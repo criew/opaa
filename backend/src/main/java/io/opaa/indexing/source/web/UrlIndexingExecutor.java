@@ -2,12 +2,12 @@ package io.opaa.indexing.source.web;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;

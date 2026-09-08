@@ -1,11 +1,11 @@
 package io.opaa.indexing.source.attachment;
 
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestOutcomes;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.library.LibraryStorageQuotaService;

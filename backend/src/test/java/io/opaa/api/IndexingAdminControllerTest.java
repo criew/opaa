@@ -21,6 +21,10 @@ import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.NotFoundException;
+import io.opaa.indexing.format.DocumentFormat;
+import io.opaa.indexing.format.DocumentFormatRegistry;
+import io.opaa.indexing.format.DocumentFormatResult;
+import io.opaa.indexing.format.DocumentFormatSource;
 import io.opaa.indexing.maintenance.ContextPrefixRerunResult;
 import io.opaa.indexing.maintenance.ContextPrefixRerunService;
 import io.opaa.indexing.maintenance.LowChunkDocumentAuditService;
@@ -30,10 +34,6 @@ import io.opaa.indexing.maintenance.PipelineReindexService;
 import io.opaa.indexing.maintenance.PipelineVersionProgress;
 import io.opaa.indexing.metadata.CoreMetadataExtractor;
 import io.opaa.indexing.metadata.MetadataBackfillResult;
-import io.opaa.indexing.pipeline.DocumentPipeline;
-import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
-import io.opaa.indexing.pipeline.DocumentPipelineResult;
-import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -71,21 +71,21 @@ class IndexingAdminControllerTest {
   @MockitoBean private PipelineReindexService pipelineReindexService;
   @MockitoBean private MetadataBackfillService metadataBackfillService;
   @MockitoBean private ContextPrefixRerunService contextPrefixRerunService;
-  @MockitoBean private DocumentPipelineRegistry pipelineRegistry;
+  @MockitoBean private DocumentFormatRegistry pipelineRegistry;
   @MockitoBean private AuditEventRecorder auditEventRecorder;
   @MockitoBean private UserService userService;
 
   /** Stands in for the registered pipelines without needing Tika or a chunking configuration. */
   private record StubPipeline(String id, short version, java.util.Set<String> handledFormats)
-      implements DocumentPipeline {
+      implements DocumentFormat {
 
     @Override
-    public DocumentPipelineResult run(DocumentPipelineSource source) {
+    public DocumentFormatResult run(DocumentFormatSource source) {
       throw new UnsupportedOperationException("not exercised by controller tests");
     }
   }
 
-  private static final DocumentPipeline TIKA_FALLBACK =
+  private static final DocumentFormat TIKA_FALLBACK =
       new StubPipeline("tika-fallback", (short) 1, java.util.Set.of());
 
   private final UUID actingAdminId = UUID.randomUUID();

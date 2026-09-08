@@ -142,9 +142,9 @@ Die einzige inhaltliche Anreicherung, die es schon gibt, ist der Kontext-Präfix
 (`ChunkContextTitle`, #933/#940) — eine LLM-freie Minimalvariante des Contextual Chunking. Sie ist
 der Ansatzpunkt, an dem der Abschnittstitel später den Dateinamen ergänzt.
 
-### Entscheidung: `DocumentPipeline` als erstes Arbeitspaket
+### Entscheidung: `DocumentFormat` als erstes Arbeitspaket
 
-Die Aufnahmestrecke bekommt eine Abstraktion `DocumentPipeline` mit einer Registry. **Eine Pipeline
+Die Aufnahmestrecke bekommt eine Abstraktion `DocumentFormat` mit einer Registry. **Eine Pipeline
 je Dokumentklasse**, jede definiert vier Dinge:
 
 1. **Reader** — womit das Dokument geparst wird,
@@ -182,7 +182,7 @@ Datei ───────────────────┤              
                      ┌──────────────────────────────────────────────────────────────┐
                      │  MarkdownPipeline · PdfPipeline · DocxPipeline · PptxPipeline │
                      │  SpreadsheetPipeline · HtmlPipeline · MailPipeline            │
-                     │  TikaFallbackPipeline  ← alles ohne eigene Pipeline           │
+                     │  TikaFallbackFormat  ← alles ohne eigene Pipeline           │
                      └──────────────────────────────────────────────────────────────┘
                                                      │
                      Reader → Splitter → Metadaten-Anreicherung → Chunk-Größe
@@ -198,9 +198,9 @@ für den Bestand nachweislich verhaltensneutral.
 
 | Baustein | Was er tut |
 |---|---|
-| `DocumentPipeline` | Reader, Splitter, Metadaten-Anreicherung und Chunk-Größe einer Dokumentklasse hinter einem Aufruf; dazu `id()` und `version()`, die auf jedem erzeugten Chunk landen |
-| `DocumentPipelineRegistry` | Routing über den **erkannten Inhalt** — es fragt dieselbe Stelle (`SupportedDocumentFormats.decideForFileName`), die auch über die Zulassung entscheidet, statt die Regel ein zweites Mal zu formulieren. Damit gilt die Markdown-/Klartext-Sonderregel (Inhalt *und* Endung) fürs Routing automatisch mit |
-| `TikaFallbackPipeline` | Der bisherige Weg (Tika-Reader + Token-Splitter mit `opaa.indexing.chunk-size`/`-overlap`), zuständig für alles, wofür keine spezialisierte Pipeline registriert ist. Chunk-Größe: **gesetzt, nicht gemessen** |
+| `DocumentFormat` | Reader, Splitter, Metadaten-Anreicherung und Chunk-Größe einer Dokumentklasse hinter einem Aufruf; dazu `id()` und `version()`, die auf jedem erzeugten Chunk landen |
+| `DocumentFormatRegistry` | Routing über den **erkannten Inhalt** — es fragt dieselbe Stelle (`SupportedDocumentFormats.decideForFileName`), die auch über die Zulassung entscheidet, statt die Regel ein zweites Mal zu formulieren. Damit gilt die Markdown-/Klartext-Sonderregel (Inhalt *und* Endung) fürs Routing automatisch mit |
+| `TikaFallbackFormat` | Der bisherige Weg (Tika-Reader + Token-Splitter mit `opaa.indexing.chunk-size`/`-overlap`), zuständig für alles, wofür keine spezialisierte Pipeline registriert ist. Chunk-Größe: **gesetzt, nicht gemessen** |
 
 Eine neue Format-Pipeline hinzuzufügen heißt: eine Klasse schreiben und als Bean registrieren. Weder
 die Registry noch `DocumentIngestService` noch `SupportedDocumentFormats` ändern dafür ihre Form.
@@ -208,7 +208,7 @@ Zwei Pipelines, die dasselbe Format beanspruchen, sind ein Verdrahtungsfehler un
 beim Start scheitern, statt die Bean-Reihenfolge entscheiden zu lassen.
 
 Für ein Format, das immer als Datei ankommt (PDF, DOCX, PPTX, ODT, ODP), übernimmt die
-Basisklasse `FileDocumentPipeline<T>` das Gerüst: einmal lesen (`read`), daraus Chunks (`chunks`)
+Basisklasse `FileDocumentFormat<T>` das Gerüst: einmal lesen (`read`), daraus Chunks (`chunks`)
 und Eigenschaften (`properties`). Die Datei wird damit je Aufnahme genau einmal geöffnet — vorher
 lasen `run` und `readProperties` sie getrennt (#1313). Für ein ODF-Paket gilt das seit #1338 auch auf
 ZIP-Ebene: `OdfPackage` öffnet das Archiv einmal, `meta.xml`, `content.xml` und `styles.xml` kommen
@@ -227,7 +227,7 @@ gar nicht erst lesen — beschädigter Container, abgewiesene XXE-Auflösung, ü
 Schutzgrenze. Der zweite Fall heißt jetzt `PARSE_FAILED`. Eine Pipeline, die beides nicht
 auseinanderhalten kann, meldet `PARSE_FAILED`; sie sagt damit nur, dass sie nichts über den Inhalt
 weiß. Eine Pipeline meldet diesen Ausgang, indem sie die Ausnahme ihres Parsers herauslässt:
-`DocumentPipelineRunner` — der einzige Aufrufpunkt von `DocumentPipeline#run` — bildet jede
+`DocumentFormatRunner` — der einzige Aufrufpunkt von `DocumentFormat#run` — bildet jede
 Laufzeitausnahme auf `PARSE_FAILED` ab und protokolliert sie einmal, für jedes Format gleich. Der
 Aufrufer sieht einen Lesefehler damit nur noch in dieser einen Form (#1313).
 
@@ -287,7 +287,7 @@ wo Chunk-Metadaten liegen: in `vector_store.metadata`. Diese Tabelle legt Spring
 nicht Liquibase — eine Spalte wäre dort gar nicht verfügbar, und eine zweite Tabelle wäre eine dritte
 Zeile je Chunk für einen Wert, der definitorisch zum Chunk gehört.
 
-**Zweiter Rückgabekanal: entdeckte Anhänge (ADR-0022, Teil 2, #1181).** `DocumentPipelineResult`
+**Zweiter Rückgabekanal: entdeckte Anhänge (ADR-0022, Teil 2, #1181).** `DocumentFormatResult`
 trägt neben `chunks` eine Liste `discoveredAttachments` (Elementtyp `DiscoveredAttachment`:
 Dateiname, temporäre Datei, erkannter Medientyp) — eine Pipeline kann damit melden, dass sie beim
 Parsen eingebettete Objekte gefunden hat, ohne sie selbst zu verarbeiten. Default ist die leere
@@ -296,14 +296,14 @@ diesen Kanal mit: `chunks` bleibt leer für jeden Outcome außer `CHUNKED`, und 
 Chunks bleibt unzulässig, auch wenn `discoveredAttachments` nicht leer ist — eine Pipeline, die nur
 Anhänge findet und selbst nichts liefert, ist ein Fall für den verallgemeinerten Anhangsweg (Teil 3,
 #1182), nicht für diesen Vertrag. Die Verantwortung für die temporäre Datei eines gemeldeten Anhangs
-geht mit der Rückgabe auf den Aufrufer über: `DocumentPipelineRunner#run` — der gemeinsame
-Aufruf-Wrapper um `DocumentPipeline#run`, den `DocumentIngestService` für jedes Dokument nutzt (seit
-#1183 der einzige Aufrufer, `MailDocumentPipeline` rekursiert nicht mehr selbst) — reicht die Liste
+geht mit der Rückgabe auf den Aufrufer über: `DocumentFormatRunner#run` — der gemeinsame
+Aufruf-Wrapper um `DocumentFormat#run`, den `DocumentIngestService` für jedes Dokument nutzt (seit
+#1183 der einzige Aufrufer, `MailDocumentFormat` rekursiert nicht mehr selbst) — reicht die Liste
 zuerst an einen von `DocumentIngestService` übergebenen Handler weiter, der einen Anhang über den
-verallgemeinerten Anhangsweg indiziert, bevor `DocumentPipelineRunner#run` in einem `finally`
+verallgemeinerten Anhangsweg indiziert, bevor `DocumentFormatRunner#run` in einem `finally`
 unbedingt und idempotent aufräumt: ein vom Handler bereits verarbeiteter Anhang wird kein zweites Mal
 gelöscht, ein nie übernommener nie geleakt. Aktiv genutzt wird der Kanal seit der Umstellung von
-`MailDocumentPipeline` in Teil 4 (#1183, siehe unten).
+`MailDocumentFormat` in Teil 4 (#1183, siehe unten).
 
 ### Parsing-Strategie: hybrid, nicht ein Werkzeug für alles
 
@@ -415,20 +415,20 @@ bedeutungsleer, mit ihr eine beantwortbare Frage.
 
 #### Umgesetzt (#1061)
 
-`PdfDocumentPipeline` (`id` `pdf`, Version 1), `DocxDocumentPipeline` (`id` `docx`, Version 2 seit
-#1145) und `PptxDocumentPipeline` (`id` `pptx`, Version 1) sind registriert und beanspruchen `.pdf`,
-`.docx` bzw. `.pptx` in der `DocumentPipelineRegistry`. `.doc` bleibt unverändert bei
-`TikaFallbackPipeline` — POIs OOXML-Leser kann das ältere Binärformat gar nicht öffnen.
+`PdfDocumentFormat` (`id` `pdf`, Version 1), `DocxDocumentFormat` (`id` `docx`, Version 2 seit
+#1145) und `PptxDocumentFormat` (`id` `pptx`, Version 1) sind registriert und beanspruchen `.pdf`,
+`.docx` bzw. `.pptx` in der `DocumentFormatRegistry`. `.doc` bleibt unverändert bei
+`TikaFallbackFormat` — POIs OOXML-Leser kann das ältere Binärformat gar nicht öffnen.
 
-- **PDF** liest über Apache PDFBox direkt (nicht den in Teil 1 genannten Spring-AI-`ParagraphPdfDocumentReader`/`PagePdfDocumentReader` — kein solches Modul liegt auf dem Klassenpfad, dieselbe Abwägung wie bei `HtmlDocumentPipeline`/Jsoup). Trägt der PDF-Katalog ein Inhaltsverzeichnis (Outline/Bookmarks), schneidet die Pipeline entlang **jeder** dort vorhandenen Verschachtelungstiefe — anders als bei Markdown/DOCX/HTML gibt es hier **kein** Level-3-Limit, weil § und Absatz in einer Satzung typischerweise zwei Katalogebenen sind und eine tiefere Gliederung ebenso zitierfähig bleiben soll. Ein Katalogeintrag, dessen Ziel sich nicht auf eine Seite auflösen lässt, wird übersprungen (seine Kinder bleiben auf ihrer eigenen Ebene). **Mehrere Katalogeinträge auf derselben Seite** (der Satzungs-Normalfall: mehrere §§ je Seite) teilen sich den Seitentext nach ihren Titeltexten auf — der Text zwischen einem Titel und dem nächsten wird dem jeweils vorangehenden Eintrag zugeordnet, statt der gesamten Seite nur dem letzten Eintrag (#1104 Review, wichtig 1); lässt sich ein Titel im extrahierten Text nicht wortgleich wiederfinden, fällt der geteilte Bereich auf den letzten Eintrag zurück, die übrigen Geschwister behalten trotzdem ihren eigenen, wenn auch körperlosen Abschnitt. Ohne auflösbaren Katalog fällt die Pipeline auf eine Seite = ein Chunk zurück (`location` = „S. n"). Der #1055-Scan-Guard wird aus der eigenen PDFBox-Extraktion beantwortet (leerer Volltext über das ganze Dokument), nicht mehr aus einem separaten, anschließend verworfenen Tika-Lauf (#1104 Review, wichtig 6) — die Semantik ist unverändert, weil Tikas PDF-Modul selbst auf PDFBox aufsetzt.
-- **DOCX** liest direkt über Apache POI (`XWPFDocument`) statt über Tika, weil die Absatzformat-Überschriftenebene — genau das, worauf diese Pipeline schneidet — bei Tikas Extraktion verloren geht. Die Ebene kommt aus der eingebauten Word-Formatvorlage (Style-ID `Heading1`…`Heading9` im üblichen englischsprachig-templateten Fall, aber die Style-ID ist **nicht** verlässlich englisch — LibreOffice und manche deutschen Word-Vorlagen exportieren `berschrift1`/`Ueberschrift1`, das führende „Ü" fällt der OOXML-Bereinigung zum Opfer, siehe #1104 Review, Nit 5) oder ersatzweise aus dem direkten Gliederungsattribut (`w:outlineLvl`); ein Absatz ohne beides bleibt Fließtext im laufenden Abschnitt. **Tabellen werden zellenweise gelesen**, nicht übersprungen (#1104 Review, wichtig 2): Ein Gebührenverzeichnis oder Formular ist praktisch immer eine Tabelle, und Tikas Extraktion (das Vor-#1061-Verhalten) trug diesen Inhalt bereits — die Pipeline durchläuft dafür `getBodyElements()` statt nur `getParagraphs()` und wandelt jede `XWPFTable` in einen Absatz-Textblock um (eine Zeile je Tabellenzeile, Zellen mit „ | " verbunden). **Kopf-/Fußzeilentext wird seit #1145 mitgelesen**, obwohl er nicht zu `getBodyElements()` gehört: Jeder Header-/Footer-Teil aus `XWPFDocument#getHeaderList()`/`#getFooterList()` — die Vereinigung über alle Abschnitte und alle Standard-/Erste-Seite-/Gerade-Varianten eines mehrabschnittigen Dokuments, nicht nur der zuletzt im Dokument stehende `sectPr`-Header/-Footer — wird über POI ausgelesen und — genau wie bei `OdtDocumentPipeline`/`OdpDocumentPipeline` — als ein einziger, deduplizierter führender Chunk aufgenommen (`location` „Kopf-/Fußzeile“, `RepeatingHeaderChunk`, geteilt mit den beiden ODF-Pipelines), statt pro Seite dupliziert oder verworfen zu werden. Ein Absatz wird über `XWPFRun#text()` gelesen, nicht `getText(0)` — Letzteres liefert nur den ersten `w:t`-Knoten eines Runs, während Word eine tabgetrennte mehrspaltige Kopfzeile („Stadt Musterstadt&lt;TAB&gt;Az. 12-34/2026“) routinemäßig als **einen** Run mit mehreren `w:t`/`w:tab`-Kindern schreibt; ein Aktenzeichen in der zweiten Spalte wäre mit `getText(0)` sonst still verloren gegangen. Ein Run mit nachverfolgt gelöschtem Text (`w:delText`) wird ausgeschlossen, dieselbe Ausnahme, die `XWPFParagraph#getText()` für den Körpertext bereits macht. Der zuletzt berechnete Wert eines Word-Feldes wird beim Auslesen ausgeschlossen — sowohl die komplexe Form (`w:fldChar`-Runs zwischen `separate` und `end`, mit einem Tiefenzähler statt eines Flags gegen verschachtelte Felder) als auch `w:fldSimple` (LibreOffices Exportform, ein eigener POI-Run-Typ `XWPFFieldRun` ohne eigenes `w:fldChar`/`w:instrText`, den die Zustandsmaschine allein nicht sieht). Zwei Absätze mit gleichem, auf Leerraum normalisiertem Text tragen nur einmal bei — der übliche Fall, wenn derselbe Header für mehrere Abschnitte oder Varianten gilt; die Normalisierung schließt geschützte Leerzeichen (U+00A0, U+202F) ein, da diese in Behördenkopfzeilen als Spaltentrenner üblich sind und ein bloßes `\s` sie nicht erfasst. `RepeatingHeaderChunk` verwirft als Netz darunter zusätzlich jeden Kandidaten ohne einen einzigen Buchstaben.
+- **PDF** liest über Apache PDFBox direkt (nicht den in Teil 1 genannten Spring-AI-`ParagraphPdfDocumentReader`/`PagePdfDocumentReader` — kein solches Modul liegt auf dem Klassenpfad, dieselbe Abwägung wie bei `HtmlDocumentFormat`/Jsoup). Trägt der PDF-Katalog ein Inhaltsverzeichnis (Outline/Bookmarks), schneidet die Pipeline entlang **jeder** dort vorhandenen Verschachtelungstiefe — anders als bei Markdown/DOCX/HTML gibt es hier **kein** Level-3-Limit, weil § und Absatz in einer Satzung typischerweise zwei Katalogebenen sind und eine tiefere Gliederung ebenso zitierfähig bleiben soll. Ein Katalogeintrag, dessen Ziel sich nicht auf eine Seite auflösen lässt, wird übersprungen (seine Kinder bleiben auf ihrer eigenen Ebene). **Mehrere Katalogeinträge auf derselben Seite** (der Satzungs-Normalfall: mehrere §§ je Seite) teilen sich den Seitentext nach ihren Titeltexten auf — der Text zwischen einem Titel und dem nächsten wird dem jeweils vorangehenden Eintrag zugeordnet, statt der gesamten Seite nur dem letzten Eintrag (#1104 Review, wichtig 1); lässt sich ein Titel im extrahierten Text nicht wortgleich wiederfinden, fällt der geteilte Bereich auf den letzten Eintrag zurück, die übrigen Geschwister behalten trotzdem ihren eigenen, wenn auch körperlosen Abschnitt. Ohne auflösbaren Katalog fällt die Pipeline auf eine Seite = ein Chunk zurück (`location` = „S. n"). Der #1055-Scan-Guard wird aus der eigenen PDFBox-Extraktion beantwortet (leerer Volltext über das ganze Dokument), nicht mehr aus einem separaten, anschließend verworfenen Tika-Lauf (#1104 Review, wichtig 6) — die Semantik ist unverändert, weil Tikas PDF-Modul selbst auf PDFBox aufsetzt.
+- **DOCX** liest direkt über Apache POI (`XWPFDocument`) statt über Tika, weil die Absatzformat-Überschriftenebene — genau das, worauf diese Pipeline schneidet — bei Tikas Extraktion verloren geht. Die Ebene kommt aus der eingebauten Word-Formatvorlage (Style-ID `Heading1`…`Heading9` im üblichen englischsprachig-templateten Fall, aber die Style-ID ist **nicht** verlässlich englisch — LibreOffice und manche deutschen Word-Vorlagen exportieren `berschrift1`/`Ueberschrift1`, das führende „Ü" fällt der OOXML-Bereinigung zum Opfer, siehe #1104 Review, Nit 5) oder ersatzweise aus dem direkten Gliederungsattribut (`w:outlineLvl`); ein Absatz ohne beides bleibt Fließtext im laufenden Abschnitt. **Tabellen werden zellenweise gelesen**, nicht übersprungen (#1104 Review, wichtig 2): Ein Gebührenverzeichnis oder Formular ist praktisch immer eine Tabelle, und Tikas Extraktion (das Vor-#1061-Verhalten) trug diesen Inhalt bereits — die Pipeline durchläuft dafür `getBodyElements()` statt nur `getParagraphs()` und wandelt jede `XWPFTable` in einen Absatz-Textblock um (eine Zeile je Tabellenzeile, Zellen mit „ | " verbunden). **Kopf-/Fußzeilentext wird seit #1145 mitgelesen**, obwohl er nicht zu `getBodyElements()` gehört: Jeder Header-/Footer-Teil aus `XWPFDocument#getHeaderList()`/`#getFooterList()` — die Vereinigung über alle Abschnitte und alle Standard-/Erste-Seite-/Gerade-Varianten eines mehrabschnittigen Dokuments, nicht nur der zuletzt im Dokument stehende `sectPr`-Header/-Footer — wird über POI ausgelesen und — genau wie bei `OdtDocumentFormat`/`OdpDocumentFormat` — als ein einziger, deduplizierter führender Chunk aufgenommen (`location` „Kopf-/Fußzeile“, `RepeatingHeaderChunk`, geteilt mit den beiden ODF-Pipelines), statt pro Seite dupliziert oder verworfen zu werden. Ein Absatz wird über `XWPFRun#text()` gelesen, nicht `getText(0)` — Letzteres liefert nur den ersten `w:t`-Knoten eines Runs, während Word eine tabgetrennte mehrspaltige Kopfzeile („Stadt Musterstadt&lt;TAB&gt;Az. 12-34/2026“) routinemäßig als **einen** Run mit mehreren `w:t`/`w:tab`-Kindern schreibt; ein Aktenzeichen in der zweiten Spalte wäre mit `getText(0)` sonst still verloren gegangen. Ein Run mit nachverfolgt gelöschtem Text (`w:delText`) wird ausgeschlossen, dieselbe Ausnahme, die `XWPFParagraph#getText()` für den Körpertext bereits macht. Der zuletzt berechnete Wert eines Word-Feldes wird beim Auslesen ausgeschlossen — sowohl die komplexe Form (`w:fldChar`-Runs zwischen `separate` und `end`, mit einem Tiefenzähler statt eines Flags gegen verschachtelte Felder) als auch `w:fldSimple` (LibreOffices Exportform, ein eigener POI-Run-Typ `XWPFFieldRun` ohne eigenes `w:fldChar`/`w:instrText`, den die Zustandsmaschine allein nicht sieht). Zwei Absätze mit gleichem, auf Leerraum normalisiertem Text tragen nur einmal bei — der übliche Fall, wenn derselbe Header für mehrere Abschnitte oder Varianten gilt; die Normalisierung schließt geschützte Leerzeichen (U+00A0, U+202F) ein, da diese in Behördenkopfzeilen als Spaltentrenner üblich sind und ein bloßes `\s` sie nicht erfasst. `RepeatingHeaderChunk` verwirft als Netz darunter zusätzlich jeden Kandidaten ohne einen einzigen Buchstaben.
 - **PPTX** liest über Apache POI (`XMLSlideShow`): eine Folie mit Text = ein Chunk, mit Folientitel und -nummer als Fundort und Sprechernotizen als eigenem, klar benannten Absatz (Platzhalter für Foliennummer/Datum in den Notizen werden dabei ausgefiltert, #1104 Review, Nit 7). Eine `XSLFGroupShape` wird rekursiv abgestiegen und eine `XSLFTable` zeilenweise gelesen (#1104 Review, wichtig 3) — beide sind keine `XSLFTextShape` und wären sonst unsichtbar; der Titel-Shape wird über Objektidentität ausgeschlossen, nicht über Textgleichheit, damit ein Textfeld mit zufällig demselben Wortlaut wie der Titel nicht mit verschwindet. Eine leere Folie neben anderen Folien mit Text erzeugt weiterhin einen (fast leeren) Chunk, damit die Foliennummerierung als Fundstelle lückenlos bleibt — **trägt aber keine einzige Folie der Präsentation Text**, meldet die Pipeline `NO_EXTRACTABLE_TEXT` statt `CHUNKED` mit lauter inhaltsleeren „Folie n"-Chunks (#1104 Review, wichtig 4): Ohne diese Schranke kehrt die in Teil 3, Punkt 1 behobene stille Leer-Index-Fehlfunktion für rein bildbasierte Präsentationen zurück.
 
-Alle drei — sowie `HtmlDocumentPipeline` — nutzen dieselbe, geteilte `HeadingSectionSplitter`-Logik (Überschriftenpfad, Soft-/Hard-Zeichenlimit, „Abschn. …“-Fundort, Unterdrückung körperloser Abschnitte): `HtmlDocumentPipeline` baut seinen eigenen Block-/Überschriftenpfad-Zustand aus der DOM-Traversierung auf, ruft für die Abschnittsbildung selbst aber `HeadingSectionSplitter.flushSection`/`capChunkLength` direkt statt einer eigenen Kopie (#1104 Review, Nit 9) — die #1100-Nachbesserungen an dieser Logik leben damit an genau einer Stelle.
+Alle drei — sowie `HtmlDocumentFormat` — nutzen dieselbe, geteilte `HeadingSectionSplitter`-Logik (Überschriftenpfad, Soft-/Hard-Zeichenlimit, „Abschn. …“-Fundort, Unterdrückung körperloser Abschnitte): `HtmlDocumentFormat` baut seinen eigenen Block-/Überschriftenpfad-Zustand aus der DOM-Traversierung auf, ruft für die Abschnittsbildung selbst aber `HeadingSectionSplitter.flushSection`/`capChunkLength` direkt statt einer eigenen Kopie (#1104 Review, Nit 9) — die #1100-Nachbesserungen an dieser Logik leben damit an genau einer Stelle.
 
 **Chunk-Größe: gesetzt, nicht gemessen** für alle drei — der bestehende Evaluierungskorpus enthält keine PDF-, DOCX- oder PPTX-Dokumente. **Baseline unberührt** — kein Korpusdokument dieses Typs.
 
-**`MarkdownDocumentPipeline` (`id` `markdown`, Version 1) ist seit #1103 als Bean registriert**, anstelle von `TikaFallbackPipeline` für `.md`. Der gesamte Evaluierungskorpus (`eval/corpus/`) ist Markdown; das Umschalten war deshalb — anders als bei PDF/DOCX/PPTX — keine für den Bestand verhaltensneutrale Änderung, sondern eine Messvertrags-Änderung, siehe [ADR-0012, Nachtrag „Strukturbewusstes Markdown-Chunking"](decisions/0012-messvertrag-retrieval-harness.md#nachtrag-strukturbewusstes-markdown-chunking-issue-1103) für die gemessene Verschiebung und die Baseline-Folgen. Ein Fund bei der Registrierung: Alle drei Korpora beginnen jedes Dokument mit einem YAML-Frontmatter-Block vor der ersten Überschrift, den `HeadingSectionSplitter` sonst zu einem eigenen, überschriftslosen ersten Chunk gemacht hätte — `MarkdownDocumentPipeline` verwirft einen `---`-begrenzten Block am Dateianfang deshalb, statt ihn zu chunken (siehe die Pipeline-eigene Javadoc).
+**`MarkdownDocumentFormat` (`id` `markdown`, Version 1) ist seit #1103 als Bean registriert**, anstelle von `TikaFallbackFormat` für `.md`. Der gesamte Evaluierungskorpus (`eval/corpus/`) ist Markdown; das Umschalten war deshalb — anders als bei PDF/DOCX/PPTX — keine für den Bestand verhaltensneutrale Änderung, sondern eine Messvertrags-Änderung, siehe [ADR-0012, Nachtrag „Strukturbewusstes Markdown-Chunking"](decisions/0012-messvertrag-retrieval-harness.md#nachtrag-strukturbewusstes-markdown-chunking-issue-1103) für die gemessene Verschiebung und die Baseline-Folgen. Ein Fund bei der Registrierung: Alle drei Korpora beginnen jedes Dokument mit einem YAML-Frontmatter-Block vor der ersten Überschrift, den `HeadingSectionSplitter` sonst zu einem eigenen, überschriftslosen ersten Chunk gemacht hätte — `MarkdownDocumentFormat` verwirft einen `---`-begrenzten Block am Dateianfang deshalb, statt ihn zu chunken (siehe die Pipeline-eigene Javadoc).
 
 ### Chunk-Größen: gemessen, wo Messmaterial existiert — und sonst ehrlich gesetzt
 
@@ -567,9 +567,9 @@ kein Chunk ändert sich, die Baseline bleibt unberührt.
 
 #### Umgesetzt (#1055)
 
-Beide Teile sind gebaut. **(1) Erkennung und Abweisung:** Jede `DocumentPipeline` meldet für ein
+Beide Teile sind gebaut. **(1) Erkennung und Abweisung:** Jede `DocumentFormat` meldet für ein
 Dokument ohne extrahierbaren Text `NO_EXTRACTABLE_TEXT` statt `CHUNKED` mit null Chunks — der
-gemeinsame Guard, den `TikaFallbackPipeline` und jede seither hinzugekommene Typ-Pipeline (PDF, DOCX,
+gemeinsame Guard, den `TikaFallbackFormat` und jede seither hinzugekommene Typ-Pipeline (PDF, DOCX,
 PPTX, Tabellen, HTML, E-Mail) für ihr eigenes Format beantworten, siehe [Teil 1](#umgesetzt-die-abstraktion-selbst-1056).
 Eine so abgewiesene Datei erscheint in der Zählung des Indizierungslaufs als übersprungen und wird
 namentlich protokolliert, wie jede andere abgewiesene Datei auch. **(2) Bestandsprüfung:**
@@ -592,14 +592,14 @@ der Zulassungsliste und in der Medientyp-Zuordnung der Formaterkennung.
 
 **Zuschnitt (Zusage korrigiert, #1104):** Ursprünglich hier zugesagt war „wie die jeweiligen
 Microsoft-Pendants — ODT wie DOCX, ODS wie XLSX, ODP wie PPTX, die Pipelines sind dieselben". Das ist
-seit #1104 uneinlösbar: Apache POI, das `DocxDocumentPipeline` und `PptxDocumentPipeline` für ihren
+seit #1104 uneinlösbar: Apache POI, das `DocxDocumentFormat` und `PptxDocumentFormat` für ihren
 strukturbewussten Zuschnitt verwenden, liest kein ODF — POI deckt OOXML (DOCX/PPTX/XLSX) und die
 alten Binärformate ab, nie OpenDocument (siehe die gleiche Einschränkung unter
 [Punkt 3](#3-xlsx-und-csv)). Nur ODS bekommt tatsächlich einen strukturerhaltenden Zuschnitt, über
-einen eigenen, POI-unabhängigen ODF-Leser (`TabularDocumentPipeline`, #1058) — „ODS wie XLSX" gilt
+einen eigenen, POI-unabhängigen ODF-Leser (`TabularDocumentFormat`, #1058) — „ODS wie XLSX" gilt
 also im Ergebnis, aber nicht über dieselbe Pipeline-Implementierung. **Seit #1110 gilt dasselbe auch
-für ODT und ODP**: `OdtDocumentPipeline`/`OdpDocumentPipeline` lesen `content.xml` über einen
-eigenen, POI-unabhängigen ODF-SAX-Leser, im selben Stil wie `TabularDocumentPipeline`s ODS-Leser —
+für ODT und ODP**: `OdtDocumentFormat`/`OdpDocumentFormat` lesen `content.xml` über einen
+eigenen, POI-unabhängigen ODF-SAX-Leser, im selben Stil wie `TabularDocumentFormat`s ODS-Leser —
 „ODT wie DOCX, ODP wie PPTX" gilt seitdem also ebenfalls im Ergebnis, aber über eine eigene
 Pipeline-Implementierung statt über POI.
 
@@ -609,33 +609,33 @@ Pipeline-Implementierung statt über POI.
 ODF-Medientypen (`application/vnd.oasis.opendocument.{text,spreadsheet,presentation}`) als
 strikte Erkennungsgrenze — anders als bei OOXML gibt es keinen generischen, unaufgelösten
 ODF-Containertyp, den es zusätzlich abzuweisen gälte. Da weder für DOCX/PPTX noch für XLSX bereits
-eine eigene `DocumentPipeline` existiert (Stand #1056/#1058), läuft auch ODF vollständig über die
-`TikaFallbackPipeline` — das Routing über `SupportedDocumentFormats.decideForFileName` reicht dafür
+eine eigene `DocumentFormat` existiert (Stand #1056/#1058), läuft auch ODF vollständig über die
+`TikaFallbackFormat` — das Routing über `SupportedDocumentFormats.decideForFileName` reicht dafür
 aus, ohne dass die Registry oder eine neue Pipeline-Klasse etwas dazulernen musste. Eine ODT-, ODS-
 oder ODP-Datei ohne extrahierbaren Text wird über denselben generischen Leer-Chunk-Guard der
 Fallback-Pipeline abgewiesen (`NO_EXTRACTABLE_TEXT` statt `INDEXED` mit null Chunks, #1055), nicht
 über eine formatspezifische Prüfung.
 
-**ODS wird seit #1058 von `TabularDocumentPipeline` mitbedient**, nicht mehr von der
+**ODS wird seit #1058 von `TabularDocumentFormat` mitbedient**, nicht mehr von der
 Tika-Fallback-Pipeline: „ODS wie XLSX" gilt seitdem auch für den Reader, über einen eigenen,
 POI-unabhängigen ODF-XML-Leser (POI selbst versteht kein ODF) — siehe die Begründung unter
 [Punkt 3](#3-xlsx-und-csv).
 
 Baseline unberührt — kein Korpusdokument dieses Typs. (Diese Feststellung galt zum Zeitpunkt
 von #1058, vor `ingestionPipelineFingerprint`; die seit #1144 zusätzliche Auflage — den
-Abdruck bei jedem `TabularDocumentPipeline`-Versions-Bump nachzuziehen — steht oben im
+Abdruck bei jedem `TabularDocumentFormat`-Versions-Bump nachzuziehen — steht oben im
 Abschnitt "Baseline-Aktualisierung als Schritt jedes Format-Issues".)
 
 #### Umgesetzt (#1110, styles.xml seit #1145)
 
-`OdtDocumentPipeline` (`id` `odt`, Version 2) und `OdpDocumentPipeline` (`id` `odp`, Version 2)
-beanspruchen `.odt` bzw. `.odp` in der `DocumentPipelineRegistry` und lösen damit die
-`TikaFallbackPipeline` für beide Formate ab. Beide lesen `content.xml` (eine ODT-/ODP-Datei ist wie
+`OdtDocumentFormat` (`id` `odt`, Version 2) und `OdpDocumentFormat` (`id` `odp`, Version 2)
+beanspruchen `.odt` bzw. `.odp` in der `DocumentFormatRegistry` und lösen damit die
+`TikaFallbackFormat` für beide Formate ab. Beide lesen `content.xml` (eine ODT-/ODP-Datei ist wie
 ODS ein ZIP-Archiv) direkt über einen gehärteten SAX-Parser, geteilt über `OdfPackage` (bis #1338
 `OdfContentXml`) — dieselbe
 XXE-Härtung (kein `<!DOCTYPE …>`, keine externen Entitäten) und derselbe Byte-Deckel auf den
 entpackten `content.xml`-Strom (`opaa.indexing.odf.max-content-xml-bytes`, gesetzt 10 MiB) wie
-`TabularDocumentPipeline`s ODS-Leser. Ein zweiter Element-Deckel gilt zusätzlich pro Format
+`TabularDocumentFormat`s ODS-Leser. Ein zweiter Element-Deckel gilt zusätzlich pro Format
 (`opaa.indexing.odf.max-odt-paragraphs` bzw. `opaa.indexing.odf.max-odp-slides`, je gesetzt 50.000
 bzw. 5.000) — anders als beim ODS-Leser wird `table:number-columns-repeated`/
 `table:number-rows-repeated` hier nicht expandiert (eine Tabelle in einem Textdokument oder einer
@@ -648,18 +648,18 @@ einen Absatz-/Zellen-Textpuffer wachsen dürfen — ohne diesen zweiten Deckel s
 viele `text:s`-Elemente innerhalb desselben Absatzes unbegrenzt, weil der Puffer nur einmal je Absatz
 zurückgesetzt wird (#1143).
 
-- **ODT** entspricht fachlich `DocxDocumentPipeline`: Die Gliederungsebene kommt direkt aus `text:h`s
+- **ODT** entspricht fachlich `DocxDocumentFormat`: Die Gliederungsebene kommt direkt aus `text:h`s
   eigenem `text:outline-level`-Attribut (kein Stilname-Abgleich nötig, anders als bei DOCX' eingebauten
   Word-Formatvorlagen), mit Abbruch der Schnittebene bei 3 wie bei DOCX. Eine `table:table` wird
   zellenweise in einen einzelnen Fließtext-Absatz je Tabelle gelesen, nie als Überschrift.
 
 **Bewusste Bestandsregression: eine in eine Tabellenzelle verschachtelte Tabelle geht vollständig
-verloren.** Sowohl `OdtDocumentPipeline` als auch `OdpDocumentPipeline` lesen die äußere Tabelle
+verloren.** Sowohl `OdtDocumentFormat` als auch `OdpDocumentFormat` lesen die äußere Tabelle
 korrekt zeilenweise weiter — die Trägerzeile und ihre übrigen Zellen bleiben intakt —, aber der
 Inhalt der verschachtelten Tabelle selbst wird verworfen, nicht etwa in die Trägerzelle
-übernommen. Über `TikaFallbackPipeline` war dieser Inhalt bisher (unstrukturiert) mit indiziert;
+übernommen. Über `TikaFallbackFormat` war dieser Inhalt bisher (unstrukturiert) mit indiziert;
 mit den beiden ODF-Pipelines ist er es nicht mehr (#1110/#1143).
-- **ODP** entspricht fachlich `PptxDocumentPipeline`: eine Folie (`draw:page`) = ein Chunk. Die Rolle
+- **ODP** entspricht fachlich `PptxDocumentFormat`: eine Folie (`draw:page`) = ein Chunk. Die Rolle
   eines Rahmens kommt aus seinem eigenen `presentation:class`-Attribut — `"title"` wird Fundort und
   führende Zeile des Chunks, jeder andere Rahmen (auch `"subtitle"`) wird Fließtext, Text in
   `presentation:notes` wird als eigener, benannter Absatz angehängt, mit denselben ausgefilterten
@@ -681,7 +681,7 @@ Masterfolien-Text (ODP: jeder Absatztext innerhalb einer `style:master-page`, mi
 Platzhalterklassen `header`/`footer`/`date-time`/`page-number`, die schon bei den Notizen
 ausgefiltert werden) werden nicht pro Seite/Folie dupliziert und nicht verworfen, sondern als **ein
 einziger, deduplizierter führender Chunk** aufgenommen (`location` „Kopf-/Fußzeile“ bzw.
-„Masterfolie“) — dieselbe `RepeatingHeaderChunk`-Bauweise wie bei `DocxDocumentPipeline` (siehe
+„Masterfolie“) — dieselbe `RepeatingHeaderChunk`-Bauweise wie bei `DocxDocumentFormat` (siehe
 unten). **Dedupliziert** heißt hier wortwörtlich: Zwei Absätze, deren auf Leerraum normalisierter
 Text übereinstimmt — etwa dieselbe Fußzeile, wiederholt über mehrere Seitenvorlagen oder über
 Standard-/Links-/Erste-Seite-Varianten —, tragen nur einmal bei; die Normalisierung schließt geschützte Leerzeichen (U+00A0, U+202F) ein, da diese in Behördenkopfzeilen als Spaltentrenner üblich sind und ein bloßes `\s` sie nicht erfasst. Ein ODF-Feldelement
@@ -696,8 +696,8 @@ unverändert indiziert) — anders als bei `content.xml` scheitert dabei nicht d
 weil `styles.xml` ergänzenden, nicht tragenden Inhalt liefert.
 
 **Eine Guard-Regel für alle drei Formate: Kopf-/Fußzeilen- bzw. Masterfolien-Text rettet ein
-sonst inhaltsleeres Dokument nie vor `NO_CONTENT`/`NO_EXTRACTABLE_TEXT`.** `OdtDocumentPipeline`,
-`OdpDocumentPipeline` und `DocxDocumentPipeline` prüfen diesen Guard ausschließlich gegen den
+sonst inhaltsleeres Dokument nie vor `NO_CONTENT`/`NO_EXTRACTABLE_TEXT`.** `OdtDocumentFormat`,
+`OdpDocumentFormat` und `DocxDocumentFormat` prüfen diesen Guard ausschließlich gegen den
 Körperinhalt (`content.xml` bzw. `getBodyElements()`) und hängen den führenden Kopf-/Fußzeilen-
 bzw. Masterfolien-Chunk erst danach an — nie umgekehrt. Der Grund gilt wörtlich für alle drei:
 Kopf-/Fußzeilen- und Masterfolien-Text ist Vorlagentext, auf jeder Seite/Folie gleich präsent,
@@ -707,14 +707,14 @@ OCR-bedürftig sichtbar bleiben (`NO_EXTRACTABLE_TEXT`/`NO_CONTENT`), nicht als 
 indiziert mit einem einzigen Briefkopf-Chunk gelten — dieselbe stille Leer-Index-Fehlfunktion aus
 #1055, die für PPTX-Scanpräsentationen bereits behoben ist (Teil 3, Punkt 1).
 
-Vor #1145 war dieser Text über `TikaFallbackPipeline` indiziert, mit `OdtDocumentPipeline`/
-`OdpDocumentPipeline` seit #1110 aber nicht mehr — eine bewusst in Kauf genommene
+Vor #1145 war dieser Text über `TikaFallbackFormat` indiziert, mit `OdtDocumentFormat`/
+`OdpDocumentFormat` seit #1110 aber nicht mehr — eine bewusst in Kauf genommene
 Bestandsregression, die #1145 behebt.
 
 **Reindex-Nachzug (#1105):** Ein bereits als ODT/ODP indizierter Bestand trägt heute noch
 `tika-fallback` als Pipeline-Metadatum. Der in #1105 gebaute Fehlrouting-Zweig von
 `PipelineReindexService#selectStaleDocuments` erkennt diesen Fall generisch über
-`DocumentPipeline#handledFormats()` der neu registrierten Pipeline (keine ODT-/ODP-spezifische
+`DocumentFormat#handledFormats()` der neu registrierten Pipeline (keine ODT-/ODP-spezifische
 Anpassung nötig) und zieht solche Dokumente beim nächsten `reindexBatch`-Aufruf nach.
 
 Baseline unberührt — der bestehende Evaluierungskorpus enthält keine ODT-/ODP-Dokumente.
@@ -736,8 +736,8 @@ Inhalt muss Text sein **und** die Datei muss `.csv` heißen.
 
 #### Umgesetzt (#1058)
 
-`TabularDocumentPipeline` (`id` `tabular`, Version 1) beansprucht `.xlsx`, `.csv` und `.ods` in der
-`DocumentPipelineRegistry`. XLSX wird blatt- und zellenweise über Apache POI gelesen, CSV über einen
+`TabularDocumentFormat` (`id` `tabular`, Version 1) beansprucht `.xlsx`, `.csv` und `.ods` in der
+`DocumentFormatRegistry`. XLSX wird blatt- und zellenweise über Apache POI gelesen, CSV über einen
 Trennzeichen-erkennenden Parser (Komma, Semikolon, Tabulator — die reale Exportvarianten, siehe
 Test-Fixtures). **ODS liest POI nicht** — POI deckt OOXML (XLSX/DOCX/PPTX) und die alten
 Binärformate ab, nie OpenDocument. Statt einer vollen ODF-Bibliothek (z. B. ODF Toolkit) für einen
@@ -751,7 +751,7 @@ schlichtes, wohlgeformtes XML. Damit bedient dieselbe Pipeline auch das „ODS w
   sie erneut, zusammen mit einer Strukturkontext-Zeile (`Blatt: … · Tabelle: …` für XLSX/ODS, `Tabelle:
   …` für CSV) — direkt im Chunk-Text, nicht als separates Metadatenfeld. Das war bis #1107 auch
   technisch erzwungen (`DocumentIngestService` übertrug eine feste, für alle Pipelines gemeinsame
-  Metadatenmenge auf einen gespeicherten Chunk); seit `DocumentPipeline#passthroughMetadataKeys()`
+  Metadatenmenge auf einen gespeicherten Chunk); seit `DocumentFormat#passthroughMetadataKeys()`
   könnte diese Pipeline ein eigenes Metadatenfeld deklarieren, tut es aber unverändert nicht — die
   Zeile geht damit auch in den Volltextindex, den ein separates Metadatenfeld nicht erreicht (Regel
   (a)), und bleibt an derselben Stelle zitierfähig wie der übrige Chunk-Text. Für XLSX/ODS fallen Blatt- und Tabellenname
@@ -767,7 +767,7 @@ schlichtes, wohlgeformtes XML. Damit bedient dieselbe Pipeline auch das „ODS w
 - Ein leeres Blatt liefert keinen Chunk; ein Blatt oder eine Datei mit zwei oder mehr Zeilen, von
   denen nach der Kopfzeile keine eine Datenzeile ist, ebenfalls nicht. Trägt kein Blatt einer
   Arbeitsmappe bzw. keine Zeile einer CSV-Datei Nutzdaten, meldet die Pipeline
-  `NO_EXTRACTABLE_TEXT` — dasselbe Ergebnis, das `TikaFallbackPipeline` für Text meldet, der auf
+  `NO_EXTRACTABLE_TEXT` — dasselbe Ergebnis, das `TikaFallbackFormat` für Text meldet, der auf
   nichts herunter zerlegt (siehe [Punkt 1](#1-scan-erkennung-und-bestandsprüfung)).
 - **Ausnahme: eine einzelne Zeile ist immer Inhalt, nie eine leere Kopfzeile.** Ein Blatt oder eine
   Datei, die nie mehr als eine nicht-leere Zeile hatte, hat keinen Kopfzeile-/Datenzeile-Unterschied
@@ -817,8 +817,8 @@ adressieren. Der Zuschnitt folgt den Überschriften h1–h3.
 
 #### Umgesetzt (#1059)
 
-`HtmlDocumentPipeline` (`id` `html`, Version 1; seit #1315 Version 2, seit #1357 Version 3, siehe unten) beansprucht `.html` in der
-`DocumentPipelineRegistry`; `.html` ist dafür neu in `SupportedDocumentFormats` zugelassen, über
+`HtmlDocumentFormat` (`id` `html`, Version 1; seit #1315 Version 2, seit #1357 Version 3, siehe unten) beansprucht `.html` in der
+`DocumentFormatRegistry`; `.html` ist dafür neu in `SupportedDocumentFormats` zugelassen, über
 den unzweideutigen Tika-Medientyp `text/html` (bzw. `application/xhtml+xml`) — wie bei PDF/DOCX ein
 strenger, inhaltsbasierter Treffer, keine text-tolerante Sonderregel wie bei Markdown/Klartext/CSV.
 Damit ist HTML nicht mehr auf den Feed-Weg angewiesen: Sowohl der Verzeichnis-Crawl
@@ -829,7 +829,7 @@ direkt über dieselbe Pipeline.
 direkt über `org.jsoup:jsoup` (bereits Projektabhängigkeit, von `DetailPageExtractor` für den
 RSS-Weg genutzt) — kein solches Spring-AI-Modul liegt auf dem Klassenpfad, und Boilerplate-Entfernung
 plus Überschriftenschnitt sind mit Jsoup unmittelbar wenige hundert Zeilen, keine Rechtfertigung für
-eine zusätzliche Abhängigkeit. Dieselbe Abwägung trifft `TabularDocumentPipeline` bereits für Apache
+eine zusätzliche Abhängigkeit. Dieselbe Abwägung trifft `TabularDocumentFormat` bereits für Apache
 POI statt eines Spring-AI-Tabellen-Readers.
 
 **Boilerplate-Entfernung nur außerhalb des gewählten Inhaltsbereichs.** `nav`, `header`, `footer`,
@@ -895,7 +895,7 @@ Pressemitteilung mit Zwischenüberschriften wurde in Token-Fenster geschnitten, 
 `.html`-Datei in Abschnitte. Jetzt reduziert `DetailPageExtractor` die Seite über die geteilten
 `HtmlContentRoots` (Boilerplate- und Hauptinhalt-Selektoren stehen einmal, der Feed-Konnektor
 setzt nur seinen konfigurierbaren Selektor ein) und übergibt das HTML der Inhaltsbereiche per
-`DocumentIngest#pipelineId` an `HtmlDocumentPipeline` — kein inhaltsbasiertes Routing, sondern der
+`DocumentIngest#pipelineId` an `HtmlDocumentFormat` — kein inhaltsbasiertes Routing, sondern der
 direkte Aufruf, den der Confluence-Konnektor bereits nutzt. Anlagen-Erkennung und
 Boilerplate-Entfernung bleiben im Konnektor. RSS-Chunks tragen `pipeline_id=html`; der
 Pipeline-Nachzug (`PipelineReindexService`) erfasst Feed-Einträge deshalb wie jedes andere
@@ -905,8 +905,8 @@ Meldung benennt andere Dokumente als sich selbst (dieselbe Regel, die der Fallba
 anwendete).
 
 **Ein XHTML-Ereignisleser für HTML und Confluence (#1315, Version 2).** `XhtmlEventBuilder` im
-Paket `pipeline` erzeugt die Heading/Paragraph-Ereignisse für `HtmlDocumentPipeline` und
-`ConfluenceDocumentPipeline`; Blocktags, Whitespace-Normalisierung, Tabellen- und Listenrendering
+Paket `format.shared` erzeugt die Heading/Paragraph-Ereignisse für `HtmlDocumentFormat` und
+`ConfluenceStorageFormat`; Blocktags, Whitespace-Normalisierung, Tabellen- und Listenrendering
 stehen einmal. Die Confluence-Makroregeln sind ein `ElementRule`-Hook (`ConfluenceElementRule`),
 der vor dem eingebauten Lauf befragt wird. Für HTML-Dateien ändert sich damit der Zuschnitt
 (daher Version 2): Tabellen werden eine Zeile je Tabellenzeile mit „ | "-getrennten Zellen,
@@ -961,8 +961,8 @@ Die Pipeline trennt drei Dinge:
   #1183). Ein PDF-Anhang einer Mail wird von der PDF-Pipeline verarbeitet und als eigene
   `Document`-Zeile mit eigener Prüfsumme, eigener Quote und `parent_document_id` auf die Mail
   gespeichert — derselbe verallgemeinerte Anhangsweg, den RSS und Confluence (#1137) auch nutzen,
-  nicht ein mail-spezifischer Sonderpfad. `MailDocumentPipeline` selbst routet dafür nichts mehr
-  rekursiv; sie meldet jeden Anhang nur noch über `DocumentPipelineResult#discoveredAttachments()`.
+  nicht ein mail-spezifischer Sonderpfad. `MailDocumentFormat` selbst routet dafür nichts mehr
+  rekursiv; sie meldet jeden Anhang nur noch über `DocumentFormatResult#discoveredAttachments()`.
 
 Die Rechte- und Herkunftsfrage von Anhängen (welche Bibliothek, welche Fundstellenangabe, welcher
 Beleg) folgt dabei den bestehenden Regeln des Anlagenwegs, siehe
@@ -970,8 +970,8 @@ Beleg) folgt dabei den bestehenden Regeln des Anlagenwegs, siehe
 
 #### Umgesetzt (#1060)
 
-`MailDocumentPipeline` (`id` `email`, Version 4 seit #1183) beansprucht `.eml` und `.msg` in der
-`DocumentPipelineRegistry`; beide Endungen sind jetzt in `SupportedDocumentFormats` zugelassen —
+`MailDocumentFormat` (`id` `email`, Version 4 seit #1183) beansprucht `.eml` und `.msg` in der
+`DocumentFormatRegistry`; beide Endungen sind jetzt in `SupportedDocumentFormats` zugelassen —
 unterschiedlich streng, mit einem empirisch belegten Grund: `.msg` bekommt mit
 `application/vnd.ms-outlook` einen eindeutigen, strikten Medientyp (wie PDF/DOCX). `.eml` dagegen
 läuft wie Markdown/Klartext/CSV über die textolerante Erkennung (Inhalt *und* Endung müssen passen) —
@@ -1051,13 +1051,13 @@ demselben Weg, den auch Dokumentart und Datum nehmen. Das Mail-Datum bleibt das 
 Datum/Stand. Die früheren Sonderschlüssel `mail_from`/`mail_to`/`mail_subject`/`mail_date`
 (`ChunkMailMetadata`) und die vier gleichnamigen Felder am `SourceReference` sind entfallen; die
 Beleg-Anzeige liest die Kopfdaten über die generische Feld-Wert-Liste aus #1066.
-`MailDocumentPipeline#version()` stieg dafür 4 → 5; ein Altbestand unterhalb dieser Version trägt die
+`MailDocumentFormat#version()` stieg dafür 4 → 5; ein Altbestand unterhalb dieser Version trägt die
 Kopfdaten erst nach einem Pipeline-Reindex (`GET /pipeline-versions`, `POST /pipeline-reindex`) oder
 dem Bestandslauf des Metadatenschemas — Regel (d): „Ausgelöst wird nichts von selbst", unverändert.
 
 **Dieselben Kopfdaten landen zusätzlich, deutsch beschriftet, als Kontextzeilen vor dem
 Nachrichtentext** (#1130 Befund 1, entschieden gegen die zuvor offene Formfrage aus Teil 5, Punkt 1)
-— nach dem Vorbild von `TabularDocumentPipeline`/`HtmlDocumentPipeline`/`PptxDocumentPipeline`, die
+— nach dem Vorbild von `TabularDocumentFormat`/`HtmlDocumentFormat`/`PptxDocumentFormat`, die
 ihren Strukturkontext ebenfalls in den Chunk-Text backen, nicht nur in ein Metadatenfeld. Damit wirken
 Absender, Empfänger und Betreff in Embedding **und** Volltextindex, sobald der Chunk (neu) entsteht —
 eine Frage wie „Mail von Müller zum Bebauungsplan" findet eine neu oder erneut indizierte Nachricht
@@ -1103,11 +1103,11 @@ durchläuft denselben Zuschnitt wie jeder andere Kopfblock (siehe oben) — ein 
 leerem Body zerlegt sich ebenso in `Teil j von M`-Chunks. **Ohne Anhang bleibt eine leere Nachricht
 `NO_EXTRACTABLE_TEXT`**: Ohne jeden eigenen Inhalt sind ihre Kopfdaten dann Vorlagentext wie ein
 wiederholter Seitenkopf, kein Beleg für tatsächlichen Inhalt — dieselbe Regel, die
-`DocxDocumentPipeline` für Kopf-/Fußzeilentext bereits festhält („Header/footer text never rescues
+`DocxDocumentFormat` für Kopf-/Fußzeilentext bereits festhält („Header/footer text never rescues
 this outcome").
 
 **Ein drittes Muster für denselben Zweck, bewusst keines der beiden bestehenden.**
-`TabularDocumentPipeline` backt ihre Strukturzeile in **jeden** Chunk (Blatt-/Tabellenname ist für
+`TabularDocumentFormat` backt ihre Strukturzeile in **jeden** Chunk (Blatt-/Tabellenname ist für
 jede Zeilengruppe eigenständig relevant, keine Dopplung desselben Inhalts); `RepeatingHeaderChunk`
 erzeugt einen **eigenen**, von der Nachricht getrennten Chunk (ein Seitenkopf trägt für sich genommen
 keinen zitierfähigen Inhalt). Der Mail-Kopf ist keines von beiden: Er gehört inhaltlich zum Anfang
@@ -1137,8 +1137,8 @@ disambiguierenden Fundort (`Teil j von M`, ggf. kombiniert mit `Nachricht i von 
 **Anhänge laufen über den verallgemeinerten Anhangsweg, nicht mehr rekursiv innerhalb dieser
 Pipeline** (ADR-0022, #1183, löst #1130 Befund 2 strukturell). `EmlReader`/`MsgReader` extrahieren
 jeden Anhang weiterhin in eine eigene temporäre Datei (unverändert Parse-Zeit-Aufgabe), aber
-`MailDocumentPipeline` routet ihn nicht mehr selbst durch `DocumentPipelineRegistry` — sie meldet ihn
-nur noch als `DiscoveredAttachment` über `DocumentPipelineResult#discoveredAttachments()`.
+`MailDocumentFormat` routet ihn nicht mehr selbst durch `DocumentFormatRegistry` — sie meldet ihn
+nur noch als `DiscoveredAttachment` über `DocumentFormatResult#discoveredAttachments()`.
 `DocumentIngestService` übergibt jeden gemeldeten Anhang an
 `io.opaa.indexing.source.attachment.AttachmentIndexer#indexAll`, denselben Weg, den RSS-Anhänge
 schon seit #1182 nehmen: eigene `Document`-Zeile, eigene Prüfsumme, eigene Speicherquote,
@@ -1186,7 +1186,7 @@ doppelte Quotenzählung, gleiches Verhalten für alle Quelltypen.
 **Der Preis dieses Wegs, ausdrücklich benannt und seit #1243 gedeckelt:** Ein Abruf parst die
 Elternnachricht weiterhin vollständig — das ist der unvermeidbare Teil. Materialisiert wird dabei
 aber nur noch die *angeforderte* Anlage: Der Anfragepfad reicht die gesuchte Position über
-`DocumentPipelineSource#attachmentIndex` bis in `EmlReader`/`MsgReader` durch, die jede Anlage
+`DocumentFormatSource#attachmentIndex` bis in `EmlReader`/`MsgReader` durch, die jede Anlage
 weiterhin in derselben Reihenfolge lesen, aber nur für diese eine eine temporäre Datei schreiben.
 Statt bis zu `max-attachments-per-message` (Vorgabe 50) temporären Dateien je Abruf entsteht damit
 genau eine je Kettenstufe. Bei Konnektor-Beständen kommt der vollständige Abruf des Elternoriginals
@@ -1235,7 +1235,7 @@ sie wird von ihrer URL geholt, statt aus dem Eintrag extrahiert zu werden.
 Pipeline** (ADR-0022, Entscheidung 6): `AttachmentIndexer` zählt die Verschachtelungstiefe über einen
 threadlokalen Zähler, sobald ein gemeldeter Anhang selbst wieder über `DocumentIngestService
 #ingest` verarbeitet wird und dabei erneut Anhänge meldet — dieselbe Rolle, die
-`MailDocumentPipeline`s eigenes `RECURSION_DEPTH`-Feld vor #1183 gespielt hat, jetzt auf der
+`MailDocumentFormat`s eigenes `RECURSION_DEPTH`-Feld vor #1183 gespielt hat, jetzt auf der
 gemeinsamen Ebene, weil auch RSS/Confluence-Anhänge grundsätzlich verschachtelt sein können.
 
 Die Rekursionstiefe selbst kommt seit #1269 nicht mehr aus `MailProperties`, sondern aus der
@@ -1250,7 +1250,7 @@ eine verschachtelte Feed-Anlage.
 Datei entsteht; und `max-attachment-bytes` (gesetzt 50 MiB) deckelt die Größe eines einzelnen
 Anhangs. Bei EML wird diese
 Byte-Grenze beim Kopieren des Anhangs in eine temporäre Datei durchgesetzt (wie
-`TabularDocumentPipeline`s ODS-Leser), bei MSG nur nachträglich (siehe unten). **Diese zwei Grenzen
+`TabularDocumentFormat`s ODS-Leser), bei MSG nur nachträglich (siehe unten). **Diese zwei Grenzen
 schützen Platte und nachgelagerte Verarbeitung, nicht den Parse-Vorgang selbst** — sowohl mime4j
 (`BasicBodyFactory`) als auch POI (`MAPIMessage`) halten beim Parsen ohnehin jeden Teil der Nachricht,
 Anhänge eingeschlossen, vollständig im Heap, bevor dieser Code auch nur entscheidet, ob ein Teil ein
@@ -1267,14 +1267,14 @@ rekonstruiert, da POI dafür keinen öffentlichen `.msg`-Writer anbietet.
 **Chunk-Größe:** im Regelfall entfällt sie — eine Nachricht wird genau ein Chunk (oder einer je
 Thread-Segment), nie nach Tokenzahl geschnitten. Ein Segment, das trotzdem die konfigurierte
 `opaa.indexing.chunk-size` überschreitet (ein langer Rundbrief ohne erkennbare Zitatgrenze), fällt auf
-denselben Token-Splitter zurück, den `TikaFallbackPipeline` ohnehin verwendet — kein eigener
+denselben Token-Splitter zurück, den `TikaFallbackFormat` ohnehin verwendet — kein eigener
 Zuschnitts-Parameter dieser Pipeline, sondern der bestehende projektweite Fallback.
 
 **`file_size` des Mail-Elterndokuments zählt seit #1183 nur noch Kopfdaten und Nachrichtentext, nicht
 die Anhangsbytes** (ADR-0022, Entscheidung 6): Die rohe `.eml`/`.msg`-Datei enthält Anhänge
 base64-kodiert bereits in ihrer eigenen Dateigröße; sobald ein Anhang eine eigene `Document`-Zeile
 mit eigenem `fileSize` ist, würde er sonst doppelt gegen die Speicherquote der Bibliothek zählen.
-`DocumentPipelineResult#contentByteSizeOverride()` trägt dafür die Summe aus Kopfblock- und
+`DocumentFormatResult#contentByteSizeOverride()` trägt dafür die Summe aus Kopfblock- und
 Nachrichtentext-Bytes; `DocumentIngestService` überschreibt `Document#getFileSize()` damit, sobald
 die Pipeline einen Wert meldet — ein reines Mail-spezifisches Detail, jede andere Pipeline lässt
 diesen Kanal leer und behält die Dateigröße auf der Platte.
@@ -1291,8 +1291,8 @@ Makro-Inhalt Seiteninhalt ist** und welcher zur Laufzeit aus anderen Quellen zus
 
 #### Umgesetzt (#1137)
 
-`ConfluenceDocumentPipeline` (`id` `confluence`, Version 1; seit #1357 Version 2, siehe HTML-Pipeline) beansprucht **kein** Format in der
-`DocumentPipelineRegistry` — der Confluence-Konnektor benennt sie im `DocumentIngest`
+`ConfluenceStorageFormat` (`id` `confluence`, Version 1; seit #1357 Version 2, siehe HTML-Pipeline) beansprucht **kein** Format in der
+`DocumentFormatRegistry` — der Confluence-Konnektor benennt sie im `DocumentIngest`
 (`pipelineId`), und `DocumentIngestService#ingest` ruft sie über `pipelineById` direkt auf, so wie
 seit #1315 auch ein Feed-Eintrag die HTML-Pipeline benennt; ohne registrierte Pipeline ist das ein
 Verdrahtungsfehler. Der Vollabgleich (#1136)
@@ -1335,7 +1335,7 @@ zitierten Rohtext) ist der Ort der Seite im Space — `[Handbuch / Kapitel 1 / A
 nur ihr Titel. Die Zitatanzeige liest diese Metadaten noch nicht (siehe Offene Punkte).
 
 **Anhänge** laufen weiter über den bestehenden Anhangsweg (`DocumentIngestService#ingest`, Routing nach Inhalt):
-ein `.html`-Anhang trifft `HtmlDocumentPipeline`, ein PDF den PDF-Weg; ein nicht unterstützter Typ
+ein `.html`-Anhang trifft `HtmlDocumentFormat`, ein PDF den PDF-Weg; ein nicht unterstützter Typ
 wird als `UNSUPPORTED_FORMAT` sichtbar übersprungen und bleibt Teil der Abgleichsmenge.
 
 **Beide Editionen, ein Ergebnis:** Der Vollabgleich übergibt für Cloud und Data Center denselben
@@ -1634,17 +1634,17 @@ wie beim letzten Versuch. Der text-tolerante Pipeline-Satz ist davon nicht betro
 
 Die Endungsnäherung oben rät, welche Pipeline heute zuständig wäre — mit den beiden gerade genannten
 Lücken. Seit #1126 schreibt `storeChunks` zusätzlich fest, mit welchem Ergebnis ein Chunk tatsächlich
-geroutet wurde: `ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY` trägt dieselbe Endung, die
-`DocumentPipelineRegistry#routedPipelineFor` beim Schreiben dieses Chunks tatsächlich aufgelöst hat —
-oder `ChunkPipelineMetadata#NO_ROUTING_EXTENSION`, wenn die Routing-Entscheidung keine Endung auflösen
+geroutet wurde: `ChunkFormatMetadata#ROUTING_EXTENSION_METADATA_KEY` trägt dieselbe Endung, die
+`DocumentFormatRegistry#routedPipelineFor` beim Schreiben dieses Chunks tatsächlich aufgelöst hat —
+oder `ChunkFormatMetadata#NO_ROUTING_EXTENSION`, wenn die Routing-Entscheidung keine Endung auflösen
 konnte (Inhalt weder streng noch texttolerant zuordenbar). Der Schlüssel fehlt sowohl beim Altbestand
 von vor #1126 als auch, wenn das Lesen der Datei zur Erkennung technisch fehlschlug
-(`DocumentPipelineRegistry.Routed#formatDetectionFailed`, z. B. kurzzeitige Sperre durch einen
+(`DocumentFormatRegistry.Routed#formatDetectionFailed`, z. B. kurzzeitige Sperre durch einen
 Virenscanner) — ein Lesefehler ist kein Routing-Verdikt und darf nicht als „korrekt fallback-geroutet"
 persistiert werden. Beide Fälle bleiben auf der Endungsnäherung.
 
 Wo der Schlüssel vorliegt, vergleicht sowohl `progressForOrganization` als auch
-`selectStaleDocuments` exakt (`DocumentPipelineRegistry#pipelineIdForRoutingExtension`) statt über
+`selectStaleDocuments` exakt (`DocumentFormatRegistry#pipelineIdForRoutingExtension`) statt über
 den Dateinamen zu raten — beide oben genannten Lücken schließen sich dadurch für jeden künftig
 geschriebenen Chunk: Ein Dokument ohne zuordenbare Endung (`download.aspx`) ist über seinen
 tatsächlichen Routing-Schlüssel erreichbar, auch wenn die Endungsnäherung ihn nie gefunden hätte; und
@@ -1705,12 +1705,12 @@ Hier wird nur der **Übergabepunkt** definiert:
 
 1. Jede Pipeline liefert ihre Struktur-Metadaten als Teil des Chunks ab, in einer für alle Pipelines
    einheitlichen Form — nicht jede Pipeline mit eigenen Schlüsselnamen für dasselbe Konzept. **Der
-   Übergabemechanismus selbst ist seit #1107 offen für jede Pipeline**: `DocumentPipeline` deklariert
+   Übergabemechanismus selbst ist seit #1107 offen für jede Pipeline**: `DocumentFormat` deklariert
    über `passthroughMetadataKeys()`, welche seiner Chunk-Metadatenschlüssel `storeChunks` auf den
    gespeicherten Chunk kopiert — eine neue Pipeline erweitert diese Menge selbst, ohne
    `DocumentIngestService` zu ändern (Open-Closed, Teil 1). Die *Form* war bis #1130 uneinheitlich:
-   `MailDocumentPipeline` nutzte ausschließlich eigene Metadatenfelder (`mail_from` usw.), während
-   `TabularDocumentPipeline`/`HtmlDocumentPipeline`/`PptxDocumentPipeline` ihren Strukturkontext in den
+   `MailDocumentFormat` nutzte ausschließlich eigene Metadatenfelder (`mail_from` usw.), während
+   `TabularDocumentFormat`/`HtmlDocumentFormat`/`PptxDocumentFormat` ihren Strukturkontext in den
    Chunk-Text backen (`location` plus eine Kontextzeile). **Entschieden mit #1130 Befund 1: beides.**
    Die Kontextzeilen der Mail-Kopfdaten bleiben — deutsch beschriftet, einmalig auf dem ersten
    erzeugten Chunk, damit sie Embedding und Volltextindex erreichen. Die *Metadaten*-Hälfte hat

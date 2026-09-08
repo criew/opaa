@@ -110,7 +110,7 @@ import PageHeading from '../components/a11y/PageHeading'
 import FieldLabel from '../components/wizard/FieldLabel'
 import MetaBadge from '../components/MetaBadge'
 
-// Mirrors SupportedDocumentFormats#EXTENSIONS (backend/src/main/java/io/opaa/indexing) - only a
+// Mirrors SupportedDocumentFormats#EXTENSIONS (backend/src/main/java/io/opaa/indexing/format) - only a
 // client-side hint for the file picker; the backend remains the authority on what is accepted.
 // Exported so directoryEntries.test.ts exercises filterAcceptedFiles against the same list rather
 // than a copy that can silently drift out of sync with it.

@@ -9,9 +9,9 @@ import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.document.StoredDocumentSourceAccess;
-import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
-import io.opaa.indexing.pipeline.DocumentPipeline;
-import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
+import io.opaa.indexing.format.ChunkFormatMetadata;
+import io.opaa.indexing.format.DocumentFormat;
+import io.opaa.indexing.format.DocumentFormatRegistry;
 import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.indexing.source.attachment.StandaloneAttachmentAccess;
 import io.opaa.library.KnowledgeLibrary;
@@ -49,7 +49,7 @@ public class PipelineReindexService {
   private static final Logger log = LoggerFactory.getLogger(PipelineReindexService.class);
 
   private final JdbcTemplate jdbcTemplate;
-  private final DocumentPipelineRegistry pipelineRegistry;
+  private final DocumentFormatRegistry pipelineRegistry;
   private final DocumentRepository documentRepository;
   private final KnowledgeLibraryRepository libraryRepository;
   private final DocumentIngestService documentIngestService;
@@ -59,7 +59,7 @@ public class PipelineReindexService {
 
   public PipelineReindexService(
       JdbcTemplate jdbcTemplate,
-      DocumentPipelineRegistry pipelineRegistry,
+      DocumentFormatRegistry pipelineRegistry,
       DocumentRepository documentRepository,
       KnowledgeLibraryRepository libraryRepository,
       DocumentIngestService documentIngestService,
@@ -88,14 +88,14 @@ public class PipelineReindexService {
     String sql =
         "SELECT (v.metadata->>'library_id')::uuid AS library_id, "
             + "       COALESCE(v.metadata->>'"
-            + ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY
+            + ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY
             + "', ?) AS pipeline_id, "
             + "       COALESCE((v.metadata->>'"
-            + ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY
+            + ChunkFormatMetadata.PIPELINE_VERSION_METADATA_KEY
             + "')::int, ?) AS pipeline_version, "
             + "       d.file_name AS file_name, "
             + "       v.metadata->>'"
-            + ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY
+            + ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY
             + "' AS routing_extension, "
             + "       count(*) AS chunk_count, "
             // Chunks whose lexical index entry is missing or built under an older tsv version are
@@ -173,8 +173,8 @@ public class PipelineReindexService {
             counters[2] += count;
           }
         },
-        ChunkPipelineMetadata.LEGACY_PIPELINE_ID,
-        ChunkPipelineMetadata.LEGACY_PIPELINE_VERSION,
+        ChunkFormatMetadata.LEGACY_PIPELINE_ID,
+        ChunkFormatMetadata.LEGACY_PIPELINE_VERSION,
         FullTextChunkStore.CURRENT_TSV_VERSION,
         organizationId.toString());
 
@@ -270,7 +270,7 @@ public class PipelineReindexService {
     // on its file name, which content-based routing does not have to agree with. If the
     // just-written chunks still name the fallback pipeline, re-selecting this document for the
     // same pipelineId would never converge - counted as skipped so the offset scans past it. Not
-    // needed for the exact routing-key branches: DocumentPipelineRegistry maps each extension to at
+    // needed for the exact routing-key branches: DocumentFormatRegistry maps each extension to at
     // most one pipeline, so a freshly written key never satisfies the selecting predicate again.
     // Not applied to a document selected for its stale or missing lexical index either: that
     // document was genuinely repaired, and reporting it as skipped would understate the call.
@@ -360,12 +360,12 @@ public class PipelineReindexService {
     List<String> pipelineIds =
         jdbcTemplate.queryForList(
             "SELECT DISTINCT COALESCE(metadata->>'"
-                + ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY
+                + ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY
                 + "', ?) AS pipeline_id FROM "
                 + vectorStoreTable
                 + " WHERE metadata->>'document_id' = ?",
             String.class,
-            ChunkPipelineMetadata.LEGACY_PIPELINE_ID,
+            ChunkFormatMetadata.LEGACY_PIPELINE_ID,
             documentId.toString());
     return pipelineIds.contains(fallbackId);
   }
@@ -402,10 +402,10 @@ public class PipelineReindexService {
             + "  AND v.metadata->>'organization_id' = ? "
             + "  AND ("
             + "       (COALESCE(v.metadata->>'"
-            + ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY
+            + ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY
             + "', ?) = ? "
             + "        AND COALESCE((v.metadata->>'"
-            + ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY
+            + ChunkFormatMetadata.PIPELINE_VERSION_METADATA_KEY
             + "')::int, ?) < ?)"
             // The routing gap: a document whose routing key or, absent that, its file name names
             // pipelineId as claiming it today, but whose chunks still carry a different
@@ -418,7 +418,7 @@ public class PipelineReindexService {
             // invisible to lexical search, an older row is searched without the newer lexemes,
             // ADR-0028), and this re-index is the only thing that repairs it. Deliberately
             // independent of pipelineId and belowVersion - raising CURRENT_TSV_VERSION raises no
-            // DocumentPipeline#version(). It converges, because the rewritten rows carry the
+            // DocumentFormat#version(). It converges, because the rewritten rows carry the
             // current version.
             + "       OR NOT EXISTS ("
             + "            SELECT 1 FROM chunk_full_text f "
@@ -439,9 +439,9 @@ public class PipelineReindexService {
             + "OFFSET ? LIMIT ?";
     List<Object> params = new ArrayList<>();
     params.add(organizationId.toString());
-    params.add(ChunkPipelineMetadata.LEGACY_PIPELINE_ID);
+    params.add(ChunkFormatMetadata.LEGACY_PIPELINE_ID);
     params.add(pipelineId);
-    params.add(ChunkPipelineMetadata.LEGACY_PIPELINE_VERSION);
+    params.add(ChunkFormatMetadata.LEGACY_PIPELINE_VERSION);
     params.add(belowVersion);
     params.addAll(misrouted.params());
     params.add(FullTextChunkStore.CURRENT_TSV_VERSION);
@@ -463,7 +463,7 @@ public class PipelineReindexService {
 
   /**
    * Whether a chunk belongs to {@code pipelineId} today but is not stored under it - exactly, via
-   * its {@link ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY}, or via the file-name
+   * its {@link ChunkFormatMetadata#ROUTING_EXTENSION_METADATA_KEY}, or via the file-name
    * approximation where that key is absent. Expressed in SQL so {@link #selectStaleDocuments} can
    * filter and paginate in the database. The exact branch compares in every direction and always
    * converges; the heuristic one stays narrow, or it could disagree on every call and never do.
@@ -473,7 +473,7 @@ public class PipelineReindexService {
     if (pipelineId.equals(fallbackId)) {
       return misroutedPredicateForFallback(fallbackId);
     }
-    DocumentPipeline pipeline =
+    DocumentFormat pipeline =
         pipelineRegistry.pipelines().stream()
             .filter(candidate -> candidate.id().equals(pipelineId))
             .findFirst()
@@ -491,14 +491,14 @@ public class PipelineReindexService {
     // already excludes a legacy chunk without falling through to the heuristic by accident.
     String exactSql =
         "v.metadata->>'"
-            + ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY
+            + ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY
             + "' IN ("
             + extensions.stream().map(extension -> "?").collect(Collectors.joining(", "))
             + ") AND COALESCE(v.metadata->>'"
-            + ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY
+            + ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY
             + "', ?) <> ?";
     List<Object> exactParams = new ArrayList<>(extensions);
-    exactParams.add(ChunkPipelineMetadata.LEGACY_PIPELINE_ID);
+    exactParams.add(ChunkFormatMetadata.LEGACY_PIPELINE_ID);
     exactParams.add(pipelineId);
     // Heuristic branch: only reached for a chunk that never had the routing key written at all,
     // and only while it is still fallback-labeled (see this method's own Javadoc for why).
@@ -515,15 +515,15 @@ public class PipelineReindexService {
         "(("
             + exactSql
             + ") OR (v.metadata->>'"
-            + ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY
+            + ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY
             + "' IS NULL AND "
             + heuristicSql
             + " AND COALESCE(v.metadata->>'"
-            + ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY
+            + ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY
             + "', ?) = ?))";
     List<Object> params = new ArrayList<>(exactParams);
     params.addAll(heuristicParams);
-    params.add(ChunkPipelineMetadata.LEGACY_PIPELINE_ID);
+    params.add(ChunkFormatMetadata.LEGACY_PIPELINE_ID);
     params.add(fallbackId);
     return new MisroutedPredicate(sql, params);
   }
@@ -544,12 +544,12 @@ public class PipelineReindexService {
     StringBuilder sql =
         new StringBuilder(
             "(v.metadata->>'"
-                + ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY
+                + ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY
                 + "' IS NOT NULL");
     List<Object> params = new ArrayList<>();
     if (!claimedExtensions.isEmpty()) {
       sql.append(" AND v.metadata->>'")
-          .append(ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY)
+          .append(ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY)
           .append("' NOT IN (")
           .append(
               claimedExtensions.stream().map(extension -> "?").collect(Collectors.joining(", ")))
@@ -557,9 +557,9 @@ public class PipelineReindexService {
       params.addAll(claimedExtensions);
     }
     sql.append(" AND COALESCE(v.metadata->>'")
-        .append(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)
+        .append(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY)
         .append("', ?) <> ?)");
-    params.add(ChunkPipelineMetadata.LEGACY_PIPELINE_ID);
+    params.add(ChunkFormatMetadata.LEGACY_PIPELINE_ID);
     params.add(fallbackId);
     return new MisroutedPredicate(sql.toString(), params);
   }
@@ -573,7 +573,7 @@ public class PipelineReindexService {
    */
   private String currentPipelineIdForFileName(String fileName) {
     String lowerCased = fileName.toLowerCase(Locale.ROOT);
-    for (DocumentPipeline pipeline : pipelineRegistry.pipelines()) {
+    for (DocumentFormat pipeline : pipelineRegistry.pipelines()) {
       if (pipeline == pipelineRegistry.fallbackPipeline()) {
         continue;
       }
@@ -588,7 +588,7 @@ public class PipelineReindexService {
 
   private Map<String, Short> currentVersionsById() {
     Map<String, Short> versions = new HashMap<>();
-    for (DocumentPipeline pipeline : pipelineRegistry.pipelines()) {
+    for (DocumentFormat pipeline : pipelineRegistry.pipelines()) {
       versions.put(pipeline.id(), pipeline.version());
     }
     return versions;

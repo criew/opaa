@@ -2,9 +2,9 @@ package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.pipeline.DocumentPipelineResult;
-import io.opaa.indexing.pipeline.DocumentPipelineSource;
-import io.opaa.indexing.pipeline.markdown.MarkdownDocumentPipeline;
+import io.opaa.indexing.format.DocumentFormatResult;
+import io.opaa.indexing.format.DocumentFormatSource;
+import io.opaa.indexing.format.file.markdown.MarkdownDocumentFormat;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -120,8 +120,8 @@ class GoldenCaseCurationTest {
 
   /**
    * Every declared {@code answer_span} of <b>every</b> domain resolves to a chunk of its expected
-   * document, chunked by the production {@link MarkdownDocumentPipeline} — every domain's corpus is
-   * entirely Markdown (#1103), so this is the same pipeline {@code DocumentPipelineRegistry} routes
+   * document, chunked by the production {@link MarkdownDocumentFormat} — every domain's corpus is
+   * entirely Markdown (#1103), so this is the same pipeline {@code DocumentFormatRegistry} routes
    * production indexing to. Catches both failure modes the Docker-requiring harness would otherwise
    * be the first to report: a span that is not literally in its document (typo) and one that
    * straddles a chunk boundary.
@@ -160,7 +160,7 @@ class GoldenCaseCurationTest {
   /** Chunks every document a span points at and collects the spans that do not resolve. */
   private static int resolveSpans(
       EvalDomainConfig domain, List<GoldenCase> cases, List<String> unresolved) throws IOException {
-    MarkdownDocumentPipeline pipeline = new MarkdownDocumentPipeline();
+    MarkdownDocumentFormat pipeline = new MarkdownDocumentFormat();
     Path corpusDir = RepoPaths.evalDir().resolve("corpus").resolve(domain.name());
 
     Map<String, Map<String, String>> spansByDocument = new LinkedHashMap<>();
@@ -178,8 +178,8 @@ class GoldenCaseCurationTest {
     for (var entry : spansByDocument.entrySet()) {
       Path file = corpusDir.resolve(entry.getKey());
       String documentText = Files.readString(file, StandardCharsets.UTF_8);
-      DocumentPipelineResult result =
-          pipeline.run(DocumentPipelineSource.ofFile(file, entry.getKey(), ".md"));
+      DocumentFormatResult result =
+          pipeline.run(DocumentFormatSource.ofFile(file, entry.getKey(), ".md"));
       List<String> chunkTexts =
           result.chunks().stream().map(org.springframework.ai.document.Document::getText).toList();
       ChunkMap.DocumentChunkMap map =

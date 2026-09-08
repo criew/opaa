@@ -59,18 +59,18 @@ public record EvaluationReport(
    * became a fixed point — see {@link IngestionPipelineFingerprint}'s Javadoc for what it records
    * and why {@code corpusManifestSha256} alone did not already cover it.
    *
-   * <p><b>Bumped to 4 by issue #1164 (PR #1201 review):</b> {@code MailDocumentPipeline#version()}
+   * <p><b>Bumped to 4 by issue #1164 (PR #1201 review):</b> {@code MailDocumentFormat#version()}
    * moved 2 → 3 (mail_date truncated to whole seconds for lexicographic sortability), which shifted
    * every committed baseline's {@code ingestionPipelineFingerprint} even though no corpus in this
    * repository routes a document through that pipeline — the fingerprint is a collective fixed
    * point over every registered pipeline (see {@link IngestionPipelineFingerprint}'s Javadoc), not
    * only the ones a given corpus actually reaches.
    *
-   * <p><b>Bumped to 5 by issue #1183 (ADR-0022):</b> {@code MailDocumentPipeline#version()} moved 3
-   * → 4 (an attachment is now a separate, generalized-attachment-path {@code Document} instead of a
+   * <p><b>Bumped to 5 by issue #1183 (ADR-0022):</b> {@code MailDocumentFormat#version()} moved 3 →
+   * 4 (an attachment is now a separate, generalized-attachment-path {@code Document} instead of a
    * chunk nested under its Mail parent) - the same collective-fingerprint reasoning as the #1164
    * bump above, not a corpus routing change (no corpus in this repository routes a document through
-   * {@code MailDocumentPipeline}).
+   * {@code MailDocumentFormat}).
    *
    * <p><b>Bumped to 6 by issue #1070 (Teil 2, ADR-0012 Nachtrag Metadatenfilter):</b> {@code
    * metadataFilterEnabled} became a fixed point - the harness applies each golden case's {@code
@@ -78,10 +78,10 @@ public record EvaluationReport(
    * different things for the {@code metadata_filter} class. Unlike the two fingerprint bumps above
    * this one moves measured values (the {@code verwaltung} baselines were re-drawn).
    *
-   * <p><b>Bumped to 9 by issue #1357:</b> {@code HtmlDocumentPipeline#version()} moved 2 → 3 and
-   * {@code ConfluenceDocumentPipeline#version()} 1 → 2 (a list item whose text sits in a block
-   * child keeps its marker), shifting the collective fingerprint - no corpus in this repository
-   * routes a document through either pipeline, so this is a fingerprint-only bump.
+   * <p><b>Bumped to 9 by issue #1357:</b> {@code HtmlDocumentFormat#version()} moved 2 → 3 and
+   * {@code ConfluenceStorageFormat#version()} 1 → 2 (a list item whose text sits in a block child
+   * keeps its marker), shifting the collective fingerprint - no corpus in this repository routes a
+   * document through either pipeline, so this is a fingerprint-only bump.
    */
   public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 9;
 

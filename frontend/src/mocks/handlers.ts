@@ -90,7 +90,7 @@ import type {
   S3EventsTokenResponse,
 } from '../types/api'
 
-// Mirrors SupportedDocumentFormats#EXTENSIONS (backend/src/main/java/io/opaa/indexing) - kept as a
+// Mirrors SupportedDocumentFormats#EXTENSIONS (backend/src/main/java/io/opaa/indexing/format) - kept as a
 // literal list here rather than importing across the frontend/backend boundary.
 const SUPPORTED_DOCUMENT_EXTENSIONS = [
   '.csv',

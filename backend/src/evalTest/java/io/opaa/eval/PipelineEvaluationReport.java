@@ -68,13 +68,13 @@ public record PipelineEvaluationReport(
    * fixed point — see {@link IngestionPipelineFingerprint}'s Javadoc for what it records and why
    * {@code corpusManifestSha256} alone did not already cover it.
    *
-   * <p>Version 5 (issue #1164, PR #1201 review): {@code MailDocumentPipeline#version()} moved 2 → 3
+   * <p>Version 5 (issue #1164, PR #1201 review): {@code MailDocumentFormat#version()} moved 2 → 3
    * (mail_date truncated to whole seconds for lexicographic sortability), which shifted every
    * committed baseline's {@code ingestionPipelineFingerprint} even though no corpus in this
    * repository routes a document through that pipeline - the fingerprint is a collective fixed
    * point over every registered pipeline, not only the ones a given corpus actually reaches.
    *
-   * <p>Version 6 (issue #1183, ADR-0022): {@code MailDocumentPipeline#version()} moved 3 → 4 (an
+   * <p>Version 6 (issue #1183, ADR-0022): {@code MailDocumentFormat#version()} moved 3 → 4 (an
    * attachment is now a separate, generalized-attachment-path {@code Document} instead of a chunk
    * nested under its Mail parent) - same collective-fingerprint reasoning as version 5 above.
    *
@@ -91,8 +91,8 @@ public record PipelineEvaluationReport(
    * fingerprint-only bump: the filter moves the measured selection of the {@code metadata_filter}
    * class, and the {@code verwaltung} baseline was re-drawn.
    *
-   * <p>Version 11 (issue #1357): {@code HtmlDocumentPipeline#version()} moved 2 → 3 and {@code
-   * ConfluenceDocumentPipeline#version()} 1 → 2 (a list item whose text sits in a block child keeps
+   * <p>Version 11 (issue #1357): {@code HtmlDocumentFormat#version()} moved 2 → 3 and {@code
+   * ConfluenceStorageFormat#version()} 1 → 2 (a list item whose text sits in a block child keeps
    * its marker) - fingerprint-only, same collective-fingerprint reasoning as versions 5 and 6
    * above; no corpus in this repository routes a document through either pipeline.
    */

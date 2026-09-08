@@ -8,10 +8,10 @@ import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.document.SourceDocumentContext;
+import io.opaa.indexing.format.DocumentProperties;
+import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
-import io.opaa.indexing.pipeline.DocumentProperties;
-import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
@@ -535,7 +535,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
   /**
    * Text and attachments of a fetched, current page. The body goes over as it is - {@link
-   * ConfluenceDocumentPipeline} owns the macro rules and the cut; the version is the change marker,
+   * ConfluenceStorageFormat} owns the macro rules and the cut; the version is the change marker,
    * the creation of the current version the page's Stand (ADR-0023).
    */
   private void storePage(
@@ -568,7 +568,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
                   .context(pageContext)
                   .changeMarker(version)
                   .modifiedAt(DocumentProperties.instantToLocalDate(page.lastModified()))
-                  .pipelineId(ConfluenceDocumentPipeline.ID)
+                  .pipelineId(ConfluenceStorageFormat.ID)
                   .build(),
               null);
       if (run.frame.recordOutcome(result, pagePath)) {

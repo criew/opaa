@@ -18,7 +18,7 @@ jtokkit = "1.1.0"
 # to today (`./gradlew dependencies`).
 jsoup = "1.23.2"
 # Magic-byte content detection for the upload endpoint (#435, io.opaa.library.LibraryDocumentService
-# / io.opaa.indexing.SupportedDocumentFormats#contentMatchesExtension). Already on the classpath
+# / io.opaa.indexing.format.SupportedDocumentFormats#contentMatchesExtension). Already on the classpath
 # transitively via spring-ai-tika-document-reader; declared explicitly because io.opaa now calls
 # org.apache.tika.Tika directly rather than only through Spring AI's TikaDocumentReader.
 tika-core = "3.3.2"
@@ -32,30 +32,30 @@ snakeyaml = "2.7"
 # this module's own code now imports it directly rather than only through Spring AI's PgVectorStore.
 # Version pinned to what that transitive dependency resolves to today (`./gradlew dependencies`).
 pgvector = "0.1.6"
-# XLSX reader for io.opaa.indexing.TabularDocumentPipeline (docs/features/ingestion-pipelines.md,
+# XLSX reader for io.opaa.indexing.format.file.tabular.TabularDocumentFormat (docs/features/ingestion-pipelines.md,
 # Teil 3, Punkt 3 - "erhaltene Tabellenstruktur"). Already on the classpath transitively via
 # spring-ai-tika-document-reader's tika-parsers-standard-package; declared explicitly because this
 # module now reads workbooks directly through org.apache.poi.ss.usermodel instead of only through
 # Tika's own extraction. Version pinned to what that transitive dependency resolves to today
 # (`./gradlew dependencies`).
 poi-ooxml = "5.5.1"
-# CSV parser for TabularDocumentPipeline, handling the delimiter variants (comma, semicolon, tab)
+# CSV parser for TabularDocumentFormat, handling the delimiter variants (comma, semicolon, tab)
 # real exports use - not on the classpath transitively today, so this is a genuinely new
 # dependency rather than an explicit pin of an existing transitive one.
 commons-csv = "1.14.1"
-# .msg reader (MAPI/HSMF) for io.opaa.indexing.MailDocumentPipeline (#1060). Already on the
+# .msg reader (MAPI/HSMF) for io.opaa.indexing.format.file.mail.MailDocumentFormat (#1060). Already on the
 # classpath transitively via spring-ai-tika-document-reader's tika-parser-microsoft-module;
 # declared explicitly because this module now reads Outlook messages directly through
 # org.apache.poi.hsmf rather than only through Tika's own extraction. Version pinned to match
 # poi-ooxml above - both come from the same POI release.
 poi-scratchpad = "5.5.1"
-# .eml reader (RFC822/MIME) for MailDocumentPipeline - parses headers, body and attachment parts
+# .eml reader (RFC822/MIME) for MailDocumentFormat - parses headers, body and attachment parts
 # without flattening them into one Tika text block. Already on the classpath transitively via
 # tika-parser-mail-module; declared explicitly because this module now walks the MIME tree
 # directly through org.apache.james.mime4j.dom rather than only through Tika's own extraction.
 # Version pinned to what that transitive dependency resolves to today (`./gradlew dependencies`).
 mime4j = "0.8.14"
-# PDF outline/page reader for io.opaa.indexing.PdfDocumentPipeline (docs/features/ingestion-pipelines.md,
+# PDF outline/page reader for io.opaa.indexing.format.file.pdf.PdfDocumentFormat (docs/features/ingestion-pipelines.md,
 # Teil 3 - "gliederungsbewusster PDF-Pfad"). Already on the classpath transitively via
 # spring-ai-tika-document-reader's tika-parser-pdf-module; declared explicitly because this module now
 # reads the PDF catalog (bookmarks) and page text directly through org.apache.pdfbox rather than only

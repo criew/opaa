@@ -9,6 +9,22 @@ import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.document.DocumentService;
 import io.opaa.indexing.document.StoredDocumentSourceAccess;
+import io.opaa.indexing.format.DocumentFormat;
+import io.opaa.indexing.format.DocumentFormatRegistry;
+import io.opaa.indexing.format.file.fallback.TikaFallbackFormat;
+import io.opaa.indexing.format.file.html.HtmlDocumentFormat;
+import io.opaa.indexing.format.file.mail.MailDocumentFormat;
+import io.opaa.indexing.format.file.mail.MailProperties;
+import io.opaa.indexing.format.file.markdown.MarkdownDocumentFormat;
+import io.opaa.indexing.format.file.office.DocxDocumentFormat;
+import io.opaa.indexing.format.file.office.OdfProperties;
+import io.opaa.indexing.format.file.office.OdpDocumentFormat;
+import io.opaa.indexing.format.file.office.OdtDocumentFormat;
+import io.opaa.indexing.format.file.office.PptxDocumentFormat;
+import io.opaa.indexing.format.file.pdf.PdfDocumentFormat;
+import io.opaa.indexing.format.file.tabular.TabularDocumentFormat;
+import io.opaa.indexing.format.file.tabular.TabularProperties;
+import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.indexing.job.DocumentIndexingService;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingJobService;
@@ -19,22 +35,6 @@ import io.opaa.indexing.maintenance.PipelineReindexService;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.metadata.ModelMetadataExtractor;
-import io.opaa.indexing.pipeline.DocumentPipeline;
-import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
-import io.opaa.indexing.pipeline.TikaFallbackPipeline;
-import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
-import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
-import io.opaa.indexing.pipeline.mail.MailDocumentPipeline;
-import io.opaa.indexing.pipeline.mail.MailProperties;
-import io.opaa.indexing.pipeline.markdown.MarkdownDocumentPipeline;
-import io.opaa.indexing.pipeline.office.DocxDocumentPipeline;
-import io.opaa.indexing.pipeline.office.OdfProperties;
-import io.opaa.indexing.pipeline.office.OdpDocumentPipeline;
-import io.opaa.indexing.pipeline.office.OdtDocumentPipeline;
-import io.opaa.indexing.pipeline.office.PptxDocumentPipeline;
-import io.opaa.indexing.pipeline.pdf.PdfDocumentPipeline;
-import io.opaa.indexing.pipeline.tabular.TabularDocumentPipeline;
-import io.opaa.indexing.pipeline.tabular.TabularProperties;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.source.SourceIndexingExecutor;
@@ -109,29 +109,29 @@ public class IndexingConfiguration {
 
   /**
    * The fallback pipeline (docs/features/ingestion-pipelines.md, Teil 1) - declared as its concrete
-   * type, not as {@link DocumentPipeline}, so {@link #documentPipelineRegistry} can ask for exactly
+   * type, not as {@link DocumentFormat}, so {@link #documentPipelineRegistry} can ask for exactly
    * this one by type while still receiving every pipeline in its {@code List} parameter.
    */
   @Bean
-  TikaFallbackPipeline tikaFallbackPipeline(
+  TikaFallbackFormat tikaFallbackPipeline(
       DocumentService documentService, ChunkingService chunkingService) {
-    return new TikaFallbackPipeline(documentService, chunkingService);
+    return new TikaFallbackFormat(documentService, chunkingService);
   }
 
-  // Every pipeline below is an ordinary DocumentPipeline bean, picked up by
+  // Every pipeline below is an ordinary DocumentFormat bean, picked up by
   // documentPipelineRegistry without that method changing shape - the open-closed criterion of
   // docs/features/ingestion-pipelines.md, Teil 1.
 
   /** XLSX/CSV/ODS pipeline (ingestion-pipelines.md, Teil 3, Punkt 3). */
   @Bean
-  TabularDocumentPipeline tabularDocumentPipeline(TabularProperties tabularProperties) {
-    return new TabularDocumentPipeline(tabularProperties);
+  TabularDocumentFormat tabularDocumentPipeline(TabularProperties tabularProperties) {
+    return new TabularDocumentFormat(tabularProperties);
   }
 
   /** HTML pipeline (ingestion-pipelines.md, Teil 3, Punkt 4). */
   @Bean
-  HtmlDocumentPipeline htmlDocumentPipeline() {
-    return new HtmlDocumentPipeline();
+  HtmlDocumentFormat htmlDocumentPipeline() {
+    return new HtmlDocumentFormat();
   }
 
   /**
@@ -139,42 +139,42 @@ public class IndexingConfiguration {
    * DocumentIngestService#ingest} looks it up by id.
    */
   @Bean
-  ConfluenceDocumentPipeline confluenceDocumentPipeline() {
-    return new ConfluenceDocumentPipeline();
+  ConfluenceStorageFormat confluenceDocumentPipeline() {
+    return new ConfluenceStorageFormat();
   }
 
   /**
    * Markdown pipeline (ingestion-pipelines.md, Teil 2). Its heading-aware cut changes the eval
    * measurement contract, because the eval corpus is entirely Markdown - see {@link
-   * MarkdownDocumentPipeline}.
+   * MarkdownDocumentFormat}.
    */
   @Bean
-  MarkdownDocumentPipeline markdownDocumentPipeline() {
-    return new MarkdownDocumentPipeline();
+  MarkdownDocumentFormat markdownDocumentPipeline() {
+    return new MarkdownDocumentFormat();
   }
 
   /** DOCX pipeline (ingestion-pipelines.md, Teil 2). */
   @Bean
-  DocxDocumentPipeline docxDocumentPipeline() {
-    return new DocxDocumentPipeline();
+  DocxDocumentFormat docxDocumentPipeline() {
+    return new DocxDocumentFormat();
   }
 
   /** PPTX pipeline (ingestion-pipelines.md, Teil 2). */
   @Bean
-  PptxDocumentPipeline pptxDocumentPipeline() {
-    return new PptxDocumentPipeline();
+  PptxDocumentFormat pptxDocumentPipeline() {
+    return new PptxDocumentFormat();
   }
 
   /** ODT pipeline (ingestion-pipelines.md, Teil 3, Punkt 2). */
   @Bean
-  OdtDocumentPipeline odtDocumentPipeline(OdfProperties odfProperties) {
-    return new OdtDocumentPipeline(odfProperties);
+  OdtDocumentFormat odtDocumentPipeline(OdfProperties odfProperties) {
+    return new OdtDocumentFormat(odfProperties);
   }
 
   /** ODP pipeline (ingestion-pipelines.md, Teil 3, Punkt 2). */
   @Bean
-  OdpDocumentPipeline odpDocumentPipeline(OdfProperties odfProperties) {
-    return new OdpDocumentPipeline(odfProperties);
+  OdpDocumentFormat odpDocumentPipeline(OdfProperties odfProperties) {
+    return new OdpDocumentFormat(odfProperties);
   }
 
   /**
@@ -182,32 +182,32 @@ public class IndexingConfiguration {
    * its own PDFBox extraction rather than needing {@link DocumentService}.
    */
   @Bean
-  PdfDocumentPipeline pdfDocumentPipeline() {
-    return new PdfDocumentPipeline();
+  PdfDocumentFormat pdfDocumentPipeline() {
+    return new PdfDocumentFormat();
   }
 
   /**
    * EML/MSG pipeline (ingestion-pipelines.md, Teil 3, Punkt 5). It never recurses into a
    * sub-pipeline itself (ADR-0022, Entscheidung 10) and therefore needs no {@link
-   * DocumentPipelineRegistry}. The {@code Clock} parameter resolves by type to this application's
+   * DocumentFormatRegistry}. The {@code Clock} parameter resolves by type to this application's
    * single {@code @Primary} {@link Clock}, not to {@link #schedulingClock()} despite its name.
    */
   @Bean
-  MailDocumentPipeline mailDocumentPipeline(
+  MailDocumentFormat mailDocumentPipeline(
       ChunkingService chunkingService, MailProperties mailProperties, Clock schedulingClock) {
-    return new MailDocumentPipeline(chunkingService, mailProperties, schedulingClock);
+    return new MailDocumentFormat(chunkingService, mailProperties, schedulingClock);
   }
 
   /**
-   * Populated from every {@link DocumentPipeline} bean Spring finds - a new format becomes
-   * reachable by adding one more pipeline bean, never by editing this method or {@link
-   * DocumentIngestService} (the open-closed criterion of docs/features/ingestion-pipelines.md, Teil
-   * 1). Mirrors {@link #indexingSourceExecutorRegistry}'s own collection-injection pattern.
+   * Populated from every {@link DocumentFormat} bean Spring finds - a new format becomes reachable
+   * by adding one more pipeline bean, never by editing this method or {@link DocumentIngestService}
+   * (the open-closed criterion of docs/features/ingestion-pipelines.md, Teil 1). Mirrors {@link
+   * #indexingSourceExecutorRegistry}'s own collection-injection pattern.
    */
   @Bean
-  DocumentPipelineRegistry documentPipelineRegistry(
-      List<DocumentPipeline> pipelines, TikaFallbackPipeline fallback) {
-    return new DocumentPipelineRegistry(pipelines, fallback);
+  DocumentFormatRegistry documentPipelineRegistry(
+      List<DocumentFormat> pipelines, TikaFallbackFormat fallback) {
+    return new DocumentFormatRegistry(pipelines, fallback);
   }
 
   /**
@@ -215,7 +215,7 @@ public class IndexingConfiguration {
    * the selective re-index and "Im Dokument öffnen" re-derive them from their parent here.
    */
   @Bean
-  AttachmentExtractor attachmentExtractor(DocumentPipelineRegistry documentPipelineRegistry) {
+  AttachmentExtractor attachmentExtractor(DocumentFormatRegistry documentPipelineRegistry) {
     return new AttachmentExtractor(documentPipelineRegistry);
   }
 
@@ -243,7 +243,7 @@ public class IndexingConfiguration {
   @Bean
   PipelineReindexService pipelineReindexService(
       JdbcTemplate jdbcTemplate,
-      DocumentPipelineRegistry documentPipelineRegistry,
+      DocumentFormatRegistry documentPipelineRegistry,
       DocumentRepository documentRepository,
       KnowledgeLibraryRepository libraryRepository,
       DocumentIngestService documentIngestService,
@@ -291,7 +291,7 @@ public class IndexingConfiguration {
 
   @Bean
   DocumentIngestService documentIngestService(
-      DocumentPipelineRegistry documentPipelineRegistry,
+      DocumentFormatRegistry documentPipelineRegistry,
       DocumentRepository documentRepository,
       VectorChunkStore vectorChunkStore,
       ChecksumService checksumService,

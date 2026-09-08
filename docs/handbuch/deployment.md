@@ -156,7 +156,7 @@ Embedding-Modells beide Werte gemeinsam ändern und die Datenbank zurücksetzen.
 > und `.odp` (`odp`) — jede mit ihrer eigenen `pipeline_id`/`pipeline_version` am Chunk (siehe
 > [Indexierung](indexierung.md), Abschnitt zu Pipeline-Versionen und Nachzug).
 > `.md`, `.txt`, `.doc` sowie jedes Format ohne eigene Pipeline laufen unverändert über
-> `TikaFallbackPipeline` weiter — für sie ändert sich am bestehenden Bestand nichts. Für `.odt`/`.odp`
+> `TikaFallbackFormat` weiter — für sie ändert sich am bestehenden Bestand nichts. Für `.odt`/`.odp`
 > ändert sich der Bestand dagegen genauso wie für die anderen sechs Formate: Wer diese Anleitung
 > abarbeitet, muss `odt`/`odp` als eigene Aufrufe mitnehmen (siehe unten), sonst bleiben bestehende
 > ODT-/ODP-Dokumente dauerhaft auf dem Fallback-Zuschnitt.
@@ -178,7 +178,7 @@ Embedding-Modells beide Werte gemeinsam ändern und die Datenbank zurücksetzen.
 > Einführung der Pipeline-Metadaten, siehe unten) **und** jeden Chunk, den `tika-fallback` selbst in
 > Version 0 erzeugt hat — beides
 > wird beim Neuerzeugen über die Registry an die heute zuständige Pipeline geroutet, nicht mehr an
-> `TikaFallbackPipeline` zurück. Erst danach folgen, ebenfalls je wiederholt bis `done: true`, die
+> `TikaFallbackFormat` zurück. Erst danach folgen, ebenfalls je wiederholt bis `done: true`, die
 > acht formatbezogenen Aufrufe (`pdf`, `docx`, `pptx`, `tabular`, `html`, `email`, `odt`, `odp`) — sie
 > decken nur noch den Zwischenstand ab, also Chunks, die bereits mit
 > `pipeline_id`/`pipeline_version` geschrieben wurden, aber noch auf einer älteren Version ihrer

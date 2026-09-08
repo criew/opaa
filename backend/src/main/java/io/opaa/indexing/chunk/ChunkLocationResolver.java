@@ -1,6 +1,5 @@
 package io.opaa.indexing.chunk;
 
-import io.opaa.indexing.pipeline.MarkdownHeading;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;

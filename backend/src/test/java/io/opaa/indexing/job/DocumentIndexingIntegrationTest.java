@@ -17,7 +17,7 @@ import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.document.DocumentService;
-import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
+import io.opaa.indexing.format.ChunkFormatMetadata;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.llm.ActiveChatModelResolver;
@@ -346,7 +346,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(results).allMatch(r -> r.getText() != null && !r.getText().isBlank());
 
     // pipeline_id at the stored chunk proves each file actually ran
-    // through its own dedicated pipeline (PdfDocumentPipeline/DocxDocumentPipeline), not merely
+    // through its own dedicated pipeline (PdfDocumentFormat/DocxDocumentFormat), not merely
     // through Tika - both would produce a non-empty, non-blank result above.
     assertThat(
             jdbcTemplate.queryForList(
@@ -369,8 +369,8 @@ class DocumentIndexingIntegrationTest {
   @Test
   void indexesOdfDocuments() throws IOException {
     // ODT/ODS/ODP are admitted the exact same way as their Microsoft counterparts (Teil 3,
-    // Punkt 2). ODT and ODP resolve to their own OdtDocumentPipeline/OdpDocumentPipeline since
-    // ODS resolves to TabularDocumentPipeline - see
+    // Punkt 2). ODT and ODP resolve to their own OdtDocumentFormat/OdpDocumentFormat since
+    // ODS resolves to TabularDocumentFormat - see
     // indexesXlsxCsvAndOdsDocumentsThroughTheTabularPipeline for the assertion that it actually
     // reads the file structurally rather than through the fallback.
     copyTestResource("test-documents/test-document.odt", "satzung.odt");
@@ -395,7 +395,7 @@ class DocumentIndexingIntegrationTest {
   @Test
   void indexesXlsxCsvAndOdsDocumentsThroughTheTabularPipeline() throws IOException {
     // an end-to-end proof that XLSX/CSV/ODS actually flow through
-    // TabularDocumentPipeline (admission -> registry -> pipeline -> stored chunk), not just the
+    // TabularDocumentFormat (admission -> registry -> pipeline -> stored chunk), not just the
     // pipeline's own unit tests - mirrors indexesPdfAndDocxDocuments's own end-to-end shape, with
     // the pipeline_id assertion the real point of this test.
     try (XSSFWorkbook workbook = new XSSFWorkbook()) {
@@ -433,13 +433,13 @@ class DocumentIndexingIntegrationTest {
         .allMatch(
             r ->
                 "tabular"
-                    .equals(r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)));
+                    .equals(r.getMetadata().get(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY)));
   }
 
   @Test
   void indexesHtmlDocumentsThroughTheHtmlPipeline() throws IOException {
     // an end-to-end proof that .html actually flows through
-    // HtmlDocumentPipeline (admission -> registry -> pipeline -> stored chunk), not just the
+    // HtmlDocumentFormat (admission -> registry -> pipeline -> stored chunk), not just the
     // pipeline's own unit tests - mirrors indexesXlsxCsvAndOdsDocumentsThroughTheTabularPipeline's
     // own shape, with the pipeline_id and location assertions the real point of this test.
     Files.writeString(
@@ -472,8 +472,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(results).isNotEmpty();
     assertThat(results)
         .allMatch(
-            r ->
-                "html".equals(r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)));
+            r -> "html".equals(r.getMetadata().get(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY)));
     assertThat(results)
         .allMatch(
             r ->
@@ -517,12 +516,11 @@ class DocumentIndexingIntegrationTest {
                 .similarityThreshold(0.0)
                 .build());
     assertThat(results).isNotEmpty();
-    // The pipeline_id proves the slide-per-chunk PptxDocumentPipeline actually ran, not the Tika
+    // The pipeline_id proves the slide-per-chunk PptxDocumentFormat actually ran, not the Tika
     // fallback, which would also happily produce a non-empty, non-blank chunk.
     assertThat(results)
         .allMatch(
-            r ->
-                "pptx".equals(r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)));
+            r -> "pptx".equals(r.getMetadata().get(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY)));
     assertThat(results)
         .allMatch(
             r -> "Folie 1".equals(r.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY)));
@@ -537,7 +535,7 @@ class DocumentIndexingIntegrationTest {
     // (io.opaa.indexing.source.attachment.AttachmentIndexer), with the correct pipeline id of its
     // own format (here: the Tika fallback for a plain-text attachment) and parent_document_id
     // pointing at the mail. Proves the real, Spring-wired bean graph end to end - not just
-    // MailDocumentPipelineTest's own hand-built registry.
+    // MailDocumentFormatTest's own hand-built registry.
     Message message =
         Message.Builder.of()
             .setSubject("Anfrage Bauantrag")
@@ -596,9 +594,7 @@ class DocumentIndexingIntegrationTest {
     // anyMatch, not allMatch, is the meaningful assertion here.
     assertThat(bodyResults)
         .anyMatch(
-            r ->
-                "email"
-                    .equals(r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)));
+            r -> "email".equals(r.getMetadata().get(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY)));
 
     List<org.springframework.ai.document.Document> attachmentResults =
         vectorStore.similaritySearch(
@@ -614,7 +610,7 @@ class DocumentIndexingIntegrationTest {
         .anyMatch(
             r ->
                 "tika-fallback"
-                    .equals(r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)));
+                    .equals(r.getMetadata().get(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY)));
   }
 
   @Test

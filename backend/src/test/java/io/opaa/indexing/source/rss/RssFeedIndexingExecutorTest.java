@@ -25,13 +25,13 @@ import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentIngests;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.document.DocumentService;
+import io.opaa.indexing.format.DocumentFormatResult;
+import io.opaa.indexing.format.DocumentFormatSource;
+import io.opaa.indexing.format.file.html.HtmlDocumentFormat;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
-import io.opaa.indexing.pipeline.DocumentPipelineResult;
-import io.opaa.indexing.pipeline.DocumentPipelineSource;
-import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.attachment.AttachmentProfile;
 import io.opaa.library.KnowledgeLibrary;
@@ -266,7 +266,7 @@ class RssFeedIndexingExecutorTest {
             DocumentIngests.that()
                 .text()
                 .textMatching(only("Der eigentliche Artikeltext.", "Navigation", "Kopf", "Fuss"))
-                .via(HtmlDocumentPipeline.ID)
+                .via(HtmlDocumentFormat.ID)
                 .at(baseUrl + "/a.html")
                 .in(library)
                 .match(),
@@ -276,7 +276,7 @@ class RssFeedIndexingExecutorTest {
             DocumentIngests.that()
                 .text()
                 .textMatching(only("Der eigentliche Artikeltext.", "Navigation", "Kopf", "Fuss"))
-                .via(HtmlDocumentPipeline.ID)
+                .via(HtmlDocumentFormat.ID)
                 .at(baseUrl + "/b.html")
                 .in(library)
                 .match(),
@@ -312,15 +312,15 @@ class RssFeedIndexingExecutorTest {
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
     ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
     verify(documentIngestService).ingest(ingest.capture(), any());
-    assertThat(ingest.getValue().pipelineId()).isEqualTo(HtmlDocumentPipeline.ID);
+    assertThat(ingest.getValue().pipelineId()).isEqualTo(HtmlDocumentFormat.ID);
     assertThat(ingest.getValue().title()).isEqualTo("Titel");
     String handedOver = DocumentIngests.textOf(ingest.getValue());
     assertThat(handedOver).doesNotContain("Startseite").doesNotContain("Impressum");
 
-    DocumentPipelineResult cut =
-        new HtmlDocumentPipeline()
-            .run(DocumentPipelineSource.ofExtractedText(handedOver, ingest.getValue().fileName()));
-    assertThat(cut.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    DocumentFormatResult cut =
+        new HtmlDocumentFormat()
+            .run(DocumentFormatSource.ofExtractedText(handedOver, ingest.getValue().fileName()));
+    assertThat(cut.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
     assertThat(cut.chunks())
         .extracting(chunk -> chunk.getText())
         .containsExactly(
@@ -359,10 +359,10 @@ class RssFeedIndexingExecutorTest {
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
     ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
     verify(documentIngestService).ingest(ingest.capture(), any());
-    DocumentPipelineResult cut =
-        new HtmlDocumentPipeline()
+    DocumentFormatResult cut =
+        new HtmlDocumentFormat()
             .run(
-                DocumentPipelineSource.ofExtractedText(
+                DocumentFormatSource.ofExtractedText(
                     DocumentIngests.textOf(ingest.getValue()), ingest.getValue().fileName()));
     assertThat(cut.chunks()).hasSize(1);
     assertThat(cut.chunks().getFirst().getText())
@@ -451,7 +451,7 @@ class RssFeedIndexingExecutorTest {
             DocumentIngests.that()
                 .text()
                 .textMatching(only("Eigentlicher Inhalt", "Navigation", "Kopf", "Fuss"))
-                .via(HtmlDocumentPipeline.ID)
+                .via(HtmlDocumentFormat.ID)
                 .at(baseUrl + "/a.html")
                 .in(library)
                 .match(),
@@ -1717,7 +1717,7 @@ class RssFeedIndexingExecutorTest {
             DocumentIngests.that()
                 .text()
                 .textMatching(only("Der eigentliche Artikeltext.", "Navigation", "Kopf", "Fuss"))
-                .via(HtmlDocumentPipeline.ID)
+                .via(HtmlDocumentFormat.ID)
                 .at(baseUrl + "/a.html")
                 .in(library)
                 .match(),

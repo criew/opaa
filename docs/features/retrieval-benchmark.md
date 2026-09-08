@@ -563,7 +563,7 @@ Drei Milderungen, keine Lösungen:
 > `id:version` über alle registrierten Pipelines (`IngestionPipelineFingerprint`) — ist seither
 > Fixpunkt auf **beiden** Pfaden: Rohvektor-Messvertrag Version 2 → 3, Pipeline-Messvertrag Version
 > 3 → 4. Reine Fixpunkt-Ergänzung ohne neuen Messlauf, weil der Eval-Korpus (Stand #1145)
-> ausschließlich aus Markdown besteht — nur `MarkdownDocumentPipeline` trägt zu den gemessenen Chunks
+> ausschließlich aus Markdown besteht — nur `MarkdownDocumentFormat` trägt zu den gemessenen Chunks
 > bei, der Abdruck listet aber alle registrierten Pipelines, nicht nur die vom Korpus genutzten.
 >
 > **Fortschreibung (Issue #1270, 09/2026):** Der Fixpunkt `fullTextBackfillComplete` heißt seither

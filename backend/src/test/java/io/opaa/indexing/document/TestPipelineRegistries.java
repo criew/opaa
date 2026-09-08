@@ -1,8 +1,8 @@
 package io.opaa.indexing.document;
 
 import io.opaa.indexing.chunk.ChunkingService;
-import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
-import io.opaa.indexing.pipeline.TikaFallbackPipeline;
+import io.opaa.indexing.format.DocumentFormatRegistry;
+import io.opaa.indexing.format.file.fallback.TikaFallbackFormat;
 import java.util.List;
 
 /**
@@ -18,26 +18,28 @@ public final class TestPipelineRegistries {
 
   private TestPipelineRegistries() {}
 
-  public static DocumentPipelineRegistry fallbackOnly(
+  public static DocumentFormatRegistry fallbackOnly(
       DocumentService documentService, ChunkingService chunkingService) {
-    TikaFallbackPipeline fallback = new TikaFallbackPipeline(documentService, chunkingService);
-    return new DocumentPipelineRegistry(List.of(fallback), fallback);
+    TikaFallbackFormat fallback = new TikaFallbackFormat(documentService, chunkingService);
+    return new DocumentFormatRegistry(List.of(fallback), fallback);
   }
 
   /** The fallback plus the HTML pipeline - for the RSS entry path, which names it by id. */
-  public static DocumentPipelineRegistry fallbackAndHtml(
+  public static DocumentFormatRegistry fallbackAndHtml(
       DocumentService documentService, ChunkingService chunkingService) {
-    TikaFallbackPipeline fallback = new TikaFallbackPipeline(documentService, chunkingService);
-    return new DocumentPipelineRegistry(
-        List.of(fallback, new io.opaa.indexing.pipeline.html.HtmlDocumentPipeline()), fallback);
+    TikaFallbackFormat fallback = new TikaFallbackFormat(documentService, chunkingService);
+    return new DocumentFormatRegistry(
+        List.of(fallback, new io.opaa.indexing.format.file.html.HtmlDocumentFormat()), fallback);
   }
 
   /** The fallback plus the Confluence page pipeline - for processConfluencePage tests. */
-  public static DocumentPipelineRegistry fallbackAndConfluence(
+  public static DocumentFormatRegistry fallbackAndConfluence(
       DocumentService documentService, ChunkingService chunkingService) {
-    TikaFallbackPipeline fallback = new TikaFallbackPipeline(documentService, chunkingService);
-    return new DocumentPipelineRegistry(
-        List.of(fallback, new io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline()),
+    TikaFallbackFormat fallback = new TikaFallbackFormat(documentService, chunkingService);
+    return new DocumentFormatRegistry(
+        List.of(
+            fallback,
+            new io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat()),
         fallback);
   }
 }

@@ -1,8 +1,8 @@
 package io.opaa.indexing.source.web;
 
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.pipeline.Whitespace;
-import io.opaa.indexing.pipeline.html.HtmlContentRoots;
+import io.opaa.indexing.format.file.html.HtmlContentRoots;
+import io.opaa.indexing.format.shared.Whitespace;
 import io.opaa.indexing.source.attachment.AttachmentCandidate;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.RateLimitListener;

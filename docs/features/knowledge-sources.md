@@ -338,7 +338,7 @@ Auflistungsaufruf je 100 Seiten — 50 000 Aufrufe decken rund 20 000 neue oder 
 Lauf.
 
 **Die Aufbereitung (#1137)** übernimmt
-`ConfluenceDocumentPipeline`: Makro-Regelwerk (statischer Inhalt bleibt, zur Laufzeit erzeugter
+`ConfluenceStorageFormat`: Makro-Regelwerk (statischer Inhalt bleibt, zur Laufzeit erzeugter
 entfällt), Überschriften, Tabellen, Listen, Code und Hinweiskästen als lesbarer Text, der
 Gliederungspfad der Seite am Dokument und im Chunk-Kontext — Einzelheiten in
 [ingestion-pipelines.md](./ingestion-pipelines.md), Teil 3, Punkt 6. Abgenommen wird der Konnektor auf

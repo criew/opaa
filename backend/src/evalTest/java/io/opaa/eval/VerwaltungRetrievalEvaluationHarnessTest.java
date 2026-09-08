@@ -16,6 +16,9 @@ import io.opaa.eval.EvaluationReport.WorstQuery;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.format.DocumentFormatRegistry;
+import io.opaa.indexing.format.DocumentFormatResult;
+import io.opaa.indexing.format.DocumentFormatSource;
 import io.opaa.indexing.job.DocumentIndexingService;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobRepository;
@@ -23,9 +26,6 @@ import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.maintenance.FullTextIndexFillStateService;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
-import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
-import io.opaa.indexing.pipeline.DocumentPipelineResult;
-import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.llm.ActiveChatModelResolver;
@@ -79,7 +79,7 @@ import org.testcontainers.utility.DockerImageName;
  * eval/corpus/verwaltung/SOURCE.md} for how the corpus constructs those failure modes. Indexes the
  * frozen {@code eval/corpus/verwaltung} corpus through the production pipeline ({@link
  * io.opaa.indexing.document.DocumentIngestService} routed to {@link
- * io.opaa.indexing.pipeline.markdown.MarkdownDocumentPipeline} for this all-Markdown corpus since
+ * io.opaa.indexing.format.file.markdown.MarkdownDocumentFormat} for this all-Markdown corpus since
  * #1103), then runs every case from {@code eval/golden/verwaltung.json} directly against {@link
  * VectorStore#similaritySearch}. No LLM — retrieval-only, per ADR-0011 decision 3.
  *
@@ -360,10 +360,10 @@ class VerwaltungRetrievalEvaluationHarnessTest {
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
   // Issue #721/#1103: reused, not reimplemented, to build the chunk map — the same
-  // DocumentPipelineRegistry routing DocumentIngestService drives (see its Javadoc), so the chunk
+  // DocumentFormatRegistry routing DocumentIngestService drives (see its Javadoc), so the chunk
   // texts the map is built from are exactly what was actually indexed, not a second, potentially
   // drifting re-implementation.
-  @Autowired private DocumentPipelineRegistry pipelineRegistry;
+  @Autowired private DocumentFormatRegistry pipelineRegistry;
   // #1039: the production query pipeline itself, for the second (pipeline) measurement path — the
   // very beans a real request runs through, not a re-implementation of steps 2 to 6.
   @Autowired private QueryService queryService;
@@ -681,7 +681,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
         DOMAIN.documentTopK());
 
     // 4b. Chunk map (issue #721, routing updated for #1103): re-derive each document's real chunk
-    //     texts through the same DocumentPipelineRegistry routing DocumentIngestService uses, so
+    //     texts through the same DocumentFormatRegistry routing DocumentIngestService uses, so
     // the
     //     map reflects exactly what was indexed. Docker-free in principle (no embedding call
     //     needed), kept here so the map always matches the corpus this specific run actually
@@ -696,11 +696,11 @@ class VerwaltungRetrievalEvaluationHarnessTest {
     for (String fileName : manifest.fileNames()) {
       Path file = corpusDir.resolve(fileName);
       String documentText = Files.readString(file, StandardCharsets.UTF_8);
-      DocumentPipelineRegistry.Routed routed = pipelineRegistry.routedPipelineFor(file, fileName);
-      DocumentPipelineResult result =
+      DocumentFormatRegistry.Routed routed = pipelineRegistry.routedPipelineFor(file, fileName);
+      DocumentFormatResult result =
           routed
               .pipeline()
-              .run(DocumentPipelineSource.ofFile(file, fileName, routed.detectedExtension()));
+              .run(DocumentFormatSource.ofFile(file, fileName, routed.detectedExtension()));
       List<String> chunkTexts =
           result.chunks().stream().map(org.springframework.ai.document.Document::getText).toList();
       Map<String, String> spansForThisDocument = new LinkedHashMap<>();

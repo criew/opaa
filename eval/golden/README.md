@@ -23,7 +23,7 @@ werden und ein Generator nur die mechanische Hälfte davon reproduzieren könnte
 das Ergebnis stattdessen durch Regeln statt durch einen Erzeugungsweg:
 `io.opaa.eval.GoldenCaseCuration` und `GoldenCaseCurationTest`, das diese Regeln Docker-frei auf
 die committete Datei anwendet und zusätzlich jeden `answer_span` **aller drei Domänen** durch die
-produktive `MarkdownDocumentPipeline` auflöst (dieselbe Pipeline, auf die `DocumentPipelineRegistry`
+produktive `MarkdownDocumentFormat` auflöst (dieselbe Pipeline, auf die `DocumentFormatRegistry`
 `.md` seit #1103 routet — alle drei Korpora bestehen ausschließlich aus Markdown):
 
 - mindestens acht Fälle je Klasse,

@@ -24,7 +24,7 @@ const LIBRARY_NAME = `E2E Formatbibliothek ${runId}`
 /**
  * Covers test(e2e) #1109 (Epic #1054/#1110 review, E5): the suite otherwise only ever uploads
  * `.txt` (and one `.pdf` fixture elsewhere) - every other admitted format
- * (`io.opaa.indexing.SupportedDocumentFormats`) has never been driven through the real upload UI
+ * (`io.opaa.indexing.format.SupportedDocumentFormats`) has never been driven through the real upload UI
  * at all. One upload of three formats in a single call proves the accept list, the multi-file
  * upload path and each format's own pipeline all still agree end to end - not encyclopedic
  * coverage of every admitted extension, which belongs to the backend-level

@@ -12,14 +12,14 @@ import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.ChecksumService;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.format.ChunkFormatMetadata;
+import io.opaa.indexing.format.DocumentFormat;
+import io.opaa.indexing.format.DocumentFormatRegistry;
+import io.opaa.indexing.format.file.fallback.TikaFallbackFormat;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.IndexingRunProgress;
-import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
-import io.opaa.indexing.pipeline.DocumentPipeline;
-import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
-import io.opaa.indexing.pipeline.TikaFallbackPipeline;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -73,7 +73,7 @@ class PipelineReindexServiceIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private UploadProperties uploadProperties;
-  @Autowired private DocumentPipelineRegistry pipelineRegistry;
+  @Autowired private DocumentFormatRegistry pipelineRegistry;
 
   private UUID userId;
   private KnowledgeLibrary library;
@@ -132,8 +132,7 @@ class PipelineReindexServiceIntegrationTest {
     Document legacy = persistedFilesystemDocument("altbestand.txt", "Alter Inhalt");
     seedChunk(legacy.getId(), "alter chunk", null, null);
     Document current = persistedFilesystemDocument("neubestand.txt", "Neuer Inhalt");
-    seedChunk(
-        current.getId(), "neuer chunk", TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION);
+    seedChunk(current.getId(), "neuer chunk", TikaFallbackFormat.ID, TikaFallbackFormat.VERSION);
 
     List<PipelineVersionProgress> progress =
         reindexService.progressForOrganization(Organization.DEFAULT_ID);
@@ -168,10 +167,9 @@ class PipelineReindexServiceIntegrationTest {
     // Simulates the routing gap: the PDF pipeline was registered after this document was
     // indexed, so its chunks still carry tika-fallback at the fallback's own current version - a
     // state no version-only comparison against either pipeline can ever call stale.
-    DocumentPipeline pdfPipeline = pdfPipeline();
+    DocumentFormat pdfPipeline = pdfPipeline();
     Document document = persistedFilesystemPdfDocument("satzung.pdf");
-    seedChunk(
-        document.getId(), "alter chunk", TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION);
+    seedChunk(document.getId(), "alter chunk", TikaFallbackFormat.ID, TikaFallbackFormat.VERSION);
 
     PipelineVersionProgress progress =
         reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
@@ -198,7 +196,7 @@ class PipelineReindexServiceIntegrationTest {
       throws IOException {
     // Closes gap (a): bericht.pdf with genuine plain-text content resolves no extension
     // at all (SupportedDocumentFormats#decideForFileName), so a forward-written chunk carries
-    // ChunkPipelineMetadata#NO_ROUTING_EXTENSION rather than a guess from the file name. Without
+    // ChunkFormatMetadata#NO_ROUTING_EXTENSION rather than a guess from the file name. Without
     // the routing key (the earlier approximation the other misrouted tests exercise), the same
     // file name would make this chunk permanently stale - the exact gap this key closes.
     Document document =
@@ -208,9 +206,9 @@ class PipelineReindexServiceIntegrationTest {
         document.getId(),
         library.getId(),
         "alter chunk",
-        TikaFallbackPipeline.ID,
-        TikaFallbackPipeline.VERSION,
-        ChunkPipelineMetadata.NO_ROUTING_EXTENSION);
+        TikaFallbackFormat.ID,
+        TikaFallbackFormat.VERSION,
+        ChunkFormatMetadata.NO_ROUTING_EXTENSION);
 
     PipelineVersionProgress progress =
         reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
@@ -228,14 +226,14 @@ class PipelineReindexServiceIntegrationTest {
     // chunks are fallback-labeled (#currentPipelineIdForFileName never matches it). A forward-
     // written routing key sidesteps the file name entirely - the same misrouted branch now
     // selects it on an exact match against the requested pipeline's own extensions.
-    DocumentPipeline pdfPipeline = pdfPipeline();
+    DocumentFormat pdfPipeline = pdfPipeline();
     Document document = persistedFilesystemPdfDocument("download.aspx");
     seedChunk(
         document.getId(),
         library.getId(),
         "alter chunk",
-        TikaFallbackPipeline.ID,
-        TikaFallbackPipeline.VERSION,
+        TikaFallbackFormat.ID,
+        TikaFallbackFormat.VERSION,
         ".pdf");
 
     PipelineVersionProgress progress =
@@ -251,14 +249,14 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(pipelineIdsOf(document.getId())).containsOnly(pdfPipeline.id());
   }
 
-  private DocumentPipeline pdfPipeline() {
+  private DocumentFormat pdfPipeline() {
     return pipelineRegistry.pipelines().stream()
         .filter(candidate -> candidate.handledFormats().contains(".pdf"))
         .findFirst()
         .orElseThrow(() -> new IllegalStateException("No PDF pipeline registered"));
   }
 
-  private DocumentPipeline htmlPipeline() {
+  private DocumentFormat htmlPipeline() {
     return pipelineRegistry.pipelines().stream()
         .filter(candidate -> candidate.handledFormats().contains(".html"))
         .findFirst()
@@ -276,7 +274,7 @@ class PipelineReindexServiceIntegrationTest {
     // into a pipeline it was never routed to, and could never converge (see
     // #currentPipelineIdForFileName's own Javadoc). The exact branch below is what makes
     // this direction reachable for a chunk that does carry a routing key.
-    DocumentPipeline pdfPipeline = pdfPipeline();
+    DocumentFormat pdfPipeline = pdfPipeline();
     Document document = persistedFilesystemPdfDocument("x.pdf");
     seedChunk(document.getId(), "html chunk", "html", (short) 1);
 
@@ -299,7 +297,7 @@ class PipelineReindexServiceIntegrationTest {
     // pipeline_id to equal the fallback's own id. With the exact routing key, no such restriction
     // is needed: the extension-to-pipeline mapping is unique, so the corrected chunk always ends
     // up under pdfPipeline and is never selected again.
-    DocumentPipeline pdfPipeline = pdfPipeline();
+    DocumentFormat pdfPipeline = pdfPipeline();
     Document document = persistedFilesystemPdfDocument("satzung.pdf");
     seedChunk(document.getId(), library.getId(), "html chunk", "html", (short) 1, ".pdf");
 
@@ -334,7 +332,7 @@ class PipelineReindexServiceIntegrationTest {
     // isComplete() as true. With the routing key, the chunk's target pipeline is resolved
     // from the key itself and never needs to look the stored pipeline_id up in currentVersions -
     // and selectStaleDocuments reaches it the same way, symmetric to the counting fix.
-    DocumentPipeline pdfPipeline = pdfPipeline();
+    DocumentFormat pdfPipeline = pdfPipeline();
     Document document = persistedFilesystemPdfDocument("satzung.pdf");
     seedChunk(
         document.getId(),
@@ -392,10 +390,10 @@ class PipelineReindexServiceIntegrationTest {
 
     PipelineReindexResult result =
         reindexService.reindexBatch(
-            Organization.DEFAULT_ID, TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION, 10);
+            Organization.DEFAULT_ID, TikaFallbackFormat.ID, TikaFallbackFormat.VERSION, 10);
 
     assertThat(result.reindexedDocuments()).isEqualTo(1);
-    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackPipeline.ID);
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackFormat.ID);
     assertThat(
             reindexService
                 .progressForOrganization(Organization.DEFAULT_ID)
@@ -409,7 +407,7 @@ class PipelineReindexServiceIntegrationTest {
     // An RSS entry's body goes through the HTML pipeline, so a raised HTML pipeline version reaches
     // it like any other remote document: counted stale, handed to the next feed run by clearing
     // its change markers, and out of the backlog afterwards.
-    DocumentPipeline htmlPipeline = htmlPipeline();
+    DocumentFormat htmlPipeline = htmlPipeline();
     Document document =
         persistedRssFeedDocument("Rat beschliesst Satzung", "https://example.test/feed/rat");
     seedChunk(
@@ -442,11 +440,10 @@ class PipelineReindexServiceIntegrationTest {
     // fallback era is treated like every other fallback-labeled remote document without a routing
     // key - selected by the file-name approximation and marked for its next run, whose fetch then
     // hands the body to the HTML pipeline by id.
-    DocumentPipeline htmlPipeline = htmlPipeline();
+    DocumentFormat htmlPipeline = htmlPipeline();
     Document document =
         persistedRssFeedDocument("artikel.html", "https://example.test/feed/artikel.html");
-    seedChunk(
-        document.getId(), "alter chunk", TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION);
+    seedChunk(document.getId(), "alter chunk", TikaFallbackFormat.ID, TikaFallbackFormat.VERSION);
 
     PipelineReindexResult result =
         reindexService.reindexBatch(
@@ -503,10 +500,9 @@ class PipelineReindexServiceIntegrationTest {
     // scoped to the one gap it exists for. A .txt document with no specialized pipeline of its own
     // is correctly fallback-labeled forever and must never be pulled into an unrelated pipeline's
     // batch just because that pipeline happens to be registered.
-    DocumentPipeline pdfPipeline = pdfPipeline();
+    DocumentFormat pdfPipeline = pdfPipeline();
     Document document = persistedFilesystemDocument("altbestand.txt", "Alter Inhalt");
-    seedChunk(
-        document.getId(), "alter chunk", TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION);
+    seedChunk(document.getId(), "alter chunk", TikaFallbackFormat.ID, TikaFallbackFormat.VERSION);
 
     PipelineReindexResult result =
         reindexService.reindexBatch(
@@ -514,25 +510,24 @@ class PipelineReindexServiceIntegrationTest {
 
     assertThat(result.isEmpty()).isTrue();
     assertThat(result.reindexedDocuments()).isZero();
-    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackPipeline.ID);
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackFormat.ID);
   }
 
   @Test
   void aDocumentThatStaysMisroutedAfterReindexTerminatesInsteadOfLoopingForever()
       throws IOException {
     // Regression guard for #1105: reindexStoredDocument routes on
-    // re-detected content (DocumentPipelineRegistry#routedPipelineFor), not on the file name
+    // re-detected content (DocumentFormatRegistry#routedPipelineFor), not on the file name
     // selectStaleDocuments guessed the candidate from. A document named like the target pipeline's
     // format but whose real content never resolves to it stays fallback-labeled after every
     // rewrite - without the loop protection this would be re-selected, re-embedded and re-written
     // on every single call, never converging (see IndexingAdminController's own guard against the
     // equivalent belowVersion case, which this same failure mode bypassed).
-    DocumentPipeline pdfPipeline = pdfPipeline();
+    DocumentFormat pdfPipeline = pdfPipeline();
     Document document =
         persistedFilesystemTextDocumentNamedLikePdf(
             "bericht.pdf", "Dies ist kein PDF, sondern reiner Text. ");
-    seedChunk(
-        document.getId(), "alter chunk", TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION);
+    seedChunk(document.getId(), "alter chunk", TikaFallbackFormat.ID, TikaFallbackFormat.VERSION);
 
     PipelineReindexResult first =
         reindexService.reindexBatch(
@@ -540,7 +535,7 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(first.isEmpty()).isTrue();
     assertThat(first.skippedDocuments()).isEqualTo(1);
     assertThat(first.reindexedDocuments()).isZero();
-    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackPipeline.ID);
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackFormat.ID);
 
     PipelineReindexResult second =
         reindexService.reindexBatch(
@@ -551,7 +546,7 @@ class PipelineReindexServiceIntegrationTest {
   @Test
   void aDocumentThatStaysMisroutedIsNotReparsedOnASubsequentReindexCall() throws IOException {
     // Closes gap (c): DocumentIngestService#storeChunks now writes
-    // ChunkPipelineMetadata#NO_ROUTING_EXTENSION onto the chunks reindexStoredDocument just wrote
+    // ChunkFormatMetadata#NO_ROUTING_EXTENSION onto the chunks reindexStoredDocument just wrote
     // for a document that still resolves to the fallback pipeline. #misroutedPredicateFor's exact
     // branch then excludes those chunks outright (routing_extension "" never matches a pipeline's
     // own extension list) instead of relying on the file-name heuristic that kept re-selecting
@@ -559,12 +554,11 @@ class PipelineReindexServiceIntegrationTest {
     // chunk
     // (see PipelineReindexResult#skippedDocuments's own Javadoc on this exact, previously accepted
     // cost).
-    DocumentPipeline pdfPipeline = pdfPipeline();
+    DocumentFormat pdfPipeline = pdfPipeline();
     Document document =
         persistedFilesystemTextDocumentNamedLikePdf(
             "bericht.pdf", "Dies ist kein PDF, sondern reiner Text. ");
-    seedChunk(
-        document.getId(), "alter chunk", TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION);
+    seedChunk(document.getId(), "alter chunk", TikaFallbackFormat.ID, TikaFallbackFormat.VERSION);
 
     PipelineReindexResult first =
         reindexService.reindexBatch(
@@ -594,7 +588,7 @@ class PipelineReindexServiceIntegrationTest {
   @Test
   void aDocumentRepairedOnlyForItsStaleFullTextRowsCountsAsReindexedNotSkipped()
       throws IOException {
-    DocumentPipeline pdfPipeline = pdfPipeline();
+    DocumentFormat pdfPipeline = pdfPipeline();
     Document document =
         persistedFilesystemTextDocumentNamedLikePdf(
             "bericht.pdf", "Dies ist kein PDF, sondern reiner Text. ");
@@ -605,9 +599,9 @@ class PipelineReindexServiceIntegrationTest {
             document.getId(),
             library.getId(),
             "alter chunk",
-            TikaFallbackPipeline.ID,
-            TikaFallbackPipeline.VERSION,
-            ChunkPipelineMetadata.NO_ROUTING_EXTENSION);
+            TikaFallbackFormat.ID,
+            TikaFallbackFormat.VERSION,
+            ChunkFormatMetadata.NO_ROUTING_EXTENSION);
     jdbcTemplate.update(
         "UPDATE chunk_full_text SET content_tsv_version = ? WHERE chunk_id = ?",
         (short) (FullTextChunkStore.CURRENT_TSV_VERSION - 1),
@@ -619,7 +613,7 @@ class PipelineReindexServiceIntegrationTest {
 
     assertThat(result.reindexedDocuments()).isEqualTo(1);
     assertThat(result.skippedDocuments()).isZero();
-    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackPipeline.ID);
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackFormat.ID);
     assertThat(currentVersionFullTextRowsOf(document.getId()))
         .isEqualTo(chunkTextsOf(document.getId()).size())
         .isPositive();
@@ -652,7 +646,7 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   /**
-   * raising FullTextChunkStore#CURRENT_TSV_VERSION raises no DocumentPipeline#version(), so a
+   * raising FullTextChunkStore#CURRENT_TSV_VERSION raises no DocumentFormat#version(), so a
    * selection tied to the pipeline version alone would report "nothing to do" for exactly the
    * situation the documented recovery path names. The document is selected on its stale full-text
    * row, and afterwards every chunk of it carries a row at the current version.
@@ -665,10 +659,7 @@ class PipelineReindexServiceIntegrationTest {
     // Current pipeline version, so only the stale tsv version can select this document.
     UUID chunkId =
         seedChunk(
-            document.getId(),
-            "aktueller chunk",
-            TikaFallbackPipeline.ID,
-            TikaFallbackPipeline.VERSION);
+            document.getId(), "aktueller chunk", TikaFallbackFormat.ID, TikaFallbackFormat.VERSION);
     jdbcTemplate.update(
         "UPDATE chunk_full_text SET content_tsv_version = ? WHERE chunk_id = ?",
         (short) (FullTextChunkStore.CURRENT_TSV_VERSION - 1),
@@ -683,7 +674,7 @@ class PipelineReindexServiceIntegrationTest {
 
     PipelineReindexResult result =
         reindexService.reindexBatch(
-            Organization.DEFAULT_ID, TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION, 10);
+            Organization.DEFAULT_ID, TikaFallbackFormat.ID, TikaFallbackFormat.VERSION, 10);
 
     assertThat(result.reindexedDocuments()).isEqualTo(1);
     assertThat(currentVersionFullTextRowsOf(document.getId()))
@@ -693,10 +684,7 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(
             reindexService
                 .reindexBatch(
-                    Organization.DEFAULT_ID,
-                    TikaFallbackPipeline.ID,
-                    TikaFallbackPipeline.VERSION,
-                    10)
+                    Organization.DEFAULT_ID, TikaFallbackFormat.ID, TikaFallbackFormat.VERSION, 10)
                 .isEmpty())
         .isTrue();
     assertThat(
@@ -716,7 +704,7 @@ class PipelineReindexServiceIntegrationTest {
 
     PipelineReindexResult result =
         reindexService.reindexBatch(
-            Organization.DEFAULT_ID, TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION, 10);
+            Organization.DEFAULT_ID, TikaFallbackFormat.ID, TikaFallbackFormat.VERSION, 10);
 
     assertThat(result.reindexedDocuments()).isEqualTo(1);
     assertThat(result.isEmpty()).isFalse();
@@ -725,8 +713,7 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(chunkTextsOf(document.getId()))
         .noneMatch(text -> text.equals("veralteter chunk"))
         .isNotEmpty();
-    assertThat(pipelineVersionsOf(document.getId()))
-        .containsOnly((int) TikaFallbackPipeline.VERSION);
+    assertThat(pipelineVersionsOf(document.getId())).containsOnly((int) TikaFallbackFormat.VERSION);
     // The re-index is the first path that deletes and rewrites chunks of an existing corpus, so
     // the lexical index has to come along: exactly one chunk_full_text row per vector_store chunk
     // of this document, none left over from the chunks that were replaced.
@@ -742,10 +729,7 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(
             reindexService
                 .reindexBatch(
-                    Organization.DEFAULT_ID,
-                    TikaFallbackPipeline.ID,
-                    TikaFallbackPipeline.VERSION,
-                    10)
+                    Organization.DEFAULT_ID, TikaFallbackFormat.ID, TikaFallbackFormat.VERSION, 10)
                 .isEmpty())
         .isTrue();
   }
@@ -899,8 +883,7 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(chunkTextsOf(document.getId()))
         .noneMatch(text -> text.equals("veralteter chunk"))
         .isNotEmpty();
-    assertThat(pipelineVersionsOf(document.getId()))
-        .containsOnly((int) TikaFallbackPipeline.VERSION);
+    assertThat(pipelineVersionsOf(document.getId())).containsOnly((int) TikaFallbackFormat.VERSION);
   }
 
   @Test
@@ -1012,7 +995,7 @@ class PipelineReindexServiceIntegrationTest {
     // hand the re-discovered attachment to the generalized attachment path - otherwise the
     // re-index deletes the old inline attachment chunks and creates nothing in their place, and
     // the subsequent checksum skip of the unchanged mail file cements the loss forever.
-    DocumentPipeline mailPipeline = mailPipeline();
+    DocumentFormat mailPipeline = mailPipeline();
     Message message =
         Message.Builder.of()
             .setSubject("Anfrage Bauantrag")
@@ -1052,7 +1035,7 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(attachment.getFileName()).isEqualTo("anlage.txt");
     assertThat(attachment.getFilePath()).isEqualTo(emlFile.toAbsolutePath() + "/0/anlage.txt");
     assertThat(attachment.getStatus()).isEqualTo(DocumentStatus.INDEXED);
-    assertThat(pipelineIdsOf(attachment.getId())).containsOnly(TikaFallbackPipeline.ID);
+    assertThat(pipelineIdsOf(attachment.getId())).containsOnly(TikaFallbackFormat.ID);
   }
 
   @Test
@@ -1061,7 +1044,7 @@ class PipelineReindexServiceIntegrationTest {
     // file_path is synthetic and resolves to no file of its own - the re-index re-extracts its
     // bytes from the root mail file via the positional index in the path, so a raised PDF pipeline
     // version reaches a PDF inside a mail without the mail file itself having changed.
-    DocumentPipeline pdfPipeline = pdfPipeline();
+    DocumentFormat pdfPipeline = pdfPipeline();
     byte[] pdfBytes =
         pdfBytes("Die Verwaltungsgebühr für einen Personalausweis beträgt 37,00 EUR.");
     Message message =
@@ -1125,7 +1108,7 @@ class PipelineReindexServiceIntegrationTest {
     // the UPLOAD counterpart of aPdfPipelineVersionBumpReachesAPdfAttachmentInsideAMail -
     // an attachment of an uploaded mail is re-extracted from the managed-storage mail file, so
     // attachmentAccessFor/reindexAttachmentDocument must accept UPLOAD roots instead of skipping.
-    DocumentPipeline pdfPipeline = pdfPipeline();
+    DocumentFormat pdfPipeline = pdfPipeline();
     byte[] pdfBytes = pdfBytes("Die Hundesteuer betraegt 96,00 EUR im Jahr.");
     Message message =
         Message.Builder.of()
@@ -1222,7 +1205,7 @@ class PipelineReindexServiceIntegrationTest {
     // today's attachment at the row's index carries DIFFERENT bytes - re-indexing them under this
     // row would put foreign content under a foreign name into search and citations. The checksum
     // verification must skip the row instead; the next scheduled run of the library heals it.
-    DocumentPipeline pdfPipeline = pdfPipeline();
+    DocumentFormat pdfPipeline = pdfPipeline();
     byte[] shiftedPdfBytes = pdfBytes("Ein ganz anderer Bescheid ueber 99,00 EUR.");
     Message message =
         Message.Builder.of()
@@ -1271,7 +1254,7 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(chunkTextsOf(attachmentDocument.getId())).containsExactly("alter Anhang-Chunk");
   }
 
-  private DocumentPipeline mailPipeline() {
+  private DocumentFormat mailPipeline() {
     return pipelineRegistry.pipelines().stream()
         .filter(candidate -> candidate.handledFormats().contains(".eml"))
         .findFirst()
@@ -1297,7 +1280,7 @@ class PipelineReindexServiceIntegrationTest {
 
   private PipelineReindexResult reindexBatch(int batchSize) {
     return reindexService.reindexBatch(
-        Organization.DEFAULT_ID, TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION, batchSize);
+        Organization.DEFAULT_ID, TikaFallbackFormat.ID, TikaFallbackFormat.VERSION, batchSize);
   }
 
   private Document persistedFilesystemDocument(String fileName, String content) throws IOException {
@@ -1355,9 +1338,9 @@ class PipelineReindexServiceIntegrationTest {
 
   /**
    * Like the four-argument overload, additionally seeding {@link
-   * ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} - {@code null} omits the key entirely
-   * (the earlier Altbestand this class's other tests already cover), matching a forward-written
-   * chunk otherwise.
+   * ChunkFormatMetadata#ROUTING_EXTENSION_METADATA_KEY} - {@code null} omits the key entirely (the
+   * earlier Altbestand this class's other tests already cover), matching a forward-written chunk
+   * otherwise.
    */
   private UUID seedChunk(
       UUID documentId,
@@ -1371,11 +1354,11 @@ class PipelineReindexServiceIntegrationTest {
     metadata.put(VectorChunkStore.LIBRARY_ID_METADATA_KEY, libraryId.toString());
     metadata.put("organization_id", Organization.DEFAULT_ID.toString());
     if (pipelineId != null) {
-      metadata.put(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY, pipelineId);
-      metadata.put(ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY, (int) pipelineVersion);
+      metadata.put(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY, pipelineId);
+      metadata.put(ChunkFormatMetadata.PIPELINE_VERSION_METADATA_KEY, (int) pipelineVersion);
     }
     if (routingExtension != null) {
-      metadata.put(ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY, routingExtension);
+      metadata.put(ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY, routingExtension);
     }
     org.springframework.ai.document.Document chunk =
         new org.springframework.ai.document.Document(text, metadata);

@@ -3,7 +3,7 @@ package io.opaa.indexing.metadata;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.DatePrecision;
-import io.opaa.indexing.pipeline.DocumentProperties;
+import io.opaa.indexing.format.DocumentProperties;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;

@@ -1,15 +1,15 @@
 package io.opaa.eval;
 
-import io.opaa.indexing.pipeline.DocumentPipeline;
-import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
+import io.opaa.indexing.format.DocumentFormat;
+import io.opaa.indexing.format.DocumentFormatRegistry;
 import java.util.Comparator;
 import java.util.stream.Collectors;
 
 /**
  * The collective fixed point recording under which ingestion pipeline versions a corpus was
- * measured (issue #1144) — every pipeline {@link DocumentPipelineRegistry} knows, not only the ones
- * a given corpus actually routes through: {@code docx:3} is part of this fingerprint even for an
- * all-Markdown corpus no document of which was ever routed to {@code DocxDocumentPipeline}, so a
+ * measured (issue #1144) — every pipeline {@link DocumentFormatRegistry} knows, not only the ones a
+ * given corpus actually routes through: {@code docx:3} is part of this fingerprint even for an
+ * all-Markdown corpus no document of which was ever routed to {@code DocxDocumentFormat}, so a
  * routing bug (a document silently reaching the wrong pipeline) shows up as a fingerprint change on
  * its own, not only once a pipeline version the corpus actually depends on moves. Neither {@code
  * corpusManifestSha256} nor {@code goldenDatasetSha256} answer that question — both describe the
@@ -30,9 +30,9 @@ final class IngestionPipelineFingerprint {
    * {@code "id:version"} for every pipeline {@code registry} knows (including the fallback),
    * comma-joined and sorted by id — deterministic regardless of bean registration order.
    */
-  static String of(DocumentPipelineRegistry registry) {
+  static String of(DocumentFormatRegistry registry) {
     return registry.pipelines().stream()
-        .sorted(Comparator.comparing(DocumentPipeline::id))
+        .sorted(Comparator.comparing(DocumentFormat::id))
         .map(pipeline -> pipeline.id() + ":" + pipeline.version())
         .collect(Collectors.joining(","));
   }

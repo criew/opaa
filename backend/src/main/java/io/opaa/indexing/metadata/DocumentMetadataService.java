@@ -6,9 +6,9 @@ import io.opaa.indexing.chunk.ChunkContextPrefix;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
-import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
-import io.opaa.indexing.pipeline.DocumentPipelineSource;
-import io.opaa.indexing.pipeline.DocumentProperties;
+import io.opaa.indexing.format.DocumentFormatRegistry;
+import io.opaa.indexing.format.DocumentFormatSource;
+import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import java.nio.file.Path;
@@ -55,7 +55,7 @@ public class DocumentMetadataService {
   private final DocumentMetadataValueRepository valueRepository;
   private final DocumentTypeVocabularyRepository vocabularyRepository;
   private final DocumentRepository documentRepository;
-  private final DocumentPipelineRegistry pipelineRegistry;
+  private final DocumentFormatRegistry pipelineRegistry;
   private final VectorChunkStore vectorChunkStore;
   private final LibraryMetadataFieldRepository libraryFieldRepository;
   private final DocumentKeywordRepository keywordRepository;
@@ -67,7 +67,7 @@ public class DocumentMetadataService {
       DocumentMetadataValueRepository valueRepository,
       DocumentTypeVocabularyRepository vocabularyRepository,
       DocumentRepository documentRepository,
-      DocumentPipelineRegistry pipelineRegistry,
+      DocumentFormatRegistry pipelineRegistry,
       VectorChunkStore vectorChunkStore,
       LibraryMetadataFieldRepository libraryFieldRepository,
       DocumentKeywordRepository keywordRepository,
@@ -255,15 +255,15 @@ public class DocumentMetadataService {
    * document as it was. No chunking, no embedding.
    */
   public CoreMetadata reextractFromFile(Document document, Path file) {
-    DocumentPipelineRegistry.Routed routed =
+    DocumentFormatRegistry.Routed routed =
         pipelineRegistry.routedPipelineFor(file, document.getFileName());
     DocumentProperties properties =
         routed
             .pipeline()
             .readProperties(
-                DocumentPipelineSource.ofFile(
+                DocumentFormatSource.ofFile(
                     file, document.getFileName(), routed.detectedExtension()))
-            // Attached here for the same reason DocumentPipelineRunner attaches it on the ingest
+            // Attached here for the same reason DocumentFormatRunner attaches it on the ingest
             // path: the routed format is a source of the Dokumentart, not a pipeline's
             // finding.
             .withFormatExtension(routed.detectedExtension());
