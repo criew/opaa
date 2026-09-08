@@ -16,6 +16,8 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditQueryService;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.indexing.format.DocumentFormat;
+import io.opaa.indexing.format.DocumentFormatRegistry;
 import io.opaa.indexing.maintenance.ContextPrefixRerunResult;
 import io.opaa.indexing.maintenance.ContextPrefixRerunService;
 import io.opaa.indexing.maintenance.LowChunkDocumentAuditService;
@@ -24,8 +26,6 @@ import io.opaa.indexing.maintenance.PipelineReindexResult;
 import io.opaa.indexing.maintenance.PipelineReindexService;
 import io.opaa.indexing.metadata.CoreMetadataExtractor;
 import io.opaa.indexing.metadata.MetadataBackfillResult;
-import io.opaa.indexing.pipeline.DocumentPipeline;
-import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -65,7 +65,7 @@ public class IndexingAdminController {
   private final PipelineReindexService pipelineReindexService;
   private final MetadataBackfillService metadataBackfillService;
   private final ContextPrefixRerunService contextPrefixRerunService;
-  private final DocumentPipelineRegistry pipelineRegistry;
+  private final DocumentFormatRegistry pipelineRegistry;
   private final AuditEventRecorder auditEventRecorder;
 
   public IndexingAdminController(
@@ -73,7 +73,7 @@ public class IndexingAdminController {
       PipelineReindexService pipelineReindexService,
       MetadataBackfillService metadataBackfillService,
       ContextPrefixRerunService contextPrefixRerunService,
-      DocumentPipelineRegistry pipelineRegistry,
+      DocumentFormatRegistry pipelineRegistry,
       AuditEventRecorder auditEventRecorder) {
     this.lowChunkDocumentAuditService = lowChunkDocumentAuditService;
     this.pipelineReindexService = pipelineReindexService;
@@ -142,7 +142,7 @@ public class IndexingAdminController {
               // Validated here rather than left to the service: every user-facing API error is
               // German (AGENTS.md, Projektsprache), and an unknown pipelineId would otherwise
               // silently return "done" for a re-index that never had a chance of matching anything.
-              DocumentPipeline pipeline =
+              DocumentFormat pipeline =
                   pipelineRegistry.pipelines().stream()
                       .filter(candidate -> candidate.id().equals(pipelineId))
                       .findFirst()

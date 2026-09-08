@@ -27,14 +27,14 @@ import io.opaa.indexing.chunk.EmbeddingRateEstimator;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.chunk.VectorStoreWriter;
-import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
-import io.opaa.indexing.pipeline.DiscoveredAttachment;
-import io.opaa.indexing.pipeline.DocumentPipeline;
-import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
-import io.opaa.indexing.pipeline.DocumentPipelineResult;
-import io.opaa.indexing.pipeline.DocumentPipelineSource;
-import io.opaa.indexing.pipeline.DocumentProperties;
-import io.opaa.indexing.pipeline.TikaFallbackPipeline;
+import io.opaa.indexing.format.ChunkFormatMetadata;
+import io.opaa.indexing.format.DiscoveredAttachment;
+import io.opaa.indexing.format.DocumentFormat;
+import io.opaa.indexing.format.DocumentFormatRegistry;
+import io.opaa.indexing.format.DocumentFormatResult;
+import io.opaa.indexing.format.DocumentFormatSource;
+import io.opaa.indexing.format.DocumentProperties;
+import io.opaa.indexing.format.file.fallback.TikaFallbackFormat;
 import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.attachment.AttachmentLimits;
@@ -128,18 +128,18 @@ class DocumentIngestServiceTest {
     lenient().when(documentRepository.markFailedWithoutChunks(any(), any())).thenReturn(1);
   }
 
-  private DocumentIngestService serviceWith(DocumentPipelineRegistry registry) {
+  private DocumentIngestService serviceWith(DocumentFormatRegistry registry) {
     return serviceWith(registry, storageQuotaService);
   }
 
   private DocumentIngestService serviceWith(
-      DocumentPipelineRegistry registry, LibraryStorageQuotaService quotaService) {
+      DocumentFormatRegistry registry, LibraryStorageQuotaService quotaService) {
     return serviceWith(registry, quotaService, Mockito.mock(ObjectProvider.class));
   }
 
   @SuppressWarnings("unchecked")
   private DocumentIngestService serviceWith(
-      DocumentPipelineRegistry registry,
+      DocumentFormatRegistry registry,
       LibraryStorageQuotaService quotaService,
       ObjectProvider<AttachmentIndexer> attachmentIndexerProvider) {
     return new DocumentIngestService(
@@ -305,7 +305,7 @@ class DocumentIngestServiceTest {
 
     @Test
     void aSourceThatCannotBeParsedKeepsItsPreviousChunksAndIsMarkedFailed() throws IOException {
-      // PARSE_FAILED (mapped by DocumentPipelineRunner from whatever the pipeline throws) says
+      // PARSE_FAILED (mapped by DocumentFormatRunner from whatever the pipeline throws) says
       // nothing about the new content, so the previous chunks and their count both stand.
       Path file = fileNamed("kaputt.txt", "new bytes");
       when(checksumService.computeSha256(file)).thenReturn("new-checksum");
@@ -486,11 +486,10 @@ class DocumentIngestServiceTest {
       // ingestion-pipelines.md, Querschnittsregel (d): every chunk names the verfahren that
       // produced it and the routing key actually used.
       assertThat(metadata)
-          .containsEntry(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY, TikaFallbackPipeline.ID)
+          .containsEntry(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY, TikaFallbackFormat.ID)
           .containsEntry(
-              ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY,
-              (int) TikaFallbackPipeline.VERSION)
-          .containsEntry(ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY, ".txt");
+              ChunkFormatMetadata.PIPELINE_VERSION_METADATA_KEY, (int) TikaFallbackFormat.VERSION)
+          .containsEntry(ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY, ".txt");
     }
 
     @Test
@@ -506,7 +505,7 @@ class DocumentIngestServiceTest {
 
       assertThat(savedDocument().getContentType()).isEqualTo("text/markdown");
       assertThat(storedChunks().getFirst().getMetadata())
-          .containsEntry(ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY, ".md");
+          .containsEntry(ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY, ".md");
     }
 
     @Test
@@ -1030,7 +1029,7 @@ class DocumentIngestServiceTest {
       assertThat(saved.getFileSize()).isEqualTo((long) "entry main text".length());
       // No routing decision was ever made for text, so no routing key is written.
       assertThat(storedChunks().getFirst().getMetadata())
-          .doesNotContainKey(ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY)
+          .doesNotContainKey(ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY)
           .containsEntry("file_name", "Titel");
       verify(documentRepository)
           .markIndexedFromSource(
@@ -1068,7 +1067,7 @@ class DocumentIngestServiceTest {
       assertThat(stored.get(0).getMetadata())
           .containsEntry("pipeline_id", "html")
           .containsEntry("file_name", "Titel")
-          .doesNotContainKey(ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY);
+          .doesNotContainKey(ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY);
       assertThat(savedDocument().getContentType()).isEqualTo("text/html");
     }
 
@@ -1238,7 +1237,7 @@ class DocumentIngestServiceTest {
       var fakePipeline =
           new FakeDiscoveringPipeline(chunks("chunk1"), List.of(attachment), Optional.of(3L));
       DocumentIngestService serviceWithFakePipeline =
-          serviceWith(new DocumentPipelineRegistry(List.of(fakePipeline), fakePipeline));
+          serviceWith(new DocumentFormatRegistry(List.of(fakePipeline), fakePipeline));
       when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
       when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))
           .thenReturn(Optional.empty());
@@ -1265,7 +1264,7 @@ class DocumentIngestServiceTest {
       var fakePipeline =
           new FakeDiscoveringPipeline(chunks("chunk1"), List.of(attachment), Optional.of(3L));
       DocumentIngestService serviceWithFakePipeline =
-          serviceWith(new DocumentPipelineRegistry(List.of(fakePipeline), fakePipeline));
+          serviceWith(new DocumentFormatRegistry(List.of(fakePipeline), fakePipeline));
       stubNewRow(file, "sha256-of-mail");
 
       serviceWithFakePipeline.ingest(localFile(file), null);
@@ -1289,7 +1288,7 @@ class DocumentIngestServiceTest {
       when(provider.getObject()).thenReturn(attachmentIndexer);
       DocumentIngestService serviceWithFakePipeline =
           serviceWith(
-              new DocumentPipelineRegistry(List.of(fakePipeline), fakePipeline),
+              new DocumentFormatRegistry(List.of(fakePipeline), fakePipeline),
               storageQuotaService,
               provider);
       when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
@@ -1543,7 +1542,7 @@ class DocumentIngestServiceTest {
 
       assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       assertThat(storedChunks().getFirst().getMetadata())
-          .doesNotContainKey(ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY);
+          .doesNotContainKey(ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY);
     }
   }
 
@@ -1564,7 +1563,7 @@ class DocumentIngestServiceTest {
       var fakePipeline =
           new FakePassthroughPipeline(Set.of("structural_key", "declared_but_absent_key"), chunks);
       DocumentIngestService serviceWithFakePipeline =
-          serviceWith(new DocumentPipelineRegistry(List.of(fakePipeline), fakePipeline));
+          serviceWith(new DocumentFormatRegistry(List.of(fakePipeline), fakePipeline));
       stubTextRow();
 
       serviceWithFakePipeline.ingest(
@@ -1592,7 +1591,7 @@ class DocumentIngestServiceTest {
                       UUID.randomUUID().toString())));
       var fakePipeline = new FakePassthroughPipeline(Set.of("file_name", "library_id"), chunks);
       DocumentIngestService serviceWithFakePipeline =
-          serviceWith(new DocumentPipelineRegistry(List.of(fakePipeline), fakePipeline));
+          serviceWith(new DocumentFormatRegistry(List.of(fakePipeline), fakePipeline));
       stubTextRow();
 
       serviceWithFakePipeline.ingest(
@@ -1661,7 +1660,7 @@ class DocumentIngestServiceTest {
 
     @Test
     void aDiscoveredAttachmentsTempFileIsDeletedAfterProcessing() throws IOException {
-      // ADR-0022, Teil 2: DocumentPipeline#run goes through DocumentPipelineRunner, which owns
+      // ADR-0022, Teil 2: DocumentFormat#run goes through DocumentFormatRunner, which owns
       // deleting a reported attachment's temp file.
       Path attachmentTempFile = fileNamed("discovered-attachment.tmp", "attachment bytes");
       var attachment =
@@ -1669,7 +1668,7 @@ class DocumentIngestServiceTest {
       var fakePipeline =
           new FakeDiscoveringPipeline(chunks("chunk1"), List.of(attachment), Optional.empty());
       DocumentIngestService serviceWithFakePipeline =
-          serviceWith(new DocumentPipelineRegistry(List.of(fakePipeline), fakePipeline));
+          serviceWith(new DocumentFormatRegistry(List.of(fakePipeline), fakePipeline));
       stubTextRow();
 
       serviceWithFakePipeline.ingest(
@@ -1690,14 +1689,14 @@ class DocumentIngestServiceTest {
 
   /**
    * A stand-in pipeline declaring an arbitrary passthrough key - stands in for e.g.
-   * MailDocumentPipeline's mail_* keys without pulling that pipeline's own parsing into this
+   * MailDocumentFormat's mail_* keys without pulling that pipeline's own parsing into this
    * service-level test. {@code run} simply returns {@code chunksToReturn}; reached as the
    * registry's fallback pipeline, which text content goes to directly.
    */
   private record FakePassthroughPipeline(
       Set<String> passthroughMetadataKeys,
       List<org.springframework.ai.document.Document> chunksToReturn)
-      implements DocumentPipeline {
+      implements DocumentFormat {
 
     @Override
     public String id() {
@@ -1715,8 +1714,8 @@ class DocumentIngestServiceTest {
     }
 
     @Override
-    public DocumentPipelineResult run(DocumentPipelineSource source) {
-      return DocumentPipelineResult.chunked(chunksToReturn);
+    public DocumentFormatResult run(DocumentFormatSource source) {
+      return DocumentFormatResult.chunked(chunksToReturn);
     }
   }
 
@@ -1728,7 +1727,7 @@ class DocumentIngestServiceTest {
       List<org.springframework.ai.document.Document> chunksToReturn,
       List<DiscoveredAttachment> discoveredAttachments,
       Optional<Long> contentByteSizeOverride)
-      implements DocumentPipeline {
+      implements DocumentFormat {
 
     @Override
     public String id() {
@@ -1746,10 +1745,10 @@ class DocumentIngestServiceTest {
     }
 
     @Override
-    public DocumentPipelineResult run(DocumentPipelineSource source) {
+    public DocumentFormatResult run(DocumentFormatSource source) {
       return contentByteSizeOverride
-          .map(size -> DocumentPipelineResult.chunked(chunksToReturn, discoveredAttachments, size))
-          .orElseGet(() -> DocumentPipelineResult.chunked(chunksToReturn, discoveredAttachments));
+          .map(size -> DocumentFormatResult.chunked(chunksToReturn, discoveredAttachments, size))
+          .orElseGet(() -> DocumentFormatResult.chunked(chunksToReturn, discoveredAttachments));
     }
   }
 }

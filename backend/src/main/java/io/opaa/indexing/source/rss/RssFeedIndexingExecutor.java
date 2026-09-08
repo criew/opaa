@@ -8,11 +8,11 @@ import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.format.DocumentProperties;
+import io.opaa.indexing.format.file.html.HtmlDocumentFormat;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunProgress;
-import io.opaa.indexing.pipeline.DocumentProperties;
-import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
@@ -257,7 +257,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       DocumentIngestResult result =
           documentIngestService.ingest(
               DocumentIngest.text(ctx.targetLibrary(), entryUrl, detailPage.mainHtml())
-                  .pipelineId(HtmlDocumentPipeline.ID)
+                  .pipelineId(HtmlDocumentFormat.ID)
                   .sourceType(DocumentSourceType.RSS_FEED)
                   .title(entry.title())
                   .changeMarker(publishedAt.map(Instant::toString).orElse(null))

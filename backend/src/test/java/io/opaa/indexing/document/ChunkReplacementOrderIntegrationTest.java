@@ -111,7 +111,7 @@ class ChunkReplacementOrderIntegrationTest {
     when(documentService.parseDocument(file)).thenThrow(new IllegalStateException("Reader kaputt"));
 
     // A reader that throws is the same answer as one that reports PARSE_FAILED - the exception is
-    // mapped in DocumentPipelineRunner, so the run ends FAILED instead of propagating.
+    // mapped in DocumentFormatRunner, so the run ends FAILED instead of propagating.
     assertThat(
             documentIngestService.ingest(
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
@@ -137,7 +137,7 @@ class ChunkReplacementOrderIntegrationTest {
     long previousVectorChunks = vectorChunks(documentId);
     assertThat(previousVectorChunks).isPositive();
 
-    // Keeps the %PDF magic bytes, so routing still picks PdfDocumentPipeline - which cannot load
+    // Keeps the %PDF magic bytes, so routing still picks PdfDocumentFormat - which cannot load
     // the body and reports PARSE_FAILED rather than throwing.
     Files.write(file, "%PDF-1.7\nnicht wirklich ein PDF".getBytes(StandardCharsets.UTF_8));
 

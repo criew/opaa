@@ -6,8 +6,8 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.chunk.ChunkingService;
-import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
-import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
+import io.opaa.indexing.format.ChunkFormatMetadata;
+import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
@@ -26,11 +26,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * The end-to-end proof that a representative Confluence page - macros, a table, a hierarchy - is
  * answerable after chunking: the storage body goes through {@link
- * DocumentIngestService#processConfluencePage}, is cut by {@link ConfluenceDocumentPipeline}, and
- * the stored chunks carry the pipeline id, the section as Fundort, the space and hierarchy path,
- * and the table row a question about the deadline would hit. Recorded as a test, not as a manual
- * spot check; the fake embedding model ties every vector, so retrieval is asserted at threshold 0,
- * as in {@code DocumentIndexingIntegrationTest}.
+ * DocumentIngestService#processConfluencePage}, is cut by {@link ConfluenceStorageFormat}, and the
+ * stored chunks carry the pipeline id, the section as Fundort, the space and hierarchy path, and
+ * the table row a question about the deadline would hit. Recorded as a test, not as a manual spot
+ * check; the fake embedding model ties every vector, so retrieval is asserted at threshold 0, as in
+ * {@code DocumentIndexingIntegrationTest}.
  */
 @OpaaIndexingIntegrationTest
 class ConfluencePageIndexingIntegrationTest {
@@ -126,18 +126,17 @@ class ConfluencePageIndexingIntegrationTest {
     assertThat(hits)
         .allMatch(
             hit ->
-                ConfluenceDocumentPipeline.ID.equals(
-                    hit.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)));
+                ConfluenceStorageFormat.ID.equals(
+                    hit.getMetadata().get(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY)));
     assertThat(hits)
         .allMatch(
             hit ->
-                "ENG".equals(hit.getMetadata().get(ConfluenceDocumentPipeline.SPACE_METADATA_KEY)));
+                "ENG".equals(hit.getMetadata().get(ChunkingService.SOURCE_CONTAINER_METADATA_KEY)));
     assertThat(hits)
         .allMatch(
             hit ->
                 "Handbuch / Kapitel 1"
-                    .equals(
-                        hit.getMetadata().get(ConfluenceDocumentPipeline.HIERARCHY_METADATA_KEY)));
+                    .equals(hit.getMetadata().get(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY)));
     org.springframework.ai.document.Document deadline =
         hits.stream()
             .filter(hit -> hit.getText().contains("Bauantrag | 14 Tage"))

@@ -1,7 +1,7 @@
 package io.opaa.indexing;
 
+import io.opaa.indexing.format.file.html.HtmlContentRoots;
 import io.opaa.indexing.job.JobStatus;
-import io.opaa.indexing.pipeline.html.HtmlContentRoots;
 import io.opaa.indexing.source.attachment.AttachmentProfile;
 import java.time.Duration;
 import java.util.List;

@@ -2,9 +2,9 @@ package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.pipeline.DocumentPipelineResult;
-import io.opaa.indexing.pipeline.DocumentPipelineSource;
-import io.opaa.indexing.pipeline.markdown.MarkdownDocumentPipeline;
+import io.opaa.indexing.format.DocumentFormatResult;
+import io.opaa.indexing.format.DocumentFormatSource;
+import io.opaa.indexing.format.file.markdown.MarkdownDocumentFormat;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -17,12 +17,12 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Docker-free dry run (issue #234; routing updated for #1103): chunks the generated {@code
- * city-landmarks} corpus through the real, production {@link MarkdownDocumentPipeline} (same
- * pipeline {@code DocumentPipelineRegistry} routes {@code .md} to since #1103) without needing
- * Testcontainers, Postgres or Ollama. Used during corpus generation to verify the "at least 3
- * chunks per document" domain property (ADR-0010 Nachtrag) before paying for a full {@code
- * evaluateRetrieval} Testcontainers run, and printed here (not asserted) so it can be re-run on
- * demand while iterating on the generator's prose.
+ * city-landmarks} corpus through the real, production {@link MarkdownDocumentFormat} (same pipeline
+ * {@code DocumentFormatRegistry} routes {@code .md} to since #1103) without needing Testcontainers,
+ * Postgres or Ollama. Used during corpus generation to verify the "at least 3 chunks per document"
+ * domain property (ADR-0010 Nachtrag) before paying for a full {@code evaluateRetrieval}
+ * Testcontainers run, and printed here (not asserted) so it can be re-run on demand while iterating
+ * on the generator's prose.
  *
  * <p>Also writes a chunk map ({@link ChunkMap}/{@link ChunkMapWriter}, same format the harness
  * itself produces as a run byproduct — see {@code RetrievalEvaluationHarnessTest}) so the golden
@@ -37,7 +37,7 @@ class CityLandmarksChunkSizeDryRunTest {
   @Test
   void reportsChunkCountsForTheGeneratedCorpus() throws IOException {
     Path corpusDir = RepoPaths.evalDir().resolve("corpus").resolve("city-landmarks");
-    MarkdownDocumentPipeline pipeline = new MarkdownDocumentPipeline();
+    MarkdownDocumentFormat pipeline = new MarkdownDocumentFormat();
 
     List<Integer> chunkCounts = new ArrayList<>();
     List<Integer> byteSizes = new ArrayList<>();
@@ -55,8 +55,8 @@ class CityLandmarksChunkSizeDryRunTest {
               .toList();
       for (Path file : mdFiles) {
         String fileName = file.getFileName().toString();
-        DocumentPipelineResult result =
-            pipeline.run(DocumentPipelineSource.ofFile(file, fileName, ".md"));
+        DocumentFormatResult result =
+            pipeline.run(DocumentFormatSource.ofFile(file, fileName, ".md"));
         List<org.springframework.ai.document.Document> chunks = result.chunks();
         chunkCounts.add(chunks.size());
         byteSizes.add((int) Files.size(file));

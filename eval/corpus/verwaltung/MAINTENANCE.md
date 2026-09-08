@@ -31,7 +31,7 @@ Docker prüft.
 Die Eintrittsbedingung des Kernfeld-Filters verlangt einen ausgewiesenen Füllstand
 (`docs/features/metadata-schema.md`, „Eintrittsbedingung für den Kernfeld-Filter"). Für den
 Eval-Korpus misst ihn `io.opaa.eval.VerwaltungCorpusMetadataFillLevelTest` Docker-frei: Jede
-Korpusdatei läuft durch die produktive `MarkdownDocumentPipeline` und den produktiven
+Korpusdatei läuft durch das produktive `MarkdownDocumentFormat` und den produktiven
 `CoreMetadataExtractor` mit dem ausgelieferten Vokabular — dieselben zwei Schritte wie im
 Indexlauf, nur ohne Datenbank. Die Zahlen sind im Test **festgenagelt**, damit eine Generator- oder
 Extraktoränderung, die sie bewegt, eine bewusste Entscheidung ist:

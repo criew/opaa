@@ -98,7 +98,7 @@ class BaselineComparatorTest {
     // exactly the failure this test now catches that the hardcoded-literals version could not.
     //
     // Shifted from six to four pairs with the #1103 baseline re-measurement
-    // (MarkdownDocumentPipeline
+    // (MarkdownDocumentFormat
     // registered): category:multi_attribute_filter's ndcgAt10 (0.137 -> 0.218) and recallAt10
     // (0.159 -> 0.245) both rose enough that their relative cap (0.25 * baselineValue) now exceeds
     // 1/n=0.0476 (0.0545 and 0.0613 respectively) - the pair no longer falls below the case-based

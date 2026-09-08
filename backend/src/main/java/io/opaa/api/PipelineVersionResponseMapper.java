@@ -4,9 +4,9 @@ import io.opaa.api.dto.DocumentPipelineResponse;
 import io.opaa.api.dto.LibraryPipelineVersionResponse;
 import io.opaa.api.dto.PipelineReindexResponse;
 import io.opaa.api.dto.PipelineVersionStatusResponse;
+import io.opaa.indexing.format.DocumentFormat;
 import io.opaa.indexing.maintenance.PipelineReindexResult;
 import io.opaa.indexing.maintenance.PipelineVersionProgress;
-import io.opaa.indexing.pipeline.DocumentPipeline;
 import java.util.Collection;
 import java.util.List;
 
@@ -20,7 +20,7 @@ final class PipelineVersionResponseMapper {
   private PipelineVersionResponseMapper() {}
 
   static PipelineVersionStatusResponse toStatusResponse(
-      Collection<DocumentPipeline> pipelines, List<PipelineVersionProgress> progress) {
+      Collection<DocumentFormat> pipelines, List<PipelineVersionProgress> progress) {
     PipelineVersionStatusResponse response = new PipelineVersionStatusResponse();
     response.setPipelines(
         pipelines.stream().map(PipelineVersionResponseMapper::toPipelineResponse).toList());
@@ -29,7 +29,7 @@ final class PipelineVersionResponseMapper {
     return response;
   }
 
-  private static DocumentPipelineResponse toPipelineResponse(DocumentPipeline pipeline) {
+  private static DocumentPipelineResponse toPipelineResponse(DocumentFormat pipeline) {
     DocumentPipelineResponse response = new DocumentPipelineResponse();
     response.setId(pipeline.id());
     response.setCurrentVersion((int) pipeline.version());

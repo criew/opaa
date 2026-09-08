@@ -17,7 +17,7 @@ import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentIngests;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.document.SourceDocumentContext;
-import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
+import io.opaa.indexing.format.DocumentFormatRegistry;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
@@ -77,7 +77,7 @@ class CoreMetadataIndexingIntegrationTest {
   @Autowired private DocumentMetadataValueRepository valueRepository;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private DocumentTypeVocabularyRepository vocabularyRepository;
-  @Autowired private DocumentPipelineRegistry pipelineRegistry;
+  @Autowired private DocumentFormatRegistry pipelineRegistry;
   @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;

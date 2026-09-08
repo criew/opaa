@@ -368,7 +368,7 @@ nächsten Abschnitts und nicht ein Nebeneffekt der Migration.
 > dafür versionsbewusst erweitert wurde: Er wählt ein Dokument auch dann aus, wenn nur seine
 > `chunk_full_text`-Zeilen unter der aktuellen `content_tsv_version` liegen (oder fehlen) —
 > unabhängig von der Pipeline-Version, denn ein Bump dieser Konstante hebt keine
-> `DocumentPipeline#version()`. **Der Preis ist benannt:** Dieser Weg liest, zerlegt und
+> `DocumentFormat#version()`. **Der Preis ist benannt:** Dieser Weg liest, zerlegt und
 > **bettet neu ein**; er ist damit deutlich teurer als das reine Neuschreiben der `tsvector`-Spalte,
 > das der entfernte Backfill leistete. Ein Bump ist damit eine bewusste, eingeplante Betriebsaufgabe
 > und kein Selbstläufer mehr.
@@ -1654,7 +1654,7 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   Der Weg heraus ist der **Pipeline-Nachzug** (`POST /api/v1/admin/indexing/pipeline-reindex`), der
   ein Dokument seit #1270 auch allein wegen veralteter oder fehlender `chunk_full_text`-Zeilen
   auswählt — unabhängig von der Pipeline-Version, weil ein Bump dieser Konstante keine
-  `DocumentPipeline#version()` hebt. **Er ist teurer als der entfernte Backfill:** Er liest, zerlegt
+  `DocumentFormat#version()` hebt. **Er ist teurer als der entfernte Backfill:** Er liest, zerlegt
   und bettet neu ein, statt nur die `tsvector`-Spalte zu überschreiben. Ein Bump der
   Volltext-Aufbereitung ist damit **eine geplante Betriebsaufgabe** mit benannten Kosten; wer ihn
   vornimmt, plant den Nachzug mit ein, statt sich auf einen Hintergrundlauf zu verlassen.

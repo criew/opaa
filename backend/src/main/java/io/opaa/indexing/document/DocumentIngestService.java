@@ -3,26 +3,25 @@ package io.opaa.indexing.document;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.chunk.ChunkContextPrefix;
 import io.opaa.indexing.chunk.ChunkContextTitle;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.format.ChunkFormatMetadata;
+import io.opaa.indexing.format.DiscoveredAttachment;
+import io.opaa.indexing.format.DocumentFormat;
+import io.opaa.indexing.format.DocumentFormatRegistry;
+import io.opaa.indexing.format.DocumentFormatResult;
+import io.opaa.indexing.format.DocumentFormatRunner;
+import io.opaa.indexing.format.DocumentFormatSource;
+import io.opaa.indexing.format.DocumentProperties;
+import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.metadata.CoreMetadataChunkKeys;
 import io.opaa.indexing.metadata.DocumentChunkMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.metadata.ModelExtractionOutcome;
 import io.opaa.indexing.metadata.ModelExtractionPrompt;
 import io.opaa.indexing.metadata.ModelMetadataExtractor;
-import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
-import io.opaa.indexing.pipeline.DiscoveredAttachment;
-import io.opaa.indexing.pipeline.DocumentPipeline;
-import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
-import io.opaa.indexing.pipeline.DocumentPipelineResult;
-import io.opaa.indexing.pipeline.DocumentPipelineRunner;
-import io.opaa.indexing.pipeline.DocumentPipelineSource;
-import io.opaa.indexing.pipeline.DocumentProperties;
-import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
 import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.attachment.AttachmentLimits;
@@ -80,7 +79,7 @@ public class DocumentIngestService {
     return (document, mode) -> ChunkContextPrefix.format(prefix, document.getText());
   }
 
-  private final DocumentPipelineRegistry pipelineRegistry;
+  private final DocumentFormatRegistry pipelineRegistry;
   private final DocumentRepository documentRepository;
   private final VectorChunkStore vectorChunkStore;
   private final ChecksumService checksumService;
@@ -108,7 +107,7 @@ public class DocumentIngestService {
   private final ModelMetadataExtractor modelMetadataExtractor;
 
   public DocumentIngestService(
-      DocumentPipelineRegistry pipelineRegistry,
+      DocumentFormatRegistry pipelineRegistry,
       DocumentRepository documentRepository,
       VectorChunkStore vectorChunkStore,
       ChecksumService checksumService,
@@ -223,11 +222,11 @@ public class DocumentIngestService {
 
     Document savedDoc = doc;
     UUID documentId = doc.getId();
-    DocumentPipeline pipeline = selection.pipeline();
+    DocumentFormat pipeline = selection.pipeline();
     boolean preservingPreviousChunks = replacingExistingChunks;
     try {
-      DocumentPipelineResult parsed =
-          DocumentPipelineRunner.run(
+      DocumentFormatResult parsed =
+          DocumentFormatRunner.run(
               pipeline,
               selection.source(),
               result -> {
@@ -246,9 +245,9 @@ public class DocumentIngestService {
                     savedDoc.getSourceType(),
                     attachmentAccess);
               });
-      if (ingest.reindex() && parsed.outcome() != DocumentPipelineResult.Outcome.CHUNKED) {
+      if (ingest.reindex() && parsed.outcome() != DocumentFormatResult.Outcome.CHUNKED) {
         log.warn("Re-index of {} ended {}, keeping it as it is", filePath, parsed.outcome());
-        return parsed.outcome() == DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT
+        return parsed.outcome() == DocumentFormatResult.Outcome.NO_EXTRACTABLE_TEXT
             ? DocumentIngestResult.NO_EXTRACTABLE_TEXT
             : DocumentIngestResult.FAILED;
       }
@@ -331,26 +330,26 @@ public class DocumentIngestService {
     try {
       return switch (ingest.content()) {
         case DocumentIngest.File file -> {
-          DocumentPipelineRegistry.Routed routed =
+          DocumentFormatRegistry.Routed routed =
               pipelineRegistry.routedPipelineFor(file.path(), fileName);
-          DocumentPipeline pipeline =
+          DocumentFormat pipeline =
               ingest.pipelineId() == null ? routed.pipeline() : pipelineById(ingest.pipelineId());
           String canonicalType =
               SupportedDocumentFormats.contentTypeForExtension(routed.detectedExtension());
           yield new Selection(
               pipeline,
-              DocumentPipelineSource.ofFile(file.path(), fileName, routed.detectedExtension()),
+              DocumentFormatSource.ofFile(file.path(), fileName, routed.detectedExtension()),
               routingExtensionFor(routed),
               canonicalType != null ? canonicalType : routed.detectedMediaType());
         }
         case DocumentIngest.Text text -> {
-          DocumentPipeline pipeline =
+          DocumentFormat pipeline =
               ingest.pipelineId() == null
                   ? pipelineRegistry.fallbackPipeline()
                   : pipelineById(ingest.pipelineId());
           yield new Selection(
               pipeline,
-              DocumentPipelineSource.ofExtractedText(text.text(), fileName),
+              DocumentFormatSource.ofExtractedText(text.text(), fileName),
               Optional.empty(),
               TEXT_CONTENT_TYPE);
         }
@@ -365,12 +364,12 @@ public class DocumentIngestService {
   }
 
   private record Selection(
-      DocumentPipeline pipeline,
-      DocumentPipelineSource source,
+      DocumentFormat pipeline,
+      DocumentFormatSource source,
       Optional<String> routingExtension,
       String contentType) {}
 
-  private DocumentPipeline pipelineById(String id) {
+  private DocumentFormat pipelineById(String id) {
     return pipelineRegistry
         .pipelineById(id)
         .orElseThrow(
@@ -427,27 +426,30 @@ public class DocumentIngestService {
    */
   private static void attachSourceContext(
       List<org.springframework.ai.document.Document> chunks,
-      DocumentPipeline pipeline,
+      DocumentFormat pipeline,
       SourceDocumentContext context) {
+    // Open question #1421: only the Confluence storage format declares these keys, so a PDF
+    // attachment of a Confluence page carries container and hierarchy on its document row but not
+    // on its chunks. Behaviour left unchanged until that is decided.
     if (context == null
         || !pipeline
             .passthroughMetadataKeys()
-            .contains(ConfluenceDocumentPipeline.SPACE_METADATA_KEY)) {
+            .contains(ChunkingService.SOURCE_CONTAINER_METADATA_KEY)) {
       return;
     }
     Map<String, Object> contextKeys = new HashMap<>();
     if (context.containerKey() != null) {
-      contextKeys.put(ConfluenceDocumentPipeline.SPACE_METADATA_KEY, context.containerKey());
+      contextKeys.put(ChunkingService.SOURCE_CONTAINER_METADATA_KEY, context.containerKey());
     }
     if (context.hierarchyPath() != null) {
-      contextKeys.put(ConfluenceDocumentPipeline.HIERARCHY_METADATA_KEY, context.hierarchyPath());
+      contextKeys.put(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY, context.hierarchyPath());
     }
     chunks.forEach(chunk -> chunk.getMetadata().putAll(contextKeys));
   }
 
   /** What the source declares about the document (ADR-0024), laid over what the format found. */
   private static DocumentProperties declaredProperties(
-      DocumentPipelineResult parsed, DocumentIngest ingest) {
+      DocumentFormatResult parsed, DocumentIngest ingest) {
     DocumentProperties properties = parsed.properties();
     if (ingest.syntheticName()) {
       properties = properties.withSyntheticName(true);
@@ -634,11 +636,11 @@ public class DocumentIngestService {
 
   /**
    * Overrides {@code document}'s {@code fileSize} with {@link
-   * DocumentPipelineResult#contentByteSizeOverride()} when the pipeline reported one (ADR-0022,
+   * DocumentFormatResult#contentByteSizeOverride()} when the pipeline reported one (ADR-0022,
    * Entscheidung 6): a Mail attachment's base64 payload must not count toward the parent's quota
    * footprint once the attachment is its own row. A no-op, and {@code save}-free, otherwise.
    */
-  private void applyContentByteSizeOverride(Document document, DocumentPipelineResult parsed) {
+  private void applyContentByteSizeOverride(Document document, DocumentFormatResult parsed) {
     parsed
         .contentByteSizeOverride()
         .ifPresent(
@@ -649,18 +651,18 @@ public class DocumentIngestService {
   }
 
   /**
-   * The value to persist as {@link ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY}, or {@link
+   * The value to persist as {@link ChunkFormatMetadata#ROUTING_EXTENSION_METADATA_KEY}, or {@link
    * Optional#empty()} to omit the key: a failed format detection is a transient read failure, not a
    * routing verdict.
    */
-  private static Optional<String> routingExtensionFor(DocumentPipelineRegistry.Routed routed) {
+  private static Optional<String> routingExtensionFor(DocumentFormatRegistry.Routed routed) {
     if (routed.formatDetectionFailed()) {
       return Optional.empty();
     }
     return Optional.of(
         routed.detectedExtension() != null
             ? routed.detectedExtension()
-            : ChunkPipelineMetadata.NO_ROUTING_EXTENSION);
+            : ChunkFormatMetadata.NO_ROUTING_EXTENSION);
   }
 
   /**
@@ -677,7 +679,7 @@ public class DocumentIngestService {
    *     Nachlauf reproduces this choice instead of deriving its own.
    * @param pipeline the pipeline that produced {@code chunks}; its id and version go onto every
    *     chunk. Which further keys ride along is decided by {@link
-   *     DocumentPipelineRegistry#allPassthroughMetadataKeys()}, not by {@code pipeline} alone - a
+   *     DocumentFormatRegistry#allPassthroughMetadataKeys()}, not by {@code pipeline} alone - a
    *     nested attachment's chunks are attributed to the outer pipeline, so filtering by its own
    *     declaration would drop a key only the inner pipeline declares
    * @param routingExtension see {@link #routingExtensionFor}: written when present, omitted when
@@ -690,7 +692,7 @@ public class DocumentIngestService {
       Document document,
       List<org.springframework.ai.document.Document> chunks,
       String contextTitle,
-      DocumentPipeline pipeline,
+      DocumentFormat pipeline,
       Optional<String> routingExtension,
       DocumentChunkMetadata chunkMetadata) {
     boolean documentWasSplit = chunks.size() >= 2;
@@ -719,17 +721,16 @@ public class DocumentIngestService {
                   // The verfahren that produced this chunk (ingestion-pipelines.md,
                   // Querschnittsregel (d)) - what makes a mixed bestand after a pipeline change
                   // feststellbar and selectively re-indexable at all.
-                  metadata.put(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY, pipeline.id());
+                  metadata.put(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY, pipeline.id());
                   metadata.put(
-                      ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY,
-                      (int) pipeline.version());
+                      ChunkFormatMetadata.PIPELINE_VERSION_METADATA_KEY, (int) pipeline.version());
                   // The routing key actually used (ingestion-pipelines.md, Querschnittsregel
                   // (d)) - what lets a later pipeline-version check compare exactly instead of
                   // re-guessing a document's format from its file name.
                   routingExtension.ifPresent(
                       extension ->
                           metadata.put(
-                              ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY, extension));
+                              ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY, extension));
                   // The document's filterable core fields (ADR-0024): inherited by every chunk,
                   // written here so both search paths can carry the same condition.
                   metadata.putAll(chunkMetadata.values());
@@ -813,7 +814,7 @@ public class DocumentIngestService {
    * fails the ingest - a failure is logged and the chunks are written without core fields.
    */
   private DocumentChunkMetadata extractCoreMetadata(
-      Document document, String fileName, DocumentPipelineResult parsed) {
+      Document document, String fileName, DocumentFormatResult parsed) {
     try {
       return documentMetadataService.applyDeterministicExtraction(
           document, fileName, parsed.properties());

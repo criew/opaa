@@ -2,22 +2,22 @@ package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.pipeline.DocumentPipeline;
-import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
-import io.opaa.indexing.pipeline.TikaFallbackPipeline;
-import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
-import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
-import io.opaa.indexing.pipeline.mail.MailDocumentPipeline;
-import io.opaa.indexing.pipeline.mail.MailProperties;
-import io.opaa.indexing.pipeline.markdown.MarkdownDocumentPipeline;
-import io.opaa.indexing.pipeline.office.DocxDocumentPipeline;
-import io.opaa.indexing.pipeline.office.OdfProperties;
-import io.opaa.indexing.pipeline.office.OdpDocumentPipeline;
-import io.opaa.indexing.pipeline.office.OdtDocumentPipeline;
-import io.opaa.indexing.pipeline.office.PptxDocumentPipeline;
-import io.opaa.indexing.pipeline.pdf.PdfDocumentPipeline;
-import io.opaa.indexing.pipeline.tabular.TabularDocumentPipeline;
-import io.opaa.indexing.pipeline.tabular.TabularProperties;
+import io.opaa.indexing.format.DocumentFormat;
+import io.opaa.indexing.format.DocumentFormatRegistry;
+import io.opaa.indexing.format.file.fallback.TikaFallbackFormat;
+import io.opaa.indexing.format.file.html.HtmlDocumentFormat;
+import io.opaa.indexing.format.file.mail.MailDocumentFormat;
+import io.opaa.indexing.format.file.mail.MailProperties;
+import io.opaa.indexing.format.file.markdown.MarkdownDocumentFormat;
+import io.opaa.indexing.format.file.office.DocxDocumentFormat;
+import io.opaa.indexing.format.file.office.OdfProperties;
+import io.opaa.indexing.format.file.office.OdpDocumentFormat;
+import io.opaa.indexing.format.file.office.OdtDocumentFormat;
+import io.opaa.indexing.format.file.office.PptxDocumentFormat;
+import io.opaa.indexing.format.file.pdf.PdfDocumentFormat;
+import io.opaa.indexing.format.file.tabular.TabularDocumentFormat;
+import io.opaa.indexing.format.file.tabular.TabularProperties;
+import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
 import java.time.Clock;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -62,14 +62,14 @@ class PipelinePathIsolationTest {
   void pipelinePathCountsItsOwnContractVersionSeparately() {
     // Version 10: 3 from issue #1049 (the lexical path's switch and the measured library's
     // full-text index state), plus 1 from issue #1144 (ingestionPipelineFingerprint), plus 1
-    // from issue #1164/PR #1201 (MailDocumentPipeline#version() moved 2 -> 3, shifting the
-    // collective fingerprint), plus 1 from issue #1183 (MailDocumentPipeline#version() moved 3 ->
+    // from issue #1164/PR #1201 (MailDocumentFormat#version() moved 2 -> 3, shifting the
+    // collective fingerprint), plus 1 from issue #1183 (MailDocumentFormat#version() moved 3 ->
     // 4, ADR-0022), plus 1 from issue #1270 (fullTextBackfillComplete renamed to
     // fullTextIndexComplete), plus 1 from issue #1070 (metadataFilterEnabled, the golden filters
-    // carried into the pipeline run), plus 1 from issue #1242 (MailDocumentPipeline#version()
+    // carried into the pipeline run), plus 1 from issue #1242 (MailDocumentFormat#version()
     // moved 4 -> 5, shifting the collective fingerprint again), plus 1 from issue #1315
-    // (HtmlDocumentPipeline#version() moved 1 -> 2, shared XHTML event walk), plus 1 from issue
-    // #1357 (HtmlDocumentPipeline#version() 2 -> 3 and ConfluenceDocumentPipeline#version() 1 ->
+    // (HtmlDocumentFormat#version() moved 1 -> 2, shared XHTML event walk), plus 1 from issue
+    // #1357 (HtmlDocumentFormat#version() 2 -> 3 and ConfluenceStorageFormat#version() 1 ->
     // 2, list items with block content keep their marker) — counted independently of the
     // raw-vector path above, whose own count (2 plus the same
     // #1144/#1164/#1183/#1070/#1242/#1315/#1357 bumps) moves for unrelated reasons at unrelated
@@ -190,7 +190,7 @@ class PipelinePathIsolationTest {
   /**
    * Issue #1144's own cheap watchdog, the counterpart of the two tests above for the new, far more
    * volatile fixed point: every registered pipeline's {@code version()} moves independently, so a
-   * version bump on any one of them (not only {@code MarkdownDocumentPipeline}, the only pipeline
+   * version bump on any one of them (not only {@code MarkdownDocumentFormat}, the only pipeline
    * this eval corpus actually routes through) would otherwise go unnoticed here and fail 70 minutes
    * into the nightly Docker regression job instead of in this Docker-free {@code check}. Builds the
    * registry with the exact production wiring {@code
@@ -239,21 +239,21 @@ class PipelinePathIsolationTest {
    * non-positive value, so passing zeros is equivalent to the application's own configured defaults
    * for every field that matters to {@code id()}/{@code version()}.
    */
-  private static DocumentPipelineRegistry realDocumentPipelineRegistry() {
-    TikaFallbackPipeline fallback = new TikaFallbackPipeline(null, null);
-    List<DocumentPipeline> pipelines =
+  private static DocumentFormatRegistry realDocumentPipelineRegistry() {
+    TikaFallbackFormat fallback = new TikaFallbackFormat(null, null);
+    List<DocumentFormat> pipelines =
         List.of(
             fallback,
-            new TabularDocumentPipeline(new TabularProperties(0, 0, 0, 0)),
-            new HtmlDocumentPipeline(),
-            new MarkdownDocumentPipeline(),
-            new DocxDocumentPipeline(),
-            new PptxDocumentPipeline(),
-            new OdtDocumentPipeline(new OdfProperties(0, 0, 0, 0, 0)),
-            new OdpDocumentPipeline(new OdfProperties(0, 0, 0, 0, 0)),
-            new PdfDocumentPipeline(),
-            new MailDocumentPipeline(null, new MailProperties(0, 0, 0), Clock.systemUTC()),
-            new ConfluenceDocumentPipeline());
-    return new DocumentPipelineRegistry(pipelines, fallback);
+            new TabularDocumentFormat(new TabularProperties(0, 0, 0, 0)),
+            new HtmlDocumentFormat(),
+            new MarkdownDocumentFormat(),
+            new DocxDocumentFormat(),
+            new PptxDocumentFormat(),
+            new OdtDocumentFormat(new OdfProperties(0, 0, 0, 0, 0)),
+            new OdpDocumentFormat(new OdfProperties(0, 0, 0, 0, 0)),
+            new PdfDocumentFormat(),
+            new MailDocumentFormat(null, new MailProperties(0, 0, 0), Clock.systemUTC()),
+            new ConfluenceStorageFormat());
+    return new DocumentFormatRegistry(pipelines, fallback);
   }
 }

@@ -76,9 +76,9 @@ public record EvalDomainConfig(
    * cities, minimum 3 chunks each at the application's default {@code chunk-size=1000}).
    *
    * <p>Chunk-count distribution measured by {@code CityLandmarksChunkSizeDryRunTest}: minimum 3,
-   * median 8, maximum 11 through the naive, heading-agnostic {@code TikaFallbackPipeline}/{@code
+   * median 8, maximum 11 through the naive, heading-agnostic {@code TikaFallbackFormat}/{@code
    * ChunkingService} cut every {@code .md} document ran through before #1103. Since #1103, Markdown
-   * is routed to the heading-aware {@code MarkdownDocumentPipeline} instead — every corpus document
+   * is routed to the heading-aware {@code MarkdownDocumentFormat} instead — every corpus document
    * starts with a YAML frontmatter block the splitter now drops rather than turning into a
    * headingless leading chunk (see that pipeline's own Javadoc), and each remaining {@code
    * #}/{@code ##}/{@code ###} heading now cuts a new chunk instead of folding into a larger one.
@@ -101,9 +101,9 @@ public record EvalDomainConfig(
    * fictional municipality "Kalkstadt", multi-chunk like {@code city-landmarks}.
    *
    * <p>Chunk-count distribution measured by {@code VerwaltungChunkSizeDryRunTest}: minimum 3,
-   * median 3, maximum 4 through the naive, heading-agnostic {@code TikaFallbackPipeline}/{@code
+   * median 3, maximum 4 through the naive, heading-agnostic {@code TikaFallbackFormat}/{@code
    * ChunkingService} cut every {@code .md} document ran through before #1103. Since #1103, Markdown
-   * is routed to the heading-aware {@code MarkdownDocumentPipeline} instead — see {@link
+   * is routed to the heading-aware {@code MarkdownDocumentFormat} instead — see {@link
    * #CITY_LANDMARKS}'s Javadoc for why. Re-measured after that change: minimum 10, median 15,
    * maximum 16. {@code maxChunksPerDocument=19} is a deliberately conservative upper bound above
    * the re-measured maximum (16), checked at runtime by the harness like every domain's.

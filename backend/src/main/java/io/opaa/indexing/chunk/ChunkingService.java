@@ -18,6 +18,21 @@ public class ChunkingService {
    */
   public static final String LOCATION_METADATA_KEY = "location";
 
+  /**
+   * Chunk metadata key carrying the container a document came from - the same value as the
+   * document's own {@code source_container_key} column. Source-neutral by name and by value; only
+   * the Confluence storage format declares it as passthrough today, and only {@code
+   * DocumentIngestService#attachSourceContext} sets it, because it is not in the body.
+   */
+  public static final String SOURCE_CONTAINER_METADATA_KEY = "source_container_key";
+
+  /**
+   * Chunk metadata key carrying the document's ancestors root first, joined with " / " - the same
+   * value as the document's own column of that name. See {@link #SOURCE_CONTAINER_METADATA_KEY};
+   * both keys always travel together.
+   */
+  public static final String SOURCE_HIERARCHY_METADATA_KEY = "source_hierarchy_path";
+
   private final IndexingProperties properties;
 
   public ChunkingService(IndexingProperties properties) {

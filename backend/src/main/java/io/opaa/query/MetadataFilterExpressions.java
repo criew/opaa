@@ -2,13 +2,13 @@ package io.opaa.query;
 
 import io.opaa.api.types.DatePrecision;
 import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.format.ChunkFormatMetadata;
 import io.opaa.indexing.metadata.CoreMetadataChunkKeys;
 import io.opaa.indexing.metadata.FormatFieldCondition;
 import io.opaa.indexing.metadata.FormatMetadataField;
 import io.opaa.indexing.metadata.LibraryFieldCondition;
 import io.opaa.indexing.metadata.LibraryMetadataFieldKeys;
 import io.opaa.indexing.metadata.MetadataFilter;
-import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -340,7 +340,7 @@ public final class MetadataFilterExpressions {
         return true;
       }
     }
-    Object pipelineId = metadata.get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY);
+    Object pipelineId = metadata.get(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY);
     for (FormatFieldCondition condition : filter.formatFields()) {
       // A document of another format was never in this field's scope: it is neither matched nor
       // "kept without a value", and marking every PDF of the bestand as "ohne Angabe" would say

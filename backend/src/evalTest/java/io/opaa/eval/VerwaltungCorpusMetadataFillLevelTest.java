@@ -2,12 +2,12 @@ package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.indexing.format.DocumentFormatSource;
+import io.opaa.indexing.format.DocumentProperties;
+import io.opaa.indexing.format.file.markdown.MarkdownDocumentFormat;
 import io.opaa.indexing.metadata.CoreMetadataExtractor;
 import io.opaa.indexing.metadata.ExtractedCoreMetadata;
 import io.opaa.indexing.metadata.TestVocabularies;
-import io.opaa.indexing.pipeline.DocumentPipelineSource;
-import io.opaa.indexing.pipeline.DocumentProperties;
-import io.opaa.indexing.pipeline.markdown.MarkdownDocumentPipeline;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 /**
  * The extraction fill level of the {@code verwaltung} corpus (issue #1070, metadata-schema.md
  * "Messung und Abnahme", point 3), Docker-free: every corpus document's properties are read by the
- * production {@link MarkdownDocumentPipeline} and handed to the production {@link
+ * production {@link MarkdownDocumentFormat} and handed to the production {@link
  * CoreMetadataExtractor} with the delivered vocabulary - the same two steps the indexing run
  * performs, minus the database. The numbers are pinned so a generator or extractor change that
  * moves them is a deliberate decision, recorded in {@code eval/corpus/verwaltung/MAINTENANCE.md}.
@@ -47,7 +47,7 @@ class VerwaltungCorpusMetadataFillLevelTest {
     assertThat(manifest.isValid()).isTrue();
     assertThat(manifest.fileNames()).hasSize(EXPECTED_DOCUMENT_COUNT);
 
-    MarkdownDocumentPipeline pipeline = new MarkdownDocumentPipeline();
+    MarkdownDocumentFormat pipeline = new MarkdownDocumentFormat();
     var vocabulary = TestVocabularies.delivered();
     int withTitle = 0;
     int withType = 0;
@@ -57,7 +57,7 @@ class VerwaltungCorpusMetadataFillLevelTest {
     for (String fileName : manifest.fileNames()) {
       DocumentProperties properties =
           pipeline.readProperties(
-              DocumentPipelineSource.ofFile(corpusDir.resolve(fileName), fileName, ".md"));
+              DocumentFormatSource.ofFile(corpusDir.resolve(fileName), fileName, ".md"));
       ExtractedCoreMetadata extracted =
           CoreMetadataExtractor.extract(fileName, properties, vocabulary);
       if (extracted.title().isPresent()) {

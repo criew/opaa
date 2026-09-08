@@ -1,5 +1,6 @@
 package io.opaa.indexing.maintenance;
 
+import io.opaa.indexing.format.ChunkFormatMetadata;
 import java.util.UUID;
 
 /**
@@ -14,10 +15,10 @@ import java.util.UUID;
  *     pipeline is not the one handling their document's format today (a routing change can leave a
  *     chunk at its own pipeline's current version yet still unreachable by any re-index request
  *     without this), including the pre-abstraction corpus (see {@link
- *     ChunkPipelineMetadata#LEGACY_PIPELINE_VERSION}). Counted directly rather than derived as
- *     {@code totalChunks - currentVersionChunks}: a chunk naming a pipeline that is no longer
- *     registered at all is neither current nor stale - it cannot be re-indexed by any pipeline this
- *     deployment has - and must not silently inflate either count.
+ *     ChunkFormatMetadata#LEGACY_PIPELINE_VERSION}). Counted directly rather than derived as {@code
+ *     totalChunks - currentVersionChunks}: a chunk naming a pipeline that is no longer registered
+ *     at all is neither current nor stale - it cannot be re-indexed by any pipeline this deployment
+ *     has - and must not silently inflate either count.
  */
 public record PipelineVersionProgress(
     UUID libraryId, long totalChunks, long currentVersionChunks, long staleChunks) {

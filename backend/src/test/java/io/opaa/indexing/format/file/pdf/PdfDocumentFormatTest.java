@@ -1,0 +1,317 @@
+package io.opaa.indexing.format.file.pdf;
+
+import static java.util.stream.Collectors.toSet;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.indexing.format.DocumentFormatResult;
+import io.opaa.indexing.format.DocumentFormatRunner;
+import io.opaa.indexing.format.DocumentFormatSource;
+import io.opaa.indexing.format.PassthroughMetadataKeysTestSupport;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDate;
+import java.util.Calendar;
+import java.util.List;
+import java.util.Set;
+import java.util.TimeZone;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageXYZDestination;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+/**
+ * The PDF pipeline (ingestion-pipelines.md, Teil 1's parsing table and Teil 2): when the catalog
+ * carries an outline, the cut follows it (every level, not just three); a document without a
+ * resolvable outline falls back to one chunk per page.
+ */
+class PdfDocumentFormatTest {
+
+  @TempDir Path tempDir;
+
+  private final PdfDocumentFormat pipeline = new PdfDocumentFormat();
+
+  @Test
+  void claimsExactlyPdf() {
+    assertThat(pipeline.handledFormats()).containsExactly(".pdf");
+    assertThat(pipeline.id()).isEqualTo("pdf");
+    assertThat(pipeline.version()).isEqualTo((short) 1);
+  }
+
+  @Test
+  void cutsFollowTheOutlineWithHeadingPathAndUnrestrictedNestingDepth() throws IOException {
+    Path file = tempDir.resolve("satzung.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page1 = addPage(doc, "Diese Satzung regelt die Gebuehren der Stadt.");
+      PDPage page2 = addPage(doc, "Fuer Personalausweise werden 37,00 EUR erhoben.");
+      PDPage page3 = addPage(doc, "Es gilt eine Ermaessigung fuer Minderjaehrige.");
+
+      PDDocumentOutline outline = new PDDocumentOutline();
+      doc.getDocumentCatalog().setDocumentOutline(outline);
+      PDOutlineItem chapter = outlineItem("§ 1 Personaldokumente", page2);
+      PDOutlineItem paragraph = outlineItem("Abs. 2 Ermaessigung", page3);
+      chapter.addLast(paragraph);
+      outline.addLast(chapter);
+
+      doc.save(file.toFile());
+    }
+
+    DocumentFormatResult result =
+        pipeline.run(DocumentFormatSource.ofFile(file, "satzung.pdf", ".pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+    // Preamble (page 1, before the first outline entry), § 1 (page 2), Abs. 2 (page 3, nested).
+    assertThat(result.chunks()).hasSize(3);
+    assertThat(result.chunks().get(0).getText()).contains("regelt die Gebuehren");
+    assertThat(result.chunks().get(0).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+        .isNull();
+    assertThat(result.chunks().get(1).getText())
+        .startsWith("§ 1 Personaldokumente")
+        .contains("37,00 EUR");
+    assertThat(result.chunks().get(1).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+        .isEqualTo("Abschn. § 1 Personaldokumente");
+    assertThat(result.chunks().get(2).getText())
+        .startsWith("§ 1 Personaldokumente › Abs. 2 Ermaessigung")
+        .contains("Minderjaehrige");
+    // A key this pipeline actually produced that also belongs to the registry-wide passthrough
+    // union must be part of its own declaration - storeChunks copies any union key it finds on a
+    // chunk regardless of which pipeline declares it (nested-pipeline attribution), so an
+    // undeclared union key here would silently ride along. A key outside the union is irrelevant:
+    // storeChunks never copies it, declared or not.
+    Set<String> actualKeysInUnion =
+        result.chunks().stream()
+            .flatMap(c -> c.getMetadata().keySet().stream())
+            .filter(PassthroughMetadataKeysTestSupport.REGISTRY_UNION::contains)
+            .collect(toSet());
+    assertThat(pipeline.passthroughMetadataKeys()).containsAll(actualKeysInUnion);
+  }
+
+  @Test
+  void multipleOutlineEntriesOnTheSamePageEachGetTheirOwnBodyText() throws IOException {
+    // The Satzung normal case: several §§ cataloged on the same page - each one's body text must
+    // stay attached to its own heading, not bleed into (or entirely vanish behind) a sibling's.
+    Path file = tempDir.resolve("mehrere-paragraphen.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page1 =
+          addPageWithLines(
+              doc,
+              List.of(
+                  "§ 1 Anwendungsbereich",
+                  "Diese Satzung gilt fuer alle Antragstellenden.",
+                  "§ 2 Gebuehren",
+                  "Es werden 37,00 EUR erhoben."));
+
+      PDDocumentOutline outline = new PDDocumentOutline();
+      doc.getDocumentCatalog().setDocumentOutline(outline);
+      outline.addLast(outlineItem("§ 1 Anwendungsbereich", page1));
+      outline.addLast(outlineItem("§ 2 Gebuehren", page1));
+
+      doc.save(file.toFile());
+    }
+
+    DocumentFormatResult result =
+        pipeline.run(DocumentFormatSource.ofFile(file, "mehrere-paragraphen.pdf", ".pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().get(0).getText())
+        .startsWith("§ 1 Anwendungsbereich")
+        .contains("Antragstellenden")
+        .doesNotContain("37,00 EUR");
+    assertThat(result.chunks().get(1).getText())
+        .startsWith("§ 2 Gebuehren")
+        .contains("37,00 EUR")
+        .doesNotContain("Antragstellenden");
+  }
+
+  @Test
+  void leadTextBeforeARunsFirstTitleStaysFindableInThePrecedingSection() throws IOException {
+    // § 1's own body continues onto the page § 2/§ 3 are
+    // bookmarked to (the run's shared page) before either title appears - that lead text must
+    // stay attached to § 1, not vanish because it sits ahead of the run's first title.
+    Path file = tempDir.resolve("fortlaufender-paragraph.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page1 =
+          addPageWithLines(
+              doc, List.of("§ 1 Anwendungsbereich", "Text zu Paragraph eins, Teil eins."));
+      PDPage page2 =
+          addPageWithLines(
+              doc,
+              List.of(
+                  "Text zu Paragraph eins, Teil zwei (Fortsetzung).",
+                  "§ 2 Gebuehren",
+                  "Text zu Paragraph zwei.",
+                  "§ 3 Schlussbestimmungen",
+                  "Text zu Paragraph drei."));
+
+      PDDocumentOutline outline = new PDDocumentOutline();
+      doc.getDocumentCatalog().setDocumentOutline(outline);
+      outline.addLast(outlineItem("§ 1 Anwendungsbereich", page1));
+      outline.addLast(outlineItem("§ 2 Gebuehren", page2));
+      outline.addLast(outlineItem("§ 3 Schlussbestimmungen", page2));
+
+      doc.save(file.toFile());
+    }
+
+    DocumentFormatResult result =
+        pipeline.run(DocumentFormatSource.ofFile(file, "fortlaufender-paragraph.pdf", ".pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(3);
+    assertThat(result.chunks().get(0).getText())
+        .startsWith("§ 1 Anwendungsbereich")
+        .contains("Teil eins")
+        .contains("Fortsetzung");
+    assertThat(result.chunks().get(1).getText())
+        .startsWith("§ 2 Gebuehren")
+        .contains("Paragraph zwei")
+        .doesNotContain("Fortsetzung");
+    assertThat(result.chunks().get(2).getText())
+        .startsWith("§ 3 Schlussbestimmungen")
+        .contains("Paragraph drei")
+        .doesNotContain("Fortsetzung");
+  }
+
+  @Test
+  void fallsBackToOnePagePerChunkWhenThereIsNoOutline() throws IOException {
+    Path file = tempDir.resolve("ohne-gliederung.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      addPage(doc, "Inhalt der ersten Seite.");
+      addPage(doc, "Inhalt der zweiten Seite.");
+      doc.save(file.toFile());
+    }
+
+    DocumentFormatResult result =
+        pipeline.run(DocumentFormatSource.ofFile(file, "ohne-gliederung.pdf", ".pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().get(0).getText()).contains("ersten Seite");
+    assertThat(result.chunks().get(0).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+        .isEqualTo("S. 1");
+    assertThat(result.chunks().get(1).getText()).contains("zweiten Seite");
+    assertThat(result.chunks().get(1).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+        .isEqualTo("S. 2");
+  }
+
+  @Test
+  void aTextlessPdfIsRejectedAsScanBeforeAnyPipelineSpecificExtraction() throws IOException {
+    Path file = tempDir.resolve("scan.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      doc.addPage(new PDPage(PDRectangle.A4));
+      doc.save(file.toFile());
+    }
+
+    DocumentFormatResult result =
+        pipeline.run(DocumentFormatSource.ofFile(file, "scan.pdf", ".pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.NO_EXTRACTABLE_TEXT);
+    assertThat(result.chunks()).isEmpty();
+  }
+
+  @Test
+  void aFileThatIsNotAValidPdfIsAParseFailure() throws IOException {
+    Path file = tempDir.resolve("kaputt.pdf");
+    Files.writeString(file, "das ist kein pdf");
+
+    DocumentFormatResult result =
+        DocumentFormatRunner.run(pipeline, DocumentFormatSource.ofFile(file, "kaputt.pdf", ".pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  @Test
+  void aFilelessSourceIsAParseFailure() {
+    // A PDF pipeline is only ever reached through a genuine .pdf file (never RSS-extracted text,
+    // ADR-0017 decision 2) - defensive fallback, mirrors DocxDocumentFormat/PptxDocumentFormat.
+    DocumentFormatResult result =
+        pipeline.run(DocumentFormatSource.ofExtractedText("irrelevanter Text", "quelle.pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+    assertThat(result.chunks()).isEmpty();
+  }
+
+  /**
+   * ADR-0024: the Info dictionary, the first top-level outline entry and the head area's first line
+   * reach the extractor without the chunk stream - {@code readProperties} extracts the first page
+   * alone and must still agree with what {@code run} attaches.
+   */
+  @Test
+  void readsInfoDictionaryOutlineAndTitleLineWithoutChunking() throws IOException {
+    Path file = tempDir.resolve("satzung-eigenschaften.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page1 = addPage(doc, "Satzung der Stadt Musterstadt");
+      addPage(doc, "Fuer Personalausweise werden 37,00 EUR erhoben.");
+      PDDocumentOutline outline = new PDDocumentOutline();
+      doc.getDocumentCatalog().setDocumentOutline(outline);
+      outline.addLast(outlineItem("§ 1 Geltungsbereich", page1));
+      doc.getDocumentInformation().setTitle("Gebuehrensatzung");
+      Calendar created = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+      created.set(2026, Calendar.MARCH, 12, 9, 15, 0);
+      doc.getDocumentInformation().setCreationDate(created);
+      doc.save(file.toFile());
+    }
+    DocumentFormatSource source =
+        DocumentFormatSource.ofFile(file, "satzung-eigenschaften.pdf", ".pdf");
+
+    var properties = pipeline.readProperties(source);
+
+    assertThat(properties.title()).isEqualTo("Gebuehrensatzung");
+    assertThat(properties.createdAt()).isEqualTo(LocalDate.of(2026, 3, 12));
+    assertThat(properties.firstHeading()).isEqualTo("§ 1 Geltungsbereich");
+    assertThat(properties.titleLine()).isEqualTo("Satzung der Stadt Musterstadt");
+    assertThat(pipeline.run(source).properties()).isEqualTo(properties);
+  }
+
+  @Test
+  void aFileThatIsNotAValidPdfHasNoProperties() throws IOException {
+    Path file = tempDir.resolve("kaputt-eigenschaften.pdf");
+    Files.writeString(file, "das ist kein pdf");
+
+    assertThat(
+            pipeline.readProperties(
+                DocumentFormatSource.ofFile(file, "kaputt-eigenschaften.pdf", ".pdf")))
+        .isEqualTo(io.opaa.indexing.format.DocumentProperties.EMPTY);
+  }
+
+  private static PDPage addPage(PDDocument doc, String text) throws IOException {
+    return addPageWithLines(doc, List.of(text));
+  }
+
+  private static PDPage addPageWithLines(PDDocument doc, List<String> lines) throws IOException {
+    PDPage page = new PDPage(PDRectangle.A4);
+    doc.addPage(page);
+    try (PDPageContentStream stream = new PDPageContentStream(doc, page)) {
+      stream.beginText();
+      stream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+      stream.newLineAtOffset(50, 700);
+      boolean first = true;
+      for (String line : lines) {
+        if (!first) {
+          stream.newLineAtOffset(0, -15);
+        }
+        first = false;
+        stream.showText(line);
+      }
+      stream.endText();
+    }
+    return page;
+  }
+
+  private static PDOutlineItem outlineItem(String title, PDPage page) {
+    PDOutlineItem item = new PDOutlineItem();
+    item.setTitle(title);
+    PDPageXYZDestination destination = new PDPageXYZDestination();
+    destination.setPage(page);
+    item.setDestination(destination);
+    return item;
+  }
+}

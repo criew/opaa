@@ -3,9 +3,9 @@ package io.opaa.indexing.document;
 import static org.mockito.ArgumentMatchers.argThat;
 
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.indexing.pipeline.DocumentProperties;
-import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
-import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
+import io.opaa.indexing.format.DocumentProperties;
+import io.opaa.indexing.format.file.html.HtmlDocumentFormat;
+import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.library.KnowledgeLibrary;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -33,7 +33,7 @@ public final class DocumentIngests {
       String entryUrl,
       String publishedAt) {
     return extractedTextBuilder(library, mainHtml, title, entryUrl, publishedAt)
-        .pipelineId(HtmlDocumentPipeline.ID)
+        .pipelineId(HtmlDocumentFormat.ID)
         .build();
   }
 
@@ -70,7 +70,7 @@ public final class DocumentIngests {
         .context(context)
         .changeMarker(version)
         .modifiedAt(DocumentProperties.instantToLocalDate(lastModified))
-        .pipelineId(ConfluenceDocumentPipeline.ID)
+        .pipelineId(ConfluenceStorageFormat.ID)
         .build();
   }
 

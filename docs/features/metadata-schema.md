@@ -565,7 +565,7 @@ manueller Wert wird nie überschrieben; ein abgeleiteter Wert weicht nur einem e
 Ergebnis; nur eine deterministische Zeile entfällt, wenn die Extraktion nichts mehr liefert. Die
 Extraktion läuft als
 Systemprozess im Ingest ohne Personenrechtekontext (Beschluss 1 des Maintainers am Epic #1065) — sie
-zeigt niemandem Inhalte. `DocumentPipeline#readProperties` liefert dieselben Rohquellen ohne Chunking;
+zeigt niemandem Inhalte. `DocumentFormat#readProperties` liefert dieselben Rohquellen ohne Chunking;
 `DocumentMetadataService#reextractFromFile` ist damit der Baustein je Dokument, den der Bestandslauf
 wiederholt: Datei parsen (außerhalb jeder Transaktion) → Werte speichern und Chunk-Schlüssel per
 JSON-Update nachziehen (eine Transaktion, Index `idx_vector_store_document_id`), ohne Neu-Einbetten.
@@ -702,7 +702,7 @@ vorgemerkt — der läuft durch den Confluence-Konnektor und damit durch dieselb
 `SupportedDocumentFormats` überhaupt zulässt), als letzte Quelle: Jede Textquelle geht vor, und ein
 Vokabular ohne diesen Code liefert nichts. Keine Ableitung für PDF/DOCX — diese Formate tragen jede
 Dokumentart. Die geroutete Formatkennung hängt zentral an den Rohquellen
-(`DocumentPipelineRunner` im Ingest, `DocumentMetadataService#reextractFromFile` im Bestandslauf),
+(`DocumentFormatRunner` im Ingest, `DocumentMetadataService#reextractFromFile` im Bestandslauf),
 nicht in den einzelnen Pipelines — sie ist ein Befund des Routings, nicht des Formats.
 
 ## Deterministischer Bestandslauf über den Altbestand
@@ -750,7 +750,7 @@ und keinen Lauf-Datensatz. Damit sind die vier Zusagen aus
 [Nachlauf im Betrieb](#nachlauf-im-betrieb) so erfüllt:
 
 - **Suche verfügbar, Mischzustand definiert:** Es wird kein Chunk gelöscht, neu zerlegt oder neu
-  eingebettet. Je Dokument liest der Lauf die Originaldatei über `DocumentPipeline#readProperties`
+  eingebettet. Je Dokument liest der Lauf die Originaldatei über `DocumentFormat#readProperties`
   (Dateiname, Dokumenteigenschaften, Frontmatter, erste Überschrift — nicht die Chunk-Texte), speichert
   die Werte und zieht `doc_type`/`doc_date`/`doc_date_precision` per JSON-Update auf die vorhandenen
   Chunks nach (`DocumentMetadataService#reextractFromFile`). Der Mischzustand ist je Bibliothek

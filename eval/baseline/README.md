@@ -311,7 +311,7 @@ weite Toleranz würde bei nachgewiesener Stabilität keinen zusätzlichen Schutz
 Alarm kaufen, sondern nur echte Regressionen durchlassen.
 
 **Nachtrag (Issue #1103, 2026-09-02): nur noch vier statt sechs Paare betroffen.** Mit der
-Baseline-Neuziehung nach der Registrierung von `MarkdownDocumentPipeline` stiegen
+Baseline-Neuziehung nach der Registrierung von `MarkdownDocumentFormat` stiegen
 `category:multi_attribute_filter`s Baseline-Werte für `ndcgAt10` (0,137 → 0,218) und `recallAt10`
 (0,159 → 0,245) genug, dass ihre relative Deckelung (`0,25 · Baselinewert`) jetzt über `1/n=0,0476`
 liegt (0,0545 bzw. 0,0613) — beide Paare unterschreiten die `1/n`-Schwelle der fallzahlbasierten
@@ -501,7 +501,7 @@ Dasselbe Verfahren wie unten, mit zwei Präzisierungen:
   `vector-only`-Lauf von einem hybriden nicht zu unterscheiden (ADR-0012, Nachtrag Volltextpfad,
   Entscheidung 22).
 - Beide Pfade führen seit Issue #1144 zusätzlich `ingestionPipelineFingerprint` — ein sortierter
-  Sammelabdruck `id:version` über alle von `DocumentPipelineRegistry` gemeldeten Pipelines
+  Sammelabdruck `id:version` über alle von `DocumentFormatRegistry` gemeldeten Pipelines
   (`IngestionPipelineFingerprint`). Ein Diff dieses Felds zeigt, welche Pipeline sich zwischen zwei
   Baselines bewegt hat, statt einen Pipelinewechsel unentdeckt gegen die Retrieval-Metriken laufen zu
   lassen (ADR-0012, Nachtrag Ingestion-Pipeline-Fixpunkt).

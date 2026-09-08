@@ -14,8 +14,8 @@ import io.opaa.auth.UserRepository;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
-import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
-import io.opaa.indexing.pipeline.TikaFallbackPipeline;
+import io.opaa.indexing.format.ChunkFormatMetadata;
+import io.opaa.indexing.format.file.fallback.TikaFallbackFormat;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.UploadProperties;
@@ -144,9 +144,9 @@ class PipelineReindexHttpIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     "{\"pipelineId\":\""
-                        + TikaFallbackPipeline.ID
+                        + TikaFallbackFormat.ID
                         + "\",\"belowVersion\":"
-                        + TikaFallbackPipeline.VERSION
+                        + TikaFallbackFormat.VERSION
                         + ",\"batchSize\":10}")
                 .with(devUser()))
         .andExpect(status().isOk())
@@ -168,31 +168,31 @@ class PipelineReindexHttpIntegrationTest {
     List<String> pipelineIds =
         jdbcTemplate.queryForList(
             "SELECT metadata->>'"
-                + ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY
+                + ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY
                 + "' FROM vector_store WHERE metadata->>'document_id' = ?",
             String.class,
             document.getId().toString());
-    assertThat(pipelineIds).containsOnly(TikaFallbackPipeline.ID);
+    assertThat(pipelineIds).containsOnly(TikaFallbackFormat.ID);
   }
 
   // IndexingAdminControllerTest already covers "unknown pipelineId" and "belowVersion above the
-  // pipeline's own version" against a mocked DocumentPipelineRegistry with a fabricated version
+  // pipeline's own version" against a mocked DocumentFormatRegistry with a fabricated version
   // number. What that mock cannot prove is that the guard engages with the *real*
-  // TikaFallbackPipeline.VERSION wired up in production - a real registry bean whose version this
+  // TikaFallbackFormat.VERSION wired up in production - a real registry bean whose version this
   // test does not control could drift out of sync with a mock's hardcoded stand-in without either
   // test noticing. This test exercises exactly that: an actually registered pipeline id with a
   // belowVersion one above its real, current version.
   @Test
   void aBelowVersionAboveTheRealPipelinesOwnVersionIsRejectedBeforeTouchingTheRealService()
       throws Exception {
-    int belowVersion = TikaFallbackPipeline.VERSION + 1;
+    int belowVersion = TikaFallbackFormat.VERSION + 1;
     mockMvc
         .perform(
             post("/api/v1/admin/indexing/pipeline-reindex")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     "{\"pipelineId\":\""
-                        + TikaFallbackPipeline.ID
+                        + TikaFallbackFormat.ID
                         + "\",\"belowVersion\":"
                         + belowVersion
                         + "}")
@@ -202,9 +202,9 @@ class PipelineReindexHttpIntegrationTest {
             jsonPath("$.error")
                 .value(
                     "belowVersion darf höchstens der aktuellen Version der Pipeline "
-                        + TikaFallbackPipeline.ID
+                        + TikaFallbackFormat.ID
                         + " entsprechen ("
-                        + TikaFallbackPipeline.VERSION
+                        + TikaFallbackFormat.VERSION
                         + "), war "
                         + belowVersion));
 

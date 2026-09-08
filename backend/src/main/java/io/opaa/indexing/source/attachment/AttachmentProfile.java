@@ -1,6 +1,6 @@
 package io.opaa.indexing.source.attachment;
 
-import io.opaa.indexing.SupportedDocumentFormats;
+import io.opaa.indexing.format.SupportedDocumentFormats;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.LinkedHashSet;
