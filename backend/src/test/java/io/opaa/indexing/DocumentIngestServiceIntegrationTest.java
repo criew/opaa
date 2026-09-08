@@ -25,9 +25,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * Reproduces the deletion window against the real Liquibase schema, not just {@link
- * FileProcessingServiceTest}'s mocked {@link DocumentRepository}: a connector document is deleted
+ * DocumentIngestServiceTest}'s mocked {@link DocumentRepository}: a connector document is deleted
  * (e.g. by {@code LibraryDocumentService#deleteDocument}, or a whole connector library being
- * removed) after {@link FileProcessingService#processFile}/{@code #processUrlFile}/{@code
+ * removed) after {@link DocumentIngestService#processFile}/{@code #processUrlFile}/{@code
  * #processRssEntry} have already inserted the row and started parsing, but before the final status
  * transition runs. That transition must not be a plain {@code documentRepository.save(doc)} on a
  * detached, already-deleted entity - {@link Document} assigns its own id and carries no
@@ -37,18 +37,18 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * <p>{@link DocumentService} is mocked here, not the repository/vector store: the delete is
  * triggered as a side effect of {@code parseDocument}, the same point in real time a concurrent
  * request would land - genuinely racing the row's existence, not simulating a zero-rows-updated
- * result the way {@link FileProcessingServiceTest} does against a mocked repository.
+ * result the way {@link DocumentIngestServiceTest} does against a mocked repository.
  */
 // Own @MockitoBean DocumentService below (needed to force the race window this class reproduces -
 // see the class Javadoc) means Spring's context cache still keys this to its own context
 // regardless of the shared @OpaaIndexingIntegrationTest base - documented exception per AGENTS.md.
 @OpaaIndexingIntegrationTest
-class FileProcessingServiceIntegrationTest {
+class DocumentIngestServiceIntegrationTest {
 
   private static final Path classTempDir =
       OpaaIndexingTestDirectory.subdirectory("file-processing-service");
 
-  @Autowired private FileProcessingService fileProcessingService;
+  @Autowired private DocumentIngestService documentIngestService;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private VectorStore vectorStore;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -105,10 +105,10 @@ class FileProcessingServiceIntegrationTest {
               return parsed;
             });
 
-    FileProcessingResult result =
-        fileProcessingService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
+    DocumentIngestResult result =
+        documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
-    assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
+    assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
     assertThat(documentRepository.count())
         .as("the deleted row must not be re-inserted as a zombie")
         .isZero();
@@ -128,10 +128,10 @@ class FileProcessingServiceIntegrationTest {
     var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
     when(documentService.parseDocument(file)).thenReturn(parsed);
 
-    FileProcessingResult result =
-        fileProcessingService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
+    DocumentIngestResult result =
+        documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
-    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
     assertThat(documentRepository.count()).isEqualTo(1);
     Document doc = documentRepository.findAll().getFirst();
     assertThat(doc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
@@ -157,10 +157,10 @@ class FileProcessingServiceIntegrationTest {
                 "Befreiung von der Verwaltungsgebühr wegen Bedürftigkeit"));
     when(documentService.parseDocument(file)).thenReturn(parsed);
 
-    FileProcessingResult result =
-        fileProcessingService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
+    DocumentIngestResult result =
+        documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
-    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
     // Compares the actual sets of chunk ids, not just their counts: equal
     // counts alone would not catch a bug where chunk_full_text ends up populated for the right
     // number of rows but the wrong ids.

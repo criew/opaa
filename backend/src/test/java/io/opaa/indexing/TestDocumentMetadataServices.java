@@ -8,7 +8,7 @@ import io.opaa.indexing.metadata.ModelMetadataExtractor;
 import org.mockito.Mockito;
 
 /**
- * A {@link DocumentMetadataService} stand-in for the mock-based {@code FileProcessingService}
+ * A {@link DocumentMetadataService} stand-in for the mock-based {@code DocumentIngestService}
  * tests: every extraction answers the empty shape instead of Mockito's {@code null}, so {@code
  * storeChunks} sees what it sees for a document without any schema values.
  */

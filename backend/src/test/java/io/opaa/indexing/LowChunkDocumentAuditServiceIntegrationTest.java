@@ -71,7 +71,7 @@ class LowChunkDocumentAuditServiceIntegrationTest {
                 false));
 
     // A document's organizationId is always denormalized from its own library's (see
-    // FileProcessingService#processFile) - cross-org scoping is genuinely tested only against a
+    // DocumentIngestService#processFile) - cross-org scoping is genuinely tested only against a
     // second, independent organization/user/library, not by attaching a foreign organizationId to
     // the same library (which the fk_documents_library_organization composite FK rejects anyway).
     jdbcTemplate.update(

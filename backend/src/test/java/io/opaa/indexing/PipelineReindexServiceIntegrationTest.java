@@ -541,7 +541,7 @@ class PipelineReindexServiceIntegrationTest {
 
   @Test
   void aDocumentThatStaysMisroutedIsNotReparsedOnASubsequentReindexCall() throws IOException {
-    // Closes gap (c): FileProcessingService#storeChunks now writes
+    // Closes gap (c): DocumentIngestService#storeChunks now writes
     // ChunkPipelineMetadata#NO_ROUTING_EXTENSION onto the chunks reindexStoredDocument just wrote
     // for a document that still resolves to the fallback pipeline. #misroutedPredicateFor's exact
     // branch then excludes those chunks outright (routing_extension "" never matches a pipeline's

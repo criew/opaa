@@ -101,7 +101,7 @@ final class EmlReader {
   /**
    * Counts the extraction positions an unfiltered run would produce and decides which of them is
    * materialized - a position is only consumed by an attachment that was actually read, exactly the
-   * numbering {@code FileProcessingService#attachmentFilePath} persists.
+   * numbering {@code DocumentIngestService#attachmentFilePath} persists.
    */
   private static final class ExtractionPosition {
     private final Integer wanted;

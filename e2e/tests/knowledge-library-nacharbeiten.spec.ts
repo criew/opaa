@@ -94,7 +94,7 @@ function cleanupLibraries(): string[] {
  * business being checked into git for a single regression test.
  *
  * The extractable page text is a single short, real sentence - just enough to avoid
- * FileProcessingService#processUploadedFile's EmptyDocumentContentException (thrown when Tika
+ * DocumentIngestService#processUploadedFile's EmptyDocumentContentException (thrown when Tika
  * extracts no text at all), so the document stays a single-digit number of chunks. The ~2 MB of
  * bulk instead comes from an embedded image (pdf.embedPng) built from random pixel data: PDFBox's
  * plain text extraction never reads image content (that would need OCR, which this backend does

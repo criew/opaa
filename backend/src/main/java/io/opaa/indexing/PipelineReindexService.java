@@ -43,7 +43,7 @@ public class PipelineReindexService {
   private final DocumentPipelineRegistry pipelineRegistry;
   private final DocumentRepository documentRepository;
   private final KnowledgeLibraryRepository libraryRepository;
-  private final FileProcessingService fileProcessingService;
+  private final DocumentIngestService documentIngestService;
   private final VectorChunkStore vectorChunkStore;
   private final StoredDocumentSourceAccess sourceAccess;
   private final String vectorStoreTable;
@@ -53,7 +53,7 @@ public class PipelineReindexService {
       DocumentPipelineRegistry pipelineRegistry,
       DocumentRepository documentRepository,
       KnowledgeLibraryRepository libraryRepository,
-      FileProcessingService fileProcessingService,
+      DocumentIngestService documentIngestService,
       VectorChunkStore vectorChunkStore,
       StoredDocumentSourceAccess sourceAccess,
       @Value("${spring.ai.vectorstore.pgvector.schema-name:public}") String schemaName,
@@ -62,7 +62,7 @@ public class PipelineReindexService {
     this.pipelineRegistry = pipelineRegistry;
     this.documentRepository = documentRepository;
     this.libraryRepository = libraryRepository;
-    this.fileProcessingService = fileProcessingService;
+    this.documentIngestService = documentIngestService;
     this.vectorChunkStore = vectorChunkStore;
     this.sourceAccess = sourceAccess;
     this.vectorStoreTable = schemaName + "." + tableName;
@@ -305,7 +305,7 @@ public class PipelineReindexService {
       return false;
     }
     try {
-      return fileProcessingService.ingest(
+      return documentIngestService.ingest(
               DocumentIngest.builder(library)
                   .file(file)
                   .filePath(document.getFilePath())
@@ -315,7 +315,7 @@ public class PipelineReindexService {
                   .reindex()
                   .build(),
               attachmentAccessFor(document, library))
-          == FileProcessingResult.PROCESSED;
+          == DocumentIngestResult.PROCESSED;
     } catch (Exception e) {
       log.error("Failed to re-index document {}", document.getFileName(), e);
       return false;
@@ -323,7 +323,7 @@ public class PipelineReindexService {
   }
 
   /**
-   * The {@link AttachmentAccess} a re-index hands to {@link FileProcessingService#ingest} so
+   * The {@link AttachmentAccess} a re-index hands to {@link DocumentIngestService#ingest} so
    * attachments a re-run pipeline discovers reach the generalized attachment path - FILESYSTEM and
    * UPLOAD, the two source types whose files this machine can re-read. There is no job here, so
    * events are only logged and no progress counted.

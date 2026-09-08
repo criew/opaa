@@ -26,8 +26,8 @@ import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.EmbeddingRateEstimator;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestResult;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.indexing.FullTextChunkStore;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJobService;
@@ -60,9 +60,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 /**
  * Unit-level coverage of {@link AsyncIndexingExecutor} (FILESYSTEM). Uses a real {@link
  * DocumentService} against a real {@code @TempDir} - {@code discoverFiles} is a plain filesystem
- * walk, cheaper to run for real than to mock - while {@link FileProcessingService} stays mocked:
+ * walk, cheaper to run for real than to mock - while {@link DocumentIngestService} stays mocked:
  * this class's own job is discovering files and reacting to what {@code processFile} reports, not
- * re-testing parsing/chunking/embedding (that belongs to {@code FileProcessingServiceTest}). The
+ * re-testing parsing/chunking/embedding (that belongs to {@code DocumentIngestServiceTest}). The
  * reconciliation is a spy over the real service, so what the executor hands over and what the
  * service preserves from the database are both observable.
  */
@@ -70,7 +70,7 @@ class AsyncIndexingExecutorTest {
 
   @TempDir Path documentDir;
 
-  private FileProcessingService fileProcessingService;
+  private DocumentIngestService documentIngestService;
   private IndexingJobService indexingJobService;
   private IndexingRunEventRepository indexingRunEventRepository;
   private LibraryStorageQuotaService storageQuotaService;
@@ -82,7 +82,7 @@ class AsyncIndexingExecutorTest {
 
   @BeforeEach
   void setUp() throws Exception {
-    fileProcessingService = mock(FileProcessingService.class);
+    documentIngestService = mock(DocumentIngestService.class);
     indexingJobService = mock(IndexingJobService.class);
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
     storageQuotaService = mock(LibraryStorageQuotaService.class);
@@ -112,7 +112,7 @@ class AsyncIndexingExecutorTest {
     executor =
         new AsyncIndexingExecutor(
             new DocumentService(),
-            fileProcessingService,
+            documentIngestService,
             allowlist,
             folderService,
             runTemplate(storageQuotaService, documentRepository));
@@ -133,9 +133,9 @@ class AsyncIndexingExecutorTest {
     Path file = documentDir.resolve("over-quota.txt");
     Files.writeString(file, "content");
 
-    when(fileProcessingService.ingest(
+    when(documentIngestService.ingest(
             DocumentIngests.that().file().file(file).in(library).inFolder(null).match(), any()))
-        .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
+        .thenReturn(DocumentIngestResult.QUOTA_EXCEEDED);
     when(storageQuotaService.quotaExceededMessage(library.getId()))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft (10 GB von 10 GB belegt)");
 
@@ -154,14 +154,14 @@ class AsyncIndexingExecutorTest {
 
   @Test
   void aScanPdfWithoutExtractableTextIsSkippedAndRecordedAsARejectedEvent() throws IOException {
-    // FileProcessingResult#NO_EXTRACTABLE_TEXT is reported the same way QUOTA_EXCEEDED is -
+    // DocumentIngestResult#NO_EXTRACTABLE_TEXT is reported the same way QUOTA_EXCEEDED is -
     // counted as skipped, not as processed, and logged by name like any other rejected file.
     Path file = documentDir.resolve("scan.txt");
     Files.writeString(file, "content");
 
-    when(fileProcessingService.ingest(
+    when(documentIngestService.ingest(
             DocumentIngests.that().file().file(file).in(library).inFolder(null).match(), any()))
-        .thenReturn(FileProcessingResult.NO_EXTRACTABLE_TEXT);
+        .thenReturn(DocumentIngestResult.NO_EXTRACTABLE_TEXT);
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
@@ -178,14 +178,14 @@ class AsyncIndexingExecutorTest {
   @Test
   void aFileThePipelineCannotParseAtAllIsCountedAsFailedAndRecordedAsAnErrorEvent()
       throws IOException {
-    // FileProcessingResult#FAILED (NO_CONTENT - the pipeline could not parse the document at all)
+    // DocumentIngestResult#FAILED (NO_CONTENT - the pipeline could not parse the document at all)
     // is reported like the catch block's own ERROR event, never silently counted as processed.
     Path file = documentDir.resolve("corrupt.txt");
     Files.writeString(file, "content");
 
-    when(fileProcessingService.ingest(
+    when(documentIngestService.ingest(
             DocumentIngests.that().file().file(file).in(library).inFolder(null).match(), any()))
-        .thenReturn(FileProcessingResult.FAILED);
+        .thenReturn(DocumentIngestResult.FAILED);
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
@@ -202,11 +202,11 @@ class AsyncIndexingExecutorTest {
   }
 
   @Test
-  void aRealScanPdfEndToEndIsRejectedWithoutMockingTheFileProcessingServiceSeam()
+  void aRealScanPdfEndToEndIsRejectedWithoutMockingTheDocumentIngestServiceSeam()
       throws IOException {
     // aScanPdfWithoutExtractableTextIsSkippedAndRecordedAsARejectedEvent above mocks both sides
-    // of the FileProcessingService seam - this test instead wires a real FileProcessingService
-    // (only its own dependencies mocked, same pattern as FileProcessingServiceTest's scan-detection
+    // of the DocumentIngestService seam - this test instead wires a real DocumentIngestService
+    // (only its own dependencies mocked, same pattern as DocumentIngestServiceTest's scan-detection
     // test) so the real NO_EXTRACTABLE_TEXT return value is exercised, not just asserted-away.
     Path file = documentDir.resolve("scan.pdf");
     Files.writeString(file, "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection");
@@ -226,7 +226,7 @@ class AsyncIndexingExecutorTest {
     when(realFlowQuotaService.wouldExceedQuota(any(), anyLong())).thenReturn(false);
 
     // Only #parseDocument is stubbed - real Tika parsing of a not-structurally-valid PDF would
-    // throw, which is irrelevant to what this test exercises (see FileProcessingServiceTest's own
+    // throw, which is irrelevant to what this test exercises (see DocumentIngestServiceTest's own
     // identical spy for the same reasoning). Everything after parsing runs for real.
     DocumentService scanDetectingDocumentService = org.mockito.Mockito.spy(new DocumentService());
     org.mockito.Mockito.doReturn(List.of(new org.springframework.ai.document.Document("")))
@@ -235,8 +235,8 @@ class AsyncIndexingExecutorTest {
 
     IndexingProperties indexingProperties =
         new IndexingProperties(1000, 0, 50, null, null, null, null, 1);
-    FileProcessingService realFileProcessingService =
-        new FileProcessingService(
+    DocumentIngestService realDocumentIngestService =
+        new DocumentIngestService(
             TestPipelineRegistries.fallbackOnly(
                 scanDetectingDocumentService, new ChunkingService(indexingProperties)),
             realFlowDocumentRepository,
@@ -262,7 +262,7 @@ class AsyncIndexingExecutorTest {
     AsyncIndexingExecutor realFlowExecutor =
         new AsyncIndexingExecutor(
             new DocumentService(),
-            realFileProcessingService,
+            realDocumentIngestService,
             realFlowAllowlist,
             folderService,
             runTemplate(realFlowQuotaService, realFlowDocumentRepository));
@@ -284,9 +284,9 @@ class AsyncIndexingExecutorTest {
     Path file = documentDir.resolve("ok.txt");
     Files.writeString(file, "content");
 
-    when(fileProcessingService.ingest(
+    when(documentIngestService.ingest(
             DocumentIngests.that().file().file(file).in(library).inFolder(null).match(), any()))
-        .thenReturn(FileProcessingResult.PROCESSED);
+        .thenReturn(DocumentIngestResult.PROCESSED);
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
@@ -312,13 +312,13 @@ class AsyncIndexingExecutorTest {
             library.getId(), DocumentSourceType.FILESYSTEM))
         .thenReturn(List.of(mailDoc, keptDoc, removedDoc));
 
-    when(fileProcessingService.ingest(
+    when(documentIngestService.ingest(
             DocumentIngests.that().file().file(mailFile).in(library).inFolder(null).match(), any()))
         .thenAnswer(
             invocation -> {
               AttachmentAccess access = invocation.getArgument(1);
               access.recordIndexedAttachment(keptPath, true);
-              return FileProcessingResult.PROCESSED;
+              return DocumentIngestResult.PROCESSED;
             });
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
@@ -353,9 +353,9 @@ class AsyncIndexingExecutorTest {
             library.getId(), DocumentSourceType.FILESYSTEM))
         .thenReturn(List.of(grandchildDoc, mailDoc, innerMailDoc));
 
-    when(fileProcessingService.ingest(
+    when(documentIngestService.ingest(
             DocumentIngests.that().file().file(mailFile).in(library).inFolder(null).match(), any()))
-        .thenReturn(FileProcessingResult.SKIPPED);
+        .thenReturn(DocumentIngestResult.SKIPPED);
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
@@ -384,14 +384,14 @@ class AsyncIndexingExecutorTest {
             library.getId(), DocumentSourceType.FILESYSTEM))
         .thenReturn(List.of(grandchildDoc, mailDoc, innerMailDoc));
 
-    when(fileProcessingService.ingest(
+    when(documentIngestService.ingest(
             DocumentIngests.that().file().file(mailFile).in(library).inFolder(null).match(), any()))
         .thenAnswer(
             invocation -> {
               AttachmentAccess access = invocation.getArgument(1);
               // The inner mail was confirmed unchanged (SKIPPED), not re-parsed.
               access.recordIndexedAttachment(innerMailPath, false);
-              return FileProcessingResult.PROCESSED;
+              return DocumentIngestResult.PROCESSED;
             });
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
@@ -429,7 +429,7 @@ class AsyncIndexingExecutorTest {
     Path mailFile = documentDir.resolve("mail.eml");
     Files.writeString(mailFile, "mail content");
     UUID jobId = UUID.randomUUID();
-    when(fileProcessingService.ingest(
+    when(documentIngestService.ingest(
             DocumentIngests.that().file().file(mailFile).in(library).inFolder(null).match(), any()))
         .thenAnswer(
             invocation -> {
@@ -438,7 +438,7 @@ class AsyncIndexingExecutorTest {
               access.progress().recordAttachment(AttachmentOutcome.PROCESSED);
               access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
               access.progress().recordAttachment(AttachmentOutcome.FAILED);
-              return FileProcessingResult.PROCESSED;
+              return DocumentIngestResult.PROCESSED;
             });
 
     executor.execute(jobId, library, IndexingRunMode.FULL);

@@ -78,7 +78,7 @@ import org.testcontainers.utility.DockerImageName;
  * — see {@link EvalDomainConfig#VERWALTUNG} for its chunk-count profile and {@code
  * eval/corpus/verwaltung/SOURCE.md} for how the corpus constructs those failure modes. Indexes the
  * frozen {@code eval/corpus/verwaltung} corpus through the production pipeline ({@link
- * io.opaa.indexing.FileProcessingService} routed to {@link
+ * io.opaa.indexing.DocumentIngestService} routed to {@link
  * io.opaa.indexing.pipeline.markdown.MarkdownDocumentPipeline} for this all-Markdown corpus since
  * #1103), then runs every case from {@code eval/golden/verwaltung.json} directly against {@link
  * VectorStore#similaritySearch}. No LLM — retrieval-only, per ADR-0011 decision 3.
@@ -360,7 +360,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
   // Issue #721/#1103: reused, not reimplemented, to build the chunk map — the same
-  // DocumentPipelineRegistry routing FileProcessingService drives (see its Javadoc), so the chunk
+  // DocumentPipelineRegistry routing DocumentIngestService drives (see its Javadoc), so the chunk
   // texts the map is built from are exactly what was actually indexed, not a second, potentially
   // drifting re-implementation.
   @Autowired private DocumentPipelineRegistry pipelineRegistry;
@@ -681,7 +681,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
         DOMAIN.documentTopK());
 
     // 4b. Chunk map (issue #721, routing updated for #1103): re-derive each document's real chunk
-    //     texts through the same DocumentPipelineRegistry routing FileProcessingService uses, so
+    //     texts through the same DocumentPipelineRegistry routing DocumentIngestService uses, so
     // the
     //     map reflects exactly what was indexed. Docker-free in principle (no embedding call
     //     needed), kept here so the map always matches the corpus this specific run actually
@@ -794,7 +794,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
                 + "docs/features/retrieval-benchmark.md, Abschnitt 4, \"Ehrliche Einschränkung: "
                 + "Benchmark-Overfitting\".");
 
-    // Issue #1144: the pipeline registry FileProcessingService actually routed through while
+    // Issue #1144: the pipeline registry DocumentIngestService actually routed through while
     // indexing this corpus, not a second, potentially drifting re-derivation.
     String ingestionPipelineFingerprint = IngestionPipelineFingerprint.of(pipelineRegistry);
 

@@ -20,8 +20,8 @@ import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestResult;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.StaleDocumentCleanupService;
@@ -59,7 +59,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
 
   @TempDir Path tempDir;
 
-  private FileProcessingService fileProcessingService;
+  private DocumentIngestService documentIngestService;
   private DocumentRepository documentRepository;
   private StaleDocumentCleanupService staleDocumentCleanupService;
   private UrlIndexingExecutor executor;
@@ -69,7 +69,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
   void setUp() throws IOException, InterruptedException {
     AutoindexCrawlerService crawlerService = mock(AutoindexCrawlerService.class);
     BoundedDownloader downloader = mock(BoundedDownloader.class);
-    fileProcessingService = mock(FileProcessingService.class);
+    documentIngestService = mock(DocumentIngestService.class);
     documentRepository = mock(DocumentRepository.class);
     staleDocumentCleanupService =
         spy(new StaleDocumentCleanupService(documentRepository, mock(VectorChunkStore.class)));
@@ -111,7 +111,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
         new UrlIndexingExecutor(
             crawlerService,
             downloader,
-            fileProcessingService,
+            documentIngestService,
             documentRepository,
             new CrawlProperties(0, 0, 0),
             mock(io.opaa.library.LibraryFolderService.class),
@@ -124,9 +124,9 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
                 mock(LibraryStorageQuotaService.class)));
   }
 
-  private void stubProcessUrlFile(org.mockito.stubbing.Answer<FileProcessingResult> answer)
+  private void stubProcessUrlFile(org.mockito.stubbing.Answer<DocumentIngestResult> answer)
       throws IOException {
-    when(fileProcessingService.ingest(
+    when(documentIngestService.ingest(
             DocumentIngests.that()
                 .file()
                 .in(library)
@@ -156,7 +156,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
         invocation -> {
           AttachmentAccess access = invocation.getArgument(1);
           access.recordIndexedAttachment(keptPath, true);
-          return FileProcessingResult.PROCESSED;
+          return DocumentIngestResult.PROCESSED;
         });
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
@@ -185,7 +185,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
             library.getId(), DocumentSourceType.HTTP_DIRECTORY))
         .thenReturn(List.of(grandchildDoc, mailDoc, innerMailDoc));
 
-    stubProcessUrlFile(invocation -> FileProcessingResult.SKIPPED);
+    stubProcessUrlFile(invocation -> DocumentIngestResult.SKIPPED);
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
@@ -213,7 +213,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
         invocation -> {
           AttachmentAccess access = invocation.getArgument(1);
           access.recordIndexedAttachment(failedPath, false);
-          return FileProcessingResult.PROCESSED;
+          return DocumentIngestResult.PROCESSED;
         });
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);

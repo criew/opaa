@@ -120,7 +120,7 @@ public class IndexingConfiguration {
 
   /**
    * Confluence page pipeline (ingestion-pipelines.md, Teil 3, Punkt 6) - claims no format, {@link
-   * FileProcessingService#ingest} looks it up by id.
+   * DocumentIngestService#ingest} looks it up by id.
    */
   @Bean
   ConfluenceDocumentPipeline confluenceDocumentPipeline() {
@@ -185,7 +185,7 @@ public class IndexingConfiguration {
   /**
    * Populated from every {@link DocumentPipeline} bean Spring finds - a new format becomes
    * reachable by adding one more pipeline bean, never by editing this method or {@link
-   * FileProcessingService} (the open-closed criterion of docs/features/ingestion-pipelines.md, Teil
+   * DocumentIngestService} (the open-closed criterion of docs/features/ingestion-pipelines.md, Teil
    * 1). Mirrors {@link #indexingSourceExecutorRegistry}'s own collection-injection pattern.
    */
   @Bean
@@ -230,7 +230,7 @@ public class IndexingConfiguration {
       DocumentPipelineRegistry documentPipelineRegistry,
       DocumentRepository documentRepository,
       KnowledgeLibraryRepository libraryRepository,
-      FileProcessingService fileProcessingService,
+      DocumentIngestService documentIngestService,
       VectorChunkStore vectorChunkStore,
       StoredDocumentSourceAccess storedDocumentSourceAccess,
       @Value("${spring.ai.vectorstore.pgvector.schema-name:public}") String schemaName,
@@ -240,7 +240,7 @@ public class IndexingConfiguration {
         documentPipelineRegistry,
         documentRepository,
         libraryRepository,
-        fileProcessingService,
+        documentIngestService,
         vectorChunkStore,
         storedDocumentSourceAccess,
         schemaName,
@@ -254,11 +254,11 @@ public class IndexingConfiguration {
   @Bean
   AttachmentIndexer attachmentIndexer(
       BoundedDownloader boundedDownloader,
-      FileProcessingService fileProcessingService,
+      DocumentIngestService documentIngestService,
       LibraryStorageQuotaService libraryStorageQuotaService,
       AttachmentProperties attachmentProperties) {
     return new AttachmentIndexer(
-        boundedDownloader, fileProcessingService, libraryStorageQuotaService, attachmentProperties);
+        boundedDownloader, documentIngestService, libraryStorageQuotaService, attachmentProperties);
   }
 
   /**
@@ -274,7 +274,7 @@ public class IndexingConfiguration {
   }
 
   @Bean
-  FileProcessingService fileProcessingService(
+  DocumentIngestService documentIngestService(
       DocumentPipelineRegistry documentPipelineRegistry,
       DocumentRepository documentRepository,
       VectorChunkStore vectorChunkStore,
@@ -287,7 +287,7 @@ public class IndexingConfiguration {
       AttachmentLimits mailAttachmentLimits,
       DocumentMetadataService documentMetadataService,
       ModelMetadataExtractor modelMetadataExtractor) {
-    return new FileProcessingService(
+    return new DocumentIngestService(
         documentPipelineRegistry,
         documentRepository,
         vectorChunkStore,
@@ -384,13 +384,13 @@ public class IndexingConfiguration {
   @Bean
   SourceIndexingExecutor asyncIndexingExecutor(
       DocumentService documentService,
-      FileProcessingService fileProcessingService,
+      DocumentIngestService documentIngestService,
       FilesystemPathAllowlist filesystemPathAllowlist,
       LibraryFolderService libraryFolderService,
       IndexingRunTemplate indexingRunTemplate) {
     return new AsyncIndexingExecutor(
         documentService,
-        fileProcessingService,
+        documentIngestService,
         filesystemPathAllowlist,
         libraryFolderService,
         indexingRunTemplate);
@@ -415,7 +415,7 @@ public class IndexingConfiguration {
   SourceIndexingExecutor urlIndexingExecutor(
       AutoindexCrawlerService autoindexCrawlerService,
       BoundedDownloader boundedDownloader,
-      FileProcessingService fileProcessingService,
+      DocumentIngestService documentIngestService,
       DocumentRepository documentRepository,
       SourceRequestPolicy sourceRequestPolicy,
       CrawlProperties crawlProperties,
@@ -424,7 +424,7 @@ public class IndexingConfiguration {
     return new UrlIndexingExecutor(
         autoindexCrawlerService,
         boundedDownloader,
-        fileProcessingService,
+        documentIngestService,
         documentRepository,
         crawlProperties,
         libraryFolderService,
@@ -440,7 +440,7 @@ public class IndexingConfiguration {
   @Bean
   SourceIndexingExecutor rssFeedIndexingExecutor(
       RssFeedParser rssFeedParser,
-      FileProcessingService fileProcessingService,
+      DocumentIngestService documentIngestService,
       DocumentRepository documentRepository,
       RssFeedStateRepository rssFeedStateRepository,
       AttachmentIndexer attachmentIndexer,
@@ -450,7 +450,7 @@ public class IndexingConfiguration {
       IndexingRunTemplate indexingRunTemplate) {
     return new RssFeedIndexingExecutor(
         rssFeedParser,
-        fileProcessingService,
+        documentIngestService,
         documentRepository,
         rssFeedStateRepository,
         attachmentIndexer,
@@ -470,7 +470,7 @@ public class IndexingConfiguration {
   ConfluenceIndexingExecutor confluenceIndexingExecutor(
       ConfluenceClientFactory confluenceClientFactory,
       ConfluenceProperties confluenceProperties,
-      FileProcessingService fileProcessingService,
+      DocumentIngestService documentIngestService,
       AttachmentIndexer attachmentIndexer,
       DocumentRepository documentRepository,
       SourceSyncStateRepository sourceSyncStateRepository,
@@ -479,7 +479,7 @@ public class IndexingConfiguration {
     return new ConfluenceIndexingExecutor(
         confluenceClientFactory,
         confluenceProperties,
-        fileProcessingService,
+        documentIngestService,
         attachmentIndexer,
         documentRepository,
         sourceSyncStateRepository,
@@ -496,7 +496,7 @@ public class IndexingConfiguration {
   S3IndexingExecutor s3IndexingExecutor(
       S3ClientFactory s3ClientFactory,
       S3Properties s3Properties,
-      FileProcessingService fileProcessingService,
+      DocumentIngestService documentIngestService,
       DocumentRepository documentRepository,
       LibraryFolderService libraryFolderService,
       StaleDocumentCleanupService staleDocumentCleanupService,
@@ -505,7 +505,7 @@ public class IndexingConfiguration {
     return new S3IndexingExecutor(
         s3ClientFactory,
         s3Properties,
-        fileProcessingService,
+        documentIngestService,
         documentRepository,
         libraryFolderService,
         staleDocumentCleanupService,
@@ -565,7 +565,7 @@ public class IndexingConfiguration {
   }
 
   /**
-   * Backs {@link FileProcessingService}'s concurrent embedding calls, one fixed-size pool shared
+   * Backs {@link DocumentIngestService}'s concurrent embedding calls, one fixed-size pool shared
    * across every indexing run in the process. It bounds the sub-batch fan-out of a splitting
    * document only - one that fits in a single sub-batch embeds on its caller's thread - so the
    * process-wide number of concurrent embedding calls is this pool plus the indexing and upload
@@ -607,7 +607,7 @@ public class IndexingConfiguration {
   }
 
   /**
-   * Backs {@code FileProcessingService#processUploadedFileAsync} - deliberately its own pool with
+   * Backs {@code DocumentIngestService#processUploadedFileAsync} - deliberately its own pool with
    * its own {@link UploadProperties#threadPool} rather than a share of {@link
    * #indexingTaskExecutor}. Both use {@code AbortPolicy}, so a full queue throws synchronously back
    * to the caller, which turns it into an immediate {@code FAILED} document or job row.

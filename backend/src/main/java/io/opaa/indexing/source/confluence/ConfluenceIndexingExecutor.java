@@ -5,8 +5,8 @@ import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestResult;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.StaleDocumentCleanupService;
@@ -80,7 +80,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
   private final ConfluenceClientFactory clientFactory;
   private final ConfluenceProperties properties;
-  private final FileProcessingService fileProcessingService;
+  private final DocumentIngestService documentIngestService;
   private final DocumentRepository documentRepository;
   private final SourceSyncStateRepository syncStateRepository;
   private final StaleDocumentCleanupService cleanupService;
@@ -91,7 +91,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   public ConfluenceIndexingExecutor(
       ConfluenceClientFactory clientFactory,
       ConfluenceProperties properties,
-      FileProcessingService fileProcessingService,
+      DocumentIngestService documentIngestService,
       AttachmentIndexer attachmentIndexer,
       DocumentRepository documentRepository,
       SourceSyncStateRepository syncStateRepository,
@@ -100,7 +100,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       IndexingRunTemplate runTemplate) {
     this.clientFactory = clientFactory;
     this.properties = properties;
-    this.fileProcessingService = fileProcessingService;
+    this.documentIngestService = documentIngestService;
     this.documentRepository = documentRepository;
     this.syncStateRepository = syncStateRepository;
     this.cleanupService = cleanupService;
@@ -560,8 +560,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     }
     boolean pageStored;
     try {
-      FileProcessingResult result =
-          fileProcessingService.ingest(
+      DocumentIngestResult result =
+          documentIngestService.ingest(
               DocumentIngest.text(run.library, pagePath, storageBody)
                   .sourceType(DocumentSourceType.CONFLUENCE)
                   .title(page.title())
@@ -577,7 +577,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       // A page whose row exists - stored now, unchanged, or rejected as text-free - carries its
       // attachments; one the quota or the pipeline refused has no row to hang them on.
       pageStored =
-          result != FileProcessingResult.QUOTA_EXCEEDED && result != FileProcessingResult.FAILED;
+          result != DocumentIngestResult.QUOTA_EXCEEDED && result != DocumentIngestResult.FAILED;
     } catch (Exception e) {
       IndexingRun.rethrowRunEnding(e);
       run.frame.recordFailure(pagePath, e);

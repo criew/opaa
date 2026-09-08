@@ -17,8 +17,8 @@ import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestResult;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingRunEventRepository;
@@ -61,7 +61,7 @@ class S3IndexingExecutorMinioTest {
 
   private final List<DocumentIngest> ingests = new CopyOnWriteArrayList<>();
   private final List<Document> storedDocuments = new ArrayList<>();
-  private FileProcessingService fileProcessingService;
+  private DocumentIngestService documentIngestService;
   private IndexingJobService indexingJobService;
   private IndexingRunEventRepository eventRepository;
   private DocumentRepository documentRepository;
@@ -81,12 +81,12 @@ class S3IndexingExecutorMinioTest {
 
   @BeforeEach
   void setUp() throws Exception {
-    fileProcessingService = mock(FileProcessingService.class);
-    when(fileProcessingService.ingest(any(), any()))
+    documentIngestService = mock(DocumentIngestService.class);
+    when(documentIngestService.ingest(any(), any()))
         .thenAnswer(
             invocation -> {
               ingests.add(invocation.getArgument(0));
-              return FileProcessingResult.PROCESSED;
+              return DocumentIngestResult.PROCESSED;
             });
     indexingJobService = mock(IndexingJobService.class);
     eventRepository = mock(IndexingRunEventRepository.class);
@@ -112,7 +112,7 @@ class S3IndexingExecutorMinioTest {
     return new S3IndexingExecutor(
         new S3ClientFactory(properties, TargetAddressValidator.disabled()),
         properties,
-        fileProcessingService,
+        documentIngestService,
         documentRepository,
         folderService,
         cleanupService,

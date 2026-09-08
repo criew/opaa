@@ -9,7 +9,7 @@ import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobTriggerSource;
@@ -42,7 +42,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * End-to-end coverage (ADR-0022 for HTTP_DIRECTORY): an {@code .eml} served from a web directory
  * has its attachments indexed as their own {@code Document} rows through the generalized attachment
  * path, and {@code cleanupVanished}'s attachment bookkeeping holds across changed, unchanged and
- * nested mails. Drives the real, Spring-wired {@link FileProcessingService} bean graph against a
+ * nested mails. Drives the real, Spring-wired {@link DocumentIngestService} bean graph against a
  * loopback {@code com.sun.net.httpserver.HttpServer}; only the executor itself is hand-built, so
  * the crawler/downloader can use {@link TargetAddressValidator#disabled()} (the loopback stub would
  * otherwise be blocked) without a context-splitting property override.
@@ -50,7 +50,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @io.opaa.test.OpaaIndexingIntegrationTest
 class UrlAttachmentIndexingIntegrationTest {
 
-  @Autowired private FileProcessingService fileProcessingService;
+  @Autowired private DocumentIngestService documentIngestService;
   @Autowired private IndexingJobService indexingJobService;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private IndexingRunTemplate indexingRunTemplate;
@@ -138,7 +138,7 @@ class UrlAttachmentIndexingIntegrationTest {
         new UrlIndexingExecutor(
             new AutoindexCrawlerService(validator, new CrawlProperties(0, 0, 0)),
             new BoundedDownloader(validator),
-            fileProcessingService,
+            documentIngestService,
             documentRepository,
             new CrawlProperties(0, 0, 0),
             folderService,

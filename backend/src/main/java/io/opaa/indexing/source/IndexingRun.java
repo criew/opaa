@@ -3,8 +3,8 @@ package io.opaa.indexing.source;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingOutcomes;
-import io.opaa.indexing.FileProcessingResult;
+import io.opaa.indexing.DocumentIngestOutcomes;
+import io.opaa.indexing.DocumentIngestResult;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingRunCost;
 import io.opaa.indexing.IndexingRunEventRecorder;
@@ -125,7 +125,7 @@ public final class IndexingRun {
    *
    * @return whether the item was processed
    */
-  public boolean recordOutcome(FileProcessingResult result, String reference) {
+  public boolean recordOutcome(DocumentIngestResult result, String reference) {
     return progress.recordOutcome(
         result, reference, events, () -> storageQuotaService.quotaExceededMessage(library.getId()));
   }
@@ -133,7 +133,7 @@ public final class IndexingRun {
   /** An item whose processing threw: logged, an {@code ERROR} entry, counted as failed. */
   public void recordFailure(String reference, Throwable failure) {
     log.error("Failed to process {} ({})", reference, sourceType, failure);
-    events.record(IndexingEventCategory.ERROR, FileProcessingOutcomes.FAILED_MESSAGE, reference);
+    events.record(IndexingEventCategory.ERROR, DocumentIngestOutcomes.FAILED_MESSAGE, reference);
     progress.recordFailed();
   }
 

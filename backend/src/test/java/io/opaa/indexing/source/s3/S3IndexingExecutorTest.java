@@ -24,8 +24,8 @@ import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestResult;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingRunCost;
@@ -78,7 +78,7 @@ class S3IndexingExecutorTest {
   private final List<Document> storedDocuments = new ArrayList<>();
   private final List<Path> ingestedFiles = new ArrayList<>();
 
-  private FileProcessingService fileProcessingService;
+  private DocumentIngestService documentIngestService;
   private IndexingJobService indexingJobService;
   private IndexingRunEventRepository eventRepository;
   private DocumentRepository documentRepository;
@@ -95,15 +95,15 @@ class S3IndexingExecutorTest {
 
   @BeforeEach
   void setUp() throws Exception {
-    fileProcessingService = mock(FileProcessingService.class);
-    when(fileProcessingService.ingest(any(), any()))
+    documentIngestService = mock(DocumentIngestService.class);
+    when(documentIngestService.ingest(any(), any()))
         .thenAnswer(
             invocation -> {
               DocumentIngest ingest = invocation.getArgument(0);
               Path file = DocumentIngests.fileOf(ingest);
               assertThat(file).exists();
               ingestedFiles.add(file);
-              return FileProcessingResult.PROCESSED;
+              return DocumentIngestResult.PROCESSED;
             });
     indexingJobService = mock(IndexingJobService.class);
     eventRepository = mock(IndexingRunEventRepository.class);
@@ -131,7 +131,7 @@ class S3IndexingExecutorTest {
     return new S3IndexingExecutor(
         clientFactory,
         properties,
-        fileProcessingService,
+        documentIngestService,
         documentRepository,
         folderService,
         cleanupService,
@@ -248,7 +248,7 @@ class S3IndexingExecutorTest {
 
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(
             DocumentIngests.that()
                 .file()
@@ -261,7 +261,7 @@ class S3IndexingExecutorTest {
                 .in(library)
                 .match(),
             any());
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(
             DocumentIngests.that()
                 .file()
@@ -318,7 +318,7 @@ class S3IndexingExecutorTest {
 
     assertThat(store.calls())
         .containsExactly("list dokumente/2025/", "get dokumente/2025/anders.pdf");
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(
             DocumentIngests.that()
                 .file()
@@ -355,7 +355,7 @@ class S3IndexingExecutorTest {
 
     executorOver(withoutETags).execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(
             DocumentIngests.that()
                 .file()
@@ -379,7 +379,7 @@ class S3IndexingExecutorTest {
 
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(
             DocumentIngests.that().file().at("s3://dokumente/2025/protokoll.pdf").match(), any());
     verify(eventRepository)
@@ -489,7 +489,7 @@ class S3IndexingExecutorTest {
             "head dokumente/2025/kalt",
             "head dokumente/2025/protokoll",
             "get dokumente/2025/protokoll");
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(
             DocumentIngests.that()
                 .file()
@@ -623,7 +623,7 @@ class S3IndexingExecutorTest {
                     IndexingEventCategory.UNREACHABLE,
                     "HTTP 500",
                     "s3://dokumente/2025/seltsam.pdf")));
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(DocumentIngests.that().file().at("s3://dokumente/2025/ok.pdf").match(), any());
     assertThat(reconciledPaths())
         .as("a failed object is neither gone nor readable - it stays present")
@@ -680,9 +680,9 @@ class S3IndexingExecutorTest {
         .save(
             argThat(
                 event(IndexingEventCategory.REJECTED, "s3:ListBucket fehlt", "dokumente/2025/")));
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(DocumentIngests.that().file().at("s3://dokumente/2025/a.pdf").match(), any());
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(DocumentIngests.that().file().at("s3://dokumente/2025/b.pdf").match(), any());
     verifyNoReconciliation();
     verify(indexingJobService)
@@ -867,7 +867,7 @@ class S3IndexingExecutorTest {
 
   @Test
   void aSameChecksumAfterANewETagIsSkippedNotFailedAndStaysPresent() throws Exception {
-    doReturn(FileProcessingResult.SKIPPED).when(fileProcessingService).ingest(any(), any());
+    doReturn(DocumentIngestResult.SKIPPED).when(documentIngestService).ingest(any(), any());
     store.put("dokumente", "2025/kopie.pdf", "gleicher inhalt", PDF);
     stored("s3://dokumente/2025/kopie.pdf", "e:vorher|15");
     UUID jobId = UUID.randomUUID();
@@ -886,7 +886,7 @@ class S3IndexingExecutorTest {
               ingestedFiles.add(DocumentIngests.fileOf(invocation.getArgument(0)));
               throw new IOException("Platte voll");
             })
-        .when(fileProcessingService)
+        .when(documentIngestService)
         .ingest(any(), any());
     store.put("dokumente", "2025/a.pdf", "a", PDF);
     UUID jobId = UUID.randomUUID();
@@ -924,11 +924,11 @@ class S3IndexingExecutorTest {
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(
             DocumentIngests.that().file().at("s3://dokumente/2025/q1/neu.pdf").inFolder(q1).match(),
             any());
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(
             DocumentIngests.that()
                 .file()
@@ -1123,9 +1123,9 @@ class S3IndexingExecutorTest {
               DocumentIngest ingest = invocation.getArgument(0);
               assertThat(DocumentIngests.fileOf(ingest)).exists();
               ingested.add(ingest.filePath());
-              return FileProcessingResult.PROCESSED;
+              return DocumentIngestResult.PROCESSED;
             })
-        .when(fileProcessingService)
+        .when(documentIngestService)
         .ingest(any(), any());
     UUID jobId = UUID.randomUUID();
 
@@ -1240,7 +1240,7 @@ class S3IndexingExecutorTest {
             "head dokumente/2025/neu.pdf",
             "get dokumente/2025/neu.pdf",
             "head dokumente/2025/weg.pdf");
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(DocumentIngests.that().file().at("s3://dokumente/2025/neu.pdf").match(), any());
     verify(documentRepository).delete(attachment);
     verify(documentRepository).delete(gone);

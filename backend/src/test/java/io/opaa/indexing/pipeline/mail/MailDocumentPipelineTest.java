@@ -37,9 +37,9 @@ import org.springframework.ai.document.Document;
  * recursively processed by this class (ADR-0022, Entscheidung 10) - it is reported via {@link
  * DocumentPipelineResult#discoveredAttachments()} instead, for the generalized attachment path
  * ({@code io.opaa.indexing.source.attachment.AttachmentIndexer}, driven by {@code
- * FileProcessingService}) to turn into its own {@code Document}. Recursion (Mail-in-Mail),
+ * DocumentIngestService}) to turn into its own {@code Document}. Recursion (Mail-in-Mail),
  * attachment-count/depth limits and format admission for an attachment therefore all live one level
- * up - see {@code AttachmentIndexerTest}/{@code FileProcessingServiceTest} for that coverage
+ * up - see {@code AttachmentIndexerTest}/{@code DocumentIngestServiceTest} for that coverage
  * instead.
  *
  * <p>EML fixtures are built at test time through mime4j's own writer ({@link DefaultMessageWriter})
@@ -526,7 +526,7 @@ class MailDocumentPipelineTest {
     assertThat(result.chunks().getFirst().getText()).contains("Zur Kenntnis.");
     // Mail-in-Mail recursion is the generalized attachment path's job now: running the
     // reported attachment's own bytes back through this same pipeline is exactly what
-    // FileProcessingService#processUrlFile does once AttachmentIndexer routes it there.
+    // DocumentIngestService#processUrlFile does once AttachmentIndexer routes it there.
     assertThat(result.discoveredAttachments()).hasSize(1);
     DiscoveredAttachment nested = result.discoveredAttachments().getFirst();
     assertThat(nested.fileName()).isEqualTo("weitergeleitet.eml");

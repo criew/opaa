@@ -16,8 +16,8 @@ import io.opaa.common.ValidationException;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestResult;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.llm.ActiveChatModelDescription;
@@ -62,7 +62,7 @@ class ModelMetadataExtractionIntegrationTest {
   private static final Path classTempDir =
       OpaaIndexingTestDirectory.subdirectory("model-metadata-extraction");
 
-  @Autowired private FileProcessingService fileProcessingService;
+  @Autowired private DocumentIngestService documentIngestService;
   @Autowired private DocumentMetadataService documentMetadataService;
   @Autowired private DocumentMetadataValueRepository valueRepository;
   @Autowired private DocumentKeywordRepository keywordRepository;
@@ -240,7 +240,7 @@ class ModelMetadataExtractionIntegrationTest {
         .thenReturn(new ActiveChatModelDescription("http://localhost:11434/v1", "test-model"));
     when(chatModel.call(any(Prompt.class))).thenThrow(new IllegalStateException("model down"));
 
-    assertThat(ingest(file("unterlage-ausfall.txt"))).isEqualTo(FileProcessingResult.PROCESSED);
+    assertThat(ingest(file("unterlage-ausfall.txt"))).isEqualTo(DocumentIngestResult.PROCESSED);
 
     Document document = onlyDocument();
     assertThat(document.getChunkCount()).isPositive();
@@ -580,8 +580,8 @@ class ModelMetadataExtractionIntegrationTest {
         .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage(json)))));
   }
 
-  private FileProcessingResult ingest(Path file) throws IOException {
-    return fileProcessingService.ingest(DocumentIngest.localFile(library, file).build(), null);
+  private DocumentIngestResult ingest(Path file) throws IOException {
+    return documentIngestService.ingest(DocumentIngest.localFile(library, file).build(), null);
   }
 
   private Document onlyDocument() {

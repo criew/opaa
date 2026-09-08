@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * Builds the registry the production wiring builds today - the Tika fallback pipeline and nothing
- * else - so a test that only cares about {@link FileProcessingService} keeps stubbing {@link
+ * else - so a test that only cares about {@link DocumentIngestService} keeps stubbing {@link
  * DocumentService} and {@link ChunkingService} directly, exactly as before the pipeline abstraction
  * existed.
  *

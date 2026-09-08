@@ -25,7 +25,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * The end-to-end proof that a representative Confluence page - macros, a table, a hierarchy - is
  * answerable after chunking: the storage body goes through {@link
- * FileProcessingService#processConfluencePage}, is cut by {@link ConfluenceDocumentPipeline}, and
+ * DocumentIngestService#processConfluencePage}, is cut by {@link ConfluenceDocumentPipeline}, and
  * the stored chunks carry the pipeline id, the section as Fundort, the space and hierarchy path,
  * and the table row a question about the deadline would hit. Recorded as a test, not as a manual
  * spot check; the fake embedding model ties every vector, so retrieval is asserted at threshold 0,
@@ -37,7 +37,7 @@ class ConfluencePageIndexingIntegrationTest {
   private static final String PAGE_URL =
       "https://wiki.behoerde.example/confluence/pages/viewpage.action?pageId=102";
 
-  @Autowired private FileProcessingService fileProcessingService;
+  @Autowired private DocumentIngestService documentIngestService;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private VectorStore vectorStore;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -93,8 +93,8 @@ class ConfluencePageIndexingIntegrationTest {
             + "<ac:structured-macro ac:name=\"jira\"><ac:parameter ac:name=\"jqlQuery\">project ="
             + " BAU</ac:parameter></ac:structured-macro>";
 
-    FileProcessingResult result =
-        fileProcessingService.ingest(
+    DocumentIngestResult result =
+        documentIngestService.ingest(
             DocumentIngests.confluencePage(
                 library,
                 storageBody,
@@ -105,7 +105,7 @@ class ConfluencePageIndexingIntegrationTest {
                 new SourceDocumentContext("ENG", "Handbuch / Kapitel 1")),
             null);
 
-    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
     Document document =
         documentRepository.findByLibraryIdAndFilePath(library.getId(), PAGE_URL).orElseThrow();
     assertThat(document.getStatus()).isEqualTo(DocumentStatus.INDEXED);

@@ -5,8 +5,8 @@ import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestResult;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.source.IndexingRun;
@@ -60,7 +60,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
 
   private final AutoindexCrawlerService crawlerService;
   private final BoundedDownloader downloader;
-  private final FileProcessingService fileProcessingService;
+  private final DocumentIngestService documentIngestService;
   private final DocumentRepository documentRepository;
   private final CrawlProperties crawlProperties;
   private final LibraryFolderService folderService;
@@ -70,7 +70,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   public UrlIndexingExecutor(
       AutoindexCrawlerService crawlerService,
       BoundedDownloader downloader,
-      FileProcessingService fileProcessingService,
+      DocumentIngestService documentIngestService,
       DocumentRepository documentRepository,
       CrawlProperties crawlProperties,
       LibraryFolderService folderService,
@@ -78,7 +78,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       IndexingRunTemplate runTemplate) {
     this.crawlerService = crawlerService;
     this.downloader = downloader;
-    this.fileProcessingService = fileProcessingService;
+    this.documentIngestService = documentIngestService;
     this.documentRepository = documentRepository;
     this.crawlProperties = crawlProperties;
     this.folderService = folderService;
@@ -317,8 +317,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                 credentialScope);
       }
       long fileSize = Files.size(tempFile);
-      FileProcessingResult result =
-          fileProcessingService.ingest(
+      DocumentIngestResult result =
+          documentIngestService.ingest(
               DocumentIngest.builder(targetLibrary)
                   .file(tempFile, fileSize)
                   .filePath(entry.url())
@@ -368,7 +368,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   /**
    * Assigns {@code entryUrl}'s document, and recursively its attachments, to the folder the crawled
    * URL path maps to (ADR-0020), materializing that chain on first use. Runs in the executor rather
-   * than in {@code FileProcessingService#ingest}, because a folder must also be assigned to an
+   * than in {@code DocumentIngestService#ingest}, because a folder must also be assigned to an
    * entry this run never handed over - one skipped as unchanged, or rejected - as long as a
    * document row exists. Failures are logged, never rethrown.
    */

@@ -11,7 +11,7 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.StaleDocumentCleanupService;
@@ -75,7 +75,7 @@ class UrlIndexingExecutorTest {
         new UrlIndexingExecutor(
             new AutoindexCrawlerService(enabledValidator),
             new BoundedDownloader(enabledValidator),
-            mock(FileProcessingService.class),
+            mock(DocumentIngestService.class),
             documentRepository,
             new CrawlProperties(0, 0, 0),
             mock(io.opaa.library.LibraryFolderService.class),

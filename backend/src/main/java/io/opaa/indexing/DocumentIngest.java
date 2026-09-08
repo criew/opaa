@@ -11,7 +11,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * One document to take into a library, as {@link FileProcessingService#ingest} sees it: its
+ * One document to take into a library, as {@link DocumentIngestService#ingest} sees it: its
  * identity, its content and the provenance its source declares. The sources differ only in the
  * values they put here, never in the sequence that runs over them.
  *

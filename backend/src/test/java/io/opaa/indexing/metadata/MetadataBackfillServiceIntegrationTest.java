@@ -15,8 +15,8 @@ import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestResult;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -62,7 +62,7 @@ class MetadataBackfillServiceIntegrationTest {
       OpaaIndexingTestDirectory.subdirectory("metadata-backfill");
 
   @Autowired private MetadataBackfillService backfillService;
-  @Autowired private FileProcessingService fileProcessingService;
+  @Autowired private DocumentIngestService documentIngestService;
   @Autowired private DocumentMetadataService documentMetadataService;
   @Autowired private DocumentMetadataValueRepository valueRepository;
   @Autowired private DocumentRepository documentRepository;
@@ -254,8 +254,8 @@ class MetadataBackfillServiceIntegrationTest {
         """);
     for (Path file : List.of(leistung, faq)) {
       assertThat(
-              fileProcessingService.ingest(DocumentIngest.localFile(library, file).build(), null))
-          .isEqualTo(FileProcessingResult.PROCESSED);
+              documentIngestService.ingest(DocumentIngest.localFile(library, file).build(), null))
+          .isEqualTo(DocumentIngestResult.PROCESSED);
     }
     Document leistungDocument = documentNamed("13_fabrikneues-fahrzeug-anmelden.md");
     Document faqDocument = documentNamed("15_faq-ausweisbeantragung.md");
@@ -421,7 +421,7 @@ class MetadataBackfillServiceIntegrationTest {
     assertThat(progress().awaitingConnectorRunDocuments()).isEqualTo(1);
 
     assertThat(
-            fileProcessingService.ingest(
+            documentIngestService.ingest(
                 DocumentIngests.confluencePage(
                     library,
                     "<h1>Uebersicht</h1><p>Die Verwaltung erhebt Entgelte fuer Amtshandlungen im"
@@ -432,7 +432,7 @@ class MetadataBackfillServiceIntegrationTest {
                     java.time.Instant.parse("2026-03-12T10:00:00Z"),
                     null),
                 null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+        .isEqualTo(DocumentIngestResult.PROCESSED);
 
     CoreMetadata core = documentMetadataService.coreMetadataFor(pageId);
     assertThat(core.title()).isEqualTo("Gebuehrensatzung 2024");
@@ -599,8 +599,8 @@ class MetadataBackfillServiceIntegrationTest {
         """);
     for (Path file : List.of(dienstanweisung, protokoll, satzung)) {
       assertThat(
-              fileProcessingService.ingest(DocumentIngest.localFile(library, file).build(), null))
-          .isEqualTo(FileProcessingResult.PROCESSED);
+              documentIngestService.ingest(DocumentIngest.localFile(library, file).build(), null))
+          .isEqualTo(DocumentIngestResult.PROCESSED);
     }
     jdbcTemplate.update("DELETE FROM document_metadata_values");
     jdbcTemplate.update("UPDATE documents SET metadata_extraction_version = NULL");

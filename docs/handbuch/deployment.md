@@ -122,7 +122,7 @@ Embedding-Modells beide Werte gemeinsam ändern und die Datenbank zurücksetzen.
 > ist das kein Fehler, sondern
 > eine Erweiterung dessen, was in die Einbettung eingeht — ein aus dem Dateinamen abgeleiteter,
 > bereinigter Titel als Kontext-Präfix, aber nur für Chunks eines Dokuments, das beim Chunking in 2
-> oder mehr Chunks zerfiel (`FileProcessingService#storeChunks`; ein einchunkiges Dokument bleibt
+> oder mehr Chunks zerfiel (`DocumentIngestService#storeChunks`; ein einchunkiges Dokument bleibt
 > bit-identisch zum vorherigen Stand). Der gespeicherte Chunk-Text (`content` in `vector_store`) und
 > damit jedes Zitat bleiben in beiden Fällen unverändert, nur der Vektor selbst ändert sich, und auch
 > nur für mehrchunkige Dokumente. **Das ist keine reine Verbesserung, sondern verschiebt auch das

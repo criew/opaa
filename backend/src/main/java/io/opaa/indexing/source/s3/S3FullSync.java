@@ -6,8 +6,8 @@ import io.opaa.common.ByteSizes;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestResult;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.StaleDocumentCleanupService;
@@ -91,7 +91,7 @@ final class S3FullSync implements AutoCloseable {
   private final IndexingRun frame;
   private final S3ObjectStore store;
   private final S3Properties properties;
-  private final FileProcessingService fileProcessingService;
+  private final DocumentIngestService documentIngestService;
   private final DocumentRepository documentRepository;
   private final StaleDocumentCleanupService cleanupService;
   private final List<S3Scope> scopes;
@@ -141,7 +141,7 @@ final class S3FullSync implements AutoCloseable {
       S3ObjectStore store,
       S3SourceSettings settings,
       S3Properties properties,
-      FileProcessingService fileProcessingService,
+      DocumentIngestService documentIngestService,
       DocumentRepository documentRepository,
       LibraryFolderService folderService,
       StaleDocumentCleanupService cleanupService,
@@ -151,7 +151,7 @@ final class S3FullSync implements AutoCloseable {
     this.frame = frame;
     this.store = store;
     this.properties = properties;
-    this.fileProcessingService = fileProcessingService;
+    this.documentIngestService = documentIngestService;
     this.documentRepository = documentRepository;
     this.cleanupService = cleanupService;
     this.scopes = settings.scopes();
@@ -680,8 +680,8 @@ final class S3FullSync implements AutoCloseable {
       SourceDocumentContext context =
           new SourceDocumentContext(scope.bucket(), hierarchyPath(scope, object.key()));
       ReconcilingAttachmentAccess attachmentAccess = frame.attachmentAccess(context);
-      FileProcessingResult result =
-          fileProcessingService.ingest(
+      DocumentIngestResult result =
+          documentIngestService.ingest(
               DocumentIngest.builder(frame.library())
                   .file(file, download.size())
                   .filePath(filePath)
@@ -701,7 +701,7 @@ final class S3FullSync implements AutoCloseable {
         documentRepository
             .findByLibraryIdAndFilePath(frame.library().getId(), filePath)
             .ifPresent(document -> applyFolder(document, folderId));
-      } else if (result == FileProcessingResult.SKIPPED) {
+      } else if (result == DocumentIngestResult.SKIPPED) {
         // a new feature over the same bytes (multipart re-upload, re-encryption): the row keeps
         // its id and chunks, only the feature was refreshed
         log.info(

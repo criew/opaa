@@ -3,7 +3,7 @@ package io.opaa.indexing.pipeline;
 /**
  * The two chunk metadata keys carrying the version of the verfahren that produced a chunk
  * (ingestion-pipelines.md, Querschnittsregel (d)). Written by {@code
- * FileProcessingService#storeChunks} onto every chunk and read back by {@code
+ * DocumentIngestService#storeChunks} onto every chunk and read back by {@code
  * io.opaa.indexing.PipelineReindexService} to select "every chunk below version N".
  *
  * <p>Deliberately chunk metadata rather than a column: {@code vector_store} is created by Spring AI

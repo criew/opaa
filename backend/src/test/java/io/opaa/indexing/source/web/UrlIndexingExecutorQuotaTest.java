@@ -21,8 +21,8 @@ import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.AttachmentOutcome;
 import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestResult;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingRunCost;
@@ -60,7 +60,7 @@ class UrlIndexingExecutorQuotaTest {
 
   @TempDir Path tempDir;
 
-  private FileProcessingService fileProcessingService;
+  private DocumentIngestService documentIngestService;
   private IndexingJobService indexingJobService;
   private DocumentRepository documentRepository;
   private IndexingRunEventRepository indexingRunEventRepository;
@@ -72,7 +72,7 @@ class UrlIndexingExecutorQuotaTest {
   void setUp() throws IOException, InterruptedException {
     AutoindexCrawlerService crawlerService = mock(AutoindexCrawlerService.class);
     BoundedDownloader downloader = mock(BoundedDownloader.class);
-    fileProcessingService = mock(FileProcessingService.class);
+    documentIngestService = mock(DocumentIngestService.class);
     indexingJobService = mock(IndexingJobService.class);
     documentRepository = mock(DocumentRepository.class);
     when(documentRepository.findByLibraryIdAndFilePath(any(), anyString()))
@@ -119,7 +119,7 @@ class UrlIndexingExecutorQuotaTest {
         new UrlIndexingExecutor(
             crawlerService,
             downloader,
-            fileProcessingService,
+            documentIngestService,
             documentRepository,
             new CrawlProperties(0, 0, 0),
             mock(io.opaa.library.LibraryFolderService.class),
@@ -132,9 +132,9 @@ class UrlIndexingExecutorQuotaTest {
                 storageQuotaService));
   }
 
-  private void stubProcessUrlFile(org.mockito.stubbing.Answer<FileProcessingResult> answer)
+  private void stubProcessUrlFile(org.mockito.stubbing.Answer<DocumentIngestResult> answer)
       throws IOException {
-    when(fileProcessingService.ingest(
+    when(documentIngestService.ingest(
             DocumentIngests.that()
                 .file()
                 .in(library)
@@ -148,7 +148,7 @@ class UrlIndexingExecutorQuotaTest {
 
   @Test
   void aFileOverTheLibraryStorageQuotaIsSkippedAndRecordedAsARejectedEvent() throws IOException {
-    stubProcessUrlFile(invocation -> FileProcessingResult.QUOTA_EXCEEDED);
+    stubProcessUrlFile(invocation -> DocumentIngestResult.QUOTA_EXCEEDED);
     when(storageQuotaService.quotaExceededMessage(library.getId()))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft (10 GB von 10 GB belegt)");
 
@@ -198,7 +198,7 @@ class UrlIndexingExecutorQuotaTest {
           access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
           access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
           access.progress().recordAttachment(AttachmentOutcome.FAILED);
-          return FileProcessingResult.PROCESSED;
+          return DocumentIngestResult.PROCESSED;
         });
 
     executor.execute(jobId, library, IndexingRunMode.FULL);

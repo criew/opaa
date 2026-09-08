@@ -12,7 +12,7 @@ import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingJobService;
@@ -60,7 +60,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @OpaaIndexingIntegrationTest
 class S3FolderMappingIntegrationTest {
 
-  @Autowired private FileProcessingService fileProcessingService;
+  @Autowired private DocumentIngestService documentIngestService;
   @Autowired private IndexingJobService indexingJobService;
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private DocumentRepository documentRepository;
@@ -166,7 +166,7 @@ class S3FolderMappingIntegrationTest {
     return new S3IndexingExecutor(
         clientFactory,
         S3Properties.defaults(),
-        fileProcessingService,
+        documentIngestService,
         documentRepository,
         folderService,
         cleanupService,

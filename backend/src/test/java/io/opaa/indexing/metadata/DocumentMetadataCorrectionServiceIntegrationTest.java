@@ -16,8 +16,8 @@ import io.opaa.common.ValidationException;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestResult;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.library.AssetGrant;
 import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibrary;
@@ -60,7 +60,7 @@ class DocumentMetadataCorrectionServiceIntegrationTest {
   @Autowired private DocumentMetadataCorrectionService correctionService;
   @Autowired private DocumentMetadataService documentMetadataService;
   @Autowired private MetadataBackfillService backfillService;
-  @Autowired private FileProcessingService fileProcessingService;
+  @Autowired private DocumentIngestService documentIngestService;
   @Autowired private DocumentMetadataValueRepository valueRepository;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
@@ -537,8 +537,8 @@ class DocumentMetadataCorrectionServiceIntegrationTest {
   private Document indexedIn(KnowledgeLibrary target, String fileName) throws IOException {
     Path file = Path.of(target.getSourcePath()).resolve(fileName);
     writePdf(file, fileName.replace(".pdf", "").replace('_', ' '));
-    assertThat(fileProcessingService.ingest(DocumentIngest.localFile(target, file).build(), null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+    assertThat(documentIngestService.ingest(DocumentIngest.localFile(target, file).build(), null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
     return documentRepository.findAll().stream()
         .filter(document -> fileName.equals(document.getFileName()))
         .filter(document -> target.getId().equals(document.getLibraryId()))

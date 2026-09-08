@@ -43,11 +43,11 @@ import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
 
 /**
- * Unit tests for the concurrent embedding path of {@link FileProcessingService} (private {@code
+ * Unit tests for the concurrent embedding path of {@link DocumentIngestService} (private {@code
  * addToVectorStore}/{@code subBatchSize}, exercised only via {@link
- * FileProcessingService#processFile}) - no real Ollama, a fake {@link VectorStoreWriter} standing
+ * DocumentIngestService#processFile}) - no real Ollama, a fake {@link VectorStoreWriter} standing
  * in for the terminal write call {@link VectorChunkStore#addChunks} makes after embedding. {@link
- * FileProcessingServiceTest} already covers {@code embeddingConcurrency == 1} exhaustively (its
+ * DocumentIngestServiceTest} already covers {@code embeddingConcurrency == 1} exhaustively (its
  * {@code defaultIndexingProperties()} always uses 1); this class covers only what changes above 1.
  *
  * <p><b>Deterministic where it matters, not everywhere.</b> {@link
@@ -60,7 +60,7 @@ import org.springframework.ai.vectorstore.VectorStore;
  * previously relied on a sleep-widened race window, which this replaces.
  */
 @ExtendWith(MockitoExtension.class)
-class FileProcessingServiceEmbeddingConcurrencyTest {
+class DocumentIngestServiceEmbeddingConcurrencyTest {
 
   @Mock private DocumentService documentService;
   @Mock private ChunkingService chunkingService;
@@ -109,12 +109,12 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     executorsToShutdown.forEach(ExecutorService::shutdownNow);
   }
 
-  private FileProcessingService service(
+  private DocumentIngestService service(
       VectorStoreWriter vectorStoreWriter, int embeddingConcurrency, int batchSize) {
     IndexingProperties properties =
         new IndexingProperties(1000, 0, batchSize, null, null, null, null, embeddingConcurrency);
     // Mirrors IndexingConfiguration#embeddingTaskExecutor exactly: the concurrency bound
-    // is the executor's own pool size, not anything FileProcessingService enforces itself - a
+    // is the executor's own pool size, not anything DocumentIngestService enforces itself - a
     // test executor sized differently from embeddingConcurrency would not actually exercise the
     // bound production relies on.
     ExecutorService executor = Executors.newFixedThreadPool(Math.max(1, embeddingConcurrency));
@@ -127,7 +127,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
             vectorStoreWriter,
             fullTextChunkStore,
             new EmbeddingRateEstimator(4.0));
-    return new FileProcessingService(
+    return new DocumentIngestService(
         TestPipelineRegistries.fallbackOnly(documentService, chunkingService),
         documentRepository,
         vectorChunkStore,
@@ -166,12 +166,12 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     stubParseAndChunk(file, "many-chunks.txt", chunksOf(9));
 
     RecordingVectorStoreWriter writer = new RecordingVectorStoreWriter(null);
-    FileProcessingService service = service(writer, 1, 2);
+    DocumentIngestService service = service(writer, 1, 2);
 
-    FileProcessingResult result =
+    DocumentIngestResult result =
         service.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
-    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
     assertThat(writer.writeCalls).hasSize(1);
     assertThat(writer.writeCalls.getFirst()).hasSize(9);
     assertThat(writer.threadNames).containsExactly(Thread.currentThread().getName());
@@ -194,12 +194,12 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
 
     CyclicBarrier concurrencyProof = new CyclicBarrier(3);
     RecordingVectorStoreWriter writer = new RecordingVectorStoreWriter(concurrencyProof);
-    FileProcessingService service = service(writer, 3, 2);
+    DocumentIngestService service = service(writer, 3, 2);
 
-    FileProcessingResult result =
+    DocumentIngestResult result =
         service.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
-    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
     assertThat(writer.writeCalls).hasSize(3);
     assertThat(writer.writeCalls.stream().mapToInt(List::size).sum()).isEqualTo(6);
     assertThat(writer.threadNames).doesNotContain(Thread.currentThread().getName());
@@ -227,12 +227,12 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     stubParseAndChunk(file, "one-chunk.txt", chunksOf(1));
 
     RecordingVectorStoreWriter writer = new RecordingVectorStoreWriter(null);
-    FileProcessingService service = service(writer, 8, 50);
+    DocumentIngestService service = service(writer, 8, 50);
 
-    FileProcessingResult result =
+    DocumentIngestResult result =
         service.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
-    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
     assertThat(writer.writeCalls).hasSize(1);
     assertThat(writer.threadNames).containsExactly(Thread.currentThread().getName());
   }
@@ -250,12 +250,12 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     stubParseAndChunk(file, "few-chunks-high-batch-size.txt", chunksOf(3));
 
     RecordingVectorStoreWriter writer = new RecordingVectorStoreWriter(null);
-    FileProcessingService service = service(writer, 3, 50);
+    DocumentIngestService service = service(writer, 3, 50);
 
-    FileProcessingResult result =
+    DocumentIngestResult result =
         service.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
-    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
     assertThat(writer.writeCalls).hasSize(3);
     assertThat(writer.threadNames).doesNotContain(Thread.currentThread().getName());
   }
@@ -269,7 +269,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     Files.writeString(file, "irrelevant");
     stubParseAndChunk(file, "failing-batch.txt", chunksOf(4));
 
-    FileProcessingService service = service(new FailingVectorStoreWriter(), 2, 2);
+    DocumentIngestService service = service(new FailingVectorStoreWriter(), 2, 2);
 
     assertThatThrownBy(
             () -> service.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null))
@@ -277,7 +277,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
         .hasMessage("embedding call blew up");
 
     verify(documentRepository)
-        .markFailedWithoutChunks(any(), eq(FileProcessingService.PROCESSING_FAILED_MESSAGE));
+        .markFailedWithoutChunks(any(), eq(DocumentIngestService.PROCESSING_FAILED_MESSAGE));
   }
 
   /**

@@ -43,9 +43,9 @@ import org.springframework.ai.document.ContentFormatter;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.scheduling.annotation.Async;
 
-public class FileProcessingService {
+public class DocumentIngestService {
 
-  private static final Logger log = LoggerFactory.getLogger(FileProcessingService.class);
+  private static final Logger log = LoggerFactory.getLogger(DocumentIngestService.class);
 
   /** The row's {@code error_message} for a document the pipeline read and found empty. */
   static final String NO_CONTENT_MESSAGE = "Aus der Datei konnte kein Text extrahiert werden";
@@ -101,7 +101,7 @@ public class FileProcessingService {
    */
   private final ModelMetadataExtractor modelMetadataExtractor;
 
-  public FileProcessingService(
+  public DocumentIngestService(
       DocumentPipelineRegistry pipelineRegistry,
       DocumentRepository documentRepository,
       VectorChunkStore vectorChunkStore,
@@ -141,11 +141,11 @@ public class FileProcessingService {
    *
    * @return {@code PROCESSED} once the row is {@code INDEXED} with its new chunks; {@code SKIPPED}
    *     for unchanged content and for a row that vanished meanwhile; otherwise the rejection or
-   *     failure {@link FileProcessingResult} names
+   *     failure {@link DocumentIngestResult} names
    * @throws IOException when the content cannot be read; an exception out of parsing, embedding or
    *     the final update is rethrown after the row was marked {@code FAILED}
    */
-  public FileProcessingResult ingest(DocumentIngest ingest, AttachmentAccess attachmentAccess)
+  public DocumentIngestResult ingest(DocumentIngest ingest, AttachmentAccess attachmentAccess)
       throws IOException {
     KnowledgeLibrary library = ingest.library();
     String filePath = ingest.filePath();
@@ -175,7 +175,7 @@ public class FileProcessingService {
       if (existing.isEmpty()) {
         log.warn("Document {} no longer exists, skipping", filePath);
         metrics.recordSkipped();
-        return FileProcessingResult.SKIPPED;
+        return DocumentIngestResult.SKIPPED;
       }
       doc = existing.get();
       replacingExistingChunks = true;
@@ -187,7 +187,7 @@ public class FileProcessingService {
         refreshProvenance(existingDoc, ingest, checksum);
         log.info("Skipping unchanged document (same checksum): {}", filePath);
         metrics.recordSkipped();
-        return FileProcessingResult.SKIPPED;
+        return DocumentIngestResult.SKIPPED;
       }
       // The row is still present when the quota is checked, so the check measures the size
       // delta: the full new size against a usedBytes that still includes the old size would
@@ -243,8 +243,8 @@ public class FileProcessingService {
       if (ingest.reindex() && parsed.outcome() != DocumentPipelineResult.Outcome.CHUNKED) {
         log.warn("Re-index of {} ended {}, keeping it as it is", filePath, parsed.outcome());
         return parsed.outcome() == DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT
-            ? FileProcessingResult.NO_EXTRACTABLE_TEXT
-            : FileProcessingResult.FAILED;
+            ? DocumentIngestResult.NO_EXTRACTABLE_TEXT
+            : DocumentIngestResult.FAILED;
       }
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
@@ -281,9 +281,9 @@ public class FileProcessingService {
       }
       storeChunks(doc, chunks, contextTitle, pipeline, selection.routingExtension(), coreMetadata);
 
-      FileProcessingResult result =
+      DocumentIngestResult result =
           markConnectorIndexed(documentId, chunks.size(), checksum, ingest.changeMarker());
-      if (result == FileProcessingResult.SKIPPED) {
+      if (result == DocumentIngestResult.SKIPPED) {
         return result;
       }
     } catch (Exception e) {
@@ -295,7 +295,7 @@ public class FileProcessingService {
     }
 
     metrics.recordProcessed();
-    return FileProcessingResult.PROCESSED;
+    return DocumentIngestResult.PROCESSED;
   }
 
   /**
@@ -382,10 +382,10 @@ public class FileProcessingService {
     return doc;
   }
 
-  private FileProcessingResult quotaExceeded(String filePath, KnowledgeLibrary library) {
+  private DocumentIngestResult quotaExceeded(String filePath, KnowledgeLibrary library) {
     log.warn("Skipping {}: library {} storage quota would be exceeded", filePath, library.getId());
     metrics.recordSkipped();
-    return FileProcessingResult.QUOTA_EXCEEDED;
+    return DocumentIngestResult.QUOTA_EXCEEDED;
   }
 
   /**
@@ -494,10 +494,10 @@ public class FileProcessingService {
    * can be deleted while {@link #storeChunks} runs, and a plain save would re-insert it as a
    * zombie.
    *
-   * @return {@link FileProcessingResult#SKIPPED} if the row was gone - its just-written chunks are
-   *     removed again here - otherwise {@link FileProcessingResult#PROCESSED}
+   * @return {@link DocumentIngestResult#SKIPPED} if the row was gone - its just-written chunks are
+   *     removed again here - otherwise {@link DocumentIngestResult#PROCESSED}
    */
-  private FileProcessingResult markConnectorIndexed(
+  private DocumentIngestResult markConnectorIndexed(
       UUID documentId, int chunkCount, String checksum, String lastModifiedRemote) {
     int updated =
         documentRepository.markIndexedFromSource(
@@ -508,9 +508,9 @@ public class FileProcessingService {
           documentId);
       vectorChunkStore.deleteByDocumentId(documentId);
       metrics.recordSkipped();
-      return FileProcessingResult.SKIPPED;
+      return DocumentIngestResult.SKIPPED;
     }
-    return FileProcessingResult.PROCESSED;
+    return DocumentIngestResult.PROCESSED;
   }
 
   /**
@@ -522,7 +522,7 @@ public class FileProcessingService {
    *     PARSE_FAILED}, where the previous chunks and count both stand
    * @param errorMessage the German, user-facing reason the row carries
    */
-  private FileProcessingResult markConnectorFailed(
+  private DocumentIngestResult markConnectorFailed(
       UUID documentId, boolean chunksRemoved, String errorMessage) {
     int updated =
         chunksRemoved
@@ -531,27 +531,27 @@ public class FileProcessingService {
     if (updated == 0) {
       log.warn("Document {} was deleted before it could be marked FAILED", documentId);
       metrics.recordSkipped();
-      return FileProcessingResult.SKIPPED;
+      return DocumentIngestResult.SKIPPED;
     }
     metrics.recordFailed();
-    return FileProcessingResult.FAILED;
+    return DocumentIngestResult.FAILED;
   }
 
   /**
    * The {@code FAILED} transition for a document without a usable chunk: marked with {@link
    * DocumentService#NO_EXTRACTABLE_TEXT_MESSAGE}, always with {@code chunk_count = 0}.
    */
-  private FileProcessingResult markConnectorRejected(UUID documentId) {
+  private DocumentIngestResult markConnectorRejected(UUID documentId) {
     int updated =
         documentRepository.markFailedWithoutChunks(
             documentId, DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
     if (updated == 0) {
       log.warn("Document {} was deleted before it could be marked as rejected", documentId);
       metrics.recordSkipped();
-      return FileProcessingResult.SKIPPED;
+      return DocumentIngestResult.SKIPPED;
     }
     metrics.recordSkipped();
-    return FileProcessingResult.NO_EXTRACTABLE_TEXT;
+    return DocumentIngestResult.NO_EXTRACTABLE_TEXT;
   }
 
   /**

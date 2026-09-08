@@ -13,8 +13,8 @@ import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.EmbeddingRateEstimator;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestResult;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
@@ -56,7 +56,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * The core fields end to end (ADR-0024): a PDF, a DOCX and a Markdown file with frontmatter go
- * through {@link FileProcessingService#processFile}; their values land at the document with origin
+ * through {@link DocumentIngestService#processFile}; their values land at the document with origin
  * and extraction version, their filterable keys on every chunk, and a manual value survives a
  * re-extraction that rewrites the chunk metadata without touching the chunks. Also the three
  * further Dokumentart sources against the seeded vocabulary of the database: the Kompositum ending
@@ -68,7 +68,7 @@ class CoreMetadataIndexingIntegrationTest {
   private static final Path classTempDir =
       OpaaIndexingTestDirectory.subdirectory("core-metadata-indexing");
 
-  @Autowired private FileProcessingService fileProcessingService;
+  @Autowired private DocumentIngestService documentIngestService;
   @Autowired private DocumentMetadataService documentMetadataService;
   @Autowired private CitationMetadataReader citationMetadataReader;
   @Autowired private LibraryMetadataFieldRepository libraryFieldRepository;
@@ -119,9 +119,9 @@ class CoreMetadataIndexingIntegrationTest {
     writePdf(file, "Dienstanweisung zur IT-Nutzung", LocalDate.of(2025, 6, 30));
 
     assertThat(
-            fileProcessingService.ingest(
+            documentIngestService.ingest(
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+        .isEqualTo(DocumentIngestResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
     assertThat(document.getMetadataExtractionVersion())
@@ -164,9 +164,9 @@ class CoreMetadataIndexingIntegrationTest {
     writeDocx(file, "Vermerk zur Fristsetzung", LocalDate.of(2024, 11, 5));
 
     assertThat(
-            fileProcessingService.ingest(
+            documentIngestService.ingest(
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+        .isEqualTo(DocumentIngestResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
@@ -204,9 +204,9 @@ class CoreMetadataIndexingIntegrationTest {
         """);
 
     assertThat(
-            fileProcessingService.ingest(
+            documentIngestService.ingest(
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+        .isEqualTo(DocumentIngestResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
@@ -227,9 +227,9 @@ class CoreMetadataIndexingIntegrationTest {
     writePdf(file, null, null);
 
     assertThat(
-            fileProcessingService.ingest(
+            documentIngestService.ingest(
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+        .isEqualTo(DocumentIngestResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
@@ -250,9 +250,9 @@ class CoreMetadataIndexingIntegrationTest {
         "Diese Regelung gilt fuer alle Mitarbeitenden des Buergerbueros.");
 
     assertThat(
-            fileProcessingService.ingest(
+            documentIngestService.ingest(
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+        .isEqualTo(DocumentIngestResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
@@ -281,9 +281,9 @@ class CoreMetadataIndexingIntegrationTest {
         """);
 
     assertThat(
-            fileProcessingService.ingest(
+            documentIngestService.ingest(
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+        .isEqualTo(DocumentIngestResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
@@ -313,9 +313,9 @@ class CoreMetadataIndexingIntegrationTest {
         """);
 
     assertThat(
-            fileProcessingService.ingest(
+            documentIngestService.ingest(
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+        .isEqualTo(DocumentIngestResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
@@ -337,9 +337,9 @@ class CoreMetadataIndexingIntegrationTest {
             "Die Gebuehr ist bei Antragstellung faellig."));
 
     assertThat(
-            fileProcessingService.ingest(
+            documentIngestService.ingest(
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+        .isEqualTo(DocumentIngestResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
@@ -356,9 +356,9 @@ class CoreMetadataIndexingIntegrationTest {
     writePptx(file, "Onboarding Buergerbuero", "Ablauf der ersten Woche im Buergerbuero.");
 
     assertThat(
-            fileProcessingService.ingest(
+            documentIngestService.ingest(
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+        .isEqualTo(DocumentIngestResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
@@ -377,7 +377,7 @@ class CoreMetadataIndexingIntegrationTest {
   @Test
   void anRssEntryNeitherReadsItsBodyAsAKopfbereichNorItsHeadlineAsAFileName() throws IOException {
     assertThat(
-            fileProcessingService.ingest(
+            documentIngestService.ingest(
                 DocumentIngests.rssEntry(
                     targetLibrary,
                     "Der Rat hat in seiner Sitzung die neue Hundesteuersatzung beschlossen. Der"
@@ -386,7 +386,7 @@ class CoreMetadataIndexingIntegrationTest {
                     "https://feed.example/rat-beschluss",
                     "2026-03-12T10:00:00Z"),
                 null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+        .isEqualTo(DocumentIngestResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
@@ -404,7 +404,7 @@ class CoreMetadataIndexingIntegrationTest {
   @Test
   void aConfluencePageTitleIsNoFileNameSoItYieldsNeitherDokumentartNorDatum() throws IOException {
     assertThat(
-            fileProcessingService.ingest(
+            documentIngestService.ingest(
                 DocumentIngests.confluencePage(
                     targetLibrary,
                     "<h1>Uebersicht</h1><p>Die Verwaltung erhebt Entgelte fuer Amtshandlungen im"
@@ -415,7 +415,7 @@ class CoreMetadataIndexingIntegrationTest {
                     null,
                     new SourceDocumentContext("BAU", "Handbuch")),
                 null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+        .isEqualTo(DocumentIngestResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
@@ -434,7 +434,7 @@ class CoreMetadataIndexingIntegrationTest {
   @Test
   void aConfluencePageTakesItsStandFromThePageVersionNotFromItsTitle() throws IOException {
     assertThat(
-            fileProcessingService.ingest(
+            documentIngestService.ingest(
                 DocumentIngests.confluencePage(
                     targetLibrary,
                     "<h1>Uebersicht</h1><p>Die Verwaltung erhebt Entgelte fuer Amtshandlungen im"
@@ -445,7 +445,7 @@ class CoreMetadataIndexingIntegrationTest {
                     java.time.Instant.parse("2026-03-12T10:00:00Z"),
                     new SourceDocumentContext("BAU", "Handbuch")),
                 null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+        .isEqualTo(DocumentIngestResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
@@ -471,7 +471,7 @@ class CoreMetadataIndexingIntegrationTest {
         Hinweise zum Ausfüllen.
         """);
 
-    fileProcessingService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
+    documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
     Document document = documentRepository.findAll().getFirst();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
@@ -485,7 +485,7 @@ class CoreMetadataIndexingIntegrationTest {
       throws IOException {
     Path file = classTempDir.resolve("2026-03-12_Dienstanweisung_Homeoffice.pdf");
     writePdf(file, null, LocalDate.of(2025, 6, 30));
-    fileProcessingService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
+    documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
     Document document = documentRepository.findAll().getFirst();
     List<UUID> chunkIdsBefore = chunkIds(document.getId());
 
@@ -519,7 +519,7 @@ class CoreMetadataIndexingIntegrationTest {
   void anEmptiedFieldDisappearsFromDocumentAndChunksOnReextraction() throws IOException {
     Path file = classTempDir.resolve("Protokoll_Sitzung.pdf");
     writePdf(file, null, null);
-    fileProcessingService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
+    documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
     Document document = documentRepository.findAll().getFirst();
     assertThat(documentMetadataService.coreMetadataFor(document.getId()).documentTypeCode())
         .isEqualTo("PROTOKOLL");
@@ -547,7 +547,7 @@ class CoreMetadataIndexingIntegrationTest {
       throws IOException {
     Path file = classTempDir.resolve("Protokoll_Sitzung.pdf");
     writePdf(file, null, null);
-    fileProcessingService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
+    documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
     Document document = documentRepository.findAll().getFirst();
     jdbcTemplate.update(
         "UPDATE documents SET file_name = 'Vermerk_2020-01-01.pdf', metadata_extraction_version ="
@@ -597,7 +597,7 @@ class CoreMetadataIndexingIntegrationTest {
   void aDerivedValueSurvivesAnEmptyDeterministicResultButYieldsToARealOne() throws IOException {
     Path file = classTempDir.resolve("anlage.pdf");
     writePdf(file, null, null);
-    fileProcessingService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
+    documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
     Document document = documentRepository.findAll().getFirst();
     valueRepository.save(
         DocumentMetadataValue.derived(
@@ -639,9 +639,9 @@ class CoreMetadataIndexingIntegrationTest {
         """);
 
     assertThat(
-            fileProcessingService.ingest(
+            documentIngestService.ingest(
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+        .isEqualTo(DocumentIngestResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
     Map<String, DocumentMetadataValue> byKey = new java.util.HashMap<>();

@@ -9,7 +9,7 @@ import java.util.Set;
  *
  * <p>Open-closed is the acceptance criterion: adding a format means adding an implementation and
  * registering it as a bean, with nothing in {@link DocumentPipelineRegistry}, {@code
- * FileProcessingService} or {@code SupportedDocumentFormats} changing shape. Admission stays with
+ * DocumentIngestService} or {@code SupportedDocumentFormats} changing shape. Admission stays with
  * {@code SupportedDocumentFormats}; this interface decides only <em>how</em> an admitted document
  * is processed. Every chunk carries {@link #id()} and {@link #version()}, and {@link #version()} is
  * raised whenever the cut or the emitted structure metadata changes - that is what makes a
@@ -60,7 +60,7 @@ public interface DocumentPipeline {
   }
 
   /**
-   * Chunk metadata keys {@code FileProcessingService#storeChunks} carries onto the persisted chunk
+   * Chunk metadata keys {@code DocumentIngestService#storeChunks} carries onto the persisted chunk
    * - a ceiling, not a promise, and never able to override its own bookkeeping keys. It filters
    * against the union of every registered pipeline's declaration ({@link
    * DocumentPipelineRegistry#allPassthroughMetadataKeys()}), so a key only a nested pipeline

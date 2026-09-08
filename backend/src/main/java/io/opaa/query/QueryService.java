@@ -567,7 +567,7 @@ public class QueryService {
   /**
    * Groups a chunk by its {@code document_id} metadata, falling back to {@code file_name} when that
    * metadata is missing or empty - a chunk without {@code document_id} can only occur for pre-#739
-   * index entries, since {@code FileProcessingService#storeChunks} now writes it on every chunk.
+   * index entries, since {@code DocumentIngestService#storeChunks} now writes it on every chunk.
    * Using the same {@code file_name} fallback consistently across {@link #countMatchesPerDocument}
    * and {@link #mapSources} keeps two such chunks from <em>different</em> documents from collapsing
    * into one merged entry via a shared empty-string key.
@@ -586,7 +586,7 @@ public class QueryService {
    * draws both {@code indexedAt} and {@code sourceEntryUrl} from (#639), rather than a second,
    * duplicate lookup per field. {@code sourceEntryUrl} follows the same document_id-lookup pattern
    * this method already used for {@code indexedAt} alone - see the comment in {@code
-   * FileProcessingService#storeChunks} for why the value is not instead duplicated onto every chunk
+   * DocumentIngestService#storeChunks} for why the value is not instead duplicated onto every chunk
    * in the vector store.
    */
   private Map<String, io.opaa.indexing.Document> lookupSourceDocuments(List<Document> chunks) {

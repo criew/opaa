@@ -171,7 +171,7 @@ class DocumentPipelineRegistryTest {
   void aFileThatCannotBeReadForDetectionFallsBackWithFormatDetectionFailedSet() {
     // Regression guard for #1165: a read failure (deleted, permission-denied, briefly
     // locked) must not be indistinguishable from a content decision that admits nothing -
-    // FileProcessingService relies on formatDetectionFailed() to avoid persisting a routing key
+    // DocumentIngestService relies on formatDetectionFailed() to avoid persisting a routing key
     // for a chunk this method never actually routed on content.
     DocumentPipelineRegistry registry = registryWith();
     java.nio.file.Path missing =

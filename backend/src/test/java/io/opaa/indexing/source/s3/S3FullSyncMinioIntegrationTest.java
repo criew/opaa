@@ -9,7 +9,7 @@ import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobRepository;
@@ -61,7 +61,7 @@ class S3FullSyncMinioIntegrationTest {
   private static final String SMALL_TEXT = "klein";
   private static final String SESSION_TEXT = "Sitzung vom 6. September.";
 
-  @Autowired private FileProcessingService fileProcessingService;
+  @Autowired private DocumentIngestService documentIngestService;
   @Autowired private IndexingJobService indexingJobService;
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private IndexingRunEventRepository eventRepository;
@@ -188,7 +188,7 @@ class S3FullSyncMinioIntegrationTest {
     return new S3IndexingExecutor(
         new S3ClientFactory(properties, TargetAddressValidator.disabled()),
         properties,
-        fileProcessingService,
+        documentIngestService,
         documentRepository,
         folderService,
         cleanupService,

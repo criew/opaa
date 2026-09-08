@@ -33,7 +33,7 @@ import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.EmbeddingRateEstimator;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.indexing.FullTextChunkStore;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.VectorStoreWriter;
@@ -82,8 +82,8 @@ import org.springframework.web.multipart.MultipartFile;
  * that {@link LibraryDocumentService#deleteDocument} only ever deletes a file this service itself
  * wrote. {@link LibraryDocumentService#uploadDocument} itself now creates and saves the {@code
  * PENDING} row and only <em>triggers</em> the asynchronous indexing pipeline ({@code
- * FileProcessingService#processUploadedFileAsync}, mocked here as a no-op void call) - covered by
- * its own tests in {@code FileProcessingServiceTest} - this class is about what happens before and
+ * DocumentIngestService#processUploadedFileAsync}, mocked here as a no-op void call) - covered by
+ * its own tests in {@code DocumentIngestServiceTest} - this class is about what happens before and
  * around that call.
  */
 class LibraryDocumentServiceTest {
@@ -92,7 +92,7 @@ class LibraryDocumentServiceTest {
   private LibraryAccessService accessService;
   private DocumentRepository documentRepository;
   private ChecksumService checksumService;
-  private FileProcessingService fileProcessingService;
+  private DocumentIngestService documentIngestService;
   private VectorStore vectorStore;
   private VectorChunkStore vectorChunkStore;
   private LibraryStorageQuotaService storageQuotaService;
@@ -128,7 +128,7 @@ class LibraryDocumentServiceTest {
     accessService = mock(LibraryAccessService.class);
     documentRepository = mock(DocumentRepository.class);
     checksumService = mock(ChecksumService.class);
-    fileProcessingService = mock(FileProcessingService.class);
+    documentIngestService = mock(DocumentIngestService.class);
     vectorStore = mock(VectorStore.class);
     vectorChunkStore =
         new VectorChunkStore(
@@ -168,7 +168,7 @@ class LibraryDocumentServiceTest {
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
 
     // #434: uploadDocument now saves the PENDING row itself (previously done inside the now-async
-    // FileProcessingService#processUploadedFileAsync) - every test exercises that save unless it
+    // DocumentIngestService#processUploadedFileAsync) - every test exercises that save unless it
     // overrides this default to simulate the concurrent-duplicate race.
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
   }
@@ -216,7 +216,7 @@ class LibraryDocumentServiceTest {
         accessService,
         documentRepository,
         checksumService,
-        fileProcessingService,
+        documentIngestService,
         vectorChunkStore,
         uploadProperties,
         storageQuotaService,
@@ -243,7 +243,7 @@ class LibraryDocumentServiceTest {
         service.uploadDocument(libraryId, pdfFile("report.pdf", "pdf content"), null, caller);
 
     // #434: the response reflects the PENDING row created synchronously - not a result from
-    // FileProcessingService, which now only runs asynchronously and returns nothing.
+    // DocumentIngestService, which now only runs asynchronously and returns nothing.
     assertThat(response.document().getFileName()).isEqualTo("report.pdf");
     assertThat(response.document().getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
     assertThat(response.document().getUploadedByUserId()).isEqualTo(currentUserId);
@@ -252,7 +252,7 @@ class LibraryDocumentServiceTest {
     // The stored file lives under the library's own subdirectory of the storage path, and async
     // processing was handed exactly that path.
     ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
-    verify(fileProcessingService).processUploadedFileAsync(ingest.capture(), any());
+    verify(documentIngestService).processUploadedFileAsync(ingest.capture(), any());
     // The row is handed over as it is: identified by its own stored path, admitted already.
     assertThat(ingest.getValue().filePath()).isEqualTo(response.document().getFilePath());
     assertThat(ingest.getValue().existingRow()).isTrue();
@@ -272,7 +272,7 @@ class LibraryDocumentServiceTest {
                     libraryId, pdfFile("report.pdf", "pdf content"), null, caller))
         .isInstanceOf(AccessDeniedException.class);
 
-    verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any());
   }
 
   @Test
@@ -321,7 +321,7 @@ class LibraryDocumentServiceTest {
         .isInstanceOf(ConflictException.class);
 
     assertNoFilesWereStored();
-    verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any());
   }
 
   @Test
@@ -339,7 +339,7 @@ class LibraryDocumentServiceTest {
         .isInstanceOf(ValidationException.class);
 
     assertNoFilesWereStored();
-    verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any());
   }
 
   @Test
@@ -356,7 +356,7 @@ class LibraryDocumentServiceTest {
         service.uploadDocument(libraryId, pdfFile("report.pdf", "%PDF content"), null, caller);
 
     assertThat(response.document().getFileName()).isEqualTo("report.pdf");
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .processUploadedFileAsync(
             argThat(ingest -> response.document().getFilePath().equals(ingest.filePath())), any());
   }
@@ -381,7 +381,7 @@ class LibraryDocumentServiceTest {
         service.uploadDocument(libraryId, realDocxFile("vertrag.docx"), null, caller);
 
     assertThat(response.document().getFileName()).isEqualTo("vertrag.docx");
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .processUploadedFileAsync(
             argThat(ingest -> response.document().getFilePath().equals(ingest.filePath())), any());
   }
@@ -420,7 +420,7 @@ class LibraryDocumentServiceTest {
         .hasMessageContaining("entspricht nicht dem Format .pdf");
 
     assertNoFilesWereStored();
-    verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any());
   }
 
   @Test
@@ -440,7 +440,7 @@ class LibraryDocumentServiceTest {
     LibraryDocumentEntry response = service.uploadDocument(libraryId, markdown, null, caller);
 
     assertThat(response.document().getFileName()).isEqualTo("notes.md");
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .processUploadedFileAsync(
             argThat(ingest -> response.document().getFilePath().equals(ingest.filePath())), any());
   }
@@ -461,7 +461,7 @@ class LibraryDocumentServiceTest {
         .hasMessageContaining("entspricht nicht dem Format .txt");
 
     assertNoFilesWereStored();
-    verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any());
   }
 
   @Test
@@ -511,7 +511,7 @@ class LibraryDocumentServiceTest {
         .isInstanceOf(ConflictException.class);
 
     assertNoFilesWereStored();
-    verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any());
   }
 
   @Test
@@ -549,7 +549,7 @@ class LibraryDocumentServiceTest {
     assertThat(Files.exists(oldFailedFile))
         .as("The old FAILED row's own file must be cleaned up when it is replaced")
         .isFalse();
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .processUploadedFileAsync(
             argThat(ingest -> response.document().getFilePath().equals(ingest.filePath())), any());
   }
@@ -560,7 +560,7 @@ class LibraryDocumentServiceTest {
     // race between two concurrent uploads; uk_documents_library_checksum (migration 020) does, and
     // this is the resulting DataIntegrityViolationException translated into the same 409. #434: the
     // save that can now raise it is the PENDING row's own save, done inside this service - not a
-    // call into FileProcessingService any more.
+    // call into DocumentIngestService any more.
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-race");
     when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
@@ -576,7 +576,7 @@ class LibraryDocumentServiceTest {
         .isInstanceOf(ConflictException.class);
 
     assertNoFilesWereStored();
-    verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any());
   }
 
   @Test
@@ -611,7 +611,7 @@ class LibraryDocumentServiceTest {
         .hasMessageContaining("inzwischen gelöscht");
 
     assertNoFilesWereStored();
-    verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any());
   }
 
   @Test
@@ -635,7 +635,7 @@ class LibraryDocumentServiceTest {
 
     assertThat(response.document().getFileName()).isEqualTo("evil.pdf");
     ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
-    verify(fileProcessingService).processUploadedFileAsync(ingest.capture(), any());
+    verify(documentIngestService).processUploadedFileAsync(ingest.capture(), any());
     Path storedPath = DocumentIngests.fileOf(ingest.getValue()).toAbsolutePath().normalize();
     Path libraryDir = storageDir.resolve(libraryId.toString()).toAbsolutePath().normalize();
     assertThat(storedPath.startsWith(libraryDir))
@@ -656,7 +656,7 @@ class LibraryDocumentServiceTest {
             libraryId, "checksum-queue-full"))
         .thenReturn(Optional.empty());
     doThrow(new TaskRejectedException("queue is full"))
-        .when(fileProcessingService)
+        .when(documentIngestService)
         .processUploadedFileAsync(any(), any());
 
     LibraryDocumentEntry response =
@@ -680,7 +680,7 @@ class LibraryDocumentServiceTest {
             libraryId, "checksum-unexpected"))
         .thenReturn(Optional.empty());
     doThrow(new IllegalStateException("submission blew up unexpectedly"))
-        .when(fileProcessingService)
+        .when(documentIngestService)
         .processUploadedFileAsync(any(), any());
 
     LibraryDocumentEntry response =
@@ -705,7 +705,7 @@ class LibraryDocumentServiceTest {
             libraryId, "checksum-conditional-update"))
         .thenReturn(Optional.empty());
     doThrow(new IllegalStateException("submission blew up unexpectedly"))
-        .when(fileProcessingService)
+        .when(documentIngestService)
         .processUploadedFileAsync(any(), any());
     when(documentRepository.markFailed(any(), any())).thenReturn(1);
 
@@ -736,7 +736,7 @@ class LibraryDocumentServiceTest {
             libraryId, "checksum-deleted-mid-flight"))
         .thenReturn(Optional.empty());
     doThrow(new IllegalStateException("submission blew up unexpectedly"))
-        .when(fileProcessingService)
+        .when(documentIngestService)
         .processUploadedFileAsync(any(), any());
     when(documentRepository.markFailed(any(), any())).thenReturn(0);
 
@@ -1421,7 +1421,7 @@ class LibraryDocumentServiceTest {
             accessService,
             documentRepository,
             checksumService,
-            fileProcessingService,
+            documentIngestService,
             vectorChunkStore,
             new UploadProperties(storageDir.toString(), 10L * 1024, null, 0),
             storageQuotaService,

@@ -15,7 +15,7 @@ import java.util.function.Predicate;
 
 /**
  * Test support for {@link DocumentIngest}: the shapes the connectors hand to {@link
- * FileProcessingService#ingest} as fixtures, and a Mockito matcher over the record's fields for
+ * DocumentIngestService#ingest} as fixtures, and a Mockito matcher over the record's fields for
  * tests that mock the service. Public - consumed from every connector's test package.
  */
 public final class DocumentIngests {

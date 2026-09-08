@@ -15,8 +15,8 @@ import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.AttachmentOutcome;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingOutcomes;
-import io.opaa.indexing.FileProcessingResult;
+import io.opaa.indexing.DocumentIngestOutcomes;
+import io.opaa.indexing.DocumentIngestResult;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingRunEventRecorder;
@@ -111,7 +111,7 @@ class IndexingRunTest {
     when(quotaService.quotaExceededMessage(library.getId()))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft");
 
-    boolean processed = run.recordOutcome(FileProcessingResult.QUOTA_EXCEEDED, "datei.txt");
+    boolean processed = run.recordOutcome(DocumentIngestResult.QUOTA_EXCEEDED, "datei.txt");
 
     assertThat(processed).isFalse();
     verify(eventRepository)
@@ -134,7 +134,7 @@ class IndexingRunTest {
             argThat(
                 event ->
                     event.getCategory() == IndexingEventCategory.ERROR
-                        && FileProcessingOutcomes.FAILED_MESSAGE.equals(event.getMessage())
+                        && DocumentIngestOutcomes.FAILED_MESSAGE.equals(event.getMessage())
                         && "datei.txt".equals(event.getReference())));
   }
 

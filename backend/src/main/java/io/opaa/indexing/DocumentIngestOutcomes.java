@@ -3,15 +3,15 @@ package io.opaa.indexing;
 import java.util.function.Supplier;
 
 /**
- * The protocol entry each {@link FileProcessingResult} calls for - the German texts stand here
+ * The protocol entry each {@link DocumentIngestResult} calls for - the German texts stand here
  * once, for a run's own items and for attachments alike.
  */
-public final class FileProcessingOutcomes {
+public final class DocumentIngestOutcomes {
 
   public static final String FAILED_MESSAGE = "Verarbeitung fehlgeschlagen";
   public static final String ATTACHMENT_FAILED_MESSAGE = "Verarbeitung der Anlage fehlgeschlagen";
 
-  private FileProcessingOutcomes() {}
+  private DocumentIngestOutcomes() {}
 
   /**
    * Records the entry {@code result} calls for: {@code QUOTA_EXCEEDED} and {@code
@@ -21,7 +21,7 @@ public final class FileProcessingOutcomes {
    */
   public static void record(
       IndexingEventSink events,
-      FileProcessingResult result,
+      DocumentIngestResult result,
       String reference,
       Supplier<String> quotaMessage,
       String failedMessage) {

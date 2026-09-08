@@ -13,7 +13,7 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.DocumentIngestService;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.IndexingRunEventRepository;
@@ -86,7 +86,7 @@ class RssFeedIndexingExecutorTargetValidationTest {
     server.start();
     baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
 
-    FileProcessingService fileProcessingService = mock(FileProcessingService.class);
+    DocumentIngestService documentIngestService = mock(DocumentIngestService.class);
     indexingJobService = mock(IndexingJobService.class);
     DocumentRepository documentRepository = mock(DocumentRepository.class);
     RssFeedStateRepository feedStateRepository = mock(RssFeedStateRepository.class);
@@ -105,12 +105,12 @@ class RssFeedIndexingExecutorTargetValidationTest {
     executor =
         new RssFeedIndexingExecutor(
             new RssFeedParser(),
-            fileProcessingService,
+            documentIngestService,
             documentRepository,
             feedStateRepository,
             new io.opaa.indexing.source.attachment.AttachmentIndexer(
                 new BoundedDownloader(enabledValidator),
-                fileProcessingService,
+                documentIngestService,
                 mock(LibraryStorageQuotaService.class),
                 new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0)),
             properties,

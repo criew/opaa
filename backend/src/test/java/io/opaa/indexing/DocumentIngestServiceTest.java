@@ -64,11 +64,11 @@ import org.springframework.beans.factory.ObjectProvider;
 
 /**
  * The one ingest sequence, one test per outcome and per row state - every source shape goes through
- * {@link FileProcessingService#ingest}, so a rule proven here holds for all of them. The
+ * {@link DocumentIngestService#ingest}, so a rule proven here holds for all of them. The
  * source-specific mapping onto {@link DocumentIngest} is the executors' own business.
  */
 @ExtendWith(MockitoExtension.class)
-class FileProcessingServiceTest {
+class DocumentIngestServiceTest {
 
   private static final String ENTRY_URL = "https://example.gov/artikel/eintrag";
   private static final String PAGE_URL =
@@ -89,7 +89,7 @@ class FileProcessingServiceTest {
 
   @TempDir Path tempDir;
 
-  private FileProcessingService service;
+  private DocumentIngestService service;
   private SimpleMeterRegistry meterRegistry;
 
   // an indexing run always targets a caller-chosen library, never the fixed system library
@@ -121,21 +121,21 @@ class FileProcessingServiceTest {
     lenient().when(documentRepository.markFailedWithoutChunks(any(), any())).thenReturn(1);
   }
 
-  private FileProcessingService serviceWith(DocumentPipelineRegistry registry) {
+  private DocumentIngestService serviceWith(DocumentPipelineRegistry registry) {
     return serviceWith(registry, storageQuotaService);
   }
 
-  private FileProcessingService serviceWith(
+  private DocumentIngestService serviceWith(
       DocumentPipelineRegistry registry, LibraryStorageQuotaService quotaService) {
     return serviceWith(registry, quotaService, Mockito.mock(ObjectProvider.class));
   }
 
   @SuppressWarnings("unchecked")
-  private FileProcessingService serviceWith(
+  private DocumentIngestService serviceWith(
       DocumentPipelineRegistry registry,
       LibraryStorageQuotaService quotaService,
       ObjectProvider<AttachmentIndexer> attachmentIndexerProvider) {
-    return new FileProcessingService(
+    return new DocumentIngestService(
         registry,
         documentRepository,
         vectorChunkStore,
@@ -244,9 +244,9 @@ class FileProcessingServiceTest {
       stubNewRow(file, "abc123");
       stubParsedInto(file, chunks("chunk1"));
 
-      FileProcessingResult result = service.ingest(localFile(file), null);
+      DocumentIngestResult result = service.ingest(localFile(file), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
       // The initial PENDING row is a plain save; the final INDEXED transition is a conditional
       // UPDATE carrying the checksum, never a second save.
@@ -265,9 +265,9 @@ class FileProcessingServiceTest {
       stubNewRow(file, "sha256-of-noise");
       stubParsedInto(file, List.of());
 
-      FileProcessingResult result = service.ingest(localFile(file), null);
+      DocumentIngestResult result = service.ingest(localFile(file), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.NO_EXTRACTABLE_TEXT);
+      assertThat(result).isEqualTo(DocumentIngestResult.NO_EXTRACTABLE_TEXT);
       verify(vectorStore, never()).add(any());
       verify(documentRepository, never())
           .markIndexedFromSource(any(), anyInt(), any(), any(), any());
@@ -285,14 +285,14 @@ class FileProcessingServiceTest {
       stubNewRow(file, "sha256-of-empty");
       when(documentService.parseDocument(file)).thenReturn(List.of());
 
-      FileProcessingResult result = service.ingest(localFile(file), null);
+      DocumentIngestResult result = service.ingest(localFile(file), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.FAILED);
+      assertThat(result).isEqualTo(DocumentIngestResult.FAILED);
       verify(chunkingService, never()).chunkDocuments(anyString(), any());
       verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
       UUID documentId = savedDocument().getId();
       verify(documentRepository)
-          .markFailedWithoutChunks(documentId, FileProcessingService.NO_CONTENT_MESSAGE);
+          .markFailedWithoutChunks(documentId, DocumentIngestService.NO_CONTENT_MESSAGE);
       assertThat(counter("failed")).isEqualTo(1.0);
     }
 
@@ -307,12 +307,12 @@ class FileProcessingServiceTest {
       when(documentService.parseDocument(file))
           .thenThrow(new RuntimeException("Tika konnte die Datei nicht lesen"));
 
-      FileProcessingResult result = service.ingest(localFile(file), null);
+      DocumentIngestResult result = service.ingest(localFile(file), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.FAILED);
+      assertThat(result).isEqualTo(DocumentIngestResult.FAILED);
       verify(vectorStore, never()).delete(any(Filter.Expression.class));
       verify(documentRepository)
-          .markFailed(existing.getId(), FileProcessingService.PROCESSING_FAILED_MESSAGE);
+          .markFailed(existing.getId(), DocumentIngestService.PROCESSING_FAILED_MESSAGE);
       verify(documentRepository, never()).markFailedWithoutChunks(any(), any());
       assertThat(counter("failed")).isEqualTo(1.0);
     }
@@ -338,7 +338,7 @@ class FileProcessingServiceTest {
       verify(vectorStore, times(2)).delete(documentIdFilter(existing.getId()));
       verify(documentRepository)
           .markFailedWithoutChunks(
-              existing.getId(), FileProcessingService.PROCESSING_FAILED_MESSAGE);
+              existing.getId(), DocumentIngestService.PROCESSING_FAILED_MESSAGE);
       assertThat(counter("failed")).isEqualTo(1.0);
     }
 
@@ -360,7 +360,7 @@ class FileProcessingServiceTest {
       UUID documentId = savedDocument().getId();
       verify(vectorStore).delete(documentIdFilter(documentId));
       verify(documentRepository)
-          .markFailedWithoutChunks(documentId, FileProcessingService.PROCESSING_FAILED_MESSAGE);
+          .markFailedWithoutChunks(documentId, DocumentIngestService.PROCESSING_FAILED_MESSAGE);
     }
 
     @Test
@@ -374,9 +374,9 @@ class FileProcessingServiceTest {
       when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), anyString(), any()))
           .thenReturn(0);
 
-      FileProcessingResult result = service.ingest(localFile(file), null);
+      DocumentIngestResult result = service.ingest(localFile(file), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
+      assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
       verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
       UUID documentId = savedDocument().getId();
       verify(vectorStore).delete(documentIdFilter(documentId));
@@ -394,9 +394,9 @@ class FileProcessingServiceTest {
       when(documentRepository.markFailedWithoutChunks(any(), any())).thenReturn(0);
       when(documentService.parseDocument(file)).thenReturn(List.of());
 
-      FileProcessingResult result = service.ingest(localFile(file), null);
+      DocumentIngestResult result = service.ingest(localFile(file), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
+      assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
       // No chunks were ever written on this path - nothing to remove from the vector store.
       verify(vectorStore, never()).delete(any(Filter.Expression.class));
       verify(chunkingService, never()).chunkDocuments(anyString(), any());
@@ -438,7 +438,7 @@ class FileProcessingServiceTest {
       assertThatThrownBy(() -> service.ingest(page, null))
           .isInstanceOf(IllegalStateException.class);
       verify(documentRepository)
-          .markFailed(existing.getId(), FileProcessingService.PROCESSING_FAILED_MESSAGE);
+          .markFailed(existing.getId(), DocumentIngestService.PROCESSING_FAILED_MESSAGE);
       verify(vectorStore, never()).delete(any(Filter.Expression.class));
       assertThat(counter("failed")).isEqualTo(1.0);
     }
@@ -508,9 +508,9 @@ class FileProcessingServiceTest {
       when(checksumService.computeSha256(file)).thenReturn("matching-checksum");
       existingIndexed(file, "matching-checksum", 0L);
 
-      FileProcessingResult result = service.ingest(localFile(file), null);
+      DocumentIngestResult result = service.ingest(localFile(file), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
+      assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
       verify(documentService, never()).parseDocument(any());
       verify(chunkingService, never()).chunkDocuments(anyString(), any());
       verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
@@ -530,11 +530,11 @@ class FileProcessingServiceTest {
       Document existing = existingIndexed(file, "matching-checksum", 0L);
       UUID folderId = UUID.randomUUID();
 
-      FileProcessingResult result =
+      DocumentIngestResult result =
           service.ingest(
               DocumentIngest.localFile(targetLibrary, file).folder(folderId).build(), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
+      assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
       assertThat(existing.getFolderId()).isEqualTo(folderId);
       verify(documentRepository).save(existing);
       verify(documentService, never()).parseDocument(any());
@@ -556,7 +556,7 @@ class FileProcessingServiceTest {
       when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), PAGE_URL))
           .thenReturn(Optional.of(existing));
 
-      FileProcessingResult result =
+      DocumentIngestResult result =
           service.ingest(
               DocumentIngests.confluencePage(
                   targetLibrary,
@@ -568,7 +568,7 @@ class FileProcessingServiceTest {
                   new SourceDocumentContext("ENG", null)),
               null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
+      assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
       verify(documentRepository)
           .markIndexedFromSource(
               existing.getId(), 2, Instant.parse("2026-09-01T08:00:00Z"), "sha256-of-page", "8");
@@ -592,13 +592,13 @@ class FileProcessingServiceTest {
       when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), ENTRY_URL))
           .thenReturn(Optional.of(existing));
 
-      FileProcessingResult result =
+      DocumentIngestResult result =
           service.ingest(
               DocumentIngests.extractedText(
                   targetLibrary, "text", "Titel", ENTRY_URL, PUBLISHED_AT),
               null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
+      assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
       verify(documentRepository, never())
           .markIndexedFromSource(any(), anyInt(), any(), any(), any());
       verify(documentRepository, never())
@@ -621,14 +621,14 @@ class FileProcessingServiceTest {
       when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), url))
           .thenReturn(Optional.of(existing));
 
-      FileProcessingResult result =
+      DocumentIngestResult result =
           service.ingest(
               DocumentIngests.downloadedFile(
                       targetLibrary, file, "unchanged-url.pdf", url, "2025-06-15 10:30", 1024)
                   .build(),
               null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
+      assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
       verify(documentService, never()).parseDocument(any());
       verify(documentRepository, never())
           .markIndexedFromSource(any(), anyInt(), any(), any(), any());
@@ -646,9 +646,9 @@ class FileProcessingServiceTest {
       Document existing = existingIndexed(file, "old-checksum", 10L);
       stubParsedInto(file, chunks("chunk1"));
 
-      FileProcessingResult result = service.ingest(localFile(file), null);
+      DocumentIngestResult result = service.ingest(localFile(file), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       verify(vectorStore).delete(documentIdFilter(existing.getId()));
       verify(documentRepository, never()).delete(any(Document.class));
       Document saved = savedDocument();
@@ -674,7 +674,7 @@ class FileProcessingServiceTest {
       when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
       String body = "<h1>Neu</h1><p>Text.</p>";
 
-      FileProcessingResult result =
+      DocumentIngestResult result =
           serviceWith(
                   TestPipelineRegistries.fallbackAndConfluence(documentService, chunkingService))
               .ingest(
@@ -688,7 +688,7 @@ class FileProcessingServiceTest {
                       new SourceDocumentContext("ENG", "Handbuch")),
                   null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       verify(documentRepository, never()).delete(any(Document.class));
       verify(vectorStore).delete(documentIdFilter(existing.getId()));
       Document saved = savedDocument();
@@ -707,9 +707,9 @@ class FileProcessingServiceTest {
       Document existing = existingIndexed(file, null, 10L);
       stubParsedInto(file, chunks("chunk1"));
 
-      FileProcessingResult result = service.ingest(localFile(file), null);
+      DocumentIngestResult result = service.ingest(localFile(file), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       verify(vectorStore).delete(documentIdFilter(existing.getId()));
       verify(documentRepository, never()).delete(any(Document.class));
     }
@@ -722,9 +722,9 @@ class FileProcessingServiceTest {
       existing.setStatus(DocumentStatus.FAILED);
       stubParsedInto(file, chunks("chunk1"));
 
-      FileProcessingResult result = service.ingest(localFile(file), null);
+      DocumentIngestResult result = service.ingest(localFile(file), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       verify(documentService).parseDocument(file);
     }
 
@@ -747,9 +747,9 @@ class FileProcessingServiceTest {
       stubNewRow(file, "same-checksum");
       stubParsedInto(file, chunks("chunk1"));
 
-      FileProcessingResult result = service.ingest(localFile(file), null);
+      DocumentIngestResult result = service.ingest(localFile(file), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       verify(documentRepository, never()).delete(docInOtherLibrary);
       verify(vectorStore, never()).delete(any(Filter.Expression.class));
       assertThat(savedDocument().getLibraryId()).isEqualTo(targetLibrary.getId());
@@ -796,7 +796,7 @@ class FileProcessingServiceTest {
       when(documentService.parseDocument(any(Path.class))).thenReturn(parsed);
       when(chunkingService.chunkDocuments(anyString(), eq(parsed))).thenReturn(chunks("chunk1"));
 
-      FileProcessingResult firstResult =
+      DocumentIngestResult firstResult =
           service.ingest(
               DocumentIngests.downloadedFile(
                       targetLibrary, fileFromFirstEntry, "anlage.pdf", attachmentUrl, null, 17)
@@ -804,7 +804,7 @@ class FileProcessingServiceTest {
                   .sourceEntryUrl("https://example.gov/artikel/erster-artikel")
                   .build(),
               null);
-      FileProcessingResult secondResult =
+      DocumentIngestResult secondResult =
           service.ingest(
               DocumentIngests.downloadedFile(
                       targetLibrary, fileFromSecondEntry, "anlage.pdf", attachmentUrl, null, 17)
@@ -813,8 +813,8 @@ class FileProcessingServiceTest {
                   .build(),
               null);
 
-      assertThat(firstResult).isEqualTo(FileProcessingResult.PROCESSED);
-      assertThat(secondResult).isEqualTo(FileProcessingResult.SKIPPED);
+      assertThat(firstResult).isEqualTo(DocumentIngestResult.PROCESSED);
+      assertThat(secondResult).isEqualTo(DocumentIngestResult.SKIPPED);
       assertThat(savedByFilePath).hasSize(1);
       // The first entry's origin survives - the second call never touched the row again.
       assertThat(savedByFilePath.get(attachmentUrl).getSourceEntryUrl())
@@ -837,9 +837,9 @@ class FileProcessingServiceTest {
       when(storageQuotaService.wouldExceedQuota(eq(targetLibrary.getId()), anyLong()))
           .thenReturn(true);
 
-      FileProcessingResult result = service.ingest(localFile(file), null);
+      DocumentIngestResult result = service.ingest(localFile(file), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.QUOTA_EXCEEDED);
+      assertThat(result).isEqualTo(DocumentIngestResult.QUOTA_EXCEEDED);
       verify(documentRepository, never()).save(any(Document.class));
       verify(documentService, never()).parseDocument(any());
       verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
@@ -852,7 +852,7 @@ class FileProcessingServiceTest {
       // quota of 1000 and a 900-byte row replaced by 950 bytes, the full new size would see
       // 900 + 950 > 1000 and wrongly reject; the delta sees 900 + 50 <= 1000 and accepts.
       // A real LibraryStorageQuotaService, so the delta is genuinely exercised.
-      FileProcessingService serviceWithRealQuota =
+      DocumentIngestService serviceWithRealQuota =
           serviceWith(
               TestPipelineRegistries.fallbackOnly(documentService, chunkingService),
               new LibraryStorageQuotaService(documentRepository, new LibraryProperties(1000)));
@@ -862,9 +862,9 @@ class FileProcessingServiceTest {
       when(documentRepository.sumFileSizeByLibraryId(targetLibrary.getId())).thenReturn(900L);
       stubParsedInto(file, chunks("chunk1"));
 
-      FileProcessingResult result = serviceWithRealQuota.ingest(localFile(file), null);
+      DocumentIngestResult result = serviceWithRealQuota.ingest(localFile(file), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       verify(documentRepository, never()).delete(any(Document.class));
       assertThat(savedDocument().getId()).isEqualTo(existing.getId());
     }
@@ -911,7 +911,7 @@ class FileProcessingServiceTest {
       when(storageQuotaService.wouldExceedQuota(eq(targetLibrary.getId()), anyLong()))
           .thenReturn(true);
 
-      FileProcessingResult result =
+      DocumentIngestResult result =
           service.ingest(
               DocumentIngests.extractedText(
                   targetLibrary,
@@ -921,7 +921,7 @@ class FileProcessingServiceTest {
                   PUBLISHED_AT),
               null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.QUOTA_EXCEEDED);
+      assertThat(result).isEqualTo(DocumentIngestResult.QUOTA_EXCEEDED);
       verify(vectorStore, never()).delete(any(Filter.Expression.class));
       verify(documentRepository, never()).save(any(Document.class));
       assertThat(existing.getChecksum()).isEqualTo("old-sha256");
@@ -948,14 +948,14 @@ class FileProcessingServiceTest {
       when(chunkingService.chunkDocuments(eq("my-report.pdf"), eq(parsed)))
           .thenReturn(chunks("chunk1"));
 
-      FileProcessingResult result =
+      DocumentIngestResult result =
           service.ingest(
               DocumentIngests.downloadedFile(
                       targetLibrary, tempFile, "my-report.pdf", remoteUrl, "2025-06-15 10:30", 1024)
                   .build(),
               null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       Document saved = savedDocument();
       assertThat(saved.getFileName()).isEqualTo("my-report.pdf");
       assertThat(saved.getFilePath()).isEqualTo(remoteUrl);
@@ -978,7 +978,7 @@ class FileProcessingServiceTest {
       stubParsedInto(file, chunks("Notizen"));
       UUID pageDocumentId = UUID.randomUUID();
 
-      FileProcessingResult result =
+      DocumentIngestResult result =
           service.ingest(
               DocumentIngests.downloadedFile(targetLibrary, file, "notizen.txt", url, "3", 7L)
                   .sourceType(DocumentSourceType.CONFLUENCE)
@@ -988,7 +988,7 @@ class FileProcessingServiceTest {
                   .build(),
               null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       Document saved = savedDocument();
       assertThat(saved.getSourceType()).isEqualTo(DocumentSourceType.CONFLUENCE);
       assertThat(saved.getParentDocumentId()).isEqualTo(pageDocumentId);
@@ -1007,13 +1007,13 @@ class FileProcessingServiceTest {
       when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
       when(chunkingService.chunkDocuments(eq("Titel"), any())).thenReturn(chunks("chunk1"));
 
-      FileProcessingResult result =
+      DocumentIngestResult result =
           service.ingest(
               DocumentIngests.extractedText(
                   targetLibrary, "entry main text", "Titel", ENTRY_URL, PUBLISHED_AT),
               null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       verify(documentService, never()).parseDocument(any());
       Document saved = savedDocument();
       assertThat(saved.getFileName()).isEqualTo("Titel");
@@ -1039,7 +1039,7 @@ class FileProcessingServiceTest {
           .thenReturn(Optional.empty());
       when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
-      FileProcessingResult result =
+      DocumentIngestResult result =
           serviceWith(TestPipelineRegistries.fallbackAndHtml(documentService, chunkingService))
               .ingest(
                   DocumentIngests.rssEntry(
@@ -1051,7 +1051,7 @@ class FileProcessingServiceTest {
                       PUBLISHED_AT),
                   null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       verify(documentService, never()).parseDocument(any());
       verify(chunkingService, never()).chunkDocuments(anyString(), any());
       List<org.springframework.ai.document.Document> stored = storedChunks();
@@ -1073,8 +1073,8 @@ class FileProcessingServiceTest {
           Mockito.mock(io.opaa.indexing.metadata.DocumentMetadataService.class);
       when(metadataService.applyDeterministicExtraction(any(), any(), any()))
           .thenReturn(io.opaa.indexing.metadata.DocumentChunkMetadata.EMPTY);
-      FileProcessingService probing =
-          new FileProcessingService(
+      DocumentIngestService probing =
+          new DocumentIngestService(
               TestPipelineRegistries.fallbackOnly(documentService, chunkingService),
               documentRepository,
               vectorChunkStore,
@@ -1185,7 +1185,7 @@ class FileProcessingServiceTest {
       when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
       // two h1 sections -> two chunks through the real Confluence pipeline (no mocked chunking)
-      FileProcessingResult result =
+      DocumentIngestResult result =
           serviceWith(
                   TestPipelineRegistries.fallbackAndConfluence(documentService, chunkingService))
               .ingest(
@@ -1200,7 +1200,7 @@ class FileProcessingServiceTest {
                       new SourceDocumentContext("ENG", "Handbuch / Kapitel 1")),
                   null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       Document saved = savedDocument();
       assertThat(saved.getSourceType()).isEqualTo(DocumentSourceType.CONFLUENCE);
       assertThat(saved.getFileName()).isEqualTo("Abschnitt 1.1");
@@ -1230,7 +1230,7 @@ class FileProcessingServiceTest {
           new DiscoveredAttachment("anlage.pdf", attachmentTempFile, "application/pdf");
       var fakePipeline =
           new FakeDiscoveringPipeline(chunks("chunk1"), List.of(attachment), Optional.of(3L));
-      FileProcessingService serviceWithFakePipeline =
+      DocumentIngestService serviceWithFakePipeline =
           serviceWith(new DocumentPipelineRegistry(List.of(fakePipeline), fakePipeline));
       when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
       when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))
@@ -1257,7 +1257,7 @@ class FileProcessingServiceTest {
           new DiscoveredAttachment("anlage.pdf", attachmentTempFile, "application/pdf");
       var fakePipeline =
           new FakeDiscoveringPipeline(chunks("chunk1"), List.of(attachment), Optional.of(3L));
-      FileProcessingService serviceWithFakePipeline =
+      DocumentIngestService serviceWithFakePipeline =
           serviceWith(new DocumentPipelineRegistry(List.of(fakePipeline), fakePipeline));
       stubNewRow(file, "sha256-of-mail");
 
@@ -1280,7 +1280,7 @@ class FileProcessingServiceTest {
       @SuppressWarnings("unchecked")
       ObjectProvider<AttachmentIndexer> provider = Mockito.mock(ObjectProvider.class);
       when(provider.getObject()).thenReturn(attachmentIndexer);
-      FileProcessingService serviceWithFakePipeline =
+      DocumentIngestService serviceWithFakePipeline =
           serviceWith(
               new DocumentPipelineRegistry(List.of(fakePipeline), fakePipeline),
               storageQuotaService,
@@ -1372,9 +1372,9 @@ class FileProcessingServiceTest {
       when(checksumService.computeSha256(file)).thenReturn("checksum-upload.pdf");
       stubParsedInto(file, chunks("chunk1"));
 
-      FileProcessingResult result = service.ingest(upload(doc, file), null);
+      DocumentIngestResult result = service.ingest(upload(doc, file), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       verify(storageQuotaService, never()).wouldExceedQuota(any(), anyLong());
       verify(documentRepository, never()).save(any(Document.class));
       assertThat(doc.getContentType()).isEqualTo("application/pdf");
@@ -1392,7 +1392,7 @@ class FileProcessingServiceTest {
       when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))
           .thenReturn(Optional.empty());
 
-      FileProcessingResult result =
+      DocumentIngestResult result =
           service.ingest(
               DocumentIngest.builder(targetLibrary)
                   .file(file)
@@ -1403,7 +1403,7 @@ class FileProcessingServiceTest {
                   .build(),
               null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
+      assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
       verify(documentService, never()).parseDocument(any());
       verify(documentRepository, never()).save(any(Document.class));
       verify(documentRepository, never()).markFailed(any(), anyString());
@@ -1427,7 +1427,7 @@ class FileProcessingServiceTest {
       // what the failed run left behind.
       verify(vectorStore, times(2)).delete(documentIdFilter(doc.getId()));
       verify(documentRepository)
-          .markFailedWithoutChunks(doc.getId(), FileProcessingService.PROCESSING_FAILED_MESSAGE);
+          .markFailedWithoutChunks(doc.getId(), DocumentIngestService.PROCESSING_FAILED_MESSAGE);
       verify(documentRepository, never()).delete(any(Document.class));
       assertThat(counter("failed")).isEqualTo(1.0);
     }
@@ -1444,9 +1444,9 @@ class FileProcessingServiceTest {
       when(checksumService.computeSha256(file)).thenReturn("same-checksum");
       stubParsedInto(file, chunks("chunk1"));
 
-      FileProcessingResult result = service.ingest(reindex(doc, file), null);
+      DocumentIngestResult result = service.ingest(reindex(doc, file), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       verify(vectorStore).delete(documentIdFilter(doc.getId()));
       verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
       verify(documentRepository)
@@ -1464,9 +1464,9 @@ class FileProcessingServiceTest {
       when(documentService.parseDocument(file))
           .thenThrow(new RuntimeException("Tika konnte die Datei nicht lesen"));
 
-      FileProcessingResult result = service.ingest(reindex(doc, file), null);
+      DocumentIngestResult result = service.ingest(reindex(doc, file), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.FAILED);
+      assertThat(result).isEqualTo(DocumentIngestResult.FAILED);
       verify(vectorStore, never()).delete(any(Filter.Expression.class));
       verify(fullTextChunkStore, never()).deleteByDocumentId(any());
       verify(documentRepository, never()).markFailed(any(), any());
@@ -1518,7 +1518,7 @@ class FileProcessingServiceTest {
 
       verify(vectorStore, times(2)).delete(documentIdFilter(doc.getId()));
       verify(documentRepository)
-          .markFailedWithoutChunks(doc.getId(), FileProcessingService.PROCESSING_FAILED_MESSAGE);
+          .markFailedWithoutChunks(doc.getId(), DocumentIngestService.PROCESSING_FAILED_MESSAGE);
     }
 
     @Test
@@ -1532,9 +1532,9 @@ class FileProcessingServiceTest {
       when(checksumService.computeSha256(file)).thenReturn("checksum");
       stubParsedInto(file, chunks("chunk1"));
 
-      FileProcessingResult result = service.ingest(reindex(doc, file), null);
+      DocumentIngestResult result = service.ingest(reindex(doc, file), null);
 
-      assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       assertThat(storedChunks().getFirst().getMetadata())
           .doesNotContainKey(ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY);
     }
@@ -1556,7 +1556,7 @@ class FileProcessingServiceTest {
                       "undeclared_key", "must not ride along")));
       var fakePipeline =
           new FakePassthroughPipeline(Set.of("structural_key", "declared_but_absent_key"), chunks);
-      FileProcessingService serviceWithFakePipeline =
+      DocumentIngestService serviceWithFakePipeline =
           serviceWith(new DocumentPipelineRegistry(List.of(fakePipeline), fakePipeline));
       stubTextRow();
 
@@ -1584,7 +1584,7 @@ class FileProcessingServiceTest {
                       "library_id",
                       UUID.randomUUID().toString())));
       var fakePipeline = new FakePassthroughPipeline(Set.of("file_name", "library_id"), chunks);
-      FileProcessingService serviceWithFakePipeline =
+      DocumentIngestService serviceWithFakePipeline =
           serviceWith(new DocumentPipelineRegistry(List.of(fakePipeline), fakePipeline));
       stubTextRow();
 
@@ -1661,7 +1661,7 @@ class FileProcessingServiceTest {
           new DiscoveredAttachment("anlage.pdf", attachmentTempFile, "application/pdf");
       var fakePipeline =
           new FakeDiscoveringPipeline(chunks("chunk1"), List.of(attachment), Optional.empty());
-      FileProcessingService serviceWithFakePipeline =
+      DocumentIngestService serviceWithFakePipeline =
           serviceWith(new DocumentPipelineRegistry(List.of(fakePipeline), fakePipeline));
       stubTextRow();
 

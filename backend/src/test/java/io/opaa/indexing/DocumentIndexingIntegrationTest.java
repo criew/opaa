@@ -192,7 +192,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
     assertThat(documents).allMatch(d -> d.getChecksum() != null && d.getChecksum().length() == 64);
     // every document belongs to exactly one library - against the real Liquibase schema,
-    // not just the mocked FileProcessingServiceTest, so a missing fk_documents_library_organization
+    // not just the mocked DocumentIngestServiceTest, so a missing fk_documents_library_organization
     // constraint or a NULL library_id would fail this insert, not just this assertion.
     assertThat(documents).allMatch(d -> targetLibraryId.equals(d.getLibraryId()));
     assertThat(documents).allMatch(d -> Organization.DEFAULT_ID.equals(d.getOrganizationId()));
@@ -798,7 +798,7 @@ class DocumentIndexingIntegrationTest {
       throws IOException {
     // Closes the gap between "indexed through the real pipeline" and
     // "findable through /api/v1/query" - QueryIntegrationTest inserts its chunks by hand and never
-    // exercises FileProcessingService at all, so this is the only test proving the two are
+    // exercises DocumentIngestService at all, so this is the only test proving the two are
     // actually connected for a document that carries a caller-chosen library.
     when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
     when(activeChatModelResolver.resolveChatClient())

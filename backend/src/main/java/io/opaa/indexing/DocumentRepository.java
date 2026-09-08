@@ -21,7 +21,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    * Document identity is scoped to {@code (library_id, file_path)}, enforced by {@code
    * uk_documents_library_path} (migration 067): the same path or URL indexed into two different
    * libraries is two independent documents, never a "move" of one into the other. Backs every
-   * dedup/change-detection lookup in {@link FileProcessingService}, {@code UrlIndexingExecutor} and
+   * dedup/change-detection lookup in {@link DocumentIngestService}, {@code UrlIndexingExecutor} and
    * {@code RssFeedIndexingExecutor}.
    */
   Optional<Document> findByLibraryIdAndFilePath(UUID libraryId, String filePath);

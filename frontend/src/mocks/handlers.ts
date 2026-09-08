@@ -2158,7 +2158,7 @@ export const handlers = [
         { status: 400 },
       )
     }
-    // Mirrors FileProcessingService#processUploadedFileAsync finding no extractable content
+    // Mirrors DocumentIngestService#processUploadedFileAsync finding no extractable content
     //: since the upload endpoint moved off the request thread, this is no longer a
     // synchronous 422 - the row is returned PENDING like any other upload and only turns FAILED
     // once the (simulated) asynchronous processing below resolves it, with the same German
@@ -2190,7 +2190,7 @@ export const handlers = [
     }
     if (isEmptyContent) {
       // Resolved to FAILED, not INDEXED, the next time this document is polled (see the
-      // documents GET handler below) - mirrors FileProcessingService#processUploadedFileAsync
+      // documents GET handler below) - mirrors DocumentIngestService#processUploadedFileAsync
       // finding an empty parse result.
       documentsPendingFailure.add(documentId)
     }

@@ -767,7 +767,7 @@ public class KnowledgeLibraryService {
       // counterpart to #631's deleteDocument fix). The reverse order (chunks deleted eagerly,
       // before the row) left a window: the bulk vectorStore.delete only removes chunks that already
       // exist when it runs. If a concurrently RUNNING indexing job for this same library writes new
-      // chunks (FileProcessingService#storeChunks) and its conditional status-transition UPDATE
+      // chunks (DocumentIngestService#storeChunks) and its conditional status-transition UPDATE
       // (DocumentRepository#markIndexedFromSource, #632) still finds the row - because this method
       // had not deleted it yet - after this deletion finally removes the row, those freshly-written
       // chunks are never caught by the already-run bulk chunk delete and survive as orphans, still

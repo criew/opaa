@@ -39,7 +39,7 @@ class IndexingRunProgressTest {
   @Test
   void aProcessedResultCountsAsProcessedAndRecordsNoEvent() {
     boolean processed =
-        progress.recordOutcome(FileProcessingResult.PROCESSED, "datei.txt", events, this::quota);
+        progress.recordOutcome(DocumentIngestResult.PROCESSED, "datei.txt", events, this::quota);
 
     assertThat(processed).isTrue();
     assertThat(progress.processedCount()).isEqualTo(1);
@@ -51,7 +51,7 @@ class IndexingRunProgressTest {
   @Test
   void aSkippedResultCountsAsSkippedAndRecordsNoEvent() {
     boolean processed =
-        progress.recordOutcome(FileProcessingResult.SKIPPED, "datei.txt", events, this::quota);
+        progress.recordOutcome(DocumentIngestResult.SKIPPED, "datei.txt", events, this::quota);
 
     assertThat(processed).isFalse();
     assertThat(progress.skippedCount()).isEqualTo(1);
@@ -62,7 +62,7 @@ class IndexingRunProgressTest {
   void anExceededQuotaCountsAsSkippedAndIsRejectedWithTheQuotaMessage() {
     boolean processed =
         progress.recordOutcome(
-            FileProcessingResult.QUOTA_EXCEEDED, "datei.txt", events, this::quota);
+            DocumentIngestResult.QUOTA_EXCEEDED, "datei.txt", events, this::quota);
 
     assertThat(processed).isFalse();
     assertThat(progress.skippedCount()).isEqualTo(1);
@@ -73,7 +73,7 @@ class IndexingRunProgressTest {
   void missingExtractableTextCountsAsSkippedAndIsRejectedWithItsOwnMessage() {
     boolean processed =
         progress.recordOutcome(
-            FileProcessingResult.NO_EXTRACTABLE_TEXT, "scan.pdf", events, this::quota);
+            DocumentIngestResult.NO_EXTRACTABLE_TEXT, "scan.pdf", events, this::quota);
 
     assertThat(processed).isFalse();
     assertThat(progress.skippedCount()).isEqualTo(1);
@@ -87,12 +87,12 @@ class IndexingRunProgressTest {
   @Test
   void aFailedResultCountsAsFailedAndIsRecordedAsAnError() {
     boolean processed =
-        progress.recordOutcome(FileProcessingResult.FAILED, "kaputt.pdf", events, this::quota);
+        progress.recordOutcome(DocumentIngestResult.FAILED, "kaputt.pdf", events, this::quota);
 
     assertThat(processed).isFalse();
     assertThat(progress.failedCount()).isEqualTo(1);
     verify(events)
-        .record(IndexingEventCategory.ERROR, FileProcessingOutcomes.FAILED_MESSAGE, "kaputt.pdf");
+        .record(IndexingEventCategory.ERROR, DocumentIngestOutcomes.FAILED_MESSAGE, "kaputt.pdf");
     progress.complete();
     verify(jobService).completeJob(jobId, 0, 1, 0, 0);
   }
@@ -100,14 +100,14 @@ class IndexingRunProgressTest {
   @Test
   void theQuotaMessageIsOnlyResolvedWhenTheQuotaWasExceeded() {
     progress.recordOutcome(
-        FileProcessingResult.PROCESSED,
+        DocumentIngestResult.PROCESSED,
         "datei.txt",
         events,
         () -> {
           throw new AssertionError("must not be resolved");
         });
     progress.recordOutcome(
-        FileProcessingResult.FAILED,
+        DocumentIngestResult.FAILED,
         "datei.txt",
         events,
         () -> {

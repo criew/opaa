@@ -49,7 +49,7 @@ class ContextPrefixRerunIntegrationTest {
 
   private static final Path classTempDir = OpaaIndexingTestDirectory.subdirectory("context-prefix");
 
-  @Autowired private FileProcessingService fileProcessingService;
+  @Autowired private DocumentIngestService documentIngestService;
   @Autowired private ContextPrefixRerunService rerunService;
   @Autowired private LibraryMetadataFieldService fieldService;
   @Autowired private DocumentMetadataService metadataService;
@@ -277,7 +277,7 @@ class ContextPrefixRerunIntegrationTest {
     assertThat(hierarchyPath.length()).isGreaterThan(500);
 
     assertThat(
-            fileProcessingService.ingest(
+            documentIngestService.ingest(
                 DocumentIngest.builder(library)
                     .text("Für die Ausstellung wird eine Gebühr von 37,00 EUR erhoben.")
                     .filePath("https://wiki.example.test/tiefe-seite")
@@ -288,7 +288,7 @@ class ContextPrefixRerunIntegrationTest {
                     .syntheticName(true)
                     .build(),
                 null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+        .isEqualTo(DocumentIngestResult.PROCESSED);
 
     Document document =
         documentRepository.findAll().stream()
@@ -421,7 +421,7 @@ class ContextPrefixRerunIntegrationTest {
    */
   private void reindexFromScratch(Document document, String fileName) throws IOException {
     assertThat(
-            fileProcessingService.ingest(
+            documentIngestService.ingest(
                 DocumentIngest.builder(library)
                     .file(classTempDir.resolve(fileName))
                     .filePath(document.getFilePath())
@@ -430,7 +430,7 @@ class ContextPrefixRerunIntegrationTest {
                     .reindex()
                     .build(),
                 null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+        .isEqualTo(DocumentIngestResult.PROCESSED);
   }
 
   /** The text both indexes actually see: the chunk's prefix in front of its stored text. */
@@ -507,7 +507,7 @@ class ContextPrefixRerunIntegrationTest {
         """,
         StandardCharsets.UTF_8);
     assertThat(
-            fileProcessingService.ingest(
+            documentIngestService.ingest(
                 DocumentIngest.builder(library)
                     .file(file)
                     .filePath(file.toString())
@@ -515,7 +515,7 @@ class ContextPrefixRerunIntegrationTest {
                     .sourceType(DocumentSourceType.FILESYSTEM)
                     .build(),
                 null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+        .isEqualTo(DocumentIngestResult.PROCESSED);
     return documentRepository.findAll().stream()
         .filter(document -> fileName.equals(document.getFileName()))
         .findFirst()

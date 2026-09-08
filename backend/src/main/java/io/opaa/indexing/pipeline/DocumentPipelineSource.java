@@ -6,7 +6,7 @@ import java.util.Locale;
 /**
  * What a {@link DocumentPipeline} is handed: either a file on disk, or text that was already
  * extracted upstream and never had a file (a feed entry's main content as HTML, a Confluence page
- * body - see {@code FileProcessingService#ingest}).
+ * body - see {@code DocumentIngestService#ingest}).
  *
  * <p>Exactly one of {@link #file()} and {@link #extractedText()} is non-{@code null} - enforced in
  * the compact constructor, so a pipeline can branch on {@code file() != null} without having to

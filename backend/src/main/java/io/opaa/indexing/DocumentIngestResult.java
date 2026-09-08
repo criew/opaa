@@ -1,6 +1,6 @@
 package io.opaa.indexing;
 
-public enum FileProcessingResult {
+public enum DocumentIngestResult {
   PROCESSED,
   SKIPPED,
 

@@ -681,7 +681,7 @@ Datumsangabe aus dem Namen. Als **Titel** bleibt der Name, denn genau das ist er
 | RSS-Eintragskörper | Überschrift des Eintrags, ersatzweise seine URL | **nein** |
 | Confluence-Seite | Seitentitel, ersatzweise seine URL | **nein** |
 
-Anhänge stehen ausnahmslos auf der Ja-Seite: Sie laufen über `FileProcessingService#ingest`
+Anhänge stehen ausnahmslos auf der Ja-Seite: Sie laufen über `DocumentIngestService#ingest`
 mit dem Namen, den die Quelle für die Datei nennt — auch der Anhang eines RSS-Eintrags und der einer
 Confluence-Seite, deren Elternzeile selbst einen synthetischen Namen trägt.
 
@@ -691,7 +691,7 @@ haben stattdessen eine echte Datumsquelle aus den Eigenschaften der Quelle: der 
 Veröffentlichungsdatum (`documentDate`), die Confluence-Seite den Zeitpunkt, zu dem ihre aktuelle
 Version geschrieben wurde (`modifiedAt`, aus `ConfluencePage#lastModified`). Beide
 synthetischen Zuflüsse setzen das Kennzeichen im `DocumentIngest`, den ihr Konnektor an
-`FileProcessingService#ingest` übergibt (`DocumentIngest.text(...)`). Im **Bestandslauf** gibt es zwei Wege zur selben Regel: Ein
+`DocumentIngestService#ingest` übergibt (`DocumentIngest.text(...)`). Im **Bestandslauf** gibt es zwei Wege zur selben Regel: Ein
 RSS-Eintragskörper wird in `MetadataBackfillService#advanceRemote` ohne Download aus seiner Zeile neu
 ermittelt und setzt das Kennzeichen dort selbst; eine Confluence-Seite hat keine zeilenweise
 Ersatzquelle (ihr `last_modified_remote` ist die Versionsnummer, kein Datum, und Titelzeile wie

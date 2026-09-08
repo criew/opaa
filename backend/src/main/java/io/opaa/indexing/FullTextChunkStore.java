@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
  * A dedicated table, not columns on {@code vector_store} itself: see {@code
  * changes/003-chunk-full-text-table.yaml}'s own comment for why.
  *
- * <p>Never called directly by {@link FileProcessingService} - {@link VectorChunkStore} owns both
+ * <p>Never called directly by {@link DocumentIngestService} - {@link VectorChunkStore} owns both
  * writes (see {@link VectorChunkStore#addChunks}) so a chunk can never be vectorized without also
  * being full-text-indexed, and both deletes (see {@link VectorChunkStore#deleteByDocumentId}/{@link
  * VectorChunkStore#deleteByLibraryId}) so a full-text row can never outlive the vector chunk it

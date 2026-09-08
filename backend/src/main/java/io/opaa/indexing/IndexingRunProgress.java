@@ -57,20 +57,20 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
   }
 
   /**
-   * Maps one item's {@link FileProcessingResult} onto the counters and the protocol: a rejection
+   * Maps one item's {@link DocumentIngestResult} onto the counters and the protocol: a rejection
    * ({@code QUOTA_EXCEEDED}, {@code NO_EXTRACTABLE_TEXT}) and {@code SKIPPED} count as skipped,
    * {@code FAILED} as failed, {@code PROCESSED} as processed; the protocol entry, if any, is the
-   * one {@link FileProcessingOutcomes#record} writes.
+   * one {@link DocumentIngestOutcomes#record} writes.
    *
    * @return whether the item was processed
    */
   public boolean recordOutcome(
-      FileProcessingResult result,
+      DocumentIngestResult result,
       String reference,
       IndexingEventSink events,
       Supplier<String> quotaMessage) {
-    FileProcessingOutcomes.record(
-        events, result, reference, quotaMessage, FileProcessingOutcomes.FAILED_MESSAGE);
+    DocumentIngestOutcomes.record(
+        events, result, reference, quotaMessage, DocumentIngestOutcomes.FAILED_MESSAGE);
     switch (result) {
       case PROCESSED -> {
         recordProcessed();

@@ -24,7 +24,7 @@ public class Document {
    * Polymorphic by {@link #sourceType}: a local filesystem/storage path for {@code
    * FILESYSTEM}/{@code UPLOAD}, a remote URL for {@code HTTP_DIRECTORY}/{@code RSS_FEED}/{@code
    * CONFLUENCE}. An attachment carries the synthetic path {@code
-   * FileProcessingService#attachmentFilePath} builds from its parent's own (ADR-0022, Entscheidung
+   * DocumentIngestService#attachmentFilePath} builds from its parent's own (ADR-0022, Entscheidung
    * 2). Unique per library ({@code uk_documents_library_path}).
    */
   @Column(name = "file_path", nullable = false, length = 2000)
@@ -69,7 +69,7 @@ public class Document {
    * The organization the {@link #libraryId} library belongs to, denormalized onto the document so
    * the permission-aware vector search can filter chunks by organization without a join back to
    * {@code knowledge_libraries} - see the same reasoning on {@code
-   * FileProcessingService#storeChunks}. Set together with {@link #libraryId}, never independently.
+   * DocumentIngestService#storeChunks}. Set together with {@link #libraryId}, never independently.
    */
   @Column(name = "organization_id")
   private UUID organizationId;
@@ -114,7 +114,7 @@ public class Document {
 
   /**
    * A German, user-facing reason {@link #status} is {@link DocumentStatus#FAILED} - set by {@code
-   * FileProcessingService#processUploadedFileAsync} when parsing or embedding an uploaded file
+   * DocumentIngestService#processUploadedFileAsync} when parsing or embedding an uploaded file
    * fails asynchronously, after the row has already been returned to the caller with {@code
    * PENDING}. {@code null} for every other status.
    */
