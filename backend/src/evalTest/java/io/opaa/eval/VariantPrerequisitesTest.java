@@ -63,10 +63,10 @@ class VariantPrerequisitesTest {
   }
 
   /**
-   * Issue #1049: chunks missing from the full-text index are invisible to the lexical path - the
-   * variant would measure a diminished lexical contribution under the name of the full hybrid
-   * configuration, and a Δ near zero against a vector-only reference would read as "the lexical
-   * path changes nothing".
+   * Issue #1049: a chunk without a full-text row is invisible to the lexical path, and a row of an
+   * older content_tsv_version lacks the current lexemes - the variant would measure a diminished
+   * lexical contribution under the name of the full hybrid configuration, and a Δ near zero against
+   * a vector-only reference would read as "the lexical path changes nothing".
    */
   @Test
   void aHybridVariantIsSkippedWhileTheFullTextIndexIsIncomplete() {

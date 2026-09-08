@@ -13,9 +13,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * How many libraries of a search scope hold chunks the lexical path cannot find - a chunk without a
- * {@code chunk_full_text} row at the current {@code FullTextChunkStore#CURRENT_TSV_VERSION}
- * (docs/features/hybrid-retrieval.md, "Arbeitspaket 2a").
+ * How many libraries of a search scope hold chunks whose full-text index is not up to date - a
+ * chunk without a {@code chunk_full_text} row, or with one below the current {@code
+ * FullTextChunkStore#CURRENT_TSV_VERSION} (docs/features/hybrid-retrieval.md, "Arbeitspaket 2a").
+ * The first kind the lexical path cannot find; the second it still finds, lacking only the lexemes
+ * the newer version adds (ADR-0028).
  *
  * <p><b>Reports, never narrows (#1270).</b> The predecessor of this class kept an incomplete
  * library out of the lexical path entirely; that gate is gone, so such a library <em>is</em>

@@ -360,10 +360,12 @@ nächsten Abschnitts und nicht ein Nebeneffekt der Migration.
 >
 > **Bewusst in Kauf genommene Folge:** Ein künftiger Bump der Volltext-Aufbereitung
 > (`FullTextChunkStore.CURRENT_TSV_VERSION`) hat keinen eigenen, billigen Nachzug mehr.
-> Bestandszeilen gelten dann als fehlend, sind für den lexikalischen Pfad unsichtbar und die
-> Bibliothek erscheint auf der Administrationsseite als `INCOMPLETE`. Der Weg zurück ist der
-> **Pipeline-Nachzug** (`POST /api/v1/admin/indexing/pipeline-reindex`), der genau dafür
-> versionsbewusst erweitert wurde: Er wählt ein Dokument auch dann aus, wenn nur seine
+> Bestandszeilen gelten dann als fehlend und die Bibliothek erscheint auf der Administrationsseite
+> als `INCOMPLETE` — **lexikalisch findbar bleiben sie** (seit #1346,
+> [ADR-0028](../decisions/0028-tsv-version-uebergang.md): der Suchpfad filtert nicht auf die
+> Fassung), ihnen fehlen bis zum Nachzug nur die Lexeme, die die neue Fassung hinzufügt. Der Weg
+> zurück ist der **Pipeline-Nachzug** (`POST /api/v1/admin/indexing/pipeline-reindex`), der genau
+> dafür versionsbewusst erweitert wurde: Er wählt ein Dokument auch dann aus, wenn nur seine
 > `chunk_full_text`-Zeilen unter der aktuellen `content_tsv_version` liegen (oder fehlen) —
 > unabhängig von der Pipeline-Version, denn ein Bump dieser Konstante hebt keine
 > `DocumentPipeline#version()`. **Der Preis ist benannt:** Dieser Weg liest, zerlegt und
@@ -477,7 +479,11 @@ behebt genau diese Asymmetrie, mit demselben Mechanismus wie bei Aktenzeichen.
   schreibt Gewichte in Positionen, ist dort also stillschweigend wirkungslos. Gebaut ist deshalb
   `setweight(to_tsvector('simple', …), 'A')`.
 - **Eine Änderung der Tokenbildung erhöht `content_tsv_version`.** Bestandszeilen gelten damit als
-  fehlend, sind für den lexikalischen Pfad unsichtbar und werden über den Pipeline-Nachzug neu aufbereitet (seit #1270 gibt es dafür keinen automatischen Nachlauf mehr, siehe Arbeitspaket 2a).
+  fehlend und werden über den Pipeline-Nachzug neu aufbereitet (seit #1270 gibt es dafür keinen
+  automatischen Nachlauf mehr, siehe Arbeitspaket 2a). Für den lexikalischen Pfad bleiben sie bis
+  dahin findbar, nur ohne die neuen Lexeme — Bedingung dafür ist, dass die Änderung additiv ist; eine
+  brechende Änderung der Lexemform braucht wieder einen Versionsfilter im Suchpfad
+  ([ADR-0028](../decisions/0028-tsv-version-uebergang.md)).
 
 ### Die bekannte Grenze: `ts_rank` ist kein BM25
 
@@ -1634,15 +1640,16 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   ist mit #1270 entfernt, weil es keinen Bestand mehr gab, den es nachzuziehen galt.
 
   **Die bewusst in Kauf genommene Folge:** Ein Bump von `CURRENT_TSV_VERSION` markiert schlagartig
-  jede Zeile jeder Bibliothek als veraltet. Diese Zeilen sind für den lexikalischen Pfad unsichtbar
-  — dessen Abfrage filtert auf die aktuelle Version —, und nichts holt sie von selbst wieder ein.
-  Der Bestand ist damit bis zum Nachzug **vollständig** aus dem lexikalischen Pfad heraus, und
-  während der Nachzug läuft, arbeitet jede noch nicht fertige Bibliothek mit einem **halb gefüllten**
-  Volltextindex — genau der Zustand, den dieses Arbeitspaket weiter oben als „schlimmer als keiner"
-  führt. Das frühere Tor verhinderte ihn; ohne Tor ist er möglich und wird hingenommen, dafür aber
-  ausgewiesen: `fullTextIndexCondition()` zeigt `INCOMPLETE`, der Suchpfad meldet sich als
-  unvollständig, und das Erklärprotokoll jeder Suche nennt die Zahl der betroffenen Bibliotheken
-  (`FULL_TEXT_PERMISSION_FILTER`).
+  jede Zeile jeder Bibliothek als veraltet, und nichts holt sie von selbst wieder ein. Bis #1346
+  waren diese Zeilen für den lexikalischen Pfad unsichtbar — dessen Abfrage filterte auf die
+  aktuelle Version —, der Bestand war bis zum Nachzug **vollständig** aus dem lexikalischen Pfad
+  heraus. **Seit #1346 ([ADR-0028](../decisions/0028-tsv-version-uebergang.md)) filtert der
+  Suchpfad nicht mehr auf die Fassung:** Eine Zeile alter Fassung bleibt findbar und wird durch den
+  Nachzug lediglich um die neuen Lexeme reicher; Bedingung ist, dass jede Anhebung additiv bleibt.
+  Der Mischzustand wird weiterhin ausgewiesen: `fullTextIndexCondition()` zeigt `INCOMPLETE`, der
+  Suchpfad meldet sich als unvollständig, und das Erklärprotokoll jeder Suche nennt die Zahl der
+  betroffenen Bibliotheken (`FULL_TEXT_PERMISSION_FILTER`) — „unvollständig" heißt dort „Nachzug
+  ausstehend", nicht „unauffindbar".
 
   Der Weg heraus ist der **Pipeline-Nachzug** (`POST /api/v1/admin/indexing/pipeline-reindex`), der
   ein Dokument seit #1270 auch allein wegen veralteter oder fehlender `chunk_full_text`-Zeilen

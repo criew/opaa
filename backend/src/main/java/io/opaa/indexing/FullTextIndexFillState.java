@@ -11,7 +11,9 @@ import java.util.UUID;
  *
  * <p>Nothing fills a gap after the fact - the full-text row is written in the same transaction as
  * the vector row - so a nonzero {@code missingChunks} is an operational finding, resolved by a
- * reindex.
+ * reindex. "Missing" covers both a chunk without a {@code chunk_full_text} row and one whose row is
+ * below {@link FullTextChunkStore#CURRENT_TSV_VERSION}; the latter is still found by the lexical
+ * path (ADR-0028), it only lacks the lexemes the newer version adds.
  */
 public record FullTextIndexFillState(
     UUID libraryId, long totalChunks, long indexedChunks, long missingChunks) {

@@ -17,10 +17,11 @@ import org.springframework.stereotype.Component;
  * alarm. Read-only counterpart of {@link FullTextChunkStore}.
  *
  * <p>Every count is filtered to {@link FullTextChunkStore#CURRENT_TSV_VERSION}, {@code
- * indexedChunks} included: a row at an older version carries lexemes the search path does not query
- * for, so counting it would report a library as complete whose rows are unusable. Schema and table
- * name come from the same {@code spring.ai.vectorstore.pgvector.*} properties {@code PgVectorStore}
- * binds.
+ * indexedChunks} included: a row at an older version lacks the lexemes the current version adds, so
+ * counting it would report a library as complete whose re-index is still outstanding. The lexical
+ * search path itself does not apply this filter (ADR-0028) - the fill state reports what still
+ * needs the re-index, not what is unsearchable. Schema and table name come from the same {@code
+ * spring.ai.vectorstore.pgvector.*} properties {@code PgVectorStore} binds.
  */
 @Component
 public class FullTextIndexFillStateService {

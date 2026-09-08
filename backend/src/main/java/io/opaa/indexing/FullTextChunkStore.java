@@ -41,10 +41,14 @@ public class FullTextChunkStore {
 
   /**
    * The {@code content_tsv_version} every row written by {@link #indexChunks} carries. <b>Raise it
-   * whenever the lexemes this class stores change</b>: rows at an older version are invisible to
-   * the lexical search path, counted as missing by {@link FullTextIndexFillStateService}, and
-   * brought up to date only by {@link PipelineReindexService#reindexBatch}, never by a background
-   * job. Public because the query path must restrict itself to rows built under this version.
+   * whenever the lexemes this class stores change</b>: rows at an older version are counted as
+   * missing by {@link FullTextIndexFillStateService} and brought up to date only by {@link
+   * PipelineReindexService#reindexBatch}, never by a background job. The lexical search path does
+   * not filter on it (ADR-0028): an older row stays searchable and merely lacks the newer lexemes.
+   * <b>That is only sound while every raise is additive.</b> A change that breaks the lexeme form
+   * of existing rows - e.g. a different {@link #TEXT_SEARCH_CONFIGURATION} - must reintroduce a
+   * version filter in {@code io.opaa.query.FullTextChunkSearch} before it ships. Public because the
+   * {@code io.opaa.query} tests seed rows below it to pin that contract.
    */
   public static final short CURRENT_TSV_VERSION = 5;
 
