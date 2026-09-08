@@ -333,6 +333,38 @@ class SourceConnectionTestServiceTest {
   }
 
   @Test
+  void httpDirectoryDropsCredentialsOnARedirectOutOfTheTestedSubtree() throws IOException {
+    // regression guard for #1301: the tested URL is the crawl's start URL - a same-origin redirect
+    // to a path outside it must not receive the credentials the request carries.
+    AtomicReference<String> observedAuth = new AtomicReference<>("(never contacted)");
+    server.createContext(
+        "/dokumente/",
+        exchange -> {
+          exchange.getResponseHeaders().set("Location", baseUrl + "/intern/");
+          exchange.sendResponseHeaders(302, -1);
+          exchange.close();
+        });
+    server.createContext(
+        "/intern/",
+        exchange -> {
+          observedAuth.set(exchange.getRequestHeaders().getFirst("Authorization"));
+          exchange.sendResponseHeaders(401, -1);
+          exchange.close();
+        });
+
+    SourceConnectionTestResult response =
+        service.test(
+            sourceConnectionTest()
+                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create(baseUrl + "/dokumente/"))
+                .sourceCredentials("admin:secret")
+                .build());
+
+    assertThat(response.reachable()).isFalse();
+    assertThat(observedAuth.get()).isNull();
+  }
+
+  @Test
   void httpDirectoryFollowsASameOriginRedirect() throws IOException {
     // #538 follow-up review, finding 4: SourceConnectionTestService had no redirect test at all -
     // buildHttpClient no longer auto-follows at the JDK level (Redirect.NEVER), so a legitimate

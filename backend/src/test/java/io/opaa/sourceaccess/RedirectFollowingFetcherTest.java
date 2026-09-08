@@ -92,6 +92,69 @@ class RedirectFollowingFetcherTest {
   }
 
   @Test
+  void dropAuthorizationOffOrigin_dropsAuthorizationOnceARedirectLeavesTheAuthorizationScope()
+      throws IOException, InterruptedException {
+    // regression guard for #1301: a same-origin redirect from below the crawl's start URL to a
+    // sibling path outside it must not carry the source configuration's credentials along.
+    AtomicReference<String> receivedAuthorization = new AtomicReference<>("(never contacted)");
+    origin.createContext(
+        "/dokumente/unterordner/", exchange -> redirectTo(exchange, originUrl + "/intern/"));
+    origin.createContext(
+        "/intern/",
+        exchange -> {
+          receivedAuthorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+          respond(exchange, 200, "content");
+        });
+
+    Map<String, String> headers = new LinkedHashMap<>();
+    headers.put("Authorization", "Basic dGVzdDp0ZXN0");
+    HttpResponse<InputStream> response =
+        RedirectFollowingFetcher.sendFollowingRedirects(
+            productionClient(),
+            originUrl + "/dokumente/unterordner/",
+            Duration.ofSeconds(5),
+            headers,
+            TargetAddressValidator.disabled(),
+            RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
+            RateLimitHandling.NONE,
+            target -> target.getPath().startsWith("/dokumente/"));
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    assertThat(receivedAuthorization.get()).isNull();
+  }
+
+  @Test
+  void dropAuthorizationOffOrigin_keepsAuthorizationOnARedirectInsideTheAuthorizationScope()
+      throws IOException, InterruptedException {
+    AtomicReference<String> receivedAuthorization = new AtomicReference<>("(never contacted)");
+    origin.createContext(
+        "/dokumente/unterordner",
+        exchange -> redirectTo(exchange, originUrl + "/dokumente/unterordner/"));
+    origin.createContext(
+        "/dokumente/unterordner/",
+        exchange -> {
+          receivedAuthorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+          respond(exchange, 200, "content");
+        });
+
+    Map<String, String> headers = new LinkedHashMap<>();
+    headers.put("Authorization", "Basic dGVzdDp0ZXN0");
+    HttpResponse<InputStream> response =
+        RedirectFollowingFetcher.sendFollowingRedirects(
+            productionClient(),
+            originUrl + "/dokumente/unterordner",
+            Duration.ofSeconds(5),
+            headers,
+            TargetAddressValidator.disabled(),
+            RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
+            RateLimitHandling.NONE,
+            target -> target.getPath().startsWith("/dokumente/"));
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    assertThat(receivedAuthorization.get()).isEqualTo("Basic dGVzdDp0ZXN0");
+  }
+
+  @Test
   void rejectOffOrigin_throwsBeforeContactingTheForeignHost()
       throws IOException, InterruptedException {
     AtomicInteger foreignHits = new AtomicInteger(0);
