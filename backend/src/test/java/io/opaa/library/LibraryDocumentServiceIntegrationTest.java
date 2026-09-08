@@ -21,8 +21,8 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ValidationException;
 import io.opaa.group.GroupMembershipHistoryRepository;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
@@ -82,7 +82,7 @@ import org.springframework.web.multipart.MultipartFile;
  * <p>{@code uploadDocument} itself only ever returns {@code PENDING} now (#434) - parsing and
  * embedding run asynchronously on {@code uploadTaskExecutor}, the real thread pool this test's
  * Spring context wires up (unlike the unit tests in {@code LibraryDocumentServiceTest}, which mock
- * {@code FileProcessingService} outright). {@link #awaitDocumentStatus} polls the row via
+ * {@code DocumentIngestService} outright). {@link #awaitDocumentStatus} polls the row via
  * Awaitility the same way {@code DocumentIndexingIntegrationTest#awaitJobCompletion} already does
  * for a directory/URL indexing run, wherever a test needs the eventual {@code INDEXED}/{@code
  * FAILED} outcome rather than the immediate {@code PENDING} response.

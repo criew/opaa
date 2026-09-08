@@ -1,12 +1,12 @@
 package io.opaa.indexing.source.filesystem;
 
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.indexing.DocumentIngest;
-import io.opaa.indexing.DocumentService;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.RejectedDocumentReporter;
+import io.opaa.indexing.document.DocumentIngest;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentService;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.RejectedDocumentReporter;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
@@ -45,19 +45,19 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
   private static final Logger log = LoggerFactory.getLogger(AsyncIndexingExecutor.class);
 
   private final DocumentService documentService;
-  private final FileProcessingService fileProcessingService;
+  private final DocumentIngestService documentIngestService;
   private final FilesystemPathAllowlist filesystemAllowlist;
   private final LibraryFolderService folderService;
   private final IndexingRunTemplate runTemplate;
 
   public AsyncIndexingExecutor(
       DocumentService documentService,
-      FileProcessingService fileProcessingService,
+      DocumentIngestService documentIngestService,
       FilesystemPathAllowlist filesystemAllowlist,
       LibraryFolderService folderService,
       IndexingRunTemplate runTemplate) {
     this.documentService = documentService;
-    this.fileProcessingService = fileProcessingService;
+    this.documentIngestService = documentIngestService;
     this.filesystemAllowlist = filesystemAllowlist;
     this.folderService = folderService;
     this.runTemplate = runTemplate;
@@ -154,8 +154,8 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
         log.info("Processing: {}", fileName);
         UUID folderId = materializeFolder(documentDir, file, folderMirror);
         folderMirror.markSeen(folderId);
-        FileProcessingResult result =
-            fileProcessingService.ingest(
+        DocumentIngestResult result =
+            documentIngestService.ingest(
                 DocumentIngest.localFile(targetLibrary, file).folder(folderId).build(),
                 attachmentAccess);
         if (run.recordOutcome(result, fileName)) {

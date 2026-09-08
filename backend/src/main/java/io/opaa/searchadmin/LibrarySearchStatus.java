@@ -1,6 +1,6 @@
 package io.opaa.searchadmin;
 
-import io.opaa.indexing.ContextPrefixRerunProgress;
+import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import io.opaa.indexing.metadata.ModelExtractionStats;
 import java.time.Instant;
@@ -10,8 +10,8 @@ import java.util.UUID;
  * One library's index state, as the administration page shows it.
  *
  * <p>{@code fullTextIndexedChunks}/{@code fullTextMissingChunks} are read from {@code
- * io.opaa.indexing.FullTextIndexFillStateService} and counted nowhere else, so no second count with
- * its own logic can contradict this display.
+ * io.opaa.indexing.maintenance.FullTextIndexFillStateService} and counted nowhere else, so no
+ * second count with its own logic can contradict this display.
  *
  * @param chunkCount chunks the {@code documents} rows record as produced.
  * @param vectorChunkCount chunks actually present in the vector store. A gap to {@code chunkCount}

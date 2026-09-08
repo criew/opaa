@@ -9,8 +9,8 @@ import io.opaa.chat.ChatService;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
-import io.opaa.indexing.ChunkingService;
-import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.metadata.CitationFieldValue;
 import io.opaa.indexing.metadata.CitationMetadataReader;
 import io.opaa.indexing.metadata.CoreMetadata;
@@ -274,7 +274,7 @@ public class QueryService {
                         citationParser.extractCitations(answer), relevantChunks, answer);
                 logInvalidCitations(validatedCitations);
                 Map<String, Integer> matchCounts = countMatchesPerDocument(relevantChunks);
-                Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId =
+                Map<String, io.opaa.indexing.document.Document> sourceDocumentsByDocId =
                     lookupSourceDocuments(relevantChunks);
                 Map<UUID, CoreMetadata> coreMetadataByDocId =
                     lookupCoreMetadata(sourceDocumentsByDocId);
@@ -567,7 +567,7 @@ public class QueryService {
   /**
    * Groups a chunk by its {@code document_id} metadata, falling back to {@code file_name} when that
    * metadata is missing or empty - a chunk without {@code document_id} can only occur for pre-#739
-   * index entries, since {@code FileProcessingService#storeChunks} now writes it on every chunk.
+   * index entries, since {@code DocumentIngestService#storeChunks} now writes it on every chunk.
    * Using the same {@code file_name} fallback consistently across {@link #countMatchesPerDocument}
    * and {@link #mapSources} keeps two such chunks from <em>different</em> documents from collapsing
    * into one merged entry via a shared empty-string key.
@@ -582,21 +582,22 @@ public class QueryService {
 
   /**
    * Resolves each cited chunk's {@code document_id} to its persisted {@link
-   * io.opaa.indexing.Document} - the single {@link DocumentRepository} lookup {@link #mapSources}
-   * draws both {@code indexedAt} and {@code sourceEntryUrl} from (#639), rather than a second,
-   * duplicate lookup per field. {@code sourceEntryUrl} follows the same document_id-lookup pattern
-   * this method already used for {@code indexedAt} alone - see the comment in {@code
-   * FileProcessingService#storeChunks} for why the value is not instead duplicated onto every chunk
+   * io.opaa.indexing.document.Document} - the single {@link DocumentRepository} lookup {@link
+   * #mapSources} draws both {@code indexedAt} and {@code sourceEntryUrl} from (#639), rather than a
+   * second, duplicate lookup per field. {@code sourceEntryUrl} follows the same document_id-lookup
+   * pattern this method already used for {@code indexedAt} alone - see the comment in {@code
+   * DocumentIngestService#storeChunks} for why the value is not instead duplicated onto every chunk
    * in the vector store.
    */
-  private Map<String, io.opaa.indexing.Document> lookupSourceDocuments(List<Document> chunks) {
+  private Map<String, io.opaa.indexing.document.Document> lookupSourceDocuments(
+      List<Document> chunks) {
     Set<String> documentIds =
         chunks.stream()
             .map(c -> c.getMetadata().getOrDefault("document_id", "").toString())
             .filter(id -> !id.isEmpty())
             .collect(Collectors.toSet());
 
-    Map<String, io.opaa.indexing.Document> result = new LinkedHashMap<>();
+    Map<String, io.opaa.indexing.document.Document> result = new LinkedHashMap<>();
     for (String docId : documentIds) {
       try {
         documentRepository
@@ -620,10 +621,10 @@ public class QueryService {
    * logged and yields no core fields rather than failing the answer.
    */
   private Map<UUID, CoreMetadata> lookupCoreMetadata(
-      Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId) {
+      Map<String, io.opaa.indexing.document.Document> sourceDocumentsByDocId) {
     Set<UUID> ids =
         sourceDocumentsByDocId.values().stream()
-            .map(io.opaa.indexing.Document::getId)
+            .map(io.opaa.indexing.document.Document::getId)
             .collect(Collectors.toSet());
     try {
       return documentMetadataService.coreMetadataFor(ids);
@@ -680,7 +681,7 @@ public class QueryService {
    * rather than failing the answer, exactly like the core-field lookup.
    */
   private Map<UUID, List<CitationFieldValue>> lookupCitationFields(
-      Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId) {
+      Map<String, io.opaa.indexing.document.Document> sourceDocumentsByDocId) {
     try {
       return citationMetadataReader.forDocuments(sourceDocumentsByDocId.values());
     } catch (RuntimeException e) {
@@ -696,7 +697,7 @@ public class QueryService {
       List<Document> chunks,
       List<CitationValidator.ValidatedCitation> validatedCitations,
       Map<String, Integer> matchCounts,
-      Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId,
+      Map<String, io.opaa.indexing.document.Document> sourceDocumentsByDocId,
       Map<UUID, CoreMetadata> coreMetadataByDocId,
       Map<UUID, List<CitationFieldValue>> citationFieldsByDocId,
       MetadataFilter metadataFilter) {
@@ -732,7 +733,8 @@ public class QueryService {
                   boolean cited = validCitedDocumentIds.contains(documentId);
                   boolean citationValid = !documentIdsWithInvalidCitation.contains(documentId);
                   int matches = matchCounts.getOrDefault(groupKey, 1);
-                  io.opaa.indexing.Document sourceDocument = sourceDocumentsByDocId.get(documentId);
+                  io.opaa.indexing.document.Document sourceDocument =
+                      sourceDocumentsByDocId.get(documentId);
                   Instant indexedAt = sourceDocument != null ? sourceDocument.getIndexedAt() : null;
                   String sourceEntryUrl =
                       sourceDocument != null ? sourceDocument.getSourceEntryUrl() : null;
@@ -881,9 +883,9 @@ public class QueryService {
    * whole contributed to the answer.
    *
    * <p>{@code a} and {@code b} always share the same {@code document_id} and therefore the same
-   * underlying {@link io.opaa.indexing.Document} row - {@code documentId}, {@code sourceType},
-   * {@code sourceUrl} and {@code sourceEntryUrl} are consequently always equal between them, unlike
-   * under a fileName key where two genuinely different documents could disagree.
+   * underlying {@link io.opaa.indexing.document.Document} row - {@code documentId}, {@code
+   * sourceType}, {@code sourceUrl} and {@code sourceEntryUrl} are consequently always equal between
+   * them, unlike under a fileName key where two genuinely different documents could disagree.
    */
   static ChatSource mergeSourceReferences(ChatSource a, ChatSource b) {
     ChatSource preferred = a.getRelevanceScore() >= b.getRelevanceScore() ? a : b;

@@ -13,11 +13,11 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentIngest;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentIngest;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.library.AssetGrant;
 import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibrary;
@@ -60,7 +60,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
   @Autowired private DocumentMetadataCorrectionService correctionService;
   @Autowired private LibraryMetadataMaintenanceService maintenanceService;
   @Autowired private CitationMetadataReader citationReader;
-  @Autowired private FileProcessingService fileProcessingService;
+  @Autowired private DocumentIngestService documentIngestService;
   @Autowired private DocumentMetadataValueRepository valueRepository;
   @Autowired private LibraryMetadataFieldValueRepository fieldValueRepository;
   @Autowired private DocumentRepository documentRepository;
@@ -716,8 +716,8 @@ class LibraryMetadataFieldServiceIntegrationTest {
   private Document indexed(String fileName) throws IOException {
     Path file = classTempDir.resolve(fileName);
     writePdf(file);
-    assertThat(fileProcessingService.ingest(DocumentIngest.localFile(library, file).build(), null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+    assertThat(documentIngestService.ingest(DocumentIngest.localFile(library, file).build(), null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
     return documentRepository.findAll().stream()
         .filter(document -> fileName.equals(document.getFileName()))
         .findFirst()

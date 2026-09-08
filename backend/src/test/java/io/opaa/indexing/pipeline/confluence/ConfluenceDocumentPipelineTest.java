@@ -2,7 +2,7 @@ package io.opaa.indexing.pipeline.confluence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.ChunkingService;
+import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import java.util.List;

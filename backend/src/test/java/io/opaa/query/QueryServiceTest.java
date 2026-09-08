@@ -27,8 +27,8 @@ import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.common.ConflictException;
-import io.opaa.indexing.ChunkingService;
-import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.metadata.CitationMetadataReader;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
@@ -294,7 +294,8 @@ class QueryServiceTest {
             .build();
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
-    var indexedDocument = new io.opaa.indexing.Document("entry.html", "/path", "text/html", 100L);
+    var indexedDocument =
+        new io.opaa.indexing.document.Document("entry.html", "/path", "text/html", 100L);
     indexedDocument.setSourceEntryUrl("https://example.com/feed/entry-123");
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
 
@@ -395,10 +396,11 @@ class QueryServiceTest {
             .build();
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk, plainChunk));
-    io.opaa.indexing.Document document =
-        new io.opaa.indexing.Document("dienstanweisung.pdf", "/d.pdf", "application/pdf", 1L);
-    io.opaa.indexing.Document plainDocument =
-        new io.opaa.indexing.Document("anweisung.md", "/a.md", "text/markdown", 1L);
+    io.opaa.indexing.document.Document document =
+        new io.opaa.indexing.document.Document(
+            "dienstanweisung.pdf", "/d.pdf", "application/pdf", 1L);
+    io.opaa.indexing.document.Document plainDocument =
+        new io.opaa.indexing.document.Document("anweisung.md", "/a.md", "text/markdown", 1L);
     when(documentRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
     when(documentRepository.findById(plainDocumentId)).thenReturn(Optional.of(plainDocument));
@@ -511,7 +513,8 @@ class QueryServiceTest {
             .build();
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
-    var indexedDocument = new io.opaa.indexing.Document("entry.html", "/path", "text/html", 100L);
+    var indexedDocument =
+        new io.opaa.indexing.document.Document("entry.html", "/path", "text/html", 100L);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -540,7 +543,7 @@ class QueryServiceTest {
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
     var indexedDocument =
-        new io.opaa.indexing.Document(
+        new io.opaa.indexing.document.Document(
             "upload.pdf",
             "/data/upload.pdf",
             "application/pdf",
@@ -578,7 +581,7 @@ class QueryServiceTest {
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
     var indexedDocument =
-        new io.opaa.indexing.Document(
+        new io.opaa.indexing.document.Document(
             "dienstanweisung.pdf",
             "https://example.gov/verzeichnis/dienstanweisung.pdf",
             "application/pdf",
@@ -696,10 +699,10 @@ class QueryServiceTest {
         .thenReturn(List.of(firstChunk, secondChunk));
 
     var firstDocument =
-        new io.opaa.indexing.Document("attachment.pdf", "/path1", "application/pdf", 100L);
+        new io.opaa.indexing.document.Document("attachment.pdf", "/path1", "application/pdf", 100L);
     firstDocument.setSourceEntryUrl("https://example.com/feed/entry-1");
     var secondDocument =
-        new io.opaa.indexing.Document("attachment.pdf", "/path2", "application/pdf", 100L);
+        new io.opaa.indexing.document.Document("attachment.pdf", "/path2", "application/pdf", 100L);
     secondDocument.setSourceEntryUrl("https://example.com/feed/entry-2");
     when(documentRepository.findById(firstDocumentId)).thenReturn(Optional.of(firstDocument));
     when(documentRepository.findById(secondDocumentId)).thenReturn(Optional.of(secondDocument));

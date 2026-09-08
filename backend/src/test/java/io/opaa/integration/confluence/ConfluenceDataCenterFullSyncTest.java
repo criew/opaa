@@ -15,16 +15,16 @@ import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
-import io.opaa.indexing.DocumentIngests;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.IndexingRunEvent;
-import io.opaa.indexing.IndexingRunEventRepository;
-import io.opaa.indexing.SourceDocumentContext;
-import io.opaa.indexing.StaleDocumentCleanupService;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentIngests;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.document.SourceDocumentContext;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunEvent;
+import io.opaa.indexing.job.IndexingRunEventRepository;
+import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
@@ -60,7 +60,7 @@ class ConfluenceDataCenterFullSyncTest {
   private static ConfluenceClientFactory factory;
   private static ConfluenceProperties properties;
 
-  private FileProcessingService fileProcessingService;
+  private DocumentIngestService documentIngestService;
   private IndexingJobService indexingJobService;
   private IndexingRunEventRepository eventRepository;
   private StaleDocumentCleanupService cleanupService;
@@ -76,11 +76,11 @@ class ConfluenceDataCenterFullSyncTest {
 
   @BeforeEach
   void setUp() throws Exception {
-    fileProcessingService = mock(FileProcessingService.class);
-    when(fileProcessingService.ingest(DocumentIngests.anyText(), any()))
-        .thenReturn(FileProcessingResult.PROCESSED);
-    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
-        .thenReturn(FileProcessingResult.PROCESSED);
+    documentIngestService = mock(DocumentIngestService.class);
+    when(documentIngestService.ingest(DocumentIngests.anyText(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+    when(documentIngestService.ingest(DocumentIngests.anyFile(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
     indexingJobService = mock(IndexingJobService.class);
     DocumentRepository documentRepository = mock(DocumentRepository.class);
     when(documentRepository.findByLibraryIdAndFilePath(any(), anyString()))
@@ -94,10 +94,10 @@ class ConfluenceDataCenterFullSyncTest {
         new ConfluenceIndexingExecutor(
             factory,
             properties,
-            fileProcessingService,
+            documentIngestService,
             new AttachmentIndexer(
                 new BoundedDownloader(TargetAddressValidator.disabled()),
-                fileProcessingService,
+                documentIngestService,
                 mock(LibraryStorageQuotaService.class),
                 new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0)),
             documentRepository,
@@ -147,7 +147,7 @@ class ConfluenceDataCenterFullSyncTest {
 
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(
             DocumentIngests.that()
                 .text()
@@ -160,11 +160,11 @@ class ConfluenceDataCenterFullSyncTest {
                 .in(library)
                 .match(),
             any());
-    verify(fileProcessingService, never())
+    verify(documentIngestService, never())
         .ingest(DocumentIngests.that().text().titled("Nur Admin").match(), any());
-    verify(fileProcessingService, never())
+    verify(documentIngestService, never())
         .ingest(DocumentIngests.that().text().titled("Alt").match(), any());
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(
             DocumentIngests.that()
                 .file()
@@ -259,7 +259,7 @@ class ConfluenceDataCenterFullSyncTest {
             });
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
     assertThat(executor.defaultRunMode(library)).isEqualTo(IndexingRunMode.INCREMENTAL);
-    org.mockito.Mockito.clearInvocations(fileProcessingService, cleanupService);
+    org.mockito.Mockito.clearInvocations(documentIngestService, cleanupService);
 
     confluence.updatePage("Onboarding", 2, "<p>Erste Schritte, aktualisiert am Tag zwei.</p>");
     // the search index catches up asynchronously (see ConfluenceDataCenterAccessTest): wait until
@@ -286,7 +286,7 @@ class ConfluenceDataCenterFullSyncTest {
     UUID jobId = UUID.randomUUID();
     executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
 
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(
             DocumentIngests.that()
                 .text()
@@ -311,7 +311,7 @@ class ConfluenceDataCenterFullSyncTest {
     ArgumentCaptor<String> message = ArgumentCaptor.forClass(String.class);
     verify(indexingJobService).failJob(eq(jobId), message.capture());
     assertThat(message.getValue()).contains("anonym").doesNotContain("kein-gueltiges-token");
-    verify(fileProcessingService, never()).ingest(DocumentIngests.anyText(), any());
+    verify(documentIngestService, never()).ingest(DocumentIngests.anyText(), any());
     verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
   }
 }

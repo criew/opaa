@@ -1,11 +1,11 @@
 package io.opaa.searchadmin;
 
-import io.opaa.indexing.ContextPrefixRerunProgress;
-import io.opaa.indexing.ContextPrefixRerunService;
-import io.opaa.indexing.FullTextIndexFillState;
-import io.opaa.indexing.FullTextIndexFillStateService;
+import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
+import io.opaa.indexing.maintenance.ContextPrefixRerunService;
+import io.opaa.indexing.maintenance.FullTextIndexFillState;
+import io.opaa.indexing.maintenance.FullTextIndexFillStateService;
+import io.opaa.indexing.maintenance.MetadataBackfillService;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
-import io.opaa.indexing.metadata.MetadataBackfillService;
 import io.opaa.indexing.metadata.ModelExtractionCounters;
 import io.opaa.indexing.metadata.ModelExtractionStats;
 import io.opaa.library.KnowledgeLibrary;

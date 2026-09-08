@@ -10,7 +10,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService;
 import io.opaa.diagnosticaccess.ForeignDiagnosticContextService;
-import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.llm.RerankClient.ScoredCandidate;

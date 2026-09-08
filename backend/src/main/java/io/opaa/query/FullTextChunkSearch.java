@@ -1,7 +1,7 @@
 package io.opaa.query;
 
-import io.opaa.indexing.FullTextChunkStore;
-import io.opaa.indexing.FullTextIdentifiers;
+import io.opaa.indexing.chunk.FullTextChunkStore;
+import io.opaa.indexing.chunk.FullTextIdentifiers;
 import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -160,7 +160,7 @@ class FullTextChunkSearch {
             // earlier key than file_name, tempting as it would be for disambiguation.
             //
             // chunk_index is cast to int because "10" sorts before "2" as text; the value is
-            // written as a number by FileProcessingService and by nothing else. The id remains the
+            // written as a number by DocumentIngestService and by nothing else. The id remains the
             // last key so the order is total.
             //
             // Honest limit: two documents that share a file name - possible across libraries, or

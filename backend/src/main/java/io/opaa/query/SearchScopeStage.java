@@ -1,6 +1,6 @@
 package io.opaa.query;
 
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.chunk.VectorChunkStore;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;

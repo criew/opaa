@@ -1,6 +1,6 @@
 package io.opaa.indexing.pipeline.pdf;
 
-import io.opaa.indexing.ChunkingService;
+import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;

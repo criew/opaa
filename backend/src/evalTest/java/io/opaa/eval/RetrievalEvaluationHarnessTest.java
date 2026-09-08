@@ -13,14 +13,14 @@ import io.opaa.eval.EvaluationReport.ChunkCountInvariantResult;
 import io.opaa.eval.EvaluationReport.DatasetNotes;
 import io.opaa.eval.EvaluationReport.RunConfiguration;
 import io.opaa.eval.EvaluationReport.WorstQuery;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentIndexingService;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FullTextIndexFillStateService;
-import io.opaa.indexing.IndexingJob;
-import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.JobStatus;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.job.DocumentIndexingService;
+import io.opaa.indexing.job.IndexingJob;
+import io.opaa.indexing.job.IndexingJobRepository;
+import io.opaa.indexing.job.JobStatus;
+import io.opaa.indexing.maintenance.FullTextIndexFillStateService;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
@@ -75,7 +75,7 @@ import org.testcontainers.utility.DockerImageName;
 /**
  * Retrieval-quality evaluation harness (issue #227). Indexes the frozen `eval/corpus/`
  * comic-characters corpus through the production pipeline ({@link
- * io.opaa.indexing.FileProcessingService} routed to {@link
+ * io.opaa.indexing.document.DocumentIngestService} routed to {@link
  * io.opaa.indexing.pipeline.markdown.MarkdownDocumentPipeline} for this all-Markdown corpus since
  * #1103), then runs every case from {@code eval/golden/comic-characters.json} directly against
  * {@link VectorStore#similaritySearch}. No LLM — retrieval-only, per ADR-0011 decision 3.
@@ -342,7 +342,7 @@ class RetrievalEvaluationHarnessTest {
     registry.add("opaa.indexing.thread-pool.core-size", () -> 1);
     registry.add("opaa.indexing.thread-pool.max-size", () -> 1);
     registry.add("opaa.indexing.thread-pool.queue-capacity", () -> 2000);
-    // #734/#735: embedding-concurrency > 1 lets FileProcessingService#addToVectorStore split a
+    // #734/#735: embedding-concurrency > 1 lets DocumentIngestService#addToVectorStore split a
     // document's chunks into sub-batches embedded and inserted into pgvector concurrently - the
     // same nondeterminism risk the thread-pool override above already guards against for
     // cross-document ordering, now one level deeper (within a single document). pgvector's HNSW
@@ -364,7 +364,7 @@ class RetrievalEvaluationHarnessTest {
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
   // Issue #721/#1103: reused, not reimplemented, to build the chunk map — the same
-  // DocumentPipelineRegistry routing FileProcessingService drives (see its Javadoc), so the chunk
+  // DocumentPipelineRegistry routing DocumentIngestService drives (see its Javadoc), so the chunk
   // texts the map is built from are exactly what was actually indexed, not a second, potentially
   // drifting re-implementation.
   @Autowired private DocumentPipelineRegistry pipelineRegistry;
@@ -683,7 +683,7 @@ class RetrievalEvaluationHarnessTest {
         DOMAIN.documentTopK());
 
     // 4b. Chunk map (issue #721, routing updated for #1103): re-derive each document's real chunk
-    //     texts through the same DocumentPipelineRegistry routing FileProcessingService uses, so
+    //     texts through the same DocumentPipelineRegistry routing DocumentIngestService uses, so
     // the
     //     map reflects exactly what was indexed. Docker-free in principle (no embedding call
     //     needed), kept here so the map always matches the corpus this specific run actually
@@ -792,7 +792,7 @@ class RetrievalEvaluationHarnessTest {
                 + "(de vs. en) ist zusätzlich mit dem Anteil an 'hard'-Fällen konfundiert — siehe "
                 + "eval/README.md.");
 
-    // Issue #1144: the pipeline registry FileProcessingService actually routed through while
+    // Issue #1144: the pipeline registry DocumentIngestService actually routed through while
     // indexing this corpus, not a second, potentially drifting re-derivation.
     String ingestionPipelineFingerprint = IngestionPipelineFingerprint.of(pipelineRegistry);
 

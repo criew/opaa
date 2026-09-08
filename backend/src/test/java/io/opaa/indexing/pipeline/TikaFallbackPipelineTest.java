@@ -4,9 +4,9 @@ import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.indexing.ChunkingService;
-import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.indexing.document.DocumentService;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -22,7 +22,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 /**
  * The fallback pipeline reproduces the pre-abstraction ingest exactly: the same Tika reader, the
  * same token splitter with the same globally configured chunk size, and the same three outcomes the
- * pipeline decides, not {@code FileProcessingService}, so a format-specific pipeline can decide
+ * pipeline decides, not {@code DocumentIngestService}, so a format-specific pipeline can decide
  * them differently for its own format.
  */
 class TikaFallbackPipelineTest {

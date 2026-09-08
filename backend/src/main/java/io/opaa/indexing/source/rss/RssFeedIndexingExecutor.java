@@ -2,15 +2,15 @@ package io.opaa.indexing.source.rss;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentIngest;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.IndexingRunEventRecorder;
-import io.opaa.indexing.IndexingRunProgress;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentIngest;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingRunEventRecorder;
+import io.opaa.indexing.job.IndexingRunProgress;
 import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
 import io.opaa.indexing.source.IndexingRun;
@@ -49,7 +49,7 @@ import org.springframework.scheduling.annotation.Async;
 /**
  * Executes indexing runs for {@link IndexingSourceType#RSS_FEED} (ADR-0017): fetches the feed,
  * resolves every entry's detail page and hands the page's main content - not the whole page - as
- * HTML into {@link FileProcessingService#ingest}, naming the HTML pipeline, so an entry is cut into
+ * HTML into {@link DocumentIngestService#ingest}, naming the HTML pipeline, so an entry is cut into
  * sections like a {@code .html} file. Transport, page reduction and attachments belong to {@link
  * FeedFetcher}, {@link DetailPageExtractor} and {@link AttachmentIndexer}; this class keeps the
  * orchestration and the per-run state ({@link RssFeedRunContext}).
@@ -66,7 +66,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
   private static final Logger log = LoggerFactory.getLogger(RssFeedIndexingExecutor.class);
 
-  private final FileProcessingService fileProcessingService;
+  private final DocumentIngestService documentIngestService;
   private final DocumentRepository documentRepository;
   private final IndexingProperties.Rss properties;
   private final FeedFetcher feedFetcher;
@@ -78,7 +78,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
   public RssFeedIndexingExecutor(
       RssFeedParser feedParser,
-      FileProcessingService fileProcessingService,
+      DocumentIngestService documentIngestService,
       DocumentRepository documentRepository,
       RssFeedStateRepository feedStateRepository,
       AttachmentIndexer attachmentIndexer,
@@ -86,7 +86,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       TargetAddressValidator targetAddressValidator,
       SourceRequestPolicy requestPolicy,
       IndexingRunTemplate runTemplate) {
-    this.fileProcessingService = fileProcessingService;
+    this.documentIngestService = documentIngestService;
     this.documentRepository = documentRepository;
     this.properties = properties.rss();
     this.feedFetcher =
@@ -254,8 +254,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     try {
       // The entry body never was a file: the main content's HTML for the HTML pipeline, its
       // headline as the declared title and its publication instant as the document's own date.
-      FileProcessingResult result =
-          fileProcessingService.ingest(
+      DocumentIngestResult result =
+          documentIngestService.ingest(
               DocumentIngest.text(ctx.targetLibrary(), entryUrl, detailPage.mainHtml())
                   .pipelineId(HtmlDocumentPipeline.ID)
                   .sourceType(DocumentSourceType.RSS_FEED)

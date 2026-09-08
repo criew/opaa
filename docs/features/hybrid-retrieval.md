@@ -447,7 +447,7 @@ Chunk-Token nie treffen — belegt gegen ein echtes PostgreSQL (siehe `FullTextI
 `FullTextChunkSearchIntegrationTest`). Die Adresse als unzerlegtes Token auf beiden Seiten zu führen
 behebt genau diese Asymmetrie, mit demselben Mechanismus wie bei Aktenzeichen.
 
-**Wie es gebaut ist** (`io.opaa.indexing.FullTextIdentifiers`, #1048):
+**Wie es gebaut ist** (`io.opaa.indexing.chunk.FullTextIdentifiers`, #1048):
 
 - **Dieselbe Liste auf beiden Seiten.** Schreibpfad und Suchpfad rufen dieselbe Methode. Ein Token aus
   einem Chunk und ein Token aus einer Frage entstehen im selben Code, sonst träfen sie einander nie.

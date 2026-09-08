@@ -1,6 +1,6 @@
 package io.opaa.library;
 
-import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.document.DocumentRepository;
 import java.time.Duration;
 import java.time.Instant;
 import org.slf4j.Logger;
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
  * Recovers uploads left stuck at {@code PENDING} by a process that died mid-{@code
  * uploadTaskExecutor} task (#614, same class of defect as #501's {@code indexing_jobs.RUNNING}
  * rows, but for the upload path's own {@code PENDING} status instead). {@code
- * FileProcessingService#processUploadedFileAsync} always leaves a row at either {@code INDEXED} or
+ * DocumentIngestService#processUploadedFileAsync} always leaves a row at either {@code INDEXED} or
  * {@code FAILED} when it runs to completion - but if the JVM stops before that (a crash, an
  * operator-initiated restart, an out-of-memory kill), the in-flight task simply vanishes with it,
  * and nothing was ever running to finish the row on the next start. Without this recovery, such a

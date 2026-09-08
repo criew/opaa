@@ -43,7 +43,7 @@ class OpenAiBaseUrlGuardTest {
   /**
    * The embedding base URL is a live runtime address, and a failed embedding call carries it into
    * the log: Spring's {@code ResourceAccessException} names the target URI, and {@code
-   * FileProcessingService} logs the whole stack trace. Refused at startup, and the refusal itself
+   * DocumentIngestService} logs the whole stack trace. Refused at startup, and the refusal itself
    * must not repeat the address.
    */
   @Test

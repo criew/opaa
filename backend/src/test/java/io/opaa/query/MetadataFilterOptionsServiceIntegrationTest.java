@@ -11,10 +11,10 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
-import io.opaa.indexing.DocumentIngest;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.document.DocumentIngest;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.DocumentMetadataCorrectionService;
 import io.opaa.indexing.metadata.FormatMetadataField;
@@ -64,7 +64,7 @@ class MetadataFilterOptionsServiceIntegrationTest {
   @Autowired private AssetGrantService grantService;
   @Autowired private GroupService groupService;
   @Autowired private GroupRepository groupRepository;
-  @Autowired private FileProcessingService fileProcessingService;
+  @Autowired private DocumentIngestService documentIngestService;
   @Autowired private DocumentMetadataCorrectionService correctionService;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
@@ -290,8 +290,8 @@ class MetadataFilterOptionsServiceIntegrationTest {
       }
       doc.save(file.toFile());
     }
-    assertThat(fileProcessingService.ingest(DocumentIngest.localFile(target, file).build(), null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+    assertThat(documentIngestService.ingest(DocumentIngest.localFile(target, file).build(), null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
   }
 
   /** An indexed mail of {@code sender} - the only source of the format field Absender. */
@@ -307,8 +307,8 @@ class MetadataFilterOptionsServiceIntegrationTest {
             + "Date: Thu, 12 Mar 2026 09:15:00 +0100\n"
             + "Content-Type: text/plain; charset=UTF-8\n\n"
             + "Diese Unterlage regelt die Nutzung der IT.\n");
-    assertThat(fileProcessingService.ingest(DocumentIngest.localFile(target, file).build(), null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+    assertThat(documentIngestService.ingest(DocumentIngest.localFile(target, file).build(), null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
   }
 
   private static void deletePdfsIn(Path directory) throws IOException {

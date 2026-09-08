@@ -31,13 +31,13 @@ import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
-import io.opaa.indexing.DocumentIndexingService;
-import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.IndexingJob;
-import io.opaa.indexing.IndexingRunCost;
-import io.opaa.indexing.IndexingRunDetail;
-import io.opaa.indexing.IndexingStatusView;
-import io.opaa.indexing.JobStatus;
+import io.opaa.indexing.job.DocumentIndexingService;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingJob;
+import io.opaa.indexing.job.IndexingRunCost;
+import io.opaa.indexing.job.IndexingRunDetail;
+import io.opaa.indexing.job.IndexingStatusView;
+import io.opaa.indexing.job.JobStatus;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
@@ -419,7 +419,7 @@ public class LibraryController {
   }
 
   private IndexingTriggerSource mapIndexingTriggerSource(
-      io.opaa.indexing.JobTriggerSource triggeredBy) {
+      io.opaa.indexing.job.JobTriggerSource triggeredBy) {
     return switch (triggeredBy) {
       case MANUAL -> IndexingTriggerSource.MANUAL;
       case SCHEDULED -> IndexingTriggerSource.SCHEDULED;
@@ -427,7 +427,7 @@ public class LibraryController {
     };
   }
 
-  private IndexingRunEvent toIndexingRunEventResponse(io.opaa.indexing.IndexingRunEvent event) {
+  private IndexingRunEvent toIndexingRunEventResponse(io.opaa.indexing.job.IndexingRunEvent event) {
     return new IndexingRunEvent(mapIndexingEventCategory(event.getCategory()), event.getMessage())
         .reference(event.getReference());
   }

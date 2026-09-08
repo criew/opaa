@@ -15,7 +15,7 @@ import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.NotFoundException;
-import io.opaa.indexing.ContextPrefixRerunProgress;
+import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import io.opaa.indexing.metadata.MetadataFieldFill;

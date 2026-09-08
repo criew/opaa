@@ -1,6 +1,6 @@
 package io.opaa.indexing.pipeline.mail;
 
-import io.opaa.indexing.ChunkingService;
+import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.metadata.FormatMetadataField;
 import io.opaa.indexing.pipeline.DiscoveredAttachment;
 import io.opaa.indexing.pipeline.DocumentPipeline;
@@ -99,7 +99,7 @@ public class MailDocumentPipeline implements DocumentPipeline {
       if (Files.size(source.file()) > properties.maxMessageBytes()) {
         // Checked before either reader ever runs - both build the message's full DOM in memory
         // (see MailProperties's own Javadoc), so this is the actual memory bound, not
-        // maxAttachmentBytes further down. FileProcessingService#ingest enforces no
+        // maxAttachmentBytes further down. DocumentIngestService#ingest enforces no
         // per-file size limit of its own (only the library's total storage quota).
         log.warn(
             "Skipping {}: {} bytes exceeds the configured limit of {} bytes"

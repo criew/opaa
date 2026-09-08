@@ -16,17 +16,16 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
-import io.opaa.indexing.AttachmentOutcome;
-import io.opaa.indexing.AttachmentProgressSink;
-import io.opaa.indexing.DocumentIngests;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.IndexingRunEventRecorder;
-import io.opaa.indexing.IndexingRunEventRepository;
-import io.opaa.indexing.IndexingRunProgress;
-import io.opaa.indexing.SourceDocumentContext;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentIngests;
+import io.opaa.indexing.document.SourceDocumentContext;
+import io.opaa.indexing.job.AttachmentProgressSink;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunEventRecorder;
+import io.opaa.indexing.job.IndexingRunEventRepository;
+import io.opaa.indexing.job.IndexingRunProgress;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.rss.RssFeedRunContext;
 import io.opaa.library.KnowledgeLibrary;
@@ -46,7 +45,7 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * Unit-level coverage of {@link AttachmentIndexer}, split out from {@code
  * RssFeedIndexingExecutorTest}'s heavier end-to-end coverage (real HTTP server, real {@link
- * BoundedDownloader}) - here {@link BoundedDownloader} and {@link FileProcessingService} are both
+ * BoundedDownloader}) - here {@link BoundedDownloader} and {@link DocumentIngestService} are both
  * mocked, isolating the one branch that needs its own targeted proof. Uses {@link
  * RssFeedRunContext} as its {@link AttachmentAccess} - the same context RSS itself supplies since
  * This class carries no direct RSS dependency.
@@ -56,7 +55,7 @@ class AttachmentIndexerTest {
   @TempDir Path tempDir;
 
   private BoundedDownloader attachmentDownloader;
-  private FileProcessingService fileProcessingService;
+  private DocumentIngestService documentIngestService;
   private IndexingJobService indexingJobService;
   private IndexingRunEventRepository indexingRunEventRepository;
   private AttachmentIndexer indexer;
@@ -67,13 +66,13 @@ class AttachmentIndexerTest {
   @BeforeEach
   void setUp() throws Exception {
     attachmentDownloader = mock(BoundedDownloader.class);
-    fileProcessingService = mock(FileProcessingService.class);
+    documentIngestService = mock(DocumentIngestService.class);
     LibraryStorageQuotaService storageQuotaService = mock(LibraryStorageQuotaService.class);
     limits = new AttachmentLimits(10, 5_242_880L);
     indexer =
         new AttachmentIndexer(
             attachmentDownloader,
-            fileProcessingService,
+            documentIngestService,
             storageQuotaService,
             new AttachmentProperties(5, 0, 0));
     parentDocumentId = UUID.randomUUID();
@@ -121,8 +120,8 @@ class AttachmentIndexerTest {
     when(attachmentDownloader.downloadBounded(
             any(), anyString(), anyString(), anyLong(), any(), any(), any()))
         .thenReturn(new BoundedDownloader.DownloadedFile(downloaded, "text/plain"));
-    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
-        .thenReturn(FileProcessingResult.FAILED);
+    when(documentIngestService.ingest(DocumentIngests.anyFile(), any()))
+        .thenReturn(DocumentIngestResult.FAILED);
 
     List<String> indexed =
         indexer.indexAll(
@@ -183,8 +182,8 @@ class AttachmentIndexerTest {
     when(access.progress()).thenReturn(progress);
     Path extracted = tempDir.resolve("anlage.txt");
     Files.writeString(extracted, "Anhangsinhalt");
-    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
-        .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
+    when(documentIngestService.ingest(DocumentIngests.anyFile(), any()))
+        .thenReturn(DocumentIngestResult.QUOTA_EXCEEDED);
 
     List<String> indexed =
         indexer.indexAll(
@@ -212,12 +211,12 @@ class AttachmentIndexerTest {
     AttachmentIndexer shallowIndexer =
         new AttachmentIndexer(
             attachmentDownloader,
-            fileProcessingService,
+            documentIngestService,
             mock(LibraryStorageQuotaService.class),
             new AttachmentProperties(1, 0, 0));
 
     // Mail-in-Mail: a LocalFile attachment whose own processing reports one more nested LocalFile
-    // attachment - mirrors FileProcessingService#processUrlFile routing a discovered .eml back
+    // attachment - mirrors DocumentIngestService#processUrlFile routing a discovered .eml back
     // through this class on the same thread.
     KnowledgeLibrary filesystemLibrary =
         KnowledgeLibrary.ownedByUser(
@@ -255,9 +254,9 @@ class AttachmentIndexerTest {
                   "/aussen.eml",
                   DocumentSourceType.FILESYSTEM,
                   limits);
-              return FileProcessingResult.PROCESSED;
+              return DocumentIngestResult.PROCESSED;
             })
-        .when(fileProcessingService)
+        .when(documentIngestService)
         .ingest(DocumentIngests.anyFile(), any());
 
     List<String> mailIndexed =
@@ -298,9 +297,9 @@ class AttachmentIndexerTest {
                   "https://example.org/aussen.txt",
                   DocumentSourceType.RSS_FEED,
                   feedLimits);
-              return FileProcessingResult.PROCESSED;
+              return DocumentIngestResult.PROCESSED;
             })
-        .when(fileProcessingService)
+        .when(documentIngestService)
         .ingest(DocumentIngests.anyFile(), any());
 
     List<String> feedIndexed =
@@ -353,8 +352,8 @@ class AttachmentIndexerTest {
     when(access.sourceContext()).thenReturn(pageContext);
     Path downloaded = tempDir.resolve("notizen.txt");
     Files.writeString(downloaded, "Notizen");
-    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
-        .thenReturn(FileProcessingResult.PROCESSED);
+    when(documentIngestService.ingest(DocumentIngests.anyFile(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
 
     List<String> indexed =
         indexer.indexAll(
@@ -371,7 +370,7 @@ class AttachmentIndexerTest {
             limits);
 
     assertThat(indexed).containsExactly("https://wiki.example/download/900/notizen.txt");
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(
             DocumentIngests.that()
                 .file()
@@ -406,8 +405,8 @@ class AttachmentIndexerTest {
     AttachmentSource.LocalFile source =
         new AttachmentSource.LocalFile(file, "anlage.txt", "/mail.eml/0/anlage.txt");
 
-    for (FileProcessingResult result : FileProcessingResult.values()) {
-      when(fileProcessingService.ingest(DocumentIngests.anyFile(), any())).thenReturn(result);
+    for (DocumentIngestResult result : DocumentIngestResult.values()) {
+      when(documentIngestService.ingest(DocumentIngests.anyFile(), any())).thenReturn(result);
       indexer.indexAll(
           access,
           List.of(source),
@@ -443,6 +442,6 @@ class AttachmentIndexerTest {
         limits);
 
     verify(progress).recordAttachment(AttachmentOutcome.SKIPPED);
-    verifyNoInteractions(fileProcessingService);
+    verifyNoInteractions(documentIngestService);
   }
 }

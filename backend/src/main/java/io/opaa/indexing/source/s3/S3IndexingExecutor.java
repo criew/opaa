@@ -1,10 +1,10 @@
 package io.opaa.indexing.source.s3;
 
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.StaleDocumentCleanupService;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
@@ -39,7 +39,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
 
   private final S3ClientFactory clientFactory;
   private final S3Properties properties;
-  private final FileProcessingService fileProcessingService;
+  private final DocumentIngestService documentIngestService;
   private final DocumentRepository documentRepository;
   private final LibraryFolderService folderService;
   private final StaleDocumentCleanupService cleanupService;
@@ -50,7 +50,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
   public S3IndexingExecutor(
       S3ClientFactory clientFactory,
       S3Properties properties,
-      FileProcessingService fileProcessingService,
+      DocumentIngestService documentIngestService,
       DocumentRepository documentRepository,
       LibraryFolderService folderService,
       StaleDocumentCleanupService cleanupService,
@@ -59,7 +59,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
       IndexingRunTemplate runTemplate) {
     this.clientFactory = clientFactory;
     this.properties = properties;
-    this.fileProcessingService = fileProcessingService;
+    this.documentIngestService = documentIngestService;
     this.documentRepository = documentRepository;
     this.folderService = folderService;
     this.cleanupService = cleanupService;
@@ -173,7 +173,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
                 store,
                 settings,
                 properties,
-                fileProcessingService,
+                documentIngestService,
                 documentRepository,
                 folderService,
                 cleanupService,

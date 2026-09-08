@@ -8,17 +8,17 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.AttachmentExtractor;
-import io.opaa.indexing.AttachmentFilePath;
-import io.opaa.indexing.ChecksumService;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentIngest;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.StandaloneAttachmentAccess;
 import io.opaa.indexing.SupportedDocumentFormats;
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.document.AttachmentExtractor;
+import io.opaa.indexing.document.AttachmentFilePath;
+import io.opaa.indexing.document.ChecksumService;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentIngest;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.source.attachment.AttachmentProperties;
+import io.opaa.indexing.source.attachment.StandaloneAttachmentAccess;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
@@ -55,7 +55,7 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * Uploads documents into, and removes them from, a {@link KnowledgeLibrary} via the REST API (#420,
  * docs/features/knowledge-sources.md#upload) - the human counterpart to the connector/crawl
- * ingestion paths {@code FileProcessingService} already serves. Both mutating methods here require
+ * ingestion paths {@code DocumentIngestService} already serves. Both mutating methods here require
  * {@link AssetRole#EDITOR} on the target library (see {@link #requireEditable}), one level below
  * the {@code MANAGER} the library-configuration endpoints require - a person may add or remove
  * content without being allowed to change who else can.
@@ -64,14 +64,14 @@ import org.springframework.web.multipart.MultipartFile;
  * incoming bytes, computes their checksum and creates the {@code Document} row itself (all three
  * are specific to how this endpoint decides *where* a file goes and whether it is a duplicate
  * *within its target library* - a different question from what {@code
- * FileProcessingService#ingest}'s file-path-keyed dedup answers), then hands off to {@link
- * FileProcessingService#processUploadedFileAsync} for parsing, chunking and vector storage - the
+ * DocumentIngestService#ingest}'s file-path-keyed dedup answers), then hands off to {@link
+ * DocumentIngestService#processUploadedFileAsync} for parsing, chunking and vector storage - the
  * same three steps every other ingestion path goes through, so a chat query finds an uploaded
  * document exactly the same way it finds a crawled one.
  *
  * <p><b>Processing is asynchronous (#434).</b> {@link #uploadDocument} returns as soon as the file
  * is stored and the row is persisted with status {@code PENDING} - it does not wait for {@link
- * FileProcessingService#processUploadedFileAsync} to finish parsing/embedding on {@code
+ * DocumentIngestService#processUploadedFileAsync} to finish parsing/embedding on {@code
  * uploadTaskExecutor}. A caller with only {@code EDITOR} could otherwise tie up a request thread
  * for the full duration of Tika parsing and embedding on every upload, with no rate limit covering
  * this endpoint (#434 supersedes #420's synchronous design for exactly this reason). The caller
@@ -83,12 +83,12 @@ import org.springframework.web.multipart.MultipartFile;
  * (#614).</b> Asynchronous processing (previous paragraph) means a document can still be mid-flight
  * on {@code uploadTaskExecutor} while a delete request for the same document arrives on another
  * thread. Deleting the row first closes that race: {@link
- * io.opaa.indexing.DocumentRepository#markIndexed}/{@code #markFailed} are conditional updates that
- * only ever affect a row that still exists, so once this method's transaction commits, a racing
- * task's status update is guaranteed to see the row gone and clean up any chunks it just wrote
- * itself (see {@code FileProcessingService#processUploadedFileAsync}). The vector store delete here
- * only has to handle documents that already had chunks before this call, deferred to after commit
- * (next paragraph) alongside the file, for the same reason.
+ * io.opaa.indexing.document.DocumentRepository#markIndexed}/{@code #markFailed} are conditional
+ * updates that only ever affect a row that still exists, so once this method's transaction commits,
+ * a racing task's status update is guaranteed to see the row gone and clean up any chunks it just
+ * wrote itself (see {@code DocumentIngestService#processUploadedFileAsync}). The vector store
+ * delete here only has to handle documents that already had chunks before this call, deferred to
+ * after commit (next paragraph) alongside the file, for the same reason.
  *
  * <p><b>Path traversal (#420 acceptance criteria):</b> the caller-supplied original file name is
  * never used to build a filesystem path. The stored file always lives at {@code
@@ -119,7 +119,7 @@ public class LibraryDocumentService {
   private final LibraryAccessService accessService;
   private final DocumentRepository documentRepository;
   private final ChecksumService checksumService;
-  private final FileProcessingService fileProcessingService;
+  private final DocumentIngestService documentIngestService;
   private final VectorChunkStore vectorChunkStore;
   private final UploadProperties uploadProperties;
   private final LibraryStorageQuotaService storageQuotaService;
@@ -138,7 +138,7 @@ public class LibraryDocumentService {
       LibraryAccessService accessService,
       DocumentRepository documentRepository,
       ChecksumService checksumService,
-      FileProcessingService fileProcessingService,
+      DocumentIngestService documentIngestService,
       VectorChunkStore vectorChunkStore,
       UploadProperties uploadProperties,
       LibraryStorageQuotaService storageQuotaService,
@@ -155,7 +155,7 @@ public class LibraryDocumentService {
     this.accessService = accessService;
     this.documentRepository = documentRepository;
     this.checksumService = checksumService;
-    this.fileProcessingService = fileProcessingService;
+    this.documentIngestService = documentIngestService;
     this.vectorChunkStore = vectorChunkStore;
     this.uploadProperties = uploadProperties;
     this.storageQuotaService = storageQuotaService;
@@ -329,7 +329,7 @@ public class LibraryDocumentService {
       try {
         // Parsing/chunking/embedding run on uploadTaskExecutor from here (#434) - this method
         // returns the PENDING row without waiting for that to finish.
-        fileProcessingService.processUploadedFileAsync(
+        documentIngestService.processUploadedFileAsync(
             DocumentIngest.builder(library)
                 .file(storedFile, fileSize)
                 .filePath(document.getFilePath())
@@ -405,7 +405,7 @@ public class LibraryDocumentService {
    * plain {@code documentRepository.save} (#636 review, item 3): the row committed by {@link
    * #uploadDocument} just above is visible to every other request from that moment on, so a
    * concurrent {@link #deleteDocument} could remove it in the narrow window between that commit and
-   * this call (e.g. while {@link FileProcessingService#processUploadedFileAsync} is being handed
+   * this call (e.g. while {@link DocumentIngestService#processUploadedFileAsync} is being handed
    * off and throws synchronously). A plain {@code save} on the caller's now-stale in-memory {@code
    * document} would not notice and silently re-{@code INSERT} it as a zombie - the same failure
    * mode {@link DocumentRepository#markIndexed}/{@code #markFailed}'s own Javadoc describes for the
@@ -479,7 +479,7 @@ public class LibraryDocumentService {
   /**
    * Whether {@code document}'s bytes only exist inside its parent's original and must be
    * re-extracted (ADR-0022, #1239) - recognized at its {@code file_path}, which then embeds the
-   * parent's own path plus an extraction index ({@code FileProcessingService#attachmentFilePath},
+   * parent's own path plus an extraction index ({@code DocumentIngestService#attachmentFilePath},
    * an {@code AttachmentSource.LocalFile} attachment: Mail). An attachment with a source identity
    * of its own - an RSS/Confluence download URL ({@code AttachmentSource.Download}) - carries
    * {@code parent_document_id} just the same but names a real, fetchable original, and is therefore
@@ -550,7 +550,7 @@ public class LibraryDocumentService {
    * they are re-extracted on demand from the root ancestor's own original - loaded through the very
    * path {@link #loadOriginal} uses for any other document, so every sourceType behaves the same -
    * by re-running the parent chain's pipelines and following the 0-based extraction index each
-   * synthetic {@code file_path} segment carries ({@code FileProcessingService#attachmentFilePath}).
+   * synthetic {@code file_path} segment carries ({@code DocumentIngestService#attachmentFilePath}).
    * Mail-in-Mail is not a special case: each level of the chain is one more extraction step.
    *
    * <p>The index alone is only meaningful while the parent is unchanged, so the name the pipeline
@@ -767,7 +767,7 @@ public class LibraryDocumentService {
 
   /**
    * Streams a {@code HTTP_DIRECTORY}/{@code RSS_FEED} document's original from its source URL
-   * (#747) - {@link Document#getFilePath()}, the same identity {@code FileProcessingService#ingest}
+   * (#747) - {@link Document#getFilePath()}, the same identity {@code DocumentIngestService#ingest}
    * dedups by and {@link Document#getDeepLinkSourceUrl()} already names as this document's own
    * origin. No part of the request ever influences which URL is fetched - only the value stored on
    * this row at indexing time, already validated against the target allowlist then (#267).
@@ -1012,7 +1012,7 @@ public class LibraryDocumentService {
 
     // The row is deleted first, the chunks only afterwards - deliberately the reverse of the order
     // this method used before #614. A concurrent uploadTaskExecutor task finishing the very same
-    // document races this method: FileProcessingService#processUploadedFileAsync re-reads the row,
+    // document races this method: DocumentIngestService#processUploadedFileAsync re-reads the row,
     // writes its chunks, and only then calls DocumentRepository#markIndexed, which affects a row
     // only if it is still there. Deleting the chunks here *before* the row let that task's
     // markIndexed still see (and update) the row while its own transaction was still in-flight,
@@ -1021,7 +1021,7 @@ public class LibraryDocumentService {
     // /api/v1/query. Deleting the row first closes that window: by the time this transaction
     // commits, the row is unconditionally gone, so a racing markIndexed (which blocks on the same
     // row until this commits) is guaranteed to affect zero rows and clean up its own chunks itself
-    // (see FileProcessingService#processUploadedFileAsync). The vector store delete below then only
+    // (see DocumentIngestService#processUploadedFileAsync). The vector store delete below then only
     // has to handle the ordinary case: chunks a document already had before this call.
     documentRepository.delete(document);
 

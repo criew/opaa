@@ -2,9 +2,9 @@ package io.opaa.indexing.source;
 
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.ConflictException;
-import io.opaa.indexing.IndexingJob;
-import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.JobTriggerSource;
+import io.opaa.indexing.job.IndexingJob;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.JobTriggerSource;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import java.time.Clock;

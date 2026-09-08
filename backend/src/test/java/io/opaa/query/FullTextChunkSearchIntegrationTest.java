@@ -2,8 +2,8 @@ package io.opaa.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.FullTextChunkStore;
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.chunk.FullTextChunkStore;
+import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.util.List;
 import java.util.Map;
@@ -46,10 +46,11 @@ class FullTextChunkSearchIntegrationTest {
 
   /**
    * ADR-0028: a row built under an older {@link
-   * io.opaa.indexing.FullTextChunkStore#CURRENT_TSV_VERSION} stays searchable - every raise of that
-   * constant so far only added lexemes, so the old row merely lacks the newest ones. The version
-   * therefore drives the fill state and the re-index selection, never this query; a raised version
-   * must not empty the lexical path until the re-index has rewritten the whole corpus (#1346).
+   * io.opaa.indexing.chunk.FullTextChunkStore#CURRENT_TSV_VERSION} stays searchable - every raise
+   * of that constant so far only added lexemes, so the old row merely lacks the newest ones. The
+   * version therefore drives the fill state and the re-index selection, never this query; a raised
+   * version must not empty the lexical path until the re-index has rewritten the whole corpus
+   * (#1346).
    */
   @Test
   void aRowBelowTheCurrentTsvVersionIsStillFound() {
@@ -209,10 +210,10 @@ class FullTextChunkSearchIntegrationTest {
    * #1130 Befund 1, Querschnittsregel a: PostgreSQL's own parser keeps an email address as one
    * {@code email}-class token, but the question path splits a question into individual word tokens
    * ({@code io.opaa.query.FullTextChunkSearch#wordTokens}) - without the undecomposed identifier
-   * lexeme {@link io.opaa.indexing.FullTextIdentifiers} now emits, a chunk whose only occurrence of
-   * "max", "mustermann", "example" or "org" is inside the email address would never be found by a
-   * question naming that address, exactly the asymmetry the file-number test above pins for
-   * Aktenzeichen.
+   * lexeme {@link io.opaa.indexing.chunk.FullTextIdentifiers} now emits, a chunk whose only
+   * occurrence of "max", "mustermann", "example" or "org" is inside the email address would never
+   * be found by a question naming that address, exactly the asymmetry the file-number test above
+   * pins for Aktenzeichen.
    */
   @Test
   void anEmailAddressIsFoundThoughItOnlyOccursInsideTheAddressItself() {

@@ -46,7 +46,8 @@ public class OpenAiBaseUrlGuard {
     String baseUrl = environment.getProperty(baseUrlProperty);
     if (ModelEndpointUri.containsCredentials(baseUrl)) {
       // #1147: the address reaches log files on its own - Spring's ResourceAccessException carries
-      // the target URI in its message, and io.opaa.indexing.FileProcessingService logs the whole
+      // the target URI in its message, and io.opaa.indexing.document.DocumentIngestService logs the
+      // whole
       // stack trace of a failed embedding call. The address itself is never named here.
       throw new IllegalStateException(
           """

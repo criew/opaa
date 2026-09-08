@@ -3,9 +3,9 @@ package io.opaa.indexing.pipeline;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.indexing.ChunkingService;
-import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.indexing.document.DocumentService;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -171,7 +171,7 @@ class DocumentPipelineRegistryTest {
   void aFileThatCannotBeReadForDetectionFallsBackWithFormatDetectionFailedSet() {
     // Regression guard for #1165: a read failure (deleted, permission-denied, briefly
     // locked) must not be indistinguishable from a content decision that admits nothing -
-    // FileProcessingService relies on formatDetectionFailed() to avoid persisting a routing key
+    // DocumentIngestService relies on formatDetectionFailed() to avoid persisting a routing key
     // for a chunk this method never actually routed on content.
     DocumentPipelineRegistry registry = registryWith();
     java.nio.file.Path missing =

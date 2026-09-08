@@ -78,7 +78,7 @@ public class DocumentPipelineRegistry {
             "Document pipeline " + pipeline.id() + " returned null from passthroughMetadataKeys()");
       }
       // The schema keys hang on the document (ADR-0024, Entscheidung 5;  for the library
-      // fields) and are written by FileProcessingService#storeChunks alone - a pipeline declaring
+      // fields) and are written by DocumentIngestService#storeChunks alone - a pipeline declaring
       // one is a contract breach, caught at startup rather than silently winning on a chunk whose
       // document has no value.
       for (String key : declared) {
@@ -166,7 +166,7 @@ public class DocumentPipelineRegistry {
   /**
    * The pipeline for content no specialized pipeline claims - a file of an admitted but unclaimed
    * format, or text that never was a file and names no pipeline of its own (see {@code
-   * FileProcessingService#ingest}).
+   * DocumentIngestService#ingest}).
    */
   public DocumentPipeline fallbackPipeline() {
     return fallback;
@@ -205,7 +205,7 @@ public class DocumentPipelineRegistry {
 
   /**
    * The union of every registered pipeline's {@link DocumentPipeline#passthroughMetadataKeys()},
-   * computed once rather than read per chunk. {@code FileProcessingService#storeChunks} filters
+   * computed once rather than read per chunk. {@code DocumentIngestService#storeChunks} filters
    * against this union, not against the single pipeline it was called with: chunks from a nested
    * pipeline are stored under the outer pipeline's id, so a key only the inner one declares must
    * still pass through.

@@ -22,13 +22,13 @@ import io.opaa.common.ValidationException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.IndexingJobRepository;
-import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.JobStatus;
-import io.opaa.indexing.LibraryScheduleCodec;
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.job.IndexingJobRepository;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.JobStatus;
+import io.opaa.indexing.job.LibraryScheduleCodec;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.ConfluenceConnection;
@@ -767,7 +767,7 @@ public class KnowledgeLibraryService {
       // counterpart to #631's deleteDocument fix). The reverse order (chunks deleted eagerly,
       // before the row) left a window: the bulk vectorStore.delete only removes chunks that already
       // exist when it runs. If a concurrently RUNNING indexing job for this same library writes new
-      // chunks (FileProcessingService#storeChunks) and its conditional status-transition UPDATE
+      // chunks (DocumentIngestService#storeChunks) and its conditional status-transition UPDATE
       // (DocumentRepository#markIndexedFromSource, #632) still finds the row - because this method
       // had not deleted it yet - after this deletion finally removes the row, those freshly-written
       // chunks are never caught by the already-run bulk chunk delete and survive as orphans, still

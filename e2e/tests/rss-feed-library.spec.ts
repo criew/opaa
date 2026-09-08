@@ -10,7 +10,7 @@ const FEED_URL_OK = 'http://rss-feed/feed-ok.xml'
 const FEED_URL_ERROR = 'http://rss-feed/feed-error.xml'
 
 // The two entry titles from feed-ok.xml (used verbatim as the resulting documents' fileName, see
-// FileProcessingService#processRssEntry) plus the one attachment linked from the first entry's
+// DocumentIngestService#processRssEntry) plus the one attachment linked from the first entry's
 // detail page (demo/seed/e2e-data/rss-feed/htdocs/seiten/oeffnungszeiten.html) - filename resolved
 // as-is by AttachmentProfile.GENERIC since ".txt" already is a supported extension.
 const ENTRY_TITLE_OEFFNUNGSZEITEN = 'Öffnungszeiten der Bürgerauskunft angepasst'

@@ -6,8 +6,8 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentRepository;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -388,9 +388,10 @@ public class LibraryFolderService {
    * currentFolderIds} (this indexing run's own directory walk never touched it - its source
    * directory is gone) and empty, including transitively (#824, docs/features/knowledge-sources.md
    * "Ordner in Konnektorbibliotheken"). Every calling executor calls {@code
-   * io.opaa.indexing.StaleDocumentCleanupService#cleanupVanished} before this method (#886): a
-   * document whose backing file disappeared is already gone by the time this runs, so a folder left
-   * holding only such a document is correctly treated as empty and pruned, not left standing.
+   * io.opaa.indexing.maintenance.StaleDocumentCleanupService#cleanupVanished} before this method
+   * (#886): a document whose backing file disappeared is already gone by the time this runs, so a
+   * folder left holding only such a document is correctly treated as empty and pruned, not left
+   * standing.
    *
    * <p>Walked leaf-first (post-order): a folder only qualifies once every one of its own subfolders
    * has already either survived (still referenced, or non-empty) or been removed - mirroring {@link

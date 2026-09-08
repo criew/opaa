@@ -2,9 +2,9 @@ package io.opaa.searchadmin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.FullTextIndexFillState;
-import io.opaa.indexing.FullTextIndexFillStateService;
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.maintenance.FullTextIndexFillState;
+import io.opaa.indexing.maintenance.FullTextIndexFillStateService;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.util.List;
 import java.util.Map;

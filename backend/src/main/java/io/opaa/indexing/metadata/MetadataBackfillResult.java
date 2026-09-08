@@ -1,5 +1,7 @@
 package io.opaa.indexing.metadata;
 
+import io.opaa.indexing.maintenance.MetadataBackfillService;
+
 /**
  * What one {@link MetadataBackfillService#backfillBatch} call did. {@link #isEmpty()} is the signal
  * to stop calling - the same "advanced nothing means drained" contract {@code
@@ -17,7 +19,7 @@ package io.opaa.indexing.metadata;
 public record MetadataBackfillResult(
     int processedDocuments, int markedForNextRun, int skippedDocuments) {
 
-  static final MetadataBackfillResult NOTHING_TO_DO = new MetadataBackfillResult(0, 0, 0);
+  public static final MetadataBackfillResult NOTHING_TO_DO = new MetadataBackfillResult(0, 0, 0);
 
   public boolean isEmpty() {
     return processedDocuments == 0 && markedForNextRun == 0;

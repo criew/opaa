@@ -2,7 +2,7 @@ package io.opaa.api;
 
 import io.opaa.api.dto.LowChunkDocumentPageResponse;
 import io.opaa.api.dto.LowChunkDocumentResponse;
-import io.opaa.indexing.LowChunkDocumentAuditService;
+import io.opaa.indexing.maintenance.LowChunkDocumentAuditService;
 import org.springframework.data.domain.Page;
 
 /**

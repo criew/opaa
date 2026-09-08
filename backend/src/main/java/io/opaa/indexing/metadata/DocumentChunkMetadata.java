@@ -1,6 +1,6 @@
 package io.opaa.indexing.metadata;
 
-import io.opaa.indexing.ChunkContextPrefix;
+import io.opaa.indexing.chunk.ChunkContextPrefix;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;

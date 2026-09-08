@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.pipeline.html.HtmlContentRoots;
 import io.opaa.indexing.source.attachment.AttachmentProfile;
 import java.time.Duration;
@@ -39,8 +40,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param embeddingConcurrency the maximum number of sub-batches a single document's chunks are
  *     split into for concurrent embedding and persistence ({@code
  *     OPAA_INDEXING_EMBEDDING_CONCURRENCY}) - see {@code
- *     io.opaa.indexing.FileProcessingService#subBatchSize} for the exact sizing formula. Concurrent
- *     sub-batches of a splitting document share a single, fixed-size pool ({@code
+ *     io.opaa.indexing.document.DocumentIngestService#subBatchSize} for the exact sizing formula.
+ *     Concurrent sub-batches of a splitting document share a single, fixed-size pool ({@code
  *     IndexingConfiguration#embeddingTaskExecutor}) process-wide, not one per document or per
  *     library - but that pool bounds only the fan-out of documents that are actually being split,
  *     not the total number of concurrent embedding calls the process makes: a document that is not
@@ -51,8 +52,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     of the latter's headroom. An operator fronting a GPU-backed or hosted embedding API can raise
  *     this (8-16 is a reasonable starting point - see docs/handbuch/deployment.md). A value of 1
  *     reproduces the exact sequential behaviour - {@code
- *     io.opaa.indexing.FileProcessingService#storeChunks} takes an entirely different code path in
- *     that case, not merely a pool of size one. Valid range: 1–32.
+ *     io.opaa.indexing.document.DocumentIngestService#storeChunks} takes an entirely different code
+ *     path in that case, not merely a pool of size one. Valid range: 1–32.
  */
 @ConfigurationProperties(prefix = "opaa.indexing")
 public record IndexingProperties(

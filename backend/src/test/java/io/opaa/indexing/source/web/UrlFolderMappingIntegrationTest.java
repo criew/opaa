@@ -11,14 +11,14 @@ import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.IndexingJob;
-import io.opaa.indexing.IndexingJobRepository;
-import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.JobTriggerSource;
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.job.IndexingJob;
+import io.opaa.indexing.job.IndexingJobRepository;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.JobTriggerSource;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -72,7 +72,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @OpaaIndexingIntegrationTest
 class UrlFolderMappingIntegrationTest {
 
-  @Autowired private FileProcessingService fileProcessingService;
+  @Autowired private DocumentIngestService documentIngestService;
   @Autowired private IndexingJobService indexingJobService;
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private DocumentRepository documentRepository;
@@ -229,7 +229,7 @@ class UrlFolderMappingIntegrationTest {
     return new UrlIndexingExecutor(
         new AutoindexCrawlerService(validator, crawlProperties),
         new BoundedDownloader(validator),
-        fileProcessingService,
+        documentIngestService,
         documentRepository,
         crawlProperties,
         folderService,

@@ -10,16 +10,16 @@ import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.IndexingJob;
-import io.opaa.indexing.IndexingJobRepository;
-import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.JobStatus;
-import io.opaa.indexing.JobTriggerSource;
-import io.opaa.indexing.StaleDocumentCleanupService;
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.job.IndexingJob;
+import io.opaa.indexing.job.IndexingJobRepository;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.JobStatus;
+import io.opaa.indexing.job.JobTriggerSource;
+import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.library.KnowledgeLibrary;
@@ -60,7 +60,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @OpaaIndexingIntegrationTest
 class S3FolderMappingIntegrationTest {
 
-  @Autowired private FileProcessingService fileProcessingService;
+  @Autowired private DocumentIngestService documentIngestService;
   @Autowired private IndexingJobService indexingJobService;
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private DocumentRepository documentRepository;
@@ -166,7 +166,7 @@ class S3FolderMappingIntegrationTest {
     return new S3IndexingExecutor(
         clientFactory,
         S3Properties.defaults(),
-        fileProcessingService,
+        documentIngestService,
         documentRepository,
         folderService,
         cleanupService,

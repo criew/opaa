@@ -7,7 +7,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.ChatSource;
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.util.ArrayList;

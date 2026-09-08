@@ -12,17 +12,17 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
-import io.opaa.indexing.AttachmentOutcome;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingOutcomes;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.IndexingRunEventRecorder;
-import io.opaa.indexing.IndexingRunEventRepository;
-import io.opaa.indexing.IndexingRunProgress;
-import io.opaa.indexing.SourceDocumentContext;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentIngestOutcomes;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.document.SourceDocumentContext;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunEventRecorder;
+import io.opaa.indexing.job.IndexingRunEventRepository;
+import io.opaa.indexing.job.IndexingRunProgress;
+import io.opaa.indexing.source.attachment.AttachmentOutcome;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import java.util.Optional;
@@ -111,7 +111,7 @@ class IndexingRunTest {
     when(quotaService.quotaExceededMessage(library.getId()))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft");
 
-    boolean processed = run.recordOutcome(FileProcessingResult.QUOTA_EXCEEDED, "datei.txt");
+    boolean processed = run.recordOutcome(DocumentIngestResult.QUOTA_EXCEEDED, "datei.txt");
 
     assertThat(processed).isFalse();
     verify(eventRepository)
@@ -134,7 +134,7 @@ class IndexingRunTest {
             argThat(
                 event ->
                     event.getCategory() == IndexingEventCategory.ERROR
-                        && FileProcessingOutcomes.FAILED_MESSAGE.equals(event.getMessage())
+                        && DocumentIngestOutcomes.FAILED_MESSAGE.equals(event.getMessage())
                         && "datei.txt".equals(event.getReference())));
   }
 

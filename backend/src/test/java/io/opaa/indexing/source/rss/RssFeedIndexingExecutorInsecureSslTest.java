@@ -16,12 +16,12 @@ import com.sun.net.httpserver.HttpsServer;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
-import io.opaa.indexing.DocumentIngests;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.IndexingRunEventRepository;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentIngests;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.library.KnowledgeLibrary;
@@ -93,7 +93,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
   // sourceInsecureSsl must never relax validation here, no matter the library's own configuration.
   private static TestHttpsServer foreignServer;
 
-  private FileProcessingService fileProcessingService;
+  private DocumentIngestService documentIngestService;
   private IndexingJobService indexingJobService;
   private DocumentRepository documentRepository;
   private RssFeedStateRepository feedStateRepository;
@@ -224,7 +224,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
 
   @BeforeEach
   void setUp() throws Exception {
-    fileProcessingService = mock(FileProcessingService.class);
+    documentIngestService = mock(DocumentIngestService.class);
     indexingJobService = mock(IndexingJobService.class);
     documentRepository = mock(DocumentRepository.class);
     feedStateRepository = mock(RssFeedStateRepository.class);
@@ -241,12 +241,12 @@ class RssFeedIndexingExecutorInsecureSslTest {
     executor =
         new RssFeedIndexingExecutor(
             new RssFeedParser(),
-            fileProcessingService,
+            documentIngestService,
             documentRepository,
             feedStateRepository,
             new io.opaa.indexing.source.attachment.AttachmentIndexer(
                 new BoundedDownloader(targetAddressValidator),
-                fileProcessingService,
+                documentIngestService,
                 mock(LibraryStorageQuotaService.class),
                 new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0)),
             properties,
@@ -255,7 +255,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
             new IndexingRunTemplate(
                 indexingJobService,
                 indexingRunEventRepository,
-                mock(io.opaa.indexing.StaleDocumentCleanupService.class),
+                mock(io.opaa.indexing.maintenance.StaleDocumentCleanupService.class),
                 documentRepository,
                 mock(LibraryStorageQuotaService.class)));
   }
@@ -325,6 +325,6 @@ class RssFeedIndexingExecutorInsecureSslTest {
     // The run still completes - a foreign detail page's TLS failure only skips that one entry, it
     // never fails the whole run (ADR-0017's "Verhalten gegenüber fremden Zielen").
     verify(indexingJobService, timeout(5000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
-    verify(fileProcessingService, never()).ingest(DocumentIngests.anyText(), any());
+    verify(documentIngestService, never()).ingest(DocumentIngests.anyText(), any());
   }
 }

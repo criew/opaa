@@ -21,17 +21,17 @@ import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
-import io.opaa.indexing.DocumentIngests;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.IndexingRunCost;
-import io.opaa.indexing.IndexingRunEvent;
-import io.opaa.indexing.IndexingRunEventRepository;
-import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.SupportedDocumentFormats;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentIngests;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunCost;
+import io.opaa.indexing.job.IndexingRunEvent;
+import io.opaa.indexing.job.IndexingRunEventRepository;
+import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -63,11 +63,11 @@ import org.mockito.ArgumentCaptor;
  * Exercises {@link UrlIndexingExecutor#execute} end to end against a local {@code
  * com.sun.net.httpserver.HttpServer} stub, mirroring {@code RssFeedIndexingExecutorTest}'s pattern
  * - {@link AutoindexCrawlerService} and {@link BoundedDownloader} are the real implementations
- * here, only {@link FileProcessingService}/{@link IndexingJobService}/{@link DocumentRepository}/
+ * here, only {@link DocumentIngestService}/{@link IndexingJobService}/{@link DocumentRepository}/
  * {@link IndexingRunEventRepository} are mocked.
  *
  * <p>A crawled entry this run ends up rejecting must never reach {@link
- * FileProcessingService#processUrlFile} and must count as skipped, not failed - {@code
+ * DocumentIngestService#processUrlFile} and must count as skipped, not failed - {@code
  * BoundedDownloaderTest} already proves the underlying {@code downloadPrefix} call itself never
  * reads more than its cap; this class proves the executor actually uses that bounded read to decide
  * before ever calling the unbounded {@code download}.
@@ -77,7 +77,7 @@ class UrlIndexingExecutorExecuteTest {
   private HttpServer server;
   private String baseUrl;
 
-  private FileProcessingService fileProcessingService;
+  private DocumentIngestService documentIngestService;
   private IndexingJobService indexingJobService;
   private DocumentRepository documentRepository;
   private IndexingRunEventRepository indexingRunEventRepository;
@@ -105,7 +105,7 @@ class UrlIndexingExecutorExecuteTest {
     server.start();
     baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
 
-    fileProcessingService = mock(FileProcessingService.class);
+    documentIngestService = mock(DocumentIngestService.class);
     indexingJobService = mock(IndexingJobService.class);
     documentRepository = mock(DocumentRepository.class);
     when(documentRepository.findByLibraryIdAndFilePath(any(), anyString()))
@@ -168,7 +168,7 @@ class UrlIndexingExecutorExecuteTest {
     return new UrlIndexingExecutor(
         new AutoindexCrawlerService(targetAddressValidator, crawlProperties, requestPolicy),
         downloader,
-        fileProcessingService,
+        documentIngestService,
         documentRepository,
         crawlProperties,
         mock(io.opaa.library.LibraryFolderService.class),
@@ -264,8 +264,8 @@ class UrlIndexingExecutorExecuteTest {
           exchange.getResponseBody().write(PDF_BODY);
           exchange.close();
         });
-    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
-        .thenReturn(FileProcessingResult.PROCESSED);
+    when(documentIngestService.ingest(DocumentIngests.anyFile(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
 
     execute();
 
@@ -306,8 +306,8 @@ class UrlIndexingExecutorExecuteTest {
           exchange.getResponseBody().write(PDF_BODY);
           exchange.close();
         });
-    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
-        .thenReturn(FileProcessingResult.PROCESSED);
+    when(documentIngestService.ingest(DocumentIngests.anyFile(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
 
     execute("admin:secret");
 
@@ -321,12 +321,12 @@ class UrlIndexingExecutorExecuteTest {
   void aThrottledDirectoryPageIsWaitedOutAndThenCrawled() throws IOException {
     serveThrottled("/files/", 1, "text/html", LISTING_WITH_ONE_PDF);
     serve("/files/bericht.pdf", "application/pdf", PDF_BODY);
-    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
-        .thenReturn(FileProcessingResult.PROCESSED);
+    when(documentIngestService.ingest(DocumentIngests.anyFile(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
 
     execute();
 
-    verify(fileProcessingService, timeout(5000))
+    verify(documentIngestService, timeout(5000))
         .ingest(DocumentIngests.that().file().named("bericht.pdf").in(library).match(), any());
     assertThat(sleeps).containsExactly(Duration.ofSeconds(1));
   }
@@ -335,12 +335,12 @@ class UrlIndexingExecutorExecuteTest {
   void aThrottledFileDownloadIsWaitedOutInsteadOfFailingTheEntry() throws IOException {
     serve("/files/", "text/html", LISTING_WITH_ONE_PDF);
     serveThrottled("/files/bericht.pdf", 1, "application/pdf", PDF_BODY);
-    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
-        .thenReturn(FileProcessingResult.PROCESSED);
+    when(documentIngestService.ingest(DocumentIngests.anyFile(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
 
     execute();
 
-    verify(fileProcessingService, timeout(5000))
+    verify(documentIngestService, timeout(5000))
         .ingest(DocumentIngests.that().file().named("bericht.pdf").in(library).match(), any());
     verify(indexingJobService).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
     assertThat(sleeps).containsExactly(Duration.ofSeconds(1));
@@ -363,7 +363,7 @@ class UrlIndexingExecutorExecuteTest {
         "/files/bescheid.csv",
         "text/csv",
         "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.ingest(
+    when(documentIngestService.ingest(
             DocumentIngests.that()
                 .file()
                 .in(library)
@@ -372,11 +372,11 @@ class UrlIndexingExecutorExecuteTest {
                 .childOf(null)
                 .match(),
             any()))
-        .thenReturn(FileProcessingResult.PROCESSED);
+        .thenReturn(DocumentIngestResult.PROCESSED);
 
     execute();
 
-    verify(fileProcessingService, timeout(5000))
+    verify(documentIngestService, timeout(5000))
         .ingest(
             DocumentIngests.that()
                 .file()
@@ -392,7 +392,7 @@ class UrlIndexingExecutorExecuteTest {
   }
 
   @Test
-  void rejectsUnsupportedContentWithoutEverCallingFileProcessingServiceAndCountsItSkippedNotFailed()
+  void rejectsUnsupportedContentWithoutEverCallingDocumentIngestServiceAndCountsItSkippedNotFailed()
       throws IOException {
     // An entry rejected on its content must not be fully downloaded first: a network hiccup
     // mid-transfer would count it as ERROR instead of the clean "skipped" it is.
@@ -411,7 +411,7 @@ class UrlIndexingExecutorExecuteTest {
 
     execute();
 
-    verify(fileProcessingService, never()).ingest(DocumentIngests.anyFile(), any());
+    verify(documentIngestService, never()).ingest(DocumentIngests.anyFile(), any());
     verify(indexingJobService, timeout(5000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
     verify(indexingRunEventRepository, timeout(5000))
         .save(argThat(categoryIs(IndexingEventCategory.UNSUPPORTED_FORMAT)));
@@ -439,7 +439,7 @@ class UrlIndexingExecutorExecuteTest {
                 + "</ul></body></html>")
             .getBytes(StandardCharsets.UTF_8));
     serve("/files/outlook-mail-mit-pdf-anhang.msg", "application/octet-stream", msg);
-    when(fileProcessingService.ingest(
+    when(documentIngestService.ingest(
             DocumentIngests.that()
                 .file()
                 .in(library)
@@ -448,11 +448,11 @@ class UrlIndexingExecutorExecuteTest {
                 .childOf(null)
                 .match(),
             any()))
-        .thenReturn(FileProcessingResult.PROCESSED);
+        .thenReturn(DocumentIngestResult.PROCESSED);
 
     execute();
 
-    verify(fileProcessingService, timeout(5000))
+    verify(documentIngestService, timeout(5000))
         .ingest(
             DocumentIngests.that()
                 .file()
@@ -499,7 +499,7 @@ class UrlIndexingExecutorExecuteTest {
 
     execute();
 
-    verify(fileProcessingService, never()).ingest(DocumentIngests.anyFile(), any());
+    verify(documentIngestService, never()).ingest(DocumentIngests.anyFile(), any());
     verify(indexingRunEventRepository, timeout(5000).times(1))
         .save(argThat(categoryIs(IndexingEventCategory.UNSUPPORTED_FORMAT)));
     verify(indexingJobService, timeout(5000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
@@ -530,7 +530,7 @@ class UrlIndexingExecutorExecuteTest {
         "text/plain",
         "Bericht. ".repeat(40_000).getBytes(StandardCharsets.UTF_8));
     serve("/files/klein.txt", "text/plain", "Kurzer Bericht.".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.ingest(
+    when(documentIngestService.ingest(
             DocumentIngests.that()
                 .file()
                 .in(library)
@@ -539,13 +539,13 @@ class UrlIndexingExecutorExecuteTest {
                 .childOf(null)
                 .match(),
             any()))
-        .thenReturn(FileProcessingResult.PROCESSED);
+        .thenReturn(DocumentIngestResult.PROCESSED);
 
     execute();
 
-    verify(fileProcessingService, never())
+    verify(documentIngestService, never())
         .ingest(DocumentIngests.that().file().named("riesig.txt").match(), any());
-    verify(fileProcessingService, timeout(5000))
+    verify(documentIngestService, timeout(5000))
         .ingest(
             DocumentIngests.that()
                 .file()
@@ -595,7 +595,7 @@ class UrlIndexingExecutorExecuteTest {
 
     verify(indexingJobService, timeout(5000))
         .failJob(eq(jobId), eq(ProxyAndCredentials.INVALID_PROXY_MESSAGE));
-    verify(fileProcessingService, never()).ingest(DocumentIngests.anyFile(), any());
+    verify(documentIngestService, never()).ingest(DocumentIngests.anyFile(), any());
   }
 
   // --- the reconciliation only ever runs after a successful, uncapped crawl --
@@ -610,7 +610,7 @@ class UrlIndexingExecutorExecuteTest {
                 + "</ul></body></html>")
             .getBytes(StandardCharsets.UTF_8));
     serve("/files/bericht.txt", "text/plain", "Inhalt.".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.ingest(
+    when(documentIngestService.ingest(
             DocumentIngests.that()
                 .file()
                 .in(library)
@@ -619,7 +619,7 @@ class UrlIndexingExecutorExecuteTest {
                 .childOf(null)
                 .match(),
             any()))
-        .thenReturn(FileProcessingResult.PROCESSED);
+        .thenReturn(DocumentIngestResult.PROCESSED);
 
     execute();
 
@@ -651,7 +651,7 @@ class UrlIndexingExecutorExecuteTest {
             .getBytes(StandardCharsets.UTF_8));
     serve("/files/eins.txt", "text/plain", "Eins.".getBytes(StandardCharsets.UTF_8));
     serve("/files/zwei.txt", "text/plain", "Zwei.".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.ingest(
+    when(documentIngestService.ingest(
             DocumentIngests.that()
                 .file()
                 .in(library)
@@ -660,7 +660,7 @@ class UrlIndexingExecutorExecuteTest {
                 .childOf(null)
                 .match(),
             any()))
-        .thenReturn(FileProcessingResult.PROCESSED);
+        .thenReturn(DocumentIngestResult.PROCESSED);
 
     execute();
 
@@ -690,7 +690,7 @@ class UrlIndexingExecutorExecuteTest {
           exchange.sendResponseHeaders(500, -1);
           exchange.close();
         });
-    when(fileProcessingService.ingest(
+    when(documentIngestService.ingest(
             DocumentIngests.that()
                 .file()
                 .in(library)
@@ -699,7 +699,7 @@ class UrlIndexingExecutorExecuteTest {
                 .childOf(null)
                 .match(),
             any()))
-        .thenReturn(FileProcessingResult.PROCESSED);
+        .thenReturn(DocumentIngestResult.PROCESSED);
 
     execute();
 
@@ -751,7 +751,7 @@ class UrlIndexingExecutorExecuteTest {
                 + "</ul></body></html>")
             .getBytes(StandardCharsets.UTF_8));
     serve("/files/oeffentlich.txt", "text/plain", "Inhalt.".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.ingest(
+    when(documentIngestService.ingest(
             DocumentIngests.that()
                 .file()
                 .in(library)
@@ -760,7 +760,7 @@ class UrlIndexingExecutorExecuteTest {
                 .childOf(null)
                 .match(),
             any()))
-        .thenReturn(FileProcessingResult.PROCESSED);
+        .thenReturn(DocumentIngestResult.PROCESSED);
 
     execute();
 
@@ -815,14 +815,14 @@ class UrlIndexingExecutorExecuteTest {
     serve("/files/", "text/html", LISTING_WITH_TWO_PDFS);
     serve("/files/a.pdf", "application/pdf", PDF_BODY);
     serve("/files/b.pdf", "application/pdf", PDF_BODY);
-    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
-        .thenReturn(FileProcessingResult.PROCESSED);
+    when(documentIngestService.ingest(DocumentIngests.anyFile(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
 
     UUID jobId = executeWithoutWaiting();
 
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(DocumentIngests.that().file().named("a.pdf").in(library).match(), any());
-    verify(fileProcessingService, never())
+    verify(documentIngestService, never())
         .ingest(DocumentIngests.that().file().named("b.pdf").in(library).match(), any());
     assertThat(requestCounts.get("/files/b.pdf").get()).as("refused before it left").isZero();
     verify(indexingRunEventRepository)
@@ -859,7 +859,7 @@ class UrlIndexingExecutorExecuteTest {
     UUID jobId = executeWithoutWaiting();
 
     assertThat(sleeps).containsExactly(Duration.ofSeconds(1));
-    verify(fileProcessingService, never()).ingest(any(), any());
+    verify(documentIngestService, never()).ingest(any(), any());
     assertThat(requestCounts.get("/files/b.pdf").get()).isZero();
     verify(indexingRunEventRepository)
         .save(
@@ -895,7 +895,7 @@ class UrlIndexingExecutorExecuteTest {
     verify(indexingJobService).failJob(jobId, IndexingRunTemplate.INTERRUPTED_MESSAGE);
     verify(indexingJobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
     assertThat(requestCounts.get("/files/b.pdf").get()).as("no further entry").isZero();
-    verify(fileProcessingService, never()).ingest(any(), any());
+    verify(documentIngestService, never()).ingest(any(), any());
     verify(indexingRunEventRepository, never())
         .save(argThat(categoryIs(IndexingEventCategory.ERROR)));
   }
@@ -905,7 +905,7 @@ class UrlIndexingExecutorExecuteTest {
     serve("/files/", "text/html", LISTING_WITH_TWO_PDFS);
     serve("/files/a.pdf", "application/pdf", PDF_BODY);
     serve("/files/b.pdf", "application/pdf", PDF_BODY);
-    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
+    when(documentIngestService.ingest(DocumentIngests.anyFile(), any()))
         .thenThrow(new IllegalStateException("Embedding abgebrochen", new InterruptedException()));
 
     UUID jobId;

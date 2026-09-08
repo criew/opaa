@@ -6,8 +6,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.indexing.FullTextIndexFillState;
-import io.opaa.indexing.FullTextIndexFillStateService;
+import io.opaa.indexing.maintenance.FullTextIndexFillState;
+import io.opaa.indexing.maintenance.FullTextIndexFillStateService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;

@@ -7,19 +7,19 @@ import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.IndexingJob;
-import io.opaa.indexing.IndexingJobRepository;
-import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.IndexingRunEvent;
-import io.opaa.indexing.IndexingRunEventRepository;
-import io.opaa.indexing.JobStatus;
-import io.opaa.indexing.JobTriggerSource;
-import io.opaa.indexing.StaleDocumentCleanupService;
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingJob;
+import io.opaa.indexing.job.IndexingJobRepository;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunEvent;
+import io.opaa.indexing.job.IndexingRunEventRepository;
+import io.opaa.indexing.job.JobStatus;
+import io.opaa.indexing.job.JobTriggerSource;
+import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.library.KnowledgeLibrary;
@@ -61,7 +61,7 @@ class S3FullSyncMinioIntegrationTest {
   private static final String SMALL_TEXT = "klein";
   private static final String SESSION_TEXT = "Sitzung vom 6. September.";
 
-  @Autowired private FileProcessingService fileProcessingService;
+  @Autowired private DocumentIngestService documentIngestService;
   @Autowired private IndexingJobService indexingJobService;
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private IndexingRunEventRepository eventRepository;
@@ -188,7 +188,7 @@ class S3FullSyncMinioIntegrationTest {
     return new S3IndexingExecutor(
         new S3ClientFactory(properties, TargetAddressValidator.disabled()),
         properties,
-        fileProcessingService,
+        documentIngestService,
         documentRepository,
         folderService,
         cleanupService,

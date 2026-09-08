@@ -4,7 +4,7 @@ import java.util.Set;
 
 /**
  * The chunk metadata keys carrying a document's filterable core fields (ADR-0024): written by
- * {@code FileProcessingService#storeChunks} onto every chunk of a document and rewritten in place
+ * {@code DocumentIngestService#storeChunks} onto every chunk of a document and rewritten in place
  * by {@code VectorChunkStore#updateDocumentMetadata} when a value changes - both search paths can
  * then carry the same condition without re-embedding. The title is deliberately absent: it is not
  * filterable, and the Beleg reads it from the document.

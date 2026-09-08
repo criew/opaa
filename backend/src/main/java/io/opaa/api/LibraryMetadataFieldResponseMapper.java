@@ -10,7 +10,7 @@ import io.opaa.api.dto.LibraryMetadataFieldsResponse;
 import io.opaa.api.dto.MetadataChangeImpactResponse;
 import io.opaa.api.dto.MetadataFieldUsageResponse;
 import io.opaa.api.dto.RemapLibraryMetadataFieldValueResponse;
-import io.opaa.indexing.EmbeddingRateEstimator;
+import io.opaa.indexing.chunk.EmbeddingRateEstimator;
 import io.opaa.indexing.metadata.CoreContextPrefixSettings;
 import io.opaa.indexing.metadata.LibraryFieldValueRemapResult;
 import io.opaa.indexing.metadata.LibraryMetadataField;

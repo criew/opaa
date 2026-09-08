@@ -236,7 +236,7 @@ export const documentSourceTypeConfigKind: Record<DocumentSourceType, DocumentSo
 }
 
 // #513: German, understandable categories for a skipped/rejected item or error in a run's
-// protocol - matches io.opaa.indexing.IndexingEventCategory's own Javadoc one-to-one.
+// protocol - matches io.opaa.indexing.job.IndexingEventCategory's own Javadoc one-to-one.
 const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> = {
   REJECTED: 'Abgewiesen',
   UNREACHABLE: 'Nicht erreichbar',

@@ -5,7 +5,7 @@ import io.opaa.api.types.LibraryMetadataFieldType;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatService;
-import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.DocumentMetadataValueRepository;
 import io.opaa.indexing.metadata.DocumentTypeVocabulary;

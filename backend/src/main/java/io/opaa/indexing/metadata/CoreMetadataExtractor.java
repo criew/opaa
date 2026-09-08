@@ -1,6 +1,6 @@
 package io.opaa.indexing.metadata;
 
-import io.opaa.indexing.ChunkContextTitle;
+import io.opaa.indexing.chunk.ChunkContextTitle;
 import io.opaa.indexing.pipeline.DocumentProperties;
 import java.time.DateTimeException;
 import java.time.LocalDate;

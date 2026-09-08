@@ -16,20 +16,20 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentIngests;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.IndexingRunEvent;
-import io.opaa.indexing.IndexingRunEventRecorder;
-import io.opaa.indexing.IndexingRunEventRepository;
-import io.opaa.indexing.IndexingRunProgress;
-import io.opaa.indexing.SourceDocumentContext;
-import io.opaa.indexing.StaleDocumentCleanupService;
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentIngests;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.document.SourceDocumentContext;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunEvent;
+import io.opaa.indexing.job.IndexingRunEventRecorder;
+import io.opaa.indexing.job.IndexingRunEventRepository;
+import io.opaa.indexing.job.IndexingRunProgress;
+import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.RequestBudgetExhaustedException;
@@ -66,7 +66,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
 
   private ConfluenceClient client;
   private DocumentRepository documentRepository;
-  private FileProcessingService fileProcessingService;
+  private DocumentIngestService documentIngestService;
   private IndexingRunEventRepository eventRepository;
   private VectorChunkStore vectorChunkStore;
   private KnowledgeLibrary library;
@@ -97,8 +97,8 @@ class ConfluenceIndexingExecutorVisitPageTest {
     documentRepository = mock(DocumentRepository.class);
     when(documentRepository.findByLibraryIdAndFilePath(any(), anyString()))
         .thenReturn(Optional.empty());
-    fileProcessingService = mock(FileProcessingService.class);
-    when(fileProcessingService.ingest(any(), any())).thenReturn(FileProcessingResult.PROCESSED);
+    documentIngestService = mock(DocumentIngestService.class);
+    when(documentIngestService.ingest(any(), any())).thenReturn(DocumentIngestResult.PROCESSED);
     eventRepository = mock(IndexingRunEventRepository.class);
     vectorChunkStore = mock(VectorChunkStore.class);
     IndexingJobService indexingJobService = mock(IndexingJobService.class);
@@ -138,7 +138,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
         new ConfluenceIndexingExecutor(
             mock(ConfluenceClientFactory.class),
             properties,
-            fileProcessingService,
+            documentIngestService,
             mock(AttachmentIndexer.class),
             documentRepository,
             mock(SourceSyncStateRepository.class),
@@ -244,7 +244,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
                     path)));
     assertThat(run.progress.skippedCount()).isEqualTo(1);
     assertThat(run.frame.currentPaths()).as("no longer part of the bestand").doesNotContain(path);
-    verify(fileProcessingService, never()).ingest(any(), any());
+    verify(documentIngestService, never()).ingest(any(), any());
   }
 
   @Test
@@ -300,7 +300,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
     assertThat(run.progress.skippedCount()).isEqualTo(1);
     assertThat(run.progress.failedCount()).isZero();
     verify(documentRepository, never()).delete(any(Document.class));
-    verify(fileProcessingService, never()).ingest(any(), any());
+    verify(documentIngestService, never()).ingest(any(), any());
     if (policy.reconciles()) {
       assertThat(run.frame.currentPaths()).as("present, not reprocessed").contains(path);
       assertThat(run.frame.reprocessedPaths()).doesNotContain(path);
@@ -348,7 +348,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
                     IndexingEventCategory.REMOVED,
                     ConfluenceIndexingExecutor.MOVED_MESSAGE,
                     oldPath)));
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(
             DocumentIngests.that().text().at(pagePath("ENG", "200")).marked("2").match(), any());
   }
@@ -392,7 +392,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
                     "300")));
     assertThat(run.progress.skippedCount()).isEqualTo(1);
     verify(documentRepository, never()).delete(stale);
-    verify(fileProcessingService, never()).ingest(any(), any());
+    verify(documentIngestService, never()).ingest(any(), any());
     verify(client, never()).listAttachments(anyString());
     if (policy == PageVisitPolicy.INCREMENTAL) {
       // the search already said where the page is - no call is spent on it
@@ -452,7 +452,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
 
     verify(client, never()).fetchPage(anyString());
     verify(client).listAttachments("102");
-    verify(fileProcessingService, never()).ingest(any(), any());
+    verify(documentIngestService, never()).ingest(any(), any());
     assertThat(run.progress.skippedCount()).isEqualTo(1);
     if (policy.reconciles()) {
       assertThat(run.frame.reprocessedPaths())
@@ -471,7 +471,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
     executor.visitPage(run, ConfluenceIndexingExecutor.reported("102"), PageVisitPolicy.WEBHOOK);
 
     verify(client).listAttachments("102");
-    verify(fileProcessingService, never()).ingest(any(), any());
+    verify(documentIngestService, never()).ingest(any(), any());
     assertThat(run.progress.skippedCount()).isEqualTo(1);
   }
 
@@ -501,7 +501,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
 
     executor.visitPage(run, known(policy, "101", "ENG", "Kapitel 1", 2), policy);
 
-    verify(fileProcessingService)
+    verify(documentIngestService)
         .ingest(
             DocumentIngests.that()
                 .text()

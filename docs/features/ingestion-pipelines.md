@@ -125,7 +125,7 @@ Heute läuft **jedes** Format durch denselben Weg:
 Datei → SupportedDocumentFormats (Zulassung, inhaltsbasiert, #404)
       → DocumentService.parseDocument  (TikaDocumentReader + PageMarkingContentHandler)
       → ChunkingService                (TokenTextSplitter(1000) in OverlappingTokenTextSplitter(100))
-      → FileProcessingService          (Embedding-Präfix aus dem Dateinamen, #933/#940)
+      → DocumentIngestService          (Embedding-Präfix aus dem Dateinamen, #933/#940)
       → VectorChunkStore
 ```
 
@@ -203,7 +203,7 @@ für den Bestand nachweislich verhaltensneutral.
 | `TikaFallbackPipeline` | Der bisherige Weg (Tika-Reader + Token-Splitter mit `opaa.indexing.chunk-size`/`-overlap`), zuständig für alles, wofür keine spezialisierte Pipeline registriert ist. Chunk-Größe: **gesetzt, nicht gemessen** |
 
 Eine neue Format-Pipeline hinzuzufügen heißt: eine Klasse schreiben und als Bean registrieren. Weder
-die Registry noch `FileProcessingService` noch `SupportedDocumentFormats` ändern dafür ihre Form.
+die Registry noch `DocumentIngestService` noch `SupportedDocumentFormats` ändern dafür ihre Form.
 Zwei Pipelines, die dasselbe Format beanspruchen, sind ein Verdrahtungsfehler und lassen den Kontext
 beim Start scheitern, statt die Bean-Reihenfolge entscheiden zu lassen.
 
@@ -216,7 +216,7 @@ aus demselben Öffnen (vorher bis zu drei Öffnungen je Aufnahme); der Bestandsl
 (`declaredProperties`) liest aus diesem einen Öffnen nur `meta.xml` und die Überschriften und behält
 `meta.xml` auch bei unlesbarem `content.xml`.
 
-Die Ausgänge, die `FileProcessingService` bisher selbst entschied — „Scan ohne Textebene",
+Die Ausgänge, die `DocumentIngestService` bisher selbst entschied — „Scan ohne Textebene",
 „gar nichts geparst", „Text, aber keine Chunks" — entscheidet jetzt die Pipeline für ihr eigenes
 Format. Genau das braucht eine PDF-Pipeline später, um Scan-Erkennung anders zu beantworten als eine
 Tabellen-Pipeline.
@@ -245,7 +245,7 @@ das Dokument bis zum nächsten erfolgreichen Lauf ohne Chunks im Bestand — der
 durchsuchbare Stand war verloren, obwohl er fachlich weiterhin der beste verfügbare war. Der
 Pipeline-Nachzug (`PipelineReindexService`) verfuhr schon vorher nach der jetzt allgemeinen Regel.
 
-Welcher Ausgang was bedeutet — für `FileProcessingService#ingest`, die eine Dokumentstrecke aller
+Welcher Ausgang was bedeutet — für `DocumentIngestService#ingest`, die eine Dokumentstrecke aller
 Konnektoren, wenn sie eine geänderte Quelle verarbeitet:
 
 | Ausgang | Alte Chunks | Dokumentzustand |
@@ -297,9 +297,9 @@ Chunks bleibt unzulässig, auch wenn `discoveredAttachments` nicht leer ist — 
 Anhänge findet und selbst nichts liefert, ist ein Fall für den verallgemeinerten Anhangsweg (Teil 3,
 #1182), nicht für diesen Vertrag. Die Verantwortung für die temporäre Datei eines gemeldeten Anhangs
 geht mit der Rückgabe auf den Aufrufer über: `DocumentPipelineRunner#run` — der gemeinsame
-Aufruf-Wrapper um `DocumentPipeline#run`, den `FileProcessingService` für jedes Dokument nutzt (seit
+Aufruf-Wrapper um `DocumentPipeline#run`, den `DocumentIngestService` für jedes Dokument nutzt (seit
 #1183 der einzige Aufrufer, `MailDocumentPipeline` rekursiert nicht mehr selbst) — reicht die Liste
-zuerst an einen von `FileProcessingService` übergebenen Handler weiter, der einen Anhang über den
+zuerst an einen von `DocumentIngestService` übergebenen Handler weiter, der einen Anhang über den
 verallgemeinerten Anhangsweg indiziert, bevor `DocumentPipelineRunner#run` in einem `finally`
 unbedingt und idempotent aufräumt: ein vom Handler bereits verarbeiteter Anhang wird kein zweites Mal
 gelöscht, ein nie übernommener nie geleakt. Aktiv genutzt wird der Kanal seit der Umstellung von
@@ -750,7 +750,7 @@ schlichtes, wohlgeformtes XML. Damit bedient dieselbe Pipeline auch das „ODS w
 - Die erste nicht-leere Zeile eines Blatts bzw. der Datei ist die Kopfzeile; jeder folgende Chunk trägt
   sie erneut, zusammen mit einer Strukturkontext-Zeile (`Blatt: … · Tabelle: …` für XLSX/ODS, `Tabelle:
   …` für CSV) — direkt im Chunk-Text, nicht als separates Metadatenfeld. Das war bis #1107 auch
-  technisch erzwungen (`FileProcessingService` übertrug eine feste, für alle Pipelines gemeinsame
+  technisch erzwungen (`DocumentIngestService` übertrug eine feste, für alle Pipelines gemeinsame
   Metadatenmenge auf einen gespeicherten Chunk); seit `DocumentPipeline#passthroughMetadataKeys()`
   könnte diese Pipeline ein eigenes Metadatenfeld deklarieren, tut es aber unverändert nicht — die
   Zeile geht damit auch in den Volltextindex, den ein separates Metadatenfeld nicht erreicht (Regel
@@ -1139,7 +1139,7 @@ Pipeline** (ADR-0022, #1183, löst #1130 Befund 2 strukturell). `EmlReader`/`Msg
 jeden Anhang weiterhin in eine eigene temporäre Datei (unverändert Parse-Zeit-Aufgabe), aber
 `MailDocumentPipeline` routet ihn nicht mehr selbst durch `DocumentPipelineRegistry` — sie meldet ihn
 nur noch als `DiscoveredAttachment` über `DocumentPipelineResult#discoveredAttachments()`.
-`FileProcessingService` übergibt jeden gemeldeten Anhang an
+`DocumentIngestService` übergibt jeden gemeldeten Anhang an
 `io.opaa.indexing.source.attachment.AttachmentIndexer#indexAll`, denselben Weg, den RSS-Anhänge
 schon seit #1182 nehmen: eigene `Document`-Zeile, eigene Prüfsumme, eigene Speicherquote,
 `parent_document_id` auf die Mail, und — der eigentliche Fix — die korrekte `pipeline_id`/
@@ -1172,7 +1172,7 @@ bereits den synthetischen `file_path` dieser weitergeleiteten Mail selbst.
 Original eines Anhangsdokuments an, lädt OPAA das Original des Wurzel-Elterndokuments über den ganz
 normalen Weg seines Quelltyps (UPLOAD/FILESYSTEM von der Platte, HTTP_DIRECTORY/RSS_FEED über den
 Proxy-Abruf), lässt dieselbe Pipeline es erneut parsen und streamt den Anhang an dem im `file_path`
-kodierten Positionsindex; die gemeinsame Extraktion dafür ist `io.opaa.indexing.AttachmentExtractor`,
+kodierten Positionsindex; die gemeinsame Extraktion dafür ist `io.opaa.indexing.document.AttachmentExtractor`,
 die auch der selektive Re-Index nutzt — nur so ist die Extraktionsreihenfolge (und damit die Bedeutung
 des Index) dieselbe wie beim Indizieren, und es gelten dieselben Parse-Grenzen aus `MailProperties`.
 Verschachtelung ist kein Sonderfall: Jede Kettenstufe ist ein weiterer Extraktionsschritt. Der
@@ -1193,7 +1193,7 @@ genau eine je Kettenstufe. Bei Konnektor-Beständen kommt der vollständige Abru
 in eine weitere temporäre Datei hinzu; das bleibt so.
 
 **Die Positionszählung bleibt dabei exakt die des unfilterten Laufs**, denn der gespeicherte Index
-ist die Listenposition in `discoveredAttachments` (`FileProcessingService#processDiscoveredAttachments`).
+ist die Listenposition in `discoveredAttachments` (`DocumentIngestService#processDiscoveredAttachments`).
 Eine Anlage, die der unfilterte Lauf gar nicht erst meldet — weil sie `max-attachment-bytes`
 überschreitet, sich nicht dekodieren lässt oder (bei MSG) ein eingebettetes Outlook-Objekt ist —,
 **verbraucht deshalb auch im filternden Lauf keine Position**. Würde sie mitgezählt, verschöbe sich
@@ -1233,7 +1233,7 @@ sie wird von ihrer URL geholt, statt aus dem Eintrag extrahiert zu werden.
 
 **Die Rekursionstiefe (Mail-in-Mail) lebt auf dem verallgemeinerten Anhangsweg, nicht mehr in dieser
 Pipeline** (ADR-0022, Entscheidung 6): `AttachmentIndexer` zählt die Verschachtelungstiefe über einen
-threadlokalen Zähler, sobald ein gemeldeter Anhang selbst wieder über `FileProcessingService
+threadlokalen Zähler, sobald ein gemeldeter Anhang selbst wieder über `DocumentIngestService
 #ingest` verarbeitet wird und dabei erneut Anhänge meldet — dieselbe Rolle, die
 `MailDocumentPipeline`s eigenes `RECURSION_DEPTH`-Feld vor #1183 gespielt hat, jetzt auf der
 gemeinsamen Ebene, weil auch RSS/Confluence-Anhänge grundsätzlich verschachtelt sein können.
@@ -1256,7 +1256,7 @@ schützen Platte und nachgelagerte Verarbeitung, nicht den Parse-Vorgang selbst*
 Anhänge eingeschlossen, vollständig im Heap, bevor dieser Code auch nur entscheidet, ob ein Teil ein
 Anhang ist. Die eigentliche Speichergrenze ist eine dritte, neue Eigenschaft: `max-message-bytes`
 (gesetzt 100 MiB) — geprüft gegen die Größe der `.eml`/`.msg`-Datei selbst, bevor überhaupt geparst
-wird, denn `FileProcessingService#ingest` erzwingt keine Einzeldateigrößen-Grenze (nur die
+wird, denn `DocumentIngestService#ingest` erzwingt keine Einzeldateigrößen-Grenze (nur die
 Speicherplatz-Quote der Bibliothek insgesamt). Bei MSG bleibt die Anhangsgrenze zusätzlich
 Best-Effort: `MAPIMessage` liest die gesamte Datei samt aller Anhangsbytes vollständig in den Speicher,
 bevor dieser Code sie zu sehen bekommt, sodass `max-attachment-bytes` dort nur noch verhindert, dass
@@ -1275,7 +1275,7 @@ die Anhangsbytes** (ADR-0022, Entscheidung 6): Die rohe `.eml`/`.msg`-Datei enth
 base64-kodiert bereits in ihrer eigenen Dateigröße; sobald ein Anhang eine eigene `Document`-Zeile
 mit eigenem `fileSize` ist, würde er sonst doppelt gegen die Speicherquote der Bibliothek zählen.
 `DocumentPipelineResult#contentByteSizeOverride()` trägt dafür die Summe aus Kopfblock- und
-Nachrichtentext-Bytes; `FileProcessingService` überschreibt `Document#getFileSize()` damit, sobald
+Nachrichtentext-Bytes; `DocumentIngestService` überschreibt `Document#getFileSize()` damit, sobald
 die Pipeline einen Wert meldet — ein reines Mail-spezifisches Detail, jede andere Pipeline lässt
 diesen Kanal leer und behält die Dateigröße auf der Platte.
 
@@ -1293,7 +1293,7 @@ Makro-Inhalt Seiteninhalt ist** und welcher zur Laufzeit aus anderen Quellen zus
 
 `ConfluenceDocumentPipeline` (`id` `confluence`, Version 1; seit #1357 Version 2, siehe HTML-Pipeline) beansprucht **kein** Format in der
 `DocumentPipelineRegistry` — der Confluence-Konnektor benennt sie im `DocumentIngest`
-(`pipelineId`), und `FileProcessingService#ingest` ruft sie über `pipelineById` direkt auf, so wie
+(`pipelineId`), und `DocumentIngestService#ingest` ruft sie über `pipelineById` direkt auf, so wie
 seit #1315 auch ein Feed-Eintrag die HTML-Pipeline benennt; ohne registrierte Pipeline ist das ein
 Verdrahtungsfehler. Der Vollabgleich (#1136)
 übergibt den Storage-Körper unverändert; die Pipeline liest ihn mit dem XML-Parser von Jsoup, damit
@@ -1334,7 +1334,7 @@ Dokuments; der Seitentitel steht am Chunk als `file_name`), die die Pipeline als
 zitierten Rohtext) ist der Ort der Seite im Space — `[Handbuch / Kapitel 1 / Abschnitt 1.1]` —, nicht
 nur ihr Titel. Die Zitatanzeige liest diese Metadaten noch nicht (siehe Offene Punkte).
 
-**Anhänge** laufen weiter über den bestehenden Anhangsweg (`FileProcessingService#ingest`, Routing nach Inhalt):
+**Anhänge** laufen weiter über den bestehenden Anhangsweg (`DocumentIngestService#ingest`, Routing nach Inhalt):
 ein `.html`-Anhang trifft `HtmlDocumentPipeline`, ein PDF den PDF-Weg; ein nicht unterstützter Typ
 wird als `UNSUPPORTED_FORMAT` sichtbar übersprungen und bleibt Teil der Abgleichsmenge.
 
@@ -1422,7 +1422,7 @@ Rohtexts: Der zitierte Auszug im Beleg bleibt der Originalwortlaut.
 #### Umgesetzt (#1072)
 
 `ChunkContextPrefix#forChunk` ist die eine Stelle, an der der Präfix entsteht — für den Aufnahmeweg
-(`FileProcessingService#storeChunks`) und für den Nachlauf gleichermaßen, samt der Entscheidung, ob es
+(`DocumentIngestService#storeChunks`) und für den Nachlauf gleichermaßen, samt der Entscheidung, ob es
 überhaupt einen gibt. Er setzt sich aus dem Titel,
 den präfixwirksamen Metadatenwerten des Dokuments und dem Strukturkontext des Chunks zusammen, getrennt
 durch `›`; ein leeres Segment entfällt vollständig, und ein Präfix ohne jedes Segment existiert nicht.
@@ -1708,7 +1708,7 @@ Hier wird nur der **Übergabepunkt** definiert:
    Übergabemechanismus selbst ist seit #1107 offen für jede Pipeline**: `DocumentPipeline` deklariert
    über `passthroughMetadataKeys()`, welche seiner Chunk-Metadatenschlüssel `storeChunks` auf den
    gespeicherten Chunk kopiert — eine neue Pipeline erweitert diese Menge selbst, ohne
-   `FileProcessingService` zu ändern (Open-Closed, Teil 1). Die *Form* war bis #1130 uneinheitlich:
+   `DocumentIngestService` zu ändern (Open-Closed, Teil 1). Die *Form* war bis #1130 uneinheitlich:
    `MailDocumentPipeline` nutzte ausschließlich eigene Metadatenfelder (`mail_from` usw.), während
    `TabularDocumentPipeline`/`HtmlDocumentPipeline`/`PptxDocumentPipeline` ihren Strukturkontext in den
    Chunk-Text backen (`location` plus eine Kontextzeile). **Entschieden mit #1130 Befund 1: beides.**

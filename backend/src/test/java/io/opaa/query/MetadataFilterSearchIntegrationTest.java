@@ -13,12 +13,12 @@ import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.ChatSource;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentIngest;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentIngest;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataCorrectionService;
 import io.opaa.indexing.metadata.DocumentMetadataService;
@@ -87,7 +87,7 @@ class MetadataFilterSearchIntegrationTest {
   @Autowired private FullTextChunkSearch fullTextChunkSearch;
   @Autowired private VectorStore vectorStore;
   @Autowired private VectorChunkStore vectorChunkStore;
-  @Autowired private FileProcessingService fileProcessingService;
+  @Autowired private DocumentIngestService documentIngestService;
   @Autowired private DocumentMetadataService documentMetadataService;
   @Autowired private DocumentMetadataCorrectionService correctionService;
   @Autowired private LibraryMetadataFieldService fieldService;
@@ -574,8 +574,8 @@ class MetadataFilterSearchIntegrationTest {
   private Document indexed(KnowledgeLibrary target, String fileName) throws IOException {
     Path file = Path.of(target.getSourcePath()).resolve(fileName);
     writePdf(file);
-    assertThat(fileProcessingService.ingest(DocumentIngest.localFile(target, file).build(), null))
-        .isEqualTo(FileProcessingResult.PROCESSED);
+    assertThat(documentIngestService.ingest(DocumentIngest.localFile(target, file).build(), null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
     return documentRepository.findAll().stream()
         .filter(document -> fileName.equals(document.getFileName()))
         .filter(document -> target.getId().equals(document.getLibraryId()))
@@ -596,7 +596,7 @@ class MetadataFilterSearchIntegrationTest {
             + "Date: Thu, 12 Mar 2026 09:15:00 +0100\n"
             + "Content-Type: text/plain; charset=UTF-8\n\n"
             + "Diese Unterlage regelt die Nutzung der IT.\n");
-    fileProcessingService.ingest(DocumentIngest.localFile(target, file).build(), null);
+    documentIngestService.ingest(DocumentIngest.localFile(target, file).build(), null);
     return documentRepository.findAll().stream()
         .filter(document -> fileName.equals(document.getFileName()))
         .findFirst()

@@ -1,13 +1,12 @@
 package io.opaa.indexing.source.attachment;
 
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.indexing.AttachmentOutcome;
-import io.opaa.indexing.DocumentIngest;
-import io.opaa.indexing.FileProcessingOutcomes;
-import io.opaa.indexing.FileProcessingResult;
-import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.SupportedDocumentFormats;
+import io.opaa.indexing.document.DocumentIngest;
+import io.opaa.indexing.document.DocumentIngestOutcomes;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
@@ -26,9 +25,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Indexes the attachments of a parent document into their own {@link io.opaa.indexing.Document}
- * rows (ADR-0022) - the shared path RSS, Mail and Confluence all use. It depends on no connector
- * package: a caller supplies an {@link AttachmentAccess} and a list of {@link AttachmentSource}.
+ * Indexes the attachments of a parent document into their own {@link
+ * io.opaa.indexing.document.Document} rows (ADR-0022) - the shared path RSS, Mail and Confluence
+ * all use. It depends on no connector package: a caller supplies an {@link AttachmentAccess} and a
+ * list of {@link AttachmentSource}.
  *
  * <p>An attachment failure never propagates: a lost attachment is logged and skipped with no effect
  * on the parent's outcome, but marks {@link AttachmentAccess#markDeferred()} so a later conditional
@@ -51,23 +51,23 @@ public class AttachmentIndexer {
    * How many levels of attachment-in-attachment recursion the current thread is at - {@code null}
    * outside of any {@link #indexAll} call. An attachment whose own pipeline reports further {@code
    * discoveredAttachments} (e.g. a nested {@code .eml}) re-enters this class synchronously, through
-   * {@code FileProcessingService#ingest}'s own attachment handling, on the same thread. The depth
+   * {@code DocumentIngestService#ingest}'s own attachment handling, on the same thread. The depth
    * cutoff is this class's alone (ADR-0022, Entscheidung 6), never a pipeline's.
    */
   private static final ThreadLocal<Integer> RECURSION_DEPTH = new ThreadLocal<>();
 
   private final BoundedDownloader attachmentDownloader;
-  private final FileProcessingService fileProcessingService;
+  private final DocumentIngestService documentIngestService;
   private final LibraryStorageQuotaService storageQuotaService;
   private final AttachmentProperties attachmentProperties;
 
   public AttachmentIndexer(
       BoundedDownloader attachmentDownloader,
-      FileProcessingService fileProcessingService,
+      DocumentIngestService documentIngestService,
       LibraryStorageQuotaService storageQuotaService,
       AttachmentProperties attachmentProperties) {
     this.attachmentDownloader = attachmentDownloader;
-    this.fileProcessingService = fileProcessingService;
+    this.documentIngestService = documentIngestService;
     this.storageQuotaService = storageQuotaService;
     this.attachmentProperties = attachmentProperties;
   }
@@ -344,7 +344,7 @@ public class AttachmentIndexer {
           .events()
           .record(
               IndexingEventCategory.ERROR,
-              FileProcessingOutcomes.ATTACHMENT_FAILED_MESSAGE,
+              DocumentIngestOutcomes.ATTACHMENT_FAILED_MESSAGE,
               download.url());
       access.markDeferred();
       access.progress().recordAttachment(AttachmentOutcome.FAILED);
@@ -430,7 +430,7 @@ public class AttachmentIndexer {
   }
 
   /**
-   * The {@link FileProcessingService#ingest} call and outcome handling both branches share. {@code
+   * The {@link DocumentIngestService#ingest} call and outcome handling both branches share. {@code
    * remoteVersion} is the source's change marker for the attachment ({@link
    * AttachmentSource.LocalFile#remoteVersion()}), {@code null} for a download; {@code access}
    * carries the parent's {@link AttachmentAccess#sourceContext()} to the attachment.
@@ -450,8 +450,8 @@ public class AttachmentIndexer {
       String parentPath,
       DocumentSourceType sourceType) {
     try {
-      FileProcessingResult result =
-          fileProcessingService.ingest(
+      DocumentIngestResult result =
+          documentIngestService.ingest(
               DocumentIngest.builder(access.targetLibrary())
                   .file(localFile, size)
                   .filePath(filePathIdentity)
@@ -463,12 +463,12 @@ public class AttachmentIndexer {
                   .changeMarker(remoteVersion)
                   .build(),
               access);
-      FileProcessingOutcomes.record(
+      DocumentIngestOutcomes.record(
           access.events(),
           result,
           filePathIdentity,
           () -> storageQuotaService.quotaExceededMessage(access.targetLibrary().getId()),
-          FileProcessingOutcomes.ATTACHMENT_FAILED_MESSAGE);
+          DocumentIngestOutcomes.ATTACHMENT_FAILED_MESSAGE);
       switch (result) {
         case QUOTA_EXCEEDED, FAILED -> {
           // Retried on a future run: deferred, so a conditional GET cannot suppress it.
@@ -502,7 +502,7 @@ public class AttachmentIndexer {
           .events()
           .record(
               IndexingEventCategory.ERROR,
-              FileProcessingOutcomes.ATTACHMENT_FAILED_MESSAGE,
+              DocumentIngestOutcomes.ATTACHMENT_FAILED_MESSAGE,
               filePathIdentity);
       access.markDeferred();
       access.recordIndexedAttachment(filePathIdentity, false);

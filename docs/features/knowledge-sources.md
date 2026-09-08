@@ -108,7 +108,7 @@ Ablauf beim Hochladen:
    eigenes Issue vorzuziehen, bevor ein Produktivbetrieb möglich ist.
 3. Ablage im Dokumentenspeicher der Installation, getrennt je Bibliothek. **Gebaut.**
 4. Übergabe an die Verarbeitungskette (siehe [Wissensschicht](./data-indexing-rag.md)). **Gebaut** —
-   dieselbe Pipeline (`FileProcessingService`) wie die anderen Aufnahmewege, seit #434 **asynchron**:
+   dieselbe Pipeline (`DocumentIngestService`) wie die anderen Aufnahmewege, seit #434 **asynchron**:
    Die Antwort auf die Anfrage kommt, sobald die Datei abgelegt und die Dokumentzeile mit Status
    `PENDING` angelegt ist, ohne auf Aufschlüsselung und Einbettung zu warten — ein einzelner Upload
    soll keine Anfrage über die volle Verarbeitungsdauer blockieren. Die Oberfläche zeigt den

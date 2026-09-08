@@ -8,6 +8,7 @@
  * io.opaa.indexing.pipeline.ChunkPipelineMetadata}), raised only when a cut changes.
  *
  * <p>This package holds no job/document orchestration and never calls back into it; it only uses
- * core services from {@code io.opaa.indexing}, which consumes this package's public contract.
+ * the shared services of {@code io.opaa.indexing.document} and {@code io.opaa.indexing.chunk},
+ * which consume this package's public contract.
  */
 package io.opaa.indexing.pipeline;

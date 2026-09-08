@@ -7,12 +7,12 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.IndexingJob;
-import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.JobTriggerSource;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.job.IndexingJob;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.JobTriggerSource;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -42,7 +42,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * End-to-end coverage (ADR-0022 for HTTP_DIRECTORY): an {@code .eml} served from a web directory
  * has its attachments indexed as their own {@code Document} rows through the generalized attachment
  * path, and {@code cleanupVanished}'s attachment bookkeeping holds across changed, unchanged and
- * nested mails. Drives the real, Spring-wired {@link FileProcessingService} bean graph against a
+ * nested mails. Drives the real, Spring-wired {@link DocumentIngestService} bean graph against a
  * loopback {@code com.sun.net.httpserver.HttpServer}; only the executor itself is hand-built, so
  * the crawler/downloader can use {@link TargetAddressValidator#disabled()} (the loopback stub would
  * otherwise be blocked) without a context-splitting property override.
@@ -50,13 +50,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @io.opaa.test.OpaaIndexingIntegrationTest
 class UrlAttachmentIndexingIntegrationTest {
 
-  @Autowired private FileProcessingService fileProcessingService;
+  @Autowired private DocumentIngestService documentIngestService;
   @Autowired private IndexingJobService indexingJobService;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private IndexingRunTemplate indexingRunTemplate;
   @Autowired private io.opaa.library.LibraryFolderService folderService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
-  @Autowired private io.opaa.indexing.VectorChunkStore vectorChunkStore;
+  @Autowired private io.opaa.indexing.chunk.VectorChunkStore vectorChunkStore;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private HttpServer server;
@@ -138,7 +138,7 @@ class UrlAttachmentIndexingIntegrationTest {
         new UrlIndexingExecutor(
             new AutoindexCrawlerService(validator, new CrawlProperties(0, 0, 0)),
             new BoundedDownloader(validator),
-            fileProcessingService,
+            documentIngestService,
             documentRepository,
             new CrawlProperties(0, 0, 0),
             folderService,
