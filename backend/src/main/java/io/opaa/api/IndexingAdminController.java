@@ -13,6 +13,7 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditQueryService;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.ContextPrefixRerunResult;
@@ -135,7 +136,7 @@ public class IndexingAdminController {
             AuditEventType.INDEXING_PIPELINE_REINDEX_TRIGGERED,
             AuditObjectType.SYSTEM_SETTING,
             pipelineObjectId(pipelineId),
-            "Ingestion-Pipeline " + pipelineId,
+            "Ingestion-Pipeline " + (pipelineId == null ? "(keine Angabe)" : pipelineId),
             requested,
             () -> {
               // Validated here rather than left to the service: every user-facing API error is
@@ -246,13 +247,15 @@ public class IndexingAdminController {
 
   /**
    * The one audit mechanism of the three batch endpoints: the triggering call is the administrative
-   * decision and is recorded exactly once, whether it ran or was rejected. {@code SUCCESS} carries
-   * {@code requested} plus the counters derived from the result; any {@code RuntimeException} from
-   * {@code call} yields {@code FAILURE} with the exception's (German, user-facing) message as
-   * reason and {@code requested} alone as {@code after}, and is rethrown unchanged - even if
-   * writing the event itself fails, in which case that failure is logged and attached as
-   * suppressed. No transaction surrounds this method, so the event commits on its own regardless of
-   * what {@code call} rolled back.
+   * decision and is recorded exactly once, whether it ran, was rejected or broke off. {@code
+   * SUCCESS} carries {@code requested} plus the counters derived from the result. Any {@code
+   * RuntimeException} from {@code call} yields {@code FAILURE} with {@code requested} alone as
+   * {@code after} and the exception message - a German validation message for a rejected call, a
+   * technical one for a run that broke off mid-batch - capped to {@code audit_log.reason}'s width
+   * as reason; documents a broken-off batch already committed are not visible in that event. The
+   * exception is rethrown unchanged, even if writing the event itself fails, in which case that
+   * failure is logged and attached as suppressed. No transaction surrounds this method, so the
+   * event commits on its own regardless of what {@code call} rolled back.
    */
   private <R> R audited(
       CurrentUser caller,
@@ -278,7 +281,7 @@ public class IndexingAdminController {
             event
                 .after(withoutNullValues(requested))
                 .outcome(AuditOutcome.FAILURE)
-                .reason(ex.getMessage())
+                .reason(capReason(ex.getMessage()))
                 .build());
       } catch (RuntimeException loggingFailure) {
         log.error(
@@ -294,6 +297,16 @@ public class IndexingAdminController {
     after.putAll(counters.apply(result));
     auditEventRecorder.recordUserAction(event.after(after).outcome(AuditOutcome.SUCCESS).build());
     return result;
+  }
+
+  /**
+   * {@code audit_log.reason} is bounded by {@link AuditQueryService#MAX_REASON_LENGTH}; an overlong
+   * technical message would otherwise fail the insert and cost the call its one entry.
+   */
+  private static String capReason(String reason) {
+    return reason == null || reason.length() <= AuditQueryService.MAX_REASON_LENGTH
+        ? reason
+        : reason.substring(0, AuditQueryService.MAX_REASON_LENGTH);
   }
 
   /**

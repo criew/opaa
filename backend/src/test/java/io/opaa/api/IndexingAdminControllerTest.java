@@ -16,6 +16,7 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditQueryService;
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
@@ -418,6 +419,30 @@ class IndexingAdminControllerTest {
                 .with(asAdmin()))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.error").value("Bibliothek nicht gefunden"));
+  }
+
+  @Test
+  void metadataBackfillCapsAnOverlongFailureReasonToTheColumnWidth() throws Exception {
+    // audit_log.reason is varchar(1000); a technical abort from the service (SQL in the message,
+    // routinely longer) must not lose the one entry the call is owed to a rejected insert.
+    UUID libraryId = UUID.randomUUID();
+    String overlong = "x".repeat(AuditQueryService.MAX_REASON_LENGTH + 500);
+    when(metadataBackfillService.backfillBatch(actingAdminOrganizationId, libraryId, 10))
+        .thenThrow(new IllegalStateException(overlong));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/metadata-backfill")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + libraryId + "\"}")
+                .with(asAdmin()))
+        .andExpect(status().is5xxServerError());
+
+    AuditEvent event = singleRecordedEvent();
+    assertThat(event.outcome()).isEqualTo(AuditOutcome.FAILURE);
+    assertThat(event.reason()).hasSize(AuditQueryService.MAX_REASON_LENGTH);
+    assertThat(event.reason())
+        .isEqualTo(overlong.substring(0, AuditQueryService.MAX_REASON_LENGTH));
   }
 
   @Test
