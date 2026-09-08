@@ -32,8 +32,13 @@ export default defineConfig({
   // sie zu verstecken.
   retries: 1,
   workers: 1,
+  // The JSON report is what the CI alarm issue reads to list the failed scenarios by name.
   reporter: process.env.CI
-    ? [["list"], ["html", { open: "never" }]]
+    ? [
+        ["list"],
+        ["html", { open: "never" }],
+        ["json", { outputFile: "test-results/results.json" }],
+      ]
     : [["list"]],
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000",

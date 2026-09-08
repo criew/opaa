@@ -86,7 +86,12 @@ jobs:
               - '.github/scripts/**'
               - '.github/workflows/ci.yml'
 
-  backend:
+  # The backend suite runs as three parallel package shards (see `testShards` in
+  # backend/build.gradle.kts) plus one build job for everything `build` does besides `test`
+  # (spotless, compile, bootJar, SBOM, evalUnitTest, opaa-api tests). The `backend` job below
+  # only aggregates their results so the required status check keeps its name and the
+  # branch protection needs no change.
+  backend-build:
     needs: changes
     if: github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
@@ -108,18 +113,71 @@ jobs:
       # (braeuchte cache-encryption-key + build-root-directory).
       - uses: gradle/actions/setup-gradle@v6
 
-      - name: Build & Test
-        run: ./gradlew build
+      - name: Build (ohne Testsuite)
+        run: ./gradlew build -x test
+
+      - name: Upload build reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-build-reports
+          path: |
+            backend/build/reports/tests/
+            opaa-api/build/reports/tests/
+          retention-days: 14
+
+  backend-test:
+    name: backend-test (${{ matrix.shard }})
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [api, indexing, core]
+    defaults:
+      run:
+        working-directory: backend/
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Test (Shard ${{ matrix.shard }})
+        run: ./gradlew test -PtestShard=${{ matrix.shard }}
 
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: backend-test-reports
-          path: |
-            backend/build/reports/tests/
-            opaa-api/build/reports/tests/
+          name: backend-test-reports-${{ matrix.shard }}
+          path: backend/build/reports/tests/
           retention-days: 14
+
+  backend:
+    needs: [changes, backend-build, backend-test]
+    # always(): the aggregate must run even when a shard failed, otherwise it would be skipped
+    # and a skipped required check reads as passed. The path-filter condition is repeated so a
+    # PR without backend changes still skips this job exactly like the old single job did.
+    if: always() && (github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ergebnisse von backend-build und backend-test zusammenfassen
+        env:
+          BUILD_RESULT: ${{ needs.backend-build.result }}
+          TEST_RESULT: ${{ needs.backend-test.result }}
+        run: |
+          echo "backend-build: $BUILD_RESULT"
+          echo "backend-test:  $TEST_RESULT"
+          if [ "$BUILD_RESULT" != "success" ] || [ "$TEST_RESULT" != "success" ]; then
+            echo "::error::Mindestens ein Backend-Job ist nicht erfolgreich."
+            exit 1
+          fi
 
   backend-integration:
     needs: changes
