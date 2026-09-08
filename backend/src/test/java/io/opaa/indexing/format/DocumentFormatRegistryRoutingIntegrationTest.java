@@ -95,7 +95,7 @@ class DocumentFormatRegistryRoutingIntegrationTest {
    * ({@link ChunkFormatMetadata}) and select what a re-index pulls in, so both are part of the
    * stored corpus rather than of the Java type. Pinned against literals here, not against the
    * classes' own constants, so that renaming or moving a format class cannot silently take a stored
-   * value with it - which is exactly what #1417 did to all eleven of them.
+   * value with it.
    */
   @Test
   void everyFormatKeepsItsPersistedIdAndVersion() {

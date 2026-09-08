@@ -415,8 +415,8 @@ bedeutungsleer, mit ihr eine beantwortbare Frage.
 
 #### Umgesetzt (#1061)
 
-`PdfDocumentFormat` (`id` `pdf`, Version 1), `DocxDocumentFormat` (`id` `docx`, Version 2 seit
-#1145) und `PptxDocumentFormat` (`id` `pptx`, Version 1) sind registriert und beanspruchen `.pdf`,
+`PdfDocumentFormat` (`id` `pdf`, Version 1), `DocxDocumentFormat` (`id` `docx`, Version 3 seit
+#1187) und `PptxDocumentFormat` (`id` `pptx`, Version 1) sind registriert und beanspruchen `.pdf`,
 `.docx` bzw. `.pptx` in der `DocumentFormatRegistry`. `.doc` bleibt unverändert bei
 `TikaFallbackFormat` — POIs OOXML-Leser kann das ältere Binärformat gar nicht öffnen.
 
@@ -970,7 +970,7 @@ Beleg) folgt dabei den bestehenden Regeln des Anlagenwegs, siehe
 
 #### Umgesetzt (#1060)
 
-`MailDocumentFormat` (`id` `email`, Version 4 seit #1183) beansprucht `.eml` und `.msg` in der
+`MailDocumentFormat` (`id` `email`, Version 5 seit #1339) beansprucht `.eml` und `.msg` in der
 `DocumentFormatRegistry`; beide Endungen sind jetzt in `SupportedDocumentFormats` zugelassen —
 unterschiedlich streng, mit einem empirisch belegten Grund: `.msg` bekommt mit
 `application/vnd.ms-outlook` einen eindeutigen, strikten Medientyp (wie PDF/DOCX). `.eml` dagegen

@@ -16,10 +16,16 @@
  *       names the format itself through {@code DocumentIngest.pipelineId}.
  * </ul>
  *
- * <p>{@code shared} holds the building blocks both kinds reuse. This package holds no job or
- * document orchestration and never calls back into it; outside its own subtree it uses only {@code
- * io.opaa.indexing.chunk} (metadata keys) and {@code io.opaa.indexing.metadata} (the reserved key
- * names a format must not claim), neither of which uses it.
+ * <p>{@code shared} holds the building blocks both kinds reuse. Outside its own subtree this
+ * package uses {@code io.opaa.indexing.chunk} (metadata keys), {@code io.opaa.indexing.metadata}
+ * (the reserved key names a format must not claim), {@code io.opaa.indexing.document} (the Tika
+ * reader the fallback format parses through) and {@code io.opaa.sourceaccess} (the read ceiling the
+ * mail and ODF readers work under). It owns no run and no document state and starts no ingest.
+ *
+ * <p>Two of those four are mutual, stated rather than claimed away: {@code document} calls this
+ * package for every document it takes in, and {@code metadata} both reads {@code
+ * DocumentProperties} and re-reads a document through the registry. {@code chunk} and {@code
+ * sourceaccess} do not use this package.
  *
  * <p>One edge runs the other way inside the subtree: {@link
  * io.opaa.indexing.format.ChunkFormatMetadata} names {@code file.fallback} for the id the
