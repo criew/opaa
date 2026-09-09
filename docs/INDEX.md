@@ -147,6 +147,9 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
 - **[`handbuch/indexierung.md`](./handbuch/indexierung.md)** — die Aufnahmestrecke: Läufe, Betriebsarten,
   Dokumentstrecke, Anhänge, Löscherkennung, Protokoll, Pipeline-Versionen; mit je einem Kapitel pro
   Konnektor (`konnektor-*.md`) und Format-Pipeline (`format-*.md`)
+- **[`handbuch/suche.md`](./handbuch/suche.md)** — die Abfragestrecke: Suchbereich und Rechtefilter,
+  Teilfragen, Vektor- und Volltextsuche, Fusion, Reranking, Dokument-Vervollständigung, Belegprüfung,
+  Diagnosewerkzeug, Konfiguration
 - **[`handbuch/konnektor-confluence.md`](./handbuch/konnektor-confluence.md)** — der Confluence-Konnektor:
   Einrichtung je Edition, Zielprüfung, Betriebsarten und Löschsemantik, Webhooks, Ratenbegrenzung und
   Anfragebudget, Kennzahlen, Grenzen, Fehlerbehebung

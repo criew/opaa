@@ -674,6 +674,7 @@ Betriebsart) ist Teil dieser Pipeline und wächst nicht je Konnektor.
   [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md),
   [Confluence](konnektor-confluence.md), [S3-Objektspeicher](konnektor-s3.md)
 - Format-Pipelines je Dokumenttyp: siehe [Formatübersicht](#anhang-formatübersicht)
+- Wie der Index abgefragt wird, von der Frage bis zur belegten Antwort: [Suche](suche.md)
 - Kernfelder je Dokument, ihre Ermittlung, Pflege und Wirkung in der Suche: [Metadaten](metadaten.md)
 - Installation, Umgebungsvariablen und Update-Verhalten des Index: [Deployment](deployment.md)
 
