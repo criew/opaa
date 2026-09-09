@@ -38,6 +38,7 @@ Eine eigene Transaktion (`REQUIRES_NEW`, `TransactionTemplate`) war in diesem Pr
 
 - Das Issue und nichts weiter implementieren. Nicht über den Auftrag hinaus refaktorieren oder nebenbei Fixes vornehmen.
 - Neue oder geänderte Kommentare folgen der Kommentar-Konvention in AGENTS.md (Vertrag/Invariante, 1–5 Zeilen, keine Review-Nacherzählung) — schon beim Schreiben, nicht erst als Review-Nachbesserung.
+- Beschreibt ein Kapitel des Produkthandbuchs (`docs/handbuch/`) das geänderte Verhalten oder die geänderte Konfiguration, das Kapitel im selben PR nachziehen — nach den Konventionen in `docs/handbuch/README.md` (Ist-Stand, Verweise nur innerhalb des Handbuchs, Zahlen nur in Konfigurationstabellen, Glossarbegriffe). Das Abnahmekriterium des Issues nennt das Kapitel; fehlt es, selbst prüfen, ob eines betroffen ist, und die Entscheidung im PR nennen.
 - Bei kleinen Unklarheiten eine vernünftige Annahme treffen und sie unter `## Annahmen` im PR dokumentieren.
 - Bei grundlegenden Fragen, widersprüchlichen Kriterien oder nicht geklärten Architekturentscheidungen stoppen und an den Orchestrator melden, statt zu raten.
 - Für einen Bug außerhalb des Umfangs ein beschriftetes deutschsprachiges Follow-up-Issue erstellen und es im PR erwähnen — in diesem PR nicht beheben.

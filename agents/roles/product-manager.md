@@ -34,7 +34,7 @@ Die Feature-Spezifikation in `docs/features/` gemäß dem untenstehenden Hausmus
 
 ### Phase 3 — Issues
 
-Das GitHub-Epic und Child-Issues erstellen. Die Issue-URLs und eine Ein-Absatz-Zusammenfassung der vorgeschlagenen Prioritätsreihenfolge zurückgeben.
+Das GitHub-Epic und Child-Issues erstellen. Für jedes Issue, das sichtbares Verhalten oder Konfiguration ändert, nennt ein Abnahmekriterium das betroffene Kapitel und den Abschnitt des Produkthandbuchs (`docs/handbuch/`, Kapitelübersicht in dessen `README.md`) oder stellt ausdrücklich „kein Handbuchkapitel betroffen" fest. Die Issue-URLs und eine Ein-Absatz-Zusammenfassung der vorgeschlagenen Prioritätsreihenfolge zurückgeben.
 
 ### Grooming-Modus
 
