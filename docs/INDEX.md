@@ -142,6 +142,8 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
 
 ### Handbuch — das gebaute Produkt benutzen
 
+- **[`handbuch/README.md`](./handbuch/README.md)** — Einstieg: Zielgruppen, Funktionsübersicht,
+  Kapitel, Lesewege nach Anlass, Glossar, Konventionen
 - **[`handbuch/deployment.md`](./handbuch/deployment.md)** — Installation und Betrieb der vorhandenen
   Software: Docker Compose, Umgebungsvariablen, Härtung
 - **[`handbuch/indexierung.md`](./handbuch/indexierung.md)** — die Aufnahmestrecke: Läufe, Betriebsarten,

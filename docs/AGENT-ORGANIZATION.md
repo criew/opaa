@@ -115,7 +115,7 @@ Issues sind die Arbeitseinheit und müssen ausreichend in sich geschlossen sein,
 
 - **Kontext / Warum** — Link zur Vision, zum Epic oder zur Feature-Spezifikation
 - **Ziel / Ergebnis** — ein Satz, der beschreibt, was danach möglich ist
-- **Abnahmekriterien** — einzeln testbare Checkboxen; "Dokumentation aktualisiert" ist ein ständiges Kriterium für nutzerseitige oder architektonische Änderungen
+- **Abnahmekriterien** — einzeln testbare Checkboxen; "Dokumentation aktualisiert" ist ein ständiges Kriterium für nutzerseitige oder architektonische Änderungen. Ändert das Issue sichtbares Verhalten oder Konfiguration, benennt ein Kriterium das betroffene Handbuchkapitel und den Abschnitt („`docs/handbuch/suche.md`, Stufe 8 nachgezogen") oder stellt ausdrücklich fest: „kein Handbuchkapitel betroffen"
 - **Umfang / Außerhalb des Umfangs** — explizite Grenzen
 - **Betroffene Module** — z. B. `io.opaa.indexing`, Frontend, OpenAPI-Spezifikation (Spec-Änderungen sind ein Koordinationspunkt — siehe [ADR-0006](./decisions/0006-openapi-dto-generation.md))
 - **Abhängigkeiten** — blockierende Issues
@@ -124,6 +124,7 @@ Issues sind die Arbeitseinheit und müssen ausreichend in sich geschlossen sein,
 ### Dokumentation
 
 - **Feature-Dokumentation wird von demjenigen geschrieben, der das Feature baut, im selben PR.** Kein separater Dokumentationsdurchgang; dies wird durch die Abnahmekriterien durchgesetzt und vom Code Reviewer geprüft.
+- **Das Produkthandbuch (`docs/handbuch/`) wird mit dem Code gepflegt.** Wer ein Verhalten oder eine Konfiguration ändert, die ein Kapitel beschreibt, zieht das Kapitel im selben PR nach — nach den Konventionen der [Einstiegsseite](./handbuch/README.md): Ist-Stand, Verweise nur innerhalb des Handbuchs, Zahlen nur in Konfigurationstabellen, Begriffe aus dem Glossar. Der Code Reviewer prüft bei jedem PR mit Verhaltens- oder Konfigurationsänderung, ob das betroffene Kapitel angefasst wurde, und hält die Änderung gegen den Code; ein fehlender Nachzug ist ein Merge-Blocker, kein Nit. Ein neues Kapitel trägt den Hinweis „Entwurf", bis der Maintainer es abnimmt und den Hinweis in einem eigenen PR entfernt; ein Nachzug in ein abgenommenes Kapitel setzt den Hinweis nicht zurück. Es gibt keinen periodischen Dokumentationsdurchgang und keinen eigenen Dokumentations-Agenten — ein Kapitel, das beim Bauen nicht mitgezogen wurde, wird bei einem späteren Durchgang nicht besser.
 - **ADRs**: Wenn der Code Reviewer oder ein Entwickler eine echte Architekturentscheidung identifiziert, schreibt er einen ADR-Entwurf in `docs/decisions/` mit dem Status `proposed` und hängt ihn an den PR. Der Maintainer entscheidet: `accepted` (gemergt) oder abgelehnt. Nichts Architektonisches wird implizit festgelegt.
 
 ### Koordinator-Betrieb
@@ -139,6 +140,7 @@ Betriebsregeln für den Koordinator/Orchestrator, unabhängig von der Umgebung, 
 - **Modellwahl je Gewicht.** Entwickler-Agenten laufen standardmäßig auf Opus; wichtige oder komplexe Issues (Epic-Kernteile, Migrations-/Löschsemantik, verzahnte Verträge) darf der Koordinator wahlweise mit Fable starten. Bei Störungen eines Modells (z. B. Überlastung) weicht er auf das jeweils andere aus, statt zu warten — Reviews bleiben immer auf einem der beiden starken Modelle.
 - **Bündelung eng zusammenhängender Issues.** Der Koordinator darf mehrere Issues desselben Subsystems demselben Agenten als einen Auftrag geben — ein PR mit mehreren `Closes`-Verweisen. Die Issues bleiben einzeln angelegt (Nachvollziehbarkeit), aber Fixkosten je PR (CI-Läufe, Review-Anläufe, Merge-Konflikte paralleler Klein-PRs) fallen nur einmal an. Vorbild: Konnektor-Anschlüsse, die dieselbe Mechanik in zwei Executors ziehen.
 - **Review startet mit der PR-Eröffnung, nicht nach grüner CI.** Code Reviewer und CI sind unabhängige Schranken: Das Review arbeitet auf dem Diff und braucht kein CI-Ergebnis. Der Koordinator startet das Review in dem Moment, in dem ein PR eröffnet ist — nicht erst mit der Abschlussmeldung des Entwickler-Agenten, die den CI-Lauf abwartet. Beide Ergebnisse laufen dann parallel ein; ein roter CI-Lauf und Review-Befunde gehen gemeinsam in dieselbe Nachbesserungsrunde. (Anweisung des Maintainers vom 04.09.2026.)
+- **Handbuch nach Abhängigkeits-Updates prüfen.** Ändert ein gemergter Renovate-PR eine Version oder einen Default, den das Handbuch nennt (Deployment-Kapitel: Images, Datenbank, Modellanbieter, Umgebungsvariablen), prüft der Koordinator das Kapitel und zieht es nach — der einzige Weg, auf dem ein Kapitel ohne eigenen Code-PR veraltet.
 - **Security-Arbeit wird delegiert.** Der Koordinator führt Security-Analysen, -Fixes und -Issues nicht selbst aus, sondern delegiert sie an Agenten — dieselbe Rollentrennung, die auch Implementierung und Review trennt.
 
 ### Autonomie und Eskalation
