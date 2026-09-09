@@ -5,8 +5,24 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-08T04:59:13Z</updated>
+  <updated>2026-09-09T04:58:54Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Dienstag, 8. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-08.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-08.html</id>
+    <updated>2026-09-09T04:58:54Z</updated>
+    <summary type="text">feat(indexing): Paketstruktur des Indexing-Bereichs schärfen:
+— Paketstruktur des Indexing-Bereichs in drei Phasen umgestaltet
+— Wurzelpaket in document, chunk, job und maintenance aufgeteilt
+— pipeline zu format umbenannt, Dateiformat und Datenformat getrennt
+— Formatzulassung aus registrierten Formaten abgeleitet
+Sonstiges:
+— Paketzyklen in auth, query und indexing aufgelöst
+— Lexikalischer Suchpfad liest chunk_full_text ohne Versionsfilter
+— Backend-Tests in drei parallele Shards geteilt
+— aws-java-sdk-v2 aktualisiert</summary>
+  </entry>
   <entry>
     <title>Tagesreport Montag, 7. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-07.html"/>
