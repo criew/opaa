@@ -379,14 +379,13 @@ An derselben Stelle werden die **Kernfelder** des Dokuments ermittelt (Titel, Do
 Datum/Stand) und die filterbaren davon an jeden Chunk geschrieben. Woher sie kommen und was sie
 bewirken, steht im Kapitel [Metadaten](metadaten.md).
 
-Zusätzlich wird für das Embedding, nicht für den gespeicherten Text, ein **Kontexttitel**
-vorangestellt: bei Dateien aus dem Dateinamen abgeleitet, bei Feed-Einträgen die Überschrift, bei
-Confluence-Seiten der Ort der Seite im Space. Ein Chunk aus
-`2024-03_Dienstanweisung_Homeoffice.pdf` wird als „[Dienstanweisung Homeoffice] …" eingebettet,
-sofern das Dokument in mehr als einen Chunk zerfällt. Der Präfix wirkt nur auf der Vektorseite: Der Volltextindex enthält den
-Chunk-Text und die Kennungen, nicht den Dateinamen. Er gleicht aus, dass ein Detail-Chunk (eine
-Gebührenzeile, ein einzelner Paragraf) im Embedding sonst kaum Signal trägt, wovon das Dokument
-handelt. Das Zitat bleibt unverändert.
+Zusätzlich wird für Embedding und Volltextindex, nicht für den gespeicherten Text, ein
+**Kontextpräfix** vorangestellt: der Titel des Dokuments (Kapitel [Metadaten](metadaten.md),
+Abschnitt 9), sofern das Dokument in mehr als einen Chunk zerfällt, dazu präfixwirksame Feldwerte
+und der Gliederungspfad des Chunks. Ein Chunk aus `2024-03_Dienstanweisung_Homeoffice.pdf` wird
+als „Dienstanweisung Homeoffice › …" eingebettet und volltextindiziert. Der Präfix gleicht aus,
+dass ein Detail-Chunk (eine Gebührenzeile, ein einzelner Paragraf) sonst kaum Signal trägt, wovon
+das Dokument handelt. Das Zitat bleibt unverändert.
 
 ### Schritt 6: Embedden
 

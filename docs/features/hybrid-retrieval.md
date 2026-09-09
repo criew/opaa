@@ -613,7 +613,8 @@ Zwei Folgerungen sind verbindlich:
 
 > **Stand: gebaut** ([#1049](https://github.com/criew/opaa/issues/1049)). Der gebaute Ablauf steht in
 > [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md#5-reciprocal-rank-fusion); dieser
-> Abschnitt bleibt die Begründung und der Zuschnitt.
+> Abschnitt bleibt die Begründung und der Zuschnitt. Warum die beiden Pfade ungewichtet fusioniert
+> werden, belegt der [Anhang: Gewichtung der Suchpfade in anderen Systemen](#anhang-gewichtung-der-suchpfade-in-anderen-systemen).
 >
 > **Gemessene Wirkung** (Verwaltungsdomäne, Pipeline-Messpfad, CPU-Testcontainer-Lauf vom 2026-09-01,
 > `vector-only` gegen `vector+fulltext-rrf` im selben Lauf über denselben Index):
@@ -1658,9 +1659,12 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   und bettet neu ein, statt nur die `tsvector`-Spalte zu überschreiben. Ein Bump der
   Volltext-Aufbereitung ist damit **eine geplante Betriebsaufgabe** mit benannten Kosten; wer ihn
   vornimmt, plant den Nachzug mit ein, statt sich auf einen Hintergrundlauf zu verlassen.
-- **Wirkt der Kontextpräfix aus Contextual Chunking (#933/#940) auch in den Volltextindex?**
-  Anthropics „contextual BM25" spricht dafür, und die Roadmap sieht es in Phase 2a vor. Es ist aber eine
-  eigene Messung wert: Ein Titelpräfix in jedem Chunk verändert die Termstatistik des ganzen Index.
+- ~~**Wirkt der Kontextpräfix aus Contextual Chunking (#933/#940) auch in den Volltextindex?**~~
+  Entschieden mit #1072: `FullTextChunkStore#indexChunks` indiziert die `EMBED`-Form des Chunks,
+  der Präfix wirkt in Einbettung und Volltextindex gleichermaßen (Metadatenschema, Wirkstelle 2).
+- ~~**Sollen die beiden Suchpfade in der Fusion gewichtet werden?**~~ Entschieden am 09.09.2026:
+  gleichgewichtete RRF bleibt, siehe
+  [Anhang: Gewichtung der Suchpfade in anderen Systemen](#anhang-gewichtung-der-suchpfade-in-anderen-systemen).
 - **Bekommt die Rerank-Rolle eine Mindestschwelle?** Das Zielbild sieht eine Schwelle vor, unterhalb
   derer eine Passage nicht mehr als Beleg taugt (siehe
   [Reranking](./data-indexing-rag.md#reranking)). Sie hätte unmittelbare Wirkung auf die Belegvalidierung

@@ -9,8 +9,9 @@
 
 Eine Frage wird nicht „an das Sprachmodell gestellt". Sie läuft zuerst durch eine Suche über den
 Index, und erst die dabei ausgewählten Textstücke (Chunks) gehen zusammen mit der Frage an das
-Chat-Modell. Das Modell darf nur aus diesen Stücken antworten und muss jede Aussage belegen. Die
-Belege werden anschließend geprüft, bevor die Antwort angezeigt wird.
+Chat-Modell. Das Modell soll aus diesen Stücken antworten und jede benutzte Quelle zitieren.
+Erzwungen wird nicht die Antwort, sondern die Prüfbarkeit der Belege: Sie werden geprüft, bevor
+die Antwort angezeigt wird.
 
 ```mermaid
 flowchart LR
@@ -71,10 +72,17 @@ steht."
 | leer | bewusst ohne Wissensbasis: keine Suche, das Modell antwortet aus dem Gespräch allein |
 
 Der Suchbereich ist **nie weiter als die Leserechte**. Er kann sie nur einschränken. Ist er leer,
-weil die Person nichts lesen darf oder der Raum nur Bibliotheken zuordnet, die sie nicht lesen
-darf, läuft keine Suche und die Antwort trägt den Hinweis, dass ohne Wissensbasis geantwortet wurde.
-Die Antwort selbst unterscheidet „nichts gefunden" nicht von „nichts lesbar"; das ist Absicht, damit
-aus einer Fehlantwort kein Rückschluss auf fremde Bestände möglich ist.
+läuft keine Suche, und das Modell antwortet aus dem Gespräch allein. Was die Person davon sieht,
+hängt vom Grund ab:
+
+| Grund für den leeren Suchbereich | Hinweis an der Antwort |
+|---|---|
+| Leiste bewusst geleert | „Diese Antwort wurde ohne Wissensbasis erstellt." |
+| Raum ordnet nur Bibliotheken zu, die die Person nicht lesen darf (gespeicherter Chat) | „In diesem Space ist für Sie derzeit kein Wissen verfügbar." |
+| Person darf gar keine Bibliothek lesen | kein Hinweis |
+
+Der letzte Fall bleibt absichtlich stumm: Die Antwort unterscheidet „nichts gefunden" nicht von
+„nichts lesbar", damit aus einer Fehlantwort kein Rückschluss auf fremde Bestände möglich ist.
 
 Ein **Chunk** ist ein Textstück aus dem Index, wie die Indexierung es zugeschnitten hat, samt seinen
 Metadaten: Dokument, Bibliothek, laufende Nummer, Ortsangabe („S. 3 · Abschn. Fristen") und die
@@ -102,6 +110,7 @@ konfigurierten Modelle. Je Frage sind das im Auslieferungsstand:
 | Einbettung der Suchanfrage | einmal je Teilfrage | Embedding-Modell |
 | Reranking | einmal, nur wenn Reranking eingeschaltet und der Endpunkt erreichbar ist | Rerank-Modell |
 | Antwort | einmal | Chat-Modell |
+| Chat-Titel | einmal je neuem gespeicherten Chat, nach der ersten Antwort, nebenläufig | Chat-Modell |
 
 Die Volltextsuche, die Vielfaltsauswahl, die Fusion, die Dokument-Vervollständigung und die
 Belegprüfung sind reine Datenbank- und Rechenschritte ohne Modellaufruf. Die Latenz einer Frage
@@ -178,8 +187,10 @@ konfigurierten Obergrenze:
   bleibt eine Suchanfrage, bei Bedarf wortgleich.
 
 Dieser Schritt hat einen **Sicherheitsgurt**: Antwortet das Modell nicht, unparsebar oder mit
-Suchanfragen, die kein Wort mit der Frage oder dem Verlauf gemeinsam haben (ein kleines Modell
-ersetzt gelegentlich die Frage durch etwas Eigenes), fällt die Stufe auf die Frage selbst zurück.
+Suchanfragen, von denen auch nur eine kein Wort mit der Frage oder dem Verlauf gemeinsam hat (ein
+kleines Modell ersetzt gelegentlich die Frage durch etwas Eigenes), fällt die Stufe auf die Frage
+selbst zurück, und zwar ganz: Eine Teilfrage wegzulassen kostet ein Thema der Frage, die Frage
+selbst kostet nur Genauigkeit.
 Vom Verlauf bleibt dann nur die **erste** Nutzerfrage des Chats erhalten; sie wird der aktuellen
 Frage vorangestellt, alle dazwischenliegenden Fragen fließen im Rückfall nicht ein. Den ganzen
 Verlauf, so weit das Gesprächsgedächtnis reicht, sieht nur die Zerlegung durch das Modell. Ein
@@ -214,8 +225,10 @@ in Frage und Dokument dieselbe Kennung ergibt. So bleibt „§ 34" von „§ 35"
 Vektorsuche nicht leistet.
 
 Beide Pfade sehen **denselben Bestand**: Die Indexierung schreibt Vektor und Volltext eines Chunks
-in einer Transaktion (Kapitel [Indexierung](indexierung.md), Schritt 7), es gibt keinen Chunk, den
-nur ein Pfad kennt. Was sich unterscheiden kann, ist die **Fassung** des Volltexts: Ändert ein
+in einer Transaktion (Kapitel [Indexierung](indexierung.md), Schritt 7); auf diesem Weg entsteht
+kein Chunk, den nur ein Pfad kennt. Entsteht er auf einem anderen Weg doch, weist die
+Administrationsseite die Bibliothek als unvollständig aus (Abschnitt 8.1). Was sich regulär
+unterscheiden kann, ist die **Fassung** des Volltexts: Ändert ein
 Software-Update die Volltextzerlegung (etwa neue Kennungsmuster), tragen ältere Chunks die neuen
 Bestandteile erst nach dem Nachzug (Kapitel [Indexierung](indexierung.md), Abschnitt 9). Sie werden
 bis dahin gefunden, nur nicht über das Neue. Das Protokoll nennt die Zahl der Bibliotheken mit
@@ -296,8 +309,10 @@ einem Lauf ohne Reranking. Wer Reranking einschaltet, sollte deshalb die Erreich
 Endpunkts überwachen und nicht nur die Antworten ansehen.
 
 Das Fenster **erweitert die Reichweite der Suche nicht**. Was keine Suchstufe zurückgegeben hat,
-kann kein Reranker nach vorn holen. Zwei Pfade liefern je Suchanfrage höchstens doppelt `fetch-k`
-verschiedene Kandidaten; wer das Fenster darüber hinaus vergrößert, muss `fetch-k` mit anheben. Was zum Einschalten gehört, steht im Kapitel
+kann kein Reranker nach vorn holen. Die Reichweite ist `fetch-k` je Liste mal der Zahl der Listen,
+also Teilfragen mal aktive Pfade; bei einer Teilfrage liefern zwei Pfade höchstens doppelt
+`fetch-k` verschiedene Kandidaten. Wer das Fenster darüber hinaus vergrößert, muss `fetch-k` mit
+anheben. Was zum Einschalten gehört, steht im Kapitel
 [Deployment](deployment.md#reranking-einschalten).
 
 ### Stufe 9: Dokument-Vervollständigung
@@ -309,7 +324,7 @@ hat seinen Platz an ein fremdes Dokument verloren. Jedes bereits vertretene Doku
 Chunks, die Rechte- und Metadatenfilter bereits passiert haben.
 
 Weil die Auswahl nicht über `top-k` wachsen darf, muss dafür etwas weichen, in zwei Stufen: zuerst der
-schwächste Chunk eines anderen Dokuments, das selbst schon mit zwei Chunks vertreten ist (die Zahl
+schwächste Chunk eines anderen Dokuments, das selbst schon mit mindestens zwei Chunks vertreten ist (die Zahl
 der vertretenen Dokumente bleibt gleich); erst wenn es kein solches gibt, der rangletzte Chunk der
 Gesamtauswahl, und nur, wenn das zu vervollständigende Dokument mit seinem besten Chunk strikt
 besser rankt. Die zweite Stufe darf ein Dokument ganz aus der Antwort drängen und ist deshalb je
@@ -328,12 +343,13 @@ verwechselt werden:
 |---|---|---|---|
 | Rechtefilter (Stufe 1) | Bibliothek des Chunks | entscheidet, ob ein Chunk überhaupt in einer Abfrage vorkommt | nein, immer |
 | Metadatenfilter (Stufe 2) | Kernfelder Dokumentart und Datum/Stand, Bibliotheks- und Formatfelder | schränkt beide Suchpfade vor dem Ranking ein; Leerwerte bleiben drin und werden als „ohne Angabe" markiert | ja, die Person setzt den Filter im Chat; aus der Frage wird kein Filter abgeleitet |
-| Kontextpräfix (Stufen 4 und 5) | ausgewählte Kernfelder und Bibliotheksfelder; daneben Dateiname bzw. Seitentitel | steht dem Chunk-Text voran, sodass ein Detail-Chunk trägt, wovon sein Dokument handelt: die Metadatenfelder beim Einbetten und im Volltextindex, der Dateiname nur beim Einbetten. Wirkt auf Ähnlichkeit und Wortsuche, ohne dass jemand filtert | nein, wirkt bei jeder Frage; welche Felder das tun, entscheidet die Bibliothek |
+| Kontextpräfix (Stufen 4 und 5) | Titel des Dokuments, ausgewählte Kernfelder und Bibliotheksfelder, Gliederungspfad des Chunks | steht dem Chunk-Text in Einbettung **und** Volltextindex voran, sodass ein Detail-Chunk trägt, wovon sein Dokument handelt; wirkt auf Ähnlichkeit und Wortsuche, ohne dass jemand filtert | nein, wirkt bei jeder Frage; welche Felder das tun, entscheidet die Bibliothek |
 | Fundstelle (Abschnitt 7) | Titel, Dokumentart, Datum/Stand, Ortsangabe, Belegfelder der Bibliothek | ordnet den Beleg ein: welche Fassung, welche Seite | nein |
 
 Der Filter wird nur angeboten, wenn das Feld im Suchbereich der Person ausreichend gefüllt ist:
-eine konfigurierte Schwelle je Kernfeld, für die Dokumentart höher als für das Datum, bei
-Bibliotheks- und Formatfeldern ohne Schwelle. Ein Filter auf ein nur zu einem Bruchteil gefülltes
+eine konfigurierte Schwelle je Kernfeld, für die Dokumentart höher als für das Datum; für
+Bibliotheksfelder gilt eine eigene Schwelle, gemessen an der eigenen Bibliothek; Formatfelder
+werden angeboten, sobald ein Dokument des Suchbereichs einen Wert trägt. Ein Filter auf ein nur zu einem Bruchteil gefülltes
 Feld sähe aus wie eine Einschränkung des Bestands und wäre keine. Die Optionen werden je Person
 und Suchbereich für kurze Zeit zwischengespeichert und bei
 jeder Rechteänderung verworfen. Ein gesetzter Filter bleibt am Chat und gilt für jede weitere Frage
@@ -342,7 +358,7 @@ darin; das Popover sagt das.
 Was Metadaten in der Suche **nicht** tun: Sie verändern keine Rangordnung. Ein Dokument mit
 gepflegten Kernfeldern rankt nicht besser als eines ohne, sofern kein Filter gesetzt ist und das
 Kontextpräfix nicht gerade das fehlende Bedeutungssignal liefert. Freie Schlagworte filtern nie und
-erscheinen nicht im Beleg. Woher die Werte kommen, wie sie gepflegt werden und wie sich der
+erscheinen nicht im Beleg; sie wirken allein über das Kontextpräfix. Woher die Werte kommen, wie sie gepflegt werden und wie sich der
 Kontextpräfix über den Bestand nachziehen lässt, steht im Kapitel [Metadaten](metadaten.md).
 
 ## 6. Antwort erzeugen
@@ -352,8 +368,9 @@ vorgegebene Zitierform) zusammen mit dem Gesprächsverlauf und der Frage an das 
 Chat-Modell**. Die Systemanweisung verpflichtet das Modell, jede genutzte Quelle mit einer Marke der
 Form `【source: <Dokument-ID>#<Chunk-Nummer> | <Dateiname>】` am Satzende zu zitieren und keine
 Quellen zu erfinden. Das Modell wird bei jedem Aufruf neu aufgelöst; eine Aktivierung eines anderen
-Modells in der Verwaltung wirkt ohne Neustart. Ist kein Chat-Modell aktiv, endet die Frage mit einer
-deutschen Fehlermeldung.
+Modells in der Verwaltung wirkt ohne Neustart. Ist kein Chat-Modell aktiv oder antwortet das
+Embedding-Modell in Stufe 4 nicht, endet die Frage mit einer deutschen Fehlermeldung; anders als
+beim Reranking gibt es für diese beiden Rollen keinen Weiterlauf ohne sie.
 
 Die Systemanweisung ist **nicht konfigurierbar**: Sie ist im Code festgelegt und enthält nur die
 Rolle, die Anweisung, aus Verlauf und Kontextdokumenten zu antworten, und die Zitierregeln.
@@ -362,9 +379,10 @@ fest, weil Belegprüfung und Fundstellen darauf aufbauen. Dasselbe gilt für die
 Teilfragen-Zerlegung (Stufe 3). Konfigurierbar ist nur, welches Modell die Anweisung bekommt.
 
 Bei einer leeren Endauswahl (leerer Suchbereich, leere Leiste, nichts über der Schwelle) antwortet
-das Modell aus dem Gespräch allein. Jede Antwort, die keinen Beleg zitiert, trägt die Zeile
-**„Durchsucht wurden: …"** mit den Namen der durchsuchten Bibliotheken, damit die Person sieht,
-worin nichts gefunden oder nichts verwendet wurde.
+das Modell aus dem Gespräch allein (die Hinweise dazu stehen in Abschnitt 2). Jede Antwort, die
+gesucht hat, aber keinen Beleg zitiert, trägt die Zeile **„Durchsucht wurden: …"** mit den Namen
+der durchsuchten Bibliotheken, damit die Person sieht, worin nichts gefunden oder nichts verwendet
+wurde.
 
 Frage und Antwort werden dem Gesprächsgedächtnis hinzugefügt und bei einem gespeicherten Chat
 persistiert. Modell, verbrauchte Tokens und Dauer der Frage stehen an der Antwort und in den Metriken
@@ -500,12 +518,13 @@ Gesamtprotokoll. Die Aufbewahrungsfrist ist einstellbar; abschalten lässt sich 
 
 Zwei bekannte, offene Schwächen gehören hierher, weil sie wie Fehler aussehen:
 
-- **Einchunkige Dokumente** bekommen kein Kontextpräfix aus dem Dateinamen, weil ihr einziger
-  Chunk den ganzen Text samt Thema ohnehin enthält. Beim mehrchunkigen Nachbardokument steht das
-  Thema dagegen zweimal im eingebetteten Text, als Präfix und im Inhalt, was seinen Vektor stärker
-  zum Thema hin verschiebt. Bei einer Frage nach diesem Thema rückt das mehrchunkige Dokument
+- **Einchunkige Dokumente** bekommen den Titel nicht ins Kontextpräfix, weil ihr einziger Chunk
+  den ganzen Text samt Thema ohnehin enthält; ein Präfix erhalten sie nur aus präfixwirksamen
+  Feldwerten. Beim mehrchunkigen Nachbardokument steht das Thema dagegen zweimal im indexierten
+  Text, als Titelpräfix und im Inhalt, was seinen Vektor stärker zum Thema hin verschiebt und im
+  Volltext ein zusätzliches Wortvorkommen zählt. Bei einer Frage nach diesem Thema rückt das mehrchunkige Dokument
   deshalb nach vorn, und das einchunkige fällt relativ zurück, auch wenn es inhaltlich ebenso
-  einschlägig ist. Ob ein Präfix auch für einchunkige Dokumente netto hilft, ist eine offene
+  einschlägig ist. Ob der Titel auch für einchunkige Dokumente netto hilft, ist eine offene
   Messfrage.
 - Welcher **Geschwister-Chunk** bei der Vervollständigung nachrückt, folgt bei mehreren Teilfragen
   der Ankunftsreihenfolge der Listen, nicht einer teilfragenübergreifenden Rangordnung. Betroffen
@@ -527,9 +546,10 @@ Darüber antwortet das Backend mit HTTP 429. Die Werte stehen unter `opaa.rate-l
 | `opaa.query.tokens` | verbrauchte Tokens des Chat-Modells |
 | `opaa.query.decomposition.fallback` | Rückfälle der Zerlegung, nach Ursache unterschieden |
 
-Ins Log gehen Warnungen bei Rückfall der Zerlegung, bei ungültigen
-Belegen und bei der Rechteprobe. Fragetext, Suchanfragen und Antwort erscheinen in keiner
-Logzeile.
+Als Warnung gehen ins Log: der Rückfall der Zerlegung und ein Befund der Rechteprobe. Ungültige
+Belege werden je Antwort mit ihrer Anzahl auf Info-Ebene vermerkt; wer nur auf Warnungen
+alarmiert, sieht sie nicht. Fragetext, Suchanfragen und Antwort erscheinen in keiner Logzeile
+oberhalb der Debug-Ebene.
 
 ### 10.3 Konfiguration
 
@@ -548,7 +568,7 @@ Umgebungsvariable im Kapitel [Deployment](deployment.md#alle-umgebungsvariablen)
 | `rerank-candidate-count` | 50 | Reranking-Fenster und Budget der Fusion bei aktivem Reranking (0 bis 200); 0 schaltet die Stufe ab |
 | `max-chunks-per-document` | 2 | Dokument-Vervollständigung (1 bis 10); 1 schaltet sie ab |
 | `permission-history-sample-rate` | 1,0 | Anteil der Fragen mit Rechteprobe |
-| `metadata-filter.*` | 0,90 / 0,75 / 5m | Füllstandsschwellen für Dokumentart und Datum, Cache der Filteroptionen |
+| `metadata-filter.*` | 0,90 / 0,75 / 0,75 / 5m | Füllstandsschwellen für Dokumentart, Datum und Bibliotheksfelder, Cache der Filteroptionen |
 | `pipeline.disabled-stages` | leer | ganze Stufen aus der Kette nehmen; nur für Entwicklung und Messung, der Suchbereich ist nicht abschaltbar |
 
 Die Rerank-Rolle wird getrennt konfiguriert (`opaa.rerank.*`: Schalter, Basisadresse, Modell,
@@ -559,7 +579,7 @@ entsprechen.
 ### 10.4 Was nicht gebaut ist
 
 - **BM25** im Volltextpfad. Ob der Wechsel nötig ist, wird gemessen; die Eintrittsbedingung steht
-  in der Feature-Spezifikation zur hybriden Suche.
+  im Kapitel [Deployment](deployment.md#bekannte-grenze-ts_rank-ist-kein-bm25).
 - **Reranking und Vielfaltsauswahl als Default.** Beides ist gebaut und per Konfiguration
   aktivierbar; der Auslieferungsstand entscheidet nach Messung, nicht nach Möglichkeit.
 - **Ableitung eines Filters aus der Frage** („nur Vermerke aus 2024"). Filter setzt die Person.
@@ -575,6 +595,3 @@ entsprechen.
 - Kernfelder, Filter, Kontextpräfix und Beleg-Anzeige: [Metadaten](metadaten.md)
 - Umgebungsvariablen, Reranking einschalten, Grenze des Volltextpfads:
   [Deployment](deployment.md)
-- Begründung des Aufbaus und Messergebnisse: Feature-Spezifikationen
-  [Retrieval-Algorithmus](../features/retrieval-algorithm.md) und
-  [Hybride Suche mit Reranking](../features/hybrid-retrieval.md)

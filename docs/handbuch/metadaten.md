@@ -392,9 +392,10 @@ den Abschnitt gar nicht.
 Dazu kommen die **Bibliotheksfelder** der Bibliotheken im Suchbereich (Abschnitt 2b), jedes in der
 Form seines Typs: Auswahl als Mehrfachauswahl der vorkommenden Werte, Datum als Fenster, Kennung als
 Eingabefeld für genau einen Wert. Ein Bibliotheksfeld wirkt nur auf die Dokumente seiner eigenen
-Bibliothek; Dokumente anderer Bibliotheken im selben Suchbereich schränkt es nie ein. Eine
-Füllstandsschwelle gibt es für Bibliotheks- und Formatfelder nicht — sie beschreiben von vornherein
-nur einen Teil des Bestands.
+Bibliothek; Dokumente anderer Bibliotheken im selben Suchbereich schränkt es nie ein. Für ein
+Bibliotheksfeld gilt eine eigene Füllstandsschwelle, gemessen an den Dokumenten seiner Bibliothek
+(Abschnitt 13). Formatfelder haben keine Schwelle — sie beschreiben von vornherein nur einen Teil
+des Bestands.
 
 Der aktive Filter erscheint als entfernbare Chips („Dokumentart: Vermerk", „Datum: 01.01.2024 –
 31.12.2024", „Absender: poststelle@stadt.de") und bleibt am Chat gespeichert. Die Werte setzt die Person; aus der Frage wird kein
