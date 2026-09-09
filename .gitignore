@@ -73,6 +73,7 @@ uploads/
 
 # Claude
 /.claude/settings.local.json
+/.claude/settings.json
 /.claude/worktrees/
 **/.claude/agent-memory/
 

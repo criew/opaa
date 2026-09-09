@@ -1181,8 +1181,9 @@ volltextindiziert ist.
 fehlend, und die Seite „Suche & Indexierung" zeigt die betroffenen Bibliotheken als **unvollständig**
 an. Der lexikalische Pfad findet diese Zeilen weiterhin — ihnen fehlen nur die Lexeme, die die neue
 Fassung hinzufügt, bis der Nachzug sie neu schreibt (ADR-0028). Einen Hintergrundlauf, der das von selbst
-nachzieht, gibt es nicht — **nötig ist dann der Nachzug auf der Administrationsseite**
-(„Suche & Indexierung", Pipeline-Nachzug). Er erfasst solche Abschnitte ausdrücklich, auch wenn sich
+nachzieht, gibt es nicht — **nötig ist dann der Pipeline-Nachzug** über die Admin-API
+(`POST /api/v1/admin/indexing/pipeline-reindex`, siehe [Indexierung](indexierung.md#9-pipeline-versionen-und-nachzug));
+eine Oberfläche dafür gibt es noch nicht. Er erfasst solche Abschnitte ausdrücklich, auch wenn sich
 an der Aufbereitung des Dokuments sonst nichts geändert hat.
 
 **Was das kostet:** Der Nachzug liest jedes betroffene Dokument neu ein, zerlegt es erneut in

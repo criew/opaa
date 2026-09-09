@@ -220,9 +220,9 @@ Anwendungsprotokoll steht eine Warnung mit der betroffenen URL.
 
 Ein Verzeichnis, das keine Dokumente mehr hält, verschwindet am Ende eines Laufs — allerdings nur
 unter derselben Bedingung wie die Löscherkennung im nächsten Abschnitt: Ein abgeschnittener oder
-unvollständiger Crawl räumt weder Dokumente noch Ordner auf. Dokumente, die vor Einführung der
-Spiegelung indiziert wurden, bekommen ihren Ordner beim nächsten Lauf zugewiesen, ohne dass sie neu
-eingelesen werden. Ein Anhang liegt im Ordner seiner Mail.
+unvollständiger Crawl räumt weder Dokumente noch Ordner auf. Ein Dokument ohne Ordnerzuweisung
+bekommt seinen Ordner beim nächsten Lauf zugewiesen, ohne dass es neu eingelesen wird. Ein Anhang
+liegt im Ordner seiner Mail.
 
 ## 9. Löscherkennung
 
