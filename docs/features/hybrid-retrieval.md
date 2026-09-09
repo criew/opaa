@@ -1675,3 +1675,49 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
 - ~~**Der Schwellenwert X der Eskalationsstufe 1.**~~ Entschieden mit #1048: **X = 0,80**, festgelegt vor
   dem ersten Variantenvergleich (siehe
   [Eskalationsstufen](#eskalationsstufen-mit-eintrittsbedingung)).
+
+## Anhang: Gewichtung der Suchpfade in anderen Systemen
+
+Recherche vom 09.09.2026 zur Frage, ob die ungewichtete Fusion beider Suchpfade
+([Arbeitspaket 3](#arbeitspaket-3-fusion)) dem Vorgehen anderer Systeme entspricht.
+
+| System | Fusionsverfahren | Gewichtung möglich? | Default gleichgewichtet? |
+|---|---|---|---|
+| Elasticsearch (`rrf`-Retriever) | RRF, `rank_constant` = 60 | ja, `weight` je Retriever (seit Stack 9.2) | ja, `weight` default 1.0 ([Doku](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/retrievers/rrf-retriever), [Blog](https://www.elastic.co/search-labs/blog/weighted-reciprocal-rank-fusion-rrf)) |
+| OpenSearch (`score-ranker-processor`) | RRF, `rank_constant` default 60 | ja, `parameters.weights` je Query-Klausel | ja ([Doku](https://docs.opensearch.org/latest/search-plugins/search-pipelines/score-ranker-processor/)) |
+| OpenSearch (`normalization-processor`) | Score-Normalisierung (min-max) + gewichtetes arithmetisches Mittel | ja, `weights` ist Kernparameter | Gleichgewichtung `[0.5, 0.5]` als üblicher Startpunkt ([Doku](https://docs.opensearch.org/latest/search-plugins/search-pipelines/normalization-processor/), [Blog](https://opensearch.org/blog/building-effective-hybrid-search-in-opensearch-techniques-and-best-practices/)) |
+| Azure AI Search | RRF, k „klein, z. B. 60" | ja, Gewicht je **Vektor**-Query (Multiplikator) | ja, „The default is 1.0, which means no weighting" ([Doku](https://learn.microsoft.com/en-us/azure/search/hybrid-search-ranking)) |
+| Weaviate | `relativeScoreFusion` (Default seit 1.24) bzw. `rankedFusion`; dazu `alpha` | ja, `alpha` (0 = nur BM25, 1 = nur Vektor) | **nein**, `alpha` default 0.75, also vektorlastig ([Doku](https://docs.weaviate.io/weaviate/concepts/search/hybrid-search)) |
+| Qdrant (Query API) | `rrf` oder `dbsf` (verteilungsbasierte Score-Fusion) | ja, `weight` je Prefetch | ja, Default (1, 1) ([Doku](https://qdrant.tech/documentation/search/hybrid-queries/)) |
+| Milvus | `RRFRanker` **oder** `WeightedRanker` (Gewichte + Normalisierung) | ja, über `WeightedRanker` | kein impliziter Default; RRF empfohlen, „wenn kein besonderer Schwerpunkt" nötig ist ([Doku](https://milvus.io/docs/reranking.md)) |
+| Vespa | `reciprocal_rank_fusion(...)` in der `global-phase`; alternativ freie Linearkombination im Rank-Profil | ja (Rank-Ausdrücke frei formulierbar) | Tutorial-Beispiel ist ungewichtete RRF ([Doku](https://docs.vespa.ai/en/learn/tutorials/hybrid-search.html)) |
+| Pinecone (sparse/dense) | Konvexkombination `alpha·dense + (1−alpha)·sparse` (keine RRF) | ja, `alpha` ist Pflichtbestandteil | Gleichgewichtung nur bei `alpha = 0.5`; Gewichtung ist hier **nötig**, weil BM25-Scores unbeschränkt sind ([Doku](https://docs.pinecone.io/guides/indexes/pods/query-sparse-dense-vectors), [Guide](https://www.pinecone.io/learn/hybrid-search-intro/)) |
+| pgvector-Referenz (Supabase) | RRF in SQL, `rrf_k` default 50 | ja, `full_text_weight`/`semantic_weight` | ja, „both 1 by default … equally contribute" ([Doku](https://supabase.com/docs/guides/ai/hybrid-search)) |
+| LangChain `EnsembleRetriever` | gewichtete RRF, c = 60 | ja, `weights` | ja, gleiche Gewichte ohne Angabe ([Referenz](https://reference.langchain.com/python/langchain-classic/retrievers/ensemble/EnsembleRetriever)) |
+| LlamaIndex `QueryFusionRetriever` | Modi `reciprocal_rerank`, `relative_score`, `dist_based_score`, `simple` | nicht belegt (ein `retriever_weights`-Parameter existiert in neueren Versionen, in offizieller Doku nicht bestätigt) | RRF-Modus ist ungewichtet ([Doku](https://docs.llamaindex.ai/en/stable/examples/retrievers/reciprocal_rerank_fusion/)) |
+| Haystack `DocumentJoiner` | `concatenate` (Default), `merge`, `reciprocal_rank_fusion`, `distribution_based_rank_fusion` | ja, `weights` | ja, „equal weight is given to each Retriever score" ([Doku](https://docs.haystack.deepset.ai/docs/documentjoiner)) |
+| Anthropic „Contextual Retrieval" | Rank Fusion; Cookbook-Implementierung nutzt Score-Gewichte | ja | **nein**, `semantic_weight = 0.8`, `bm25_weight = 0.2` im Cookbook; der Blog nennt nur „rank fusion techniques" ([Blog](https://www.anthropic.com/engineering/contextual-retrieval), [Cookbook](https://platform.claude.com/cookbook/capabilities-contextual-embeddings-guide)) |
+
+**Einordnung.** Ungewichtete RRF mit k = 60 ist der verbreitete Default. Der Wert stammt aus der
+Originalarbeit von Cormack, Clarke und Büttcher (SIGIR 2009), die RRF gerade als Verfahren ohne
+trainierte Gewichte einführt ([PDF](https://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf)).
+Elasticsearch, OpenSearch (RRF-Pfad), Azure AI Search, Qdrant, LangChain, Haystack und die
+pgvector-Referenz setzen gleiche Gewichte als Default und bieten Gewichtung als Opt-in. Die
+Ausnahmen sind erklärbar: Pinecone kombiniert Roh-Scores und muss deshalb gewichten; Weaviate und
+das Anthropic-Cookbook setzen bewusst vektorlastige Defaults. Messungen sprechen nur schwach für
+Gewichtung: Qdrant hat sechs Gewichtspaare auf fünf BEIR-artigen Datensätzen vermessen, (1, 1)
+gewann bei zwei, die übrigen Gewinne lagen bei +0,006 bis +0,01 nDCG, teils ohne signifikanten
+Abstand ([Artikel](https://qdrant.tech/articles/how-to-tune-hybrid-search/)); Weaviate berichtet
+rund 6 % Recall-Vorteil für Score-Fusion gegenüber Rangfusion auf FIQA
+([Blog](https://weaviate.io/blog/hybrid-search-fusion-algorithms)); Elastics Blog zu gewichteter
+RRF nennt keine Messwerte. Qdrants ausdrückliche Empfehlung: ohne Eval-Set bei (1, 1) bleiben.
+
+**Folgerung für OPAA.** Gleichgewichtete RRF mit k = 60 bleibt. Entsteht später Bedarf, ist der
+lohnende Schritt keine handgesetzte Gewichtung, sondern eine gemessene Variante gegen das
+Golden-Set: ein Gewichtspaar (`weight / (rank + k)`) oder normalisierende Score-Fusion
+(relativeScoreFusion, DBSF) als abschaltbare Alternative, übernommen nur bei einem Gewinn deutlich
+über der berichteten Größenordnung von 0,005 bis 0,01 nDCG.
+
+Nicht belegbar geblieben: ob LlamaIndex Retriever-Gewichte offiziell dokumentiert, welchen k-Wert
+Haystacks RRF nutzt (Sekundärquellen nennen 40 und 61) und ob Elastic Messwerte zu gewichteter RRF
+veröffentlicht hat.
