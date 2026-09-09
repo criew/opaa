@@ -360,6 +360,15 @@ dependencyManagement {
     imports {
         mavenBom("org.springframework.ai:spring-ai-bom:${libs.versions.spring.ai.get()}")
     }
+    // Raises the embedded Tomcat above the version pinned by spring-boot-dependencies; see the
+    // tomcat entry in libs.versions.toml. Remove once a Spring Boot release pins >= 11.0.25 (#1431).
+    dependencies {
+        dependencySet("org.apache.tomcat.embed:${libs.versions.tomcat.get()}") {
+            entry("tomcat-embed-core")
+            entry("tomcat-embed-el")
+            entry("tomcat-embed-websocket")
+        }
+    }
 }
 
 spotless {
