@@ -9,7 +9,10 @@ COPY frontend/ .
 COPY opaa-api/src/main/resources/openapi/opaa-api.yaml /opaa-api/src/main/resources/openapi/opaa-api.yaml
 RUN pnpm run build
 
-FROM nginx:alpine
+FROM nginx:alpine AS runtime
+# Same contract as backend/Dockerfile: pull the Alpine security updates published after the base
+# image was built, so the image is not frozen on nginx:alpine's build date (issue #1450).
+RUN apk upgrade --no-cache
 COPY --from=build /app/dist /usr/share/nginx/html
 # .template in /etc/nginx/templates/ is processed by the base image's entrypoint with envsubst
 # into /etc/nginx/conf.d/default.conf at container start (see docker-entrypoint.d/20-envsubst-on-
