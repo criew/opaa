@@ -245,8 +245,10 @@ Zwei bekannte Grenzen des Pfads:
   kostet das gemessen 15 Prozentpunkte Hit Rate@5.
 
 Schlägt die Volltextabfrage für eine **einzelne Teilfrage** fehl, entfällt nur deren Kandidatenliste;
-der Lauf geht mit den übrigen Teilfragen und dem Vektorpfad weiter, und das Protokoll notiert den
-Ausfall je Teilfrage mit ihrer Fehlerursache, statt die ganze Stufe als abgeschaltet auszuweisen.
+der Lauf geht mit den übrigen Teilfragen und dem Vektorpfad weiter. Das Protokoll benennt in der
+Oberfläche die betroffene Liste und dass die Volltextsuche für sie fehlgeschlagen ist, statt die
+ganze Stufe als abgeschaltet auszuweisen; die Fehlerursache selbst (Exception-Typ) steht nur im
+Server-Log.
 
 ### Stufe 6: Auswahl je Liste
 
@@ -312,10 +314,12 @@ für den Reranker auf das Reranking-Fenster geweitet hatten, haben in der Fusion
 einem Lauf ohne Reranking. Wer Reranking einschaltet, sollte deshalb die Erreichbarkeit des
 Endpunkts überwachen und nicht nur die Antworten ansehen.
 
-Ist das Reranking-Fenster kleiner als die fusionierte Liste, werden die Kandidaten hinter dem
-Fenster **angehängt**, in fusionierter Reihenfolge, nicht verworfen: Der Reranker bewertet nur das
-Fenster neu, die Kandidaten dahinter behalten ihren Platz aus der Fusion. Im Auslieferungsstand
-(Fenster 50 ≥ `top-k`) tritt der Fall nicht ein; bei einem kleineren Fenster schon.
+Ist `rerank-candidate-count` **kleiner** als `top-k`, liefert die Fusion trotzdem bis zu `top-k`
+Kandidaten (das Kandidatenbudget ist dann das Maximum aus beiden Werten, damit die Antwort nicht
+unter `top-k` schrumpft), aber der Reranker bewertet nur die ersten `rerank-candidate-count` davon.
+Die Kandidaten dahinter werden **angehängt**, in fusionierter Reihenfolge, nicht verworfen. Im
+Auslieferungsstand (`rerank-candidate-count` 50 ≥ `top-k` 8) tritt der Fall nicht ein; erst eine
+Konfiguration mit `rerank-candidate-count < top-k` löst ihn aus.
 
 Das Fenster **erweitert die Reichweite der Suche nicht**. Was keine Suchstufe zurückgegeben hat,
 kann kein Reranker nach vorn holen. Die Reichweite ist `fetch-k` je Liste mal der Zahl der Listen,
@@ -484,20 +488,22 @@ rekonstruiert.
 | Rechteprofil (eine Gruppe mit ihrer lesbaren Bibliotheksmenge) | Systemadministrator | Voreinstellung; Installationen, die Rechte nur einzeln statt über Gruppen vergeben, haben keine Profile, und die Seite sagt das |
 | Person („Sicht als") | nur mit einzeln vergebener, befristeter Befugnis, die aus keiner Rolle folgt | Pflichtbegründung vor dem Lauf, Protokolleintrag, Abzug der diagnosegesperrten Bibliotheken; das Ergebnis wird nirgends gespeichert |
 
-Die Diagnose führt jede Stufe unter ihrer stabilen, code-seitigen Bezeichnung
-(`RetrievalStageName`), die vor der 1–9-Zählung dieses Kapitels Bestand hat:
+Die Oberfläche zeigt jede Stufe unter ihrer deutschen Bezeichnung. Referenz zwischen Handbuch,
+Spezifikation und dem API-Feld `stage` des Erklärprotokolls ist der technische Name
+(`RetrievalStageName`), der vor der 1–9-Zählung dieses Kapitels Bestand hat und der Wert ist, den
+`stage` tatsächlich trägt:
 
-| Stufe (dieses Kapitel) | `RetrievalStageName` |
-|---|---|
-| 1 Suchbereich | `SEARCH_SCOPE` |
-| 2 Metadatenfilter | `METADATA_FILTER` |
-| 3 Teilfragen | `SUB_QUERY_DECOMPOSITION` |
-| 4 Vektorsuche | `VECTOR_SEARCH` |
-| 5 Volltextsuche | `FULL_TEXT_SEARCH` |
-| 6 Auswahl je Liste | `MMR_SELECTION` |
-| 7 Fusion | `RANK_FUSION` |
-| 8 Reranking | `RERANK` |
-| 9 Dokument-Vervollständigung | `DOCUMENT_COMPLETION` |
+| Stufe (dieses Kapitel) | Bezeichnung in der Oberfläche | `stage` (technischer Name) |
+|---|---|---|
+| 1 Suchbereich | Suchbereich | `SEARCH_SCOPE` |
+| 2 Metadatenfilter | Metadatenfilter | `METADATA_FILTER` |
+| 3 Teilfragen | Teilfragen | `SUB_QUERY_DECOMPOSITION` |
+| 4 Vektorsuche | Vektorsuche | `VECTOR_SEARCH` |
+| 5 Volltextsuche | Volltextsuche | `FULL_TEXT_SEARCH` |
+| 6 Auswahl je Liste | Auswahl je Liste | `MMR_SELECTION` |
+| 7 Fusion | Fusion (RRF) | `RANK_FUSION` |
+| 8 Reranking | Neubewertung (Reranking) | `RERANK` |
+| 9 Dokument-Vervollständigung | Dokument-Vervollständigung | `DOCUMENT_COMPLETION` |
 
 Für jede Stufe zeigt die Seite Eingang, Ausgang, Status (ausgeführt, abgeschaltet, nicht verfügbar,
 nicht erreicht), die Notizen (Suchanfragen, Budgets, Filter, Zahl der Bibliotheken mit

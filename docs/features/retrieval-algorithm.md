@@ -71,9 +71,9 @@ arbeitet nur mit dem, was der vorherige ihm übergibt — kein Schritt weitet di
 Ähnlichkeitsschwellengrenze eines früheren wieder auf (die Kandidatenmenge selbst schöpft Schritt 6
 weiterhin aus dem in Schritt 3 gebildeten Pool, siehe dort).
 
-### 1. Scope-Bestimmung (`SEARCH_SCOPE`)
+### 1. Scope-Bestimmung
 
-`QueryService#query` unterscheidet zunächst zwei Fälle: eine **persistierte Chat-Anfrage** (`chatId` löst
+Stufenname: `SEARCH_SCOPE`. `QueryService#query` unterscheidet zunächst zwei Fälle: eine **persistierte Chat-Anfrage** (`chatId` löst
 über `ChatService#findOwnedChat` auf einen vom Aufrufenden selbst angelegten Chat auf) oder eine
 **ephemere Anfrage** (kein `chatId`, oder er löst nicht auf). Bei einem persistierten Chat bestimmt
 `ChatService#effectiveLibraryScope` den Suchbereich aus dessen eigenem `useKnowledge`/
@@ -89,9 +89,9 @@ Javadoc-Begründung an `QueryService#query`). Ein leerer Suchbereich überspring
 vollständig (`relevantChunks = List.of()`, keine der dortigen Aufrufe läuft) — Schritt 7 läuft trotzdem,
 mit null Chunks im Kontext, und markiert das Ergebnis über `QueryOutcome#answeredWithoutKnowledge`.
 
-### 1b. Metadatenfilter (`METADATA_FILTER`, #1070)
+### 1b. Metadatenfilter (#1070)
 
-Direkt hinter der Scope-Bestimmung trägt `MetadataFilterStage` den Kernfeld-Filter der Person oder
+Stufenname: `METADATA_FILTER`. Direkt hinter der Scope-Bestimmung trägt `MetadataFilterStage` den Kernfeld-Filter der Person oder
 des Chats (`MetadataFilter`: Dokumentart-Codes, Datumsfenster) in den Lauf — bei einem persistierten
 Chat dessen eigener Filter (`chats.metadata_filter`), sonst der aus der Anfrage. Die Stufe übersetzt
 ihn einmal in die `Filter.Expression` des Vektorpfads und reicht beide Formen im Zustand weiter; die
@@ -101,9 +101,9 @@ Ein Dokument ohne Wert im gefilterten Feld bleibt in beiden Pfaden enthalten und
 `SourceReference` als `NO_VALUE` („ohne Angabe") gekennzeichnet. Semantik und Tests: [Metadatenschema,
 Umgesetzt (#1070, Teil 1)](./metadata-schema.md#umgesetzt-1070-teil-1).
 
-### 2. LLM-Teilfragen-Zerlegung/Reformulierung (`SUB_QUERY_DECOMPOSITION`)
+### 2. LLM-Teilfragen-Zerlegung/Reformulierung
 
-`SubQueryDecompositionStage` ruft, sofern `opaa.query.query-decomposition-enabled`
+Stufenname: `SUB_QUERY_DECOMPOSITION`. `SubQueryDecompositionStage` ruft, sofern `opaa.query.query-decomposition-enabled`
 (`OPAA_QUERY_DECOMPOSITION_ENABLED`, Default `true`) aktiv ist, `QueryDecompositionService#decompose`
 auf: Die aktuelle Frage geht zusammen mit dem bisherigen Gesprächsverlauf an das systemweit aktive
 Chat-Modell (`ActiveChatModelResolver`, dieselbe Anbindung wie die Antwortgenerierung), das 1 bis
@@ -120,9 +120,9 @@ Zerlegung — mit WARN-Log (Zählwerte, keine Inhalte) und dem Zähler
 Details, Grenzen des Wächters, Diagramm und die Vorher/Nachher-Messung stehen in
 [Teilfragen-Zerlegung und Query-Reformulierung](./data-indexing-rag.md#teilfragen-zerlegung-und-query-reformulierung-multi-query-retrieval-923).
 
-### 3. Vektorsuche je Teilfrage (`VECTOR_SEARCH`)
+### 3. Vektorsuche je Teilfrage
 
-`VectorSearchStage` ruft für **jede** Suchanfrage aus Schritt 2 einen eigenen
+Stufenname: `VECTOR_SEARCH`. `VectorSearchStage` ruft für **jede** Suchanfrage aus Schritt 2 einen eigenen
 `VectorStore#similaritySearch`-Aufruf gegen PostgreSQL/pgvector auf,
 mit identischem Rechtefilter (`searchScope` aus Schritt 1) und identischer Ähnlichkeitsschwelle für jede
 Teilfrage. Parameter: `opaa.query.fetch-k` (`OPAA_QUERY_FETCH_K`, Default `25`) Kandidaten je Aufruf,
@@ -132,9 +132,9 @@ ohne Kontextbezug decodiert typischerweise zu genau einer Suchanfrage; dieser Fa
 wie vor #923, nur ohne die vorangestellte Verlaufs-Heuristik. Details zu beiden Parametern in der
 Stellschrauben-Tabelle.
 
-### 3b. Volltextsuche je Teilfrage (`FULL_TEXT_SEARCH`, #1048/#1049)
+### 3b. Volltextsuche je Teilfrage (#1048/#1049)
 
-`FullTextSearchStage` führt für **jede** Suchanfrage aus Schritt 2 eine PostgreSQL-Volltextabfrage gegen
+Stufenname: `FULL_TEXT_SEARCH`. `FullTextSearchStage` führt für **jede** Suchanfrage aus Schritt 2 eine PostgreSQL-Volltextabfrage gegen
 `chunk_full_text` aus — mit **identischem Rechtefilter** wie Schritt 3 (`library_id = ANY(...)` als Teil
 der `WHERE`-Klausel, nie ein Nachfilter, ADR-0008 §5) und identischem `opaa.query.fetch-k`. Sortiert wird
 nach `ts_rank`.
@@ -177,9 +177,9 @@ was sie hinzufügt, hat denselben Rechtefilter passiert, und der Kandidatenpool 
 für Schritt 6. Abgeschaltet (`opaa.query.full-text-search-enabled=false`) ist die Stufe die Identität:
 Die Auswahl ist dann bit-identisch zu der ohne sie — die Messvariante `vector-only`.
 
-### 4. MMR-Auswahl je Teilfrage (`MMR_SELECTION`)
+### 4. MMR-Auswahl je Teilfrage
 
-`MmrSelectionStage` narrowt die `fetch-k` Kandidaten **jeder Liste einzeln** — je Teilfrage und je
+Stufenname: `MMR_SELECTION`. `MmrSelectionStage` narrowt die `fetch-k` Kandidaten **jeder Liste einzeln** — je Teilfrage und je
 Suchpfad, nie über die zusammengeführte Gesamtmenge — mittels `MmrSelector#select` auf das **Kandidatenbudget** des Laufs
 (`RetrievalContext#candidateBudget`). Ohne Reranking ist das `opaa.query.top-k`
 (`OPAA_QUERY_TOP_K`, Default `8`) — das Verhalten von vor #1050. Läuft die Rerank-Stufe, ist es
@@ -195,9 +195,9 @@ gegen `spring.ai.vectorstore.pgvector.*`) — kein zusätzlicher Aufruf beim Ein
 null multipliziert wird. Details, Messwerte und die Begründung des Defaults in
 [MMR](./data-indexing-rag.md#stellschrauben-und-ihre-wirkung).
 
-### 5. Reciprocal Rank Fusion (`RANK_FUSION`)
+### 5. Reciprocal Rank Fusion
 
-`RankFusionStage` führt über `ReciprocalRankFusion` die pro Teilfrage und **je Suchpfad** per MMR
+Stufenname: `RANK_FUSION`. `RankFusionStage` führt über `ReciprocalRankFusion` die pro Teilfrage und **je Suchpfad** per MMR
 ausgewählten Ranglisten zu einer einzigen zusammen — seit #1049 also zwei Listen je Teilfrage, die der
 Vektor- und die der Volltextsuche. Jeder Chunk erhält je Liste, in der er vorkommt, den Beitrag
 `1 / (60 + Rang)` (Rang 1-basiert, Dämpfungskonstante 60 nach Cormack et al.), die Beiträge werden über
@@ -221,9 +221,9 @@ Deckelung ist durch das Listenbudget bereits erfüllt. Vor #1046 wurde dieser Fa
 übersprungen; dass beides dasselbe auswählt, sichert `RetrievalPipelineParityTest` gegen die
 Vorher-Implementierung ab.
 
-### 5b. Reranking (`RERANK`, #1050)
+### 5b. Reranking (#1050)
 
-`RerankStage` bewertet die fusionierte Kandidatenmenge mit der **Rerank-Modellrolle** neu und deckelt
+Stufenname: `RERANK`. `RerankStage` bewertet die fusionierte Kandidatenmenge mit der **Rerank-Modellrolle** neu und deckelt
 sie wieder auf `top-k`. Die Stufe steht zwischen Fusion und Dokument-Vervollständigung: Die
 Vervollständigung ergänzt Geschwister-Chunks bereits ausgewählter Dokumente und muss deshalb auf der
 endgültigen Rangfolge arbeiten, nicht auf einer, die der Reranker gleich wieder umsortiert
@@ -275,9 +275,9 @@ erklärte es eine Suche, die so nie gelaufen ist. Wird die Stufe über
 `opaa.query.pipeline.disabled-stages` abgeschaltet, während die Rolle an ist, nimmt die Pipeline das
 verbreiterte Kandidatenfenster mit zurück — sonst stellte niemand die `top-k`-Deckelung wieder her.
 
-### 6. Dokument-Vervollständigung (`DOCUMENT_COMPLETION`)
+### 6. Dokument-Vervollständigung
 
-`DocumentCompletionStage` (`DocumentCompletion#complete`, #932/#934/#935) läuft **zuletzt** und zieht ausschließlich
+Stufenname: `DOCUMENT_COMPLETION`. `DocumentCompletionStage` (`DocumentCompletion#complete`, #932/#934/#935) läuft **zuletzt** und zieht ausschließlich
 aus den bereits berechtigungs- und schwellenwertgefilterten Kandidaten von Schritt 3 nach — nie darüber
 hinaus. Ziel: Ein Dokument, das mit einem Chunk bereits in der Auswahl vertreten ist, darf bis zu
 `opaa.query.max-chunks-per-document` (`OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT`, Default `2`) Chunks stellen,
@@ -456,8 +456,10 @@ Ideen und bekannte Schwächen, keine Zusagen. Konsolidiert aus den verstreuten V
   gebaut: Der lexikalische Pfad findet ein Dokument jetzt auch dann, wenn sein Embedding die Anfrage
   nicht erreicht, sofern der Anfragebegriff wörtlich darin steht (auf der Verwaltungsdomäne löst der
   Pipeline-Pfad seither zwei der neun `literal_term_weak_embedding`-Fälle, die Hit Rate@5 dieser Klasse
-  stieg von 0,556 auf 0,889). Was fehlt, ist die zweite Hälfte: ein Reranker für die Fälle, in denen die
-  richtige Fundstelle im Fenster liegt, aber nicht weit genug oben (Diagnose vollständig in #938).
+  stieg von 0,556 auf 0,889). Die zweite Hälfte — ein Reranker für die Fälle, in denen die richtige
+  Fundstelle im Fenster liegt, aber nicht weit genug oben — ist seit #1050 gebaut (Schritt 5b), aber
+  in der Auslieferungskonfiguration abgeschaltet; erst mit `OPAA_RERANK_ENABLED=true` wirkt sie auf
+  diesen Fall (Diagnose vollständig in #938).
 
 ### Etablierte Verfahren, die OPAA noch nicht nutzt
 
