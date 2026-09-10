@@ -441,7 +441,7 @@ erzeugt ein Token, das nie gesucht wird; eine nicht erkannte Kennung ist der Feh
 
 Bei E-Mail-Adressen liegt die Lücke anders als bei Aktenzeichen: PostgreSQLs eigener Parser hält eine
 Adresse bereits als ein einzelnes `email`-Token — die Zerstörung passiert nicht beim Schreiben, sondern
-beim Fragen. `io.opaa.query.FullTextChunkSearch#wordTokens` zerlegt eine Frage an jedem
+beim Fragen. `io.opaa.query.retrieval.search.FullTextChunkSearch#wordTokens` zerlegt eine Frage an jedem
 Nicht-Alphanumerikum, „max.mustermann@example.org" wird dort zu vier einzelnen Worttokens, die das eine
 Chunk-Token nie treffen — belegt gegen ein echtes PostgreSQL (siehe `FullTextIdentifiersTest` und
 `FullTextChunkSearchIntegrationTest`). Die Adresse als unzerlegtes Token auf beiden Seiten zu führen
@@ -963,10 +963,10 @@ Klassen, nicht nur über einen `multi_hop`-Fall. `OPAA_QUERY_RERANK_CANDIDATE_CO
 unverändert von diesem Issue) liefern Vektor- und Volltextpfad je Anfrage zusammen höchstens 50
 verschiedene Chunks — das ist keine Beobachtung dieses Laufs, sondern folgt aus dem Code selbst:
 `RankFusionStage` kappt die fusionierte Liste auf `min(candidateBudget, fused.size())`
-(`backend/src/main/java/io/opaa/query/RankFusionStage.java`), und `fused.size()` ist durch die Summe
+(`backend/src/main/java/io/opaa/query/retrieval/ranking/RankFusionStage.java`), und `fused.size()` ist durch die Summe
 der Eingabelisten begrenzt. `RerankStage` wiederum nimmt als Fenster
 `incoming.subList(0, min(incoming.size(), rerankCandidateCount))`
-(`backend/src/main/java/io/opaa/query/RerankStage.java`) — für `rerankCandidateCount=100` ist
+(`backend/src/main/java/io/opaa/query/retrieval/ranking/RerankStage.java`) — für `rerankCandidateCount=100` ist
 `incoming.size()` bei unverändertem `fetch-k` aber bereits durch 50 gedeckelt, sodass das Fenster
 bei 100 exakt dasselbe wäre wie bei 50: derselbe Kandidatensatz, dieselbe Bewertung, nur doppelte
 Rerank-Laufzeit. Eine Variante `rerank-100` hätte deshalb keine neue Messung geliefert, sondern eine

@@ -42,7 +42,7 @@ public final class PipelineRetrievalEvaluator {
   /**
    * What one call into the pipeline (steps 2–6) produced for a case: the selected chunks' file
    * names in selection order, and the search queries decomposition (or its single-query fallback)
-   * actually ran — see {@link io.opaa.query.RetrievalPipelineResult#searchQueries()}.
+   * actually ran — see {@link io.opaa.query.retrieval.RetrievalPipelineResult#searchQueries()}.
    */
   public record PipelineInvocationResult(List<String> rankedFileNames, List<String> subQueries) {}
 

@@ -222,7 +222,7 @@ für `SYSTEM_ADMIN`: Liste mit deutlich erkennbarem aktivem Eintrag, Anlegen/Bea
 „Aktiv setzen" und Verbindungstest je Eintrag, darunter der schreibgeschützte
 Einbettungsblock aus `embedding-info`.
 
-**Laufzeitauflösung (gebaut, #758).** Antwortgenerierung (`io.opaa.query.AnswerGenerationService`)
+**Laufzeitauflösung (gebaut, #758).** Antwortgenerierung (`io.opaa.query.answer.AnswerGenerationService`)
 und Titelgenerierung (`io.opaa.chat.ChatTitleGenerationService`) lösen den `ChatClient` bei jedem
 Aufruf über `io.opaa.llm.ActiveChatModelResolver` aus dem systemweit aktiven `llm_models`-Eintrag
 auf — programmatisch über die OpenAI-kompatible Anbindung (Basis-Adresse, Modell-Kennung, Temperatur,

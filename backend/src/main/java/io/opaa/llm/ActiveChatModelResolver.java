@@ -23,7 +23,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * Resolves the {@link ChatClient} for the systemwide active {@link LlmModel} at runtime (#758,
  * docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung), replacing what
  * used to be a {@code ChatClient.Builder} built once at startup from the static Spring AI OpenAI
- * autoconfiguration. {@code io.opaa.query.AnswerGenerationService} and {@code
+ * autoconfiguration. {@code io.opaa.query.answer.AnswerGenerationService} and {@code
  * io.opaa.chat.ChatTitleGenerationService} both call {@link #resolveChatClient()} on every request
  * instead of holding a {@code ChatClient} field built in their constructor - the only way an
  * activation via the admin API (#764) can take effect without a restart.

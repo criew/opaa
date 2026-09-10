@@ -40,6 +40,27 @@ import io.opaa.library.PermissionHistoryService;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.llm.RerankRoleStatus;
 import io.opaa.observability.QueryMetrics;
+import io.opaa.query.answer.AnswerGenerationService;
+import io.opaa.query.answer.CaffeineChatMemoryRepository;
+import io.opaa.query.answer.ConversationMemoryConfiguration;
+import io.opaa.query.citation.ChatSourceAssembler;
+import io.opaa.query.citation.CitationParser;
+import io.opaa.query.citation.CitationValidator;
+import io.opaa.query.retrieval.RetrievalPipeline;
+import io.opaa.query.retrieval.RetrievalPipelineProperties;
+import io.opaa.query.retrieval.ranking.ChunkEmbeddingLookup;
+import io.opaa.query.retrieval.ranking.DocumentCompletionStage;
+import io.opaa.query.retrieval.ranking.MmrSelectionStage;
+import io.opaa.query.retrieval.ranking.RankFusionStage;
+import io.opaa.query.retrieval.ranking.RerankStage;
+import io.opaa.query.retrieval.scope.MetadataFilterStage;
+import io.opaa.query.retrieval.scope.SearchScopeStage;
+import io.opaa.query.retrieval.search.FullTextChunkSearch;
+import io.opaa.query.retrieval.search.FullTextIndexCompleteness;
+import io.opaa.query.retrieval.search.FullTextSearchStage;
+import io.opaa.query.retrieval.search.QueryDecompositionService;
+import io.opaa.query.retrieval.search.SubQueryDecompositionStage;
+import io.opaa.query.retrieval.search.VectorSearchStage;
 import java.lang.reflect.Method;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -180,7 +201,7 @@ class QueryServiceTest {
   }
 
   /**
-   * At {@code mmrLambda = 1.0} the diversity term is always multiplied by zero (see {@link
+   * At {@code mmrLambda = 1.0} the diversity term is always multiplied by zero (see {@code
    * MmrSelector#select}'s Javadoc), so {@code query()} must skip the {@link ChunkEmbeddingLookup}
    * round trip entirely rather than pay for a database call whose result could not affect the final
    * selection - every test in this class relies on that (see {@link #setUp}'s comment), but none of
@@ -954,8 +975,8 @@ class QueryServiceTest {
   /**
    * #123 follow-up: explicit two-account test against the real cache stack ({@link
    * MessageWindowChatMemory} over {@link CaffeineChatMemoryRepository}, exactly as {@link
-   * QueryConfiguration} wires it) instead of this test class's otherwise-mocked {@code chatMemory}
-   * field. Both accounts submit the same {@code chatId}; neither resolves it via {@link
+   * ConversationMemoryConfiguration} wires it) instead of this test class's otherwise-mocked {@code
+   * chatMemory} field. Both accounts submit the same {@code chatId}; neither resolves it via {@link
    * ChatService#findOwnedChat} (stubbed empty for every argument in {@link #setUp}), so both run
    * ephemerally - see the class Javadoc on {@link
    * #queryRunsEphemerallyWhenChatIdDoesNotBelongToTheCaller} for that pre-existing behaviour. The
@@ -970,7 +991,8 @@ class QueryServiceTest {
    */
   @Test
   void sameChatIdForTwoDifferentUsersProducesIsolatedConversationHistories() {
-    ChatMemoryRepository realRepository = new CaffeineChatMemoryRepository(50, 60);
+    ChatMemoryRepository realRepository =
+        new CaffeineChatMemoryRepository(new SimpleMeterRegistry());
     ChatMemory realChatMemory =
         MessageWindowChatMemory.builder()
             .chatMemoryRepository(realRepository)
@@ -1252,7 +1274,7 @@ class QueryServiceTest {
 
   /**
    * #914: {@code similaritySearch} itself is called with {@code fetchK}, not {@code topK} - the
-   * larger candidate pool {@link MmrSelector} narrows down afterwards, in {@link
+   * larger candidate pool {@code MmrSelector} narrows down afterwards, in {@link
    * QueryService#query} itself, not inside this mocked call.
    */
   @Test

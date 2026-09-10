@@ -1,8 +1,8 @@
 package io.opaa.eval;
 
-import io.opaa.query.CandidateVerdict;
-import io.opaa.query.RetrievalExplanation;
-import io.opaa.query.StageExplanation;
+import io.opaa.query.retrieval.CandidateVerdict;
+import io.opaa.query.retrieval.RetrievalExplanation;
+import io.opaa.query.retrieval.StageExplanation;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;

@@ -38,10 +38,10 @@ import org.springframework.stereotype.Service;
  * <p><b>Uses the same systemwide active chat model as answer generation.</b> {@link
  * ActiveChatModelResolver#resolveChatClient()} resolves it fresh on every call rather than building
  * a {@code ChatClient} once in the constructor, so an activation via the admin API takes effect for
- * title generation exactly when it takes effect for {@code io.opaa.query.AnswerGenerationService} -
- * the next request either way, never a restart. {@code io.opaa.llm.NoActiveChatModelException} is a
- * {@link RuntimeException}, so it is caught by {@link #generateTitleAsync}'s existing catch-all
- * exactly like any other title-generation failure.
+ * title generation exactly when it takes effect for {@code
+ * io.opaa.query.answer.AnswerGenerationService} - the next request either way, never a restart.
+ * {@code io.opaa.llm.NoActiveChatModelException} is a {@link RuntimeException}, so it is caught by
+ * {@link #generateTitleAsync}'s existing catch-all exactly like any other title-generation failure.
  */
 @Service
 public class ChatTitleGenerationService {

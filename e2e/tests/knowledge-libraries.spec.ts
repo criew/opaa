@@ -102,9 +102,10 @@ async function uploadOwnDocument(page: Page, libraryName: string) {
  * OWN_DOCUMENT_PATH's comment for why.
  *
  * Scenarios 4 and 5 (the negative cases) are the ones that actually exercise
- * io.opaa.query.SearchScopeStage#libraryFilter, the permission filter applied directly to the vector
- * store query (see its Javadoc). Verified manually per AGENTS.md's Reproduktionsnachweis pattern,
- * applied to a pre-existing feature rather than a fix: with `.filterExpression(...)` removed from
+ * io.opaa.query.retrieval.scope.SearchScopeStage#libraryFilter, the permission filter applied
+ * directly to the vector store query (see its Javadoc). Verified manually per AGENTS.md's
+ * Reproduktionsnachweis pattern, applied to a pre-existing feature rather than a fix: with
+ * `.filterExpression(...)` removed from
  * that call and `readableLibraryIds.isEmpty() ? List.of() : ...` short-circuit bypassed, both
  * scenarios fail identically - the own document is still (rightfully) cited, so
  * `expectCitedExclusively`'s first assertion passes, but its second one does not:

@@ -6,7 +6,7 @@ import io.opaa.api.dto.MetadataFilterFormatFieldOption;
 import io.opaa.api.dto.MetadataFilterLibraryFieldOption;
 import io.opaa.api.dto.MetadataFilterLibraryFieldValueOption;
 import io.opaa.api.dto.MetadataFilterOptionsResponse;
-import io.opaa.query.MetadataFilterOptions;
+import io.opaa.query.filter.MetadataFilterOptions;
 
 /** Maps {@link MetadataFilterOptions} onto its generated response (#1070; ADR-0006). */
 final class MetadataFilterOptionsResponseMapper {
