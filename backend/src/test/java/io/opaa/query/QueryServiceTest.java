@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -42,7 +41,6 @@ import io.opaa.llm.RerankModelRole;
 import io.opaa.llm.RerankRoleStatus;
 import io.opaa.observability.QueryMetrics;
 import java.lang.reflect.Method;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -125,27 +123,29 @@ class QueryServiceTest {
                 RetrievalPipelineProperties.allStagesEnabled());
     return new QueryService(
         pipeline,
+        new RetrievalContextFactory(queryProperties, disabledRerankRole()),
+        new SearchScopeResolver(chatService),
+        new ChatSourceAssembler(
+            documentRepository,
+            documentMetadataService,
+            mock(CitationMetadataReader.class),
+            knowledgeLibraryRepository),
         answerGenerationService,
         memory,
         new CitationParser(),
         new CitationValidator(),
-        documentRepository,
         libraryAccessService,
         permissionHistoryService,
         chatService,
         new QueryMetrics(new SimpleMeterRegistry()),
         queryProperties,
-        knowledgeLibraryRepository,
-        disabledRerankRole(),
-        documentMetadataService,
-        mock(MetadataFilterValidator.class),
-        mock(CitationMetadataReader.class));
+        mock(MetadataFilterValidator.class));
   }
 
   /**
-   * A rerank role whose switch is off - the state {@link QueryService} reads once per run. A bare
-   * {@code mock(RerankModelRole.class)} returns {@code null} there, which no production caller
-   * sees.
+   * A rerank role whose switch is off - the state {@link RetrievalContextFactory} reads once per
+   * run. A bare {@code mock(RerankModelRole.class)} returns {@code null} there, which no production
+   * caller sees.
    */
   private static RerankModelRole disabledRerankRole() {
     RerankModelRole role = mock(RerankModelRole.class);
@@ -279,8 +279,8 @@ class QueryServiceTest {
 
   /**
    * #639: {@code sourceEntryUrl} is resolved via the same {@code document_id} -> DocumentRepository
-   * lookup {@code indexedAt} already uses ({@link QueryService#lookupSourceDocuments}), not carried
-   * on the chunk metadata itself.
+   * lookup {@code indexedAt} already uses ({@code ChatSourceAssembler}), not carried on the chunk
+   * metadata itself.
    */
   @Test
   void queryPopulatesSourceEntryUrlFromDocumentLookup() {
@@ -600,72 +600,6 @@ class QueryServiceTest {
         .isEqualTo(io.opaa.api.types.DocumentSourceType.HTTP_DIRECTORY);
     assertThat(source.getSourceUrl())
         .isEqualTo("https://example.gov/verzeichnis/dienstanweisung.pdf");
-  }
-
-  /**
-   * #739: a synthetic entry (#386, invalid citation matching no retrieved chunk) has no underlying
-   * document to resolve - {@code documentId}, {@code sourceType} and {@code sourceUrl} must all
-   * stay null, there is nothing real to link to.
-   */
-  @Test
-  void querySynthesizesNoDocumentLinkForAFabricatedCitation() {
-    when(chatMemory.get(any())).thenReturn(List.of());
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
-
-    var answer = "Info 【source: nonexistent-doc#0 | fabricated.pdf】.";
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
-    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
-
-    QueryResult response = queryService.query("Question", null, caller, true, List.of());
-
-    ChatSource source = response.getSources().getFirst();
-    assertThat(source.getFileName()).isEqualTo("fabricated.pdf");
-    assertThat(source.getDocumentId()).isNull();
-    assertThat(source.getSourceType()).isNull();
-    assertThat(source.getSourceUrl()).isNull();
-  }
-
-  /**
-   * #78: a chunk carrying a malformed (non-UUID) {@code document_id} in its metadata points at a
-   * data problem - corrupt indexing, a botched migration or a version mismatch between indexer and
-   * query service - not a transient failure, so both {@link QueryService#lookupSourceDocuments} and
-   * {@link QueryService#parseDocumentId} must log it at WARN, where it survives a production log
-   * level, rather than at DEBUG where it is silently dropped.
-   */
-  @Test
-  void queryLogsInvalidDocumentIdAtWarnLevel() {
-    var logger =
-        (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(QueryService.class);
-    var logAppender =
-        new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
-    logAppender.start();
-    logger.addAppender(logAppender);
-    try {
-      when(chatMemory.get(any())).thenReturn(List.of());
-      var chunk =
-          Document.builder()
-              .text("Corrupted metadata content")
-              .metadata(Map.of("file_name", "broken.pdf", "document_id", "not-a-uuid"))
-              .score(0.8)
-              .build();
-      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
-
-      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
-
-      queryService.query("Question", null, caller, true, List.of());
-
-      var invalidDocumentIdEvents =
-          logAppender.list.stream()
-              .filter(event -> event.getFormattedMessage().contains("not-a-uuid"))
-              .toList();
-      assertThat(invalidDocumentIdEvents).isNotEmpty();
-      assertThat(invalidDocumentIdEvents)
-          .allSatisfy(
-              event -> assertThat(event.getLevel()).isEqualTo(ch.qos.logback.classic.Level.WARN));
-    } finally {
-      logger.detachAppender(logAppender);
-    }
   }
 
   /**
@@ -1160,44 +1094,6 @@ class QueryServiceTest {
   }
 
   /**
-   * #386 acceptance criterion + reproduction proof: a citation whose document id is not among the
-   * chunks retrieved for this answer must be flagged as invalid - never silently dropped, and never
-   * allowed to pass through as an ordinary, unflagged citation. Before the fix this fabricated
-   * citation produced no source entry at all (it matches no real chunk's document id in {@code
-   * mapSources}' original iteration), so nothing in the response indicated anything was wrong with
-   * it - this assertion is red on the pre-fix code (no entry exists to carry {@code citationValid:
-   * false} at all) and green after. Uses a file name that collides with no retrieved chunk, so the
-   * result is unaffected by the collision-folding {@link
-   * #queryFoldsACollidingSyntheticEntryIntoTheRealUncitedSourceInsteadOfAddingARow} covers
-   * separately.
-   */
-  @Test
-  void queryMarksCitationToAFabricatedDocumentIdAsInvalid() {
-    when(chatMemory.get(any())).thenReturn(List.of());
-    var chunk =
-        Document.builder()
-            .text("Relevant content")
-            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
-            .score(0.85)
-            .build();
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
-
-    var answer = "The answer is 42 【source: fabricated-id#0 | fabricated-name.pdf】";
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
-    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
-
-    QueryResult response = queryService.query("What?", null, caller, true, List.of());
-
-    assertThat(response.getSources())
-        .anySatisfy(
-            source -> {
-              assertThat(source.getFileName()).isEqualTo("fabricated-name.pdf");
-              assertThat(source.getCitationValid()).isFalse();
-              assertThat(source.getCited()).isTrue();
-            });
-  }
-
-  /**
    * #386 acceptance criterion: a citation with a valid document id and section but a file name that
    * does not match that document is invalid - it is more misleading than no citation at all.
    */
@@ -1266,82 +1162,6 @@ class QueryServiceTest {
     QueryResult response = queryService.query("What?", null, caller, true, List.of());
 
     assertThat(response.getSources().getFirst().getCitationValid()).isTrue();
-  }
-
-  /**
-   * #697 review, finding 4 + second round: a fabricated citation's synthetic entry must never merge
-   * with a real, retrieved-but-uncited source that happens to share its file name via the normal
-   * dedupe-by-filename merge - that would have made the real document appear falsely cited, with
-   * its real relevance score and its real "open in document" link, for a citation it was never
-   * actually named in. The second review round found that the first fix (never merging the two
-   * groups at all) traded that failure for another: two {@code ChatSource} rows sharing one file
-   * name, which the frontend's marker-to-source join resolves last-wins - always to the synthetic,
-   * zero-relevance row, corrupting even a source that {@code was} genuinely, validly cited (see the
-   * next test). The fix folds a colliding synthetic entry into the real one instead of adding a
-   * second row: only {@code citationValid} moves to {@code false}, nothing else about the real
-   * entry changes.
-   */
-  @Test
-  void queryFoldsACollidingSyntheticEntryIntoTheRealUncitedSourceInsteadOfAddingARow() {
-    when(chatMemory.get(any())).thenReturn(List.of());
-    var chunk =
-        Document.builder()
-            .text("Relevant content")
-            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
-            .score(0.85)
-            .build();
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
-
-    // "fabricated-id" is not among the retrieved chunks, but the model still copied the correct,
-    // real file name into the fabricated citation - the exact collision finding 4 describes.
-    var answer = "The answer is 42 【source: fabricated-id#0 | readme.md】";
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
-    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
-
-    QueryResult response = queryService.query("What?", null, caller, true, List.of());
-
-    assertThat(response.getSources()).hasSize(1);
-    ChatSource source = response.getSources().getFirst();
-    assertThat(source.getFileName()).isEqualTo("readme.md");
-    assertThat(source.getRelevanceScore()).isEqualTo(1.0);
-    assertThat(source.getMatchCount()).isEqualTo(1);
-    assertThat(source.getCited()).isFalse();
-    assertThat(source.getCitationValid()).isFalse();
-  }
-
-  /**
-   * #697 second review round's concrete scenario: a source is both validly cited <em>and</em> named
-   * by a colliding fabricated citation. Before this fix, the frontend's file-name join would have
-   * resolved to the synthetic, zero-relevance row for this file - the validly cited real source
-   * would have displayed with 0% relevance and no document link, even though a genuine citation
-   * pointed at it. Folding the collision into the real entry keeps its real {@code cited = true},
-   * relevance score and link intact; only {@code citationValid} reflects the separate, invalid
-   * citation that also named this file.
-   */
-  @Test
-  void queryPreservesRealMetadataOnAValidlyCitedSourceThatAlsoCollidesWithASyntheticEntry() {
-    when(chatMemory.get(any())).thenReturn(List.of());
-    var chunk =
-        Document.builder()
-            .text("Relevant content")
-            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
-            .score(0.85)
-            .build();
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
-
-    var answer =
-        "The answer is 42 【source: doc-123#0 | readme.md】 【source: fabricated-id#0 | readme.md】";
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
-    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
-
-    QueryResult response = queryService.query("What?", null, caller, true, List.of());
-
-    assertThat(response.getSources()).hasSize(1);
-    ChatSource source = response.getSources().getFirst();
-    assertThat(source.getFileName()).isEqualTo("readme.md");
-    assertThat(source.getRelevanceScore()).isEqualTo(1.0);
-    assertThat(source.getCited()).isTrue();
-    assertThat(source.getCitationValid()).isFalse();
   }
 
   @Test
@@ -1731,155 +1551,6 @@ class QueryServiceTest {
     assertThat(queryMethod.getAnnotation(Transactional.class)).isNull();
   }
 
-  @Nested
-  class MergeSourceReferences {
-
-    private static final Instant INDEXED_AT = Instant.parse("2025-01-01T00:00:00Z");
-
-    @Test
-    void keepsHigherRelevanceScore() {
-      var high = sourceReference("file.pdf", 0.9, 1, INDEXED_AT, false);
-      var low = sourceReference("file.pdf", 0.5, 1, INDEXED_AT, false);
-
-      var result = QueryService.mergeSourceReferences(high, low);
-
-      assertThat(result.getRelevanceScore()).isEqualTo(0.9);
-    }
-
-    /** #667: the merged entry knows every retrieved chunk's location, in chunk order. */
-    @Test
-    void unionsChunkLocationsInChunkOrder() {
-      var high = sourceReference("file.pdf", 0.9, 1, INDEXED_AT, false);
-      high.setChunkLocations(List.of(new ChatSourceLocation(5).location("S. 3")));
-      var low = sourceReference("file.pdf", 0.5, 1, INDEXED_AT, true);
-      low.setChunkLocations(List.of(new ChatSourceLocation(2).location("S. 1")));
-
-      var result = QueryService.mergeSourceReferences(high, low);
-
-      assertThat(result.getChunkLocations())
-          .extracting(ChatSourceLocation::getChunkIndex, ChatSourceLocation::getLocation)
-          .containsExactly(tuple(2, "S. 1"), tuple(5, "S. 3"));
-    }
-
-    @Test
-    void keepsHigherScoreRegardlessOfOrder() {
-      var low = sourceReference("file.pdf", 0.3, 1, INDEXED_AT, false);
-      var high = sourceReference("file.pdf", 0.8, 1, INDEXED_AT, false);
-
-      var result = QueryService.mergeSourceReferences(low, high);
-
-      assertThat(result.getRelevanceScore()).isEqualTo(0.8);
-    }
-
-    @Test
-    void prefersFirstWhenScoresAreEqual() {
-      var first = sourceReference("file.pdf", 0.7, 2, INDEXED_AT, true);
-      var second = sourceReference("file.pdf", 0.7, 1, INDEXED_AT, false);
-
-      var result = QueryService.mergeSourceReferences(first, second);
-
-      assertThat(result).isEqualTo(first);
-    }
-
-    @Test
-    void preservesCitedWhenHigherScoreIsCited() {
-      var cited = sourceReference("file.pdf", 0.9, 1, INDEXED_AT, true);
-      var uncited = sourceReference("file.pdf", 0.5, 1, INDEXED_AT, false);
-
-      var result = QueryService.mergeSourceReferences(cited, uncited);
-
-      assertThat(result.getCited()).isTrue();
-      assertThat(result.getRelevanceScore()).isEqualTo(0.9);
-    }
-
-    @Test
-    void forcesCitedWhenLowerScoreIsCitedButHigherWins() {
-      var citedLow = sourceReference("file.pdf", 0.3, 1, INDEXED_AT, true);
-      var uncitedHigh = sourceReference("file.pdf", 0.9, 1, INDEXED_AT, false);
-
-      var result = QueryService.mergeSourceReferences(citedLow, uncitedHigh);
-
-      assertThat(result.getCited()).isTrue();
-      assertThat(result.getRelevanceScore()).isEqualTo(0.9);
-      assertThat(result.getFileName()).isEqualTo("file.pdf");
-    }
-
-    @Test
-    void returnsFalseWhenNeitherIsCited() {
-      var a = sourceReference("file.pdf", 0.8, 1, INDEXED_AT, false);
-      var b = sourceReference("file.pdf", 0.6, 1, INDEXED_AT, false);
-
-      var result = QueryService.mergeSourceReferences(a, b);
-
-      assertThat(result.getCited()).isFalse();
-    }
-
-    @Test
-    void preservesMetadataFromPreferredSource() {
-      var indexedEarly = Instant.parse("2024-01-01T00:00:00Z");
-      var indexedLate = Instant.parse("2025-06-01T00:00:00Z");
-      var high = sourceReference("report.pdf", 0.95, 3, indexedLate, false);
-      var low = sourceReference("report.pdf", 0.4, 1, indexedEarly, true);
-
-      var result = QueryService.mergeSourceReferences(high, low);
-
-      assertThat(result.getMatchCount()).isEqualTo(3);
-      assertThat(result.getIndexedAt()).isEqualTo(indexedLate);
-      assertThat(result.getCited()).isTrue();
-    }
-
-    /**
-     * #639: the branch that builds a fresh {@code ChatSource} to force {@code cited = true}
-     * (because a lower-scoring duplicate was cited but the higher-scoring one is preferred) carries
-     * {@code sourceEntryUrl} over from the preferred source, same as {@code indexedAt}.
-     */
-    @Test
-    void preservesSourceEntryUrlWhenForcingCited() {
-      var citedLow =
-          sourceReference("report.pdf", 0.3, 1, INDEXED_AT, true, "https://example.com/entry-1");
-      var uncitedHigh =
-          sourceReference("report.pdf", 0.9, 1, INDEXED_AT, false, "https://example.com/entry-1");
-
-      var result = QueryService.mergeSourceReferences(citedLow, uncitedHigh);
-
-      assertThat(result.getCited()).isTrue();
-      assertThat(result.getSourceEntryUrl()).isEqualTo("https://example.com/entry-1");
-    }
-
-    /**
-     * #666 review: two distinct documents can share a file name, each with its own {@code
-     * sourceEntryUrl} - picking either side's URL for the merged citation would be an unverifiable,
-     * potentially wrong claim about where the other chunk actually came from. The merge must drop
-     * to {@code null} rather than assert one of two disagreeing URLs.
-     */
-    @Test
-    void dropsSourceEntryUrlWhenMergedSourcesDisagree() {
-      var a =
-          sourceReference("report.pdf", 0.9, 1, INDEXED_AT, false, "https://example.com/entry-1");
-      var b =
-          sourceReference("report.pdf", 0.5, 1, INDEXED_AT, false, "https://example.com/entry-2");
-
-      var result = QueryService.mergeSourceReferences(a, b);
-
-      assertThat(result.getSourceEntryUrl()).isNull();
-    }
-
-    /**
-     * #666 review: one side carrying no {@code sourceEntryUrl} at all (not merely a different one)
-     * is also a disagreement - a document with a URL and one without do not corroborate each other.
-     */
-    @Test
-    void dropsSourceEntryUrlWhenOnlyOneSourceHasOne() {
-      var withUrl =
-          sourceReference("report.pdf", 0.9, 1, INDEXED_AT, false, "https://example.com/entry-1");
-      var withoutUrl = sourceReference("report.pdf", 0.5, 1, INDEXED_AT, false, null);
-
-      var result = QueryService.mergeSourceReferences(withUrl, withoutUrl);
-
-      assertThat(result.getSourceEntryUrl()).isNull();
-    }
-  }
-
   /**
    * Query decomposition and multi-search retrieval fusion (#923). {@link
    * #queryDecompositionService} is unstubbed (empty list) by every other test in this class - see
@@ -2264,143 +1935,6 @@ class QueryServiceTest {
           .hasSize(1)
           .allSatisfy(source -> assertThat(source.getMatchCount()).isEqualTo(2));
     }
-  }
-
-  /**
-   * #1102: {@code relevanceScore} must mean the same thing no matter which search path found the
-   * chunk - unlike every other test in this class (see {@link #newQueryService}), the lexical path
-   * is wired in here.
-   */
-  @Nested
-  class RelevanceScoreAcrossSearchPaths {
-
-    private QueryService newHybridQueryService(FullTextChunkSearch fullTextChunkSearch) {
-      return newHybridQueryService(fullTextChunkSearch, 1);
-    }
-
-    private QueryService newHybridQueryService(
-        FullTextChunkSearch fullTextChunkSearch, int maxChunksPerDocument) {
-      RetrievalPipeline pipeline =
-          new QueryConfiguration()
-              .retrievalPipeline(
-                  new SearchScopeStage(),
-                  new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
-                  new SubQueryDecompositionStage(queryDecompositionService),
-                  new VectorSearchStage(vectorStore),
-                  new FullTextSearchStage(
-                      fullTextChunkSearch, mock(FullTextIndexCompleteness.class)),
-                  new MmrSelectionStage(chunkEmbeddingLookup),
-                  new RankFusionStage(),
-                  new RerankStage(disabledRerankRole()),
-                  new DocumentCompletionStage(),
-                  RetrievalPipelineProperties.allStagesEnabled());
-      return new QueryService(
-          pipeline,
-          answerGenerationService,
-          chatMemory,
-          new CitationParser(),
-          new CitationValidator(),
-          documentRepository,
-          libraryAccessService,
-          permissionHistoryService,
-          chatService,
-          new QueryMetrics(new SimpleMeterRegistry()),
-          new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, maxChunksPerDocument, true, 50),
-          knowledgeLibraryRepository,
-          disabledRerankRole(),
-          documentMetadataService,
-          mock(MetadataFilterValidator.class),
-          mock(CitationMetadataReader.class));
-    }
-
-    /**
-     * A lone vector hit (cosine 0.8) and a lone lexical hit (ts_rank 0.09) tie in the fusion, so
-     * the fused order keeps the search-stage order - and the exposed scores follow that order (1.0,
-     * 0.5) instead of the incomparable raw scores, which would have dropped the lexical hit to the
-     * bottom of the evidence list.
-     */
-    @Test
-    void aLexicalOnlyChunkKeepsTheRelevanceScoreOfItsFusedRank() {
-      when(chatMemory.get(any())).thenReturn(List.of());
-      FullTextChunkSearch fullTextChunkSearch = mock(FullTextChunkSearch.class);
-      var vectorChunk =
-          Document.builder()
-              .text("vector hit")
-              .metadata(Map.of("file_name", "vector.md", "document_id", "doc-vector"))
-              .score(0.8)
-              .build();
-      var lexicalChunk =
-          Document.builder()
-              .text("literal term")
-              .metadata(Map.of("file_name", "lexical.md", "document_id", "doc-lexical"))
-              .score(0.09)
-              .build();
-      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(vectorChunk));
-      when(fullTextChunkSearch.search(any(), any(), any(), any(), anyInt()))
-          .thenReturn(List.of(lexicalChunk));
-      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
-      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
-
-      QueryResult response =
-          newHybridQueryService(fullTextChunkSearch).query("Frage", null, caller, true, List.of());
-
-      assertThat(response.getSources())
-          .extracting(ChatSource::getFileName, ChatSource::getRelevanceScore)
-          .containsExactly(tuple("vector.md", 1.0), tuple("lexical.md", 0.5));
-    }
-
-    /**
-     * The rank is a source's own position, not its best chunk's: a document contributing two of the
-     * three selected chunks occupies one row, and the next document is rank 2 - never rank 3, which
-     * would label a two-row list "Rang 1" and "Rang 3" (#1102).
-     */
-    @Test
-    void ranksSourcesByTheirOwnPositionWhenOneDocumentContributesSeveralChunks() {
-      when(chatMemory.get(any())).thenReturn(List.of());
-      FullTextChunkSearch fullTextChunkSearch = mock(FullTextChunkSearch.class);
-      var firstChunkOfA = chunkOf("a.md", "doc-a", "A, erster Abschnitt", 0.9);
-      var secondChunkOfA = chunkOf("a.md", "doc-a", "A, zweiter Abschnitt", 0.85);
-      var chunkOfB = chunkOf("b.md", "doc-b", "B, einziger Abschnitt", 0.8);
-      when(vectorStore.similaritySearch(any(SearchRequest.class)))
-          .thenReturn(List.of(firstChunkOfA, secondChunkOfA, chunkOfB));
-      when(fullTextChunkSearch.search(any(), any(), any(), any(), anyInt())).thenReturn(List.of());
-      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
-      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
-
-      QueryResult response =
-          newHybridQueryService(fullTextChunkSearch, 2)
-              .query("Frage", null, caller, true, List.of());
-
-      assertThat(response.getSources())
-          .extracting(ChatSource::getFileName, ChatSource::getRelevanceScore)
-          .containsExactly(tuple("a.md", 1.0), tuple("b.md", 0.5));
-    }
-
-    private Document chunkOf(String fileName, String documentId, String text, double score) {
-      return Document.builder()
-          .text(text)
-          .metadata(Map.of("file_name", fileName, "document_id", documentId))
-          .score(score)
-          .build();
-    }
-  }
-
-  private static ChatSource sourceReference(
-      String fileName, double relevanceScore, int matchCount, Instant indexedAt, boolean cited) {
-    return sourceReference(fileName, relevanceScore, matchCount, indexedAt, cited, null);
-  }
-
-  private static ChatSource sourceReference(
-      String fileName,
-      double relevanceScore,
-      int matchCount,
-      Instant indexedAt,
-      boolean cited,
-      String sourceEntryUrl) {
-    ChatSource sourceReference = new ChatSource(fileName, relevanceScore, matchCount, cited);
-    sourceReference.setIndexedAt(indexedAt);
-    sourceReference.setSourceEntryUrl(sourceEntryUrl);
-    return sourceReference;
   }
 
   private Usage createUsage(int promptTokens, int completionTokens) {

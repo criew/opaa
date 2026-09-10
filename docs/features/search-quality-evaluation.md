@@ -359,7 +359,7 @@ JUnit-Test
   │    ├─ Treffer über Chunk-Metadatum file_name auf Entitäten abbilden
   │    └─ Hit Rate@5, MRR@10, nDCG@10, Recall@10 → Report + Baseline-Vergleich
   └─ Pipeline-Pfad (#1039, derselbe Index, keine zweite Indizierung)
-       ├─ pro Golden-Query: QueryService#retrieveRelevantChunksInGivenScope
+       ├─ pro Golden-Query: RetrievalContextFactory#contextFor + RetrievalPipeline#run
        │    (Zerlegung → Suche je Teilfrage → MMR → RRF → Dokument-Vervollständigung,
        │     Produktionskonfiguration inkl. angewandter Ähnlichkeitsschwelle)
        └─ Hit Rate@5, MRR@8, nDCG@8, Recall@8 → eigener Report + eigener Baseline-Vergleich (#1040)

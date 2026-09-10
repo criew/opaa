@@ -18,6 +18,7 @@ import io.opaa.llm.RerankModelRole;
 import io.opaa.llm.RerankRoleState;
 import io.opaa.llm.RerankRoleStatus;
 import io.opaa.query.QueryProperties;
+import io.opaa.query.RetrievalContextFactory;
 import io.opaa.query.RetrievalPipeline;
 import io.opaa.query.RetrievalPipelineTestSupport;
 import io.opaa.query.RetrievalStageName;
@@ -39,8 +40,8 @@ import org.springframework.ai.vectorstore.VectorStore;
  * findings nobody ever got.
  *
  * <p>Runs the real pipeline ({@link RetrievalPipelineTestSupport}) with only the search source and
- * the rerank endpoint stubbed - a test against a mocked pipeline could not tell whether this
- * service built the context correctly.
+ * the rerank endpoint stubbed - a test against a mocked pipeline could not tell whether the context
+ * this service runs with carries the role's state.
  */
 class SearchDiagnosisRerankParityTest {
 
@@ -74,12 +75,11 @@ class SearchDiagnosisRerankParityTest {
     SearchDiagnosisService service =
         new SearchDiagnosisService(
             pipeline(),
-            PROPERTIES,
+            new RetrievalContextFactory(PROPERTIES, rerankModelRole),
             libraryAccessService,
             mock(KnowledgeLibraryRepository.class),
             mock(io.opaa.group.GroupService.class),
             mock(DocumentRepository.class),
-            rerankModelRole,
             mock(ForeignDiagnosticContextService.class),
             mock(DiagnosticImpersonationGrantService.class),
             mock(io.opaa.diagnosticaccess.LibraryDiagnosticsLockService.class),

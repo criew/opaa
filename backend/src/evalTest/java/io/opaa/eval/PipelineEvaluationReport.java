@@ -85,11 +85,10 @@ public record PipelineEvaluationReport(
    *
    * <p>Version 8 (issue #1070, Teil 2, ADR-0012 Nachtrag Metadatenfilter): {@code
    * metadataFilterEnabled} became a fixed point - each golden case's {@code filter} is carried into
-   * the pipeline run through {@code
-   * QueryService#retrieveRelevantChunksInGivenScopeWithDecomposition}, where the {@code
-   * METADATA_FILTER} stage applies it in both search paths. Unlike versions 4 to 7 this is not a
-   * fingerprint-only bump: the filter moves the measured selection of the {@code metadata_filter}
-   * class, and the {@code verwaltung} baseline was re-drawn.
+   * the pipeline run as part of its {@code RetrievalContext}, where the {@code METADATA_FILTER}
+   * stage applies it in both search paths. Unlike versions 4 to 7 this is not a fingerprint-only
+   * bump: the filter moves the measured selection of the {@code metadata_filter} class, and the
+   * {@code verwaltung} baseline was re-drawn.
    *
    * <p>Version 11 (issue #1357): {@code HtmlDocumentFormat#version()} moved 2 → 3 and {@code
    * ConfluenceStorageFormat#version()} 1 → 2 (a list item whose text sits in a block child keeps
@@ -198,7 +197,7 @@ public record PipelineEvaluationReport(
    * @param distinctDocumentsReturned how many distinct documents those chunks belong to — the
    *     length of the ranked list the metrics were computed over.
    * @param subQueries the search queries decomposition (or its single-query fallback) produced for
-   *     this case in this run — see {@link io.opaa.query.QueryService.RetrievalWithDecomposition}.
+   *     this case in this run — see {@link io.opaa.query.RetrievalPipelineResult#searchQueries()}.
    *     Recorded on every run, not only decomposition-enabled ones, so a multi-run comparison
    *     (issue #1044, docs/features/retrieval-benchmark.md §3) can tell whether decomposition
    *     produced a different sub-query set for the same question across runs.

@@ -28,9 +28,8 @@ import java.util.List;
  *     order-sensitive) — the specification's own "eigentliche Kennzahl der Instabilität", more
  *     informative than any spread on the metrics themselves. Deliberately conservative: a run that
  *     produced the identical sub-queries in a different order counts as deviating too, since a
- *     reordering can still change which candidates {@link
- *     io.opaa.query.QueryService#retrieveRelevantChunksInGivenScopeWithDecomposition} pools first
- *     for Reciprocal Rank Fusion.
+ *     reordering can still change which candidates the {@link io.opaa.query.RetrievalPipeline}
+ *     pools first for Reciprocal Rank Fusion.
  * @param decompositionDeviatingCaseIds the ids of those cases, worst-informative first is not
  *     defined here (unlike {@link VariantReport.CaseDelta}, there is no single ordering metric for
  *     "how different" a sub-query list is) — kept in dataset order instead.

@@ -249,8 +249,8 @@ zusätzlich einen zweiten Pfad — auf demselben, bereits indizierten und manife
 also ohne zweiten Indizierungslauf:
 
 6. Führt jeden Fall desselben Golden Datasets durch die produktive `RetrievalPipeline`
-   (`RetrievalPipeline#run` über einen `RetrievalContext`, der genau wie bei einer echten Anfrage
-   gebaut wird), also durch **dieselbe Kette, die eine echte Anfrage durchläuft** —
+   (`RetrievalContextFactory#contextFor` + `RetrievalPipeline#run`, derselbe Einstieg, den auch das
+   Diagnosewerkzeug nutzt), also durch **dieselbe Kette, die eine echte Anfrage durchläuft** —
    Teilfragen-Zerlegung, Vektorsuche je Teilfrage, MMR, Reciprocal Rank Fusion,
    Dokument-Vervollständigung (Schritte 2 bis 6 aus
    [`docs/features/retrieval-algorithm.md`](../docs/features/retrieval-algorithm.md)). Die
