@@ -201,7 +201,7 @@ kein Build — das Skript wird nur in das offizielle `node`-Image gemountet). Er
 `POST /v1/embeddings` immer mit demselben festen Vektor (analog zu
 `backend/src/test/java/io/opaa/FakeEmbeddingModel.java`, das denselben Zweck für Backend-
 Integrationstests erfüllt) und `POST /v1/chat/completions` mit einer Antwort, die jede im Prompt
-enthaltene Zitationsmarkierung (`【source: …】`, siehe `io.opaa.query.CitationParser`) unverändert
+enthaltene Zitationsmarkierung (`【source: …】`, siehe `io.opaa.query.citation.CitationParser`) unverändert
 zurückgibt. Damit hängt das Suchergebnis in dieser Suite ausschließlich vom Rechtefilter ab (welche
 Chunks überhaupt in die Anfrage an den Vektorspeicher gelangen), nie von einer echten
 Relevanzbewertung — genau das, was die Szenarien unten prüfen sollen. Antwortqualität im

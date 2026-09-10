@@ -33,7 +33,7 @@ import org.springframework.ai.vectorstore.VectorStore;
  * Arbeitspaket 1): every registered stage appears in the explanation protocol, a switched-off stage
  * is the identity, and no stage can widen the permission scope or the candidate pool.
  *
- * <p>What this class deliberately does <b>not</b> test is the selection itself - that is {@link
+ * <p>What this class deliberately does <b>not</b> test is the selection itself - that is {@code
  * RetrievalPipelineParityTest}'s job, which pins it against the pre-refactoring algorithm - nor the
  * behaviour of a single stage, which the {@code *StageTest} classes of the stage packages cover.
  */
