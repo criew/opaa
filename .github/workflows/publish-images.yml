@@ -3,6 +3,12 @@ name: Publish Images
 on:
   push:
     branches: [main]
+  # Weekly rebuild without a code change: the runtime stage pulls the OS security updates of the
+  # build day (issue #1450), so a published image is otherwise only as current as the last push to
+  # main. Scheduled well ahead of cve-scan.yml's 03:30 run so the nightly Trivy scan sees the fresh
+  # image, and off the top of the hour (GitHub throttles schedules on :00).
+  schedule:
+    - cron: '50 1 * * 1'
   workflow_dispatch:
 
 env:
@@ -11,6 +17,13 @@ env:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Only runs building the very same commit may cancel each other - a scheduled and a push run of
+    # the same tip, where the slower one would otherwise push last and leave :main on the older
+    # build. github.sha keeps a run for an earlier commit alive, so every pushed commit gets its
+    # sha-<commit> image; matrix.name keeps the two images from cancelling each other.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}-${{ matrix.name }}
+      cancel-in-progress: true
     permissions:
       contents: read
       packages: write
@@ -43,6 +56,9 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/opaa-${{ matrix.name }}
+          # A scheduled rebuild republishes the tags of a commit that already has an image; both
+          # tags move to the new digest together, so sha-<commit> is always the newest build of that
+          # commit and never diverges from :main. The digest stays the stable identity of a build.
           tags: |
             type=raw,value=main,enable={{is_default_branch}}
             type=sha,format=long

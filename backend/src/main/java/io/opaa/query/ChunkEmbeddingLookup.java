@@ -11,21 +11,15 @@ import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Component;
 
 /**
- * Reads chunk embeddings straight out of the pgvector table by row id (#914) - a single {@code
- * SELECT ... WHERE id::text = ANY(?)} over the {@code fetchK} MMR candidate ids per query, not an
- * embedding-API call: {@code similaritySearch}'s own {@link
- * org.springframework.ai.document.Document} result never carries the stored vector (see {@link
- * MmrSelector}'s Javadoc for why), but the vector is sitting right there in the same table row
- * {@code similaritySearch} already read to compute the distance it did return. {@code id::text} on
- * the left side (rather than binding a typed {@code uuid} array) keeps this query agnostic to
- * {@code spring.ai.vectorstore.pgvector.id-type} - this project never overrides it away from the
- * default ({@code PgVectorStore.PgIdType.UUID}), but the cast costs nothing and avoids a second
- * place that would silently break if that ever changed.
+ * Reads chunk embeddings straight out of the pgvector table by row id - one {@code SELECT ... WHERE
+ * id::text = ANY(?)} over the MMR candidate ids, never an embedding-API call: the vector already
+ * sits in the row {@code similaritySearch} read, but its {@code Document} result does not carry it.
+ * The {@code id::text} cast keeps the query agnostic to {@code
+ * spring.ai.vectorstore.pgvector.id-type}.
  *
- * <p>Schema/table name are read from the same {@code spring.ai.vectorstore.pgvector.*} properties
- * {@link org.springframework.ai.vectorstore.pgvector.PgVectorStore} itself binds, with the same
- * defaults ({@code public}/{@code vector_store}) - never hardcoded independently of that
- * configuration.
+ * <p>Schema and table name come from the same {@code spring.ai.vectorstore.pgvector.*} properties
+ * {@link org.springframework.ai.vectorstore.pgvector.PgVectorStore} binds, with the same defaults -
+ * never hardcoded independently of that configuration.
  */
 @Component
 class ChunkEmbeddingLookup {
@@ -44,9 +38,9 @@ class ChunkEmbeddingLookup {
   }
 
   /**
-   * Looks up the embedding of every given chunk id, keyed by id. A row deleted between {@code
-   * similaritySearch} and this lookup (re-indexing race) simply does not appear in the result - see
-   * {@link MmrSelector}'s handling of a missing entry.
+   * Looks up the embedding of every given chunk id, keyed by id. A row deleted between the search
+   * and this lookup simply does not appear in the result; {@link MmrSelector} treats a missing
+   * entry as zero similarity.
    */
   Map<String, float[]> findByIds(List<String> chunkIds) {
     if (chunkIds.isEmpty()) {

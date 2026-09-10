@@ -7,38 +7,17 @@ import java.util.UUID;
 import org.springframework.ai.chat.messages.Message;
 
 /**
- * The immutable input of one retrieval run: the question, the conversation history the
- * decomposition stage may resolve follow-ups against, the search scope, the metadata filter, and
- * the parameters every stage reads.
+ * The immutable input of one retrieval run: question, conversation history, search scope, metadata
+ * filter and the parameters every stage reads. No stage can change any of it - that is why it is a
+ * separate value from {@link RetrievalState}: the permission scope a run was started with is the
+ * scope every one of its searches applies (ADR-0008 §5).
  *
- * <p><b>No stage can change any of it.</b> That is the whole reason it is a separate value from
- * {@link RetrievalState}: a stage receives this context read-only, so the permission scope a run
- * was started with is the permission scope every one of its searches applies (ADR-0008 §5).
- *
- * <p>{@code searchScope} is taken as given, exactly as {@code
- * QueryService#retrieveRelevantChunksInGivenScope} takes it: this type resolves no permissions of
- * its own, and whoever builds it is responsible for the scope being one the acting user may read.
- *
- * <p>{@code metadataFilter} (#1070) is the core-field filter the asking person or the chat's
- * context set - never derived from the question. It is subordinate to the scope by construction:
- * every search stage AND-s it to the permission filter, so no value of it can reach past {@code
- * searchScope}. {@link MetadataFilter#NONE} means no filter; there is deliberately no constructor
- * that fills it in, for the same reason as {@code rerankAvailability} below.
- *
- * <p>{@code queryProperties} travels in the context rather than being injected into the stages so
- * that one pipeline instance can serve several parameter sets in the same process - the
- * variant-comparison harness (issue #1041) measures a dozen of them without rebuilding the bean
- * graph.
- *
- * <p>{@code rerankAvailability} travels here for the same reason: the rerank model role's state is
- * read once per run, by whoever builds the context, and every stage that depends on it must see the
- * same answer. Deciding it per stage would let {@link RetrievalStageName#RANK_FUSION} widen its
- * budget for a reranker that {@link RetrievalStageName#RERANK} then finds unavailable.
- *
- * <p><b>Every construction states the rerank availability.</b> There is deliberately no convenience
- * constructor that fills it in: a caller that forgets it would silently run a different retrieval
- * than the chat path does, which is precisely how the administration's diagnosis came to show
- * something other than what the real search did.
+ * <p>{@code searchScope} is taken as given; this type resolves no permissions of its own. {@code
+ * metadataFilter} is the filter the asking person or the chat set, never derived from the question.
+ * {@code queryProperties} and {@code rerankAvailability} travel here rather than being injected, so
+ * one instance serves several parameter sets and every stage of a run sees the same rerank answer -
+ * deciding it per stage would let the fusion widen its budget for a reranker the rerank stage then
+ * finds unavailable. Every construction must state the availability; no constructor fills it in.
  */
 public record RetrievalContext(
     String question,
@@ -83,12 +62,10 @@ public record RetrievalContext(
 
   /**
    * The number of candidates the narrowing stages before the reranker keep - {@link
-   * RetrievalStageName#MMR_SELECTION} per list, {@link RetrievalStageName#RANK_FUSION} overall.
-   * With reranking active that is the rerank candidate window, because the reranker is then the
-   * stage that decides the final {@code top-k}; without it, {@code top-k} itself, which is exactly
-   * what those stages used before reranking existed. The cap is restored either way: {@link
-   * RetrievalStageName#RERANK} never hands on more than {@code top-k}, including when the endpoint
-   * fails mid-run.
+   * RetrievalStageName#MMR_SELECTION} per list, {@link RetrievalStageName#RANK_FUSION} overall: the
+   * rerank candidate window while reranking is active, {@code top-k} otherwise. The cap is restored
+   * either way, because {@link RetrievalStageName#RERANK} never hands on more than {@code top-k},
+   * including when the endpoint fails mid-run.
    */
   public int candidateBudget() {
     return rerankActive()

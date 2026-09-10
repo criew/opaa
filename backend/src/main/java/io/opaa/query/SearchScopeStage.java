@@ -10,20 +10,16 @@ import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.stereotype.Component;
 
 /**
- * Step 1 of docs/features/retrieval-algorithm.md as a pipeline stage: turns the search scope the
- * caller resolved into the {@code library_id IN (...)} filter every search stage passes straight
- * into {@link VectorStore#similaritySearch} - never a filter applied to a search result afterwards
- * (see {@code QueryService#query}'s Javadoc and
- * docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit).
+ * The {@link RetrievalStageName#SEARCH_SCOPE} stage: turns the search scope the caller resolved
+ * into the {@code library_id IN (...)} filter every search stage passes straight into {@link
+ * VectorStore#similaritySearch} - never a filter applied to a search result afterwards
+ * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit).
  *
  * <p>Resolves no permissions of its own: which libraries the acting user may read is decided before
- * the pipeline starts, and this stage only carries that decision into every search. It is
- * consequently the one stage that cannot be switched off ({@link #switchable()}).
- *
- * <p>An empty scope halts the run: no search, no LLM call for decomposition, no embedding lookup -
- * the same short-circuit {@code QueryService#query} took before this pipeline existed, and the
- * reason the remaining stages appear in the protocol as {@link StageStatus#NOT_REACHED} rather than
- * being quietly absent.
+ * the pipeline starts; this stage only carries that decision into every search, and is therefore
+ * the one stage that cannot be switched off ({@link #switchable()}). An empty scope halts the run -
+ * no search, no decomposition call, no embedding lookup - and the remaining stages appear in the
+ * protocol as {@link StageStatus#NOT_REACHED} rather than being quietly absent.
  */
 @Component
 class SearchScopeStage implements RetrievalStage {

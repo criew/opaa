@@ -19,16 +19,16 @@ import org.springframework.stereotype.Service;
 
 /**
  * Splits a question into up to {@code maxSubQueries} independent, self-contained search queries
- * before retrieval (#923), resolving a conversation-relative follow-up into a standalone question
- * in the process - replacing {@code QueryService}'s previous "always prepend the first chat
- * message" heuristic on every path that reaches this class successfully. {@link #decompose} never
- * throws: any LLM failure, unparsable/empty response or output unrelated to the question (see
- * {@link #countUnrelated}) yields an empty list, which {@code QueryService} treats as "run the
- * single-query fallback unchanged", never a user-facing error. Every such fallback is logged at
- * WARN with counts only - never with the question or the sub-queries - and counted on {@code
- * opaa.query.decomposition.fallback}, so no path out of here is silent. Resolves the {@link
- * ChatClient} fresh via {@link ActiveChatModelResolver#resolveChatClient()} on every call - the
- * same systemwide active chat model {@code AnswerGenerationService} uses for the answer itself.
+ * (docs/handbuch/suche.md, Stufe 3), resolving a conversation-relative follow-up into a standalone
+ * question in the process.
+ *
+ * <p>{@link #decompose} never throws: any LLM failure, unparsable or empty response, or output
+ * unrelated to the question (see {@link #countUnrelated}) yields an empty list, which {@link
+ * SubQueryDecompositionStage} takes as "run the single-query fallback". Every such fallback is
+ * logged at WARN with counts only - never with the question or the sub-queries - and counted on
+ * {@code opaa.query.decomposition.fallback}, so no path out of here is silent. The {@link
+ * ChatClient} is resolved fresh per call, from the same systemwide active chat model the answer
+ * uses.
  */
 @Service
 class QueryDecompositionService {
@@ -54,12 +54,10 @@ class QueryDecompositionService {
   private static final int ANCHOR_MIN_LENGTH = 4;
 
   /**
-   * Deliberately carries <b>no</b> example sentence (#1254). A small instruct model regularly
-   * mistakes an example inside a rule for the task itself and returns the example verbatim, which
-   * discards the user's question entirely while still looking like a successful decomposition. The
-   * output format is therefore described, never demonstrated; the user's question is the only
-   * content the model sees. The follow-up resolution of #923 stays in as a rule - it is what makes
-   * a conversation-relative question searchable - only its illustration is gone.
+   * Deliberately carries <b>no</b> example sentence: a small instruct model regularly mistakes an
+   * example inside a rule for the task itself and returns it verbatim, discarding the user's
+   * question while still looking like a successful decomposition. The output format is therefore
+   * described, never demonstrated.
    */
   private static final String SYSTEM_PROMPT_TEMPLATE =
       """
@@ -176,21 +174,13 @@ class QueryDecompositionService {
 
   /**
    * How many of {@code subQueries} share no anchor token with the question or the conversation
-   * history (#1254): a decomposition is a reformulation of what the user asked, so a sub-query
-   * without a single word in common with either is not one - it is model output that replaced the
-   * question instead of restating it.
+   * history: a decomposition is a reformulation of what the user asked, so a sub-query without a
+   * single word in common with either is model output that replaced the question.
    *
-   * <p><b>All or nothing.</b> {@link #decompose} falls back as soon as this returns anything above
-   * zero, rather than searching with the remainder: dropping one sub-query of a correct
-   * decomposition loses a whole topic of the question, which is strictly worse than the
-   * undecomposed question that {@code SubQueryDecompositionStage#buildSearchQuery} falls back to.
-   *
-   * <p>Returns zero - the check is skipped - in two cases only. First, when question and history
-   * together yield at most one anchor: there is nothing to relate against. The history counts here,
-   * so a short follow-up ("Und was kostet das?") is judged against the conversation it resolves
-   * into, not left unchecked. Second, for a script without word separators (Chinese, Japanese,
-   * Thai), recognised by the question collapsing into a single token that spans all of its word
-   * characters - there, every sub-query would look unrelated.
+   * <p>All or nothing: {@link #decompose} falls back as soon as this returns anything above zero,
+   * because dropping one sub-query of a correct decomposition loses a whole topic. The check is
+   * skipped - returning zero - when question and history yield at most one anchor, and for a script
+   * without word separators, where every sub-query would look unrelated.
    */
   private static long countUnrelated(
       List<String> subQueries, String question, List<Message> conversationHistory) {

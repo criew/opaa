@@ -2,7 +2,9 @@
 
 ## Deployment aus vorgebauten Images (GHCR)
 
-Für Zielsysteme, auf denen nicht aus dem Quellcode gebaut werden soll, veröffentlicht CI bei jedem Push auf `main` fertige Container-Images:
+Für Zielsysteme, auf denen nicht aus dem Quellcode gebaut werden soll, veröffentlicht CI fertige
+Container-Images — bei jedem Push auf `main` und zusätzlich wöchentlich (montags), damit die Images
+auch ohne Codeänderung die aktuellen OS-Sicherheitsupdates tragen:
 
 | Image | Tags |
 |-------|------|
@@ -25,7 +27,17 @@ Aktualisieren auf den neuesten `main`-Stand:
 docker compose pull && docker compose up -d
 ```
 
-`main` folgt dem jeweils letzten Stand; für reproduzierbare Deployments stattdessen einen `sha-<commit>`-Tag pinnen.
+`main` folgt dem jeweils letzten Stand. Für reproduzierbare Deployments **den Digest pinnen**, nicht
+einen Tag:
+
+```yaml
+image: ghcr.io/criew/opaa-backend@sha256:…
+```
+
+Auch `sha-<commit>` taugt dafür nicht: Der wöchentliche Neubau veröffentlicht denselben Commit erneut
+und verschiebt `main` **und** `sha-<commit>` gemeinsam auf den neuen Digest. `sha-<commit>` beantwortet
+also „aus welchem Commit“, nicht „welches Image“. Den Digest eines laufenden Stands liefert
+`docker buildx imagetools inspect ghcr.io/criew/opaa-backend:main`.
 
 Jedes Image trägt eine SBOM- und eine Provenance-Attestierung, die beim Bauen erzeugt werden; die
 SBOM deckt auch die Betriebssystempakete des Basis-Images ab. Abruf:
@@ -42,7 +54,12 @@ Build-Werkzeuge).
 
 ## Aktualisierung auf einen neuen `main`-Stand
 
-Die CI baut bei jedem Push auf `main` neue `ghcr.io/criew/opaa-backend`- und `ghcr.io/criew/opaa-frontend`-Images und veröffentlicht sie mit den Tags `main` und `sha-<commit>` in der GHCR-Registry (siehe [Deployment aus vorgebauten Images](#deployment-aus-vorgebauten-images-ghcr) oben).
+Die CI baut bei jedem Push auf `main` — und unabhängig davon einmal wöchentlich montags — neue
+`ghcr.io/criew/opaa-backend`- und `ghcr.io/criew/opaa-frontend`-Images und veröffentlicht sie mit den
+Tags `main` und `sha-<commit>` in der GHCR-Registry (siehe [Deployment aus vorgebauten Images](#deployment-aus-vorgebauten-images-ghcr) oben).
+Der wöchentliche Lauf ändert den Code nicht, wohl aber den Digest: Er zieht die inzwischen
+veröffentlichten OS-Sicherheitsupdates nach. Ein `docker compose pull` bringt deshalb auch dann einen
+neuen Stand, wenn seit dem letzten Mal nichts committet wurde.
 
 Ein Deployment-Skript, das genau das tut — die aktuellen Images ziehen und den Stack auf den neuen
 Stand bringen —, ist eine naheliegende Automatisierung für eine erreichbare Instanz; die öffentliche
