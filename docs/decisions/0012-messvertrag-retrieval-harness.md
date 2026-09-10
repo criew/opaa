@@ -816,3 +816,17 @@ protokollierten Verwerfungen mit ihrer Konfidenz (`metadata_model_rejections`) u
 handausgewertete 100er-Stichprobe der QA-Rolle; liegt dort der Anteil „falsch trotz ≥ 0,80" über
 5 %, steigt die Schwelle. Ein Wert außerhalb des angebotenen Vokabulars wird unabhängig von der
 Konfidenz verworfen — das ist kein Schwellenfall.
+
+## Nachtrag: Einstieg des Pipeline-Messpfads (Issue #1455)
+
+### 37. Der Messpfad ruft Fabrik und Pipeline direkt
+
+Die Entscheidungen 11 und 14 nennen `QueryService#retrieveRelevantChunksInGivenScope` als den
+Einstieg, über den der Pipeline-Pfad die Schritte 2–6 misst. Diese Methode ist mit #1455 entfallen;
+der Messpfad läuft seither über `RetrievalContextFactory#contextFor` (Produktionsparameter und
+Rerank-Zustand, genau wie eine Chat-Anfrage) und `RetrievalPipeline#run` — denselben Einstieg, den
+auch das Diagnosewerkzeug (`SearchDiagnosisService`) nutzt. Der Suchbereich wird weiterhin
+übergeben, nicht aufgelöst (Entscheidung 14 gilt unverändert), und der `library_id`-Filter entsteht
+unverändert in der Stufe `SEARCH_SCOPE` der Pipeline. Reine Umbenennung des Einstiegs, kein
+geänderter Messgegenstand: Der Protokoll-Diff der 49 Verwaltungsfälle vor und nach dem Umbau war
+leer, beide Messverträge bleiben bei ihrer Version.

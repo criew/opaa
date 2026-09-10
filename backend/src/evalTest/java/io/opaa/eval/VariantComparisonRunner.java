@@ -2,8 +2,9 @@ package io.opaa.eval;
 
 import io.opaa.eval.PipelineEvaluationReport.PipelineQueryResult;
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.llm.RerankModelRole;
 import io.opaa.query.QueryProperties;
-import io.opaa.query.QueryServiceDependencies;
+import io.opaa.query.RetrievalPipeline;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -21,7 +22,8 @@ public final class VariantComparisonRunner {
 
   public static VariantReport run(
       VariantComparison comparison,
-      QueryServiceDependencies dependencies,
+      RetrievalPipeline pipeline,
+      RerankModelRole rerankModelRole,
       QueryProperties productionQueryProperties,
       EvalDomainConfig domain,
       PipelineHarnessSupport.RunIdentity identity,
@@ -39,7 +41,8 @@ public final class VariantComparisonRunner {
       outcomes.add(
           VariantRunner.run(
               variant,
-              dependencies,
+              pipeline,
+              rerankModelRole,
               productionQueryProperties,
               domain,
               identity,
@@ -85,8 +88,8 @@ public final class VariantComparisonRunner {
 
   // Package-private, not private: VariantComparisonRunnerTest exercises the delta computation
   // directly with synthetic reports, since VariantComparisonRunner#run itself needs a real
-  // QueryService (Spring/Docker) via VariantRunner and is therefore only exercised end to end by
-  // the Docker-requiring RetrievalEvaluationHarnessTest.
+  // RetrievalPipeline (Spring/Docker) via VariantRunner and is therefore only exercised end to end
+  // by the Docker-requiring RetrievalEvaluationHarnessTest.
   static VariantReport.VariantComparisonAgainstReference delta(
       VariantOutcome variantOutcome, VariantOutcome referenceOutcome) {
     PipelineEvaluationReport variantReport = variantOutcome.report();

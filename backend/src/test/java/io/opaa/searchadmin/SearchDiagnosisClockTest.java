@@ -16,6 +16,7 @@ import io.opaa.library.LibraryAccessService;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.llm.RerankRoleStatus;
 import io.opaa.query.QueryProperties;
+import io.opaa.query.RetrievalContextFactory;
 import io.opaa.query.RetrievalPipeline;
 import io.opaa.query.RetrievalPipelineTestSupport;
 import java.time.Clock;
@@ -58,12 +59,11 @@ class SearchDiagnosisClockTest {
     SearchDiagnosisService service =
         new SearchDiagnosisService(
             pipeline,
-            properties,
+            new RetrievalContextFactory(properties, rerankModelRole),
             libraryAccessService,
             mock(KnowledgeLibraryRepository.class),
             mock(GroupService.class),
             mock(DocumentRepository.class),
-            rerankModelRole,
             mock(ForeignDiagnosticContextService.class),
             mock(DiagnosticImpersonationGrantService.class),
             mock(io.opaa.diagnosticaccess.LibraryDiagnosticsLockService.class),

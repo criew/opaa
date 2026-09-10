@@ -117,8 +117,10 @@ Vom Maintainer entschieden; die Abschnitte darunter führen sie aus.
 
 ## 1. Messpfad durch die produktive Pipeline
 
-> **Umsetzungsstand (Issue #1039, 08/2026):** Der Messpfad ist gebaut. `QueryService` bietet mit
-> `retrieveRelevantChunksInGivenScope(question, history, searchScope)` die Schritte 2–6 als eigenen Einstieg an;
+> **Umsetzungsstand (Issue #1039, 08/2026):** Der Messpfad ist gebaut. `QueryService` bot mit
+> `retrieveRelevantChunksInGivenScope(question, history, searchScope)` die Schritte 2–6 als eigenen Einstieg an
+> (seit #1455 ersetzt durch `RetrievalContextFactory#contextFor` + `RetrievalPipeline#run`, siehe
+> [Retrieval-Algorithmus](./retrieval-algorithm.md));
 > `io.opaa.eval.PipelineHarnessSupport` fährt darüber beide Domänen im selben Harness-Lauf und
 > schreibt `build/eval-reports/pipeline-metrics-<domäne>.json` mit fenstertragenden Feldnamen
 > (`hitRateAt5`, `mrrAt8`, `ndcgAt8`, `recallAt8`). Fortgeschrieben ist der Messvertrag in
@@ -335,10 +337,11 @@ Variantenvergleich formulieren lässt. Genau das ist der Zweck des Aufbaus.
 > diesen Lauf, sodass `VariantComparisonRunner#delta` unverändert bleibt und trotzdem den Median
 > vergleicht, nicht einen beliebigen Einzellauf. `VariantReportWriter` gibt die drei Zahlen je Metrik
 > und die Abweichungszahl zusätzlich zur bestehenden Delta-Ausgabe aus. Um die Teilfragen einer
-> Anfrage über Läufe hinweg vergleichen zu können, liefert `QueryService` jetzt zusätzlich
-> `retrieveRelevantChunksInGivenScopeWithDecomposition`, additiv neben der bestehenden Methode, die
-> neben den Chunks auch die tatsächlich gestellten Suchanfragen zurückgibt; jeder Pipeline-Report
-> führt sie seither je Fall mit (`PipelineQueryResult#subQueries`).
+> Anfrage über Läufe hinweg vergleichen zu können, lieferte `QueryService` zusätzlich
+> `retrieveRelevantChunksInGivenScopeWithDecomposition`, die neben den Chunks auch die tatsächlich
+> gestellten Suchanfragen zurückgab (seit #1455 liest der Harness beides direkt aus dem
+> `RetrievalPipelineResult`); jeder Pipeline-Report führt sie seither je Fall mit
+> (`PipelineQueryResult#subQueries`).
 >
 > **Scharf geschaltet mit Issue #1085.** Der Harness hat seither ein gepinntes, lokales
 > Chat-Modell (`io.opaa.eval.EvalChatModel`, ADR-0011-Nachtrag), und `VariantPrerequisites`

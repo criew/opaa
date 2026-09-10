@@ -142,10 +142,11 @@ fun registerEvalDomain(
         // needs an explicit systemProperty() call here, read from this daemon-process property at
         // configuration time. opaa.eval.allowGpu (RetrievalEvaluationHarnessTest, local GPU opt-out),
         // opaa.eval.ollamaBaseUrl (issue #1076, external Ollama endpoint) and the issue #1041
-        // variant-comparison opt-in and opaa.eval.queryDecomposition (issue #1085: measure the
+        // variant-comparison opt-in, opaa.eval.queryDecomposition (issue #1085: measure the
         // shipped decomposition-on configuration instead of the baseline's decomposition-off one)
-        // share this list because all of them are optional, manually-invoked knobs rather than
-        // something every eval domain always needs.
+        // and opaa.eval.explanationDumpDir (ExplanationDump, the protocol dump of the pipeline
+        // path) share this list because all of them are optional, manually-invoked knobs rather
+        // than something every eval domain always needs.
         // The opaa.rerank.*/opaa.query.rerank-candidate-count entries are Spring properties rather
         // than harness knobs: a reranking measurement run (issue #1050) has to configure the rerank
         // model role of the forked JVM's application context. opaa.rerank.api-key is deliberately
@@ -157,6 +158,7 @@ fun registerEvalDomain(
             "opaa.eval.runVariantComparison",
             "opaa.eval.variantComparisonFile",
             "opaa.eval.queryDecomposition",
+            "opaa.eval.explanationDumpDir",
             "opaa.rerank.enabled",
             "opaa.rerank.base-url",
             "opaa.rerank.model",

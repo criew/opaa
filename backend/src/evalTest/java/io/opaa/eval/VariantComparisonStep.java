@@ -1,16 +1,16 @@
 package io.opaa.eval;
 
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.llm.RerankModelRole;
 import io.opaa.query.QueryProperties;
-import io.opaa.query.QueryService;
-import io.opaa.query.QueryServiceDependencies;
+import io.opaa.query.RetrievalContextFactory;
+import io.opaa.query.RetrievalPipeline;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
-import org.springframework.context.ApplicationContext;
 
 /**
  * The opt-in Variantenvergleich step of a harness run (issue #1041,
@@ -67,15 +67,18 @@ public final class VariantComparisonStep {
    * calling test as any other assertion would — the one failure mode this method must never
    * swallow, since it signals a bug in the variant mechanism itself, not a broken input.
    *
-   * @param queryService the harness's own production-wired bean, the one the pipeline path measured
-   *     with — the self-check compares against it, not against a second hand-built instance.
+   * @param pipeline the harness's own production-wired pipeline bean, the one the pipeline path
+   *     measured with — every variant runs through it.
+   * @param contextFactory the production-wired factory the pipeline path measured with; the
+   *     self-check compares the reference variant against a run over it.
    */
   public static void run(
       EvalDomainConfig domain,
       String defaultComparisonFile,
-      ApplicationContext applicationContext,
+      RetrievalPipeline pipeline,
+      RetrievalContextFactory contextFactory,
+      RerankModelRole rerankModelRole,
       PipelineHarnessSupport.RunIdentity identity,
-      QueryService queryService,
       QueryProperties queryProperties,
       IndexingProperties indexingProperties,
       UUID evalLibraryId,
@@ -84,13 +87,12 @@ public final class VariantComparisonStep {
     try {
       VariantComparison comparison =
           loadAndValidate(queryProperties, defaultComparisonFile, identity.chatModel());
-      QueryServiceDependencies dependencies =
-          QueryServiceDependencies.fromContext(applicationContext);
 
       VariantReport report =
           VariantComparisonRunner.run(
               comparison,
-              dependencies,
+              pipeline,
+              rerankModelRole,
               queryProperties,
               domain,
               identity,
@@ -99,12 +101,9 @@ public final class VariantComparisonStep {
               goldenCases);
 
       // Referenzvarianten-Selbstprüfung (issue #1041 acceptance criteria): the reference variant
-      // must reproduce, field for field, what the harness's own @Autowired QueryService bean
-      // computes for the unchanged production configuration — the very bean the pipeline path
-      // already measured with, not a second, hand-built instance (issue #1041 review, Befund 1: a
-      // hand-built instance from QueryServiceDependencies would only prove the mechanism is
-      // internally deterministic, not that it matches the production-wired pipeline). Both sides
-      // follow the Mehrfachlauf-Regel — see ReferenceVariantSelfCheck.
+      // must reproduce, field for field, what the production configuration computes through the
+      // very pipeline bean the pipeline path already measured with. Both sides follow the
+      // Mehrfachlauf-Regel — see ReferenceVariantSelfCheck.
       VariantOutcome referenceOutcome =
           report.outcomes().stream()
               .filter(o -> o.variant().name().equals(report.referenceVariant()))
@@ -118,15 +117,16 @@ public final class VariantComparisonStep {
                   PipelineHarnessSupport.measure(
                       domain,
                       identity,
-                      queryService,
-                      queryProperties,
+                      pipeline,
+                      contextFactory,
                       indexingProperties,
                       evalLibraryId,
                       goldenCases,
-                      Instant.now()));
+                      Instant.now(),
+                      ExplanationDump.disabled()));
       log.info(
           "Referenzvarianten-Selbstprüfung bestanden: bitgleiche Zahlen zum direkten Pipeline-Lauf"
-              + " über das produktiv verdrahtete QueryService-Bean.{}",
+              + " über die produktiv verdrahtete Pipeline.{}",
           direct.multiRun() ? "\n" + MehrfachlaufRule.render(direct.summary()) : "");
 
       Path reportFile =

@@ -13,12 +13,12 @@ import java.util.function.Function;
  * Runs a golden dataset through the pipeline measurement path and assembles a {@link
  * PipelineEvaluationReport} (issue #1039, docs/features/retrieval-benchmark.md §1).
  *
- * <p>Takes the pipeline itself as a function from a query to a {@link PipelineInvocationResult}
- * (the selected chunks' file names in selection order, plus the search queries decomposition
- * produced), rather than depending on {@code QueryService} directly: the harness supplies {@code
- * QueryService#retrieveRelevantChunksInGivenScopeWithDecomposition} (steps 2–6, no answer
- * generation), while this class stays a pure, Docker- and Spring-free unit and is exercised by
- * {@code PipelineRetrievalEvaluatorTest} in the {@code evalUnitTest} task.
+ * <p>Takes the pipeline itself as a function from a case to a {@link PipelineInvocationResult} (the
+ * selected chunks' file names in selection order, plus the search queries decomposition produced),
+ * rather than depending on the {@code RetrievalPipeline} directly: the harness supplies the
+ * production pipeline run (its stages, no answer generation), while this class stays a pure,
+ * Docker- and Spring-free unit and is exercised by {@code PipelineRetrievalEvaluatorTest} in the
+ * {@code evalUnitTest} task.
  *
  * <p>The chunk list is deduplicated to documents by {@link DocumentRanking} exactly as the
  * raw-vector path does — a document's rank is the rank of its best-placed chunk — and truncated at
@@ -42,18 +42,18 @@ public final class PipelineRetrievalEvaluator {
   /**
    * What one call into the pipeline (steps 2–6) produced for a case: the selected chunks' file
    * names in selection order, and the search queries decomposition (or its single-query fallback)
-   * actually ran — see {@link io.opaa.query.QueryService.RetrievalWithDecomposition}.
+   * actually ran — see {@link io.opaa.query.RetrievalPipelineResult#searchQueries()}.
    */
   public record PipelineInvocationResult(List<String> rankedFileNames, List<String> subQueries) {}
 
   /**
-   * One call into the pipeline for a case: its query and its core-field filter (issue #1070, {@link
-   * MetadataFilter#NONE} for an unfiltered case), the second argument carried into {@code
-   * QueryService#retrieveRelevantChunksInGivenScopeWithDecomposition} as given.
+   * One call into the pipeline for a case: the case's query and its core-field filter ({@link
+   * MetadataFilter#NONE} for an unfiltered case) are carried into the run as given; the case id
+   * names the protocol dump file of an {@link ExplanationDump}.
    */
   @FunctionalInterface
   public interface PipelineInvocation {
-    PipelineInvocationResult invoke(String query, MetadataFilter metadataFilter);
+    PipelineInvocationResult invoke(GoldenCase goldenCase);
   }
 
   /**
@@ -84,20 +84,19 @@ public final class PipelineRetrievalEvaluator {
    */
   public static List<CaseOutcome> evaluateAll(
       List<GoldenCase> goldenCases, Function<String, PipelineInvocationResult> pipeline) {
-    return evaluateAll(goldenCases, (query, filter) -> pipeline.apply(query));
+    return evaluateAllCases(goldenCases, goldenCase -> pipeline.apply(goldenCase.query()));
   }
 
   /**
-   * The same run with each case's filter handed to the pipeline (issue #1070) - the form the
-   * harness uses; the query-only overload above serves tests whose pipeline stands in for the real
-   * one and has nothing to filter.
+   * The same run with the whole case handed to the pipeline - the form the harness uses, which
+   * needs the case's filter and id; the query-only overload above serves tests whose pipeline
+   * stands in for the real one and has nothing to filter.
    */
-  public static List<CaseOutcome> evaluateAll(
+  public static List<CaseOutcome> evaluateAllCases(
       List<GoldenCase> goldenCases, PipelineInvocation pipeline) {
     List<CaseOutcome> outcomes = new ArrayList<>(goldenCases.size());
     for (GoldenCase goldenCase : goldenCases) {
-      PipelineInvocationResult invocation =
-          pipeline.invoke(goldenCase.query(), goldenCase.metadataFilter());
+      PipelineInvocationResult invocation = pipeline.invoke(goldenCase);
       outcomes.add(evaluateCase(goldenCase, invocation.rankedFileNames(), invocation.subQueries()));
     }
     return List.copyOf(outcomes);

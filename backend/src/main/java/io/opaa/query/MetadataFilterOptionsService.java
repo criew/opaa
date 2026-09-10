@@ -31,8 +31,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * The Füllstand and the offered values of the filterable core fields for one person's search scope
- * (metadata-schema.md "Eintrittsbedingung für den Kernfeld-Filter"): the scope is resolved exactly
- * as {@link QueryService#query} resolves it - from the chat's own settings, or from {@code
+ * (metadata-schema.md "Eintrittsbedingung für den Kernfeld-Filter"): the scope is resolved by the
+ * same {@link SearchScopeResolver} a query uses - from the chat's own settings, or from {@code
  * useKnowledge}/{@code libraryIds}, always narrowed to what the caller may read - and every number
  * is counted over that scope only. No aggregate here ever exceeds the rights context of the asking
  * person; the cache in front keeps the same key.
@@ -40,7 +40,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class MetadataFilterOptionsService {
 
-  private final QueryService queryService;
+  private final SearchScopeResolver searchScopeResolver;
   private final ChatService chatService;
   private final LibraryAccessService libraryAccessService;
   private final DocumentRepository documentRepository;
@@ -53,7 +53,7 @@ public class MetadataFilterOptionsService {
   private final KnowledgeLibraryRepository libraryRepository;
 
   public MetadataFilterOptionsService(
-      QueryService queryService,
+      SearchScopeResolver searchScopeResolver,
       ChatService chatService,
       LibraryAccessService libraryAccessService,
       DocumentRepository documentRepository,
@@ -64,7 +64,7 @@ public class MetadataFilterOptionsService {
       LibraryMetadataFieldService fieldService,
       MetadataFillCounter fillCounter,
       KnowledgeLibraryRepository libraryRepository) {
-    this.queryService = queryService;
+    this.searchScopeResolver = searchScopeResolver;
     this.chatService = chatService;
     this.libraryAccessService = libraryAccessService;
     this.documentRepository = documentRepository;
@@ -87,7 +87,7 @@ public class MetadataFilterOptionsService {
     Set<UUID> readable =
         libraryAccessService.readableLibraryIds(caller.id(), caller.organizationId());
     Set<UUID> scope =
-        queryService.resolveSearchScope(chat, useKnowledge, requestedLibraryIds, readable);
+        searchScopeResolver.resolveSearchScope(chat, useKnowledge, requestedLibraryIds, readable);
     return optionsForScope(caller.id(), scope);
   }
 

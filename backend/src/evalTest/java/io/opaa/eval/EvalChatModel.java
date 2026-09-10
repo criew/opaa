@@ -50,9 +50,9 @@ final class EvalChatModel {
    * Proves the installed model actually answers before a decomposing run measures anything.
    *
    * <p>Not redundant with the prerequisite checks: {@code QueryDecompositionService#decompose}
-   * swallows every LLM failure and returns an empty list, which {@code QueryService} treats as
-   * "retrieve for the single original query". A run against an unreachable endpoint would therefore
-   * report "with decomposition" while measuring without it — the exact silent degradation the
+   * swallows every LLM failure and returns an empty list, which the pipeline treats as "retrieve
+   * for the single original query". A run against an unreachable endpoint would therefore report
+   * "with decomposition" while measuring without it — the exact silent degradation the
    * prerequisites exist to prevent, one layer deeper than "is a model configured at all".
    */
   static void requireUsable(ActiveChatModelResolver resolver) {

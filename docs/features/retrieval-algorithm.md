@@ -365,10 +365,12 @@ Frage + Gesprächsverlauf
 7. Antwortgenerierung, Zitatvalidierung, Quellen-Mapping
 ```
 
-Die Schritte 1 bis 6 sind über `QueryService#retrieveRelevantChunksInGivenScopeWithDecomposition`
-auch einzeln aufrufbar — der Einstieg, über den der Pipeline-Messpfad des Retrieval-Harness
-(`PipelineHarnessSupport`) genau diese Kette misst, ohne Schritt 7 (siehe
-[Retrieval-Benchmark](./retrieval-benchmark.md#1-messpfad-durch-die-produktive-pipeline)). Der
+Die Schritte 1 bis 6 sind auch ohne Schritt 7 aufrufbar: `RetrievalContextFactory#contextFor`
+baut den Kontext eines Laufs mit Produktionsparametern und Rerank-Zustand, `RetrievalPipeline#run`
+führt ihn aus. Über genau diesen Einstieg misst der Pipeline-Messpfad des Retrieval-Harness
+(`PipelineHarnessSupport`) diese Kette, und über denselben läuft das Diagnosewerkzeug
+(`SearchDiagnosisService`) — siehe
+[Retrieval-Benchmark](./retrieval-benchmark.md#1-messpfad-durch-die-produktive-pipeline). Der
 Suchbereich wird dort übergeben, nicht aufgelöst: Berechtigungen bestimmt weiterhin ausschließlich
 Schritt 1 in `QueryService#query`.
 

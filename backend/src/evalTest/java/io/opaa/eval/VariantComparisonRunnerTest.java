@@ -11,8 +11,9 @@ import org.junit.jupiter.api.Test;
 /**
  * Docker-free unit tests for {@link VariantComparisonRunner#delta}, the paired per-case and
  * aggregated delta computation at the heart of the variant mechanism (issue #1041). {@link
- * VariantComparisonRunner#run} itself needs a real {@code QueryService} via {@link VariantRunner}
- * and is exercised end to end only by the Docker-requiring {@code RetrievalEvaluationHarnessTest}.
+ * VariantComparisonRunner#run} itself needs a real {@code RetrievalPipeline} via {@link
+ * VariantRunner} and is exercised end to end only by the Docker-requiring {@code
+ * RetrievalEvaluationHarnessTest}.
  */
 class VariantComparisonRunnerTest {
 

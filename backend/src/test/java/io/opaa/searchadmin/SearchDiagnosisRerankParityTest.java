@@ -18,15 +18,21 @@ import io.opaa.llm.RerankModelRole;
 import io.opaa.llm.RerankRoleState;
 import io.opaa.llm.RerankRoleStatus;
 import io.opaa.query.QueryProperties;
+import io.opaa.query.RetrievalContextFactory;
 import io.opaa.query.RetrievalPipeline;
 import io.opaa.query.RetrievalPipelineTestSupport;
 import io.opaa.query.RetrievalStageName;
 import io.opaa.query.StageExplanation;
 import io.opaa.query.StageStatus;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
@@ -39,8 +45,8 @@ import org.springframework.ai.vectorstore.VectorStore;
  * findings nobody ever got.
  *
  * <p>Runs the real pipeline ({@link RetrievalPipelineTestSupport}) with only the search source and
- * the rerank endpoint stubbed - a test against a mocked pipeline could not tell whether this
- * service built the context correctly.
+ * the rerank endpoint stubbed - a test against a mocked pipeline could not tell whether the context
+ * this service runs with carries the role's state.
  */
 class SearchDiagnosisRerankParityTest {
 
@@ -74,12 +80,11 @@ class SearchDiagnosisRerankParityTest {
     SearchDiagnosisService service =
         new SearchDiagnosisService(
             pipeline(),
-            PROPERTIES,
+            new RetrievalContextFactory(PROPERTIES, rerankModelRole),
             libraryAccessService,
             mock(KnowledgeLibraryRepository.class),
             mock(io.opaa.group.GroupService.class),
             mock(DocumentRepository.class),
-            rerankModelRole,
             mock(ForeignDiagnosticContextService.class),
             mock(DiagnosticImpersonationGrantService.class),
             mock(io.opaa.diagnosticaccess.LibraryDiagnosticsLockService.class),
@@ -134,6 +139,39 @@ class SearchDiagnosisRerankParityTest {
     assertThat(rerankStage(diagnosis).status()).isEqualTo(StageStatus.DISABLED);
     assertThat(diagnosis.selection()).hasSize(TOP_K);
     assertThat(diagnosis.selection().getFirst().chunkId()).isEqualTo("c0");
+  }
+
+  /**
+   * The parity above holds only while every caller obtains its context from {@link
+   * io.opaa.query.RetrievalContextFactory}: a caller that constructed a {@code RetrievalContext}
+   * itself could read the role's state differently from the chat query without any test noticing.
+   * Structural guard: in production code the constructor is called only by the factory and by the
+   * record's own {@code withoutReranking()}.
+   */
+  @Test
+  void onlyTheFactoryConstructsARetrievalContextInProductionCode() throws IOException {
+    Path mainSources = Path.of("src", "main", "java");
+    List<String> constructingFiles;
+    try (Stream<Path> files = Files.walk(mainSources)) {
+      constructingFiles =
+          files
+              .filter(path -> path.toString().endsWith(".java"))
+              .filter(path -> readFile(path).contains("new RetrievalContext("))
+              .map(path -> path.getFileName().toString())
+              .sorted()
+              .toList();
+    }
+
+    assertThat(constructingFiles)
+        .containsExactly("RetrievalContext.java", "RetrievalContextFactory.java");
+  }
+
+  private static String readFile(Path path) {
+    try {
+      return Files.readString(path);
+    } catch (IOException e) {
+      throw new java.io.UncheckedIOException(e);
+    }
   }
 
   /** Switched on but broken is a Störung in the protocol, never an "aus". */

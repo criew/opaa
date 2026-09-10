@@ -15,12 +15,9 @@ import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
-import io.opaa.llm.RerankModelRole;
 import io.opaa.query.CandidateOutcome;
 import io.opaa.query.CandidateVerdict;
-import io.opaa.query.QueryProperties;
-import io.opaa.query.RerankAvailability;
-import io.opaa.query.RetrievalContext;
+import io.opaa.query.RetrievalContextFactory;
 import io.opaa.query.RetrievalPipeline;
 import io.opaa.query.RetrievalPipelineResult;
 import io.opaa.query.SearchedLibraryRef;
@@ -51,11 +48,10 @@ import org.springframework.stereotype.Service;
  *       that filter differently from a chat query; it never omits it (ADR-0008 §5).
  *   <li><b>No chat is ever read.</b> The pipeline runs with an empty conversation history - there
  *       is no parameter on this service that could name an existing conversation.
- *   <li><b>The same retrieval a chat query runs.</b> Every parameter that decides what the pipeline
- *       does is read from the same source the chat path reads it from - the production {@link
- *       QueryProperties} and the rerank model role's current state. A diagnosis that differed from
- *       the real search in even one stage would answer "why these findings?" about findings no user
- *       ever got.
+ *   <li><b>The same retrieval a chat query runs.</b> The context comes from the same {@link
+ *       RetrievalContextFactory} the chat path uses - production parameters and the rerank model
+ *       role's current state. A diagnosis that differed from the real search in even one stage
+ *       would answer "why these findings?" about findings no user ever got.
  *   <li><b>No reconstruction.</b> {@link RetrievalPipelineResult#explanation()} is passed through
  *       unchanged. Nothing here re-derives what a stage decided.
  * </ul>
@@ -67,12 +63,11 @@ import org.springframework.stereotype.Service;
 public class SearchDiagnosisService {
 
   private final RetrievalPipeline retrievalPipeline;
-  private final QueryProperties queryProperties;
+  private final RetrievalContextFactory retrievalContextFactory;
   private final LibraryAccessService libraryAccessService;
   private final KnowledgeLibraryRepository libraryRepository;
   private final GroupService groupService;
   private final DocumentRepository documentRepository;
-  private final RerankModelRole rerankModelRole;
   private final ForeignDiagnosticContextService foreignDiagnosticContextService;
   private final DiagnosticImpersonationGrantService grantService;
   private final LibraryDiagnosticsLockService lockService;
@@ -80,23 +75,21 @@ public class SearchDiagnosisService {
 
   public SearchDiagnosisService(
       RetrievalPipeline retrievalPipeline,
-      QueryProperties queryProperties,
+      RetrievalContextFactory retrievalContextFactory,
       LibraryAccessService libraryAccessService,
       KnowledgeLibraryRepository libraryRepository,
       GroupService groupService,
       DocumentRepository documentRepository,
-      RerankModelRole rerankModelRole,
       ForeignDiagnosticContextService foreignDiagnosticContextService,
       DiagnosticImpersonationGrantService grantService,
       LibraryDiagnosticsLockService lockService,
       Clock clock) {
     this.retrievalPipeline = retrievalPipeline;
-    this.queryProperties = queryProperties;
+    this.retrievalContextFactory = retrievalContextFactory;
     this.libraryAccessService = libraryAccessService;
     this.libraryRepository = libraryRepository;
     this.groupService = groupService;
     this.documentRepository = documentRepository;
-    this.rerankModelRole = rerankModelRole;
     this.foreignDiagnosticContextService = foreignDiagnosticContextService;
     this.grantService = grantService;
     this.lockService = lockService;
@@ -230,17 +223,10 @@ public class SearchDiagnosisService {
       String profileName,
       boolean personContext) {
     // Empty history, deliberately: the diagnosis never reads a conversation (Leitplanke (a)).
-    // The rerank role's state is read exactly as QueryService reads it, so this run reranks
-    // whenever a chat query would.
     RetrievalPipelineResult result =
         retrievalPipeline.run(
-            new RetrievalContext(
-                query.question(),
-                List.of(),
-                searchScope,
-                query.metadataFilter(),
-                queryProperties,
-                RerankAvailability.of(rerankModelRole.currentStatus().state())));
+            retrievalContextFactory.contextFor(
+                query.question(), List.of(), searchScope, query.metadataFilter()));
 
     Map<String, String> documentKeyByChunkId = documentKeyByChunkId(result);
     List<SearchDiagnosis.SelectedChunk> selection = selection(result, documentKeyByChunkId);

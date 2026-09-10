@@ -8,9 +8,9 @@ import java.util.UUID;
 
 /**
  * Domain counterpart of the generated {@code SourceReference} (#860 Teil 4) - a single cited or
- * retrieved document behind a chat turn's answer. {@code QueryService} builds and merges these
- * while ranking search results ({@code QueryService#mergeSourceReferences} mutates a "preferred"
- * instance in place, hence the mutable setters below, not just the fluent ones); {@link
+ * retrieved document behind a chat turn's answer. {@code ChatSourceAssembler} builds and merges
+ * these while ranking search results ({@code ChatSourceAssembler#mergeSourceReferences} mutates a
+ * "preferred" instance in place, hence the mutable setters below, not just the fluent ones); {@link
  * ChatService} persists a turn's sources as JSON on {@link ChatMessage#getSources()} and parses
  * them back unchanged for {@code GET /chats/{chatId}}.
  *
@@ -108,7 +108,7 @@ public final class ChatSource {
   /**
    * The reciprocal of this source's rank within the answer - {@code 1.0} for the top-ranked one,
    * {@code 0.5} for the second - not a similarity score, and {@code 0.0} for a synthetic entry no
-   * retrieved chunk backs (see {@code QueryService#mapSources}).
+   * retrieved chunk backs (see {@code ChatSourceAssembler}).
    */
   public double getRelevanceScore() {
     return relevanceScore;

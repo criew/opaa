@@ -248,9 +248,11 @@ direkt, ohne Ähnlichkeitsschwelle, Fenster `documentTopK=10`. Seit #1039 misst 
 zusätzlich einen zweiten Pfad — auf demselben, bereits indizierten und manifest-geprüften Korpus,
 also ohne zweiten Indizierungslauf:
 
-6. Führt jeden Fall desselben Golden Datasets durch `QueryService#retrieveRelevantChunksInGivenScope`, also
-   durch **dieselbe Kette, die eine echte Anfrage durchläuft** — Teilfragen-Zerlegung, Vektorsuche
-   je Teilfrage, MMR, Reciprocal Rank Fusion, Dokument-Vervollständigung (Schritte 2 bis 6 aus
+6. Führt jeden Fall desselben Golden Datasets durch die produktive `RetrievalPipeline`
+   (`RetrievalContextFactory#contextFor` + `RetrievalPipeline#run`, derselbe Einstieg, den auch das
+   Diagnosewerkzeug nutzt), also durch **dieselbe Kette, die eine echte Anfrage durchläuft** —
+   Teilfragen-Zerlegung, Vektorsuche je Teilfrage, MMR, Reciprocal Rank Fusion,
+   Dokument-Vervollständigung (Schritte 2 bis 6 aus
    [`docs/features/retrieval-algorithm.md`](../docs/features/retrieval-algorithm.md)). Die
    Antwortgenerierung (Schritt 7) bleibt außen vor: Sie ist kein Retrieval und mit Ranking-Metriken
    nicht bewertbar.
@@ -303,6 +305,43 @@ Weitere Festlegungen des Pipeline-Pfads:
 
 Messvertrag beider Pfade: [ADR-0012](../docs/decisions/0012-messvertrag-retrieval-harness.md),
 Nachträge „Pipeline-Messpfad" (#1039) und „Baselines des Pipeline-Pfads" (#1040).
+
+### Protokoll-Dump: Nachweis der Verhaltensneutralität (Issue #1455)
+
+Der Pipeline-Pfad kann das vollständige Erklärprotokoll (`RetrievalExplanation`) jeder Frage des
+Golden Datasets in ein Verzeichnis schreiben — das Werkzeug für mechanische Umbauten der Pipeline,
+deren Verhalten sich nicht ändern darf:
+
+```bash
+./gradlew evaluateVerwaltungRetrieval \
+  -Dopaa.eval.ollamaBaseUrl=http://localhost:11434 \
+  -Dopaa.eval.explanationDumpDir=/tmp/opaa-dump/before
+```
+
+Ist `opaa.eval.explanationDumpDir` gesetzt, entsteht je Fall eine Datei `<fall-id>.json`
+(`io.opaa.eval.ExplanationDump`) mit dem **normalisierten** Protokoll: je Stufe Name, Status,
+`incomingCount`, `outgoingCount`; je Verdikt `chunkId`, `documentKey`, `outcome`, `reason`,
+`listLabel`, `rank` und `value` (auf sechs Nachkommastellen gerundet); die Notizen einer Stufe als
+Liste, wie die Stufe sie erzeugt hat. Ohne die Property schreibt der Lauf nichts und verhält sich
+byte-identisch zum bisherigen Stand.
+
+**Indexstabile Schlüssel statt IDs.** Jeder Harness-Lauf indiziert in einen frischen
+Testcontainer-Index; Chunk- und Dokument-IDs sind dort neue UUIDs und wären zwischen zwei Läufen nie
+gleich. Der Dump übersetzt sie deshalb über den `vector_store` des Laufs (`VectorStoreChunkKeys`):
+ein Chunk erscheint als `<dateiname>#<chunk_index>`, ein Dokument als sein Dateiname. Beides ist
+durch das Manifest des Korpus festgelegt, also über Läufe hinweg stabil.
+
+Verwendung: Vorher-Stand auf `main` dumpen, Umbau durchführen, Nachher-Stand in ein zweites
+Verzeichnis dumpen, `diff -r before after` — ein leerer Diff über alle Fälle ist der Nachweis. Dass
+zwei Läufe **desselben** Codes einen leeren Diff liefern, ist vorher einmal zu prüfen (zwei Dumps auf
+`main` gegeneinander); erst das macht einen leeren Diff vor/nach aussagekräftig. Für diesen
+Vergleich darf das Host-Ollama genutzt werden (`-Dopaa.eval.ollamaBaseUrl`): Verglichen wird nur
+Gleichheit vor/nach demselben Index-Verfahren, keine Baseline. Der Dump schreibt ausschließlich der
+Ein-Konfigurations-Messpfad; ein Variantenvergleich (unten) dumpt nie, damit eine Variante den Stand
+der Produktionskonfiguration nicht überschreibt. Mit eingeschalteter Teilfragen-Zerlegung
+(`-Dopaa.eval.queryDecomposition=true`) ist ein Diff wegen des LLM-Anteils nicht aussagekräftig;
+bei drei Läufen nach der Mehrfachlauf-Regel bleibt zudem nur der letzte Lauf je Fall stehen. Die
+JSON-Dateien sind Zwischenartefakte und werden nicht committet.
 
 ### Variantenvergleiche (Issue #1041)
 
