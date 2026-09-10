@@ -1,9 +1,14 @@
 package io.opaa.eval;
 
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.llm.RerankModelRole;
 import io.opaa.query.QueryProperties;
-import io.opaa.query.QueryService;
+import io.opaa.query.RerankAvailability;
+import io.opaa.query.RetrievalContext;
+import io.opaa.query.RetrievalPipeline;
 import io.opaa.query.RetrievalPipelineProperties;
+import io.opaa.query.RetrievalPipelineResult;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -16,11 +21,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 
 /**
- * The pipeline measurement path's harness half (issue #1039): everything the two domain harnesses
- * need to run their golden dataset through {@link
- * QueryService#retrieveRelevantChunksInGivenScopeWithDecomposition(String, List, Set,
- * io.opaa.indexing.metadata.MetadataFilter)} and write the resulting {@link
- * PipelineEvaluationReport}, in one place instead of copied into both near-duplicate harness
+ * The pipeline measurement path's harness half (issue #1039): everything the domain harnesses need
+ * to run their golden dataset through {@link RetrievalPipeline#run} - over a {@link
+ * RetrievalContext} built exactly as a chat query builds it - and write the resulting {@link
+ * PipelineEvaluationReport}, in one place instead of copied into the near-duplicate harness
  * classes.
  *
  * <p>Runs on the corpus the calling harness has already indexed and manifest-verified — the
@@ -116,11 +120,15 @@ public final class PipelineHarnessSupport {
    * <p>{@code pipelineRunStart} is the start of this measurement phase, not of the whole harness
    * run — the reported duration is the cost of the queries alone, since indexing was already paid
    * for by the raw-vector path.
+   *
+   * <p>{@code explanationDump} receives every case's protocol; only this single-configuration path
+   * dumps, a variant comparison never does (see {@link ExplanationDump}).
    */
   public static void runAndWriteGuarded(
       EvalDomainConfig domain,
       RunIdentity identity,
-      QueryService queryService,
+      RetrievalPipeline pipeline,
+      RerankModelRole rerankModelRole,
       QueryProperties queryProperties,
       RetrievalPipelineProperties pipelineProperties,
       boolean rerankRoleUsable,
@@ -128,6 +136,7 @@ public final class PipelineHarnessSupport {
       UUID evalLibraryId,
       List<GoldenCase> goldenCases,
       Instant pipelineRunStart,
+      ExplanationDump explanationDump,
       Logger log) {
     requireMeasurableConfiguration(
         queryProperties, pipelineProperties, rerankRoleUsable, identity.chatModel());
@@ -145,12 +154,14 @@ public final class PipelineHarnessSupport {
                   measure(
                       domain,
                       identity,
-                      queryService,
+                      pipeline,
+                      rerankModelRole,
                       queryProperties,
                       indexingProperties,
                       evalLibraryId,
                       goldenCases,
-                      startOfNextRun(firstRunStart)));
+                      startOfNextRun(firstRunStart),
+                      explanationDump));
       PipelineEvaluationReport report = measurement.report();
       PipelineReportWriter.writeJson(report, reportFile(domain));
       if (measurement.multiRun()) {
@@ -183,41 +194,55 @@ public final class PipelineHarnessSupport {
    * reference variant's own report (computed through {@link VariantRunner}, a second, independent
    * call into this same measurement) must equal, field for field, what this method computes for the
    * unmodified production configuration in the very same harness run.
+   *
+   * <p>{@code queryProperties} is both the run's fixed point in the report and the parameter set
+   * every stage reads from the context - a variant hands in its own instance here.
    */
   public static PipelineEvaluationReport measure(
       EvalDomainConfig domain,
       RunIdentity identity,
-      QueryService queryService,
+      RetrievalPipeline pipeline,
+      RerankModelRole rerankModelRole,
       QueryProperties queryProperties,
       IndexingProperties indexingProperties,
       UUID evalLibraryId,
       List<GoldenCase> goldenCases,
-      Instant pipelineRunStart) {
+      Instant pipelineRunStart,
+      ExplanationDump explanationDump) {
     Set<UUID> searchScope = Set.of(evalLibraryId);
     // Issue #1070: counted, not assumed - the fixed point metadataFilterEnabled below is "every
     // filtered case reached the pipeline with its filter", derived from this counter and the
     // dataset's own count of filtered cases.
     AtomicInteger appliedFilters = new AtomicInteger();
     List<PipelineRetrievalEvaluator.CaseOutcome> outcomes =
-        PipelineRetrievalEvaluator.evaluateAll(
+        PipelineRetrievalEvaluator.evaluateAllCases(
             goldenCases,
             // No conversation history: a golden case is a standalone question, and the harness has
             // no chat to resolve a follow-up against. The case's filter (#1070) is carried in as
-            // given, where the METADATA_FILTER stage applies it in both search paths.
-            (query, metadataFilter) -> {
+            // given, where the METADATA_FILTER stage applies it in both search paths. The rerank
+            // role's state is read once per run, exactly as a chat query reads it.
+            goldenCase -> {
+              MetadataFilter metadataFilter = goldenCase.metadataFilter();
               if (!metadataFilter.isEmpty()) {
                 appliedFilters.incrementAndGet();
               }
-              QueryService.RetrievalWithDecomposition retrieval =
-                  queryService.retrieveRelevantChunksInGivenScopeWithDecomposition(
-                      query, List.of(), searchScope, metadataFilter);
+              RetrievalPipelineResult result =
+                  pipeline.run(
+                      new RetrievalContext(
+                          goldenCase.query(),
+                          List.of(),
+                          searchScope,
+                          metadataFilter,
+                          queryProperties,
+                          RerankAvailability.of(rerankModelRole.currentStatus().state())));
+              explanationDump.write(goldenCase.id(), result.explanation());
               List<String> rankedFileNames =
-                  retrieval.chunks().stream()
+                  result.chunks().stream()
                       .map(chunk -> chunk.getMetadata().get("file_name"))
                       .map(value -> value == null ? null : value.toString())
                       .toList();
               return new PipelineRetrievalEvaluator.PipelineInvocationResult(
-                  rankedFileNames, retrieval.searchQueries());
+                  rankedFileNames, result.searchQueries());
             });
 
     // Built after the run, not before: runDurationSeconds must cover the queries above.

@@ -36,7 +36,7 @@ final class ReferenceVariantSelfCheck {
    *     them, so reading the production value alone could put three runs on one side and one on the
    *     other.
    * @param directMeasure one direct measurement through the harness's own production-wired {@code
-   *     QueryService} bean; invoked once or {@link MultiRunAggregator#DECOMPOSITION_RUN_COUNT}
+   *     RetrievalPipeline} bean; invoked once or {@link MultiRunAggregator#DECOMPOSITION_RUN_COUNT}
    *     times.
    * @return the direct measurement, for the caller to log or report.
    */
@@ -56,7 +56,7 @@ final class ReferenceVariantSelfCheck {
     assertThat(referenceReport.overall())
         .as(
             "reference variant must be bit-identical to a direct pipeline measurement through the "
-                + "production-wired QueryService bean (Referenzvarianten-Selbstprüfung, issue "
+                + "production-wired RetrievalPipeline bean (Referenzvarianten-Selbstprüfung, issue "
                 + "#1041)%s",
             instabilityHint)
         .isEqualTo(direct.report().overall());

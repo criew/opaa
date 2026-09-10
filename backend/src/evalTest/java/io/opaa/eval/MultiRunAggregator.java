@@ -10,8 +10,7 @@ import java.util.Map;
  * Turns repeated pipeline runs into a {@link MultiRunSummary} (issue #1044,
  * docs/features/retrieval-benchmark.md §3). Called only through {@link MehrfachlaufRule}, which is
  * where the "once or three times" decision itself lives; kept as its own, Docker-free unit so the
- * aggregation math is exercised without a real {@code QueryService} (see {@code
- * MultiRunAggregatorTest}).
+ * aggregation math is exercised without a real pipeline (see {@code MultiRunAggregatorTest}).
  */
 final class MultiRunAggregator {
 

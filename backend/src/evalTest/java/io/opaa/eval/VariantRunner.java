@@ -1,9 +1,9 @@
 package io.opaa.eval;
 
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.llm.RerankModelRole;
 import io.opaa.query.QueryProperties;
-import io.opaa.query.QueryService;
-import io.opaa.query.QueryServiceDependencies;
+import io.opaa.query.RetrievalPipeline;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -13,7 +13,8 @@ import java.util.function.Supplier;
  * Measures one {@link PipelineVariant} against the golden dataset (issue #1041,
  * docs/features/retrieval-benchmark.md §2). Reuses the production pipeline path exactly as the
  * single-configuration measurement (#1039, {@link PipelineHarnessSupport}) does — a variant is a
- * different {@link QueryProperties}, never a reimplementation of retrieval steps 2 to 6.
+ * different {@link QueryProperties} handed into the same {@link RetrievalPipeline}, never a
+ * reimplementation of retrieval steps 2 to 6.
  *
  * <p><b>Mehrfachlauf-Regel</b> (issue #1044, docs/features/retrieval-benchmark.md §3, "Was
  * stattdessen gilt", 2.–3.): a variant whose effective {@code queryDecompositionEnabled} is {@code
@@ -31,7 +32,8 @@ public final class VariantRunner {
 
   public static VariantOutcome run(
       PipelineVariant variant,
-      QueryServiceDependencies dependencies,
+      RetrievalPipeline pipeline,
+      RerankModelRole rerankModelRole,
       QueryProperties productionQueryProperties,
       EvalDomainConfig domain,
       PipelineHarnessSupport.RunIdentity identity,
@@ -40,7 +42,7 @@ public final class VariantRunner {
       List<GoldenCase> goldenCases) {
     QueryProperties effective =
         VariantQueryProperties.apply(productionQueryProperties, variant.queryOverrides());
-    RerankRunWatch rerankWatch = RerankRunWatch.of(dependencies.rerankModelRole());
+    RerankRunWatch rerankWatch = RerankRunWatch.of(rerankModelRole);
 
     var unmetReason =
         VariantPrerequisites.unmetReason(
@@ -53,7 +55,6 @@ public final class VariantRunner {
       return VariantOutcome.skipped(variant, unmetReason.get());
     }
 
-    QueryService queryService = dependencies.buildQueryService(effective);
     return run(
         variant,
         effective,
@@ -61,12 +62,14 @@ public final class VariantRunner {
             PipelineHarnessSupport.measure(
                 domain,
                 identity,
-                queryService,
+                pipeline,
+                rerankModelRole,
                 effective,
                 indexingProperties,
                 evalLibraryId,
                 goldenCases,
-                Instant.now()),
+                Instant.now(),
+                ExplanationDump.disabled()),
         rerankWatch);
   }
 
@@ -75,9 +78,9 @@ public final class VariantRunner {
    * #1044 review, Befund 1) so it is Docker-free testable: {@code measure} stands in for one {@link
    * PipelineHarnessSupport#measure} call, letting {@code VariantRunnerTest} exercise the run count
    * (one vs. {@link MultiRunAggregator#DECOMPOSITION_RUN_COUNT}), the median-run selection and the
-   * resulting {@link VariantOutcome} without a real {@code QueryService} or corpus. The public
-   * overload's prerequisite check is deliberately <b>not</b> repeated here: by the time this method
-   * is reached, {@code effective} is already known to be measurable.
+   * resulting {@link VariantOutcome} without a real pipeline or corpus. The public overload's
+   * prerequisite check is deliberately <b>not</b> repeated here: by the time this method is
+   * reached, {@code effective} is already known to be measurable.
    *
    * <p><b>{@code rerankWatch} is read before and after the measurement</b>, not only before it (see
    * {@link RerankRunWatch}): a variant whose reranking dropped out part-way through measured a

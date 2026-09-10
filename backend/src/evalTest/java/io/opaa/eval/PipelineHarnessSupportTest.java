@@ -3,12 +3,13 @@ package io.opaa.eval;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.llm.RerankModelRole;
+import io.opaa.llm.RerankRoleStatus;
 import io.opaa.query.QueryProperties;
-import io.opaa.query.QueryService;
+import io.opaa.query.RetrievalPipeline;
 import io.opaa.query.RetrievalPipelineProperties;
 import io.opaa.query.RetrievalStageName;
 import java.time.Instant;
@@ -74,10 +75,10 @@ class PipelineHarnessSupportTest {
    */
   @Test
   void aFailingPipelineDoesNotFailTheHarnessRun() {
-    QueryService failing = mock(QueryService.class);
-    when(failing.retrieveRelevantChunksInGivenScopeWithDecomposition(
-            anyString(), any(), any(), any()))
-        .thenThrow(new IllegalStateException("vector store exploded"));
+    RetrievalPipeline failing = mock(RetrievalPipeline.class);
+    when(failing.run(any())).thenThrow(new IllegalStateException("vector store exploded"));
+    RerankModelRole disabledRole = mock(RerankModelRole.class);
+    when(disabledRole.currentStatus()).thenReturn(RerankRoleStatus.disabled());
 
     assertThatCode(
             () ->
@@ -85,6 +86,7 @@ class PipelineHarnessSupportTest {
                     EvalDomainConfig.COMIC_CHARACTERS,
                     IDENTITY,
                     failing,
+                    disabledRole,
                     productionLikeProperties(8, false),
                     RetrievalPipelineProperties.allStagesEnabled(),
                     false,
@@ -94,6 +96,7 @@ class PipelineHarnessSupportTest {
                     UUID.randomUUID(),
                     oneCase(),
                     Instant.now(),
+                    ExplanationDump.disabled(),
                     LoggerFactory.getLogger(PipelineHarnessSupportTest.class)))
         .doesNotThrowAnyException();
   }
@@ -222,6 +225,7 @@ class PipelineHarnessSupportTest {
         EvalDomainConfig.COMIC_CHARACTERS,
         identityWithChatModel(chatModel),
         null,
+        null,
         queryProperties,
         pipelineProperties,
         rerankRoleUsable,
@@ -229,6 +233,7 @@ class PipelineHarnessSupportTest {
         UUID.randomUUID(),
         oneCase(),
         Instant.now(),
+        ExplanationDump.disabled(),
         LoggerFactory.getLogger(PipelineHarnessSupportTest.class));
   }
 

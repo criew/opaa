@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
  * VariantPrerequisites} skips every decomposition-enabled variant before it ever reaches this
  * logic, so it would otherwise go completely untested. These tests exercise the package-private
  * {@link VariantRunner#run(PipelineVariant, QueryProperties, java.util.function.Supplier)} overload
- * directly, standing in for the real {@code QueryService}/corpus with a counting supplier.
+ * directly, standing in for the real pipeline/corpus with a counting supplier.
  */
 class VariantRunnerTest {
 

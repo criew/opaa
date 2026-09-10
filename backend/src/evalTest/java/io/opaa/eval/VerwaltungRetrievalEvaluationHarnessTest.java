@@ -33,7 +33,7 @@ import io.opaa.llm.RerankModelRole;
 import io.opaa.organization.Organization;
 import io.opaa.query.MetadataFilterExpressions;
 import io.opaa.query.QueryProperties;
-import io.opaa.query.QueryService;
+import io.opaa.query.RetrievalPipeline;
 import io.opaa.query.RetrievalPipelineProperties;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -61,7 +61,6 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -364,9 +363,9 @@ class VerwaltungRetrievalEvaluationHarnessTest {
   // texts the map is built from are exactly what was actually indexed, not a second, potentially
   // drifting re-implementation.
   @Autowired private DocumentFormatRegistry pipelineRegistry;
-  // #1039: the production query pipeline itself, for the second (pipeline) measurement path — the
-  // very beans a real request runs through, not a re-implementation of steps 2 to 6.
-  @Autowired private QueryService queryService;
+  // The production retrieval pipeline itself, for the second (pipeline) measurement path - the
+  // very bean a real request runs through, not a re-implementation of its stages.
+  @Autowired private RetrievalPipeline retrievalPipeline;
   @Autowired private QueryProperties queryProperties;
   // #1049: the fill state of the measured library's full-text index, a fixed point of every
   // pipeline report since the lexical path feeds the fusion.
@@ -378,13 +377,6 @@ class VerwaltungRetrievalEvaluationHarnessTest {
   // #1085: the production resolver of the systemwide active chat model - used to prove the
   // installed eval chat model actually answers before a decomposing run measures anything.
   @Autowired private ActiveChatModelResolver activeChatModelResolver;
-
-  // #1041/#1049: the variant-comparison step builds its own QueryService instances around the same
-  // collaborators the autowired queryService above uses - two of those collaborators
-  // (ChunkEmbeddingLookup, QueryDecompositionService) are package-private in io.opaa.query and
-  // cannot be named from this package at all. QueryServiceDependencies#fromContext is the seam
-  // that crosses that boundary via bean lookups instead.
-  @Autowired private ApplicationContext applicationContext;
 
   /**
    * This domain's default comparison file; {@code -Dopaa.eval.variantComparisonFile} overrides it
@@ -889,7 +881,8 @@ class VerwaltungRetrievalEvaluationHarnessTest {
             fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isComplete(),
             ingestionPipelineFingerprint,
             activeChatModel),
-        queryService,
+        retrievalPipeline,
+        rerankModelRole,
         queryProperties,
         pipelineProperties,
         rerankModelRole.usable(),
@@ -897,6 +890,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
         evalLibraryId,
         goldenCases,
         pipelineRunStart,
+        ExplanationDump.fromSystemProperty(() -> VectorStoreChunkKeys.fromStore(jdbcTemplate)),
         log);
 
     // 7. Variant comparison (#1041/#1049, docs/features/retrieval-benchmark.md §2): an opt-in step,
@@ -906,7 +900,8 @@ class VerwaltungRetrievalEvaluationHarnessTest {
       VariantComparisonStep.run(
           DOMAIN,
           DEFAULT_VARIANT_COMPARISON_FILE,
-          applicationContext,
+          retrievalPipeline,
+          rerankModelRole,
           new PipelineHarnessSupport.RunIdentity(
               "ollama",
               EMBEDDING_MODEL,
@@ -922,7 +917,6 @@ class VerwaltungRetrievalEvaluationHarnessTest {
               fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isComplete(),
               ingestionPipelineFingerprint,
               activeChatModel),
-          queryService,
           queryProperties,
           indexingProperties,
           evalLibraryId,

@@ -33,7 +33,7 @@ import io.opaa.llm.RerankModelRole;
 import io.opaa.organization.Organization;
 import io.opaa.query.MetadataFilterExpressions;
 import io.opaa.query.QueryProperties;
-import io.opaa.query.QueryService;
+import io.opaa.query.RetrievalPipeline;
 import io.opaa.query.RetrievalPipelineProperties;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -61,7 +61,6 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -88,9 +87,9 @@ import org.testcontainers.utility.DockerImageName;
  *       one that writes {@code retrieval-metrics.json} and is compared against {@code
  *       eval/baseline/comic-characters.json};
  *   <li>the <b>pipeline path</b> ({@link PipelineHarnessSupport}), which runs the same golden cases
- *       through {@code QueryService}'s production retrieval chain — decomposition, per-sub-query
- *       search, MMR, RRF, document completion — with the production configuration including the
- *       similarity threshold, and writes its own report at its own window.
+ *       through the production retrieval pipeline — decomposition, per-sub-query search, MMR, RRF,
+ *       document completion — with the production configuration including the similarity threshold,
+ *       and writes its own report at its own window.
  * </ol>
  *
  * <p>The two are never mixed: different windows, different files, different contract versions.
@@ -368,9 +367,9 @@ class RetrievalEvaluationHarnessTest {
   // texts the map is built from are exactly what was actually indexed, not a second, potentially
   // drifting re-implementation.
   @Autowired private DocumentFormatRegistry pipelineRegistry;
-  // #1039: the production query pipeline itself, for the second (pipeline) measurement path — the
-  // very beans a real request runs through, not a re-implementation of steps 2 to 6.
-  @Autowired private QueryService queryService;
+  // The production retrieval pipeline itself, for the second (pipeline) measurement path - the
+  // very bean a real request runs through, not a re-implementation of its stages.
+  @Autowired private RetrievalPipeline retrievalPipeline;
   @Autowired private QueryProperties queryProperties;
   // #1049: the fill state of the measured library's full-text index, a fixed point of every
   // pipeline report since the lexical path feeds the fusion.
@@ -382,13 +381,6 @@ class RetrievalEvaluationHarnessTest {
   // #1085: the production resolver of the systemwide active chat model - used to prove the
   // installed eval chat model actually answers before a decomposing run measures anything.
   @Autowired private ActiveChatModelResolver activeChatModelResolver;
-  // #1041: the variant-comparison step builds its own QueryService instances around the same
-  // collaborators the autowired queryService above uses — two of those collaborators
-  // (ChunkEmbeddingLookup, QueryDecompositionService) are package-private in io.opaa.query and
-  // cannot be named from this package at all. QueryServiceDependencies#fromContext is the seam
-  // that crosses that boundary via bean lookups instead.
-  @Autowired private ApplicationContext applicationContext;
-
   // #419: triggerIndexing needs a caller-chosen target library and an authorized caller -
   // set up once per run, not pinned to a well-known system library id, since #419 already stopped
   // production indexing from targeting one by default and #521 later deleted it outright. The
@@ -884,7 +876,8 @@ class RetrievalEvaluationHarnessTest {
     PipelineHarnessSupport.runAndWriteGuarded(
         DOMAIN,
         identity,
-        queryService,
+        retrievalPipeline,
+        rerankModelRole,
         queryProperties,
         pipelineProperties,
         rerankModelRole.usable(),
@@ -892,6 +885,7 @@ class RetrievalEvaluationHarnessTest {
         evalLibraryId,
         goldenCases,
         pipelineRunStart,
+        ExplanationDump.fromSystemProperty(() -> VectorStoreChunkKeys.fromStore(jdbcTemplate)),
         log);
 
     // 7. Variant comparison (#1041, docs/features/retrieval-benchmark.md §2): an opt-in step,
@@ -904,9 +898,9 @@ class RetrievalEvaluationHarnessTest {
       VariantComparisonStep.run(
           DOMAIN,
           DEFAULT_VARIANT_COMPARISON_FILE,
-          applicationContext,
+          retrievalPipeline,
+          rerankModelRole,
           identity,
-          queryService,
           queryProperties,
           indexingProperties,
           evalLibraryId,
