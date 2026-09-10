@@ -4,7 +4,7 @@
 #
 # Jeder Eintrag trägt `statement` (Begründung nach docs/cve-scanning.md, Abschnitt
 # „Begründungsqualität") und `expired_at` (Ablaufdatum, höchstens ein Quartal voraus); ohne
-# beides scheitert der Prüfschritt in cve-scan.yml. Nach dem Ablaufdatum meldet Trivy den
+# beides scheitert der Prüfschritt in cve-scan.yml. Ab dem Ablaufdatum meldet Trivy den
 # Befund wieder — eine Unterdrückung endet immer von selbst.
 #
 # Existiert eine Fix-Version, wird gebaut statt unterdrückt (Mittelreihenfolge in
