@@ -399,6 +399,92 @@ aber Indizierung und Fragen schlagen fehl.
 | ollama      | —         | 11434           | Lokal betriebener Ollama-Server (nur `ollama`-Profil; kein Host-Port, siehe unten) |
 | ollama-pull | —         | —               | Einmaliger Init-Schritt, zieht `nomic-embed-text`/`phi3:mini` (nur `ollama`-Profil) |
 
+## Backend-Laufzeitimage
+
+Das Backend läuft in einem bewusst minimalen Image: eine mit `jlink` erzeugte Java-21-Laufzeit auf
+einem Distroless-Basisimage. Außer der C-Bibliothek enthält das Image kein Betriebssystempaket —
+keine Shell, keine Coreutils, kein `curl`/`wget`, keinen Paketmanager. Für den Betrieb folgt daraus:
+
+- **`docker exec … sh` funktioniert nicht.** Es gibt keine ausführbare Shell im Container.
+- **Ein `healthcheck:` in der `docker-compose.yml` darf für den Backend-Service kein `CMD-SHELL`
+  und kein `curl`/`wget` verwenden.** Der mitgelieferte Stack definiert für das Backend keinen
+  Healthcheck; wer einen braucht, prüft `GET /actuator/health` von außen (siehe unten) statt aus dem
+  Container heraus.
+- **Zeitzone:** Der Container läuft in UTC, solange `TZ` nicht gesetzt ist. `TZ=Europe/Berlin` wirkt
+  wie gewohnt — die Zeitzonendatenbank steckt in der Java-Laufzeit, nicht in einem OS-Paket.
+- **Zertifikate:** Der Truststore der Anwendung ist der `cacerts` der Java-Laufzeit mit den
+  öffentlichen CAs. `update-ca-certificates` gibt es im Image nicht mehr; eine eigene interne CA
+  wird stattdessen in eine **Kopie dieses Truststores** aufgenommen (siehe unten) — nie in einen
+  leeren, neuen Store.
+- **Zusätzliche JVM-Optionen** (Heap-Grenzen, Debug-Agent, JFR) werden über `JAVA_TOOL_OPTIONS`
+  gesetzt; ein `java`-Aufruf mit eigenen Argumenten ist nicht nötig und würde den Entrypoint
+  überschreiben.
+
+### Eigene interne CA ergänzen
+
+> **Wichtig:** `-Djavax.net.ssl.trustStore=…` **ersetzt** den mitgelieferten Truststore, es ergänzt
+> ihn nicht. Wer nur seine interne CA in einen frischen Store legt und darauf zeigt, verliert
+> sämtliche öffentlichen CAs — HTTPS zu LLM-Anbietern, S3 und einem OIDC-Anbieter mit öffentlichem
+> Zertifikat scheitert dann mit `PKIX path building failed`, ohne erkennbaren Zusammenhang zur
+> Änderung.
+
+Richtig ist, den mitgelieferten Store zu kopieren, zu ergänzen und zurückzumounten:
+
+```bash
+# 1. Mitgelieferten Truststore herausholen (funktioniert ohne Shell im Container)
+docker cp <container>:/opt/java/openjdk/lib/security/cacerts ./cacerts
+
+# 2. Eigene CA ergänzen (Standardpasswort des JDK-Truststores: changeit)
+keytool -importcert -keystore ./cacerts -storepass changeit \
+        -alias interne-ca -file interne-ca.crt -noprompt
+
+# 3. Ergänzte Kopie an ihren Originalplatz mounten - dann ist kein JVM-Schalter nötig
+```
+
+```yaml
+services:
+  backend:
+    volumes:
+      - ./cacerts:/opt/java/openjdk/lib/security/cacerts:ro
+```
+
+Der Schritt ist nach einem Image-Update zu wiederholen, sobald die Laufzeit neue öffentliche
+Wurzelzertifikate mitbringt: Die gemountete Kopie überdeckt den Stand des Images.
+
+### Diagnose ohne Shell
+
+```bash
+docker compose logs -f backend                       # Logs
+curl -s http://localhost:8081/actuator/health        # Zustandsübersicht
+curl -s http://localhost:8081/actuator/metrics       # Metriken
+curl -s http://localhost:8081/actuator/prometheus    # Prometheus-Format
+docker cp <container>:/app/uploads ./uploads-kopie   # Dateien aus dem Container holen
+docker run --rm -it --network container:<container> nicolaka/netshoot   # Netzwerkdiagnose im selben Netz
+```
+
+Wie viel `/actuator/health` zeigt, hängt von der Authentifizierung ab: Der Endpunkt ist ohne Anmeldung
+erreichbar, Einzelheiten zu Datenbank sowie Chat- und Embedding-Anbieter zeigt er aber nur einem
+angemeldeten Aufrufer. Im Entwicklungsmodus (`dev`) gilt jede Anfrage als angemeldet, ein anonymes
+`curl` sieht dort also die volle Aufschlüsselung; in einem OIDC-Deployment antwortet dasselbe `curl`
+nur mit `{"status":"UP"}` bzw. `DOWN`, und die Aufschlüsselung braucht ein gültiges Zugangstoken.
+
+Thread- und Heap-Dump ohne Shell:
+
+```bash
+docker exec <container> /opt/java/openjdk/bin/jcmd 1 Thread.print
+docker exec <container> /opt/java/openjdk/bin/jcmd 1 GC.heap_dump /tmp/heap.hprof
+docker cp <container>:/tmp/heap.hprof ./heap.hprof
+docker kill -s QUIT <container>   # Alternative: Thread-Dump ins Log, braucht nichts im Image
+```
+
+`docker kill -s QUIT` beendet den Container **nicht** — die JVM behandelt `SIGQUIT` als Aufforderung,
+einen Thread-Dump auf die Standardausgabe zu schreiben, er landet also in `docker compose logs`.
+
+Ein `docker compose logs backend` beantwortet die überwiegende Mehrheit der Fälle, in denen früher
+eine Shell benutzt wurde. Für alles Weitere lässt sich ein Werkzeug-Container in denselben Netzwerk-
+oder PID-Namensraum hängen (`--network container:…`, `--pid container:…`), ohne dass das
+Laufzeitimage selbst Werkzeuge mitbringen muss.
+
 ## Konfiguration
 
 Alle Konfigurationen erfolgen über Umgebungsvariablen in `.env.docker`. Docker Compose lädt diese Datei über die `env_file`-Direktive. Alle verfügbaren Optionen mit Beschreibungen finden Sie in `.env.docker.example`.
@@ -1299,6 +1385,12 @@ Das PostgreSQL-Volume enthält noch Daten von einer früheren Initialisierung mi
 - Sicherstellen, dass Keycloak läuft (`docker compose --profile oidc ps`)
 - Wenn Keycloak neu gestartet wurde, ist das Access-Token möglicherweise abgelaufen — Seite neu laden und erneut anmelden
 - Prüfen, dass `OPAA_OIDC_JWK_SET_URI` `keycloak:8180` (nicht `localhost:8180`) verwendet
+
+### `docker exec` in den Backend-Container schlägt mit "executable file not found" fehl
+
+Das Backend-Laufzeitimage enthält keine Shell (siehe [Backend-Laufzeitimage](#backend-laufzeitimage)).
+Statt `docker exec … sh` die dort beschriebenen Wege nutzen: Logs, `/actuator`, `docker cp` oder einen
+Werkzeug-Container im selben Netzwerk-Namensraum.
 
 ### Umgebungsvariablen-Änderungen treten nicht in Kraft
 
