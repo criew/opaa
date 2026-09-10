@@ -352,19 +352,25 @@ die Handbuchstufen 6–9 werden ohnehin als eine Phase „Zusammenführen und Or
 Reihenfolge wie bei #1316: Kommentare zuerst und allein, damit die Umbau-Diffs lesbar bleiben; dann
 Entkernung, dann Schnitt.
 
-**Verhaltensneutralitäts-Nachweis für 2 und 3** (Muster aus #1316, Memory „Verhaltensneutralität messen"):
-Vor dem Umbau wird für das Golden-Set der Verwaltungs-Evaldomäne je Frage das vollständige
-`RetrievalExplanation` als normalisiertes JSON abgelegt (Stufenname, Status, Zählungen, Verdikte mit
-Chunk-ID, Outcome, Reason, Listen-Label, Rang; Notizen ohne Laufzeitwerte). Nach dem Umbau derselbe Lauf,
-Dateivergleich muss leer sein. Zusätzlich ein Diff der `ChatSource`-Ausgabe von `QueryServiceTest`-Fixtures
-vor/nach der Extraktion des `ChatSourceAssembler`. Die Eval-Baseline (`eval/`) bleibt unverändert oder wird
-begründet neu gezogen.
+**Verhaltensneutralitäts-Nachweis für 2, 3 und 4** (Muster aus #1316): Vor dem Umbau, auf dem
+`main`-Stand, läuft die Pipeline für jede Frage des Golden-Sets der Verwaltungs-Evaldomäne einmal, und das
+vollständige `RetrievalExplanation` wird als normalisiertes JSON in ein lokales Verzeichnis geschrieben
+(Stufenname, Status, Zählungen, je Verdikt Chunk-ID, Outcome, Reason, Listen-Label, Rang; Notizen ohne
+Laufzeitwerte). Nach dem Umbau derselbe Lauf gegen denselben Index, `diff -r` der beiden Verzeichnisse muss
+leer sein. In den PR kommt nur das Ergebnis (Befehl, Zahl der Fragen, „Diff leer" oder der erklärte Diff);
+die JSON-Dateien selbst sind ein Zwischenartefakt und werden nicht committet, anders als die Kennzahlen-
+Baseline unter `eval/`, die unverändert bleibt oder begründet neu gezogen wird. Das **Werkzeug** dafür,
+ein Dump-Modus des Eval-Harness (Systemproperty mit Zielverzeichnis, schreibt je Frage eine Datei), wird in
+Issue 2 gebaut und bleibt im Repository, weil jeder weitere mechanische Umbau der Pipeline (etwa #1445) ihn
+wieder braucht. Für Zwischenläufe darf das Host-Ollama (`-Dopaa.eval.ollamaBaseUrl`) genutzt werden, da
+nur Gleichheit vor/nach verglichen wird, keine Baseline. Zusätzlich für Issue 2 ein Diff der
+`ChatSource`-Ausgabe der `QueryServiceTest`-Fixtures vor und nach der Extraktion des `ChatSourceAssembler`.
 
 | # | Titel | Inhalt | Größe |
 |---|---|---|---|
 | 1 | `docs(query): Javadoc-Kur im Paket query` | Review-Protokoll, Verdrahtungs- und Ablösungsgeschichte entfernen; veraltete Aussagen aus 3.2 korrigieren; verwaisten Javadoc über `lookupCitationFields` an `mapSources` hängen; Stage-Javadocs auf Stufennamen statt „Step N"; Klassen-Javadoc ≤ 10 Zeilen (Memory „Javadoc knapp halten"). Rein mechanisch, `spotlessApply`, keine Verhaltensänderung. | M |
-| 2 | `refactor(query): QueryService entkernen` | `SearchScopeResolver` (mit `MetadataFilterOptionsService` umgestellt), `ChatSourceAssembler` (Fundstellenbildung samt Lookups), `RetrievalContextFactory` (genutzt von `QueryService`, `SearchDiagnosisService`, `PipelineHarnessSupport`; `SearchDiagnosisRerankParityTest` prüft dann die Fabrik); Retrieval-Einstiege auf einen reduzieren (`retrieve(...)` → `RetrievalPipelineResult`, eval liest `searchQueries()` daraus), `RetrievalWithDecomposition` und die 3-arg-Form entfallen; `QueryServiceTest` aufteilen. Nachweis: Protokoll-Diff + `ChatSource`-Diff. | L |
-| 3 | `refactor(query): Unterpakete retrieval, answer, citation, filter` | Schnitt aus Abschnitt 4; Sichtbarkeiten anpassen; `FUSED_LIST_LABEL` nach `RetrievalListLabel`, `requiredLibraryFilter` nach `RetrievalState`; `package-info.java` je Paket mit dem Handbuchverweis. Nachweis: Protokoll-Diff (muss leer sein, da nur Verschiebung). Abhängig von 2. | M |
+| 2 | `refactor(query): QueryService entkernen` | Zuerst den Protokoll-Dump-Modus im Eval-Harness bauen und den Vorher-Stand aufnehmen. Dann `SearchScopeResolver` (mit `MetadataFilterOptionsService` umgestellt), `ChatSourceAssembler` (Fundstellenbildung samt Lookups), `RetrievalContextFactory` (genutzt von `QueryService`, `SearchDiagnosisService`, `PipelineHarnessSupport`; `SearchDiagnosisRerankParityTest` prüft dann die Fabrik); Retrieval-Einstiege auf einen reduzieren (`retrieve(...)` → `RetrievalPipelineResult`, eval liest `searchQueries()` daraus), `RetrievalWithDecomposition` und die 3-arg-Form entfallen; `QueryServiceTest` aufteilen. Nachweis: Protokoll-Diff + `ChatSource`-Diff. Abhängig von 1. | L |
+| 3 | `refactor(query): Unterpakete retrieval, answer, citation, filter` | Schnitt aus Abschnitt 4; Sichtbarkeiten anpassen; `FUSED_LIST_LABEL` nach `RetrievalListLabel`, `requiredLibraryFilter` nach `RetrievalState`; `package-info.java` je Paket mit dem Handbuchverweis; `RetrievalPipelineTest` (410 Zeilen) entlang der neuen Pakete aufteilen: Rahmen (Registrierung, Protokollvollständigkeit, Abschaltung, Halt) bleibt, Stufenverhalten wandert zu den Stufenpaketen. Nachweis: Protokoll-Diff (muss leer sein, da nur Verschiebung) plus normalisierter Dateivergleich ohne `package`/`import`-Zeilen. Abhängig von 2. | M |
 | 4 | `refactor(query): Doppelungen und test-only API` | `RetrievalState#candidateCount()`; gemeinsame Verdikt-Hilfe für die zwei Suchstufen; `QueryResult`/`QueryOutcome`/`SearchedLibraryRef` als Records (Mapper in `api` anpassen); test-only-Überladungen aus 3.3 entfernen, Tests auf die Produktionsform umstellen; `RetrievalPipelineParityTest` durch den Protokollvergleich ablösen. Abhängig von 3. | S |
 | 5 | `docs(query): Doku-Lücken aus dem Struktur-Review` | `library-field-offer-threshold` in `application.yml` und deployment.md; retrieval-algorithm.md: Reranking-Eintrag streichen wie Hybrid, Harness-Einstieg korrigieren, Stufennamen statt Nummern; suche.md: Volltextausfall je Teilfrage (Stufe 5), Fenster kleiner als Liste (Stufe 8), Verweis auf Wertedeckel der Formatfelder. Unabhängig, kann parallel zu 1 laufen. | S |
 
