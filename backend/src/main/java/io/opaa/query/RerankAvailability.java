@@ -6,11 +6,9 @@ import io.opaa.llm.RerankRoleState;
  * What the rerank model role can contribute to one retrieval run, decided once when the {@link
  * RetrievalContext} is built.
  *
- * <p><b>Three states, not a boolean.</b> "Switched off" and "switched on but not usable" are
- * different statements about an installation - the first is an operator's decision, the second a
- * Störung - and a run's explanation protocol must be able to tell them apart
- * (docs/features/hybrid-retrieval.md, "'Aus' muss eine Aussage sein, kein Zustand"). A boolean
- * collapses both into the same {@link StageStatus#DISABLED}.
+ * <p>Three states, not a boolean: "switched off" is an operator's decision, "switched on but not
+ * usable" a Störung, and the explanation protocol must tell them apart - a boolean would collapse
+ * both into the same {@link StageStatus#DISABLED}.
  */
 public enum RerankAvailability {
 

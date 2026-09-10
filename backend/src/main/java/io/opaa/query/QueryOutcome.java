@@ -3,8 +3,8 @@ package io.opaa.query;
 import java.util.List;
 
 /**
- * Domain counterpart of the generated {@code QueryMetadata} (#860 Teil 4) - mirrors its fluent
- * {@code withX}-style setters and bean getters for a low-friction test call site.
+ * The per-turn metadata of one answer - model, token count, duration and the libraries searched.
+ * {@code QueryController} maps it to the generated {@code QueryMetadata}.
  */
 public final class QueryOutcome {
 

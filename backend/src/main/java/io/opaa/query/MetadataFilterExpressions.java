@@ -19,35 +19,17 @@ import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 /**
  * The one place a {@link MetadataFilter} becomes a query condition - once for the vector path as a
  * Spring AI {@link Filter.Expression}, once for the lexical path as SQL over the same {@code
- * vector_store.metadata} keys (ADR-0024, Entscheidung 5). Both forms state the identical rule:
+ * vector_store.metadata} keys (ADR-0024, Entscheidung 5). Both state the identical rule: {@code
+ * (doc_type in selected OR doc_type absent) AND (doc_date within window OR doc_date absent)}, the
+ * window widened to the span a stored value's precision leaves open.
  *
- * <pre>
- *   (doc_type in selected  OR doc_type absent)
- *   AND (doc_date within window at its precision  OR doc_date absent)
- * </pre>
+ * <p>"Absent" is the Leerwert rule (metadata-schema.md). The pgvector converter knows no {@code IS
+ * NULL}, so both forms express absence as {@code NOT IN} over the complete set of values the key
+ * can carry; parity rests on that set being closed - a value outside it reads as "absent".
  *
- * "Absent" is the Leerwert rule (metadata-schema.md, "Leerwerte schließen nicht aus"): a chunk
- * without the key is a document without a value, and it stays in. The pgvector filter converter
- * knows no {@code IS NULL}, so both forms express absence the same way: {@code NOT IN} over the
- * complete set of values the key can carry - the Dokumentart vocabulary, or the three precisions -
- * which is true for a chunk without the key. <b>Parity between the paths rests on that set being
- * closed:</b> a value outside it (a vocabulary code removed while chunks still carry it, a
- * precision no constant names) reads as "absent" and is kept - in both paths alike, because the SQL
- * form deliberately mirrors the {@code NOT IN} instead of saying {@code IN selected OR IS NULL}.
- *
- * <p><b>Brackets are explicit.</b> The pgvector converter renders a nested {@link
- * Filter.Expression} without parentheses; only a {@link Filter.Group} produces them, and jsonpath
- * binds {@code &&} tighter than {@code ||}. Every OR-composed condition is therefore wrapped in a
- * group before it enters an AND: the permission filter must be the outer operand of the
- * <em>whole</em> metadata condition, never of its first branch only.
- *
- * <p>The window at a precision: a stored value is the first day of the span its precision leaves
- * open, so {@code value <= to} and {@code value >= }{@link MetadataFilter#dateFromBound} is the
- * overlap of that span with the window.
- *
- * <p>Public for exactly one caller outside this package: the retrieval-evaluation harness ({@code
- * io.opaa.eval}) builds the raw-vector path's filter through {@link #vectorExpression} so that its
- * measurement applies the identical condition the production search applies.
+ * <p>Brackets are explicit: the converter parenthesises only a {@link Filter.Group}, and jsonpath
+ * binds {@code &&} tighter than {@code ||}, so every OR-composed condition is grouped before it
+ * enters an AND - the permission filter must be the outer operand of the whole metadata condition.
  */
 public final class MetadataFilterExpressions {
 

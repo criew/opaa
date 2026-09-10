@@ -5,16 +5,11 @@ import java.util.List;
 
 /**
  * The whole run's explanation protocol: one {@link StageExplanation} per registered stage, in
- * execution order, whether that stage ran or not (docs/features/hybrid-retrieval.md, Arbeitspaket
- * 1).
+ * execution order, whether that stage ran or not (docs/handbuch/suche.md Abschnitt 8).
  *
- * <p><b>It is always produced, never optional.</b> Whether it is kept is the caller's decision -
- * {@code QueryService#query} discards it, the admin diagnosis evaluates it - but no run can happen
- * without it, because {@link RetrievalStage} cannot return a result without one.
- *
- * <p>The invariant this type carries: {@code stages().size()} equals the number of stages the
- * pipeline has registered. A stage that vanishes from the protocol is a candidate that vanishes
- * without a trace in a tool that looks complete, which is the failure this is built to prevent.
+ * <p>It is always produced; keeping it is the caller's decision. The invariant it carries: {@code
+ * stages().size()} equals the number of stages the pipeline registered, so a candidate cannot
+ * vanish without a trace in a diagnosis that looks complete.
  */
 public record RetrievalExplanation(List<StageExplanation> stages) {
 

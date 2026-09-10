@@ -4,112 +4,52 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * Configuration properties for the RAG query pipeline.
+ * Configuration properties of the retrieval pipeline (docs/handbuch/suche.md Abschnitt 10.3 lists
+ * the operator-facing form of every value below). Ebene-1 values: overridable per environment
+ * variable, absent from every administration surface.
  *
- * @param topK number of chunks {@link MmrSelector} finally selects for the answer prompt, out of
- *     the {@link #fetchK} candidates {@code similaritySearch} returns (#914). Default 8 (previously
- *     5, raised as part of #914's Maßnahme D): 8 chunks of ~1 000 tokens each (see {@code
- *     opaa.indexing.chunk-size}) produce ~8 000 tokens of context - the extra headroom MMR needs to
- *     trade in a redundant top-relevance chunk for a less relevant but topically distinct one
- *     without shrinking below the pre-#914 five-chunk floor for any single-topic question.
- * @param fetchK number of candidates {@code similaritySearch} itself retrieves, before {@link
- *     MmrSelector} narrows them down to {@link #topK} (#914). Default 25: large enough that a
- *     dominant topic's redundant chunks do not crowd out every candidate from a second, less
- *     dominant topic in a multi-topic question (the #912 failure mode), while staying a single
- *     {@code similaritySearch} call - no additional embedding or LLM API call per query. A missing
- *     configuration value (see the compact constructor) normalizes to {@code max(25, topK)}, not a
- *     flat 25, so a deployment that already configured {@code topK} above 25 does not fail {@link
- *     #fetchK} {@code < topK}'s validation below on a property it never touched. See
- *     docs/handbuch/deployment.md for the operator-facing version of this note.
- * @param mmrLambda the relevance/diversity trade-off {@link MmrSelector} applies when narrowing
- *     {@link #fetchK} candidates down to {@link #topK} (#914): each candidate's selection score is
- *     {@code mmrLambda * relevance - (1 - mmrLambda) * maxSimilarityToAlreadySelected}, where the
- *     similarity term is cosine similarity of the real chunk embeddings (see {@link
- *     ChunkEmbeddingLookup}, {@link MmrSelector}). Default <b>{@code 1.0}</b> - diversity selection
- *     is implemented but ships disabled, an explicit opt-in via a lower value, not a separate
- *     on/off flag (plain top-{@code topK}-by-relevance selection, the pre-#914 behaviour, whenever
- *     {@code mmrLambda == 1.0}; {@code QueryService#query} also then skips the {@link
- *     ChunkEmbeddingLookup} round trip entirely, since it could not affect the result). Backed by
- *     {@code @DefaultValue} (not the manual-default pattern {@link #topK}/{@link #fetchK} use
- *     below) so an explicitly configured {@code 0.0} is honored rather than silently raised -
- *     {@code 0.0} is a legal (if extreme) point on the range, not an "unset" sentinel the way a
- *     non-positive {@code topK}/{@code fetchK} is. The measured numbers behind {@code 1.0}'s choice
- *     over a lower value live in docs/handbuch/deployment.md and
- *     docs/features/data-indexing-rag.md, not here.
- * @param similarityThreshold minimum cosine-similarity score a chunk must reach to be included in
- *     results. Default 0.3: empirically tested — lower values surface too much noise, higher values
- *     miss relevant documents on imprecise user queries. Applied inside {@code similaritySearch}
- *     itself (#914): a chunk below the threshold never becomes an MMR candidate, so diversity can
- *     never pull a below-threshold chunk into the final selection.
+ * @param topK the number of chunks that reach the answer prompt. {@link
+ *     RetrievalStageName#RANK_FUSION} caps the fused list at it, or - with reranking active - the
+ *     reranker restores the cap after re-scoring the wider window. Default 8; at most 100.
+ * @param fetchK candidates each search query retrieves, per search path, before the narrowing
+ *     stages work on them. Default 25, normalized to {@code max(25, topK)} when unset so a
+ *     deployment that raised {@code topK} alone does not fail the {@code fetchK >= topK} check.
+ * @param mmrLambda the relevance/diversity trade-off {@link MmrSelector} applies: a candidate's
+ *     score is {@code mmrLambda * relevance - (1 - mmrLambda) * maxSimilarityToAlreadySelected}.
+ *     Default {@code 1.0}, where the diversity term vanishes and {@link
+ *     RetrievalStageName#MMR_SELECTION} skips the {@link ChunkEmbeddingLookup} round trip. Bound
+ *     via {@code @DefaultValue} so an explicit {@code 0.0} is honoured rather than raised.
+ * @param similarityThreshold minimum cosine similarity a chunk must reach in the vector path.
+ *     Applied inside {@code similaritySearch} itself, so a chunk below it never becomes an MMR
+ *     candidate and diversity can never pull it into the selection. Default 0.3.
  * @param permissionHistorySampleRate the fraction of queries {@link
- *     QueryService#checkAgainstPermissionHistory} actually runs for, expressed as a probability in
- *     {@code [0.0, 1.0]} (#889, O1) - see
- *     docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten. Default
- *     {@code 1.0}: the pre-#889 behaviour, every query checked, unchanged without an explicit
- *     maintainer decision to lower it - the check is a compliance control, and a missing property
- *     must not silently disable most of it. {@code @DefaultValue} backs this at the binder level
- *     too, not just in {@code application.yml}, so a caller assembling an {@code Environment}
- *     without that file still gets {@code 1.0}, never Java's primitive-{@code double} zero.
- *     Lowering it trades that guarantee for less load from the check's three additional queries
- *     against ever-growing tables per sampled query - an operator's explicit choice, not this
- *     project's default.
- * @param queryDecompositionEnabled whether {@code QueryService#query} asks {@code
- *     QueryDecompositionService} to split the question into up to {@link #maxSubQueries}
- *     independent search queries before retrieval (#923) - each becomes its own permission- and
- *     threshold-scoped {@code similaritySearch} call, fused by {@code ReciprocalRankFusion}.
- *     Default {@code true}: on LLM failure or unparsable output {@code
- *     QueryDecompositionService#decompose} returns an empty list and {@code QueryService#query}
- *     falls back to today's single-query retrieval unchanged, so leaving this on costs at most one
- *     extra LLM round trip per query, never a broken query. Set to {@code false} to skip that round
- *     trip entirely (e.g. no query-decomposition-capable model configured).
- * @param maxSubQueries the upper bound on how many independent search queries {@code
- *     QueryDecompositionService#decompose} may return (#923). Default 3: beyond that, {@code
- *     QueryDecompositionService} truncates rather than growing the number of {@code
- *     similaritySearch} calls (and thus retrieval latency) without bound for an adversarial or
- *     confused decomposition response. Each sub-query is independently narrowed to the full {@link
- *     #topK} (see {@code MmrSelectionStage}), so the overall chunk count stays capped at {@link
- *     #topK} regardless of {@code maxSubQueries}.
- * @param fullTextSearchEnabled whether {@link RetrievalStageName#FULL_TEXT_SEARCH} runs its
- *     PostgreSQL full-text query and contributes its ranked lists to the fusion (#1049,
- *     docs/features/hybrid-retrieval.md, Arbeitspaket 3). Default {@code true}: the lexical path is
- *     the answer to the failure class in which the searched term stands literally in the target
- *     document and the vector search still misses it (#938). Set to {@code false} for the {@code
- *     vector-only} measurement variant, or to spare the query on a deployment whose full-text
- *     backfill is not wanted at all - the stage then stays in the chain and says so in the
- *     explanation protocol, unlike switching it off via {@link
- *     RetrievalPipelineProperties#disabledStages()}. A parameter of this record rather than a
- *     record of its own (its shape until #1049): from the moment its value moves the final
- *     selection it is a measured dimension of the retrieval benchmark's run configuration
- *     (ADR-0012, Nachtrag Volltextpfad), and every measured query parameter travels in {@link
- *     RetrievalContext} so one pipeline instance can serve several variants in one process.
- * @param rerankCandidateCount how many fused candidates {@link RetrievalStageName#RERANK} hands to
- *     the rerank model, and therefore the budget {@link RetrievalStageName#RANK_FUSION} keeps for
- *     it instead of {@link #topK} whenever reranking actually runs
- *     (docs/features/hybrid-retrieval.md, Arbeitspaket 4). Default 50: two search paths at the
- *     default {@link #fetchK} of 25 can deliver 50 distinct candidates per search query, so the
- *     window covers a full one-sub-query run of the shipped configuration. <b>The window does not
- *     extend the reach of retrieval</b> - what no search stage returned cannot be fused and cannot
- *     be reranked. The reach is {@link #fetchK} per list times the lists actually in flight
- *     (sub-queries times active search paths), which is why raising this value without raising
- *     {@link #fetchK} buys nothing. An Ebene-1 value - overridable for benchmark and development,
- *     in no administration surface - and one that is measured rather than set and forgotten (see
- *     eval/variants/verwaltung-reranking.json). {@code 0} switches the stage off through its own
- *     parameter, the same explicit opt-out {@code maxChunksPerDocument = 1} is for document
- *     completion; whether reranking runs at all is additionally governed by the rerank model role's
- *     own switch ({@code OPAA_RERANK_ENABLED}, {@code io.opaa.llm.RerankProperties}), which is
- *     deliberately not a field of this record: it is an installation decision about a model role,
- *     not a retrieval parameter.
+ *     QueryService#checkAgainstPermissionHistory} runs for, in {@code [0.0, 1.0]}
+ *     (docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten).
+ *     Default {@code 1.0}, bound at the binder level too: a compliance control must not fall to
+ *     Java's primitive-{@code double} zero because a property file is missing.
+ * @param queryDecompositionEnabled whether {@link RetrievalStageName#SUB_QUERY_DECOMPOSITION} asks
+ *     the LLM to split the question into up to {@link #maxSubQueries} search queries. Default
+ *     {@code true}: any failure falls back to the single-query form, so it costs at most one extra
+ *     round trip, never a broken query.
+ * @param maxSubQueries the upper bound on the search queries the decomposition may return. Default
+ *     3; the service truncates beyond it, so an adversarial answer cannot grow retrieval latency
+ *     without bound. Each list is narrowed on its own, so the chunk count stays capped at {@link
+ *     #topK} regardless.
  * @param maxChunksPerDocument the upper bound on how many chunks of one document {@link
- *     DocumentCompletion#complete} will pull into the final selection on top of whatever the
- *     fusion/MMR step already picked (#932 scope v2 - v1's single-tier eviction was a no-op
- *     whenever every document held exactly one chunk, its own live-verification failure mode; see
- *     {@link DocumentCompletion}'s Javadoc for the two eviction tiers this now applies). Default 2:
- *     the #912 failure mode this exists for - a document's own detail chunk (e.g. a fee table)
- *     losing its slot to an unrelated document's chunk purely because RRF/MMR spread {@link #topK}
- *     across topics before considering whether a document already represented in the selection has
- *     more relevant material still sitting in the candidate pool. {@code 1} disables completion
- *     entirely ({@link DocumentCompletion#complete} then returns its input unchanged) - the
- *     pre-#932 behaviour, an explicit opt-out rather than a separate flag.
+ *     DocumentCompletion} may hold in the final selection. Default 2; {@code 1} is the explicit
+ *     opt-out that makes completion the identity.
+ * @param fullTextSearchEnabled whether {@link RetrievalStageName#FULL_TEXT_SEARCH} runs and
+ *     contributes its lists to the fusion. Default {@code true}. Set to {@code false} for the
+ *     {@code vector-only} measurement variant: the stage stays in the chain and says so in the
+ *     explanation protocol, unlike switching it off via {@link
+ *     RetrievalPipelineProperties#disabledStages()}.
+ * @param rerankCandidateCount how many fused candidates {@link RetrievalStageName#RERANK} hands to
+ *     the rerank model, and therefore the budget the narrowing stages keep instead of {@link #topK}
+ *     whenever reranking runs. Default 50. The window does not extend the reach of retrieval - what
+ *     no search returned cannot be reranked - so raising it without raising {@link #fetchK} buys
+ *     nothing. {@code 0} switches the stage off through its own parameter; whether reranking runs
+ *     at all is additionally governed by the rerank model role's switch ({@code
+ *     OPAA_RERANK_ENABLED}), which is an installation decision, not a retrieval parameter.
  */
 @ConfigurationProperties(prefix = "opaa.query")
 public record QueryProperties(
@@ -132,7 +72,7 @@ public record QueryProperties(
       throw new IllegalArgumentException("topK must be at most 100, got " + topK);
     }
     if (fetchK <= 0) {
-      // See #fetchK's Javadoc: max(25, topK), not a flat 25.
+      // max(25, topK), not a flat 25 - see #fetchK's Javadoc.
       fetchK = Math.max(25, topK);
     }
     if (fetchK > 200) {
@@ -163,7 +103,7 @@ public record QueryProperties(
           "maxChunksPerDocument must be between 1 and 10, got " + maxChunksPerDocument);
     }
     // Deliberately not checked against fetchK: the window's reach is fetchK per list times the
-    // lists in flight, a per-query quantity this constructor cannot know. See the field's Javadoc.
+    // lists in flight, a per-query quantity this constructor cannot know.
     if (rerankCandidateCount < 0 || rerankCandidateCount > 200) {
       throw new IllegalArgumentException(
           "rerankCandidateCount must be between 0 and 200, got " + rerankCandidateCount);

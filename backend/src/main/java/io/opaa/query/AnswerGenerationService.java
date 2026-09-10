@@ -16,17 +16,14 @@ import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Service;
 
 /**
- * Generates the RAG answer against the systemwide active chat model (#758,
- * docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung), resolved fresh on
- * every call via {@link ActiveChatModelResolver} rather than built once in the constructor from the
- * static Spring AI OpenAI autoconfiguration - the only way an activation via the admin API (#764)
- * takes effect without a restart. {@link ActiveChatModelResolver#resolveChatClient()} throws {@code
- * io.opaa.llm.NoActiveChatModelException} (a {@code io.opaa.common.ServiceUnavailableException})
- * when no model is active, which propagates through {@code io.opaa.query.QueryService#query}
- * exactly like any other domain error already does - {@code io.opaa.api.GlobalExceptionHandler}
- * turns it into a German, user-facing error response rather than an NPE or an opaque 500.
+ * Generates the RAG answer against the systemwide active chat model
+ * (docs/features/llm-integration.md), resolved fresh on every call via {@link
+ * ActiveChatModelResolver} rather than built once in the constructor - the only way an activation
+ * through the admin API takes effect without a restart.
  *
- * <p>{@code @Service} (#889, O2): previously wired manually in {@code QueryConfiguration}.
+ * <p>With no active model {@link ActiveChatModelResolver#resolveChatClient()} throws {@code
+ * io.opaa.llm.NoActiveChatModelException}, which propagates like any other domain error and reaches
+ * the caller as a German error response rather than an NPE.
  */
 @Service
 public class AnswerGenerationService {
