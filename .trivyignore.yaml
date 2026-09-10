@@ -1,0 +1,13 @@
+# Unterdrückungsquelle für Trivy-Befunde. Ein Eintrag hier entfernt einen Befund aus beiden
+# Trivy-Läufen von .github/workflows/cve-scan.yml (Security-Tab und critical-Alarm) und aus
+# einem lokalen `trivy image --ignorefile .trivyignore.yaml <image>`.
+#
+# Jeder Eintrag trägt `statement` (Begründung nach docs/cve-scanning.md, Abschnitt
+# „Begründungsqualität") und `expired_at` (Ablaufdatum, höchstens ein Quartal voraus); ohne
+# beides scheitert der Prüfschritt in cve-scan.yml. Nach dem Ablaufdatum meldet Trivy den
+# Befund wieder — eine Unterdrückung endet immer von selbst.
+#
+# Existiert eine Fix-Version, wird gebaut statt unterdrückt (Mittelreihenfolge in
+# docs/cve-scanning.md).
+
+vulnerabilities: []
