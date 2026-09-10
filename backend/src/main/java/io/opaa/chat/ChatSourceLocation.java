@@ -2,8 +2,8 @@ package io.opaa.chat;
 
 /**
  * Domain counterpart of the generated {@code ChunkLocation} (#860 Teil 4) - where one retrieved
- * chunk sits within its document (#667). {@code QueryService} builds these while ranking search
- * results; {@link ChatService} persists them as part of a turn's sources ({@link ChatMessage
+ * chunk sits within its document (#667). {@code ChatSourceAssembler} builds these while ranking
+ * search results; {@link ChatService} persists them as part of a turn's sources ({@link ChatMessage
  * #getSources()}) and reads them back unchanged for {@code GET /chats/{chatId}}. Mutable, no-arg
  * constructor included, mirroring the generated DTO's bean shape so the JSON persisted in {@code
  * chat_messages.sources} before this change deserializes into this class unchanged - the property

@@ -33,6 +33,7 @@ import io.opaa.llm.RerankModelRole;
 import io.opaa.organization.Organization;
 import io.opaa.query.MetadataFilterExpressions;
 import io.opaa.query.QueryProperties;
+import io.opaa.query.RetrievalContextFactory;
 import io.opaa.query.RetrievalPipeline;
 import io.opaa.query.RetrievalPipelineProperties;
 import java.io.IOException;
@@ -370,6 +371,7 @@ class RetrievalEvaluationHarnessTest {
   // The production retrieval pipeline itself, for the second (pipeline) measurement path - the
   // very bean a real request runs through, not a re-implementation of its stages.
   @Autowired private RetrievalPipeline retrievalPipeline;
+  @Autowired private RetrievalContextFactory retrievalContextFactory;
   @Autowired private QueryProperties queryProperties;
   // #1049: the fill state of the measured library's full-text index, a fixed point of every
   // pipeline report since the lexical path feeds the fusion.
@@ -877,7 +879,7 @@ class RetrievalEvaluationHarnessTest {
         DOMAIN,
         identity,
         retrievalPipeline,
-        rerankModelRole,
+        retrievalContextFactory,
         queryProperties,
         pipelineProperties,
         rerankModelRole.usable(),
@@ -899,6 +901,7 @@ class RetrievalEvaluationHarnessTest {
           DOMAIN,
           DEFAULT_VARIANT_COMPARISON_FILE,
           retrievalPipeline,
+          retrievalContextFactory,
           rerankModelRole,
           identity,
           queryProperties,

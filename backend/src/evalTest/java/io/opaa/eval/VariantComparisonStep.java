@@ -3,6 +3,7 @@ package io.opaa.eval;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.query.QueryProperties;
+import io.opaa.query.RetrievalContextFactory;
 import io.opaa.query.RetrievalPipeline;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -67,13 +68,15 @@ public final class VariantComparisonStep {
    * swallow, since it signals a bug in the variant mechanism itself, not a broken input.
    *
    * @param pipeline the harness's own production-wired pipeline bean, the one the pipeline path
-   *     measured with — every variant runs through it, and the self-check compares against it under
-   *     the production {@code queryProperties}.
+   *     measured with — every variant runs through it.
+   * @param contextFactory the production-wired factory the pipeline path measured with; the
+   *     self-check compares the reference variant against a run over it.
    */
   public static void run(
       EvalDomainConfig domain,
       String defaultComparisonFile,
       RetrievalPipeline pipeline,
+      RetrievalContextFactory contextFactory,
       RerankModelRole rerankModelRole,
       PipelineHarnessSupport.RunIdentity identity,
       QueryProperties queryProperties,
@@ -115,7 +118,7 @@ public final class VariantComparisonStep {
                       domain,
                       identity,
                       pipeline,
-                      rerankModelRole,
+                      contextFactory,
                       queryProperties,
                       indexingProperties,
                       evalLibraryId,

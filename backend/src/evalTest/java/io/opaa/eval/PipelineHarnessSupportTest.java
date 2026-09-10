@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.llm.RerankRoleStatus;
 import io.opaa.query.QueryProperties;
+import io.opaa.query.RetrievalContextFactory;
 import io.opaa.query.RetrievalPipeline;
 import io.opaa.query.RetrievalPipelineProperties;
 import io.opaa.query.RetrievalStageName;
@@ -86,7 +87,7 @@ class PipelineHarnessSupportTest {
                     EvalDomainConfig.COMIC_CHARACTERS,
                     IDENTITY,
                     failing,
-                    disabledRole,
+                    new RetrievalContextFactory(productionLikeProperties(8, false), disabledRole),
                     productionLikeProperties(8, false),
                     RetrievalPipelineProperties.allStagesEnabled(),
                     false,

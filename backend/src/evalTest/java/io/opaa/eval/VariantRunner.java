@@ -3,6 +3,7 @@ package io.opaa.eval;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.query.QueryProperties;
+import io.opaa.query.RetrievalContextFactory;
 import io.opaa.query.RetrievalPipeline;
 import java.time.Instant;
 import java.util.List;
@@ -13,8 +14,8 @@ import java.util.function.Supplier;
  * Measures one {@link PipelineVariant} against the golden dataset (issue #1041,
  * docs/features/retrieval-benchmark.md §2). Reuses the production pipeline path exactly as the
  * single-configuration measurement (#1039, {@link PipelineHarnessSupport}) does — a variant is a
- * different {@link QueryProperties} handed into the same {@link RetrievalPipeline}, never a
- * reimplementation of retrieval steps 2 to 6.
+ * different {@link QueryProperties}, wrapped in its own {@link RetrievalContextFactory} and handed
+ * into the same {@link RetrievalPipeline}, never a reimplementation of retrieval steps 2 to 6.
  *
  * <p><b>Mehrfachlauf-Regel</b> (issue #1044, docs/features/retrieval-benchmark.md §3, "Was
  * stattdessen gilt", 2.–3.): a variant whose effective {@code queryDecompositionEnabled} is {@code
@@ -63,7 +64,7 @@ public final class VariantRunner {
                 domain,
                 identity,
                 pipeline,
-                rerankModelRole,
+                new RetrievalContextFactory(effective, rerankModelRole),
                 effective,
                 indexingProperties,
                 evalLibraryId,
