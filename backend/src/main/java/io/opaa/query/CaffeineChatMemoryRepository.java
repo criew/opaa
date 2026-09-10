@@ -16,17 +16,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
- * A {@link ChatMemoryRepository} backed by a Caffeine cache with LRU eviction and TTL. Limits the
- * number of concurrent conversations to prevent unbounded memory growth.
+ * A {@link ChatMemoryRepository} backed by a Caffeine cache with LRU eviction and TTL, bounding the
+ * number of concurrent conversations against unbounded memory growth. The {@code
+ * opaa.conversations.active} {@link Gauge} that {@link #size()} backs is registered in the
+ * constructor, as elsewhere in {@code io.opaa.observability}.
  *
- * <p>{@code @Service} (#889, O2): previously wired manually in {@code QueryConfiguration}, along
- * with the {@code opaa.conversations.active} {@link Gauge} that {@link #size()} now backs -
- * self-registered in the constructor below like {@code ChatHealthIndicator} and the other
- * {@code @Component} classes in {@code io.opaa.observability} already do, rather than a separate
- * {@code @Bean} method. The two-/three-arg constructors below are package-visible, for tests in
- * {@code io.opaa.query} that need non-default limits or a synchronous eviction executor; {@link
- * #CaffeineChatMemoryRepository(MeterRegistry)} is the one Spring actually calls, marked {@link
- * Autowired} because more than one constructor exists.
+ * <p>The two-/three-arg constructors are package-visible for tests that need non-default limits or
+ * a synchronous eviction executor; {@link #CaffeineChatMemoryRepository(MeterRegistry)} is the one
+ * Spring calls, marked {@link Autowired} because more than one constructor exists.
  */
 @Service
 public class CaffeineChatMemoryRepository implements ChatMemoryRepository {
@@ -48,7 +45,7 @@ public class CaffeineChatMemoryRepository implements ChatMemoryRepository {
 
   private final Cache<String, List<Message>> cache;
 
-  /** The constructor Spring calls - see this class's Javadoc. */
+  /** The constructor Spring calls. */
   @Autowired
   public CaffeineChatMemoryRepository(MeterRegistry meterRegistry) {
     this(MAX_CONVERSATIONS, TTL_MINUTES, null);
@@ -93,9 +90,8 @@ public class CaffeineChatMemoryRepository implements ChatMemoryRepository {
    * method with no per-user variant, but the keys this repository actually stores are {@code
    * currentUserId + ":" + effectiveChatId} (see {@code QueryService#query}) - so a caller that
    * treats the result as a listing of conversations for "the current user" would in fact see every
-   * account's keys mixed together. #123 found no caller of this method (production or test) beyond
-   * the interface contract itself; it must never be used to build a user-facing conversation
-   * listing without first filtering by the caller's own user-id prefix.
+   * account's keys mixed together. It must never back a user-facing conversation listing without
+   * first filtering by the caller's own user-id prefix.
    */
   @Override
   public List<String> findConversationIds() {

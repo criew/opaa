@@ -11,15 +11,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * The genuine configuration left in the query pipeline after #889 (O2) moved every other previously
- * manually-wired bean here to an {@code @Service} on the class itself ({@link
- * CaffeineChatMemoryRepository}, {@link AnswerGenerationService}, {@link CitationParser}, {@link
- * CitationValidator}, {@link QueryService}) - see each class's own Javadoc. {@link #chatMemory}
- * stays a {@code @Bean} factory method because {@link ChatMemory}/{@link MessageWindowChatMemory}
- * are Spring AI framework types assembled via a builder, not application classes this codebase
- * owns; {@link #queryMetrics} stays wired the same way {@code AuthMetrics}/{@code IndexingMetrics}
- * are in their own {@code *Configuration} classes project-wide, a deliberate, consistent
- * cross-cutting convention this issue did not change.
+ * The query package's bean wiring: the retrieval pipeline's stage order, the chat memory and the
+ * query metrics. Everything the package can annotate with {@code @Service} is wired there instead;
+ * what remains needs a factory method - {@link ChatMemory}/{@link MessageWindowChatMemory} are
+ * Spring AI framework types assembled via a builder, and {@link #queryMetrics} follows the
+ * project-wide convention of building a metrics facade in its package's configuration.
  */
 @Configuration
 @EnableConfigurationProperties({
@@ -30,16 +26,9 @@ import org.springframework.context.annotation.Configuration;
 public class QueryConfiguration {
 
   /**
-   * <b>The one place the retrieval order is decided</b> (docs/features/hybrid-retrieval.md,
-   * Arbeitspaket 1). The stages are {@code @Component}s, but their sequence is not left to
-   * component scanning or to {@code @Order} annotations scattered across six files: whether
-   * reranking runs before or after document completion is a technical decision with consequences,
-   * and it belongs somewhere it can be read off in one line.
-   *
-   * <p>New stages are inserted here, at the position they belong to - the lexical search path next
-   * to {@link VectorSearchStage} (in place since #1048), reranking between {@link RankFusionStage}
-   * and {@link DocumentCompletionStage} (in place since #1050, docs/features/hybrid-retrieval.md,
-   * Arbeitspaket 4).
+   * The one place the retrieval order is decided. The stages are {@code @Component}s, but their
+   * sequence is not left to component scanning or to {@code @Order} annotations spread over nine
+   * files; a new stage is inserted here, at the position it belongs to.
    */
   @Bean
   RetrievalPipeline retrievalPipeline(

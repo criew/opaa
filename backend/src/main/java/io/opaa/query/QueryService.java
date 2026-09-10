@@ -48,7 +48,18 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 
-/** {@code @Service} (#889, O2): previously wired manually in {@code QueryConfiguration}. */
+/**
+ * Answers one question end to end (docs/handbuch/suche.md): resolves the search scope, runs the
+ * {@link RetrievalPipeline} over it, has the answer generated, validates the citations and builds
+ * the source rows.
+ *
+ * <p>A query always reads with the calling user's own rights - no system-admin bypass, no second
+ * rights context (ADR-0008 §5) - and the permission filter is part of the {@link
+ * VectorStore#similaritySearch} call itself, never a post-filter, so an unauthorized chunk is never
+ * loaded or ranked. An empty search scope short-circuits to answer generation with zero chunks, the
+ * same path a genuinely empty result takes, so the answer cannot distinguish "no permission on
+ * anything" from "nothing matched".
+ */
 @Service
 public class QueryService {
 
@@ -107,54 +118,21 @@ public class QueryService {
   }
 
   /**
-   * Answers {@code question}, restricted to chunks from libraries {@code currentUserId} may read
-   * (#202). The filter is part of the {@link VectorStore#similaritySearch} call itself, not a
-   * post-filter - an unauthorized chunk is never loaded or ranked. No system-admin bypass here
-   * (unlike {@code LibraryAccessService#effectiveRole}): a query always reads with the calling
-   * user's own rights, with no second rights context (ADR-0008 §5).
+   * Answers {@code question} against the libraries {@code caller} may read.
    *
-   * <p>An empty readable set short-circuits before the vector store is even called, skipping
-   * straight to answer generation with zero chunks - the same path a genuinely empty result takes,
-   * so the message cannot distinguish "no permission on anything" from "nothing matched" (#202
-   * acceptance criteria).
+   * <p>A chat {@code chatId} names and {@code caller} authored governs the turn entirely: search
+   * scope and filter come from the chat's own settings - {@code useKnowledge} and {@code
+   * requestedLibraryIds} are then ignored, not merely defaulted - the conversation memory is seeded
+   * from its persisted history, and question and answer are persisted. Otherwise the query runs
+   * ephemerally, with {@code useKnowledge = true} searching every readable library and {@code
+   * false} narrowing to {@code requestedLibraryIds} intersected with the readable set - never
+   * widened beyond it, so a referenced but unreadable library yields no hits.
    *
-   * <p><b>Persisted chats (#525).</b> {@code chatId} is optional. When it names a chat {@code
-   * currentUserId} authored (see {@link ChatService#findOwnedChat}), the query runs against that
-   * chat: the search scope comes from the chat's own {@code useKnowledge}/{@code
-   * referencedLibraryIds} ({@link ChatService#effectiveLibraryScope}) - the parameters below are
-   * then ignored, not merely defaulted - question and answer are persisted as {@link
-   * io.opaa.chat.ChatMessage}s, and the conversation-memory cache ({@link #chatMemory}) is seeded
-   * from the persisted history on a cache miss. When {@code chatId} is absent or does not resolve
-   * to an owned chat, the query runs ephemerally instead: not persisted, scope governed by {@code
-   * useKnowledge}/{@code requestedLibraryIds} (#526), keyed in the in-memory cache by the
-   * caller-supplied {@code chatId} when given, or a freshly generated one.
-   *
-   * <p><b>Permission-history regression check</b> (#238, sampled per {@link
-   * #maybeCheckAgainstPermissionHistory} at {@link QueryProperties#permissionHistorySampleRate}):
-   * the live readable set is compared against {@link
-   * PermissionHistoryService#readableLibraryIdsAsOf}'s reconstruction for the same instant, logging
-   * a warning if the live computation reaches a library the history would not - a beweisbarer
-   * Durchsetzungsfehler per
-   * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten. Only a
-   * detected mismatch - not every sampled query - is logged, and only the offending library id,
-   * never the caller's whole readable set (personal-data minimization per the same section).
-   *
-   * <p><b>Search-scope controls</b> {@code useKnowledge}/{@code requestedLibraryIds} (#526,
-   * consulted only without a persisted chat): {@code useKnowledge = true} uses every library {@code
-   * currentUserId} may read; {@code useKnowledge = false} narrows to {@code requestedLibraryIds}
-   * intersected with the readable set - never widened beyond it, so a referenced but unreadable
-   * library yields no hits rather than being silently granted. An empty intersection also takes the
-   * empty-scope short-circuit above and marks {@link QueryOutcome#getAnsweredWithoutKnowledge()}.
-   *
-   * <p><b>Deliberately <em>not</em> {@code @Transactional}</b> (same reasoning as {@code
-   * UserService#findOrCreateUser}, same class of bug #299 fixed there): an ambient transaction here
-   * would hold one JDBC connection open for the entire call, including the LLM call inside {@code
-   * answerGenerationService.generateAnswer}, while {@code ChatService#appendTurn} afterwards needs
-   * a second, independently held connection to write - under concurrent persisted-chat traffic this
-   * exhausts the pool (a full deadlock, not merely contention) once every caller's connection is
-   * claimed and waiting on the LLM response. Without an ambient transaction here, every
-   * repository/service call below is instead independently transactional and releases its
-   * connection immediately, exactly like {@code UserService.findOrCreateUser}.
+   * <p>Deliberately <em>not</em> {@code @Transactional}: an ambient transaction would hold one JDBC
+   * connection for the whole call, LLM round trip included, while the write phase afterwards needs
+   * a second one - under concurrent traffic that exhausts the pool into a deadlock rather than mere
+   * contention. Every repository call below is therefore independently transactional and releases
+   * its connection immediately.
    */
   public QueryResult query(
       String question,
@@ -166,12 +144,12 @@ public class QueryService {
   }
 
   /**
-   * The same query with a core-field filter (#1070). Like the search scope, the filter of a
-   * persisted chat governs entirely - the chat's sticky filter is the Kontext der Unterhaltung -
-   * and only an ephemeral query takes {@code requestedMetadataFilter}. The effective filter is
-   * validated against the Dokumentart vocabulary (400 for an unknown code) and applied inside both
-   * search paths, subordinate to the permission filter; every returned source says whether it
-   * matched or was kept as "ohne Angabe".
+   * The same query with a core-field filter. Like the search scope, the filter of a persisted chat
+   * governs entirely - the chat's sticky filter is the Kontext der Unterhaltung - and only an
+   * ephemeral query takes {@code requestedMetadataFilter}. The effective filter is validated
+   * against the Dokumentart vocabulary (400 for an unknown code) and applied inside both search
+   * paths, subordinate to the permission filter; every returned source says whether it matched or
+   * was kept as "ohne Angabe".
    */
   public QueryResult query(
       String question,
@@ -186,19 +164,16 @@ public class QueryService {
         .record(
             () -> {
               try {
-                // --- Read phase (#889): membership/archive/scope checks and the vector search
-                // below all run without any ambient transaction of their own - each repository
-                // call opens and releases its own short-lived connection (see this method's
-                // Javadoc's "Deliberately not @Transactional" section).
+                // --- Read phase: membership/archive/scope checks and the retrieval below all
+                // run without any ambient transaction of their own - each repository call opens
+                // and releases its own short-lived connection.
                 Optional<Chat> chat = chatService.findOwnedChat(chatId, currentUserId);
-                // Querying is chatting: requires space membership even for an author who already
-                // owns the chat - see ChatService#requireStillSpaceMember's Javadoc for why this
-                // check lives only on this path and not on getChat/updateChat/deleteChat.
+                // Querying is chatting: requires space membership even for an author who
+                // already owns the chat - see ChatService#requireStillSpaceMember.
                 chat.ifPresent(chatService::requireStillSpaceMember);
-                // An archived space accepts no new content - checked here, before retrieval/the
-                // LLM call, so the ordinary case never pays for an LLM call whose answer appendTurn
-                // below would discard anyway. appendTurn's own call to the same guard stays in
-                // place as the race guard for a space archived after this point.
+                // An archived space accepts no new content - checked before the LLM call, so
+                // no answer is paid for that appendTurn would discard. appendTurn's own call to
+                // the same guard remains the race guard for a space archived after this point.
                 chat.ifPresent(c -> chatService.requireSpaceNotArchived(c.getSpaceId()));
                 // A chatId that does not resolve to an owned persisted chat (including "none
                 // given") runs ephemerally rather than being rejected, reused as the in-memory
@@ -213,8 +188,8 @@ public class QueryService {
                 String conversationKey = currentUserId + ":" + effectiveChatId;
                 seedConversationMemoryFromPersistedHistory(chat, conversationKey);
 
-                // Before the #923 decomposition call (run below, inside the non-empty-scope
-                // branch), so durationMs includes its latency rather than silently excluding it.
+                // Before the decomposition call in the non-empty-scope branch below, so
+                // durationMs includes its latency rather than silently excluding it.
                 long startTime = System.currentTimeMillis();
 
                 Instant scopeComputedAt = Instant.now();
@@ -224,8 +199,7 @@ public class QueryService {
                     readableLibraryIds, currentUserId, caller.organizationId(), scopeComputedAt);
 
                 // A persisted chat's own settings govern the scope entirely; only an ephemeral
-                // query (no owned chat) falls back to the request-level useKnowledge/
-                // requestedLibraryIds (#526).
+                // query falls back to the request-level useKnowledge/requestedLibraryIds.
                 Set<UUID> searchScope =
                     resolveSearchScope(chat, useKnowledge, requestedLibraryIds, readableLibraryIds);
                 MetadataFilter metadataFilter =
@@ -238,21 +212,18 @@ public class QueryService {
                                     : requestedMetadataFilter));
                 boolean effectiveUseKnowledge = chat.map(Chat::isUseKnowledge).orElse(useKnowledge);
                 boolean answeredWithoutKnowledge = !effectiveUseKnowledge && searchScope.isEmpty();
-                // Distinct from answeredWithoutKnowledge above: the #203 fail-open case where the
-                // chip stays on @Alles-Wissen but the chat's space is curated and none of its
-                // associated libraries are readable by this caller, so effectiveLibraryScope
+                // Distinct from answeredWithoutKnowledge above: the chat's space is curated
+                // but none of its associated libraries are readable by this caller, so the scope
                 // legitimately resolves to empty. Only meaningful for a persisted chat - an
-                // ephemeral query's empty searchScope instead means the caller simply has no
-                // readable library at all. See ChatService#spaceHasLibraryAssociations's Javadoc.
+                // ephemeral query's empty scope means the caller has no readable library at all.
                 boolean noKnowledgeAvailableInSpace =
                     effectiveUseKnowledge
                         && searchScope.isEmpty()
                         && chat.map(c -> chatService.spaceHasLibraryAssociations(c.getSpaceId()))
                             .orElse(false);
 
-                // #923: the decomposition LLM call only runs once there is actually something to
-                // search - an empty scope (no readable library, or useKnowledge=false with nothing
-                // requested) would otherwise pay for it and discard the result unused.
+                // The decomposition LLM call only runs once there is actually something to
+                // search - an empty scope would otherwise pay for it and discard the result.
                 List<Document> relevantChunks;
                 if (searchScope.isEmpty()) {
                   relevantChunks = List.of();
@@ -262,8 +233,8 @@ public class QueryService {
                           question, chatMemory.get(conversationKey), searchScope, metadataFilter);
                 }
 
-                // --- LLM call: the slowest step, and the reason no phase in this method carries a
-                // transaction - see this method's Javadoc's "Deliberately not @Transactional".
+                // --- LLM call: the slowest step, and the reason no phase of this method
+                // carries a transaction.
                 ChatResponse chatResponse =
                     answerGenerationService.generateAnswer(
                         question, relevantChunks, conversationKey);
@@ -302,12 +273,10 @@ public class QueryService {
                 metrics.recordSuccess(tokenCount);
 
                 // --- Write phase: the one place this method's result is persisted, in
-                // ChatService#appendTurn's own transaction(s) - see that method's Javadoc.
-                // appendTurn's title/title_source writes go through atomic, targeted
-                // ChatRepository updates rather than mutating the `chat` instance loaded above, so
-                // its return value (not `chat`) is this method's source of truth for the title -
-                // the fallback title on a first turn, never the LLM-derived one, which generates
-                // asynchronously after this response is built (see ChatTitleGenerationService).
+                // ChatService#appendTurn's own transaction(s). appendTurn's return value, not the
+                // `chat` instance loaded above, is the source of truth for the title - the
+                // fallback title on a first turn, never the LLM-derived one, which is generated
+                // asynchronously after this response is built.
                 String chatTitle =
                     chat.map(c -> chatService.appendTurn(c, question, answer, sources))
                         .orElse(null);
@@ -328,9 +297,9 @@ public class QueryService {
 
   /**
    * The search scope a question runs in - a persisted chat's own settings govern it entirely; only
-   * an ephemeral query (no owned chat) falls back to the request-level {@code useKnowledge}/{@code
-   * requestedLibraryIds} (#526). Never wider than {@code readableLibraryIds}. Public so the filter
-   * options (#1070) are built over exactly the libraries the next question would search.
+   * an ephemeral query falls back to the request-level {@code useKnowledge}/{@code
+   * requestedLibraryIds}. Never wider than {@code readableLibraryIds}. Public so the metadata
+   * filter options are built over exactly the libraries the next question would search.
    */
   public Set<UUID> resolveSearchScope(
       Optional<Chat> chat,
@@ -359,11 +328,11 @@ public class QueryService {
   }
 
   /**
-   * {@code requestedLibraryIds ∩ readableLibraryIds} - the #526 search scope for an ephemeral query
-   * (no persisted chat) with {@code useKnowledge = false}. Deliberately never adds anything beyond
-   * {@code readableLibraryIds}: a reference to a library the caller cannot read is silently
-   * dropped, not honoured. A persisted chat's sticky references go through {@link
-   * ChatService#effectiveLibraryScope} instead, which applies the identical rule.
+   * {@code requestedLibraryIds ∩ readableLibraryIds} - the search scope of an ephemeral query with
+   * {@code useKnowledge = false}. Never adds anything beyond {@code readableLibraryIds}: a
+   * reference to a library the caller cannot read is dropped, not honoured. A persisted chat's
+   * sticky references go through {@link ChatService#effectiveLibraryScope}, which applies the same
+   * rule.
    */
   private Set<UUID> intersectWithReadable(
       List<UUID> requestedLibraryIds, Set<UUID> readableLibraryIds) {
@@ -378,12 +347,9 @@ public class QueryService {
   /**
    * Seeds the in-memory conversation cache from the persisted chat history on a cache miss - the
    * mechanism that makes {@link SubQueryDecompositionStage} and {@link
-   * AnswerGenerationService#generateAnswer} see the persisted history even though neither was
-   * changed to read from the database directly (#525's "Gesprächsgedächtnis speist sich aus den
-   * persistierten Nachrichten (Caffeine darf Cache bleiben)"). Only touches the cache when it is
-   * actually empty for this key - a chat with history already in the warm cache is left alone, both
-   * because re-adding would duplicate every message and because the warm cache is already
-   * authoritative for the current process.
+   * AnswerGenerationService#generateAnswer} see the persisted history without either reading the
+   * database directly. Only touches the cache when it is empty for this key: re-adding would
+   * duplicate every message, and a warm cache is already authoritative for this process.
    */
   private void seedConversationMemoryFromPersistedHistory(
       Optional<Chat> chat, String conversationKey) {
@@ -398,12 +364,9 @@ public class QueryService {
 
   /**
    * Samples {@link #checkAgainstPermissionHistory} down to {@link
-   * QueryProperties#permissionHistorySampleRate} of queries instead of running it on every one -
-   * see that field's Javadoc for why the reconstruction cost is unnecessary on every request for a
-   * drift signal that either never fires or keeps firing on every query until fixed. {@code
-   * sampleRate = 1.0} runs the check every time; {@code sampleRate = 0.0} never runs it. The dice
-   * roll happens here, not inside {@link #checkAgainstPermissionHistory} itself, which stays a
-   * plain, deterministic, directly testable check.
+   * QueryProperties#permissionHistorySampleRate} of queries: {@code 1.0} checks every query, {@code
+   * 0.0} none. The dice roll happens here rather than inside the check itself, which stays
+   * deterministic and directly testable.
    */
   private void maybeCheckAgainstPermissionHistory(
       Set<UUID> readableScope, UUID currentUserId, UUID organizationId, Instant asOf) {
@@ -414,17 +377,12 @@ public class QueryService {
   }
 
   /**
-   * #238's regression check - see {@link #query}'s Javadoc. {@code readableScope} is the full set
-   * {@link LibraryAccessService#readableLibraryIds} computed for this query at {@code asOf} - not
-   * necessarily the narrower {@code searchScope} #525/#526 may actually hand to the vector store,
-   * since either can restrict the search to a subset of what is merely readable. Any id in {@code
-   * readableScope} the permission history does not also grant as of {@code asOf} is a mismatch,
-   * logged as a single warning per query (not once per offending library - code review of #427, nit
-   * 2), never silently ignored. {@code asOf} is the instant {@code readableScope} was itself
-   * computed at, not a fresh {@code Instant.now()} taken here - reusing it avoids a false-positive
-   * mismatch from a permission change landing in the gap between the two computations. Not sampled
-   * itself - see {@link #maybeCheckAgainstPermissionHistory}, its only caller, for the sampling
-   * decision (#889, O1).
+   * Compares the live readable set against the permission history's reconstruction for the same
+   * instant (docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten).
+   * Any library the live computation grants and the history does not is an enforcement drift,
+   * logged as one warning per query with the offending ids only, never the whole readable set.
+   * {@code asOf} must be the instant {@code readableScope} was computed at: a fresh {@code
+   * Instant.now()} here would report a permission change landing in between as a mismatch.
    */
   private void checkAgainstPermissionHistory(
       Set<UUID> readableScope, UUID currentUserId, UUID organizationId, Instant asOf) {
@@ -451,23 +409,14 @@ public class QueryService {
   }
 
   /**
-   * The retrieval half of {@link #query}: the {@link RetrievalPipeline}'s stages 1 to 6 as
-   * documented in docs/features/retrieval-algorithm.md — scope filter, decomposition, one vector
-   * search per sub-query, MMR, Reciprocal Rank Fusion and document completion — stopping before
-   * step 7 (answer generation, citation validation, source mapping). Returns the chunks in the
-   * exact order and count the answer prompt would have been built from, using the configured {@link
-   * QueryProperties} for every parameter, {@code similarityThreshold} included.
+   * The retrieval half of {@link #query}: runs the whole {@link RetrievalPipeline} and returns the
+   * chunks in the exact order and count the answer prompt would be built from, stopping before
+   * answer generation, citation validation and source mapping.
    *
-   * <p><b>{@code searchScope} is taken as given — hence the name.</b> This method applies it as the
-   * {@code library_id} filter of every search exactly as {@link #query} does, but resolves no
-   * permissions of its own: a caller other than {@link #query} is responsible for establishing that
-   * the scope it passes is one the acting user may read (ADR-0008 §5). The retrieval-evaluation
-   * harness ({@code io.opaa.eval}) is such a caller: it deliberately measures a fixed, complete
-   * scope over its own eval library, since permission enforcement is covered by the backend's
-   * integration tests and is not a measurement subject.
-   *
-   * <p>An empty {@code searchScope} short-circuits to an empty result without any search, LLM call
-   * or embedding lookup — the same short-circuit {@link #query} takes.
+   * <p>{@code searchScope} is taken as given - hence the name. This method applies it as the {@code
+   * library_id} filter of every search but resolves no permissions of its own: the caller is
+   * responsible for the scope being one the acting user may read (ADR-0008 §5). An empty scope
+   * short-circuits to an empty result without any search, LLM call or embedding lookup.
    */
   public List<Document> retrieveRelevantChunksInGivenScope(
       String question, List<Message> conversationHistory, Set<UUID> searchScope) {
@@ -475,7 +424,7 @@ public class QueryService {
         question, conversationHistory, searchScope, MetadataFilter.NONE);
   }
 
-  /** The same retrieval with a core-field filter (#1070) carried into the run as given. */
+  /** The same retrieval with a core-field filter carried into the run as given. */
   public List<Document> retrieveRelevantChunksInGivenScope(
       String question,
       List<Message> conversationHistory,
@@ -500,22 +449,14 @@ public class QueryService {
 
   /**
    * The same retrieval as {@link #retrieveRelevantChunksInGivenScope}, additionally exposing the
-   * search queries decomposition produced — needed by the pipeline measurement path (issue #1044,
-   * docs/features/retrieval-benchmark.md §3) to detect, across repeated runs of the same question,
-   * whether decomposition produced a different set of sub-queries. A separate method rather than
-   * changing {@link #retrieveRelevantChunksInGivenScope}'s return type: that method's one remaining
-   * caller, {@link #query}, has no use for the search queries and would only gain call-site noise
-   * from unpacking a record it discards.
+   * search queries the decomposition produced - what the benchmark path needs to detect, across
+   * repeated runs of one question, whether the decomposition varied
+   * (docs/features/retrieval-benchmark.md §3). Applies the same {@code searchScope}-taken-as-given
+   * contract.
    *
-   * <p>Applies the same {@code searchScope}-taken-as-given contract as {@link
-   * #retrieveRelevantChunksInGivenScope} — see that method's Javadoc for the ADR-0008 §5 permission
-   * invariant this method's callers are responsible for.
-   *
-   * <p>The explanation protocol every stage produces is deliberately dropped here: an answer needs
-   * the chunks, and nothing in this path evaluates why a candidate was displaced. A caller that
-   * does — the administration's diagnosis — runs {@link RetrievalPipeline#run} itself and keeps the
-   * whole {@link RetrievalPipelineResult} (docs/features/hybrid-retrieval.md, Arbeitspaket 1: "Ob
-   * das Protokoll festgehalten wird, entscheidet der Aufrufer; erzeugt wird es immer").
+   * <p>The explanation protocol the stages produce is dropped here: an answer needs the chunks
+   * alone. A caller that evaluates why a candidate was displaced - the administration's diagnosis -
+   * runs {@link RetrievalPipeline#run} itself and keeps the whole {@link RetrievalPipelineResult}.
    */
   public RetrievalWithDecomposition retrieveRelevantChunksInGivenScopeWithDecomposition(
       String question, List<Message> conversationHistory, Set<UUID> searchScope) {
@@ -523,7 +464,7 @@ public class QueryService {
         question, conversationHistory, searchScope, MetadataFilter.NONE);
   }
 
-  /** The same retrieval with a core-field filter (#1070) carried into the run as given. */
+  /** The same retrieval with a core-field filter carried into the run as given. */
   public RetrievalWithDecomposition retrieveRelevantChunksInGivenScopeWithDecomposition(
       String question,
       List<Message> conversationHistory,
@@ -540,9 +481,8 @@ public class QueryService {
                 // Read once per run, so every stage sees the same answer: fusion widens its
                 // budget for the reranker only if the reranker can actually be called.
                 RerankAvailability.of(rerankModelRole.currentStatus().state())));
-    // Only for a run that actually searched: an empty scope logged nothing before this pipeline
-    // existed, and a "0 chunks across 0 search queries" line would read like a failed retrieval
-    // rather than the deliberate short-circuit it is.
+    // Only for a run that actually searched: a "0 chunks across 0 search queries" line would
+    // read like a failed retrieval rather than the deliberate empty-scope short-circuit.
     if (!result.searchQueries().isEmpty()) {
       log.debug(
           "Retrieved {} relevant chunks across {} search quer{} for query",
@@ -554,9 +494,9 @@ public class QueryService {
   }
 
   /**
-   * Groups by {@code document_id}, not {@code file_name} (#739): two distinct documents that happen
-   * to share a file name must each get their own match count, the same collision {@link
-   * #mapSources} now avoids by keying its merge on {@code document_id} too.
+   * Groups by {@code document_id}, not {@code file_name}: two distinct documents that happen to
+   * share a file name each get their own match count, the same collision {@link #mapSources} avoids
+   * by keying its merge on {@code document_id} too.
    */
   private Map<String, Integer> countMatchesPerDocument(List<Document> chunks) {
     return chunks.stream()
@@ -566,11 +506,9 @@ public class QueryService {
   /**
    * Resolves each cited chunk's {@code document_id} to its persisted {@link
    * io.opaa.indexing.document.Document} - the single {@link DocumentRepository} lookup {@link
-   * #mapSources} draws both {@code indexedAt} and {@code sourceEntryUrl} from (#639), rather than a
-   * second, duplicate lookup per field. {@code sourceEntryUrl} follows the same document_id-lookup
-   * pattern this method already used for {@code indexedAt} alone - see the comment in {@code
-   * DocumentIngestService#storeChunks} for why the value is not instead duplicated onto every chunk
-   * in the vector store.
+   * #mapSources} draws {@code indexedAt}, {@code sourceEntryUrl} and the source type from, rather
+   * than one lookup per field. The values are read from the document instead of being duplicated
+   * onto every chunk of the vector store.
    */
   private Map<String, io.opaa.indexing.document.Document> lookupSourceDocuments(
       List<Document> chunks) {
@@ -587,10 +525,8 @@ public class QueryService {
             .findById(UUID.fromString(docId))
             .ifPresent(doc -> result.put(docId, doc));
       } catch (IllegalArgumentException e) {
-        // #78: not a transient failure - a chunk's document_id metadata never fails to parse on
-        // its own, so this signals a data problem (corrupt indexing, a botched migration, or a
-        // version mismatch between indexer and query service) that DEBUG would hide in
-        // production.
+        // Not a transient failure: a chunk's document_id never fails to parse on its own, so this
+        // signals a data problem, and WARN rather than DEBUG keeps it visible in production.
         log.warn("Invalid document ID '{}' in chunk metadata - likely a data problem", docId);
       }
     }
@@ -618,10 +554,8 @@ public class QueryService {
   }
 
   /**
-   * Logs the number of invalid citations found in this answer's response (#386) - deliberately a
-   * single log line per answer, not a new metric: the issue's scope is the deterministic validation
-   * itself, not new metrics infrastructure. Nothing is logged when every citation validated, so the
-   * log volume tracks only answers that actually need attention.
+   * Logs the number of invalid citations of one answer - one line per answer, and nothing at all
+   * when every citation validated, so the log volume tracks only answers that need attention.
    */
   private void logInvalidCitations(List<CitationValidator.ValidatedCitation> validatedCitations) {
     long invalidCount = validatedCitations.stream().filter(c -> !c.valid()).count();
@@ -635,33 +569,9 @@ public class QueryService {
   }
 
   /**
-   * Builds one {@link ChatSource} per retrieved file, plus a synthetic entry for every invalid
-   * citation whose document id matches none of the retrieved chunks at all (#386) - the only case
-   * where an invalid citation cannot attach to a real retrieved chunk's source entry, since it
-   * points at a document this answer never actually searched. {@code cited} only reflects
-   * <em>valid</em> citations - an invalid one never makes an unrelated, merely pattern-matching
-   * citation count as genuine.
-   *
-   * <p>Synthetic entries deliberately do <b>not</b> go through the same file-name merge as the
-   * real, retrieved-chunk entries: a fabricated citation can coincide in file name with a real,
-   * retrieved document, and merging would let the fabricated citation's {@code cited = true},
-   * relevance score and document link overwrite the real entry's own values. A colliding synthetic
-   * entry instead folds into the matching real entry by flipping only its {@code citationValid} to
-   * {@code false} - {@code cited}, relevance score, match count and document link stay exactly as
-   * the real, retrieved chunk(s) determined them. A synthetic entry is appended as its own row only
-   * when no real entry shares its file name (avoiding two rows sharing one {@code fileName}, which
-   * {@code frontend/src/components/chat/citations.ts} would resolve last-wins).
-   *
-   * <p>Real entries are deduped by {@code document_id}, not {@code fileName} (#739): two distinct
-   * documents sharing a file name each keep their own {@link ChatSource} row. The orphan-collision
-   * check below still matches by {@code fileName} deliberately - a fabricated citation naming the
-   * right file name but the wrong document id must still flag every real entry sharing that file
-   * name, since there is no other signal for which one the model meant.
-   */
-  /**
-   * The library fields a Beleg shows (#1071) for every resolved source document - at most two per
-   * library, in their configured order. A lookup failure is logged and yields no library fields
-   * rather than failing the answer, exactly like the core-field lookup.
+   * The library fields a Beleg shows for every resolved source document - at most two per library,
+   * in their configured order. A lookup failure is logged and yields no library fields rather than
+   * failing the answer, exactly like the core-field lookup.
    */
   private Map<UUID, List<CitationFieldValue>> lookupCitationFields(
       Map<String, io.opaa.indexing.document.Document> sourceDocumentsByDocId) {
@@ -676,6 +586,20 @@ public class QueryService {
     }
   }
 
+  /**
+   * Builds one {@link ChatSource} per retrieved document, deduplicated by {@code document_id} and
+   * ranked gap-free by first appearance in the selection, plus a synthetic entry per invalid
+   * citation whose document id matches no retrieved chunk. {@code cited} reflects valid citations
+   * only, so a merely pattern-matching citation never counts as genuine.
+   *
+   * <p>A synthetic entry never goes through the merge of the real entries: a fabricated citation
+   * can coincide in file name with a real document, and merging would let its {@code cited},
+   * relevance score and document link overwrite the real values. It folds into a colliding real
+   * entry by flipping that entry's {@code citationValid} to {@code false} and is appended as its
+   * own row only when no real entry shares its file name. That collision check matches by file name
+   * deliberately - a fabricated citation naming the right file but the wrong document id must still
+   * flag every real entry of that name, there being no other signal for which one was meant.
+   */
   private List<ChatSource> mapSources(
       List<Document> chunks,
       List<CitationValidator.ValidatedCitation> validatedCitations,
@@ -754,11 +678,10 @@ public class QueryService {
                     QueryService::mergeSourceReferences,
                     LinkedHashMap::new));
 
-    // The chunk-position score above is only the merge's tie-break for #mergeSourceReferences'
-    // "preferred" instance; the value a client sees is the entry's own rank. The map's insertion
-    // order is the documents' first-appearance order in the selection, so renumbering its values
-    // turns a chunk rank (which skips a position whenever one document contributed two chunks)
-    // into a gap-free source rank (#1102).
+    // The chunk-position score above is only the merge's tie-break for the "preferred" instance;
+    // the value a client sees is the entry's own rank. The map's insertion order is the documents'
+    // first-appearance order, so renumbering turns a chunk rank - which skips a position whenever
+    // one document contributed two chunks - into a gap-free source rank.
     int sourceRank = 1;
     for (ChatSource source : fromChunksByDocumentId.values()) {
       source.setRelevanceScore(relevanceScoreForRank(sourceRank++));
@@ -784,11 +707,11 @@ public class QueryService {
   }
 
   /**
-   * #1070/#1071: whether a retrieved document matched every filtered field or was kept by the
-   * Leerwert rule alone. Read from the chunk's own metadata keys - the ones both search paths
-   * filtered on, so the mark cannot disagree with the condition that let the chunk through, and a
-   * library field is covered without a second query per document. Null without an active filter,
-   * and for a chunk whose document no longer resolves.
+   * Whether a retrieved document matched every filtered field or was kept by the Leerwert rule
+   * alone. Read from the chunk's own metadata keys - the ones both search paths filtered on, so the
+   * mark cannot disagree with the condition that let the chunk through, and a library field is
+   * covered without a second query per document. Null without an active filter, and for a chunk
+   * whose document no longer resolves.
    */
   static MetadataFilterMatch metadataFilterMatch(
       MetadataFilter filter, CoreMetadata core, Document chunk) {
@@ -804,7 +727,7 @@ public class QueryService {
    * The reciprocal of a 1-based position - {@code 1.0} for the first, strictly decreasing and
    * always within {@code (0, 1]}, so it stays inside {@code SourceReference#relevanceScore}'s
    * declared bounds. A position is comparable across search paths, a raw {@link
-   * Document#getScore()} is not (#1102).
+   * Document#getScore()} is not.
    */
   private static double relevanceScoreForRank(int rank) {
     return 1.0 / rank;
@@ -812,10 +735,8 @@ public class QueryService {
 
   /**
    * Parses a chunk's {@code document_id} metadata value into a {@link UUID} for {@link
-   * ChatSource#getDocumentId()} (#739), returning {@code null} for an empty or malformed value
-   * rather than throwing - the same defensive handling {@link #lookupSourceDocuments} already
-   * applies to the identical metadata field, since a chunk with missing/corrupt metadata must not
-   * fail the whole answer.
+   * ChatSource#getDocumentId()}, returning {@code null} for an empty or malformed value rather than
+   * throwing: a chunk with corrupt metadata must not fail the whole answer.
    */
   private static UUID parseDocumentId(String documentId) {
     if (documentId.isEmpty()) {
@@ -824,8 +745,7 @@ public class QueryService {
     try {
       return UUID.fromString(documentId);
     } catch (IllegalArgumentException e) {
-      // #78: same rationale as lookupSourceDocuments above - WARN, not DEBUG, since this
-      // indicates a data problem rather than a transient error.
+      // Same rationale as lookupSourceDocuments above: a data problem, not a transient error.
       log.warn("Invalid document ID '{}' in chunk metadata - likely a data problem", documentId);
       return null;
     }
@@ -833,16 +753,11 @@ public class QueryService {
 
   /**
    * Builds one synthetic {@link ChatSource} per distinct file name an invalid citation claimed for
-   * a document id that matches no retrieved chunk at all (#386) - this is the only way such a
-   * citation can be flagged at all, since it does not correspond to any real retrieved chunk that
-   * would otherwise carry the flag. {@code relevanceScore} and {@code matchCount} are both {@code
-   * 0} - the honest signal that there is no real retrieved passage behind this entry, not merely a
-   * low one.
-   *
-   * <p>#697 review, finding 4: {@code cited = true} is deliberate, not an oversight - the citation
-   * is why this entry exists at all, so it must not be sorted into "checked but uncited" ({@link
-   * #mapSources}'s uncited group), which would misrepresent a fabricated reference as a real
-   * document that was merely retrieved and not used.
+   * a document id no retrieved chunk carries - the only way such a citation can be flagged, since
+   * no real entry would carry the flag. {@code relevanceScore} and {@code matchCount} are {@code
+   * 0}: there is no retrieved passage behind the entry, not merely a weak one. {@code cited = true}
+   * is deliberate - the citation is why the entry exists, so it must not be sorted into "checked
+   * but uncited", which would present a fabricated reference as a retrieved but unused document.
    */
   private List<ChatSource> buildOrphanSourceReferences(
       List<CitationValidator.ValidatedCitation> validatedCitations,
@@ -859,30 +774,25 @@ public class QueryService {
   }
 
   /**
-   * Merges duplicate source references for the same <b>document</b> (dedupe key is {@code
-   * document_id}, not {@code fileName} - #739), keeping the one with the highest relevance score
-   * while preserving citation status. If either reference was cited in the answer, the merged
-   * result is marked as cited - any chunk from that document being cited means the document as a
-   * whole contributed to the answer.
+   * Merges duplicate source references of the same <b>document</b> - the dedupe key is {@code
+   * document_id}, never {@code fileName} - keeping the higher-scoring one and marking the result
+   * cited if either side was: a cited chunk means the document contributed to the answer.
    *
-   * <p>{@code a} and {@code b} always share the same {@code document_id} and therefore the same
-   * underlying {@link io.opaa.indexing.document.Document} row - {@code documentId}, {@code
-   * sourceType}, {@code sourceUrl} and {@code sourceEntryUrl} are consequently always equal between
-   * them, unlike under a fileName key where two genuinely different documents could disagree.
+   * <p>{@code a} and {@code b} therefore always share one underlying document row, so {@code
+   * documentId}, {@code sourceType} and {@code sourceUrl} are equal between them.
    */
   static ChatSource mergeSourceReferences(ChatSource a, ChatSource b) {
     ChatSource preferred = a.getRelevanceScore() >= b.getRelevanceScore() ? a : b;
     boolean shouldBeCited = a.getCited() || b.getCited();
-    // #386: valid only if neither side carries an invalid citation - one invalid citation for
-    // this file is enough to flag the merged entry, mirroring shouldBeCited's OR but inverted,
-    // since "valid" is the property that must hold for *every* citation, not just one.
+    // Valid only if neither side carries an invalid citation: "valid" must hold for every
+    // citation of this document, so one invalid citation flags the merged entry.
     boolean mergedCitationValid = isCitationValid(a) && isCitationValid(b);
     String mergedSourceEntryUrl =
         Objects.equals(a.getSourceEntryUrl(), b.getSourceEntryUrl())
             ? preferred.getSourceEntryUrl()
             : null;
-    // #667: every retrieved chunk keeps its own location entry, ordered by chunk index, so the
-    // frontend can resolve any footnote of this document - not only the best-scoring chunk's.
+    // Every retrieved chunk keeps its own location entry, ordered by chunk index, so any
+    // footnote of this document resolves - not only the best-scoring chunk's.
     List<ChatSourceLocation> mergedChunkLocations = mergeChunkLocations(a, b);
     // ADR-0024: schema metadata hangs on the document, so both sides carry the same list or none.
     List<ChatSourceMetadataEntry> mergedMetadata =
@@ -923,10 +833,10 @@ public class QueryService {
   }
 
   /**
-   * The #667 location entry of one retrieved chunk: its {@code chunk_index} (the number the
-   * citation marker names) and the {@code location} the indexing pipeline stored, null when it
-   * stored none. A chunk without a usable {@code chunk_index} (legacy data predating the metadata)
-   * yields no entry at all - there is no number a footnote could be resolved by.
+   * The location entry of one retrieved chunk: its {@code chunk_index} - the number the citation
+   * marker names - and the {@code location} the indexing pipeline stored, null when it stored none.
+   * A chunk without a usable {@code chunk_index} yields no entry: there is no number a footnote
+   * could be resolved by.
    */
   private static List<ChatSourceLocation> chunkLocationOf(Document chunk) {
     Object rawIndex = chunk.getMetadata().get("chunk_index");
@@ -947,10 +857,9 @@ public class QueryService {
   }
 
   /**
-   * The libraries the vector search actually ran against (#667), by name - what mockup 1a's
-   * "Durchsucht wurden: …" line under an unsubstantiated answer names. Resolved from the effective
-   * {@code searchScope}, never from the request, so it reflects permissions and the chat's own
-   * settings exactly as the search did. Empty when no search ran.
+   * The libraries the search actually ran against, by name - the "Durchsucht wurden: …" line under
+   * an unsubstantiated answer. Resolved from the effective {@code searchScope}, never from the
+   * request, so it reflects permissions and the chat's settings exactly as the search did.
    */
   private List<SearchedLibraryRef> searchedLibraries(Set<UUID> searchScope) {
     if (searchScope.isEmpty()) {
@@ -962,7 +871,7 @@ public class QueryService {
         .collect(Collectors.toCollection(ArrayList::new));
   }
 
-  /** {@code citationValid} defaults to {@code true} (absent = never flagged invalid) - #386. */
+  /** {@code citationValid} defaults to {@code true}: absent means never flagged invalid. */
   private static boolean isCitationValid(ChatSource source) {
     Boolean citationValid = source.getCitationValid();
     return citationValid == null || citationValid;

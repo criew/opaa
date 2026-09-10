@@ -13,27 +13,19 @@ import java.util.stream.Collectors;
 import org.springframework.ai.document.Document;
 
 /**
- * Completes a post-fusion/post-MMR chunk selection with sibling chunks of documents it already
- * represents (#932): up to {@link QueryProperties#maxChunksPerDocument} chunks per document from
- * the already permission/threshold-filtered {@code candidatePool} (the same pool {@code
- * similaritySearch} produced for {@code selection}) are preferred over a chunk of a different
- * document filling the remaining budget.
+ * Completes a fused chunk selection with sibling chunks of documents it already represents
+ * (docs/handbuch/suche.md, Stufe 9): up to {@link QueryProperties#maxChunksPerDocument} chunks per
+ * document, drawn only from the permission-scoped candidate pool the search stages filled, are
+ * preferred over a chunk of a different document filling the remaining budget.
  *
- * <p>Tier 1 evicts the weakest chunk of some other, not-yet-completed document already holding at
- * least two chunks - document diversity never drops below what fusion/MMR established.
+ * <p>Tier 1 evicts the weakest chunk of another, not-yet-completed document already holding at
+ * least two, so document diversity never drops below what fusion established. Tier 2 runs only when
+ * tier 1 finds no source, is capped at {@code max(1, overallBudget / 4)} evictions per call, and
+ * takes the lowest-ranked chunk of the whole selection - only if the completing document's own best
+ * chunk ranks strictly better - which may drop a document from the answer.
  *
- * <p>Tier 2, tried only when tier 1 finds no source and capped at {@code max(1, overallBudget / 4)}
- * evictions per call (#932 scope v2 - v1's tier-1-only rule was a no-op whenever every document
- * held exactly one chunk, its own live-verification failure mode): evicts the lowest-ranked chunk
- * of the whole selection, but only when the completing document's own best chunk ranks strictly
- * better than that victim, the victim was not itself added this call, and it does not belong to the
- * completing document. May drop a document out of the selection entirely - diversity is not
- * protected here.
- *
- * <p>A document already completed this call is never a tier-1 source; a chunk either tier added is
- * never a later victim in either tier, so a completion never undoes an earlier one. A completed
- * document's own original chunk, unlike its just-added completion, stays eligible as a later tier-2
- * victim. Filling never grows {@code selection} past {@code overallBudget}.
+ * <p>A chunk either tier added is never a later victim, so a completion never undoes an earlier
+ * one, and completion never grows the selection past {@code overallBudget}.
  */
 final class DocumentCompletion {
 
@@ -45,8 +37,8 @@ final class DocumentCompletion {
    *
    * @param evicted {@code null} when the selection still had free budget and nothing had to go.
    * @param evictionTier {@code 0} when nothing was evicted, otherwise the tier that chose the
-   *     victim (see this class's Javadoc) - the difference between an eviction that preserved
-   *     document diversity and one that may have dropped a document from the answer.
+   *     victim - the difference between an eviction that preserved document diversity and one that
+   *     may have dropped a document from the answer.
    */
   record CompletionEvent(
       Document added, String completedDocumentKey, Document evicted, int evictionTier) {}
@@ -76,10 +68,8 @@ final class DocumentCompletion {
       return selection;
     }
 
-    // The authoritative rank both paths agree on: selection's own order (fused-score descending
-    // on the multi-sub-query path, plain relevance descending on the single-query path) - never
-    // Document#getScore() directly, which is only comparable within a single search vector and is
-    // exactly the cross-sub-query comparison ReciprocalRankFusion's Javadoc documents as invalid.
+    // The authoritative rank is the selection's own order - never Document#getScore(), which is
+    // only comparable within the single search that produced it (see ReciprocalRankFusion).
     Map<String, Integer> originalRankByChunkId = new HashMap<>();
     Map<String, Integer> bestOriginalRankByDocument = new HashMap<>();
     for (int i = 0; i < selection.size(); i++) {
@@ -100,8 +90,8 @@ final class DocumentCompletion {
     // a subsequent one within the same call (see this class's Javadoc).
     Set<String> completedDocumentKeys = new HashSet<>();
 
-    // Tier 2's per-call cap (#932 scope v2, Maintainer decision): unbounded tier-2 eviction could
-    // otherwise shrink an eight-topic answer down to a handful of documents in a single call.
+    // Tier 2's per-call cap: unbounded tier-2 eviction could otherwise shrink an eight-topic
+    // answer down to a handful of documents in a single call.
     int tier2EvictionCap = Math.max(1, overallBudget / 4);
     int tier2EvictionsUsed = 0;
 
@@ -173,10 +163,9 @@ final class DocumentCompletion {
    * (the same chunk can appear once per sub-query and once per search path in a pooled candidate
    * list, kept at its first-occurring instance) and ordered by each chunk's own first-occurrence
    * position in {@code candidatePool} - not {@link Document#getScore()}, which is only comparable
-   * within the single search that produced it (see this class's Javadoc). First-occurring, not
-   * highest-scoring, for the reason {@link ReciprocalRankFusion} states for the same tie-break:
-   * since #1049 two instances of one chunk can carry a cosine similarity and a {@code ts_rank}, and
-   * the larger of those two numbers means nothing.
+   * within the single search that produced it. First-occurring, not highest-scoring, for the reason
+   * {@link ReciprocalRankFusion} states for the same tie-break: two instances of one chunk can
+   * carry a cosine similarity and a {@code ts_rank}, and the larger of the two means nothing.
    */
   private static Map<String, List<Document>> unusedCandidatesByDocument(
       List<Document> candidatePool, Set<String> selectedChunkIds) {

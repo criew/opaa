@@ -8,32 +8,19 @@ import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 
 /**
- * Step 4 of docs/features/retrieval-algorithm.md as a pipeline stage: narrows every candidate list
- * to {@link RetrievalContext#candidateBudget()} via {@link MmrSelector}, each list on its own - MMR
- * runs inside one sub-query's single-topic candidate pool, never across the pooled cross-topic
- * result. That budget is {@link QueryProperties#topK} unless reranking runs, in which case it is
- * the wider rerank candidate window: a reranker that only ever saw {@code top-k} candidates could
- * not promote anything the earlier stages had already dropped, which is the entire point of the
- * stage (docs/features/hybrid-retrieval.md, Arbeitspaket 4).
+ * The {@link RetrievalStageName#MMR_SELECTION} stage: narrows every candidate list to {@link
+ * RetrievalContext#candidateBudget()} via {@link MmrSelector}, each list on its own - MMR runs
+ * inside one search query's candidate pool, never across the pooled cross-topic result. It narrows
+ * only, so every chunk it passes on stays permission-scoped by the search that produced it.
  *
- * <p>The chunk embeddings MMR needs are read back once for the whole run, over the pooled
- * candidates, rather than once per list: {@link ChunkEmbeddingLookup} does not care which list a
- * candidate came from. At {@link QueryProperties#mmrLambda} {@code >= 1.0} the diversity term is
- * always multiplied by zero (see {@link MmrSelector#select}), so the round trip is skipped entirely
- * - it could not affect the result.
+ * <p>The chunk embeddings MMR needs are read once for the whole run over the pooled candidates. At
+ * {@link QueryProperties#mmrLambda} {@code >= 1.0} the diversity term is multiplied by zero, so
+ * {@link ChunkEmbeddingLookup} is skipped entirely - it could not affect the result.
  *
- * <p>Narrows only: every chunk it passes on was already permission-scoped by the search that
- * produced it, and threshold-filtered if that search was the vector one - {@link
- * QueryProperties#similarityThreshold} is a property of vector distance and has no counterpart in
- * the lexical path, whose lists this stage narrows by the same per-list budget all the same.
- *
- * <p><b>At {@link QueryProperties#mmrLambda} {@code < 1.0} this stage treats the two paths' lists
- * unequally</b>, and knowingly so: the relevance term is each candidate's own score, which is a
- * cosine similarity in a vector list and a {@code ts_rank} an order of magnitude smaller in a
- * lexical one, while the diversity term is a cosine similarity in both. A lexical list is therefore
- * ordered almost entirely by diversity at any lambda below 1.0 - see {@link MmrSelector}'s scale
- * note. The shipped default is {@code 1.0}, where the diversity term is multiplied by zero and both
- * paths are narrowed identically.
+ * <p>Below {@code 1.0} the two paths' lists are treated unequally and knowingly so: the relevance
+ * term is the candidate's own score - a cosine similarity in a vector list, a {@code ts_rank} an
+ * order of magnitude smaller in a lexical one - while the diversity term is a cosine similarity in
+ * both, so a lexical list is then ordered almost entirely by diversity.
  */
 @Component
 class MmrSelectionStage implements RetrievalStage {
@@ -98,10 +85,7 @@ class MmrSelectionStage implements RetrievalStage {
                     : RetrievalNote.MMR_LAMBDA_ACTIVE.format(properties.mmrLambda()))));
   }
 
-  /**
-   * One pooled lookup for the whole run, skipped entirely at {@code mmrLambda >= 1.0} - see this
-   * class's Javadoc.
-   */
+  /** One pooled lookup for the whole run, skipped entirely at {@code mmrLambda >= 1.0}. */
   private Map<String, float[]> lookupEmbeddings(
       List<Document> candidatePool, QueryProperties properties) {
     return properties.mmrLambda() >= 1.0

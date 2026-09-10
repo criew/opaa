@@ -1,51 +1,45 @@
 package io.opaa.query;
 
 /**
- * The named stages of the retrieval pipeline (docs/features/hybrid-retrieval.md, Arbeitspaket 1).
- * The constant order is documentation only - the order stages actually run in is the order {@code
- * QueryConfiguration#retrievalPipeline} registers them in, which is the one place it is decided.
+ * The named stages of the retrieval pipeline (docs/handbuch/suche.md Abschnitt 4,
+ * docs/features/retrieval-algorithm.md). The constant order is documentation only - the order
+ * stages actually run in is the order {@code QueryConfiguration#retrievalPipeline} registers them
+ * in, which is the one place it is decided.
  *
- * <p>Each stage can be switched off individually via {@link RetrievalPipelineProperties}, and a
- * switched-off stage is the identity: the pipeline then runs exactly as it would without that stage
- * in the chain - not as it would with the stage present but neutralized. That distinction is the
- * point of the switch: it lets a benchmark measure a stage's contribution rather than the
- * difference between two code paths. What "without this stage" means for each one is documented on
- * the constant itself.
- *
- * <p>{@link #SEARCH_SCOPE} is the one stage that cannot be switched off - see its own
- * documentation.
+ * <p>Every stage except {@link #SEARCH_SCOPE} can be switched off via {@link
+ * RetrievalPipelineProperties}, and a switched-off stage is the identity: the pipeline then runs
+ * exactly as it would without that stage in the chain, not as it would with the stage present but
+ * neutralized. What "without this stage" means is documented on the constant itself.
  */
 public enum RetrievalStageName {
 
   /**
    * Turns the caller-supplied, already permission-resolved search scope into the {@code library_id
-   * IN (...)} filter every search stage must apply (ADR-0008 §5,
-   * docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit). Halts the run when the scope
-   * is empty: there is nothing to search, and no later stage may widen it.
+   * IN (...)} filter every search stage must apply (ADR-0008 §5). Halts the run when the scope is
+   * empty; no later stage may widen it.
    *
-   * <p><b>Not switchable.</b> "Without this stage" would mean searching without a permission
-   * filter, which is not a measurable variant but a permission bypass. {@link RetrievalPipeline}
-   * rejects a configuration that names it at construction time rather than at query time.
+   * <p><b>Not switchable.</b> A run without the permission filter is a bypass, not a measurable
+   * variant; {@link RetrievalPipeline} rejects such a configuration at construction time.
    */
   SEARCH_SCOPE,
 
   /**
-   * Carries the caller-supplied core-field filter (#1070, metadata-schema.md Wirkstelle 1) into the
-   * run: the Dokumentart set and the Datum/Stand window, in the vector-path form and the domain
+   * Carries the caller-supplied core-field filter into the run - the Dokumentart set and the
+   * Datum/Stand window (metadata-schema.md Wirkstelle 1) - in the vector-path form and the domain
    * form the lexical path translates to SQL. Both search stages AND it to the permission filter
-   * from {@link #SEARCH_SCOPE} - inside the query, before ranking, never on a result - so the
-   * filter narrows the readable set and can never widen it. A document without a value for a
-   * filtered field is kept ("Leerwerte schließen nicht aus").
+   * from {@link #SEARCH_SCOPE} inside the query, before ranking, never on a result, so the filter
+   * narrows the readable set and can never widen it. A document without a value for a filtered
+   * field is kept ("Leerwerte schließen nicht aus").
    *
-   * <p>Switched off, the searches run unfiltered - the pipeline as it was before the filter
-   * existed, whatever the caller asked for; the protocol says so.
+   * <p>Switched off, the searches run unfiltered whatever the caller asked for; the protocol says
+   * so.
    */
   METADATA_FILTER,
 
   /**
    * Produces the search queries the search stages run, one each: 1 to {@link
-   * QueryProperties#maxSubQueries} sub-queries from {@link QueryDecompositionService#decompose}
-   * (#923), or the single-query fallback whenever decomposition is off, fails, or returns nothing.
+   * QueryProperties#maxSubQueries} sub-queries from {@link QueryDecompositionService#decompose}, or
+   * the single-query fallback whenever decomposition is off, fails, or returns nothing.
    *
    * <p>Note the two distinct "off" notions: {@link QueryProperties#queryDecompositionEnabled}
    * {@code = false} keeps this stage in the chain and yields the fallback query, while switching
@@ -60,7 +54,7 @@ public enum RetrievalStageName {
    * {@link QueryProperties#fetchK} candidates per query. One of the two stages that add candidates
    * the pipeline did not already hold; every later stage is confined to what the two produced.
    *
-   * <p>Switched off, the pipeline retrieves through the lexical path alone (#1049) - the {@code
+   * <p>Switched off, the pipeline retrieves through the lexical path alone - the {@code
    * lexical-only} variant, and nothing at all if that path is switched off too.
    */
   VECTOR_SEARCH,
@@ -68,12 +62,12 @@ public enum RetrievalStageName {
   /**
    * One PostgreSQL full-text query per search query, each with the identical filter from {@link
    * #SEARCH_SCOPE} and the identical {@link QueryProperties#fetchK}, over the libraries whose
-   * full-text backfill has finished (docs/features/hybrid-retrieval.md, Arbeitspaket 2).
+   * full-text backfill has finished. The second stage that adds candidates; its lists enter {@link
+   * #RANK_FUSION} next to the vector path's, one per search query.
    *
-   * <p>Its lists are inputs of {@link #RANK_FUSION} (#1049), one per search query, next to the
-   * vector path's. Switched off, the pipeline retrieves through the vector path alone - the {@code
-   * vector-only} measurement variant, which {@link QueryProperties#fullTextSearchEnabled()}
-   * expresses without removing the stage from the chain.
+   * <p>Switched off, the pipeline retrieves through the vector path alone - the {@code vector-only}
+   * measurement variant, which {@link QueryProperties#fullTextSearchEnabled()} expresses without
+   * removing the stage from the chain.
    */
   FULL_TEXT_SEARCH,
 
@@ -97,32 +91,24 @@ public enum RetrievalStageName {
 
   /**
    * Re-scores the fused candidate window with the rerank model role ({@code
-   * io.opaa.llm.RerankModelRole}) and cuts it back to {@link QueryProperties#topK}
-   * (docs/features/hybrid-retrieval.md, Arbeitspaket 4). Runs after {@link #RANK_FUSION} and before
-   * {@link #DOCUMENT_COMPLETION}: completion adds sibling chunks of already selected documents and
-   * must therefore work on the final ranking, not on one the reranker would resort.
+   * io.opaa.llm.RerankModelRole}) and cuts it back to {@link QueryProperties#topK}. Runs after
+   * {@link #RANK_FUSION} and before {@link #DOCUMENT_COMPLETION}: completion adds sibling chunks of
+   * already selected documents and must therefore work on the final ranking.
    *
-   * <p>Reranking is off in the shipped configuration ({@code OPAA_RERANK_ENABLED}), and off it is
-   * the identity - fusion then keeps {@code top-k} as before and this stage passes its input
-   * through. Switched on but unusable (role unbound, endpoint silent, call failed), the stage still
-   * restores the {@code top-k} cap and records that it could not rerank, so a broken endpoint costs
-   * the ordering, never the query.
-   *
-   * <p>Switching the stage off through {@link RetrievalPipelineProperties} takes reranking out of
-   * the run entirely: {@link RetrievalPipeline} then runs with {@link
-   * RetrievalContext#withoutReranking()}, so the narrowing stages fall back to {@link
-   * QueryProperties#topK} instead of widening their budget for a stage that would never restore the
-   * cap. Switching it off is therefore the identity here too, whatever {@link
-   * QueryProperties#rerankCandidateCount} says - unlike a switched-off {@link #RANK_FUSION}, which
-   * does lose its own cap.
+   * <p>Off in the shipped configuration ({@code OPAA_RERANK_ENABLED}), and off it is the identity.
+   * Switched on but unusable (role unbound, endpoint silent, call failed), the stage still restores
+   * the {@code top-k} cap and records that it could not rerank, so a broken endpoint costs the
+   * ordering, never the query. Taking it out through {@link RetrievalPipelineProperties} also takes
+   * the widened budget with it ({@link RetrievalContext#withoutReranking()}), so it is the identity
+   * there too, whatever {@link QueryProperties#rerankCandidateCount} says.
    */
   RERANK,
 
   /**
    * Lets a document already represented in the selection contribute up to {@link
-   * QueryProperties#maxChunksPerDocument} chunks, drawn only from the candidate pool {@link
-   * #VECTOR_SEARCH} produced (#932/#935). Switched off, the selection stays exactly as fusion left
-   * it - the same behaviour {@code maxChunksPerDocument = 1} produces.
+   * QueryProperties#maxChunksPerDocument} chunks, drawn only from the candidate pool the search
+   * stages produced - both the vector and the lexical path. Switched off, the selection stays
+   * exactly as fusion left it, the same behaviour {@code maxChunksPerDocument = 1} produces.
    */
   DOCUMENT_COMPLETION
 }

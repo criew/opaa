@@ -5,9 +5,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Domain counterpart of the generated {@code QueryResponse} (#860 Teil 4) - {@link
- * QueryService#query}'s return type. {@code QueryController} maps this to the generated response
- * via {@code QueryResponseMapper}.
+ * {@link QueryService#query}'s return type: answer, sources, metadata and the chat it belongs to.
+ * {@code QueryController} maps it to the generated response via {@code QueryResponseMapper}.
  */
 public final class QueryResult {
 
