@@ -180,13 +180,13 @@ class OpenAiIntegrationTest {
             true,
             java.util.List.of());
 
-    assertThat(response.getAnswer()).isNotBlank();
-    assertThat(response.getAnswer().toLowerCase()).contains("open project ai assistant");
-    assertThat(response.getSources()).isNotEmpty();
-    assertThat(response.getSources().getFirst().getFileName()).isEqualTo("opaa-info.md");
-    assertThat(response.getSources().getFirst().getRelevanceScore()).isGreaterThan(0.0);
-    assertThat(response.getMetadata().getModel()).isNotBlank();
-    assertThat(response.getMetadata().getTokenCount()).isGreaterThan(0);
-    assertThat(response.getMetadata().getDurationMs()).isGreaterThan(0);
+    assertThat(response.answer()).isNotBlank();
+    assertThat(response.answer().toLowerCase()).contains("open project ai assistant");
+    assertThat(response.sources()).isNotEmpty();
+    assertThat(response.sources().getFirst().getFileName()).isEqualTo("opaa-info.md");
+    assertThat(response.sources().getFirst().getRelevanceScore()).isGreaterThan(0.0);
+    assertThat(response.metadata().model()).isNotBlank();
+    assertThat(response.metadata().tokenCount()).isGreaterThan(0);
+    assertThat(response.metadata().durationMs()).isGreaterThan(0);
   }
 }

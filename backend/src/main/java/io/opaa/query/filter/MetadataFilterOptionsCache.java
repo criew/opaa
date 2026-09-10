@@ -45,8 +45,8 @@ public class MetadataFilterOptionsCache implements GroupMembershipChangeListener
     return options.get(new Key(userId, Set.copyOf(searchScope)), key -> loader.apply(searchScope));
   }
 
-  /** Whether an entry for this person and scope is currently held - for tests of the eviction. */
-  public boolean contains(UUID userId, Set<UUID> searchScope) {
+  /** Whether an entry for this person and scope is currently held. */
+  boolean contains(UUID userId, Set<UUID> searchScope) {
     return options.getIfPresent(new Key(userId, Set.copyOf(searchScope))) != null;
   }
 

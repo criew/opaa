@@ -842,7 +842,7 @@ class DocumentIndexingIntegrationTest {
             CurrentUser.of(userId, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, null),
             true,
             java.util.List.of());
-    assertThat(withGrant.getSources())
+    assertThat(withGrant.sources())
         .as("a user with a grant on the target library must find the indexed document")
         .anyMatch(source -> "findable.txt".equals(source.getFileName()));
 
@@ -879,7 +879,7 @@ class DocumentIndexingIntegrationTest {
             CurrentUser.of(strangerId, Organization.DEFAULT_ID, SystemRole.USER, null),
             true,
             java.util.List.of());
-    assertThat(withoutGrant.getSources())
+    assertThat(withoutGrant.sources())
         .as("a user without any grant on the target library must not find the indexed document")
         .noneMatch(source -> "findable.txt".equals(source.getFileName()));
 

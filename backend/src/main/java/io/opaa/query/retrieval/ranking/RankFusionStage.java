@@ -66,7 +66,7 @@ public class RankFusionStage implements RetrievalStage {
               candidate.fusedScore()));
     }
 
-    int incoming = rankedLists.stream().mapToInt(List::size).sum();
+    int incoming = state.candidateCount();
     return new StageOutcome(
         state.withCandidateLists(
             List.of(new CandidateList(RetrievalListLabel.FUSED_LIST_LABEL, selection))),

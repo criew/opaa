@@ -12,9 +12,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Pure JUnit test (no Spring context) against a directly constructed {@link QueryResult} - #860
- * Teil 4, following the mapper-test convention {@code SpaceResponseMapperTest} established (#869
- * review).
+ * Pure JUnit test (no Spring context) against a directly constructed {@link QueryResult}: every
+ * field of the result, its metadata and its searched libraries must reach the response.
  */
 class QueryResponseMapperTest {
 
@@ -24,13 +23,20 @@ class QueryResponseMapperTest {
     UUID libraryId = UUID.randomUUID();
     ChatSource source = new ChatSource("readme.md", 0.9, 2, true);
     QueryOutcome metadata =
-        new QueryOutcome("gpt-4o", 500, 1200L)
-            .answeredWithoutKnowledge(true)
-            .noKnowledgeAvailableInSpace(false)
-            .searchedLibraries(List.of(new SearchedLibraryRef(libraryId, "Dienstanweisungen")));
+        new QueryOutcome(
+            "gpt-4o",
+            500,
+            1200L,
+            true,
+            false,
+            List.of(new SearchedLibraryRef(libraryId, "Dienstanweisungen")));
     QueryResult result =
-        new QueryResult("Die Antwort", List.of(source), metadata, chatId)
-            .chatTitle("Rückstellung für Altlastensanierung");
+        new QueryResult(
+            "Die Antwort",
+            List.of(source),
+            metadata,
+            chatId,
+            "Rückstellung für Altlastensanierung");
 
     QueryResponse response = QueryResponseMapper.toResponse(result);
 
@@ -53,8 +59,8 @@ class QueryResponseMapperTest {
 
   @Test
   void toResponseLeavesSearchedLibrariesNullWhenAbsent() {
-    QueryOutcome metadata = new QueryOutcome("gpt-4o", 0, 0L);
-    QueryResult result = new QueryResult("Antwort", List.of(), metadata, UUID.randomUUID());
+    QueryOutcome metadata = new QueryOutcome("gpt-4o", 0, 0L, false, false, null);
+    QueryResult result = new QueryResult("Antwort", List.of(), metadata, UUID.randomUUID(), null);
 
     QueryResponse response = QueryResponseMapper.toResponse(result);
 

@@ -2,6 +2,7 @@ package io.opaa.query.retrieval.search;
 
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.observability.QueryMetrics;
+import io.opaa.query.answer.ChatResponses;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -144,12 +145,7 @@ public class QueryDecompositionService {
     ChatClient chatClient = activeChatModelResolver.resolveChatClient();
     ChatResponse response =
         chatClient.prompt().system(systemText).messages(messages).call().chatResponse();
-    if (response == null
-        || response.getResult() == null
-        || response.getResult().getOutput() == null) {
-      return null;
-    }
-    return response.getResult().getOutput().getText();
+    return ChatResponses.textOrNull(response);
   }
 
   /**

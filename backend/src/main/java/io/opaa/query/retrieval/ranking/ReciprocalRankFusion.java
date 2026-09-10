@@ -33,24 +33,9 @@ final class ReciprocalRankFusion {
   record FusedCandidate(Document document, double fusedScore) {}
 
   /**
-   * Fuses the ranked, already permission-scoped candidate lists into at most {@code overallBudget}
-   * chunks, highest fused score first. An empty input, or a non-positive {@code overallBudget},
-   * yields an empty list.
-   */
-  static List<Document> fuse(List<List<Document>> rankedResultsPerSubQuery, int overallBudget) {
-    if (overallBudget <= 0) {
-      return List.of();
-    }
-    return fuseRanked(rankedResultsPerSubQuery).stream()
-        .limit(overallBudget)
-        .map(FusedCandidate::document)
-        .toList();
-  }
-
-  /**
-   * The same fusion as {@link #fuse}, uncapped and with each candidate's fused score, so the stage
-   * can report both the chunks that made the budget and the ones that missed it. {@link #fuse} is
-   * this method capped, so the two can never drift apart into two ranking rules.
+   * Fuses the ranked, already permission-scoped candidate lists, highest fused score first, with
+   * each candidate's fused score, so the stage can report both the chunks that made its budget and
+   * the ones that missed it. Uncapped: the budget is the stage's decision, not the fusion's.
    */
   static List<FusedCandidate> fuseRanked(List<List<Document>> rankedResultsPerSubQuery) {
     if (rankedResultsPerSubQuery.isEmpty()) {

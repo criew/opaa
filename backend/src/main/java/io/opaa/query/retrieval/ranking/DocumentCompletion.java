@@ -42,20 +42,10 @@ final class DocumentCompletion {
   record CompletionEvent(
       Document added, String completedDocumentKey, Document evicted, int evictionTier) {}
 
-  static List<Document> complete(
-      List<Document> selection,
-      List<Document> candidatePool,
-      int maxChunksPerDocument,
-      int overallBudget) {
-    return complete(
-        selection, candidatePool, maxChunksPerDocument, overallBudget, new ArrayList<>());
-  }
-
   /**
-   * The same completion, additionally recording one {@link CompletionEvent} per added chunk into
-   * {@code trace}. Recording only - the selection this returns is identical either way, which is
-   * what lets {@code DocumentCompletionStage} report what happened without a second implementation
-   * of it.
+   * Completes the documents of {@code selection} from {@code candidatePool}, recording one {@link
+   * CompletionEvent} per added chunk into {@code trace} - recording only, so {@code
+   * DocumentCompletionStage} can report what happened without a second implementation of it.
    */
   static List<Document> complete(
       List<Document> selection,

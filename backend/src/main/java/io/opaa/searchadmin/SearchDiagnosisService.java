@@ -440,7 +440,7 @@ public class SearchDiagnosisService {
     libraryRepository
         .findAllById(searchScope)
         .forEach(library -> refs.add(new SearchedLibraryRef(library.getId(), library.getName())));
-    refs.sort(Comparator.comparing(SearchedLibraryRef::getName, String.CASE_INSENSITIVE_ORDER));
+    refs.sort(Comparator.comparing(SearchedLibraryRef::name, String.CASE_INSENSITIVE_ORDER));
     return List.copyOf(refs);
   }
 

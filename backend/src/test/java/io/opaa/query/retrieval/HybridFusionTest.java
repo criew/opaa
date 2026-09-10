@@ -151,7 +151,8 @@ class HybridFusionTest {
    */
   @Test
   void aLibraryWithoutLexicalHitsStillContributesItsVectorCandidates() {
-    when(fullTextChunkSearch.search(anyString(), any(), anyInt())).thenReturn(List.of());
+    when(fullTextChunkSearch.search(anyString(), any(), any(), any(), anyInt()))
+        .thenReturn(List.of());
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-a", 0.8)));
 

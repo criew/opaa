@@ -2,7 +2,6 @@ package io.opaa.query.retrieval.search;
 
 import io.opaa.query.QueryProperties;
 import io.opaa.query.retrieval.CandidateList;
-import io.opaa.query.retrieval.CandidateOutcome;
 import io.opaa.query.retrieval.CandidateVerdict;
 import io.opaa.query.retrieval.RetrievalContext;
 import io.opaa.query.retrieval.RetrievalListLabel;
@@ -12,7 +11,6 @@ import io.opaa.query.retrieval.RetrievalStageName;
 import io.opaa.query.retrieval.RetrievalState;
 import io.opaa.query.retrieval.StageExplanation;
 import io.opaa.query.retrieval.StageOutcome;
-import io.opaa.query.retrieval.VerdictReason;
 import io.opaa.query.retrieval.ranking.RankFusionStage;
 import io.opaa.query.retrieval.scope.MetadataFilterExpressions;
 import java.util.ArrayList;
@@ -65,7 +63,7 @@ public class FullTextSearchStage implements RetrievalStage {
     // exactly as it does in the vector path.
     state.requiredLibraryFilter();
 
-    int inFlight = state.candidateLists().stream().mapToInt(list -> list.documents().size()).sum();
+    int inFlight = state.candidateCount();
 
     if (!context.queryProperties().fullTextSearchEnabled()) {
       return new StageOutcome(
@@ -82,8 +80,7 @@ public class FullTextSearchStage implements RetrievalStage {
 
     Set<UUID> searchScope = context.searchScope();
 
-    List<String> searchQueries =
-        state.searchQueries().isEmpty() ? List.of(context.question()) : state.searchQueries();
+    List<String> searchQueries = SearchStageSupport.searchQueriesOrQuestion(context, state);
     List<CandidateList> lists = new ArrayList<>(searchQueries.size());
     List<CandidateVerdict> verdicts = new ArrayList<>();
     List<String> notes = new ArrayList<>();
@@ -108,17 +105,7 @@ public class FullTextSearchStage implements RetrievalStage {
         continue;
       }
       lists.add(new CandidateList(label, candidates));
-      for (int rank = 1; rank <= candidates.size(); rank++) {
-        Document candidate = candidates.get(rank - 1);
-        verdicts.add(
-            CandidateVerdict.of(
-                candidate,
-                CandidateOutcome.ADDED,
-                VerdictReason.RETRIEVED_BY_SEARCH,
-                label,
-                rank,
-                candidate.getScore()));
-      }
+      verdicts.addAll(SearchStageSupport.retrievalVerdicts(label, candidates));
     }
 
     int retrieved = lists.stream().mapToInt(list -> list.documents().size()).sum();
@@ -136,10 +123,7 @@ public class FullTextSearchStage implements RetrievalStage {
               MetadataFilterExpressions.countKeptWithoutValue(state.metadataFilter(), all),
               all.size()));
     }
-    // Records the queries actually searched when this stage derived them itself, so a run never
-    // reports having searched nothing while it did - either path may be the one that runs.
-    RetrievalState searched =
-        state.searchQueries().isEmpty() ? state.withSearchQueries(searchQueries) : state;
+    RetrievalState searched = SearchStageSupport.withRecordedSearchQueries(state, searchQueries);
     return new StageOutcome(
         searched.withSearchResults(lists),
         StageExplanation.executed(name(), inFlight, inFlight + retrieved, verdicts, notes));

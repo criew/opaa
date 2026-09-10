@@ -325,7 +325,7 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    assertThat(response.getSources().getFirst().getSourceEntryUrl())
+    assertThat(response.sources().getFirst().getSourceEntryUrl())
         .isEqualTo("https://example.com/feed/entry-123");
   }
 
@@ -371,8 +371,8 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    assertThat(response.getSources()).hasSize(1);
-    List<ChatSourceLocation> locations = response.getSources().getFirst().getChunkLocations();
+    assertThat(response.sources()).hasSize(1);
+    List<ChatSourceLocation> locations = response.sources().getFirst().getChunkLocations();
     assertThat(locations).extracting(ChatSourceLocation::getChunkIndex).containsExactly(0, 3);
     assertThat(locations)
         .extracting(ChatSourceLocation::getLocation)
@@ -444,7 +444,7 @@ class QueryServiceTest {
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
     ChatSource withCore =
-        response.getSources().stream()
+        response.sources().stream()
             .filter(source -> source.getFileName().equals("dienstanweisung.pdf"))
             .findFirst()
             .orElseThrow();
@@ -479,7 +479,7 @@ class QueryServiceTest {
                 MetadataOrigin.DETERMINISTIC,
                 DatePrecision.DAY));
     ChatSource plainSource =
-        response.getSources().stream()
+        response.sources().stream()
             .filter(source -> source.getFileName().equals("anweisung.md"))
             .findFirst()
             .orElseThrow();
@@ -501,8 +501,8 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    assertThat(response.getMetadata().getSearchedLibraries())
-        .extracting(SearchedLibraryRef::getId, SearchedLibraryRef::getName)
+    assertThat(response.metadata().searchedLibraries())
+        .extracting(SearchedLibraryRef::id, SearchedLibraryRef::name)
         .containsExactly(tuple(readableLibraryId, "Dienstanweisungen"));
   }
 
@@ -514,7 +514,7 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, false, List.of());
 
-    assertThat(response.getMetadata().getSearchedLibraries()).isEmpty();
+    assertThat(response.metadata().searchedLibraries()).isEmpty();
     verify(knowledgeLibraryRepository, never()).findAllById(any());
   }
 
@@ -543,7 +543,7 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    assertThat(response.getSources().getFirst().getSourceEntryUrl()).isNull();
+    assertThat(response.sources().getFirst().getSourceEntryUrl()).isNull();
   }
 
   /**
@@ -577,7 +577,7 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    ChatSource source = response.getSources().getFirst();
+    ChatSource source = response.sources().getFirst();
     assertThat(source.getDocumentId()).isEqualTo(documentId);
     assertThat(source.getSourceType()).isEqualTo(io.opaa.api.types.DocumentSourceType.UPLOAD);
     assertThat(source.getSourceUrl()).isNull();
@@ -615,7 +615,7 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    ChatSource source = response.getSources().getFirst();
+    ChatSource source = response.sources().getFirst();
     assertThat(source.getDocumentId()).isEqualTo(documentId);
     assertThat(source.getSourceType())
         .isEqualTo(io.opaa.api.types.DocumentSourceType.HTTP_DIRECTORY);
@@ -667,8 +667,8 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    assertThat(response.getSources()).hasSize(2);
-    assertThat(response.getSources())
+    assertThat(response.sources()).hasSize(2);
+    assertThat(response.sources())
         .extracting(ChatSource::getDocumentId, ChatSource::getSourceEntryUrl)
         .containsExactlyInAnyOrder(
             tuple(firstDocumentId, "https://example.com/feed/entry-1"),
@@ -713,8 +713,8 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    assertThat(response.getSources()).hasSize(2);
-    assertThat(response.getSources())
+    assertThat(response.sources()).hasSize(2);
+    assertThat(response.sources())
         .extracting(ChatSource::getFileName, ChatSource::getMatchCount)
         .containsExactlyInAnyOrder(tuple("legacy-a.pdf", 2), tuple("legacy-b.pdf", 1));
   }
@@ -741,16 +741,16 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("What?", null, caller, true, List.of());
 
-    assertThat(response.getAnswer()).contains("【source:");
-    assertThat(response.getSources()).hasSize(1);
-    assertThat(response.getSources().getFirst().getFileName()).isEqualTo("readme.md");
+    assertThat(response.answer()).contains("【source:");
+    assertThat(response.sources()).hasSize(1);
+    assertThat(response.sources().getFirst().getFileName()).isEqualTo("readme.md");
     // #1102: the reciprocal of the fused rank, not the chunk's raw score.
-    assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(1.0);
-    assertThat(response.getSources().getFirst().getCited()).isTrue();
-    assertThat(response.getSources().getFirst().getMatchCount()).isEqualTo(1);
-    assertThat(response.getMetadata().getModel()).isEqualTo("gpt-4o");
-    assertThat(response.getMetadata().getTokenCount()).isEqualTo(300);
-    assertThat(response.getChatId()).isNotNull();
+    assertThat(response.sources().getFirst().getRelevanceScore()).isEqualTo(1.0);
+    assertThat(response.sources().getFirst().getCited()).isTrue();
+    assertThat(response.sources().getFirst().getMatchCount()).isEqualTo(1);
+    assertThat(response.metadata().model()).isEqualTo("gpt-4o");
+    assertThat(response.metadata().tokenCount()).isEqualTo(300);
+    assertThat(response.chatId()).isNotNull();
   }
 
   @Test
@@ -763,7 +763,7 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    assertThat(response.getChatId()).isNotNull();
+    assertThat(response.chatId()).isNotNull();
   }
 
   @Test
@@ -784,7 +784,7 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", chatId, caller, true, List.of());
 
-    assertThat(response.getChatId()).isEqualTo(chatId);
+    assertThat(response.chatId()).isEqualTo(chatId);
     verify(chatService).appendTurn(eq(chat), eq("Question"), eq("Answer"), any());
   }
 
@@ -812,7 +812,7 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Frage zur Frist", chatId, caller, true, List.of());
 
-    assertThat(response.getChatTitle()).isEqualTo("Frage zur Frist");
+    assertThat(response.chatTitle()).isEqualTo("Frage zur Frist");
   }
 
   @Test
@@ -824,7 +824,7 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    assertThat(response.getChatTitle()).isNull();
+    assertThat(response.chatTitle()).isNull();
   }
 
   @Test
@@ -881,8 +881,8 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", chatId, caller, true, List.of());
 
-    assertThat(response.getMetadata().getNoKnowledgeAvailableInSpace()).isTrue();
-    assertThat(response.getMetadata().getAnsweredWithoutKnowledge()).isFalse();
+    assertThat(response.metadata().noKnowledgeAvailableInSpace()).isTrue();
+    assertThat(response.metadata().answeredWithoutKnowledge()).isFalse();
     org.mockito.Mockito.verifyNoInteractions(vectorStore);
   }
 
@@ -904,7 +904,7 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", chatId, caller, true, List.of());
 
-    assertThat(response.getMetadata().getNoKnowledgeAvailableInSpace()).isFalse();
+    assertThat(response.metadata().noKnowledgeAvailableInSpace()).isFalse();
   }
 
   // An ephemeral query (no persisted chat) never marks this flag, regardless of scope - curation
@@ -916,7 +916,7 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, false, List.of());
 
-    assertThat(response.getMetadata().getNoKnowledgeAvailableInSpace()).isFalse();
+    assertThat(response.metadata().noKnowledgeAvailableInSpace()).isFalse();
   }
 
   @Test
@@ -934,7 +934,7 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", foreignChatId, caller, true, List.of());
 
-    assertThat(response.getChatId()).isEqualTo(foreignChatId);
+    assertThat(response.chatId()).isEqualTo(foreignChatId);
     verify(chatService, never()).appendTurn(any(), any(), any(), any());
   }
 
@@ -1110,9 +1110,9 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    assertThat(response.getSources()).hasSize(2);
-    assertThat(response.getSources().get(0).getCited()).isTrue();
-    assertThat(response.getSources().get(1).getCited()).isFalse();
+    assertThat(response.sources()).hasSize(2);
+    assertThat(response.sources().get(0).getCited()).isTrue();
+    assertThat(response.sources().get(1).getCited()).isFalse();
   }
 
   /**
@@ -1136,8 +1136,8 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("What?", null, caller, true, List.of());
 
-    assertThat(response.getSources().getFirst().getFileName()).isEqualTo("readme.md");
-    assertThat(response.getSources().getFirst().getCitationValid()).isFalse();
+    assertThat(response.sources().getFirst().getFileName()).isEqualTo("readme.md");
+    assertThat(response.sources().getFirst().getCitationValid()).isFalse();
   }
 
   /**
@@ -1161,8 +1161,8 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("What?", null, caller, true, List.of());
 
-    assertThat(response.getSources().getFirst().getFileName()).isEqualTo("readme.md");
-    assertThat(response.getSources().getFirst().getCitationValid()).isFalse();
+    assertThat(response.sources().getFirst().getFileName()).isEqualTo("readme.md");
+    assertThat(response.sources().getFirst().getCitationValid()).isFalse();
   }
 
   /** #386: a citation matching the retrieved chunk exactly stays unflagged. */
@@ -1183,7 +1183,7 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("What?", null, caller, true, List.of());
 
-    assertThat(response.getSources().getFirst().getCitationValid()).isTrue();
+    assertThat(response.sources().getFirst().getCitationValid()).isTrue();
   }
 
   @Test
@@ -1216,11 +1216,11 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    assertThat(response.getSources()).hasSize(2);
-    assertThat(response.getSources().get(0).getFileName()).isEqualTo("report.pdf");
-    assertThat(response.getSources().get(0).getMatchCount()).isEqualTo(2);
-    assertThat(response.getSources().get(1).getFileName()).isEqualTo("readme.md");
-    assertThat(response.getSources().get(1).getMatchCount()).isEqualTo(1);
+    assertThat(response.sources()).hasSize(2);
+    assertThat(response.sources().get(0).getFileName()).isEqualTo("report.pdf");
+    assertThat(response.sources().get(0).getMatchCount()).isEqualTo(2);
+    assertThat(response.sources().get(1).getFileName()).isEqualTo("readme.md");
+    assertThat(response.sources().get(1).getMatchCount()).isEqualTo(1);
   }
 
   @Test
@@ -1241,7 +1241,7 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    assertThat(response.getAnswer()).isEqualTo(answer);
+    assertThat(response.answer()).isEqualTo(answer);
   }
 
   @Test
@@ -1268,8 +1268,8 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    assertThat(response.getSources()).hasSize(1);
-    assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(1.0);
+    assertThat(response.sources()).hasSize(1);
+    assertThat(response.sources().getFirst().getRelevanceScore()).isEqualTo(1.0);
   }
 
   /**
@@ -1326,7 +1326,7 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    assertThat(response.getSources()).isEmpty();
+    assertThat(response.sources()).isEmpty();
     org.mockito.Mockito.verifyNoInteractions(vectorStore);
   }
 
@@ -1358,8 +1358,8 @@ class QueryServiceTest {
     QueryResult response =
         queryService.query("Question", null, caller, false, List.of(unreadableLibraryId));
 
-    assertThat(response.getSources()).isEmpty();
-    assertThat(response.getMetadata().getAnsweredWithoutKnowledge()).isTrue();
+    assertThat(response.sources()).isEmpty();
+    assertThat(response.metadata().answeredWithoutKnowledge()).isTrue();
     org.mockito.Mockito.verifyNoInteractions(vectorStore);
   }
 
@@ -1370,8 +1370,8 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, false, List.of());
 
-    assertThat(response.getSources()).isEmpty();
-    assertThat(response.getMetadata().getAnsweredWithoutKnowledge()).isTrue();
+    assertThat(response.sources()).isEmpty();
+    assertThat(response.metadata().answeredWithoutKnowledge()).isTrue();
     org.mockito.Mockito.verifyNoInteractions(vectorStore);
     // An empty search scope must not pay for the decomposition LLM call either.
     org.mockito.Mockito.verifyNoInteractions(queryDecompositionService);
@@ -1386,7 +1386,7 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    assertThat(response.getMetadata().getAnsweredWithoutKnowledge()).isFalse();
+    assertThat(response.metadata().answeredWithoutKnowledge()).isFalse();
   }
 
   @Test
@@ -1420,8 +1420,8 @@ class QueryServiceTest {
     // everything readable.
     QueryResult response = queryService.query("Question", null, caller, false, null);
 
-    assertThat(response.getSources()).isEmpty();
-    assertThat(response.getMetadata().getAnsweredWithoutKnowledge()).isTrue();
+    assertThat(response.sources()).isEmpty();
+    assertThat(response.metadata().answeredWithoutKnowledge()).isTrue();
     org.mockito.Mockito.verifyNoInteractions(vectorStore);
   }
 
@@ -1452,9 +1452,9 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    assertThat(response.getSources()).hasSize(1);
-    assertThat(response.getSources().getFirst().getCited()).isTrue();
-    assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(1.0);
+    assertThat(response.sources()).hasSize(1);
+    assertThat(response.sources().getFirst().getCited()).isTrue();
+    assertThat(response.sources().getFirst().getRelevanceScore()).isEqualTo(1.0);
   }
 
   /**
@@ -1488,8 +1488,8 @@ class QueryServiceTest {
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
-    assertThat(response.getSources()).hasSize(2);
-    assertThat(response.getSources())
+    assertThat(response.sources()).hasSize(2);
+    assertThat(response.sources())
         .extracting(ChatSource::getFileName, ChatSource::getCited)
         .containsExactlyInAnyOrder(tuple("report.pdf", true), tuple("report.pdf", false));
   }
@@ -1649,7 +1649,7 @@ class QueryServiceTest {
       QueryResult response = queryService.query("Kombifrage", null, caller, true, List.of());
 
       verify(vectorStore, times(2)).similaritySearch(any(SearchRequest.class));
-      assertThat(response.getSources())
+      assertThat(response.sources())
           .extracting(ChatSource::getFileName)
           .containsExactlyInAnyOrder("a.md", "b.md");
     }
@@ -1738,7 +1738,7 @@ class QueryServiceTest {
 
       QueryResult response = queryService.query("Kombifrage", null, caller, true, List.of());
 
-      assertThat(response.getSources()).hasSize(8);
+      assertThat(response.sources()).hasSize(8);
     }
   }
 
@@ -1792,12 +1792,12 @@ class QueryServiceTest {
 
       QueryResult response = queryService.query("Frage", null, caller, true, List.of());
 
-      assertThat(response.getSources()).hasSize(7);
-      assertThat(response.getSources())
+      assertThat(response.sources()).hasSize(7);
+      assertThat(response.sources())
           .filteredOn(source -> source.getFileName().equals("a.md"))
           .hasSize(1)
           .allSatisfy(source -> assertThat(source.getMatchCount()).isEqualTo(2));
-      assertThat(response.getSources())
+      assertThat(response.sources())
           .filteredOn(source -> source.getFileName().equals("x.md"))
           .hasSize(1)
           .allSatisfy(source -> assertThat(source.getMatchCount()).isEqualTo(1));
@@ -1832,12 +1832,12 @@ class QueryServiceTest {
 
       QueryResult response = queryService.query("Kombifrage", null, caller, true, List.of());
 
-      assertThat(response.getSources()).hasSize(7);
-      assertThat(response.getSources())
+      assertThat(response.sources()).hasSize(7);
+      assertThat(response.sources())
           .filteredOn(source -> source.getFileName().equals("a.md"))
           .hasSize(1)
           .allSatisfy(source -> assertThat(source.getMatchCount()).isEqualTo(2));
-      assertThat(response.getSources())
+      assertThat(response.sources())
           .filteredOn(source -> source.getFileName().equals("x.md"))
           .hasSize(1)
           .allSatisfy(source -> assertThat(source.getMatchCount()).isEqualTo(1));
@@ -1902,12 +1902,12 @@ class QueryServiceTest {
 
       QueryResult response = queryService.query("Kombifrage", null, caller, true, List.of());
 
-      assertThat(response.getSources()).hasSize(7);
-      assertThat(response.getSources())
+      assertThat(response.sources()).hasSize(7);
+      assertThat(response.sources())
           .filteredOn(source -> source.getFileName().equals("a.md"))
           .hasSize(1)
           .allSatisfy(source -> assertThat(source.getMatchCount()).isEqualTo(2));
-      assertThat(response.getSources())
+      assertThat(response.sources())
           .filteredOn(source -> source.getFileName().equals("x.md"))
           .hasSize(1)
           .allSatisfy(source -> assertThat(source.getMatchCount()).isEqualTo(1));
@@ -1915,7 +1915,7 @@ class QueryServiceTest {
       // each sub-query - sub-query A's f2..f5 (ranks 5-8) and sub-query B's g5..g8 never make it,
       // pushed out by the interleave exactly as f5 alone was in the single-candidate-set tests
       // above.
-      assertThat(response.getSources())
+      assertThat(response.sources())
           .extracting(ChatSource::getFileName)
           .containsExactlyInAnyOrder("x.md", "a.md", "f1.md", "g1.md", "g2.md", "g3.md", "g4.md");
     }
@@ -1950,9 +1950,9 @@ class QueryServiceTest {
 
       QueryResult response = queryService.query("Frage", null, caller, true, List.of());
 
-      assertThat(response.getSources()).hasSize(7);
-      assertThat(response.getSources()).extracting(ChatSource::getFileName).doesNotContain("d7.md");
-      assertThat(response.getSources())
+      assertThat(response.sources()).hasSize(7);
+      assertThat(response.sources()).extracting(ChatSource::getFileName).doesNotContain("d7.md");
+      assertThat(response.sources())
           .filteredOn(source -> source.getFileName().equals("d3.md"))
           .hasSize(1)
           .allSatisfy(source -> assertThat(source.getMatchCount()).isEqualTo(2));

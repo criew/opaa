@@ -214,12 +214,12 @@ class QueryIntegrationTest {
         queryService.query("What is OPAA?", null, asCaller(userId), true, java.util.List.of());
 
     // Verify the response
-    assertThat(response.getAnswer()).isEqualTo("OPAA is an AI project assistant (readme.md).");
-    assertThat(response.getSources()).isNotEmpty();
-    assertThat(response.getSources()).allMatch(s -> s.getFileName() != null);
-    assertThat(response.getMetadata().getModel()).isEqualTo("gpt-4o");
-    assertThat(response.getMetadata().getTokenCount()).isEqualTo(250);
-    assertThat(response.getMetadata().getDurationMs()).isGreaterThan(0);
+    assertThat(response.answer()).isEqualTo("OPAA is an AI project assistant (readme.md).");
+    assertThat(response.sources()).isNotEmpty();
+    assertThat(response.sources()).allMatch(s -> s.getFileName() != null);
+    assertThat(response.metadata().model()).isEqualTo("gpt-4o");
+    assertThat(response.metadata().tokenCount()).isEqualTo(250);
+    assertThat(response.metadata().durationMs()).isGreaterThan(0);
   }
 
   @Test
@@ -234,8 +234,8 @@ class QueryIntegrationTest {
         queryService.query(
             "Something completely unrelated", null, asCaller(userId), true, java.util.List.of());
 
-    assertThat(response.getAnswer()).contains("don't have enough context");
-    assertThat(response.getSources()).isEmpty();
+    assertThat(response.answer()).contains("don't have enough context");
+    assertThat(response.sources()).isEmpty();
   }
 
   @Test
@@ -278,8 +278,8 @@ class QueryIntegrationTest {
           queryService.query(
               "What is the secret?", null, asCaller(strangerId), true, java.util.List.of());
 
-      assertThat(response.getAnswer()).contains("don't have enough context");
-      assertThat(response.getSources()).isEmpty();
+      assertThat(response.answer()).contains("don't have enough context");
+      assertThat(response.sources()).isEmpty();
     } finally {
       jdbcTemplate.update("DELETE FROM users WHERE id = ?", strangerId);
     }
@@ -337,7 +337,7 @@ class QueryIntegrationTest {
       QueryResult closed =
           queryService.query(
               "Wie gross ist Batman?", null, asCaller(userId), true, java.util.List.of());
-      assertThat(closed.getSources()).isEmpty();
+      assertThat(closed.sources()).isEmpty();
 
       jdbcTemplate.update(
           "UPDATE knowledge_libraries SET visibility = 'ORGANIZATION' WHERE id = ?",
@@ -352,8 +352,8 @@ class QueryIntegrationTest {
           queryService.query(
               "Wie gross ist Batman?", null, asCaller(userId), true, java.util.List.of());
 
-      assertThat(opened.getSources()).hasSize(1);
-      assertThat(opened.getSources().getFirst().getFileName()).isEqualTo("batman.md");
+      assertThat(opened.sources()).hasSize(1);
+      assertThat(opened.sources().getFirst().getFileName()).isEqualTo("batman.md");
     } finally {
       vectorChunkStore.deleteByLibraryId(closedLibraryId);
       jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", closedLibraryId);
@@ -426,12 +426,12 @@ class QueryIntegrationTest {
 
       // Exactly topK (8, application.yml default) retrieved chunks, every one of them from the
       // granted library - the count itself is the assertion that matters (see the comment above).
-      // Summed matchCount, not response.getSources().size(): with #grantedChunksWithOneMulti
+      // Summed matchCount, not response.sources().size(): with #grantedChunksWithOneMulti
       // ChunkDocument's tied candidates, how many of doc-a-multi's chunks the ANN tie order keeps
       // is unspecified, so the distinct-source count is not (see that method's Javadoc).
-      assertThat(response.getSources())
+      assertThat(response.sources())
           .allSatisfy(source -> assertThat(source.getFileName()).startsWith("a"));
-      assertThat(response.getSources().stream().mapToInt(ChatSource::getMatchCount).sum())
+      assertThat(response.sources().stream().mapToInt(ChatSource::getMatchCount).sum())
           .isEqualTo(8);
     } finally {
       vectorChunkStore.deleteByLibraryId(ungrantedLibraryId);
@@ -556,11 +556,11 @@ class QueryIntegrationTest {
       // full topK before fusion (#923 review) - with both sub-queries returning the identical,
       // fully-overlapping authorized candidate set (FakeEmbeddingModel ties every embedding), the
       // fused result is exactly that same set of 8, not fewer. Summed matchCount, not
-      // response.getSources().size() - see #grantedChunksWithOneMultiChunkDocument's Javadoc for
+      // response.sources().size() - see #grantedChunksWithOneMultiChunkDocument's Javadoc for
       // why the distinct-source count is not pinned by this fixture.
-      assertThat(response.getSources())
+      assertThat(response.sources())
           .allSatisfy(source -> assertThat(source.getFileName()).startsWith("a"));
-      assertThat(response.getSources().stream().mapToInt(ChatSource::getMatchCount).sum())
+      assertThat(response.sources().stream().mapToInt(ChatSource::getMatchCount).sum())
           .isEqualTo(8);
     } finally {
       vectorChunkStore.deleteByLibraryId(ungrantedLibraryId);
@@ -690,7 +690,7 @@ class QueryIntegrationTest {
       // Falls back to an ephemeral conversation, not the owner's chat - the returned id is the
       // supplied chatId (echoed back, exactly as an unresolvable id always is), but nothing was
       // written to it.
-      assertThat(response.getChatId()).isEqualTo(chatId);
+      assertThat(response.chatId()).isEqualTo(chatId);
       Integer messageCount =
           jdbcTemplate.queryForObject(
               "SELECT count(*) FROM chat_messages WHERE chat_id = ?", Integer.class, chatId);
@@ -825,8 +825,8 @@ class QueryIntegrationTest {
     QueryResult response =
         queryService.query("Erste Frage", chatId, asCaller(userId), true, java.util.List.of());
 
-    assertThat(response.getAnswer()).isEqualTo("Antwort trotz Fehler");
-    assertThat(response.getChatTitle()).isEqualTo("Erste Frage");
+    assertThat(response.answer()).isEqualTo("Antwort trotz Fehler");
+    assertThat(response.chatTitle()).isEqualTo("Erste Frage");
 
     // The (synchronous, #616) title generation call above already failed and left the fallback
     // title untouched instead of throwing it away or leaving the chat without any title at all.

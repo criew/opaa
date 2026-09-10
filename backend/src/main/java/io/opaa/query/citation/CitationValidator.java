@@ -20,9 +20,8 @@ import org.springframework.stereotype.Service;
  * file name all agree with one and the same retrieved chunk, so a merely well-shaped citation that
  * points at nothing this answer used is detectable rather than trusted.
  *
- * <p>A citation that passes that check is additionally held against {@link CitationFactChecker}
- * (see {@link #validate(List, List, String)}). That second check can only push a citation from
- * valid to invalid, never the other way round.
+ * <p>A citation that passes that check is additionally held against {@link CitationFactChecker}.
+ * That second check can only push a citation from valid to invalid, never the other way round.
  */
 @Service
 public class CitationValidator {
@@ -30,16 +29,6 @@ public class CitationValidator {
   /** One citation together with the verdict {@link #validate} reached for it. */
   public record ValidatedCitation(
       String documentId, int chunkIndex, String fileName, boolean valid) {}
-
-  /**
-   * Retrieval-only overload, without the content check {@link #validate(List, List, String)}
-   * additionally applies - for callers with no answer text at hand. Production always calls the
-   * 3-arg overload.
-   */
-  public List<ValidatedCitation> validate(
-      List<CitationParser.ParsedCitation> citations, List<Document> retrievedChunks) {
-    return validate(citations, retrievedChunks, "");
-  }
 
   /**
    * Validates {@code citations} against {@code retrievedChunks} - the exact set handed to the
@@ -154,7 +143,7 @@ public class CitationValidator {
    * The start offset of every citation marker in {@code answer}, in appearance order - the same
    * order {@link CitationParser#extractCitations} returns its {@code ParsedCitation}s in, since
    * both are produced by the same pattern over the same text. Empty when {@code answer} does not
-   * carry the literal marker text (e.g. {@link #validate(List, List)}'s {@code ""} placeholder).
+   * carry the literal marker text.
    */
   private List<Integer> citationMarkerStarts(String answer) {
     List<Integer> starts = new ArrayList<>();

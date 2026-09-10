@@ -218,9 +218,7 @@ der Volltextpfad gefunden hat; was der Wert für diesen Fall bedeuten soll, ist 
 ([#1102](https://github.com/criew/opaa/issues/1102)). Bei
 genau einer Suchanfrage und abgeschaltetem Volltextpfad läuft die Stufe mit und ist dort nachweislich die Identität: innerhalb einer Liste
 sind alle Ränge verschieden, die fusionierten Werte also streng fallend in der Listenreihenfolge, und die
-Deckelung ist durch das Listenbudget bereits erfüllt. Vor #1046 wurde dieser Fall stattdessen verzweigt
-übersprungen; dass beides dasselbe auswählt, sichert `RetrievalPipelineParityTest` gegen die
-Vorher-Implementierung ab.
+Deckelung ist durch das Listenbudget bereits erfüllt.
 
 ### 5b. Reranking (#1050)
 

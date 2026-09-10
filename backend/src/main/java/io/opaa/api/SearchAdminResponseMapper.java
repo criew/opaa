@@ -260,7 +260,7 @@ final class SearchAdminResponseMapper {
   }
 
   private static SearchedLibrary toSearchedLibrary(SearchedLibraryRef ref) {
-    return new SearchedLibrary(ref.getId(), ref.getName());
+    return new SearchedLibrary(ref.id(), ref.name());
   }
 
   private static SearchModelRole toModelRole(ModelRole role) {

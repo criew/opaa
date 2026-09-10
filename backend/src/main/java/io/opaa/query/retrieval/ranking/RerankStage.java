@@ -134,8 +134,7 @@ public class RerankStage implements RetrievalStage {
    * stage that did not run is the identity).
    */
   private StageOutcome identity(RetrievalState state, StageStatus status, String note) {
-    int candidates =
-        state.candidateLists().stream().mapToInt(list -> list.documents().size()).sum();
+    int candidates = state.candidateCount();
     return new StageOutcome(
         state, StageExplanation.notRun(name(), status, candidates, candidates, note));
   }
@@ -147,7 +146,7 @@ public class RerankStage implements RetrievalStage {
    */
   private StageOutcome cappedWithoutRerank(
       RetrievalState state, List<Document> kept, StageStatus status, String note) {
-    int incoming = state.candidateLists().stream().mapToInt(list -> list.documents().size()).sum();
+    int incoming = state.candidateCount();
     return new StageOutcome(
         state.withCandidateLists(
             List.of(new CandidateList(RetrievalListLabel.FUSED_LIST_LABEL, List.copyOf(kept)))),

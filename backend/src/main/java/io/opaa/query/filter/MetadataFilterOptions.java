@@ -36,24 +36,6 @@ public record MetadataFilterOptions(
     formatFields = formatFields == null ? List.of() : List.copyOf(formatFields);
   }
 
-  /** The shape without format field options - a scope whose documents carry none. */
-  public MetadataFilterOptions(
-      long totalDocuments,
-      List<FieldOption> fields,
-      List<DocumentTypeOption> documentTypes,
-      LocalDate documentDateMin,
-      LocalDate documentDateMax,
-      List<LibraryFieldOption> libraryFields) {
-    this(
-        totalDocuments,
-        fields,
-        documentTypes,
-        documentDateMin,
-        documentDateMax,
-        libraryFields,
-        List.of());
-  }
-
   /**
    * One field's Füllstand: documents with a value or the mark "kein Wert ermittelbar" over the
    * scope's indexed documents, and whether that reaches the committed threshold.

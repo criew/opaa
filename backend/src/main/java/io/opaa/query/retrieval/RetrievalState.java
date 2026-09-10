@@ -147,6 +147,15 @@ public record RetrievalState(
   }
 
   /**
+   * How many candidates are currently in flight, counted across all lists - the number a stage
+   * reports as its incoming count. Counts a chunk once per list it appears in, because that is what
+   * the lists hold before fusion deduplicates them.
+   */
+  public int candidateCount() {
+    return candidateLists.stream().mapToInt(list -> list.documents().size()).sum();
+  }
+
+  /**
    * The filter a search stage must apply, or an {@link IllegalStateException} - a search without a
    * permission filter is not a degraded mode this pipeline has.
    */

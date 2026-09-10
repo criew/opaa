@@ -7,11 +7,19 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 
-/** Unit tests for {@link ReciprocalRankFusion#fuse}'s rank-based merge and dedup (#923). */
+/** Unit tests for {@link ReciprocalRankFusion#fuseRanked}'s rank-based merge and dedup. */
 class ReciprocalRankFusionTest {
 
   private static Document chunk(String id, String text, double score) {
     return Document.builder().id(id).text(text).metadata(Map.of()).score(score).build();
+  }
+
+  /** The fused order cut to {@code budget} - the cap {@link RankFusionStage} applies to it. */
+  private static List<Document> fusedWithin(int budget, List<List<Document>> rankedLists) {
+    return ReciprocalRankFusion.fuseRanked(rankedLists).stream()
+        .limit(Math.max(budget, 0))
+        .map(ReciprocalRankFusion.FusedCandidate::document)
+        .toList();
   }
 
   @Test
@@ -29,7 +37,7 @@ class ReciprocalRankFusionTest {
     List<Document> topicAResults = List.of(a, bInTopicA);
     List<Document> topicBResults = List.of(c, bInTopicB);
 
-    List<Document> fused = ReciprocalRankFusion.fuse(List.of(topicAResults, topicBResults), 10);
+    List<Document> fused = fusedWithin(10, List.of(topicAResults, topicBResults));
 
     assertThat(fused).extracting(Document::getId).containsExactly("a", "c", "b1", "b2");
   }
@@ -43,7 +51,7 @@ class ReciprocalRankFusionTest {
     List<Document> first = List.of(onlyInFirst, sharedRankTwo);
     List<Document> second = List.of(onlyInSecond, sharedRankTwo);
 
-    List<Document> fused = ReciprocalRankFusion.fuse(List.of(first, second), 10);
+    List<Document> fused = fusedWithin(10, List.of(first, second));
 
     // "shared" accumulates two rank-2 contributions (1/62 + 1/62 ≈ 0.0323), edging out each
     // individually-rank-1 chunk's single contribution (1/61 ≈ 0.0164).
@@ -64,7 +72,7 @@ class ReciprocalRankFusionTest {
     Document fromLexicalPath = chunk("dup", "lexical path's copy", 0.9);
 
     List<Document> fused =
-        ReciprocalRankFusion.fuse(List.of(List.of(fromVectorPath), List.of(fromLexicalPath)), 10);
+        fusedWithin(10, List.of(List.of(fromVectorPath), List.of(fromLexicalPath)));
 
     assertThat(fused).hasSize(1);
     assertThat(fused.getFirst().getText()).isEqualTo("vector path's copy");
@@ -83,8 +91,7 @@ class ReciprocalRankFusionTest {
     Document lexicalTop = chunk("lexical-top", "top of the lexical list", 0.07);
 
     List<Document> fused =
-        ReciprocalRankFusion.fuse(
-            List.of(List.of(vectorTop, foundByBoth), List.of(lexicalTop, foundByBoth)), 10);
+        fusedWithin(10, List.of(List.of(vectorTop, foundByBoth), List.of(lexicalTop, foundByBoth)));
 
     assertThat(fused)
         .extracting(Document::getId)
@@ -97,20 +104,20 @@ class ReciprocalRankFusionTest {
         List.of(
             chunk("a", "a", 0.4), chunk("b", "b", 0.3), chunk("c", "c", 0.2), chunk("d", "d", 0.1));
 
-    List<Document> fused = ReciprocalRankFusion.fuse(List.of(ranked), 2);
+    List<Document> fused = fusedWithin(2, List.of(ranked));
 
     assertThat(fused).extracting(Document::getId).containsExactly("a", "b");
   }
 
   @Test
   void emptyInputYieldsAnEmptyList() {
-    assertThat(ReciprocalRankFusion.fuse(List.of(), 10)).isEmpty();
+    assertThat(fusedWithin(10, List.of())).isEmpty();
   }
 
   @Test
   void nonPositiveBudgetYieldsAnEmptyList() {
     List<Document> ranked = List.of(chunk("a", "a", 0.5));
 
-    assertThat(ReciprocalRankFusion.fuse(List.of(ranked), 0)).isEmpty();
+    assertThat(fusedWithin(0, List.of(ranked))).isEmpty();
   }
 }

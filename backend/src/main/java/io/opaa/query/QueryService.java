@@ -10,6 +10,7 @@ import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.query.answer.AnswerGenerationService;
+import io.opaa.query.answer.ChatResponses;
 import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.query.citation.CitationParser;
 import io.opaa.query.citation.CitationValidator;
@@ -218,7 +219,7 @@ public class QueryService {
                     answerGenerationService.generateAnswer(
                         question, relevantChunks, conversationKey);
 
-                String answer = extractAnswer(chatResponse);
+                String answer = ChatResponses.text(chatResponse);
                 List<CitationValidator.ValidatedCitation> validatedCitations =
                     citationValidator.validate(
                         citationParser.extractCitations(answer), relevantChunks, answer);
@@ -232,8 +233,8 @@ public class QueryService {
                     sources.size());
 
                 long durationMs = System.currentTimeMillis() - startTime;
-                String model = extractModel(chatResponse);
-                int tokenCount = extractTokenCount(chatResponse);
+                String model = ChatResponses.model(chatResponse);
+                int tokenCount = ChatResponses.totalTokens(chatResponse);
 
                 metrics.recordSuccess(tokenCount);
 
@@ -247,12 +248,14 @@ public class QueryService {
                         .orElse(null);
 
                 QueryOutcome metadata =
-                    new QueryOutcome(model, tokenCount, durationMs)
-                        .answeredWithoutKnowledge(answeredWithoutKnowledge)
-                        .noKnowledgeAvailableInSpace(noKnowledgeAvailableInSpace)
-                        .searchedLibraries(chatSourceAssembler.searchedLibraries(searchScope));
-                return new QueryResult(answer, sources, metadata, effectiveChatId)
-                    .chatTitle(chatTitle);
+                    new QueryOutcome(
+                        model,
+                        tokenCount,
+                        durationMs,
+                        answeredWithoutKnowledge,
+                        noKnowledgeAvailableInSpace,
+                        chatSourceAssembler.searchedLibraries(searchScope));
+                return new QueryResult(answer, sources, metadata, effectiveChatId, chatTitle);
               } catch (RuntimeException e) {
                 metrics.recordError();
                 throw e;
@@ -362,27 +365,5 @@ public class QueryService {
           result.searchQueries().size() == 1 ? "y" : "ies");
     }
     return result.chunks();
-  }
-
-  private String extractAnswer(ChatResponse response) {
-    if (response.getResult() == null || response.getResult().getOutput() == null) {
-      return "";
-    }
-    String text = response.getResult().getOutput().getText();
-    return text != null ? text : "";
-  }
-
-  private String extractModel(ChatResponse response) {
-    if (response.getMetadata() != null && response.getMetadata().getModel() != null) {
-      return response.getMetadata().getModel();
-    }
-    return "unknown";
-  }
-
-  private int extractTokenCount(ChatResponse response) {
-    if (response.getMetadata() != null && response.getMetadata().getUsage() != null) {
-      return response.getMetadata().getUsage().getTotalTokens();
-    }
-    return 0;
   }
 }

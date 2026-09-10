@@ -27,6 +27,7 @@ class MetadataFilterOptionsResponseMapperTest {
             List.of(new MetadataFilterOptions.DocumentTypeOption("VERMERK", "Vermerk", 7)),
             LocalDate.of(2019, 1, 1),
             LocalDate.of(2026, 3, 12),
+            List.of(),
             List.of());
 
     MetadataFilterOptionsResponse response =
@@ -119,6 +120,7 @@ class MetadataFilterOptionsResponseMapperTest {
             List.of(),
             null,
             null,
+            List.of(),
             List.of());
 
     MetadataFilterOptionsResponse response =

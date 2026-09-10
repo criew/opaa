@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +63,8 @@ class FullTextChunkSearchIntegrationTest {
         stale);
 
     List<Document> hits =
-        fullTextChunkSearch.search("Gebührenbefreiung", Set.of(readableLibrary), 25);
+        fullTextChunkSearch.search(
+            "Gebührenbefreiung", Set.of(readableLibrary), MetadataFilter.NONE, List.of(), 25);
 
     assertThat(hits)
         .extracting(Document::getId)
@@ -83,7 +85,8 @@ class FullTextChunkSearchIntegrationTest {
             + " im Einzelfall.");
 
     List<Document> hits =
-        fullTextChunkSearch.search("Gebührenbefreiung", Set.of(readableLibrary), 25);
+        fullTextChunkSearch.search(
+            "Gebührenbefreiung", Set.of(readableLibrary), MetadataFilter.NONE, List.of(), 25);
 
     assertThat(hits).extracting(Document::getId).containsExactly(readable.toString());
   }
@@ -93,7 +96,10 @@ class FullTextChunkSearchIntegrationTest {
   void anEmptyReadableSetReturnsNothing() {
     seed(readableLibrary, "Die Gebührenbefreiung ist auf Antrag zu gewähren.");
 
-    assertThat(fullTextChunkSearch.search("Gebührenbefreiung", Set.of(), 25)).isEmpty();
+    assertThat(
+            fullTextChunkSearch.search(
+                "Gebührenbefreiung", Set.of(), MetadataFilter.NONE, List.of(), 25))
+        .isEmpty();
   }
 
   /**
@@ -116,7 +122,11 @@ class FullTextChunkSearchIntegrationTest {
 
     List<Document> hits =
         fullTextChunkSearch.search(
-            "Vorhaben im Außenbereich nach § 35 BauGB", Set.of(readableLibrary), 25);
+            "Vorhaben im Außenbereich nach § 35 BauGB",
+            Set.of(readableLibrary),
+            MetadataFilter.NONE,
+            List.of(),
+            25);
 
     assertThat(hits)
         .extracting(Document::getId)
@@ -140,7 +150,12 @@ class FullTextChunkSearchIntegrationTest {
                 + " weiteren Verfahren des Jahres 24 wurde im Verfahren entschieden.");
 
     List<Document> hits =
-        fullTextChunkSearch.search("Verfahren 4 K 1023/24.NW", Set.of(readableLibrary), 25);
+        fullTextChunkSearch.search(
+            "Verfahren 4 K 1023/24.NW",
+            Set.of(readableLibrary),
+            MetadataFilter.NONE,
+            List.of(),
+            25);
 
     assertThat(hits).extracting(Document::getId).first().isEqualTo(wanted.toString());
     assertThat(hits).extracting(Document::getId).contains(repetitive.toString());
@@ -152,7 +167,9 @@ class FullTextChunkSearchIntegrationTest {
     UUID chunkId =
         seed(readableLibrary, "Von der Gebühr befreit ist, wer seine Bedürftigkeit nachweist.");
 
-    List<Document> hits = fullTextChunkSearch.search("Bedürftigkeit", Set.of(readableLibrary), 25);
+    List<Document> hits =
+        fullTextChunkSearch.search(
+            "Bedürftigkeit", Set.of(readableLibrary), MetadataFilter.NONE, List.of(), 25);
 
     assertThat(hits).extracting(Document::getId).containsExactly(chunkId.toString());
     assertThat(hits.get(0).getMetadata())
@@ -164,7 +181,9 @@ class FullTextChunkSearchIntegrationTest {
   void germanStemmingStillApplies() {
     UUID chunkId = seed(readableLibrary, "Die Satzung regelt die Befreiungen von der Gebühr.");
 
-    assertThat(fullTextChunkSearch.search("Befreiung", Set.of(readableLibrary), 25))
+    assertThat(
+            fullTextChunkSearch.search(
+                "Befreiung", Set.of(readableLibrary), MetadataFilter.NONE, List.of(), 25))
         .extracting(Document::getId)
         .containsExactly(chunkId.toString());
   }
@@ -174,8 +193,14 @@ class FullTextChunkSearchIntegrationTest {
   void aQuestionWithoutUsableTokensReturnsNothing() {
     seed(readableLibrary, "Die Satzung regelt die Befreiungen von der Gebühr.");
 
-    assertThat(fullTextChunkSearch.search("...", Set.of(readableLibrary), 25)).isEmpty();
-    assertThat(fullTextChunkSearch.search("Gebühr", Set.of(readableLibrary), 0)).isEmpty();
+    assertThat(
+            fullTextChunkSearch.search(
+                "...", Set.of(readableLibrary), MetadataFilter.NONE, List.of(), 25))
+        .isEmpty();
+    assertThat(
+            fullTextChunkSearch.search(
+                "Gebühr", Set.of(readableLibrary), MetadataFilter.NONE, List.of(), 0))
+        .isEmpty();
   }
 
   /**
@@ -200,7 +225,11 @@ class FullTextChunkSearchIntegrationTest {
 
     List<Document> hits =
         fullTextChunkSearch.search(
-            "Was regelt die Dienstanweisung BAU-DA-2/2024?", Set.of(readableLibrary), 25);
+            "Was regelt die Dienstanweisung BAU-DA-2/2024?",
+            Set.of(readableLibrary),
+            MetadataFilter.NONE,
+            List.of(),
+            25);
 
     assertThat(hits).extracting(Document::getId).first().isEqualTo(wanted.toString());
     assertThat(hits).extracting(Document::getId).contains(neighbour.toString());
@@ -223,7 +252,12 @@ class FullTextChunkSearchIntegrationTest {
         seed(readableLibrary, "Kontakt: <max.mustermann@example.org> bezueglich Ihrer Anfrage.");
 
     List<Document> hits =
-        fullTextChunkSearch.search("max.mustermann@example.org", Set.of(readableLibrary), 25);
+        fullTextChunkSearch.search(
+            "max.mustermann@example.org",
+            Set.of(readableLibrary),
+            MetadataFilter.NONE,
+            List.of(),
+            25);
 
     assertThat(hits).extracting(Document::getId).containsExactly(wanted.toString());
   }
@@ -239,7 +273,11 @@ class FullTextChunkSearchIntegrationTest {
 
     List<Document> hits =
         fullTextChunkSearch.search(
-            "Gebühr & ! ( ) : * <-> 'satzung' | 1=1 --", Set.of(readableLibrary), 25);
+            "Gebühr & ! ( ) : * <-> 'satzung' | 1=1 --",
+            Set.of(readableLibrary),
+            MetadataFilter.NONE,
+            List.of(),
+            25);
 
     assertThat(hits).extracting(Document::getId).containsExactly(chunkId.toString());
   }
@@ -259,7 +297,9 @@ class FullTextChunkSearchIntegrationTest {
     seed(readableLibrary, "Die Satzung regelt die Gebühr.", "z-satzung.md", 1);
     seed(readableLibrary, "Die Satzung regelt die Gebühr.", "a-satzung.md", 0);
 
-    List<Document> hits = fullTextChunkSearch.search("Satzung Gebühr", Set.of(readableLibrary), 25);
+    List<Document> hits =
+        fullTextChunkSearch.search(
+            "Satzung Gebühr", Set.of(readableLibrary), MetadataFilter.NONE, List.of(), 25);
 
     assertThat(hits)
         .extracting(hit -> hit.getMetadata().get("file_name"))
@@ -276,7 +316,9 @@ class FullTextChunkSearchIntegrationTest {
     seed(readableLibrary, "Die Satzung regelt die Gebühr.", "satzung.md", 10);
     seed(readableLibrary, "Die Satzung regelt die Gebühr.", "satzung.md", 2);
 
-    List<Document> hits = fullTextChunkSearch.search("Satzung Gebühr", Set.of(readableLibrary), 25);
+    List<Document> hits =
+        fullTextChunkSearch.search(
+            "Satzung Gebühr", Set.of(readableLibrary), MetadataFilter.NONE, List.of(), 25);
 
     assertThat(hits).extracting(hit -> hit.getMetadata().get("chunk_index")).containsExactly(2, 10);
   }

@@ -148,7 +148,7 @@ class SearchDiagnosisIntegrationTest {
     SearchDiagnosis diagnosis = diagnose(profileQuery("Gebührenbefreiung", null));
 
     assertThat(diagnosis.searchScope())
-        .extracting(ref -> ref.getId())
+        .extracting(ref -> ref.id())
         .containsExactly(grantedLibraryId);
     assertThat(diagnosis.permissionProfileName()).isEqualTo("Sachbearbeitung Bürgerbüro");
     // Every chunk the run ever saw belongs to the one library the profile reaches - the filter is
@@ -165,7 +165,7 @@ class SearchDiagnosisIntegrationTest {
                 "Gebührenbefreiung", DiagnosisContextType.SELF, null, null, null, null));
 
     assertThat(diagnosis.searchScope())
-        .extracting(ref -> ref.getId())
+        .extracting(ref -> ref.id())
         .containsExactlyInAnyOrder(grantedLibraryId, ungrantedLibraryId);
     assertThat(diagnosis.permissionProfileName()).isNull();
   }
