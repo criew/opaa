@@ -77,7 +77,10 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
-          # The runtime stage applies the OS security updates of the build day (issue #1450); a
-          # cache hit on that layer would republish the state of an arbitrarily old build, so this
-          # one stage is always rebuilt while every earlier stage keeps its cache.
+          # The frontend's runtime stage applies the OS security updates of the build day (issue
+          # #1450); a cache hit on that layer would republish the state of an arbitrarily old
+          # build, so this one stage is always rebuilt while every earlier stage keeps its cache.
+          # The backend's runtime stage has no package manager left to update since #1459 - it is
+          # kept out of the cache for the same effect one level down: the distroless base is
+          # re-resolved and re-fetched instead of an old layer being reused.
           no-cache-filters: runtime

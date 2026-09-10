@@ -401,10 +401,9 @@ aber Indizierung und Fragen schlagen fehl.
 
 ## Backend-Laufzeitimage
 
-Das Backend läuft in einem bewusst minimalen Image ([ADR-0029](../decisions/0029-schlankes-backend-laufzeitimage.md)):
-eine mit `jlink` erzeugte Java-21-Laufzeit auf `gcr.io/distroless/base-nossl-debian13`. Außer der
-C-Bibliothek enthält das Image kein Betriebssystempaket — keine Shell, keine Coreutils, kein
-`curl`/`wget`, keinen Paketmanager. Für den Betrieb folgt daraus:
+Das Backend läuft in einem bewusst minimalen Image: eine mit `jlink` erzeugte Java-21-Laufzeit auf
+einem Distroless-Basisimage. Außer der C-Bibliothek enthält das Image kein Betriebssystempaket —
+keine Shell, keine Coreutils, kein `curl`/`wget`, keinen Paketmanager. Für den Betrieb folgt daraus:
 
 - **`docker exec … sh` funktioniert nicht.** Es gibt keine ausführbare Shell im Container.
 - **Ein `healthcheck:` in der `docker-compose.yml` darf für den Backend-Service kein `CMD-SHELL`
@@ -413,25 +412,73 @@ C-Bibliothek enthält das Image kein Betriebssystempaket — keine Shell, keine 
   Container heraus.
 - **Zeitzone:** Der Container läuft in UTC, solange `TZ` nicht gesetzt ist. `TZ=Europe/Berlin` wirkt
   wie gewohnt — die Zeitzonendatenbank steckt in der Java-Laufzeit, nicht in einem OS-Paket.
-- **Zertifikate:** Der Truststore der Anwendung ist der `cacerts` der Java-Laufzeit (dieselben
-  öffentlichen CAs wie zuvor). Ein eigenes Unternehmens-Zertifikat wird nicht mehr über
-  `update-ca-certificates` eingespielt, sondern über die üblichen JVM-Schalter, z. B.
-  `JAVA_TOOL_OPTIONS=-Djavax.net.ssl.trustStore=/app/truststore.p12 -Djavax.net.ssl.trustStorePassword=…`
-  mit einem hineingemounteten Truststore.
+- **Zertifikate:** Der Truststore der Anwendung ist der `cacerts` der Java-Laufzeit mit den
+  öffentlichen CAs. `update-ca-certificates` gibt es im Image nicht mehr; eine eigene interne CA
+  wird stattdessen in eine **Kopie dieses Truststores** aufgenommen (siehe unten) — nie in einen
+  leeren, neuen Store.
 - **Zusätzliche JVM-Optionen** (Heap-Grenzen, Debug-Agent, JFR) werden über `JAVA_TOOL_OPTIONS`
   gesetzt; ein `java`-Aufruf mit eigenen Argumenten ist nicht nötig und würde den Entrypoint
   überschreiben.
 
+### Eigene interne CA ergänzen
+
+> **Wichtig:** `-Djavax.net.ssl.trustStore=…` **ersetzt** den mitgelieferten Truststore, es ergänzt
+> ihn nicht. Wer nur seine interne CA in einen frischen Store legt und darauf zeigt, verliert
+> sämtliche öffentlichen CAs — HTTPS zu LLM-Anbietern, S3 und einem OIDC-Anbieter mit öffentlichem
+> Zertifikat scheitert dann mit `PKIX path building failed`, ohne erkennbaren Zusammenhang zur
+> Änderung.
+
+Richtig ist, den mitgelieferten Store zu kopieren, zu ergänzen und zurückzumounten:
+
+```bash
+# 1. Mitgelieferten Truststore herausholen (funktioniert ohne Shell im Container)
+docker cp <container>:/opt/java/openjdk/lib/security/cacerts ./cacerts
+
+# 2. Eigene CA ergänzen (Standardpasswort des JDK-Truststores: changeit)
+keytool -importcert -keystore ./cacerts -storepass changeit \
+        -alias interne-ca -file interne-ca.crt -noprompt
+
+# 3. Ergänzte Kopie an ihren Originalplatz mounten - dann ist kein JVM-Schalter nötig
+```
+
+```yaml
+services:
+  backend:
+    volumes:
+      - ./cacerts:/opt/java/openjdk/lib/security/cacerts:ro
+```
+
+Der Schritt ist nach einem Image-Update zu wiederholen, sobald die Laufzeit neue öffentliche
+Wurzelzertifikate mitbringt: Die gemountete Kopie überdeckt den Stand des Images.
+
 ### Diagnose ohne Shell
 
 ```bash
-docker compose logs -f backend                      # Logs
-curl -s http://localhost:8081/actuator/health        # Zustand inkl. DB, Chat- und Embedding-Anbieter
+docker compose logs -f backend                       # Logs
+curl -s http://localhost:8081/actuator/health        # Zustandsübersicht
 curl -s http://localhost:8081/actuator/metrics       # Metriken
 curl -s http://localhost:8081/actuator/prometheus    # Prometheus-Format
 docker cp <container>:/app/uploads ./uploads-kopie   # Dateien aus dem Container holen
 docker run --rm -it --network container:<container> nicolaka/netshoot   # Netzwerkdiagnose im selben Netz
 ```
+
+Wie viel `/actuator/health` zeigt, hängt von der Authentifizierung ab: Der Endpunkt ist ohne Anmeldung
+erreichbar, Einzelheiten zu Datenbank sowie Chat- und Embedding-Anbieter zeigt er aber nur einem
+angemeldeten Aufrufer. Im Entwicklungsmodus (`dev`) gilt jede Anfrage als angemeldet, ein anonymes
+`curl` sieht dort also die volle Aufschlüsselung; in einem OIDC-Deployment antwortet dasselbe `curl`
+nur mit `{"status":"UP"}` bzw. `DOWN`, und die Aufschlüsselung braucht ein gültiges Zugangstoken.
+
+Thread- und Heap-Dump ohne Shell:
+
+```bash
+docker exec <container> /opt/java/openjdk/bin/jcmd 1 Thread.print
+docker exec <container> /opt/java/openjdk/bin/jcmd 1 GC.heap_dump /tmp/heap.hprof
+docker cp <container>:/tmp/heap.hprof ./heap.hprof
+docker kill -s QUIT <container>   # Alternative: Thread-Dump ins Log, braucht nichts im Image
+```
+
+`docker kill -s QUIT` beendet den Container **nicht** — die JVM behandelt `SIGQUIT` als Aufforderung,
+einen Thread-Dump auf die Standardausgabe zu schreiben, er landet also in `docker compose logs`.
 
 Ein `docker compose logs backend` beantwortet die überwiegende Mehrheit der Fälle, in denen früher
 eine Shell benutzt wurde. Für alles Weitere lässt sich ein Werkzeug-Container in denselben Netzwerk-

@@ -21,11 +21,12 @@ RUN ./gradlew bootJar --no-daemon -x test
 # crypto.cryptoki), non-UTF-8 charsets of imported documents (charsets), German formatting
 # (localedata), DNS/JNDI (naming.dns), sun.misc.Unsafe used by Hibernate and Spring (unsupported),
 # ZIP filesystem access (zipfs), and the diagnostic surface an operator has left on a shell-less
-# image (jfr, management.agent, jdwp.agent). A missing module surfaces only at runtime; the E2E
-# suite, not the build, is what keeps this list honest.
+# image: jdk.jcmd (it pulls in jdk.attach) is what makes a thread or heap dump reachable at all
+# without a shell, jfr/management.agent/jdwp.agent complement it. A missing module surfaces only at
+# runtime; the E2E suite, not the build, is what keeps this list honest.
 FROM eclipse-temurin:21-jdk AS jlink
 RUN "$JAVA_HOME/bin/jlink" \
-    --add-modules java.se,jdk.charsets,jdk.crypto.cryptoki,jdk.crypto.ec,jdk.dynalink,jdk.jdwp.agent,jdk.jfr,jdk.localedata,jdk.management,jdk.management.agent,jdk.naming.dns,jdk.net,jdk.security.auth,jdk.unsupported,jdk.zipfs \
+    --add-modules java.se,jdk.charsets,jdk.crypto.cryptoki,jdk.crypto.ec,jdk.dynalink,jdk.jcmd,jdk.jdwp.agent,jdk.jfr,jdk.localedata,jdk.management,jdk.management.agent,jdk.naming.dns,jdk.net,jdk.security.auth,jdk.unsupported,jdk.zipfs \
     --strip-debug --no-man-pages --no-header-files --compress=zip-6 \
     --output /javaruntime
 
@@ -39,7 +40,9 @@ FROM gcr.io/distroless/base-nossl-debian13 AS runtime
 # sun.jnu.encoding - file *names* carrying umlauts (a document library's normal case) would then be
 # unreadable. Distroless strips /usr/lib/locale, so the one built-in locale is copied back in;
 # language and country are pinned to the values the Temurin base used to export via LANG, so the
-# default Locale stays en_US across this change.
+# default Locale stays en_US across this change. The compiled locale format is glibc-version
+# specific, so this Debian release must move together with the distroless base above - a lone bump
+# to debian:14-slim would not fail the build, it would silently fall back to ANSI_X3.4-1968.
 COPY --from=debian:13-slim /usr/lib/locale/C.utf8 /usr/lib/locale/C.utf8
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8

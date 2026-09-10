@@ -60,8 +60,12 @@ Der Laufzeit-Stage von `backend/Dockerfile` besteht aus zwei Teilen:
    deshalb aus keiner Abhängigkeitsanalyse folgen — `jdk.crypto.ec`/`jdk.crypto.cryptoki` (TLS),
    `jdk.charsets` (Nicht-UTF-8-Zeichensätze importierter Dokumente), `jdk.localedata` (deutsche
    Formatierung), `jdk.naming.dns`, `jdk.unsupported` (`sun.misc.Unsafe`, von Hibernate und Spring
-   genutzt), `jdk.zipfs`, `jdk.dynalink`, `jdk.net`, `jdk.security.auth`, `jdk.management` sowie
-   `jdk.jfr`, `jdk.management.agent` und `jdk.jdwp.agent` als Diagnosefläche.
+   genutzt), `jdk.zipfs`, `jdk.dynalink`, `jdk.net`, `jdk.security.auth`, `jdk.management` sowie als
+   Diagnosefläche `jdk.jcmd` (zieht `jdk.attach` mit), `jdk.jfr`, `jdk.management.agent` und
+   `jdk.jdwp.agent`. `jdk.jcmd` ist dabei nicht optional: Ohne Shell und mit den vier
+   freigeschalteten Actuator-Endpunkten gäbe es sonst **keinen** Weg zu einem Thread- oder
+   Heap-Dump. JFR allein trägt das nicht — ohne `jcmd` lässt es sich nur beim Start
+   scharfschalten, also gerade dann nicht, wenn der Störfall schon läuft.
 2. **`gcr.io/distroless/base-nossl-debian13` als Basis** — glibc und sonst nichts, was die Triage
    oben nennt. Zertifikate (`cacerts`), Zeitzonendatenbank und Locale-Daten kommen aus der
    JDK-Laufzeit, nicht aus OS-Paketen.
@@ -92,12 +96,16 @@ Layer-Cache.
 **Schwieriger:**
 
 - **Kein Shell-Zugang mehr.** `docker exec … sh` funktioniert nicht. Diagnose läuft über Logs,
-  `/actuator`, JFR und `docker cp`; die Betriebsanleitung beschreibt das
+  `/actuator`, `jcmd`, `docker kill -s QUIT` und `docker cp`; die Betriebsanleitung beschreibt das
   ([`docs/handbuch/deployment.md`](../handbuch/deployment.md)).
 - **Ein fehlendes jlink-Modul fällt erst zur Laufzeit auf.** Der Build bleibt grün, ein
   Codepfad wirft `ClassNotFoundException` oder `ServiceConfigurationError`. Absicherung ist die
   E2E- und `demo-smoke`-Suite, die alle Formate und Konnektoren durchläuft — nicht der Build.
-  Eine neue Abhängigkeit mit nativem oder reflektivem JDK-Bedarf muss den Modulsatz mit prüfen.
+  **Beide laufen bewusst nicht auf `pull_request`** (`e2e.yml`, `demo-smoke.yml`): Das Netz greift
+  nach dem Merge bzw. bei einem `workflow_dispatch` auf dem Branch, nicht als PR-Gate. Wer den
+  Modulsatz ändert, stößt beide auf seinem Branch von Hand an, statt sich auf die PR-Checks zu
+  verlassen. Eine neue Abhängigkeit mit nativem oder reflektivem JDK-Bedarf muss den Modulsatz
+  mit prüfen.
 - **glibc bleibt und wird als Fläche größer.** Debians glibc trägt 18 dauerhaft ungefixte Befunde
   (11 medium, 7 low), Ubuntu 26.04 trug an derselben Stelle 4. Diese Gruppe ist durch kein
   Basisimage lösbar; sie war in #1459 bereits als Sonderfall benannt.
