@@ -16,12 +16,17 @@ WORKDIR /app/backend
 RUN ./gradlew bootJar --no-daemon -x test
 
 FROM eclipse-temurin:21-jre AS runtime
-# The runtime image ships the Ubuntu security state of the day Temurin last rebuilt its base;
-# everything published since then would otherwise stay in the image (issue #1450). pebble is the
-# service manager of Canonical's Ubuntu rock base - this image never starts it, so it is removed
-# instead of kept patched. Requires cache-busting on publish (no-cache-filters in
-# .github/workflows/publish-images.yml), otherwise a cached layer freezes this state again.
-RUN set -eux;     apt-get update;     DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends;     rm -rf /var/lib/apt/lists/*;     rm -f /usr/bin/pebble
+# Without this the image ships the Ubuntu security state of the day Temurin last rebuilt its base
+# (issue #1450); publish-images.yml keeps this stage out of the layer cache so the update happens
+# on every publish. pebble is the service manager of Canonical's Ubuntu rock base and is never
+# started here - removed instead of patched; the bare `rm` is deliberate, a moved or dropped
+# binary has to break the build rather than silently reinstate its Go runtime.
+RUN set -eux; \
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/*; \
+    rm /usr/bin/pebble
 WORKDIR /app
 COPY --from=build /app/backend/build/libs/*.jar app.jar
 EXPOSE 8080
