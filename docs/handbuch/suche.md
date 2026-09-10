@@ -244,6 +244,12 @@ Zwei bekannte Grenzen des Pfads:
   Protokoll als abgeschaltet aus, und die Suche läuft rein vektoriell. Auf der Verwaltungs-Evaldomäne
   kostet das gemessen 15 Prozentpunkte Hit Rate@5.
 
+Schlägt die Volltextabfrage für eine **einzelne Teilfrage** fehl, entfällt nur deren Kandidatenliste;
+der Lauf geht mit den übrigen Teilfragen und dem Vektorpfad weiter. Das Protokoll benennt in der
+Oberfläche die betroffene Liste und dass die Volltextsuche für sie fehlgeschlagen ist, statt die
+ganze Stufe als abgeschaltet auszuweisen; die Fehlerursache selbst (Exception-Typ) steht nur im
+Server-Log.
+
 ### Stufe 6: Auswahl je Liste
 
 Jetzt liegen mehrere Kandidatenlisten vor: je Suchanfrage eine aus der Vektorsuche und eine aus
@@ -308,6 +314,13 @@ für den Reranker auf das Reranking-Fenster geweitet hatten, haben in der Fusion
 einem Lauf ohne Reranking. Wer Reranking einschaltet, sollte deshalb die Erreichbarkeit des
 Endpunkts überwachen und nicht nur die Antworten ansehen.
 
+Ist `rerank-candidate-count` **kleiner** als `top-k`, liefert die Fusion trotzdem bis zu `top-k`
+Kandidaten (das Kandidatenbudget ist dann das Maximum aus beiden Werten, damit die Antwort nicht
+unter `top-k` schrumpft), aber der Reranker bewertet nur die ersten `rerank-candidate-count` davon.
+Die Kandidaten dahinter werden **angehängt**, in fusionierter Reihenfolge, nicht verworfen. Im
+Auslieferungsstand (`rerank-candidate-count` 50 ≥ `top-k` 8) tritt der Fall nicht ein; erst eine
+Konfiguration mit `rerank-candidate-count < top-k` löst ihn aus.
+
 Das Fenster **erweitert die Reichweite der Suche nicht**. Was keine Suchstufe zurückgegeben hat,
 kann kein Reranker nach vorn holen. Die Reichweite ist `fetch-k` je Liste mal der Zahl der Listen,
 also Teilfragen mal aktive Pfade; bei einer Teilfrage liefern zwei Pfade höchstens doppelt
@@ -349,7 +362,9 @@ verwechselt werden:
 Der Filter wird nur angeboten, wenn das Feld im Suchbereich der Person ausreichend gefüllt ist:
 eine konfigurierte Schwelle je Kernfeld, für die Dokumentart höher als für das Datum; für
 Bibliotheksfelder gilt eine eigene Schwelle, gemessen an der eigenen Bibliothek; Formatfelder
-werden angeboten, sobald ein Dokument des Suchbereichs einen Wert trägt. Ein Filter auf ein nur zu einem Bruchteil gefülltes
+werden angeboten, sobald ein Dokument des Suchbereichs einen Wert trägt. Ein Formatfeld bietet
+höchstens 20 Werte an und meldet, wenn der Bestand mehr hergibt (siehe [Metadaten](metadaten.md)).
+Ein Filter auf ein nur zu einem Bruchteil gefülltes
 Feld sähe aus wie eine Einschränkung des Bestands und wäre keine. Die Optionen werden je Person
 und Suchbereich für kurze Zeit zwischengespeichert und bei
 jeder Rechteänderung verworfen. Ein gesetzter Filter bleibt am Chat und gilt für jede weitere Frage
@@ -472,6 +487,23 @@ rekonstruiert.
 | eigener Rechtekontext | Systemadministrator | die eigenen Leserechte |
 | Rechteprofil (eine Gruppe mit ihrer lesbaren Bibliotheksmenge) | Systemadministrator | Voreinstellung; Installationen, die Rechte nur einzeln statt über Gruppen vergeben, haben keine Profile, und die Seite sagt das |
 | Person („Sicht als") | nur mit einzeln vergebener, befristeter Befugnis, die aus keiner Rolle folgt | Pflichtbegründung vor dem Lauf, Protokolleintrag, Abzug der diagnosegesperrten Bibliotheken; das Ergebnis wird nirgends gespeichert |
+
+Die Oberfläche zeigt jede Stufe unter ihrer deutschen Bezeichnung. Referenz zwischen Handbuch,
+Spezifikation und dem API-Feld `stage` des Erklärprotokolls ist der technische Name
+(`RetrievalStageName`), der vor der 1–9-Zählung dieses Kapitels Bestand hat und der Wert ist, den
+`stage` tatsächlich trägt:
+
+| Stufe (dieses Kapitel) | Bezeichnung in der Oberfläche | `stage` (technischer Name) |
+|---|---|---|
+| 1 Suchbereich | Suchbereich | `SEARCH_SCOPE` |
+| 2 Metadatenfilter | Metadatenfilter | `METADATA_FILTER` |
+| 3 Teilfragen | Teilfragen | `SUB_QUERY_DECOMPOSITION` |
+| 4 Vektorsuche | Vektorsuche | `VECTOR_SEARCH` |
+| 5 Volltextsuche | Volltextsuche | `FULL_TEXT_SEARCH` |
+| 6 Auswahl je Liste | Auswahl je Liste | `MMR_SELECTION` |
+| 7 Fusion | Fusion (RRF) | `RANK_FUSION` |
+| 8 Reranking | Neubewertung (Reranking) | `RERANK` |
+| 9 Dokument-Vervollständigung | Dokument-Vervollständigung | `DOCUMENT_COMPLETION` |
 
 Für jede Stufe zeigt die Seite Eingang, Ausgang, Status (ausgeführt, abgeschaltet, nicht verfügbar,
 nicht erreicht), die Notizen (Suchanfragen, Budgets, Filter, Zahl der Bibliotheken mit
