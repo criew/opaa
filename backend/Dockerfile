@@ -15,7 +15,18 @@ COPY opaa-api/src/ opaa-api/src/
 WORKDIR /app/backend
 RUN ./gradlew bootJar --no-daemon -x test
 
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:21-jre AS runtime
+# Without this the image ships the Ubuntu security state of the day Temurin last rebuilt its base
+# (issue #1450); publish-images.yml keeps this stage out of the layer cache so the update happens
+# on every publish. pebble is the service manager of Canonical's Ubuntu rock base and is never
+# started here - removed instead of patched; the bare `rm` is deliberate, a moved or dropped
+# binary has to break the build rather than silently reinstate its Go runtime.
+RUN set -eux; \
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/*; \
+    rm /usr/bin/pebble
 WORKDIR /app
 COPY --from=build /app/backend/build/libs/*.jar app.jar
 EXPOSE 8080

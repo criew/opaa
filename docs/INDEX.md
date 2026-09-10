@@ -159,8 +159,8 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
   Datum/Stand: Ermittlung, Bestandslauf, manuelle Pflege, Filter und Beleg
 - **[`sbom.md`](./sbom.md)** — Software Bill of Materials: Image-Attestierungen und
   CycloneDX-CI-Artefakte für Backend und Frontend
-- **[`cve-scanning.md`](./cve-scanning.md)** — CVE-Erkennung: Dependency Graph, Dependabot-Alerts
-  und geplanter Image-Scan mit Trivy
+- **[`cve-scanning.md`](./cve-scanning.md)** — CVE-Erkennung: Dependency Graph, Dependabot-Alerts,
+  Trivy-Image-Scan und die Triage von Image-Alerts
 
 ### Architekturentscheidungen
 
