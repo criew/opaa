@@ -51,7 +51,7 @@ describe('MessageBubble', () => {
     expect(screen.getByText('Hello there')).toBeInTheDocument()
   })
 
-  it('renders assistant message with feedback buttons', () => {
+  it('renders assistant message', () => {
     const msg: ChatMessage = {
       id: '2',
       role: 'assistant',
@@ -61,7 +61,7 @@ describe('MessageBubble', () => {
     }
     render(<MessageBubble message={msg} />)
     expect(screen.getByText('Here is the answer')).toBeInTheDocument()
-    expect(screen.getByLabelText('Daumen hoch')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Daumen hoch')).not.toBeInTheDocument()
   })
 
   it('renders assistant message with markdown', () => {
