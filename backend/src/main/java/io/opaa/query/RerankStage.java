@@ -8,28 +8,17 @@ import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 
 /**
- * Re-scores the fused candidate window with the rerank model role and cuts it back to {@link
- * QueryProperties#topK} (docs/features/hybrid-retrieval.md, Arbeitspaket 4). Sits between {@link
- * RankFusionStage} and {@link DocumentCompletionStage}.
+ * The {@link RetrievalStageName#RERANK} stage (docs/handbuch/suche.md, Stufe 8): re-scores the
+ * fused candidate window with the rerank model role and cuts it back to {@link
+ * QueryProperties#topK}.
  *
- * <p><b>No path passes on more than {@code top-k} chunks.</b> {@link RankFusionStage} widens its
- * budget to {@link QueryProperties#rerankCandidateCount} only while reranking is active, so the
- * paths that end in {@code identity(...)} - switched off, or unavailable before the run - are
- * already capped and leave the state untouched. Only the path where the endpoint was asked and
- * scored nothing has to restore the cap itself, because the budget was widened for a reranker that
- * then did not deliver.
+ * <p>No path passes on more than {@code top-k} chunks: the fusion widens its budget only while
+ * reranking is active, so every {@code identity(...)} path is already capped and only the path
+ * where the endpoint scored nothing restores the cap itself. A chunk the reranker did not score
+ * keeps its fused order behind every scored one.
  *
- * <p>A chunk the reranker did not score keeps its fused order behind every scored one - whether it
- * sat behind the candidate window or the endpoint simply did not score it. An endpoint that answers
- * for part of the window must not make the rest disappear, and a window below {@code top-k} must
- * not shrink the answer's context.
- *
- * <p><b>A failure costs the order, never the answer - but not the order of a run without
- * reranking.</b> An endpoint that drops out mid-run leaves the fused order of the <i>widened</i>
- * window: {@link MmrSelectionStage} kept {@link QueryProperties#rerankCandidateCount} entries per
- * list instead of {@code top-k}, so ranks 9 to 50 of each list took part in the fusion and a chunk
- * found by both searches can outrank a rank-3 hit of a single one. The selection is therefore a
- * third state, distinct both from the reranked run and from the run configured without reranking.
+ * <p>A failure costs the order, never the answer - but not the order of a run configured without
+ * reranking: the narrowing stages kept the widened window, so the surviving order is a third state.
  */
 @Component
 class RerankStage implements RetrievalStage {

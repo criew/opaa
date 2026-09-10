@@ -11,21 +11,17 @@ import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.stereotype.Component;
 
 /**
- * Carries the caller-supplied core-field filter into the run (metadata-schema.md Wirkstelle 1):
+ * The {@link RetrievalStageName#METADATA_FILTER} stage (metadata-schema.md Wirkstelle 1):
  * translates {@link RetrievalContext#metadataFilter()} once into the vector-path expression and
  * hands both forms on in the state, so {@link VectorSearchStage} and {@link FullTextSearchStage}
- * apply the identical condition inside their queries.
- *
- * <p>Runs right after {@link SearchScopeStage} and touches nothing it established: the permission
- * filter stays the outer condition, this stage only supplies what the searches AND to it. A run
- * without a filter passes through unchanged and says so.
+ * apply the identical condition inside their queries. It touches nothing {@link SearchScopeStage}
+ * established: the permission filter stays the outer condition.
  *
  * <p>The Dokumentart vocabulary is read once per run - never per sub-query or per path - because
  * both forms express "no value" as NOT IN over the complete value set (see {@link
  * MetadataFilterExpressions}); the snapshot travels in the state to the lexical path. A code
- * outside the vocabulary is therefore rejected at the API and at the chat (400) before it reaches
- * this stage: selecting only unknown codes would exclude every code the vocabulary knows and keep
- * exactly the documents without a Dokumentart.
+ * outside the vocabulary is rejected at the API before it reaches this stage: selecting only
+ * unknown codes would keep exactly the documents without a Dokumentart.
  */
 @Component
 class MetadataFilterStage implements RetrievalStage {

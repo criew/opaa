@@ -19,52 +19,20 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * The lexical half of the hybrid search (docs/features/hybrid-retrieval.md, Arbeitspaket 2): one
- * PostgreSQL full-text query against {@code chunk_full_text}, ranked by {@code ts_rank}, returning
- * the same {@link Document} shape the vector path returns so both feed one fusion later (#1049).
+ * The lexical half of the hybrid search (docs/handbuch/suche.md, Stufe 5): one PostgreSQL full-text
+ * query against {@code chunk_full_text}, ranked by {@code ts_rank}, in the {@link Document} shape
+ * the vector path returns. The permission filter is part of that query, never a filter on its
+ * result (ADR-0008 §5): {@code library_id = ANY(?)} sits in the {@code WHERE} clause.
  *
- * <p><b>The permission filter is part of the query, never a filter on its result</b> (ADR-0008 §5,
- * docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit). {@code library_id = ANY(?)}
- * sits in the {@code WHERE} clause next to the match predicate; there is no code path in this class
- * that reads a row of a library the caller did not pass in. A second search path is the most common
- * way a permission-aware search springs a leak, which is why this is a structural property here and
- * not a convention.
+ * <p>The query mirrors {@link FullTextChunkStore#indexChunks}: the German analysis chain over the
+ * question's words, OR-ed rather than AND-ed because this path feeds a fusion, plus the identifier
+ * lexemes of {@link FullTextIdentifiers} - weight {@code A}, which keeps "§ 34" and "§ 35" apart.
+ * Both halves use sanitized tokens, so no character of the question reaches {@code to_tsquery} as
+ * an operator.
  *
- * <p><b>The query is built the same way the index is</b>, from two halves that mirror {@link
- * FullTextChunkStore#indexChunks} exactly:
- *
- * <ul>
- *   <li>the German analysis chain over the question's words, {@code to_tsquery(german, w1 | w2 |
- *       …)}. {@code OR}, not {@code AND}: this path supplies ranked candidates for a fusion, so a
- *       question whose every word must occur would return nothing for most real questions. {@code
- *       ts_rank} is what separates a chunk matching six terms from one matching one.
- *   <li>the undecomposed identifier lexemes of {@link FullTextIdentifiers}, {@code
- *       to_tsquery(simple, …)}, OR-ed on top. They carry weight {@code A} in the index, so an exact
- *       identifier match outranks the bare number the German chain left behind - the mechanism that
- *       keeps "§ 34" and "§ 35" apart.
- * </ul>
- *
- * <p>Both halves are built from sanitized tokens - word tokens are reduced to letters and digits,
- * identifier lexemes are ASCII-alphanumeric by construction - so no character of the user's
- * question can reach {@code to_tsquery} as an operator.
- *
- * <p><b>{@code ts_rank} is not BM25</b> and is knowingly used anyway: it lacks BM25's document
- * length normalization and inverse document frequency, so it overrates long chunks and
- * underseparates frequent from rare terms. Fusion consumes ranks rather than scores, which is a
- * markedly weaker requirement than ranking correctly (docs/features/hybrid-retrieval.md, "Die
- * bekannte Grenze: ts_rank ist kein BM25", and docs/handbuch/deployment.md for the operator-facing
- * statement of the same limit).
- *
- * <p><b>No {@code content_tsv_version} filter</b> (ADR-0028): a row built under an older {@link
- * FullTextChunkStore#CURRENT_TSV_VERSION} is searched like any other, it merely lacks the lexemes a
- * later version added until the pipeline re-index rewrites it. The version steers the fill state
- * and the re-index selection, never this query - so raising it does not empty the lexical path.
- * That holds only while every raise stays additive; a breaking change of the lexeme form (e.g. a
- * different text search configuration) must reintroduce a filter here, see the constant's Javadoc.
- *
- * <p>Schema/table name of the vector store are read from the same {@code
- * spring.ai.vectorstore.pgvector.*} properties {@code PgVectorStore} itself binds, mirroring {@link
- * ChunkEmbeddingLookup}.
+ * <p>Two accepted limits: {@code ts_rank} is not BM25, which the fusion tolerates because it
+ * consumes ranks; and an older {@code content_tsv_version} row is searched unfiltered (ADR-0028),
+ * valid only while a version raise stays additive.
  */
 @Component
 class FullTextChunkSearch {
@@ -105,10 +73,10 @@ class FullTextChunkSearch {
   }
 
   /**
-   * The same search with the core-field filter (#1070) as further {@code WHERE} conditions over the
-   * chunk's {@code metadata} - the lexical twin of the vector path's filter expression, built by
-   * {@link MetadataFilterExpressions#sqlPredicate} from the same rule, and placed after the
-   * permission filter in the same clause: it narrows, it never widens.
+   * The same search with the core-field filter as further {@code WHERE} conditions over the chunk's
+   * {@code metadata} - the lexical twin of the vector path's filter expression, built by {@link
+   * MetadataFilterExpressions#sqlPredicate} from the same rule, and placed after the permission
+   * filter in the same clause: it narrows, it never widens.
    *
    * @param vocabularyCodes the complete Dokumentart value set the "no value" condition is built
    *     over - the one snapshot {@link MetadataFilterStage} read for the run, so every sub-query of

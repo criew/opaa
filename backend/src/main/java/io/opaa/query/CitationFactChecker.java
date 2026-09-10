@@ -18,27 +18,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Stufe 1 (#937) of citation plausibility checking: a deterministic, LLM-free comparison of hard
- * facts (money amounts, dates, paragraph references, other "hard" numbers with a thousands
- * separator or decimal comma) between a statement in the answer and the text of the chunk(s) it
- * cites. {@link CitationValidator} calls this class only for citations that already passed the
- * existing retrieval-based check (#386) - this class only tightens that verdict, never loosens it.
+ * The content half of citation checking: a deterministic, LLM-free comparison of hard facts (money
+ * amounts, dates, paragraph references, other "hard" numbers with a thousands separator or decimal
+ * comma) between a statement in the answer and the text of the chunk(s) it cites. {@link
+ * CitationValidator} calls it only for citations that already passed the retrieval-based check, and
+ * it only tightens that verdict, never loosens it.
  *
- * <p>Deliberately conservative (#937 acceptance criterion, sharpened by #939 review: a false
- * positive - flagging a genuinely correct citation - is worse than a false negative):
- *
- * <ul>
- *   <li>a statement that yields no extractable fact is always treated as supported;
- *   <li>a fact is only ever compared against facts of the same <b>category</b> extracted the same
- *       way from the chunk text ({@link Fact#category()}: money amounts and other "hard" numbers
- *       share the {@code "AMOUNT"} category, since a money amount is only ever a formatted number -
- *       "37,00" in a fee table column headed "EUR" is the same fact as "37,00 €" in prose - while a
- *       date or a paragraph reference stays its own category);
- *   <li>when the chunk contains <b>no</b> fact of a statement fact's category at all, that
- *       statement fact is never compared and never flags the citation - an absent category is
- *       "could not be confirmed here", not "contradicted"; only a same-category fact with a
- *       genuinely different value is a contradiction.
- * </ul>
+ * <p>Deliberately conservative: a statement without an extractable fact counts as supported, and a
+ * fact is compared only against same-category facts of the chunk ({@link Fact#category()}; money
+ * amounts and other hard numbers share one category, an amount being a formatted number). Only a
+ * same-category fact with a different value is a contradiction - a category the chunk does not
+ * carry means "not confirmed here", never "contradicted".
  */
 final class CitationFactChecker {
 
@@ -105,8 +95,7 @@ final class CitationFactChecker {
   /**
    * Like {@link #isSupportedByChunk}, but only checks the single fact {@link #nearestFact} finds
    * closest to the end of {@code statement} - the fact {@link CitationValidator} takes a citation
-   * marker to actually belong to (#939 review, finding 3(a)), rather than every fact anywhere in
-   * the statement.
+   * marker to actually belong to, rather than every fact anywhere in the statement.
    */
   static boolean isNearestFactSupportedByChunk(String statement, String chunkText) {
     Optional<Fact> nearest = nearestFact(statement);
@@ -152,9 +141,8 @@ final class CitationFactChecker {
   /**
    * The single fact whose match starts closest to the end of {@code text} - used by {@link
    * #isNearestFactSupportedByChunk} to resolve "the fact this citation marker belongs to" when a
-   * statement carries more than one (#939 review, finding 3(a): a sentence enumerating several
-   * documents' fees, each with its own marker, must not compare an earlier fee against the wrong
-   * marker's chunk).
+   * statement carries more than one: a sentence enumerating several documents' fees, each with its
+   * own marker, must not compare an earlier fee against the wrong marker's chunk.
    */
   static Optional<Fact> nearestFact(String text) {
     return extractPositionedFacts(text).stream()
@@ -232,7 +220,7 @@ final class CitationFactChecker {
   /**
    * A money amount also carries its plain-number form ({@code "NUM:<value>"}) so it is recognised
    * against a chunk that states the identical value without a currency marker - e.g. a fee table
-   * column headed "EUR" once, with bare numbers underneath (#939 review, finding 2).
+   * column headed "EUR" once, with bare numbers underneath.
    */
   private static Fact moneyFactOf(long cents) {
     BigDecimal euros = BigDecimal.valueOf(cents).movePointLeft(2);

@@ -11,12 +11,11 @@ import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 
 /**
- * Step 6 of docs/features/retrieval-algorithm.md as a pipeline stage: lets a document already
- * represented in the selection contribute up to {@link QueryProperties#maxChunksPerDocument} chunks
- * (#932/#935), drawn only from {@link RetrievalState#candidatePool()} - the candidates the search
- * stages already returned under the permission filter and the similarity threshold. It therefore
- * widens neither of them, and runs last for the same reason it did before: it works on the final
- * ranking, not on a stage a later one would resort.
+ * The {@link RetrievalStageName#DOCUMENT_COMPLETION} stage: lets a document already represented in
+ * the selection contribute up to {@link QueryProperties#maxChunksPerDocument} chunks, drawn only
+ * from {@link RetrievalState#candidatePool()} - the candidates the two search stages returned under
+ * the permission filter. It therefore widens neither the scope nor the pool, and runs last because
+ * it works on the final ranking rather than one a later stage would resort.
  *
  * <p>The verdicts distinguish the two eviction tiers, because for the diagnosis they are two
  * different answers: a tier-1 eviction takes a chunk from a document that keeps another one, a

@@ -9,19 +9,17 @@ import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.stereotype.Component;
 
 /**
- * Step 3 of docs/features/retrieval-algorithm.md as a pipeline stage: one {@code similaritySearch}
- * per search query, each with the identical permission filter from {@link SearchScopeStage} and the
- * identical {@link QueryProperties#similarityThreshold}, yielding one candidate list per query.
+ * The {@link RetrievalStageName#VECTOR_SEARCH} stage: one {@code similaritySearch} per search
+ * query, each with the identical permission filter from {@link SearchScopeStage} and the identical
+ * {@link QueryProperties#similarityThreshold}, yielding one candidate list per query.
  *
  * <p>One of the two stages that add candidates the run did not already hold ({@link
- * FullTextSearchStage} is the other, #1049) - together they call {@link
- * RetrievalState#withSearchResults} and form the ceiling every later stage works within.
+ * FullTextSearchStage} is the other) - together they call {@link RetrievalState#withSearchResults}
+ * and form the ceiling every later stage works within.
  *
  * <p>With no search queries in the state - which happens exactly when {@link
  * RetrievalStageName#SUB_QUERY_DECOMPOSITION} is switched off - the bare question is searched and
  * recorded as the run's search query, so a run never reports having searched nothing while it did.
- * Note the difference to that stage's own fallback, which prepends the conversation's first user
- * message: a switched-off stage is absent, not neutralized.
  */
 @Component
 class VectorSearchStage implements RetrievalStage {
@@ -39,8 +37,8 @@ class VectorSearchStage implements RetrievalStage {
 
   @Override
   public StageOutcome apply(RetrievalContext context, RetrievalState state) {
-    // The permission filter is the outer condition; the metadata filter (#1070) can only ever
-    // remove from what it allows - see MetadataFilterExpressions#subordinateTo.
+    // The permission filter is the outer condition; the metadata filter can only ever remove from
+    // what it allows - see MetadataFilterExpressions#subordinateTo.
     Filter.Expression filter =
         MetadataFilterExpressions.subordinateTo(
             SearchScopeStage.requiredLibraryFilter(state), state.metadataFilterExpression());
@@ -75,8 +73,7 @@ class VectorSearchStage implements RetrievalStage {
     }
 
     // Records the queries actually searched when this stage derived them itself, so the run always
-    // reports what it searched for - the state's search queries are otherwise empty exactly when
-    // the decomposition stage is switched off.
+    // reports what it searched for.
     RetrievalState searched =
         state.searchQueries().isEmpty() ? state.withSearchQueries(searchQueries) : state;
     int retrieved = lists.stream().mapToInt(list -> list.documents().size()).sum();

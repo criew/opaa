@@ -27,20 +27,20 @@ public enum VerdictReason {
 
   /**
    * Document completion pulled the candidate in as a sibling chunk of a document the selection
-   * already held (#932).
+   * already held.
    */
   COMPLETED_AS_SIBLING,
 
   /**
    * Document completion evicted the candidate as the weakest chunk of another document that already
-   * held at least two (#932, tier 1) - document diversity is unchanged by such an eviction.
+   * held at least two (tier 1) - document diversity is unchanged by such an eviction.
    */
   EVICTED_BY_DOCUMENT_COMPLETION_TIER_1,
 
   /**
    * Document completion evicted the candidate as the lowest-ranked chunk of the whole selection
-   * (#932, tier 2) - unlike tier 1 this can drop a document out of the selection entirely, which is
-   * why it is a reason of its own.
+   * (tier 2) - unlike tier 1 this can drop a document out of the selection entirely, which is why
+   * it is a reason of its own.
    */
   EVICTED_BY_DOCUMENT_COMPLETION_TIER_2
 }

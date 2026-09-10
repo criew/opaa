@@ -9,16 +9,14 @@ import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.stereotype.Component;
 
 /**
- * Step 2 of docs/features/retrieval-algorithm.md as a pipeline stage: produces the search queries
- * the search stages run, one search call each.
+ * The {@link RetrievalStageName#SUB_QUERY_DECOMPOSITION} stage: produces the search queries the
+ * search stages run, one search call each.
  *
  * <p>{@link QueryDecompositionService#decompose} returns 1 to {@link QueryProperties#maxSubQueries}
- * self-contained queries, or an empty list on any failure - which falls back to {@link
- * #buildSearchQuery}'s pre-#923 single-query behaviour unchanged. {@link
- * QueryProperties#queryDecompositionEnabled} {@code = false} skips the LLM round trip and takes
- * that same fallback.
- *
- * <p>Touches no candidates: at this point in the run there are none.
+ * self-contained queries, or an empty list on any failure, which falls back to the single query
+ * {@link #buildSearchQuery} builds. {@link QueryProperties#queryDecompositionEnabled} {@code =
+ * false} skips the LLM round trip and takes that same fallback. Touches no candidates: at this
+ * point in the run there are none.
  */
 @Component
 class SubQueryDecompositionStage implements RetrievalStage {
@@ -68,11 +66,10 @@ class SubQueryDecompositionStage implements RetrievalStage {
   }
 
   /**
-   * The pre-#923 fallback search query: the plain {@code question}, or - when a conversation is
-   * under way - the first user message of {@code history} prepended to it. {@code history} is
-   * passed in rather than read from the chat memory here, so a caller that already holds it (to
-   * also feed {@link QueryDecompositionService#decompose}) does not pay for a second, redundant
-   * lookup.
+   * The fallback search query: the plain {@code question}, or - when a conversation is under way -
+   * the first user message of {@code history} prepended to it. {@code history} is passed in rather
+   * than read from the chat memory here, so a caller that already holds it does not pay for a
+   * second lookup.
    */
   static String buildSearchQuery(String question, List<Message> history) {
     if (history.isEmpty()) {

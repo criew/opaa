@@ -1,21 +1,14 @@
 package io.opaa.query;
 
 /**
- * One named step of the retrieval pipeline (docs/features/hybrid-retrieval.md, Arbeitspaket 1):
- * candidate lists in, candidate lists out, plus an explanation of what happened to them.
+ * One named step of the retrieval pipeline (docs/handbuch/suche.md Abschnitt 4): candidate lists
+ * in, candidate lists out, plus an explanation of what happened to them.
  *
- * <p>Three properties are structural rather than a matter of discipline:
- *
- * <ul>
- *   <li><b>A stage cannot change the permission context.</b> It receives {@link RetrievalContext}
- *       read-only; the search scope and the filter derived from it are not part of what it returns.
- *   <li><b>A stage cannot see more candidates than it was handed.</b> Its input is the state's
- *       candidate lists and pool; only a search stage extends the pool, via {@link
- *       RetrievalState#withSearchResults}.
- *   <li><b>A stage cannot stay silent.</b> {@link StageOutcome} has no constructor without a {@link
- *       StageExplanation}, so an implementation that explains nothing does not compile rather than
- *       silently dropping out of the diagnosis.
- * </ul>
+ * <p>Three properties are structural rather than a matter of discipline: a stage receives {@link
+ * RetrievalContext} read-only and can therefore not change the permission context; it sees no more
+ * candidates than the state hands it, because only a search stage extends the pool via {@link
+ * RetrievalState#withSearchResults}; and it cannot stay silent, because {@link StageOutcome} has no
+ * constructor without a {@link StageExplanation}.
  */
 public interface RetrievalStage {
 

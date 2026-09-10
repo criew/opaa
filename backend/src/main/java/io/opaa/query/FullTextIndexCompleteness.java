@@ -15,25 +15,16 @@ import org.springframework.stereotype.Component;
 /**
  * How many libraries of a search scope hold chunks whose full-text index is not up to date - a
  * chunk without a {@code chunk_full_text} row, or with one below the current {@code
- * FullTextChunkStore#CURRENT_TSV_VERSION} (docs/features/hybrid-retrieval.md, "Arbeitspaket 2a").
- * The first kind the lexical path cannot find; the second it still finds, lacking only the lexemes
- * the newer version adds (ADR-0028).
+ * FullTextChunkStore#CURRENT_TSV_VERSION} (ADR-0028). The first kind the lexical path cannot find;
+ * the second it still finds, lacking only the lexemes the newer version adds.
  *
- * <p><b>Reports, never narrows (#1270).</b> The predecessor of this class kept an incomplete
- * library out of the lexical path entirely; that gate is gone, so such a library <em>is</em>
- * searched and contributes a partially filled list. This class exists so that state does not stay
- * silent in the explanation protocol: {@link FullTextSearchStage} records the number in its notes,
- * and the administration page shows the same condition per library.
+ * <p>Reports, never narrows: an incomplete library is searched all the same and contributes a
+ * partially filled list; {@link FullTextSearchStage} records the number in its notes.
  *
- * <p><b>Cached, because the underlying count is not free and the answer is monotone.</b> {@link
- * FullTextIndexFillStateService} counts against {@code vector_store} via the expression index on
- * the {@code library_id} metadata key (#1119); caching still avoids running that count on every
- * query. A library that is complete stays complete while the process runs: every chunk written
- * after #1047 gets its {@code chunk_full_text} row in the same transaction as its vector row. The
- * one event that invalidates a completion - a raised {@code CURRENT_TSV_VERSION} - can only arrive
- * with a new deployment, and therefore with a fresh process and an empty cache. An incomplete
- * library is re-checked at most once per {@link #RECHECK_INTERVAL}, so a finished re-index becomes
- * visible without a restart.
+ * <p>Cached, because the count is not free and the answer is monotone: a complete library stays
+ * complete while the process runs, and a raised {@code CURRENT_TSV_VERSION} arrives only with a new
+ * process. An incomplete library is re-checked once per {@link #RECHECK_INTERVAL}, so a finished
+ * re-index becomes visible without a restart.
  */
 @Component
 class FullTextIndexCompleteness {

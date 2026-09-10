@@ -11,8 +11,7 @@ import java.util.List;
  * @param incomingCount candidates the stage was handed, counted across all lists in flight.
  * @param outgoingCount candidates it passed on, counted the same way. Both are counts of list
  *     entries, not of distinct chunks: the same chunk found by two sub-queries is two entries
- *     before fusion and one after, and flattening that difference away would hide exactly what
- *     fusion did.
+ *     before fusion and one after, and flattening that difference would hide what fusion did.
  * @param verdicts one entry per candidate the stage acted on, in the stage's own order. Empty for a
  *     stage that did not run, and for {@link RetrievalStageName#SEARCH_SCOPE}, which acts on no
  *     candidates at all.

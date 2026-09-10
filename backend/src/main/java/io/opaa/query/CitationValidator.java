@@ -14,21 +14,15 @@ import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Service;
 
 /**
- * {@code @Service} (#889, O2): previously wired manually in {@code QueryConfiguration}.
+ * Deterministic citation validation (docs/handbuch/suche.md Abschnitt 7): checks every citation a
+ * model placed in an answer against the chunks actually retrieved for that answer - no second model
+ * call, no LLM judgment. A citation is valid only when its document id, section (chunk index) and
+ * file name all agree with one and the same retrieved chunk, so a merely well-shaped citation that
+ * points at nothing this answer used is detectable rather than trusted.
  *
- * <p>Deterministic belief validation (#386): checks every citation a model placed in an answer
- * against the chunks actually retrieved for that answer - no second model call, no LLM judgment. A
- * citation is valid only when its document id, section (chunk index) and file name all agree with
- * one and the same retrieved chunk. A model that merely imitates the citation's shape (a fabricated
- * document id, a section that document does not have among the retrieved chunks, or a file name
- * that does not match the id it claims) produces a citation that <em>looks</em> correct but points
- * at nothing this answer was actually grounded in - this class is what turns that from an
- * unenforced request to the model into a checkable fact about the response.
- *
- * <p>Stufe 1 content check (#937): a citation that passes the check above is additionally checked
- * against {@link CitationFactChecker} - see {@link #validate(List, List, String)}'s Javadoc. A
- * citation can only be pushed from valid to invalid by this second check, never the other way
- * round.
+ * <p>A citation that passes that check is additionally held against {@link CitationFactChecker}
+ * (see {@link #validate(List, List, String)}). That second check can only push a citation from
+ * valid to invalid, never the other way round.
  */
 @Service
 public class CitationValidator {
@@ -38,10 +32,9 @@ public class CitationValidator {
       String documentId, int chunkIndex, String fileName, boolean valid) {}
 
   /**
-   * Retrieval-only convenience overload, without the Stufe 1 (#937) content check {@link
-   * #validate(List, List, String)} additionally applies - kept for callers with no answer text at
-   * hand (e.g. tests exercising retrieval-only behaviour); {@code QueryService} always calls the
-   * 3-arg overload (#939 review, finding 7).
+   * Retrieval-only overload, without the content check {@link #validate(List, List, String)}
+   * additionally applies - for callers with no answer text at hand. Production always calls the
+   * 3-arg overload.
    */
   public List<ValidatedCitation> validate(
       List<CitationParser.ParsedCitation> citations, List<Document> retrievedChunks) {
@@ -50,39 +43,14 @@ public class CitationValidator {
 
   /**
    * Validates {@code citations} against {@code retrievedChunks} - the exact set handed to the
-   * answer model for this answer, never a broader "everything indexed" set (that would defeat the
-   * point: a citation must be grounded in what <em>this</em> answer actually used). A chunk with no
-   * {@code chunk_index} metadata defaults to index {@code 0} - the same default {@code
-   * AnswerGenerationService} falls back to when it writes the citation instructions the model
-   * copies from, so a chunk that never carried the metadata still matches the citation the model
-   * was told to produce for it.
+   * answer model, never a broader one, because a citation must be grounded in what <em>this</em>
+   * answer used. A chunk without {@code chunk_index} defaults to {@code 0}, the same default the
+   * citation instructions use. The file name comparison is Unicode-normalised (NFC) and
+   * case-insensitive; no other leniency.
    *
-   * <p>#697 review, finding 3: the file name comparison is Unicode-normalised (NFC) and
-   * case-insensitive before matching - a model routinely echoes a file name back with a different
-   * capitalisation (a model correcting "readme.md" to "Readme.md") or, for a name that reached the
-   * index via a macOS upload, a different Unicode normal form for the same visible characters (an
-   * "ü" as a precomposed NFC code point versus a base letter plus combining diaeresis in NFD - both
-   * render identically but compare unequal as raw {@code String}s). Neither loosening admits a
-   * citation for a genuinely different name: a fabricated name still fails unless it is the same
-   * name up to case and normalisation, which is exactly the class of "harmless model rewrite" this
-   * validation should not punish. No other leniency is applied - a truncated name, a path prefix or
-   * a different extension still invalidates the citation, because those describe an actually
-   * different reference, not the same one written differently.
-   *
-   * <p>Additionally tightened by a Stufe 1 (#937) content check: for a citation that is otherwise
-   * valid, the statement immediately preceding its marker in {@code answer} - the text back to the
-   * previous sentence boundary ({@code .}, {@code !}, {@code ?} or a newline), or the start of
-   * {@code answer} - is checked (only for its single nearest-to-the-marker fact, {@link
-   * CitationFactChecker#nearestFact}) for hard facts against the combined text of every retrieved
-   * chunk of the cited <b>document</b> - not only the one chunk the marker names (#939 review,
-   * finding 3): the #932 document-completion pass can retrieve several chunks of one document, and
-   * a value the model attributes to chunk 0 may actually live in chunk 1 of the same,
-   * still-retrieved document. A statement naming an approximation or a sum ("rund", "etwa", "ca.",
-   * "circa", "knapp", "insgesamt", "zusammen") skips the check entirely - a model computing or
-   * rounding a real figure is not a fabrication. A statement with no extractable fact, or a
-   * citation whose marker cannot be located in {@code answer} (e.g. {@code answer} is empty, as
-   * {@link #validate(List, List)} passes), is left at the retrieval-based verdict - this check only
-   * ever tightens, never loosens, the verdict the retrieval-based check alone would have reached.
+   * <p>The content check ({@link CitationFactChecker}) then compares the statement preceding the
+   * marker against every retrieved chunk of the cited <b>document</b>, not only the chunk the
+   * marker names, and can only tighten the retrieval-based verdict.
    */
   public List<ValidatedCitation> validate(
       List<CitationParser.ParsedCitation> citations,
@@ -117,18 +85,15 @@ public class CitationValidator {
     return result;
   }
 
-  // #939 review, finding 4: a statement naming an approximation or a computed sum is not a
-  // fabrication, so the content check skips it entirely rather than flagging a rounded/summed
-  // figure the model derived correctly.
+  // A statement naming an approximation or a computed sum is not a fabrication, so the content
+  // check skips it rather than flagging a figure the model rounded or summed correctly.
   private static final Pattern APPROXIMATION_OR_SUM =
       Pattern.compile(
           "\\b(rund|etwa|ca\\.|circa|knapp|insgesamt|zusammen)\\b", Pattern.CASE_INSENSITIVE);
 
   /**
-   * The Stufe 1 (#937) content check for one already retrieval-valid citation - see {@link
-   * #validate(List, List, String)}'s Javadoc for the statement boundary, the document-wide chunk
-   * scope, the approximation/sum skip, and the conservative fallback to {@code true} (never flag)
-   * whenever the marker position or the cited document's chunks cannot be resolved.
+   * The content check for one already retrieval-valid citation. Falls back to {@code true} - never
+   * flag - whenever the marker position or the cited document's chunks cannot be resolved.
    */
   private boolean contentPlausible(
       CitationParser.ParsedCitation citation,
@@ -157,14 +122,10 @@ public class CitationValidator {
 
   /**
    * The text of {@code answer} from the previous sentence boundary up to {@code markerStart} - the
-   * pragmatic "statement" a citation marker is taken to belong to (#937). A sentence boundary is
-   * {@code !}, {@code ?}, a newline, or a {@code .} that is <b>not</b> sitting between two digits
-   * (#939 review, finding 1) - the latter exempts a thousands separator or a date's dots (e.g.
-   * {@code "1.234,50"}, {@code "01.01.2027"}) from ending the statement early, which would
-   * otherwise truncate the very fact this check is meant to compare. When two citation markers
-   * share one sentence, the statement of the later marker also contains the earlier marker's
-   * literal text; that marker syntax carries neither a decimal comma nor a thousands separator, so
-   * it does not itself produce a spurious fact for {@link CitationFactChecker} to compare.
+   * pragmatic "statement" a citation marker is taken to belong to. A sentence boundary is {@code
+   * !}, {@code ?}, a newline, or a {@code .} that is <b>not</b> sitting between two digits - the
+   * exemption keeps a thousands separator or a date ({@code "1.234,50"}, {@code "01.01.2027"}) from
+   * truncating the very fact this check compares.
    */
   private String statementBefore(String answer, int markerStart) {
     int boundary = -1;
@@ -208,10 +169,9 @@ public class CitationValidator {
   }
 
   /**
-   * Normalises a file name for the comparison in {@link #validate} - Unicode NFC plus lower-casing,
-   * so a harmless model rewrite (different normal form, different case) cannot turn a genuine
-   * citation into a false-invalid verdict. See {@link #validate}'s Javadoc for exactly what this
-   * does and does not forgive.
+   * Normalises a file name for the comparison in {@link #validate}: Unicode NFC plus lower-casing,
+   * so a differing normal form or capitalisation cannot turn a genuine citation into a
+   * false-invalid verdict.
    */
   private String normalize(String fileName) {
     return Normalizer.normalize(fileName, Normalizer.Form.NFC).toLowerCase(Locale.ROOT);

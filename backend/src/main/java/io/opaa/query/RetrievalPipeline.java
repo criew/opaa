@@ -7,27 +7,15 @@ import java.util.Set;
 
 /**
  * The retrieval pipeline: a fixed, ordered sequence of named {@link RetrievalStage}s, run over one
- * {@link RetrievalContext} (docs/features/hybrid-retrieval.md, Arbeitspaket 1). Replaces the
- * seven-step orchestrator {@code QueryService} grew over #912 to #940, without changing what it
- * selects.
+ * {@link RetrievalContext} (docs/handbuch/suche.md Abschnitt 4).
  *
- * <p><b>The order is data, not control flow.</b> It is decided at one visible place - {@code
- * QueryConfiguration#retrievalPipeline} - so a question like "does reranking run before or after
- * document completion?" is answered by reading a list rather than by tracing branches.
- *
- * <p><b>A stage switched off here is switched off everywhere.</b> Taking {@link
- * RetrievalStageName#RERANK} out of the chain also takes the widened candidate budget with it (see
- * {@link RetrievalContext#withoutReranking()}) - a pipeline cannot be configured into a state in
- * which the budget is widened for a stage that never runs.
- *
- * <p><b>Every registered stage appears in the protocol, always.</b> A switched-off stage is
- * recorded as {@link StageStatus#DISABLED}, a stage the run never reached as {@link
- * StageStatus#NOT_REACHED}. A candidate can therefore not disappear between two stages of a
- * diagnosis that looks complete; {@code RetrievalPipelineTest} pins the count.
- *
- * <p>Thread-safe and stateless: the stages hold collaborators, the run holds the state. All per-run
- * parameters travel in the context, so one instance serves every caller and every parameter
- * variant.
+ * <p>The order is data, not control flow: it is decided in {@code
+ * QueryConfiguration#retrievalPipeline} alone. A stage switched off there is switched off
+ * everywhere, including the candidate budget it would have widened. Every registered stage appears
+ * in the protocol regardless - switched off as {@link StageStatus#DISABLED}, never reached as
+ * {@link StageStatus#NOT_REACHED} - so no candidate can disappear between two stages of a diagnosis
+ * that looks complete. Thread-safe and stateless: all per-run parameters travel in the context, so
+ * one instance serves every caller and every parameter variant.
  */
 public class RetrievalPipeline {
 
@@ -72,22 +60,14 @@ public class RetrievalPipeline {
 
   /**
    * Runs every registered stage in order and returns the selection together with the complete
-   * explanation protocol.
-   *
-   * <p><b>{@code context.searchScope()} is taken as given.</b> This method applies it as the {@code
-   * library_id} filter of every search, but resolves no permissions of its own: whoever builds the
-   * context is responsible for the scope being one the acting user may read (ADR-0008 §5). That
-   * holds for every caller of this second public entry point - the administration's diagnosis as
-   * much as {@code QueryService}.
-   *
-   * <p>Once a stage halts the run - today only the empty-scope case in {@link SearchScopeStage} -
-   * the remaining stages are recorded as not reached instead of being executed: an empty scope must
-   * not pay for a decomposition LLM call whose result nothing would use.
+   * explanation protocol. {@code context.searchScope()} is taken as given: this method applies it
+   * as the {@code library_id} filter of every search but resolves no permissions of its own
+   * (ADR-0008 §5). Once a stage halts the run, the remaining stages are recorded as not reached
+   * instead of being executed.
    */
   public RetrievalPipelineResult run(RetrievalContext rawContext) {
-    // A pipeline without the rerank stage must not let the narrowing stages widen their budget for
-    // it: nothing would restore the top-k cap, and up to rerankCandidateCount chunks would reach
-    // answer generation. Enforced here rather than at the call sites, which cannot see this set.
+    // Without the rerank stage nothing would restore the top-k cap, so the narrowing stages must
+    // not widen their budget for it. Enforced here: the call sites cannot see the disabled set.
     RetrievalContext context =
         disabledStages.contains(RetrievalStageName.RERANK)
             ? rawContext.withoutReranking()
