@@ -17,11 +17,12 @@ env:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    # A scheduled and a push run of the same ref build the same commit; without this the slower one
-    # could push last and leave :main on the older build. Keyed per matrix entry, otherwise the two
-    # images would cancel each other.
+    # Only runs building the very same commit may cancel each other - a scheduled and a push run of
+    # the same tip, where the slower one would otherwise push last and leave :main on the older
+    # build. github.sha keeps a run for an earlier commit alive, so every pushed commit gets its
+    # sha-<commit> image; matrix.name keeps the two images from cancelling each other.
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.name }}
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}-${{ matrix.name }}
       cancel-in-progress: true
     permissions:
       contents: read
