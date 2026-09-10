@@ -104,11 +104,24 @@ class MmrSelectionStageTest {
             .run(context(Set.of(LIBRARY_ID), PROPERTIES));
 
     assertThat(result.chunks()).hasSize(PROPERTIES.topK());
-    List<StageExplanation> droppedIn = result.explanation().stagesThatDropped("chunk-11");
+    List<StageExplanation> droppedIn =
+        result.explanation().stages().stream()
+            .filter(
+                stage ->
+                    stage.verdicts().stream()
+                        .anyMatch(
+                            verdict ->
+                                verdict.chunkId().equals("chunk-11")
+                                    && verdict.outcome() == CandidateOutcome.DROPPED))
+            .toList();
     assertThat(droppedIn)
         .extracting(StageExplanation::stage)
         .contains(RetrievalStageName.MMR_SELECTION);
-    assertThat(result.explanation().forChunk("chunk-11"))
+    assertThat(
+            result.explanation().stages().stream()
+                .flatMap(stage -> stage.verdicts().stream())
+                .filter(verdict -> verdict.chunkId().equals("chunk-11"))
+                .toList())
         .anySatisfy(
             verdict -> {
               assertThat(verdict.outcome()).isEqualTo(CandidateOutcome.DROPPED);

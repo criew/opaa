@@ -63,22 +63,16 @@ public class FullTextChunkSearch {
   }
 
   /**
-   * The best {@code limit} chunks for {@code question} within {@code libraryIds}, best first.
+   * The best {@code limit} chunks for {@code question} within {@code libraryIds}, best first, with
+   * the core-field filter as further {@code WHERE} conditions over the chunk's {@code metadata} -
+   * the lexical twin of the vector path's filter expression, built by {@link
+   * MetadataFilterExpressions#sqlPredicate} from the same rule, and placed after the permission
+   * filter in the same clause: it narrows, it never widens.
    *
    * <p>Returns an empty list without touching the database when there is nothing that could match -
    * no libraries, no limit, or a question that carries neither a usable word token nor an
    * identifier. An empty {@code libraryIds} in particular must never widen into "all libraries"; it
    * means the caller resolved no readable library at all.
-   */
-  public List<Document> search(String question, Collection<UUID> libraryIds, int limit) {
-    return search(question, libraryIds, MetadataFilter.NONE, List.of(), limit);
-  }
-
-  /**
-   * The same search with the core-field filter as further {@code WHERE} conditions over the chunk's
-   * {@code metadata} - the lexical twin of the vector path's filter expression, built by {@link
-   * MetadataFilterExpressions#sqlPredicate} from the same rule, and placed after the permission
-   * filter in the same clause: it narrows, it never widens.
    *
    * @param vocabularyCodes the complete Dokumentart value set the "no value" condition is built
    *     over - the one snapshot {@link MetadataFilterStage} read for the run, so every sub-query of

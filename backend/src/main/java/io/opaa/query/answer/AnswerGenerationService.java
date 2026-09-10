@@ -75,11 +75,9 @@ public class AnswerGenerationService {
         chatClient.prompt().system(systemText).messages(messages).call().chatResponse();
 
     chatMemory.add(conversationId, new UserMessage(question));
-    if (response.getResult() != null && response.getResult().getOutput() != null) {
-      String assistantText = response.getResult().getOutput().getText();
-      if (assistantText != null) {
-        chatMemory.add(conversationId, new AssistantMessage(assistantText));
-      }
+    String assistantText = ChatResponses.textOrNull(response);
+    if (assistantText != null) {
+      chatMemory.add(conversationId, new AssistantMessage(assistantText));
     }
 
     return response;

@@ -30,7 +30,7 @@ class CitationValidatorTest {
     List<ParsedCitation> citations = List.of(new ParsedCitation("doc-1", 0, "readme.md"));
     List<Document> retrievedChunks = List.of(chunk("doc-1", 0, "readme.md"));
 
-    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks);
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, "");
 
     assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, "readme.md", true));
   }
@@ -44,7 +44,7 @@ class CitationValidatorTest {
     List<ParsedCitation> citations = List.of(new ParsedCitation("doc-1", 0, "README.md"));
     List<Document> retrievedChunks = List.of(chunk("doc-1", 0, "readme.md"));
 
-    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks);
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, "");
 
     assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, "README.md", true));
   }
@@ -66,7 +66,7 @@ class CitationValidatorTest {
     List<ParsedCitation> citations = List.of(new ParsedCitation("doc-1", 0, nfcName));
     List<Document> retrievedChunks = List.of(chunk("doc-1", 0, nfdName));
 
-    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks);
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, "");
 
     assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, nfcName, true));
   }
@@ -80,7 +80,7 @@ class CitationValidatorTest {
     List<ParsedCitation> citations = List.of(new ParsedCitation("fabricated-id", 0, "readme.md"));
     List<Document> retrievedChunks = List.of(chunk("doc-1", 0, "readme.md"));
 
-    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks);
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, "");
 
     assertThat(result)
         .containsExactly(new ValidatedCitation("fabricated-id", 0, "readme.md", false));
@@ -95,7 +95,7 @@ class CitationValidatorTest {
     List<ParsedCitation> citations = List.of(new ParsedCitation("doc-1", 0, "wrong-name.pdf"));
     List<Document> retrievedChunks = List.of(chunk("doc-1", 0, "readme.md"));
 
-    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks);
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, "");
 
     assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, "wrong-name.pdf", false));
   }
@@ -109,7 +109,7 @@ class CitationValidatorTest {
     List<ParsedCitation> citations = List.of(new ParsedCitation("doc-1", 7, "readme.md"));
     List<Document> retrievedChunks = List.of(chunk("doc-1", 0, "readme.md"));
 
-    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks);
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, "");
 
     assertThat(result).containsExactly(new ValidatedCitation("doc-1", 7, "readme.md", false));
   }
@@ -123,7 +123,8 @@ class CitationValidatorTest {
             .metadata(Map.of("document_id", "doc-1", "file_name", "readme.md"))
             .build();
 
-    List<ValidatedCitation> result = validator.validate(citations, List.of(chunkWithoutChunkIndex));
+    List<ValidatedCitation> result =
+        validator.validate(citations, List.of(chunkWithoutChunkIndex), "");
 
     assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, "readme.md", true));
   }
@@ -136,7 +137,7 @@ class CitationValidatorTest {
             new ParsedCitation("doc-1", 9, "readme.md"));
     List<Document> retrievedChunks = List.of(chunk("doc-1", 0, "readme.md"));
 
-    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks);
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, "");
 
     assertThat(result)
         .containsExactly(
@@ -146,7 +147,8 @@ class CitationValidatorTest {
 
   @Test
   void returnsEmptyListWhenNoCitationsGiven() {
-    assertThat(validator.validate(List.of(), List.of(chunk("doc-1", 0, "readme.md")))).isEmpty();
+    assertThat(validator.validate(List.of(), List.of(chunk("doc-1", 0, "readme.md")), ""))
+        .isEmpty();
   }
 
   private static Document chunkWithText(
@@ -227,7 +229,7 @@ class CitationValidatorTest {
     List<Document> retrievedChunks =
         List.of(chunkWithText("doc-1", 0, "001_personalausweis.md", "Die Gebühr beträgt 27,20 €."));
 
-    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks);
+    List<ValidatedCitation> result = validator.validate(citations, retrievedChunks, "");
 
     assertThat(result)
         .containsExactly(new ValidatedCitation("doc-1", 0, "001_personalausweis.md", true));

@@ -2,6 +2,7 @@ package io.opaa.query.retrieval.search;
 
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.observability.QueryMetrics;
+import io.opaa.query.answer.ChatResponses;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -144,12 +145,9 @@ public class QueryDecompositionService {
     ChatClient chatClient = activeChatModelResolver.resolveChatClient();
     ChatResponse response =
         chatClient.prompt().system(systemText).messages(messages).call().chatResponse();
-    if (response == null
-        || response.getResult() == null
-        || response.getResult().getOutput() == null) {
-      return null;
-    }
-    return response.getResult().getOutput().getText();
+    // A model call that returns nothing at all is a decomposition failure like any other here:
+    // the caller falls back to single-query retrieval instead of failing the turn.
+    return response == null ? null : ChatResponses.textOrNull(response);
   }
 
   /**

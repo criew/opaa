@@ -2,7 +2,6 @@ package io.opaa.query.retrieval.search;
 
 import io.opaa.query.QueryProperties;
 import io.opaa.query.retrieval.CandidateList;
-import io.opaa.query.retrieval.CandidateOutcome;
 import io.opaa.query.retrieval.CandidateVerdict;
 import io.opaa.query.retrieval.RetrievalContext;
 import io.opaa.query.retrieval.RetrievalListLabel;
@@ -12,7 +11,6 @@ import io.opaa.query.retrieval.RetrievalStageName;
 import io.opaa.query.retrieval.RetrievalState;
 import io.opaa.query.retrieval.StageExplanation;
 import io.opaa.query.retrieval.StageOutcome;
-import io.opaa.query.retrieval.VerdictReason;
 import io.opaa.query.retrieval.scope.MetadataFilterExpressions;
 import io.opaa.query.retrieval.scope.SearchScopeStage;
 import java.util.ArrayList;
@@ -58,8 +56,7 @@ public class VectorSearchStage implements RetrievalStage {
         MetadataFilterExpressions.subordinateTo(
             state.requiredLibraryFilter(), state.metadataFilterExpression());
     QueryProperties properties = context.queryProperties();
-    List<String> searchQueries =
-        state.searchQueries().isEmpty() ? List.of(context.question()) : state.searchQueries();
+    List<String> searchQueries = SearchStageSupport.searchQueriesOrQuestion(context, state);
 
     List<CandidateList> lists = new ArrayList<>(searchQueries.size());
     List<CandidateVerdict> verdicts = new ArrayList<>();
@@ -74,23 +71,10 @@ public class VectorSearchStage implements RetrievalStage {
                   .filterExpression(filter)
                   .build());
       lists.add(new CandidateList(label, candidates));
-      for (int rank = 1; rank <= candidates.size(); rank++) {
-        Document candidate = candidates.get(rank - 1);
-        verdicts.add(
-            CandidateVerdict.of(
-                candidate,
-                CandidateOutcome.ADDED,
-                VerdictReason.RETRIEVED_BY_SEARCH,
-                label,
-                rank,
-                candidate.getScore()));
-      }
+      verdicts.addAll(SearchStageSupport.retrievalVerdicts(label, candidates));
     }
 
-    // Records the queries actually searched when this stage derived them itself, so the run always
-    // reports what it searched for.
-    RetrievalState searched =
-        state.searchQueries().isEmpty() ? state.withSearchQueries(searchQueries) : state;
+    RetrievalState searched = SearchStageSupport.withRecordedSearchQueries(state, searchQueries);
     int retrieved = lists.stream().mapToInt(list -> list.documents().size()).sum();
     List<String> notes = new ArrayList<>();
     notes.add(RetrievalNote.VECTOR_SEARCH_LISTS.format(searchQueries.size()));

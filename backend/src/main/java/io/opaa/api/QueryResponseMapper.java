@@ -20,23 +20,23 @@ final class QueryResponseMapper {
 
   static QueryResponse toResponse(QueryResult result) {
     return new QueryResponse(
-            result.getAnswer(),
-            ChatResponseMapper.toSourceReferences(result.getSources()),
-            toMetadata(result.getMetadata()),
-            result.getChatId())
-        .chatTitle(result.getChatTitle());
+            result.answer(),
+            ChatResponseMapper.toSourceReferences(result.sources()),
+            toMetadata(result.metadata()),
+            result.chatId())
+        .chatTitle(result.chatTitle());
   }
 
   private static QueryMetadata toMetadata(QueryOutcome outcome) {
-    return new QueryMetadata(outcome.getModel(), outcome.getTokenCount(), outcome.getDurationMs())
-        .answeredWithoutKnowledge(outcome.getAnsweredWithoutKnowledge())
-        .noKnowledgeAvailableInSpace(outcome.getNoKnowledgeAvailableInSpace())
-        .searchedLibraries(toSearchedLibraries(outcome.getSearchedLibraries()));
+    return new QueryMetadata(outcome.model(), outcome.tokenCount(), outcome.durationMs())
+        .answeredWithoutKnowledge(outcome.answeredWithoutKnowledge())
+        .noKnowledgeAvailableInSpace(outcome.noKnowledgeAvailableInSpace())
+        .searchedLibraries(toSearchedLibraries(outcome.searchedLibraries()));
   }
 
   private static List<SearchedLibrary> toSearchedLibraries(List<SearchedLibraryRef> refs) {
     return refs == null
         ? null
-        : refs.stream().map(ref -> new SearchedLibrary(ref.getId(), ref.getName())).toList();
+        : refs.stream().map(ref -> new SearchedLibrary(ref.id(), ref.name())).toList();
   }
 }

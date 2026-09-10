@@ -343,6 +343,16 @@ der Produktionskonfiguration nicht überschreibt. Mit eingeschalteter Teilfragen
 bei drei Läufen nach der Mehrfachlauf-Regel bleibt zudem nur der letzte Lauf je Fall stehen. Die
 JSON-Dateien sind Zwischenartefakte und werden nicht committet.
 
+**Was der Dump nicht ersetzt.** Er belegt „dieser Umbau ändert das Verhalten nicht", nicht „die
+Pipeline wählt aus wie irgendein früherer Stand". Der frühere `RetrievalPipelineParityTest`, der die
+Stufenkette gegen die wörtlich kopierte Vor-#1046-Orchestrierung stellte, wurde mit #1458 durch
+diesen Vergleich abgelöst; dabei entfällt die Zusicherung gegen jenen alten Stand ersatzlos. Zu
+beachten ist außerdem, dass der Messlauf mit **abgeschalteter** Teilfragen-Zerlegung läuft: Der
+Mehr-Teilfragen-Pfad (mehrere Kandidatenlisten, Fusion über zwei Suchpfade) wird vom Dump gar nicht
+ausgeführt und ist stattdessen über `RetrievalPipelineTest` und `HybridFusionTest` abgesichert. Ein
+leerer Diff ist deshalb ein starker, aber kein vollständiger Nachweis; Stufenverhalten, das der
+Ein-Anfragen-Pfad nicht berührt, braucht weiterhin einen Test.
+
 ### Variantenvergleiche (Issue #1041)
 
 Ein dritter, **standardmäßig abgeschalteter** Schritt am Ende desselben Testlaufs misst eine

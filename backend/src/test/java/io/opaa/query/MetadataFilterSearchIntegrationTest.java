@@ -224,14 +224,14 @@ class MetadataFilterSearchIntegrationTest {
     // as its sub-query, which the lexical path above would not find.
     stubAnswer();
     List<ChatSource> sources =
-        queryService.query("Nutzung", null, reader, true, List.of(), filter).getSources();
+        queryService.query("Nutzung", null, reader, true, List.of(), filter).sources();
     assertThat(sources)
         .extracting(ChatSource::getDocumentId, ChatSource::getMetadataFilterMatch)
         .containsExactlyInAnyOrder(
             org.assertj.core.groups.Tuple.tuple(marked.getId(), MetadataFilterMatch.NO_VALUE),
             org.assertj.core.groups.Tuple.tuple(matching.getId(), MetadataFilterMatch.MATCHED));
     // Without a filter no source claims a match state at all.
-    assertThat(queryService.query("Nutzung", null, reader, true, List.of()).getSources())
+    assertThat(queryService.query("Nutzung", null, reader, true, List.of()).sources())
         .extracting(ChatSource::getMetadataFilterMatch)
         .containsOnlyNulls();
   }
@@ -418,7 +418,8 @@ class MetadataFilterSearchIntegrationTest {
 
     // Lexical path, deterministic order (ties broken by file name): the post-filter finds nothing.
     List<org.springframework.ai.document.Document> unfiltered =
-        fullTextChunkSearch.search("Nutzung", Set.of(library.getId()), fetchK);
+        fullTextChunkSearch.search(
+            "Nutzung", Set.of(library.getId()), MetadataFilter.NONE, List.of(), fetchK);
     assertThat(unfiltered).hasSize(fetchK);
     assertThat(unfiltered.stream().filter(c -> "VERMERK".equals(c.getMetadata().get("doc_type"))))
         .as("the post-filter over the fetch-k window is empty")

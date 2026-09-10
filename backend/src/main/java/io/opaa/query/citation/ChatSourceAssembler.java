@@ -105,7 +105,7 @@ public class ChatSourceAssembler {
     }
     return knowledgeLibraryRepository.findAllById(searchScope).stream()
         .map(library -> new SearchedLibraryRef(library.getId(), library.getName()))
-        .sorted(Comparator.comparing(SearchedLibraryRef::getName, String.CASE_INSENSITIVE_ORDER))
+        .sorted(Comparator.comparing(SearchedLibraryRef::name, String.CASE_INSENSITIVE_ORDER))
         .collect(Collectors.toCollection(ArrayList::new));
   }
 

@@ -3,6 +3,7 @@ package io.opaa.query.retrieval.ranking;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.query.retrieval.ChunkGroupingKey;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,8 @@ class DocumentCompletionTest {
     List<Document> selection = List.of(selected);
     List<Document> candidatePool = List.of(selected, sibling);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 2);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 2, 2, new ArrayList<>());
 
     assertThat(result).extracting(Document::getId).containsExactly("a-0", "a-1");
   }
@@ -47,7 +49,8 @@ class DocumentCompletionTest {
     List<Document> selection = List.of(introduction, otherTopicA, otherTopicB);
     List<Document> candidatePool = List.of(introduction, feeTable, otherTopicA, otherTopicB);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 4);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 2, 4, new ArrayList<>());
 
     assertThat(result).extracting(Document::getId).contains("intro", "fees");
   }
@@ -66,7 +69,8 @@ class DocumentCompletionTest {
     List<Document> selection = List.of(docAStrong, docAWeak, docBFirst);
     List<Document> candidatePool = List.of(docAStrong, docAWeak, docBFirst, docBSecond);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 3);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 2, 3, new ArrayList<>());
 
     assertThat(result).extracting(Document::getId).containsExactly("a-0", "b-0", "b-1");
   }
@@ -86,7 +90,8 @@ class DocumentCompletionTest {
     List<Document> selection = List.of(docA, docB, docC);
     List<Document> candidatePool = List.of(docA, docB, docC, docCSibling);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 3);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 2, 3, new ArrayList<>());
 
     assertThat(result).extracting(Document::getId).containsExactly("a-0", "b-0", "c-0");
   }
@@ -99,7 +104,8 @@ class DocumentCompletionTest {
     List<Document> selection = List.of(docA);
     List<Document> candidatePool = List.of(docA, sibling1, sibling2);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 5);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 2, 5, new ArrayList<>());
 
     assertThat(result).extracting(Document::getId).containsExactly("a-0", "a-1");
   }
@@ -117,7 +123,8 @@ class DocumentCompletionTest {
     List<Document> selection = List.of(docA, docB);
     List<Document> candidatePool = List.of(docA, docB, sibling);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 2);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 2, 2, new ArrayList<>());
 
     assertThat(result).hasSize(2);
     assertThat(result).extracting(Document::getId).containsExactly("a-0", "a-1");
@@ -130,14 +137,16 @@ class DocumentCompletionTest {
     List<Document> selection = List.of(docA);
     List<Document> candidatePool = List.of(docA, sibling);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 1, 5);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 1, 5, new ArrayList<>());
 
     assertThat(result).extracting(Document::getId).containsExactly("a-0");
   }
 
   @Test
   void emptySelectionStaysEmpty() {
-    List<Document> result = DocumentCompletion.complete(List.of(), List.of(), 2, 5);
+    List<Document> result =
+        DocumentCompletion.complete(List.of(), List.of(), 2, 5, new ArrayList<>());
 
     assertThat(result).isEmpty();
   }
@@ -161,7 +170,8 @@ class DocumentCompletionTest {
     List<Document> selection = List.of(x0, x1, a0, b0);
     List<Document> candidatePool = List.of(x0, x1, a0, b0, a1, b1);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 4);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 2, 4, new ArrayList<>());
 
     // doc-a's completion (processed first, per selection order) evicts doc-x's weaker chunk and
     // is then protected: doc-b's later completion attempt finds no eligible eviction source left
@@ -187,7 +197,8 @@ class DocumentCompletionTest {
     List<Document> selection = List.of(x0, x1, a0);
     List<Document> candidatePool = List.of(x0, x1, a0, a1);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 3);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 2, 3, new ArrayList<>());
 
     // x1 is later in selection (weaker by rank) despite its higher score - it must be the one
     // evicted, not x0.
@@ -209,7 +220,8 @@ class DocumentCompletionTest {
     List<Document> selection = List.of(a0);
     List<Document> candidatePool = List.of(a0, aEarlyLowScore, aLateHighScore);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 2);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 2, 2, new ArrayList<>());
 
     assertThat(result).extracting(Document::getId).containsExactly("a-0", "a-early");
   }
@@ -230,7 +242,8 @@ class DocumentCompletionTest {
     List<Document> selection = List.of(a0);
     List<Document> candidatePool = List.of(a0, siblingFromVectorPath, siblingFromLexicalPath);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 2);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 2, 2, new ArrayList<>());
 
     assertThat(result).hasSize(2);
     Document added = result.get(1);
@@ -247,7 +260,8 @@ class DocumentCompletionTest {
     // must not duplicate either.
     List<Document> candidatePool = List.of(docA, docASibling);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 5);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 2, 5, new ArrayList<>());
 
     assertThat(result).extracting(Document::getId).containsExactly("a-0", "a-1");
   }
@@ -275,7 +289,8 @@ class DocumentCompletionTest {
     List<Document> candidatePool =
         List.of(doc0, doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc3Sibling);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 8);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 2, 8, new ArrayList<>());
 
     assertThat(result).hasSize(8);
     assertThat(result).extracting(Document::getId).doesNotContain("doc7-0");
@@ -297,7 +312,8 @@ class DocumentCompletionTest {
     List<Document> selection = List.of(docA, docB);
     List<Document> candidatePool = List.of(docA, docB, docBSibling);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 2);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 2, 2, new ArrayList<>());
 
     assertThat(result).extracting(Document::getId).containsExactly("a-0", "b-0");
   }
@@ -313,7 +329,8 @@ class DocumentCompletionTest {
     List<Document> selection = List.of(docA);
     List<Document> candidatePool = List.of(docA, docASibling);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 1);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 2, 1, new ArrayList<>());
 
     assertThat(result).extracting(Document::getId).containsExactly("a-0");
   }
@@ -336,7 +353,8 @@ class DocumentCompletionTest {
     List<Document> selection = List.of(d0, d1, d2);
     List<Document> candidatePool = List.of(d0, d1, d2, d0Sibling, d1Sibling);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 3);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 2, 3, new ArrayList<>());
 
     assertThat(result).extracting(Document::getId).containsExactly("d0-0", "d1-0", "d0-1");
   }
@@ -360,7 +378,8 @@ class DocumentCompletionTest {
     List<Document> candidatePool =
         List.of(docAStrong, docAWeak, docBFirst, docCFirst, docDFiller, docBSecond, docCSecond);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 5);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 2, 5, new ArrayList<>());
 
     assertThat(result)
         .extracting(Document::getId)
@@ -393,7 +412,8 @@ class DocumentCompletionTest {
         List.of(
             doc0, doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc0Sibling, doc1Sibling, doc2Sibling);
 
-    List<Document> result = DocumentCompletion.complete(selection, candidatePool, 2, 8);
+    List<Document> result =
+        DocumentCompletion.complete(selection, candidatePool, 2, 8, new ArrayList<>());
 
     assertThat(result).hasSize(8);
     assertThat(result).extracting(Document::getId).contains("doc0-1", "doc1-1");

@@ -78,8 +78,7 @@ public class RetrievalPipeline {
     for (RetrievalStage stage : stages) {
       if (state.halted() || disabledStages.contains(stage.name())) {
         StageStatus status = state.halted() ? StageStatus.NOT_REACHED : StageStatus.DISABLED;
-        int candidateCount =
-            state.candidateLists().stream().mapToInt(list -> list.documents().size()).sum();
+        int candidateCount = state.candidateCount();
         explanations.add(StageExplanation.notRun(stage.name(), status, candidateCount));
         continue;
       }
