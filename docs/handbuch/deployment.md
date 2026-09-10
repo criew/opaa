@@ -382,6 +382,45 @@ aber Indizierung und Fragen schlagen fehl.
 | ollama      | —         | 11434           | Lokal betriebener Ollama-Server (nur `ollama`-Profil; kein Host-Port, siehe unten) |
 | ollama-pull | —         | —               | Einmaliger Init-Schritt, zieht `nomic-embed-text`/`phi3:mini` (nur `ollama`-Profil) |
 
+## Backend-Laufzeitimage
+
+Das Backend läuft in einem bewusst minimalen Image ([ADR-0029](../decisions/0029-schlankes-backend-laufzeitimage.md)):
+eine mit `jlink` erzeugte Java-21-Laufzeit auf `gcr.io/distroless/base-nossl-debian13`. Außer der
+C-Bibliothek enthält das Image kein Betriebssystempaket — keine Shell, keine Coreutils, kein
+`curl`/`wget`, keinen Paketmanager. Für den Betrieb folgt daraus:
+
+- **`docker exec … sh` funktioniert nicht.** Es gibt keine ausführbare Shell im Container.
+- **Ein `healthcheck:` in der `docker-compose.yml` darf für den Backend-Service kein `CMD-SHELL`
+  und kein `curl`/`wget` verwenden.** Der mitgelieferte Stack definiert für das Backend keinen
+  Healthcheck; wer einen braucht, prüft `GET /actuator/health` von außen (siehe unten) statt aus dem
+  Container heraus.
+- **Zeitzone:** Der Container läuft in UTC, solange `TZ` nicht gesetzt ist. `TZ=Europe/Berlin` wirkt
+  wie gewohnt — die Zeitzonendatenbank steckt in der Java-Laufzeit, nicht in einem OS-Paket.
+- **Zertifikate:** Der Truststore der Anwendung ist der `cacerts` der Java-Laufzeit (dieselben
+  öffentlichen CAs wie zuvor). Ein eigenes Unternehmens-Zertifikat wird nicht mehr über
+  `update-ca-certificates` eingespielt, sondern über die üblichen JVM-Schalter, z. B.
+  `JAVA_TOOL_OPTIONS=-Djavax.net.ssl.trustStore=/app/truststore.p12 -Djavax.net.ssl.trustStorePassword=…`
+  mit einem hineingemounteten Truststore.
+- **Zusätzliche JVM-Optionen** (Heap-Grenzen, Debug-Agent, JFR) werden über `JAVA_TOOL_OPTIONS`
+  gesetzt; ein `java`-Aufruf mit eigenen Argumenten ist nicht nötig und würde den Entrypoint
+  überschreiben.
+
+### Diagnose ohne Shell
+
+```bash
+docker compose logs -f backend                      # Logs
+curl -s http://localhost:8081/actuator/health        # Zustand inkl. DB, Chat- und Embedding-Anbieter
+curl -s http://localhost:8081/actuator/metrics       # Metriken
+curl -s http://localhost:8081/actuator/prometheus    # Prometheus-Format
+docker cp <container>:/app/uploads ./uploads-kopie   # Dateien aus dem Container holen
+docker run --rm -it --network container:<container> nicolaka/netshoot   # Netzwerkdiagnose im selben Netz
+```
+
+Ein `docker compose logs backend` beantwortet die überwiegende Mehrheit der Fälle, in denen früher
+eine Shell benutzt wurde. Für alles Weitere lässt sich ein Werkzeug-Container in denselben Netzwerk-
+oder PID-Namensraum hängen (`--network container:…`, `--pid container:…`), ohne dass das
+Laufzeitimage selbst Werkzeuge mitbringen muss.
+
 ## Konfiguration
 
 Alle Konfigurationen erfolgen über Umgebungsvariablen in `.env.docker`. Docker Compose lädt diese Datei über die `env_file`-Direktive. Alle verfügbaren Optionen mit Beschreibungen finden Sie in `.env.docker.example`.
@@ -1282,6 +1321,12 @@ Das PostgreSQL-Volume enthält noch Daten von einer früheren Initialisierung mi
 - Sicherstellen, dass Keycloak läuft (`docker compose --profile oidc ps`)
 - Wenn Keycloak neu gestartet wurde, ist das Access-Token möglicherweise abgelaufen — Seite neu laden und erneut anmelden
 - Prüfen, dass `OPAA_OIDC_JWK_SET_URI` `keycloak:8180` (nicht `localhost:8180`) verwendet
+
+### `docker exec` in den Backend-Container schlägt mit "executable file not found" fehl
+
+Das Backend-Laufzeitimage enthält keine Shell (siehe [Backend-Laufzeitimage](#backend-laufzeitimage)).
+Statt `docker exec … sh` die dort beschriebenen Wege nutzen: Logs, `/actuator`, `docker cp` oder einen
+Werkzeug-Container im selben Netzwerk-Namensraum.
 
 ### Umgebungsvariablen-Änderungen treten nicht in Kraft
 
