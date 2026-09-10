@@ -71,7 +71,7 @@ arbeitet nur mit dem, was der vorherige ihm übergibt — kein Schritt weitet di
 Ähnlichkeitsschwellengrenze eines früheren wieder auf (die Kandidatenmenge selbst schöpft Schritt 6
 weiterhin aus dem in Schritt 3 gebildeten Pool, siehe dort).
 
-### 1. Scope-Bestimmung
+### 1. Scope-Bestimmung (`SEARCH_SCOPE`)
 
 `QueryService#query` unterscheidet zunächst zwei Fälle: eine **persistierte Chat-Anfrage** (`chatId` löst
 über `ChatService#findOwnedChat` auf einen vom Aufrufenden selbst angelegten Chat auf) oder eine
@@ -89,7 +89,7 @@ Javadoc-Begründung an `QueryService#query`). Ein leerer Suchbereich überspring
 vollständig (`relevantChunks = List.of()`, keine der dortigen Aufrufe läuft) — Schritt 7 läuft trotzdem,
 mit null Chunks im Kontext, und markiert das Ergebnis über `QueryOutcome#answeredWithoutKnowledge`.
 
-### 1b. Metadatenfilter (#1070)
+### 1b. Metadatenfilter (`METADATA_FILTER`, #1070)
 
 Direkt hinter der Scope-Bestimmung trägt `MetadataFilterStage` den Kernfeld-Filter der Person oder
 des Chats (`MetadataFilter`: Dokumentart-Codes, Datumsfenster) in den Lauf — bei einem persistierten
@@ -101,7 +101,7 @@ Ein Dokument ohne Wert im gefilterten Feld bleibt in beiden Pfaden enthalten und
 `SourceReference` als `NO_VALUE` („ohne Angabe") gekennzeichnet. Semantik und Tests: [Metadatenschema,
 Umgesetzt (#1070, Teil 1)](./metadata-schema.md#umgesetzt-1070-teil-1).
 
-### 2. LLM-Teilfragen-Zerlegung/Reformulierung
+### 2. LLM-Teilfragen-Zerlegung/Reformulierung (`SUB_QUERY_DECOMPOSITION`)
 
 `SubQueryDecompositionStage` ruft, sofern `opaa.query.query-decomposition-enabled`
 (`OPAA_QUERY_DECOMPOSITION_ENABLED`, Default `true`) aktiv ist, `QueryDecompositionService#decompose`
@@ -120,7 +120,7 @@ Zerlegung — mit WARN-Log (Zählwerte, keine Inhalte) und dem Zähler
 Details, Grenzen des Wächters, Diagramm und die Vorher/Nachher-Messung stehen in
 [Teilfragen-Zerlegung und Query-Reformulierung](./data-indexing-rag.md#teilfragen-zerlegung-und-query-reformulierung-multi-query-retrieval-923).
 
-### 3. Vektorsuche je Teilfrage
+### 3. Vektorsuche je Teilfrage (`VECTOR_SEARCH`)
 
 `VectorSearchStage` ruft für **jede** Suchanfrage aus Schritt 2 einen eigenen
 `VectorStore#similaritySearch`-Aufruf gegen PostgreSQL/pgvector auf,
@@ -132,7 +132,7 @@ ohne Kontextbezug decodiert typischerweise zu genau einer Suchanfrage; dieser Fa
 wie vor #923, nur ohne die vorangestellte Verlaufs-Heuristik. Details zu beiden Parametern in der
 Stellschrauben-Tabelle.
 
-### 3b. Volltextsuche je Teilfrage (#1048/#1049)
+### 3b. Volltextsuche je Teilfrage (`FULL_TEXT_SEARCH`, #1048/#1049)
 
 `FullTextSearchStage` führt für **jede** Suchanfrage aus Schritt 2 eine PostgreSQL-Volltextabfrage gegen
 `chunk_full_text` aus — mit **identischem Rechtefilter** wie Schritt 3 (`library_id = ANY(...)` als Teil
@@ -177,7 +177,7 @@ was sie hinzufügt, hat denselben Rechtefilter passiert, und der Kandidatenpool 
 für Schritt 6. Abgeschaltet (`opaa.query.full-text-search-enabled=false`) ist die Stufe die Identität:
 Die Auswahl ist dann bit-identisch zu der ohne sie — die Messvariante `vector-only`.
 
-### 4. MMR-Auswahl je Teilfrage
+### 4. MMR-Auswahl je Teilfrage (`MMR_SELECTION`)
 
 `MmrSelectionStage` narrowt die `fetch-k` Kandidaten **jeder Liste einzeln** — je Teilfrage und je
 Suchpfad, nie über die zusammengeführte Gesamtmenge — mittels `MmrSelector#select` auf das **Kandidatenbudget** des Laufs
@@ -195,7 +195,7 @@ gegen `spring.ai.vectorstore.pgvector.*`) — kein zusätzlicher Aufruf beim Ein
 null multipliziert wird. Details, Messwerte und die Begründung des Defaults in
 [MMR](./data-indexing-rag.md#stellschrauben-und-ihre-wirkung).
 
-### 5. Reciprocal Rank Fusion
+### 5. Reciprocal Rank Fusion (`RANK_FUSION`)
 
 `RankFusionStage` führt über `ReciprocalRankFusion` die pro Teilfrage und **je Suchpfad** per MMR
 ausgewählten Ranglisten zu einer einzigen zusammen — seit #1049 also zwei Listen je Teilfrage, die der
@@ -221,7 +221,7 @@ Deckelung ist durch das Listenbudget bereits erfüllt. Vor #1046 wurde dieser Fa
 übersprungen; dass beides dasselbe auswählt, sichert `RetrievalPipelineParityTest` gegen die
 Vorher-Implementierung ab.
 
-### 5b. Reranking (#1050)
+### 5b. Reranking (`RERANK`, #1050)
 
 `RerankStage` bewertet die fusionierte Kandidatenmenge mit der **Rerank-Modellrolle** neu und deckelt
 sie wieder auf `top-k`. Die Stufe steht zwischen Fusion und Dokument-Vervollständigung: Die
@@ -275,7 +275,7 @@ erklärte es eine Suche, die so nie gelaufen ist. Wird die Stufe über
 `opaa.query.pipeline.disabled-stages` abgeschaltet, während die Rolle an ist, nimmt die Pipeline das
 verbreiterte Kandidatenfenster mit zurück — sonst stellte niemand die `top-k`-Deckelung wieder her.
 
-### 6. Dokument-Vervollständigung
+### 6. Dokument-Vervollständigung (`DOCUMENT_COMPLETION`)
 
 `DocumentCompletionStage` (`DocumentCompletion#complete`, #932/#934/#935) läuft **zuletzt** und zieht ausschließlich
 aus den bereits berechtigungs- und schwellenwertgefilterten Kandidaten von Schritt 3 nach — nie darüber
@@ -365,9 +365,9 @@ Frage + Gesprächsverlauf
 7. Antwortgenerierung, Zitatvalidierung, Quellen-Mapping
 ```
 
-Die Schritte 1 bis 6 sind über `QueryService#retrieveRelevantChunksInGivenScope(question, history, searchScope)`
-auch einzeln aufrufbar — der Einstieg, über den der Pipeline-Messpfad des Retrieval-Harness genau
-diese Kette misst, ohne Schritt 7 (siehe
+Die Schritte 1 bis 6 sind über `QueryService#retrieveRelevantChunksInGivenScopeWithDecomposition`
+auch einzeln aufrufbar — der Einstieg, über den der Pipeline-Messpfad des Retrieval-Harness
+(`PipelineHarnessSupport`) genau diese Kette misst, ohne Schritt 7 (siehe
 [Retrieval-Benchmark](./retrieval-benchmark.md#1-messpfad-durch-die-produktive-pipeline)). Der
 Suchbereich wird dort übergeben, nicht aufgelöst: Berechtigungen bestimmt weiterhin ausschließlich
 Schritt 1 in `QueryService#query`.
@@ -468,11 +468,10 @@ Als Ideen zu verstehen, ohne Zusage einer Umsetzung.
   ist eingelöst: Der Index liegt in derselben PostgreSQL-Datenbank (`tsvector`/GIN statt einer eigenen
   Engine), zusammengeführt wird rangbasiert. Es ist `ts_rank` statt BM25 — die bekannte Grenze steht in
   [Hybride Suche mit Reranking](./hybrid-retrieval.md#die-bekannte-grenze-ts_rank-ist-kein-bm25).
-- **Cross-Encoder-Reranking.** Ebenfalls Zielbild in `data-indexing-rag.md`
-  ([Reranking](./data-indexing-rag.md#reranking)), heute nicht gebaut. Ein Modell, das Frage und Passage
-  gemeinsam statt getrennt bewertet, erkennt Passung genauer als eine reine Vektorähnlichkeit — kostet
-  aber einen zusätzlichen Modellaufruf je Kandidat (oder Batch) und damit Latenz und Betrieb eines weiteren
-  Modells.
+- ~~**Cross-Encoder-Reranking.**~~ Gebaut mit #1050 — Schritt 5b (`RERANK`). Ein Modell, das Frage und
+  Passage gemeinsam statt getrennt bewertet, erkennt Passung genauer als eine reine Vektorähnlichkeit —
+  kostet einen zusätzlichen Modellaufruf je Kandidat (oder Batch) und damit Latenz und Betrieb eines
+  weiteren Modells; deshalb per Voreinstellung aus (siehe Schritt 5b oben).
 - **HyDE (Hypothetical Document Embeddings).** Das Sprachmodell erzeugt vor der Suche eine hypothetische
   Antwort und embedded diese statt der Frage — eine Antwort ähnelt einem Fundstellentext oft mehr als eine
   Frage. Trade-off: ein zusätzlicher LLM-Aufruf vor jeder Suche, und eine plausible, aber falsche
