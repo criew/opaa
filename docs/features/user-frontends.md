@@ -55,7 +55,7 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 | **Arbeitsräume** | Chats und Artefakte eines Themas, Entwurf und Ablage getrennt (siehe [spaces-and-assets.md](./spaces-and-assets.md)) | teilweise — Übersicht, Mitglieder, Rollen, Eigentumsübergabe und die Gesprächsliste je Arbeitsraum (anlegen, umbenennen, löschen) sind vorhanden |
 | **Wissen** | Dokumente einer Wissensbibliothek einsehen, hochladen, Indizierungsstand erkennen | ja — Bibliotheksdetailseite mit Bestandsdarstellung, Upload/Löschen für Upload-Bibliotheken und Indizierungsstand für Konnektor-Bibliotheken |
 | **Assets** | Agenten, Prompt-Bibliotheken und Wissensbibliotheken anlegen, beschreiben, freigeben, finden | nein — Zielbild |
-| **Rückmeldung** | Antworten und Treffer bewerten; die Rückmeldung fließt in die Suchqualität ein (siehe [search-quality-evaluation.md](./search-quality-evaluation.md)) | teilweise — Bedienelement vorhanden, ohne Wirkung (siehe unten) |
+| **Rückmeldung** | Antworten und Treffer bewerten; die Rückmeldung fließt in die Suchqualität ein (siehe [search-quality-evaluation.md](./search-quality-evaluation.md)) | nein — Zielbild (siehe unten) |
 | **Systemverwaltung** | Gruppen und Verzeichnisabgleich, Rollen, Auslösen und Stand der Indizierung | teilweise — Gruppen, Verzeichnisabgleich, Rollen und Indizierung sind vorhanden; Modellvorgaben und Protokolleinsicht sind Zielbild (siehe [access-control.md](./access-control.md) und [llm-integration.md](./llm-integration.md)) |
 | **Persönliche Einstellungen** | Darstellung, später eigene Zugänge zur Schnittstelle | teilweise — nur die Darstellung; eine Verwaltung eigener API-Zugänge gibt es nicht |
 
@@ -183,9 +183,9 @@ Umsetzung ist eine Eigenschaft dieses Kanals, keine nachgelagerte Prüfung.
 Die Rückmeldung schließt die Rückkopplungsschleife aus Themenbereich A: Ohne sie ist die einzige
 verfügbare Aussage über die Antwortqualität die Vermutung derer, die das System gebaut haben.
 
-**Stand:** Das Bedienelement — Zustimmung oder Ablehnung zu einer Antwort — ist in der Oberfläche
-vorhanden und beschriftet, hat aber **keine Wirkung**: Es gibt keinen Endpunkt, der eine Bewertung
-entgegennimmt, und keine Speicherung. Alles Weitere in diesem Abschnitt ist Zielbild.
+**Stand:** Ein wirkungsloses Bedienelement (Zustimmung/Ablehnung zu einer Antwort, ohne Endpunkt oder
+Speicherung dahinter) war zeitweise in der Oberfläche vorhanden und wurde in #1447 wieder ausgebaut,
+bis ein Konzept für Nutzerbewertungen existiert. Alles Weitere in diesem Abschnitt ist Zielbild.
 
 ### Was bewertet wird
 

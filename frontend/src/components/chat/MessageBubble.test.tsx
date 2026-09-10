@@ -61,6 +61,7 @@ describe('MessageBubble', () => {
     }
     render(<MessageBubble message={msg} />)
     expect(screen.getByText('Here is the answer')).toBeInTheDocument()
+    // regression guard for #1447: no rating control is rendered for assistant messages
     expect(screen.queryByLabelText('Daumen hoch')).not.toBeInTheDocument()
   })
 
