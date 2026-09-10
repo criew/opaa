@@ -24,7 +24,7 @@ import io.opaa.llm.RerankRoleState;
 import io.opaa.llm.RerankRoleStatus;
 import io.opaa.llm.RerankRoleStatusProvider;
 import io.opaa.query.QueryProperties;
-import io.opaa.query.RetrievalPipelineProperties;
+import io.opaa.query.retrieval.RetrievalPipelineProperties;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;

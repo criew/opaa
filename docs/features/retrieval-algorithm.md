@@ -17,8 +17,9 @@ Dokument; wer wissen will, wohin es geht, liest `data-indexing-rag.md`.
 Die Stellschrauben-Tabelle in `data-indexing-rag.md` bleibt die eine Quelle der Wahrheit für Parameter und
 ihre Defaults (siehe [Stellschrauben und ihre Wirkung](./data-indexing-rag.md#stellschrauben-und-ihre-wirkung));
 sie wird hier nicht dupliziert, nur je Schritt referenziert. Quelle des Codes ist
-`backend/src/main/java/io/opaa/query/`, vor allem `RetrievalPipeline`, die `*Stage`-Klassen und
-`QueryProperties`.
+`backend/src/main/java/io/opaa/query/`: der Rahmen (`RetrievalPipeline`, Kontext, Zustand, Protokoll) in
+`retrieval/`, die `*Stage`-Klassen in `retrieval/scope/`, `retrieval/search/` und `retrieval/ranking/`, die
+Fassade `QueryService` mit `QueryProperties` im Wurzelpaket.
 
 ---
 

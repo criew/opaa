@@ -15,13 +15,13 @@ import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
-import io.opaa.query.CandidateOutcome;
-import io.opaa.query.CandidateVerdict;
 import io.opaa.query.RetrievalContextFactory;
-import io.opaa.query.RetrievalPipeline;
-import io.opaa.query.RetrievalPipelineResult;
 import io.opaa.query.SearchedLibraryRef;
-import io.opaa.query.StageExplanation;
+import io.opaa.query.retrieval.CandidateOutcome;
+import io.opaa.query.retrieval.CandidateVerdict;
+import io.opaa.query.retrieval.RetrievalPipeline;
+import io.opaa.query.retrieval.RetrievalPipelineResult;
+import io.opaa.query.retrieval.StageExplanation;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -377,7 +377,7 @@ public class SearchDiagnosisService {
 
     Set<String> retrievedChunkIds = new HashSet<>();
     CandidateVerdict lastDrop = null;
-    io.opaa.query.RetrievalStageName lastDropStage = null;
+    io.opaa.query.retrieval.RetrievalStageName lastDropStage = null;
     for (StageExplanation stage : result.explanation().stages()) {
       for (CandidateVerdict verdict : stage.verdicts()) {
         if (!keys.contains(verdict.documentKey())) {

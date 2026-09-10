@@ -2,20 +2,30 @@ package io.opaa.query;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.observability.QueryMetrics;
+import io.opaa.query.answer.ConversationMemoryConfiguration;
+import io.opaa.query.filter.MetadataFilterProperties;
+import io.opaa.query.retrieval.RetrievalPipeline;
+import io.opaa.query.retrieval.RetrievalPipelineProperties;
+import io.opaa.query.retrieval.ranking.DocumentCompletionStage;
+import io.opaa.query.retrieval.ranking.MmrSelectionStage;
+import io.opaa.query.retrieval.ranking.RankFusionStage;
+import io.opaa.query.retrieval.ranking.RerankStage;
+import io.opaa.query.retrieval.scope.MetadataFilterStage;
+import io.opaa.query.retrieval.scope.SearchScopeStage;
+import io.opaa.query.retrieval.search.FullTextSearchStage;
+import io.opaa.query.retrieval.search.SubQueryDecompositionStage;
+import io.opaa.query.retrieval.search.VectorSearchStage;
 import java.util.List;
-import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.memory.ChatMemoryRepository;
-import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * The query package's bean wiring: the retrieval pipeline's stage order, the chat memory and the
- * query metrics. Everything the package can annotate with {@code @Service} is wired there instead;
- * what remains needs a factory method - {@link ChatMemory}/{@link MessageWindowChatMemory} are
- * Spring AI framework types assembled via a builder, and {@link #queryMetrics} follows the
- * project-wide convention of building a metrics facade in its package's configuration.
+ * The query package's bean wiring: the retrieval pipeline's stage order and the query metrics.
+ * Everything the package can annotate with {@code @Service} is wired there instead; what remains
+ * needs a factory method - {@link #queryMetrics} follows the project-wide convention of building a
+ * metrics facade in its package's configuration. The chat memory is wired in {@link
+ * ConversationMemoryConfiguration}.
  */
 @Configuration
 @EnableConfigurationProperties({
@@ -31,7 +41,7 @@ public class QueryConfiguration {
    * files; a new stage is inserted here, at the position it belongs to.
    */
   @Bean
-  RetrievalPipeline retrievalPipeline(
+  public RetrievalPipeline retrievalPipeline(
       SearchScopeStage searchScopeStage,
       MetadataFilterStage metadataFilterStage,
       SubQueryDecompositionStage subQueryDecompositionStage,
@@ -54,21 +64,6 @@ public class QueryConfiguration {
             rerankStage,
             documentCompletionStage),
         pipelineProperties);
-  }
-
-  /**
-   * Maximum messages retained per conversation. Default 20: this corresponds to roughly 10
-   * question/answer pairs, limiting the context window tokens sent to the LLM while preserving
-   * enough history for coherent multi-turn dialogues.
-   */
-  static final int MAX_MESSAGES_PER_CONVERSATION = 20;
-
-  @Bean
-  ChatMemory chatMemory(ChatMemoryRepository chatMemoryRepository) {
-    return MessageWindowChatMemory.builder()
-        .chatMemoryRepository(chatMemoryRepository)
-        .maxMessages(MAX_MESSAGES_PER_CONVERSATION)
-        .build();
   }
 
   @Bean

@@ -7,7 +7,7 @@ import io.opaa.api.dto.MetadataFilterFormatFieldOption;
 import io.opaa.api.dto.MetadataFilterOptionsResponse;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.FormatMetadataField;
-import io.opaa.query.MetadataFilterOptions;
+import io.opaa.query.filter.MetadataFilterOptions;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;

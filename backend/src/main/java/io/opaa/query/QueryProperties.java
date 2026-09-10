@@ -1,5 +1,8 @@
 package io.opaa.query;
 
+import io.opaa.query.retrieval.RetrievalPipelineProperties;
+import io.opaa.query.retrieval.RetrievalStageName;
+import io.opaa.query.retrieval.ranking.ChunkEmbeddingLookup;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
@@ -14,7 +17,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param fetchK candidates each search query retrieves, per search path, before the narrowing
  *     stages work on them. Default 25, normalized to {@code max(25, topK)} when unset so a
  *     deployment that raised {@code topK} alone does not fail the {@code fetchK >= topK} check.
- * @param mmrLambda the relevance/diversity trade-off {@link MmrSelector} applies: a candidate's
+ * @param mmrLambda the relevance/diversity trade-off {@code MmrSelector} applies: a candidate's
  *     score is {@code mmrLambda * relevance - (1 - mmrLambda) * maxSimilarityToAlreadySelected}.
  *     Default {@code 1.0}, where the diversity term vanishes and {@link
  *     RetrievalStageName#MMR_SELECTION} skips the {@link ChunkEmbeddingLookup} round trip. Bound
@@ -35,7 +38,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     3; the service truncates beyond it, so an adversarial answer cannot grow retrieval latency
  *     without bound. Each list is narrowed on its own, so the chunk count stays capped at {@link
  *     #topK} regardless.
- * @param maxChunksPerDocument the upper bound on how many chunks of one document {@link
+ * @param maxChunksPerDocument the upper bound on how many chunks of one document {@code
  *     DocumentCompletion} may hold in the final selection. Default 2; {@code 1} is the explicit
  *     opt-out that makes completion the identity.
  * @param fullTextSearchEnabled whether {@link RetrievalStageName#FULL_TEXT_SEARCH} runs and

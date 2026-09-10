@@ -20,7 +20,7 @@ import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import io.opaa.indexing.metadata.MetadataFieldFill;
 import io.opaa.indexing.metadata.ModelExtractionStats;
-import io.opaa.query.RetrievalExplanation;
+import io.opaa.query.retrieval.RetrievalExplanation;
 import io.opaa.searchadmin.ChunkInspection;
 import io.opaa.searchadmin.ChunkInspectionService;
 import io.opaa.searchadmin.DiagnosisContextType;

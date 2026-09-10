@@ -11,7 +11,7 @@
 
 /**
  * A note the backend can produce, and the German sentence that carries the same statement. `name`
- * is the backend's enum constant (`io.opaa.query.RetrievalNote`/`RetrievalListLabel`/`StageStatus`)
+ * is the backend's enum constant (`io.opaa.query.retrieval.RetrievalNote`/`RetrievalListLabel`/`StageStatus`)
  * this rule translates - the join key `retrievalProtocolText.test.ts` uses against
  * `retrieval-note-templates.json` to check coverage in both directions (#1207).
  */

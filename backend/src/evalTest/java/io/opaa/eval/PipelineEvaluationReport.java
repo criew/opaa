@@ -197,10 +197,11 @@ public record PipelineEvaluationReport(
    * @param distinctDocumentsReturned how many distinct documents those chunks belong to — the
    *     length of the ranked list the metrics were computed over.
    * @param subQueries the search queries decomposition (or its single-query fallback) produced for
-   *     this case in this run — see {@link io.opaa.query.RetrievalPipelineResult#searchQueries()}.
-   *     Recorded on every run, not only decomposition-enabled ones, so a multi-run comparison
-   *     (issue #1044, docs/features/retrieval-benchmark.md §3) can tell whether decomposition
-   *     produced a different sub-query set for the same question across runs.
+   *     this case in this run — see {@link
+   *     io.opaa.query.retrieval.RetrievalPipelineResult#searchQueries()}. Recorded on every run,
+   *     not only decomposition-enabled ones, so a multi-run comparison (issue #1044,
+   *     docs/features/retrieval-benchmark.md §3) can tell whether decomposition produced a
+   *     different sub-query set for the same question across runs.
    */
   public record PipelineQueryResult(
       String id,

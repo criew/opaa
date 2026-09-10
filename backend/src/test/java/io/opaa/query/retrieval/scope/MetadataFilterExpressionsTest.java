@@ -1,0 +1,314 @@
+package io.opaa.query.retrieval.scope;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import io.opaa.indexing.metadata.FormatFieldCondition;
+import io.opaa.indexing.metadata.LibraryFieldCondition;
+import io.opaa.indexing.metadata.MetadataFilter;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.springframework.ai.vectorstore.filter.Filter;
+import org.springframework.ai.vectorstore.pgvector.PgVectorFilterExpressionConverter;
+
+/**
+ * The two query forms of a {@link MetadataFilter} state the same rule (#1070), and the metadata
+ * filter is subordinate to the permission filter by construction - the AND with the library filter
+ * is the outer operator, and an empty filter leaves the permission filter untouched.
+ */
+class MetadataFilterExpressionsTest {
+
+  private static final List<String> VOCABULARY =
+      List.of("SATZUNG_ORDNUNG", "DIENSTANWEISUNG", "VERMERK");
+  private static final Filter.Expression LIBRARY_FILTER =
+      SearchScopeStage.libraryFilter(Set.of(UUID.randomUUID()));
+
+  private static String jsonPath(Filter.Expression expression) {
+    return new PgVectorFilterExpressionConverter().convertExpression(expression);
+  }
+
+  @Test
+  void anEmptyFilterIsNoConditionInEitherPath() {
+    assertThat(MetadataFilterExpressions.vectorExpression(MetadataFilter.NONE, VOCABULARY))
+        .isNull();
+    assertThat(MetadataFilterExpressions.subordinateTo(LIBRARY_FILTER, null))
+        .isSameAs(LIBRARY_FILTER);
+    List<Object> parameters = new ArrayList<>();
+    assertThat(
+            MetadataFilterExpressions.sqlPredicate(
+                MetadataFilter.NONE, "v.metadata", VOCABULARY, parameters))
+        .isEmpty();
+    assertThat(parameters).isEmpty();
+  }
+
+  /**
+   * The permission filter stays the outer operand: whatever the metadata filter says, the
+   * expression a search runs is {@code libraryFilter AND (...)} - it can remove, never add.
+   */
+  @Test
+  void theMetadataFilterIsAndedUnderThePermissionFilter() {
+    MetadataFilter filter = MetadataFilter.ofDocumentTypes(List.of("VERMERK"));
+    Filter.Expression combined =
+        MetadataFilterExpressions.subordinateTo(
+            LIBRARY_FILTER, MetadataFilterExpressions.vectorExpression(filter, VOCABULARY));
+
+    assertThat(combined.type()).isEqualTo(Filter.ExpressionType.AND);
+    assertThat(combined.left()).isSameAs(LIBRARY_FILTER);
+    assertThat(jsonPath(combined)).startsWith(jsonPath(LIBRARY_FILTER).replace("'::jsonpath", ""));
+  }
+
+  /**
+   * The rendered jsonpath must bracket the whole metadata condition under the permission filter:
+   * jsonpath binds {@code &&} tighter than {@code ||}, so an unbracketed date window would tie the
+   * permission filter to its first precision branch only. Asserted on the rendered string, because
+   * the expression tree alone cannot show whether the converter emitted the brackets.
+   */
+  @Test
+  void theRenderedVectorFilterBracketsTheMetadataConditionUnderThePermissionFilter() {
+    MetadataFilter filter =
+        new MetadataFilter(Set.of("VERMERK"), LocalDate.of(2024, 6, 15), LocalDate.of(2024, 8, 31));
+    String rendered =
+        jsonPath(
+            MetadataFilterExpressions.subordinateTo(
+                LIBRARY_FILTER, MetadataFilterExpressions.vectorExpression(filter, VOCABULARY)));
+
+    String permission = jsonPath(LIBRARY_FILTER).replace("'::jsonpath", "");
+    assertThat(rendered).startsWith(permission + " && (");
+    // No "||" may sit at depth zero inside the subordinate group: every OR is in a group.
+    String metadataPart = rendered.substring(permission.length());
+    assertThat(topLevelOrCount(insideTheSubordinateGroup(metadataPart))).isZero();
+    // Inside: the Dokumentart condition AND the (bracketed) date condition.
+    assertThat(metadataPart).contains(") && (");
+  }
+
+  /**
+   * The bracket under the permission filter does not depend on a Dokumentart condition being
+   * present: with a date-only filter the whole OR-composed date window is still one bracketed
+   * operand, and the permission filter still binds to all of it - the group comes from {@link
+   * MetadataFilterExpressions#subordinateTo} alone.
+   */
+  @Test
+  void aDateOnlyFilterIsBracketedUnderThePermissionFilterAsAWhole() {
+    MetadataFilter dateOnly =
+        MetadataFilter.ofDateWindow(LocalDate.of(2023, 1, 1), LocalDate.of(2023, 12, 31));
+    Filter.Expression combined =
+        MetadataFilterExpressions.subordinateTo(
+            LIBRARY_FILTER, MetadataFilterExpressions.vectorExpression(dateOnly, VOCABULARY));
+    String rendered = jsonPath(combined);
+
+    assertThat(combined.right()).isInstanceOf(Filter.Group.class);
+    String permission = jsonPath(LIBRARY_FILTER).replace("'::jsonpath", "");
+    assertThat(rendered).startsWith(permission + " && (");
+    String metadataPart = rendered.substring(permission.length());
+    // Every precision branch of the window sits inside that one bracket - a group that closed after
+    // the first branch would leave MONTH and YEAR outside it, tied to nothing.
+    assertThat(insideTheSubordinateGroup(metadataPart))
+        .contains("DAY")
+        .contains("MONTH")
+        .contains("YEAR");
+  }
+
+  /**
+   * The same bracket rule for the two condition forms whose first operand looks as if it opened the
+   * set up again: a library condition is {@code (fremde Bibliothek OR trifft zu OR ohne Wert)} and
+   * a format condition {@code (trifft zu OR ohne Wert)}. Both must sit inside the group the
+   * permission filter binds to - all three field circles at once, in both query forms.
+   */
+  @Test
+  void everyFieldCircleIsBracketedUnderThePermissionFilterInBothForms() {
+    MetadataFilter filter = allFieldCircles();
+
+    String rendered =
+        jsonPath(
+            MetadataFilterExpressions.subordinateTo(
+                LIBRARY_FILTER, MetadataFilterExpressions.vectorExpression(filter, VOCABULARY)));
+    String permission = jsonPath(LIBRARY_FILTER).replace("'::jsonpath", "");
+    assertThat(rendered).startsWith(permission + " && (");
+    String metadataPart = rendered.substring(permission.length());
+    assertThat(topLevelOrCount(insideTheSubordinateGroup(metadataPart))).isZero();
+    // Each circle contributed its own condition: value key, precision key, presence marker and the
+    // library guard of the library fields, plus the format field's value and presence key.
+    assertThat(metadataPart)
+        .contains("lf_fassung")
+        .contains("lf_stand")
+        .contains("lfp_stand")
+        .contains("lf_aktenzeichen")
+        .contains("lfs_fassung")
+        .contains("library_id")
+        .contains("ff_mail_sender")
+        .contains("ffs_mail_sender");
+
+    List<Object> parameters = new ArrayList<>();
+    String sql =
+        MetadataFilterExpressions.sqlPredicate(filter, "v.metadata", VOCABULARY, parameters);
+    // The lexical twin: every condition is its own bracketed AND term, so none of them can widen
+    // what the permission clause before it already narrowed.
+    assertThat(sql).startsWith(" AND (");
+    assertThat(topLevelSqlOrCount(sql)).isZero();
+    assertThat(sql)
+        .contains("v.metadata->>'lf_fassung'")
+        .contains("v.metadata->>'lfp_stand'")
+        .contains("v.metadata->>'lf_aktenzeichen'")
+        .contains("v.metadata->>'lfs_fassung'")
+        .contains("v.metadata->>'library_id'")
+        .contains("v.metadata->>'ff_mail_sender'")
+        .contains("v.metadata->>'ffs_mail_sender'");
+  }
+
+  /** A filter carrying a condition of every kind: core fields, all three library types, format. */
+  private static MetadataFilter allFieldCircles() {
+    UUID libraryId = UUID.randomUUID();
+    return new MetadataFilter(
+            Set.of("VERMERK"), LocalDate.of(2024, 6, 15), LocalDate.of(2024, 8, 31))
+        .withLibraryFields(
+            List.of(
+                LibraryFieldCondition.ofCodes(libraryId, "fassung", List.of("A")),
+                LibraryFieldCondition.ofDateWindow(
+                    libraryId, "stand", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31)),
+                LibraryFieldCondition.ofValue(libraryId, "aktenzeichen", "RF-KFZ-001")))
+        .withFormatFields(
+            List.of(FormatFieldCondition.parse("mail_sender", List.of("max@stadt.de"))));
+  }
+
+  /** How many {@code OR} sit outside every bracket of an SQL fragment - must always be zero. */
+  private static int topLevelSqlOrCount(String sql) {
+    int depth = 0;
+    int count = 0;
+    for (int i = 0; i < sql.length(); i++) {
+      char c = sql.charAt(i);
+      if (c == '(') {
+        depth++;
+      } else if (c == ')') {
+        depth--;
+      } else if (depth == 0 && sql.startsWith(" OR ", i)) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /**
+   * The content of the group {@link MetadataFilterExpressions#subordinateTo} wraps the whole
+   * metadata condition in. Counting ORs on the metadata part as a whole would say nothing: that
+   * outer bracket holds every character at depth 1 or deeper, so the count were zero even for a
+   * condition that lost its own brackets. What must be free of top-level ORs is the inside.
+   */
+  private static String insideTheSubordinateGroup(String metadataPart) {
+    int open = metadataPart.indexOf('(');
+    int depth = 0;
+    for (int i = open; i < metadataPart.length(); i++) {
+      char c = metadataPart.charAt(i);
+      if (c == '(') {
+        depth++;
+      } else if (c == ')' && --depth == 0) {
+        return metadataPart.substring(open + 1, i);
+      }
+    }
+    throw new IllegalStateException("unbalanced brackets in " + metadataPart);
+  }
+
+  private static int topLevelOrCount(String jsonPath) {
+    int depth = 0;
+    int count = 0;
+    for (int i = 0; i < jsonPath.length(); i++) {
+      char c = jsonPath.charAt(i);
+      if (c == '(') {
+        depth++;
+      } else if (c == ')') {
+        depth--;
+      } else if (c == '|'
+          && depth == 0
+          && i + 1 < jsonPath.length()
+          && jsonPath.charAt(i + 1) == '|') {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /**
+   * "No value" cannot be said as IS NULL in the vector path; both forms say NOT IN over every other
+   * vocabulary code - true for a chunk without the key - so a value the closed set does not know (a
+   * removed vocabulary code still on old chunks) is read as "no value" by both paths alike: the
+   * paths cannot drift apart on it.
+   */
+  @Test
+  void bothFormsSayNoValueAsNotInOverTheClosedValueSet() {
+    MetadataFilter filter = MetadataFilter.ofDocumentTypes(List.of("VERMERK"));
+
+    String vector = jsonPath(MetadataFilterExpressions.vectorExpression(filter, VOCABULARY));
+    assertThat(vector).contains("!(").contains("SATZUNG_ORDNUNG").contains("DIENSTANWEISUNG");
+    assertThat(vector).doesNotContain("\"VERMERK\"");
+
+    List<Object> parameters = new ArrayList<>();
+    String sql =
+        MetadataFilterExpressions.sqlPredicate(filter, "v.metadata", VOCABULARY, parameters);
+    assertThat(sql)
+        .isEqualTo(" AND (v.metadata->>'doc_type' IS NULL OR v.metadata->>'doc_type' <> ALL(?))");
+    assertThat(parameters).hasSize(1);
+    assertThat((String[]) parameters.get(0))
+        .containsExactly("SATZUNG_ORDNUNG", "DIENSTANWEISUNG")
+        .doesNotContain("ALTCODE");
+  }
+
+  /** Selecting every code constrains nothing: every document carries one of them or none. */
+  @Test
+  void selectingTheWholeVocabularyIsNoCondition() {
+    assertThat(
+            MetadataFilterExpressions.vectorExpression(
+                MetadataFilter.ofDocumentTypes(VOCABULARY), VOCABULARY))
+        .isNull();
+  }
+
+  /**
+   * The window is widened per precision to the first day of the month/year the window starts in.
+   */
+  @Test
+  void theDateConditionWidensTheLowerBoundPerPrecisionInBothPaths() {
+    MetadataFilter filter =
+        MetadataFilter.ofDateWindow(LocalDate.of(2024, 6, 15), LocalDate.of(2024, 8, 31));
+
+    String vector = jsonPath(MetadataFilterExpressions.vectorExpression(filter, VOCABULARY));
+    assertThat(vector)
+        .contains("\"DAY\" && $.\"doc_date\" >= \"2024-06-15\"")
+        .contains("\"MONTH\" && $.\"doc_date\" >= \"2024-06-01\"")
+        .contains("\"YEAR\" && $.\"doc_date\" >= \"2024-01-01\"")
+        .contains("<= \"2024-08-31\"")
+        .contains("!($.\"doc_date_precision\" == \"DAY\"");
+
+    List<Object> parameters = new ArrayList<>();
+    String sql =
+        MetadataFilterExpressions.sqlPredicate(filter, "v.metadata", VOCABULARY, parameters);
+    assertThat(sql)
+        .startsWith(
+            " AND (v.metadata->>'doc_date_precision' IS NULL OR"
+                + " v.metadata->>'doc_date_precision' <> ALL(?) OR (");
+    assertThat((String[]) parameters.get(0)).containsExactly("DAY", "MONTH", "YEAR");
+    assertThat(parameters.subList(1, parameters.size()))
+        .containsExactly(
+            "DAY",
+            "2024-06-15",
+            "2024-08-31",
+            "MONTH",
+            "2024-06-01",
+            "2024-08-31",
+            "YEAR",
+            "2024-01-01",
+            "2024-08-31");
+  }
+
+  @Test
+  void anOpenEndedWindowOmitsTheMissingBound() {
+    MetadataFilter from = MetadataFilter.ofDateWindow(LocalDate.of(2024, 1, 1), null);
+    List<Object> parameters = new ArrayList<>();
+    String sql = MetadataFilterExpressions.sqlPredicate(from, "v.metadata", VOCABULARY, parameters);
+    assertThat(sql).contains(">= ?").doesNotContain("<= ?");
+    assertThat(parameters.subList(1, parameters.size()))
+        .containsExactly("DAY", "2024-01-01", "MONTH", "2024-01-01", "YEAR", "2024-01-01");
+    assertThat(jsonPath(MetadataFilterExpressions.vectorExpression(from, VOCABULARY)))
+        .doesNotContain("<=");
+  }
+}

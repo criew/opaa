@@ -4,7 +4,7 @@ import io.opaa.eval.PipelineEvaluationReport.PipelineQueryResult;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.query.QueryProperties;
-import io.opaa.query.RetrievalPipeline;
+import io.opaa.query.retrieval.RetrievalPipeline;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;

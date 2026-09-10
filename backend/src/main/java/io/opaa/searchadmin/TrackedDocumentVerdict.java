@@ -1,7 +1,7 @@
 package io.opaa.searchadmin;
 
-import io.opaa.query.RetrievalStageName;
-import io.opaa.query.VerdictReason;
+import io.opaa.query.retrieval.RetrievalStageName;
+import io.opaa.query.retrieval.VerdictReason;
 import java.util.UUID;
 
 /**
