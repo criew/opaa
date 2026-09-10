@@ -88,7 +88,6 @@ class PipelineHarnessSupportTest {
                     IDENTITY,
                     failing,
                     new RetrievalContextFactory(productionLikeProperties(8, false), disabledRole),
-                    productionLikeProperties(8, false),
                     RetrievalPipelineProperties.allStagesEnabled(),
                     false,
                     // Never dereferenced on this path: the failure happens while querying, before
@@ -226,8 +225,7 @@ class PipelineHarnessSupportTest {
         EvalDomainConfig.COMIC_CHARACTERS,
         identityWithChatModel(chatModel),
         null,
-        null,
-        queryProperties,
+        new RetrievalContextFactory(queryProperties, null),
         pipelineProperties,
         rerankRoleUsable,
         null,

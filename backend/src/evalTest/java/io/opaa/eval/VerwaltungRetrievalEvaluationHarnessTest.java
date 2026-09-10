@@ -885,7 +885,6 @@ class VerwaltungRetrievalEvaluationHarnessTest {
             activeChatModel),
         retrievalPipeline,
         retrievalContextFactory,
-        queryProperties,
         pipelineProperties,
         rerankModelRole.usable(),
         indexingProperties,

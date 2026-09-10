@@ -119,7 +119,6 @@ public final class VariantComparisonStep {
                       identity,
                       pipeline,
                       contextFactory,
-                      queryProperties,
                       indexingProperties,
                       evalLibraryId,
                       goldenCases,

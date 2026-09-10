@@ -65,7 +65,6 @@ public final class VariantRunner {
                 identity,
                 pipeline,
                 new RetrievalContextFactory(effective, rerankModelRole),
-                effective,
                 indexingProperties,
                 evalLibraryId,
                 goldenCases,

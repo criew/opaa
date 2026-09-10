@@ -878,7 +878,6 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
             activeChatModel),
         retrievalPipeline,
         retrievalContextFactory,
-        queryProperties,
         pipelineProperties,
         rerankModelRole.usable(),
         indexingProperties,

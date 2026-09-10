@@ -880,7 +880,6 @@ class RetrievalEvaluationHarnessTest {
         identity,
         retrievalPipeline,
         retrievalContextFactory,
-        queryProperties,
         pipelineProperties,
         rerankModelRole.usable(),
         indexingProperties,

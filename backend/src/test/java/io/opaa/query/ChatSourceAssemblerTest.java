@@ -299,7 +299,7 @@ class ChatSourceAssemblerTest {
       assertThat(result.getRelevanceScore()).isEqualTo(0.9);
     }
 
-    /** The merged entry knows every retrieved chunk's location, in chunk order. */
+    /** #667: the merged entry knows every retrieved chunk's location, in chunk order. */
     @Test
     void unionsChunkLocationsInChunkOrder() {
       var high = sourceReference("file.pdf", 0.9, 1, INDEXED_AT, false);
@@ -382,9 +382,9 @@ class ChatSourceAssemblerTest {
     }
 
     /**
-     * The branch that builds a fresh {@code ChatSource} to force {@code cited = true} (because a
-     * lower-scoring duplicate was cited but the higher-scoring one is preferred) carries {@code
-     * sourceEntryUrl} over from the preferred source, same as {@code indexedAt}.
+     * #639: the branch that builds a fresh {@code ChatSource} to force {@code cited = true}
+     * (because a lower-scoring duplicate was cited but the higher-scoring one is preferred) carries
+     * {@code sourceEntryUrl} over from the preferred source, same as {@code indexedAt}.
      */
     @Test
     void preservesSourceEntryUrlWhenForcingCited() {
@@ -400,10 +400,10 @@ class ChatSourceAssemblerTest {
     }
 
     /**
-     * Two distinct documents can share a file name, each with its own {@code sourceEntryUrl} -
-     * picking either side's URL for the merged citation would be an unverifiable, potentially wrong
-     * claim about where the other chunk actually came from. The merge drops to {@code null} rather
-     * than assert one of two disagreeing URLs.
+     * #666: two distinct documents can share a file name, each with its own {@code sourceEntryUrl}
+     * - picking either side's URL for the merged citation would be an unverifiable, potentially
+     * wrong claim about where the other chunk actually came from. The merge drops to {@code null}
+     * rather than assert one of two disagreeing URLs.
      */
     @Test
     void dropsSourceEntryUrlWhenMergedSourcesDisagree() {
@@ -418,8 +418,8 @@ class ChatSourceAssemblerTest {
     }
 
     /**
-     * One side carrying no {@code sourceEntryUrl} at all (not merely a different one) is also a
-     * disagreement - a document with a URL and one without do not corroborate each other.
+     * #666: one side carrying no {@code sourceEntryUrl} at all (not merely a different one) is also
+     * a disagreement - a document with a URL and one without do not corroborate each other.
      */
     @Test
     void dropsSourceEntryUrlWhenOnlyOneSourceHasOne() {

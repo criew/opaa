@@ -1,6 +1,7 @@
 package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import io.opaa.query.CandidateOutcome;
 import io.opaa.query.CandidateVerdict;
@@ -100,24 +101,29 @@ class ExplanationDumpTest {
   }
 
   @Test
-  void aDisabledDumpWritesNothing(@TempDir Path dir) throws IOException {
-    ExplanationDump.disabled().write("case-1", explanation());
+  void aDisabledDumpHasNoTargetAndWritingIsANoOp() {
+    ExplanationDump dump = ExplanationDump.disabled();
 
-    try (var files = Files.list(dir)) {
-      assertThat(files).isEmpty();
-    }
+    assertThat(dump.enabled()).isFalse();
+    assertThatCode(() -> dump.write("case-1", explanation())).doesNotThrowAnyException();
   }
 
   @Test
   void isDisabledWithoutTheSystemProperty() {
+    String previous = System.getProperty(ExplanationDump.DIRECTORY_PROPERTY);
     System.clearProperty(ExplanationDump.DIRECTORY_PROPERTY);
+    try {
+      ExplanationDump dump =
+          ExplanationDump.fromSystemProperty(
+              () -> {
+                throw new AssertionError("keys must not be resolved for a disabled dump");
+              });
 
-    ExplanationDump dump =
-        ExplanationDump.fromSystemProperty(
-            () -> {
-              throw new AssertionError("keys must not be resolved for a disabled dump");
-            });
-
-    assertThat(dump.enabled()).isFalse();
+      assertThat(dump.enabled()).isFalse();
+    } finally {
+      if (previous != null) {
+        System.setProperty(ExplanationDump.DIRECTORY_PROPERTY, previous);
+      }
+    }
   }
 }

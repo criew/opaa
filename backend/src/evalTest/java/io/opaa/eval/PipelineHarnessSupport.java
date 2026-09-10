@@ -128,7 +128,6 @@ public final class PipelineHarnessSupport {
       RunIdentity identity,
       RetrievalPipeline pipeline,
       RetrievalContextFactory contextFactory,
-      QueryProperties queryProperties,
       RetrievalPipelineProperties pipelineProperties,
       boolean rerankRoleUsable,
       IndexingProperties indexingProperties,
@@ -137,6 +136,7 @@ public final class PipelineHarnessSupport {
       Instant pipelineRunStart,
       ExplanationDump explanationDump,
       Logger log) {
+    QueryProperties queryProperties = contextFactory.queryProperties();
     requireMeasurableConfiguration(
         queryProperties, pipelineProperties, rerankRoleUsable, identity.chatModel());
     try {
@@ -155,7 +155,6 @@ public final class PipelineHarnessSupport {
                       identity,
                       pipeline,
                       contextFactory,
-                      queryProperties,
                       indexingProperties,
                       evalLibraryId,
                       goldenCases,
@@ -194,20 +193,21 @@ public final class PipelineHarnessSupport {
    * call into this same measurement) must equal, field for field, what this method computes for the
    * unmodified production configuration in the very same harness run.
    *
-   * <p>{@code queryProperties} is the run's fixed point in the report and must be the instance
-   * {@code contextFactory} was built with - a variant hands in its own pair here.
+   * <p>The report's fixed points are read from {@code contextFactory}'s own {@link QueryProperties}
+   * - the parameter set every measured run actually carried, so the report can never describe a
+   * different configuration than the one measured. A variant hands in its own factory.
    */
   public static PipelineEvaluationReport measure(
       EvalDomainConfig domain,
       RunIdentity identity,
       RetrievalPipeline pipeline,
       RetrievalContextFactory contextFactory,
-      QueryProperties queryProperties,
       IndexingProperties indexingProperties,
       UUID evalLibraryId,
       List<GoldenCase> goldenCases,
       Instant pipelineRunStart,
       ExplanationDump explanationDump) {
+    QueryProperties queryProperties = contextFactory.queryProperties();
     Set<UUID> searchScope = Set.of(evalLibraryId);
     // Issue #1070: counted, not assumed - the fixed point metadataFilterEnabled below is "every
     // filtered case reached the pipeline with its filter", derived from this counter and the

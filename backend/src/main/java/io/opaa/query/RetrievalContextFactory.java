@@ -25,6 +25,11 @@ public class RetrievalContextFactory {
     this.rerankModelRole = rerankModelRole;
   }
 
+  /** The parameter set every context of this factory carries. */
+  public QueryProperties queryProperties() {
+    return queryProperties;
+  }
+
   /**
    * {@code searchScope} is taken as given (ADR-0008 §5). The rerank role's state is read once per
    * call, so every stage of the run sees the same answer: fusion widens its budget for the reranker
