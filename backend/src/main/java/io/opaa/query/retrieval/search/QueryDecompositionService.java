@@ -145,7 +145,9 @@ public class QueryDecompositionService {
     ChatClient chatClient = activeChatModelResolver.resolveChatClient();
     ChatResponse response =
         chatClient.prompt().system(systemText).messages(messages).call().chatResponse();
-    return ChatResponses.textOrNull(response);
+    // A model call that returns nothing at all is a decomposition failure like any other here:
+    // the caller falls back to single-query retrieval instead of failing the turn.
+    return response == null ? null : ChatResponses.textOrNull(response);
   }
 
   /**

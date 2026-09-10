@@ -7,6 +7,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.query.SearchedLibraryRef;
 import io.opaa.query.retrieval.CandidateOutcome;
 import io.opaa.query.retrieval.RetrievalPipeline;
 import io.opaa.query.retrieval.RetrievalStageName;
@@ -148,7 +149,7 @@ class SearchDiagnosisIntegrationTest {
     SearchDiagnosis diagnosis = diagnose(profileQuery("Gebührenbefreiung", null));
 
     assertThat(diagnosis.searchScope())
-        .extracting(ref -> ref.id())
+        .extracting(SearchedLibraryRef::id)
         .containsExactly(grantedLibraryId);
     assertThat(diagnosis.permissionProfileName()).isEqualTo("Sachbearbeitung Bürgerbüro");
     // Every chunk the run ever saw belongs to the one library the profile reaches - the filter is
@@ -165,7 +166,7 @@ class SearchDiagnosisIntegrationTest {
                 "Gebührenbefreiung", DiagnosisContextType.SELF, null, null, null, null));
 
     assertThat(diagnosis.searchScope())
-        .extracting(ref -> ref.id())
+        .extracting(SearchedLibraryRef::id)
         .containsExactlyInAnyOrder(grantedLibraryId, ungrantedLibraryId);
     assertThat(diagnosis.permissionProfileName()).isNull();
   }
