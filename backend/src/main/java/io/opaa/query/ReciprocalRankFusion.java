@@ -14,10 +14,8 @@ import org.springframework.ai.document.Document;
  *
  * <p>Deduplicated by {@link Document#getId()}: a chunk's contributions from every list are summed
  * before ranking, and the instance from the <b>earliest</b> list is kept. That tie-break is
- * positional rather than "the higher score" because duplicate instances of one chunk can carry a
- * cosine similarity and a {@code ts_rank}, and picking the larger of the two would be exactly the
- * cross-scale comparison this class avoids. No consumer reads a surviving {@link
- * Document#getScore()}; the ranking is the fused score either way.
+ * positional rather than "the higher score" because two instances of one chunk can carry a cosine
+ * similarity and a {@code ts_rank}, and the larger of the two means nothing.
  */
 final class ReciprocalRankFusion {
 

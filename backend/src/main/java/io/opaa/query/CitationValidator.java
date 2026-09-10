@@ -43,21 +43,14 @@ public class CitationValidator {
 
   /**
    * Validates {@code citations} against {@code retrievedChunks} - the exact set handed to the
-   * answer model for this answer, never a broader "everything indexed" set (that would defeat the
-   * point: a citation must be grounded in what <em>this</em> answer actually used). A chunk with no
-   * {@code chunk_index} metadata defaults to index {@code 0} - the same default {@code
-   * AnswerGenerationService} falls back to when it writes the citation instructions the model
-   * copies from, so a chunk that never carried the metadata still matches the citation the model
-   * was told to produce for it.
+   * answer model, never a broader one, because a citation must be grounded in what <em>this</em>
+   * answer used. A chunk without {@code chunk_index} defaults to {@code 0}, the same default the
+   * citation instructions use. The file name comparison is Unicode-normalised (NFC) and
+   * case-insensitive; no other leniency.
    *
-   * <p>The file name comparison is Unicode-normalised (NFC) and case-insensitive; no other
-   * leniency, since a truncated name or a different extension describes a different reference.
-   *
-   * <p>The content check then holds the statement preceding the marker against the combined text of
-   * every retrieved chunk of the cited <b>document</b> - not only the chunk the marker names,
-   * because document completion can retrieve several chunks of one. A statement naming an
-   * approximation or a sum, one with no extractable fact, and an unlocatable marker all keep the
-   * retrieval-based verdict: the check only ever tightens it.
+   * <p>The content check ({@link CitationFactChecker}) then compares the statement preceding the
+   * marker against every retrieved chunk of the cited <b>document</b>, not only the chunk the
+   * marker names, and can only tighten the retrieval-based verdict.
    */
   public List<ValidatedCitation> validate(
       List<CitationParser.ParsedCitation> citations,

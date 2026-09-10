@@ -54,11 +54,11 @@ import org.springframework.stereotype.Service;
  * the source rows.
  *
  * <p>A query always reads with the calling user's own rights - no system-admin bypass, no second
- * rights context (ADR-0008 §5) - and the permission filter is part of the {@link
- * VectorStore#similaritySearch} call itself, never a post-filter, so an unauthorized chunk is never
- * loaded or ranked. An empty search scope short-circuits to answer generation with zero chunks, the
- * same path a genuinely empty result takes, so the answer cannot distinguish "no permission on
- * anything" from "nothing matched".
+ * rights context (ADR-0008 §5) - and the permission filter is part of every search query itself,
+ * the {@link VectorStore#similaritySearch} call and the full-text query alike, never a post-filter,
+ * so an unauthorized chunk is never loaded or ranked. An empty search scope short-circuits to
+ * answer generation with zero chunks, the same path a genuinely empty result takes, so the answer
+ * cannot distinguish "no permission on anything" from "nothing matched".
  */
 @Service
 public class QueryService {
@@ -410,13 +410,9 @@ public class QueryService {
 
   /**
    * The retrieval half of {@link #query}: runs the whole {@link RetrievalPipeline} and returns the
-   * chunks in the exact order and count the answer prompt would be built from, stopping before
-   * answer generation, citation validation and source mapping.
-   *
-   * <p>{@code searchScope} is taken as given - hence the name. This method applies it as the {@code
-   * library_id} filter of every search but resolves no permissions of its own: the caller is
-   * responsible for the scope being one the acting user may read (ADR-0008 §5). An empty scope
-   * short-circuits to an empty result without any search, LLM call or embedding lookup.
+   * chunks in the order and count the answer prompt would be built from. {@code searchScope} is
+   * taken as given - hence the name - so the caller is responsible for it being one the acting user
+   * may read (ADR-0008 §5). An empty scope short-circuits without any search or LLM call.
    */
   public List<Document> retrieveRelevantChunksInGivenScope(
       String question, List<Message> conversationHistory, Set<UUID> searchScope) {
@@ -448,15 +444,12 @@ public class QueryService {
   public record RetrievalWithDecomposition(List<Document> chunks, List<String> searchQueries) {}
 
   /**
-   * The same retrieval as {@link #retrieveRelevantChunksInGivenScope}, additionally exposing the
-   * search queries the decomposition produced - what the benchmark path needs to detect, across
-   * repeated runs of one question, whether the decomposition varied
-   * (docs/features/retrieval-benchmark.md §3). Applies the same {@code searchScope}-taken-as-given
-   * contract.
+   * The same retrieval, additionally exposing the search queries the decomposition produced - what
+   * the benchmark path needs to detect whether repeated runs of one question decomposed it
+   * differently (docs/features/retrieval-benchmark.md §3). Same taken-as-given scope contract.
    *
-   * <p>The explanation protocol the stages produce is dropped here: an answer needs the chunks
-   * alone. A caller that evaluates why a candidate was displaced - the administration's diagnosis -
-   * runs {@link RetrievalPipeline#run} itself and keeps the whole {@link RetrievalPipelineResult}.
+   * <p>The explanation protocol is dropped here; a caller that evaluates it runs {@link
+   * RetrievalPipeline#run} itself and keeps the whole {@link RetrievalPipelineResult}.
    */
   public RetrievalWithDecomposition retrieveRelevantChunksInGivenScopeWithDecomposition(
       String question, List<Message> conversationHistory, Set<UUID> searchScope) {

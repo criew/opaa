@@ -13,18 +13,16 @@ import org.springframework.stereotype.Component;
  * The {@link RetrievalStageName#FULL_TEXT_SEARCH} stage (docs/handbuch/suche.md, Stufe 5): one
  * PostgreSQL full-text query per search query, each with the identical permission filter the vector
  * path applies and the identical {@link QueryProperties#fetchK}, yielding one labelled candidate
- * list per search query. Its lists enter {@link RankFusionStage} next to the vector path's; a chunk
- * both paths found is one candidate with two contributions, deduplicated by chunk id and never by
- * score, because a cosine similarity and a {@code ts_rank} are not comparable quantities.
+ * list per search query. Its lists enter {@link RankFusionStage} next to the vector path's,
+ * deduplicated by chunk id and never by score.
  *
  * <p>{@link QueryProperties#fullTextSearchEnabled()} is the only gate, and it narrows: every
- * library of the search scope is searched otherwise, even one whose full-text index is incomplete.
- * {@link FullTextIndexCompleteness} reports the affected libraries in this stage's notes; a
- * re-index repairs them (ADR-0028).
+ * library of the scope is searched otherwise, even one whose full-text index is incomplete - {@link
+ * FullTextIndexCompleteness} then reports it in this stage's notes.
  *
- * <p>A failure degrades the path, never the answer: it is logged and recorded in the protocol, the
- * remaining lists continue into the fusion, and the fallback is an empty list rather than an
- * unfiltered one - no failure mode of this stage returns a chunk outside the search scope.
+ * <p>A failure degrades the path, never the answer: it is logged and recorded in the protocol, and
+ * the fallback is an empty list rather than an unfiltered one, so no failure mode returns a chunk
+ * outside the search scope.
  */
 @Component
 class FullTextSearchStage implements RetrievalStage {

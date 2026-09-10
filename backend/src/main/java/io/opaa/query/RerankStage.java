@@ -12,15 +12,13 @@ import org.springframework.stereotype.Component;
  * fused candidate window with the rerank model role and cuts it back to {@link
  * QueryProperties#topK}.
  *
- * <p>No path passes on more than {@code top-k} chunks. The fusion widens its budget to {@link
- * QueryProperties#rerankCandidateCount} only while reranking is active, so every {@code
- * identity(...)} path is already capped; only the path where the endpoint was asked and scored
- * nothing has to restore the cap itself. A chunk the reranker did not score keeps its fused order
- * behind every scored one, whether it sat behind the window or the endpoint skipped it.
+ * <p>No path passes on more than {@code top-k} chunks: the fusion widens its budget only while
+ * reranking is active, so every {@code identity(...)} path is already capped and only the path
+ * where the endpoint scored nothing restores the cap itself. A chunk the reranker did not score
+ * keeps its fused order behind every scored one.
  *
  * <p>A failure costs the order, never the answer - but not the order of a run configured without
- * reranking: the narrowing stages kept the widened window, so the surviving fused order is a third
- * state, distinct from both the reranked run and the run without reranking.
+ * reranking: the narrowing stages kept the widened window, so the surviving order is a third state.
  */
 @Component
 class RerankStage implements RetrievalStage {

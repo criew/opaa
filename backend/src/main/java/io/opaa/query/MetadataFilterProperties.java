@@ -7,9 +7,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 /**
  * The entry condition of the core-field filter (metadata-schema.md "Eintrittsbedingung für den
  * Kernfeld-Filter"): the Füllstand a field must reach in the asking person's search scope before
- * the filter interface offers it. The defaults are the thresholds committed before the first
- * measurement (ADR-0012): Dokumentart 0.90 - a controlled vocabulary is deterministically reachable
- * -, Datum/Stand 0.75 - a missing date only costs sharpness, never a document, under the Leerwert
+ * the filter interface offers it. The defaults are the thresholds committed there before the first
+ * measurement: Dokumentart 0.90 - a controlled vocabulary is deterministically reachable -,
+ * Datum/Stand 0.75 - a missing date only costs sharpness, never a document, under the Leerwert
  * rule. Overridable per property for tests and deliberate experiments; not an administration
  * setting.
  *

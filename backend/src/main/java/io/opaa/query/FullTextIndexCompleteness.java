@@ -19,15 +19,12 @@ import org.springframework.stereotype.Component;
  * the second it still finds, lacking only the lexemes the newer version adds.
  *
  * <p>Reports, never narrows: an incomplete library is searched all the same and contributes a
- * partially filled list. This class exists so that state does not stay silent - {@link
- * FullTextSearchStage} records the number in its notes, and the administration page shows the same
- * condition per library.
+ * partially filled list; {@link FullTextSearchStage} records the number in its notes.
  *
- * <p>Cached, because the count is not free and the answer is monotone: a library that is complete
- * stays complete while the process runs, since every chunk gets its {@code chunk_full_text} row in
- * the same transaction as its vector row, and a raised {@code CURRENT_TSV_VERSION} can only arrive
- * with a new process and an empty cache. An incomplete library is re-checked at most once per
- * {@link #RECHECK_INTERVAL}, so a finished re-index becomes visible without a restart.
+ * <p>Cached, because the count is not free and the answer is monotone: a complete library stays
+ * complete while the process runs, and a raised {@code CURRENT_TSV_VERSION} arrives only with a new
+ * process. An incomplete library is re-checked once per {@link #RECHECK_INTERVAL}, so a finished
+ * re-index becomes visible without a restart.
  */
 @Component
 class FullTextIndexCompleteness {

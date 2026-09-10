@@ -19,28 +19,17 @@ import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 /**
  * The one place a {@link MetadataFilter} becomes a query condition - once for the vector path as a
  * Spring AI {@link Filter.Expression}, once for the lexical path as SQL over the same {@code
- * vector_store.metadata} keys (ADR-0024, Entscheidung 5). Both forms state the identical rule:
+ * vector_store.metadata} keys (ADR-0024, Entscheidung 5). Both state the identical rule: {@code
+ * (doc_type in selected OR doc_type absent) AND (doc_date within window OR doc_date absent)}, the
+ * window widened to the span a stored value's precision leaves open.
  *
- * <pre>
- *   (doc_type in selected  OR doc_type absent)
- *   AND (doc_date within window at its precision  OR doc_date absent)
- * </pre>
+ * <p>"Absent" is the Leerwert rule (metadata-schema.md). The pgvector converter knows no {@code IS
+ * NULL}, so both forms express absence as {@code NOT IN} over the complete set of values the key
+ * can carry; parity rests on that set being closed - a value outside it reads as "absent".
  *
- * "Absent" is the Leerwert rule (metadata-schema.md): a chunk without the key is a document without
- * a value and stays in. The pgvector converter knows no {@code IS NULL}, so both forms express
- * absence as {@code NOT IN} over the complete set of values the key can carry. Parity between the
- * paths rests on that set being closed: a value outside it reads as "absent" and is kept, in both
- * paths alike.
- *
- * <p>Brackets are explicit: the converter renders a nested {@link Filter.Expression} without
- * parentheses, only a {@link Filter.Group} produces them, and jsonpath binds {@code &&} tighter
- * than {@code ||}. Every OR-composed condition is therefore grouped before it enters an AND, so the
- * permission filter is the outer operand of the whole metadata condition, never of its first branch
- * only. The date window accounts for precision: a stored value is the first day of the span its
- * precision leaves open.
- *
- * <p>Public for one caller outside this package: the retrieval-evaluation harness builds the vector
- * path's filter through {@link #vectorExpression} so it applies the production condition.
+ * <p>Brackets are explicit: the converter parenthesises only a {@link Filter.Group}, and jsonpath
+ * binds {@code &&} tighter than {@code ||}, so every OR-composed condition is grouped before it
+ * enters an AND - the permission filter must be the outer operand of the whole metadata condition.
  */
 public final class MetadataFilterExpressions {
 

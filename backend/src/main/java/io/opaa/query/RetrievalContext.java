@@ -13,13 +13,11 @@ import org.springframework.ai.chat.messages.Message;
  * scope every one of its searches applies (ADR-0008 §5).
  *
  * <p>{@code searchScope} is taken as given; this type resolves no permissions of its own. {@code
- * metadataFilter} is the core-field filter the asking person or the chat set, never derived from
- * the question, and subordinate to the scope by construction ({@link MetadataFilter#NONE} means no
- * filter). {@code queryProperties} and {@code rerankAvailability} travel here rather than being
- * injected so one pipeline instance serves several parameter sets, and so every stage of a run sees
- * the same rerank answer - deciding it per stage would let the fusion widen its budget for a
- * reranker the rerank stage then finds unavailable. Every construction must therefore state the
- * availability; there is deliberately no convenience constructor that fills it in.
+ * metadataFilter} is the filter the asking person or the chat set, never derived from the question.
+ * {@code queryProperties} and {@code rerankAvailability} travel here rather than being injected, so
+ * one instance serves several parameter sets and every stage of a run sees the same rerank answer -
+ * deciding it per stage would let the fusion widen its budget for a reranker the rerank stage then
+ * finds unavailable. Every construction must state the availability; no constructor fills it in.
  */
 public record RetrievalContext(
     String question,

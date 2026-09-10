@@ -19,13 +19,10 @@ import org.springframework.ai.document.Document;
  * preferred over a chunk of a different document filling the remaining budget.
  *
  * <p>Tier 1 evicts the weakest chunk of another, not-yet-completed document already holding at
- * least two, so document diversity never drops below what fusion established. Tier 2 runs only when
+ * least two, so document diversity never drops below what fusion established. Tier 2 runs only if
  * tier 1 finds no source, is capped at {@code max(1, overallBudget / 4)} evictions per call, and
- * takes the lowest-ranked chunk of the whole selection - only if the completing document's own best
- * chunk ranks strictly better - which may drop a document from the answer.
- *
- * <p>A chunk either tier added is never a later victim, so a completion never undoes an earlier
- * one, and completion never grows the selection past {@code overallBudget}.
+ * may drop a document from the answer. A chunk either tier added is never a later victim, and
+ * completion never grows the selection past {@code overallBudget}.
  */
 final class DocumentCompletion {
 
@@ -85,9 +82,8 @@ final class DocumentCompletion {
         unusedCandidatesByDocument(candidatePool, selectedChunkIds);
     List<String> documentOrder = distinctDocumentOrder(result);
 
-    // Documents that already received a completion chunk in this call - excluded from being an
-    // eviction source for any later document's completion, so a completion can never be undone by
-    // a subsequent one within the same call (see this class's Javadoc).
+    // Documents that already received a completion chunk in this call: never a tier-1 eviction
+    // source, so a completion can never be undone by a later one within the same call.
     Set<String> completedDocumentKeys = new HashSet<>();
 
     // Tier 2's per-call cap: unbounded tier-2 eviction could otherwise shrink an eight-topic
@@ -160,12 +156,9 @@ final class DocumentCompletion {
 
   /**
    * Groups every candidate not already in {@code selection} by document, deduplicated by chunk id
-   * (the same chunk can appear once per sub-query and once per search path in a pooled candidate
-   * list, kept at its first-occurring instance) and ordered by each chunk's own first-occurrence
-   * position in {@code candidatePool} - not {@link Document#getScore()}, which is only comparable
-   * within the single search that produced it. First-occurring, not highest-scoring, for the reason
-   * {@link ReciprocalRankFusion} states for the same tie-break: two instances of one chunk can
-   * carry a cosine similarity and a {@code ts_rank}, and the larger of the two means nothing.
+   * and ordered by first occurrence in {@code candidatePool} - not by {@link Document#getScore()},
+   * which is only comparable within the single search that produced it. Positional for the same
+   * reason {@link ReciprocalRankFusion} gives for its tie-break.
    */
   private static Map<String, List<Document>> unusedCandidatesByDocument(
       List<Document> candidatePool, Set<String> selectedChunkIds) {
@@ -234,15 +227,12 @@ final class DocumentCompletion {
   }
 
   /**
-   * Tier 2: evicts the lowest-ranked chunk of the whole selection - the entry in {@code
-   * originalRankByChunkId} with the highest rank, excluding {@code documentKey}'s own chunks - when
-   * {@code documentKey}'s own best original rank beats it strictly. Only chunks with an {@code
-   * originalRankByChunkId} entry are eligible at all, which structurally excludes any chunk a
-   * completion already added this call - a chunk from {@code candidatePool} never carries one -
-   * mirroring tier 1's {@code protectedDocumentKeys} exclusion without needing a second set.
-   * Returns the evicted chunk, or {@code null} - leaving {@code result} unchanged - when no
-   * eligible victim exists or the strict-rank condition fails. The caller enforces the per-call
-   * tier-2 cap (see this class's Javadoc); this method has no cap awareness of its own.
+   * Tier 2: evicts the lowest-ranked chunk of the whole selection, excluding {@code documentKey}'s
+   * own chunks, and only when {@code documentKey}'s best original rank beats it strictly. Only
+   * chunks carrying an {@code originalRankByChunkId} entry are eligible, which structurally
+   * excludes anything a completion added this call. Returns the evicted chunk, or {@code null} -
+   * leaving {@code result} unchanged - when no eligible victim exists. The per-call tier-2 cap is
+   * the caller's; this method has no cap awareness of its own.
    */
   private static Document evictLastRankedChunkOfSelection(
       List<Document> result,

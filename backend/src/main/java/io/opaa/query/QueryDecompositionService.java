@@ -178,12 +178,9 @@ class QueryDecompositionService {
    * single word in common with either is model output that replaced the question.
    *
    * <p>All or nothing: {@link #decompose} falls back as soon as this returns anything above zero,
-   * rather than searching with the remainder - dropping one sub-query of a correct decomposition
-   * loses a whole topic, which is worse than the undecomposed question.
-   *
-   * <p>Returns zero - the check is skipped - in two cases: when question and history together yield
-   * at most one anchor, so there is nothing to relate against, and for a script without word
-   * separators (Chinese, Japanese, Thai), where every sub-query would look unrelated.
+   * because dropping one sub-query of a correct decomposition loses a whole topic. The check is
+   * skipped - returning zero - when question and history yield at most one anchor, and for a script
+   * without word separators, where every sub-query would look unrelated.
    */
   private static long countUnrelated(
       List<String> subQueries, String question, List<Message> conversationHistory) {

@@ -8,19 +8,17 @@ import org.springframework.ai.document.Document;
 /**
  * Maximal Marginal Relevance (MMR) selection within one candidate list: the first pick is the
  * highest-relevance candidate, every following pick maximizes {@code mmrLambda * relevance - (1 -
- * mmrLambda) * maxSimilarityToAlreadySelected}, so a candidate that merely repeats an
- * already-selected chunk loses ground to a less relevant but topically distinct one.
+ * mmrLambda) * maxSimilarityToAlreadySelected}, so a candidate repeating an already-selected chunk
+ * loses ground to a less relevant but topically distinct one.
  *
  * <p>Pairwise similarity is cosine similarity of the real chunk embeddings, read by row id via
- * {@link ChunkEmbeddingLookup} - no embedding-API call. A candidate whose id is missing from {@code
- * embeddingsByChunkId} contributes {@code 0.0} similarity: a defensive fallback for a chunk deleted
- * between search and lookup, not a claim that it is dissimilar.
+ * {@link ChunkEmbeddingLookup} - no embedding-API call. A candidate missing from {@code
+ * embeddingsByChunkId} contributes {@code 0.0}: a defensive fallback, not a claim of dissimilarity.
  *
- * <p>Scale note: relevance scores differ by as little as ~0.02 between neighbours while cosine
- * similarities span ~0.3-0.5, and a lexical list's {@code ts_rank} relevance is an order of
- * magnitude smaller still. At any {@code mmrLambda < 1.0} the diversity term therefore dominates,
- * for a lexical list almost entirely; comparing the two paths here would need a per-path
- * normalization that does not exist. At the shipped {@code 1.0} the question does not arise.
+ * <p>Scale note: relevance scores differ by ~0.02 between neighbours while cosine similarities span
+ * ~0.3-0.5, and a lexical list's {@code ts_rank} is smaller still, so at any {@code mmrLambda <
+ * 1.0} the diversity term dominates. Making the paths comparable would need a per-path
+ * normalization that does not exist; at the shipped {@code 1.0} the question does not arise.
  */
 final class MmrSelector {
 

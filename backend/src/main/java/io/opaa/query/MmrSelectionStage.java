@@ -18,9 +18,8 @@ import org.springframework.stereotype.Component;
  * {@link ChunkEmbeddingLookup} is skipped entirely - it could not affect the result.
  *
  * <p>Below {@code 1.0} the two paths' lists are treated unequally and knowingly so: the relevance
- * term is the candidate's own score - a cosine similarity in a vector list, a {@code ts_rank} an
- * order of magnitude smaller in a lexical one - while the diversity term is a cosine similarity in
- * both, so a lexical list is then ordered almost entirely by diversity.
+ * term is the candidate's own score - a cosine similarity here, a much smaller {@code ts_rank}
+ * there - while the diversity term is a cosine similarity in both.
  */
 @Component
 class MmrSelectionStage implements RetrievalStage {

@@ -20,24 +20,19 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * The lexical half of the hybrid search (docs/handbuch/suche.md, Stufe 5): one PostgreSQL full-text
- * query against {@code chunk_full_text}, ranked by {@code ts_rank}, returning the same {@link
- * Document} shape the vector path returns so both feed one fusion.
- *
- * <p>The permission filter is part of the query, never a filter on its result (ADR-0008 §5): {@code
- * library_id = ANY(?)} sits in the {@code WHERE} clause next to the match predicate, and no code
- * path here reads a row of a library the caller did not pass in.
+ * query against {@code chunk_full_text}, ranked by {@code ts_rank}, in the {@link Document} shape
+ * the vector path returns. The permission filter is part of that query, never a filter on its
+ * result (ADR-0008 §5): {@code library_id = ANY(?)} sits in the {@code WHERE} clause.
  *
  * <p>The query mirrors {@link FullTextChunkStore#indexChunks}: the German analysis chain over the
- * question's words, OR-ed rather than AND-ed because this path supplies ranked candidates for a
- * fusion, plus the undecomposed identifier lexemes of {@link FullTextIdentifiers} - weight {@code
- * A} in the index, which is what keeps "§ 34" and "§ 35" apart. Both halves are built from
- * sanitized tokens, so no character of the question reaches {@code to_tsquery} as an operator.
+ * question's words, OR-ed rather than AND-ed because this path feeds a fusion, plus the identifier
+ * lexemes of {@link FullTextIdentifiers} - weight {@code A}, which keeps "§ 34" and "§ 35" apart.
+ * Both halves use sanitized tokens, so no character of the question reaches {@code to_tsquery} as
+ * an operator.
  *
- * <p>Two knowingly accepted limits: {@code ts_rank} is not BM25 - it lacks length normalization and
- * inverse document frequency - which the fusion tolerates because it consumes ranks, not scores;
- * and there is no {@code content_tsv_version} filter (ADR-0028), so an older row is searched and
- * merely lacks later lexemes. The latter holds only while every version raise stays additive: a
- * breaking change of the lexeme form must reintroduce a filter here.
+ * <p>Two accepted limits: {@code ts_rank} is not BM25, which the fusion tolerates because it
+ * consumes ranks; and an older {@code content_tsv_version} row is searched unfiltered (ADR-0028),
+ * valid only while a version raise stays additive.
  */
 @Component
 class FullTextChunkSearch {

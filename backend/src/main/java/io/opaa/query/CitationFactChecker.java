@@ -24,12 +24,11 @@ import java.util.regex.Pattern;
  * CitationValidator} calls it only for citations that already passed the retrieval-based check, and
  * it only tightens that verdict, never loosens it.
  *
- * <p>Deliberately conservative - flagging a genuinely correct citation is worse than missing a
- * fabricated one. A statement without an extractable fact counts as supported; a fact is compared
- * only against same-category facts of the chunk text ({@link Fact#category()}, with money amounts
- * and other hard numbers sharing one category, since an amount is a formatted number); and a
- * category absent from the chunk never flags the citation, because "not confirmed here" is not
- * "contradicted". Only a same-category fact with a different value is a contradiction.
+ * <p>Deliberately conservative: a statement without an extractable fact counts as supported, and a
+ * fact is compared only against same-category facts of the chunk ({@link Fact#category()}; money
+ * amounts and other hard numbers share one category, an amount being a formatted number). Only a
+ * same-category fact with a different value is a contradiction - a category the chunk does not
+ * carry means "not confirmed here", never "contradicted".
  */
 final class CitationFactChecker {
 
