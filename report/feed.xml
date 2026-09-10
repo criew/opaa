@@ -5,8 +5,19 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-09T04:58:54Z</updated>
+  <updated>2026-09-10T05:02:06Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Mittwoch, 9. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-09.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-09.html</id>
+    <updated>2026-09-10T05:02:06Z</updated>
+    <summary type="text">Sonstiges:
+— Drei kritische Tomcat-CVEs durch Update auf 11.0.25 behoben
+— Einstiegsseite und Pflegeprozess des Produkthandbuchs dokumentiert
+— Handbuchkapitel zur Abfragestrecke und Suchstrecke hinzugefügt
+— Abhängigkeiten aktualisiert: Node.js, npm-Pakete, AWS SDK</summary>
+  </entry>
   <entry>
     <title>Tagesreport Dienstag, 8. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-08.html"/>
