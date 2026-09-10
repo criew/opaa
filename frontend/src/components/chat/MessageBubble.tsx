@@ -9,7 +9,6 @@ import { buildCitationIndex } from './citations'
 import MarkdownRenderer from './MarkdownRenderer'
 import SourceEvidenceDrawer from './SourceEvidenceDrawer'
 import SourceFootnotes from './SourceFootnotes'
-import FeedbackButtons from './FeedbackButtons'
 import DocumentTextPreviewDialog from '../DocumentTextPreviewDialog'
 import { useDocumentPreview } from '../../hooks/useDocumentPreview'
 
@@ -160,12 +159,6 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               answeredAt={message.timestamp}
               openDocument={documentPreview.openDocument}
             />
-          )}
-
-          {!isUser && (
-            <Box sx={{ mt: 0.5 }}>
-              <FeedbackButtons />
-            </Box>
           )}
 
           {!isUser && (
