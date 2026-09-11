@@ -263,7 +263,7 @@ TLS-terminierender nginx auf dem Host davor, Keycloak unter dem Unterpfad `/idp`
 `testuser` deaktiviert, das Passwort des Administrationskontos nach jedem Seed-Lauf rotiert und der
 Client `opaa-seed` nur für die Dauer eines Seed-Laufs aktiviert.
 
-Die folgende Liste geht die sechs tatsächlich im Repository liegenden Vorgabewerte durch. Wo eine
+Die folgende Liste geht die sieben tatsächlich im Repository liegenden Vorgabewerte durch. Wo eine
 Gegenmaßnahme **zwingend** ist, steht das dabei; alles andere ist eine Empfehlung, deren Unterlassung
 begründet werden sollte, kein hartes Muss.
 
@@ -275,6 +275,7 @@ begründet werden sollte, kein hartes Muss.
 | 4 | `docker-compose.yml:62` | `command: start-dev --import-realm` — kein persistentes Datenverzeichnis, nur der Realm-Export ist als Datei gemountet | Keycloaks eingebaute Entwicklungsdatenbank ist an den Container gebunden und geht bei jedem Neuerstellen verloren — ein rotiertes Bootstrap-Passwort (Punkt 3) und ein bereinigter Realm (Punkt 1) verschwinden damit beim nächsten `docker compose up -d`/Image-Update und `admin`/`admin` sowie `testuser` sind wieder da, ohne dass das auffällt | **Zwingend**, sonst wirken die Gegenmaßnahmen zu Punkt 1 und 3 nicht dauerhaft, sondern nur bis zum nächsten Container-Neustart. Für erreichbaren Betrieb `start` statt `start-dev` verwenden (das erzwingt ohnehin die übrigen Härtungspunkte dieser Zeile — Keycloak startet mit `start` ohne konfiguriertes TLS/Proxy-Setup gar nicht erst) und eine externe, persistente Datenbank anbinden (`KC_DB`, `KC_DB_URL` u. a.) statt der eingebauten Entwicklungsdatenbank. `--import-realm` importiert einen Realm dabei ohnehin nur, wenn er noch nicht existiert — nach der ersten, persistenten Einrichtung wirken spätere Realm-Änderungen über die Admin-Konsole oder einen erneuten, gezielten Import |
 | 5 | `docker-compose.yml:19-20`, `40`, `56`, `68` | Nur `postgres` bindet auf `127.0.0.1`; `backend` (8081), `frontend` (3000) und `keycloak` (8180) veröffentlichen ihre Ports ohne Adressangabe und binden damit auf allen Schnittstellen | `postgres` auf `127.0.0.1` gebunden schützt vor Zugriff aus dem Netz, aber nicht vor jedem anderen Prozess und Nutzerkonto auf demselben Host. Die übrigen drei Ports sind dagegen aus dem Netz erreichbar, sobald keine Firewall davorsteht — bei `keycloak` ist das der konkrete Ausnutzungsweg zu Punkt 3: Die Admin-Konsole wäre netzweit ansprechbar, unabhängig davon, ob ein vorgelagerter Reverse-Proxy nur bestimmte Pfade durchreicht | Hinter einem Reverse-Proxy alle vier Ports auf `127.0.0.1:` binden, so wie es `postgres` bereits vormacht — für `keycloak` **zwingend** (sonst bleibt die Admin-Konsole trotz Proxy direkt aus dem Netz erreichbar), für `backend`/`frontend` **empfohlen** (der Reverse-Proxy ist dann der einzige Weg zu beiden). Für `postgres` **empfohlen**, die `ports:`-Zuordnung für den erreichbaren Betrieb ganz zu entfernen statt sie nur auf Loopback zu binden — Backend und `postgres` erreichen sich ohnehin über das interne Compose-Netz (Servicename `postgres`), ein Host-Port wird dafür nicht gebraucht. Für lokale Entwicklung (Anschluss mit einem Datenbank-Client vom Host aus, direkter Aufruf der Admin-Konsole) bleiben die bisherigen Bindungen dagegen sinnvoll — deshalb sind sie dort nicht als Fehler markiert |
 | 6 | `keycloak/realm-export.json` (Client `opaa-seed`) | Öffentlicher Client mit `directAccessGrantsEnabled: true` (Resource-Owner-Password-Grant) und ohne Client-Secret, ausschließlich für das Seed-Skript der Demo (`demo/seed/seed.py`) gedacht, das sich damit als Demo-Nutzer anmeldet und Bibliotheken, Rechte und Chats über die reguläre API anlegt | Erlaubt einen passwortbasierten Tokenweg **ohne Secret** gegen jedes Realm-Konto — auf einer erreichbaren Instanz ein zusätzlicher, von der eigentlichen Anmeldung (`opaa-frontend`, `directAccessGrantsEnabled: false`, Authorization-Code + PKCE) unabhängiger Angriffsweg, unabhängig davon, wessen Passwort betroffen ist | **Zwingend.** Client `opaa-seed` aus dem Realm-Export entfernen oder auf `enabled: false` setzen, bevor der Realm auf einer erreichbaren Instanz importiert wird. Wer die Demo dort dennoch erneut seeden will, aktiviert den Client nur für die Dauer des Laufs wieder (per `kcadm` oder Admin-Konsole) oder legt die Rechte direkt über die Keycloak-Admin-Konsole/API an, statt den Client dauerhaft scharf zu lassen |
+| 7 | `docker-compose.yml` (Service `upload-store`, nur Compose-Profil `upload-s3`) | Root-Zugangsdaten des mitgelieferten Objektspeichers der Originalablage als Compose-Vorgabe (`opaa-uploads`/`OpaaUploads!2026`), dieselben Werte auskommentiert in `.env.docker.example` | Wer das Profil in einem erreichbaren Betrieb nutzt und die Vorgabe behält, schützt die Originale **aller** hochgeladenen Dokumente mit Zugangsdaten, die im Repository stehen. Die S3-API ist zwar nur an `127.0.0.1` gebunden — das schützt vor dem Netz, aber nicht vor anderen Prozessen und Konten auf demselben Host | **Zwingend**, sobald das Profil außerhalb einer Erprobung läuft: eigene Werte über `OPAA_UPLOAD_STORE_ROOT_USER`/`OPAA_UPLOAD_STORE_ROOT_PASSWORD` in `.env` oder der Prozessumgebung setzen (nicht in `.env.docker`, siehe Punkt 3) und dieselben Werte als `OPAA_UPLOAD_S3_ACCESS_KEY`/`OPAA_UPLOAD_S3_SECRET_KEY` in `.env.docker` eintragen. Der mitgelieferte Dienst ist als Erprobungs- und Umstellungsziel gedacht; im erreichbaren Betrieb ist ein hauseigener Objektspeicher mit eigenen Zugangsdaten, Verschlüsselung ruhender Daten und Versionierung der Regelfall (siehe [„Originalablage"](#originalablage)) |
 
 **Realm-Lebensdauern auf einer bereits laufenden Instanz:** `keycloak/realm-export.json`
 setzt `accessTokenLifespan`, `ssoSessionIdleTimeout` und `ssoSessionMaxLifespan` explizit. Wie
@@ -398,6 +399,8 @@ aber Indizierung und Fragen schlagen fehl.
 | keycloak    | 8180      | 8180            | Keycloak (nur `oidc`-/`demo`-Profil)                    |
 | ollama      | —         | 11434           | Lokal betriebener Ollama-Server (nur `ollama`-Profil; kein Host-Port, siehe unten) |
 | ollama-pull | —         | —               | Einmaliger Init-Schritt, zieht `nomic-embed-text`/`phi3:mini` (nur `ollama`-Profil) |
+| upload-store | 8095 (API), 8096 (Konsole) | 9000, 9001 | Objektspeicher der Originalablage (nur `upload-s3`-Profil; an `127.0.0.1` gebunden, siehe [Originalablage](#originalablage)) |
+| upload-store-init | —    | —               | Einmaliger Init-Schritt, legt den Bucket der Originalablage an (nur `upload-s3`-Profil) |
 
 ## Backend-Laufzeitimage
 
@@ -461,6 +464,12 @@ curl -s http://localhost:8081/actuator/prometheus    # Prometheus-Format
 docker cp <container>:/app/uploads ./uploads-kopie   # Dateien aus dem Container holen
 docker run --rm -it --network container:<container> nicolaka/netshoot   # Netzwerkdiagnose im selben Netz
 ```
+
+> **`docker cp … /app/uploads` gilt nur für die Dateisystem-Ablage.** Mit `OPAA_UPLOAD_STORE=s3`
+> liegen die hochgeladenen Originale im Objektspeicher; das Verzeichnis im Container ist dann leer
+> oder trägt nur noch einen Altbestand aus der Zeit davor, und der Befehl kopiert genau das, ohne
+> Hinweis. Wie ein Original in diesem Fall greifbar wird, steht unter
+> [Originalablage](#originalablage).
 
 Wie viel `/actuator/health` zeigt, hängt von der Authentifizierung ab: Der Endpunkt ist ohne Anmeldung
 erreichbar, Einzelheiten zu Datenbank sowie Chat- und Embedding-Anbieter zeigt er aber nur einem
@@ -679,7 +688,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_UPLOAD_S3_PATH_STYLE` | `true` | nicht gesetzt | Adressstil (`opaa.upload.s3.path-style`): `true` = `endpoint/bucket/schlüssel` (MinIO, Ceph), `false` = `bucket.endpoint/schlüssel` (AWS, Hetzner) |
 | `OPAA_UPLOAD_S3_ACCESS_KEY` | — (leer; Pflicht bei `OPAA_UPLOAD_STORE=s3`) | nicht gesetzt | Zugangsschlüssel (`opaa.upload.s3.access-key`). Der Schlüssel braucht `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` und für die Startprüfung `s3:ListBucket` auf dem Bucket. Anders als die Zugangsdaten einer S3-Bibliothek dürfen Zugangsschlüssel und Geheimnis hier Doppelpunkte enthalten; beide erscheinen in keiner Protokollzeile und keiner Meldung |
 | `OPAA_UPLOAD_S3_SECRET_KEY` | — (leer; Pflicht bei `OPAA_UPLOAD_STORE=s3`) | nicht gesetzt | Geheimer Schlüssel (`opaa.upload.s3.secret-key`) |
-| `OPAA_UPLOAD_S3_TEMP_DIRECTORY` | — (leer: das Temp-Verzeichnis der JVM, im Container `/tmp`) | nicht gesetzt | Verzeichnis für die Arbeitsdatei eines Uploads und die lokale Kopie, die Pipeline-Nachzug, Metadaten-Nachlauf und die Rückextraktion von Anhängen brauchen (`opaa.upload.s3.temp-directory`). **Platzbedarf einplanen, und zwar auf zwei Dateisystemen:** In *diesem* Verzeichnis liegen je Upload die Arbeitsdatei in Originalgröße, die bis zum Ende der asynchronen Verarbeitung lebt, und bei einem gleichzeitigen Nachzug derselben Bibliothek die Kopie des Originals; mit parallelen Uploads (`OPAA_UPLOAD_THREAD_POOL_MAX_SIZE` plus Warteschlange) vervielfacht sich das. Im *Temp-Verzeichnis der JVM* (im Container `/tmp`, unabhängig von dieser Variable) liegen daneben der Multipart-Zwischenspeicher von Spring — jede eingehende Datei wird dort in Originalgröße gespoolt, bevor die Arbeitsdatei entsteht — und die Zwischendateien, die das Öffnen eines Anhangs beim Nachextrahieren aus seinem Elterndokument schreibt. Wer nur dieses Verzeichnis auf ein großes Volume legt und `/tmp` in Overlay-Größe belässt, füllt bei parallelen Uploads das falsche Dateisystem. Dateien, die ein hart beendeter Prozess dort zurücklässt (Präfix `opaa-upload-`, älter als der laufende Prozess), räumt der nächste Start weg — ein verwaistes Objekt im Bucket bleibt liegen, bis ein Aufräumlauf es einsammelt |
+| `OPAA_UPLOAD_S3_TEMP_DIRECTORY` | — (leer: das Temp-Verzeichnis der JVM, im Container `/tmp`) | nicht gesetzt | Verzeichnis für die Arbeitsdatei eines Uploads und die lokale Kopie, die Pipeline-Nachzug, Metadaten-Nachlauf und die Rückextraktion von Anhängen brauchen (`opaa.upload.s3.temp-directory`). **Platzbedarf einplanen, und zwar auf zwei Dateisystemen:** In *diesem* Verzeichnis liegen je Upload die Arbeitsdatei in Originalgröße, die bis zum Ende der asynchronen Verarbeitung lebt, und bei einem gleichzeitigen Nachzug derselben Bibliothek die Kopie des Originals; mit parallelen Uploads (`OPAA_UPLOAD_THREAD_POOL_MAX_SIZE` plus Warteschlange) vervielfacht sich das. Im *Temp-Verzeichnis der JVM* (im Container `/tmp`, unabhängig von dieser Variable) liegen daneben der Multipart-Zwischenspeicher von Spring — jede eingehende Datei wird dort in Originalgröße gespoolt, bevor die Arbeitsdatei entsteht — und die Zwischendateien, die das Öffnen eines Anhangs beim Nachextrahieren aus seinem Elterndokument schreibt. Wer nur dieses Verzeichnis auf ein großes Volume legt und `/tmp` in Overlay-Größe belässt, füllt bei parallelen Uploads das falsche Dateisystem. Dateien, die ein hart beendeter Prozess dort zurücklässt (Präfix `opaa-upload-`, älter als der laufende Prozess), räumt der nächste Start weg. Ein verwaistes Objekt im Bucket, das derselbe Abbruch hinterlassen kann, bleibt dagegen liegen, bis ein Betreiber es entfernt — siehe [„Verwaiste Originale aufräumen"](#verwaiste-originale-aufräumen); bis dahin kostet es Speicherplatz und stört den Betrieb sonst nicht |
 | `OPAA_UPLOAD_S3_TARGET_VALIDATION_ENABLED` | `true` | nicht gesetzt | Zieladressprüfung jeder Anfrage an den Objektspeicher (`opaa.upload.s3.target-validation.enabled`) — eigener Namensraum, unabhängig von `OPAA_INDEXING_TARGET_VALIDATION_ENABLED`: das Abschalten der Konnektorprüfung schaltet diese nicht mit ab. Der konfigurierte Endpunkt passiert immer; die Prüfung fängt Anfragen, die woandershin gingen |
 | `OPAA_UPLOAD_S3_TARGET_VALIDATION_ALLOWLIST` | — (leer) | nicht gesetzt | Kommagetrennte Hosts, die die Zieladressprüfung der Originalablage zusätzlich passieren dürfen (`opaa.upload.s3.target-validation.allowlist`); für den konfigurierten Endpunkt selbst nicht nötig |
 | `OPAA_UPLOAD_MAX_FILE_SIZE` | `52428800` (50 MiB, Byte) | nicht gesetzt (Anwendungs-Default gilt) | Maximale Dateigröße beim Dokument-Upload (`spring.servlet.multipart.max-file-size`/`max-request-size` und `opaa.upload.max-file-size` in `application.yml`, dieselbe Variable für beide). **Bei Docker Compose zusätzlich zu beachten:** Der nginx-Reverse-Proxy im Frontend-Container (`frontend/nginx.conf`) setzt `client_max_body_size` unabhängig davon fest auf `52m` — etwas oberhalb dieses Limits, weil nginx die gesamte Multipart-Anfrage misst (inklusive Framing-Overhead), das Backend dagegen nur die Dateigröße. Diese Datei wird beim Image-Build fest eingebacken (kein `envsubst`), wird also **nicht** automatisch aus `OPAA_UPLOAD_MAX_FILE_SIZE` übernommen. Wer `OPAA_UPLOAD_MAX_FILE_SIZE` erhöht, muss `client_max_body_size` in `frontend/nginx.conf` entsprechend mit anheben, sonst weist nginx größere Uploads bereits mit einer eigenen HTML-413-Seite ab, bevor die Backend-Prüfung überhaupt greift. Ein weiterer Reverse-Proxy vor dem Frontend-Container braucht denselben Wert zusätzlich (nginx-Default dort: 1 MB) |
@@ -832,6 +841,12 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_DEMO_PRESSE_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8092`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `8092` | Host-Port des Rheinfurt-Demo-Pressestelle-Webservers `demo-presse` (nur `demo`-Compose-Profil), zum Prüfen von RSS-Feed und HTML-Detailseiten im Browser — an `127.0.0.1` gebunden, kein öffentlicher Zugang |
 | `OPAA_DEMO_MINIO_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8093`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `8093` | Host-Port der S3-API des Demo-Objektspeichers `minio` (nur `demo`-Compose-Profil) — zum Prüfen mit `mc`/`aws s3` vom Host; das Backend erreicht `minio` über das Compose-Netzwerk unter dem Servicenamen, der dafür in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` stehen muss |
 | `OPAA_DEMO_MINIO_CONSOLE_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8094`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `8094` | Host-Port der MinIO-Konsole des Demo-Objektspeichers (nur `demo`-Compose-Profil) — zum Ansehen des Buckets `rheinfurt-archiv` im Browser, Anmeldung mit den Demo-Zugangsdaten des Compose-Stacks |
+| `OPAA_UPLOAD_STORE_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8095`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `8095` | Host-Port der S3-API des mitgelieferten Objektspeichers der Originalablage `upload-store` (nur `upload-s3`-Compose-Profil) — für `mc`/`aws s3` vom Host, etwa bei der Umstellung eines Bestands; das Backend erreicht den Dienst über das Compose-Netzwerk unter seinem Servicenamen, nicht über diesen Port. An `127.0.0.1` gebunden, kein öffentlicher Zugang |
+| `OPAA_UPLOAD_STORE_CONSOLE_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8096`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `8096` | Host-Port der MinIO-Konsole des mitgelieferten Objektspeichers der Originalablage (nur `upload-s3`-Compose-Profil) — zum Nachsehen eines Originals im Bucket, Anmeldung mit `OPAA_UPLOAD_STORE_ROOT_USER`/`OPAA_UPLOAD_STORE_ROOT_PASSWORD`. An `127.0.0.1` gebunden, kein öffentlicher Zugang |
+| **Mitgelieferter Objektspeicher (`upload-s3`)** | | | |
+| `OPAA_UPLOAD_STORE_ROOT_USER` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `opaa-uploads`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `opaa-uploads` | Zugangsschlüssel des Dienstes `upload-store` selbst (nur `upload-s3`-Compose-Profil). Muss mit `OPAA_UPLOAD_S3_ACCESS_KEY` in `.env.docker` übereinstimmen — die beiden Werte stehen bewusst in verschiedenen Dateien, weil Compose die eine Seite selbst einsetzt und die andere erst im Container gelesen wird |
+| `OPAA_UPLOAD_STORE_ROOT_PASSWORD` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `OpaaUploads!2026`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `OpaaUploads!2026` | Geheimer Schlüssel des Dienstes `upload-store` (nur `upload-s3`-Compose-Profil). Muss mit `OPAA_UPLOAD_S3_SECRET_KEY` in `.env.docker` übereinstimmen. Der mitgelieferte Wert ist eine dokumentierte Entwicklungsvorgabe wie die übrigen Zugangsdaten dieses Stacks und für eine erreichbare Installation zu ersetzen (siehe [Härtung](#härtung-für-erreichbare-deployments)) |
+| `OPAA_UPLOAD_STORE_BUCKET` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `opaa-uploads`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `opaa-uploads` | Bucket, den der einmalige Init-Schritt `upload-store-init` anlegt (nur `upload-s3`-Compose-Profil). Muss mit `OPAA_UPLOAD_S3_BUCKET` in `.env.docker` übereinstimmen; OPAA legt keinen Bucket an |
 | `OPAA_ENV_FILE` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `.env.docker`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` selbst (zirkulär — siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt | Wählt die `env_file`, aus der `docker-compose.yml` die Container-Umgebung lädt (Standard `.env.docker`). Die E2E-Suite setzt sie per Prozessumgebung auf `e2e/e2e.env`, um denselben `docker-compose.yml` mit einem eigenen, von der Entwickler-`.env.docker` unabhängigen Umgebungssatz zu betreiben |
 
 **Laufzeit und Speicher eines RSS-Laufs.** Die Politeness-Wartezeit (`OPAA_INDEXING_RSS_REQUEST_DELAY_MS`, Voreinstellung 1000 ms) gilt für jede Anfrage einzeln — Detailseite und jede einzelne Anlage. Mit den Voreinstellungen (200 Einträge, bis zu 10 Anlagen je Eintrag) dauert ein Lauf, der bei jedem Eintrag das Limit ausschöpft, im ungünstigsten Fall rund 200 × 11 × 1 s ≈ 37 Minuten. Jede Anlage wird beim Herunterladen direkt auf die temporäre Datei gestreamt und dabei bei `OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES` (Voreinstellung 20 MiB) abgeschnitten (`io.opaa.sourceaccess.BoundedDownloader#downloadBounded`); der Heap hält davon nur den Kopierpuffer. Antwortet eine Quelle mit `429`, wartet der Lauf die in `Retry-After` genannte Zeit — je Anfrage bis zu `OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_RETRIES` × `OPAA_INDEXING_HTTP_MAX_RETRY_AFTER`, mit den Voreinstellungen also bis zu 6 × 2 min = 12 Minuten. Je Lauf ist die Summe dieser Wartezeiten auf `OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_WAIT_PER_RUN` (Voreinstellung 15 Minuten) gedeckelt, die Zahl der Anfragen optional auf `OPAA_INDEXING_HTTP_REQUEST_BUDGET_PER_RUN`: Eine Quelle, die jede Anfrage bis zum Ende drosselt, beendet den Lauf damit nach spätestens 15 Minuten Wartezeit geordnet als „unvollständig, wird fortgesetzt", statt ihn rechnerisch um 200 × 11 × 12 min zu verlängern. Wer schneller aufgeben will, senkt die Werte; Confluence und S3 begrenzen ihre Läufe über eigene Anfragebudgets.
@@ -1259,13 +1274,184 @@ Warum keine Vereinheitlichung:
 
 Dokumente im `./documents`-Verzeichnis ablegen (oder `OPAA_INDEXING_DOCUMENT_PATH_HOST` in `.env.docker` ändern). Das Verzeichnis wird in den Backend-Container unter `/app/documents` gemountet.
 
-## Verwaiste Originale aufräumen
+## Originalablage
+
+> **Entwurf.** Dieser Abschnitt ist geschrieben und gegen den gebauten Stand geprüft, aber noch
+> nicht abgenommen.
+
+Ein hochgeladenes Dokument wird nicht nur indiziert — sein **Original** bleibt greifbar, damit aus
+einer Fundstelle die Datei wird, die ein Prüfer in die Hand nehmen kann. Die Originalablage ist der
+Ort, an dem diese Dateien liegen. Sie gehört der Anwendung: OPAA schreibt, ersetzt und löscht dort,
+und nur dort.
+
+Betroffen sind ausschließlich **Uploads**. Dokumente, die über einen Konnektor hereinkommen, bleiben
+Eigentum ihrer Quelle; OPAA liest sie dort und legt keine Kopie an. Wer die Originalablage
+umstellt, ändert nichts an Verzeichnissen, Webverzeichnissen, Feeds, Confluence-Instanzen oder
+S3-Quellen einer Bibliothek.
+
+Jede Dokumentzeile in der Datenbank trägt den **Verweis** auf ihr Original. Beim Verzeichnisweg ist
+das ein Dateipfad, beim Objektspeicher eine Adresse der Form `s3://<Bucket>/<Schlüssel>`. Dieser
+Verweis und die Bytes sind zwei Dinge: Wer das eine ohne das andere umzieht, hat eine Installation,
+die auf nicht vorhandene Originale zeigt.
+
+### Die drei Wege
+
+| Weg | Wofür | Was der Betrieb tut | Grenzen |
+|---|---|---|---|
+| **Verzeichnis** | kleine Installationen, Erprobung, Betrieb ohne Netzanbindung | Ein Verzeichnis bereitstellen und einhängen (`OPAA_UPLOAD_STORAGE_PATH_HOST` auf `/app/uploads`) | Wächst mit dem Volume des Wirtsystems; ohne eingehängtes Verzeichnis ist der Bestand beim Neuaufsetzen des Containers weg |
+| **Netzlaufwerk** | Häuser, deren Bestände ohnehin auf einem Dateiserver liegen | Die Freigabe (SMB/NFS) auf genau dieses Verzeichnis einhängen; in OPAA nichts weiter zu konfigurieren | Rechte des Dienstkontos auf der Freigabe; ein Verbindungsabbruch erscheint als Ein-/Ausgabefehler, nicht als „Datei fehlt" |
+| **Objektspeicher** | Rechenzentrumsbetrieb, große Bestände, Verschlüsselung und Versionierung aus dem Speicher | `OPAA_UPLOAD_STORE=s3` und die `OPAA_UPLOAD_S3_*`-Variablen setzen; Bucket vorher anlegen | Keine Bereichsanfragen beim Download (kein Fortsetzen eines abgebrochenen Downloads); zusätzlicher Platzbedarf für Zwischendateien; ein zweites Sicherungsziel |
+
+Die ersten beiden Wege sind für die Anwendung **derselbe** Weg: Sie sieht ein Verzeichnis und weiß
+nicht, was darunterliegt. Nur der Objektspeicher ist eine andere Ablage — und nur er verlangt eine
+Umstellung, wenn ein Bestand schon existiert.
+
+### Auswahl
+
+- **Ein Haus, eine Installation, überschaubarer Bestand** → Verzeichnis. Das ist die Voreinstellung;
+  wer nichts konfiguriert, bekommt sie.
+- **Die Dateien sollen dort liegen, wo die übrigen Bestände des Hauses liegen** → Netzlaufwerk.
+  Kein Umstellen, kein zweites Sicherungsziel, kein zusätzlicher Dienst.
+- **Der Bestand soll unabhängig vom Volume einer Maschine wachsen, oder Verschlüsselung ruhender
+  Daten, Versionierung, Aufbewahrungsregeln und Replikation sollen aus dem Speichersystem
+  kommen** → Objektspeicher.
+
+Drei Eigenschaften des Objektspeicherwegs gehören in die Entscheidung, weil sie sich nicht
+konfigurieren lassen:
+
+- **Fehlende Konfiguration bricht den Start ab**, ein nicht erreichbarer Speicher nicht. Fehlt bei
+  `OPAA_UPLOAD_STORE=s3` der Endpunkt, der Bucket oder ein Zugangsschlüssel, endet der Start mit
+  einer Meldung, die die fehlende Variable nennt. Ist der Speicher dagegen nur gerade nicht
+  erreichbar, läuft die Installation weiter: Chat, Suche und alles bereits Indizierte funktionieren
+  ohne ihn, und der Zustand erscheint in einer eigenen Gesundheitsgruppe
+  (`GET /actuator/health/upload-store`), bewusst nicht im Gesamtstatus — sonst nähme ein gestörter
+  Speicher die Instanz aus der Lastverteilung, obwohl sie Fragen beantworten kann. Mit
+  `OPAA_UPLOAD_STORE=filesystem` gibt es diese Gruppe nicht; der Endpunkt antwortet dann mit
+  „nicht gefunden". Beim Start prüft die Anwendung den Speicher einmal und protokolliert eine
+  Warnung, wenn er nicht benutzbar ist — ein nicht erreichbarer Endpunkt, ein fehlender Bucket und
+  abgelehnte Zugangsdaten fallen dabei alle auf, bevor der erste Upload es tut.
+- **Der Abruf eines Originals unterscheidet zwei Fälle.** Ist der Speicher nicht erreichbar,
+  antwortet der Abruf mit „Dienst nicht verfügbar" und einer Meldung; ist das Objekt nicht
+  vorhanden, antwortet er wie bisher mit „nicht gefunden" — ununterscheidbar von einem fremden oder
+  unbekannten Dokument, damit der Abruf keine Auskunft über fremde Bestände gibt.
+- **Zwischendateien brauchen Platz, und zwar auf zwei Dateisystemen.** Jeder Upload wird zunächst
+  als Arbeitsdatei abgelegt und erst danach in den Bucket geschrieben; ein Nachzug, ein
+  Metadatenlauf oder das Öffnen eines Anhangs holt sich eine lokale Kopie für die Dauer der Aktion.
+  Dazu kommt im Temp-Verzeichnis der Anwendung der Zwischenspeicher jeder eingehenden Datei. Die
+  Rechnung und die beiden Verzeichnisse stehen bei `OPAA_UPLOAD_S3_TEMP_DIRECTORY` in der
+  Variablenliste.
+
+### Was im Objektspeicher liegt
+
+Ein Bucket, ein Objekt je hochgeladenem Dokument. Der Schlüssel ist
+`<Präfix><Bibliotheks-ID>/<Zufallsname><Endung>` — **dieselbe Struktur wie auf der Platte**, ein
+Unterverzeichnis je Bibliothek, darin eine Datei je Dokument unter einem Zufallsnamen. Das Präfix
+ist leer, solange `OPAA_UPLOAD_S3_KEY_PREFIX` nichts anderes sagt; es trennt mehrere Installationen,
+die sich einen Bucket teilen.
+
+Der Bucket **muss vorhanden sein** — OPAA legt keinen an. Ordner darin legt OPAA ebenfalls nicht an:
+Objektspeicher kennt keine, der Schrägstrich im Schlüssel ist Teil des Namens.
+
+**Was OPAA am Bucket nicht tut**, und was deshalb der Betrieb dort einstellt: Verschlüsselung
+ruhender Daten, Versionierung, Aufbewahrungs- und Lebenszyklusregeln, Replikation. OPAA setzt keine
+Verschlüsselungskopfzeilen und verwaltet keine Schlüssel. **Empfohlen sind Verschlüsselung ruhender
+Daten und Versionierung**: Versionierung ist zugleich der Schutz gegen ein versehentliches Löschen
+in der Oberfläche und gegen ein fehlgeleitetes Kopierkommando bei der Umstellung.
+
+**Wie ein Prüfer ein Original wiederfindet.** Der Weg führt über die Dokumentzeile, nicht über den
+Dateinamen — im Bucket steht ein Zufallsname:
+
+```bash
+docker compose exec postgres psql -U opaa -d opaa \
+  -c "SELECT file_name, file_path FROM documents WHERE file_name = 'Bescheid.pdf';"
+```
+
+`file_path` nennt Bucket und Schlüssel. Damit lässt sich das Objekt in der Konsole des
+Objektspeichers ansehen (Host-Port siehe [Services](#services)) oder mit dem Kommandozeilenwerkzeug
+des Speichers herausholen, etwa `mc stat`/`mc cp` oder `aws s3 cp`. Der Weg über die Oberfläche
+bleibt der einfachere: Die Fundstelle unter einer Antwort führt zum Dokument, und dessen Original
+lädt sich dort herunter.
+
+> In allen `psql`-Aufrufen dieses Kapitels steht `opaa` für den konfigurierten Datenbankbenutzer
+> (`OPAA_DB_USERNAME`, Voreinstellung `opaa`) und für die Datenbank. Wer ein eigenes Konto
+> eingerichtet hat, setzt es ein — sonst antwortet `psql` mit `FATAL: role "opaa" does not exist`,
+> und zwar auch mitten in der Umstellung.
+
+**Anhänge sind die Ausnahme.** Eine E-Mail mit Anhängen wird zu mehreren Dokumentzeilen: die Mail
+selbst und je ein Dokument pro Anhang. Nur die Mail liegt als Objekt im Speicher; der Verweis der
+Anhangzeilen ist zusammengesetzt aus dem Verweis der Mail, einer laufenden Nummer und dem
+Dateinamen des Anhangs. Der Anhang wird beim Abruf aus der Mail herausgelöst. Das ist der Grund,
+warum die Umstellung unten den Verweis **ersetzt** statt ihn neu zu bilden — die Anhangzeilen
+wandern dabei ohne Sonderbehandlung mit.
+
+### Der mitgelieferte Objektspeicher im Compose-Stapel
+
+Der Stapel bringt einen Objektspeicher für die Originalablage mit, hinter dem eigenen Compose-Profil
+`upload-s3`. Ohne dieses Profil existieren die beiden Dienste nicht und der Stapel verhält sich
+unverändert.
+
+```bash
+docker compose --profile upload-s3 up -d upload-store upload-store-init
+```
+
+- `upload-store` hält die Originale und hat ein **eigenes benanntes Volume**. Ohne dieses Volume
+  wäre der Bestand beim Neuaufsetzen weg, während die Dokumentzeilen in der Datenbank bestehen
+  bleiben und auf nicht mehr vorhandene Objekte zeigen — derselbe Fallstrick wie beim
+  Verzeichnisweg ohne eingehängtes Verzeichnis. `docker compose down -v` löscht dieses Volume
+  mitsamt allen Originalen; für den regulären Stopp genügt `docker compose down`.
+- `upload-store-init` läuft einmal, legt den Bucket an und beendet sich. Er schreibt keine Objekte;
+  der Inhalt des Buckets gehört ab da allein der Anwendung.
+- Das Backend hängt **nicht** von beiden ab: Eine Installation, die beim Verzeichnisweg bleibt,
+  behält ihre Startreihenfolge, und ein kurz nicht erreichbarer Speicher hält den Start nicht auf.
+
+Dieser Dienst ist nicht der Objektspeicher des Demo-Profils. Jener füllt einen Korpus-Bucket, aus
+dem eine Bibliothek als **Quelle** liest, und wird bei jedem Start neu befüllt; er hat deshalb
+bewusst kein Volume. Beide Profile lassen sich nebeneinander betreiben.
+
+In `.env.docker` gehören dann die fünf Werte, mit denen das Backend den Dienst anspricht — Ablage,
+Endpunkt, Bucket und die beiden Zugangsschlüssel (`OPAA_UPLOAD_STORE`, `OPAA_UPLOAD_S3_ENDPOINT`,
+`OPAA_UPLOAD_S3_BUCKET`, `OPAA_UPLOAD_S3_ACCESS_KEY`, `OPAA_UPLOAD_S3_SECRET_KEY`); die Vorlage
+`.env.docker.example` trägt sie auskommentiert und mit genau den Werten, die der Dienst selbst
+voreingestellt hat. Die Zugangsdaten des Dienstes **selbst** setzt Docker Compose ein und liest sie
+deshalb nie aus `.env.docker`, sondern nur aus der Prozessumgebung oder einer `.env`-Datei
+(`OPAA_UPLOAD_STORE_ROOT_USER`, `OPAA_UPLOAD_STORE_ROOT_PASSWORD`, `OPAA_UPLOAD_STORE_BUCKET`, siehe
+[Alle Umgebungsvariablen](#alle-umgebungsvariablen)). Wer sie ändert, ändert sie auf beiden Seiten —
+sonst weist der Speicher jeden Zugriff zurück.
+
+Der Endpunkt zeigt auf den Servicenamen im Compose-Netzwerk. Er passiert die Zieladressprüfung der
+Originalablage immer, weil er aus der Betriebskonfiguration stammt; ein Eintrag in einer Freigabeliste
+ist dafür nicht nötig, und die Freigabeliste der Konnektoren ist davon unberührt.
+
+### Sicherung und Wiederherstellung
+
+Beim Verzeichnisweg gibt es zwei Sicherungsziele: die Datenbank und das Upload-Verzeichnis. Beim
+Objektspeicher ebenfalls zwei: die Datenbank und der Bucket. In beiden Fällen gilt dieselbe
+Reihenfolge.
+
+**Zeile und Bytes gehören zusammen, fallen aber nicht gemeinsam an.** Wird während des
+Sicherungslaufs hochgeladen oder gelöscht, driften die beiden Ziele um die Dauer des Laufs
+auseinander. Wer einen genau zusammenpassenden Stand braucht, hält die Uploads für die Dauer an
+(Backend stoppen). Sonst gilt: **erst die Datenbank sichern, dann die Originale.** Ein in der
+Zwischenzeit hochgeladenes Dokument ist dann ein Objekt ohne Zeile — verwaist, kostet Speicherplatz
+und stört sonst nichts; eingesammelt wird es vom Aufräumlauf im nächsten Abschnitt. In der anderen
+Reihenfolge wäre es eine Zeile ohne Bytes, und die ist im Betrieb ein Fehlerbild.
+
+**Wiederherstellen dagegen umgekehrt: erst die Originale, dann die Datenbank.** Sonst zeigen die
+Zeilen auf Objekte, die es noch nicht gibt — jeder Abruf eines Originals scheitert, bis die Kopie
+durch ist, und das sieht für die Dauer der Wiederherstellung nach Datenverlust aus.
+
+Zu sichern ist außerdem die Konfiguration. Ein Verweis in der Datenbank nennt Bucket und Schlüssel,
+aber nicht, an welchem Endpunkt dieser Bucket liegt; ohne die `OPAA_UPLOAD_S3_*`-Werte ist nach
+einem Ausfall des Wirtsystems nicht mehr abzuleiten, worauf die Installation gezeigt hat.
+
+### Verwaiste Originale aufräumen
 
 Ein verwaistes Original ist eine abgelegte Datei beziehungsweise ein abgelegtes Objekt, auf das keine
 Zeile mehr zeigt: ein fehlgeschlagenes Löschen, ein zwischen Ablegen und Eintragen abgebrochener
-Upload, ein zurückgespielter Datenbankstand. Auf der Platte fällt so etwas beim Hineinschauen auf, in
-einem Bucket sieht niemand nach. Zwei Endpunkte räumen das auf, `SYSTEM_ADMIN` und je Bibliothek —
-melden und löschen sind bewusst getrennt, damit ein Fehler in der Zuordnung nicht unumkehrbar wird.
+Upload, ein zurückgespielter Datenbankstand — und der planmäßige Fall aus dem Abschnitt darüber, ein
+Upload während des Sicherungslaufs. Auf der Platte fällt so etwas beim Hineinschauen auf, in einem
+Bucket sieht niemand nach. Zwei Endpunkte räumen es auf, `SYSTEM_ADMIN` und je Bibliothek — melden
+und löschen sind bewusst getrennt, damit ein Fehler in der Zuordnung nicht unumkehrbar wird.
 
 Erster Schritt: melden, ohne etwas anzufassen.
 
@@ -1302,10 +1488,154 @@ Drei Dinge sind im Betrieb wichtig:
 - **`truncated: true` heißt: zweiter Durchgang nötig.** Ein Bericht listet nur einen Ausschnitt der
   Funde, zählt in `orphanCount` aber alle. Nach dem Löschen des gelisteten Ausschnitts denselben
   Bericht erneut abrufen, bis `truncated` auf `false` steht.
-- **Nach einer Umstellung der Ablage meldet der erste Bericht alles.** Wer von einem Verzeichnis auf
-  einen Objektspeicher (oder zurück) umgestellt hat, ohne die `file_path`-Werte der Zeilen
-  mitzuziehen, bekommt den gesamten Bestand als verwaist gemeldet. Das ist das Signal, die Umstellung
-  zu prüfen — nicht, zu löschen.
+- **Nach einer Umstellung der Ablage meldet der erste Bericht alles.** Wurden die Bytes umgezogen,
+  aber die Verweise nicht umgeschrieben (siehe
+  [„Eine laufende Installation auf den Objektspeicher umstellen"](#eine-laufende-installation-auf-den-objektspeicher-umstellen)),
+  gilt der gesamte Bestand als verwaist. Das ist das Signal, die Umstellung zu prüfen — nicht, zu
+  löschen.
+
+### Eine laufende Installation auf den Objektspeicher umstellen
+
+Die Umstellung ist ein **Wartungsfenster**, kein laufender Betriebszustand: Bytes kopieren, dann die
+Verweise in der Datenbank umschreiben, dann umschalten. Es gibt bewusst keinen Zustand, in dem beide
+Ablagen gleichzeitig gelesen werden — eine unvollständige Kopie soll auffallen, nicht aufgefangen
+werden.
+
+Vorher: einen Datenbank-Dump ziehen und den Bucket bereitstellen (mit dem mitgelieferten Dienst legt
+ihn `upload-store-init` an).
+
+**1. Uploads anhalten.** Das Backend stoppen, damit während des Kopierens keine neue Datei
+dazukommt:
+
+```bash
+docker compose stop backend
+```
+
+**2. Objektspeicher starten** (nur beim mitgelieferten Dienst; ein hauseigener Speicher läuft schon):
+
+```bash
+docker compose --profile upload-s3 up -d upload-store upload-store-init
+```
+
+**3. Bytes kopieren.** Die Verzeichnisstruktur wandert unverändert in den Bucket — ein Unterordner
+je Bibliothek. Mit dem mitgelieferten Dienst genügt ein Wegwerf-Container, der das
+Upload-Verzeichnis und den Speicher gleichzeitig sieht:
+
+```bash
+docker compose --profile upload-s3 run --rm -v ./uploads:/uploads:ro upload-store-init \
+  "mc alias set store http://upload-store:9000 <zugangsschlüssel> '<geheimer schlüssel>' &&
+   mc mirror /uploads store/<bucket> &&
+   mc ls --recursive store/<bucket>"
+```
+
+`./uploads` ist dabei das Verzeichnis, das der Stapel in den Backend-Container einhängt; wurde es
+über `OPAA_UPLOAD_STORAGE_PATH_HOST` verlegt, steht dort der verlegte Pfad. Gegen einen hauseigenen
+Speicher tut es dasselbe vom Host aus, etwa `aws s3 sync ./uploads s3://<bucket>/` oder
+`mc mirror ./uploads <alias>/<bucket>`. Ist ein Schlüsselpräfix konfiguriert, ist das Ziel
+`<bucket>/<präfix>` statt `<bucket>`.
+
+Die abschließende Auflistung ist die Probe: So viele Objekte wie Dateien. Der Schritt ist
+wiederholbar — kopiert wird nur, was im Ziel fehlt.
+
+**4. Zählen, was umzuschreiben ist.** Der zu ersetzende Präfix ist installationsabhängig — im
+Container `/app/uploads/`, bei einem Betrieb ohne Container der dort konfigurierte absolute Pfad.
+Die Zählabfrage zeigt, ob er stimmt: Beide Zahlen müssen gleich sein.
+
+```bash
+docker compose exec postgres psql -U opaa -d opaa -c \
+  "SELECT count(*) AS zeilen,
+          count(*) FILTER (WHERE file_path LIKE '/app/uploads/%') AS mit_praefix
+     FROM documents WHERE source_type = 'UPLOAD';"
+```
+
+**5. Verweise umschreiben.** Eine Präfixersetzung, kein Neubilden des Werts — dadurch wandern die
+Anhangzeilen ohne Sonderfall mit:
+
+```bash
+docker compose exec postgres psql -U opaa -d opaa -c \
+  "UPDATE documents
+      SET file_path = replace(file_path, '/app/uploads/', 's3://<bucket>/')
+    WHERE source_type = 'UPLOAD' AND file_path LIKE '/app/uploads/%';"
+```
+
+Die Zahl der geänderten Zeilen muss der Zählabfrage aus Schritt 4 entsprechen. Mit Schlüsselpräfix
+lautet das Ziel `s3://<bucket>/<präfix>`.
+
+**6. Umschalten und starten.** In `.env.docker` die Ablage auf den Objektspeicher stellen und die
+`OPAA_UPLOAD_S3_*`-Werte eintragen, dann:
+
+```bash
+docker compose up -d backend
+```
+
+**7. Prüfen.** Vier Proben, in dieser Reihenfolge. Die ersten beiden von der Kommandozeile:
+
+```bash
+curl -s http://localhost:8081/actuator/health/upload-store   # Endpunkt und Bucket, Status UP
+docker compose exec postgres psql -U opaa -d opaa -c \
+  "SELECT file_name, file_path FROM documents WHERE source_type = 'UPLOAD' LIMIT 5;"
+```
+
+Endpunkt, Bucket und im Störungsfall der Grund erscheinen dabei nur einem angemeldeten Aufrufer —
+in einem OIDC-Deployment antwortet ein anonymes `curl` nur mit dem Status, wie unter
+[„Diagnose ohne Shell"](#diagnose-ohne-shell) beschrieben.
+
+Die dritte ist die eigentliche: In der Oberfläche ein Dokument öffnen und sein Original
+herunterladen — am besten eine E-Mail mit Anhang und den Anhang gleich mit, weil daran sichtbar
+wird, dass auch die zusammengesetzten Verweise noch stimmen. Die vierte prüft den Schreibweg: eine
+neue Datei hochladen und nachsehen, dass sie als Objekt im Bucket ankommt.
+
+**Das alte Verzeichnis bleibt zunächst stehen.** Es ist der Rückweg, solange die Proben nicht durch
+sind. Wer es entfernt, tut das erst nach einem erfolgreichen Sicherungslauf der neuen Ablage.
+
+### Der Rückweg: vom Objektspeicher zurück auf das Dateisystem
+
+Dieselben Schritte in umgekehrter Richtung.
+
+```bash
+docker compose stop backend
+
+docker compose --profile upload-s3 run --rm -v ./uploads:/uploads upload-store-init \
+  "mc alias set store http://upload-store:9000 <zugangsschlüssel> '<geheimer schlüssel>' &&
+   mc mirror --overwrite store/<bucket> /uploads"
+
+docker compose exec postgres psql -U opaa -d opaa -c \
+  "UPDATE documents
+      SET file_path = replace(file_path, 's3://<bucket>/', '/app/uploads/')
+    WHERE source_type = 'UPLOAD' AND file_path LIKE 's3://<bucket>/%';"
+```
+
+Danach in `.env.docker` die Ablage zurück auf das Dateisystem stellen und das Backend starten.
+
+Drei Unterschiede zum Hinweg:
+
+- **Ein Schlüsselpräfix gehört in beide Befehle**, und zwar in die Quelle des Kopierens und in den
+  zu ersetzenden Wert. Das Verzeichnis muss danach wieder unmittelbar die Unterordner der
+  Bibliotheken enthalten — liegt darunter erst noch ein Ordner mit dem Namen des Präfixes, gilt
+  keine Datei mehr als zur Bibliothek gehörend und **jedes** Original antwortet mit „nicht
+  gefunden". Mit Präfix lauten die beiden Zeilen deshalb
+  `mc mirror --overwrite store/<bucket>/<präfix> /uploads` und
+  `replace(file_path, 's3://<bucket>/<präfix>', '/app/uploads/')` mit
+  `LIKE 's3://<bucket>/<präfix>%'`.
+- **`--overwrite` ist nötig**, wenn das alte Verzeichnis noch steht. Ohne diesen Schalter überträgt
+  `mc mirror` zwar alles Fehlende, meldet aber für jede bereits vorhandene Datei einen Fehlschlag —
+  und **endet trotzdem mit dem Rückgabewert `0`**. Eine Skriptierung bemerkt den Unterschied
+  deshalb nicht. In ein leeres Verzeichnis kopiert der Befehl auch ohne den Schalter.
+- **Der Bestand ist größer als beim Hinweg.** Alles, was seit der Umstellung hochgeladen wurde,
+  liegt nur im Bucket. Die Zählabfrage aus Schritt 4 gehört deshalb auch hier davor, mit
+  `s3://<bucket>/%` als Muster.
+
+### Wenn etwas nicht stimmt
+
+| Bild | Wahrscheinliche Ursache |
+|---|---|
+| Alle Originale antworten mit „nicht gefunden", die Suche funktioniert | Die Verweise wurden nicht umgeschrieben, oder Bucket bzw. Schlüsselpräfix in der Konfiguration passen nicht zu dem, was in den Verweisen steht. Nach einem Rückweg mit Schlüsselpräfix kommt eine dritte Ursache dazu: Die Dateien liegen dann eine Ebene zu tief, unter einem Ordner mit dem Namen des Präfixes |
+| Einzelne Originale fehlen, andere nicht | Die Kopie war unvollständig — Kopierschritt wiederholen, er überträgt nur, was fehlt |
+| Jeder Abruf antwortet mit „Dienst nicht verfügbar", die Gesundheitsgruppe steht auf `DOWN` | Der Objektspeicher ist nicht erreichbar; die Gruppe nennt den Grund |
+| Der Start bricht mit einer Meldung über eine fehlende Variable ab | `OPAA_UPLOAD_STORE=s3` ohne Endpunkt, Bucket oder Zugangsschlüssel |
+| Die Gesundheitsgruppe antwortet mit „nicht gefunden" | Es ist der Verzeichnisweg konfiguriert; die Gruppe gibt es nur beim Objektspeicher |
+| Uploads scheitern, der Speicher ist erreichbar | Der Bucket fehlt oder der Zugangsschlüssel darf nicht schreiben |
+| `docker cp … /app/uploads` liefert ein leeres Verzeichnis | Die Originale liegen im Objektspeicher, nicht im Container |
 
 ## Datenbank
 

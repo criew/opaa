@@ -15,35 +15,31 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The second of the two remaining {@code io.opaa.migration} tests after #904 (see {@link
- * MigrationBaselineTest}'s Javadoc for the general baseline-consolidation context): the audit
- * privilege model ADR-0015 describes - ownership of {@code audit_log}/{@code
- * audit_actor_pseudonyms}/{@code audit_retention_settings} moved to the restricted {@code
- * opaa_audit_owner} role, with the migration/application account left only the narrow grants the
- * baseline's group (f) establishes - no longer has a dedicated regression test of its own after the
- * deletion of {@code Migration017AuditLogTest}/{@code Migration023AuditRetentionTest} (~40 methods
- * between them). This class is deliberately not a full port: see the #904 pull request description
- * for the complete list of what those two classes additionally covered and why each omission is
- * considered acceptable (mostly: enum-value/CHECK-constraint content already duplicated by
- * application-level tests, and the documented, tracked CREATEROLE escalation residual ADR-0015/#426
- * describe as a known, open gap rather than a guarantee to regression-test).
+ * The audit privilege model ADR-0015 describes, as the baseline's group (j) establishes it -
+ * ownership of {@code audit_log}/{@code audit_actor_pseudonyms}/{@code audit_retention_settings}
+ * moved to the restricted {@code opaa_audit_owner} role, with the migration/application account
+ * left only the narrow grants that group hands out. The sibling of {@link
+ * DiagnosticContextPrivilegeModelTest}, which does the same for the second protocol using this
+ * model; see {@link MigrationBaselineTest}'s Javadoc for the general baseline context.
  *
- * <p><b>Why this test does not re-run the baseline as a non-superuser role (unlike the deleted
- * classes' {@code AUDIT_APP_ROLE} dance):</b> {@link AbstractMigrationTest}'s template-database
- * mechanism always builds {@link #baseFixtureChangelogPath()} as the container's bootstrap
- * superuser - there is no supported way to make just this class's fixture build run as a different,
- * restricted role while every other class in this package keeps using the shared template
- * mechanism. Splitting {@code changes/001-baseline.yaml} to make that possible would violate #904's
- * own "genau eine Baseline-Datei" requirement. Instead, this test creates an ordinary, freshly
- * provisioned role after the baseline has already been applied and grants it exactly the privileges
- * the baseline's group (f) grants to {@code current_user} at migration time (INSERT/SELECT on
- * {@code audit_log}/{@code audit_actor_pseudonyms}, SELECT + narrow UPDATE on {@code
- * audit_retention_settings}) - the REVOKE/GRANT/ownership mechanism under test does not care which
- * role name ends up holding those grants, only that holding exactly them (and no more) blocks the
- * operations below. What this intentionally does not exercise is the specific CREATEROLE-time
- * residual membership ADR-0015 documents as a known, tracked escalation (#426) - that residual is a
- * property of the *migration* role's own CREATEROLE attribute, not of an arbitrary grantee, and is
- * out of scope for a smoke-level privilege check.
+ * <p>This class is deliberately not a full port of the deleted {@code Migration017AuditLogTest}/
+ * {@code Migration023AuditRetentionTest}: the #904 pull request description lists what those two
+ * classes additionally covered and why each omission is acceptable (mostly enum-value/CHECK content
+ * already duplicated by application-level tests, and the CREATEROLE escalation residual ADR-0015
+ * and #426 describe as a known, open gap rather than a guarantee to regression-test).
+ *
+ * <p><b>Why this test does not re-run the baseline as a non-superuser role:</b> {@link
+ * AbstractMigrationTest}'s template-database mechanism always builds {@link
+ * #baseFixtureChangelogPath()} as the container's bootstrap superuser, and splitting {@code
+ * changes/001-baseline.yaml} to change that would violate the "exactly one baseline file" rule.
+ * Instead, this test creates an ordinary, freshly provisioned role after the baseline has been
+ * applied and grants it exactly the privileges group (j) grants to {@code current_user} at
+ * migration time (INSERT/SELECT on {@code audit_log}/{@code audit_actor_pseudonyms}, SELECT +
+ * narrow UPDATE on {@code audit_retention_settings}) - the REVOKE/GRANT/ownership mechanism under
+ * test does not care which role name holds those grants, only that holding exactly them (and no
+ * more) blocks the operations below. The CREATEROLE-time residual membership of #426 is
+ * deliberately not exercised: it is a property of the migration role's own CREATEROLE attribute,
+ * not of an arbitrary grantee.
  */
 class AuditPrivilegeModelTest extends AbstractMigrationTest {
 
@@ -82,7 +78,7 @@ class AuditPrivilegeModelTest extends AbstractMigrationTest {
   }
 
   /**
-   * Mirrors exactly what the baseline's group (f) grants to {@code current_user} at migration time
+   * Mirrors exactly what the baseline's group (j) grants to {@code current_user} at migration time
    * - see this class's own Javadoc for why a fresh role rather than re-running the migration as a
    * restricted account.
    */
@@ -200,10 +196,10 @@ class AuditPrivilegeModelTest extends AbstractMigrationTest {
 
   /**
    * The application account's grant on {@code audit_retention_settings} is narrowed to {@code
-   * (retention_months, updated_at)} (baseline group (f), mirroring migration 023) - {@code
-   * last_cutoff} is written exclusively by {@code opaa_audit_delete_expired_partitions()}, which is
-   * what makes that function's own forward-only cap an actual guarantee rather than a convention
-   * the application could bypass by writing the column directly.
+   * (retention_months, updated_at)} (baseline group (j)) - {@code last_cutoff} is written
+   * exclusively by {@code opaa_audit_delete_expired_partitions()}, which is what makes that
+   * function's own forward-only cap an actual guarantee rather than a convention the application
+   * could bypass by writing the column directly.
    */
   @Test
   void applicationAccountCanUpdateRetentionMonthsButNotLastCutoffDirectly() throws Exception {

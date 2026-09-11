@@ -645,15 +645,17 @@ Siehe [Daten-Indizierung & RAG](./features/data-indexing-rag.md).
 Der Dateispeicher für Originaldateien. Er ist von der Vektor-Datenbank getrennt: Hier liegen
 die PDF- und DOCX-Dateien für Download und erneute Verarbeitung, dort die Embeddings für die Suche.
 
-**Gebaut ist genau ein Weg: ein Verzeichnis.** OPAA schreibt und liest gegen ein konfiguriertes
-Verzeichnis; eine Abstraktion über mehrere Speicherarten gibt es nicht. Das Dateisystem ist der
-Vertrag — was dahinter hängt, entscheidet der Betrieb:
+**Der Regelfall ist ein Verzeichnis.** OPAA liest und schreibt gegen ein konfiguriertes Verzeichnis;
+eine Abstraktion über mehrere Speicherarten gibt es nicht. Das Dateisystem ist der Vertrag — was
+dahinter hängt, entscheidet der Betrieb. Eine Ausnahme gibt es: die Ablage der **hochgeladenen**
+Originale. Sie gehört der Anwendung statt einer Quelle und ist deshalb als einzige wählbar:
 
 - **Lokales Dateisystem** — Erprobung und kleine Installationen
 - **Netzlaufwerk** (SMB/NFS) — der Regelfall im Haus; es wird vom Betriebssystem auf das konfigurierte
   Verzeichnis eingehängt und braucht deshalb keinen eigenen Weg in der Anwendung
-- **Objektspeicher** (S3-kompatibel) — **Zielbild, nicht gebaut**; er ist der einzige Fall, der einen
-  eigenen Pfad im Code braucht
+- **Objektspeicher** (S3-kompatibel) — der einzige Fall mit eigenem Pfad im Code, **gebaut für die
+  Originalablage der Uploads** und dort zuschaltbar. Quelldokumente einer Dateisystem-Bibliothek
+  bleiben beim Verzeichnis; ein S3-Bucket als *Quelle* ist stattdessen der S3-Konnektor
 
 Näheres in [Betrieb & Deployment](./features/deployment-infrastructure.md#speicher-backends).
 

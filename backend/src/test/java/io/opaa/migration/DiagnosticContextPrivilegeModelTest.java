@@ -17,28 +17,27 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Delta test for {@code changes/007-diagnostic-context-log.yaml} (#1052): the protocol of diagnoses
- * run in a foreign rights context. Two groups of assertions, matching the two things the
- * leitplanken make binding about it - that a Personenkontext without Begründung cannot be stored at
- * all, and that the entry is unveränderlich in the ADR-0015 sense, i.e. an account holding exactly
- * the application's own grants can insert and read but neither update, delete nor truncate, not
- * even through a named partition.
+ * The privilege model of the diagnostic context log (#1052, ADR-0015), as the baseline's group (k)
+ * establishes it - the sibling of {@link AuditPrivilegeModelTest} for the second protocol that uses
+ * the same non-superuser model. Two groups of assertions, matching the two things the leitplanken
+ * make binding about it: a Personenkontext without Begründung cannot be stored at all, and the
+ * entry is unveränderlich in the ADR-0015 sense - an account holding exactly the application's own
+ * grants can insert and read but neither update, delete nor truncate, not even through a named
+ * partition, and the SECURITY DEFINER partition-drop function is the only deletion path.
  *
- * <p>The restricted account is provisioned here rather than by re-running the changeset as a
+ * <p>The restricted account is provisioned here rather than by re-running the baseline as a
  * non-superuser - same reasoning and same shape as {@link AuditPrivilegeModelTest}, see its
  * Javadoc: Liquibase runs as an account that must be able to create the objects in the first place,
- * so the account the application later uses cannot be the account that applied the changeset. That
+ * so the account the application later uses cannot be the account that applied the baseline. That
  * hand-provisioned role is only as truthful as the grants it copies, which is why {@link
- * #grantsTheApplicationAccountExactlyInsertAndSelect} asserts the ACL the changeset itself produced
- * - without it, a changeset handing out {@code UPDATE} would leave every "permission denied"
+ * #grantsTheApplicationAccountExactlyInsertAndSelect} asserts the ACL the baseline itself produced
+ * - without it, a baseline handing out {@code UPDATE} would leave every "permission denied"
  * assertion below green. {@code opaa_audit_owner} is deliberately never dropped by this class: it
  * is created by the baseline, which this class's own fixture chain applies at template-build time
  * (see {@link AbstractMigrationTest}, "Important asymmetry").
  */
-class Migration007DiagnosticContextLogTest extends AbstractMigrationTest {
+class DiagnosticContextPrivilegeModelTest extends AbstractMigrationTest {
 
-  private static final String CHANGELOG_PATH =
-      "db/changelog/changes/007-diagnostic-context-log.yaml";
   private static final UUID ORGANIZATION_ID =
       UUID.fromString("00000000-0000-0000-0000-000000000001");
   private static final String OWNER_ROLE = "opaa_audit_owner";
@@ -56,7 +55,6 @@ class Migration007DiagnosticContextLogTest extends AbstractMigrationTest {
   @BeforeEach
   void setUp() throws Exception {
     connection = connect();
-    applyChangelog(connection, CHANGELOG_PATH);
     provisionApplicationRole();
     appConnection = connect(APP_ROLE, APP_ROLE_PASSWORD);
   }
@@ -73,7 +71,7 @@ class Migration007DiagnosticContextLogTest extends AbstractMigrationTest {
   }
 
   @Test
-  void createsThePartitionedProtocolTable() throws SQLException {
+  void theProtocolTableIsPartitionedAndCarriesItsSpecifiedColumns() throws SQLException {
     assertThat(columnType("event_id")).isEqualTo("uuid");
     assertThat(columnType("recorded_at")).isEqualTo("timestamp with time zone");
     assertThat(columnType("actor_ref")).isEqualTo("character varying");
@@ -199,13 +197,13 @@ class Migration007DiagnosticContextLogTest extends AbstractMigrationTest {
 
   /**
    * The privileges {@link #provisionApplicationRole} hands the test role must be the privileges the
-   * changeset hands the real application account - otherwise this class measures its own fixture.
+   * baseline hands the real application account - otherwise this class measures its own fixture.
    */
   @Test
   void grantsTheApplicationAccountExactlyInsertAndSelect() throws SQLException {
-    assertThat(tablePrivilegesOf("diagnostic_context_log", changesetAccount()))
+    assertThat(tablePrivilegesOf("diagnostic_context_log", migrationAccount()))
         .containsExactlyInAnyOrder("INSERT", "SELECT");
-    assertThat(tablePrivilegesOf("diagnostic_context_retention_settings", changesetAccount()))
+    assertThat(tablePrivilegesOf("diagnostic_context_retention_settings", migrationAccount()))
         .containsExactly("SELECT");
   }
 
@@ -215,7 +213,7 @@ class Migration007DiagnosticContextLogTest extends AbstractMigrationTest {
     UUID eventId = insertEntryAs(appConnection, "PERMISSION_PROFILE", "Profil", null);
     String partition = partitionNameOf(eventId);
 
-    assertThat(tablePrivilegesOf(partition.replace("public.", ""), changesetAccount())).isEmpty();
+    assertThat(tablePrivilegesOf(partition.replace("public.", ""), migrationAccount())).isEmpty();
   }
 
   /**
@@ -227,9 +225,9 @@ class Migration007DiagnosticContextLogTest extends AbstractMigrationTest {
    */
   @Test
   void grantsTheApplicationAccountUpdateOnExactlyTheTwoConfigurableColumns() throws SQLException {
-    assertThat(updatableColumnsOf("diagnostic_context_retention_settings", changesetAccount()))
+    assertThat(updatableColumnsOf("diagnostic_context_retention_settings", migrationAccount()))
         .containsExactlyInAnyOrder("retention_months", "updated_at");
-    assertThat(updatableColumnsOf("diagnostic_context_log", changesetAccount())).isEmpty();
+    assertThat(updatableColumnsOf("diagnostic_context_log", migrationAccount())).isEmpty();
   }
 
   /**
@@ -373,7 +371,7 @@ class Migration007DiagnosticContextLogTest extends AbstractMigrationTest {
             + " months')::date) TO ((date_trunc('month', now()) - interval '"
             + (monthsAgo - 1)
             + " months')::date)");
-    // The function drops partitions as opaa_audit_owner, which requires ownership - the changeset
+    // The function drops partitions as opaa_audit_owner, which requires ownership - the baseline
     // hands every partition it creates to that role for the same reason.
     execute(connection, "ALTER TABLE " + name + " OWNER TO " + OWNER_ROLE);
   }
@@ -407,7 +405,7 @@ class Migration007DiagnosticContextLogTest extends AbstractMigrationTest {
     }
   }
 
-  private String changesetAccount() throws SQLException {
+  private String migrationAccount() throws SQLException {
     try (Statement statement = connection.createStatement();
         ResultSet rs = statement.executeQuery("SELECT current_user")) {
       assertThat(rs.next()).isTrue();

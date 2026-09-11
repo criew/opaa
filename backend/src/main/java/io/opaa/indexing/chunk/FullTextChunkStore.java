@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
  * Writes/deletes rows in {@code chunk_full_text} (docs/features/hybrid-retrieval.md, "Arbeitspaket
  * 2a") - the lexical-search counterpart of {@link VectorChunkStore}'s {@code vector_store} writes.
  * A dedicated table, not columns on {@code vector_store} itself: see {@code
- * changes/003-chunk-full-text-table.yaml}'s own comment for why.
+ * changes/001-baseline.yaml}, group (g), for why.
  *
  * <p>Never called directly by {@link io.opaa.indexing.document.DocumentIngestService} - {@link
  * VectorChunkStore} owns both writes (see {@link VectorChunkStore#addChunks}) so a chunk can never

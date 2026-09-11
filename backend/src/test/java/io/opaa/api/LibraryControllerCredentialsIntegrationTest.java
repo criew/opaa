@@ -308,7 +308,7 @@ class LibraryControllerCredentialsIntegrationTest {
     // guards against a fix that only special-cased the FILESYSTEM branch above. The database's own
     // chk_knowledge_libraries_source_configuration (whose error text would include every column
     // value, credentials included, per ADR-0018 Entscheidung 4) is exercised directly, without any
-    // HTTP layer in between, in migration 027 (baseline group (d) as of #904).
+    // HTTP layer in between (baseline group (e), the documents table).
     String body =
         """
         {

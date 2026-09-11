@@ -144,11 +144,16 @@ Zwei Sicherungen gehören zusätzlich dazu, beide noch offen:
 
 Beide sind entschieden und als **Issue #119** erfasst (siehe [Geklärte Fragen](#geklärte-fragen)), aber
 noch nicht gebaut. #420 hat dafür die Voraussetzung geschaffen: Jedes hochgeladene Dokument führt jetzt
-seine einbringende Person. Die Originale liegen in einem eigenen, vom Indizierungsverzeichnis
-getrennten Verzeichnis, das die Installation über `OPAA_UPLOAD_STORAGE_PATH` konfiguriert (Standard
-`./uploads`, im Docker-Compose-Aufbau als eigenes Volume eingehängt); ob dahinter ein lokales
-Dateisystem oder ein eingehängtes Netzlaufwerk steht, entscheidet der Betrieb und nicht die Anwendung
-(siehe [Deployment und Infrastruktur](./deployment-infrastructure.md#speicher-backends)). Getrennt vom
+seine einbringende Person. Die Originale liegen in einer eigenen, vom Indizierungsverzeichnis
+getrennten Ablage — standardmäßig einem Verzeichnis, das die Installation über
+`OPAA_UPLOAD_STORAGE_PATH` konfiguriert (Standard `./uploads`, im Docker-Compose-Aufbau als eigenes
+Volume eingehängt). Ob dahinter ein lokales Dateisystem oder ein eingehängtes Netzlaufwerk steht,
+entscheidet der Betrieb und nicht die Anwendung. Seit
+[ADR-0030](../decisions/0030-originalablage-der-uploads.md) gibt es dazu einen zweiten, wählbaren
+Weg, über den sehr wohl die Anwendung entscheidet: `opaa.upload.store=s3` legt dieselben Originale
+als Objekte in einem S3-kompatiblen Speicher ab, weil diese Ablage — anders als jedes Quellenverzeichnis —
+der Anwendung gehört (siehe
+[Deployment und Infrastruktur](./deployment-infrastructure.md#speicher-backends)). Getrennt vom
 Indizierungsverzeichnis deshalb, weil `DELETE .../documents/{documentId}` nur Dateien löscht, die es
 selbst dorthin geschrieben hat — ein hochgeladenes Dokument darf verschwinden, ein vom Betrieb
 gepflegter Bestand nicht.
