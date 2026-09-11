@@ -419,7 +419,15 @@ public class KnowledgeLibrary {
     this.updatedAt = Instant.now();
   }
 
-  public void updateDetails(
+  /**
+   * Package-private by contract: {@link #visibility} is an input of {@link
+   * LibraryAccessService#readableLibraryIds}, and it shares one history interval with {@link
+   * #listed} ({@link PermissionHistoryService#recordVisibilityChanged}), so whoever changes either
+   * field must publish {@link LibraryChanged} - today only {@link
+   * KnowledgeLibraryService#updateLibrary} does. Package scope keeps that obligation reachable, it
+   * does not enforce it: a further class in this package would have to honour it too.
+   */
+  void updateDetails(
       String name, String description, LibraryVisibility visibility, boolean listed) {
     this.name = name;
     this.description = description;

@@ -109,7 +109,7 @@ public final class VariantComparisonStep {
               .filter(o -> o.variant().name().equals(report.referenceVariant()))
               .findFirst()
               .orElseThrow();
-      MehrfachlaufRule.Measurement direct =
+      MehrfachlaufRule.Measurement<PipelineEvaluationReport> direct =
           ReferenceVariantSelfCheck.assertMatchesDirectMeasurement(
               referenceOutcome,
               queryProperties,

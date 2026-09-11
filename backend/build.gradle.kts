@@ -145,8 +145,10 @@ fun registerEvalDomain(
         // variant-comparison opt-in, opaa.eval.queryDecomposition (issue #1085: measure the
         // shipped decomposition-on configuration instead of the baseline's decomposition-off one)
         // and opaa.eval.explanationDumpDir (ExplanationDump, the protocol dump of the pipeline
-        // path) share this list because all of them are optional, manually-invoked knobs rather
-        // than something every eval domain always needs.
+        // path) and opaa.eval.runConversations (issue #1484: the opt-in multi-turn step, which
+        // costs a decomposition call per turn and runs three times) share this list because all of
+        // them are optional, manually-invoked knobs rather than something every eval domain always
+        // needs.
         // The opaa.rerank.*/opaa.query.rerank-candidate-count entries are Spring properties rather
         // than harness knobs: a reranking measurement run (issue #1050) has to configure the rerank
         // model role of the forked JVM's application context. opaa.rerank.api-key is deliberately
@@ -159,6 +161,7 @@ fun registerEvalDomain(
             "opaa.eval.variantComparisonFile",
             "opaa.eval.queryDecomposition",
             "opaa.eval.explanationDumpDir",
+            "opaa.eval.runConversations",
             "opaa.rerank.enabled",
             "opaa.rerank.base-url",
             "opaa.rerank.model",

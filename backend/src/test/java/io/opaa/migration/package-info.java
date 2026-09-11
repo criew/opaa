@@ -2,13 +2,16 @@
  * Tests that apply real, versioned Liquibase changelogs in isolation against a Postgres
  * Testcontainer - not against Hibernate-generated schema and not against an empty database.
  *
- * <p><b>Since #904:</b> the 134 changesets accumulated up to 08/2026 were consolidated into a
- * single baseline ({@code db/changelog/changes/001-baseline.yaml}); {@link
+ * <p><b>Since the second baseline consolidation (#1492, after #904):</b> the whole changelog
+ * history lives in one file again ({@code db/changelog/changes/001-baseline.yaml}); {@link
  * io.opaa.migration.MigrationBaselineTest} applies it against an empty database and asserts the
- * handful of core invariants a broken baseline would violate - see that class's own Javadoc. From
- * here on, one changeset per schema change again: a future changeset's own delta test follows the
- * pattern the pre-#904 history established (see e.g. the deleted {@code
- * Migration010SpaceUniquenessTest} in git history for a worked example) - apply everything up to
+ * invariants a broken baseline would violate - see that class's own Javadoc, and {@link
+ * io.opaa.migration.AuditPrivilegeModelTest}, {@link
+ * io.opaa.migration.DiagnosticContextPrivilegeModelTest} and {@link
+ * io.opaa.migration.VectorStoreExpressionIndexTest} for the three areas that keep a test of their
+ * own. From here on, one changeset per schema change again: a future changeset's own delta test
+ * follows the pattern the pre-baseline history established (see e.g. the deleted {@code
+ * Migration033SourceSyncStateTest} in git history for a worked example) - apply everything up to
  * (and including) the changeSet immediately preceding the one under test via a fixture changelog
  * starting from {@code db/changelog/test-master-through-baseline.yaml}, seed representative rows
  * directly through JDBC, apply only the new changelog file, and assert on the resulting schema and
