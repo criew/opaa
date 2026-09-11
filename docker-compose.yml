@@ -218,6 +218,64 @@ services:
     profiles:
       - demo
 
+  # The object store of the uploaded originals (ADR-0030), opt-in via the "upload-s3" Compose
+  # profile. Deliberately a second MinIO next to "minio" above: that one is a *source* the S3
+  # connector reads, refilled from the committed corpus on every start, this one is the *storage*
+  # the application writes to and owns. Hence the named volume - without it the originals would be
+  # gone after "docker compose down -v" while their document rows survive in the database and point
+  # at objects that no longer exist, the same trap the ./uploads bind mount has on the filesystem
+  # path.
+  #
+  # Without the profile this service does not exist and the stack is unchanged; the backend is
+  # deliberately not depends_on it, so an installation that stays on the filesystem store keeps its
+  # start-up order, and a store that is briefly unreachable never holds the backend back
+  # (ADR-0030, Entscheidung 9). The backend reaches it over the Compose network as
+  # http://upload-store:9000 (OPAA_UPLOAD_S3_ENDPOINT in .env.docker); the configured endpoint
+  # passes the upload store's own target validation by definition, so no allowlist entry is needed.
+  # Root credentials and bucket name are the documented defaults of .env.docker.example's
+  # "Originalablage" block - whoever changes them changes them on both sides, here (process
+  # environment or .env) and for the backend (.env.docker).
+  upload-store:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${OPAA_UPLOAD_STORE_ROOT_USER:-opaa-uploads}
+      MINIO_ROOT_PASSWORD: ${OPAA_UPLOAD_STORE_ROOT_PASSWORD:-OpaaUploads!2026}
+    volumes:
+      - opaa-upload-store-data:/data
+    # Published to 127.0.0.1 only, for the operator's own "mc"/"aws s3" calls from the host (API on
+    # 8095) and for looking an original up in the browser (console on 8096) - the backend uses
+    # neither, it goes through the Compose network.
+    ports:
+      - "127.0.0.1:${OPAA_UPLOAD_STORE_PORT:-8095}:9000"
+      - "127.0.0.1:${OPAA_UPLOAD_STORE_CONSOLE_PORT:-8096}:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+    profiles:
+      - upload-s3
+
+  # One-shot init step (pattern: minio-seed, ollama-pull): creates the bucket, because OPAA never
+  # creates one - without it the start logs a warning and every upload fails. Idempotent
+  # ("mc mb --ignore-existing"), runs to completion and exits. It never writes objects: the content
+  # of this bucket belongs to the application alone.
+  upload-store-init:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    entrypoint: ["/bin/sh", "-c"]
+    command: >-
+      "mc alias set store http://upload-store:9000
+      '${OPAA_UPLOAD_STORE_ROOT_USER:-opaa-uploads}'
+      '${OPAA_UPLOAD_STORE_ROOT_PASSWORD:-OpaaUploads!2026}' >/dev/null &&
+      mc mb --ignore-existing store/${OPAA_UPLOAD_STORE_BUCKET:-opaa-uploads} &&
+      mc ls store"
+    depends_on:
+      upload-store:
+        condition: service_healthy
+    profiles:
+      - upload-s3
+
   # Optional locally-run Ollama service (#720): entirely opt-in via the "ollama" Compose profile,
   # started with `docker compose --profile ollama up`. Without the profile, this service does not
   # exist and the stack behaves exactly as before - the backend's own defaults still assume a
@@ -272,3 +330,4 @@ services:
 volumes:
   opaa-postgres-data:
   opaa-ollama-data:
+  opaa-upload-store-data:
