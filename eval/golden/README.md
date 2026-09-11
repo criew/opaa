@@ -204,10 +204,11 @@ aus dem Zieldokument abgeleitet ist, schreibt kein Skript. Abgesichert ist das E
 |---|---|---|---|
 | `anaphora_resolution` | 9 | 21 | 4 |
 | `topic_switch` | 9 | 30 | 2 |
-| `constraint_carryover` | 9 | 32 | 0 |
+| `constraint_carryover` | 9 | 32 | 3 |
 
-Der Befund des Erstlaufs — was gelöst ist, was nicht, und warum zwei gemessen gelöste
-`constraint_carryover`-Fälle trotzdem `known_gap` bleiben — steht bei der Domäne:
+Der Befund des Erstlaufs — was gelöst ist, was nicht, welche Vorhersage der Spezifikation nicht
+zutrifft und warum ein gemessen gelöster `constraint_carryover`-Fall trotzdem `known_gap` bleibt —
+steht bei der Domäne:
 [`eval/corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md), Abschnitt
 „Mehrrunden-Fallklassen". Der Lauf selbst steht in [`eval/README.md`](../README.md), Abschnitt
 „Dritter Messpfad: Mehrrunden-Fälle".

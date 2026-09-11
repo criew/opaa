@@ -21,7 +21,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Zerlegung löst „dafür“ zu „Formular KAE-07“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
+    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst „dafür“ zu „Formular KAE-07“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
   },
   {
     "id": "verw-conv-ana-002",
@@ -45,7 +45,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Zerlegung löst „seine“ zu „Formular BUE-08“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
+    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst „seine“ zu „Formular BUE-08“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
   },
   {
     "id": "verw-conv-ana-003",
@@ -69,7 +69,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Zerlegung löst „danach“ zu „Dienstanweisung BAU-DA-2/2024“ auf und hält das Dokument gegen die amtsübergreifende Aufbewahrungs-Dienstanweisung auf Rang 1."
+    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst „danach“ zu „Dienstanweisung BAU-DA-2/2024“ auf und hält das Dokument gegen die amtsübergreifende Aufbewahrungs-Dienstanweisung auf Rang 1."
   },
   {
     "id": "verw-conv-ana-004",
@@ -100,7 +100,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Runde 2 verliert den Bezug auf die Verwaltungsgebührensatzung (verwaltung-0038 außerhalb des Fensters), Runde 3 landet auf einer fremden Gebührenordnung (Rang 1 verwaltung-0011_gebuehrenordnung-bauamt.md)."
+    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 verliert den Bezug auf die Verwaltungsgebührensatzung (verwaltung-0038 außerhalb des Fensters); Runde 3 verlangt zusätzlich den Schritt Verwaltungsgebührensatzung → Kämmerei → deren Gebührenordnung, den kein Fenster-Baustein leistet (siehe MAINTENANCE.md, Vermerk zu dieser Runde)."
   },
   {
     "id": "verw-conv-ana-005",
@@ -124,7 +124,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Runde 2 verliert den Bezug auf ORD-DA-2/2024; verwaltung-0022 liegt außerhalb des Fensters."
+    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 verliert den Bezug auf ORD-DA-2/2024; verwaltung-0022 liegt außerhalb des Fensters."
   },
   {
     "id": "verw-conv-ana-006",
@@ -148,7 +148,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Runde 2 verliert den Bezug auf Formular JUG-07; verwaltung-0055 liegt außerhalb des Fensters."
+    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 verliert den Bezug auf Formular JUG-07; verwaltung-0055 liegt außerhalb des Fensters."
   },
   {
     "id": "verw-conv-ana-007",
@@ -156,30 +156,31 @@
     "category": "anaphora_resolution",
     "turns": [
       {
-        "query": "Welches Amt stellt Personenstandsurkunden aus?",
-        "answer": "Das Standesamt der Stadt Kalkstadt ist für die Ausstellung von Personenstandsurkunden zuständig.",
+        "query": "Was kostet die Erteilung einer Personenstandsurkunde?",
+        "answer": "Für die Erteilung (Personenstandsurkunde) erhebt das Standesamt 28,00 Euro.",
         "expected_documents": [
-          "verwaltung-geschaeftsverteilungsplan.md"
+          "verwaltung-0025_personenstandsurkundengebuehrensatzung.md",
+          "verwaltung-0026_gebuehrenordnung-standesamt.md"
         ]
       },
       {
-        "query": "Wer vertritt dessen Sachbearbeitung im Abwesenheitsfall?",
-        "answer": "Ist die zuständige Sachbearbeitung des Standesamts nicht erreichbar, entscheidet ersatzweise die Sachbearbeitung des Bürgeramts.",
+        "query": "Welches Antragsformular brauche ich dafür?",
+        "answer": "Formular STA-07 ist das reguläre Antragsformular des Standesamts für eine Amtshandlung.",
         "expected_documents": [
-          "verwaltung-vertretungsregelung.md"
+          "verwaltung-0029_formularhinweis-standesamt-7.md"
         ]
       },
       {
-        "query": "Nach welcher Satzung erhebt es seine Gebühren?",
-        "answer": "Grundlage der Gebührenerhebung ist die Personenstandsurkundengebührensatzung der Stadt Kalkstadt.",
+        "query": "Welche Nachweise verlangt es?",
+        "answer": "Je nach Anliegen ist ein Identitätsnachweis oder ein Nachweis der Gemeinnützigkeit beizufügen; das Standesamt akzeptiert beglaubigte Kopien ebenso wie das Original zur Einsichtnahme vor Ort.",
         "expected_documents": [
-          "verwaltung-0025_personenstandsurkundengebuehrensatzung.md"
+          "verwaltung-0029_formularhinweis-standesamt-7.md"
         ]
       }
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Alle drei Runden offen; bereits die eigenständige Runde 1 verfehlt den Geschäftsverteilungsplan — dieser Fall misst damit auch eine Einzelfragen-Lücke der Domäne, nicht nur das Gesprächsgedächtnis."
+    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 1 und 3 sind gelöst; Runde 2 verliert den Bezug auf das Antragsformular des Standesamts (verwaltung-0029 außerhalb des Fensters)."
   },
   {
     "id": "verw-conv-ana-008",
@@ -203,7 +204,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Zerlegung löst die Rückfrage nach den typischen Ausfüllfehlern zu „Formular PER-08“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
+    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst die Rückfrage nach den typischen Ausfüllfehlern zu „Formular PER-08“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
   },
   {
     "id": "verw-conv-ana-009",
@@ -220,23 +221,23 @@
         ]
       },
       {
-        "query": "Welches Amt ist dafür zuständig?",
-        "answer": "Das Jugendamt der Stadt Kalkstadt ist für die Betreuung in städtischen Kindertagesstätten zuständig.",
+        "query": "Welche Dienstanweisung regelt die Aktenführung bei diesen Vorgängen?",
+        "answer": "Die Dienstanweisung JUG-DA-2/2024 regelt die Aktenführung und die Fristenkontrolle im Jugendamt der Stadt Kalkstadt.",
         "expected_documents": [
-          "verwaltung-geschaeftsverteilungsplan.md"
+          "verwaltung-0054_dienstanweisung-jugendamt-2-2024.md"
         ]
       },
       {
-        "query": "Wofür wird dessen Änderungsformular verwendet?",
-        "answer": "Formular JUG-08 ist das Änderungs- und Ermäßigungsformular des Jugendamts; es dient dem Antrag auf nachträgliche Änderung der Antragsdaten oder auf Gebührenermäßigung nach § 13.",
+        "query": "Wie oft prüft die Amtsleitung danach abgeschlossene Vorgänge?",
+        "answer": "Die Amtsleitung des Jugendamts prüft stichprobenartig, mindestens einmal je Quartal, abgeschlossene Vorgänge auf die korrekte Anwendung der Dienstanweisung.",
         "expected_documents": [
-          "verwaltung-0056_formularhinweis-jugendamt-8.md"
+          "verwaltung-0054_dienstanweisung-jugendamt-2-2024.md"
         ]
       }
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Runde 1 verfehlt die Gebührenordnung Jugendamt, Runde 2 stellt sie vor den Geschäftsverteilungsplan, Runde 3 verliert den zweistufigen Bezug auf das Änderungsformular des Jugendamts (verwaltung-0056 außerhalb des Fensters)."
+    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 1 verfehlt die Gebührenordnung Jugendamt; Runde 3 verliert den Bezug auf JUG-DA-2/2024 (verwaltung-0054 außerhalb des Fensters)."
   },
   {
     "id": "verw-conv-ts-001",
@@ -268,7 +269,7 @@
     "topic_switch_turn": 3,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Wechselrunde 3 ist gelöst und enthält kein Dokument des Vorthemas (Bleed 0); offen ist die Vorrunde 2, in der die Aufbewahrungs-Dienstanweisung Rang 1 belegt."
+    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Wechselrunde 3 ist gelöst und ohne Dokument des Vorthemas; offen ist die Vorrunde 2, in der die Aufbewahrungs-Dienstanweisung Rang 1 belegt."
   },
   {
     "id": "verw-conv-ts-002",
@@ -300,7 +301,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Wechselrunde 2 selbst ist offen: die Zerlegung erfindet eine Rechtsgrundlage, Rang 1 belegt verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md. Bleed 0."
+    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Wechselrunde 2 selbst ist offen: die Zerlegung erfindet eine Rechtsgrundlage, Rang 1 belegt verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md."
   },
   {
     "id": "verw-conv-ts-003",
@@ -332,7 +333,7 @@
     "topic_switch_turn": 3,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Wechselrunde 3 ist gelöst; offen ist die Vorrunde 2, die die Verwaltungsgebührensatzung aus dem Fenster verliert. Bleed 0."
+    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Wechselrunde 3 ist gelöst; offen ist die Vorrunde 2, die die Verwaltungsgebührensatzung aus dem Fenster verliert."
   },
   {
     "id": "verw-conv-ts-004",
@@ -371,7 +372,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Wechselrunde 2 ist offen (verwaltung-0048 außerhalb des Fensters), ebenso die Rückkehr zum Altthema in Runde 4 (verwaltung-0060 außerhalb des Fensters). Bleed 0."
+    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Wechselrunde 2 ist offen (verwaltung-0048 außerhalb des Fensters), ebenso die Rückkehr zum Altthema in Runde 4 (verwaltung-0060 außerhalb des Fensters)."
   },
   {
     "id": "verw-conv-ts-005",
@@ -403,7 +404,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Wechselrunde 2 und Folgerunde 3 sind offen; verwaltung-0035 liegt in beiden außerhalb des Fensters. Bleed 0."
+    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Wechselrunde 2 und Folgerunde 3 sind offen; verwaltung-0035 liegt in beiden außerhalb des Fensters."
   },
   {
     "id": "verw-conv-ts-006",
@@ -435,7 +436,7 @@
     "topic_switch_turn": 3,
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Alle drei Runden führen ihr erwartetes Dokument auf Rang 1, und die Wechselrunde 3 enthält kein Dokument des Vorthemas (Bleed 0)."
+    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Alle drei Runden führen ihr erwartetes Dokument auf Rang 1; die Wechselrunde 3 enthält kein Dokument des Vorthemas."
   },
   {
     "id": "verw-conv-ts-007",
@@ -451,10 +452,10 @@
         ]
       },
       {
-        "query": "Welches Amt ist dafür zuständig?",
-        "answer": "Das Standesamt der Stadt Kalkstadt ist für die Ausstellung von Personenstandsurkunden zuständig.",
+        "query": "Welche Dienstanweisung regelt dort die Bearbeitung von Amtshandlungsanträgen?",
+        "answer": "Die Dienstanweisung STA-DA-1/2024 regelt die Bearbeitung von Amtshandlungsanträgen im Standesamt der Stadt Kalkstadt.",
         "expected_documents": [
-          "verwaltung-geschaeftsverteilungsplan.md"
+          "verwaltung-0027_dienstanweisung-standesamt-1-2024.md"
         ]
       },
       {
@@ -475,7 +476,7 @@
     "topic_switch_turn": 3,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Wechselrunde 3 und Folgerunde 4 sind gelöst; offen ist die Vorrunde 2, die den Geschäftsverteilungsplan aus dem Fenster verliert. Bleed 0."
+    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Wechselrunde 3 und Folgerunde 4 sind gelöst; offen ist die Vorrunde 2, die den Bezug auf das Standesamt verliert (verwaltung-0027 außerhalb des Fensters)."
   },
   {
     "id": "verw-conv-ts-008",
@@ -508,7 +509,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Wechselrunde 2 ist gelöst; offen ist die Folgerunde 3 im neuen Thema (verwaltung-0006 außerhalb des Fensters). Bleed 0."
+    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Wechselrunde 2 ist gelöst; offen ist die Folgerunde 3 im neuen Thema (verwaltung-0006 außerhalb des Fensters)."
   },
   {
     "id": "verw-conv-ts-009",
@@ -547,7 +548,7 @@
     "topic_switch_turn": 2,
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Wechselrunde 2 und die Rückkehr durch Neubenennung in Runde 4 treffen beide ihr Dokument auf Rang 1; die Wechselrunde enthält kein Dokument des Vorthemas (Bleed 0)."
+    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Wechselrunde 2 und die Rückkehr durch Neubenennung in Runde 4 treffen beide ihr Dokument auf Rang 1; die Wechselrunde enthält kein Dokument des Vorthemas."
   },
   {
     "id": "verw-conv-cc-001",
@@ -556,7 +557,7 @@
     "turns": [
       {
         "query": "Ich bearbeite einen Altfall aus dem Jahr 2023; für mich gilt durchgehend die Fassung 2023. Wie lange galt die Sozialgebührenbefreiungssatzung in dieser Fassung?",
-        "answer": "Die Sozialgebührenbefreiungssatzung in der Fassung 2023 trat am 1. Januar 2023 in Kraft und galt bis zum 31. Dezember 2023; sie wurde durch die Fassung 2024 ersetzt.",
+        "answer": "Die Sozialgebührenbefreiungssatzung in der Fassung 2023 trat am 1. Januar 2023 in Kraft und galt bis zum 31. Dezember 2023.",
         "expected_documents": [
           "verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md"
         ],
@@ -580,7 +581,8 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): In der Zielrunde 3 belegt der Verwechslungspartner (Fassung 2024) Rang 1 und das Ziel (Fassung 2023) Rang 2; die Angabe „Fassung 2023“ aus Runde 1 erscheint in keiner Teilfrage."
+    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482) — die Rahmenangabe aus Runde 1 erreicht die Teilfrage der Zielrunde nicht; siehe expected_state_exception zum gemessenen Treffer.",
+    "expected_state_exception": "Gemessen gelöst, aber nicht durch die übernommene Rahmenangabe: Die Teilfrage der Zielrunde 3 nennt weder „Fassung 2023“ noch ein Datum; dass die Fassung 2023 trotzdem vor der Fassung 2024 steht, hängt am Wortlaut, den die Zerlegung in diesem Lauf erzeugt hat. Bleibt known_gap nach derselben Regel wie metadata_filter vor #1070 — ein Treffer ohne den geprüften Mechanismus belegt keine Fähigkeit."
   },
   {
     "id": "verw-conv-cc-002",
@@ -613,7 +615,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): In der Zielrunde 3 belegt verwaltung-0011_gebuehrenordnung-bauamt.md Rang 1, das Ziel steht auf Rang 2."
+    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Teilfrage der Zielrunde 3 trägt die Angabe „Fassung 2023“ nicht; Rang 1 belegt verwaltung-0011_gebuehrenordnung-bauamt.md, das Ziel steht auf Rang 2, der Verwechslungspartner auf Rang 3."
   },
   {
     "id": "verw-conv-cc-003",
@@ -622,17 +624,17 @@
     "turns": [
       {
         "query": "Ich prüfe einen Vorgang, der 2023 abgeschlossen wurde; maßgeblich ist der Stand 2023. Welche Dienstanweisung des Sozialamts zur Bearbeitung von Amtshandlungsanträgen galt damals?",
-        "answer": "Damals galt die Dienstanweisung SOZ-DA-1/2023 des Sozialamts; sie wurde durch die Fassung SOZ-DA-1/2024 ersetzt.",
+        "answer": "Damals galt die Dienstanweisung SOZ-DA-1/2023 des Sozialamts; sie trat am 1. Januar 2023 in Kraft und galt bis zum 31. Dezember 2023.",
         "expected_documents": [
           "verwaltung-0004_dienstanweisung-sozialamt-1-2023.md"
         ],
         "confusable_document": "verwaltung-0005_dienstanweisung-sozialamt-1-2024.md"
       },
       {
-        "query": "Anderes Thema: Welches Amt ist für Baugenehmigungen zuständig?",
-        "answer": "Das Bauamt der Stadt Kalkstadt ist für die Erteilung von Baugenehmigungen zuständig.",
+        "query": "Anderes Thema: Wofür wird Formular UMW-07 verwendet?",
+        "answer": "Formular UMW-07 ist das reguläre Antragsformular des Umweltamts, etwa für die Entsorgung von Haushaltsabfällen.",
         "expected_documents": [
-          "verwaltung-geschaeftsverteilungsplan.md"
+          "verwaltung-0061_formularhinweis-umweltamt-7.md"
         ]
       },
       {
@@ -651,9 +653,9 @@
         "confusable_document": "verwaltung-0005_dienstanweisung-sozialamt-1-2024.md"
       }
     ],
-    "expected_state": "known_gap",
+    "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): In der Zielrunde 4 belegt der Verwechslungspartner SOZ-DA-1/2024 Rang 1, das Ziel Rang 2; zusätzlich verfehlt das Zwischenthema in Runde 2 den Geschäftsverteilungsplan."
+    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Teilfrage der Zielrunde 4 trägt die Angabe aus Runde 1 wörtlich („Die Dienstanweisung SOZ-DA-1/2023 besagt …“); das Ziel steht auf Rang 1, der Verwechslungspartner SOZ-DA-1/2024 auf Rang 3. Der klarste Beleg des Datensatzes dafür, dass die Übernahme im 20-Nachrichten-Fenster funktionieren kann."
   },
   {
     "id": "verw-conv-cc-004",
@@ -662,7 +664,7 @@
     "turns": [
       {
         "query": "Für meinen Vorgang ist der Rechtsstand 2023 maßgeblich. Welche Dienstanweisung des Ordnungsamts zur Bearbeitung von Amtshandlungsanträgen galt 2023?",
-        "answer": "Im Jahr 2023 galt die Dienstanweisung ORD-DA-1/2023 des Ordnungsamts; sie wurde durch die Fassung ORD-DA-1/2024 ersetzt.",
+        "answer": "Im Jahr 2023 galt die Dienstanweisung ORD-DA-1/2023 des Ordnungsamts; sie war vom 1. Januar bis zum 31. Dezember 2023 in Kraft.",
         "expected_documents": [
           "verwaltung-0020_dienstanweisung-ordnungsamt-1-2023.md"
         ],
@@ -686,7 +688,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): In der Zielrunde 3 belegt der Verwechslungspartner ORD-DA-1/2024 Rang 1, das Ziel Rang 2."
+    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Teilfrage der Zielrunde 3 nennt das Ordnungsamt, aber kein Jahr; der Verwechslungspartner ORD-DA-1/2024 belegt Rang 1, das Ziel Rang 2. Zusätzlich verfehlt das Zwischenthema in Runde 2 die Vertretungsregelung."
   },
   {
     "id": "verw-conv-cc-005",
@@ -695,7 +697,7 @@
     "turns": [
       {
         "query": "Ich berate zu einem laufenden Fall nach aktuellem Recht, also der Fassung 2024. Seit wann gilt die Gewerbeanmeldegebührensatzung in der Fassung 2024?",
-        "answer": "Die Gewerbeanmeldegebührensatzung in der Fassung 2024 trat am 1. Januar 2024 in Kraft und ersetzt die Fassung 2023.",
+        "answer": "Die Gewerbeanmeldegebührensatzung in der Fassung 2024 trat am 1. Januar 2024 in Kraft.",
         "expected_documents": [
           "verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md"
         ],
@@ -724,10 +726,9 @@
         "confusable_document": "verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md"
       }
     ],
-    "expected_state": "known_gap",
+    "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482) — die Rahmenangabe aus Runde 1 erreicht die Suche nicht; siehe expected_state_exception zum gemessenen Treffer.",
-    "expected_state_exception": "Gemessen gelöst, aber nicht durch die übernommene Rahmenangabe: Ziel ist hier die Fassung 2024, die die Rangfolge auch ohne jede Angabe vor die Fassung 2023 stellt — in den Fällen mit 2023er Ziel (verw-conv-cc-001/-003/-004) belegt umgekehrt durchgängig die 2024er Rang 1. Die Angabe aus Runde 1 taucht in keiner Teilfrage der Zielrunde auf. Ein Treffer ohne den geprüften Mechanismus bleibt known_gap — dieselbe Regel, unter der metadata_filter bis #1070 geführt wurde."
+    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Teilfrage der Zielrunde 4 trägt die Angabe aus Runde 1 („nach der Fassung 2024“); Ziel auf Rang 1, Verwechslungspartner auf Rang 2."
   },
   {
     "id": "verw-conv-cc-006",
@@ -736,7 +737,7 @@
     "turns": [
       {
         "query": "Ich prüfe einen Gebührenbescheid von 2023; maßgeblich ist die Fassung 2023. Bis wann galt die Personalausweisgebührensatzung in dieser Fassung?",
-        "answer": "Die Personalausweisgebührensatzung in der Fassung 2023 galt bis zum 31. Dezember 2023 und wurde zum 1. Januar 2024 durch die Fassung 2024 abgelöst.",
+        "answer": "Die Personalausweisgebührensatzung in der Fassung 2023 galt bis zum 31. Dezember 2023.",
         "expected_documents": [
           "verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md"
         ],
@@ -760,7 +761,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Zielrunde 3 ist getroffen; offen ist Runde 1, in der bereits die Fassungsfrage selbst die Personalausweisgebührensatzung 2023 aus dem Fenster verliert."
+    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zielrunde 3 ist getroffen; offen ist Runde 1, in der bereits die Fassungsfrage selbst die Personalausweisgebührensatzung 2023 aus dem Fenster verliert."
   },
   {
     "id": "verw-conv-cc-007",
@@ -769,7 +770,7 @@
     "turns": [
       {
         "query": "Ich bearbeite einen Beitragsbescheid für das Jahr 2023, es gilt die Fassung 2023. Bis wann galt die Kindertagesstättenbeitragssatzung in der Fassung 2023?",
-        "answer": "Die Kindertagesstättenbeitragssatzung in der Fassung 2023 galt bis zum 31. Dezember 2023; seit dem 1. Januar 2024 gilt die Fassung 2024.",
+        "answer": "Die Kindertagesstättenbeitragssatzung in der Fassung 2023 galt bis zum 31. Dezember 2023.",
         "expected_documents": [
           "verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md"
         ],
@@ -793,7 +794,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Runde 1 und Zielrunde 3 sind offen; in Runde 3 liegt die Kindertagesstättenbeitragssatzung 2023 außerhalb des Fensters."
+    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 1 und Zielrunde 3 sind offen; in Runde 3 liegt die Kindertagesstättenbeitragssatzung 2023 außerhalb des Fensters."
   },
   {
     "id": "verw-conv-cc-008",
@@ -802,7 +803,7 @@
     "turns": [
       {
         "query": "Ich arbeite durchgehend mit dem aktuellen Stand 2024. Welche Dienstanweisung des Bauamts zur Bearbeitung von Amtshandlungsanträgen gilt in dieser Fassung?",
-        "answer": "In der Fassung 2024 gilt die Dienstanweisung BAU-DA-1/2024 des Bauamts; sie ersetzt die Fassung BAU-DA-1/2023.",
+        "answer": "In der Fassung 2024 gilt die Dienstanweisung BAU-DA-1/2024 des Bauamts; sie trat am 1. Januar 2024 in Kraft.",
         "expected_documents": [
           "verwaltung-0013_dienstanweisung-bauamt-1-2024.md"
         ],
@@ -816,10 +817,10 @@
         ]
       },
       {
-        "query": "Und welches Amt ist für Personalaktenauskünfte zuständig?",
-        "answer": "Das Personalamt der Stadt Kalkstadt ist für die Einsichtnahme in Personalakten ehemaliger Beschäftigter zuständig.",
+        "query": "Und was regelt die Dienstanweisung PER-DA-1/2024?",
+        "answer": "Die Dienstanweisung PER-DA-1/2024 regelt die Bearbeitung von Amtshandlungsanträgen im Personalamt der Stadt Kalkstadt.",
         "expected_documents": [
-          "verwaltung-geschaeftsverteilungsplan.md"
+          "verwaltung-0046_dienstanweisung-personalamt-1-2024.md"
         ]
       },
       {
@@ -840,7 +841,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Der fünfrundige Fall ist in Runde 1, im Zwischenthema der Runde 3 und in der Zielrunde 5 offen; in Runde 5 liegt BAU-DA-1/2024 außerhalb des Fensters."
+    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zielrunde 5 ist getroffen und trägt die Angabe „BAU-DA-1/2024“ in ihrer Teilfrage; offen sind Runde 1 und das Zwischenthema in Runde 3, in denen jeweils SOZ-DA-1/2024 Rang 1 belegt."
   },
   {
     "id": "verw-conv-cc-009",
@@ -849,7 +850,7 @@
     "turns": [
       {
         "query": "Für meinen Fall gilt das aktuelle Recht, also die Fassung 2024. Seit wann gilt die Sozialgebührenbefreiungssatzung in der Fassung 2024?",
-        "answer": "Die Sozialgebührenbefreiungssatzung in der Fassung 2024 trat am 1. Januar 2024 in Kraft und ersetzt die Fassung 2023.",
+        "answer": "Die Sozialgebührenbefreiungssatzung in der Fassung 2024 trat am 1. Januar 2024 in Kraft.",
         "expected_documents": [
           "verwaltung-0002_sozialgebuehrenbefreiungssatzung-fassung-2024.md"
         ],
@@ -878,9 +879,8 @@
         "confusable_document": "verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md"
       }
     ],
-    "expected_state": "known_gap",
+    "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482) — die Rahmenangabe aus Runde 1 erreicht die Suche nicht; siehe expected_state_exception zum gemessenen Treffer.",
-    "expected_state_exception": "Gemessen gelöst, aber nicht durch die übernommene Rahmenangabe: Ziel ist hier die Fassung 2024, die die Rangfolge auch ohne jede Angabe vor die Fassung 2023 stellt — in den Fällen mit 2023er Ziel (verw-conv-cc-001/-003/-004) belegt umgekehrt durchgängig die 2024er Rang 1. Die Angabe aus Runde 1 taucht in keiner Teilfrage der Zielrunde auf. Ein Treffer ohne den geprüften Mechanismus bleibt known_gap — dieselbe Regel, unter der metadata_filter bis #1070 geführt wurde."
+    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Teilfrage der Zielrunde 4 trägt die Angabe aus Runde 1 („in der Fassung 2024“); Ziel auf Rang 1, Verwechslungspartner auf Rang 2."
   }
 ]

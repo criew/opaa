@@ -24,7 +24,7 @@
       "corpusManifestSha256": "e129bb86365f08bb553dab2401b91d82233e5efd84516b0b151c25b6e1590480",
       "corpusDocumentCount": 72,
       "goldenDatasetFile": "eval/golden/verwaltung-conversations.json",
-      "goldenDatasetSha256": "af808d17b9b42f983c5d220273986eb49a8a828b3322aa482add85f895d3cee5",
+      "goldenDatasetSha256": "7af55fa4f03c77faf8ed9ceef45deac17e450653b35e8bb8c08ea10062cde34e",
       "goldenCaseCount": 27,
       "ingestionPipelineFingerprint": "confluence:2,docx:3,email:5,html:3,markdown:1,odp:2,odt:2,pdf:1,pptx:1,tabular:1,tika-fallback:1",
       "metadataFilterEnabled": false
@@ -37,39 +37,39 @@
   "groups": {
     "overall": {
       "n": 83,
-      "hitRateAt5": 0.807,
-      "mrrAt8": 0.704,
-      "ndcgAt8": 0.725,
-      "recallAt8": 0.803,
+      "hitRateAt5": 0.831,
+      "mrrAt8": 0.756,
+      "ndcgAt8": 0.771,
+      "recallAt8": 0.827,
       "recallAt8Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 45,
-      "hitCountAt5": 67,
-      "hitCountAt8": 67,
-      "allExpectedDocumentsHitAt8": 0.795
+      "distinctExpectedDocumentSets": 46,
+      "hitCountAt5": 69,
+      "hitCountAt8": 69,
+      "allExpectedDocumentsHitAt8": 0.819
     },
     "category:anaphora_resolution": {
       "n": 21,
-      "hitRateAt5": 0.714,
-      "mrrAt8": 0.617,
-      "ndcgAt8": 0.629,
-      "recallAt8": 0.698,
+      "hitRateAt5": 0.762,
+      "mrrAt8": 0.724,
+      "ndcgAt8": 0.722,
+      "recallAt8": 0.746,
       "recallAt8Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 13,
-      "hitCountAt5": 15,
-      "hitCountAt8": 15,
-      "allExpectedDocumentsHitAt8": 0.667
+      "distinctExpectedDocumentSets": 12,
+      "hitCountAt5": 16,
+      "hitCountAt8": 16,
+      "allExpectedDocumentsHitAt8": 0.714
     },
     "category:constraint_carryover": {
       "n": 32,
-      "hitRateAt5": 0.906,
-      "mrrAt8": 0.764,
-      "ndcgAt8": 0.8,
-      "recallAt8": 0.906,
+      "hitRateAt5": 0.938,
+      "mrrAt8": 0.829,
+      "ndcgAt8": 0.857,
+      "recallAt8": 0.938,
       "recallAt8Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 21,
-      "hitCountAt5": 29,
-      "hitCountAt8": 29,
-      "allExpectedDocumentsHitAt8": 0.906
+      "distinctExpectedDocumentSets": 22,
+      "hitCountAt5": 30,
+      "hitCountAt8": 30,
+      "allExpectedDocumentsHitAt8": 0.938
     },
     "category:topic_switch": {
       "n": 30,
@@ -85,24 +85,24 @@
     },
     "turn:1": {
       "n": 27,
-      "hitRateAt5": 0.926,
-      "mrrAt8": 0.878,
-      "ndcgAt8": 0.876,
-      "recallAt8": 0.914,
+      "hitRateAt5": 0.963,
+      "mrrAt8": 0.915,
+      "ndcgAt8": 0.913,
+      "recallAt8": 0.951,
       "recallAt8Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 26,
-      "hitCountAt5": 25,
-      "hitCountAt8": 25,
-      "allExpectedDocumentsHitAt8": 0.889
+      "distinctExpectedDocumentSets": 25,
+      "hitCountAt5": 26,
+      "hitCountAt8": 26,
+      "allExpectedDocumentsHitAt8": 0.926
     },
     "turn:2": {
       "n": 27,
       "hitRateAt5": 0.704,
-      "mrrAt8": 0.6,
-      "ndcgAt8": 0.625,
+      "mrrAt8": 0.631,
+      "ndcgAt8": 0.649,
       "recallAt8": 0.704,
       "recallAt8Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 22,
+      "distinctExpectedDocumentSets": 25,
       "hitCountAt5": 19,
       "hitCountAt8": 19,
       "allExpectedDocumentsHitAt8": 0.704
@@ -110,11 +110,11 @@
     "turn:3": {
       "n": 21,
       "hitRateAt5": 0.81,
-      "mrrAt8": 0.621,
-      "ndcgAt8": 0.669,
+      "mrrAt8": 0.668,
+      "ndcgAt8": 0.704,
       "recallAt8": 0.81,
       "recallAt8Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 21,
+      "distinctExpectedDocumentSets": 19,
       "hitCountAt5": 17,
       "hitCountAt8": 17,
       "allExpectedDocumentsHitAt8": 0.81
@@ -122,8 +122,8 @@
     "turn:4": {
       "n": 7,
       "hitRateAt5": 0.857,
-      "mrrAt8": 0.786,
-      "ndcgAt8": 0.804,
+      "mrrAt8": 0.857,
+      "ndcgAt8": 0.857,
       "recallAt8": 0.857,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 7,
@@ -133,21 +133,21 @@
     },
     "turn:5": {
       "n": 1,
-      "hitRateAt5": 0.0,
-      "mrrAt8": 0.0,
-      "ndcgAt8": 0.0,
-      "recallAt8": 0.0,
+      "hitRateAt5": 1.0,
+      "mrrAt8": 1.0,
+      "ndcgAt8": 1.0,
+      "recallAt8": 1.0,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 1,
-      "hitCountAt5": 0,
-      "hitCountAt8": 0,
-      "allExpectedDocumentsHitAt8": 0.0
+      "hitCountAt5": 1,
+      "hitCountAt8": 1,
+      "allExpectedDocumentsHitAt8": 1.0
     }
   },
   "measuredAt": "2026-09-11",
   "provenance": {
-    "sourceReportRunStartedAt": "2026-09-11T09:35:27.057632600Z",
+    "sourceReportRunStartedAt": "2026-09-11T11:56:04.803813600Z",
     "sourcePullRequest": "#1485 (Erstkuratierung und Erstmessung der Mehrrunden-Fälle)"
   },
-  "notes": "Erste Ziehung der Mehrrunden-Baseline (Issue #1485), Mehrrunden-Messvertrag Version 1 (ADR-0012, Nachtrag Mehrrunden-Messpfad). Gemessen am 2026-09-11 im CPU-Testcontainer-Lauf \"./gradlew evaluateVerwaltungRetrieval -Dopaa.eval.queryDecomposition=true -Dopaa.eval.runConversations=true\" auf demselben manifest-geprueften Korpus (72 Dokumente) wie eval/baseline/verwaltung.json und eval/baseline/pipeline-verwaltung.json, aber gegen den eigenen Datensatz eval/golden/verwaltung-conversations.json (27 Faelle, 83 Runden). Mehrfachlauf-Regel angewandt: drei Laeufe, berichtet ist der Median-Lauf; min = median = max in allen vier Metriken, und 0 von 83 Runden hatten ueber die drei Laeufe hinweg eine abweichende Zerlegung. Zwei weitere, vollstaendig getrennte Laeufe (je eigene JVM, eigene Container, je wieder drei Laeufe) lieferten jede Zahl dieser Datei bitgleich und dasselbe Urteil fuer jeden der 27 Faelle - der dritte davon auf dem in den Branch gemergten Stand von origin/main (f9ccdbc6), also einschliesslich der zweiten Liquibase-Baseline aus #1504. Befund des Erstlaufs: anaphora_resolution 4 von 9 Faellen geloest, topic_switch 2 von 9, constraint_carryover 2 von 9 - letztere beide nachweislich ohne den geprueften Mechanismus (die uebernommene Rahmenangabe erscheint in keiner Teilfrage; committete expected_state_exception am Fall), mit ihm also 0 von 9. Themen-Bleed: 0 Dokumente des Vorthemas in 0 von 9 Wechselrunden. Deklariert sind deshalb 6 Faelle als solved und 21 als known_gap; Einzelbegruendung je Fall im Datensatz, Zusammenfassung in eval/corpus/verwaltung/MAINTENANCE.md, Abschnitt \"Mehrrunden-Fallklassen\". Nicht mit eval/baseline/pipeline-verwaltung.json vergleichbar, obwohl beide dasselbe Fenster tragen: Dort ist jede Zeile eine Einzelfrage ohne Verlauf, hier eine Runde eines Gespraechs mit dem produktiven 20-Nachrichten-Fenster im Ruecken. Die Gruppe turn:5 hat n=1 - nur verw-conv-cc-008 ist fuenfrundig - und steht bei 0,000; sie ist als Gruppe vom Kippen dieses einen Falls dominiert und damit ein schwaches Regressionssignal, steht aber in der Datei, weil der Vergleich sonst eine vom Bericht gelieferte Gruppe nicht faende. Toleranzformel und Fehlerkriterium: ADR-0013, unveraendert und woertlich mit dem Pipeline-Pfad geteilt (PipelineGroupChecks, PipelineGroupInvariants). Diese Baseline ist bewusst noch an keine Regressionstestklasse verdrahtet: registerEvalDomain in backend/build.gradle.kts kennt bislang nur den Rohvektor- und den Pipeline-Pfad, und der Mehrrunden-Schritt ist ohnehin manuell/per Label zu starten, nie naechtlich - die Verdrahtung ist Folgearbeit ausserhalb von #1485."
+  "notes": "Erste Ziehung der Mehrrunden-Baseline (Issue #1485), Mehrrunden-Messvertrag Version 1 (ADR-0012, Nachtrag Mehrrunden-Messpfad). Gemessen am 2026-09-11 im CPU-Testcontainer-Lauf \"./gradlew evaluateVerwaltungRetrieval -Dopaa.eval.queryDecomposition=true -Dopaa.eval.runConversations=true\" auf demselben manifest-geprueften Korpus (72 Dokumente) wie eval/baseline/verwaltung.json und eval/baseline/pipeline-verwaltung.json, aber gegen den eigenen Datensatz eval/golden/verwaltung-conversations.json (27 Faelle, 83 Runden). Mehrfachlauf-Regel angewandt: drei Laeufe, berichtet ist der Median-Lauf; min = median = max in allen vier Metriken, und 0 von 83 Runden hatten ueber die drei Laeufe hinweg eine abweichende Zerlegung. Ein zweiter, vollstaendig getrennter Lauf derselben Konfiguration lieferte jede Zahl dieser Datei bitgleich und dasselbe Urteil fuer jeden der 27 Faelle. Befund des Erstlaufs: anaphora_resolution 4 von 9 Faellen geloest, topic_switch 2 von 9 bei Themen-Bleed 0 in 9 von 9 Wechselrunden, constraint_carryover 4 von 9 - davon drei mit der Rahmenangabe woertlich in der Teilfrage der Zielrunde, einer (verw-conv-cc-001) ohne sie und deshalb als known_gap mit committeter expected_state_exception gefuehrt. Deklariert sind 9 Faelle als solved und 18 als known_gap; Einzelbegruendung je Fall im Datensatz, Zusammenfassung in eval/corpus/verwaltung/MAINTENANCE.md, Abschnitt \"Mehrrunden-Fallklassen\". Diese Zahlen stammen aus dem Lauf NACH zwei Messaufbau-Korrekturen aus dem Review zu PR #1521; der erste Lauf desselben Tages ist ueberholt und nicht vergleichbar: Fuenf Runden zielten auf amtsunabhaengige Dokumente (Vertretungsregelung, Geschaeftsverteilungsplan), die von keinem aufgeloesten Bezug getrennt werden koennen, und acht Runde-1-Kurzantworten der constraint_carryover-Faelle nannten den Verwechslungspartner, der damit als Aussage des Assistenten im Gespraechsfenster stand. Ueberholte Werte des ersten Laufs zum Vergleich: overall HitRate@5 0,807 / MRR@8 0,704 / nDCG@8 0,725 / Recall@8 0,803; je Klasse anaphora_resolution 0,714/0,617/0,629/0,698, constraint_carryover 0,906/0,764/0,800/0,906, topic_switch 0,767/0,701/0,713/0,767; geloest 4 / 2 / 2 von je 9. Nicht mit eval/baseline/pipeline-verwaltung.json vergleichbar, obwohl beide dasselbe Fenster tragen: Dort ist jede Zeile eine Einzelfrage ohne Verlauf, hier eine Runde eines Gespraechs mit dem produktiven 20-Nachrichten-Fenster im Ruecken. Die Gruppe turn:5 hat n=1 - nur verw-conv-cc-008 ist fuenfrundig - und ist als Regressionssignal entsprechend schwach, steht aber in der Datei, weil der Vergleich sonst eine vom Bericht gelieferte Gruppe nicht faende. Toleranzformel und Fehlerkriterium: ADR-0013, unveraendert und woertlich mit dem Pipeline-Pfad geteilt (PipelineGroupChecks, PipelineGroupInvariants). Diese Baseline ist bewusst noch an keine Regressionstestklasse verdrahtet: registerEvalDomain in backend/build.gradle.kts kennt bislang nur den Rohvektor- und den Pipeline-Pfad, und der Mehrrunden-Schritt ist ohnehin manuell oder per Label zu starten, nie naechtlich - die Verdrahtung ist Folgearbeit ausserhalb von #1485."
 }
