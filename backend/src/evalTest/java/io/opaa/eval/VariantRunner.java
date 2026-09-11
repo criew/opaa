@@ -120,7 +120,7 @@ public final class VariantRunner {
       PipelineVariant variant,
       QueryProperties effective,
       Supplier<PipelineEvaluationReport> measure) {
-    MehrfachlaufRule.Measurement measurement =
+    MehrfachlaufRule.Measurement<PipelineEvaluationReport> measurement =
         MehrfachlaufRule.measure(effective.queryDecompositionEnabled(), measure);
     return measurement.multiRun()
         ? VariantOutcome.executedMultiRun(variant, measurement.report(), measurement.summary())

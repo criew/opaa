@@ -145,7 +145,7 @@ public final class PipelineHarnessSupport {
       // Each run reports its own duration; the first one starts at the phase start the caller
       // passed, so a single-run measurement is unchanged from before the rule applied here.
       AtomicReference<Instant> firstRunStart = new AtomicReference<>(pipelineRunStart);
-      MehrfachlaufRule.Measurement measurement =
+      MehrfachlaufRule.Measurement<PipelineEvaluationReport> measurement =
           MehrfachlaufRule.measure(
               queryProperties.queryDecompositionEnabled(),
               () ->

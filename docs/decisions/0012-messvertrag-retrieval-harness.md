@@ -840,3 +840,121 @@ auch das Diagnosewerkzeug (`SearchDiagnosisService`) nutzt. Der Suchbereich wird
 unverändert in der Stufe `SEARCH_SCOPE` der Pipeline. Reine Umbenennung des Einstiegs, kein
 geänderter Messgegenstand: Der Protokoll-Diff der 49 Verwaltungsfälle vor und nach dem Umbau war
 leer, beide Messverträge bleiben bei ihrer Version.
+
+## Nachtrag: Mehrrunden-Messpfad (Issue #1484)
+
+`docs/features/conversation-memory.md`, Abschnitt „Messung", verlangt einen Messpfad für
+Gespräche: Der Harness kannte bis dahin nur Einzelfragen, jede Golden-Frage lief ohne Verlauf, und
+der Folgefragen-Pfad der Zerlegung war damit ungemessen (#1288, „Nicht Teil dieses Issues").
+Bevor Gesprächsfenster und Gesprächsnotiz gebaut werden, muss der heutige Stand beziffert sein.
+Dieser Nachtrag schreibt den Messvertrag dafür fort; an den beiden bestehenden Pfaden ändert er
+nichts.
+
+### 38. Ein dritter Messpfad, getrennt ausgewiesen
+
+Der Mehrrunden-Pfad ist ein **dritter** Pfad neben Rohvektor und Pipeline, mit eigenem Berichtstyp
+(`ConversationEvaluationReport`), eigener Berichtsdatei
+(`build/eval-reports/pipeline-conversations-<domäne>.json`), eigenem Datensatz
+(`eval/golden/<domäne>-conversations.json`) und eigener Baseline
+(`eval/baseline/pipeline-<domäne>-conversations.json`). Begründung wie in Entscheidung 11 und 16:
+Die Pfade messen Verschiedenes, sind nicht ineinander umrechenbar, und ein geteiltes Schema machte
+es möglich, dass eine Neumessung des einen die Zahlen des anderen überschreibt.
+
+Was **nicht** neu ist: die Metrikmathematik und das Fenster. Eine Runde wird von `RetrievalMetrics`
+an denselben Fenstern gemessen wie eine Einzelfrage des Pipeline-Pfads (Hit Rate@5, MRR@8, nDCG@8,
+Recall@8, Ähnlichkeitsschwelle angewandt) und von `PipelineMetricsAggregate` aggregiert. Eine Runde
+ist eine Frage mit erwarteten Dokumenten — genau das, was ein Golden-Fall modelliert; der Harness
+adaptiert sie deshalb auf `GoldenCase`, statt eine zweite Metrikfamilie zu führen.
+
+### 39. „Gelöst" bleibt eine Definition, angewandt je Runde und je Fall
+
+Eine **Runde** gilt als gelöst nach dem bestehenden Kriterium aus Entscheidung zu den
+Zustandsfeldern (`ExpectedStateAudit#isSolved`): alle erwarteten Dokumente im Fenster **und** eines
+auf Rang 1. Ein **Fall** gilt als gelöst, wenn **jede** seiner Runden gelöst ist. Kein gemittelter
+Fallwert: Ein Gespräch, dessen zweite Runde den Bezug nicht auflöst, ist nicht „zur Hälfte gelöst" —
+es ist der Fehler, den die Klasse `anaphora_resolution` messen soll.
+
+Der Bericht weist deshalb drei Ebenen aus: je Runde (`byTurn`, Gruppenschlüssel `turn:<n>`), je
+Fallklasse (`byCategory`) und je Fall (`caseOutcomes`, plus das Zustandsfeld-Audit auf Fallebene).
+Die Rundengruppe ist nicht Zierde: Eine Änderung, die den eigenständigen ersten Runden hilft und den
+Folgerunden schadet, lässt den Gesamtwert flach.
+
+### 40. Vier neue Festpunkte: Fensterbreite, Suchfenster, Notizdeckel, Rundenzahl
+
+Die Festpunkte des Pipeline-Pfads (Entscheidungen 13, 18, 22, 28, 32) gelten unverändert und werden
+wörtlich geteilt. Hinzu kommen:
+
+| Festpunkt | Heutiger Wert | Warum er einer ist |
+|---|---|---|
+| `conversationWindowMessages` | 20 | die Breite des Gesprächsfensters; sie bestimmt, wie viel Verlauf die Zerlegung überhaupt sehen kann |
+| `searchWindowTurns` | 0 = „ganzes Gesprächsfenster" | heute reicht `SubQueryDecompositionStage` den Verlauf ungekürzt weiter; sobald ein eigenes Suchfenster existiert, ändert sich dieser Wert und die Baseline wird laut unvergleichbar statt still weitergerechnet |
+| `conversationNoteCap` | 0 = „keine Notiz" | dasselbe, für die Gesprächsnotiz |
+| `turnCount` | Größe des Datensatzes | eine Kuratierungsrunde, die nur Fälle verlängert, ließe `goldenCaseCount` unberührt |
+
+`conversationWindowMessages` wird **gemessen, nicht angenommen**: Der Harness reicht der produktiven
+`ChatMemory`-Bean mehr Nachrichten, als sie halten kann, und zählt, was zurückkommt
+(`ConversationMemoryProfile#measuredFrom`). Eine ins Messwerkzeug kopierte Konstante meldete nach
+einer Produktionsänderung weiter den alten Wert — genau der stille Zustand, den Festpunkte
+verhindern sollen.
+
+**Das Chat-Modell ist auf diesem Pfad ein geprüfter Festpunkt**, nicht nur ein gemeldeter
+(Abweichung von Entscheidung 20, die für den Pipeline-Pfad „keines" als gültigen Wert zulässt): Ohne
+Teilfragen-Zerlegung wird kein einziger Bezug aufgelöst, und eine Mehrrunden-Baseline ohne Modell
+beschriebe einen Lauf, der gar nicht messen konnte, wofür der Pfad existiert. `ConversationBaseline`
+weist eine solche Datei beim Laden zurück.
+
+### 41. Eigene Vertragsversion, beide bestehenden unverändert
+
+`CONVERSATION_MEASUREMENT_CONTRACT_VERSION` beginnt bei 1 und zählt unabhängig weiter — dieselbe
+Begründung wie in Entscheidung 16: Eine Erhöhung entwertet jede committete Baseline ihres Pfads, und
+das Hinzukommen dieses Pfads bewegt weder den Rohvektor- noch den Pipeline-Messgegenstand. Beide
+bleiben bei ihrer Version; keine bestehende Baseline wird neu gezogen.
+
+### 42. Ausführung: nur mit Zerlegung, dreimal, manuell — sonst „nicht ausgeführt"
+
+Der Pfad läuft als Opt-in-Schritt am Ende desselben Harness-Laufs
+(`-Dopaa.eval.runConversations=true`), auf dem bereits indizierten Korpus, nie in einem zweiten
+Indizierungslauf. Er gehorcht der Mehrfachlauf-Regel (drei Läufe, Median nach nDCG@8, Abschnitt 3 von
+`docs/features/retrieval-benchmark.md`) und ist damit **nicht** nächtlich tragbar: je Runde ein
+Chat-Aufruf, mal drei.
+
+Fehlt die Zerlegung, das Chat-Modell oder der Datensatz, meldet sich der Lauf als **nicht
+ausgeführt** und schreibt nichts. Das ist die Anwendung von Entscheidung 15 auf diesen Pfad: Ohne
+Zerlegung erreichte eine Rückfrage die Suche als Rückfall-Verkettung, und die Zahlen beschrieben den
+Rückfall statt das Gesprächsgedächtnis — eine stille Degradierung, die als Regression gegen die
+Baseline gebucht würde.
+
+### 43. Die Einpfadigkeit steht am Datensatz, nicht am Fall (Einpfad-Regel)
+
+Die Zustandsfelder-Regel aus Abschnitt 5 von `docs/features/retrieval-benchmark.md` definiert
+„gelöst“ über **beide** Messpfade. Ein Mehrrunden-Fall kann konstruktionsbedingt nur auf dem
+Pipeline-Pfad laufen: Der Rohvektor-Pfad misst `similaritySearch` direkt und kennt weder
+Gesprächsverlauf noch Teilfragen-Zerlegung. Unter der unveränderten Regel bliebe jeder
+Mehrrunden-Fall dauerhaft `known_gap`, und ein Zustandswechsel wäre unerreichbar. Deshalb gilt die
+dort ergänzte Einpfad-Regel: **Eine Fallklasse, die konstruktionsbedingt nur auf einem Messpfad
+laufen kann, gilt als gelöst, wenn sie auf diesem Pfad gelöst ist.**
+
+**Vermerkt wird sie einmal je Bericht** (`singlePathNote`), nicht je Fall. Sie ist eine Eigenschaft
+der Messanordnung: Sie gilt für jeden Fall des Datensatzes gleichermaßen und ändert sich nie.
+
+`expected_state_exception` behält damit die Bedeutung, die es auf dem Einzelfragen-Pfad hat —
+optional, nur auf einem `known_gap`-Fall, und nur für eine tatsächliche Abweichung **dieses einen**
+Falls. Stünde es auf jedem Fall, reichte der Harness es als `acceptedDeviationReason` an
+`ExpectedStateAudit` weiter, und der erste Zweig der Auswertung griffe immer: `unexpectedlySolved`
+und `unexpectedlyUnsolved` wären strukturell leer, `matchesDeclaredStates()` immer wahr. Ein
+`known_gap`, den das Gesprächsgedächtnis löst, erschiene nie als Fund — genau der Nachweis, den die
+Zustandsfelder tragen sollen — und ein verlorener `solved`-Fall nie als Rückschritt.
+
+### 44. Die Wechselrunde eines `topic_switch`-Falls wird benannt, nicht abgeleitet
+
+Die Bleed-Zahl ist die Kennzahl, an der die Änderung des Suchfensters gemessen wird. Sie wird über
+**genau eine** Runde je Fall gebildet, und der Datensatz benennt sie (`topic_switch_turn`,
+1-basiert, geprüft gegen die Rundenspanne der Klasse).
+
+Eine Ableitung aus den Daten — „die erste Runde, deren erwartete Dokumente mit keiner früheren
+überschneiden“ — ist ausdrücklich verworfen: Sie träfe auch auf eine gewöhnliche Rückfrage zu,
+deren Antwort in einem anderen Dokument steht („Und bei Bedürftigkeit?“ nach „Was kostet ein
+Anwohnerparkausweis?“, das Beispiel der Spezifikation selbst), und zählte dann das **richtige**
+Vorthemen-Dokument als Bleed. Die Kuratierungsregel „mindestens sechs unterschiedliche Treffermengen
+je Klasse“ fördert dieses Muster zusätzlich. Das deckt sich mit
+`docs/features/conversation-memory.md`: Themenwechsel werden nicht erkannt — auch nicht im Harness.

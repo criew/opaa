@@ -40,7 +40,7 @@ final class ReferenceVariantSelfCheck {
    *     times.
    * @return the direct measurement, for the caller to log or report.
    */
-  static MehrfachlaufRule.Measurement assertMatchesDirectMeasurement(
+  static MehrfachlaufRule.Measurement<PipelineEvaluationReport> assertMatchesDirectMeasurement(
       VariantOutcome referenceOutcome,
       QueryProperties productionQueryProperties,
       Supplier<PipelineEvaluationReport> directMeasure) {
@@ -48,7 +48,7 @@ final class ReferenceVariantSelfCheck {
         VariantQueryProperties.apply(
                 productionQueryProperties, referenceOutcome.variant().queryOverrides())
             .queryDecompositionEnabled();
-    MehrfachlaufRule.Measurement direct =
+    MehrfachlaufRule.Measurement<PipelineEvaluationReport> direct =
         MehrfachlaufRule.measure(decompositionEnabled, directMeasure);
     PipelineEvaluationReport referenceReport = referenceOutcome.report();
     String instabilityHint = instabilityHint(referenceOutcome.multiRun(), direct.summary());
