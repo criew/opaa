@@ -12,6 +12,7 @@ import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The three production collaborators no test of this suite may reach for real: the embedding
@@ -51,6 +52,11 @@ class OpaaTestBeans {
   @Primary
   FakeDirectoryClient testDirectoryClient() {
     return new FakeDirectoryClient();
+  }
+
+  @Bean
+  OwnOrganizationFixtures ownOrganizationFixtures(JdbcTemplate jdbcTemplate) {
+    return new OwnOrganizationFixtures(jdbcTemplate);
   }
 
   @Bean

@@ -15,12 +15,11 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.group.GroupMembershipHistoryRepository;
-import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnOrganizationFixtures;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -50,41 +49,20 @@ class SpaceServiceIntegrationTest {
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
-  @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
-  @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private ChatRepository chatRepository;
   @Autowired private SpaceAssetAssociationRepository associationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
 
   private UUID organizationA;
   private UUID organizationB;
 
+  // Every row this class writes - users, spaces, memberships, libraries, grants, chats,
+  // associations and audit_log entries - belongs to one of the two throwaway organizations created
+  // here, so tearDown() removes exactly those two organizations and everything in them. No cleanup
+  // in this hook: a freshly created organization cannot hold rows of an earlier test method.
   @BeforeEach
-  void cleanUp() {
-    // Deliberately does not delete all organizations: Organization.DEFAULT_ID is seeded once by
-    // Liquibase and other tests sharing this Spring context (e.g.
-    // UserServicePersonalSpaceIntegrationTest) rely on that row existing (fk_users_organization).
-    // Each test creates its own throwaway organizations instead, scoped by random ids, and removes
-    // them again in tearDown() - see tearDown() below.
-    // #525: fk_chats_space is ON DELETE RESTRICT (chats survive their space being deleted, see
-    // migration 032), so a leftover chat from this class's own previous test would otherwise block
-    // spaceRepository.deleteAll() below.
-    chatRepository.deleteAll();
-    associationRepository.deleteAll();
-    membershipRepository.deleteAll();
-    spaceRepository.deleteAll();
-    // #201: fk_knowledge_libraries_owner_user references users too, not just fk_spaces_owner - a
-    // library left behind by any class of this shared context would block
-    // userRepository.deleteAll()
-    // below with a RESTRICT violation on a user this class never created. The blanket chain here is
-    // the remaining one of its kind; #1561 tracks narrowing it to this class's own rows.
-    libraryRepository.deleteAll();
-    // #238 code review, finding 2+4: the same leftover-history risk as the library cleanup above -
-    // asset_grant_history.subject_user_id/group_membership_history.user_id are ON DELETE RESTRICT
-    // (see 018-permission-history.yaml's "Deletion survival" comment).
-    grantHistoryRepository.deleteAll();
-    membershipHistoryRepository.deleteAll();
-    userRepository.deleteAll();
+  void createOrganizations() {
     organizationA =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org A")).getId();
     organizationB =
@@ -93,24 +71,7 @@ class SpaceServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    // Users created during the test still reference organizationA/organizationB
-    // (fk_users_organization) - delete them first, then remove only the two organizations this
-    // test created (by id), never Organization.DEFAULT_ID or organizations created by other tests
-    // sharing this context.
-    chatRepository.deleteAll();
-    associationRepository.deleteAll();
-    membershipRepository.deleteAll();
-    spaceRepository.deleteAll();
-    libraryRepository.deleteAll();
-    grantHistoryRepository.deleteAll();
-    membershipHistoryRepository.deleteAll();
-    userRepository.deleteAll();
-    // #392: SpaceService now also writes audit_log rows (fk_audit_log_organization is ON DELETE
-    // RESTRICT, migration 017) - purged via JdbcTemplate, same reasoning as
-    // AuditLogServiceIntegrationTest#tearDown.
-    jdbcTemplate.update(
-        "DELETE FROM audit_log WHERE organization_id IN (?, ?)", organizationA, organizationB);
-    organizationRepository.deleteAllById(List.of(organizationA, organizationB));
+    ownOrganizationFixtures.removeOrganizations(organizationA, organizationB);
   }
 
   private UUID createUser(UUID organizationId) {
@@ -152,6 +113,19 @@ class SpaceServiceIntegrationTest {
         .findFirst()
         .orElseThrow()
         .getRole();
+  }
+
+  /**
+   * The spaces of this class's two organizations - the whole suite shares one database, so a plain
+   * {@code findAll()} would also see every other class's spaces.
+   */
+  private List<Space> spacesOfOwnOrganizations() {
+    return spaceRepository.findAll().stream()
+        .filter(
+            space ->
+                organizationA.equals(space.getOrganizationId())
+                    || organizationB.equals(space.getOrganizationId()))
+        .toList();
   }
 
   private CurrentUser currentUserOf(UUID userId) {
@@ -671,7 +645,7 @@ class SpaceServiceIntegrationTest {
 
     assertThatThrownBy(() -> spaceService.createSpace(request, currentUserOf(admin, true)))
         .isInstanceOf(NotFoundException.class);
-    assertThat(spaceRepository.findAll()).isEmpty();
+    assertThat(spacesOfOwnOrganizations()).isEmpty();
   }
 
   @Test
@@ -689,7 +663,7 @@ class SpaceServiceIntegrationTest {
 
     assertThatThrownBy(() -> spaceService.createSpace(request, currentUserOf(admin, true)))
         .isInstanceOf(NotFoundException.class);
-    assertThat(spaceRepository.findAll()).isEmpty();
+    assertThat(spacesOfOwnOrganizations()).isEmpty();
   }
 
   @Test
