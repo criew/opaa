@@ -1,5 +1,6 @@
 package io.opaa.auth;
 
+import io.opaa.auth.local.LocalAuthProperties;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -178,6 +179,55 @@ class UserServiceTest {
     assertThat(fromPartner.user()).isSameAs(atPartner);
     assertThat(fromPartner.provider()).isSameAs(partner);
     assertThat(fromPartner.tokenGroups()).containsExactly("Fachbereich 3");
+  }
+
+  /**
+   * ADR-0033, Entscheidung 8: the local issuer is a finder, never a provisioner - a structurally
+   * valid token with an unknown subject creates no account, and the stored address and display
+   * name are never overwritten from the token (the database is the source, not the claim).
+   */
+  @Test
+  void provisionFromTokenNeverCreatesAnAccountForTheLocalIssuer() {
+    when(userRepository.findBySubjectAndIssuer(any(), eq(LocalAuthProperties.ISSUER)))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> userService.provisionFromToken(localToken(UUID.randomUUID())))
+        .isInstanceOf(UserNotFoundException.class);
+
+    verify(userRepository, never()).saveAndFlush(any());
+    verify(userRepository, never()).save(any());
+    assertThat(publishedEvents).isEmpty();
+  }
+
+  @Test
+  void provisionFromTokenFindsALocalAccountWithoutWritingTheClaimsBack() {
+    UUID id = UUID.randomUUID();
+    User stored =
+        new User(id.toString(), LocalAuthProperties.ISSUER, "gespeichert@stadt.example", "Amt");
+    stored.setLastLoginAt(clock.instant());
+    when(userRepository.findBySubjectAndIssuer(id.toString(), LocalAuthProperties.ISSUER))
+        .thenReturn(Optional.of(stored));
+
+    User result = userService.provisionFromToken(localToken(id));
+
+    assertThat(result).isSameAs(stored);
+    assertThat(result.getEmail()).isEqualTo("gespeichert@stadt.example");
+    assertThat(result.getDisplayName()).isEqualTo("Amt");
+    verify(userRepository, never()).save(any());
+    assertThat(onlyEvent().user()).isSameAs(stored);
+    assertThat(onlyEvent().createdHere()).isFalse();
+  }
+
+  private static Jwt localToken(UUID subject) {
+    return Jwt.withTokenValue("t")
+        .header("alg", "HS256")
+        .claim("sub", subject.toString())
+        .claim("iss", LocalAuthProperties.ISSUER)
+        .claim("email", "aus-dem-token@stadt.example")
+        .claim("name", "Aus dem Token")
+        .issuedAt(Instant.now())
+        .expiresAt(Instant.now().plusSeconds(60))
+        .build();
   }
 
   @Test

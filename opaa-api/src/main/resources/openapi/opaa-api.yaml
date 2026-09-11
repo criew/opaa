@@ -117,6 +117,112 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /api/v1/auth/local/login:
+    post:
+      operationId: localLogin
+      tags: [auth]
+      security: []
+      summary: >
+        Sign in with a local account (ADR-0033, Entscheidungen 6, 7 and 9): e-mail address and
+        password. On success the body carries a short-lived HS256 access token and the response sets
+        the HttpOnly refresh cookie "opaa_refresh" (Path /api/v1/auth/local, SameSite=Strict,
+        Secure). Every failure - unknown address, wrong password, locked, expired or not yet
+        activated account, local accounts switched off for a non-administrator - is the same 401
+        with the same body and the same response-time class; nothing tells the cases apart. Only
+        exists in the "oidc" profile.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalLoginRequest"
+      responses:
+        "200":
+          description: Signed in; the refresh cookie is set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalTokenResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/auth/local/refresh:
+    post:
+      operationId: localRefresh
+      tags: [auth]
+      security: []
+      summary: >
+        Rotate the refresh cookie and mint a new access token (ADR-0033, Entscheidung 7). Reads the
+        "opaa_refresh" cookie and requires the CSRF double-submit token (cookie XSRF-TOKEN echoed
+        as header X-XSRF-TOKEN). Presenting an active token revokes it and sets its successor of the
+        same family; presenting an already rotated token is a replay that revokes the whole family
+        and every session of the account. Unknown, expired and replayed tokens are answered alike:
+        401 and the cookie cleared.
+      responses:
+        "200":
+          description: Rotated; the successor cookie is set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalTokenResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/auth/local/logout:
+    post:
+      operationId: localLogout
+      tags: [auth]
+      security: []
+      summary: >
+        End the local session (ADR-0033, Entscheidung 7): revokes the refresh family behind the
+        "opaa_refresh" cookie, denylists the presented access token's jti immediately when a Bearer
+        token accompanies the call, and clears the cookie. Requires the CSRF double-submit token.
+        Always 204 - a missing or unknown cookie is not an error. The person's own sign-out is no
+        audit event (Entscheidung 13).
+      responses:
+        "204":
+          description: Signed out; the cookie is cleared
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/auth/local/change-password:
+    post:
+      operationId: localChangePassword
+      tags: [auth]
+      summary: >
+        Change the caller's own password (ADR-0033, Entscheidungen 8, 9 and 11) - the one call a
+        session with passwordChangeRequired may make. Verifies the current password (400 with
+        fieldErrors[currentPassword] = WRONG_PASSWORD otherwise), applies the password policy (400
+        with fieldErrors[newPassword] naming every violated rule: TOO_SHORT, TOO_LONG,
+        EQUALS_EMAIL, TOO_COMMON), stores the new hash, clears the forced change, invalidates every
+        access token issued before now, revokes every refresh family except the one behind the
+        "opaa_refresh" cookie of this call, and answers like a login with a fresh access token
+        without the pcr flag. Audited as LOCAL_PASSWORD_CHANGED. 409 for an account of an identity
+        provider.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalChangePasswordRequest"
+      responses:
+        "200":
+          description: Password changed; a fresh access token without the pcr flag
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalTokenResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
   /api/v1/me/groups:
     get:
       operationId: listMyGroups
@@ -4413,7 +4519,7 @@ components:
 
     AuthConfigResponse:
       type: object
-      required: [mode, providers]
+      required: [mode, providers, localAccounts]
       properties:
         mode:
           type: string
@@ -4424,9 +4530,104 @@ components:
           description: >
             The enabled identity providers a sign-in can start at right now, in sign-in page order
             (ADR-0025). Only what the sign-in page shows anyway - no claim mapping, nothing about
-            accounts. Empty in the dev mode.
+            accounts. Empty in the dev mode. The LOCAL provider row is never listed here - it is
+            localAccounts (ADR-0033, Entscheidung 4).
           items:
             $ref: "#/components/schemas/OidcSignInProvider"
+        localAccounts:
+          $ref: "#/components/schemas/LocalAccountsConfig"
+
+    LocalAccountsConfig:
+      type: object
+      description: >
+        What the sign-in page needs to know about local accounts (ADR-0033, Entscheidung 4): the
+        state of the management switch (the enabled flag of the LOCAL provider row; false while no
+        such row exists) and the self-service flows it offers. selfRegistrationEnabled and
+        passwordResetEnabled are true only while the management is enabled, the respective setting
+        is on, self-registration has a non-empty domain list, and the public base URL of the
+        installation is configured (Entscheidung 10) - a flow that would hand out a link nobody
+        can see is reported as unavailable.
+      required: [enabled, selfRegistrationEnabled, passwordResetEnabled, passwordMinLength]
+      properties:
+        enabled:
+          type: boolean
+          description: >
+            Whether regular local accounts may sign in. Local SYSTEM_ADMIN accounts may sign in
+            regardless (the system administrators' sign-in page).
+        selfRegistrationEnabled:
+          type: boolean
+        passwordResetEnabled:
+          type: boolean
+        passwordMinLength:
+          type: integer
+          description: The minimum password length of the password policy, shown before sign-up.
+          example: 12
+
+    LocalLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          minLength: 1
+          maxLength: 320
+          description: The sign-in identifier; compared case-insensitively (ADR-0033, Entscheidung 1).
+          example: erika.muster@stadt.example
+        password:
+          type: string
+          minLength: 1
+          maxLength: 1024
+
+    LocalTokenResponse:
+      type: object
+      description: >
+        A minted local session (ADR-0033, Entscheidung 6). The refresh token is never in the body;
+        it travels only as the HttpOnly cookie the same response sets.
+      required: [accessToken, expiresInSeconds, passwordChangeRequired]
+      properties:
+        accessToken:
+          type: string
+          description: HS256 JWT with iss urn:opaa:local, sub = the account id, jti, iat, exp, email, name, pcr.
+        expiresInSeconds:
+          type: integer
+          format: int64
+          description: Lifetime of accessToken from now (opaa.auth.local.access-token-ttl, 15 minutes by default).
+          example: 900
+        passwordChangeRequired:
+          type: boolean
+          description: >
+            True when the account must change its password before anything but
+            /api/v1/auth/local/* is reachable - every other call answers 403 with code
+            PASSWORD_CHANGE_REQUIRED and the same reason (ADR-0033, Entscheidung 8).
+        passwordChangeReason:
+          $ref: "#/components/schemas/PasswordChangeReason"
+
+    PasswordChangeReason:
+      type: string
+      description: >
+        Mirrors io.opaa.api.types.PasswordChangeReason (ADR-0033, Entscheidung 3): why a password
+        change is forced - INITIAL for the first sign-in with a generated password, ADMIN_RESET
+        after an administrator reset it, SECURITY when the operator asked for a new one.
+      enum: [INITIAL, ADMIN_RESET, SECURITY]
+      example: INITIAL
+
+    LocalChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          maxLength: 1024
+        newPassword:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          description: >
+            Checked against the password policy (ADR-0033, Entscheidung 9): at least
+            local_auth_settings.password_min_length characters, at most 64 characters and 72 bytes,
+            not equal to the account's e-mail address, not on the shipped list of the most common
+            passwords (compared in lower case). No complexity rules.
 
     OidcSignInProvider:
       type: object
@@ -5136,11 +5337,48 @@ components:
       properties:
         error:
           type: string
+          description: The user-facing message, in German.
         status:
           type: integer
         timestamp:
           type: string
           format: date-time
+        code:
+          type: string
+          description: >
+            Optional stable, machine-readable code for the cases a client has to act on rather
+            than display - e.g. PASSWORD_CHANGE_REQUIRED (ADR-0033, Entscheidung 8). Absent for
+            errors that only carry a message.
+          example: PASSWORD_CHANGE_REQUIRED
+        reason:
+          type: string
+          description: >
+            Optional qualifier of code - for PASSWORD_CHANGE_REQUIRED the PasswordChangeReason
+            (INITIAL, ADMIN_RESET, SECURITY) the client shows as a plain sentence.
+          example: INITIAL
+        fieldErrors:
+          type: array
+          description: >
+            Optional per-field violations of a request - one entry per field and rule, each with
+            a stable code the client can map to its own text (the password policy of ADR-0033
+            reports TOO_SHORT, TOO_LONG, EQUALS_EMAIL, TOO_COMMON on newPassword this way).
+          items:
+            $ref: "#/components/schemas/FieldError"
+
+    FieldError:
+      type: object
+      required: [field, code, message]
+      properties:
+        field:
+          type: string
+          description: The request field the violation concerns, e.g. newPassword.
+        code:
+          type: string
+          description: A stable, machine-readable code of the violated rule.
+          example: TOO_SHORT
+        message:
+          type: string
+          description: The user-facing message, in German.
 
     SpaceRole:
       type: string
@@ -9390,6 +9628,8 @@ components:
           DIAGNOSTIC_CONTEXT_RETENTION_CHANGED,
           LIBRARY_DIAGNOSTICS_LOCK_CHANGED,
           AUDIT_LOG_ACCESSED,
+          LOCAL_SESSION_REVOKED,
+          LOCAL_PASSWORD_CHANGED,
         ]
       example: ASSET_GRANT_REVOKED
 

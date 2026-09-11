@@ -1,5 +1,6 @@
 package io.opaa.auth.local;
 
+import io.opaa.api.types.PasswordChangeReason;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

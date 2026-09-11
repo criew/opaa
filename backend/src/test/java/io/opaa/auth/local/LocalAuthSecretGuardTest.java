@@ -1,5 +1,10 @@
 package io.opaa.auth.local;
 
+import org.slf4j.LoggerFactory;
+import ch.qos.logback.core.read.ListAppender;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.Level;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.security.LocalAuthKeyService;
@@ -98,6 +103,42 @@ class LocalAuthSecretGuardTest {
                     .getFailure()
                     .rootCause()
                     .hasMessageContaining("OPAA_AUTH_LOCAL_REFRESH_TOKEN_TTL"));
+  }
+
+  /**
+   * ADR-0033, Entscheidung 7: {@code cookie-secure = false} is allowed for local HTTP but never
+   * silent in the {@code oidc} profile - every start says so at WARN, naming the variable.
+   */
+  @Test
+  void oidcProfileWarnsOnEveryStartWhenTheRefreshCookieIsNotSecure() {
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    Logger logger = (Logger) LoggerFactory.getLogger(LocalAuthSecretGuard.class);
+    logger.addAppender(appender);
+    try {
+      contextRunner
+          .withPropertyValues(
+              "spring.profiles.active=oidc",
+              "opaa.auth.local.jwt-secret=" + STRONG_SECRET,
+              "opaa.auth.local.cookie-secure=false")
+          .run(context -> assertThat(context).hasNotFailed());
+      contextRunner
+          .withPropertyValues(
+              "spring.profiles.active=oidc", "opaa.auth.local.jwt-secret=" + STRONG_SECRET)
+          .run(context -> assertThat(context).hasNotFailed());
+    } finally {
+      logger.detachAppender(appender);
+    }
+
+    assertThat(appender.list)
+        .filteredOn(event -> event.getLevel() == Level.WARN)
+        .extracting(ILoggingEvent::getFormattedMessage)
+        .hasSize(1)
+        .allSatisfy(
+            message ->
+                assertThat(message)
+                    .contains("OPAA_AUTH_LOCAL_COOKIE_SECURE")
+                    .contains("opaa_refresh"));
   }
 
   @Test

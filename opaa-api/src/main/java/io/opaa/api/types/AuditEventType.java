@@ -199,5 +199,16 @@ public enum AuditEventType {
 
   // Zugriff auf die Protokolldaten selbst
   /** Any read, evaluation or export of audit data, including rejected attempts (see outcome). */
-  AUDIT_LOG_ACCESSED
+  AUDIT_LOG_ACCESSED,
+
+  // Lokale Konten (ADR-0033, Entscheidung 13)
+  /**
+   * A local account's sessions were revoked by something other than the person's own sign-out -
+   * here the reuse of a rotated refresh token; later a lock, a reset or a handover. Written under
+   * the {@code local-auth} system actor with the reason in {@code after}; the person's own logout
+   * and the routine expiry of a session are deliberately no event.
+   */
+  LOCAL_SESSION_REVOKED,
+  /** A local account's password was changed by the person, with the current password verified. */
+  LOCAL_PASSWORD_CHANGED
 }

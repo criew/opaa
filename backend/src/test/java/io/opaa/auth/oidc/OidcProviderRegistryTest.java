@@ -1,5 +1,6 @@
 package io.opaa.auth.oidc;
 
+import io.opaa.auth.local.LocalAuthProperties;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -102,6 +103,33 @@ class OidcProviderRegistryTest {
     assertThat(registry.enabledProviders()).containsExactly(enabledA, enabledB);
     assertThat(registry.healthOf(enabledA.getId()).ready()).isTrue();
     assertUnknownIssuer(registry.resolve("https://idp.example/realms/unknown"));
+  }
+
+  /**
+   * ADR-0033, Entscheidung 4: the LOCAL row is not an OIDC provider - no discovery, no decoder from
+   * the factory - but its {@code enabled} flag is the management switch, which the registry carries
+   * from the same committed rows so the token validator and the login need no query for it.
+   */
+  @Test
+  void theLocalRowGetsNoDecoderButItsEnabledFlagIsTheManagementSwitch() {
+    OidcProvider local = OidcProvider.localProvider("Lokale Konten");
+    local.enable();
+    when(repository.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc())
+        .thenReturn(List.of(enabledA, local));
+
+    registry.refresh();
+
+    assertThat(registry.localAccountsEnabled()).isTrue();
+    assertThat(registry.enabledProviders()).containsExactly(enabledA);
+    assertThat(registry.findEnabledByIssuer(LocalAuthProperties.ISSUER)).isEmpty();
+    verify(decoderFactory, never()).create(local);
+    assertUnknownIssuer(registry.resolve(LocalAuthProperties.ISSUER));
+
+    when(repository.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc())
+        .thenReturn(List.of(enabledA));
+    registry.onProvidersChanged(new OidcProvidersChangedEvent());
+
+    assertThat(registry.localAccountsEnabled()).isFalse();
   }
 
   @Test
