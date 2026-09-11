@@ -122,8 +122,8 @@ public enum AuditEventType {
    */
   INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED,
   /**
-   * Explicitly named orphaned originals - stored originals no document row of the library points
-   * to - were removed from the upload storage (ADR-0030, "Konsequenzen"). Recorded per triggering
+   * Explicitly named orphaned originals - stored originals no document row of the library points to
+   * - were removed from the upload storage (ADR-0030, "Konsequenzen"). Recorded per triggering
    * call, not per original, mirroring {@link #INDEXING_PIPELINE_REINDEX_TRIGGERED}; the payload
    * names every locator that went. The report step that precedes it changes nothing and is not
    * recorded.

@@ -12,10 +12,10 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
-import java.util.UUID;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -257,8 +257,7 @@ class FilesystemUploadedOriginalStoreTest {
         .allSatisfy(
             original -> {
               assertThat(original.size()).isEqualTo(4);
-              assertThat(original.lastModified())
-                  .isAfter(java.time.Instant.now().minusSeconds(60));
+              assertThat(original.lastModified()).isAfter(java.time.Instant.now().minusSeconds(60));
             });
   }
 

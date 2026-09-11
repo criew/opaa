@@ -1199,6 +1199,12 @@ class LibraryDocumentServiceTest {
           public boolean belongsToLibrary(UploadedOriginalRef ref) {
             return true;
           }
+
+          @Override
+          public void forEachStoredOriginal(
+              UUID libraryId, java.util.function.Consumer<StoredOriginal> visitor) {
+            throw new UnsupportedOperationException();
+          }
         };
     LibraryDocumentService streamingService =
         serviceWith(new AttachmentExtractionProperties(4, java.time.Duration.ofSeconds(10)));

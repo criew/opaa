@@ -780,6 +780,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_UPLOAD_THREAD_POOL_MAX_SIZE` | `4` | `4` | Maximale Threads für die asynchrone Verarbeitung hochgeladener Dokumente |
 | `OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY` | `20` | `20` | Task-Queue-Kapazität für den Upload-Pool — bei voller Queue wird der Upload sofort mit Status `FAILED` beantwortet, statt die Aufgabe still zu verwerfen |
 | `OPAA_UPLOAD_PENDING_RECOVERY_THRESHOLD_MINUTES` | `30` | `30` | Minuten, nach denen ein noch `PENDING` hängender Upload beim nächsten Anwendungsstart als durch einen Neustart abgebrochen auf `FAILED` gesetzt wird |
+| `OPAA_UPLOAD_ORPHAN_GRACE_MINUTES` | `60` | `60` | Schonfrist des Aufräumlaufs für verwaiste Originale: Minuten, die ein abgelegtes Original alt sein muss, bevor der Lauf es überhaupt melden oder entfernen darf — ein Upload, dessen Zeile gerade entsteht oder dessen Verarbeitung noch läuft, ist kein verwaistes Original. Ein Melde-Aufruf darf die Frist je Aufruf anheben, nie unterschreiten. Siehe [„Verwaiste Originale aufräumen"](#verwaiste-originale-aufräumen) |
 | **Bibliothek** | | | |
 | `OPAA_LIBRARY_QUOTA_BYTES` | `10737418240` (10 GiB, Byte) | `10737418240` | Speicherkontingent je Wissensbibliothek — Summe der `file_size`-Spalte aller Dokumente einer Bibliothek, durchgesetzt am Upload-Endpunkt (413) **und** an allen vier Konnektorpfaden (FILESYSTEM/HTTP_DIRECTORY/RSS_FEED/CONFLUENCE, dort als übersprungenes Dokument mit `REJECTED`-Ereignis im Laufprotokoll). Zählt den *Bibliotheksinhalt* (die Größe der Quelldateien), nicht den von OPAA tatsächlich belegten Plattenplatz — bei HTTP_DIRECTORY/RSS_FEED liegen die Dateien nur temporär auf der Platte, OPAA behält dauerhaft nur die Chunks im Vektorspeicher; ein Betreiber sieht deshalb ggf. „10 GiB belegt", obwohl der eigene Plattenverbrauch deutlich kleiner ist. **`0` oder ein negativer Wert deaktiviert das Kontingent vollständig** (kein Rückfall auf den Default) — wichtig für Bestandsinstallationen mit Bibliotheken über 10 GiB: das Kontingent wirkt rückwirkend auf bereits gewachsene Bibliotheken, ein Update auf diese Version würde dort sonst jeden weiteren Upload und jedes weitere Konnektordokument ablehnen, bis die Bibliothek unter das Kontingent geschrumpft ist. |
 | **pgvector** | | | |
@@ -1257,6 +1258,54 @@ Warum keine Vereinheitlichung:
 ## Dokumente
 
 Dokumente im `./documents`-Verzeichnis ablegen (oder `OPAA_INDEXING_DOCUMENT_PATH_HOST` in `.env.docker` ändern). Das Verzeichnis wird in den Backend-Container unter `/app/documents` gemountet.
+
+## Verwaiste Originale aufräumen
+
+Ein verwaistes Original ist eine abgelegte Datei beziehungsweise ein abgelegtes Objekt, auf das keine
+Zeile mehr zeigt: ein fehlgeschlagenes Löschen, ein zwischen Ablegen und Eintragen abgebrochener
+Upload, ein zurückgespielter Datenbankstand. Auf der Platte fällt so etwas beim Hineinschauen auf, in
+einem Bucket sieht niemand nach. Zwei Endpunkte räumen das auf, `SYSTEM_ADMIN` und je Bibliothek —
+melden und löschen sind bewusst getrennt, damit ein Fehler in der Zuordnung nicht unumkehrbar wird.
+
+Erster Schritt: melden, ohne etwas anzufassen.
+
+```bash
+curl -X POST http://localhost:8081/api/v1/admin/upload-store/orphan-originals/report \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"libraryId": "<Bibliotheks-ID>"}'
+```
+
+Die Antwort nennt zu jedem gefundenen Original seinen `locator` (genau den Wert, den `file_path`
+einer Zeile trüge), Änderungszeit und Größe, dazu `orphanCount` (alle Funde), `scannedCount` (alle
+angesehenen Originale) und `withinGracePeriodCount` (zu junge, die der Lauf nicht anfasst). Optional
+hebt `minimumAgeMinutes` die Schonfrist für diesen Aufruf an — unterschreiten lässt sie sich nicht.
+
+Zweiter Schritt: die geprüften Locator löschen, und nur diese.
+
+```bash
+curl -X POST http://localhost:8081/api/v1/admin/upload-store/orphan-originals/delete \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"libraryId": "<Bibliotheks-ID>", "locators": ["<locator aus dem Bericht>"]}'
+```
+
+Jeder genannte Locator wird unmittelbar davor erneut geprüft; wo inzwischen eine Zeile darauf zeigt,
+wo die Schonfrist noch läuft oder wo die Ablage nichts mehr hält, steht der Locator mit seinem Grund
+unter `skipped` statt unter `deleted`. Jeder Löschaufruf hinterlässt genau einen Eintrag im
+Prüfprotokoll, auch ein abgelehnter; der Melde-Aufruf hinterlässt keinen.
+
+Drei Dinge sind im Betrieb wichtig:
+
+- **Schonfrist.** Ein Original, das jünger ist als `OPAA_UPLOAD_ORPHAN_GRACE_MINUTES`, wird weder
+  gemeldet noch gelöscht — ein Upload, dessen Zeile gerade entsteht, ist kein verwaistes Original.
+- **`truncated: true` heißt: zweiter Durchgang nötig.** Ein Bericht listet nur einen Ausschnitt der
+  Funde, zählt in `orphanCount` aber alle. Nach dem Löschen des gelisteten Ausschnitts denselben
+  Bericht erneut abrufen, bis `truncated` auf `false` steht.
+- **Nach einer Umstellung der Ablage meldet der erste Bericht alles.** Wer von einem Verzeichnis auf
+  einen Objektspeicher (oder zurück) umgestellt hat, ohne die `file_path`-Werte der Zeilen
+  mitzuziehen, bekommt den gesamten Bestand als verwaist gemeldet. Das ist das Signal, die Umstellung
+  zu prüfen — nicht, zu löschen.
 
 ## Datenbank
 

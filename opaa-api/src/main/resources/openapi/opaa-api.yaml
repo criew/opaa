@@ -1098,6 +1098,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/v1/admin/upload-store/orphan-originals/delete:
     post:
@@ -1133,6 +1135,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/v1/admin/search/status:
     get:
@@ -9346,6 +9350,7 @@ components:
           INDEXING_PIPELINE_REINDEX_TRIGGERED,
           INDEXING_METADATA_BACKFILL_TRIGGERED,
           INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED,
+          UPLOAD_ORPHAN_ORIGINALS_DELETED,
           DOCUMENT_METADATA_CHANGED,
           BRANDING_SETTINGS_CHANGED,
           OIDC_PROVIDER_CREATED,

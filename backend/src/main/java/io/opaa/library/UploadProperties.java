@@ -35,8 +35,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     OrphanedOriginalCleanupService} may report or remove it as orphaned (ADR-0030,
  *     "Konsequenzen"): the window between storing the bytes and inserting the row, and the whole
  *     asynchronous processing of an upload, must lie inside it. Default 60 minutes - twice {@link
- *     #pendingRecoveryThresholdMinutes}, so an upload still legitimately in flight is never mistaken
- *     for an orphan. A report may raise it per call, never lower it.
+ *     #pendingRecoveryThresholdMinutes}, so an upload still legitimately in flight is never
+ *     mistaken for an orphan. A report may raise it per call, never lower it.
  */
 @ConfigurationProperties(prefix = "opaa.upload")
 public record UploadProperties(

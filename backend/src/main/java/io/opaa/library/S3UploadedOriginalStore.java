@@ -33,7 +33,10 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Object;
 
 /**
  * Uploaded originals in an S3-compatible object store (ADR-0030, {@code opaa.upload.store=s3}): one
@@ -241,7 +244,56 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
 
   @Override
   public void forEachStoredOriginal(UUID libraryId, Consumer<StoredOriginal> visitor) {
-    throw new UnsupportedOperationException("not built yet");
+    String prefix = keyPrefix + libraryId + "/";
+    String continuationToken = null;
+    do {
+      ListObjectsV2Response page = listPage(prefix, continuationToken);
+      for (S3Object object : page.contents()) {
+        String locator = locator(object.key());
+        // The same containment check resolving goes through, so what is listed can also be
+        // deleted: a folder marker under the prefix names no original.
+        if (managedKey(new UploadedOriginalRef(libraryId, locator)) == null) {
+          continue;
+        }
+        visitor.accept(
+            new StoredOriginal(
+                locator, object.lastModified(), object.size() == null ? 0 : object.size()));
+      }
+      continuationToken =
+          Boolean.TRUE.equals(page.isTruncated()) ? page.nextContinuationToken() : null;
+    } while (continuationToken != null);
+  }
+
+  /**
+   * One {@code ListObjectsV2} page under {@code prefix}. A page that claims more without naming a
+   * continuation token is a failure, not the last page: reported short, every unlisted original
+   * would look like it is not there at all.
+   */
+  private ListObjectsV2Response listPage(String prefix, String continuationToken) {
+    try {
+      ListObjectsV2Response page =
+          translator.call(
+              S3Operation.LIST_OBJECTS,
+              bucket,
+              null,
+              () ->
+                  s3.listObjectsV2(
+                      ListObjectsV2Request.builder()
+                          .bucket(bucket)
+                          .prefix(prefix)
+                          .maxKeys(listPageSize)
+                          .continuationToken(continuationToken)
+                          .build()));
+      String next = page.nextContinuationToken();
+      if (Boolean.TRUE.equals(page.isTruncated()) && (next == null || next.isBlank())) {
+        throw new S3AccessException.ListingIncomplete(bucket);
+      }
+      return page;
+    } catch (S3AccessException e) {
+      throw unavailable("list", prefix, e);
+    } catch (InterruptedException e) {
+      throw interrupted();
+    }
   }
 
   /**

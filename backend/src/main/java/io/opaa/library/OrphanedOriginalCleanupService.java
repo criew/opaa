@@ -98,8 +98,7 @@ public class OrphanedOriginalCleanupService {
           counts[1]++;
           if (listed.size() < MAX_LISTED) {
             listed.add(
-                new OrphanedOriginal(
-                    original.locator(), original.lastModified(), original.size()));
+                new OrphanedOriginal(original.locator(), original.lastModified(), original.size()));
           }
         });
     OrphanedOriginalReport report =
@@ -156,10 +155,12 @@ public class OrphanedOriginalCleanupService {
     List<OrphanedOriginalDeletion.Skipped> skipped = new ArrayList<>();
     for (String locator : requested) {
       UploadedOriginalStore.StoredOriginal original = inStore.get(locator);
-      if (original == null) {
-        skipped.add(skip(locator, OrphanedOriginalSkipReason.NOT_IN_STORE));
-      } else if (known.contains(locator)) {
+      // Referenced first, whether or not the store still holds it: that a row points to this
+      // locator is the one fact the caller has to see - a stale report, or the wrong list pasted.
+      if (known.contains(locator)) {
         skipped.add(skip(locator, OrphanedOriginalSkipReason.REFERENCED));
+      } else if (original == null) {
+        skipped.add(skip(locator, OrphanedOriginalSkipReason.NOT_IN_STORE));
       } else if (original.lastModified().isAfter(threshold)) {
         skipped.add(skip(locator, OrphanedOriginalSkipReason.WITHIN_GRACE_PERIOD));
       } else {

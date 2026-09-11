@@ -86,7 +86,7 @@ public final class StubS3Server implements AutoCloseable {
   }
 
   /** Truncated listings claim {@code IsTruncated=true} but carry no continuation token. */
-  void omitContinuationToken() {
+  public void omitContinuationToken() {
     omitContinuationToken = true;
   }
 

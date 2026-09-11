@@ -8,7 +8,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.document.AttachmentFilePath;
 import io.opaa.indexing.document.DocumentRepository;
@@ -32,9 +31,9 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The two steps of the orphan cleanup over the filesystem adapter (ADR-0030, "Konsequenzen"):
- * reporting names what no row points to and is old enough, changes nothing, and is capped;
- * deleting removes only what it is handed and re-checks each locator. Row lookups are mocked -
- * the rule under test is "orphaned is what no row points to", whatever the row.
+ * reporting names what no row points to and is old enough, changes nothing, and is capped; deleting
+ * removes only what it is handed and re-checks each locator. Row lookups are mocked - the rule
+ * under test is "orphaned is what no row points to", whatever the row.
  */
 class OrphanedOriginalCleanupServiceTest {
 
@@ -45,7 +44,8 @@ class OrphanedOriginalCleanupServiceTest {
   private final UUID organizationId = UUID.randomUUID();
   private final UUID libraryId = UUID.randomUUID();
   private final Instant now = Instant.parse("2026-09-11T12:00:00Z");
-  private final KnowledgeLibraryRepository libraryRepository = mock(KnowledgeLibraryRepository.class);
+  private final KnowledgeLibraryRepository libraryRepository =
+      mock(KnowledgeLibraryRepository.class);
   private final DocumentRepository documentRepository = mock(DocumentRepository.class);
   private final List<String> rows = new ArrayList<>();
   private FilesystemUploadedOriginalStore store;
@@ -94,7 +94,8 @@ class OrphanedOriginalCleanupServiceTest {
   @Test
   void anOriginalInsideTheGracePeriodIsNeverReported() throws IOException {
     String fresh = stored("gerade hochgeladen", now.minus(Duration.ofMinutes(GRACE_MINUTES - 1)));
-    String atTheEdge = stored("genau an der Schwelle", now.minus(Duration.ofMinutes(GRACE_MINUTES)));
+    String atTheEdge =
+        stored("genau an der Schwelle", now.minus(Duration.ofMinutes(GRACE_MINUTES)));
 
     OrphanedOriginalReport report = service.report(organizationId, libraryId, null);
 
@@ -163,7 +164,8 @@ class OrphanedOriginalCleanupServiceTest {
   @Test
   void deletingRemovesOnlyTheNamedLocatorsAndRechecksEachOfThem() throws IOException {
     String orphan = stored("verwaist", now.minus(Duration.ofHours(2)));
-    String unnamedOrphan = stored("auch verwaist, aber nicht genannt", now.minus(Duration.ofHours(2)));
+    String unnamedOrphan =
+        stored("auch verwaist, aber nicht genannt", now.minus(Duration.ofHours(2)));
     String referencedSince = stored("inzwischen eine Zeile", now.minus(Duration.ofHours(2)));
     rows.add(referencedSince);
     String fresh = stored("zu jung", now.minus(Duration.ofMinutes(5)));
@@ -185,8 +187,7 @@ class OrphanedOriginalCleanupServiceTest {
             new OrphanedOriginalDeletion.Skipped(
                 fresh, OrphanedOriginalSkipReason.WITHIN_GRACE_PERIOD),
             new OrphanedOriginalDeletion.Skipped(gone, OrphanedOriginalSkipReason.NOT_IN_STORE),
-            new OrphanedOriginalDeletion.Skipped(
-                foreign, OrphanedOriginalSkipReason.NOT_IN_STORE));
+            new OrphanedOriginalDeletion.Skipped(foreign, OrphanedOriginalSkipReason.NOT_IN_STORE));
     assertThat(Path.of(orphan)).doesNotExist();
     assertThat(Path.of(unnamedOrphan)).as("what was not named is not touched").exists();
     assertThat(Path.of(referencedSince)).exists();
@@ -220,16 +221,27 @@ class OrphanedOriginalCleanupServiceTest {
     assertThat(deletion.deleted()).isEmpty();
     assertThat(deletion.skipped())
         .containsExactly(
-            new OrphanedOriginalDeletion.Skipped(
-                orphan, OrphanedOriginalSkipReason.DELETE_FAILED));
+            new OrphanedOriginalDeletion.Skipped(orphan, OrphanedOriginalSkipReason.DELETE_FAILED));
     assertThat(Path.of(orphan)).exists();
   }
 
   @Test
-  void aRowOfAnyStatusOrSourceTypeIsAFilePathTheQueryCarries() {
-    // Pins the contract this service relies on: the repository query is over every row of the
-    // library, not over UPLOAD rows or top-level rows alone (see DocumentRepository).
-    assertThat(DocumentSourceType.UPLOAD).isNotNull();
+  void aLocatorARowPointsToIsReportedAsReferencedEvenWhenTheStoreNoLongerHoldsIt() {
+    // Pins the order of the re-checks: "a row points to this" outranks "the store does not hold
+    // it". The caller who pasted a stale list must see that a row owns the locator, not the
+    // harmless "nothing to do here".
+    String referencedButGone =
+        storageDir.resolve(libraryId.toString()).resolve("zeile-ohne-objekt.pdf").toString();
+    rows.add(referencedButGone);
+
+    OrphanedOriginalDeletion deletion =
+        service.delete(organizationId, libraryId, List.of(referencedButGone));
+
+    assertThat(deletion.deleted()).isEmpty();
+    assertThat(deletion.skipped())
+        .containsExactly(
+            new OrphanedOriginalDeletion.Skipped(
+                referencedButGone, OrphanedOriginalSkipReason.REFERENCED));
   }
 
   /** A stored original of {@code libraryId} whose file dates from {@code lastModified}. */

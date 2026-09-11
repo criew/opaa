@@ -302,6 +302,10 @@ opaa:
     # dead process and set to FAILED at the next application startup - see
     # UploadPendingRecoveryRunner.
     pending-recovery-threshold-minutes: ${OPAA_UPLOAD_PENDING_RECOVERY_THRESHOLD_MINUTES:30}
+    # #1478: how old a stored original must be before the orphan cleanup may report or remove it -
+    # the window between writing the bytes and inserting the row, and the whole asynchronous
+    # processing of an upload, must lie inside it. A report may raise it per call, never lower it.
+    orphan-grace-minutes: ${OPAA_UPLOAD_ORPHAN_GRACE_MINUTES:60}
   library:
     # #119/#1273: maximum total size (bytes), summed across every document a library holds, that
     # library may occupy - enforced at every path that stores document content (upload, and the

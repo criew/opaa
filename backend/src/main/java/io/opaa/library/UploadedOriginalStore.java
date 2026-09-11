@@ -63,12 +63,12 @@ public interface UploadedOriginalStore {
 
   /**
    * Hands every original this store holds in {@code libraryId}'s own storage area to {@code
-   * visitor}, one at a time, in the store's own order and without ever holding the whole listing:
-   * a large bucket is walked page by page. Exactly the originals a locator of this library would
+   * visitor}, one at a time, in the store's own order and without ever holding the whole listing: a
+   * large bucket is walked page by page. Exactly the originals a locator of this library would
    * resolve to are visited - what lies in the area but would not resolve (a link leading out, a
    * folder marker) is not - and each is reported under the locator {@link AcceptedUpload#store()}
-   * would have returned for it, so a visited locator compares equal to the {@code file_path} of
-   * the row that owns it. A library without a storage area yields nothing.
+   * would have returned for it, so a visited locator compares equal to the {@code file_path} of the
+   * row that owns it. A library without a storage area yields nothing.
    *
    * @throws UploadStoreUnavailableException when the store cannot be listed right now
    */

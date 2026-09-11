@@ -2,6 +2,7 @@ package io.opaa.library;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -85,7 +86,27 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
 
   @Override
   public void forEachStoredOriginal(UUID libraryId, Consumer<StoredOriginal> visitor) {
-    throw new UnsupportedOperationException("not built yet");
+    Path libraryDirectory = libraryDirectory(libraryId);
+    if (!Files.isDirectory(libraryDirectory)) {
+      return;
+    }
+    try (DirectoryStream<Path> entries = Files.newDirectoryStream(libraryDirectory)) {
+      for (Path entry : entries) {
+        // The same check every other operation goes through, so what is listed can also be read
+        // and deleted: a subdirectory and a link leading out of the area are not originals.
+        String locator = entry.toString();
+        Path file = managedFile(new UploadedOriginalRef(libraryId, locator));
+        if (file == null || !Files.isRegularFile(file)) {
+          continue;
+        }
+        visitor.accept(
+            new StoredOriginal(
+                locator, Files.getLastModifiedTime(file).toInstant(), Files.size(file)));
+      }
+    } catch (IOException e) {
+      log.warn("Could not list the stored originals under {}", libraryDirectory, e);
+      throw new UploadStoreUnavailableException();
+    }
   }
 
   /**
