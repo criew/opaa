@@ -32,3 +32,9 @@ databaseChangeLog:
       file: db/changelog/changes/009-create-local-auth-settings.yaml
   - include:
       file: db/changelog/changes/010-create-local-admin-seed-marker.yaml
+  # Mail-Infrastruktur (#1536, ADR-0033 Entscheidung 10) - unabhaengig vom Kontoschema oben, aber
+  # nach ihm eingehaengt, weil der Epic-Stapel diese Reihenfolge hat.
+  - include:
+      file: db/changelog/changes/011-mail-settings.yaml
+  - include:
+      file: db/changelog/changes/012-mail-templates.yaml

@@ -83,6 +83,15 @@ junit-platform = "6.1.3"
 # clients (apache-client 4.x, netty-nio-client) are excluded in build.gradle.kts so exactly one is
 # on the classpath. Not managed by the Spring Boot BOM, hence pinned here.
 aws-sdk = "2.54.16"
+# Logic-less Mustache renderer for the mail templates of io.opaa.mail (#1536, ADR-0033
+# Entscheidung 10). Deliberately not a template engine with expressions: a mail body an
+# administrator edits in the browser must not be able to evaluate anything, and "strict mode plus a
+# declared placeholder set" is the whole safety argument. Not managed by the Spring Boot BOM.
+jmustache = "1.16"
+# In-JVM SMTP server for the mail integration tests (#1536). Started inside the test JVM rather
+# than as a container, so a send is proved end to end - STARTTLS negotiation, AUTH, the MIME parts
+# - without Docker being required for that particular test. Not managed by the Spring Boot BOM.
+greenmail = "2.1.13"
 
 [libraries]
 # Spring Boot starters (versions managed by Spring Boot BOM)
@@ -92,6 +101,7 @@ spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-start
 spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation" }
 spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-starter-security" }
 spring-boot-starter-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-resource-server" }
+spring-boot-starter-mail = { module = "org.springframework.boot:spring-boot-starter-mail" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
 # Spring Boot 4 splits the test slices into dedicated starters (@WebMvcTest)
 spring-boot-starter-webmvc-test = { module = "org.springframework.boot:spring-boot-starter-webmvc-test" }
@@ -119,6 +129,7 @@ poi-scratchpad = { module = "org.apache.poi:poi-scratchpad", version.ref = "poi-
 mime4j-dom = { module = "org.apache.james:apache-mime4j-dom", version.ref = "mime4j" }
 pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
 commons-csv = { module = "org.apache.commons:commons-csv", version.ref = "commons-csv" }
+jmustache = { module = "com.samskivert:jmustache", version.ref = "jmustache" }
 aws-sdk-s3 = { module = "software.amazon.awssdk:s3", version.ref = "aws-sdk" }
 aws-sdk-apache5-client = { module = "software.amazon.awssdk:apache5-client", version.ref = "aws-sdk" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
@@ -154,6 +165,7 @@ testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgr
 testcontainers-minio = { module = "org.testcontainers:testcontainers-minio" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 awaitility = { module = "org.awaitility:awaitility" }
+greenmail = { module = "com.icegreen:greenmail", version.ref = "greenmail" }
 
 [bundles]
 spring-boot = [
@@ -163,6 +175,7 @@ spring-boot = [
     "spring-boot-starter-validation",
     "spring-boot-starter-security",
     "spring-boot-starter-oauth2-resource-server",
+    "spring-boot-starter-mail",
 ]
 spring-ai = [
     "spring-ai-vector-store-advisor",
@@ -184,6 +197,7 @@ test-deps = [
     "testcontainers-postgresql",
     "testcontainers-minio",
     "awaitility",
+    "greenmail",
 ]
 test-runtime-deps = ["junit-platform-launcher"]
 opaa-api-test-deps = ["junit-jupiter", "assertj-core", "snakeyaml"]

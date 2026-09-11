@@ -239,5 +239,23 @@ public enum AuditEventType {
    * one event of the affair, under the {@code local-auth} system actor; the single failed attempt
    * is never audited (ADR-0033, Entscheidungen 9 and 13).
    */
-  LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS
+  LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS,
+
+  // Mail-Infrastruktur (#1536, ADR-0033 Entscheidung 13)
+  /**
+   * The SMTP settings changed. The before/after payload never carries the password itself, only
+   * whether one is stored - the same convention {@link #LLM_MODEL_CHANGED} uses for a model's
+   * access key.
+   */
+  MAIL_SETTINGS_CHANGED,
+  /** A mail template was overridden for a locale, replacing the delivered German default. */
+  MAIL_TEMPLATE_CHANGED,
+  /** A mail template override was removed; the delivered default applies again. */
+  MAIL_TEMPLATE_RESET,
+  /**
+   * A test mail was sent from the administration. Distinct from a change event because it leaves
+   * the installation - an auditor asking "who had this deployment send mail, and when" should find
+   * it by its own name.
+   */
+  MAIL_TEST_SENT
 }

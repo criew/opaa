@@ -4602,6 +4602,219 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/system/mail-settings:
+    get:
+      operationId: getMailSettings
+      tags: [mail]
+      summary: >
+        Read the systemwide SMTP configuration (SYSTEM_ADMIN only, #1536, ADR-0033 Entscheidung
+        10). The password is never returned - only the mask "***" and passwordSet.
+      responses:
+        "200":
+          description: The current SMTP configuration and its send status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MailSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    put:
+      operationId: updateMailSettings
+      tags: [mail]
+      summary: >
+        Replace the SMTP configuration (SYSTEM_ADMIN only). Takes effect in the same process
+        without a restart: the cached sender is rebuilt after the transaction commits. The literal
+        "***" as password leaves the stored one untouched, an empty string clears it. No address
+        check is made on host - an internal mail server is the normal case and this endpoint is
+        SYSTEM_ADMIN only, the same trade-off the managed model endpoints make.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MailSettingsUpdateRequest"
+      responses:
+        "200":
+          description: Settings stored; the effective configuration afterwards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MailSettingsResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/system/mail-settings/test:
+    post:
+      operationId: sendMailSettingsTest
+      tags: [mail]
+      summary: >
+        Send the TEST_MAIL template to the calling administrator's own address (SYSTEM_ADMIN only).
+        Answers 200 either way; the outcome field carries SENT, SKIPPED or FAILED with the reason,
+        the same convention SourceConnectionTestResponse uses.
+      responses:
+        "200":
+          description: The outcome of the send attempt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MailSendResultResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/system/mail-templates:
+    get:
+      operationId: listMailTemplates
+      tags: [mail]
+      summary: >
+        The twelve known mail templates with their effective subject and where it comes from
+        (SYSTEM_ADMIN only, #1536). The registry is closed - a template cannot be created or
+        deleted, only overridden and reset.
+      responses:
+        "200":
+          description: All known templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MailTemplateSummaryResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/system/mail-templates/{templateKey}:
+    parameters:
+      - name: templateKey
+        in: path
+        required: true
+        description: A registry key, e.g. LOCAL_ACCOUNT_INVITATION. An unknown key answers 404.
+        schema:
+          type: string
+
+    get:
+      operationId: getMailTemplate
+      tags: [mail]
+      summary: One template with its effective content and the delivered default (SYSTEM_ADMIN only).
+      responses:
+        "200":
+          description: The template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MailTemplateResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: updateMailTemplate
+      tags: [mail]
+      summary: >
+        Store an override for one template (SYSTEM_ADMIN only). A placeholder the template does not
+        declare is rejected with 400 naming the field and the accepted names.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MailTemplateUpdateRequest"
+      responses:
+        "200":
+          description: Override stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MailTemplateResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: resetMailTemplate
+      tags: [mail]
+      summary: >
+        Remove the override and go back to the delivered default (SYSTEM_ADMIN only). Idempotent -
+        resetting a template that was never overridden succeeds and writes no audit entry.
+      responses:
+        "200":
+          description: The template as it applies now
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MailTemplateResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/system/mail-templates/{templateKey}/preview:
+    post:
+      operationId: previewMailTemplate
+      tags: [mail]
+      summary: >
+        Render a template with representative sample values, stored or as an unsaved draft
+        (SYSTEM_ADMIN only). Sends nothing.
+      parameters:
+        - name: templateKey
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MailTemplatePreviewRequest"
+      responses:
+        "200":
+          description: The rendered subject, text body and HTML body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MailTemplatePreviewResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/system/mail-templates/{templateKey}/test:
+    post:
+      operationId: sendMailTemplateTest
+      tags: [mail]
+      summary: >
+        Send one template, rendered with its sample values, to the calling administrator's own
+        address (SYSTEM_ADMIN only). Answers 200 either way, like the settings test.
+      parameters:
+        - name: templateKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The outcome of the send attempt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MailSendResultResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   schemas:
     HealthResponse:
@@ -9739,6 +9952,10 @@ components:
           LOCAL_ACCOUNTS_ENABLED,
           LOCAL_ACCOUNTS_DISABLED,
           LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS,
+          MAIL_SETTINGS_CHANGED,
+          MAIL_TEMPLATE_CHANGED,
+          MAIL_TEMPLATE_RESET,
+          MAIL_TEST_SENT,
         ]
       example: ASSET_GRANT_REVOKED
 
@@ -11258,6 +11475,302 @@ components:
           description: The stored chunks ordered by chunkIndex.
           items:
             $ref: "#/components/schemas/ChunkInspectionResponse"
+
+    MailEncryption:
+      type: string
+      description: >
+        How the SMTP connection is protected (ADR-0033, Entscheidung 10). STARTTLS upgrades a
+        plaintext connection and is required - a server without STARTTLS support is refused rather
+        than silently downgraded. SSL is implicit TLS from the first byte. NONE is unencrypted SMTP
+        and only defensible for a relay on the same trusted network.
+      enum: [NONE, STARTTLS, SSL]
+      example: STARTTLS
+
+    MailSettingsResponse:
+      type: object
+      description: >
+        The systemwide SMTP configuration (#1536, ADR-0033 Entscheidung 10), SYSTEM_ADMIN only.
+        The password is never returned: passwordSet says whether one is stored, and password
+        carries the literal mask "***" when it is, so a management form can round-trip the value
+        without the secret ever passing through the browser. The three status fields are written by
+        every send attempt and are what "letzter erfolgreicher Versand / letzter Fehler" on the
+        settings page shows.
+      required: [enabled, passwordSet, encryption, updatedAt]
+      properties:
+        enabled:
+          type: boolean
+          description: >
+            The master switch. Mail is only attempted when this is on AND host is set; otherwise
+            every send returns SKIPPED.
+        host:
+          type: string
+          nullable: true
+          example: smtp.intern.example
+        port:
+          type: integer
+          nullable: true
+          example: 587
+        username:
+          type: string
+          nullable: true
+          description: Blank or absent means the connection is made without SMTP AUTH.
+        password:
+          type: string
+          nullable: true
+          description: Always the literal "***" when a password is stored, never the value itself.
+          example: "***"
+        passwordSet:
+          type: boolean
+        encryption:
+          $ref: "#/components/schemas/MailEncryption"
+        fromAddress:
+          type: string
+          nullable: true
+          example: opaa@intern.example
+        fromName:
+          type: string
+          nullable: true
+          example: OPAA
+        lastSuccessAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastFailureAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastFailureReason:
+          type: string
+          nullable: true
+          description: The credential-free cause of the last failed send attempt.
+        updatedAt:
+          type: string
+          format: date-time
+
+    MailSettingsUpdateRequest:
+      type: object
+      description: >
+        A full replacement of the SMTP configuration. password is the one three-way field: the
+        literal "***" leaves the stored password untouched, an empty string clears it, and anything
+        else replaces it - a secret is never sent back to the server just because a form rendered
+        its mask.
+      required: [enabled, encryption]
+      properties:
+        enabled:
+          type: boolean
+        host:
+          type: string
+          nullable: true
+          maxLength: 255
+        port:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 65535
+        username:
+          type: string
+          nullable: true
+          maxLength: 255
+        password:
+          type: string
+          nullable: true
+          maxLength: 255
+          example: "***"
+        encryption:
+          $ref: "#/components/schemas/MailEncryption"
+        fromAddress:
+          type: string
+          nullable: true
+          maxLength: 320
+        fromName:
+          type: string
+          nullable: true
+          maxLength: 120
+
+    MailSendOutcome:
+      type: string
+      description: >
+        The outcome of a send attempt (ADR-0033, Entscheidung 10): SENT handed the message to the
+        SMTP server, SKIPPED means no delivery was attempted because SMTP is not configured, and
+        FAILED means the attempt was made and failed. Sending never raises - the outcome is data.
+      enum: [SENT, SKIPPED, FAILED]
+      example: SENT
+
+    MailSendResultResponse:
+      type: object
+      description: The result of a test send; always answered with 200, the outcome is in the body.
+      required: [outcome]
+      properties:
+        outcome:
+          $ref: "#/components/schemas/MailSendOutcome"
+        reason:
+          type: string
+          nullable: true
+          description: Why the send was skipped or failed; absent for SENT.
+        recipient:
+          type: string
+          nullable: true
+          description: The address the message went to; absent unless the outcome is SENT.
+
+    MailTemplateSource:
+      type: string
+      description: >
+        Where the effective content of a template comes from: a stored mail_templates row that an
+        administrator saved, or the German default delivered with the release.
+      enum: [DATABASE, DEFAULT]
+      example: DEFAULT
+
+    MailTemplateSummaryResponse:
+      type: object
+      description: One template in the overview list, without its bodies.
+      required: [key, label, locale, subject, source, placeholders]
+      properties:
+        key:
+          type: string
+          description: The stable registry key, e.g. LOCAL_ACCOUNT_INVITATION.
+          example: LOCAL_ACCOUNT_INVITATION
+        label:
+          type: string
+          description: The German name of the template for the administration page.
+          example: Einladung eines lokalen Kontos
+        locale:
+          type: string
+          example: de
+        subject:
+          type: string
+          description: The effective subject, placeholders unrendered.
+        source:
+          $ref: "#/components/schemas/MailTemplateSource"
+        placeholders:
+          type: array
+          description: The closed set of placeholder names this template accepts.
+          items:
+            type: string
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    MailTemplateResponse:
+      type: object
+      description: >
+        One template with its effective content and the delivered default alongside it, so the
+        administration page can show the difference and offer "back to the default" without a
+        second request.
+      required:
+        [
+          key,
+          label,
+          locale,
+          subject,
+          bodyPlain,
+          source,
+          placeholders,
+          defaultSubject,
+          defaultBodyPlain,
+        ]
+      properties:
+        key:
+          type: string
+          example: LOCAL_ACCOUNT_INVITATION
+        label:
+          type: string
+        locale:
+          type: string
+          example: de
+        subject:
+          type: string
+        bodyPlain:
+          type: string
+        bodyHtml:
+          type: string
+          nullable: true
+          description: >
+            Only set when an administrator stored an HTML override. Absent means the branded frame
+            built from the delivered HTML fragment is used.
+        source:
+          $ref: "#/components/schemas/MailTemplateSource"
+        placeholders:
+          type: array
+          items:
+            type: string
+        defaultSubject:
+          type: string
+        defaultBodyPlain:
+          type: string
+        defaultBodyHtml:
+          type: string
+          description: The delivered default rendered into the branded frame, placeholders intact.
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        updatedBy:
+          type: string
+          format: uuid
+          nullable: true
+
+    MailTemplateUpdateRequest:
+      type: object
+      description: >
+        Stores an override for one template. Every placeholder referenced in subject, bodyPlain or
+        bodyHtml must be one the template declares - an unknown one is rejected with 400 naming the
+        field and the accepted names, because a template that only fails at send time fails while
+        somebody waits for their invitation.
+      required: [subject, bodyPlain]
+      properties:
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 300
+        bodyPlain:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        bodyHtml:
+          type: string
+          nullable: true
+          maxLength: 60000
+
+    MailTemplatePreviewRequest:
+      type: object
+      description: >
+        Renders a template with representative sample values. With no draft content the stored or
+        delivered version is rendered; with draft content the unsaved editor state is rendered
+        instead, so a change can be looked at before it is stored.
+      properties:
+        subject:
+          type: string
+          maxLength: 300
+        bodyPlain:
+          type: string
+          maxLength: 20000
+        bodyHtml:
+          type: string
+          maxLength: 60000
+        variables:
+          type: object
+          additionalProperties:
+            type: string
+          description: >
+            Overrides for the per-placeholder sample values. Entries for names the template does
+            not declare are ignored.
+
+    MailTemplatePreviewResponse:
+      type: object
+      required: [subject, bodyPlain, bodyHtml, variables]
+      properties:
+        subject:
+          type: string
+        bodyPlain:
+          type: string
+        bodyHtml:
+          type: string
+        variables:
+          type: object
+          additionalProperties:
+            type: string
+          description: The sample values the preview was rendered with.
 
   parameters:
     LocalRefreshCookie:

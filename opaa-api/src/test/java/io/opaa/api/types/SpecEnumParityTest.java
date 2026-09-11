@@ -87,7 +87,8 @@ class SpecEnumParityTest {
         Arguments.of("LibraryMetadataFieldType", LibraryMetadataFieldType.values()),
         Arguments.of("OrphanedOriginalSkipReason", OrphanedOriginalSkipReason.values()),
         Arguments.of("ProviderType", ProviderType.values()),
-        Arguments.of("PasswordChangeReason", PasswordChangeReason.values()));
+        Arguments.of("PasswordChangeReason", PasswordChangeReason.values()),
+        Arguments.of("MailEncryption", MailEncryption.values()));
   }
 
   @ParameterizedTest(name = "{0}")

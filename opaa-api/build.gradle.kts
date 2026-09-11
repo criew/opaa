@@ -114,6 +114,7 @@ val typeMappingsConfig = mapOf(
     "OrphanedOriginalSkipReason" to "OrphanedOriginalSkipReason",
     "ProviderType" to "ProviderType",
     "PasswordChangeReason" to "PasswordChangeReason",
+    "MailEncryption" to "MailEncryption",
 )
 
 tasks.withType<Test> {
@@ -192,6 +193,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "OrphanedOriginalSkipReason" to "io.opaa.api.types.OrphanedOriginalSkipReason",
         "ProviderType" to "io.opaa.api.types.ProviderType",
         "PasswordChangeReason" to "io.opaa.api.types.PasswordChangeReason",
+        "MailEncryption" to "io.opaa.api.types.MailEncryption",
     ))
 }
 
