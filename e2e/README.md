@@ -208,19 +208,22 @@ Relevanzbewertung — genau das, was die Szenarien unten prüfen sollen. Antwort
 eigentlichen Sinn ist Sache von Epic #224, nicht dieser Suite. Die lokale Modellbereitstellung
 für echte Chat-/Embedding-Läufe bleibt eigenes, noch offenes Issue (#256).
 
-Zwei weitere Prompts laufen über dieselbe Route, jeder mit seiner eigenen festen Antwort:
+Über dieselbe Route laufen noch etliche weitere Prompts — Teilfragen-Zerlegung
+(`QueryDecompositionService`), Chat-Titel (`ChatTitleGenerationService`), Modellmetadaten
+(`ModelMetadataExtractor`), der Verbindungstest der Modellverwaltung (`LlmModelService`) und
+`ChatHealthIndicator`. **Die Gesprächsnotiz ist der einzige Prompt mit einer eigenen Regel; alle
+übrigen fallen auf den Zitat-Echo-/Ohne-Kontext-Zweig oben.** Praktisch sichtbar ist das beim
+Chat-Titel: Sein Prompt trägt keine Zitationsmarkierung, also bekommt jeder erzeugte Titel dieser
+Suite denselben Text — Szenarien verankern sich deshalb nie an einem Titelwortlaut (siehe
+`fixtures/chat.ts`, `chatSidebarEntries`).
 
-- **Chat-Titel** (`io.opaa.chat.ChatTitleGenerationService`): keine eigene Regel — der Prompt trägt
-  keine Zitationsmarkierung, also greift die feste „Ohne-Kontext"-Antwort oben. Jeder erzeugte
-  Titel dieser Suite ist damit derselbe Text; Szenarien verankern sich deshalb nie an einem
-  Titelwortlaut (siehe `fixtures/chat.ts`, `chatSidebarEntries`).
-- **Gesprächsnotiz** (`io.opaa.chat.ChatNoteExtractionService`, #1489): eine eigene Regel, weil die
-  „Ohne-Kontext"-Antwort sonst in **jeder** Runde jedes Chats zu einem Notizpunkt würde und
-  „kein Punkt, keine Schaltfläche" gar nicht prüfbar wäre. Der Stub erkennt den Verdichtungs-Prompt
-  an einem festen Textstück und beantwortet ihn als reine Funktion der Nutzernachricht: „Ich
-  arbeite …" ergibt den `RAHMEN`-Punkt „Arbeitet …", „bitte knapp" den `ANTWORTFORM`-Punkt „Möchte
-  knappe Antworten", jede andere Nachricht das Sentinel `KEINE`. Die Auswertung der Antwort
-  (Art-Präfix, 200-Zeichen-Deckel, höchstens zwei Zeilen) bleibt die produktive.
+Die **Gesprächsnotiz** (`io.opaa.chat.ChatNoteExtractionService`, #1489) braucht die Ausnahme, weil
+die „Ohne-Kontext"-Antwort sonst in **jeder** Runde jedes Chats zu einem Notizpunkt würde und
+„kein Punkt, keine Schaltfläche" gar nicht prüfbar wäre. Der Stub erkennt den Verdichtungs-Prompt an
+einem festen Textstück und beantwortet ihn als reine Funktion der Nutzernachricht: „Ich arbeite …"
+ergibt den `RAHMEN`-Punkt „Arbeitet …", „bitte knapp" den `ANTWORTFORM`-Punkt „Möchte knappe
+Antworten", jede andere Nachricht das Sentinel `KEINE`. Die Auswertung der Antwort (Art-Präfix,
+200-Zeichen-Deckel, höchstens zwei Zeilen) bleibt die produktive.
 
 ## Serialisierungs-Konvention
 
@@ -425,12 +428,21 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   Die Verdichtung läuft nebenläufig **nach** der Antwort, ein Punkt wird also erst mit der
   *nächsten* Antwort sichtbar. Jedes Szenario wartet deshalb auf den Notizstand, den der Server
   tatsächlich hält (`GET /api/v1/chats/{chatId}`), bevor es weiterfragt — nie auf eine Zeitspanne.
-  Genau dieses Warten macht den Negativnachweis „nach Runde 2 keine Schaltfläche" belastbar: Die
-  Notiz trägt zu diesem Zeitpunkt nachweislich schon einen Punkt, die Abwesenheit liegt also an der
-  Rundenuntergrenze und nicht an einer leeren Notiz. Alle Chats dieser Datei leeren vorher ihre
-  Chip-Leiste — die Notiz wird ohne Wissensbasis geführt und verwendet (entschiedener Randfall der
-  Spezifikation), und eine unscoped Suche über den wachsenden Korpus brächte dem Prüfgegenstand
-  nichts.
+
+  Für den Negativnachweis „nach Runde 2 keine Schaltfläche" genügt dieses Warten allein aber
+  **nicht**, und die Stelle ist die einzige der Datei, an der die Rundenuntergrenze überhaupt
+  diskriminiert (nach Runde 3 liegt jede denkbare Zählregel über drei). Der Client kennt den
+  Notizstand ausschließlich aus den Antworten, die er selbst bekommen hat, und eine Antwort trägt
+  den Stand *vor* ihrer Runde; ein Nachladen für den bereits aktiven Chat gibt es nicht. Ob die
+  Verdichtung von Runde 1 bis Runde 2 fertig war, entscheidet also ein Rennen — verliert sie es,
+  wäre die Abwesenheit schon durch eine leere Notiz erfüllt und der Nachweis stillschweigend
+  wertlos. Das Szenario lädt deshalb an dieser Stelle die Seite neu: Danach kommen Punktzahl **und**
+  Rundenzahl aus demselben `GET chat` (ein Punkt, zwei Runden), und der Schritt deckt zugleich
+  „Neuladen unterhalb der Schwelle" ab.
+
+  Alle Chats dieser Datei leeren vorher ihre Chip-Leiste — die Notiz wird ohne Wissensbasis geführt
+  und verwendet (entschiedener Randfall der Spezifikation), und eine unscoped Suche über den
+  wachsenden Korpus brächte dem Prüfgegenstand nichts.
 
 - `tests/format-pipelines-upload.spec.ts` (#1109) — lädt XLSX, HTML und EML in einem Durchlauf
   hoch und prüft, dass alle drei nach der Verarbeitung als indiziert erscheinen. Deckt damit Formate

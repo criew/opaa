@@ -10,15 +10,17 @@ import type { Locator, Page, TestInfo } from '@playwright/test'
  * **Deterministic condensation.** Note points come from a model call. The suite's KI stub
  * (e2e/ai-stub/server.mjs) recognises io.opaa.chat.ChatNoteExtractionService's prompt and answers
  * it with a fixed line per user message - a message carrying "Ich arbeite …" or "bitte knapp"
- * produces exactly that point, every other message produces the "KEINE" sentinel. Same idea as the
- * stub already serves the chat-title prompt with: one fixed answer per prompt shape, never a model.
+ * produces exactly that point, every other message produces the "KEINE" sentinel. This is the
+ * stub's only prompt-specific rule; every other prompt of the application still falls through to
+ * its one citation-echo/no-context answer.
  *
  * **Display lag by one round.** The condensation runs after the answer, so the note state an
  * answer carries is the one that went *into* it - a point condensed from turn n first shows with
  * turn n+1's answer or on a reload. Every scenario below therefore waits for the note state the
  * server actually holds (waitForNoteItems) before asking the next question, instead of trusting
  * that the asynchronous condensation of the previous turn happened to win the race. That wait is
- * on observed state, not on a timespan.
+ * on observed state, not on a timespan. Where the client's own copy of the note matters for an
+ * assertion and no further answer refreshes it, the scenario reloads - see scenario 1.
  *
  * **No knowledge base.** Every chat here empties its chip bar before the first question
  * (`clearSearchScope`): the note is kept and used regardless of the search scope (a decided
@@ -109,6 +111,24 @@ async function waitForNoteItems(page: Page, chatId: string, expected: number): P
     .toBe(expected)
 }
 
+/**
+ * Clicks a point's remove button and returns once the server has confirmed the removal. The store
+ * removes the point optimistically and only then fires the DELETE, so every visible assertion is
+ * already satisfied while that request is still in flight - and a navigation right after would
+ * abort it, leaving the point in the database and the next reload looking like a product defect.
+ */
+async function removeNotePoint(page: Page, removeButton: Locator): Promise<void> {
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      (candidate) =>
+        candidate.request().method() === 'DELETE' &&
+        /\/api\/v1\/chats\/[^/]+\/note-items\/[^/]+$/.test(candidate.url()),
+    ),
+    removeButton.click(),
+  ])
+  expect(response.status()).toBe(204)
+}
+
 /** A fresh chat of the acting user's default space, with an empty search scope. */
 async function startChatWithoutKnowledge(page: Page): Promise<void> {
   await startFreshChat(page)
@@ -129,10 +149,17 @@ test.describe('Gesprächsnotiz im Chat (#1489)', () => {
     )
     await askTurn(page, `Und wie lange dauert die Bearbeitung? (${id})`)
 
-    // Zwei abgeschlossene Runden, und die Angabe aus Runde 1 ist bereits verdichtet: Die
-    // Abwesenheit der Schaltfläche liegt damit an der Rundenuntergrenze, nicht an einer leeren
-    // Notiz - ohne diese Wartezeit wäre der folgende Nachweis von beidem gleich gut erklärbar.
+    // Der Client kennt den Notizstand nur aus den Antworten, die er selbst bekommen hat, und eine
+    // Antwort trägt den Stand *vor* ihrer Runde - nach Runde 2 also den vor Runde 2. Ob die
+    // Verdichtung von Runde 1 bis dahin fertig war, entscheidet ein Rennen. Erst das Neuladen
+    // holt Punktzahl und Rundenzahl aus demselben GET chat: ein Punkt, zwei Runden. Ohne das wäre
+    // die folgende Abwesenheit ebenso gut durch eine noch leere Notiz erklärbar, und dann
+    // diskriminierte sie gegen keine Untergrenze mehr - dies ist die einzige Stelle der Datei,
+    // an der die Untergrenze überhaupt geprüft werden kann (nach Runde 3 liegt jede denkbare
+    // Zählregel über 3).
     await waitForNoteItems(page, chatId, 1)
+    await page.reload()
+    await expect(page.getByTestId('message-list').getByText(`(${id})`).last()).toBeVisible()
     await expect(noteToggle(page)).toHaveCount(0)
 
     await askTurn(page, `Gibt es eine Ermäßigung für Schwerbehinderte? (${id})`)
@@ -182,11 +209,13 @@ test.describe('Gesprächsnotiz im Chat (#1489)', () => {
     await expect(panel).not.toContainText('RAHMEN')
     await expect(panel).not.toContainText('ANTWORTFORM')
 
-    await panel
-      .getByRole('listitem')
-      .filter({ hasText: WORKPLACE_NOTE })
-      .getByRole('button', { name: 'Notizpunkt entfernen' })
-      .click()
+    await removeNotePoint(
+      page,
+      panel
+        .getByRole('listitem')
+        .filter({ hasText: WORKPLACE_NOTE })
+        .getByRole('button', { name: 'Notizpunkt entfernen' }),
+    )
     await expect(toggle).toHaveText('Gesprächsnotiz · 1')
     await expect(panel.getByRole('listitem')).toHaveText([BREVITY_NOTE])
 
@@ -200,7 +229,10 @@ test.describe('Gesprächsnotiz im Chat (#1489)', () => {
     await expect(notePanel(page).getByRole('listitem')).toHaveText([BREVITY_NOTE])
 
     // Mit dem letzten Punkt verschwindet die Schaltfläche - eine leere Notiz hat keine Oberfläche.
-    await notePanel(page).getByRole('button', { name: 'Notizpunkt entfernen' }).click()
+    await removeNotePoint(
+      page,
+      notePanel(page).getByRole('button', { name: 'Notizpunkt entfernen' }),
+    )
     await expect(noteToggle(page)).toHaveCount(0)
 
     await page.reload()
@@ -231,8 +263,14 @@ test.describe('Gesprächsnotiz im Chat (#1489)', () => {
 
     await page.reload()
 
+    // Erst hier trägt die Aussage auch für Runde 3: deren Verdichtung lief oben noch, und ihr
+    // Ergebnis könnte die Schaltfläche ohnehin erst nach einem Neuladen zeigen. Formal schließt
+    // auch das die Lücke nicht - es gibt kein Signal für "Verdichtung fertig" -, aber es prüft
+    // hinter einem ganzen Seitenaufbau erneut, und ob eine Nachricht einen Punkt erzeugt, ist
+    // eine reine Funktion ihres Texts (NOTE_RULES im Stub), keine Frage des Zeitpunkts.
     await expect(page.getByTestId('message-list').getByText(`(${id})`).last()).toBeVisible()
     await expect(noteToggle(page)).toHaveCount(0)
+    expect((await fetchChat(page, chatId)).noteItems ?? []).toHaveLength(0)
   })
 
   test('4. Ein sehr langer Notizpunkt bricht um und wird nicht gekürzt', async (
@@ -260,6 +298,8 @@ test.describe('Gesprächsnotiz im Chat (#1489)', () => {
         textContent: string | null
         scrollWidth: number
         clientWidth: number
+        scrollHeight: number
+        clientHeight: number
         querySelector(selector: string): MeasuredElement | null
       }
       const browser = globalThis as unknown as {
@@ -290,6 +330,8 @@ test.describe('Gesprächsnotiz im Chat (#1489)', () => {
         lineCount: new Set(rects.map((rect) => Math.round(rect.top))).size,
         scrollWidth: paragraph.scrollWidth,
         clientWidth: paragraph.clientWidth,
+        scrollHeight: paragraph.scrollHeight,
+        clientHeight: paragraph.clientHeight,
         whiteSpace: style.whiteSpace,
         textOverflow: style.textOverflow,
       }
@@ -300,9 +342,12 @@ test.describe('Gesprächsnotiz im Chat (#1489)', () => {
 
     expect(metrics.text).toBe(LONG_WORKPLACE_NOTE)
     expect(metrics.lineCount).toBeGreaterThan(1)
-    // Nichts ragt aus dem Absatz heraus - genau das wäre bei einer einzeiligen, abgeschnittenen
-    // Darstellung der Fall.
+    // Nichts ragt aus dem Absatz heraus - waagerecht nicht (einzeilige Kürzung per noWrap) und
+    // senkrecht nicht. Die senkrechte Prüfung ist die gegen die naheliegende künftige Variante
+    // eines mehrzeiligen Eintrags: Bei -webkit-line-clamp oder maxHeight + overflow: hidden legt
+    // Chromium alle Zeilen weiterhin aus, Zeilenzahl und Breite blieben also unauffällig.
     expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1)
+    expect(metrics.scrollHeight).toBeLessThanOrEqual(metrics.clientHeight + 1)
     expect(metrics.whiteSpace).not.toBe('nowrap')
     expect(metrics.textOverflow).not.toBe('ellipsis')
   })

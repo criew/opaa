@@ -52,9 +52,11 @@ services:
       # test(e2e) #1489: the Gesprächsnotiz scenarios drive four chats of three turns each back to
       # back, and the display threshold of three completed rounds makes that count a property of
       # the feature, not a choice - twelve questions inside a few seconds, well past the default
-      # of 10 per user per 60s (opaa.rate-limit.query.max-requests), before a single retry is even
-      # counted. Raised, not disabled: the limiter stays in the request path, and the global
-      # counter (100/60s) is untouched, so a runaway loop in any future scenario still hits a wall.
+      # of 10 (opaa.rate-limit.query.max-requests), before a single retry is even counted.
+      # io.opaa.ratelimit.RateLimitFilter keys this counter on the client IP, not on the account:
+      # every spec of this suite shares one budget, and a future scenario under a further dev user
+      # gets no budget of its own. Raised, not disabled: the limiter stays in the request path, and
+      # the global counter (100/60s) is untouched, so a runaway loop still hits a wall.
       OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS: "40"
       # #267: the SSRF target-address check defaults to active (opaa.indexing.target-validation),
       # which would otherwise reject every HTTP_DIRECTORY/RSS_FEED fetch this suite makes - both
