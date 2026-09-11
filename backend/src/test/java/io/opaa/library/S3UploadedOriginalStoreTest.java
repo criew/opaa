@@ -539,6 +539,9 @@ class S3UploadedOriginalStoreTest {
         "a/b");
     server.putObject(BUCKET, "inst1-" + organizationId + "/lose.pdf", raw("x"), "a/b");
     server.putObject(BUCKET, "inst1-" + organizationId + "/ablage/tief.pdf", raw("x"), "a/b");
+    // UUID.fromString also accepts abbreviated groups; such a segment would resolve to a library
+    // whose keys lie elsewhere, so only one that renders back to itself counts.
+    server.putObject(BUCKET, "inst1-" + organizationId + "/1-1-1-1-1/kurz.pdf", raw("x"), "a/b");
     server.seen().clear();
 
     List<UUID> visited = new ArrayList<>();

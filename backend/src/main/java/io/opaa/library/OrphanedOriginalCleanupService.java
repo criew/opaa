@@ -37,8 +37,8 @@ import org.springframework.stereotype.Service;
  *
  * <p><b>The organization is the boundary of both runs</b>, and the store draws it: every locator is
  * resolved against the storage area of the caller's own organization and the named library, so an
- * original of another organization is "not there" rather than deletable. The storage-bound run
- * additionally leaves alone every storage area a library row exists for - <em>any</em> row, not
+ * original of another organization is {@code NOT_IN_STORE} rather than deletable. The storage-bound
+ * run additionally leaves alone every storage area a library row exists for - <em>any</em> row, not
  * only one of the caller's organization.
  */
 @Service
@@ -109,16 +109,15 @@ public class OrphanedOriginalCleanupService {
 
   /**
    * Lists the storage areas of {@code organizationId} that no library row belongs to any more, each
-   * with the orphaned originals it still holds - the one way to an original whose library was
-   * deleted after its removal had failed, which {@link #report} cannot reach because it needs the
-   * library row it no longer has.
+   * with the orphaned originals it still holds. An area holding no original at all is left out - an
+   * emptied directory is nothing this run could remove. At most {@link #MAX_LISTED} areas and
+   * {@link #MAX_LISTED} orphans across all of them are listed; all are counted.
    *
-   * <p>Every stored original of such an area is orphaned by definition; only the grace period keeps
-   * one out, so an area whose library was just deleted shows its originals under {@code
-   * withinGracePeriodCount} and becomes deletable one grace period later. <b>An area a library row
-   * exists for is never reported</b>, and neither is one holding no original at all - an emptied
-   * directory is nothing this run could remove. At most {@link #MAX_LISTED} areas and {@link
-   * #MAX_LISTED} orphans across all of them are listed; all are counted.
+   * <p>Every stored original of such an area is orphaned by definition, and the grace period is the
+   * only thing that keeps one out. <b>It is measured from when the original was written, not from
+   * when the library was deleted</b>: an original older than the period is offered the moment its
+   * library's row is gone, so deleting a library opens no window in which its originals could still
+   * be recovered.
    *
    * @throws IllegalArgumentException when {@code minimumAgeMinutes} undercuts the grace period
    * @throws UploadStoreUnavailableException when the store cannot be listed right now
@@ -204,14 +203,11 @@ public class OrphanedOriginalCleanupService {
   }
 
   /**
-   * The second step of the storage-bound run: removes the named originals from the storage area of
-   * {@code libraryId} inside {@code organizationId}, which must be the area of a library that no
-   * longer exists. A library that does exist is rejected outright rather than handled here - its
-   * originals are the business of {@link #delete}, which holds them against their rows.
-   *
-   * <p>Nothing else changes: the same grace period, the same per-locator checks, and the same
-   * containment - a locator outside the caller's own organization or outside {@code libraryId} is
-   * {@code NOT_IN_STORE}, because the store resolves it against exactly that area.
+   * {@link #delete} for a library that no longer exists anywhere - same grace period, same
+   * per-locator checks, same containment. One that does exist is rejected instead, because its
+   * originals are the business of {@link #delete}, which holds them against their rows; the
+   * rejection reads the same whether that library is the caller's own or another organization's, so
+   * it tells nobody about a library they cannot see otherwise.
    *
    * @throws IllegalArgumentException when the library still exists, or when no or more than {@link
    *     #MAX_LISTED} locators are given
@@ -222,10 +218,8 @@ public class OrphanedOriginalCleanupService {
       UUID organizationId, UUID libraryId, List<String> locators) {
     if (libraryRepository.existsById(libraryId)) {
       throw new IllegalArgumentException(
-          "Die Bibliothek "
-              + libraryId
-              + " existiert - ihre verwaisten Originale entfernt der bibliotheksbezogene"
-              + " Aufräumlauf");
+          "Diese Bibliothek lässt sich über diesen Weg nicht aufräumen - für eine vorhandene"
+              + " Bibliothek ist der bibliotheksbezogene Aufräumlauf zuständig");
     }
     // No row can name a locator of a library that does not exist: documents.library_id is a
     // foreign key, so the set of protecting rows is empty rather than merely unread.

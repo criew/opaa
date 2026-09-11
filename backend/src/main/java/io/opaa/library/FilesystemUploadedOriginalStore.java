@@ -118,18 +118,16 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
     if (organizationDirectory == null || !Files.isDirectory(organizationDirectory)) {
       return;
     }
+    Path storageRoot = realPath(Paths.get(uploadProperties.storagePath()));
     try (DirectoryStream<Path> entries = Files.newDirectoryStream(organizationDirectory)) {
       for (Path entry : entries) {
-        // The entry must really sit in this organization's directory rather than lead out of it,
-        // and its own name must be a library id: the real path's parent is the segment-wise
-        // comparison that a lexical startsWith on the entry's own path would not give.
         Path real = realPath(entry);
         if (real == null
             || !Files.isDirectory(real)
-            || !organizationDirectory.equals(real.getParent())) {
+            || elsewhereInside(real, organizationDirectory, storageRoot)) {
           continue;
         }
-        UUID libraryId = libraryId(real.getFileName().toString());
+        UUID libraryId = libraryId(entry.getFileName().toString());
         if (libraryId != null) {
           visitor.accept(libraryId);
         }
@@ -138,6 +136,23 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
       log.warn("Could not list the library directories under {}", organizationDirectory, e);
       throw new UploadStoreUnavailableException();
     }
+  }
+
+  /**
+   * Whether {@code directory} leads to another place <em>inside</em> the storage path than the one
+   * it is listed under - the one case a listing over a whole organization must leave out. A
+   * directory the operator linked to a volume outside the storage path is not that case and is
+   * visited like any other, so what the reads and deletes below resolve stays listable; a link to
+   * another library's or another organization's area is, because it would make those originals
+   * appear under this name and the deletion that follows the report would remove the wrong ones.
+   *
+   * <p>The parent of the real path is the segment-wise comparison; a lexical {@code startsWith} on
+   * the entry's own path would pass every link.
+   */
+  private static boolean elsewhereInside(Path directory, Path listedUnder, Path storageRoot) {
+    return !listedUnder.equals(directory.getParent())
+        && storageRoot != null
+        && directory.startsWith(storageRoot);
   }
 
   /**

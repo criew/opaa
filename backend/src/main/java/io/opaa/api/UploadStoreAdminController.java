@@ -86,11 +86,7 @@ public class UploadStoreAdminController {
     return OrphanedOriginalResponseMapper.toDeletionResponse(deletion);
   }
 
-  /**
-   * The storage-bound report needs no library: it walks the caller's own organization and names the
-   * storage areas whose library row is gone. Like the library-bound report it changes nothing and
-   * leaves no audit event.
-   */
+  /** The storage-bound report needs no library; the organization comes from the caller alone. */
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping("/orphan-libraries/report")
   public OrphanedLibraryReportResponse reportOrphanedLibraries(
@@ -102,8 +98,8 @@ public class UploadStoreAdminController {
 
   /**
    * Removes the named originals from the storage area of a library that no longer exists. Audited
-   * exactly like the library-bound deletion, under the same event type and against the same object
-   * - the library id the storage area carries is all that identifies it.
+   * under the same event type and against the same object as the library-bound deletion - the
+   * library id the storage area carries is all that identifies it.
    */
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping("/orphan-libraries/delete")

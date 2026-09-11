@@ -133,12 +133,20 @@ class OrphanedLibraryCleanupServiceTest {
     assertThat(report.scannedLibraryCount()).isEqualTo(2);
     assertThat(report.knownLibraryCount()).isEqualTo(2);
 
+    // The same rejection for both, naming neither library: a caller must not learn from it that
+    // an id they guessed belongs to a library of an organization they cannot see.
+    String rejection =
+        "Diese Bibliothek lässt sich über diesen Weg nicht aufräumen - für eine vorhandene"
+            + " Bibliothek ist der bibliotheksbezogene Aufräumlauf zuständig";
     assertThatThrownBy(
             () ->
                 service.deleteInOrphanedLibrary(organizationId, foreignLibrary, List.of(misfiled)))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining(foreignLibrary.toString())
-        .hasMessageContaining("existiert");
+        .hasMessage(rejection);
+    assertThatThrownBy(
+            () -> service.deleteInOrphanedLibrary(organizationId, ownLibrary, List.of(owned)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(rejection);
     assertThat(Path.of(misfiled)).exists();
     assertThat(Path.of(owned)).exists();
   }
@@ -178,11 +186,11 @@ class OrphanedLibraryCleanupServiceTest {
   }
 
   @Test
-  void originalsOfAJustDeletedLibraryAreCountedButNotOfferedUntilTheGracePeriodIsOver()
-      throws IOException {
-    UUID justDeleted = UUID.randomUUID();
+  void aFreshlyWrittenOriginalIsCountedButNotOfferedUntilTheGracePeriodIsOver() throws IOException {
+    UUID deletedLibrary = UUID.randomUUID();
     String fresh =
-        stored(justDeleted, "gerade hochgeladen", now.minus(Duration.ofMinutes(GRACE_MINUTES - 1)));
+        stored(
+            deletedLibrary, "gerade hochgeladen", now.minus(Duration.ofMinutes(GRACE_MINUTES - 1)));
 
     OrphanedLibraryReport report = service.reportOrphanedLibraries(organizationId, null);
 
@@ -196,7 +204,7 @@ class OrphanedLibraryCleanupServiceTest {
     assertThat(report.libraryCount()).isEqualTo(1);
 
     OrphanedOriginalDeletion deletion =
-        service.deleteInOrphanedLibrary(organizationId, justDeleted, List.of(fresh));
+        service.deleteInOrphanedLibrary(organizationId, deletedLibrary, List.of(fresh));
 
     assertThat(deletion.deleted()).isEmpty();
     assertThat(deletion.skipped())
@@ -204,6 +212,28 @@ class OrphanedLibraryCleanupServiceTest {
             new OrphanedOriginalDeletion.Skipped(
                 fresh, OrphanedOriginalSkipReason.WITHIN_GRACE_PERIOD));
     assertThat(Path.of(fresh)).exists();
+  }
+
+  @Test
+  void anOldOriginalOfAJustDeletedLibraryIsOfferedRightAway() throws IOException {
+    // The grace period runs from the original's own last write, not from the deletion of its
+    // library: deleting a library opens no window in which its originals could be recovered.
+    UUID justDeleted = UUID.randomUUID();
+    String longStored = stored(justDeleted, "im Juni abgelegt", now.minus(Duration.ofDays(100)));
+
+    OrphanedLibraryReport report = service.reportOrphanedLibraries(organizationId, null);
+
+    OrphanedLibrary orphaned = report.libraries().get(0);
+    assertThat(orphaned.orphans())
+        .extracting(OrphanedOriginal::locator)
+        .containsExactly(longStored);
+    assertThat(orphaned.withinGracePeriodCount()).isZero();
+
+    OrphanedOriginalDeletion deletion =
+        service.deleteInOrphanedLibrary(organizationId, justDeleted, List.of(longStored));
+
+    assertThat(deletion.deleted()).containsExactly(longStored);
+    assertThat(Path.of(longStored)).doesNotExist();
   }
 
   @Test

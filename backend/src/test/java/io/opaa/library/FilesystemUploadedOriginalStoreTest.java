@@ -389,7 +389,7 @@ class FilesystemUploadedOriginalStoreTest {
   }
 
   @Test
-  void theLibraryListingFollowsNoLinkOutOfTheOrganizationsOwnDirectory() throws IOException {
+  void theLibraryListingLeavesOutALinkToAnotherAreaOfTheSameStorage() throws IOException {
     UUID foreignOrganization = UUID.randomUUID();
     UUID foreignLibrary = UUID.randomUUID();
     store.accept(foreignOrganization, foreignLibrary, ".pdf", bytes("fremdes Haus")).store();
@@ -405,6 +405,35 @@ class FilesystemUploadedOriginalStoreTest {
     store.forEachStoredLibrary(organizationId, visited::add);
 
     assertThat(visited).isEmpty();
+  }
+
+  @Test
+  void theLibraryListingVisitsADirectoryTheOperatorLinkedOutOfTheStoragePath() throws IOException {
+    // The listing and the operations must agree: what a download resolves, the report has to see -
+    // otherwise the orphans of a directory the operator moved to another volume are found by
+    // nobody. Only a link to another area of the same storage stays out, because there the
+    // originals have their own name.
+    Path ownVolume = Files.createTempDirectory("outside-upload-storage");
+    Files.writeString(ownVolume.resolve("umgezogen.pdf"), "auf dem anderen Volume");
+    Path organizationDirectory = storageDir.resolve(organizationId.toString());
+    Files.createDirectories(organizationDirectory);
+    assumeTrue(
+        createSymbolicLink(organizationDirectory.resolve(libraryId.toString()), ownVolume),
+        "symbolic links are not available here");
+    String locator =
+        organizationDirectory.resolve(libraryId.toString()).resolve("umgezogen.pdf").toString();
+
+    List<UUID> visitedLibraries = new ArrayList<>();
+    store.forEachStoredLibrary(organizationId, visitedLibraries::add);
+    List<UploadedOriginalStore.StoredOriginal> visitedOriginals = new ArrayList<>();
+    store.forEachStoredOriginal(organizationId, libraryId, visitedOriginals::add);
+
+    assertThat(visitedLibraries).containsExactly(libraryId);
+    assertThat(visitedOriginals)
+        .extracting(UploadedOriginalStore.StoredOriginal::locator)
+        .containsExactly(locator);
+    assertThat(store.belongsToLibrary(new UploadedOriginalRef(organizationId, libraryId, locator)))
+        .isTrue();
   }
 
   @Test

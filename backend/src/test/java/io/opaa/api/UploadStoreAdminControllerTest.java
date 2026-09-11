@@ -345,7 +345,9 @@ class UploadStoreAdminControllerTest {
   @Test
   void aStillExistingLibraryIsRejectedAndTheRejectionIsRecorded() throws Exception {
     when(cleanupService.deleteInOrphanedLibrary(any(), any(), any()))
-        .thenThrow(new IllegalArgumentException("Die Bibliothek " + libraryId + " existiert"));
+        .thenThrow(
+            new IllegalArgumentException(
+                "Diese Bibliothek lässt sich über diesen Weg nicht aufräumen"));
 
     mockMvc
         .perform(
@@ -354,7 +356,9 @@ class UploadStoreAdminControllerTest {
                 .content("{\"libraryId\":\"" + libraryId + "\",\"locators\":[\"locator-1\"]}")
                 .with(asAdmin()))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.error").value("Die Bibliothek " + libraryId + " existiert"));
+        .andExpect(
+            jsonPath("$.error")
+                .value("Diese Bibliothek lässt sich über diesen Weg nicht aufräumen"));
 
     ArgumentCaptor<AuditEvent> auditCaptor = ArgumentCaptor.forClass(AuditEvent.class);
     verify(auditEventRecorder).recordUserAction(auditCaptor.capture());

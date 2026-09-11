@@ -187,7 +187,7 @@ class OrphanedOriginalCleanupIntegrationTest {
     assertThatThrownBy(
             () -> service.deleteInOrphanedLibrary(organizationId, libraryId, List.of(owned)))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining(libraryId.toString());
+        .hasMessageContaining("bibliotheksbezogene Aufräumlauf");
 
     OrphanedOriginalDeletion deletion =
         service.deleteInOrphanedLibrary(organizationId, deletedLibrary, List.of(orphan));

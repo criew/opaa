@@ -1161,10 +1161,12 @@ paths:
         with another's is a different storage area, and no call ever leaves the caller's own.
         A storage area a library row exists for is left out even when that row belongs to another
         organization, and so is one holding no original at all - an emptied directory is nothing
-        this run could remove. Every stored original of a reported area is orphaned by definition;
-        only the grace period (opaa.upload.orphan-grace-minutes, raised but never lowered by
-        minimumAgeMinutes) keeps one out, so an area whose library was just deleted shows its
-        originals under withinGracePeriodCount and becomes deletable one grace period later.
+        this run could remove. Every stored original of a reported area is orphaned by definition,
+        and the grace period (opaa.upload.orphan-grace-minutes, raised but never lowered by
+        minimumAgeMinutes) is the only thing that keeps one out. It is measured from when the
+        original was written, not from when the library was deleted: an original older than the
+        period is offered the moment its library's row is gone, so deleting a library opens no
+        window in which its originals could still be recovered.
         Reports only; nothing is changed, and no audit event is written. At most 500 areas and 500
         orphans across all of them are listed - truncated tells whether a further pass is needed. A
         storage that cannot be reached answers 503.
@@ -8446,8 +8448,9 @@ components:
         withinGracePeriodCount:
           type: integer
           description: >
-            How many of them are still younger than the grace period - not reported, not
-            deletable, expected to age into the next report.
+            How many of them were written less than a grace period ago - not reported, not
+            deletable, expected to age into the next report. The age of the original decides, not
+            the moment its library was deleted.
         totalSize:
           type: integer
           format: int64

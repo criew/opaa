@@ -12,9 +12,8 @@ import java.util.List;
  *     listed or not
  * @param scannedLibraryCount how many storage areas the organization has at all
  * @param knownLibraryCount how many of them a library row exists for - the sanity check of the
- *     whole report, the same one {@code OrphanedOriginalReport#referencedCount} is: an organization
- *     with storage areas and none of them known has lost the connection between rows and storage,
- *     and nothing should be deleted until that is understood
+ *     whole report, as {@link OrphanedOriginalReport#referencedCount()} is for the library-bound
+ *     one: storage areas but none of them known means this storage belongs to somebody else
  * @param minimumAgeMinutes the age threshold this pass applied
  */
 public record OrphanedLibraryReport(
