@@ -540,7 +540,11 @@ bewusst keinen Fremdschlüssel, damit eine reguläre Lösch-Operation die Beweis
 
 **Auflösung der Intervallgrenzen (#1497, [ADR-0032](../decisions/0032-zeitquelle-rechtehistorie.md)):**
 Aufeinanderfolgende Zustandsintervalle desselben Objekts haben streng aufsteigende Grenzen — auch dann,
-wenn beide Änderungen in denselben Tick der Systemuhr fallen. Ohne diese Zusage hinterlässt ein Zustand,
+wenn beide Änderungen in denselben Tick der Systemuhr fallen. Die Zusage gilt **für Zeilen, die ab
+dieser Korrektur geschrieben wurden**; vorher entstandene leere Intervalle bleiben bestehen und werden
+nicht nachbearbeitet. Für einen Stichtag in einem solchen Altzeitraum kann die Rekonstruktion also
+weiterhin fälschlich „kein Zugriff" melden — dieselbe Einschränkung, die weiter unten unter „Beginn der
+belegbaren Historie" für die Zeit vor dem Backfill gilt. Ohne diese Zusage hinterlässt ein Zustand,
 der kürzer bestand als die Uhr fortschreitet, ein leeres Intervall, und ein leeres Intervall enthält
 keinen Stichtag: Die Rekonstruktion antwortete für diesen Zeitraum „kein Zugriff", obwohl Zugriff
 bestand. Die Grenzen stammen deshalb aus einer streng monotonen Quelle mit Mikrosekunden-Auflösung

@@ -336,6 +336,9 @@ class PermissionHistoryServiceIntegrationTest {
     // changes that follow each other closely. Taking the boundaries straight from the wall clock
     // gave the organization-wide state validFrom == validTo, an interval no asOf can satisfy, so
     // the reconstruction reported "no access" for a period in which access existed.
+    // Recording through a locally built service replaces KnowledgeLibraryService#updateLibrary ->
+    // LibraryChanged -> PermissionHistoryListener; it therefore says nothing about how many
+    // boundaries that production path consumes per change - the tests above cover that.
     UUID owner = createUser();
     UUID otherUser = createUser();
     UUID libraryId = createLibrary(owner);

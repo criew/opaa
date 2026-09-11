@@ -10,10 +10,15 @@ import org.springframework.stereotype.Component;
  * Strictly monotonic source of the interval boundaries {@link PermissionHistoryService} records:
  * every call returns an instant strictly greater than the one returned before, at the microsecond
  * resolution {@code timestamptz} stores - so two boundaries that differ here still differ once read
- * back from the database. A wall-clock reading that is not greater than the last boundary (a coarse
- * clock tick, a backwards time step) is replaced by that boundary plus one microsecond; the result
- * is still a wall-clock instant, at most one microsecond per call ahead of the wall clock until it
- * catches up.
+ * back from the database. A wall-clock reading that is not greater than the last boundary is
+ * replaced by that boundary plus one microsecond.
+ *
+ * <p>Monotonicity is unconditional, absolute accuracy is not. Within one coarse clock tick the
+ * result runs one microsecond per call ahead of the wall clock and is caught up by the next tick.
+ * After the wall clock jumps <i>backwards</i> by some delta (NTP step, VM snapshot restore), the
+ * lead is that whole delta from the very next call on, and stays until the wall clock has passed
+ * the last boundary again - for that span the recorded instants lie in the future and cluster
+ * around the pre-jump value. ADR-0032 carries this as a known consequence.
  *
  * <p>Monotonicity holds per process, which is what ADR-0021 (single instance) allows; ADR-0032
  * records the decision and what a multi-instance setup would need instead.

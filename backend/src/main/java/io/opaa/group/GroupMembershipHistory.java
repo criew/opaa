@@ -12,11 +12,12 @@ import java.util.UUID;
 
 /**
  * A half-open interval {@code [validFrom, validTo)} recording one period a user was a member of a
- * group (#238, see docs/features/spaces-and-assets.md#nachweisbarkeit-historisierung-von-rechten).
- * {@code validTo == null} means the interval is still open, i.e. the user is a member right now.
- * Written and closed exclusively by {@link io.opaa.library.PermissionHistoryService}, which lives
- * in {@code io.opaa.library} because it reconstructs the readable-library formula that combines
- * this table with {@link io.opaa.library.AssetGrantHistory} and {@code
+ * group (#238, see
+ * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten). {@code
+ * validTo == null} means the interval is still open, i.e. the user is a member right now. Written
+ * and closed exclusively by {@link io.opaa.library.PermissionHistoryService}, which lives in {@code
+ * io.opaa.library} because it reconstructs the readable-library formula that combines this table
+ * with {@link io.opaa.library.AssetGrantHistory} and {@code
  * io.opaa.library.LibraryVisibilityHistory} - this entity itself stays in {@code io.opaa.group}
  * next to {@link GroupMembership}, the table it historises.
  */

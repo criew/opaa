@@ -14,8 +14,8 @@ import java.util.UUID;
 /**
  * A half-open interval {@code [validFrom, validTo)} recording one {@link LibraryVisibility}/{@code
  * listed} state a {@link KnowledgeLibrary} was in (#238, see
- * docs/features/spaces-and-assets.md#nachweisbarkeit-historisierung-von-rechten) - the third source
- * the readable-library formula depends on besides direct and group grants ({@link
+ * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten) - the third
+ * source the readable-library formula depends on besides direct and group grants ({@link
  * AssetGrantHistory}). {@code validTo == null} means the interval is still open, i.e. this is the
  * library's current state. Written and closed exclusively by {@link PermissionHistoryService}.
  */

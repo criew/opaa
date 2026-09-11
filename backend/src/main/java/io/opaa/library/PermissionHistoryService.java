@@ -17,21 +17,25 @@ import org.springframework.transaction.annotation.Transactional;
  * AssetGrant}, a {@link GroupMembership} or a {@link KnowledgeLibrary}'s visibility/listed fields
  * is written here as a half-open interval, with the operation that caused it - so the full
  * readable-library set of any user is reconstructable at any past instant, not only "now" (see
- * docs/features/spaces-and-assets.md#nachweisbarkeit-historisierung-von-rechten). Every recording
- * method runs inside the caller's own transaction (default propagation): a grant change and its
- * history row commit or roll back together, the same as any other write this class's callers
- * already make in the same transaction.
+ * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten). Every
+ * recording method runs inside the caller's own transaction (default propagation): a grant change
+ * and its history row commit or roll back together, the same as any other write this class's
+ * callers already make in the same transaction.
  *
- * <p><b>Interval contract</b> (#1497, ADR-0032): successive <i>state</i> intervals of the same
- * object have strictly increasing boundaries - two changes that fall into the same clock tick still
- * get different ones, because every boundary comes from {@link PermissionHistoryClock} rather than
- * from the wall clock directly. A state interval is therefore never empty, and {@code validFrom <=
- * asOf < validTo} has a solution for every state the object ever held. Successive intervals stay
- * gapless: closing one and opening the next share a single boundary value. Zero-length rows exist
- * on purpose, but only as event markers ({@link AssetGrantHistory#terminal}, {@link
- * LibraryVisibilityHistory#terminal}, {@link GroupMembershipHistory#terminal}) recording a
- * revocation or deletion; they are exempt from the strictly-increasing rule and are never selected
- * by the reconstruction.
+ * <p><b>Interval contract</b> (#1497, ADR-0032), holding for every row written from that change on
+ * - rows written before it can still carry the empty intervals it prevents, and are not repaired:
+ * successive <i>state</i> intervals of the same object have strictly increasing boundaries - two
+ * changes that fall into the same clock tick still get different ones, because every boundary comes
+ * from {@link PermissionHistoryClock} rather than from the wall clock directly. A state interval is
+ * therefore never empty, and {@code validFrom <= asOf < validTo} has a solution for every state the
+ * object ever held. Successive intervals stay gapless: closing one and opening the next share a
+ * single boundary value. Zero-length rows exist on purpose, but only as event markers ({@link
+ * AssetGrantHistory#terminal}, {@link LibraryVisibilityHistory#terminal}, {@link
+ * GroupMembershipHistory#terminal}) recording a revocation or deletion; they are exempt from the
+ * strictly-increasing rule and are never selected by the reconstruction. The contract orders the
+ * <i>issuing</i> of boundaries, not the commits around them: that two concurrent transactions
+ * cannot leave an interleaved chain behind is what the partial unique indexes on the open rows
+ * enforce, not the clock.
  *
  * <p>Deliberately not the event log #391/#392 are building in parallel - this class records only
  * the resulting state interval, never a stream of "who read what". It lives next to the fact tables

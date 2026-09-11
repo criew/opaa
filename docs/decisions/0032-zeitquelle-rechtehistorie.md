@@ -31,10 +31,11 @@ Es geht dabei **nicht** um zwei gegeneinander laufende Uhren: Die Datenbank stem
 speichert den übergebenen Wert lediglich mit Mikrosekunden-Auflösung. Es gibt genau eine Uhr, und sie
 ist zu grob.
 
-Warum das eine Architekturentscheidung und nicht nur eine Javadoc-Invariante ist: Die naheliegende
-Abhilfe — die Datenbankuhr (`clock_timestamp()`) als maßgebliche Zeitquelle — koppelt die Korrektheit
-einer nachweisrelevanten Tabelle an die Datenbank und kostet je Schreibvorgang einen Roundtrip. Die
-billigere, JVM-seitige Alternative ist nur unter der Single-Instance-Annahme aus
+Warum das eine Architekturentscheidung und nicht nur eine Javadoc-Invariante ist: Die Wahl steht
+zwischen einer datenbankseitigen Lösung — die Datenbankuhr (`clock_timestamp()`) samt einer Sicherung
+in der Datenbank selbst — und einer JVM-seitigen. Die datenbankseitige verlegt die Korrektheit einer
+nachweisrelevanten Tabelle ins Schema und gilt unabhängig davon, wie viele Prozesse schreiben; die
+JVM-seitige ist billiger und einfacher, aber nur unter der Single-Instance-Annahme aus
 [ADR-0021](0021-single-instance-betrieb.md) haltbar. Das ist eine Festlegung mit Folgen für einen
 künftigen Mehrinstanzbetrieb — und genau die Art Festlegung, die ohne ADR bei der nächsten
 Performance-Optimierung unbemerkt zurückgedreht wird.
@@ -54,10 +55,13 @@ Der Vertrag dieser Quelle:
    Mikrosekunden; zwei Grenzen, die sich erst in Nanosekunden unterscheiden, wären nach dem Schreiben
    ein und derselbe Wert. Die Abschneidung passiert deshalb vor der Monotonie-Prüfung, nicht in der
    Datenbank.
-3. **Der Wert bleibt ein Wanduhr-Zeitpunkt.** Die Quelle läuft der Wanduhr um höchstens eine
-   Mikrosekunde je Aufruf voraus und fällt auf deren Lesung zurück, sobald diese wieder größer ist.
-   Bei 3,64 ms Tick und einer Mikrosekunde je Schreibvorgang holt die Wanduhr jeden Burst unterhalb von
-   rund 3.600 Historienzeilen innerhalb eines einzigen Ticks wieder ein.
+3. **Der Wert bleibt ein Wanduhr-Zeitpunkt — mit begrenzter Genauigkeit.** Innerhalb eines groben
+   Ticks läuft die Quelle der Wanduhr um eine Mikrosekunde je Aufruf voraus und fällt auf deren
+   Lesung zurück, sobald diese wieder größer ist; bei 3,64 ms Tick holt die Wanduhr jeden Burst
+   unterhalb von rund 3.600 Historienzeilen innerhalb eines einzigen Ticks wieder ein. Nach einem
+   **Rückwärtssprung** der Wanduhr um Δ (NTP-Korrektur, Wiederherstellung eines VM-Schnappschusses)
+   beträgt der Vorlauf dagegen sofort ganze Δ und bleibt es, bis die Wanduhr die zuletzt vergebene
+   Grenze wieder überschritten hat — siehe Konsequenzen.
 
 **Die daraus folgende Invariante der Tabellen** — als Vertrag im Javadoc von
 `PermissionHistoryService` festgehalten:
@@ -76,29 +80,77 @@ folgenden teilen sich einen einzigen Grenzwert (`validTo` des alten `==` `validF
 aufsteigend sind die Grenzen aufeinanderfolgender *Änderungen*, nicht die beiden Seiten derselben
 Änderung.
 
+**Die Zusage ordnet die Vergabe der Grenzen, nicht die Commits um sie herum.** Dass zwei nebenläufige
+Transaktionen keine verschränkte Kette am selben Objekt hinterlassen, leisten die partiellen
+Unique-Indizes auf den offenen Zeilen (je Objekt höchstens ein Intervall mit `valid_to IS NULL`) — nicht
+die Uhr. Uhr und Index zusammen ergeben die Zusage; keiner von beiden genügt allein.
+
+**Weil alle Grenzen global streng geordnet sind, gilt die Rekonstruierbarkeit auch für
+Kombinationszustände.** Die Rechtemenge einer Person entsteht aus drei Tabellen; ein Zustand, der erst
+aus dem Zusammentreffen eines Grants, einer Mitgliedschaft und einer Sichtbarkeit entsteht, hat einen
+Zeitraum, der von Grenzen aus allen dreien begrenzt wird. Da die eine Quelle sie alle vergibt und nie
+zweimal denselben Wert ausgibt, ist auch dieser Zeitraum echt positiv lang und damit von einem Stichtag
+treffbar — ohne die globale Ordnung wäre nur die Rekonstruierbarkeit je Einzeltabelle gesichert.
+
 **Prozesslokale Monotonie genügt, solange ADR-0021 gilt.** `PermissionHistoryClock` ist als Fundstelle
 in ADR-0021 eingetragen.
 
 ## Verworfene Alternativen
 
-**`clock_timestamp()` der Datenbank je Schreibvorgang** (der ursprüngliche Vorschlag in #1497).
-Verworfen aus drei Gründen:
+**`clock_timestamp()` der Datenbank je Schreibvorgang, für sich genommen** (der Vorschlag in #1497).
+Verworfen, weil sie die gebrauchte Zusage nicht liefert: `clock_timestamp()` ist die Systemuhr des
+Datenbankhosts mit Mikrosekunden-Auflösung. Strenge Monotonie ist nicht zugesichert — zwei Aufrufe
+innerhalb derselben Mikrosekunde liefern denselben Wert, und ein Rückwärtssprung der Systemuhr ist
+möglich. In der Praxis fast immer richtig; „fast immer richtig" ist für eine nachweisrelevante Tabelle
+aber genau die Eigenschaft, die dieses ADR ersetzen soll. Der Ausdruck allein ist damit kein Kandidat —
+die ernstzunehmende Alternative ist die nächste.
 
-- **Sie liefert die gebrauchte Zusage nicht.** `clock_timestamp()` ist die Systemuhr des
-  Datenbankhosts mit Mikrosekunden-Auflösung. Strenge Monotonie ist nicht zugesichert: Zwei Aufrufe
-  innerhalb derselben Mikrosekunde liefern denselben Wert, und ein Rückwärtssprung der Systemuhr ist
-  möglich. In der Praxis fast immer richtig — „fast immer richtig" ist für eine nachweisrelevante
-  Tabelle aber genau die Eigenschaft, die dieses ADR ersetzen soll. Wer die Zusage tatsächlich will,
-  braucht zusätzlich eine Monotonie-Sicherung; die ist prozesslokal, womit der Unterschied zur
-  JVM-Variante auf die Frage schrumpft, wessen Uhr den Anker liefert.
-- **Sie kostet einen Roundtrip je historisierter Änderung** auf einem Pfad, der sonst keinen Grund
-  hätte, vor seinem `INSERT` mit der Datenbank zu sprechen — multipliziert mit der Menge an
-  Mitgliedschaftsänderungen, die ein Verzeichnisabgleich in einem Lauf schreibt.
-- **Sie ist nicht deterministisch prüfbar.** Der Nachweis, dass ein Zustand innerhalb eines Uhr-Ticks
-  rekonstruierbar bleibt, verlangt einen Tick, der sich erzwingen lässt. Eine stehende Uhr lässt sich
-  einspeisen, die Uhr eines laufenden Postgres nicht — der Test könnte den Fall nur wahrscheinlich
-  machen, nicht herstellen (Wartezeit und Wiederholungsschleife sind in #1497 ausdrücklich
-  ausgeschlossen).
+**`clock_timestamp()` plus datenbankseitige Sicherung.** Das ist der echte Gegenentwurf, und er ist
+**heute schon baubar**, nicht erst bei einem Mehrinstanz-Umbau: die Datenbankuhr als Anker, ergänzt um
+eine Sicherung, die die strenge Ordnung in der Datenbank selbst erzwingt — eine Sequenz, die den
+Mikrosekunden-Anteil vergibt, oder ein `EXCLUDE`-Constraint, der Überschneidungen und leere
+Zustandsintervalle je Objekt zurückweist.
+
+- **Was sie besser kann:** Die Zusage hinge nicht mehr an ADR-0021. Sie gälte über Prozessgrenzen
+  hinweg, weil alle Instanzen dieselbe Uhr und dieselbe Sicherung benutzten, und sie gälte auch gegen
+  einen Schreiber, der die Anwendung umgeht (Migrationsskript, Handkorrektur per SQL) — was eine
+  JVM-seitige Quelle grundsätzlich nicht kann.
+- **Was sie heute kostet:** eine Migration auf einer nachweisrelevanten Tabelle, dauerhaft ein
+  zusätzliches Statement je historisierter Änderung, und eine Sicherung, die die beiden Ausnahmen der
+  Invariante kennen muss — die geteilte Grenze zwischen schließender und öffnender Zeile und die
+  absichtlichen Nulllängen-Marker. Ein `EXCLUDE`-Constraint müsste beide ausnehmen, also genau die
+  Fachlogik abbilden, die schon im Java-Code steht.
+- **Zum zusätzlichen Statement, genau:** Von den neun Aufrufstellen lesen sechs ohnehin die offene
+  Zeile, bevor sie schreiben — `recordGrantRoleChanged`, `recordGrantRevoked` und
+  `recordGrantClosedByLibraryDeletion` über `closeOpenGrantInterval`, dazu `recordMembershipRemoved`,
+  `recordVisibilityChanged` und `recordVisibilityClosedByLibraryDeletion`. Nur `recordGrantCreated`,
+  `recordMembershipAdded` und `recordLibraryCreated` schreiben ohne vorheriges Lesen. Alle neun laufen
+  zudem in einer offenen Transaktion auf einer bestehenden Verbindung: Es geht um ein weiteres
+  Statement, nicht um einen Verbindungsaufbau. Auch der Multiplikator „Mitgliedschaftsänderungen eines
+  Verzeichnisabgleichs" trägt nur zur Hälfte, weil die Entfernungen über `recordMembershipRemoved`
+  bereits lesende Pfade sind. Das Kostenargument ist also real, aber klein — es allein würde die
+  Alternative nicht abräumen.
+- **Warum trotzdem nicht heute:** Der Gewinn ist Instanzunabhängigkeit, und die hat keinen Abnehmer,
+  solange ADR-0021 gilt. Dem steht eine Schemaänderung an genau der Tabelle gegenüber, deren
+  Beweiskraft hier verteidigt wird, plus eine Sicherung, die die Invariante ein zweites Mal
+  formulieren muss. Dazu kommt die Prüfbarkeit: Der geforderte Nachweis verlangt einen erzwungenen
+  Uhr-Tick ohne Wartezeit und ohne Wiederholungsschleife. Eine stehende Uhr lässt sich einspeisen, die
+  Uhr eines laufenden Postgres nicht — der Fall ließe sich nur wahrscheinlich machen, nicht
+  herstellen. Die Entscheidung ist damit eine **Vertagung**, keine Ablehnung: Fällt ADR-0021, ist dies
+  der Weg, und die Umstellung trifft eine einzige Klasse, weil alle neun Aufrufstellen bereits durch
+  sie laufen.
+
+**Den Wert im `INSERT` erzeugen lassen** (Spalten-Default `clock_timestamp()` oder ein
+`BEFORE INSERT`-Trigger). Diese Ausprägung kostet **null** zusätzliche Statements und entkräftet das
+Kostenargument vollständig — sie scheitert an etwas anderem: Die lückenlose Verkettung verlangt, dass
+schließende und öffnende Zeile sich denselben Wert teilen. Ein Default oder Trigger erzeugt den Wert
+je Zeile und erst beim Schreiben; die JVM kennt ihn nicht und kann ihn dem `UPDATE ... SET valid_to`
+der Vorgängerzeile deshalb nicht mitgeben. Ihn zurückzulesen kostet genau das Statement wieder, das
+man gespart hat — unter Hibernate zudem an der unangenehmsten Stelle, weil die neue Zeile im selben
+Flush geschrieben und sofort wieder gelesen werden müsste (`@Generated`/`refresh`-Semantik), und zwar
+vor dem `UPDATE`, das die Reihenfolge-Zusicherung in `closeOpenGrantInterval` ohnehin schon erzwingt.
+Hinzu käme, dass ein Trigger die Nulllängen-Marker von den Zustandsintervallen unterscheiden müsste,
+die Fachlogik also ein zweites Mal trüge.
 
 **Die Grenze nur dann um eine Mikrosekunde anheben, wenn der neue `validFrom` dem vorigen `validTo`
 gleicht** (Nachbesserung an der Aufrufstelle statt einer eigenen Zeitquelle). Verworfen: Das prüft
@@ -127,10 +179,18 @@ dann bei der Zeitgeberauflösung des Betriebssystems — auf einer Maschine 3,64
 
 **Schwieriger / bewusst in Kauf genommen:**
 
-- Ein aufgezeichneter Zeitstempel kann der Wanduhr um Mikrosekunden vorauslaufen. Für die
-  Stichtagsfrage (ein Datum, ein Zeitpunkt) ist das ohne Bedeutung; für einen Vergleich mit einem
-  frisch gelesenen `Instant.now()` nicht — Tests, die einen Stichtag „nach der Änderung" brauchen,
-  nehmen ihn deshalb aus derselben Quelle, nicht aus der Wanduhr.
+- Ein aufgezeichneter Zeitstempel kann der Wanduhr vorauslaufen. Im Normalfall um Mikrosekunden —
+  für die Stichtagsfrage (ein Datum, ein Zeitpunkt) ohne Bedeutung; für einen Vergleich mit einem
+  frisch gelesenen `Instant.now()` nicht, weshalb Tests, die einen Stichtag „nach der Änderung"
+  brauchen, ihn aus derselben Quelle nehmen.
+- **Nach einem Rückwärtssprung der Wanduhr ist der Vorlauf die Sprunghöhe, nicht eine Mikrosekunde.**
+  Springt die Uhr um Δ zurück (NTP-Korrektur, VM-Schnappschuss), liegen die ab dann vergebenen Grenzen
+  bis zum Ablauf von Δ in der Zukunft und drängen sich in Mikrosekunden-Schritten um den Wert vor dem
+  Sprung. Die Monotonie bleibt unberührt, die absolute Genauigkeit nicht: Für diese Spanne sagt die
+  Historie die Reihenfolge der Änderungen korrekt, ihren Zeitpunkt aber um bis zu Δ zu spät. Bewusst
+  in Kauf genommen — die Gegenrichtung wäre, dem Sprung zu folgen und damit die Ordnung aufzugeben,
+  also genau den Fehler zu wiederholen, den dieses ADR behebt. Ein Betreiber, der Δ klein hält (NTP
+  mit `slew` statt `step`), hält damit auch diese Abweichung klein.
 - Die Zusage gilt je Prozess. Bei mehreren Backend-Instanzen könnten zwei Änderungen am selben Objekt
   aus verschiedenen Prozessen wieder dieselbe Grenze bekommen; die Uhren zweier Hosts können zudem
   gegeneinander driften. Ein Multi-Instanz-Umbau muss die Quelle deshalb ersetzen — durch die
@@ -138,4 +198,13 @@ dann bei der Zeitgeberauflösung des Betriebssystems — auf einer Maschine 3,64
   `EXCLUDE`-Constraint auf dem Intervall je Objekt), nicht durch eine weitere prozesslokale Variable.
   Eingetragen in der Fundstellenliste von ADR-0021.
 - Bestandsdaten werden nicht nachbearbeitet: Bereits geschriebene leere Intervalle bleiben, wie sie
-  sind (stehende Maintainer-Festlegung, keine Bestandsnachzüge). Die Korrektur wirkt vorwärts.
+  sind (stehende Maintainer-Festlegung, keine Bestandsnachzüge). Die Korrektur wirkt vorwärts — die
+  Zusage ist deshalb auch im Javadoc und in der Feature-Spezifikation ausdrücklich auf Zeilen ab dieser
+  Änderung datiert, damit aus einer leeren Rekonstruktion über einen Altzeitraum niemand auf „kein
+  Zugriff" schließt.
+- **Die Invariante ist nicht datenbankseitig abgesichert.** Sie hält, solange alle Schreiber durch
+  `PermissionHistoryService` gehen; ein Migrationsskript oder eine Handkorrektur per SQL könnte sie
+  verletzen, ohne dass etwas es bemerkt. Ein `EXCLUDE`-Constraint, der leere Zustandsintervalle und
+  Überschneidungen je Objekt zurückweist und dabei die Nulllängen-Marker ausnimmt, wäre die
+  Ergänzung — bewusst offen gelassen und als eigenes Folge-Issue geführt, nicht Teil dieser
+  Entscheidung.
