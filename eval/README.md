@@ -206,6 +206,11 @@ Baseline-Vergleich damit ab.
   `BaselineComparator.requireBaselineComparable`, der Pipeline-Pfad über
   `PipelineBaselineComparator.requireBaselineComparable` (beide Pfade teilen sich denselben Lauf und
   denselben Index, also gilt der Vorbehalt für beide).
+- **Auch eine daraus gezogene Baseline wird abgewiesen** (Issue #1522): Der Report trägt in
+  `ollamaImage` den Wert `extern: <url>` statt des gepinnten Images, und `ollamaImage` ist seither
+  ein geprüfter Festpunkt jedes Baseline-Typs. Eine Baseline-Datei mit diesem Präfix — oder ohne das
+  Feld — scheitert beim Laden mit benannter Begründung, statt erst beim nächsten Lauf als
+  vermeintliche Regression aufzufallen (siehe `eval/baseline/README.md`, „Ollama-Herkunft").
 - Ohne die Property ist das Verhalten byte-identisch zum bisherigen Stand (Testcontainer, CPU) — CI
   setzt die Property nie, bleibt also unberührt.
 

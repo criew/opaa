@@ -129,7 +129,9 @@ Gruppennamen, Fallzahlen und Zahlenwerte unterscheiden sich zwischen den beiden 
   Issue #721 (Messvertrag-Version 2, ADR-0012 Nachtrag) zusätzlich `chunkOverlap` (vorher nur
   Report-Metadatum — für eine einchunkige Domäne folgenlos, für eine mehrchunkige aber
   messgrundlagenbestimmend) sowie `documentTopK`/`chunkTopK` (das jetzt ausdrücklich
-  dokumentbezogene k-Fenster, siehe `io.opaa.eval.DocumentRanking`). Weicht auch nur eines davon
+  dokumentbezogene k-Fenster, siehe `io.opaa.eval.DocumentRanking`). Seit Issue #1522 zusätzlich
+  `ollamaImage` — das gepinnte Testcontainer-Image, das die Vektoren erzeugt hat; siehe
+  [Ollama-Herkunft](#ollama-herkunft-issue-1522) unten. Weicht auch nur eines davon
   vom aktuellen Lauf ab, ist die Baseline **ungültig** für diesen Lauf — der Job meldet das
   ausdrücklich als "Baseline ungültig, Messgrundlage geändert" und vergleicht dann **keine** Metrik,
   weil ein Vergleich unter unterschiedlicher Messgrundlage keine Aussage über Retrieval-Qualität
@@ -408,6 +410,27 @@ Unabhängig von Toleranzen: Verletzt der Lauf die Ein-Chunk-Invariante (ADR-0010
 `oneChunkInvariant.violations` im Report nicht leer), schlägt der Job **immer** fehl — das ist kein
 Toleranzfall. Eine verletzte Invariante bedeutet, dass "ein Treffer = eine Entität" nicht mehr gilt,
 wodurch jede Metrik bedeutungslos wird.
+
+## Ollama-Herkunft (Issue #1522)
+
+`ollamaImage` ist in allen drei Baseline-Typen ein **geprüfter** Festpunkt: Es benennt das gepinnte
+Testcontainer-Image, mit dem die Vektoren dieser Baseline entstanden sind (heute
+`ollama/ollama:0.6.5`). Weicht der Wert vom Lauf ab, ist die Baseline unvergleichbar — wie bei jedem
+anderen Festpunkt. Der Modell-Digest allein deckt das nicht ab: Er beschreibt die Gewichte, nicht die
+Laufzeit, die sie auswertet.
+
+Zusätzlich wird eine Baseline-Datei **beim Laden abgewiesen**, wenn sie
+
+- kein `ollamaImage` führt (sie könnte über die Herkunft ihrer Vektoren nichts aussagen) oder
+- einen Wert mit dem Präfix `extern: ` führt. Den schreibt ein Lauf mit
+  `-Dopaa.eval.ollamaBaseUrl` (siehe `eval/README.md`, „Externer Ollama-Endpunkt"): Ein solcher
+  Lauf ist für die lokale Iteration gedacht, embeddet womöglich auf der GPU und ist in der CI nicht
+  reproduzierbar. Aus ihm eine Baseline zu ziehen würde jeden späteren Vergleich als Regression
+  ausweisen.
+
+Wer eine Baseline zieht, übernimmt den Wert also unverändert aus dem `runConfiguration`-Block des
+Reports — steht dort `extern: …`, ist der Lauf zu wiederholen, nicht der Wert zu korrigieren.
+Begründung: ADR-0012, Nachtrag Ollama-Herkunft.
 
 ## Besonderheiten der Pipeline-Baselines (Issue #1040)
 
