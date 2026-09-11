@@ -61,7 +61,7 @@ def build_meldewesen_documents() -> list[tuple[str, bytes]]:
     documents: list[tuple[str, bytes]] = []
     for index, filename in enumerate(SELECTED_MELDEWESEN, start=1):
         raw = read_raw(filename)
-        title, body = transform_service(raw, filename)
+        title, body = transform_service(raw)
         az = aktenzeichen("32.1", index)
         formular = formularnummer("MW", index)
         content = render_markdown(title, body, "Meldewesen & Ausweise", az, formular)
@@ -74,7 +74,7 @@ def build_kfz_documents() -> list[tuple[str, bytes]]:
     documents: list[tuple[str, bytes]] = []
     for index, filename in enumerate(SELECTED_KFZ, start=1):
         raw = read_raw(filename)
-        title, body = transform_service(raw, filename)
+        title, body = transform_service(raw)
         az = aktenzeichen("32.3", index)
         formular = formularnummer("KFZ", index)
         # Alternate .md/.txt deterministically so both formats named in the

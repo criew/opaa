@@ -31,7 +31,7 @@ außer bei Fahrzeugen, die außer Betrieb gesetzt sind.
 
 Dauer & Kosten
 Gebührenrahmen
-ab 55,70 Euro
+ab 57,50 Euro
 
 ---
 

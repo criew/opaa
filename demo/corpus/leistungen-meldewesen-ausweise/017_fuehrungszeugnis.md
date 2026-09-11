@@ -31,7 +31,7 @@ Ein schriftlicher Antrag auf ein Führungszeugnis muss Folgendes enthalten:
 - Gegebenenfalls die Anschrift der Behörde und den genaue Verwendungszweck
 - Ihre eigenhändige Unterschrift auf dem Antrag
 - Die amtliche (von einer siegelführenden Behörde) oder öffentliche (von einem Notar) Beglaubigung der Unterschrift.
-Wenn Sie das Führungszeugnis schriftlich beantragen, überweisen Sie vorab die Gebühr in Höhe von 11,80 Euro an das Bürgerbüro Rheinfurt und senden den Nachweis der Überweisung zusammen mit dem Antrag an uns. Ohne Zahlungsnachweis können eingehende Anträge nicht bearbeitet werden.
+Wenn Sie das Führungszeugnis schriftlich beantragen, überweisen Sie vorab die Gebühr in Höhe von 15 Euro an das Bürgerbüro Rheinfurt und senden den Nachweis der Überweisung zusammen mit dem Antrag an uns. Ohne Zahlungsnachweis können eingehende Anträge nicht bearbeitet werden.
 Überweisung an:
 Sparkasse Rheinfurt
 IBAN: DE58 8888 8888 8888 8888 88
@@ -48,7 +48,7 @@ Im Regelfall zwei bis drei Wochen.
 Europäisches Führungszeugnis: bis zu sechs Wochen
 
 Gebührenrahmen
-11,80 Euro
+15 Euro
 
 Überweisung
 Bankverbindung

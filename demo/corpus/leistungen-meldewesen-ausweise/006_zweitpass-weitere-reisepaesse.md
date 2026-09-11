@@ -9,7 +9,7 @@ In der Regel dürfen Sie nur einen gültigen deutschen Pass besitzen. Für eine 
 In der Regel dürfen Sie nicht mehrere gültige Pässe der Bundesrepublik Deutschland besitzen. Für eine Ausnahme ist es notwendig, dass Sie das berechtigte Interesse an einem Zweitpass oder mehreren Pässen konkret nachweisen oder glaubhaft machen  können. Jeder Einzelfall wird sorgfältig geprüft. Ausnahmen werden sehr restriktiv gehandhabt.
 Ein weiterer Reisepass ist 6 Jahre gültig.
 Express-Bestellung:
-Bei der Bundesdruckerei kann auch ein sogenannter Expresspass bestellt werden. Die Bearbeitungszeit (Antragstellung bis Aushändigung) beträgt etwa sechs Arbeitstage und kostet zusätzlich zur Gebühr 35,30 Euro Aufpreis.
+Bei der Bundesdruckerei kann auch ein sogenannter Expresspass bestellt werden. Die Bearbeitungszeit (Antragstellung bis Aushändigung) beträgt etwa sechs Arbeitstage und kostet zusätzlich zur Gebühr 36,80 Euro Aufpreis.
 
 Für Ihren Besuch müssen Sie einen Termin per E-Mail vereinbaren.
 Jeder Einzelfall wird sorgfältig geprüft. Ausnahmen werden sehr restriktiv gehandhabt.
@@ -28,11 +28,11 @@ Bearbeitungszeit
 - der vorläufige Reisepass wird sofort ausgestellt
 
 Gebührenrahmen
-•   Unter 24 Jahren: 41,40 Euro
-•    Über 24 Jahren:  66,20 Euro
-•    vorläufiger Reisepass: 28,70 Euro
-•    Vielreisende (Reisepass mit 48 Seiten): Gebühr plus 24,30 Euro Aufpreis
-•    Express-Bestellung: Gebühr plus 35,30 Euro Aufpreis
+•   Unter 24 Jahren: 43,10 Euro
+•    Über 24 Jahren:  69 Euro
+•    vorläufiger Reisepass: 29,90 Euro
+•    Vielreisende (Reisepass mit 48 Seiten): Gebühr plus 25,30 Euro Aufpreis
+•    Express-Bestellung: Gebühr plus 36,80 Euro Aufpreis
 
 Barzahlung
 Kasse vor Ort

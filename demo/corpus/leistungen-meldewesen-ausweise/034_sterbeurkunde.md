@@ -35,8 +35,8 @@ Der Sterbefall kann beurkundet werden, sobald dem Standesamt alle erforderlichen
 
 Gebührenrahmen
 Für Krankenkasse und Rentenzwecke: Je 1 gebührenfreie Urkunde
-Sterbeurkunden für den privaten Gebrauch: 13,90 Euro
-Bescheinigungen über die Zurückstellung der Beurkundung: 13,90 Euro
+Sterbeurkunden für den privaten Gebrauch: 13,80 Euro
+Bescheinigungen über die Zurückstellung der Beurkundung: 13,80 Euro
 
 Barzahlung
 Kasse vor Ort

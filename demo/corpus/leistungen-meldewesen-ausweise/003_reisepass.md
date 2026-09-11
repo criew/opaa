@@ -8,7 +8,7 @@ Wer außerhalb der Europäischen Union verreisen möchte, braucht einen Reisepas
 
 Beim Überschreiten von Staatsgrenzen ist grundsätzlich das Mitführen eines Ausweisdokumentes erforderlich. Bei Reisen innerhalb der Europäischen Union und in die meisten Urlaubsländer reicht für Deutsche jedoch die Vorlage des Personalausweises beziehungsweise Kinderreisepasses aus.
 Express-Bestellung:
-Bei der Bundesdruckerei kann auch ein Reisepass im Expressverfahren bestellt werden. Die Bearbeitungszeit (Antragstellung bis Aushändigung) im Bürgerbüro, Passausgabe, Rheinauer Straße 19, beträgt im Idealfall etwa drei bis vier Arbeitstage. In den Außenstellen des Bürgerbüros verlängert sich die Bearbeitungszeit um einen Arbeitstag. Sie können den Pass in jedem Bürgerbüro im Stadtgebiet beantragen und abholen. Zusätzlich zur Gebühr muss ein Aufpreis von 38 Euro gezahlt werden.
+Bei der Bundesdruckerei kann auch ein Reisepass im Expressverfahren bestellt werden. Die Bearbeitungszeit (Antragstellung bis Aushändigung) im Bürgerbüro, Passausgabe, Rheinauer Straße 19, beträgt im Idealfall etwa drei bis vier Arbeitstage. In den Außenstellen des Bürgerbüros verlängert sich die Bearbeitungszeit um einen Arbeitstag. Sie können den Pass in jedem Bürgerbüro im Stadtgebiet beantragen und abholen. Zusätzlich zur Gebühr muss ein Aufpreis von 36,80 Euro gezahlt werden.
 Gültigkeit des Reisepasses:
 - Für Personen unter 24 Jahren gilt der Reisepass sechs Jahre, bei über 24-Jährigen ist er zehn Jahre gültig
 - Eine Verlängerung der Gültigkeitsdauer ist nicht möglich.
@@ -39,11 +39,11 @@ Hinweise zur Abholung:
 - Den Reisepass per Post zuzusenden, ist nicht zulässig.
 
 Gebührenrahmen
-- Unter 24 Jahren: 44,50 Euro
-- Über 24 Jahren: 71,20 Euro
-- Vielreisende (Reisepass mit 48 Seiten): Gebühr plus 26,10 Euro Aufpreis
-- Express-Bestellung: Gebühr plus 38 Euro Aufpreis
-- Vorläufiger Reisepass: 30,80 Euro
+- Unter 24 Jahren: 43,10 Euro
+- Über 24 Jahren: 69 Euro
+- Vielreisende (Reisepass mit 48 Seiten): Gebühr plus 25,30 Euro Aufpreis
+- Express-Bestellung: Gebühr plus 36,80 Euro Aufpreis
+- Vorläufiger Reisepass: 29,90 Euro
 
 Barzahlung
 Kasse vor Ort
@@ -61,7 +61,7 @@ Sollten Sie den Reisepass dringend benötigen und sollte sogar die Express-Beste
 Können auch Kinder einen regulären Reisepass bekommen?
 Ja, für Kinder kann auch ein Reisepass beantragt werden. Bei Reisen in einige Länder ist ein Reisepass sogar vorgeschrieben. Es kann aber nur entweder ein Reisepass oder ein Kinderreisepass ausgestellt werden.
 Vorteil Reisepass: Er ist in allen Ländern gültig.
-Vorteil Kinderreisepass: Er kostet nur 15,40 Euro.
+Vorteil Kinderreisepass: Er kostet nur 15 Euro.
 Was passiert mit dem Reisepass von Verstorbenen?
 Der Reisepass wird im Todesfall automatisch ungültig. Sie haben dieMöglichkeit, den Reisepass an die Meldebehörde zurückzugeben, wo erentwertet und datenschutzgerecht vernichtet wird. Den entwertetenReisepass können Sie auf Wunsch behalten.
 

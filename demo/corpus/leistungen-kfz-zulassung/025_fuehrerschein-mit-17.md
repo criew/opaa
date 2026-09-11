@@ -36,9 +36,9 @@ Bearbeitungszeit
 Etwa acht Wochen
 
 Gebührenrahmen
-- Bearbeitungsgebühr mit Probezeit 60,40 Euro
-- Bearbeitungsgebühr ohne Probezeit (nur falls Klasse A1 vorhanden) 59,40 Euro
-- zuzüglich für die Überprüfung der Begleitpersonen (je Begleitperson) 12,70 Euro
+- Bearbeitungsgebühr mit Probezeit 60,30 Euro
+- Bearbeitungsgebühr ohne Probezeit (nur falls Klasse A1 vorhanden) 59,30 Euro
+- zuzüglich für die Überprüfung der Begleitpersonen (je Begleitperson) 12,60 Euro
 - Auslagen für Kopien: 0,60 Euro pro Kopie
 In der Bearbeitungsgebühr sind die Kosten für eine Prüfungsbescheinigung und die Kosten für die Ausstellung des Kartenführerscheins ab Vollendung des 18. Lebensjahres enthalten.
 Die Gebühr für die Überprüfung der Begleitperson setzt sich zusammen aus: 8,90 Euro Bearbeitungsgebühr, 3,80 Euro für Kraftfahrt-Bundesamt.

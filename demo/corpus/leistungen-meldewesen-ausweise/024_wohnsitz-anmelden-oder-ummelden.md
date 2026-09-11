@@ -38,7 +38,7 @@ Eine Vollmacht, die folgende Bereiche umfasst: melderechtliche Angelegenheiten o
 Dauer & Kosten
 Gebührenrahmen
 - kostenfrei
-- Adressänderung in Fahrzeugpapieren: 11,70 Euro
+- Adressänderung in Fahrzeugpapieren: 13,80 Euro
 
 Rechtliche Grundlagen
 BMG

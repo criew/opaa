@@ -31,12 +31,12 @@ In dringenden Fällen empfehlen wir Ihnen, persönlich während der Öffnungszei
 
 Gebührenrahmen
 - Ehe-, Geburts-, Sterbeurkunden
-(auch mehrsprachig); Lebenspartnerschaftsurkunden: 11,40 Euro
+(auch mehrsprachig); Lebenspartnerschaftsurkunden: 13,80 Euro
 - Falls Sie eine Urkunde für
 Sozialversicherungszwecke (Rente, Krankenkasse) benötigen, so ist diese
 gebührenfrei und wird zweckgebunden ausgestellt.
 - Bei ungenauen oder unvollständigen
-Angaben kann eine Suchgebühr von bis zu 94,70 Euro pro Personenstandsfall
+Angaben kann eine Suchgebühr von bis zu 115 Euro pro Personenstandsfall
 anfallen.
 Die Gebühren können Sie in der Regel online bezahlen (siehe nachfolgende Möglichkeiten). In Ausnahmefällen kann/muss die Gebühr per Rechnung beglichen werden. Bitte bezahlen Sie diese zeitnah. Selbstverständlich gehen wir mit Ihren Daten vertraulich um. Daher werden Ihre Daten verschlüsselt (SSL-Verfahren), bevor sie an unseren Server übermittelt werden.
 

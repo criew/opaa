@@ -181,6 +181,16 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
   Compose-Profil `demo` zugeordnet (`docker-compose.yml`, Kommentar am `keycloak`-Service), damit die
   Demo nie ohne Anmeldung erreichbar ist — `docker compose --profile demo up` genügt damit allein,
   kein zweiter, leicht vergessener `--profile oidc` auf jedem dokumentierten Befehl.
+
+  **Neustart:** Der Dienst hat bewusst kein Volume und importiert `keycloak/realm-export.json` bei
+  jedem Start neu. Beide Realm-Exporte vergeben deshalb je Konto eine **feste Nutzer-ID** (`"id"`
+  unter `users`, #1526); Keycloak übernimmt sie, das `sub` im Token bleibt damit über einen
+  Neustart hinweg gleich, und OPAA findet zu jedem Konto (Schlüssel: `subject` + `issuer`) seinen
+  vorhandenen Datensatz samt Spaces und Rechten wieder. Ein `docker compose --profile demo down`
+  **ohne** `-v` erhält damit die ganze Demo: Datenbank, Objektspeicher und Konten. Wer den Realm
+  ändert, startet einfach neu — die Datei führt, nicht ein Keycloak-Zustand. **Ein neuer Eintrag
+  unter `users` braucht dabei seine eigene feste `"id"`**, sonst gilt für dieses eine Konto wieder
+  das alte Verhalten: neues `sub` bei jedem Start, neuer rechteloser Datensatz bei jedem Login.
 - **`demo-corpus`** (`httpd:2.4-alpine`) liefert die drei `HTTP_DIRECTORY`-Bibliotheken als getrennte
   Unterverzeichnisse aus: `leistungen-meldewesen-ausweise/`, `leistungen-kfz-zulassung/`,
   `satzungen-gebuehrenordnungen/`. `interne-dienstanweisungen-meldewesen/` (die `UPLOAD`-Bibliothek,
@@ -215,16 +225,13 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
   bleiben davon unberührt: `mc mirror --overwrite --remove` erzwingt bei jedem Start wieder den
   committeten Korpusstand, egal was im Volume lag.
 
-  > **Achtung beim Neustart:** Objekte, Datenbank und damit auch die Dokumentzeilen überleben ein
-  > `docker compose --profile demo down` (ohne `-v`) — die **Konten** nicht. Der `keycloak`-Dienst
-  > hat kein Volume und importiert `keycloak/realm-export.json` bei jedem Start neu; der Export
-  > vergibt keine festen Nutzer-IDs, also bekommt jedes Demo-Konto ein neues `sub` und damit beim
-  > nächsten Login einen **neuen** OPAA-Datensatz ohne Rechte an den vorhandenen Bibliotheken. Der
-  > Bestand ist dann noch da, aber niemand sieht ihn mehr, und ein erneuter Seed-Lauf legt alles
-  > ein zweites Mal an, statt das Vorhandene zu übernehmen (seine Namensprüfung läuft über die
-  > Sitzung des — nun neuen — Admin-Kontos). Wer die Demo neu startet, setzt sie deshalb mit
-  > `docker compose --profile demo down -v` vollständig zurück und seedet neu. Das gilt unverändert
-  > seit #712 und hat mit der Ablage nichts zu tun; behoben wird es in #1526.
+  > **Neustart:** Objekte, Datenbank, Dokumentzeilen **und Konten** überleben ein
+  > `docker compose --profile demo down` (ohne `-v`). Die Konten tun das seit #1526, weil beide
+  > Realm-Exporte je Eintrag eine feste Nutzer-ID vergeben (siehe „Stack starten", Punkt
+  > `keycloak`): Das `sub` im Token bleibt gleich, OPAA findet seinen vorhandenen Datensatz samt
+  > Rechten wieder, und ein erneuter Seed-Lauf bleibt auch über den Neustart hinweg idempotent.
+  > Vollständig zurücksetzen (`down -v` plus neuer Seed) muss nur, wer den Bestand selbst loswerden
+  > will.
 
   **Zugangsdaten:** Der Root-Schlüssel `rheinfurt-archiv` / `RheinfurtDemo!2026` ist ein
   dokumentierter Demo-Wert; ihn gibt der Seed den **beiden S3-Bibliotheken** als
@@ -359,12 +366,11 @@ sha256sum -c MANIFEST.sha256
 Details zum Reproduktionsverfahren, den verwendeten Quellen und der Werkzeugwahl für PDF/DOCX/PPTX:
 [`generator/README.md`](generator/README.md) und [`corpus/SOURCE.md`](corpus/SOURCE.md).
 
-**Zwei Abweichungen vom „alles kommt aus dem Generator"-Bild**, beide dort ausführlich festgehalten:
-Die Word-97-Datei der Bibliothek „Formattest auf S3" schreibt keine der gepinnten Bibliotheken, sie
+**Eine Abweichung vom „alles kommt aus dem Generator"-Bild**, dort ausführlich festgehalten: Die
+Word-97-Datei der Bibliothek „Formattest auf S3" schreibt keine der gepinnten Bibliotheken, sie
 entsteht einmalig über `generator/make_doc_fixture.py` mit LibreOffice und bleibt committet
-(„Formate ohne Writer"); und `corpus/leistungen-meldewesen-ausweise/002_personalausweis-oder-reisepass-abholen.md`
-trägt eine Handkorrektur aus #942, die ein Generator-Lauf zurücknimmt („Handkorrektur in der
-Leistungsbibliothek").
+(„Formate ohne Writer"). Alles andere — auch jeder Gebührenbetrag — kommt aus dem Lauf selbst und
+braucht keine Nacharbeit von Hand (#1525).
 
 **Was danach neu indiziert werden muss:** Ein erneuter `python seed.py --profile demo`-Lauf gegen eine
 bereits laufende Instanz legt Nutzer, Spaces, Bibliotheken und Rechte nicht doppelt an (idempotent),
@@ -696,6 +702,13 @@ die Daten bleiben also erhalten. Die Ausgabe der Läufe wird protokolliert und w
 Instanz folgt dem `main`-Stand damit mit höchstens einem Tag Verzug; ein Push auf `main` erscheint
 nicht sofort, sondern beim nächsten nächtlichen Lauf. Wer schneller sein will, ruft das Skript von
 Hand auf.
+
+**Einmalig beim ersten Aufruf nach #1526:** Der Realm-Export vergibt seither feste Nutzer-IDs; die
+bestehenden Konten der Instanz tragen noch die zufälligen aus ihrem letzten Import. Beim ersten
+Deployment danach wechselt also jedes `sub` einmal, und jedes Demo-Konto bekäme beim nächsten Login
+eine zweite, rechtelose Zeile. Dieser eine Lauf braucht deshalb den zurücksetzenden Schalter
+(`down -v`) und anschließend einen vollständigen Seed; ab dann bleiben die Konten über jeden
+Neustart hinweg dieselben.
 
 Auf der Testinstanz sind `nomic-embed-text` und `OPAA_PGVECTOR_DIMENSIONS=768` fest aneinander
 gekoppelt: Wer das Embedding-Modell wechselt, muss beide Werte gemeinsam ändern und die Datenbank

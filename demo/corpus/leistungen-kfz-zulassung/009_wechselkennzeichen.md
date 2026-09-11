@@ -40,7 +40,7 @@ Wenn Sie persönlich vorbeikommen: am gleichen Tag
 
 Gebührenrahmen
 Die üblichen Zulassungsgebühren erhöhen sich bei
-Zuteilung eines Wechselkennzeichens um 5,40 Euro pro
+Zuteilung eines Wechselkennzeichens um 6,90 Euro pro
 Fahrzeug.
 
 Rechtliche Grundlagen
