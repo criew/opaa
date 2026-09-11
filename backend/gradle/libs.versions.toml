@@ -59,7 +59,7 @@ poi-scratchpad = "5.5.1"
 # tika-parser-mail-module; declared explicitly because this module now walks the MIME tree
 # directly through org.apache.james.mime4j.dom rather than only through Tika's own extraction.
 # Version pinned to what that transitive dependency resolves to today (`./gradlew dependencies`).
-mime4j = "0.8.14"
+mime4j = "0.8.15"
 # PDF outline/page reader for io.opaa.indexing.format.file.pdf.PdfDocumentFormat (docs/features/ingestion-pipelines.md,
 # Teil 3 - "gliederungsbewusster PDF-Pfad"). Already on the classpath transitively via
 # spring-ai-tika-document-reader's tika-parser-pdf-module; declared explicitly because this module now
