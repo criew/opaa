@@ -188,8 +188,9 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
   Neustart hinweg gleich, und OPAA findet zu jedem Konto (Schlüssel: `subject` + `issuer`) seinen
   vorhandenen Datensatz samt Spaces und Rechten wieder. Ein `docker compose --profile demo down`
   **ohne** `-v` erhält damit die ganze Demo: Datenbank, Objektspeicher und Konten. Wer den Realm
-  ändert (neues Konto, neues Passwort), startet einfach neu — die Datei führt, nicht ein
-  Keycloak-Zustand.
+  ändert, startet einfach neu — die Datei führt, nicht ein Keycloak-Zustand. **Ein neuer Eintrag
+  unter `users` braucht dabei seine eigene feste `"id"`**, sonst gilt für dieses eine Konto wieder
+  das alte Verhalten: neues `sub` bei jedem Start, neuer rechteloser Datensatz bei jedem Login.
 - **`demo-corpus`** (`httpd:2.4-alpine`) liefert die drei `HTTP_DIRECTORY`-Bibliotheken als getrennte
   Unterverzeichnisse aus: `leistungen-meldewesen-ausweise/`, `leistungen-kfz-zulassung/`,
   `satzungen-gebuehrenordnungen/`. `interne-dienstanweisungen-meldewesen/` (die `UPLOAD`-Bibliothek,
@@ -682,6 +683,13 @@ die Daten bleiben also erhalten. Die Ausgabe der Läufe wird protokolliert und w
 Instanz folgt dem `main`-Stand damit mit höchstens einem Tag Verzug; ein Push auf `main` erscheint
 nicht sofort, sondern beim nächsten nächtlichen Lauf. Wer schneller sein will, ruft das Skript von
 Hand auf.
+
+**Einmalig beim ersten Aufruf nach #1526:** Der Realm-Export vergibt seither feste Nutzer-IDs; die
+bestehenden Konten der Instanz tragen noch die zufälligen aus ihrem letzten Import. Beim ersten
+Deployment danach wechselt also jedes `sub` einmal, und jedes Demo-Konto bekäme beim nächsten Login
+eine zweite, rechtelose Zeile. Dieser eine Lauf braucht deshalb den zurücksetzenden Schalter
+(`down -v`) und anschließend einen vollständigen Seed; ab dann bleiben die Konten über jeden
+Neustart hinweg dieselben.
 
 Auf der Testinstanz sind `nomic-embed-text` und `OPAA_PGVECTOR_DIMENSIONS=768` fest aneinander
 gekoppelt: Wer das Embedding-Modell wechselt, muss beide Werte gemeinsam ändern und die Datenbank
