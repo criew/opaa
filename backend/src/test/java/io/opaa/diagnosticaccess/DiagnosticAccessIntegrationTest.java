@@ -30,6 +30,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,6 +82,26 @@ class DiagnosticAccessIntegrationTest {
             .save(
                 new Group(organizationId, GroupKind.ORG_UNIT, "Amt für Personal", null, null, null))
             .getId();
+  }
+
+  /**
+   * Every row a test method writes belongs to the organization created above and is removed here,
+   * in reference order: a Befugnis left behind names its granter through an {@code ON DELETE
+   * RESTRICT} foreign key and would block the blanket {@code userRepository.deleteAll()} of any
+   * other class sharing this context. The organization itself stays - its protocol entries are
+   * undeletable for the application account (ADR-0015).
+   */
+  @AfterEach
+  void tearDown() {
+    jdbcTemplate.update(
+        "DELETE FROM diagnostic_impersonation_grants WHERE organization_id = ?", organizationId);
+    jdbcTemplate.update(
+        "DELETE FROM asset_grant_history WHERE organization_id = ?", organizationId);
+    jdbcTemplate.update("DELETE FROM asset_grants WHERE organization_id = ?", organizationId);
+    jdbcTemplate.update(
+        "DELETE FROM knowledge_libraries WHERE organization_id = ?", organizationId);
+    jdbcTemplate.update("DELETE FROM users WHERE organization_id = ?", organizationId);
+    jdbcTemplate.update("DELETE FROM groups WHERE organization_id = ?", organizationId);
   }
 
   @Test
