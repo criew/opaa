@@ -7,6 +7,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
+import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.AttachmentExtractor;
@@ -20,6 +21,9 @@ import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.source.attachment.AttachmentProperties;
 import io.opaa.indexing.source.attachment.StandaloneAttachmentAccess;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
+import io.opaa.indexing.source.s3.S3AccessException;
+import io.opaa.indexing.source.s3.S3Download;
+import io.opaa.indexing.source.s3.S3OriginalAccess;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.ProxyAndCredentials;
@@ -132,6 +136,7 @@ public class LibraryDocumentService {
   private final AttachmentProperties attachmentProperties;
   private final AttachmentExtractionLimiter attachmentExtractionLimiter;
   private final SupportedDocumentFormats supportedFormats;
+  private final S3OriginalAccess s3OriginalAccess;
 
   public LibraryDocumentService(
       KnowledgeLibraryRepository libraryRepository,
@@ -152,7 +157,8 @@ public class LibraryDocumentService {
       AttachmentExtractor attachmentExtractor,
       AttachmentProperties attachmentProperties,
       AttachmentExtractionLimiter attachmentExtractionLimiter,
-      SupportedDocumentFormats supportedFormats) {
+      SupportedDocumentFormats supportedFormats,
+      S3OriginalAccess s3OriginalAccess) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
     this.documentRepository = documentRepository;
@@ -172,6 +178,7 @@ public class LibraryDocumentService {
     this.attachmentProperties = attachmentProperties;
     this.attachmentExtractionLimiter = attachmentExtractionLimiter;
     this.supportedFormats = supportedFormats;
+    this.s3OriginalAccess = s3OriginalAccess;
   }
 
   /**
@@ -478,9 +485,13 @@ public class LibraryDocumentService {
    * instead, applying the library's own quellkonfiguration (proxy, credentials, insecure TLS) the
    * same way {@code UrlIndexingExecutor}/{@code RssFeedIndexingExecutor} already do.
    *
+   * <p>{@code S3} (#1524): the stored {@code s3://bucket/key} names no local file and no address a
+   * browser could open either - {@link #loadS3Content} fetches the object from the library's own
+   * store, the way an indexing run reads it.
+   *
    * <p>An attachment document (ADR-0022, #1239) has no original of its own at all - neither on disk
    * nor behind its synthetic {@code file_path} - and is served by {@link #loadAttachmentContent},
-   * which re-extracts it from its parent chain'''s own original.
+   * which re-extracts it from its parent chain's own original.
    */
   public DocumentContent loadContent(UUID documentId, CurrentUser caller) {
     Document document =
@@ -523,10 +534,10 @@ public class LibraryDocumentService {
 
   /**
    * The original of a document that is not itself an attachment - resolved from local disk ({@code
-   * UPLOAD}/{@code FILESYSTEM}) or proxied from its source URL ({@code HTTP_DIRECTORY}/{@code
-   * RSS_FEED}). Access has already been checked by {@link #loadContent}; {@link
-   * #loadAttachmentContent} calls this for an attachment's root ancestor, which always lives in the
-   * same library as the attachment itself.
+   * UPLOAD}/{@code FILESYSTEM}), proxied from its source URL ({@code HTTP_DIRECTORY}/{@code
+   * RSS_FEED}) or downloaded from the library's object store ({@code S3}). Access has already been
+   * checked by {@link #loadContent}; {@link #loadAttachmentContent} calls this for an attachment's
+   * root ancestor, which always lives in the same library as the attachment itself.
    */
   private DocumentContent loadOriginal(Document document, KnowledgeLibrary library) {
     return switch (document.getSourceType()) {
@@ -540,12 +551,57 @@ public class LibraryDocumentService {
               .orElseThrow(LibraryDocumentService::noOriginalAvailable);
       case FILESYSTEM ->
           localContent(document, filesystemFileIfWithinConfiguredDirectory(document, library));
+      case S3 -> loadS3Content(document, library);
       // A Confluence page has no file of its own and its content sits behind the instance's
-      // authentication; the citation opens the page directly via getDeepLinkSourceUrl. An S3
-      // object is re-read only by a run (ADR-0027, Entscheidung 5): no local file, and
-      // s3://bucket/key is no address a reader could open either.
-      case CONFLUENCE, S3 -> throw noOriginalAvailable();
+      // authentication; the citation opens the page directly via getDeepLinkSourceUrl, which is
+      // why this is the one sourceType without an original of its own to serve.
+      case CONFLUENCE -> throw noOriginalAvailable();
     };
+  }
+
+  /**
+   * Streams an {@code S3} document's object out of its library's own object store (#1524) through
+   * {@link S3OriginalAccess} - no access decision of its own, {@link #loadContent} has already
+   * required {@code VIEWER}. The temp file the download lands in is deleted when the returned
+   * stream is closed, the contract {@link #loadAttachmentContent} already relies on.
+   *
+   * <p>Two failure pictures, as for an uploaded original in an object store (ADR-0030, Entscheidung
+   * 9): an object this library resolves to nothing answers the same German 404 as every other "no
+   * original available" case, indistinguishable from it; a store that cannot be reached is a {@code
+   * 503}, a temporary condition a caller must not read as "this original does not exist". The
+   * store's own sentence stays in the log - it names configuration a VIEWER does not see.
+   */
+  private DocumentContent loadS3Content(Document document, KnowledgeLibrary library) {
+    S3Download download;
+    try {
+      download =
+          s3OriginalAccess
+              .download(library, document.getFilePath())
+              .orElseThrow(LibraryDocumentService::noOriginalAvailable);
+    } catch (S3AccessException e) {
+      log.warn(
+          "S3 object of document {} is not readable right now: {}",
+          document.getId(),
+          e.getMessage());
+      throw new ServiceUnavailableException(OBJECT_STORE_UNAVAILABLE);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new ServiceUnavailableException(OBJECT_STORE_UNAVAILABLE);
+    }
+    try {
+      String contentType = document.getContentType();
+      if (contentType == null || contentType.isBlank()) {
+        contentType = normalizeContentType(download.contentType());
+      }
+      InputStream stream =
+          deletingOnClose(Files.newInputStream(download.file()), List.of(download.file()));
+      return DocumentContent.ofStream(
+          stream, document.getFileName(), ServedContentTypes.forFile(contentType, download.file()));
+    } catch (IOException e) {
+      deleteQuietly(download.file());
+      log.warn("Downloaded S3 object of document {} could not be opened", document.getId(), e);
+      throw noOriginalAvailable();
+    }
   }
 
   /** A local original to serve, or the same 404 every other unreachable original answers with. */
@@ -556,6 +612,15 @@ public class LibraryDocumentService {
     return new DocumentContent(
         file, document.getFileName(), ServedContentTypes.forFile(document.getContentType(), file));
   }
+
+  /**
+   * The {@code 503} of an object store that cannot be reached or refuses the application right now
+   * (#1524) - carries no detail of the failure, which goes to the log; the wording mirrors {@link
+   * UploadStoreUnavailableException}, whose storage is a different one.
+   */
+  static final String OBJECT_STORE_UNAVAILABLE =
+      "Der Objektspeicher dieser Bibliothek ist derzeit nicht erreichbar. Bitte später erneut"
+          + " versuchen.";
 
   private static NotFoundException noOriginalAvailable() {
     return new NotFoundException("Für dieses Dokument steht kein Originaldokument zur Verfügung");
@@ -660,7 +725,9 @@ public class LibraryDocumentService {
     boolean streaming = false;
     try {
       Path currentFile =
-          rootContent.isStreamed() ? bufferToTempFile(rootContent) : rootContent.path();
+          rootContent.isStreamed()
+              ? bufferToTempFile(rootContent, bufferBoundFor(root))
+              : rootContent.path();
       if (rootContent.isStreamed()) {
         tempFiles.add(currentFile);
       }
@@ -719,15 +786,28 @@ public class LibraryDocumentService {
   }
 
   /**
-   * Copies a streamed root original into a temp file so the pipeline can re-read it. A proxied
-   * remote body is already bounded by {@link RemoteContentProperties#maxBytes()} through its own
-   * stream; an {@code UPLOAD} original streamed from an object store (ADR-0030) is not, so the copy
-   * is capped at {@link UploadProperties#maxFileSize()} - the most an upload could ever have been -
-   * and an object swapped in the bucket for a larger one cannot fill the temp directory.
+   * The ceiling {@link #bufferToTempFile} applies to a streamed root: the bound the root's own
+   * origin already had to pass, so a root that was legitimately indexed can always be buffered
+   * again. Taking one storage's bound for another's content would make an attachment inside a large
+   * {@code S3} object unopenable as soon as an operator sets the two differently. {@code
+   * FILESYSTEM}/{@code CONFLUENCE} never reach here - neither ever yields a streamed original.
    */
-  private Path bufferToTempFile(DocumentContent content) throws IOException {
+  private long bufferBoundFor(Document root) {
+    return switch (root.getSourceType()) {
+      case S3 -> s3OriginalAccess.maxObjectSizeBytes();
+      case HTTP_DIRECTORY, RSS_FEED -> remoteContentProperties.maxBytes();
+      case UPLOAD, FILESYSTEM, CONFLUENCE -> uploadProperties.maxFileSize();
+    };
+  }
+
+  /**
+   * Copies a streamed root original into a temp file so the pipeline can re-read it, capped at
+   * {@code maxBytes} ({@link #bufferBoundFor}) - an original swapped at its source for a larger one
+   * cannot fill the temp directory.
+   */
+  private Path bufferToTempFile(DocumentContent content, long maxBytes) throws IOException {
     Path temp = Files.createTempFile("opaa-attachment-parent-", ".tmp");
-    try (InputStream in = BoundedStreams.input(content.stream(), uploadProperties.maxFileSize())) {
+    try (InputStream in = BoundedStreams.input(content.stream(), maxBytes)) {
       Files.copy(in, temp, StandardCopyOption.REPLACE_EXISTING);
     } catch (IOException | RuntimeException e) {
       deleteQuietly(temp);
