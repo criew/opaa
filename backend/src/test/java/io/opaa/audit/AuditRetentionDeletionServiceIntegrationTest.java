@@ -11,12 +11,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * #395: {@link AuditRetentionDeletionService} calling the real {@code
- * opaa_audit_delete_expired_partitions()} database function (migration 023, baseline group (f) as
- * of #904) through the ordinary application datasource - proves the wiring end to end (repository
- * -> native query -> database function), not the SQL function's own forward-only-cutoff behaviour
- * or its restricted, non-superuser role - that is {@code io.opaa.migration.MigrationBaselineTest}'s
- * smoke-level concern now; the function's business logic itself has no dedicated regression test
- * after #904 (see that issue's pull request description).
+ * opaa_audit_delete_expired_partitions()} database function (baseline group (j)) through the
+ * ordinary application datasource - proves the wiring end to end (repository -> native query ->
+ * database function), not the SQL function's own forward-only-cutoff behaviour or its restricted,
+ * non-superuser role, which is {@code io.opaa.migration.AuditPrivilegeModelTest}'s concern.
  */
 @OpaaIntegrationTest
 class AuditRetentionDeletionServiceIntegrationTest {
