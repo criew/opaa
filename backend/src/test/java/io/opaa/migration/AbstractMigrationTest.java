@@ -56,7 +56,7 @@ import org.testcontainers.utility.DockerImageName;
  * <p><b>Cluster-wide roles are not part of this optimization and remain each subclass's own
  * responsibility.</b> {@code CREATE ROLE}/{@code DROP ROLE} (e.g. for {@code opaa_audit_owner},
  * created by the baseline's audit-log privilege restriction, see {@code
- * db/changelog/changes/001-baseline.yaml}, group (f)) act on the whole Postgres cluster, not on one
+ * db/changelog/changes/001-baseline.yaml}, group (j)) act on the whole Postgres cluster, not on one
  * database - they survive a {@code DROP DATABASE} exactly as they survived the old {@code DROP
  * SCHEMA CASCADE}. Subclasses that create such roles must keep creating and dropping them per test
  * method, and must never bake them into the template database: a role dropped by one test would
@@ -111,8 +111,8 @@ abstract class AbstractMigrationTest {
    * The classpath path of the fixture changelog that builds the schema exactly as it existed
    * immediately before the changeSet(s) under test - e.g. {@code
    * db/changelog/test-master-through-baseline.yaml} for a delta test of the first changeset added
-   * after the #904 baseline. Applied once per class, into the template database; never re-applied
-   * per test method.
+   * after the baseline. Applied once per class, into the template database; never re-applied per
+   * test method.
    */
   protected abstract String baseFixtureChangelogPath();
 

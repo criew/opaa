@@ -1,77 +1,16 @@
 databaseChangeLog:
-  # Baseline = Stand 08/2026 (#904): OPAA was still pre-production, so the 134 changesets
-  # accumulated across 67 files were consolidated into changes/001-baseline.yaml, grouped into a
-  # handful of changeSets by schema area (extensions, auth, spaces/groups, libraries/documents,
-  # chat, audit/permission-history, notifications/branding, seed data) rather than left as one
-  # monster changeset - a failure during apply then points at a schema area, not an undifferentiated
-  # 134-step history. This was a deliberate, one-time consolidation, not a pattern to repeat: every
+  # Baseline = Stand 09/2026 (#1492): the second and, like the first (#904), deliberately one-time
+  # consolidation of the Liquibase history before production use - 56 changesets from 33 files
+  # folded into changes/001-baseline.yaml. It is grouped into a handful of changeSets by schema
+  # area (extensions, organizations/users/identity providers, spaces/groups, libraries/folders/
+  # grants, documents, indexing runs/source state, full-text index, metadata schema, chat/model
+  # catalogue, audit/permission history, diagnostics, notifications/branding, seed data) rather
+  # than left as one monster changeset, so a failure during apply points at a schema area. The two
+  # trailing changeSets are the precondition-guarded vector_store expression indexes, which must
+  # stay separate: a precondition on a group changeSet would skip that whole group. Every
   # installation this ran against had to be rebuilt from scratch (DATABASECHANGELOG no longer
   # matches), which is only acceptable before real production data exists. From here on, one
   # changeset per schema change again, each with its own delta test under io.opaa.migration (see
   # AbstractMigrationTest's Javadoc and test-master-through-baseline.yaml).
   - include:
       file: db/changelog/changes/001-baseline.yaml
-  - include:
-      file: db/changelog/changes/002-documents-indexed-chunk-count-index.yaml
-  - include:
-      file: db/changelog/changes/003-chunk-full-text-table.yaml
-  - include:
-      file: db/changelog/changes/004-chunk-full-text-gin-index.yaml
-  - include:
-      file: db/changelog/changes/005-diagnostic-impersonation-grants.yaml
-  - include:
-      file: db/changelog/changes/006-library-diagnostics-lock.yaml
-  - include:
-      file: db/changelog/changes/007-diagnostic-context-log.yaml
-  - include:
-      file: db/changelog/changes/008-asset-grants-granted-by-backfill.yaml
-  - include:
-      file: db/changelog/changes/009-chunk-full-text-skip-table.yaml
-  - include:
-      file: db/changelog/changes/010-confluence-source-type.yaml
-  - include:
-      file: db/changelog/changes/011-documents-parent-document-id.yaml
-  - include:
-      file: db/changelog/changes/012-vector-store-library-id-index.yaml
-  - include:
-      file: db/changelog/changes/013-confluence-full-sync.yaml
-  - include:
-      file: db/changelog/changes/014-confluence-webhooks.yaml
-  - include:
-      file: db/changelog/changes/015-confluence-run-metrics.yaml
-  - include:
-      file: db/changelog/changes/016-documents-parent-document-id-backfill.yaml
-  - include:
-      file: db/changelog/changes/017-documents-library-checksum-parentless.yaml
-  - include:
-      file: db/changelog/changes/018-document-metadata-core-fields.yaml
-  - include:
-      file: db/changelog/changes/019-documents-library-status-index.yaml
-  - include:
-      file: db/changelog/changes/020-document-type-suffixes.yaml
-  - include:
-      file: db/changelog/changes/021-drop-chunk-full-text-skip-table.yaml
-  - include:
-      file: db/changelog/changes/022-chats-metadata-filter.yaml
-  - include:
-      file: db/changelog/changes/023-indexing-jobs-listing-assessment.yaml
-  - include:
-      file: db/changelog/changes/024-library-confluence-full-sync-interval.yaml
-  - include:
-      file: db/changelog/changes/025-library-metadata-fields.yaml
-  - include:
-      file: db/changelog/changes/026-oidc-providers.yaml
-  - include:
-      file: db/changelog/changes/027-context-prefix-stamp.yaml
-  - include:
-      file: db/changelog/changes/028-model-metadata-extraction.yaml
-  - include:
-      file: db/changelog/changes/029-identity-provider-groups.yaml
-  - include:
-      file: db/changelog/changes/030-s3-source-type.yaml
-  - include:
-      file: db/changelog/changes/031-s3-run-state.yaml
-  - include:
-      file: db/changelog/changes/032-s3-events.yaml
-  - include:
-      file: db/changelog/changes/033-source-sync-state.yaml
