@@ -34,8 +34,8 @@ public class ClientAddressDiagnosticsController {
       throw new AccessDeniedException(
           "Nur die Administration darf die aufgelöste Client-Adresse einsehen");
     }
-    String remote = request.getRemoteAddr();
-    String forwardedFor = request.getHeader(TrustedProxyClientIpResolver.X_FORWARDED_FOR);
+    String remote = clientIpResolver.remoteAddress(request);
+    String forwardedFor = clientIpResolver.forwardedFor(request);
     ClientAddressDiagnosticsResponse response =
         new ClientAddressDiagnosticsResponse(
             forwardedFor != null && clientIpResolver.isTrustedProxy(remote),

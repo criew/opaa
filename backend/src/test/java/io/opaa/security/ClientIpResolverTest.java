@@ -2,6 +2,8 @@ package io.opaa.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -111,6 +113,34 @@ class ClientIpResolverTest {
         .isEqualTo("2a02:1::5");
     assertThat(resolver.resolve(request("10.0.0.9", "2a02:1::5"))).isEqualTo("2a02:1::5");
     assertThat(resolver.resolve(request("2001:db9::1", "2a02:1::5"))).isEqualTo("2001:db9::1");
+  }
+
+  @Test
+  void theConnectionAddressAndTheHeaderAreReadBeneathEveryRequestWrapper() {
+    // regression guard: Spring's ForwardedHeaderFilter (forward-headers-strategy: framework) wraps
+    // the request with getRemoteAddr() rewritten from the leftmost X-Forwarded-For entry and the
+    // header hidden - the resolver must see the connection and the raw header underneath
+    var resolver = new TrustedProxyClientIpResolver(List.of("10.0.0.0/8"));
+    MockHttpServletRequest root = request("10.0.0.9", "9.9.9.9, 198.51.100.1");
+    HttpServletRequest wrapped =
+        new HttpServletRequestWrapper(new HttpServletRequestWrapper(root)) {
+          @Override
+          public String getRemoteAddr() {
+            return "9.9.9.9";
+          }
+
+          @Override
+          public String getHeader(String name) {
+            return XFF.equalsIgnoreCase(name) ? null : super.getHeader(name);
+          }
+        };
+
+    assertThat(resolver.resolve(wrapped)).isEqualTo("198.51.100.1");
+    assertThat(resolver.remoteAddress(wrapped)).isEqualTo("10.0.0.9");
+    assertThat(resolver.forwardedFor(wrapped)).isEqualTo("9.9.9.9, 198.51.100.1");
+
+    var untrusting = new TrustedProxyClientIpResolver(List.of());
+    assertThat(untrusting.resolve(wrapped)).isEqualTo("10.0.0.9");
   }
 
   @Test

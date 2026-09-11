@@ -228,7 +228,11 @@ einem Netz in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` kommt (Vorgabe leer = Header
 dann ist der Client der erste Eintrag von rechts, der kein vertrauter Proxy ist — der Eintrag, den
 der nächste vertraute Proxy angehängt hat; ein vom Client mitgeschickter Anfang der Kette und
 weitere vertraute Zwischenstationen zählen nicht. Das Ergebnis ist immer eine numerische Adresse
-(ein Eintrag, der keine ist, fällt auf die Verbindungsadresse zurück; kein DNS). `0.0.0.0/0` und
+(ein Eintrag, der keine ist, fällt auf die Verbindungsadresse zurück; kein DNS). Verbindungsadresse
+und Header liest der Resolver unterhalb aller Request-Wrapper, denn Springs `ForwardedHeaderFilter`
+(`server.forward-headers-strategy: framework`) schreibt `getRemoteAddr()` bereits aus dem
+**linkesten** `X-Forwarded-For`-Eintrag um und versteckt den Header — `getRemoteAddr()` direkt zu
+lesen wäre von jedem Client wählbar; kein Code liest es mehr direkt. `0.0.0.0/0` und
 `::/0` lehnt der Start ab; der `oidc`-Betriebsmodus warnt bei leerer Liste mit der Folge im
 Klartext. Der Compose-Stack hat dafür ein festes Netz (`docker-compose.yml`, `OPAA_COMPOSE_SUBNET`)
 und `.env.docker.example` den passenden Wert. `GET /api/v1/admin/diagnostics/client-address`

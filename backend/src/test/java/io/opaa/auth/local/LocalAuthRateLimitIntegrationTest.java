@@ -57,6 +57,9 @@ class LocalAuthRateLimitIntegrationTest {
   private static final String CHANGE_PASSWORD = "/api/v1/auth/local/change-password";
   private static final String DIAGNOSTICS = "/api/v1/admin/diagnostics/client-address";
 
+  /** Throttled attempts name no account: a known one would be locked after five (#1535). */
+  private static final String UNKNOWN = "niemand@stadt.example";
+
   @Autowired private MockMvc mockMvc;
   @Autowired private LocalAccountFixturesFactory fixturesFactory;
 
@@ -79,11 +82,11 @@ class LocalAuthRateLimitIntegrationTest {
   @Test
   void theEleventhSignInFromOneAddressWithinAMinuteIs429WithRetryAfter() throws Exception {
     for (int i = 0; i < 10; i++) {
-      login(user.email(), "falsches-passwort", from("203.0.113.11"))
+      login(UNKNOWN, "falsches-passwort", from("203.0.113.11"))
           .andExpect(status().isUnauthorized());
     }
 
-    login(user.email(), "falsches-passwort", from("203.0.113.11"))
+    login(UNKNOWN, "falsches-passwort", from("203.0.113.11"))
         .andExpect(status().isTooManyRequests())
         .andExpect(header().exists(HttpHeaders.RETRY_AFTER))
         .andExpect(jsonPath("$.status").value(429))
@@ -103,11 +106,11 @@ class LocalAuthRateLimitIntegrationTest {
   @Test
   void aForgedForwardedForHeaderFromAnUntrustedConnectionDoesNotChangeTheBucket() throws Exception {
     for (int i = 0; i < 10; i++) {
-      login(user.email(), "falsches-passwort", from("203.0.113.21", "198.51.100." + (i + 1)))
+      login(UNKNOWN, "falsches-passwort", from("203.0.113.21", "198.51.100." + (i + 1)))
           .andExpect(status().isUnauthorized());
     }
 
-    login(user.email(), "falsches-passwort", from("203.0.113.21", "198.51.100.99"))
+    login(UNKNOWN, "falsches-passwort", from("203.0.113.21", "198.51.100.99"))
         .andExpect(status().isTooManyRequests());
   }
 
@@ -115,11 +118,11 @@ class LocalAuthRateLimitIntegrationTest {
   void behindATrustedProxyTheClientIsTheAddressTheProxyAppended() throws Exception {
     for (int i = 0; i < 10; i++) {
       // an attacker's own "9.9.9.9" prefix never rotates the bucket: the proxy appended the client
-      login(user.email(), "falsches-passwort", from("10.0.0.5", "9.9.9." + i + ", 198.51.100.31"))
+      login(UNKNOWN, "falsches-passwort", from("10.0.0.5", "9.9.9." + i + ", 198.51.100.31"))
           .andExpect(status().isUnauthorized());
     }
 
-    login(user.email(), "falsches-passwort", from("10.0.0.5", "198.51.100.31"))
+    login(UNKNOWN, "falsches-passwort", from("10.0.0.5", "198.51.100.31"))
         .andExpect(status().isTooManyRequests());
     // a different client behind the same proxy has its own budget
     login(user.email(), LocalAccountFixtures.PASSWORD, from("10.0.0.5", "198.51.100.32"))

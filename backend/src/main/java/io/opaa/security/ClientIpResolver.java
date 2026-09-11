@@ -8,7 +8,9 @@ import jakarta.servlet.http.HttpServletRequest;
  * Entscheidung 9). The implementation is {@link TrustedProxyClientIpResolver}: {@code
  * X-Forwarded-For} counts only behind a proxy listed in {@code
  * OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS}, so a client can never choose its address, and the answer is
- * always a numeric address.
+ * always a numeric address. Never read {@code HttpServletRequest#getRemoteAddr()} directly instead:
+ * with {@code server.forward-headers-strategy: framework} Spring rewrites it from the leftmost
+ * {@code X-Forwarded-For} entry, which any client can write.
  */
 @FunctionalInterface
 public interface ClientIpResolver {
