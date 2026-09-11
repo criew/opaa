@@ -419,7 +419,12 @@ Der Lauf richtet über die API ein:
    mindestens VIEWER auf der Bibliothek — beides hat der Eigentümer nach Schritt 4.
 6. **Indizierung je Bibliothek** über deren eigene Quellkonfiguration (nicht für die `UPLOAD`-Bibliothek
    — die hat keinen eigenen Lauf, ADR-0018, siehe Schritt 4) — der Seed wartet auf `COMPLETED` und
-   bricht bei `documentsFailed > 0` ab.
+   bricht bei `documentsFailed > 0` ab. Für die beiden `S3`-Bibliotheken prüft er zusätzlich eine
+   **Mindestzahl**: Ihr Bucket ist eine exakte Spiegelung eines Korpusverzeichnisses
+   (`expected_documents_dir` in `profiles.py`), also muss der Lauf mindestens so viele Dokumente
+   verarbeitet haben, wie dort Dateien liegen. Ohne diese Prüfung meldete ein Lauf gegen einen noch
+   nicht fertig befüllten Bucket „abgeschlossen" über eine leere Bibliothek — der Einmal-Schritt
+   `minio-seed` muss vorher durch sein (Schritt 2).
 
 Für das minimale, eingefrorene `e2e`-Profil (dev-Auth, keine Keycloak-Anmeldung nötig) braucht es den
 separaten E2E-Stack (`e2e/docker-compose.e2e.yml`), nicht den `demo`-Stack — nur dieser provisioniert
