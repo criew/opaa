@@ -25,8 +25,8 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.UploadProperties;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -61,11 +61,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * that is exactly the state of every chunk written before the abstraction existed, the corpus the
  * whole mechanism is meant to be able to reach again.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class PipelineReindexServiceIntegrationTest {
 
-  private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("pipeline-reindex");
+  private static final Path classTempDir = OpaaTestDirectory.subdirectory("pipeline-reindex");
 
   @Autowired private PipelineReindexService reindexService;
   @Autowired private DocumentRepository documentRepository;

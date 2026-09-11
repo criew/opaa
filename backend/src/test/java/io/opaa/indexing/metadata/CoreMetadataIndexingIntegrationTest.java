@@ -21,8 +21,8 @@ import io.opaa.indexing.format.DocumentFormatRegistry;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
@@ -62,11 +62,10 @@ import org.springframework.transaction.PlatformTransactionManager;
  * further Dokumentart sources against the seeded vocabulary of the database: the Kompositum ending
  * in a file name, the document head, and the file format.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class CoreMetadataIndexingIntegrationTest {
 
-  private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("core-metadata-indexing");
+  private static final Path classTempDir = OpaaTestDirectory.subdirectory("core-metadata-indexing");
 
   @Autowired private DocumentIngestService documentIngestService;
   @Autowired private DocumentMetadataService documentMetadataService;

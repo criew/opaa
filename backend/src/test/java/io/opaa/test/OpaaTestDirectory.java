@@ -1,6 +1,5 @@
 package io.opaa.test;
 
-import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -9,31 +8,31 @@ import java.util.Comparator;
 import java.util.stream.Stream;
 
 /**
- * One process-wide base directory for every class carrying {@link OpaaIndexingIntegrationTest},
- * created exactly once so the {@code opaa.indexing.filesystem.allowlist} property {@link
- * OpaaIndexingFilesystemAllowlistInitializer} registers stays identical across classes (an
- * identical, static value keeps the Spring context cache key identical too - a fresh
- * {@code @TempDir} per class would not, see {@link OpaaIndexingIntegrationTest}'s Javadoc).
+ * One process-wide base directory for every Spring-backed test of this suite, created exactly once
+ * so the paths {@link OpaaTestPathInitializer} registers stay identical across classes - an
+ * identical, static value keeps the Spring context cache key identical too, a fresh
+ * {@code @TempDir} per class would not (see {@link OpaaIntegrationTest}'s Javadoc).
  *
- * <p>{@link FilesystemPathAllowlist#isAllowed} (see {@code io.opaa.indexing}) checks with {@code
- * Path#startsWith}, so a subdirectory of {@link #BASE_DIR} passes the allowlist check without
- * widening it beyond this base - each test class calls {@link #subdirectory(String)} for its own,
- * uniquely named subdirectory instead of sharing files directly under {@link #BASE_DIR}.
+ * <p>{@code FilesystemPathAllowlist#isAllowed} checks with {@code Path#startsWith}, so a
+ * subdirectory of {@link #BASE_DIR} passes the allowlist check without widening it beyond this base
+ * - each test class calls {@link #subdirectory(String)} for its own, uniquely named subdirectory
+ * instead of sharing files directly under {@link #BASE_DIR}.
  *
  * <p>Unlike a JUnit {@code @TempDir}, {@link Files#createTempDirectory} does not delete its
- * directory on its own; a shutdown hook removes the whole {@link #BASE_DIR} tree (including every
- * test document a class copied into it) when the JVM exits, so a test run does not leave a
- * permanent temp directory behind.
+ * directory on its own; a shutdown hook removes the whole tree when the JVM exits.
  */
-public final class OpaaIndexingTestDirectory {
+public final class OpaaTestDirectory {
 
   public static final Path BASE_DIR = createBaseDir();
 
-  private OpaaIndexingTestDirectory() {}
+  /** Where {@code opaa.upload.storage-path} points for every class of the suite. */
+  public static final Path UPLOAD_STORAGE_DIR = subdirectory("upload-storage");
+
+  private OpaaTestDirectory() {}
 
   private static Path createBaseDir() {
     try {
-      Path dir = Files.createTempDirectory("opaa-indexing-it-");
+      Path dir = Files.createTempDirectory("opaa-it-");
       Runtime.getRuntime().addShutdownHook(new Thread(() -> deleteRecursively(dir)));
       return dir;
     } catch (IOException e) {

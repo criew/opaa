@@ -9,7 +9,7 @@ import com.sun.net.httpserver.HttpServer;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.test.OpaaMockMvcTest;
+import io.opaa.test.OpaaIntegrationTest;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigDecimal;
@@ -39,7 +39,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * #providerUnauthorizedResponseReturnsBadGatewayWithGermanMessage} covers the other branch of the
  * mapping - a provider that actually answers, just not successfully.
  */
-@OpaaMockMvcTest
+@OpaaIntegrationTest
 class QueryControllerLlmErrorMappingIntegrationTest {
 
   @Autowired private MockMvc mockMvc;

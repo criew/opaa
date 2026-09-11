@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
-import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -20,7 +20,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * as indexed, a re-index of the chunk through the ingestion write path clears that backlog again,
  * and a row whose chunk is gone counts at all.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class FullTextIndexFillStateServiceIntegrationTest {
 
   @Autowired private VectorChunkStore vectorChunkStore;

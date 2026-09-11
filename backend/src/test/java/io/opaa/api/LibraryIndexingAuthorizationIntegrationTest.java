@@ -20,18 +20,17 @@ import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaMockMvcTest;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -42,21 +41,13 @@ import org.springframework.test.web.servlet.MockMvc;
  * dev} security chain ({@link DevAuthFilter}, {@code UserProvisioningFilter}) against a real
  * Postgres, mirroring {@code IndexingControllerAuthorizationIntegrationTest} this replaces.
  */
-// Own filesystem allowlist @DynamicPropertySource (below, scoped to this class's @TempDir) means
-// Spring's context cache still keys this to its own context regardless of the shared
-// @OpaaMockMvcTest base - documented exception per AGENTS.md.
-@OpaaMockMvcTest(properties = "opaa.rate-limit.enabled=false")
+@OpaaIntegrationTest
 class LibraryIndexingAuthorizationIntegrationTest {
 
-  @TempDir static Path documentDir;
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    // #484: overrides the dev profile's /data,/tmp default so this suite's own @TempDir stays
-    // inside the allowlist.
-    registry.add(
-        "opaa.indexing.filesystem.allowlist", () -> documentDir.toAbsolutePath().toString());
-  }
+  // Underneath the suite-wide allowlisted base directory, so it needs no allowlist entry of its
+  // own.
+  private static final Path documentDir =
+      OpaaTestDirectory.subdirectory("library-indexing-authorization");
 
   @Autowired private MockMvc mockMvc;
   @Autowired private UserRepository userRepository;
@@ -66,6 +57,20 @@ class LibraryIndexingAuthorizationIntegrationTest {
   @Autowired private IndexingJobRepository indexingJobRepository;
 
   private User devAdmin;
+
+  /**
+   * Mirrors the {@code setUp} cleanup below: the suite shares one database, so this class removes
+   * its own libraries and their grants again instead of leaving them for the next class's blanket
+   * {@code deleteAll()} to trip over.
+   */
+  @AfterEach
+  void removeCreatedRows() {
+    jdbcTemplate.update(
+        "DELETE FROM asset_grants WHERE library_id IN (SELECT id FROM knowledge_libraries WHERE"
+            + " name LIKE 'Test-Bibliothek%')");
+    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE name LIKE 'Test-Bibliothek%'");
+    jdbcTemplate.update("DELETE FROM users WHERE email = 'foreign-owner-478@example.com'");
+  }
 
   @BeforeEach
   void setUp() throws Exception {

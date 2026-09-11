@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 
-import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
@@ -34,16 +33,9 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -58,26 +50,8 @@ import org.springframework.web.multipart.MultipartFile;
  * the part a mocked {@link LibraryDocumentService} in the unit test cannot prove - that a recursive
  * delete actually removes every contained document's row, vector store chunks and stored file.
  */
-// Own @DynamicPropertySource (below) means Spring's context cache still keys this to its own
-// context regardless of the shared @OpaaIntegrationTest base - documented exception per AGENTS.md.
 @OpaaIntegrationTest
 class LibraryFolderServiceIntegrationTest {
-
-  @TempDir static Path uploadStorageDir;
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("opaa.upload.storage-path", () -> uploadStorageDir.toAbsolutePath().toString());
-  }
-
-  @TestConfiguration
-  static class TestConfig {
-    @Bean
-    @Primary
-    EmbeddingModel testEmbeddingModel() {
-      return new FakeEmbeddingModel();
-    }
-  }
 
   @Autowired private LibraryFolderService folderService;
   @Autowired private LibraryDocumentService documentService;

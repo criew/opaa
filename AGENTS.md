@@ -57,7 +57,7 @@ OPAA_CONFLUENCE_IT=true ./gradlew confluenceIntegrationTest
 # läuft innerhalb von test/build, sobald Docker erreichbar ist (sonst übersprungen). Fußabdruck:
 # ein geteilter MinIO je Test-JVM (MinioFixture) plus je Methode des Ereignisweg-Tests ein
 # eigener MinIO samt sshd-Sidecar für die Portweiterleitung; die Spring-Klassen teilen sich den
-# @OpaaIndexingIntegrationTest-Kontext (kein zusätzlicher Postgres). Bei maxParallelForks = 2 in
+# @OpaaIntegrationTest-Kontext (kein zusätzlicher Postgres). Bei maxParallelForks = 2 in
 # der CI verdoppelt sich das. Alle drei Klassen zusammen unter zwei Minuten.
 ./gradlew spotlessCheck
 ./gradlew spotlessApply
@@ -109,55 +109,81 @@ pnpm test                               # Stack via Docker Compose starten, Suit
 
 ## Spring-Testkontexte
 
-Neue Backend-Integrationstests verwenden eine der kanonischen Meta-Annotationen aus `io.opaa.test`
-(`backend/src/test/java/io/opaa/test/`) statt eigener `@SpringBootTest`/`@ActiveProfiles`/`@Import`/
-`@Testcontainers`-Kombinationen:
+Die gesamte Backend-Suite läuft auf **vier** Spring-Kontexten und damit vier Testcontainers-Postgres
+je Test-JVM (Issue #1481; `TestcontainersConfiguration` deklariert den Container als gewöhnliches
+Singleton-`@Bean`, es gilt also exakt: ein Kontext = ein Container). Jeder Backend-Test, der einen
+Anwendungskontext startet, trägt genau eine der vier Meta-Annotationen aus `io.opaa.test`
+(`backend/src/test/java/io/opaa/test/`) — niemals eine eigene
+`@SpringBootTest`/`@ActiveProfiles`/`@Import`/`@Testcontainers`-Kombination:
 
-- `@OpaaIntegrationTest` — Service-/Repository-Ebene gegen echtes Postgres, ohne MockMvc
-  (`webEnvironment = RANDOM_PORT`, `@ActiveProfiles({"local", "dev"})`). `RANDOM_PORT` startet einen
-  echten Servlet-Container; das ist bewusst gewählt, damit diese Signatur mit der großen
-  `@OpaaIntegrationTest`-Gruppe kontext-kompatibel bleibt, auch für Klassen, die selbst keinen HTTP-Client
-  gegen die eigene Anwendung nutzen.
-- `@OpaaMockMvcTest` — Controller-Ebene über MockMvc (`@AutoConfigureMockMvc`,
-  `@ActiveProfiles("dev")`).
-- `@OpaaIndexingIntegrationTest` — dieselbe Basis wie `@OpaaIntegrationTest`, ergänzt um die feste
-  Chunking-Konfiguration (`opaa.indexing.chunk-size`/`-overlap`/`-batch-size` als `properties`) und
-  den kanonischen Mock-/Fake-LLM-Satz (`ChatModel`, `ActiveChatModelResolver`, `EmbeddingModel`) der
-  Indexing-Pipeline-Tests. `opaa.indexing.filesystem.allowlist` zeigt auf ein einziges,
-  prozessweites Basisverzeichnis (`OpaaIndexingTestDirectory.BASE_DIR`), einmalig über einen
-  `ApplicationContextInitializer` registriert statt über eine klassenlokale
-  `@DynamicPropertySource` — eine Testklasse legt sich darunter mit
-  `OpaaIndexingTestDirectory.subdirectory(name)` ihr eigenes Unterverzeichnis an.
-  `OpaaIndexingMockResetListener` setzt die beiden Mocks vor jeder Testmethode zurück, damit
-  Stubbing nicht zwischen Klassen im selben Kontext durchsickert.
+- **`@OpaaIntegrationTest`** — die kanonische Signatur, die drei Viertel der Suite tragen: echtes
+  Postgres, ganze Anwendung auf `RANDOM_PORT`, MockMvc (`@AutoConfigureMockMvc`),
+  `@ActiveProfiles({"local","dev"})`, die festen Test-Properties der Annotation (Chunking,
+  Upload-Grenzen, abgeschaltetes Rate-Limit, OIDC-Allowlist) und die geteilten Ersatz-Beans aus
+  `OpaaTestBeans` (`FakeEmbeddingModel`, `ChatModel`-Mock, `FakeDirectoryClient`) sowie die
+  `@MockitoSpyBean`-Spies auf `UserRepository`, `ChatMessageRepository` und
+  `DirectorySyncStatusRecorder`.
+- **`@OpaaMockedChatModelIntegrationTest`** — dieselbe Basis, aber `ActiveChatModelResolver` als
+  Mock und der Chat-Titel-Executor synchron. Technischer Grund: zwei Klassen prüfen den **echten**
+  Resolver, davon eine innerhalb der Produktionsverdrahtung.
+- **`@OpaaMockedDocumentServiceIntegrationTest`** — dieselbe Basis, aber `DocumentService` (und der
+  Resolver) als Mock, Chat-Titel-Executor asynchron wie in Produktion. Technischer Grund: zwei
+  Klassen brauchen ein gescriptetes `parseDocument`, was für die zwei Dutzend Klassen, die echte
+  Fixtures indexieren, nicht neutral ist.
+- **`@OpaaPropertyVariantIntegrationTest`** — dieselbe Basis plus die Properties, die selbst
+  Prüfgegenstand sind (abweichende Embedding-Basis-URL, feste pgvector-Dimension ohne
+  Schema-Initialisierung). Technischer Grund: eine Nachbarklasse prüft genau den Default, und der
+  pgvector-Wächter zerstört und erzeugt `vector_store` neu.
 
-Jede Klasse mit identischer Signatur teilt sich einen Spring-Kontext und einen Testcontainers-
-Postgres statt einen eigenen zu booten — Spring cached Kontexte anhand der exakten, zusammengeführten
-Konfiguration (Issue #843). Eine eigene `@DynamicPropertySource`, ein eigenes, **klassenlokales**
-(inneres) `@Import(...TestConfig)` oder ein eigener `@MockitoBean`-Satz erzwingt trotz gemeinsamer
-Meta-Annotation einen eigenen Kontext (Spring bezieht das in den Cache-Schlüssel ein) — das ist
-zulässig, wenn fachlich nötig, muss aber mit einem 1–2-zeiligen Kommentar über der Annotation
-begründet werden (Review-Flagge). Ein geteiltes `@Import` **derselben Top-Level-`@TestConfiguration`**
-in `io.opaa.test` ist dagegen cache-kompatibel, sofern die importierende Klasse sonst keine eigenen
-Differenzierer trägt — jede Klasse, die dieselbe Top-Level-Config importiert, teilt sich einen Kontext
-mit jeder anderen (Vorbild: `DirectorySyncMockConfiguration`, Issue #903); ein Mock, den mehr als eine
-Klasse braucht, gehört deshalb von Anfang an dorthin statt in eine klassenlokale `TestConfig`. Ein
-solcher geteilter Mock braucht denselben Reset-Mechanismus wie `OpaaIndexingMockResetListener` — ohne
-ihn vererbt eine künftige, weitere importierende Klasse stillschweigend den Zustand, den die vorherige
-Testmethode zuletzt hinterlassen hat. In eine
-`@DynamicPropertySource` gehört nur, was zur Laufzeit aus einer Ressource (z. B. einem Testcontainer)
-gelesen wird — ein konstanter Wert gehört stattdessen in `properties` auf der `@SpringBootTest`-Annotation
-selbst. Ein zur Laufzeit berechneter Wert, der über alle Klassen einer Signatur identisch sein muss
-(z. B. ein einmalig angelegtes, geteiltes Basisverzeichnis), gehört in einen geteilten
-`ApplicationContextInitializer` der Meta-Annotation selbst statt in eine klassenlokale
-`@DynamicPropertySource` — letztere spaltet den Kontext trotz identischen Werts, weil Spring die
-Methode selbst (nicht nur ihr Ergebnis) in den Cache-Schlüssel einbezieht (siehe
-`@OpaaIndexingIntegrationTest`). Ein neuer Postgres-Container wird nie manuell deklariert; `@ServiceConnection` kommt aus der
+Die drei Varianten sind über `@OpaaIntegrationTest` selbst meta-annotiert und ergänzen nur ihre
+Abweichung. Eine Variante muss **nicht fachlich zusammengehören**: Wo eine Abweichung ohnehin einen
+eigenen Kontext kostet, fährt fachlich Unverwandtes bewusst mit (der S3-Upload-Speicher in der
+Chat-Modell-Signatur, das Test-Dokumentformat in der `DocumentService`-Signatur). **Ein Kontext mehr
+braucht eine harte technische Begründung, nicht eine fachliche Zugehörigkeit** (Maßgabe des
+Maintainers vom 11.09.2026).
+
+**Was einen Kontext spaltet — und wohin es stattdessen gehört.** Spring cached Kontexte anhand der
+exakten, zusammengeführten Konfiguration (`MergedContextConfiguration`). Eine klassenlokale
+`@DynamicPropertySource`, ein klassenlokales `@Import`, ein `@MockitoBean`/`@MockitoSpyBean`/
+`@TestBean`-Feld oder eine innere `@TestConfiguration` erzeugt trotz gemeinsamer Meta-Annotation
+einen eigenen Kontext und einen eigenen Container. Deshalb:
+
+- **Konstanter Wert** → `properties` der Meta-Annotation.
+- **Zur Laufzeit aus einer Ressource gelesener Wert** (Containeradresse, prozessweites
+  Basisverzeichnis) → ein `ApplicationContextInitializer` der Meta-Annotation
+  (`OpaaTestPathInitializer`, `OpaaTestTargetAllowlistInitializer`, `OpaaS3UploadStoreInitializer`).
+  Eine klassenlokale `@DynamicPropertySource` spaltet den Kontext auch bei identischem Wert, weil
+  Spring die Methode selbst in den Cache-Schlüssel einbezieht.
+- **Ersetzte oder ergänzte Bean** → `OpaaTestBeans` (bzw. die `@MockitoSpyBean`-Liste der
+  Meta-Annotation). Ein Spy delegiert an die echte Bean und ist damit für alle anderen Klassen
+  verhaltensneutral; ein voller Mock ist es fast nie.
+- **Eigenes Verzeichnis** → `OpaaTestDirectory.subdirectory(name)` unter dem einen prozessweiten
+  Basisverzeichnis, nie ein `@TempDir`-Feld.
+
+**Jeder geteilte Mock oder Fake braucht einen Reset je Testmethode.** Für `@MockitoBean`/
+`@MockitoSpyBean` erledigt das Spring selbst; für die Fakes aus `OpaaTestBeans` tut es
+`OpaaTestBeanResetListener`. Ohne ihn erbt eine künftige Klasse stillschweigend den Zustand, den die
+vorherige Testmethode hinterlassen hat. `@TestExecutionListeners` gehen nicht in den Cache-Schlüssel
+ein, erzeugen also keinen zusätzlichen Kontext.
+
+**Eine Datenbank für die ganze Suite.** Eine Klasse räumt in `@BeforeEach` weg, was sie anfasst,
+räumt in `@AfterEach` hinter sich auf und prüft **nie** gegen eine ungefilterte Tabelle, sondern nur
+gegen Zeilen ihrer eigenen IDs. Ein pauschales `deleteAll()` über eine Tabelle, in die auch andere
+Klassen schreiben (`users`, `knowledge_libraries`), ist ein Fehler, kein Aufräumen — es scheitert
+spätestens an einer RESTRICT-Fremdschlüsselbeziehung einer fremden, noch gebrauchten Zeile.
+
+**`SpringContextSignatureTest` zieht die Grenze maschinell.** Er baut über
+`BootstrapUtils.resolveTestContextBootstrapper(...)` je Testklasse die `MergedContextConfiguration`,
+ohne einen Kontext zu starten, gruppiert danach und schlägt fehl, sobald eine Klasse ihre Signatur
+verlässt oder eine fünfte Signatur entsteht. Eine neue kanonische Signatur wird dort bewusst
+eingetragen; ein Code-Kommentar als Begründung genügt nicht mehr (nach #843 hatte jede der
+gewachsenen 23 Kontext-Varianten einen formal regelkonformen Kommentar).
+
+Ein neuer Postgres-Container wird nie manuell deklariert; `@ServiceConnection` kommt aus der
 Meta-Annotation. Ausnahme: `io.opaa.migration`-Tests booten bewusst einen eigenen Container mit
 Template-Datenbank pro Klasse (siehe `AbstractMigrationTest`) — das Muster ist dort nötig und keine
-Abweichung von dieser Regel. Passt keine der drei Signaturen, ist das ein Fall für eine weitere
-kanonische Meta-Annotation statt einer weiteren Ad-hoc-Kombination — im Zweifel im PR begründen und
-dem Review überlassen.
+Abweichung von dieser Regel. Ebenfalls außerhalb: die `@WebMvcTest`-Slices, die weder einen
+Anwendungskontext noch eine Datenbank starten.
 
 ### Liquibase-Baseline (Stand 09/2026, #1492)
 

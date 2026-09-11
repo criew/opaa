@@ -30,8 +30,6 @@ import io.opaa.group.sync.DirectorySyncStatusRepository;
 import io.opaa.group.sync.SyncReport;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
-import io.opaa.test.DirectorySyncMockConfiguration;
-import io.opaa.test.DirectorySyncMockResetListener;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
 import java.lang.reflect.Field;
@@ -57,9 +55,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.util.ClassUtils;
 
 /**
@@ -77,14 +73,7 @@ import org.springframework.util.ClassUtils;
  * every operation that changes the readable set against both formulas at once. It is what keeps the
  * history complete now that no drift probe runs on the query path any more (#1428).
  */
-// Shares one context with AuditEventRecordingIntegrationTest/DirectorySyncServiceIntegrationTest
-// via
-// the identical DirectorySyncMockConfiguration import (#903).
 @OpaaIntegrationTest
-@Import(DirectorySyncMockConfiguration.class)
-@TestExecutionListeners(
-    listeners = DirectorySyncMockResetListener.class,
-    mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 class PermissionHistoryServiceIntegrationTest {
 
   @Autowired private io.opaa.auth.AuthProperties authProperties;

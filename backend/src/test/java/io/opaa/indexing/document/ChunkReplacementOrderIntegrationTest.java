@@ -9,8 +9,8 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaMockedDocumentServiceIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -27,7 +27,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * The order in which a changed document's chunks are exchanged: the previous chunks survive until
@@ -40,13 +39,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * processRssEntry} has no parse step of its own - it is handed already-extracted text - so only its
  * empty and success cases exist to test.
  */
-// Same single @MockitoBean DocumentService as DocumentIngestServiceIntegrationTest, so both classes
-// share one context: the mock is what makes an unparseable Tika document reproducible at all.
-@OpaaIndexingIntegrationTest
+@OpaaMockedDocumentServiceIntegrationTest
 class ChunkReplacementOrderIntegrationTest {
 
   private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("chunk-replacement-order");
+      OpaaTestDirectory.subdirectory("chunk-replacement-order");
 
   private static final String FIRST_TEXT =
       "Die erste Fassung dieses Dokuments beschreibt das Verfahren zur Aktenfuehrung.";
@@ -57,7 +54,9 @@ class ChunkReplacementOrderIntegrationTest {
   @Autowired private DocumentRepository documentRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
-  @MockitoBean private DocumentService documentService;
+  // The mock of @OpaaMockedDocumentServiceIntegrationTest - what makes an unparseable Tika
+  // document reproducible at all.
+  @Autowired private DocumentService documentService;
 
   private KnowledgeLibrary targetLibrary;
 

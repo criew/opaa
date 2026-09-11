@@ -10,7 +10,7 @@ import io.opaa.chat.ChatSource;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.query.retrieval.ranking.ChunkEmbeddingLookup;
-import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaMockedChatModelIntegrationTest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,10 +32,7 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.task.SyncTaskExecutor;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.bean.override.convention.TestBean;
 
 /**
  * Exercises the permission-aware vector search (#202) end to end against a real Postgres schema:
@@ -43,10 +40,7 @@ import org.springframework.test.context.bean.override.convention.TestBean;
  * library_id} metadata points at, or {@link QueryService#query} never even calls {@link
  * VectorStore#similaritySearch} for it - see {@link #userWithoutAnyGrantSeesNothing}.
  */
-// Own @TestBean chatTitleTaskExecutor override below means Spring's context cache still keys this
-// to its own context regardless of the shared @OpaaIndexingIntegrationTest base - documented
-// exception per AGENTS.md.
-@OpaaIndexingIntegrationTest
+@OpaaMockedChatModelIntegrationTest
 class QueryIntegrationTest {
 
   private static final UUID DEFAULT_ORGANIZATION_ID =
@@ -59,39 +53,6 @@ class QueryIntegrationTest {
   // once in setUp() below to always hand back a ChatClient wrapping the class-wide chatModel mock
   // above, so every existing when(chatModel...) stub in this class keeps working unchanged.
   @Autowired private ActiveChatModelResolver activeChatModelResolver;
-
-  /**
-   * #616: replaces {@code ChatConfiguration#chatTitleTaskExecutor} with a same-name, fully
-   * synchronous executor for this test class only - the real one runs #557's chat-title LLM call on
-   * a separate thread, racing this class's {@code when(chatModel...)} re-stubbing (see the {@code
-   * promptCaptor} usages below) against that async call landing on the very same, shared {@code
-   * chatModel} mock (from {@link io.opaa.test.OpaaIndexingMockConfiguration}) it stubs. Mockito's
-   * stubbing API is not thread-safe against a concurrent invocation of the mock being stubbed,
-   * which is exactly what corrupted CI runs with {@code MockitoException at
-   * QueryIntegrationTest.java:562} (#616) - a still-in-flight title job from an earlier {@code
-   * queryService.query(...)} call (in this test or, since {@code chatModel} is reused across every
-   * test method in this class's shared Spring context, an earlier test) invoking the mock exactly
-   * while a later {@code when(...)} call was mid-setup. {@link SyncTaskExecutor} runs the title job
-   * on the calling thread instead, so by the time {@code queryService.query(...)} returns, the
-   * title generation call has already completed (or failed) - never racing anything that runs after
-   * it.
-   *
-   * <p>{@code @TestBean(enforceOverride = true)}, not a same-name {@code @Bean} in a
-   * {@code @TestConfiguration}: a plain {@code @Bean} with a name that no longer matches - after,
-   * say, a rename of {@code ChatConfiguration#chatTitleTaskExecutor} - would silently become an
-   * *additional* bean instead of replacing anything, and the flake this class exists to prevent
-   * would come back without a single test here failing loudly to say why. {@code enforceOverride =
-   * true} instead makes context startup itself fail if no bean named {@code chatTitleTaskExecutor}
-   * exists to replace. Not a mocked {@code TaskExecutor} (the way {@code chatModel} above is a
-   * mock): a mock would never actually run the submitted title-generation task at all, which would
-   * hide the very call this class stubs {@code chatModel} for instead of making it deterministic.
-   */
-  @TestBean(name = "chatTitleTaskExecutor", enforceOverride = true)
-  private TaskExecutor chatTitleTaskExecutor;
-
-  private static TaskExecutor chatTitleTaskExecutor() {
-    return new SyncTaskExecutor();
-  }
 
   @Autowired private VectorStore vectorStore;
   @Autowired private VectorChunkStore vectorChunkStore;
@@ -747,7 +708,7 @@ class QueryIntegrationTest {
     // MockitoException at this line before the fix. If #557's title job (or this stranger
     // query's own answer call) ever reaches this stub from any thread but this JUnit test
     // thread - i.e. the real, ChatConfiguration-backed chatTitleTaskExecutor pool, not the
-    // synchronous TestBean override at the top of this class - callThreadNames below fails.
+    // inline executor of this class's signature - callThreadNames below fails.
     List<String> callThreadNames = new ArrayList<>();
     when(chatModel.call(promptCaptor.capture()))
         .thenAnswer(
@@ -802,10 +763,10 @@ class QueryIntegrationTest {
    * (title generation) after the answer is already built - mocked here to fail, proving the answer
    * {@code query()} returns is entirely unaffected and the chat keeps its synchronous
    * prefix-derived fallback title rather than surfacing the failure. In production this second call
-   * genuinely runs off the request thread (#557); in this test class it runs synchronously instead
-   * (see {@link #chatTitleTaskExecutor}'s Javadoc, #616), so no {@code await()} is needed below -
-   * by the time {@code queryService.query(...)} returns, the failing title generation call has
-   * already happened.
+   * genuinely runs off the request thread (#557); under this class's signature it runs inline
+   * instead ({@code SynchronousChatTitleExecutorConfiguration}, #616), so no {@code await()} is
+   * needed below - by the time {@code queryService.query(...)} returns, the failing title
+   * generation call has already happened.
    */
   @Test
   void queryAnswerSucceedsEvenWhenTitleGenerationFailsAfterwards() {

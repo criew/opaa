@@ -9,8 +9,8 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaMockedDocumentServiceIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,7 +21,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * Reproduces the deletion window against the real Liquibase schema, not just {@link
@@ -39,21 +38,20 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * request would land - genuinely racing the row's existence, not simulating a zero-rows-updated
  * result the way {@link DocumentIngestServiceTest} does against a mocked repository.
  */
-// Own @MockitoBean DocumentService below (needed to force the race window this class reproduces -
-// see the class Javadoc) means Spring's context cache still keys this to its own context
-// regardless of the shared @OpaaIndexingIntegrationTest base - documented exception per AGENTS.md.
-@OpaaIndexingIntegrationTest
+@OpaaMockedDocumentServiceIntegrationTest
 class DocumentIngestServiceIntegrationTest {
 
   private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("file-processing-service");
+      OpaaTestDirectory.subdirectory("file-processing-service");
 
   @Autowired private DocumentIngestService documentIngestService;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private VectorStore vectorStore;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
-  @MockitoBean private DocumentService documentService;
+  // The mock of @OpaaMockedDocumentServiceIntegrationTest - needed to force the race window
+  // this class reproduces (see the class Javadoc).
+  @Autowired private DocumentService documentService;
 
   private UUID userId;
   private KnowledgeLibrary targetLibrary;

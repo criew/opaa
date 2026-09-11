@@ -20,8 +20,8 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryFolder;
 import io.opaa.library.LibraryFolderRepository;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,14 +44,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * io.opaa.library.LibraryFolderService#pruneOrphanedFolders}. Runs against the real Liquibase
  * schema (AGENTS.md "Reproduktionsnachweis" - {@code fk_documents_folder}/{@code
  * fk_library_folders_parent} only exist there, not under {@code ddl-auto=create-drop}), the same
- * Testcontainers/fake-embedding-model setup every {@link io.opaa.test.OpaaIndexingIntegrationTest}
- * class shares.
+ * Testcontainers/fake-embedding-model setup every {@link io.opaa.test.OpaaIntegrationTest} class
+ * shares.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class FilesystemFolderMappingIntegrationTest {
 
   private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("filesystem-folder-mapping");
+      OpaaTestDirectory.subdirectory("filesystem-folder-mapping");
 
   @Autowired private DocumentIndexingService documentIndexingService;
   @Autowired private DocumentRepository documentRepository;

@@ -9,11 +9,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
-import io.opaa.test.OpaaMockMvcTest;
+import io.opaa.test.OpaaIntegrationTest;
 import java.nio.charset.StandardCharsets;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -44,7 +46,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * here instead - onto the container and context this class needs regardless - removes that second
  * context entirely rather than trying to make two different classes share one.
  *
- * <p>Carries the canonical {@link io.opaa.test.OpaaMockMvcTest} signature (AGENTS.md, "Spring-
+ * <p>Carries the canonical {@link io.opaa.test.OpaaIntegrationTest} signature (AGENTS.md, "Spring-
  * Testkontexte") for exactly the reason just described - this class, {@code
  * BrandingControllerIntegrationTest} and {@code AuditControllerAuthorizationIntegrationTest} share
  * one cached context and one container.
@@ -58,12 +60,26 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * times across the whole group's combined test run can observe an unexpected 429 that a standalone
  * run of that one class would not have shown.
  */
-@OpaaMockMvcTest
+@OpaaIntegrationTest
 class LibraryControllerCredentialsIntegrationTest {
 
   private static final String SECRET = "admin:super-secret-password";
 
   @Autowired private MockMvc mockMvc;
+  @Autowired private JdbcTemplate jdbcTemplate;
+
+  /**
+   * Every library this class creates over HTTP is removed again: the suite shares one database, and
+   * a leftover library (with its documents and its owner's grant) blocks the blanket {@code
+   * userRepository.deleteAll()} of any later class with a RESTRICT violation.
+   */
+  @AfterEach
+  void removeCreatedLibraries() {
+    jdbcTemplate.update("DELETE FROM documents WHERE parent_document_id IS NOT NULL");
+    jdbcTemplate.update("DELETE FROM documents");
+    jdbcTemplate.update("DELETE FROM asset_grants WHERE library_id IS NOT NULL");
+    jdbcTemplate.update("DELETE FROM knowledge_libraries");
+  }
 
   private RequestPostProcessor devUser() {
     return request -> {
@@ -152,7 +168,7 @@ class LibraryControllerCredentialsIntegrationTest {
         {
           "name": "MinIO intern",
           "sourceType": "S3",
-          "sourceUrl": "http://127.0.0.1:9000",
+          "sourceUrl": "http://127.0.0.2:9000",
           "sourceCredentials": "AKIAEXAMPLE:%s",
           "s3Settings": {"pathStyle": true, "scopes": [{"bucket": "dokumente"}]}
         }
@@ -182,7 +198,7 @@ class LibraryControllerCredentialsIntegrationTest {
         """
         {
           "sourceType": "S3",
-          "sourceUrl": "http://127.0.0.1:9000",
+          "sourceUrl": "http://127.0.0.2:9000",
           "sourceCredentials": "AKIAEXAMPLE:%s",
           "s3Settings": {"pathStyle": true, "scopes": [{"bucket": "dokumente"}]}
         }
@@ -203,7 +219,7 @@ class LibraryControllerCredentialsIntegrationTest {
 
     String listing =
         """
-        {"sourceUrl": "http://127.0.0.1:9000", "sourceCredentials": "AKIAEXAMPLE:%s", "pathStyle": true}
+        {"sourceUrl": "http://127.0.0.2:9000", "sourceCredentials": "AKIAEXAMPLE:%s", "pathStyle": true}
         """
             .formatted(secret);
     var listingResult =
@@ -219,7 +235,7 @@ class LibraryControllerCredentialsIntegrationTest {
     // without settings the test is the caller's mistake, still without the key in the answer
     String noSettings =
         """
-        {"sourceType": "S3", "sourceUrl": "http://127.0.0.1:9000", "sourceCredentials": "AKIAEXAMPLE:%s"}
+        {"sourceType": "S3", "sourceUrl": "http://127.0.0.2:9000", "sourceCredentials": "AKIAEXAMPLE:%s"}
         """
             .formatted(secret);
     var noSettingsResult =
@@ -234,15 +250,16 @@ class LibraryControllerCredentialsIntegrationTest {
 
   @Test
   void confluenceConnectionTestAndSpaceListingNeverEchoCredentials() throws Exception {
-    // A loopback address: with the default target validation active, both probes are refused
-    // before any connection is attempted - the test reports that as a result with the allowlist
-    // hint, the listing as a 400; neither carries the submitted token.
+    // A loopback address outside the signature's allowlist (which names only localhost and
+    // 127.0.0.1, by host string): both probes are refused before any connection is attempted - the
+    // test reports that as a result with the allowlist hint, the listing as a 400; neither carries
+    // the submitted token.
     String token = "pat-streng-geheim-4711";
     String test =
         """
         {
           "sourceType": "CONFLUENCE",
-          "sourceUrl": "http://127.0.0.1:9/confluence",
+          "sourceUrl": "http://127.0.0.2:9/confluence",
           "sourceCredentials": "%s"
         }
         """
@@ -261,7 +278,7 @@ class LibraryControllerCredentialsIntegrationTest {
     String listing =
         """
         {
-          "sourceUrl": "http://127.0.0.1:9/confluence",
+          "sourceUrl": "http://127.0.0.2:9/confluence",
           "confluenceEdition": "DATA_CENTER",
           "sourceCredentials": "%s"
         }
@@ -389,7 +406,7 @@ class LibraryControllerCredentialsIntegrationTest {
     // the source configuration being invalid (400 above).
     String body =
         """
-        { "sourceType": "HTTP_DIRECTORY", "sourceUrl": "http://127.0.0.1:1/" }
+        { "sourceType": "HTTP_DIRECTORY", "sourceUrl": "http://127.0.0.2:1/" }
         """;
 
     mockMvc

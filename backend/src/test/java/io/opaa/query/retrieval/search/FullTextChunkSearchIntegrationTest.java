@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.metadata.MetadataFilter;
-import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,7 +28,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * which fills {@code vector_store} and {@code chunk_full_text} in one transaction - so what is
  * searched here is byte-identical to what production stores.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class FullTextChunkSearchIntegrationTest {
 
   @Autowired private VectorChunkStore vectorChunkStore;

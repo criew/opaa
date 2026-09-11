@@ -2,21 +2,10 @@ package io.opaa.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.FakeEmbeddingModel;
-import io.opaa.TestcontainersConfiguration;
+import io.opaa.test.OpaaPropertyVariantIntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Verifies that the application context loads when chat and embedding point at different
@@ -24,29 +13,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * and embedding remain independently configurable functions (different endpoints, different
  * models).
  *
- * <p>The embedding base URL is stated explicitly here even though {@code application.yml} already
- * defaults it to a local Ollama endpoint, to prove the override actually takes effect. The address
- * below is never called — the embedding model is replaced by {@link FakeEmbeddingModel}.
+ * <p>The embedding base URL is stated explicitly by this class's signature even though {@code
+ * application.yml} already defaults it to a local Ollama endpoint, to prove the override actually
+ * takes effect. The address is never called - the embedding model is a fake.
  */
-// Own context (the @SpringBootTest properties override below is the subject under test), shared
-// TestcontainersConfiguration container config.
-@SpringBootTest(
-    properties = {"spring.ai.openai.embedding.base-url=http://model-server.invalid:8000/v1"})
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles("dev")
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaPropertyVariantIntegrationTest
 class MixedProviderConfigurationTest {
-
-  @TestConfiguration
-  static class TestConfig {
-    @Bean
-    @Primary
-    EmbeddingModel testEmbeddingModel() {
-      return new FakeEmbeddingModel();
-    }
-  }
-
-  @MockitoBean private ChatModel chatModel;
 
   @Autowired private Environment environment;
 

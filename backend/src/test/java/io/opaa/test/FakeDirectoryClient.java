@@ -10,14 +10,12 @@ import java.util.UUID;
 
 /**
  * The one seam between {@code DirectorySyncService} and an actual directory (see {@link
- * DirectoryClient}'s own Javadoc) - shared by every test class that needs a scriptable directory
- * response instead of the production {@code NoOpDirectoryClient}, so those classes can carry an
- * identical {@link DirectorySyncMockConfiguration} import and therefore share one Spring context
- * (Issue #903).
+ * DirectoryClient}'s own Javadoc): a scriptable response instead of the production {@code
+ * NoOpDirectoryClient}, published for the whole suite by {@code OpaaTestBeans}.
  *
- * <p>{@link DirectorySyncMockResetListener} calls {@link #reset()} before every test method of a
- * class carrying it, so no class relies on inheriting whatever the previous test (in this class or
- * a sibling sharing the same context) last configured via {@link #respondWith}/{@link #failWith}.
+ * <p>{@code OpaaTestBeanResetListener} calls {@link #reset()} before every test method, so no class
+ * inherits whatever a sibling sharing the context last configured via {@link #respondWith}/{@link
+ * #failWith}.
  */
 public final class FakeDirectoryClient implements DirectoryClient {
 
@@ -33,10 +31,7 @@ public final class FakeDirectoryClient implements DirectoryClient {
     this.failure = new DirectoryUnavailableException(message);
   }
 
-  /**
-   * Restores the empty-response, no-failure default {@link DirectorySyncMockResetListener} relies
-   * on.
-   */
+  /** Restores the empty-response, no-failure default the reset listener relies on. */
   public void reset() {
     this.failure = null;
     this.snapshot = new DirectorySnapshot(Instant.now(), List.of());

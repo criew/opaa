@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 
 import io.opaa.api.types.ChatRole;
 import io.opaa.api.types.SpaceRole;
@@ -28,7 +29,7 @@ import io.opaa.space.Space;
 import io.opaa.space.SpaceMembership;
 import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
-import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaMockedDocumentServiceIntegrationTest;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -47,8 +48,6 @@ import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
@@ -65,19 +64,16 @@ import tools.jackson.databind.ObjectMapper;
  * create foreign keys for those, Liquibase does ({@code fk_chats_space}, {@code fk_chats_author},
  * migration 032).
  */
-// Own @MockitoBean/@MockitoSpyBean set (see below) means Spring's context cache still keys this to
-// its own context regardless of the shared @OpaaIntegrationTest base - documented exception per
-// AGENTS.md.
-@OpaaIntegrationTest
+@OpaaMockedDocumentServiceIntegrationTest
 class ChatServiceIntegrationTest {
 
   @Autowired private ChatService chatService;
   @Autowired private ChatRepository chatRepository;
 
-  // @MockitoSpyBean, not @Autowired (own context - see this class's Javadoc, already forced by the
-  // @MockitoBean set below): appendTurnRetriesWhenAConcurrentTurnWinsTheRaceOnTheSameSequence below
-  // stubs one call of findMaxSequenceByChatId to force a deterministic sequence collision.
-  @MockitoSpyBean private ChatMessageRepository chatMessageRepository;
+  // The shared spy of @OpaaIntegrationTest: appendTurnRetriesWhenAConcurrentTurnWinsTheRaceOnThe-
+  // SameSequence below stubs one call of findMaxSequenceByChatId to force a deterministic
+  // sequence collision; every other call still hits the real repository.
+  @Autowired private ChatMessageRepository chatMessageRepository;
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private SpaceMembershipRepository spaceMembershipRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
@@ -88,32 +84,17 @@ class ChatServiceIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private ObjectMapper objectMapper;
 
-  // #557: ChatService#appendTurn now triggers ChatTitleGenerationService's real, Spring-managed
-  // LLM call on a chat's first turn - without this mock, every appendTurn test in this class would
-  // attempt a genuine call against whichever provider the active profile configures. That title job
-  // (ChatTitleGenerationService#generateTitleAsync) runs on chatTitleTaskExecutor, genuinely off
-  // the
-  // calling thread, and several tests below (e.g. appendTurnPersistsBothMessagesAndDerives...,
-  // appendTurnOrdersMessagesBySequenceAndTouchesUpdatedAt) trigger it via a first turn without
-  // waiting for it to finish, since their assertions only concern the synchronous fallback title.
-  // Unlike QueryIntegrationTest (#616/#621), replacing chatTitleTaskExecutor with a synchronous one
-  // is not an option here: two tests in this class
-  // (appendTurnAsynchronouslyAppliesAnLlmGenerated...,
-  // appendTurnNeverOverwritesATitleRenamedWhileGenerationIsStillInFlight) deliberately exercise the
-  // real, concurrent timing of that job. Instead, every stub on this class-wide shared mock below
-  // uses Mockito's doReturn/doAnswer/doThrow - not when(...).thenReturn(...) - precisely because
-  // doReturn(...).when(mock)... never invokes the mock while building the stub, so it cannot race a
-  // still in-flight title job from an earlier test's unwaited-for call the way when(mock.call(...))
-  // does (#623, same root cause as #616 - a leftover async chatModel.call() from a previous test
-  // landing exactly while a later when(...) call is mid-setup throws a MockitoException).
-  @MockitoBean private ChatModel chatModel;
+  // #557: ChatService#appendTurn triggers ChatTitleGenerationService's real, Spring-managed LLM
+  // call on a chat's first turn. That job runs on chatTitleTaskExecutor, genuinely off the calling
+  // thread, and two tests below deliberately exercise that concurrency - which is why this class
+  // uses @OpaaMockedDocumentServiceIntegrationTest rather than the signature that runs the job
+  // inline. A class-local mock, not the shared ChatModel bean: a title job still in flight after
+  // the last test method here would otherwise race the next class's reset of that bean. Every stub
+  // on it uses doReturn/doAnswer/doThrow - not when(...) - because doReturn(...).when(mock) never
+  // invokes the mock while building the stub, so it cannot race a still in-flight title job (#623).
+  private final ChatModel chatModel = mock(ChatModel.class);
 
-  // #758: ChatTitleGenerationService now resolves its ChatClient via ActiveChatModelResolver on
-  // every call instead of holding one built once at startup - stubbed once in setUp() below to
-  // always hand back a ChatClient wrapping the class-wide chatModel mock above, so every existing
-  // doReturn/doAnswer/doThrow stub on chatModel itself (see its own Javadoc for why those, not
-  // when(...).thenReturn(...)) keeps working unchanged.
-  @MockitoBean private ActiveChatModelResolver activeChatModelResolver;
+  @Autowired private ActiveChatModelResolver activeChatModelResolver;
 
   private UUID organizationA;
 

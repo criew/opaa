@@ -48,7 +48,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * the crawler/downloader can use {@link TargetAddressValidator#disabled()} (the loopback stub would
  * otherwise be blocked) without a context-splitting property override.
  */
-@io.opaa.test.OpaaIndexingIntegrationTest
+@io.opaa.test.OpaaIntegrationTest
 class UrlAttachmentIndexingIntegrationTest {
 
   @Autowired private DocumentIngestService documentIngestService;

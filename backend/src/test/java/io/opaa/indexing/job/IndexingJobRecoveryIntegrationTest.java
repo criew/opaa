@@ -17,7 +17,8 @@ import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaMockMvcTest;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -25,10 +26,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -41,19 +39,12 @@ import org.springframework.test.web.servlet.MockMvc;
  * free it even without one - but only once its heartbeat has actually gone stale, not merely
  * because the run has been going on for a while.
  */
-// Own filesystem allowlist @DynamicPropertySource (below, scoped to this class's @TempDir) means
-// Spring's context cache still keys this to its own context regardless of the shared
-// @OpaaMockMvcTest base - documented exception per AGENTS.md.
-@OpaaMockMvcTest(properties = "opaa.rate-limit.enabled=false")
+@OpaaIntegrationTest
 class IndexingJobRecoveryIntegrationTest {
 
-  @TempDir static Path documentDir;
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add(
-        "opaa.indexing.filesystem.allowlist", () -> documentDir.toAbsolutePath().toString());
-  }
+  // Underneath the suite-wide allowlisted base directory, so it needs no allowlist entry of its
+  // own.
+  private static final Path documentDir = OpaaTestDirectory.subdirectory("indexing-job-recovery");
 
   @Autowired private MockMvc mockMvc;
   @Autowired private UserRepository userRepository;

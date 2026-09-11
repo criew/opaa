@@ -32,8 +32,8 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -50,10 +50,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * input and full-text index without ever entering the stored chunk text, the run selects by the
  * version pair, and it is idempotent, document-granular, resumable and destructive of nothing.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class ContextPrefixRerunIntegrationTest {
 
-  private static final Path classTempDir = OpaaIndexingTestDirectory.subdirectory("context-prefix");
+  private static final Path classTempDir = OpaaTestDirectory.subdirectory("context-prefix");
 
   @Autowired private DocumentIngestService documentIngestService;
   @Autowired private ContextPrefixRerunService rerunService;
