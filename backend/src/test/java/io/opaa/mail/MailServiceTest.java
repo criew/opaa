@@ -211,8 +211,7 @@ class MailServiceTest {
 
   private void stubConfiguredSender() {
     when(senderProvider.isEnabled()).thenReturn(true);
-    when(senderProvider.current()).thenReturn(sender);
-    when(senderProvider.settings()).thenReturn(CONFIGURED);
+    when(senderProvider.current()).thenReturn(new MailSenderProvider.Transport(sender, CONFIGURED));
     when(sender.createMimeMessage())
         .thenReturn(new MimeMessage(Session.getInstance(new Properties())));
     when(templates.render(eq(MailTemplateKey.TEST_MAIL), eq("de"), any()))

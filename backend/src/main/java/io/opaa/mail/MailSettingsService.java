@@ -159,9 +159,18 @@ public class MailSettingsService {
    * <p><b>Its own short transaction</b> ({@code REQUIRES_NEW}): joining the caller's would hold a
    * lock on the single {@code mail_settings} row for the rest of a business transaction - every
    * account creation would queue behind the previous one, and a {@code PUT} of the settings behind
-   * all of them. Both failure directions are accepted: fails the inner transaction, the send stands
-   * and only its status is lost; fails the outer one, the status row keeps an attempt whose
-   * business transaction rolled back - which is correct, because the mail did go out.
+   * all of them.
+   *
+   * <p><b>The price, named:</b> on a request thread this briefly holds a <em>second</em> pooled
+   * connection next to the caller's, out of a fixed pool of 10 ({@code
+   * spring.datasource.hikari.maximum-pool-size}). The scope is one {@code SELECT} plus one {@code
+   * UPDATE} on a single row, and it runs once per sent mail - not per request - which is why the
+   * trade is acceptable here and would not be for a longer unit of work.
+   *
+   * <p>Both failure directions are accepted: fails the inner transaction, the send stands and only
+   * its status is lost - {@link MailService} swallows that and logs a warning, the caller still
+   * gets its {@code Sent}; fails the outer one, the status row keeps an attempt whose business
+   * transaction rolled back, which is correct, because the mail did go out.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void recordSendOutcome(Instant at, String failureReason) {

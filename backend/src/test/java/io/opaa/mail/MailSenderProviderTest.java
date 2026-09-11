@@ -112,19 +112,30 @@ class MailSenderProviderTest {
   @Test
   void keepsTheTransportWhileTheSnapshotIsTheSameOneAndRebuildsForAFreshSnapshot() {
     currentSnapshot = snapshot(MailEncryption.STARTTLS, "kennung");
-    JavaMailSender first = provider.current();
-    assertThat(provider.current()).isSameAs(first);
+    JavaMailSender first = provider.current().sender();
+    assertThat(provider.current().sender()).isSameAs(first);
 
     currentSnapshot = snapshot(MailEncryption.STARTTLS, "kennung");
-    JavaMailSender second = provider.current();
+    JavaMailSender second = provider.current().sender();
 
     assertThat(second).isNotSameAs(first);
-    assertThat(provider.current()).isSameAs(second);
+    assertThat(provider.current().sender()).isSameAs(second);
+  }
+
+  /** The pair belongs together: the envelope must never be built from other settings (#1559). */
+  @Test
+  void handsOutTheTransportTogetherWithTheSettingsItWasBuiltFrom() {
+    currentSnapshot = snapshot(MailEncryption.STARTTLS, "kennung");
+
+    MailSenderProvider.Transport transport = provider.current();
+
+    assertThat(transport.settings()).isSameAs(currentSnapshot);
+    assertThat(transport.sender()).isNotNull();
   }
 
   private JavaMailSender build(MailSettingsSnapshot snapshot) {
     currentSnapshot = snapshot;
-    return provider.current();
+    return provider.current().sender();
   }
 
   private Properties propertiesFor(MailSettingsSnapshot snapshot) {

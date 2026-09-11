@@ -45,10 +45,12 @@ public class MailSenderProvider {
     return settingsService.snapshot().sendable();
   }
 
-  /** The configuration a message's envelope is built from (sender address and display name). */
-  public MailSettingsSnapshot settings() {
-    return settingsService.snapshot();
-  }
+  /**
+   * A transport and the settings it was built from, handed out together: a caller that asked for
+   * the two separately could compose an envelope from settings the transport was not built from, if
+   * a change committed between the two calls (#1559 review).
+   */
+  public record Transport(JavaMailSender sender, MailSettingsSnapshot settings) {}
 
   /**
    * The transport for the current settings, built on first use and rebuilt as soon as {@link
@@ -57,18 +59,18 @@ public class MailSenderProvider {
    * committed change, so identity is the cheapest exact answer to "are these still the settings
    * this transport was built from".
    */
-  public JavaMailSender current() {
+  public Transport current() {
     MailSettingsSnapshot snapshot = settingsService.snapshot();
     if (!snapshot.sendable()) {
       return null;
     }
     Cached existing = cached.get();
     if (existing != null && existing.from() == snapshot) {
-      return existing.sender();
+      return new Transport(existing.sender(), existing.from());
     }
     Cached rebuilt = new Cached(snapshot, build(snapshot));
     cached.set(rebuilt);
-    return rebuilt.sender();
+    return new Transport(rebuilt.sender(), rebuilt.from());
   }
 
   private JavaMailSender build(MailSettingsSnapshot snapshot) {

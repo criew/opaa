@@ -87,13 +87,15 @@ public class MailService {
       return abort(key, recipient, "Die Vorlage konnte nicht gefüllt werden: " + e.getMessage());
     }
 
-    JavaMailSender sender = senderProvider.current();
-    if (sender == null) {
+    // Transport and settings come from one call: asked separately, the envelope could carry the
+    // sender address of settings the transport was not built from (#1559 review).
+    MailSenderProvider.Transport transport = senderProvider.current();
+    if (transport == null) {
       return new SendResult.Skipped(NOT_CONFIGURED);
     }
 
     try {
-      sender.send(compose(sender, senderProvider.settings(), recipient, mail));
+      transport.sender().send(compose(transport.sender(), transport.settings(), recipient, mail));
     } catch (Exception e) {
       return transportFailed(key, recipient, causeOf(e));
     }

@@ -11,12 +11,15 @@ import io.opaa.common.ValidationException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -301,6 +304,62 @@ class MailTemplateServiceIntegrationTest {
         .hasMessageContaining("bodyPlain")
         .hasMessageContaining("konnte nicht verarbeitet werden");
     assertThat(templateRepository.count()).isZero();
+  }
+
+  /**
+   * The realistic path an administrator takes: open a template, keep the delivered HTML as it is
+   * and save. That content must pass every check the two additions of #1559 introduced - a frame or
+   * a fragment the release itself ships and the editor then refuses would make the whole override
+   * feature unusable.
+   */
+  @ParameterizedTest
+  @EnumSource(MailTemplateKey.class)
+  void acceptsTheDeliveredHtmlOfEveryTemplateUnchanged(MailTemplateKey key) {
+    MailTemplateView delivered = templateService.get(key, MailTemplateService.DEFAULT_LOCALE);
+    assertThat(delivered.source()).isEqualTo(MailTemplateView.Source.DEFAULT);
+
+    MailTemplateView stored =
+        templateService.update(
+            organizationId,
+            userId,
+            key,
+            MailTemplateService.DEFAULT_LOCALE,
+            delivered.defaultSubject(),
+            delivered.defaultBodyPlain(),
+            delivered.defaultBodyHtml());
+
+    assertThat(stored.source()).isEqualTo(MailTemplateView.Source.DATABASE);
+    assertThat(stored.bodyHtml()).isEqualTo(delivered.defaultBodyHtml());
+
+    // And it still renders: the stored HTML is used verbatim, so a wrongly accepted one would
+    // surface here rather than at the next send.
+    RenderedMail rendered =
+        templateService.render(
+            key, MailTemplateService.DEFAULT_LOCALE, new HashMap<>(key.sampleValues()));
+    assertThat(rendered.bodyHtml()).contains("<!DOCTYPE html>").doesNotContain("{{");
+    assertThat(rendered.subject()).doesNotContain("{{");
+    assertThat(rendered.bodyPlain()).doesNotContain("{{");
+  }
+
+  /**
+   * The same for the preview of an unchanged draft - the editor renders before anything is saved.
+   */
+  @ParameterizedTest
+  @EnumSource(MailTemplateKey.class)
+  void previewsTheDeliveredHtmlOfEveryTemplateUnchanged(MailTemplateKey key) {
+    MailTemplateView delivered = templateService.get(key, MailTemplateService.DEFAULT_LOCALE);
+
+    MailPreview preview =
+        templateService.preview(
+            key,
+            MailTemplateService.DEFAULT_LOCALE,
+            new MailTemplateDraft(
+                delivered.defaultSubject(),
+                delivered.defaultBodyPlain(),
+                delivered.defaultBodyHtml()),
+            null);
+
+    assertThat(preview.rendered().bodyHtml()).contains("<!DOCTYPE html>").doesNotContain("{{");
   }
 
   /** The same bar for a draft: a preview of unusable content is a 400, not a 500. */
