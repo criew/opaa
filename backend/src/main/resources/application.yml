@@ -273,9 +273,25 @@ opaa:
       allowlist: ${OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST:}
   upload:
     storage-path: ${OPAA_UPLOAD_STORAGE_PATH:./uploads}
-    # ADR-0030: which storage holds the uploaded originals. Only "filesystem" exists so far; any
-    # other value refuses the start instead of falling back silently.
+    # ADR-0030: which storage holds the uploaded originals - "filesystem" (the directory above) or
+    # "s3" (the block below); any other value refuses the start instead of falling back silently.
     store: ${OPAA_UPLOAD_STORE:filesystem}
+    # ADR-0030: the S3 storage of uploaded originals, read only with store=s3 - endpoint, bucket,
+    # access-key and secret-key are required then, see UploadS3Properties. The target validation
+    # has its own namespace so switching the connectors' check off never switches this one off;
+    # the configured endpoint itself always passes.
+    s3:
+      endpoint: ${OPAA_UPLOAD_S3_ENDPOINT:}
+      region: ${OPAA_UPLOAD_S3_REGION:us-east-1}
+      bucket: ${OPAA_UPLOAD_S3_BUCKET:}
+      key-prefix: ${OPAA_UPLOAD_S3_KEY_PREFIX:}
+      path-style: ${OPAA_UPLOAD_S3_PATH_STYLE:true}
+      access-key: ${OPAA_UPLOAD_S3_ACCESS_KEY:}
+      secret-key: ${OPAA_UPLOAD_S3_SECRET_KEY:}
+      temp-directory: ${OPAA_UPLOAD_S3_TEMP_DIRECTORY:}
+      target-validation:
+        enabled: ${OPAA_UPLOAD_S3_TARGET_VALIDATION_ENABLED:true}
+        allowlist: ${OPAA_UPLOAD_S3_TARGET_VALIDATION_ALLOWLIST:}
     max-file-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}
     # #614: own pool, deliberately not opaa.indexing.thread-pool - see UploadProperties#threadPool.
     thread-pool:

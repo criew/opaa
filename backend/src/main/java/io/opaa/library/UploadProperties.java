@@ -12,9 +12,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     sourcePath} (#207, ADR-0018): that directory is crawled by the filesystem indexing path and
  *     is operator-managed, whereas this one is written to exclusively by {@link
  *     LibraryDocumentService}. Read by {@link FilesystemUploadedOriginalStore} alone (ADR-0030).
- * @param store which storage backend holds the uploaded originals (ADR-0030, Entscheidung 1).
- *     Default {@code filesystem}, the only one available so far; {@link UploadStorageConfiguration}
- *     refuses the start on any other value.
+ * @param store which storage backend holds the uploaded originals (ADR-0030, Entscheidung 1):
+ *     {@code filesystem} (the default) or {@code s3} ({@link UploadS3Properties}); {@link
+ *     UploadStorageConfiguration} refuses the start on any other value.
  * @param maxFileSize maximum accepted upload size in bytes. Default 50 MiB (52 428 800): generous
  *     enough for a typical scanned Dienstanweisung while still bounding memory and disk use per
  *     upload; see #420's acceptance criteria for the resulting 413 response.
