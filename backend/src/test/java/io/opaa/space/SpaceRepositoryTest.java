@@ -7,9 +7,6 @@ import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.group.GroupMembershipHistoryRepository;
-import io.opaa.library.AssetGrantHistoryRepository;
-import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
@@ -45,49 +42,29 @@ class SpaceRepositoryTest {
 
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private SpaceMembershipRepository spaceMembershipRepository;
-  @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private PlatformTransactionManager transactionManager;
-  @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
-  @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
 
   private UUID org;
 
+  // Organizations are never wiped wholesale: Organization.DEFAULT_ID is seeded once by Liquibase
+  // and every other class of this context depends on that row (fk_users_organization). This class
+  // creates its own throwaway organization per test and removes it again by id.
   @BeforeEach
   void cleanUp() {
-    // Deliberately does not delete all organizations: Organization.DEFAULT_ID is seeded once by
-    // Liquibase and other tests sharing this Spring context (e.g.
-    // UserServicePersonalSpaceIntegrationTest) rely on that row existing (fk_users_organization).
-    // Each test creates its own throwaway organization instead, scoped by a random id, and removes
-    // it again in tearDown() - see tearDown() below.
     spaceMembershipRepository.deleteAll();
     spaceRepository.deleteAll();
-    // #201: fk_knowledge_libraries_owner_user also references users now, not just fk_spaces_owner
-    // - a leftover personal library from another test class sharing this context (e.g.
-    // UserServicePersonalSpaceIntegrationTest, which has no @AfterEach) would otherwise block
-    // userRepository.deleteAll() below with a RESTRICT violation on that unrelated user.
-    libraryRepository.deleteAll();
-    // #238 code review, finding 2+4: the same leftover-history risk as the library cleanup above -
-    // asset_grant_history.subject_user_id/group_membership_history.user_id are ON DELETE RESTRICT
-    // (see 018-permission-history.yaml's "Deletion survival" comment), and another test class
-    // sharing this context may have historised a grant/membership for a user it never cleaned up.
-    grantHistoryRepository.deleteAll();
-    membershipHistoryRepository.deleteAll();
     userRepository.deleteAll();
     org = organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
   }
 
   @AfterEach
   void tearDown() {
-    // Users created during the test still reference org (fk_users_organization) - delete them
-    // first, then remove only the organization this test created (by id), never
-    // Organization.DEFAULT_ID or organizations created by other tests sharing this context.
+    // Users created during the test still reference org (fk_users_organization) - they go first,
+    // then only the organization this test created, by id.
     spaceMembershipRepository.deleteAll();
     spaceRepository.deleteAll();
-    libraryRepository.deleteAll();
-    grantHistoryRepository.deleteAll();
-    membershipHistoryRepository.deleteAll();
     userRepository.deleteAll();
     organizationRepository.deleteById(org);
   }

@@ -2,13 +2,13 @@ package io.opaa.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.group.GroupMembershipHistoryRepository;
-import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnUserFixtures;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -17,6 +17,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,17 +63,20 @@ class UserServiceCreationRaceIntegrationTest {
   @Autowired private UserService userService;
   @Autowired private UserRepository userRepository;
   @Autowired private SpaceRepository spaceRepository;
-  @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
-  @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
+
+  @Autowired private OwnUserFixtures ownUserFixtures;
+
+  /** Everything that is none of this test method's business - see {@link OwnUserFixtures}. */
+  private Set<UUID> foreignUserIds = Set.of();
 
   @BeforeEach
-  void cleanUp() {
-    spaceRepository.deleteAll();
-    // #238 code review, finding 2+4 - see UserServicePersonalSpaceIntegrationTest#cleanUp's
-    // identical comment.
-    grantHistoryRepository.deleteAll();
-    membershipHistoryRepository.deleteAll();
-    userRepository.deleteAll();
+  void rememberForeignUsers() {
+    foreignUserIds = ownUserFixtures.existingUserIds();
+  }
+
+  @AfterEach
+  void removeOwnUsers() {
+    ownUserFixtures.removeUsersCreatedSince(foreignUserIds);
   }
 
   @Test
@@ -104,10 +108,12 @@ class UserServiceCreationRaceIntegrationTest {
       assertThat(results).extracting(User::getId).doesNotContainNull();
       assertThat(results.stream().map(User::getId).distinct()).hasSize(1);
 
-      List<User> persisted = userRepository.findAll();
+      // Filtered by the randomly generated subject, not the whole table: the suite shares one
+      // database, so only this method's own row may be counted here.
+      List<User> persisted =
+          userRepository.findAll().stream().filter(u -> subject.equals(u.getSubject())).toList();
       assertThat(persisted).hasSize(1);
       User persistedUser = persisted.getFirst();
-      assertThat(persistedUser.getSubject()).isEqualTo(subject);
       assertThat(persistedUser.getIssuer()).isEqualTo(issuer);
 
       // Every one of the CONCURRENT_LOGINS calls provisions the personal space of the same user

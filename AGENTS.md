@@ -157,8 +157,10 @@ einen eigenen Kontext und einen eigenen Container. Deshalb:
 - **Ersetzte oder ergänzte Bean** → `OpaaTestBeans` (bzw. die `@MockitoSpyBean`-Liste der
   Meta-Annotation). Ein Spy delegiert an die echte Bean und ist damit für alle anderen Klassen
   verhaltensneutral; ein voller Mock ist es fast nie.
-- **Eigenes Verzeichnis** → `OpaaTestDirectory.subdirectory(name)` unter dem einen prozessweiten
-  Basisverzeichnis, nie ein `@TempDir`-Feld.
+- **Eigenes Verzeichnis, dessen Pfad in eine Property fließt** → `OpaaTestDirectory.subdirectory(name)`
+  unter dem einen prozessweiten Basisverzeichnis. Ein `@TempDir` bliebe je Klasse verschieden und
+  spaltete damit den Kontext. Ein `@TempDir`, das nur im Test selbst verwendet wird und keine
+  Property speist, ist unverändert in Ordnung.
 
 **Jeder geteilte Mock oder Fake braucht einen Reset je Testmethode.** Für `@MockitoBean`/
 `@MockitoSpyBean` erledigt das Spring selbst; für die Fakes aus `OpaaTestBeans` tut es
@@ -166,11 +168,18 @@ einen eigenen Kontext und einen eigenen Container. Deshalb:
 vorherige Testmethode hinterlassen hat. `@TestExecutionListeners` gehen nicht in den Cache-Schlüssel
 ein, erzeugen also keinen zusätzlichen Kontext.
 
-**Eine Datenbank für die ganze Suite.** Eine Klasse räumt in `@BeforeEach` weg, was sie anfasst,
-räumt in `@AfterEach` hinter sich auf und prüft **nie** gegen eine ungefilterte Tabelle, sondern nur
-gegen Zeilen ihrer eigenen IDs. Ein pauschales `deleteAll()` über eine Tabelle, in die auch andere
-Klassen schreiben (`users`, `knowledge_libraries`), ist ein Fehler, kein Aufräumen — es scheitert
-spätestens an einer RESTRICT-Fremdschlüsselbeziehung einer fremden, noch gebrauchten Zeile.
+**Eine Datenbank für die ganze Suite.** Eine Klasse räumt in `@AfterEach` hinter sich auf und prüft
+**nie** gegen eine ungefilterte Tabelle, sondern nur gegen Zeilen ihrer eigenen IDs. **Nur** in
+`@BeforeEach` aufzuräumen ist unzulässig (#1510): Es verlagert die Arbeit auf die nächste Klasse und
+setzt voraus, dass die den fremden Bestand kennt. In beiden Haken aufzuräumen ist dagegen richtig —
+der `@BeforeEach`-Teil schützt gegen eine Methode, die auf halbem Weg abgebrochen ist. Ein
+pauschales `deleteAll()` über eine Tabelle, in die auch andere Klassen schreiben (`users`,
+`knowledge_libraries`), ist ein Fehler, kein Aufräumen — es scheitert spätestens an einer
+RESTRICT-Fremdschlüsselbeziehung einer fremden, noch gebrauchten Zeile. Ebenso wenig räumt eine
+Klasse vorsorglich hinter einer namentlich genannten anderen her; stattdessen wird die verursachende
+Klasse repariert. `LeftoverGrantGuard` nennt nach jeder Testklasse die Verursacherin für die beiden
+RESTRICT-Kindtabellen, die keine Aufräumkette abdeckt (`diagnostic_impersonation_grants`,
+`audit_incident_scope_grants`).
 
 **`SpringContextSignatureTest` zieht die Grenze maschinell.** Er baut über
 `BootstrapUtils.resolveTestContextBootstrapper(...)` je Testklasse die `MergedContextConfiguration`,

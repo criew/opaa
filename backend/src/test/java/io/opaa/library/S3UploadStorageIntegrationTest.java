@@ -92,7 +92,10 @@ class S3UploadStorageIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    List<Document> remaining = documentRepository.findAll();
+    // Scoped to this class's own library, not findAll(): the suite shares one database. Peeled
+    // leaf by leaf because fk_documents_parent (ADR-0022) refuses a parent whose attachment rows
+    // are still there.
+    List<Document> remaining = documentRepository.findByLibraryId(libraryId);
     while (!remaining.isEmpty()) {
       Set<UUID> referencedAsParent =
           remaining.stream()
@@ -101,7 +104,7 @@ class S3UploadStorageIntegrationTest {
               .collect(Collectors.toSet());
       documentRepository.deleteAll(
           remaining.stream().filter(d -> !referencedAsParent.contains(d.getId())).toList());
-      remaining = documentRepository.findAll();
+      remaining = documentRepository.findByLibraryId(libraryId);
     }
     libraryRepository.deleteById(libraryId);
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId()));

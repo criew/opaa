@@ -39,8 +39,12 @@ public final class OpaaTestDirectory {
   private OpaaTestDirectory() {}
 
   private static Path createOutsideAllowlistDir() {
+    // Per JVM, not a fixed path: with two Gradle test workers the one finishing first would
+    // otherwise delete the tree the other is still using.
     Path dir =
-        Path.of(System.getProperty("user.dir")).resolve("build").resolve("opaa-outside-allowlist");
+        Path.of(System.getProperty("user.dir"))
+            .resolve("build")
+            .resolve("opaa-outside-allowlist-" + ProcessHandle.current().pid());
     try {
       Files.createDirectories(dir);
     } catch (IOException e) {

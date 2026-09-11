@@ -11,7 +11,12 @@ import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.test.OpaaIntegrationTest;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -69,16 +74,42 @@ class LibraryControllerCredentialsIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   /**
-   * Every library this class creates over HTTP is removed again: the suite shares one database, and
-   * a leftover library (with its documents and its owner's grant) blocks the blanket {@code
-   * userRepository.deleteAll()} of any later class with a RESTRICT violation.
+   * The libraries this class created over HTTP, derived as the difference to a snapshot taken
+   * before the test method: the ids never reach the test code, and the suite shares one database,
+   * so a blanket delete would take a sibling class's rows with it. Left behind, such a library
+   * (with its documents and its owner's grant) blocks any later class's user cleanup with a
+   * RESTRICT violation.
    */
+  private List<UUID> foreignLibraryIds = List.of();
+
+  @BeforeEach
+  void rememberForeignLibraries() {
+    foreignLibraryIds = libraryIds();
+  }
+
   @AfterEach
   void removeCreatedLibraries() {
-    jdbcTemplate.update("DELETE FROM documents WHERE parent_document_id IS NOT NULL");
-    jdbcTemplate.update("DELETE FROM documents");
-    jdbcTemplate.update("DELETE FROM asset_grants WHERE library_id IS NOT NULL");
-    jdbcTemplate.update("DELETE FROM knowledge_libraries");
+    List<UUID> own = new ArrayList<>(libraryIds());
+    own.removeAll(foreignLibraryIds);
+    if (own.isEmpty()) {
+      return;
+    }
+    String placeholders = String.join(",", Collections.nCopies(own.size(), "?"));
+    Object[] ids = own.toArray();
+    // Attachments before their parent: fk_documents_parent is ON DELETE RESTRICT (ADR-0022), and
+    // PostgreSQL checks it per row, not at statement end.
+    jdbcTemplate.update(
+        "DELETE FROM documents WHERE parent_document_id IS NOT NULL AND library_id IN ("
+            + placeholders
+            + ")",
+        ids);
+    jdbcTemplate.update("DELETE FROM documents WHERE library_id IN (" + placeholders + ")", ids);
+    jdbcTemplate.update("DELETE FROM asset_grants WHERE library_id IN (" + placeholders + ")", ids);
+    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id IN (" + placeholders + ")", ids);
+  }
+
+  private List<UUID> libraryIds() {
+    return jdbcTemplate.queryForList("SELECT id FROM knowledge_libraries", UUID.class);
   }
 
   private RequestPostProcessor devUser() {

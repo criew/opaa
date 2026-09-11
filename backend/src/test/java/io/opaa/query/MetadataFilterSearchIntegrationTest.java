@@ -87,6 +87,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @OpaaMockedChatModelIntegrationTest
 class MetadataFilterSearchIntegrationTest {
 
+  private static final String OWN_LIBRARIES =
+      "(SELECT id FROM knowledge_libraries WHERE name LIKE 'Filter-%')";
+
   private static final Path classTempDir = OpaaTestDirectory.subdirectory("metadata-filter-search");
 
   @Autowired private RetrievalPipeline retrievalPipeline;
@@ -115,11 +118,9 @@ class MetadataFilterSearchIntegrationTest {
 
   @BeforeEach
   void setUp() throws IOException {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    jdbcTemplate.update("DELETE FROM documents");
-    jdbcTemplate.update("DELETE FROM asset_grants");
-    // Users and libraries of earlier runs stay: the audit rows a manual correction writes
-    // reference them. Every run creates its own, by id.
+    // Both hooks run the same scoped cleanup: this one guards against a method that broke off
+    // halfway, the @AfterEach one leaves the shared database as it was found.
+    removeOwnFixtures();
     owner = user("owner", SystemRole.SYSTEM_ADMIN);
     reader = user("reader", SystemRole.USER);
     library = library("Filter-" + UUID.randomUUID(), classTempDir.resolve("readable"));
@@ -549,9 +550,16 @@ class MetadataFilterSearchIntegrationTest {
    */
   @AfterEach
   void removeOwnFixtures() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    jdbcTemplate.update("DELETE FROM documents");
-    jdbcTemplate.update("DELETE FROM asset_grants");
+    jdbcTemplate.update("DELETE FROM chunk_full_text WHERE library_id IN " + OWN_LIBRARIES);
+    jdbcTemplate.update(
+        "DELETE FROM vector_store WHERE (metadata->>'library_id')::uuid IN " + OWN_LIBRARIES);
+    // Attachments before their parent: fk_documents_parent is ON DELETE RESTRICT
+    // (ADR-0022), and PostgreSQL checks it per row, not at statement end.
+    jdbcTemplate.update(
+        "DELETE FROM documents WHERE parent_document_id IS NOT NULL AND library_id IN "
+            + OWN_LIBRARIES);
+    jdbcTemplate.update("DELETE FROM documents WHERE library_id IN " + OWN_LIBRARIES);
+    jdbcTemplate.update("DELETE FROM asset_grants WHERE library_id IN " + OWN_LIBRARIES);
     // History rows reference users with RESTRICT - they go before the users themselves.
     jdbcTemplate.update(
         "DELETE FROM asset_grant_history WHERE subject_user_id IN (SELECT id FROM users WHERE"

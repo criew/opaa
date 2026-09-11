@@ -31,9 +31,11 @@ import org.springframework.test.context.MergedContextConfiguration;
  * {@code @DynamicPropertySource}, a {@code @MockitoBean} field, a nested
  * {@code @TestConfiguration}) lands in a group of its own and fails here, named.
  *
- * <p>Issue #1481: before it, 86 classes on three canonical meta-annotations booted 23 contexts,
- * because every documented, review-approved exception added one. A comment-and-review rule did not
- * hold that line; this test does.
+ * <p><b>Three known gaps, all accepted:</b> the scan sees no {@code @Nested} inner class (they
+ * inherit their enclosing class's configuration anyway), it filters on {@link SpringBootTest} alone
+ * (a future {@code @DataJpaTest} slice would pass unseen), and a signature inherited from a base
+ * class counts as a violation, because {@link Class#getDeclaredAnnotation} does not look up the
+ * hierarchy.
  */
 class SpringContextSignatureTest {
 

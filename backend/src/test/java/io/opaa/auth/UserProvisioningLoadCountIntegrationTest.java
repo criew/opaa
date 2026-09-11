@@ -25,8 +25,10 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * invocations across the full authenticated {@code dev} chain.
  *
  * <p>Counts on the shared {@link UserRepository} spy of {@link OpaaIntegrationTest}, which Spring
- * resets after every test method - the count below therefore covers this test method.s own requests
- * and nothing else.
+ * resets after every test method, so the count below covers this method's own requests and nothing
+ * else. Requests of a parallel test cannot inflate it either: the suite runs its classes
+ * sequentially within a JVM, and the Gradle workers of a sharded CI run have a database and a
+ * context of their own.
  */
 @OpaaIntegrationTest
 class UserProvisioningLoadCountIntegrationTest {

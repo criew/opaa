@@ -1,7 +1,11 @@
 package io.opaa.test;
 
 import io.opaa.FakeEmbeddingModel;
+import io.opaa.auth.UserRepository;
+import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.group.sync.DirectoryClient;
+import io.opaa.library.AssetGrantHistoryRepository;
+import io.opaa.space.SpaceRepository;
 import org.mockito.Mockito;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -47,5 +51,14 @@ class OpaaTestBeans {
   @Primary
   FakeDirectoryClient testDirectoryClient() {
     return new FakeDirectoryClient();
+  }
+
+  @Bean
+  OwnUserFixtures ownUserFixtures(
+      UserRepository users,
+      SpaceRepository spaces,
+      AssetGrantHistoryRepository grantHistory,
+      GroupMembershipHistoryRepository membershipHistory) {
+    return new OwnUserFixtures(users, spaces, grantHistory, membershipHistory);
   }
 }

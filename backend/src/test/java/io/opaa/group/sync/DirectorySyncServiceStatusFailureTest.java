@@ -47,6 +47,8 @@ class DirectorySyncServiceStatusFailureTest {
   @Autowired private io.opaa.auth.AuthProperties authProperties;
   @Autowired private DirectorySyncStatusRecorder statusRecorder;
 
+  private static final String DIRECTORY_GUID = "dir-guid-9";
+
   private UUID organizationId;
 
   private final List<UUID> createdUserIds = new ArrayList<>();
@@ -54,18 +56,29 @@ class DirectorySyncServiceStatusFailureTest {
   @BeforeEach
   void setUp() {
     organizationId = Organization.DEFAULT_ID;
+    removeOwnRows();
     directoryClient.respondWith();
     doThrow(new RuntimeException("simulated status write failure"))
         .when(statusRecorder)
         .record(any(), any(), any(), anyString(), anyDouble());
   }
 
-  // Only what this class created: the suite shares one database, and the dev auth filter
-  // provisions users with personal spaces into the same organization, which an unscoped
-  // deleteAll() cannot remove (fk_spaces_owner_organization).
   @AfterEach
   void tearDown() {
-    groupRepository.deleteAll(groupRepository.findByOrganizationId(organizationId));
+    removeOwnRows();
+  }
+
+  /**
+   * Only what this class created - the suite shares one database, and an unscoped {@code
+   * deleteAll()} cannot remove the dev auth filter's users with their personal spaces
+   * (fk_spaces_owner_organization) anyway. Called from both hooks, so this class neither depends on
+   * leftovers of a method that broke off halfway nor leaves any behind.
+   */
+  private void removeOwnRows() {
+    groupRepository.deleteAll(
+        groupRepository.findByOrganizationId(organizationId).stream()
+            .filter(group -> DIRECTORY_GUID.equals(group.getExternalId()))
+            .toList());
     // group_membership_history.user_id is ON DELETE RESTRICT - history before users.
     membershipHistoryRepository.deleteByUserIdIn(createdUserIds);
     userRepository.deleteAllById(createdUserIds);
@@ -85,13 +98,18 @@ class DirectorySyncServiceStatusFailureTest {
   void aStatusWriteFailureDoesNotSwallowAnAlreadyAppliedReport() {
     UUID member = createUser("member-1");
     directoryClient.respondWith(
-        new DirectoryGroup("dir-guid-9", "Referat 99", null, Set.of("member-1")));
+        new DirectoryGroup(DIRECTORY_GUID, "Referat 99", null, Set.of("member-1")));
 
     SyncReport report = directorySyncService.run(organizationId);
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
     // The group/membership change is real and committed, regardless of the status write failure.
-    List<Group> groups = groupRepository.findByOrganizationId(organizationId);
+    // Scoped to this class's own directory guid: the shared database may hold other classes'
+    // groups.
+    List<Group> groups =
+        groupRepository.findByOrganizationId(organizationId).stream()
+            .filter(group -> DIRECTORY_GUID.equals(group.getExternalId()))
+            .toList();
     assertThat(groups).hasSize(1);
     assertThat(groups.get(0).getKind()).isEqualTo(GroupKind.ORG_UNIT);
     assertThat(member).isNotNull();

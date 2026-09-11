@@ -36,6 +36,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @OpaaIntegrationTest
 @MockitoBean(types = ActiveChatModelResolver.class)
 @Import(SynchronousChatTitleExecutorConfiguration.class)
+// Repeats the two initializers of the canonical signature: @ContextConfiguration is resolved by
+// nearest declaration, not merged - an initializer added to @OpaaIntegrationTest alone would
+// never reach the classes below.
 @ContextConfiguration(
     initializers = {
       OpaaTestPathInitializer.class,

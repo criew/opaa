@@ -33,9 +33,16 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * {@link OpaaTestBeans}. Where none of that works, one of the three named exception signatures
  * applies; {@code SpringContextSignatureTest} holds that list and fails on any further one.
  *
+ * <p><b>{@code ActiveChatModelResolver} is the real one here</b>, unlike under the indexing
+ * signature this replaced: a class that needs a scripted chat answer carries {@link
+ * OpaaMockedChatModelIntegrationTest} instead. The indexing classes never script one - their
+ * resolver call, if any, fails against the unreachable default endpoint and takes the same fallback
+ * path an unstubbed mock produced before.
+ *
  * <p><b>One database for the whole suite.</b> A class wipes in its own {@code @BeforeEach} what it
  * touches, cleans up after itself in {@code @AfterEach}, and never asserts against an unfiltered
- * table - only against rows scoped to ids it created itself.
+ * table - only against rows scoped to ids it created itself. {@link LeftoverGrantGuard} names the
+ * offending class for the two tables no cleanup chain covers.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
@@ -70,6 +77,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @MockitoSpyBean(
     types = {UserRepository.class, ChatMessageRepository.class, DirectorySyncStatusRecorder.class})
 @TestExecutionListeners(
-    listeners = OpaaTestBeanResetListener.class,
+    listeners = {OpaaTestBeanResetListener.class, LeftoverGrantGuard.class},
     mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 public @interface OpaaIntegrationTest {}
