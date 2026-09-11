@@ -361,6 +361,33 @@ services:
     profiles:
       - ollama
 
+  # Mailpit as the mail server of the local stack (#1536, ADR-0033 Entscheidung 10): entirely
+  # opt-in via the "mail" Compose profile, started with `docker compose --profile mail up`. Without
+  # the profile this service does not exist and the stack behaves exactly as before - OPAA sends
+  # nothing until an administrator configures SMTP in the settings anyway.
+  #
+  # It accepts everything and delivers nothing: every message stays in its own web interface, which
+  # is what makes it usable for a demo, for the E2E suite and for looking at a template by hand
+  # without a single mail leaving the machine. Settings to enter under "E-Mail-Versand": host
+  # "mailpit" (the backend reaches it over the Compose network), port 1025, encryption NONE, no
+  # credentials. Both ports are published to 127.0.0.1 only.
+  mailpit:
+    image: axllent/mailpit:v1.31.1
+    environment:
+      MP_MAX_MESSAGES: 500
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    ports:
+      - "127.0.0.1:${OPAA_MAILPIT_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${OPAA_MAILPIT_WEB_PORT:-8025}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+    profiles:
+      - mail
+
 volumes:
   opaa-postgres-data:
   opaa-ollama-data:

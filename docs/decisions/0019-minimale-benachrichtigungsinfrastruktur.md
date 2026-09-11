@@ -80,3 +80,27 @@ Erledigt-Status) kommt erst mit der Notwendigkeit, nicht vorab.
   als einzelnes Paar für jede künftige Art ausreicht, oder ob ein Postfach mehrere Objektbezüge pro
   Eintrag braucht (z. B. „Bibliothek X in Space Y") — diese Frage wird zurückgestellt, bis eine
   zweite Benachrichtigungsart sie tatsächlich aufwirft, statt sie spekulativ vorwegzunehmen.
+
+## Nachtrag (11.09.2026, #1536): Es gibt jetzt einen Mail-Sender
+
+Diese Entscheidung entstand, als OPAA keinerlei Mailversand hatte — der Kontext oben setzt das
+stillschweigend voraus, und der Verzicht auf einen Zustellweg neben der Anzeige in der Anwendung war
+deshalb keine Wahl, sondern eine Gegebenheit.
+
+Mit [ADR-0033](0033-lokale-benutzerverwaltung.md), Entscheidung 10, hat OPAA das Subsystem
+`io.opaa.mail`: SMTP-Einstellungen in der Verwaltung, einen zur Laufzeit gebauten Sender, eine
+geschlossene Registry deutscher Vorlagen mit Überschreibung in der Datenbank und ein
+Versandergebnis (`Sent | Skipped | Failed`) statt einer Ausnahme.
+
+Was das für diesen ADR bedeutet:
+
+- **Diese Entscheidung bleibt unverändert gültig.** Die Tabelle `notifications` und ihre zwei
+  Endpunkte sind weiterhin der Weg, auf dem eine Benachrichtigung in der Anwendung sichtbar wird.
+- **Der Kanal E-Mail ist damit möglich, aber nicht beschlossen.** Ob und für welche
+  Benachrichtigungsarten zusätzlich eine Mail rausgeht, entscheidet das Benachrichtigungs-Epic
+  (#1297) — nicht dieser ADR. Ein solcher Kanal ergänzt dann Vorlagen in der Registry und ruft
+  `MailService`; er braucht kein zweites Versandsubsystem und ändert den Vertrag von
+  `MailService.send` nicht.
+- **Eine Warteschlange bleibt offen.** Der Versand ist synchron, ohne Outbox und ohne Wiederholung,
+  weil die Auth-Mails an eine Nutzeraktion gebunden sind. Ein Digest aus #1297 kann eine
+  Warteschlange davor setzen, ohne diesen Vertrag zu ändern.

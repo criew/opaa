@@ -922,6 +922,11 @@ Sinn; das ist jeweils vermerkt.
 | **Zugangsdaten-Verschlüsselung** | | | |
 | `OPAA_CREDENTIALS_ENCRYPTION_KEY` | — (leer) außerhalb des Profils `dev`; im Profil `dev` fest hinterlegter, **ausdrücklich nicht produktionstauglicher** Schlüssel (siehe [„Zugangsdaten-Verschlüsselung"](#zugangsdaten-verschlüsselung) unten) | nicht gesetzt (auskommentiert — bewusst, siehe Kommentar in `.env.docker.example`) | Base64-kodierter AES-256-Schlüssel (32 rohe Byte) zur Verschlüsselung von `knowledge_libraries.source_credentials` ruhend in der Datenbank. **Ohne Voreinstellung außerhalb des Profils `dev`; erforderlich, sobald eine Bibliothek mit Zugangsdaten gespeichert wird** |
 | `OPAA_SETTINGS_ENCRYPTION_KEY` | — (leer) außerhalb des Profils `dev`; im Profil `dev` fest hinterlegter, **ausdrücklich nicht produktionstauglicher** Schlüssel (siehe [„Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle"](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle) unten) | nicht gesetzt (auskommentiert — bewusst, siehe Kommentar in `.env.docker.example`) | Base64-kodierter AES-256-Schlüssel (32 rohe Byte) zur Verschlüsselung von `llm_models.api_key_ciphertext` ruhend in der Datenbank. **Ohne Voreinstellung außerhalb des Profils `dev`; erforderlich, sobald ein Chat-Modell mit Zugangsschlüssel gespeichert wird — der Start selbst bricht ohne ihn nicht ab** |
+| **E-Mail-Versand** | | | |
+| `OPAA_PUBLIC_BASE_URL` | — (leer) | nicht gesetzt (auskommentiert) | Adresse, unter der die Installation von außen erreichbar ist; Basis jedes Links in einer versendeten E-Mail. Vollständige Adresse mit Schema, ohne abschließenden Schrägstrich. Bewusst eine Umgebungsvariable: der `Host`-Header einer Anfrage wird nie als Basis verwendet. **Ohne Wert unterbleibt jeder Versand, der auf einen Link angewiesen ist** (siehe [„E-Mail-Versand (SMTP)"](#e-mail-versand-smtp)) |
+| `OPAA_MAIL_CONNECT_TIMEOUT` | `10s` | nicht gesetzt | Zeitgrenze für den Verbindungsaufbau zum SMTP-Server |
+| `OPAA_MAIL_READ_TIMEOUT` | `15s` | nicht gesetzt | Zeitgrenze für die Antwort des SMTP-Servers auf einen Befehl |
+| `OPAA_MAIL_WRITE_TIMEOUT` | `15s` | nicht gesetzt | Zeitgrenze für das Schreiben der Nachricht |
 | **OIDC** | | | |
 | `OPAA_OIDC_JWK_SET_URI` | — (leer) | `http://keycloak:8180/realms/opaa/protocol/openid-connect/certs` | **Bootstrap-Wert** (siehe [„Bestandsübernahme"](#bestandsübernahme-aus-opaa_oidc_) unten): Backend-seitige JWK-Set-Adresse des ersten Anbieters, den OPAA beim ersten Start im `oidc`-Modus einmalig als Standardanbieter „Verzeichnisdienst" in die Anbieterverwaltung übernimmt. Der Backend-Container muss den Docker-internen Hostnamen `keycloak` verwenden, siehe [„OIDC (Keycloak)"](#oidc-keycloak) unten. Bleibt danach als Notanker gesetzt (`OPAA_OIDC_BOOTSTRAP=force`) und ist immer als Adresse erlaubt |
 | `OPAA_OIDC_ISSUER_URI` | — (leer) | `http://localhost:8180/realms/opaa` | Bootstrap-Wert: Issuer des ersten Anbieters — bleibt `localhost`, weil der Browser diese URL verwendet. Ohne diesen Wert legt der erste Start keinen Anbieter an und protokolliert einen Fehler; keine Anmeldung möglich |
@@ -942,6 +947,8 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_DEMO_MINIO_CONSOLE_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8094`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `8094` | Host-Port der MinIO-Konsole des Demo-Objektspeichers (nur `demo`-Compose-Profil) — zum Ansehen seiner drei Buckets im Browser: `rheinfurt-archiv` und `formattest` als Quellen der beiden `S3`-Bibliotheken sowie `opaa-uploads` als Originalablage der Demo. Anmeldung mit den Demo-Zugangsdaten des Compose-Stacks |
 | `OPAA_UPLOAD_STORE_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8095`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `8095` | Host-Port der S3-API des mitgelieferten Objektspeichers der Originalablage `upload-store` (nur `upload-s3`-Compose-Profil) — für `mc`/`aws s3` vom Host, etwa bei der Umstellung eines Bestands; das Backend erreicht den Dienst über das Compose-Netzwerk unter seinem Servicenamen, nicht über diesen Port. An `127.0.0.1` gebunden, kein öffentlicher Zugang |
 | `OPAA_UPLOAD_STORE_CONSOLE_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8096`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `8096` | Host-Port der MinIO-Konsole des mitgelieferten Objektspeichers der Originalablage (nur `upload-s3`-Compose-Profil) — zum Nachsehen eines Originals im Bucket, Anmeldung mit `OPAA_UPLOAD_STORE_ROOT_USER`/`OPAA_UPLOAD_STORE_ROOT_PASSWORD`. An `127.0.0.1` gebunden, kein öffentlicher Zugang |
+| `OPAA_MAILPIT_SMTP_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `1025`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `1025` | Host-Port des SMTP-Dienstes von Mailpit (nur `mail`-Compose-Profil). Das Backend erreicht Mailpit über das Compose-Netzwerk unter `mailpit:1025`, nicht über diesen Port. An `127.0.0.1` gebunden |
+| `OPAA_MAILPIT_WEB_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8025`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `8025` | Host-Port der Weboberfläche von Mailpit (nur `mail`-Compose-Profil) — dort liegen die abgefangenen Nachrichten. An `127.0.0.1` gebunden |
 | **Mitgelieferter Objektspeicher (`upload-s3`)** | | | |
 | `OPAA_UPLOAD_STORE_ROOT_USER` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `opaa-uploads`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `opaa-uploads` | Zugangsschlüssel des Dienstes `upload-store` selbst (nur `upload-s3`-Compose-Profil). Muss mit `OPAA_UPLOAD_S3_ACCESS_KEY` in `.env.docker` übereinstimmen — die beiden Werte stehen bewusst in verschiedenen Dateien, weil Compose die eine Seite selbst einsetzt und die andere erst im Container gelesen wird |
 | `OPAA_UPLOAD_STORE_ROOT_PASSWORD` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `OpaaUploads!2026`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `OpaaUploads!2026` | Geheimer Schlüssel des Dienstes `upload-store` (nur `upload-s3`-Compose-Profil). Muss mit `OPAA_UPLOAD_S3_SECRET_KEY` in `.env.docker` übereinstimmen. Der mitgelieferte Wert ist eine dokumentierte Entwicklungsvorgabe wie die übrigen Zugangsdaten dieses Stacks und für eine erreichbare Installation zu ersetzen (siehe [Härtung](#härtung-für-erreichbare-deployments)) |
@@ -1368,6 +1375,105 @@ Warum keine Vereinheitlichung:
   nutzt dessen Nutzer weiter: Die Filterkette ist dort identisch zur OIDC-Konfiguration, die Suite
   übt also dieselben Autorisierungsregeln aus, ohne Keycloak, Realm-Import und Anmeldeablauf im
   Prüfpfad zu haben. Den echten Keycloak-Login prüft allein der separate Demo-Smoke-Lauf.
+
+## E-Mail-Versand (SMTP)
+
+> **Entwurf.** Dieser Abschnitt ist geschrieben und gegen den gebauten Stand geprüft, aber noch
+> nicht abgenommen.
+
+OPAA versendet E-Mails über einen SMTP-Server, den ein Systemverwalter in der Anwendung einträgt.
+Ohne diese Einstellung versendet OPAA nichts — und meldet das als Ergebnis, statt einen Vorgang
+scheitern zu lassen: Wer ein Konto anlegt, bekommt den Einladungslink dann zur Weitergabe angezeigt.
+
+Zwei Dinge werden getrennt gehalten:
+
+- **Der Mailserver ist eine Verwaltungseinstellung.** Server, Port, Verschlüsselung, Zugangsdaten
+  und Absender stehen in der Oberfläche unter „E-Mail-Versand" und wirken ohne Neustart. Das
+  Passwort liegt verschlüsselt in der Datenbank, erscheint in keiner Antwort und in keinem
+  Protokoll.
+- **Die öffentliche Adresse ist eine Bereitstellungsentscheidung.** `OPAA_PUBLIC_BASE_URL` steht in
+  der Umgebung, nicht in der Oberfläche. Jeder Link in einer E-Mail wird daraus gebildet; die
+  Adresse aus dem `Host`-Kopf einer Anfrage wird nie verwendet.
+
+### Einrichtung
+
+1. `OPAA_PUBLIC_BASE_URL` setzen — vollständig mit Schema, ohne abschließenden Schrägstrich, genau
+   die Adresse, unter der Nutzende OPAA im Browser öffnen.
+2. Als Systemverwalter unter „E-Mail-Versand" eintragen: Server, Port, Verschlüsselung, bei Bedarf
+   Zugangsdaten, Absenderadresse und Absendername. Der Versand lässt sich erst einschalten, wenn
+   Server, Port und Absenderadresse gesetzt sind.
+3. Testnachricht auslösen. Sie geht an die eigene Adresse des aufrufenden Verwalters. Das Ergebnis
+   steht sofort in der Oberfläche: zugestellt, übersprungen oder fehlgeschlagen mit Grund.
+
+| Feld | Bedeutung |
+|---|---|
+| Versand aktiv | Hauptschalter. Aus bedeutet: OPAA versendet nichts und meldet jeden Versand als übersprungen |
+| Server, Port | Adresse des Mailservers. Es findet keine Adressprüfung statt — ein interner Mailserver ist der Regelfall, und die Einstellung ist Systemverwaltern vorbehalten |
+| Verschlüsselung | `STARTTLS` verlangt die Aufwertung der Verbindung und bricht ab, wenn der Server sie nicht anbietet; `SSL` verschlüsselt ab dem ersten Byte; `NONE` überträgt unverschlüsselt und ist nur für einen Mailserver im selben vertrauenswürdigen Netz vertretbar |
+| Benutzername, Passwort | Leerer Benutzername bedeutet: Verbindung ohne Anmeldung. Das Passwort wird verschlüsselt gespeichert und in Antworten als `***` angezeigt; wer `***` zurückschickt, lässt es unverändert, ein leeres Feld löscht es |
+| Absenderadresse, Absendername | Stehen als Absender in jeder Nachricht |
+
+Verschlüsselungsschlüssel: Das SMTP-Passwort wird mit demselben Schlüssel geschützt wie die
+Zugangsschlüssel verwalteter Chat-Modelle (siehe
+[„Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle"](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)).
+Ohne gültigen Schlüssel schlägt das Speichern eines Passworts fehl; der Start bricht nicht ab.
+
+### Vorlagen
+
+Zwölf Vorlagen werden mit deutschem Text ausgeliefert: Einladung, Passwort vergessen,
+administratives Zurücksetzen, Bestätigung der Selbstregistrierung, Sperrung, Entsperrung,
+Ablaufhinweis, Übergabe angestoßen, Übergabe abgeschlossen, Benutzung des Notanker-Kontos,
+Erinnerung an die Kontenprüfung und die Testnachricht.
+
+Eine Vorlage lässt sich überschreiben (Betreff, Textteil, wahlweise ein eigener HTML-Teil) und
+jederzeit auf den ausgelieferten Stand zurücksetzen. Es lassen sich weder Vorlagen anlegen noch
+löschen — der Satz ist fest, damit keine Installation mit einer Vorlage ohne Inhalt enden kann.
+
+- **Platzhalter sind je Vorlage festgelegt.** Jede Vorlage nennt die Platzhalter, die sie kennt
+  (etwa Produktname, Anrede, Link, Ablaufhinweis). Ein Platzhalter, den die Vorlage nicht kennt,
+  wird beim Speichern abgelehnt — mit Angabe des Feldes und der erlaubten Namen. Fehlt beim Versand
+  ein Wert für einen verwendeten Platzhalter, wird nicht versendet, statt eine Nachricht mit einer
+  Lücke an der Stelle des Links zu verschicken.
+- **Der Produktname kommt aus dem Branding.** Er muss nirgends eingetragen werden.
+- **Der HTML-Teil trägt den Rahmen der Installation**: Produktname und Akzentfarbe aus dem Branding.
+  Ein Logo wird nicht eingebettet. Wer einen eigenen HTML-Teil speichert, ersetzt den Rahmen
+  vollständig.
+- **Vorschau und Testnachricht je Vorlage**: Die Vorschau zeigt das Ergebnis mit Beispielwerten,
+  ohne etwas zu versenden; die Testnachricht schickt genau diese Fassung an die eigene Adresse.
+
+Jede Änderung, jedes Zurücksetzen, jede Änderung der Einstellungen und jede Testnachricht steht im
+Nachweisprotokoll.
+
+### Mailpit im lokalen Stapel
+
+Für Demonstration, Entwicklung und die E2E-Suite liegt dem Compose-Stapel ein Mailserver bei, der
+alles annimmt und nichts zustellt:
+
+```bash
+docker compose --profile mail up -d mailpit
+```
+
+Die abgefangenen Nachrichten liegen danach unter `http://localhost:8025`. In der Verwaltung
+einzutragen: Server `mailpit`, Port `1025`, Verschlüsselung `NONE`, keine Zugangsdaten. Ohne das
+Profil `mail` existiert der Dienst nicht, und der Stapel verhält sich unverändert.
+
+### Fehlerbilder
+
+Der Zustand des Versands steht an drei Stellen: als „letzter erfolgreicher Versand" und „letzter
+Fehler" auf der Einstellungsseite, als Ergebnis unmittelbar an der auslösenden Aktion, und als
+Eintrag `mail` unter `/actuator/health` — dort nur der Zustand, ohne Einzelheiten. Die Ursache steht
+im Anwendungsprotokoll, dort ohne die Empfängeradresse.
+
+| Beobachtung | Ursache | Abhilfe |
+|---|---|---|
+| Ergebnis „übersprungen" | Versand ist ausgeschaltet oder kein Server eingetragen | Einstellungen vervollständigen und einschalten |
+| Einladung zeigt nur den Link an, statt zu versenden | Kein Versand möglich — Versand aus, Versand fehlgeschlagen oder `OPAA_PUBLIC_BASE_URL` nicht gesetzt | Link weitergeben; parallel Einstellung und Umgebungsvariable prüfen |
+| „Connection refused" | Falscher Server oder Port, oder der Mailserver ist aus dem Backend-Container nicht erreichbar | Im Compose-Stapel den Servicenamen statt `localhost` verwenden; Erreichbarkeit aus dem Container prüfen |
+| Zeitüberschreitung | Mailserver antwortet nicht innerhalb der Zeitgrenzen | Erreichbarkeit prüfen; notfalls `OPAA_MAIL_CONNECT_TIMEOUT`, `OPAA_MAIL_READ_TIMEOUT`, `OPAA_MAIL_WRITE_TIMEOUT` anpassen |
+| Meldung zu STARTTLS | Der Server bietet STARTTLS nicht an; OPAA bricht ab, statt unverschlüsselt fortzufahren | Beim Mailserver TLS einrichten, oder — nur im vertrauenswürdigen Netz — Verschlüsselung `NONE` wählen |
+| „535" oder Authentifizierungsfehler | Benutzername oder Passwort falsch | Zugangsdaten neu eintragen; das Feld `***` lässt das gespeicherte Passwort unverändert, zum Ersetzen den neuen Wert eintragen |
+| Passwort lässt sich nicht speichern | Verschlüsselungsschlüssel fehlt oder ist ungültig | `OPAA_SETTINGS_ENCRYPTION_KEY` setzen |
+| Nachrichten kommen an, Links führen ins Leere | `OPAA_PUBLIC_BASE_URL` zeigt auf eine Adresse, die Nutzende nicht erreichen | Variable auf die tatsächlich genutzte Adresse setzen und Backend neu starten |
 
 ## Dokumente
 
