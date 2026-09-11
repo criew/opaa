@@ -234,11 +234,19 @@ und Header liest der Resolver unterhalb aller Request-Wrapper, denn Springs `For
 **linkesten** `X-Forwarded-For`-Eintrag um und versteckt den Header — `getRemoteAddr()` direkt zu
 lesen wäre von jedem Client wählbar; kein Code liest es mehr direkt. `0.0.0.0/0` und
 `::/0` lehnt der Start ab; der `oidc`-Betriebsmodus warnt bei leerer Liste mit der Folge im
-Klartext. Der Compose-Stack hat dafür ein festes Netz (`docker-compose.yml`, `OPAA_COMPOSE_SUBNET`)
-und `.env.docker.example` den passenden Wert. `GET /api/v1/admin/diagnostics/client-address`
+Klartext; mehrere `X-Forwarded-For`-Zeilen gelten als eine Kette, ein eingehendes `Forwarded`
+(RFC 7239) verwirft der Frontend-nginx. Der Compose-Stack hat dafür ein festes Netz und eine feste
+Adresse des Frontend-Containers (`docker-compose.yml`, `OPAA_COMPOSE_SUBNET`/
+`OPAA_COMPOSE_FRONTEND_ADDRESS`), `.env.docker.example` vertraut genau dieser Adresse (`/32`, nicht
+dem Netz — die Gateway-Adresse spräche jeder Host-Prozess), und der Backend-Port ist nur an
+`127.0.0.1` gebunden. `GET /api/v1/admin/diagnostics/client-address`
 (Systemverwaltung) zeigt für genau diese Anfrage Verbindungsadresse, empfangenen Header, ob er
 gezählt hat, und die aufgelöste Adresse. Der bestehende `RateLimitFilter` (Sliding Window über
-Caffeine, ein Limiter je Regel, Schlüsselzahl begrenzt) nutzt dieselbe Auflösung und antwortet auf
+Caffeine, ein Limiter je Regel, Schlüsselzahl begrenzt — darüber fällt die Grenze für die
+vergessenen Schlüssel offen aus, was die globale Grenze auffängt) nutzt dieselbe Auflösung, matcht
+gegen den dekodierten Pfad innerhalb der Anwendung (kein `X-Forwarded-Prefix`, keine
+Prozentkodierung führt an einer Regel vorbei), prüft erst das Kontingent des Clients und verbraucht
+die globale Grenze nur für durchgelassene Anfragen, zählt IPv6-Clients je `/64` und antwortet auf
 jede Überschreitung mit `429`, `Retry-After` und dem einen deutschen Fehlertext; CORS-Preflights
 zählen nicht. Grenzen der lokalen Anmeldung (`opaa.rate-limit.local-auth.*`): Login 10/60 s je
 Adresse, Refresh 30/60 s je Adresse, Passwortwechsel 5/300 s je Konto (vor dem Vergleich des
@@ -251,14 +259,14 @@ Fenster (100 bzw. 50), deren Überschreiten eine Warnung und die Metrik `opaa.ra
 Selbstbedienung (#1538) rufen `requireAddressAllowance` auf, die Pfadregeln stehen bereit. Nach
 fünf Fehlversuchen (`OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS`) sperrt `LocalAccountLockoutListener`
 das Konto für feste 15 Minuten (`OPAA_AUTH_LOCAL_LOCKOUT_DURATION`, `locked_reason =
-FAILED_LOGINS`, keine progressive Verlängerung; ein bereits gesperrtes Konto wird weder erneut
-gesperrt noch verlängert): auditiert **einmal** als `LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS`
+FAILED_LOGINS`, keine progressive Verlängerung; die Sperre setzt den Zähler auf null, während der
+Sperre wird nichts gezählt — nach ihrem Ende gilt wieder das volle Kontingent): auditiert **einmal** als `LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS`
 (Systemakteur `local-auth`, Subjekt als Pseudonym, ohne Zähler) und als Metrik
 `opaa.auth.local_account_lockout`; der einzelne Fehlversuch steht nur im Anwendungslog mit der
 Konto-ID, nie der Adresse. Die Anmeldung antwortet während der Sperre exakt wie bei einem
 falschen Passwort; Tokens des gesperrten Kontos weist der Validator über den Zustand ab
-(`account_locked:failed_logins`). Das Ende der Sperre erzeugt kein Ereignis; der Zähler geht bei
-der nächsten erfolgreichen Anmeldung auf null. Keine Mail bei dieser Sperre; „Passwort vergessen"
+(`account_locked:failed_logins`). Das Ende der Sperre erzeugt kein Ereignis; der Zähler geht auch
+bei jeder erfolgreichen Anmeldung auf null. Keine Mail bei dieser Sperre; „Passwort vergessen"
 bleibt offen, und ein eingelöster Rücksetzlink hebt sie auf (#1538).
 
 **Aussperrschutz (gebaut, #1534).** `LocalAdminAvailabilityGuard` ist die eine Stelle für „nie ohne

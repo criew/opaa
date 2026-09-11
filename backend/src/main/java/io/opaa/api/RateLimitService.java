@@ -9,8 +9,10 @@ import java.util.Deque;
 /**
  * A sliding-window limiter over one kind of key (client address, account, hashed address): each
  * instance is one scope, so the same literal key in two scopes never collides. Idle keys expire and
- * the key space is capped, so a high-cardinality key space (a spoofable address, an attacker
- * inventing addresses) cannot grow memory without bound.
+ * the key space is capped, so a high-cardinality key space (an attacker inventing addresses) cannot
+ * grow memory without bound. The cap fails open: beyond it the least valuable keys are forgotten
+ * and their next request counts as the first of a fresh window - which is why the cap is far above
+ * any legitimate client count and why the login endpoint carries a global ceiling as well.
  */
 public class RateLimitService {
 
@@ -26,6 +28,10 @@ public class RateLimitService {
    * @param windowSeconds sliding window duration in seconds
    */
   public RateLimitService(int maxRequests, int windowSeconds) {
+    this(maxRequests, windowSeconds, MAX_TRACKED_KEYS);
+  }
+
+  RateLimitService(int maxRequests, int windowSeconds, long maxTrackedKeys) {
     this.maxRequests = maxRequests;
     this.windowMillis = Duration.ofSeconds(windowSeconds).toMillis();
     // Cache entries live 2× the window duration so that timestamps from the current window
@@ -34,8 +40,14 @@ public class RateLimitService {
     this.requestLog =
         Caffeine.newBuilder()
             .expireAfterAccess(Duration.ofSeconds(windowSeconds * 2L))
-            .maximumSize(MAX_TRACKED_KEYS)
+            .maximumSize(maxTrackedKeys)
             .build();
+  }
+
+  /** Keys currently held, after pending evictions are applied - for tests of the cap. */
+  long trackedKeys() {
+    requestLog.cleanUp();
+    return requestLog.estimatedSize();
   }
 
   public boolean isAllowed(String key) {

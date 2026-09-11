@@ -23,7 +23,9 @@ import org.springframework.stereotype.Component;
  * refusal is a {@link TooManyRequestsException} with the seconds to wait, which {@code
  * GlobalExceptionHandler} turns into {@code 429} with {@code Retry-After}. Addresses are keyed by a
  * hash of their lower-cased form and never held as text; with {@code opaa.rate-limit.enabled =
- * false} nothing is refused.
+ * false} nothing is refused. Depends on {@code io.opaa.api}'s limiter and properties on purpose:
+ * the rate-limit building blocks live there, and this class is the auth-side consumer of them, not
+ * the other way round.
  */
 @Component
 public class LocalAuthRateLimiter {

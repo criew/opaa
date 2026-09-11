@@ -116,6 +116,19 @@ class ClientIpResolverTest {
   }
 
   @Test
+  void severalHeaderLinesFormOneChain() {
+    // RFC 9110: a proxy may add its own X-Forwarded-For line instead of appending - the lines are
+    // one chain in order, so the client is still the entry the nearest trusted hop wrote
+    var resolver = new TrustedProxyClientIpResolver(List.of("10.0.0.0/8"));
+    MockHttpServletRequest request = request("10.0.0.9", "9.9.9.9");
+    request.addHeader(XFF, "198.51.100.1, 10.1.1.1");
+
+    assertThat(resolver.forwardedFor(request)).isEqualTo("9.9.9.9, 198.51.100.1, 10.1.1.1");
+    assertThat(resolver.resolve(request)).isEqualTo("198.51.100.1");
+    assertThat(resolver.forwardedFor(request("10.0.0.9", null))).isNull();
+  }
+
+  @Test
   void theConnectionAddressAndTheHeaderAreReadBeneathEveryRequestWrapper() {
     // regression guard: Spring's ForwardedHeaderFilter (forward-headers-strategy: framework) wraps
     // the request with getRemoteAddr() rewritten from the leftmost X-Forwarded-For entry and the

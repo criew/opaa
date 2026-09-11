@@ -6,6 +6,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.springframework.security.web.util.matcher.IpAddressMatcher;
@@ -90,9 +92,17 @@ public class TrustedProxyClientIpResolver implements ClientIpResolver {
     return underlying(request).getRemoteAddr();
   }
 
-  /** The {@code X-Forwarded-For} header as it arrived, beneath every request wrapper. */
+  /**
+   * The {@code X-Forwarded-For} header as it arrived, beneath every request wrapper - every field
+   * line joined with commas (RFC 9110 allows the header to be split; a proxy that adds its own line
+   * instead of appending must still be walked through), or {@code null} without the header.
+   */
   public String forwardedFor(HttpServletRequest request) {
-    return underlying(request).getHeader(X_FORWARDED_FOR);
+    Enumeration<String> lines = underlying(request).getHeaders(X_FORWARDED_FOR);
+    if (lines == null || !lines.hasMoreElements()) {
+      return null;
+    }
+    return String.join(", ", Collections.list(lines));
   }
 
   private static HttpServletRequest underlying(HttpServletRequest request) {

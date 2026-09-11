@@ -310,6 +310,61 @@ class RateLimitFilterTest {
   }
 
   @Test
+  void aClientRefusedByItsOwnBudgetNeverConsumesTheGlobalCeiling() throws Exception {
+    // one address must not be able to exhaust the global ceiling for everyone: the client budget
+    // comes first, and only a request that passed it spends a global token
+    when(loginLimiter.tryAcquire(anyString())).thenReturn(REJECTED);
+
+    var request = new MockHttpServletRequest("POST", "/api/v1/auth/local/login");
+    var response = new MockHttpServletResponse();
+    filter.doFilter(request, response, new MockFilterChain());
+
+    assertThat(response.getStatus()).isEqualTo(429);
+    verify(globalLoginLimiter, never()).tryAcquire(anyString());
+    assertThat(rejected("local-auth-login", "client")).isEqualTo(1.0);
+    assertThat(rejected("local-auth-login", "global")).isZero();
+  }
+
+  @Test
+  void rulesMatchTheDecodedPathWithinTheApplication() throws Exception {
+    // regression guard: a forwarded prefix (ForwardedHeaderFilter moves it into the context path)
+    // or a percent-encoded spelling reaches the very same handler and must hit the same rule
+    when(loginLimiter.tryAcquire(anyString())).thenReturn(REJECTED);
+
+    var prefixed = new MockHttpServletRequest("POST", "/x/api/v1/auth/local/login");
+    prefixed.setContextPath("/x");
+    var encoded = new MockHttpServletRequest("POST", "/api/v1/auth/local/%6Cogin");
+    for (var request : List.of(prefixed, encoded)) {
+      var response = new MockHttpServletResponse();
+      var chain = new MockFilterChain();
+
+      filter.doFilter(request, response, chain);
+
+      assertThat(response.getStatus()).as(request.getRequestURI()).isEqualTo(429);
+      assertThat(chain.getRequest()).isNull();
+    }
+  }
+
+  @Test
+  void ipv6ClientsShareTheBucketOfTheirSlash64AndAnUnknownAddressOneKey() throws Exception {
+    when(loginLimiter.tryAcquire(anyString())).thenReturn(ALLOWED);
+    for (String address : List.of("2001:db8:1:2:aaaa::1", "2001:db8:1:2:bbbb::2")) {
+      var request = new MockHttpServletRequest("POST", "/api/v1/auth/local/login");
+      request.setRemoteAddr(address);
+      filter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+    }
+    var noAddress = new MockHttpServletRequest("POST", "/api/v1/auth/local/login");
+    noAddress.setRemoteAddr(null);
+    filter.doFilter(noAddress, new MockHttpServletResponse(), new MockFilterChain());
+
+    verify(loginLimiter, org.mockito.Mockito.times(2)).tryAcquire("2001:db8:1:2:0:0:0:0/64");
+    verify(loginLimiter).tryAcquire("unknown");
+    assertThat(RateLimitFilter.bucketKey("203.0.113.7")).isEqualTo("203.0.113.7");
+    assertThat(RateLimitFilter.bucketKey("2001:db8::7")).isEqualTo("2001:db8:0:0:0:0:0:0/64");
+    assertThat(RateLimitFilter.bucketKey("2001:db8:0:1::7")).isEqualTo("2001:db8:0:1:0:0:0:0/64");
+  }
+
+  @Test
   void returns429AndWarnsAndCountsWhenAGlobalLimitIsExceeded() throws Exception {
     when(loginLimiter.tryAcquire(anyString())).thenReturn(ALLOWED);
     when(globalLoginLimiter.tryAcquire(anyString())).thenReturn(Decision.reject(42));
@@ -337,7 +392,7 @@ class RateLimitFilterTest {
         .anySatisfy(message -> assertThat(message).contains("Global").contains("local-auth-login"));
     assertThat(rejected("local-auth-login", "global")).isEqualTo(1.0);
     assertThat(rejected("local-auth-login", "client")).isZero();
-    verify(loginLimiter, never()).tryAcquire(anyString());
+    verify(loginLimiter).tryAcquire(anyString());
   }
 
   @Test

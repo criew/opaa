@@ -22,12 +22,13 @@ import org.springframework.stereotype.Service;
  * or no password - so the response-time class never tells an unknown address from a wrong password.
  * Only an {@code ACTIVE} account signs in, and with the management switched off only a local {@code
  * SYSTEM_ADMIN}; every refusal is the same empty result. A wrong password of a known account is
- * counted atomically and reported to every {@link LocalLoginAttemptListener}; a successful sign-in
- * resets the counter. Account state comes from {@link LocalCredentials#state} alone - a lock's
- * stale {@code locked_at} after a lockout expired is not a lock. A local {@code SYSTEM_ADMIN}
- * signing in from outside {@link LocalAdminNetworkPolicy}'s networks is refused like a wrong
- * password - before the counter, so the account cannot be locked from there, and without the
- * listeners (ADR-0033, Entscheidung 9); the hash comparison still runs so the timing stays alike.
+ * counted atomically and reported to every {@link LocalLoginAttemptListener} - unless the account
+ * is locked, then nothing is counted; a successful sign-in resets the counter. Account state comes
+ * from {@link LocalCredentials#state} alone - a lock's stale {@code locked_at} after a lockout
+ * expired is not a lock. A local {@code SYSTEM_ADMIN} signing in from outside {@link
+ * LocalAdminNetworkPolicy}'s networks is refused like a wrong password - before the counter, so the
+ * account cannot be locked from there, and without the listeners (ADR-0033, Entscheidung 9); the
+ * hash comparison still runs so the timing stays alike.
  */
 @Service
 public class LocalLoginService {
@@ -96,6 +97,11 @@ public class LocalLoginService {
       return Optional.empty();
     }
     if (!passwordMatches) {
+      // a locked account counts nothing (#1535): attempts during a lockout neither extend it nor
+      // spend the fresh budget the account has once the lockout has ended
+      if (row.state(now) == LocalAccountState.LOCKED) {
+        return Optional.empty();
+      }
       credentials.recordFailedLogin(user.getId(), now);
       LocalCredentials counted = credentials.findById(user.getId()).orElse(row);
       listeners.forEach(listener -> listener.onPasswordRejected(user, counted, now));

@@ -14,6 +14,7 @@ import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthMockMvcTest;
 import jakarta.servlet.http.Cookie;
+import java.net.URI;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -101,6 +102,32 @@ class LocalAuthRateLimitIntegrationTest {
     // ... and another address has its own budget
     login(user.email(), LocalAccountFixtures.PASSWORD, from("203.0.113.12"))
         .andExpect(status().isOk());
+  }
+
+  @Test
+  void neitherAForwardedPrefixNorAPercentEncodedPathReachesTheHandlerPastTheRule()
+      throws Exception {
+    for (int i = 0; i < 10; i++) {
+      login(UNKNOWN, "falsches-passwort", from("203.0.113.71"))
+          .andExpect(status().isUnauthorized());
+    }
+
+    // X-Forwarded-Prefix: Spring moves the prefix into the context path; the handler still runs
+    mockMvc
+        .perform(
+            post(LOGIN)
+                .with(from("203.0.113.71"))
+                .header("X-Forwarded-Prefix", "/x")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("email", UNKNOWN, "password", "falsches-passwort"))))
+        .andExpect(status().isTooManyRequests());
+    mockMvc
+        .perform(
+            post(URI.create("/api/v1/auth/local/%6Cogin"))
+                .with(from("203.0.113.71"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("email", UNKNOWN, "password", "falsches-passwort"))))
+        .andExpect(status().isTooManyRequests());
   }
 
   @Test

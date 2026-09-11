@@ -110,10 +110,13 @@ const composeEnv = {
   OPAA_FRONTEND_PORT: frontendPort,
   OPAA_DB_PORT: dbPort,
   OPAA_KEYCLOAK_PORT: keycloakPort,
-  // docker-compose.yml fixes the network's subnet (ADR-0033: the backend trusts X-Forwarded-For
-  // only from the frontend's network); each stack gets its own range so it can run next to a
-  // developer's own stack, and the matching OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS stands in its env file.
+  // docker-compose.yml fixes the network's subnet and the frontend's address in it (ADR-0033: the
+  // backend trusts X-Forwarded-For only from that nginx); each stack gets its own range so it can
+  // run next to a developer's own stack, and the matching OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS
+  // stands in its env file. The backend port is bound to 127.0.0.1, which is where this script and
+  // the seed reach it.
   OPAA_COMPOSE_SUBNET: isDemo ? '172.30.0.0/16' : '172.29.0.0/16',
+  OPAA_COMPOSE_FRONTEND_ADDRESS: isDemo ? '172.30.0.10' : '172.29.0.10',
   ...(isDemo ? {} : { OPAA_AI_STUB_PORT: aiStubPort }),
 }
 

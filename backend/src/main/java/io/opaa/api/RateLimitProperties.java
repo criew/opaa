@@ -12,7 +12,8 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  *     io.opaa.security.TrustedProxyClientIpResolver} (ADR-0033, Entscheidung 9). Empty by default -
  *     the secure default for a backend without a reverse proxy, which then ignores the header
  *     entirely; behind a proxy it must name the proxy's network, or every client shares one bucket.
- *     A wildcard ({@code 0.0.0.0/0}, {@code ::/0}) is refused: it would make every client a proxy.
+ *     A range wider than /8 ({@code 0.0.0.0/0}, {@code ::/0}, {@code 10.0.0.0/7}) is refused: it
+ *     would make every client a proxy.
  * @param query per-endpoint limits for the query endpoint
  * @param indexing per-endpoint limits for the indexing trigger endpoint
  * @param sourceTest per-endpoint limits for the source connection test endpoint (#514, PR #537
@@ -42,6 +43,7 @@ public record RateLimitProperties(
     LocalAuthLimits localAuth) {
 
   public static final String TRUSTED_PROXY_CIDRS_VARIABLE = "OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS";
+  public static final int NARROWEST_ALLOWED_PREFIX_LENGTH = 8;
 
   public RateLimitProperties {
     trustedProxyCidrs = normalizeTrustedProxies(trustedProxyCidrs);
@@ -70,25 +72,30 @@ public record RateLimitProperties(
                 + cidr,
             e);
       }
-      if (isWildcard(cidr)) {
+      if (isWiderThanAllowed(cidr)) {
         throw new IllegalArgumentException(
             "opaa.rate-limit.trusted-proxy-cidrs ("
                 + TRUSTED_PROXY_CIDRS_VARIABLE
-                + ") must not trust every address - a /0 range would let any client choose its"
-                + " own address via X-Forwarded-For (ADR-0033): "
+                + ") must not trust a range wider than /"
+                + NARROWEST_ALLOWED_PREFIX_LENGTH
+                + " - a /0 range would let any client choose its own address via"
+                + " X-Forwarded-For (ADR-0033): "
                 + cidr);
       }
     }
     return normalized;
   }
 
-  private static boolean isWildcard(String cidr) {
+  /**
+   * A trusted-proxy range is a proxy's network, never a continent: prefixes below /8 are refused.
+   */
+  private static boolean isWiderThanAllowed(String cidr) {
     int slash = cidr.indexOf('/');
     if (slash < 0) {
       return false;
     }
     try {
-      return Integer.parseInt(cidr.substring(slash + 1).trim()) == 0;
+      return Integer.parseInt(cidr.substring(slash + 1).trim()) < NARROWEST_ALLOWED_PREFIX_LENGTH;
     } catch (NumberFormatException e) {
       return false;
     }

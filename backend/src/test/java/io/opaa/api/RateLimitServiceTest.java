@@ -65,6 +65,20 @@ class RateLimitServiceTest {
   }
 
   @Test
+  void aFloodOfKeysStaysWithinTheCapAndFailsOpenForForgottenKeys() {
+    // the cap bounds memory, not correctness: a forgotten key starts a fresh window (documented
+    // fail-open); every request is still answered, and the store never exceeds the cap
+    var service = new RateLimitService(1, 60, 10);
+
+    for (int i = 0; i < 1_000; i++) {
+      assertThat(service.tryAcquire("client-" + i).allowed()).isTrue();
+    }
+
+    assertThat(service.trackedKeys()).isLessThanOrEqualTo(10);
+    assertThat(service.tryAcquire("client-999999").allowed()).isTrue();
+  }
+
+  @Test
   void aRejectionDoesNotCountAsARequest() {
     var service = new RateLimitService(1, 60);
 

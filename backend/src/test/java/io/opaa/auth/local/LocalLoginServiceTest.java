@@ -146,6 +146,18 @@ class LocalLoginServiceTest {
   }
 
   @Test
+  void aWrongPasswordDuringALockoutIsNeitherCountedNorReported() {
+    // #1535: attempts during the lockout neither extend it nor spend the budget after it
+    row.recordLockoutUntil(NOW.plus(Duration.ofMinutes(10)), NOW.minusSeconds(60));
+
+    assertThat(service.authenticate(EMAIL, "falsch", CLIENT)).isEmpty();
+
+    verify(encoder, times(1)).matches("falsch", HASH);
+    verify(credentials, never()).recordFailedLogin(any(), any());
+    verify(listener, never()).onPasswordRejected(any(), any(), any());
+  }
+
+  @Test
   void anExpiredAccountIsRefusedEvenWithTheRightPassword() {
     row.setExpiresAt(NOW.minus(Duration.ofDays(1)), NOW);
 

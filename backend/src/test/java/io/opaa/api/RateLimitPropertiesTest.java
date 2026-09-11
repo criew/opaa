@@ -26,14 +26,19 @@ class RateLimitPropertiesTest {
   void trustedProxiesDefaultToNoneAndAreTrimmed() {
     assertThat(properties(null, null).trustedProxyCidrs()).isEmpty();
     assertThat(
+            properties(List.of("10.0.0.0/8", "172.28.0.10/32", "fd00::/8"), null)
+                .trustedProxyCidrs())
+        .hasSize(3);
+    assertThat(
             properties(List.of(" 10.0.0.0/8 ", "", "  ", "2001:db8::/32"), null)
                 .trustedProxyCidrs())
         .containsExactly("10.0.0.0/8", "2001:db8::/32");
   }
 
   @Test
-  void refusesAWildcardOrUnparseableProxyRangeNamingTheVariable() {
-    for (String bad : List.of("0.0.0.0/0", "::/0", "kein-netz", "10.0.0.0/33")) {
+  void refusesAWildcardOrTooWideOrUnparseableProxyRangeNamingTheVariable() {
+    for (String bad :
+        List.of("0.0.0.0/0", "::/0", "10.0.0.0/7", "2001::/4", "kein-netz", "10.0.0.0/33")) {
       assertThatThrownBy(() -> properties(List.of("10.0.0.0/8", bad), null))
           .as(bad)
           .isInstanceOf(IllegalArgumentException.class)

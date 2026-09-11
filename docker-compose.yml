@@ -36,8 +36,11 @@ services:
     env_file: ${OPAA_ENV_FILE:-.env.docker}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # Loopback only, like postgres (ADR-0033, Entscheidung 9): a direct connection to the backend
+    # port from outside the host would carry a spoofable X-Forwarded-For past the frontend's nginx.
+    # The frontend container reaches the backend over the Compose network, never through this port.
     ports:
-      - "${OPAA_BACKEND_PORT:-8081}:8080"
+      - "127.0.0.1:${OPAA_BACKEND_PORT:-8081}:8080"
     volumes:
       - ${OPAA_INDEXING_DOCUMENT_PATH_HOST:-./documents}:/app/documents
       - ${OPAA_UPLOAD_STORAGE_PATH_HOST:-./uploads}:/app/uploads
@@ -54,6 +57,12 @@ services:
     env_file: ${OPAA_ENV_FILE:-.env.docker}
     ports:
       - "${OPAA_FRONTEND_PORT:-3000}:80"
+    # A fixed address inside the subnet below, so OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS can trust
+    # exactly this container's nginx (ADR-0033, Entscheidung 9) - not the whole network, whose
+    # gateway address every host process and every other container could speak from.
+    networks:
+      default:
+        ipv4_address: ${OPAA_COMPOSE_FRONTEND_ADDRESS:-172.28.0.10}
     depends_on:
       - backend
 
@@ -358,12 +367,13 @@ volumes:
   opaa-upload-store-data:
   opaa-demo-minio-data:
 
-# ADR-0033, Entscheidung 9: a fixed subnet, so OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS in .env.docker
-# can name the one network the frontend's nginx forwards from - the backend honours X-Forwarded-For
-# only from there. The range is read from the shell environment or .env (not .env.docker, which
-# Compose does not interpolate): override it when it collides with another network on the host, and
-# change OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS with it. e2e/scripts/run-e2e.mjs gives its own stacks
-# their own ranges so they can run next to a developer's stack.
+# ADR-0033, Entscheidung 9: a fixed subnet, so the frontend service above can hold a fixed address
+# (OPAA_COMPOSE_FRONTEND_ADDRESS) that OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS in .env.docker names -
+# the backend honours X-Forwarded-For only from that nginx. Both values are read from the shell
+# environment or .env (not .env.docker, which Compose does not interpolate): override them together
+# when the range collides with another network on the host, and change
+# OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS with them. e2e/scripts/run-e2e.mjs gives its own stacks their
+# own ranges so they can run next to a developer's stack.
 networks:
   default:
     ipam:

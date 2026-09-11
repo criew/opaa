@@ -22,10 +22,11 @@ import org.springframework.stereotype.Component;
  * duration ({@code locked_reason = FAILED_LOGINS}, ending by itself), audited once as {@code
  * LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS} under the {@code local-auth} system actor and counted
  * as a metric. The single failed attempt reaches the application log only, with the account id and
- * never the address. An account that is already locked - by this lock, a lockout still running, or
- * an administrator - is neither re-locked nor extended, so attempts during a lock change nothing; a
- * concurrent request that locked first is no error. No mail and no session revocation: the
- * validator refuses the tokens of a locked account by its state.
+ * never the address. The lock resets the counter, so an ended lockout leaves the full budget again;
+ * an account that is already locked - a lockout still running, or an administrator's lock - is
+ * neither re-locked nor extended ({@code LocalLoginService} counts nothing for it, this is the
+ * second line of defence); a concurrent request that locked first is no error. No mail and no
+ * session revocation: the validator refuses the tokens of a locked account by its state.
  */
 @Component
 public class LocalAccountLockoutListener implements LocalLoginAttemptListener {

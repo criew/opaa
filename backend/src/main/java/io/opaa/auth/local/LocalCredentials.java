@@ -169,9 +169,12 @@ public class LocalCredentials {
 
   /**
    * The lock after too many failed sign-ins: {@link #lock} with {@link LockReason#FAILED_LOGINS}.
+   * The counter returns to zero - once the lockout has ended the account has its full budget again
+   * (ADR-0033, Entscheidung 9: a fixed duration, no progressive tightening).
    */
   public void recordLockoutUntil(Instant lockoutUntil, Instant now) {
     lock(LockReason.FAILED_LOGINS, now, Objects.requireNonNull(lockoutUntil, "lockoutUntil"));
+    this.failedLoginAttempts = 0;
   }
 
   public void resetFailedLoginAttempts(Instant now) {

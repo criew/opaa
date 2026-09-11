@@ -25,10 +25,11 @@ import org.springframework.test.web.servlet.ResultActions;
 /**
  * The lockout after failed sign-ins through the production {@code oidc} chain against Postgres
  * (ADR-0033, Entscheidungen 9 and 13): the fifth wrong password locks the account for the fixed
- * duration ({@code locked_reason = FAILED_LOGINS}); the right password is refused during the lock
- * with the very same answer as a wrong one; once the lockout has ended the sign-in succeeds and the
- * counter is back at zero; the lock is audited exactly once under the {@code local-auth} system
- * actor - the attempts themselves never are.
+ * duration ({@code locked_reason = FAILED_LOGINS}) and resets the counter; attempts during the lock
+ * are not counted; the right password is refused during the lock with the very same answer as a
+ * wrong one; once the lockout has ended the account has its full budget again and the sign-in
+ * succeeds; the lock is audited exactly once under the {@code local-auth} system actor - the
+ * attempts themselves never are.
  */
 @OpaaLocalAuthMockMvcTest
 class LocalAccountLockoutIntegrationTest {
@@ -79,7 +80,7 @@ class LocalAccountLockoutIntegrationTest {
     assertThat(locked.getLockedReason()).isEqualTo(LockReason.FAILED_LOGINS);
     assertThat(locked.getLockoutUntil())
         .isBetween(afterLock.plus(Duration.ofMinutes(14)), afterLock.plus(Duration.ofMinutes(16)));
-    assertThat(locked.getFailedLoginAttempts()).isEqualTo(5);
+    assertThat(locked.getFailedLoginAttempts()).as("the lock resets the counter").isZero();
 
     // the sixth wrong password and the right password answer exactly like the first wrong one
     assertThat(body(login(user.email(), "falsches-passwort"))).isEqualTo(wrongPassword);
@@ -89,7 +90,9 @@ class LocalAccountLockoutIntegrationTest {
     assertThat(stillLocked.getLockoutUntil())
         .as("attempts during the lockout neither extend it")
         .isEqualTo(locked.getLockoutUntil());
-    assertThat(stillLocked.getFailedLoginAttempts()).isEqualTo(6);
+    assertThat(stillLocked.getFailedLoginAttempts())
+        .as("attempts during the lockout are not counted")
+        .isZero();
 
     // exactly one audit event, under the system actor, without any personal data
     List<Map<String, Object>> events =
@@ -104,10 +107,16 @@ class LocalAccountLockoutIntegrationTest {
         .doesNotContain(user.id().toString())
         .contains("FAILED_LOGINS");
 
-    // the lockout ends by itself: the row's lockout_until is moved into the past
+    // the lockout ends by itself: the row's lockout_until is moved into the past - and the
+    // account has its full budget again (four more wrong passwords do not lock)
     Instant lockedAt = Instant.now().minus(Duration.ofMinutes(20));
     stillLocked.lock(LockReason.FAILED_LOGINS, lockedAt, lockedAt.plus(Duration.ofMinutes(15)));
     fixtures.save(stillLocked);
+    for (int i = 0; i < 4; i++) {
+      login(user.email(), "falsches-passwort").andExpect(status().isUnauthorized());
+    }
+    assertThat(credentials.findById(user.id()).orElseThrow().state(Instant.now()))
+        .isEqualTo(LocalAccountState.ACTIVE);
 
     login(user.email(), LocalAccountFixtures.PASSWORD).andExpect(status().isOk());
     LocalCredentials afterSignIn = credentials.findById(user.id()).orElseThrow();

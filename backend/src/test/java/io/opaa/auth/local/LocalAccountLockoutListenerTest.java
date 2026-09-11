@@ -111,6 +111,7 @@ class LocalAccountLockoutListenerTest {
     assertThat(row.getLockedAt()).isEqualTo(NOW);
     assertThat(row.getLockoutUntil()).isEqualTo(NOW.plus(Duration.ofMinutes(15)));
     assertThat(row.state(NOW.plus(Duration.ofMinutes(15)))).isEqualTo(LocalAccountState.ACTIVE);
+    assertThat(row.getFailedLoginAttempts()).as("the lock resets the counter").isZero();
     verify(repository).save(row);
 
     ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
@@ -165,12 +166,21 @@ class LocalAccountLockoutListenerTest {
   }
 
   @Test
-  void anExpiredLockoutIsLockedAgainOnTheNextFailedAttempt() {
-    LocalCredentials row = activeRowWithFailedAttempts(6);
+  void afterAnExpiredLockoutTheAccountHasItsFullBudgetAgain() {
+    // ADR-0033, Entscheidung 9: five attempts, then a fixed lockout - not one attempt per lockout
+    LocalCredentials row = activeRowWithFailedAttempts(0);
     Instant lockedAt = NOW.minus(Duration.ofMinutes(30));
     row.recordLockoutUntil(lockedAt.plus(Duration.ofMinutes(15)), lockedAt);
     assertThat(row.state(NOW)).isEqualTo(LocalAccountState.ACTIVE);
+    ReflectionTestUtils.setField(row, "failedLoginAttempts", 4);
 
+    listener.onPasswordRejected(user, row, NOW);
+
+    assertThat(row.state(NOW)).isEqualTo(LocalAccountState.ACTIVE);
+    verify(repository, never()).save(any());
+    verify(audit, never()).recordSystemProcessAction(any());
+
+    ReflectionTestUtils.setField(row, "failedLoginAttempts", 5);
     listener.onPasswordRejected(user, row, NOW);
 
     assertThat(row.state(NOW)).isEqualTo(LocalAccountState.LOCKED);
