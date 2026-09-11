@@ -16,6 +16,7 @@ import io.opaa.library.AttachmentExtractionProperties;
 import io.opaa.library.LibraryProperties;
 import io.opaa.library.RemoteContentProperties;
 import io.opaa.library.UploadProperties;
+import io.opaa.library.UploadS3Properties;
 import io.opaa.llm.RerankProperties;
 import io.opaa.security.CredentialsEncryptionProperties;
 import io.opaa.security.SettingsEncryptionProperties;
@@ -30,6 +31,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   SourceHttpProperties.class,
   AuthProperties.class,
   UploadProperties.class,
+  UploadS3Properties.class,
   LibraryProperties.class,
   CredentialsEncryptionProperties.class,
   RemoteContentProperties.class,
