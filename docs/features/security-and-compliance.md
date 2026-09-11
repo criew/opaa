@@ -198,6 +198,9 @@ ersten Stufe nicht geschrieben.
   zusätzlich angezeigt
 - Modellvorgaben und die Freigabe externer Modelle
 - Die Freigabe-Obergrenze konnektor-gespeister Bibliotheken
+- **Mail-Einstellungen** ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md)): Änderung der
+  SMTP-Einstellungen (ohne den Passwortwert), Änderung und Zurücksetzen einer Mail-Vorlage, ein
+  ausgelöster Testversand
 
 **Zugriff auf die Protokolldaten selbst**
 
@@ -215,9 +218,10 @@ Kopfeintrag, und die Erteilung/der Entzug der System-Admin-Rolle. Noch **nicht**
 die jeweilige Funktion selbst noch fehlt, nicht weil sie ausgenommen wäre: Ablauf einer Befristung
 (kein Scheduler), Aussetzen von Grants durch eine gesenkte Freigabe-Obergrenze, Bereitstellung einer
 Bibliothek in einem Space, Eigentümerübernahme ohne Zuständigkeit und der Übergang in „Nachfolge
-offen", Deaktivierung eines Kontos, erzwungene Neuanmeldung, API-Tokens, sowie sämtliche
+offen", Deaktivierung eines Kontos, erzwungene Neuanmeldung, API-Tokens, sämtliche
 Systemeinstellungen (Governance, Protokollkonfiguration, Modellvorgaben, Freigabe-Obergrenze
-konnektor-gespeister Bibliotheken). Jede dieser Lücken schließt das jeweilige Folge-Issue, sobald
+konnektor-gespeister Bibliotheken) sowie sämtliche Ereignisse lokaler Konten und der
+Mail-Einstellungen (ADR-0033, Epic #1529). Jede dieser Lücken schließt das jeweilige Folge-Issue, sobald
 die zugehörige Funktion existiert — die Liste selbst bleibt geschlossen und ändert sich nicht.
 
 ### Was ausdrücklich nicht protokolliert wird

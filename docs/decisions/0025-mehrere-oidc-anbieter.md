@@ -11,10 +11,14 @@ ein **lokales Konto** (Seed beim ersten Start), nicht mehr das erste Konto mit
 `opaa.auth.initial-admin-email` beim Standardanbieter — die Erstadministrator-Regel aus Entscheidung 3
 gilt für OIDC-Anbieter nicht mehr (nur noch für den Dev-Issuer). `is_default` bedeutet seitdem nur noch
 „Verzeichnis-Anbieter" (Verzeichnisabgleich); ein Zustand ohne OIDC-Anbieter ist zulässig, und der
-letzte aktivierte OIDC-Anbieter darf mit ausdrücklicher Bestätigung deaktiviert werden, weil der lokale
-Systemverwalter immer anmeldefähig bleibt. `OPAA_OIDC_BOOTSTRAP=force` wird durch
-`OPAA_LOCAL_ADMIN_RESET=force` abgelöst (eine Version Übergang); die `OPAA_OIDC_*`-Variablen behalten
-ihre Bootstrap-Rolle für den ersten Anbieter. `oidc_providers` erhält `provider_type` (`OIDC | LOCAL`),
+letzte aktivierte OIDC-Anbieter darf deaktiviert oder gelöscht werden — hinter einer **geprüften
+Vorbedingung** (`LocalAdminAvailabilityGuard`: ein anmeldefähiges lokales Systemverwalterkonto mit
+Passwort existiert, sonst 409 `LAST_LOGIN_CAPABLE_ADMIN`) und zusätzlich einer ausdrücklichen
+Bestätigung. Die Regel „der Standardanbieter ist immer aktiviert" aus Entscheidung 3 gilt für diesen
+Fall nicht mehr: Die Zeile behält `is_default`, `TrustedProvider` liefert aber nur noch einen
+aktivierten Standardanbieter. `OPAA_OIDC_BOOTSTRAP=force` wird durch `OPAA_LOCAL_ADMIN_RESET=force`
+und die lokale Anmeldung abgelöst und zum **31.03.2027** entfernt; die `OPAA_OIDC_*`-Variablen
+behalten ihre Bootstrap-Rolle für den ersten Anbieter. `oidc_providers` erhält `provider_type` (`OIDC | LOCAL`),
 und die Registry aus Entscheidung 1 führt den lokalen Issuer als weiteren Decoder. Die Regel „keine
 Zusammenführung" (Grenzen) bekommt eine benannte Ausnahme: die administrativ angestoßene, von der
 betroffenen Person selbst durch Anmeldung beim Anbieter eingelöste Übergabe eines lokalen Kontos an
