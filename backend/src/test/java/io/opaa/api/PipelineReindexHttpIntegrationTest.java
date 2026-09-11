@@ -100,7 +100,9 @@ class PipelineReindexHttpIntegrationTest {
                 false));
 
     Path managedDirectory =
-        Path.of(uploadProperties.storagePath()).resolve(library.getId().toString());
+        Path.of(uploadProperties.storagePath())
+            .resolve(Organization.DEFAULT_ID.toString())
+            .resolve(library.getId().toString());
     Files.createDirectories(managedDirectory);
     Path storedFile = managedDirectory.resolve(UUID.randomUUID() + "-vermerk.txt");
     Files.writeString(storedFile, "Ein Vermerk ueber Verwaltungsgebuehren. ".repeat(20));

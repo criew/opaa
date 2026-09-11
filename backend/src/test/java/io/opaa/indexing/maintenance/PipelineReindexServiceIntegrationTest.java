@@ -867,7 +867,9 @@ class PipelineReindexServiceIntegrationTest {
     // storagePath would let every upload pass silently as "skipped" and nobody would notice that
     // uploads are never re-indexed at all.
     Path managedDirectory =
-        Path.of(uploadProperties.storagePath()).resolve(uploadLibrary.getId().toString());
+        Path.of(uploadProperties.storagePath())
+            .resolve(Organization.DEFAULT_ID.toString())
+            .resolve(uploadLibrary.getId().toString());
     Files.createDirectories(managedDirectory);
     Path file = managedDirectory.resolve(UUID.randomUUID() + "-vermerk.txt");
     Files.writeString(file, "Ein hochgeladener Vermerk über Verwaltungsgebühren. ".repeat(20));
@@ -1125,7 +1127,9 @@ class PipelineReindexServiceIntegrationTest {
                     .build())
             .build();
     Path managedDirectory =
-        Path.of(uploadProperties.storagePath()).resolve(uploadLibrary.getId().toString());
+        Path.of(uploadProperties.storagePath())
+            .resolve(Organization.DEFAULT_ID.toString())
+            .resolve(uploadLibrary.getId().toString());
     Files.createDirectories(managedDirectory);
     Path emlFile = managedDirectory.resolve(UUID.randomUUID() + ".eml");
     Files.write(emlFile, DefaultMessageWriter.asBytes(message));

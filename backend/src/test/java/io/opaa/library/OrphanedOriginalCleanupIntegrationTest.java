@@ -165,6 +165,7 @@ class OrphanedOriginalCleanupIntegrationTest {
     UploadedOriginalRef ref =
         store
             .accept(
+                organizationId,
                 libraryId,
                 ".pdf",
                 new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)))

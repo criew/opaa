@@ -6,12 +6,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * Configuration for the REST document upload endpoint (#420,
  * docs/features/knowledge-sources.md#upload).
  *
- * @param storagePath filesystem path where uploaded files are stored, one subdirectory per library
- *     (by library id) so files from different libraries never collide and a library's uploads can
- *     be told apart on disk. Deliberately separate from a FILESYSTEM library's own {@code
- *     sourcePath} (#207, ADR-0018): that directory is crawled by the filesystem indexing path and
- *     is operator-managed, whereas this one is written to exclusively by {@link
- *     LibraryDocumentService}. Read by {@link FilesystemUploadedOriginalStore} alone (ADR-0030).
+ * @param storagePath filesystem path where uploaded files are stored, as {@code
+ *     <storagePath>/<organizationId>/<libraryId>/<uuid><extension>} so files of different tenants
+ *     and libraries never collide and every file names its own organization without a database row
+ *     being read. Deliberately separate from a FILESYSTEM library's own {@code sourcePath} (#207,
+ *     ADR-0018): that directory is crawled by the filesystem indexing path and is operator-managed,
+ *     whereas this one is written to exclusively by {@link LibraryDocumentService}. Read by {@link
+ *     FilesystemUploadedOriginalStore} alone (ADR-0030).
  * @param store which storage backend holds the uploaded originals (ADR-0030, Entscheidung 1):
  *     {@code filesystem} (the default) or {@code s3} ({@link UploadS3Properties}); {@link
  *     UploadStorageConfiguration} refuses the start on any other value.

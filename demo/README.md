@@ -211,7 +211,7 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
   |---|---|---|
   | `rheinfurt-archiv` | Quelle der Bibliothek „Ratsinformationen Stadt Rheinfurt" | `demo/corpus/ratsinformationen/` unter dem Präfix `ratsinformationen/`, Jahrgangsordner inklusive |
   | `formattest` | Quelle der Bibliothek „Formattest auf S3" | `demo/corpus/formate/`, je ein Dokument pro unterstützter Endung |
-  | `opaa-uploads` | **Ablage** der hochgeladenen Originale der Demo | was über die Oberfläche hochgeladen wird, einschließlich der 26 Dokumente der Upload-Bibliothek, die der Seed einspielt |
+  | `opaa-uploads` | **Ablage** der hochgeladenen Originale der Demo | was über die Oberfläche hochgeladen wird, einschließlich der 26 Dokumente der Upload-Bibliothek, die der Seed einspielt — je Original ein Objekt unter `<Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` ([ADR-0030](../docs/decisions/0030-originalablage-der-uploads.md), Entscheidung 4 mit Nachtrag) |
 
   Der Einmal-Schritt **`minio-seed`** legt alle drei Buckets an, spiegelt die beiden Korpus-Buckets
   (`mc mirror --overwrite --remove`, idempotent; Fortschritt mit `docker compose logs minio-seed`)
@@ -252,7 +252,8 @@ ein Hafen nach außen ist dafür nicht nötig:
   mit dem Root-Schlüssel oben (`rheinfurt-archiv` / `RheinfurtDemo!2026`), dann „Object Browser":
   `rheinfurt-archiv` zeigt die Jahrgangsordner unter `ratsinformationen/`, `formattest` die vierzehn
   Formatmuster, und `opaa-uploads` füllt sich mit je einem Objekt pro hochgeladenem Original —
-  sichtbar unmittelbar nach einem Upload über die Oberfläche. Die Konsole des gepinnten Release ist
+  sichtbar unmittelbar nach einem Upload über die Oberfläche, zwei Ordnerebenen tief: erst die
+  Organisation, darin die Bibliothek. Die Konsole des gepinnten Release ist
   vollständig; ein zusätzlicher UI-Container ist dafür nicht nötig.
 
 Listing-Format: Apache `IndexOptions FancyIndexing HTMLTable`

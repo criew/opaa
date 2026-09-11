@@ -119,10 +119,16 @@ class OrphanedOriginalCleanupMinioTest {
         .containsExactly(
             new OrphanedOriginalDeletion.Skipped(
                 otherLibrarysObject, OrphanedOriginalSkipReason.NOT_IN_STORE));
-    assertThat(store.belongsToLibrary(new UploadedOriginalRef(libraryId, orphan))).isFalse();
-    assertThat(store.belongsToLibrary(new UploadedOriginalRef(libraryId, keptOrphan))).isTrue();
-    assertThat(store.belongsToLibrary(new UploadedOriginalRef(libraryId, owned))).isTrue();
-    assertThat(store.belongsToLibrary(new UploadedOriginalRef(otherLibrary, otherLibrarysObject)))
+    assertThat(store.belongsToLibrary(new UploadedOriginalRef(organizationId, libraryId, orphan)))
+        .isFalse();
+    assertThat(
+            store.belongsToLibrary(new UploadedOriginalRef(organizationId, libraryId, keptOrphan)))
+        .isTrue();
+    assertThat(store.belongsToLibrary(new UploadedOriginalRef(organizationId, libraryId, owned)))
+        .isTrue();
+    assertThat(
+            store.belongsToLibrary(
+                new UploadedOriginalRef(organizationId, otherLibrary, otherLibrarysObject)))
         .isTrue();
 
     OrphanedOriginalReport after = service.report(organizationId, libraryId, null);
@@ -130,7 +136,8 @@ class OrphanedOriginalCleanupMinioTest {
   }
 
   private String storedOriginal(UUID library, String content) throws IOException {
-    UploadedOriginalStore.AcceptedUpload accepted = store.accept(library, ".pdf", bytes(content));
+    UploadedOriginalStore.AcceptedUpload accepted =
+        store.accept(organizationId, library, ".pdf", bytes(content));
     UploadedOriginalRef ref = accepted.store();
     accepted.release();
     return ref.locator();

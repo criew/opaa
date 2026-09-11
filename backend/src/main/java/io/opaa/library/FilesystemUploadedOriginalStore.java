@@ -16,10 +16,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Uploaded originals on this machine (ADR-0030, {@code opaa.upload.store=filesystem}): one
- * subdirectory per library under {@code opaa.upload.storage-path}, one file per document under a
- * random name, and the absolute path of that file as the locator. A network share the operator
- * mounts onto that directory is this adapter too - it only ever sees a directory.
+ * Uploaded originals on this machine (ADR-0030, {@code opaa.upload.store=filesystem}): {@code
+ * <storage-path>/<organizationId>/<libraryId>/<uuid><extension>}, one file per document under a
+ * random name, and the absolute path of that file as the locator. The organization segment is what
+ * lets a walk over the whole storage area tell the tenants apart without a database row (ADR-0030,
+ * addendum to Entscheidung 4). A network share the operator mounts onto that directory is this
+ * adapter too - it only ever sees a directory.
  *
  * <p>Serving hands out the file itself rather than a stream, so the controller keeps answering HTTP
  * range requests from {@code FileSystemResource}, and a caller that needs a local file gets the
@@ -39,9 +41,9 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
   }
 
   @Override
-  public AcceptedUpload accept(UUID libraryId, String extension, InputStream bytes)
-      throws IOException {
-    Path libraryDirectory = libraryDirectory(libraryId);
+  public AcceptedUpload accept(
+      UUID organizationId, UUID libraryId, String extension, InputStream bytes) throws IOException {
+    Path libraryDirectory = libraryDirectory(organizationId, libraryId);
     Files.createDirectories(libraryDirectory);
     Path file = libraryDirectory.resolve(UUID.randomUUID() + extension);
     try {
@@ -50,7 +52,7 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
       deleteQuietly(file);
       throw e;
     }
-    return new AcceptedFile(libraryId, file);
+    return new AcceptedFile(organizationId, libraryId, file);
   }
 
   @Override
@@ -85,8 +87,9 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
   }
 
   @Override
-  public void forEachStoredOriginal(UUID libraryId, Consumer<StoredOriginal> visitor) {
-    Path libraryDirectory = libraryDirectory(libraryId);
+  public void forEachStoredOriginal(
+      UUID organizationId, UUID libraryId, Consumer<StoredOriginal> visitor) {
+    Path libraryDirectory = libraryDirectory(organizationId, libraryId);
     if (!Files.isDirectory(libraryDirectory)) {
       return;
     }
@@ -95,7 +98,7 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
         // One level only, and the same check every other operation goes through: a subdirectory
         // (whose content this adapter never wrote) and a link leading out are not originals.
         String locator = entry.toString();
-        Path file = managedFile(new UploadedOriginalRef(libraryId, locator));
+        Path file = managedFile(new UploadedOriginalRef(organizationId, libraryId, locator));
         if (file == null || !Files.isRegularFile(file)) {
           continue;
         }
@@ -112,9 +115,10 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
   /**
    * The single containment check of this adapter, and the only way a locator ever becomes a path:
    * the real path of {@code ref}'s file when it lies underneath its own library's subdirectory of
-   * the storage path, {@code null} otherwise - another library's subdirectory, anything outside the
-   * storage path, a symlink leading out of it, an unparseable locator, and a file that is no longer
-   * there all yield {@code null}.
+   * its own organization's subdirectory of the storage path, {@code null} otherwise - another
+   * organization's or another library's subdirectory, anything outside the storage path, a symlink
+   * leading out of it, an unparseable locator, and a file that is no longer there all yield {@code
+   * null}.
    *
    * <p>Resolves both sides with {@link Path#toRealPath()} rather than comparing them lexically: a
    * symlink inside the directory pointing outside it would otherwise pass the {@code startsWith}
@@ -127,15 +131,16 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
       return null;
     }
     Path real = realPath(candidate);
-    Path libraryDirectory = realPath(libraryDirectory(ref.libraryId()));
+    Path libraryDirectory = realPath(libraryDirectory(ref.organizationId(), ref.libraryId()));
     if (real == null || libraryDirectory == null) {
       return null;
     }
     return real.startsWith(libraryDirectory) ? real : null;
   }
 
-  private Path libraryDirectory(UUID libraryId) {
+  private Path libraryDirectory(UUID organizationId, UUID libraryId) {
     return Paths.get(uploadProperties.storagePath())
+        .resolve(organizationId.toString())
         .resolve(libraryId.toString())
         .toAbsolutePath()
         .normalize();
@@ -177,10 +182,12 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
    */
   private final class AcceptedFile implements AcceptedUpload {
 
+    private final UUID organizationId;
     private final UUID libraryId;
     private final Path file;
 
-    private AcceptedFile(UUID libraryId, Path file) {
+    private AcceptedFile(UUID organizationId, UUID libraryId, Path file) {
+      this.organizationId = organizationId;
       this.libraryId = libraryId;
       this.file = file;
     }
@@ -192,7 +199,7 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
 
     @Override
     public UploadedOriginalRef store() {
-      return new UploadedOriginalRef(libraryId, file.toString());
+      return new UploadedOriginalRef(organizationId, libraryId, file.toString());
     }
 
     @Override

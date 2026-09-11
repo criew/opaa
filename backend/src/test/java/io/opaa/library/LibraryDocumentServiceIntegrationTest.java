@@ -629,7 +629,12 @@ class LibraryDocumentServiceIntegrationTest {
 
     Document saved = documentRepository.findById(response.document().getId()).orElseThrow();
     Path storedFile = Path.of(saved.getFilePath()).toAbsolutePath().normalize();
-    Path libraryDir = uploadStorageDir.resolve(libraryId.toString()).toAbsolutePath().normalize();
+    Path libraryDir =
+        uploadStorageDir
+            .resolve(organizationId.toString())
+            .resolve(libraryId.toString())
+            .toAbsolutePath()
+            .normalize();
     assertThat(storedFile.startsWith(libraryDir)).isTrue();
     assertThat(saved.getFileName()).isEqualTo("evil.txt");
   }
@@ -2288,7 +2293,8 @@ class LibraryDocumentServiceIntegrationTest {
   }
 
   private void assertNoFilesStored() throws IOException {
-    Path libraryDir = uploadStorageDir.resolve(libraryId.toString());
+    Path libraryDir =
+        uploadStorageDir.resolve(organizationId.toString()).resolve(libraryId.toString());
     if (!Files.exists(libraryDir)) {
       return;
     }
