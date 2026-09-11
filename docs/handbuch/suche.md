@@ -17,8 +17,8 @@ die Antwort angezeigt wird.
 flowchart LR
     F[Frage] --> S[Suchbereich<br/>und Filter]
     S --> T[Teilfragen]
-    H[Gesprächs-<br/>verlauf] -.-> T
-    H -.-> A
+    H[Gesprächs-<br/>fenster] -.-> |Suchfenster| T
+    H -.-> |ganzes Fenster| A
     T --> V[Vektorsuche]
     T --> L[Volltextsuche]
     V --> Z[Zusammenführen<br/>und Ordnen]
@@ -58,8 +58,32 @@ Vier Begriffe tragen das Kapitel.
 
 Eine **Frage** ist die einzelne Eingabe einer Person. Sie kommt fast immer aus einem **Chat**: einer
 gespeicherten Unterhaltung in einem Raum, die ihren Suchbereich, ihren Filter und ihren Verlauf
-kennt. Der Verlauf fließt in die Suche (Stufe 3) und in die Antwort (Abschnitt 6) ein; das
-Gesprächsgedächtnis reicht eine begrenzte Zahl der jüngsten Nachrichten zurück.
+kennt.
+
+Der Verlauf heißt **Gesprächsfenster**: die letzten 20 Nachrichten des Chats (zehn Runden aus Frage
+und Antwort), wörtlich. Suche und Antwort bekommen ihn **unterschiedlich dosiert**:
+
+| | Was davon | Warum |
+|---|---|---|
+| Antwort (Abschnitt 6) | das ganze Fenster | Kontinuität: „wie vorhin beim Parkausweis" soll noch verstanden werden |
+| Suche (Stufe 3) | nur das **Suchfenster**, die letzten zwei Runden | Bezüge auflösen, ohne dass ein altes Thema die Suche weiter färbt |
+
+Zwei Eigenschaften des Fensters sind betrieblich wichtig:
+
+- **Zitiermarken früherer Antworten stehen nicht im Fenster.** Sie werden auf dem Weg hinein
+  entfernt — sowohl direkt nach einer Antwort als auch beim Nachladen aus der Datenbank. Der
+  gespeicherte Antworttext behält sie unverändert; er ist die Grundlage für Fußnoten, Textanker und
+  Belegfenster. Ohne Marke im Verlauf kann das Modell keine Marke für ein Dokument wiederholen, das
+  in dieser Runde gar nicht im Kontext ist.
+- **Ein Neustart ändert nichts an der Aufbereitung.** Nach einem Neustart oder wenn der
+  prozessinterne Zwischenspeicher abgelaufen ist, wird das Fenster aus den letzten 20 gespeicherten
+  Nachrichten desselben Chats neu gebildet, durch dieselbe Marken-Entfernung — derselbe Chat schickt
+  denselben Prompt wie davor. Eine Ausnahme betrifft nicht die Aufbereitung, sondern den Bestand:
+  Liefert eine Runde keinen Antworttext (Modellfehler, oder eine Antwort, die nur aus Marken
+  bestand), fehlt sie im laufenden Fenster wie im nachgeladenen gleichermaßen.
+
+Beide Breiten sind Konfigurationswerte (Abschnitt 10.3); in einer Verwaltungsoberfläche erscheinen
+sie nicht.
 
 Der **Suchbereich** ist die Menge der Bibliotheken, in denen diese Frage sucht. Er steht in der
 Chip-Leiste am Eingabefeld und gilt für den ganzen Chat: „Durchsucht wird, was in der Leiste
@@ -128,7 +152,7 @@ flowchart TB
     Q -- ja --> H[Lauf endet:<br/>Antwort ohne Wissensbasis]
     Q -- nein --> S2[2 Metadatenfilter<br/>dem Rechtefilter unterordnen]
     S2 --> S3[3 Teilfragen bilden<br/>n Suchanfragen]
-    V[Gesprächsverlauf<br/>des Chats] -.-> S3
+    V[Suchfenster<br/>letzte 2 Runden] -.-> S3
     S3 --> S4[4 Vektorsuche<br/>x Kandidaten je Suchanfrage]
     S3 --> S5[5 Volltextsuche<br/>x Kandidaten je Suchanfrage]
     S4 --> S6[6 Auswahl je Liste<br/>auf das Budget kürzen]
@@ -173,8 +197,8 @@ fasst Abschnitt 5 zusammen.
 ### Stufe 3: Teilfragen
 
 Die Frage wird nicht wörtlich gesucht. Das Chat-Modell formt sie unter Berücksichtigung des
-Gesprächsverlaufs in **eine oder mehrere eigenständige Suchanfragen** um, bis zu einer
-konfigurierten Obergrenze:
+**Suchfensters** — der letzten zwei Runden des Gesprächsfensters, siehe Abschnitt 2 — in **eine oder
+mehrere eigenständige Suchanfragen** um, bis zu einer konfigurierten Obergrenze:
 
 - Eine Frage mit zwei Themen („Was kostet ein Anwohnerparkausweis und wie lange ist er gültig?")
   wird in zwei Suchanfragen zerlegt, die jede für sich gesucht werden.
@@ -184,17 +208,22 @@ konfigurierten Obergrenze:
   bleibt eine Suchanfrage, bei Bedarf wortgleich.
 
 Dieser Schritt hat einen **Sicherheitsgurt**: Antwortet das Modell nicht, unparsebar oder mit
-Suchanfragen, von denen auch nur eine kein Wort mit der Frage oder dem Verlauf gemeinsam hat (ein
-kleines Modell ersetzt gelegentlich die Frage durch etwas Eigenes), fällt die Stufe auf die Frage
-selbst zurück, und zwar ganz: Eine Teilfrage wegzulassen kostet ein Thema der Frage, die Frage
-selbst kostet nur Genauigkeit.
-Vom Verlauf bleibt dann nur die **erste** Nutzerfrage des Chats erhalten; sie wird der aktuellen
-Frage vorangestellt, alle dazwischenliegenden Fragen fließen im Rückfall nicht ein. Den ganzen
-Verlauf, so weit das Gesprächsgedächtnis reicht, sieht nur die Zerlegung durch das Modell. Ein
-solcher Rückfall steht als Warnung
-im Log, ohne den Fragetext, und zählt auf der Metrik `opaa.query.decomposition.fallback`. Die Frage
-scheitert dadurch nie; sie wird nur ungenauer gesucht. Ist die Zerlegung abgeschaltet, wird immer
-so gesucht und der Modellaufruf gespart.
+Suchanfragen, von denen auch nur eine kein Wort mit dem Kontext gemeinsam hat, den die Zerlegung
+bekommen hat (ein kleines Modell ersetzt gelegentlich die Frage durch etwas Eigenes), fällt die
+Stufe auf die Frage selbst zurück, und zwar ganz: Eine Teilfrage wegzulassen kostet ein Thema der
+Frage, die Frage selbst kostet nur Genauigkeit.
+
+„Der Kontext, den die Zerlegung bekommen hat" ist dabei wörtlich zu nehmen: **genau die Frage und
+das Suchfenster**, nicht mehr und nicht weniger. Das ist nötig, weil eine korrekt aufgelöste
+Rückfrage mit der Frage oft kein Wort teilt — „Wie lange dauert das?" wird zu „Bearbeitungsdauer für
+den Anwohnerparkausweis", und das Ankerwort steht in der Vorrunde, nicht in der Frage. Ein Thema,
+das älter als das Suchfenster ist, kann eine Teilfrage umgekehrt nicht mehr rechtfertigen.
+
+Im Rückfall wird der aktuellen Frage die **letzte** Nutzerfrage des Suchfensters vorangestellt; gibt
+es im Suchfenster keine Vorrunde, wird die Frage allein gesucht. Ein solcher Rückfall steht als
+Warnung im Log, ohne den Fragetext, und zählt auf der Metrik `opaa.query.decomposition.fallback`.
+Die Frage scheitert dadurch nie; sie wird nur ungenauer gesucht. Ist die Zerlegung abgeschaltet,
+wird immer so gesucht und der Modellaufruf gespart.
 
 ### Stufe 4: Vektorsuche
 
@@ -392,8 +421,9 @@ gesucht hat, aber keinen Beleg zitiert, trägt die Zeile **„Durchsucht wurden:
 der durchsuchten Bibliotheken, damit die Person sieht, worin nichts gefunden oder nichts verwendet
 wurde.
 
-Frage und Antwort werden dem Gesprächsgedächtnis hinzugefügt und bei einem gespeicherten Chat
-persistiert. Modell, verbrauchte Tokens und Dauer der Frage stehen an der Antwort und in den Metriken
+Frage und Antwort werden dem Gesprächsfenster hinzugefügt und bei einem gespeicherten Chat
+persistiert — die Antwort im Fenster ohne ihre Zitiermarken, der gespeicherte Text mit ihnen
+(Abschnitt 2). Modell, verbrauchte Tokens und Dauer der Frage stehen an der Antwort und in den Metriken
 (Abschnitt 10.2).
 
 ## 7. Belege prüfen und Fundstellen bilden
@@ -591,6 +621,8 @@ Umgebungsvariable im Kapitel [Deployment](deployment.md#alle-umgebungsvariablen)
 | `mmr-lambda` | 1,0 | Vielfaltsauswahl; 1,0 ist reine Relevanz |
 | `rerank-candidate-count` | 50 | Reranking-Fenster und Budget der Fusion bei aktivem Reranking (0 bis 200); 0 schaltet die Stufe ab |
 | `max-chunks-per-document` | 2 | Dokument-Vervollständigung (1 bis 10); 1 schaltet sie ab |
+| `conversation-window-messages` | 20 | Breite des Gesprächsfensters in Nachrichten (2 bis 100, gerade) — was die Antwort sieht und was bei kaltem Zwischenspeicher nachgeladen wird |
+| `search-window-turns` | 2 | Runden des Gesprächsfensters, die die Teilfragen-Zerlegung sieht (0 bis `conversation-window-messages` ÷ 2); 0 heißt „nur die Frage" |
 | `metadata-filter.*` | 0,90 / 0,75 / 0,75 / 5m | Füllstandsschwellen für Dokumentart, Datum und Bibliotheksfelder, Cache der Filteroptionen |
 | `pipeline.disabled-stages` | leer | ganze Stufen aus der Kette nehmen; nur für Entwicklung und Messung, der Suchbereich ist nicht abschaltbar |
 

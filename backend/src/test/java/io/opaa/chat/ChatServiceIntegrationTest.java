@@ -41,6 +41,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
@@ -658,6 +660,55 @@ class ChatServiceIntegrationTest {
     assertThat(messages).extracting(ChatMessage::getSequence).containsExactly(0, 2, 3, 4, 5);
     assertThat(messages.get(3).getContent()).isEqualTo("Dritte Frage");
     assertThat(messages.get(4).getContent()).isEqualTo("Dritte Antwort");
+  }
+
+  /**
+   * #1486: the conversation window is rebuilt from the <b>end</b> of a chat's history on a cache
+   * miss. Both halves are load-bearing and neither is visible from a mocked {@code ChatService}:
+   * the cut takes the newest {@code maxMessages} rows, and the result is handed over oldest first.
+   * Reading the tail ascending, or forgetting to reverse it, would answer every follow-up after a
+   * restart against the oldest turns of the chat.
+   */
+  @Test
+  void historyAsSpringAiMessagesReturnsTheNewestMessagesInTurnOrder() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    chatService.appendTurn(chat, "Frage 1", "Antwort 1", List.of());
+    chatService.appendTurn(chat, "Frage 2", "Antwort 2", List.of());
+    chatService.appendTurn(chat, "Frage 3", "Antwort 3", List.of());
+
+    assertThat(chatService.historyAsSpringAiMessages(chat.getId(), 4))
+        .extracting(Message::getText)
+        .containsExactly("Frage 2", "Antwort 2", "Frage 3", "Antwort 3");
+    assertThat(chatService.historyAsSpringAiMessages(chat.getId(), 4))
+        .extracting(Message::getMessageType)
+        .containsExactly(
+            MessageType.USER, MessageType.ASSISTANT, MessageType.USER, MessageType.ASSISTANT);
+  }
+
+  /** A history shorter than the window comes back whole, still oldest first. */
+  @Test
+  void historyAsSpringAiMessagesReturnsTheWholeHistoryWhenItFitsTheWindow() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    chatService.appendTurn(chat, "Frage 1", "Antwort 1", List.of());
+
+    assertThat(chatService.historyAsSpringAiMessages(chat.getId(), 20))
+        .extracting(Message::getText)
+        .containsExactly("Frage 1", "Antwort 1");
+  }
+
+  /** A window of zero messages reads nothing at all rather than the whole transcript. */
+  @Test
+  void historyAsSpringAiMessagesReadsNothingForAWindowOfZero() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    chatService.appendTurn(chat, "Frage 1", "Antwort 1", List.of());
+
+    assertThat(chatService.historyAsSpringAiMessages(chat.getId(), 0)).isEmpty();
   }
 
   @Test

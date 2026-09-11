@@ -95,7 +95,8 @@ public final class ConversationHarnessSupport {
         return;
       }
 
-      ConversationMemoryProfile memoryProfile = ConversationMemoryProfile.measuredFrom(chatMemory);
+      ConversationMemoryProfile memoryProfile =
+          ConversationMemoryProfile.measuredFrom(chatMemory, queryProperties);
       // Mehrfachlauf-Regel (docs/features/retrieval-benchmark.md §3), through the shared rule: this
       // path always decomposes and is therefore never deterministic. It carries the highest LLM
       // share of the three paths - one decomposition call per *turn*, not per case - so the spread

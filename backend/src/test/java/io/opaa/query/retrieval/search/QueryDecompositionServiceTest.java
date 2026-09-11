@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -13,6 +14,7 @@ import ch.qos.logback.core.read.ListAppender;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.observability.QueryMetrics;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.slf4j.LoggerFactory;
@@ -57,11 +59,7 @@ class QueryDecompositionServiceTest {
   }
 
   private String capturedSystemPrompt() {
-    return capturedPrompt().getInstructions().stream()
-        .filter(message -> message.getMessageType() == MessageType.SYSTEM)
-        .map(Message::getText)
-        .findFirst()
-        .orElseThrow();
+    return systemTextOf(capturedPrompt());
   }
 
   @Test
@@ -69,7 +67,10 @@ class QueryDecompositionServiceTest {
     stubChatModelResponse("Was kostet ein Personalausweis?\nWas kostet ein Führerschein?");
 
     List<String> subQueries =
-        service.decompose("Was kostet ein Personalausweis und ein Führerschein?", List.of(), 3);
+        service.decompose(
+            DecompositionContext.of(
+                "Was kostet ein Personalausweis und ein Führerschein?", List.of()),
+            3);
 
     assertThat(subQueries)
         .containsExactly("Was kostet ein Personalausweis?", "Was kostet ein Führerschein?");
@@ -79,7 +80,8 @@ class QueryDecompositionServiceTest {
   void aSingleTopicQuestionDecomposesToExactlyOneSubQuery() {
     stubChatModelResponse("Was kostet ein Personalausweis?");
 
-    List<String> subQueries = service.decompose("Was kostet ein Personalausweis?", List.of(), 3);
+    List<String> subQueries =
+        service.decompose(DecompositionContext.of("Was kostet ein Personalausweis?", List.of()), 3);
 
     assertThat(subQueries).containsExactly("Was kostet ein Personalausweis?");
   }
@@ -88,7 +90,7 @@ class QueryDecompositionServiceTest {
   void leadingBulletsAndNumberingAreStripped() {
     stubChatModelResponse("- Erste Frage\n2) Zweite Frage\n3. Dritte Frage");
 
-    List<String> subQueries = service.decompose("Frage", List.of(), 3);
+    List<String> subQueries = service.decompose(DecompositionContext.of("Frage", List.of()), 3);
 
     assertThat(subQueries).containsExactly("Erste Frage", "Zweite Frage", "Dritte Frage");
   }
@@ -97,7 +99,7 @@ class QueryDecompositionServiceTest {
   void blankLinesAreDropped() {
     stubChatModelResponse("Erste Frage\n\n   \nZweite Frage");
 
-    List<String> subQueries = service.decompose("Frage", List.of(), 3);
+    List<String> subQueries = service.decompose(DecompositionContext.of("Frage", List.of()), 3);
 
     assertThat(subQueries).containsExactly("Erste Frage", "Zweite Frage");
   }
@@ -106,7 +108,7 @@ class QueryDecompositionServiceTest {
   void moreLinesThanMaxSubQueriesAreTruncated() {
     stubChatModelResponse("Frage eins\nFrage zwei\nFrage drei\nFrage vier\nFrage fünf");
 
-    List<String> subQueries = service.decompose("Frage", List.of(), 3);
+    List<String> subQueries = service.decompose(DecompositionContext.of("Frage", List.of()), 3);
 
     assertThat(subQueries).containsExactly("Frage eins", "Frage zwei", "Frage drei");
   }
@@ -115,7 +117,7 @@ class QueryDecompositionServiceTest {
   void duplicateLinesAreDeduplicated() {
     stubChatModelResponse("Frage A\nFrage A\nFrage B");
 
-    List<String> subQueries = service.decompose("Frage", List.of(), 3);
+    List<String> subQueries = service.decompose(DecompositionContext.of("Frage", List.of()), 3);
 
     assertThat(subQueries).containsExactly("Frage A", "Frage B");
   }
@@ -125,7 +127,7 @@ class QueryDecompositionServiceTest {
   void blankResponseFallsBackToAnEmptyList() {
     stubChatModelResponse("   \n  \n");
 
-    List<String> subQueries = service.decompose("Frage", List.of(), 3);
+    List<String> subQueries = service.decompose(DecompositionContext.of("Frage", List.of()), 3);
 
     assertThat(subQueries).isEmpty();
     verify(metrics).recordFailedDecomposition();
@@ -136,7 +138,7 @@ class QueryDecompositionServiceTest {
     when(activeChatModelResolver.resolveChatClient())
         .thenThrow(new RuntimeException("kein aktives Chat-Modell konfiguriert"));
 
-    List<String> subQueries = service.decompose("Frage", List.of(), 3);
+    List<String> subQueries = service.decompose(DecompositionContext.of("Frage", List.of()), 3);
 
     assertThat(subQueries).isEmpty();
     verify(metrics).recordFailedDecomposition();
@@ -149,7 +151,7 @@ class QueryDecompositionServiceTest {
     when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
     doThrow(new RuntimeException("LLM nicht erreichbar")).when(chatModel).call(any(Prompt.class));
 
-    List<String> subQueries = service.decompose("Frage", List.of(), 3);
+    List<String> subQueries = service.decompose(DecompositionContext.of("Frage", List.of()), 3);
 
     assertThat(subQueries).isEmpty();
     verify(metrics).recordFailedDecomposition();
@@ -167,7 +169,7 @@ class QueryDecompositionServiceTest {
   void theSystemPromptDemonstratesNoSearchQuery() {
     stubChatModelResponse("Was kostet ein Personalausweis?");
 
-    service.decompose("Was kostet ein Personalausweis?", List.of(), 3);
+    service.decompose(DecompositionContext.of("Was kostet ein Personalausweis?", List.of()), 3);
 
     assertThat(capturedSystemPrompt())
         .doesNotContain("?")
@@ -185,7 +187,8 @@ class QueryDecompositionServiceTest {
     stubChatModelResponse("Was kostet ein Personalausweis?");
     List<Message> history = List.of(new UserMessage("Wo beantrage ich einen Personalausweis?"));
 
-    List<String> subQueries = service.decompose("Und was kostet das dann?", history, 3);
+    List<String> subQueries =
+        service.decompose(DecompositionContext.of("Und was kostet das dann?", history), 3);
 
     assertThat(capturedSystemPrompt()).contains("rückverweisende").contains("Gesprächsverlauf");
     assertThat(capturedPrompt().getInstructions())
@@ -204,7 +207,10 @@ class QueryDecompositionServiceTest {
     stubChatModelResponse("und was kostet das?");
 
     List<String> subQueries =
-        service.decompose("Wer wird von der Gebühr befreit, wenn er bedürftig ist?", List.of(), 3);
+        service.decompose(
+            DecompositionContext.of(
+                "Wer wird von der Gebühr befreit, wenn er bedürftig ist?", List.of()),
+            3);
 
     assertThat(subQueries).isEmpty();
     verify(metrics).recordDegenerateDecomposition();
@@ -222,7 +228,9 @@ class QueryDecompositionServiceTest {
 
     List<String> subQueries =
         service.decompose(
-            "Wie lange darf ich Bücher ausleihen und was kostet eine Mahnung?", List.of(), 3);
+            DecompositionContext.of(
+                "Wie lange darf ich Bücher ausleihen und was kostet eine Mahnung?", List.of()),
+            3);
 
     assertThat(subQueries).isEmpty();
     verify(metrics).recordPrunedDecomposition();
@@ -240,7 +248,9 @@ class QueryDecompositionServiceTest {
         captureWhile(
             () ->
                 service.decompose(
-                    "Wer wird von der Gebühr befreit, wenn er bedürftig ist?", List.of(), 3));
+                    DecompositionContext.of(
+                        "Wer wird von der Gebühr befreit, wenn er bedürftig ist?", List.of()),
+                    3));
 
     assertThat(events).isNotEmpty();
     assertThat(events)
@@ -261,7 +271,9 @@ class QueryDecompositionServiceTest {
     stubChatModelResponse("Was kostet ein Personalausweis?");
     List<Message> history = List.of(new UserMessage("Wo beantrage ich einen Personalausweis?"));
 
-    List<String> subQueries = service.decompose("Und was kostet das dann insgesamt?", history, 3);
+    List<String> subQueries =
+        service.decompose(
+            DecompositionContext.of("Und was kostet das dann insgesamt?", history), 3);
 
     assertThat(subQueries).containsExactly("Was kostet ein Personalausweis?");
   }
@@ -279,7 +291,8 @@ class QueryDecompositionServiceTest {
             new UserMessage("Wo beantrage ich einen Personalausweis?"),
             new AssistantMessage("Der Personalausweis wird im Bürgeramt beantragt."));
 
-    List<String> subQueries = service.decompose("Und was kostet das?", history, 3);
+    List<String> subQueries =
+        service.decompose(DecompositionContext.of("Und was kostet das?", history), 3);
 
     assertThat(subQueries).isEmpty();
     verify(metrics).recordDegenerateDecomposition();
@@ -290,7 +303,8 @@ class QueryDecompositionServiceTest {
   void aQuestionWithoutAnchorWordsSkipsTheRelatednessCheck() {
     stubChatModelResponse("Zuständige Stelle für die Anmeldung");
 
-    List<String> subQueries = service.decompose("Wer tut das?", List.of(), 3);
+    List<String> subQueries =
+        service.decompose(DecompositionContext.of("Wer tut das?", List.of()), 3);
 
     assertThat(subQueries).containsExactly("Zuständige Stelle für die Anmeldung");
     verifyNoInteractions(metrics);
@@ -304,7 +318,8 @@ class QueryDecompositionServiceTest {
   void aQuestionInAScriptWithoutWordBoundariesSkipsTheRelatednessCheck() {
     stubChatModelResponse("护照申请材料\n护照办理地点");
 
-    List<String> subQueries = service.decompose("我想知道办理护照需要哪些材料", List.of(), 3);
+    List<String> subQueries =
+        service.decompose(DecompositionContext.of("我想知道办理护照需要哪些材料", List.of()), 3);
 
     assertThat(subQueries).containsExactly("护照申请材料", "护照办理地点");
     verifyNoInteractions(metrics);
@@ -323,5 +338,142 @@ class QueryDecompositionServiceTest {
       logger.detachAppender(appender);
       appender.stop();
     }
+  }
+
+  /**
+   * The case the anchor space exists for (#1486): "Wie lange dauert das?" resolved into
+   * "Bearbeitungsdauer für den Anwohnerparkausweis" shares no anchor with the question - "dauert"
+   * is not a substring of "Bearbeitungsdauer" and the belt is deliberately no stemmer - but it
+   * shares one with the previous turn in the search window.
+   */
+  @Test
+  void aNominalPhraseResolvedFromThePreviousTurnIsKept() {
+    stubChatModelResponse("Bearbeitungsdauer für den Anwohnerparkausweis");
+    List<Message> searchWindow =
+        List.of(
+            new UserMessage("Was kostet ein Anwohnerparkausweis?"),
+            new AssistantMessage("Ein Anwohnerparkausweis kostet 30,70 Euro pro Jahr."));
+
+    List<String> subQueries =
+        service.decompose(DecompositionContext.of("Wie lange dauert das?", searchWindow), 3);
+
+    assertThat(subQueries).containsExactly("Bearbeitungsdauer für den Anwohnerparkausweis");
+    verifyNoInteractions(metrics);
+  }
+
+  /**
+   * The other half of the same rule: a topic that is no longer in the search window can no longer
+   * legitimize a sub-query. Whoever cuts the window decides how far back that reaches - see {@link
+   * SubQueryDecompositionStage}.
+   */
+  @Test
+  void aSubQueryAboutATopicOutsideTheSearchWindowIsDiscarded() {
+    stubChatModelResponse("Bearbeitungsdauer für den Anwohnerparkausweis");
+    List<Message> searchWindow =
+        List.of(
+            new UserMessage("Wo finde ich das Formular für die Hundesteuer?"),
+            new AssistantMessage("Das Formular liegt im Bürgerbüro aus."));
+
+    List<String> subQueries =
+        service.decompose(DecompositionContext.of("Wie lange dauert das?", searchWindow), 3);
+
+    assertThat(subQueries).isEmpty();
+    verify(metrics).recordDegenerateDecomposition();
+  }
+
+  /**
+   * The anchor-space invariant: a context block rendered into the decomposition prompt widens the
+   * anchor space by construction. The block here is the shape a Gesprächsnotiz point will have
+   * ("Bezugsjahr 2024"); without it the same sub-query is judged unrelated and the whole run falls
+   * back, which is exactly the failure the invariant prevents.
+   */
+  @Test
+  void aRenderedContextBlockWidensTheAnchorSpace() {
+    stubChatModelResponse("Gebührenordnung Bezugsjahr 2024");
+
+    List<String> subQueries =
+        service.decompose(
+            DecompositionContext.of("Was kostet der Ausweis?", List.of())
+                .withContextBlock("Bezugsjahr 2024"),
+            3);
+
+    assertThat(subQueries).containsExactly("Gebührenordnung Bezugsjahr 2024");
+    assertThat(capturedSystemPrompt()).contains("Bezugsjahr 2024");
+    verifyNoInteractions(metrics);
+  }
+
+  /** The same sub-query without the block: unrelated, whole decomposition discarded. */
+  @Test
+  void withoutTheContextBlockTheSameSubQueryFallsBack() {
+    stubChatModelResponse("Gebührenordnung Bezugsjahr 2024");
+
+    List<String> subQueries =
+        service.decompose(DecompositionContext.of("Was kostet der Ausweis?", List.of()), 3);
+
+    assertThat(subQueries).isEmpty();
+    verify(metrics).recordDegenerateDecomposition();
+  }
+
+  /**
+   * The anchor-space invariant at the seam this class owns: the instruction this service passes to
+   * {@link DecompositionContext#systemText} must be a <b>fixed</b> text, never one that carries
+   * context of its own. Rendering a context building block into the instruction argument instead of
+   * through {@link DecompositionContext#withContextBlock} would put it in front of the model while
+   * leaving {@code countUnrelated} blind to it - and because the belt is all or nothing, every
+   * sub-query that block legitimizes would take the whole run into the fallback.
+   *
+   * <p>Measured by running two entirely different contexts: once each prompt has its own {@link
+   * DecompositionContext#contextTexts()} taken out, what remains must be identical. Anything the
+   * prompt derives from the context outside the anchor space differs here.
+   *
+   * <p><b>Whoever adds an argument to {@code decompose} fills it differently in the two runs.</b>
+   * The two runs are the whole mechanism: a new argument given the same value twice cancels out of
+   * the comparison and leaves this test green while saying nothing.
+   */
+  @Test
+  void nothingReachesTheModelOutsideTheInstructionAndTheAnchoredContext() {
+    stubChatModelResponse("Irgendeine Zeile");
+    DecompositionContext first =
+        DecompositionContext.of(
+                "Was kostet der Ausweis?",
+                List.of(new UserMessage("Vorrunde zum Anwohnerparkausweis")))
+            .withContextBlock("Bezugsjahr 2024");
+    DecompositionContext second =
+        DecompositionContext.of(
+                "Welche Frist gilt?", List.of(new UserMessage("Vorrunde zum Widerspruch")))
+            .withContextBlock("Zuständig ist das Ordnungsamt");
+
+    service.decompose(first, 3);
+    service.decompose(second, 3);
+
+    ArgumentCaptor<Prompt> prompts = ArgumentCaptor.forClass(Prompt.class);
+    verify(chatModel, times(2)).call(prompts.capture());
+    assertThat(withoutAnchoredContext(prompts.getAllValues().get(0), first))
+        .isEqualTo(withoutAnchoredContext(prompts.getAllValues().get(1), second));
+    // The blocks do reach the model, and only their own run's does.
+    assertThat(systemTextOf(prompts.getAllValues().get(0)))
+        .contains("Bezugsjahr 2024")
+        .doesNotContain("Ordnungsamt");
+  }
+
+  /**
+   * The whole rendered prompt with every anchored text removed - the instruction, and nothing else
+   * if the invariant holds.
+   */
+  private static String withoutAnchoredContext(Prompt prompt, DecompositionContext context) {
+    String rendered =
+        prompt.getInstructions().stream().map(Message::getText).collect(Collectors.joining("\n"));
+    for (String contextText : context.contextTexts()) {
+      rendered = rendered.replace(contextText, "");
+    }
+    return rendered.strip();
+  }
+
+  private static String systemTextOf(Prompt prompt) {
+    return prompt.getInstructions().stream()
+        .filter(message -> message.getMessageType() == MessageType.SYSTEM)
+        .map(Message::getText)
+        .findFirst()
+        .orElseThrow();
   }
 }

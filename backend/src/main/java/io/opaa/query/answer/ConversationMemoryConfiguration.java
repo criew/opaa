@@ -1,5 +1,6 @@
 package io.opaa.query.answer;
 
+import io.opaa.query.QueryProperties;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
@@ -15,17 +16,16 @@ import org.springframework.context.annotation.Configuration;
 public class ConversationMemoryConfiguration {
 
   /**
-   * Maximum messages retained per conversation. Default 20: this corresponds to roughly 10
-   * question/answer pairs, limiting the context window tokens sent to the LLM while preserving
-   * enough history for coherent multi-turn dialogues.
+   * The window width is {@link QueryProperties#conversationWindowMessages()} and lives nowhere
+   * else: this bean is the only thing that bounds a conversation, so anything measuring the window
+   * measures the configured value rather than a constant copied alongside it.
    */
-  static final int MAX_MESSAGES_PER_CONVERSATION = 20;
-
   @Bean
-  ChatMemory chatMemory(ChatMemoryRepository chatMemoryRepository) {
+  ChatMemory chatMemory(
+      ChatMemoryRepository chatMemoryRepository, QueryProperties queryProperties) {
     return MessageWindowChatMemory.builder()
         .chatMemoryRepository(chatMemoryRepository)
-        .maxMessages(MAX_MESSAGES_PER_CONVERSATION)
+        .maxMessages(queryProperties.conversationWindowMessages())
         .build();
   }
 }

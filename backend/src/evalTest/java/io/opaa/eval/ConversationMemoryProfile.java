@@ -1,5 +1,6 @@
 package io.opaa.eval;
 
+import io.opaa.query.QueryProperties;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -16,21 +17,30 @@ import org.springframework.ai.chat.messages.UserMessage;
  *     production {@link ChatMemory} bean rather than read from a constant - see {@link
  *     #measuredFrom}.
  * @param searchWindowTurns the number of most recent turns the sub-question decomposition sees,
- *     {@link #SEARCH_WINDOW_WHOLE_CONVERSATION_WINDOW} while production hands it the whole window.
+ *     read from the production {@link QueryProperties}; {@link #SEARCH_WINDOW_QUESTION_ONLY} means
+ *     it sees the question alone.
  * @param noteCap the maximum number of Gesprächsnotiz points per chat, {@link
  *     #NO_CONVERSATION_NOTE} while there is no note.
  */
 public record ConversationMemoryProfile(int windowMessages, int searchWindowTurns, int noteCap) {
 
   /**
-   * The value of {@link #searchWindowTurns} while the decomposition receives the entire
-   * conversation window: {@code SubQueryDecompositionStage} passes {@code
-   * RetrievalContext#conversationHistory} on unchanged, so there is no narrower search window to
-   * name. Encoded as 0 rather than as the window's own round count so that introducing a real
-   * search window changes this fixed point - and with it the baseline's comparability - instead of
-   * silently keeping the same number.
+   * {@link #searchWindowTurns} of a run whose decomposition sees no conversation at all - the
+   * question and, once it exists, the Gesprächsnotiz.
+   *
+   * <p>A baseline drawn before {@code opaa.query.search-window-turns} existed carries the same
+   * {@code 0} with the opposite meaning ("the whole conversation window", the behaviour of the
+   * time). Such a baseline is told apart by its fixed point differing from the run's - which is
+   * exactly what makes it incomparable, so no report has to guess which reading applies.
    */
-  public static final int SEARCH_WINDOW_WHOLE_CONVERSATION_WINDOW = 0;
+  public static final int SEARCH_WINDOW_QUESTION_ONLY = 0;
+
+  /** How {@link #searchWindowTurns} reads in a report. */
+  public String searchWindowLabel() {
+    return searchWindowTurns == SEARCH_WINDOW_QUESTION_ONLY
+        ? "nur die Frage"
+        : searchWindowTurns + " Runden";
+  }
 
   /** The value of {@link #noteCap} while no Gesprächsnotiz exists. */
   public static final int NO_CONVERSATION_NOTE = 0;
@@ -44,14 +54,16 @@ public record ConversationMemoryProfile(int windowMessages, int searchWindowTurn
   /**
    * Reads the profile off the running production configuration: the window width is measured by
    * handing the production {@link ChatMemory} bean more messages than it can hold and counting what
-   * it returns. Measured, not assumed, for the same reason every other fixed point of this harness
-   * is - a changed production window must make the committed baseline incomparable, and a constant
-   * copied into the harness would keep reporting the old number.
+   * it returns, the search window is read from the production {@link QueryProperties} the pipeline
+   * runs with. Measured rather than assumed, for the same reason every other fixed point of this
+   * harness is - a changed production window must make the committed baseline incomparable, and a
+   * constant copied into the harness would keep reporting the old number.
    *
    * <p>Runs under its own random conversation id and clears it afterwards, so it cannot touch a
    * measured conversation.
    */
-  public static ConversationMemoryProfile measuredFrom(ChatMemory chatMemory) {
+  public static ConversationMemoryProfile measuredFrom(
+      ChatMemory chatMemory, QueryProperties queryProperties) {
     String probeKey = "eval-window-probe-" + UUID.randomUUID();
     List<org.springframework.ai.chat.messages.Message> probe = new ArrayList<>(PROBE_MESSAGE_COUNT);
     for (int i = 0; i < PROBE_MESSAGE_COUNT; i++) {
@@ -69,7 +81,7 @@ public record ConversationMemoryProfile(int windowMessages, int searchWindowTurn
                 + "unbounded, in which case it is not a fixed point this path can report.");
       }
       return new ConversationMemoryProfile(
-          windowMessages, SEARCH_WINDOW_WHOLE_CONVERSATION_WINDOW, NO_CONVERSATION_NOTE);
+          windowMessages, queryProperties.searchWindowTurns(), NO_CONVERSATION_NOTE);
     } finally {
       chatMemory.clear(probeKey);
     }

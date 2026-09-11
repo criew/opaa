@@ -17,6 +17,18 @@ Benutzerbereitstellung": Für Anbieter mit gesetztem `groups_claim` kommen Grupp
 aus dem Token, und für Anbieter mit gesetztem `roles_claim` auch die Systemrollen `SYSTEM_ADMIN`
 und `AUDITOR` — ADR-0025, Entscheidung 4, mit den dort genannten Sicherungen.
 
+**Nachtrag mit [ADR-0033](0033-lokale-benutzerverwaltung.md) (Epic #1529, Beschluss aus #1368):** Neben
+den OIDC-Anbietern gibt es eine optionale **lokale Benutzerverwaltung**, und der Erstadministrator ist
+immer ein lokales Konto. Der Satz „Es gibt keinen passwortbasierten Anmeldeweg und kein Anmeldeformular"
+gilt damit nur noch für den OIDC-Weg; für den lokalen Issuer `urn:opaa:local` ist das Backend
+Token-Aussteller mit Refresh-Cookie, Widerruf und Rate-Limiting. Jede Lehre aus der
+[Historie](#historie-warum-mock-und-basic-entfielen) ist in ADR-0033 an einer benannten Stelle
+eingelöst: Subject ist die Konto-UUID, nie die Kennung (Entscheidung 2); Hashing mit Arbeitsfaktor und
+Vergleich in konstanter Zeit (9); Rate-Limiting je Adresse und je Konto mit Sperre (9); Refresh mit
+Rotation und Wiederverwendungserkennung (7); mehrere Konten mit Rollen (11); ein validiertes Secret mit
+Startabbruch statt eines unvalidierten HMAC-Secrets (6). Die negative Konsequenz „kein Angebot für
+Interessenten ohne eigenen Identity-Provider" entfällt. Der `dev`-Modus bleibt unverändert.
+
 ## Kontext
 
 OPAA braucht Benutzeridentität als Grundlage für Spaces und Zugangskontrolle (Epic #107).

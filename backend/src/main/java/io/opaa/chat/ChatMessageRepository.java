@@ -2,6 +2,7 @@ package io.opaa.chat;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,6 +15,13 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
    * same turn.
    */
   List<ChatMessage> findByChatIdOrderBySequenceAsc(UUID chatId);
+
+  /**
+   * The newest {@code limit} messages of {@code chatId}, newest first - the tail the conversation
+   * window is rebuilt from on a cache miss. Loading the whole history and cutting it afterwards
+   * would read a chat's entire transcript for the handful of messages the window keeps.
+   */
+  List<ChatMessage> findByChatIdOrderBySequenceDesc(UUID chatId, Limit limit);
 
   /**
    * The highest existing {@code sequence} for {@code chatId}, or {@code null} for a chat with no

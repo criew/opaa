@@ -66,6 +66,37 @@ class ConversationPathIsolationTest {
   }
 
   /**
+   * The committed conversation baseline satisfies {@link ConversationBaseline}'s load-time
+   * invariants - the Docker-free half of "the committed baseline is internally consistent",
+   * modelled on {@code PipelinePathIsolationTest#committedPipelineBaselinesStayLoadableAndValid}.
+   *
+   * <p>This path has no regression test class and no Gradle task reading the file yet (issue #1485:
+   * the decision which job carries a 249-call measurement belongs to the epic's last step), so
+   * without this test nothing at all would read it and a hand-edited group would stay unnoticed
+   * until that decision is made.
+   */
+  @Test
+  void theCommittedConversationBaselineStaysLoadableAndValid() throws IOException {
+    EvalDomainConfig domain = EvalDomainConfig.VERWALTUNG;
+
+    ConversationBaseline baseline =
+        ConversationBaseline.load(
+            RepoPaths.evalDir().resolve("baseline").resolve(domain.conversationBaselineFileName()));
+
+    assertThat(baseline.conversationMeasurementContractVersion())
+        .isEqualTo(ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION);
+    assertThat(baseline.groups()).containsKey(Baseline.OVERALL);
+    // The dataset the committed numbers describe: a curation round that leaves this behind would
+    // otherwise only be caught by the next expensive run.
+    assertThat(baseline.fixedPoints().pipeline().goldenDatasetSha256())
+        .isEqualTo(ConversationDataset.sha256(ConversationDataset.file(domain)));
+    assertThat(baseline.fixedPoints().turnCount())
+        .isEqualTo(
+            ConversationDataset.turnCount(
+                ConversationDataset.load(ConversationDataset.file(domain))));
+  }
+
+  /**
    * A baseline drawn without decomposition (or without a chat model) describes a run that could not
    * resolve a single reference - it is refused at load time rather than silently compared against a
    * real run.
@@ -135,7 +166,7 @@ class ConversationPathIsolationTest {
             new ConversationBaseline.FixedPoints(
                 pipelineFixedPoints(),
                 20,
-                ConversationMemoryProfile.SEARCH_WINDOW_WHOLE_CONVERSATION_WINDOW,
+                ConversationMemoryProfile.SEARCH_WINDOW_QUESTION_ONLY,
                 0,
                 20),
             Map.of(),

@@ -114,15 +114,36 @@ Löschen darf nur der im Space als Verantwortlicher hinterlegte Nutzer oder ein 
 
 Benutzer authentifizieren sich über:
 
-- **Single Sign-On (SSO)** — OIDC oder SAML (empfohlen)
-- **Lokale Konten** — Benutzername und Passwort (nur als Rückfallebene)
-- **API-Tokens** — für programmatischen Zugang
+- **Single Sign-On (SSO)** — OIDC (empfohlen für den Regelbetrieb; SAML nur über eine Föderation)
+- **Lokale Konten** — E-Mail-Adresse und Passwort, von OPAA selbst geführt (optional, Standard aus;
+  das Konto der Systemverwaltung ist immer ein lokales Konto)
+- **API-Tokens** — für programmatischen Zugang (noch nicht gebaut)
 
 **Empfohlen ist die SSO-Anbindung an das im Haus vorhandene Identitätsmanagement.** Sie ist nicht nur
 bequemer, sondern die Voraussetzung dafür, dass der Kontenlebenszyklus überhaupt an einer Stelle geführt
-werden kann. Lokale Konten sind eine Rückfallebene für den Anlaufbetrieb und für Notfallzugänge; jedes
-dauerhaft betriebene lokale Konto ist eine Ausnahme, die begründet und regelmäßig überprüft gehört, weil
-es am zentralen Ausscheideprozess vorbeiläuft.
+werden kann. Lokale Konten laufen am zentralen Ausscheideprozess vorbei; jedes dauerhaft betriebene
+lokale Konto ist deshalb eine Ausnahme, die begründet und regelmäßig überprüft gehört. OPAA macht das
+sichtbar statt es zu verbieten: Jedes lokale Konto trägt einen Anlagegrund und ein Ablaufdatum, die
+Verwaltung zeigt dauerhaft, wie viele lokale Konten ohne Ablaufdatum bestehen, und die lokale
+Benutzerverwaltung ist im Regelbetrieb abgeschaltet.
+
+> **Lokale Benutzerverwaltung** (Epic #1529, Beschluss aus #1368 vom 10.09.2026): Der
+> **Erstadministrator ist immer ein lokales Konto**, das beim allerersten Start entsteht (Einmalpasswort
+> einmalig im Log, Wechsel bei der ersten Anmeldung erzwungen); damit ist eine Installation nie ohne
+> anmeldefähigen Systemverwalter, auch ohne konfigurierten Identitätsanbieter. Die lokale Verwaltung für
+> reguläre Konten ist per Schalter zuschaltbar: Anlegen mit Einladung per E-Mail, Sperren, Zurücksetzen,
+> Ablaufdatum, Passwort vergessen, optionale Selbstregistrierung — dafür bekommt OPAA eine
+> Mail-Infrastruktur (SMTP). Solange die Verwaltung aus ist, melden sich lokale Systemverwalter über eine
+> eigene Anmeldeseite an. Die Architektur legt
+> [ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md) fest: lokaler Issuer `urn:opaa:local` mit
+> der Konto-UUID als Subject, Backend als Aussteller kurzlebiger Access-Tokens mit rotierendem
+> Refresh-Cookie und sofortigem Widerruf, lokaler Anbieter als Anbieterzeile, Rate-Limiting je Adresse
+> und je Konto mit Sperre nach Fehlversuchen, keine Zusammenführung über die E-Mail (nur eine
+> administrativ angestoßene, von der betroffenen Person selbst durch Anmeldung beim Anbieter
+> eingelöste Übergabe eines lokalen Kontos an ihre Anbieteridentität). Kein stiller Eingriff in ein
+> Konto: Sperre, Entsperrung, Zurücksetzen, bevorstehender Ablauf und Übergabe werden der Person per
+> E-Mail mitgeteilt, und eine beendete Sitzung nennt beim nächsten Aufruf ihren Grund. Der Ist-Stand
+> der Umsetzung steht im Epic.
 
 Die Mandantengrenze gilt auch für die Anmeldung: Eine Identität gehört zu **genau einer** Organisation.
 Es gibt kein Konto, das mehrere Mandanten sieht, und keinen Wechsel zwischen ihnen innerhalb einer
