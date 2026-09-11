@@ -34,7 +34,6 @@ import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.MinIOContainer;
-import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.checksums.RequestChecksumCalculation;
@@ -138,7 +137,7 @@ class S3EventPathMinioIntegrationTest {
             + library.getId()
             + "/s3-events";
     minio =
-        new MinIOContainer(DockerImageName.parse(MinioFixture.IMAGE))
+        new MinIOContainer(MinioFixture.imageName())
             .withEnv("MINIO_NOTIFY_WEBHOOK_ENABLE_OPAA", "on")
             .withEnv("MINIO_NOTIFY_WEBHOOK_ENDPOINT_OPAA", endpoint)
             .withEnv("MINIO_NOTIFY_WEBHOOK_AUTH_TOKEN_OPAA", TOKEN);
