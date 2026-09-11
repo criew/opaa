@@ -50,10 +50,9 @@ class FullTextSearchStageTest {
       new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
 
   private final FullTextChunkSearch search = mock(FullTextChunkSearch.class);
-  private final FullTextIndexCompleteness indexCompleteness = mock(FullTextIndexCompleteness.class);
 
   private FullTextSearchStage stage() {
-    return new FullTextSearchStage(search, indexCompleteness);
+    return new FullTextSearchStage(search);
   }
 
   private static RetrievalContext context(Set<UUID> searchScope) {
@@ -104,9 +103,9 @@ class FullTextSearchStageTest {
   }
 
   /**
-   * Exactly the permission scope reaches the query - no library beyond it (ADR-0008 §5) and, since
-   * #1270, none of it held back either: the full-text row is written with the vector row, so there
-   * is no scoped library the lexical path has to leave out.
+   * Exactly the permission scope reaches the query - no library beyond it (ADR-0008 §5) and none of
+   * it held back either: the full-text row is written with the vector row, so there is no scoped
+   * library the lexical path has to leave out.
    */
   @Test
   void searchesExactlyThePermissionScope() {
@@ -119,31 +118,7 @@ class FullTextSearchStageTest {
     ArgumentCaptor<Set<UUID>> libraries = ArgumentCaptor.forClass(Set.class);
     verify(search).search(anyString(), libraries.capture(), any(), any(), anyInt());
     assertThat(libraries.getValue()).containsExactlyInAnyOrder(SCOPED_LIBRARY, SECOND_LIBRARY);
-    assertThat(outcome.explanation().notes())
-        .anySatisfy(note -> assertThat(note).contains("2 scoped libraries"));
-  }
-
-  /**
-   * #1270: a library whose full-text index is incomplete is searched anyway - the completion gate
-   * is gone - but the run says so, so a partially filled list never reaches the fusion silently.
-   */
-  @Test
-  void searchesAnIncompletelyIndexedLibraryAndRecordsThatItIsIncomplete() {
-    Set<UUID> scope = Set.of(SCOPED_LIBRARY, SECOND_LIBRARY);
-    when(indexCompleteness.incompleteLibraryCount(scope)).thenReturn(1L);
-    when(search.search(anyString(), any(), any(), any(), anyInt())).thenReturn(List.of(chunk("a")));
-
-    StageOutcome outcome = stage().apply(context(scope), scopedState(scope));
-
-    @SuppressWarnings("unchecked")
-    ArgumentCaptor<Set<UUID>> libraries = ArgumentCaptor.forClass(Set.class);
-    verify(search).search(anyString(), libraries.capture(), any(), any(), anyInt());
-    assertThat(libraries.getValue()).containsExactlyInAnyOrder(SCOPED_LIBRARY, SECOND_LIBRARY);
-    assertThat(outcome.explanation().notes())
-        .anySatisfy(
-            note ->
-                assertThat(note)
-                    .contains("2 scoped libraries searched, 1 of them with an incomplete"));
+    assertThat(outcome.explanation().status()).isEqualTo(StageStatus.EXECUTED);
   }
 
   @Test
@@ -279,49 +254,34 @@ class FullTextSearchStageTest {
   }
 
   /**
-   * A failed list is left out of the fusion, the remaining ones are not: "Fällt der Volltextpfad
-   * aus, läuft die Fusion mit den verbleibenden Listen weiter" (docs/features/hybrid-retrieval.md,
-   * Arbeitspaket 3).
+   * A failing query fails the run rather than quietly dropping half the hybrid search: a run that
+   * silently loses the lexical list returns a worse answer while looking like a normal one.
    */
   @Test
-  void aFailedListIsOmittedWhileTheRemainingOnesStillReachTheFusion() {
+  void aFailingQueryFailsTheRun() {
     Set<UUID> scope = Set.of(SCOPED_LIBRARY);
     when(search.search(anyString(), any(), any(), any(), anyInt()))
-        .thenThrow(new IllegalStateException("relation chunk_full_text does not exist"))
-        .thenReturn(List.of(chunk("second-list-hit")));
+        .thenThrow(new IllegalStateException("column content_tsv does not exist"));
+
+    assertThatThrownBy(() -> stage().apply(context(scope), scopedState(scope)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("content_tsv");
+  }
+
+  /** The same for a failure on a later sub-query: no partially filled result reaches the fusion. */
+  @Test
+  void aFailingQueryOfOneSubQueryFailsTheRunAsWell() {
+    Set<UUID> scope = Set.of(SCOPED_LIBRARY);
+    when(search.search(anyString(), any(), any(), any(), anyInt()))
+        .thenReturn(List.of(chunk("first-list-hit")))
+        .thenThrow(new IllegalStateException("column content_tsv does not exist"));
     RetrievalState state =
         RetrievalState.initial()
             .withLibraryFilter(permissionFilter(scope))
             .withSearchQueries(List.of("q1", "q2"));
 
-    StageOutcome outcome = stage().apply(context(scope), state);
-
-    assertThat(outcome.state().candidateLists())
-        .extracting(CandidateList::label)
-        .containsExactly(FullTextSearchStage.listLabel(1));
-    assertThat(outcome.state().candidatePool())
-        .extracting(Document::getId)
-        .containsExactly("second-list-hit");
-    assertThat(outcome.explanation().notes())
-        .anySatisfy(note -> assertThat(note).contains("lexical search failed"));
-  }
-
-  /**
-   * A broken or missing full-text column costs search quality, never an error for the person asking
-   * (docs/features/hybrid-retrieval.md, Arbeitspaket 3) - and the failure is stated in the protocol
-   * rather than looking like "nothing matched".
-   */
-  @Test
-  void aFailingQueryDegradesThePathInsteadOfFailingTheRun() {
-    Set<UUID> scope = Set.of(SCOPED_LIBRARY);
-    when(search.search(anyString(), any(), any(), any(), anyInt()))
-        .thenThrow(new IllegalStateException("relation chunk_full_text does not exist"));
-
-    StageOutcome outcome = stage().apply(context(scope), scopedState(scope));
-
-    assertThat(outcome.explanation().status()).isEqualTo(StageStatus.EXECUTED);
-    assertThat(outcome.explanation().verdicts()).isEmpty();
-    assertThat(outcome.explanation().notes())
-        .anySatisfy(note -> assertThat(note).contains("lexical search failed"));
+    assertThatThrownBy(() -> stage().apply(context(scope), state))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("content_tsv");
   }
 }

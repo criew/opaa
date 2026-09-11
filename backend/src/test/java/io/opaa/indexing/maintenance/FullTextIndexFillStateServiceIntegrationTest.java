@@ -11,20 +11,17 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The two counting invariants {@link FullTextIndexFillState}'s Javadoc claims, against a real
- * Postgres: a row below {@link FullTextChunkStore#CURRENT_TSV_VERSION} does not count as indexed,
- * and {@code missingChunks} is an anti-join rather than a subtraction, so an orphaned {@code
- * chunk_full_text} row cannot cancel out a genuinely un-indexed chunk.
+ * The counting contract {@link FullTextIndexFillState} states, against a real Postgres: a row below
+ * {@link FullTextChunkStore#CURRENT_TSV_VERSION} counts as backlog rather than as indexed, and a
+ * re-index of the chunk through the ingestion write path clears that backlog again.
  */
 @OpaaIndexingIntegrationTest
 class FullTextIndexFillStateServiceIntegrationTest {
 
-  @Autowired private VectorStore vectorStore;
   @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private FullTextIndexFillStateService fillStateService;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -38,62 +35,63 @@ class FullTextIndexFillStateServiceIntegrationTest {
   }
 
   @Test
-  void aRowBelowTheCurrentTsvVersionCountsAsMissingRatherThanIndexed() {
-    UUID chunkId = seedVectorChunkWithoutFullTextRow("Gebührenbefreiung wegen Bedürftigkeit");
-    insertFullTextRow(chunkId, (short) (FullTextChunkStore.CURRENT_TSV_VERSION - 1));
+  void aRowBelowTheCurrentTsvVersionCountsAsBacklogRatherThanAsIndexed() {
+    indexChunk("Gebührenbefreiung wegen Bedürftigkeit");
+    pretendAVersionRaise();
 
     FullTextIndexFillState fillState = fillStateService.fillStateForLibrary(libraryId);
 
     assertThat(fillState.totalChunks()).isEqualTo(1);
     assertThat(fillState.indexedChunks()).isZero();
-    assertThat(fillState.missingChunks()).isEqualTo(1);
-    assertThat(fillState.isComplete()).isFalse();
+    assertThat(fillState.outdatedChunks()).isEqualTo(1);
+    assertThat(fillState.isUpToDate()).isFalse();
     // The grouped read the administration page uses must agree with the single-library one.
     assertThat(fillStateService.fillStateForLibraries(List.of(libraryId)))
         .singleElement()
         .satisfies(
             grouped -> {
+              assertThat(grouped.totalChunks()).isEqualTo(1);
               assertThat(grouped.indexedChunks()).isZero();
-              assertThat(grouped.missingChunks()).isEqualTo(1);
+              assertThat(grouped.outdatedChunks()).isEqualTo(1);
             });
   }
 
+  /**
+   * The backlog of a raised {@code CURRENT_TSV_VERSION} is cleared by re-writing the chunk through
+   * the same write path the pipeline re-index uses - and by nothing else (#1270).
+   */
   @Test
-  void anOrphanedFullTextRowDoesNotMaskAGenuinelyMissingChunk() {
-    seedVectorChunkWithoutFullTextRow("Ein Abschnitt ohne Volltextzeile");
-    // A chunk_full_text row for an id no vector_store row carries - left behind by a bug, or by a
-    // chunk deleted through a path that bypassed VectorChunkStore.
-    insertFullTextRow(UUID.randomUUID(), FullTextChunkStore.CURRENT_TSV_VERSION);
+  void reindexingTheChunkClearsTheBacklog() {
+    indexChunk("Gebührenbefreiung wegen Bedürftigkeit");
+    pretendAVersionRaise();
+    assertThat(fillStateService.fillStateForLibrary(libraryId).outdatedChunks()).isEqualTo(1);
+
+    vectorChunkStore.deleteByDocumentId(documentId);
+    indexChunk("Gebührenbefreiung wegen Bedürftigkeit");
 
     FullTextIndexFillState fillState = fillStateService.fillStateForLibrary(libraryId);
-
-    // totalChunks (1) minus indexedChunks (1, the orphan) would read "complete"; the anti-join
-    // still reports the one vector chunk that has no row of its own.
     assertThat(fillState.totalChunks()).isEqualTo(1);
     assertThat(fillState.indexedChunks()).isEqualTo(1);
-    assertThat(fillState.missingChunks()).isEqualTo(1);
-    assertThat(fillState.isComplete()).isFalse();
+    assertThat(fillState.outdatedChunks()).isZero();
+    assertThat(fillState.isUpToDate()).isTrue();
   }
 
-  /** Written straight into the vector store, so no {@code chunk_full_text} row exists for it. */
-  private UUID seedVectorChunkWithoutFullTextRow(String text) {
+  /** One chunk through the production write path: vector row and full-text row in one go. */
+  private void indexChunk(String text) {
     Document chunk =
         new Document(
             text,
             Map.of(
                 VectorChunkStore.DOCUMENT_ID_METADATA_KEY, documentId.toString(),
                 VectorChunkStore.LIBRARY_ID_METADATA_KEY, libraryId.toString()));
-    vectorStore.add(List.of(chunk));
-    return UUID.fromString(chunk.getId());
+    vectorChunkStore.addChunks(List.of(chunk));
   }
 
-  private void insertFullTextRow(UUID chunkId, short contentTsvVersion) {
+  /** What a raised {@link FullTextChunkStore#CURRENT_TSV_VERSION} does to existing rows. */
+  private void pretendAVersionRaise() {
     jdbcTemplate.update(
-        "INSERT INTO chunk_full_text (chunk_id, document_id, library_id, content_tsv, "
-            + "content_tsv_version) VALUES (?, ?, ?, to_tsvector('german', 'inhalt'), ?)",
-        chunkId,
-        documentId,
-        libraryId,
-        contentTsvVersion);
+        "UPDATE chunk_full_text SET content_tsv_version = ? WHERE library_id = ?",
+        (short) (FullTextChunkStore.CURRENT_TSV_VERSION - 1),
+        libraryId);
   }
 }

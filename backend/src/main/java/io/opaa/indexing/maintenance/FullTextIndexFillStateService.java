@@ -14,12 +14,12 @@ import org.springframework.stereotype.Component;
 
 /**
  * The queryable full-text index fill state (docs/features/hybrid-retrieval.md, "Arbeitspaket 2a"),
- * behind the administration page's index status and its "Volltextpfad inaktiv oder unvollständig"
- * alarm. Read-only counterpart of {@link FullTextChunkStore}.
+ * behind the administration page's index status. Read-only counterpart of {@link
+ * FullTextChunkStore}.
  *
- * <p>Every count is filtered to {@link FullTextChunkStore#CURRENT_TSV_VERSION}, {@code
- * indexedChunks} included: a row at an older version lacks the lexemes the current version adds, so
- * counting it would report a library as complete whose re-index is still outstanding. The lexical
+ * <p>A row is counted as indexed only at {@link FullTextChunkStore#CURRENT_TSV_VERSION} and as
+ * outdated at any other version: it lacks the lexemes the current version adds, so counting it as
+ * indexed would report a library whose re-index is still outstanding as up to date. The lexical
  * search path itself does not apply this filter (ADR-0028) - the fill state reports what still
  * needs the re-index, not what is unsearchable. Schema and table name come from the same {@code
  * spring.ai.vectorstore.pgvector.*} properties {@code PgVectorStore} binds.
@@ -55,32 +55,26 @@ public class FullTextIndexFillStateService {
             + " WHERE metadata->>'library_id' = ?) AS total, "
             + "  (SELECT count(*) FROM chunk_full_text "
             + "     WHERE library_id = ? AND content_tsv_version = ?) AS indexed, "
-            + "  (SELECT count(*) FROM "
-            + vectorStoreTable
-            + " v WHERE metadata->>'library_id' = ? "
-            + "     AND NOT EXISTS ("
-            + "       SELECT 1 FROM chunk_full_text f "
-            + "       WHERE f.chunk_id = v.id AND f.content_tsv_version = ?"
-            + "     )"
-            + "  ) AS missing";
+            + "  (SELECT count(*) FROM chunk_full_text "
+            + "     WHERE library_id = ? AND content_tsv_version <> ?) AS outdated";
     return jdbcTemplate.queryForObject(
         sql,
         (rs, rowNum) ->
             new FullTextIndexFillState(
-                libraryId, rs.getLong("total"), rs.getLong("indexed"), rs.getLong("missing")),
+                libraryId, rs.getLong("total"), rs.getLong("indexed"), rs.getLong("outdated")),
         libraryId.toString(),
         libraryId,
         FullTextChunkStore.CURRENT_TSV_VERSION,
-        libraryId.toString(),
+        libraryId,
         FullTextChunkStore.CURRENT_TSV_VERSION);
   }
 
   /**
-   * The fill state of each of {@code libraryIds} with at least one chunk on either side - a
-   * three-way {@code FULL OUTER JOIN} rather than one query per library, so a library with chunks
-   * on only one side is still reported instead of silently missing. Libraries without any chunk do
-   * not appear; the caller supplies the zero state and always passes only the libraries it may
-   * display, since the query would otherwise aggregate across every organization.
+   * The fill state of each of {@code libraryIds} with at least one chunk on either side - a {@code
+   * FULL OUTER JOIN} rather than one query per library, so a library with chunks on only one side
+   * is still reported instead of silently missing. Libraries without any chunk do not appear; the
+   * caller supplies the zero state and always passes only the libraries it may display, since the
+   * query would otherwise aggregate across every organization.
    */
   public List<FullTextIndexFillState> fillStateForLibraries(Collection<UUID> libraryIds) {
     Set<UUID> distinct = new LinkedHashSet<>(libraryIds);
@@ -88,47 +82,34 @@ public class FullTextIndexFillStateService {
       return List.of();
     }
     String vectorStoreTable = schemaName + "." + tableName;
-    String textPlaceholders = placeholders(distinct.size());
+    String idPlaceholders = placeholders(distinct.size());
     String sql =
-        "SELECT COALESCE(v.library_id, f.library_id, m.library_id) AS library_id, "
+        "SELECT COALESCE(v.library_id, f.library_id) AS library_id, "
             + "       COALESCE(v.total, 0) AS total, "
             + "       COALESCE(f.indexed, 0) AS indexed, "
-            + "       COALESCE(m.missing, 0) AS missing "
+            + "       COALESCE(f.outdated, 0) AS outdated "
             + "FROM ("
             + "  SELECT (metadata->>'library_id')::uuid AS library_id, count(*) AS total "
             + "  FROM "
             + vectorStoreTable
             + "  WHERE metadata->>'library_id' IN ("
-            + textPlaceholders
+            + idPlaceholders
             + ") GROUP BY 1"
             + ") v "
             + "FULL OUTER JOIN ("
-            + "  SELECT library_id, count(*) AS indexed FROM chunk_full_text "
-            + "  WHERE library_id IN ("
-            + textPlaceholders
-            + ") AND content_tsv_version = ? GROUP BY 1"
-            + ") f ON v.library_id = f.library_id "
-            + "FULL OUTER JOIN ("
-            + "  SELECT (v2.metadata->>'library_id')::uuid AS library_id, count(*) AS missing "
-            + "  FROM "
-            + vectorStoreTable
-            + " v2 "
-            + "  WHERE v2.metadata->>'library_id' IN ("
-            + textPlaceholders
-            + ") "
-            + "    AND NOT EXISTS ("
-            + "      SELECT 1 FROM chunk_full_text f2 "
-            + "      WHERE f2.chunk_id = v2.id AND f2.content_tsv_version = ?"
-            + "    ) "
-            + "  GROUP BY 1"
-            + ") m ON COALESCE(v.library_id, f.library_id) = m.library_id";
+            + "  SELECT library_id, "
+            + "         count(*) FILTER (WHERE content_tsv_version = ?) AS indexed, "
+            + "         count(*) FILTER (WHERE content_tsv_version <> ?) AS outdated "
+            + "  FROM chunk_full_text WHERE library_id IN ("
+            + idPlaceholders
+            + ") GROUP BY 1"
+            + ") f ON v.library_id = f.library_id";
 
     List<Object> arguments = new ArrayList<>();
     distinct.forEach(id -> arguments.add(id.toString()));
+    arguments.add(FullTextChunkStore.CURRENT_TSV_VERSION);
+    arguments.add(FullTextChunkStore.CURRENT_TSV_VERSION);
     arguments.addAll(distinct);
-    arguments.add(FullTextChunkStore.CURRENT_TSV_VERSION);
-    distinct.forEach(id -> arguments.add(id.toString()));
-    arguments.add(FullTextChunkStore.CURRENT_TSV_VERSION);
 
     return jdbcTemplate.query(
         sql,
@@ -137,7 +118,7 @@ public class FullTextIndexFillStateService {
                 (UUID) rs.getObject("library_id"),
                 rs.getLong("total"),
                 rs.getLong("indexed"),
-                rs.getLong("missing")),
+                rs.getLong("outdated")),
         arguments.toArray());
   }
 

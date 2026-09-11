@@ -9,7 +9,7 @@ import java.util.UUID;
 /**
  * One library's index state, as the administration page shows it.
  *
- * <p>{@code fullTextIndexedChunks}/{@code fullTextMissingChunks} are read from {@code
+ * <p>{@code fullTextIndexedChunks}/{@code fullTextOutdatedChunks} are read from {@code
  * io.opaa.indexing.maintenance.FullTextIndexFillStateService} and counted nowhere else, so no
  * second count with its own logic can contradict this display.
  *
@@ -37,7 +37,7 @@ public record LibrarySearchStatus(
     long vectorChunkCount,
     Instant lastIndexedAt,
     long fullTextIndexedChunks,
-    long fullTextMissingChunks,
+    long fullTextOutdatedChunks,
     MetadataBackfillProgress metadataBackfill,
     ModelExtractionStats modelExtraction,
     ContextPrefixRerunProgress contextPrefixRerun) {
@@ -46,7 +46,8 @@ public record LibrarySearchStatus(
   public enum IndexCondition {
     EMPTY,
     READY,
-    INCOMPLETE
+    INCOMPLETE,
+    OUTDATED
   }
 
   /** Empty without chunks, incomplete while documents are still waiting, otherwise ready. */
@@ -58,14 +59,15 @@ public record LibrarySearchStatus(
   }
 
   /**
-   * Incomplete while a chunk lacks its full-text row at the current tsv version - content the
-   * lexical search path cannot find, and which no background job repairs since #1270: the remedy is
-   * a reindex. A library must never look flawlessly READY while it is quietly missing such content.
+   * Outdated while a row still carries an older tsv version - found by the lexical path all the
+   * same, only without the lexemes the current version adds, and brought up to date by the pipeline
+   * re-index alone (ADR-0028). A library must never look flawlessly READY while that backlog is
+   * open.
    */
   public IndexCondition fullTextIndexCondition() {
     if (vectorChunkCount == 0) {
       return IndexCondition.EMPTY;
     }
-    return fullTextMissingChunks > 0 ? IndexCondition.INCOMPLETE : IndexCondition.READY;
+    return fullTextOutdatedChunks > 0 ? IndexCondition.OUTDATED : IndexCondition.READY;
   }
 }
