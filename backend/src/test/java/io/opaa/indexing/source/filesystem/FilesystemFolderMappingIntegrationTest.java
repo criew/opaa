@@ -22,6 +22,7 @@ import io.opaa.library.LibraryFolderRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnLibraryFixtures;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,6 +31,7 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -58,6 +60,7 @@ class FilesystemFolderMappingIntegrationTest {
   @Autowired private LibraryFolderRepository folderRepository;
   @Autowired private ChecksumService checksumService;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
 
@@ -66,13 +69,6 @@ class FilesystemFolderMappingIntegrationTest {
 
   @BeforeEach
   void setUp() throws IOException {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    // Children first: another class in this shared context may leave attachment rows behind, and
-    // deleteAll()'s row order would otherwise trip fk_documents_parent (ADR-0022).
-    jdbcTemplate.update("DELETE FROM documents WHERE parent_document_id IS NOT NULL");
-    documentRepository.deleteAll();
-    indexingJobRepository.deleteAll();
-    jdbcTemplate.update("DELETE FROM library_folders");
     if (Files.exists(classTempDir)) {
       try (var files = Files.walk(classTempDir)) {
         files
@@ -89,10 +85,6 @@ class FilesystemFolderMappingIntegrationTest {
       }
     }
 
-    jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = 'folder-mapping-it@example.com')");
-    jdbcTemplate.update("DELETE FROM users WHERE email = 'folder-mapping-it@example.com'");
     userId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
@@ -156,6 +148,14 @@ class FilesystemFolderMappingIntegrationTest {
         .findFirst();
   }
 
+  // The library takes its folders with it (fk_library_folders_library is ON DELETE CASCADE); its
+  // documents and runs go first, see OwnLibraryFixtures.
+  @AfterEach
+  void removeOwnRows() {
+    ownLibraryFixtures.removeLibraries(targetLibraryId);
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
+  }
+
   @Test
   void nestedDirectoryStructureIsMirroredAsFolders() throws IOException {
     Files.createDirectories(classTempDir.resolve("Rechtsquellen/2026"));
@@ -169,12 +169,12 @@ class FilesystemFolderMappingIntegrationTest {
     LibraryFolder jahr2026 = findFolder(rechtsquellen.getId(), "2026").orElseThrow();
 
     Document topDoc =
-        documentRepository.findAll().stream()
+        documentRepository.findByLibraryId(targetLibraryId).stream()
             .filter(d -> d.getFileName().equals("top.txt"))
             .findFirst()
             .orElseThrow();
     Document januarDoc =
-        documentRepository.findAll().stream()
+        documentRepository.findByLibraryId(targetLibraryId).stream()
             .filter(d -> d.getFileName().equals("januar.txt"))
             .findFirst()
             .orElseThrow();
@@ -200,7 +200,7 @@ class FilesystemFolderMappingIntegrationTest {
     awaitJobCompletion(triggerIndexing());
 
     Document document =
-        documentRepository.findAll().stream()
+        documentRepository.findByLibraryId(targetLibraryId).stream()
             .filter(d -> d.getFileName().equals("wurzel.txt"))
             .findFirst()
             .orElseThrow();
@@ -293,7 +293,7 @@ class FilesystemFolderMappingIntegrationTest {
     Files.delete(classTempDir.resolve("Temp/2025"));
     Files.delete(classTempDir.resolve("Temp"));
     documentRepository.deleteAll(
-        documentRepository.findAll().stream()
+        documentRepository.findByLibraryId(targetLibraryId).stream()
             .filter(d -> d.getFileName().equals("datei.txt"))
             .toList());
 
@@ -319,7 +319,7 @@ class FilesystemFolderMappingIntegrationTest {
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(2);
 
     List<Document> documents =
-        documentRepository.findAll().stream()
+        documentRepository.findByLibraryId(targetLibraryId).stream()
             .filter(d -> d.getFileName().equals("gleich.txt"))
             .toList();
     assertThat(documents).hasSize(2);

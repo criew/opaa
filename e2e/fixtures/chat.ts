@@ -47,6 +47,17 @@ export async function startFreshChat(page: Page): Promise<void> {
   await expect(page.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')).toBeVisible()
 }
 
+/**
+ * Empties the chat's search-scope chip bar, which is what "ohne Wissensbasis" means since #560:
+ * @Alles-Wissen is a chip like any other and is removed the same way a reference chip is (the
+ * accessible name sits on the chip root, not on its aria-hidden delete icon). Call before the
+ * first question of a chat - the scope is the chat's own sticky setting from then on.
+ */
+export async function clearSearchScope(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Referenz Alles-Wissen entfernen' }).press('Backspace')
+  await expect(page.getByText('Antwortet ohne Dokumente.')).toBeVisible()
+}
+
 /** Fills the chat input and sends it, waiting for it to be visible first (see startFreshChat). */
 export async function askQuestion(page: Page, question: string): Promise<void> {
   const input = page.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')

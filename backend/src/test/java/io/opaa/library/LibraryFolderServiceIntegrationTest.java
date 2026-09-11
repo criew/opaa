@@ -20,6 +20,7 @@ import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnLibraryFixtures;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -63,6 +64,7 @@ class LibraryFolderServiceIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
 
@@ -95,7 +97,6 @@ class LibraryFolderServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
 
@@ -119,24 +120,16 @@ class LibraryFolderServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    documentRepository.findByLibraryId(libraryId).forEach(documentRepository::delete);
-    folderRepository
-        .findByLibraryIdAndParentFolderIdOrderByNameAsc(libraryId, null)
-        .forEach(this::deleteRecursively);
-    libraryRepository.deleteById(libraryId);
+    // Chunks, documents and runs of this class's own library, then the library itself - its
+    // folders go with it (fk_library_folders_library is ON DELETE CASCADE).
+    jdbcTemplate.update("DELETE FROM library_visibility_history WHERE library_id = ?", libraryId);
+    ownLibraryFixtures.removeLibraries(libraryId);
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId(), viewer.getId()));
     membershipHistoryRepository.deleteByUserIdIn(List.of(editor.getId(), viewer.getId()));
     userRepository.deleteById(editor.getId());
     userRepository.deleteById(viewer.getId());
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
-  }
-
-  private void deleteRecursively(LibraryFolder folder) {
-    folderRepository
-        .findByLibraryIdAndParentFolderIdOrderByNameAsc(libraryId, folder.getId())
-        .forEach(this::deleteRecursively);
-    folderRepository.delete(folder);
   }
 
   private MultipartFile textFile(String originalFileName, String content) {

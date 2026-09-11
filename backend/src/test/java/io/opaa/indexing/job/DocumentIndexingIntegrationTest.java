@@ -104,12 +104,6 @@ class DocumentIndexingIntegrationTest {
 
   @BeforeEach
   void setUp() throws IOException {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    // Children first: another class in this shared context may leave attachment rows behind, and
-    // deleteAll()'s row order would otherwise trip fk_documents_parent (ADR-0022).
-    jdbcTemplate.update("DELETE FROM documents WHERE parent_document_id IS NOT NULL");
-    documentRepository.deleteAll();
-    indexingJobRepository.deleteAll();
     // Clean up any leftover files from previous tests
     if (Files.exists(classTempDir)) {
       try (var files = Files.list(classTempDir)) {
@@ -127,15 +121,9 @@ class DocumentIndexingIntegrationTest {
     // every trigger needs a caller-chosen library and a caller who actually holds at least
     // EDITOR on it - a system admin is not bypassed for an ordinary library (the /trigger
     // endpoint already requires SYSTEM_ADMIN, so bypassing the EDITOR check for that flag too
-    // would make it unreachable in practice). userId is granted
-    // OWNER on its own library explicitly below, exactly like a real KnowledgeLibraryService
-    // library creation would. The previous run's library is deleted first -
-    // fk_knowledge_libraries_owner_user is RESTRICT, so the user row cannot go while it still owns
-    // one.
-    jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = 'indexing-it@example.com')");
-    jdbcTemplate.update("DELETE FROM users WHERE email = 'indexing-it@example.com'");
+    // would make it unreachable in practice). userId is granted OWNER on its own library
+    // explicitly below, exactly like a real KnowledgeLibraryService library creation would.
+    removeOwnFixtures();
     userId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
@@ -167,17 +155,17 @@ class DocumentIndexingIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    // Cleaning up in @BeforeEach alone (above) left this class's chunks, documents and runs in the
-    // shared tables for whoever ran next (#1510): QueryIntegrationTest, sharing this context and
-    // this vector_store, then retrieved fewer than topK of its own tied chunks. Both halves are
-    // scoped so that an aborted method's rows are found here too: the class's own fixtures by its
-    // one owner e-mail, the ones a method creates in a throwaway organization by that
-    // organization's id.
-    List<UUID> ownLibraryIds =
-        jdbcTemplate.queryForList(
-            "SELECT id FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users"
-                + " WHERE email = 'indexing-it@example.com')",
-            UUID.class);
+    removeOwnFixtures();
+  }
+
+  /**
+   * Everything this class created, in both hooks: the {@code @AfterEach} call removes what a method
+   * created, the {@code @BeforeEach} call what a method aborted halfway left behind. Scoped by this
+   * class's one owner e-mail and by the throwaway organizations a method created - never by table,
+   * the whole suite shares one database.
+   */
+  private void removeOwnFixtures() {
+    List<UUID> ownLibraryIds = ownLibraryIds();
     for (UUID libraryId : ownLibraryIds) {
       removeContentOf(libraryId);
       jdbcTemplate.update("DELETE FROM indexing_jobs WHERE library_id = ?", libraryId);
@@ -187,6 +175,20 @@ class DocumentIndexingIntegrationTest {
             + " email = 'indexing-it@example.com')");
     jdbcTemplate.update("DELETE FROM users WHERE email = 'indexing-it@example.com'");
     removeThrowawayOrganizations();
+  }
+
+  private List<UUID> ownLibraryIds() {
+    return jdbcTemplate.queryForList(
+        "SELECT id FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users"
+            + " WHERE email = 'indexing-it@example.com')",
+        UUID.class);
+  }
+
+  /** Every document of this class's own libraries - the suite shares one documents table. */
+  private List<Document> ownDocuments() {
+    return ownLibraryIds().stream()
+        .flatMap(libraryId -> documentRepository.findByLibraryId(libraryId).stream())
+        .toList();
   }
 
   /**
@@ -252,7 +254,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsFailed()).isZero();
     assertThat(completedJob.getDocumentsSkipped()).isZero();
 
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(2);
     assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
     assertThat(documents).allMatch(d -> d.getIndexedAt() != null);
@@ -310,7 +312,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getEventsTruncatedCount()).isZero();
 
     // Verify only the supported file was indexed
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(1);
     assertThat(documents.getFirst().getFileName()).isEqualTo("good.txt");
     assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.INDEXED);
@@ -396,7 +398,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(2);
     assertThat(completedJob.getDocumentsFailed()).isZero();
 
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(2);
     assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
@@ -449,7 +451,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsFailed()).isZero();
     assertThat(completedJob.getDocumentsSkipped()).isZero();
 
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(3);
     assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
@@ -483,7 +485,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(2);
     assertThat(completedJob.getDocumentsFailed()).isZero();
 
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(2);
     assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
@@ -520,7 +522,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(1);
     assertThat(completedJob.getDocumentsFailed()).isZero();
 
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(1);
     assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
@@ -566,7 +568,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsFailed()).isZero();
     assertThat(completedJob.getDocumentsSkipped()).isZero();
 
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(1);
     assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(documents.getFirst().getChunkCount()).isPositive();
@@ -630,7 +632,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsFailed()).isZero();
     assertThat(completedJob.getDocumentsSkipped()).isZero();
 
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(2);
     assertThat(documents)
         .allSatisfy(d -> assertThat(d.getStatus()).isEqualTo(DocumentStatus.INDEXED));
@@ -694,7 +696,7 @@ class DocumentIndexingIntegrationTest {
     // The document row itself is kept, marked FAILED with the same user-facing message a scan PDF
     // gets (DocumentService#NO_EXTRACTABLE_TEXT_MESSAGE) - not deleted or left INDEXED with zero
     // chunks.
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(1);
     assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.FAILED);
     assertThat(documents.getFirst().getErrorMessage())
@@ -716,7 +718,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsProcessed()).isZero();
     assertThat(completedJob.getDocumentsFailed()).isZero();
     assertThat(completedJob.getDocumentsSkipped()).isEqualTo(1);
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(1);
     assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.FAILED);
     assertThat(documents.getFirst().getErrorMessage())
@@ -739,7 +741,7 @@ class DocumentIndexingIntegrationTest {
         vectorStore.similaritySearch(
             SearchRequest.builder().query("content").topK(100).similarityThreshold(0.0).build());
     assertThat(initialResults).isNotEmpty();
-    Document initialDoc = documentRepository.findAll().getFirst();
+    Document initialDoc = ownDocuments().getFirst();
     assertThat(initialDoc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(initialDoc.getChecksum()).isNotNull();
     assertThat(initialDoc.getLibraryId()).isEqualTo(targetLibraryId);
@@ -752,10 +754,10 @@ class DocumentIndexingIntegrationTest {
     var completedSecondJob = indexingJobRepository.findById(secondJob.getId()).orElseThrow();
     assertThat(completedSecondJob.getDocumentsProcessed()).isEqualTo(1);
     assertThat(completedSecondJob.getDocumentsSkipped()).isZero();
-    assertThat(documentRepository.count()).isEqualTo(1);
+    assertThat(ownDocuments()).hasSize(1);
 
     // Verify the document content was actually re-indexed
-    Document reindexedDoc = documentRepository.findAll().getFirst();
+    Document reindexedDoc = ownDocuments().getFirst();
     assertThat(reindexedDoc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(reindexedDoc.getIndexedAt()).isNotNull();
     assertThat(reindexedDoc.getChecksum()).isNotEqualTo(initialDoc.getChecksum());
@@ -849,7 +851,7 @@ class DocumentIndexingIntegrationTest {
                 otherLibraryId, filePath("shared-source.txt")))
         .as("the second library has its own, independent document")
         .isPresent();
-    assertThat(documentRepository.count()).isEqualTo(2);
+    assertThat(ownDocuments()).hasSize(2);
   }
 
   private String filePath(String fileName) {
@@ -971,8 +973,8 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedSecondJob.getDocumentsSkipped()).isEqualTo(1);
 
     // Document record should still be there, unchanged
-    assertThat(documentRepository.count()).isEqualTo(1);
-    Document doc = documentRepository.findAll().getFirst();
+    assertThat(ownDocuments()).hasSize(1);
+    Document doc = ownDocuments().getFirst();
     assertThat(doc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(doc.getChecksum()).isNotNull();
     assertThat(doc.getChecksum()).hasSize(64);
@@ -1021,8 +1023,9 @@ class DocumentIndexingIntegrationTest {
     assertThat(failedJob.getStatus()).isEqualTo(JobStatus.FAILED);
     assertThat(failedJob.getErrorMessage()).contains("außerhalb");
     assertThat(documentRepository.findByLibraryId(outsideAllowlistLibrary.getId())).isEmpty();
-
-    libraryRepository.deleteById(outsideAllowlistLibrary.getId());
+    // The library is not deleted here: fk_indexing_jobs_library_organization is ON DELETE SET NULL,
+    // so the run above would survive with a NULL library_id and no later cleanup would find it.
+    // removeOwnFixtures() owns this library through userId and removes its runs first.
   }
 
   // --- indexing_jobs organization boundary, exercised against two real organizations ---

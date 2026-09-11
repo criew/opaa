@@ -49,6 +49,11 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 @OpaaIntegrationTest
 class OidcProviderServiceIntegrationTest {
 
+  /**
+   * The path segment that makes an issuer of this class recognisable - see removeOwnProviders().
+   */
+  private static final String OWN_ISSUER_PREFIX = "https://idp.example/oidc-provider-it/";
+
   @Autowired private OidcProviderService service;
   @Autowired private OidcProviderRegistry registry;
   @Autowired private OidcProviderRepository repository;
@@ -64,7 +69,7 @@ class OidcProviderServiceIntegrationTest {
 
   @BeforeEach
   void setUp() throws Exception {
-    jdbcTemplate.update("DELETE FROM oidc_providers");
+    removeOwnProviders();
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "OIDC Test Org")).getId();
     User user = new User(UUID.randomUUID().toString(), "test-issuer", "oidc@example.com", "Test");
@@ -86,18 +91,32 @@ class OidcProviderServiceIntegrationTest {
         });
     jwks.start();
     // the issuer is never fetched here: the JWK set override is the only address the registry
-    // reads for this provider, exactly the Compose split ADR-0025 describes
-    issuer = "https://idp.example/realms/" + UUID.randomUUID();
+    // reads for this provider, exactly the Compose split ADR-0025 describes. The path segment is
+    // this class's own - see removeOwnProviders().
+    issuer = OWN_ISSUER_PREFIX + UUID.randomUUID();
   }
 
   @AfterEach
   void tearDown() {
     jwks.stop(0);
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
-    jdbcTemplate.update("DELETE FROM oidc_providers");
+    removeOwnProviders();
     registry.refresh();
     userRepository.deleteById(userId);
     organizationRepository.deleteById(organizationId);
+  }
+
+  /**
+   * Only the providers of this class: every issuer it registers starts with {@link
+   * #OWN_ISSUER_PREFIX} or addresses its own local discovery server. The host alone would not do -
+   * {@code UserServiceMultiProviderIntegrationTest} registers under {@code
+   * https://idp.example/realms/...} as well, and this table is shared like every other.
+   */
+  private void removeOwnProviders() {
+    jdbcTemplate.update(
+        "DELETE FROM oidc_providers WHERE issuer_uri LIKE ? OR issuer_uri LIKE ?",
+        OWN_ISSUER_PREFIX + "%",
+        "http://127.0.0.1:%");
   }
 
   private OidcProviderDraft draft(String name, String issuerUri) {

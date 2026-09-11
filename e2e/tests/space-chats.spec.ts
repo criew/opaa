@@ -4,6 +4,7 @@ import { expect, test } from '../fixtures/auth'
 import {
   askQuestion,
   chatSidebarEntries,
+  clearSearchScope,
   createLibraryWithDocument,
   expectAnyCitedSource,
   expectCitedExclusively,
@@ -84,14 +85,6 @@ async function referenceLibrary(page: Page, libraryName: string) {
   const input = page.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')
   await input.fill(`@${libraryName}`)
   await page.getByRole('option', { name: libraryName }).click()
-}
-
-// #560: the switch is gone - the chip bar is the only search-scope control, and @Alles-Wissen is
-// a chip like any other, removable the same way the reference chips in fixtures/chat.ts already
-// are (see the accessible-name convention on ChatInput.tsx, review finding #539/#564: the name
-// sits on the chip root, not on its aria-hidden delete icon).
-async function clearSearchScope(page: Page) {
-  await page.getByRole('button', { name: 'Referenz Alles-Wissen entfernen' }).press('Backspace')
 }
 
 /**
@@ -199,7 +192,6 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     // Leaving the chip bar empty (not a switch, #560) is what "ohne Wissensbasis" means now:
     // remove the default @Alles-Wissen chip and reference nothing in its place.
     await clearSearchScope(page)
-    await expect(page.getByText('Antwortet ohne Dokumente.')).toBeVisible()
 
     await askQuestion(page, question)
 

@@ -8,10 +8,9 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
-import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.job.DocumentIndexingService;
 import io.opaa.indexing.job.IndexingJob;
-import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -21,7 +20,9 @@ import io.opaa.query.QueryService;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -75,27 +76,20 @@ class OpenAiIntegrationTest {
 
   @Autowired private DocumentIndexingService documentIndexingService;
   @Autowired private QueryService queryService;
-  @Autowired private DocumentRepository documentRepository;
-  @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private VectorChunkStore vectorChunkStore;
 
   private UUID userId;
   private UUID targetLibraryId;
 
   @BeforeEach
   void setUp() throws IOException {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    documentRepository.deleteAll();
-    indexingJobRepository.deleteAll();
+    removeOwnFixtures();
     // #478: the trigger endpoint/service reads type and configuration off the library itself, and
     // the seeded system library is DocumentSourceType.UPLOAD, which triggerIndexing now rejects
     // with 409 (no run type). This test needs a document to actually be found and indexed, so it
     // creates its own FILESYSTEM library pointed at tempDir instead of reusing the system library.
-    jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = 'openai-it@example.com')");
-    jdbcTemplate.update("DELETE FROM users WHERE email = 'openai-it@example.com'");
     userId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
@@ -143,6 +137,33 @@ class OpenAiIntegrationTest {
             });
       }
     }
+  }
+
+  @AfterEach
+  void tearDown() {
+    removeOwnFixtures();
+  }
+
+  /**
+   * Chunks, documents, runs, library and user of this class, in foreign-key order - never a {@code
+   * TRUNCATE} or an unscoped {@code deleteAll()}, even though the {@code openAiIntegrationTest}
+   * task runs this class on its own database (AGENTS.md, "Spring-Testkontexte").
+   */
+  private void removeOwnFixtures() {
+    List<UUID> ownLibraryIds =
+        jdbcTemplate.queryForList(
+            "SELECT id FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users"
+                + " WHERE email = 'openai-it@example.com')",
+            UUID.class);
+    for (UUID libraryId : ownLibraryIds) {
+      vectorChunkStore.deleteByLibraryId(libraryId);
+      // One statement rather than deleteAll(): PostgreSQL checks fk_documents_parent only at its
+      // end, so a parent and its attachment go together (ADR-0022).
+      jdbcTemplate.update("DELETE FROM documents WHERE library_id = ?", libraryId);
+      jdbcTemplate.update("DELETE FROM indexing_jobs WHERE library_id = ?", libraryId);
+      jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", libraryId);
+    }
+    jdbcTemplate.update("DELETE FROM users WHERE email = 'openai-it@example.com'");
   }
 
   @Test
