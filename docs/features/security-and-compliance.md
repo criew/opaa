@@ -509,10 +509,16 @@ derselbe Test gegen den Anwendungskontext, damit eine neue Klasse an den Rechtet
 hinzukommt.
 
 Für die **Reichweitenfelder** (`visibility`, `listed`) trägt diese Einschränkung zusätzlich der Compiler:
-Sie sind nur aus dem Paket heraus veränderbar, das die Historienzeile schreibt. Ein künftiger Schreibpfad
-außerhalb dieses Pakets kann die Reichweite einer Bibliothek nicht am Historieneintrag vorbei ändern — er
-lässt sich gar nicht erst übersetzen. Für Bestand und Mitgliedschaften bleibt es bei der Absicherung über
-den Test.
+Über die Bibliothek selbst sind sie nur aus dem Paket heraus veränderbar, das die Historienzeile schreibt
+— ein Schreibpfad außerhalb dieses Pakets lässt sich gar nicht erst übersetzen. Am Compiler vorbei ginge
+es weiterhin über direktes SQL, eine Datenbankmigration oder Reflection; diese Wege sieht keine der
+Prüfungen.
+
+Für den **Bestand** einer Bibliothek — das Anlegen und Löschen der Zeile selbst — gilt weder das eine noch
+das andere: Der Test gegen den Anwendungskontext lässt das Bibliotheks-Repository bewusst aus, weil es
+überwiegend von lesenden Klassen gehalten wird, und die Prüfung je Operation kennt nur die dort benannten
+Dienste. Dass heute keine weitere Klasse Bibliothekszeilen anlegt oder löscht, ist eine Beobachtung, keine
+Prüfung. Für Mitgliedschaften bleibt es bei der Absicherung über den Test.
 
 Das ist bewusst **anders gelöst als über eine Protokollzeile je Abfrage**: Die Rechtemenge bei jeder Suche
 mitzuschreiben würde das Protokoll um eine erhebliche Menge personenbezogener Daten erweitern — genau das,

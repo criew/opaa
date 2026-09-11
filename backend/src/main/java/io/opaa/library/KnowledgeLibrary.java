@@ -420,11 +420,12 @@ public class KnowledgeLibrary {
   }
 
   /**
-   * Package-private by contract: {@link #visibility} and {@link #listed} are inputs of {@link
-   * LibraryAccessService#readableLibraryIds}, and whoever changes them must publish {@link
-   * LibraryChanged} so {@link PermissionHistoryService} opens the matching interval - only {@link
-   * KnowledgeLibraryService#updateLibrary} does. A caller outside this package would move the live
-   * answer without the Stichtag reconstruction ever learning of it.
+   * Package-private by contract: {@link #visibility} is an input of {@link
+   * LibraryAccessService#readableLibraryIds}, and it shares one history interval with {@link
+   * #listed} ({@link PermissionHistoryService#recordVisibilityChanged}), so whoever changes either
+   * field must publish {@link LibraryChanged} - today only {@link
+   * KnowledgeLibraryService#updateLibrary} does. Package scope keeps that obligation reachable, it
+   * does not enforce it: a further class in this package would have to honour it too.
    */
   void updateDetails(
       String name, String description, LibraryVisibility visibility, boolean listed) {

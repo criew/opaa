@@ -587,8 +587,8 @@ public class KnowledgeLibraryService {
     KnowledgeLibrary updated = libraryRepository.save(library);
     boolean visibilityOrListedChanged =
         updated.getVisibility() != previousVisibility || updated.isListed() != previousListed;
-    // #238/#892: only visibility and listed feed the readable-library formula, so only a change
-    // to either of them opens a new interval - a rename alone is not a permission change. One
+    // #238/#892: visibility feeds the readable-library formula and shares one history interval
+    // with listed, so a change to either opens a new interval - a rename alone is not. One
     // LibraryChanged publish covers both the history interval and the ASSET_VISIBILITY_CHANGED
     // audit entry (#392 code review, nit 4: independent of LIBRARY_CHANGED below - a call that
     // renames the library and widens its visibility in the same request writes both).
