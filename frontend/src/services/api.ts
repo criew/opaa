@@ -268,6 +268,19 @@ export async function deleteChat(chatId: string): Promise<void> {
   }
 }
 
+/**
+ * Removes one point of a chat's Gesprächsnotiz (#1488). Immediate and without a confirmation step;
+ * the point is not blocked for the future - the condensation may create it again if the person
+ * states the same thing again (docs/features/conversation-memory.md, "Zustand und Bedienung").
+ */
+export async function deleteChatNoteItem(chatId: string, itemId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/chats/${chatId}/note-items/${itemId}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
 export async function getSpaces(): Promise<SpaceListResponse[]> {
   try {
     const { data } = await client.get<SpaceListResponse[]>('/v1/spaces')
