@@ -201,7 +201,8 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
   realistische Domain statt `localhost`, damit die Demo das `RSS_FEED`-Konnektorverhalten so vorführt,
   wie es auch gegen eine echte Domain liefe.
 
-- **`minio`** (`minio/minio`, gepinnt auf dasselbe Release wie die MinIO-Testfixture des Backends)
+- **`minio`** (`quay.io/minio/minio`, gepinnt auf dasselbe Release wie die MinIO-Testfixture des
+  Backends; die Quelle ist quay.io, seit MinIO das Docker-Hub-Repository entfernt hat — #1578)
   ist der **eine** S3-kompatible Objektspeicher der Demo — mit drei Buckets (#1383, #1520,
   [ADR-0027](../docs/decisions/0027-s3-konnektor.md),
   [ADR-0030](../docs/decisions/0030-originalablage-der-uploads.md), Handbuch
