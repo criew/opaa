@@ -140,6 +140,11 @@ public record ConversationEvaluationReport(
    *
    * @param conversationWindowMessages how many messages this turn's conversation window actually
    *     held - 0 for the first turn of a case, and capped by the production window width.
+   * @param conversationNote the {@code RAHMEN} points this turn received (#1490), empty for the
+   *     first turn of a case and for a run measured without a note. Recorded for the same reason
+   *     {@code subQueries} is: once the search window is narrower than the case, the note is the
+   *     only way an early Rahmenangabe can reach the search at all, so a report without it cannot
+   *     tell "the note never carried the Angabe" from "the decomposition ignored it".
    * @param subQueries the search queries decomposition produced for this turn: the observation the
    *     whole path exists for, since a follow-up question that was not resolved shows up here
    *     before it shows up in the metrics.
@@ -161,6 +166,7 @@ public record ConversationEvaluationReport(
       Integer rankingMargin,
       boolean solved,
       int conversationWindowMessages,
+      List<String> conversationNote,
       int chunksReturned,
       int distinctDocumentsReturned,
       List<String> subQueries,

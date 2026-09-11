@@ -428,7 +428,9 @@ Was der Schritt tut, je Fall:
 
 Bericht: `build/eval-reports/pipeline-conversations-<domäne>.json` und `.md` (nicht committet), mit
 `overall`, `byCategory` (`anaphora_resolution`, `topic_switch`, `constraint_carryover`), `byTurn`
-(je Rundennummer), den Teilfragen je Runde, dem Fall-Urteil je Klasse, dem Zustandsfeld-Audit und
+(je Rundennummer), den Notizpunkten und Teilfragen je Runde (`conversationNote`/`subQueries` —
+beides zusammen, weil sonst nicht zu trennen ist, ob eine Angabe die Notiz nie erreicht hat oder die
+Zerlegung sie ignoriert hat), dem Fall-Urteil je Klasse, dem Zustandsfeld-Audit und
 der **Bleed-Zahl**: wie viele Dokumente des Vorthemas in der vom Fall benannten Wechselrunde
 (`topic_switch_turn`) eines `topic_switch`-Falls noch im Fenster standen.
 
@@ -439,12 +441,12 @@ Eigenschaft des Datensatzes und steht deshalb einmal je Bericht — nicht als
 
 Baseline-Vergleich: `eval/baseline/pipeline-<domäne>-conversations.json`, geladen von
 `ConversationBaselineRegressionCheck` und verglichen nach denselben Regeln wie der Pipeline-Pfad
-(`ConversationBaselineComparator`, ADR-0013). Das Urteil hat **vier** Ausgänge statt drei: Zu
-„keine Regression", „Regression" und „unvergleichbar" kommt **„nicht beurteilt"** — eine
-Unvergleichbarkeit, die ausschließlich die Festpunkte betrifft, deren Neumessung angekündigt ist
-(`ConversationBaselineVerdict`). Ihre Festpunktabweichung steht dann im Klartext im Bericht, und
-der Lauf bleibt grün; siehe `eval/baseline/README.md`, „Besonderheiten der Mehrrunden-Baseline".
-Die Delta-Tabelle landet in `build/eval-reports/conversation-baseline-comparison-<domäne>.md`.
+(`ConversationBaselineComparator`, ADR-0013). Das Urteil hat dieselben **drei** Ausgänge wie dort:
+„keine Regression", „Regression" und „unvergleichbar" (`ConversationBaselineVerdict`). Der vierte
+Ausgang „nicht beurteilt", den dieser Pfad zwischen #1553 und #1490 trug, ist mit der Neuziehung
+der Baseline entfallen — er galt zwei namentlich genannten Festpunkten, deren Neumessung
+angekündigt war (ADR-0012, Entscheidung 50). Die Delta-Tabelle landet in
+`build/eval-reports/conversation-baseline-comparison-<domäne>.md`.
 
 In der CI trägt diesen Pfad seit Issue #1553 ein **eigener Job** `conversations` in
 `.github/workflows/retrieval-regression.yml` — mit denselben Auslösern wie die

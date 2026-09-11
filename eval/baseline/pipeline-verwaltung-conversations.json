@@ -25,70 +25,70 @@
       "corpusManifestSha256": "e129bb86365f08bb553dab2401b91d82233e5efd84516b0b151c25b6e1590480",
       "corpusDocumentCount": 72,
       "goldenDatasetFile": "eval/golden/verwaltung-conversations.json",
-      "goldenDatasetSha256": "7af55fa4f03c77faf8ed9ceef45deac17e450653b35e8bb8c08ea10062cde34e",
+      "goldenDatasetSha256": "a9a712755234c316f0efbc07ffb18b68d871b8a81fc2bc8fdf5889f4010b4ff6",
       "goldenCaseCount": 27,
       "ingestionPipelineFingerprint": "confluence:2,docx:3,email:5,html:3,markdown:1,odp:2,odt:2,pdf:1,pptx:1,tabular:1,tika-fallback:1",
       "metadataFilterEnabled": false
     },
     "conversationWindowMessages": 20,
-    "searchWindowTurns": 0,
-    "conversationNoteCap": 0,
+    "searchWindowTurns": 2,
+    "conversationNoteCap": 10,
     "turnCount": 83
   },
   "groups": {
     "overall": {
       "n": 83,
-      "hitRateAt5": 0.831,
-      "mrrAt8": 0.756,
-      "ndcgAt8": 0.771,
-      "recallAt8": 0.827,
+      "hitRateAt5": 0.88,
+      "mrrAt8": 0.772,
+      "ndcgAt8": 0.796,
+      "recallAt8": 0.876,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 46,
-      "hitCountAt5": 69,
-      "hitCountAt8": 69,
-      "allExpectedDocumentsHitAt8": 0.819
+      "hitCountAt5": 73,
+      "hitCountAt8": 73,
+      "allExpectedDocumentsHitAt8": 0.867
     },
     "category:anaphora_resolution": {
       "n": 21,
-      "hitRateAt5": 0.762,
-      "mrrAt8": 0.724,
-      "ndcgAt8": 0.722,
-      "recallAt8": 0.746,
+      "hitRateAt5": 0.81,
+      "mrrAt8": 0.762,
+      "ndcgAt8": 0.763,
+      "recallAt8": 0.794,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 12,
-      "hitCountAt5": 16,
-      "hitCountAt8": 16,
-      "allExpectedDocumentsHitAt8": 0.714
+      "hitCountAt5": 17,
+      "hitCountAt8": 17,
+      "allExpectedDocumentsHitAt8": 0.762
     },
     "category:constraint_carryover": {
       "n": 32,
-      "hitRateAt5": 0.938,
-      "mrrAt8": 0.829,
-      "ndcgAt8": 0.857,
-      "recallAt8": 0.938,
+      "hitRateAt5": 0.969,
+      "mrrAt8": 0.79,
+      "ndcgAt8": 0.835,
+      "recallAt8": 0.969,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 22,
-      "hitCountAt5": 30,
-      "hitCountAt8": 30,
-      "allExpectedDocumentsHitAt8": 0.938
+      "hitCountAt5": 31,
+      "hitCountAt8": 31,
+      "allExpectedDocumentsHitAt8": 0.969
     },
     "category:topic_switch": {
       "n": 30,
-      "hitRateAt5": 0.767,
-      "mrrAt8": 0.701,
-      "ndcgAt8": 0.713,
-      "recallAt8": 0.767,
+      "hitRateAt5": 0.833,
+      "mrrAt8": 0.761,
+      "ndcgAt8": 0.776,
+      "recallAt8": 0.833,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 19,
-      "hitCountAt5": 23,
-      "hitCountAt8": 23,
-      "allExpectedDocumentsHitAt8": 0.767
+      "hitCountAt5": 25,
+      "hitCountAt8": 25,
+      "allExpectedDocumentsHitAt8": 0.833
     },
     "turn:1": {
       "n": 27,
       "hitRateAt5": 0.963,
-      "mrrAt8": 0.915,
-      "ndcgAt8": 0.913,
+      "mrrAt8": 0.944,
+      "ndcgAt8": 0.936,
       "recallAt8": 0.951,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 25,
@@ -98,33 +98,33 @@
     },
     "turn:2": {
       "n": 27,
-      "hitRateAt5": 0.704,
-      "mrrAt8": 0.631,
-      "ndcgAt8": 0.649,
-      "recallAt8": 0.704,
+      "hitRateAt5": 0.926,
+      "mrrAt8": 0.827,
+      "ndcgAt8": 0.853,
+      "recallAt8": 0.926,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 25,
-      "hitCountAt5": 19,
-      "hitCountAt8": 19,
-      "allExpectedDocumentsHitAt8": 0.704
+      "hitCountAt5": 25,
+      "hitCountAt8": 25,
+      "allExpectedDocumentsHitAt8": 0.926
     },
     "turn:3": {
       "n": 21,
-      "hitRateAt5": 0.81,
-      "mrrAt8": 0.668,
-      "ndcgAt8": 0.704,
-      "recallAt8": 0.81,
+      "hitRateAt5": 0.714,
+      "mrrAt8": 0.557,
+      "ndcgAt8": 0.597,
+      "recallAt8": 0.714,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 19,
-      "hitCountAt5": 17,
-      "hitCountAt8": 17,
-      "allExpectedDocumentsHitAt8": 0.81
+      "hitCountAt5": 15,
+      "hitCountAt8": 15,
+      "allExpectedDocumentsHitAt8": 0.714
     },
     "turn:4": {
       "n": 7,
       "hitRateAt5": 0.857,
-      "mrrAt8": 0.857,
-      "ndcgAt8": 0.857,
+      "mrrAt8": 0.583,
+      "ndcgAt8": 0.652,
       "recallAt8": 0.857,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 7,
@@ -135,8 +135,8 @@
     "turn:5": {
       "n": 1,
       "hitRateAt5": 1.0,
-      "mrrAt8": 1.0,
-      "ndcgAt8": 1.0,
+      "mrrAt8": 0.5,
+      "ndcgAt8": 0.631,
       "recallAt8": 1.0,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 1,
@@ -145,10 +145,10 @@
       "allExpectedDocumentsHitAt8": 1.0
     }
   },
-  "measuredAt": "2026-09-11",
+  "measuredAt": "2026-09-12",
   "provenance": {
-    "sourceReportRunStartedAt": "2026-09-11T11:56:04.803813600Z",
-    "sourcePullRequest": "#1485 (Erstkuratierung und Erstmessung der Mehrrunden-Fälle)"
+    "sourceReportRunStartedAt": "2026-09-11T23:11:34.693060Z",
+    "sourcePullRequest": "#1490 (Nachmessung nach Suchfenster und Gesprächsnotiz)"
   },
-  "notes": "Erste Ziehung der Mehrrunden-Baseline (Issue #1485), Mehrrunden-Messvertrag Version 1 (ADR-0012, Nachtrag Mehrrunden-Messpfad). Gemessen am 2026-09-11 im CPU-Testcontainer-Lauf \"./gradlew evaluateVerwaltungRetrieval -Dopaa.eval.queryDecomposition=true -Dopaa.eval.runConversations=true\" auf demselben manifest-geprueften Korpus (72 Dokumente) wie eval/baseline/verwaltung.json und eval/baseline/pipeline-verwaltung.json, aber gegen den eigenen Datensatz eval/golden/verwaltung-conversations.json (27 Faelle, 83 Runden). Mehrfachlauf-Regel angewandt: drei Laeufe, berichtet ist der Median-Lauf; min = median = max in allen vier Metriken, und 0 von 83 Runden hatten ueber die drei Laeufe hinweg eine abweichende Zerlegung. Ein zweiter, vollstaendig getrennter Lauf derselben Konfiguration lieferte jede Zahl dieser Datei bitgleich und dasselbe Urteil fuer jeden der 27 Faelle. Befund des Erstlaufs: anaphora_resolution 4 von 9 Faellen geloest, topic_switch 2 von 9 bei Themen-Bleed 0 in 9 von 9 Wechselrunden, constraint_carryover 4 von 9 - davon drei mit der Rahmenangabe woertlich in der Teilfrage der Zielrunde, einer (verw-conv-cc-001) ohne sie und deshalb als known_gap mit committeter expected_state_exception gefuehrt. Deklariert sind 9 Faelle als solved und 18 als known_gap; Einzelbegruendung je Fall im Datensatz, Zusammenfassung in eval/corpus/verwaltung/MAINTENANCE.md, Abschnitt \"Mehrrunden-Fallklassen\". Diese Zahlen stammen aus dem Lauf NACH zwei Messaufbau-Korrekturen aus dem Review zu PR #1521; der erste Lauf desselben Tages ist ueberholt und nicht vergleichbar: Fuenf Runden zielten auf amtsunabhaengige Dokumente (Vertretungsregelung, Geschaeftsverteilungsplan), die von keinem aufgeloesten Bezug getrennt werden koennen, und acht Runde-1-Kurzantworten der constraint_carryover-Faelle nannten den Verwechslungspartner, der damit als Aussage des Assistenten im Gespraechsfenster stand. Ueberholte Werte des ersten Laufs zum Vergleich: overall HitRate@5 0,807 / MRR@8 0,704 / nDCG@8 0,725 / Recall@8 0,803; je Klasse anaphora_resolution 0,714/0,617/0,629/0,698, constraint_carryover 0,906/0,764/0,800/0,906, topic_switch 0,767/0,701/0,713/0,767; geloest 4 / 2 / 2 von je 9. Nicht mit eval/baseline/pipeline-verwaltung.json vergleichbar, obwohl beide dasselbe Fenster tragen: Dort ist jede Zeile eine Einzelfrage ohne Verlauf, hier eine Runde eines Gespraechs mit dem produktiven 20-Nachrichten-Fenster im Ruecken. Die Gruppe turn:5 hat n=1 - nur verw-conv-cc-008 ist fuenfrundig - und ist als Regressionssignal entsprechend schwach, steht aber in der Datei, weil der Vergleich sonst eine vom Bericht gelieferte Gruppe nicht faende. Toleranzformel und Fehlerkriterium: ADR-0013, unveraendert und woertlich mit dem Pipeline-Pfad geteilt (PipelineGroupChecks, PipelineGroupInvariants). Diese Baseline ist bewusst noch an keine Regressionstestklasse verdrahtet: registerEvalDomain in backend/build.gradle.kts kennt bislang nur den Rohvektor- und den Pipeline-Pfad, und der Mehrrunden-Schritt ist ohnehin manuell oder per Label zu starten, nie naechtlich - die Verdrahtung ist Folgearbeit ausserhalb von #1485. Nachtrag (Issue #1522, 2026-09-11): ollamaImage als neuer, geprüfter Fixpunkt aufgenommen (conversationMeasurementContractVersion 1 -> 2) — eine committete Baseline weist damit selbst aus, welches Ollama ihre Vektoren erzeugt hat, statt das nur in dieser Prosa zu behaupten; eine Baseline, die aus einem Lauf gegen einen externen Endpunkt gezogen wurde (-Dopaa.eval.ollamaBaseUrl, Wert mit Präfix 'extern: '), wird beim Laden abgewiesen (ADR-0012, Nachtrag Ollama-Herkunft). Reine Fixpunkt-Ergänzung ohne neuen Messlauf: eingetragen ist das gepinnte Testcontainer-Image ollama/ollama:0.6.5 des oben genannten CPU-Laufs, aus dem die Zahlen dieser Datei stammen — keine gemessene Zahl ändert sich, und searchWindowTurns bleibt bei dem mit 0 gemessenen Wert."
+  "notes": "Neuziehung nach Suchfenster (#1486) und Gespraechsnotiz (#1487), Issue #1490, Mehrrunden-Messvertrag Version 2 (ADR-0012, Nachtrag Mehrrunden-Messpfad). Gemessen im CPU-Testcontainer-Lauf \"./gradlew evaluateVerwaltungConversations\" (die Task setzt -Dopaa.eval.runConversations und -Dopaa.eval.queryDecomposition selbst) auf demselben manifest-geprueften Korpus (72 Dokumente) und demselben Datensatz (eval/golden/verwaltung-conversations.json, 27 Faelle, 83 Runden) wie die Erstziehung. Lauf begonnen am 2026-09-11 um 23:11 UTC; das ist in der Zeitzone der Messmaschine der 2026-09-12, unter dem auch die Zustandsfelder datiert sind. Mehrfachlauf-Regel angewandt: drei Messungen, berichtet ist der Median-Lauf; min = median = max in allen vier Metriken, 0 von 83 Runden mit abweichender Zerlegung. Ein zweiter, vollstaendig getrennter Aufruf derselben Konfiguration lieferte jede Zahl dieser Datei bitgleich, dasselbe Urteil fuer jeden der 27 Faelle und dieselben zwei Bleed-Runden. Alle 83 Notiz-Verdichtungen sind gelungen, keine ist fehlgeschlagen. Ueberholt, aber zum Vergleich festgehalten: die Erstziehung aus #1485 (2026-09-11, searchWindowTurns 0, conversationNoteCap 0) lieferte overall HitRate@5 0,831 / MRR@8 0,756 / nDCG@8 0,771 / Recall@8 0,827; je Klasse anaphora_resolution 0,762/0,724/0,722/0,746, constraint_carryover 0,938/0,829/0,857/0,938, topic_switch 0,767/0,701/0,713/0,767; geloest 4 / 4 / 2 von je 9 Faellen, Themen-Bleed 0. Die Zahlen dieser Datei liegen ueber die 83 Runden hoeher (0,880 / 0,772 / 0,796 / 0,876); auf Fallebene sind es 8 statt 10 geloeste Faelle, weil constraint_carryover von 4 auf 1 faellt, waehrend anaphora_resolution von 4 auf 5 steigt und topic_switch bei 2 bleibt. Der Bleed liegt jetzt bei 2 Dokumenten in 2 von 9 Wechselrunden (verw-conv-ts-007#3, verw-conv-ts-008#2) statt bei 0; die Kennzahl hat auf diesem Datensatz kaum Dynamikbereich und ist als Kriterium zurueckgezogen (eval/corpus/verwaltung/MAINTENANCE.md). Die empfindlichere Vergleichsgroesse, die #1485 fuer diesen Schritt festgelegt hat, ist \"Zielrunden, deren Teilfrage die Rahmenangabe traegt\": 4 von 9 im Referenzlauf, 1 von 9 hier (nur verw-conv-cc-002, und nicht einer der vier von damals). Der Report fuehrt seit #1490 je Runde auch die Notizpunkte, die sie erhalten hat (Feld conversationNote), sodass sich \"die Notiz hat die Angabe nie getragen\" von \"die Zerlegung hat sie ignoriert\" trennen laesst; Herleitung und Einzelfaelle stehen in MAINTENANCE.md, Abschnitt \"Befund der Nachmessung\". Der Vergleich mit der Erstziehung ist kein reines A/B ueber Fenster und Notiz: #1487 hat der festen Zerlegungs-Instruktion eine Zeile ueber die Gespraechsnotiz hinzugefuegt, die bei jedem Aufruf mitgeht. 18 der 27 ersten Runden - die weder ein Gespraechsfenster noch eine Notiz haben - liefern deshalb andere Teilfragen als im Referenzlauf, und 13 der 27 eine andere Trefferliste. Drei Fall-Urteile haengen an solchen Runden. Zustandsfelder nach dieser Messung: 8 solved, 19 known_gap, Einzelbegruendung je Fall im Datensatz. Neu solved sind verw-conv-ana-006, verw-conv-ts-001 und verw-conv-cc-002; von solved auf known_gap zurueckgesetzt sind verw-conv-ts-009, verw-conv-cc-003, verw-conv-cc-005 und verw-conv-cc-009. Die expected_state_exception von verw-conv-cc-001 ist entfernt: Der Fall wird jetzt auch gemessen nicht geloest, die Ausnahme hat damit keinen Gegenstand mehr. Der Golden-Hash dieser Datei beschreibt den Datensatz nach diesen Zustandswechseln; die Zustandsfelder gehen in keine Messung ein, die Zahlen stammen also unveraendert aus dem oben genannten Lauf. Verglichen wird diese Baseline seit #1553 von VerwaltungConversationBaselineRegressionTest ueber checkVerwaltungConversationBaseline, in der CI vom Job \"conversations\" in .github/workflows/retrieval-regression.yml. Der vierte Urteilsausgang \"nicht beurteilt\", den #1553 fuer genau die beiden Festpunkte searchWindowTurns und conversationNoteCap eingerichtet hatte, ist mit dieser Neuziehung entfallen (ADR-0012, Entscheidung 50): Die Datei traegt jetzt 2 und 10 und ist wieder vergleichbar. Nicht mit eval/baseline/pipeline-verwaltung.json vergleichbar, obwohl beide dasselbe Gespraechsfenster tragen: Dort ist jede Zeile eine Einzelfrage ohne Verlauf, hier eine Runde eines Gespraechs. Die Gruppe turn:5 hat n=1 - nur verw-conv-cc-008 ist fuenfrundig - und ist als Regressionssignal entsprechend schwach, steht aber in der Datei, weil der Vergleich sonst eine vom Bericht gelieferte Gruppe nicht faende. Toleranzformel und Fehlerkriterium: ADR-0013, unveraendert und woertlich mit dem Pipeline-Pfad geteilt (PipelineGroupChecks, PipelineGroupInvariants). Der Fixpunkt ollamaImage traegt das gepinnte Testcontainer-Image des Laufs; eine Baseline aus einem Lauf gegen einen externen Endpunkt (-Dopaa.eval.ollamaBaseUrl) wird beim Laden abgewiesen (ADR-0012, Nachtrag Ollama-Herkunft)."
 }

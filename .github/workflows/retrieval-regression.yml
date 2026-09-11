@@ -514,13 +514,12 @@ jobs:
             # Ein GitHub-Runner ist deutlich langsamer. Gemessene Anhaltspunkte: verwaltung
             # (Einzelfragen) lag im Lauf 34648243211 bei 16 min 28 s gegen rund 7 min lokal, also
             # Faktor ~2,4 einschließlich Modell-Zug; bei city-landmarks ist der Faktor deutlich
-            # größer. Für die CPU-Textgenerierung dieses Pfads — und die, nicht die Einbettung,
-            # macht hier den Großteil aus — gibt es noch keine CI-Messung. Skaliert sie
-            # ungünstiger als die Einbettung, können 60-90 Minuten lokal über 300 Minuten landen;
-            # das Budget ist also nicht so großzügig, wie die Herleitung klingt, sondern die
-            # plausible Obergrenze unter dem 6-Stunden-Limit eines GitHub-Jobs. Der erste
-            # nächtliche Lauf liefert die Zahl; endet er im Zeitlimit, ist die Anhebung dieses
-            # Werts die erste Handlung von #1490 und nicht der Messlauf.
+            # größer. Gemessen (#1490): Der erste vollständige Lauf dieses Jobs (Lauf
+            # 34648243211, kalter Modell-Cache) brauchte 118 Minuten, davon 117 min 45 s für den
+            # Gradle-Schritt — 39 % des Budgets, Faktor ~2,3 gegenüber 52 Minuten lokal für
+            # denselben Task-Lauf. Das Budget bleibt bei 300 Minuten, bis zwei bis drei weitere
+            # nächtliche Läufe eine Verteilung zeigen: Es muss auch einen langsameren Runner und
+            # einen kalten Cache überstehen (ADR-0012, Entscheidung 49).
             timeout_minutes: 300
             # Der Messbericht des Laufs selbst: Gruppen, Fall-Urteile, Themen-Bleed und der
             # Mehrfachlauf-Block (drei Läufe, Median, Streubereich, Abweichungszahl).

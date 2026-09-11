@@ -91,6 +91,7 @@ public final class ConversationRetrievalEvaluator {
       RetrievalMetrics.WindowedQueryResult metrics,
       int turnIndex,
       int conversationWindowMessages,
+      List<String> conversationNote,
       int chunksReturned,
       int distinctDocumentsReturned,
       List<String> subQueries) {
@@ -182,13 +183,15 @@ public final class ConversationRetrievalEvaluator {
         // The window as production would hand it over: everything the memory holds *before* this
         // turn's own question is added.
         List<Message> window = List.copyOf(chatMemory.get(conversationId));
+        List<String> rahmenPoints = rahmenPoints(note);
         TurnInvocationResult invocation =
-            pipeline.invoke(conversationCase, turnIndex, window, rahmenPoints(note));
+            pipeline.invoke(conversationCase, turnIndex, window, rahmenPoints);
         turnOutcomes.add(
             evaluateTurn(
                 conversationCase,
                 turnIndex,
                 window.size(),
+                rahmenPoints,
                 invocation.rankedChunkFileNames(),
                 invocation.subQueries()));
         chatMemory.add(conversationId, new UserMessage(turn.query()));
@@ -270,6 +273,7 @@ public final class ConversationRetrievalEvaluator {
       ConversationCase conversationCase,
       int turnIndex,
       int conversationWindowMessages,
+      List<String> conversationNote,
       List<String> rankedChunkFileNames,
       List<String> subQueries) {
     PipelineRetrievalEvaluator.CaseOutcome turn =
@@ -279,6 +283,7 @@ public final class ConversationRetrievalEvaluator {
         turn.metrics(),
         turnIndex,
         conversationWindowMessages,
+        List.copyOf(conversationNote),
         turn.chunksReturned(),
         turn.distinctDocumentsReturned(),
         turn.subQueries());
@@ -480,6 +485,7 @@ public final class ConversationRetrievalEvaluator {
         m.rankingMargin(),
         turn.solved(),
         turn.conversationWindowMessages(),
+        turn.conversationNote(),
         turn.chunksReturned(),
         turn.distinctDocumentsReturned(),
         turn.subQueries(),

@@ -1085,9 +1085,17 @@ Alternative — ein Messpfad, der ausschließlich auf einer Entwicklermaschine l
 Praxis, dass er zwischen zwei Messzyklen monatelang ungelaufen bleibt.
 
 Das Budget ist mit 300 Minuten bewusst großzügig: Eine Messung dauert auf einer Entwicklermaschine
-20–29 Minuten (83 Runden, je Runde ein Zerlegungs- und ein Notiz-Aufruf), die Mehrfachlauf-Regel
-verlangt drei davon, und für die Chat-Aufruf-Rate eines GitHub-Runners gibt es noch keine Messung.
-Der erste nächtliche Lauf liefert die Zahl, mit der das Budget enger gezogen werden kann.
+14–29 Minuten (83 Runden, je Runde ein Zerlegungs- und ein Notiz-Aufruf), die Mehrfachlauf-Regel
+verlangt drei davon, und für die Chat-Aufruf-Rate eines GitHub-Runners gab es zunächst keine
+Messung.
+
+> **Gemessen (Issue #1490):** Der erste vollständige Lauf dieses Jobs (GitHub-Actions-Lauf
+> 34648243211, kalter Modell-Cache) brauchte **118 Minuten**, davon 117 Minuten 45 Sekunden für
+> `checkVerwaltungConversationBaseline` selbst. Das sind 39 % des Budgets; der Faktor zur
+> Entwicklermaschine liegt bei rund 2,3 (52 Minuten lokal für denselben Task-Lauf). Das Budget
+> bleibt vorerst bei 300 Minuten: Eine Messung ist kein Verteilungsbild, und der Job muss auch einen
+> langsameren Runner und einen kalten Cache überstehen. Wer es verengt, zieht vorher zwei bis drei
+> weitere nächtliche Läufe heran.
 
 ### 50. Vier Urteile statt drei: „nicht beurteilt" als eigener Ausgang
 
@@ -1113,6 +1121,16 @@ committete Datei gegen genau die beiden Vor-#1486/#1487-Werte. Zieht #1490 die B
 dieser Docker-freie Test rot und erzwingt, dass die Ausnahme mit ihm entfernt wird — statt als
 stille Dauertoleranz stehen zu bleiben.
 
+> **Eingelöst mit Issue #1490 (12.09.2026): Dieser Ausgang existiert nicht mehr.** Die
+> Mehrrunden-Baseline ist mit `searchWindowTurns: 2` und `conversationNoteCap: 10` neu gezogen, die
+> angekündigte Unvergleichbarkeit damit aufgelöst. `ConversationBaselineVerdict` kennt seither
+> dieselben **drei** Ausgänge wie der Pipeline-Pfad; eine Abweichung in diesen beiden Feldern ist
+> wieder „unvergleichbar" und lässt den Job fehlschlagen. Der obige Wächter ist durch
+> `ConversationPathIsolationTest#theCommittedBaselineMeasuresTheProductionConversationMemory`
+> ersetzt, der die Gegenrichtung sperrt: Eine Baseline, die auf die beiden Vor-#1486/#1487-Werte
+> zurückfiele, schaltete den Vergleich dieses Pfads wieder ab — jetzt ohne Toleranz, die das
+> benennen würde.
+
 ### 51. Der Mehrfachlauf-Block gehört in den Bericht, nicht nur in die Konsole
 
 `ConversationReportWriter` schreibt die drei Läufe, den Median-Lauf, den Streubereich je Metrik und
@@ -1121,3 +1139,10 @@ rendert. Auf den beiden anderen Pfaden steht dieser Block nur im Log, was dort h
 ihre gemessene Konfiguration deterministisch ist. Dieser Pfad ruft die Zerlegung einmal je **Runde**
 und ist damit der instabilste der drei; die Abweichungszahl ist hier keine Randnotiz, sondern die
 Aussage darüber, wie belastbar der Rest des Berichts überhaupt ist.
+
+> **Ergänzt mit Issue #1490:** Jede Runde führt im Bericht zusätzlich die `RAHMEN`-Punkte, die sie
+> erhalten hat (`conversationNote`), neben den Teilfragen, die aus ihr entstanden sind. Ohne dieses
+> Feld kann ein Bericht die beiden Erklärungen einer gefallenen `constraint_carryover`-Zahl nicht
+> trennen — „die Notiz hat die Angabe nie getragen" gegen „die Zerlegung hat sie ignoriert" —, und
+> genau die verlangen entgegengesetzte Folgearbeit. Eine Beobachtung, kein Festpunkt: Keine
+> gemessene Zahl bewegt sich, die Vertragsversion bleibt bei 2.

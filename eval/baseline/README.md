@@ -541,12 +541,13 @@ Dasselbe Verfahren wie unten, mit zwei Präzisierungen:
   Pipeline-Reports (`build/eval-reports/pipeline-metrics-<domäne>.json`) desselben Laufs gezählt
   (`hitRateAt5 > 0` bzw. `ndcgAt8 > 0`) — nicht aus den Mittelwerten zurückgerechnet.
 
-## Besonderheiten der Mehrrunden-Baseline (Issues #1484/#1485)
+## Besonderheiten der Mehrrunden-Baseline (Issues #1484/#1485/#1490)
 
 `pipeline-verwaltung-conversations.json` ist die Baseline des dritten Messpfads
-(`docs/features/conversation-memory.md`, Abschnitt „Messung"). **Gezogen mit Issue #1485**, aus
-einem CPU-Testcontainer-Lauf vom 2026-09-11 gegen die dort erstkuratierten 27 Fälle mit 83 Runden;
-Typ (`ConversationBaseline`) und Vergleich (`ConversationBaselineComparator`) stammen aus #1484.
+(`docs/features/conversation-memory.md`, Abschnitt „Messung"). **Erstmals gezogen mit Issue #1485**
+aus einem CPU-Testcontainer-Lauf vom 2026-09-11 gegen die dort erstkuratierten 27 Fälle mit 83
+Runden; Typ (`ConversationBaseline`) und Vergleich (`ConversationBaselineComparator`) stammen aus
+#1484. Die heute committeten Zahlen stammen aus der Neuziehung in #1490 (siehe unten).
 
 **Verglichen wird sie seit Issue #1553** von `VerwaltungConversationBaselineRegressionTest` über
 `ConversationBaselineRegressionCheck` — dem Gegenstück zu `PipelineBaselineRegressionCheck`. Der
@@ -558,15 +559,15 @@ beiden anderen Baselines dieser Domäne wurden ohne sie gezogen. In der CI träg
 Einzelfragen-Domänen (nächtlich, `workflow_dispatch`, Label `evaluation`) und einem eigenen
 Zeitbudget.
 
-**Heute meldet dieser Vergleich „nicht beurteilt", nicht „bestanden".** Die Datei wurde vor dem
-Suchfenster (#1486) und vor der Gesprächsnotiz (#1487) gezogen und trägt deshalb
-`searchWindowTurns: 0` und `conversationNoteCap: 0`, während ein heutiger Lauf beide Maße produktiv
-misst (2 bzw. 10). Damit ist sie unvergleichbar — nicht schlechter, sondern an etwas anderem
-gemessen. Der Job bleibt dafür grün und weist die Festpunktabweichung im Klartext aus; rot wird er
-bei einer Regression, bei einer Festpunktabweichung **außerhalb** dieser beiden Felder und bei
-einem fehlgeschlagenen Messlauf (`ConversationBaselineVerdict`). Neu gezogen wird die Baseline in
-Issue #1490; mit der Neuziehung entfällt die Ausnahme, und
-`ConversationPathIsolationTest#theNotJudgedGateIsStillNeededByTheCommittedBaseline` erzwingt das.
+**Neu gezogen mit Issue #1490** aus einem CPU-Testcontainer-Lauf vom 2026-09-12, nach dem
+verengten Suchfenster (#1486) und der Gesprächsnotiz (#1487): Die Datei trägt seither
+`searchWindowTurns: 2` und `conversationNoteCap: 10` und ist damit wieder vergleichbar. Die
+Erstziehung aus #1485 stammte aus der Zeit davor (`0`/`0`) und wurde deshalb zwischen #1553 und
+#1490 als **„nicht beurteilt"** gemeldet — ein vierter Urteilsausgang für genau diese zwei
+Festpunkte (ADR-0012, Entscheidung 50). **Dieser Ausgang ist mit der Neuziehung entfallen**;
+`ConversationBaselineVerdict` kennt wieder dieselben drei Ausgänge wie der Pipeline-Pfad, und
+`ConversationPathIsolationTest#theCommittedBaselineMeasuresTheProductionConversationMemory` sperrt
+den Rückweg auf die beiden Vor-#1486/#1487-Werte.
 
 Aufbau wie die Pipeline-Baseline, mit vier Unterschieden:
 
