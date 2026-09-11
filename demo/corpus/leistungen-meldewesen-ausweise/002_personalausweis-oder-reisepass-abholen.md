@@ -23,10 +23,10 @@ Dauer & Kosten
 Gebührenrahmen
 Die Gebühr wurde in der Regel bereits bei Antragstellung bezahlt.
 Sollte dies nicht geschehen sein, betragen die Gebühren:
-- Personalausweis unter 24 Jahren: 27,20 Euro
-- Personalausweis über 24 Jahren: 44,20 Euro
-- Reisepass unter 24 Jahren: 44,50 Euro
-- Reisepass über 24 Jahren: 71,20 Euro
+- Personalausweis unter 24 Jahren: 26,20 Euro
+- Personalausweis über 24 Jahren: 42,60 Euro
+- Reisepass unter 24 Jahren: 43,10 Euro
+- Reisepass über 24 Jahren: 69 Euro
 
 Barzahlung
 Kasse vor Ort

@@ -44,7 +44,7 @@ Bearbeitungszeit
 Der Kinderreisepass wird bei Vorlage aller erforderlichen Unterlagen in der Regel sofort ausgestellt.
 
 Gebührenrahmen
-Kinderreisepass: 15,20 Euro
+Kinderreisepass: 15 Euro
 Aktualisierung Kinderreisepass: sechs Euro
 Verlängerung Kinderreisepass: sechs Euro
 
@@ -56,8 +56,8 @@ Girocard
 Fragen & Antworten
 Können Kinder auch einen regulären Reisepass bekommen?
 Ja. Bei Reisen in einige Länder ist dieser Reisepass sogar vorgeschrieben. Es kann aber nur entweder ein Kinderreisepass ausgestellt oder ein maschinenlesbarer Reisepass beantragt werden.
-Vorteil Reisepass: er ist in allen Ländern gültig, kostet unter 24 Jahren: 43,90 Euro.
-Vorteil Kinderreisepass: er kostet nur 15,20 Euro.
+Vorteil Reisepass: er ist in allen Ländern gültig, kostet unter 24 Jahren: 43,10 Euro.
+Vorteil Kinderreisepass: er kostet nur 15 Euro.
 Auch beim (vorläufigen) Reisepass ist die Eintragung der sorgeberechtigten Elternteile auf Antrag möglich.
 Einzelheiten zu den jeweiligen Reisemodalitäten einzelner Länder können Sie beim Auswärtigen Amt, im Reisebüro oder bei der Botschaft des jeweiligen Landes erfragen.
 Muss ich mein Kind bei der Abholung des Reisepasses mitbringen?

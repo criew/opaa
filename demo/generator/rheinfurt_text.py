@@ -3,10 +3,11 @@
 Turns one raw LHM-Dienstleistungen-Corpus `.txt` file into Rheinfurt-branded
 content: place names, authority names, street/district names, postal codes,
 bank details, e-mail domains, phone numbers and external URLs are rewritten,
-fees are scaled by a per-document deterministic factor, and a synthetic
-Aktenzeichen/Formularnummer footer is appended. Nothing here uses `random` or
-wall-clock time — every value is derived from the source filename so two runs
-produce byte-identical output.
+fees are scaled by a single corpus-wide factor, and a synthetic
+Aktenzeichen/Formularnummer footer is appended. Nothing here uses `random`,
+wall-clock time or the name of the file being transformed — every value is
+derived from the source text itself, so two runs produce byte-identical
+output.
 
 The Munich-specific "Anlaufstellen in Ihrer Nähe" / "Links & Downloads"
 sections (real street addresses, GIS widgets, muenchen.de download links) are
@@ -188,6 +189,20 @@ _DANGLING_REPLACEMENT = (
 _LINK_INTRO_URL_RE = re.compile(r"\s*unter (?:folgendem |dem )?Link:?\s*https?://\S+")
 _BARE_EXTERNAL_URL_RE = re.compile(r"https?://(?:(?!stadt-rheinfurt\.example)\S)+")
 
+# --- Fee scaling (Issue #1525) ----------------------------------------------
+#
+# Every Euro amount in the corpus is the same source amount times this one
+# factor, so the Rheinfurt amount is a property of the *fee* and not of the
+# document that happens to quote it: a document citing another service's fees
+# (e.g. "Personalausweis oder Reisepass abholen") necessarily prints the same
+# number as the service's own document and as the Gebührenverzeichnis of the
+# Verwaltungsgebührensatzung. A per-document factor made those three disagree
+# and needed a manual correction after every run; a per-amount *hashed* factor
+# would keep them in agreement but can reorder two close amounts inside one
+# document (measured: 8 such pairs in the pinned source selection), which a
+# single factor cannot.
+FEE_SCALE_FACTOR = 1.15
+
 _EMAIL_RE = re.compile(r"([\w.\-]+)@muenchen\.de")
 _DOMAIN_RE = re.compile(r"[\w\-]*muenchen\.de")
 _PHONE_RE = re.compile(r"089[/\s]\d(?:[\d\-\s]*\d)?")
@@ -228,13 +243,6 @@ def _replace_phone(match: re.Match[str]) -> str:
     return f"{RHEINFURT_VORWAHL}/44-{extension:04d}"
 
 
-def fee_scale_factor(filename: str) -> float:
-    """Deterministic per-document scale factor in [0.85, 1.20)."""
-    digest = hashlib.sha256(filename.encode("utf-8")).hexdigest()
-    n = int(digest[:8], 16)
-    return 0.85 + (n % 351) / 1000.0
-
-
 def format_euro(value: float) -> str:
     cents = round(value * 100)
     euros, rest = divmod(cents, 100)
@@ -244,24 +252,25 @@ def format_euro(value: float) -> str:
     return f"{euros_text},{rest:02d} Euro"
 
 
-def scale_and_format_fee(base_euro: float, filename: str) -> str:
-    """Scale a known base fee (as extracted from the raw LHM source) by the
-    same per-document factor `transform_service` uses, so a fee quoted both
-    in a Leistungen document and in a Satzungen PDF (e.g. the
-    Verwaltungsgebührensatzung's Gebührenverzeichnis) shows the identical
-    number."""
-    factor = fee_scale_factor(filename)
-    scaled = round(base_euro * factor * 10) / 10  # nearest 0.10
-    return format_euro(scaled)
+def scale_fee(base_euro: float) -> float:
+    """Scale one source fee to its Rheinfurt amount, rounded to the nearest
+    0.10 Euro."""
+    return round(base_euro * FEE_SCALE_FACTOR * 10) / 10
 
 
-def _scale_fees(text: str, factor: float) -> str:
+def scale_and_format_fee(base_euro: float) -> str:
+    """Scale a known base fee (as extracted from the raw LHM source) and format
+    it. Since the factor depends only on the amount, a fee quoted in a
+    Leistungen document, in a second Leistungen document and in a Satzungen PDF
+    always shows the identical number."""
+    return format_euro(scale_fee(base_euro))
+
+
+def _scale_fees(text: str) -> str:
     def replace(match: re.Match[str]) -> str:
         euros = int(match.group(1).replace(".", ""))
         cents = int(match.group(2)) if match.group(2) else 0
-        value = euros + cents / 100
-        scaled = round(value * factor * 10) / 10  # nearest 0.10
-        return format_euro(scaled)
+        return format_euro(scale_fee(euros + cents / 100))
 
     return _FEE_RE.sub(replace, text)
 
@@ -348,7 +357,7 @@ def formularnummer(library_code: str, sequence: int) -> str:
     return f"RF-{library_code}-{sequence:03d}"
 
 
-def transform_service(raw_text: str, filename: str) -> tuple[str, str]:
+def transform_service(raw_text: str) -> tuple[str, str]:
     """Transform one raw LHM file into (title, body) for Rheinfurt.
 
     `body` excludes the title line (already split off) and the dropped
@@ -361,7 +370,6 @@ def transform_service(raw_text: str, filename: str) -> tuple[str, str]:
     title = lines[0].strip()
     remainder = lines[1] if len(lines) > 1 else ""
 
-    factor = fee_scale_factor(filename)
     title = rewrite_place_names(title)
     title = rewrite_streets_and_districts(title)
     title = rewrite_contacts(title)
@@ -375,7 +383,7 @@ def transform_service(raw_text: str, filename: str) -> tuple[str, str]:
     remainder = rewrite_bank_details(remainder)
     remainder = rewrite_postal_codes(remainder)
     remainder = redact_fischerei(remainder)
-    remainder = _scale_fees(remainder, factor)
+    remainder = _scale_fees(remainder)
     remainder = _collapse_whitespace(remainder)
 
     return title, remainder.strip()

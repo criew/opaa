@@ -31,8 +31,9 @@ umgeschrieben: Ortsnamen, Behördenbezeichnungen (`Landeshauptstadt München` �
 `rheinfurt_text.py`), Postleitzahlen (auf die erkennbar fiktive `00000`), Bankverbindungen
 (auf eine fiktive, prüfziffernkonforme IBAN `DE58 8888 8888 8888 8888 88` und BIC `SPRHDEXX`),
 E-Mail-Domains (`muenchen.de` → `stadt-rheinfurt.example`), Telefonnummern (`089/…` → deterministisch
-abgeleitete `01234/44-…`) sowie Gebührenbeträge (deterministisch pro
-Dokument skaliert) wurden ersetzt. Externe Links (z. B. ein echter `bzst.de`-Deeplink), veraltete
+abgeleitete `01234/44-…`) sowie Gebührenbeträge (einheitlich mit dem Faktor
+1,15 skaliert, sodass derselbe Gebührentatbestand in jedem Dokument denselben Betrag trägt)
+wurden ersetzt. Externe Links (z. B. ein echter `bzst.de`-Deeplink), veraltete
 Corona-Passagen und ins Leere verweisende Formulierungen aus der entfernten Link-Sektion
 ("... finden Sie hier.") wurden entfernt bzw. umformuliert. Die münchenspezifischen Abschnitte
 „Anlaufstellen in Ihrer Nähe" und „Links & Downloads" (reale Adressen, Kartenwidgets,

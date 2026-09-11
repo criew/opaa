@@ -48,7 +48,7 @@ Bearbeitungszeit
 Wenn Sie den Antrag auf Ihr Ehefähigkeitszeugnis zusammen mit allen erforderlichen Unterlagen schriftlich beim Standesamt eingereicht haben, dauert die Bearbeitung in der Regel zwei bis drei Wochen. Im Einzelfall kann das Verfahren auch deutlich länger dauern.
 
 Gebührenrahmen
-Ausstellung des Ehefähigkeitszeugnisses: 60 bis 179,70 Euro
+Ausstellung des Ehefähigkeitszeugnisses: 60 bis 172,50 Euro
 
 Barzahlung
 Kasse vor Ort

@@ -15,7 +15,7 @@ Benötigte Unterlagen
 
 Dauer & Kosten
 Gebührenrahmen
-11,40 Euro
+12,10 Euro
 
 Barzahlung
 Kasse vor Ort

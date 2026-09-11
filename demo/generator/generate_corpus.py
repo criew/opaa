@@ -48,7 +48,13 @@ import leistungen_quelle
 import presse
 import rat
 import satzungen
-from rheinfurt_text import RHEINFURT_BIC, RHEINFURT_IBAN, RHEINFURT_PLZ, RHEINFURT_VORWAHL
+from rheinfurt_text import (
+    FEE_SCALE_FACTOR,
+    RHEINFURT_BIC,
+    RHEINFURT_IBAN,
+    RHEINFURT_PLZ,
+    RHEINFURT_VORWAHL,
+)
 from validation import validate_all
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -431,6 +437,7 @@ def render_formate_gaps(formate_files: list[tuple[str, str, bytes]]) -> str:
 
 def render_source_md(per_library: dict[str, int], total_bytes: int, formate_gaps: str) -> str:
     total_docs = sum(per_library.values())
+    fee_factor = f"{FEE_SCALE_FACTOR:.2f}".replace(".", ",")
     table_rows = "\n".join(
         f"| {LIBRARY_LABELS[library]} | `{library}/` | {per_library.get(library, 0)} | "
         f"{LIBRARY_FORMATS[library]} |"
@@ -469,8 +476,9 @@ umgeschrieben: Ortsnamen, Behördenbezeichnungen (`Landeshauptstadt München` �
 `rheinfurt_text.py`), Postleitzahlen (auf die erkennbar fiktive `{RHEINFURT_PLZ}`), Bankverbindungen
 (auf eine fiktive, prüfziffernkonforme IBAN `{RHEINFURT_IBAN}` und BIC `{RHEINFURT_BIC}`),
 E-Mail-Domains (`muenchen.de` → `stadt-rheinfurt.example`), Telefonnummern (`089/…` → deterministisch
-abgeleitete `{RHEINFURT_VORWAHL}/44-…`) sowie Gebührenbeträge (deterministisch pro
-Dokument skaliert) wurden ersetzt. Externe Links (z. B. ein echter `bzst.de`-Deeplink), veraltete
+abgeleitete `{RHEINFURT_VORWAHL}/44-…`) sowie Gebührenbeträge (einheitlich mit dem Faktor
+{fee_factor} skaliert, sodass derselbe Gebührentatbestand in jedem Dokument denselben Betrag trägt)
+wurden ersetzt. Externe Links (z. B. ein echter `bzst.de`-Deeplink), veraltete
 Corona-Passagen und ins Leere verweisende Formulierungen aus der entfernten Link-Sektion
 ("... finden Sie hier.") wurden entfernt bzw. umformuliert. Die münchenspezifischen Abschnitte
 „Anlaufstellen in Ihrer Nähe" und „Links & Downloads" (reale Adressen, Kartenwidgets,

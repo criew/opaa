@@ -41,7 +41,7 @@ sowie bei der Neuaufnahme von Fahrzeugen die jeweiligen zum Fahrzeug benötigten
 
 Dauer & Kosten
 Gebührenrahmen
-193,50 Euro (zuzüglich Kennzeichenschilder)
+221,80 Euro (zuzüglich Kennzeichenschilder)
 
 Rechtliche Grundlagen
 Fahrzeugzulassungsverordnung
