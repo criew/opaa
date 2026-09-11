@@ -16,12 +16,15 @@ import java.util.Map;
  * by {@link RetrievalMetrics} and aggregated by {@link PipelineMetricsAggregate} at this path's own
  * windows, which are the pipeline path's (Hit Rate@5, MRR@8, nDCG@8, Recall@8).
  *
+ * @param singlePathNote records once per report that this measurement runs on the pipeline path
+ *     alone - see {@link #SINGLE_PATH_NOTE}.
  * @param overall every turn of every case, in one aggregate.
  * @param byCategory turn-level aggregate per case class ({@link
  *     ConversationCaseCuration#CASE_CLASSES}).
- * @param byTurn turn-level aggregate per turn index, keyed {@code turn-1}, {@code turn-2}, … - the
- *     grouping the whole path exists for: whether a follow-up turn is resolved at all is invisible
- *     in an aggregate that averages it with the standalone first turns.
+ * @param byTurn turn-level aggregate per turn number, keyed {@code "1"}, {@code "2"}, … ({@link
+ *     #turnGroupKey}) - the grouping the whole path exists for: whether a follow-up turn is
+ *     resolved at all is invisible in an aggregate that averages it with the standalone first
+ *     turns.
  * @param caseOutcomes the case-level verdict: a case counts as solved only when <b>every</b> one of
  *     its turns is solved.
  * @param expectedStateAudit declared vs. measured case state, at the case-level criterion above.
@@ -31,6 +34,7 @@ import java.util.Map;
 public record ConversationEvaluationReport(
     int conversationMeasurementContractVersion,
     String metricWindowNote,
+    String singlePathNote,
     ConversationRunConfiguration runConfiguration,
     PipelineMetricsAggregate overall,
     Map<String, PipelineMetricsAggregate> byCategory,
@@ -49,6 +53,26 @@ public record ConversationEvaluationReport(
    * two measure.
    */
   public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 1;
+
+  /**
+   * The Einpfad-Regel of docs/features/retrieval-benchmark.md §5, recorded <b>once per report</b>:
+   * "solved" is defined over both measurement paths, but a multi-turn case can only ever run on the
+   * pipeline path - the raw-vector path searches directly and knows neither conversation history
+   * nor decomposition. A class that can structurally run on one path only counts as solved when it
+   * is solved on that path.
+   *
+   * <p>A property of the measurement setup, not of a case: it holds for every case of this dataset
+   * and never changes. Putting it on each case as an {@code expected_state_exception} would leave
+   * {@link ExpectedStateAudit} permanently silent - a {@code known_gap} a new building block solves
+   * would never appear as a finding, and a lost {@code solved} case never as a regression, which is
+   * precisely what the state fields exist to show.
+   */
+  public static final String SINGLE_PATH_NOTE =
+      "Einpfad-Messung: Mehrrunden-Fälle laufen konstruktionsbedingt nur über den Pipeline-Pfad — "
+          + "der Rohvektor-Pfad kennt weder Gesprächsverlauf noch Teilfragen-Zerlegung. Ein Fall "
+          + "gilt deshalb als gelöst, wenn er auf diesem Pfad gelöst ist "
+          + "(docs/features/retrieval-benchmark.md, Abschnitt 5, Einpfad-Regel). Die Einpfadigkeit "
+          + "ist eine Eigenschaft dieses Datensatzes, kein expected_state_exception am Fall.";
 
   /**
    * The key of the per-turn group: the turn number, 1-based. Unprefixed like the report's category

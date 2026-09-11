@@ -27,10 +27,14 @@ import java.util.TreeMap;
  *       out of the search window, which is the whole point of that class.
  *   <li><b>The state fields are mandatory</b>, with the same shape and the same reasoning as in
  *       {@link GoldenCaseCuration}: a state that may be left empty is a state nobody can tell a
- *       known gap from a regression by. <b>{@code expected_state_exception} included</b>, unlike on
- *       the single-question path - see {@link #SINGLE_PATH_EXCEPTION_RULE}.
+ *       known gap from a regression by. {@code expected_state_exception} keeps its meaning from
+ *       there - an optional, written reason why a <b>single</b> case deviates from its declared
+ *       state on purpose, only on a {@code known_gap} case. The single-pathedness of this
+ *       measurement is a property of the dataset, not of a case, and is recorded once per report
+ *       ({@link ConversationEvaluationReport#SINGLE_PATH_NOTE}).
  *   <li><b>A {@code constraint_carryover} case names a {@link #CONFUSABLE_DOCUMENT_RULE confusable
- *       document}</b> in at least one turn.
+ *       document}</b> in at least one turn; a {@code topic_switch} case names its {@link
+ *       #TOPIC_SWITCH_TURN_RULE change turn}.
  *   <li><b>Class sizes</b>: at least {@link #MINIMUM_CASES_PER_CLASS} cases and, across their
  *       turns, at least {@link GoldenCaseCuration#MINIMUM_DISTINCT_EXPECTED_SETS_PER_CLASS}
  *       distinct expected-document sets - the tolerance of ADR-0013 is computed from the latter,
@@ -72,22 +76,16 @@ public final class ConversationCaseCuration {
           + "document the carried constraint exists to keep out, the class measures nothing";
 
   /**
-   * The Einpfad-Regel of docs/features/retrieval-benchmark.md §5: "solved" is defined over both
-   * measurement paths, but a multi-turn case can only ever run on the pipeline path - the
-   * raw-vector path searches {@code similaritySearch} directly and knows neither conversation
-   * history nor decomposition. A class that can structurally run on one path only counts as solved
-   * when it is solved on that path, and carries its single-pathedness as the committed exception at
-   * the case, so a state change stays a visible, dated decision here too.
-   *
-   * <p>This is why {@code expected_state_exception} is mandatory on every case of this dataset and
-   * allowed on a {@code solved} one - the opposite of {@link
-   * GoldenCaseCuration#EXCEPTION_ONLY_ON_KNOWN_GAP_RULE}, which holds for a dataset both paths
-   * measure.
+   * The turn a {@code topic_switch} case changes its topic in, 1-based; every earlier turn belongs
+   * to the previous topic. Named in the dataset rather than derived from the expected documents,
+   * exactly as docs/features/conversation-memory.md prescribes ("Es gibt keine Erkennung"): a
+   * derivation from "shares no document with an earlier turn" would also fire on an ordinary
+   * follow-up whose answer happens to sit in a different document, and would then count the correct
+   * previous-topic document as bleed.
    */
-  public static final String SINGLE_PATH_EXCEPTION_RULE =
-      "expected_state_exception is mandatory: a multi-turn case runs on the pipeline path only, and "
-          + "the Einpfad-Regel (docs/features/retrieval-benchmark.md, Abschnitt 5) requires that "
-          + "single-pathedness to be recorded and justified at the case";
+  public static final String TOPIC_SWITCH_TURN_RULE =
+      "a topic_switch case names topic_switch_turn - the 1-based turn it changes topic in, at least "
+          + "2 and at most its turn count; no other class carries the field";
 
   private ConversationCaseCuration() {}
 
@@ -116,6 +114,7 @@ public final class ConversationCaseCuration {
       }
       validateClassAndTurnCount(conversationCase, violations);
       validateTurns(conversationCase, corpusFileNames, violations);
+      validateTopicSwitchTurn(conversationCase, violations);
       validateState(conversationCase, violations);
     }
 
@@ -243,14 +242,51 @@ public final class ConversationCaseCuration {
     return true;
   }
 
+  /** See {@link #TOPIC_SWITCH_TURN_RULE}: named, never derived, and only on that one class. */
+  private static void validateTopicSwitchTurn(
+      ConversationCase conversationCase, List<Violation> violations) {
+    String id = conversationCase.id();
+    Integer switchTurn = conversationCase.topicSwitchTurn();
+    boolean isSwitchCase = TOPIC_SWITCH_CLASS.equals(conversationCase.category());
+    if (!isSwitchCase) {
+      if (switchTurn != null) {
+        violations.add(
+            new Violation(
+                id,
+                "topic_switch_turn is only defined for the topic_switch class, not for '"
+                    + conversationCase.category()
+                    + "'"));
+      }
+      return;
+    }
+    int turnCount = conversationCase.turns() == null ? 0 : conversationCase.turns().size();
+    if (switchTurn == null) {
+      violations.add(new Violation(id, TOPIC_SWITCH_TURN_RULE));
+    } else if (switchTurn < 2 || switchTurn > turnCount) {
+      violations.add(
+          new Violation(
+              id,
+              "topic_switch_turn is "
+                  + switchTurn
+                  + ", outside [2, "
+                  + turnCount
+                  + "] - the first turn cannot be a change, and a turn beyond the script does not "
+                  + "exist"));
+    }
+  }
+
   private static void validateState(ConversationCase conversationCase, List<Violation> violations) {
     String id = conversationCase.id();
     if (conversationCase.expectedState() == null) {
       violations.add(new Violation(id, "expected_state is missing"));
     }
-    if (conversationCase.expectedStateException() == null
-        || conversationCase.expectedStateException().isBlank()) {
-      violations.add(new Violation(id, SINGLE_PATH_EXCEPTION_RULE));
+    if (conversationCase.expectedStateException() != null
+        && conversationCase.expectedStateException().isBlank()) {
+      violations.add(new Violation(id, "expected_state_exception is present but blank"));
+    }
+    if (conversationCase.expectedStateException() != null
+        && conversationCase.expectedState() == GoldenCase.ExpectedState.SOLVED) {
+      violations.add(new Violation(id, GoldenCaseCuration.EXCEPTION_ONLY_ON_KNOWN_GAP_RULE));
     }
     if (conversationCase.expectedStateReason() == null
         || conversationCase.expectedStateReason().isBlank()) {

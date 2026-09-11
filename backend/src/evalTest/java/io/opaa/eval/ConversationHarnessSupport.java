@@ -8,11 +8,12 @@ import io.opaa.query.RetrievalContextFactory;
 import io.opaa.query.retrieval.RetrievalPipeline;
 import io.opaa.query.retrieval.RetrievalPipelineResult;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -95,29 +96,36 @@ public final class ConversationHarnessSupport {
       }
 
       ConversationMemoryProfile memoryProfile = ConversationMemoryProfile.measuredFrom(chatMemory);
-      // Mehrfachlauf-Regel (docs/features/retrieval-benchmark.md §3): this path always decomposes
-      // and is therefore never deterministic - three runs, the median one is what the report and
-      // any baseline comparison are built from.
-      List<ConversationEvaluationReport> runs =
-          new ArrayList<>(MultiRunAggregator.DECOMPOSITION_RUN_COUNT);
-      for (int i = 0; i < MultiRunAggregator.DECOMPOSITION_RUN_COUNT; i++) {
-        runs.add(
-            measure(
-                domain,
-                identity,
-                pipeline,
-                contextFactory,
-                chatMemory,
-                memoryProfile,
-                indexingProperties,
-                evalLibraryId,
-                cases,
-                Instant.now()));
-      }
-      ConversationEvaluationReport report = medianRun(runs);
+      // Mehrfachlauf-Regel (docs/features/retrieval-benchmark.md §3), through the shared rule: this
+      // path always decomposes and is therefore never deterministic. It carries the highest LLM
+      // share of the three paths - one decomposition call per *turn*, not per case - so the spread
+      // and the deviation count are not decoration here but the statement about how stable the
+      // measurement is at all.
+      MehrfachlaufRule.Measurement<ConversationEvaluationReport> measurement =
+          MehrfachlaufRule.measure(
+              true,
+              () ->
+                  measureUnchecked(
+                      domain,
+                      identity,
+                      pipeline,
+                      contextFactory,
+                      chatMemory,
+                      memoryProfile,
+                      indexingProperties,
+                      evalLibraryId,
+                      cases,
+                      Instant.now()),
+              ConversationHarnessSupport::runView);
+      ConversationEvaluationReport report = measurement.report();
 
       ConversationReportWriter.writeJson(report, reportFile(domain));
       ConversationReportWriter.writeMarkdown(report, markdownFile(domain));
+      if (measurement.multiRun()) {
+        String multiRunSummary = MehrfachlaufRule.render(measurement.summary());
+        log.info(multiRunSummary);
+        System.out.println(multiRunSummary);
+      }
       String summary = ConversationReportWriter.renderSummary(report);
       log.info(summary);
       System.out.println(summary);
@@ -139,8 +147,7 @@ public final class ConversationHarnessSupport {
    * {@link RetrievalContextFactory}/{@link RetrievalPipeline} pair a chat query uses.
    *
    * <p>The turn's conversation window is handed in as the context's conversation history - the one
-   * place this path differs from the single-question one, which passes an empty list. The
-   * Gesprächsnotiz travels alongside it and is empty until it exists.
+   * place this path differs from the single-question one, which passes an empty list.
    */
   public static ConversationEvaluationReport measure(
       EvalDomainConfig domain,
@@ -159,7 +166,7 @@ public final class ConversationHarnessSupport {
         ConversationRetrievalEvaluator.evaluateAll(
             cases,
             chatMemory,
-            (conversationCase, turnIndex, conversationWindow, conversationNote) -> {
+            (conversationCase, turnIndex, conversationWindow) -> {
               RetrievalPipelineResult result =
                   pipeline.run(
                       contextFactory.contextFor(
@@ -221,7 +228,7 @@ public final class ConversationHarnessSupport {
             identity.corpusDocumentCount(),
             "eval/golden/" + domain.conversationDatasetFileName(),
             ConversationDataset.sha256(datasetFile),
-            identity.fullTextIndexComplete(),
+            identity.fullTextIndexUpToDate(),
             identity.ingestionPipelineFingerprint(),
             identity.chatModel());
     return new ConversationRunConfiguration(
@@ -239,15 +246,52 @@ public final class ConversationHarnessSupport {
   }
 
   /**
-   * The median of the repeated runs by overall nDCG@8 - the finest-grained of the four metrics, the
-   * same tie-break {@link MultiRunAggregator} applies to the single-question path's repeated runs.
+   * What the Mehrfachlauf-Regel needs of one run of this path: the overall aggregate and the search
+   * queries the decomposition produced <b>per turn</b> - the unit this path calls it for, so the
+   * reported deviation count says which turns the decomposition was unstable on.
    */
-  static ConversationEvaluationReport medianRun(List<ConversationEvaluationReport> runs) {
-    if (runs.isEmpty()) {
-      throw new IllegalArgumentException("medianRun needs at least one run");
+  static MultiRunAggregator.RunView runView(ConversationEvaluationReport report) {
+    Map<String, List<String>> subQueriesByTurnId = new LinkedHashMap<>();
+    report
+        .cases()
+        .forEach(
+            caseResult ->
+                caseResult
+                    .turns()
+                    .forEach(turn -> subQueriesByTurnId.put(turn.turnId(), turn.subQueries())));
+    return new MultiRunAggregator.RunView(report.overall(), subQueriesByTurnId);
+  }
+
+  /**
+   * {@link #measure} as a {@link java.util.function.Supplier} can call it - the checked {@link
+   * IOException} is the dataset hash of a file the caller has already read, so a failure here is
+   * the same kind of run failure the guard around it catches either way.
+   */
+  private static ConversationEvaluationReport measureUnchecked(
+      EvalDomainConfig domain,
+      PipelineHarnessSupport.RunIdentity identity,
+      RetrievalPipeline pipeline,
+      RetrievalContextFactory contextFactory,
+      ChatMemory chatMemory,
+      ConversationMemoryProfile memoryProfile,
+      IndexingProperties indexingProperties,
+      UUID evalLibraryId,
+      List<ConversationCase> cases,
+      Instant runStart) {
+    try {
+      return measure(
+          domain,
+          identity,
+          pipeline,
+          contextFactory,
+          chatMemory,
+          memoryProfile,
+          indexingProperties,
+          evalLibraryId,
+          cases,
+          runStart);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
-    List<ConversationEvaluationReport> sorted = new ArrayList<>(runs);
-    sorted.sort(Comparator.comparingDouble(run -> run.overall().ndcgAt8()));
-    return sorted.get(sorted.size() / 2);
   }
 }

@@ -724,9 +724,16 @@ Korpusdokumente einen Fall der Klasse `literal_term_weak_embedding` aus dem Top-
 > auf dem Pipeline-Pfad laufen — der Rohvektor-Pfad misst `similaritySearch` direkt und kennt weder
 > Verlauf noch Zerlegung. Unter der unveränderten Regel bliebe jeder Mehrrunden-Fall dauerhaft
 > `known_gap`. Deshalb gilt: **Eine Fallklasse, die konstruktionsbedingt nur auf einem Messpfad
-> laufen kann, gilt als gelöst, wenn sie auf diesem Pfad gelöst ist.** Die Einpfadigkeit ist am Fall
-> vermerkt und begründet (`expected_state_exception`, wie bei der bestehenden Pfad-Asymmetrie), damit
-> ein Zustandswechsel auch hier eine sichtbare, datierte Entscheidung bleibt.
+> laufen kann, gilt als gelöst, wenn sie auf diesem Pfad gelöst ist.**
+>
+> **Die Einpfadigkeit ist am Datensatz gekennzeichnet, nicht am Fall.** Sie ist eine Eigenschaft der
+> Messanordnung — sie gilt für jeden Fall des Datensatzes gleichermaßen und ändert sich nie. Der
+> Harness weist sie einmal je Bericht aus; kein Fall trägt sie. Insbesondere ist sie **kein**
+> `expected_state_exception`: Dieses Feld erklärt, warum ein **einzelner** Fall von seinem
+> deklarierten Zustand abweicht, und wäre es auf jedem Fall gesetzt, liefe das
+> Zustandsfeld-Audit dauerhaft leer — ein `known_gap`, den ein neuer Baustein löst, erschiene nie als
+> Fund, und ein verlorener `solved`-Fall nie als Rückschritt. Genau dieser Nachweis ist der Zweck der
+> Zustandsfelder.
 
 #### (f) `anaphora_resolution` — Rückfrage mit Bezugswort
 

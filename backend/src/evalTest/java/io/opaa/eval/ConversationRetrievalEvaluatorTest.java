@@ -26,10 +26,6 @@ import org.springframework.ai.chat.messages.MessageType;
  */
 class ConversationRetrievalEvaluatorTest {
 
-  /** The single-pathedness every multi-turn case records (Einpfad-Regel, mandatory field). */
-  private static final String EINPFAD =
-      "Mehrrunden-Fall: läuft konstruktionsbedingt nur auf dem Pipeline-Messpfad.";
-
   private static final String DOC_A = "verwaltung-0001_a.md";
   private static final String DOC_B = "verwaltung-0002_b.md";
   private static final String DOC_C = "verwaltung-0003_c.md";
@@ -54,10 +50,11 @@ class ConversationRetrievalEvaluatorTest {
                 null),
             new ConversationCase.Turn(
                 "Und bei Bedürftigkeit?", "Dann entfällt die Gebühr.", List.of(DOC_B), null)),
+        null,
         GoldenCase.ExpectedState.KNOWN_GAP,
         "2026-09-11",
         "Der Folgefragen-Pfad der Zerlegung ist noch ungemessen.",
-        EINPFAD);
+        null);
   }
 
   /** Records the window every turn was invoked with, and answers with a scripted ranking. */
@@ -65,7 +62,6 @@ class ConversationRetrievalEvaluatorTest {
       implements ConversationRetrievalEvaluator.TurnInvocation {
 
     private final Map<String, List<Message>> windows = new LinkedHashMap<>();
-    private final Map<String, List<String>> notes = new LinkedHashMap<>();
     private final List<List<String>> rankings;
     private int call;
 
@@ -75,12 +71,8 @@ class ConversationRetrievalEvaluatorTest {
 
     @Override
     public ConversationRetrievalEvaluator.TurnInvocationResult invoke(
-        ConversationCase conversationCase,
-        int turnIndex,
-        List<Message> conversationWindow,
-        List<String> conversationNote) {
+        ConversationCase conversationCase, int turnIndex, List<Message> conversationWindow) {
       windows.put(conversationCase.turnId(turnIndex), conversationWindow);
-      notes.put(conversationCase.turnId(turnIndex), conversationNote);
       return new ConversationRetrievalEvaluator.TurnInvocationResult(
           rankings.get(call++), List.of("Teilfrage " + (turnIndex + 1)));
     }
@@ -106,17 +98,6 @@ class ConversationRetrievalEvaluatorTest {
         .isEqualTo("Ein Anwohnerparkausweis kostet 30,70 Euro pro Jahr.");
   }
 
-  @Test
-  void theConversationNoteTravelsWithEveryTurnAndIsEmptyUntilItExists() {
-    ConversationCase conversationCase = twoTurnCase("anaphora_resolution");
-    RecordingPipeline pipeline = new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B)));
-
-    ConversationRetrievalEvaluator.evaluateCase(conversationCase, chatMemory(20), pipeline);
-
-    assertThat(pipeline.notes).containsOnlyKeys("verw-conv-001#1", "verw-conv-001#2");
-    assertThat(pipeline.notes.values()).allSatisfy(note -> assertThat(note).isEmpty());
-  }
-
   /** The production window evicts; the harness never re-implements that, it only observes it. */
   @Test
   void theWindowIsBoundedByTheProductionMemoryNotByTheHarness() {
@@ -129,10 +110,11 @@ class ConversationRetrievalEvaluatorTest {
                 new ConversationCase.Turn("Frage 1?", "Antwort 1.", List.of(DOC_A), null),
                 new ConversationCase.Turn("Frage 2?", "Antwort 2.", List.of(DOC_B), null),
                 new ConversationCase.Turn("Frage 3?", "Antwort 3.", List.of(DOC_C), null)),
+            3,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
             "Grund",
-            EINPFAD);
+            null);
     RecordingPipeline pipeline =
         new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B), List.of(DOC_C)));
 
@@ -154,10 +136,11 @@ class ConversationRetrievalEvaluatorTest {
             "verwaltung",
             "anaphora_resolution",
             first.turns(),
+            null,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
             "Grund",
-            EINPFAD);
+            null);
     RecordingPipeline pipeline =
         new RecordingPipeline(
             List.of(List.of(DOC_A), List.of(DOC_B), List.of(DOC_A), List.of(DOC_B)));
@@ -231,10 +214,11 @@ class ConversationRetrievalEvaluatorTest {
                 new ConversationCase.Turn("Vertiefung A?", "Antwort A2.", List.of(DOC_A), null),
                 new ConversationCase.Turn(
                     "Ganz anderes Thema?", "Antwort B.", List.of(DOC_B), null)),
+            3,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
             "Themen-Bleed nach einem Wechsel ist ungemessen.",
-            EINPFAD);
+            null);
     // The change turn's window still holds the old topic's document.
     List<ConversationRetrievalEvaluator.CaseOutcome> outcomes =
         List.of(
@@ -254,6 +238,78 @@ class ConversationRetrievalEvaluatorTest {
     assertThat(report.topicBleed().byTurn().getFirst().turnId()).isEqualTo("verw-conv-010#3");
     assertThat(report.topicBleed().byTurn().getFirst().bledDocuments()).containsExactly(DOC_A);
     assertThat(report.cases().getFirst().turns().get(2).bledDocuments()).containsExactly(DOC_A);
+  }
+
+  /**
+   * The state audit has to be able to speak on this path: a {@code known_gap} case a run solves is
+   * the finding the whole epic is measured by, and a {@code solved} case that stops being solved is
+   * a regression. Both are invisible the moment every case carries an {@code
+   * expected_state_exception} - which is why the single-pathedness of this measurement sits on the
+   * report ({@link ConversationEvaluationReport#SINGLE_PATH_NOTE}), not on the cases.
+   */
+  @Test
+  void aKnownGapCaseTheRunSolvesIsReportedAsAFinding() {
+    List<ConversationRetrievalEvaluator.CaseOutcome> outcomes =
+        List.of(
+            ConversationRetrievalEvaluator.evaluateCase(
+                twoTurnCase("anaphora_resolution"),
+                chatMemory(20),
+                new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B)))));
+
+    ConversationEvaluationReport report =
+        ConversationRetrievalEvaluator.report(outcomes, runConfiguration());
+
+    assertThat(report.singlePathNote()).isEqualTo(ConversationEvaluationReport.SINGLE_PATH_NOTE);
+    assertThat(report.expectedStateAudit().unexpectedlySolved()).containsExactly("verw-conv-001");
+    assertThat(report.expectedStateAudit().matchesDeclaredStates()).isFalse();
+    assertThat(report.expectedStateAudit().acceptedDeviations()).isEmpty();
+  }
+
+  /**
+   * Only the named change turn is measured. The specification's own example - "Und bei
+   * Bedürftigkeit?" after "Was kostet ein Anwohnerparkausweis?" - is a follow-up whose target sits
+   * in another document; counting it as a change would report the correct previous-topic document
+   * as bleed, in the very number a topic-switch change is judged by.
+   */
+  @Test
+  void aFollowUpWithADifferentTargetDocumentIsNotCountedAsATopicChange() {
+    ConversationCase switchCase =
+        new ConversationCase(
+            "verw-conv-011",
+            "verwaltung",
+            "topic_switch",
+            List.of(
+                new ConversationCase.Turn(
+                    "Was kostet ein Anwohnerparkausweis?", "30,70 Euro.", List.of(DOC_A), null),
+                new ConversationCase.Turn(
+                    "Und bei Bedürftigkeit?", "Dann entfällt sie.", List.of(DOC_B), null),
+                new ConversationCase.Turn(
+                    "Wie hoch ist die Hundesteuer?", "120 Euro.", List.of(DOC_C), null)),
+            3,
+            GoldenCase.ExpectedState.KNOWN_GAP,
+            "2026-09-11",
+            "Grund",
+            null);
+    // Turn 2 expects a document no earlier turn expects, and turn 1's document stands in its
+    // window - a derivation would book that as bleed.
+    List<ConversationRetrievalEvaluator.CaseOutcome> outcomes =
+        List.of(
+            ConversationRetrievalEvaluator.evaluateCase(
+                switchCase,
+                chatMemory(20),
+                new RecordingPipeline(
+                    List.of(List.of(DOC_A), List.of(DOC_B, DOC_A), List.of(DOC_C)))));
+
+    ConversationEvaluationReport report =
+        ConversationRetrievalEvaluator.report(outcomes, runConfiguration());
+
+    assertThat(report.topicBleed().switchTurns())
+        .as("exactly the one turn the case names, never every non-overlapping turn")
+        .isEqualTo(1);
+    assertThat(report.topicBleed().bledDocuments()).isZero();
+    assertThat(report.cases().getFirst().turns().get(1).bledDocuments())
+        .as("the follow-up turn is not a change turn and is never attributed bleed")
+        .isEmpty();
   }
 
   @Test

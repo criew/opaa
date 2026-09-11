@@ -3,11 +3,9 @@ package io.opaa.eval;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.function.ToIntFunction;
 
 /**
  * Compares a freshly produced {@link PipelineEvaluationReport} against the committed {@link
@@ -35,6 +33,11 @@ import java.util.function.ToIntFunction;
  * re-asserting it would report the same violation twice under two verdicts.
  */
 public final class PipelineBaselineComparator {
+
+  /** What a reader has to do when the committed baseline lacks a group the report produced. */
+  private static final String MISSING_GROUP_HINT =
+      "the golden dataset gained a new category/difficulty/language value without a baseline "
+          + "re-measurement (see eval/baseline/README.md).";
 
   /**
    * Fixed, baseline-independent floors for the four overall metrics of this path, in the role
@@ -103,7 +106,8 @@ public final class PipelineBaselineComparator {
     if (baselineValid) {
       Set<String> visitedGroups = new LinkedHashSet<>();
 
-      checkGroup(checks, Baseline.OVERALL, report.overall(), baseline.groups(), true);
+      PipelineGroupChecks.checkGroup(
+          checks, Baseline.OVERALL, report.overall(), baseline.groups(), true, MISSING_GROUP_HINT);
       visitedGroups.add(Baseline.OVERALL);
 
       report
@@ -111,7 +115,8 @@ public final class PipelineBaselineComparator {
           .forEach(
               (name, agg) -> {
                 String key = Baseline.category(name);
-                checkGroup(checks, key, agg, baseline.groups(), false);
+                PipelineGroupChecks.checkGroup(
+                    checks, key, agg, baseline.groups(), false, MISSING_GROUP_HINT);
                 visitedGroups.add(key);
               });
       report
@@ -119,7 +124,8 @@ public final class PipelineBaselineComparator {
           .forEach(
               (name, agg) -> {
                 String key = Baseline.difficulty(name);
-                checkGroup(checks, key, agg, baseline.groups(), false);
+                PipelineGroupChecks.checkGroup(
+                    checks, key, agg, baseline.groups(), false, MISSING_GROUP_HINT);
                 visitedGroups.add(key);
               });
       report
@@ -134,7 +140,8 @@ public final class PipelineBaselineComparator {
                     && !baseline.groups().containsKey(key)) {
                   return;
                 }
-                checkGroup(checks, key, agg, baseline.groups(), false);
+                PipelineGroupChecks.checkGroup(
+                    checks, key, agg, baseline.groups(), false, MISSING_GROUP_HINT);
                 visitedGroups.add(key);
               });
 
@@ -285,102 +292,5 @@ public final class PipelineBaselineComparator {
     if (!Objects.equals(baselineValue, currentValue)) {
       mismatches.add(new BaselineComparator.FixedPointMismatch(field, baselineValue, currentValue));
     }
-  }
-
-  private static void checkGroup(
-      List<BaselineComparator.MetricCheck> checks,
-      String groupKey,
-      PipelineMetricsAggregate current,
-      Map<String, PipelineMetricsAggregate> baselineGroups,
-      boolean applyHardFloor) {
-    PipelineMetricsAggregate base = baselineGroups.get(groupKey);
-    if (base == null) {
-      throw new IllegalStateException(
-          "Pipeline baseline has no entry for group '"
-              + groupKey
-              + "' — the golden dataset gained a new category/difficulty/language value without a "
-              + "baseline re-measurement (see eval/baseline/README.md).");
-    }
-    int nEff = base.distinctExpectedDocumentSets();
-    addCheck(
-        checks,
-        groupKey,
-        "hitRateAt5",
-        base.hitRateAt5(),
-        current.hitRateAt5(),
-        nEff,
-        applyHardFloor ? HARD_FLOOR_ABSOLUTE_HIT_RATE : null,
-        PipelineMetricsAggregate::hitCountAt5,
-        base,
-        current);
-    addCheck(
-        checks,
-        groupKey,
-        "mrrAt8",
-        base.mrrAt8(),
-        current.mrrAt8(),
-        nEff,
-        applyHardFloor ? HARD_FLOOR_ABSOLUTE_MRR : null,
-        PipelineMetricsAggregate::hitCountAt8,
-        base,
-        current);
-    addCheck(
-        checks,
-        groupKey,
-        "ndcgAt8",
-        base.ndcgAt8(),
-        current.ndcgAt8(),
-        nEff,
-        applyHardFloor ? HARD_FLOOR_ABSOLUTE_NDCG : null,
-        PipelineMetricsAggregate::hitCountAt8,
-        base,
-        current);
-    addCheck(
-        checks,
-        groupKey,
-        "recallAt8",
-        base.recallAt8(),
-        current.recallAt8(),
-        nEff,
-        applyHardFloor ? HARD_FLOOR_ABSOLUTE_RECALL : null,
-        PipelineMetricsAggregate::hitCountAt8,
-        base,
-        current);
-    addCheck(
-        checks,
-        groupKey,
-        "allExpectedDocumentsHitAt8",
-        base.allExpectedDocumentsHitAt8(),
-        current.allExpectedDocumentsHitAt8(),
-        nEff,
-        null,
-        PipelineMetricsAggregate::hitCountAt8,
-        base,
-        current);
-  }
-
-  private static void addCheck(
-      List<BaselineComparator.MetricCheck> checks,
-      String group,
-      String metric,
-      double baselineValue,
-      double currentValue,
-      int nEff,
-      Double absoluteHardFloor,
-      ToIntFunction<PipelineMetricsAggregate> hitCountFn,
-      PipelineMetricsAggregate base,
-      PipelineMetricsAggregate current) {
-    checks.add(
-        BaselineComparator.metricCheck(
-            group,
-            metric,
-            current.n(),
-            baselineValue,
-            currentValue,
-            nEff,
-            absoluteHardFloor,
-            base.n(),
-            hitCountFn.applyAsInt(base),
-            hitCountFn.applyAsInt(current)));
   }
 }

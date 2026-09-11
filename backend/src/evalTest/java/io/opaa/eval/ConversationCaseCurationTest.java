@@ -19,10 +19,6 @@ class ConversationCaseCurationTest {
 
   private static final String DOMAIN = EvalDomainConfig.VERWALTUNG.name();
 
-  /** The single-pathedness every multi-turn case has to record (Einpfad-Regel). */
-  private static final String EINPFAD =
-      "Mehrrunden-Fall: läuft konstruktionsbedingt nur auf dem Pipeline-Messpfad.";
-
   private static Path corpusDir() {
     return RepoPaths.evalDir().resolve("corpus").resolve(DOMAIN);
   }
@@ -67,10 +63,11 @@ class ConversationCaseCurationTest {
             List.of(
                 new ConversationCase.Turn("Frage 1?", "Antwort 1.", List.of("a.md"), null),
                 new ConversationCase.Turn("Frage 2?", "  ", List.of(), null)),
+            null,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
             "Grund",
-            EINPFAD);
+            null);
 
     List<Violation> violations =
         ConversationCaseCuration.validate(List.of(incomplete), DOMAIN, Set.of("a.md"));
@@ -95,10 +92,11 @@ class ConversationCaseCurationTest {
             DOMAIN,
             "multi_hop",
             List.of(new ConversationCase.Turn("Frage?", "Antwort.", List.of("a.md"), null)),
+            null,
             GoldenCase.ExpectedState.SOLVED,
             "2026-09-11",
             "Grund",
-            EINPFAD);
+            null);
     ConversationCase tooShort =
         new ConversationCase(
             "verw-conv-002",
@@ -107,10 +105,11 @@ class ConversationCaseCurationTest {
             List.of(
                 new ConversationCase.Turn("Frage 1?", "Antwort 1.", List.of("a.md"), "b.md"),
                 new ConversationCase.Turn("Frage 2?", "Antwort 2.", List.of("b.md"), null)),
+            null,
             GoldenCase.ExpectedState.SOLVED,
             "2026-09-11",
             "Grund",
-            EINPFAD);
+            null);
 
     List<Violation> violations =
         ConversationCaseCuration.validate(
@@ -137,6 +136,7 @@ class ConversationCaseCurationTest {
                 new ConversationCase.Turn("Frage 2?", "Antwort 2.", List.of("a.md"), null)),
             null,
             null,
+            null,
             "   ",
             null);
 
@@ -148,17 +148,17 @@ class ConversationCaseCurationTest {
         .contains(
             "expected_state is missing",
             "expected_state_since is missing",
-            "expected_state_reason is missing or blank",
-            ConversationCaseCuration.SINGLE_PATH_EXCEPTION_RULE);
+            "expected_state_reason is missing or blank");
   }
 
   /**
-   * The Einpfad-Regel makes the exception mandatory even on a {@code solved} case - the opposite of
-   * the single-question dataset's rule, where an exception on a solved case could only ever excuse
-   * a regression.
+   * {@code expected_state_exception} keeps the meaning it has on the single-question path: an
+   * optional reason for a <b>single</b> case's deliberate deviation, only on a {@code known_gap}
+   * one. The single-pathedness of this whole measurement is recorded once per report instead - on
+   * every case it would leave {@link ExpectedStateAudit} permanently silent.
    */
   @Test
-  void aSolvedCaseAlsoHasToRecordItsSinglePathedness() {
+  void anExceptionOnASolvedCaseCouldOnlyEverExcuseARegression() {
     ConversationCase solvedWithException =
         new ConversationCase(
             "verw-conv-001",
@@ -167,17 +167,77 @@ class ConversationCaseCurationTest {
             List.of(
                 new ConversationCase.Turn("Frage 1?", "Antwort 1.", List.of("a.md"), null),
                 new ConversationCase.Turn("Frage 2?", "Antwort 2.", List.of("a.md"), null)),
+            null,
             GoldenCase.ExpectedState.SOLVED,
             "2026-09-11",
             "Grund",
-            EINPFAD);
+            "Einpfadigkeit");
 
     assertThat(
             ConversationCaseCuration.validate(List.of(solvedWithException), DOMAIN, Set.of("a.md")))
         .extracting(Violation::rule)
-        .doesNotContain(
-            ConversationCaseCuration.SINGLE_PATH_EXCEPTION_RULE,
-            GoldenCaseCuration.EXCEPTION_ONLY_ON_KNOWN_GAP_RULE);
+        .contains(GoldenCaseCuration.EXCEPTION_ONLY_ON_KNOWN_GAP_RULE);
+  }
+
+  @Test
+  void aTopicSwitchCaseNamesItsChangeTurnAndNoOtherClassCarriesOne() {
+    ConversationCase withoutSwitchTurn =
+        new ConversationCase(
+            "verw-conv-001",
+            DOMAIN,
+            "topic_switch",
+            List.of(
+                new ConversationCase.Turn("Frage 1?", "Antwort 1.", List.of("a.md"), null),
+                new ConversationCase.Turn("Frage 2?", "Antwort 2.", List.of("a.md"), null),
+                new ConversationCase.Turn("Frage 3?", "Antwort 3.", List.of("b.md"), null)),
+            null,
+            GoldenCase.ExpectedState.KNOWN_GAP,
+            "2026-09-11",
+            "Grund",
+            null);
+    ConversationCase outsideItsScript =
+        new ConversationCase(
+            "verw-conv-002",
+            DOMAIN,
+            "topic_switch",
+            withoutSwitchTurn.turns(),
+            4,
+            GoldenCase.ExpectedState.KNOWN_GAP,
+            "2026-09-11",
+            "Grund",
+            null);
+    ConversationCase wrongClassWithSwitchTurn =
+        new ConversationCase(
+            "verw-conv-003",
+            DOMAIN,
+            "anaphora_resolution",
+            List.of(
+                new ConversationCase.Turn("Frage 1?", "Antwort 1.", List.of("a.md"), null),
+                new ConversationCase.Turn("Frage 2?", "Antwort 2.", List.of("b.md"), null)),
+            2,
+            GoldenCase.ExpectedState.KNOWN_GAP,
+            "2026-09-11",
+            "Grund",
+            null);
+
+    List<Violation> violations =
+        ConversationCaseCuration.validate(
+            List.of(withoutSwitchTurn, outsideItsScript, wrongClassWithSwitchTurn),
+            DOMAIN,
+            Set.of("a.md", "b.md"));
+
+    assertThat(violations)
+        .anyMatch(
+            v ->
+                "verw-conv-001".equals(v.caseId())
+                    && ConversationCaseCuration.TOPIC_SWITCH_TURN_RULE.equals(v.rule()));
+    assertThat(violations)
+        .anyMatch(v -> "verw-conv-002".equals(v.caseId()) && v.rule().contains("outside [2, 3]"));
+    assertThat(violations)
+        .anyMatch(
+            v ->
+                "verw-conv-003".equals(v.caseId())
+                    && v.rule().contains("only defined for the topic_switch class"));
   }
 
   @Test
@@ -191,10 +251,11 @@ class ConversationCaseCurationTest {
                 new ConversationCase.Turn("Frage 1?", "Antwort 1.", List.of("a.md"), null),
                 new ConversationCase.Turn("Frage 2?", "Antwort 2.", List.of("b.md"), null),
                 new ConversationCase.Turn("Frage 3?", "Antwort 3.", List.of("a.md"), null)),
+            null,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
             "Grund",
-            EINPFAD);
+            null);
 
     assertThat(
             ConversationCaseCuration.validate(
@@ -213,10 +274,11 @@ class ConversationCaseCurationTest {
             List.of(
                 new ConversationCase.Turn("Frage 1?", "Antwort 1.", List.of("a.md"), null),
                 new ConversationCase.Turn("Frage 2?", "Antwort 2.", List.of("a.md"), null)),
+            null,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
             "Grund",
-            EINPFAD);
+            null);
 
     List<Violation> violations =
         ConversationCaseCuration.validate(List.of(onlyCase), DOMAIN, Set.of("a.md"));

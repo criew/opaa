@@ -17,8 +17,9 @@ import java.util.List;
  *
  * <p>A case is solved when <b>every</b> one of its turns is solved under the existing criterion
  * ({@link ExpectedStateAudit#isSolved}); the state fields describe the case, never a single turn.
- * All four of them are mandatory here, {@code expected_state_exception} included - see {@link
- * ConversationCaseCuration#SINGLE_PATH_EXCEPTION_RULE}.
+ *
+ * @param topicSwitchTurn the 1-based turn a {@code topic_switch} case changes its topic in, {@code
+ *     null} for every other class - see {@link ConversationCaseCuration#TOPIC_SWITCH_TURN_RULE}.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ConversationCase(
@@ -26,6 +27,7 @@ public record ConversationCase(
     String domain,
     String category,
     List<Turn> turns,
+    @JsonProperty("topic_switch_turn") Integer topicSwitchTurn,
     @JsonProperty("expected_state") GoldenCase.ExpectedState expectedState,
     @JsonProperty("expected_state_since") String expectedStateSince,
     @JsonProperty("expected_state_reason") String expectedStateReason,
@@ -50,6 +52,14 @@ public record ConversationCase(
   /** The id of one turn, as every per-turn report line and protocol dump names it. */
   public String turnId(int turnIndex) {
     return id + "#" + (turnIndex + 1);
+  }
+
+  /**
+   * The 0-based index of the change turn, or {@code -1} for a case that names none. Only a {@code
+   * topic_switch} case has one; the bleed count is defined over exactly this turn.
+   */
+  public int topicSwitchTurnIndex() {
+    return topicSwitchTurn == null ? -1 : topicSwitchTurn - 1;
   }
 
   /**

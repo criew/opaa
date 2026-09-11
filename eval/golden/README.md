@@ -149,35 +149,46 @@ den Fall reproduzierbar.
   ],
   "expected_state": "known_gap",
   "expected_state_since": "2026-09-11",
-  "expected_state_reason": "Der Folgefragen-Pfad der Zerlegung ist ungemessen (#1288).",
-  "expected_state_exception": "Mehrrunden-Fall: läuft konstruktionsbedingt nur auf dem Pipeline-Messpfad."
+  "expected_state_reason": "Der Folgefragen-Pfad der Zerlegung ist ungemessen (#1288)."
 }
 ```
 
-**`expected_state_exception` ist hier Pflicht — anders als bei den Einzelfragen, und auch auf einem
-`solved`-Fall.** Grund ist die Einpfad-Regel aus `docs/features/retrieval-benchmark.md`,
-Abschnitt 5: „Gelöst" ist dort über **beide** Messpfade definiert, ein Mehrrunden-Fall kann aber
-konstruktionsbedingt nur auf dem Pipeline-Pfad laufen — der Rohvektor-Pfad misst
-`similaritySearch` direkt und kennt weder Verlauf noch Zerlegung. Eine Fallklasse, die nur auf
-einem Pfad laufen kann, gilt als gelöst, wenn sie auf diesem Pfad gelöst ist, und trägt die
-Einpfadigkeit als begründete Ausnahme am Fall. Ohne das Feld bliebe jeder Mehrrunden-Fall dauerhaft
-`known_gap`. Die Regel von `verwaltung.json`, dass eine Ausnahme nur auf `known_gap` stehen darf,
-gilt in diesem Datensatz deshalb **nicht**.
+**Die Einpfadigkeit steht am Datensatz, nicht am Fall.** Nach der Einpfad-Regel aus
+`docs/features/retrieval-benchmark.md`, Abschnitt 5, gilt „gelöst" sonst über **beide** Messpfade;
+ein Mehrrunden-Fall kann aber konstruktionsbedingt nur auf dem Pipeline-Pfad laufen — der
+Rohvektor-Pfad misst `similaritySearch` direkt und kennt weder Verlauf noch Zerlegung. Diese
+Eigenschaft gilt für jeden Fall des Datensatzes gleichermaßen und wird deshalb **einmal je Bericht**
+ausgewiesen (`singlePathNote`), nie je Fall.
+
+`expected_state_exception` behält damit exakt die Bedeutung, die es in `verwaltung.json` hat:
+optional, nur auf einem `known_gap`-Fall, und nur für eine tatsächliche, begründete Abweichung
+**dieses einen** Falls. Stünde es auf jedem Fall, liefe das Zustandsfeld-Audit dauerhaft leer — ein
+`known_gap`, den ein neuer Baustein löst, erschiene nie als Fund, und ein verlorener `solved`-Fall nie
+als Rückschritt. Genau dieser Nachweis ist der Zweck der Zustandsfelder.
+
+Ein `topic_switch`-Fall benennt zusätzlich seine **Wechselrunde** (`topic_switch_turn`, 1-basiert,
+mindestens 2): Die Bleed-Zahl wird über genau diese eine Runde gebildet. Abgeleitet wird sie nie —
+eine Ableitung „die erste Runde ohne Dokumentüberschneidung" träfe auch auf eine gewöhnliche
+Rückfrage zu, deren Antwort in einem anderen Dokument steht („Und bei Bedürftigkeit?" nach „Was
+kostet ein Anwohnerparkausweis?"), und zählte dann das richtige Vorthemen-Dokument als Bleed.
 
 | Klasse (`category`) | Runden | Was sie misst | Pflichtfeld |
 |---|---|---|---|
 | `anaphora_resolution` | 2–3 | Rückfrage mit Bezugswort auf die Vorrunde(n); das Zieldokument ist nur mit aufgelöstem Bezug findbar | — |
-| `topic_switch` | 3–4 | Wechsel in Runde 2 oder 3; die erwarteten Dokumente der Wechselrunde sind ausschließlich das neue Thema — ein Altthemen-Dokument im Fenster ist Bleed | — |
+| `topic_switch` | 3–4 | Wechsel in Runde 2 oder 3; die erwarteten Dokumente der Wechselrunde sind ausschließlich das neue Thema — ein Altthemen-Dokument im Fenster ist Bleed | `topic_switch_turn` |
 | `constraint_carryover` | 3–5 | eine Angabe aus Runde 1, die in Runde 3 oder später das richtige Dokument vom Verwechslungspartner trennt; Runde 2 ist ein Zwischenthema | `confusable_document` in mindestens einer Runde |
 
 Geprüft wird das Docker-frei durch `io.opaa.eval.ConversationCaseCuration` und
 `ConversationCaseCurationTest` (Teil von `check`):
 
 - jede Runde hat `query`, `answer` und `expected_documents`; die Kurzantwort ist höchstens 400
-  Zeichen lang (die mechanische Untergrenze hinter „ein bis drei Sätze"),
+  Zeichen lang (die mechanische Obergrenze hinter „ein bis drei Sätze"),
 - die Klasse ist eine der drei oben, mit der Rundenzahl, über die sie definiert ist,
-- alle vier Zustandsfelder sind Pflicht — `expected_state`, `expected_state_since` (ISO-Datum),
-  `expected_state_reason` (nicht leer) und `expected_state_exception` (nicht leer, siehe oben),
+- die drei Zustandsfelder sind Pflicht — `expected_state`, `expected_state_since` (ISO-Datum) und
+  `expected_state_reason` (nicht leer); `expected_state_exception` bleibt optional und nur auf einem
+  `known_gap`-Fall zulässig, wie bei den Einzelfragen,
+- ein `topic_switch`-Fall benennt `topic_switch_turn` innerhalb seiner Rundenspanne, und keine
+  andere Klasse trägt das Feld,
 - mindestens acht Fälle je Klasse und, über deren Runden, mindestens sechs unterschiedliche
   Treffermengen — dieselbe `n_eff`-Begründung wie bei den Einzelfragen,
 - jedes erwartete Dokument und jeder Verwechslungspartner steht im Manifest.

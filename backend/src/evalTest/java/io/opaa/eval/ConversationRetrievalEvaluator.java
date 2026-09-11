@@ -44,16 +44,12 @@ public final class ConversationRetrievalEvaluator {
 
   /**
    * One turn's retrieval run. {@code conversationWindow} is the production window built from the
-   * preceding turns (empty for the first turn); {@code conversationNote} is the Gesprächsnotiz,
-   * empty until it exists.
+   * preceding turns, empty for the first turn of a case.
    */
   @FunctionalInterface
   public interface TurnInvocation {
     TurnInvocationResult invoke(
-        ConversationCase conversationCase,
-        int turnIndex,
-        List<Message> conversationWindow,
-        List<String> conversationNote);
+        ConversationCase conversationCase, int turnIndex, List<Message> conversationWindow);
   }
 
   /** One turn's outcome: its windowed metrics plus what the pipeline actually returned. */
@@ -112,9 +108,7 @@ public final class ConversationRetrievalEvaluator {
         // The window as production would hand it over: everything the memory holds *before* this
         // turn's own question is added.
         List<Message> window = List.copyOf(chatMemory.get(conversationId));
-        TurnInvocationResult invocation =
-            pipeline.invoke(
-                conversationCase, turnIndex, window, ConversationMemoryProfile.conversationNote());
+        TurnInvocationResult invocation = pipeline.invoke(conversationCase, turnIndex, window);
         turnOutcomes.add(
             evaluateTurn(
                 conversationCase,
@@ -132,26 +126,27 @@ public final class ConversationRetrievalEvaluator {
     return new CaseOutcome(conversationCase, List.copyOf(turnOutcomes));
   }
 
+  /**
+   * A turn is scored by the single-question path's own evaluator, on the turn as a {@link
+   * GoldenCase}: identical window, identical document deduplication, identical metric mathematics -
+   * by construction rather than by a comment claiming it.
+   */
   private static TurnOutcome evaluateTurn(
       ConversationCase conversationCase,
       int turnIndex,
       int conversationWindowMessages,
       List<String> rankedChunkFileNames,
       List<String> subQueries) {
-    DocumentRanking.DocumentWindowResult window =
-        DocumentRanking.applyDocumentWindow(
-            rankedChunkFileNames, PipelineMetricsAggregate.RANKING_K);
+    PipelineRetrievalEvaluator.CaseOutcome turn =
+        PipelineRetrievalEvaluator.evaluateCase(
+            conversationCase.turnAsGoldenCase(turnIndex), rankedChunkFileNames, subQueries);
     return new TurnOutcome(
-        RetrievalMetrics.evaluateAt(
-            conversationCase.turnAsGoldenCase(turnIndex),
-            window.rankedFileNames(),
-            PipelineMetricsAggregate.HIT_RATE_K,
-            PipelineMetricsAggregate.RANKING_K),
+        turn.metrics(),
         turnIndex,
         conversationWindowMessages,
-        rankedChunkFileNames.size(),
-        window.distinctDocumentsReached(),
-        subQueries);
+        turn.chunksReturned(),
+        turn.distinctDocumentsReturned(),
+        turn.subQueries());
   }
 
   /** Assembles the report from already-computed outcomes. */
@@ -175,6 +170,7 @@ public final class ConversationRetrievalEvaluator {
     return new ConversationEvaluationReport(
         ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION,
         PipelineMetricsAggregate.METRIC_WINDOW_NOTE,
+        ConversationEvaluationReport.SINGLE_PATH_NOTE,
         runConfiguration,
         PipelineMetricsAggregate.of(allTurns),
         PipelineMetricsAggregate.groupBy(allTurns, GoldenCase::category),
@@ -214,11 +210,16 @@ public final class ConversationRetrievalEvaluator {
   }
 
   /**
-   * The Bleed count over every {@code topic_switch} case. A <b>change turn</b> is the first turn
-   * whose expected documents share nothing with any earlier turn of the same case; the bled
-   * documents are those earlier turns' expected documents that still stand in the change turn's
-   * window. {@code null} without a single {@code topic_switch} case - an absent section, not a
-   * clean one.
+   * The Bleed count over every {@code topic_switch} case, measured in the <b>one change turn the
+   * case names</b> ({@link ConversationCase#topicSwitchTurn()}): how many documents of the previous
+   * topic - the expected documents of every turn before it that this turn does not itself expect -
+   * still stood in its window. {@code null} without a single {@code topic_switch} case: an absent
+   * section, not a clean one.
+   *
+   * <p>The change turn is never derived from the expected documents. A derivation would also fire
+   * on an ordinary follow-up whose answer sits in another document ("Und bei Bedürftigkeit?" after
+   * "Was kostet ein Anwohnerparkausweis?") and would then count the correct previous-topic document
+   * as bleed - in the very number a topic-switch change is judged by.
    */
   private static TopicBleedAudit topicBleed(List<CaseOutcome> outcomes) {
     List<SwitchTurnBleed> byTurn = new ArrayList<>();
@@ -231,15 +232,17 @@ public final class ConversationRetrievalEvaluator {
         continue;
       }
       anySwitchCase = true;
-      for (TurnOutcome turn : switchTurnsOf(outcome)) {
-        switchTurns++;
-        List<String> bled = bledDocuments(outcome, turn);
-        bledDocumentCount += bled.size();
-        if (!bled.isEmpty()) {
-          byTurn.add(
-              new SwitchTurnBleed(
-                  outcome.conversationCase().turnId(turn.turnIndex()), List.copyOf(bled)));
-        }
+      TurnOutcome changeTurn = changeTurnOf(outcome);
+      if (changeTurn == null) {
+        continue;
+      }
+      switchTurns++;
+      List<String> bled = bledDocuments(outcome, changeTurn);
+      bledDocumentCount += bled.size();
+      if (!bled.isEmpty()) {
+        byTurn.add(
+            new SwitchTurnBleed(
+                outcome.conversationCase().turnId(changeTurn.turnIndex()), List.copyOf(bled)));
       }
     }
     if (!anySwitchCase) {
@@ -253,29 +256,26 @@ public final class ConversationRetrievalEvaluator {
         List.copyOf(byTurn));
   }
 
-  private static List<TurnOutcome> switchTurnsOf(CaseOutcome outcome) {
-    List<TurnOutcome> switchTurns = new ArrayList<>();
-    Set<String> earlier = new LinkedHashSet<>();
-    for (TurnOutcome turn : outcome.turns()) {
-      List<String> expected = turn.metrics().goldenCase().expectedDocuments();
-      if (!earlier.isEmpty() && expected.stream().noneMatch(earlier::contains)) {
-        switchTurns.add(turn);
-      }
-      earlier.addAll(expected);
-    }
-    return switchTurns;
+  /**
+   * The turn the case declares as its change turn, or {@code null} for a case that names none or
+   * names one outside its script - {@code ConversationCaseCuration} refuses both, so this is the
+   * defensive half rather than a second rule.
+   */
+  private static TurnOutcome changeTurnOf(CaseOutcome outcome) {
+    int index = outcome.conversationCase().topicSwitchTurnIndex();
+    return index < 0 || index >= outcome.turns().size() ? null : outcome.turns().get(index);
   }
 
-  private static List<String> bledDocuments(CaseOutcome outcome, TurnOutcome switchTurn) {
+  private static List<String> bledDocuments(CaseOutcome outcome, TurnOutcome changeTurn) {
     Set<String> previousTopic = new LinkedHashSet<>();
     for (TurnOutcome turn : outcome.turns()) {
-      if (turn.turnIndex() >= switchTurn.turnIndex()) {
+      if (turn.turnIndex() >= changeTurn.turnIndex()) {
         break;
       }
       previousTopic.addAll(turn.metrics().goldenCase().expectedDocuments());
     }
-    previousTopic.removeAll(switchTurn.metrics().goldenCase().expectedDocuments());
-    return switchTurn.metrics().rankedFileNames().stream()
+    previousTopic.removeAll(changeTurn.metrics().goldenCase().expectedDocuments());
+    return changeTurn.metrics().rankedFileNames().stream()
         .distinct()
         .filter(previousTopic::contains)
         .toList();
@@ -283,10 +283,10 @@ public final class ConversationRetrievalEvaluator {
 
   private static ConversationCaseResult toCaseResult(CaseOutcome outcome) {
     Map<Integer, List<String>> bledByTurnIndex = new TreeMap<>();
-    if (ConversationCaseCuration.TOPIC_SWITCH_CLASS.equals(outcome.conversationCase().category())) {
-      for (TurnOutcome switchTurn : switchTurnsOf(outcome)) {
-        bledByTurnIndex.put(switchTurn.turnIndex(), bledDocuments(outcome, switchTurn));
-      }
+    TurnOutcome changeTurn = changeTurnOf(outcome);
+    if (ConversationCaseCuration.TOPIC_SWITCH_CLASS.equals(outcome.conversationCase().category())
+        && changeTurn != null) {
+      bledByTurnIndex.put(changeTurn.turnIndex(), bledDocuments(outcome, changeTurn));
     }
     List<TurnResult> turns =
         outcome.turns().stream()

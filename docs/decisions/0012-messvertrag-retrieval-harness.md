@@ -924,19 +924,37 @@ Zerlegung erreichte eine Rückfrage die Suche als Rückfall-Verkettung, und die 
 Rückfall statt das Gesprächsgedächtnis — eine stille Degradierung, die als Regression gegen die
 Baseline gebucht würde.
 
-### 43. `expected_state_exception` ist auf diesem Pfad Pflicht (Einpfad-Regel)
+### 43. Die Einpfadigkeit steht am Datensatz, nicht am Fall (Einpfad-Regel)
 
 Die Zustandsfelder-Regel aus Abschnitt 5 von `docs/features/retrieval-benchmark.md` definiert
-„gelöst" über **beide** Messpfade. Ein Mehrrunden-Fall kann konstruktionsbedingt nur auf dem
+„gelöst“ über **beide** Messpfade. Ein Mehrrunden-Fall kann konstruktionsbedingt nur auf dem
 Pipeline-Pfad laufen: Der Rohvektor-Pfad misst `similaritySearch` direkt und kennt weder
 Gesprächsverlauf noch Teilfragen-Zerlegung. Unter der unveränderten Regel bliebe jeder
-Mehrrunden-Fall dauerhaft `known_gap`, und ein Zustandswechsel wäre unerreichbar.
+Mehrrunden-Fall dauerhaft `known_gap`, und ein Zustandswechsel wäre unerreichbar. Deshalb gilt die
+dort ergänzte Einpfad-Regel: **Eine Fallklasse, die konstruktionsbedingt nur auf einem Messpfad
+laufen kann, gilt als gelöst, wenn sie auf diesem Pfad gelöst ist.**
 
-Deshalb gilt die dort ergänzte Einpfad-Regel: **Eine Fallklasse, die konstruktionsbedingt nur auf
-einem Messpfad laufen kann, gilt als gelöst, wenn sie auf diesem Pfad gelöst ist.** Die
-Einpfadigkeit ist am Fall vermerkt und begründet — `expected_state_exception` ist in diesem
-Datensatz ein **Pflichtfeld**, geprüft von `ConversationCaseCuration`, und ist **auch auf einem
-`solved`-Fall zulässig**. Das ist die bewusste Umkehrung von
-`GoldenCaseCuration.EXCEPTION_ONLY_ON_KNOWN_GAP_RULE`, die für einen Datensatz gilt, den beide
-Pfade messen: Dort könnte eine Ausnahme auf einem gelösten Fall nur eine Regression entschuldigen,
-hier benennt sie den Grund, aus dem ein Fall überhaupt auf einem Pfad allein als gelöst gelten darf.
+**Vermerkt wird sie einmal je Bericht** (`singlePathNote`), nicht je Fall. Sie ist eine Eigenschaft
+der Messanordnung: Sie gilt für jeden Fall des Datensatzes gleichermaßen und ändert sich nie.
+
+`expected_state_exception` behält damit die Bedeutung, die es auf dem Einzelfragen-Pfad hat —
+optional, nur auf einem `known_gap`-Fall, und nur für eine tatsächliche Abweichung **dieses einen**
+Falls. Stünde es auf jedem Fall, reichte der Harness es als `acceptedDeviationReason` an
+`ExpectedStateAudit` weiter, und der erste Zweig der Auswertung griffe immer: `unexpectedlySolved`
+und `unexpectedlyUnsolved` wären strukturell leer, `matchesDeclaredStates()` immer wahr. Ein
+`known_gap`, den das Gesprächsgedächtnis löst, erschiene nie als Fund — genau der Nachweis, den die
+Zustandsfelder tragen sollen — und ein verlorener `solved`-Fall nie als Rückschritt.
+
+### 44. Die Wechselrunde eines `topic_switch`-Falls wird benannt, nicht abgeleitet
+
+Die Bleed-Zahl ist die Kennzahl, an der die Änderung des Suchfensters gemessen wird. Sie wird über
+**genau eine** Runde je Fall gebildet, und der Datensatz benennt sie (`topic_switch_turn`,
+1-basiert, geprüft gegen die Rundenspanne der Klasse).
+
+Eine Ableitung aus den Daten — „die erste Runde, deren erwartete Dokumente mit keiner früheren
+überschneiden“ — ist ausdrücklich verworfen: Sie träfe auch auf eine gewöhnliche Rückfrage zu,
+deren Antwort in einem anderen Dokument steht („Und bei Bedürftigkeit?“ nach „Was kostet ein
+Anwohnerparkausweis?“, das Beispiel der Spezifikation selbst), und zählte dann das **richtige**
+Vorthemen-Dokument als Bleed. Die Kuratierungsregel „mindestens sechs unterschiedliche Treffermengen
+je Klasse“ fördert dieses Muster zusätzlich. Das deckt sich mit
+`docs/features/conversation-memory.md`: Themenwechsel werden nicht erkannt — auch nicht im Harness.

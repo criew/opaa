@@ -535,9 +535,10 @@ Aufbau wie die Pipeline-Baseline, mit vier Unterschieden:
   weist eine Datei zurück, deren Festpunkte `queryDecompositionEnabled: false` oder
   `chatModel: null` tragen: Ohne Zerlegung wird kein einziger Bezug aufgelöst, und die committeten
   Zahlen beschrieben nicht, was dieser Pfad misst.
-- **Fehlerkriterium und harte Untergrenzen:** unverändert die des Pipeline-Pfads (ADR-0013 bzw.
-  `PipelineBaselineComparator.HARD_FLOOR_ABSOLUTE_*`) — gemessen wird an denselben Fenstern mit
-  derselben angewandten Schwelle.
+- **Fehlerkriterium, harte Untergrenzen und Ladeprüfungen:** unverändert die des Pipeline-Pfads.
+  Beide Baselines teilen sich die Ladeprüfungen (`PipelineGroupInvariants`) und die fünf
+  Metrikprüfungen je Gruppe (`PipelineGroupChecks`) wörtlich — nicht als Kopie, sonst hört eine der
+  beiden irgendwann auf, eine der Ungleichungen zu prüfen.
 
 ## Baseline aktualisieren
 

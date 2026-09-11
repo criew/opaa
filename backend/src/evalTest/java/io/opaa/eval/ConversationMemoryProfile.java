@@ -74,13 +74,4 @@ public record ConversationMemoryProfile(int windowMessages, int searchWindowTurn
       chatMemory.clear(probeKey);
     }
   }
-
-  /**
-   * The Gesprächsnotiz a turn is run with. Empty until the note is built; it travels through the
-   * measurement path already, so the note's arrival is a value change rather than a signature
-   * change across the harness.
-   */
-  public static List<String> conversationNote() {
-    return List.of();
-  }
 }

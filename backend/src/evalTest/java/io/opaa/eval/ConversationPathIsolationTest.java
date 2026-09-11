@@ -92,7 +92,7 @@ class ConversationPathIsolationTest {
               "maxChunksPerDocument": 3,
               "mmrLambda": 0.7,
               "fullTextSearchEnabled": true,
-              "fullTextIndexComplete": true,
+              "fullTextIndexUpToDate": true,
               "queryDecompositionEnabled": false,
               "maxSubQueries": 4,
               "chatModel": null,
@@ -186,6 +186,7 @@ class ConversationPathIsolationTest {
     return new ConversationEvaluationReport(
         ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION,
         PipelineMetricsAggregate.METRIC_WINDOW_NOTE,
+        ConversationEvaluationReport.SINGLE_PATH_NOTE,
         new ConversationEvaluationReport.ConversationRunConfiguration(
             new PipelineEvaluationReport.PipelineRunConfiguration(
                 "verwaltung",

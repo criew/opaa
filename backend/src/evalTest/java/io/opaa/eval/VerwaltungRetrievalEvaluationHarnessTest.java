@@ -949,7 +949,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
               manifest.fileNames().size(),
               "eval/golden/" + DOMAIN.goldenDatasetFileName(),
               GoldenDataset.sha256(goldenFile),
-              fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isComplete(),
+              fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isUpToDate(),
               ingestionPipelineFingerprint,
               activeChatModel),
           retrievalPipeline,
