@@ -13,8 +13,10 @@ import java.util.UUID;
 /**
  * One refresh token of a local session (ADR-0033, Entscheidung 7). Only the HMAC lookup hash of the
  * cookie value is stored. Tokens form a family: rotation revokes the presented token ({@link
- * RevocationReason#ROTATED}) and points it at its successor; {@link #getExpiresAt()} is the idle
- * limit, {@link #getFamilyExpiresAt()} the absolute end every successor inherits unchanged.
+ * RevocationReason#ROTATED}) and points it at its successor - atomically, through {@link
+ * LocalRefreshTokenRepository#rotateIfActive}, never by a read-then-write on this entity; {@link
+ * #getExpiresAt()} is the idle limit, {@link #getFamilyExpiresAt()} the absolute end every
+ * successor inherits unchanged.
  */
 @Entity
 @Table(name = "local_refresh_tokens")
@@ -76,12 +78,6 @@ public class LocalRefreshToken {
   public void revoke(RevocationReason reason, Instant now) {
     this.revocationReason = Objects.requireNonNull(reason, "reason");
     this.revokedAt = Objects.requireNonNull(now, "now");
-  }
-
-  /** Revokes this token as {@link RevocationReason#ROTATED} and records its successor. */
-  public void rotateTo(UUID successorId, Instant now) {
-    revoke(RevocationReason.ROTATED, now);
-    this.rotatedToId = Objects.requireNonNull(successorId, "successorId");
   }
 
   public UUID getId() {

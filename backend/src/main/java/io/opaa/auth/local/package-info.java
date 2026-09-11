@@ -5,6 +5,6 @@
  * oidc} profile without a strong {@code OPAA_AUTH_JWT_SECRET}. The issuer itself (tokens, refresh,
  * revocation), the bootstrap seed and the account lifecycle build on this package; the account
  * identity stays {@code users(subject, issuer)} in {@code io.opaa.auth}, with {@link
- * io.opaa.auth.local.LocalAuthProperties#ISSUER} as the local issuer.
+ * io.opaa.auth.LocalIssuer#URN} as the local issuer.
  */
 package io.opaa.auth.local;

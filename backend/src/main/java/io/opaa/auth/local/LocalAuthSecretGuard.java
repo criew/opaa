@@ -1,5 +1,6 @@
 package io.opaa.auth.local;
 
+import io.opaa.security.LocalAuthKeyService;
 import io.opaa.security.SecretValidator;
 import jakarta.annotation.PostConstruct;
 import jakarta.validation.ConstraintViolation;
@@ -37,7 +38,7 @@ public class LocalAuthSecretGuard {
     if (!violations.isEmpty()) {
       throw new IllegalStateException(
           "Local accounts cannot start: "
-              + SecretValidator.describeRequirement(LocalAuthProperties.JWT_SECRET_VARIABLE)
+              + SecretValidator.describeRequirement(LocalAuthKeyService.SECRET_VARIABLE)
               + " The \"oidc\" profile refuses to start without it (ADR-0033); the \"dev\""
               + " profile does not need it. See docs/handbuch/deployment.md.");
     }

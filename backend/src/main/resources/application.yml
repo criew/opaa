@@ -497,7 +497,9 @@ opaa:
       # test suite (all activate "dev", see AGENTS.md) have working local-issuer keys without
       # operator setup. LocalAuthSecretGuard does not run in this profile; any deployment that does
       # not activate "dev" falls back to the (empty) base value above and must set
-      # OPAA_AUTH_JWT_SECRET itself - see docs/handbuch/deployment.md.
+      # OPAA_AUTH_JWT_SECRET itself - see docs/handbuch/deployment.md. The value carries
+      # io.opaa.security.SecretValidator.NON_PRODUCTION_MARKER, so the "oidc" profile refuses it
+      # even when copied over (SecretValidatorTest#rejectsTheShippedDevDefault).
       jwt-secret: ${OPAA_AUTH_JWT_SECRET:NICHT-FUER-DEN-PRODUKTIVBETRIEB-opaa-dev-jwt-secret-2026}
     dev:
       issuer: ${OPAA_AUTH_DEV_ISSUER:opaa-dev}

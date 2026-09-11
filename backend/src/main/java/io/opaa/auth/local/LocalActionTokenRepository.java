@@ -23,7 +23,7 @@ public interface LocalActionTokenRepository extends JpaRepository<LocalActionTok
 
   /** 1 if this call consumed the still open, unexpired token; 0 otherwise. */
   @Transactional
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(
       "UPDATE LocalActionToken t SET t.consumedAt = :now"
           + " WHERE t.id = :id AND t.consumedAt IS NULL AND t.expiresAt > :now")
@@ -31,7 +31,7 @@ public interface LocalActionTokenRepository extends JpaRepository<LocalActionTok
 
   /** Consumes every open link of the purpose - a newly issued link supersedes the older ones. */
   @Transactional
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(
       "UPDATE LocalActionToken t SET t.consumedAt = :now"
           + " WHERE t.userId = :userId AND t.purpose = :purpose AND t.consumedAt IS NULL")
@@ -44,7 +44,7 @@ public interface LocalActionTokenRepository extends JpaRepository<LocalActionTok
    * Removes links expired or consumed before {@code cutoff} (cleanup run, ADR-0033 Entscheidung 7).
    */
   @Transactional
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("DELETE FROM LocalActionToken t WHERE t.expiresAt < :cutoff OR t.consumedAt < :cutoff")
   int deleteExpiredBefore(@Param("cutoff") Instant cutoff);
 }

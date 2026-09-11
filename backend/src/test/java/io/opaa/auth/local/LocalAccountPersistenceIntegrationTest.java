@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.ProviderType;
+import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.oidc.OidcProvider;
@@ -17,6 +18,12 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,7 +65,7 @@ class LocalAccountPersistenceIntegrationTest {
         .filter(OidcProvider::isLocal)
         .forEach(providerRepository::delete);
     userRepository.findAll().stream()
-        .filter(u -> LocalAuthProperties.ISSUER.equals(u.getIssuer()))
+        .filter(u -> LocalIssuer.URN.equals(u.getIssuer()))
         .forEach(userRepository::delete);
     settingsRepository
         .findSingleton()
@@ -88,6 +95,19 @@ class LocalAccountPersistenceIntegrationTest {
     assertThat(reloaded.isBootstrap()).isTrue();
     assertThat(reloaded.getVersion()).isZero();
     assertThat(credentialsRepository.findByBootstrapTrue()).contains(reloaded);
+  }
+
+  @Test
+  void countsFailedLoginsAtomicallyInTheDatabase() {
+    credentialsRepository.save(new LocalCredentials(user.getId(), "Test", now));
+
+    assertThat(credentialsRepository.recordFailedLogin(user.getId(), now)).isEqualTo(1);
+    assertThat(credentialsRepository.recordFailedLogin(user.getId(), now)).isEqualTo(1);
+    assertThat(credentialsRepository.recordFailedLogin(UUID.randomUUID(), now)).isZero();
+
+    LocalCredentials reloaded = credentialsRepository.findById(user.getId()).orElseThrow();
+    assertThat(reloaded.getFailedLoginAttempts()).isEqualTo(2);
+    assertThat(reloaded.getUpdatedAt()).isEqualTo(now);
   }
 
   @Test
@@ -140,6 +160,66 @@ class LocalAccountPersistenceIntegrationTest {
         .isEqualTo(1);
     assertThat(refreshTokenRepository.deleteExpiredBefore(now.plus(Duration.ofDays(8))))
         .isEqualTo(3);
+  }
+
+  @Test
+  void rotatesAnActiveTokenExactlyOnceUnderConcurrency() throws Exception {
+    UUID family = UUID.randomUUID();
+    LocalRefreshToken presented = refreshTokenRepository.save(refreshToken(family, "shared"));
+    LocalRefreshToken successorA = refreshTokenRepository.save(refreshToken(family, "succ-a"));
+    LocalRefreshToken successorB = refreshTokenRepository.save(refreshToken(family, "succ-b"));
+    CountDownLatch start = new CountDownLatch(1);
+    ExecutorService pool = Executors.newFixedThreadPool(2);
+    try {
+      Future<Integer> a = pool.submit(rotation(start, presented.getId(), successorA.getId()));
+      Future<Integer> b = pool.submit(rotation(start, presented.getId(), successorB.getId()));
+      start.countDown();
+
+      int wins = a.get(30, TimeUnit.SECONDS) + b.get(30, TimeUnit.SECONDS);
+
+      assertThat(wins).as("exactly one concurrent rotation may win").isEqualTo(1);
+    } finally {
+      pool.shutdownNow();
+    }
+    LocalRefreshToken reloaded = refreshTokenRepository.findById(presented.getId()).orElseThrow();
+    assertThat(reloaded.getRevocationReason()).isEqualTo(RevocationReason.ROTATED);
+    assertThat(reloaded.getRevokedAt()).isEqualTo(now);
+    assertThat(reloaded.getRotatedToId()).isIn(successorA.getId(), successorB.getId());
+    assertThat(
+            refreshTokenRepository.rotateIfActive(
+                presented.getId(), successorA.getId(), RevocationReason.ROTATED, now))
+        .as("a rotated token is never rotated again - the caller treats it as reuse")
+        .isZero();
+  }
+
+  @Test
+  void doesNotRotateAnExpiredToken() {
+    UUID family = UUID.randomUUID();
+    LocalRefreshToken expired =
+        refreshTokenRepository.save(
+            new LocalRefreshToken(
+                family,
+                user.getId(),
+                keyService.lookupHash(Purpose.REFRESH_TOKEN_LOOKUP, "expired"),
+                now.minus(Duration.ofDays(2)),
+                now.minus(Duration.ofDays(1)),
+                now.plus(Duration.ofDays(30))));
+    LocalRefreshToken successor = refreshTokenRepository.save(refreshToken(family, "succ"));
+
+    assertThat(
+            refreshTokenRepository.rotateIfActive(
+                expired.getId(), successor.getId(), RevocationReason.ROTATED, now))
+        .isZero();
+    assertThat(refreshTokenRepository.findById(expired.getId()).orElseThrow().getRevokedAt())
+        .isNull();
+  }
+
+  private Callable<Integer> rotation(CountDownLatch start, UUID presentedId, UUID successorId) {
+    return () -> {
+      start.await();
+      return refreshTokenRepository.rotateIfActive(
+          presentedId, successorId, RevocationReason.ROTATED, now);
+    };
   }
 
   @Test
@@ -257,7 +337,7 @@ class LocalAccountPersistenceIntegrationTest {
 
   private static User localUser(String email) {
     UUID id = UUID.randomUUID();
-    User user = new User(id.toString(), LocalAuthProperties.ISSUER, email, "Lokales Konto");
+    User user = new User(id.toString(), LocalIssuer.URN, email, "Lokales Konto");
     user.setOrganizationId(Organization.DEFAULT_ID);
     return user;
   }

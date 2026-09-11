@@ -17,7 +17,7 @@ public interface LocalRevokedTokenRepository extends JpaRepository<LocalRevokedT
    * more.
    */
   @Transactional
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("DELETE FROM LocalRevokedToken t WHERE t.expiresAt < :cutoff")
   int deleteExpiredBefore(@Param("cutoff") Instant cutoff);
 }

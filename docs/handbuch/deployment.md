@@ -307,12 +307,16 @@ kcadm.sh update realms/opaa -s accessTokenLifespan=900 -s ssoSessionIdleTimeout=
   der Start selbst nicht. Der im `dev`-Profil hinterlegte Schlüssel ist ausdrücklich nicht
   produktionstauglich und darf nicht übernommen werden.
 
-**Was es nicht gibt und deshalb hier auch nicht zu ersetzen ist:** Ein
-anwendungsseitiges JWT-Secret existiert nicht — OPAA verifiziert Tokens ausschließlich gegen die
-Signaturschlüssel des konfigurierten
-OIDC-Anbieters (`OPAA_OIDC_JWK_SET_URI`), es gibt kein eigenes Signier-Geheimnis, das rotiert werden
-müsste. Diese Verantwortung liegt beim Identitätsanbieter (dessen Realm-Schlüssel) statt bei OPAA. Ebenso
-gibt es keinen Mock-Auth-Modus: Der einzige ungeprüfte Modus ist das Spring-Profil `dev`
+- `OPAA_AUTH_JWT_SECRET` — das Wurzelgeheimnis der lokalen Benutzerverwaltung, aus dem OPAA die
+  Schlüssel für lokal ausgestellte Tokens und die Prüfwerte der Refresh- und Aktionslinks ableitet;
+  im Profil `oidc` **Pflicht** (mindestens 32 Zeichen, kein Platzhalter — sonst bricht der Start mit
+  einer Meldung ab), erzeugt mit `openssl rand -base64 48`. Eine Rotation beendet alle lokalen
+  Sitzungen und entwertet alle offenen Einladungs-, Rücksetz- und Übergabelinks — bewusst der eine
+  Handgriff nach einer Datenbank-Rücksicherung. Tokens von OIDC-Anbietern verifiziert OPAA weiterhin
+  ausschließlich gegen deren Signaturschlüssel (`OPAA_OIDC_JWK_SET_URI`); dieses Secret betrifft nur
+  lokale Konten.
+
+**Was es nicht gibt und deshalb hier auch nicht zu ersetzen ist:** einen Mock-Auth-Modus: Der einzige ungeprüfte Modus ist das Spring-Profil `dev`
 — **es gehört nie auf eine erreichbare Instanz**, siehe die Warnung unter
 [„Entwicklungsmodus (dev)"](#entwicklungsmodus-dev) unten. Nur `SPRING_PROFILES_ACTIVE=...,oidc` ist für
 den erreichbaren Betrieb zulässig.
@@ -819,6 +823,14 @@ Sinn; das ist jeweils vermerkt.
 | **Authentifizierung** | | | |
 | `SPRING_PROFILES_ACTIVE` | ohne Angabe ist das Spring-Profil `local` aktiv (`spring.profiles.default: local` in `application.yml`) — das enthält aber weder `oidc` noch `dev`, sodass `io.opaa.auth.AuthProfileGuard` den Start trotzdem mit einer Fehlermeldung abbricht | `docker,dev` | Muss `oidc` (Betrieb) oder `dev` (Entwicklung/Tests) enthalten; ohne eines der beiden startet das Backend nicht — das gilt für den Auth-Modus, nicht für das Spring-Profil an sich, das auch ohne Angabe einen Wert (`local`) hat. Für Betrieb mit dem gebündelten Keycloak stattdessen `docker,oidc` setzen (siehe [„OIDC (Keycloak)"](#oidc-keycloak) unten) |
 | `OPAA_INITIAL_ADMIN_EMAIL` | `admin@opaa.local` | `admin@opaa.local` | E-Mail für den automatisch erstellten initialen Admin-Benutzer; greift nur beim ersten Anmelden dieser Adresse und nur über den Standardanbieter (im `dev`-Modus: den Dev-Issuer), siehe [„Anbieterverwaltung"](#anbieterverwaltung) unten |
+| **Lokale Konten** | | | |
+| `OPAA_AUTH_JWT_SECRET` | — (leer) außerhalb des Profils `dev`; im Profil `dev` fest hinterlegter, **ausdrücklich nicht produktionstauglicher** Wert | nicht gesetzt (auskommentiert — bewusst, siehe Kommentar in `.env.docker.example`) | Wurzelgeheimnis der lokalen Benutzerverwaltung, aus dem die Schlüssel für lokal ausgestellte Tokens und die Prüfwerte der Refresh- und Aktionslinks abgeleitet werden. **Im Profil `oidc` Pflicht: mindestens 32 Zeichen, kein Platzhalter — ohne gültigen Wert bricht der Start mit einer Meldung ab, die diese Variable nennt.** Erzeugen mit `openssl rand -base64 48`; eine Rotation beendet alle lokalen Sitzungen und entwertet alle offenen Links (siehe [„Härtung für erreichbare Deployments"](#härtung-für-erreichbare-deployments) oben) |
+| `OPAA_AUTH_LOCAL_ACCESS_TOKEN_TTL` | `15m` | nicht gesetzt (Anwendungs-Default gilt) | Lebensdauer eines lokal ausgestellten Access-Tokens |
+| `OPAA_AUTH_LOCAL_REFRESH_TOKEN_TTL` | `7d` | nicht gesetzt (Anwendungs-Default gilt) | Leerlauffrist einer lokalen Sitzung (Lebensdauer des Refresh-Tokens), höchstens `30d`; ein Wert darüber lässt den Start fehlschlagen |
+| `OPAA_AUTH_LOCAL_SESSION_MAX_LIFETIME` | `30d` | nicht gesetzt (Anwendungs-Default gilt) | Absolute Höchstdauer einer lokalen Sitzung, die keine Erneuerung verlängert, höchstens `90d` |
+| `OPAA_AUTH_LOCAL_ADMIN_REFRESH_TOKEN_TTL` | `4h` | nicht gesetzt (Anwendungs-Default gilt) | Leerlauffrist für lokale Systemverwalterkonten; nie länger als die reguläre Leerlauffrist |
+| `OPAA_AUTH_LOCAL_ADMIN_SESSION_MAX_LIFETIME` | `12h` | nicht gesetzt (Anwendungs-Default gilt) | Absolute Höchstdauer für lokale Systemverwalterkonten; nie länger als die reguläre Höchstdauer |
+| `OPAA_AUTH_LOCAL_COOKIE_SECURE` | `true` | nicht gesetzt (Anwendungs-Default gilt) | Ob das Refresh-Cookie lokaler Sitzungen das `Secure`-Attribut trägt; `false` nur für lokales HTTP ohne TLS |
 | **Entwicklungs-Auth (`dev`)** | | | |
 | `OPAA_AUTH_DEV_ISSUER` | `opaa-dev` | `opaa-dev` | Issuer-Claim der synthetischen Tokens |
 | `OPAA_AUTH_DEV_DEFAULT_USER` | `dev-admin` | `dev-admin` | Nutzer, als der ohne `X-OPAA-Dev-User`-Header authentifiziert wird — `.env.docker.example` setzt diesen Block, weil `docker,dev` der Compose-Standardfall ist, und erklärt dort auch die vorkonfigurierten Nutzer |

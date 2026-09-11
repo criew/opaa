@@ -14,10 +14,10 @@ import java.util.UUID;
 /**
  * The local half of a local account (ADR-0033, Entscheidung 3): password hash, forced-change and
  * lock state, expiry, address confirmation and the mandatory creation reason, keyed by {@code
- * users.id}. A row exists exactly when the user's issuer is {@link LocalAuthProperties#ISSUER} - an
- * invariant of the single write path, not of the schema. The account state is derived by {@link
- * #state}, never stored; the failed-login counter is never exposed and returns to zero on every
- * successful sign-in, reset and unlock.
+ * users.id}. A row exists exactly when the user's issuer is {@link io.opaa.auth.LocalIssuer#URN} -
+ * an invariant of the single write path of the local account service, not of the schema. The
+ * account state is derived by {@link #state}, never stored; the failed-login counter is never
+ * exposed and returns to zero on every successful sign-in, reset and unlock.
  */
 @Entity
 @Table(name = "local_credentials")
@@ -90,10 +90,11 @@ public class LocalCredentials {
   /**
    * The derived state: a lock outranks everything (a locked invitation must not be redeemable),
    * then expiry, then an incomplete invitation; only what remains is {@link
-   * LocalAccountState#ACTIVE}.
+   * LocalAccountState#ACTIVE}. A {@link LockReason#FAILED_LOGINS} lock ends by itself with {@link
+   * #getLockoutUntil()}; every other lock lasts until {@link #unlock}.
    */
   public LocalAccountState state(Instant now) {
-    if (lockedAt != null || (lockoutUntil != null && lockoutUntil.isAfter(now))) {
+    if (isLocked(now)) {
       return LocalAccountState.LOCKED;
     }
     if (expiresAt != null && !expiresAt.isAfter(now)) {
@@ -107,6 +108,13 @@ public class LocalCredentials {
 
   public boolean isLoginCapable(Instant now) {
     return state(now) == LocalAccountState.ACTIVE;
+  }
+
+  private boolean isLocked(Instant now) {
+    if (lockedReason == LockReason.FAILED_LOGINS) {
+      return lockoutUntil != null && lockoutUntil.isAfter(now);
+    }
+    return lockedAt != null;
   }
 
   /** Stores an already encoded hash (never a plain password). */
@@ -128,14 +136,22 @@ public class LocalCredentials {
   }
 
   /** Every token issued before {@code cutoff} becomes invalid - the mass revocation. */
-  public void invalidateSessionsIssuedBefore(Instant cutoff) {
+  public void invalidateSessionsIssuedBefore(Instant cutoff, Instant now) {
     this.passwordInvalidatedBefore = Objects.requireNonNull(cutoff, "cutoff");
-    touch(cutoff);
+    touch(now);
   }
 
-  /** Locks the account; {@code lockoutUntil} is set only for {@link LockReason#FAILED_LOGINS}. */
+  /**
+   * Locks the account. A {@link LockReason#FAILED_LOGINS} lock needs {@code lockoutUntil} - it ends
+   * on its own at that instant; for every other reason {@code lockoutUntil} must be null.
+   */
   public void lock(LockReason reason, Instant lockedAt, Instant lockoutUntil) {
-    this.lockedReason = Objects.requireNonNull(reason, "reason");
+    Objects.requireNonNull(reason, "reason");
+    if ((reason == LockReason.FAILED_LOGINS) != (lockoutUntil != null)) {
+      throw new IllegalArgumentException(
+          "lockoutUntil is required for FAILED_LOGINS and forbidden for every other lock reason");
+    }
+    this.lockedReason = reason;
     this.lockedAt = Objects.requireNonNull(lockedAt, "lockedAt");
     this.lockoutUntil = lockoutUntil;
     touch(lockedAt);
@@ -150,10 +166,11 @@ public class LocalCredentials {
     touch(now);
   }
 
-  /** A temporary lockout after failed sign-ins without an administrative lock. */
+  /**
+   * The lock after too many failed sign-ins: {@link #lock} with {@link LockReason#FAILED_LOGINS}.
+   */
   public void recordLockoutUntil(Instant lockoutUntil, Instant now) {
-    this.lockoutUntil = lockoutUntil;
-    touch(now);
+    lock(LockReason.FAILED_LOGINS, now, Objects.requireNonNull(lockoutUntil, "lockoutUntil"));
   }
 
   public void resetFailedLoginAttempts(Instant now) {

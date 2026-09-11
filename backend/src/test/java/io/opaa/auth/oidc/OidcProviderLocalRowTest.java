@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.ProviderType;
-import io.opaa.auth.local.LocalAuthProperties;
+import io.opaa.auth.LocalIssuer;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -30,7 +30,7 @@ class OidcProviderLocalRowTest {
 
     assertThat(local.getProviderType()).isEqualTo(ProviderType.LOCAL);
     assertThat(local.isLocal()).isTrue();
-    assertThat(local.getIssuerUri()).isEqualTo(LocalAuthProperties.ISSUER);
+    assertThat(local.getIssuerUri()).isEqualTo(LocalIssuer.URN);
     assertThat(local.getClientId()).isNull();
     assertThat(local.getJwkSetUri()).isNull();
     assertThat(local.isEnabled()).isFalse();
@@ -57,13 +57,13 @@ class OidcProviderLocalRowTest {
 
     assertThat(local.getDisplayName()).isEqualTo("Konten der Stadt");
     assertThat(local.isEnabled()).isTrue();
-    assertThat(local.getIssuerUri()).isEqualTo(LocalAuthProperties.ISSUER);
+    assertThat(local.getIssuerUri()).isEqualTo(LocalIssuer.URN);
   }
 
   @Test
   void theLocalRowSharesNoDecoderInputsWithAnyOidcRow() {
     OidcProvider local = OidcProvider.localProvider("Lokale Konten");
-    OidcProvider oidc = new OidcProvider("X", LocalAuthProperties.ISSUER, "opaa", null, null);
+    OidcProvider oidc = new OidcProvider("X", LocalIssuer.URN, "opaa", null, null);
 
     assertThat(local.hasSameDecoderInputsAs(oidc)).isFalse();
     assertThat(local.hasSameDecoderInputsAs(OidcProvider.localProvider("Y"))).isTrue();

@@ -11,8 +11,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * limit longer than the absolute one, administrator limits longer than the regular ones, an access
  * token that outlives the shortest refresh window) in every profile, naming the environment
  * variable. The secret's strength is checked by {@link LocalAuthSecretGuard} in the {@code oidc}
- * profile only. The issuer is not configurable: {@link #ISSUER} is installation-independent so an
- * account's identity survives a move (Entscheidung 2).
+ * profile only. The issuer is not configurable - {@link io.opaa.auth.LocalIssuer#URN} is
+ * installation-independent so an account's identity survives a move (Entscheidung 2).
  *
  * @param jwtSecret {@code OPAA_AUTH_JWT_SECRET}, HKDF input keying material; trimmed, never null
  * @param accessTokenTtl lifetime of a local access token (default 15 minutes)
@@ -35,9 +35,6 @@ public record LocalAuthProperties(
     Duration adminRefreshTokenTtl,
     Duration adminSessionMaxLifetime,
     Boolean cookieSecure) {
-
-  public static final String ISSUER = "urn:opaa:local";
-  public static final String JWT_SECRET_VARIABLE = "OPAA_AUTH_JWT_SECRET";
 
   public static final Duration MAX_REFRESH_TOKEN_TTL = Duration.ofDays(30);
   public static final Duration MAX_SESSION_MAX_LIFETIME = Duration.ofDays(90);
@@ -88,13 +85,6 @@ public record LocalAuthProperties(
         Setting.ACCESS_TOKEN_TTL,
         adminRefreshTokenTtl,
         Setting.ADMIN_REFRESH_TOKEN_TTL);
-  }
-
-  /**
-   * Whether any secret is configured at all - its strength is {@link LocalAuthSecretGuard}'s job.
-   */
-  public boolean hasJwtSecret() {
-    return !jwtSecret.isEmpty();
   }
 
   private static void requirePositive(Duration value, Setting setting) {

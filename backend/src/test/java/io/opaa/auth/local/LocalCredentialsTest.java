@@ -58,6 +58,10 @@ class LocalCredentialsTest {
 
     assertThat(credentials.state(NOW)).isEqualTo(LocalAccountState.LOCKED);
     assertThat(credentials.getLockoutUntil()).isEqualTo(NOW.plus(Duration.ofMinutes(15)));
+    // regression guard: a failed-login lock ends on its own, it is never permanent
+    assertThat(credentials.state(NOW.plus(Duration.ofMinutes(16))))
+        .isEqualTo(LocalAccountState.ACTIVE);
+    assertThat(credentials.getLockedReason()).isEqualTo(LockReason.FAILED_LOGINS);
 
     credentials.unlock(NOW.plus(Duration.ofMinutes(1)));
 
@@ -70,13 +74,35 @@ class LocalCredentialsTest {
   }
 
   @Test
-  void aLockoutInTheFutureCountsAsLockedEvenWithoutAnAdministrativeLock() {
+  void aRecordedLockoutIsAFailedLoginLockWithItsReason() {
     LocalCredentials credentials = activeCredentials();
     credentials.recordLockoutUntil(NOW.plus(Duration.ofMinutes(15)), NOW);
 
     assertThat(credentials.state(NOW)).isEqualTo(LocalAccountState.LOCKED);
+    assertThat(credentials.getLockedAt()).isEqualTo(NOW);
+    assertThat(credentials.getLockedReason()).isEqualTo(LockReason.FAILED_LOGINS);
     assertThat(credentials.state(NOW.plus(Duration.ofMinutes(16))))
         .isEqualTo(LocalAccountState.ACTIVE);
+  }
+
+  @Test
+  void anAdministrativeLockNeverEndsOnItsOwn() {
+    LocalCredentials credentials = activeCredentials();
+    credentials.lock(LockReason.INACTIVITY, NOW, null);
+
+    assertThat(credentials.state(NOW.plus(Duration.ofDays(400))))
+        .isEqualTo(LocalAccountState.LOCKED);
+  }
+
+  @Test
+  void lockoutUntilBelongsToFailedLoginLocksOnly() {
+    LocalCredentials credentials = activeCredentials();
+
+    assertThatThrownBy(() -> credentials.lock(LockReason.FAILED_LOGINS, NOW, null))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(
+            () -> credentials.lock(LockReason.ADMIN, NOW, NOW.plus(Duration.ofMinutes(1))))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
@@ -98,11 +124,12 @@ class LocalCredentialsTest {
   @Test
   void invalidatingSessionsRecordsTheCutoff() {
     LocalCredentials credentials = activeCredentials();
+    Instant later = NOW.plus(Duration.ofHours(1));
 
-    credentials.invalidateSessionsIssuedBefore(NOW);
+    credentials.invalidateSessionsIssuedBefore(NOW, later);
 
     assertThat(credentials.getPasswordInvalidatedBefore()).isEqualTo(NOW);
-    assertThat(credentials.getUpdatedAt()).isEqualTo(NOW);
+    assertThat(credentials.getUpdatedAt()).isEqualTo(later);
   }
 
   @Test

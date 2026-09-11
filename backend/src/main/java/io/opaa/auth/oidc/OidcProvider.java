@@ -1,7 +1,7 @@
 package io.opaa.auth.oidc;
 
 import io.opaa.api.types.ProviderType;
-import io.opaa.auth.local.LocalAuthProperties;
+import io.opaa.auth.LocalIssuer;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -26,8 +26,8 @@ import java.util.UUID;
  * <p>Since ADR-0033 the local account management is one row of this table too ({@link
  * #localProvider}, {@link ProviderType#LOCAL}, at most one - {@code
  * ux_oidc_providers_single_local}): its {@link #isEnabled()} is that management's switch, its
- * issuer is fixed to {@link LocalAuthProperties#ISSUER}, it has no client id, is never the default
- * and has no editable connection details - the schema's CHECKs and this class refuse all of that.
+ * issuer is fixed to {@link LocalIssuer#URN}, it has no client id, is never the default and has no
+ * editable connection details - the schema's CHECKs and this class refuse all of that.
  */
 @Entity
 @Table(name = "oidc_providers")
@@ -95,7 +95,7 @@ public class OidcProvider {
     provider.updatedAt = provider.createdAt;
     provider.providerType = ProviderType.LOCAL;
     provider.displayName = Objects.requireNonNull(displayName, "displayName").trim();
-    provider.issuerUri = LocalAuthProperties.ISSUER;
+    provider.issuerUri = LocalIssuer.URN;
     provider.clientId = null;
     provider.jwkSetUri = null;
     provider.claimMapping = OidcClaimMapping.keycloakDefaults();

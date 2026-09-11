@@ -25,7 +25,6 @@ class LocalAuthPropertiesTest {
     assertThat(properties.adminRefreshTokenTtl()).isEqualTo(Duration.ofHours(4));
     assertThat(properties.adminSessionMaxLifetime()).isEqualTo(Duration.ofHours(12));
     assertThat(properties.cookieSecure()).isTrue();
-    assertThat(LocalAuthProperties.ISSUER).isEqualTo("urn:opaa:local");
   }
 
   @Test
