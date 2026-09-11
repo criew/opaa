@@ -48,6 +48,7 @@ class LlmModelServiceIntegrationTest {
 
   @Autowired private LlmModelService llmModelService;
   @Autowired private LlmModelSeeder llmModelSeeder;
+  @Autowired private ActiveChatModelResolver resolver;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -71,8 +72,13 @@ class LlmModelServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
+    // First statement of the cleanup: anything that throws before it would leave the catalogue
+    // emptied for every following class, and the seeder never refills it (its marker is set).
     llmModelCatalogFixtures.restoreCatalog(foreignModels);
+    // The restore bypasses LlmModelService, so no ActiveChatModelChangedEvent fires - without this,
+    // the resolver would keep the client it built for a model this method has just deleted.
+    resolver.resetForTest();
+    jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     userRepository.deleteById(userId);
     organizationRepository.deleteById(organizationId);
   }

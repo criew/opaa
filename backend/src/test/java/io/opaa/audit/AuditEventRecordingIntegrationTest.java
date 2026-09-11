@@ -46,7 +46,6 @@ import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceCreation;
-import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
 import io.opaa.test.FakeDirectoryClient;
@@ -95,7 +94,6 @@ class AuditEventRecordingIntegrationTest {
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private SpaceService spaceService;
   @Autowired private SpaceRepository spaceRepository;
-  @Autowired private SpaceMembershipRepository spaceMembershipRepository;
   @Autowired private DirectorySyncService directorySyncService;
   @Autowired private DirectorySyncStatusRepository directorySyncStatusRepository;
   @Autowired private FakeDirectoryClient directoryClient;
@@ -124,18 +122,15 @@ class AuditEventRecordingIntegrationTest {
     directorySyncStatusRepository
         .findByOrganizationId(organizationId)
         .ifPresent(status -> directorySyncStatusRepository.deleteById(status.getId()));
-    // Memberships before their spaces, and only those of this test's own organization: a user of
-    // this organization can only ever be a member of a space of the same organization
-    // (fk_space_memberships_user_organization), so no membership of this class is missed.
-    List<Space> ownSpaces =
+    // Only the spaces of this test's own organization; their memberships go with them
+    // (Space#memberships cascades, and so does fk_space_memberships_space_organization). Nothing of
+    // this class is missed: a membership carries both its space's and its user's organization
+    // (fk_space_memberships_space_organization and fk_space_memberships_user_organization), so it
+    // cannot exist outside the organization filtered for here.
+    spaceRepository.deleteAll(
         spaceRepository.findAll().stream()
             .filter(s -> s.getOrganizationId().equals(organizationId))
-            .toList();
-    ownSpaces.forEach(
-        space ->
-            spaceMembershipRepository.deleteAll(
-                spaceMembershipRepository.findBySpaceId(space.getId())));
-    spaceRepository.deleteAll(ownSpaces);
+            .toList());
     List<UUID> ownLibraryIds =
         libraryRepository.findAll().stream()
             .filter(l -> l.getOrganizationId().equals(organizationId))

@@ -71,6 +71,13 @@ class QueryIntegrationTest {
 
   @BeforeEach
   void setUp() {
+    // A precondition of this class's fixtures, not a cleanup: the two "topK chunks, all of them
+    // from the granted library" tests below add 250 unauthorized chunks whose embeddings tie with
+    // the granted ones (FakeEmbeddingModel), so the filtered HNSW search only reaches its own rows
+    // while the index holds no dead entries. Every insert/delete cycle of this class and of its
+    // siblings in this context leaves some behind, and VACUUM is what the TRUNCATE they used to run
+    // did implicitly.
+    jdbcTemplate.execute("VACUUM vector_store");
     // Spring AI 2.0 merges ChatModel.getOptions() into every request; a bare mock returns null
     when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
     when(activeChatModelResolver.resolveChatClient())

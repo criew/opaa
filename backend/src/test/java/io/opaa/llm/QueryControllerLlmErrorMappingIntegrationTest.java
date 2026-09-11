@@ -93,8 +93,11 @@ class QueryControllerLlmErrorMappingIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    resolver.resetForTest();
+    // Restore first: anything that throws before it would leave the catalogue emptied for every
+    // following class, and the seeder never refills it (its marker is set). The resolver cache is
+    // dropped afterwards, because the restore bypasses LlmModelService and fires no event.
     llmModelCatalogFixtures.restoreCatalog(foreignModels);
+    resolver.resetForTest();
   }
 
   @Test

@@ -31,6 +31,9 @@ public final class OwnOrganizationFixtures {
           "spaces",
           "asset_grants",
           "asset_grant_history",
+          // Neither a foreign key to its library nor one to its organization: nothing would ever
+          // fail over a row left here, it would just keep accumulating with a dangling library_id.
+          "library_visibility_history",
           "group_membership_history",
           "knowledge_libraries",
           "users",

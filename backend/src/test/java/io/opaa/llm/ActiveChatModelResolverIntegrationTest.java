@@ -104,13 +104,15 @@ class ActiveChatModelResolverIntegrationTest {
   void tearDown() {
     serverA.stop(0);
     serverB.stop(0);
+    // Restore before anything that could throw: otherwise the catalogue stays emptied for every
+    // following class, and the seeder never refills it (its marker is set).
+    llmModelCatalogFixtures.restoreCatalog(foreignModels);
     // #767 review, optional finding 4: without this, a cached client from this test method would
     // keep pointing at serverA/serverB above, both now stopped - the next test method sharing this
     // class's Spring context would see "connection refused" instead of the 503 its own fixtures
     // expect, until it happened to trigger an activation of its own.
     resolver.resetForTest();
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
-    llmModelCatalogFixtures.restoreCatalog(foreignModels);
     userRepository.deleteById(userId);
     organizationRepository.deleteById(organizationId);
   }
