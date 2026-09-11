@@ -30,6 +30,7 @@ tool-choice rationale for PDF/DOCX/PPTX generation.
 from __future__ import annotations
 
 import hashlib
+import re
 import sys
 from pathlib import Path
 
@@ -64,30 +65,67 @@ LIBRARIES = [
 ]
 
 # Corpus files no generator run produces, because no pinned library writes their format. They are
-# committed once (see formate.py and make_doc_fixture.py), survive the clean step and are still
-# covered by MANIFEST.sha256 - a missing one aborts the run rather than silently shrinking the
-# library.
-PRESERVED_FILES = {f"formate/{formate.DOC_FILE_NAME}"}
+# committed once, survive the clean step and are still covered by MANIFEST.sha256 - a missing one
+# aborts the run rather than silently shrinking the library. The value is the origin sentence
+# SOURCE.md carries for that file, so the two can never drift apart.
+PRESERVED_FILES = {
+    f"formate/{formate.DOC_FILE_NAME}": (
+        "einmalig aus dem in `generator/formate.py` deklarierten Rheinfurt-Text erzeugt "
+        '(`generator/make_doc_fixture.py`, LibreOffice-Export nach "MS Word 97"), danach committet'
+    ),
+    f"formate/{formate.MSG_FILE_NAME}": (
+        "übernommen aus dem Testkorpus des Apache-POI-Projekts (`test-data/hsmf/simple_test_msg.msg`, "
+        "Apache License 2.0, Volltext in "
+        "[`THIRD-PARTY-LICENSES/Apache-POI-testdata-Apache-2.0.txt`](THIRD-PARTY-LICENSES/Apache-POI-testdata-Apache-2.0.txt)). "
+        "**Als einziges Dokument dieses Korpus englisch und ohne Rheinfurt-Bezug** — eine Folge "
+        "seiner Herkunft, kein Versehen"
+    ),
+}
 
-# Every extension the Formatübersicht of docs/handbuch/indexierung.md admits. Listed here so a
-# format missing from the "Formattest auf S3" library becomes a named gap in SOURCE.md instead of
-# going unnoticed.
-ADMITTED_EXTENSIONS = [
-    ".pdf",
-    ".docx",
-    ".doc",
-    ".pptx",
-    ".xlsx",
-    ".csv",
-    ".ods",
-    ".odt",
-    ".odp",
-    ".html",
-    ".md",
-    ".txt",
-    ".eml",
-    ".msg",
-]
+HANDBOOK_FORMAT_CHAPTER = REPO_ROOT / "docs" / "handbuch" / "indexierung.md"
+_HANDBOOK_SECTION = "## Anhang: Formatübersicht"
+_HANDBOOK_EXTENSION_ROW = re.compile(r"^\|\s*`(\.[a-z0-9]+)`\s*\|")
+# The Formatübersicht lists at least the formats of #1058/#1057/#1059/#1189; a parse finding fewer
+# than this read the wrong thing rather than a genuinely shrunken table.
+_MINIMUM_ADMITTED_EXTENSIONS = 10
+
+
+def admitted_extensions() -> list[str]:
+    """Every extension the Formatübersicht of docs/handbuch/indexierung.md admits, read from that
+    table rather than copied here - a fifteenth format must never leave SOURCE.md claiming full
+    coverage. Rows without an extension in the first column (Feed-Detailseite, Confluence-Seite)
+    are no file extension and are skipped.
+
+    Raises SystemExit when the chapter, the section or the table cannot be read: an unnoticed
+    parse failure would silently turn the gap list into "nothing is missing".
+    """
+    if not HANDBOOK_FORMAT_CHAPTER.is_file():
+        raise SystemExit(
+            f"Handbuchkapitel {HANDBOOK_FORMAT_CHAPTER} nicht gefunden - ohne seine "
+            "Formatübersicht lässt sich die Abdeckung der Bibliothek 'Formattest auf S3' nicht "
+            "bestimmen."
+        )
+    text = HANDBOOK_FORMAT_CHAPTER.read_text(encoding="utf-8")
+    start = text.find(_HANDBOOK_SECTION)
+    if start < 0:
+        raise SystemExit(
+            f"Abschnitt '{_HANDBOOK_SECTION}' fehlt in {HANDBOOK_FORMAT_CHAPTER} - wurde er "
+            "umbenannt? Ohne ihn ist die Endungsliste nicht ableitbar."
+        )
+    extensions: list[str] = []
+    for line in text[start:].splitlines()[1:]:
+        if line.startswith("## "):
+            break
+        match = _HANDBOOK_EXTENSION_ROW.match(line)
+        if match and match.group(1) not in extensions:
+            extensions.append(match.group(1))
+    if len(extensions) < _MINIMUM_ADMITTED_EXTENSIONS:
+        raise SystemExit(
+            f"Nur {len(extensions)} Endungen aus der Formatübersicht in "
+            f"{HANDBOOK_FORMAT_CHAPTER} gelesen ({extensions}) - das Tabellenformat hat sich "
+            "vermutlich geändert. Lieber abbrechen als vollständige Abdeckung behaupten."
+        )
+    return extensions
 
 LIBRARY_LABELS = {
     "leistungen-meldewesen-ausweise": "Leistungen Meldewesen & Ausweise",
@@ -369,10 +407,11 @@ def render_formate_gaps(formate_files: list[tuple[str, str, bytes]]) -> str:
     """The two honest statements about this library: which files are committed rather than
     generated, and which admitted extension has no document at all."""
     present = {Path(relative_path).suffix.lower() for relative_path, _slug, _ in formate_files}
-    missing = [extension for extension in ADMITTED_EXTENSIONS if extension not in present]
+    missing = [extension for extension in admitted_extensions() if extension not in present]
     preserved = "\n".join(
-        f"- `{relative_path}` — committet, nicht erzeugt: für diese Endung schreibt keine der in "
-        "`generator/requirements.txt` gepinnten Bibliotheken. Herkunft und Verfahren: "
+        f"- `{relative_path}` — committet, nicht bei jedem Lauf erzeugt: für diese Endung schreibt "
+        f"keine der in `generator/requirements.txt` gepinnten Bibliotheken. Herkunft: "
+        f"{PRESERVED_FILES[relative_path]}. Verfahren: "
         '[`generator/README.md`](../generator/README.md), Abschnitt "Formate ohne Writer".'
         for relative_path in sorted(PRESERVED_FILES)
     )
@@ -399,11 +438,13 @@ def render_source_md(per_library: dict[str, int], total_bytes: int, formate_gaps
     )
     return f"""# Quellen, Lizenzen und Hinweis auf synthetische Inhalte
 
-**Alle Inhalte in diesem Korpus sind synthetisch.** Rheinfurt ist eine erfundene Stadt; jede
-Behörde, Adresse, Person, Telefonnummer, E-Mail-Adresse, Bankverbindung, jedes Aktenzeichen und
-jeder Euro-Betrag in diesem Verzeichnis ist frei erfunden oder aus realen Quellen deterministisch
-umgeschrieben (siehe unten). Übereinstimmungen mit realen Personen oder Behörden sind nicht
-beabsichtigt.
+**Alle Inhalte in diesem Korpus sind synthetisch — mit genau einer benannten Ausnahme.** Rheinfurt
+ist eine erfundene Stadt; jede Behörde, Adresse, Person, Telefonnummer, E-Mail-Adresse,
+Bankverbindung, jedes Aktenzeichen und jeder Euro-Betrag in diesem Verzeichnis ist frei erfunden
+oder aus realen Quellen deterministisch umgeschrieben (siehe unten). Übereinstimmungen mit realen
+Personen oder Behörden sind nicht beabsichtigt. Die Ausnahme ist die Outlook-Nachricht der
+Bibliothek „Formattest auf S3": Sie stammt unverändert aus einem fremden Testkorpus, weil sich das
+`.msg`-Format nicht erzeugen lässt — Herkunft und Lizenz im Abschnitt zu dieser Bibliothek unten.
 
 Dieser Abschnitt sowie die Datei- und Dokumentzahlen unten werden **vom Generator selbst
 geschrieben** ([`generate_corpus.py::render_source_md`](../generator/generate_corpus.py)) — sie
@@ -468,10 +509,10 @@ Abschnitt „Quellen und Lizenzen" (Recherche Issue #709).
 ## Bibliothek „Formattest auf S3" (#1519)
 
 Die siebte Bibliothek (`formate/`) ist keine Fachablage, sondern eine technische Schaubibliothek:
-je ein Dokument pro Dateiendung, die OPAA zulässt. Ihr Inhalt ist wie der übrige Korpus synthetisch
-und im Rheinfurt-Kontext verfasst (Dokumentenformate, Posteingang, Langzeitarchivierung); jedes
-Dokument nennt im Text sein eigenes Format, damit im Chat erkennbar bleibt, aus welcher Datei eine
-Antwort stammt.
+je ein Dokument pro Dateiendung, die OPAA zulässt. Ihr Inhalt ist bis auf die unten genannte
+Outlook-Nachricht synthetisch und im Rheinfurt-Kontext verfasst (Dokumentenformate, Posteingang,
+Langzeitarchivierung); jedes erzeugte Dokument nennt im Text sein eigenes Format, damit im Chat
+erkennbar bleibt, aus welcher Datei eine Antwort stammt.
 
 {formate_gaps}
 

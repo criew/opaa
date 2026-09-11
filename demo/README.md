@@ -24,7 +24,7 @@ demo/
     ├── formate/                              je ein Dokument pro unterstützter Endung (S3-Bucket des Demo-Stacks, #1519)
     ├── MANIFEST.sha256                       SHA-256 über alle Dokumente
     ├── SOURCE.md                             Quellen, Lizenzen, Hinweis auf synthetische Inhalte (vom Generator geschrieben)
-    └── THIRD-PARTY-LICENSES/                 Volltext der MIT-Lizenz des LHM-Dienstleistungen-Corpus
+    └── THIRD-PARTY-LICENSES/                 Volltexte der MIT-Lizenz des LHM-Dienstleistungen-Corpus und der Apache-2.0-Lizenz des POI-Testkorpus
 ```
 
 ---
@@ -49,8 +49,16 @@ Konnektortypen und mehrere Dateiformate:
 Die siebte Bibliothek ist keine Fachablage, sondern eine **technische Schaubibliothek**: Sie zeigt,
 dass jedes vom Handbuch zugelassene Dateiformat wirklich verarbeitet wird, und gehört deshalb allein
 dem Demo-Admin — kein Fachkonto bekommt ein Leserecht darauf, und keinem Space ist sie zugeordnet.
-Jedes ihrer Dokumente nennt im Text sein eigenes Format, damit im Chat erkennbar bleibt, aus welcher
-Datei eine Antwort stammt.
+Jedes erzeugte Dokument nennt im Text sein eigenes Format, damit im Chat erkennbar bleibt, aus
+welcher Datei eine Antwort stammt.
+
+**Ein Dokument fällt bewusst aus dem Rahmen:** Die Outlook-Nachricht (`.msg`) lässt sich mit keiner
+Bibliothek erzeugen und stammt deshalb unverändert aus dem Testkorpus des Apache-POI-Projekts
+(Apache License 2.0). Sie ist als einziges Dokument des gesamten Korpus englisch und ohne
+Rheinfurt-Bezug — das ist eine Folge ihrer Herkunft, kein Versehen. Die Bibliotheksbeschreibung sagt
+das auch in der Oberfläche; Herkunft und Lizenz stehen in
+[`corpus/SOURCE.md`](corpus/SOURCE.md) und
+[`corpus/THIRD-PARTY-LICENSES/`](corpus/THIRD-PARTY-LICENSES/).
 
 Begründung der Auswahl, Quellen und Lizenzen des Korpus:
 [`docs/features/demo-instance.md`](../docs/features/demo-instance.md).
@@ -235,7 +243,7 @@ ein Hafen nach außen ist dafür nicht nötig:
 - <http://127.0.0.1:8092/rss.xml>
 - <http://127.0.0.1:8094/> — **MinIO-Konsole**, der Weg, sich die drei Buckets anzusehen. Anmeldung
   mit dem Root-Schlüssel oben (`rheinfurt-archiv` / `RheinfurtDemo!2026`), dann „Object Browser":
-  `rheinfurt-archiv` zeigt die Jahrgangsordner unter `ratsinformationen/`, `formattest` die dreizehn
+  `rheinfurt-archiv` zeigt die Jahrgangsordner unter `ratsinformationen/`, `formattest` die vierzehn
   Formatmuster, und `opaa-uploads` füllt sich mit je einem Objekt pro hochgeladenem Original —
   sichtbar unmittelbar nach einem Upload über die Oberfläche. Die Konsole des gepinnten Release ist
   vollständig; ein zusätzlicher UI-Container ist dafür nicht nötig.
@@ -273,8 +281,8 @@ Schritt 2). Vollständiger Ablauf, Idempotenz und Fehlerfälle: „Seed-Mechanis
 wartet auf jede Indizierung und jeden Upload (Polling gegen `GET
 /api/v1/libraries/{libraryId}/indexing/status` bzw. den Dokumentstatus) und bricht mit einer klaren
 Fehlermeldung ab, wenn etwas schiefgeht — läuft `seed.py` bis zur Ausgabe „Seed-Profil 'demo'
-abgeschlossen." durch, ist die Instanz vollständig gefüllt und durchsuchbar. Bei den 180 Dokumenten
-des Korpus (46 + 37 + 19 + 27 + 12 + 13 in den sechs konnektorgespeisten Bibliotheken, 26 Uploads) und
+abgeschlossen." durch, ist die Instanz vollständig gefüllt und durchsuchbar. Bei den 181 Dokumenten
+des Korpus (46 + 37 + 19 + 27 + 12 + 14 in den sechs konnektorgespeisten Bibliotheken, 26 Uploads) und
 lokal betriebenen Modellen ist mit einigen Minuten zu rechnen, je nach Ollama-Hardware; ein zweiter Lauf
 gegen dieselbe Instanz ist idempotent und legt nichts doppelt an.
 

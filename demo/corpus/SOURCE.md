@@ -1,10 +1,12 @@
 # Quellen, Lizenzen und Hinweis auf synthetische Inhalte
 
-**Alle Inhalte in diesem Korpus sind synthetisch.** Rheinfurt ist eine erfundene Stadt; jede
-Behörde, Adresse, Person, Telefonnummer, E-Mail-Adresse, Bankverbindung, jedes Aktenzeichen und
-jeder Euro-Betrag in diesem Verzeichnis ist frei erfunden oder aus realen Quellen deterministisch
-umgeschrieben (siehe unten). Übereinstimmungen mit realen Personen oder Behörden sind nicht
-beabsichtigt.
+**Alle Inhalte in diesem Korpus sind synthetisch — mit genau einer benannten Ausnahme.** Rheinfurt
+ist eine erfundene Stadt; jede Behörde, Adresse, Person, Telefonnummer, E-Mail-Adresse,
+Bankverbindung, jedes Aktenzeichen und jeder Euro-Betrag in diesem Verzeichnis ist frei erfunden
+oder aus realen Quellen deterministisch umgeschrieben (siehe unten). Übereinstimmungen mit realen
+Personen oder Behörden sind nicht beabsichtigt. Die Ausnahme ist die Outlook-Nachricht der
+Bibliothek „Formattest auf S3": Sie stammt unverändert aus einem fremden Testkorpus, weil sich das
+`.msg`-Format nicht erzeugen lässt — Herkunft und Lizenz im Abschnitt zu dieser Bibliothek unten.
 
 Dieser Abschnitt sowie die Datei- und Dokumentzahlen unten werden **vom Generator selbst
 geschrieben** ([`generate_corpus.py::render_source_md`](../generator/generate_corpus.py)) — sie
@@ -69,14 +71,15 @@ Abschnitt „Quellen und Lizenzen" (Recherche Issue #709).
 ## Bibliothek „Formattest auf S3" (#1519)
 
 Die siebte Bibliothek (`formate/`) ist keine Fachablage, sondern eine technische Schaubibliothek:
-je ein Dokument pro Dateiendung, die OPAA zulässt. Ihr Inhalt ist wie der übrige Korpus synthetisch
-und im Rheinfurt-Kontext verfasst (Dokumentenformate, Posteingang, Langzeitarchivierung); jedes
-Dokument nennt im Text sein eigenes Format, damit im Chat erkennbar bleibt, aus welcher Datei eine
-Antwort stammt.
+je ein Dokument pro Dateiendung, die OPAA zulässt. Ihr Inhalt ist bis auf die unten genannte
+Outlook-Nachricht synthetisch und im Rheinfurt-Kontext verfasst (Dokumentenformate, Posteingang,
+Langzeitarchivierung); jedes erzeugte Dokument nennt im Text sein eigenes Format, damit im Chat
+erkennbar bleibt, aus welcher Datei eine Antwort stammt.
 
-- `formate/13_rahmenvertrag-scandienstleister.doc` — committet, nicht erzeugt: für diese Endung schreibt keine der in `generator/requirements.txt` gepinnten Bibliotheken. Herkunft und Verfahren: [`generator/README.md`](../generator/README.md), Abschnitt "Formate ohne Writer".
+- `formate/13_rahmenvertrag-scandienstleister.doc` — committet, nicht bei jedem Lauf erzeugt: für diese Endung schreibt keine der in `generator/requirements.txt` gepinnten Bibliotheken. Herkunft: einmalig aus dem in `generator/formate.py` deklarierten Rheinfurt-Text erzeugt (`generator/make_doc_fixture.py`, LibreOffice-Export nach "MS Word 97"), danach committet. Verfahren: [`generator/README.md`](../generator/README.md), Abschnitt "Formate ohne Writer".
+- `formate/14_poi-beispielnachricht-outlook.msg` — committet, nicht bei jedem Lauf erzeugt: für diese Endung schreibt keine der in `generator/requirements.txt` gepinnten Bibliotheken. Herkunft: übernommen aus dem Testkorpus des Apache-POI-Projekts (`test-data/hsmf/simple_test_msg.msg`, Apache License 2.0, Volltext in [`THIRD-PARTY-LICENSES/Apache-POI-testdata-Apache-2.0.txt`](THIRD-PARTY-LICENSES/Apache-POI-testdata-Apache-2.0.txt)). **Als einziges Dokument dieses Korpus englisch und ohne Rheinfurt-Bezug** — eine Folge seiner Herkunft, kein Versehen. Verfahren: [`generator/README.md`](../generator/README.md), Abschnitt "Formate ohne Writer".
 
-**Nicht abgedeckte Endungen:** `.msg`. Für sie liegt in dieser Bibliothek kein Dokument — Begründung in [`generator/README.md`](../generator/README.md), Abschnitt "Formate ohne Writer".
+Jede Endung der Formatübersicht des Handbuchs ist mit genau einem Dokument vertreten.
 
 ## Wie diese Dateien entstanden sind
 
@@ -93,7 +96,7 @@ sha256sum -c MANIFEST.sha256
 
 ## Umfang
 
-181 Dokumente über sieben Bibliotheken (Zielkorridor 150–300 laut Issue #711 für die
+182 Dokumente über sieben Bibliotheken (Zielkorridor 150–300 laut Issue #711 für die
 sechs fachlichen Bibliotheken; „Formattest auf S3" ist eine technische Schaubibliothek mit genau
 einem Dokument je unterstützter Endung, #1519):
 
@@ -105,6 +108,6 @@ einem Dokument je unterstützter Endung, #1519):
 | Pressemitteilungen Stadt Rheinfurt | `pressemitteilungen/` | 28 | RSS-XML, HTML |
 | Interne Dienstanweisungen Meldewesen | `interne-dienstanweisungen-meldewesen/` | 26 | `.docx`, `.pdf`, `.pptx` |
 | Ratsinformationen Stadt Rheinfurt | `ratsinformationen/` | 12 | `.md`, `.txt` (ein Präfix je Jahrgang) |
-| Formattest auf S3 | `formate/` | 13 | je ein Dokument pro unterstützter Endung |
+| Formattest auf S3 | `formate/` | 14 | je ein Dokument pro unterstützter Endung |
 
 Gesamtgröße rund 1,2 MB.

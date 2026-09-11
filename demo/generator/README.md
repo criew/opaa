@@ -60,7 +60,7 @@ Das Skript:
      Stadtrats und des Hauptausschusses, je Jahrgang ein Unterverzeichnis (`rat.py`) — der
      Ausschnitt, den der Demo-Stack in seinen MinIO-Bucket `rheinfurt-archiv` spiegelt
      (`S3`-Bibliothek, #1383).
-   - `formate/` (je ein Dokument pro unterstützter Endung): 13 Dokumente rund um Dokumentenformate,
+   - `formate/` (je ein Dokument pro unterstützter Endung): 14 Dokumente rund um Dokumentenformate,
      Posteingang und Langzeitarchivierung (`formate.py`, `odf_utils.py`) — die technische
      Schaubibliothek „Formattest auf S3", die der Demo-Stack in den MinIO-Bucket `formattest`
      spiegelt (#1519, #1520).
@@ -89,18 +89,35 @@ vollständiger Läufe mit mehreren Sekunden Abstand dazwischen (siehe PR-Beschre
 
 ## Formate ohne Writer
 
-Die Bibliothek „Formattest auf S3" (#1519) soll jede Endung abdecken, die OPAA zulässt. Für zwei
-davon gibt es in Python keinen brauchbaren Writer — sie werden deshalb **nicht** bei jedem Lauf
+Die Bibliothek „Formattest auf S3" (#1519) deckt jede Endung ab, die OPAA zulässt. Für zwei davon
+gibt es in Python keinen brauchbaren Writer — sie sind deshalb **committet** statt bei jedem Lauf
 erzeugt:
 
-| Endung | Stand | Verfahren |
+| Endung | Herkunft | Verfahren |
 |---|---|---|
-| `.doc` (Word 97) | abgedeckt, Datei committet | `make_doc_fixture.py` rendert den in `formate.py` deklarierten Text über `python-docx` und lässt LibreOffice ihn nach „MS Word 97" umwandeln. Das Ergebnis ist committet; ein regulärer Generator-Lauf lässt es unangetastet (`PRESERVED_FILES` in `generate_corpus.py`) und nimmt es unverändert in `MANIFEST.sha256` auf. Zwei LibreOffice-Läufe erzeugen **keine** byte-gleichen Dateien — genau deshalb ist der Schritt einmalig und nicht Teil von `generate_corpus.py`. |
-| `.msg` (Outlook) | **nicht abgedeckt** | Das Format ist ein proprietärer OLE2/MAPI-Container; keine Python-Bibliothek schreibt ihn, LibreOffice kann es nicht, und Apache POI bietet nur einen Leser. Eine Übernahme aus einem lizenzklaren Fremdkorpus wäre möglich (das Backend nutzt dafür zwei Dateien aus dem Apache-POI-Testkorpus unter `backend/src/test/resources/test-documents/mail/`, ALv2 mit `NOTICE.md`), bringt aber englischen Fremdtext in eine Bibliothek, deren Inhalt sonst durchgehend Rheinfurt-Kontext ist — die Abwägung liegt beim Maintainer und ist bewusst offen (#1519). Die Lücke ist hier und in `corpus/SOURCE.md` benannt statt verschwiegen; die `.msg`-Pipeline selbst ist über die Backend-Tests abgedeckt. |
+| `.doc` (Word 97) | eigener Rheinfurt-Text | `make_doc_fixture.py` rendert den in `formate.py` deklarierten Text über `python-docx` und lässt LibreOffice ihn nach „MS Word 97" umwandeln. Zwei LibreOffice-Läufe erzeugen **keine** byte-gleichen Dateien — genau deshalb ist der Schritt einmalig und nicht Teil von `generate_corpus.py`. |
+| `.msg` (Outlook) | Apache-POI-Testkorpus, Apache License 2.0 | Byte-Kopie von `test-data/hsmf/simple_test_msg.msg`. Das Format ist ein proprietärer OLE2/MAPI-Container: keine Python-Bibliothek schreibt ihn, LibreOffice kann es nicht, Apache POI selbst bietet nur einen Leser. Dieselben Dateien liegen bereits als Testfixturen unter `backend/src/test/resources/test-documents/mail/` (mit eigener `NOTICE.md`). **Dieses eine Dokument ist englisch und hat keinen Rheinfurt-Bezug** — Folge seiner Herkunft, kein Versehen; die Bibliotheksbeschreibung im Seed (`demo/seed/profiles.py`) sagt das auch in der Oberfläche. Lizenztext: `corpus/THIRD-PARTY-LICENSES/Apache-POI-testdata-Apache-2.0.txt`. |
 
-Beide Zeilen schreibt `generate_corpus.py` nicht von Hand fort: `render_formate_gaps` leitet die
-Lückenliste in `corpus/SOURCE.md` aus `ADMITTED_EXTENSIONS` und den tatsächlich vorhandenen Dateien
-ab. Wer ein fehlendes Format nachliefert, muss dort nichts nachziehen.
+Beide Dateien überleben den Clean-Schritt (`PRESERVED_FILES` in `generate_corpus.py`) und gehen
+unverändert in `MANIFEST.sha256` ein; fehlt eine, bricht der Lauf ab, statt die Bibliothek
+stillschweigend schrumpfen zu lassen. Die Herkunftssätze in `corpus/SOURCE.md` stehen als Wert
+neben dem jeweiligen Pfad in `PRESERVED_FILES` — Pfad und Herkunft können nicht auseinanderlaufen.
+
+**Die Lückenliste pflegt sich selbst.** `render_formate_gaps` vergleicht die tatsächlich vorhandenen
+Dateien mit der Endungsliste, die `admitted_extensions()` **aus der Formatübersicht des Handbuchs
+liest** (`docs/handbuch/indexierung.md`, Abschnitt „Anhang: Formatübersicht") statt sie ein drittes
+Mal zu kopieren — kommt dort eine fünfzehnte Endung dazu, erscheint sie ohne Zutun als Lücke in
+`corpus/SOURCE.md`. Lässt sich das Kapitel, der Abschnitt oder die Tabelle nicht lesen, bricht der
+Lauf ab, statt stillschweigend vollständige Abdeckung zu behaupten. Geschrieben wird dann entweder
+die Liste der fehlenden Endungen oder der Satz „Jede Endung der Formatübersicht des Handbuchs ist
+mit genau einem Dokument vertreten."
+
+**Ein nachgeliefertes Format braucht trotzdem einen Handgriff, wenn es sich nicht erzeugen lässt:**
+Eine Datei, die einfach nur in `corpus/formate/` abgelegt wird, löscht `clean_library_dirs()` beim
+nächsten Lauf wieder, bevor `build_formate()` sie überhaupt sieht. Wer ein Format ohne Writer
+ergänzt, trägt es deshalb zusammen mit seinem Herkunftssatz in `PRESERVED_FILES` ein — erst dann
+überlebt es den Clean-Schritt und landet in `MANIFEST.sha256`. Für ein Format **mit** Writer gilt
+das nicht: Es gehört als Renderer in `formate.py` und wird bei jedem Lauf neu geschrieben.
 
 Änderung der Word-97-Datei:
 
@@ -109,6 +126,10 @@ cd demo/generator
 python make_doc_fixture.py          # --soffice <Pfad>, falls LibreOffice nicht gefunden wird
 python generate_corpus.py           # zieht MANIFEST.sha256/SOURCE.md nach
 ```
+
+Die Outlook-Nachricht wird nie neu erzeugt; sie wird höchstens durch eine andere lizenzklare Datei
+ersetzt — dann `formate.MSG_FILE_NAME`, den Herkunftssatz in `PRESERVED_FILES` und den Lizenztext
+unter `corpus/THIRD-PARTY-LICENSES/` mit ändern.
 
 ## Handkorrektur in der Leistungsbibliothek
 

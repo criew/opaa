@@ -86,12 +86,16 @@ Vorrat vollständig ab (#1519/#1520):
 | Pressemitteilungen Stadt Rheinfurt | ~20–30 Meldungen (Sperrungen, geänderte Öffnungszeiten, Stadtfest, Jubiläen) | RSS-XML, je Eintrag eine HTML-Detailseite auf demselben Host | `RSS_FEED` (statisch, selbst gehostet) |
 | Interne Dienstanweisungen Meldewesen | Dienstanweisungen, Eskalationsregeln, interne FAQ, Schulungsfolien | `.docx`, `.pdf`, `.pptx` | `UPLOAD` (manueller Upload, im Seed automatisiert) |
 | Ratsinformationen Stadt Rheinfurt | Niederschriften und Beschlussvorlagen des Stadtrats und des Hauptausschusses 2024–2026, ein Schlüsselpräfix je Jahrgang | `.md`, `.txt` | `S3` (MinIO im Demo-Stack, Bucket `rheinfurt-archiv`, Präfix `ratsinformationen/`; #1383, [ADR-0027](../decisions/0027-s3-konnektor.md)) |
-| Formattest auf S3 | Je ein Dokument pro zugelassener Endung, inhaltlich rund um Dokumentenformate, Posteingang und Langzeitarchivierung; jedes Dokument nennt sein eigenes Format | alle oben genannten, soweit erzeugbar | `S3` (MinIO im Demo-Stack, Bucket `formattest`, ohne Präfix; #1519/#1520) |
+| Formattest auf S3 | Je ein Dokument pro zugelassener Endung, inhaltlich rund um Dokumentenformate, Posteingang und Langzeitarchivierung; jedes erzeugte Dokument nennt sein eigenes Format | alle oben genannten | `S3` (MinIO im Demo-Stack, Bucket `formattest`, ohne Präfix; #1519/#1520) |
 
 Die siebte Bibliothek ist **keine Fachablage, sondern eine technische Schaubibliothek**: Sie belegt,
 dass jedes zugelassene Format tatsächlich durch seine Pipeline geht, statt es nur zu behaupten. Sie
 gehört deshalb dem Admin-Konto allein — kein Fachkonto erhält ein Leserecht, kein Space eine
-Zuordnung, und die Berechtigungsmatrix unten bleibt unverändert. Ihr Objektspeicher ist derselbe
+Zuordnung, und die Berechtigungsmatrix unten bleibt unverändert. Zwölf ihrer vierzehn Dokumente
+erzeugt der Korpus-Generator; die Word-97-Datei entsteht einmalig über einen LibreOffice-Export und
+die Outlook-Nachricht ist als einzige aus einem Fremdkorpus übernommen (Apache POI, Apache License
+2.0) — sie ist deshalb englisch, was die Bibliotheksbeschreibung im Seed auch sagt. Beides ist in
+`demo/corpus/SOURCE.md` und `demo/generator/README.md` festgehalten. Ihr Objektspeicher ist derselbe
 `minio`-Dienst, in dem die Demo seit #1520 auch ihre hochgeladenen Originale ablegt
 ([ADR-0030](../decisions/0030-originalablage-der-uploads.md)).
 

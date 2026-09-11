@@ -2,13 +2,15 @@
 
 One document per file extension OPAA admits (docs/handbuch/indexierung.md, "Anhang:
 Formatübersicht"), so the demo can show that every supported format really is read rather than
-merely listed. Each document names its own format in its text, which is what makes a chat answer
-attributable to the format it came from; the content is ordinary Rheinfurt administration around
-document formats and long-term archiving, not filler.
+merely listed. Each generated document names its own format in its text, which is what makes a chat
+answer attributable to the format it came from; the content is ordinary Rheinfurt administration
+around document formats and long-term archiving, not filler.
 
 Two extensions have no writer in any pinned library and are therefore committed files rather than
 generated ones (see generator/README.md, "Formate ohne Writer", and PRESERVED_FILES in
-generate_corpus.py): `.doc` (Word 97 binary) and `.msg` (OLE2/MAPI).
+generate_corpus.py): `.doc` (Word 97 binary, converted once with LibreOffice from the text declared
+below) and `.msg` (OLE2/MAPI, a byte copy from the Apache POI test corpus and therefore the one
+English document of this corpus).
 """
 
 from __future__ import annotations
@@ -496,11 +498,18 @@ Telefon 01234/44-1080
 """.format(notice=SYNTHETIC_NOTICE)
 
 
-# --- 13 Word 97 (.doc), committed, not generated -----------------------------
+# --- 13/14 committed rather than generated -----------------------------------
 #
-# No pinned library writes the Word 97 binary format. This text is converted once with LibreOffice
-# (make_doc_fixture.py) and the result is committed; generate_corpus.py preserves the file and
-# still covers it by MANIFEST.sha256, and the validation pass reads the text declared here.
+# No pinned library writes the Word 97 binary format, and none writes the proprietary OLE2/MAPI
+# container of an Outlook message either. The Word text below is converted once with LibreOffice
+# (make_doc_fixture.py); the message is a byte copy of an Apache POI test file. generate_corpus.py
+# preserves both files and still covers them by MANIFEST.sha256; only the Word file's text is
+# declared here and read by the validation pass - the message's content is foreign and English, and
+# validating it against the Rheinfurt rules would be meaningless.
+
+# From the Apache POI test corpus (test-data/hsmf/simple_test_msg.msg, Apache License 2.0) - see
+# demo/corpus/THIRD-PARTY-LICENSES/Apache-POI-testdata-Apache-2.0.txt.
+MSG_FILE_NAME = "14_poi-beispielnachricht-outlook.msg"
 
 DOC_FILE_NAME = "13_rahmenvertrag-scandienstleister.doc"
 DOC_TITLE = "Rahmenvertrag über Scandienstleistungen (Auszug)"

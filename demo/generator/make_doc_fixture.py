@@ -7,7 +7,10 @@ Word 97. The result is committed once and preserved by generate_corpus.py (PRESE
 LibreOffice runs do not produce identical bytes, which is exactly why this is not part of the
 regular generator run.
 
-    python make_doc_fixture.py [--soffice <Pfad zu soffice>]
+    python make_doc_fixture.py [--soffice <Pfad zu soffice>] [--force]
+
+Ohne --force bricht der Lauf ab, wenn die Zieldatei schon existiert: Ein erneuter Export erzeugt
+andere Bytes und würde MANIFEST.sha256 ungültig machen, ohne am Inhalt etwas zu ändern.
 
 Same "run once, commit the result" pattern as
 backend/src/test/resources/test-documents/generate-odf-fixtures.py.
@@ -51,7 +54,20 @@ def find_soffice(explicit: str | None) -> str:
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--soffice", default=None)
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Vorhandene Datei überschreiben (der neue Lauf erzeugt andere Bytes)",
+    )
     args = parser.parse_args(argv)
+    # Two LibreOffice runs never produce identical bytes, so an accidental call would invalidate
+    # MANIFEST.sha256 without changing a single character of content.
+    if TARGET.exists() and not args.force:
+        raise SystemExit(
+            f"{TARGET} existiert bereits. Ein erneuter Lauf erzeugt andere Bytes und macht "
+            "demo/corpus/MANIFEST.sha256 ungültig, ohne den Inhalt zu ändern. Absichtlich neu "
+            "erzeugen: --force, danach 'python generate_corpus.py' für Manifest und SOURCE.md."
+        )
     soffice = find_soffice(args.soffice)
 
     with tempfile.TemporaryDirectory() as work_dir:
