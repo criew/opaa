@@ -10,9 +10,9 @@ Hochgeladene Originale liegen heute in einem konfigurierten Verzeichnis
 (`opaa.upload.storage-path`, Standard `./uploads`, Compose: Bind-Mount `./uploads` auf
 `/app/uploads`). Darunter gibt es je Bibliothek ein Unterverzeichnis, darin eine Datei je Dokument
 unter einem zufälligen Namen (`<libraryId>/<uuid><endung>`); `documents.file_path` trägt den
-absoluten Pfad. Zwei Klassen fassen diese Ablage an:
-`LibraryDocumentService` (schreiben, löschen, ausliefern) und `StoredDocumentSourceAccess`
-(Wiederlesen für Pipeline-Reindex und Metadaten-Nachläufe).
+absoluten Pfad. Zwei Klassen fassen diese Ablage an: `LibraryDocumentService` (schreiben, löschen,
+ausliefern) und `StoredDocumentSourceAccess` (Wiederlesen für Pipeline-Reindex und
+Metadaten-Nachläufe).
 
 Das trägt den Einzelinstanzbetrieb ([ADR-0021](0021-single-instance-betrieb.md)) und trägt ein
 Netzlaufwerk, das der Betrieb auf dieses Verzeichnis einhängt. Es trägt **nicht** den
@@ -31,21 +31,41 @@ löscht sie, und genau diese Grenze setzt `deleteDocument` heute durch. Eigentum
 Speichertechnik, ist der Grund für die Trennung der beiden Verzeichnisse, und sie ist der Grund,
 warum hier überhaupt eine Wahl möglich ist.
 
+### Die sechs Wege zu den Bytes eines Uploads
+
+Wer die Ablage kapseln will, muss alle sechs kennen — vier davon fallen beim ersten Hinsehen nicht
+auf:
+
+1. **Ablegen** beim Upload: `Files.copy` aus dem Multipart-Strom direkt an den Zielort.
+2. **Weiterverarbeiten**: `processUploadedFileAsync` ist `@Async("uploadTaskExecutor")` und liest die
+   abgelegte Datei **nach** der Rückkehr von `uploadDocument` auf einem anderen Thread. Die Datei
+   muss den Aufruf überleben.
+3. **Ausliefern** über `/api/v1/documents/{id}/content`.
+4. **Wiederlesen** durch Pipeline-Reindex und Metadaten-Nachlauf (`StoredDocumentSourceAccess`).
+5. **Rückextraktion von Anhängen** ([ADR-0022](0022-anhang-als-eigenes-dokument.md)): ein
+   hochgeladenes `.eml` erzeugt Kindzeilen, die ebenfalls `source_type = 'UPLOAD'` tragen, deren
+   `file_path` aber synthetisch ist und den Pfad des Elternteils als Präfix enthält
+   (`<elternpfad>/<index>/<dateiname>`).
+6. **Löschen**: beim Löschen eines Dokuments, beim Ersetzen eines fehlgeschlagenen Uploads und auf
+   jedem Fehlerpfad des Uploads selbst.
+
 ### Was an Bausteinen schon existiert
 
-Der S3-Konnektor ([ADR-0027](0027-s3-konnektor.md)) hat das AWS SDK for Java v2, die Typen
-`S3Connection`/`S3Credentials`/`S3AccessException`, die Endpunkt-Normalisierung, den Umgang mit
-Adressstil und Signaturregion sowie `MinioFixture` samt einer innerhalb von `test`/`build`
-laufenden MinIO-Suite in das Projekt gebracht. Der Demo-Stack betreibt MinIO bereits als
-Compose-Dienst hinter dem Profil `demo`.
+Der S3-Konnektor ([ADR-0027](0027-s3-konnektor.md)) hat das AWS SDK for Java v2 und in
+`AwsSdkS3ObjectStore` einen Clientbau in das Projekt gebracht, der mehr enthält, als er von außen
+aussieht: Endpunkt, Signaturregion und Adressstil, `RequestChecksumCalculation.WHEN_REQUIRED` und
+`ResponseChecksumValidation.WHEN_REQUIRED` (Verträglichkeit mit S3-kompatiblen Speichern — nicht
+offensichtlich und nicht optional), Apache5-Client mit abgestimmten Zeitschranken,
+Proxy-Konfiguration, `TRUST_ALL_CERTIFICATES` für selbstsignierte Endpunkte, eine Wiederholstrategie
+mit gedeckeltem Rückzug und eine Übersetzung der SDK-Fehler in deutsche, geheimnisfreie Meldungen.
+ADR-0027 zählt diese Liste als „Stück für Stück, mit Test je Stück" erarbeitet auf. Dazu kommen
+`MinioFixture` und eine MinIO-Suite, die innerhalb von `test`/`build` läuft, sobald Docker erreichbar
+ist.
 
-Sein Port `S3ObjectStore` ist jedoch **nicht** der Port, den die Upload-Ablage braucht: er ist
-lesend (`list`/`head`/`get`), an die Verbindung *einer Bibliothek* gebunden, wird je Lauf erzeugt
-und geschlossen, trägt ein Anfragebudget mit geordnetem Abbruch — und er schickt jede Zieladresse
-durch `TargetAddressValidator`, weil dort ein *Benutzer* den Endpunkt eingibt. Beim
-Betriebsspeicher konfiguriert der Betrieb den Endpunkt, und der liegt im Normalfall gerade auf einer
-privaten Adresse (`http://minio:9000` im Compose-Netz). Dieselbe Prüfung wäre hier also nicht
-Schutz, sondern Fehlerquelle.
+Was dagegen **nicht** passt, ist der Port `S3ObjectStore` selbst: er ist lesend
+(`list`/`head`/`get`), an die Verbindung *einer Bibliothek* gebunden, wird je Lauf erzeugt und
+geschlossen und trägt ein Anfragebudget mit geordnetem Abbruch. Die Originalablage ist das Gegenteil:
+eine Verbindung für die gesamte Laufzeit, schreibend, ohne Lauf und ohne Budget.
 
 ## Entscheidung
 
@@ -58,123 +78,168 @@ konfiguriert, verhält sich unverändert, und die kleine Installation ohne Objek
 einfachste Fall. S3 ist der zusätzliche Weg für Rechenzentrums- und Multiinstanzbetrieb, nicht der
 neue Normalfall.
 
-Fünf Operationen, mehr braucht keiner der vier Aufrufpfade:
-
-| Operation | Wer ruft sie | Dateisystem | S3 |
+| Operation | Weg (oben) | Dateisystem | S3 |
 |---|---|---|---|
-| Ablegen einer fertig geschriebenen lokalen Datei, Rückgabe des Locators | `LibraryDocumentService#uploadDocument` | Verschieben/Kopieren in `<storage-path>/<libraryId>/` | `PutObject` |
-| Lesen zum Ausliefern | `LibraryDocumentService#loadContent` | lokale Datei | Objektkörper als Strom |
-| Lesen als lokale Datei, mit Aufräumen danach | Pipeline-Reindex, Metadaten-Nachlauf, Anhang-Rückextraktion | dieselbe Datei, nichts zu kopieren | `GetObject` in eine Temp-Datei, danach gelöscht |
-| Löschen | `deleteDocument`, jeder Fehlerpfad des Uploads | `Files.deleteIfExists` | `DeleteObject` |
-| Zugehörigkeitsprüfung (gehört dieser Locator zu dieser Bibliothek?) | alle Lese- und Löschpfade | Realpfad-Präfixvergleich | Schlüssel-Präfixvergleich |
+| Ablegen aus einem Strom, Rückgabe von Locator **und Arbeitsdatei** | 1, 2 | `Files.copy` an den Zielort, Arbeitsdatei = die abgelegte Datei | Temp-Datei schreiben, `PutObject`, Arbeitsdatei = die Temp-Datei |
+| Freigeben der Arbeitsdatei | 2 | nichts zu tun | Temp-Datei löschen |
+| Lesen zum Ausliefern | 3 | lokale Datei (`FileSystemResource`) | Objektkörper als Strom |
+| Lesen als lokale Kopie für die Dauer einer Aktion | 4, 5 | dieselbe Datei, keine Kopie | `GetObject` in eine Temp-Datei, danach gelöscht |
+| Löschen | 6 | `Files.deleteIfExists` | `DeleteObject` |
+| Auflösen eines Locators: Zugehörigkeit, Symlink-Auflösung, Existenz | 3, 4, 5, 6 | `toRealPath` plus Präfixvergleich | Schlüssel-Präfixvergleich plus `HeadObject` |
 
-Die **Zugehörigkeitsprüfung gehört in den Adapter**. Sie ist heute zweimal dasselbe
-`toRealPath`-plus-`startsWith` (`LibraryDocumentService#uploadedFileIfManagedByThisService`,
-`StoredDocumentSourceAccess#uploadedFileWithinManagedStorage`) und damit die Stelle, an der ein
-manipulierter `file_path` abgefangen wird. Sie bleibt in beiden Adaptern eine eigene, einzeln
-getestete Methode; kein Lese- oder Löschpfad erreicht Bytes, ohne sie passiert zu haben.
+### 2. Die Schreibseite nimmt den Strom und gibt eine Arbeitsdatei zurück
 
-### 2. Die Schreibseite sieht immer zuerst eine lokale Datei
+Der Port nimmt beim Ablegen den Multipart-Strom, nicht eine fertig geschriebene Datei. Andernfalls
+bräuchte der Dateisystemweg erst eine Staging-Datei und dann eine zweite Vollkopie je Upload:
+`java.io.tmpdir` (Container-Overlay) und `/app/uploads` (Bind-Mount) liegen praktisch nie auf
+demselben Dateisystem, ein `move` wäre also keines.
 
-Der Port nimmt beim Ablegen eine fertig geschriebene lokale Datei, keinen Strom. Damit bleiben
-Prüfsumme, `Files.probeContentType` und die Größenermittlung unverändert dort, wo sie heute sind,
-und das Tika-Parsen des Uploads arbeitet weiter auf einer lokalen Datei. Der S3-Adapter lädt diese
-Datei hoch; der Dateisystem-Adapter legt sie an ihren Platz. Ein Strom-basierter Schreibweg würde
-Inhaltstyp-Erkennung und Parsen gleichzeitig umbauen und wäre kein verhaltensneutraler Umbau mehr.
+Zurück kommt der Locator **und eine lokale Arbeitsdatei**, denn Weg 2 liest sie erst nach der
+Rückkehr von `uploadDocument` auf einem anderen Thread. Die Arbeitsdatei gehört ab da dem
+asynchronen Auftrag, der sie auf jedem Ausgang freigibt — beim Dateisystem-Adapter ist die
+Freigabe ein No-op (die Arbeitsdatei *ist* das abgelegte Original), beim S3-Adapter löscht sie die
+Temp-Datei. Prüfsumme, `Files.probeContentType` und Größenermittlung arbeiten unverändert auf dieser
+Arbeitsdatei; nichts an der Inhaltstyp-Erkennung und am Tika-Parsen ändert sich.
 
-### 3. `documents.file_path` trägt weiter den Locator, seine Form gehört dem Adapter
+Fehlerpfade räumen beides: das bereits abgelegte Original **und** die Arbeitsdatei.
+
+### 3. Auflösen heißt Zugehörigkeit **und** Existenz — und schärft den Upload-Weg bewusst nach
+
+Heute stehen an den zwei Aufrufstellen zwei verschiedene Prüfungen, und das ist kein Zufall, sondern
+ein Fehler: `LibraryDocumentService#uploadedFileIfManagedByThisService` vergleicht rein lexikalisch
+(`toAbsolutePath().normalize()`), während `StoredDocumentSourceAccess` und der `FILESYSTEM`-Zwilling
+derselben Klasse `toRealPath` verwenden — Letzterer mit der ausdrücklichen Begründung, dass ein
+Symlink innerhalb des Verzeichnisses, der nach draußen zeigt, den lexikalischen Vergleich passiert,
+und dass die Auflösung genau dort nötig ist, wo die Datei geöffnet und an einen HTTP-Aufrufer
+gestreamt wird.
+
+Der Adapter bekommt **eine** Auflösung, und sie folgt der strengeren Semantik: Zugehörigkeit zur
+Bibliothek, Symlink-Auflösung, Existenz. Das ist eine **gewollte Verschärfung** des
+Upload-Auslieferwegs, kein verhaltensneutraler Umbau: ein Symlink im Upload-Verzeichnis, der nach
+draußen zeigt, wird danach nicht mehr ausgeliefert. Wer den Port baut (#1475), deklariert das als
+Verhaltensänderung und sichert sie mit einem Test ab, statt sie unter „neutral" laufen zu lassen.
+
+Die Existenz ist Teil der Auflösung, weil die 404-Disziplin von `loadContent` (#736) darauf beruht:
+unbekanntes Dokument, fremde Organisation, fehlende Freigabe, Quellentyp ohne lokale Datei und
+verschwundene Datei antworten alle dasselbe `404`, damit kein Aufrufer die Fälle unterscheiden kann.
+Der S3-Adapter erreicht das mit `HeadObject`.
+
+### 4. `documents.file_path` trägt weiter den Locator, seine Form gehört dem Adapter
 
 Dateisystem: absoluter Pfad, unverändert. S3: `s3://<bucket>/<schlüssel>` — dieselbe Form, die
 ADR-0027 für Konnektor-Dokumente verwendet; der `source_type` unterscheidet die beiden Fälle
 (`UPLOAD` gegen `S3`), nicht der Pfad. Kein neues Spaltenschema, keine Migration an der Tabelle.
 
-Schlüsselschema: `<key-prefix><libraryId>/<uuid><endung>`, mit leerem `key-prefix` als Standard.
-Das ist **dieselbe Struktur wie auf der Platte**, damit ein Bestand mit einem rekursiven Kopieren
-(`mc mirror`, `aws s3 sync`) in den Bucket wandert und die Umstellung keine Umrechnung von Namen
-braucht. Kein Organisations-Segment: eine Bibliothek gehört genau einer Organisation, und die
-Mandantenfähigkeit (#1442) wird, wenn sie Speichergrenzen je Haus ziehen will, Buckets oder Prefixe
-trennen wollen — das ist über `key-prefix` erreichbar, ohne das Schlüsselschema zu ändern.
+Schlüsselschema: `<key-prefix><libraryId>/<uuid><endung>`, mit leerem `key-prefix` als Standard —
+**dieselbe Struktur wie auf der Platte**, damit ein Bestand mit einem rekursiven Kopieren
+(`mc mirror`, `aws s3 sync`) in den Bucket wandert. Kein Organisations-Segment: eine Bibliothek
+gehört genau einer Organisation, und die Mandantenfähigkeit (#1442) kann über `key-prefix` oder
+einen eigenen Bucket je Haus trennen, ohne das Schema zu ändern.
 
-### 4. Die Umstellung eines Bestands ist ein dokumentierter Betriebsvorgang, kein Code
+**Anhangzeilen sind die Ausnahme.** Ihr `file_path` ist synthetisch
+(`<elternpfad>/<index>/<dateiname>`) und benennt kein abgelegtes Objekt. Der Store löst ihn nie auf:
+`isReExtractableAttachment` erkennt die Form am Elternpfad und leitet die Zeile in die
+Rückextraktion um, bevor irgendein Adapter sie sieht. Für die Ablage heißt das — nichts; für die
+Umstellung eines Bestands heißt es alles (Entscheidung 5).
 
-Bytes kopieren, dann `file_path` der `UPLOAD`-Zeilen umschreiben — ein SQL-Statement, das das
-Handbuch mitliefert, samt der Zählabfrage davor und dem Rückweg. Kein Bestandsnachzug im Code, kein
-Parallel-Lesen beider Ablagen: eine dauerhafte Verzweigung im Leseweg ist teurer als ein einmaliger
-Betriebsschritt, und sie würde genau die Fehler verdecken, die bei einer unvollständigen Kopie
-auffallen sollen. Die Umstellung ist ein Wartungsfenster, nicht ein Betriebszustand.
+### 5. Die Umstellung eines Bestands ist eine Präfixersetzung, und zwar ein Betriebsvorgang
 
-### 5. Herunterladen streamt, ohne Zwischendatei — und verliert dabei Bereichsanfragen
+Bytes kopieren, dann in `documents.file_path` **den Pfadpräfix ersetzen**, nicht den Wert neu
+bilden:
+
+```sql
+UPDATE documents
+   SET file_path = replace(file_path, '/app/uploads/', 's3://mein-bucket/')
+ WHERE source_type = 'UPLOAD';
+```
+
+Die Präfixersetzung ist der Grund, warum Anhangzeilen ohne Sonderfall mitwandern: ihr synthetischer
+Pfad trägt den Elternpfad als Präfix und bleibt nach derselben Ersetzung auf seinen Elternteil
+bezogen, sodass `AttachmentFilePath.indexIn` weiter greift. Sie ist injektiv, also bleibt
+`uk_documents_library_path` eindeutig. Der zu ersetzende Präfix ist installationsabhängig
+(`/app/uploads/` im Container, ein anderer Pfad auf dem Host) und gehört mit einer Zählabfrage davor
+und einer Stichprobe danach ins Handbuch — ebenso der Rückweg, der dieselbe Ersetzung umgekehrt
+fährt.
+
+Kein Bestandsnachzug im Code, kein Parallel-Lesen beider Ablagen: eine dauerhafte Verzweigung im
+Leseweg ist teurer als ein einmaliger Betriebsschritt, und sie würde genau die Fehler verdecken, die
+bei einer unvollständigen Kopie auffallen sollen. Die Umstellung ist ein Wartungsfenster, kein
+Betriebszustand.
+
+### 6. Herunterladen streamt, ohne Zwischendatei — und verliert dabei Bereichsanfragen
 
 Der S3-Adapter gibt den Objektkörper als Strom zurück; `DocumentContent` kann das seit #747 und der
 Controller liefert ihn als `InputStreamResource` aus. Folge: für S3-gestützte Originale gibt es
 kein HTTP-`Range` und keine Wiederaufnahme eines abgebrochenen Downloads mehr — der
 Dateisystem-Adapter behält beides über `FileSystemResource`. Für Dokumente bis 50 MiB ist das
 vertretbar; vorsigniert ausgelieferte URLs, die beides zurückbrächten, sind ausdrücklich nicht Teil
-dieses Schnitts (siehe [Nicht entschieden](#nicht-entschieden)).
+dieses Schnitts.
 
-### 6. Wer eine lokale Datei braucht, bekommt eine Kopie mit Aufräumpflicht beim Port
+### 7. Wer eine lokale Datei braucht, bekommt eine Kopie mit Aufräumpflicht beim Port
 
-Pipeline-Reindex, Metadaten-Nachlauf und die Anhang-Rückextraktion
-([ADR-0022](0022-anhang-als-eigenes-dokument.md)) brauchen einen echten Pfad. Der Port stellt ihn
-als „lokale Kopie für die Dauer einer Aktion" bereit und löscht sie danach selbst — dieselbe
-Disziplin, die `S3ObjectStore#getObject` schon hat, nur mit dem Aufräumen auf der richtigen Seite.
-Temp-Verzeichnis über `opaa.upload.s3.temp-directory` konfigurierbar, Standard das
-JVM-Temp-Verzeichnis. Der Platzbedarf ist damit „größte Datei × gleichzeitige Verarbeitungen" und
-gehört ins Handbuch, weil er unter S3 neu ist.
+Pipeline-Reindex, Metadaten-Nachlauf und die Rückextraktion von Anhängen (ADR-0022) brauchen einen
+echten Pfad. Der Port stellt ihn als „lokale Kopie für die Dauer einer Aktion" bereit und löscht sie
+danach selbst — dieselbe Disziplin, die `S3ObjectStore#getObject` schon hat, nur mit dem Aufräumen
+auf der richtigen Seite. Temp-Verzeichnis über `opaa.upload.s3.temp-directory` konfigurierbar,
+Standard das JVM-Temp-Verzeichnis.
 
-### 7. Keine Zieladressprüfung für den Betriebsendpunkt, deshalb ein eigener Client
+Der Platzbedarf ist damit unter S3 neu und **größer als eine Dateigröße je Upload**: Springs
+Multipart-Spool (ohne gesetzten `file-size-threshold` landet jede Datei auf der Platte), die
+Arbeitsdatei aus Entscheidung 2 und, bei einem gleichzeitigen Reindex derselben Bibliothek, die
+Kopie aus dieser Entscheidung können nebeneinander liegen. Das Handbuch nennt die Rechnung, statt
+eine Zahl zu behaupten.
 
-Der Endpunkt der Originalablage kommt aus der Betriebskonfiguration, nicht aus einer
-Benutzereingabe, und zeigt im Regelfall auf eine private Adresse im eigenen Netz. `S3ClientFactory`
-und `TargetAddressValidator` werden deshalb **nicht** verwendet; der Adapter baut seinen eigenen,
-langlebigen `S3Client` für die gesamte Laufzeit der Anwendung. Wiederverwendet werden die Typen
-(`S3Credentials`, Endpunkt-Normalisierung, Adressstil, Signaturregion, die Ausnahmehierarchie) und
-die Testbausteine (`MinioFixture`), nicht der lesende Port und nicht sein Laufzeitgerüst
-(Anfragebudget, Messwerk, Erzeugung je Lauf).
+### 8. Geteilter Clientbau, eigene Zieladressprüfung mit eigenem Namensraum
 
-### 8. Fehlende Konfiguration bricht den Start ab, ein nicht erreichbarer Speicher nicht
+Der Clientbau aus `AwsSdkS3ObjectStore` (Endpunkt, Region, Adressstil, die beiden
+Prüfsummen-Schalter, Zeitschranken, Proxy, selbstsignierte Endpunkte, Wiederholstrategie,
+Fehlerübersetzung) wird **herausgelöst und von beiden Seiten benutzt**, statt ein zweites Mal
+erarbeitet zu werden. Er ist mühsam erworbenes Wissen über die Verträglichkeit mit nicht-AWS-Stores;
+eine zweite Fassung davon würde still auseinanderlaufen.
+
+Die Zieladressprüfung bleibt erhalten, bekommt aber einen eigenen Namensraum
+`opaa.upload.s3.target-validation` — nach dem Vorbild von `OidcAddressPolicy`
+([ADR-0025](0025-mehrere-oidc-anbieter.md)), das genau diesen Fall schon gelöst hat: der
+**konfigurierte Endpunkt selbst ist immer erlaubt** (nach Schema, Host *und* Port), weil er aus der
+Betriebskonfiguration stammt und damit dieselbe Vertrauensstufe hat wie die Freigabeliste; alles
+andere wird geprüft. Damit funktioniert `http://minio:9000` im Compose-Netz ohne Eintrag, und ein
+verirrter Endpunkt wie `169.254.169.254` bleibt trotzdem erkennbar. Ein eigener Namensraum statt des
+indizierungsseitigen sorgt dafür, dass das Abschalten der Konnektorprüfung nicht die Ablage
+mitschaltet — dieselbe Begründung, die ADR-0025 für die Anmeldeseite gibt.
+
+Nicht wiederverwendet wird `S3Credentials`: sein Doppelpunkt-Verbot stammt aus dem Speicherformat
+`knowledge_libraries.source_credentials`, nicht aus S3, und würde ein MinIO-Secret mit Doppelpunkt in
+einer Umgebungsvariablen grundlos ablehnen. Die Betriebskonfiguration trägt Zugangsschlüssel und
+Geheimnis als zwei getrennte Werte — mit derselben Zusage, dass sie in keiner Protokollzeile und in
+keiner Meldung erscheinen.
+
+### 9. Fehlende Konfiguration bricht den Start ab, ein nicht erreichbarer Speicher nicht
 
 `opaa.upload.store=s3` ohne Bucket, Endpunkt oder Zugangsdaten ist ein Konfigurationsfehler und
 beendet den Start mit einer Meldung, die den fehlenden Wert nennt — dieselbe Haltung wie bei
-`AuthProfileGuard` ([ADR-0005](0005-authentication-strategy.md)). Ein konfigurierter, aber
-momentan nicht erreichbarer Objektspeicher beendet den Start dagegen **nicht**: Chat, Suche und die
-bereits indizierten Inhalte funktionieren ohne ihn, nur Upload und Originalabruf nicht. Dieser Fall
-gehört in einen Zustandsbeitrag von `/actuator/health` und in eine Warnung beim Start, nicht in
-einen Abbruch.
+`AuthProfileGuard` ([ADR-0005](0005-authentication-strategy.md)). Ein konfigurierter, aber momentan
+nicht erreichbarer Objektspeicher beendet den Start **nicht**: Chat, Suche und die bereits
+indizierten Inhalte funktionieren ohne ihn.
 
-### 9. Verschlüsselung ruhender Daten, Aufbewahrung und Replikation gehören dem Speicher
+Daraus folgen zwei Dinge, die der ADR mitentscheidet, weil sie sonst beim Bauen beliebig ausfallen:
+
+- **Der Gesundheitsbeitrag geht nicht in den Gesamtstatus.** Die drei vorhandenen Indikatoren
+  (Chat, Embeddings, Vektorspeicher) tun das; ein vierter, der es ebenso täte, würde ausgerechnet im
+  Mehrinstanzbetrieb — dem Zweck dieser Arbeit — eine Instanz wegen eines nicht erreichbaren
+  Objektspeichers aus der Lastverteilung nehmen, obwohl sie Chat und Suche weiter bedienen kann. Der
+  Beitrag erscheint deshalb als eigener Eintrag mit eigener Gruppe, nicht im Gesamturteil.
+- **Der Abruf eines Originals unterscheidet zwei Fälle.** „Objekt nicht vorhanden" ist das
+  bestehende `404` ohne Unterscheidbarkeit (Entscheidung 3). „Speicher nicht erreichbar" ist ein
+  eigener Fehler mit deutscher Meldung und `503`, weil eine vorübergehende Störung dem Aufrufer
+  nicht als „gibt es nicht" erscheinen darf — und weil ein `404` hier den Betrieb in die falsche
+  Richtung schicken würde.
+
+### 10. Verschlüsselung ruhender Daten, Aufbewahrung und Replikation gehören dem Speicher
 
 OPAA setzt keine Verschlüsselungskopfzeilen und verwaltet keine Schlüssel. Bucket-weite
 Verschlüsselung (SSE-S3, SSE-KMS), Versionierung, Lebenszyklusregeln und Replikation konfiguriert
 der Betrieb am Bucket; das Handbuch nennt sie als Empfehlung. Derselbe Grundsatz gilt heute für das
 Dateisystem, wo Verschlüsselung am Dateisystem oder am Speichersystem hängt.
-
-### 10. Verworfen: Originale als Blob in Postgres
-
-Einzeldokumente im Objektspeicher gegen Einzeldokumente in der Datenbank abzuwägen, fällt nicht
-grundsätzlich aus, sondern an der Größenordnung. Dafür spricht Erhebliches: eine gemeinsame
-Transaktion für Zeile und Bytes, also keine verwaisten Dateien und keine Zeilen ohne Datei; **ein**
-Backup und **ein** Wiederherstellungszeitpunkt, was gegenüber Betrieb und Prüfern das stärkste
-Argument ist; keine zusätzliche Komponente, auch im Betrieb ohne Netzanbindung; und der
-Multiinstanzbetrieb wäre ohne Objektspeicher gelöst.
-
-Dagegen steht die Menge:
-
-- Jede hochgeladene Datei läuft durch das Write-Ahead-Log und damit in Replikation, Sicherung und
-  `pg_dump`-Dauer. Die Datenbank hält bereits Chunks und Vektoren; #1439 arbeitet gerade daran, die
-  Datentöpfe zu **trennen**, nicht weitere hineinzulegen.
-- `bytea` streamt nicht: 50 MiB liegen beim Schreiben und beim Lesen vollständig im Heap und im
-  JDBC-Puffer. Large Objects streamen, verlangen aber eine eigene API, eigene `vacuumlo`-Pflege und
-  passen nicht zu JPA.
-- Kalte Originalbytes verdrängen `shared_buffers` — also den Cache, von dem die Vektorsuche lebt.
-- Ein Download hält für die Dauer der Übertragung eine Verbindung aus dem Pool.
-- Datenbankspeicher ist das teuerste und am unhandlichsten zu vergrößernde Volume einer
-  Installation.
-
-Das Maß ist also Datenmenge je Zeile und Gesamtwachstum, nicht eine Regel gegen Bytes in der
-Datenbank: `branding_settings.logo_content` liegt bewusst als `bytea` in seiner Zeile — ein Logo je
-Organisation, höchstens ein halbes MiB, bei fast jeder Anfrage gebraucht. Upload-Originale sind das
-Gegenteil davon: viele, groß, selten gelesen.
 
 ### 11. Unberührt
 
@@ -197,30 +262,84 @@ Gegenteil davon: viele, groß, selten gelesen.
 **Einfacher.** Der Multiinstanzbetrieb (#1292) verliert eine seiner drei offenen Speicherfragen.
 Große Bestände hängen nicht mehr an der Größe eines Volumes. Verschlüsselung, Versionierung,
 Replikation und Aufbewahrung kommen aus dem Speicher statt aus unserem Code. Und die Upload-Ablage
-ist nach diesem Umbau erstmals an genau einer Stelle im Code gekapselt statt an zwei — schon das ist
-unabhängig von S3 eine Verbesserung.
+ist nach diesem Umbau erstmals an genau einer Stelle gekapselt statt an zwei — mit **einer**
+Auflösung statt zweier, die sich in ihrer Strenge unterscheiden. Schon das ist unabhängig von S3
+eine Verbesserung, und es schließt nebenbei die Lücke, dass ein Symlink im Upload-Verzeichnis heute
+ausgeliefert wird.
 
-**Schwieriger.** Es gibt einen zweiten Betriebsweg mit eigener Konfiguration, eigenem Backup-Ziel
-und eigener Wiederherstellungsreihenfolge (erst Objekte, dann Datenbank — umgekehrt zeigen Zeilen
-auf noch nicht vorhandene Objekte). Zeile und Bytes fallen nicht mehr gemeinsam: ein fehlgeschlagenes
+**Schwieriger.** Es gibt einen zweiten Betriebsweg mit eigener Konfiguration, eigenem Backup-Ziel und
+eigener Wiederherstellungsreihenfolge (erst Objekte, dann Datenbank — umgekehrt zeigen Zeilen auf
+noch nicht vorhandene Objekte). Zeile und Bytes fallen nicht mehr gemeinsam: ein fehlgeschlagenes
 `DeleteObject` hinterlässt ein verwaistes Objekt, ein Abbruch zwischen `PutObject` und dem Einfügen
 der Zeile ebenso — beides existiert heute auf der Platte genauso, fällt dort aber beim Hineinschauen
-auf, während im Bucket niemand nachsieht. Dafür braucht es einen Aufräumlauf; er ist eigener
-Arbeitsumfang im Epic und nicht Voraussetzung der Umstellung. Bereichsanfragen beim Download fallen
-für S3 weg (Entscheidung 5). Und die Temp-Platte wird erstmals Teil der Kapazitätsplanung
-(Entscheidung 6).
+auf, während im Bucket niemand nachsieht. Dafür braucht es einen Aufräumlauf (#1478); er ist eigener
+Arbeitsumfang und nicht Voraussetzung der Umstellung. Bereichsanfragen beim Download fallen für S3
+weg (Entscheidung 6). Die Temp-Platte wird erstmals Teil der Kapazitätsplanung (Entscheidung 7). Und
+der herausgelöste Clientbau (Entscheidung 8) fasst Konnektor-Code an, der heute funktioniert — das
+gehört mit eigener Testabdeckung abgesichert, nicht nebenbei verschoben.
 
 **Nachweisbarkeit.** Der Beleg bleibt greifbar — das ist die Bedingung, unter der überhaupt
 umgestellt werden darf. Was sich ändert, ist der Ort: ein Prüfer, der heute in ein Verzeichnis
 schaut, schaut künftig in einen Bucket. Das Handbuch muss ihm sagen, wie.
 
-## Nicht entschieden
+## Verworfene Alternativen
+
+### Originale als Blob in Postgres
+
+Fällt nicht grundsätzlich aus, sondern an der Größenordnung. Dafür spricht Erhebliches: eine
+gemeinsame Transaktion für Zeile und Bytes, also keine verwaisten Dateien und keine Zeilen ohne
+Datei; **ein** Backup und **ein** Wiederherstellungszeitpunkt, was gegenüber Betrieb und Prüfern das
+stärkste Argument ist; keine zusätzliche Komponente, auch im Betrieb ohne Netzanbindung; und der
+Multiinstanzbetrieb wäre ohne Objektspeicher gelöst.
+
+Dagegen steht die Menge:
+
+- Jede hochgeladene Datei läuft durch das Write-Ahead-Log und damit in Replikation, Sicherung und
+  `pg_dump`-Dauer. Die Datenbank hält bereits Chunks und Vektoren.
+- `bytea` streamt nicht: 50 MiB liegen beim Schreiben und beim Lesen vollständig im Heap und im
+  JDBC-Puffer. Large Objects streamen, verlangen aber eine eigene API, eigene `vacuumlo`-Pflege und
+  passen nicht zu JPA.
+- Kalte Originalbytes verdrängen `shared_buffers` — also den Cache, von dem die Vektorsuche lebt.
+- Ein Download hält für die Dauer der Übertragung eine Verbindung aus dem Pool.
+- Datenbankspeicher ist das teuerste und am unhandlichsten zu vergrößernde Volume einer
+  Installation.
+
+Das Maß ist also Datenmenge je Zeile und Gesamtwachstum, nicht eine Regel gegen Bytes in der
+Datenbank: `branding_settings.logo_content` liegt bewusst als `bytea` in seiner Zeile — ein Logo je
+Organisation, höchstens 512 KiB, bei fast jeder Anfrage gebraucht. Upload-Originale sind das
+Gegenteil davon: viele, groß, selten gelesen. In dieselbe Richtung, aber ohne dass hier etwas
+entschieden wäre, zeigt der Stichpunkt „Speicher-Backends trennen" in #1439.
+
+### Beide Ablagen parallel lesen
+
+Erspart der Umstellung einen Betriebsschritt und kostet dauerhaft eine Verzweigung in jedem
+Lesepfad — samt der Eigenschaft, dass eine unvollständige Kopie nicht auffällt, weil die alte Ablage
+sie auffängt. Verworfen zugunsten von Entscheidung 5.
+
+### Ein eigener S3-Client ohne geteilten Bau
+
+War der erste Entwurf dieses ADR, mit der Begründung, die Zieladressprüfung passe nicht zum
+Betriebsendpunkt. Das Review hat gezeigt, dass das Projekt diesen Fall zweimal anders gelöst hat
+(Freigabeliste für das Demo-MinIO, eigener Prüf-Namensraum für die Anmeldeseite) und dass am
+Clientbau deutlich mehr hängt als am Prüfschritt. Ersetzt durch Entscheidung 8.
+
+## Ausdrücklich offen
 
 - **Vorsigniert ausgelieferte URLs** (der Browser holt das Original direkt vom Speicher). Brächten
-  Bereichsanfragen zurück und nähmen dem Backend die Bytes ab, verlangen aber eine eigene
-  Abwägung: eine URL, die für ihre Gültigkeitsdauer auch ohne Anmeldung funktioniert, ist eine
-  andere Zugriffseigenschaft als die heutige.
+  Bereichsanfragen zurück und nähmen dem Backend die Bytes ab, verlangen aber eine eigene Abwägung:
+  eine URL, die für ihre Gültigkeitsdauer auch ohne Anmeldung funktioniert, ist eine andere
+  Zugriffseigenschaft als die heutige.
 - **Ein Objektspeicher-Weg für `FILESYSTEM`-Bibliotheken.** Dafür gibt es den S3-Konnektor (#1291);
   eine Quelle ist keine Ablage.
-- **Trennung der Postgres-Datentöpfe** (#1439) und **Mandantenfähigkeit** (#1442) berühren das
-  Schlüsselschema, ändern es nach Entscheidung 3 aber nicht.
+- **Mehrere Ablagen nebeneinander** (je Organisation oder je Bibliothek ein eigener Bucket). Das
+  Schlüsselschema aus Entscheidung 4 verbaut es nicht; entschieden ist es nicht.
+
+## Referenzen
+
+- Epic #1440, Umsetzung in #1475, #1476, #1477, #1478
+- [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md) — Quellkonfiguration in der Bibliothek
+- [ADR-0021](0021-single-instance-betrieb.md) — Single-Instance-Annahme
+- [ADR-0022](0022-anhang-als-eigenes-dokument.md) — Anhang als eigenes Dokument
+- [ADR-0025](0025-mehrere-oidc-anbieter.md) — Zieladressprüfung mit eigenem Namensraum
+- [ADR-0027](0027-s3-konnektor.md) — S3-Konnektor, Zugriffsschicht und Clientbau
+- `docs/features/deployment-infrastructure.md` — Speicher-Backends
