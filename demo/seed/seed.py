@@ -32,8 +32,15 @@ from profiles import PROFILES, LibraryDef, Profile, SpaceDef, UserDef
 
 INDEXING_POLL_INTERVAL_SECONDS = 3
 # Transient errors expected right after `docker compose ... up`: the backend/Keycloak container
-# exists but is not yet accepting connections, or (dev-auth) is still applying Liquibase.
-TRANSIENT_STARTUP_ERRORS = (ApiError, AuthError, requests.exceptions.ConnectionError)
+# exists but is not yet accepting connections, answers slowly enough to run into the request
+# timeout, or (dev-auth) is still applying Liquibase.
+TRANSIENT_STARTUP_ERRORS = (
+    ApiError,
+    AuthError,
+    requests.exceptions.ConnectionError,
+    requests.exceptions.Timeout,
+)
+TOKEN_REJECTED_STATUS_CODES = (401, 403)
 
 
 def build_client(
@@ -77,7 +84,39 @@ def wait_until_ready(admin_client: Client, timeout_seconds: int = 90) -> None:
         except TRANSIENT_STARTUP_ERRORS as error:
             last_error = error
             time.sleep(3)
-    raise SystemExit(
+    raise SystemExit(_readiness_failure_message(last_error, timeout_seconds))
+
+
+def _readiness_failure_message(last_error: Exception | None, timeout_seconds: float) -> str:
+    """Names the failure the readiness wait actually ran into (#1515). "Nicht erreichbar" is
+    reserved for the case where nothing answered; an answered request that rejects the token is
+    reported as such, together with the WWW-Authenticate challenge that carries the reason. Every
+    case stays retried: a token can legitimately be rejected while the backend is still building
+    the JwtDecoder of its OIDC provider (ADR-0025)."""
+    if isinstance(last_error, ApiError) and last_error.status_code in TOKEN_REJECTED_STATUS_CODES:
+        return (
+            f"Token nach {timeout_seconds}s weiterhin abgelehnt "
+            f"(HTTP {last_error.status_code}) — Backend und Keycloak antworten also beide, der "
+            f"Tokenerwerb selbst war erfolgreich.\n  {last_error}\n"
+            "Häufigste Ursache im Auth-Modus 'oidc': Das Token des Clients 'opaa-seed' nennt den "
+            "Client aus OPAA_OIDC_CLIENT_ID weder in 'azp' noch in 'aud'. Dann fehlt 'opaa-seed' "
+            "der Audience-Mapper aus keycloak/realm-export.json oder er zeigt auf einen anderen "
+            "Client — und ein Keycloak mit eigenem Volume liest den Realm-Export nach dem ersten "
+            "Start nicht mehr, die Datei allein genügt dort also nicht."
+        )
+    if isinstance(last_error, AuthError):
+        return (
+            f"Keycloak lehnt die Anmeldung nach {timeout_seconds}s weiterhin ab (letzter Fehler: "
+            f"{last_error}). Keycloak antwortet also — geprüft werden sollten Realm, Client "
+            "'opaa-seed' (aktiviert, directAccessGrantsEnabled) und die Zugangsdaten des Kontos."
+        )
+    if isinstance(last_error, ApiError):
+        return (
+            f"Backend antwortet nach {timeout_seconds}s weiterhin mit einem Fehler (letzter "
+            f"Fehler: {last_error}). Erreichbar ist es also — der Fehler liegt hinter der "
+            "Anfrage, nicht in der Verbindung."
+        )
+    return (
         f"Backend bzw. Keycloak nach {timeout_seconds}s nicht erreichbar (letzter Fehler: "
         f"{last_error}). Läuft der Stack bereits vollständig (docker compose ... up, ggf. "
         "--profile demo)?"

@@ -277,17 +277,33 @@ begründet werden sollte, kein hartes Muss.
 | 6 | `keycloak/realm-export.json` (Client `opaa-seed`) | Öffentlicher Client mit `directAccessGrantsEnabled: true` (Resource-Owner-Password-Grant) und ohne Client-Secret, ausschließlich für das Seed-Skript der Demo (`demo/seed/seed.py`) gedacht, das sich damit als Demo-Nutzer anmeldet und Bibliotheken, Rechte und Chats über die reguläre API anlegt | Erlaubt einen passwortbasierten Tokenweg **ohne Secret** gegen jedes Realm-Konto — auf einer erreichbaren Instanz ein zusätzlicher, von der eigentlichen Anmeldung (`opaa-frontend`, `directAccessGrantsEnabled: false`, Authorization-Code + PKCE) unabhängiger Angriffsweg, unabhängig davon, wessen Passwort betroffen ist | **Zwingend.** Client `opaa-seed` aus dem Realm-Export entfernen oder auf `enabled: false` setzen, bevor der Realm auf einer erreichbaren Instanz importiert wird. Wer die Demo dort dennoch erneut seeden will, aktiviert den Client nur für die Dauer des Laufs wieder (per `kcadm` oder Admin-Konsole) oder legt die Rechte direkt über die Keycloak-Admin-Konsole/API an, statt den Client dauerhaft scharf zu lassen |
 | 7 | `docker-compose.yml` (Service `upload-store`, nur Compose-Profil `upload-s3`) | Root-Zugangsdaten des mitgelieferten Objektspeichers der Originalablage als Compose-Vorgabe (`opaa-uploads`/`OpaaUploads!2026`), dieselben Werte auskommentiert in `.env.docker.example` | Wer das Profil in einem erreichbaren Betrieb nutzt und die Vorgabe behält, schützt die Originale **aller** hochgeladenen Dokumente mit Zugangsdaten, die im Repository stehen. Die S3-API ist zwar nur an `127.0.0.1` gebunden — das schützt vor dem Netz, aber nicht vor anderen Prozessen und Konten auf demselben Host | **Zwingend**, sobald das Profil außerhalb einer Erprobung läuft: eigene Werte über `OPAA_UPLOAD_STORE_ROOT_USER`/`OPAA_UPLOAD_STORE_ROOT_PASSWORD` in `.env` oder der Prozessumgebung setzen (nicht in `.env.docker`, siehe Punkt 3) und dieselben Werte als `OPAA_UPLOAD_S3_ACCESS_KEY`/`OPAA_UPLOAD_S3_SECRET_KEY` in `.env.docker` eintragen. Der mitgelieferte Dienst ist als Erprobungs- und Umstellungsziel gedacht; im erreichbaren Betrieb ist ein hauseigener Objektspeicher mit eigenen Zugangsdaten, Verschlüsselung ruhender Daten und Versionierung der Regelfall (siehe [„Originalablage"](#originalablage)) |
 
-**Realm-Lebensdauern auf einer bereits laufenden Instanz:** `keycloak/realm-export.json`
-setzt `accessTokenLifespan`, `ssoSessionIdleTimeout` und `ssoSessionMaxLifespan` explizit. Wie
-bei Punkt 4 oben importiert `--import-realm` einen Realm dabei nur, wenn er noch nicht existiert
-— auf einer Instanz mit bereits importiertem Realm wirkt eine spätere Änderung dieser Werte im
-Repository also **nicht von selbst**. Ein erneuter, vollständiger Import
-würde außerdem die dokumentierte Härtung der Konten aus Punkt 1 zurückdrehen. Die Lebensdauern
-müssen stattdessen gezielt über `kcadm` (oder die Admin-Konsole) nachgezogen werden:
+**Änderungen am Realm auf einer bereits laufenden Instanz:** Wie bei Punkt 4 oben importiert
+`--import-realm` einen Realm nur, wenn er noch nicht existiert — auf einer Instanz mit bereits
+importiertem Realm (Keycloak mit eigenem Volume oder eigener Datenbank) wirkt eine spätere
+Änderung an `keycloak/realm-export.json` also **nicht von selbst**. Ein erneuter, vollständiger
+Import würde außerdem die dokumentierte Härtung der Konten aus Punkt 1 zurückdrehen. Zwei
+Änderungen, die deshalb gezielt über `kcadm` (oder die Admin-Konsole) nachzuziehen sind:
+
+*Lebensdauern* — `keycloak/realm-export.json` setzt `accessTokenLifespan`, `ssoSessionIdleTimeout`
+und `ssoSessionMaxLifespan` explizit:
 
 ```bash
 kcadm.sh config credentials --server http://localhost:8180 --realm master --user admin
 kcadm.sh update realms/opaa -s accessTokenLifespan=900 -s ssoSessionIdleTimeout=3600 -s ssoSessionMaxLifespan=36000
+```
+
+*Audience-Mapper des Seed-Clients* — der Client `opaa-seed` aus Punkt 6 trägt im Export einen
+`oidc-audience-mapper` auf `opaa-frontend`. Ohne ihn nennt sein Token den Client aus
+`OPAA_OIDC_CLIENT_ID` weder in `azp` noch in `aud`, und das Backend weist jeden Aufruf eines
+Seed-Laufs mit HTTP 401 ab (siehe [„OIDC (Keycloak)"](#oidc-keycloak)). Trägt die Installation eine
+andere `OPAA_OIDC_CLIENT_ID`, gehört deren Wert in `included.client.audience`:
+
+```bash
+kcadm.sh create clients/<id-des-clients-opaa-seed>/protocol-mappers/models -r opaa \
+  -s name=opaa-frontend-audience -s protocol=openid-connect \
+  -s protocolMapper=oidc-audience-mapper \
+  -s 'config."included.client.audience"=opaa-frontend' \
+  -s 'config."access.token.claim"=true'
 ```
 
 **Zugangsdaten, die zusätzlich zu ersetzen sind (empfohlen, unabhängig von den sechs Fundstellen oben):**
@@ -1230,6 +1246,8 @@ Die Variablen `OPAA_OIDC_ISSUER_URI`, `OPAA_OIDC_CLIENT_ID` und `OPAA_OIDC_JWK_S
 **Die Variablen bleiben gesetzt.** Sie sind der Notanker: `OPAA_OIDC_BOOTSTRAP=force` stellt den Anbieter aus der Umgebung einmalig wieder her (Zeile mit diesem Issuer überschrieben bzw. angelegt, aktiviert, Standard) — der dokumentierte Weg zurück aus einer vertippten Issuer-URI des einzigen Anbieters. Die Variable danach wieder entfernen; jeder weitere Start würde die Anbieterverwaltung erneut überschreiben. Außerdem sind die **Adressen** der beiden Variablen (Schema, Host und Port von Issuer-URI und JWK-Set-Adresse) für die Adressprüfung immer erlaubt.
 
 **Adressprüfung.** Jede von der Systemverwaltung eingegebene Issuer- und JWK-Set-Adresse durchläuft dieselbe Prüfung gegen private Netzbereiche wie die Datenquellen (SSRF-Schutz), mit eigener Konfiguration `OPAA_OIDC_TARGET_VALIDATION_ENABLED` (Vorgabe `true`) und `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` (Hosts, kommagetrennt). Ein hausinterner Anbieter mit privater Adresse gehört in die Allowlist; die Bootstrap-Adressen brauchen keinen Eintrag. Discovery-Dokument und JWK-Set werden vom Backend selbst abgerufen, ohne Weiterleitungen zu folgen.
+
+**Tokenprüfung (`azp`/`aud`).** Ein Token wird nur angenommen, wenn sein `azp`-Claim (authorized party) die `client_id` der Anbieterzeile nennt, der Claim ganz fehlt, oder `aud` die `client_id` enthält — sonst weist das Backend die Anfrage mit HTTP 401 ab und nennt den Grund im `WWW-Authenticate`-Header. Bei einem öffentlichen Client ist das die einzige Kontrolle dagegen, dass ein Token, das derselbe Anbieter für eine **andere** Anwendung ausgestellt hat, hier angenommen wird. Praktische Folge für eigene Dienst-Clients: Keycloak setzt `azp` immer auf den anfragenden Client, ein zweiter Client braucht deshalb einen Audience-Mapper auf die `client_id` dieser Installation. Der mitgelieferte Seed-Client `opaa-seed` ist genau dieser Fall und trägt den Mapper im Realm-Export (siehe [„Härtung für erreichbare Deployments"](#härtung-für-erreichbare-deployments), Punkt 6 und der Absatz zu Änderungen am Realm).
 
 #### Grenzen
 
