@@ -41,9 +41,10 @@ erzeugte und gelöschte Objekte meldet (Abschnitt 8).
 Jedes Dokument trägt als Pfad `s3://<bucket>/<schlüssel>` — Bucket und Schlüssel sind die Identität,
 der Endpoint nur der Weg; ein Umzug des Speichers auf einen anderen Endpoint mit denselben Buckets
 baut den Bestand nicht neu. Der Bucket steht als Container, die Präfixsegmente unterhalb des
-Geltungsbereichs als Gliederungspfad am Dokument. **Einen Beleg-Link gibt es nicht:** Beleg und
+Geltungsbereichs als Gliederungspfad am Dokument. **Einen Beleg-Link gibt es nicht** — Beleg und
 Dokumentliste zeigen Bucket und Schlüsselordner als Text, denn eine `s3://`-Adresse öffnet kein
-Browser.
+Browser —, **wohl aber einen Beleg-Abruf:** „Original öffnen" am Beleg und in der Dokumentliste
+lädt das Objekt durch OPAA aus dem Speicher der Bibliothek (Abschnitt 3.1).
 
 **Rechte werden nicht abgebildet.** Was der Schlüssel lesen darf und in einem Geltungsbereich
 liegt, sehen alle Leseberechtigten der Bibliothek. Abschnitt 14 sagt, was daraus für den Zuschnitt
@@ -214,6 +215,35 @@ nennt Abschnitt 14: Nextcloud und ownCloud als S3-Primärspeicher.
 | Downloads | jedes Objekt wird in eine temporäre Datei geladen (Verzeichnis `temp-directory`, Standard das Temp-Verzeichnis der JVM) und nach der Verarbeitung gelöscht; bis zu `download-concurrency` Downloads (Standard 2) laufen gleichzeitig, während die Auflistung weitergeht. Die Dokumentstrecke verarbeitet die geladenen Objekte weiterhin nacheinander in Auflistungsreihenfolge. |
 | Anfrage-Prüfsummen | nur wo der Speicher sie verlangt (`WHEN_REQUIRED`) — MinIO und Ceph verstehen die neueren Prüfsummenkopfzeilen des SDK nicht in jeder Version. |
 | User-Agent | der des SDK; `opaa.indexing.http.user-agent` gilt für diesen Konnektor nicht, weil er nicht über den gemeinsamen HTTP-Client der anderen Netzkonnektoren läuft. |
+
+### 3.1 Original öffnen
+
+Ein Klick auf „Original öffnen" — am Beleg einer Antwort wie in der Dokumentliste — lädt das Objekt
+**im Moment des Klicks** aus dem Speicher der Bibliothek und liefert es an den Browser aus. OPAA
+bewahrt keine Kopie auf: Die Datei entsteht nur für die Dauer der Übertragung und verschwindet
+danach, auch wenn der Leser sie abbricht.
+
+Der Abruf benutzt dieselbe Quellkonfiguration wie ein Lauf (Endpoint, Zugangsdaten, Proxy,
+TLS-Einstellung) und dieselbe Zieladressprüfung (Abschnitt 4.1) und Größenobergrenze
+(`max-object-size-bytes`). Er ist aber **kürzer geduldig** als ein Lauf, weil ein Mensch darauf
+wartet: 5 Sekunden je Versuch und eine Wiederholung, wie beim Verbindungstest.
+
+Was der Leser sieht, wenn es nicht klappt:
+
+- **„Für dieses Dokument steht kein Originaldokument zur Verfügung"** — das Objekt ist inzwischen
+  gelöscht, liegt in einer Archivklasse, überschreitet die Größenobergrenze oder liegt in keinem
+  Geltungsbereich der Bibliothek mehr. Dieselbe Meldung wie bei jedem anderen Dokument ohne
+  Original; welcher der Fälle vorliegt, steht nur im Anwendungsprotokoll.
+- **„Der Objektspeicher dieser Bibliothek ist derzeit nicht erreichbar"** — der Speicher antwortet
+  nicht, drosselt, weist die Zugangsdaten ab oder verweigert das Leserecht. Die Einzelheit steht im
+  Anwendungsprotokoll und nie in der Meldung; Abschnitt 13 führt die Ursachen auf.
+
+**Für den Betrieb zwei Folgen:** Jeder Klick kostet einen `GetObject` gegen den Speicher — bei AWS
+also Abrufentgelt (Abschnitt 16) —, und jede Leseberechtigung der Bibliothek kann jedes Objekt
+ihres Bestands wiederholt laden, unabhängig von den Rechten im Objektspeicher (Abschnitt 14). Die
+Zahl der Abrufe je Fenster ist wie für jedes andere Original durch die Ratenbegrenzung des
+Abruf-Endpunkts gedeckelt (`OPAA_RATE_LIMIT_DOCUMENT_CONTENT_*`, siehe
+[Deployment](deployment.md)); das Anfragebudget der Läufe gilt hier nicht.
 
 ## 4. Schutzmechanismen
 
@@ -716,6 +746,8 @@ viele Läufe.
 | Ereignis: `429` | Ratenbegrenzung je Client-Adresse und Bibliothek | `OPAA_RATE_LIMIT_WEBHOOK_*` anheben; `X-Forwarded-For` am Proxy prüfen |
 | AWS: SNS-Subscription bleibt „pending confirmation" | OPAA führt den SNS-Handshake nicht aus | EventBridge-API-Destination (Abschnitt 8.5) verwenden |
 | Nach Schlüsselrotation läuft nichts mehr | alter Schlüssel in weiteren Bibliotheken; oder der Endpoint wurde mitgeändert und die Zugangsdaten deshalb verworfen | jede Bibliothek gegen diesen Speicher einzeln aktualisieren |
+| „Original öffnen": „Für dieses Dokument steht kein Originaldokument zur Verfügung" | Objekt inzwischen gelöscht, in einer Archivklasse, über der Größenobergrenze oder in keinem Geltungsbereich mehr (Abschnitt 3.1) | Anwendungsprotokoll nennt den Fall; ein vollständiger Lauf räumt ein verschwundenes Objekt aus dem Bestand |
+| „Original öffnen": „Der Objektspeicher dieser Bibliothek ist derzeit nicht erreichbar" | Speicher antwortet nicht, drosselt, lehnt die Zugangsdaten ab oder verweigert `s3:GetObject` | Verbindungstest an der Bibliothek ausführen — er nennt die Ursache; die Zeilen oben führen sie auf |
 
 Probe des Ereigniseingangs von Hand (S3-`Records`-Format, wie MinIO und Ceph es senden):
 
@@ -751,8 +783,12 @@ curl -i -X POST "https://<opaa-host>/api/v1/libraries/<id>/s3-events" \
   gespeichert, ein Löschmarker gilt als Löschung, `versionId` wird nicht angefragt.
 - **Keine Benachrichtigungen bei Hetzner** — dort bleibt der Zeitplan der einzige Weg zur
   Aktualität.
-- **Kein Beleg-Link.** Wer das Objekt öffnen will, braucht Pfad und eigenen Zugang zum Speicher;
-  vorsignierte Links sind Zielbild.
+- **Kein Beleg-Link.** Wer das Objekt **im Speicher selbst** öffnen will, braucht Pfad und eigenen
+  Zugang dorthin; in OPAA öffnet „Original öffnen" es über den Abruf aus Abschnitt 3.1, und
+  vorsignierte Links bleiben Zielbild.
+- **Der Abruf eines Originals kennt die Rechte des Speichers nicht.** Er läuft mit dem Schlüssel der
+  Bibliothek, nicht mit dem des Lesers: Wer die Bibliothek lesen darf, kann jedes ihrer Objekte
+  wiederholt und auf Zuruf laden.
 - **Umbenennen und Verschieben bauen Dokumente neu** (Abschnitt 7).
 - **Jeder Lauf listet alles.** Ein Vollabgleich lädt nie weniger als die vollständige Auflistung;
   bei AWS fallen `LIST`-Anfragen ins Entgelt (Abschnitt 16).
@@ -803,6 +839,10 @@ Lauf, auch stündlich, auch wenn sich nichts geändert hat. **Bei AWS fallen `LI
 Entgelt**; ein stündlicher Zeitplan über einen großen Bucket summiert sich dort zu 24.000
 Auflistungsaufrufen je Million Objekte und Tag. Für einen Speicher im Haus (MinIO, Ceph) ist das
 eine Frage der Last, nicht der Kosten.
+
+Neben den Läufen kostet der **Abruf eines Originals** (Abschnitt 3.1) je Klick einen `GetObject`
+samt übertragener Bytes — bei AWS also Abruf- und Datenausgangsentgelt. Das fällt gegenüber den
+Auflistungen kaum ins Gewicht, hängt aber am Verhalten der Leser, nicht am Zeitplan.
 
 Faustregeln: Ein täglicher Zeitplan ist für die meisten Ablagen richtig; stündlich lohnt sich für
 kleine, lebhafte Bereiche. Wer Ereignisbenachrichtigungen eingerichtet hat, kann den Zeitplan

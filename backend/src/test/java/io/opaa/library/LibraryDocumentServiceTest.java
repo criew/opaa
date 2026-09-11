@@ -24,6 +24,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
+import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.chunk.EmbeddingRateEstimator;
@@ -39,6 +40,9 @@ import io.opaa.indexing.document.DocumentIngests;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.source.attachment.AttachmentProperties;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
+import io.opaa.indexing.source.s3.S3AccessException;
+import io.opaa.indexing.source.s3.S3Download;
+import io.opaa.indexing.source.s3.S3OriginalAccess;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import io.opaa.test.ProductionDocumentFormats;
@@ -51,6 +55,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -116,6 +121,10 @@ class LibraryDocumentServiceTest {
   private AttachmentExtractor attachmentExtractor;
   private UploadProperties uploadProperties;
   private UploadedOriginalStore uploadedOriginalStore;
+  // #1524: mocked here - what this class asserts is the branching, the failure pictures and the
+  // temp-file contract around it; the access layer itself is covered against a real MinIO by
+  // io.opaa.indexing.source.s3.S3OriginalAccessMinioTest.
+  private S3OriginalAccess s3OriginalAccess;
   private LibraryDocumentService service;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -161,6 +170,7 @@ class LibraryDocumentServiceTest {
     folderRepository = mock(LibraryFolderRepository.class);
     folderService = mock(LibraryFolderService.class);
     attachmentExtractor = mock(AttachmentExtractor.class);
+    s3OriginalAccess = mock(S3OriginalAccess.class);
 
     service = serviceWith(new AttachmentExtractionProperties(0, null));
 
@@ -237,7 +247,8 @@ class LibraryDocumentServiceTest {
         attachmentExtractor,
         new AttachmentProperties(0, 0, 0),
         new AttachmentExtractionLimiter(limits),
-        ProductionDocumentFormats.supportedFormats());
+        ProductionDocumentFormats.supportedFormats(),
+        s3OriginalAccess);
   }
 
   @Test
@@ -1521,7 +1532,8 @@ class LibraryDocumentServiceTest {
             attachmentExtractor,
             new AttachmentProperties(0, 0, 0),
             new AttachmentExtractionLimiter(new AttachmentExtractionProperties(0, null)),
-            ProductionDocumentFormats.supportedFormats());
+            ProductionDocumentFormats.supportedFormats(),
+            s3OriginalAccess);
     when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
         .thenReturn(AssetRole.VIEWER);
     KnowledgeLibrary library = remoteLibrary(null);
@@ -1678,5 +1690,164 @@ class LibraryDocumentServiceTest {
       releaseFirstExtraction.countDown();
       executor.shutdownNow();
     }
+  }
+
+  // --- #1524: an S3 document's original is fetched from its library's own object store ---------
+
+  /** An S3 document row as a run writes it: the locator is the object's identity, not a file. */
+  private Document s3Document(String key, String contentType) {
+    String fileName = key.substring(key.lastIndexOf('/') + 1);
+    Document document =
+        new Document(fileName, "s3://protokolle/" + key, contentType, 42L, DocumentSourceType.S3);
+    document.setLibraryId(libraryId);
+    return document;
+  }
+
+  private S3Download s3Download(String content, String contentType) throws IOException {
+    Path file = Files.createTempFile("opaa-s3-test-", ".tmp");
+    Files.writeString(file, content);
+    return new S3Download(file, contentType, "etag", Files.size(file), Instant.now());
+  }
+
+  @Test
+  void loadContentStreamsTheS3ObjectAndDeletesItsTempFileOnClose() throws Exception {
+    grantViewerOnUploadLibrary();
+    Document document = s3Document("2025/protokoll.pdf", "application/pdf");
+    when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
+    S3Download download = s3Download("Originalinhalt aus dem Objektspeicher", "application/pdf");
+    when(s3OriginalAccess.download(any(), eq("s3://protokolle/2025/protokoll.pdf")))
+        .thenReturn(Optional.of(download));
+
+    DocumentContent content = service.loadContent(document.getId(), caller);
+
+    assertThat(content.fileName()).isEqualTo("protokoll.pdf");
+    assertThat(content.contentType()).isEqualTo("application/pdf");
+    assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
+        .isEqualTo("Originalinhalt aus dem Objektspeicher");
+    assertThat(download.file()).exists();
+    content.stream().close();
+    // The contract every streamed original shares: closing the stream is what releases the temp
+    // file, so an aborted transfer leaves nothing behind either.
+    assertThat(download.file()).doesNotExist();
+  }
+
+  @Test
+  void loadContentFallsBackToTheContentTypeTheObjectStoreDeclares() throws Exception {
+    grantViewerOnUploadLibrary();
+    Document document = s3Document("2025/protokoll.pdf", null);
+    when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
+    when(s3OriginalAccess.download(any(), eq("s3://protokolle/2025/protokoll.pdf")))
+        .thenReturn(Optional.of(s3Download("inhalt", "application/pdf; charset=utf-8")));
+
+    DocumentContent content = service.loadContent(document.getId(), caller);
+
+    try {
+      assertThat(content.contentType()).isEqualTo("application/pdf");
+    } finally {
+      content.stream().close();
+    }
+  }
+
+  @Test
+  void loadContentAnswers404WhenTheS3ObjectNoLongerResolves() throws Exception {
+    grantViewerOnUploadLibrary();
+    Document document = s3Document("2025/protokoll.pdf", "application/pdf");
+    when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
+    when(s3OriginalAccess.download(any(), any())).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.loadContent(document.getId(), caller))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
+  }
+
+  @Test
+  void loadContentAnswers503WhenTheObjectStoreCannotBeReached() throws Exception {
+    grantViewerOnUploadLibrary();
+    Document document = s3Document("2025/protokoll.pdf", "application/pdf");
+    when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
+    when(s3OriginalAccess.download(any(), any()))
+        .thenThrow(new S3AccessException.Unreachable("Die Verbindung wurde abgelehnt."));
+
+    assertThatThrownBy(() -> service.loadContent(document.getId(), caller))
+        .isInstanceOf(ServiceUnavailableException.class)
+        .hasMessage(
+            "Der Objektspeicher dieser Bibliothek ist derzeit nicht erreichbar. Bitte später"
+                + " erneut versuchen.")
+        // The store's own sentence names bucket, key and endpoint detail - it stays in the log.
+        .hasMessageNotContaining("Verbindung wurde abgelehnt");
+  }
+
+  @Test
+  void loadContentNeverReachesTheObjectStoreWithoutViewerOnTheLibrary() {
+    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
+        .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
+    Document document = s3Document("2025/protokoll.pdf", "application/pdf");
+    when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
+
+    assertThatThrownBy(() -> service.loadContent(document.getId(), caller))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Bibliothek nicht gefunden");
+    // #1524: the S3 branch adds no permission logic of its own - the one check in loadContent is
+    // reached before any branching, so a caller without VIEWER never costs a single S3 request.
+    verifyNoInteractions(s3OriginalAccess);
+  }
+
+  @Test
+  void loadContentStillAnswers404ForAConfluencePage() {
+    grantViewerOnUploadLibrary();
+    Document page =
+        new Document(
+            "Seite",
+            "https://confluence.example/pages/1",
+            "text/html",
+            10L,
+            DocumentSourceType.CONFLUENCE);
+    page.setLibraryId(libraryId);
+    when(documentRepository.findById(page.getId())).thenReturn(Optional.of(page));
+
+    assertThatThrownBy(() -> service.loadContent(page.getId(), caller))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
+  }
+
+  @Test
+  void loadContentReExtractsAnAttachmentOutOfItsS3Object() throws Exception {
+    grantViewerOnUploadLibrary();
+    Document mail = s3Document("post/nachricht.eml", "message/rfc822");
+    Document attachment =
+        new Document(
+            "anlage.txt",
+            mail.getFilePath() + "/0/anlage.txt",
+            "text/plain",
+            6L,
+            DocumentSourceType.S3);
+    attachment.setLibraryId(libraryId);
+    attachment.setParentDocumentId(mail.getId());
+    when(documentRepository.findById(mail.getId())).thenReturn(Optional.of(mail));
+    when(documentRepository.findById(attachment.getId())).thenReturn(Optional.of(attachment));
+    S3Download download = s3Download("nachricht mit anlage", "message/rfc822");
+    when(s3OriginalAccess.download(any(), eq("s3://protokolle/post/nachricht.eml")))
+        .thenReturn(Optional.of(download));
+    AtomicReference<String> parentBytes = new AtomicReference<>();
+    Path extracted = Files.createTempFile("opaa-attachment-test-", ".txt");
+    Files.writeString(extracted, "Anhang");
+    when(attachmentExtractor.extract(any(), eq("nachricht.eml"), eq(0)))
+        .thenAnswer(
+            invocation -> {
+              parentBytes.set(Files.readString(invocation.getArgument(0, Path.class)));
+              return new AttachmentExtractor.Extracted(extracted, "anlage.txt");
+            });
+
+    DocumentContent content = service.loadContent(attachment.getId(), caller);
+
+    assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
+        .isEqualTo("Anhang");
+    assertThat(content.fileName()).isEqualTo("anlage.txt");
+    // The re-extraction ran against the object's own bytes: a streamed S3 root is buffered into a
+    // temp file first, which is what makes an attachment inside an S3 object openable at all.
+    assertThat(parentBytes.get()).isEqualTo("nachricht mit anlage");
+    content.stream().close();
+    assertThat(extracted).doesNotExist();
+    assertThat(download.file()).doesNotExist();
   }
 }

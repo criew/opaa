@@ -694,7 +694,9 @@ gebaut, und ein Rechteentzug wirkt erst mit dem Zuschnitt der Bereiche. Nextclou
 S3-Primärspeicher sind kein Ziel (opake `urn:oid`-Objekte ohne Namen, Entscheidung 10). Objekte in
 Archivklassen und SSE-C-verschlüsselte Objekte werden nicht gelesen; Objektmetadaten und Tags sind
 Zielbild (ADR-0024), ebenso vorsignierte Beleg-Links — ein S3-Dokument zeigt seine Herkunft als
-Text, nicht als Link. Die Zugriffsschicht ist ein Port mit einem Adapter auf das AWS SDK for Java
+Text, nicht als Link. „Original öffnen" gibt es trotzdem: Seit #1524 lädt OPAA das Objekt beim
+Klick selbst aus dem Speicher der Bibliothek (ADR-0027, Nachtrag zu Entscheidung 5), mit der
+Rechteprüfung, der Zieladressprüfung und der Größenobergrenze, die auch sonst gelten. Die Zugriffsschicht ist ein Port mit einem Adapter auf das AWS SDK for Java
 v2 (Entscheidung 9); der Nachweis läuft im regulären `./gradlew test` gegen MinIO in Testcontainers
 — der erste Konnektor mit vollständigem Container-Nachweis.
 

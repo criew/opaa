@@ -54,6 +54,7 @@ import io.opaa.indexing.source.rss.RssFeedParser;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
 import io.opaa.indexing.source.s3.S3ClientFactory;
 import io.opaa.indexing.source.s3.S3IndexingExecutor;
+import io.opaa.indexing.source.s3.S3OriginalAccess;
 import io.opaa.indexing.source.s3.S3Properties;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
 import io.opaa.indexing.source.web.CrawlProperties;
@@ -384,6 +385,15 @@ public class IndexingConfiguration {
   S3ClientFactory s3ClientFactory(
       S3Properties s3Properties, TargetAddressValidator targetAddressValidator) {
     return new S3ClientFactory(s3Properties, targetAddressValidator);
+  }
+
+  /**
+   * Reads an indexed object back for the citation jump (ADR-0027, Entscheidung 5) - a read path
+   * outside every run, used by {@code io.opaa.library.LibraryDocumentService}.
+   */
+  @Bean
+  S3OriginalAccess s3OriginalAccess(S3ClientFactory s3ClientFactory) {
+    return new S3OriginalAccess(s3ClientFactory);
   }
 
   @Bean

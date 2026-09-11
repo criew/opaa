@@ -849,7 +849,7 @@ final class S3FullSync implements AutoCloseable {
 
   private static String archivedMessage(String filePath, String storageClass) {
     return "Das Objekt „"
-        + filePath.substring("s3://".length())
+        + filePath.substring(S3ObjectRef.SCHEME.length())
         + "“ liegt in der Archivklasse "
         + (storageClass == null ? "(unbekannt)" : storageClass)
         + " und ist ohne Wiederherstellung nicht lesbar.";
@@ -857,7 +857,7 @@ final class S3FullSync implements AutoCloseable {
 
   /** {@code s3://<bucket>/<key>}, the key as it is - the identity per library (Entscheidung 5). */
   static String filePath(String bucket, String key) {
-    return "s3://" + bucket + "/" + key;
+    return S3ObjectRef.filePath(bucket, key);
   }
 
   private static boolean hasExtension(String fileName) {
