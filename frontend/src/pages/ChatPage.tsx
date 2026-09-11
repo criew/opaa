@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import Alert from '@mui/material/Alert'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
@@ -6,7 +6,10 @@ import CircularProgress from '@mui/material/CircularProgress'
 import { useNavigate, useParams } from 'react-router'
 import MessageList from '../components/chat/MessageList'
 import ChatInput from '../components/chat/ChatInput'
+import ConversationNote from '../components/chat/ConversationNote'
+import { isConversationNoteVisible } from '../components/chat/conversationNoteVisibility'
 import { useChatStore } from '../stores/chatStore'
+import { useSpaceStore } from '../stores/spaceStore'
 import PageHeading from '../components/a11y/PageHeading'
 
 export default function ChatPage() {
@@ -23,6 +26,21 @@ export default function ChatPage() {
   const storeSpaceId = useChatStore((s) => s.spaceId)
   const storeChatId = useChatStore((s) => s.chatId)
   const chatTitle = useChatStore((s) => s.title)
+  const noteItems = useChatStore((s) => s.noteItems)
+  const removeNoteItem = useChatStore((s) => s.removeNoteItem)
+  // #543: an archived space accepts no change to an existing chat - the points stay visible, the
+  // remove buttons do not. Same lookup as ChatList's "Neuer Chat" guard.
+  const isArchivedSpace = useSpaceStore(
+    (s) => s.spaces.find((space) => space.id === spaceId)?.archived ?? false,
+  )
+  // A round is completed once its answer is in - the question of a round in flight does not count.
+  const completedRounds = useMemo(
+    () => messages.filter((message) => message.role === 'assistant').length,
+    [messages],
+  )
+  const noteVisible = isConversationNoteVisible(noteItems, completedRounds)
+  // Where focus goes when the last note point is removed and the note's surface disappears with it.
+  const headerRef = useRef<HTMLDivElement>(null)
 
   // Read via a ref, not a reactive dependency: sendMessage sets the store's chatId as soon as it
   // implicitly creates a chat, well before the query itself resolves. If that update re-ran this
@@ -96,16 +114,46 @@ export default function ChatPage() {
         documentTitle={chatTitle ?? undefined}
         visuallyHidden
       />
-      {chatTitle && (
-        // Mockup 1a's header bar (#658). aria-hidden: the visually hidden PageHeading above
-        // already announces the title - this bar is purely visual.
+      {(chatTitle || noteVisible) && (
+        // Mockup 1a's header bar (#658), and the Gesprächsnotiz's place (#1488). Wrapping flex
+        // row: title and button share the first line, the note panel takes the next one.
         <Box
-          aria-hidden="true"
-          sx={{ px: 5, py: 2, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}
+          ref={headerRef}
+          // Focus target of the note when its last point - and with it its button - is removed
+          // (#1488). Named, because focus must never land on an element without name and role.
+          tabIndex={-1}
+          role="group"
+          aria-label="Chat-Kopfzeile"
+          sx={{
+            px: 5,
+            py: 2,
+            borderBottom: 1,
+            borderColor: 'divider',
+            flexShrink: 0,
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 2,
+          }}
         >
-          <Typography component="div" noWrap sx={{ fontSize: 18, fontWeight: 600 }}>
+          {/* aria-hidden: the visually hidden PageHeading above already announces the title. */}
+          <Typography
+            aria-hidden="true"
+            component="div"
+            noWrap
+            sx={{ fontSize: 18, fontWeight: 600, flexGrow: 1, minWidth: 0 }}
+          >
             {chatTitle}
           </Typography>
+          <ConversationNote
+            // Expanding is per chat and per session: switching chats starts collapsed again.
+            key={storeChatId ?? 'new'}
+            items={noteItems}
+            completedRounds={completedRounds}
+            canRemove={!isArchivedSpace}
+            onRemove={(itemId) => void removeNoteItem(itemId)}
+            emptyFocusRef={headerRef}
+          />
         </Box>
       )}
       {error && (

@@ -200,11 +200,13 @@
       automerge: false,
     },
     // Das MinIO-Testimage (MinioFixture.IMAGE) wird nie automatisch gemergt: Die Fixture und der
-    // Ereignisweg-Test brauchen das im Image mitgelieferte "mc", und die Community-Linie von
-    // minio/minio ist mit dem gepinnten Release ausgelaufen — ein neuer Tag kann in die
-    // lizenzierte Linie wechseln oder mc verlieren. Ein Vorschlag bleibt als PR zur Entscheidung.
+    // Ereignisweg-Test brauchen das im Image mitgelieferte "mc", und die Community-Linie ist mit
+    // dem gepinnten Release ausgelaufen — ein neuer Tag kann in die lizenzierte Linie wechseln
+    // oder mc verlieren. Ein Vorschlag bleibt als PR zur Entscheidung. Quelle ist quay.io, seit
+    // MinIO das Docker-Hub-Repository "minio/minio" entfernt hat (#1578) — dort nachzuschlagen
+    // ergäbe nie wieder ein Update.
     {
-      matchPackageNames: ['minio/minio'],
+      matchPackageNames: ['quay.io/minio/minio'],
       automerge: false,
       // Dasselbe Versionsschema wie im Regex-Manager oben, hier managerübergreifend: auch die
       // docker-compose-Zeilen des Demo-Stacks (#1383) tragen diesen Tag, den die docker-

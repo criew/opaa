@@ -304,8 +304,11 @@ verworfen, weil sie `constraint_carryover` die frühen Angaben kostet.
   entfernten Punkt aus jedem mitgelieferten Notizstand heraus, bis das Laden des Chats die
   Entfernung bestätigt; ein gelöschter Punkt taucht nie kurz wieder auf.
 - **Barrierefreiheit:** Schaltfläche mit `aria-expanded`, Panel als benannte Region; Entfernen ist
-  eine echte Schaltfläche; Fokus bleibt nach dem Entfernen auf dem nächsten Punkt bzw. der
-  Schaltfläche, wenn die Liste leer wird.
+  eine echte Schaltfläche; Fokus bleibt nach dem Entfernen auf dem nächsten Punkt (sonst auf dem
+  vorherigen). **Wird die Liste leer, geht der Fokus auf die Kopfzeile** — die Schaltfläche ist in
+  diesem Moment selbst verschwunden, weil eine leere Notiz keine Oberfläche hat; die Kopfzeile ist
+  benannt (`role="group"`, `aria-label`) und genau die Stelle, an der die Schaltfläche saß. Eine
+  Live-Region meldet die Entfernung mit der Restanzahl (#1488).
 
 ### Anzeigeverzögerung
 

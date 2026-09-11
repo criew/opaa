@@ -35,13 +35,14 @@ public final class MinioFixture {
   private static final Logger log = LoggerFactory.getLogger(MinioFixture.class);
 
   /**
-   * The pinned image; the community line of {@code minio/minio} ended with this release. The regex
-   * manager in {@code renovate.json5} reads the tag from the comment below and never merges a bump
-   * on its own: the mc commands of this fixture and of the event-path test need the client the
-   * image ships, so a new tag is a deliberate decision.
+   * The pinned image, pulled from quay.io because MinIO removed the {@code minio/minio} repository
+   * from Docker Hub entirely (#1578); quay.io serves this release under the same tag and the same
+   * digest. The community line ended with it. The regex manager in {@code renovate.json5} reads the
+   * tag from the comment below and never merges a bump on its own: the mc commands of this fixture
+   * and of the event-path test need the client the image ships, so a new tag stays a decision.
    */
-  // renovate: datasource=docker depName=minio/minio
-  public static final String IMAGE = "minio/minio:RELEASE.2025-09-07T16-13-09Z";
+  // renovate: datasource=docker depName=quay.io/minio/minio
+  public static final String IMAGE = "quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z";
 
   public static final String REGION = "us-east-1";
 
@@ -61,8 +62,17 @@ public final class MinioFixture {
     return instance;
   }
 
+  /**
+   * {@link #IMAGE} as a Testcontainers name. {@link MinIOContainer} asserts on {@code minio/minio},
+   * which the registry prefix of the quay.io name no longer matches, so the compatibility is
+   * declared here once for every caller.
+   */
+  public static DockerImageName imageName() {
+    return DockerImageName.parse(IMAGE).asCompatibleSubstituteFor("minio/minio");
+  }
+
   private MinioFixture() {
-    container = new MinIOContainer(DockerImageName.parse(IMAGE));
+    container = new MinIOContainer(imageName());
     log.info("Starting MinIO {}", IMAGE);
     container.start();
     admin =
