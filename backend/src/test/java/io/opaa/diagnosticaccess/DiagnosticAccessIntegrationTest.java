@@ -88,8 +88,10 @@ class DiagnosticAccessIntegrationTest {
    * Every row a test method writes belongs to the organization created above and is removed here,
    * in reference order: a Befugnis left behind names its granter through an {@code ON DELETE
    * RESTRICT} foreign key and would block the blanket {@code userRepository.deleteAll()} of any
-   * other class sharing this context. The organization itself stays - its protocol entries are
-   * undeletable for the application account (ADR-0015).
+   * other class sharing this context. The organization itself stays, so that its protocol entries
+   * keep their referenced object; no other class deletes organizations wholesale, so it is
+   * inconsequential. The closing assertion holds for every write path of this class, including a
+   * future one under a second organization that the scoped deletes above would miss.
    */
   @AfterEach
   void tearDown() {
@@ -102,6 +104,10 @@ class DiagnosticAccessIntegrationTest {
         "DELETE FROM knowledge_libraries WHERE organization_id = ?", organizationId);
     jdbcTemplate.update("DELETE FROM users WHERE organization_id = ?", organizationId);
     jdbcTemplate.update("DELETE FROM groups WHERE organization_id = ?", organizationId);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM diagnostic_impersonation_grants", Integer.class))
+        .isZero();
   }
 
   @Test
