@@ -113,6 +113,7 @@ class LibraryDocumentServiceTest {
   private LibraryFolderService folderService;
   private AttachmentExtractor attachmentExtractor;
   private UploadProperties uploadProperties;
+  private UploadedOriginalStore uploadedOriginalStore;
   private LibraryDocumentService service;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -139,7 +140,10 @@ class LibraryDocumentServiceTest {
             mock(VectorStoreWriter.class),
             mock(FullTextChunkStore.class),
             new EmbeddingRateEstimator(4.0));
-    uploadProperties = new UploadProperties(storageDir.toString(), 10L * 1024, null, 0);
+    uploadProperties = new UploadProperties(storageDir.toString(), null, 10L * 1024, null, 0);
+    // The real adapter, not a mock: every assertion below about where a file ends up (or stops
+    // existing) is about what it actually does with opaa.upload.storage-path.
+    uploadedOriginalStore = new FilesystemUploadedOriginalStore(uploadProperties);
     storageQuotaService = mock(LibraryStorageQuotaService.class);
     // Default: plenty of headroom, so existing tests exercising other behaviour never trip the
     // quota check unless they explicitly stub it otherwise (see
@@ -220,6 +224,7 @@ class LibraryDocumentServiceTest {
         documentIngestService,
         vectorChunkStore,
         uploadProperties,
+        uploadedOriginalStore,
         storageQuotaService,
         filesystemAllowlist,
         boundedDownloader,
@@ -254,7 +259,7 @@ class LibraryDocumentServiceTest {
     // The stored file lives under the library's own subdirectory of the storage path, and async
     // processing was handed exactly that path.
     ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
-    verify(documentIngestService).processUploadedFileAsync(ingest.capture(), any());
+    verify(documentIngestService).processUploadedFileAsync(ingest.capture(), any(), any());
     // The row is handed over as it is: identified by its own stored path, admitted already.
     assertThat(ingest.getValue().filePath()).isEqualTo(response.document().getFilePath());
     assertThat(ingest.getValue().existingRow()).isTrue();
@@ -274,7 +279,7 @@ class LibraryDocumentServiceTest {
                     libraryId, pdfFile("report.pdf", "pdf content"), null, caller))
         .isInstanceOf(AccessDeniedException.class);
 
-    verify(documentIngestService, never()).processUploadedFileAsync(any(), any());
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any(), any());
   }
 
   @Test
@@ -323,7 +328,7 @@ class LibraryDocumentServiceTest {
         .isInstanceOf(ConflictException.class);
 
     assertNoFilesWereStored();
-    verify(documentIngestService, never()).processUploadedFileAsync(any(), any());
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any(), any());
   }
 
   @Test
@@ -341,7 +346,7 @@ class LibraryDocumentServiceTest {
         .isInstanceOf(ValidationException.class);
 
     assertNoFilesWereStored();
-    verify(documentIngestService, never()).processUploadedFileAsync(any(), any());
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any(), any());
   }
 
   @Test
@@ -360,7 +365,9 @@ class LibraryDocumentServiceTest {
     assertThat(response.document().getFileName()).isEqualTo("report.pdf");
     verify(documentIngestService)
         .processUploadedFileAsync(
-            argThat(ingest -> response.document().getFilePath().equals(ingest.filePath())), any());
+            argThat(ingest -> response.document().getFilePath().equals(ingest.filePath())),
+            any(),
+            any());
   }
 
   @Test
@@ -386,7 +393,9 @@ class LibraryDocumentServiceTest {
     assertThat(response.document().getFileName()).isEqualTo("vertrag.docx");
     verify(documentIngestService)
         .processUploadedFileAsync(
-            argThat(ingest -> response.document().getFilePath().equals(ingest.filePath())), any());
+            argThat(ingest -> response.document().getFilePath().equals(ingest.filePath())),
+            any(),
+            any());
   }
 
   private MultipartFile realDocxFile(String originalFileName) throws IOException {
@@ -423,7 +432,7 @@ class LibraryDocumentServiceTest {
         .hasMessageContaining("entspricht nicht dem Format .pdf");
 
     assertNoFilesWereStored();
-    verify(documentIngestService, never()).processUploadedFileAsync(any(), any());
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any(), any());
   }
 
   @Test
@@ -445,7 +454,9 @@ class LibraryDocumentServiceTest {
     assertThat(response.document().getFileName()).isEqualTo("notes.md");
     verify(documentIngestService)
         .processUploadedFileAsync(
-            argThat(ingest -> response.document().getFilePath().equals(ingest.filePath())), any());
+            argThat(ingest -> response.document().getFilePath().equals(ingest.filePath())),
+            any(),
+            any());
   }
 
   @Test
@@ -464,7 +475,7 @@ class LibraryDocumentServiceTest {
         .hasMessageContaining("entspricht nicht dem Format .txt");
 
     assertNoFilesWereStored();
-    verify(documentIngestService, never()).processUploadedFileAsync(any(), any());
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any(), any());
   }
 
   @Test
@@ -514,7 +525,7 @@ class LibraryDocumentServiceTest {
         .isInstanceOf(ConflictException.class);
 
     assertNoFilesWereStored();
-    verify(documentIngestService, never()).processUploadedFileAsync(any(), any());
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any(), any());
   }
 
   @Test
@@ -554,7 +565,9 @@ class LibraryDocumentServiceTest {
         .isFalse();
     verify(documentIngestService)
         .processUploadedFileAsync(
-            argThat(ingest -> response.document().getFilePath().equals(ingest.filePath())), any());
+            argThat(ingest -> response.document().getFilePath().equals(ingest.filePath())),
+            any(),
+            any());
   }
 
   @Test
@@ -579,7 +592,7 @@ class LibraryDocumentServiceTest {
         .isInstanceOf(ConflictException.class);
 
     assertNoFilesWereStored();
-    verify(documentIngestService, never()).processUploadedFileAsync(any(), any());
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any(), any());
   }
 
   @Test
@@ -614,7 +627,7 @@ class LibraryDocumentServiceTest {
         .hasMessageContaining("inzwischen gelöscht");
 
     assertNoFilesWereStored();
-    verify(documentIngestService, never()).processUploadedFileAsync(any(), any());
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any(), any());
   }
 
   @Test
@@ -638,7 +651,7 @@ class LibraryDocumentServiceTest {
 
     assertThat(response.document().getFileName()).isEqualTo("evil.pdf");
     ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
-    verify(documentIngestService).processUploadedFileAsync(ingest.capture(), any());
+    verify(documentIngestService).processUploadedFileAsync(ingest.capture(), any(), any());
     Path storedPath = DocumentIngests.fileOf(ingest.getValue()).toAbsolutePath().normalize();
     Path libraryDir = storageDir.resolve(libraryId.toString()).toAbsolutePath().normalize();
     assertThat(storedPath.startsWith(libraryDir))
@@ -660,7 +673,7 @@ class LibraryDocumentServiceTest {
         .thenReturn(Optional.empty());
     doThrow(new TaskRejectedException("queue is full"))
         .when(documentIngestService)
-        .processUploadedFileAsync(any(), any());
+        .processUploadedFileAsync(any(), any(), any());
 
     LibraryDocumentEntry response =
         service.uploadDocument(libraryId, pdfFile("report.pdf", "pdf content"), null, caller);
@@ -684,7 +697,7 @@ class LibraryDocumentServiceTest {
         .thenReturn(Optional.empty());
     doThrow(new IllegalStateException("submission blew up unexpectedly"))
         .when(documentIngestService)
-        .processUploadedFileAsync(any(), any());
+        .processUploadedFileAsync(any(), any(), any());
 
     LibraryDocumentEntry response =
         service.uploadDocument(libraryId, pdfFile("report.pdf", "pdf content"), null, caller);
@@ -709,7 +722,7 @@ class LibraryDocumentServiceTest {
         .thenReturn(Optional.empty());
     doThrow(new IllegalStateException("submission blew up unexpectedly"))
         .when(documentIngestService)
-        .processUploadedFileAsync(any(), any());
+        .processUploadedFileAsync(any(), any(), any());
     when(documentRepository.markFailed(any(), any())).thenReturn(1);
 
     LibraryDocumentEntry response =
@@ -740,7 +753,7 @@ class LibraryDocumentServiceTest {
         .thenReturn(Optional.empty());
     doThrow(new IllegalStateException("submission blew up unexpectedly"))
         .when(documentIngestService)
-        .processUploadedFileAsync(any(), any());
+        .processUploadedFileAsync(any(), any(), any());
     when(documentRepository.markFailed(any(), any())).thenReturn(0);
 
     LibraryDocumentEntry response =
@@ -1426,7 +1439,8 @@ class LibraryDocumentServiceTest {
             checksumService,
             documentIngestService,
             vectorChunkStore,
-            new UploadProperties(storageDir.toString(), 10L * 1024, null, 0),
+            new UploadProperties(storageDir.toString(), null, 10L * 1024, null, 0),
+            uploadedOriginalStore,
             storageQuotaService,
             filesystemAllowlist,
             new BoundedDownloader(enabledValidator),

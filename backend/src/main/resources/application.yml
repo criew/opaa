@@ -274,6 +274,9 @@ opaa:
       allowlist: ${OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST:}
   upload:
     storage-path: ${OPAA_UPLOAD_STORAGE_PATH:./uploads}
+    # ADR-0030: which storage holds the uploaded originals. Only "filesystem" exists so far; any
+    # other value refuses the start instead of falling back silently.
+    store: ${OPAA_UPLOAD_STORE:filesystem}
     max-file-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}
     # #614: own pool, deliberately not opaa.indexing.thread-pool - see UploadProperties#threadPool.
     thread-pool:

@@ -21,6 +21,7 @@ import io.opaa.indexing.metadata.ModelMetadataExtractor;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -149,45 +150,47 @@ public class MetadataBackfillService {
       if (StoredDocumentSourceAccess.isRemote(document)) {
         return advanceRemote(document);
       }
-      if (document.getParentDocumentId() != null) {
-        boolean advanced =
-            sourceAccess.withReextractedAttachment(
-                document,
-                file -> {
-                  documentMetadataService.reextractFromFile(document, file);
-                  return true;
-                });
-        if (advanced) {
-          runModelStep(document);
-        }
-        return advanced ? Advance.PROCESSED : Advance.SKIPPED;
+      boolean advanced =
+          document.getParentDocumentId() != null
+              ? sourceAccess.withReextractedAttachment(
+                  document,
+                  file -> {
+                    documentMetadataService.reextractFromFile(document, file);
+                    return true;
+                  })
+              : sourceAccess.withLocalSourceFile(
+                  document, "metadata backfill", file -> reextractFromOwnFile(document, file));
+      if (advanced) {
+        runModelStep(document);
       }
-      Path localFile = sourceAccess.localSourceFile(document);
-      if (localFile == null) {
-        log.info(
-            "Skipping document {} in the metadata backfill: its file is not readable within the"
-                + " directories this deployment is configured to read",
-            documentId);
-        return Advance.SKIPPED;
-      }
-      // The chunks were cut from the bytes read at indexing time. A file replaced since then would
-      // put the core fields of a different text onto those chunks - the same rule the attachment
-      // path applies; the next connector run re-indexes it and extracts along the way.
-      if (document.getChecksum() != null
-          && !checksumService.computeSha256(localFile).equals(document.getChecksum())) {
-        log.info(
-            "Skipping document {} in the metadata backfill: its file changed since indexing",
-            documentId);
-        return Advance.SKIPPED;
-      }
-      documentMetadataService.reextractFromFile(document, localFile);
-      runModelStep(document);
-      return Advance.PROCESSED;
-    } catch (RuntimeException | IOException e) {
+      return advanced ? Advance.PROCESSED : Advance.SKIPPED;
+    } catch (RuntimeException e) {
       log.warn(
           "Skipping document {} in the metadata backfill: re-extraction failed", documentId, e);
       return Advance.SKIPPED;
     }
+  }
+
+  /**
+   * The document's own file, re-read under the rules of {@link StoredDocumentSourceAccess}. The
+   * chunks were cut from the bytes read at indexing time: a file replaced since then would put the
+   * core fields of a different text onto those chunks - the same rule the attachment path applies;
+   * the next connector run re-indexes it and extracts along the way.
+   */
+  private boolean reextractFromOwnFile(Document document, Path localFile) {
+    try {
+      if (document.getChecksum() != null
+          && !checksumService.computeSha256(localFile).equals(document.getChecksum())) {
+        log.info(
+            "Skipping document {} in the metadata backfill: its file changed since indexing",
+            document.getId());
+        return false;
+      }
+    } catch (IOException e) {
+      throw new UncheckedIOException("Could not read the checksum of " + localFile, e);
+    }
+    documentMetadataService.reextractFromFile(document, localFile);
+    return true;
   }
 
   /**

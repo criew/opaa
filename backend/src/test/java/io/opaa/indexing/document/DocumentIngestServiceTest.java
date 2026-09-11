@@ -54,6 +54,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -1417,6 +1418,37 @@ class DocumentIngestServiceTest {
     }
 
     @Test
+    void theWorkingFileIsReleasedAfterASuccessfulUpload() throws IOException {
+      // ADR-0030, Entscheidung 2: this method is the only place that knows when the uploaded file
+      // has been read for the last time, so it is the one that lets go of it.
+      Path file = fileNamed("released.pdf", "content");
+      Document doc = pendingUpload("released.pdf");
+      when(checksumService.computeSha256(file)).thenReturn("checksum-released.pdf");
+      stubParsedInto(file, chunks("chunk1"));
+      AtomicInteger released = new AtomicInteger();
+
+      service.processUploadedFileAsync(upload(doc, file), null, released::incrementAndGet);
+
+      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
+      assertThat(released).hasValue(1);
+    }
+
+    @Test
+    void theWorkingFileIsReleasedEvenWhenTheProcessingFails() throws IOException {
+      // The exit that would leak: without the release on the failure path, a store that keeps its
+      // working file in a temp directory would accumulate one per failed upload.
+      Path file = fileNamed("released-on-failure.pdf", "content");
+      Document doc = pendingUpload("released-on-failure.pdf");
+      when(checksumService.computeSha256(file)).thenReturn("checksum-released-on-failure.pdf");
+      when(documentService.parseDocument(any())).thenThrow(new RuntimeException("parsing blew up"));
+      AtomicInteger released = new AtomicInteger();
+
+      service.processUploadedFileAsync(upload(doc, file), null, released::incrementAndGet);
+
+      assertThat(released).hasValue(1);
+    }
+
+    @Test
     void anUploadThatFailsAfterItsChunksWereWrittenEndsFailedWithoutThrowing() throws IOException {
       // The asynchronous entry has no caller to rethrow to: the failure is logged, the written
       // chunks are removed and the row ends FAILED with the user-facing reason.
@@ -1427,7 +1459,7 @@ class DocumentIngestServiceTest {
       when(documentRepository.markIndexedFromSource(eq(doc.getId()), eq(1), any(), any(), any()))
           .thenThrow(new RuntimeException("final update blew up"));
 
-      service.processUploadedFileAsync(upload(doc, file), null);
+      service.processUploadedFileAsync(upload(doc, file), null, null);
 
       verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
       // Once to make room before the write (an existing row is always replaced), once to remove

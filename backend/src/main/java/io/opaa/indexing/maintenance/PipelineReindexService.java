@@ -190,8 +190,8 @@ public class PipelineReindexService {
   /**
    * Advances up to {@code batchSize} documents of {@code organizationId} that still hold chunks
    * from {@code pipelineId} below {@code belowVersion}; call repeatedly until the result is empty.
-   * A source that passes {@link StoredDocumentSourceAccess#localSourceFile} is rewritten under its
-   * own id, a remote one marked for its next run, anything else skipped. Deliberately not
+   * A source that passes {@link StoredDocumentSourceAccess#withLocalSourceFile} is rewritten under
+   * its own id, a remote one marked for its next run, anything else skipped. Deliberately not
    * {@code @Transactional}: one transaction would pin a connection for every embedding call.
    */
   public PipelineReindexResult reindexBatch(
@@ -253,15 +253,9 @@ public class PipelineReindexService {
       // for the Mail file itself to change.
       advanced = sourceAccess.withReextractedAttachment(document, file -> reindex(document, file));
     } else {
-      Path localFile = sourceAccess.localSourceFile(document);
-      if (localFile == null) {
-        log.info(
-            "Skipping document {} in the pipeline re-index: its file is not readable within the"
-                + " directories this deployment is configured to read",
-            documentId);
-        return Advance.SKIPPED;
-      }
-      advanced = reindex(document, localFile);
+      advanced =
+          sourceAccess.withLocalSourceFile(
+              document, "pipeline re-index", file -> reindex(document, file));
     }
     if (!advanced) {
       return Advance.SKIPPED;
