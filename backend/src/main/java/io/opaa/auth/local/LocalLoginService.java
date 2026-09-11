@@ -1,5 +1,6 @@
 package io.opaa.auth.local;
 
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;

@@ -188,7 +188,11 @@ class LocalAdminSeederTest {
     List<String> withPassword =
         loggedMessages().stream().filter(message -> message.contains(GENERATED)).toList();
     assertThat(withPassword).hasSize(1);
-    assertThat(withPassword.getFirst()).contains(EMAIL).contains("einmalig");
+    assertThat(withPassword.getFirst())
+        .contains(LocalAdminSeeder.INITIAL_ADMIN_EMAIL_VARIABLE)
+        .contains("einmalig")
+        .doesNotContain(EMAIL);
+    assertThat(loggedMessages()).noneMatch(message -> message.contains(EMAIL));
     assertThat(loggedMessages().stream().filter(m -> !m.contains(GENERATED)))
         .noneMatch(message -> message.contains(GENERATED));
     AuditEvent event = recordedAudit();
@@ -323,7 +327,8 @@ class LocalAdminSeederTest {
     assertThat(row.getPasswordHash()).isEqualTo("{bcrypt}hash-of-" + GENERATED);
     assertThat(row.isPasswordChangeRequired()).isTrue();
     assertThat(row.getPasswordChangeReason()).isEqualTo(PasswordChangeReason.INITIAL);
-    assertThat(row.getPasswordInvalidatedBefore()).isEqualTo(NOW);
+    // the next whole second, like every other mass revocation (LocalTokenRevocationService)
+    assertThat(row.getPasswordInvalidatedBefore()).isEqualTo(NOW.plusSeconds(1));
     assertThat(row.getEmailVerifiedAt()).isNotNull();
     assertThat(row.state(NOW)).isEqualTo(LocalAccountState.ACTIVE);
     assertThat(user.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);

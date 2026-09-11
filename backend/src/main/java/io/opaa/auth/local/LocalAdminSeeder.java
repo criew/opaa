@@ -20,8 +20,6 @@ import io.opaa.organization.Organization;
 import io.opaa.security.PasswordGenerator;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -183,7 +181,7 @@ public class LocalAdminSeeder {
       return Outcome.SEEDED_INVITED;
     }
     if (generated != null) {
-      printPasswordBlock(email, generated);
+      printPasswordBlock(generated);
     }
     log.info(
         "Notanker-Konto der Systemverwaltung angelegt (Konto {}); lokale Konten sind deaktiviert,"
@@ -237,7 +235,7 @@ public class LocalAdminSeeder {
     }
     ensureLocalProviderRow();
     String generated = applyPassword(row, now);
-    row.invalidateSessionsIssuedBefore(now.truncatedTo(ChronoUnit.SECONDS), now);
+    row.invalidateSessionsIssuedBefore(LocalTokenRevocationService.cutoffFor(now), now);
     credentials.save(row);
     refreshTokens.revokeAllForUser(admin.getId(), RevocationReason.ADMIN, now);
     if (!marker.seedAlreadyAttempted()) {
@@ -249,7 +247,7 @@ public class LocalAdminSeeder {
         Map.of("recreated", recreated, "passwordSource", passwordSource(true, generated)));
     events.publishEvent(new OidcProvidersChangedEvent());
     if (generated != null) {
-      printPasswordBlock(admin.getEmail(), generated);
+      printPasswordBlock(generated);
     }
     log.warn(
         "{}=force: Notanker-Konto der Systemverwaltung {} (Konto {}), alle seine Sitzungen beendet."
@@ -334,16 +332,18 @@ public class LocalAdminSeeder {
 
   /**
    * The one place a password ever reaches the log (ADR-0033, Entscheidung 5): one WARN event, so it
-   * is seen at every usual log level and can be located by {@code Passwort:}.
+   * is seen at every usual log level and can be located by {@code Passwort:}. The address is not
+   * printed - the operator set it in {@value #INITIAL_ADMIN_EMAIL_VARIABLE}, and no line of OPAA's
+   * loggers carries an address (Entscheidung 13).
    */
-  private static void printPasswordBlock(String email, String password) {
+  private static void printPasswordBlock(String password) {
     String block =
         String.join(
             System.lineSeparator(),
             "",
             RULE,
             "  NOTANKER-KONTO DER SYSTEMVERWALTUNG - EINMALIGE AUSGABE",
-            "  Anmeldung:  " + email.toLowerCase(Locale.ROOT),
+            "  Anmeldung:  mit der Adresse aus " + INITIAL_ADMIN_EMAIL_VARIABLE,
             "  Passwort:   " + password,
             "  Der Wechsel des Passworts wird bei der ersten Anmeldung erzwungen.",
             "  Diese Ausgabe erscheint einmalig und wird nicht wiederholt.",

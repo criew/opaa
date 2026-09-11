@@ -19,11 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The one place that checks "never without a login-capable system administrator" (ADR-0033,
- * Entscheidung 4). Login capable is a {@code SYSTEM_ADMIN} that is either a local account whose
- * {@link LocalCredentials#isLoginCapable(Instant)} holds - the same rule the login and the token
- * validator apply, not a second formulation - or an account of an <em>enabled</em> OIDC provider
- * (in the {@code dev} mode: of the dev issuer, the trusted provider of ADR-0005). An administrator
- * of a disabled provider, a locked, expired or still invited local account does not count.
+ * Entscheidung 4). Login capable is a {@code SYSTEM_ADMIN} that is either a local account for which
+ * {@link LocalAccountAccess#isLoginCapable} holds - the one rule the login, the rotation and the
+ * token validator apply, not a second formulation - or an account of an <em>enabled</em> OIDC
+ * provider (in the {@code dev} mode: of the dev issuer, the trusted provider of ADR-0005). An
+ * administrator of a disabled provider, a locked, expired or still invited local account does not
+ * count.
  *
  * <p>Every path that could remove the last such administrator runs through here under the advisory
  * lock {@link UserRepository#lockRoleChanges} of the organization, so two concurrent changes never
@@ -131,7 +132,10 @@ public class LocalAdminAvailabilityGuard {
   private boolean isLoginCapable(
       User admin, List<OidcProvider> enabledProviders, String devIssuer, Instant now) {
     if (LocalIssuer.URN.equals(admin.getIssuer())) {
-      return credentials.findById(admin.getId()).map(row -> row.isLoginCapable(now)).orElse(false);
+      return credentials
+          .findById(admin.getId())
+          .map(row -> LocalAccountAccess.isLoginCapable(row, now))
+          .orElse(false);
     }
     if (devIssuer != null && OidcIssuerUris.normalize(devIssuer).equals(normalize(admin))) {
       return true;
