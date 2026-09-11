@@ -44,8 +44,8 @@ Bearbeitungszeit
 Bevor Sie einen gebührenpflichtigen Antrag einreichen, empfehlen wir Ihnen, sich zuerst unverbindlich zu Ihrem Anliegen beraten zu lassen. Bitte nutzen Sie dazu unser Kontaktformular. Die Namensänderungsbehörde wird sich dann bei Ihnen melden.
 
 Gebührenrahmen
-Änderung eines Familiennamens: 50 bis 1.725 Euro
-Änderung eines Vornamens: 25 bis 575 Euro.
+Änderung eines Familiennamens: 57,50 bis 1.725 Euro
+Änderung eines Vornamens: 28,70 bis 575 Euro.
 Die Gebührenschuld entsteht bereits mit dem Eingang des Antrags bei der zuständigen Behörde. In geeigneten Fällen kann die Bearbeitung des Namensänderungsantrags von der Zahlung eines angemessenen Vorschusses bis zur Höhe der voraussichtlich entstehenden Kosten abhängig gemacht werden. Bei der Festsetzung der Gebühr für die Namensänderung werden der mit der Amtshandlung verbundene Verwaltungsaufwand und die Bedeutung, der wirtschaftliche Wert oder der sonstige Nutzen der Amtshandlung für die antragstellende Person sowie die wirtschaftlichen Verhältnisse der antragstellenden Person berücksichtigt. Im Regelfall liegt in Rheinfurt die Gebühr für die Familiennamensänderung in etwa in der Mitte, für die Vornamensänderung in der oberen Rahmenhälfte der oben genannten Beträge. Falls Sie eine Gebührenermäßigung beantragen wollen, müssen Sie Nachweise über Ihre Einkommensverhältnisse vorlegen.
 
 Rechtliche Grundlagen

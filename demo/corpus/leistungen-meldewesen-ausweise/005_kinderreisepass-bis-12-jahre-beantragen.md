@@ -45,8 +45,8 @@ Der Kinderreisepass wird bei Vorlage aller erforderlichen Unterlagen in der Rege
 
 Gebührenrahmen
 Kinderreisepass: 15 Euro
-Aktualisierung Kinderreisepass: sechs Euro
-Verlängerung Kinderreisepass: sechs Euro
+Aktualisierung Kinderreisepass: 6,90 Euro
+Verlängerung Kinderreisepass: 6,90 Euro
 
 Barzahlung
 Kasse vor Ort

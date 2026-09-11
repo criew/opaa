@@ -201,7 +201,37 @@ FEE_SCALE_FACTOR = 1.15
 _EMAIL_RE = re.compile(r"([\w.\-]+)@muenchen\.de")
 _DOMAIN_RE = re.compile(r"[\w\-]*muenchen\.de")
 _PHONE_RE = re.compile(r"089[/\s]\d(?:[\d\-\s]*\d)?")
-_FEE_RE = re.compile(r"(\d{1,3}(?:\.\d{3})*)(?:,(\d{2}))?\s*(Euro|EUR|€)")
+# The currency unit, never as the start of a longer word: "Euro-Kennzeichen" and
+# "Europäische Union" are not amounts.
+_EURO_UNIT = r"(?:Euro|EUR|€)(?![\w-])"
+_AMOUNT = r"(\d{1,3}(?:\.\d{3})*)(?:,(\d{2}))?"
+_FEE_RE = re.compile(_AMOUNT + r"\s*" + _EURO_UNIT)
+# Two spellings that carry an amount without putting a digit right before the
+# currency unit; both are scaled like any other fee, so an amount stays the same
+# number wherever it appears: the lower bound of a range ("60 bis 150 Euro" —
+# only the upper bound is followed by "Euro") and a spelled-out number word
+# ("sechs Euro").
+_FEE_RANGE_LOWER_RE = re.compile(_AMOUNT + r"(?=\s*bis\s*\d[\d.,]*\s*" + _EURO_UNIT + ")")
+_NUMBER_WORDS = {
+    "ein": 1,
+    "eine": 1,
+    "einen": 1,
+    "eins": 1,
+    "zwei": 2,
+    "drei": 3,
+    "vier": 4,
+    "fünf": 5,
+    "sechs": 6,
+    "sieben": 7,
+    "acht": 8,
+    "neun": 9,
+    "zehn": 10,
+    "elf": 11,
+    "zwölf": 12,
+}
+_FEE_WORD_RE = re.compile(
+    r"\b(" + "|".join(_NUMBER_WORDS) + r")\s+" + _EURO_UNIT, re.IGNORECASE
+)
 
 # --- Real bank details (PR #717 review, WICHTIG 1) --------------------------
 _IBAN_RE = re.compile(r"IBAN:\s*[A-Z]{2}\d{2}(?:[\s]?\d{4}){3,5}[\s]?\d{0,4}")
@@ -238,13 +268,17 @@ def _replace_phone(match: re.Match[str]) -> str:
     return f"{RHEINFURT_VORWAHL}/44-{extension:04d}"
 
 
-def format_euro(value: float) -> str:
+def format_amount(value: float) -> str:
     cents = round(value * 100)
     euros, rest = divmod(cents, 100)
     euros_text = f"{euros:,}".replace(",", ".")  # German thousands separator
     if rest == 0:
-        return f"{euros_text} Euro"
-    return f"{euros_text},{rest:02d} Euro"
+        return euros_text
+    return f"{euros_text},{rest:02d}"
+
+
+def format_euro(value: float) -> str:
+    return f"{format_amount(value)} Euro"
 
 
 def scale_fee(base_euro: float) -> float:
@@ -261,13 +295,23 @@ def scale_and_format_fee(base_euro: float) -> str:
     return format_euro(scale_fee(base_euro))
 
 
-def _scale_fees(text: str) -> str:
-    def replace(match: re.Match[str]) -> str:
-        euros = int(match.group(1).replace(".", ""))
-        cents = int(match.group(2)) if match.group(2) else 0
-        return format_euro(scale_fee(euros + cents / 100))
+def _amount_of(match: re.Match[str]) -> float:
+    euros = int(match.group(1).replace(".", ""))
+    cents = int(match.group(2)) if match.group(2) else 0
+    return euros + cents / 100
 
-    return _FEE_RE.sub(replace, text)
+
+def _scale_fees(text: str) -> str:
+    """Scale every amount in `text`, in all three spellings the source uses.
+
+    The order is load-bearing: each pass writes an already scaled amount, so a
+    later pass must not be able to match its output again.
+    """
+    text = _FEE_RE.sub(lambda m: format_euro(scale_fee(_amount_of(m))), text)
+    text = _FEE_RANGE_LOWER_RE.sub(lambda m: format_amount(scale_fee(_amount_of(m))), text)
+    return _FEE_WORD_RE.sub(
+        lambda m: format_euro(scale_fee(_NUMBER_WORDS[m.group(1).lower()])), text
+    )
 
 
 def extract_body(raw_text: str) -> str:

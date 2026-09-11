@@ -214,16 +214,28 @@ demo/generator/
 Jeder Euro-Betrag wird mit **einem einzigen korpusweiten Faktor** skaliert
 (`rheinfurt_text.FEE_SCALE_FACTOR`, derzeit 1,15). Der Rheinfurter Betrag hängt damit am
 Gebührentatbestand und nicht an der Datei, die ihn zufällig nennt: Ein Dokument, das die Gebühren
-einer anderen Leistung zitiert („Personalausweis oder Reisepass abholen"), nennt zwangsläufig
-dieselben Beträge wie deren eigene Leistungsbeschreibung und wie das Gebührenverzeichnis der
+einer anderen Leistung zitiert („Personalausweis oder Reisepass abholen"), nennt dieselben Beträge
+wie deren eigene Leistungsbeschreibung und wie das Gebührenverzeichnis der
 Verwaltungsgebührensatzung — ohne Nacharbeit von Hand.
+
+Das gilt für alle drei Schreibweisen, in denen die Quelle Beträge notiert (`_scale_fees`):
+`37,50 Euro`, die untere Grenze eines Rahmens (`60 bis 150 Euro` — nur die obere Zahl trägt das
+Wort „Euro") und die ausgeschriebene Zahl (`sechs Euro`). Die letzten beiden wurden bis
+einschließlich der ersten Fassung von #1525 übersprungen und blieben damit echte Münchner Werte;
+seither ist in den Leistungsbibliotheken jeder Betrag ein skalierter Quellbetrag — prüfbar, indem
+man die Beträge der erzeugten Dokumente gegen die skalierten Quellbeträge hält.
+
+Der Faktor der Satzungen kommt aus derselben Funktion, ihre **Basisbeträge** stehen aber von Hand in
+`satzungen.py`. Wer dort eine Zeile ergänzt oder ändert, nimmt den Betrag aus der Rohquelle der
+zugehörigen Leistung — sonst nennt das Gebührenverzeichnis eine andere Zahl als die
+Leistungsbeschreibung, ohne dass an der Skalierung etwas falsch wäre.
 
 Verworfen wurden zwei naheliegende Alternativen: ein Faktor **je Quelldatei** (der frühere Stand;
 er erzeugte genau diesen Widerspruch und brauchte eine Handkorrektur nach jedem Lauf) und ein je
-Betrag **gehashter** Faktor (widerspruchsfrei über Dokumentgrenzen hinweg, vertauscht aber die
-Reihenfolge zweier nah beieinander liegender Beträge — in der gepinnten Quellauswahl gemessen: acht
-solcher Paare innerhalb eines Dokuments, z. B. 37,00 € → 37,80 € neben 37,50 € → 34,70 €). Ein
-einzelner Faktor ist ordnungserhaltend und braucht dafür keine Zusatzprüfung.
+Betrag **gehashter** Faktor. Der zweite ist über Dokumentgrenzen hinweg widerspruchsfrei, aber
+nicht ordnungserhaltend: Zwei Beträge, deren Verhältnis kleiner ist als das Verhältnis zweier
+möglicher Faktoren, können in der Ausgabe die Plätze tauschen — in der gepinnten Quellauswahl acht
+solcher Paare innerhalb eines Dokuments. Ein einzelner Faktor kann das nicht.
 
 ## Bekannte Eigenheiten der Quelldaten
 

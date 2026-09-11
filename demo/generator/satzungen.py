@@ -229,11 +229,11 @@ SATZUNGEN: list[Satzung] = [
             "Ausgabe von Wunsch- und Wechselkennzeichen sowie Kurzzeit- und Saisonkennzeichen.",
         ],
         gebuehren=[
-            Gebuehrenzeile("Neuzulassung eines Fahrzeugs", scale_and_format_fee(27.90)),
-            Gebuehrenzeile("Ummeldung innerhalb Rheinfurts", scale_and_format_fee(20.20)),
+            Gebuehrenzeile("Neuzulassung eines Fahrzeugs", scale_and_format_fee(26.90)),
+            Gebuehrenzeile("Ummeldung innerhalb Rheinfurts", scale_and_format_fee(19.20)),
             Gebuehrenzeile("Wunschkennzeichen, Reservierung", scale_and_format_fee(12.80)),
             Gebuehrenzeile("Wechselkennzeichen, Ausgabe", scale_and_format_fee(19.10)),
-            Gebuehrenzeile("Kurzzeitkennzeichen", scale_and_format_fee(13.20)),
+            Gebuehrenzeile("Kurzzeitkennzeichen", scale_and_format_fee(13.10)),
         ],
     ),
     simple_satzung(
