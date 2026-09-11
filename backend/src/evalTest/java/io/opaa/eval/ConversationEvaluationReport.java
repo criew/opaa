@@ -30,6 +30,8 @@ import java.util.Map;
  * @param expectedStateAudit declared vs. measured case state, at the case-level criterion above.
  * @param topicBleed how many documents of the previous topic stood in the window of a topic change,
  *     {@code null} for a dataset without a {@code topic_switch} case.
+ * @param noteCondensation how many of the run's Gespraechsnotiz condensations failed, {@code null}
+ *     for a run measured without a note - see {@link NoteCondensationAudit}.
  */
 public record ConversationEvaluationReport(
     int conversationMeasurementContractVersion,
@@ -42,6 +44,7 @@ public record ConversationEvaluationReport(
     CaseOutcomeSummary caseOutcomes,
     ExpectedStateAudit.Result expectedStateAudit,
     TopicBleedAudit topicBleed,
+    NoteCondensationAudit noteCondensation,
     List<ConversationCaseResult> cases) {
 
   /**
@@ -99,6 +102,22 @@ public record ConversationEvaluationReport(
       PipelineEvaluationReport.PipelineRunConfiguration pipeline,
       ConversationMemoryProfile memoryProfile,
       int turnCount) {}
+
+  /**
+   * How the Gesprächsnotiz of this run actually came about (#1487): one condensation call per turn,
+   * and how many of them failed. A failed call costs its turn the points and never the run - which
+   * is exactly why the count has to be reported: a run in which <em>every</em> call failed measures
+   * standalone turns while still declaring {@code conversationNoteCap} as a checked fixed point,
+   * and would otherwise read like a run that proved the note ineffective.
+   *
+   * <p>Deliberately an observation, never a fixed point: the comparator pins what a run measured
+   * <em>with</em>, while this says how well the run went. {@code null} for a run measured without a
+   * note at all - an absent section, not a clean one, the idiom {@link TopicBleedAudit} uses.
+   *
+   * @param failedTurnIds the turns whose condensation failed, in run order
+   */
+  public record NoteCondensationAudit(
+      int attemptedCondensations, int failedCondensations, List<String> failedTurnIds) {}
 
   /** How many cases were solved in full, overall and per case class. */
   public record CaseOutcomeSummary(

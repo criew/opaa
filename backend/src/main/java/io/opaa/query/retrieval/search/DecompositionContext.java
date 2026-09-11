@@ -10,15 +10,47 @@ import org.springframework.ai.chat.messages.UserMessage;
  * the search window of the conversation, and any rendered context block
  * (docs/features/conversation-memory.md, "Bauteil 1").
  *
- * <p><b>Anchor-space invariant.</b> {@link #contextTexts()} is <em>the same</em> material {@link
- * #promptMessages()} and {@link #systemText(String)} render to the model, so {@code
- * QueryDecompositionService}'s safety belt anchors against exactly what the decomposition was given
- * - never against a separately maintained enumeration of sources. A context building block added to
- * this record therefore reaches the model and widens the anchor space in one step; it cannot reach
- * one without the other.
+ * <p><b>Anchor-space invariant.</b> A context building block reaches the model and the anchor space
+ * of {@code QueryDecompositionService}'s safety belt in <em>one</em> step - {@link
+ * #withContextBlock(String, List)} takes both halves together, so a block cannot reach one without
+ * the other, and neither half can come from a separately maintained enumeration.
+ *
+ * <p><b>The anchor space is the block's material, not its boilerplate.</b> A block renders content
+ * inside a heading of its own; only the content is material of the asking person. The belt matches
+ * on substring containment from four characters ({@code QueryDecompositionService#isRelated}), so a
+ * heading word in the anchor space would relate sub-queries to the prompt's own German wording -
+ * "Personalausweis beantragen" would count as related to any conversation merely because the
+ * heading contains "Person". {@link #contextTexts()} is therefore a subset of what the model sees,
+ * never a superset - {@link ContextBlock} enforces that rather than assuming it. Leaving material
+ * out of the anchor space narrows the belt in the overwhelming majority of cases and can never
+ * widen it through text OPAA wrote itself; it is not, however, strictly monotone, because {@code
+ * countUnrelated} skips its check entirely below two anchor tokens.
  */
 public record DecompositionContext(
-    String question, List<Message> searchWindow, List<String> contextBlocks) {
+    String question, List<Message> searchWindow, List<ContextBlock> contextBlocks) {
+
+  /**
+   * One rendered block: {@code modelText} is what the system prompt carries, {@code anchorTexts}
+   * the parts of it the safety belt may anchor against. Both are produced by whoever renders the
+   * block, in one step - see {@code io.opaa.query.ConversationNoteBlock}.
+   *
+   * <p><b>Every anchor text must occur verbatim in {@code modelText}.</b> Checked, not merely
+   * documented: the subset relation is the whole reason the two halves may differ at all, and an
+   * anchor text the model never saw would be exactly the separately maintained enumeration this
+   * type exists to prevent - in the loosening direction, where the safety belt would legitimize
+   * sub-queries against words nothing in the prompt carried.
+   */
+  public record ContextBlock(String modelText, List<String> anchorTexts) {
+    public ContextBlock {
+      anchorTexts = List.copyOf(anchorTexts);
+      for (String anchorText : anchorTexts) {
+        if (!modelText.contains(anchorText)) {
+          throw new IllegalArgumentException(
+              "anchor text is not part of the rendered block: " + anchorText);
+        }
+      }
+    }
+  }
 
   public DecompositionContext {
     searchWindow = List.copyOf(searchWindow);
@@ -33,10 +65,14 @@ public record DecompositionContext(
   /**
    * The same context with one more rendered block appended - the seam the Gesprächsnotiz's {@code
    * RAHMEN} points enter through.
+   *
+   * @param modelText the block as the system prompt carries it, heading included
+   * @param anchorTexts the material of that block, without its heading - see this record's Javadoc
+   *     on why the two differ
    */
-  public DecompositionContext withContextBlock(String block) {
-    List<String> blocks = new ArrayList<>(contextBlocks);
-    blocks.add(block);
+  public DecompositionContext withContextBlock(String modelText, List<String> anchorTexts) {
+    List<ContextBlock> blocks = new ArrayList<>(contextBlocks);
+    blocks.add(new ContextBlock(modelText, anchorTexts));
     return new DecompositionContext(question, searchWindow, blocks);
   }
 
@@ -53,20 +89,22 @@ public record DecompositionContext(
     if (contextBlocks.isEmpty()) {
       return instruction;
     }
-    return instruction + "\n" + String.join("\n", contextBlocks);
+    StringBuilder text = new StringBuilder(instruction);
+    contextBlocks.forEach(block -> text.append("\n").append(block.modelText()));
+    return text.toString();
   }
 
   /**
-   * Every text of this context, in rendering order - the anchor space of the safety belt. Holds the
-   * texts of {@link #promptMessages()} and the blocks {@link #systemText(String)} appends, and
-   * nothing else: the instruction is not context, and anchoring a sub-query against the prompt's
-   * own German wording would relate every output to it.
+   * The anchor space of the safety belt, in rendering order: the texts of {@link #promptMessages()}
+   * and the material of the blocks {@link #systemText(String)} appends - and nothing else. Neither
+   * the instruction nor a block's own heading is context; anchoring a sub-query against the
+   * prompt's own German wording would relate every output to it.
    */
   public List<String> contextTexts() {
     List<String> texts = new ArrayList<>(searchWindow.size() + contextBlocks.size() + 1);
     searchWindow.forEach(message -> texts.add(message.getText()));
     texts.add(question);
-    texts.addAll(contextBlocks);
+    contextBlocks.forEach(block -> texts.addAll(block.anchorTexts()));
     return List.copyOf(texts);
   }
 }

@@ -18,3 +18,5 @@ databaseChangeLog:
       file: db/changelog/changes/002-documents-parent-composite-foreign-key.yaml
   - include:
       file: db/changelog/changes/003-diagnostic-impersonation-grant-delete-rules.yaml
+  - include:
+      file: db/changelog/changes/030-chat-note-items.yaml

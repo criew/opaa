@@ -1,5 +1,8 @@
 package io.opaa.eval;
 
+import io.opaa.api.types.ChatNoteItemKind;
+import io.opaa.chat.ChatNoteCandidate;
+import io.opaa.chat.ChatNoteList;
 import io.opaa.eval.ConversationEvaluationReport.CaseOutcomeSummary;
 import io.opaa.eval.ConversationEvaluationReport.ClassOutcome;
 import io.opaa.eval.ConversationEvaluationReport.ConversationCaseResult;
@@ -15,6 +18,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -30,12 +35,22 @@ import org.springframework.ai.chat.messages.UserMessage;
  * that memory returns. Window width, eviction order and citation-marker normalization are therefore
  * production behaviour by construction, not because a curated dataset happens to avoid them.
  *
+ * <p><b>The Gespraechsnotiz is built by the production condensation, not scripted</b> (#1487):
+ * after every turn, {@link NoteExtraction} condenses that turn's <em>question</em> - the harness
+ * supplies {@code ChatNoteExtractionService#condense} - and {@link ChatNoteList} decides which
+ * candidates enter and how many oldest points fall out, the same algebra the persisted note uses.
+ * The next turn receives the {@code RAHMEN} points, which is all the sub-question decomposition
+ * ever sees. The note is therefore a non-deterministic part of this path, like the decomposition
+ * itself, and falls under the Mehrfachlauf-Regel.
+ *
  * <p>Takes the retrieval itself as a {@link TurnInvocation} rather than depending on {@code
  * RetrievalPipeline}, for the same reason {@link PipelineRetrievalEvaluator} does: the harness
  * supplies the production run, while this class stays a Docker- and Spring-context-free unit
  * exercised by {@code ConversationRetrievalEvaluatorTest}.
  */
 public final class ConversationRetrievalEvaluator {
+
+  private static final Logger log = LoggerFactory.getLogger(ConversationRetrievalEvaluator.class);
 
   private ConversationRetrievalEvaluator() {}
 
@@ -44,12 +59,31 @@ public final class ConversationRetrievalEvaluator {
 
   /**
    * One turn's retrieval run. {@code conversationWindow} is the production window built from the
-   * preceding turns, empty for the first turn of a case.
+   * preceding turns, empty for the first turn of a case; {@code conversationNote} the {@code
+   * RAHMEN} points condensed from those turns, empty for the first turn and for a run without a
+   * note.
    */
   @FunctionalInterface
   public interface TurnInvocation {
     TurnInvocationResult invoke(
-        ConversationCase conversationCase, int turnIndex, List<Message> conversationWindow);
+        ConversationCase conversationCase,
+        int turnIndex,
+        List<Message> conversationWindow,
+        List<String> conversationNote);
+  }
+
+  /**
+   * The production condensation of one user message into note candidates. A functional interface
+   * rather than a dependency on the service, so this class stays Spring-free; the harness passes
+   * the real one.
+   */
+  @FunctionalInterface
+  public interface NoteExtraction {
+
+    /** The condensation of a run that keeps no note - every turn then starts from nothing. */
+    NoteExtraction NONE = userMessage -> List.of();
+
+    List<ChatNoteCandidate> condense(String userMessage);
   }
 
   /** One turn's outcome: its windowed metrics plus what the pipeline actually returned. */
@@ -72,8 +106,22 @@ public final class ConversationRetrievalEvaluator {
     }
   }
 
-  /** One case's outcome: its turns in script order. A case is solved when every turn is. */
-  public record CaseOutcome(ConversationCase conversationCase, List<TurnOutcome> turns) {
+  /**
+   * One case's outcome: its turns in script order. A case is solved when every turn is.
+   *
+   * @param attemptedCondensations one call per turn, zero for a run measured without a note
+   * @param failedCondensationTurnIds the turns whose condensation failed, in run order - carried up
+   *     rather than swallowed, so {@link #report} can report a run whose note never came about
+   */
+  public record CaseOutcome(
+      ConversationCase conversationCase,
+      List<TurnOutcome> turns,
+      int attemptedCondensations,
+      List<String> failedCondensationTurnIds) {
+
+    public CaseOutcome {
+      failedCondensationTurnIds = List.copyOf(failedCondensationTurnIds);
+    }
 
     public boolean solved() {
       return !turns.isEmpty() && turns.stream().allMatch(TurnOutcome::solved);
@@ -90,9 +138,19 @@ public final class ConversationRetrievalEvaluator {
    */
   public static List<CaseOutcome> evaluateAll(
       List<ConversationCase> cases, ChatMemory chatMemory, TurnInvocation pipeline) {
+    return evaluateAll(cases, chatMemory, pipeline, NoteExtraction.NONE, 0);
+  }
+
+  /** The same run with a Gesprächsnotiz - see {@link NoteExtraction}. */
+  public static List<CaseOutcome> evaluateAll(
+      List<ConversationCase> cases,
+      ChatMemory chatMemory,
+      TurnInvocation pipeline,
+      NoteExtraction noteExtraction,
+      int noteCap) {
     List<CaseOutcome> outcomes = new ArrayList<>(cases.size());
     for (ConversationCase conversationCase : cases) {
-      outcomes.add(evaluateCase(conversationCase, chatMemory, pipeline));
+      outcomes.add(evaluateCase(conversationCase, chatMemory, pipeline, noteExtraction, noteCap));
     }
     return List.copyOf(outcomes);
   }
@@ -100,15 +158,32 @@ public final class ConversationRetrievalEvaluator {
   /** Runs a single case; visible for the unit test that proves turn 2 receives turn 1's window. */
   public static CaseOutcome evaluateCase(
       ConversationCase conversationCase, ChatMemory chatMemory, TurnInvocation pipeline) {
+    return evaluateCase(conversationCase, chatMemory, pipeline, NoteExtraction.NONE, 0);
+  }
+
+  /**
+   * The same case with a Gesprächsnotiz: {@code noteExtraction} condenses each finished turn's
+   * question, {@code noteCap} bounds the resulting list. {@code noteCap <= 0} keeps no note at all,
+   * which is what the overload above passes.
+   */
+  public static CaseOutcome evaluateCase(
+      ConversationCase conversationCase,
+      ChatMemory chatMemory,
+      TurnInvocation pipeline,
+      NoteExtraction noteExtraction,
+      int noteCap) {
     String conversationId = "eval-conversation-" + conversationCase.id() + "-" + UUID.randomUUID();
     List<TurnOutcome> turnOutcomes = new ArrayList<>(conversationCase.turns().size());
+    List<ChatNoteCandidate> note = new ArrayList<>();
+    List<String> failedCondensations = new ArrayList<>();
     try {
       for (int turnIndex = 0; turnIndex < conversationCase.turns().size(); turnIndex++) {
         ConversationCase.Turn turn = conversationCase.turns().get(turnIndex);
         // The window as production would hand it over: everything the memory holds *before* this
         // turn's own question is added.
         List<Message> window = List.copyOf(chatMemory.get(conversationId));
-        TurnInvocationResult invocation = pipeline.invoke(conversationCase, turnIndex, window);
+        TurnInvocationResult invocation =
+            pipeline.invoke(conversationCase, turnIndex, window, rahmenPoints(note));
         turnOutcomes.add(
             evaluateTurn(
                 conversationCase,
@@ -119,11 +194,71 @@ public final class ConversationRetrievalEvaluator {
         chatMemory.add(conversationId, new UserMessage(turn.query()));
         ConversationWindowMessages.answer(turn.answer())
             .ifPresent(message -> chatMemory.add(conversationId, message));
+        // After the turn, as in production: a point condensed from this turn's question reaches
+        // the *next* turn, never this one.
+        if (!condenseInto(note, noteExtraction, turn.query(), noteCap)) {
+          failedCondensations.add(conversationCase.turnId(turnIndex));
+          log.warn(
+              "Verdichtung der Gesprächsnotiz fehlgeschlagen für Runde {} — diese Runde steuert "
+                  + "keine Notizpunkte bei, der Lauf geht weiter",
+              conversationCase.turnId(turnIndex));
+        }
       }
     } finally {
       chatMemory.clear(conversationId);
     }
-    return new CaseOutcome(conversationCase, List.copyOf(turnOutcomes));
+    return new CaseOutcome(
+        conversationCase,
+        List.copyOf(turnOutcomes),
+        noteCap <= 0 ? 0 : conversationCase.turns().size(),
+        failedCondensations);
+  }
+
+  /** What the sub-question decomposition sees of the note - never the ANTWORTFORM points. */
+  private static List<String> rahmenPoints(List<ChatNoteCandidate> note) {
+    return note.stream()
+        .filter(point -> point.kind() == ChatNoteItemKind.RAHMEN)
+        .map(ChatNoteCandidate::text)
+        .toList();
+  }
+
+  /**
+   * Appends what the note accepts and drops as many oldest points as the cap requires - through
+   * {@link ChatNoteList}, so the measured note cannot diverge from the persisted one.
+   *
+   * <p><b>A failing condensation costs this turn its points and nothing else</b>, the same
+   * defensive catch {@code ChatNoteExtractionService#condenseAsync} makes in production. A run of
+   * this path costs one condensation call per turn and is measured three times under the
+   * Mehrfachlauf-Regel; letting a single transient model error propagate would discard the whole
+   * multi-turn measurement, and would do so at the one seam this harness exists to reproduce
+   * faithfully.
+   */
+  private static boolean condenseInto(
+      List<ChatNoteCandidate> note,
+      NoteExtraction noteExtraction,
+      String userMessage,
+      int noteCap) {
+    if (noteCap <= 0) {
+      return true;
+    }
+    List<ChatNoteCandidate> condensed;
+    try {
+      condensed = noteExtraction.condense(userMessage);
+    } catch (RuntimeException e) {
+      // Never the message or the condensed text: that is what the asking person wrote, which
+      // docs/features/security-and-compliance.md keeps out of the log. The caller records which
+      // turn it was and the report carries the count.
+      log.debug("Condensation call failed", e);
+      return false;
+    }
+    List<ChatNoteCandidate> accepted =
+        ChatNoteList.accept(note.stream().map(ChatNoteCandidate::text).toList(), condensed);
+    if (accepted.isEmpty()) {
+      return true;
+    }
+    note.subList(0, ChatNoteList.overflow(note.size(), accepted.size(), noteCap)).clear();
+    note.addAll(accepted);
+    return true;
   }
 
   /**
@@ -188,7 +323,29 @@ public final class ConversationRetrievalEvaluator {
                             c.solved()))
                 .toList()),
         topicBleed(outcomes),
+        noteCondensation(outcomes),
         outcomes.stream().map(ConversationRetrievalEvaluator::toCaseResult).toList());
+  }
+
+  /**
+   * How the run's note came about: one condensation call per turn, and the turns whose call failed.
+   * {@code null} for a run measured without a note - an absent section, not a clean one.
+   *
+   * <p>Reported rather than merely caught: a run in which every call failed produces an empty note
+   * for every turn while its {@code conversationNoteCap} fixed point still says 10, so the
+   * comparator would hold it comparable and the numbers would read as evidence that the note does
+   * not help.
+   */
+  private static ConversationEvaluationReport.NoteCondensationAudit noteCondensation(
+      List<CaseOutcome> outcomes) {
+    int attempted = outcomes.stream().mapToInt(CaseOutcome::attemptedCondensations).sum();
+    if (attempted == 0) {
+      return null;
+    }
+    List<String> failedTurnIds =
+        outcomes.stream().flatMap(o -> o.failedCondensationTurnIds().stream()).toList();
+    return new ConversationEvaluationReport.NoteCondensationAudit(
+        attempted, failedTurnIds.size(), failedTurnIds);
   }
 
   private static CaseOutcomeSummary caseOutcomeSummary(List<CaseOutcome> outcomes) {

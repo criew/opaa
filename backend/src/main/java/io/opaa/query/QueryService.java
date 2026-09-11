@@ -1,7 +1,11 @@
 package io.opaa.query;
 
+import io.opaa.api.types.ChatNoteItemKind;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.Chat;
+import io.opaa.chat.ChatNoteExtractionService;
+import io.opaa.chat.ChatNotePoint;
+import io.opaa.chat.ChatNoteService;
 import io.opaa.chat.ChatService;
 import io.opaa.chat.ChatSource;
 import io.opaa.indexing.metadata.MetadataFilter;
@@ -57,6 +61,8 @@ public class QueryService {
   private final CitationValidator citationValidator;
   private final LibraryAccessService libraryAccessService;
   private final ChatService chatService;
+  private final ChatNoteService chatNoteService;
+  private final ChatNoteExtractionService chatNoteExtractionService;
   private final QueryMetrics metrics;
   private final MetadataFilterValidator metadataFilterValidator;
 
@@ -71,6 +77,8 @@ public class QueryService {
       CitationValidator citationValidator,
       LibraryAccessService libraryAccessService,
       ChatService chatService,
+      ChatNoteService chatNoteService,
+      ChatNoteExtractionService chatNoteExtractionService,
       QueryMetrics metrics,
       MetadataFilterValidator metadataFilterValidator) {
     this.retrievalPipeline = retrievalPipeline;
@@ -83,6 +91,8 @@ public class QueryService {
     this.citationValidator = citationValidator;
     this.libraryAccessService = libraryAccessService;
     this.chatService = chatService;
+    this.chatNoteService = chatNoteService;
+    this.chatNoteExtractionService = chatNoteExtractionService;
     this.metrics = metrics;
     this.metadataFilterValidator = metadataFilterValidator;
   }
@@ -158,6 +168,12 @@ public class QueryService {
                 String conversationKey = currentUserId + ":" + effectiveChatId;
                 seedConversationMemoryFromPersistedHistory(chat, conversationKey);
 
+                // The Gesprächsnotiz as it stands *before* this turn (#1487) - the state that
+                // goes into this answer and is returned with it. The condensation of this turn's
+                // own question runs after the answer, below.
+                List<ChatNotePoint> notePoints =
+                    chat.map(c -> chatNoteService.points(c.getId())).orElse(null);
+
                 // Before the decomposition call in the non-empty-scope branch below, so
                 // durationMs includes its latency rather than silently excluding it.
                 long startTime = System.currentTimeMillis();
@@ -198,14 +214,18 @@ public class QueryService {
                 } else {
                   relevantChunks =
                       retrieve(
-                          question, chatMemory.get(conversationKey), searchScope, metadataFilter);
+                          question,
+                          chatMemory.get(conversationKey),
+                          noteTexts(notePoints, ChatNoteItemKind.RAHMEN),
+                          searchScope,
+                          metadataFilter);
                 }
 
                 // --- LLM call: the slowest step, and the reason no phase of this method
                 // carries a transaction.
                 ChatResponse chatResponse =
                     answerGenerationService.generateAnswer(
-                        question, relevantChunks, conversationKey);
+                        question, relevantChunks, conversationKey, noteTexts(notePoints, null));
 
                 String answer = ChatResponses.text(chatResponse);
                 List<CitationValidator.ValidatedCitation> validatedCitations =
@@ -234,6 +254,14 @@ public class QueryService {
                 String chatTitle =
                     chat.map(c -> chatService.appendTurn(c, question, answer, sources))
                         .orElse(null);
+                // #1487: the condensation of this turn's question, off the request thread and
+                // only once the turn is durably persisted - triggered here rather than inside
+                // appendTurn so the chat package's note services stay free of a dependency on
+                // ChatService, which needs the note itself for every chat it returns.
+                chat.ifPresent(
+                    c ->
+                        chatNoteExtractionService.condenseAsync(
+                            c.getId(), c.getSpaceId(), question));
 
                 QueryOutcome metadata =
                     new QueryOutcome(
@@ -243,7 +271,8 @@ public class QueryService {
                         answeredWithoutKnowledge,
                         noKnowledgeAvailableInSpace,
                         chatSourceAssembler.searchedLibraries(searchScope));
-                return new QueryResult(answer, sources, metadata, effectiveChatId, chatTitle);
+                return new QueryResult(
+                    answer, sources, metadata, effectiveChatId, chatTitle, notePoints);
               } catch (RuntimeException e) {
                 metrics.recordError();
                 throw e;
@@ -262,6 +291,22 @@ public class QueryService {
       return filter;
     }
     return metadataFilterValidator.validate(filter, readableLibraryIds);
+  }
+
+  /**
+   * The note's point texts, optionally narrowed to one kind: {@link ChatNoteItemKind#RAHMEN} for
+   * the sub-question decomposition, {@code null} for the answer, which sees every point
+   * (docs/features/conversation-memory.md, "Wie die Notiz ins Modell kommt"). Empty outside a
+   * persisted chat.
+   */
+  private static List<String> noteTexts(List<ChatNotePoint> points, ChatNoteItemKind onlyKind) {
+    if (points == null) {
+      return List.of();
+    }
+    return points.stream()
+        .filter(point -> onlyKind == null || point.kind() == onlyKind)
+        .map(ChatNotePoint::text)
+        .toList();
   }
 
   /**
@@ -298,12 +343,13 @@ public class QueryService {
   private List<Document> retrieve(
       String question,
       List<Message> conversationHistory,
+      List<String> conversationNote,
       Set<UUID> searchScope,
       MetadataFilter metadataFilter) {
     RetrievalPipelineResult result =
         retrievalPipeline.run(
             retrievalContextFactory.contextFor(
-                question, conversationHistory, searchScope, metadataFilter));
+                question, conversationHistory, conversationNote, searchScope, metadataFilter));
     // Only for a run that actually searched: a "0 chunks across 0 search queries" line would
     // read like a failed retrieval rather than the deliberate empty-scope short-circuit.
     if (!result.searchQueries().isEmpty()) {

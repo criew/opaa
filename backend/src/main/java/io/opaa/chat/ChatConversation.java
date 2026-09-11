@@ -29,10 +29,11 @@ public final class ChatConversation {
   private final MetadataFilter metadataFilter;
   private final ChatStatus status;
   private final List<ChatTurn> messages;
+  private final List<ChatNotePoint> noteItems;
   private final Instant createdAt;
   private final Instant updatedAt;
 
-  public ChatConversation(Chat chat, List<ChatTurn> messages) {
+  public ChatConversation(Chat chat, List<ChatTurn> messages, List<ChatNotePoint> noteItems) {
     this.id = chat.getId();
     this.spaceId = chat.getSpaceId();
     this.authorId = chat.getAuthorId();
@@ -42,6 +43,7 @@ public final class ChatConversation {
     this.metadataFilter = chat.getMetadataFilter();
     this.status = chat.getStatus();
     this.messages = messages;
+    this.noteItems = List.copyOf(noteItems);
     this.createdAt = chat.getCreatedAt();
     this.updatedAt = chat.getUpdatedAt();
   }
@@ -81,6 +83,11 @@ public final class ChatConversation {
 
   public List<ChatTurn> getMessages() {
     return messages;
+  }
+
+  /** The chat's Gesprächsnotiz (#1487), oldest point first; empty for a chat without one. */
+  public List<ChatNotePoint> getNoteItems() {
+    return noteItems;
   }
 
   public Instant getCreatedAt() {

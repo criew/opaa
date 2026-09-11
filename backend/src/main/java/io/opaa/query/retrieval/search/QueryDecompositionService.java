@@ -57,6 +57,11 @@ public class QueryDecompositionService {
    * example inside a rule for the task itself and returns it verbatim, discarding the user's
    * question while still looking like a successful decomposition. The output format is therefore
    * described, never demonstrated.
+   *
+   * <p>Equally deliberately a <b>fixed</b> text, the Gesprächsnotiz rule included: the rule is an
+   * instruction, not context, and stating it unconditionally keeps this template free of anything
+   * derived from the run - which is what {@link DecompositionContext}'s anchor-space invariant
+   * rests on. The note itself arrives as a context block, never here.
    */
   private static final String SYSTEM_PROMPT_TEMPLATE =
       """
@@ -72,6 +77,8 @@ public class QueryDecompositionService {
       - Bezieht sich die Frage auf den bisherigen Gesprächsverlauf, ersetze jedes rückverweisende \
       Wort durch den Gegenstand aus dem Verlauf, den es meint. Das Ergebnis bleibt eine Frage und \
       enthält denselben Gegenstand wie der Verlauf.
+      - Enthält der Kontext eine Gesprächsnotiz, verwende sie ausschließlich, um rückverweisende \
+      oder unterbestimmte Wörter aufzulösen. Eine bereits eigenständige Frage bleibt unverändert.
       - Korrigiere offensichtliche Tippfehler in der Frage.
       - Ist die Frage bereits eigenständig und einthemig, gib genau eine Suchanfrage zurück - bei \
       Bedarf wortgleich zur Eingabe.
@@ -170,8 +177,9 @@ public class QueryDecompositionService {
    * reformulation of what the user asked in the context it was asked in, so a sub-query without a
    * single word in common with any of that material is model output that replaced the question.
    *
-   * <p>The anchor space is {@link DecompositionContext#contextTexts()} - exactly the material the
-   * model was given, by construction rather than by enumeration here.
+   * <p>The anchor space is {@link DecompositionContext#contextTexts()} - the material the model was
+   * given, minus the boilerplate of any rendered block, by construction rather than by an
+   * enumeration here. See that method for why a block's own heading must stay out of it.
    *
    * <p>All or nothing: {@link #decompose} falls back as soon as this returns anything above zero,
    * because dropping one sub-query of a correct decomposition loses a whole topic. The check is

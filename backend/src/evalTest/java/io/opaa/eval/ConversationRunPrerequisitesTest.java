@@ -94,6 +94,7 @@ class ConversationRunPrerequisitesTest {
         new ConversationEvaluationReport.CaseOutcomeSummary(0, 0, Map.of()),
         null,
         null,
+        null,
         List.of(
             new ConversationEvaluationReport.ConversationCaseResult(
                 "verw-conv-001",

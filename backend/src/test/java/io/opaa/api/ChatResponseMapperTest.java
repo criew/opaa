@@ -7,6 +7,7 @@ import io.opaa.api.dto.ChatMessageResponse;
 import io.opaa.api.dto.ChatSummary;
 import io.opaa.api.dto.SourceMetadataEntry;
 import io.opaa.api.dto.SourceReference;
+import io.opaa.api.types.ChatNoteItemKind;
 import io.opaa.api.types.ChatRole;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.DocumentSourceType;
@@ -14,6 +15,7 @@ import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatConversation;
+import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
@@ -97,7 +99,8 @@ class ChatResponseMapperTest {
             "Antwort.",
             List.of(source),
             createdAt.plus(2, ChronoUnit.MINUTES));
-    ChatConversation conversation = new ChatConversation(chat, List.of(userTurn, assistantTurn));
+    ChatConversation conversation =
+        new ChatConversation(chat, List.of(userTurn, assistantTurn), List.of());
 
     ChatDetail response = ChatResponseMapper.toDetailResponse(conversation);
 
@@ -230,7 +233,8 @@ class ChatResponseMapperTest {
             Set.of("VERMERK"), LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31)));
 
     ChatSummary summary = ChatResponseMapper.toSummaryResponse(chat);
-    ChatDetail detail = ChatResponseMapper.toDetailResponse(new ChatConversation(chat, List.of()));
+    ChatDetail detail =
+        ChatResponseMapper.toDetailResponse(new ChatConversation(chat, List.of(), List.of()));
 
     assertThat(summary.getMetadataFilter().getDocumentTypes()).containsExactly("VERMERK");
     assertThat(summary.getMetadataFilter().getDocumentDateFrom()).isEqualTo("2024-01-01");
@@ -239,6 +243,54 @@ class ChatResponseMapperTest {
 
     chat.applyMetadataFilter(MetadataFilter.NONE);
     assertThat(ChatResponseMapper.toSummaryResponse(chat).getMetadataFilter()).isNull();
+  }
+
+  /**
+   * #1487: every field of a note point reaches the response, in the order the note holds them. The
+   * kind is delivered even though the Oberfläche does not show it.
+   */
+  @Test
+  void toDetailCopiesEveryNotePointWithItsKindAndOrder() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
+    UUID firstId = UUID.randomUUID();
+    UUID secondId = UUID.randomUUID();
+    Instant createdAt = Instant.parse("2026-09-11T09:00:00Z");
+    ChatConversation conversation =
+        new ChatConversation(
+            chat,
+            List.of(),
+            List.of(
+                new ChatNotePoint(
+                    firstId, "Arbeitet in der Nebenstelle 3", ChatNoteItemKind.RAHMEN, createdAt),
+                new ChatNotePoint(
+                    secondId,
+                    "Möchte knappe Antworten",
+                    ChatNoteItemKind.ANTWORTFORM,
+                    createdAt.plus(1, ChronoUnit.MINUTES))));
+
+    ChatDetail detail = ChatResponseMapper.toDetailResponse(conversation);
+
+    assertThat(detail.getNoteItems()).hasSize(2);
+    assertThat(detail.getNoteItems().get(0).getId()).isEqualTo(firstId);
+    assertThat(detail.getNoteItems().get(0).getText()).isEqualTo("Arbeitet in der Nebenstelle 3");
+    assertThat(detail.getNoteItems().get(0).getKind()).isEqualTo(ChatNoteItemKind.RAHMEN);
+    assertThat(detail.getNoteItems().get(0).getCreatedAt()).isEqualTo(createdAt);
+    assertThat(detail.getNoteItems().get(1).getId()).isEqualTo(secondId);
+    assertThat(detail.getNoteItems().get(1).getKind()).isEqualTo(ChatNoteItemKind.ANTWORTFORM);
+    assertThat(detail.getNoteItems().get(1).getCreatedAt())
+        .isEqualTo(createdAt.plus(1, ChronoUnit.MINUTES));
+  }
+
+  @Test
+  void aChatWithoutNotePointsCarriesAnEmptyNoteNotNull() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
+
+    assertThat(
+            ChatResponseMapper.toDetailResponse(new ChatConversation(chat, List.of(), List.of()))
+                .getNoteItems())
+        .isEmpty();
   }
 
   /** #1070: a source's match state reaches the DTO, and stays null without a filter. */
