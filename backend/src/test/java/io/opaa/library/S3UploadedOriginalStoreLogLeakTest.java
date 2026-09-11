@@ -111,9 +111,10 @@ class S3UploadedOriginalStoreLogLeakTest {
       UploadedOriginalRef ref = accepted.store();
       accepted.release();
 
+      // a refused HeadObject is "not there" (see S3UploadedOriginalStore#resolve), a refused
+      // GetObject is "unavailable" - both paths log
       server.failNext(403, "InvalidAccessKeyId", 1);
-      assertThatThrownBy(() -> store.openForDownload(ref, "x.pdf", null))
-          .isInstanceOf(UploadStoreUnavailableException.class);
+      assertThat(store.openForDownload(ref, "x.pdf", null)).isEmpty();
       server.failNextMatching("GET", "/ablage/", 403, "AccessDenied");
       assertThatThrownBy(() -> store.withLocalFile(ref, p -> "x"))
           .isInstanceOf(UploadStoreUnavailableException.class);

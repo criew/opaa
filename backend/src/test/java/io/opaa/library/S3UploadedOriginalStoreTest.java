@@ -168,7 +168,21 @@ class S3UploadedOriginalStoreTest {
 
     accepted.discard();
     assertThat(server.keys(BUCKET)).isEmpty();
-    assertThat(server.seen()).extracting(StubS3Server.Seen::method).containsExactly("PUT");
+    // Discarding after a failed put still sends the DeleteObject: a put that succeeded on the wire
+    // but timed out on the way back has written the object, and only the delete takes it away.
+    assertThat(server.seen())
+        .extracting(StubS3Server.Seen::method)
+        .containsExactly("PUT", "DELETE");
+  }
+
+  @Test
+  void aForbiddenHeadIsNotThereNotUnavailable() throws IOException {
+    // Without s3:ListBucket AWS answers a HeadObject on a missing key with 403 - which must stay
+    // the same "not there" as a 404, or "does not exist" becomes distinguishable again (#736).
+    UploadedOriginalRef ref = storedOriginal("inhalt");
+    server.failNextMatching("HEAD", "/" + BUCKET + "/", 403, "AccessDenied");
+
+    assertThat(store.openForDownload(ref, "x.pdf", "application/pdf")).isEmpty();
   }
 
   @Test
@@ -190,8 +204,8 @@ class S3UploadedOriginalStoreTest {
 
   @Test
   void aRowWithoutAContentTypeIsServedWithTheStoredOne() throws IOException {
-    // The SDK types the object from the key's extension on PutObject; that is what a row without
-    // a type of its own falls back to.
+    // RequestBody.fromFile types the object from the working file's name on PutObject; that is
+    // what a row without a type of its own falls back to.
     UploadedOriginalRef ref = storedOriginal("x");
 
     Optional<DocumentContent> content = store.openForDownload(ref, "x.bin", null);
@@ -321,7 +335,14 @@ class S3UploadedOriginalStoreTest {
   }
 
   @Test
-  void recoveringAfterARestartSweepsOnlyThisAdaptersOwnTempFiles() throws IOException {
+  void recoveringAfterARestartSweepsOnlyThisAdaptersOwnFilesOlderThanTheProcess()
+      throws IOException {
+    // The web server already accepts uploads when the startup runners fire: a working file
+    // written by this process is in flight, not abandoned, and must survive the sweep.
+    java.nio.file.attribute.FileTime beforeThisProcess =
+        java.nio.file.attribute.FileTime.fromMillis(
+            java.lang.management.ManagementFactory.getRuntimeMXBean().getStartTime()
+                - java.time.Duration.ofMinutes(5).toMillis());
     Path abandonedWorkingFile =
         Files.writeString(
             tempDir.resolve(S3UploadedOriginalStore.TEMP_FILE_PREFIX + "abandoned.pdf"), "x");
@@ -331,11 +352,18 @@ class S3UploadedOriginalStoreTest {
     Path somebodyElses = Files.writeString(tempDir.resolve("other-tool.tmp"), "x");
     Path ownDirectory =
         Files.createDirectory(tempDir.resolve(S3UploadedOriginalStore.TEMP_FILE_PREFIX + "dir"));
+    for (Path old : List.of(abandonedWorkingFile, abandonedCopy, somebodyElses, ownDirectory)) {
+      Files.setLastModifiedTime(old, beforeThisProcess);
+    }
+    Path inFlight =
+        Files.writeString(
+            tempDir.resolve(S3UploadedOriginalStore.TEMP_FILE_PREFIX + "in-flight.pdf"), "x");
 
     store.recoverAfterRestart();
 
     assertThat(abandonedWorkingFile).doesNotExist();
     assertThat(abandonedCopy).doesNotExist();
+    assertThat(inFlight).exists();
     assertThat(somebodyElses).exists();
     assertThat(ownDirectory).exists();
   }

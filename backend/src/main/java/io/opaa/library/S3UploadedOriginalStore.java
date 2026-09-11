@@ -10,9 +10,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
+import java.lang.management.ManagementFactory;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.FileTime;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
@@ -228,8 +230,9 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
 
   /**
    * Removes every working file and local copy a killed process left under {@code tempDirectory} -
-   * recognised by {@link #TEMP_FILE_PREFIX}, nothing else there is touched - and reports, without
-   * failing the start, whether the store answers (ADR-0030, Entscheidung 7 and 9).
+   * recognised by {@link #TEMP_FILE_PREFIX} and by being older than this process, nothing else
+   * there is touched - and reports, without failing the start, whether the store answers (ADR-0030,
+   * Entscheidung 7 and 9).
    */
   @Override
   public void recoverAfterRestart() {
@@ -307,15 +310,23 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
     client.close();
   }
 
+  /**
+   * Only a file older than this process is abandoned: the web server already accepts requests when
+   * the startup runners fire, so a working file of an upload in flight right now is younger than
+   * the process and must survive the sweep.
+   */
   private void sweepTempDirectory() {
     if (!Files.isDirectory(tempDirectory)) {
       return;
     }
+    FileTime processStart =
+        FileTime.fromMillis(ManagementFactory.getRuntimeMXBean().getStartTime());
     int removed = 0;
     try (Stream<Path> entries = Files.list(tempDirectory)) {
       for (Path entry : entries.toList()) {
         if (entry.getFileName().toString().startsWith(TEMP_FILE_PREFIX)
-            && Files.isRegularFile(entry)) {
+            && Files.isRegularFile(entry)
+            && isOlderThan(entry, processStart)) {
           try {
             Files.deleteIfExists(entry);
             removed++;
@@ -335,7 +346,10 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
 
   /**
    * The single containment check of this adapter: the key behind {@code ref}'s locator when it lies
-   * in this bucket under {@code ref}'s own library prefix and names an object, empty otherwise.
+   * in this bucket under {@code ref}'s own library prefix and names an object, empty otherwise. A
+   * {@code 403} on the {@code HeadObject} is "not there" too: without {@code s3:ListBucket}, AWS
+   * answers a missing key with {@code 403} instead of {@code 404}, and the two must stay
+   * indistinguishable to the caller - a rights gap shows in {@link #probe()}, not here.
    *
    * @throws UploadStoreUnavailableException when the store cannot answer
    */
@@ -352,7 +366,7 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
               key,
               () -> s3.headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build()));
       return Optional.of(new Resolved(key, head));
-    } catch (S3AccessException.ObjectNotFound e) {
+    } catch (S3AccessException.ObjectNotFound | S3AccessException.ReadForbidden e) {
       return Optional.empty();
     } catch (S3AccessException e) {
       throw unavailable("resolve", key, e);
@@ -424,6 +438,14 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
     }
   }
 
+  private static boolean isOlderThan(Path file, FileTime instant) {
+    try {
+      return Files.getLastModifiedTime(file).compareTo(instant) < 0;
+    } catch (IOException e) {
+      return false;
+    }
+  }
+
   private void deleteQuietly(Path file) {
     try {
       Files.deleteIfExists(file);
@@ -459,6 +481,10 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
 
     @Override
     public UploadedOriginalRef store() throws IOException {
+      // Marked before the call: a PutObject that succeeds on the wire but times out on the way
+      // back has written the object, and discarding must remove it. DeleteObject on a key that
+      // was never written answers 204 and costs nothing.
+      stored = true;
       try {
         translator.call(
             S3Operation.PUT_OBJECT,
@@ -472,7 +498,6 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
         Thread.currentThread().interrupt();
         throw new InterruptedIOException("interrupted while storing " + key);
       }
-      stored = true;
       return new UploadedOriginalRef(libraryId, locator(key));
     }
 

@@ -125,10 +125,11 @@ public final class S3RequestGuard implements ExecutionInterceptor {
         executionAttributes.putAttribute(THROTTLED_AT, Instant.now());
       }
       log.debug(
-          "S3 endpoint {} answered HTTP {} to {} - retrying with backoff",
+          "S3 endpoint {} answered HTTP {} to {} - retrying with backoff ({} so far)",
           context.httpRequest().host(),
           status,
-          context.httpRequest().encodedPath());
+          context.httpRequest().encodedPath(),
+          meter == null ? "uncounted" : meter.throttles());
     }
   }
 

@@ -202,6 +202,62 @@ class S3UploadStorageIntegrationTest {
   }
 
   @Test
+  void anAttachmentOfAnUploadedMailIsReExtractedFromTheStreamedOriginal() throws Exception {
+    // The download path of the re-extraction (ADR-0022) meets a streamed UPLOAD original for the
+    // first time here: the root is buffered from the bucket, not opened as a path.
+    LibraryDocumentEntry uploaded =
+        documentService.uploadDocument(
+            libraryId,
+            emlFile("anfrage.eml", "Bitte pruefen.", "Anhangsinhalt fuer den Bauantrag."),
+            null,
+            currentUserOf(editor));
+    Document mail = awaitDocumentStatus(uploaded.document().getId(), DocumentStatus.INDEXED);
+    List<Document> children = documentRepository.findByParentDocumentId(mail.getId());
+    assertThat(children).hasSize(1);
+    Document attachment = children.getFirst();
+    assertThat(attachment.getFilePath()).startsWith(mail.getFilePath() + "/");
+
+    DocumentContent content =
+        documentService.loadContent(attachment.getId(), currentUserOf(editor));
+    assertThat(content.isStreamed()).isTrue();
+    assertThat(content.fileName()).isEqualTo("anlage.txt");
+    try (InputStream stream = content.stream()) {
+      assertThat(new String(stream.readAllBytes(), StandardCharsets.UTF_8))
+          .isEqualTo("Anhangsinhalt fuer den Bauantrag.");
+    }
+    await().atMost(10, TimeUnit.SECONDS).until(() -> ownTempFiles().isEmpty());
+
+    // The attachment row is deletable through the same endpoint; its synthetic locator names no
+    // object, so the mail's original stays.
+    String mailKey = mail.getFilePath().substring(("s3://" + bucket + "/").length());
+    documentService.deleteDocument(libraryId, attachment.getId(), currentUserOf(editor));
+    assertThat(objectExists(mailKey)).isTrue();
+  }
+
+  private static MockMultipartFile emlFile(String fileName, String bodyText, String attachmentText)
+      throws Exception {
+    org.apache.james.mime4j.dom.Message message =
+        org.apache.james.mime4j.dom.Message.Builder.of()
+            .setSubject("Test")
+            .setFrom("a@example.org")
+            .setTo("b@example.org")
+            .setBody(
+                org.apache.james.mime4j.message.MultipartBuilder.create("mixed")
+                    .addTextPart(bodyText, StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        org.apache.james.mime4j.message.BodyPartBuilder.create()
+                            .setBody(attachmentText.getBytes(StandardCharsets.UTF_8), "text/plain")
+                            .setContentDisposition("attachment", "anlage.txt"))
+                    .build())
+            .build();
+    return new MockMultipartFile(
+        "file",
+        fileName,
+        "message/rfc822",
+        org.apache.james.mime4j.message.DefaultMessageWriter.asBytes(message));
+  }
+
+  @Test
   void theStoreContributesToItsOwnHealthGroupAndNotToTheOverallStatus() {
     SystemHealthDescriptor overall = (SystemHealthDescriptor) healthEndpoint.health();
     assertThat(overall.getComponents()).doesNotContainKey(UploadStoreHealthGroup.CONTRIBUTOR);
