@@ -60,10 +60,10 @@ Bearbeitungszeit
 Etwa acht Wochen
 
 Gebührenrahmen
-- prüfungsfrei, ohne Festsetzung einer Probezeit: 36,90 Euro
-- prüfungsfrei, mit Festsetzung einer Probezeit: 37,70 Euro
-- prüfungspflichtig, ohne Festsetzung einer Probezeit: 44,60 Euro
-- prüfungspflichtig, mit Festsetzung einer Probezeit: 45,40 Euro
+- prüfungsfrei, ohne Festsetzung einer Probezeit: 41,70 Euro
+- prüfungsfrei, mit Festsetzung einer Probezeit: 42,70 Euro
+- prüfungspflichtig, ohne Festsetzung einer Probezeit: 50,50 Euro
+- prüfungspflichtig, mit Festsetzung einer Probezeit: 51,40 Euro
 Zutreffendes kann nur individuell  bei Vorlage des Führerscheins beantwortet werden.
 
 Barzahlung

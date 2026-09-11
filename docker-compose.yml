@@ -67,6 +67,10 @@ services:
     ports:
       - "${OPAA_KEYCLOAK_PORT:-8180}:8180"
     volumes:
+      # This service has no volume on purpose: the realm is imported again on every start. Both
+      # exports therefore carry a fixed "id" per user, which Keycloak keeps as that user's id - so
+      # the `sub` of every demo account is the same after a restart, and OPAA (which keys a user on
+      # subject + issuer) keeps finding the existing row instead of provisioning a second one.
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
       # A second realm = a second identity provider on the same origin (ADR-0025, #1334): the
       # user maria.weber exists in both realms with the same e-mail address, so the demo-smoke run

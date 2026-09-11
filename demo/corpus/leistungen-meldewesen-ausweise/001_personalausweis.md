@@ -42,9 +42,9 @@ Die Aushändigung kann an die Antragstellerin oder den Antragsteller oder an ein
 Auch Sorgeberechtigte benötigen von den Antragstellenden eine entsprechende Vollmacht, wenn diese 16 Jahre alt sind.
 
 Gebührenrahmen
-- Unter 24 Jahren: 27,20 Euro
-- Über 24 Jahren: 44,20 Euro
-- Vorläufiger Personalausweis: 12 Euro
+- Unter 24 Jahren: 26,20 Euro
+- Über 24 Jahren: 42,60 Euro
+- Vorläufiger Personalausweis: 11,50 Euro
 - Einschalten/ Entsperrung der Online-Ausweisfunktion: gebührenfrei
 - Änderung beziehungsweise Neusetzen der PIN: gebührenfrei
 

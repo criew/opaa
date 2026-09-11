@@ -11,6 +11,9 @@ Issues #12, #17, #19, #20). Die Stakeholder-Bewertungen aus Sicht Betrieb/Inform
 Personalrat sind eingearbeitet (Abschnitt [Stakeholder-Bewertung](#stakeholder-bewertung)); die
 Berichte liegen in
 [`docs/discussions/discussion-lokale-benutzerverwaltung-stakeholder.md`](../discussions/discussion-lokale-benutzerverwaltung-stakeholder.md).
+Überarbeitet mit #1552 nach dem Code-Review von PR #1548 (Trusted-Proxy-Auflösung, Bestandserkennung
+des Seeds, Demo-Stack, Unverletzlichkeit des Notanker-Kontos, Anti-Aufzählung am Login,
+Guard-Wegeliste).
 
 ## Kontext
 
@@ -110,9 +113,14 @@ Integrationstest prüft sie.
 Der **Kontozustand wird abgeleitet, nicht gespeichert**: `INVITED` (kein Passwort oder E-Mail nicht
 bestätigt), `ACTIVE`, `LOCKED` (`locked_at` gesetzt oder `lockout_until` in der Zukunft), `EXPIRED`
 (`expires_at` vergangen). Anmeldefähig ist nur `ACTIVE` — und bei abgeschalteter Verwaltung nur ein
-`ACTIVE`-Konto mit `SYSTEM_ADMIN`. Ein **anmeldefähiger Systemverwalter** im Sinne dieses ADR ist ein
-lokales `ACTIVE`-Konto mit `SYSTEM_ADMIN` oder ein `SYSTEM_ADMIN`-Konto eines aktivierten
-OIDC-Anbieters; diese Definition trägt die Invariante aus Entscheidung 4.
+`ACTIVE`-Konto mit `SYSTEM_ADMIN`. Ein **anmeldefähiger lokaler Systemverwalter** im Sinne dieses ADR
+ist ein lokales `ACTIVE`-Konto mit `SYSTEM_ADMIN`; ein **anmeldefähiger Systemverwalter** ist ein
+solches Konto oder ein `SYSTEM_ADMIN`-Konto eines aktivierten OIDC-Anbieters — wobei OPAA von einem
+OIDC-Konto nur weiß, dass sein Anbieter aktiviert ist, nicht, ob der Anbieter es noch anmeldet. Deshalb
+hängt die Invariante aus Entscheidung 4 nicht an dieser Zählung allein, sondern am Notanker-Konto, das
+**unverletzlich** ist: Es kann weder gesperrt (auch nicht durch Inaktivität) noch befristet, degradiert,
+gelöscht noch übergeben werden; nur `OPAA_LOCAL_ADMIN_RESET=force` und der eigene Passwortwechsel
+verändern es (Entscheidung 5).
 
 Dazu kommen drei Token-Tabellen (qnop `0004-token-schema.yaml`): `local_refresh_tokens`
 (Familie mit absolutem Ablauf, HMAC-Lookup-Hash, Ausstellung, Ablauf, Widerruf mit Grund als Enum,
@@ -167,46 +175,78 @@ Das ändert drei Regeln aus ADR-0025, Entscheidung 3, und hebt eine auf:
   Passwort einrichten"). Zusätzlich verlangt der Aufruf `acknowledgeLastProvider = true`, und die
   Oberfläche zeigt die Konsequenz: Danach können sich nur noch lokale Konten anmelden; ein vertippter
   Anbieter lässt sich aus der lokalen Anmeldung heraus korrigieren — ohne Datenbankzugriff und ohne
-  Umgebungsvariable. **Aufgehoben** ist damit die Aussage „es gibt keinen Zustand ohne anmeldefähigen
-  Anbieter" in ihrer alten Form: Der anmeldefähige Weg ist jetzt immer der lokale Systemverwalter.
+  Umgebungsvariable. **Aufgehoben** sind damit zwei Aussagen von ADR-0025, Entscheidung 3, in ihrer
+  alten Form: „es gibt keinen Zustand ohne anmeldefähigen Anbieter" — der anmeldefähige Weg ist jetzt
+  immer der lokale Systemverwalter — und „der Standardanbieter ist immer aktiviert". Der letzte
+  aktivierte OIDC-Anbieter ist zwangsläufig der Standardanbieter; wird er deaktiviert, **behält seine
+  Zeile `is_default`** (ein Wiedereinschalten stellt den Verzeichnisabgleich ohne Neukonfiguration
+  wieder her), aber `TrustedProvider` liefert nur noch einen **aktivierten** Standardanbieter
+  (`findByDefaultProviderTrueAndEnabledTrue`): Ohne ihn gibt es keinen Verzeichnis-Anbieter, und ein
+  Abgleichslauf bricht ohne Änderungen ab — das Verhalten, das `access-control.md` für „ohne
+  Standardanbieter" bereits festlegt.
 
 **Die Invariante „nie ohne anmeldefähigen Systemverwalter" wird an genau einer Stelle geprüft**
-(`LocalAdminAvailabilityGuard`, ein bedingter `UPDATE` unter dem bestehenden Advisory-Lock
-`UserRepository#lockRoleChanges`, Fehlercode `LAST_LOGIN_CAPABLE_ADMIN`), und jeder Weg, der die letzte
-benutzbare Systemverwalter-Anmeldung entfernen könnte, läuft darüber: das Deaktivieren oder Löschen
-des letzten aktivierten OIDC-Anbieters (oben), Sperren, Befristen, Rollenentzug und Löschen eines
-Systemverwalters (Entscheidung 11), der Anstoß einer Übergabe für ein Systemverwalterkonto
-(Entscheidung 12) und der Wiederanlauf, der ein Konto neu anlegt, wenn keines mehr benutzbar ist
-(Entscheidung 5). Die Zählung kennt nur **anmeldefähige** Konten nach Entscheidung 3 — ein
-`SYSTEM_ADMIN` eines deaktivierten Anbieters oder ein gesperrtes lokales Konto zählt nicht. Der heutige
-Zähler in `TokenRoleSynchronizer`/`UserRepository#withdrawSystemAdminIfAnotherRemains` (#1331, #1349)
-wird durch diesen Guard ersetzt, nicht ergänzt.
+(`LocalAdminAvailabilityGuard`, Fehlercode `LAST_LOGIN_CAPABLE_ADMIN`), und jeder Weg, der die letzte
+benutzbare Systemverwalter-Anmeldung entfernen könnte, läuft darüber:
+
+- das Deaktivieren oder Löschen des letzten aktivierten OIDC-Anbieters (oben; Schreibvorgang auf
+  `oidc_providers`, Bedingung: ein anmeldefähiger **lokaler** Systemverwalter bleibt);
+- Sperren, Befristen, Rollenentzug und Löschen eines Systemverwalters über die neue Admin-API
+  lokaler Konten (Entscheidung 11) **und über den bestehenden generischen Rollenendpunkt**
+  `POST /api/v1/admin/users/{id}/role` (`UserService#updateRole`, Gegenstand von #1349 — er hat heute
+  keinen Schutz des letzten Verwalters; ohne ihn wäre die Invariante offen);
+- der Rollenentzug per Token (`TokenRoleSynchronizer`, ADR-0025, Entscheidung 4);
+- der Anstoß einer Übergabe für ein Systemverwalterkonto (Entscheidung 12);
+- der Wiederanlauf, der das Notanker-Konto neu anlegt, wenn keines mehr existiert (Entscheidung 5).
+
+Mechanik: Jeder dieser Wege nimmt in derselben Transaktion den bestehenden Advisory-Lock
+`UserRepository#lockRoleChanges(Organization.DEFAULT_ID)` (organisationsgeschlüsselt,
+transaktionsgebunden), prüft dann per `SELECT` über `users`, `local_credentials` und `oidc_providers`,
+ob nach der Operation die Bedingung noch gilt, und schreibt erst danach — für die Konto-Wege als
+bedingter `UPDATE` wie heute `withdrawSystemAdminIfAnotherRemains`, für den Anbieter-Weg als Schreibvorgang
+auf `oidc_providers` unter demselben Lock, damit „letzten Anbieter deaktivieren" und „letzten lokalen
+Verwalter sperren" nicht nebenläufig beide durchgehen. Die Zählung kennt nur **anmeldefähige** Konten
+nach Entscheidung 3 — ein `SYSTEM_ADMIN` eines deaktivierten Anbieters oder ein gesperrtes lokales
+Konto zählt nicht. Der heutige Zähler in `TokenRoleSynchronizer`/
+`UserRepository#withdrawSystemAdminIfAnotherRemains` (#1331, #1349) wird durch diesen Guard ersetzt,
+nicht ergänzt. Dass OPAA die Anmeldefähigkeit eines OIDC-Kontos beim Anbieter nicht kennt, ist der
+Grund, warum der eigentliche Anker nicht die Zählung, sondern das unverletzliche Notanker-Konto ist
+(Entscheidung 3).
 
 Der lokale Decoder (Entscheidung 8) wird **unabhängig von `enabled`** registriert. Was der Schalter
 bewirkt, entscheidet sich im Token-Validator und im Login: Bei `enabled = false` werden Login und
-Token regulärer lokaler Konten abgewiesen (`WWW-Authenticate`-Marker `local_accounts_disabled`),
-lokale `SYSTEM_ADMIN`-Konten passieren. Das Abschalten wirkt damit sofort auf laufende Sitzungen, ohne
-dass Sitzungen serverseitig aufgezählt werden müssten. Die Anbieter-Registry bleibt eine prozesslokale
+Token regulärer lokaler Konten abgewiesen, lokale `SYSTEM_ADMIN`-Konten passieren. Der
+`WWW-Authenticate`-Marker `local_accounts_disabled` steht dabei **nur auf dem Token-Pfad** (der
+Aufrufer besitzt bereits ein gültiges Token); der Login antwortet in diesem Fall mit derselben
+Einheitsantwort wie bei falschem Passwort (Entscheidung 9) — sonst verriete er ohne Passwort, dass ein
+Konto existiert. Das Abschalten wirkt damit sofort auf laufende Sitzungen, ohne dass Sitzungen
+serverseitig aufgezählt werden müssten. Die Anbieter-Registry bleibt eine prozesslokale
 Fundstelle nach ADR-0021; dieser ADR trägt die neuen Fundstellen dort ein.
 
 ### 5. Erstadministrator: lokales Notanker-Konto beim ersten Start, Einmalpasswort ins Log, Wiederanlauf per Variable
 
-Beim ersten Start im `oidc`-Profil legt `LocalAdminSeeder` (vor dem Webserver, wie
-`OidcProviderSeedRunner`; gegen Wiederholung durch eine Markierungszeile gesichert, nicht durch „ist
-die Tabelle leer?" — Muster `OidcProviderSeedMarker`/`LlmModelSeedMarker`) die `LOCAL`-Anbieterzeile
-und **ein lokales `SYSTEM_ADMIN`-Konto** an: E-Mail aus `OPAA_INITIAL_ADMIN_EMAIL` (die Variable
-behält Namen und Bedeutung „Adresse des ersten Systemverwalters"), Anzeigename „Systemverwaltung",
-Anlagegrund „Notanker-Konto der Systemverwaltung", `is_bootstrap = true`, `password_change_required =
-true` mit Grund `INITIAL`.
+Beim ersten Start im `oidc`-Profil legt `LocalAdminSeeder` (vor dem Webserver, als
+`SmartInitializingSingleton` wie `OidcProviderSeedRunner`, aber mit ausdrücklicher Reihenfolge per
+`@Order` **vor** dem OIDC-Seeder; gegen Wiederholung durch eine eigene Markierungszeile gesichert, nicht
+durch „ist die Tabelle leer?" — Muster `OidcProviderSeedMarker`/`LlmModelSeedMarker`) zwei Dinge
+unabhängig voneinander an: **immer** die `LOCAL`-Anbieterzeile (ohne sie gäbe es den Schalter der
+Verwaltung nicht) und **ein lokales `SYSTEM_ADMIN`-Konto**, sofern die Adresse gültig ist (unten):
+E-Mail aus `OPAA_INITIAL_ADMIN_EMAIL` (die Variable behält Namen und Bedeutung „Adresse des ersten
+Systemverwalters"), Anzeigename „Systemverwaltung", Anlagegrund „Notanker-Konto der
+Systemverwaltung", `is_bootstrap = true`, `password_change_required = true` mit Grund `INITIAL`.
 
 **Neuinstallation und Bestand sind zwei Fälle.** Der Beschluss spricht vom *allerersten Start einer
-Installation*. Findet der Seed eine Installation vor, die bereits Konten hat (die Markierung des
-OIDC-Seeders existiert oder `users` ist nicht leer), legt er das Notanker-Konto **als `INVITED` ohne
-Passwort und ohne Log-Ausgabe** an — es ist vorhanden, aber nicht scharf, und der Betrieb aktiviert es
-bewusst mit `OPAA_LOCAL_ADMIN_RESET=force` (unten). Ein Haus, das lokale Konten organisatorisch
-ausschließt, bekommt damit kein gültiges Passwort in sein Log. Ein Opt-out über eine Variable gibt es
-nicht: Der Beschluss will den Systemverwalter immer lokal, und ein `INVITED`-Konto ohne Passwort ist
-für dieses Haus dasselbe wie heute — der Notweg bleibt eine Variable plus Neustart.
+Installation*. Das einzige Kriterium ist, ob `users` **zum Zeitpunkt des lokalen Seeds** Zeilen
+enthält — nicht die Markierung des OIDC-Seeders (die schreibt er schon beim allerersten Start, sobald
+`OPAA_OIDC_*` gesetzt ist, und eine Installation mit gesätem Anbieter, bei der sich nie jemand
+angemeldet hat, ist fachlich frisch); die feste Reihenfolge „lokaler Seed vor OIDC-Seed" stellt
+sicher, dass der OIDC-Seed dieses Kriterium nicht beeinflusst. Findet der Seed Konten vor, legt er das
+Notanker-Konto **als `INVITED` ohne Passwort und ohne Log-Ausgabe** an — es ist vorhanden, aber nicht
+scharf, und der Betrieb aktiviert es bewusst mit `OPAA_LOCAL_ADMIN_RESET=force` (unten). Ein Haus, das
+lokale Konten organisatorisch ausschließt, bekommt damit kein gültiges Passwort in sein Log. Ein
+Opt-out über eine Variable gibt es nicht: Der Beschluss will den Systemverwalter immer lokal, und ein
+`INVITED`-Konto ohne Passwort ist für dieses Haus dasselbe wie heute — der Notweg bleibt eine Variable
+plus Neustart.
 
 **Passwort (Neuinstallation).** Ist `OPAA_INITIAL_ADMIN_PASSWORD` gesetzt, wird es verwendet und der
 Wechsel **nicht** erzwungen — der Weg für CI, E2E und automatisierte Bereitstellung (qnop
@@ -221,21 +261,37 @@ qnops Weg (`System.err` am Logger vorbei plus Datei `0600`) wird nicht übernomm
 `stderr` dasselbe Log, und eine Datei im Volume wäre ein zweiter Ort, an dem ein Geheimnis liegen
 bleibt.
 
-**Der ausgelieferte Vorgabewert ist kein Anmeldename.** `OPAA_INITIAL_ADMIN_EMAIL` hat heute den
-Vorgabewert `admin@opaa.local`. Mit dem Seed würde er zum Anmeldenamen eines privilegierten Kontos an
-einem erreichbaren Formular und ist nicht zustellbar. Der Seed im `oidc`-Profil **lehnt diesen Wert
-ab**: Fehler im Log mit der zu setzenden Variable, keine Markierung, Anlage beim nächsten Start — exakt
-das Verhalten, das ADR-0025 für einen fehlenden OIDC-Bootstrap festlegt. Der `dev`-Modus ist nicht
-betroffen (dort wird nicht gesät). `.env.docker.example` liefert die Variable ohne Wert aus; das
-Handbuch verlangt ein zustellbares Postfach, am besten ein Funktionspostfach der IT.
+**Der ausgelieferte Vorgabewert ist kein Anmeldename.** `OPAA_INITIAL_ADMIN_EMAIL` hat den
+Vorgabewert `admin@opaa.local` (`application.yml`). Mit dem Seed würde er zum Anmeldenamen eines
+privilegierten Kontos an einem erreichbaren Formular und ist nicht zustellbar. Der Seed im
+`oidc`-Profil **lehnt diesen Wert für das Konto ab**: Fehler im Log mit der zu setzenden Variable, keine
+Konto-Markierung, Anlage des Kontos beim nächsten Start — exakt das Verhalten, das ADR-0025 für einen
+fehlenden OIDC-Bootstrap festlegt; die `LOCAL`-Anbieterzeile entsteht davon unabhängig, damit eine
+Bestandsinstallation mit funktionierendem OIDC-Systemverwalter die lokale Verwaltung trotzdem aus der
+Oberfläche einschalten kann. Der Vorgabewert **bleibt in `application.yml`**, weil der `dev`-Modus an
+ihm hängt (`dev-admin` wird über ihn Systemverwalter; „der `dev`-Modus ist unverändert"); nur
+`.env.docker.example` und `.env.example` liefern die Variable künftig ohne Wert aus, und das
+Handbuchkapitel aus #1543 verlangt ein zustellbares Postfach, am besten ein Funktionspostfach der IT.
+
+**Der Demo-Stack wechselt auf den neuen Weg.** `demo/seed/seed.py` erwartet heute, dass `demo-admin`
+über die OIDC-Erstadmin-Regel `SYSTEM_ADMIN` trägt, und bricht sonst ab; `e2e/demo-smoke.env` läuft
+mit demselben Mechanismus. Künftig meldet sich der Seed zuerst als Notanker-Konto an
+(`OPAA_INITIAL_ADMIN_PASSWORD` in `.env.docker` der Demo und in `e2e/demo-smoke.env`;
+`OPAA_INITIAL_ADMIN_EMAIL` wird dort zur Adresse des Notankers, etwa
+`it-betrieb@stadt-rheinfurt.example`) und vergibt `demo-admin` die Rolle über
+`POST /api/v1/admin/users/{id}/role` — die Demo führt damit genau den Weg vor, den dieser ADR für jede
+Installation vorsieht. `demo/README.md`, `demo/seed/seed.py`, `e2e/demo-smoke.env` und
+`docs/features/demo-instance.md` ziehen in #1543 nach.
 
 **Das Notanker-Konto ist ein Notfallzugangsmittel, kein Arbeitskonto und kein Sammelkonto.** Nach der
 Einrichtung legt der erste Systemverwalter **persönliche** Verwalterkonten an (Beschluss: je eigenes
 Konto); das Notanker-Konto bleibt anmeldefähig, aber jede erfolgreiche Anmeldung mit ihm ist ein
 Audit-Ereignis (`LOCAL_BOOTSTRAP_ACCOUNT_LOGIN`) und löst eine Mail an alle übrigen Systemverwalter
-aus. Es ist von der Sperre nach Inaktivität ausgenommen (sein Zweck ist, unbenutzt zu bleiben), kann
-nicht übergeben werden (Entscheidung 12) und wird über `is_bootstrap` identifiziert, nicht über seine
-Adresse — beides darf sich ändern, ohne dass der Notweg verloren geht. Das Handbuch sagt: Passwort
+aus. Es ist **unverletzlich** (Entscheidung 3): keine Sperre (auch nicht durch Inaktivität — sein Zweck
+ist, unbenutzt zu bleiben), kein Ablaufdatum, kein Rollenentzug, keine Löschung, keine Übergabe
+(Entscheidung 12); die Admin-API antwortet auf jeden dieser Versuche mit 409 `BOOTSTRAP_ACCOUNT`.
+Identifiziert wird es über `is_bootstrap`, nicht über seine Adresse — Adresse und Anzeigename dürfen
+sich ändern, ohne dass der Notweg verloren geht. Das Handbuchkapitel aus #1543 wird sagen: Passwort
 versiegelt hinterlegen, persönliche Konten für die tägliche Arbeit.
 
 **Die Erstadministrator-Regel für OIDC-Konten entfällt.** `InitialAdminPolicy` vergibt `SYSTEM_ADMIN`
@@ -254,8 +310,8 @@ der konfigurierten Adresse neu angelegt. Laut protokolliert, auditiert (`LOCAL_A
 Betrieb entfernt die Variable danach. Das ersetzt den **Zugangsweg** von `OPAA_OIDC_BOOTSTRAP=force`;
 die Anbieterreparatur selbst ist künftig die Anmeldung als lokaler Systemverwalter. Die alte Variable
 bleibt bis zum **31.03.2027** funktionsfähig, schreibt bei jeder Verwendung eine `WARN`-Zeile mit
-Ersatz und Entfernungsdatum, und steht mit diesem Datum in der Tabelle „Migrationen aus älteren
-Ständen" des Handbuchs. Die `OPAA_OIDC_*`-Variablen behalten ihre Bootstrap-Rolle für den ersten
+Ersatz und Entfernungsdatum, und kommt mit #1543 mit diesem Datum in die Tabelle „Migrationen aus
+älteren Ständen" des Handbuchs. Die `OPAA_OIDC_*`-Variablen behalten ihre Bootstrap-Rolle für den ersten
 OIDC-Anbieter (ADR-0025) — wer sie setzt, bekommt wie heute den Anbieter gesät; wer sie nicht setzt,
 legt Anbieter über die Oberfläche an, angemeldet als lokaler Systemverwalter.
 
@@ -314,7 +370,8 @@ externer Dienst lokale Tokens prüfen müssen, ist der Wechsel auf RS256 eine Ä
 - **Cookie** `opaa_refresh`: `HttpOnly`, `SameSite=Strict`, `Secure`, `Path=/api/v1/auth/local` — es
   reist nur zu den Refresh-, Logout- und Übergabe-Endpunkten und ist für Skripte unsichtbar.
   `opaa.auth.local.cookie-secure = false` ist für lokales HTTP zulässig, erzeugt im `oidc`-Profil aber
-  bei jedem Start eine `WARN`-Zeile und steht als eigene Zeile in der Härtungstabelle des Handbuchs.
+  bei jedem Start eine `WARN`-Zeile und bekommt mit #1543 eine eigene Zeile in der Härtungstabelle des
+  Handbuchs.
   Das Access-Token hält die SPA nur im Speicher; nichts im `localStorage`.
 - **CSRF** nur dort, wo das Cookie trägt: `POST /api/v1/auth/local/refresh` und `/logout` verlangen ein
   Double-Submit-Token (`CookieCsrfTokenRepository.withHttpOnlyFalse()`, Header `X-XSRF-TOKEN`). Alle
@@ -326,7 +383,7 @@ externer Dienst lokale Tokens prüfen müssen, ist der Wechsel auf RS256 eine Ä
   die Zusicherung aus `access-control.md`, „Sitzungsverwaltung".
 - **Harte Fristen für die Betriebsdaten.** Ein eigener, täglicher `LocalTokenCleanupScheduler`
   (es gibt bislang keinen täglichen Lauf im Backend; die vorhandenen Scheduler laufen minütlich,
-  viertelstündlich oder monatlich) löscht Zeilen der drei Token-Tabellen **spätestens sieben Tage nach
+  alle 60 Sekunden (`RerankModelRole`), viertelstündlich oder monatlich) löscht Zeilen der drei Token-Tabellen **spätestens sieben Tage nach
   Ablauf oder Widerruf**, sperrt Konten nach der Inaktivitätsfrist (Entscheidung 11) und verschickt
   die Ablauf-Erinnerungen. `revocation_reason` ist ein Enum, kein Freitext. Es gibt **keine Oberfläche
   und keine Schnittstelle, die dieses Sitzungsjournal je Person ausgibt**; die in `access-control.md`
@@ -334,7 +391,7 @@ externer Dienst lokale Tokens prüfen müssen, ist der Wechsel auf RS256 eine Ä
   Person selbst, und nicht Teil dieses Epics.
 - **Rücksicherung einer Datenbank** stellt widerrufene Familien, verbrauchte Links und einen nach
   Verdacht geänderten Passworthash wieder her — ein Zustand, den bisher der Identitätsanbieter hielt.
-  Das Handbuch nennt deshalb als verbindlichen Schritt nach jeder Rücksicherung: `OPAA_AUTH_JWT_SECRET`
+  Das Handbuchkapitel aus #1543 nennt deshalb als verbindlichen Schritt nach jeder Rücksicherung: `OPAA_AUTH_JWT_SECRET`
   rotieren (beendet alle lokalen Sitzungen und entwertet alle offenen Links, Entscheidung 6) und
   Sperren und Rücksetzungen seit dem Sicherungszeitpunkt erneut vornehmen. Kein zusätzlicher
   Startschalter: Die Rotation leistet, was ein Purge leisten müsste.
@@ -375,7 +432,7 @@ Systemverwaltung zurückgesetzt" ist etwas anderes als „Bitte legen Sie Ihr er
 Der Aussteller existiert nur im `oidc`-Profil (`@Profile("oidc")`); `DevSecurityConfig` kennt weder
 die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betriebsmodus heißt weiter
 `oidc`, auch wenn er jetzt eine lokale Anmeldung enthält — eine Umbenennung bräche jede
-`SPRING_PROFILES_ACTIVE` im Feld für einen Namen. Das Handbuch nennt `oidc` künftig „Betriebsmodus
+`SPRING_PROFILES_ACTIVE` im Feld für einen Namen. Das Handbuch nennt `oidc` ab #1543 „Betriebsmodus
 (OIDC-Anbieter und lokale Konten)".
 
 ### 9. Sicherheitsmindestmaß
@@ -387,8 +444,8 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
   verrät, ob die Kennung existiert. Argon2id wird nicht gewählt, weil es Bouncy Castle als
   zusätzliche Abhängigkeit zieht und BCrypt für einen Login mit Rate-Limiting und Kontosperre
   ausreicht; die Präfix-Kodierung hält die Tür offen.
-- **Passwortrichtlinie:** mindestens 12 Zeichen (`local_auth_settings.password_min_length`, nie unter
-  8), höchstens 64 Zeichen und 72 Byte (BCrypt verarbeitet 72 Byte), nicht gleich der E-Mail-Adresse,
+- **Passwortrichtlinie:** Mindestlänge aus `local_auth_settings.password_min_length` (Vorgabe 12,
+  konfigurierbar, nie unter 8), höchstens 64 Zeichen und 72 Byte (BCrypt verarbeitet 72 Byte), nicht gleich der E-Mail-Adresse,
   **nicht in der mitgelieferten Sperrliste** der rund 1000 häufigsten Passwörter (Abgleich in
   Kleinschreibung, Datei im Image) — der übliche Ausgleich für den Verzicht auf Komplexitätsregeln.
   **Keine Komplexitätsregeln** (Sonderzeichenpflicht verschiebt Passwörter auf Zettel), kein
@@ -407,14 +464,17 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
 - **Kontosperre** nach 5 Fehlversuchen für 15 Minuten (feste Dauer; eine progressive Verlängerung wäre
   eine spätere Verschärfung), Zähler atomar (`UPDATE … SET n = n + 1`), Sperre auditiert
   (`LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS`) — **der einzelne Fehlversuch nicht**: Er steht nur im
-  technischen Anwendungslog (Konto-Kennung, nie die Adresse; kurze Frist; keine Auswertungsoberfläche)
-  und später in der SIEM-Ausleitung, wie `security-and-compliance.md` es für Sicherheitsereignisse
-  festlegt. Die Fehlversuch-Sperre **schneidet die Selbsthilfe nicht ab**: „Passwort vergessen" bleibt
-  wirksam, und ein erfolgreich eingelöster Rücksetzlink hebt sie auf — der Besitz des Postfachs ist
-  der Nachweis, den die Sperre verlangt. Die Antwort des Logins bleibt in **allen** Fällen dieselbe
-  (falsche Kennung, falsches Passwort, gesperrt, abgelaufen, nicht bestätigt): Würde sie nach
-  korrektem Passwort den Zustand nennen, bestätigte sie einem Angreifer das Passwort eines gesperrten
-  Kontos. Dass und warum ein Konto gesperrt ist, erfährt die Person auf dem Weg, den Entscheidung 11
+  technischen Anwendungslog (Konto-Kennung, nie die Adresse; keine Auswertungsoberfläche) und später in
+  der SIEM-Ausleitung, wie `security-and-compliance.md` es für Sicherheitsereignisse festlegt. Die
+  Aufbewahrung dieses Logs ist Betriebskonfiguration (Log-Rotation des Containers, nicht der
+  Anwendung); das Handbuchkapitel aus #1543 empfiehlt höchstens 90 Tage — eine Empfehlung, keine vom
+  Produkt erzwingbare Zusage. Die Fehlversuch-Sperre **schneidet die Selbsthilfe nicht ab**: „Passwort
+  vergessen" bleibt wirksam, und ein erfolgreich eingelöster Rücksetzlink hebt sie auf — der Besitz des
+  Postfachs ist der Nachweis, den die Sperre verlangt. Die Antwort des Logins bleibt in **allen** Fällen
+  dieselbe (falsche Kennung, falsches Passwort, gesperrt, abgelaufen, nicht bestätigt, **Verwaltung
+  abgeschaltet**): Würde sie nach korrektem Passwort den Zustand nennen, bestätigte sie einem Angreifer
+  das Passwort eines gesperrten Kontos; würde sie bei abgeschalteter Verwaltung anders antworten,
+  verriete sie ohne Passwort die Existenz eines Kontos. Dass und warum ein Konto gesperrt ist, erfährt die Person auf dem Weg, den Entscheidung 11
   festlegt — per Mail zum Zeitpunkt der Handlung und als Grund im Sitzungsmarker.
 - **Sperre nach Inaktivität:** Ein lokales Konto ohne Aktivität über `inactive_days` (Vorgabe 90,
   mindestens 30) wird vom Cleanup-Lauf gesperrt (`locked_reason = INACTIVITY`, Audit
@@ -422,19 +482,48 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
   Systemverwalterkonten eingeschlossen; nur das Notanker-Konto ist ausgenommen. Das ist die eine
   Automatik, die den Satz „lokale Konten laufen am Ausscheideprozess vorbei" entschärft, statt ihn
   nur sichtbar zu machen.
-- **Client-IP nur von vertrauten Proxys.** `X-Forwarded-For` wird ausschließlich ausgewertet, wenn
-  `getRemoteAddr()` in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` liegt; die Vorgabe ist **leer** (Header
-  ignoriert). Der bestehende `RateLimitFilter` liest den Header heute ungeprüft — hinter dem
-  Compose-nginx kann damit jeder Client seinen Bucket frei wählen. Er wird auf dieselbe Auflösung
-  umgestellt; der Compose-Stack bekommt ein festes Subnetz und eine passende Vorgabe in
-  `.env.docker.example`. Weil das Fehlerbild einer leeren Liste hinter einem Proxy still ist (alle
-  Clients teilen einen Bucket: „zehn Anmeldungen pro Minute für das ganze Haus"), schreibt der Start
-  im `oidc`-Profil bei leerer Liste eine `WARN`-Zeile mit der Folge im Klartext, lehnt `0.0.0.0/0`
-  und `::/0` ab, und die Diagnose-Ansicht zeigt die aufgelöste Client-Adresse der eigenen Anfrage.
+- **Client-IP nur von vertrauten Proxys — und dafür muss OPAA die `X-Forwarded-*`-Auflösung selbst
+  in die Hand nehmen.** Heute setzt `application.yml` `server.forward-headers-strategy: framework`
+  (#553: Same-Origin-Erkennung hinter einem TLS-terminierenden Proxy — Springs CORS-Prüfung vergleicht
+  den `Origin`-Header mit Schema, Host und Port der Anfrage). Spring Boot registriert dafür
+  `ForwardedHeaderFilter` auf `Ordered.HIGHEST_PRECEDENCE`, also vor jedem anderen Filter, und dessen
+  Wrapper **überschreibt `getRemoteAddr()` mit dem linkesten `X-Forwarded-For`-Eintrag** und entfernt
+  die Header (spring-web 7.0.9, `ForwardedHeaderExtractingRequest#getRemoteAddr`,
+  `ForwardedHeaderUtils#parseForwardedFor`). Der bestehende `RateLimitFilter` liest den Header damit
+  gar nicht mehr selbst — er **erbt die Fälschung über `getRemoteAddr()`**: Hinter dem Compose-nginx,
+  der mit `$proxy_add_x_forwarded_for` **anhängt**, steht der vom Client mitgeschickte Wert links, und
+  jeder Client wählt seinen Bucket frei. Eine Vertrauensprüfung „Peer-Adresse im Proxy-CIDR" auf
+  `getRemoteAddr()` verglichen einen gefälschten Wert gegen sich selbst. Deshalb:
+  `server.forward-headers-strategy` wird auf **`none`** gestellt, und OPAA registriert einen eigenen
+  `TrustedProxyForwardedHeaderFilter` auf `Ordered.HIGHEST_PRECEDENCE`, der (1) die **unverpackte
+  Peer-Adresse** liest, bevor irgendetwas umgeschrieben ist, (2) nur bei einem Peer aus
+  `OPAA_TRUSTED_PROXY_CIDRS` die `X-Forwarded-Proto`/`-Host`/`-Port`-Auswertung an Springs
+  `ForwardedHeaderFilter` delegiert (damit #553 weiter gilt) und sonst alle `X-Forwarded-*`-Header
+  verwirft (`removeOnly`), und (3) die Client-Adresse selbst bestimmt — **rechts nach links** über die
+  `X-Forwarded-For`-Kette, jeden Eintrag aus der Proxy-Liste überspringend, der erste nicht vertraute
+  ist der Client — und sie als `getRemoteAddr()` und Request-Attribut bereitstellt. Rechts-nach-links
+  statt „linkester Eintrag" (qnop, Springs Filter) ist der Unterschied zwischen einem Proxy, der
+  überschreibt, und einem, der anhängt: Beide Formen werden richtig gelesen, und die Handbuchauflage
+  „`X-Forwarded-For` mit `$remote_addr` überschreiben" wird zur Empfehlung statt zur Bedingung. Die
+  Variable heißt `OPAA_TRUSTED_PROXY_CIDRS` (nicht `OPAA_RATE_LIMIT_…`), weil sie jetzt Schema, Host
+  **und** Adresse regelt; die Vorgabe ist **leer** — dann ist kein `X-Forwarded-*` wirksam, was dem
+  heutigen Verhalten ohne Proxy entspricht und die im `application.yml`-Kommentar und im Handbuch
+  bisher nur als Betreiberpflicht formulierte Spoofing-Gefahr (`X-Forwarded-Proto` gegen die
+  CORS-Prüfung) technisch schließt. **Für Bestandsinstallationen hinter einem Reverse-Proxy ist das
+  ein Migrationsschritt:** Ohne gesetzte Liste erkennt das Backend Same-Origin-Anfragen hinter einem
+  TLS-Proxy nicht mehr (Zustand vor #553); der Compose-Stack bekommt ein festes Subnetz und die passende
+  Vorgabe in `.env.docker.example`, das Handbuch den Schritt in „Aktualisierung auf einen neuen
+  `main`-Stand" und die Variablentabelle (#1543). Weil das Fehlerbild einer leeren Liste hinter einem
+  Proxy still ist (alle Clients teilen einen Bucket, und Same-Origin schlägt fehl), schreibt der Start
+  im `oidc`-Profil bei leerer Liste eine `WARN`-Zeile mit der Folge im Klartext, lehnt `0.0.0.0/0` und
+  `::/0` ab, und die Diagnose-Ansicht zeigt Peer-Adresse und aufgelöste Client-Adresse der eigenen
+  Anfrage. `RateLimitFilter` und `ClientIpResolver` lesen danach nur noch `getRemoteAddr()`.
 - **Netzbeschränkung für lokale Systemverwalter** als Kompensation, solange es keinen zweiten Faktor
   gibt: `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (leer = keine Beschränkung) lässt die Anmeldung lokaler
-  `SYSTEM_ADMIN`-Konten nur aus den genannten Netzen zu — dieselbe CIDR-Auswertung auf derselben
-  aufgelösten Client-Adresse, kein neuer Mechanismus. Reguläre lokale Konten sind nicht betroffen.
+  `SYSTEM_ADMIN`-Konten nur aus den genannten Netzen zu — dieselbe CIDR-Auswertung auf derselben,
+  wie oben aufgelösten Client-Adresse, kein neuer Mechanismus; hinter einem Proxy setzt sie
+  `OPAA_TRUSTED_PROXY_CIDRS` voraus, sonst vergleicht sie die Proxy-Adresse. Reguläre lokale Konten
+  sind nicht betroffen.
 - **Kein Geheimnis im Log** außer dem Einmalpasswort des Seeds (Entscheidung 5): keine Roh-Tokens,
   keine Passwörter, keine SMTP-Passwörter; ein Test nach dem Muster von qnops `LogPrivacyTest`
   belegt es — und prüft zugleich die Regel aus Entscheidung 13, dass kein Protokollsatz Adressen,
@@ -488,8 +577,8 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
   zu; `EmailLayoutBuilder` liefert den gebrandeten HTML-Rahmen aus `BrandingSettings` (Produktname,
   Farbe). Vorlagen-API mit Vorschau, Zurücksetzen und Testversand.
 - **Verhältnis zu #1297:** Der Kanal E-Mail des Benachrichtigungssystems nutzt `MailService` und die
-  Registry unverändert und ergänzt Vorlagen und gegebenenfalls einen Digest. ADR-0019 bleibt gültig;
-  er erhält den Hinweis, dass ein Mail-Sender existiert.
+  Registry unverändert und ergänzt Vorlagen und gegebenenfalls einen Digest. ADR-0019 bleibt gültig
+  und trägt seit diesem ADR den Nachtrag, dass ein Mail-Sender entsteht.
 
 ### 11. Kontolebenszyklus: Einladung, Zurücksetzen mit Link-Rückfall, Sperren als Regelweg, kein stiller Eingriff, Löschen nach dem DSGVO-Pfad
 
@@ -515,9 +604,10 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
   vorsieht. Sperren widerruft alle Sitzungen sofort und hebt eine Fehlversuch-Sperre auf; Entsperren
   setzt Zähler zurück. Selbstsperre und Sperre, Ablauf, Rollenentzug oder Löschung des **letzten
   anmeldefähigen Systemverwalters** werden abgelehnt (409 `SELF_LOCKOUT`,
-  `LAST_LOGIN_CAPABLE_ADMIN`) — über den Guard aus Entscheidung 4. Rollenänderungen an lokalen Konten
-  laufen über die bestehenden Rollenereignisse (`SYSTEM_ADMIN_ROLE_GRANTED`/`_REVOKED`,
-  `AUDITOR_*`), nicht über ein zweites.
+  `LAST_LOGIN_CAPABLE_ADMIN`) — über den Guard aus Entscheidung 4; jede dieser Aktionen am
+  Notanker-Konto wird unabhängig davon abgelehnt (409 `BOOTSTRAP_ACCOUNT`, Entscheidung 3).
+  Rollenänderungen an lokalen Konten laufen über den bestehenden Rollenendpunkt und die bestehenden
+  Rollenereignisse (`SYSTEM_ADMIN_ROLE_GRANTED`/`_REVOKED`, `AUDITOR_*`), nicht über ein zweites.
 - **Kein stiller Eingriff.** Jeder Verwaltungsakt an einem Konto wird der Person mitgeteilt — per Mail
   zum Zeitpunkt der Handlung (`ACCOUNT_LOCKED` bei Sperre durch Verwalter oder Inaktivität,
   `ACCOUNT_UNLOCKED`, `ADMIN_PASSWORD_RESET`, `ACCOUNT_EXPIRING` 14 Tage vor dem Ablauf,
@@ -553,13 +643,14 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
   „Selbstregistrierung", Konto bis zur Bestätigung (`VERIFY_EMAIL`, 24 Stunden) nicht anmeldefähig;
   bei belegter Adresse entsteht kein zweites Konto, die Antwort ist identisch (202); keine Hinweis-Mail
   an die belegte Adresse (sie wäre selbst ein Aufzählungskanal). Das Einschalten ist ein Audit-Ereignis
-  und nach `security-and-compliance.md` ein Punkt der Dienstvereinbarung; das Handbuch sagt das.
+  und nach `security-and-compliance.md` ein Punkt der Dienstvereinbarung; das Handbuchkapitel aus #1543 sagt das.
 - **Passwort vergessen** nur bei `password_reset_enabled` und gesetzter Basis-URL: immer 204 nach
   konstanter Zeitklasse, unabhängig davon, ob ein aktives Konto existiert; Konten mit
   Verwalter- oder Inaktivitätssperre, abgelaufene und eingeladene Konten erhalten keine Mail — ein
-  Konto in Fehlversuch-Sperre schon (Entscheidung 9). **Abgeschaltete Flüsse antworten 404 wie eine
-  unbekannte Route**, damit ihre Existenz nicht sondiert wird; die SPA kennt den Zustand aus
-  `/auth/config`.
+  Konto in Fehlversuch-Sperre schon (Entscheidung 9). **Abgeschaltete Flüsse antworten 404** — als
+  schlichte „Route nicht aktiv"-Antwort, nicht als Tarnung: Ob ein Fluss aktiv ist, steht ohnehin im
+  öffentlichen `/auth/config` (Entscheidung 4), weil die SPA es wissen muss. Ein 404 verrät also
+  nichts, was nicht schon bekannt ist, und hält nur die Fehlerbehandlung der Clients einfach.
 - **Passwort ändern** (mit aktuellem Passwort) steht jedem lokalen Konto in den
   Benutzereinstellungen offen und widerruft die übrigen Sitzungen.
 
@@ -579,13 +670,20 @@ nicht vertippen kann:
    und auditiert `LOCAL_USER_HANDOVER_REQUESTED`. Das lokale Konto bleibt bis zur Einlösung benutzbar.
 2. **Die Person löst ein:** Der Link führt auf eine Seite der SPA, die den Code-Flow beim gewählten
    Anbieter startet; nach dem Callback ruft die SPA `POST /api/v1/auth/local/handover/redeem` mit dem
-   **Token des Anbieters** und dem Übergabecode auf. Dieser Endpunkt liegt **vor** der Provisionierung
-   (er legt nie ein Konto an), prüft das Anbieter-Token wie jedes andere über die Registry, verlangt,
-   dass unter `(issuer, subject)` **noch kein Konto** existiert (sonst 409 — es wird nichts
-   zusammengeführt; wer sich vorher schon über den Anbieter angemeldet hat, hat zwei Konten und keinen
-   Übergabeweg), und schreibt dann atomar `users.issuer`/`users.subject` auf die Identität aus dem
-   Token um, löscht `local_credentials` und alle Tokens des Kontos, widerruft dessen Sitzungen und
-   verbraucht den Code. Die Einlöseseite zeigt vorher, was mitgeht (persönlicher Space, Zahl der
+   **Token des Anbieters im Request-Body** (nicht im `Authorization`-Header) und dem Übergabecode auf.
+   Das ist nötig, weil `UserProvisioningFilter` hinter `BearerTokenAuthenticationFilter` für **jede**
+   Anfrage mit `Jwt`-Principal `UserService#provisionFromToken` ruft und ein unbekanntes
+   `(issuer, subject)` **anlegt** — ein Anbieter-Token im Header hätte das Konto erzeugt, bevor der
+   Controller läuft, und die Übergabe wäre nie einlösbar. Der Endpunkt ist deshalb `permitAll`, ohne
+   Bearer-Authentifizierung, prüft das Token aus dem Body selbst über `OidcProviderRegistry` (derselbe
+   Decoder, dieselben Validatoren wie im Resource-Server, inklusive `azp`), verlangt, dass unter
+   `(issuer, subject)` **noch kein Konto** existiert (sonst 409 — es wird nichts zusammengeführt; wer
+   sich vorher schon über den Anbieter angemeldet hat, hat zwei Konten und keinen Übergabeweg), und
+   schreibt dann atomar `users.issuer`/`users.subject` auf die Identität aus dem Token um, löscht
+   `local_credentials` und alle Tokens des Kontos, widerruft dessen Sitzungen und verbraucht den Code.
+   Die Einlöseseite der SPA darf zwischen OIDC-Callback und `redeem` **keinen** authentifizierten
+   Aufruf absetzen (auch nicht `/auth/me`) — sie hält das Anbieter-Token nur für diesen einen Aufruf
+   und lädt die Sitzung erst danach regulär. Die Einlöseseite zeigt vorher, was mitgeht (persönlicher Space, Zahl der
    Mitgliedschaften, Systemrolle) — es sind die eigenen Inhalte der Person. Danach
    `ACCOUNT_HANDED_OVER` an die Adresse und Audit `LOCAL_USER_HANDED_OVER` mit der Anbieter-Kennung
    und den Zahlen, **nie mit dem Subject**.
@@ -687,14 +785,15 @@ unangetastet — sie sind für den Verzeichnis-Lebenszyklus reserviert.
 - Das Einmalpasswort steht bei einer Neuinstallation einmal im Log. Log-Weiterleitungen sehen es; der
   erzwungene Wechsel und `OPAA_INITIAL_ADMIN_PASSWORD` sind die Gegenmittel, kein Ausschluss.
 - Lokale Konten laufen am Verzeichnis vorbei. Sperre nach Inaktivität, Pflicht-Anlagegrund,
-  Ablaufdatum, Erinnerungen und Wiedervorlage machen das beherrschbar; das Handbuch empfiehlt, die
+  Ablaufdatum, Erinnerungen und Wiedervorlage machen das beherrschbar; das Handbuch (#1543) empfiehlt, die
   Verwaltung im Regelbetrieb aus zu lassen und Systemverwalterkonten zu befristen.
 - Der letzte OIDC-Anbieter kann deaktiviert werden. Ein Verwalter, der das bestätigt, sperrt alle
   Nutzer außer den lokalen Konten aus — beabsichtigt, geprüft, aber ein größerer Hebel als bisher.
 - Bestandsinstallationen haben nach dem Update einen Startabbruch, bis `OPAA_AUTH_JWT_SECRET` gesetzt
-  ist, und drei weitere Variablen sind dringend empfohlen (`OPAA_PUBLIC_BASE_URL`,
-  `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS`, ein echter Wert für `OPAA_INITIAL_ADMIN_EMAIL`); das Handbuch
-  trägt sie als Vorbereitungsschritte.
+  ist; hinter einem Reverse-Proxy **müssen** sie zusätzlich `OPAA_TRUSTED_PROXY_CIDRS` setzen, sonst
+  erkennt das Backend Same-Origin-Anfragen hinter einem TLS-Proxy nicht mehr (Entscheidung 9), und
+  zwei weitere Variablen sind dringend empfohlen (`OPAA_PUBLIC_BASE_URL`, ein echter Wert für
+  `OPAA_INITIAL_ADMIN_EMAIL`); das Handbuch trägt sie als Vorbereitungsschritte (#1543).
 - Mehr Mails: Sperre, Entsperrung, Zurücksetzen, Ablauf, Übergabe, Notanker-Nutzung, Wiedervorlage —
   jede davon ist ein Vorlagenschlüssel, den die Verwaltung anpassen kann, aber es sind zwölf Vorlagen
   statt fünf.
@@ -703,16 +802,20 @@ unangetastet — sie sind für den Verzeichnis-Lebenszyklus reserviert.
 ### Neutral
 
 - `OPAA_INITIAL_ADMIN_EMAIL` wechselt die Bedeutung von „E-Mail, die beim ersten OIDC-Login Admin
-  wird" zu „E-Mail des lokalen Notanker-Kontos"; der Name bleibt, der Vorgabewert entfällt.
+  wird" zu „E-Mail des lokalen Notanker-Kontos"; der Name bleibt, der Vorgabewert bleibt in
+  `application.yml` (für den `dev`-Modus) und entfällt nur in `.env.docker.example` und `.env.example`.
+- `server.forward-headers-strategy` wechselt von `framework` auf `none`; die Auflösung übernimmt der
+  eigene, durch `OPAA_TRUSTED_PROXY_CIDRS` gesteuerte Filter (Entscheidung 9).
 - `OPAA_OIDC_BOOTSTRAP=force` wird bis zum 31.03.2027 durch `OPAA_LOCAL_ADMIN_RESET=force` und die
   lokale Anmeldung abgelöst.
 - ADR-0021 erhält neue prozesslokale Fundstellen (lokaler Decoder in der Registry, `jti`-Denylist,
   Rate-Limit-Buckets der Auth-Endpunkte, `MailSenderProvider`-Cache, Snapshots von `mail_settings` und
   `local_auth_settings`) und den `LocalTokenCleanupScheduler`.
 - `docs/features/access-control.md` („Anmeldung und Identität") und
-  `docs/features/security-and-compliance.md` (geschlossene Ereignisliste, „Was ausdrücklich nicht
-  protokolliert wird", „Export und Auskunft") sind mit diesem ADR nachgezogen;
-  `docs/features/user-frontends.md` trägt den Hinweis. Die Absätze „gebaut" folgen mit den Sub-Issues.
+  `docs/features/security-and-compliance.md` (geschlossene Ereignisliste einschließlich der
+  `MAIL_*`-Ereignisse, Umsetzungsstand, „Was ausdrücklich nicht protokolliert wird", „Export und
+  Auskunft") sind mit diesem ADR nachgezogen; `docs/features/user-frontends.md` und ADR-0019 tragen
+  den Hinweis. Die Absätze „gebaut" folgen mit den Sub-Issues; `demo/` zieht mit #1543 nach.
 
 ## Stakeholder-Bewertung
 
@@ -753,19 +856,23 @@ ausdrücklich mitgetragene Ausnahme. **Nicht übernommen:** ein Vier-Augen-Prinz
 (die Person selbst ist die zweite Partei), die Nennung des Kontozustands nach korrektem Passwort
 (bestätigte einem Angreifer das Passwort eines gesperrten Kontos; die Unterrichtung läuft per Mail und
 Sitzungsmarker) und das Sperren des Notanker-Kontos nach der Einrichtung (es bleibt anmeldefähig,
-seine Nutzung ist auditiert und wird allen Systemverwaltern gemeldet). Die zwölf Bedingungen für eine
-Zustimmung sind im ADR abgebildet; die als Regelung (nicht als Produkt) zu treffenden — Unterrichtung
-des Personalrats vor dem Einschalten der Schalter, jährliche Vorlage des Auszugs — gehören ins
-Handbuch (#1543).
+seine Nutzung ist auditiert und wird allen Systemverwaltern gemeldet). Von den zwölf Bedingungen für
+eine Zustimmung sind **zehn** im ADR abgebildet; Bedingung 6 (Vier-Augen für die Übergabe) und
+Bedingung 12 (Sperren des Notanker-Kontos nach der Einrichtung) sind mit der Begründung oben **nicht**
+übernommen, und Bedingung 2 verlangt für das technische Log der Fehlversuche eine Frist von höchstens
+90 Tagen als Produkteigenschaft, die OPAA nicht erzwingen kann (Log-Rotation ist Betriebskonfiguration)
+— sie steht als Empfehlung im Handbuch (#1543). Die als Regelung (nicht als Produkt) zu treffenden
+Punkte — Unterrichtung des Personalrats vor dem Einschalten der Schalter, jährliche Vorlage des
+Auszugs — gehören ebenfalls ins Handbuch (#1543).
 
 ## Zuschnitt der Sub-Issues (gegen diesen ADR geprüft)
 
 | Issue | Folgt aus diesem ADR | Zu korrigieren |
 | --- | --- | --- |
-| #1532 Schema und Krypto | 1:1-Tabelle `local_credentials` mit `is_bootstrap`, `password_change_reason`, `locked_reason` inkl. `INACTIVITY`, `created_reason NOT NULL varchar(200)` (3); drei Token-Tabellen mit `HANDOVER`-Zweck und Enum-Gründen (3); `local_auth_settings` (3); `provider_type` mit den drei `CHECK`s (4); BCrypt 12 hinter `DelegatingPasswordEncoder` (9); HKDF mit drei Zwecken, `@ValidSecret`, TTL-Obergrenzen (6, 7) | `local_auth_settings` und `mail_settings`-Statusspalten ergänzen; Passwortmaximum 64 Zeichen/72 Byte statt 200; Aktionstoken mit HMAC statt SHA-256 |
+| #1532 Schema und Krypto | 1:1-Tabelle `local_credentials` mit `is_bootstrap`, `password_change_reason`, `locked_reason` inkl. `INACTIVITY`, `created_reason NOT NULL varchar(200)` (3); drei Token-Tabellen mit `HANDOVER`-Zweck und Enum-Gründen (3); `local_auth_settings` (3); `provider_type` mit den `CHECK`s `provider_type IN ('OIDC','LOCAL')`, `OIDC ⇒ client_id NOT NULL`, `LOCAL ⇒ is_default = false` und dem partiellen Unique-Index „höchstens eine `LOCAL`-Zeile" (4); BCrypt 12 hinter `DelegatingPasswordEncoder` (9); HKDF mit drei Zwecken, `@ValidSecret`, TTL-Obergrenzen (6, 7) | `local_auth_settings` und `mail_settings`-Statusspalten ergänzen; Passwortmaximum 64 Zeichen/72 Byte statt 200; Aktionstoken mit HMAC statt SHA-256 |
 | #1533 Token-Aussteller | Claims, Fristen inkl. Höchstdauer, Cookie, CSRF, Rotation, Widerruf (6, 7), Marker mit Gründen und Finder-Regel (8), `pcr`-Filter mit Anlass (8), `LocalTokenCleanupScheduler` (7) | Aufräumlauf, Höchstdauer je Familie, Admin-Fristen, `WARN` bei `cookie-secure = false`, Marker-Gründe; `change-password` stellt sofort ein neues Token aus; keine Audits für Login/Logout/Ablauf (13) |
-| #1534 Erstadministrator | Seed mit Bestandsfall `INVITED`, Ablehnung des Vorgabewerts, `is_bootstrap`, Notanker-Login auditiert und gemeldet, `InitialAdminPolicy` nur Dev, Wiederanlauf legt neu an, `LocalAdminAvailabilityGuard` ersetzt den heutigen Zähler, letzter OIDC-Anbieter nur mit Guard **und** `acknowledgeLastProvider` (4, 5) | Bestandsfall, Vorgabewert, Guard als gemeinsamer Dienst, Datum 31.03.2027 mit `WARN`, Netzbeschränkung `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (9) |
-| #1535 Rate-Limiting | Grenzen inkl. globaler Grenze, Trusted-Proxy mit `WARN`/Ablehnung `0.0.0.0/0`, Diagnose-Anzeige, Kontosperre 5/15 min, Fehlversuche nur ins Anwendungslog (9) | globale Grenze, `WARN`, Diagnose; **kein** Audit je Fehlversuch; Rücksetzweg bleibt bei Fehlversuch-Sperre offen |
+| #1534 Erstadministrator | Seed vor dem OIDC-Seed (`@Order`), Bestandsfall allein über „`users` nicht leer", `LOCAL`-Zeile immer, Ablehnung des Vorgabewerts nur für das Konto, `is_bootstrap` mit Unverletzlichkeit (409 `BOOTSTRAP_ACCOUNT`), Notanker-Login auditiert und gemeldet, `InitialAdminPolicy` nur Dev, Wiederanlauf legt neu an, `LocalAdminAvailabilityGuard` als gemeinsamer Dienst mit `lockRoleChanges` in jedem Weg — einschließlich `UserService#updateRole` (#1349 geht darin auf) und `TokenRoleSynchronizer` —, letzter OIDC-Anbieter nur mit Guard **und** `acknowledgeLastProvider`, `is_default` bleibt, `TrustedProvider` nur aktiviert (4, 5) | Reihenfolge und Kriterium des Bestandsfalls; `LOCAL`-Zeile unabhängig vom Konto; Unverletzlichkeit des Notankers; Guard auch am generischen Rollenendpunkt und im Token-Pfad; `findByDefaultProviderTrueAndEnabledTrue`; Datum 31.03.2027 mit `WARN`; Netzbeschränkung `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (9) |
+| #1535 Rate-Limiting | `server.forward-headers-strategy: none` und `TrustedProxyForwardedHeaderFilter` auf `HIGHEST_PRECEDENCE` (Peer-Adresse vor der Umschreibung, `X-Forwarded-*` nur bei vertrautem Peer, Rechts-nach-links-Auflösung, `removeOnly` sonst), `OPAA_TRUSTED_PROXY_CIDRS` statt `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS`, Grenzen inkl. globaler Grenze, `WARN`/Ablehnung `0.0.0.0/0`, Diagnose-Anzeige mit Peer- und Client-Adresse, Kontosperre 5/15 min, Fehlversuche nur ins Anwendungslog (9) | eigener Filter statt Boot-`ForwardedHeaderFilter` (der Befund: `getRemoteAddr()` ist heute selbst der gefälschte Wert); Variable umbenannt; Test „gefälschtes `X-Forwarded-For` hinter nicht vertrautem Peer ändert weder Bucket noch Schema"; **kein** Audit je Fehlversuch; Rücksetzweg bleibt bei Fehlversuch-Sperre offen |
 | #1536 Mail | `mail_settings` mit Statusspalten, `OPAA_PUBLIC_BASE_URL` als Umgebung und Vorbedingung, `SendResult`, sichtbares Scheitern, Health-Indikator, Registry mit zwölf Schlüsseln, JMustache (10) | Statusspalten, Log-Zeile je `Failed`, Health-Indikator, sieben weitere Vorlagen |
 | #1537 Admin-API | Einladung mit Link-Rückfall und Zustellweg, Zurücksetzen, Sperren als Regelweg, Anlagegrund Pflicht und zweckgebunden, Ablauf mit Erinnerungen, Kontenliste nur lokal ohne Export, Aktivität als Klasse, Guard, `local_auth_settings`-API mit Domänen und Fristen (4, 11) | `created_reason` Pflicht/200 Zeichen/für die Person sichtbar; Zustellweg im Protokoll; Liste nur lokal, Seitengröße ≤ 50, kein Export; `DELETE` nur ohne Besitz; Mails bei Sperre/Entsperrung/Zurücksetzen; Vorher/Nachher nur für `expires_at` |
 | #1538 Selbstbedienung | `set-password` für beide Zwecke, `forgot-password` 204 konstant und offen bei Fehlversuch-Sperre, Registrierung nur mit Domänenliste und Pflicht-Ablauf, 404 für abgeschaltete Flüsse (11) | Domänenliste, Pflicht-Ablauf, fester Anlagegrund; Fehlversuch-Sperre blockiert den Rücksetzweg nicht; keine Hinweis-Mail an belegte Adressen |
@@ -773,7 +880,7 @@ Handbuch (#1543).
 | #1540 Selbstbedienungsseiten | eine Seite für Einladung und Zurücksetzen, Richtlinie sichtbar, Sperrliste im Feldfehler, Anlagegrund in den eigenen Einstellungen (9, 11) | Maximum 64 Zeichen; Anlagegrund einsehbar |
 | #1541 Benutzerverwaltung | Zustände mit Grund, Schalter mit Konsequenz-Dialog und Vorbedingungen (Basis-URL, Domänenliste), Filter statt Zähler, Aktivität als Klasse, kein Export (4, 11) | **nur lokale Konten**; Aktivität als Klasse ohne Sortierung; kein Export; Aktion „Übergabe anstoßen" mit Pflicht-Anlass; Konsequenz-Dialog des letzten OIDC-Anbieters zeigt den Guard-Fehler |
 | #1542 E-Mail-Einstellungen | Maskierung `***`, Testversand, „letzter Erfolg / letzter Fehler", Vorlagen mit Vorschau (10) | Statusanzeige; Hinweis und Sperre der Schalter ohne `OPAA_PUBLIC_BASE_URL` |
-| #1543 E2E und Handbuch | E2E-Ziel ohne Keycloak, Handbuchkapitel, Variablen (5, 6, 9, 10) | Vorbereitungsschritte für Bestandsinstallationen (`OPAA_AUTH_JWT_SECRET` mit Erzeugungsbefehl, echter Wert für `OPAA_INITIAL_ADMIN_EMAIL`, Proxy-Liste), Härtungskapitel-Absatz zum JWT-Secret ersetzen, Härtungstabelle um `cookie-secure`, Tabelle „Migrationen aus älteren Ständen" mit 31.03.2027, Nacharbeit nach Rücksicherung, Notanker-Prozedur (versiegeltes Passwort, persönliche Konten), Dienstvereinbarungs-Hinweise (Schalter, Auszug vor dem Einschalten, jährliche Vorlage), MFA-Folgeschritt, `oidc` als „Betriebsmodus" |
+| #1543 E2E und Handbuch | E2E-Ziel ohne Keycloak, Handbuchkapitel, Variablen, **Demo-Stack** (5, 6, 9, 10) | Vorbereitungsschritte für Bestandsinstallationen (`OPAA_AUTH_JWT_SECRET` mit Erzeugungsbefehl, echter Wert für `OPAA_INITIAL_ADMIN_EMAIL`, `OPAA_TRUSTED_PROXY_CIDRS` hinter jedem Reverse-Proxy — sonst keine Same-Origin-Erkennung mehr), Härtungskapitel-Absatz zum JWT-Secret ersetzen, Hinweis zu `forward-headers-strategy` in „Netzwerkzugang" umschreiben, Härtungstabelle um `cookie-secure`, Tabelle „Migrationen aus älteren Ständen" mit 31.03.2027 und der umbenannten Proxy-Variable, Nacharbeit nach Rücksicherung, Notanker-Prozedur (versiegeltes Passwort, persönliche Konten), Empfehlung „technisches Log höchstens 90 Tage", Dienstvereinbarungs-Hinweise (Schalter, Auszug vor dem Einschalten, jährliche Vorlage), MFA-Folgeschritt, `oidc` als „Betriebsmodus"; **Demo:** `demo/seed/seed.py` meldet sich als Notanker an und vergibt `demo-admin` die Rolle, `demo/README.md`, `e2e/demo-smoke.env` (`OPAA_INITIAL_ADMIN_PASSWORD`), `docs/features/demo-instance.md`, `.env.example` |
 | **neu** | Übergabe eines lokalen Kontos an eine Anbieteridentität, zweistufig (12) — Sub-Issue nach #1537, #1538 und #1539 | anzulegen |
 
 ## Verworfene Alternativen
@@ -832,7 +939,18 @@ Handbuch (#1543).
   „ich habe es vergessen" braucht, und macht die Sperre zur wiederholbaren Aussperrung durch Dritte
   (9, 11).
 - **`X-Forwarded-For` unverändert ungeprüft lassen:** hinter dem Compose-nginx wäre jede IP-Grenze am
-  Login wirkungslos (9).
+  Login wirkungslos (9). **`forward-headers-strategy: framework` behalten und nur die Adresse
+  gegenprüfen:** Springs Filter läuft auf `HIGHEST_PRECEDENCE` und überschreibt `getRemoteAddr()` vor
+  jedem eigenen Filter; die Peer-Adresse ist danach nicht mehr zugänglich, und eine Prüfung verglichen
+  den gefälschten Wert gegen sich selbst. **`none` ohne Ersatz:** verlöre die Same-Origin-Erkennung
+  hinter TLS-Proxys (#553). **Linkester `X-Forwarded-For`-Eintrag** (qnop, Springs Filter): falsch,
+  sobald der vertraute Proxy anhängt statt überschreibt (9).
+- **`is_default` beim Deaktivieren des letzten OIDC-Anbieters räumen:** dann müsste der Verwalter beim
+  Wiedereinschalten den Verzeichnis-Anbieter neu wählen; die Zeile behält das Kennzeichen, nur
+  `TrustedProvider` verlangt zusätzlich `enabled` (4).
+- **Notanker-Konto wie jedes andere sperr-, befrist- und löschbar:** dann wäre die Invariante an eine
+  Zählung gebunden, die OIDC-Konten mitzählt, deren Anmeldefähigkeit OPAA nicht kennt; ein
+  unverletzliches Konto ist der Anker, an dem die Zusage tatsächlich hängt (3, 4).
 - **SMTP-Einstellungen in der Umgebung:** kein Testversand aus der Oberfläche, Neustart je Änderung;
   die Datenbank mit Snapshot ist das Muster der Anbieter (10).
 - **Basis-URL als Verwaltungseinstellung** (qnop `general.base_url`): über eine kompromittierte

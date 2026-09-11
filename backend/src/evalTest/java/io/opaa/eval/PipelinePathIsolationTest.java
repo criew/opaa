@@ -55,7 +55,7 @@ class PipelinePathIsolationTest {
                 + "committed raw-vector baselines' measurementContractVersion or "
                 + "BaselineComparator's fixed-point list being updated to match — reconcile all "
                 + "four rather than adjusting only this assertion")
-        .isEqualTo(9);
+        .isEqualTo(10);
   }
 
   @Test
@@ -72,10 +72,11 @@ class PipelinePathIsolationTest {
     // #1357 (HtmlDocumentFormat#version() 2 -> 3 and ConfluenceStorageFormat#version() 1 ->
     // 2, list items with block content keep their marker), plus 1 from issue #1429
     // (fullTextIndexComplete renamed to fullTextIndexUpToDate and narrowed to the version
-    // backlog) — counted independently of the raw-vector path above, whose own count (2 plus the
-    // same #1144/#1164/#1183/#1070/#1242/#1315/#1357 bumps) moves for unrelated reasons at
+    // backlog), plus 1 from issue #1522 (ollamaImage became a checked fixed point) — counted
+    // independently of the raw-vector path above, whose own count (2 plus the same
+    // #1144/#1164/#1183/#1070/#1242/#1315/#1357/#1522 bumps) moves for unrelated reasons at
     // unrelated points in its history.
-    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(12);
+    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(13);
   }
 
   @Test
@@ -184,6 +185,47 @@ class PipelinePathIsolationTest {
       assertThat(baseline.pipelineMeasurementContractVersion())
           .isEqualTo(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION);
       assertThat(baseline.groups()).containsKey(Baseline.OVERALL);
+    }
+  }
+
+  /**
+   * Issue #1522's watchdog, the same shape as the fingerprint one below: the pinned Ollama image is
+   * a Java constant, the committed baselines are JSON files, and nothing else connects the two. A
+   * deliberate image bump that forgets the baselines would otherwise surface only as a fixed-point
+   * mismatch 70 minutes into the nightly Docker job - reported as "Messgrundlage geändert" for
+   * every domain at once.
+   */
+  @Test
+  void committedBaselinesNameThePinnedOllamaImage() throws java.io.IOException {
+    for (EvalDomainConfig domain :
+        List.of(
+            EvalDomainConfig.COMIC_CHARACTERS,
+            EvalDomainConfig.CITY_LANDMARKS,
+            EvalDomainConfig.VERWALTUNG)) {
+      assertThat(
+              Baseline.load(
+                      RepoPaths.evalDir().resolve("baseline").resolve(domain.baselineFileName()))
+                  .fixedPoints()
+                  .ollamaImage())
+          .as(
+              "%s: the harness pin moved without this baseline's ollamaImage (and, per ADR-0012 "
+                  + "Nachtrag Ollama-Herkunft, its measurementContractVersion) being updated to "
+                  + "match - a baseline may only name the Ollama it was actually measured with",
+              domain.baselineFileName())
+          .isEqualTo(EvalOllamaEndpoint.PINNED_IMAGE);
+
+      assertThat(
+              PipelineBaseline.load(
+                      RepoPaths.evalDir()
+                          .resolve("baseline")
+                          .resolve(domain.pipelineBaselineFileName()))
+                  .fixedPoints()
+                  .ollamaImage())
+          .as(
+              "%s: the harness pin moved without this baseline's ollamaImage (and its "
+                  + "pipelineMeasurementContractVersion) being updated to match",
+              domain.pipelineBaselineFileName())
+          .isEqualTo(EvalOllamaEndpoint.PINNED_IMAGE);
     }
   }
 

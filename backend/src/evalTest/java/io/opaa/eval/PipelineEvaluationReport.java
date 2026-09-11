@@ -103,8 +103,13 @@ public record PipelineEvaluationReport(
    * Narrowed definitions are contract changes by decision 6 of ADR-0012 even when no measured value
    * moves; on a freshly indexed eval corpus the value stays {@code true}, so no baseline is
    * re-measured (see eval/baseline/README.md).
+   *
+   * <p>Version 13 (issue #1522): {@code ollamaImage} became a checked fixed point on this path too,
+   * so a committed baseline states which Ollama produced its vectors instead of leaving that to the
+   * {@code notes}. No measured value moves - the committed baselines record the pinned container
+   * they were already measured with (ADR-0012, Nachtrag Ollama-Herkunft).
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 12;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 13;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be

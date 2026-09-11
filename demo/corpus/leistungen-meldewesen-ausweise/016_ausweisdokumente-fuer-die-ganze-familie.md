@@ -27,20 +27,20 @@ Kinderreisepass wird bei Vorlage aller erforderlichen Unterlagen in der Regel so
 
 Gebührenrahmen
 Personalausweis:
-- Unter 24 Jahren: 22,40 Euro
-- Über 24 Jahren: 36,30 Euro
-- Vorläufiger Personalausweis: 9,80 Euro
+- Unter 24 Jahren: 26,20 Euro
+- Über 24 Jahren: 42,60 Euro
+- Vorläufiger Personalausweis: 11,50 Euro
 - Einschalten/ Entsperrung der Online-Ausweisfunktion: gebührenfrei
 - Änderung beziehungsweise Neusetzen der PIN: gebührenfrei
 Reisepass:
-- Unter 24 Jahren: 36,80 Euro
-- Über 24 Jahren: 58,90 Euro
-- Vielreisende (Reisepass mit 48 Seiten): Gebühr plus 21,60 Euro Aufpreis
-- Express-Bestellung: Gebühr plus 31,40 Euro Aufpreis
-- Vorläufiger Reisepass: 25,50 Euro
+- Unter 24 Jahren: 43,10 Euro
+- Über 24 Jahren: 69 Euro
+- Vielreisende (Reisepass mit 48 Seiten): Gebühr plus 25,30 Euro Aufpreis
+- Express-Bestellung: Gebühr plus 36,80 Euro Aufpreis
+- Vorläufiger Reisepass: 29,90 Euro
 Kinderreisepass:
-- 12,80 Euro
-- Aktualisierung und Verlängerung: 5,90 Euro
+- 15 Euro
+- Aktualisierung und Verlängerung: 6,90 Euro
 
 Barzahlung
 Kasse vor Ort

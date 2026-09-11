@@ -32,7 +32,7 @@ Wenn das nicht die erste Ehe ist, zusätzlich:
 
 Dauer & Kosten
 Gebührenrahmen
-Eheschließung: etwa 258 Euro
+Eheschließung: etwa 345 Euro
 
 Barzahlung
 Kasse vor Ort

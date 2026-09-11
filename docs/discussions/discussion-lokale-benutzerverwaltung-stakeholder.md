@@ -10,7 +10,7 @@ Zeilenangaben und Zitate beziehen sich auf den damaligen Stand.
 
 ---
 
-# Teil 1: Betriebs- und Informationssicherheitsverantwortlicher
+## Teil 1: Betriebs- und Informationssicherheitsverantwortlicher
 
 
 **Gegenstand:** `docs/decisions/0033-lokale-benutzerverwaltung.md` (Entwurf vom 11.09.2026, Issue #1531, Epic #1529)
@@ -557,7 +557,7 @@ ich erst im Ernstfall erfahre, dass ihn jemand vorletzten Monat weggeräumt hat.
 
 ---
 
-# Teil 2: Personalrat
+## Teil 2: Personalrat
 
 
 **Bewertete Fassung:** `docs/decisions/0033-lokale-benutzerverwaltung.md`, Stand 11.09.2026 (Status

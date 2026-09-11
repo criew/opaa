@@ -79,6 +79,7 @@ uploads/
 
 tmp
 
-# Python (Hilfsskripte unter .github/scripts/)
+# Python (Hilfsskripte unter .github/scripts/, Seed-Skript unter demo/seed/)
 __pycache__/
 *.pyc
+.pytest_cache/

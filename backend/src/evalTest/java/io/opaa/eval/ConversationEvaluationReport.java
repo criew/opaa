@@ -51,8 +51,12 @@ public record ConversationEvaluationReport(
    * is counted independently of the raw-vector path's: raising a contract version invalidates every
    * committed baseline of that path, and this path's arrival changes nothing about what the other
    * two measure.
+   *
+   * <p>Version 2 (issue #1522): {@code ollamaImage} became a checked fixed point of the shared
+   * pipeline block, so a committed baseline of this path states which Ollama produced its vectors
+   * (ADR-0012, Nachtrag Ollama-Herkunft). No measured value moves.
    */
-  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 1;
+  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 2;
 
   /**
    * The Einpfad-Regel of docs/features/retrieval-benchmark.md §5, recorded <b>once per report</b>:

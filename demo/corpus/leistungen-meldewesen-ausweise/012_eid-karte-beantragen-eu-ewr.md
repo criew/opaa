@@ -29,7 +29,7 @@ Die Aushändigung kann an Sie persönlich oder an eine schriftlich bevollmächti
 Für die Abholung können Sie optional auch ein entsprechend bevollmächtigtes Dienstleistungsunternehmen Ihrer Wahl engagieren.
 
 Gebührenrahmen
-Ausstellung der Karte: 38,60 Euro
+Ausstellung der Karte: 42,60 Euro
 
 Barzahlung
 Kasse vor Ort

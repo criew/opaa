@@ -105,6 +105,41 @@ class BaselineTest {
         .hasMessageContaining("too small for mrr/ndcgAt10/recallAt10");
   }
 
+  /**
+   * Issue #1522: a file drawn from a run against an external Ollama endpoint may never become a
+   * comparison point - the only correct outcome is to re-measure, which a fixed-point mismatch
+   * ("measurement grounds changed") would not say.
+   */
+  @Test
+  void rejectsABaselineDrawnFromAnExternalOllamaEndpoint() throws IOException {
+    Path file = tempDir.resolve("baseline.json");
+    Files.writeString(
+        file,
+        VALID_BASELINE_JSON.replace(
+            "\"ollamaImage\": \"ollama/ollama:0.6.5\"",
+            "\"ollamaImage\": \"extern: http://localhost:11434\""));
+
+    assertThatThrownBy(() -> Baseline.load(file))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("externen Ollama-Endpunkt")
+        .hasMessageContaining("opaa.eval.ollamaBaseUrl");
+  }
+
+  /**
+   * A missing value is not refused at load time (unlike an external one): it reaches {@link
+   * BaselineComparator} as {@code null} and is reported there as an incomparable fixed point, so
+   * the regression job still writes its delta table - see {@code BaselineOllamaOrigin}'s Javadoc
+   * and the {@code metadataFilterEnabled} precedent.
+   */
+  @Test
+  void loadsABaselineWithoutAnOllamaImageAndLeavesItToTheComparator() throws IOException {
+    Path file = tempDir.resolve("baseline.json");
+    Files.writeString(
+        file, VALID_BASELINE_JSON.replace("\"ollamaImage\": \"ollama/ollama:0.6.5\",", ""));
+
+    assertThat(Baseline.load(file).fixedPoints().ollamaImage()).isNull();
+  }
+
   private static final String TOO_SMALL_HIT_COUNT_AT_10_JSON =
       """
       {
@@ -112,6 +147,7 @@ class BaselineTest {
         "fixedPoints": {
           "embeddingModel": "nomic-embed-text:v1.5",
           "embeddingModelDigest": "abc",
+          "ollamaImage": "ollama/ollama:0.6.5",
           "embeddingDimensions": 768,
           "chunkSize": 1000,
           "chunkSizeMatchesApplicationDefault": true,
@@ -153,6 +189,7 @@ class BaselineTest {
         "fixedPoints": {
           "embeddingModel": "nomic-embed-text:v1.5",
           "embeddingModelDigest": "abc",
+          "ollamaImage": "ollama/ollama:0.6.5",
           "embeddingDimensions": 768,
           "chunkSize": 1000,
           "chunkSizeMatchesApplicationDefault": true,

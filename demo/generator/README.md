@@ -131,22 +131,6 @@ Die Outlook-Nachricht wird nie neu erzeugt; sie wird höchstens durch eine ander
 ersetzt — dann `formate.MSG_FILE_NAME`, den Herkunftssatz in `PRESERVED_FILES` und den Lizenztext
 unter `corpus/THIRD-PARTY-LICENSES/` mit ändern.
 
-## Handkorrektur in der Leistungsbibliothek
-
-`corpus/leistungen-meldewesen-ausweise/002_personalausweis-oder-reisepass-abholen.md` wurde in #942
-**von Hand** geändert: Die Datei nannte Gebühren, die den Einzeldokumenten `001_personalausweis.md`
-und `003_reisepass.md` widersprachen, und das Drehbuch garantiert zu Frage 1 eine widerspruchsfreie
-Antwort. Die Ursache sitzt im Generator — `fee_scale_factor` skaliert je Quelldatei, diese Datei
-zitiert aber Gebühren zweier anderer Leistungen — und ist dort noch nicht behoben (#1525). **Ein
-Generator-Lauf nimmt die Korrektur deshalb zurück.** Wer den Korpus neu erzeugt, stellt diese eine
-Datei wieder her und trägt ihren alten SHA-256 in `MANIFEST.sha256` nach:
-
-```bash
-git checkout -- demo/corpus/leistungen-meldewesen-ausweise/002_personalausweis-oder-reisepass-abholen.md
-# danach die zugehörige Zeile in demo/corpus/MANIFEST.sha256 auf den wiederhergestellten Stand setzen
-cd demo/corpus && sha256sum -c MANIFEST.sha256
-```
-
 ## Werkzeugwahl für PDF/DOCX/PPTX
 
 Issue #711 verlangt ausdrücklich eine begründete Werkzeugwahl. Kandidaten waren pandoc (+LaTeX),
@@ -224,6 +208,34 @@ demo/generator/
 - **Nicht übernommen**: die Abschnitte „Anlaufstellen in Ihrer Nähe" und „Links & Downloads" —
   reale Münchner Adressen, Kartenwidgets und muenchen.de-Downloadlinks, die sich nicht plausibel
   auf Rheinfurt übertragen lassen und für die dieses Projekt keine echten Rheinfurt-Geodaten hat.
+
+## Gebührenbeträge (#1525)
+
+Jeder Euro-Betrag wird mit **einem einzigen korpusweiten Faktor** skaliert
+(`rheinfurt_text.FEE_SCALE_FACTOR`, derzeit 1,15). Der Rheinfurter Betrag hängt damit am
+Gebührentatbestand und nicht an der Datei, die ihn zufällig nennt: Ein Dokument, das die Gebühren
+einer anderen Leistung zitiert („Personalausweis oder Reisepass abholen"), nennt dieselben Beträge
+wie deren eigene Leistungsbeschreibung und wie das Gebührenverzeichnis der
+Verwaltungsgebührensatzung — ohne Nacharbeit von Hand.
+
+Das gilt für alle drei Schreibweisen, in denen die Quelle Beträge notiert (`_scale_fees`):
+`37,50 Euro`, die untere Grenze eines Rahmens (`60 bis 150 Euro` — nur die obere Zahl trägt das
+Wort „Euro") und die ausgeschriebene Zahl (`sechs Euro`). Die letzten beiden wurden bis
+einschließlich der ersten Fassung von #1525 übersprungen und blieben damit echte Münchner Werte;
+seither ist in den Leistungsbibliotheken jeder Betrag ein skalierter Quellbetrag — prüfbar, indem
+man die Beträge der erzeugten Dokumente gegen die skalierten Quellbeträge hält.
+
+Der Faktor der Satzungen kommt aus derselben Funktion, ihre **Basisbeträge** stehen aber von Hand in
+`satzungen.py`. Wer dort eine Zeile ergänzt oder ändert, nimmt den Betrag aus der Rohquelle der
+zugehörigen Leistung — sonst nennt das Gebührenverzeichnis eine andere Zahl als die
+Leistungsbeschreibung, ohne dass an der Skalierung etwas falsch wäre.
+
+Verworfen wurden zwei naheliegende Alternativen: ein Faktor **je Quelldatei** (der frühere Stand;
+er erzeugte genau diesen Widerspruch und brauchte eine Handkorrektur nach jedem Lauf) und ein je
+Betrag **gehashter** Faktor. Der zweite ist über Dokumentgrenzen hinweg widerspruchsfrei, aber
+nicht ordnungserhaltend: Zwei Beträge, deren Verhältnis kleiner ist als das Verhältnis zweier
+möglicher Faktoren, können in der Ausgabe die Plätze tauschen — in der gepinnten Quellauswahl acht
+solcher Paare innerhalb eines Dokuments. Ein einzelner Faktor kann das nicht.
 
 ## Bekannte Eigenheiten der Quelldaten
 

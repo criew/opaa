@@ -52,9 +52,9 @@ Bearbeitungszeit
 Etwa acht Wochen
 
 Gebührenrahmen
-- ohne Festsetzung einer Probezeit: 33,20 Euro
-- mit Festsetzung einer Probezeit: 33,90 Euro
-- bei Umschreibung befristeter Klassen: 40,10 Euro
+- ohne Festsetzung einer Probezeit: 41,70 Euro
+- mit Festsetzung einer Probezeit: 42,70 Euro
+- bei Umschreibung befristeter Klassen: 50,50 Euro
 
 Barzahlung
 Kasse vor Ort

@@ -14,13 +14,25 @@ import requests
 
 
 class ApiError(RuntimeError):
+    """Carries the WWW-Authenticate challenge when the server sent one: a rejected token is
+    answered with an empty body, so the challenge is the only description of the cause (#1515)."""
+
     def __init__(self, response: requests.Response) -> None:
+        challenge = response.headers.get("WWW-Authenticate")
+        detail = " ".join(
+            part
+            for part in (
+                response.text[:500],
+                f"[WWW-Authenticate: {challenge}]" if challenge else "",
+            )
+            if part
+        )
         super().__init__(
-            f"{response.request.method} {response.request.url} -> {response.status_code}: "
-            f"{response.text[:500]}"
+            f"{response.request.method} {response.request.url} -> {response.status_code}: {detail}"
         )
         self.response = response
         self.status_code = response.status_code
+        self.www_authenticate = challenge
 
 
 def _rewind_files(kwargs: dict) -> None:
