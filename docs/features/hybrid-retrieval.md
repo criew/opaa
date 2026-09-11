@@ -1422,12 +1422,19 @@ gilt:
 > Einordnung im Nachtrag zu [ADR-0016](../decisions/0016-loeschschicksal-rechtehistorie.md)). Die
 > Befugnis ist ein **Betriebsrecht der Gegenwart**, kein Historienartefakt: Wird ein daran beteiligtes
 > Konto gelöscht — Inhaber, Ausstellender oder Widerrufender —, verschwindet die Vollmachtszeile mit
-> ihm; dasselbe gilt für die Löschung der Gruppe, die ihren Geltungsbereich bildet. Belegbar bleibt
-> das **Protokoll**: Erteilung und Widerruf stehen als eigene Ereignisse im `audit_log` und hängen an
-> keinem Konto. Der Bestandssatz selbst bleibt nicht — nach der Löschung ist aus dem Bestand nicht
-> mehr rekonstruierbar, wer die Befugnis wann und mit welchem Geltungsbereich hatte. Das ist
-> ausdrücklich **anders** als bei der Rechtehistorie, die eine Kontolöschung überleben muss; die
-> beiden Regeln nicht verwechseln.
+> ihm; dasselbe gilt für die Löschung der Gruppe, die ihren Geltungsbereich bildet. Über die
+> Aussteller- und Widerruferspalte trifft das auch **Vollmachten anderer, weiterhin existierender
+> Inhaber**; eine künftige Kontolöschungsfunktion widerruft sie ausdrücklich, statt sich auf die
+> Kaskade zu verlassen.
+>
+> Die Erteilung und der Widerruf stehen als eigene Ereignisse im `audit_log` und hängen an keinem
+> Konto — der Vorgang als solcher bleibt also protokolliert. **Die Person darin bleibt es nicht:**
+> Sie wird im Ereignis über ihr Pseudonym geführt, und die Pseudonymtabelle hängt ihrerseits mit
+> `ON DELETE CASCADE` an den Konten (ADR-0015/#395). Nach einer Kontolöschung ist „wer hatte die
+> Befugnis, mit welchem Geltungsbereich, in welchem Zeitfenster?" deshalb **über keinen der beiden
+> Wege** mehr beantwortbar — weder aus dem Bestand noch aus dem Protokoll. Das ist ausdrücklich
+> **anders** als bei der Rechtehistorie, die eine Kontolöschung überleben muss; die beiden Regeln
+> nicht verwechseln.
 
 > **Chunk-Ansicht** ([#1230](https://github.com/criew/opaa/issues/1230)). Die Chunk-Vorschau aus der
 > Diagnose und die Dokument-Chunk-Ansicht sind `SYSTEM_ADMIN` vorbehalten und auf die **eigene

@@ -8,12 +8,17 @@ databaseChangeLog:
         not a Historienartefakt - once an account involved in it is gone, its subject matter is gone
         with it, so the row goes too. holder_user_id already cascaded; granted_by_user_id,
         revoked_by_user_id and scope_group_id follow, because a single remaining RESTRICT would keep
-        blocking exactly the account deletion this decision allows. scope_group_id joins them for the
-        same reason on the object side: it is NOT NULL (SET NULL is not available) and a grant whose
-        scope group no longer exists grants nothing. organization_id keeps RESTRICT - the tenant root
-        is never deleted, and every other table treats it that way. What stays provable after an
-        account is deleted is the audit_log pair DIAGNOSTIC_IMPERSONATION_GRANTED/_REVOKED, which
-        carries no foreign key to users; the Bestandssatz deliberately does not survive.
+        blocking exactly the account deletion this decision allows. Every one of these columns is
+        part of a composite key alongside organization_id, which is NOT NULL - SET NULL is not
+        available for any of them. organization_id itself keeps RESTRICT: the tenant root is never
+        deleted, and every other table treats it that way.
+
+        Deliberately accepted reach: through the granter, revoker and scope columns the cascade also
+        removes grants of other, still existing holders - deleting the account of an administrator
+        who issued 40 grants removes those 40, without a revocation event. A future account deletion
+        function must revoke them explicitly instead of relying on this cascade. What stays provable
+        afterwards is the audit_log pair DIAGNOSTIC_IMPERSONATION_GRANTED/_REVOKED, which carries no
+        foreign key to users; the Bestandssatz deliberately does not survive.
       changes:
         - sql:
             splitStatements: false

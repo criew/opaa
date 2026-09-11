@@ -117,8 +117,9 @@ Diagnose-Vollmacht beantworten nicht dieselbe Art von Frage:
   Auskunft zu geben, und zwar gerade über ausgeschiedene Personen — deshalb muss sie die Löschung
   überleben, die sie belegen soll (Szenario 2 oben).
 - Eine **Vollmacht** ist ein Betriebsrecht der Gegenwart: eine befristete, bereichsgebundene Erlaubnis,
-  „Sicht als" auszuführen. Mit dem Konto entfällt ihr Gegenstand — es gibt niemanden mehr, der sie
-  ausüben könnte, und niemanden, für den sie noch gelten könnte.
+  „Sicht als" auszuführen. Mit dem Konto **ihres Inhabers** entfällt ihr Gegenstand — es gibt
+  niemanden mehr, der sie ausüben könnte. Für die übrigen Spalten trägt dieses Argument nicht; deren
+  Kaskade ist eine bewusste Inkaufnahme, siehe die Tabelle unten.
 
 Beide Regeln nebeneinander zu führen ist also kein Widerspruch, sondern der Unterschied zwischen
 Historienartefakt und Bestandssatz eines aktiven Rechts. Wer künftig eine personenbezogene Tabelle
@@ -130,10 +131,20 @@ festgelegt" gilt hier wie sonst.
 | Spalte | Ziel | Löschregel | Begründung |
 |---|---|---|---|
 | `holder_user_id` | `users` | `CASCADE` (unverändert) | Die Person, um die die Vollmacht geht — mit ihrem Konto entfällt ihr Gegenstand. |
-| `granted_by_user_id` | `users` | `RESTRICT` → `CASCADE` | Spalte ist `NOT NULL`, `SET NULL` scheidet aus; ein `RESTRICT` würde die Kontolöschung weiterhin blockieren und die Entscheidung leerlaufen lassen. |
-| `revoked_by_user_id` | `users` | `RESTRICT` → `CASCADE` | Sonst blockiert eine einmal widerrufene — also längst wirkungslose — Vollmacht die Löschung des widerrufenden Kontos dauerhaft. |
-| `scope_group_id` | `groups` | `RESTRICT` → `CASCADE` | Der Geltungsbereich ist der Gegenstand der Vollmacht; `NOT NULL` schließt `SET NULL` aus, und eine Vollmacht ohne existierenden Geltungsbereich erlaubt nichts. |
+| `granted_by_user_id` | `users` | `RESTRICT` → `CASCADE` | Ein `RESTRICT` würde die Kontolöschung weiterhin blockieren und die Entscheidung leerlaufen lassen. `SET NULL` scheidet aus: Der Schlüssel ist zusammengesetzt und führt `organization_id` mit, die `NOT NULL` ist (die Spalte selbst ist es ebenfalls). |
+| `revoked_by_user_id` | `users` | `RESTRICT` → `CASCADE` | Sonst blockiert eine einmal widerrufene — also längst wirkungslose — Vollmacht die Löschung des widerrufenden Kontos dauerhaft. `SET NULL` scheidet aus demselben Grund aus wie oben (`organization_id` im zusammengesetzten Schlüssel), zusätzlich koppelt `chk_…_revocation` die Spalte an `revoked_at`. |
+| `scope_group_id` | `groups` | `RESTRICT` → `CASCADE` | Der Geltungsbereich ist der Gegenstand der Vollmacht; `SET NULL` scheidet aus (Spalte und `organization_id` sind `NOT NULL`), und eine Vollmacht ohne existierenden Geltungsbereich erlaubt nichts. **Wirkt heute nicht:** Der Geltungsbereich muss eine Organisationseinheit sein, und `GroupService#deleteGroup` weist Organisationseinheiten vor jedem Fremdschlüsselkontakt ab — die Regel greift erst, wenn es einen Löschpfad für Organisationseinheiten gibt. |
 | `organization_id` | `organizations` | `RESTRICT` (unverändert) | Der Mandantenwurzel wird nicht gelöscht; jede andere Tabelle behandelt sie ebenso. |
+
+**Die Kaskade trifft auch Dritte — bewusst.** Über Aussteller-, Widerrufer- und Geltungsbereichsspalte
+entfernt sie nicht nur Vollmachten der gelöschten Person, sondern auch **noch gültige Vollmachten
+weiterhin existierender Inhaber**: Wird das Konto einer Administratorin gelöscht, die über zwei Jahre
+40 Befugnisse ausgestellt hat, verschwinden diese 40 mit — ohne Widerrufsereignis und ohne Anzeige.
+Die Richtung ist ungefährlich (Rechte entfallen, sie entstehen nicht), und `RESTRICT` wäre die
+Alternative, die genau die Kontolöschung blockiert, um die es hier geht. Die Auflage daraus: **Eine
+künftige Kontolöschungsfunktion widerruft betroffene Vollmachten ausdrücklich**, statt sich auf diese
+Kaskade zu verlassen — dann entsteht je Vollmacht ein Widerrufsereignis, und die Kaskade greift nur
+noch als Netz.
 
 **Was nach einer Kontolöschung belegbar bleibt.** Erteilung und Widerruf schreiben je einen Eintrag ins
 `audit_log` (`DIAGNOSTIC_IMPERSONATION_GRANTED`/`_REVOKED`); dessen `actor_ref`/`subject_ref` sind

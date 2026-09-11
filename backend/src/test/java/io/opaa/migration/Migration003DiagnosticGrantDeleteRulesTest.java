@@ -1,9 +1,11 @@
 package io.opaa.migration;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -118,6 +120,31 @@ class Migration003DiagnosticGrantDeleteRulesTest extends AbstractMigrationTest {
         .isFalse();
   }
 
+  /**
+   * Standing guard, not a property of the changeset: every test here applies {@link
+   * #CHANGELOG_PATH} itself, so a changelog file missing from {@code db.changelog-master.yaml}
+   * would still pass every assertion above while no installation ever ran it - and no other test
+   * judges these delete rules against the delivered changelog.
+   */
+  @Test
+  void theChangelogIsReferencedByTheMasterChangelog() throws Exception {
+    String master =
+        new String(
+            requireNonNull(
+                    getClass()
+                        .getClassLoader()
+                        .getResourceAsStream("db/changelog/db.changelog-master.yaml"))
+                .readAllBytes(),
+            StandardCharsets.UTF_8);
+
+    assertThat(master).contains(CHANGELOG_PATH);
+  }
+
+  /**
+   * Database behaviour only: a scope must be an ORG_UNIT group, and {@code
+   * GroupService#deleteGroup} rejects those outright - so this rule has no reachable caller until a
+   * deletion path for Organisationseinheiten exists.
+   */
   @Test
   void deletingTheScopeGroupTakesTheBefugnisWithIt() throws Exception {
     Fixture fixture = seedGrant();
