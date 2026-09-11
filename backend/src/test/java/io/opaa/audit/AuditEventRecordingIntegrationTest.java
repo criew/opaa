@@ -124,11 +124,18 @@ class AuditEventRecordingIntegrationTest {
     directorySyncStatusRepository
         .findByOrganizationId(organizationId)
         .ifPresent(status -> directorySyncStatusRepository.deleteById(status.getId()));
-    spaceMembershipRepository.deleteAll();
-    spaceRepository.deleteAll(
+    // Memberships before their spaces, and only those of this test's own organization: a user of
+    // this organization can only ever be a member of a space of the same organization
+    // (fk_space_memberships_user_organization), so no membership of this class is missed.
+    List<Space> ownSpaces =
         spaceRepository.findAll().stream()
             .filter(s -> s.getOrganizationId().equals(organizationId))
-            .toList());
+            .toList();
+    ownSpaces.forEach(
+        space ->
+            spaceMembershipRepository.deleteAll(
+                spaceMembershipRepository.findBySpaceId(space.getId())));
+    spaceRepository.deleteAll(ownSpaces);
     List<UUID> ownLibraryIds =
         libraryRepository.findAll().stream()
             .filter(l -> l.getOrganizationId().equals(organizationId))
