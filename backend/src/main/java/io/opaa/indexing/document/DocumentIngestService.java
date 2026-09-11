@@ -305,13 +305,33 @@ public class DocumentIngestService {
   /**
    * {@link #ingest} for an upload whose row is already {@code PENDING}, on a pool of its own so
    * uploads cannot exhaust an indexing run's; there is no caller to rethrow to.
+   *
+   * <p>{@code workingFile} is the upload's own hold on the file being parsed here (ADR-0030,
+   * Entscheidung 2): this method is the only one that knows when that file is no longer read, so it
+   * lets go of it on every exit, successful or not. What letting go means belongs to the storage
+   * the caller took the file from, not here - for an upload stored on this machine it is nothing at
+   * all.
    */
   @Async("uploadTaskExecutor")
-  public void processUploadedFileAsync(DocumentIngest ingest, AttachmentAccess attachmentAccess) {
+  public void processUploadedFileAsync(
+      DocumentIngest ingest, AttachmentAccess attachmentAccess, AutoCloseable workingFile) {
     try {
       ingest(ingest, attachmentAccess);
     } catch (Exception e) {
       log.error("Failed to process uploaded document {}", ingest.fileName(), e);
+    } finally {
+      releaseQuietly(workingFile, ingest);
+    }
+  }
+
+  private void releaseQuietly(AutoCloseable workingFile, DocumentIngest ingest) {
+    if (workingFile == null) {
+      return;
+    }
+    try {
+      workingFile.close();
+    } catch (Exception e) {
+      log.warn("Could not release the working file of uploaded document {}", ingest.fileName(), e);
     }
   }
 

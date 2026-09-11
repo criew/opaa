@@ -35,7 +35,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 class GlobalExceptionHandlerTest {
 
   private final GlobalExceptionHandler handler =
-      new GlobalExceptionHandler(new UploadProperties(null, 52_428_800L, null, 0));
+      new GlobalExceptionHandler(new UploadProperties(null, null, 52_428_800L, null, 0));
 
   @Test
   void handleGenericExceptionReturnsInternalServerError() {

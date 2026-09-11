@@ -32,7 +32,6 @@ import java.io.UncheckedIOException;
 import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -122,6 +121,7 @@ public class LibraryDocumentService {
   private final DocumentIngestService documentIngestService;
   private final VectorChunkStore vectorChunkStore;
   private final UploadProperties uploadProperties;
+  private final UploadedOriginalStore uploadedOriginalStore;
   private final LibraryStorageQuotaService storageQuotaService;
   private final FilesystemPathAllowlist filesystemAllowlist;
   private final BoundedDownloader boundedDownloader;
@@ -142,6 +142,7 @@ public class LibraryDocumentService {
       DocumentIngestService documentIngestService,
       VectorChunkStore vectorChunkStore,
       UploadProperties uploadProperties,
+      UploadedOriginalStore uploadedOriginalStore,
       LibraryStorageQuotaService storageQuotaService,
       FilesystemPathAllowlist filesystemAllowlist,
       BoundedDownloader boundedDownloader,
@@ -160,6 +161,7 @@ public class LibraryDocumentService {
     this.documentIngestService = documentIngestService;
     this.vectorChunkStore = vectorChunkStore;
     this.uploadProperties = uploadProperties;
+    this.uploadedOriginalStore = uploadedOriginalStore;
     this.storageQuotaService = storageQuotaService;
     this.filesystemAllowlist = filesystemAllowlist;
     this.boundedDownloader = boundedDownloader;
@@ -252,15 +254,13 @@ public class LibraryDocumentService {
           folderService.resolveOrCreateFolderPath(libraryId, folderId, pathSegments, caller);
     }
 
-    Path libraryDir = Paths.get(uploadProperties.storagePath()).resolve(libraryId.toString());
-    Path storedFile = libraryDir.resolve(UUID.randomUUID() + extension);
+    UploadedOriginalStore.AcceptedUpload accepted = acceptUpload(libraryId, extension, file);
+    // The working file the rest of this upload reads - the same file the asynchronous processing
+    // gets, and the one it releases when it is done (ADR-0030, Entscheidung 2). It only becomes the
+    // library's original at accepted.store() below, after the checks that still reject an upload.
+    Path storedFile = accepted.workingFile();
 
     try {
-      Files.createDirectories(libraryDir);
-      try (InputStream in = file.getInputStream()) {
-        Files.copy(in, storedFile, StandardCopyOption.REPLACE_EXISTING);
-      }
-
       requireContentMatchesExtension(storedFile, extension);
 
       String checksum = checksumService.computeSha256(storedFile);
@@ -273,7 +273,7 @@ public class LibraryDocumentService {
       if (existing.isPresent()) {
         Document existingDoc = existing.get();
         if (existingDoc.getStatus() != DocumentStatus.FAILED) {
-          Files.deleteIfExists(storedFile);
+          accepted.discard();
           throw new ConflictException("Diese Datei ist bereits in dieser Bibliothek vorhanden");
         }
         // #589 review, item 3: a FAILED row must not block a retry of the same file forever - the
@@ -289,16 +289,14 @@ public class LibraryDocumentService {
         // parent is being parsed, before its own chunks are written) - they must go with it, or
         // documentRepository.delete below fails fk_documents_parent and the retry is blocked
         // forever. The retry's re-parse recreates them under the new row's own file_path.
-        Path oldFailedFile = uploadedFileIfManagedByThisService(existingDoc, libraryId);
+        Optional<UploadedOriginalRef> oldFailedOriginal = UploadedOriginalRef.of(existingDoc);
         for (Document descendant : descendantsDeepestFirst(existingDoc.getId())) {
           vectorChunkStore.deleteByDocumentId(descendant.getId());
           documentRepository.delete(descendant);
         }
         vectorChunkStore.deleteByDocumentId(existingDoc.getId());
         documentRepository.delete(existingDoc);
-        if (oldFailedFile != null) {
-          deleteQuietly(oldFailedFile);
-        }
+        oldFailedOriginal.ifPresent(uploadedOriginalStore::delete);
       }
 
       // The row is created - and returned - as PENDING here, before any parsing/embedding has
@@ -309,7 +307,7 @@ public class LibraryDocumentService {
       Document document =
           new Document(
               displayFileName,
-              storedFile.toAbsolutePath().toString(),
+              accepted.store().locator(),
               contentType,
               fileSize,
               DocumentSourceType.UPLOAD);
@@ -340,7 +338,8 @@ public class LibraryDocumentService {
                 .sourceType(DocumentSourceType.UPLOAD)
                 .existingRow()
                 .build(),
-            new StandaloneAttachmentAccess(library, "Upload"));
+            new StandaloneAttachmentAccess(library, "Upload"),
+            accepted::release);
       } catch (TaskRejectedException e) {
         // #589 review, item 2: uploadTaskExecutor's queue is full - it never silently discards the
         // task (see IndexingConfiguration#uploadTaskExecutor; #501 later gave indexingTaskExecutor
@@ -353,7 +352,7 @@ public class LibraryDocumentService {
             e);
         return failAlreadyPersistedUpload(
             document,
-            storedFile,
+            accepted,
             "Die Verarbeitung ist derzeit ausgelastet - bitte später erneut versuchen.");
       } catch (RuntimeException e) {
         log.error(
@@ -361,7 +360,7 @@ public class LibraryDocumentService {
             document.getId(),
             e);
         return failAlreadyPersistedUpload(
-            document, storedFile, "Die Verarbeitung konnte nicht gestartet werden");
+            document, accepted, "Die Verarbeitung konnte nicht gestartet werden");
       }
 
       return new LibraryDocumentEntry(
@@ -374,7 +373,7 @@ public class LibraryDocumentService {
       // distinction, that race surfaced as the same "Diese Datei ist bereits in dieser Bibliothek
       // vorhanden" the checksum race below produces, actively misleading a caller whose file was
       // never a duplicate at all.
-      deleteQuietly(storedFile);
+      accepted.discard();
       if (isFolderForeignKeyViolation(e)) {
         throw new NotFoundException("Der Ordner wurde inzwischen gelöscht");
       }
@@ -387,14 +386,33 @@ public class LibraryDocumentService {
       // fallback rather than assuming every violation is the folder race handled above.
       throw new ConflictException("Diese Datei ist bereits in dieser Bibliothek vorhanden");
     } catch (IOException e) {
-      deleteQuietly(storedFile);
+      accepted.discard();
       throw new UncheckedIOException("Datei konnte nicht gespeichert werden", e);
     } catch (RuntimeException e) {
       // Only reachable before the row is committed (validation, file I/O, the dedup check above) -
       // everything from documentRepository.save(document) onward has its own inner try/catch that
       // never lets a RuntimeException escape to here (#589 review, item 4).
-      deleteQuietly(storedFile);
+      accepted.discard();
       throw e;
+    }
+  }
+
+  /**
+   * The uploaded bytes, taken into the store as this library's next original-to-be. Nothing of a
+   * failed attempt survives - including one that only fails while closing the multipart stream,
+   * after the bytes were already taken.
+   */
+  private UploadedOriginalStore.AcceptedUpload acceptUpload(
+      UUID libraryId, String extension, MultipartFile file) {
+    UploadedOriginalStore.AcceptedUpload accepted = null;
+    try (InputStream in = file.getInputStream()) {
+      accepted = uploadedOriginalStore.accept(libraryId, extension, in);
+      return accepted;
+    } catch (IOException e) {
+      if (accepted != null) {
+        accepted.discard();
+      }
+      throw new UncheckedIOException("Datei konnte nicht gespeichert werden", e);
     }
   }
 
@@ -416,7 +434,7 @@ public class LibraryDocumentService {
    * either way - {@code document} is only ever used to build it, never persisted directly again.
    */
   private LibraryDocumentEntry failAlreadyPersistedUpload(
-      Document document, Path storedFile, String errorMessage) {
+      Document document, UploadedOriginalStore.AcceptedUpload accepted, String errorMessage) {
     int updated = documentRepository.markFailed(document.getId(), errorMessage);
     if (updated == 0) {
       log.warn(
@@ -426,7 +444,7 @@ public class LibraryDocumentService {
     }
     document.setStatus(DocumentStatus.FAILED);
     document.setErrorMessage(errorMessage);
-    deleteQuietly(storedFile);
+    accepted.discard();
     return new LibraryDocumentEntry(
         document, LibraryFolderPaths.pathOf(folderRepository, document.getFolderId()));
   }
@@ -445,11 +463,11 @@ public class LibraryDocumentService {
    * LibraryAccessService#canRead} already uses for a library's configuration and document list;
    * opening a document's own content is not more sensitive than seeing it listed.
    *
-   * <p>Path traversal is closed the same way {@link #uploadedFileIfManagedByThisService} already
-   * closes it for deletion: the resolved, normalized file path must actually resolve underneath the
-   * one directory this {@code sourceType} is allowed to serve from - this library's own upload
-   * subdirectory for {@code UPLOAD}, this library's own configured {@code sourcePath} for {@code
-   * FILESYSTEM} - rather than trusting the stored {@code file_path} column on its own.
+   * <p>Path traversal is closed the same way deletion closes it: the file must actually resolve
+   * underneath the one directory this {@code sourceType} is allowed to serve from - this library's
+   * own upload storage area for {@code UPLOAD} ({@link UploadedOriginalStore#belongsToLibrary}),
+   * this library's own configured {@code sourcePath} for {@code FILESYSTEM} - rather than trusting
+   * the stored {@code file_path} column on its own.
    *
    * <p>{@code HTTP_DIRECTORY}/{@code RSS_FEED} (#747): neither sourceType names a local file at all
    * - {@link #loadRemoteContent} proxies the original from the source URL stored at indexing time
@@ -507,45 +525,36 @@ public class LibraryDocumentService {
    * same library as the attachment itself.
    */
   private DocumentContent loadOriginal(Document document, KnowledgeLibrary library) {
-    if (document.getSourceType() == DocumentSourceType.HTTP_DIRECTORY
-        || document.getSourceType() == DocumentSourceType.RSS_FEED) {
-      return loadRemoteContent(document, library);
-    }
+    return switch (document.getSourceType()) {
+      case HTTP_DIRECTORY, RSS_FEED -> loadRemoteContent(document, library);
+      case UPLOAD ->
+          UploadedOriginalRef.of(document)
+              .flatMap(
+                  ref ->
+                      uploadedOriginalStore.openForDownload(
+                          ref, document.getFileName(), document.getContentType()))
+              .orElseThrow(LibraryDocumentService::noOriginalAvailable);
+      case FILESYSTEM ->
+          localContent(document, filesystemFileIfWithinConfiguredDirectory(document, library));
+      // A Confluence page has no file of its own and its content sits behind the instance's
+      // authentication; the citation opens the page directly via getDeepLinkSourceUrl. An S3
+      // object is re-read only by a run (ADR-0027, Entscheidung 5): no local file, and
+      // s3://bucket/key is no address a reader could open either.
+      case CONFLUENCE, S3 -> throw noOriginalAvailable();
+    };
+  }
 
-    Path resolvedFile =
-        switch (document.getSourceType()) {
-          case UPLOAD -> uploadedFileIfManagedByThisService(document, library.getId());
-          case FILESYSTEM -> filesystemFileIfWithinConfiguredDirectory(document, library);
-          case HTTP_DIRECTORY, RSS_FEED -> null; // unreachable, handled above
-          // A Confluence page has no file of its own and its content sits behind the instance's
-          // authentication; the citation opens the page directly via getDeepLinkSourceUrl.
-          case CONFLUENCE -> null;
-          // An S3 object is re-read only by a run (ADR-0027, Entscheidung 5): no local file, and
-          // s3://bucket/key is no address a reader could open either.
-          case S3 -> null;
-        };
-    if (resolvedFile == null || !Files.isRegularFile(resolvedFile)) {
-      throw new NotFoundException("Für dieses Dokument steht kein Originaldokument zur Verfügung");
+  /** A local original to serve, or the same 404 every other unreachable original answers with. */
+  private DocumentContent localContent(Document document, Path file) {
+    if (file == null || !Files.isRegularFile(file)) {
+      throw noOriginalAvailable();
     }
+    return new DocumentContent(
+        file, document.getFileName(), ServedContentTypes.forFile(document.getContentType(), file));
+  }
 
-    // document.getContentType() is decided at index time - the canonical type of the routed
-    // format on the connector paths, Files.probeContentType for an upload - and is the primary
-    // source here, so serving never makes a second, independent guess from the bytes that could
-    // disagree with what was actually indexed. DocumentController's Content-Security-Policy and
-    // X-Content-Type-Options headers are what keep that type from becoming a script execution
-    // vector, not this choice of source.
-    String contentType = document.getContentType();
-    if (contentType == null || contentType.isBlank()) {
-      try {
-        contentType = Files.probeContentType(resolvedFile);
-      } catch (IOException e) {
-        contentType = null;
-      }
-    }
-    if (contentType == null || contentType.isBlank()) {
-      contentType = "application/octet-stream";
-    }
-    return new DocumentContent(resolvedFile, document.getFileName(), contentType);
+  private static NotFoundException noOriginalAvailable() {
+    return new NotFoundException("Für dieses Dokument steht kein Originaldokument zur Verfügung");
   }
 
   /**
@@ -583,7 +592,7 @@ public class LibraryDocumentService {
     while (current.getParentDocumentId() != null) {
       if (chain.size() >= maxAttachmentChainDepth()) {
         log.warn("Attachment document {} has an over-deep parent chain", document.getId());
-        throw attachmentUnavailable();
+        throw noOriginalAvailable();
       }
       Document parent = documentRepository.findById(current.getParentDocumentId()).orElse(null);
       if (parent == null) {
@@ -591,7 +600,7 @@ public class LibraryDocumentService {
             "Attachment document {} has a broken parent chain at {}",
             document.getId(),
             current.getParentDocumentId());
-        throw attachmentUnavailable();
+        throw noOriginalAvailable();
       }
       if (AttachmentFilePath.indexIn(parent.getFilePath(), current.getFilePath()) < 0) {
         // current has a source identity of its own (a downloaded .eml, itself an attachment of an
@@ -603,7 +612,7 @@ public class LibraryDocumentService {
             "Attachment document {} has an ancestor in another library ({})",
             document.getId(),
             parent.getId());
-        throw attachmentUnavailable();
+        throw noOriginalAvailable();
       }
       chain.add(current);
       current = parent;
@@ -620,7 +629,7 @@ public class LibraryDocumentService {
             "Attachment document {} has a file_path that does not embed its parent's path {}",
             document.getId(),
             parentPath);
-        throw attachmentUnavailable();
+        throw noOriginalAvailable();
       }
       indices.add(index);
       parentPath = chain.get(i).getFilePath();
@@ -662,7 +671,7 @@ public class LibraryDocumentService {
               document.getId(),
               indices.get(i),
               currentName);
-          throw attachmentUnavailable();
+          throw noOriginalAvailable();
         }
         tempFiles.add(extracted.file());
         if (!expected.getFileName().equals(extracted.fileName())) {
@@ -672,7 +681,7 @@ public class LibraryDocumentService {
               indices.get(i),
               currentName,
               extracted.fileName());
-          throw attachmentUnavailable();
+          throw noOriginalAvailable();
         }
         currentFile = extracted.file();
         currentName = extracted.fileName();
@@ -681,10 +690,12 @@ public class LibraryDocumentService {
       InputStream stream = deletingOnClose(Files.newInputStream(currentFile), tempFiles);
       streaming = true;
       return DocumentContent.ofStream(
-          stream, document.getFileName(), contentTypeOf(document, currentFile));
+          stream,
+          document.getFileName(),
+          ServedContentTypes.forFile(document.getContentType(), currentFile));
     } catch (IOException e) {
       log.warn("Attachment document {} could not be re-extracted", document.getId(), e);
-      throw attachmentUnavailable();
+      throw noOriginalAvailable();
     } finally {
       closeQuietly(rootContent);
       if (!streaming) {
@@ -738,22 +749,6 @@ public class LibraryDocumentService {
     };
   }
 
-  /**
-   * The document's own stored {@code contentType} where present, the file's probed type otherwise -
-   * the same order {@link #loadOriginal} uses for a local original.
-   */
-  private String contentTypeOf(Document document, Path file) {
-    String contentType = document.getContentType();
-    if (contentType == null || contentType.isBlank()) {
-      try {
-        contentType = Files.probeContentType(file);
-      } catch (IOException e) {
-        contentType = null;
-      }
-    }
-    return contentType == null || contentType.isBlank() ? "application/octet-stream" : contentType;
-  }
-
   private void closeQuietly(DocumentContent content) {
     if (content.isStreamed()) {
       try {
@@ -762,10 +757,6 @@ public class LibraryDocumentService {
         log.debug("Failed to close the proxied parent stream", e);
       }
     }
-  }
-
-  private NotFoundException attachmentUnavailable() {
-    return new NotFoundException("Für dieses Dokument steht kein Originaldokument zur Verfügung");
   }
 
   /**
@@ -924,7 +915,7 @@ public class LibraryDocumentService {
   }
 
   /**
-   * The {@code FILESYSTEM} counterpart to {@link #uploadedFileIfManagedByThisService} (#736): a
+   * The {@code FILESYSTEM} counterpart to {@link UploadedOriginalStore#belongsToLibrary} (#736): a
    * {@code FILESYSTEM} document's {@code file_path} may only be served if it actually resolves
    * underneath this library's own configured {@code sourcePath} - not merely inside some
    * operator-managed directory in general, and not at all when {@code sourcePath} is unset (a
@@ -995,7 +986,10 @@ public class LibraryDocumentService {
       throw new NotFoundException("Dokument nicht gefunden");
     }
 
-    Path fileManagedByThisService = uploadedFileIfManagedByThisService(document, libraryId);
+    // Decided here, acted on after commit below: the row is still readable, and the answer must
+    // not depend on what a concurrent request does to the storage in between.
+    Optional<UploadedOriginalRef> ownOriginal =
+        UploadedOriginalRef.of(document).filter(uploadedOriginalStore::belongsToLibrary);
     UUID chunkFilterDocumentId = document.getId();
 
     // ADR-0022, Entscheidung 3 (Nebenpfad-Auflage): a document with attachment rows pointing at
@@ -1070,9 +1064,7 @@ public class LibraryDocumentService {
                 chunkFilterDocumentId,
                 e);
           }
-          if (fileManagedByThisService != null) {
-            deleteQuietly(fileManagedByThisService);
-          }
+          ownOriginal.ifPresent(uploadedOriginalStore::delete);
         });
   }
 
@@ -1101,27 +1093,6 @@ public class LibraryDocumentService {
       currentLevel = nextLevel.stream().map(Document::getId).toList();
     }
     return deepestFirst;
-  }
-
-  /**
-   * The file to delete alongside {@code document}'s row, or {@code null} if this service does not
-   * own that file and must leave it alone - see the class Javadoc ("{@code deleteDocument} only
-   * ever deletes a file this class itself wrote"). Both conditions are required: the {@code
-   * sourceType} alone is not proof against a corrupted or foreign {@code file_path}, and a path
-   * check alone would not stop a {@code FILESYSTEM} document whose operator-managed file
-   * coincidentally lives under the same parent directory.
-   */
-  private Path uploadedFileIfManagedByThisService(Document document, UUID libraryId) {
-    if (document.getSourceType() != DocumentSourceType.UPLOAD || document.getFilePath() == null) {
-      return null;
-    }
-    Path candidate = Path.of(document.getFilePath()).toAbsolutePath().normalize();
-    Path libraryUploadDir =
-        Paths.get(uploadProperties.storagePath())
-            .resolve(libraryId.toString())
-            .toAbsolutePath()
-            .normalize();
-    return candidate.startsWith(libraryUploadDir) ? candidate : null;
   }
 
   /**

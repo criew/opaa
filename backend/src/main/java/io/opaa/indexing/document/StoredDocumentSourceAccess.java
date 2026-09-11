@@ -4,26 +4,28 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.library.UploadProperties;
+import io.opaa.library.UploadedOriginalRef;
+import io.opaa.library.UploadedOriginalStore;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * How the bytes of an already indexed document can be reached again by an operator-triggered run
- * over the bestand: its own file on this machine ({@link #localSourceFile}), re-extracted from its
- * root ancestor's file along the attachment chain ({@link #withReextractedAttachment}, ADR-0022),
- * or only by its next connector run ({@link #markRemoteChainForNextRun}). Shared by the pipeline
+ * over the bestand: its own file ({@link #withLocalSourceFile}), re-extracted from its root
+ * ancestor's file along the attachment chain ({@link #withReextractedAttachment}, ADR-0022), or
+ * only by its next connector run ({@link #markRemoteChainForNextRun}). Shared by the pipeline
  * re-index ({@link io.opaa.indexing.maintenance.PipelineReindexService}) and the core-metadata
  * backfill ({@code io.opaa.indexing.maintenance.MetadataBackfillService}), so both apply the same
  * runtime containment discipline (ADR-0018, Entscheidung 6) and the same chain rules. Every
@@ -38,7 +40,7 @@ public class StoredDocumentSourceAccess {
   private final KnowledgeLibraryRepository libraryRepository;
   private final ChecksumService checksumService;
   private final FilesystemPathAllowlist filesystemAllowlist;
-  private final UploadProperties uploadProperties;
+  private final UploadedOriginalStore uploadedOriginalStore;
 
   public StoredDocumentSourceAccess(
       AttachmentExtractor attachmentExtractor,
@@ -46,13 +48,13 @@ public class StoredDocumentSourceAccess {
       KnowledgeLibraryRepository libraryRepository,
       ChecksumService checksumService,
       FilesystemPathAllowlist filesystemAllowlist,
-      UploadProperties uploadProperties) {
+      UploadedOriginalStore uploadedOriginalStore) {
     this.attachmentExtractor = attachmentExtractor;
     this.documentRepository = documentRepository;
     this.libraryRepository = libraryRepository;
     this.checksumService = checksumService;
     this.filesystemAllowlist = filesystemAllowlist;
-    this.uploadProperties = uploadProperties;
+    this.uploadedOriginalStore = uploadedOriginalStore;
   }
 
   /**
@@ -67,29 +69,40 @@ public class StoredDocumentSourceAccess {
   }
 
   /**
-   * The document's own file on this machine, or {@code null} when this deployment may not read it
-   * again: a {@code FILESYSTEM} library's {@code sourcePath} must still pass {@link
-   * FilesystemPathAllowlist} and the file must resolve underneath it via {@link Path#toRealPath},
-   * and an {@code UPLOAD} file must lie in this library's own managed subdirectory. The allowlist
-   * can be narrowed after indexing (ADR-0018, Entscheidung 6), so it is re-checked here.
+   * Runs {@code action} on the document's own file, or returns {@code false} without running it
+   * when this deployment may not read it again: a {@code FILESYSTEM} library's {@code sourcePath}
+   * must still pass {@link FilesystemPathAllowlist} and the file must resolve underneath it (the
+   * allowlist can be narrowed after indexing, ADR-0018, Entscheidung 6), and an {@code UPLOAD} file
+   * must belong to its library's own storage area. The file is only valid for the duration of the
+   * call - an upload store that is not this machine's disk hands out a copy and removes it
+   * afterwards (ADR-0030, Entscheidung 6).
    */
-  public Path localSourceFile(Document document) {
-    if (document.getFilePath() == null || document.getLibraryId() == null) {
-      return null;
+  public boolean withLocalSourceFile(Document document, Predicate<Path> action) {
+    Optional<Boolean> outcome = withLocalFile(document, action::test);
+    if (outcome.isEmpty()) {
+      log.info(
+          "Skipping document {}: its file is not readable within the directories this deployment"
+              + " is configured to read",
+          document.getId());
+      return false;
     }
-    Path candidate;
-    try {
-      candidate = Path.of(document.getFilePath());
-    } catch (InvalidPathException e) {
-      log.warn("Document {} has a file path that is not a local path", document.getId(), e);
-      return null;
-    }
-    if (isRemote(document)) {
-      return null;
+    return outcome.get();
+  }
+
+  /**
+   * {@link #withLocalSourceFile} without the logging, so the attachment path can report its own
+   * reason: empty means no readable file of this document, otherwise {@code action}'s own result.
+   */
+  private <T> Optional<T> withLocalFile(Document document, Function<Path, T> action) {
+    if (document.getFilePath() == null || document.getLibraryId() == null || isRemote(document)) {
+      return Optional.empty();
     }
     return switch (document.getSourceType()) {
-      case FILESYSTEM -> filesystemFileWithinConfiguredDirectory(document, candidate);
-      case UPLOAD -> uploadedFileWithinManagedStorage(document, candidate);
+      case FILESYSTEM ->
+          Optional.ofNullable(filesystemFileWithinConfiguredDirectory(document)).map(action);
+      case UPLOAD ->
+          UploadedOriginalRef.of(document)
+              .flatMap(ref -> uploadedOriginalStore.withLocalFile(ref, action));
       default ->
           throw new IllegalStateException(
               "local source type without a file resolution: " + document.getSourceType());
@@ -133,14 +146,6 @@ public class StoredDocumentSourceAccess {
           document.getId());
       return false;
     }
-    Path rootFile = localSourceFile(root);
-    if (rootFile == null) {
-      log.info(
-          "Skipping attachment document {}: its root ancestor's file is not readable within the"
-              + " directories this deployment is configured to read",
-          document.getId());
-      return false;
-    }
     List<Integer> indices = new ArrayList<>(chain.size());
     String parentPath = root.getFilePath();
     for (int i = chain.size() - 1; i >= 0; i--) {
@@ -156,6 +161,30 @@ public class StoredDocumentSourceAccess {
       indices.add(index);
       parentPath = chain.get(i).getFilePath();
     }
+    Optional<Boolean> outcome =
+        withLocalFile(
+            root, rootFile -> extractAlong(document, root, chain, indices, rootFile, action));
+    if (outcome.isEmpty()) {
+      log.info(
+          "Skipping attachment document {}: its root ancestor's file is not readable within the"
+              + " directories this deployment is configured to read",
+          document.getId());
+      return false;
+    }
+    return outcome.get();
+  }
+
+  /**
+   * Follows {@code indices} down {@code chain}, starting at the root ancestor's own file, and hands
+   * the last extracted file to {@code action}. Every temp file it created is deleted afterwards.
+   */
+  private boolean extractAlong(
+      Document document,
+      Document root,
+      List<Document> chain,
+      List<Integer> indices,
+      Path rootFile,
+      Predicate<Path> action) {
     List<Path> extractedFiles = new ArrayList<>(indices.size());
     try {
       Path currentFile = rootFile;
@@ -241,12 +270,16 @@ public class StoredDocumentSourceAccess {
     return true;
   }
 
-  private Path filesystemFileWithinConfiguredDirectory(Document document, Path candidate) {
+  private Path filesystemFileWithinConfiguredDirectory(Document document) {
     KnowledgeLibrary library = libraryRepository.findById(document.getLibraryId()).orElse(null);
     if (library == null || library.getSourcePath() == null) {
       return null;
     }
     if (!filesystemAllowlist.isAllowed(library.getSourcePath())) {
+      return null;
+    }
+    Path candidate = localPath(document);
+    if (candidate == null) {
       return null;
     }
     Path real = resolveReal(candidate);
@@ -257,18 +290,13 @@ public class StoredDocumentSourceAccess {
     return real.startsWith(configuredDirectory) ? real : null;
   }
 
-  private Path uploadedFileWithinManagedStorage(Document document, Path candidate) {
-    Path libraryUploadDirectory =
-        Paths.get(uploadProperties.storagePath())
-            .resolve(document.getLibraryId().toString())
-            .toAbsolutePath()
-            .normalize();
-    Path real = resolveReal(candidate);
-    Path managedDirectory = resolveReal(libraryUploadDirectory);
-    if (real == null || managedDirectory == null) {
+  private Path localPath(Document document) {
+    try {
+      return Path.of(document.getFilePath());
+    } catch (InvalidPathException e) {
+      log.warn("Document {} has a file path that is not a local path", document.getId(), e);
       return null;
     }
-    return real.startsWith(managedDirectory) ? real : null;
   }
 
   /**
