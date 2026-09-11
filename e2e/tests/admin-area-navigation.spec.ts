@@ -21,6 +21,14 @@ test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)',
     await page.waitForURL('**/admin/models')
     await expect(page.getByRole('heading', { level: 1, name: 'Modelle' })).toBeVisible()
 
+    // #1542: der Eintrag „E-Mail" landet auf dem Server-Tab, der selbst eine Route ist.
+    await column.getByRole('link', { name: 'E-Mail' }).click()
+    await page.waitForURL('**/admin/mail/server')
+    await expect(page.getByRole('heading', { level: 1, name: 'E-Mail' })).toBeVisible()
+    await expect(
+      page.getByRole('tab', { name: 'SMTP-Zugang' }).and(page.locator('[aria-selected="true"]')),
+    ).toBeVisible()
+
     await column.getByRole('link', { name: 'Allgemein & Branding' }).click()
     await page.waitForURL('**/admin/branding')
     await expect(page.getByRole('heading', { level: 1, name: 'Branding' })).toBeVisible()
@@ -50,6 +58,7 @@ test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)',
       'Allgemein & Branding',
       'Benutzer & Gruppen',
       'Modelle',
+      'E-Mail',
       'Suche & Indexierung',
     ]) {
       const box = await column.getByRole('link', { name: label }).boundingBox()

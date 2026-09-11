@@ -1390,9 +1390,9 @@ scheitern zu lassen: Wer ein Konto anlegt, bekommt den Einladungslink dann zur W
 Zwei Dinge werden getrennt gehalten:
 
 - **Der Mailserver ist eine Verwaltungseinstellung.** Server, Port, Verschlüsselung, Zugangsdaten
-  und Absender stehen in der Oberfläche unter „E-Mail-Versand" und wirken ohne Neustart. Das
-  Passwort liegt verschlüsselt in der Datenbank, erscheint in keiner Antwort und in keinem
-  Protokoll.
+  und Absender stehen in der Oberfläche unter „Administration → E-Mail → SMTP-Zugang" und wirken
+  ohne Neustart. Das Passwort liegt verschlüsselt in der Datenbank, erscheint in keiner Antwort und
+  in keinem Protokoll.
 - **Die öffentliche Adresse ist eine Bereitstellungsentscheidung.** `OPAA_PUBLIC_BASE_URL` steht in
   der Umgebung, nicht in der Oberfläche. Jeder Link in einer E-Mail wird daraus gebildet; die
   Adresse aus dem `Host`-Kopf einer Anfrage wird nie verwendet. Ohne Wert baut OPAA keinen Link —
@@ -1403,9 +1403,11 @@ Zwei Dinge werden getrennt gehalten:
 
 1. `OPAA_PUBLIC_BASE_URL` setzen — vollständig mit Schema, ohne abschließenden Schrägstrich, genau
    die Adresse, unter der Nutzende OPAA im Browser öffnen.
-2. Als Systemverwalter unter „E-Mail-Versand" eintragen: Server, Port, Verschlüsselung, bei Bedarf
+2. Als Systemverwalter unter „Administration → E-Mail → SMTP-Zugang" eintragen: Server, Port,
+   Verschlüsselung, bei Bedarf
    Zugangsdaten, Absenderadresse und Absendername. Der Versand lässt sich erst einschalten, wenn
-   Server, Port und Absenderadresse gesetzt sind.
+   Server, Port und Absenderadresse gesetzt sind. Fehlt `OPAA_PUBLIC_BASE_URL`, weist die Seite
+   darauf hin, dass Links in E-Mails unbrauchbar blieben.
 3. Testnachricht auslösen. Sie geht an die eigene Adresse des aufrufenden Verwalters. Das Ergebnis
    steht sofort in der Oberfläche: zugestellt, übersprungen oder fehlgeschlagen mit Grund.
 
@@ -1442,8 +1444,11 @@ löschen — der Satz ist fest, damit keine Installation mit einer Vorlage ohne 
 - **Der HTML-Teil trägt den Rahmen der Installation**: Produktname und Akzentfarbe aus dem Branding.
   Ein Logo wird nicht eingebettet. Wer einen eigenen HTML-Teil speichert, ersetzt den Rahmen
   vollständig.
-- **Vorschau und Testnachricht je Vorlage**: Die Vorschau zeigt das Ergebnis mit Beispielwerten,
-  ohne etwas zu versenden; die Testnachricht schickt genau diese Fassung an die eigene Adresse.
+- **Vorschau und Testnachricht je Vorlage**: Die Vorschau unter „Administration → E-Mail →
+  Vorlagen" zeigt das Ergebnis mit Beispielwerten, ohne etwas zu versenden — Textfassung und
+  HTML-Fassung nebeneinander, die HTML-Fassung in einem abgeschotteten Rahmen ohne Skripte. Die
+  Testnachricht schickt genau diese Fassung an die eigene Adresse. „Mit Standard vergleichen"
+  stellt die eigene Fassung dem ausgelieferten Text gegenüber.
 
 Jede Änderung, jedes Zurücksetzen, jede Änderung der Einstellungen und jede Testnachricht steht im
 Nachweisprotokoll.
