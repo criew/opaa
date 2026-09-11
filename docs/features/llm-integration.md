@@ -614,7 +614,7 @@ bestimmt, welche Passagen übergeben werden** — Suche, Zusammenführung, Reran
 Dokument bestimmt, wie sie übergeben werden**, weil das eine Eigenschaft des Modellaufrufs ist und mit
 Systemvorspann, Parametern und Kontextgrenze zusammen festgelegt wird.
 
-Der Aufruf wird aus vier Teilen zusammengesetzt:
+Der Aufruf wird aus fünf Teilen zusammengesetzt (der fünfte ist Zielbild):
 
 1. **Systemvorspann** — Rolle, Ton, Umgang mit Nichtwissen und die verbindlichen Belegregeln. Nicht über
    den Chat änderbar (siehe [Absicherung des Modells](#absicherung-des-modells-gegen-missbrauch)).
@@ -622,8 +622,13 @@ Der Aufruf wird aus vier Teilen zusammengesetzt:
    tragen: Dokument, Stelle im Dokument, Bezeichnung — und die **Zeichenfolge, mit der genau diese
    Passage zu zitieren ist**. Die Passagen sind voneinander sichtbar getrennt, damit das Modell sie
    nicht zu einem Fließtext verschmilzt. **(gebaut)**
-3. **Der bisherige Gesprächsverlauf**, soweit er in die Kontextgrenze passt. **(gebaut)**
+3. **Der bisherige Gesprächsverlauf**, soweit er in die Kontextgrenze passt. **(gebaut)** Zielbild
+   (Epic #1482): das Gesprächsfenster ohne Zitiermarken früherer Antworten, siehe
+   [conversation-memory.md](./conversation-memory.md).
 4. **Die Frage.**
+5. **Die Gesprächsnotiz** — die Angaben der Person aus diesem Chat, als Block **im Systemvorspann**,
+   ausdrücklich als „kein Beleg, keine Quelle" gekennzeichnet. **(Zielbild, Epic #1482;
+   Spezifikation in [conversation-memory.md](./conversation-memory.md))**
 
 Die Antwort kommt **mit Belegen im Text zurück, nicht mit einer Liste am Ende**: Jede tragende Aussage
 trägt die Zeichenfolge der Passage, auf die sie sich stützt, unmittelbar bei sich. OPAA löst diese

@@ -701,6 +701,69 @@ Korpusdokumente einen Fall der Klasse `literal_term_weak_embedding` aus dem Top-
 (HitRate@5 0,444 → 0,333) und `compound_word`/nDCG@10 um 0,005 — benannt statt geglättet, siehe
 [`eval/corpus/verwaltung/MAINTENANCE.md`](../../eval/corpus/verwaltung/MAINTENANCE.md).
 
+### Mehrrunden-Klassen (Epic #1482, Gesprächsgedächtnis)
+
+> **Stand (09/2026):** spezifiziert, noch nicht gebaut. Die drei Klassen unterscheiden sich von den
+> fünf obigen in der Form: Ein Fall ist eine **Folge von Runden**, jede mit eigener Frage, eigener
+> handgeschriebener Kurzantwort und eigenen erwarteten Dokumenten; gemessen wird je Runde, ein Fall
+> gilt als gelöst, wenn jede Runde gelöst ist. Sie liegen in einem eigenen Datensatz
+> (`eval/golden/verwaltung-conversations.json`) mit eigener Baseline und laufen nur zerlegend —
+> gepinntes Eval-Chat-Modell, Mehrfachlauf-Regel, manuell oder per Label, nicht nächtlich. Schema,
+> Harness-Simulation des Gedächtnisses und Reihenfolge der Messung stehen in
+> [conversation-memory.md, Abschnitt „Messung"](./conversation-memory.md#messung).
+>
+> **Ausnahme von der Zwei-Pfade-Regel (Abschnitt 5, Zustandsfelder; `MAINTENANCE.md`):** „Gelöst"
+> ist bislang auf **beiden** Messpfaden definiert. Mehrrunden-Fälle können konstruktionsbedingt nur
+> auf dem Pipeline-Pfad laufen — der Rohvektor-Pfad misst `similaritySearch` direkt und kennt weder
+> Verlauf noch Zerlegung. Unter der unveränderten Regel bliebe jeder Mehrrunden-Fall dauerhaft
+> `known_gap`. Deshalb gilt: **Eine Fallklasse, die konstruktionsbedingt nur auf einem Messpfad
+> laufen kann, gilt als gelöst, wenn sie auf diesem Pfad gelöst ist.** Die Einpfadigkeit ist am Fall
+> vermerkt und begründet (`expected_state_exception`, wie bei der bestehenden Pfad-Asymmetrie), damit
+> ein Zustandswechsel auch hier eine sichtbare, datierte Entscheidung bleibt.
+
+#### (f) `anaphora_resolution` — Rückfrage mit Bezugswort
+
+„Und bei Bedürftigkeit?" nach „Was kostet ein Anwohnerparkausweis?". Das Zieldokument der Rückfrage
+ist nur findbar, wenn das Bezugswort durch den Gegenstand der Vorrunde ersetzt wird.
+
+*Konstruktion:* zwei bis drei Runden; die Rückfrage teilt mit der Vorrunde kein Nomen, das allein
+zum Zieldokument führt.
+*Adressat:* Suchfenster und Teilfragen-Zerlegung (Bauteil 1 des Gesprächsgedächtnisses). Die Klasse
+ist die Sicherung dafür, dass die Verengung des Suchfensters auf zwei Runden nichts verliert.
+
+#### (g) `topic_switch` — Themenwechsel im Chat
+
+Runde 1 und 2 zum Anwohnerparkausweis, Runde 3 zur Hundesteuer. Die erwarteten Dokumente der
+Wechselrunde sind ausschließlich das neue Thema; ein Dokument des alten Themas im Fenster ist
+**Bleed** und wird als eigene Zahl je Klasse ausgewiesen.
+
+*Konstruktion:* drei bis vier Runden, Wechsel in Runde 2 oder 3; ein bis zwei Fälle kehren durch
+Neubenennung zum alten Thema zurück.
+*Adressat:* kurzes Suchfenster, Ankerraum-Invariante des Sicherheitsgurts, Rückfall auf die letzte
+Nutzerfrage. Zugleich die Wiederaufnahmebedingung der verworfenen Themenwechsel-Erkennung
+([ADR-0031](../decisions/0031-gespraechsgedaechtnis.md)).
+
+#### (h) `constraint_carryover` — Rahmenangabe aus einer frühen Runde
+
+„Ich arbeite in der Nebenstelle 3" in Runde 1, ein Zwischenthema in Runde 2, „Welche Öffnungszeiten
+gelten?" in Runde 3. Richtig ist das Dokument der Nebenstelle 3; die Hauptstelle ist der
+Verwechslungspartner.
+
+*Konstruktion:* drei bis fünf Runden; die Angabe liegt bei der Zielrunde außerhalb des Suchfensters
+von zwei Runden, sodass sie die Suche nur über die Gesprächsnotiz erreichen kann;
+`confusable_document` ist Pflicht, sonst misst die Klasse nichts.
+*Adressat:* Gesprächsnotiz (Bauteil 2). Die Klasse muss nach dem Fenster-Umbau **vorübergehend
+fallen dürfen** und mit der Notiz mindestens den heutigen Stand wieder erreichen — das ist der
+Nachweis, dass die Notiz gebraucht wird.
+
+#### Verworfen: `long_horizon`
+
+Eine Angabe aus Runde 1 in Runde 13 läuft über denselben Mechanismus wie in Runde 4 — die Notiz.
+Was die Klasse zusätzlich messen würde, ist die Kontinuität der **Antwort** über die Fensterbreite
+hinaus, und die ist mit Ranking-Metriken nicht messbar. Acht Fälle wären rund hundert Skriptrunden
+Kuratierung für einen Wert, den der Retrieval-Harness nicht sehen kann. Wiederaufnahme, sobald ein
+Generationsharness (Relevanz-/Faktentreue-Evaluatoren) existiert.
+
 ### Gemeinsame Regeln
 
 Die bestehenden Regeln für Golden-Fälle gelten unverändert und werden hier nicht wiederholt:
