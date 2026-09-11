@@ -80,7 +80,8 @@ neue Normalfall.
 
 | Operation | Weg (oben) | Dateisystem | S3 |
 |---|---|---|---|
-| Ablegen aus einem Strom, Rückgabe von Locator **und Arbeitsdatei** | 1, 2 | `Files.copy` an den Zielort, Arbeitsdatei = die abgelegte Datei | Temp-Datei schreiben, `PutObject`, Arbeitsdatei = die Temp-Datei |
+| Annehmen: Strom entgegennehmen, Arbeitsdatei zurückgeben | 1 | `Files.copy` an den Zielort | Temp-Datei schreiben |
+| Festschreiben: die angenommene Datei wird zum Original, Rückgabe des Locators | 1 | nichts zu tun, die Datei liegt schon dort | `PutObject` |
 | Freigeben der Arbeitsdatei (Original bleibt) | 2 | nichts zu tun | Temp-Datei löschen |
 | Verwerfen: Original und Arbeitsdatei | 6 | beide löschen | Objekt und Temp-Datei löschen |
 | Lesen zum Ausliefern | 3 | lokale Datei (`FileSystemResource`) | Objektkörper als Strom |
@@ -94,6 +95,14 @@ Der Port nimmt beim Ablegen den Multipart-Strom, nicht eine fertig geschriebene 
 bräuchte der Dateisystemweg erst eine Staging-Datei und dann eine zweite Vollkopie je Upload:
 `java.io.tmpdir` (Container-Overlay) und `/app/uploads` (Bind-Mount) liegen praktisch nie auf
 demselben Dateisystem, ein `move` wäre also keines.
+
+**Annehmen und Festschreiben sind zwei Schritte**, denn zwischen ihnen liegen die Prüfungen, die
+einen Upload noch ablehnen: die Übereinstimmung von Inhalt und Endung und die Entdoppelung über die
+Prüfsumme. Ein einziger Schritt würde die Bytes vor diesen Prüfungen in den Bucket legen, sodass
+jeder abgelehnte Doppel-Upload ein volles `PutObject` samt `DeleteObject` kostet — und der erneute
+Upload derselben Datei ist der häufige Fall, nicht der seltene. Die Temp-Datei existiert ohnehin,
+also kostet die Trennung nur eine Operation mehr im Port. Auf dem Dateisystemweg fallen beide
+Schritte zusammen: die angenommene Datei liegt bereits an ihrem endgültigen Platz.
 
 Zurück kommt der Locator **und eine lokale Arbeitsdatei**, denn Weg 2 liest sie erst nach der
 Rückkehr von `uploadDocument` auf einem anderen Thread. Die Arbeitsdatei gehört ab da dem
@@ -155,9 +164,14 @@ einen eigenen Bucket je Haus trennen, ohne das Schema zu ändern.
 
 **Anhangzeilen sind die Ausnahme.** Ihr `file_path` ist synthetisch
 (`<elternpfad>/<index>/<dateiname>`) und benennt kein abgelegtes Objekt. Der Store löst ihn nie auf:
-`isReExtractableAttachment` erkennt die Form am Elternpfad und leitet die Zeile in die
-Rückextraktion um, bevor irgendein Adapter sie sieht. Für die Ablage heißt das — nichts; für die
-Umstellung eines Bestands heißt es alles (Entscheidung 5).
+auf den **Lesewegen** löst der Store ihn nie auf, weil `isReExtractableAttachment` die Form am
+Elternpfad erkennt und die Zeile in die Rückextraktion umleitet, bevor ein Adapter sie sieht. Auf
+dem Löschweg gibt es diese Weiche nicht: `deleteDocument` löst den Locator der übergebenen Zeile
+auf, und eine Anhangzeile ist über denselben Endpunkt löschbar. Das ist unschädlich, muss aber im
+Vertrag stehen: ein synthetischer Locator liegt zwar im richtigen Präfix, benennt aber kein Objekt
+und **löst regulär auf `nicht vorhanden` auf** — er darf kein Fehler sein und nichts löschen. Für
+die Ablage heißt das ein `HeadObject` je Anhangslöschung; für die Umstellung eines Bestands heißt es
+alles (Entscheidung 5).
 
 ### 5. Die Umstellung eines Bestands ist eine Präfixersetzung, und zwar ein Betriebsvorgang
 
@@ -206,6 +220,13 @@ Arbeitsdatei aus Entscheidung 2 und, bei einem gleichzeitigen Reindex derselben 
 Kopie aus dieser Entscheidung können nebeneinander liegen. Das Handbuch nennt die Rechnung, statt
 eine Zahl zu behaupten.
 
+**Ein getöteter Prozess hat kein `finally`.** Die Freigabe aus Entscheidung 2 und das Aufräumen
+hier hängen beide daran; ein harter Abbruch lässt die Temp-Datei liegen. Das Gegenstück für genau
+diesen Fall existiert bereits: `UploadPendingRecoveryRunner` räumt beim Start die Zeilen auf, die
+ein gestorbener Prozess in `PENDING` zurückgelassen hat. Das Temp-Verzeichnis der Ablage bekommt
+denselben Kehraus am selben Ort — das verwaiste **Objekt** im Bucket, das derselbe Abbruch
+hinterlassen kann, sammelt dagegen der Aufräumlauf #1478 ein.
+
 ### 8. Geteilter Clientbau, eigene Zieladressprüfung mit eigenem Namensraum
 
 Der Clientbau aus `AwsSdkS3ObjectStore` (Endpunkt, Region, Adressstil, die beiden
@@ -213,6 +234,14 @@ Prüfsummen-Schalter, Zeitschranken, Proxy, selbstsignierte Endpunkte, Wiederhol
 Fehlerübersetzung) wird **herausgelöst und von beiden Seiten benutzt**, statt ein zweites Mal
 erarbeitet zu werden. Er ist mühsam erworbenes Wissen über die Verträglichkeit mit nicht-AWS-Stores;
 eine zweite Fassung davon würde still auseinanderlaufen.
+
+**Der `ExecutionInterceptor` gehört mit in den geteilten Teil**, und zwar parametrisiert. Er bündelt
+heute in einer Klasse drei Dinge, die nicht zusammen wandern: die Host-Prüfung vor jeder Anfrage
+(ADR-0027, Entscheidung 8 — sie soll die Ablage behalten), die Anfrage- und Drosselzählung über
+`SourceRequestMeter` und die Durchsetzung des Anfragebudgets (beide bleiben beim Konnektor). Er
+nimmt deshalb Validator, optionales Messwerk und optionales Budget entgegen — `0` als „unbegrenzt"
+kennt `createForProbe` bereits. Ohne diesen Satz fällt beim Bauen entweder das Budget in die Ablage
+oder die Prüfung je Anfrage aus ihr heraus.
 
 Die Zieladressprüfung bleibt erhalten, bekommt aber einen eigenen Namensraum
 `opaa.upload.s3.target-validation` — nach dem Vorbild von `OidcAddressPolicy`
