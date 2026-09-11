@@ -108,6 +108,25 @@ opaa:
     # sets it. Starting without one of those profiles fails fast, see
     # io.opaa.auth.AuthProfileGuard.
     initial-admin-email: ${OPAA_INITIAL_ADMIN_EMAIL:admin@opaa.local}
+    # Local accounts (ADR-0033): the one secret every key of the local token issuer is derived from
+    # (HKDF, io.opaa.security.LocalAuthKeyService - access-token signature, refresh-token lookup,
+    # action-token lookup) and the session limits of the local issuer. No default for the secret on
+    # purpose: the "oidc" profile refuses to start without a strong one (at least 32 characters, no
+    # placeholder - io.opaa.auth.local.LocalAuthSecretGuard); the dev profile below sets an
+    # explicitly-marked non-production value. Rotating the secret ends every local session and
+    # invalidates every open invitation, reset and handover link - the documented step after a
+    # database restore. The limits are validated at startup in every profile (LocalAuthProperties):
+    # refresh-token-ttl is the idle limit (at most 30 days), session-max-lifetime the absolute end
+    # of a session no refresh extends (at most 90 days); local SYSTEM_ADMIN accounts get the shorter
+    # admin-* values. The issuer of local accounts is fixed to urn:opaa:local and not configurable.
+    local:
+      jwt-secret: ${OPAA_AUTH_JWT_SECRET:}
+      access-token-ttl: ${OPAA_AUTH_LOCAL_ACCESS_TOKEN_TTL:15m}
+      refresh-token-ttl: ${OPAA_AUTH_LOCAL_REFRESH_TOKEN_TTL:7d}
+      session-max-lifetime: ${OPAA_AUTH_LOCAL_SESSION_MAX_LIFETIME:30d}
+      admin-refresh-token-ttl: ${OPAA_AUTH_LOCAL_ADMIN_REFRESH_TOKEN_TTL:4h}
+      admin-session-max-lifetime: ${OPAA_AUTH_LOCAL_ADMIN_SESSION_MAX_LIFETIME:12h}
+      cookie-secure: ${OPAA_AUTH_LOCAL_COOKIE_SECURE:true}
   http:
     force-http1: ${OPAA_HTTP_FORCE_HTTP1:false}
   query:
@@ -473,6 +492,13 @@ spring:
 opaa:
   auth:
     mode: dev
+    local:
+      # NICHT FUER DEN PRODUKTIVBETRIEB - a fixed, publicly-known secret so bootRun and the backend
+      # test suite (all activate "dev", see AGENTS.md) have working local-issuer keys without
+      # operator setup. LocalAuthSecretGuard does not run in this profile; any deployment that does
+      # not activate "dev" falls back to the (empty) base value above and must set
+      # OPAA_AUTH_JWT_SECRET itself - see docs/handbuch/deployment.md.
+      jwt-secret: ${OPAA_AUTH_JWT_SECRET:NICHT-FUER-DEN-PRODUKTIVBETRIEB-opaa-dev-jwt-secret-2026}
     dev:
       issuer: ${OPAA_AUTH_DEV_ISSUER:opaa-dev}
       default-user: ${OPAA_AUTH_DEV_DEFAULT_USER:dev-admin}

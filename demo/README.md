@@ -81,6 +81,7 @@ SPRING_PROFILES_ACTIVE=docker,oidc
 OPAA_INITIAL_ADMIN_EMAIL=admin@stadt-rheinfurt.example
 OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example,minio
 OPAA_CREDENTIALS_ENCRYPTION_KEY=<Ausgabe von: openssl rand -base64 32>
+OPAA_AUTH_JWT_SECRET=<Ausgabe von: openssl rand -base64 48>
 OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180
 OPAA_DEMO_MODE=true
 OPAA_PGVECTOR_DIMENSIONS=768
@@ -116,6 +117,11 @@ Herkunft und Zwang jeder einzelnen Variable:
   mit `docker,oidc`, nicht mit `dev` — der nur dort hinterlegte Entwicklungsschlüssel greift also
   nicht; einen eigenen Wert mit `openssl rand -base64 32` erzeugen (der Demo-Smoke-Lauf setzt in
   `e2e/demo-smoke.env` bewusst den öffentlichen Entwicklungsschlüssel, weil er nur Demo-Werte schützt).
+- `OPAA_AUTH_JWT_SECRET` ist seit #1532 zwingend: Der Demo-Stack läuft mit `docker,oidc`, und in
+  diesem Betriebsmodus bricht das Backend den Start ohne ein starkes Wurzelgeheimnis der lokalen
+  Benutzerverwaltung ab (ADR-0033; mindestens 32 Zeichen, kein Platzhalter). Einen eigenen Wert mit
+  `openssl rand -base64 48` erzeugen; der Demo-Smoke-Lauf setzt in `e2e/demo-smoke.env` bewusst
+  einen öffentlichen Testwert, weil er nur Demo-Konten schützt.
 - `OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180` ist beim `oidc`-Compose-Profil **zwingend**
   (`.env.docker.example`, Kommentar bei derselben Variable) — ohne sie blockiert die
   Content-Security-Policy des Frontend-nginx die OIDC-Anmeldung im Browser still (#409/#670): kein
