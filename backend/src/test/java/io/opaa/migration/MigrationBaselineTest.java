@@ -23,10 +23,11 @@ import org.junit.jupiter.api.Test;
  * Applies {@code db/changelog/changes/001-baseline.yaml} to an empty database and asserts the
  * invariants a broken baseline would violate: representative tables per schema group exist (and the
  * historical intermediate ones do not), pgvector is enabled, {@code audit_log} is partitioned and
- * owned by the restricted role, the seed rows are present, the organization-boundary
- * composite-foreign-key rule (formerly {@code OrganizationBoundarySchemaTest}, #390) still holds
- * schema-wide, and the current-state constraints the deleted per-changeset delta tests covered as a
- * side effect of testing their own transition.
+ * owned by the restricted role, the seed rows are present, and the current-state constraints the
+ * deleted per-changeset delta tests covered as a side effect of testing their own transition. The
+ * organization-boundary composite-foreign-key rule (formerly {@code
+ * OrganizationBoundarySchemaTest}, #390) lives here too, but judges the delivered schema rather
+ * than the baseline alone - see {@code applyEveryChangesetAfterTheBaseline()}.
  *
  * <p>Three sibling tests carry the rest: {@link AuditPrivilegeModelTest} and {@link
  * DiagnosticContextPrivilegeModelTest} for the two ADR-0015 privilege models, and {@link
@@ -48,17 +49,9 @@ class MigrationBaselineTest extends AbstractMigrationTest {
    * created under (ported from {@code OrganizationBoundarySchemaTest}, #390 review - see {@link
    * BoundaryException}). {@link #everyOrganizationScopedForeignKeyIsComposite()} also fails if a
    * listed exception no longer describes an actual violation, so stale entries cannot linger
-   * unnoticed.
+   * unnoticed. Empty today: the schema holds the rule without exception.
    */
-  private static final List<BoundaryException> DOCUMENTED_EXCEPTIONS =
-      List.of(
-          new BoundaryException(
-              "documents",
-              "fk_documents_parent",
-              "Single-column self-reference added before this rule covered it again; making it"
-                  + " composite is a schema change and therefore out of scope for the baseline"
-                  + " consolidation that surfaced it. Tracked and to be removed with #1500.",
-              "#1500"));
+  private static final List<BoundaryException> DOCUMENTED_EXCEPTIONS = List.of();
 
   private Connection connection;
 
@@ -996,10 +989,14 @@ class MigrationBaselineTest extends AbstractMigrationTest {
   // instance of: a table carrying organization_id whose foreign key to another organization_id-
   // carrying table is a plain, single-column key instead of the composite (fk_column,
   // organization_id) -> (referenced_pk, organization_id) shape the rest of the schema relies on.
+  // Every test here that asserts the absence of a violation first calls
+  // applyEveryChangesetAfterTheBaseline(): the rule binds the delivered schema, not just the
+  // baseline.
   // ---------------------------------------------------------------------------------------------
 
   @Test
-  void everyOrganizationScopedForeignKeyIsComposite() throws SQLException {
+  void everyOrganizationScopedForeignKeyIsComposite() throws Exception {
+    applyEveryChangesetAfterTheBaseline();
     List<Violation> violations = findViolations(connection);
 
     List<String> staleExceptions = staleExceptionDescriptions(violations, DOCUMENTED_EXCEPTIONS);
@@ -1067,7 +1064,8 @@ class MigrationBaselineTest extends AbstractMigrationTest {
    */
   @Test
   void aSingleColumnForeignKeyBetweenTwoOrganizationScopedTablesIsDetectedAsAViolation()
-      throws SQLException {
+      throws Exception {
+    applyEveryChangesetAfterTheBaseline();
     createArtificialOrganizationScopedTablesWithASingleColumnForeignKey();
 
     List<Violation> violations =
@@ -1095,7 +1093,8 @@ class MigrationBaselineTest extends AbstractMigrationTest {
    * Reproduktionsnachweis section warns against.
    */
   @Test
-  void aDocumentedExceptionCoversTheMatchingViolationAndIsNotStale() throws SQLException {
+  void aDocumentedExceptionCoversTheMatchingViolationAndIsNotStale() throws Exception {
+    applyEveryChangesetAfterTheBaseline();
     createArtificialOrganizationScopedTablesWithASingleColumnForeignKey();
     List<Violation> violations = findViolations(connection);
     List<BoundaryException> exceptions = new ArrayList<>(DOCUMENTED_EXCEPTIONS);
@@ -1147,7 +1146,8 @@ class MigrationBaselineTest extends AbstractMigrationTest {
    * this degenerate shape must still be reported as a violation, not accepted as composite.
    */
   @Test
-  void aForeignKeyThatIsOnlyOrganizationIdIsNotAcceptedAsComposite() throws SQLException {
+  void aForeignKeyThatIsOnlyOrganizationIdIsNotAcceptedAsComposite() throws Exception {
+    applyEveryChangesetAfterTheBaseline();
     createArtificialOrganizationScopedTablesWithADegenerateOrganizationIdOnlyForeignKey();
 
     List<Violation> violations =
@@ -1163,6 +1163,18 @@ class MigrationBaselineTest extends AbstractMigrationTest {
     assertThat(violation.constraintName()).isEqualTo("fk_test_org_only_child_degenerate");
     assertThat(violation.baseColumns()).containsExactly("organization_id");
     assertThat(violation.referencedColumns()).containsExactly("organization_id");
+  }
+
+  /**
+   * Brings this test's database from the baseline (all this class's other tests work against) to
+   * the delivered schema: {@code db.changelog-master.yaml} shares the baseline's changeSet
+   * identities with this class's fixture chain, so only the changesets written after the baseline
+   * actually run. The organization-boundary rule is a property of the schema an installation ends
+   * up with, not of the baseline alone - without this step a changeset added after the baseline
+   * could introduce a single-column key and never be judged by the rule (#1500).
+   */
+  private void applyEveryChangesetAfterTheBaseline() throws Exception {
+    applyChangelog(connection, "db/changelog/db.changelog-master.yaml");
   }
 
   private void createArtificialOrganizationScopedTablesWithASingleColumnForeignKey()

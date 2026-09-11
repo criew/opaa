@@ -1,0 +1,39 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-documents-parent-composite-foreign-key
+      author: opaa
+      comment: >-
+        Organization boundary rule (#390, #1500): documents carries organization_id on both sides of
+        its own parent self-reference, so fk_documents_parent has to bind the organization as well -
+        (parent_document_id, organization_id) -> (id, organization_id), which needs a unique key on
+        (id, organization_id) as its target. Before this changeset an attachment row could name a
+        parent document of a different organization; afterwards the database rejects it. The delete
+        rule stays exactly what the single-column key had - NO ACTION, the PostgreSQL default: no
+        database-side cascade (ADR-0022, Entscheidung 4 - deleting a parent document stays
+        application code, because a cascade would remove the row and leave its pgvector chunks
+        orphaned), and deliberately not ON DELETE RESTRICT either, since
+        DocumentRepository#deleteByLibraryId removes a parent and its attachment rows in a single
+        statement - NO ACTION checks that at statement end and accepts it, RESTRICT would reject it
+        row by row. parent_document_id stays nullable; a composite foreign key with a NULL column is
+        not checked (MATCH SIMPLE), so parentless rows are unaffected.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE ONLY public.documents
+                  ADD CONSTRAINT uk_documents_id_organization UNIQUE (id, organization_id);
+
+              ALTER TABLE public.documents
+                  DROP CONSTRAINT fk_documents_parent;
+
+              ALTER TABLE ONLY public.documents
+                  ADD CONSTRAINT fk_documents_parent FOREIGN KEY (parent_document_id, organization_id) REFERENCES public.documents(id, organization_id);
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE public.documents DROP CONSTRAINT IF EXISTS fk_documents_parent;
+
+              ALTER TABLE public.documents
+                  ADD CONSTRAINT fk_documents_parent FOREIGN KEY (parent_document_id) REFERENCES public.documents(id);
+
+              ALTER TABLE public.documents DROP CONSTRAINT IF EXISTS uk_documents_id_organization;
