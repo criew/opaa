@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import axios from 'axios'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
+import { setupAuthInterceptors } from '../services/apiInterceptors'
 import { useAuthStore } from './authStore'
 import { useSpaceStore } from './spaceStore'
 import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
@@ -387,5 +389,75 @@ describe('authStore - local session', () => {
 
     expect(useAuthStore.getState().error).toBeNull()
     expect(useAuthStore.getState().localAccounts.enabled).toBe(true)
+  })
+  // The whole 401 path of a local session in one go: one shared refresh, one repeat of the
+  // original request, no second attempt.
+  it('answers a 401 in a local session with exactly one refresh and one repeat', async () => {
+    setCsrfCookie()
+    let refreshes = 0
+    let calls = 0
+    server.use(
+      http.post('/api/v1/auth/local/refresh', () => {
+        refreshes += 1
+        return HttpResponse.json({ ...TOKEN, accessToken: 'renewed-token' })
+      }),
+      http.get('/api/spaces', ({ request }) => {
+        calls += 1
+        if (calls === 1) return new HttpResponse(null, { status: 401 })
+        expect(request.headers.get('Authorization')).toBe('Bearer renewed-token')
+        return HttpResponse.json({ ok: true })
+      }),
+    )
+    useAuthStore.setState({ sessionKind: 'local', token: 'expired-token', isAuthenticated: true })
+    const client = axios.create({ baseURL: '/api' })
+    setupAuthInterceptors(
+      client,
+      () => useAuthStore.getState().getAccessToken(),
+      () => useAuthStore.getState().renewToken(),
+      (reason) => useAuthStore.getState().expireSession(reason),
+      (reason) => useAuthStore.getState().requirePasswordChange(reason),
+    )
+
+    await expect(client.get('/spaces')).resolves.toBeTruthy()
+
+    expect(refreshes).toBe(1)
+    expect(calls).toBe(2)
+    expect(useAuthStore.getState().isAuthenticated).toBe(true)
+  })
+
+  it('ends the session without a refresh when the 401 names a marker', async () => {
+    setCsrfCookie()
+    let refreshes = 0
+    server.use(
+      http.post('/api/v1/auth/local/refresh', () => {
+        refreshes += 1
+        return HttpResponse.json(TOKEN)
+      }),
+      http.get(
+        '/api/spaces',
+        () =>
+          new HttpResponse(null, {
+            status: 401,
+            headers: {
+              'WWW-Authenticate':
+                'Bearer error="invalid_token", error_description="local_accounts_disabled"',
+            },
+          }),
+      ),
+    )
+    useAuthStore.setState({ sessionKind: 'local', token: 'token', isAuthenticated: true })
+    const client = axios.create({ baseURL: '/api' })
+    setupAuthInterceptors(
+      client,
+      () => useAuthStore.getState().getAccessToken(),
+      () => useAuthStore.getState().renewToken(),
+      (reason) => useAuthStore.getState().expireSession(reason),
+    )
+
+    await expect(client.get('/spaces')).rejects.toThrow()
+
+    expect(refreshes).toBe(0)
+    expect(useAuthStore.getState().isAuthenticated).toBe(false)
+    expect(useAuthStore.getState().error).toMatch(/abgeschaltet/)
   })
 })
