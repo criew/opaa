@@ -23,9 +23,12 @@ public final class CitationMarkers {
 
   /**
    * A run of one or more markers together with the horizontal whitespace it sits in, and the line
-   * end when nothing follows it on that line. Built from {@link CitationParser#CITATION_PATTERN} so
-   * there stays exactly one definition of what a marker is. Matching the surroundings as part of
-   * the marker is what keeps the removal local: no pass ever runs over the rest of the text.
+   * end when nothing follows it on that line. Composed from {@link
+   * CitationParser#CITATION_PATTERN}'s source so there stays exactly one definition of what a
+   * marker <em>looks like</em> - only its syntax travels, not its compile flags, so a flag added
+   * there (say {@code CASE_INSENSITIVE}) would have to be repeated here. Matching the surroundings
+   * as part of the marker is what keeps the removal local: no pass ever runs over the rest of the
+   * text.
    */
   private static final Pattern MARKER_RUN =
       Pattern.compile(
@@ -58,19 +61,28 @@ public final class CitationMarkers {
   }
 
   /**
-   * What one marker run leaves behind: the line end it stood before, nothing at the start of a
-   * line, and otherwise a single space if it sat in whitespace at all.
+   * What one marker run leaves behind: the line end it stood before, the line's own indentation at
+   * the start of a line, and otherwise a single space if it sat in whitespace at all.
    */
   private static String replacementFor(String text, Matcher matcher) {
     String lineEnd = matcher.group("lineEnd");
     if (lineEnd != null) {
       return lineEnd;
     }
-    if (matcher.start() == 0 || isLineBreak(text.charAt(matcher.start() - 1))) {
-      return "";
-    }
     String run = matcher.group("run");
+    if (matcher.start() == 0 || isLineBreak(text.charAt(matcher.start() - 1))) {
+      // Whitespace at the start of a line is the line's indentation, not the marker's.
+      return leadingWhitespaceOf(run);
+    }
     return isSpace(run.charAt(0)) || isSpace(run.charAt(run.length() - 1)) ? " " : "";
+  }
+
+  private static String leadingWhitespaceOf(String run) {
+    int end = 0;
+    while (end < run.length() && isSpace(run.charAt(end))) {
+      end++;
+    }
+    return run.substring(0, end);
   }
 
   private static boolean isSpace(char c) {

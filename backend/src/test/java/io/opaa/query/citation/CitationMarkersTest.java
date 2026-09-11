@@ -110,6 +110,18 @@ class CitationMarkersTest {
     assertThat(CitationMarkers.strip(answer)).isEqualTo("Zeile eins.\nZeile zwei.");
   }
 
+  /**
+   * Whitespace at the start of a line is the line's indentation, not the marker's - a marker that
+   * opens an indented line must not pull the line back to column zero.
+   */
+  @Test
+  void aMarkerOpeningAnIndentedLineKeepsTheIndentation() {
+    String answer = "Die Werte lauten:\n  【source: doc-1#0 | a.md】 top-k: 8\n    fetch-k: 25";
+
+    assertThat(CitationMarkers.strip(answer))
+        .isEqualTo("Die Werte lauten:\n  top-k: 8\n    fetch-k: 25");
+  }
+
   /** Something that only looks like a marker is not one - nothing is guessed away. */
   @Test
   void aMalformedMarkerIsLeftAlone() {

@@ -425,6 +425,10 @@ class QueryDecompositionServiceTest {
    * <p>Measured by running two entirely different contexts: once each prompt has its own {@link
    * DecompositionContext#contextTexts()} taken out, what remains must be identical. Anything the
    * prompt derives from the context outside the anchor space differs here.
+   *
+   * <p><b>Whoever adds an argument to {@code decompose} fills it differently in the two runs.</b>
+   * The two runs are the whole mechanism: a new argument given the same value twice cancels out of
+   * the comparison and leaves this test green while saying nothing.
    */
   @Test
   void nothingReachesTheModelOutsideTheInstructionAndTheAnchoredContext() {
