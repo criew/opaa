@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Deterministic generator for the Rheinfurt demo corpus (Issue #711).
 
-Builds all six demo libraries described in
+Builds all seven demo libraries described in
 docs/features/demo-instance.md ("Behördenlandschaft, Bibliotheken und
 Formate") under demo/corpus/:
 
@@ -11,6 +11,7 @@ Formate") under demo/corpus/:
 - pressemitteilungen/              (RSS + .html)   — synthetic, hand-authored
 - interne-dienstanweisungen-meldewesen/ (.docx/.pdf/.pptx) — synthetic
 - ratsinformationen/<jahr>/       (.md, .txt)     — synthetic, one prefix per year
+- formate/                        (one file per admitted extension) — synthetic
 
 No network access is required once the pinned LHM raw files are cached under
 generator/raw-source/ (see leistungen_quelle.py); no `random`, no wall-clock
@@ -29,6 +30,7 @@ tool-choice rationale for PDF/DOCX/PPTX generation.
 from __future__ import annotations
 
 import hashlib
+import re
 import sys
 from pathlib import Path
 
@@ -39,6 +41,7 @@ import reportlab.rl_config as rl_config
 # wall-clock time, which would make every PDF generation non-reproducible.
 rl_config.invariant = 1
 
+import formate
 import intern
 import leistungen
 import leistungen_quelle
@@ -58,7 +61,71 @@ LIBRARIES = [
     "pressemitteilungen",
     "interne-dienstanweisungen-meldewesen",
     "ratsinformationen",
+    "formate",
 ]
+
+# Corpus files no generator run produces, because no pinned library writes their format. They are
+# committed once, survive the clean step and are still covered by MANIFEST.sha256 - a missing one
+# aborts the run rather than silently shrinking the library. The value is the origin sentence
+# SOURCE.md carries for that file, so the two can never drift apart.
+PRESERVED_FILES = {
+    f"formate/{formate.DOC_FILE_NAME}": (
+        "einmalig aus dem in `generator/formate.py` deklarierten Rheinfurt-Text erzeugt "
+        '(`generator/make_doc_fixture.py`, LibreOffice-Export nach "MS Word 97"), danach committet'
+    ),
+    f"formate/{formate.MSG_FILE_NAME}": (
+        "übernommen aus dem Testkorpus des Apache-POI-Projekts (`test-data/hsmf/simple_test_msg.msg`, "
+        "Apache License 2.0, Volltext in "
+        "[`THIRD-PARTY-LICENSES/Apache-POI-testdata-Apache-2.0.txt`](THIRD-PARTY-LICENSES/Apache-POI-testdata-Apache-2.0.txt)). "
+        "**Als einziges Dokument dieses Korpus englisch und ohne Rheinfurt-Bezug** — eine Folge "
+        "seiner Herkunft, kein Versehen"
+    ),
+}
+
+HANDBOOK_FORMAT_CHAPTER = REPO_ROOT / "docs" / "handbuch" / "indexierung.md"
+_HANDBOOK_SECTION = "## Anhang: Formatübersicht"
+_HANDBOOK_EXTENSION_ROW = re.compile(r"^\|\s*`(\.[a-z0-9]+)`\s*\|")
+# The Formatübersicht lists at least the formats of #1058/#1057/#1059/#1189; a parse finding fewer
+# than this read the wrong thing rather than a genuinely shrunken table.
+_MINIMUM_ADMITTED_EXTENSIONS = 10
+
+
+def admitted_extensions() -> list[str]:
+    """Every extension the Formatübersicht of docs/handbuch/indexierung.md admits, read from that
+    table rather than copied here - a fifteenth format must never leave SOURCE.md claiming full
+    coverage. Rows without an extension in the first column (Feed-Detailseite, Confluence-Seite)
+    are no file extension and are skipped.
+
+    Raises SystemExit when the chapter, the section or the table cannot be read: an unnoticed
+    parse failure would silently turn the gap list into "nothing is missing".
+    """
+    if not HANDBOOK_FORMAT_CHAPTER.is_file():
+        raise SystemExit(
+            f"Handbuchkapitel {HANDBOOK_FORMAT_CHAPTER} nicht gefunden - ohne seine "
+            "Formatübersicht lässt sich die Abdeckung der Bibliothek 'Formattest auf S3' nicht "
+            "bestimmen."
+        )
+    text = HANDBOOK_FORMAT_CHAPTER.read_text(encoding="utf-8")
+    start = text.find(_HANDBOOK_SECTION)
+    if start < 0:
+        raise SystemExit(
+            f"Abschnitt '{_HANDBOOK_SECTION}' fehlt in {HANDBOOK_FORMAT_CHAPTER} - wurde er "
+            "umbenannt? Ohne ihn ist die Endungsliste nicht ableitbar."
+        )
+    extensions: list[str] = []
+    for line in text[start:].splitlines()[1:]:
+        if line.startswith("## "):
+            break
+        match = _HANDBOOK_EXTENSION_ROW.match(line)
+        if match and match.group(1) not in extensions:
+            extensions.append(match.group(1))
+    if len(extensions) < _MINIMUM_ADMITTED_EXTENSIONS:
+        raise SystemExit(
+            f"Nur {len(extensions)} Endungen aus der Formatübersicht in "
+            f"{HANDBOOK_FORMAT_CHAPTER} gelesen ({extensions}) - das Tabellenformat hat sich "
+            "vermutlich geändert. Lieber abbrechen als vollständige Abdeckung behaupten."
+        )
+    return extensions
 
 LIBRARY_LABELS = {
     "leistungen-meldewesen-ausweise": "Leistungen Meldewesen & Ausweise",
@@ -67,6 +134,7 @@ LIBRARY_LABELS = {
     "pressemitteilungen": "Pressemitteilungen Stadt Rheinfurt",
     "interne-dienstanweisungen-meldewesen": "Interne Dienstanweisungen Meldewesen",
     "ratsinformationen": "Ratsinformationen Stadt Rheinfurt",
+    "formate": "Formattest auf S3",
 }
 LIBRARY_FORMATS = {
     "leistungen-meldewesen-ausweise": "`.md`",
@@ -75,6 +143,7 @@ LIBRARY_FORMATS = {
     "pressemitteilungen": "RSS-XML, HTML",
     "interne-dienstanweisungen-meldewesen": "`.docx`, `.pdf`, `.pptx`",
     "ratsinformationen": "`.md`, `.txt` (ein Präfix je Jahrgang)",
+    "formate": "je ein Dokument pro unterstützter Endung",
 }
 
 
@@ -91,6 +160,8 @@ def clean_library_dirs() -> None:
             # depth-first: files first, then the (year) subdirectories they leave empty
             for existing in sorted(directory.rglob("*"), reverse=True):
                 if existing.is_file():
+                    if existing.relative_to(CORPUS_DIR).as_posix() in PRESERVED_FILES:
+                        continue
                     existing.unlink()
                 elif existing.is_dir() and not any(existing.iterdir()):
                     existing.rmdir()
@@ -215,6 +286,26 @@ def build_rat() -> list[tuple[str, str, bytes]]:
     return sorted(written, key=lambda item: item[0])
 
 
+def build_formate(
+    documents: list[formate.RenderedDocument],
+) -> list[tuple[str, str, bytes]]:
+    """The "Formattest auf S3" library: one document per admitted extension. The preserved files
+    are read from the corpus directory, so the manifest covers them like a generated one."""
+    written = [
+        (f"formate/{document.file_name}", document.file_name, document.content)
+        for document in documents
+    ]
+    for relative_path in sorted(PRESERVED_FILES):
+        path = CORPUS_DIR / relative_path
+        if not path.is_file():
+            raise SystemExit(
+                f"Committete Datei des Formatkorpus fehlt: {path}. Sie wird nicht vom Generator "
+                "erzeugt - siehe generator/README.md, 'Formate ohne Writer'."
+            )
+        written.append((relative_path, path.name, path.read_bytes()))
+    return sorted(written, key=lambda item: item[0])
+
+
 def _satzung_text(satzung: satzungen.Satzung) -> str:
     parts = [satzung.titel, satzung.kurzbezeichnung, satzung.aktenzeichen, *satzung.praeambel]
     for paragraf in satzung.paragrafen:
@@ -255,7 +346,8 @@ def _schulung_text(schulung: intern.Schulung) -> str:
 
 
 def collect_validation_texts(
-    leistungen_files: list[tuple[str, str, bytes]]
+    leistungen_files: list[tuple[str, str, bytes]],
+    formate_documents: list[formate.RenderedDocument],
 ) -> list[tuple[str, str]]:
     texts: list[tuple[str, str]] = []
     for relative_path, _slug, content in leistungen_files:
@@ -278,6 +370,9 @@ def collect_validation_texts(
         texts.append((f"ratsinformationen/{n.slug} (Quelltext)", rat.niederschrift_text(n)))
     for v in rat.BESCHLUSSVORLAGEN:
         texts.append((f"ratsinformationen/{v.slug} (Quelltext)", rat.vorlage_text(v)))
+    for document in formate_documents:
+        texts.append((f"formate/{document.file_name} (Quelltext)", document.text))
+    texts.append((f"formate/{formate.DOC_FILE_NAME} (Quelltext)", formate.doc_text()))
     return texts
 
 
@@ -308,7 +403,33 @@ def verify_manifest_completeness(all_files: list[tuple[Path, bytes]]) -> None:
         )
 
 
-def render_source_md(per_library: dict[str, int], total_bytes: int) -> str:
+def render_formate_gaps(formate_files: list[tuple[str, str, bytes]]) -> str:
+    """The two honest statements about this library: which files are committed rather than
+    generated, and which admitted extension has no document at all."""
+    present = {Path(relative_path).suffix.lower() for relative_path, _slug, _ in formate_files}
+    missing = [extension for extension in admitted_extensions() if extension not in present]
+    preserved = "\n".join(
+        f"- `{relative_path}` — committet, nicht bei jedem Lauf erzeugt: für diese Endung schreibt "
+        f"keine der in `generator/requirements.txt` gepinnten Bibliotheken. Herkunft: "
+        f"{PRESERVED_FILES[relative_path]}. Verfahren: "
+        '[`generator/README.md`](../generator/README.md), Abschnitt "Formate ohne Writer".'
+        for relative_path in sorted(PRESERVED_FILES)
+    )
+    if missing:
+        gap = (
+            "**Nicht abgedeckte Endungen:** "
+            + ", ".join(f"`{extension}`" for extension in missing)
+            + ". Für sie liegt in dieser Bibliothek kein Dokument — Begründung in "
+            '[`generator/README.md`](../generator/README.md), Abschnitt "Formate ohne Writer".'
+        )
+    else:
+        gap = (
+            "Jede Endung der Formatübersicht des Handbuchs ist mit genau einem Dokument vertreten."
+        )
+    return f"{preserved}\n\n{gap}" if preserved else gap
+
+
+def render_source_md(per_library: dict[str, int], total_bytes: int, formate_gaps: str) -> str:
     total_docs = sum(per_library.values())
     table_rows = "\n".join(
         f"| {LIBRARY_LABELS[library]} | `{library}/` | {per_library.get(library, 0)} | "
@@ -317,11 +438,13 @@ def render_source_md(per_library: dict[str, int], total_bytes: int) -> str:
     )
     return f"""# Quellen, Lizenzen und Hinweis auf synthetische Inhalte
 
-**Alle Inhalte in diesem Korpus sind synthetisch.** Rheinfurt ist eine erfundene Stadt; jede
-Behörde, Adresse, Person, Telefonnummer, E-Mail-Adresse, Bankverbindung, jedes Aktenzeichen und
-jeder Euro-Betrag in diesem Verzeichnis ist frei erfunden oder aus realen Quellen deterministisch
-umgeschrieben (siehe unten). Übereinstimmungen mit realen Personen oder Behörden sind nicht
-beabsichtigt.
+**Alle Inhalte in diesem Korpus sind synthetisch — mit genau einer benannten Ausnahme.** Rheinfurt
+ist eine erfundene Stadt; jede Behörde, Adresse, Person, Telefonnummer, E-Mail-Adresse,
+Bankverbindung, jedes Aktenzeichen und jeder Euro-Betrag in diesem Verzeichnis ist frei erfunden
+oder aus realen Quellen deterministisch umgeschrieben (siehe unten). Übereinstimmungen mit realen
+Personen oder Behörden sind nicht beabsichtigt. Die Ausnahme ist die Outlook-Nachricht der
+Bibliothek „Formattest auf S3": Sie stammt unverändert aus einem fremden Testkorpus, weil sich das
+`.msg`-Format nicht erzeugen lässt — Herkunft und Lizenz im Abschnitt zu dieser Bibliothek unten.
 
 Dieser Abschnitt sowie die Datei- und Dokumentzahlen unten werden **vom Generator selbst
 geschrieben** ([`generate_corpus.py::render_source_md`](../generator/generate_corpus.py)) — sie
@@ -356,7 +479,7 @@ Dokument trägt zusätzlich ein Aktenzeichen- und Formularnummer-Muster sowie ei
 synthetische Herkunft.
 
 Ein abschließender Validierungslauf (`generator/validation.py`) prüft die erzeugten Inhalte aller
-sechs Bibliotheken gegen eine Liste von Verbotsmustern (reale Ortsnamen, Straßen außerhalb einer
+sieben Bibliotheken gegen eine Liste von Verbotsmustern (reale Ortsnamen, Straßen außerhalb einer
 Whitelist, reale Postleitzahlen, reale Bankverbindungen) und bricht den Generator-Lauf mit Fehler
 ab, falls eines davon gefunden wird.
 
@@ -383,6 +506,16 @@ Behörden (siehe `rheinfurt_text.py::strip_external_links`).
 Details und Begründung der Quellenauswahl: [`docs/features/demo-instance.md`](../../docs/features/demo-instance.md),
 Abschnitt „Quellen und Lizenzen" (Recherche Issue #709).
 
+## Bibliothek „Formattest auf S3" (#1519)
+
+Die siebte Bibliothek (`formate/`) ist keine Fachablage, sondern eine technische Schaubibliothek:
+je ein Dokument pro Dateiendung, die OPAA zulässt. Ihr Inhalt ist bis auf die unten genannte
+Outlook-Nachricht synthetisch und im Rheinfurt-Kontext verfasst (Dokumentenformate, Posteingang,
+Langzeitarchivierung); jedes erzeugte Dokument nennt im Text sein eigenes Format, damit im Chat
+erkennbar bleibt, aus welcher Datei eine Antwort stammt.
+
+{formate_gaps}
+
 ## Wie diese Dateien entstanden sind
 
 Erzeugt durch [`demo/generator/generate_corpus.py`](../generator/generate_corpus.py); siehe
@@ -398,7 +531,9 @@ sha256sum -c MANIFEST.sha256
 
 ## Umfang
 
-{total_docs} Dokumente über sechs Bibliotheken (Zielkorridor 150–300 laut Issue #711):
+{total_docs} Dokumente über sieben Bibliotheken (Zielkorridor 150–300 laut Issue #711 für die
+sechs fachlichen Bibliotheken; „Formattest auf S3" ist eine technische Schaubibliothek mit genau
+einem Dokument je unterstützter Endung, #1519):
 
 | Bibliothek | Verzeichnis | Anzahl | Formate |
 |---|---|---|---|
@@ -418,8 +553,12 @@ def main() -> None:
     presse_files = build_presse()
     intern_files = build_intern()
     rat_files = build_rat()
+    formate_documents = formate.build_documents()
+    formate_files = build_formate(formate_documents)
 
-    validate_all(collect_validation_texts(leistungen_meldewesen + leistungen_kfz))
+    validate_all(
+        collect_validation_texts(leistungen_meldewesen + leistungen_kfz, formate_documents)
+    )
 
     all_files: list[tuple[Path, bytes]] = [
         (CORPUS_DIR / relative_path, content)
@@ -430,6 +569,7 @@ def main() -> None:
             + presse_files
             + intern_files
             + rat_files
+            + formate_files
         )
     ]
 
@@ -447,7 +587,9 @@ def main() -> None:
     total_bytes = sum(len(content) for _, content in all_files)
 
     (CORPUS_DIR / "SOURCE.md").write_text(
-        render_source_md(per_library, total_bytes), encoding="utf-8", newline="\n"
+        render_source_md(per_library, total_bytes, render_formate_gaps(formate_files)),
+        encoding="utf-8",
+        newline="\n",
     )
 
     print(f"Wrote {len(all_files)} files across {len(per_library)} libraries to {CORPUS_DIR}", file=sys.stderr)
