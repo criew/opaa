@@ -193,7 +193,8 @@ class LibraryDocumentServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    // #1184: fk_documents_parent (RESTRICT) forbids deleting a parent before its attachments -
+    // #1184: fk_documents_parent (NO ACTION, no cascade) forbids deleting a parent before its
+    // attachments -
     // delete leaf-first, one nesting level per round, instead of deleteAll()'s arbitrary order.
     // More general than sorting by file_path length (#1227's variant): it holds for attachment
     // identities that do not embed their parent's path (e.g. RSS attachment URLs).
