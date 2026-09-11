@@ -22,6 +22,17 @@ import org.springframework.transaction.annotation.Transactional;
  * history row commit or roll back together, the same as any other write this class's callers
  * already make in the same transaction.
  *
+ * <p><b>Interval contract</b> (#1497, ADR-0032): successive <i>state</i> intervals of the same
+ * object have strictly increasing boundaries - two changes that fall into the same clock tick still
+ * get different ones, because every boundary comes from {@link PermissionHistoryClock} rather than
+ * from the wall clock directly. A state interval is therefore never empty, and {@code validFrom <=
+ * asOf < validTo} has a solution for every state the object ever held. Successive intervals stay
+ * gapless: closing one and opening the next share a single boundary value. Zero-length rows exist
+ * on purpose, but only as event markers ({@link AssetGrantHistory#terminal}, {@link
+ * LibraryVisibilityHistory#terminal}, {@link GroupMembershipHistory#terminal}) recording a
+ * revocation or deletion; they are exempt from the strictly-increasing rule and are never selected
+ * by the reconstruction.
+ *
  * <p>Deliberately not the event log #391/#392 are building in parallel - this class records only
  * the resulting state interval, never a stream of "who read what". It lives next to the fact tables
  * it historises (asset_grants, group_memberships, knowledge_libraries), not behind a shared
@@ -53,14 +64,17 @@ public class PermissionHistoryService {
   private final AssetGrantHistoryRepository grantHistoryRepository;
   private final GroupMembershipHistoryRepository membershipHistoryRepository;
   private final LibraryVisibilityHistoryRepository visibilityHistoryRepository;
+  private final PermissionHistoryClock clock;
 
-  public PermissionHistoryService(
+  PermissionHistoryService(
       AssetGrantHistoryRepository grantHistoryRepository,
       GroupMembershipHistoryRepository membershipHistoryRepository,
-      LibraryVisibilityHistoryRepository visibilityHistoryRepository) {
+      LibraryVisibilityHistoryRepository visibilityHistoryRepository,
+      PermissionHistoryClock clock) {
     this.grantHistoryRepository = grantHistoryRepository;
     this.membershipHistoryRepository = membershipHistoryRepository;
     this.visibilityHistoryRepository = visibilityHistoryRepository;
+    this.clock = clock;
   }
 
   // -------------------------------------------------------------------------------------------
@@ -70,7 +84,8 @@ public class PermissionHistoryService {
   /** Opens the first interval for a newly created {@link AssetGrant}. */
   public void recordGrantCreated(AssetGrant grant, UUID actorUserId) {
     grantHistoryRepository.save(
-        AssetGrantHistory.open(grant, AssetGrantHistoryCause.GRANTED, actorUserId, Instant.now()));
+        AssetGrantHistory.open(
+            grant, AssetGrantHistoryCause.GRANTED, actorUserId, clock.nextBoundary()));
   }
 
   /**
@@ -81,7 +96,7 @@ public class PermissionHistoryService {
    * incomplete for grants that existed before this feature, not broken by it.
    */
   public void recordGrantRoleChanged(AssetGrant grant, UUID actorUserId) {
-    Instant now = Instant.now();
+    Instant now = clock.nextBoundary();
     closeOpenGrantInterval(grant, now);
     grantHistoryRepository.save(
         AssetGrantHistory.open(grant, AssetGrantHistoryCause.ROLE_CHANGED, actorUserId, now));
@@ -95,7 +110,7 @@ public class PermissionHistoryService {
    * deleted; {@code grant} must still carry its last-active role/expiresAt.
    */
   public void recordGrantRevoked(AssetGrant grant, UUID actorUserId) {
-    Instant now = Instant.now();
+    Instant now = clock.nextBoundary();
     closeOpenGrantInterval(grant, now);
     grantHistoryRepository.save(
         AssetGrantHistory.terminal(grant, AssetGrantHistoryCause.REVOKED, actorUserId, now));
@@ -109,7 +124,7 @@ public class PermissionHistoryService {
    * these intervals on its own, leaving a deleted library's grants looking "currently readable").
    */
   public void recordGrantClosedByLibraryDeletion(AssetGrant grant, UUID actorUserId) {
-    Instant now = Instant.now();
+    Instant now = clock.nextBoundary();
     closeOpenGrantInterval(grant, now);
     grantHistoryRepository.save(
         AssetGrantHistory.terminal(
@@ -152,7 +167,7 @@ public class PermissionHistoryService {
             membership.getUserId(),
             cause,
             actorUserId,
-            Instant.now()));
+            clock.nextBoundary()));
   }
 
   /**
@@ -168,7 +183,7 @@ public class PermissionHistoryService {
       UUID userId,
       GroupMembershipHistoryCause cause,
       UUID actorUserId) {
-    Instant now = Instant.now();
+    Instant now = clock.nextBoundary();
     membershipHistoryRepository
         .findByGroupIdAndUserIdAndValidToIsNull(groupId, userId)
         .ifPresent(
@@ -193,7 +208,7 @@ public class PermissionHistoryService {
             library.isListed(),
             LibraryVisibilityHistoryCause.CREATED,
             actorUserId,
-            Instant.now()));
+            clock.nextBoundary()));
   }
 
   /**
@@ -202,7 +217,7 @@ public class PermissionHistoryService {
    * listed are unchanged; call only when at least one actually differs.
    */
   public void recordVisibilityChanged(KnowledgeLibrary library, UUID actorUserId) {
-    Instant now = Instant.now();
+    Instant now = clock.nextBoundary();
     visibilityHistoryRepository
         .findByLibraryIdAndValidToIsNull(library.getId())
         .ifPresent(
@@ -230,7 +245,7 @@ public class PermissionHistoryService {
    * this interval on its own, leaving a deleted library's visibility looking still in effect.
    */
   public void recordVisibilityClosedByLibraryDeletion(KnowledgeLibrary library, UUID actorUserId) {
-    Instant now = Instant.now();
+    Instant now = clock.nextBoundary();
     visibilityHistoryRepository
         .findByLibraryIdAndValidToIsNull(library.getId())
         .ifPresent(
