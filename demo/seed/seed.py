@@ -260,7 +260,27 @@ def wait_for_uploads_indexed(
     print(f"  Uploads für '{name}' indiziert: {indexed} Dokument(e)")
 
 
-def trigger_indexing(admin_client: Client, library_id: str, name: str, timeout_seconds: int) -> None:
+def expected_document_count(library_def: LibraryDef) -> int | None:
+    """How many documents a run over library_def's own corpus directory has to end up with, or None
+    when the profile names no such directory. The bucket of an S3 library is an exact mirror of it,
+    so one file is one document."""
+    if library_def.expected_documents_dir is None:
+        return None
+    if not library_def.expected_documents_dir.is_dir():
+        raise SystemExit(
+            f"Korpusverzeichnis für '{library_def.name}' fehlt: "
+            f"{library_def.expected_documents_dir}"
+        )
+    return sum(1 for path in library_def.expected_documents_dir.rglob("*") if path.is_file())
+
+
+def trigger_indexing(
+    admin_client: Client,
+    library_id: str,
+    name: str,
+    timeout_seconds: int,
+    expected_documents: int | None = None,
+) -> None:
     response = admin_client.post(f"/v1/libraries/{library_id}/indexing")
     if response.status_code == 409:
         # A run is already in progress (possibly from a previous, interrupted seed attempt) - just
@@ -287,6 +307,18 @@ def trigger_indexing(admin_client: Client, library_id: str, name: str, timeout_s
         raise SystemExit(
             f"Indizierung für '{name}' nicht sauber abgeschlossen: status={status['status']}, "
             f"documentsFailed={status['documentsFailed']}, message={status.get('message')}"
+        )
+    # A run that saw nothing also ends COMPLETED. Against a bucket the "minio-seed" step has not
+    # finished filling, that would report success over a half-filled - or empty - library.
+    # Unchanged documents count as skipped on a repeat run, so both numbers belong in the total.
+    processed = status["documentsIndexedTotal"] + status["documentsSkipped"]
+    if expected_documents is not None and processed < expected_documents:
+        raise SystemExit(
+            f"Indizierung für '{name}' hat nur {processed} von erwarteten {expected_documents} "
+            f"Dokumenten verarbeitet (indiziert: {status['documentsIndexedTotal']}, übersprungen: "
+            f"{status['documentsSkipped']}). Bei einer S3-Bibliothek heißt das meist: Der "
+            "Einmal-Schritt 'minio-seed' war beim Auslösen noch nicht fertig - "
+            "'docker compose logs minio-seed' prüfen und den Seed erneut laufen lassen."
         )
     print(
         f"  Indizierung für '{name}' abgeschlossen: "
@@ -374,6 +406,7 @@ def run(args: argparse.Namespace) -> None:
             library_ids[library_def.name],
             library_def.name,
             timeout_seconds=args.indexing_timeout_seconds,
+            expected_documents=expected_document_count(library_def),
         )
 
     print(f"Seed-Profil '{profile.name}' abgeschlossen.")

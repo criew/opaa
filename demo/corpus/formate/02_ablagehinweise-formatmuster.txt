@@ -1,0 +1,20 @@
+Ablagehinweise für Formatmuster
+Stadt Rheinfurt, Organisationsstelle
+
+Dieses Dokument liegt als einfache Textdatei (.txt) vor.
+
+Ablageschlüssel: AZ 10.4-FORM-2026-002
+
+1. Jedes Formatmuster wird unter dem Ablageschlüssel 10.4-FORM geführt und behält seinen
+   Dateinamen unverändert bei. Umbenennungen durch die Sachbearbeitung sind nicht zulässig,
+   weil der Dateiname die Nummer des Musters trägt.
+
+2. Ein Muster wird ersetzt, nicht ergänzt: Zu jedem Format existiert genau eine Datei. Wer ein
+   Muster austauscht, vermerkt das im Vermerk zur Langzeitarchivierung.
+
+3. Eingehende Dateien ohne erkennbares Format nimmt die Poststelle nicht an. Sie werden mit dem
+   Hinweis auf diese Ablagehinweise an die absendende Stelle zurückgegeben.
+
+4. Rückfragen beantwortet die Organisationsstelle unter 01234/44-1040.
+
+Synthetisches Musterdokument der fiktiven Stadt Rheinfurt aus der Bibliothek 'Formattest auf S3' des OPAA-Demo-Korpus (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Es zeigt ein unterstütztes Dateiformat mit echtem Inhalt.

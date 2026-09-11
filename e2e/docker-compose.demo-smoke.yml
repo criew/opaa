@@ -19,10 +19,11 @@ services:
         # waiting for the stub's own /health first is what actually guarantees it can already
         # answer that call (see e2e/docker-compose.e2e.yml's identical comment).
         condition: service_healthy
-      # #1383: the seed triggers the S3 library's run right after the backend is ready - the bucket
-      # must be filled by then, so the backend only starts once the mirror step has finished. Only
-      # here, not in docker-compose.yml: a depends_on on a profile-gated service would break every
-      # `docker compose up` without the demo profile.
+      # #1383/#1520: the seed triggers both S3 libraries' runs right after the backend is ready and
+      # uploads into the object store, so all three buckets must exist and the two source buckets
+      # must be filled by then - the backend therefore only starts once the mirror step has
+      # finished. Only here, not in docker-compose.yml: a depends_on on a profile-gated service
+      # would break every `docker compose up` without the demo profile.
       minio-seed:
         condition: service_completed_successfully
     environment:

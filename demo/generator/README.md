@@ -11,8 +11,11 @@ hier **keinen Ground-Truth-Zwang**: Die Demo misst nichts, sie zeigt.
 ## Voraussetzungen
 
 - Python 3.11 oder neuer
-- Die in `requirements.txt` gepinnten Pakete `python-docx`, `python-pptx` und `reportlab` (siehe
-  unten, „Werkzeugwahl")
+- Die in `requirements.txt` gepinnten Pakete `python-docx`, `python-pptx`, `reportlab` und
+  `openpyxl` (siehe unten, „Werkzeugwahl")
+- **Optional, nur für die Word-97-Datei der Bibliothek „Formattest auf S3":** LibreOffice. Die Datei
+  ist committet und wird von einem regulären Generator-Lauf nicht angefasst — LibreOffice braucht
+  nur, wer ihren Inhalt ändern will (siehe unten, „Formate ohne Writer")
 - Netzzugriff beim ersten Lauf, um die 83 ausgewählten Rohdateien des LHM-Dienstleistungen-Corpus
   von HuggingFace zu laden (danach genügt der lokale Cache unter `raw-source/`)
 
@@ -21,7 +24,7 @@ pip install -r requirements.txt
 ```
 
 **Byte-Identität ist nur mit den in `requirements.txt` gepinnten Versionen zugesichert.** Ein
-neueres `reportlab`/`python-docx`/`python-pptx` kann sein Standardausgabeformat ändern (z. B.
+neueres `reportlab`/`python-docx`/`python-pptx`/`openpyxl` kann sein Standardausgabeformat ändern (z. B.
 Font-Metriken, XML-Formatierung, Zip-Kompressionsdetails) und würde dann andere Bytes erzeugen,
 selbst bei identischem Input und identischer Generator-Logik. Wer die Pakete absichtlich
 aktualisiert, aktualisiert `requirements.txt` im selben Commit und dokumentiert das in der
@@ -41,8 +44,9 @@ Das Skript:
    oder nutzt die dort bereits vorhandenen Dateien, falls ihr SHA-256 zu den in
    `leistungen_quelle.py` hinterlegten Werten passt. Bricht bei Abweichung mit einer klaren
    Fehlermeldung ab, statt still weiterzuarbeiten.
-2. Schreibt alle sechs Bibliotheken deterministisch neu (vorhandener Inhalt der jeweiligen
-   Zielverzeichnisse wird vorher gelöscht):
+2. Schreibt alle sieben Bibliotheken deterministisch neu (vorhandener Inhalt der jeweiligen
+   Zielverzeichnisse wird vorher gelöscht, bis auf die unter „Formate ohne Writer" genannten
+   committeten Dateien):
    - `leistungen-meldewesen-ausweise/` (`.md`) und `leistungen-kfz-zulassung/` (`.md`/`.txt`):
      46 bzw. 37 Dokumente, aus den LHM-Rohdateien München→Rheinfurt umgeschrieben
      (`rheinfurt_text.py`, `leistungen.py`).
@@ -54,8 +58,13 @@ Das Skript:
      Eskalationsregeln, FAQ-Dokumente und Schulungsfolien (`intern.py`).
    - `ratsinformationen/<jahr>/` (`.md`/`.txt`): 12 Niederschriften und Beschlussvorlagen des
      Stadtrats und des Hauptausschusses, je Jahrgang ein Unterverzeichnis (`rat.py`) — der
-     Ausschnitt, den der Demo-Stack in seinen MinIO-Bucket spiegelt (`S3`-Bibliothek, #1383).
-3. Validiert die erzeugten Inhalte aller sechs Bibliotheken gegen eine Liste von Verbotsmustern
+     Ausschnitt, den der Demo-Stack in seinen MinIO-Bucket `rheinfurt-archiv` spiegelt
+     (`S3`-Bibliothek, #1383).
+   - `formate/` (je ein Dokument pro unterstützter Endung): 14 Dokumente rund um Dokumentenformate,
+     Posteingang und Langzeitarchivierung (`formate.py`, `odf_utils.py`) — die technische
+     Schaubibliothek „Formattest auf S3", die der Demo-Stack in den MinIO-Bucket `formattest`
+     spiegelt (#1519, #1520).
+3. Validiert die erzeugten Inhalte aller sieben Bibliotheken gegen eine Liste von Verbotsmustern
    (`validation.py`): reale Ortsnamen (München/KVR/Pasing/Landeshauptstadt/Fischerei), Straßen
    außerhalb einer festen Whitelist fiktiver Rheinfurter Straßen, Postleitzahlen ungleich der
    fiktiven Rheinfurt-PLZ, sowie IBAN/BIC ungleich der fiktiven Rheinfurt-Bankverbindung. Bricht
@@ -64,7 +73,7 @@ Das Skript:
 4. Prüft, dass Verzeichnisinhalt und geschriebene Dateiliste exakt übereinstimmen (keine
    Karteileichen aus einem früheren, abweichenden Lauf).
 5. Schreibt `demo/corpus/MANIFEST.sha256` mit dem SHA-256 jeder erzeugten Datei (relativ zu
-   `demo/corpus/`, über alle sechs Bibliotheken hinweg) sowie `demo/corpus/SOURCE.md` selbst — die
+   `demo/corpus/`, über alle sieben Bibliotheken hinweg) sowie `demo/corpus/SOURCE.md` selbst — die
    dort genannten Dokumentzahlen sind damit immer die tatsächlich erzeugten, nicht von Hand
    nachgeführte Werte (siehe PR #717 Review, NIT/KLEIN d).
 
@@ -77,6 +86,66 @@ sha256sum -c MANIFEST.sha256
 
 Zwei Läufe des Generators erzeugen byte-identische Ausgaben — geprüft über `diff -rq` zweier
 vollständiger Läufe mit mehreren Sekunden Abstand dazwischen (siehe PR-Beschreibung von #711).
+
+## Formate ohne Writer
+
+Die Bibliothek „Formattest auf S3" (#1519) deckt jede Endung ab, die OPAA zulässt. Für zwei davon
+gibt es in Python keinen brauchbaren Writer — sie sind deshalb **committet** statt bei jedem Lauf
+erzeugt:
+
+| Endung | Herkunft | Verfahren |
+|---|---|---|
+| `.doc` (Word 97) | eigener Rheinfurt-Text | `make_doc_fixture.py` rendert den in `formate.py` deklarierten Text über `python-docx` und lässt LibreOffice ihn nach „MS Word 97" umwandeln. Zwei LibreOffice-Läufe erzeugen **keine** byte-gleichen Dateien — genau deshalb ist der Schritt einmalig und nicht Teil von `generate_corpus.py`. |
+| `.msg` (Outlook) | Apache-POI-Testkorpus, Apache License 2.0 | Byte-Kopie von `test-data/hsmf/simple_test_msg.msg`. Das Format ist ein proprietärer OLE2/MAPI-Container: keine Python-Bibliothek schreibt ihn, LibreOffice kann es nicht, Apache POI selbst bietet nur einen Leser. Dieselben Dateien liegen bereits als Testfixturen unter `backend/src/test/resources/test-documents/mail/` (mit eigener `NOTICE.md`). **Dieses eine Dokument ist englisch und hat keinen Rheinfurt-Bezug** — Folge seiner Herkunft, kein Versehen; die Bibliotheksbeschreibung im Seed (`demo/seed/profiles.py`) sagt das auch in der Oberfläche. Lizenztext: `corpus/THIRD-PARTY-LICENSES/Apache-POI-testdata-Apache-2.0.txt`. |
+
+Beide Dateien überleben den Clean-Schritt (`PRESERVED_FILES` in `generate_corpus.py`) und gehen
+unverändert in `MANIFEST.sha256` ein; fehlt eine, bricht der Lauf ab, statt die Bibliothek
+stillschweigend schrumpfen zu lassen. Die Herkunftssätze in `corpus/SOURCE.md` stehen als Wert
+neben dem jeweiligen Pfad in `PRESERVED_FILES` — Pfad und Herkunft können nicht auseinanderlaufen.
+
+**Die Lückenliste pflegt sich selbst.** `render_formate_gaps` vergleicht die tatsächlich vorhandenen
+Dateien mit der Endungsliste, die `admitted_extensions()` **aus der Formatübersicht des Handbuchs
+liest** (`docs/handbuch/indexierung.md`, Abschnitt „Anhang: Formatübersicht") statt sie ein drittes
+Mal zu kopieren — kommt dort eine fünfzehnte Endung dazu, erscheint sie ohne Zutun als Lücke in
+`corpus/SOURCE.md`. Lässt sich das Kapitel, der Abschnitt oder die Tabelle nicht lesen, bricht der
+Lauf ab, statt stillschweigend vollständige Abdeckung zu behaupten. Geschrieben wird dann entweder
+die Liste der fehlenden Endungen oder der Satz „Jede Endung der Formatübersicht des Handbuchs ist
+mit genau einem Dokument vertreten."
+
+**Ein nachgeliefertes Format braucht trotzdem einen Handgriff, wenn es sich nicht erzeugen lässt:**
+Eine Datei, die einfach nur in `corpus/formate/` abgelegt wird, löscht `clean_library_dirs()` beim
+nächsten Lauf wieder, bevor `build_formate()` sie überhaupt sieht. Wer ein Format ohne Writer
+ergänzt, trägt es deshalb zusammen mit seinem Herkunftssatz in `PRESERVED_FILES` ein — erst dann
+überlebt es den Clean-Schritt und landet in `MANIFEST.sha256`. Für ein Format **mit** Writer gilt
+das nicht: Es gehört als Renderer in `formate.py` und wird bei jedem Lauf neu geschrieben.
+
+Änderung der Word-97-Datei:
+
+```bash
+cd demo/generator
+python make_doc_fixture.py          # --soffice <Pfad>, falls LibreOffice nicht gefunden wird
+python generate_corpus.py           # zieht MANIFEST.sha256/SOURCE.md nach
+```
+
+Die Outlook-Nachricht wird nie neu erzeugt; sie wird höchstens durch eine andere lizenzklare Datei
+ersetzt — dann `formate.MSG_FILE_NAME`, den Herkunftssatz in `PRESERVED_FILES` und den Lizenztext
+unter `corpus/THIRD-PARTY-LICENSES/` mit ändern.
+
+## Handkorrektur in der Leistungsbibliothek
+
+`corpus/leistungen-meldewesen-ausweise/002_personalausweis-oder-reisepass-abholen.md` wurde in #942
+**von Hand** geändert: Die Datei nannte Gebühren, die den Einzeldokumenten `001_personalausweis.md`
+und `003_reisepass.md` widersprachen, und das Drehbuch garantiert zu Frage 1 eine widerspruchsfreie
+Antwort. Die Ursache sitzt im Generator — `fee_scale_factor` skaliert je Quelldatei, diese Datei
+zitiert aber Gebühren zweier anderer Leistungen — und ist dort noch nicht behoben (#1525). **Ein
+Generator-Lauf nimmt die Korrektur deshalb zurück.** Wer den Korpus neu erzeugt, stellt diese eine
+Datei wieder her und trägt ihren alten SHA-256 in `MANIFEST.sha256` nach:
+
+```bash
+git checkout -- demo/corpus/leistungen-meldewesen-ausweise/002_personalausweis-oder-reisepass-abholen.md
+# danach die zugehörige Zeile in demo/corpus/MANIFEST.sha256 auf den wiederhergestellten Stand setzen
+cd demo/corpus && sha256sum -c MANIFEST.sha256
+```
 
 ## Werkzeugwahl für PDF/DOCX/PPTX
 
@@ -111,11 +180,26 @@ sauber extrahierbar.
   beides Formate, die Tika (und in den Stichproben `pdfminer.six`/`python-docx`/`python-pptx` zur
   Gegenprobe) ohne Sonderbehandlung extrahiert.
 
+### Nachtrag für XLSX und die OpenDocument-Formate (#1519)
+
+- **XLSX: `openpyxl`**, dieselbe Begründung wie oben. Zwei Eigenheiten waren dafür zu beheben:
+  `Workbook.save` überschreibt `properties.modified` unmittelbar vor dem Schreiben mit der
+  aktuellen Uhrzeit (deshalb schreibt `formate.py` über `ExcelWriter`), und `openpyxl` legt
+  `[Content_Types].xml` als **letzten** Zip-Eintrag ab, wo eine strömende Formaterkennung ihn erst
+  nach allen anderen erreicht (deshalb sortiert `zip_utils.normalize_zip_timestamps` ihn auf Wunsch
+  nach vorn).
+- **ODT/ODS/ODP: von Hand gebaute Pakete** (`odf_utils.py`), keine Writer-Bibliothek. `odfpy` stempelt
+  jedes Paket mit seinem eigenen Erzeugungszeitpunkt, was die Byte-Identität brechen würde, und die
+  drei ODF-Pipelines des Backends lesen `content.xml`/`meta.xml`/`styles.xml` mit einem einfachen
+  SAX-Parser — ein selbst gebautes Paket läuft damit über genau denselben Pfad wie ein
+  LibreOffice-Export. Dasselbe Vorgehen nutzt `backend/src/test/resources/test-documents/generate-odf-fixtures.py`
+  für die Testfixturen. Vertrag des Containers: `mimetype` als erster, unkomprimierter Eintrag.
+
 ## Struktur
 
 ```
 demo/generator/
-├── generate_corpus.py     Orchestriert alle sechs Bibliotheken, schreibt MANIFEST.sha256/SOURCE.md
+├── generate_corpus.py     Orchestriert alle sieben Bibliotheken, schreibt MANIFEST.sha256/SOURCE.md
 ├── leistungen_quelle.py    Pinning/Download der 83 ausgewählten LHM-Rohdateien
 ├── rheinfurt_text.py       München→Rheinfurt-Texttransformation (Orte, Straßen, Kontakte, Gebühren)
 ├── leistungen.py            Rendert die zwei Leistungs-Bibliotheken (.md/.txt)
@@ -123,9 +207,12 @@ demo/generator/
 ├── presse.py                 Pressemitteilungsdaten + RSS/HTML-Rendering
 ├── intern.py                  Interne-Dienstanweisungen-Daten + DOCX/PDF/PPTX-Rendering
 ├── rat.py                     Ratsinformationen (Niederschriften, Beschlussvorlagen) + Markdown/Text-Rendering
-├── zip_utils.py               Entfernt nicht-reproduzierbare Zip-Zeitstempel aus DOCX/PPTX
+├── formate.py                 Formattest-Bibliothek: je ein Dokument pro unterstützter Endung
+├── make_doc_fixture.py        Einmal-Schritt für die Word-97-Datei (LibreOffice), siehe „Formate ohne Writer"
+├── odf_utils.py               Baut deterministische ODT/ODS/ODP-Pakete ohne Writer-Bibliothek
+├── zip_utils.py               Entfernt nicht-reproduzierbare Zip-Zeitstempel aus DOCX/PPTX/XLSX
 ├── validation.py               Abschluss-Assert gegen reale Münchner Identifikatoren
-├── requirements.txt             Gepinnte Versionen von reportlab/python-docx/python-pptx
+├── requirements.txt             Gepinnte Versionen von reportlab/python-docx/python-pptx/openpyxl
 └── raw-source/                 Gecachte LHM-Rohdaten, gitignored
 ```
 
@@ -149,7 +236,7 @@ demo/generator/
 
 ## Was nicht in diesem Korpus vorkommt
 
-- Zur Fischereierlaubnis findet sich in keiner der sechs Bibliotheken irgendein Dokument — bewusst
+- Zur Fischereierlaubnis findet sich in keiner der sieben Bibliotheken irgendein Dokument — bewusst
   so belassen, damit die Drehbuchfrage „Wie beantrage ich in Rheinfurt eine Fischereierlaubnis?"
   aus `docs/features/demo-instance.md` unbeantwortbar bleibt.
 - Keine echte Münchner Straße, kein echter Stadtbezirk, keine echte Postleitzahl und keine echte

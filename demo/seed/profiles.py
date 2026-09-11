@@ -80,6 +80,10 @@ class LibraryDef:
     # demo values, never secrets - the bucket lives in the demo stack's own MinIO (docker-compose.yml).
     source_credentials: str | None = None
     s3_settings: Mapping[str, object] | None = None  # read-only by contract, like every field here
+    # The corpus directory a connector run must reproduce one-to-one. seed.py counts its files and
+    # fails a run that ended COMPLETED with fewer documents - without it, a run against a bucket
+    # the "minio-seed" step has not finished filling reports success with nothing indexed.
+    expected_documents_dir: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -233,6 +237,30 @@ DEMO_PROFILE = Profile(
                 "scopes": [{"bucket": "rheinfurt-archiv", "prefix": "ratsinformationen/"}],
             },
             viewer_keys=("maria", "selin", "thomas", "andrea"),
+            expected_documents_dir=DEMO_CORPUS_ROOT / "ratsinformationen",
+        ),
+        # The seventh library (#1520): a technical showcase, not a Fachablage - one document per
+        # file extension OPAA admits, read over the S3 connector from the bucket "formattest" of
+        # the same MinIO. It stays with the admin account that creates it and gets no VIEWER grant
+        # and no space association, so it never widens what a fach account sees.
+        LibraryDef(
+            name="Formattest auf S3",
+            description=(
+                "Technische Schaubibliothek: je ein Dokument pro unterstütztem Dateiformat, aus dem "
+                "Objektspeicher des Demo-Stacks. Alle Dokumente sind synthetisch und im "
+                "Rheinfurt-Kontext verfasst — bis auf die Outlook-Nachricht (.msg): Dieses Format "
+                "lässt sich nicht erzeugen, die Datei stammt deshalb unverändert aus dem Testkorpus "
+                "des Apache-POI-Projekts (Apache License 2.0) und ist als einzige englisch."
+            ),
+            source_type="S3",
+            source_url="http://minio:9000",
+            source_credentials="rheinfurt-archiv:RheinfurtDemo!2026",  # nosec - documented demo credential
+            s3_settings={
+                "pathStyle": True,
+                "scopes": [{"bucket": "formattest"}],
+            },
+            viewer_keys=(),
+            expected_documents_dir=DEMO_CORPUS_ROOT / "formate",
         ),
     ),
 )
