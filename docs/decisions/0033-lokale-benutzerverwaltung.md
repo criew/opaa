@@ -183,8 +183,9 @@ Das ändert drei Regeln aus ADR-0025, Entscheidung 3, und hebt eine auf:
   Adresse bestätigt, weder durch Verwalter noch Inaktivität gesperrt, nicht abgelaufen; eine laufende
   Fehlversuch-Sperre zählt nicht dagegen). Das ist keine Bestätigung, sondern eine geprüfte
   Vorbedingung: Fehlt ein solches Konto, antwortet die API mit 409 und nennt den fehlenden Schritt
-  („zuerst ein lokales Systemverwalterkonto mit Passwort einrichten"). Zusätzlich verlangt der Aufruf `acknowledgeLastProvider = true`, und die
-  Oberfläche zeigt die Konsequenz: Danach können sich nur noch lokale Konten anmelden; ein vertippter
+  („zuerst ein lokales Systemverwalterkonto mit Passwort einrichten"). Zusätzlich verlangt der
+  Aufruf `acknowledgeLastProvider = true`, und die Oberfläche zeigt die Konsequenz: Danach können
+  sich nur noch lokale Konten anmelden; ein vertippter
   Anbieter lässt sich aus der lokalen Anmeldung heraus korrigieren — ohne Datenbankzugriff und ohne
   Umgebungsvariable. **Aufgehoben** sind damit zwei Aussagen von ADR-0025, Entscheidung 3, in ihrer
   alten Form: „es gibt keinen Zustand ohne anmeldefähigen Anbieter" — der anmeldefähige Weg ist jetzt
@@ -266,16 +267,19 @@ herstellbar: Spring ruft `afterSingletonsInstantiated()` in Registrierungsreihen
 `Ordered` zu beachten (`DefaultListableBeanFactory#preInstantiateSingletons`, spring-beans 7.0.9) —
 und sie ist gleichgültig, weil `OidcProviderSeeder` nur `oidc_providers` und seine Markierung schreibt,
 nie `users`, und die Liquibase-Baseline keine `users`-Zeile sät. Dev-Konten und Konten gelöschter
-Anbieter zählen nicht, damit eine
-Pilotdatenbank, die zuerst im `dev`-Profil lief und dann auf `oidc` umgestellt wird, als das gilt,
-was sie für den Betriebsmodus ist — frisch: Ihre Dev-Konten sind unter `oidc` nicht anmeldefähig, und
-ohne diese Regel bekäme sie ein `INVITED`-Konto ohne Passwort und damit gar keinen anmeldefähigen
-Systemverwalter. Konten gelöschter Anbieter auszunehmen wirkt nur, wenn kein Anbieter mehr Konten
-hat: Solange ein anderer Anbieter Konten hat, gilt die Installation ohnehin als Bestand; sind alle
-Anbieter gelöscht, gibt es keinen Anmeldeweg mehr, und das scharfe Konto ist das, was gebraucht wird. Findet der Seed Konten eines bestehenden Anbieters vor,
-legt er das Notanker-Konto **als `INVITED` ohne
-Passwort und ohne Log-Ausgabe** an — es ist vorhanden, aber nicht
-scharf, und der Betrieb aktiviert es bewusst mit `OPAA_LOCAL_ADMIN_RESET=force` (unten). Ein Haus, das
+Anbieter zählen nicht, damit eine Pilotdatenbank, die zuerst im `dev`-Profil lief und dann auf `oidc`
+umgestellt wird, als das gilt, was sie für den Betriebsmodus ist — frisch: Ihre Dev-Konten sind unter
+`oidc` nicht anmeldefähig, und ohne diese Regel bekäme sie ein `INVITED`-Konto ohne Passwort und
+damit gar keinen anmeldefähigen Systemverwalter. Konten gelöschter Anbieter auszunehmen wirkt nur,
+wenn kein Anbieter mehr Konten hat: Solange ein anderer Anbieter Konten hat, gilt die Installation
+ohnehin als Bestand; sind alle Anbieter gelöscht, gibt es keinen Anmeldeweg mehr, und das scharfe
+Konto ist das, was gebraucht wird. Der dritte Fall — ein Anbieter ist angelegt, hat aber noch kein
+Konto (etwa nach dem Löschen des alten und vor der ersten Anmeldung über den neuen) — wird bewusst
+wie „frisch" behandelt: Ein Neustart in diesem Fenster liefert das scharfe Notanker-Konto samt
+Einmalpasswort im Log, was für eine Installation ohne anmeldefähiges Konto der richtige Zustand ist.
+Findet der Seed Konten eines bestehenden Anbieters vor, legt er das Notanker-Konto **als `INVITED`
+ohne Passwort und ohne Log-Ausgabe** an — es ist vorhanden, aber nicht scharf, und der Betrieb
+aktiviert es bewusst mit `OPAA_LOCAL_ADMIN_RESET=force` (unten). Ein Haus, das
 lokale Konten organisatorisch ausschließt, bekommt damit kein gültiges Passwort in sein Log. Ein
 Opt-out über eine Variable gibt es nicht: Der Beschluss will den Systemverwalter immer lokal, und ein
 `INVITED`-Konto ohne Passwort ist für dieses Haus dasselbe wie heute — der Notweg bleibt eine Variable
