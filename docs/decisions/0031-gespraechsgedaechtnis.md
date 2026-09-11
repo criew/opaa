@@ -155,8 +155,14 @@ unten. Die Untergrenze ist ein fester Wert (Oberflächengröße), kein Parameter
   — der Gurt fiele aus, und zwar nur in Chats mit Notiz. Die Umsetzung reicht Modelltext und
   Ankertext deshalb aus **einem** Rendervorgang getrennt weiter (`ConversationNoteBlock`): Ein
   Baustein erreicht Modell und Ankerraum weiterhin in einem Schritt, aber der Ankerraum ist eine
-  Teilmenge des Modelltexts — eine Auslassung kann den Gurt nur strenger machen, nie lockerer.
-  **Wiederaufnahme, wenn** ein künftiger Kontextbaustein keine eigene Rahmung hat; dann fallen
-  beide Hälften ohnehin zusammen.
+  Teilmenge des Modelltexts — geprüft, nicht bloß zugesagt, denn ein Ankertext außerhalb des
+  Modelltexts wäre wieder die separat gepflegte Aufzählung, diesmal in der lockernden Richtung.
+  **Kein Anspruch auf strenge Monotonie:** Weniger Ankertoken machen den Gurt der Sache nach
+  strenger, aber nicht ausnahmslos — die Prüfung bricht unterhalb von zwei Ankertoken ganz ab
+  (`countUnrelated`), sodass eine sehr kleine Ankermenge sie theoretisch auch überspringen ließe.
+  Mit einem Notizpunkt ist diese Schwelle praktisch nicht erreichbar, und das Weglassen der
+  Kopfzeile nimmt nie das letzte Ankertoken weg. Die Aussage lautet also „in der ungefährlichen
+  Richtung", nicht „monoton"; daraus ist keine Garantie ableitbar. **Wiederaufnahme, wenn** ein
+  künftiger Kontextbaustein keine eigene Rahmung hat; dann fallen beide Hälften ohnehin zusammen.
 - Eine fehlgeschlagene Verdichtung kostet die Angaben dieser einen Runde; die Person wiederholt sie
   bei Bedarf. Das ist der Preis dafür, keinen Nachholmechanismus mit eigenem Zustand zu bauen.

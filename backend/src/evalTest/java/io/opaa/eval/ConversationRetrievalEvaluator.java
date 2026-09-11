@@ -18,6 +18,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -47,6 +49,8 @@ import org.springframework.ai.chat.messages.UserMessage;
  * exercised by {@code ConversationRetrievalEvaluatorTest}.
  */
 public final class ConversationRetrievalEvaluator {
+
+  private static final Logger log = LoggerFactory.getLogger(ConversationRetrievalEvaluator.class);
 
   private ConversationRetrievalEvaluator() {}
 
@@ -102,8 +106,22 @@ public final class ConversationRetrievalEvaluator {
     }
   }
 
-  /** One case's outcome: its turns in script order. A case is solved when every turn is. */
-  public record CaseOutcome(ConversationCase conversationCase, List<TurnOutcome> turns) {
+  /**
+   * One case's outcome: its turns in script order. A case is solved when every turn is.
+   *
+   * @param attemptedCondensations one call per turn, zero for a run measured without a note
+   * @param failedCondensationTurnIds the turns whose condensation failed, in run order - carried up
+   *     rather than swallowed, so {@link #report} can report a run whose note never came about
+   */
+  public record CaseOutcome(
+      ConversationCase conversationCase,
+      List<TurnOutcome> turns,
+      int attemptedCondensations,
+      List<String> failedCondensationTurnIds) {
+
+    public CaseOutcome {
+      failedCondensationTurnIds = List.copyOf(failedCondensationTurnIds);
+    }
 
     public boolean solved() {
       return !turns.isEmpty() && turns.stream().allMatch(TurnOutcome::solved);
@@ -157,6 +175,7 @@ public final class ConversationRetrievalEvaluator {
     String conversationId = "eval-conversation-" + conversationCase.id() + "-" + UUID.randomUUID();
     List<TurnOutcome> turnOutcomes = new ArrayList<>(conversationCase.turns().size());
     List<ChatNoteCandidate> note = new ArrayList<>();
+    List<String> failedCondensations = new ArrayList<>();
     try {
       for (int turnIndex = 0; turnIndex < conversationCase.turns().size(); turnIndex++) {
         ConversationCase.Turn turn = conversationCase.turns().get(turnIndex);
@@ -177,12 +196,22 @@ public final class ConversationRetrievalEvaluator {
             .ifPresent(message -> chatMemory.add(conversationId, message));
         // After the turn, as in production: a point condensed from this turn's question reaches
         // the *next* turn, never this one.
-        condenseInto(note, noteExtraction, turn.query(), noteCap);
+        if (!condenseInto(note, noteExtraction, turn.query(), noteCap)) {
+          failedCondensations.add(conversationCase.turnId(turnIndex));
+          log.warn(
+              "Verdichtung der Gesprächsnotiz fehlgeschlagen für Runde {} — diese Runde steuert "
+                  + "keine Notizpunkte bei, der Lauf geht weiter",
+              conversationCase.turnId(turnIndex));
+        }
       }
     } finally {
       chatMemory.clear(conversationId);
     }
-    return new CaseOutcome(conversationCase, List.copyOf(turnOutcomes));
+    return new CaseOutcome(
+        conversationCase,
+        List.copyOf(turnOutcomes),
+        noteCap <= 0 ? 0 : conversationCase.turns().size(),
+        failedCondensations);
   }
 
   /** What the sub-question decomposition sees of the note - never the ANTWORTFORM points. */
@@ -204,27 +233,32 @@ public final class ConversationRetrievalEvaluator {
    * multi-turn measurement, and would do so at the one seam this harness exists to reproduce
    * faithfully.
    */
-  private static void condenseInto(
+  private static boolean condenseInto(
       List<ChatNoteCandidate> note,
       NoteExtraction noteExtraction,
       String userMessage,
       int noteCap) {
     if (noteCap <= 0) {
-      return;
+      return true;
     }
     List<ChatNoteCandidate> condensed;
     try {
       condensed = noteExtraction.condense(userMessage);
     } catch (RuntimeException e) {
-      return;
+      // Never the message or the condensed text: that is what the asking person wrote, which
+      // docs/features/security-and-compliance.md keeps out of the log. The caller records which
+      // turn it was and the report carries the count.
+      log.debug("Condensation call failed", e);
+      return false;
     }
     List<ChatNoteCandidate> accepted =
         ChatNoteList.accept(note.stream().map(ChatNoteCandidate::text).toList(), condensed);
     if (accepted.isEmpty()) {
-      return;
+      return true;
     }
     note.subList(0, ChatNoteList.overflow(note.size(), accepted.size(), noteCap)).clear();
     note.addAll(accepted);
+    return true;
   }
 
   /**
@@ -289,7 +323,29 @@ public final class ConversationRetrievalEvaluator {
                             c.solved()))
                 .toList()),
         topicBleed(outcomes),
+        noteCondensation(outcomes),
         outcomes.stream().map(ConversationRetrievalEvaluator::toCaseResult).toList());
+  }
+
+  /**
+   * How the run's note came about: one condensation call per turn, and the turns whose call failed.
+   * {@code null} for a run measured without a note - an absent section, not a clean one.
+   *
+   * <p>Reported rather than merely caught: a run in which every call failed produces an empty note
+   * for every turn while its {@code conversationNoteCap} fixed point still says 10, so the
+   * comparator would hold it comparable and the numbers would read as evidence that the note does
+   * not help.
+   */
+  private static ConversationEvaluationReport.NoteCondensationAudit noteCondensation(
+      List<CaseOutcome> outcomes) {
+    int attempted = outcomes.stream().mapToInt(CaseOutcome::attemptedCondensations).sum();
+    if (attempted == 0) {
+      return null;
+    }
+    List<String> failedTurnIds =
+        outcomes.stream().flatMap(o -> o.failedCondensationTurnIds().stream()).toList();
+    return new ConversationEvaluationReport.NoteCondensationAudit(
+        attempted, failedTurnIds.size(), failedTurnIds);
   }
 
   private static CaseOutcomeSummary caseOutcomeSummary(List<CaseOutcome> outcomes) {

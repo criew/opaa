@@ -417,6 +417,11 @@ class ConversationRetrievalEvaluatorTest {
    * condensation costs that turn its points and nothing else. Without it a single transient model
    * error in one turn of one case would discard the whole multi-turn measurement - three runs of
    * the dataset under the Mehrfachlauf-Regel.
+   *
+   * <p>And it must <b>say so</b>: a silent catch would let a run whose every condensation failed
+   * report a complete measurement while still declaring its note cap as a checked fixed point - the
+   * comparator would hold it comparable, and the numbers would read as evidence that the note does
+   * not help.
    */
   @Test
   void aFailingCondensationCostsItsTurnButNeverTheRun() {
@@ -455,6 +460,50 @@ class ConversationRetrievalEvaluatorTest {
     assertThat(pipeline.notes.get("verw-conv-006#3"))
         .as("the failed turn contributes nothing and is not caught up on")
         .containsExactly("Angabe zu Frage 1?");
+
+    var audit =
+        ConversationRetrievalEvaluator.report(List.of(outcome), runConfiguration())
+            .noteCondensation();
+    assertThat(audit.attemptedCondensations()).isEqualTo(3);
+    assertThat(audit.failedCondensations()).isEqualTo(1);
+    assertThat(audit.failedTurnIds())
+        .as("the report names the turn, so a run without a note cannot look like a clean one")
+        .containsExactly("verw-conv-006#2");
+  }
+
+  /** A run measured without a note reports an absent section, not a clean one. */
+  @Test
+  void aRunWithoutANoteHasNoCondensationSection() {
+    ConversationRetrievalEvaluator.CaseOutcome outcome =
+        ConversationRetrievalEvaluator.evaluateCase(
+            twoTurnCase("anaphora_resolution"),
+            chatMemory(20),
+            new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B))));
+
+    assertThat(
+            ConversationRetrievalEvaluator.report(List.of(outcome), runConfiguration())
+                .noteCondensation())
+        .isNull();
+  }
+
+  /** Every condensation succeeding is reported as such, not by the section's absence. */
+  @Test
+  void aRunWhoseCondensationsAllSucceedReportsZeroFailures() {
+    ConversationRetrievalEvaluator.CaseOutcome outcome =
+        ConversationRetrievalEvaluator.evaluateCase(
+            twoTurnCase("constraint_carryover"),
+            chatMemory(20),
+            new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B))),
+            userMessage ->
+                List.of(new ChatNoteCandidate("Angabe zu " + userMessage, ChatNoteItemKind.RAHMEN)),
+            10);
+
+    var audit =
+        ConversationRetrievalEvaluator.report(List.of(outcome), runConfiguration())
+            .noteCondensation();
+    assertThat(audit.attemptedCondensations()).isEqualTo(2);
+    assertThat(audit.failedCondensations()).isZero();
+    assertThat(audit.failedTurnIds()).isEmpty();
   }
 
   /** Each case starts from an empty note, exactly as each starts from an empty window. */

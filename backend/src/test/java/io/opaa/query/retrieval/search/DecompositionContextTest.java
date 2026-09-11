@@ -1,6 +1,7 @@
 package io.opaa.query.retrieval.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -77,6 +78,24 @@ class DecompositionContextTest {
         .as("the heading is OPAA's own wording, not material of the asking person")
         .noneSatisfy(text -> assertThat(text).contains("Angaben der fragenden Person"));
     assertThat(context.contextTexts()).contains("Bezugsjahr 2024");
+  }
+
+  /**
+   * The subset relation is a guarantee, not a promise: an anchor text the model never saw would be
+   * exactly the separately maintained enumeration this seam exists to prevent - and in the
+   * loosening direction, where the belt would legitimize sub-queries against words nothing in the
+   * prompt carried.
+   */
+  @Test
+  void anAnchorTextOutsideTheRenderedBlockIsRefused() {
+    DecompositionContext context = DecompositionContext.of("Frage?", WINDOW);
+
+    assertThatThrownBy(
+            () ->
+                context.withContextBlock(
+                    "Notiz zum Bezugsjahr 2024", List.of("Wort das im Modelltext nie vorkam")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Wort das im Modelltext nie vorkam");
   }
 
   /**

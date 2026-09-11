@@ -94,6 +94,7 @@ public final class ConversationReportWriter {
                         "  %-24s %d von %d gelöst\n",
                         caseClass, outcome.solvedCases(), outcome.cases())));
     sb.append('\n');
+    sb.append(renderNoteCondensation(report.noteCondensation()));
     sb.append(renderBleed(report.topicBleed()));
     sb.append(ExpectedStateAudit.renderSummary(report.expectedStateAudit()));
     sb.append(
@@ -101,6 +102,31 @@ public final class ConversationReportWriter {
             "Alle %d Fälle mit ihren Runden und Teilfragen stehen im JSON-Report unter 'cases'.\n",
             report.cases().size()));
     return sb.toString();
+  }
+
+  /**
+   * How the Gesprächsnotiz of this run came about (#1487). The line is not decoration: a failed
+   * condensation costs its turn the points and never the run, so a run whose model was unreachable
+   * throughout still produces a complete report - one that measures standalone turns while
+   * declaring a note cap as a fixed point. Whoever reads a multi-turn result reads this first.
+   */
+  private static String renderNoteCondensation(
+      ConversationEvaluationReport.NoteCondensationAudit audit) {
+    if (audit == null) {
+      return "Gesprächsnotiz: dieser Lauf wurde ohne Notiz gemessen.\n\n";
+    }
+    if (audit.failedCondensations() == 0) {
+      return format(
+          "Gesprächsnotiz: %d Verdichtungen, alle erfolgreich.\n\n",
+          audit.attemptedCondensations());
+    }
+    return format(
+        "Gesprächsnotiz: %d Verdichtungen, davon %d FEHLGESCHLAGEN (%s) — diese Runden sind ohne "
+            + "Notizpunkte gemessen worden; bei durchgehendem Fehlschlag misst der Lauf trotz "
+            + "gesetztem Notizdeckel Einzelrunden.\n\n",
+        audit.attemptedCondensations(),
+        audit.failedCondensations(),
+        String.join(", ", audit.failedTurnIds()));
   }
 
   /** The same run as a Markdown block — the form a job summary or a PR comment carries. */
@@ -139,6 +165,7 @@ public final class ConversationReportWriter {
             "| **gesamt** | %d | %d |\n",
             report.caseOutcomes().cases(), report.caseOutcomes().solvedCases()));
 
+    sb.append('\n').append(renderNoteCondensation(report.noteCondensation()));
     sb.append('\n').append(renderBleed(report.topicBleed())).append('\n');
     sb.append(ExpectedStateAudit.renderMarkdown(report.expectedStateAudit()));
     sb.append("\n### Teilfragen je Runde\n\n");

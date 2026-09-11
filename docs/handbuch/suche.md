@@ -249,12 +249,13 @@ ohne Modell.
 „Der Kontext, den die Zerlegung bekommen hat" ist dabei wörtlich zu nehmen: **genau die Frage,
 das Suchfenster und die Notizpunkte**, nicht mehr und nicht weniger. Die Überschrift des
 Notiz-Blocks zählt ausdrücklich nicht dazu: Sie ist Text von OPAA, kein Material der Person,
-und ein Ankerwort daraus würde den Sicherheitsgurt genau dort lockern, wo er greifen soll. Das ist nötig, weil eine korrekt aufgelöste
-Rückfrage mit der Frage oft kein Wort teilt — „Wie lange dauert das?" wird zu „Bearbeitungsdauer für
-den Anwohnerparkausweis", und das Ankerwort steht in der Vorrunde, nicht in der Frage — oder in der Notiz,
-etwa wenn der Punkt „Bezugsjahr 2024" die Teilfrage „Anwohnerparkausweis Gebühren 2024"
-rechtfertigt. Ein Thema, das älter als das Suchfenster ist, kann eine Teilfrage umgekehrt nicht
-mehr rechtfertigen.
+und ein Ankerwort daraus würde den Sicherheitsgurt genau dort lockern, wo er greifen soll.
+Die Wörtlichkeit ist nötig, weil eine korrekt aufgelöste Rückfrage mit der Frage oft kein
+Wort teilt — „Wie lange dauert das?" wird zu „Bearbeitungsdauer für den
+Anwohnerparkausweis", und das Ankerwort steht in der Vorrunde, nicht in der Frage — oder in
+der Notiz, etwa wenn der Punkt „Bezugsjahr 2024" die Teilfrage „Anwohnerparkausweis
+Gebühren 2024" rechtfertigt. Ein Thema, das älter als das Suchfenster ist, kann eine Teilfrage
+umgekehrt nicht mehr rechtfertigen.
 
 Im Rückfall wird der aktuellen Frage die **letzte** Nutzerfrage des Suchfensters vorangestellt; gibt
 es im Suchfenster keine Vorrunde, wird die Frage allein gesucht. Ein solcher Rückfall steht als

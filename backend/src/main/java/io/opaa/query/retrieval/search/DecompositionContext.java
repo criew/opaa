@@ -21,8 +21,10 @@ import org.springframework.ai.chat.messages.UserMessage;
  * heading word in the anchor space would relate sub-queries to the prompt's own German wording -
  * "Personalausweis beantragen" would count as related to any conversation merely because the
  * heading contains "Person". {@link #contextTexts()} is therefore a subset of what the model sees,
- * never a superset: leaving material out of the anchor space can only make the belt stricter, and
- * the one thing it must never do is grow looser through text OPAA wrote itself.
+ * never a superset - {@link ContextBlock} enforces that rather than assuming it. Leaving material
+ * out of the anchor space narrows the belt in the overwhelming majority of cases and can never
+ * widen it through text OPAA wrote itself; it is not, however, strictly monotone, because {@code
+ * countUnrelated} skips its check entirely below two anchor tokens.
  */
 public record DecompositionContext(
     String question, List<Message> searchWindow, List<ContextBlock> contextBlocks) {
@@ -31,10 +33,22 @@ public record DecompositionContext(
    * One rendered block: {@code modelText} is what the system prompt carries, {@code anchorTexts}
    * the parts of it the safety belt may anchor against. Both are produced by whoever renders the
    * block, in one step - see {@code io.opaa.query.ConversationNoteBlock}.
+   *
+   * <p><b>Every anchor text must occur verbatim in {@code modelText}.</b> Checked, not merely
+   * documented: the subset relation is the whole reason the two halves may differ at all, and an
+   * anchor text the model never saw would be exactly the separately maintained enumeration this
+   * type exists to prevent - in the loosening direction, where the safety belt would legitimize
+   * sub-queries against words nothing in the prompt carried.
    */
   public record ContextBlock(String modelText, List<String> anchorTexts) {
     public ContextBlock {
       anchorTexts = List.copyOf(anchorTexts);
+      for (String anchorText : anchorTexts) {
+        if (!modelText.contains(anchorText)) {
+          throw new IllegalArgumentException(
+              "anchor text is not part of the rendered block: " + anchorText);
+        }
+      }
     }
   }
 
