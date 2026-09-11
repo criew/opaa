@@ -330,16 +330,16 @@ class QueryIntegrationTest {
     // gives the user a real, non-empty readable set with a second, ungranted library present in
     // the same store, and asserts on the *count* of results, not just their content.
     //
-    // The granted library A (10 chunks) and ungranted library B (250 chunks) are deliberately
-    // lopsided, and every B chunk is strictly closer to the question than every A chunk (see the
-    // embedding offset below), so a broken, post-hoc filter is distinguishable from the correct,
-    // search-time one at fetchK=25 candidates: the correct filter only ever sees A's 10 members and
-    // returns all of them as candidates - MmrSelector then narrows those 10 down to topK (8), all
-    // "a"-prefixed. A post-filter would request the unfiltered top-25 of 260 candidates first,
-    // which are then all of B, and be left with nothing authorized to answer from. See the PR
-    // description for the reproduction: reverting QueryService's filterExpression(...) call turns
-    // this test red while every other test in this class, QueryControllerTest and io.opaa.library.*
-    // stay green.
+    // The granted library A (13 chunks in 11 documents) and ungranted library B (250 chunks) are
+    // deliberately lopsided, and every B chunk is strictly closer to the question than every A
+    // chunk (see the embedding offset below), so a broken, post-hoc filter is distinguishable from
+    // the correct, search-time one at fetchK=25 candidates: the correct filter only ever sees A's
+    // 13 members and returns all of them as candidates - MmrSelector then narrows those 13 down to
+    // topK (8), all "a"-prefixed. A post-filter would request the unfiltered top-25 of 263
+    // candidates first, which are then all of B, and be left with nothing authorized to answer
+    // from. See the PR description for the reproduction: reverting QueryService's
+    // filterExpression(...) call turns this test red while every other test in this class,
+    // QueryControllerTest and io.opaa.library.* stay green.
     //
     // #932 review: the granted set below includes one multi-chunk document (see
     // #grantedChunksWithOneMultiChunkDocument's Javadoc for the exact shape, placement, and why
