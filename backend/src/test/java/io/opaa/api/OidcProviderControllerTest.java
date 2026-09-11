@@ -153,6 +153,7 @@ class OidcProviderControllerTest {
         .andExpect(jsonPath("$[0].enabled").value(true))
         .andExpect(jsonPath("$[0].claimMapping.emailClaim").value("email"))
         .andExpect(jsonPath("$[0].registryState").value("READY"))
+        .andExpect(jsonPath("$[0].providerType").value("OIDC"))
         .andExpect(jsonPath("$[0].clientSecret").doesNotExist());
   }
 

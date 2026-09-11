@@ -103,8 +103,11 @@ class Migration003OidcProviderTypeTest extends AbstractMigrationTest {
     assertThatThrownBy(
             () -> insertProvider("LOCAL", LocalAccountSchemaSupport.LOCAL_ISSUER, null, false))
         .isInstanceOf(SQLException.class)
-        .hasMessageContainingAny(
-            "ux_oidc_providers_single_local", "ux_oidc_providers_issuer_uri_normalized");
+        .satisfies(
+            error ->
+                assertThat(error.getMessage())
+                    .containsAnyOf(
+                        "ux_oidc_providers_single_local", "ux_oidc_providers_issuer_uri_normalized"));
     assertThat(
             LocalAccountSchemaSupport.indexDefinition(connection, "ux_oidc_providers_single_local"))
         .isNotNull()

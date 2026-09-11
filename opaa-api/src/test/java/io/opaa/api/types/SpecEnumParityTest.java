@@ -85,7 +85,8 @@ class SpecEnumParityTest {
         Arguments.of("ConfluenceEdition", ConfluenceEdition.values()),
         Arguments.of("IndexingRunMode", IndexingRunMode.values()),
         Arguments.of("LibraryMetadataFieldType", LibraryMetadataFieldType.values()),
-        Arguments.of("OrphanedOriginalSkipReason", OrphanedOriginalSkipReason.values()));
+        Arguments.of("OrphanedOriginalSkipReason", OrphanedOriginalSkipReason.values()),
+        Arguments.of("ProviderType", ProviderType.values()));
   }
 
   @ParameterizedTest(name = "{0}")
