@@ -193,9 +193,24 @@ Geprüft wird das Docker-frei durch `io.opaa.eval.ConversationCaseCuration` und
   Treffermengen — dieselbe `n_eff`-Begründung wie bei den Einzelfragen,
 - jedes erwartete Dokument und jeder Verwechslungspartner steht im Manifest.
 
-**Kuratierung:** Die Fälle selbst entstehen in Issue #1485; bis dahin ist die Datei ein leeres
-Array, und der Lauf meldet sich als „nicht ausgeführt". Der Lauf selbst steht in
-[`eval/README.md`](../README.md), Abschnitt „Dritter Messpfad: Mehrrunden-Fälle".
+**Kuratierung (Issue #1485):** 27 von Hand gegen
+[`eval/corpus/verwaltung/`](../corpus/verwaltung/) kuratierte Fälle — neun je Klasse, über dem
+Minimum von acht — mit zusammen 83 Runden. Kein Generator, aus demselben Grund wie bei
+`verwaltung.json`: Die Fälle werden aus den Dokumenten heraus formuliert, und eine Kurzantwort, die
+aus dem Zieldokument abgeleitet ist, schreibt kein Skript. Abgesichert ist das Ergebnis stattdessen
+über die Regeln oben.
+
+| Klasse | Fälle | Runden | davon `solved` (Stand 2026-09-11) |
+|---|---|---|---|
+| `anaphora_resolution` | 9 | 21 | 4 |
+| `topic_switch` | 9 | 30 | 2 |
+| `constraint_carryover` | 9 | 32 | 0 |
+
+Der Befund des Erstlaufs — was gelöst ist, was nicht, und warum zwei gemessen gelöste
+`constraint_carryover`-Fälle trotzdem `known_gap` bleiben — steht bei der Domäne:
+[`eval/corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md), Abschnitt
+„Mehrrunden-Fallklassen". Der Lauf selbst steht in [`eval/README.md`](../README.md), Abschnitt
+„Dritter Messpfad: Mehrrunden-Fälle".
 
 ---
 

@@ -1,1 +1,886 @@
-[]
+[
+  {
+    "id": "verw-conv-ana-001",
+    "domain": "verwaltung",
+    "category": "anaphora_resolution",
+    "turns": [
+      {
+        "query": "Wofür wird Formular KAE-07 verwendet?",
+        "answer": "Formular KAE-07 ist das reguläre Antragsformular der Kämmerei für eine Amtshandlung der Stadtverwaltung.",
+        "expected_documents": [
+          "verwaltung-0042_formularhinweis-kaemmerei-7.md"
+        ]
+      },
+      {
+        "query": "Welche Nachweise muss ich dafür beilegen?",
+        "answer": "Je nach Anliegen sind Identitätsnachweis, Nachweis der Bedürftigkeit oder Nachweis der Gemeinnützigkeit beizufügen. Die Kämmerei akzeptiert beglaubigte Kopien ebenso wie das Original zur Einsichtnahme vor Ort.",
+        "expected_documents": [
+          "verwaltung-0042_formularhinweis-kaemmerei-7.md"
+        ]
+      }
+    ],
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Zerlegung löst „dafür“ zu „Formular KAE-07“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
+  },
+  {
+    "id": "verw-conv-ana-002",
+    "domain": "verwaltung",
+    "category": "anaphora_resolution",
+    "turns": [
+      {
+        "query": "Wofür wird Formular BUE-08 verwendet?",
+        "answer": "Formular BUE-08 ist das Änderungs- und Ermäßigungsformular des Bürgeramts; es dient dem Antrag auf nachträgliche Änderung der Antragsdaten oder auf Gebührenermäßigung nach § 13.",
+        "expected_documents": [
+          "verwaltung-0037_formularhinweis-buergeramt-8.md"
+        ]
+      },
+      {
+        "query": "Wie lange dauert seine Bearbeitung?",
+        "answer": "Die reguläre Bearbeitungsdauer des Bürgeramts beträgt zwei bis vier Wochen ab vollständigem Eingang aller Nachweise. Eine Eilbearbeitung verkürzt sie in der Regel auf drei bis fünf Werktage.",
+        "expected_documents": [
+          "verwaltung-0037_formularhinweis-buergeramt-8.md"
+        ]
+      }
+    ],
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Zerlegung löst „seine“ zu „Formular BUE-08“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
+  },
+  {
+    "id": "verw-conv-ana-003",
+    "domain": "verwaltung",
+    "category": "anaphora_resolution",
+    "turns": [
+      {
+        "query": "Was regelt die Dienstanweisung BAU-DA-2/2024?",
+        "answer": "Die Dienstanweisung BAU-DA-2/2024 regelt die Aktenführung und die Fristenkontrolle im Bauamt der Stadt Kalkstadt.",
+        "expected_documents": [
+          "verwaltung-0014_dienstanweisung-bauamt-2-2024.md"
+        ]
+      },
+      {
+        "query": "Wie lange sind die Entscheidungen danach aufzubewahren?",
+        "answer": "Alle Entscheidungen sind revisionssicher zu dokumentieren und mindestens zehn Jahre aufzubewahren, sofern nicht die Datenschutzregelung nach § 11 der einschlägigen Satzung eine kürzere Frist vorsieht.",
+        "expected_documents": [
+          "verwaltung-0014_dienstanweisung-bauamt-2-2024.md"
+        ]
+      }
+    ],
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Zerlegung löst „danach“ zu „Dienstanweisung BAU-DA-2/2024“ auf und hält das Dokument gegen die amtsübergreifende Aufbewahrungs-Dienstanweisung auf Rang 1."
+  },
+  {
+    "id": "verw-conv-ana-004",
+    "domain": "verwaltung",
+    "category": "anaphora_resolution",
+    "turns": [
+      {
+        "query": "Was regelt § 13 der Verwaltungsgebührensatzung?",
+        "answer": "§ 13 gewährt eingetragenen, gemeinnützigen Vereinen mit Sitz in der Stadt Kalkstadt auf schriftlichen Antrag eine Ermäßigung von 50 Prozent auf die Gebühren der Verwaltungsgebührensatzung.",
+        "expected_documents": [
+          "verwaltung-0038_verwaltungsgebuehrensatzung.md"
+        ]
+      },
+      {
+        "query": "Welchen Nachweis verlangt sie dafür?",
+        "answer": "Der Nachweis der Gemeinnützigkeit erfolgt durch Vorlage des aktuellen Freistellungsbescheids des Finanzamts. Die Ermäßigung gilt nicht rückwirkend für bereits bestandskräftig festgesetzte Gebühren.",
+        "expected_documents": [
+          "verwaltung-0038_verwaltungsgebuehrensatzung.md"
+        ]
+      },
+      {
+        "query": "Gilt sie auch für eine Eilbearbeitung?",
+        "answer": "Ja. Die Gebührenposition 7 (Eilbearbeitung, 52,00 Euro) unterliegt unverändert der Gebührenbefreiung nach § 3 und der Vereinsermäßigung nach § 13 der Verwaltungsgebührensatzung.",
+        "expected_documents": [
+          "verwaltung-0039_gebuehrenordnung-kaemmerei.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Runde 2 verliert den Bezug auf die Verwaltungsgebührensatzung (verwaltung-0038 außerhalb des Fensters), Runde 3 landet auf einer fremden Gebührenordnung (Rang 1 verwaltung-0011_gebuehrenordnung-bauamt.md)."
+  },
+  {
+    "id": "verw-conv-ana-005",
+    "domain": "verwaltung",
+    "category": "anaphora_resolution",
+    "turns": [
+      {
+        "query": "Was regelt die Dienstanweisung ORD-DA-2/2024?",
+        "answer": "Die Dienstanweisung ORD-DA-2/2024 regelt die Aktenführung und die Fristenkontrolle im Ordnungsamt der Stadt Kalkstadt.",
+        "expected_documents": [
+          "verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md"
+        ]
+      },
+      {
+        "query": "Wer entscheidet danach, wenn die zuständige Sachbearbeitung im Urlaub ist?",
+        "answer": "Dann entscheidet die nach der Vertretungsregelung zuständige Vertretung; ist auch diese nicht erreichbar, entscheidet die Amtsleitung des Ordnungsamts. Der Vertretungsfall ist im Vorgangsverzeichnis zu vermerken.",
+        "expected_documents": [
+          "verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Runde 2 verliert den Bezug auf ORD-DA-2/2024; verwaltung-0022 liegt außerhalb des Fensters."
+  },
+  {
+    "id": "verw-conv-ana-006",
+    "domain": "verwaltung",
+    "category": "anaphora_resolution",
+    "turns": [
+      {
+        "query": "Wofür wird Formular JUG-07 verwendet?",
+        "answer": "Formular JUG-07 ist das reguläre Antragsformular des Jugendamts für eine Amtshandlung rund um die Betreuung in städtischen Kindertagesstätten.",
+        "expected_documents": [
+          "verwaltung-0055_formularhinweis-jugendamt-7.md"
+        ]
+      },
+      {
+        "query": "Welche Angaben verlangt es?",
+        "answer": "Anzugeben sind Name, Anschrift, Geburtsdatum und, sofern zutreffend, das Aktenzeichen eines laufenden Vorgangs sowie eine Telefonnummer oder E-Mail-Adresse für Rückfragen.",
+        "expected_documents": [
+          "verwaltung-0055_formularhinweis-jugendamt-7.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Runde 2 verliert den Bezug auf Formular JUG-07; verwaltung-0055 liegt außerhalb des Fensters."
+  },
+  {
+    "id": "verw-conv-ana-007",
+    "domain": "verwaltung",
+    "category": "anaphora_resolution",
+    "turns": [
+      {
+        "query": "Welches Amt stellt Personenstandsurkunden aus?",
+        "answer": "Das Standesamt der Stadt Kalkstadt ist für die Ausstellung von Personenstandsurkunden zuständig.",
+        "expected_documents": [
+          "verwaltung-geschaeftsverteilungsplan.md"
+        ]
+      },
+      {
+        "query": "Wer vertritt dessen Sachbearbeitung im Abwesenheitsfall?",
+        "answer": "Ist die zuständige Sachbearbeitung des Standesamts nicht erreichbar, entscheidet ersatzweise die Sachbearbeitung des Bürgeramts.",
+        "expected_documents": [
+          "verwaltung-vertretungsregelung.md"
+        ]
+      },
+      {
+        "query": "Nach welcher Satzung erhebt es seine Gebühren?",
+        "answer": "Grundlage der Gebührenerhebung ist die Personenstandsurkundengebührensatzung der Stadt Kalkstadt.",
+        "expected_documents": [
+          "verwaltung-0025_personenstandsurkundengebuehrensatzung.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Alle drei Runden offen; bereits die eigenständige Runde 1 verfehlt den Geschäftsverteilungsplan — dieser Fall misst damit auch eine Einzelfragen-Lücke der Domäne, nicht nur das Gesprächsgedächtnis."
+  },
+  {
+    "id": "verw-conv-ana-008",
+    "domain": "verwaltung",
+    "category": "anaphora_resolution",
+    "turns": [
+      {
+        "query": "Wofür wird Formular PER-08 verwendet?",
+        "answer": "Formular PER-08 ist das Änderungs- und Ermäßigungsformular des Personalamts; es dient dem Antrag auf nachträgliche Änderung der Antragsdaten oder auf Gebührenermäßigung nach § 13.",
+        "expected_documents": [
+          "verwaltung-0049_formularhinweis-personalamt-8.md"
+        ]
+      },
+      {
+        "query": "Welche typischen Fehler treten beim Ausfüllen auf?",
+        "answer": "Am häufigsten bleibt das Feld für das Aktenzeichen eines bereits laufenden Vorgangs leer, oder der beigefügte Nachweis liegt nicht mehr innerhalb der geforderten Gültigkeitsdauer von drei Monaten.",
+        "expected_documents": [
+          "verwaltung-0049_formularhinweis-personalamt-8.md"
+        ]
+      }
+    ],
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Zerlegung löst die Rückfrage nach den typischen Ausfüllfehlern zu „Formular PER-08“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
+  },
+  {
+    "id": "verw-conv-ana-009",
+    "domain": "verwaltung",
+    "category": "anaphora_resolution",
+    "turns": [
+      {
+        "query": "Welcher Beitrag ist für die Betreuung in einer Kindertagesstätte zu zahlen?",
+        "answer": "Für den Kindertagesstättenplatz verlangt das Jugendamt 26,00 Euro für die Erteilung, 31,00 Euro für die Verlängerung, 36,00 Euro für die Änderung und 41,00 Euro für die Zweitausfertigung.",
+        "expected_documents": [
+          "verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md",
+          "verwaltung-0051_kindertagesstaettenbeitragssatzung-fassung-2024.md",
+          "verwaltung-0052_gebuehrenordnung-jugendamt.md"
+        ]
+      },
+      {
+        "query": "Welches Amt ist dafür zuständig?",
+        "answer": "Das Jugendamt der Stadt Kalkstadt ist für die Betreuung in städtischen Kindertagesstätten zuständig.",
+        "expected_documents": [
+          "verwaltung-geschaeftsverteilungsplan.md"
+        ]
+      },
+      {
+        "query": "Wofür wird dessen Änderungsformular verwendet?",
+        "answer": "Formular JUG-08 ist das Änderungs- und Ermäßigungsformular des Jugendamts; es dient dem Antrag auf nachträgliche Änderung der Antragsdaten oder auf Gebührenermäßigung nach § 13.",
+        "expected_documents": [
+          "verwaltung-0056_formularhinweis-jugendamt-8.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Runde 1 verfehlt die Gebührenordnung Jugendamt, Runde 2 stellt sie vor den Geschäftsverteilungsplan, Runde 3 verliert den zweistufigen Bezug auf das Änderungsformular des Jugendamts (verwaltung-0056 außerhalb des Fensters)."
+  },
+  {
+    "id": "verw-conv-ts-001",
+    "domain": "verwaltung",
+    "category": "topic_switch",
+    "turns": [
+      {
+        "query": "Was regelt die Dienstanweisung BAU-DA-1/2023?",
+        "answer": "Die Dienstanweisung BAU-DA-1/2023 regelt die Bearbeitung von Amtshandlungsanträgen im Bauamt der Stadt Kalkstadt.",
+        "expected_documents": [
+          "verwaltung-0012_dienstanweisung-bauamt-1-2023.md"
+        ]
+      },
+      {
+        "query": "Welche Nachfrist gilt dort, wenn Unterlagen fehlen?",
+        "answer": "Fehlen Unterlagen, wird eine Nachfrist von zwei Wochen gesetzt; nach fruchtlosem Ablauf wird nach Aktenlage entschieden.",
+        "expected_documents": [
+          "verwaltung-0012_dienstanweisung-bauamt-1-2023.md"
+        ]
+      },
+      {
+        "query": "Ich habe jetzt ein ganz anderes Anliegen: Wofür wird Formular STA-07 verwendet?",
+        "answer": "Formular STA-07 ist das reguläre Antragsformular des Standesamts für eine Amtshandlung, etwa die Ausstellung einer Personenstandsurkunde.",
+        "expected_documents": [
+          "verwaltung-0029_formularhinweis-standesamt-7.md"
+        ]
+      }
+    ],
+    "topic_switch_turn": 3,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Wechselrunde 3 ist gelöst und enthält kein Dokument des Vorthemas (Bleed 0); offen ist die Vorrunde 2, in der die Aufbewahrungs-Dienstanweisung Rang 1 belegt."
+  },
+  {
+    "id": "verw-conv-ts-002",
+    "domain": "verwaltung",
+    "category": "topic_switch",
+    "turns": [
+      {
+        "query": "Wofür wird Formular SOZ-08 verwendet?",
+        "answer": "Formular SOZ-08 ist das Änderungs- und Ermäßigungsformular des Sozialamts; es dient dem Antrag auf nachträgliche Änderung der Antragsdaten oder auf Gebührenermäßigung nach § 13.",
+        "expected_documents": [
+          "verwaltung-0008_formularhinweis-sozialamt-8.md"
+        ]
+      },
+      {
+        "query": "Etwas ganz anderes: Welche Satzung regelt die Gebühren für die Entsorgung von Haushaltsabfällen?",
+        "answer": "Grundlage der Gebührenerhebung des Umweltamts ist die Abfallgebührensatzung der Stadt Kalkstadt.",
+        "expected_documents": [
+          "verwaltung-0057_abfallgebuehrensatzung.md"
+        ]
+      },
+      {
+        "query": "Was kostet danach die Erteilung?",
+        "answer": "Für die Erteilung (Abfallentsorgung) sieht die Abfallgebührensatzung 28,00 Euro vor.",
+        "expected_documents": [
+          "verwaltung-0057_abfallgebuehrensatzung.md"
+        ]
+      }
+    ],
+    "topic_switch_turn": 2,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Wechselrunde 2 selbst ist offen: die Zerlegung erfindet eine Rechtsgrundlage, Rang 1 belegt verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md. Bleed 0."
+  },
+  {
+    "id": "verw-conv-ts-003",
+    "domain": "verwaltung",
+    "category": "topic_switch",
+    "turns": [
+      {
+        "query": "Was regelt § 3 der Verwaltungsgebührensatzung?",
+        "answer": "§ 3 befreit auf schriftlichen Antrag ganz oder teilweise von der Gebühr, wer nachweislich bedürftig nach SGB XII ist oder laufende Leistungen nach SGB II bezieht.",
+        "expected_documents": [
+          "verwaltung-0038_verwaltungsgebuehrensatzung.md"
+        ]
+      },
+      {
+        "query": "Welchen Nachweis verlangt die Kämmerei dafür?",
+        "answer": "Die Bedürftigkeit ist durch Vorlage des aktuellen Leistungsbescheids der zuständigen Behörde nachzuweisen.",
+        "expected_documents": [
+          "verwaltung-0038_verwaltungsgebuehrensatzung.md"
+        ]
+      },
+      {
+        "query": "Anderes Thema: Welche Dienstanweisung regelt die Aktenführung im Jugendamt?",
+        "answer": "Die Dienstanweisung JUG-DA-2/2024 regelt die Aktenführung und die Fristenkontrolle im Jugendamt der Stadt Kalkstadt.",
+        "expected_documents": [
+          "verwaltung-0054_dienstanweisung-jugendamt-2-2024.md"
+        ]
+      }
+    ],
+    "topic_switch_turn": 3,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Wechselrunde 3 ist gelöst; offen ist die Vorrunde 2, die die Verwaltungsgebührensatzung aus dem Fenster verliert. Bleed 0."
+  },
+  {
+    "id": "verw-conv-ts-004",
+    "domain": "verwaltung",
+    "category": "topic_switch",
+    "turns": [
+      {
+        "query": "Was regelt die Dienstanweisung UMW-DA-2/2024?",
+        "answer": "Die Dienstanweisung UMW-DA-2/2024 regelt die Aktenführung und die Fristenkontrolle im Umweltamt der Stadt Kalkstadt.",
+        "expected_documents": [
+          "verwaltung-0060_dienstanweisung-umweltamt-2-2024.md"
+        ]
+      },
+      {
+        "query": "Ich wechsle das Thema: Wofür wird Formular PER-07 verwendet?",
+        "answer": "Formular PER-07 ist das reguläre Antragsformular des Personalamts, etwa für eine Auskunft aus der Personalakte.",
+        "expected_documents": [
+          "verwaltung-0048_formularhinweis-personalamt-7.md"
+        ]
+      },
+      {
+        "query": "Welche Nachweise verlangt es?",
+        "answer": "Je nach Anliegen ist ein Identitätsnachweis oder ein Nachweis der Gemeinnützigkeit beizufügen; das Personalamt akzeptiert beglaubigte Kopien ebenso wie das Original zur Einsichtnahme.",
+        "expected_documents": [
+          "verwaltung-0048_formularhinweis-personalamt-7.md"
+        ]
+      },
+      {
+        "query": "Noch einmal zurück zur Dienstanweisung UMW-DA-2/2024: Wie oft prüft die Amtsleitung abgeschlossene Vorgänge?",
+        "answer": "Die Amtsleitung des Umweltamts prüft stichprobenartig, mindestens einmal je Quartal, abgeschlossene Vorgänge auf die korrekte Anwendung der Dienstanweisung.",
+        "expected_documents": [
+          "verwaltung-0060_dienstanweisung-umweltamt-2-2024.md"
+        ]
+      }
+    ],
+    "topic_switch_turn": 2,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Wechselrunde 2 ist offen (verwaltung-0048 außerhalb des Fensters), ebenso die Rückkehr zum Altthema in Runde 4 (verwaltung-0060 außerhalb des Fensters). Bleed 0."
+  },
+  {
+    "id": "verw-conv-ts-005",
+    "domain": "verwaltung",
+    "category": "topic_switch",
+    "turns": [
+      {
+        "query": "Welche Satzung regelt die Gebühren für die Benutzung der Stadtbibliothek?",
+        "answer": "Grundlage der Gebührenerhebung des Kulturamts ist die Bibliotheksbenutzungsgebührensatzung der Stadt Kalkstadt.",
+        "expected_documents": [
+          "verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md"
+        ]
+      },
+      {
+        "query": "Neues Thema: Was regelt die Dienstanweisung BUE-DA-2/2024?",
+        "answer": "Die Dienstanweisung BUE-DA-2/2024 regelt die Aktenführung und die Fristenkontrolle im Bürgeramt der Stadt Kalkstadt.",
+        "expected_documents": [
+          "verwaltung-0035_dienstanweisung-buergeramt-2-2024.md"
+        ]
+      },
+      {
+        "query": "Wie lange sind die Entscheidungen danach aufzubewahren?",
+        "answer": "Alle Entscheidungen sind revisionssicher zu dokumentieren und mindestens zehn Jahre aufzubewahren, sofern nicht § 11 der einschlägigen Satzung eine kürzere Frist vorsieht.",
+        "expected_documents": [
+          "verwaltung-0035_dienstanweisung-buergeramt-2-2024.md"
+        ]
+      }
+    ],
+    "topic_switch_turn": 2,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Wechselrunde 2 und Folgerunde 3 sind offen; verwaltung-0035 liegt in beiden außerhalb des Fensters. Bleed 0."
+  },
+  {
+    "id": "verw-conv-ts-006",
+    "domain": "verwaltung",
+    "category": "topic_switch",
+    "turns": [
+      {
+        "query": "Wofür wird Formular ORD-07 verwendet?",
+        "answer": "Formular ORD-07 ist das reguläre Antragsformular des Ordnungsamts, etwa für die Anmeldung eines Gewerbes.",
+        "expected_documents": [
+          "verwaltung-0023_formularhinweis-ordnungsamt-7.md"
+        ]
+      },
+      {
+        "query": "Wie lange dauert dort die Bearbeitung?",
+        "answer": "Die reguläre Bearbeitungsdauer des Ordnungsamts beträgt zwei bis vier Wochen ab vollständigem Eingang aller Nachweise; eine Eilbearbeitung verkürzt sie auf drei bis fünf Werktage.",
+        "expected_documents": [
+          "verwaltung-0023_formularhinweis-ordnungsamt-7.md"
+        ]
+      },
+      {
+        "query": "Etwas ganz anderes: Wie lange werden abgeschlossene Vorgänge aufbewahrt, bevor sie ausgesondert werden?",
+        "answer": "Abgeschlossene Vorgänge werden grundsätzlich zehn Jahre aufbewahrt, gerechnet ab dem Ende des Kalenderjahres, in dem der Vorgang abgeschlossen wurde.",
+        "expected_documents": [
+          "verwaltung-dienstanweisung-aktenaufbewahrung.md"
+        ]
+      }
+    ],
+    "topic_switch_turn": 3,
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Alle drei Runden führen ihr erwartetes Dokument auf Rang 1, und die Wechselrunde 3 enthält kein Dokument des Vorthemas (Bleed 0)."
+  },
+  {
+    "id": "verw-conv-ts-007",
+    "domain": "verwaltung",
+    "category": "topic_switch",
+    "turns": [
+      {
+        "query": "Was kostet die Erteilung einer Personenstandsurkunde?",
+        "answer": "Für die Erteilung (Personenstandsurkunde) erhebt das Standesamt 28,00 Euro.",
+        "expected_documents": [
+          "verwaltung-0025_personenstandsurkundengebuehrensatzung.md",
+          "verwaltung-0026_gebuehrenordnung-standesamt.md"
+        ]
+      },
+      {
+        "query": "Welches Amt ist dafür zuständig?",
+        "answer": "Das Standesamt der Stadt Kalkstadt ist für die Ausstellung von Personenstandsurkunden zuständig.",
+        "expected_documents": [
+          "verwaltung-geschaeftsverteilungsplan.md"
+        ]
+      },
+      {
+        "query": "Themenwechsel: Welche Anforderungen an die Barrierefreiheit müssen die Dienstgebäude mit Publikumsverkehr erfüllen?",
+        "answer": "Jedes Dienstgebäude mit Publikumsverkehr verfügt über mindestens einen stufenlosen Zugang mit automatischer Tür; Aufzüge tragen taktile Bedienelemente, akustische Etagenansage und einen Notruf zum Empfang.",
+        "expected_documents": [
+          "verwaltung-leitfaden-barrierefreiheit.md"
+        ]
+      },
+      {
+        "query": "Wie melde ich eine Barriere?",
+        "answer": "Barrieren lassen sich über das Formular „Barriere melden“ auf der städtischen Website oder telefonisch beim Empfang melden; das Gebäudemanagement bestätigt den Eingang innerhalb von drei Werktagen.",
+        "expected_documents": [
+          "verwaltung-leitfaden-barrierefreiheit.md"
+        ]
+      }
+    ],
+    "topic_switch_turn": 3,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Wechselrunde 3 und Folgerunde 4 sind gelöst; offen ist die Vorrunde 2, die den Geschäftsverteilungsplan aus dem Fenster verliert. Bleed 0."
+  },
+  {
+    "id": "verw-conv-ts-008",
+    "domain": "verwaltung",
+    "category": "topic_switch",
+    "turns": [
+      {
+        "query": "Was kostet eine Auskunft aus der Personalakte?",
+        "answer": "Für die Personalaktenauskunft erhebt das Personalamt 27,00 Euro für die Erteilung, 32,00 Euro für die Verlängerung, 37,00 Euro für die Änderung und 42,00 Euro für die Zweitausfertigung.",
+        "expected_documents": [
+          "verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md",
+          "verwaltung-0045_gebuehrenordnung-personalamt.md"
+        ]
+      },
+      {
+        "query": "Jetzt etwas anderes: Was regelt die Dienstanweisung SOZ-DA-2/2024?",
+        "answer": "Die Dienstanweisung SOZ-DA-2/2024 regelt die Aktenführung und die Fristenkontrolle im Sozialamt der Stadt Kalkstadt.",
+        "expected_documents": [
+          "verwaltung-0006_dienstanweisung-sozialamt-2-2024.md"
+        ]
+      },
+      {
+        "query": "Wie wird dort der Eingang eines Vorgangs erfasst?",
+        "answer": "Jeder eingehende Vorgang wird am Tag des Eingangs im Vorgangsverzeichnis erfasst und mit einem Geschäftszeichen aus Amtskürzel SOZ, Kalenderjahr und fortlaufender Nummer versehen.",
+        "expected_documents": [
+          "verwaltung-0006_dienstanweisung-sozialamt-2-2024.md"
+        ]
+      }
+    ],
+    "topic_switch_turn": 2,
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Wechselrunde 2 ist gelöst; offen ist die Folgerunde 3 im neuen Thema (verwaltung-0006 außerhalb des Fensters). Bleed 0."
+  },
+  {
+    "id": "verw-conv-ts-009",
+    "domain": "verwaltung",
+    "category": "topic_switch",
+    "turns": [
+      {
+        "query": "Wofür wird Formular JUG-08 verwendet?",
+        "answer": "Formular JUG-08 ist das Änderungs- und Ermäßigungsformular des Jugendamts; es dient dem Antrag auf nachträgliche Änderung der Antragsdaten oder auf Gebührenermäßigung nach § 13.",
+        "expected_documents": [
+          "verwaltung-0056_formularhinweis-jugendamt-8.md"
+        ]
+      },
+      {
+        "query": "Anderes Anliegen: Was regelt die Dienstanweisung KAE-DA-1/2024?",
+        "answer": "Die Dienstanweisung KAE-DA-1/2024 regelt die Bearbeitung von Anträgen auf Gebührenbefreiung in der Kämmerei der Stadt Kalkstadt.",
+        "expected_documents": [
+          "verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md"
+        ]
+      },
+      {
+        "query": "Wer entscheidet danach über den Antrag?",
+        "answer": "Zuständig ist die im Geschäftsverteilungsplan benannte Sachbearbeitung der Kämmerei; ist sie nicht erreichbar, gilt die Vertretungsregelung, und die Amtsleitung behält ihre Selbsteintrittsbefugnis.",
+        "expected_documents": [
+          "verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md"
+        ]
+      },
+      {
+        "query": "Zurück zum Formular JUG-08: Wie lange dauert dessen Bearbeitung?",
+        "answer": "Die reguläre Bearbeitungsdauer des Jugendamts beträgt zwei bis vier Wochen ab vollständigem Eingang aller Nachweise; eine Eilbearbeitung verkürzt sie auf drei bis fünf Werktage.",
+        "expected_documents": [
+          "verwaltung-0056_formularhinweis-jugendamt-8.md"
+        ]
+      }
+    ],
+    "topic_switch_turn": 2,
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Wechselrunde 2 und die Rückkehr durch Neubenennung in Runde 4 treffen beide ihr Dokument auf Rang 1; die Wechselrunde enthält kein Dokument des Vorthemas (Bleed 0)."
+  },
+  {
+    "id": "verw-conv-cc-001",
+    "domain": "verwaltung",
+    "category": "constraint_carryover",
+    "turns": [
+      {
+        "query": "Ich bearbeite einen Altfall aus dem Jahr 2023; für mich gilt durchgehend die Fassung 2023. Wie lange galt die Sozialgebührenbefreiungssatzung in dieser Fassung?",
+        "answer": "Die Sozialgebührenbefreiungssatzung in der Fassung 2023 trat am 1. Januar 2023 in Kraft und galt bis zum 31. Dezember 2023; sie wurde durch die Fassung 2024 ersetzt.",
+        "expected_documents": [
+          "verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md"
+        ],
+        "confusable_document": "verwaltung-0002_sozialgebuehrenbefreiungssatzung-fassung-2024.md"
+      },
+      {
+        "query": "Kurze Zwischenfrage: Wie melde ich eine Barriere in einem Dienstgebäude?",
+        "answer": "Barrieren lassen sich über das Formular „Barriere melden“ auf der städtischen Website oder telefonisch beim Empfang melden; das Gebäudemanagement bestätigt den Eingang innerhalb von drei Werktagen.",
+        "expected_documents": [
+          "verwaltung-leitfaden-barrierefreiheit.md"
+        ]
+      },
+      {
+        "query": "Wie hoch ist die Ermäßigung für eingetragene Vereine nach der Sozialgebührenbefreiungssatzung?",
+        "answer": "Eingetragene, gemeinnützige Vereine mit Sitz in der Stadt Kalkstadt erhalten auf schriftlichen Antrag eine Ermäßigung von 50 Prozent auf die Gebühren des Sozialamts.",
+        "expected_documents": [
+          "verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md"
+        ],
+        "confusable_document": "verwaltung-0002_sozialgebuehrenbefreiungssatzung-fassung-2024.md"
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): In der Zielrunde 3 belegt der Verwechslungspartner (Fassung 2024) Rang 1 und das Ziel (Fassung 2023) Rang 2; die Angabe „Fassung 2023“ aus Runde 1 erscheint in keiner Teilfrage."
+  },
+  {
+    "id": "verw-conv-cc-002",
+    "domain": "verwaltung",
+    "category": "constraint_carryover",
+    "turns": [
+      {
+        "query": "Mein Vorgang stammt aus dem Jahr 2023, ich brauche durchgehend die Fassung 2023. Welche Fassung der Baugenehmigungsgebührensatzung galt damals?",
+        "answer": "Im Jahr 2023 galt die Baugenehmigungsgebührensatzung in der Fassung 2023; sie war vom 1. Januar bis zum 31. Dezember 2023 in Kraft.",
+        "expected_documents": [
+          "verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md"
+        ],
+        "confusable_document": "verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md"
+      },
+      {
+        "query": "Zwischendurch etwas anderes: Wofür wird Formular KUL-07 verwendet?",
+        "answer": "Formular KUL-07 ist das reguläre Antragsformular des Kulturamts, etwa für einen Bibliotheksausweis.",
+        "expected_documents": [
+          "verwaltung-0067_formularhinweis-kulturamt-7.md"
+        ]
+      },
+      {
+        "query": "Was kostet nach der Baugenehmigungsgebührensatzung die Änderung einer Baugenehmigung?",
+        "answer": "Für die Änderung (Baugenehmigung) sieht die Satzung 39,00 Euro vor.",
+        "expected_documents": [
+          "verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md"
+        ],
+        "confusable_document": "verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md"
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): In der Zielrunde 3 belegt verwaltung-0011_gebuehrenordnung-bauamt.md Rang 1, das Ziel steht auf Rang 2."
+  },
+  {
+    "id": "verw-conv-cc-003",
+    "domain": "verwaltung",
+    "category": "constraint_carryover",
+    "turns": [
+      {
+        "query": "Ich prüfe einen Vorgang, der 2023 abgeschlossen wurde; maßgeblich ist der Stand 2023. Welche Dienstanweisung des Sozialamts zur Bearbeitung von Amtshandlungsanträgen galt damals?",
+        "answer": "Damals galt die Dienstanweisung SOZ-DA-1/2023 des Sozialamts; sie wurde durch die Fassung SOZ-DA-1/2024 ersetzt.",
+        "expected_documents": [
+          "verwaltung-0004_dienstanweisung-sozialamt-1-2023.md"
+        ],
+        "confusable_document": "verwaltung-0005_dienstanweisung-sozialamt-1-2024.md"
+      },
+      {
+        "query": "Anderes Thema: Welches Amt ist für Baugenehmigungen zuständig?",
+        "answer": "Das Bauamt der Stadt Kalkstadt ist für die Erteilung von Baugenehmigungen zuständig.",
+        "expected_documents": [
+          "verwaltung-geschaeftsverteilungsplan.md"
+        ]
+      },
+      {
+        "query": "Und noch etwas: Wie lange dauert die Bearbeitung von Formular SOZ-07?",
+        "answer": "Die reguläre Bearbeitungsdauer des Sozialamts beträgt zwei bis vier Wochen ab vollständigem Eingang aller Nachweise; eine Eilbearbeitung verkürzt sie auf drei bis fünf Werktage.",
+        "expected_documents": [
+          "verwaltung-0007_formularhinweis-sozialamt-7.md"
+        ]
+      },
+      {
+        "query": "Wer darf nach der Dienstanweisung des Sozialamts selbst eintreten, wenn ein Vorgang besonders schwierig ist?",
+        "answer": "Die Amtsleitung des Sozialamts bleibt in jedem Fall zur Selbsteintrittsbefugnis berechtigt, wenn ein Vorgang von besonderer Bedeutung oder besonderer Schwierigkeit ist.",
+        "expected_documents": [
+          "verwaltung-0004_dienstanweisung-sozialamt-1-2023.md"
+        ],
+        "confusable_document": "verwaltung-0005_dienstanweisung-sozialamt-1-2024.md"
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): In der Zielrunde 4 belegt der Verwechslungspartner SOZ-DA-1/2024 Rang 1, das Ziel Rang 2; zusätzlich verfehlt das Zwischenthema in Runde 2 den Geschäftsverteilungsplan."
+  },
+  {
+    "id": "verw-conv-cc-004",
+    "domain": "verwaltung",
+    "category": "constraint_carryover",
+    "turns": [
+      {
+        "query": "Für meinen Vorgang ist der Rechtsstand 2023 maßgeblich. Welche Dienstanweisung des Ordnungsamts zur Bearbeitung von Amtshandlungsanträgen galt 2023?",
+        "answer": "Im Jahr 2023 galt die Dienstanweisung ORD-DA-1/2023 des Ordnungsamts; sie wurde durch die Fassung ORD-DA-1/2024 ersetzt.",
+        "expected_documents": [
+          "verwaltung-0020_dienstanweisung-ordnungsamt-1-2023.md"
+        ],
+        "confusable_document": "verwaltung-0021_dienstanweisung-ordnungsamt-1-2024.md"
+      },
+      {
+        "query": "Zwischenfrage: Wer vertritt die Sachbearbeitung des Kulturamts?",
+        "answer": "Ist die zuständige Sachbearbeitung des Kulturamts nicht erreichbar, entscheidet ersatzweise die Sachbearbeitung des Sozialamts.",
+        "expected_documents": [
+          "verwaltung-vertretungsregelung.md"
+        ]
+      },
+      {
+        "query": "Wie oft prüft die Amtsleitung nach der Dienstanweisung des Ordnungsamts abgeschlossene Vorgänge?",
+        "answer": "Die Amtsleitung des Ordnungsamts prüft stichprobenartig, mindestens einmal je Quartal, abgeschlossene Vorgänge auf die korrekte Anwendung der Dienstanweisung.",
+        "expected_documents": [
+          "verwaltung-0020_dienstanweisung-ordnungsamt-1-2023.md"
+        ],
+        "confusable_document": "verwaltung-0021_dienstanweisung-ordnungsamt-1-2024.md"
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): In der Zielrunde 3 belegt der Verwechslungspartner ORD-DA-1/2024 Rang 1, das Ziel Rang 2."
+  },
+  {
+    "id": "verw-conv-cc-005",
+    "domain": "verwaltung",
+    "category": "constraint_carryover",
+    "turns": [
+      {
+        "query": "Ich berate zu einem laufenden Fall nach aktuellem Recht, also der Fassung 2024. Seit wann gilt die Gewerbeanmeldegebührensatzung in der Fassung 2024?",
+        "answer": "Die Gewerbeanmeldegebührensatzung in der Fassung 2024 trat am 1. Januar 2024 in Kraft und ersetzt die Fassung 2023.",
+        "expected_documents": [
+          "verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md"
+        ],
+        "confusable_document": "verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md"
+      },
+      {
+        "query": "Kurz etwas anderes: Was regelt die Dienstanweisung PER-DA-2/2024?",
+        "answer": "Die Dienstanweisung PER-DA-2/2024 regelt die Aktenführung und die Fristenkontrolle im Personalamt der Stadt Kalkstadt.",
+        "expected_documents": [
+          "verwaltung-0047_dienstanweisung-personalamt-2-2024.md"
+        ]
+      },
+      {
+        "query": "Und wofür wird Formular PER-08 verwendet?",
+        "answer": "Formular PER-08 ist das Änderungs- und Ermäßigungsformular des Personalamts für eine nachträgliche Änderung der Antragsdaten oder einen Antrag auf Gebührenermäßigung nach § 13.",
+        "expected_documents": [
+          "verwaltung-0049_formularhinweis-personalamt-8.md"
+        ]
+      },
+      {
+        "query": "Was kostet nach der Gewerbeanmeldegebührensatzung die Erteilung?",
+        "answer": "Für die Erteilung (Gewerbeanmeldung) sieht die Satzung 25,00 Euro vor.",
+        "expected_documents": [
+          "verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md"
+        ],
+        "confusable_document": "verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md"
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482) — die Rahmenangabe aus Runde 1 erreicht die Suche nicht; siehe expected_state_exception zum gemessenen Treffer.",
+    "expected_state_exception": "Gemessen gelöst, aber nicht durch die übernommene Rahmenangabe: Ziel ist hier die Fassung 2024, die die Rangfolge auch ohne jede Angabe vor die Fassung 2023 stellt — in den Fällen mit 2023er Ziel (verw-conv-cc-001/-003/-004) belegt umgekehrt durchgängig die 2024er Rang 1. Die Angabe aus Runde 1 taucht in keiner Teilfrage der Zielrunde auf. Ein Treffer ohne den geprüften Mechanismus bleibt known_gap — dieselbe Regel, unter der metadata_filter bis #1070 geführt wurde."
+  },
+  {
+    "id": "verw-conv-cc-006",
+    "domain": "verwaltung",
+    "category": "constraint_carryover",
+    "turns": [
+      {
+        "query": "Ich prüfe einen Gebührenbescheid von 2023; maßgeblich ist die Fassung 2023. Bis wann galt die Personalausweisgebührensatzung in dieser Fassung?",
+        "answer": "Die Personalausweisgebührensatzung in der Fassung 2023 galt bis zum 31. Dezember 2023 und wurde zum 1. Januar 2024 durch die Fassung 2024 abgelöst.",
+        "expected_documents": [
+          "verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md"
+        ],
+        "confusable_document": "verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md"
+      },
+      {
+        "query": "Zwischendurch: Wie ist die Vernichtung nicht archivwürdiger Akten zu protokollieren?",
+        "answer": "Über jede Vernichtung ist ein Vernichtungsprotokoll zu führen, das Aktenzeichen, Datum der Vernichtung und die verantwortliche Person nennt; das Protokoll wird dauerhaft aufbewahrt.",
+        "expected_documents": [
+          "verwaltung-dienstanweisung-aktenaufbewahrung.md"
+        ]
+      },
+      {
+        "query": "Was regelt § 3 der Personalausweisgebührensatzung?",
+        "answer": "§ 3 regelt das Auskunftsrecht und die Akteneinsicht: Antragstellende erhalten in der Regel innerhalb von drei Werktagen formlos Auskunft über den Bearbeitungsstand ihres Vorgangs.",
+        "expected_documents": [
+          "verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md"
+        ],
+        "confusable_document": "verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md"
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Die Zielrunde 3 ist getroffen; offen ist Runde 1, in der bereits die Fassungsfrage selbst die Personalausweisgebührensatzung 2023 aus dem Fenster verliert."
+  },
+  {
+    "id": "verw-conv-cc-007",
+    "domain": "verwaltung",
+    "category": "constraint_carryover",
+    "turns": [
+      {
+        "query": "Ich bearbeite einen Beitragsbescheid für das Jahr 2023, es gilt die Fassung 2023. Bis wann galt die Kindertagesstättenbeitragssatzung in der Fassung 2023?",
+        "answer": "Die Kindertagesstättenbeitragssatzung in der Fassung 2023 galt bis zum 31. Dezember 2023; seit dem 1. Januar 2024 gilt die Fassung 2024.",
+        "expected_documents": [
+          "verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md"
+        ],
+        "confusable_document": "verwaltung-0051_kindertagesstaettenbeitragssatzung-fassung-2024.md"
+      },
+      {
+        "query": "Kurze Zwischenfrage: Wofür wird Formular UMW-08 verwendet?",
+        "answer": "Formular UMW-08 ist das Änderungs- und Ermäßigungsformular des Umweltamts für eine nachträgliche Änderung der Antragsdaten oder einen Antrag auf Gebührenermäßigung nach § 13.",
+        "expected_documents": [
+          "verwaltung-0062_formularhinweis-umweltamt-8.md"
+        ]
+      },
+      {
+        "query": "Welcher Beitrag ist nach der Kindertagesstättenbeitragssatzung für die Verlängerung zu zahlen?",
+        "answer": "Für die Verlängerung (Kindertagesstättenplatz) sieht die Satzung 31,00 Euro vor.",
+        "expected_documents": [
+          "verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md"
+        ],
+        "confusable_document": "verwaltung-0051_kindertagesstaettenbeitragssatzung-fassung-2024.md"
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Runde 1 und Zielrunde 3 sind offen; in Runde 3 liegt die Kindertagesstättenbeitragssatzung 2023 außerhalb des Fensters."
+  },
+  {
+    "id": "verw-conv-cc-008",
+    "domain": "verwaltung",
+    "category": "constraint_carryover",
+    "turns": [
+      {
+        "query": "Ich arbeite durchgehend mit dem aktuellen Stand 2024. Welche Dienstanweisung des Bauamts zur Bearbeitung von Amtshandlungsanträgen gilt in dieser Fassung?",
+        "answer": "In der Fassung 2024 gilt die Dienstanweisung BAU-DA-1/2024 des Bauamts; sie ersetzt die Fassung BAU-DA-1/2023.",
+        "expected_documents": [
+          "verwaltung-0013_dienstanweisung-bauamt-1-2024.md"
+        ],
+        "confusable_document": "verwaltung-0012_dienstanweisung-bauamt-1-2023.md"
+      },
+      {
+        "query": "Zwischenfrage: Wer vertritt die Sachbearbeitung des Sozialamts?",
+        "answer": "Ist die zuständige Sachbearbeitung des Sozialamts nicht erreichbar, entscheidet ersatzweise die Sachbearbeitung des Bauamts.",
+        "expected_documents": [
+          "verwaltung-vertretungsregelung.md"
+        ]
+      },
+      {
+        "query": "Und welches Amt ist für Personalaktenauskünfte zuständig?",
+        "answer": "Das Personalamt der Stadt Kalkstadt ist für die Einsichtnahme in Personalakten ehemaliger Beschäftigter zuständig.",
+        "expected_documents": [
+          "verwaltung-geschaeftsverteilungsplan.md"
+        ]
+      },
+      {
+        "query": "Noch eine Zwischenfrage: Wie lange dauert die Bearbeitung von Formular BAU-07?",
+        "answer": "Die reguläre Bearbeitungsdauer des Bauamts beträgt zwei bis vier Wochen ab vollständigem Eingang aller Nachweise; eine Eilbearbeitung verkürzt sie auf drei bis fünf Werktage.",
+        "expected_documents": [
+          "verwaltung-0015_formularhinweis-bauamt-7.md"
+        ]
+      },
+      {
+        "query": "Wie oft prüft die Amtsleitung nach der Dienstanweisung des Bauamts abgeschlossene Vorgänge?",
+        "answer": "Die Amtsleitung des Bauamts prüft stichprobenartig, mindestens einmal je Quartal, abgeschlossene Vorgänge auf die korrekte Anwendung der Dienstanweisung.",
+        "expected_documents": [
+          "verwaltung-0013_dienstanweisung-bauamt-1-2024.md"
+        ],
+        "confusable_document": "verwaltung-0012_dienstanweisung-bauamt-1-2023.md"
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel, siehe singlePathNote des Berichts): Der fünfrundige Fall ist in Runde 1, im Zwischenthema der Runde 3 und in der Zielrunde 5 offen; in Runde 5 liegt BAU-DA-1/2024 außerhalb des Fensters."
+  },
+  {
+    "id": "verw-conv-cc-009",
+    "domain": "verwaltung",
+    "category": "constraint_carryover",
+    "turns": [
+      {
+        "query": "Für meinen Fall gilt das aktuelle Recht, also die Fassung 2024. Seit wann gilt die Sozialgebührenbefreiungssatzung in der Fassung 2024?",
+        "answer": "Die Sozialgebührenbefreiungssatzung in der Fassung 2024 trat am 1. Januar 2024 in Kraft und ersetzt die Fassung 2023.",
+        "expected_documents": [
+          "verwaltung-0002_sozialgebuehrenbefreiungssatzung-fassung-2024.md"
+        ],
+        "confusable_document": "verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md"
+      },
+      {
+        "query": "Kurz etwas anderes: Welche Dienstanweisung regelt die Aktenführung im Standesamt?",
+        "answer": "Die Dienstanweisung STA-DA-2/2024 regelt die Aktenführung und die Fristenkontrolle im Standesamt der Stadt Kalkstadt.",
+        "expected_documents": [
+          "verwaltung-0028_dienstanweisung-standesamt-2-2024.md"
+        ]
+      },
+      {
+        "query": "Und wofür wird Formular STA-08 verwendet?",
+        "answer": "Formular STA-08 ist das Änderungs- und Ermäßigungsformular des Standesamts für eine nachträgliche Änderung der Antragsdaten oder einen Antrag auf Gebührenermäßigung nach § 13.",
+        "expected_documents": [
+          "verwaltung-0030_formularhinweis-standesamt-8.md"
+        ]
+      },
+      {
+        "query": "Was kostet nach der Sozialgebührenbefreiungssatzung die Zweitausfertigung?",
+        "answer": "Für die Zweitausfertigung (Sozialleistungsbescheinigung) sieht die Satzung 46,00 Euro vor.",
+        "expected_documents": [
+          "verwaltung-0002_sozialgebuehrenbefreiungssatzung-fassung-2024.md"
+        ],
+        "confusable_document": "verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md"
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-11",
+    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482) — die Rahmenangabe aus Runde 1 erreicht die Suche nicht; siehe expected_state_exception zum gemessenen Treffer.",
+    "expected_state_exception": "Gemessen gelöst, aber nicht durch die übernommene Rahmenangabe: Ziel ist hier die Fassung 2024, die die Rangfolge auch ohne jede Angabe vor die Fassung 2023 stellt — in den Fällen mit 2023er Ziel (verw-conv-cc-001/-003/-004) belegt umgekehrt durchgängig die 2024er Rang 1. Die Angabe aus Runde 1 taucht in keiner Teilfrage der Zielrunde auf. Ein Treffer ohne den geprüften Mechanismus bleibt known_gap — dieselbe Regel, unter der metadata_filter bis #1070 geführt wurde."
+  }
+]

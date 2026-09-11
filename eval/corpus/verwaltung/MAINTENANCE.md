@@ -303,6 +303,151 @@ im Fenster (Ränge 1 und 4) und schieben das erwartete Dokument auf Rang 9. `exa
 statt geglättet: Ein größerer Korpus kann auf dem schwellenlosen Messpfad jedes Fenster verschieben —
 wer die beiden Dokumente entfernte, verlöre dafür die Messbarkeit der Leerwert-Regel.
 
+## Mehrrunden-Fallklassen (Issue #1485)
+
+Drei weitere Klassen messen seit #1485 Gespräche statt Einzelfragen: `anaphora_resolution`,
+`topic_switch` und `constraint_carryover` (`docs/features/conversation-memory.md`, Abschnitt
+„Messung"). Sie liegen in einem **eigenen** Datensatz mit **eigener** Baseline und laufen weder im
+nächtlichen Job noch in `checkVerwaltungRetrievalBaseline` mit, sondern nur auf ausdrückliche
+Anforderung:
+
+```bash
+cd backend
+./gradlew evaluateVerwaltungRetrieval \
+  -Dopaa.eval.queryDecomposition=true \
+  -Dopaa.eval.runConversations=true
+```
+
+Ohne beide Schalter meldet sich der Schritt als **nicht ausgeführt** und schreibt nichts. Der Grund
+für die Zurückhaltung ist der Preis: ein Zerlegungsaufruf je **Runde**, und nach der
+Mehrfachlauf-Regel dreimal — 249 Modellaufrufe für 83 Runden.
+
+**Einpfad-Regel.** Für diese drei Klassen gilt „gelöst" auf dem **Pipeline-Pfad allein**, nicht wie
+sonst auf beiden: Der Rohvektor-Pfad misst `similaritySearch` direkt und kennt weder Gesprächsverlauf
+noch Zerlegung, ein Mehrrunden-Fall kann dort konstruktionsbedingt nicht laufen
+(`docs/features/retrieval-benchmark.md`, Abschnitt 5). Die Einpfadigkeit ist eine Eigenschaft des
+Datensatzes und steht deshalb einmal je Bericht (`singlePathNote`) — sie ist **kein**
+`expected_state_exception` am Fall, weil das Zustandsfeld-Audit sonst dauerhaft leer liefe.
+
+### Wer pflegt was
+
+| Teil | Pflegeverantwortung | Heutiger Stand |
+|---|---|---|
+| `anaphora_resolution` (9 Fälle, 21 Runden) | QA Engineer. Die Fälle hängen an einzelnen Korpusdokumenten: Eine Generator-Änderung, die einen Formularhinweis oder eine Dienstanweisung umbenennt, macht die Rückfrage der zweiten Runde unauflösbar. Bei jeder Korpusänderung mitprüfen. | vorhanden (#1485), 4 von 9 gelöst |
+| `topic_switch` (9 Fälle, 30 Runden) | QA Engineer. Zusätzlich zu prüfen ist bei jeder Korpusänderung, dass die erwarteten Dokumente der Wechselrunde und die der Vorrunden **disjunkt** bleiben — sonst zählt die Bleed-Zahl das richtige Dokument mit. `topic_switch_turn` wird nie abgeleitet, sondern am Fall benannt. | vorhanden (#1485), 2 von 9 gelöst, Bleed 0 |
+| `constraint_carryover` (9 Fälle, 32 Runden) | QA Engineer. Der Verwechslungspartner ist das Empfindliche: Er muss inhaltsgleich zum Ziel bleiben und sich nur in der Rahmenangabe (Fassung/Jahr) unterscheiden. Verschwindet eine der beiden Fassungen aus dem Korpus, misst die Klasse nichts mehr. | vorhanden (#1485), 2 von 9 gemessen gelöst, **0 von 9 mit dem geprüften Mechanismus** |
+| Mehrrunden-Datensatz (`eval/golden/verwaltung-conversations.json`) | QA Engineer, wie beim Einzelfragen-Datensatz. Von Hand kuratiert, kein Generator; die Regeln stehen in `io.opaa.eval.ConversationCaseCuration` und werden von `ConversationCaseCurationTest` Docker-frei auf die committete Datei angewandt. | vorhanden (#1485), 27 Fälle mit 83 Runden |
+| Mehrrunden-Baseline (`eval/baseline/pipeline-verwaltung-conversations.json`) | QA Engineer, analog zu den beiden anderen Baselines dieser Domäne; Neuziehung nach demselben Verfahren wie oben. | vorhanden (#1485), noch an keine Regressionstestklasse verdrahtet |
+
+### Befund des Erstlaufs (2026-09-11)
+
+CPU-Testcontainer, `qwen2.5:1.5b-instruct` bei Temperatur 0, Gesprächsfenster 20 Nachrichten
+(am produktiven `ChatMemory` gemessen), Suchfenster = ganzes Gesprächsfenster, keine Gesprächsnotiz.
+Median aus drei Läufen.
+
+| Klasse | Fälle | gelöst gemessen | `solved` deklariert | Bleed |
+|---|---|---|---|---|
+| `anaphora_resolution` | 9 | 4 | 4 | — |
+| `topic_switch` | 9 | 2 | 2 | 0 Dokumente in 0 von 9 Wechselrunden |
+| `constraint_carryover` | 9 | 2 | 0 | — |
+
+Je Runde (alle Klassen zusammen) zeigt sich, wo der Pfad steht:
+
+| Gruppe | n | Hit Rate@5 | MRR@8 | nDCG@8 | Recall@8 |
+|---|---|---|---|---|---|
+| Runde 1 | 27 | 0,926 | 0,878 | 0,876 | 0,914 |
+| Runde 2 | 27 | 0,704 | 0,600 | 0,625 | 0,704 |
+| Runde 3 | 21 | 0,810 | 0,621 | 0,669 | 0,810 |
+| Runde 4 | 7 | 0,857 | 0,786 | 0,804 | 0,857 |
+| Runde 5 | 1 | 0,000 | 0,000 | 0,000 | 0,000 |
+
+**Wiederholbarkeit.** Min = Median = Max über die drei Läufe in allen vier Metriken, und **0 von 83
+Runden** hatten über die Läufe hinweg eine abweichende Zerlegung. Zwei weitere, vollständig
+getrennte Läufe (je eigene JVM, eigene Container, je wieder drei Läufe) lieferten jede
+Gruppenzahl bitgleich und für jeden der 27 Fälle dasselbe Urteil — der dritte auf dem gemergten
+Stand von `origin/main` (f9ccdbc6).
+
+**Was die Zahlen zeigen — und was nicht.** Die erwartete Ordnung der Spezifikation
+(`docs/features/conversation-memory.md`, „Reihenfolge") trifft in zwei von drei Punkten zu und im
+dritten nicht:
+
+- `anaphora_resolution` ist **überwiegend gelöst — knapp**: 4 von 9. In den vier gelösten Fällen
+  trägt die erzeugte Teilfrage die aufgelöste Entität („Formular BUE-08", „Dienstanweisung
+  BAU-DA-2/2024"); in den fünf offenen fällt genau sie weg, und die Rückfrage erreicht die Suche
+  ohne ihren Gegenstand. Ein Fall (`verw-conv-ana-007`) scheitert schon in seiner eigenständigen
+  ersten Runde und misst damit auch eine Einzelfragen-Lücke der Domäne.
+- `topic_switch` ist mit 2 von 9 die schwächste Klasse — **aber nicht wegen Bleed**. Die Bleed-Zahl
+  ist 0: In keiner der neun Wechselrunden stand ein Dokument des Vorthemas im Fenster. Die Ursache
+  ist am Protokoll ablesbar: Die Zerlegung erzeugt in der Wechselrunde keine an den Verlauf
+  geankerte Teilfrage, sondern eine frei erfundene Aussage über das **neue** Thema; das Altthema
+  färbt also gar nicht ab, weil der Verlauf kaum verwendet wird. Hinzu kommt, dass die Wechselfragen
+  dieses Datensatzes eine Kennung tragen („Formular STA-07", „BUE-DA-2/2024") und damit für sich
+  allein tragfähig sind. **Eine Wechselfrage, die kurz und unterbestimmt ist, fehlt im Datensatz;
+  ohne sie kann die Bleed-Zahl nur bei 0 bleiben** — das ist die erkannte Grenze dieser
+  Erstkuratierung und in #1446 als offener Punkt benannt.
+- `constraint_carryover` ist **nicht „teilweise gelöst", sondern mit dem geprüften Mechanismus gar
+  nicht**. Zwar zählt der Bericht 2 von 9; beide haben aber die Fassung 2024 als Ziel, die die
+  Rangfolge auch ohne jede Angabe vor die Fassung 2023 stellt. In den Fällen mit 2023er Ziel
+  (`verw-conv-cc-001`/`-003`/`-004`) belegt umgekehrt durchgängig der Verwechslungspartner 2024
+  Rang 1 und das Ziel Rang 2. Die Rahmenangabe aus Runde 1 erscheint in **keiner** Teilfrage einer
+  Zielrunde — sie erreicht die Suche heute nicht, obwohl das ganze 20-Nachrichten-Fenster an die
+  Zerlegung geht. Beide Fälle bleiben deshalb `known_gap` mit committeter
+  `expected_state_exception`, nach derselben Regel, unter der `metadata_filter` bis #1070 geführt
+  wurde: Ein Treffer ohne den geprüften Mechanismus belegt keine Fähigkeit.
+
+**Folge für die Nachmessung (T4/T5 des Epics #1482):** Die Referenz, die `constraint_carryover` nach
+dem Fenster-Umbau wieder erreichen muss, ist damit **0 von 9 mit Mechanismus** (2 von 9 gemessen),
+nicht ein positiver Zwischenwert. Der Nachweis, dass die Gesprächsnotiz gebraucht wird, muss folglich
+an den Rangpositionen des Verwechslungspartners geführt werden, nicht allein an der Zahl gelöster
+Fälle.
+
+### `known_gap`-Fälle
+
+**21 von 27 Fällen**, Stand 2026-09-11. Die Einzelbegründung steht je Fall im Feld
+`expected_state_reason`; die Tabellen führen zusätzlich das gemessene Symptom.
+
+#### anaphora_resolution (5 Fälle)
+
+| Fall | Symptom im Lauf vom 2026-09-11 (Pipeline-Pfad) |
+|---|---|
+| `verw-conv-ana-004` | Runde 2 außerhalb des Fensters: verwaltung-0038_verwaltungsgebuehrensatzung.md; Runde 3 im Fenster, aber Rang 1: verwaltung-0011_gebuehrenordnung-bauamt.md |
+| `verw-conv-ana-005` | Runde 2 außerhalb des Fensters: verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md |
+| `verw-conv-ana-006` | Runde 2 außerhalb des Fensters: verwaltung-0055_formularhinweis-jugendamt-7.md |
+| `verw-conv-ana-007` | Runden 1 und 2 außerhalb des Fensters (Geschäftsverteilungsplan, Vertretungsregelung); Runde 3 im Fenster, aber Rang 1: verwaltung-0026_gebuehrenordnung-standesamt.md |
+| `verw-conv-ana-009` | Runde 1 außerhalb des Fensters: verwaltung-0052_gebuehrenordnung-jugendamt.md; Runde 2 Rang 1: dasselbe Dokument statt des Geschäftsverteilungsplans; Runde 3 außerhalb des Fensters: verwaltung-0056_formularhinweis-jugendamt-8.md |
+
+#### topic_switch (7 Fälle, Bleed in keinem)
+
+| Fall | Wechselrunde | Symptom im Lauf vom 2026-09-11 (Pipeline-Pfad) |
+|---|---|---|
+| `verw-conv-ts-001` | 3 (gelöst) | Runde 2 im Fenster, aber Rang 1: verwaltung-dienstanweisung-aktenaufbewahrung.md |
+| `verw-conv-ts-002` | 2 (offen) | Wechselrunde selbst: Rang 1 verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md; die Zerlegung erfindet eine Rechtsgrundlage |
+| `verw-conv-ts-003` | 3 (gelöst) | Runde 2 außerhalb des Fensters: verwaltung-0038_verwaltungsgebuehrensatzung.md |
+| `verw-conv-ts-004` | 2 (offen) | Wechselrunde außerhalb des Fensters: verwaltung-0048_formularhinweis-personalamt-7.md; die Rückkehr zum Altthema in Runde 4 verliert verwaltung-0060_dienstanweisung-umweltamt-2-2024.md |
+| `verw-conv-ts-005` | 2 (offen) | Wechselrunde und Folgerunde 3 außerhalb des Fensters: verwaltung-0035_dienstanweisung-buergeramt-2-2024.md |
+| `verw-conv-ts-007` | 3 (gelöst) | Runde 2 vor dem Wechsel außerhalb des Fensters: verwaltung-geschaeftsverteilungsplan.md |
+| `verw-conv-ts-008` | 2 (gelöst) | Folgerunde 3 im neuen Thema außerhalb des Fensters: verwaltung-0006_dienstanweisung-sozialamt-2-2024.md |
+
+#### constraint_carryover (9 Fälle, davon 2 mit erwarteter Abweichung)
+
+| Fall | Symptom im Lauf vom 2026-09-11 (Pipeline-Pfad) |
+|---|---|
+| `verw-conv-cc-001` | Zielrunde 3: Verwechslungspartner (Fassung 2024) auf Rang 1, Ziel (Fassung 2023) auf Rang 2 |
+| `verw-conv-cc-002` | Zielrunde 3: Rang 1 verwaltung-0011_gebuehrenordnung-bauamt.md, Ziel auf Rang 2 |
+| `verw-conv-cc-003` | Zielrunde 4: Verwechslungspartner SOZ-DA-1/2024 auf Rang 1, Ziel auf Rang 2; zusätzlich verfehlt das Zwischenthema in Runde 2 den Geschäftsverteilungsplan |
+| `verw-conv-cc-004` | Zielrunde 3: Verwechslungspartner ORD-DA-1/2024 auf Rang 1, Ziel auf Rang 2 |
+| `verw-conv-cc-005` | gemessen gelöst **(erwartete Abweichung: Treffer ohne den geprüften Mechanismus)** |
+| `verw-conv-cc-006` | Runde 1 außerhalb des Fensters: verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md (die Zielrunde 3 ist getroffen) |
+| `verw-conv-cc-007` | Runde 1 Rang 1: eine fremde 2023er Satzung; Zielrunde 3 außerhalb des Fensters: verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md |
+| `verw-conv-cc-008` | Runde 1 und Zwischenthema in Runde 3 im Fenster, aber falscher Rang 1; Zielrunde 5 außerhalb des Fensters: verwaltung-0013_dienstanweisung-bauamt-1-2024.md |
+| `verw-conv-cc-009` | gemessen gelöst **(erwartete Abweichung: Treffer ohne den geprüften Mechanismus)** |
+
+### Erwartete Abweichungen dieser Klassen (`expected_state_exception`)
+
+| Fall | Grund |
+|---|---|
+| `verw-conv-cc-005`, `verw-conv-cc-009` | Gemessen gelöst, aber nicht durch die übernommene Rahmenangabe: Beide haben die Fassung 2024 als Ziel, die die Rangfolge auch ohne jede Angabe vor die Fassung 2023 stellt. Die Angabe aus Runde 1 erscheint in keiner Teilfrage der Zielrunde. Bleiben `known_gap` nach derselben Regel wie `metadata_filter` vor #1070 — ein Zufallsergebnis gehört nicht unter Regressionsschutz. |
+
 ## Overfitting-Risiko
 
 Siehe [`SOURCE.md`](SOURCE.md), Abschnitt „Overfitting-Risiko", und
