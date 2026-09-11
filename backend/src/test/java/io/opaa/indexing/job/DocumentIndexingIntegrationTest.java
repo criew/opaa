@@ -937,8 +937,8 @@ class DocumentIndexingIntegrationTest {
                 LibraryVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
-                OpaaTestDirectory.BASE_DIR
-                    .resolveSibling("opaa-484-outside-allowlist")
+                OpaaTestDirectory.OUTSIDE_ALLOWLIST_DIR
+                    .resolve("opaa-484")
                     .toAbsolutePath()
                     .toString(),
                 null,

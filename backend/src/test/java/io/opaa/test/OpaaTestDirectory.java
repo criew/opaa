@@ -28,7 +28,27 @@ public final class OpaaTestDirectory {
   /** Where {@code opaa.upload.storage-path} points for every class of the suite. */
   public static final Path UPLOAD_STORAGE_DIR = subdirectory("upload-storage");
 
+  /**
+   * A writable base directory deliberately <b>outside</b> the suite-wide filesystem allowlist, for
+   * the tests that prove a sourcePath is refused. The OS temp directory is no use for that: the
+   * allowlist keeps the dev profile{@code /data,/tmp} entries, and on Linux the temp directory lies
+   * underneath {@code /tmp}. This one sits under the Gradle build directory instead.
+   */
+  public static final Path OUTSIDE_ALLOWLIST_DIR = createOutsideAllowlistDir();
+
   private OpaaTestDirectory() {}
+
+  private static Path createOutsideAllowlistDir() {
+    Path dir =
+        Path.of(System.getProperty("user.dir")).resolve("build").resolve("opaa-outside-allowlist");
+    try {
+      Files.createDirectories(dir);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+    Runtime.getRuntime().addShutdownHook(new Thread(() -> deleteRecursively(dir)));
+    return dir;
+  }
 
   private static Path createBaseDir() {
     try {

@@ -830,7 +830,8 @@ class PipelineReindexServiceIntegrationTest {
     // library's own configured sourcePath, so containment alone would let it through - only the
     // allowlist rejects it. This is the "operator narrowed (or emptied) the allowlist after the
     // library was created" case FilesystemPathAllowlist exists for.
-    Path withdrawnDirectory = Files.createTempDirectory("withdrawn-source-path");
+    Path withdrawnDirectory =
+        Files.createTempDirectory(OpaaTestDirectory.OUTSIDE_ALLOWLIST_DIR, "withdrawn-source-path");
     Path file = withdrawnDirectory.resolve("satzung.txt");
     Files.writeString(file, "Inhalt in einem nicht mehr erlaubten Quellverzeichnis. ".repeat(20));
     KnowledgeLibrary withdrawnLibrary =
