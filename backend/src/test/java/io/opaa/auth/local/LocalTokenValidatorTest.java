@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.SystemRole;
+import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.oidc.OidcProviderRegistry;
@@ -27,8 +28,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
  * and expiry it checks the {@code jti} denylist, {@code password_invalidated_before}, the derived
  * account state and the management switch - and every refusal names its reason the way the SPA
  * shows it: {@code local_accounts_disabled}, {@code account_locked} with the lock's cause, {@code
- * account_expired}, {@code session_revoked} with the revocation's cause. A structurally valid
- * token of an unknown account is refused too - the local issuer never provisions.
+ * account_expired}, {@code session_revoked} with the revocation's cause. A structurally valid token
+ * of an unknown account is refused too - the local issuer never provisions.
  */
 class LocalTokenValidatorTest {
 
@@ -83,10 +84,9 @@ class LocalTokenValidatorTest {
 
   @Test
   void refusesATokenIssuedBeforeThePasswordInvalidationWithTheRevocationsCause() {
-    row.invalidateSessionsIssuedBefore(NOW.minusSeconds(30));
+    row.invalidateSessionsIssuedBefore(NOW.minusSeconds(30), NOW);
     LocalRefreshToken revoked =
-        new LocalRefreshToken(
-            UUID.randomUUID(), user.getId(), "h", NOW.minusSeconds(40), NOW, NOW);
+        new LocalRefreshToken(UUID.randomUUID(), user.getId(), "h", NOW.minusSeconds(40), NOW, NOW);
     revoked.revoke(RevocationReason.PASSWORD_CHANGED, NOW.minusSeconds(30));
     when(refreshTokens.findFirstByUserIdAndRevokedAtIsNotNullOrderByRevokedAtDesc(user.getId()))
         .thenReturn(Optional.of(revoked));
@@ -95,14 +95,13 @@ class LocalTokenValidatorTest {
         validator.rejectionFor(token(user.getId(), NOW.minusSeconds(60)));
 
     assertThat(rejection)
-        .contains(
-            new LocalTokenRejection(LocalTokenMarkers.SESSION_REVOKED, "password_changed"));
+        .contains(new LocalTokenRejection(LocalTokenMarkers.SESSION_REVOKED, "password_changed"));
     assertThat(rejection.get().errorDescription()).isEqualTo("session_revoked:password_changed");
   }
 
   @Test
   void aTokenIssuedInTheSameSecondAsTheInvalidationIsStillAccepted() {
-    row.invalidateSessionsIssuedBefore(NOW);
+    row.invalidateSessionsIssuedBefore(NOW, NOW);
 
     assertThat(validator.rejectionFor(token(user.getId(), NOW))).isEmpty();
     assertThat(validator.rejectionFor(token(user.getId(), NOW.minusSeconds(1)))).isPresent();
@@ -118,8 +117,7 @@ class LocalTokenValidatorTest {
     assertThat(LocalTokenRejection.causeOf(RevocationReason.ADMIN)).isEqualTo("admin_reset");
     assertThat(LocalTokenRejection.causeOf(RevocationReason.REUSE_DETECTED))
         .isEqualTo("reuse_detected");
-    assertThat(LocalTokenRejection.causeOf(RevocationReason.HANDED_OVER))
-        .isEqualTo("handed_over");
+    assertThat(LocalTokenRejection.causeOf(RevocationReason.HANDED_OVER)).isEqualTo("handed_over");
     assertThat(LocalTokenRejection.causeOf(RevocationReason.LOGOUT)).isNull();
     assertThat(LocalTokenRejection.causeOf(RevocationReason.ROTATED)).isNull();
   }
@@ -174,7 +172,7 @@ class LocalTokenValidatorTest {
     Jwt withoutJti =
         Jwt.withTokenValue("t")
             .header("alg", "HS256")
-            .issuer(LocalAuthProperties.ISSUER)
+            .issuer(LocalIssuer.URN)
             .subject(user.getId().toString())
             .issuedAt(NOW.minusSeconds(60))
             .expiresAt(NOW.plusSeconds(60))
@@ -182,9 +180,9 @@ class LocalTokenValidatorTest {
     Jwt nonUuidSubject =
         Jwt.withTokenValue("t")
             .header("alg", "HS256")
-            .issuer(LocalAuthProperties.ISSUER)
+            .issuer(LocalIssuer.URN)
             .subject("alice")
-            .jwtId(UUID.randomUUID().toString())
+            .jti(UUID.randomUUID().toString())
             .issuedAt(NOW.minusSeconds(60))
             .expiresAt(NOW.plusSeconds(60))
             .build();
@@ -198,9 +196,9 @@ class LocalTokenValidatorTest {
   private static Jwt token(UUID subject, Instant issuedAt) {
     return Jwt.withTokenValue("t")
         .header("alg", "HS256")
-        .issuer(LocalAuthProperties.ISSUER)
+        .issuer(LocalIssuer.URN)
         .subject(subject.toString())
-        .jwtId(UUID.randomUUID().toString())
+        .jti(UUID.randomUUID().toString())
         .issuedAt(issuedAt)
         .expiresAt(issuedAt.plus(Duration.ofMinutes(15)))
         .build();
@@ -208,8 +206,7 @@ class LocalTokenValidatorTest {
 
   private static User localUser(SystemRole role) {
     UUID id = UUID.randomUUID();
-    User user =
-        new User(id.toString(), LocalAuthProperties.ISSUER, "erika@stadt.example", "Erika");
+    User user = new User(id.toString(), LocalIssuer.URN, "erika@stadt.example", "Erika");
     user.setOrganizationId(Organization.DEFAULT_ID);
     user.setSystemRole(role);
     return user;

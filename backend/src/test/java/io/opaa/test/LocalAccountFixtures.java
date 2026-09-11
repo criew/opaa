@@ -2,9 +2,9 @@ package io.opaa.test;
 
 import io.opaa.api.types.PasswordChangeReason;
 import io.opaa.api.types.SystemRole;
+import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.auth.local.LocalAuthProperties;
 import io.opaa.auth.local.LocalCredentials;
 import io.opaa.auth.local.LocalCredentialsRepository;
 import io.opaa.auth.local.LocalRefreshTokenRepository;
@@ -23,9 +23,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * Test data of the local account management (ADR-0033) for integration tests, shared by #1533 and
  * the sub-issues after it: the one LOCAL provider row (created switched on or off), local accounts
- * with an encoded password in every derived state, and the cleanup that removes all of it again.
- * A plain helper over the repositories, not a Spring bean, so it never changes a context's cache
- * key (AGENTS.md, Spring-Testkontexte).
+ * with an encoded password in every derived state, and the cleanup that removes all of it again. A
+ * plain helper over the repositories, not a Spring bean, so it never changes a context's cache key
+ * (AGENTS.md, Spring-Testkontexte).
  *
  * <p>The provider row is written inside a committed transaction that publishes {@link
  * OidcProvidersChangedEvent}, because {@code OidcProviderRegistry} learns the switch's state only
@@ -114,12 +114,11 @@ public final class LocalAccountFixtures {
       boolean emailVerified,
       PasswordChangeReason forcedChange) {
     Instant now = Instant.now();
-    UUID id = UUID.randomUUID();
-    User user = new User(id.toString(), LocalAuthProperties.ISSUER, email, DISPLAY_NAME);
+    User user = User.localAccount(email, DISPLAY_NAME);
     user.setOrganizationId(Organization.DEFAULT_ID);
     user.setSystemRole(role);
     User savedUser = users.save(user);
-    LocalCredentials row = new LocalCredentials(id, "Testkonto", now);
+    LocalCredentials row = new LocalCredentials(savedUser.getId(), "Testkonto", now);
     if (password != null) {
       row.setPasswordHash(passwordEncoder.encode(password), now);
     }
@@ -155,7 +154,7 @@ public final class LocalAccountFixtures {
           refreshTokens.deleteAll();
           revokedTokens.deleteAll();
           users.findAll().stream()
-              .filter(u -> LocalAuthProperties.ISSUER.equals(u.getIssuer()))
+              .filter(u -> LocalIssuer.URN.equals(u.getIssuer()))
               .forEach(
                   u -> {
                     jdbc.update("DELETE FROM spaces WHERE owner_id = ?", u.getId());

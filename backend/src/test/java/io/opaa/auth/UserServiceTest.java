@@ -1,6 +1,5 @@
 package io.opaa.auth;
 
-import io.opaa.auth.local.LocalAuthProperties;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -183,12 +182,12 @@ class UserServiceTest {
 
   /**
    * ADR-0033, Entscheidung 8: the local issuer is a finder, never a provisioner - a structurally
-   * valid token with an unknown subject creates no account, and the stored address and display
-   * name are never overwritten from the token (the database is the source, not the claim).
+   * valid token with an unknown subject creates no account, and the stored address and display name
+   * are never overwritten from the token (the database is the source, not the claim).
    */
   @Test
   void provisionFromTokenNeverCreatesAnAccountForTheLocalIssuer() {
-    when(userRepository.findBySubjectAndIssuer(any(), eq(LocalAuthProperties.ISSUER)))
+    when(userRepository.findBySubjectAndIssuer(any(), eq(LocalIssuer.URN)))
         .thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> userService.provisionFromToken(localToken(UUID.randomUUID())))
@@ -202,10 +201,9 @@ class UserServiceTest {
   @Test
   void provisionFromTokenFindsALocalAccountWithoutWritingTheClaimsBack() {
     UUID id = UUID.randomUUID();
-    User stored =
-        new User(id.toString(), LocalAuthProperties.ISSUER, "gespeichert@stadt.example", "Amt");
+    User stored = new User(id.toString(), LocalIssuer.URN, "gespeichert@stadt.example", "Amt");
     stored.setLastLoginAt(clock.instant());
-    when(userRepository.findBySubjectAndIssuer(id.toString(), LocalAuthProperties.ISSUER))
+    when(userRepository.findBySubjectAndIssuer(id.toString(), LocalIssuer.URN))
         .thenReturn(Optional.of(stored));
 
     User result = userService.provisionFromToken(localToken(id));
@@ -222,7 +220,7 @@ class UserServiceTest {
     return Jwt.withTokenValue("t")
         .header("alg", "HS256")
         .claim("sub", subject.toString())
-        .claim("iss", LocalAuthProperties.ISSUER)
+        .claim("iss", LocalIssuer.URN)
         .claim("email", "aus-dem-token@stadt.example")
         .claim("name", "Aus dem Token")
         .issuedAt(Instant.now())

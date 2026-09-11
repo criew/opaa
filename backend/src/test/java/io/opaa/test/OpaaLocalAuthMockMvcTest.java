@@ -35,5 +35,5 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 public @interface OpaaLocalAuthMockMvcTest {
 
   /** A public, deliberately non-production secret that passes {@code @ValidSecret}. */
-  String JWT_SECRET = "opaa-local-auth-mockmvc-test-secret-with-64-bits-of-nothing-0123456789";
+  String JWT_SECRET = "mockmvc-local-auth-integration-test-key-0123456789-abcdefghij";
 }

@@ -15,8 +15,8 @@ import org.junit.jupiter.api.Test;
 /**
  * The daily run is the one place the local account management's housekeeping hangs (ADR-0033,
  * Entscheidung 7): after the token cleanup every registered {@link LocalAccountMaintenanceStep}
- * runs with the same instant - the inactivity lock (#1537) and the expiry reminders (#1538) plug
- * in there - and one failing step is logged and never stops the others.
+ * runs with the same instant - the inactivity lock (#1537) and the expiry reminders (#1538) plug in
+ * there - and one failing step is logged and never stops the others.
  */
 class LocalTokenCleanupServiceTest {
 

@@ -2,6 +2,7 @@ package io.opaa.auth.local;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.organization.Organization;
 import io.opaa.security.LocalAuthKeyService;
@@ -17,10 +18,10 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
 /**
- * The access tokens the local issuer mints (ADR-0033, Entscheidung 6): HS256 under the
- * access-token key, exactly the claims the ADR names - {@code jti}, {@code iss}, {@code sub} =
- * the account id, {@code iat}, {@code exp} after the configured lifetime, {@code email}, {@code
- * name}, {@code pcr} - and no role, which stays in {@code users}.
+ * The access tokens the local issuer mints (ADR-0033, Entscheidung 6): HS256 under the access-token
+ * key, exactly the claims the ADR names - {@code jti}, {@code iss}, {@code sub} = the account id,
+ * {@code iat}, {@code exp} after the configured lifetime, {@code email}, {@code name}, {@code pcr}
+ * - and no role, which stays in {@code users}.
  */
 class LocalAccessTokenServiceTest {
 
@@ -48,7 +49,8 @@ class LocalAccessTokenServiceTest {
 
     Jwt jwt = decode(issued.value());
     assertThat(jwt.getHeaders()).containsEntry("alg", "HS256");
-    assertThat(jwt.getIssuer().toString()).isEqualTo(LocalAuthProperties.ISSUER);
+    // a URN, not a URL - read as the string it is, the way JwtUserClaims does
+    assertThat(jwt.getClaimAsString("iss")).isEqualTo(LocalIssuer.URN);
     assertThat(jwt.getSubject()).isEqualTo(user.getId().toString());
     assertThat(jwt.getId()).isEqualTo(issued.jti());
     assertThat(UUID.fromString(jwt.getId())).isNotNull();
@@ -84,13 +86,14 @@ class LocalAccessTokenServiceTest {
             .build();
     // only the signature and structure matter here - the fixed clock is in the past for the
     // default timestamp validator
-    decoder.setJwtValidator(jwt -> org.springframework.security.oauth2.core.OAuth2TokenValidatorResult.success());
+    decoder.setJwtValidator(
+        jwt -> org.springframework.security.oauth2.core.OAuth2TokenValidatorResult.success());
     return decoder.decode(token);
   }
 
   private static User localUser(String email, String name) {
     UUID id = UUID.randomUUID();
-    User user = new User(id.toString(), LocalAuthProperties.ISSUER, email, name);
+    User user = new User(id.toString(), LocalIssuer.URN, email, name);
     user.setOrganizationId(Organization.DEFAULT_ID);
     return user;
   }

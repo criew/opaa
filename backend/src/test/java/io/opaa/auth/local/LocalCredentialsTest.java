@@ -1,9 +1,9 @@
 package io.opaa.auth.local;
 
-import io.opaa.api.types.PasswordChangeReason;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.PasswordChangeReason;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;

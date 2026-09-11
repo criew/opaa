@@ -1,6 +1,5 @@
 package io.opaa.auth.oidc;
 
-import io.opaa.auth.local.LocalAuthProperties;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -11,6 +10,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.auth.LocalIssuer;
 import io.opaa.common.ValidationException;
 import java.time.Clock;
 import java.time.Duration;
@@ -121,9 +121,9 @@ class OidcProviderRegistryTest {
 
     assertThat(registry.localAccountsEnabled()).isTrue();
     assertThat(registry.enabledProviders()).containsExactly(enabledA);
-    assertThat(registry.findEnabledByIssuer(LocalAuthProperties.ISSUER)).isEmpty();
+    assertThat(registry.findEnabledByIssuer(LocalIssuer.URN)).isEmpty();
     verify(decoderFactory, never()).create(local);
-    assertUnknownIssuer(registry.resolve(LocalAuthProperties.ISSUER));
+    assertUnknownIssuer(registry.resolve(LocalIssuer.URN));
 
     when(repository.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc())
         .thenReturn(List.of(enabledA));

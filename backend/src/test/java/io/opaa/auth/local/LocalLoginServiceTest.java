@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.SystemRole;
+import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.oidc.OidcProviderRegistry;
@@ -65,7 +66,7 @@ class LocalLoginServiceTest {
     when(registry.localAccountsEnabled()).thenReturn(true);
     user = localUser(SystemRole.USER);
     row = activeCredentials(user);
-    when(users.findByIssuerAndEmailIgnoreCase(LocalAuthProperties.ISSUER, EMAIL))
+    when(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, EMAIL))
         .thenReturn(Optional.of(user));
     when(credentials.findById(user.getId())).thenReturn(Optional.of(row));
     when(encoder.matches("richtig", HASH)).thenReturn(true);
@@ -79,7 +80,7 @@ class LocalLoginServiceTest {
     assertThat(result).isPresent();
     assertThat(result.get().user()).isSameAs(user);
     assertThat(result.get().credentials()).isSameAs(row);
-    verify(users).findByIssuerAndEmailIgnoreCase(LocalAuthProperties.ISSUER, EMAIL);
+    verify(users).findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, EMAIL);
     verify(encoder, times(1)).matches("richtig", HASH);
     verify(listener).onLoginSucceeded(user, row, NOW);
     verify(credentials, never()).save(any());
@@ -92,6 +93,7 @@ class LocalLoginServiceTest {
 
     verify(encoder, times(1)).matches("falsch", HASH);
     verify(credentials).recordFailedLogin(user.getId(), NOW);
+    // the listener sees the row as it is after the count, reloaded past the bulk update
     verify(listener).onPasswordRejected(user, row, NOW);
     verify(listener, never()).onLoginSucceeded(any(), any(), any());
   }
@@ -157,8 +159,9 @@ class LocalLoginServiceTest {
 
     assertThat(service.authenticate(EMAIL, "richtig")).isPresent();
 
-    verify(withFailures).resetFailedLoginAttempts(NOW);
-    verify(credentials).save(withFailures);
+    // an atomic UPDATE, never a save() of the loaded entity: recordFailedLogin bypasses @Version
+    verify(credentials).resetFailedLoginAttempts(user.getId(), NOW);
+    verify(credentials, never()).save(any());
   }
 
   @Test
@@ -171,7 +174,7 @@ class LocalLoginServiceTest {
 
     User admin = localUser(SystemRole.SYSTEM_ADMIN);
     LocalCredentials adminRow = activeCredentials(admin);
-    when(users.findByIssuerAndEmailIgnoreCase(LocalAuthProperties.ISSUER, EMAIL))
+    when(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, EMAIL))
         .thenReturn(Optional.of(admin));
     when(credentials.findById(admin.getId())).thenReturn(Optional.of(adminRow));
 
@@ -189,7 +192,7 @@ class LocalLoginServiceTest {
 
   private static User localUser(SystemRole role) {
     UUID id = UUID.randomUUID();
-    User user = new User(id.toString(), LocalAuthProperties.ISSUER, EMAIL, "Erika Muster");
+    User user = new User(id.toString(), LocalIssuer.URN, EMAIL, "Erika Muster");
     user.setOrganizationId(Organization.DEFAULT_ID);
     user.setSystemRole(role);
     return user;

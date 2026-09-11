@@ -9,10 +9,10 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The password policy of ADR-0033, Entscheidung 9: the configured minimum length, at most 64
- * characters and 72 bytes (BCrypt's input limit), not the account's own address, not on the
- * shipped list of the most common passwords (compared in lower case) - and nothing else: no
- * complexity rules. Every violated rule is reported with its own stable code, so the form can name
- * all of them at once.
+ * characters and 72 bytes (BCrypt's input limit), not the account's own address, not on the shipped
+ * list of the most common passwords (compared in lower case) - and nothing else: no complexity
+ * rules. Every violated rule is reported with its own stable code, so the form can name all of them
+ * at once.
  */
 class PasswordPolicyTest {
 
@@ -48,9 +48,9 @@ class PasswordPolicyTest {
 
   @Test
   void rejectsTheMostCommonPasswordsComparedInLowerCase() {
-    assertThat(codes(policy.check("Password1234", "erika@stadt.example")))
+    assertThat(codes(policy.check("Sonnenschein", "erika@stadt.example")))
         .containsExactly(PasswordPolicy.TOO_COMMON);
-    assertThat(codes(policy.check("QWERTZUIOP12", "erika@stadt.example")))
+    assertThat(codes(policy.check("SCHMETTERLING", "erika@stadt.example")))
         .containsExactly(PasswordPolicy.TOO_COMMON);
   }
 
@@ -62,8 +62,8 @@ class PasswordPolicyTest {
 
   @Test
   void reportsEveryViolatedRuleAtOnce() {
-    // "123456789012" is 12 characters (long enough) and on the common list
-    assertThat(codes(policy.check("123456789012", "erika@stadt.example")))
+    // "ichliebedich" is 12 characters (long enough) and on the common list
+    assertThat(codes(policy.check("ichliebedich", "erika@stadt.example")))
         .containsExactly(PasswordPolicy.TOO_COMMON);
     assertThat(codes(policy.check("a@b.de", "a@b.de")))
         .containsExactlyInAnyOrder(PasswordPolicy.TOO_SHORT, PasswordPolicy.EQUALS_EMAIL);
@@ -80,7 +80,8 @@ class PasswordPolicyTest {
                         FieldValidationException.FieldError::field,
                         FieldValidationException.FieldError::code)
                     .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple("newPassword", PasswordPolicy.TOO_SHORT)));
+                        org.assertj.core.groups.Tuple.tuple(
+                            "newPassword", PasswordPolicy.TOO_SHORT)));
   }
 
   @Test

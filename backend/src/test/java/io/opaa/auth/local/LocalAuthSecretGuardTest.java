@@ -1,15 +1,15 @@
 package io.opaa.auth.local;
 
-import org.slf4j.LoggerFactory;
-import ch.qos.logback.core.read.ListAppender;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.Level;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.security.PasswordEncoderConfiguration;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 

@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.auth.local.LocalAuthProperties;
 import io.opaa.auth.local.LocalAuthSettings;
 import io.opaa.auth.local.LocalAuthSettingsRepository;
 import io.opaa.auth.local.PublicBaseUrlAvailability;
@@ -27,12 +26,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * {@code GET /api/v1/auth/config} (#1332, ADR-0025 Entscheidung 5; #1533, ADR-0033 Entscheidung
- * 4): the mode, in the {@code oidc} mode every enabled provider in sign-in page order - whether or
- * not the backend's decoder for it is ready yet - with exactly the fields the sign-in page shows,
- * and the local account management as {@code localAccounts}: the switch of the LOCAL row (never
- * listed among the providers), and the self-service flows only while the switch, the setting and
- * the public base URL all allow them.
+ * {@code GET /api/v1/auth/config} (#1332, ADR-0025 Entscheidung 5; #1533, ADR-0033 Entscheidung 4):
+ * the mode, in the {@code oidc} mode every enabled provider in sign-in page order - whether or not
+ * the backend's decoder for it is ready yet - with exactly the fields the sign-in page shows, and
+ * the local account management as {@code localAccounts}: the switch of the LOCAL row (never listed
+ * among the providers), and the self-service flows only while the switch, the setting and the
+ * public base URL all allow them.
  */
 @WebMvcTest(AuthConfigController.class)
 @Import({TestSecurityConfig.class, AuthConfigControllerTest.BaseUrlStub.class})
@@ -143,7 +142,7 @@ class AuthConfigControllerTest {
     local.enable();
     when(providerRepository.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc())
         .thenReturn(List.of(standard, local));
-    when(providerRepository.findByNormalizedIssuerUri(LocalAuthProperties.ISSUER))
+    when(providerRepository.findByNormalizedIssuerUri(LocalIssuer.URN))
         .thenReturn(Optional.of(local));
     when(settings.values())
         .thenReturn(

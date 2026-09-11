@@ -7,6 +7,7 @@ import io.opaa.auth.local.LocalRefreshTokenService.IssuedRefreshToken;
 import io.opaa.auth.local.LocalRefreshTokenService.RotationResult;
 import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
+import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Duration;
 import java.time.Instant;
@@ -148,8 +149,10 @@ class LocalRefreshTokenServiceIntegrationTest {
   @Test
   void unknownAndExpiredTokensAreUnknown() {
     IssuedRefreshToken issued = service.issue(user.user());
+    // moved into the past as a whole - the schema insists on expires_at > issued_at
     jdbc.update(
-        "UPDATE local_refresh_tokens SET expires_at = ? WHERE user_id = ?",
+        "UPDATE local_refresh_tokens SET issued_at = ?, expires_at = ? WHERE user_id = ?",
+        java.sql.Timestamp.from(Instant.now().minusSeconds(10)),
         java.sql.Timestamp.from(Instant.now().minusSeconds(1)),
         user.id());
 

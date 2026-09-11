@@ -95,11 +95,19 @@ class LocalTokenCleanupServiceIntegrationTest {
         .containsExactlyInAnyOrder("revoked-new", "active");
     assertThat(revokedTokens.existsById(LocalAuthKeyService.jtiHash("new"))).isTrue();
     assertThat(revokedTokens.existsById(LocalAuthKeyService.jtiHash("old"))).isFalse();
-    assertThat(actionTokens.findAll()).extracting(LocalActionToken::getTokenHash).containsExactly("open");
+    assertThat(actionTokens.findAll())
+        .extracting(LocalActionToken::getTokenHash)
+        .containsExactly("open");
   }
 
+  /** Issued long ago, so every expiry the tests choose satisfies the table's ordering CHECK. */
   private LocalRefreshToken refreshToken(String hash, Instant expiresAt, Instant familyExpiresAt) {
     return new LocalRefreshToken(
-        UUID.randomUUID(), user.id(), hash, now.minus(Duration.ofDays(1)), expiresAt, familyExpiresAt);
+        UUID.randomUUID(),
+        user.id(),
+        hash,
+        now.minus(Duration.ofDays(60)),
+        expiresAt,
+        familyExpiresAt);
   }
 }

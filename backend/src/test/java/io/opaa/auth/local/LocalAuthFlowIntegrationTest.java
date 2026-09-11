@@ -20,6 +20,7 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import io.opaa.api.types.PasswordChangeReason;
+import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.UserRepository;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.security.LocalAuthKeyService.Purpose;
@@ -208,8 +209,7 @@ class LocalAuthFlowIntegrationTest {
   }
 
   @Test
-  void aSignOutRevokesTheAccessTokenImmediatelyAndTheFamilyWithoutAnAuditEvent()
-      throws Exception {
+  void aSignOutRevokesTheAccessTokenImmediatelyAndTheFamilyWithoutAnAuditEvent() throws Exception {
     long auditedBefore = auditCount("LOCAL_SESSION_REVOKED");
     MvcResult login = login(user.email(), LocalAccountFixtures.PASSWORD).andReturn();
     Cookie refresh = refreshCookie(login);
@@ -318,7 +318,7 @@ class LocalAuthFlowIntegrationTest {
                             "currentPassword",
                             LocalAccountFixtures.PASSWORD,
                             "newPassword",
-                            "password1234")))
+                            "sonnenschein"))))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.fieldErrors[0].field").value("newPassword"))
         .andExpect(jsonPath("$.fieldErrors[0].code").value("TOO_COMMON"));
@@ -455,9 +455,7 @@ class LocalAuthFlowIntegrationTest {
         .perform(post(REFRESH).cookie(refresh, xsrf).header("X-XSRF-TOKEN", "falsch"))
         .andExpect(status().isForbidden());
     // the family is still intact - the refused calls changed nothing
-    mockMvc
-        .perform(withCsrf(post(REFRESH), login).cookie(refresh))
-        .andExpect(status().isOk());
+    mockMvc.perform(withCsrf(post(REFRESH), login).cookie(refresh)).andExpect(status().isOk());
     // login and change-password never need it (bearer-only, no cookie of their own)
     login(user.email(), LocalAccountFixtures.PASSWORD).andExpect(status().isOk());
     mockMvc
@@ -484,8 +482,7 @@ class LocalAuthFlowIntegrationTest {
                     containsString("error_description=\"unknown_account\"")));
 
     assertThat(users.count()).isEqualTo(usersBefore);
-    assertThat(users.findBySubjectAndIssuer(unknown.toString(), LocalAuthProperties.ISSUER))
-        .isEmpty();
+    assertThat(users.findBySubjectAndIssuer(unknown.toString(), LocalIssuer.URN)).isEmpty();
   }
 
   @Test
@@ -601,7 +598,7 @@ class LocalAuthFlowIntegrationTest {
   }
 
   private String signedLocalToken(UUID subject) throws Exception {
-    return signedToken(subject, LocalAuthProperties.ISSUER);
+    return signedToken(subject, LocalIssuer.URN);
   }
 
   private String signedToken(UUID subject, String issuer) throws Exception {
@@ -618,7 +615,11 @@ class LocalAuthFlowIntegrationTest {
             .claim("pcr", false)
             .build();
     SignedJWT jwt =
-        new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.HS256).type(com.nimbusds.jose.JOSEObjectType.JWT).build(), claims);
+        new SignedJWT(
+            new JWSHeader.Builder(JWSAlgorithm.HS256)
+                .type(com.nimbusds.jose.JOSEObjectType.JWT)
+                .build(),
+            claims);
     jwt.sign(new MACSigner(keys.key(Purpose.ACCESS_TOKEN)));
     return jwt.serialize();
   }
