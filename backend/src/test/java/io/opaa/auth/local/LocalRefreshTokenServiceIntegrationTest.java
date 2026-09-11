@@ -43,6 +43,7 @@ class LocalRefreshTokenServiceIntegrationTest {
   void setUp() {
     fixtures = fixturesFactory.create();
     fixtures.cleanUp();
+    fixtures.localProvider(true);
     user = fixtures.activeUser("konto-" + UUID.randomUUID() + "@stadt.example");
     admin = fixtures.activeAdmin("admin-" + UUID.randomUUID() + "@stadt.example");
   }
@@ -119,7 +120,7 @@ class LocalRefreshTokenServiceIntegrationTest {
   }
 
   @Test
-  void aReplayRevokesTheWholeFamilyEndsEverySessionOfTheAccountAndIsAudited() {
+  void aReplayRevokesEveryFamilyOfTheAccountEndsEverySessionAndIsAudited() {
     long auditedBefore = auditedSessionRevocations();
     IssuedRefreshToken first = service.issue(user.user());
     IssuedRefreshToken otherFamily = service.issue(user.user());
@@ -138,9 +139,10 @@ class LocalRefreshTokenServiceIntegrationTest {
     assertThat(fixtures.credentialsOf(user).getPasswordInvalidatedBefore())
         .isNotNull()
         .isCloseTo(Instant.now(), within(Duration.ofSeconds(5)));
-    // the other family is untouched by the family revocation ...
-    assertThat(service.findPresented(otherFamily.value()).orElseThrow().isActive(Instant.now()))
-        .isTrue();
+    // every other family of the account dies with it - a replay ends the account's sessions ...
+    LocalRefreshToken other = service.findPresented(otherFamily.value()).orElseThrow();
+    assertThat(other.isActive(Instant.now())).isFalse();
+    assertThat(other.getRevocationReason()).isEqualTo(RevocationReason.REUSE_DETECTED);
     // ... and a further presentation of the revoked successor is a replay too
     assertThat(service.rotate(rotated.token().value())).isInstanceOf(RotationResult.Reused.class);
     assertThat(auditedSessionRevocations()).isEqualTo(auditedBefore + 1);
@@ -159,6 +161,36 @@ class LocalRefreshTokenServiceIntegrationTest {
     assertThat(service.rotate("kein-token")).isEqualTo(new RotationResult.Unknown());
     assertThat(service.rotate(issued.value())).isEqualTo(new RotationResult.Unknown());
     assertThat(service.revokePresentedFamily("kein-token", RevocationReason.LOGOUT)).isFalse();
+  }
+
+  /**
+   * A rotation for an account that may not sign in - no longer login-capable, or a regular account
+   * while the management is off - is refused like an unknown token, so the session ends instead of
+   * minting tokens the validator refuses anyway.
+   */
+  @Test
+  void aRotationIsRefusedForAnAccountThatMayNotSignIn() {
+    IssuedRefreshToken expiredAccount = service.issue(user.user());
+    LocalCredentials row = fixtures.credentialsOf(user);
+    row.setExpiresAt(Instant.now().minusSeconds(1), Instant.now());
+    fixtures.save(row);
+
+    assertThat(service.rotate(expiredAccount.value())).isEqualTo(new RotationResult.Unknown());
+    // refused, not revoked: an unlocked account rotates again
+    row = fixtures.credentialsOf(user);
+    row.setExpiresAt(null, Instant.now());
+    fixtures.save(row);
+    assertThat(service.rotate(expiredAccount.value())).isInstanceOf(RotationResult.Rotated.class);
+
+    IssuedRefreshToken regular = service.issue(user.user());
+    IssuedRefreshToken administrative = service.issue(admin.user());
+    fixtures.localProvider(false);
+    try {
+      assertThat(service.rotate(regular.value())).isEqualTo(new RotationResult.Unknown());
+      assertThat(service.rotate(administrative.value())).isInstanceOf(RotationResult.Rotated.class);
+    } finally {
+      fixtures.localProvider(true);
+    }
   }
 
   @Test

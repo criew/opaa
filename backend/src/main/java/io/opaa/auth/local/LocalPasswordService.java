@@ -19,10 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * The person's own password change (ADR-0033, Entscheidungen 8, 9 and 11): the current password is
  * verified, the new one checked against the {@link PasswordPolicy}, the hash replaced, a forced
- * change cleared, every access token issued before now invalidated, every refresh family but the
- * one the change was made from revoked, and the act audited as {@code LOCAL_PASSWORD_CHANGED}. One
- * transaction: a failing revocation rolls the new hash back too, so the person never ends up with a
- * new password and old sessions still alive.
+ * change cleared, every access token issued up to now invalidated, every refresh family revoked
+ * ({@code PASSWORD_CHANGED} - the trace a later refused token names as its cause; the caller opens
+ * a fresh family for the session the change was made from), and the act audited as {@code
+ * LOCAL_PASSWORD_CHANGED}. One transaction: a failing revocation rolls the new hash back too, so
+ * the person never ends up with a new password and old sessions still alive.
  */
 @Service
 public class LocalPasswordService {
@@ -55,13 +56,11 @@ public class LocalPasswordService {
   }
 
   /**
-   * @param keepFamilyId the refresh family of the session the change is made from, kept alive;
-   *     {@code null} revokes every family
-   * @return the credentials after the change (detached)
+   * @return the credentials after the change (detached); their {@code password_invalidated_before}
+   *     is the cutoff the replacement access token is minted at
    */
   @Transactional
-  public LocalCredentials changePassword(
-      User user, String currentPassword, String newPassword, UUID keepFamilyId) {
+  public LocalCredentials changePassword(User user, String currentPassword, String newPassword) {
     LocalCredentials row =
         credentials
             .findById(user.getId())
@@ -80,12 +79,7 @@ public class LocalPasswordService {
     row.clearPasswordChangeRequirement(now);
     credentials.save(row);
     revocation.invalidateSessionsIssuedBefore(user.getId());
-    if (keepFamilyId == null) {
-      refreshTokens.revokeAllForUser(user.getId(), RevocationReason.PASSWORD_CHANGED);
-    } else {
-      refreshTokens.revokeAllForUserExcept(
-          user.getId(), keepFamilyId, RevocationReason.PASSWORD_CHANGED);
-    }
+    refreshTokens.revokeAllForUser(user.getId(), RevocationReason.PASSWORD_CHANGED);
     UUID pseudonym = audit.pseudonymFor(user.getId(), user.getOrganizationId());
     audit.recordUserActionOnSubject(
         AuditEvent.builder()

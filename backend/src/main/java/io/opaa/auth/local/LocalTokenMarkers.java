@@ -16,6 +16,9 @@ public final class LocalTokenMarkers {
 
   public static final String ACCOUNT_EXPIRED = "account_expired";
 
+  /** Neither locked nor expired, yet not {@code ACTIVE} - e.g. an invitation not completed. */
+  public static final String ACCOUNT_NOT_ACTIVE = "account_not_active";
+
   /**
    * Cause, when one is known: {@code admin_lock}, {@code password_changed}, {@code admin_reset},
    * {@code reuse_detected}, {@code handed_over}; none after the person's own sign-out.

@@ -47,7 +47,18 @@ public class LocalAccessTokenService {
   }
 
   public IssuedAccessToken issue(User user, boolean passwordChangeRequired) {
+    return issue(user, passwordChangeRequired, clock.instant());
+  }
+
+  /**
+   * Mints with {@code iat} no earlier than {@code notBefore} - the replacement token of a password
+   * change, whose cutoff lies in the next whole second (at most one second ahead of the clock).
+   */
+  public IssuedAccessToken issue(User user, boolean passwordChangeRequired, Instant notBefore) {
     Instant now = clock.instant();
+    if (notBefore != null && notBefore.isAfter(now)) {
+      now = notBefore;
+    }
     Instant expiresAt = now.plus(properties.accessTokenTtl());
     String jti = UUID.randomUUID().toString();
     JwtClaimsSet.Builder claims =

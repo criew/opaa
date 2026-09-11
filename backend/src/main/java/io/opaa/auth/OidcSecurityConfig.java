@@ -1,6 +1,7 @@
 package io.opaa.auth;
 
 import io.opaa.auth.local.CsrfCookieFilter;
+import io.opaa.auth.local.LocalAuthAccessDeniedHandler;
 import io.opaa.auth.local.PasswordChangeRequiredFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.ObjectProvider;
@@ -18,8 +19,11 @@ import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfigurationSource;
+import tools.jackson.databind.json.JsonMapper;
 
 @Configuration
 @Profile("oidc")
@@ -33,17 +37,18 @@ public class OidcSecurityConfig {
   /**
    * ADR-0033, Entscheidung 7: the double-submit CSRF token is required exactly where the refresh
    * cookie carries the session - refresh and logout. Every other endpoint is bearer-only and stays
-   * CSRF-free.
+   * CSRF-free. Matched on the decoded request path, the same way the handler mapping matches, so a
+   * percent-encoded spelling of the path cannot reach the handler past the check.
    */
   static final RequestMatcher LOCAL_COOKIE_ENDPOINTS =
-      request ->
-          HttpMethod.POST.matches(request.getMethod())
-              && (LOCAL_REFRESH.equals(request.getRequestURI())
-                  || LOCAL_LOGOUT.equals(request.getRequestURI()));
+      new OrRequestMatcher(
+          PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, LOCAL_REFRESH),
+          PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, LOCAL_LOGOUT));
 
   private final UserService userService;
   private final AuthenticationManagerResolver<HttpServletRequest> oidcAuthenticationManagerResolver;
   private final ObjectProvider<PasswordChangeRequiredFilter> passwordChangeRequiredFilter;
+  private final JsonMapper jsonMapper;
 
   /**
    * The {@code pcr} filter is resolved lazily: the {@code oidc} profile always provides it ({@code
@@ -53,10 +58,12 @@ public class OidcSecurityConfig {
   public OidcSecurityConfig(
       UserService userService,
       AuthenticationManagerResolver<HttpServletRequest> oidcAuthenticationManagerResolver,
-      ObjectProvider<PasswordChangeRequiredFilter> passwordChangeRequiredFilter) {
+      ObjectProvider<PasswordChangeRequiredFilter> passwordChangeRequiredFilter,
+      JsonMapper jsonMapper) {
     this.userService = userService;
     this.oidcAuthenticationManagerResolver = oidcAuthenticationManagerResolver;
     this.passwordChangeRequiredFilter = passwordChangeRequiredFilter;
+    this.jsonMapper = jsonMapper;
   }
 
   @Bean
@@ -68,6 +75,10 @@ public class OidcSecurityConfig {
                     .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                     .requireCsrfProtectionMatcher(LOCAL_COOKIE_ENDPOINTS))
         .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
+        // a refused double submit answers with its own code, so the SPA tells it apart from the
+        // 403 of the pcr filter; every other access denial keeps GlobalExceptionHandler's wording
+        .exceptionHandling(
+            handling -> handling.accessDeniedHandler(new LocalAuthAccessDeniedHandler(jsonMapper)))
         .cors(cors -> cors.configurationSource(corsConfigurationSource))
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(

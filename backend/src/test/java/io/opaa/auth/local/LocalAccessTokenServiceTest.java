@@ -73,6 +73,22 @@ class LocalAccessTokenServiceTest {
   }
 
   @Test
+  void mintsNoEarlierThanNotBeforeAndKeepsTheLifetimeFromThere() {
+    User user = localUser("a@stadt.example", "A");
+    Instant cutoff = NOW.plusSeconds(1);
+
+    LocalAccessTokenService.IssuedAccessToken replacement = service.issue(user, false, cutoff);
+    LocalAccessTokenService.IssuedAccessToken past =
+        service.issue(user, false, NOW.minusSeconds(5));
+
+    assertThat(replacement.issuedAt()).isEqualTo(cutoff);
+    assertThat(replacement.expiresAt()).isEqualTo(cutoff.plus(Duration.ofMinutes(15)));
+    assertThat(decode(replacement.value()).getIssuedAt()).isEqualTo(cutoff);
+    // a notBefore in the past changes nothing
+    assertThat(past.issuedAt()).isEqualTo(NOW);
+  }
+
+  @Test
   void everyTokenGetsItsOwnJti() {
     User user = localUser("a@stadt.example", "A");
 

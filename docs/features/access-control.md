@@ -158,26 +158,33 @@ Fehlversuchen folgt mit #1535. Anmeldefähig ist nur ein aktives Konto; bei ausg
 Verwaltung (Schalter = `enabled` der `LOCAL`-Anbieterzeile) nur ein lokaler `SYSTEM_ADMIN`.
 `POST …/refresh` rotiert das Cookie innerhalb seiner Familie (Leerlauffrist 7 Tage, absolute
 Höchstdauer 30 Tage, für lokale Systemverwalter 4 h / 12 h; keine Rotation verlängert das
-Familienende); die erneute Vorlage eines bereits rotierten Tokens widerruft die ganze Familie und
-alle Sitzungen des Kontos, wird als `LOCAL_SESSION_REVOKED` protokolliert und als Warnung ins
-Anwendungslog geschrieben (Konto-ID, nie die Adresse). `POST …/logout` widerruft Familie und das
+Familienende); die erneute Vorlage eines bereits rotierten Tokens widerruft **alle** Familien und
+alle Access-Tokens des Kontos (`REUSE_DETECTED`), wird als `LOCAL_SESSION_REVOKED` protokolliert und
+als Warnung ins Anwendungslog geschrieben (Konto-ID, nie die Adresse). Zwei gleichzeitige Vorlagen
+desselben Tokens gelten als Wiederverwendung — die Oberfläche serialisiert `refresh` (ein Aufruf zur
+Zeit). Ein `refresh` für ein nicht mehr anmeldefähiges Konto oder ein reguläres Konto bei
+abgeschalteter Verwaltung wird wie ein unbekanntes Token behandelt (`401`, Cookie gelöscht). `POST …/logout` widerruft Familie und das
 vorgelegte Access-Token sofort (`jti`-Sperrliste), ohne Protokolleintrag. `refresh` und `logout`
-verlangen das CSRF-Double-Submit-Token (Cookie `XSRF-TOKEN`, Header `X-XSRF-TOKEN`); kein anderer
-Endpunkt tut das. `POST …/change-password` (Bearer) prüft das aktuelle Passwort, wendet die
+verlangen das CSRF-Double-Submit-Token (Cookie `XSRF-TOKEN`, Header `X-XSRF-TOKEN`; fehlt es:
+`403` mit Code `CSRF_TOKEN_MISSING`); kein anderer Endpunkt tut das. `login`, `refresh` und
+`logout` werden ohne Bearer-Token aufgerufen — ein abgelaufenes Bearer-Token würde vor dem Handler
+mit `401` abgewiesen. `POST …/change-password` (Bearer) prüft das aktuelle Passwort, wendet die
 Passwortrichtlinie an (Mindestlänge aus den Einstellungen, höchstens 64 Zeichen/72 Byte, nicht die
 eigene Adresse, nicht in der mitgelieferten Sperrliste häufiger Passwörter — Verstöße als
-`fieldErrors` mit Codes `TOO_SHORT`, `TOO_LONG`, `EQUALS_EMAIL`, `TOO_COMMON`), setzt alle vor dem
-Wechsel ausgestellten Access-Tokens außer Kraft, widerruft alle Refresh-Familien außer der
-aktuellen, protokolliert `LOCAL_PASSWORD_CHANGED` und antwortet sofort mit einem neuen Token ohne
-`pcr`. Ein Token mit `pcr = true` erreicht außer `/api/v1/auth/local/*` nichts: jede andere
+`fieldErrors` mit Codes `TOO_SHORT`, `TOO_LONG`, `EQUALS_EMAIL`, `TOO_COMMON`), setzt alle bis zum
+Wechsel ausgestellten Access-Tokens außer Kraft, widerruft alle Refresh-Familien
+(`PASSWORD_CHANGED`), protokolliert `LOCAL_PASSWORD_CHANGED` und antwortet wie eine Anmeldung: neues
+Token ohne `pcr` und ein neues Refresh-Cookie für die laufende Sitzung. Ein Token mit `pcr = true` erreicht außer `/api/v1/auth/local/*` nichts: jede andere
 Anfrage endet mit `403`, Code `PASSWORD_CHANGE_REQUIRED` und dem Anlass (`INITIAL`,
 `ADMIN_RESET`, `SECURITY`). Lokale Tokens prüft ein eigener Decoder vor der Anbieter-Registry,
 unabhängig von der `LOCAL`-Zeile und ihrem Schalter; jede Abweisung nennt im Header
 `WWW-Authenticate` ihren Grund als `error_description`: `local_accounts_disabled`,
-`account_locked:<admin|failed_logins|inactivity>`, `account_expired`,
+`account_locked:<admin|failed_logins|inactivity>`, `account_expired`, `account_not_active`,
 `session_revoked[:<admin_lock|password_changed|admin_reset|reuse_detected|handed_over>]`,
-`unknown_account` — die Oberfläche unterscheidet sie so vom abgelaufenen Token und startet keinen
-Erneuerungsversuch. Der lokale Issuer legt nie ein Konto an (unbekanntes `sub` → `401`) und
+`unknown_account`, `malformed_token` — die Oberfläche unterscheidet sie so vom abgelaufenen Token
+und startet keinen Erneuerungsversuch. Nur ein anmeldefähiges (`ACTIVE`) Konto passiert den
+Validator; der Anlass von `session_revoked` ist der letzte Verwaltungsakt an den Refresh-Familien
+des Kontos. Der lokale Issuer legt nie ein Konto an (unbekanntes `sub` → `401`) und
 schreibt E-Mail und Anzeigename nicht aus dem Token zurück. `GET /api/v1/auth/config` führt die
 `LOCAL`-Zeile nicht unter `providers`, sondern als `localAccounts { enabled,
 selfRegistrationEnabled, passwordResetEnabled, passwordMinLength }`; die beiden Selbstbedienungs-

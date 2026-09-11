@@ -89,6 +89,25 @@ class PasswordPolicyTest {
     assertThat(PasswordPolicy.commonPasswordCount()).isGreaterThanOrEqualTo(1000);
   }
 
+  /**
+   * An entry shorter than the policy's lower bound of the minimum length (8) can never match; and
+   * the list has to bite at the default minimum of 12, not only below it.
+   */
+  @Test
+  void everyEntryCanMatchAndEnoughOfThemAreTwelveCharactersOrLonger() {
+    assertThat(PasswordPolicy.commonPasswords())
+        .allSatisfy(entry -> assertThat(entry).hasSizeGreaterThanOrEqualTo(8))
+        .allSatisfy(entry -> assertThat(entry).isEqualTo(entry.toLowerCase(java.util.Locale.ROOT)));
+    assertThat(PasswordPolicy.commonPasswords().stream().filter(entry -> entry.length() >= 12))
+        .hasSizeGreaterThanOrEqualTo(300);
+    assertThat(codes(policy.check("Willkommen2026!", "erika@stadt.example")))
+        .containsExactly(PasswordPolicy.TOO_COMMON);
+    assertThat(codes(policy.check("passwort1234", "erika@stadt.example")))
+        .containsExactly(PasswordPolicy.TOO_COMMON);
+    assertThat(codes(policy.check("qwertzuiopasdfghjkl", "erika@stadt.example")))
+        .containsExactly(PasswordPolicy.TOO_COMMON);
+  }
+
   private static List<String> codes(List<PasswordPolicy.Violation> violations) {
     return violations.stream().map(PasswordPolicy.Violation::code).toList();
   }

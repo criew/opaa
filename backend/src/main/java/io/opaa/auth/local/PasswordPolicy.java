@@ -95,6 +95,11 @@ public class PasswordPolicy {
     return COMMON_PASSWORDS.size();
   }
 
+  /** The shipped list, lower-cased - for tests of the list's shape. */
+  static Set<String> commonPasswords() {
+    return COMMON_PASSWORDS;
+  }
+
   /** One violated rule: a stable code and the user-facing message. */
   public record Violation(String code, String message) {}
 

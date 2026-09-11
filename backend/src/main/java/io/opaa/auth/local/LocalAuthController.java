@@ -15,6 +15,8 @@ import io.opaa.auth.local.LocalRefreshTokenService.IssuedRefreshToken;
 import io.opaa.auth.local.LocalRefreshTokenService.RotationResult;
 import io.opaa.common.ConflictException;
 import io.opaa.common.UnauthorizedException;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.Optional;
@@ -26,11 +28,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.WebUtils;
 
 /**
  * The endpoints of the local token issuer (ADR-0033, Entscheidungen 6-9): sign-in, rotation,
@@ -89,9 +91,14 @@ public class LocalAuthController {
         .body(tokenResponse(account.user(), account.credentials()));
   }
 
+  /**
+   * The cookie is read from the request here, not bound as a {@code @CookieValue} argument: Spring
+   * MVC's TRACE diagnostics print handler arguments, and the raw refresh token must never be
+   * logged.
+   */
   @PostMapping("/refresh")
-  public ResponseEntity<Object> refresh(
-      @CookieValue(name = LocalRefreshCookies.COOKIE_NAME, required = false) String cookie) {
+  public ResponseEntity<Object> refresh(HttpServletRequest request) {
+    String cookie = presentedRefreshToken(request);
     if (cookie == null || cookie.isBlank()) {
       return sessionInvalid();
     }
@@ -116,8 +123,8 @@ public class LocalAuthController {
    * an error: a missing or unknown cookie is simply cleared.
    */
   @PostMapping("/logout")
-  public ResponseEntity<Void> logout(
-      @CookieValue(name = LocalRefreshCookies.COOKIE_NAME, required = false) String cookie) {
+  public ResponseEntity<Void> logout(HttpServletRequest request) {
+    String cookie = presentedRefreshToken(request);
     if (cookie != null && !cookie.isBlank()) {
       refreshTokens.revokePresentedFamily(cookie, RevocationReason.LOGOUT);
     }
@@ -132,15 +139,13 @@ public class LocalAuthController {
   }
 
   /**
-   * The family behind the cookie of this very call survives the change; every other one is revoked.
-   * Answers like a sign-in with a token that no longer carries {@code pcr}; the cookie is left as
-   * it is.
+   * Every refresh family of the account is revoked ({@code PASSWORD_CHANGED}) and the session this
+   * call was made from continues in a fresh family: the answer is a sign-in - a token without
+   * {@code pcr} and a new refresh cookie.
    */
   @PostMapping("/change-password")
-  public LocalTokenResponse changePassword(
-      @Caller CurrentUser caller,
-      @Valid @RequestBody LocalChangePasswordRequest request,
-      @CookieValue(name = LocalRefreshCookies.COOKIE_NAME, required = false) String cookie) {
+  public ResponseEntity<LocalTokenResponse> changePassword(
+      @Caller CurrentUser caller, @Valid @RequestBody LocalChangePasswordRequest request) {
     User user =
         userService
             .findBySubjectAndIssuer(caller.id().toString(), LocalIssuer.URN)
@@ -148,20 +153,23 @@ public class LocalAuthController {
                 () ->
                     new ConflictException(
                         "Das Passwort kann nur für ein lokales Konto geändert werden."));
-    UUID keepFamilyId =
-        refreshTokens
-            .findPresented(cookie)
-            .filter(row -> row.getUserId().equals(user.getId()))
-            .map(LocalRefreshToken::getFamilyId)
-            .orElse(null);
     LocalCredentials changed =
-        passwords.changePassword(
-            user, request.getCurrentPassword(), request.getNewPassword(), keepFamilyId);
-    return tokenResponse(user, changed);
+        passwords.changePassword(user, request.getCurrentPassword(), request.getNewPassword());
+    IssuedRefreshToken refresh = refreshTokens.issue(user);
+    return ResponseEntity.ok()
+        .header(HttpHeaders.SET_COOKIE, cookies.issue(refresh.value(), refresh.maxAge()).toString())
+        .body(tokenResponse(user, changed));
   }
 
+  /**
+   * Every token is minted no earlier than the account's {@code password_invalidated_before}: a
+   * sign-in or a password change in the very second of a revocation would otherwise hand out a
+   * token the validator refuses.
+   */
   private LocalTokenResponse tokenResponse(User user, LocalCredentials row) {
-    IssuedAccessToken token = accessTokens.issue(user, row.isPasswordChangeRequired());
+    IssuedAccessToken token =
+        accessTokens.issue(
+            user, row.isPasswordChangeRequired(), row.getPasswordInvalidatedBefore());
     LocalTokenResponse response =
         new LocalTokenResponse(
             token.value(), token.expiresInSeconds(), row.isPasswordChangeRequired());
@@ -175,6 +183,11 @@ public class LocalAuthController {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
         .header(HttpHeaders.SET_COOKIE, cookies.clear().toString())
         .body(new ErrorResponse(SESSION_INVALID, HttpStatus.UNAUTHORIZED.value(), Instant.now()));
+  }
+
+  private static String presentedRefreshToken(HttpServletRequest request) {
+    Cookie cookie = WebUtils.getCookie(request, LocalRefreshCookies.COOKIE_NAME);
+    return cookie == null ? null : cookie.getValue();
   }
 
   private static Optional<Jwt> currentLocalToken() {

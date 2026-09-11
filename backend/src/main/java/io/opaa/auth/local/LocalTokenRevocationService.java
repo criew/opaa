@@ -14,9 +14,10 @@ import org.springframework.transaction.annotation.Transactional;
  * The two layers of access-token revocation (ADR-0033, Entscheidung 7): a {@code jti} denylist for
  * single tokens (sign-out), fronted by a Caffeine cache that forgets an entry when the token would
  * have expired anyway, and {@code password_invalidated_before} for everything at once. The cutoff
- * is stored in whole seconds because a token's {@code iat} has no finer resolution: a token minted
- * in the same second as the cutoff is accepted, one minted in an earlier second is not - which is
- * what lets {@code change-password} hand out a fresh token in the same breath.
+ * is the start of the <em>next</em> whole second, because a token's {@code iat} has no finer
+ * resolution: every token minted up to and including the current second is invalid, and the fresh
+ * token {@code change-password} hands out in the same breath is minted with {@code iat} at the
+ * cutoff ({@link LocalAccessTokenService#issue(io.opaa.auth.User, boolean, Instant)}).
  */
 @Service
 public class LocalTokenRevocationService {
@@ -59,8 +60,9 @@ public class LocalTokenRevocationService {
   }
 
   /**
-   * Invalidates every access token of the account issued before now (whole seconds, see the class
-   * Javadoc); returns the cutoff. A no-op for an account without local credentials.
+   * Invalidates every access token of the account issued up to the current second (see the class
+   * Javadoc); returns the cutoff a replacement token must not be issued before. A no-op for an
+   * account without local credentials.
    */
   @Transactional
   public Instant invalidateSessionsIssuedBefore(UUID userId) {
@@ -78,10 +80,11 @@ public class LocalTokenRevocationService {
 
   /** Whether a token issued at {@code issuedAt} falls under a stored cutoff. */
   static boolean issuedBefore(Instant issuedAt, Instant cutoff) {
-    return cutoff != null && issuedAt.isBefore(cutoffFor(cutoff));
+    return cutoff != null && issuedAt.isBefore(cutoff);
   }
 
-  private static Instant cutoffFor(Instant instant) {
-    return instant.truncatedTo(ChronoUnit.SECONDS);
+  /** The first whole second after {@code instant}. */
+  static Instant cutoffFor(Instant instant) {
+    return instant.truncatedTo(ChronoUnit.SECONDS).plusSeconds(1);
   }
 }

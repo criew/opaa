@@ -1,6 +1,5 @@
 package io.opaa.auth.local;
 
-import io.opaa.api.types.SystemRole;
 import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -76,10 +75,8 @@ public class LocalLoginService {
       listeners.forEach(listener -> listener.onPasswordRejected(user, counted, now));
       return Optional.empty();
     }
-    if (row.state(now) != LocalAccountState.ACTIVE) {
-      return Optional.empty();
-    }
-    if (!registry.localAccountsEnabled() && user.getSystemRole() != SystemRole.SYSTEM_ADMIN) {
+    if (!LocalAccountAccess.isLoginCapable(row, now)
+        || !LocalAccountAccess.passesManagementSwitch(registry, user)) {
       return Optional.empty();
     }
     if (row.getFailedLoginAttempts() != 0) {

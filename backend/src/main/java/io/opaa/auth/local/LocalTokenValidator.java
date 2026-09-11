@@ -1,12 +1,12 @@
 package io.opaa.auth.local;
 
-import io.opaa.api.types.SystemRole;
-import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.oidc.OidcProviderRegistry;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
@@ -16,9 +16,10 @@ import org.springframework.stereotype.Component;
  * after signature, issuer and expiry have been verified: the {@code jti} denylist (cache), the
  * account's {@code local_credentials} row (one primary-key lookup - the derived state, {@code
  * password_invalidated_before}) and the management switch (the registry's flag; the {@code users}
- * row is loaded only when the switch is off, to let a {@code SYSTEM_ADMIN} through). Every refusal
- * is a {@link LocalTokenRejection} naming its reason; a token whose subject has no local account is
- * refused rather than provisioned.
+ * row is loaded only when the switch is off, to let a {@code SYSTEM_ADMIN} through). Fail closed:
+ * only an account {@link LocalAccountAccess#isLoginCapable login-capable} right now passes. Every
+ * refusal is a {@link LocalTokenRejection} naming its reason; a token whose subject has no local
+ * account is refused rather than provisioned.
  */
 @Component
 public class LocalTokenValidator {
@@ -62,17 +63,15 @@ public class LocalTokenValidator {
       return Optional.of(new LocalTokenRejection(LocalTokenMarkers.UNKNOWN_ACCOUNT, null));
     }
     Instant now = clock.instant();
-    switch (row.state(now)) {
-      case LOCKED -> {
-        return Optional.of(
-            new LocalTokenRejection(LocalTokenMarkers.ACCOUNT_LOCKED, lockCause(row)));
-      }
-      case EXPIRED -> {
-        return Optional.of(new LocalTokenRejection(LocalTokenMarkers.ACCOUNT_EXPIRED, null));
-      }
-      default -> {
-        // ACTIVE; INVITED cannot hold a token - there is no password to sign in with
-      }
+    if (!LocalAccountAccess.isLoginCapable(row, now)) {
+      // fail closed: whatever is not ACTIVE is refused, the two named states with their marker
+      return Optional.of(
+          switch (row.state(now)) {
+            case LOCKED ->
+                new LocalTokenRejection(LocalTokenMarkers.ACCOUNT_LOCKED, lockCause(row));
+            case EXPIRED -> new LocalTokenRejection(LocalTokenMarkers.ACCOUNT_EXPIRED, null);
+            default -> new LocalTokenRejection(LocalTokenMarkers.ACCOUNT_NOT_ACTIVE, null);
+          });
     }
     if (LocalTokenRevocationService.issuedBefore(issuedAt, row.getPasswordInvalidatedBefore())) {
       return Optional.of(
@@ -88,9 +87,8 @@ public class LocalTokenValidator {
   private boolean isSystemAdmin(UUID userId) {
     return users
         .findById(userId)
-        .map(User::getSystemRole)
-        .filter(role -> role == SystemRole.SYSTEM_ADMIN)
-        .isPresent();
+        .map(user -> LocalAccountAccess.passesManagementSwitch(registry, user))
+        .orElse(false);
   }
 
   /** A temporary lockout without a stored reason is the one after failed sign-ins. */
@@ -102,13 +100,24 @@ public class LocalTokenValidator {
     return LocalTokenRejection.causeOf(reason);
   }
 
+  /** The revocation reasons that are administrative acts - the ones a marker may name. */
+  static final Set<RevocationReason> ACTS =
+      EnumSet.of(
+          RevocationReason.ACCOUNT_LOCKED,
+          RevocationReason.PASSWORD_CHANGED,
+          RevocationReason.ADMIN_RESET,
+          RevocationReason.ADMIN,
+          RevocationReason.REUSE_DETECTED,
+          RevocationReason.HANDED_OVER);
+
   /**
-   * The cause of the most recent revocation of one of the account's refresh families - the act that
-   * ended the sessions; only read on the refusal path.
+   * The cause of the most recent administrative revocation among the account's refresh families -
+   * the act that ended the sessions; only read on the refusal path. Routine {@code ROTATED} and the
+   * person's own {@code LOGOUT} rows are skipped so they never hide the act.
    */
   private String latestRevocationCause(UUID userId) {
     return refreshTokens
-        .findFirstByUserIdAndRevokedAtIsNotNullOrderByRevokedAtDesc(userId)
+        .findFirstByUserIdAndRevocationReasonInOrderByRevokedAtDesc(userId, ACTS)
         .map(LocalRefreshToken::getRevocationReason)
         .map(LocalTokenRejection::causeOf)
         .orElse(null);

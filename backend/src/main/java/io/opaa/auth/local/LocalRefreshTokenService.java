@@ -9,6 +9,7 @@ import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.auth.oidc.OidcProviderRegistry;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.security.LocalAuthKeyService.Purpose;
 import java.security.SecureRandom;
@@ -31,9 +32,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * the idle limit and the absolute end of the account's role; a rotation revokes the presented token
  * as {@code ROTATED} and issues a successor of the same family whose idle limit never passes the
  * family's end. The presentation of an already revoked token - or losing the atomic rotation to a
- * concurrent refresh with the same cookie - is a replay: the whole family is revoked as {@code
- * REUSE_DETECTED}, every access token of the account is invalidated, the act is audited as {@code
- * LOCAL_SESSION_REVOKED} and logged at WARN with the account id, never the address.
+ * concurrent refresh with the same cookie - is a replay: every family of the account is revoked as
+ * {@code REUSE_DETECTED}, every access token of the account is invalidated, the act is audited as
+ * {@code LOCAL_SESSION_REVOKED} and logged at WARN with the account id, never the address.
  *
  * <p>Transactions: successor insert and {@link LocalRefreshTokenRepository#rotateIfActive} form one
  * transaction that is rolled back when the rotation was lost, so the loser leaves no active
@@ -41,6 +42,11 @@ import org.springframework.transaction.support.TransactionTemplate;
  * if the rotation transaction fails, nothing changed and the presented token stays active for a
  * retry; if the replay transaction fails, the presented token is already revoked and the next
  * presentation detects the replay again.
+ *
+ * <p>A rotation is refused like an unknown token when the account is no longer login-capable or the
+ * management switch excludes it: a session that could only mint tokens the validator refuses ends
+ * here instead of looping. Two concurrent refreshes with the same cookie are a replay by ADR-0033 -
+ * the SPA serialises {@code /refresh}.
  */
 @Service
 public class LocalRefreshTokenService {
@@ -54,6 +60,8 @@ public class LocalRefreshTokenService {
 
   private final LocalRefreshTokenRepository repository;
   private final UserRepository users;
+  private final LocalCredentialsRepository credentials;
+  private final OidcProviderRegistry registry;
   private final LocalAuthKeyService keys;
   private final LocalAuthProperties properties;
   private final LocalTokenRevocationService revocation;
@@ -64,6 +72,8 @@ public class LocalRefreshTokenService {
   public LocalRefreshTokenService(
       LocalRefreshTokenRepository repository,
       UserRepository users,
+      LocalCredentialsRepository credentials,
+      OidcProviderRegistry registry,
       LocalAuthKeyService keys,
       LocalAuthProperties properties,
       LocalTokenRevocationService revocation,
@@ -72,6 +82,8 @@ public class LocalRefreshTokenService {
       Clock clock) {
     this.repository = repository;
     this.users = users;
+    this.credentials = credentials;
+    this.registry = registry;
     this.keys = keys;
     this.properties = properties;
     this.revocation = revocation;
@@ -103,7 +115,11 @@ public class LocalRefreshTokenService {
       return new RotationResult.Unknown();
     }
     User user = users.findById(presented.getUserId()).orElse(null);
-    if (user == null) {
+    LocalCredentials row = credentials.findById(presented.getUserId()).orElse(null);
+    if (user == null
+        || row == null
+        || !LocalAccountAccess.isLoginCapable(row, now)
+        || !LocalAccountAccess.passesManagementSwitch(registry, user)) {
       return new RotationResult.Unknown();
     }
     Instant expiresAt = now.plus(limitsFor(user).idle());
@@ -174,14 +190,15 @@ public class LocalRefreshTokenService {
                   repository.revokeFamily(
                       presented.getFamilyId(), RevocationReason.REUSE_DETECTED, now);
               if (rows > 0) {
+                repository.revokeAllForUser(userId, RevocationReason.REUSE_DETECTED, now);
                 revocation.invalidateSessionsIssuedBefore(userId);
                 users.findById(userId).ifPresent(this::auditSessionsRevoked);
               }
               return rows;
             });
     log.warn(
-        "Refresh token reuse detected for local account {}: family {} revoked ({} active"
-            + " member(s)), every session of the account ended",
+        "Refresh token reuse detected for local account {}: family {} ({} active member(s))"
+            + " and every other session of the account revoked",
         userId,
         presented.getFamilyId(),
         revoked);

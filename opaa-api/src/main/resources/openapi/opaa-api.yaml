@@ -157,9 +157,15 @@ paths:
         Rotate the refresh cookie and mint a new access token (ADR-0033, Entscheidung 7). Reads the
         "opaa_refresh" cookie and requires the CSRF double-submit token (cookie XSRF-TOKEN echoed
         as header X-XSRF-TOKEN). Presenting an active token revokes it and sets its successor of the
-        same family; presenting an already rotated token is a replay that revokes the whole family
-        and every session of the account. Unknown, expired and replayed tokens are answered alike:
-        401 and the cookie cleared.
+        same family; presenting an already rotated token is a replay that revokes every family and
+        every session of the account. Unknown, expired and replayed tokens, an account that is no
+        longer login-capable and a regular account while local accounts are switched off are
+        answered alike: 401 and the cookie cleared. The SPA serialises its refresh calls: two
+        concurrent presentations of the same token are a replay (ADR-0033, Entscheidung 7). Never
+        send an expired Bearer token along - the resource server refuses it before this handler.
+      parameters:
+        - $ref: "#/components/parameters/LocalRefreshCookie"
+        - $ref: "#/components/parameters/CsrfTokenHeader"
       responses:
         "200":
           description: Rotated; the successor cookie is set
@@ -168,9 +174,17 @@ paths:
               schema:
                 $ref: "#/components/schemas/LocalTokenResponse"
         "401":
-          $ref: "#/components/responses/Unauthorized"
+          description: Unknown, expired or replayed token, or the account may not sign in; the cookie is cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          description: CSRF double-submit token missing or wrong (code CSRF_TOKEN_MISSING)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/auth/local/logout:
     post:
@@ -182,12 +196,27 @@ paths:
         "opaa_refresh" cookie, denylists the presented access token's jti immediately when a Bearer
         token accompanies the call, and clears the cookie. Requires the CSRF double-submit token.
         Always 204 - a missing or unknown cookie is not an error. The person's own sign-out is no
-        audit event (Entscheidung 13).
+        audit event (Entscheidung 13). Send the Bearer token only while it is still valid: an
+        expired one is refused by the resource server with 401 before this handler runs - repeat
+        the call without it.
+      parameters:
+        - $ref: "#/components/parameters/LocalRefreshCookie"
+        - $ref: "#/components/parameters/CsrfTokenHeader"
       responses:
         "204":
           description: Signed out; the cookie is cleared
+        "401":
+          description: An expired or otherwise invalid Bearer token accompanied the call
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          description: CSRF double-submit token missing or wrong (code CSRF_TOKEN_MISSING)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/auth/local/change-password:
     post:
@@ -199,9 +228,9 @@ paths:
         fieldErrors[currentPassword] = WRONG_PASSWORD otherwise), applies the password policy (400
         with fieldErrors[newPassword] naming every violated rule: TOO_SHORT, TOO_LONG,
         EQUALS_EMAIL, TOO_COMMON), stores the new hash, clears the forced change, invalidates every
-        access token issued before now, revokes every refresh family except the one behind the
-        "opaa_refresh" cookie of this call, and answers like a login with a fresh access token
-        without the pcr flag. Audited as LOCAL_PASSWORD_CHANGED. 409 for an account of an identity
+        access token issued up to now, revokes every refresh family (PASSWORD_CHANGED) and answers
+        like a login: a fresh access token without the pcr flag and a new "opaa_refresh" cookie
+        for this session. Audited as LOCAL_PASSWORD_CHANGED. 409 for an account of an identity
         provider.
       requestBody:
         required: true
@@ -4575,6 +4604,7 @@ components:
           example: erika.muster@stadt.example
         password:
           type: string
+          format: password
           minLength: 1
           maxLength: 1024
 
@@ -4587,7 +4617,10 @@ components:
       properties:
         accessToken:
           type: string
-          description: HS256 JWT with iss urn:opaa:local, sub = the account id, jti, iat, exp, email, name, pcr.
+          format: password
+          description: >
+            HS256 JWT with iss urn:opaa:local, sub = the account id, jti, iat, exp, email, name,
+            pcr. A bearer secret - format password keeps it out of the DTO's toString().
         expiresInSeconds:
           type: integer
           format: int64
@@ -4617,10 +4650,12 @@ components:
       properties:
         currentPassword:
           type: string
+          format: password
           minLength: 1
           maxLength: 1024
         newPassword:
           type: string
+          format: password
           minLength: 1
           maxLength: 1024
           description: >
@@ -5358,10 +5393,12 @@ components:
           example: INITIAL
         fieldErrors:
           type: array
+          nullable: true
           description: >
             Optional per-field violations of a request - one entry per field and rule, each with
             a stable code the client can map to its own text (the password policy of ADR-0033
             reports TOO_SHORT, TOO_LONG, EQUALS_EMAIL, TOO_COMMON on newPassword this way).
+            Absent (not an empty list) on every other error.
           items:
             $ref: "#/components/schemas/FieldError"
 
@@ -11121,6 +11158,25 @@ components:
             $ref: "#/components/schemas/ChunkInspectionResponse"
 
   parameters:
+    LocalRefreshCookie:
+      name: opaa_refresh
+      in: cookie
+      required: false
+      description: >
+        The HttpOnly refresh cookie a local sign-in set (Path /api/v1/auth/local, SameSite=Strict,
+        Secure). The browser sends it by itself; it is never read or written by the SPA.
+      schema:
+        type: string
+    CsrfTokenHeader:
+      name: X-XSRF-TOKEN
+      in: header
+      required: true
+      description: >
+        The CSRF double-submit token: the value of the XSRF-TOKEN cookie every response of this
+        API sets, echoed as a header (ADR-0033, Entscheidung 7). Missing or wrong: 403 with code
+        CSRF_TOKEN_MISSING.
+      schema:
+        type: string
     AuditFrom:
       name: from
       in: query

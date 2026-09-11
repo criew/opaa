@@ -62,7 +62,7 @@ class LocalTokenValidatorTest {
     row.markEmailVerified(NOW.minus(Duration.ofDays(1)));
     when(credentials.findById(user.getId())).thenReturn(Optional.of(row));
     when(users.findById(user.getId())).thenReturn(Optional.of(user));
-    when(refreshTokens.findFirstByUserIdAndRevokedAtIsNotNullOrderByRevokedAtDesc(any()))
+    when(refreshTokens.findFirstByUserIdAndRevocationReasonInOrderByRevokedAtDesc(any(), any()))
         .thenReturn(Optional.empty());
   }
 
@@ -88,7 +88,8 @@ class LocalTokenValidatorTest {
     LocalRefreshToken revoked =
         new LocalRefreshToken(UUID.randomUUID(), user.getId(), "h", NOW.minusSeconds(40), NOW, NOW);
     revoked.revoke(RevocationReason.PASSWORD_CHANGED, NOW.minusSeconds(30));
-    when(refreshTokens.findFirstByUserIdAndRevokedAtIsNotNullOrderByRevokedAtDesc(user.getId()))
+    when(refreshTokens.findFirstByUserIdAndRevocationReasonInOrderByRevokedAtDesc(
+            user.getId(), LocalTokenValidator.ACTS))
         .thenReturn(Optional.of(revoked));
 
     Optional<LocalTokenRejection> rejection =
@@ -99,12 +100,51 @@ class LocalTokenValidatorTest {
     assertThat(rejection.get().errorDescription()).isEqualTo("session_revoked:password_changed");
   }
 
+  /**
+   * The cutoff is the next whole second: a token minted in the same second as the invalidation is
+   * refused too (iat has no finer resolution), the replacement token minted at the cutoff passes.
+   */
   @Test
-  void aTokenIssuedInTheSameSecondAsTheInvalidationIsStillAccepted() {
+  void aTokenIssuedInTheSameSecondAsTheInvalidationIsRefusedAndOneAtTheCutoffPasses() {
+    Instant invalidation = NOW.plusMillis(300);
+    row.invalidateSessionsIssuedBefore(
+        LocalTokenRevocationService.cutoffFor(invalidation), invalidation);
+
+    assertThat(validator.rejectionFor(token(user.getId(), NOW))).isPresent();
+    assertThat(validator.rejectionFor(token(user.getId(), NOW.minusSeconds(1)))).isPresent();
+    assertThat(validator.rejectionFor(token(user.getId(), NOW.plusSeconds(1)))).isEmpty();
+    assertThat(LocalTokenRevocationService.cutoffFor(invalidation)).isEqualTo(NOW.plusSeconds(1));
+  }
+
+  @Test
+  void anAccountThatIsNotActiveIsRefusedEvenWhenNeitherLockedNorExpired() {
+    LocalCredentials invited = new LocalCredentials(user.getId(), "Einladung", NOW);
+    invited.setPasswordHash("{bcrypt}x", NOW);
+    // address never confirmed - INVITED, fail closed
+    when(credentials.findById(user.getId())).thenReturn(Optional.of(invited));
+
+    assertThat(validator.rejectionFor(token(user.getId(), NOW.minusSeconds(60))))
+        .contains(new LocalTokenRejection(LocalTokenMarkers.ACCOUNT_NOT_ACTIVE, null));
+  }
+
+  @Test
+  void theCauseOfARevokedSessionSkipsRoutineRotationsAndSignOuts() {
     row.invalidateSessionsIssuedBefore(NOW, NOW);
 
-    assertThat(validator.rejectionFor(token(user.getId(), NOW))).isEmpty();
-    assertThat(validator.rejectionFor(token(user.getId(), NOW.minusSeconds(1)))).isPresent();
+    validator.rejectionFor(token(user.getId(), NOW.minusSeconds(60)));
+
+    verify(refreshTokens)
+        .findFirstByUserIdAndRevocationReasonInOrderByRevokedAtDesc(
+            user.getId(), LocalTokenValidator.ACTS);
+    assertThat(LocalTokenValidator.ACTS)
+        .doesNotContain(RevocationReason.ROTATED, RevocationReason.LOGOUT)
+        .containsExactlyInAnyOrder(
+            RevocationReason.ACCOUNT_LOCKED,
+            RevocationReason.PASSWORD_CHANGED,
+            RevocationReason.ADMIN_RESET,
+            RevocationReason.ADMIN,
+            RevocationReason.REUSE_DETECTED,
+            RevocationReason.HANDED_OVER);
   }
 
   @Test

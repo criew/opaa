@@ -29,6 +29,7 @@ import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthMockMvcTest;
 import jakarta.servlet.http.Cookie;
+import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
@@ -52,8 +53,8 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
  * the replay of the refresh cookie, the immediate revocation on sign-out and password change, the
  * forced password change, the management switch, the reasons every refused token names in {@code
  * WWW-Authenticate}, the finder-never-provisioner rule of the local issuer and the public
- * configuration. Tokens minted in one second and revoked in the same second are the one window the
- * second-granular {@code iat} cannot close - the tests that need the boundary wait for it.
+ * configuration. A revocation cuts off the whole current second ({@code iat} is second-granular),
+ * so no test has to wait for a second boundary.
  */
 @OpaaLocalAuthMockMvcTest
 class LocalAuthFlowIntegrationTest {
@@ -134,10 +135,15 @@ class LocalAuthFlowIntegrationTest {
     assertThat(lockedAccount).isEqualTo(unknownAddress);
     assertThat(invitedAccount).isEqualTo(unknownAddress);
     assertThat(unknownAddress).contains("\"status\":401").doesNotContain("locked", "gesperrt");
+    // the envelope's optional fields are absent, not empty, when they do not apply
+    login("niemand@stadt.example", "irgendwas")
+        .andExpect(jsonPath("$.fieldErrors").doesNotExist())
+        .andExpect(jsonPath("$.code").doesNotExist())
+        .andExpect(jsonPath("$.reason").doesNotExist());
   }
 
   @Test
-  void aRefreshRotatesTheCookieAndAReplayEndsTheFamilyAndEverySessionWithAReason()
+  void aRefreshRotatesTheCookieAndAReplayEndsEverySessionOfTheAccountWithAReason()
       throws Exception {
     ListAppender<ILoggingEvent> warnings = attachTo(LocalRefreshTokenService.class);
     long auditedBefore = auditCount("LOCAL_SESSION_REVOKED");
@@ -157,8 +163,9 @@ class LocalAuthFlowIntegrationTest {
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(refreshed)))
         .andExpect(status().isOk());
 
+    MvcResult otherSession = login(user.email(), LocalAccountFixtures.PASSWORD).andReturn();
+
     // the replay: the already rotated cookie is presented again
-    waitForTheNextSecond();
     mockMvc
         .perform(withCsrf(post(REFRESH), login).cookie(first))
         .andExpect(status().isUnauthorized())
@@ -172,6 +179,18 @@ class LocalAuthFlowIntegrationTest {
     // ... and so is the access token minted with it, naming the reason
     mockMvc
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(refreshed)))
+        .andExpect(status().isUnauthorized())
+        .andExpect(
+            header()
+                .string(
+                    HttpHeaders.WWW_AUTHENTICATE,
+                    containsString("error_description=\"session_revoked:reuse_detected\"")));
+    // every other session of the account is over as well - cookie and access token alike
+    mockMvc
+        .perform(withCsrf(post(REFRESH), otherSession).cookie(refreshCookie(otherSession)))
+        .andExpect(status().isUnauthorized());
+    mockMvc
+        .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(otherSession)))
         .andExpect(status().isUnauthorized())
         .andExpect(
             header()
@@ -239,12 +258,11 @@ class LocalAuthFlowIntegrationTest {
   }
 
   @Test
-  void aPasswordChangeEndsEveryOtherSessionKeepsThisOneAndAnswersWithAFreshToken()
+  void aPasswordChangeEndsEverySessionAndContinuesThisOneWithAFreshTokenAndCookie()
       throws Exception {
     long auditedBefore = auditCount("LOCAL_PASSWORD_CHANGED");
     MvcResult thisSession = login(user.email(), LocalAccountFixtures.PASSWORD).andReturn();
     MvcResult otherSession = login(user.email(), LocalAccountFixtures.PASSWORD).andReturn();
-    waitForTheNextSecond();
 
     MvcResult changed =
         mockMvc
@@ -263,12 +281,16 @@ class LocalAuthFlowIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.accessToken").isString())
             .andExpect(jsonPath("$.passwordChangeRequired").value(false))
+            .andExpect(cookie().exists(LocalRefreshCookies.COOKIE_NAME))
             .andReturn();
+    assertThat(refreshCookie(changed).getValue())
+        .isNotEqualTo(refreshCookie(thisSession).getValue());
 
-    // the fresh token works, both older ones name the reason
+    // the fresh token works (minted at the cutoff, in the same second as the change) ...
     mockMvc
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(changed)))
         .andExpect(status().isOk());
+    // ... both older ones name the reason ...
     for (MvcResult old : new MvcResult[] {thisSession, otherSession}) {
       mockMvc
           .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(old)))
@@ -279,18 +301,52 @@ class LocalAuthFlowIntegrationTest {
                       HttpHeaders.WWW_AUTHENTICATE,
                       containsString("error_description=\"session_revoked:password_changed\"")));
     }
-    // this session's family survives, the other one is revoked
+    // ... every old family is revoked, the fresh one continues this session
+    for (MvcResult old : new MvcResult[] {thisSession, otherSession}) {
+      mockMvc
+          .perform(withCsrf(post(REFRESH), old).cookie(refreshCookie(old)))
+          .andExpect(status().isUnauthorized());
+    }
     mockMvc
-        .perform(withCsrf(post(REFRESH), thisSession).cookie(refreshCookie(thisSession)))
+        .perform(withCsrf(post(REFRESH), changed).cookie(refreshCookie(changed)))
         .andExpect(status().isOk());
-    mockMvc
-        .perform(withCsrf(post(REFRESH), otherSession).cookie(refreshCookie(otherSession)))
-        .andExpect(status().isUnauthorized());
     // and only the new password signs in
     login(user.email(), LocalAccountFixtures.PASSWORD).andExpect(status().isUnauthorized());
     login(user.email(), NEW_PASSWORD).andExpect(status().isOk());
     assertThat(auditCount("LOCAL_PASSWORD_CHANGED")).isEqualTo(auditedBefore + 1);
     assertThat(fixtures.credentialsOf(user).getPasswordInvalidatedBefore()).isNotNull();
+  }
+
+  /**
+   * The single-session first change: the one case where no other family exists to leave a trace.
+   */
+  @Test
+  void theFirstChangeInASingleSessionStillNamesPasswordChangedAsTheCause() throws Exception {
+    MvcResult only = login(user.email(), LocalAccountFixtures.PASSWORD).andReturn();
+
+    mockMvc
+        .perform(
+            post(CHANGE_PASSWORD)
+                .header(HttpHeaders.AUTHORIZATION, bearer(only))
+                .cookie(refreshCookie(only))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    json(
+                        Map.of(
+                            "currentPassword",
+                            LocalAccountFixtures.PASSWORD,
+                            "newPassword",
+                            NEW_PASSWORD))))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(only)))
+        .andExpect(status().isUnauthorized())
+        .andExpect(
+            header()
+                .string(
+                    HttpHeaders.WWW_AUTHENTICATE,
+                    containsString("error_description=\"session_revoked:password_changed\"")));
   }
 
   @Test
@@ -374,10 +430,15 @@ class LocalAuthFlowIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.passwordChangeRequired").value(false))
             .andExpect(jsonPath("$.passwordChangeReason").doesNotExist())
+            .andExpect(cookie().exists(LocalRefreshCookies.COOKIE_NAME))
             .andReturn();
     mockMvc
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(changed)))
         .andExpect(status().isOk());
+    mockMvc
+        .perform(withCsrf(post(REFRESH), changed).cookie(refreshCookie(changed)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.passwordChangeRequired").value(false));
     assertThat(fixtures.credentialsOf(forced).isPasswordChangeRequired()).isFalse();
   }
 
@@ -403,6 +464,15 @@ class LocalAuthFlowIntegrationTest {
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(adminSession)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.systemRole").value("SYSTEM_ADMIN"));
+
+    // a regular account's refresh is refused as well (401, cookie cleared), the administrator's not
+    mockMvc
+        .perform(withCsrf(post(REFRESH), userSession).cookie(refreshCookie(userSession)))
+        .andExpect(status().isUnauthorized())
+        .andExpect(cookie().maxAge(LocalRefreshCookies.COOKIE_NAME, 0));
+    mockMvc
+        .perform(withCsrf(post(REFRESH), adminSession).cookie(refreshCookie(adminSession)))
+        .andExpect(status().isOk());
 
     // switching it back on lets the same token through again - nothing was revoked
     fixtures.localProvider(true);
@@ -439,6 +509,40 @@ class LocalAuthFlowIntegrationTest {
                 .string(
                     HttpHeaders.WWW_AUTHENTICATE,
                     containsString("error_description=\"account_expired\"")));
+    // and the session cannot be prolonged past the account's end either
+    mockMvc
+        .perform(withCsrf(post(REFRESH), login).cookie(refreshCookie(login)))
+        .andExpect(status().isUnauthorized())
+        .andExpect(cookie().maxAge(LocalRefreshCookies.COOKIE_NAME, 0));
+  }
+
+  /** Signature and algorithm: only HS256 under the access-token key is a local token. */
+  @Test
+  void tokensWithoutAValidSignatureUnderTheLocalKeyAreRefused() throws Exception {
+    Instant now = Instant.now();
+    JWTClaimsSet claims =
+        new JWTClaimsSet.Builder()
+            .issuer(LocalIssuer.URN)
+            .subject(user.id().toString())
+            .jwtID(UUID.randomUUID().toString())
+            .issueTime(Date.from(now))
+            .expirationTime(Date.from(now.plusSeconds(300)))
+            .build();
+    String unsigned = new com.nimbusds.jwt.PlainJWT(claims).serialize(); // alg=none
+    SignedJWT foreignKey = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.HS256).build(), claims);
+    foreignKey.sign(new MACSigner(new byte[32]));
+    SignedJWT rsa = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).build(), claims);
+    rsa.sign(
+        new com.nimbusds.jose.crypto.RSASSASigner(
+            new com.nimbusds.jose.jwk.gen.RSAKeyGenerator(2048).generate()));
+
+    for (String token : new String[] {unsigned, foreignKey.serialize(), rsa.serialize()}) {
+      mockMvc
+          .perform(get(ME).header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+          .andExpect(status().isUnauthorized())
+          .andExpect(
+              header().string(HttpHeaders.WWW_AUTHENTICATE, containsString("invalid_token")));
+    }
   }
 
   @Test
@@ -447,9 +551,21 @@ class LocalAuthFlowIntegrationTest {
     Cookie refresh = refreshCookie(login);
     Cookie xsrf = login.getResponse().getCookie("XSRF-TOKEN");
 
-    // cookie only, no header
-    mockMvc.perform(post(REFRESH).cookie(refresh, xsrf)).andExpect(status().isForbidden());
+    // cookie only, no header - refused with its own code, so the SPA tells it from a pcr 403
+    mockMvc
+        .perform(post(REFRESH).cookie(refresh, xsrf))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("CSRF_TOKEN_MISSING"))
+        .andExpect(jsonPath("$.status").value(403));
     mockMvc.perform(post(LOGOUT).cookie(refresh, xsrf)).andExpect(status().isForbidden());
+    // a percent-encoded spelling of the path reaches the same handler and the same check
+    mockMvc
+        .perform(post(URI.create("/api/v1/auth/local/%72efresh")).cookie(refresh, xsrf))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("CSRF_TOKEN_MISSING"));
+    mockMvc
+        .perform(post(URI.create("/api/v1/auth/local/logo%75t")).cookie(refresh, xsrf))
+        .andExpect(status().isForbidden());
     // header that does not match the cookie
     mockMvc
         .perform(post(REFRESH).cookie(refresh, xsrf).header("X-XSRF-TOKEN", "falsch"))
@@ -636,13 +752,5 @@ class LocalAuthFlowIntegrationTest {
     appender.start();
     ((Logger) LoggerFactory.getLogger(loggerClass)).addAppender(appender);
     return appender;
-  }
-
-  /** Access tokens carry {@code iat} in whole seconds; a revocation must land in a later one. */
-  private static void waitForTheNextSecond() throws InterruptedException {
-    long second = Instant.now().getEpochSecond();
-    while (Instant.now().getEpochSecond() == second) {
-      Thread.sleep(20);
-    }
   }
 }

@@ -152,7 +152,7 @@ class LocalLoginServiceTest {
   @Test
   void aSuccessfulSignInResetsAnEarlierFailedLoginCount() {
     LocalCredentials withFailures = mock(LocalCredentials.class);
-    when(withFailures.state(NOW)).thenReturn(LocalAccountState.ACTIVE);
+    when(withFailures.isLoginCapable(NOW)).thenReturn(true);
     when(withFailures.getPasswordHash()).thenReturn(HASH);
     when(withFailures.getFailedLoginAttempts()).thenReturn(3);
     when(credentials.findById(user.getId())).thenReturn(Optional.of(withFailures));

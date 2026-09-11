@@ -16,6 +16,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -31,8 +33,11 @@ import tools.jackson.databind.json.JsonMapper;
 public class PasswordChangeRequiredFilter extends OncePerRequestFilter {
 
   public static final String CODE = "PASSWORD_CHANGE_REQUIRED";
-  static final String EXEMPT_PREFIX = "/api/v1/auth/local/";
   static final String MESSAGE = "Bitte legen Sie zuerst ein neues Passwort fest.";
+
+  /** Matched on the decoded path like the handler mapping, so a context path is honoured too. */
+  private static final RequestMatcher EXEMPT =
+      PathPatternRequestMatcher.withDefaults().matcher("/api/v1/auth/local/**");
 
   private final LocalCredentialsRepository credentials;
   private final JsonMapper jsonMapper;
@@ -50,7 +55,7 @@ public class PasswordChangeRequiredFilter extends OncePerRequestFilter {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication instanceof JwtAuthenticationToken token
         && requiresPasswordChange(token.getToken())
-        && !request.getRequestURI().startsWith(EXEMPT_PREFIX)) {
+        && !EXEMPT.matches(request)) {
       refuse(response, token.getToken());
       return;
     }

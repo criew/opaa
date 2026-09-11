@@ -1,6 +1,7 @@
 package io.opaa.auth.local;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -24,12 +25,13 @@ public interface LocalRefreshTokenRepository extends JpaRepository<LocalRefreshT
   Optional<LocalRefreshToken> findByTokenLookupHash(String tokenLookupHash);
 
   /**
-   * The most recently revoked token of the user - its reason is the act that ended the sessions,
-   * which a refused access token names as the cause of {@code session_revoked} (ADR-0033,
-   * Entscheidung 8).
+   * The most recently revoked token of the user among the given reasons - the administrative act
+   * that ended the sessions, which a refused access token names as the cause of {@code
+   * session_revoked} (ADR-0033, Entscheidung 8). Callers pass the acts only, never {@code ROTATED}
+   * or {@code LOGOUT}, which would otherwise hide the act behind the routine mechanics.
    */
-  Optional<LocalRefreshToken> findFirstByUserIdAndRevokedAtIsNotNullOrderByRevokedAtDesc(
-      UUID userId);
+  Optional<LocalRefreshToken> findFirstByUserIdAndRevocationReasonInOrderByRevokedAtDesc(
+      UUID userId, Collection<RevocationReason> reasons);
 
   /**
    * Rotates the token to its already inserted successor if - and only if - it is still active at
