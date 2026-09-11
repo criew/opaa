@@ -64,7 +64,7 @@ class OidcProviderServiceIntegrationTest {
 
   @BeforeEach
   void setUp() throws Exception {
-    jdbcTemplate.update("DELETE FROM oidc_providers");
+    removeOwnProviders();
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "OIDC Test Org")).getId();
     User user = new User(UUID.randomUUID().toString(), "test-issuer", "oidc@example.com", "Test");
@@ -94,10 +94,22 @@ class OidcProviderServiceIntegrationTest {
   void tearDown() {
     jwks.stop(0);
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
-    jdbcTemplate.update("DELETE FROM oidc_providers");
+    removeOwnProviders();
     registry.refresh();
     userRepository.deleteById(userId);
     organizationRepository.deleteById(organizationId);
+  }
+
+  /**
+   * Only the providers of this class: every issuer it registers is either the fixed idp.example
+   * host or its local discovery server on 127.0.0.1. {@code
+   * UserServiceMultiProviderIntegrationTest} writes this table too and removes its own row by id,
+   * so it is never emptied wholesale.
+   */
+  private void removeOwnProviders() {
+    jdbcTemplate.update(
+        "DELETE FROM oidc_providers WHERE issuer_uri LIKE 'https://idp.example/%'"
+            + " OR issuer_uri LIKE 'http://127.0.0.1:%'");
   }
 
   private OidcProviderDraft draft(String name, String issuerUri) {

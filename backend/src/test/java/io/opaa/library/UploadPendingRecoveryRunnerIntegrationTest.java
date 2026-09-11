@@ -15,6 +15,7 @@ import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnLibraryFixtures;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -52,6 +53,7 @@ class UploadPendingRecoveryRunnerIntegrationTest {
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
 
   private UUID organizationId;
   private User editor;
@@ -73,7 +75,8 @@ class UploadPendingRecoveryRunnerIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    documentRepository.deleteAll();
+    ownLibraryFixtures.removeContentOf(libraryId);
+    jdbcTemplate.update("DELETE FROM library_visibility_history WHERE library_id = ?", libraryId);
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId()));
     membershipHistoryRepository.deleteByUserIdIn(List.of(editor.getId()));
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
