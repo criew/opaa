@@ -121,6 +121,12 @@ Zerlegung — mit WARN-Log (Zählwerte, keine Inhalte) und dem Zähler
 Details, Grenzen des Wächters, Diagramm und die Vorher/Nachher-Messung stehen in
 [Teilfragen-Zerlegung und Query-Reformulierung](./data-indexing-rag.md#teilfragen-zerlegung-und-query-reformulierung-multi-query-retrieval-923).
 
+**Zielbild (Epic #1482, [conversation-memory.md](./conversation-memory.md), ADR-0031):** Die
+Zerlegung erhält künftig nicht mehr das ganze Gesprächsfenster, sondern ein **Suchfenster von zwei
+Runden** plus die `RAHMEN`-Punkte der Gesprächsnotiz; der Wächter ankert gegen genau diesen Kontext
+(Invariante), und der Rückfall stellt die **letzte** statt der ersten Nutzernachricht voran. Dieser
+Absatz beschreibt bis zur Umsetzung den Ist-Stand.
+
 ### 3. Vektorsuche je Teilfrage
 
 Stufenname: `VECTOR_SEARCH`. `VectorSearchStage` ruft für **jede** Suchanfrage aus Schritt 2 einen eigenen
