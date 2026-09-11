@@ -202,8 +202,12 @@ hält ihr Access-Token ausschließlich im Speicher — nichts im `localStorage` 
 Neuladen über das HttpOnly-Cookie wiederhergestellt: Beim Start versucht die Anwendung genau
 **einen** Erneuerungsaufruf, und das auch nur, wenn zuletzt eine lokale Sitzung bestand. Diesen
 Vermerk hält der nicht geheime Schlüssel `opaa.auth.lastSessionKind` im `localStorage`; er wird
-beim lokalen Login gesetzt und bei der Abmeldung wie bei jedem endgültigen `401` auf `/refresh`
-gelöscht. Das CSRF-Cookie taugt dafür nicht: Es steht nach jeder Antwort im Browser, also schon
+beim lokalen Login gesetzt und **nur dann** gelöscht, wenn die Sitzung tatsächlich endet — bei der
+Abmeldung einer lokalen Sitzung, bei einem `401` auf `/refresh` und bei einer Abweisung, die einen
+Marker oder `401`/`403` nennt. Ein `5xx` oder ein Netzfehler lässt ihn stehen: Der Dienst war
+vorübergehend nicht erreichbar, die Sitzung deswegen nicht vorbei, und ein zweiter Tab desselben
+Browsers verlöre sonst beim nächsten `401` seine Erneuerung. Das Ende einer Anbietersitzung rührt
+den Vermerk ebenfalls nicht an. Das CSRF-Cookie taugt dafür nicht: Es steht nach jeder Antwort im Browser, also schon
 nach dem ersten `GET /auth/config` einer abgemeldeten Person. Ohne den Vermerk gibt es keinen
 Netzaufruf, damit eine reguläre Anmeldung über einen Identitätsanbieter keine Fehlermeldung sieht,
 die sie nie ausgelöst hat. Die Sitzungsart hält allein der Anwendungszustand des Tabs.
@@ -211,7 +215,9 @@ die sie nie ausgelöst hat. Die Sitzungsart hält allein der Anwendungszustand d
 Erneuerung, Abmeldung und die Behandlung eines `401` verzweigen nach Sitzungsart. Alle
 Erneuerungen laufen durch **eine** geteilte Anfrage — innerhalb eines Tabs über eine laufende
 Zusage, über alle Tabs desselben Browsers hinweg über eine Web Lock (`navigator.locks`, Name
-`opaa.local.refresh`; fehlt die Schnittstelle, bleibt es bei der Serialisierung im Tab). Zwei Tabs,
+`opaa.local.refresh`; fehlt die Schnittstelle, bleibt es bei der Serialisierung im Tab; ein
+Zeitlimit von 15 Sekunden auf den Anmeldeaufrufen begrenzt, wie lange eine hängende Anfrage die
+Sperre halten kann). Zwei Tabs,
 die dasselbe rotierende Refresh-Token vorlegen, wären serverseitig eine Wiederverwendung und
 würden **alle** Sitzungen des Kontos beenden. `refresh` und `logout` tragen das
 Double-Submit-Token im Header `X-XSRF-TOKEN`; weist der Server es mit `CSRF_TOKEN_MISSING` ab, holt

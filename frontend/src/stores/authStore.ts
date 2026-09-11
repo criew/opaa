@@ -13,6 +13,7 @@ import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
 import {
   changePassword as changePasswordRequest,
   describeLocalSignInFailure,
+  endsSession,
   forgetLocalSession,
   getAuthConfig,
   getMe,
@@ -34,6 +35,7 @@ import {
   NO_PROVIDER_MESSAGE,
   PROVIDER_GONE_MESSAGE,
   SESSION_EXPIRED_MESSAGE,
+  SESSION_UNAVAILABLE_MESSAGE,
   UNKNOWN_ISSUER_MESSAGE,
   sessionEndMessage,
   signInFailedMessage,
@@ -270,8 +272,18 @@ export const useAuthStore = create<AuthState>((set, get) => {
     set({ ...session, user: me })
   }
 
-  /** Forgets the local session in this browser, without calling the backend. */
+  /** Forgets the local access token of this tab. The browser-wide note stays untouched. */
   function dropLocalTokens() {
+    localTokenExpiresAt = null
+  }
+
+  /**
+   * Ends the local session of this browser: the tab's token and the note that gates the start-up
+   * refresh. Only for a session that is actually over - a backend that was briefly unreachable
+   * must keep the note, or no later reload would even try to restore the session, and a second tab
+   * would lose its renewal at the next 401.
+   */
+  function endLocalSession() {
     localTokenExpiresAt = null
     forgetLocalSession()
   }
@@ -290,14 +302,20 @@ export const useAuthStore = create<AuthState>((set, get) => {
     } catch (err) {
       // The refresh worked, so a session existed; whatever refused the identity call names its
       // own cause (locked, expired, management switched off) and that is what the person reads.
-      dropLocalTokens()
+      // A 5xx or a network error is not such a cause: the session stays on record for the next try.
+      const over = endsSession(err)
+      if (over) endLocalSession()
+      else dropLocalTokens()
       set({
         token: null,
         user: null,
         isAuthenticated: false,
         sessionKind: null,
         isLoading: false,
-        error: sessionSetupFailureMessage(err, SESSION_EXPIRED_MESSAGE),
+        error: sessionSetupFailureMessage(
+          err,
+          over ? SESSION_EXPIRED_MESSAGE : SESSION_UNAVAILABLE_MESSAGE,
+        ),
       })
       return 'ended'
     }
@@ -482,8 +500,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
         return true
       } catch (err) {
         // The credentials were right - the identity call was not. Saying "check e-mail address and
-        // password" here would send the person after a mistake they did not make.
-        dropLocalTokens()
+        // password" here would send the person after a mistake they did not make, and a backend
+        // that was briefly unreachable must not cost another tab its session note either.
+        if (endsSession(err)) endLocalSession()
+        else dropLocalTokens()
         set({
           isSigningIn: false,
           isAuthenticated: false,
@@ -543,7 +563,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
       writeStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY, null)
       if (sessionKind === 'local') {
         const stillValid = localTokenExpiresAt !== null && Date.now() < localTokenExpiresAt
-        dropLocalTokens()
+        endLocalSession()
         try {
           // Revokes the refresh family and the presented access token at once (ADR-0033,
           // Entscheidung 7); a failure must not leave the tab signed in, so the local state is
@@ -575,6 +595,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
         }
       }
       clearDevUser()
+      // Deliberately only this tab's token: a provider sign-out says nothing about a local session
+      // another tab of the same browser may be holding.
       dropLocalTokens()
       set({
         token: null,
@@ -650,7 +672,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
       // Local-only: it clears the WebStorageStateStore entry in sessionStorage, not the IdP session
       // itself - a fresh signinRedirect() still won't force new credentials.
       dropLocalSession()
-      dropLocalTokens()
+      // Only a local session gives up the browser-wide note; a provider session ending here says
+      // nothing about a local session in another tab.
+      if (get().sessionKind === 'local') endLocalSession()
+      else dropLocalTokens()
       set({
         token: null,
         user: null,

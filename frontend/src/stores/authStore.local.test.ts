@@ -171,6 +171,37 @@ describe('authStore - local session', () => {
     expect(state.error).toMatch(/von der Systemverwaltung gesperrt/)
   })
 
+  // A backend that is momentarily out of reach says nothing about the session: dropping the note
+  // here would keep every later reload from even trying, and cost a second tab its renewal.
+  it('keeps the session note when the identity call fails with a server error', async () => {
+    withLocalConfig()
+    rememberLastLocalSession()
+    server.use(
+      http.post('/api/v1/auth/local/refresh', () => HttpResponse.json(TOKEN)),
+      http.get('/api/v1/auth/me', () => new HttpResponse(null, { status: 502 })),
+    )
+
+    await useAuthStore.getState().initialize()
+
+    const state = useAuthStore.getState()
+    expect(state.isAuthenticated).toBe(false)
+    expect(state.error).toMatch(/vorübergehend nicht erreichbar/)
+    expect(localStorage.getItem(LAST_SESSION_KIND_STORAGE_KEY)).toBe('local')
+  })
+
+  it('gives up the session note when the identity call is refused', async () => {
+    withLocalConfig()
+    rememberLastLocalSession()
+    server.use(
+      http.post('/api/v1/auth/local/refresh', () => HttpResponse.json(TOKEN)),
+      http.get('/api/v1/auth/me', () => new HttpResponse(null, { status: 401 })),
+    )
+
+    await useAuthStore.getState().initialize()
+
+    expect(localStorage.getItem(LAST_SESSION_KIND_STORAGE_KEY)).toBeNull()
+  })
+
   it('signs in with e-mail address and password', async () => {
     let body: unknown = null
     server.use(
@@ -229,6 +260,7 @@ describe('authStore - local session', () => {
   })
 
   it('does not blame the credentials when only the identity call fails', async () => {
+    rememberLastLocalSession()
     server.use(
       http.post('/api/v1/auth/local/login', () => HttpResponse.json(TOKEN)),
       http.get('/api/v1/auth/me', () => new HttpResponse(null, { status: 500 })),
@@ -239,6 +271,27 @@ describe('authStore - local session', () => {
     expect(ok).toBe(false)
     expect(useAuthStore.getState().error).toMatch(/Konto konnte nicht geladen werden/)
     expect(useAuthStore.getState().isAuthenticated).toBe(false)
+    // the server error says nothing about the session another tab may be holding
+    expect(localStorage.getItem(LAST_SESSION_KIND_STORAGE_KEY)).toBe('local')
+  })
+
+  // A provider session ending says nothing about a local session in another tab of this browser.
+  it('leaves the session note alone when a provider session ends', () => {
+    rememberLastLocalSession()
+    useAuthStore.setState({ mode: 'oidc', sessionKind: 'oidc', isAuthenticated: true, token: 't' })
+
+    useAuthStore.getState().expireSession('unknown_issuer')
+
+    expect(localStorage.getItem(LAST_SESSION_KIND_STORAGE_KEY)).toBe('local')
+  })
+
+  it('gives up the session note when the local session itself ends', () => {
+    rememberLastLocalSession()
+    useAuthStore.setState({ sessionKind: 'local', isAuthenticated: true, token: 't' })
+
+    useAuthStore.getState().expireSession('session_revoked:admin_lock')
+
+    expect(localStorage.getItem(LAST_SESSION_KIND_STORAGE_KEY)).toBeNull()
   })
 
   it('does not fetch the identity while a password change is owed', async () => {

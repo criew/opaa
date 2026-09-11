@@ -2,7 +2,7 @@ import axios from 'axios'
 import type { AuthConfig, AuthUser, FieldError, LocalTokenResponse } from '../types/auth'
 import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
 import { DEV_USER_HEADER, getDevUser } from './devAuth'
-import { CSRF_TOKEN_MISSING, UNKNOWN_ISSUER } from './apiInterceptors'
+import { CSRF_TOKEN_MISSING, sessionEndingReason, UNKNOWN_ISSUER } from './apiInterceptors'
 
 /**
  * Thrown by {@link getMe} when the backend refuses the token with {@code unknown_issuer}
@@ -17,8 +17,11 @@ export class UnknownIssuerError extends Error {
 }
 
 // A client of its own, without the renew interceptor of api.ts (which depends on the auth
-// store this client serves) - the one 401 it must understand is unknown_issuer.
-const authClient = axios.create({ baseURL: '/api' })
+// store this client serves) - the one 401 it must understand is unknown_issuer. The timeout is
+// what bounds the cross-tab refresh lock (see performLocalRefresh): a request that never settles
+// would otherwise keep every other tab of this browser waiting for its own renewal.
+const AUTH_REQUEST_TIMEOUT_MS = 15_000
+const authClient = axios.create({ baseURL: '/api', timeout: AUTH_REQUEST_TIMEOUT_MS })
 
 export async function getAuthConfig(): Promise<AuthConfig> {
   const { data } = await authClient.get<AuthConfig>('/v1/auth/config')
@@ -214,6 +217,18 @@ export function forgetLocalSession(): void {
   } catch {
     // see rememberLocalSession
   }
+}
+
+/**
+ * Whether a failure means the session is over rather than momentarily out of reach: a named
+ * session-ending marker, or a plain `401`/`403`. A `5xx` or a network error says nothing about the
+ * session - dropping the note there would keep every later reload from even trying to restore it.
+ */
+export function endsSession(err: unknown): boolean {
+  if (sessionEndingReason(err) !== null) return true
+  if (!axios.isAxiosError(err)) return false
+  const status = err.response?.status
+  return status === 401 || status === 403
 }
 
 export function hadLocalSession(): boolean {

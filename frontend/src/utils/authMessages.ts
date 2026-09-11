@@ -11,6 +11,9 @@ export const UNKNOWN_ISSUER_MESSAGE =
   'Der Identitätsanbieter Ihrer Anmeldung ist nicht mehr zugelassen. Bitte melden Sie sich erneut an.'
 export const SESSION_EXPIRED_MESSAGE =
   'Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.'
+/** The session may well be intact - the backend was momentarily out of reach, nothing more. */
+export const SESSION_UNAVAILABLE_MESSAGE =
+  'Ihre Sitzung konnte gerade nicht wiederhergestellt werden. Der Dienst ist vorübergehend nicht erreichbar — bitte laden Sie die Seite in einem Moment neu.'
 export const LOCAL_LOGOUT_MESSAGE =
   'Sie wurden nur in dieser Anwendung abgemeldet; die Sitzung beim Identitätsanbieter besteht möglicherweise weiter.'
 
