@@ -195,7 +195,44 @@ und Ablauf-Erinnerungen hängen sich dort ein (#1537). Aussteller, Anmelde-Endpu
 der Schalter (#1537) sind profilunabhängig, damit die Oberfläche (#1541) und die E2E-Suite im
 `dev`-Modus laufen — ein dort angelegtes lokales Konto kann sich mangels Aussteller nicht
 anmelden. Die Anmeldeseite
-(#1539) und die Systemverwalter-Anmeldung (#1534) folgen.
+(#1539) ist gebaut (siehe nächster Absatz); der Erstadministrator folgt mit #1534.
+
+**Anmeldeseite (gebaut, #1539).** Die Oberfläche kennt zwei Sitzungsarten. Die **lokale Sitzung**
+hält ihr Access-Token ausschließlich im Speicher — nichts im `localStorage` — und wird nach einem
+Neuladen über das HttpOnly-Cookie wiederhergestellt: Beim Start versucht die Anwendung genau
+**einen** Erneuerungsaufruf, und das auch nur, wenn das nicht-HttpOnly-Cookie `XSRF-TOKEN`
+vorhanden ist; ohne dieses Cookie gibt es keinen Netzaufruf, damit eine reguläre Anmeldung über
+einen Identitätsanbieter keine Fehlermeldung sieht, die sie nie ausgelöst hat. Die Sitzungsart
+merkt sich jeder Browser-Tab für sich (`sessionStorage`). Erneuerung, Abmeldung und die Behandlung
+eines `401` verzweigen nach Sitzungsart; alle Erneuerungen laufen durch **eine** geteilte Anfrage,
+weil die zweite Vorlage desselben Refresh-Tokens serverseitig als Wiederverwendung gilt und alle
+Sitzungen des Kontos beenden würde. `refresh` und `logout` tragen das Double-Submit-Token im Header
+`X-XSRF-TOKEN`; weist der Server es mit `CSRF_TOKEN_MISSING` ab, holt die Anwendung das Cookie
+einmal neu und wiederholt den Aufruf. Ein abgelaufenes Access-Token wird nie mitgeschickt.
+
+Nennt eine Abweisung im Header `WWW-Authenticate` einen der Gründe `local_accounts_disabled`,
+`account_locked` (mit Anlass), `account_expired`, `session_revoked` (mit Anlass),
+`account_not_active`, `unknown_account`, `malformed_token` oder `unknown_issuer`, unternimmt die
+Anwendung **keinen** Erneuerungsversuch: Sie beendet die Sitzung und nennt den Grund als deutschen
+Satz — je Marker und je Anlass ein eigener. Ein `403` mit dem Code `PASSWORD_CHANGE_REQUIRED` führt
+auf die Seite `/account/password`; bis das neue Passwort steht, ist keine andere Route erreichbar,
+und der Anlass (`INITIAL`, `ADMIN_RESET`, `SECURITY`) steht dort als Klartextsatz. Der erfolgreiche
+Wechsel übernimmt die Sitzung, die das Backend in derselben Antwort ausstellt — es folgt keine
+erneute Anmeldung.
+
+Die **Anmeldeseite** zeigt die Passwortmaske nur, solange die lokale Verwaltung eingeschaltet ist;
+Anbieterkacheln und Maske stehen als getrennte, benannte Bereiche untereinander („Mit
+Identitätsanbieter" zuerst, dann „Mit Konto dieser Installation"). Die Links „Passwort vergessen?"
+und „Konto registrieren" erscheinen nur, wenn `GET /api/v1/auth/config` den jeweiligen Fluss als
+verfügbar meldet. Jede abgewiesene Anmeldung liest sich gleich („Anmeldung nicht möglich. Prüfen Sie
+E-Mail-Adresse und Passwort."); eine Begrenzung nennt die Wartezeit aus `Retry-After`, ein nicht
+erreichbares Backend sagt genau das. Nach einer Abweisung springt der Fokus zurück ins erste Feld.
+Der Vertrauenshinweis ist kontextabhängig formuliert. Die **Systemverwalter-Anmeldung**
+(`/login/system`) ist immer erreichbar — der Weg zurück in eine Installation, deren letzter
+Anbieter falsch konfiguriert ist —, erscheint als stiller Fußlink der Anmeldeseite und leitet auf
+`/login` um, sobald die lokale Verwaltung eingeschaltet ist. Ein Rücksprungziel aus `?from=` oder
+dem Router-Zustand wird auf einen Pfad desselben Origins normalisiert, bevor es verwendet wird. Im
+`dev`-Betriebsmodus ändert sich nichts.
 
 **Erstadministrator und Notanker-Konto (gebaut, #1534).** Beim allerersten Start im
 `oidc`-Betriebsmodus legt `LocalAdminSeeder` — vor dem Webserver, gegen Wiederholung durch eine
