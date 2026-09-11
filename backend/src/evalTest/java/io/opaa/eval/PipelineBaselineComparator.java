@@ -189,6 +189,9 @@ public final class PipelineBaselineComparator {
     addIfDiffers(mismatches, "embeddingModel", fp.embeddingModel(), cfg.embeddingModel());
     addIfDiffers(
         mismatches, "embeddingModelDigest", fp.embeddingModelDigest(), cfg.embeddingModelDigest());
+    // Issue #1522: the same model digest served from a different Ollama - another container tag, or
+    // an external (possibly GPU-backed) endpoint - is not guaranteed to embed bit-identically.
+    addIfDiffers(mismatches, "ollamaImage", fp.ollamaImage(), cfg.ollamaImage());
     addIfDiffers(
         mismatches,
         "embeddingDimensions",

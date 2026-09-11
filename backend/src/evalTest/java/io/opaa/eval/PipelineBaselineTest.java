@@ -95,6 +95,36 @@ class PipelineBaselineTest {
         .hasMessageContaining("allExpectedDocumentsHitAt8");
   }
 
+  /**
+   * Issue #1522: a run against an external Ollama endpoint is meant for local iteration and is not
+   * reproducible in CI - drawing a baseline from it would turn every later comparison into a
+   * reported regression.
+   */
+  @Test
+  void rejectsAPipelineBaselineDrawnFromAnExternalOllamaEndpoint() throws IOException {
+    Path file = tempDir.resolve("pipeline-baseline.json");
+    Files.writeString(
+        file,
+        VALID_JSON.replace(
+            "\"ollamaImage\": \"ollama/ollama:0.6.5\"",
+            "\"ollamaImage\": \"extern: http://localhost:11434\""));
+
+    assertThatThrownBy(() -> PipelineBaseline.load(file))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("external Ollama endpoint")
+        .hasMessageContaining("opaa.eval.ollamaBaseUrl");
+  }
+
+  @Test
+  void rejectsAPipelineBaselineThatDoesNotNameTheOllamaItWasMeasuredWith() throws IOException {
+    Path file = tempDir.resolve("pipeline-baseline.json");
+    Files.writeString(file, VALID_JSON.replace("\"ollamaImage\": \"ollama/ollama:0.6.5\",", ""));
+
+    assertThatThrownBy(() -> PipelineBaseline.load(file))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("no fixedPoints.ollamaImage");
+  }
+
   private static final String VALID_JSON =
       """
       {
@@ -102,6 +132,7 @@ class PipelineBaselineTest {
         "fixedPoints": {
           "embeddingModel": "nomic-embed-text:v1.5",
           "embeddingModelDigest": "abc",
+          "ollamaImage": "ollama/ollama:0.6.5",
           "embeddingDimensions": 768,
           "chunkSize": 1000,
           "chunkSizeMatchesApplicationDefault": true,

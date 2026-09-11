@@ -14,6 +14,14 @@ final class EvalOllamaEndpoint {
 
   static final String BASE_URL_PROPERTY = "opaa.eval.ollamaBaseUrl";
 
+  /**
+   * Prefix of the {@code ollamaImage} value of a run that talked to an external endpoint. Defined
+   * once and read back by {@link BaselineOllamaOrigin}: the marker a report writes and the marker a
+   * baseline is refused for must be the same string, or the refusal stops firing the moment this
+   * wording changes.
+   */
+  static final String EXTERNAL_MARKER_PREFIX = "extern: ";
+
   private EvalOllamaEndpoint() {}
 
   /**
@@ -40,6 +48,11 @@ final class EvalOllamaEndpoint {
    * pinned image ran when no container was ever started (issue #1076 review).
    */
   static String describeImageOrEndpoint(String pinnedImage) {
-    return isExternal() ? "extern: " + externalBaseUrl() : pinnedImage;
+    return isExternal() ? EXTERNAL_MARKER_PREFIX + externalBaseUrl() : pinnedImage;
+  }
+
+  /** Whether a recorded {@code ollamaImage} names an external endpoint instead of a container. */
+  static boolean describesExternalEndpoint(String ollamaImage) {
+    return ollamaImage != null && ollamaImage.startsWith(EXTERNAL_MARKER_PREFIX);
   }
 }

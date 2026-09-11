@@ -46,11 +46,16 @@ public record Baseline(
    * <p>Since issue #1144, {@code ingestionPipelineFingerprint} is one of these fields too — see
    * {@link IngestionPipelineFingerprint}'s Javadoc for what it records and why {@code
    * corpusManifestSha256} alone does not already cover it.
+   *
+   * @param ollamaImage the pinned Ollama container image the vectors were produced with (issue
+   *     #1522). A checked fixed point, and refused at load time when it is missing or names an
+   *     external endpoint — see {@link BaselineOllamaOrigin}.
    */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record FixedPoints(
       String embeddingModel,
       String embeddingModelDigest,
+      String ollamaImage,
       int embeddingDimensions,
       int chunkSize,
       boolean chunkSizeMatchesApplicationDefault,
@@ -119,8 +124,16 @@ public record Baseline(
    * that group to the full {@code RELATIVE_CAP_FRACTION * baselineValue}, the loosest the formula
    * can produce, instead of failing loudly. Failing fast here at load time is cheaper than
    * debugging why a group's tolerance mysteriously loosened.
+   *
+   * <p>Issue #1522 adds the {@code ollamaImage} guard of {@link BaselineOllamaOrigin} for a
+   * different failure mode: a baseline that cannot show it was measured in the reproducible
+   * CPU/Testcontainer run.
    */
   private static void validate(Baseline baseline, Path file) {
+    BaselineOllamaOrigin.requirePinnedContainerImage(
+        baseline.fixedPoints() == null ? null : baseline.fixedPoints().ollamaImage(),
+        file,
+        "Baseline");
     baseline
         .groups()
         .forEach(

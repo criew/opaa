@@ -38,9 +38,14 @@ class PipelineBaselineComparatorTest {
   }
 
   private static PipelineBaseline.FixedPoints fixedPoints() {
+    return fixedPoints("ollama/ollama:0.6.5");
+  }
+
+  private static PipelineBaseline.FixedPoints fixedPoints(String ollamaImage) {
     return new PipelineBaseline.FixedPoints(
         "nomic-embed-text:v1.5",
         "digest",
+        ollamaImage,
         768,
         1000,
         true,
@@ -232,6 +237,32 @@ class PipelineBaselineComparatorTest {
     assertThat(result.fixedPointMismatches())
         .extracting(BaselineComparator.FixedPointMismatch::field)
         .containsExactly("mmrLambda");
+    assertThat(result.checks()).isEmpty();
+  }
+
+  /**
+   * Issue #1522: a baseline whose numbers came from another Ollama than the run's is incomparable,
+   * not regressed - the same model digest served by a different container tag, or by an external
+   * endpoint, is not guaranteed to embed bit-identically.
+   */
+  @Test
+  void aBaselineFromAnotherOllamaInvalidatesTheComparison() {
+    PipelineBaseline baseline =
+        new PipelineBaseline(
+            PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION,
+            fixedPoints("extern: http://localhost:11434"),
+            groups(0.5, 20),
+            "2026-08-31",
+            null,
+            "test");
+
+    PipelineBaselineComparator.ComparisonResult result =
+        PipelineBaselineComparator.compare(baseline, report(0.5, 20, matchingRunConfiguration()));
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly("ollamaImage");
     assertThat(result.checks()).isEmpty();
   }
 
