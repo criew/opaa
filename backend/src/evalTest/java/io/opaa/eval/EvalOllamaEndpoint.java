@@ -15,6 +15,15 @@ final class EvalOllamaEndpoint {
   static final String BASE_URL_PROPERTY = "opaa.eval.ollamaBaseUrl";
 
   /**
+   * The Ollama container image every harness of this source set runs, and the value every committed
+   * baseline's {@code ollamaImage} fixed point therefore carries. One constant rather than one per
+   * harness class: a pin that exists three times can be moved in two places and stay unnoticed in
+   * the third, and {@code PipelinePathIsolationTest} checks the committed baselines against exactly
+   * this value.
+   */
+  static final String PINNED_IMAGE = "ollama/ollama:0.6.5";
+
+  /**
    * Prefix of the {@code ollamaImage} value of a run that talked to an external endpoint. Defined
    * once and read back by {@link BaselineOllamaOrigin}: the marker a report writes and the marker a
    * baseline is refused for must be the same string, or the refusal stops firing the moment this
@@ -43,12 +52,12 @@ final class EvalOllamaEndpoint {
   }
 
   /**
-   * The value a report's "ollamaImage" field should carry: the pinned Testcontainer image when not
-   * external, or a marker naming the external endpoint otherwise — a report must never claim the
-   * pinned image ran when no container was ever started (issue #1076 review).
+   * The value a report's "ollamaImage" field should carry: {@link #PINNED_IMAGE} when not external,
+   * or a marker naming the external endpoint otherwise — a report must never claim the pinned image
+   * ran when no container was ever started (issue #1076 review).
    */
-  static String describeImageOrEndpoint(String pinnedImage) {
-    return isExternal() ? EXTERNAL_MARKER_PREFIX + externalBaseUrl() : pinnedImage;
+  static String describeImageOrEndpoint() {
+    return isExternal() ? EXTERNAL_MARKER_PREFIX + externalBaseUrl() : PINNED_IMAGE;
   }
 
   /** Whether a recorded {@code ollamaImage} names an external endpoint instead of a container. */

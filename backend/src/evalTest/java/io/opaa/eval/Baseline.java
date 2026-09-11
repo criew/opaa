@@ -48,8 +48,8 @@ public record Baseline(
    * corpusManifestSha256} alone does not already cover it.
    *
    * @param ollamaImage the pinned Ollama container image the vectors were produced with (issue
-   *     #1522). A checked fixed point, and refused at load time when it is missing or names an
-   *     external endpoint — see {@link BaselineOllamaOrigin}.
+   *     #1522). A checked fixed point; a value naming an external endpoint is refused at load time
+   *     — see {@link BaselineOllamaOrigin}.
    */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record FixedPoints(
@@ -126,11 +126,11 @@ public record Baseline(
    * debugging why a group's tolerance mysteriously loosened.
    *
    * <p>Issue #1522 adds the {@code ollamaImage} guard of {@link BaselineOllamaOrigin} for a
-   * different failure mode: a baseline that cannot show it was measured in the reproducible
-   * CPU/Testcontainer run.
+   * different failure mode: a file drawn from a run against an external Ollama endpoint, which may
+   * never serve as a comparison point.
    */
   private static void validate(Baseline baseline, Path file) {
-    BaselineOllamaOrigin.requirePinnedContainerImage(
+    BaselineOllamaOrigin.refuseExternalOrigin(
         baseline.fixedPoints() == null ? null : baseline.fixedPoints().ollamaImage(),
         file,
         "Baseline");

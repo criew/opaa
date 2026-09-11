@@ -189,6 +189,47 @@ class PipelinePathIsolationTest {
   }
 
   /**
+   * Issue #1522's watchdog, the same shape as the fingerprint one below: the pinned Ollama image is
+   * a Java constant, the committed baselines are JSON files, and nothing else connects the two. A
+   * deliberate image bump that forgets the baselines would otherwise surface only as a fixed-point
+   * mismatch 70 minutes into the nightly Docker job - reported as "Messgrundlage geändert" for
+   * every domain at once.
+   */
+  @Test
+  void committedBaselinesNameThePinnedOllamaImage() throws java.io.IOException {
+    for (EvalDomainConfig domain :
+        List.of(
+            EvalDomainConfig.COMIC_CHARACTERS,
+            EvalDomainConfig.CITY_LANDMARKS,
+            EvalDomainConfig.VERWALTUNG)) {
+      assertThat(
+              Baseline.load(
+                      RepoPaths.evalDir().resolve("baseline").resolve(domain.baselineFileName()))
+                  .fixedPoints()
+                  .ollamaImage())
+          .as(
+              "%s: the harness pin moved without this baseline's ollamaImage (and, per ADR-0012 "
+                  + "Nachtrag Ollama-Herkunft, its measurementContractVersion) being updated to "
+                  + "match - a baseline may only name the Ollama it was actually measured with",
+              domain.baselineFileName())
+          .isEqualTo(EvalOllamaEndpoint.PINNED_IMAGE);
+
+      assertThat(
+              PipelineBaseline.load(
+                      RepoPaths.evalDir()
+                          .resolve("baseline")
+                          .resolve(domain.pipelineBaselineFileName()))
+                  .fixedPoints()
+                  .ollamaImage())
+          .as(
+              "%s: the harness pin moved without this baseline's ollamaImage (and its "
+                  + "pipelineMeasurementContractVersion) being updated to match",
+              domain.pipelineBaselineFileName())
+          .isEqualTo(EvalOllamaEndpoint.PINNED_IMAGE);
+    }
+  }
+
+  /**
    * Issue #1144's own cheap watchdog, the counterpart of the two tests above for the new, far more
    * volatile fixed point: every registered pipeline's {@code version()} moves independently, so a
    * version bump on any one of them (not only {@code MarkdownDocumentFormat}, the only pipeline

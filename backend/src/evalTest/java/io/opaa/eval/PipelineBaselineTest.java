@@ -96,9 +96,9 @@ class PipelineBaselineTest {
   }
 
   /**
-   * Issue #1522: a run against an external Ollama endpoint is meant for local iteration and is not
-   * reproducible in CI - drawing a baseline from it would turn every later comparison into a
-   * reported regression.
+   * Issue #1522: a file drawn from a run against an external Ollama endpoint may never become a
+   * comparison point - the only correct outcome is to re-measure, which a fixed-point mismatch
+   * ("measurement grounds changed") would not say.
    */
   @Test
   void rejectsAPipelineBaselineDrawnFromAnExternalOllamaEndpoint() throws IOException {
@@ -111,18 +111,21 @@ class PipelineBaselineTest {
 
     assertThatThrownBy(() -> PipelineBaseline.load(file))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("external Ollama endpoint")
+        .hasMessageContaining("externen Ollama-Endpunkt")
         .hasMessageContaining("opaa.eval.ollamaBaseUrl");
   }
 
+  /**
+   * A missing value is not refused at load time (unlike an external one): it reaches {@link
+   * PipelineBaselineComparator} as {@code null} and is reported there as an incomparable fixed
+   * point, so the regression job still writes its delta table.
+   */
   @Test
-  void rejectsAPipelineBaselineThatDoesNotNameTheOllamaItWasMeasuredWith() throws IOException {
+  void loadsAPipelineBaselineWithoutAnOllamaImageAndLeavesItToTheComparator() throws IOException {
     Path file = tempDir.resolve("pipeline-baseline.json");
     Files.writeString(file, VALID_JSON.replace("\"ollamaImage\": \"ollama/ollama:0.6.5\",", ""));
 
-    assertThatThrownBy(() -> PipelineBaseline.load(file))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("no fixedPoints.ollamaImage");
+    assertThat(PipelineBaseline.load(file).fixedPoints().ollamaImage()).isNull();
   }
 
   private static final String VALID_JSON =

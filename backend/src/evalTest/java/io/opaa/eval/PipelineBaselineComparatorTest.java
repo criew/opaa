@@ -243,27 +243,31 @@ class PipelineBaselineComparatorTest {
   /**
    * Issue #1522: a baseline whose numbers came from another Ollama than the run's is incomparable,
    * not regressed - the same model digest served by a different container tag, or by an external
-   * endpoint, is not guaranteed to embed bit-identically.
+   * endpoint, is not guaranteed to embed bit-identically. A file predating the field (value {@code
+   * null}) lands in the same place rather than being refused at load time, so the job still writes
+   * a delta table naming the field (the {@code metadataFilterEnabled} precedent).
    */
   @Test
-  void aBaselineFromAnotherOllamaInvalidatesTheComparison() {
-    PipelineBaseline baseline =
-        new PipelineBaseline(
-            PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION,
-            fixedPoints("extern: http://localhost:11434"),
-            groups(0.5, 20),
-            "2026-08-31",
-            null,
-            "test");
+  void aBaselineFromAnotherOrUnnamedOllamaInvalidatesTheComparison() {
+    for (String ollamaImage : new String[] {"extern: http://localhost:11434", null}) {
+      PipelineBaseline baseline =
+          new PipelineBaseline(
+              PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION,
+              fixedPoints(ollamaImage),
+              groups(0.5, 20),
+              "2026-08-31",
+              null,
+              "test");
 
-    PipelineBaselineComparator.ComparisonResult result =
-        PipelineBaselineComparator.compare(baseline, report(0.5, 20, matchingRunConfiguration()));
+      PipelineBaselineComparator.ComparisonResult result =
+          PipelineBaselineComparator.compare(baseline, report(0.5, 20, matchingRunConfiguration()));
 
-    assertThat(result.baselineValid()).isFalse();
-    assertThat(result.fixedPointMismatches())
-        .extracting(BaselineComparator.FixedPointMismatch::field)
-        .containsExactly("ollamaImage");
-    assertThat(result.checks()).isEmpty();
+      assertThat(result.baselineValid()).as("ollamaImage=%s", ollamaImage).isFalse();
+      assertThat(result.fixedPointMismatches())
+          .extracting(BaselineComparator.FixedPointMismatch::field)
+          .containsExactly("ollamaImage");
+      assertThat(result.checks()).isEmpty();
+    }
   }
 
   /**

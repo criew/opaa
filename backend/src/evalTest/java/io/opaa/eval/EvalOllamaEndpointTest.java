@@ -46,7 +46,7 @@ class EvalOllamaEndpointTest {
   void theExternalMarkerWrittenByARunIsTheOneTheBaselineGuardRecognizes() {
     System.setProperty(EvalOllamaEndpoint.BASE_URL_PROPERTY, "http://localhost:11434");
 
-    String recorded = EvalOllamaEndpoint.describeImageOrEndpoint("ollama/ollama:0.6.5");
+    String recorded = EvalOllamaEndpoint.describeImageOrEndpoint();
 
     assertThat(recorded).isEqualTo("extern: http://localhost:11434");
     assertThat(EvalOllamaEndpoint.describesExternalEndpoint(recorded)).isTrue();
@@ -54,7 +54,12 @@ class EvalOllamaEndpointTest {
 
   @Test
   void aPinnedContainerImageDoesNotDescribeAnExternalEndpoint() {
-    assertThat(EvalOllamaEndpoint.describesExternalEndpoint("ollama/ollama:0.6.5")).isFalse();
+    System.clearProperty(EvalOllamaEndpoint.BASE_URL_PROPERTY);
+
+    assertThat(EvalOllamaEndpoint.describeImageOrEndpoint())
+        .isEqualTo(EvalOllamaEndpoint.PINNED_IMAGE);
+    assertThat(EvalOllamaEndpoint.describesExternalEndpoint(EvalOllamaEndpoint.PINNED_IMAGE))
+        .isFalse();
     assertThat(EvalOllamaEndpoint.describesExternalEndpoint(null)).isFalse();
   }
 }

@@ -992,24 +992,38 @@ Messung, und der Modell-Digest allein beantwortet diese Frage nicht: Er beschrei
 nicht die Laufzeit, die sie auswertet.
 
 **Zusätzlich eine Ladeprüfung** (`BaselineOllamaOrigin`, aufgerufen aus allen drei `load`-Methoden).
-Sie weist zwei Dateien ab:
+Sie weist genau einen Fall ab: eine Datei, deren `ollamaImage` mit dem Marker `extern: ` beginnt.
 
-- eine ohne `ollamaImage` — sie kann über die Herkunft ihrer Vektoren nichts aussagen;
-- eine, deren Wert mit dem Marker `extern: ` beginnt — sie stammt aus einem Lauf gegen einen
-  externen Endpunkt und ist damit nie baseline-tauglich.
+Die Prüfung ist eine Aussage über die **Datei**, nicht über einen späteren Lauf. Ein *Report* aus
+einem externen Lauf kommt schon heute nicht in einen Vergleich — `requireBaselineComparable` bricht
+auf `externalOllamaEndpoint` ab, und alle vier Einstiegspunkte rufen es **vor** dem Laden der
+Baseline. Was diese Prüfung ergänzt, ist das andere Ende: Der Fehler, dass die *committete Baseline*
+selbst aus einem solchen Lauf stammt, ist ein Ziehfehler, und der einzige richtige Ausgang ist ein
+neuer Messlauf. Genau das sagt die Meldung. Der Fixpunktvergleich allein sagte stattdessen
+„Messgrundlage geändert" — richtig als Urteil über zwei Läufe, aber irreführend über eine Datei, die
+nie hätte entstehen dürfen.
 
-Der reine Vergleich hätte für den zweiten Fall nicht genügt. Er meldet zwar eine Abweichung, aber
-erst beim nächsten Lauf, in der Sprache „Messgrundlage geändert" — und liefe die Abweichung
-zufällig nicht auf (etwa weil ein späterer Lauf denselben externen Endpunkt nutzt), bliebe sie
-unbemerkt. Die Ablehnung beim Laden benennt den Grund an der Stelle, an der der Fehler entsteht:
-beim Ziehen der Baseline. Den Marker definiert `EvalOllamaEndpoint` einmal und liest ihn dort
-zurück; die Zeichenkette, die ein Lauf schreibt, und die, für die eine Baseline abgelehnt wird,
-können so nicht auseinanderlaufen.
+Den Marker definiert `EvalOllamaEndpoint` einmal und liest ihn dort zurück; die Zeichenkette, die
+ein Lauf schreibt, und die, für die eine Baseline abgelehnt wird, können so nicht auseinanderlaufen.
+
+**Ein fehlender Wert wird nicht abgewiesen**, sondern folgt dem Muster von `metadataFilterEnabled`:
+Er lädt als `null` und erscheint im Vergleich als unvergleichbarer Fixpunkt (`null` gegen das
+gepinnte Image). Das ist die mildere Behandlung mit Absicht — der Regressionsjob schreibt dann noch
+seine Delta-Tabelle und benennt das Feld darin, statt mit einer Ausnahme und ohne Bericht
+abzubrechen. Abgewiesen wird nur, was aktiv falsch ist, nicht was unvollständig ist.
 
 **Kein neuer Guard im Harness.** `PipelineHarnessSupport#requireMeasurableConfiguration` prüft, ob
 ein Lauf etwas anderes misst, als seine Feldnamen behaupten — ein Lauf gegen einen externen
 Endpunkt misst korrekt und darf stattfinden, er darf nur keine Baseline werden. Genau diese
 Unterscheidung liegt bei `requireBaselineComparable` und ab jetzt zusätzlich beim Laden.
+
+**Zwei Docker-freie Wächter** halten die Zusage, die ein Fixpunkt nur mit ihnen einlöst: Das Image
+ist eine Java-Konstante (`EvalOllamaEndpoint.PINNED_IMAGE`, seit diesem Nachtrag einmal statt dreimal
+im Quelltext), die Baselines sind JSON-Dateien, und nichts sonst verbindet beide.
+`PipelinePathIsolationTest` hält deshalb die sechs committeten Baselines gegen die Konstante, und
+sein Gegenstück auf dem Mehrrunden-Pfad prüft dasselbe für die dortige Baseline, sobald sie existiert.
+Ohne sie fiele ein bewusster Image-Wechsel ohne Baseline-Nachzug erst nach über einer Stunde im
+nächtlichen Docker-Lauf auf — und dann für alle Domänen gleichzeitig.
 
 ### 46. Alle drei Messverträge steigen: Rohvektor 9 → 10, Pipeline 12 → 13, Mehrrunden 1 → 2
 
@@ -1023,8 +1037,9 @@ Schritt.
 
 Die sechs committeten Baselines (drei Domänen × zwei Pfade) wurden **ohne** neuen
 `evaluateRetrieval`-Lauf nachgezogen. Eingetragen ist `ollama/ollama:0.6.5` — das Image, mit dem sie
-tatsächlich gemessen wurden: Es ist seit der ersten Fassung des Harness in allen drei Harness-Klassen
-gepinnt und hat sich nie bewegt, und die `notes` jeder der sechs Dateien weisen den zugehörigen Lauf
+tatsächlich gemessen wurden: Es ist seit der ersten Fassung des Harness gepinnt und hat sich nie
+bewegt (bis zu diesem Nachtrag als drei gleichlautende Literale, jetzt als eine Konstante), und die
+`notes` jeder der sechs Dateien weisen den zugehörigen Lauf
 als CPU-/Testcontainer-Lauf aus (`eval/baseline/verwaltung.json` nennt das Image dort sogar wörtlich).
 Kein bereits committeter Chunk, keine bereits committete Metrik ändert sich — nur die Beschreibung
 der Messbedingungen wird vollständiger.

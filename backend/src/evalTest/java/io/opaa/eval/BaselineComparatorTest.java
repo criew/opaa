@@ -426,6 +426,24 @@ class BaselineComparatorTest {
         .containsExactly("ollamaImage");
   }
 
+  /**
+   * Issue #1522: a baseline file predating the field loads as {@code null} and is reported here as
+   * incomparable, rather than being refused at load time - the regression job then still writes a
+   * delta table naming the field (the {@code metadataFilterEnabled} precedent).
+   */
+  @Test
+  void aBaselineWithoutAnOllamaImageIsReportedAsIncomparable() {
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", null, "corpus-a", "golden-a"));
+    EvaluationReport report = reportWith(runConfiguration("m1", "d1", "corpus-a", "golden-a"));
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly("ollamaImage");
+  }
+
   @Test
   void detectsEmbeddingModelDigestDrift() {
     Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));

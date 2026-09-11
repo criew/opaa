@@ -200,17 +200,19 @@ Baseline-Vergleich damit ab.
 - **Ein solcher Lauf ist nicht baseline-tauglich** — analog zum GPU-Opt-out oben: CPU- und
   GPU-Embedding-Kernel liefern nicht notwendigerweise bitgleiche Vektoren, und ein natives
   Host-Ollama ist ohnehin nicht dieselbe, reproduzierbare Umgebung wie der gepinnte
-  `ollama/ollama:0.6.5`-Testcontainer. `checkRetrievalBaseline`/`checkCityLandmarksRetrievalBaseline`
-  gegen einen solchen Lauf laufen zu lassen ist ohne Aussagekraft; beide Baseline-Vergleiche brechen
-  deshalb hart ab, wenn der Report von einem externen Endpunkt stammt — der Rohvektor-Pfad über
+  `ollama/ollama:0.6.5`-Testcontainer. Einen `check…RetrievalBaseline`-Lauf gegen einen solchen
+  Report zu stellen ist ohne Aussagekraft; **alle drei** Messpfade brechen deshalb hart ab, wenn der
+  Report von einem externen Endpunkt stammt — der Rohvektor-Pfad über
   `BaselineComparator.requireBaselineComparable`, der Pipeline-Pfad über
-  `PipelineBaselineComparator.requireBaselineComparable` (beide Pfade teilen sich denselben Lauf und
-  denselben Index, also gilt der Vorbehalt für beide).
+  `PipelineBaselineComparator.requireBaselineComparable`, der Mehrrunden-Pfad über
+  `ConversationBaselineComparator.requireBaselineComparable` (alle Pfade teilen sich denselben Lauf
+  und denselben Index, also gilt der Vorbehalt für alle). Jeder Einstiegspunkt ruft die Prüfung
+  **vor** dem Laden der Baseline.
 - **Auch eine daraus gezogene Baseline wird abgewiesen** (Issue #1522): Der Report trägt in
   `ollamaImage` den Wert `extern: <url>` statt des gepinnten Images, und `ollamaImage` ist seither
-  ein geprüfter Festpunkt jedes Baseline-Typs. Eine Baseline-Datei mit diesem Präfix — oder ohne das
-  Feld — scheitert beim Laden mit benannter Begründung, statt erst beim nächsten Lauf als
-  vermeintliche Regression aufzufallen (siehe `eval/baseline/README.md`, „Ollama-Herkunft").
+  ein geprüfter Festpunkt jedes Baseline-Typs. Eine Baseline-Datei mit diesem Präfix scheitert beim
+  Laden mit benannter Begründung — der Punkt, an dem der Fehler entsteht, ist das Ziehen, nicht der
+  nächste Vergleich (siehe `eval/baseline/README.md`, „Ollama-Herkunft").
 - Ohne die Property ist das Verhalten byte-identisch zum bisherigen Stand (Testcontainer, CPU) — CI
   setzt die Property nie, bleibt also unberührt.
 

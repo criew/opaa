@@ -2,6 +2,7 @@ package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -66,6 +67,30 @@ class ConversationPathIsolationTest {
   }
 
   /**
+   * The counterpart of {@link PipelinePathIsolationTest}'s two committed-baseline guards for this
+   * path: once a multi-turn baseline exists it must stay loadable, carry the current contract
+   * version and name the pinned Ollama. Skipped while the file is absent (issue #1485/#1521 draws
+   * it) - the assumption is what makes the guard self-arming: the first commit of that file turns
+   * this test on, so a forgotten fixed point cannot sit unnoticed on {@code main} until someone
+   * re-measures.
+   */
+  @Test
+  void aCommittedMultiTurnBaselineStaysLoadableAndNamesThePinnedOllama() throws IOException {
+    Path baselineFile =
+        RepoPaths.evalDir()
+            .resolve("baseline")
+            .resolve(EvalDomainConfig.VERWALTUNG.conversationBaselineFileName());
+    assumeTrue(Files.exists(baselineFile), "no multi-turn baseline committed yet");
+
+    ConversationBaseline baseline = ConversationBaseline.load(baselineFile);
+
+    assertThat(baseline.conversationMeasurementContractVersion())
+        .isEqualTo(ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION);
+    assertThat(baseline.fixedPoints().pipeline().ollamaImage())
+        .isEqualTo(EvalOllamaEndpoint.PINNED_IMAGE);
+  }
+
+  /**
    * A baseline drawn without decomposition (or without a chat model) describes a run that could not
    * resolve a single reference - it is refused at load time rather than silently compared against a
    * real run.
@@ -82,7 +107,8 @@ class ConversationPathIsolationTest {
 
   /**
    * Issue #1522: the multi-turn path shares the pipeline fixed points and with them the origin
-   * guard - a baseline drawn against an external, possibly GPU-backed endpoint is refused here too.
+   * guard - a file drawn against an external, possibly GPU-backed endpoint may never become a
+   * comparison point on this path either.
    */
   @Test
   void aBaselineFromAnExternalOllamaEndpointIsRefusedAtLoadTime(@TempDir Path tempDir)
@@ -96,7 +122,7 @@ class ConversationPathIsolationTest {
 
     assertThatThrownBy(() -> ConversationBaseline.load(file))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("external Ollama endpoint");
+        .hasMessageContaining("externen Ollama-Endpunkt");
   }
 
   private static final String DECOMPOSITION_OFF_BASELINE_JSON =

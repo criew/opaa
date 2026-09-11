@@ -57,8 +57,8 @@ public record PipelineBaseline(
    * corpusManifestSha256} alone does not already cover it.
    *
    * @param ollamaImage the pinned Ollama container image the vectors were produced with (issue
-   *     #1522). A checked fixed point, and refused at load time when it is missing or names an
-   *     external endpoint — see {@link BaselineOllamaOrigin}.
+   *     #1522). A checked fixed point; a value naming an external endpoint is refused at load time
+   *     — see {@link BaselineOllamaOrigin}.
    * @param chatModel {@code null} while the harness measures the {@code decomposition-off} variant
    *     — a value here would claim a model took part in the run that did not.
    * @param hitRateK the two metric windows the report's field names state literally; a change makes
@@ -111,10 +111,10 @@ public record PipelineBaseline(
   /**
    * The shared load-time guards of {@link PipelineGroupInvariants} - see there for the derivation
    * of each inequality and for why they live in one place rather than once per baseline type - plus
-   * the {@code ollamaImage} guard of {@link BaselineOllamaOrigin} (issue #1522).
+   * the external-origin guard of {@link BaselineOllamaOrigin} (issue #1522).
    */
   private static void validate(PipelineBaseline baseline, Path file) {
-    BaselineOllamaOrigin.requirePinnedContainerImage(
+    BaselineOllamaOrigin.refuseExternalOrigin(
         baseline.fixedPoints() == null ? null : baseline.fixedPoints().ollamaImage(),
         file,
         "Pipeline baseline");

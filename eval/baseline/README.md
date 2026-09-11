@@ -419,17 +419,23 @@ Testcontainer-Image, mit dem die Vektoren dieser Baseline entstanden sind (heute
 anderen Festpunkt. Der Modell-Digest allein deckt das nicht ab: Er beschreibt die Gewichte, nicht die
 Laufzeit, die sie auswertet.
 
-Zusätzlich wird eine Baseline-Datei **beim Laden abgewiesen**, wenn sie
+Zusätzlich wird eine Baseline-Datei **beim Laden abgewiesen**, wenn ihr Wert mit dem Präfix
+`extern: ` beginnt. Den schreibt ein Lauf mit `-Dopaa.eval.ollamaBaseUrl` (siehe `eval/README.md`,
+„Externer Ollama-Endpunkt"): Ein solcher Lauf ist für die lokale Iteration gedacht, embeddet
+womöglich auf der GPU und ist in der CI nicht reproduzierbar. Die Ablehnung sagt, was der
+Fixpunktvergleich nicht sagen könnte — nicht „Messgrundlage geändert", sondern „diese Datei hätte so
+nie entstehen dürfen, der Lauf ist zu wiederholen".
 
-- kein `ollamaImage` führt (sie könnte über die Herkunft ihrer Vektoren nichts aussagen) oder
-- einen Wert mit dem Präfix `extern: ` führt. Den schreibt ein Lauf mit
-  `-Dopaa.eval.ollamaBaseUrl` (siehe `eval/README.md`, „Externer Ollama-Endpunkt"): Ein solcher
-  Lauf ist für die lokale Iteration gedacht, embeddet womöglich auf der GPU und ist in der CI nicht
-  reproduzierbar. Aus ihm eine Baseline zu ziehen würde jeden späteren Vergleich als Regression
-  ausweisen.
+Ein **fehlendes** `ollamaImage` wird dagegen nicht abgewiesen: Es lädt als `null` und erscheint im
+Vergleich als unvergleichbarer Fixpunkt, genau wie ein fehlendes `metadataFilterEnabled`. So schreibt
+der Regressionsjob noch seine Delta-Tabelle und benennt das Feld darin, statt ohne Bericht
+abzubrechen.
 
-Wer eine Baseline zieht, übernimmt den Wert also unverändert aus dem `runConfiguration`-Block des
-Reports — steht dort `extern: …`, ist der Lauf zu wiederholen, nicht der Wert zu korrigieren.
+Wer eine Baseline zieht, übernimmt den Wert unverändert aus dem `runConfiguration`-Block des
+Reports — steht dort `extern: …`, ist der Lauf zu wiederholen, nicht der Wert zu korrigieren. Dass
+die committeten Dateien das tatsächlich gepinnte Image nennen, prüfen zwei Docker-freie Wächter in
+`PipelinePathIsolationTest`/`ConversationPathIsolationTest` gegen `EvalOllamaEndpoint.PINNED_IMAGE`;
+ein Image-Wechsel ohne Baseline-Nachzug fällt damit im `check` auf statt erst im nächtlichen Lauf.
 Begründung: ADR-0012, Nachtrag Ollama-Herkunft.
 
 ## Besonderheiten der Pipeline-Baselines (Issue #1040)
