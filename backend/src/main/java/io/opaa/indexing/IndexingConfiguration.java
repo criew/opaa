@@ -392,8 +392,8 @@ public class IndexingConfiguration {
    * outside every run, used by {@code io.opaa.library.LibraryDocumentService}.
    */
   @Bean
-  S3OriginalAccess s3OriginalAccess(S3ClientFactory s3ClientFactory) {
-    return new S3OriginalAccess(s3ClientFactory);
+  S3OriginalAccess s3OriginalAccess(S3ClientFactory s3ClientFactory, S3Properties s3Properties) {
+    return new S3OriginalAccess(s3ClientFactory, s3Properties);
   }
 
   @Bean

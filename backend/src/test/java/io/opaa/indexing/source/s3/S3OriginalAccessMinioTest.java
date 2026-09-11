@@ -70,7 +70,8 @@ class S3OriginalAccessMinioTest {
   private S3OriginalAccess access(long maxObjectSizeBytes) {
     S3Properties properties =
         new S3Properties(0, maxObjectSizeBytes, null, null, null, 0, downloadDirectory, 0, 0);
-    return new S3OriginalAccess(new S3ClientFactory(properties, TargetAddressValidator.disabled()));
+    return new S3OriginalAccess(
+        new S3ClientFactory(properties, TargetAddressValidator.disabled()), properties);
   }
 
   private S3OriginalAccess access() {
@@ -149,11 +150,11 @@ class S3OriginalAccessMinioTest {
   void anEndpointTheTargetValidationRejectsIsRefusedBeforeAnyRequest() {
     // An allowlist narrowed after the library was created (or never opened for this host): the
     // endpoint is loopback, which an enabled validator always blocks.
+    S3Properties properties = new S3Properties(0, 0, null, null, null, 0, downloadDirectory, 0, 0);
     S3OriginalAccess blocking =
         new S3OriginalAccess(
-            new S3ClientFactory(
-                new S3Properties(0, 0, null, null, null, 0, downloadDirectory, 0, 0),
-                new TargetAddressValidator(true, List.of())));
+            new S3ClientFactory(properties, new TargetAddressValidator(true, List.of())),
+            properties);
     KnowledgeLibrary library = library(S3Scope.of(bucket, "2025/"));
 
     assertThatThrownBy(() -> blocking.download(library, "s3://" + bucket + "/2025/protokoll.pdf"))
@@ -161,14 +162,16 @@ class S3OriginalAccessMinioTest {
   }
 
   @Test
-  void aKeyWithoutTheReadRightIsAFailureOfItsOwn() {
+  void aKeyWithoutTheReadRightIsIndistinguishableFromAMissingObject() throws Exception {
+    // Without s3:ListBucket - a right a policy can lose after indexing - AWS answers a missing key
+    // with 403 rather than 404. Were that 403 a store failure, a deleted object would surface as
+    // "store unreachable"; io.opaa.library.S3UploadedOriginalStore resolves it the same way.
     S3Credentials listOnly =
         minio.createUser(
             MinioFixture.policyAllowing(bucket, "s3:ListBucket", "s3:GetBucketLocation"));
     KnowledgeLibrary library =
         library(minio.endpoint().toString(), listOnly, S3Scope.of(bucket, "2025/"));
 
-    assertThatThrownBy(() -> access().download(library, "s3://" + bucket + "/2025/protokoll.pdf"))
-        .isInstanceOf(S3AccessException.ReadForbidden.class);
+    assertThat(access().download(library, "s3://" + bucket + "/2025/protokoll.pdf")).isEmpty();
   }
 }

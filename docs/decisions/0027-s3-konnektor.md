@@ -301,8 +301,12 @@ wird nie mit ihr verglichen.
   > - **Keine eigene Rechtelogik.** Die Prüfung auf `VIEWER` der Bibliothek steht in `loadContent`
   >   vor jeder Verzweigung; dieser Pfad erbt sie und fügt keine zweite hinzu.
   > - **Nur innerhalb der Geltungsbereiche.** Ein Schlüssel, der in keinem konfigurierten Bereich
-  >   mehr liegt (Bereiche wurden nach der Indexierung enger gefasst), ist nicht abrufbar — dieselbe
-  >   Disziplin, die `FILESYSTEM` mit seiner Allowlist und seinem `sourcePath` anwendet.
+  >   mehr liegt (Bereiche wurden nach der Indexierung enger gefasst), ist nicht abrufbar. Geprüft
+  >   wird der **Bereich**, nicht die Ein-/Ausschlussmuster: Der Bereich sagt, mit welchem Bucket
+  >   und Präfix diese Bibliothek überhaupt sprechen darf — er bestimmt auch den Bucket-Hostnamen,
+  >   den die Zieladressprüfung freigeben muss —, das Muster sagt nur, was davon in den Index soll.
+  >   Ein Muster, das ein bereits aufgenommenes Objekt seither ausschließt, entfernt es mit dem
+  >   nächsten Vollabgleich; bis dahin bleibt sein Beleg abrufbar.
   > - **Zieladressprüfung bleibt.** Anders als bei der Originalablage (ADR-0030, Entscheidung 8) ist
   >   der Endpoint hier eine Benutzereingabe; der Client entsteht über `S3ClientFactory` mit deren
   >   Prüfung, nicht daran vorbei.
@@ -311,9 +315,16 @@ wird nie mit ihr verglichen.
   > - **Obergrenze** wie im Lauf: `max-object-size-bytes`, damit ein im Bucket ausgetauschtes,
   >   übergroßes Objekt das Temp-Verzeichnis nicht füllt.
   > - **Zwei Fehlerbilder wie bei der Originalablage (ADR-0030, Entscheidung 9):** Objekt weg,
-  >   archiviert oder zu groß → dasselbe `404` wie jeder andere „gibt es nicht"-Fall, ohne
-  >   Unterscheidbarkeit; Speicher nicht erreichbar oder Schlüssel abgelehnt → `503`, dessen Meldung
-  >   keine Einzelheit der Quellkonfiguration nennt.
+  >   archiviert, zu groß oder mit `403` beantwortet → dasselbe `404` wie jeder andere „gibt es
+  >   nicht"-Fall, ohne Unterscheidbarkeit; Speicher nicht erreichbar oder die Anfrage als ganze
+  >   abgelehnt → `503`, dessen Meldung keine Einzelheit der Quellkonfiguration nennt. Das `403`
+  >   gehört zum ersten Bild, weil ein Speicher ohne `s3:ListBucket` einen **fehlenden** Schlüssel
+  >   mit `403` statt `404` beantwortet — als Speicherstörung gelesen, würde ein gelöschtes Objekt
+  >   „derzeit nicht erreichbar" melden. Die Originalablage löst denselben Fall genauso auf.
+  > - **Die Antwort steht in der OpenAPI-Spezifikation.** `getDocumentContent` deklariert seither
+  >   `503` und sagt, für welche Quellentypen der Satz „jede Störung wird als dasselbe `404`
+  >   beantwortet" noch gilt: für die lokalen und die durchgereichten, nicht für die beiden über
+  >   einen Objektspeicher bedienten (dieser hier und die Originalablage nach ADR-0030).
   >
   > Unverändert bleibt: `Document#getDeepLinkSourceUrl` liefert für `S3` weiter `null` (`s3://`
   > öffnet kein Browser), die Dokumentliste zeigt Bucket und Schlüssel als Text, und **vorsignierte

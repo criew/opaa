@@ -560,26 +560,16 @@ public class LibraryDocumentService {
   }
 
   /**
-   * Streams an {@code S3} document's object out of its library's own object store (#1524): {@link
-   * Document#getFilePath()} holds {@code s3://bucket/key}, an identity no browser can open, so
-   * unlike Confluence this type has no deep link a citation could fall back on - the original is
-   * fetched here or nowhere. {@link S3OriginalAccess} applies the library's own stored
-   * quellkonfiguration (endpoint, credentials, proxy, relaxed TLS) the same way an indexing run
-   * does, with the target validation and the object size bound of the connector still in force.
-   *
-   * <p>No access decision of its own: {@link #loadContent} has already required {@code VIEWER} on
-   * this library, and every byte served here belongs to a document of it.
-   *
-   * <p>The object is downloaded into a temp file that the returned stream deletes when it is closed
-   * - the same contract {@link #loadAttachmentContent} already relies on, so an aborted transfer
-   * leaves nothing behind either.
+   * Streams an {@code S3} document's object out of its library's own object store (#1524) through
+   * {@link S3OriginalAccess} - no access decision of its own, {@link #loadContent} has already
+   * required {@code VIEWER}. The temp file the download lands in is deleted when the returned
+   * stream is closed, the contract {@link #loadAttachmentContent} already relies on.
    *
    * <p>Two failure pictures, as for an uploaded original in an object store (ADR-0030, Entscheidung
-   * 9): an object that is gone, archived or above the size bound answers the same German 404 as
-   * every other "no original available" case, indistinguishable from it; a store that cannot be
-   * reached or refuses the key is a {@code 503}, because it is a temporary condition a caller must
-   * not read as "this original does not exist". The store's own sentence goes to the log only - it
-   * names the configuration a VIEWER does not see.
+   * 9): an object this library resolves to nothing answers the same German 404 as every other "no
+   * original available" case, indistinguishable from it; a store that cannot be reached is a {@code
+   * 503}, a temporary condition a caller must not read as "this original does not exist". The
+   * store's own sentence stays in the log - it names configuration a VIEWER does not see.
    */
   private DocumentContent loadS3Content(Document document, KnowledgeLibrary library) {
     S3Download download;
@@ -735,7 +725,9 @@ public class LibraryDocumentService {
     boolean streaming = false;
     try {
       Path currentFile =
-          rootContent.isStreamed() ? bufferToTempFile(rootContent) : rootContent.path();
+          rootContent.isStreamed()
+              ? bufferToTempFile(rootContent, bufferBoundFor(root))
+              : rootContent.path();
       if (rootContent.isStreamed()) {
         tempFiles.add(currentFile);
       }
@@ -794,15 +786,28 @@ public class LibraryDocumentService {
   }
 
   /**
-   * Copies a streamed root original into a temp file so the pipeline can re-read it. A proxied
-   * remote body is already bounded by {@link RemoteContentProperties#maxBytes()} through its own
-   * stream; an {@code UPLOAD} original streamed from an object store (ADR-0030) is not, so the copy
-   * is capped at {@link UploadProperties#maxFileSize()} - the most an upload could ever have been -
-   * and an object swapped in the bucket for a larger one cannot fill the temp directory.
+   * The ceiling {@link #bufferToTempFile} applies to a streamed root: the bound the root's own
+   * origin already had to pass, so a root that was legitimately indexed can always be buffered
+   * again. Taking one storage's bound for another's content would make an attachment inside a large
+   * {@code S3} object unopenable as soon as an operator sets the two differently. {@code
+   * FILESYSTEM}/{@code CONFLUENCE} never reach here - neither ever yields a streamed original.
    */
-  private Path bufferToTempFile(DocumentContent content) throws IOException {
+  private long bufferBoundFor(Document root) {
+    return switch (root.getSourceType()) {
+      case S3 -> s3OriginalAccess.maxObjectSizeBytes();
+      case HTTP_DIRECTORY, RSS_FEED -> remoteContentProperties.maxBytes();
+      case UPLOAD, FILESYSTEM, CONFLUENCE -> uploadProperties.maxFileSize();
+    };
+  }
+
+  /**
+   * Copies a streamed root original into a temp file so the pipeline can re-read it, capped at
+   * {@code maxBytes} ({@link #bufferBoundFor}) - an original swapped at its source for a larger one
+   * cannot fill the temp directory.
+   */
+  private Path bufferToTempFile(DocumentContent content, long maxBytes) throws IOException {
     Path temp = Files.createTempFile("opaa-attachment-parent-", ".tmp");
-    try (InputStream in = BoundedStreams.input(content.stream(), uploadProperties.maxFileSize())) {
+    try (InputStream in = BoundedStreams.input(content.stream(), maxBytes)) {
       Files.copy(in, temp, StandardCopyOption.REPLACE_EXISTING);
     } catch (IOException | RuntimeException e) {
       deleteQuietly(temp);

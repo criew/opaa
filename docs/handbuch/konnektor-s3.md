@@ -228,22 +228,35 @@ TLS-Einstellung) und dieselbe Zieladressprüfung (Abschnitt 4.1) und Größenobe
 (`max-object-size-bytes`). Er ist aber **kürzer geduldig** als ein Lauf, weil ein Mensch darauf
 wartet: 5 Sekunden je Versuch und eine Wiederholung, wie beim Verbindungstest.
 
+Geprüft wird beim Abruf der **Geltungsbereich**, nicht die Ein-/Ausschlussmuster: Wurden die
+Bereiche nach der Indexierung enger gefasst, ist ein Objekt außerhalb sofort nicht mehr abrufbar;
+ein Muster, das ein aufgenommenes Objekt seither ausschließt, wirkt dagegen erst mit dem nächsten
+Vollabgleich, der es aus dem Bestand nimmt.
+
 Was der Leser sieht, wenn es nicht klappt:
 
-- **„Für dieses Dokument steht kein Originaldokument zur Verfügung"** — das Objekt ist inzwischen
-  gelöscht, liegt in einer Archivklasse, überschreitet die Größenobergrenze oder liegt in keinem
-  Geltungsbereich der Bibliothek mehr. Dieselbe Meldung wie bei jedem anderen Dokument ohne
-  Original; welcher der Fälle vorliegt, steht nur im Anwendungsprotokoll.
-- **„Der Objektspeicher dieser Bibliothek ist derzeit nicht erreichbar"** — der Speicher antwortet
-  nicht, drosselt, weist die Zugangsdaten ab oder verweigert das Leserecht. Die Einzelheit steht im
-  Anwendungsprotokoll und nie in der Meldung; Abschnitt 13 führt die Ursachen auf.
+- **„Das Originaldokument wurde nicht gefunden. Es wurde möglicherweise verschoben oder gelöscht."**
+  (Meldung der Oberfläche; die API antwortet `404` mit „Für dieses Dokument steht kein
+  Originaldokument zur Verfügung") — das Objekt ist inzwischen gelöscht, liegt in einer
+  Archivklasse, überschreitet die Größenobergrenze, liegt in keinem Geltungsbereich der Bibliothek
+  mehr, oder der Schlüssel darf es nicht lesen. Dieselbe Meldung wie bei jedem anderen Dokument
+  ohne Original; welcher der Fälle vorliegt, steht nur im Anwendungsprotokoll.
+- **„Der Objektspeicher dieser Bibliothek ist derzeit nicht erreichbar. Bitte später erneut
+  versuchen."** (Servertext, den die Oberfläche unverändert anzeigt; API-Status `503`) — der
+  Speicher antwortet nicht, drosselt, weist die Zugangsdaten ab oder ist für diese Installation
+  gesperrt. Die Einzelheit steht im Anwendungsprotokoll und nie in der Meldung; Abschnitt 13 führt
+  die Ursachen auf.
 
-**Für den Betrieb zwei Folgen:** Jeder Klick kostet einen `GetObject` gegen den Speicher — bei AWS
+**Für den Betrieb drei Folgen:** Jeder Klick kostet einen `GetObject` gegen den Speicher — bei AWS
 also Abrufentgelt (Abschnitt 16) —, und jede Leseberechtigung der Bibliothek kann jedes Objekt
-ihres Bestands wiederholt laden, unabhängig von den Rechten im Objektspeicher (Abschnitt 14). Die
-Zahl der Abrufe je Fenster ist wie für jedes andere Original durch die Ratenbegrenzung des
-Abruf-Endpunkts gedeckelt (`OPAA_RATE_LIMIT_DOCUMENT_CONTENT_*`, siehe
-[Deployment](deployment.md)); das Anfragebudget der Läufe gilt hier nicht.
+ihres Bestands wiederholt laden, unabhängig von den Rechten im Objektspeicher (Abschnitt 14). Und
+jeder Abruf schreibt das **vollständige** Objekt in dasselbe Verzeichnis, aus dem auch ein
+laufender Vollabgleich schreibt (`temp-directory`, Abschnitt 15), und baut dafür einen eigenen
+Client auf. Die Zahl gleichzeitiger Abrufe deckelt die Ratenbegrenzung des Abruf-Endpunkts
+(`OPAA_RATE_LIMIT_DOCUMENT_CONTENT_*`, siehe [Deployment](deployment.md)) — nicht das
+Anfragebudget der Läufe, das hier nicht gilt. Bei den Standardwerten kann das Verzeichnis dadurch
+im Extremfall mehrere Gigabyte gleichzeitig halten; wer wenig Platz hat, setzt `temp-directory` auf
+ein eigenes, ausreichend großes Dateisystem oder die Ratenbegrenzung herunter.
 
 ## 4. Schutzmechanismen
 
@@ -746,8 +759,8 @@ viele Läufe.
 | Ereignis: `429` | Ratenbegrenzung je Client-Adresse und Bibliothek | `OPAA_RATE_LIMIT_WEBHOOK_*` anheben; `X-Forwarded-For` am Proxy prüfen |
 | AWS: SNS-Subscription bleibt „pending confirmation" | OPAA führt den SNS-Handshake nicht aus | EventBridge-API-Destination (Abschnitt 8.5) verwenden |
 | Nach Schlüsselrotation läuft nichts mehr | alter Schlüssel in weiteren Bibliotheken; oder der Endpoint wurde mitgeändert und die Zugangsdaten deshalb verworfen | jede Bibliothek gegen diesen Speicher einzeln aktualisieren |
-| „Original öffnen": „Für dieses Dokument steht kein Originaldokument zur Verfügung" | Objekt inzwischen gelöscht, in einer Archivklasse, über der Größenobergrenze oder in keinem Geltungsbereich mehr (Abschnitt 3.1) | Anwendungsprotokoll nennt den Fall; ein vollständiger Lauf räumt ein verschwundenes Objekt aus dem Bestand |
-| „Original öffnen": „Der Objektspeicher dieser Bibliothek ist derzeit nicht erreichbar" | Speicher antwortet nicht, drosselt, lehnt die Zugangsdaten ab oder verweigert `s3:GetObject` | Verbindungstest an der Bibliothek ausführen — er nennt die Ursache; die Zeilen oben führen sie auf |
+| „Original öffnen": „Das Originaldokument wurde nicht gefunden. Es wurde möglicherweise verschoben oder gelöscht." (API: `404`, „Für dieses Dokument steht kein Originaldokument zur Verfügung") | Objekt inzwischen gelöscht, in einer Archivklasse, über der Größenobergrenze, in keinem Geltungsbereich mehr oder vom Schlüssel nicht lesbar (Abschnitt 3.1) | Anwendungsprotokoll nennt den Fall; ein vollständiger Lauf räumt ein verschwundenes Objekt aus dem Bestand |
+| „Original öffnen": „Der Objektspeicher dieser Bibliothek ist derzeit nicht erreichbar. Bitte später erneut versuchen." (API: `503`) | Speicher antwortet nicht, drosselt, lehnt die Zugangsdaten ab oder ist für diese Installation gesperrt | Verbindungstest an der Bibliothek ausführen — er nennt die Ursache; die Zeilen oben führen sie auf |
 
 Probe des Ereigniseingangs von Hand (S3-`Records`-Format, wie MinIO und Ceph es senden):
 

@@ -3143,15 +3143,29 @@ paths:
         validates the configured proxy host the same way, applies the library's own stored
         proxy/credentials to the outbound request without ever exposing them in the response, and
         streams the response directly to the caller (no temp file) bounded by its own, smaller size
-        limit and request timeout than a background indexing run uses. Answered with
+        limit and request timeout than a background indexing run uses. S3 documents are fetched
+        from the library's own object store on demand (#1524) - an s3://bucket/key identity opens
+        nowhere in a browser and, unlike a Confluence page, has no deep link to fall back on, so
+        this endpoint is the only way to such an original. The fetch uses the connector's own
+        access layer: the library's stored source configuration, the same target-address
+        validation and object size bound an indexing run applies, but a short, probe-sized timeout
+        instead of a run's patience; a key that no longer lies in one of the library's configured
+        scopes is not served. Answered with
         Content-Disposition: inline and the file's original name/content type (the document's own
         stored content type first, the proxied response's own declared type - normalized, no
         parameters - only as a fallback), so a client can render it inline instead of forcing a
         download. A document from another organization, without a
-        library grant, of an unsupported sourceType, whose local file has since been moved or deleted
-        on disk, or whose remote source is unreachable/rejected are all answered with the same 404 -
-        no response here reveals whether a given documentId exists, nor whether "not found" means
-        "no such document" or "source currently unreachable". There is no 403: VIEWER is the lowest
+        library grant, of an unsupported sourceType (CONFLUENCE, whose original is the page in the
+        instance itself), whose local file has since been moved or deleted on disk, whose remote
+        source is unreachable/rejected, or whose S3 object is gone, archived, above the size bound
+        or outside the library's scopes are all answered with the same 404 - no response here
+        reveals whether a given documentId exists, and for the local and proxied sourceTypes it
+        does not reveal whether "not found" means "no such document" or "source currently
+        unreachable" either. The two object-store-backed paths are the deliberate exception: an
+        UPLOAD original in an S3 upload storage (ADR-0030, Entscheidung 9) and an S3 document's own
+        object (ADR-0027) answer 503 when the store cannot be reached or refuses the application -
+        a temporary condition a caller must not read as "this original does not exist". Its message
+        names no detail of the stored configuration. There is no 403: VIEWER is the lowest
         AssetRole, so any grant at all already satisfies this floor - a caller either clears it or
         has no grant, which is the 404 case above. 429 is answered when this endpoint is under
         load: either by its own rate limit, or - for an attachment document, whose bytes are
@@ -3169,6 +3183,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/v1/libraries/{libraryId}/grants:
     parameters:

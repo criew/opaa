@@ -1828,6 +1828,7 @@ class LibraryDocumentServiceTest {
     S3Download download = s3Download("nachricht mit anlage", "message/rfc822");
     when(s3OriginalAccess.download(any(), eq("s3://protokolle/post/nachricht.eml")))
         .thenReturn(Optional.of(download));
+    when(s3OriginalAccess.maxObjectSizeBytes()).thenReturn(50L * 1024 * 1024);
     AtomicReference<String> parentBytes = new AtomicReference<>();
     Path extracted = Files.createTempFile("opaa-attachment-test-", ".txt");
     Files.writeString(extracted, "Anhang");
@@ -1849,5 +1850,43 @@ class LibraryDocumentServiceTest {
     content.stream().close();
     assertThat(extracted).doesNotExist();
     assertThat(download.file()).doesNotExist();
+  }
+
+  @Test
+  void loadContentBuffersAnS3RootAgainstTheObjectSizeBoundNotTheUploadLimit() throws Exception {
+    // The two bounds are configured independently (opaa.upload.max-file-size here 10 KiB,
+    // opaa.indexing.s3.max-object-size-bytes 1 MiB): an attachment inside an object the connector
+    // indexed legitimately must stay openable, so the buffered root is measured against the bound
+    // its own origin had to pass.
+    grantViewerOnUploadLibrary();
+    Document mail = s3Document("post/gross.eml", "message/rfc822");
+    Document attachment =
+        new Document(
+            "anlage.txt",
+            mail.getFilePath() + "/0/anlage.txt",
+            "text/plain",
+            6L,
+            DocumentSourceType.S3);
+    attachment.setLibraryId(libraryId);
+    attachment.setParentDocumentId(mail.getId());
+    when(documentRepository.findById(mail.getId())).thenReturn(Optional.of(mail));
+    when(documentRepository.findById(attachment.getId())).thenReturn(Optional.of(attachment));
+    String oversizedForUploads = "m".repeat((int) uploadProperties.maxFileSize() + 1);
+    when(s3OriginalAccess.download(any(), eq("s3://protokolle/post/gross.eml")))
+        .thenReturn(Optional.of(s3Download(oversizedForUploads, "message/rfc822")));
+    when(s3OriginalAccess.maxObjectSizeBytes()).thenReturn(1024L * 1024);
+    Path extracted = Files.createTempFile("opaa-attachment-test-", ".txt");
+    Files.writeString(extracted, "Anhang");
+    when(attachmentExtractor.extract(any(), eq("gross.eml"), eq(0)))
+        .thenReturn(new AttachmentExtractor.Extracted(extracted, "anlage.txt"));
+
+    DocumentContent content = service.loadContent(attachment.getId(), caller);
+
+    try {
+      assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
+          .isEqualTo("Anhang");
+    } finally {
+      content.stream().close();
+    }
   }
 }

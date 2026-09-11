@@ -24,9 +24,20 @@ public class S3OriginalAccess {
   private static final Logger log = LoggerFactory.getLogger(S3OriginalAccess.class);
 
   private final S3ClientFactory clientFactory;
+  private final S3Properties properties;
 
-  public S3OriginalAccess(S3ClientFactory clientFactory) {
+  public S3OriginalAccess(S3ClientFactory clientFactory, S3Properties properties) {
     this.clientFactory = clientFactory;
+    this.properties = properties;
+  }
+
+  /**
+   * The ceiling every download here is capped at ({@code opaa.indexing.s3.max-object-size-bytes}) -
+   * the bound a caller that re-reads the delivered stream must apply as well, so a legitimately
+   * indexed object does not become unreadable behind a smaller bound of another storage.
+   */
+  public long maxObjectSizeBytes() {
+    return properties.maxObjectSizeBytes();
   }
 
   /**
@@ -36,8 +47,13 @@ public class S3OriginalAccess {
    * (the scopes can be narrowed after indexing), and an object the store reports as gone, archived
    * or above the size bound.
    *
-   * @throws S3AccessException when the store cannot be reached or refuses the key - deliberately
-   *     not folded into the empty result, because that is not "there is no original"
+   * <p>A {@code 403} on the object is "not there" too, the same way {@code
+   * io.opaa.library.S3UploadedOriginalStore} resolves one: without {@code s3:ListBucket} - a right
+   * a policy can lose after indexing - AWS answers a missing key with {@code 403} instead of {@code
+   * 404}, so answering it as a store failure would turn a deleted object into "store unreachable".
+   *
+   * @throws S3AccessException when the store cannot be reached or refuses the request as a whole -
+   *     deliberately not folded into the empty result, because that is not "there is no original"
    */
   public Optional<S3Download> download(KnowledgeLibrary library, String filePath)
       throws S3AccessException, InterruptedException {
@@ -78,6 +94,7 @@ public class S3OriginalAccess {
     try (S3ObjectStore store = clientFactory.createForProbe(connection, List.of(scope.get()))) {
       return Optional.of(store.getObject(ref.bucket(), ref.key()));
     } catch (S3AccessException.ObjectNotFound
+        | S3AccessException.ReadForbidden
         | S3AccessException.Archived
         | S3AccessException.ObjectTooLarge e) {
       log.info("Object {} is not servable: {}", filePath, e.getMessage());
