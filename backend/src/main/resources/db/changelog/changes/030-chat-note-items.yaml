@@ -1,0 +1,62 @@
+databaseChangeLog:
+  - changeSet:
+      id: 030-chat-note-items
+      author: opaa
+      comment: >-
+        Gesprächsnotiz (#1487, docs/features/conversation-memory.md, "Bauteil 2"): the persistent
+        note points of a chat, one row per point, ordered by an application-assigned per-chat
+        position the way chat_messages is ordered by its sequence - created_at alone cannot order
+        two points condensed from the same turn. text is capped at 200 characters by the column
+        itself, not only by the extraction, so no code path can widen the Oberflächengröße the
+        specification fixes. Organization boundary rule (#390) after the chat_library_references
+        pattern: organization_id is never named by the application but derived from the row's own
+        chat_id by a BEFORE INSERT trigger, and the composite foreign key onto
+        chats(id, organization_id) then makes a cross-organization row unrepresentable. ON DELETE
+        CASCADE: the note has the chat's lifecycle and is deleted with it.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE public.chat_note_items (
+                  id uuid NOT NULL,
+                  chat_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  position integer NOT NULL,
+                  text character varying(200) NOT NULL,
+                  kind character varying(20) NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_chat_note_items_kind CHECK ((kind IN ('RAHMEN', 'ANTWORTFORM'))),
+                  CONSTRAINT chk_chat_note_items_position CHECK ((position >= 0))
+              );
+
+              ALTER TABLE ONLY public.chat_note_items
+                  ADD CONSTRAINT chat_note_items_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.chat_note_items
+                  ADD CONSTRAINT uk_chat_note_items_chat_position UNIQUE (chat_id, position);
+
+              CREATE INDEX idx_chat_note_items_chat_id ON public.chat_note_items USING btree (chat_id);
+
+              CREATE FUNCTION public.chat_note_items_set_organization() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', 'public', 'pg_temp'
+                  AS $$ BEGIN
+                SELECT organization_id INTO STRICT NEW.organization_id
+                FROM chats
+                WHERE id = NEW.chat_id;
+                RETURN NEW;
+              END; $$;
+
+              CREATE TRIGGER trg_chat_note_items_set_organization BEFORE INSERT ON public.chat_note_items FOR EACH ROW EXECUTE FUNCTION public.chat_note_items_set_organization();
+
+              ALTER TABLE ONLY public.chat_note_items
+                  ADD CONSTRAINT fk_chat_note_items_chat_organization FOREIGN KEY (chat_id, organization_id) REFERENCES public.chats(id, organization_id) ON DELETE CASCADE;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER IF EXISTS trg_chat_note_items_set_organization ON public.chat_note_items;
+
+              DROP TABLE IF EXISTS public.chat_note_items;
+
+              DROP FUNCTION IF EXISTS public.chat_note_items_set_organization();

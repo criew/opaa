@@ -110,6 +110,13 @@ opaa:
     initial-admin-email: ${OPAA_INITIAL_ADMIN_EMAIL:admin@opaa.local}
   http:
     force-http1: ${OPAA_HTTP_FORCE_HTTP1:false}
+  chat:
+    note:
+      # Points the Gespraechsnotiz of one chat keeps at most; appending beyond it drops the
+      # oldest point. Ebene-1 benchmark value, only judgeable with the multi-turn harness
+      # (docs/features/conversation-memory.md). Everything else about the note is a fixed
+      # value with no addressee to reconfigure it.
+      max-items: ${OPAA_CHAT_NOTE_MAX_ITEMS:10}
   query:
     top-k: ${OPAA_QUERY_TOP_K:8}
     fetch-k: ${OPAA_QUERY_FETCH_K:25}

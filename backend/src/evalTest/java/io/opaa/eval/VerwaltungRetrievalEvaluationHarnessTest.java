@@ -9,6 +9,8 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.chat.ChatNoteExtractionService;
+import io.opaa.chat.ChatNoteProperties;
 import io.opaa.eval.EvaluationReport.ChunkCountInvariantResult;
 import io.opaa.eval.EvaluationReport.DatasetNotes;
 import io.opaa.eval.EvaluationReport.RunConfiguration;
@@ -382,6 +384,10 @@ class VerwaltungRetrievalEvaluationHarnessTest {
   // #1484: the production conversation memory, which builds the window every turn of the
   // multi-turn measurement path receives - the harness never assembles one itself.
   @Autowired private ChatMemory chatMemory;
+  // #1487: the production Gesprächsnotiz condensation and its cap - the note of a measured
+  // conversation is produced by the same model call production uses, never scripted here.
+  @Autowired private ChatNoteExtractionService chatNoteExtractionService;
+  @Autowired private ChatNoteProperties chatNoteProperties;
 
   /**
    * This domain's default comparison file; {@code -Dopaa.eval.variantComparisonFile} overrides it
@@ -954,6 +960,8 @@ class VerwaltungRetrievalEvaluationHarnessTest {
           retrievalPipeline,
           retrievalContextFactory,
           chatMemory,
+          chatNoteExtractionService,
+          chatNoteProperties,
           indexingProperties,
           evalLibraryId,
           log);

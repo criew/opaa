@@ -1,5 +1,6 @@
 package io.opaa.query.retrieval.search;
 
+import io.opaa.query.ConversationNoteBlock;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.retrieval.RetrievalContext;
 import io.opaa.query.retrieval.RetrievalNote;
@@ -25,6 +26,9 @@ import org.springframework.stereotype.Component;
  * {@link #buildSearchQuery} builds. {@link QueryProperties#queryDecompositionEnabled} {@code =
  * false} skips the LLM round trip and takes that same fallback. Touches no candidates: at this
  * point in the run there are none.
+ *
+ * <p>The chat's Gesprächsnotiz reaches the model here too, as a rendered context block of the
+ * {@link DecompositionContext} - see {@link #decompositionContext}.
  *
  * <p><b>The search window is cut here, not before the run.</b> A {@link RetrievalContext} carries
  * the whole conversation window; this stage narrows it to {@link QueryProperties#searchWindowTurns}
@@ -59,8 +63,7 @@ public class SubQueryDecompositionStage implements RetrievalStage {
     List<String> subQueries =
         properties.queryDecompositionEnabled()
             ? queryDecompositionService.decompose(
-                DecompositionContext.of(context.question(), searchWindow),
-                properties.maxSubQueries())
+                decompositionContext(context, searchWindow), properties.maxSubQueries())
             : List.of();
     boolean decomposed = !subQueries.isEmpty();
     List<String> searchQueries =
@@ -81,6 +84,32 @@ public class SubQueryDecompositionStage implements RetrievalStage {
     return new StageOutcome(
         state.withSearchQueries(searchQueries),
         StageExplanation.executed(name(), 0, 0, List.of(), notes));
+  }
+
+  /**
+   * The decomposition's context: question and search window, plus the rendered Gesprächsnotiz block
+   * when the chat has {@code RAHMEN} points (#1487).
+   *
+   * <p><b>Through {@link DecompositionContext#withContextBlock}, never through the instruction
+   * argument of {@link DecompositionContext#systemText}.</b> Only the former puts the note's points
+   * into {@link DecompositionContext#contextTexts()} as well, and the safety belt of {@link
+   * QueryDecompositionService} anchors against exactly those texts. A note rendered into the
+   * instruction instead would reach the model while leaving {@code countUnrelated} blind to it -
+   * and because that belt is all or nothing, an enriched sub-query the note legitimizes
+   * ("Bezugsjahr 2024" -&gt; "Anwohnerparkausweis Gebühren 2024") would take the whole run into the
+   * fallback, precisely in the {@code constraint_carryover} cases the note exists for.
+   *
+   * <p>The block's heading stays out of the anchor space - {@link ConversationNoteBlock} hands the
+   * two halves over together, for the reason documented there.
+   */
+  private static DecompositionContext decompositionContext(
+      RetrievalContext context, List<Message> searchWindow) {
+    DecompositionContext decompositionContext =
+        DecompositionContext.of(context.question(), searchWindow);
+    ConversationNoteBlock noteBlock = ConversationNoteBlock.render(context.conversationNote());
+    return noteBlock == null
+        ? decompositionContext
+        : decompositionContext.withContextBlock(noteBlock.modelText(), noteBlock.anchorTexts());
   }
 
   /**

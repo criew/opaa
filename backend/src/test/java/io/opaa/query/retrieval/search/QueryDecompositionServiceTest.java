@@ -13,6 +13,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.observability.QueryMetrics;
+import io.opaa.query.ConversationNoteBlock;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -394,12 +395,72 @@ class QueryDecompositionServiceTest {
     List<String> subQueries =
         service.decompose(
             DecompositionContext.of("Was kostet der Ausweis?", List.of())
-                .withContextBlock("Bezugsjahr 2024"),
+                .withContextBlock("Notiz:\n- Bezugsjahr 2024", List.of("Bezugsjahr 2024")),
             3);
 
     assertThat(subQueries).containsExactly("Gebührenordnung Bezugsjahr 2024");
     assertThat(capturedSystemPrompt()).contains("Bezugsjahr 2024");
     verifyNoInteractions(metrics);
+  }
+
+  /**
+   * The acceptance case of #1487, with the <b>real</b> rendered Gesprächsnotiz block rather than a
+   * bare string: the note point "Bezugsjahr 2024" is the only anchor the sub-query
+   * "Anwohnerparkausweis Gebühren 2024" shares with anything the decomposition was given. Without
+   * the note in the anchor space the belt would judge it unrelated and - being all or nothing -
+   * take the whole run into the fallback, precisely in the {@code constraint_carryover} case.
+   */
+  @Test
+  void aSubQueryAnchoredOnlyInTheRenderedNoteSurvivesTheSafetyBelt() {
+    stubChatModelResponse("Anwohnerparkausweis Gebühren 2024");
+    ConversationNoteBlock noteBlock = ConversationNoteBlock.render(List.of("Bezugsjahr 2024"));
+
+    List<String> withNote =
+        service.decompose(
+            DecompositionContext.of("Wie hoch sind dafür die Kosten?", List.of())
+                .withContextBlock(noteBlock.modelText(), noteBlock.anchorTexts()),
+            3);
+
+    assertThat(withNote).containsExactly("Anwohnerparkausweis Gebühren 2024");
+    verifyNoInteractions(metrics);
+  }
+
+  /**
+   * Regression guard for #1487: the note block's heading must not anchor anything. "Person" stands
+   * in that heading and is contained in "Personalausweis"; were the heading anchored, a degenerate
+   * sub-query that replaced the question entirely would count as related to any chat that merely
+   * happens to carry a note, and the belt would stop firing.
+   */
+  @Test
+  void theNoteBlocksHeadingAnchorsNothing() {
+    stubChatModelResponse("Personalausweis beantragen");
+    ConversationNoteBlock noteBlock = ConversationNoteBlock.render(List.of("Bezugsjahr 2024"));
+
+    List<String> subQueries =
+        service.decompose(
+            DecompositionContext.of("Wie hoch sind dafür die Kosten?", List.of())
+                .withContextBlock(noteBlock.modelText(), noteBlock.anchorTexts()),
+            3);
+
+    assertThat(noteBlock.modelText())
+        .as("the guarded word really is in the heading the model sees")
+        .contains("Person");
+    assertThat(subQueries)
+        .as("a sub-query anchored only in OPAA's own heading is not a reformulation")
+        .isEmpty();
+    verify(metrics).recordDegenerateDecomposition();
+  }
+
+  /** The same sub-query without the note: unrelated, whole decomposition discarded. */
+  @Test
+  void withoutTheRenderedNoteTheSameSubQueryFallsBack() {
+    stubChatModelResponse("Anwohnerparkausweis Gebühren 2024");
+
+    List<String> subQueries =
+        service.decompose(DecompositionContext.of("Wie hoch sind dafür die Kosten?", List.of()), 3);
+
+    assertThat(subQueries).isEmpty();
+    verify(metrics).recordDegenerateDecomposition();
   }
 
   /** The same sub-query without the block: unrelated, whole decomposition discarded. */
@@ -424,7 +485,9 @@ class QueryDecompositionServiceTest {
    *
    * <p>Measured by running two entirely different contexts: once each prompt has its own {@link
    * DecompositionContext#contextTexts()} taken out, what remains must be identical. Anything the
-   * prompt derives from the context outside the anchor space differs here.
+   * prompt derives from the run outside the anchor space differs here. A block's own heading is
+   * deliberately not anchored (#1487) and survives the removal - it is the same fixed text in both
+   * runs and therefore cancels out, exactly as the instruction does.
    *
    * <p><b>Whoever adds an argument to {@code decompose} fills it differently in the two runs.</b>
    * The two runs are the whole mechanism: a new argument given the same value twice cancels out of
@@ -437,11 +500,15 @@ class QueryDecompositionServiceTest {
         DecompositionContext.of(
                 "Was kostet der Ausweis?",
                 List.of(new UserMessage("Vorrunde zum Anwohnerparkausweis")))
-            .withContextBlock("Bezugsjahr 2024");
+            .withContextBlock(
+                ConversationNoteBlock.render(List.of("Bezugsjahr 2024")).modelText(),
+                List.of("Bezugsjahr 2024"));
     DecompositionContext second =
         DecompositionContext.of(
                 "Welche Frist gilt?", List.of(new UserMessage("Vorrunde zum Widerspruch")))
-            .withContextBlock("Zuständig ist das Ordnungsamt");
+            .withContextBlock(
+                ConversationNoteBlock.render(List.of("Zuständig ist das Ordnungsamt")).modelText(),
+                List.of("Zuständig ist das Ordnungsamt"));
 
     service.decompose(first, 3);
     service.decompose(second, 3);

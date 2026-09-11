@@ -290,6 +290,7 @@ class ConversationPathIsolationTest {
         new ConversationEvaluationReport.CaseOutcomeSummary(0, 0, Map.of()),
         null,
         null,
+        null,
         List.of());
   }
 }
