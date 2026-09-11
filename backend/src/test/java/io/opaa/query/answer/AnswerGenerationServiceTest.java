@@ -65,10 +65,16 @@ class AnswerGenerationServiceTest {
         "conv-note",
         List.of("Bezugsjahr 2024", "Möchte knappe Antworten"));
 
-    assertThat(systemTextOf(capturedPrompt()))
+    String systemText = systemTextOf(capturedPrompt());
+    assertThat(systemText)
         .contains("Gesprächsnotiz")
         .contains("- Bezugsjahr 2024")
         .contains("- Möchte knappe Antworten");
+    // Ahead of the passages: under "Context documents:" the note would stand inside the
+    // section the "Only cite documents listed below" rule governs - and in a chat without a
+    // knowledge base it would be the only thing there.
+    assertThat(systemText.indexOf("Gesprächsnotiz"))
+        .isLessThan(systemText.indexOf("Context documents:"));
   }
 
   @Test
@@ -109,7 +115,7 @@ class AnswerGenerationServiceTest {
 
     ChatResponse result =
         answerGenerationService.generateAnswer(
-            "What is OPAA?", List.of(chunk1, chunk2), "conv-123");
+            "What is OPAA?", List.of(chunk1, chunk2), "conv-123", List.of());
 
     assertThat(result.getResult().getOutput().getText()).isEqualTo("Generated answer");
 
@@ -139,7 +145,7 @@ class AnswerGenerationServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
-    answerGenerationService.generateAnswer("Question?", List.of(chunk), "conv-citation");
+    answerGenerationService.generateAnswer("Question?", List.of(chunk), "conv-citation", List.of());
 
     ArgumentCaptor<Prompt> promptCaptor = ArgumentCaptor.forClass(Prompt.class);
     verify(chatModel).call(promptCaptor.capture());
@@ -157,7 +163,7 @@ class AnswerGenerationServiceTest {
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
     ChatResponse result =
-        answerGenerationService.generateAnswer("Question?", List.of(), "conv-456");
+        answerGenerationService.generateAnswer("Question?", List.of(), "conv-456", List.of());
 
     assertThat(result.getResult().getOutput().getText()).isEqualTo("No context available");
   }
@@ -174,8 +180,9 @@ class AnswerGenerationServiceTest {
 
     String conversationId = "conv-history-test";
 
-    answerGenerationService.generateAnswer("First question", List.of(), conversationId);
-    answerGenerationService.generateAnswer("Follow-up question", List.of(), conversationId);
+    answerGenerationService.generateAnswer("First question", List.of(), conversationId, List.of());
+    answerGenerationService.generateAnswer(
+        "Follow-up question", List.of(), conversationId, List.of());
 
     var messages = chatMemory.get(conversationId);
     assertThat(messages).hasSize(4);
@@ -195,8 +202,8 @@ class AnswerGenerationServiceTest {
     ArgumentCaptor<Prompt> captor = ArgumentCaptor.forClass(Prompt.class);
     when(chatModel.call(captor.capture())).thenReturn(chatResponse1, chatResponse2);
 
-    answerGenerationService.generateAnswer("First question", List.of(), "conv-order");
-    answerGenerationService.generateAnswer("Follow-up", List.of(), "conv-order");
+    answerGenerationService.generateAnswer("First question", List.of(), "conv-order", List.of());
+    answerGenerationService.generateAnswer("Follow-up", List.of(), "conv-order", List.of());
 
     Prompt secondPrompt = captor.getAllValues().get(1);
     var messages = secondPrompt.getInstructions();
@@ -216,7 +223,7 @@ class AnswerGenerationServiceTest {
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
     var chunk = new Document("Some RAG content", Map.of("file_name", "doc.md"));
-    answerGenerationService.generateAnswer("My question", List.of(chunk), "conv-rag");
+    answerGenerationService.generateAnswer("My question", List.of(chunk), "conv-rag", List.of());
 
     var messages = chatMemory.get("conv-rag");
     assertThat(messages.get(0).getText()).isEqualTo("My question");
@@ -238,7 +245,8 @@ class AnswerGenerationServiceTest {
             new ChatResponse(List.of(new Generation(new AssistantMessage(answerWithCitation)))));
 
     ChatResponse response =
-        answerGenerationService.generateAnswer("Frage?", List.of(), "conv-citation-memory");
+        answerGenerationService.generateAnswer(
+            "Frage?", List.of(), "conv-citation-memory", List.of());
 
     assertThat(response.getResult().getOutput().getText()).isEqualTo(answerWithCitation);
     assertThat(chatMemory.get("conv-citation-memory"))
@@ -261,8 +269,8 @@ class AnswerGenerationServiceTest {
             new ChatResponse(List.of(new Generation(new AssistantMessage("Zweite Antwort")))));
     ArgumentCaptor<Prompt> captor = ArgumentCaptor.forClass(Prompt.class);
 
-    answerGenerationService.generateAnswer("Erste Frage", List.of(), "conv-no-marker");
-    answerGenerationService.generateAnswer("Folgefrage", List.of(), "conv-no-marker");
+    answerGenerationService.generateAnswer("Erste Frage", List.of(), "conv-no-marker", List.of());
+    answerGenerationService.generateAnswer("Folgefrage", List.of(), "conv-no-marker", List.of());
 
     verify(chatModel, times(2)).call(captor.capture());
     assertThat(captor.getAllValues().get(1).getInstructions())
@@ -283,7 +291,7 @@ class AnswerGenerationServiceTest {
             new ChatResponse(
                 List.of(new Generation(new AssistantMessage("【source: doc-1#0 | a.md】")))));
 
-    answerGenerationService.generateAnswer("Frage?", List.of(), "conv-only-marker");
+    answerGenerationService.generateAnswer("Frage?", List.of(), "conv-only-marker", List.of());
 
     assertThat(chatMemory.get("conv-only-marker"))
         .extracting(Message::getText)

@@ -30,13 +30,13 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * never actually be reached in practice, making it a dead setting. {@code 0} makes the queue a
  * direct hand-off ({@link java.util.concurrent.SynchronousQueue} under the hood): a submission
  * either gets a free thread immediately, grows the pool up to {@code maxPoolSize}, or - only once
- * even that is exhausted - is rejected. {@link #loggingRejectedExecutionHandler()} makes that
+ * even that is exhausted - is rejected. {@link #rejectionHandler(String, Runnable)} makes that
  * rejection an observable warning instead of {@link ThreadPoolExecutor.DiscardPolicy}'s silent
- * drop; {@link ThreadPoolExecutor.CallerRunsPolicy} is deliberately not used here even though it is
- * the more common choice, because the caller is the very request thread {@code @Async} exists to
- * keep this LLM call off (#557's "kein zweiter LLM-Roundtrip auf dem kritischen Pfad der Antwort")
- * - running it there on rejection would defeat that design goal exactly when the system is already
- * under load.
+ * drop, and - for the condensation - a counted one; {@link ThreadPoolExecutor.CallerRunsPolicy} is
+ * deliberately not used here even though it is the more common choice, because the caller is the
+ * very request thread {@code @Async} exists to keep this LLM call off (#557's "kein zweiter
+ * LLM-Roundtrip auf dem kritischen Pfad der Antwort") - running it there on rejection would defeat
+ * that design goal exactly when the system is already under load.
  */
 @Configuration
 @EnableConfigurationProperties(ChatNoteProperties.class)
@@ -51,7 +51,7 @@ public class ChatConfiguration {
     executor.setMaxPoolSize(4);
     executor.setQueueCapacity(0);
     executor.setThreadNamePrefix("chat-title-");
-    executor.setRejectedExecutionHandler(loggingRejectedExecutionHandler("chat title generation"));
+    executor.setRejectedExecutionHandler(rejectionHandler("chat title generation", () -> {}));
     executor.initialize();
     return executor;
   }
@@ -62,15 +62,22 @@ public class ChatConfiguration {
    * two jobs differ in shape but because they differ in frequency: the title runs once per chat,
    * the condensation once per <em>turn</em>, so a busy conversation would otherwise crowd out the
    * one-off job through the deliberately queue-free hand-off both use.
+   *
+   * <p>That same frequency makes a rejection here worth counting, not only logging: a burst of
+   * concurrent turns is exactly when this pool overflows, and a rejected task never reaches {@link
+   * ChatNoteExtractionService} at all - so without {@link
+   * ChatMetrics#recordRejectedNoteExtraction()} the {@code opaa.chat.note.extraction} counter would
+   * stay clean precisely under load.
    */
   @Bean
-  TaskExecutor chatNoteTaskExecutor() {
+  TaskExecutor chatNoteTaskExecutor(ChatMetrics chatMetrics) {
     ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
     executor.setCorePoolSize(2);
     executor.setMaxPoolSize(4);
     executor.setQueueCapacity(0);
     executor.setThreadNamePrefix("chat-note-");
-    executor.setRejectedExecutionHandler(loggingRejectedExecutionHandler("chat note condensation"));
+    executor.setRejectedExecutionHandler(
+        rejectionHandler("chat note condensation", chatMetrics::recordRejectedNoteExtraction));
     executor.initialize();
     return executor;
   }
@@ -80,14 +87,21 @@ public class ChatConfiguration {
     return new ChatMetrics(meterRegistry);
   }
 
-  private RejectedExecutionHandler loggingRejectedExecutionHandler(String job) {
-    return (task, executor) ->
-        log.warn(
-            "{} task rejected - pool exhausted (active={}, queue={}, maxPoolSize={}); the affected"
-                + " chat keeps the state it had",
-            job,
-            executor.getActiveCount(),
-            executor.getQueue().size(),
-            executor.getMaximumPoolSize());
+  /**
+   * Logs the rejection and runs {@code onRejected} - the hook that lets a pool whose rejections
+   * matter for a metric record them, while a pool whose rejections are a log line only passes a
+   * no-op.
+   */
+  private RejectedExecutionHandler rejectionHandler(String job, Runnable onRejected) {
+    return (task, executor) -> {
+      onRejected.run();
+      log.warn(
+          "{} task rejected - pool exhausted (active={}, queue={}, maxPoolSize={}); the affected"
+              + " chat keeps the state it had",
+          job,
+          executor.getActiveCount(),
+          executor.getQueue().size(),
+          executor.getMaximumPoolSize());
+    };
   }
 }

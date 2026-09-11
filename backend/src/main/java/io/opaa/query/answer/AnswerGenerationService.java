@@ -45,10 +45,16 @@ public class AnswerGenerationService {
       - Copy the values exactly from the [Source] header of each context chunk.
       - Example: 【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6#0 | readme.md】
       - Do NOT invent citations. Only cite documents listed below.
-      - Place citations at the end of the sentence or paragraph that uses the information.
+      - Place citations at the end of the sentence or paragraph that uses the information.\
+      """;
 
-      Context documents:
-      {context}""";
+  /**
+   * The heading the retrieved passages stand under, appended after the rules and after any
+   * Gesprächsnotiz block - a note appended at the end would stand under this heading and under its
+   * "Only cite documents listed below" rule, and in a chat without a knowledge base it would be the
+   * only thing there.
+   */
+  private static final String CONTEXT_SECTION = "\n\nContext documents:\n";
 
   private final ActiveChatModelResolver activeChatModelResolver;
   private final ChatMemory chatMemory;
@@ -59,29 +65,25 @@ public class AnswerGenerationService {
     this.chatMemory = chatMemory;
   }
 
-  public ChatResponse generateAnswer(
-      String question, List<Document> relevantChunks, String conversationId) {
-    return generateAnswer(question, relevantChunks, conversationId, List.of());
-  }
-
   /**
-   * The same answer with the chat's Gesprächsnotiz (#1487): <b>all</b> of its points, unlike the
-   * sub-question decomposition, which only sees the {@code RAHMEN} ones - a Darstellungswunsch is
-   * noise for the search and the whole point for the answer. Rendered as its own block before the
-   * conversation history, the fifth part of the call (docs/features/llm-integration.md, "Übergabe
-   * der Passagen"); without a point there is no block.
+   * Generates the answer, with the chat's Gesprächsnotiz (#1487): <b>all</b> of its points, unlike
+   * the sub-question decomposition, which only sees the {@code RAHMEN} ones - a Darstellungswunsch
+   * is noise for the search and the whole point for the answer. Rendered as its own block between
+   * the citation rules and the passages, the fifth part of the call
+   * (docs/features/llm-integration.md, "Übergabe der Passagen"); without a point there is no block.
+   * See {@link #CONTEXT_SECTION} for why it must not follow the passages.
    */
   public ChatResponse generateAnswer(
       String question,
       List<Document> relevantChunks,
       String conversationId,
       List<String> conversationNote) {
-    String context = formatChunks(relevantChunks);
-    String systemText = SYSTEM_PROMPT.replace("{context}", context);
-    String noteBlock = ConversationNoteBlock.render(conversationNote);
-    if (noteBlock != null) {
-      systemText = systemText + "\n\n" + noteBlock;
-    }
+    ConversationNoteBlock noteBlock = ConversationNoteBlock.render(conversationNote);
+    String systemText =
+        SYSTEM_PROMPT
+            + (noteBlock == null ? "" : "\n\n" + noteBlock.modelText())
+            + CONTEXT_SECTION
+            + formatChunks(relevantChunks);
 
     log.debug("Sending prompt to LLM with {} context chunks", relevantChunks.size());
 

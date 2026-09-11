@@ -57,6 +57,7 @@ class Migration030ChatNoteItemsTest extends AbstractMigrationTest {
     assertThat(constraintExists("chat_note_items_pkey")).isTrue();
     assertThat(constraintExists("uk_chat_note_items_chat_position")).isTrue();
     assertThat(constraintExists("chk_chat_note_items_kind")).isTrue();
+    assertThat(constraintExists("chk_chat_note_items_position")).isTrue();
     assertThat(constraintExists("fk_chat_note_items_chat_organization")).isTrue();
     assertThat(indexExists("idx_chat_note_items_chat_id")).isTrue();
   }
@@ -119,6 +120,18 @@ class Migration030ChatNoteItemsTest extends AbstractMigrationTest {
 
     assertThatThrownBy(() -> insertNoteItem(fixture.chatId(), 0, "Andere Angabe", "RAHMEN"))
         .hasMessageContaining("uk_chat_note_items_chat_position");
+  }
+
+  /** Positions are ordinals, never negative - the cap drops "the oldest", not "the least". */
+  @Test
+  void aNegativePositionIsRejected() throws Exception {
+    Fixture fixture = seedChat();
+    applyChangelog(CHANGELOG_PATH);
+
+    assertThatThrownBy(() -> insertNoteItem(fixture.chatId(), -1, "Bezugsjahr 2024", "RAHMEN"))
+        .hasMessageContaining("chk_chat_note_items_position");
+    assertThatCode(() -> insertNoteItem(fixture.chatId(), 0, "Bezugsjahr 2024", "RAHMEN"))
+        .doesNotThrowAnyException();
   }
 
   @Test

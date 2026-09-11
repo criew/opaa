@@ -19,6 +19,7 @@ public class ChatMetrics {
   private final Counter emptyNoteExtractionCounter;
   private final Counter failedNoteExtractionCounter;
   private final Counter discardedNoteExtractionCounter;
+  private final Counter rejectedNoteExtractionCounter;
 
   public ChatMetrics(MeterRegistry meterRegistry) {
     this.appliedNoteExtractionCounter =
@@ -41,6 +42,11 @@ public class ChatMetrics {
         Counter.builder(NOTE_EXTRACTION)
             .tag("reason", "discarded")
             .description("Condensation results discarded because the chat's space was archived")
+            .register(meterRegistry);
+    this.rejectedNoteExtractionCounter =
+        Counter.builder(NOTE_EXTRACTION)
+            .tag("reason", "rejected")
+            .description("Condensations never started - the condensation pool was exhausted")
             .register(meterRegistry);
   }
 
@@ -69,5 +75,15 @@ public class ChatMetrics {
   /** The space was archived between the answer and the write, so the result was thrown away. */
   public void recordDiscardedNoteExtraction() {
     discardedNoteExtractionCounter.increment();
+  }
+
+  /**
+   * The condensation pool refused the task, so it never ran at all. Counted here rather than only
+   * logged: the condensation runs once per <em>turn</em>, so a burst of concurrent turns is exactly
+   * when the pool overflows - and an uncounted rejection would make the "Fehlschläge nahe null"
+   * metric look best under load.
+   */
+  public void recordRejectedNoteExtraction() {
+    rejectedNoteExtractionCounter.increment();
   }
 }

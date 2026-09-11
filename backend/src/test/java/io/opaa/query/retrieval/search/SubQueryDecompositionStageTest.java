@@ -1,8 +1,6 @@
 package io.opaa.query.retrieval.search;
 
-import static org.assertj.core.api.Assertions.as;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.InstanceOfAssertFactories.STRING;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
@@ -152,11 +150,32 @@ class SubQueryDecompositionStageTest {
 
     DecompositionContext context = capturedContext();
     assertThat(context.contextBlocks())
-        .singleElement(as(STRING))
-        .contains("Bezugsjahr 2024")
-        .startsWith("Gesprächsnotiz");
+        .singleElement()
+        .satisfies(
+            block -> {
+              assertThat(block.modelText())
+                  .startsWith("Gesprächsnotiz")
+                  .contains("Bezugsjahr 2024");
+              assertThat(block.anchorTexts()).containsExactly("Bezugsjahr 2024");
+            });
+    assertThat(context.contextTexts()).contains("Bezugsjahr 2024");
     assertThat(context.contextTexts())
-        .anySatisfy(text -> assertThat(text).contains("Bezugsjahr 2024"));
+        .as("the block's heading is OPAA's own wording and anchors nothing")
+        .noneSatisfy(text -> assertThat(text).contains("Gesprächsnotiz"));
+  }
+
+  /**
+   * A note of nothing but ANTWORTFORM points reaches the stage as an empty {@code conversationNote}
+   * and must not produce an empty heading - the decomposition then runs exactly as it does for a
+   * chat without a note at all.
+   */
+  @Test
+  void aNoteWithoutAnyRahmenPointAddsNoContextBlock() {
+    when(decomposition.decompose(any(), anyInt())).thenReturn(List.of("Teilfrage"));
+
+    stage.apply(contextWith(List.of(), 2, List.of()), RetrievalState.initial());
+
+    assertThat(capturedContext().contextBlocks()).isEmpty();
   }
 
   /** Without a RAHMEN point there is no block - an empty heading would still be an instruction. */

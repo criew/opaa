@@ -97,7 +97,7 @@ Aufruf des Chat-Modells (Abschnitt 3).
 | Umfang je Chat | höchstens zehn Punkte (Abschnitt 10.3); beim Überlauf fällt der älteste Punkt weg |
 | Länge eines Punkts | höchstens 200 Zeichen, längere werden mit „…" gekürzt |
 | Wirkung | Die Suche (Stufe 3) sieht nur die Punkte mit Rahmenangaben, die Antwort (Abschnitt 6) alle. Diese Unterscheidung ist intern und wird nicht angezeigt |
-| Lebensdauer | die des Chats: mit ihm gelöscht, nur für seinen Autor sichtbar, nicht protokolliert und nicht auswertbar |
+| Lebensdauer | die des Chats: mit ihm gelöscht, nur für seinen Autor abrufbar, nicht protokolliert und nicht auswertbar. Eine Anzeige im Chat folgt |
 
 Zwei Punkte sind betrieblich wichtig:
 
@@ -240,13 +240,16 @@ Stufe auf die Frage selbst zurück, und zwar ganz: Eine Teilfrage wegzulassen ko
 Frage, die Frage selbst kostet nur Genauigkeit.
 
 Zusätzlich zum Suchfenster bekommt die Zerlegung die **Rahmen-Punkte der Gesprächsnotiz**
-(Abschnitt 2) als eigenen Block, mit der Regel, sie ausschließlich zur Auflösung rückverweisender
-oder unterbestimmter Wörter zu verwenden; eine bereits eigenständige Frage bleibt unverändert. Ohne
-solche Punkte entfällt der Block ganz. Ist die Zerlegung abgeschaltet, erreicht die Notiz die Suche
-gar nicht — der Rückfall baut die Suchanfrage ohne Modell.
+(Abschnitt 2) als eigenen Block, mit der Regel, sie ausschließlich zur Auflösung
+rückverweisender oder unterbestimmter Wörter zu verwenden; eine bereits eigenständige Frage
+bleibt unverändert. Ohne solche Punkte entfällt der Block ganz. Ist die Zerlegung
+abgeschaltet, erreicht die Notiz die Suche gar nicht — der Rückfall baut die Suchanfrage
+ohne Modell.
 
-„Der Kontext, den die Zerlegung bekommen hat" ist dabei wörtlich zu nehmen: **genau die Frage, das
-Suchfenster und die gerenderten Notizpunkte**, nicht mehr und nicht weniger. Das ist nötig, weil eine korrekt aufgelöste
+„Der Kontext, den die Zerlegung bekommen hat" ist dabei wörtlich zu nehmen: **genau die Frage,
+das Suchfenster und die Notizpunkte**, nicht mehr und nicht weniger. Die Überschrift des
+Notiz-Blocks zählt ausdrücklich nicht dazu: Sie ist Text von OPAA, kein Material der Person,
+und ein Ankerwort daraus würde den Sicherheitsgurt genau dort lockern, wo er greifen soll. Das ist nötig, weil eine korrekt aufgelöste
 Rückfrage mit der Frage oft kein Wort teilt — „Wie lange dauert das?" wird zu „Bearbeitungsdauer für
 den Anwohnerparkausweis", und das Ankerwort steht in der Vorrunde, nicht in der Frage — oder in der Notiz,
 etwa wenn der Punkt „Bezugsjahr 2024" die Teilfrage „Anwohnerparkausweis Gebühren 2024"
@@ -638,7 +641,7 @@ Darüber antwortet das Backend mit HTTP 429. Die Werte stehen unter `opaa.rate-l
 | `opaa.query.count` | Fragen, nach Erfolg und Fehler unterschieden |
 | `opaa.query.tokens` | verbrauchte Tokens des Chat-Modells |
 | `opaa.query.decomposition.fallback` | Rückfälle der Zerlegung, nach Ursache unterschieden |
-| `opaa.chat.note.extraction` | Verdichtungen der Gesprächsnotiz, nach Ausgang unterschieden: `applied`, `empty`, `failed` (Modell nicht erreichbar, Zeitüberschreitung, unparsebar) und `discarded` (Space zwischenzeitlich archiviert) |
+| `opaa.chat.note.extraction` | Verdichtungen der Gesprächsnotiz, nach Ausgang unterschieden: `applied`, `empty`, `failed` (Modell nicht erreichbar, Zeitüberschreitung, unparsebar), `discarded` (Space zwischenzeitlich archiviert) und `rejected` (Verdichtungs-Pool erschöpft, die Runde wurde gar nicht erst verdichtet) |
 
 Als Warnung gehen der Rückfall der Zerlegung und die fehlgeschlagene Verdichtung der
 Gesprächsnotiz ins Log, beide ohne Inhalt. Ungültige
@@ -672,7 +675,7 @@ die Notiz Chatinhalt ist und kein Suchparameter:
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
-| `opaa.chat.note.max-items` | 10 | Höchstzahl der Notizpunkte je Chat (1 bis 50); beim Anhängen darüber hinaus fällt der älteste Punkt weg |
+| `opaa.chat.note.max-items` | 10 | Höchstzahl der Notizpunkte je Chat (1 bis 50); beim Anhängen darüber hinaus fällt der älteste Punkt weg (`OPAA_CHAT_NOTE_MAX_ITEMS`) |
 
 Alles andere an der Notiz ist ein fester Wert ohne Adressaten: zwei Punkte je Runde, 200 Zeichen je
 Punkt, die Art eines Punkts, das verwendete Modell (das systemweit aktive Chat-Modell) und die

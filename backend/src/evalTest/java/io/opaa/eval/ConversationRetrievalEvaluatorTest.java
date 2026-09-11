@@ -412,6 +412,51 @@ class ConversationRetrievalEvaluatorTest {
     assertThat(pipeline.notes.get("verw-conv-001#2")).containsExactly("Bezugsjahr 2024");
   }
 
+  /**
+   * The harness reproduces production's defensive catch, not only its prompt: a failing
+   * condensation costs that turn its points and nothing else. Without it a single transient model
+   * error in one turn of one case would discard the whole multi-turn measurement - three runs of
+   * the dataset under the Mehrfachlauf-Regel.
+   */
+  @Test
+  void aFailingCondensationCostsItsTurnButNeverTheRun() {
+    ConversationCase threeTurns =
+        new ConversationCase(
+            "verw-conv-006",
+            "verwaltung",
+            "constraint_carryover",
+            List.of(
+                new ConversationCase.Turn("Frage 1?", "Antwort 1.", List.of(DOC_A), null),
+                new ConversationCase.Turn("Frage 2?", "Antwort 2.", List.of(DOC_B), null),
+                new ConversationCase.Turn("Frage 3?", "Antwort 3.", List.of(DOC_C), null)),
+            null,
+            GoldenCase.ExpectedState.KNOWN_GAP,
+            "2026-09-11",
+            "Grund",
+            null);
+    RecordingPipeline pipeline =
+        new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B), List.of(DOC_C)));
+
+    ConversationRetrievalEvaluator.CaseOutcome outcome =
+        ConversationRetrievalEvaluator.evaluateCase(
+            threeTurns,
+            chatMemory(20),
+            pipeline,
+            userMessage -> {
+              if ("Frage 2?".equals(userMessage)) {
+                throw new IllegalStateException("Modell nicht erreichbar");
+              }
+              return List.of(
+                  new ChatNoteCandidate("Angabe zu " + userMessage, ChatNoteItemKind.RAHMEN));
+            },
+            10);
+
+    assertThat(outcome.turns()).as("every turn of the case was still measured").hasSize(3);
+    assertThat(pipeline.notes.get("verw-conv-006#3"))
+        .as("the failed turn contributes nothing and is not caught up on")
+        .containsExactly("Angabe zu Frage 1?");
+  }
+
   /** Each case starts from an empty note, exactly as each starts from an empty window. */
   @Test
   void noCaseInheritsAnotherCasesNote() {

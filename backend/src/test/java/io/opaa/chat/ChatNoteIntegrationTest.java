@@ -223,6 +223,28 @@ class ChatNoteIntegrationTest {
     }
   }
 
+  /**
+   * The kind filter at its boundary: a note of nothing but Darstellungswünsche leaves the
+   * decomposition with no block at all, while the answer still gets its own.
+   */
+  @Test
+  void aNoteOfOnlyAntwortformPointsLeavesTheDecompositionWithoutABlock() {
+    UUID libraryId = insertReadableLibrary();
+    try {
+      seedNote("Möchte knappe Antworten", ChatNoteItemKind.ANTWORTFORM);
+      scriptModel("KEINE");
+
+      queryService.query("Was kostet der Ausweis?", chatId, asCaller(userId), true, List.of());
+
+      assertThat(promptFor(DECOMPOSITION_MARKER)).doesNotContain(NOTE_BLOCK_MARKER);
+      assertThat(promptFor(ANSWER_MARKER))
+          .contains(NOTE_BLOCK_MARKER)
+          .contains("Möchte knappe Antworten");
+    } finally {
+      dropLibrary(libraryId);
+    }
+  }
+
   @Test
   void withoutAnyPointNeitherPromptCarriesANoteBlock() {
     UUID libraryId = insertReadableLibrary();

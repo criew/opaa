@@ -177,8 +177,9 @@ public class QueryDecompositionService {
    * reformulation of what the user asked in the context it was asked in, so a sub-query without a
    * single word in common with any of that material is model output that replaced the question.
    *
-   * <p>The anchor space is {@link DecompositionContext#contextTexts()} - exactly the material the
-   * model was given, by construction rather than by enumeration here.
+   * <p>The anchor space is {@link DecompositionContext#contextTexts()} - the material the model was
+   * given, minus the boilerplate of any rendered block, by construction rather than by an
+   * enumeration here. See that method for why a block's own heading must stay out of it.
    *
    * <p>All or nothing: {@link #decompose} falls back as soon as this returns anything above zero,
    * because dropping one sub-query of a correct decomposition loses a whole topic. The check is

@@ -118,7 +118,8 @@ class ConversationMemoryProductionBindingTest {
 
     ChatResponse response =
         new AnswerGenerationService(resolver, chatMemory)
-            .generateAnswer("Was kostet ein Anwohnerparkausweis?", List.of(), conversationId);
+            .generateAnswer(
+                "Was kostet ein Anwohnerparkausweis?", List.of(), conversationId, List.of());
 
     assertThat(response.getResult().getOutput().getText())
         .as("the persisted answer keeps its markers - only the window's copy loses them")
@@ -151,7 +152,8 @@ class ConversationMemoryProductionBindingTest {
     when(resolver.resolveChatClient()).thenReturn(chatClient);
     String conversationId = "binding-test-" + UUID.randomUUID();
     new AnswerGenerationService(resolver, liveMemory)
-        .generateAnswer("Was kostet ein Anwohnerparkausweis?", List.of(), conversationId);
+        .generateAnswer(
+            "Was kostet ein Anwohnerparkausweis?", List.of(), conversationId, List.of());
 
     // What QueryService#seedConversationMemoryFromPersistedHistory rebuilds from the persisted
     // rows, which carry the markers: the same texts, or the same chat sends a different prompt

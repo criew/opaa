@@ -196,6 +196,13 @@ public final class ConversationRetrievalEvaluator {
   /**
    * Appends what the note accepts and drops as many oldest points as the cap requires - through
    * {@link ChatNoteList}, so the measured note cannot diverge from the persisted one.
+   *
+   * <p><b>A failing condensation costs this turn its points and nothing else</b>, the same
+   * defensive catch {@code ChatNoteExtractionService#condenseAsync} makes in production. A run of
+   * this path costs one condensation call per turn and is measured three times under the
+   * Mehrfachlauf-Regel; letting a single transient model error propagate would discard the whole
+   * multi-turn measurement, and would do so at the one seam this harness exists to reproduce
+   * faithfully.
    */
   private static void condenseInto(
       List<ChatNoteCandidate> note,
@@ -205,10 +212,14 @@ public final class ConversationRetrievalEvaluator {
     if (noteCap <= 0) {
       return;
     }
+    List<ChatNoteCandidate> condensed;
+    try {
+      condensed = noteExtraction.condense(userMessage);
+    } catch (RuntimeException e) {
+      return;
+    }
     List<ChatNoteCandidate> accepted =
-        ChatNoteList.accept(
-            note.stream().map(ChatNoteCandidate::text).toList(),
-            noteExtraction.condense(userMessage));
+        ChatNoteList.accept(note.stream().map(ChatNoteCandidate::text).toList(), condensed);
     if (accepted.isEmpty()) {
       return;
     }

@@ -91,22 +91,25 @@ public class SubQueryDecompositionStage implements RetrievalStage {
    * when the chat has {@code RAHMEN} points (#1487).
    *
    * <p><b>Through {@link DecompositionContext#withContextBlock}, never through the instruction
-   * argument of {@link DecompositionContext#systemText}.</b> Only the former puts the block into
-   * {@link DecompositionContext#contextTexts()} as well, and the safety belt of {@link
+   * argument of {@link DecompositionContext#systemText}.</b> Only the former puts the note's points
+   * into {@link DecompositionContext#contextTexts()} as well, and the safety belt of {@link
    * QueryDecompositionService} anchors against exactly those texts. A note rendered into the
    * instruction instead would reach the model while leaving {@code countUnrelated} blind to it -
    * and because that belt is all or nothing, an enriched sub-query the note legitimizes
    * ("Bezugsjahr 2024" -&gt; "Anwohnerparkausweis Gebühren 2024") would take the whole run into the
    * fallback, precisely in the {@code constraint_carryover} cases the note exists for.
+   *
+   * <p>The block's heading stays out of the anchor space - {@link ConversationNoteBlock} hands the
+   * two halves over together, for the reason documented there.
    */
   private static DecompositionContext decompositionContext(
       RetrievalContext context, List<Message> searchWindow) {
     DecompositionContext decompositionContext =
         DecompositionContext.of(context.question(), searchWindow);
-    String noteBlock = ConversationNoteBlock.render(context.conversationNote());
+    ConversationNoteBlock noteBlock = ConversationNoteBlock.render(context.conversationNote());
     return noteBlock == null
         ? decompositionContext
-        : decompositionContext.withContextBlock(noteBlock);
+        : decompositionContext.withContextBlock(noteBlock.modelText(), noteBlock.anchorTexts());
   }
 
   /**

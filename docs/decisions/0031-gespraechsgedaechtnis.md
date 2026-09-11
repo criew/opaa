@@ -48,7 +48,9 @@ Das Gedächtnis wird in zwei Bauteile getrennt (Spezifikation:
    Antwort, `ANTWORTFORM` (Darstellungswünsche) nur die Antwort. Die Notiz enthält keine
    Antwortinhalte, keine Themen der Fragen, keine Bewertungen. Sie ist im Chat sichtbar (Kopfzeile),
    punktweise löschbar, wird mit dem Chat gelöscht (und, sobald gebaut, exportiert und mit dem
-   Konto gelöscht), nicht protokolliert und nicht aggregiert.
+   Konto gelöscht), nicht protokolliert und nicht aggregiert. **In den Ankerraum des
+   Sicherheitsgurts gehen die Notiz*punkte* ein, nicht die Überschrift ihres Blocks** — die
+   Begründung steht unten in den Konsequenzen.
 3. **Sichtbarkeit ab drei abgeschlossenen Runden.** Die Schaltfläche erscheint, sobald die Notiz
    mindestens einen Punkt hat **und** drei Runden abgeschlossen sind; die Verdichtung läuft ab
    Runde 1. Die Abwägung dazu steht unten.
@@ -142,5 +144,19 @@ unten. Die Untergrenze ist ein fester Wert (Oberflächengröße), kein Parameter
   lockerer, nie strenger; `topic_switch` trägt es auch nicht, weil Themen nie in die Notiz kommen.
   Was bleibt, sind die Prompt-Regel der Zerlegung (Notiz nur zur Auflösung rückverweisender Wörter)
   und die Löschbarkeit durch die Person.
+- **Der Ankerraum wächst um die Notizpunkte, nicht um die Überschrift ihres Blocks** (#1487). Die
+  Lockerung, die der vorige Punkt in Kauf nimmt, gilt für Material der Person: Steht „Bezugsjahr
+  2024" im Ankerraum, kann eine damit angereicherte Teilfrage nicht mehr als unverwandt gelten —
+  genau der Zweck. Für die Überschrift des Blocks („Gesprächsnotiz — Angaben der fragenden Person
+  aus diesem Gespräch (kein Beleg, keine Quelle)") gilt sie **nicht**. Der Gurt vergleicht
+  Teilwörter ab vier Zeichen; stünde die Überschrift im Ankerraum, ankerte „Person" jede Teilfrage
+  mit „Personalausweis", „Beleg" jede mit „Belegschaft". Eine Teilfrage, die das Modell an die
+  Stelle der Frage gesetzt hat, gälte dann als verwandt, sobald die Notiz überhaupt einen Punkt hat
+  — der Gurt fiele aus, und zwar nur in Chats mit Notiz. Die Umsetzung reicht Modelltext und
+  Ankertext deshalb aus **einem** Rendervorgang getrennt weiter (`ConversationNoteBlock`): Ein
+  Baustein erreicht Modell und Ankerraum weiterhin in einem Schritt, aber der Ankerraum ist eine
+  Teilmenge des Modelltexts — eine Auslassung kann den Gurt nur strenger machen, nie lockerer.
+  **Wiederaufnahme, wenn** ein künftiger Kontextbaustein keine eigene Rahmung hat; dann fallen
+  beide Hälften ohnehin zusammen.
 - Eine fehlgeschlagene Verdichtung kostet die Angaben dieser einen Runde; die Person wiederholt sie
   bei Bedarf. Das ist der Preis dafür, keinen Nachholmechanismus mit eigenem Zustand zu bauen.
