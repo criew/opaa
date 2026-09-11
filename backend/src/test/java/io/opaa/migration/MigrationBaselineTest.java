@@ -82,34 +82,76 @@ class MigrationBaselineTest extends AbstractMigrationTest {
   // Baseline smoke tests
   // ---------------------------------------------------------------------------------------------
 
+  /**
+   * The complete table inventory the baseline builds, compared in both directions: a table missing
+   * from the baseline fails here, and so does one the baseline creates without this list naming it.
+   * The equivalence proof against the old changelog chain was a one-time exercise (#1492), so this
+   * list is the standing guard that replaces it - a future changeset adding or dropping a table
+   * extends or shortens it. {@code vector_store} is deliberately absent: Spring AI creates it at
+   * application startup, never Liquibase (see {@link VectorStoreExpressionIndexTest}).
+   */
   @Test
   void createsEveryTableAcrossAllSchemaGroups() throws SQLException {
-    // One representative table per baseline group (b-m) - not an exhaustive list, just enough to
-    // catch a whole group silently missing from the baseline.
-    List<String> representativeTables =
-        List.of(
+    assertThat(baseTableNames())
+        .containsExactlyInAnyOrder(
+            // (b) organizations, users, identity providers
             "organizations",
+            "users",
             "oidc_providers",
+            "oidc_provider_seed_marker",
+            // (c) spaces, groups, memberships
             "spaces",
             "groups",
+            "group_memberships",
+            "space_memberships",
+            "directory_sync_status",
+            // (d) libraries, folders, grants
             "knowledge_libraries",
+            "library_folders",
+            "asset_grants",
+            "space_asset_associations",
+            "knowledge_library_confluence_spaces",
+            // (e) documents
             "documents",
+            // (f) indexing runs and source state
             "indexing_jobs",
+            "indexing_run_events",
             "source_sync_state",
+            "rss_feed_state",
+            // (g) full-text index
             "chunk_full_text",
+            // (h) metadata schema
             "document_type_vocabulary",
+            "document_type_synonyms",
+            "document_type_suffixes",
+            "document_type_suffix_exclusions",
+            "document_metadata_values",
             "library_metadata_fields",
+            "library_metadata_field_values",
+            "document_keywords",
+            "metadata_model_extraction_stats",
+            "metadata_model_rejections",
+            // (i) chat and model catalogue
             "chats",
+            "chat_messages",
+            "chat_library_references",
             "llm_models",
+            "llm_model_seed_marker",
+            // (j) audit and permission history
             "audit_log",
+            "audit_actor_pseudonyms",
+            "audit_retention_settings",
+            "audit_incident_scope_grants",
             "asset_grant_history",
-            "diagnostic_context_log",
+            "group_membership_history",
+            "library_visibility_history",
+            // (k) diagnostics
             "diagnostic_impersonation_grants",
+            "diagnostic_context_log",
+            "diagnostic_context_retention_settings",
+            // (l) notifications and branding
             "notifications",
             "branding_settings");
-    for (String table : representativeTables) {
-      assertThat(tableExists(table)).as("table %s must exist", table).isTrue();
-    }
   }
 
   /**
@@ -1371,6 +1413,27 @@ class MigrationBaselineTest extends AbstractMigrationTest {
   // ---------------------------------------------------------------------------------------------
   // Shared JDBC helpers
   // ---------------------------------------------------------------------------------------------
+
+  /**
+   * Every ordinary and partitioned table in {@code public}, without the partitions themselves
+   * ({@code relispartition}) and without Liquibase's own two bookkeeping tables.
+   */
+  private List<String> baseTableNames() throws SQLException {
+    List<String> tables = new ArrayList<>();
+    try (Statement statement = connection.createStatement();
+        ResultSet rs =
+            statement.executeQuery(
+                "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace"
+                    + " WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')"
+                    + " AND NOT c.relispartition"
+                    + " AND c.relname NOT IN ('databasechangelog', 'databasechangeloglock')"
+                    + " ORDER BY c.relname")) {
+      while (rs.next()) {
+        tables.add(rs.getString(1));
+      }
+    }
+    return tables;
+  }
 
   private boolean tableExists(String tableName) throws SQLException {
     try (PreparedStatement statement =
