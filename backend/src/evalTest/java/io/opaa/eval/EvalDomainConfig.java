@@ -59,6 +59,28 @@ public record EvalDomainConfig(
   }
 
   /**
+   * This domain's multi-turn dataset under {@code eval/golden/} (issue #1484) - derived from {@link
+   * #goldenDatasetFileName()} for the same reason {@link #pipelineBaselineFileName()} is derived
+   * from the baseline name: the two datasets are measured separately against separate baselines,
+   * and a typo in a future domain declaration must not be able to point one at the other's file.
+   */
+  public String conversationDatasetFileName() {
+    return withSuffix(goldenDatasetFileName, "-conversations");
+  }
+
+  /** This domain's multi-turn baseline under {@code eval/baseline/} (issue #1484). */
+  public String conversationBaselineFileName() {
+    return withSuffix(pipelineBaselineFileName(), "-conversations");
+  }
+
+  private static String withSuffix(String fileName, String suffix) {
+    int dot = fileName.lastIndexOf('.');
+    return dot < 0
+        ? fileName + suffix
+        : fileName.substring(0, dot) + suffix + fileName.substring(dot);
+  }
+
+  /**
    * The frozen comic-characters domain (issues #225–#228): one chunk per document, unchanged from
    * before #721 in every observable way.
    */

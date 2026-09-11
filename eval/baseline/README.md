@@ -19,6 +19,7 @@ Baselines:
 | `pipeline-city-landmarks.json` | Pipeline | dieselben | `pipelineMeasurementContractVersion` |
 | `verwaltung.json` | Rohvektor | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | `measurementContractVersion` |
 | `pipeline-verwaltung.json` | Pipeline | Hit Rate@5, MRR@8, nDCG@8, Recall@8 | `pipelineMeasurementContractVersion` |
+| `pipeline-verwaltung-conversations.json` | Mehrrunden (Issue #1484) | Hit Rate@5, MRR@8, nDCG@8, Recall@8, **je Runde** | `conversationMeasurementContractVersion` |
 
 Die Pipeline-Baseline von `city-landmarks` ist seit Issue #1081 gezogen, aus dem CPU-Artefakt eines
 erfolgreichen, label-ausgelösten Regressionslaufs (Run 33437536393, Branch von PR #1084) statt aus
@@ -508,6 +509,33 @@ Dasselbe Verfahren wie unten, mit zwei Präzisierungen:
 - `hitCountAt5`/`hitCountAt8` stehen nicht in der Textausgabe; sie werden aus `allQueryResults` des
   Pipeline-Reports (`build/eval-reports/pipeline-metrics-<domäne>.json`) desselben Laufs gezählt
   (`hitRateAt5 > 0` bzw. `ndcgAt8 > 0`) — nicht aus den Mittelwerten zurückgerechnet.
+
+## Besonderheiten der Mehrrunden-Baseline (Issue #1484)
+
+`pipeline-verwaltung-conversations.json` ist die Baseline des dritten Messpfads
+(`docs/features/conversation-memory.md`, Abschnitt „Messung"). **Noch nicht gezogen:** Die Fälle
+entstehen in Issue #1485, und eine Baseline ohne Fälle beschriebe einen Lauf, den es nicht gab. Bis
+dahin existieren Typ (`ConversationBaseline`) und Vergleich (`ConversationBaselineComparator`), aber
+keine Datei und keine Regressionstestklasse — eine verdrahtete Prüfung ohne committete Baseline
+färbte den Job rot für eine Messung, die nie stattgefunden hat.
+
+Aufbau wie die Pipeline-Baseline, mit vier Unterschieden:
+
+- **Gruppen:** `overall`, `category:<klasse>` und `turn:<n>` — die Rundennummer ist eine eigene
+  Gruppe, weil genau dort sichtbar wird, was der Pfad misst: Eine Änderung, die den eigenständigen
+  ersten Runden hilft und den Folgerunden schadet, lässt den Gesamtwert flach.
+- **Festpunkte:** der komplette Satz der Pipeline-Baseline (unverändert und wörtlich geteilt, siehe
+  `PipelineBaselineComparator.addPipelineFixedPointMismatches`) plus `conversationWindowMessages`,
+  `searchWindowTurns`, `conversationNoteCap` und `turnCount`. Die drei Gedächtnismaße verschieben,
+  was die Zerlegung sieht; `turnCount` ist die zweite Hälfte der Datensatzgröße, weil eine
+  Kuratierungsrunde, die nur Fälle verlängert, `goldenCaseCount` unberührt ließe.
+- **Das Chat-Modell ist ein geprüfter Festpunkt, nicht nur ein gemeldeter.** `ConversationBaseline.load`
+  weist eine Datei zurück, deren Festpunkte `queryDecompositionEnabled: false` oder
+  `chatModel: null` tragen: Ohne Zerlegung wird kein einziger Bezug aufgelöst, und die committeten
+  Zahlen beschrieben nicht, was dieser Pfad misst.
+- **Fehlerkriterium und harte Untergrenzen:** unverändert die des Pipeline-Pfads (ADR-0013 bzw.
+  `PipelineBaselineComparator.HARD_FLOOR_ABSOLUTE_*`) — gemessen wird an denselben Fenstern mit
+  derselben angewandten Schwelle.
 
 ## Baseline aktualisieren
 

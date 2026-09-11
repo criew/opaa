@@ -160,14 +160,25 @@ public final class PipelineBaselineComparator {
   private static List<BaselineComparator.FixedPointMismatch> fixedPointMismatches(
       PipelineBaseline baseline, PipelineEvaluationReport report) {
     List<BaselineComparator.FixedPointMismatch> mismatches = new ArrayList<>();
-    var fp = baseline.fixedPoints();
-    var cfg = report.runConfiguration();
-
     addIfDiffers(
         mismatches,
         "pipelineMeasurementContractVersion",
         String.valueOf(baseline.pipelineMeasurementContractVersion()),
         String.valueOf(report.pipelineMeasurementContractVersion()));
+    addPipelineFixedPointMismatches(mismatches, baseline.fixedPoints(), report.runConfiguration());
+    return List.copyOf(mismatches);
+  }
+
+  /**
+   * The fixed points of a pipeline run, compared field by field. Package-private and taking the two
+   * blocks rather than the two documents (issue #1484): the multi-turn path pins the identical set
+   * inside its own baseline and would otherwise carry a second copy of these comparisons, which is
+   * exactly how one of the two grows a field the other silently stops checking.
+   */
+  static void addPipelineFixedPointMismatches(
+      List<BaselineComparator.FixedPointMismatch> mismatches,
+      PipelineBaseline.FixedPoints fp,
+      PipelineEvaluationReport.PipelineRunConfiguration cfg) {
     addIfDiffers(mismatches, "embeddingModel", fp.embeddingModel(), cfg.embeddingModel());
     addIfDiffers(
         mismatches, "embeddingModelDigest", fp.embeddingModelDigest(), cfg.embeddingModelDigest());
@@ -264,7 +275,6 @@ public final class PipelineBaselineComparator {
         "metadataFilterEnabled",
         String.valueOf(fp.metadataFilterEnabled()),
         String.valueOf(cfg.metadataFilterEnabled()));
-    return List.copyOf(mismatches);
   }
 
   private static void addIfDiffers(

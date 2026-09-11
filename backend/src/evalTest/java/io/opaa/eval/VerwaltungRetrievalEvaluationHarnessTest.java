@@ -57,6 +57,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.Filter;
@@ -379,6 +380,9 @@ class VerwaltungRetrievalEvaluationHarnessTest {
   // #1085: the production resolver of the systemwide active chat model - used to prove the
   // installed eval chat model actually answers before a decomposing run measures anything.
   @Autowired private ActiveChatModelResolver activeChatModelResolver;
+  // #1484: the production conversation memory, which builds the window every turn of the
+  // multi-turn measurement path receives - the harness never assembles one itself.
+  @Autowired private ChatMemory chatMemory;
 
   /**
    * This domain's default comparison file; {@code -Dopaa.eval.variantComparisonFile} overrides it
@@ -923,6 +927,36 @@ class VerwaltungRetrievalEvaluationHarnessTest {
           indexingProperties,
           evalLibraryId,
           goldenCases,
+          log);
+    }
+
+    // 8. Mehrrunden-Messpfad (#1484, docs/features/conversation-memory.md, "Messung"): an opt-in
+    //    step, off by default — every turn costs a decomposition call and the whole dataset is
+    //    measured three times. Guarded like steps 6 and 7; a run without decomposition or without
+    //    a chat model reports itself as not executed instead of measuring the fallback.
+    if (ConversationHarnessSupport.isRequested()) {
+      ConversationHarnessSupport.runAndWriteGuarded(
+          DOMAIN,
+          new PipelineHarnessSupport.RunIdentity(
+              "ollama",
+              EMBEDDING_MODEL,
+              actualEmbeddingModelDigest,
+              EvalOllamaEndpoint.describeImageOrEndpoint(OLLAMA_IMAGE),
+              EMBEDDING_DIMENSIONS,
+              actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
+              PGVECTOR_INDEX_TYPE,
+              CorpusManifest.sha256Hex(manifestFile),
+              manifest.fileNames().size(),
+              "eval/golden/" + DOMAIN.goldenDatasetFileName(),
+              GoldenDataset.sha256(goldenFile),
+              fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isComplete(),
+              ingestionPipelineFingerprint,
+              activeChatModel),
+          retrievalPipeline,
+          retrievalContextFactory,
+          chatMemory,
+          indexingProperties,
+          evalLibraryId,
           log);
     }
   }
