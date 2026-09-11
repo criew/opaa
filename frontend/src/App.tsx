@@ -10,6 +10,8 @@ import ChatPage from './pages/ChatPage'
 import ChatRedirect from './pages/ChatRedirect'
 import SettingsPage from './pages/SettingsPage'
 import LoginPage from './pages/LoginPage'
+import SystemLoginPage from './pages/SystemLoginPage'
+import ChangePasswordPage from './pages/ChangePasswordPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import SpacePage from './pages/SpacePage'
 import SpacesOverviewPage from './pages/SpacesOverviewPage'
@@ -85,6 +87,12 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            {/* ADR-0033, Entscheidung 4/5: reachable at all times - the way back into an
+                installation whose last identity provider is misconfigured. */}
+            <Route path="/login/system" element={<SystemLoginPage />} />
+            {/* Outside the application shell on purpose: while a password change is owed, every
+                route but /api/v1/auth/local/* answers 403 (ADR-0033, Entscheidung 8). */}
+            <Route path="/account/password" element={<ChangePasswordPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route
               element={

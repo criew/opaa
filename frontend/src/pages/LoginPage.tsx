@@ -3,26 +3,24 @@ import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
+import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import { keyframes } from '@mui/material/styles'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import SwitchAccountOutlinedIcon from '@mui/icons-material/SwitchAccountOutlined'
-import { Navigate, useLocation } from 'react-router'
+import { Navigate, Link as RouterLink, useLocation } from 'react-router'
 import type { SignInProvider } from '../types/auth'
 import BrandMark from '../components/BrandMark'
 import ProviderMonogram from '../components/ProviderMonogram'
+import AuthLayout from '../components/auth/AuthLayout'
+import LocalSignInForm from '../components/auth/LocalSignInForm'
+import SectionEyebrow from '../components/auth/SectionEyebrow'
 import { LAST_PROVIDER_STORAGE_KEY, useAuthStore } from '../stores/authStore'
 import { usePageTitle } from '../hooks/usePageTitle'
-import { fontFamily, navyRoles, radius } from '../theme/tokens'
-
-// One staged entrance for the card (guidelines 4.5); the theme collapses it under
-// prefers-reduced-motion.
-const cardReveal = keyframes`
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: none; }
-`
+import { SYSTEM_LOGIN_ROUTE } from '../routes'
+import { redirectTargetOf } from '../utils/safeRedirectPath'
+import { fontFamily, radius } from '../theme/tokens'
 
 function lastUsedProviderId(): string | null {
   try {
@@ -143,6 +141,7 @@ export default function LoginPage() {
   const isSigningIn = useAuthStore((s) => s.isSigningIn)
   const loginOidc = useAuthStore((s) => s.loginOidc)
   const providers = useAuthStore((s) => s.providers)
+  const localAccounts = useAuthStore((s) => s.localAccounts)
   const suggestedProvider = useAuthStore((s) => s.suggestedProvider)
   // ADR-0025: the provider used last is proposed, else the default, else the first - it gets the
   // one primary button of this surface (guidelines 5.1); the others are secondary
@@ -150,128 +149,116 @@ export default function LoginPage() {
   const lastUsedId = lastUsedProviderId()
 
   if (isAuthenticated) {
-    const from =
-      typeof location.state === 'object' &&
-      location.state !== null &&
-      'from' in location.state &&
-      typeof location.state.from === 'string'
-        ? location.state.from
-        : '/chat'
-    return <Navigate to={from} replace />
+    return <Navigate to={redirectTargetOf(location.state, location.search)} replace />
   }
 
   const hasChoice = mode === 'oidc' && providers.length > 0
+  // ADR-0033, Entscheidung 4: the mask appears only while the management is switched on. Local
+  // system administrators keep their own page, which is reachable at all times.
+  const hasLocalForm = mode === 'oidc' && localAccounts.enabled
   const isBusy = isLoading || isSigningIn
 
   return (
-    <Box
-      sx={{
-        display: 'grid',
-        // minmax(0, 1fr): the track may shrink below the card's preferred width, so a narrow
-        // viewport narrows the card instead of scrolling sideways
-        gridTemplateColumns: 'minmax(0, 1fr)',
-        placeItems: 'center',
-        minHeight: '100vh',
-        p: { xs: 2, sm: 3 },
-        // The sign-in page is a brand surface like the sidebar: navy ground in both schemes
-        // (mockup 1f) - the card itself follows the active scheme.
-        bgcolor: navyRoles.bg1,
-      }}
-    >
-      <Box
-        sx={{
-          width: '100%',
-          maxWidth: 440,
-          bgcolor: 'background.paper',
-          border: 2,
-          borderColor: 'primary.main',
-          borderRadius: `${radius.xl}px`,
-          px: { xs: 3, sm: 4.25 },
-          py: 4.5,
-          animation: `${cardReveal} 240ms ease-out both`,
-        }}
-      >
-        {/*
-          The sign-in page is the one screen that renders before there is a session, which is why
-          #582's read endpoint is reachable without authentication (#583) - otherwise the first
-          thing a user sees would be the only thing that could not carry their house's mark.
-        */}
-        <Box component="h1" sx={{ m: 0, mb: 3.5 }}>
-          <BrandMark orientation="vertical" variant="h5" logoHeight={40} showClaim />
-        </Box>
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 2.5, textAlign: 'left' }}>
-            <AlertTitle>Anmeldung fehlgeschlagen</AlertTitle>
-            {error}
-          </Alert>
-        )}
-
-        {hasChoice && (
-          <Box component="section" role="group" aria-labelledby="login-choice-title">
-            <Typography
-              id="login-choice-title"
-              component="h2"
-              sx={{
-                m: 0,
-                fontFamily: fontFamily.mono,
-                fontSize: 10,
-                fontWeight: 500,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: 'primary.main',
-              }}
-            >
-              Anmeldung
-            </Typography>
-            <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5, mb: 2 }}>
-              {providers.length > 1
-                ? 'Wählen Sie den Identitätsanbieter, bei dem Sie ein Konto haben.'
-                : 'Melden Sie sich mit dem Konto Ihrer Organisation an.'}
-            </Typography>
-            <Stack spacing={1}>
-              {providers.map((provider) => (
-                <ProviderChoice
-                  key={provider.id}
-                  provider={provider}
-                  isSuggested={provider.id === suggested?.id}
-                  showsLastUsed={providers.length > 1 && provider.id === lastUsedId}
-                  isSigningIn={isSigningIn}
-                  disabled={isBusy}
-                  onChoose={() => void loginOidc(provider.id)}
-                />
-              ))}
-            </Stack>
-            {suggested && (
-              <Button
-                variant="text"
-                size="small"
-                startIcon={<SwitchAccountOutlinedIcon />}
-                onClick={() => void loginOidc(suggested.id, { switchAccount: true })}
-                disabled={isBusy}
-                sx={{ display: 'flex', mx: 'auto', mt: 1.5 }}
-              >
-                {providers.length > 1
-                  ? `Mit anderem Konto bei ${suggested.displayName} anmelden`
-                  : 'Mit anderem Konto anmelden'}
-              </Button>
-            )}
-          </Box>
-        )}
-
-        <Divider sx={{ my: 3 }} />
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{ alignItems: 'flex-start', color: 'text.secondary' }}
-        >
-          <LockOutlinedIcon aria-hidden="true" sx={{ fontSize: 16, mt: '1px', flex: 'none' }} />
-          <Typography sx={{ fontSize: 12, lineHeight: 1.5 }}>
-            Die Anmeldung erfolgt beim Identitätsanbieter. OPAA erhält kein Kennwort und speichert
-            keines.
-          </Typography>
-        </Stack>
+    <AuthLayout>
+      {/*
+        The sign-in page is the one screen that renders before there is a session, which is why
+        #582's read endpoint is reachable without authentication (#583) - otherwise the first
+        thing a user sees would be the only thing that could not carry their house's mark.
+      */}
+      <Box component="h1" sx={{ m: 0, mb: 3.5 }}>
+        <BrandMark orientation="vertical" variant="h5" logoHeight={40} showClaim />
       </Box>
-    </Box>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2.5, textAlign: 'left' }}>
+          <AlertTitle>Anmeldung fehlgeschlagen</AlertTitle>
+          {error}
+        </Alert>
+      )}
+
+      {hasChoice && (
+        <Box component="section" role="group" aria-labelledby="login-choice-title">
+          <SectionEyebrow id="login-choice-title">
+            {hasLocalForm ? 'Mit Identitätsanbieter' : 'Anmeldung'}
+          </SectionEyebrow>
+          <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5, mb: 2 }}>
+            {providers.length > 1
+              ? 'Wählen Sie den Identitätsanbieter, bei dem Sie ein Konto haben.'
+              : 'Melden Sie sich mit dem Konto Ihrer Organisation an.'}
+          </Typography>
+          <Stack spacing={1}>
+            {providers.map((provider) => (
+              <ProviderChoice
+                key={provider.id}
+                provider={provider}
+                isSuggested={provider.id === suggested?.id}
+                showsLastUsed={providers.length > 1 && provider.id === lastUsedId}
+                isSigningIn={isSigningIn}
+                disabled={isBusy}
+                onChoose={() => void loginOidc(provider.id)}
+              />
+            ))}
+          </Stack>
+          {suggested && (
+            <Button
+              variant="text"
+              size="small"
+              startIcon={<SwitchAccountOutlinedIcon />}
+              onClick={() => void loginOidc(suggested.id, { switchAccount: true })}
+              disabled={isBusy}
+              sx={{ display: 'flex', mx: 'auto', mt: 1.5 }}
+            >
+              {providers.length > 1
+                ? `Mit anderem Konto bei ${suggested.displayName} anmelden`
+                : 'Mit anderem Konto anmelden'}
+            </Button>
+          )}
+        </Box>
+      )}
+
+      {hasChoice && hasLocalForm && <Divider sx={{ my: 3 }} />}
+
+      {hasLocalForm && (
+        <LocalSignInForm
+          title={hasChoice ? 'Mit Konto dieser Installation' : 'Anmeldung'}
+          description="Melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an."
+          showPasswordReset={localAccounts.passwordResetEnabled}
+          showSelfRegistration={localAccounts.selfRegistrationEnabled}
+          disabled={isLoading}
+        />
+      )}
+
+      <Divider sx={{ my: 3 }} />
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start', color: 'text.secondary' }}>
+        <LockOutlinedIcon aria-hidden="true" sx={{ fontSize: 16, mt: '1px', flex: 'none' }} />
+        <Typography sx={{ fontSize: 12, lineHeight: 1.5 }}>
+          {trustNote(hasChoice, hasLocalForm)}
+        </Typography>
+      </Stack>
+
+      {/* ADR-0033, Entscheidung 4: while the management is switched off, this quiet link is the
+          only visible way to the local system administrators' sign-in. */}
+      {!hasLocalForm && (
+        <Typography sx={{ mt: 2, fontSize: 12, textAlign: 'center' }}>
+          <Link component={RouterLink} to={SYSTEM_LOGIN_ROUTE} color="text.secondary">
+            Anmeldung für die Systemverwaltung
+          </Link>
+        </Typography>
+      )}
+    </AuthLayout>
   )
+}
+
+/** The trust note, worded for what this installation actually offers (#1368). */
+function trustNote(hasChoice: boolean, hasLocalForm: boolean): string {
+  if (hasChoice && hasLocalForm) {
+    return 'Bei Anmeldung über einen Identitätsanbieter erhält OPAA kein Kennwort. Das Passwort eines Kontos dieser Installation speichert OPAA nur als nicht umkehrbaren Prüfwert.'
+  }
+  if (hasChoice) {
+    return 'Die Anmeldung erfolgt beim Identitätsanbieter. OPAA erhält kein Kennwort und speichert keines.'
+  }
+  if (hasLocalForm) {
+    return 'Das Passwort eines Kontos dieser Installation speichert OPAA nur als nicht umkehrbaren Prüfwert.'
+  }
+  return 'Für diese Installation ist derzeit keine Anmeldung eingerichtet. Die Systemverwaltung meldet sich über die Anmeldung für die Systemverwaltung an.'
 }

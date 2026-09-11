@@ -3,6 +3,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
+import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
 import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
 import LoginPage from './LoginPage'
 
@@ -19,6 +20,10 @@ describe('LoginPage', () => {
       providers: [],
       userManager: null,
       activeProviderId: null,
+      localAccounts: LOCAL_ACCOUNTS_DISABLED,
+      sessionKind: null,
+      passwordChangeRequired: false,
+      passwordChangeReason: null,
     })
     localStorage.clear()
   })
@@ -180,6 +185,149 @@ describe('LoginPage', () => {
       renderWithProviders(<LoginPage />, { withRouter: true })
       expect(screen.queryByRole('button', { name: /anmelden bei/i })).not.toBeInTheDocument()
       expect(screen.getByText(/kein Identitätsanbieter/)).toBeInTheDocument()
+    })
+  })
+  // ADR-0033, Entscheidung 4 / #1368: the mask appears only while the local account management is
+  // switched on; the identity providers keep their place above it.
+  describe('accounts of this installation (#1539)', () => {
+    const localEnabled = {
+      enabled: true,
+      selfRegistrationEnabled: false,
+      passwordResetEnabled: false,
+      passwordMinLength: 12,
+    }
+
+    it('shows no mask while the management is switched off', () => {
+      useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst] })
+      renderWithProviders(<LoginPage />, { withRouter: true })
+      expect(screen.queryByLabelText('Passwort')).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('link', { name: 'Anmeldung für die Systemverwaltung' }),
+      ).toHaveAttribute('href', '/login/system')
+    })
+
+    it('shows both sections, providers first, when both ways exist', () => {
+      useAuthStore.setState({
+        mode: 'oidc',
+        providers: [verzeichnisdienst],
+        localAccounts: localEnabled,
+      })
+      renderWithProviders(<LoginPage />, { withRouter: true })
+
+      const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
+      expect(headings).toEqual(['Mit Identitätsanbieter', 'Mit Konto dieser Installation'])
+      expect(screen.getByLabelText('E-Mail-Adresse')).toBeInTheDocument()
+      expect(screen.getByLabelText('Passwort')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Anmelden' })).toBeInTheDocument()
+      // the quiet link is pointless once the regular page carries the mask
+      expect(
+        screen.queryByRole('link', { name: 'Anmeldung für die Systemverwaltung' }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByText(/erhält OPAA kein Kennwort/)).toBeInTheDocument()
+      expect(screen.getByText(/nicht umkehrbaren Prüfwert/)).toBeInTheDocument()
+    })
+
+    it('shows the mask alone when there is no provider', () => {
+      useAuthStore.setState({ mode: 'oidc', providers: [], localAccounts: localEnabled })
+      renderWithProviders(<LoginPage />, { withRouter: true })
+
+      expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Anmeldung')
+      expect(screen.getByLabelText('E-Mail-Adresse')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /anmelden bei/i })).not.toBeInTheDocument()
+    })
+
+    it('offers the self-service links only where the configuration allows them', () => {
+      useAuthStore.setState({
+        mode: 'oidc',
+        providers: [],
+        localAccounts: {
+          ...localEnabled,
+          passwordResetEnabled: true,
+          selfRegistrationEnabled: true,
+        },
+      })
+      renderWithProviders(<LoginPage />, { withRouter: true })
+
+      expect(screen.getByRole('link', { name: 'Passwort vergessen?' })).toHaveAttribute(
+        'href',
+        '/forgot-password',
+      )
+      expect(screen.getByRole('link', { name: 'Konto registrieren' })).toHaveAttribute(
+        'href',
+        '/register',
+      )
+    })
+
+    it('hides the self-service links while the flows are unavailable', () => {
+      useAuthStore.setState({ mode: 'oidc', providers: [], localAccounts: localEnabled })
+      renderWithProviders(<LoginPage />, { withRouter: true })
+
+      expect(screen.queryByRole('link', { name: 'Passwort vergessen?' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Konto registrieren' })).not.toBeInTheDocument()
+    })
+
+    it('signs in with the entered credentials', async () => {
+      const loginLocal = vi.fn().mockResolvedValue(true)
+      useAuthStore.setState({
+        mode: 'oidc',
+        providers: [],
+        localAccounts: localEnabled,
+        loginLocal,
+      })
+      renderWithProviders(<LoginPage />, { withRouter: true })
+
+      await userEvent.type(screen.getByLabelText('E-Mail-Adresse'), '  erika@stadt.example  ')
+      await userEvent.type(screen.getByLabelText('Passwort'), 'geheim')
+      await userEvent.click(screen.getByRole('button', { name: 'Anmelden' }))
+
+      expect(loginLocal).toHaveBeenCalledWith('erika@stadt.example', 'geheim')
+    })
+
+    it('shows the password on demand and hides it again', async () => {
+      useAuthStore.setState({ mode: 'oidc', providers: [], localAccounts: localEnabled })
+      renderWithProviders(<LoginPage />, { withRouter: true })
+
+      expect(screen.getByLabelText('Passwort')).toHaveAttribute('type', 'password')
+      await userEvent.click(screen.getByRole('button', { name: 'Passwort anzeigen' }))
+      expect(screen.getByLabelText('Passwort')).toHaveAttribute('type', 'text')
+      await userEvent.click(screen.getByRole('button', { name: 'Passwort verbergen' }))
+      expect(screen.getByLabelText('Passwort')).toHaveAttribute('type', 'password')
+    })
+
+    it('puts the focus back into the first field after a refusal', async () => {
+      const loginLocal = vi.fn().mockImplementation(async () => {
+        useAuthStore.setState({
+          error: 'Anmeldung nicht möglich. Prüfen Sie E-Mail-Adresse und Passwort.',
+        })
+        return false
+      })
+      useAuthStore.setState({
+        mode: 'oidc',
+        providers: [],
+        localAccounts: localEnabled,
+        loginLocal,
+      })
+      renderWithProviders(<LoginPage />, { withRouter: true })
+
+      await userEvent.type(screen.getByLabelText('E-Mail-Adresse'), 'erika@stadt.example')
+      await userEvent.type(screen.getByLabelText('Passwort'), 'falsch')
+      await userEvent.click(screen.getByRole('button', { name: 'Anmelden' }))
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Anmeldung nicht möglich. Prüfen Sie E-Mail-Adresse und Passwort.',
+      )
+      expect(screen.getByLabelText('E-Mail-Adresse')).toHaveFocus()
+      expect(screen.getByLabelText('Passwort')).toHaveValue('')
+    })
+
+    it('points at the system administrators sign-in when nothing else is offered', () => {
+      useAuthStore.setState({ mode: 'oidc', providers: [] })
+      renderWithProviders(<LoginPage />, { withRouter: true })
+
+      expect(screen.getByText(/keine Anmeldung eingerichtet/)).toBeInTheDocument()
+      expect(
+        screen.getByRole('link', { name: 'Anmeldung für die Systemverwaltung' }),
+      ).toBeInTheDocument()
     })
   })
 })
