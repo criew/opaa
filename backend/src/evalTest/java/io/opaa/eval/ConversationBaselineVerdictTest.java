@@ -57,6 +57,21 @@ class ConversationBaselineVerdictTest {
         .contains("Messgrundlage");
   }
 
+  /**
+   * An invalid baseline that names no deviating fixed point is not the announced state — {@code
+   * allMatch} is true on an empty stream, so the gate would otherwise stand open for exactly the
+   * result {@code ConversationBaselineComparator} calls "a harness bug". No producer creates it
+   * today; the coupling that prevents it is an invariant of one method, not of the public record.
+   */
+  @Test
+  void anInvalidBaselineWithoutANamedDeviationFailsRatherThanPassingAsNotJudged() {
+    ConversationBaselineVerdict verdict = ConversationBaselineVerdict.of(incomparable());
+
+    assertThat(verdict.kind()).isEqualTo(ConversationBaselineVerdict.Kind.INCOMPARABLE);
+    assertThat(verdict.failing()).isTrue();
+    assertThat(verdict.detail()).contains("ohne einen abweichenden Festpunkt zu nennen");
+  }
+
   /** A comparable baseline whose metrics moved is a regression, and is named one. */
   @Test
   void aFailedMetricCheckOnAComparableBaselineIsARegression() {

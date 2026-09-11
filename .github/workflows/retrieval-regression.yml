@@ -511,12 +511,16 @@ jobs:
             # Abschnitt 3). Auf einer Entwicklermaschine (CPU/Testcontainer) dauert eine Messung
             # 20-29 Minuten, der Mehrrunden-Schritt insgesamt also rund 60-90 Minuten; dazu kommt
             # der Einzelfragen-Teil desselben Harness-Laufs (verwaltung: rund 7 Minuten lokal).
-            # Ein GitHub-Runner ist deutlich langsamer — für die Einbettungsrate ist das an der
-            # city-landmarks-Domäne gemessen (siehe deren timeout_minutes oben). Für die
-            # Chat-Aufrufe dieses Pfads gibt es noch keine CI-Messung; 300 Minuten sind bewusst
-            # großzügig angesetzt (Erwartung: 2-4 Stunden) und bleiben unter dem 6-Stunden-Limit
-            # eines GitHub-Jobs. Der erste nächtliche Lauf liefert die Zahl, mit der dieses Budget
-            # danach enger gezogen werden kann.
+            # Ein GitHub-Runner ist deutlich langsamer. Gemessene Anhaltspunkte: verwaltung
+            # (Einzelfragen) lag im Lauf 34648243211 bei 16 min 28 s gegen rund 7 min lokal, also
+            # Faktor ~2,4 einschließlich Modell-Zug; bei city-landmarks ist der Faktor deutlich
+            # größer. Für die CPU-Textgenerierung dieses Pfads — und die, nicht die Einbettung,
+            # macht hier den Großteil aus — gibt es noch keine CI-Messung. Skaliert sie
+            # ungünstiger als die Einbettung, können 60-90 Minuten lokal über 300 Minuten landen;
+            # das Budget ist also nicht so großzügig, wie die Herleitung klingt, sondern die
+            # plausible Obergrenze unter dem 6-Stunden-Limit eines GitHub-Jobs. Der erste
+            # nächtliche Lauf liefert die Zahl; endet er im Zeitlimit, ist die Anhebung dieses
+            # Werts die erste Handlung von #1490 und nicht der Messlauf.
             timeout_minutes: 300
             # Der Messbericht des Laufs selbst: Gruppen, Fall-Urteile, Themen-Bleed und der
             # Mehrfachlauf-Block (drei Läufe, Median, Streubereich, Abweichungszahl).
@@ -570,9 +574,13 @@ jobs:
         working-directory: backend
         run: ./gradlew ${{ matrix.task }}
 
-      # Kein Cache-Export in diesem Job: Der Schlüssel ist unveränderlich und wird vom Job
-      # `evaluate` desselben Laufs bereits geschrieben; ein zweiter Export wäre ein No-op mit
-      # zusätzlicher Laufzeit.
+      # Kein Cache-Export in diesem Job: Der Schlüssel ist unveränderlich, und der Job `evaluate`
+      # schreibt ihn ohnehin — ein zweiter Export wäre ein No-op mit zusätzlicher Laufzeit.
+      # Für den *Nutzen* innerhalb desselben Laufs trägt das aber nicht: Alle Jobs starten
+      # gleichzeitig, der Export des `evaluate`-Jobs kommt frühestens nach dessen Messlauf. Im
+      # Lauf 34648243211 war „Seed Docker volume from cache" in allen vier Jobs übersprungen —
+      # dieser Job zieht die rund 1,26 GB also regelmäßig selbst, was im Zeitbudget oben
+      # mitgedacht ist.
 
       # Zwei Abschnitte, beide immer benannt: die Messung des Laufs und, davon getrennt, das
       # Urteil gegen die Baseline. Fehlt einer, sagt der Abschnitt das ausdrücklich — ein
@@ -705,12 +713,27 @@ jobs:
               });
             }
 
+      # Trägt die Vergleichstabelle mit, anders als der gleichnamige Schritt im Job `evaluate`.
+      # Grund ist der vierte Ausgang dieses Pfads: Ein grüner Lauf kann „keine Regression" oder
+      # „nicht beurteilt" bedeuten. Ein Schließ-Kommentar, der nur „wieder grün" sagt, ließe einen
+      # Leser, der bloß das Issue sieht, den unbeurteilten Zustand für eine bestandene Prüfung
+      # halten — genau die Verwechslung, gegen die jede andere Ausgabestelle dieses Jobs den
+      # Zustand ausdrücklich benennt.
       - name: Alarm-Issue bei erneutem Bestehen schließen
         if: success() && github.event_name != 'pull_request'
         uses: actions/github-script@v9
         with:
           script: |
+            const fs = require('fs');
             const marker = '${{ matrix.marker }}';
+            const domain = '${{ matrix.domain }}';
+            const comparisonPath =
+              'backend/build/eval-reports/${{ matrix.comparison_report_file }}';
+            const comparison = fs.existsSync(comparisonPath)
+              ? fs.readFileSync(comparisonPath, 'utf8')
+              : `## Mehrrunden-Messpfad gegen Baseline (${domain})\n\n_Keine Vergleichstabelle — ` +
+                'der Lauf ist grün, hat den Baseline-Vergleich aber nicht erreicht. Siehe ' +
+                'Workflow-Logs._';
             const { data: issuesAndPrs } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -727,7 +750,10 @@ jobs:
                 repo: context.repo.repo,
                 issue_number: existing.number,
                 body: '${{ matrix.success_comment }} ' +
-                  `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                  `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}` +
+                  '\n\nGrün heißt auf diesem Pfad nicht zwingend „geprüft": Welches Urteil ' +
+                  'dahinter steht — keine Regression oder nicht beurteilt —, steht in der ' +
+                  'Tabelle unten.\n\n' + comparison,
               });
               await github.rest.issues.update({
                 owner: context.repo.owner,

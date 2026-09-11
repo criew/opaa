@@ -79,12 +79,20 @@ public record ConversationBaselineVerdict(Kind kind, String headline, String det
   private static ConversationBaselineVerdict incomparable(
       List<BaselineComparator.FixedPointMismatch> mismatches) {
     String deviation =
-        "Abweichende Festpunkte: "
-            + mismatches.stream().map(Object::toString).collect(Collectors.joining("; "))
-            + ".";
+        mismatches.isEmpty()
+            ? "Die Baseline ist als ungültig gemeldet, ohne einen abweichenden Festpunkt zu nennen "
+                + "— das kann kein Lauf erzeugen, sondern nur ein Fehler im Vergleich selbst."
+            : "Abweichende Festpunkte: "
+                + mismatches.stream().map(Object::toString).collect(Collectors.joining("; "))
+                + ".";
+    // An invalid baseline without a named deviation is never the announced state: allMatch is true
+    // on an empty stream, so without this the gate would stand open for a result that cannot say
+    // why it is incomparable — today only producible by a comparator that reports instead of
+    // throwing, which is a change this path has made before.
     boolean onlyPending =
-        mismatches.stream()
-            .allMatch(mismatch -> PENDING_REMEASUREMENT_FIELDS.contains(mismatch.field()));
+        !mismatches.isEmpty()
+            && mismatches.stream()
+                .allMatch(mismatch -> PENDING_REMEASUREMENT_FIELDS.contains(mismatch.field()));
     if (onlyPending) {
       return new ConversationBaselineVerdict(
           Kind.NOT_JUDGED,

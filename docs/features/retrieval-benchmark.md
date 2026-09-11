@@ -710,12 +710,16 @@ Korpusdokumente einen Fall der Klasse `literal_term_weak_embedding` aus dem Top-
 
 ### Mehrrunden-Klassen (Epic #1482, Gesprächsgedächtnis)
 
-> **Stand (09/2026):** spezifiziert, noch nicht gebaut. Die drei Klassen unterscheiden sich von den
+> **Stand (09/2026):** gebaut (#1484/#1485), verglichen und in der CI (#1553). Die drei Klassen
+> unterscheiden sich von den
 > fünf obigen in der Form: Ein Fall ist eine **Folge von Runden**, jede mit eigener Frage, eigener
 > handgeschriebener Kurzantwort und eigenen erwarteten Dokumenten; gemessen wird je Runde, ein Fall
 > gilt als gelöst, wenn jede Runde gelöst ist. Sie liegen in einem eigenen Datensatz
 > (`eval/golden/verwaltung-conversations.json`) mit eigener Baseline und laufen nur zerlegend —
-> gepinntes Eval-Chat-Modell, Mehrfachlauf-Regel, manuell oder per Label, nicht nächtlich. Schema,
+> gepinntes Eval-Chat-Modell, Mehrfachlauf-Regel. Sie laufen nächtlich, per `workflow_dispatch`
+> und beim Label `evaluation`, aber in einem **eigenen** Job mit eigenem Zeitbudget
+> (`conversations` in `.github/workflows/retrieval-regression.yml`); an den Job der
+> Einzelfragen-Domänen angehängt sprengten sie dessen Budget (ADR-0012, Entscheidung 49). Schema,
 > Harness-Simulation des Gedächtnisses und Reihenfolge der Messung stehen in
 > [conversation-memory.md, Abschnitt „Messung"](./conversation-memory.md#messung).
 >
