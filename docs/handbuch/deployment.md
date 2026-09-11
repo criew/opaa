@@ -275,7 +275,6 @@ begründet werden sollte, kein hartes Muss.
 | 4 | `docker-compose.yml:62` | `command: start-dev --import-realm` — kein persistentes Datenverzeichnis, nur der Realm-Export ist als Datei gemountet | Keycloaks eingebaute Entwicklungsdatenbank ist an den Container gebunden und geht bei jedem Neuerstellen verloren — ein rotiertes Bootstrap-Passwort (Punkt 3) und ein bereinigter Realm (Punkt 1) verschwinden damit beim nächsten `docker compose up -d`/Image-Update und `admin`/`admin` sowie `testuser` sind wieder da, ohne dass das auffällt | **Zwingend**, sonst wirken die Gegenmaßnahmen zu Punkt 1 und 3 nicht dauerhaft, sondern nur bis zum nächsten Container-Neustart. Für erreichbaren Betrieb `start` statt `start-dev` verwenden (das erzwingt ohnehin die übrigen Härtungspunkte dieser Zeile — Keycloak startet mit `start` ohne konfiguriertes TLS/Proxy-Setup gar nicht erst) und eine externe, persistente Datenbank anbinden (`KC_DB`, `KC_DB_URL` u. a.) statt der eingebauten Entwicklungsdatenbank. `--import-realm` importiert einen Realm dabei ohnehin nur, wenn er noch nicht existiert — nach der ersten, persistenten Einrichtung wirken spätere Realm-Änderungen über die Admin-Konsole oder einen erneuten, gezielten Import |
 | 5 | `docker-compose.yml:19-20`, `40`, `56`, `68` | Nur `postgres` bindet auf `127.0.0.1`; `backend` (8081), `frontend` (3000) und `keycloak` (8180) veröffentlichen ihre Ports ohne Adressangabe und binden damit auf allen Schnittstellen | `postgres` auf `127.0.0.1` gebunden schützt vor Zugriff aus dem Netz, aber nicht vor jedem anderen Prozess und Nutzerkonto auf demselben Host. Die übrigen drei Ports sind dagegen aus dem Netz erreichbar, sobald keine Firewall davorsteht — bei `keycloak` ist das der konkrete Ausnutzungsweg zu Punkt 3: Die Admin-Konsole wäre netzweit ansprechbar, unabhängig davon, ob ein vorgelagerter Reverse-Proxy nur bestimmte Pfade durchreicht | Hinter einem Reverse-Proxy alle vier Ports auf `127.0.0.1:` binden, so wie es `postgres` bereits vormacht — für `keycloak` **zwingend** (sonst bleibt die Admin-Konsole trotz Proxy direkt aus dem Netz erreichbar), für `backend`/`frontend` **empfohlen** (der Reverse-Proxy ist dann der einzige Weg zu beiden). Für `postgres` **empfohlen**, die `ports:`-Zuordnung für den erreichbaren Betrieb ganz zu entfernen statt sie nur auf Loopback zu binden — Backend und `postgres` erreichen sich ohnehin über das interne Compose-Netz (Servicename `postgres`), ein Host-Port wird dafür nicht gebraucht. Für lokale Entwicklung (Anschluss mit einem Datenbank-Client vom Host aus, direkter Aufruf der Admin-Konsole) bleiben die bisherigen Bindungen dagegen sinnvoll — deshalb sind sie dort nicht als Fehler markiert |
 | 6 | `keycloak/realm-export.json` (Client `opaa-seed`) | Öffentlicher Client mit `directAccessGrantsEnabled: true` (Resource-Owner-Password-Grant) und ohne Client-Secret, ausschließlich für das Seed-Skript der Demo (`demo/seed/seed.py`) gedacht, das sich damit als Demo-Nutzer anmeldet und Bibliotheken, Rechte und Chats über die reguläre API anlegt | Erlaubt einen passwortbasierten Tokenweg **ohne Secret** gegen jedes Realm-Konto — auf einer erreichbaren Instanz ein zusätzlicher, von der eigentlichen Anmeldung (`opaa-frontend`, `directAccessGrantsEnabled: false`, Authorization-Code + PKCE) unabhängiger Angriffsweg, unabhängig davon, wessen Passwort betroffen ist | **Zwingend.** Client `opaa-seed` aus dem Realm-Export entfernen oder auf `enabled: false` setzen, bevor der Realm auf einer erreichbaren Instanz importiert wird. Wer die Demo dort dennoch erneut seeden will, aktiviert den Client nur für die Dauer des Laufs wieder (per `kcadm` oder Admin-Konsole) oder legt die Rechte direkt über die Keycloak-Admin-Konsole/API an, statt den Client dauerhaft scharf zu lassen |
-
 | 7 | `docker-compose.yml` (Service `upload-store`, nur Compose-Profil `upload-s3`) | Root-Zugangsdaten des mitgelieferten Objektspeichers der Originalablage als Compose-Vorgabe (`opaa-uploads`/`OpaaUploads!2026`), dieselben Werte auskommentiert in `.env.docker.example` | Wer das Profil in einem erreichbaren Betrieb nutzt und die Vorgabe behält, schützt die Originale **aller** hochgeladenen Dokumente mit Zugangsdaten, die im Repository stehen. Die S3-API ist zwar nur an `127.0.0.1` gebunden — das schützt vor dem Netz, aber nicht vor anderen Prozessen und Konten auf demselben Host | **Zwingend**, sobald das Profil außerhalb einer Erprobung läuft: eigene Werte über `OPAA_UPLOAD_STORE_ROOT_USER`/`OPAA_UPLOAD_STORE_ROOT_PASSWORD` in `.env` oder der Prozessumgebung setzen (nicht in `.env.docker`, siehe Punkt 3) und dieselben Werte als `OPAA_UPLOAD_S3_ACCESS_KEY`/`OPAA_UPLOAD_S3_SECRET_KEY` in `.env.docker` eintragen. Der mitgelieferte Dienst ist als Erprobungs- und Umstellungsziel gedacht; im erreichbaren Betrieb ist ein hauseigener Objektspeicher mit eigenen Zugangsdaten, Verschlüsselung ruhender Daten und Versionierung der Regelfall (siehe [„Originalablage"](#originalablage)) |
 
 **Realm-Lebensdauern auf einer bereits laufenden Instanz:** `keycloak/realm-export.json`
@@ -689,7 +688,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_UPLOAD_S3_PATH_STYLE` | `true` | nicht gesetzt | Adressstil (`opaa.upload.s3.path-style`): `true` = `endpoint/bucket/schlüssel` (MinIO, Ceph), `false` = `bucket.endpoint/schlüssel` (AWS, Hetzner) |
 | `OPAA_UPLOAD_S3_ACCESS_KEY` | — (leer; Pflicht bei `OPAA_UPLOAD_STORE=s3`) | nicht gesetzt | Zugangsschlüssel (`opaa.upload.s3.access-key`). Der Schlüssel braucht `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` und für die Startprüfung `s3:ListBucket` auf dem Bucket. Anders als die Zugangsdaten einer S3-Bibliothek dürfen Zugangsschlüssel und Geheimnis hier Doppelpunkte enthalten; beide erscheinen in keiner Protokollzeile und keiner Meldung |
 | `OPAA_UPLOAD_S3_SECRET_KEY` | — (leer; Pflicht bei `OPAA_UPLOAD_STORE=s3`) | nicht gesetzt | Geheimer Schlüssel (`opaa.upload.s3.secret-key`) |
-| `OPAA_UPLOAD_S3_TEMP_DIRECTORY` | — (leer: das Temp-Verzeichnis der JVM, im Container `/tmp`) | nicht gesetzt | Verzeichnis für die Arbeitsdatei eines Uploads und die lokale Kopie, die Pipeline-Nachzug, Metadaten-Nachlauf und die Rückextraktion von Anhängen brauchen (`opaa.upload.s3.temp-directory`). **Platzbedarf einplanen, und zwar auf zwei Dateisystemen:** In *diesem* Verzeichnis liegen je Upload die Arbeitsdatei in Originalgröße, die bis zum Ende der asynchronen Verarbeitung lebt, und bei einem gleichzeitigen Nachzug derselben Bibliothek die Kopie des Originals; mit parallelen Uploads (`OPAA_UPLOAD_THREAD_POOL_MAX_SIZE` plus Warteschlange) vervielfacht sich das. Im *Temp-Verzeichnis der JVM* (im Container `/tmp`, unabhängig von dieser Variable) liegen daneben der Multipart-Zwischenspeicher von Spring — jede eingehende Datei wird dort in Originalgröße gespoolt, bevor die Arbeitsdatei entsteht — und die Zwischendateien, die das Öffnen eines Anhangs beim Nachextrahieren aus seinem Elterndokument schreibt. Wer nur dieses Verzeichnis auf ein großes Volume legt und `/tmp` in Overlay-Größe belässt, füllt bei parallelen Uploads das falsche Dateisystem. Dateien, die ein hart beendeter Prozess dort zurücklässt (Präfix `opaa-upload-`, älter als der laufende Prozess), räumt der nächste Start weg — ein verwaistes Objekt im Bucket bleibt liegen, bis ein Aufräumlauf es einsammelt |
+| `OPAA_UPLOAD_S3_TEMP_DIRECTORY` | — (leer: das Temp-Verzeichnis der JVM, im Container `/tmp`) | nicht gesetzt | Verzeichnis für die Arbeitsdatei eines Uploads und die lokale Kopie, die Pipeline-Nachzug, Metadaten-Nachlauf und die Rückextraktion von Anhängen brauchen (`opaa.upload.s3.temp-directory`). **Platzbedarf einplanen, und zwar auf zwei Dateisystemen:** In *diesem* Verzeichnis liegen je Upload die Arbeitsdatei in Originalgröße, die bis zum Ende der asynchronen Verarbeitung lebt, und bei einem gleichzeitigen Nachzug derselben Bibliothek die Kopie des Originals; mit parallelen Uploads (`OPAA_UPLOAD_THREAD_POOL_MAX_SIZE` plus Warteschlange) vervielfacht sich das. Im *Temp-Verzeichnis der JVM* (im Container `/tmp`, unabhängig von dieser Variable) liegen daneben der Multipart-Zwischenspeicher von Spring — jede eingehende Datei wird dort in Originalgröße gespoolt, bevor die Arbeitsdatei entsteht — und die Zwischendateien, die das Öffnen eines Anhangs beim Nachextrahieren aus seinem Elterndokument schreibt. Wer nur dieses Verzeichnis auf ein großes Volume legt und `/tmp` in Overlay-Größe belässt, füllt bei parallelen Uploads das falsche Dateisystem. Dateien, die ein hart beendeter Prozess dort zurücklässt (Präfix `opaa-upload-`, älter als der laufende Prozess), räumt der nächste Start weg. Ein verwaistes Objekt im Bucket, das derselbe Abbruch hinterlassen kann, bleibt dagegen liegen — einen Aufräumlauf dafür gibt es noch nicht (#1478); es kostet Speicherplatz und stört den Betrieb sonst nicht |
 | `OPAA_UPLOAD_S3_TARGET_VALIDATION_ENABLED` | `true` | nicht gesetzt | Zieladressprüfung jeder Anfrage an den Objektspeicher (`opaa.upload.s3.target-validation.enabled`) — eigener Namensraum, unabhängig von `OPAA_INDEXING_TARGET_VALIDATION_ENABLED`: das Abschalten der Konnektorprüfung schaltet diese nicht mit ab. Der konfigurierte Endpunkt passiert immer; die Prüfung fängt Anfragen, die woandershin gingen |
 | `OPAA_UPLOAD_S3_TARGET_VALIDATION_ALLOWLIST` | — (leer) | nicht gesetzt | Kommagetrennte Hosts, die die Zieladressprüfung der Originalablage zusätzlich passieren dürfen (`opaa.upload.s3.target-validation.allowlist`); für den konfigurierten Endpunkt selbst nicht nötig |
 | `OPAA_UPLOAD_MAX_FILE_SIZE` | `52428800` (50 MiB, Byte) | nicht gesetzt (Anwendungs-Default gilt) | Maximale Dateigröße beim Dokument-Upload (`spring.servlet.multipart.max-file-size`/`max-request-size` und `opaa.upload.max-file-size` in `application.yml`, dieselbe Variable für beide). **Bei Docker Compose zusätzlich zu beachten:** Der nginx-Reverse-Proxy im Frontend-Container (`frontend/nginx.conf`) setzt `client_max_body_size` unabhängig davon fest auf `52m` — etwas oberhalb dieses Limits, weil nginx die gesamte Multipart-Anfrage misst (inklusive Framing-Overhead), das Backend dagegen nur die Dateigröße. Diese Datei wird beim Image-Build fest eingebacken (kein `envsubst`), wird also **nicht** automatisch aus `OPAA_UPLOAD_MAX_FILE_SIZE` übernommen. Wer `OPAA_UPLOAD_MAX_FILE_SIZE` erhöht, muss `client_max_body_size` in `frontend/nginx.conf` entsprechend mit anheben, sonst weist nginx größere Uploads bereits mit einer eigenen HTML-413-Seite ab, bevor die Backend-Prüfung überhaupt greift. Ein weiterer Reverse-Proxy vor dem Frontend-Container braucht denselben Wert zusätzlich (nginx-Default dort: 1 MB) |
@@ -1372,6 +1371,11 @@ des Speichers herausholen, etwa `mc stat`/`mc cp` oder `aws s3 cp`. Der Weg übe
 bleibt der einfachere: Die Fundstelle unter einer Antwort führt zum Dokument, und dessen Original
 lädt sich dort herunter.
 
+> In allen `psql`-Aufrufen dieses Kapitels steht `opaa` für den konfigurierten Datenbankbenutzer
+> (`OPAA_DB_USERNAME`, Voreinstellung `opaa`) und für die Datenbank. Wer ein eigenes Konto
+> eingerichtet hat, setzt es ein — sonst antwortet `psql` mit `FATAL: role "opaa" does not exist`,
+> und zwar auch mitten in der Umstellung.
+
 **Anhänge sind die Ausnahme.** Eine E-Mail mit Anhängen wird zu mehreren Dokumentzeilen: die Mail
 selbst und je ein Dokument pro Anhang. Nur die Mail liegt als Objekt im Speicher; der Verweis der
 Anhangzeilen ist zusammengesetzt aus dem Verweis der Mail, einer laufenden Nummer und dem
@@ -1403,7 +1407,7 @@ Dieser Dienst ist nicht der Objektspeicher des Demo-Profils. Jener füllt einen 
 dem eine Bibliothek als **Quelle** liest, und wird bei jedem Start neu befüllt; er hat deshalb
 bewusst kein Volume. Beide Profile lassen sich nebeneinander betreiben.
 
-In `.env.docker` gehören dann die vier Werte, mit denen das Backend den Dienst anspricht — Ablage,
+In `.env.docker` gehören dann die fünf Werte, mit denen das Backend den Dienst anspricht — Ablage,
 Endpunkt, Bucket und die beiden Zugangsschlüssel (`OPAA_UPLOAD_STORE`, `OPAA_UPLOAD_S3_ENDPOINT`,
 `OPAA_UPLOAD_S3_BUCKET`, `OPAA_UPLOAD_S3_ACCESS_KEY`, `OPAA_UPLOAD_S3_SECRET_KEY`); die Vorlage
 `.env.docker.example` trägt sie auskommentiert und mit genau den Werten, die der Dienst selbst
@@ -1521,6 +1525,10 @@ docker compose exec postgres psql -U opaa -d opaa -c \
   "SELECT file_name, file_path FROM documents WHERE source_type = 'UPLOAD' LIMIT 5;"
 ```
 
+Endpunkt, Bucket und im Störungsfall der Grund erscheinen dabei nur einem angemeldeten Aufrufer —
+in einem OIDC-Deployment antwortet ein anonymes `curl` nur mit dem Status, wie unter
+[„Diagnose ohne Shell"](#diagnose-ohne-shell) beschrieben.
+
 Die dritte ist die eigentliche: In der Oberfläche ein Dokument öffnen und sein Original
 herunterladen — am besten eine E-Mail mit Anhang und den Anhang gleich mit, weil daran sichtbar
 wird, dass auch die zusammengesetzten Verweise noch stimmen. Die vierte prüft den Schreibweg: eine
@@ -1548,12 +1556,20 @@ docker compose exec postgres psql -U opaa -d opaa -c \
 
 Danach in `.env.docker` die Ablage zurück auf das Dateisystem stellen und das Backend starten.
 
-Zwei Unterschiede zum Hinweg:
+Drei Unterschiede zum Hinweg:
 
-- **`--overwrite` ist nötig**, wenn das alte Verzeichnis noch steht: Ohne diesen Schalter bricht
-  das Kopieren bei der ersten bereits vorhandenen Datei ab und meldet das auch — aber erst, nachdem
-  es die neuen Objekte übertragen hat, sodass ein flüchtiger Blick auf das Ergebnis trügt. In ein
-  leeres Verzeichnis kopiert es ohne den Schalter.
+- **Ein Schlüsselpräfix gehört in beide Befehle**, und zwar in die Quelle des Kopierens und in den
+  zu ersetzenden Wert. Das Verzeichnis muss danach wieder unmittelbar die Unterordner der
+  Bibliotheken enthalten — liegt darunter erst noch ein Ordner mit dem Namen des Präfixes, gilt
+  keine Datei mehr als zur Bibliothek gehörend und **jedes** Original antwortet mit „nicht
+  gefunden". Mit Präfix lauten die beiden Zeilen deshalb
+  `mc mirror --overwrite store/<bucket>/<präfix> /uploads` und
+  `replace(file_path, 's3://<bucket>/<präfix>', '/app/uploads/')` mit
+  `LIKE 's3://<bucket>/<präfix>%'`.
+- **`--overwrite` ist nötig**, wenn das alte Verzeichnis noch steht. Ohne diesen Schalter überträgt
+  `mc mirror` zwar alles Fehlende, meldet aber für jede bereits vorhandene Datei einen Fehlschlag —
+  und **endet trotzdem mit dem Rückgabewert `0`**. Eine Skriptierung bemerkt den Unterschied
+  deshalb nicht. In ein leeres Verzeichnis kopiert der Befehl auch ohne den Schalter.
 - **Der Bestand ist größer als beim Hinweg.** Alles, was seit der Umstellung hochgeladen wurde,
   liegt nur im Bucket. Die Zählabfrage aus Schritt 4 gehört deshalb auch hier davor, mit
   `s3://<bucket>/%` als Muster.
@@ -1562,7 +1578,7 @@ Zwei Unterschiede zum Hinweg:
 
 | Bild | Wahrscheinliche Ursache |
 |---|---|
-| Alle Originale antworten mit „nicht gefunden", die Suche funktioniert | Die Verweise wurden nicht umgeschrieben, oder Bucket bzw. Schlüsselpräfix in der Konfiguration passen nicht zu dem, was in den Verweisen steht |
+| Alle Originale antworten mit „nicht gefunden", die Suche funktioniert | Die Verweise wurden nicht umgeschrieben, oder Bucket bzw. Schlüsselpräfix in der Konfiguration passen nicht zu dem, was in den Verweisen steht. Nach einem Rückweg mit Schlüsselpräfix kommt eine dritte Ursache dazu: Die Dateien liegen dann eine Ebene zu tief, unter einem Ordner mit dem Namen des Präfixes |
 | Einzelne Originale fehlen, andere nicht | Die Kopie war unvollständig — Kopierschritt wiederholen, er überträgt nur, was fehlt |
 | Jeder Abruf antwortet mit „Dienst nicht verfügbar", die Gesundheitsgruppe steht auf `DOWN` | Der Objektspeicher ist nicht erreichbar; die Gruppe nennt den Grund |
 | Der Start bricht mit einer Meldung über eine fehlende Variable ab | `OPAA_UPLOAD_STORE=s3` ohne Endpunkt, Bucket oder Zugangsschlüssel |

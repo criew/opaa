@@ -48,8 +48,10 @@ flowchart LR
 Drei Eigenschaften prägen alles Weitere:
 
 - **Die Datenbank ist die einzige Wahrheit.** Dokumentzeilen, Chunks samt Vektoren, Volltext,
-  Metadaten, Protokolle, Chats: alles liegt in PostgreSQL. Ein Backup der Datenbank ist ein Backup
-  der Installation.
+  Metadaten, Protokolle, Chats: alles liegt in PostgreSQL. Daneben steht genau ein zweiter Bestand,
+  den die Datenbank nicht enthält: die Originale der hochgeladenen Dokumente. Eine Sicherung der
+  Installation umfasst deshalb beides — die Datenbank und die
+  [Originalablage](deployment.md#originalablage).
 - **Genau eine Backend-Instanz.** Zeitpläne, Wiederanlauf und Thread-Pools sind prozesslokal.
   Skalierung ist eine Frage der Hardware dieser einen Instanz.
 - **Rechte wirken in der Suche, nicht dahinter.** Jede Suchabfrage trägt den Filter auf die
