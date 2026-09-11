@@ -86,12 +86,14 @@ class DiagnosticAccessIntegrationTest {
 
   /**
    * Every row a test method writes belongs to the organization created above and is removed here,
-   * in reference order: a Befugnis left behind names its granter through an {@code ON DELETE
-   * RESTRICT} foreign key and would block the blanket {@code userRepository.deleteAll()} of any
-   * other class sharing this context. The organization itself stays, so that its protocol entries
-   * keep their referenced object; no other class deletes organizations wholesale, so it is
-   * inconsequential. The closing assertion holds for every write path of this class, including a
-   * future one under a second organization that the scoped deletes above would miss.
+   * in reference order - a class removes its own Bestand, whatever the schema's delete rules would
+   * do with it. Since #1509 every account key of a Befugnis cascades, so a row left behind no
+   * longer blocks the blanket {@code userRepository.deleteAll()} of another class sharing this
+   * context; it would vanish unnoticed instead, which is what the closing assertion guards against.
+   * The organization itself stays, so that its protocol entries keep their referenced object; no
+   * other class deletes organizations wholesale, so it is inconsequential. The closing assertion
+   * holds for every write path of this class, including a future one under a second organization
+   * that the scoped deletes above would miss.
    */
   @AfterEach
   void tearDown() {

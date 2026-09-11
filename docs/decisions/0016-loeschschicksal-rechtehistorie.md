@@ -97,6 +97,55 @@ dass die historisierte Tatsache ihre Aussagekraft verliert.
   `GroupMembershipHistoryRepository#deleteByUserIdIn` — beide ausdrücklich als Test-Hilfsmittel
   markiert, nicht für Produktionscode).
 
+## Nachtrag (11.09.2026): personenbezogene Berechtigungs-Bestandssätze
+
+Die Entscheidung oben nennt nur die drei Historientabellen aus #238. Mit den **Diagnose-Vollmachten**
+(`diagnostic_impersonation_grants`, #1052) ist seither eine weitere personenbezogene Tabelle
+entstanden, die auf den ersten Blick dieselbe Frage stellt: `holder_user_id` sagt, wen die Zeile
+betrifft — nach der Systematik oben also eine Subjektspalte, für die die Entscheidung `RESTRICT`
+verlangt. Tatsächlich stand sie von Anfang an auf `ON DELETE CASCADE`, ohne dass das Changeset diese
+Abweichung begründet hätte (Befund in #1509, entdeckt im Review zu #1506).
+
+**Maintainer-Entscheidung vom 11.09.2026:** `CASCADE` bleibt und wird auf alle Personenspalten der
+Tabelle ausgeweitet. Begründung im Wortlaut: „Wenn ein Nutzer nicht mehr da ist, brauchen wir die
+Information der Vollmacht nicht mehr."
+
+**Warum das die Entscheidung oben nicht aufhebt, sondern abgrenzt.** Die Rechtehistorie und die
+Diagnose-Vollmacht beantworten nicht dieselbe Art von Frage:
+
+- Eine **Historienzeile** ist ein Artefakt: Sie existiert, um über einen Zustand der Vergangenheit
+  Auskunft zu geben, und zwar gerade über ausgeschiedene Personen — deshalb muss sie die Löschung
+  überleben, die sie belegen soll (Szenario 2 oben).
+- Eine **Vollmacht** ist ein Betriebsrecht der Gegenwart: eine befristete, bereichsgebundene Erlaubnis,
+  „Sicht als" auszuführen. Mit dem Konto entfällt ihr Gegenstand — es gibt niemanden mehr, der sie
+  ausüben könnte, und niemanden, für den sie noch gelten könnte.
+
+Beide Regeln nebeneinander zu führen ist also kein Widerspruch, sondern der Unterschied zwischen
+Historienartefakt und Bestandssatz eines aktiven Rechts. Wer künftig eine personenbezogene Tabelle
+anlegt, ordnet sie **ausdrücklich** einer der beiden Arten zu; „nichts Architektonisches wird implizit
+festgelegt" gilt hier wie sonst.
+
+**Konkret für `diagnostic_impersonation_grants` (Changeset `003`, #1509):**
+
+| Spalte | Ziel | Löschregel | Begründung |
+|---|---|---|---|
+| `holder_user_id` | `users` | `CASCADE` (unverändert) | Die Person, um die die Vollmacht geht — mit ihrem Konto entfällt ihr Gegenstand. |
+| `granted_by_user_id` | `users` | `RESTRICT` → `CASCADE` | Spalte ist `NOT NULL`, `SET NULL` scheidet aus; ein `RESTRICT` würde die Kontolöschung weiterhin blockieren und die Entscheidung leerlaufen lassen. |
+| `revoked_by_user_id` | `users` | `RESTRICT` → `CASCADE` | Sonst blockiert eine einmal widerrufene — also längst wirkungslose — Vollmacht die Löschung des widerrufenden Kontos dauerhaft. |
+| `scope_group_id` | `groups` | `RESTRICT` → `CASCADE` | Der Geltungsbereich ist der Gegenstand der Vollmacht; `NOT NULL` schließt `SET NULL` aus, und eine Vollmacht ohne existierenden Geltungsbereich erlaubt nichts. |
+| `organization_id` | `organizations` | `RESTRICT` (unverändert) | Der Mandantenwurzel wird nicht gelöscht; jede andere Tabelle behandelt sie ebenso. |
+
+**Was nach einer Kontolöschung belegbar bleibt.** Erteilung und Widerruf schreiben je einen Eintrag ins
+`audit_log` (`DIAGNOSTIC_IMPERSONATION_GRANTED`/`_REVOKED`); dessen `actor_ref`/`subject_ref` sind
+`varchar` ohne Fremdschlüssel und überleben die Löschung. Der **Bestandssatz** überlebt sie bewusst
+nicht. Die Person wird im Ereignis über ihr Pseudonym geführt, und `audit_actor_pseudonyms` hängt nach
+ADR-0015/#395 selbst mit `CASCADE` an `users` — nach der Kontolöschung ist die Frage „hatte Person X im
+Zeitraum Y die Befugnis?" also über keinen der beiden Wege mehr beantwortbar. Das ist die bewusst in
+Kauf genommene Folge dieser Entscheidung, nicht ein übersehener Nebeneffekt.
+
+**Für die Rechtehistorie ändert sich nichts:** Ihre Subjektspalten bleiben `RESTRICT`, und die Vorgabe
+an #391/#395 — Pseudonymisierung statt Kaskadierung — bleibt für sie unverändert bestehen.
+
 ## Offene Folgefragen (nicht Gegenstand dieser Entscheidung)
 
 - Ein lesbarer Namens-Schnappschuss an den Historienzeilen (Bibliotheks-/Gruppenname zum
