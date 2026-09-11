@@ -164,7 +164,8 @@ Frage r ──► Suche (Suchfenster + RAHMEN-Punkte) ──► Antwort (Fenster
 
 - **Wann:** nach jeder Antwort, nebenläufig, für die Nutzernachricht der gerade beendeten Runde
   (Blaupause: Chat-Titel-Erzeugung — außerhalb des Anfrage-Threads, defensiv geparst, Fehler nie
-  sichtbar). Die Notiz deckt damit jede Runde außer der laufenden ab; die Denkzeit der Person
+  sichtbar). Die Notiz deckt damit jede Runde ab außer der laufenden und einer, deren Verdichtung
+  fehlgeschlagen ist; die Denkzeit der Person
   verbirgt die Latenz. Trifft die nächste Frage ein, bevor die Verdichtung fertig ist, läuft sie mit
   dem Stand davor — harmlos, weil die Runde noch im Gesprächsfenster steht.
 - **Womit:** das systemweit aktive Chat-Modell. Keine neue Modellrolle.
