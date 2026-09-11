@@ -29,9 +29,9 @@ Bearbeitungszeit
 Wenn Sie Ihr Anliegen mit dem Kontaktformular einreichen, wird das Standesamt sich bei Ihnen melden, Ihren Wunsch besprechen und Ihnen einen Vorsprachetermin anbieten.
 
 Gebührenrahmen
-Beurkundung einer Namenserklärung: 32 Euro
-Mehrere Erklärungen in einer Beurkundung: 63,90 Euro
-Bescheinigung über die Namensänderung: 12,80 Euro
+Beurkundung einer Namenserklärung: 34,50 Euro
+Mehrere Erklärungen in einer Beurkundung: 69 Euro
+Bescheinigung über die Namensänderung: 13,80 Euro
 
 Barzahlung
 Kasse vor Ort

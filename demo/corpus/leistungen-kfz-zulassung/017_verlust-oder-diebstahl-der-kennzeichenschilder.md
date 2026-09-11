@@ -23,7 +23,7 @@ Benötigte Unterlagen
 
 Dauer & Kosten
 Gebührenrahmen
-ab 26,20 Euro
+ab 28,50 Euro
 
 Fragen & Antworten
 Bekommt man die neuen Nummernschilder gleich vor Ort?

@@ -44,7 +44,7 @@ Bearbeitungszeit
 Etwa sechs Monate bevor die Sperrfrist abläuft, sollten Sie den Antrag auf Neuerteilung der Fahrerlaubnis stellen.
 
 Gebührenrahmen
-330,60 Euro
+321,70 Euro
 
 Überweisung
 Bankverbindung

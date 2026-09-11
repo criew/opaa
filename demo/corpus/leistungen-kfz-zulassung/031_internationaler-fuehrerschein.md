@@ -34,7 +34,7 @@ Bearbeitungszeit
 - Wenn Sie einen ausländischen Führerschein haben, dauert es etwa sechs Wochen bis Sie den Internationalen Führerschein abholen können.
 
 Gebührenrahmen
-18,30 Euro
+18,70 Euro
 (wenn Sie einen Kartenführerschein beantragen müssen, fallen dafür noch weitere Gebühren an)
 
 Kreditkarte

@@ -26,7 +26,7 @@ Benötigte Unterlagen
 
 Dauer & Kosten
 Gebührenrahmen
-Beglaubigung pro Dokument (bis 6 Seiten): 4,40 Euro
+Beglaubigung pro Dokument (bis 6 Seiten): 5,80 Euro
 Hat ein Dokument mehr als 6 Seiten, wird die Bearbeitungsgebühr bei der Vorsprache berechnet.
 Beglaubigungen zur Vorlage bei einem Sozialversicherungsträger (beispielsweise Rentenzwecke): gebührenfrei
 

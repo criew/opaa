@@ -19,8 +19,8 @@ Bitte verwenden Sie unser Kontaktformular, um die gewünschte Namensänderung zu
 
 Dauer & Kosten
 Gebührenrahmen
-Beurkundung einer Namenserklärung: 29,10 Euro
-Mehrere Erklärungen in einer Beurkundung: 58,20 Euro
+Beurkundung einer Namenserklärung: 34,50 Euro
+Mehrere Erklärungen in einer Beurkundung: 69 Euro
 
 Barzahlung
 Kasse vor Ort

@@ -135,25 +135,15 @@ def simple_satzung(
 
 def _verwaltungsgebuehrensatzung() -> Satzung:
     gebuehren = [
-        Gebuehrenzeile(
-            "Personalausweis (Antragstellende unter 24 Jahren)",
-            scale_and_format_fee(22.80, "Personalausweis.txt"),
-        ),
-        Gebuehrenzeile(
-            "Personalausweis (Antragstellende ab 24 Jahren)",
-            scale_and_format_fee(37.00, "Personalausweis.txt"),
-        ),
-        Gebuehrenzeile(
-            "Vorläufiger Personalausweis", scale_and_format_fee(10.00, "Personalausweis.txt")
-        ),
-        Gebuehrenzeile("Reisepass (regulär, 32 Seiten)", scale_and_format_fee(60.00, "Reisepass.txt")),
-        Gebuehrenzeile("Führungszeugnis", scale_and_format_fee(13.00, "Führungszeugnis.txt")),
-        Gebuehrenzeile(
-            "Beglaubigung je Unterschrift", scale_and_format_fee(20.00, "Beglaubigung von Unterschriften.txt")
-        ),
-        Gebuehrenzeile("Melderegisterauskunft, einfach", scale_and_format_fee(10.00, "Melderegisterauskunft.txt")),
+        Gebuehrenzeile("Personalausweis (Antragstellende unter 24 Jahren)", scale_and_format_fee(22.80)),
+        Gebuehrenzeile("Personalausweis (Antragstellende ab 24 Jahren)", scale_and_format_fee(37.00)),
+        Gebuehrenzeile("Vorläufiger Personalausweis", scale_and_format_fee(10.00)),
+        Gebuehrenzeile("Reisepass (regulär, 32 Seiten)", scale_and_format_fee(60.00)),
+        Gebuehrenzeile("Führungszeugnis", scale_and_format_fee(13.00)),
+        Gebuehrenzeile("Beglaubigung je Unterschrift", scale_and_format_fee(20.00)),
+        Gebuehrenzeile("Melderegisterauskunft, einfach", scale_and_format_fee(10.00)),
         Gebuehrenzeile("Anmeldung/Ummeldung des Wohnsitzes", "gebührenfrei"),
-        Gebuehrenzeile("Reservierung Wunschkennzeichen", scale_and_format_fee(12.80, "Wunschkennzeichen.txt")),
+        Gebuehrenzeile("Reservierung Wunschkennzeichen", scale_and_format_fee(12.80)),
     ]
     paragrafen = [
         Paragraf(
@@ -239,11 +229,11 @@ SATZUNGEN: list[Satzung] = [
             "Ausgabe von Wunsch- und Wechselkennzeichen sowie Kurzzeit- und Saisonkennzeichen.",
         ],
         gebuehren=[
-            Gebuehrenzeile("Neuzulassung eines Fahrzeugs", scale_and_format_fee(27.90, "Fabrikneues Fahrzeug anmelden.txt")),
-            Gebuehrenzeile("Ummeldung innerhalb Rheinfurts", scale_and_format_fee(20.20, "Fahrzeug umschreiben innerhalb Münchens.txt")),
-            Gebuehrenzeile("Wunschkennzeichen, Reservierung", scale_and_format_fee(12.80, "Wunschkennzeichen.txt")),
-            Gebuehrenzeile("Wechselkennzeichen, Ausgabe", scale_and_format_fee(19.10, "Wechselkennzeichen.txt")),
-            Gebuehrenzeile("Kurzzeitkennzeichen", scale_and_format_fee(13.20, "Kurzzeitkennzeichen beantragen.txt")),
+            Gebuehrenzeile("Neuzulassung eines Fahrzeugs", scale_and_format_fee(26.90)),
+            Gebuehrenzeile("Ummeldung innerhalb Rheinfurts", scale_and_format_fee(19.20)),
+            Gebuehrenzeile("Wunschkennzeichen, Reservierung", scale_and_format_fee(12.80)),
+            Gebuehrenzeile("Wechselkennzeichen, Ausgabe", scale_and_format_fee(19.10)),
+            Gebuehrenzeile("Kurzzeitkennzeichen", scale_and_format_fee(13.10)),
         ],
     ),
     simple_satzung(
@@ -457,7 +447,7 @@ SATZUNGEN: list[Satzung] = [
             "Standesamts Rheinfurt.",
         ],
         gebuehren=[
-            Gebuehrenzeile("Eheschließung im Standesamt (Regeltermin)", scale_and_format_fee(50.00, "Anmeldung einer Eheschließung.txt")),
+            Gebuehrenzeile("Eheschließung im Standesamt (Regeltermin)", scale_and_format_fee(50.00)),
             Gebuehrenzeile("Eheurkunde, weitere Ausfertigung", "12 Euro"),
         ],
     ),

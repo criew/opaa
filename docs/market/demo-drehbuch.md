@@ -42,7 +42,7 @@ sind sie mit dem neuen Stand gegenzuprüfen.
 
 - **Konto:** eines der vier Fachkonten, z. B. `maria.weber`
 - **Frage:** „Was kostet ein Personalausweis für eine 22-Jährige?"
-- **Erwartete Antwort:** 27,20 Euro (Gebührenrahmen „unter 24 Jahren") — belegt sowohl aus der
+- **Erwartete Antwort:** 26,20 Euro (Gebührenrahmen „unter 24 Jahren") — belegt sowohl aus der
   Leistungsbeschreibung `001_personalausweis.md` (Bibliothek „Leistungen Meldewesen & Ausweise") als
   auch aus der Verwaltungsgebührensatzung (`01_verwaltungsgebuehrensatzung.pdf`, Bibliothek
   „Satzungen & Gebührenordnungen") — beide Quellen sind für jedes der vier Fachkonten lesbar.
@@ -73,7 +73,7 @@ sind sie mit dem neuen Stand gegenzuprüfen.
 - **Frage:** „Kann ich mein Wunschkennzeichen online reservieren?"
 - **Erwartete Antwort:** ja, über das Internetangebot der Kfz-Zulassungsbehörde; die
   Online-Reservierung ist drei Monate gültig (gegenüber einem Monat bei Reservierung im Bürgerbüro),
-  Gebühr 14,10 Euro bzw. 11,30 Euro bei Zulassung am Tag der Online-Reservierung — belegt aus
+  Gebühr 14,70 Euro bzw. 11,70 Euro bei Zulassung am Tag der Online-Reservierung — belegt aus
   `008_wunschkennzeichen.txt` (Bibliothek „Leistungen Kfz-Zulassung").
 - **Zeigt:** dieselbe Antwortqualität für eine `.txt`-Quelle wie für `.md` — der Formatvorrat ist für
   Suche und Beleg gleichgültig.
@@ -124,7 +124,7 @@ sind sie mit dem neuen Stand gegenzuprüfen.
   - Aus der Leistungsbeschreibung `008_wunschkennzeichen.txt` (Bibliothek „Leistungen
     Kfz-Zulassung", nur für Thomas und Andrea lesbar): eine online reservierte
     Wunschkennzeichen-Reservierung ist drei Monate gültig (gegenüber einem Monat bei Reservierung im
-    Bürgerbüro selbst), Gebühr 14,10 Euro bzw. 11,30 Euro bei Zulassung am Tag der
+    Bürgerbüro selbst), Gebühr 14,70 Euro bzw. 11,70 Euro bei Zulassung am Tag der
     Online-Reservierung.
   - **Als Maria/Selin:** nur der erste Teil (Terminvergabe) belegt, zur Wunschkennzeichenfrist keine
     Quelle — die Kfz-Bibliothek ist ihnen nicht zugänglich.

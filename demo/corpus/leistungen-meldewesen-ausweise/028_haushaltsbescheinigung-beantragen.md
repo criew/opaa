@@ -34,7 +34,7 @@ Bearbeitungszeit
 Bei persönlicher Vorsprache sofort.
 
 Gebührenrahmen
-5,40 Euro
+5,80 Euro
 
 Barzahlung
 Kasse vor Ort

@@ -35,8 +35,8 @@ Vereinsregisterauszug (nicht älter als 3 Jahre ab Ausstellung) und Gewerbeanmel
 
 Dauer & Kosten
 Gebührenrahmen
-Kurzzeitkennzeichen: ab 15,20 Euro zuzüglich Kennzeichenschilder
-Ausnahmegenehmigung für Umweltzone (falls erforderlich): 58,20 Euro
+Kurzzeitkennzeichen: ab 15,10 Euro zuzüglich Kennzeichenschilder
+Ausnahmegenehmigung für Umweltzone (falls erforderlich): 57,50 Euro
 
 Rechtliche Grundlagen
 Fahrzeugzulassungsverordnung
