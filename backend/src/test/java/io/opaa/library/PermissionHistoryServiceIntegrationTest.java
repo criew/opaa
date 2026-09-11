@@ -560,10 +560,14 @@ class PermissionHistoryServiceIntegrationTest {
    *
    * <p>{@code KnowledgeLibraryRepository} is deliberately not scanned: some thirty beans inject it,
    * nearly all of them only to load a library by id, so the list would flag unrelated indexing work
-   * without naming a write path. The library-side inputs - creation, visibility, deletion - run
-   * exclusively through {@link KnowledgeLibraryService}, whose methods the check above classifies
-   * one by one. A write issued through {@code JdbcTemplate} instead of a repository is out of reach
-   * of both checks.
+   * without naming a write path. What carries the omission is the narrower fact that the fields the
+   * formula reads - a library's existence and its visibility - are written only by {@link
+   * KnowledgeLibraryService}: {@code KnowledgeLibrary#updateDetails} is the single door to {@code
+   * visibility} outside the constructor, and {@code KnowledgeLibraryService#updateLibrary} is its
+   * only caller. Three further beans do save library rows ({@code LibraryDiagnosticsLockService},
+   * {@code LibraryMetadataExtractionService}, {@code LibraryMetadataFieldService}) without touching
+   * either field. A write issued through {@code JdbcTemplate} instead of a repository is out of
+   * reach of both checks.
    */
   @Test
   void everyBeanReachingTheGrantOrMembershipTablesIsAccountedFor() {
