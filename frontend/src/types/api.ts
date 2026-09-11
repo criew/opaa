@@ -187,6 +187,18 @@ export type OidcProviderTestRequest = components['schemas']['OidcProviderTestReq
 export type OidcProviderTestResponse = components['schemas']['OidcProviderTestResponse']
 export type EmbeddingInfoResponse = components['schemas']['EmbeddingInfoResponse']
 
+export type MailEncryption = components['schemas']['MailEncryption']
+export type MailSettingsResponse = components['schemas']['MailSettingsResponse']
+export type MailSettingsUpdateRequest = components['schemas']['MailSettingsUpdateRequest']
+export type MailSendOutcome = components['schemas']['MailSendOutcome']
+export type MailSendResultResponse = components['schemas']['MailSendResultResponse']
+export type MailTemplateSource = components['schemas']['MailTemplateSource']
+export type MailTemplateSummaryResponse = components['schemas']['MailTemplateSummaryResponse']
+export type MailTemplateResponse = components['schemas']['MailTemplateResponse']
+export type MailTemplateUpdateRequest = components['schemas']['MailTemplateUpdateRequest']
+export type MailTemplatePreviewRequest = components['schemas']['MailTemplatePreviewRequest']
+export type MailTemplatePreviewResponse = components['schemas']['MailTemplatePreviewResponse']
+
 export type SearchModelRole = components['schemas']['SearchModelRole']
 export type SearchModelRoleState = components['schemas']['SearchModelRoleState']
 export type SearchModelRoleStatusResponse = components['schemas']['SearchModelRoleStatusResponse']

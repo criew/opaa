@@ -8,6 +8,7 @@ import { useIndexingStore } from './indexingStore'
 import { useGrantStore } from './grantStore'
 import { useLlmModelStore } from './llmModelStore'
 import { useOidcProviderStore } from './oidcProviderStore'
+import { useMailStore } from './mailStore'
 import { useNotificationStore } from './notificationStore'
 import { useSearchAdminStore } from './searchAdminStore'
 import { useMetadataFilterOptionsStore } from './metadataFilterOptionsStore'
@@ -48,6 +49,7 @@ function resettableStores() {
     useGrantStore,
     useLlmModelStore,
     useOidcProviderStore,
+    useMailStore,
     useNotificationStore,
     useSearchAdminStore,
     useMetadataFilterOptionsStore,

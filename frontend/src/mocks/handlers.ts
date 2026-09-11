@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { assetRoleLabel } from '../utils/labels'
+import { mailHandlers } from './mailHandlers'
 
 /** Per-library countdown of the mock metadata backfill; see the handler below. */
 const mockMetadataBackfillRemaining = new Map<string, number>()
@@ -3049,4 +3050,8 @@ export const handlers = [
   http.get('/api/v1/auth/me', () => {
     return HttpResponse.json(mockUser)
   }),
+
+  // The mail administration (#1542) lives in its own module: this file is long past the 800-line
+  // mark the coding conventions set, and its fixtures are a self-contained set.
+  ...mailHandlers,
 ]

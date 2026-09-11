@@ -18,6 +18,7 @@ import {
 // SpaceCreatePage.test.tsx go red on its own. Store state that has to be reset between tests
 // belongs in that test file's own beforeEach.
 import { resetMockBranding, resetMockOidcProviders } from '../mocks/fixtures'
+import { resetMockMailSettings, resetMockMailTemplates } from '../mocks/mailFixtures'
 
 beforeAll(() => server.listen())
 afterEach(() => {
@@ -31,5 +32,8 @@ afterEach(() => {
   // a test that configures a brand colour would silently set the stage for the next one.
   resetMockBranding()
   resetMockOidcProviders()
+  // Same reason: the mail settings and templates are mutable so a PUT shows up on the next GET.
+  resetMockMailSettings()
+  resetMockMailTemplates()
 })
 afterAll(() => server.close())
