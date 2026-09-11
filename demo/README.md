@@ -482,6 +482,24 @@ bewusst getrennt vom `opaa-frontend`-Client, dessen `directAccessGrantsEnabled` 
 (`../docs/handbuch/deployment.md`, Härtungstabelle, Punkt 6) — er ist ein passwortbasierter Tokenweg
 ohne Secret gegen jedes Realm-Konto und darf nicht dauerhaft scharf bleiben.
 
+Der Client trägt dafür einen Audience-Mapper (`oidc-audience-mapper`,
+`included.client.audience=opaa-frontend`): Das Backend nimmt ein Token nur an, wenn dessen `azp`
+die `client_id` der Anbieterzeile nennt oder diese in `aud` steht
+([ADR-0025](../docs/decisions/0025-mehrere-oidc-anbieter.md), Entscheidung 1). Keycloak setzt `azp`
+immer auf den anfragenden Client, hier also `opaa-seed` — ohne den Mapper endet jeder API-Aufruf des
+Seed-Laufs mit HTTP 401, obwohl der Tokenerwerb selbst erfolgreich war. Maßgeblich ist dabei die
+`client_id` der Anbieterzeile in der Anbieterverwaltung, nicht `OPAA_OIDC_CLIENT_ID`: Die Variable
+ist nur der Bootstrap-Wert des ersten Starts, danach führt die Datenbank. Lautet sie nicht
+`opaa-frontend`, muss der Mapper auf denselben Wert zeigen. Ein
+Keycloak, dessen Realm bereits importiert ist (eigenes Volume oder bestehende Datenbank), liest den
+Export nicht erneut — dort wird der Mapper per `kcadm` nachgezogen
+([„Härtung für erreichbare Deployments"](../docs/handbuch/deployment.md#härtung-für-erreichbare-deployments),
+Absatz „Änderungen am Realm auf einer bereits laufenden Instanz").
+
+Schlägt ein Seed-Lauf an dieser Stelle fehl, benennt `seed.py` die Ablehnung als solche und gibt den
+`WWW-Authenticate`-Header des Backends aus — „nicht erreichbar" meldet es nur, wenn tatsächlich
+nichts geantwortet hat.
+
 ### Öffentliche Instanz betreiben (opaa.ewerlin.com)
 
 Unter **https://opaa.ewerlin.com** betreibt der Maintainer eine öffentliche **Test-/Demo-Instanz** von
