@@ -10,7 +10,9 @@ import io.opaa.auth.UserRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnUserFixtures;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,14 +50,17 @@ class SpaceRepositoryTest {
 
   private UUID org;
 
+  @Autowired private OwnUserFixtures ownUserFixtures;
+
+  /** Everything that is none of this test method's business - see {@link OwnUserFixtures}. */
+  private Set<UUID> foreignUserIds = Set.of();
+
   // Organizations are never wiped wholesale: Organization.DEFAULT_ID is seeded once by Liquibase
   // and every other class of this context depends on that row (fk_users_organization). This class
   // creates its own throwaway organization per test and removes it again by id.
   @BeforeEach
   void cleanUp() {
-    spaceMembershipRepository.deleteAll();
-    spaceRepository.deleteAll();
-    userRepository.deleteAll();
+    foreignUserIds = ownUserFixtures.existingUserIds();
     org = organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
   }
 
@@ -63,9 +68,7 @@ class SpaceRepositoryTest {
   void tearDown() {
     // Users created during the test still reference org (fk_users_organization) - they go first,
     // then only the organization this test created, by id.
-    spaceMembershipRepository.deleteAll();
-    spaceRepository.deleteAll();
-    userRepository.deleteAll();
+    ownUserFixtures.removeUsersCreatedSince(foreignUserIds);
     organizationRepository.deleteById(org);
   }
 
@@ -151,7 +154,8 @@ class SpaceRepositoryTest {
 
     assertThat(saved).hasSize(2);
     assertThat(spaceRepository.findAll())
-        .filteredOn(space -> space.getName().equals("Phoenix"))
+        .filteredOn(
+            space -> org.equals(space.getOrganizationId()) && space.getName().equals("Phoenix"))
         .hasSize(2);
   }
 
