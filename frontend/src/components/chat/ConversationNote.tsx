@@ -25,6 +25,14 @@ interface ConversationNoteProps {
   emptyFocusRef?: RefObject<HTMLElement | null>
 }
 
+/** Names the number of remaining points, so two removals in a row never produce the same text - an
+ * aria-live region with unchanged content is not announced a second time. */
+function removalAnnouncement(remaining: number): string {
+  if (remaining === 0) return 'Notizpunkt entfernt. Die Gesprächsnotiz ist jetzt leer.'
+  if (remaining === 1) return 'Notizpunkt entfernt. Noch 1 Punkt.'
+  return `Notizpunkt entfernt. Noch ${remaining} Punkte.`
+}
+
 /**
  * The Gesprächsnotiz in the chat's header (#1488): a button carrying the number of points and a
  * collapsible panel listing them, each removable on the spot. The kind of a point (RAHMEN /
@@ -40,8 +48,13 @@ export default function ConversationNote({
   onRemove,
   emptyFocusRef,
 }: ConversationNoteProps) {
+  // Never reset by a removal: removal is optimistic, and a failed one puts the point - and with it
+  // the panel the person had open - back exactly as it was. While the note is empty, `visible` is
+  // false and nothing is rendered anyway.
   const [open, setOpen] = useState(false)
-  const [status, setStatus] = useState('')
+  // The point removed last and the number that remained - the count is captured at the click, not
+  // derived from the current list, so a point condensed later does not re-trigger the announcement.
+  const [lastRemoval, setLastRemoval] = useState<{ id: string; remaining: number } | null>(null)
   const panelId = useId()
   const toggleRef = useRef<HTMLButtonElement>(null)
   const removeButtonRefs = useRef(new Map<string, HTMLButtonElement | null>())
@@ -50,6 +63,11 @@ export default function ConversationNote({
   const pendingFocusIndexRef = useRef<number | null>(null)
 
   const visible = isConversationNoteVisible(items, completedRounds)
+  // The store puts a point back when its DELETE fails; the announcement of its removal must not
+  // stand next to the error message. Derived, not stored, so no state has to be reset for it.
+  const rolledBack = lastRemoval !== null && items.some((item) => item.id === lastRemoval.id)
+  const announcement =
+    lastRemoval === null || rolledBack ? '' : removalAnnouncement(lastRemoval.remaining)
 
   useEffect(() => {
     const index = pendingFocusIndexRef.current
@@ -63,16 +81,12 @@ export default function ConversationNote({
     removeButtonRefs.current.get(next.id)?.focus()
   }, [items, emptyFocusRef])
 
-  function handleRemove(index: number, item: ChatNoteItem) {
-    const wasLast = items.length === 1
-    pendingFocusIndexRef.current = index
-    // Optimistic, like the removal itself: the panel goes with the last point, since an empty note
-    // has no surface.
-    setStatus(
-      wasLast ? 'Notizpunkt entfernt. Die Gesprächsnotiz ist jetzt leer.' : 'Notizpunkt entfernt.',
-    )
-    if (wasLast) setOpen(false)
-    onRemove(item.id)
+  // Escape closes the panel from anywhere in the note. The handler sits on both the button and the
+  // panel because the two are siblings in the chat header's flex row, not nested.
+  function handleEscape(event: { key: string }) {
+    if (event.key !== 'Escape' || !open) return
+    setOpen(false)
+    toggleRef.current?.focus()
   }
 
   return (
@@ -80,7 +94,7 @@ export default function ConversationNote({
       {/* Kept mounted even while the note has no surface: a live region only announces changes to
           content it already had when the change happened. */}
       <Box role="status" aria-live="polite" sx={visuallyHidden}>
-        {status}
+        {announcement}
       </Box>
       {visible && (
         <>
@@ -89,11 +103,14 @@ export default function ConversationNote({
             size="small"
             variant="outlined"
             onClick={() => {
-              setStatus('')
+              setLastRemoval(null)
               setOpen((previous) => !previous)
             }}
+            onKeyDown={handleEscape}
             aria-expanded={open}
-            aria-controls={panelId}
+            // Only while the panel exists: Collapse unmounts it, and a reference to an absent id
+            // is worse than none.
+            aria-controls={open ? panelId : undefined}
             sx={{ flexShrink: 0 }}
           >
             {`Gesprächsnotiz · ${items.length}`}
@@ -105,11 +122,7 @@ export default function ConversationNote({
               id={panelId}
               role="region"
               aria-label="Gesprächsnotiz"
-              onKeyDown={(event) => {
-                if (event.key !== 'Escape') return
-                setOpen(false)
-                toggleRef.current?.focus()
-              }}
+              onKeyDown={handleEscape}
               sx={{ pt: 2, pb: 0.5 }}
             >
               <Typography component="h2" sx={{ fontSize: 15, fontWeight: 600 }}>
@@ -147,7 +160,11 @@ export default function ConversationNote({
                         ref={(element) => {
                           removeButtonRefs.current.set(item.id, element)
                         }}
-                        onClick={() => handleRemove(index, item)}
+                        onClick={() => {
+                          pendingFocusIndexRef.current = index
+                          setLastRemoval({ id: item.id, remaining: items.length - 1 })
+                          onRemove(item.id)
+                        }}
                         sx={{ flexShrink: 0 }}
                       >
                         <CloseIcon fontSize="small" />

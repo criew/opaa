@@ -86,34 +86,38 @@ interface ConfirmedSettings {
 // the GET's own response does (the specific ordering #618 left unguarded).
 const settingsChangeSequenceByChatId = new Map<string, number>()
 
-// Ids of Gesprächsnotiz points the person removed locally whose removal GET chat has not yet
-// confirmed (#1488). Every note state the server delivers is filtered through this set, because an
-// answer carries the note state that went into *it* - an answer that was already in flight when the
-// point was removed still contains it, and applying that state unfiltered would make a removed
-// point briefly reappear. Deliberately module-level, like the settings-persistence maps above: it
-// is never read by a component, only applied to incoming server state.
-const locallyRemovedNoteItemIds = new Set<string>()
+// Per chat, the ids of Gesprächsnotiz points the person removed locally whose removal GET chat has
+// not yet confirmed (#1488). Every note state the server delivers for a chat is filtered through
+// that chat's entry, because an answer carries the note state that went into *it* - an answer that
+// was already in flight when the point was removed still contains it, and applying it unfiltered
+// would make a removed point reappear. Keyed by chat id, like the settings maps above: loading
+// *another* chat says nothing about this chat's server state, so it must not release anything here.
+const removedNoteItemIdsByChatId = new Map<string, Set<string>>()
 
-/** Drops every point from `locallyRemovedNoteItemIds` the server no longer reports for the chat it
- * just delivered - that is the confirmation the filter waits for. Ids of other chats' points are
- * dropped along with them: they are absent from this chat's note too, and a point of a chat that is
- * not the active one is never filtered against anyway (removeNoteItem rolls back per chat id). */
-function confirmNoteItemRemovals(serverItems: ChatNoteItem[]): void {
+/** Releases the ids of `chatId` that the server no longer reports - that is the confirmation the
+ * filter waits for. Only this chat's entry is touched; removals pending for another chat stay
+ * pending until that chat is loaded. */
+function confirmNoteItemRemovals(chatId: string, serverItems: ChatNoteItem[]): void {
+  const pending = removedNoteItemIdsByChatId.get(chatId)
+  if (!pending) return
   const stillPresent = new Set(serverItems.map((item) => item.id))
-  locallyRemovedNoteItemIds.forEach((id) => {
-    if (!stillPresent.has(id)) locallyRemovedNoteItemIds.delete(id)
+  pending.forEach((id) => {
+    if (!stillPresent.has(id)) pending.delete(id)
   })
+  if (pending.size === 0) removedNoteItemIdsByChatId.delete(chatId)
 }
 
-function visibleNoteItems(serverItems: ChatNoteItem[]): ChatNoteItem[] {
-  return serverItems.filter((item) => !locallyRemovedNoteItemIds.has(item.id))
+function visibleNoteItems(chatId: string, serverItems: ChatNoteItem[]): ChatNoteItem[] {
+  const pending = removedNoteItemIdsByChatId.get(chatId)
+  if (!pending) return serverItems
+  return serverItems.filter((item) => !pending.has(item.id))
 }
 
-/** Clears the module-level set of not-yet-confirmed note removals - used by the store's own reset()
+/** Clears the module-level map of not-yet-confirmed note removals - used by the store's own reset()
  * (logout) and exported for chatStore.test.ts's beforeEach, since module state survives across
  * test cases unless cleared explicitly. */
 export function clearRemovedNoteItemCache(): void {
-  locallyRemovedNoteItemIds.clear()
+  removedNoteItemIdsByChatId.clear()
 }
 
 /**
@@ -147,6 +151,9 @@ export function dropChatSettingsCache(chatId: string): void {
   const pendingChain = settingsUpdateChains.get(chatId)
   settingsUpdateChains.delete(chatId)
   settingsChangeSequenceByChatId.delete(chatId)
+  // #1488: a deleted chat is never loaded again, so its pending note removals would never be
+  // confirmed - and nothing would ever filter against them either.
+  removedNoteItemIdsByChatId.delete(chatId)
   if (pendingChain) {
     void pendingChain.finally(() => confirmedSettingsByChatId.delete(chatId))
     return
@@ -306,7 +313,7 @@ function applyChatDetail(detail: ChatDetail) {
     referencedLibraryIds: scope === 'libraries' ? referencedLibraryIds : [],
     metadataFilter: normalizeMetadataFilter(detail.metadataFilter),
     messages: detail.messages.map(toChatMessage),
-    noteItems: visibleNoteItems(detail.noteItems ?? []),
+    noteItems: visibleNoteItems(detail.id, detail.noteItems ?? []),
   }
 }
 
@@ -351,7 +358,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (requestId !== chatLoadSequence) return
       // #1488: loading the chat is what confirms a local removal - a point the server no longer
       // reports leaves the filter set, a point it still reports keeps being filtered out.
-      confirmNoteItemRemovals(detail.noteItems ?? [])
+      confirmNoteItemRemovals(chatId, detail.noteItems ?? [])
       const detailState = applyChatDetail(detail)
       // #619: a settings change for this exact chat was started while this GET was in flight - its
       // own success/failure handler in applyScopeChange is the authoritative source for scope/
@@ -527,7 +534,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
         // #1488: the note state that went into *this* answer, minus the points removed since it
         // was sent (see locallyRemovedNoteItemIds). Null only for an ephemeral query without a
         // persisted chat - the note then stays as it is rather than being emptied.
-        noteItems: response.noteItems ? visibleNoteItems(response.noteItems) : state.noteItems,
+        noteItems: response.noteItems
+          ? visibleNoteItems(response.chatId, response.noteItems)
+          : state.noteItems,
       }))
       if (spaceId) {
         // Moves the chat to the top of its space's list after every turn, mirroring the backend's
@@ -604,14 +613,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const sessionEpoch = currentSessionEpoch()
 
     // Optimistic: the point is gone from the list and from every note state the server delivers
-    // until a GET chat confirms the removal (see locallyRemovedNoteItemIds).
-    locallyRemovedNoteItemIds.add(itemId)
+    // for this chat until a GET chat confirms the removal (see removedNoteItemIdsByChatId).
+    const pending = removedNoteItemIdsByChatId.get(chatId) ?? new Set<string>()
+    pending.add(itemId)
+    removedNoteItemIdsByChatId.set(chatId, pending)
     set({ noteItems: noteItems.filter((item) => item.id !== itemId) })
 
     try {
       await deleteChatNoteItem(chatId, itemId)
     } catch (err) {
-      locallyRemovedNoteItemIds.delete(itemId)
+      const stillPending = removedNoteItemIdsByChatId.get(chatId)
+      stillPending?.delete(itemId)
+      if (stillPending?.size === 0) removedNoteItemIdsByChatId.delete(chatId)
       if (isStaleSessionEpoch(sessionEpoch)) return
       // A failure arriving after the user switched chats must not push this point into the chat
       // they are looking at now - the note is per chat.

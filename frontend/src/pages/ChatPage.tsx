@@ -119,7 +119,11 @@ export default function ChatPage() {
         // row: title and button share the first line, the note panel takes the next one.
         <Box
           ref={headerRef}
+          // Focus target of the note when its last point - and with it its button - is removed
+          // (#1488). Named, because focus must never land on an element without name and role.
           tabIndex={-1}
+          role="group"
+          aria-label="Chat-Kopfzeile"
           sx={{
             px: 5,
             py: 2,

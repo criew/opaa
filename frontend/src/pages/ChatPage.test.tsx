@@ -149,6 +149,56 @@ describe('ChatPage', () => {
       expect(screen.getByRole('button', { name: 'Gesprächsnotiz · 1' })).toBeInTheDocument()
     })
 
+    // Nails down "completed round" = round with an answer. The fixture chat alone cannot: with
+    // three questions and three answers, every conceivable rule is above the threshold. Here the
+    // third answer is still coming in - counting messages or questions would show the button now.
+    it('keeps the button away while the third answer is still coming in', async () => {
+      const now = new Date()
+      useChatStore.setState({
+        spaceId: 'space-engineering',
+        chatId: 'chat-engineering-2',
+        title: 'Anwohnerparkausweis Nebenstelle 3',
+        noteItems: [
+          {
+            id: 'note-1',
+            text: 'Arbeitet im Bürgerbüro Nebenstelle 3',
+            kind: 'RAHMEN',
+            createdAt: '2026-03-08T09:00:10Z',
+          },
+          {
+            id: 'note-2',
+            text: 'Bezugsjahr 2024',
+            kind: 'RAHMEN',
+            createdAt: '2026-03-08T09:01:10Z',
+          },
+        ],
+        messages: [
+          { id: 'm1', role: 'user', content: 'Erste Frage', timestamp: now },
+          { id: 'm2', role: 'assistant', content: 'Erste Antwort', timestamp: now },
+          { id: 'm3', role: 'user', content: 'Zweite Frage', timestamp: now },
+          { id: 'm4', role: 'assistant', content: 'Zweite Antwort', timestamp: now },
+          { id: 'm5', role: 'user', content: 'Dritte Frage', timestamp: now },
+        ],
+        isLoading: true,
+      })
+
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      expect(screen.queryByRole('button', { name: /Gesprächsnotiz/ })).not.toBeInTheDocument()
+
+      act(() => {
+        useChatStore.setState((state) => ({
+          messages: [
+            ...state.messages,
+            { id: 'm6', role: 'assistant', content: 'Dritte Antwort', timestamp: now },
+          ],
+          isLoading: false,
+        }))
+      })
+
+      expect(screen.getByRole('button', { name: 'Gesprächsnotiz · 2' })).toBeInTheDocument()
+    })
+
     it('shows the note without remove buttons while the space is archived', async () => {
       setEngineeringSpace(true)
       const user = userEvent.setup()

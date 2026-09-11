@@ -1970,6 +1970,27 @@ describe('chatStore', () => {
       expect(noteIds()).toEqual([OTHER_NOTE_ITEM_ID])
     })
 
+    // Loading a *different* chat says nothing about this chat's server state. Releasing the filter
+    // there would let the point reappear on the way back - the promise is an invariant, not a
+    // matter of timing.
+    it('keeps a pending removal pending while another chat is loaded', async () => {
+      server.use(
+        // Deliberately does not touch the fixture: the server still reports the point on the next
+        // GET, the way it does while the removal has not been read back yet.
+        http.delete(
+          '/api/v1/chats/:chatId/note-items/:itemId',
+          () => new HttpResponse(null, { status: 204 }),
+        ),
+      )
+      await useChatStore.getState().loadChat(NOTE_CHAT_ID)
+      await useChatStore.getState().removeNoteItem(NOTE_ITEM_ID)
+
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      await useChatStore.getState().loadChat(NOTE_CHAT_ID)
+
+      expect(noteIds()).toEqual([OTHER_NOTE_ITEM_ID])
+    })
+
     // The filter is a bridge, not a tombstone: once the load confirmed the removal, the id is
     // released - the same point may be condensed again later and must then show up normally.
     it('stops filtering a point once loading the chat confirmed its removal', async () => {

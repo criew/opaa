@@ -693,8 +693,9 @@ export const handlers = [
       chatId,
       chatTitle,
       // Mirrors QueryResponse#noteItems (#1487): the note state that went into *this* answer -
-      // never one the condensation of this very turn would produce.
-      noteItems: mockChatDetails[chatId]?.noteItems ?? [],
+      // never one the condensation of this very turn would produce, and null for an ephemeral
+      // query that has no persisted chat at all.
+      noteItems: mockChatDetails[chatId]?.noteItems ?? null,
     })
   }),
 
