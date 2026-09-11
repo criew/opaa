@@ -32,9 +32,9 @@ public class CaffeineChatMemoryRepository implements ChatMemoryRepository {
 
   /**
    * Maximum number of concurrent conversation caches. Default 50: moderate memory usage suitable
-   * for typical team sizes - each conversation holds up to {@link
-   * ConversationMemoryConfiguration#MAX_MESSAGES_PER_CONVERSATION} messages in a Caffeine cache
-   * entry.
+   * for typical team sizes - each conversation holds up to {@code
+   * opaa.query.conversation-window-messages} messages in a Caffeine cache entry (see {@link
+   * ConversationMemoryConfiguration}).
    */
   static final int MAX_CONVERSATIONS = 50;
 

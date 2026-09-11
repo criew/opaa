@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -77,7 +76,9 @@ public class AnswerGenerationService {
     chatMemory.add(conversationId, new UserMessage(question));
     String assistantText = ChatResponses.textOrNull(response);
     if (assistantText != null) {
-      chatMemory.add(conversationId, new AssistantMessage(assistantText));
+      // The window gets the answer without its citation markers; the response returned here - and
+      // with it the persisted text - keeps them. See ConversationWindowMessages.
+      chatMemory.add(conversationId, ConversationWindowMessages.answer(assistantText));
     }
 
     return response;

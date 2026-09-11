@@ -25,10 +25,12 @@ import org.springframework.ai.chat.messages.UserMessage;
  *
  * <p><b>The conversation window is built by the production memory, not by this class.</b> Every
  * turn is appended to the {@link ChatMemory} bean a chat request uses, and the window handed to the
- * next turn is whatever that memory returns - so the window width, its eviction order and (once
- * there is one) its normalization are production behaviour, never a second implementation that can
- * drift. The {@code Message} shapes match {@code ChatService#historyAsSpringAiMessages}: the user's
- * question as a {@code UserMessage}, the hand-written short answer as an {@code AssistantMessage}.
+ * next turn is whatever that memory returns - so the window width and its eviction order are
+ * production behaviour, never a second implementation that can drift. Production additionally
+ * strips citation markers on the way in ({@code ConversationWindowMessages}); a scripted short
+ * answer carries none, so appending it as-is lands on the same text that path would produce. The
+ * {@code Message} shapes match {@code ChatService#historyAsSpringAiMessages}: the user's question
+ * as a {@code UserMessage}, the hand-written short answer as an {@code AssistantMessage}.
  *
  * <p>Takes the retrieval itself as a {@link TurnInvocation} rather than depending on {@code
  * RetrievalPipeline}, for the same reason {@link PipelineRetrievalEvaluator} does: the harness

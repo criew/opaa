@@ -49,7 +49,7 @@ class ConversationHarnessSupportTest {
         .thenReturn(new RerankRoleStatus(RerankRoleState.DISABLED, null, null, null, false));
     RetrievalContextFactory contextFactory =
         new RetrievalContextFactory(
-            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, true, 0), rerankModelRole);
+            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, true, 0, 20, 2), rerankModelRole);
 
     ConversationHarnessSupport.measure(
         EvalDomainConfig.VERWALTUNG,

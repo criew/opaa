@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 class VariantQueryPropertiesTest {
 
   private static final QueryProperties PRODUCTION =
-      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, true, 50);
+      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, true, 50, 20, 2);
 
   @Test
   void emptyOverridesReproduceTheProductionConfigurationExactly() {

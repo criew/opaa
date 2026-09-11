@@ -3,6 +3,7 @@ package io.opaa.query.answer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -19,6 +20,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -172,5 +174,53 @@ class AnswerGenerationServiceTest {
     var messages = chatMemory.get("conv-rag");
     assertThat(messages.get(0).getText()).isEqualTo("My question");
     assertThat(messages.get(0).getText()).doesNotContain("RAG content");
+  }
+
+  /**
+   * #1486: the conversation window holds the answer without its citation markers, while the
+   * response the caller persists keeps them - the persisted text is the truth for footnotes, text
+   * anchors and the evidence drawer.
+   */
+  @Test
+  void theWindowLosesTheCitationMarkersWhileTheReturnedAnswerKeepsThem() {
+    String answerWithCitation =
+        "Ein Anwohnerparkausweis kostet 30,70 Euro pro Jahr. "
+            + "【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6#0 | anwohnerparken.md】";
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            new ChatResponse(List.of(new Generation(new AssistantMessage(answerWithCitation)))));
+
+    ChatResponse response =
+        answerGenerationService.generateAnswer("Frage?", List.of(), "conv-citation-memory");
+
+    assertThat(response.getResult().getOutput().getText()).isEqualTo(answerWithCitation);
+    assertThat(chatMemory.get("conv-citation-memory"))
+        .extracting(Message::getText)
+        .containsExactly("Frage?", "Ein Anwohnerparkausweis kostet 30,70 Euro pro Jahr.");
+  }
+
+  /**
+   * #1486: a marker of the previous turn must not reach the next prompt - that is the repetition
+   * the removal exists for.
+   */
+  @Test
+  void theFollowUpPromptCarriesNoMarkerOfThePreviousAnswer() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            new ChatResponse(
+                List.of(
+                    new Generation(
+                        new AssistantMessage("Erste Antwort. 【source: doc-1#0 | a.md】")))),
+            new ChatResponse(List.of(new Generation(new AssistantMessage("Zweite Antwort")))));
+    ArgumentCaptor<Prompt> captor = ArgumentCaptor.forClass(Prompt.class);
+
+    answerGenerationService.generateAnswer("Erste Frage", List.of(), "conv-no-marker");
+    answerGenerationService.generateAnswer("Folgefrage", List.of(), "conv-no-marker");
+
+    verify(chatModel, times(2)).call(captor.capture());
+    assertThat(captor.getAllValues().get(1).getInstructions())
+        .filteredOn(message -> message.getMessageType() == MessageType.ASSISTANT)
+        .extracting(Message::getText)
+        .containsExactly("Erste Antwort.");
   }
 }
