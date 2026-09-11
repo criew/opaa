@@ -7,6 +7,8 @@ import { createAppTheme } from '../theme/theme'
 import NotificationHost from '../components/NotificationHost'
 import { useAuthStore } from '../stores/authStore'
 import { useNotificationStore } from '../stores/notificationStore'
+import type { LocalAccountsConfig, SessionKind } from '../types/auth'
+import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
 
 const theme = createAppTheme('dark')
 
@@ -44,8 +46,19 @@ export function renderWithProviders(
   return render(ui, { wrapper: Wrapper, ...renderOptions })
 }
 
+interface MockAuthStateOptions {
+  /** Which kind of session the tab holds (ADR-0033); dev mode has none. */
+  sessionKind?: SessionKind | null
+  passwordChangeRequired?: boolean
+  localAccounts?: LocalAccountsConfig
+}
+
 /** Puts the auth store into an authenticated dev-mode state, bypassing any network call. */
-export function setMockAuthState() {
+export function setMockAuthState({
+  sessionKind = null,
+  passwordChangeRequired = false,
+  localAccounts = LOCAL_ACCOUNTS_DISABLED,
+}: MockAuthStateOptions = {}) {
   useAuthStore.setState({
     mode: 'dev',
     isAuthenticated: true,
@@ -54,5 +67,9 @@ export function setMockAuthState() {
     token: null,
     error: null,
     userManager: null,
+    sessionKind,
+    passwordChangeRequired,
+    passwordChangeReason: null,
+    localAccounts,
   })
 }

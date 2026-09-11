@@ -1,9 +1,40 @@
 import { create } from 'zustand'
 import { UserManager, WebStorageStateStore } from 'oidc-client-ts'
-import type { AuthMode, AuthUser, SignInProvider } from '../types/auth'
-import { getAuthConfig, getMe, UnknownIssuerError } from '../services/authApi'
+import type {
+  AuthMode,
+  AuthUser,
+  LocalAccountsConfig,
+  LocalTokenResponse,
+  PasswordChangeReason,
+  SessionKind,
+  SignInProvider,
+} from '../types/auth'
+import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
+import {
+  changePassword as changePasswordRequest,
+  describeLocalSignInFailure,
+  getAuthConfig,
+  getMe,
+  loginLocal as loginLocalRequest,
+  logoutLocal,
+  performLocalRefresh,
+  UnknownIssuerError,
+} from '../services/authApi'
 import { clearDevUser, resolveDevUser } from '../services/devAuth'
 import type { SessionExpiredReason } from '../services/apiInterceptors'
+import {
+  CONFIG_UNAVAILABLE_MESSAGE,
+  LOCAL_LOGOUT_MESSAGE,
+  LOCAL_SIGN_IN_FAILED_MESSAGE,
+  LOCAL_SIGN_IN_UNREACHABLE_MESSAGE,
+  NO_PROVIDER_MESSAGE,
+  PROVIDER_GONE_MESSAGE,
+  SESSION_EXPIRED_MESSAGE,
+  UNKNOWN_ISSUER_MESSAGE,
+  sessionEndMessage,
+  signInFailedMessage,
+  tooManyAttemptsMessage,
+} from '../utils/authMessages'
 import { notify } from './notificationStore'
 import { resetAllStores } from './resettableStores'
 
@@ -15,25 +46,24 @@ import { resetAllStores } from './resettableStores'
  * these managers; the provider used last is remembered in localStorage only as the suggestion
  * for the next sign-in. Everything token-related (renewal, 401 handling, logout) works on the
  * active session's manager.
+ *
+ * A tab holds at most one session, and its kind is remembered next to the flow provider
+ * (ADR-0033): a local session keeps its access token in memory only - never in localStorage - and
+ * is restored after a reload through the HttpOnly refresh cookie.
  */
 export const FLOW_PROVIDER_STORAGE_KEY = 'opaa.oidc.flowProvider'
 export const LAST_PROVIDER_STORAGE_KEY = 'opaa.oidc.lastProvider'
+export const SESSION_KIND_STORAGE_KEY = 'opaa.auth.sessionKind'
 
-export const CONFIG_UNAVAILABLE_MESSAGE =
-  'Die Authentifizierungskonfiguration konnte nicht geladen werden.'
-export const NO_PROVIDER_MESSAGE =
-  'Es ist kein Identitätsanbieter für die Anmeldung verfügbar. Bitte wenden Sie sich an die Systemverwaltung.'
-export const PROVIDER_GONE_MESSAGE =
-  'Der gewählte Identitätsanbieter steht nicht mehr zur Verfügung. Bitte melden Sie sich über einen anderen Anbieter an.'
-export const UNKNOWN_ISSUER_MESSAGE =
-  'Der Identitätsanbieter Ihrer Anmeldung ist nicht mehr zugelassen. Bitte melden Sie sich erneut an.'
-export const SESSION_EXPIRED_MESSAGE =
-  'Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.'
-export const LOCAL_LOGOUT_MESSAGE =
-  'Sie wurden nur in dieser Anwendung abgemeldet; die Sitzung beim Identitätsanbieter besteht möglicherweise weiter.'
-
-export function signInFailedMessage(providerName: string, detail: string): string {
-  return `Die Anmeldung bei ${providerName} konnte nicht gestartet werden: ${detail}`
+export {
+  CONFIG_UNAVAILABLE_MESSAGE,
+  LOCAL_LOGOUT_MESSAGE,
+  LOCAL_SIGN_IN_FAILED_MESSAGE,
+  NO_PROVIDER_MESSAGE,
+  PROVIDER_GONE_MESSAGE,
+  SESSION_EXPIRED_MESSAGE,
+  UNKNOWN_ISSUER_MESSAGE,
+  signInFailedMessage,
 }
 
 interface AuthState {
@@ -51,6 +81,14 @@ interface AuthState {
   userManager: UserManager | null
   /** Which of {@link providers} {@link userManager} belongs to. */
   activeProviderId: string | null
+  /** What local accounts offer right now (ADR-0033); switched off until the config says otherwise. */
+  localAccounts: LocalAccountsConfig
+  /** The kind of the active session, or of the sign-in under way; null while signed out. */
+  sessionKind: SessionKind | null
+  /** The account must set a new password before any route but /account/password answers. */
+  passwordChangeRequired: boolean
+  /** Why the change is demanded - the sentence the password page shows. */
+  passwordChangeReason: PasswordChangeReason | null
 
   initialize: () => Promise<void>
   /**
@@ -59,6 +97,16 @@ interface AuthState {
    */
   loginOidc: (providerId?: string, options?: { switchAccount?: boolean }) => Promise<void>
   handleOidcCallback: () => Promise<void>
+  /**
+   * Signs in with an account of this installation. Returns whether it worked; the reason of a
+   * refusal is in {@link AuthState.error}, in one wording for every refused sign-in.
+   */
+  loginLocal: (email: string, password: string) => Promise<boolean>
+  /**
+   * Changes the password of the signed-in local account and adopts the session the backend mints
+   * in the same answer, which clears {@link AuthState.passwordChangeRequired}.
+   */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>
   logout: () => Promise<void>
   getAccessToken: () => Promise<string | null>
   // #737: a single silent-renew attempt via the refresh token, used by the response interceptor
@@ -69,6 +117,8 @@ interface AuthState {
   // signoutRedirect(), which would also destroy the IdP session. Left for the OIDC case; a
   // deliberate logout button click still calls logout() above and its full signoutRedirect().
   expireSession: (reason?: SessionExpiredReason) => void
+  /** The 403 of the forced password change (ADR-0033, Entscheidung 8), from the interceptor. */
+  requirePasswordChange: (reason: PasswordChangeReason | null) => void
   /** The provider the sign-in page proposes: the one used last, else the default, else the first. */
   suggestedProvider: () => SignInProvider | null
 }
@@ -81,6 +131,10 @@ let inFlightRenew: Promise<boolean> | null = null
 // Module-scoped like inFlightRenew: the managers of the providers that are not the active one are
 // plumbing for a sign-in that has not started, not UI state.
 let userManagers: Map<string, UserManager> = new Map()
+
+// When the access token of the local session stops being valid (epoch ms). Plumbing for logout,
+// which may only present a bearer the resource server still accepts; a UI never reads it.
+let localTokenExpiresAt: number | null = null
 
 function readStorage(storage: Storage, key: string): string | null {
   try {
@@ -175,6 +229,51 @@ export const useAuthStore = create<AuthState>((set, get) => {
     void userManager?.removeUser()
   }
 
+  /**
+   * Takes over a freshly minted local session. A token that demands a password change reaches
+   * nothing but `/api/v1/auth/local/*` - `/auth/me` included - so the identity is fetched only
+   * once the new password stands (ADR-0033, Entscheidung 8).
+   */
+  async function adoptLocalSession(tokens: LocalTokenResponse) {
+    writeStorage(sessionStorage, SESSION_KIND_STORAGE_KEY, 'local')
+    localTokenExpiresAt = Date.now() + tokens.expiresInSeconds * 1000
+    const session = {
+      token: tokens.accessToken,
+      sessionKind: 'local' as const,
+      isAuthenticated: true,
+      isLoading: false,
+      isSigningIn: false,
+      error: null,
+      passwordChangeRequired: tokens.passwordChangeRequired,
+      passwordChangeReason: tokens.passwordChangeReason ?? null,
+    }
+    if (tokens.passwordChangeRequired) {
+      set({ ...session, user: null })
+      return
+    }
+    const me = await getMe(tokens.accessToken)
+    set({ ...session, user: me })
+  }
+
+  /** Forgets the local session in this tab, without calling the backend. */
+  function dropLocalTokens() {
+    localTokenExpiresAt = null
+    writeStorage(sessionStorage, SESSION_KIND_STORAGE_KEY, null)
+  }
+
+  /** One attempt at the local session behind the refresh cookie; false when there is none. */
+  async function restoreLocalSession(): Promise<boolean> {
+    const tokens = await performLocalRefresh()
+    if (!tokens) return false
+    try {
+      await adoptLocalSession(tokens)
+      return true
+    } catch {
+      dropLocalTokens()
+      return false
+    }
+  }
+
   return {
     mode: null,
     user: null,
@@ -186,6 +285,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
     providers: [],
     userManager: null,
     activeProviderId: null,
+    localAccounts: LOCAL_ACCOUNTS_DISABLED,
+    sessionKind: null,
+    passwordChangeRequired: false,
+    passwordChangeReason: null,
 
     initialize: async () => {
       let config
@@ -207,7 +310,11 @@ export const useAuthStore = create<AuthState>((set, get) => {
         return
       }
       const providers = config.providers ?? []
-      set({ mode: config.mode, providers })
+      set({
+        mode: config.mode,
+        providers,
+        localAccounts: config.localAccounts ?? LOCAL_ACCOUNTS_DISABLED,
+      })
 
       if (config.mode === 'dev') {
         // No login and no token: the backend authenticates every request as the selected dev
@@ -233,15 +340,6 @@ export const useAuthStore = create<AuthState>((set, get) => {
       if (last && !userManagers.has(last)) {
         writeStorage(localStorage, LAST_PROVIDER_STORAGE_KEY, null)
       }
-      if (providers.length === 0) {
-        set({
-          userManager: null,
-          activeProviderId: null,
-          isLoading: false,
-          error: NO_PROVIDER_MESSAGE,
-        })
-        return
-      }
       // the session (or the flow under way) belongs to the provider this tab remembers; a
       // provider disabled in the meantime is simply no longer there, and the tab starts over
       const remembered = readStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY)
@@ -256,26 +354,45 @@ export const useAuthStore = create<AuthState>((set, get) => {
         if (suggested) activate(suggested.id, false)
       }
       const oidcUser = active ? await active.getUser() : null
-      if (!oidcUser || oidcUser.expired) {
-        set({ isLoading: false })
+      if (oidcUser && !oidcUser.expired) {
+        try {
+          const me = await getMe(oidcUser.access_token)
+          set({
+            token: oidcUser.access_token,
+            user: me,
+            isAuthenticated: true,
+            isLoading: false,
+            sessionKind: 'oidc',
+          })
+        } catch (err) {
+          // the stored session is worthless when its provider was disabled - drop it, keep the
+          // sign-in page armed with the providers just loaded
+          dropLocalSession()
+          set({
+            token: null,
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error:
+              err instanceof UnknownIssuerError ? UNKNOWN_ISSUER_MESSAGE : SESSION_EXPIRED_MESSAGE,
+          })
+        }
         return
       }
-      try {
-        const me = await getMe(oidcUser.access_token)
-        set({ token: oidcUser.access_token, user: me, isAuthenticated: true, isLoading: false })
-      } catch (err) {
-        // the stored session is worthless when its provider was disabled - drop it, keep the
-        // sign-in page armed with the providers just loaded
-        dropLocalSession()
+      // No provider session in this tab: one attempt at a local one (ADR-0033). Without the CSRF
+      // cookie there is nothing to restore and no request is made, so a regular OIDC sign-in
+      // never sees a failed call it did not ask for.
+      if (await restoreLocalSession()) return
+      if (providers.length === 0 && !get().localAccounts.enabled) {
         set({
-          token: null,
-          user: null,
-          isAuthenticated: false,
+          userManager: null,
+          activeProviderId: null,
           isLoading: false,
-          error:
-            err instanceof UnknownIssuerError ? UNKNOWN_ISSUER_MESSAGE : SESSION_EXPIRED_MESSAGE,
+          error: NO_PROVIDER_MESSAGE,
         })
+        return
       }
+      set({ isLoading: false })
     },
 
     suggestedProvider: () => {
@@ -296,7 +413,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
         return
       }
       writeStorage(localStorage, LAST_PROVIDER_STORAGE_KEY, chosen)
-      set({ isSigningIn: true, error: null })
+      writeStorage(sessionStorage, SESSION_KIND_STORAGE_KEY, 'oidc')
+      set({ isSigningIn: true, sessionKind: 'oidc', error: null })
       try {
         await userManager.signinRedirect(options?.switchAccount ? { prompt: 'login' } : undefined)
       } catch (err) {
@@ -311,6 +429,36 @@ export const useAuthStore = create<AuthState>((set, get) => {
           ),
         })
       }
+    },
+
+    loginLocal: async (email, password) => {
+      set({ isSigningIn: true, error: null })
+      try {
+        const tokens = await loginLocalRequest(email, password)
+        await adoptLocalSession(tokens)
+        return true
+      } catch (err) {
+        dropLocalTokens()
+        const { status, retryAfterSeconds } = describeLocalSignInFailure(err)
+        // ADR-0033, Entscheidung 9: every refusal - unknown address, wrong password, locked,
+        // expired, switched off - is the same sentence; only the rate limit and an unreachable
+        // backend say something else, because those name a next step.
+        set({
+          isSigningIn: false,
+          error:
+            status === 429
+              ? tooManyAttemptsMessage(retryAfterSeconds)
+              : status === null
+                ? LOCAL_SIGN_IN_UNREACHABLE_MESSAGE
+                : LOCAL_SIGN_IN_FAILED_MESSAGE,
+        })
+        return false
+      }
+    },
+
+    changePassword: async (currentPassword, newPassword) => {
+      const tokens = await changePasswordRequest(get().token, currentPassword, newPassword)
+      await adoptLocalSession(tokens)
     },
 
     handleOidcCallback: async () => {
@@ -330,6 +478,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
           user: me,
           isAuthenticated: true,
           isLoading: false,
+          sessionKind: 'oidc',
         })
       } catch (err) {
         if (err instanceof UnknownIssuerError) {
@@ -345,13 +494,35 @@ export const useAuthStore = create<AuthState>((set, get) => {
     },
 
     logout: async () => {
-      const { userManager, mode } = get()
+      const { userManager, mode, sessionKind, token } = get()
       // Resets every store that caches data scoped to the signed-in user's session (#440) - see
       // resettableStores.ts for which stores that covers and why. Must run before
       // signoutRedirect below: that call navigates the browser away in OIDC mode, so anything
       // after it would practically never run.
       resetAllStores()
       writeStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY, null)
+      if (sessionKind === 'local') {
+        const stillValid = localTokenExpiresAt !== null && Date.now() < localTokenExpiresAt
+        dropLocalTokens()
+        try {
+          // Revokes the refresh family and the presented access token at once (ADR-0033,
+          // Entscheidung 7); a failure must not leave the tab signed in, so the local state is
+          // reset either way and ProtectedRoute takes over from there.
+          await logoutLocal(stillValid ? token : null)
+        } catch {
+          notify(LOCAL_LOGOUT_MESSAGE, 'info')
+        }
+        set({
+          token: null,
+          user: null,
+          isAuthenticated: false,
+          sessionKind: null,
+          passwordChangeRequired: false,
+          passwordChangeReason: null,
+          error: null,
+        })
+        return
+      }
       if (mode === 'oidc' && userManager) {
         try {
           // the RP-initiated logout at the provider of the active session (ADR-0025)
@@ -364,10 +535,14 @@ export const useAuthStore = create<AuthState>((set, get) => {
         }
       }
       clearDevUser()
+      dropLocalTokens()
       set({
         token: null,
         user: null,
         isAuthenticated: false,
+        sessionKind: null,
+        passwordChangeRequired: false,
+        passwordChangeReason: null,
         error: null,
       })
     },
@@ -378,7 +553,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
     // interceptor (apiInterceptors.ts) can lose against an in-flight renew. In dev mode there is no
     // userManager at all, so the (always-null) store token is the only thing to return.
     getAccessToken: async () => {
-      const { userManager, mode, token } = get()
+      const { userManager, mode, token, sessionKind } = get()
+      // The local access token lives in the store and nowhere else (ADR-0033, Entscheidung 7).
+      if (sessionKind === 'local') return token
       if (mode === 'oidc' && userManager) {
         const user = await userManager.getUser()
         return user && !user.expired ? user.access_token : token
@@ -390,8 +567,20 @@ export const useAuthStore = create<AuthState>((set, get) => {
     // used to each start their own signinSilent() call - harmless today, but a refresh-token-rotating
     // IdP would have the first grant invalidate the token for every other in-flight one. Sharing one
     // in-flight renew across callers removes the N-parallel-grants case entirely.
-    renewToken: () => {
-      const { userManager, mode } = get()
+    renewToken: async () => {
+      const { userManager, mode, sessionKind } = get()
+      if (sessionKind === 'local') {
+        const tokens = await performLocalRefresh()
+        if (!tokens) return false
+        localTokenExpiresAt = Date.now() + tokens.expiresInSeconds * 1000
+        set({
+          token: tokens.accessToken,
+          isAuthenticated: true,
+          passwordChangeRequired: tokens.passwordChangeRequired,
+          passwordChangeReason: tokens.passwordChangeReason ?? null,
+        })
+        return true
+      }
       if (mode !== 'oidc' || !userManager) return Promise.resolve(false)
       if (inFlightRenew) return inFlightRenew
       inFlightRenew = (async () => {
@@ -421,16 +610,20 @@ export const useAuthStore = create<AuthState>((set, get) => {
       // Local-only: it clears the WebStorageStateStore entry in sessionStorage, not the IdP session
       // itself - a fresh signinRedirect() still won't force new credentials.
       dropLocalSession()
+      dropLocalTokens()
       set({
         token: null,
         user: null,
         isAuthenticated: false,
+        sessionKind: null,
+        passwordChangeRequired: false,
+        passwordChangeReason: null,
         // #737 review: explain the redirect to the login page - it used to look like a random
         // logout with no explanation (error: null), because this is exactly the branch a
         // successfully-renewed-but-still-401ing request falls into (apiInterceptors.ts).
-        // ADR-0025: `unknown_issuer` is the provider of this session being disabled, not an
-        // expired token - it gets its own explanation.
-        error: reason === 'unknown_issuer' ? UNKNOWN_ISSUER_MESSAGE : SESSION_EXPIRED_MESSAGE,
+        // ADR-0025/ADR-0033: every marker of the challenge has its own sentence - a disabled
+        // provider, a locked account, a revoked session are not an expired token.
+        error: sessionEndMessage(reason),
       })
       if (reason === 'unknown_issuer') {
         // the provider list is stale by definition now: reload it, so the sign-in page neither
@@ -443,6 +636,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
           .initialize()
           .then(() => set({ error: UNKNOWN_ISSUER_MESSAGE }))
       }
+    },
+
+    requirePasswordChange: (reason) => {
+      set({ passwordChangeRequired: true, passwordChangeReason: reason })
     },
   }
 })

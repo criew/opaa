@@ -112,4 +112,125 @@ describe('setupAuthInterceptors', () => {
     expect(renewToken).not.toHaveBeenCalled()
     expect(onSessionExpired).toHaveBeenCalledWith('unknown_issuer')
   })
+  // ADR-0033, Entscheidung 8: every marker of the challenge names a cause a renewal can never fix.
+  it.each([
+    ['local_accounts_disabled', 'local_accounts_disabled'],
+    ['account_locked:failed_logins', 'account_locked:failed_logins'],
+    ['account_expired', 'account_expired'],
+    ['session_revoked:password_changed', 'session_revoked:password_changed'],
+    ['account_not_active', 'account_not_active'],
+    ['unknown_account', 'unknown_account'],
+    ['malformed_token', 'malformed_token'],
+  ])('ends the session without a renew when the 401 names %s', async (marker, expected) => {
+    server.use(
+      http.post(
+        '/api/test-marker',
+        () =>
+          new HttpResponse(null, {
+            status: 401,
+            headers: {
+              'WWW-Authenticate': `Bearer error="invalid_token", error_description="${marker}"`,
+            },
+          }),
+      ),
+    )
+
+    const client = axios.create({ baseURL: '/api' })
+    const renewToken = vi.fn(async () => true)
+    const onSessionExpired = vi.fn()
+
+    setupAuthInterceptors(client, () => 'token', renewToken, onSessionExpired)
+
+    await expect(client.post('/test-marker')).rejects.toThrow()
+
+    expect(renewToken).not.toHaveBeenCalled()
+    expect(onSessionExpired).toHaveBeenCalledWith(expected)
+  })
+
+  it('still renews on a 401 whose challenge names no session-ending marker', async () => {
+    let callCount = 0
+    server.use(
+      http.get('/api/test-plain-401', () => {
+        callCount += 1
+        return callCount === 1
+          ? new HttpResponse(null, {
+              status: 401,
+              headers: { 'WWW-Authenticate': 'Bearer error="invalid_token"' },
+            })
+          : HttpResponse.json({ ok: true })
+      }),
+    )
+
+    const client = axios.create({ baseURL: '/api' })
+    const renewToken = vi.fn(async () => true)
+    const onSessionExpired = vi.fn()
+
+    setupAuthInterceptors(client, () => 'token', renewToken, onSessionExpired)
+
+    await expect(client.get('/test-plain-401')).resolves.toBeTruthy()
+    expect(renewToken).toHaveBeenCalledTimes(1)
+    expect(onSessionExpired).not.toHaveBeenCalled()
+  })
+
+  // ADR-0033, Entscheidung 8: the session is intact - only the destination changes.
+  it('reports a forced password change with its reason on a 403', async () => {
+    server.use(
+      http.get('/api/test-pcr', () =>
+        HttpResponse.json(
+          {
+            error: 'Passwortwechsel erforderlich',
+            status: 403,
+            timestamp: '2026-09-11T10:00:00Z',
+            code: 'PASSWORD_CHANGE_REQUIRED',
+            reason: 'ADMIN_RESET',
+          },
+          { status: 403 },
+        ),
+      ),
+    )
+
+    const client = axios.create({ baseURL: '/api' })
+    const renewToken = vi.fn(async () => true)
+    const onSessionExpired = vi.fn()
+    const onPasswordChangeRequired = vi.fn()
+
+    setupAuthInterceptors(
+      client,
+      () => 'token',
+      renewToken,
+      onSessionExpired,
+      onPasswordChangeRequired,
+    )
+
+    await expect(client.get('/test-pcr')).rejects.toThrow()
+
+    expect(onPasswordChangeRequired).toHaveBeenCalledWith('ADMIN_RESET')
+    expect(onSessionExpired).not.toHaveBeenCalled()
+    expect(renewToken).not.toHaveBeenCalled()
+  })
+
+  it('leaves an ordinary 403 alone', async () => {
+    server.use(
+      http.get('/api/test-plain-403', () =>
+        HttpResponse.json(
+          { error: 'Keine Berechtigung', status: 403, timestamp: '2026-09-11T10:00:00Z' },
+          { status: 403 },
+        ),
+      ),
+    )
+
+    const client = axios.create({ baseURL: '/api' })
+    const onPasswordChangeRequired = vi.fn()
+
+    setupAuthInterceptors(
+      client,
+      () => 'token',
+      vi.fn(async () => true),
+      vi.fn(),
+      onPasswordChangeRequired,
+    )
+
+    await expect(client.get('/test-plain-403')).rejects.toThrow()
+    expect(onPasswordChangeRequired).not.toHaveBeenCalled()
+  })
 })

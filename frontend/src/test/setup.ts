@@ -17,7 +17,7 @@ import {
 // times out. Verified by adding a bare `import '../services/api'` here and watching
 // SpaceCreatePage.test.tsx go red on its own. Store state that has to be reset between tests
 // belongs in that test file's own beforeEach.
-import { resetMockBranding, resetMockOidcProviders } from '../mocks/fixtures'
+import { resetMockAuthConfig, resetMockBranding, resetMockOidcProviders } from '../mocks/fixtures'
 import { resetMockMailSettings, resetMockMailTemplates } from '../mocks/mailFixtures'
 
 beforeAll(() => server.listen())
@@ -35,5 +35,8 @@ afterEach(() => {
   // Same reason: the mail settings and templates are mutable so a PUT shows up on the next GET.
   resetMockMailSettings()
   resetMockMailTemplates()
+  // The auth config fixture is mutable too (ADR-0033): a test that switches the local account
+  // management on must not leave it on for the next one.
+  resetMockAuthConfig()
 })
 afterAll(() => server.close())

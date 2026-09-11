@@ -114,6 +114,7 @@ setupAuthInterceptors(
   () => useAuthStore.getState().getAccessToken(),
   () => useAuthStore.getState().renewToken(),
   (reason) => useAuthStore.getState().expireSession(reason),
+  (reason) => useAuthStore.getState().requirePasswordChange(reason),
 )
 
 //  (review): a bare 413 alone doesn't tell us the oversized body was a file - normalizeError is
