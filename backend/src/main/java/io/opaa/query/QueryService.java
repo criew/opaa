@@ -10,6 +10,7 @@ import io.opaa.library.LibraryAccessService;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.query.answer.AnswerGenerationService;
 import io.opaa.query.answer.ChatResponses;
+import io.opaa.query.answer.ConversationWindowMessages;
 import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.query.citation.CitationParser;
 import io.opaa.query.citation.CitationValidator;
@@ -269,15 +270,22 @@ public class QueryService {
    * AnswerGenerationService#generateAnswer} see the persisted history without either reading the
    * database directly. Only touches the cache when it is empty for this key: re-adding would
    * duplicate every message, and a warm cache is already authoritative for this process.
+   *
+   * <p>This is the <b>second entrance into the conversation window</b>; it normalizes through the
+   * same {@link ConversationWindowMessages} the first one uses, which is what makes the same chat
+   * send the same prompt before and after a restart or a cache eviction.
    */
   private void seedConversationMemoryFromPersistedHistory(
       Optional<Chat> chat, String conversationKey) {
     if (chat.isEmpty() || !chatMemory.get(conversationKey).isEmpty()) {
       return;
     }
-    List<Message> persistedHistory = chatService.historyAsSpringAiMessages(chat.get().getId());
+    List<Message> persistedHistory =
+        chatService.historyAsSpringAiMessages(
+            chat.get().getId(),
+            retrievalContextFactory.queryProperties().conversationWindowMessages());
     if (!persistedHistory.isEmpty()) {
-      chatMemory.add(conversationKey, persistedHistory);
+      chatMemory.add(conversationKey, ConversationWindowMessages.reloaded(persistedHistory));
     }
   }
 

@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 class VariantComparisonTest {
 
   private static final QueryProperties PRODUCTION_LIKE =
-      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, true, 50);
+      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, true, 50, 20, 2);
 
   private static PipelineVariant variant(String name) {
     return new PipelineVariant(name, "desc", false, PipelineVariant.QueryOverrides.NONE);

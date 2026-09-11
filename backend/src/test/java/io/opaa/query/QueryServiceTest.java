@@ -175,7 +175,8 @@ class QueryServiceTest {
     // MmrSelector's own diversity behaviour (mmrLambda != 1.0) is covered separately by
     // MmrSelectorTest.
     queryService =
-        newQueryService(new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50), chatMemory);
+        newQueryService(
+            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2), chatMemory);
 
     // lenient: not every test in this class exercises the full query() path (e.g. the
     // mergeSourceReferences nested tests call other members directly), so MockitoExtension's
@@ -211,7 +212,8 @@ class QueryServiceTest {
   @Test
   void queryCallsChunkEmbeddingLookupWhenMmrLambdaIsBelowOne() {
     QueryService serviceWithMmrEnabled =
-        newQueryService(new QueryProperties(8, 25, 0.5, 0.3, true, 3, 2, false, 50), chatMemory);
+        newQueryService(
+            new QueryProperties(8, 25, 0.5, 0.3, true, 3, 2, false, 50, 20, 2), chatMemory);
     when(chatMemory.get(any())).thenReturn(List.of());
     var chunk =
         Document.builder()
@@ -704,7 +706,7 @@ class QueryServiceTest {
     String conversationKey = currentUserId + ":" + chatId;
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatMemory.get(conversationKey)).thenReturn(List.of());
-    when(chatService.historyAsSpringAiMessages(chatId)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
@@ -732,7 +734,7 @@ class QueryServiceTest {
     String conversationKey = currentUserId + ":" + chatId;
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatMemory.get(conversationKey)).thenReturn(List.of());
-    when(chatService.historyAsSpringAiMessages(chatId)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
@@ -775,7 +777,7 @@ class QueryServiceTest {
     UUID chatId = chat.getId();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatMemory.get(currentUserId + ":" + chatId)).thenReturn(List.of());
-    when(chatService.historyAsSpringAiMessages(chatId)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
     // Only the sticky reference, not the second library the caller can also read - the scope
     // that the chat's own useKnowledge=false restricts to (epic #523), regardless of the
     // request-level useKnowledge/libraryIds passed below.
@@ -804,7 +806,7 @@ class QueryServiceTest {
     UUID chatId = chat.getId();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatMemory.get(currentUserId + ":" + chatId)).thenReturn(List.of());
-    when(chatService.historyAsSpringAiMessages(chatId)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId))).thenReturn(Set.of());
     when(chatService.spaceHasLibraryAssociations(chat.getSpaceId())).thenReturn(true);
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -825,7 +827,7 @@ class QueryServiceTest {
     UUID chatId = chat.getId();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
     when(chatMemory.get(currentUserId + ":" + chatId)).thenReturn(List.of());
-    when(chatService.historyAsSpringAiMessages(chatId)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
     lenient().when(chatService.spaceHasLibraryAssociations(chat.getSpaceId())).thenReturn(false);
@@ -926,7 +928,7 @@ class QueryServiceTest {
             .build();
     QueryService serviceWithRealMemory =
         newQueryService(
-            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50), realChatMemory);
+            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2), realChatMemory);
 
     UUID otherUserId = UUID.randomUUID();
     CurrentUser otherCaller =
@@ -993,7 +995,7 @@ class QueryServiceTest {
     // First call (the seeding check) sees a cold cache; the second call (inside
     // buildSearchQuery) sees it warmed by the seeding this test asserts happened.
     when(chatMemory.get(conversationKey)).thenReturn(List.of(), persistedHistory);
-    when(chatService.historyAsSpringAiMessages(chatId)).thenReturn(persistedHistory);
+    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(persistedHistory);
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
@@ -1008,6 +1010,66 @@ class QueryServiceTest {
     verify(vectorStore).similaritySearch(captor.capture());
     assertThat(captor.getValue().getQuery())
         .isEqualTo("Was sind meine Ausgaben bei Apple? Mach daraus eine tabellarische Auflistung");
+  }
+
+  /**
+   * #1486: the reload asks for the conversation window's worth of messages, not the whole
+   * transcript - a long chat must not be read end to end for the handful of messages the window
+   * keeps.
+   */
+  @Test
+  void theColdCacheReloadAsksOnlyForTheConversationWindowsWorthOfMessages() {
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+    UUID chatId = chat.getId();
+    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 6)).thenReturn(List.of());
+    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+        .thenReturn(Set.of(readableLibraryId));
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+    QueryService serviceWithSmallWindow =
+        newQueryService(
+            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 6, 2), chatMemory);
+
+    serviceWithSmallWindow.query("Frage", chatId, caller, true, List.of());
+
+    verify(chatService).historyAsSpringAiMessages(chatId, 6);
+  }
+
+  /**
+   * #1486: the second entrance into the conversation window normalizes like the first one - the
+   * reloaded answer loses its citation markers, the question stays verbatim. Without this the same
+   * chat sends a different prompt after a restart than before it.
+   */
+  @Test
+  void theColdCacheReloadStripsCitationMarkersFromPersistedAnswers() {
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+    UUID chatId = chat.getId();
+    String conversationKey = currentUserId + ":" + chatId;
+    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+    when(chatMemory.get(conversationKey)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 20))
+        .thenReturn(
+            List.of(
+                new UserMessage("Was kostet ein Anwohnerparkausweis?"),
+                new AssistantMessage(
+                    "Er kostet 30,70 Euro pro Jahr. 【source: doc-1#0 | anwohnerparken.md】")));
+    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+        .thenReturn(Set.of(readableLibraryId));
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    queryService.query("Und bei Bedürftigkeit?", chatId, caller, true, List.of());
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<Message>> seeded = ArgumentCaptor.forClass(List.class);
+    verify(chatMemory).add(eq(conversationKey), seeded.capture());
+    assertThat(seeded.getValue())
+        .extracting(Message::getText)
+        .containsExactly("Was kostet ein Anwohnerparkausweis?", "Er kostet 30,70 Euro pro Jahr.");
   }
 
   @Test
@@ -1441,8 +1503,13 @@ class QueryServiceTest {
         .isEqualTo("Was sind meine Ausgaben bei Apple? Mach daraus eine tabellarische Auflistung");
   }
 
+  /**
+   * #1486: the fallback prepends the <b>last</b> user question of the search window, not the first
+   * of the chat - after a topic change the oldest question in the window is the one the current
+   * question is least likely to continue.
+   */
   @Test
-  void queryEnrichesThirdMessageWithFirstUserQuestion() {
+  void queryEnrichesThirdMessageWithTheLastUserQuestionOfTheSearchWindow() {
     UUID chatId = UUID.randomUUID();
     when(chatMemory.get(currentUserId + ":" + chatId))
         .thenReturn(
@@ -1461,7 +1528,38 @@ class QueryServiceTest {
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
     verify(vectorStore).similaritySearch(captor.capture());
     assertThat(captor.getValue().getQuery())
-        .isEqualTo("Was sind meine Ausgaben bei Apple? Sortiere nach Datum");
+        .isEqualTo("Mach daraus eine Tabelle Sortiere nach Datum");
+  }
+
+  /**
+   * #1486: a question older than the search window no longer reaches the fallback query at all -
+   * the search window is cut in {@code SubQueryDecompositionStage}, and the fallback reads the same
+   * cut.
+   */
+  @Test
+  void queryLeavesAQuestionOlderThanTheSearchWindowOutOfTheFallbackQuery() {
+    UUID chatId = UUID.randomUUID();
+    when(chatMemory.get(currentUserId + ":" + chatId))
+        .thenReturn(
+            List.of(
+                new UserMessage("Was sind meine Ausgaben bei Apple?"),
+                new AssistantMessage("Ihre Apple-Ausgaben betragen 500 EUR."),
+                new UserMessage("Mach daraus eine Tabelle"),
+                new AssistantMessage("Hier ist die Tabelle..."),
+                new UserMessage("Und wie sieht das bei Reisekosten aus?"),
+                new AssistantMessage("Die Reisekosten betragen 200 EUR.")));
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Sortiert"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    queryService.query("Sortiere nach Datum", chatId, caller, true, List.of());
+
+    ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+    verify(vectorStore).similaritySearch(captor.capture());
+    assertThat(captor.getValue().getQuery())
+        .isEqualTo("Und wie sieht das bei Reisekosten aus? Sortiere nach Datum")
+        .doesNotContain("Apple");
   }
 
   @Test
@@ -1509,7 +1607,8 @@ class QueryServiceTest {
     @Test
     void aSingleSubQueryTakesTheUnfusedPreDecompositionPath() {
       when(chatMemory.get(any())).thenReturn(List.of());
-      when(queryDecompositionService.decompose(eq("Question"), any(), eq(3)))
+      when(queryDecompositionService.decompose(
+              argThat(context -> context != null && "Question".equals(context.question())), eq(3)))
           .thenReturn(List.of("Umformulierte Frage"));
       var chunk =
           Document.builder()
@@ -1540,7 +1639,9 @@ class QueryServiceTest {
     @Test
     void multipleSubQueriesRunSeparateSearchesAndFuseTheResults() {
       when(chatMemory.get(any())).thenReturn(List.of());
-      when(queryDecompositionService.decompose(eq("Kombifrage"), any(), eq(3)))
+      when(queryDecompositionService.decompose(
+              argThat(context -> context != null && "Kombifrage".equals(context.question())),
+              eq(3)))
           .thenReturn(List.of("Teilfrage A", "Teilfrage B"));
       var chunkA =
           Document.builder()
@@ -1583,7 +1684,9 @@ class QueryServiceTest {
     @Test
     void everySubQuerysSearchCarriesTheSamePermissionFilter() {
       when(chatMemory.get(any())).thenReturn(List.of());
-      when(queryDecompositionService.decompose(eq("Kombifrage"), any(), eq(3)))
+      when(queryDecompositionService.decompose(
+              argThat(context -> context != null && "Kombifrage".equals(context.question())),
+              eq(3)))
           .thenReturn(List.of("Teilfrage A", "Teilfrage B"));
       when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -1606,7 +1709,9 @@ class QueryServiceTest {
     @Test
     void emptyDecompositionResultFallsBackToBuildSearchQuery() {
       when(chatMemory.get(any())).thenReturn(List.of());
-      when(queryDecompositionService.decompose(eq("Question"), any(), eq(3))).thenReturn(List.of());
+      when(queryDecompositionService.decompose(
+              argThat(context -> context != null && "Question".equals(context.question())), eq(3)))
+          .thenReturn(List.of());
       when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
       when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
@@ -1622,7 +1727,8 @@ class QueryServiceTest {
     @Test
     void decompositionDisabledSkipsTheDecompositionServiceEntirely() {
       QueryService serviceWithDecompositionDisabled =
-          newQueryService(new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, false, 50), chatMemory);
+          newQueryService(
+              new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, false, 50, 20, 2), chatMemory);
       when(chatMemory.get(any())).thenReturn(List.of());
       when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -1642,7 +1748,9 @@ class QueryServiceTest {
     @Test
     void eachSubQueryIsMmrNarrowedToTheFullTopKBeforeFusion() {
       when(chatMemory.get(any())).thenReturn(List.of());
-      when(queryDecompositionService.decompose(eq("Kombifrage"), any(), eq(3)))
+      when(queryDecompositionService.decompose(
+              argThat(context -> context != null && "Kombifrage".equals(context.question())),
+              eq(3)))
           .thenReturn(List.of("Teilfrage A", "Teilfrage B"));
       List<Document> eightChunks =
           IntStream.range(0, 8)
@@ -1736,7 +1844,9 @@ class QueryServiceTest {
     @Test
     void multiQueryPathRecoversAFeeChunkByEvictingAnOverrepresentedDocumentsWeakerChunk() {
       when(chatMemory.get(any())).thenReturn(List.of());
-      when(queryDecompositionService.decompose(eq("Kombifrage"), any(), eq(3)))
+      when(queryDecompositionService.decompose(
+              argThat(context -> context != null && "Kombifrage".equals(context.question())),
+              eq(3)))
           .thenReturn(List.of("Teilfrage A", "Teilfrage B"));
       List<Document> candidates =
           new ArrayList<>(
@@ -1786,7 +1896,9 @@ class QueryServiceTest {
     @Test
     void multiQueryPathRecoversAFeeChunkAcrossTwoDisjointSubQueryCandidateSets() {
       when(chatMemory.get(any())).thenReturn(List.of());
-      when(queryDecompositionService.decompose(eq("Kombifrage"), any(), eq(3)))
+      when(queryDecompositionService.decompose(
+              argThat(context -> context != null && "Kombifrage".equals(context.question())),
+              eq(3)))
           .thenReturn(List.of("Teilfrage A", "Teilfrage B"));
       List<Document> candidatesA =
           new ArrayList<>(

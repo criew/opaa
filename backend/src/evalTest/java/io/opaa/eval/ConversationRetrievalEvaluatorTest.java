@@ -366,7 +366,7 @@ class ConversationRetrievalEvaluatorTest {
             false),
         new ConversationMemoryProfile(
             20,
-            ConversationMemoryProfile.SEARCH_WINDOW_WHOLE_CONVERSATION_WINDOW,
+            ConversationMemoryProfile.SEARCH_WINDOW_QUESTION_ONLY,
             ConversationMemoryProfile.NO_CONVERSATION_NOTE),
         2);
   }
