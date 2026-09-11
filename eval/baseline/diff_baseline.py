@@ -2,10 +2,13 @@
 """Diffs every committed retrieval baseline under `eval/baseline/*.json` and renders a Markdown
 section per file listing every metric that is lower on one side ("pr") than on the other ("main").
 
-Deckt seit Issue #1040 beide Messpfade ab: die Rohvektor-Baselines (`<domäne>.json`) und die
-Pipeline-Baselines (`pipeline-<domäne>.json`). Beide liegen flach im selben Verzeichnis, sodass
-weder dieser Vergleich noch der Workflow eine Pfad-Fallunterscheidung braucht — verglichen wird je
-Dateiname, und ein Dateiname gehört immer zu genau einem Pfad und einer Domäne.
+Deckt alle drei Messpfade ab: die Rohvektor-Baselines (`<domäne>.json`, Issue #228), die
+Pipeline-Baselines (`pipeline-<domäne>.json`, Issue #1040) und die Mehrrunden-Baselines
+(`pipeline-<domäne>-conversations.json`, Issue #1484). Alle liegen flach im selben Verzeichnis,
+sodass weder dieser Vergleich noch der Workflow eine Pfad-Fallunterscheidung braucht — verglichen
+wird je Dateiname, und ein Dateiname gehört immer zu genau einem Pfad und einer Domäne. Der
+Mehrrunden-Pfad führt dieselben Metrikfelder wie der Pipeline-Pfad und zusätzlich die Gruppen
+`turn:<n>`; Gruppenschlüssel werden ohnehin nicht aufgezählt, sondern aus beiden Dateien gelesen.
 
 Used by .github/workflows/baseline-diff.yml (issue #228, ADR-0013 decision 6): runs on every pull
 request touching `eval/baseline/**` and compares the PR branch's own committed baselines against the
@@ -30,11 +33,12 @@ import json
 import sys
 from pathlib import Path
 
-# Beide Messpfade in einer Liste (Issue #1040): der Rohvektor-Pfad führt seine Metriken am
-# @10-Fenster, der Pipeline-Pfad am @8-Fenster der Produktion. Eine Baseline-Datei enthält immer nur
-# die Felder ihres eigenen Pfades; die des jeweils anderen fehlen und werden unten übersprungen
-# (`main_value is None`). Verglichen wird deshalb nie über Pfadgrenzen hinweg — der Vergleich läuft
-# ohnehin je Dateiname, und die Dateinamen sind je Pfad und Domäne verschieden.
+# Alle Messpfade in einer Liste (Issue #1040): der Rohvektor-Pfad führt seine Metriken am
+# @10-Fenster, der Pipeline- und der Mehrrunden-Pfad am @8-Fenster der Produktion. Eine
+# Baseline-Datei enthält immer nur die Felder ihres eigenen Pfades; die des jeweils anderen fehlen
+# und werden unten übersprungen (`main_value is None`). Verglichen wird deshalb nie über
+# Pfadgrenzen hinweg — der Vergleich läuft ohnehin je Dateiname, und die Dateinamen sind je Pfad
+# und Domäne verschieden.
 METRICS = (
     "hitRateAt5",
     "mrr",

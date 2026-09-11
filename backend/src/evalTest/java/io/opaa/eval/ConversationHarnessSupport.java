@@ -31,9 +31,11 @@ import org.springframework.ai.chat.memory.ChatMemory;
  * manifest-verified: the multi-turn cases cost a second pass of queries, never a second indexing
  * run, and they therefore measure provably the same index.
  *
- * <p><b>Manually invoked, never nightly.</b> Every turn costs a decomposition call, and under the
- * Mehrfachlauf-Regel the whole dataset is measured three times - far more than the nightly job's
- * budget carries. Switch it on with {@code -Dopaa.eval.runConversations=true}, together with {@code
+ * <p><b>Opt-in, and switched on by its own task rather than by the caller.</b> Every turn costs a
+ * decomposition and a note call, and under the Mehrfachlauf-Regel the whole dataset is measured
+ * three times - far more than the single-question job's budget carries, which is why {@code
+ * evaluate…Conversations} is a second task with its own CI job (issue #1553) rather than a flag on
+ * the single-question one. It forces {@code -Dopaa.eval.runConversations=true} together with {@code
  * -Dopaa.eval.queryDecomposition=true}; without the latter the run reports itself as not executed
  * rather than measuring the fallback (see {@link ConversationRunPrerequisites}).
  */
@@ -126,7 +128,7 @@ public final class ConversationHarnessSupport {
       ConversationEvaluationReport report = measurement.report();
 
       ConversationReportWriter.writeJson(report, reportFile(domain));
-      ConversationReportWriter.writeMarkdown(report, markdownFile(domain));
+      ConversationReportWriter.writeMarkdown(report, measurement.summary(), markdownFile(domain));
       if (measurement.multiRun()) {
         String multiRunSummary = MehrfachlaufRule.render(measurement.summary());
         log.info(multiRunSummary);

@@ -491,3 +491,248 @@ jobs:
                 state: 'closed',
               });
             }
+
+  # Der Mehrrunden-Messpfad (Issue #1484, dritter Messpfad) als eigener Job, nicht als vierter
+  # matrix.include-Eintrag oben: Er misst unter aktiver Teilfragen-Zerlegung, und beide Baselines,
+  # die der Job `evaluate` beurteilt, wurden ohne sie gezogen. Ein Lauf kann nicht beides bedienen —
+  # deshalb ein eigener Harness-Lauf mit eigener Gradle-Task und eigenem Urteil (Issue #1553).
+  # Auslöser, Concurrency-Gruppe und Modell-Cache sind dieselben wie oben.
+  conversations:
+    name: conversations (${{ matrix.domain }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - domain: verwaltung
+            task: checkVerwaltungConversationBaseline
+            # Der teuerste Messpfad des Projekts: 83 Runden je Messung, je Runde ein Aufruf des
+            # Chat-Modells für die Zerlegung und einer für die Gesprächsnotiz, und die
+            # Mehrfachlauf-Regel verlangt drei Messungen (docs/features/retrieval-benchmark.md,
+            # Abschnitt 3). Auf einer Entwicklermaschine (CPU/Testcontainer) dauert eine Messung
+            # 20-29 Minuten, der Mehrrunden-Schritt insgesamt also rund 60-90 Minuten; dazu kommt
+            # der Einzelfragen-Teil desselben Harness-Laufs (verwaltung: rund 7 Minuten lokal).
+            # Ein GitHub-Runner ist deutlich langsamer — für die Einbettungsrate ist das an der
+            # city-landmarks-Domäne gemessen (siehe deren timeout_minutes oben). Für die
+            # Chat-Aufrufe dieses Pfads gibt es noch keine CI-Messung; 300 Minuten sind bewusst
+            # großzügig angesetzt (Erwartung: 2-4 Stunden) und bleiben unter dem 6-Stunden-Limit
+            # eines GitHub-Jobs. Der erste nächtliche Lauf liefert die Zahl, mit der dieses Budget
+            # danach enger gezogen werden kann.
+            timeout_minutes: 300
+            # Der Messbericht des Laufs selbst: Gruppen, Fall-Urteile, Themen-Bleed und der
+            # Mehrfachlauf-Block (drei Läufe, Median, Streubereich, Abweichungszahl).
+            run_report_file: pipeline-conversations-verwaltung.md
+            # Davon getrennt das Urteil gegen die committete Baseline.
+            comparison_report_file: conversation-baseline-comparison-verwaltung.md
+            metrics_file: pipeline-conversations-verwaltung.json
+            artifact_name: retrieval-metrics-verwaltung-conversations
+            marker: '<!-- retrieval-regression-alert-verwaltung-conversations -->'
+            failure_prefix: 'Erneut fehlgeschlagen (verwaltung, Mehrrunden):'
+            issue_intro: '**Automatischer nächtlicher Mehrrunden-Regressionslauf (verwaltung) fehlgeschlagen.**'
+            issue_title: 'Mehrrunden-Regression erkannt (automatischer Lauf, verwaltung)'
+            success_comment: 'Der nächtliche Mehrrunden-Regressionslauf (verwaltung) ist wieder grün:'
+    if: >
+      github.event_name != 'pull_request' ||
+      github.event.label.name == 'evaluation'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ matrix.timeout_minutes }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # Derselbe Cache-Schlüssel wie im Job `evaluate` — dort steht auch die vollständige
+      # Begründung des restore/save-Musters. Dieser Pfad zieht dieselben zwei Modelle.
+      - name: Restore Ollama model cache
+        id: ollama-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ollama-model-cache.tar
+          key: ollama-models-nomic-embed-text-v1.5-0a109f42-qwen2.5-1.5b-instruct-65ec0654
+
+      - name: Seed Docker volume from cache
+        if: steps.ollama-cache.outputs.cache-hit == 'true'
+        run: |
+          docker volume create opaa-eval-ollama-models
+          docker run --rm \
+            -v opaa-eval-ollama-models:/root/.ollama \
+            -v "${{ github.workspace }}":/backup \
+            alpine sh -c "tar xf /backup/ollama-model-cache.tar -C /root/.ollama"
+
+      # Die Gradle-Task setzt -Dopaa.eval.runConversations und -Dopaa.eval.queryDecomposition
+      # selbst (backend/build.gradle.kts, registerEvalHarnessTask): Der Schalter, an dem dieser
+      # Pfad bisher hing, gehört an die Task, nicht an jeden Aufrufer.
+      - name: 'Mehrrunden-Regression (verwaltung) ausführen'
+        working-directory: backend
+        run: ./gradlew ${{ matrix.task }}
+
+      # Kein Cache-Export in diesem Job: Der Schlüssel ist unveränderlich und wird vom Job
+      # `evaluate` desselben Laufs bereits geschrieben; ein zweiter Export wäre ein No-op mit
+      # zusätzlicher Laufzeit.
+
+      # Zwei Abschnitte, beide immer benannt: die Messung des Laufs und, davon getrennt, das
+      # Urteil gegen die Baseline. Fehlt einer, sagt der Abschnitt das ausdrücklich — ein
+      # stillschweigend fehlender Abschnitt sähe in einem grünen Lauf aus wie eine bestandene
+      # Prüfung.
+      - name: Report der Job-Zusammenfassung hinzufügen
+        if: always()
+        run: |
+          missing_note="Kein Bericht — dieser Schritt wurde nicht erreicht (siehe Workflow-Logs)."
+
+          if [ -f "backend/build/eval-reports/${{ matrix.run_report_file }}" ]; then
+            cat "backend/build/eval-reports/${{ matrix.run_report_file }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## Mehrrunden-Messpfad (${{ matrix.domain }})" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "$missing_note" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -f "backend/build/eval-reports/${{ matrix.comparison_report_file }}" ]; then
+            cat "backend/build/eval-reports/${{ matrix.comparison_report_file }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## Mehrrunden-Messpfad gegen Baseline (${{ matrix.domain }})" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "$missing_note" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report als Artefakt hochladen
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: |
+            backend/build/eval-reports/${{ matrix.metrics_file }}
+            backend/build/eval-reports/${{ matrix.run_report_file }}
+            backend/build/eval-reports/${{ matrix.comparison_report_file }}
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Delta-Tabelle als PR-Kommentar posten
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const domain = '${{ matrix.domain }}';
+            const notReached = 'Kein Bericht erzeugt — dieser Schritt wurde nicht erreicht ' +
+              '(siehe Workflow-Logs).';
+            const section = (path, label) =>
+              fs.existsSync(path)
+                ? fs.readFileSync(path, 'utf8')
+                : `## ${label} (${domain})\n\n${notReached}`;
+            const body = [
+              section(
+                'backend/build/eval-reports/${{ matrix.run_report_file }}',
+                'Mehrrunden-Messpfad'),
+              section(
+                'backend/build/eval-reports/${{ matrix.comparison_report_file }}',
+                'Mehrrunden-Messpfad gegen Baseline'),
+            ].join('\n\n---\n\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      # Eigener Marker und damit eigenes Alarm-Issue: Ein Fehlschlag dieses Pfads ist keine Aussage
+      # über den Einzelfragen-Lauf derselben Domäne und darf dessen Alarm-Issue nicht mitbenutzen.
+      - name: Fehlschlag als Issue melden (nächtlicher/manueller Lauf)
+        if: (failure() || cancelled()) && github.event_name != 'pull_request'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '${{ matrix.marker }}';
+            const domain = '${{ matrix.domain }}';
+            const missing = '_Kein Bericht für diesen Abschnitt — er wurde nicht erreicht (z. B. ' +
+              'Manifest- oder Invarianten-Verletzung, ein fehlgeschlagener Messlauf oder das ' +
+              'Zeitlimit). Siehe Workflow-Logs._';
+            const section = (path, label) =>
+              fs.existsSync(path)
+                ? fs.readFileSync(path, 'utf8')
+                : `## ${label} (${domain})\n\n${missing}`;
+            const details = [
+              section(
+                'backend/build/eval-reports/${{ matrix.run_report_file }}',
+                'Mehrrunden-Messpfad'),
+              section(
+                'backend/build/eval-reports/${{ matrix.comparison_report_file }}',
+                'Mehrrunden-Messpfad gegen Baseline'),
+            ].join('\n\n---\n\n');
+            const pathNote = 'Dieser Lauf führt genau ein Urteil, das des Mehrrunden-Messpfads. ' +
+              'Seine Zahlen sind mit denen des Rohvektor- und des Pipeline-Pfads nicht ' +
+              'vergleichbar (ADR-0012, Nachtrag Mehrrunden-Messpfad): Dort ist jede Zeile eine ' +
+              'Einzelfrage ohne Verlauf, hier eine Runde eines Gesprächs. Eine unvergleichbare ' +
+              'Baseline ist kein Fehlschlag dieses Jobs, sondern erscheint als „nicht beurteilt" ' +
+              'mit ihrer Festpunktabweichung — ein roter Lauf meint deshalb eine Regression, eine ' +
+              'unerwartet verschobene Messgrundlage oder einen fehlgeschlagenen Messlauf.';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const commentBody = `${{ matrix.failure_prefix }} ${runUrl}\n\n${pathNote}\n\n${details}`;
+            const issueBody = `${marker}\n\n${{ matrix.issue_intro }}\n\n${pathNote}\n\nWorkflow-Lauf: ${runUrl}\n\n${details}`;
+
+            const { data: issuesAndPrs } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'evaluation',
+              per_page: 100,
+            });
+            const existing = issuesAndPrs.find(
+              i => !i.pull_request && i.body && i.body.includes(marker)
+            );
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: commentBody,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '${{ matrix.issue_title }}',
+                body: issueBody,
+                labels: ['evaluation', 'bug'],
+              });
+            }
+
+      - name: Alarm-Issue bei erneutem Bestehen schließen
+        if: success() && github.event_name != 'pull_request'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const marker = '${{ matrix.marker }}';
+            const { data: issuesAndPrs } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'evaluation',
+              per_page: 100,
+            });
+            const existing = issuesAndPrs.find(
+              i => !i.pull_request && i.body && i.body.includes(marker)
+            );
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: '${{ matrix.success_comment }} ' +
+                  `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                state: 'closed',
+              });
+            }

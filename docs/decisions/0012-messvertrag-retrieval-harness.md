@@ -919,6 +919,11 @@ Indizierungslauf. Er gehorcht der Mehrfachlauf-Regel (drei Läufe, Median nach n
 `docs/features/retrieval-benchmark.md`) und ist damit **nicht** nächtlich tragbar: je Runde ein
 Chat-Aufruf, mal drei.
 
+> **Überholt durch Entscheidung 49 (Issue #1553):** Der Pfad läuft nächtlich — aber in einem
+> **eigenen** Job mit eigenem Zeitbudget, nicht im Job der Einzelfragen-Domänen, dessen Budget er
+> tatsächlich sprengte. Die Opt-in-Mechanik bleibt unverändert; sie wird seither von der Task
+> gesetzt statt vom Aufrufer.
+
 Fehlt die Zerlegung, das Chat-Modell oder der Datensatz, meldet sich der Lauf als **nicht
 ausgeführt** und schreibt nichts. Das ist die Anwendung von Entscheidung 15 auf diesen Pfad: Ohne
 Zerlegung erreichte eine Rückfrage die Suche als Rückfall-Verkettung, und die Zahlen beschrieben den
@@ -1044,3 +1049,75 @@ bewegt (bis zu diesem Nachtrag als drei gleichlautende Literale, jetzt als eine 
 als CPU-/Testcontainer-Lauf aus (`eval/baseline/verwaltung.json` nennt das Image dort sogar wörtlich).
 Kein bereits committeter Chunk, keine bereits committete Metrik ändert sich — nur die Beschreibung
 der Messbedingungen wird vollständiger.
+
+## Nachtrag: Verdrahtung des Mehrrunden-Vergleichs (Issue #1553)
+
+Der Nachtrag zum Mehrrunden-Messpfad (Entscheidungen 38–44) beschreibt den Messvertrag dieses
+Pfads, und mit #1485 ist seine Baseline gezogen. Gefehlt hat bis hierher die Verbindung: Kein
+Aufrufer lud `eval/baseline/pipeline-<domäne>-conversations.json` für einen Vergleich, und der
+Messpfad lief in keinem CI-Job. Ein Messvertrag, den niemand gegen eine Messung hält, ist eine
+Absichtserklärung. Dieser Nachtrag schließt die Lücke; am Messgegenstand aller drei Pfade ändert er
+nichts, und keine Vertragsversion steigt.
+
+### 48. Eigenes Task-Paar, nicht ein drittes Urteil im bestehenden Check
+
+`evaluate<Domäne>Conversations` und `check<Domäne>ConversationBaseline` sind ein zweites Paar neben
+`evaluate<Domäne>Retrieval`/`check<Domäne>RetrievalBaseline`, kein weiterer Testklassen-Eintrag im
+bestehenden Check. Der technische Grund ist zwingend und kein Geschmacksurteil: Der Mehrrunden-Pfad
+misst ausschließlich mit aktiver Teilfragen-Zerlegung (Entscheidung 42), die Rohvektor- und die
+Pipeline-Baseline derselben Domäne wurden dagegen mit `queryDecompositionEnabled: false` gezogen
+(Entscheidung 15). Ein Harness-Lauf, der beides bediente, machte die beiden bestehenden Baselines
+unvergleichbar — er hätte genau die Prüfung abgeschaltet, an die dieser Pfad angeschlossen werden
+soll.
+
+Die beiden Properties, ohne die dieser Pfad nichts misst, setzt die Task selbst und überschreibt
+dabei einen gleichnamigen `-D`-Wert. Ein Aufrufer, der sie vergisst, bekäme sonst einen Lauf ohne
+Mehrrunden-Bericht, der erst im Baseline-Test als „No multi-turn report found" auffällt.
+
+### 49. Ein eigener CI-Job mit eigenem Zeitbudget, gleiche Auslöser
+
+Der Job `conversations` in `.github/workflows/retrieval-regression.yml` läuft nächtlich, per
+`workflow_dispatch` und beim Label `evaluation` — dieselben Auslöser wie die Einzelfragen-Domänen.
+Damit fällt die bisherige Festlegung „manuell, nie nächtlich" aus Entscheidung 42: Sie stammt aus
+der Zeit, in der dieser Pfad an einen Job der Einzelfragen-Domänen angehängt worden wäre und dessen
+Budget gesprengt hätte. Als eigener Job mit eigenem Budget konkurriert er mit niemandem, und die
+Alternative — ein Messpfad, der ausschließlich auf einer Entwicklermaschine läuft — heißt in der
+Praxis, dass er zwischen zwei Messzyklen monatelang ungelaufen bleibt.
+
+Das Budget ist mit 300 Minuten bewusst großzügig: Eine Messung dauert auf einer Entwicklermaschine
+20–29 Minuten (83 Runden, je Runde ein Zerlegungs- und ein Notiz-Aufruf), die Mehrfachlauf-Regel
+verlangt drei davon, und für die Chat-Aufruf-Rate eines GitHub-Runners gibt es noch keine Messung.
+Der erste nächtliche Lauf liefert die Zahl, mit der das Budget enger gezogen werden kann.
+
+### 50. Vier Urteile statt drei: „nicht beurteilt" als eigener Ausgang
+
+Der Pipeline-Pfad kennt drei Ausgänge: keine Regression, Regression, unvergleichbare Baseline — und
+lässt den letzten fehlschlagen. Der Mehrrunden-Pfad bekommt einen vierten, **„nicht beurteilt"**
+(`ConversationBaselineVerdict`), und lässt nur diesen bestehen.
+
+Der Grund ist die Lage der committeten Baseline: Sie wurde vor dem Suchfenster (#1486) und vor der
+Gesprächsnotiz (#1487) gezogen und trägt `searchWindowTurns: 0` und `conversationNoteCap: 0`,
+während jeder heutige Lauf 2 und 10 misst. Sie ist damit unvergleichbar — vorhergesehen, angekündigt
+und in #1490 neu zu ziehen. Ein Job, der von seinem Merge an dauerhaft rot steht, wird nicht gelesen
+und schaltet die Prüfung damit gründlicher ab, als sie nie geschrieben zu haben.
+
+**Die Ausnahme gilt zwei namentlich genannten Feldern, nicht der Unvergleichbarkeit an sich.**
+Weicht ein Festpunkt außerhalb von `searchWindowTurns`/`conversationNoteCap` ab — Korpus, Modell,
+Golden-Datensatz, Vertragsversion, Ollama-Image —, ist der Lauf rot wie auf dem Pipeline-Pfad. In
+beiden Fällen steht die Abweichung im Klartext im Bericht und in der Job-Zusammenfassung: Ein
+unbeurteilter Pfad, der das verschwiege, sähe in einem grünen Lauf aus wie ein geprüfter.
+
+**Die Ausnahme kann ihren Grund nicht überleben.**
+`ConversationPathIsolationTest#theNotJudgedGateIsStillNeededByTheCommittedBaseline` hält die
+committete Datei gegen genau die beiden Vor-#1486/#1487-Werte. Zieht #1490 die Baseline neu, wird
+dieser Docker-freie Test rot und erzwingt, dass die Ausnahme mit ihm entfernt wird — statt als
+stille Dauertoleranz stehen zu bleiben.
+
+### 51. Der Mehrfachlauf-Block gehört in den Bericht, nicht nur in die Konsole
+
+`ConversationReportWriter` schreibt die drei Läufe, den Median-Lauf, den Streubereich je Metrik und
+die Zahl der Runden mit abweichender Zerlegung in die Markdown-Datei, die die Job-Zusammenfassung
+rendert. Auf den beiden anderen Pfaden steht dieser Block nur im Log, was dort hinnehmbar ist, weil
+ihre gemessene Konfiguration deterministisch ist. Dieser Pfad ruft die Zerlegung einmal je **Runde**
+und ist damit der instabilste der drei; die Abweichungszahl ist hier keine Randnotiz, sondern die
+Aussage darüber, wie belastbar der Rest des Berichts überhaupt ist.

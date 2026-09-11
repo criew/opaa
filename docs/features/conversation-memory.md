@@ -415,9 +415,13 @@ einzigen, auf dem ein Mehrrunden-Fall laufen kann; die Ausnahme von der Zwei-Pfa
 
 Die Mehrrunden-Messung braucht die Teilfragen-Zerlegung — ohne sie gibt es keine Auflösung von
 Bezügen. Sie läuft deshalb wie jede zerlegende Messung: gepinntes Eval-Chat-Modell, Mehrfachlauf-Regel
-(drei Läufe, Median), **manuell oder per Label**, nicht nächtlich. Sie bekommt eine eigene
+(drei Läufe, Median). Sie bekommt eine eigene
 Baseline-Datei (`eval/baseline/pipeline-verwaltung-conversations.json`) mit dem Chat-Modell als
 geprüftem Fixpunkt; die Entscheidung aus #1288 über die Einzelfragen-Baseline bleibt davon unberührt.
+Seit #1553 trägt sie ein **eigener** CI-Job (`conversations` in
+`.github/workflows/retrieval-regression.yml`) mit denselben Auslösern wie die
+Einzelfragen-Domänen und eigenem Zeitbudget — nicht der Job der Einzelfragen-Domänen, dessen Budget
+sie sprengte (ADR-0012, Entscheidung 49).
 
 ### Fallklassen
 
