@@ -538,6 +538,21 @@ Recht falsch, nicht bloß lückenhaft. Die Historie überlebt die Löschung eine
 (siehe [ADR-0016](../decisions/0016-loeschschicksal-rechtehistorie.md)): Die Fachobjekt-Spalten tragen
 bewusst keinen Fremdschlüssel, damit eine reguläre Lösch-Operation die Beweislage nicht mit sich reißt.
 
+**Auflösung der Intervallgrenzen (#1497, [ADR-0032](../decisions/0032-zeitquelle-rechtehistorie.md)):**
+Aufeinanderfolgende Zustandsintervalle desselben Objekts haben streng aufsteigende Grenzen — auch dann,
+wenn beide Änderungen in denselben Tick der Systemuhr fallen. Die Zusage gilt **für Zeilen, die ab
+dieser Korrektur geschrieben wurden**; vorher entstandene leere Intervalle bleiben bestehen und werden
+nicht nachbearbeitet. Für einen Stichtag in einem solchen Altzeitraum kann die Rekonstruktion also
+weiterhin fälschlich „kein Zugriff" melden — dieselbe Einschränkung, die weiter unten unter „Beginn der
+belegbaren Historie" für die Zeit vor dem Backfill gilt. Ohne diese Zusage hinterlässt ein Zustand,
+der kürzer bestand als die Uhr fortschreitet, ein leeres Intervall, und ein leeres Intervall enthält
+keinen Stichtag: Die Rekonstruktion antwortete für diesen Zeitraum „kein Zugriff", obwohl Zugriff
+bestand. Die Grenzen stammen deshalb aus einer streng monotonen Quelle mit Mikrosekunden-Auflösung
+statt unmittelbar aus der Systemuhr. Lückenlos bleiben die Intervalle dabei: Das Schließen eines
+Intervalls und das Öffnen des folgenden teilen sich einen Grenzwert. Zeilen der Länge null gibt es
+weiterhin, aber ausschließlich als **Ereignismarkierung** für einen Widerruf oder eine Löschung — sie
+halten den auslösenden Vorgang fest und werden von der Rekonstruktion nie als Zustand ausgewählt.
+
 **Noch offen, bewusst nicht Teil dieser Ausbaustufe:**
 
 - **Aufbewahrungshöchstdauer und Pseudonymisierung der Historie selbst.** Die oben zugesagte

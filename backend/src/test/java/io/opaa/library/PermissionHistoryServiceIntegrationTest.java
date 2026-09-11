@@ -37,6 +37,8 @@ import io.opaa.test.OpaaIntegrationTest;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
+import java.time.InstantSource;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -98,6 +100,10 @@ class PermissionHistoryServiceIntegrationTest {
   @Autowired private GroupMembershipRepository membershipRepository;
   @Autowired private LibraryVisibilityHistoryRepository visibilityHistoryRepository;
   @Autowired private PermissionHistoryService permissionHistoryService;
+  // Every Stichtag below is drawn from the same monotonic source the recorded boundaries come
+  // from (#1497). Instant.now() would not do: its readings can be several milliseconds coarser
+  // than the boundaries, so an "after the change" stamp could land before the change it follows.
+  @Autowired private PermissionHistoryClock historyClock;
   @Autowired private LibraryAccessService accessService;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
@@ -210,7 +216,7 @@ class PermissionHistoryServiceIntegrationTest {
         libraryId,
         new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
         currentUserOf(owner));
-    Instant whileGranted = Instant.now();
+    Instant whileGranted = historyClock.nextBoundary();
 
     AssetGrantHistory grantHistory =
         grantHistoryRepository
@@ -221,7 +227,7 @@ class PermissionHistoryServiceIntegrationTest {
     assertThat(grantHistory.getCause()).isEqualTo(AssetGrantHistoryCause.GRANTED);
 
     grantService.revokeGrant(libraryId, findLiveGrantId(libraryId, reader), currentUserOf(owner));
-    Instant afterRevocation = Instant.now();
+    Instant afterRevocation = historyClock.nextBoundary();
 
     assertThat(
             permissionHistoryService.readableLibraryIdsAsOf(reader, organizationId, whileGranted))
@@ -260,10 +266,10 @@ class PermissionHistoryServiceIntegrationTest {
         new AssetGrantUpsert(PermissionSubjectType.GROUP, savedGroup.getId(), AssetRole.VIEWER),
         currentUserOf(owner));
     groupService.addMember(savedGroup.getId(), member, currentUserOf(owner));
-    Instant whileMember = Instant.now();
+    Instant whileMember = historyClock.nextBoundary();
 
     groupService.removeMember(savedGroup.getId(), member, currentUserOf(owner));
-    Instant afterRemoval = Instant.now();
+    Instant afterRemoval = historyClock.nextBoundary();
 
     assertThat(permissionHistoryService.readableLibraryIdsAsOf(member, organizationId, whileMember))
         .contains(libraryId);
@@ -305,13 +311,13 @@ class PermissionHistoryServiceIntegrationTest {
         libraryId,
         libraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION).build(),
         currentUserOf(owner));
-    Instant whileOrganizationWide = Instant.now();
+    Instant whileOrganizationWide = historyClock.nextBoundary();
 
     libraryService.updateLibrary(
         libraryId,
         libraryUpdate("Bibliothek").visibility(LibraryVisibility.PRIVATE).build(),
         currentUserOf(owner));
-    Instant afterNarrowing = Instant.now();
+    Instant afterNarrowing = historyClock.nextBoundary();
 
     assertThat(
             permissionHistoryService.readableLibraryIdsAsOf(
@@ -321,6 +327,134 @@ class PermissionHistoryServiceIntegrationTest {
             permissionHistoryService.readableLibraryIdsAsOf(
                 otherUser, organizationId, afterNarrowing))
         .doesNotContain(libraryId);
+  }
+
+  @Test
+  void twoVisibilityChangesWithinOneClockTickStayReconstructableAtAnInstantBetweenThem() {
+    // regression guard for #1497: the wall clock stands still for both changes - deterministically,
+    // without a wait or a retry loop - which is exactly what a coarse clock tick does to two
+    // changes that follow each other closely. Taking the boundaries straight from the wall clock
+    // gave the organization-wide state validFrom == validTo, an interval no asOf can satisfy, so
+    // the reconstruction reported "no access" for a period in which access existed.
+    // Recording through a locally built service replaces KnowledgeLibraryService#updateLibrary ->
+    // LibraryChanged -> PermissionHistoryListener; it therefore says nothing about how many
+    // boundaries that production path consumes per change - the tests above cover that.
+    UUID owner = createUser();
+    UUID otherUser = createUser();
+    UUID libraryId = createLibrary(owner);
+
+    Instant standstill =
+        visibilityHistoryRepository
+            .findByLibraryIdAndValidToIsNull(libraryId)
+            .orElseThrow()
+            .getValidFrom()
+            .plus(1, ChronoUnit.MICROS);
+    PermissionHistoryClock standingClock =
+        new PermissionHistoryClock(InstantSource.fixed(standstill));
+    PermissionHistoryService serviceOnAStandingClock =
+        new PermissionHistoryService(
+            grantHistoryRepository,
+            membershipHistoryRepository,
+            visibilityHistoryRepository,
+            standingClock);
+
+    KnowledgeLibrary library = libraryRepository.findById(libraryId).orElseThrow();
+    library.updateDetails(
+        library.getName(),
+        library.getDescription(),
+        LibraryVisibility.ORGANIZATION,
+        library.isListed());
+    serviceOnAStandingClock.recordVisibilityChanged(libraryRepository.save(library), owner);
+
+    Instant whileOrganizationWide = standingClock.nextBoundary();
+
+    library.updateDetails(
+        library.getName(), library.getDescription(), LibraryVisibility.PRIVATE, library.isListed());
+    serviceOnAStandingClock.recordVisibilityChanged(libraryRepository.save(library), owner);
+
+    Instant afterNarrowing = standingClock.nextBoundary();
+
+    LibraryVisibilityHistory organizationWide =
+        visibilityIntervalOf(
+            libraryId,
+            LibraryVisibilityHistoryCause.VISIBILITY_CHANGED,
+            LibraryVisibility.ORGANIZATION);
+    assertThat(organizationWide.getValidTo())
+        .as("a state the object really held must occupy a non-empty interval")
+        .isAfter(organizationWide.getValidFrom());
+
+    assertThat(
+            permissionHistoryService.readableLibraryIdsAsOf(
+                otherUser, organizationId, whileOrganizationWide))
+        .contains(libraryId);
+    assertThat(
+            permissionHistoryService.readableLibraryIdsAsOf(
+                otherUser, organizationId, afterNarrowing))
+        .doesNotContain(libraryId);
+
+    // The chaining the strictly increasing boundaries must not cost: no instant falls between two
+    // successive intervals of the same library.
+    LibraryVisibilityHistory created =
+        visibilityIntervalOf(
+            libraryId, LibraryVisibilityHistoryCause.CREATED, LibraryVisibility.PRIVATE);
+    LibraryVisibilityHistory narrowedAgain =
+        visibilityIntervalOf(
+            libraryId, LibraryVisibilityHistoryCause.VISIBILITY_CHANGED, LibraryVisibility.PRIVATE);
+    assertThat(created.getValidTo()).isEqualTo(organizationWide.getValidFrom());
+    assertThat(organizationWide.getValidTo()).isEqualTo(narrowedAgain.getValidFrom());
+  }
+
+  @Test
+  void aRevocationMarkerStaysZeroLengthWhileTheStateIntervalItClosesDoesNot() {
+    // The strictly increasing boundaries of #1497 apply to state intervals only. A terminal marker
+    // records the revocation itself and is deliberately zero-length - never selected by the
+    // reconstruction, and therefore not a state that could go missing from it.
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    UUID reader = createUser();
+
+    grantService.upsertGrant(
+        libraryId,
+        new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+        currentUserOf(owner));
+    grantService.revokeGrant(libraryId, findLiveGrantId(libraryId, reader), currentUserOf(owner));
+
+    AssetGrantHistory granted = grantIntervalOf(libraryId, reader, AssetGrantHistoryCause.GRANTED);
+    AssetGrantHistory revoked = grantIntervalOf(libraryId, reader, AssetGrantHistoryCause.REVOKED);
+
+    assertThat(granted.getValidTo())
+        .as("the state interval must stay non-empty even though both writes share a clock tick")
+        .isAfter(granted.getValidFrom());
+    assertThat(revoked.getValidTo())
+        .as("the marker is an event, not a state - zero-length on purpose")
+        .isEqualTo(revoked.getValidFrom());
+    assertThat(revoked.getValidFrom())
+        .as("the marker sits exactly on the boundary that closed the state interval")
+        .isEqualTo(granted.getValidTo());
+  }
+
+  private LibraryVisibilityHistory visibilityIntervalOf(
+      UUID libraryId, LibraryVisibilityHistoryCause cause, LibraryVisibility visibility) {
+    return visibilityHistoryRepository.findAll().stream()
+        .filter(
+            h ->
+                h.getLibraryId().equals(libraryId)
+                    && h.getCause() == cause
+                    && h.getVisibility() == visibility)
+        .findFirst()
+        .orElseThrow();
+  }
+
+  private AssetGrantHistory grantIntervalOf(
+      UUID libraryId, UUID subjectUserId, AssetGrantHistoryCause cause) {
+    return grantHistoryRepository.findAll().stream()
+        .filter(
+            h ->
+                h.getLibraryId().equals(libraryId)
+                    && subjectUserId.equals(h.getSubjectUserId())
+                    && h.getCause() == cause)
+        .findFirst()
+        .orElseThrow();
   }
 
   @Test
@@ -358,7 +492,7 @@ class PermissionHistoryServiceIntegrationTest {
         libraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION).build(),
         currentUserOf(orgWideOwner));
 
-    Instant now = Instant.now();
+    Instant now = historyClock.nextBoundary();
     Set<UUID> live = accessService.readableLibraryIds(user, organizationId);
     Set<UUID> historized =
         permissionHistoryService.readableLibraryIdsAsOf(user, organizationId, now);
@@ -408,7 +542,8 @@ class PermissionHistoryServiceIntegrationTest {
     assertThat(visibilityHistoryRepository.findByLibraryIdAndValidToIsNull(libraryId)).isEmpty();
 
     assertThat(
-            permissionHistoryService.readableLibraryIdsAsOf(reader, organizationId, Instant.now()))
+            permissionHistoryService.readableLibraryIdsAsOf(
+                reader, organizationId, historyClock.nextBoundary()))
         .doesNotContain(libraryId);
   }
 
@@ -643,7 +778,7 @@ class PermissionHistoryServiceIntegrationTest {
           "TokenGroupSynchronizer#namespaceOf");
 
   private void assertLiveAndHistoryAgree(ReadabilityChange change) {
-    Instant afterTheChange = Instant.now();
+    Instant afterTheChange = historyClock.nextBoundary();
     Set<UUID> live = accessService.readableLibraryIds(change.userId(), organizationId);
     Set<UUID> historized =
         permissionHistoryService.readableLibraryIdsAsOf(

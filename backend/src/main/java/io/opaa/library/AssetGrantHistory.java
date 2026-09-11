@@ -14,11 +14,11 @@ import java.util.UUID;
 
 /**
  * A half-open interval {@code [validFrom, validTo)} recording one state {@link AssetGrant} was in
- * (#238, see docs/features/spaces-and-assets.md#nachweisbarkeit-historisierung-von-rechten). {@code
- * validTo == null} means the interval is still open, i.e. the grant is in this state right now.
- * Written and closed exclusively by {@link PermissionHistoryService}, never updated in place except
- * to set {@link #close}: a change closes the currently open row and opens a new one, so the table
- * is append-only from the outside.
+ * (#238, see docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten).
+ * {@code validTo == null} means the interval is still open, i.e. the grant is in this state right
+ * now. Written and closed exclusively by {@link PermissionHistoryService}, never updated in place
+ * except to set {@link #close}: a change closes the currently open row and opens a new one, so the
+ * table is append-only from the outside.
  *
  * <p>{@link #expiresAt} is a copy of the live {@link AssetGrant#getExpiresAt()} at the moment this
  * interval was opened - not itself a bound on {@link #validTo}, so a Stichtag reconstruction can

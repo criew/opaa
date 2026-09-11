@@ -93,6 +93,13 @@ an den JVM-Prozess gebunden, der ihn eingereiht hat):
 | --- | --- |
 | `IndexingConfiguration.indexingTaskExecutor`, `.embeddingTaskExecutor`, `.uploadTaskExecutor` | Drei `ThreadPoolTaskExecutor`-Bohnen mit eigener, rein prozessinterner Warteschlange - eine Zeile, die auf Instanz A als `RUNNING` eingereiht wurde, hat auf Instanz B keinen wartenden Task, den ein Neustart von B jemals hätte abbrechen können |
 
+**Prozesslokaler Zeitgeber** (eine Zusage, die aus einer prozessweit geführten Variable folgt — bei
+mehreren Instanzen führt jede ihre eigene):
+
+| Fundstelle | Zustand |
+| --- | --- |
+| `PermissionHistoryClock` ([ADR-0032](0032-zeitquelle-rechtehistorie.md), #1497) | Zuletzt vergebene Intervallgrenze der Rechtehistorie. Garantiert streng aufsteigende Grenzen für aufeinanderfolgende Zustandsänderungen desselben Objekts — je Prozess. Bei mehreren Instanzen könnten zwei Änderungen am selben Objekt aus verschiedenen Prozessen wieder dieselbe Grenze bekommen, und die Wanduhren zweier Hosts können gegeneinander driften; das Ergebnis wäre erneut ein leeres Intervall, das die Stichtags-Rekonstruktion nie meldet |
+
 **Prozesslokale/knotenlokale Dateiablage:**
 
 | Fundstelle | Zustand |
@@ -136,6 +143,10 @@ Diese Skizze ist keine Umsetzungsplanung, nur eine Einordnung der Größenordnun
   beim eigenen Neustart failen) oder eine Umstellung auf ausschließlich heartbeat-basierte Erkennung
   (`recoverStaleJobs`s Ansatz), sodass ein Neustart einer Instanz die Jobs anderer, weiterhin laufender
   Instanzen nicht mehr anfasst.
+- **`PermissionHistoryClock`**: Ersatz der prozesslokalen Monotonie durch eine datenbankseitige —
+  die Datenbankuhr als Anker plus eine Sicherung, die die Ordnung über Verbindungen hinweg erzwingt
+  (Bauart offen, siehe #1517). Eine zweite prozesslokale Variable je Instanz genügt hier ausdrücklich
+  nicht (ADR-0032).
 - **`DirectorySyncService`**: Ein Postgres Advisory-Lock, keyed auf `organizationId`, gehalten für die
   Dauer eines Laufs — im Javadoc bereits als eine der beiden möglichen Lösungsrichtungen benannt.
 - **Task-Executor-Warteschlangen** (`IndexingConfiguration`): Folgt aus dem `LibraryDocumentService`-
