@@ -512,14 +512,19 @@ Dasselbe Verfahren wie unten, mit zwei Präzisierungen:
   Pipeline-Reports (`build/eval-reports/pipeline-metrics-<domäne>.json`) desselben Laufs gezählt
   (`hitRateAt5 > 0` bzw. `ndcgAt8 > 0`) — nicht aus den Mittelwerten zurückgerechnet.
 
-## Besonderheiten der Mehrrunden-Baseline (Issue #1484)
+## Besonderheiten der Mehrrunden-Baseline (Issues #1484/#1485)
 
 `pipeline-verwaltung-conversations.json` ist die Baseline des dritten Messpfads
-(`docs/features/conversation-memory.md`, Abschnitt „Messung"). **Noch nicht gezogen:** Die Fälle
-entstehen in Issue #1485, und eine Baseline ohne Fälle beschriebe einen Lauf, den es nicht gab. Bis
-dahin existieren Typ (`ConversationBaseline`) und Vergleich (`ConversationBaselineComparator`), aber
-keine Datei und keine Regressionstestklasse — eine verdrahtete Prüfung ohne committete Baseline
-färbte den Job rot für eine Messung, die nie stattgefunden hat.
+(`docs/features/conversation-memory.md`, Abschnitt „Messung"). **Gezogen mit Issue #1485**, aus
+einem CPU-Testcontainer-Lauf vom 2026-09-11 gegen die dort erstkuratierten 27 Fälle mit 83 Runden;
+Typ (`ConversationBaseline`) und Vergleich (`ConversationBaselineComparator`) stammen aus #1484.
+
+**Noch an keine Regressionstestklasse verdrahtet, bewusst.** `registerEvalDomain` in
+`backend/build.gradle.kts` kennt bislang nur den Rohvektor- und den Pipeline-Pfad, und der
+Mehrrunden-Schritt ist ohnehin manuell oder per Label zu starten, nie nächtlich: Je Runde ein
+Chat-Aufruf, mal drei Läufe. Eine Verdrahtung, die den nächtlichen Job rot färben könnte, wäre
+also erst zusammen mit einer Entscheidung darüber sinnvoll, welcher Job diesen Pfad trägt —
+Folgearbeit außerhalb von #1485.
 
 Aufbau wie die Pipeline-Baseline, mit vier Unterschieden:
 
