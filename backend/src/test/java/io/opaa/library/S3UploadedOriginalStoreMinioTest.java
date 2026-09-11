@@ -242,6 +242,52 @@ class S3UploadedOriginalStoreMinioTest {
     }
   }
 
+  @Test
+  void theLibraryListingWalksAnOrganizationPageByPageAgainstTheRealStore() throws IOException {
+    UUID organization = UUID.randomUUID();
+    UploadS3Properties properties =
+        new UploadS3Properties(
+            minio.endpoint().toString(),
+            MinioFixture.REGION,
+            bucket,
+            "uploads/",
+            true,
+            minio.rootCredentials().accessKey(),
+            minio.rootCredentials().secretKey(),
+            tempDir,
+            new UploadS3Properties.TargetValidation(true, List.of()));
+    try (S3UploadedOriginalStore paging =
+        new S3UploadedOriginalStore(
+            properties,
+            UploadS3TargetPolicy.of(properties),
+            S3UploadedOriginalStore.REQUEST_TIMEOUT,
+            S3UploadedOriginalStore.MAX_RETRIES,
+            S3UploadedOriginalStore.RETRY_BACKOFF,
+            3)) {
+      List<UUID> own = new ArrayList<>();
+      for (int i = 0; i < 7; i++) {
+        UUID library = UUID.randomUUID();
+        own.add(library);
+        UploadedOriginalStore.AcceptedUpload accepted =
+            paging.accept(organization, library, ".pdf", bytes("Bibliothek " + i));
+        accepted.store();
+        accepted.release();
+      }
+      UploadedOriginalStore.AcceptedUpload otherTenant =
+          paging.accept(UUID.randomUUID(), UUID.randomUUID(), ".pdf", bytes("anderes Haus"));
+      otherTenant.store();
+      otherTenant.release();
+
+      List<UUID> visited = new ArrayList<>();
+      paging.forEachStoredLibrary(organization, visited::add);
+
+      assertThat(visited).containsExactlyInAnyOrderElementsOf(own);
+      assertThat(keysUnder("uploads/" + organization + "/"))
+          .as("the listing removes nothing")
+          .hasSize(7);
+    }
+  }
+
   private UploadedOriginalRef storedOriginal(String content) throws IOException {
     UploadedOriginalStore.AcceptedUpload accepted =
         store.accept(organizationId, libraryId, ".pdf", bytes(content));

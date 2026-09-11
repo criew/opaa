@@ -350,6 +350,101 @@ class FilesystemUploadedOriginalStoreTest {
     }
   }
 
+  @Test
+  void theLibraryListingNamesEveryStorageAreaOfThisOrganizationAndNoOther() throws IOException {
+    storedOriginal("eigenes Original");
+    UUID secondLibrary = UUID.randomUUID();
+    store.accept(organizationId, secondLibrary, ".pdf", bytes("zweite Bibliothek")).store();
+    UUID foreignOrganization = UUID.randomUUID();
+    UUID foreignLibrary = UUID.randomUUID();
+    store.accept(foreignOrganization, foreignLibrary, ".pdf", bytes("fremdes Haus")).store();
+
+    List<UUID> visited = new ArrayList<>();
+    store.forEachStoredLibrary(organizationId, visited::add);
+
+    assertThat(visited).containsExactlyInAnyOrder(libraryId, secondLibrary);
+
+    List<UUID> foreign = new ArrayList<>();
+    store.forEachStoredLibrary(foreignOrganization, foreign::add);
+
+    assertThat(foreign).containsExactly(foreignLibrary);
+  }
+
+  @Test
+  void theLibraryListingNamesOnlyDirectoriesThisAdapterWouldHaveWritten() throws IOException {
+    // Only a directory whose name is a library id counts: a file, a directory named something
+    // else and one whose name merely starts with a library id are not storage areas, and a run
+    // that offered them for deletion would delete what it cannot attribute.
+    storedOriginal("eigenes Original");
+    Path organizationDirectory = storageDir.resolve(organizationId.toString());
+    Files.writeString(organizationDirectory.resolve("hinweis.txt"), "kein Ordner");
+    Files.createDirectories(organizationDirectory.resolve("ablage"));
+    Files.createDirectories(organizationDirectory.resolve(libraryId + "-alt"));
+    Files.createDirectories(organizationDirectory.resolve("1-1-1-1-1"));
+
+    List<UUID> visited = new ArrayList<>();
+    store.forEachStoredLibrary(organizationId, visited::add);
+
+    assertThat(visited).containsExactly(libraryId);
+  }
+
+  @Test
+  void theLibraryListingLeavesOutALinkToAnotherAreaOfTheSameStorage() throws IOException {
+    UUID foreignOrganization = UUID.randomUUID();
+    UUID foreignLibrary = UUID.randomUUID();
+    store.accept(foreignOrganization, foreignLibrary, ".pdf", bytes("fremdes Haus")).store();
+    Path organizationDirectory = storageDir.resolve(organizationId.toString());
+    Files.createDirectories(organizationDirectory);
+    assumeTrue(
+        createSymbolicLink(
+            organizationDirectory.resolve(foreignLibrary.toString()),
+            storageDir.resolve(foreignOrganization.toString()).resolve(foreignLibrary.toString())),
+        "symbolic links are not available here");
+
+    List<UUID> visited = new ArrayList<>();
+    store.forEachStoredLibrary(organizationId, visited::add);
+
+    assertThat(visited).isEmpty();
+  }
+
+  @Test
+  void theLibraryListingVisitsADirectoryTheOperatorLinkedOutOfTheStoragePath() throws IOException {
+    // The listing and the operations must agree: what a download resolves, the report has to see -
+    // otherwise the orphans of a directory the operator moved to another volume are found by
+    // nobody. Only a link to another area of the same storage stays out, because there the
+    // originals have their own name.
+    Path ownVolume = Files.createTempDirectory("outside-upload-storage");
+    Files.writeString(ownVolume.resolve("umgezogen.pdf"), "auf dem anderen Volume");
+    Path organizationDirectory = storageDir.resolve(organizationId.toString());
+    Files.createDirectories(organizationDirectory);
+    assumeTrue(
+        createSymbolicLink(organizationDirectory.resolve(libraryId.toString()), ownVolume),
+        "symbolic links are not available here");
+    String locator =
+        organizationDirectory.resolve(libraryId.toString()).resolve("umgezogen.pdf").toString();
+
+    List<UUID> visitedLibraries = new ArrayList<>();
+    store.forEachStoredLibrary(organizationId, visitedLibraries::add);
+    List<UploadedOriginalStore.StoredOriginal> visitedOriginals = new ArrayList<>();
+    store.forEachStoredOriginal(organizationId, libraryId, visitedOriginals::add);
+
+    assertThat(visitedLibraries).containsExactly(libraryId);
+    assertThat(visitedOriginals)
+        .extracting(UploadedOriginalStore.StoredOriginal::locator)
+        .containsExactly(locator);
+    assertThat(store.belongsToLibrary(new UploadedOriginalRef(organizationId, libraryId, locator)))
+        .isTrue();
+  }
+
+  @Test
+  void listingTheLibrariesOfAnOrganizationWithoutAStorageAreaVisitsNothing() {
+    List<UUID> visited = new ArrayList<>();
+
+    store.forEachStoredLibrary(UUID.randomUUID(), visited::add);
+
+    assertThat(visited).isEmpty();
+  }
+
   private void assertNeitherReadableNorDeletable(UploadedOriginalRef ref) {
     assertThat(store.belongsToLibrary(ref)).isFalse();
     assertThat(store.openForDownload(ref, "harmlos.pdf", "application/pdf")).isEmpty();

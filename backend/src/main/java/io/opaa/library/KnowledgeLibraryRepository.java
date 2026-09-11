@@ -58,6 +58,14 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   List<KnowledgeLibrary> findByOrganizationId(UUID organizationId);
 
   /**
+   * The ids of every library of one organization - the set the orphan cleanup holds the storage
+   * areas found under that organization against. Ids only, because loading the entities would drag
+   * their eager Confluence space selection along, one query per library.
+   */
+  @Query("select l.id from KnowledgeLibrary l where l.organizationId = :organizationId")
+  List<UUID> findIdsByOrganizationId(@Param("organizationId") UUID organizationId);
+
+  /**
    * Every library with an active schedule (#485), across every organization - {@code
    * io.opaa.indexing.job.LibraryIndexingScheduler}'s own tick is the only caller; a schedule can
    * only ever be enabled on a connector library (migration 054's {@code

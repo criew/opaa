@@ -2,6 +2,7 @@ package io.opaa.library;
 
 import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
@@ -40,7 +41,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * The cleanup against real {@code documents} rows in Postgres: what decides is the row's {@code
  * file_path}, not its status, source type or parent. A {@code PENDING} row - an upload still being
  * processed - and a {@code FAILED} one keep their original just as an {@code INDEXED} row does, and
- * an attachment row's synthetic path belongs to no stored original at all.
+ * an attachment row's synthetic path belongs to no stored original at all. The storage-bound run is
+ * here too, because what decides there is the existence of a library row.
  *
  * <p>The store is a filesystem adapter over this test's own temporary directory rather than the
  * application's configured one, so the assertions stay independent of {@code
@@ -160,13 +162,52 @@ class OrphanedOriginalCleanupIntegrationTest {
     assertThat(Path.of(foreignSourceType)).exists();
   }
 
+  @Test
+  void aStorageAreaWithoutALibraryRowIsFoundOverTheOrganizationAndCanBeEmptied()
+      throws IOException {
+    // The gap the library-bound run cannot close: the bytes are there, no library row names the
+    // area any more, and the two repository queries that draw the boundary run against Postgres.
+    String owned = storedOriginal("gehört einer lebenden Bibliothek");
+    row("bescheid.pdf", owned, DocumentStatus.INDEXED, DocumentSourceType.UPLOAD, null);
+    UUID deletedLibrary = UUID.randomUUID();
+    String orphan = storedOriginal(deletedLibrary, "Rest einer gelöschten Bibliothek");
+
+    OrphanedLibraryReport report = service.reportOrphanedLibraries(organizationId, null);
+
+    assertThat(report.libraries())
+        .extracting(OrphanedLibrary::libraryId)
+        .containsExactly(deletedLibrary);
+    assertThat(report.libraries().get(0).orphans())
+        .extracting(OrphanedOriginal::locator)
+        .containsExactly(orphan);
+    assertThat(report.scannedLibraryCount()).isEqualTo(2);
+    assertThat(report.knownLibraryCount()).isEqualTo(1);
+    assertThat(report.libraryCount()).isEqualTo(1);
+
+    assertThatThrownBy(
+            () -> service.deleteInOrphanedLibrary(organizationId, libraryId, List.of(owned)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("bibliotheksbezogene Aufräumlauf");
+
+    OrphanedOriginalDeletion deletion =
+        service.deleteInOrphanedLibrary(organizationId, deletedLibrary, List.of(orphan));
+
+    assertThat(deletion.deleted()).containsExactly(orphan);
+    assertThat(Path.of(orphan)).doesNotExist();
+    assertThat(Path.of(owned)).exists();
+  }
+
   /** A stored original of the library, old enough to be past the grace period. */
   private String storedOriginal(String content) throws IOException {
+    return storedOriginal(libraryId, content);
+  }
+
+  private String storedOriginal(UUID library, String content) throws IOException {
     UploadedOriginalRef ref =
         store
             .accept(
                 organizationId,
-                libraryId,
+                library,
                 ".pdf",
                 new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)))
             .store();

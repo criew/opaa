@@ -1249,6 +1249,12 @@ class LibraryDocumentServiceTest {
               java.util.function.Consumer<StoredOriginal> visitor) {
             throw new UnsupportedOperationException();
           }
+
+          @Override
+          public void forEachStoredLibrary(
+              UUID organizationId, java.util.function.Consumer<UUID> visitor) {
+            throw new UnsupportedOperationException();
+          }
         };
     LibraryDocumentService streamingService =
         serviceWith(new AttachmentExtractionProperties(4, java.time.Duration.ofSeconds(10)));
