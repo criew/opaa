@@ -508,6 +508,12 @@ schreiben, fällt dort auf, bevor er in Betrieb geht. Welche Klassen dabei über
 derselbe Test gegen den Anwendungskontext, damit eine neue Klasse an den Rechtetabellen nicht unbemerkt
 hinzukommt.
 
+Für die **Reichweitenfelder** (`visibility`, `listed`) trägt diese Einschränkung zusätzlich der Compiler:
+Sie sind nur aus dem Paket heraus veränderbar, das die Historienzeile schreibt. Ein künftiger Schreibpfad
+außerhalb dieses Pakets kann die Reichweite einer Bibliothek nicht am Historieneintrag vorbei ändern — er
+lässt sich gar nicht erst übersetzen. Für Bestand und Mitgliedschaften bleibt es bei der Absicherung über
+den Test.
+
 Das ist bewusst **anders gelöst als über eine Protokollzeile je Abfrage**: Die Rechtemenge bei jeder Suche
 mitzuschreiben würde das Protokoll um eine erhebliche Menge personenbezogener Daten erweitern — genau das,
 was die Datensparsamkeit vermeiden soll — und wäre trotzdem lückenanfällig. Die Historie liefert dieselbe

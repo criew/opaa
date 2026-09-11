@@ -419,7 +419,14 @@ public class KnowledgeLibrary {
     this.updatedAt = Instant.now();
   }
 
-  public void updateDetails(
+  /**
+   * Package-private by contract: {@link #visibility} and {@link #listed} are inputs of {@link
+   * LibraryAccessService#readableLibraryIds}, and whoever changes them must publish {@link
+   * LibraryChanged} so {@link PermissionHistoryService} opens the matching interval - only {@link
+   * KnowledgeLibraryService#updateLibrary} does. A caller outside this package would move the live
+   * answer without the Stichtag reconstruction ever learning of it.
+   */
+  void updateDetails(
       String name, String description, LibraryVisibility visibility, boolean listed) {
     this.name = name;
     this.description = description;
