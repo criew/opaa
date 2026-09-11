@@ -94,7 +94,7 @@ Fremdschlüssel auf `users(id) ON DELETE CASCADE`), nicht als Spalten an `users`
 | `password_hash` | nullbar — ein eingeladenes Konto hat noch keines |
 | `password_change_required`, `password_change_reason` (`INITIAL` \| `ADMIN_RESET` \| `SECURITY`) | erzwungener Wechsel **mit Anlass**, damit die Person erfährt, warum |
 | `password_invalidated_before` | jedes Token mit `iat` davor ist ungültig (Massenwiderruf) |
-| `locked_at`, `locked_reason` (`ADMIN` \| `FAILED_LOGINS` \| `INACTIVITY`) | Sperre durch Verwalter, Fehlversuche oder Inaktivität |
+| `locked_at`, `locked_reason` (`ADMIN` \| `INACTIVITY`) | Sperre durch Verwalter oder Inaktivität; die Fehlversuch-Sperre schreibt **nur** `lockout_until`, nie `locked_at` |
 | `failed_login_attempts`, `lockout_until` | Zähler und Ende der Fehlversuch-Sperre; der Zähler wird **nie ausgegeben** und geht bei jeder erfolgreichen Anmeldung, jedem Zurücksetzen und jeder Entsperrung auf null |
 | `expires_at` | Ablaufdatum (Auflage aus `access-control.md`) |
 | `email_verified_at` | gesetzt beim Anlegen durch einen Verwalter (er bürgt für die Adresse), sonst durch Einladungs- oder Bestätigungslink |
@@ -112,14 +112,15 @@ Integrationstest prüft sie.
 
 Der **Kontozustand wird abgeleitet, nicht gespeichert**: `INVITED` (kein Passwort oder E-Mail nicht
 bestätigt), `ACTIVE`, `LOCKED` (`locked_at` gesetzt oder `lockout_until` in der Zukunft), `EXPIRED`
-(`expires_at` vergangen). Anmeldefähig ist nur `ACTIVE` — und bei abgeschalteter Verwaltung nur ein
-`ACTIVE`-Konto mit `SYSTEM_ADMIN`. Ein **anmeldefähiger lokaler Systemverwalter** im Sinne dieses ADR
-ist ein lokales `SYSTEM_ADMIN`-Konto mit gesetztem Passwort und bestätigter Adresse, ohne `locked_at`
-und ohne abgelaufenes `expires_at` — eine laufende Fehlversuch-Sperre (`lockout_until`) nimmt ihm
-diese Eigenschaft **nicht**: Sie endet nach höchstens 15 Minuten von selbst, und der Guard aus
-Entscheidung 4 schützt gegen den dauerhaften Verlust der letzten Anmeldung, nicht gegen eine
-Viertelstunde; ein **anmeldefähiger Systemverwalter** ist ein
-solches Konto oder ein `SYSTEM_ADMIN`-Konto eines aktivierten OIDC-Anbieters — wobei OPAA von einem
+(`expires_at` vergangen). **Anmeldefähig** ist genau ein `ACTIVE`-Konto — und bei abgeschalteter
+Verwaltung nur ein `ACTIVE`-Konto mit `SYSTEM_ADMIN`; das ist der Momentzustand, den Login und
+Token-Validator prüfen. Davon getrennt ist der Begriff, mit dem der Guard aus Entscheidung 4
+rechnet: Ein **gesicherter lokaler Systemverwalter** ist ein lokales `SYSTEM_ADMIN`-Konto mit
+gesetztem Passwort und bestätigter Adresse, ohne `locked_at` und ohne abgelaufenes `expires_at` —
+eine laufende Fehlversuch-Sperre (`lockout_until`) nimmt ihm diese Eigenschaft **nicht**: Sie endet
+nach höchstens 15 Minuten von selbst, und der Guard schützt gegen den dauerhaften Verlust der letzten
+Anmeldung, nicht gegen eine Viertelstunde. Ein **gesicherter Systemverwalter** ist ein solches Konto
+oder ein `SYSTEM_ADMIN`-Konto eines aktivierten OIDC-Anbieters — wobei OPAA von einem
 OIDC-Konto nur weiß, dass sein Anbieter aktiviert ist, nicht, ob der Anbieter es noch anmeldet. Deshalb
 hängt die Invariante aus Entscheidung 4 nicht an dieser Zählung allein, sondern am Notanker-Konto, das
 **gegenüber Verwaltungsakten unverletzlich** ist: keine Sperre durch einen Verwalter, keine Sperre nach
@@ -178,10 +179,11 @@ Das ändert drei Regeln aus ADR-0025, Entscheidung 3, und hebt eine auf:
   Die Regel „genau ein Standard, solange Anbieter existieren" gilt weiter, aber nur über die
   `OIDC`-Zeilen.
 - **Der letzte aktivierte OIDC-Anbieter darf deaktiviert oder gelöscht werden — aber nur, wenn ein
-  anmeldefähiger lokaler Systemverwalter existiert.** Das ist keine Bestätigung, sondern eine geprüfte
-  Vorbedingung: Fehlt ein lokales `ACTIVE`-Konto mit `SYSTEM_ADMIN` und gesetztem Passwort, antwortet
-  die API mit 409 und nennt den fehlenden Schritt („zuerst ein lokales Systemverwalterkonto mit
-  Passwort einrichten"). Zusätzlich verlangt der Aufruf `acknowledgeLastProvider = true`, und die
+  gesicherter lokaler Systemverwalter existiert** (Entscheidung 3: `SYSTEM_ADMIN`, Passwort gesetzt,
+  Adresse bestätigt, weder durch Verwalter noch Inaktivität gesperrt, nicht abgelaufen; eine laufende
+  Fehlversuch-Sperre zählt nicht dagegen). Das ist keine Bestätigung, sondern eine geprüfte
+  Vorbedingung: Fehlt ein solches Konto, antwortet die API mit 409 und nennt den fehlenden Schritt
+  („zuerst ein lokales Systemverwalterkonto mit Passwort einrichten"). Zusätzlich verlangt der Aufruf `acknowledgeLastProvider = true`, und die
   Oberfläche zeigt die Konsequenz: Danach können sich nur noch lokale Konten anmelden; ein vertippter
   Anbieter lässt sich aus der lokalen Anmeldung heraus korrigieren — ohne Datenbankzugriff und ohne
   Umgebungsvariable. **Aufgehoben** sind damit zwei Aussagen von ADR-0025, Entscheidung 3, in ihrer
@@ -194,12 +196,12 @@ Das ändert drei Regeln aus ADR-0025, Entscheidung 3, und hebt eine auf:
   Abgleichslauf bricht ohne Änderungen ab — das Verhalten, das `access-control.md` für „ohne
   Standardanbieter" bereits festlegt.
 
-**Die Invariante „nie ohne anmeldefähigen Systemverwalter" wird an genau einer Stelle geprüft**
+**Die Invariante „nie ohne gesicherten Systemverwalter" wird an genau einer Stelle geprüft**
 (`LocalAdminAvailabilityGuard`, Fehlercode `LAST_LOGIN_CAPABLE_ADMIN`), und jeder Weg, der die letzte
 benutzbare Systemverwalter-Anmeldung entfernen könnte, läuft darüber:
 
 - das Deaktivieren oder Löschen des letzten aktivierten OIDC-Anbieters (oben; Schreibvorgang auf
-  `oidc_providers`, Bedingung: ein anmeldefähiger **lokaler** Systemverwalter bleibt);
+  `oidc_providers`, Bedingung: ein gesicherter **lokaler** Systemverwalter bleibt);
 - Sperren, Befristen, Rollenentzug und Löschen eines Systemverwalters über die neue Admin-API
   lokaler Konten (Entscheidung 11) **und über den bestehenden generischen Rollenendpunkt**
   `POST /api/v1/admin/users/{id}/role` (`UserService#updateRole`, Gegenstand von #1349 — er hat heute
@@ -215,7 +217,7 @@ transaktionsgebunden), prüft dann per `SELECT` über `users`, `local_credential
 ob nach der Operation die Bedingung noch gilt, und schreibt erst danach — für die Konto-Wege als
 bedingter `UPDATE` wie heute `withdrawSystemAdminIfAnotherRemains`, für den Anbieter-Weg als Schreibvorgang
 auf `oidc_providers` unter demselben Lock, damit „letzten Anbieter deaktivieren" und „letzten lokalen
-Verwalter sperren" nicht nebenläufig beide durchgehen. Die Zählung kennt nur **anmeldefähige** Konten
+Verwalter sperren" nicht nebenläufig beide durchgehen. Die Zählung kennt nur **gesicherte** Konten
 nach Entscheidung 3 — ein `SYSTEM_ADMIN` eines deaktivierten Anbieters oder ein durch Verwalter oder
 Inaktivität gesperrtes (`locked_at`), abgelaufenes oder passwortloses lokales Konto zählt nicht; eine
 laufende Fehlversuch-Sperre (`lockout_until`) zählt **nicht als Verlust** — sonst könnte ein Dritter
@@ -268,8 +270,9 @@ Anbieter zählen nicht, damit eine
 Pilotdatenbank, die zuerst im `dev`-Profil lief und dann auf `oidc` umgestellt wird, als das gilt,
 was sie für den Betriebsmodus ist — frisch: Ihre Dev-Konten sind unter `oidc` nicht anmeldefähig, und
 ohne diese Regel bekäme sie ein `INVITED`-Konto ohne Passwort und damit gar keinen anmeldefähigen
-Systemverwalter; wer alle Anbieter gelöscht hat, hat ohnehin keinen Anmeldeweg mehr und bekommt
-damit das scharfe Konto, das er braucht. Findet der Seed Konten eines bestehenden Anbieters vor,
+Systemverwalter. Konten gelöschter Anbieter auszunehmen wirkt nur, wenn kein Anbieter mehr Konten
+hat: Solange ein anderer Anbieter Konten hat, gilt die Installation ohnehin als Bestand; sind alle
+Anbieter gelöscht, gibt es keinen Anmeldeweg mehr, und das scharfe Konto ist das, was gebraucht wird. Findet der Seed Konten eines bestehenden Anbieters vor,
 legt er das Notanker-Konto **als `INVITED` ohne
 Passwort und ohne Log-Ausgabe** an — es ist vorhanden, aber nicht
 scharf, und der Betrieb aktiviert es bewusst mit `OPAA_LOCAL_ADMIN_RESET=force` (unten). Ein Haus, das
@@ -552,8 +555,10 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
   tomcat-embed-core 11.0.25: Es läuft **vor jedem Servlet-Filter** und liest die unverpackte
   Peer-Adresse; es wertet `X-Forwarded-For`, `-Proto`, `-Host` und `-Port` nur aus, wenn der Peer in
   `server.tomcat.remoteip.internal-proxies` liegt — Tomcat liest die Eigenschaft nur dann als
-  CIDR-Menge (`NetMaskSet`), wenn sie einen `/` enthält, sonst als **regulären Ausdruck**, der gegen
-  eine einzelne Peer-Adresse nie passt (`RemoteIpValve#setInternalProxies`); deshalb prüft OPAA
+  CIDR-Menge (`NetMaskSet`), wenn sie einen `/` enthält, sonst als **regulären Ausdruck**
+  (`RemoteIpValve#setInternalProxies`) — ein einzelner Eintrag `10.1.0.7` passt dann zwar auf genau
+  diese Adresse, eine kommagetrennte Liste ohne `/` auf keine, und niemand sieht den Unterschied;
+  deshalb prüft OPAA
   `OPAA_TRUSTED_PROXY_CIDRS` beim Start, verlangt für jeden Eintrag eine Präfixlänge (`10.1.0.7/32`,
   `::1/128`), lehnt Einträge ohne `/`, mit Regex-Zeichen sowie `0.0.0.0/0` und `::/0` ab und übergibt
   nur die geprüfte Liste; es löst die `X-Forwarded-For`-Kette **rechts nach links** auf, vertraute
@@ -695,7 +700,7 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
 - **Sperren ist der Regelweg**, Löschen die Ausnahme — wie `access-control.md` es für das Ausscheiden
   vorsieht. Sperren widerruft alle Sitzungen sofort und hebt eine Fehlversuch-Sperre auf; Entsperren
   setzt Zähler zurück. Selbstsperre und Sperre, Ablauf, Rollenentzug oder Löschung des **letzten
-  anmeldefähigen Systemverwalters** werden abgelehnt (409 `SELF_LOCKOUT`,
+  gesicherten Systemverwalters** werden abgelehnt (409 `SELF_LOCKOUT`,
   `LAST_LOGIN_CAPABLE_ADMIN`) — über den Guard aus Entscheidung 4; jede dieser Aktionen am
   Notanker-Konto wird unabhängig davon abgelehnt (409 `BOOTSTRAP_ACCOUNT`, Entscheidung 3).
   Rollenänderungen an lokalen Konten laufen über den bestehenden Rollenendpunkt und die bestehenden
@@ -789,7 +794,7 @@ bleibt gewahrt); ein Verwalter allein kann keine Identität übernehmen; und die
 Vorgang, weil sie ihn selbst abschließt. `system_role` bleibt (bei einem Anbieter mit `roles_claim`
 wird sie ohnehin beim nächsten Token geführt); die nächste Anmeldung über den Anbieter findet das
 Konto über den bestehenden Schlüssel — kein Sonderpfad im Provisionierer. Ausgeschlossen sind das
-Notanker-Konto und jede Übergabe, die den letzten anmeldefähigen Systemverwalter entfernen würde
+Notanker-Konto und jede Übergabe, die den letzten gesicherten Systemverwalter entfernen würde
 (Guard aus Entscheidung 4). Einen Rückweg gibt es nicht; das ist vertretbar, weil die Person selbst
 einlöst. Die Umsetzung ist ein eigenes Sub-Issue des Epics nach der Admin-API und der Anmeldeseite.
 
@@ -856,7 +861,7 @@ unangetastet — sie sind für den Verzeichnis-Lebenszyklus reserviert.
 
 ### Positiv
 
-- Eine Installation ist **nie ohne anmeldefähigen Systemverwalter** — nicht durch eine Regel über
+- Eine Installation ist **nie ohne gesicherten Systemverwalter** — nicht durch eine Regel über
   OIDC-Anbieter und nicht durch einen Bestätigungsdialog, sondern durch eine an einer Stelle geprüfte
   Invariante über ein Konto, das OPAA selbst führt. Der Weg zurück aus jeder
   Anbieter-Fehlkonfiguration ist eine Anmeldung, kein Datenbankeingriff.
@@ -974,7 +979,7 @@ Auszugs — gehören ebenfalls ins Handbuch (#1543).
 | #1532 Schema und Krypto | 1:1-Tabelle `local_credentials` mit `is_bootstrap`, `password_change_reason`, `locked_reason` inkl. `INACTIVITY`, `created_reason NOT NULL varchar(200)` (3); drei Token-Tabellen mit `HANDOVER`-Zweck und Enum-Gründen (3); `local_auth_settings` (3); `provider_type` mit den `CHECK`s `provider_type IN ('OIDC','LOCAL')`, `OIDC ⇒ client_id NOT NULL`, `LOCAL ⇒ is_default = false` und dem partiellen Unique-Index „höchstens eine `LOCAL`-Zeile" (4); BCrypt 12 hinter `DelegatingPasswordEncoder` (9); HKDF mit drei Zwecken, `@ValidSecret`, TTL-Obergrenzen (6, 7) | `local_auth_settings` und `mail_settings`-Statusspalten ergänzen; Passwortmaximum 64 Zeichen/72 Byte statt 200; Aktionstoken mit HMAC statt SHA-256 |
 | #1533 Token-Aussteller | Claims, Fristen inkl. Höchstdauer, Cookie, CSRF, Rotation, Widerruf (6, 7), Marker mit Gründen und Finder-Regel (8), `pcr`-Filter mit Anlass (8), `LocalTokenCleanupScheduler` (7) | Aufräumlauf, Höchstdauer je Familie, Admin-Fristen, `WARN` bei `cookie-secure = false`, Marker-Gründe; `change-password` stellt sofort ein neues Token aus; keine Audits für Login/Logout/Ablauf (13) |
 | #1534 Erstadministrator | Seed ohne Reihenfolgeanspruch gegenüber dem OIDC-Seed (der schreibt nie `users`; `@Order` ordnet `SmartInitializingSingleton`-Rückrufe ohnehin nicht), Bestandsfall allein über „`users` enthält Konten mit lokalem oder zu einer `oidc_providers`-Zeile gehörendem Issuer" (Dev-Konten und Konten gelöschter Anbieter zählen nicht), `LOCAL`-Zeile immer, Ablehnung des Vorgabewerts nur für das Konto, `is_bootstrap` mit Unverletzlichkeit gegenüber Verwaltungsakten (409 `BOOTSTRAP_ACCOUNT`) **bei geltender Fehlversuch-Sperre** (Sperre des Notankers auditiert und mit `WARN`-Zeile im Anwendungslog gemeldet, keine Mail; für den Guard zählt sie nicht als Verlust), Notanker-Login auditiert und gemeldet, `InitialAdminPolicy` nur Dev, Wiederanlauf aus jedem erreichbaren Zustand (`INVITED`, Passwort unbekannt, Fehlversuch-Sperre, abgelehnte Adresse; Neuanlage nur nach Datenbankeingriff), `LocalAdminAvailabilityGuard` als gemeinsamer Dienst mit `lockRoleChanges` in jedem Weg — einschließlich `UserService#updateRole` (#1349 geht darin auf) und `TokenRoleSynchronizer` —, letzter OIDC-Anbieter nur mit Guard **und** `acknowledgeLastProvider`, `is_default` bleibt, `TrustedProvider` nur aktiviert (4, 5) | Kriterium des Bestandsfalls (Issuer aus `oidc_providers` statt Vergleich gegen den Dev-Issuer; kein `@Order`); `LOCAL`-Zeile unabhängig vom Konto; Unverletzlichkeit des Notankers nur gegenüber Verwaltungsakten, Fehlversuch-Sperre gilt (ohne Mail, mit `WARN`-Zeile; für den Guard kein Verlust); Wiederanlauf-Zustände; Guard auch am generischen Rollenendpunkt und im Token-Pfad; `findByDefaultProviderTrueAndEnabledTrue`; Datum 31.03.2027 mit `WARN`; Netzbeschränkung `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (9) |
-| #1535 Rate-Limiting | `server.forward-headers-strategy: native` mit Tomcats `RemoteIpValve`, `server.tomcat.remoteip.internal-proxies` aus `OPAA_TRUSTED_PROXY_CIDRS` (Vorgabe leer = kein Peer vertraut, Boots RFC-1918-Vorgabe ersetzt), kein eigener Filter; `RateLimitFilter#resolveClientIp` liest nur `getRemoteAddr()`; einmalige `ERROR`-Zeile bei `X-Forwarded-*` ohne Eingriff des Valve (Request-Attribut `org.apache.tomcat.request.forwarded` fehlt; deckt leere und wirkungslose Liste ab); Startprüfung der Liste (Präfixlänge je Eintrag Pflicht, keine Regex-Zeichen, kein `0.0.0.0/0`/`::/0`); `docker-compose.yml` mit festem Subnetz (`ipam`) und `.env.docker.example` mit der passenden Vorgabe; Grenzen inkl. globaler Grenze, `WARN`/Ablehnung `0.0.0.0/0`, Diagnose-Anzeige mit Client-Adresse und Valve-Eingriff, Kontosperre 5/15 min (auch für das Notanker-Konto), Fehlversuche nur ins Anwendungslog (9) | RemoteIpValve statt eigenem Filter (der Befund: `getRemoteAddr()` ist heute selbst der gefälschte Wert, und ein eigener Filter wäre ein Nachbau des Valve auf einem Sicherheitspfad); Variable `OPAA_TRUSTED_PROXY_CIDRS`; Test „gefälschtes `X-Forwarded-For`/`-Proto` hinter nicht vertrautem Peer ändert weder Bucket noch Schema, hinter vertrautem Peer wird rechts nach links aufgelöst"; **kein** Audit je Fehlversuch; Rücksetzweg bleibt bei Fehlversuch-Sperre offen |
+| #1535 Rate-Limiting | `server.forward-headers-strategy: native` mit Tomcats `RemoteIpValve`, `server.tomcat.remoteip.internal-proxies` aus `OPAA_TRUSTED_PROXY_CIDRS` (Vorgabe leer = kein Peer vertraut, Boots vorgegebene CIDR-Liste privater und lokaler Bereiche ersetzt), kein eigener Filter; `RateLimitFilter#resolveClientIp` liest nur `getRemoteAddr()`; einmalige `ERROR`-Zeile bei `X-Forwarded-*` ohne Eingriff des Valve (Request-Attribut `org.apache.tomcat.request.forwarded` fehlt; deckt leere und wirkungslose Liste ab); Startprüfung der Liste (Präfixlänge je Eintrag Pflicht, keine Regex-Zeichen, kein `0.0.0.0/0`/`::/0`); `docker-compose.yml` mit festem Subnetz (`ipam`) und `.env.docker.example` mit der passenden Vorgabe; Grenzen inkl. globaler Grenze, `WARN`/Ablehnung `0.0.0.0/0`, Diagnose-Anzeige mit Client-Adresse und Valve-Eingriff, Kontosperre 5/15 min (auch für das Notanker-Konto), Fehlversuche nur ins Anwendungslog (9) | RemoteIpValve statt eigenem Filter (der Befund: `getRemoteAddr()` ist heute selbst der gefälschte Wert, und ein eigener Filter wäre ein Nachbau des Valve auf einem Sicherheitspfad); Variable `OPAA_TRUSTED_PROXY_CIDRS`; Test „gefälschtes `X-Forwarded-For`/`-Proto` hinter nicht vertrautem Peer ändert weder Bucket noch Schema, hinter vertrautem Peer wird rechts nach links aufgelöst"; **kein** Audit je Fehlversuch; Rücksetzweg bleibt bei Fehlversuch-Sperre offen |
 | #1536 Mail | `mail_settings` mit Statusspalten, `OPAA_PUBLIC_BASE_URL` als Umgebung und Vorbedingung, `SendResult`, sichtbares Scheitern, Health-Indikator, Registry mit zwölf Schlüsseln, JMustache (10) | Statusspalten, Log-Zeile je `Failed`, Health-Indikator, sieben weitere Vorlagen |
 | #1537 Admin-API | Einladung mit Link-Rückfall und Zustellweg, Zurücksetzen, Sperren als Regelweg, Anlagegrund Pflicht und zweckgebunden, Ablauf mit Erinnerungen, Kontenliste nur lokal ohne Export, Aktivität als Klasse, Guard, 409 `BOOTSTRAP_ACCOUNT` für Sperre/Ablauf/Rollenentzug/Löschung/Übergabe des Notanker-Kontos, `local_auth_settings`-API mit Domänen und Fristen (4, 5, 11) | `created_reason` Pflicht/200 Zeichen/für die Person sichtbar; 409 `BOOTSTRAP_ACCOUNT`; Zustellweg im Protokoll; Liste nur lokal, Seitengröße ≤ 50, kein Export; `DELETE` nur ohne Besitz; Mails bei Sperre/Entsperrung/Zurücksetzen; Vorher/Nachher nur für `expires_at` |
 | #1538 Selbstbedienung | `set-password` für beide Zwecke, `forgot-password` 204 konstant und offen bei Fehlversuch-Sperre, Registrierung nur mit Domänenliste und Pflicht-Ablauf, 404 für abgeschaltete Flüsse (11) | Domänenliste, Pflicht-Ablauf, fester Anlagegrund; Fehlversuch-Sperre blockiert den Rücksetzweg nicht; keine Hinweis-Mail an belegte Adressen |
@@ -1063,9 +1068,10 @@ Auszugs — gehören ebenfalls ins Handbuch (#1543).
   höchstprivilegierten Konto bliebe das IP-Limit, das über mehrere Adressen verteilt nichts bremst;
   die wiederholbare Aussperrung des Notfallzugangs ist die kleinere Kehrseite und hat mit
   Netzbeschränkung, auditierter Sperre samt Warnzeile im Log und `OPAA_LOCAL_ADMIN_RESET=force` drei
-  Ausgleiche (5, 9). **Mail an alle Systemverwalter bei Sperre des Notanker-Kontos:** derselbe
-  Belästigungskanal, den Entscheidung 11 ausschließt, nur verstärkt — ein Dritter mit fünf
-  Fehlversuchen erreichte jedes Verwalterpostfach, beliebig oft (5, 11).
+  Ausgleiche (5, 9).
+- **Mail an alle Systemverwalter bei Sperre des Notanker-Kontos:** derselbe Belästigungskanal, den
+  Entscheidung 11 ausschließt, nur verstärkt — ein Dritter mit fünf Fehlversuchen erreichte jedes
+  Verwalterpostfach, beliebig oft (5, 11).
 - **SMTP-Einstellungen in der Umgebung:** kein Testversand aus der Oberfläche, Neustart je Änderung;
   die Datenbank mit Snapshot ist das Muster der Anbieter (10).
 - **Basis-URL als Verwaltungseinstellung** (qnop `general.base_url`): über eine kompromittierte
