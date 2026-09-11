@@ -27,7 +27,17 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@SpringBootTest(properties = {"opaa.auth.local.jwt-secret=" + OpaaLocalAuthMockMvcTest.JWT_SECRET})
+// The local-auth limits (#1535) are widened for this shared context: every class drives its
+// sign-ins from MockMvc's one address, and the production defaults (login 10/60 s) would exhaust
+// within a single class. LocalAuthRateLimitIntegrationTest proves the limits in its own context.
+@SpringBootTest(
+    properties = {
+      "opaa.auth.local.jwt-secret=" + OpaaLocalAuthMockMvcTest.JWT_SECRET,
+      "opaa.rate-limit.local-auth.login.max-requests=100000",
+      "opaa.rate-limit.local-auth.login.global-max-requests=100000",
+      "opaa.rate-limit.local-auth.refresh.max-requests=100000",
+      "opaa.rate-limit.local-auth.change-password.max-requests=100000"
+    })
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles("oidc")

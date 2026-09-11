@@ -118,6 +118,12 @@ class LocalAuthLogPrivacyIntegrationTest {
                 .cookie(third)
                 .header(HttpHeaders.AUTHORIZATION, bearer(changed)))
         .andExpect(status().isNoContent());
+    // the lockout path (#1535): five wrong passwords lock a second account
+    LocalAccount victim = fixtures.activeUser("opfer-" + UUID.randomUUID() + "@stadt.example");
+    for (int i = 0; i < 6; i++) {
+      login(victim.email(), "geratenes-passwort", 401);
+    }
+    login(victim.email(), LocalAccountFixtures.PASSWORD, 401);
 
     List<String> secrets =
         List.of(
@@ -127,8 +133,11 @@ class LocalAuthLogPrivacyIntegrationTest {
             LocalAccountFixtures.PASSWORD,
             NEW_PASSWORD,
             "falsches-passwort",
+            "geratenes-passwort",
             JsonPath.read(login.getResponse().getContentAsString(), "$.accessToken"));
-    List<String> personal = List.of(user.email(), user.email().toUpperCase());
+    List<String> personal =
+        List.of(
+            user.email(), user.email().toUpperCase(), victim.email(), victim.email().toUpperCase());
     assertThat(logs.list).isNotEmpty();
     assertThat(logs.list).anyMatch(event -> event.getLoggerName().startsWith("io.opaa"));
     for (ILoggingEvent event : logs.list) {
@@ -151,14 +160,23 @@ class LocalAuthLogPrivacyIntegrationTest {
                 + " FROM audit_log WHERE event_type LIKE 'LOCAL_%'");
     assertThat(events)
         .extracting(row -> (String) row.get("event_type"))
-        .contains("LOCAL_SESSION_REVOKED", "LOCAL_PASSWORD_CHANGED");
+        .contains(
+            "LOCAL_SESSION_REVOKED",
+            "LOCAL_PASSWORD_CHANGED",
+            "LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS");
+    // the lock is the one event of six failed attempts; the attempts themselves leave none
+    assertThat(events)
+        .filteredOn(row -> "LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS".equals(row.get("event_type")))
+        .hasSize(1);
     for (Map<String, Object> row : events) {
       String text = String.valueOf(row.values());
       assertThat(text)
           .as("audit row %s", row.get("event_type"))
           .doesNotContain(user.email())
+          .doesNotContain(victim.email())
           .doesNotContain(LocalAccountFixtures.DISPLAY_NAME)
-          .doesNotContain(user.id().toString());
+          .doesNotContain(user.id().toString())
+          .doesNotContain(victim.id().toString());
     }
   }
 
