@@ -63,9 +63,9 @@ def no_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(seed.time, "sleep", lambda _seconds: None)
 
 
-def wait_message(error: Exception) -> str:
+def wait_message(error: Exception, auth_mode: str = "keycloak") -> str:
     with pytest.raises(SystemExit) as exit_info:
-        seed.wait_until_ready(FailingClient(error), timeout_seconds=0.01)
+        seed.wait_until_ready(FailingClient(error), auth_mode, timeout_seconds=0.01)
     return str(exit_info.value)
 
 
@@ -82,7 +82,25 @@ def test_rejected_token_is_not_reported_as_unreachable() -> None:
 def test_rejected_token_names_the_audience_mapper_as_the_usual_cause() -> None:
     message = wait_message(ApiError(response(403)))
     assert "opaa-seed" in message
-    assert "OPAA_OIDC_CLIENT_ID" in message
+    assert "Audience-Mapper" in message
+    assert "client_id der Anbieterzeile" in message
+
+
+def test_dev_auth_gets_its_own_cause_instead_of_the_keycloak_one() -> None:
+    """DevAuthFilter answers an unknown X-OPAA-Dev-User with 401 as well - a stack without any
+    Keycloak must not be told about tokens, clients and audience mappers."""
+    message = wait_message(ApiError(response(401)), auth_mode="dev")
+    assert "X-OPAA-Dev-User" in message
+    assert "opaa.auth.dev.users" in message
+    assert "keycloak" not in message.lower()
+    assert "opaa-seed" not in message
+
+
+def test_unknown_auth_mode_states_the_rejection_without_guessing_a_cause() -> None:
+    message = wait_message(ApiError(response(401)), auth_mode="mtls")
+    assert "abgelehnt" in message
+    assert "opaa-seed" not in message
+    assert "X-OPAA-Dev-User" not in message
 
 
 def test_connection_error_is_reported_as_unreachable() -> None:
@@ -121,8 +139,8 @@ def test_api_error_without_challenge_stays_unchanged() -> None:
 
 
 def test_seed_client_carries_an_audience_mapper_for_the_frontend_client() -> None:
-    """The backend validates azp/aud against OPAA_OIDC_CLIENT_ID (ADR-0025); without this mapper
-    every API call of a demo seed run against a keycloak-auth backend ends in 401 (#1515)."""
+    """The backend validates azp/aud against the client id of the provider row (ADR-0025); without
+    this mapper every API call of a demo seed run against a keycloak-auth backend ends in 401."""
     realm = json.loads(REALM_EXPORT.read_text(encoding="utf-8"))
     seed_client = next(c for c in realm["clients"] if c["clientId"] == "opaa-seed")
     mappers = [

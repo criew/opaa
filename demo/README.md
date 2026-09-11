@@ -484,11 +484,13 @@ ohne Secret gegen jedes Realm-Konto und darf nicht dauerhaft scharf bleiben.
 
 Der Client trägt dafür einen Audience-Mapper (`oidc-audience-mapper`,
 `included.client.audience=opaa-frontend`): Das Backend nimmt ein Token nur an, wenn dessen `azp`
-den Client aus `OPAA_OIDC_CLIENT_ID` nennt oder dieser in `aud` steht
+die `client_id` der Anbieterzeile nennt oder diese in `aud` steht
 ([ADR-0025](../docs/decisions/0025-mehrere-oidc-anbieter.md), Entscheidung 1). Keycloak setzt `azp`
 immer auf den anfragenden Client, hier also `opaa-seed` — ohne den Mapper endet jeder API-Aufruf des
-Seed-Laufs mit HTTP 401, obwohl der Tokenerwerb selbst erfolgreich war. Trägt eine Installation eine
-andere `OPAA_OIDC_CLIENT_ID` als `opaa-frontend`, muss der Mapper auf denselben Wert zeigen. Ein
+Seed-Laufs mit HTTP 401, obwohl der Tokenerwerb selbst erfolgreich war. Maßgeblich ist dabei die
+`client_id` der Anbieterzeile in der Anbieterverwaltung, nicht `OPAA_OIDC_CLIENT_ID`: Die Variable
+ist nur der Bootstrap-Wert des ersten Starts, danach führt die Datenbank. Lautet sie nicht
+`opaa-frontend`, muss der Mapper auf denselben Wert zeigen. Ein
 Keycloak, dessen Realm bereits importiert ist (eigenes Volume oder bestehende Datenbank), liest den
 Export nicht erneut — dort wird der Mapper per `kcadm` nachgezogen
 ([„Härtung für erreichbare Deployments"](../docs/handbuch/deployment.md#härtung-für-erreichbare-deployments),

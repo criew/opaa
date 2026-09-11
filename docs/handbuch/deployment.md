@@ -293,10 +293,13 @@ kcadm.sh update realms/opaa -s accessTokenLifespan=900 -s ssoSessionIdleTimeout=
 ```
 
 *Audience-Mapper des Seed-Clients* — der Client `opaa-seed` aus Punkt 6 trägt im Export einen
-`oidc-audience-mapper` auf `opaa-frontend`. Ohne ihn nennt sein Token den Client aus
-`OPAA_OIDC_CLIENT_ID` weder in `azp` noch in `aud`, und das Backend weist jeden Aufruf eines
-Seed-Laufs mit HTTP 401 ab (siehe [„OIDC (Keycloak)"](#oidc-keycloak)). Trägt die Installation eine
-andere `OPAA_OIDC_CLIENT_ID`, gehört deren Wert in `included.client.audience`:
+`oidc-audience-mapper` auf `opaa-frontend`. Ohne ihn nennt sein Token die `client_id` der
+Anbieterzeile weder in `azp` noch in `aud`, und das Backend weist jeden Aufruf eines Seed-Laufs mit
+HTTP 401 ab (siehe [„OIDC (Keycloak)"](#oidc-keycloak)). Maßgeblich ist dabei genau diese
+`client_id` aus der Anbieterverwaltung — `OPAA_OIDC_CLIENT_ID` ist nur ihr Bootstrap-Wert und wirkt
+auf einer laufenden Installation nicht mehr (siehe
+[„Bestandsübernahme aus `OPAA_OIDC_*`"](#bestandsübernahme-aus-opaa_oidc_)). Lautet sie nicht
+`opaa-frontend`, gehört ihr Wert in `included.client.audience`:
 
 ```bash
 kcadm.sh create clients/<id-des-clients-opaa-seed>/protocol-mappers/models -r opaa \
