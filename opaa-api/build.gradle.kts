@@ -115,6 +115,10 @@ val typeMappingsConfig = mapOf(
     "ProviderType" to "ProviderType",
     "PasswordChangeReason" to "PasswordChangeReason",
     "MailEncryption" to "MailEncryption",
+    "LocalAccountState" to "LocalAccountState",
+    "LockReason" to "LockReason",
+    "LocalAccountActivity" to "LocalAccountActivity",
+    "MailDeliveryPath" to "MailDeliveryPath",
 )
 
 tasks.withType<Test> {
@@ -194,6 +198,10 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "ProviderType" to "io.opaa.api.types.ProviderType",
         "PasswordChangeReason" to "io.opaa.api.types.PasswordChangeReason",
         "MailEncryption" to "io.opaa.api.types.MailEncryption",
+        "LocalAccountState" to "io.opaa.api.types.LocalAccountState",
+        "LockReason" to "io.opaa.api.types.LockReason",
+        "LocalAccountActivity" to "io.opaa.api.types.LocalAccountActivity",
+        "MailDeliveryPath" to "io.opaa.api.types.MailDeliveryPath",
     ))
 }
 

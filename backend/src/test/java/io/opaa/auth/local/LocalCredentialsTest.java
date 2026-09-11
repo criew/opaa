@@ -3,6 +3,8 @@ package io.opaa.auth.local;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.LocalAccountState;
+import io.opaa.api.types.LockReason;
 import io.opaa.api.types.PasswordChangeReason;
 import java.time.Duration;
 import java.time.Instant;

@@ -10,6 +10,8 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.api.types.LocalAccountState;
+import io.opaa.api.types.LockReason;
 import io.opaa.api.types.PasswordChangeReason;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.LocalIssuer;

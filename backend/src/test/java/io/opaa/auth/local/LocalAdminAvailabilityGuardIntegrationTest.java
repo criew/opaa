@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.LockReason;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.AuthProperties;
 import io.opaa.auth.User;

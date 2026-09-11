@@ -88,7 +88,11 @@ class SpecEnumParityTest {
         Arguments.of("OrphanedOriginalSkipReason", OrphanedOriginalSkipReason.values()),
         Arguments.of("ProviderType", ProviderType.values()),
         Arguments.of("PasswordChangeReason", PasswordChangeReason.values()),
-        Arguments.of("MailEncryption", MailEncryption.values()));
+        Arguments.of("MailEncryption", MailEncryption.values()),
+        Arguments.of("LocalAccountState", LocalAccountState.values()),
+        Arguments.of("LockReason", LockReason.values()),
+        Arguments.of("LocalAccountActivity", LocalAccountActivity.values()),
+        Arguments.of("MailDeliveryPath", MailDeliveryPath.values()));
   }
 
   @ParameterizedTest(name = "{0}")

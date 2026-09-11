@@ -3,6 +3,7 @@ package io.opaa.auth.local;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.LocalAccountState;
 import io.opaa.api.types.ProviderType;
 import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;

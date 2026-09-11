@@ -373,6 +373,417 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/admin/local-users:
+    get:
+      operationId: listLocalUsers
+      tags: [admin]
+      summary: List the local accounts of the caller's organization (system admin only)
+      description: >
+        The account list of the local account management (ADR-0033, Entscheidung 11). Lists
+        local accounts only - never accounts of an OIDC provider - and is deliberately no
+        evaluation path: activity is a class (NEVER, INACTIVE_90_DAYS, ACTIVE), never a
+        timestamp, the list cannot be sorted by it, there is no export, and a page holds at most
+        50 rows. The three review filters of the ADR are status=INVITED ("offene Einladungen"),
+        withoutExpiry ("ohne Ablaufdatum") and inactive ("länger als 90 Tage nicht genutzt").
+      parameters:
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 320
+          description: Case-insensitive substring of the e-mail address or the display name.
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/LocalAccountState"
+        - name: role
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/SystemRole"
+        - name: withoutExpiry
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Only accounts without an expiry date.
+        - name: inactive
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Only accounts with activity class NEVER or INACTIVE_90_DAYS.
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [displayName, email, expiresAt, createdAt]
+            default: displayName
+          description: The allow-listed sort fields; activity is deliberately not one of them.
+        - name: direction
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 25
+          description: Rows per page, at most 50 (ADR-0033, Entscheidung 11) - a larger value is refused with 400.
+      responses:
+        "200":
+          description: One page of local accounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalUserPageResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    post:
+      operationId: createLocalUser
+      tags: [admin]
+      summary: Create a local account by invitation or with a generated initial password (system admin only)
+      description: >
+        ADR-0033, Entscheidung 11. mode INVITE creates the account INVITED (address confirmed by
+        the administrator, no password), issues a single-use SET_PASSWORD link valid for
+        local_auth_settings.invitation_token_ttl_hours and mails it (LOCAL_ACCOUNT_INVITATION).
+        Link fallback: when the mail was not sent - SMTP off, the send failed, or
+        OPAA_PUBLIC_BASE_URL is not set - the response carries setupUrl exactly once (without a
+        base URL as a path relative to the installation) so the administrator hands it over
+        another way; no later call returns it again. The delivery path is audited
+        (LOCAL_USER_INVITED with MAIL_SENT, MAIL_FAILED or LINK_DISPLAYED). mode
+        INITIAL_PASSWORD creates an ACTIVE account with a generated password that the response
+        carries exactly once; the first sign-in must change it (reason INITIAL). The expiry date
+        defaults to now plus local_auth_settings.default_expiry_days unless expiresAt is given or
+        noExpiry is true. A systemRole other than USER is granted through the same path as
+        POST /api/v1/admin/users/{id}/role (audited as a role grant). An address already used by
+        another local account is refused with 409 and code EMAIL_TAKEN; an OIDC account with the
+        same address does not conflict.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalUserCreateRequest"
+      responses:
+        "201":
+          description: Local account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalUserCreatedResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/local-users/summary:
+    get:
+      operationId: getLocalUserSummary
+      tags: [admin]
+      summary: Counts for the review notice of the local account management (system admin only)
+      responses:
+        "200":
+          description: The counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalUserSummaryResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/local-users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getLocalUser
+      tags: [admin]
+      summary: One local account (system admin only)
+      description: >
+        404 for an unknown id, for an account of another organization and for an OIDC account -
+        this view manages local accounts only.
+      responses:
+        "200":
+          description: The local account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalUserResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    patch:
+      operationId: updateLocalUser
+      tags: [admin]
+      summary: Change display name, e-mail address, expiry date, creation reason or role of a local account (system admin only)
+      description: >
+        Every absent field stays unchanged; expiresAt sets a new expiry date, noExpiry=true
+        removes it. An expiry date in the past on a SYSTEM_ADMIN and the withdrawal of the
+        SYSTEM_ADMIN role are refused with 409 and code LAST_LOGIN_CAPABLE_ADMIN while no other
+        login-capable system administrator remains (ADR-0033, Entscheidung 4). The role change
+        runs through the same path as POST /api/v1/admin/users/{id}/role and is audited as a role
+        grant or withdrawal; everything else is one LOCAL_USER_CHANGED that carries before/after
+        for the expiry date only and otherwise just the names of the changed fields.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalUserUpdateRequest"
+      responses:
+        "200":
+          description: The changed local account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalUserResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+    delete:
+      operationId: deleteLocalUser
+      tags: [admin]
+      summary: Delete a local account that owns nothing (system admin only)
+      description: >
+        Locking is the rule, deletion the exception (ADR-0033, Entscheidung 11): an account is
+        deleted only while it owns no knowledge library, no space besides its personal one and
+        no chat - otherwise 409 with code ACCOUNT_OWNS_CONTENT and the advice to lock it
+        instead. The personal space, the local credentials, every token and the pseudonym mapping
+        go with it; the audit trail keeps its pseudonymised rows (ADR-0015). Refused with 409 for
+        the caller's own account (SELF_DELETE), for the bootstrap account (BOOTSTRAP_ACCOUNT) and
+        for the last login-capable system administrator (LAST_LOGIN_CAPABLE_ADMIN).
+      responses:
+        "204":
+          description: Local account deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/local-users/{id}/lock:
+    post:
+      operationId: lockLocalUser
+      tags: [admin]
+      summary: Lock a local account (system admin only)
+      description: >
+        Sets locked_reason ADMIN, ends every session of the account at once (access tokens
+        through password_invalidated_before, refresh families as ACCOUNT_LOCKED; audited as
+        LOCAL_SESSION_REVOKED only when a session was actually active), replaces a running
+        failed-login lockout and resets its counter, and tells the person by mail
+        (ACCOUNT_LOCKED with the reason). Refused with 409 for the caller's own account
+        (SELF_LOCKOUT), for the last login-capable system administrator
+        (LAST_LOGIN_CAPABLE_ADMIN) and for an account that is already locked by the
+        administration or for inactivity (ALREADY_LOCKED).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalUserLockRequest"
+      responses:
+        "200":
+          description: The locked local account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalUserResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/local-users/{id}/unlock:
+    post:
+      operationId: unlockLocalUser
+      tags: [admin]
+      summary: Unlock a local account (system admin only)
+      description: >
+        Lifts an administrative, inactivity or failed-login lock and resets the failed-login
+        counter; the person is told by mail (ACCOUNT_UNLOCKED). 409 with code NOT_LOCKED for an
+        account that is neither locked nor carries failed attempts.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The unlocked local account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalUserResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/local-users/{id}/password-reset:
+    post:
+      operationId: requestLocalUserPasswordReset
+      tags: [admin]
+      summary: Reset a local account's password by link (system admin only)
+      description: >
+        Issues a single-use RESET_PASSWORD link valid for local_auth_settings.reset_token_ttl_minutes
+        (a new link supersedes every older open one), ends every session of the account and
+        mails the link (ADMIN_PASSWORD_RESET). For an account that has no password yet the
+        invitation is sent again instead (SET_PASSWORD link, LOCAL_ACCOUNT_INVITATION). Link
+        fallback and delivery-path audit exactly as for the invitation
+        (LOCAL_USER_PASSWORD_RESET_REQUESTED, or LOCAL_USER_INVITED for the resent invitation).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Link issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalUserPasswordResetResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/local-users/{id}/password:
+    post:
+      operationId: generateLocalUserPassword
+      tags: [admin]
+      summary: Set a generated password on a local account (system admin only)
+      description: >
+        Generates a password, stores its hash, forces the change at the next sign-in (reason
+        ADMIN_RESET, or INITIAL for an account that had no password yet), resets the failed-login
+        counter and lifts a failed-login lockout, ends every session of the account and audits
+        LOCAL_USER_PASSWORD_GENERATED. The response carries the password exactly once; it is
+        never stored in clear text and never returned again.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The generated password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalUserGeneratedPasswordResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/local-auth-settings:
+    get:
+      operationId: getLocalAuthSettings
+      tags: [admin]
+      summary: The settings of the local account management (system admin only)
+      responses:
+        "200":
+          description: The settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalAuthSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    put:
+      operationId: updateLocalAuthSettings
+      tags: [admin]
+      summary: Replace the settings of the local account management (system admin only)
+      description: >
+        ADR-0033, Entscheidungen 3, 4 and 10. enabled is the switch of the local account
+        management - the enabled flag of the LOCAL provider row, changed through the same path as
+        POST /api/v1/admin/oidc-providers/{providerId}/enable|disable (audited as
+        LOCAL_ACCOUNTS_ENABLED/_DISABLED); switching off ends the sessions of every regular local
+        account, and the response quotes how many accounts lost a session (revokedSessions).
+        The other values live in local_auth_settings and are audited as
+        LOCAL_ACCOUNTS_SETTINGS_CHANGED with before/after of the changed keys only. Bounds:
+        passwordMinLength 8-64, invitationTokenTtlHours 1-720, resetTokenTtlMinutes 1-1440,
+        defaultExpiryDays at least 1, inactiveDays at least 30 (400 with fieldErrors otherwise).
+        selfRegistrationEnabled needs a non-empty domain list (400). Switching
+        passwordResetEnabled or selfRegistrationEnabled on is refused with 409 and code
+        PUBLIC_BASE_URL_REQUIRED while OPAA_PUBLIC_BASE_URL is not set - a link nobody can see
+        is no flow.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalAuthSettingsUpdateRequest"
+      responses:
+        "200":
+          description: The stored settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalAuthSettingsResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
   /api/v1/admin/groups:
     get:
       operationId: listGroups
@@ -4942,6 +5353,344 @@ components:
             local_auth_settings.password_min_length characters, at most 64 characters and 72 bytes,
             not equal to the account's e-mail address, not on the shipped list of the most common
             passwords (compared in lower case). No complexity rules.
+
+    LocalAccountState:
+      type: string
+      description: >
+        Mirrors io.opaa.api.types.LocalAccountState (ADR-0033, Entscheidung 3) - the derived state
+        of a local account: INVITED (no password yet or address not confirmed), ACTIVE, LOCKED
+        (by the administration, after failed sign-ins or for inactivity), EXPIRED (expiry date
+        passed; the account is kept). A lock outranks expiry, expiry outranks an open invitation.
+      enum: [INVITED, ACTIVE, LOCKED, EXPIRED]
+      example: ACTIVE
+
+    LockReason:
+      type: string
+      description: >
+        Mirrors io.opaa.api.types.LockReason (ADR-0033, Entscheidungen 3, 9 and 11): ADMIN for a
+        lock by the administration, FAILED_LOGINS for the lockout after too many failed sign-ins
+        (ends by itself), INACTIVITY for the lock after local_auth_settings.inactive_days without
+        activity.
+      enum: [ADMIN, FAILED_LOGINS, INACTIVITY]
+      example: ADMIN
+
+    LocalAccountActivity:
+      type: string
+      description: >
+        Mirrors io.opaa.api.types.LocalAccountActivity (ADR-0033, Entscheidung 11): the activity
+        of a local account as a class, never as a timestamp - NEVER (no request since the account
+        was created), INACTIVE_90_DAYS (no request for at least 90 days), ACTIVE. Derived from the
+        throttled activity timestamp users.last_login_at, which is no sign-in time.
+      enum: [NEVER, INACTIVE_90_DAYS, ACTIVE]
+      example: ACTIVE
+
+    MailDeliveryPath:
+      type: string
+      description: >
+        Mirrors io.opaa.api.types.MailDeliveryPath (ADR-0033, Entscheidung 11): how a link
+        reached - or did not reach - the person. MAIL_SENT: the mail went out, the link is not in
+        the response. MAIL_FAILED: the send was attempted and failed; the link is in the response
+        for hand-over. LINK_DISPLAYED: no send was attempted (SMTP off or OPAA_PUBLIC_BASE_URL not
+        set); the link is in the response. The audit event of the act carries the same value, so a
+        hand-over outside the system stays distinguishable from a delivery.
+      enum: [MAIL_SENT, MAIL_FAILED, LINK_DISPLAYED]
+      example: MAIL_SENT
+
+    LocalUserCreationMode:
+      type: string
+      description: >
+        INVITE: account INVITED with a SET_PASSWORD link by mail (link fallback in the response).
+        INITIAL_PASSWORD: account ACTIVE with a generated password returned exactly once.
+      enum: [INVITE, INITIAL_PASSWORD]
+      example: INVITE
+
+    LocalUserResponse:
+      type: object
+      description: >
+        One row of the local account list (ADR-0033, Entscheidung 11). Never a sign-in or activity
+        timestamp - activity is the class only - and never the failed-login counter.
+      required:
+        [id, email, displayName, systemRole, status, passwordChangeRequired, createdReason,
+        createdAt, activity, bootstrap]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        displayName:
+          type: string
+        systemRole:
+          $ref: "#/components/schemas/SystemRole"
+        status:
+          $ref: "#/components/schemas/LocalAccountState"
+        lockedReason:
+          $ref: "#/components/schemas/LockReason"
+        passwordChangeRequired:
+          type: boolean
+        passwordChangeReason:
+          $ref: "#/components/schemas/PasswordChangeReason"
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Absent for an account without an expiry date.
+        createdReason:
+          type: string
+          description: >
+            The purpose-bound reason of the account's creation, at most 200 characters; visible to
+            the person in their own settings and never a value in the audit trail.
+        createdAt:
+          type: string
+          format: date-time
+        activity:
+          $ref: "#/components/schemas/LocalAccountActivity"
+        bootstrap:
+          type: boolean
+          description: The one emergency account of the Systemverwaltung; it cannot be deleted.
+
+    LocalUserPageResponse:
+      type: object
+      required: [items, total, page, size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LocalUserResponse"
+        total:
+          type: integer
+          format: int64
+          description: Matching accounts over all pages.
+        page:
+          type: integer
+        size:
+          type: integer
+
+    LocalUserSummaryResponse:
+      type: object
+      description: >
+        The counts behind the standing notice of the local account management (ADR-0033,
+        Entscheidung 11). Counts local accounts of the caller's organization only.
+      required: [total, withoutExpiry, locked, invitedPending]
+      properties:
+        total:
+          type: integer
+          format: int64
+        withoutExpiry:
+          type: integer
+          format: int64
+          description: Accounts without an expiry date - what the quarterly reminder counts.
+        locked:
+          type: integer
+          format: int64
+        invitedPending:
+          type: integer
+          format: int64
+          description: Open invitations (state INVITED).
+        lastReviewHint:
+          type: string
+          nullable: true
+          description: >
+            A German sentence for the notice, naming the date of the next quarterly reminder to
+            the system administrators.
+
+    LocalUserCreateRequest:
+      type: object
+      required: [email, displayName, createdReason, mode]
+      properties:
+        email:
+          type: string
+          minLength: 3
+          maxLength: 320
+          description: The sign-in identifier, stored trimmed as entered, unique among local accounts (case-insensitive).
+          example: erika.muster@stadt.example
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        systemRole:
+          $ref: "#/components/schemas/SystemRole"
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            The expiry date. Absent: now plus local_auth_settings.default_expiry_days, unless
+            noExpiry is true. Must lie in the future.
+        noExpiry:
+          type: boolean
+          default: false
+          description: Create the account without an expiry date - an explicit act, never the default.
+        createdReason:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: >
+            Mandatory and purpose-bound (ADR-0033, Entscheidung 11): the official occasion of the
+            account and the reason of its limit - nothing about health, employment, performance,
+            disciplinary matters or third parties. The person can read it.
+        mode:
+          $ref: "#/components/schemas/LocalUserCreationMode"
+
+    LocalUserCreatedResponse:
+      type: object
+      required: [user, mode, emailSent]
+      properties:
+        user:
+          $ref: "#/components/schemas/LocalUserResponse"
+        mode:
+          $ref: "#/components/schemas/LocalUserCreationMode"
+        emailSent:
+          type: boolean
+          description: Whether the invitation mail went out; always false for INITIAL_PASSWORD.
+        deliveryPath:
+          $ref: "#/components/schemas/MailDeliveryPath"
+        setupUrl:
+          type: string
+          nullable: true
+          description: >
+            The single-use link to set the password - present exactly once, only when the mail
+            was not sent (MAIL_FAILED or LINK_DISPLAYED). Without OPAA_PUBLIC_BASE_URL a path
+            relative to the installation.
+        initialPassword:
+          type: string
+          format: password
+          nullable: true
+          description: The generated initial password - present exactly once for INITIAL_PASSWORD.
+
+    LocalUserUpdateRequest:
+      type: object
+      description: Every absent field stays unchanged.
+      properties:
+        email:
+          type: string
+          minLength: 3
+          maxLength: 320
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        systemRole:
+          $ref: "#/components/schemas/SystemRole"
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: A new expiry date; ignored while noExpiry is true.
+        noExpiry:
+          type: boolean
+          default: false
+          description: Remove the expiry date.
+        createdReason:
+          type: string
+          minLength: 1
+          maxLength: 200
+
+    LocalUserLockRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: >
+            An optional sentence for the person, quoted in the ACCOUNT_LOCKED mail. Never written
+            to the audit trail (free text is no audit payload, ADR-0033 Entscheidung 13).
+
+    LocalUserPasswordResetResponse:
+      type: object
+      required: [emailSent, deliveryPath]
+      properties:
+        emailSent:
+          type: boolean
+        deliveryPath:
+          $ref: "#/components/schemas/MailDeliveryPath"
+        setupUrl:
+          type: string
+          nullable: true
+          description: The single-use link, present exactly once when the mail was not sent.
+
+    LocalUserGeneratedPasswordResponse:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+          format: password
+          description: The generated password, returned exactly once.
+
+    LocalAuthSettingsResponse:
+      type: object
+      description: >
+        The settings of the local account management (ADR-0033, Entscheidung 3). enabled is the
+        switch itself (the LOCAL provider row); publicBaseUrlConfigured says whether
+        OPAA_PUBLIC_BASE_URL is set - the precondition of every link flow; the effective values of
+        passwordResetEnabled and selfRegistrationEnabled for visitors are in GET /api/v1/auth/config.
+      required:
+        [enabled, selfRegistrationEnabled, selfRegistrationAllowedDomains, passwordResetEnabled,
+        passwordMinLength, invitationTokenTtlHours, resetTokenTtlMinutes, defaultExpiryDays,
+        inactiveDays, publicBaseUrlConfigured]
+      properties:
+        enabled:
+          type: boolean
+        selfRegistrationEnabled:
+          type: boolean
+        selfRegistrationAllowedDomains:
+          type: array
+          items:
+            type: string
+          description: Lower-cased, de-duplicated address domains; empty means nobody can register.
+        passwordResetEnabled:
+          type: boolean
+        passwordMinLength:
+          type: integer
+        invitationTokenTtlHours:
+          type: integer
+        resetTokenTtlMinutes:
+          type: integer
+        defaultExpiryDays:
+          type: integer
+          description: The prefill for the expiry date of a new account and the mandatory limit of self-registered ones.
+        inactiveDays:
+          type: integer
+        publicBaseUrlConfigured:
+          type: boolean
+        revokedSessions:
+          type: integer
+          nullable: true
+          description: >
+            Only in the answer to a PUT that switched the management off: how many regular local
+            accounts lost an active session.
+
+    LocalAuthSettingsUpdateRequest:
+      type: object
+      required:
+        [enabled, selfRegistrationEnabled, selfRegistrationAllowedDomains, passwordResetEnabled,
+        passwordMinLength, invitationTokenTtlHours, resetTokenTtlMinutes, defaultExpiryDays,
+        inactiveDays]
+      properties:
+        enabled:
+          type: boolean
+        selfRegistrationEnabled:
+          type: boolean
+        selfRegistrationAllowedDomains:
+          type: array
+          items:
+            type: string
+            maxLength: 253
+          maxItems: 100
+        passwordResetEnabled:
+          type: boolean
+        passwordMinLength:
+          type: integer
+        invitationTokenTtlHours:
+          type: integer
+        resetTokenTtlMinutes:
+          type: integer
+        defaultExpiryDays:
+          type: integer
+        inactiveDays:
+          type: integer
 
     OidcSignInProvider:
       type: object
@@ -9956,6 +10705,15 @@ components:
           MAIL_TEMPLATE_CHANGED,
           MAIL_TEMPLATE_RESET,
           MAIL_TEST_SENT,
+          LOCAL_USER_CREATED,
+          LOCAL_USER_INVITED,
+          LOCAL_USER_CHANGED,
+          LOCAL_USER_LOCKED,
+          LOCAL_USER_UNLOCKED,
+          LOCAL_USER_PASSWORD_RESET_REQUESTED,
+          LOCAL_USER_PASSWORD_GENERATED,
+          LOCAL_USER_DELETED,
+          LOCAL_ACCOUNTS_SETTINGS_CHANGED,
         ]
       example: ASSET_GRANT_REVOKED
 

@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.api.types.LocalAccountState;
+import io.opaa.api.types.LockReason;
 import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;

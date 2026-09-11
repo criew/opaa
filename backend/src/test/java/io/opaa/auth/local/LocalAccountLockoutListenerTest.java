@@ -16,6 +16,8 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
+import io.opaa.api.types.LocalAccountState;
+import io.opaa.api.types.LockReason;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;

@@ -1,5 +1,6 @@
 package io.opaa.auth.local;
 
+import io.opaa.api.types.LockReason;
 import java.util.Locale;
 import java.util.Objects;
 

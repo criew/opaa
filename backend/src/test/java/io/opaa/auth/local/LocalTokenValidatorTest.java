@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.LockReason;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;

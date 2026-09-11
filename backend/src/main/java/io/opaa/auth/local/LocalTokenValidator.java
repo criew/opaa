@@ -1,5 +1,6 @@
 package io.opaa.auth.local;
 
+import io.opaa.api.types.LockReason;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.oidc.OidcProviderRegistry;
 import java.time.Clock;

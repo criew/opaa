@@ -1,4 +1,4 @@
-package io.opaa.auth.local;
+package io.opaa.api.types;
 
 /**
  * The derived state of a local account (ADR-0033, Entscheidung 3) - see {@link

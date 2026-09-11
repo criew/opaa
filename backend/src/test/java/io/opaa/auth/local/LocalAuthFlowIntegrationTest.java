@@ -19,6 +19,7 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import io.opaa.api.types.LockReason;
 import io.opaa.api.types.PasswordChangeReason;
 import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.UserRepository;

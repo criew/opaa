@@ -41,8 +41,8 @@ import org.springframework.test.web.servlet.MvcResult;
  * INFO and above (Spring MVC's own DEBUG/TRACE request dump echoes the request body as a whole and
  * is a framework diagnostic no deployment runs), and no {@code LOCAL_*} audit event carries the
  * address or the display name in any of its text columns. The seed's one-time password (#1534) is
- * the one deliberate exception and stays inside its marked block. The later sub-issues
- * (invitations, lockout) extend the flow here.
+ * the one deliberate exception and stays inside its marked block. The administration paths of #1537
+ * (invitation, lock, reset, generated password) are covered below.
  */
 @OpaaLocalAuthMockMvcTest
 class LocalAuthLogPrivacyIntegrationTest {
@@ -260,6 +260,140 @@ class LocalAuthLogPrivacyIntegrationTest {
           "DELETE FROM audit_log WHERE event_type IN"
               + " ('LOCAL_ADMIN_RESET', 'LOCAL_BOOTSTRAP_ACCOUNT_LOGIN')");
     }
+  }
+
+  /**
+   * The administration paths (#1537): an invitation, an administrative lock with a free-text reason
+   * and a password-reset link leave neither the raw link token nor the reason text nor the address
+   * in any log line, and the {@code LOCAL_USER_*} events carry the delivery path but no address, no
+   * name, no reason and no account id. Without a public base URL every link is handed to the
+   * administrator (LINK_DISPLAYED) - the path on which the token stands in a response body.
+   */
+  @Test
+  void theAdministrationPathsLeakNeitherTheLinkTokenNorTheReasonNorThePerson() throws Exception {
+    LocalAccount admin = fixtures.activeAdmin("verwaltung-" + UUID.randomUUID() + "@stadt.example");
+    String adminBearer = bearer(login(admin.email(), LocalAccountFixtures.PASSWORD, 200));
+    String invitedEmail = "eingeladen-" + UUID.randomUUID() + "@stadt.example";
+    String reasonText = "Sachbearbeitung Bauamt, Vertretung bis Jahresende";
+    MvcResult invited =
+        mockMvc
+            .perform(
+                post("/api/v1/admin/local-users")
+                    .header(HttpHeaders.AUTHORIZATION, adminBearer)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        "{\"email\":\""
+                            + invitedEmail
+                            + "\",\"displayName\":\"Erika Eingeladen\",\"mode\":\"INVITE\","
+                            + "\"createdReason\":\""
+                            + reasonText
+                            + "\"}"))
+            .andExpect(status().isCreated())
+            .andReturn();
+    String invitedBody = invited.getResponse().getContentAsString();
+    String invitationToken = tokenIn(JsonPath.read(invitedBody, "$.setupUrl"));
+    UUID invitedId = UUID.fromString(JsonPath.read(invitedBody, "$.user.id"));
+    String lockReason = "Dienstende zum Monatsende";
+    mockMvc
+        .perform(
+            post("/api/v1/admin/local-users/" + user.id() + "/lock")
+                .header(HttpHeaders.AUTHORIZATION, adminBearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"" + lockReason + "\"}"))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(
+            post("/api/v1/admin/local-users/" + user.id() + "/unlock")
+                .header(HttpHeaders.AUTHORIZATION, adminBearer))
+        .andExpect(status().isOk());
+    MvcResult reset =
+        mockMvc
+            .perform(
+                post("/api/v1/admin/local-users/" + user.id() + "/password-reset")
+                    .header(HttpHeaders.AUTHORIZATION, adminBearer))
+            .andExpect(status().isOk())
+            .andReturn();
+    String resetToken =
+        tokenIn(JsonPath.read(reset.getResponse().getContentAsString(), "$.setupUrl"));
+    MvcResult generated =
+        mockMvc
+            .perform(
+                post("/api/v1/admin/local-users/" + user.id() + "/password")
+                    .header(HttpHeaders.AUTHORIZATION, adminBearer))
+            .andExpect(status().isOk())
+            .andReturn();
+    String generatedPassword =
+        JsonPath.read(generated.getResponse().getContentAsString(), "$.password");
+
+    List<String> secrets = List.of(invitationToken, resetToken, generatedPassword);
+    List<String> personal =
+        List.of(
+            invitedEmail,
+            invitedEmail.toUpperCase(),
+            user.email(),
+            admin.email(),
+            lockReason,
+            reasonText,
+            "Erika Eingeladen");
+    assertThat(logs.list).anyMatch(event -> event.getLoggerName().startsWith("io.opaa"));
+    for (ILoggingEvent event : logs.list) {
+      String line = event.getFormattedMessage() + " " + throwableText(event);
+      String where = "log line of " + event.getLoggerName() + " at " + event.getLevel();
+      for (String secret : secrets) {
+        assertThat(line).as(where).doesNotContain(secret);
+      }
+      boolean ours = event.getLoggerName().startsWith("io.opaa");
+      if (ours || event.getLevel().isGreaterOrEqual(Level.INFO)) {
+        for (String value : personal) {
+          assertThat(line).as(where).doesNotContain(value);
+        }
+      }
+    }
+
+    List<Map<String, Object>> events =
+        jdbc.queryForList(
+            "SELECT event_type, actor_ref, object_label, subject_ref, CAST(before AS text) AS before,"
+                + " CAST(after AS text) AS after, reason FROM audit_log"
+                + " WHERE event_type LIKE 'LOCAL_USER_%' OR event_type = 'LOCAL_SESSION_REVOKED'");
+    assertThat(events)
+        .extracting(row -> (String) row.get("event_type"))
+        .contains(
+            "LOCAL_USER_CREATED",
+            "LOCAL_USER_INVITED",
+            "LOCAL_USER_LOCKED",
+            "LOCAL_USER_UNLOCKED",
+            "LOCAL_USER_PASSWORD_RESET_REQUESTED",
+            "LOCAL_USER_PASSWORD_GENERATED");
+    assertThat(events)
+        .filteredOn(row -> "LOCAL_USER_INVITED".equals(row.get("event_type")))
+        .allSatisfy(row -> assertThat((String) row.get("after")).contains("LINK_DISPLAYED"));
+    for (Map<String, Object> row : events) {
+      String text = String.valueOf(row.values());
+      assertThat(text)
+          .as("audit row %s", row.get("event_type"))
+          .doesNotContain(invitedEmail)
+          .doesNotContain(user.email())
+          .doesNotContain(admin.email())
+          .doesNotContain("Erika Eingeladen")
+          .doesNotContain(LocalAccountFixtures.DISPLAY_NAME)
+          .doesNotContain(reasonText)
+          .doesNotContain(lockReason)
+          .doesNotContain(invitedId.toString())
+          .doesNotContain(user.id().toString())
+          .doesNotContain(admin.id().toString());
+      for (String secret : secrets) {
+        assertThat(text).as("audit row %s", row.get("event_type")).doesNotContain(secret);
+      }
+    }
+    jdbc.update(
+        "DELETE FROM audit_log WHERE event_type LIKE 'LOCAL_USER_%'"
+            + " OR event_type = 'LOCAL_SESSION_REVOKED'");
+  }
+
+  private static String tokenIn(String link) {
+    Matcher matcher = Pattern.compile("token=([A-Za-z0-9_-]+)").matcher(link);
+    assertThat(matcher.find()).as("token in %s", link).isTrue();
+    return matcher.group(1);
   }
 
   private MvcResult login(String email, String password, int expectedStatus) throws Exception {
