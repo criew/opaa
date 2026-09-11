@@ -134,6 +134,10 @@ unten. Die Untergrenze ist ein fester Wert (Oberflächengröße), kein Parameter
   im Golden Dataset mit eigener Baseline und Messvertrag-Nachtrag zu ADR-0012.
 - Die Mehrrunden-Messung ist nur zerlegend sinnvoll und läuft deshalb nicht nächtlich; ihr Ergebnis
   ist ein manuell ausgelöster Befund, kein automatischer Regressionsschutz.
+  > **Überholt durch ADR-0012, Entscheidung 49 (Issue #1553):** Sie läuft nächtlich, per
+  > `workflow_dispatch` und beim Label `evaluation` — in einem eigenen CI-Job mit eigenem
+  > Zeitbudget, nicht im Job der Einzelfragen-Domänen. Sie ist damit automatischer
+  > Regressionsschutz. Unverändert ist nur, dass sie ausschließlich zerlegend misst.
 - In den zwei Runden nach einem Themenwechsel kann eine mehrdeutige Rückfrage falsch aufgelöst
   werden; in den zwei Runden vor der Anzeige wirkt die Notiz unsichtbar. Beides ist benannt,
   begrenzt und heilt sich selbst.

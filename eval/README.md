@@ -391,6 +391,14 @@ Datensatz: `eval/golden/<domäne>-conversations.json` (siehe
 Abschnitt „Messung".
 
 ```bash
+# Messung und Baseline-Vergleich in einem Aufruf (Issue #1553) — die Task setzt beide
+# Properties selbst:
+./gradlew checkVerwaltungConversationBaseline
+
+# Nur messen, ohne Urteil gegen die Baseline:
+./gradlew evaluateVerwaltungConversations
+
+# Gleichwertig, mit den Properties von Hand:
 ./gradlew evaluateVerwaltungRetrieval \
   -Dopaa.eval.queryDecomposition=true \
   -Dopaa.eval.runConversations=true
@@ -429,8 +437,22 @@ diesen Pfad (Einpfad-Regel, `docs/features/retrieval-benchmark.md`, Abschnitt 5)
 Eigenschaft des Datensatzes und steht deshalb einmal je Bericht — nicht als
 `expected_state_exception` an jedem Fall, was das Zustandsfeld-Audit dauerhaft stumm stellte.
 
-Der Schritt ist manuell oder per Label zu starten, **nie nächtlich**: Je Runde ein Chat-Aufruf, mal
-drei Läufe — deutlich über dem Budget des nächtlichen Jobs.
+Baseline-Vergleich: `eval/baseline/pipeline-<domäne>-conversations.json`, geladen von
+`ConversationBaselineRegressionCheck` und verglichen nach denselben Regeln wie der Pipeline-Pfad
+(`ConversationBaselineComparator`, ADR-0013). Das Urteil hat **vier** Ausgänge statt drei: Zu
+„keine Regression", „Regression" und „unvergleichbar" kommt **„nicht beurteilt"** — eine
+Unvergleichbarkeit, die ausschließlich die Festpunkte betrifft, deren Neumessung angekündigt ist
+(`ConversationBaselineVerdict`). Ihre Festpunktabweichung steht dann im Klartext im Bericht, und
+der Lauf bleibt grün; siehe `eval/baseline/README.md`, „Besonderheiten der Mehrrunden-Baseline".
+Die Delta-Tabelle landet in `build/eval-reports/conversation-baseline-comparison-<domäne>.md`.
+
+In der CI trägt diesen Pfad seit Issue #1553 ein **eigener Job** `conversations` in
+`.github/workflows/retrieval-regression.yml` — mit denselben Auslösern wie die
+Einzelfragen-Domänen (nächtlich, `workflow_dispatch`, Label `evaluation`), aber eigenem
+Zeitbudget: Je Runde ein Chat-Aufruf für die Zerlegung und einer für die Notiz, mal drei Läufe.
+Ein eigener Job und nicht ein weiterer Eintrag der `evaluate`-Matrix, weil dieser Pfad nur mit
+aktiver Zerlegung misst und die beiden Baselines dieser Domäne ohne sie gezogen wurden — ein
+Harness-Lauf kann nicht beides bedienen.
 
 ### Report lesen
 

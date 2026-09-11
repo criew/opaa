@@ -70,10 +70,9 @@ class ConversationPathIsolationTest {
    * invariants - the Docker-free half of "the committed baseline is internally consistent",
    * modelled on {@code PipelinePathIsolationTest#committedPipelineBaselinesStayLoadableAndValid}.
    *
-   * <p>This path has no regression test class and no Gradle task reading the file yet (issue #1485:
-   * the decision which job carries a 249-call measurement belongs to the epic's last step), so
-   * without this test nothing at all would read it and a hand-edited group would stay unnoticed
-   * until that decision is made.
+   * <p>Docker-free on purpose even though {@link ConversationBaselineRegressionCheck} reads the
+   * same file since issue #1553: that check needs a measurement run of well over an hour, this one
+   * catches a hand-edited group on every build.
    */
   @Test
   void theCommittedConversationBaselineStaysLoadableAndValid() throws IOException {
@@ -98,6 +97,34 @@ class ConversationPathIsolationTest {
     // baselines - a baseline may only name the Ollama it was actually measured with.
     assertThat(baseline.fixedPoints().pipeline().ollamaImage())
         .isEqualTo(EvalOllamaEndpoint.PINNED_IMAGE);
+  }
+
+  /**
+   * The tolerance {@link ConversationBaselineVerdict#PENDING_REMEASUREMENT_FIELDS} grants may not
+   * outlive its reason (issue #1553). It exists because the committed baseline predates the search
+   * window (#1486) and the Gesprächsnotiz (#1487); this test pins exactly that, so the re-measured
+   * baseline of #1490 turns it red and forces the tolerance out of the verdict rules with it.
+   */
+  @Test
+  void theNotJudgedGateIsStillNeededByTheCommittedBaseline() throws IOException {
+    EvalDomainConfig domain = EvalDomainConfig.VERWALTUNG;
+
+    ConversationBaseline baseline =
+        ConversationBaseline.load(
+            RepoPaths.evalDir().resolve("baseline").resolve(domain.conversationBaselineFileName()));
+
+    assertThat(baseline.fixedPoints().searchWindowTurns())
+        .as(
+            "Die committete Baseline trägt nicht mehr den Wert aus der Zeit vor #1486 — sie ist "
+                + "offenbar neu gezogen (#1490). Dann ist die Nicht-beurteilt-Ausnahme in "
+                + "ConversationBaselineVerdict.PENDING_REMEASUREMENT_FIELDS gegenstandslos und "
+                + "muss zusammen mit dieser Prüfung entfernt werden.")
+        .isEqualTo(ConversationMemoryProfile.SEARCH_WINDOW_QUESTION_ONLY);
+    assertThat(baseline.fixedPoints().conversationNoteCap())
+        .as("Dasselbe für die Gesprächsnotiz (#1487).")
+        .isEqualTo(ConversationMemoryProfile.NO_CONVERSATION_NOTE);
+    assertThat(ConversationBaselineVerdict.PENDING_REMEASUREMENT_FIELDS)
+        .containsExactlyInAnyOrder("searchWindowTurns", "conversationNoteCap");
   }
 
   /**

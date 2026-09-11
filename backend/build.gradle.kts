@@ -114,18 +114,23 @@ tasks.cyclonedxBom {
 // `pipelineBaselineTestClass` is null for a domain whose pipeline baseline has not been drawn yet:
 // wiring the test without a committed baseline would turn the nightly job red for a measurement
 // that was never taken. See the call sites for which domain that currently is and under which
-// issue it is being drawn.
-fun registerEvalDomain(
-    name: String,
-    evaluateDescription: String,
-    checkDescription: String,
+// issue it is being drawn. `conversationBaselineTestClass` works the same way for the multi-turn
+// path (issue #1553) — but its pair of tasks is a second, separate pair, never a third test class
+// in the check task above: the multi-turn step needs the Teilfragen-Zerlegung switched on, and
+// both baselines the check task above judges were drawn with it off.
+//
+// `forcedProperties` are the system properties a task's measurement cannot run without, set by the
+// task itself rather than left to the caller. They win over the same key from the command line: a
+// -D that switched the multi-turn step off would produce a run with no multi-turn report, which
+// then only surfaces as the baseline test's "No multi-turn report found".
+fun registerEvalHarnessTask(
+    taskName: String,
+    taskDescription: String,
     harnessTestClass: String,
-    baselineTestClass: String,
-    pipelineBaselineTestClass: String?,
+    forcedProperties: Map<String, String>,
 ) {
-    val evaluateTaskName = "evaluate${name}Retrieval"
-    tasks.register<Test>(evaluateTaskName) {
-        description = evaluateDescription
+    tasks.register<Test>(taskName) {
+        description = taskDescription
         group = "verification"
         testClassesDirs = sourceSets["evalTest"].output.classesDirs
         classpath = sourceSets["evalTest"].runtimeClasspath
@@ -168,11 +173,25 @@ fun registerEvalDomain(
             "opaa.rerank.timeout",
             "opaa.query.rerank-candidate-count",
         ).forEach { key -> System.getProperty(key)?.let { systemProperty(key, it) } }
+        forcedProperties.forEach { (key, value) -> systemProperty(key, value) }
         testLogging {
             events("passed", "skipped", "failed", "standard_out")
             showStandardStreams = true
         }
     }
+}
+
+fun registerEvalDomain(
+    name: String,
+    evaluateDescription: String,
+    checkDescription: String,
+    harnessTestClass: String,
+    baselineTestClass: String,
+    pipelineBaselineTestClass: String?,
+    conversationBaselineTestClass: String? = null,
+) {
+    val evaluateTaskName = "evaluate${name}Retrieval"
+    registerEvalHarnessTask(evaluateTaskName, evaluateDescription, harnessTestClass, emptyMap())
 
     // Depends on the evaluate task above so a single `./gradlew check${name}RetrievalBaseline`
     // invocation (as used by the nightly/manual/label-triggered CI job in
@@ -192,6 +211,47 @@ fun registerEvalDomain(
             if (pipelineBaselineTestClass != null) {
                 includeTestsMatching(pipelineBaselineTestClass)
             }
+        }
+        testLogging {
+            events("passed", "skipped", "failed", "standard_out")
+            showStandardStreams = true
+        }
+    }
+
+    if (conversationBaselineTestClass == null) {
+        return
+    }
+
+    // The multi-turn path's own pair (issue #1553). A second full harness run rather than a third
+    // test class on the pair above, because the multi-turn step only measures with the
+    // Teilfragen-Zerlegung active (ConversationRunPrerequisites) while both baselines the pair
+    // above judges were drawn with it off — one run cannot serve both, and a run that tried would
+    // report every domain baseline as incomparable.
+    val conversationEvaluateTaskName = "evaluate${name}Conversations"
+    registerEvalHarnessTask(
+        conversationEvaluateTaskName,
+        "Runs the same harness as evaluate${name}Retrieval but with the multi-turn step switched " +
+            "on (issue #1484): three measurements of the domain's conversation dataset over the " +
+            "corpus the run has just indexed. Needs Docker; far longer than the single-question " +
+            "run, one chat call per turn. Not part of build/check.",
+        harnessTestClass,
+        mapOf(
+            "opaa.eval.runConversations" to "true",
+            "opaa.eval.queryDecomposition" to "true",
+        ),
+    )
+    tasks.register<Test>("check${name}ConversationBaseline") {
+        description = "Runs evaluate${name}Conversations, then compares the multi-turn result " +
+            "against eval/baseline/pipeline-<domain>-conversations.json (issue #1553). Needs " +
+            "Docker."
+        group = "verification"
+        dependsOn(conversationEvaluateTaskName)
+        testClassesDirs = sourceSets["evalTest"].output.classesDirs
+        classpath = sourceSets["evalTest"].runtimeClasspath
+        useJUnitPlatform()
+        outputs.upToDateWhen { false }
+        filter {
+            includeTestsMatching(conversationBaselineTestClass)
         }
         testLogging {
             events("passed", "skipped", "failed", "standard_out")
@@ -246,6 +306,9 @@ registerEvalDomain(
     harnessTestClass = "io.opaa.eval.VerwaltungRetrievalEvaluationHarnessTest",
     baselineTestClass = "io.opaa.eval.VerwaltungBaselineRegressionTest",
     pipelineBaselineTestClass = "io.opaa.eval.VerwaltungPipelineBaselineRegressionTest",
+    // The only domain with a curated multi-turn dataset and a committed multi-turn baseline
+    // (issues #1485/#1553); a second domain supplies its own test class here.
+    conversationBaselineTestClass = "io.opaa.eval.VerwaltungConversationBaselineRegressionTest",
 )
 
 // Fast, Docker-free unit tests for the pure metric math (RetrievalMetrics, MetricsAggregate,
@@ -257,8 +320,9 @@ registerEvalDomain(
 // report file that only exists after a real `evaluateRetrieval` run, stays exclusive to
 // `checkRetrievalBaseline` below) — issue #227/#228's exclusion criterion is about those two
 // specific test classes, not about the evalTest source set as a whole. The `*BaselineRegressionTest`
-// pattern covers the pipeline path's baseline tests (issue #1040) for the identical reason: they
-// consume a report file no Docker-free build produces.
+// pattern covers the pipeline path's baseline tests (issue #1040) and the multi-turn path's
+// (issue #1553) for the identical reason: they consume a report file no Docker-free build
+// produces.
 tasks.register<Test>("evalUnitTest") {
     description = "Docker-free unit tests for the eval metric math (RetrievalMetrics, " +
         "MetricsAggregate, CorpusManifest, BaselineComparator). Part of check; no Testcontainers, " +

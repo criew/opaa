@@ -548,12 +548,25 @@ Dasselbe Verfahren wie unten, mit zwei Präzisierungen:
 einem CPU-Testcontainer-Lauf vom 2026-09-11 gegen die dort erstkuratierten 27 Fälle mit 83 Runden;
 Typ (`ConversationBaseline`) und Vergleich (`ConversationBaselineComparator`) stammen aus #1484.
 
-**Noch an keine Regressionstestklasse verdrahtet, bewusst.** `registerEvalDomain` in
-`backend/build.gradle.kts` kennt bislang nur den Rohvektor- und den Pipeline-Pfad, und der
-Mehrrunden-Schritt ist ohnehin manuell oder per Label zu starten, nie nächtlich: Je Runde ein
-Chat-Aufruf, mal drei Läufe. Eine Verdrahtung, die den nächtlichen Job rot färben könnte, wäre
-also erst zusammen mit einer Entscheidung darüber sinnvoll, welcher Job diesen Pfad trägt —
-Folgearbeit außerhalb von #1485.
+**Verglichen wird sie seit Issue #1553** von `VerwaltungConversationBaselineRegressionTest` über
+`ConversationBaselineRegressionCheck` — dem Gegenstück zu `PipelineBaselineRegressionCheck`. Der
+Messlauf und der Vergleich stecken in einem eigenen Task-Paar
+(`evaluateVerwaltungConversations` / `checkVerwaltungConversationBaseline`), nicht im
+`check…RetrievalBaseline` der Domäne: Dieser Pfad misst nur mit aktiver Teilfragen-Zerlegung, die
+beiden anderen Baselines dieser Domäne wurden ohne sie gezogen. In der CI trägt ihn der Job
+`conversations` in `.github/workflows/retrieval-regression.yml`, mit denselben Auslösern wie die
+Einzelfragen-Domänen (nächtlich, `workflow_dispatch`, Label `evaluation`) und einem eigenen
+Zeitbudget.
+
+**Heute meldet dieser Vergleich „nicht beurteilt", nicht „bestanden".** Die Datei wurde vor dem
+Suchfenster (#1486) und vor der Gesprächsnotiz (#1487) gezogen und trägt deshalb
+`searchWindowTurns: 0` und `conversationNoteCap: 0`, während ein heutiger Lauf beide Maße produktiv
+misst (2 bzw. 10). Damit ist sie unvergleichbar — nicht schlechter, sondern an etwas anderem
+gemessen. Der Job bleibt dafür grün und weist die Festpunktabweichung im Klartext aus; rot wird er
+bei einer Regression, bei einer Festpunktabweichung **außerhalb** dieser beiden Felder und bei
+einem fehlgeschlagenen Messlauf (`ConversationBaselineVerdict`). Neu gezogen wird die Baseline in
+Issue #1490; mit der Neuziehung entfällt die Ausnahme, und
+`ConversationPathIsolationTest#theNotJudgedGateIsStillNeededByTheCommittedBaseline` erzwingt das.
 
 Aufbau wie die Pipeline-Baseline, mit vier Unterschieden:
 
