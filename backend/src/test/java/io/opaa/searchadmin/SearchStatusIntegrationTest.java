@@ -2,6 +2,7 @@ package io.opaa.searchadmin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.maintenance.FullTextIndexFillState;
 import io.opaa.indexing.maintenance.FullTextIndexFillStateService;
@@ -13,7 +14,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -30,7 +30,6 @@ class SearchStatusIntegrationTest {
 
   @Autowired private SearchStatusService searchStatusService;
   @Autowired private FullTextIndexFillStateService fullTextIndexFillStateService;
-  @Autowired private VectorStore vectorStore;
   @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private JdbcTemplate jdbcTemplate;
 
@@ -68,23 +67,45 @@ class SearchStatusIntegrationTest {
   }
 
   @Test
-  void theFullTextFillStateIsTheSameNumberTheFillStateServiceReads() {
+  void theVersionBacklogIsShownPerLibraryAndClearedByTheReindex() {
     UUID documentId = UUID.randomUUID();
     insertDocument(documentId, "satzung.pdf", "INDEXED", 3);
-    // Written straight into the vector store, bypassing VectorChunkStore - so no chunk_full_text
-    // row exists and the library is exactly in the state this page must show as incomplete.
-    vectorStore.add(
+    vectorChunkStore.addChunks(
         List.of(chunk(documentId, "satzung.pdf", 0), chunk(documentId, "satzung.pdf", 1)));
+    // What a raised FullTextChunkStore.CURRENT_TSV_VERSION does to rows already written.
+    jdbcTemplate.update(
+        "UPDATE chunk_full_text SET content_tsv_version = ? WHERE library_id = ?",
+        (short) (FullTextChunkStore.CURRENT_TSV_VERSION - 1),
+        libraryId);
 
-    LibrarySearchStatus status = statusOfOwnLibrary();
+    LibrarySearchStatus outdated = statusOfOwnLibrary();
     FullTextIndexFillState source = fullTextIndexFillStateService.fillStateForLibrary(libraryId);
 
-    assertThat(status.vectorChunkCount()).isEqualTo(source.totalChunks()).isEqualTo(2);
-    assertThat(status.fullTextIndexedChunks()).isEqualTo(source.indexedChunks()).isZero();
-    assertThat(status.fullTextMissingChunks()).isEqualTo(source.missingChunks()).isEqualTo(2);
-    assertThat(source.isComplete()).isFalse();
-    assertThat(status.fullTextIndexCondition())
-        .isEqualTo(LibrarySearchStatus.IndexCondition.INCOMPLETE);
+    assertThat(outdated.vectorChunkCount()).isEqualTo(source.totalChunks()).isEqualTo(2);
+    assertThat(outdated.fullTextIndexedChunks()).isEqualTo(source.indexedChunks()).isZero();
+    assertThat(outdated.fullTextOutdatedChunks()).isEqualTo(source.outdatedChunks()).isEqualTo(2);
+    assertThat(source.isUpToDate()).isFalse();
+    assertThat(outdated.fullTextIndexCondition())
+        .isEqualTo(LibrarySearchStatus.IndexCondition.OUTDATED);
+    assertThat(searchStatusService.statusForOrganization(DEFAULT_ORGANIZATION_ID).searchPaths())
+        .filteredOn(path -> path.path() == SearchPathStatus.SearchPathName.FULL_TEXT)
+        .singleElement()
+        .satisfies(
+            path -> {
+              assertThat(path.condition()).isEqualTo(SearchPathStatus.SearchPathCondition.OUTDATED);
+              assertThat(path.affectedLibraryCount()).isEqualTo(1);
+            });
+
+    // The pipeline re-index writes the same chunks again - the only way this backlog goes away.
+    vectorChunkStore.deleteByDocumentId(documentId);
+    vectorChunkStore.addChunks(
+        List.of(chunk(documentId, "satzung.pdf", 0), chunk(documentId, "satzung.pdf", 1)));
+
+    LibrarySearchStatus reindexed = statusOfOwnLibrary();
+    assertThat(reindexed.fullTextIndexedChunks()).isEqualTo(2);
+    assertThat(reindexed.fullTextOutdatedChunks()).isZero();
+    assertThat(reindexed.fullTextIndexCondition())
+        .isEqualTo(LibrarySearchStatus.IndexCondition.READY);
   }
 
   @Test

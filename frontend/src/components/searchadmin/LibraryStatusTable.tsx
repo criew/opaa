@@ -18,6 +18,7 @@ const INDEX_STATE_LABELS: Record<LibraryIndexState, string> = {
   EMPTY: 'Leer',
   READY: 'Vollständig',
   INCOMPLETE: 'Unvollständig',
+  OUTDATED: 'Nachzug ausstehend',
 }
 
 /**
@@ -279,11 +280,15 @@ export default function LibraryStatusTable({
                 <Chip
                   size="small"
                   label={INDEX_STATE_LABELS[library.fullTextIndexState]}
-                  color={library.fullTextIndexState === 'INCOMPLETE' ? 'warning' : 'default'}
+                  color={library.fullTextIndexState === 'OUTDATED' ? 'warning' : 'default'}
                 />
-                {library.fullTextMissingChunks > 0 && (
+                {library.fullTextOutdatedChunks > 0 && (
                   <Typography variant="caption" color="text.secondary" component="div">
-                    {plural(library.fullTextMissingChunks, 'Abschnitt fehlt', 'Abschnitte fehlen')}
+                    {plural(
+                      library.fullTextOutdatedChunks,
+                      'Abschnitt in älterer Fassung',
+                      'Abschnitte in älterer Fassung',
+                    )}
                   </Typography>
                 )}
               </TableCell>

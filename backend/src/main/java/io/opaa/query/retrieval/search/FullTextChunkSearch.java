@@ -46,6 +46,16 @@ public class FullTextChunkSearch {
    */
   static final int MAX_QUERY_TOKENS = 32;
 
+  /**
+   * Upper bound on the length of a single word token, in characters. PostgreSQL rejects a lexeme of
+   * 2047 bytes or more in {@code to_tsquery}, and a question of multi-byte letters without a
+   * separator reaches that within the 2000 characters a question may have - the query would fail on
+   * input no operator can recognize as malformed. 500 stays below the limit at UTF-8's worst case
+   * of three bytes per character, and costs nothing real: no word comes close, and a truncated
+   * token still matches the stems its full form would.
+   */
+  static final int MAX_QUERY_TOKEN_LENGTH = 500;
+
   private final JdbcTemplate jdbcTemplate;
   private final ObjectMapper objectMapper;
   private final String schemaName;
@@ -89,7 +99,10 @@ public class FullTextChunkSearch {
       return List.of();
     }
     List<String> wordTokens = wordTokens(question);
-    List<String> identifierLexemes = FullTextIdentifiers.extract(question);
+    // Same bound as the word tokens: an identifier pattern has no length limit of its own, and a
+    // sub-query of the decomposition is not bound by the question's own length limit either.
+    List<String> identifierLexemes =
+        FullTextIdentifiers.extract(question).stream().map(FullTextChunkSearch::truncated).toList();
     if (wordTokens.isEmpty() && identifierLexemes.isEmpty()) {
       return List.of();
     }
@@ -188,9 +201,10 @@ public class FullTextChunkSearch {
 
   /**
    * The question's words as {@code to_tsquery}-safe tokens: lowercased, split at everything that is
-   * not a letter or digit, deduplicated, capped at {@link #MAX_QUERY_TOKENS}. Stemming and stopword
-   * removal are left to the {@code german} configuration the tokens are handed to - doing either
-   * here would be a second, drifting copy of the analysis chain the index was built with.
+   * not a letter or digit, deduplicated, each capped at {@link #MAX_QUERY_TOKEN_LENGTH} characters
+   * and the list at {@link #MAX_QUERY_TOKENS} entries. Stemming and stopword removal are left to
+   * the {@code german} configuration the tokens are handed to - doing either here would be a
+   * second, drifting copy of the analysis chain the index was built with.
    */
   static List<String> wordTokens(String question) {
     if (question == null || question.isBlank()) {
@@ -202,17 +216,34 @@ public class FullTextChunkSearch {
       if (Character.isLetterOrDigit(character)) {
         current.append(character);
       } else if (current.length() > 0) {
-        tokens.add(current.toString());
+        tokens.add(truncated(current.toString()));
         current.setLength(0);
       }
     }
     if (current.length() > 0) {
-      tokens.add(current.toString());
+      tokens.add(truncated(current.toString()));
     }
     List<String> result = new ArrayList<>(tokens);
     return result.size() <= MAX_QUERY_TOKENS
         ? List.copyOf(result)
         : List.copyOf(result.subList(0, MAX_QUERY_TOKENS));
+  }
+
+  /**
+   * Caps one lexeme at {@link #MAX_QUERY_TOKEN_LENGTH} characters, never cutting a surrogate pair
+   * in half - half a pair is not encodable as UTF-8. The bound itself holds through the character
+   * count alone; the pair check is defence for callers whose tokenization does not, as {@link
+   * #wordTokens} does, split at a surrogate anyway.
+   */
+  private static String truncated(String token) {
+    if (token.length() <= MAX_QUERY_TOKEN_LENGTH) {
+      return token;
+    }
+    int end = MAX_QUERY_TOKEN_LENGTH;
+    if (Character.isHighSurrogate(token.charAt(end - 1))) {
+      end--;
+    }
+    return token.substring(0, end);
   }
 
   /**

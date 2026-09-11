@@ -20,7 +20,6 @@ import io.opaa.query.retrieval.ranking.RerankStage;
 import io.opaa.query.retrieval.scope.MetadataFilterStage;
 import io.opaa.query.retrieval.scope.SearchScopeStage;
 import io.opaa.query.retrieval.search.FullTextChunkSearch;
-import io.opaa.query.retrieval.search.FullTextIndexCompleteness;
 import io.opaa.query.retrieval.search.FullTextSearchStage;
 import io.opaa.query.retrieval.search.QueryDecompositionService;
 import io.opaa.query.retrieval.search.SubQueryDecompositionStage;
@@ -75,8 +74,7 @@ class RerankPipelineTest {
             new VectorSearchStage(vectorStore),
             // The lexical path is switched off in every QueryProperties here: this class is about
             // what happens to the fused list afterwards, not about how it was retrieved.
-            new FullTextSearchStage(
-                mock(FullTextChunkSearch.class), mock(FullTextIndexCompleteness.class)),
+            new FullTextSearchStage(mock(FullTextChunkSearch.class)),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new RerankStage(rerankModelRole),

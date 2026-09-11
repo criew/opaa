@@ -51,9 +51,9 @@ public final class PipelineReportWriter {
         format(
             "  full-text-search-enabled=%s (Volltextindex der gemessenen Bibliothek" + " %s)\n",
             cfg.fullTextSearchEnabled(),
-            cfg.fullTextIndexComplete()
-                ? "vollständig"
-                : "UNVOLLSTÄNDIG — der lexikalische Pfad hat weniger beigetragen"));
+            cfg.fullTextIndexUpToDate()
+                ? "auf aktueller Fassung"
+                : "MIT RÜCKSTAND — der lexikalische Pfad hat weniger beigetragen"));
     sb.append(
         format(
             "  query-decomposition-enabled=%s, max-sub-queries=%d, Chat-Modell=%s\n",

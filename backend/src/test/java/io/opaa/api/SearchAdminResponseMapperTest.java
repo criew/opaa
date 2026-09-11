@@ -112,7 +112,7 @@ class SearchAdminResponseMapperTest {
   }
 
   @Test
-  void anIncompleteSearchPathNamesHowManyLibrariesAreMissing() {
+  void aSearchPathWithAVersionBacklogNamesHowManyLibrariesCarryIt() {
     SearchStatusResponse response =
         SearchAdminResponseMapper.toStatusResponse(
             new SearchStatus(
@@ -120,15 +120,16 @@ class SearchAdminResponseMapperTest {
                 List.of(
                     new SearchPathStatus(
                         SearchPathStatus.SearchPathName.FULL_TEXT,
-                        SearchPathStatus.SearchPathCondition.INCOMPLETE,
+                        SearchPathStatus.SearchPathCondition.OUTDATED,
                         2,
                         5)),
                 List.of()));
 
     var path = response.getSearchPaths().get(0);
     assertThat(path.getPath()).isEqualTo(SearchPath.FULL_TEXT);
-    assertThat(path.getState()).isEqualTo(SearchPathState.INCOMPLETE);
+    assertThat(path.getState()).isEqualTo(SearchPathState.OUTDATED);
     assertThat(path.getDetail()).contains("Volltextsuche", "2 von 5");
+    assertThat(path.getDetail()).doesNotContain("unvollständig");
   }
 
   @Test
@@ -213,11 +214,11 @@ class SearchAdminResponseMapperTest {
     assertThat(response.getVectorChunkCount()).isEqualTo(230);
     assertThat(response.getLastIndexedAt()).isEqualTo(Instant.parse("2026-09-01T08:00:00Z"));
     assertThat(response.getFullTextIndexedChunks()).isEqualTo(200);
-    assertThat(response.getFullTextMissingChunks()).isEqualTo(30);
-    // Pending documents make the vector index incomplete; missing full-text rows do the same for
-    // the lexical one - the condition the completion gate reads.
+    assertThat(response.getFullTextOutdatedChunks()).isEqualTo(30);
+    // Pending documents make the vector index incomplete; full-text rows below the current tsv
+    // version make the lexical index outdated - two different findings, two different states.
     assertThat(response.getVectorIndexState()).isEqualTo(LibraryIndexState.INCOMPLETE);
-    assertThat(response.getFullTextIndexState()).isEqualTo(LibraryIndexState.INCOMPLETE);
+    assertThat(response.getFullTextIndexState()).isEqualTo(LibraryIndexState.OUTDATED);
   }
 
   @Test

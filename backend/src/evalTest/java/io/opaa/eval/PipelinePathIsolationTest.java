@@ -60,7 +60,7 @@ class PipelinePathIsolationTest {
 
   @Test
   void pipelinePathCountsItsOwnContractVersionSeparately() {
-    // Version 10: 3 from issue #1049 (the lexical path's switch and the measured library's
+    // Version 12: 3 from issue #1049 (the lexical path's switch and the measured library's
     // full-text index state), plus 1 from issue #1144 (ingestionPipelineFingerprint), plus 1
     // from issue #1164/PR #1201 (MailDocumentFormat#version() moved 2 -> 3, shifting the
     // collective fingerprint), plus 1 from issue #1183 (MailDocumentFormat#version() moved 3 ->
@@ -70,12 +70,12 @@ class PipelinePathIsolationTest {
     // moved 4 -> 5, shifting the collective fingerprint again), plus 1 from issue #1315
     // (HtmlDocumentFormat#version() moved 1 -> 2, shared XHTML event walk), plus 1 from issue
     // #1357 (HtmlDocumentFormat#version() 2 -> 3 and ConfluenceStorageFormat#version() 1 ->
-    // 2, list items with block content keep their marker) — counted independently of the
-    // raw-vector path above, whose own count (2 plus the same
-    // #1144/#1164/#1183/#1070/#1242/#1315/#1357 bumps) moves for unrelated reasons at unrelated
-    // points
-    // in its history.
-    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(11);
+    // 2, list items with block content keep their marker), plus 1 from issue #1429
+    // (fullTextIndexComplete renamed to fullTextIndexUpToDate and narrowed to the version
+    // backlog) — counted independently of the raw-vector path above, whose own count (2 plus the
+    // same #1144/#1164/#1183/#1070/#1242/#1315/#1357 bumps) moves for unrelated reasons at
+    // unrelated points in its history.
+    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(12);
   }
 
   @Test

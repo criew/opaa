@@ -50,7 +50,7 @@ public final class VariantRunner {
             variant,
             effective,
             identity.chatModel() != null,
-            identity.fullTextIndexComplete(),
+            identity.fullTextIndexUpToDate(),
             rerankWatch.usable());
     if (unmetReason.isPresent()) {
       return VariantOutcome.skipped(variant, unmetReason.get());

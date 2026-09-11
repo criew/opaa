@@ -136,24 +136,9 @@ const NOTE_RULES: NoteRule[] = [
     german: (m) => `Volltextpfad abgeschaltet (${m[1]}).`,
   },
   {
-    name: 'LEXICAL_SEARCH_FAILED',
-    // The exception type the backend appends is developer diagnostics and stays in the server log:
-    // a Java class name says nothing to the operator that this sentence does not say better.
-    pattern: /^lexical search failed for (.+?): \w+$/,
-    german: (m) =>
-      `Volltextsuche für die Liste „${translateListLabel(m[1])}“ fehlgeschlagen; der Lauf wurde ohne ihre Treffer fortgesetzt.`,
-  },
-  {
     name: 'FULL_TEXT_SEARCH_LISTS',
     pattern: /^full-text search, (\d+) list\(s\)$/,
     german: (m) => `Volltextsuche über ${plural(m[1], 'Liste', 'Listen')}.`,
-  },
-  {
-    name: 'FULL_TEXT_PERMISSION_FILTER',
-    pattern:
-      /^permission filter applied inside the query: (\d+) scoped libraries searched, (\d+) of them with an incomplete full-text index$/,
-    german: (m) =>
-      `Rechtefilter in der Suchanfrage angewendet: ${plural(m[1], 'Bibliothek', 'Bibliotheken')} des Suchbereichs durchsucht, davon ${m[2]} mit unvollständigem Volltextindex.`,
   },
 
   // MmrSelectionStage

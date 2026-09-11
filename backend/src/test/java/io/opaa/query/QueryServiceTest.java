@@ -55,7 +55,6 @@ import io.opaa.query.retrieval.ranking.RerankStage;
 import io.opaa.query.retrieval.scope.MetadataFilterStage;
 import io.opaa.query.retrieval.scope.SearchScopeStage;
 import io.opaa.query.retrieval.search.FullTextChunkSearch;
-import io.opaa.query.retrieval.search.FullTextIndexCompleteness;
 import io.opaa.query.retrieval.search.FullTextSearchStage;
 import io.opaa.query.retrieval.search.QueryDecompositionService;
 import io.opaa.query.retrieval.search.SubQueryDecompositionStage;
@@ -133,8 +132,7 @@ class QueryServiceTest {
                 // (fullTextSearchEnabled = false): this class is about what QueryService does with
                 // the selection, not about how the selection is retrieved (see
                 // FullTextSearchStageTest).
-                new FullTextSearchStage(
-                    mock(FullTextChunkSearch.class), mock(FullTextIndexCompleteness.class)),
+                new FullTextSearchStage(mock(FullTextChunkSearch.class)),
                 new MmrSelectionStage(chunkEmbeddingLookup),
                 new RankFusionStage(),
                 new RerankStage(disabledRerankRole()),

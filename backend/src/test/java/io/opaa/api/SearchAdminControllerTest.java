@@ -176,8 +176,8 @@ class SearchAdminControllerTest {
         .andExpect(jsonPath("$.modelRoles[0].state").value("UNCONFIGURED"))
         .andExpect(jsonPath("$.modelRoles[0].faulted").value(true))
         .andExpect(jsonPath("$.libraries[0].lowChunkDocumentCount").value(2))
-        .andExpect(jsonPath("$.libraries[0].fullTextMissingChunks").value(20))
-        .andExpect(jsonPath("$.libraries[0].fullTextIndexState").value("INCOMPLETE"))
+        .andExpect(jsonPath("$.libraries[0].fullTextOutdatedChunks").value(20))
+        .andExpect(jsonPath("$.libraries[0].fullTextIndexState").value("OUTDATED"))
         .andExpect(jsonPath("$.libraries[0].metadataBackfill.pendingDocuments").value(3))
         .andExpect(
             jsonPath("$.libraries[0].metadataBackfill.awaitingConnectorRunDocuments").value(1))

@@ -1272,8 +1272,9 @@ Erlassnummern, seltene Fachbegriffe.
 > **Stand:** Der Pfad ist gebaut und **wirkt auf die Antwort**. Je Teilfrage liefert er
 > eine zweite Trefferliste, die zusammen mit der Liste der Vektorsuche rangbasiert fusioniert wird
 > (Reciprocal Rank Fusion). Ein Chunk, den beide Pfade finden, ist dabei **ein** Treffer mit zwei
-> Beiträgen, kein doppelter. Fällt die Volltextabfrage aus, läuft die Fusion mit den verbleibenden
-> Listen weiter: schlechtere Suchqualität, nie ein Fehler für die fragende Person.
+> Beiträgen, kein doppelter. Scheitert die Volltextabfrage, scheitert die Frage — genau wie bei
+> einem Ausfall der Vektorsuche: Eine halbe hybride Suche ist eine schlechtere Antwort, die sich
+> sonst als normale ausgäbe.
 
 ### Was zu tun ist
 
@@ -1281,11 +1282,12 @@ Im laufenden Betrieb nichts. Jeder indexierte Chunk bekommt seinen Volltexteintr
 Transaktion wie den Vektor; auf diesem Weg entsteht kein Abschnitt, der vektorisiert, aber nicht
 volltextindiziert ist.
 
-**Ändert ein Update die Art, wie der Volltextindex gebildet wird**, gelten die betroffenen Zeilen als
-fehlend, und die Seite „Suche & Indexierung" zeigt die betroffenen Bibliotheken als **unvollständig**
-an. Der lexikalische Pfad findet diese Zeilen weiterhin — ihnen fehlen nur die Lexeme, die die neue
-Fassung hinzufügt, bis der Nachzug sie neu schreibt (ADR-0028). Einen Hintergrundlauf, der das von selbst
-nachzieht, gibt es nicht — **nötig ist dann der Pipeline-Nachzug** über die Admin-API
+**Ändert ein Update die Art, wie der Volltextindex gebildet wird**, liegen die betroffenen Zeilen in
+einer älteren Fassung, und die Seite „Suche & Indexierung" weist die betroffenen Bibliotheken mit
+**Nachzug ausstehend** aus. Der lexikalische Pfad findet diese Zeilen weiterhin — ihnen fehlen nur
+die Lexeme, die die neue Fassung hinzufügt, bis der Nachzug sie neu schreibt (ADR-0028). Einen
+Hintergrundlauf, der das von selbst nachzieht, gibt es nicht — **nötig ist dann der Pipeline-Nachzug**
+über die Admin-API
 (`POST /api/v1/admin/indexing/pipeline-reindex`, siehe [Indexierung](indexierung.md#9-pipeline-versionen-und-nachzug));
 eine Oberfläche dafür gibt es noch nicht. Er erfasst solche Abschnitte ausdrücklich, auch wenn sich
 an der Aufbereitung des Dokuments sonst nichts geändert hat.
@@ -1294,7 +1296,7 @@ an der Aufbereitung des Dokuments sonst nichts geändert hat.
 Abschnitte und **bettet diese neu ein** — er verursacht also Aufrufe beim Einbettungsmodell und ist
 in derselben Größenordnung teuer wie eine Neuindizierung dieser Dokumente. Er ist damit teurer als
 das reine Neuschreiben der Volltextspalte wäre, aber der einzige Weg, der dieselben Abschnitte
-lückenlos wiederherstellt. Der Lauf ist stapelweise, unterbrechbar und wiederaufnehmbar; bis er
+in der neuen Fassung wiederherstellt. Der Lauf ist stapelweise, unterbrechbar und wiederaufnehmbar; bis er
 durch ist, sucht der lexikalische Pfad in den betroffenen Beständen mit den Lexemen der alten
 Fassung weiter. Ein Update, das
 diesen Nachzug nötig macht, wird in den Release-Hinweisen ausdrücklich genannt.
