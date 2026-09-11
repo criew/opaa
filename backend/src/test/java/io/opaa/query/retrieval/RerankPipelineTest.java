@@ -20,7 +20,6 @@ import io.opaa.query.retrieval.ranking.RerankStage;
 import io.opaa.query.retrieval.scope.MetadataFilterStage;
 import io.opaa.query.retrieval.scope.SearchScopeStage;
 import io.opaa.query.retrieval.search.FullTextChunkSearch;
-import io.opaa.query.retrieval.search.FullTextIndexCompleteness;
 import io.opaa.query.retrieval.search.FullTextSearchStage;
 import io.opaa.query.retrieval.search.QueryDecompositionService;
 import io.opaa.query.retrieval.search.SubQueryDecompositionStage;
@@ -52,9 +51,9 @@ class RerankPipelineTest {
   private static final int CANDIDATE_WINDOW = 20;
 
   private static final QueryProperties WITH_RERANKING =
-      new QueryProperties(TOP_K, 25, 1.0, 0.3, 1.0, false, 3, 1, false, CANDIDATE_WINDOW);
+      new QueryProperties(TOP_K, 25, 1.0, 0.3, false, 3, 1, false, CANDIDATE_WINDOW);
   private static final QueryProperties WITHOUT_RERANKING =
-      new QueryProperties(TOP_K, 25, 1.0, 0.3, 1.0, false, 3, 1, false, 0);
+      new QueryProperties(TOP_K, 25, 1.0, 0.3, false, 3, 1, false, 0);
 
   private final VectorStore vectorStore = mock(VectorStore.class);
   private final ChunkEmbeddingLookup chunkEmbeddingLookup = mock(ChunkEmbeddingLookup.class);
@@ -75,8 +74,7 @@ class RerankPipelineTest {
             new VectorSearchStage(vectorStore),
             // The lexical path is switched off in every QueryProperties here: this class is about
             // what happens to the fused list afterwards, not about how it was retrieved.
-            new FullTextSearchStage(
-                mock(FullTextChunkSearch.class), mock(FullTextIndexCompleteness.class)),
+            new FullTextSearchStage(mock(FullTextChunkSearch.class)),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new RerankStage(rerankModelRole),

@@ -29,9 +29,7 @@ const BACKEND_NOTES = [
   'fetch-k 25 per list',
   'similarity threshold 0.5, applied in-query',
   'lexical search path switched off (opaa.query.full-text-search-enabled)',
-  'lexical search failed for full-text search · sub-query 2: DataAccessResourceFailureException',
   'full-text search, 3 list(s)',
-  'permission filter applied inside the query: 3 scoped libraries searched, 1 of them with an incomplete full-text index',
   'per-list budget 8',
   'mmr-lambda 1.0 (diversity term inactive: plain top-k by relevance)',
   'mmr-lambda 0.7 (diversity term active, cosine similarity of real chunk embeddings)',
@@ -115,12 +113,6 @@ describe('translateStageNote', () => {
     )
     expect(unusable).not.toContain('RerankRoleStatusProvider')
     expect(unusable).toContain('Modellrolle')
-
-    const failed = translateStageNote(
-      'lexical search failed for full-text search · sub-query 2: DataAccessResourceFailureException',
-    )
-    expect(failed).not.toContain('Exception')
-    expect(failed).toContain('Volltextsuche · Teilfrage 2')
   })
 
   it('passes an unknown note through rather than swallowing it', () => {

@@ -148,17 +148,14 @@ Rechtefilter wäre keine Variante der Suche, sondern eine Rechteumgehung.
 Ist der Suchbereich leer, endet der Lauf hier. Es wird kein Modell für die Zerlegung gerufen und
 nichts gesucht; die übrigen Stufen stehen im Protokoll als „nicht erreicht".
 
-Begleitend läuft eine **Rechteprobe**. OPAA berechnet die Leserechte einer Person auf zwei
-Wegen: einmal live aus den aktuellen Berechtigungen (das ist, was die Suche benutzt), und einmal aus
-der **Rechtehistorie**, in der jede Änderung an Berechtigungen, Gruppenmitgliedschaften und
-Freigaben mit Zeitpunkt festgehalten wird, damit sich für Prüfer jederzeit beantworten lässt, wer
-wann worauf Zugriff hatte. Beide Wege müssen für denselben Zeitpunkt dieselbe Bibliotheksmenge
-ergeben. Die Probe rechnet bei einer Frage beides aus und vergleicht: Enthält die Live-Menge eine
-Bibliothek, die die Historie nicht bestätigt, steht eine Warnung mit der betroffenen Bibliotheks-ID
-im Log. Das wäre ein Programmfehler, kein Bedienfehler, und der Betrieb sollte ihm nachgehen. Die
-Suche selbst wird davon nicht beeinflusst. Die Probe läuft standardmäßig bei jeder Frage und kostet
-zusätzliche Datenbankabfragen; für Installationen mit hohem Aufkommen lässt sie sich auf eine
-Stichprobe absenken (Abschnitt 10.3).
+Die Leserechte, aus denen der Filter entsteht, werden für die Frage einmal live aus den aktuellen
+Berechtigungen berechnet. Parallel dazu führt OPAA eine **Rechtehistorie**, in der jede Änderung an
+Berechtigungen, Gruppenmitgliedschaften und Freigaben mit Zeitpunkt festgehalten wird; aus ihr lässt
+sich für Prüfer zu jedem Stichtag rekonstruieren, wer worauf Zugriff hatte. Die Historie wird beim
+Beantworten einer Frage nicht gelesen: Ein Abgleich beider Rechenwege je Anfrage findet nicht statt.
+Dass beide Wege dieselbe Bibliotheksmenge ergeben, sichert die Testsuite für jede Operation ab, die
+Leserechte ändert — Berechtigungen, Gruppenmitgliedschaften aus der Verwaltung, dem
+Verzeichnisabgleich und dem Anmeldetoken sowie Bestand und Sichtbarkeit einer Bibliothek.
 
 ### Stufe 2: Metadatenfilter
 
@@ -226,13 +223,11 @@ Vektorsuche nicht leistet.
 
 Beide Pfade sehen **denselben Bestand**: Die Indexierung schreibt Vektor und Volltext eines Chunks
 in einer Transaktion (Kapitel [Indexierung](indexierung.md), Schritt 7); auf diesem Weg entsteht
-kein Chunk, den nur ein Pfad kennt. Entsteht er auf einem anderen Weg doch, weist die
-Administrationsseite die Bibliothek als unvollständig aus (Abschnitt 8.1). Was sich regulär
-unterscheiden kann, ist die **Fassung** des Volltexts: Ändert ein
-Software-Update die Volltextzerlegung (etwa neue Kennungsmuster), tragen ältere Chunks die neuen
-Bestandteile erst nach dem Nachzug (Kapitel [Indexierung](indexierung.md), Abschnitt 9). Sie werden
-bis dahin gefunden, nur nicht über das Neue. Das Protokoll nennt die Zahl der Bibliotheken mit
-solchem Rückstand, die Administrationsseite zeigt ihn je Bibliothek (Abschnitt 8.1).
+kein Chunk, den nur ein Pfad kennt. Was sich unterscheiden kann, ist allein die **Fassung** des
+Volltexts: Ändert ein Software-Update die Volltextzerlegung (etwa neue Kennungsmuster), tragen
+ältere Chunks die neuen Bestandteile erst nach dem Nachzug (Kapitel
+[Indexierung](indexierung.md), Abschnitt 9). Sie werden bis dahin gefunden, nur nicht über das
+Neue. Diesen Rückstand zeigt die Administrationsseite je Bibliothek (Abschnitt 8.1).
 
 Zwei bekannte Grenzen des Pfads:
 
@@ -244,11 +239,9 @@ Zwei bekannte Grenzen des Pfads:
   Protokoll als abgeschaltet aus, und die Suche läuft rein vektoriell. Auf der Verwaltungs-Evaldomäne
   kostet das gemessen 15 Prozentpunkte Hit Rate@5.
 
-Schlägt die Volltextabfrage für eine **einzelne Teilfrage** fehl, entfällt nur deren Kandidatenliste;
-der Lauf geht mit den übrigen Teilfragen und dem Vektorpfad weiter. Das Protokoll benennt in der
-Oberfläche die betroffene Liste und dass die Volltextsuche für sie fehlgeschlagen ist, statt die
-ganze Stufe als abgeschaltet auszuweisen; die Fehlerursache selbst (Exception-Typ) steht nur im
-Server-Log.
+Schlägt die Volltextabfrage fehl, scheitert die Frage — wie bei einem Ausfall der Vektorsuche. Ein
+Lauf, der die halbe hybride Suche still verliert, gäbe eine schlechtere Antwort als normale aus; die
+Fehlerursache steht im Server-Log.
 
 ### Stufe 6: Auswahl je Liste
 
@@ -468,9 +461,9 @@ aber nichts ein. Die einzigen Eingriffe dort sind die beiden Chargenläufe der M
   Rerank-Rolle in ihren drei Zuständen (Stufe 8); „eingeschaltet, nicht nutzbar" ist eine
   Störungsmeldung. Ein Zugangsschlüssel erscheint nie, auch nicht gekürzt.
 - **Suchpfade** Vektor und Volltext mit Zustand.
-- **Indexstatus je Bibliothek**: Dokumente, Chunks, letzter Lauf, Rückstand, Füllstand des
-  Volltextindex. Ein Volltext-Rückstand nach einem Update ist hier sichtbar und nicht erst an schlechten
-  Antworten spürbar.
+- **Indexstatus je Bibliothek**: Dokumente, Chunks, letzter Lauf, Rückstand der Indexierung,
+  Fassungs-Rückstand des Volltextindex. Ein Volltext-Rückstand nach einem Update ist hier sichtbar
+  und nicht erst an schlechten Antworten spürbar.
 - **Stand der Kernfelder und des Kontextpräfix** je Bibliothek, mit Start, Anhalten und
   Wiederaufnahme der Chargenläufe (Kapitel [Metadaten](metadaten.md)).
 
@@ -506,8 +499,7 @@ Spezifikation und dem API-Feld `stage` des Erklärprotokolls ist der technische 
 | 9 Dokument-Vervollständigung | Dokument-Vervollständigung | `DOCUMENT_COMPLETION` |
 
 Für jede Stufe zeigt die Seite Eingang, Ausgang, Status (ausgeführt, abgeschaltet, nicht verfügbar,
-nicht erreicht), die Notizen (Suchanfragen, Budgets, Filter, Zahl der Bibliotheken mit
-Volltext-Rückstand) und je Kandidat das Urteil: gefunden über welchen Pfad mit welchem
+nicht erreicht), die Notizen (Suchanfragen, Budgets, Filter) und je Kandidat das Urteil: gefunden über welchen Pfad mit welchem
 Rang, behalten, verworfen (außerhalb des Listenbudgets, außerhalb des Fusionsbudgets, unterhalb des
 Reranking-Budgets, verdrängt durch Vervollständigung Stufe 1 oder 2) oder als Geschwister-Chunk
 nachgezogen. Die Endauswahl steht mit Begründung je Chunk darunter.
@@ -543,7 +535,7 @@ Gesamtprotokoll. Die Aufbewahrungsfrist ist einstellbar; abschalten lässt sich 
 | unterhalb des Reranking-Budgets | Stufe „Reranking" | der Reranker hält andere Kandidaten für passender; der Reranker-Wert steht daneben |
 | verdrängt durch Vervollständigung Stufe 2 | Stufe „Dokument-Vervollständigung" | ein besser rankendes Dokument hat seinen zweiten Chunk nachgezogen |
 | Reranking „nicht verfügbar" | Modellrollen, Stufe „Reranking" | Endpunkt nicht erreichbar oder Zeitbudget überschritten; die Suche lief ohne Reranking weiter |
-| Bibliotheken mit Volltext-Rückstand | Notiz der Volltextstufe, Indexstatus | Nachzug nach einem Update noch nicht gelaufen (Kapitel [Indexierung](indexierung.md), Abschnitt 9) |
+| Bibliotheken mit Volltext-Rückstand | Indexstatus („Nachzug ausstehend"), Suchpfade | Nachzug nach einem Update noch nicht gelaufen (Kapitel [Indexierung](indexierung.md), Abschnitt 9) |
 | Rückfall der Zerlegung | Log-Warnung, Metrik `opaa.query.decomposition.fallback` | das Chat-Modell folgt dem Zerlegungsformat nicht; die Frage wurde wörtlich gesucht |
 | „Beleg nicht bestätigt" | Fundstelle | Modell hat eine Marke erfunden oder einen Wert abweichend wiedergegeben |
 | viele „ohne Angabe" unter Filter | Fundstellen, Notiz der Suchstufen | Feld im Bestand schwach gefüllt; Bestandslauf oder Pflege (Kapitel [Metadaten](metadaten.md)) |
@@ -578,7 +570,7 @@ Darüber antwortet das Backend mit HTTP 429. Die Werte stehen unter `opaa.rate-l
 | `opaa.query.tokens` | verbrauchte Tokens des Chat-Modells |
 | `opaa.query.decomposition.fallback` | Rückfälle der Zerlegung, nach Ursache unterschieden |
 
-Als Warnung gehen ins Log: der Rückfall der Zerlegung und ein Befund der Rechteprobe. Ungültige
+Als Warnung geht der Rückfall der Zerlegung ins Log. Ungültige
 Belege werden je Antwort mit ihrer Anzahl auf Info-Ebene vermerkt; wer nur auf Warnungen
 alarmiert, sieht sie nicht. Fragetext, Suchanfragen und Antwort erscheinen in keiner Logzeile
 oberhalb der Debug-Ebene.
@@ -599,7 +591,6 @@ Umgebungsvariable im Kapitel [Deployment](deployment.md#alle-umgebungsvariablen)
 | `mmr-lambda` | 1,0 | Vielfaltsauswahl; 1,0 ist reine Relevanz |
 | `rerank-candidate-count` | 50 | Reranking-Fenster und Budget der Fusion bei aktivem Reranking (0 bis 200); 0 schaltet die Stufe ab |
 | `max-chunks-per-document` | 2 | Dokument-Vervollständigung (1 bis 10); 1 schaltet sie ab |
-| `permission-history-sample-rate` | 1,0 | Anteil der Fragen mit Rechteprobe |
 | `metadata-filter.*` | 0,90 / 0,75 / 0,75 / 5m | Füllstandsschwellen für Dokumentart, Datum und Bibliotheksfelder, Cache der Filteroptionen |
 | `pipeline.disabled-stages` | leer | ganze Stufen aus der Kette nehmen; nur für Entwicklung und Messung, der Suchbereich ist nicht abschaltbar |
 

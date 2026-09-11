@@ -121,21 +121,25 @@ describe('SearchIndexingAdminPage', () => {
     const table = await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
     const row = within(table).getByText('Satzungen & Gebuehrenordnungen').closest('tr')
     expect(row).not.toBeNull()
-    // 2 documents geführt as indexed with (almost) no chunks, and 56 chunks the lexical path is
-    // still missing - the two numbers the page exists to keep permanently visible.
+    // 2 documents geführt as indexed with (almost) no chunks, and 56 chunks whose full-text row
+    // still waits for the re-index - the two numbers the page exists to keep permanently visible.
     expect(within(row as HTMLElement).getByText('2')).toBeInTheDocument()
-    expect(within(row as HTMLElement).getByText('56 Abschnitte fehlen')).toBeInTheDocument()
+    expect(
+      within(row as HTMLElement).getByText('56 Abschnitte in älterer Fassung'),
+    ).toBeInTheDocument()
     // Both chunk counts, because a gap between them is itself the finding.
     expect(within(row as HTMLElement).getByText(/236 \/ 240/)).toBeInTheDocument()
     expect(
       within(row as HTMLElement).getByText('Vektorindex und Dokumentzählung weichen ab'),
     ).toBeInTheDocument()
 
-    // A single missing chunk reads as a sentence, not as "1 Abschnitte fehlen".
+    // A single outdated chunk reads as a sentence, not as "1 Abschnitte in älterer Fassung".
     const singularRow = within(table).getByText('Protokolle').closest('tr')
-    expect(within(singularRow as HTMLElement).getByText('1 Abschnitt fehlt')).toBeInTheDocument()
+    expect(
+      within(singularRow as HTMLElement).getByText('1 Abschnitt in älterer Fassung'),
+    ).toBeInTheDocument()
 
-    // A library whose full-text index carries every chunk shows no gap hint at all.
+    // A library whose full-text index is at the current version shows no backlog hint at all.
     const readyRow = within(table).getByText('Formulare').closest('tr')
     expect(within(readyRow as HTMLElement).queryByText(/Abschnitt/)).toBeNull()
   })

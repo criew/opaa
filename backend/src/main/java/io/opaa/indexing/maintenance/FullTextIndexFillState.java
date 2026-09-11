@@ -5,27 +5,31 @@ import java.util.UUID;
 
 /**
  * The full-text index fill state of one library (docs/features/hybrid-retrieval.md, "Arbeitspaket
- * 2a"). {@code missingChunks} is counted directly via an anti-join, never derived as {@code
- * totalChunks - indexedChunks}: a stale, orphaned {@code chunk_full_text} row could otherwise make
- * the two cancel out and mask a genuinely un-indexed chunk. All counts come from one query, so no
- * concurrent write can interleave between them.
+ * 2a"). A chunk's {@code chunk_full_text} row is written in the same transaction as its vector row,
+ * so the only state that can lag behind is the <em>version</em> of a row: {@code outdatedChunks}
+ * counts the rows that are not at {@link FullTextChunkStore#CURRENT_TSV_VERSION}, which the lexical
+ * path still finds (ADR-0028) and which only the pipeline re-index brings up to date.
  *
- * <p>Nothing fills a gap after the fact - the full-text row is written in the same transaction as
- * the vector row - so a nonzero {@code missingChunks} is an operational finding, resolved by a
- * reindex. "Missing" covers both a chunk without a {@code chunk_full_text} row and one whose row is
- * below {@link FullTextChunkStore#CURRENT_TSV_VERSION}; the latter is still found by the lexical
- * path (ADR-0028), it only lacks the lexemes the newer version adds.
+ * <p>"Not at" rather than "below": the re-index selects by the same equality test, so a row left
+ * above the current version by a rollback converges through the same run instead of sitting in a
+ * backlog nothing addresses. {@code indexedChunks} and {@code outdatedChunks} therefore partition
+ * the library's rows.
+ *
+ * <p>Every count comes from one query, so no concurrent write can interleave between them, and each
+ * counts only rows whose chunk still exists in the vector store.
  */
 public record FullTextIndexFillState(
-    UUID libraryId, long totalChunks, long indexedChunks, long missingChunks) {
+    UUID libraryId, long totalChunks, long indexedChunks, long outdatedChunks) {
 
   /**
-   * {@code true} once every chunk of this library carries a {@code chunk_full_text} row at the
-   * current {@link FullTextChunkStore#CURRENT_TSV_VERSION}. Defined on {@link #missingChunks}
-   * directly, not on {@link #totalChunks}/{@link #indexedChunks} - see this record's own Javadoc
-   * for why that comparison alone is not safe.
+   * {@code true} once no row of this library is left off {@link
+   * FullTextChunkStore#CURRENT_TSV_VERSION} <em>and</em> every chunk of it carries a row at all.
+   * The second half is a smoke detector, not a modeled state: no write path can produce a chunk
+   * without its full-text row, so a shortfall against {@link #totalChunks} is a finding rather than
+   * a backlog. The administration display is driven by {@link #outdatedChunks} alone - that is the
+   * state a re-index can act on.
    */
-  public boolean isComplete() {
-    return missingChunks == 0;
+  public boolean isUpToDate() {
+    return outdatedChunks == 0 && indexedChunks == totalChunks;
   }
 }

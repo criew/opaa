@@ -717,9 +717,9 @@ export const mockSearchStatus: SearchStatusResponse = {
     },
     {
       path: 'FULL_TEXT',
-      state: 'INCOMPLETE',
+      state: 'OUTDATED',
       detail:
-        'Die Volltextsuche ist aktiv, aber noch nicht ueber den ganzen Bestand aufgebaut: 1 von 2 Bibliotheken sind unvollstaendig und werden von diesem Pfad nicht durchsucht.',
+        'Die Volltextsuche ist aktiv und durchsucht den ganzen Bestand. In 1 von 2 Bibliotheken steht der Volltext aber noch in einer aelteren Fassung: Diese Abschnitte werden gefunden, nur noch ohne die Suchmerkmale, die das letzte Update hinzugefuegt hat. Der Pipeline-Nachzug baut den Rueckstand ab.',
     },
   ],
   libraries: [
@@ -735,9 +735,9 @@ export const mockSearchStatus: SearchStatusResponse = {
       vectorChunkCount: 236,
       lastIndexedAt: '2026-09-01T06:00:00Z',
       vectorIndexState: 'INCOMPLETE',
-      fullTextIndexState: 'INCOMPLETE',
+      fullTextIndexState: 'OUTDATED',
       fullTextIndexedChunks: 180,
-      fullTextMissingChunks: 56,
+      fullTextOutdatedChunks: 56,
       metadataBackfill: {
         extractionVersion: 1,
         totalDocuments: 11,
@@ -806,9 +806,9 @@ export const mockSearchStatus: SearchStatusResponse = {
       vectorChunkCount: 30,
       lastIndexedAt: '2026-08-31T12:00:00Z',
       vectorIndexState: 'READY',
-      fullTextIndexState: 'INCOMPLETE',
+      fullTextIndexState: 'OUTDATED',
       fullTextIndexedChunks: 29,
-      fullTextMissingChunks: 1,
+      fullTextOutdatedChunks: 1,
       metadataBackfill: {
         extractionVersion: 1,
         totalDocuments: 3,
@@ -879,7 +879,7 @@ export const mockSearchStatus: SearchStatusResponse = {
       vectorIndexState: 'READY',
       fullTextIndexState: 'READY',
       fullTextIndexedChunks: 48,
-      fullTextMissingChunks: 0,
+      fullTextOutdatedChunks: 0,
       metadataBackfill: {
         extractionVersion: 1,
         totalDocuments: 4,

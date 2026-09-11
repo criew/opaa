@@ -121,6 +121,12 @@ Zerlegung — mit WARN-Log (Zählwerte, keine Inhalte) und dem Zähler
 Details, Grenzen des Wächters, Diagramm und die Vorher/Nachher-Messung stehen in
 [Teilfragen-Zerlegung und Query-Reformulierung](./data-indexing-rag.md#teilfragen-zerlegung-und-query-reformulierung-multi-query-retrieval-923).
 
+**Zielbild (Epic #1482, [conversation-memory.md](./conversation-memory.md), ADR-0031):** Die
+Zerlegung erhält künftig nicht mehr das ganze Gesprächsfenster, sondern ein **Suchfenster von zwei
+Runden** plus die `RAHMEN`-Punkte der Gesprächsnotiz; der Wächter ankert gegen genau diesen Kontext
+(Invariante), und der Rückfall stellt die **letzte** statt der ersten Nutzernachricht voran. Dieser
+Absatz beschreibt bis zur Umsetzung den Ist-Stand.
+
 ### 3. Vektorsuche je Teilfrage
 
 Stufenname: `VECTOR_SEARCH`. `VectorSearchStage` ruft für **jede** Suchanfrage aus Schritt 2 einen eigenen
@@ -161,15 +167,15 @@ Ebene-1-Wert, Default `true`). Jede Bibliothek des Rechtebereichs wird sonst dur
 Backfill-Tor ist mit #1270 entfallen (siehe
 [Arbeitspaket 2a](./hybrid-retrieval.md#arbeitspaket-2a-volltextspalte-index-und-füllstand)). Auf dem
 regulären Schreibweg entsteht der Volltexteintrag in derselben Transaktion wie der Vektor, ein halb
-gefüllter Index also nicht — **wohl aber nach einem Bump von `content_tsv_version`** (Bestandszeilen
-gelten dann als fehlend, bleiben aber findbar, nur ohne die neuen Lexeme —
-[ADR-0028](../decisions/0028-tsv-version-uebergang.md)) oder durch verwaiste Zeilen. Der Pfad
-liefert dann eine unvollständige Liste statt gar keiner; das Erklärprotokoll weist die Zahl der
-betroffenen Bibliotheken aus, und die Administrationsseite zeigt sie als unvollständig.
+gefüllter Index also nicht. Zurückliegen kann allein die **Fassung** einer Zeile, nach einem Bump von
+`content_tsv_version`: Solche Zeilen bleiben findbar, nur ohne die neuen Lexeme
+([ADR-0028](../decisions/0028-tsv-version-uebergang.md)). Die Administrationsseite weist diesen
+Rückstand je Bibliothek als „Nachzug ausstehend" aus; das Erklärprotokoll der einzelnen Suche nennt
+ihn seit #1429 nicht mehr — er ist ein Bestandszustand, kein Anfragezustand.
 
-**Ein Fehlschlag degradiert den Pfad, nie die Antwort.** Eine defekte oder fehlende Volltextspalte darf
-Suchqualität kosten, aber nie zum Fehler für den fragenden Menschen werden; die Rückfallebene ist eine
-**leere** Kandidatenliste, nie eine ungefilterte.
+**Ein Fehlschlag der Volltextabfrage lässt den Lauf scheitern** (seit #1429), wie ein Fehlschlag der
+Vektorsuche: Das frühere Weiterlaufen sicherte gegen eine fehlende Volltextspalte ab, und eine halbe
+hybride Suche gäbe eine schlechtere Antwort als normale aus.
 
 **Eingangsliste der Fusion (#1049).** Die Listen dieser Stufe werden im Pipeline-Zustand
 weitergereicht, genau wie die der Vektorsuche, und in Schritt 5 rangbasiert mit ihnen zusammengeführt.

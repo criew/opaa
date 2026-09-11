@@ -32,7 +32,7 @@ class ReferenceVariantSelfCheckTest {
       };
 
   private static QueryProperties production(boolean decompositionEnabled) {
-    return new QueryProperties(8, 25, 1.0, 0.3, 1.0, decompositionEnabled, 3, 2, true, 50);
+    return new QueryProperties(8, 25, 1.0, 0.3, decompositionEnabled, 3, 2, true, 50);
   }
 
   private static PipelineEvaluationReport report(boolean caseAFound) {

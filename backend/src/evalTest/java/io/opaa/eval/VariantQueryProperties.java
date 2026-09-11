@@ -5,11 +5,8 @@ import io.opaa.query.QueryProperties;
 /**
  * Applies a {@link PipelineVariant.QueryOverrides} on top of the production {@link QueryProperties}
  * (issue #1041). A field left {@code null} in the overrides keeps the production value unchanged;
- * {@code topK} and {@code permissionHistorySampleRate} are never overridden — the former because
- * the pipeline path's metric component names are pinned to it (see {@link
- * PipelineVariant.QueryOverrides}'s Javadoc), the latter because it governs a compliance sampling
- * decision unrelated to retrieval quality (docs/features/security-and-compliance.md) that a
- * retrieval variant has no business changing.
+ * {@code topK} is never overridden, because the pipeline path's metric component names are pinned
+ * to it (see {@link PipelineVariant.QueryOverrides}'s Javadoc).
  */
 final class VariantQueryProperties {
 
@@ -24,7 +21,6 @@ final class VariantQueryProperties {
         overrides.similarityThreshold() != null
             ? overrides.similarityThreshold()
             : production.similarityThreshold(),
-        production.permissionHistorySampleRate(),
         overrides.queryDecompositionEnabled() != null
             ? overrides.queryDecompositionEnabled()
             : production.queryDecompositionEnabled(),

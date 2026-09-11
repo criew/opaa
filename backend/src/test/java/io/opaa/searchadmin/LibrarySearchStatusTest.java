@@ -11,15 +11,14 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * {@link LibrarySearchStatus#fullTextIndexCondition()}: a library holding chunks the full-text
- * index does not carry must never look flawlessly READY - it is quietly missing content the lexical
- * search cannot find.
+ * {@link LibrarySearchStatus#fullTextIndexCondition()}: a library whose full-text rows still sit
+ * below the current tsv version must never look flawlessly READY - its re-index is outstanding.
  */
 class LibrarySearchStatusTest {
 
   private static final UUID LIBRARY_ID = UUID.randomUUID();
 
-  private LibrarySearchStatus status(long vectorChunkCount, long missing) {
+  private LibrarySearchStatus status(long vectorChunkCount, long outdated) {
     return new LibrarySearchStatus(
         LIBRARY_ID,
         "Satzungen",
@@ -31,25 +30,25 @@ class LibrarySearchStatusTest {
         vectorChunkCount,
         vectorChunkCount,
         Instant.EPOCH,
-        vectorChunkCount - missing,
-        missing,
+        vectorChunkCount - outdated,
+        outdated,
         MetadataBackfillProgress.empty(LIBRARY_ID),
         ModelExtractionStats.empty(LIBRARY_ID),
         ContextPrefixRerunProgress.empty(LIBRARY_ID));
   }
 
   @Test
-  void readyWhenNothingIsMissing() {
+  void readyWithoutAnyBacklog() {
     assertThat(status(10, 0).fullTextIndexCondition()).isEqualTo(IndexCondition.READY);
   }
 
   @Test
-  void incompleteWhileAChunkIsMissing() {
-    assertThat(status(10, 1).fullTextIndexCondition()).isEqualTo(IndexCondition.INCOMPLETE);
+  void outdatedWhileARowSitsBelowTheCurrentVersion() {
+    assertThat(status(10, 1).fullTextIndexCondition()).isEqualTo(IndexCondition.OUTDATED);
   }
 
   @Test
-  void emptyWithoutAnyVectorChunkRegardlessOfTheMissingCount() {
+  void emptyWithoutAnyVectorChunkRegardlessOfTheBacklog() {
     assertThat(status(0, 0).fullTextIndexCondition()).isEqualTo(IndexCondition.EMPTY);
   }
 }

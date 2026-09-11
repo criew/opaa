@@ -346,9 +346,10 @@ public class SearchStatusService {
   }
 
   /**
-   * A path switched off at stage level or by its own property reports {@code DISABLED}; a running
-   * path that cannot yet cover every library reports {@code INCOMPLETE}. For the full-text path the
-   * incomplete count is the number of libraries with chunks missing from the full-text index.
+   * A path switched off at stage level or by its own property reports {@code DISABLED}. Otherwise
+   * each path reports the condition of the libraries it covers: {@code INCOMPLETE} for the vector
+   * path while documents are still waiting, {@code OUTDATED} for the full-text path while rows sit
+   * below the current tsv version.
    */
   private List<SearchPathStatus> searchPaths(List<LibrarySearchStatus> libraries) {
     long withChunks = libraries.stream().filter(l -> l.vectorChunkCount() > 0).count();
@@ -356,10 +357,9 @@ public class SearchStatusService {
         libraries.stream()
             .filter(l -> l.vectorIndexCondition() == LibrarySearchStatus.IndexCondition.INCOMPLETE)
             .count();
-    long fullTextIncomplete =
+    long fullTextOutdated =
         libraries.stream()
-            .filter(
-                l -> l.fullTextIndexCondition() == LibrarySearchStatus.IndexCondition.INCOMPLETE)
+            .filter(l -> l.fullTextIndexCondition() == LibrarySearchStatus.IndexCondition.OUTDATED)
             .count();
 
     boolean vectorDisabled =
@@ -371,24 +371,24 @@ public class SearchStatusService {
     return List.of(
         new SearchPathStatus(
             SearchPathStatus.SearchPathName.VECTOR,
-            pathCondition(vectorDisabled, vectorIncomplete),
+            pathCondition(
+                vectorDisabled, vectorIncomplete, SearchPathStatus.SearchPathCondition.INCOMPLETE),
             vectorIncomplete,
             withChunks),
         new SearchPathStatus(
             SearchPathStatus.SearchPathName.FULL_TEXT,
-            pathCondition(fullTextDisabled, fullTextIncomplete),
-            fullTextIncomplete,
+            pathCondition(
+                fullTextDisabled, fullTextOutdated, SearchPathStatus.SearchPathCondition.OUTDATED),
+            fullTextOutdated,
             withChunks));
   }
 
   private static SearchPathStatus.SearchPathCondition pathCondition(
-      boolean disabled, long incompleteLibraries) {
+      boolean disabled, long affectedLibraries, SearchPathStatus.SearchPathCondition ifAffected) {
     if (disabled) {
       return SearchPathStatus.SearchPathCondition.DISABLED;
     }
-    return incompleteLibraries > 0
-        ? SearchPathStatus.SearchPathCondition.INCOMPLETE
-        : SearchPathStatus.SearchPathCondition.ACTIVE;
+    return affectedLibraries > 0 ? ifAffected : SearchPathStatus.SearchPathCondition.ACTIVE;
   }
 
   private List<LibrarySearchStatus> libraryStatus(UUID organizationId) {
@@ -440,7 +440,7 @@ public class SearchStatusService {
               fillState.totalChunks(),
               stats.lastIndexedAt(),
               fillState.indexedChunks(),
-              fillState.missingChunks(),
+              fillState.outdatedChunks(),
               metadataBackfill,
               modelExtractionByLibrary.getOrDefault(
                   library.getId(), ModelExtractionStats.empty(library.getId())),

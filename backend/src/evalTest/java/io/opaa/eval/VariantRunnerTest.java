@@ -44,7 +44,7 @@ class VariantRunnerTest {
   }
 
   private static QueryProperties productionProperties(boolean queryDecompositionEnabled) {
-    return new QueryProperties(8, 25, 1.0, 0.3, 1.0, queryDecompositionEnabled, 3, 2, true, 50);
+    return new QueryProperties(8, 25, 1.0, 0.3, queryDecompositionEnabled, 3, 2, true, 50);
   }
 
   /**

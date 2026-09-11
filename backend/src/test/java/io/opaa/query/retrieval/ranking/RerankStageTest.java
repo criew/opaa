@@ -43,7 +43,7 @@ class RerankStageTest {
   private final RerankStage stage = new RerankStage(role);
 
   private static QueryProperties properties(int rerankCandidateCount) {
-    return new QueryProperties(TOP_K, 25, 1.0, 0.3, 1.0, false, 3, 2, true, rerankCandidateCount);
+    return new QueryProperties(TOP_K, 25, 1.0, 0.3, false, 3, 2, true, rerankCandidateCount);
   }
 
   private static RetrievalContext context(

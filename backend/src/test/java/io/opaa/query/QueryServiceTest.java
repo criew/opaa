@@ -36,7 +36,6 @@ import io.opaa.indexing.metadata.MetadataFilterValidator;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
-import io.opaa.library.PermissionHistoryService;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.llm.RerankRoleStatus;
 import io.opaa.observability.QueryMetrics;
@@ -56,7 +55,6 @@ import io.opaa.query.retrieval.ranking.RerankStage;
 import io.opaa.query.retrieval.scope.MetadataFilterStage;
 import io.opaa.query.retrieval.scope.SearchScopeStage;
 import io.opaa.query.retrieval.search.FullTextChunkSearch;
-import io.opaa.query.retrieval.search.FullTextIndexCompleteness;
 import io.opaa.query.retrieval.search.FullTextSearchStage;
 import io.opaa.query.retrieval.search.QueryDecompositionService;
 import io.opaa.query.retrieval.search.SubQueryDecompositionStage;
@@ -100,7 +98,6 @@ class QueryServiceTest {
   @Mock private ChatMemory chatMemory;
   @Mock private DocumentRepository documentRepository;
   @Mock private LibraryAccessService libraryAccessService;
-  @Mock private PermissionHistoryService permissionHistoryService;
   @Mock private ChatService chatService;
   @Mock private KnowledgeLibraryRepository knowledgeLibraryRepository;
   @Mock private DocumentMetadataService documentMetadataService;
@@ -135,8 +132,7 @@ class QueryServiceTest {
                 // (fullTextSearchEnabled = false): this class is about what QueryService does with
                 // the selection, not about how the selection is retrieved (see
                 // FullTextSearchStageTest).
-                new FullTextSearchStage(
-                    mock(FullTextChunkSearch.class), mock(FullTextIndexCompleteness.class)),
+                new FullTextSearchStage(mock(FullTextChunkSearch.class)),
                 new MmrSelectionStage(chunkEmbeddingLookup),
                 new RankFusionStage(),
                 new RerankStage(disabledRerankRole()),
@@ -156,10 +152,8 @@ class QueryServiceTest {
         new CitationParser(),
         new CitationValidator(),
         libraryAccessService,
-        permissionHistoryService,
         chatService,
         new QueryMetrics(new SimpleMeterRegistry()),
-        queryProperties,
         mock(MetadataFilterValidator.class));
   }
 
@@ -181,19 +175,13 @@ class QueryServiceTest {
     // MmrSelector's own diversity behaviour (mmrLambda != 1.0) is covered separately by
     // MmrSelectorTest.
     queryService =
-        newQueryService(
-            new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, false, 50), chatMemory);
+        newQueryService(new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50), chatMemory);
 
     // lenient: not every test in this class exercises the full query() path (e.g. the
     // mergeSourceReferences nested tests call other members directly), so MockitoExtension's
     // strict stubbing would otherwise flag these as unused.
     lenient()
         .when(libraryAccessService.readableLibraryIds(currentUserId, organizationId))
-        .thenReturn(Set.of(readableLibraryId));
-    // #238's regression check - matches the applied scope by default so it never flags a
-    // mismatch in tests that do not care about it.
-    lenient()
-        .when(permissionHistoryService.readableLibraryIdsAsOf(eq(currentUserId), any(), any()))
         .thenReturn(Set.of(readableLibraryId));
     // #525 default: no chatId given (or it does not resolve to a chat the caller authored) runs
     // the query ephemerally, exactly as before persisted chats existed.
@@ -223,8 +211,7 @@ class QueryServiceTest {
   @Test
   void queryCallsChunkEmbeddingLookupWhenMmrLambdaIsBelowOne() {
     QueryService serviceWithMmrEnabled =
-        newQueryService(
-            new QueryProperties(8, 25, 0.5, 0.3, 1.0, true, 3, 2, false, 50), chatMemory);
+        newQueryService(new QueryProperties(8, 25, 0.5, 0.3, true, 3, 2, false, 50), chatMemory);
     when(chatMemory.get(any())).thenReturn(List.of());
     var chunk =
         Document.builder()
@@ -240,62 +227,6 @@ class QueryServiceTest {
     serviceWithMmrEnabled.query("Question", null, caller, true, List.of());
 
     verify(chunkEmbeddingLookup).findByIds(List.of(chunk.getId()));
-  }
-
-  /**
-   * #889 (O1): {@code permissionHistorySampleRate = 0.0} must skip the check entirely - the whole
-   * point of sampling is to spare the reconstruction cost for queries it does not run for.
-   */
-  @Test
-  void permissionHistoryCheckNeverRunsWhenSampleRateIsZero() {
-    QueryService serviceWithNoSampling =
-        newQueryService(
-            new QueryProperties(8, 25, 1.0, 0.3, 0.0, true, 3, 2, false, 50), chatMemory);
-    when(chatMemory.get(any())).thenReturn(List.of());
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
-
-    serviceWithNoSampling.query("Question", null, caller, true, List.of());
-
-    verifyNoInteractions(permissionHistoryService);
-  }
-
-  /**
-   * #889 (O1): {@code permissionHistorySampleRate = 1.0} is the pre-#889 "every query" behaviour -
-   * a mismatch must still be logged exactly as before sampling existed. No test previously
-   * exercised this log line at all (only the lenient default stub in {@link #setUp} existed); this
-   * closes that gap while proving sampling's "1.0 = always" boundary.
-   */
-  @Test
-  void permissionHistoryCheckLogsMismatchWhenSampleRateIsOne() {
-    var logger =
-        (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(QueryService.class);
-    var logAppender =
-        new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
-    logAppender.start();
-    logger.addAppender(logAppender);
-    try {
-      when(permissionHistoryService.readableLibraryIdsAsOf(eq(currentUserId), any(), any()))
-          .thenReturn(Set.of());
-      when(chatMemory.get(any())).thenReturn(List.of());
-      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-      when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
-
-      queryService.query("Question", null, caller, true, List.of());
-
-      var mismatchEvents =
-          logAppender.list.stream()
-              .filter(
-                  event ->
-                      event.getFormattedMessage().contains("Permission history regression check"))
-              .toList();
-      assertThat(mismatchEvents).isNotEmpty();
-      assertThat(mismatchEvents)
-          .allSatisfy(
-              event -> assertThat(event.getLevel()).isEqualTo(ch.qos.logback.classic.Level.WARN));
-    } finally {
-      logger.detachAppender(logAppender);
-    }
   }
 
   /**
@@ -963,12 +894,7 @@ class QueryServiceTest {
     // Not just "before the model": nothing past the early check runs at all, including the
     // readable-scope computation and the conversation-memory cache - proving the check's early
     // placement, not merely that it precedes the LLM call specifically.
-    verifyNoInteractions(
-        vectorStore,
-        answerGenerationService,
-        libraryAccessService,
-        permissionHistoryService,
-        chatMemory);
+    verifyNoInteractions(vectorStore, answerGenerationService, libraryAccessService, chatMemory);
     verify(chatService, never()).appendTurn(any(), any(), any(), any());
   }
 
@@ -1000,15 +926,14 @@ class QueryServiceTest {
             .build();
     QueryService serviceWithRealMemory =
         newQueryService(
-            new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, false, 50), realChatMemory);
+            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50), realChatMemory);
 
     UUID otherUserId = UUID.randomUUID();
     CurrentUser otherCaller =
         CurrentUser.of(otherUserId, organizationId, SystemRole.USER, "Other User");
     // useKnowledge=false with no requested library keeps the search scope empty regardless of
     // what this account may read, so the readable-set stub's content is irrelevant here - the
-    // vector store and permission-history check are simply skipped for an empty scope (see
-    // QueryService#query and #checkAgainstPermissionHistory).
+    // vector store is simply skipped for an empty scope (see QueryService#query).
     when(libraryAccessService.readableLibraryIds(otherUserId, organizationId)).thenReturn(Set.of());
 
     UUID sharedChatId = UUID.randomUUID();
@@ -1697,8 +1622,7 @@ class QueryServiceTest {
     @Test
     void decompositionDisabledSkipsTheDecompositionServiceEntirely() {
       QueryService serviceWithDecompositionDisabled =
-          newQueryService(
-              new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50), chatMemory);
+          newQueryService(new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, false, 50), chatMemory);
       when(chatMemory.get(any())).thenReturn(List.of());
       when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));

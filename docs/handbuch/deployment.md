@@ -694,7 +694,6 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_QUERY_FETCH_K` | `25` | `25` | Anzahl der Kandidaten, die die Vektorsuche selbst abruft, bevor MMR daraus `OPAA_QUERY_TOP_K` auswählt (1–200, muss ≥ `OPAA_QUERY_TOP_K` sein). Fehlt der Wert, während `OPAA_QUERY_TOP_K` bereits über 25 konfiguriert ist, normalisiert sich der Default auf `max(25, OPAA_QUERY_TOP_K)` statt auf ein starres `25` — sonst würde ein solches Bestandssystem allein durch diese Anhebung nicht mehr starten |
 | `OPAA_QUERY_MMR_LAMBDA` | `1.0` | `1.0` | Abwägung zwischen Relevanz und Vielfalt bei der MMR-Auswahl aus `OPAA_QUERY_FETCH_K` Kandidaten (0,0–1,0) — `1,0` schaltet die Vielfaltsauswahl vollständig ab (reine Top-K-Relevanz) und ist bewusst der Default: Gegen 20 Mehrthemen-Golden-Fälle gemessen (beide erwarteten Dokumente unter den zurückgegebenen Chunks vertreten) erreichte `0,7` mit echten Chunk-Embeddings 19/20 Fälle, reines `topK=8` (dieser Default) 20/20 — MMR ist damit implementiert und per niedrigerem Wert aktivierbar, aber bewusst kein Default (siehe `QueryProperties#mmrLambda`) |
 | `OPAA_QUERY_SIMILARITY_THRESHOLD` | `0.3` | `0.3` | Minimale Kosinus-Ähnlichkeit für Chunk-Aufnahme (0,0–1,0) |
-| `OPAA_QUERY_PERMISSION_HISTORY_SAMPLE_RATE` | `1.0` | `1.0` | Anteil der Abfragen, für die der Abgleich der Live-Rechte gegen die historisierte Rechteformel tatsächlich läuft, als Wahrscheinlichkeit zwischen `0,0` und `1,0`. Standardmäßig läuft der Abgleich bei jeder Abfrage; drei Zusatz-Queries über wachsende Tabellen je Anfrage sind der Grund, den Wert für eine Betriebsumgebung mit hohem Abfrageaufkommen abzusenken |
 | `OPAA_QUERY_DECOMPOSITION_ENABLED` | `true` | `true` | Zerlegt eine Frage vor dem Retrieval per LLM-Aufruf in bis zu `OPAA_QUERY_MAX_SUB_QUERIES` eigenständige Suchanfragen, je mit eigenem berechtigungs- und schwellenwertgeprüften `similaritySearch`-Aufruf, rangbasiert (Reciprocal Rank Fusion) zusammengeführt. Ein LLM-Fehlschlag oder eine unparsebare Antwort fällt auf die Ein-Suche-Logik zurück, nie auf einen Fehler; Modellwahl folgt dem systemweiten aktiven Chat-Modell (kein zusätzlicher API-Anbindungsweg) |
 | `OPAA_QUERY_MAX_SUB_QUERIES` | `3` | `3` | Obergrenze der Teilfragen aus der Zerlegung — darüber hinaus kappt die Zerlegung, ohne die Zahl der `similaritySearch`-Aufrufe (und damit die Retrieval-Latenz) unbegrenzt wachsen zu lassen |
 | `OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT` | `2` | `2` | Nach der Fusions-/MMR-Auswahl bevorzugt bis zu diese viele Chunks je bereits ausgewähltem Dokument aus der ohnehin berechtigungs- und schwellenwertgefilterten Kandidatenmenge — zweistufige Verdrängung: zuerst der schwächste Chunk eines Dokuments, das schon mit mindestens zwei Chunks vertreten ist; existiert keine solche Quelle, der auswahlrang-letzte Chunk der Gesamtauswahl, sofern das zu vervollständigende Dokument mit seinem besten Chunk strikt besser rankt als dieser (die Dokumentvielfalt darf dabei sinken) — auf `max(1, OPAA_QUERY_TOP_K / 4)` solcher Verdrängungen je Abfrage gedeckelt (bei Default `OPAA_QUERY_TOP_K=8` also 2), damit eine einzelne Abfrage nicht mehrere Themen zugunsten eines einzigen verdrängt. `1` schaltet die Dokument-Vervollständigung vollständig ab |
@@ -1273,8 +1272,9 @@ Erlassnummern, seltene Fachbegriffe.
 > **Stand:** Der Pfad ist gebaut und **wirkt auf die Antwort**. Je Teilfrage liefert er
 > eine zweite Trefferliste, die zusammen mit der Liste der Vektorsuche rangbasiert fusioniert wird
 > (Reciprocal Rank Fusion). Ein Chunk, den beide Pfade finden, ist dabei **ein** Treffer mit zwei
-> Beiträgen, kein doppelter. Fällt die Volltextabfrage aus, läuft die Fusion mit den verbleibenden
-> Listen weiter: schlechtere Suchqualität, nie ein Fehler für die fragende Person.
+> Beiträgen, kein doppelter. Scheitert die Volltextabfrage, scheitert die Frage — genau wie bei
+> einem Ausfall der Vektorsuche: Eine halbe hybride Suche ist eine schlechtere Antwort, die sich
+> sonst als normale ausgäbe.
 
 ### Was zu tun ist
 
@@ -1282,11 +1282,12 @@ Im laufenden Betrieb nichts. Jeder indexierte Chunk bekommt seinen Volltexteintr
 Transaktion wie den Vektor; auf diesem Weg entsteht kein Abschnitt, der vektorisiert, aber nicht
 volltextindiziert ist.
 
-**Ändert ein Update die Art, wie der Volltextindex gebildet wird**, gelten die betroffenen Zeilen als
-fehlend, und die Seite „Suche & Indexierung" zeigt die betroffenen Bibliotheken als **unvollständig**
-an. Der lexikalische Pfad findet diese Zeilen weiterhin — ihnen fehlen nur die Lexeme, die die neue
-Fassung hinzufügt, bis der Nachzug sie neu schreibt (ADR-0028). Einen Hintergrundlauf, der das von selbst
-nachzieht, gibt es nicht — **nötig ist dann der Pipeline-Nachzug** über die Admin-API
+**Ändert ein Update die Art, wie der Volltextindex gebildet wird**, liegen die betroffenen Zeilen in
+einer älteren Fassung, und die Seite „Suche & Indexierung" weist die betroffenen Bibliotheken mit
+**Nachzug ausstehend** aus. Der lexikalische Pfad findet diese Zeilen weiterhin — ihnen fehlen nur
+die Lexeme, die die neue Fassung hinzufügt, bis der Nachzug sie neu schreibt (ADR-0028). Einen
+Hintergrundlauf, der das von selbst nachzieht, gibt es nicht — **nötig ist dann der Pipeline-Nachzug**
+über die Admin-API
 (`POST /api/v1/admin/indexing/pipeline-reindex`, siehe [Indexierung](indexierung.md#9-pipeline-versionen-und-nachzug));
 eine Oberfläche dafür gibt es noch nicht. Er erfasst solche Abschnitte ausdrücklich, auch wenn sich
 an der Aufbereitung des Dokuments sonst nichts geändert hat.
@@ -1295,7 +1296,7 @@ an der Aufbereitung des Dokuments sonst nichts geändert hat.
 Abschnitte und **bettet diese neu ein** — er verursacht also Aufrufe beim Einbettungsmodell und ist
 in derselben Größenordnung teuer wie eine Neuindizierung dieser Dokumente. Er ist damit teurer als
 das reine Neuschreiben der Volltextspalte wäre, aber der einzige Weg, der dieselben Abschnitte
-lückenlos wiederherstellt. Der Lauf ist stapelweise, unterbrechbar und wiederaufnehmbar; bis er
+in der neuen Fassung wiederherstellt. Der Lauf ist stapelweise, unterbrechbar und wiederaufnehmbar; bis er
 durch ist, sucht der lexikalische Pfad in den betroffenen Beständen mit den Lexemen der alten
 Fassung weiter. Ein Update, das
 diesen Nachzug nötig macht, wird in den Release-Hinweisen ausdrücklich genannt.

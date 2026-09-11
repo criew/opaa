@@ -166,6 +166,12 @@ final class SearchAdminResponseMapper {
         searchPathDetail(status));
   }
 
+  /**
+   * The German sentence per path state. {@code INCOMPLETE} and {@code OUTDATED} are each reachable
+   * for exactly one path - waiting documents for the vector index, rows below the current tsv
+   * version for the full-text one - which is why their wording may name what only that path can
+   * have. A state that becomes reachable for both must lose that wording again.
+   */
   private static String searchPathDetail(SearchPathStatus status) {
     String pathName =
         status.path() == SearchPathStatus.SearchPathName.VECTOR
@@ -180,12 +186,20 @@ final class SearchAdminResponseMapper {
               + " Bibliotheken mit Inhalt ab.";
       case INCOMPLETE ->
           pathName
-              + " ist aktiv, aber noch nicht über den ganzen Bestand aufgebaut: "
-              + status.incompleteLibraryCount()
+              + " ist aktiv, aber noch nicht über den ganzen Bestand aufgebaut: in "
+              + status.affectedLibraryCount()
               + " von "
               + status.libraryCount()
-              + " Bibliotheken sind unvollständig; ihre fehlenden Abschnitte findet dieser Pfad"
-              + " nicht.";
+              + " Bibliotheken warten noch Dokumente auf die Indexierung.";
+      case OUTDATED ->
+          pathName
+              + " ist aktiv und durchsucht den ganzen Bestand. In "
+              + status.affectedLibraryCount()
+              + " von "
+              + status.libraryCount()
+              + " Bibliotheken steht der Volltext aber noch in einer älteren Fassung: Diese"
+              + " Abschnitte werden gefunden, nur noch ohne die Suchmerkmale, die das letzte"
+              + " Update hinzugefügt hat. Der Pipeline-Nachzug baut den Rückstand ab.";
     };
   }
 
@@ -203,7 +217,7 @@ final class SearchAdminResponseMapper {
             toIndexState(status.vectorIndexCondition()),
             toIndexState(status.fullTextIndexCondition()),
             status.fullTextIndexedChunks(),
-            status.fullTextMissingChunks(),
+            status.fullTextOutdatedChunks(),
             MetadataBackfillResponseMapper.toStatusResponse(status.metadataBackfill()),
             MetadataExtractionResponseMapper.toStatsResponse(status.modelExtraction()),
             MetadataBackfillResponseMapper.toRerunStatusResponse(status.contextPrefixRerun()))
@@ -292,6 +306,7 @@ final class SearchAdminResponseMapper {
       case ACTIVE -> SearchPathState.ACTIVE;
       case DISABLED -> SearchPathState.DISABLED;
       case INCOMPLETE -> SearchPathState.INCOMPLETE;
+      case OUTDATED -> SearchPathState.OUTDATED;
     };
   }
 
@@ -300,6 +315,7 @@ final class SearchAdminResponseMapper {
       case EMPTY -> LibraryIndexState.EMPTY;
       case READY -> LibraryIndexState.READY;
       case INCOMPLETE -> LibraryIndexState.INCOMPLETE;
+      case OUTDATED -> LibraryIndexState.OUTDATED;
     };
   }
 

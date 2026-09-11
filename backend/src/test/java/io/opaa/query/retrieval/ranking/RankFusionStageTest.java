@@ -28,7 +28,7 @@ class RankFusionStageTest {
   private static final UUID LIBRARY_ID = UUID.randomUUID();
 
   private static QueryProperties propertiesWithTopK(int topK) {
-    return new QueryProperties(topK, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
+    return new QueryProperties(topK, 25, 1.0, 0.3, false, 3, 2, false, 50);
   }
 
   private static RetrievalState stateWith(List<Document> candidates) {
