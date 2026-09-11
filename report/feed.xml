@@ -5,8 +5,24 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-10T05:02:06Z</updated>
+  <updated>2026-09-11T04:58:09Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Donnerstag, 10. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-10.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-10.html</id>
+    <updated>2026-09-11T04:58:09Z</updated>
+    <summary type="text">feat: UI-Politur-Runde Oktober 2026 — Sammel-Epic:
+— Fundstellenblock unter Antworten verschlankt
+— Filterangebot der Metadaten — Konzept für Sichtbarkeit je Bibliothek
+feat: Gruppen, Rollen und Berechtigungen: Subjekte, Herkunft und Folgen für Freigaben:
+— Gruppenherkunft je Identitätsanbieter — Sync-Konfiguration
+Sonstiges:
+— Query-Paket refaktoriert: Entkernung, Paketschnitt, Doppelungen entfernt
+— Backend-Laufzeitimage auf Distroless reduziert, wöchentliche Neubau-Automation
+— Trivy-Alerts triagiert, kritische Befunde mit Alarm-Issue verknüpft
+— Daumen-Schaltflächen aus Chat entfernt, Dokumentation ergänzt</summary>
+  </entry>
   <entry>
     <title>Tagesreport Mittwoch, 9. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-09.html"/>

@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-09-10</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Donnerstag, 10. September 2026</h1>
+<nav class="blaettern"><a href="2026-09-09.html" rel="prev" title="Mittwoch, 9. September 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/34494789206" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">45</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+23</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">13</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">14</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1441">#1441</a> feat: UI-Politur-Runde Oktober 2026 — Sammel-Epic</span>
+<span class="epic-progress">0 / 2 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/1449">#1449</a></span>Fundstellenblock unter Antworten verschlankt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1448">#1448</a></span>Filterangebot der Metadaten — Konzept für Sichtbarkeit je Bibliothek</li></ul>
+
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1295">#1295</a> feat: Gruppen, Rollen und Berechtigungen: Subjekte, Herkunft und Folgen für Freigaben</span>
+<span class="epic-progress">0 / 1 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/1443">#1443</a></span>Gruppenherkunft je Identitätsanbieter — Sync-Konfiguration</li></ul>
+
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li>Query-Paket refaktoriert: Entkernung, Paketschnitt, Doppelungen entfernt</li><li>Backend-Laufzeitimage auf Distroless reduziert, wöchentliche Neubau-Automation</li><li>Trivy-Alerts triagiert, kritische Befunde mit Alarm-Issue verknüpft</li><li>Daumen-Schaltflächen aus Chat entfernt, Dokumentation ergänzt</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1473">#1473</a></span>refactor(query): Doppelungen zusammenführen und test-only API entfernen (+682/−790, 46 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1472">#1472</a></span>refactor(query): Unterpakete retrieval, answer, citation, filter (+1005/−502, 133 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1470">#1470</a></span>refactor(query): QueryService entkernen (+1869/−1331, 42 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1469">#1469</a></span>build(backend): Schlankes Laufzeitimage — jlink-Laufzeit auf Distroless statt vollem Ubuntu-Basis (+290/−26, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1468">#1468</a></span>ci(cve-scan): Unterdrückungsquelle .trivyignore.yaml für nicht behebbare Trivy-Befunde (+141/−28, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1467">#1467</a></span>ci(images): Laufzeit-Images wöchentlich neu bauen und veröffentlichen (+47/−6, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1465">#1465</a></span>docs(query): Javadoc-Kur im Paket query (+586/−1122, 42 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1463">#1463</a></span>ci(cve-scan): Alarm-Issue bei critical-Befunden im Image-Scan (+222/−1, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1462">#1462</a></span>docs(query): Doku-Lücken aus dem Struktur-Review schließen (+120/−20, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1453">#1453</a></span>docs(query): Befundliste des Struktur-Reviews zum Paket query (+379/−0, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1452">#1452</a></span>ci(images): OS-Sicherheitsupdates in den Laufzeit-Images nachziehen (Trivy-Triage) (+105/−7, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1451">#1451</a></span>feat(chat): Daumen-hoch/-runter-Schaltflächen aus dem Chat entfernen (+7/−93, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1438">#1438</a></span>chore(deps): ollama/ollama docker tag to v0.34.0 (+2/−2, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1437">#1437</a></span>chore(deps): aws-java-sdk-v2 monorepo aktualisieren (+1/−1, 1 Datei)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-09-11 um 06:58 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-09-10T00:00:00 bis 2026-09-10T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>
