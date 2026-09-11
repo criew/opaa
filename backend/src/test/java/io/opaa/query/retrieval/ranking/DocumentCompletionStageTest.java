@@ -59,9 +59,8 @@ class DocumentCompletionStageTest {
             chunk("c-0", "doc-c", 0.7),
             chunk("a-1", "doc-a", 0.5));
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(candidates);
-    QueryProperties completing = new QueryProperties(3, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
-    QueryProperties notCompleting =
-        new QueryProperties(3, 25, 1.0, 0.3, 1.0, false, 3, 1, false, 50);
+    QueryProperties completing = new QueryProperties(3, 25, 1.0, 0.3, false, 3, 2, false, 50);
+    QueryProperties notCompleting = new QueryProperties(3, 25, 1.0, 0.3, false, 3, 1, false, 50);
     RetrievalContext completingRun =
         new RetrievalContext(
             "Frage",

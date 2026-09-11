@@ -36,7 +36,7 @@ class MmrSelectionStageTest {
 
   private static final UUID LIBRARY_ID = UUID.randomUUID();
   private static final QueryProperties PROPERTIES =
-      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
+      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, false, 50);
 
   private final VectorStore vectorStore = mock(VectorStore.class);
 

@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 class MetadataFilterStageTest {
 
   private static final QueryProperties PROPERTIES =
-      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
+      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, false, 50);
   private static final Set<UUID> SCOPE = Set.of(UUID.randomUUID());
 
   private final DocumentTypeVocabularyRepository vocabulary =

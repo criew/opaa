@@ -41,7 +41,7 @@ class RetrievalPipelineTest {
 
   private static final UUID LIBRARY_ID = UUID.randomUUID();
   private static final QueryProperties PROPERTIES =
-      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
+      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, false, 50);
 
   private final VectorStore vectorStore = mock(VectorStore.class);
   private final ChunkEmbeddingLookup chunkEmbeddingLookup = mock(ChunkEmbeddingLookup.class);
@@ -139,8 +139,7 @@ class RetrievalPipelineTest {
                   ? List.of(shared, firstOnly)
                   : List.of(shared, secondOnly);
             });
-    QueryProperties twoChunkBudget =
-        new QueryProperties(2, 25, 1.0, 0.3, 1.0, true, 3, 1, false, 50);
+    QueryProperties twoChunkBudget = new QueryProperties(2, 25, 1.0, 0.3, true, 3, 1, false, 50);
 
     RetrievalPipelineResult withoutFusion =
         pipeline(new RetrievalPipelineProperties(Set.of(RetrievalStageName.RANK_FUSION)))
@@ -179,7 +178,7 @@ class RetrievalPipelineTest {
                     history,
                     Set.of(LIBRARY_ID),
                     MetadataFilter.NONE,
-                    new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, false, 50),
+                    new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50),
                     RerankAvailability.SWITCHED_OFF));
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);

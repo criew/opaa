@@ -25,11 +25,6 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param similarityThreshold minimum cosine similarity a chunk must reach in the vector path.
  *     Applied inside {@code similaritySearch} itself, so a chunk below it never becomes an MMR
  *     candidate and diversity can never pull it into the selection. Default 0.3.
- * @param permissionHistorySampleRate the fraction of queries {@link
- *     QueryService#checkAgainstPermissionHistory} runs for, in {@code [0.0, 1.0]}
- *     (docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten).
- *     Default {@code 1.0}, bound at the binder level too: a compliance control must not fall to
- *     Java's primitive-{@code double} zero because a property file is missing.
  * @param queryDecompositionEnabled whether {@link RetrievalStageName#SUB_QUERY_DECOMPOSITION} asks
  *     the LLM to split the question into up to {@link #maxSubQueries} search queries. Default
  *     {@code true}: any failure falls back to the single-query form, so it costs at most one extra
@@ -60,7 +55,6 @@ public record QueryProperties(
     int fetchK,
     @DefaultValue("1.0") double mmrLambda,
     double similarityThreshold,
-    @DefaultValue("1.0") double permissionHistorySampleRate,
     @DefaultValue("true") boolean queryDecompositionEnabled,
     @DefaultValue("3") int maxSubQueries,
     @DefaultValue("2") int maxChunksPerDocument,
@@ -91,11 +85,6 @@ public record QueryProperties(
     if (similarityThreshold < 0.0 || similarityThreshold > 1.0) {
       throw new IllegalArgumentException(
           "similarityThreshold must be between 0.0 and 1.0, got " + similarityThreshold);
-    }
-    if (permissionHistorySampleRate < 0.0 || permissionHistorySampleRate > 1.0) {
-      throw new IllegalArgumentException(
-          "permissionHistorySampleRate must be between 0.0 and 1.0, got "
-              + permissionHistorySampleRate);
     }
     if (maxSubQueries <= 0 || maxSubQueries > 10) {
       throw new IllegalArgumentException(

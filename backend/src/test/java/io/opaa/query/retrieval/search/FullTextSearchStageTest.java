@@ -45,9 +45,9 @@ class FullTextSearchStageTest {
   private static final UUID SCOPED_LIBRARY = UUID.randomUUID();
   private static final UUID SECOND_LIBRARY = UUID.randomUUID();
   private static final QueryProperties PROPERTIES =
-      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, true, 50);
+      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, true, 50);
   private static final QueryProperties LEXICAL_PATH_OFF =
-      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
+      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, false, 50);
 
   private final FullTextChunkSearch search = mock(FullTextChunkSearch.class);
   private final FullTextIndexCompleteness indexCompleteness = mock(FullTextIndexCompleteness.class);

@@ -53,7 +53,7 @@ class SearchDiagnosisClockTest {
     when(rerankModelRole.currentStatus()).thenReturn(RerankRoleStatus.disabled());
     RetrievalPipeline pipeline =
         RetrievalPipelineTestSupport.vectorSearchPipeline(vectorStore, rerankModelRole);
-    QueryProperties properties = new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 1, false, 20);
+    QueryProperties properties = new QueryProperties(8, 25, 1.0, 0.3, false, 3, 1, false, 20);
     Clock fixedClock = Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC);
 
     SearchDiagnosisService service =

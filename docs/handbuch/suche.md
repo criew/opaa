@@ -148,17 +148,14 @@ Rechtefilter wäre keine Variante der Suche, sondern eine Rechteumgehung.
 Ist der Suchbereich leer, endet der Lauf hier. Es wird kein Modell für die Zerlegung gerufen und
 nichts gesucht; die übrigen Stufen stehen im Protokoll als „nicht erreicht".
 
-Begleitend läuft eine **Rechteprobe**. OPAA berechnet die Leserechte einer Person auf zwei
-Wegen: einmal live aus den aktuellen Berechtigungen (das ist, was die Suche benutzt), und einmal aus
-der **Rechtehistorie**, in der jede Änderung an Berechtigungen, Gruppenmitgliedschaften und
-Freigaben mit Zeitpunkt festgehalten wird, damit sich für Prüfer jederzeit beantworten lässt, wer
-wann worauf Zugriff hatte. Beide Wege müssen für denselben Zeitpunkt dieselbe Bibliotheksmenge
-ergeben. Die Probe rechnet bei einer Frage beides aus und vergleicht: Enthält die Live-Menge eine
-Bibliothek, die die Historie nicht bestätigt, steht eine Warnung mit der betroffenen Bibliotheks-ID
-im Log. Das wäre ein Programmfehler, kein Bedienfehler, und der Betrieb sollte ihm nachgehen. Die
-Suche selbst wird davon nicht beeinflusst. Die Probe läuft standardmäßig bei jeder Frage und kostet
-zusätzliche Datenbankabfragen; für Installationen mit hohem Aufkommen lässt sie sich auf eine
-Stichprobe absenken (Abschnitt 10.3).
+Die Leserechte, aus denen der Filter entsteht, werden für die Frage einmal live aus den aktuellen
+Berechtigungen berechnet. Parallel dazu führt OPAA eine **Rechtehistorie**, in der jede Änderung an
+Berechtigungen, Gruppenmitgliedschaften und Freigaben mit Zeitpunkt festgehalten wird; aus ihr lässt
+sich für Prüfer zu jedem Stichtag rekonstruieren, wer worauf Zugriff hatte. Die Historie wird beim
+Beantworten einer Frage nicht gelesen: Ein Abgleich beider Rechenwege je Anfrage findet nicht statt.
+Dass beide Wege dieselbe Bibliotheksmenge ergeben, sichert die Testsuite für jede Operation ab, die
+Leserechte ändert — Berechtigungen, Gruppenmitgliedschaften aus der Verwaltung, dem
+Verzeichnisabgleich und dem Anmeldetoken sowie Bestand und Sichtbarkeit einer Bibliothek.
 
 ### Stufe 2: Metadatenfilter
 
@@ -578,7 +575,7 @@ Darüber antwortet das Backend mit HTTP 429. Die Werte stehen unter `opaa.rate-l
 | `opaa.query.tokens` | verbrauchte Tokens des Chat-Modells |
 | `opaa.query.decomposition.fallback` | Rückfälle der Zerlegung, nach Ursache unterschieden |
 
-Als Warnung gehen ins Log: der Rückfall der Zerlegung und ein Befund der Rechteprobe. Ungültige
+Als Warnung geht der Rückfall der Zerlegung ins Log. Ungültige
 Belege werden je Antwort mit ihrer Anzahl auf Info-Ebene vermerkt; wer nur auf Warnungen
 alarmiert, sieht sie nicht. Fragetext, Suchanfragen und Antwort erscheinen in keiner Logzeile
 oberhalb der Debug-Ebene.
@@ -599,7 +596,6 @@ Umgebungsvariable im Kapitel [Deployment](deployment.md#alle-umgebungsvariablen)
 | `mmr-lambda` | 1,0 | Vielfaltsauswahl; 1,0 ist reine Relevanz |
 | `rerank-candidate-count` | 50 | Reranking-Fenster und Budget der Fusion bei aktivem Reranking (0 bis 200); 0 schaltet die Stufe ab |
 | `max-chunks-per-document` | 2 | Dokument-Vervollständigung (1 bis 10); 1 schaltet sie ab |
-| `permission-history-sample-rate` | 1,0 | Anteil der Fragen mit Rechteprobe |
 | `metadata-filter.*` | 0,90 / 0,75 / 0,75 / 5m | Füllstandsschwellen für Dokumentart, Datum und Bibliotheksfelder, Cache der Filteroptionen |
 | `pipeline.disabled-stages` | leer | ganze Stufen aus der Kette nehmen; nur für Entwicklung und Messung, der Suchbereich ist nicht abschaltbar |
 

@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 class VariantQueryPropertiesTest {
 
   private static final QueryProperties PRODUCTION =
-      new QueryProperties(8, 25, 1.0, 0.3, 0.5, false, 3, 2, true, 50);
+      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, true, 50);
 
   @Test
   void emptyOverridesReproduceTheProductionConfigurationExactly() {
@@ -33,16 +33,5 @@ class VariantQueryPropertiesTest {
         .isEqualTo(PRODUCTION.queryDecompositionEnabled());
     assertThat(effective.maxSubQueries()).isEqualTo(PRODUCTION.maxSubQueries());
     assertThat(effective.maxChunksPerDocument()).isEqualTo(PRODUCTION.maxChunksPerDocument());
-  }
-
-  @Test
-  void permissionHistorySampleRateIsNeverOverridden() {
-    var overrides =
-        new PipelineVariant.QueryOverrides(null, null, null, null, null, null, null, null);
-
-    QueryProperties effective = VariantQueryProperties.apply(PRODUCTION, overrides);
-
-    assertThat(effective.permissionHistorySampleRate())
-        .isEqualTo(PRODUCTION.permissionHistorySampleRate());
   }
 }
