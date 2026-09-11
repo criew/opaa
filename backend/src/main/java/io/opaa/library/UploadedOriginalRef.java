@@ -4,6 +4,8 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.document.Document;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A reference to one uploaded original in {@link UploadedOriginalStore}: the organization and
@@ -16,6 +18,8 @@ import java.util.UUID;
  *     UploadedOriginalStore#belongsToLibrary})
  */
 public record UploadedOriginalRef(UUID organizationId, UUID libraryId, String locator) {
+
+  private static final Logger log = LoggerFactory.getLogger(UploadedOriginalRef.class);
 
   public UploadedOriginalRef {
     if (organizationId == null) {
@@ -34,13 +38,24 @@ public record UploadedOriginalRef(UUID organizationId, UUID libraryId, String lo
    * all: only a {@code UPLOAD} row with a {@code file_path}, a library and an organization names
    * one. A {@code FILESYSTEM} or connector row names a file (or URL) this application does not own,
    * and must never be routed into the store - neither to read nor to delete.
+   *
+   * <p>An {@code UPLOAD} row that does name a {@code file_path} but neither its library nor its
+   * organization is the one empty answer that is <b>not</b> ordinary: {@code documents.library_id}
+   * and {@code .organization_id} are {@code NOT NULL}, so it cannot come from a stored row, and on
+   * the delete path it would silently mean "no bytes to remove" and leave an orphan behind. It is
+   * logged rather than thrown - a delete must still remove the row.
    */
   public static Optional<UploadedOriginalRef> of(Document document) {
     if (document.getSourceType() != DocumentSourceType.UPLOAD
         || document.getFilePath() == null
-        || document.getFilePath().isBlank()
-        || document.getLibraryId() == null
-        || document.getOrganizationId() == null) {
+        || document.getFilePath().isBlank()) {
+      return Optional.empty();
+    }
+    if (document.getLibraryId() == null || document.getOrganizationId() == null) {
+      log.warn(
+          "Upload document {} names no library or organization; its stored original is left"
+              + " untouched and stays behind for the orphan cleanup",
+          document.getId());
       return Optional.empty();
     }
     return Optional.of(

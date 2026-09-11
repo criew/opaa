@@ -1546,10 +1546,13 @@ Drei Dinge sind im Betrieb wichtig:
   Funde, zählt in `orphanCount` aber alle. Nach dem Löschen des gelisteten Ausschnitts denselben
   Bericht erneut abrufen, bis `truncated` auf `false` steht.
 - **Nach einer Umstellung der Ablage meldet der erste Bericht alles.** Wurden die Bytes umgezogen,
-  aber die Verweise nicht umgeschrieben (siehe
-  [„Eine laufende Installation auf den Objektspeicher umstellen"](#eine-laufende-installation-auf-den-objektspeicher-umstellen)),
-  gilt der gesamte Bestand als verwaist — erkennbar an `referencedCount: 0`. Das ist das Signal, die
-  Umstellung zu prüfen — nicht, zu löschen.
+  aber die Verweise nicht umgeschrieben, gilt der gesamte Bestand als verwaist — erkennbar an
+  `referencedCount: 0`. Das ist das Signal, die Umstellung zu prüfen — nicht, zu löschen. Zwei
+  Vorgänge können in diesen Zustand führen, und beide sind gemeint:
+  [„Eine laufende Installation auf den Objektspeicher umstellen"](#eine-laufende-installation-auf-den-objektspeicher-umstellen)
+  für den ganzen Bestand und der
+  [Einmalschritt](#einmalschritt-einen-vor-dem-11092026-angelegten-bestand-einsortieren) für eine
+  einzelne Bibliothek, deren Bytes verschoben, deren Verweise aber noch nicht umgeschrieben wurden.
 
 Was der Lauf **nicht** sieht: alles, was tiefer liegt als die Ebene der Bibliothek. Die Ablage legt
 dort nie etwas an; was ein anderer Schreiber unter demselben Präfix abgelegt hat, wird deshalb weder
@@ -1571,15 +1574,28 @@ Schritt läuft deshalb je Bibliothek — eine Abfrage nennt die Paare, dann ein 
 ein `UPDATE` je Paar. Vorher: Backend stoppen (`docker compose stop backend`) und einen
 Datenbank-Dump ziehen.
 
+> **Schritt 2 und Schritt 3 gehören zusammen.** Wer die Bytes verschiebt und die Verweise nicht
+> umschreibt, hinterlässt eine Bibliothek, deren Objekte am neuen Ort liegen, während ihre Zeilen
+> noch auf den alten zeigen — der Bericht über verwaiste Originale meldet dann ihren **gesamten
+> Bestand** als verwaist (`referencedCount: 0`), und über den Löschendpunkt wäre er entfernbar.
+> Beide Schritte je Paar unmittelbar nacheinander ausführen, nicht erst alle Verschiebungen und
+> danach alle `UPDATE`s. Siehe [„Verwaiste Originale aufräumen"](#verwaiste-originale-aufräumen).
+
 **1. Die Paare abfragen.** Jede Zeile der Antwort ist ein Paar `<Organisations-ID>
-<Bibliotheks-ID>`; nur Bibliotheken mit hochgeladenen Dokumenten kommen vor.
+<Bibliotheks-ID>`.
 
 ```bash
 docker compose exec postgres psql -U opaa -d opaa -t -A -F' ' -c \
-  "SELECT DISTINCT l.organization_id, l.id
-     FROM knowledge_libraries l JOIN documents d ON d.library_id = l.id
-    WHERE d.source_type = 'UPLOAD';"
+  "SELECT organization_id, id FROM knowledge_libraries;"
 ```
+
+**Bewusst alle Bibliotheken, nicht nur die mit hochgeladenen Dokumenten.** Eine Bibliothek ohne
+Upload-Zeilen kann trotzdem Bytes in der Ablage haben — ein verwaistes Original aus einem
+fehlgeschlagenen Löschen zum Beispiel. Bliebe ihr Ordner auf der alten Ebene liegen, sähe danach
+keine Stelle mehr hin: Der Bericht über verwaiste Originale listet nur noch unterhalb der
+Organisation, und die Probe in Schritt 4 zählt Datenbankzeilen. Aus einem verwaisten Original würde
+ein unsichtbares. Ein Verschiebebefehl auf ein nicht vorhandenes Verzeichnis ist dagegen ein
+harmloser Fehlschlag: Er meldet „nicht gefunden" und ändert nichts.
 
 **2. Bytes verschieben, je Paar.** Auf dem Verzeichnisweg vom Host aus, im Verzeichnis des
 Bind-Mounts (`./uploads`, oder der über `OPAA_UPLOAD_STORAGE_PATH_HOST` verlegte Pfad):
@@ -1618,21 +1634,39 @@ docker compose exec postgres psql -U opaa -d opaa -c \
 Im Objektspeicher mit `s3://<bucket>/<präfix>` statt `/app/uploads/` auf beiden Seiten und
 entsprechend im `LIKE`.
 
-**4. Probe.** Die Zahl muss `0` sein — sie zählt jeden Verweis, der nicht unter seiner eigenen
-Organisation und Bibliothek liegt:
+**4. Probe, zweimal — einmal die Verweise, einmal die Bytes.** Die Zahl muss `0` sein; sie zählt
+jeden Verweis, der nicht unter seiner eigenen Organisation und Bibliothek liegt. Bewusst ohne
+führenden Schrägstrich vor der Organisations-ID, damit die Abfrage auch mit einem Schlüsselpräfix
+ohne abschließendes `/` (etwa `inst1-`) richtig zählt:
 
 ```bash
 docker compose exec postgres psql -U opaa -d opaa -c \
   "SELECT count(*) FROM documents
     WHERE source_type = 'UPLOAD'
-      AND file_path NOT LIKE '%/' || organization_id || '/' || library_id || '/%';"
+      AND file_path NOT LIKE '%' || organization_id || '/' || library_id || '/%';"
 ```
+
+Die zweite Probe gilt der Ablage selbst, denn die erste sähe einen Lauf mit umgeschriebenen
+Verweisen und nicht verschobenen Bytes für in Ordnung an. Auf oberster Ebene darf danach **kein
+Eintrag mehr eine Bibliotheks-ID sein**:
+
+```bash
+ls ./uploads                                  # Verzeichnisweg: nur Organisations-Ordner
+mc ls --recursive <alias>/<bucket>/<präfix>   # Objektspeicher: jeder Schlüssel zwei Ebenen tief
+```
+
+Ein auf oberster Ebene verbliebener UUID-Ordner ist der Rest einer Bibliothek, die es in der
+Datenbank nicht mehr gibt — Schritt 1 hat ihn deshalb nicht genannt. Nach dem Lauf sind
+Organisations-Ordner und solche Reste beide UUIDs und von außen nicht mehr zu unterscheiden; wer sie
+auseinanderhalten will, gleicht sie gegen `SELECT id FROM organizations;` ab. Ihre Behandlung ist
+nicht Teil dieses Schritts und gehört zum Aufräumlauf ohne Bibliotheksbezug.
 
 Danach das Backend starten und ein Original in der Oberfläche herunterladen — am besten eine E-Mail
 mit Anhang und den Anhang gleich mit, weil daran sichtbar wird, dass auch die zusammengesetzten
-Verweise noch stimmen. Bleibt ein Paar unbearbeitet, meldet der Bericht über verwaiste Originale
-für diese Bibliothek nichts (ihre Objekte liegen nicht mehr unter ihrem Präfix) und jedes ihrer
-Originale antwortet mit „nicht gefunden"; das Nachholen der beiden Befehle für dieses Paar behebt es.
+Verweise noch stimmen. Bleibt ein Paar **ganz** unbearbeitet, ist das der harmlose Fall: Der Bericht
+über verwaiste Originale meldet für diese Bibliothek nichts und jedes ihrer Originale antwortet mit
+„nicht gefunden"; das Nachholen beider Befehle für dieses Paar behebt es. Der riskante Fall ist die
+halb ausgeführte Bibliothek aus dem Kasten oben.
 
 ### Eine laufende Installation auf den Objektspeicher umstellen
 
