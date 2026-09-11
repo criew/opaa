@@ -92,8 +92,9 @@ export default function MailSettingsPage() {
           ))}
         </Tabs>
 
-        {/* Both panels exist so that every tab's aria-controls points at a real element; the
-            inactive one is hidden, which also unmounts nothing and keeps no request running. */}
+        {/* Both panels exist so that every tab's aria-controls points at a real element. The
+            inactive one is hidden and renders no children, so no request of the other area keeps
+            running in the background. */}
         <Box
           role="tabpanel"
           id="mail-tabpanel-server"

@@ -72,8 +72,15 @@ function contentError(
 ): string | null {
   for (const [fieldLabel, text] of Object.entries(fields)) {
     for (const match of (text ?? '').matchAll(TEMPLATE_TAG)) {
+      const inner = match[2]?.trim() ?? ''
+      // An empty tag is named explicitly rather than falling out of includes(''), which is true
+      // for every string: {{}} has no variable name for the renderer to resolve and fails the
+      // backend's probe render, so the mock must not let it through either.
       const unsupported =
-        match[1] ?? (UNSUPPORTED_PREFIXES.includes(match[2]?.trim()[0] ?? '') ? match[0] : null)
+        match[1] ??
+        (match[2] !== undefined && (inner === '' || UNSUPPORTED_PREFIXES.includes(inner[0]))
+          ? match[0]
+          : null)
       if (unsupported) {
         return (
           `${fieldLabel}: Nicht unterstützte Vorlagen-Syntax ${unsupported.trim()}. Erlaubt sind` +
@@ -188,7 +195,13 @@ export const mailHandlers = [
         { status: 400 },
       )
     }
-    const invalid = contentError(template, { subject: body.subject, bodyPlain: body.bodyPlain })
+    // bodyHtml included: the editor sends it back on every PUT, so an override stored through
+    // the API has to pass the same check as the two fields the editor itself writes.
+    const invalid = contentError(template, {
+      subject: body.subject,
+      bodyPlain: body.bodyPlain,
+      bodyHtml: body.bodyHtml,
+    })
     if (invalid) return HttpResponse.json({ error: invalid }, { status: 400 })
 
     template.subject = body.subject
@@ -222,7 +235,7 @@ export const mailHandlers = [
     const body = (await request.json()) as MailTemplatePreviewRequest
     const subject = body.subject ?? template.subject
     const bodyPlain = body.bodyPlain ?? template.bodyPlain
-    const invalid = contentError(template, { subject, bodyPlain })
+    const invalid = contentError(template, { subject, bodyPlain, bodyHtml: body.bodyHtml })
     if (invalid) return HttpResponse.json({ error: invalid }, { status: 400 })
 
     const variables: Record<string, string> = {}
