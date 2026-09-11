@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
+import java.time.Instant;
+import java.util.ArrayList;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,12 +52,17 @@ class S3UploadedOriginalStoreTest {
 
   /** The production policy on fast retry bounds, so a dead port fails within milliseconds. */
   private static S3UploadedOriginalStore store(UploadS3Properties properties) {
+    return store(properties, S3UploadedOriginalStore.LIST_PAGE_SIZE);
+  }
+
+  private static S3UploadedOriginalStore store(UploadS3Properties properties, int listPageSize) {
     return new S3UploadedOriginalStore(
         properties,
         UploadS3TargetPolicy.of(properties),
         java.time.Duration.ofSeconds(5),
         1,
-        java.time.Duration.ofMillis(1));
+        java.time.Duration.ofMillis(1),
+        listPageSize);
   }
 
   @AfterEach
@@ -411,6 +418,67 @@ class S3UploadedOriginalStoreTest {
         .doesNotContain("geheim");
   }
 
+  @Test
+  void listingWalksTheLibrarysPrefixPageByPageAndVisitsOnlyItsOwnObjects() throws IOException {
+    store.close();
+    store = store(properties("uploads/"), 2);
+    List<String> own = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      own.add(storedOriginal("original " + i).locator());
+    }
+    server.putObject(BUCKET, "uploads/" + UUID.randomUUID() + "/fremd.pdf", raw("x"), "a/b");
+    server.putObject(BUCKET, libraryId + "/ohne-praefix.pdf", raw("x"), "a/b");
+    server.putObject(BUCKET, "uploads/" + libraryId + "/", new byte[0], "a/b");
+    server.seen().clear();
+
+    List<UploadedOriginalStore.StoredOriginal> visited = new ArrayList<>();
+    store.forEachStoredOriginal(libraryId, visited::add);
+
+    assertThat(visited)
+        .extracting(UploadedOriginalStore.StoredOriginal::locator)
+        .containsExactlyInAnyOrderElementsOf(own);
+    assertThat(visited)
+        .allSatisfy(
+            original -> {
+              assertThat(original.size()).isEqualTo("original 0".length());
+              assertThat(original.lastModified()).isEqualTo(Instant.parse("2026-09-01T10:00:00Z"));
+            });
+    List<StubS3Server.Seen> listings =
+        server.seen().stream().filter(seen -> seen.query().contains("list-type=2")).toList();
+    assertThat(listings).as("five own objects plus the marker, two per page").hasSize(3);
+    assertThat(listings)
+        .allSatisfy(seen -> assertThat(seen.query()).contains("prefix=uploads%2F" + libraryId));
+    assertThat(listings.get(1).query()).contains("continuation-token=");
+    assertThat(server.seen())
+        .as("the listing itself costs no HeadObject")
+        .extracting(StubS3Server.Seen::method)
+        .containsOnly("GET");
+  }
+
+  @Test
+  void listingAStoreThatCannotBeReachedIsUnavailable() throws IOException {
+    storedOriginal("inhalt");
+    server.close();
+
+    assertThatThrownBy(() -> store.forEachStoredOriginal(libraryId, original -> {}))
+        .isInstanceOf(UploadStoreUnavailableException.class);
+  }
+
+  @Test
+  void aListingThatClaimsMorePagesWithoutATokenIsUnavailableNotShort() throws IOException {
+    // A silently short listing would make every unlisted original look like it is not there -
+    // and the cleanup's second step would then refuse to touch it, which is the safe direction,
+    // but the report must not pretend to be complete either.
+    store.close();
+    store = store(properties(""), 1);
+    storedOriginal("eins");
+    storedOriginal("zwei");
+    server.omitContinuationToken();
+
+    assertThatThrownBy(() -> store.forEachStoredOriginal(libraryId, original -> {}))
+        .isInstanceOf(UploadStoreUnavailableException.class);
+  }
+
   private void assertNeitherReadableNorDeletable(UploadedOriginalRef ref) {
     assertThat(store.belongsToLibrary(ref)).isFalse();
     assertThat(store.openForDownload(ref, "harmlos.pdf", "application/pdf")).isEmpty();
@@ -435,6 +503,10 @@ class S3UploadedOriginalStoreTest {
     } catch (IOException e) {
       throw new AssertionError(e);
     }
+  }
+
+  private static byte[] raw(String content) {
+    return content.getBytes(StandardCharsets.UTF_8);
   }
 
   private static InputStream bytes(String content) {

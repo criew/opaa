@@ -14,6 +14,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -34,7 +36,7 @@ class FilesystemUploadedOriginalStoreTest {
   void setUp() {
     store =
         new FilesystemUploadedOriginalStore(
-            new UploadProperties(storageDir.toString(), null, 1024L, null, 0));
+            new UploadProperties(storageDir.toString(), null, 1024L, null, 0, 0));
   }
 
   @Test
@@ -236,6 +238,61 @@ class FilesystemUploadedOriginalStoreTest {
     filesystemDocument.setLibraryId(libraryId);
 
     assertThat(UploadedOriginalRef.of(filesystemDocument)).isEmpty();
+  }
+
+  @Test
+  void listingVisitsEveryStoredOriginalOfTheLibraryUnderTheLocatorItsRowCarries()
+      throws IOException {
+    UploadedOriginalRef first = storedOriginal("eins");
+    UploadedOriginalRef second = storedOriginal("zwei");
+    store.accept(UUID.randomUUID(), ".pdf", bytes("fremde Bibliothek")).store();
+
+    List<UploadedOriginalStore.StoredOriginal> visited = new ArrayList<>();
+    store.forEachStoredOriginal(libraryId, visited::add);
+
+    assertThat(visited)
+        .extracting(UploadedOriginalStore.StoredOriginal::locator)
+        .containsExactlyInAnyOrder(first.locator(), second.locator());
+    assertThat(visited)
+        .allSatisfy(
+            original -> {
+              assertThat(original.size()).isEqualTo(4);
+              assertThat(original.lastModified())
+                  .isAfter(java.time.Instant.now().minusSeconds(60));
+            });
+  }
+
+  @Test
+  void listingALibraryWithoutAStorageAreaVisitsNothing() {
+    List<UploadedOriginalStore.StoredOriginal> visited = new ArrayList<>();
+
+    store.forEachStoredOriginal(UUID.randomUUID(), visited::add);
+
+    assertThat(visited).isEmpty();
+  }
+
+  @Test
+  void listingSkipsWhatALocatorOfThisLibraryWouldNotResolveTo() throws IOException {
+    // The listing and the resolution must agree: what the listing reports, delete must be able
+    // to remove; a subdirectory and a link leading out of the area resolve to nothing.
+    UploadedOriginalRef own = storedOriginal("eigenes Original");
+    Path libraryDirectory = storageDir.resolve(libraryId.toString());
+    Files.createDirectories(libraryDirectory.resolve("unterordner"));
+    Files.writeString(libraryDirectory.resolve("unterordner").resolve("tief.pdf"), "tief");
+    Path outside = Files.createTempDirectory("outside-upload-storage").resolve("geheim.pdf");
+    Files.writeString(outside, "not ours");
+    boolean linked = createSymbolicLink(libraryDirectory.resolve("harmlos.pdf"), outside);
+
+    List<UploadedOriginalStore.StoredOriginal> visited = new ArrayList<>();
+    store.forEachStoredOriginal(libraryId, visited::add);
+
+    assertThat(visited)
+        .extracting(UploadedOriginalStore.StoredOriginal::locator)
+        .containsExactly(own.locator());
+    assertThat(outside).exists();
+    if (linked) {
+      assertThat(libraryDirectory.resolve("harmlos.pdf")).exists();
+    }
   }
 
   private void assertNeitherReadableNorDeletable(UploadedOriginalRef ref) {

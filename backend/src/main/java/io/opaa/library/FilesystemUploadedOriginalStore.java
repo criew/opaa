@@ -9,6 +9,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,6 +81,11 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
   @Override
   public boolean belongsToLibrary(UploadedOriginalRef ref) {
     return managedFile(ref) != null;
+  }
+
+  @Override
+  public void forEachStoredOriginal(UUID libraryId, Consumer<StoredOriginal> visitor) {
+    throw new UnsupportedOperationException("not built yet");
   }
 
   /**

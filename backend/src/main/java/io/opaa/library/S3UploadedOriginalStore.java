@@ -18,6 +18,7 @@ import java.nio.file.attribute.FileTime;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
@@ -71,12 +72,16 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
   /** Name prefix of every file this adapter writes under {@code tempDirectory}. */
   static final String TEMP_FILE_PREFIX = "opaa-upload-";
 
+  /** {@code MaxKeys} of every {@code ListObjectsV2} page; the S3 maximum. */
+  static final int LIST_PAGE_SIZE = 1000;
+
   private static final Logger log = LoggerFactory.getLogger(S3UploadedOriginalStore.class);
 
   private final String bucket;
   private final String keyPrefix;
   private final Path tempDirectory;
   private final String endpoint;
+  private final int listPageSize;
   private final S3FailureTranslator translator;
   private final S3SdkClient client;
   private final S3Client s3;
@@ -87,21 +92,27 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
         UploadS3TargetPolicy.of(properties),
         REQUEST_TIMEOUT,
         MAX_RETRIES,
-        RETRY_BACKOFF);
+        RETRY_BACKOFF,
+        LIST_PAGE_SIZE);
   }
 
-  /** With the bounds of the retry strategy chosen by the caller - for tests against a dead port. */
+  /**
+   * With the bounds of the retry strategy and the listing page size chosen by the caller - for
+   * tests against a dead port and for exercising pagination with a handful of objects.
+   */
   S3UploadedOriginalStore(
       UploadS3Properties properties,
       S3RequestGuard.TargetPolicy targetPolicy,
       Duration requestTimeout,
       int maxRetries,
-      Duration retryBackoff) {
+      Duration retryBackoff,
+      int listPageSize) {
     properties.requireComplete();
     this.bucket = properties.bucket();
     this.keyPrefix = properties.keyPrefix();
     this.tempDirectory = properties.tempDirectory();
     this.endpoint = properties.endpointUri().toString();
+    this.listPageSize = listPageSize;
     this.translator =
         new S3FailureTranslator(requestTimeout, maxRetries, UploadS3TargetPolicy.ALLOWLIST_HINT);
     this.client =
@@ -226,6 +237,11 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
   @Override
   public boolean belongsToLibrary(UploadedOriginalRef ref) {
     return resolve(ref).isPresent();
+  }
+
+  @Override
+  public void forEachStoredOriginal(UUID libraryId, Consumer<StoredOriginal> visitor) {
+    throw new UnsupportedOperationException("not built yet");
   }
 
   /**

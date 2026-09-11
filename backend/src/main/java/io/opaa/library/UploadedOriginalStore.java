@@ -3,8 +3,10 @@ package io.opaa.library;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -58,6 +60,28 @@ public interface UploadedOriginalStore {
 
   /** Whether {@code ref} resolves to an original this store holds for {@code ref}'s library. */
   boolean belongsToLibrary(UploadedOriginalRef ref);
+
+  /**
+   * Hands every original this store holds in {@code libraryId}'s own storage area to {@code
+   * visitor}, one at a time, in the store's own order and without ever holding the whole listing:
+   * a large bucket is walked page by page. Exactly the originals a locator of this library would
+   * resolve to are visited - what lies in the area but would not resolve (a link leading out, a
+   * folder marker) is not - and each is reported under the locator {@link AcceptedUpload#store()}
+   * would have returned for it, so a visited locator compares equal to the {@code file_path} of
+   * the row that owns it. A library without a storage area yields nothing.
+   *
+   * @throws UploadStoreUnavailableException when the store cannot be listed right now
+   */
+  void forEachStoredOriginal(UUID libraryId, Consumer<StoredOriginal> visitor);
+
+  /**
+   * One original as the listing sees it.
+   *
+   * @param locator the value {@code documents.file_path} carries for this original
+   * @param lastModified when the original was written, as the store records it
+   * @param size in bytes
+   */
+  record StoredOriginal(String locator, Instant lastModified, long size) {}
 
   /**
    * Runs once at startup ({@code UploadPendingRecoveryRunner}) - after the web server is already
