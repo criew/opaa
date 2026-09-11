@@ -111,6 +111,7 @@ val typeMappingsConfig = mapOf(
     "ConfluenceEdition" to "ConfluenceEdition",
     "IndexingRunMode" to "IndexingRunMode",
     "LibraryMetadataFieldType" to "LibraryMetadataFieldType",
+    "OrphanedOriginalSkipReason" to "OrphanedOriginalSkipReason",
 )
 
 tasks.withType<Test> {
@@ -186,6 +187,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "ConfluenceEdition" to "io.opaa.api.types.ConfluenceEdition",
         "IndexingRunMode" to "io.opaa.api.types.IndexingRunMode",
         "LibraryMetadataFieldType" to "io.opaa.api.types.LibraryMetadataFieldType",
+        "OrphanedOriginalSkipReason" to "io.opaa.api.types.OrphanedOriginalSkipReason",
     ))
 }
 

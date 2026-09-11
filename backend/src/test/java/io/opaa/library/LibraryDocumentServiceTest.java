@@ -142,7 +142,7 @@ class LibraryDocumentServiceTest {
             mock(VectorStoreWriter.class),
             mock(FullTextChunkStore.class),
             new EmbeddingRateEstimator(4.0));
-    uploadProperties = new UploadProperties(storageDir.toString(), null, 10L * 1024, null, 0);
+    uploadProperties = new UploadProperties(storageDir.toString(), null, 10L * 1024, null, 0, 0);
     // The real adapter, not a mock: every assertion below about where a file ends up (or stops
     // existing) is about what it actually does with opaa.upload.storage-path.
     uploadedOriginalStore = new FilesystemUploadedOriginalStore(uploadProperties);
@@ -1199,6 +1199,12 @@ class LibraryDocumentServiceTest {
           public boolean belongsToLibrary(UploadedOriginalRef ref) {
             return true;
           }
+
+          @Override
+          public void forEachStoredOriginal(
+              UUID libraryId, java.util.function.Consumer<StoredOriginal> visitor) {
+            throw new UnsupportedOperationException();
+          }
         };
     LibraryDocumentService streamingService =
         serviceWith(new AttachmentExtractionProperties(4, java.time.Duration.ofSeconds(10)));
@@ -1503,7 +1509,7 @@ class LibraryDocumentServiceTest {
             checksumService,
             documentIngestService,
             vectorChunkStore,
-            new UploadProperties(storageDir.toString(), null, 10L * 1024, null, 0),
+            new UploadProperties(storageDir.toString(), null, 10L * 1024, null, 0, 0),
             uploadedOriginalStore,
             storageQuotaService,
             filesystemAllowlist,

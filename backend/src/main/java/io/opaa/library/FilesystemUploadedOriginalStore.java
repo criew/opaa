@@ -2,6 +2,7 @@ package io.opaa.library;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -9,6 +10,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,6 +82,31 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
   @Override
   public boolean belongsToLibrary(UploadedOriginalRef ref) {
     return managedFile(ref) != null;
+  }
+
+  @Override
+  public void forEachStoredOriginal(UUID libraryId, Consumer<StoredOriginal> visitor) {
+    Path libraryDirectory = libraryDirectory(libraryId);
+    if (!Files.isDirectory(libraryDirectory)) {
+      return;
+    }
+    try (DirectoryStream<Path> entries = Files.newDirectoryStream(libraryDirectory)) {
+      for (Path entry : entries) {
+        // One level only, and the same check every other operation goes through: a subdirectory
+        // (whose content this adapter never wrote) and a link leading out are not originals.
+        String locator = entry.toString();
+        Path file = managedFile(new UploadedOriginalRef(libraryId, locator));
+        if (file == null || !Files.isRegularFile(file)) {
+          continue;
+        }
+        visitor.accept(
+            new StoredOriginal(
+                locator, Files.getLastModifiedTime(file).toInstant(), Files.size(file)));
+      }
+    } catch (IOException e) {
+      log.warn("Could not list the stored originals under {}", libraryDirectory, e);
+      throw new UploadStoreUnavailableException();
+    }
   }
 
   /**

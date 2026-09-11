@@ -31,6 +31,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     it to {@code FAILED} at the next application startup (#614). Default 30 minutes: comfortably
  *     longer than parsing/embedding even a large upload should ever take, so a row is only ever
  *     caught here because nothing is actually still working on it.
+ * @param orphanGraceMinutes how old a stored original must be before {@code
+ *     OrphanedOriginalCleanupService} may report or remove it as orphaned (ADR-0030,
+ *     "Konsequenzen"): the window between storing the bytes and inserting the row, and the whole
+ *     asynchronous processing of an upload, must lie inside it. Default 60 minutes - twice {@link
+ *     #pendingRecoveryThresholdMinutes}, so an upload still legitimately in flight is never
+ *     mistaken for an orphan. A report may raise it per call, never lower it.
  */
 @ConfigurationProperties(prefix = "opaa.upload")
 public record UploadProperties(
@@ -38,7 +44,8 @@ public record UploadProperties(
     String store,
     long maxFileSize,
     ThreadPool threadPool,
-    int pendingRecoveryThresholdMinutes) {
+    int pendingRecoveryThresholdMinutes,
+    int orphanGraceMinutes) {
 
   public UploadProperties {
     if (storagePath == null || storagePath.isBlank()) {
@@ -55,6 +62,9 @@ public record UploadProperties(
     }
     if (pendingRecoveryThresholdMinutes <= 0) {
       pendingRecoveryThresholdMinutes = 30;
+    }
+    if (orphanGraceMinutes <= 0) {
+      orphanGraceMinutes = 60;
     }
   }
 

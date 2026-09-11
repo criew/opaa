@@ -69,7 +69,7 @@ class UploadStorageConfigurationTest {
   }
 
   private static UploadProperties properties(String store) {
-    return new UploadProperties("./uploads", store, 1024L, null, 0);
+    return new UploadProperties("./uploads", store, 1024L, null, 0, 0);
   }
 
   private static UploadS3Properties s3Properties(String bucket) {
