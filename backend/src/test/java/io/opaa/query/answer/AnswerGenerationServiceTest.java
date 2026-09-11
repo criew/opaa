@@ -49,6 +49,53 @@ class AnswerGenerationServiceTest {
     answerGenerationService = new AnswerGenerationService(activeChatModelResolver, chatMemory);
   }
 
+  /**
+   * #1487: the answer sees <b>every</b> note point, including the ANTWORTFORM ones the sub-question
+   * decomposition never gets - a Darstellungswunsch is noise for the search and the whole point
+   * here.
+   */
+  @Test
+  void everyNotePointReachesTheAnswerPrompt() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+
+    answerGenerationService.generateAnswer(
+        "Was kostet der Ausweis?",
+        List.of(),
+        "conv-note",
+        List.of("Bezugsjahr 2024", "Möchte knappe Antworten"));
+
+    assertThat(systemTextOf(capturedPrompt()))
+        .contains("Gesprächsnotiz")
+        .contains("- Bezugsjahr 2024")
+        .contains("- Möchte knappe Antworten");
+  }
+
+  @Test
+  void withoutANotePointTheAnswerPromptCarriesNoNoteBlock() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+
+    answerGenerationService.generateAnswer(
+        "Was kostet der Ausweis?", List.of(), "conv-no-note", List.of());
+
+    assertThat(systemTextOf(capturedPrompt())).doesNotContain("Gesprächsnotiz");
+  }
+
+  private Prompt capturedPrompt() {
+    ArgumentCaptor<Prompt> promptCaptor = ArgumentCaptor.forClass(Prompt.class);
+    verify(chatModel).call(promptCaptor.capture());
+    return promptCaptor.getValue();
+  }
+
+  private static String systemTextOf(Prompt prompt) {
+    return prompt.getInstructions().stream()
+        .filter(message -> message.getMessageType() == MessageType.SYSTEM)
+        .map(Message::getText)
+        .findFirst()
+        .orElseThrow();
+  }
+
   @Test
   void generateAnswerBuildsCorrectPromptAndReturnsResponse() {
     var chunk1 =

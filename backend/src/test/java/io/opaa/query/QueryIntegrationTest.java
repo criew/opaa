@@ -611,8 +611,12 @@ class QueryIntegrationTest {
 
     queryService.query("Mach daraus eine Tabelle", chatId, asCaller(userId), true, List.of());
 
+    // The *answer* prompt, not simply the last captured one: since #1487 the last call of a turn
+    // is the Gesprächsnotiz condensation, which deliberately carries only the current question.
     boolean firstQuestionInPrompt =
-        promptCaptor.getValue().getInstructions().stream()
+        promptCaptor.getAllValues().stream()
+            .filter(prompt -> prompt.getContents().contains("CITATION RULES"))
+            .flatMap(prompt -> prompt.getInstructions().stream())
             .anyMatch(m -> m.getText() != null && m.getText().contains("Ausgaben bei Apple"));
     assertThat(firstQuestionInPrompt)
         .as("the second prompt must include the first question, rehydrated from chat_messages")

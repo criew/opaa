@@ -1844,6 +1844,41 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/chats/{chatId}/note-items/{itemId}:
+    parameters:
+      - name: chatId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: deleteChatNoteItem
+      tags: [chat]
+      summary: >
+        Remove one point of a chat's Gesprächsnotiz (#1487) - author only, and rejected with 409
+        while the chat's space is archived, like every other change to an existing chat (#543).
+      description: >
+        Immediate and without a confirmation step: the point stops reaching the prompts with the
+        next question. It is deliberately not blocked for the future - if the person states the
+        same thing again, the condensation may create it again (docs/features/conversation-memory.md,
+        "Zustand und Bedienung"). A point that does not belong to this chat, or a chat the caller
+        does not author, both answer 404.
+      responses:
+        "204":
+          description: Note point removed
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
   /api/v1/libraries:
     get:
       operationId: listLibraries
@@ -5026,6 +5061,17 @@ components:
             frontend picks up the LLM-derived title (if generation succeeds) on a later reload of
             the chat, e.g. GET /chats/{chatId}.
           example: Rückstellung für Altlastensanierung
+        noteItems:
+          type: array
+          nullable: true
+          description: >
+            The Gesprächsnotiz state that went into *this* answer (#1487), oldest point first, or
+            null for an ephemeral query that has no persisted chat. Like chatTitle above, this is
+            deliberately never the state of the condensation this turn triggers: that runs
+            asynchronously after the answer is returned, so a point condensed from this turn's own
+            question first appears with the next answer or on a reload of the chat.
+          items:
+            $ref: "#/components/schemas/ChatNoteItem"
 
     SourceReference:
       type: object
@@ -5628,6 +5674,38 @@ components:
       enum: [USER, ASSISTANT]
       example: USER
 
+    ChatNoteItemKind:
+      type: string
+      description: >
+        What a Gesprächsnotiz point says about the asking person, and therefore which prompt it
+        reaches (docs/features/conversation-memory.md, "Bauteil 2"): RAHMEN (role, responsibility,
+        place, period, version, organization, decision) reaches the sub-question decomposition and
+        the answer, ANTWORTFORM (wishes about presentation) only the answer. Delivered so a client
+        can reason about it; the Oberfläche deliberately does not show it, and it is not
+        configurable.
+      enum: [RAHMEN, ANTWORTFORM]
+      example: RAHMEN
+
+    ChatNoteItem:
+      type: object
+      description: >
+        One point of a chat's Gesprächsnotiz - a single sentence of at most 200 characters,
+        condensed from a user message of this chat, in the order it was appended (oldest first).
+      required: [id, text, kind, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        text:
+          type: string
+          maxLength: 200
+          example: Arbeitet im Bürgerbüro Nebenstelle 3
+        kind:
+          $ref: "#/components/schemas/ChatNoteItemKind"
+        createdAt:
+          type: string
+          format: date-time
+
     ChatSummary:
       type: object
       description: A chat as listed in its space - without its messages, see ChatDetail for those.
@@ -5711,6 +5789,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ChatMessageResponse"
+        noteItems:
+          type: array
+          description: >
+            The chat's Gesprächsnotiz (#1487), oldest point first - always present, empty while
+            nothing has been condensed yet. Optional in the schema rather than required so a client
+            written before the note existed still type-checks; the server always sends it. Only the
+            author may remove a point, via DELETE /api/v1/chats/{chatId}/note-items/{itemId}.
+          items:
+            $ref: "#/components/schemas/ChatNoteItem"
         createdAt:
           type: string
           format: date-time

@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.api.types.ChatNoteItemKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
@@ -21,8 +22,10 @@ import io.opaa.auth.UserService;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatConversation;
 import io.opaa.chat.ChatCreation;
+import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.ChatPatch;
 import io.opaa.chat.ChatService;
+import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import java.util.List;
 import java.util.Set;
@@ -75,7 +78,7 @@ class ChatControllerTest {
   /** The returned {@link Chat} carries its own (randomly assigned) id - see {@link Chat}'s ctor. */
   private ChatConversation sampleDetail(UUID spaceId) {
     Chat chat = new Chat(spaceId, currentUser.getId(), UUID.randomUUID(), null, true, Set.of());
-    return new ChatConversation(chat, List.of());
+    return new ChatConversation(chat, List.of(), List.of());
   }
 
   @Test
@@ -296,5 +299,80 @@ class ChatControllerTest {
     mockMvc
         .perform(delete("/api/v1/chats/{chatId}", chatId).with(asTestUser()))
         .andExpect(status().isNotFound());
+  }
+
+  /** #1487: both path variables reach the service, in the right order. */
+  @Test
+  void deleteChatNoteItemReturns204AndPassesBothPathVariablesThrough() throws Exception {
+    UUID chatId = UUID.randomUUID();
+    UUID itemId = UUID.randomUUID();
+
+    mockMvc
+        .perform(
+            delete("/api/v1/chats/{chatId}/note-items/{itemId}", chatId, itemId).with(asTestUser()))
+        .andExpect(status().isNoContent());
+
+    ArgumentCaptor<UUID> chatIdCaptor = ArgumentCaptor.forClass(UUID.class);
+    ArgumentCaptor<UUID> itemIdCaptor = ArgumentCaptor.forClass(UUID.class);
+    verify(chatService)
+        .deleteNoteItem(chatIdCaptor.capture(), itemIdCaptor.capture(), eq(currentUser.getId()));
+    assertThat(chatIdCaptor.getValue()).isEqualTo(chatId);
+    assertThat(itemIdCaptor.getValue()).isEqualTo(itemId);
+  }
+
+  @Test
+  void deleteChatNoteItemReturns404ForAForeignChatOrUnknownPoint() throws Exception {
+    UUID chatId = UUID.randomUUID();
+    UUID itemId = UUID.randomUUID();
+    org.mockito.Mockito.doThrow(new NotFoundException("Notizpunkt nicht gefunden"))
+        .when(chatService)
+        .deleteNoteItem(eq(chatId), eq(itemId), any());
+
+    mockMvc
+        .perform(
+            delete("/api/v1/chats/{chatId}/note-items/{itemId}", chatId, itemId).with(asTestUser()))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void deleteChatNoteItemReturns409WhileTheSpaceIsArchived() throws Exception {
+    UUID chatId = UUID.randomUUID();
+    UUID itemId = UUID.randomUUID();
+    org.mockito.Mockito.doThrow(new ConflictException("Der Space ist archiviert"))
+        .when(chatService)
+        .deleteNoteItem(eq(chatId), eq(itemId), any());
+
+    mockMvc
+        .perform(
+            delete("/api/v1/chats/{chatId}/note-items/{itemId}", chatId, itemId).with(asTestUser()))
+        .andExpect(status().isConflict());
+  }
+
+  /** #1487: the note reaches the chat response the frontend reloads. */
+  @Test
+  void getChatRendersTheNoteItems() throws Exception {
+    UUID chatId = UUID.randomUUID();
+    UUID itemId = UUID.randomUUID();
+    Chat chat =
+        new Chat(UUID.randomUUID(), currentUser.getId(), UUID.randomUUID(), null, true, Set.of());
+    when(chatService.getChat(eq(chatId), any()))
+        .thenReturn(
+            new ChatConversation(
+                chat,
+                List.of(),
+                List.of(
+                    new ChatNotePoint(
+                        itemId,
+                        "Bezugsjahr 2024",
+                        ChatNoteItemKind.RAHMEN,
+                        java.time.Instant.parse("2026-09-11T08:00:00Z")))));
+
+    mockMvc
+        .perform(get("/api/v1/chats/{chatId}", chatId).with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.noteItems.length()").value(1))
+        .andExpect(jsonPath("$.noteItems[0].id").value(itemId.toString()))
+        .andExpect(jsonPath("$.noteItems[0].text").value("Bezugsjahr 2024"))
+        .andExpect(jsonPath("$.noteItems[0].kind").value("RAHMEN"));
   }
 }

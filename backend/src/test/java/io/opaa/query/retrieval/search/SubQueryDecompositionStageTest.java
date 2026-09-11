@@ -1,6 +1,8 @@
 package io.opaa.query.retrieval.search;
 
+import static org.assertj.core.api.Assertions.as;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.InstanceOfAssertFactories.STRING;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
@@ -137,6 +139,36 @@ class SubQueryDecompositionStageTest {
         .containsExactly("Und wie lange ist er gültig? Gilt das auch für Zweitwagen?");
   }
 
+  /**
+   * The seam #1487 lives or dies on: the note's {@code RAHMEN} points must arrive as a context
+   * block, so they are in {@link DecompositionContext#contextTexts()} - the anchor space of the
+   * safety belt - and not merely in front of the model.
+   */
+  @Test
+  void theRahmenPointsOfTheNoteArriveAsAnAnchoredContextBlock() {
+    when(decomposition.decompose(any(), anyInt())).thenReturn(List.of("Teilfrage"));
+
+    stage.apply(contextWith(List.of(), 2, List.of("Bezugsjahr 2024")), RetrievalState.initial());
+
+    DecompositionContext context = capturedContext();
+    assertThat(context.contextBlocks())
+        .singleElement(as(STRING))
+        .contains("Bezugsjahr 2024")
+        .startsWith("Gesprächsnotiz");
+    assertThat(context.contextTexts())
+        .anySatisfy(text -> assertThat(text).contains("Bezugsjahr 2024"));
+  }
+
+  /** Without a RAHMEN point there is no block - an empty heading would still be an instruction. */
+  @Test
+  void anEmptyNoteAddsNoContextBlock() {
+    when(decomposition.decompose(any(), anyInt())).thenReturn(List.of("Teilfrage"));
+
+    stage.apply(contextWith(THREE_TURNS, 2), RetrievalState.initial());
+
+    assertThat(capturedContext().contextBlocks()).isEmpty();
+  }
+
   private DecompositionContext capturedContext() {
     ArgumentCaptor<DecompositionContext> captor =
         ArgumentCaptor.forClass(DecompositionContext.class);
@@ -145,9 +177,15 @@ class SubQueryDecompositionStageTest {
   }
 
   private static RetrievalContext contextWith(List<Message> window, int searchWindowTurns) {
+    return contextWith(window, searchWindowTurns, List.of());
+  }
+
+  private static RetrievalContext contextWith(
+      List<Message> window, int searchWindowTurns, List<String> conversationNote) {
     return new RetrievalContext(
         "Gilt das auch für Zweitwagen?",
         window,
+        conversationNote,
         Set.of(UUID.randomUUID()),
         MetadataFilter.NONE,
         new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, true, 0, 20, searchWindowTurns),

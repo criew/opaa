@@ -24,7 +24,8 @@ final class QueryResponseMapper {
             ChatResponseMapper.toSourceReferences(result.sources()),
             toMetadata(result.metadata()),
             result.chatId())
-        .chatTitle(result.chatTitle());
+        .chatTitle(result.chatTitle())
+        .noteItems(ChatResponseMapper.toNoteItems(result.noteItems()));
   }
 
   private static QueryMetadata toMetadata(QueryOutcome outcome) {

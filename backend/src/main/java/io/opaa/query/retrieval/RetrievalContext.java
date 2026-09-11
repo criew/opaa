@@ -14,6 +14,9 @@ import org.springframework.ai.chat.messages.Message;
  * scope every one of its searches applies (ADR-0008 §5).
  *
  * <p>{@code searchScope} is taken as given; this type resolves no permissions of its own. {@code
+ * conversationNote} holds the {@code RAHMEN} points of the chat's Gesprächsnotiz as plain texts -
+ * already filtered by kind, because only that kind reaches the search
+ * (docs/features/conversation-memory.md, "Bauteil 2"); empty outside a persisted chat. {@code
  * metadataFilter} is the filter the asking person or the chat set, never derived from the question.
  * {@code queryProperties} and {@code rerankAvailability} travel here rather than being injected, so
  * one instance serves several parameter sets and every stage of a run sees the same rerank answer -
@@ -23,6 +26,7 @@ import org.springframework.ai.chat.messages.Message;
 public record RetrievalContext(
     String question,
     List<Message> conversationHistory,
+    List<String> conversationNote,
     Set<UUID> searchScope,
     MetadataFilter metadataFilter,
     QueryProperties queryProperties,
@@ -30,8 +34,31 @@ public record RetrievalContext(
 
   public RetrievalContext {
     conversationHistory = List.copyOf(conversationHistory);
+    conversationNote = List.copyOf(conversationNote);
     searchScope = Set.copyOf(searchScope);
     metadataFilter = metadataFilter == null ? MetadataFilter.NONE : metadataFilter;
+  }
+
+  /**
+   * A run without a Gesprächsnotiz - what a query outside a persisted chat, the administration's
+   * diagnosis and the single-question evaluation path all have. Kept as a constructor rather than
+   * left to each caller to pass {@code List.of()}, so the note stays one named concept.
+   */
+  public RetrievalContext(
+      String question,
+      List<Message> conversationHistory,
+      Set<UUID> searchScope,
+      MetadataFilter metadataFilter,
+      QueryProperties queryProperties,
+      RerankAvailability rerankAvailability) {
+    this(
+        question,
+        conversationHistory,
+        List.of(),
+        searchScope,
+        metadataFilter,
+        queryProperties,
+        rerankAvailability);
   }
 
   /**
@@ -45,6 +72,7 @@ public record RetrievalContext(
         : new RetrievalContext(
             question,
             conversationHistory,
+            conversationNote,
             searchScope,
             metadataFilter,
             queryProperties,

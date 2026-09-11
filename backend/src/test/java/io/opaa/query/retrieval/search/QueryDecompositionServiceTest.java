@@ -13,6 +13,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.observability.QueryMetrics;
+import io.opaa.query.ConversationNoteBlock;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -402,6 +403,40 @@ class QueryDecompositionServiceTest {
     verifyNoInteractions(metrics);
   }
 
+  /**
+   * The acceptance case of #1487, with the <b>real</b> rendered Gesprächsnotiz block rather than a
+   * bare string: the note point "Bezugsjahr 2024" is the only anchor the sub-query
+   * "Anwohnerparkausweis Gebühren 2024" shares with anything the decomposition was given. Without
+   * the note in the anchor space the belt would judge it unrelated and - being all or nothing -
+   * take the whole run into the fallback, precisely in the {@code constraint_carryover} case.
+   */
+  @Test
+  void aSubQueryAnchoredOnlyInTheRenderedNoteSurvivesTheSafetyBelt() {
+    stubChatModelResponse("Anwohnerparkausweis Gebühren 2024");
+    String noteBlock = ConversationNoteBlock.render(List.of("Bezugsjahr 2024"));
+
+    List<String> withNote =
+        service.decompose(
+            DecompositionContext.of("Wie hoch sind dafür die Kosten?", List.of())
+                .withContextBlock(noteBlock),
+            3);
+
+    assertThat(withNote).containsExactly("Anwohnerparkausweis Gebühren 2024");
+    verifyNoInteractions(metrics);
+  }
+
+  /** The same sub-query without the note: unrelated, whole decomposition discarded. */
+  @Test
+  void withoutTheRenderedNoteTheSameSubQueryFallsBack() {
+    stubChatModelResponse("Anwohnerparkausweis Gebühren 2024");
+
+    List<String> subQueries =
+        service.decompose(DecompositionContext.of("Wie hoch sind dafür die Kosten?", List.of()), 3);
+
+    assertThat(subQueries).isEmpty();
+    verify(metrics).recordDegenerateDecomposition();
+  }
+
   /** The same sub-query without the block: unrelated, whole decomposition discarded. */
   @Test
   void withoutTheContextBlockTheSameSubQueryFallsBack() {
@@ -437,11 +472,12 @@ class QueryDecompositionServiceTest {
         DecompositionContext.of(
                 "Was kostet der Ausweis?",
                 List.of(new UserMessage("Vorrunde zum Anwohnerparkausweis")))
-            .withContextBlock("Bezugsjahr 2024");
+            .withContextBlock(ConversationNoteBlock.render(List.of("Bezugsjahr 2024")));
     DecompositionContext second =
         DecompositionContext.of(
                 "Welche Frist gilt?", List.of(new UserMessage("Vorrunde zum Widerspruch")))
-            .withContextBlock("Zuständig ist das Ordnungsamt");
+            .withContextBlock(
+                ConversationNoteBlock.render(List.of("Zuständig ist das Ordnungsamt")));
 
     service.decompose(first, 3);
     service.decompose(second, 3);

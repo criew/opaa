@@ -1,5 +1,7 @@
 package io.opaa.eval;
 
+import io.opaa.chat.ChatNoteExtractionService;
+import io.opaa.chat.ChatNoteProperties;
 import io.opaa.eval.ConversationEvaluationReport.ConversationRunConfiguration;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.metadata.MetadataFilter;
@@ -75,6 +77,8 @@ public final class ConversationHarnessSupport {
       RetrievalPipeline pipeline,
       RetrievalContextFactory contextFactory,
       ChatMemory chatMemory,
+      ChatNoteExtractionService chatNoteExtractionService,
+      ChatNoteProperties chatNoteProperties,
       IndexingProperties indexingProperties,
       UUID evalLibraryId,
       Logger log) {
@@ -96,7 +100,7 @@ public final class ConversationHarnessSupport {
       }
 
       ConversationMemoryProfile memoryProfile =
-          ConversationMemoryProfile.measuredFrom(chatMemory, queryProperties);
+          ConversationMemoryProfile.measuredFrom(chatMemory, queryProperties, chatNoteProperties);
       // Mehrfachlauf-Regel (docs/features/retrieval-benchmark.md §3), through the shared rule: this
       // path always decomposes and is therefore never deterministic. It carries the highest LLM
       // share of the three paths - one decomposition call per *turn*, not per case - so the spread
@@ -112,6 +116,7 @@ public final class ConversationHarnessSupport {
                       pipeline,
                       contextFactory,
                       chatMemory,
+                      chatNoteExtractionService::condense,
                       memoryProfile,
                       indexingProperties,
                       evalLibraryId,
@@ -147,8 +152,11 @@ public final class ConversationHarnessSupport {
    * One measurement of the whole multi-turn dataset: every case, turn by turn, through the same
    * {@link RetrievalContextFactory}/{@link RetrievalPipeline} pair a chat query uses.
    *
-   * <p>The turn's conversation window is handed in as the context's conversation history - the one
-   * place this path differs from the single-question one, which passes an empty list.
+   * <p>The turn's conversation window and the {@code RAHMEN} points of its Gesprächsnotiz are
+   * handed in as the context's conversation history and note - the one place this path differs from
+   * the single-question one, which passes empty lists for both. {@code noteExtraction} is the
+   * production condensation ({@code ChatNoteExtractionService#condense}); a failing model call
+   * costs that turn its points, exactly as it does in production, and never the run.
    */
   public static ConversationEvaluationReport measure(
       EvalDomainConfig domain,
@@ -156,6 +164,7 @@ public final class ConversationHarnessSupport {
       RetrievalPipeline pipeline,
       RetrievalContextFactory contextFactory,
       ChatMemory chatMemory,
+      ConversationRetrievalEvaluator.NoteExtraction noteExtraction,
       ConversationMemoryProfile memoryProfile,
       IndexingProperties indexingProperties,
       UUID evalLibraryId,
@@ -167,12 +176,13 @@ public final class ConversationHarnessSupport {
         ConversationRetrievalEvaluator.evaluateAll(
             cases,
             chatMemory,
-            (conversationCase, turnIndex, conversationWindow) -> {
+            (conversationCase, turnIndex, conversationWindow, conversationNote) -> {
               RetrievalPipelineResult result =
                   pipeline.run(
                       contextFactory.contextFor(
                           conversationCase.turns().get(turnIndex).query(),
                           conversationWindow,
+                          conversationNote,
                           searchScope,
                           MetadataFilter.NONE));
               List<String> rankedFileNames =
@@ -182,7 +192,9 @@ public final class ConversationHarnessSupport {
                       .toList();
               return new ConversationRetrievalEvaluator.TurnInvocationResult(
                   rankedFileNames, result.searchQueries());
-            });
+            },
+            noteExtraction,
+            memoryProfile.noteCap());
 
     return ConversationRetrievalEvaluator.report(
         outcomes,
@@ -274,6 +286,7 @@ public final class ConversationHarnessSupport {
       RetrievalPipeline pipeline,
       RetrievalContextFactory contextFactory,
       ChatMemory chatMemory,
+      ConversationRetrievalEvaluator.NoteExtraction noteExtraction,
       ConversationMemoryProfile memoryProfile,
       IndexingProperties indexingProperties,
       UUID evalLibraryId,
@@ -286,6 +299,7 @@ public final class ConversationHarnessSupport {
           pipeline,
           contextFactory,
           chatMemory,
+          noteExtraction,
           memoryProfile,
           indexingProperties,
           evalLibraryId,

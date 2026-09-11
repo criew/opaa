@@ -2,12 +2,14 @@ package io.opaa.api;
 
 import io.opaa.api.dto.ChatDetail;
 import io.opaa.api.dto.ChatMessageResponse;
+import io.opaa.api.dto.ChatNoteItem;
 import io.opaa.api.dto.ChatSummary;
 import io.opaa.api.dto.ChunkLocation;
 import io.opaa.api.dto.SourceMetadataEntry;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatConversation;
+import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
@@ -53,9 +55,23 @@ final class ChatResponseMapper {
             messages,
             conversation.getCreatedAt(),
             conversation.getUpdatedAt())
+        .noteItems(toNoteItems(conversation.getNoteItems()))
         .title(conversation.getTitle())
         .referencedLibraryIds(conversation.getReferencedLibraryIds())
         .metadataFilter(MetadataFilterMapper.toResponse(conversation.getMetadataFilter()));
+  }
+
+  /**
+   * The Gesprächsnotiz (#1487). Package-private (not private): reused by {@code
+   * QueryResponseMapper}, where {@code null} - no persisted chat - stays {@code null} rather than
+   * becoming an empty note.
+   */
+  static List<ChatNoteItem> toNoteItems(List<ChatNotePoint> points) {
+    return points == null ? null : points.stream().map(ChatResponseMapper::toNoteItem).toList();
+  }
+
+  private static ChatNoteItem toNoteItem(ChatNotePoint point) {
+    return new ChatNoteItem(point.id(), point.text(), point.kind(), point.createdAt());
   }
 
   private static ChatMessageResponse toMessageResponse(ChatTurn turn) {

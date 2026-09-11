@@ -85,6 +85,29 @@ Zwei Eigenschaften des Fensters sind betrieblich wichtig:
 Beide Breiten sind Konfigurationswerte (Abschnitt 10.3); in einer Verwaltungsoberfläche erscheinen
 sie nicht.
 
+Neben dem Fenster führt jeder gespeicherte Chat eine **Gesprächsnotiz**: eine kurze, dauerhafte
+Liste von Angaben der fragenden Person, die über das Fenster hinaus gelten. Sie entsteht nach jeder
+Antwort aus der **Nutzernachricht** derselben Runde — nie aus Antworten — durch einen nebenläufigen
+Aufruf des Chat-Modells (Abschnitt 3).
+
+| Eigenschaft | Regel |
+|---|---|
+| Inhalt | Rolle, Zuständigkeit, Ort, Zeitraum, Fassung, Organisation, Festlegungen sowie Wünsche zur Antwortform. Keine Themen der Fragen, keine Antwortinhalte, keine Bewertungen über die Person |
+| Umfang je Runde | höchstens zwei Punkte; Doppelte (unabhängig von Groß-/Kleinschreibung und Satzzeichen) kommen nicht erneut hinzu |
+| Umfang je Chat | höchstens zehn Punkte (Abschnitt 10.3); beim Überlauf fällt der älteste Punkt weg |
+| Länge eines Punkts | höchstens 200 Zeichen, längere werden mit „…" gekürzt |
+| Wirkung | Die Suche (Stufe 3) sieht nur die Punkte mit Rahmenangaben, die Antwort (Abschnitt 6) alle. Diese Unterscheidung ist intern und wird nicht angezeigt |
+| Lebensdauer | die des Chats: mit ihm gelöscht, nur für seinen Autor sichtbar, nicht protokolliert und nicht auswertbar |
+
+Zwei Punkte sind betrieblich wichtig:
+
+- **Ein neuer Punkt wirkt erst ab der nächsten Frage.** Die Antwort einer Runde trägt den
+  Notizstand, der in sie eingeflossen ist — dieselbe Regel wie beim erzeugten Chat-Titel.
+- **Eine fehlgeschlagene Verdichtung wird nicht nachgeholt.** Diese Runde steuert dann keine Punkte
+  bei; im Log steht eine Warnung ohne Inhalt, und die Metrik `opaa.chat.note.extraction` zählt den
+  Grund (Abschnitt 10.2). Ist der Space beim Schreiben des Ergebnisses inzwischen archiviert, wird
+  das Ergebnis verworfen — ein archivierter Space nimmt keine Änderung an einem Chat an.
+
 Der **Suchbereich** ist die Menge der Bibliotheken, in denen diese Frage sucht. Er steht in der
 Chip-Leiste am Eingabefeld und gilt für den ganzen Chat: „Durchsucht wird, was in der Leiste
 steht."
@@ -135,11 +158,14 @@ konfigurierten Modelle. Je Frage sind das im Auslieferungsstand:
 | Reranking | einmal, nur wenn Reranking eingeschaltet und der Endpunkt erreichbar ist | Rerank-Modell |
 | Antwort | einmal | Chat-Modell |
 | Chat-Titel | einmal je neuem gespeicherten Chat, nach der ersten Antwort, nebenläufig | Chat-Modell |
+| Gesprächsnotiz verdichten | einmal je Runde eines gespeicherten Chats, nach der Antwort, nebenläufig | Chat-Modell |
 
 Die Volltextsuche, die Vielfaltsauswahl, die Fusion, die Dokument-Vervollständigung und die
 Belegprüfung sind reine Datenbank- und Rechenschritte ohne Modellaufruf. Die Latenz einer Frage
 besteht deshalb im Wesentlichen aus zwei Chat-Modell-Aufrufen, und bei eingeschaltetem Reranking
-aus dessen Antwortzeit (Stufe 8).
+aus dessen Antwortzeit (Stufe 8). Die beiden nebenläufigen Aufrufe — Titel und Notiz — liegen
+außerhalb des Anfrage-Threads und verlängern die Antwortzeit nicht; sie erhöhen die Modellkosten je
+Runde.
 
 ## 4. Die Suchstrecke: Stufe für Stufe
 
@@ -213,11 +239,19 @@ bekommen hat (ein kleines Modell ersetzt gelegentlich die Frage durch etwas Eige
 Stufe auf die Frage selbst zurück, und zwar ganz: Eine Teilfrage wegzulassen kostet ein Thema der
 Frage, die Frage selbst kostet nur Genauigkeit.
 
-„Der Kontext, den die Zerlegung bekommen hat" ist dabei wörtlich zu nehmen: **genau die Frage und
-das Suchfenster**, nicht mehr und nicht weniger. Das ist nötig, weil eine korrekt aufgelöste
+Zusätzlich zum Suchfenster bekommt die Zerlegung die **Rahmen-Punkte der Gesprächsnotiz**
+(Abschnitt 2) als eigenen Block, mit der Regel, sie ausschließlich zur Auflösung rückverweisender
+oder unterbestimmter Wörter zu verwenden; eine bereits eigenständige Frage bleibt unverändert. Ohne
+solche Punkte entfällt der Block ganz. Ist die Zerlegung abgeschaltet, erreicht die Notiz die Suche
+gar nicht — der Rückfall baut die Suchanfrage ohne Modell.
+
+„Der Kontext, den die Zerlegung bekommen hat" ist dabei wörtlich zu nehmen: **genau die Frage, das
+Suchfenster und die gerenderten Notizpunkte**, nicht mehr und nicht weniger. Das ist nötig, weil eine korrekt aufgelöste
 Rückfrage mit der Frage oft kein Wort teilt — „Wie lange dauert das?" wird zu „Bearbeitungsdauer für
-den Anwohnerparkausweis", und das Ankerwort steht in der Vorrunde, nicht in der Frage. Ein Thema,
-das älter als das Suchfenster ist, kann eine Teilfrage umgekehrt nicht mehr rechtfertigen.
+den Anwohnerparkausweis", und das Ankerwort steht in der Vorrunde, nicht in der Frage — oder in der Notiz,
+etwa wenn der Punkt „Bezugsjahr 2024" die Teilfrage „Anwohnerparkausweis Gebühren 2024"
+rechtfertigt. Ein Thema, das älter als das Suchfenster ist, kann eine Teilfrage umgekehrt nicht
+mehr rechtfertigen.
 
 Im Rückfall wird der aktuellen Frage die **letzte** Nutzerfrage des Suchfensters vorangestellt; gibt
 es im Suchfenster keine Vorrunde, wird die Frage allein gesucht. Ein solcher Rückfall steht als
@@ -401,8 +435,10 @@ Kontextpräfix über den Bestand nachziehen lässt, steht im Kapitel [Metadaten]
 ## 6. Antwort erzeugen
 
 Die ausgewählten Chunks gehen mit einem Kopf je Chunk (Dateiname, Dokument-ID, Chunk-Nummer und die
-vorgegebene Zitierform) zusammen mit dem Gesprächsverlauf und der Frage an das **systemweit aktive
-Chat-Modell**. Die Systemanweisung verpflichtet das Modell, jede genutzte Quelle mit einer Marke der
+vorgegebene Zitierform) zusammen mit der **Gesprächsnotiz**, dem Gesprächsverlauf und der Frage an
+das **systemweit aktive Chat-Modell**. Die Notiz steht als eigener Block vor dem Verlauf und
+enthält hier **alle** Punkte, auch die Wünsche zur Antwortform, die die Suche nie sieht
+(Abschnitt 2); ohne Punkte entfällt der Block. Die Systemanweisung verpflichtet das Modell, jede genutzte Quelle mit einer Marke der
 Form `【source: <Dokument-ID>#<Chunk-Nummer> | <Dateiname>】` am Satzende zu zitieren und keine
 Quellen zu erfinden. Das Modell wird bei jedem Aufruf neu aufgelöst; eine Aktivierung eines anderen
 Modells in der Verwaltung wirkt ohne Neustart. Ist kein Chat-Modell aktiv oder antwortet das
@@ -420,6 +456,9 @@ das Modell aus dem Gespräch allein (die Hinweise dazu stehen in Abschnitt 2). J
 gesucht hat, aber keinen Beleg zitiert, trägt die Zeile **„Durchsucht wurden: …"** mit den Namen
 der durchsuchten Bibliotheken, damit die Person sieht, worin nichts gefunden oder nichts verwendet
 wurde.
+
+Nach der Antwort wird die Nutzernachricht dieser Runde nebenläufig zur Gesprächsnotiz verdichtet
+(Abschnitt 2); ein daraus entstehender Punkt wirkt ab der nächsten Frage.
 
 Frage und Antwort werden dem Gesprächsfenster hinzugefügt und bei einem gespeicherten Chat
 persistiert — die Antwort im Fenster ohne ihre Zitiermarken, der gespeicherte Text mit ihnen
@@ -599,8 +638,10 @@ Darüber antwortet das Backend mit HTTP 429. Die Werte stehen unter `opaa.rate-l
 | `opaa.query.count` | Fragen, nach Erfolg und Fehler unterschieden |
 | `opaa.query.tokens` | verbrauchte Tokens des Chat-Modells |
 | `opaa.query.decomposition.fallback` | Rückfälle der Zerlegung, nach Ursache unterschieden |
+| `opaa.chat.note.extraction` | Verdichtungen der Gesprächsnotiz, nach Ausgang unterschieden: `applied`, `empty`, `failed` (Modell nicht erreichbar, Zeitüberschreitung, unparsebar) und `discarded` (Space zwischenzeitlich archiviert) |
 
-Als Warnung geht der Rückfall der Zerlegung ins Log. Ungültige
+Als Warnung gehen der Rückfall der Zerlegung und die fehlgeschlagene Verdichtung der
+Gesprächsnotiz ins Log, beide ohne Inhalt. Ungültige
 Belege werden je Antwort mit ihrer Anzahl auf Info-Ebene vermerkt; wer nur auf Warnungen
 alarmiert, sieht sie nicht. Fragetext, Suchanfragen und Antwort erscheinen in keiner Logzeile
 oberhalb der Debug-Ebene.
@@ -625,6 +666,17 @@ Umgebungsvariable im Kapitel [Deployment](deployment.md#alle-umgebungsvariablen)
 | `search-window-turns` | 2 | Runden des Gesprächsfensters, die die Teilfragen-Zerlegung sieht (0 bis `conversation-window-messages` ÷ 2); 0 heißt „nur die Frage" |
 | `metadata-filter.*` | 0,90 / 0,75 / 0,75 / 5m | Füllstandsschwellen für Dokumentart, Datum und Bibliotheksfelder, Cache der Filteroptionen |
 | `pipeline.disabled-stages` | leer | ganze Stufen aus der Kette nehmen; nur für Entwicklung und Messung, der Suchbereich ist nicht abschaltbar |
+
+Ein einziger Wert der Gesprächsnotiz ist einstellbar, und er steht unter einem eigenen Präfix, weil
+die Notiz Chatinhalt ist und kein Suchparameter:
+
+| Schlüssel | Standard | Wirkung |
+|---|---|---|
+| `opaa.chat.note.max-items` | 10 | Höchstzahl der Notizpunkte je Chat (1 bis 50); beim Anhängen darüber hinaus fällt der älteste Punkt weg |
+
+Alles andere an der Notiz ist ein fester Wert ohne Adressaten: zwei Punkte je Runde, 200 Zeichen je
+Punkt, die Art eines Punkts, das verwendete Modell (das systemweit aktive Chat-Modell) und die
+Tatsache, dass die Verdichtung läuft — einen Schalter dafür gibt es bewusst nicht.
 
 Die Rerank-Rolle wird getrennt konfiguriert (`opaa.rerank.*`: Schalter, Basisadresse, Modell,
 Schlüssel, Zeitbudget), weil sie eine Installationsentscheidung über ein Modell ist, kein

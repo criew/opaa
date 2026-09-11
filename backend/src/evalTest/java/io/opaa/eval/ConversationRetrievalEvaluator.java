@@ -1,5 +1,8 @@
 package io.opaa.eval;
 
+import io.opaa.api.types.ChatNoteItemKind;
+import io.opaa.chat.ChatNoteCandidate;
+import io.opaa.chat.ChatNoteList;
 import io.opaa.eval.ConversationEvaluationReport.CaseOutcomeSummary;
 import io.opaa.eval.ConversationEvaluationReport.ClassOutcome;
 import io.opaa.eval.ConversationEvaluationReport.ConversationCaseResult;
@@ -30,6 +33,14 @@ import org.springframework.ai.chat.messages.UserMessage;
  * that memory returns. Window width, eviction order and citation-marker normalization are therefore
  * production behaviour by construction, not because a curated dataset happens to avoid them.
  *
+ * <p><b>The Gespraechsnotiz is built by the production condensation, not scripted</b> (#1487):
+ * after every turn, {@link NoteExtraction} condenses that turn's <em>question</em> - the harness
+ * supplies {@code ChatNoteExtractionService#condense} - and {@link ChatNoteList} decides which
+ * candidates enter and how many oldest points fall out, the same algebra the persisted note uses.
+ * The next turn receives the {@code RAHMEN} points, which is all the sub-question decomposition
+ * ever sees. The note is therefore a non-deterministic part of this path, like the decomposition
+ * itself, and falls under the Mehrfachlauf-Regel.
+ *
  * <p>Takes the retrieval itself as a {@link TurnInvocation} rather than depending on {@code
  * RetrievalPipeline}, for the same reason {@link PipelineRetrievalEvaluator} does: the harness
  * supplies the production run, while this class stays a Docker- and Spring-context-free unit
@@ -44,12 +55,31 @@ public final class ConversationRetrievalEvaluator {
 
   /**
    * One turn's retrieval run. {@code conversationWindow} is the production window built from the
-   * preceding turns, empty for the first turn of a case.
+   * preceding turns, empty for the first turn of a case; {@code conversationNote} the {@code
+   * RAHMEN} points condensed from those turns, empty for the first turn and for a run without a
+   * note.
    */
   @FunctionalInterface
   public interface TurnInvocation {
     TurnInvocationResult invoke(
-        ConversationCase conversationCase, int turnIndex, List<Message> conversationWindow);
+        ConversationCase conversationCase,
+        int turnIndex,
+        List<Message> conversationWindow,
+        List<String> conversationNote);
+  }
+
+  /**
+   * The production condensation of one user message into note candidates. A functional interface
+   * rather than a dependency on the service, so this class stays Spring-free; the harness passes
+   * the real one.
+   */
+  @FunctionalInterface
+  public interface NoteExtraction {
+
+    /** The condensation of a run that keeps no note - every turn then starts from nothing. */
+    NoteExtraction NONE = userMessage -> List.of();
+
+    List<ChatNoteCandidate> condense(String userMessage);
   }
 
   /** One turn's outcome: its windowed metrics plus what the pipeline actually returned. */
@@ -90,9 +120,19 @@ public final class ConversationRetrievalEvaluator {
    */
   public static List<CaseOutcome> evaluateAll(
       List<ConversationCase> cases, ChatMemory chatMemory, TurnInvocation pipeline) {
+    return evaluateAll(cases, chatMemory, pipeline, NoteExtraction.NONE, 0);
+  }
+
+  /** The same run with a Gesprächsnotiz - see {@link NoteExtraction}. */
+  public static List<CaseOutcome> evaluateAll(
+      List<ConversationCase> cases,
+      ChatMemory chatMemory,
+      TurnInvocation pipeline,
+      NoteExtraction noteExtraction,
+      int noteCap) {
     List<CaseOutcome> outcomes = new ArrayList<>(cases.size());
     for (ConversationCase conversationCase : cases) {
-      outcomes.add(evaluateCase(conversationCase, chatMemory, pipeline));
+      outcomes.add(evaluateCase(conversationCase, chatMemory, pipeline, noteExtraction, noteCap));
     }
     return List.copyOf(outcomes);
   }
@@ -100,15 +140,31 @@ public final class ConversationRetrievalEvaluator {
   /** Runs a single case; visible for the unit test that proves turn 2 receives turn 1's window. */
   public static CaseOutcome evaluateCase(
       ConversationCase conversationCase, ChatMemory chatMemory, TurnInvocation pipeline) {
+    return evaluateCase(conversationCase, chatMemory, pipeline, NoteExtraction.NONE, 0);
+  }
+
+  /**
+   * The same case with a Gesprächsnotiz: {@code noteExtraction} condenses each finished turn's
+   * question, {@code noteCap} bounds the resulting list. {@code noteCap <= 0} keeps no note at all,
+   * which is what the overload above passes.
+   */
+  public static CaseOutcome evaluateCase(
+      ConversationCase conversationCase,
+      ChatMemory chatMemory,
+      TurnInvocation pipeline,
+      NoteExtraction noteExtraction,
+      int noteCap) {
     String conversationId = "eval-conversation-" + conversationCase.id() + "-" + UUID.randomUUID();
     List<TurnOutcome> turnOutcomes = new ArrayList<>(conversationCase.turns().size());
+    List<ChatNoteCandidate> note = new ArrayList<>();
     try {
       for (int turnIndex = 0; turnIndex < conversationCase.turns().size(); turnIndex++) {
         ConversationCase.Turn turn = conversationCase.turns().get(turnIndex);
         // The window as production would hand it over: everything the memory holds *before* this
         // turn's own question is added.
         List<Message> window = List.copyOf(chatMemory.get(conversationId));
-        TurnInvocationResult invocation = pipeline.invoke(conversationCase, turnIndex, window);
+        TurnInvocationResult invocation =
+            pipeline.invoke(conversationCase, turnIndex, window, rahmenPoints(note));
         turnOutcomes.add(
             evaluateTurn(
                 conversationCase,
@@ -119,11 +175,45 @@ public final class ConversationRetrievalEvaluator {
         chatMemory.add(conversationId, new UserMessage(turn.query()));
         ConversationWindowMessages.answer(turn.answer())
             .ifPresent(message -> chatMemory.add(conversationId, message));
+        // After the turn, as in production: a point condensed from this turn's question reaches
+        // the *next* turn, never this one.
+        condenseInto(note, noteExtraction, turn.query(), noteCap);
       }
     } finally {
       chatMemory.clear(conversationId);
     }
     return new CaseOutcome(conversationCase, List.copyOf(turnOutcomes));
+  }
+
+  /** What the sub-question decomposition sees of the note - never the ANTWORTFORM points. */
+  private static List<String> rahmenPoints(List<ChatNoteCandidate> note) {
+    return note.stream()
+        .filter(point -> point.kind() == ChatNoteItemKind.RAHMEN)
+        .map(ChatNoteCandidate::text)
+        .toList();
+  }
+
+  /**
+   * Appends what the note accepts and drops as many oldest points as the cap requires - through
+   * {@link ChatNoteList}, so the measured note cannot diverge from the persisted one.
+   */
+  private static void condenseInto(
+      List<ChatNoteCandidate> note,
+      NoteExtraction noteExtraction,
+      String userMessage,
+      int noteCap) {
+    if (noteCap <= 0) {
+      return;
+    }
+    List<ChatNoteCandidate> accepted =
+        ChatNoteList.accept(
+            note.stream().map(ChatNoteCandidate::text).toList(),
+            noteExtraction.condense(userMessage));
+    if (accepted.isEmpty()) {
+      return;
+    }
+    note.subList(0, ChatNoteList.overflow(note.size(), accepted.size(), noteCap)).clear();
+    note.addAll(accepted);
   }
 
   /**

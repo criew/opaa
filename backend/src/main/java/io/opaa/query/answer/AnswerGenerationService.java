@@ -1,6 +1,7 @@
 package io.opaa.query.answer;
 
 import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.query.ConversationNoteBlock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -60,8 +61,27 @@ public class AnswerGenerationService {
 
   public ChatResponse generateAnswer(
       String question, List<Document> relevantChunks, String conversationId) {
+    return generateAnswer(question, relevantChunks, conversationId, List.of());
+  }
+
+  /**
+   * The same answer with the chat's Gesprächsnotiz (#1487): <b>all</b> of its points, unlike the
+   * sub-question decomposition, which only sees the {@code RAHMEN} ones - a Darstellungswunsch is
+   * noise for the search and the whole point for the answer. Rendered as its own block before the
+   * conversation history, the fifth part of the call (docs/features/llm-integration.md, "Übergabe
+   * der Passagen"); without a point there is no block.
+   */
+  public ChatResponse generateAnswer(
+      String question,
+      List<Document> relevantChunks,
+      String conversationId,
+      List<String> conversationNote) {
     String context = formatChunks(relevantChunks);
     String systemText = SYSTEM_PROMPT.replace("{context}", context);
+    String noteBlock = ConversationNoteBlock.render(conversationNote);
+    if (noteBlock != null) {
+      systemText = systemText + "\n\n" + noteBlock;
+    }
 
     log.debug("Sending prompt to LLM with {} context chunks", relevantChunks.size());
 
