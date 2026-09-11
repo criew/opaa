@@ -400,6 +400,20 @@ bestimmte Menge der Runden, deren Frage **ohne den Verlauf nicht auflösbar** is
 0,913 gegen 0,512 bei nDCG@8, 23 von 27 gegen 10 von 22 gelöst: Das ist der Preis der Rückfrage auf
 diesem Datensatz.
 
+Die Menge der 22 Rückfragerunden ist von Hand bestimmt und deshalb hier benannt — sie lässt sich
+aus den Symptomtabellen unten nicht ableiten, weil die dort nur die **offenen** Runden führen.
+Mitglied ist jede Runde ab Nummer 2, deren Frage ohne den Verlauf nicht auflösbar ist; Wechselrunden
+(die ihr neues Thema selbst benennen), Rückkehrrunden durch Neubenennung (`ts-004#4`, `ts-009#4`)
+und die eigenständigen Zwischenthemen der `constraint_carryover`-Fälle gehören **nicht** dazu.
+
+- `anaphora_resolution` (12): `ana-001#2`, `-002#2`, `-003#2`, `-004#2`, `-004#3`, `-005#2`,
+  `-006#2`, `-007#2`, `-007#3`, `-008#2`, `-009#2`, `-009#3`
+- `topic_switch` (10): `ts-001#2`, `-002#3`, `-003#2`, `-004#3`, `-005#3`, `-006#2`, `-007#2`,
+  `-007#4`, `-008#3`, `-009#3`
+
+Gelöst sind davon zehn: `ana-001#2`, `ana-002#2`, `ana-003#2`, `ana-007#3`, `ana-008#2`,
+`ana-009#2`, `ts-002#3`, `ts-006#2`, `ts-007#4`, `ts-009#3`.
+
 ### Wo die Messung von der Vorhersage der Spezifikation abweicht
 
 `docs/features/conversation-memory.md`, Abschnitt „Reihenfolge", sagt drei Dinge voraus. **Eine der
@@ -426,11 +440,21 @@ sie gemessen wurde.
   sie die Angabe mit — genau die Referenz, die das kurze Suchfenster plus Notiz nicht
   unterschreiten darf.
 
+> **Die Vergleichsgröße für T4 und T5 ist „Zielrunden, deren Teilfrage die Angabe trägt" — heute
+> **4 von 9** (`cc-003`, `-005`, `-008`, `-009`), abzulesen im Feld `subQueries` des
+> Mehrrunden-Reports.** Sie ist empfindlicher als der Anteil gelöster Fälle: Ein Fall kann aus
+> Gründen scheitern, die mit der Übernahme nichts zu tun haben (bei `cc-008` ist die Zielrunde 5
+> getroffen und trägt die Angabe, offen sind Runde 1 und ein Zwischenthema), und er kann getroffen
+> sein, ohne dass die Angabe je in einer Teilfrage stand (`cc-001`). Die beiden Mengen sind **nicht**
+> deckungsgleich: gelöste Fälle sind `cc-001`, `-003`, `-005`, `-009`, Zielrunden mit der Angabe
+> sind `cc-003`, `-005`, `-008`, `-009`. Beide Male vier, aber nicht dieselben vier.
+
 ### Themen-Bleed: warum die Zahl 0 ist und was sie nicht taugt
 
 Die Bleed-Zahl zählt ausschließlich die **erwarteten Dokumente der Vorrunden dieses Falls**, die im
 Trefferfenster der Wechselrunde stehen. Über die neun Wechselrunden sind das zusammen **zwölf**
-namentlich festgelegte Dokumente: sechsmal genau eines, einmal zwei, einmal drei. Eines von ein bis
+namentlich festgelegte Dokumente: **siebenmal** genau eines (`ts-001`, `-002`, `-003`, `-004`,
+`-005`, `-006`, `-009`), einmal zwei (`ts-008`) und einmal drei (`ts-007`). Eines von ein bis
 drei Dokumenten aus 72 müsste also unter die acht Treffer der Wechselrunde geraten. Jede andere
 Verschmutzung durch Geschwisterdokumente des Altthemas ist per Definition unsichtbar.
 
@@ -503,6 +527,15 @@ Zwei Gründe, warum sie hier bei 0 liegt:
 | `verw-conv-cc-008` | Zielrunde 5 getroffen und mit der Angabe „BAU-DA-1/2024" in der Teilfrage; offen sind Runde 1 und das Zwischenthema in Runde 3, in denen jeweils verwaltung-0005_dienstanweisung-sozialamt-1-2024.md Rang 1 belegt |
 
 ### Erwartete Abweichungen dieser Klassen (`expected_state_exception`)
+
+**Fortschreibung innerhalb dieses PRs:** Der erste Lauf führte `verw-conv-cc-005` und
+`verw-conv-cc-009` mit einer erwarteten Abweichung; die Begründung lautete, die Fassung 2024 stehe
+in der Rangfolge ohnehin vor der Fassung 2023, ein Treffer auf sie belege also nichts. **Dieses
+Argument ist durch den korrigierten Lauf widerlegt** und deshalb zurückgezogen: Ohne den
+Verwechslungspartner im Gesprächsfenster steht bei `verw-conv-cc-001` die Fassung **2023** auf
+Rang 1, eine generelle Bevorzugung der neueren Fassung gibt es also nicht. Beide Fälle tragen
+zudem die Angabe aus Runde 1 wörtlich in der Teilfrage ihrer Zielrunde und stehen seither auf
+`solved`.
 
 | Fall | Grund |
 |---|---|
