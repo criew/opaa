@@ -166,6 +166,12 @@ final class SearchAdminResponseMapper {
         searchPathDetail(status));
   }
 
+  /**
+   * The German sentence per path state. {@code INCOMPLETE} and {@code OUTDATED} are each reachable
+   * for exactly one path - waiting documents for the vector index, rows below the current tsv
+   * version for the full-text one - which is why their wording may name what only that path can
+   * have. A state that becomes reachable for both must lose that wording again.
+   */
   private static String searchPathDetail(SearchPathStatus status) {
     String pathName =
         status.path() == SearchPathStatus.SearchPathName.VECTOR

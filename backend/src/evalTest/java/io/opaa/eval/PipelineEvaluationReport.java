@@ -60,7 +60,7 @@ public record PipelineEvaluationReport(
    * <p>Version 3 (issue #1049, ADR-0012 Nachtrag Volltextpfad): the lexical search path became an
    * input of the fusion and therefore moves the selection. Two new fixed points record it — {@code
    * fullTextSearchEnabled} (the path's switch) and the measured library's full-text index state
-   * (named {@code fullTextIndexComplete} since version 7). Without them a hybrid run and a
+   * (named {@code fullTextIndexUpToDate} since version 12). Without them a hybrid run and a
    * vector-only run would carry the identical {@code runConfiguration} fingerprint and the
    * difference between them would be booked against the committed baseline as a code change.
    *
@@ -90,12 +90,21 @@ public record PipelineEvaluationReport(
    * bump: the filter moves the measured selection of the {@code metadata_filter} class, and the
    * {@code verwaltung} baseline was re-drawn.
    *
+   * <p>Version 12 (issue #1429): the fixed point {@code fullTextIndexComplete} is named {@code
+   * fullTextIndexUpToDate} and its definition narrows. "Complete" covered two states, one of which
+   * no longer exists: a chunk's full-text row is written in the same transaction as its vector row,
+   * so only the row's {@code content_tsv_version} can lag behind. What the fixed point now records
+   * is exactly that - every chunk of the measured library carries a row at the current version.
+   * Narrowed definitions are contract changes by decision 6 of ADR-0012 even when no measured value
+   * moves; on a freshly indexed eval corpus the value stays {@code true}, so no baseline is
+   * re-measured (see eval/baseline/README.md).
+   *
    * <p>Version 11 (issue #1357): {@code HtmlDocumentFormat#version()} moved 2 → 3 and {@code
    * ConfluenceStorageFormat#version()} 1 → 2 (a list item whose text sits in a block child keeps
    * its marker) - fingerprint-only, same collective-fingerprint reasoning as versions 5 and 6
    * above; no corpus in this repository routes a document through either pipeline.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 11;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 12;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be
@@ -112,11 +121,11 @@ public record PipelineEvaluationReport(
    *     the fusion in this run (issue #1049). A measured dimension since that path moves the
    *     selection — a {@code vector-only} run would otherwise be indistinguishable from a hybrid
    *     one here and its numbers would be judged against the committed baseline as a code change.
-   * @param fullTextIndexComplete whether every chunk of the measured library carried its full-text
-   *     row at the current {@code content_tsv_version}, i.e. whether the lexical path could
-   *     contribute its full share - a chunk without a row is invisible to it, a row of an older
-   *     version lacks the current lexemes. {@code true} with {@code fullTextSearchEnabled = false}
-   *     is not a contradiction: the index was ready, the path was switched off.
+   * @param fullTextIndexUpToDate whether the measured library's full-text index sat at the current
+   *     {@code content_tsv_version} for every one of its chunks, i.e. whether the lexical path
+   *     could contribute its full share - a row of another version lacks the current lexemes.
+   *     {@code true} with {@code fullTextSearchEnabled = false} is not a contradiction: the index
+   *     was ready, the path was switched off.
    * @param searchScopeNote records that the harness measures a fixed, complete search scope and
    *     that permission filtering is not a measurement subject.
    * @param chatModel the chat model used for decomposition, or {@code null} when decomposition is
@@ -139,7 +148,7 @@ public record PipelineEvaluationReport(
       int maxChunksPerDocument,
       double mmrLambda,
       boolean fullTextSearchEnabled,
-      boolean fullTextIndexComplete,
+      boolean fullTextIndexUpToDate,
       boolean queryDecompositionEnabled,
       int maxSubQueries,
       String chatModel,

@@ -48,15 +48,20 @@ public class FullTextIndexFillStateService {
    */
   public FullTextIndexFillState fillStateForLibrary(UUID libraryId) {
     String vectorStoreTable = schemaName + "." + tableName;
+    String chunkStillPresent = chunkStillPresent(vectorStoreTable);
     String sql =
         "SELECT "
             + "  (SELECT count(*) FROM "
             + vectorStoreTable
             + " WHERE metadata->>'library_id' = ?) AS total, "
-            + "  (SELECT count(*) FROM chunk_full_text "
-            + "     WHERE library_id = ? AND content_tsv_version = ?) AS indexed, "
-            + "  (SELECT count(*) FROM chunk_full_text "
-            + "     WHERE library_id = ? AND content_tsv_version <> ?) AS outdated";
+            + "  (SELECT count(*) FROM chunk_full_text f "
+            + "     WHERE f.library_id = ? AND f.content_tsv_version = ?"
+            + chunkStillPresent
+            + ") AS indexed, "
+            + "  (SELECT count(*) FROM chunk_full_text f "
+            + "     WHERE f.library_id = ? AND f.content_tsv_version <> ?"
+            + chunkStillPresent
+            + ") AS outdated";
     return jdbcTemplate.queryForObject(
         sql,
         (rs, rowNum) ->
@@ -82,6 +87,7 @@ public class FullTextIndexFillStateService {
       return List.of();
     }
     String vectorStoreTable = schemaName + "." + tableName;
+    String chunkStillPresent = chunkStillPresent(vectorStoreTable);
     String idPlaceholders = placeholders(distinct.size());
     String sql =
         "SELECT COALESCE(v.library_id, f.library_id) AS library_id, "
@@ -97,12 +103,14 @@ public class FullTextIndexFillStateService {
             + ") GROUP BY 1"
             + ") v "
             + "FULL OUTER JOIN ("
-            + "  SELECT library_id, "
-            + "         count(*) FILTER (WHERE content_tsv_version = ?) AS indexed, "
-            + "         count(*) FILTER (WHERE content_tsv_version <> ?) AS outdated "
-            + "  FROM chunk_full_text WHERE library_id IN ("
+            + "  SELECT f.library_id, "
+            + "         count(*) FILTER (WHERE f.content_tsv_version = ?) AS indexed, "
+            + "         count(*) FILTER (WHERE f.content_tsv_version <> ?) AS outdated "
+            + "  FROM chunk_full_text f WHERE f.library_id IN ("
             + idPlaceholders
-            + ") GROUP BY 1"
+            + ")"
+            + chunkStillPresent
+            + " GROUP BY 1"
             + ") f ON v.library_id = f.library_id";
 
     List<Object> arguments = new ArrayList<>();
@@ -120,6 +128,16 @@ public class FullTextIndexFillStateService {
                 rs.getLong("indexed"),
                 rs.getLong("outdated")),
         arguments.toArray());
+  }
+
+  /**
+   * Counts only rows whose chunk still exists - a primary-key lookup. {@code VectorChunkStore}
+   * deletes the two stores in sequence rather than in one transaction, so a half-failed delete can
+   * leave a {@code chunk_full_text} row behind; counted, such a row would put its library into a
+   * backlog no re-index can clear, because the re-index selects over {@code vector_store}.
+   */
+  private static String chunkStillPresent(String vectorStoreTable) {
+    return " AND EXISTS (SELECT 1 FROM " + vectorStoreTable + " v WHERE v.id = f.chunk_id)";
   }
 
   private static String placeholders(int count) {

@@ -79,11 +79,10 @@ public final class PipelineHarnessSupport {
       int corpusDocumentCount,
       String goldenDatasetFile,
       String goldenDatasetSha256,
-      // Issue #1049: a fact about the index this run measures, read from
-      // FullTextIndexFillStateService after indexing — the lexical path cannot find a chunk that
-      // is missing from the full-text index, and a run in which it silently contributed less
-      // must not look like a full hybrid one.
-      boolean fullTextIndexComplete,
+      // A fact about the index this run measures, read from FullTextIndexFillStateService after
+      // indexing — a full-text row below the current version lacks the current lexemes, and a run
+      // in which the lexical path silently contributed less must not look like a full hybrid one.
+      boolean fullTextIndexUpToDate,
       // Issue #1144: under which ingestion pipeline versions (all registered, not just the ones
       // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
       // Javadoc.
@@ -401,7 +400,7 @@ public final class PipelineHarnessSupport {
         queryProperties.maxChunksPerDocument(),
         queryProperties.mmrLambda(),
         queryProperties.fullTextSearchEnabled(),
-        identity.fullTextIndexComplete(),
+        identity.fullTextIndexUpToDate(),
         queryProperties.queryDecompositionEnabled(),
         queryProperties.maxSubQueries(),
         // Only the configuration that actually decomposes reports a chat model: a run with

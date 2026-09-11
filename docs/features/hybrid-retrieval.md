@@ -321,8 +321,8 @@ nebenbei die Suchqualität verändert, ist im Nachhinein nicht mehr von einer Re
 > [Arbeitspaket 3](#arbeitspaket-3-fusion)). Dort steht auch die Wirkung.
 >
 > **Die Auflage für #1049 ist erfüllt:** `opaa.query.full-text-search-enabled` ist Fixpunkt des
-> Pipeline-Messvertrags (zusammen mit `fullTextIndexComplete`, dem Füllstand des Volltextindex der
-> gemessenen Bibliothek), die Vertragsversion steht auf 3, und die Pipeline-Baselines aller drei Domänen
+> Pipeline-Messvertrags (zusammen mit `fullTextIndexUpToDate`, seit #1429 der Name des Fixpunkts
+> für die Fassung des Volltextindex der gemessenen Bibliothek), die Vertragsversion stand damit auf 3, und die Pipeline-Baselines aller drei Domänen
 > sind neu gezogen. Der Harness-Guard
 > (`PipelineHarnessSupport#requireMeasurableConfiguration`) weist einen Lauf mit `enabled=false` ab: Die
 > committete Baseline beschreibt die ausgelieferte hybride Konfiguration, ein vector-only-Lauf gehört in
@@ -405,8 +405,9 @@ eigenen Index wäre das bei rund 1 Mio. Chunks ein vollständiger Tabellenscan j
 Ausdrucksindex auf `metadata->>'library_id'` (#1119) trägt ihn; ein zusätzlicher Index auf den
 `::uuid`-Cast, den `fillStateForLibraries` für sein `GROUP BY` verwendet, ist gemessen nicht nötig —
 der Textindex leistet die zeilenbeschränkende Arbeit, der Cast läuft danach nur noch über die bereits
-gefilterten Zeilen. Gelesen wird er an genau einer Stelle: auf der Administrationsseite bei jedem
-Seitenaufruf. Der Antwortpfad der Suche liest ihn nicht mehr — der Zähler je Anfrage samt Cache und
+gefilterten Zeilen. Im Produktivcode wird er an genau einer Stelle gelesen: auf der
+Administrationsseite bei jedem Seitenaufruf (der Eval-Harness liest ihn zusätzlich, als Fixpunkt
+seines Messvertrags). Der Antwortpfad der Suche liest ihn nicht mehr — der Zähler je Anfrage samt Cache und
 Nachprüfintervall (`FullTextIndexCompleteness`) ist mit #1429 entfallen: Der Rückstand ist ein
 Bestandszustand und gehört auf die Administrationsseite, nicht in jede Anfragenotiz.
 

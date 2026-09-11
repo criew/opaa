@@ -6,8 +6,7 @@ databaseChangeLog:
         #1119: expression index on vector_store's metadata->>'library_id', backing
         FullTextIndexFillStateService#fillStateForLibrary/fillStateForLibraries (named
         FullTextBackfillProgressService until #1270) - previously an unindexed full scan, on the
-        response path of search via io.opaa.query.FullTextIndexCompleteness (cached only 60s while a
-        library's full-text index is incomplete) and on every load of the
+        response path of search until #1429 removed that reader, and on every load of the
         "Suche & Indexierung" admin page via io.opaa.searchadmin.SearchStatusService#libraryStatus.
         No index on the ::uuid cast fillStateForLibraries additionally groups by: EXPLAIN (ANALYZE,
         BUFFERS) against ~1M rows (see PR description) shows the planner uses this text expression

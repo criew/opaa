@@ -575,6 +575,13 @@ Drei Milderungen, keine Lösungen:
 > vollständig war — nur eben als Eigenschaft des Index, nicht als Zustand eines Nachzugs. Reine
 > Fixpunkt-Umbenennung ohne neuen Messlauf: Der Wert war und ist `true`, keine gemessene Zahl
 > verschiebt sich.
+>
+> **Fortschreibung (Issue #1429, 09/2026):** Der Fixpunkt heißt seither `fullTextIndexUpToDate`
+> (Pipeline-Messvertrag Version 11 → 12), und seine Definition verengt sich auf den
+> Fassungs-Rückstand: Die Volltextzeile eines Abschnitts entsteht seit #1047 in derselben
+> Transaktion wie seine Vektorzeile, zurückliegen kann nur noch die Fassung einer Zeile. Auch dies
+> eine reine Fixpunkt-Umbenennung ohne neuen Messlauf — auf dem frisch indizierten Korpus bleibt
+> der Wert `true`.
 
 
 Fünf Kategorien kommen hinzu. Jede hat ein benanntes Fehlerbild, eine überprüfbare Ground Truth und

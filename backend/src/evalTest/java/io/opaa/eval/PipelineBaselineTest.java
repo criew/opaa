@@ -112,7 +112,7 @@ class PipelineBaselineTest {
           "maxChunksPerDocument": 2,
           "mmrLambda": 1.0,
           "fullTextSearchEnabled": true,
-          "fullTextIndexComplete": true,
+          "fullTextIndexUpToDate": true,
           "queryDecompositionEnabled": false,
           "maxSubQueries": 3,
           "chatModel": null,
