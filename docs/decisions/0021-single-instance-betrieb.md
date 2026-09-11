@@ -145,8 +145,8 @@ Diese Skizze ist keine Umsetzungsplanung, nur eine Einordnung der Größenordnun
   Instanzen nicht mehr anfasst.
 - **`PermissionHistoryClock`**: Ersatz der prozesslokalen Monotonie durch eine datenbankseitige —
   die Datenbankuhr als Anker plus eine Sicherung, die die Ordnung über Verbindungen hinweg erzwingt
-  (etwa eine Sequenz oder ein `EXCLUDE`-Constraint auf dem Intervall je Objekt). Eine zweite
-  prozesslokale Variable je Instanz genügt hier ausdrücklich nicht (ADR-0032).
+  (Bauart offen, siehe #1517). Eine zweite prozesslokale Variable je Instanz genügt hier ausdrücklich
+  nicht (ADR-0032).
 - **`DirectorySyncService`**: Ein Postgres Advisory-Lock, keyed auf `organizationId`, gehalten für die
   Dauer eines Laufs — im Javadoc bereits als eine der beiden möglichen Lösungsrichtungen benannt.
 - **Task-Executor-Warteschlangen** (`IndexingConfiguration`): Folgt aus dem `LibraryDocumentService`-

@@ -95,26 +95,40 @@ treffbar — ohne die globale Ordnung wäre nur die Rekonstruierbarkeit je Einze
 **Prozesslokale Monotonie genügt, solange ADR-0021 gilt.** `PermissionHistoryClock` ist als Fundstelle
 in ADR-0021 eingetragen.
 
-## Verworfene Alternativen
+## Geprüfte Alternativen
 
-**`clock_timestamp()` der Datenbank je Schreibvorgang, für sich genommen** (der Vorschlag in #1497).
-Verworfen, weil sie die gebrauchte Zusage nicht liefert: `clock_timestamp()` ist die Systemuhr des
+Von den fünf hier geprüften Wegen ist genau einer **vertagt** statt verworfen: `clock_timestamp()`
+samt datenbankseitiger Sicherung. Er ist tragfähig, heute schon baubar und bleibt der Weg für einen
+Mehrinstanzbetrieb — er hat heute nur keinen Abnehmer. Die übrigen vier sind verworfen.
+
+### Verworfen: `clock_timestamp()` für sich genommen
+
+**`clock_timestamp()` der Datenbank je Schreibvorgang, ohne weitere Sicherung** (der Vorschlag in
+#1497). Verworfen, weil sie die gebrauchte Zusage nicht liefert: `clock_timestamp()` ist die Systemuhr des
 Datenbankhosts mit Mikrosekunden-Auflösung. Strenge Monotonie ist nicht zugesichert — zwei Aufrufe
 innerhalb derselben Mikrosekunde liefern denselben Wert, und ein Rückwärtssprung der Systemuhr ist
 möglich. In der Praxis fast immer richtig; „fast immer richtig" ist für eine nachweisrelevante Tabelle
 aber genau die Eigenschaft, die dieses ADR ersetzen soll. Der Ausdruck allein ist damit kein Kandidat —
 die ernstzunehmende Alternative ist die nächste.
 
-**`clock_timestamp()` plus datenbankseitige Sicherung.** Das ist der echte Gegenentwurf, und er ist
-**heute schon baubar**, nicht erst bei einem Mehrinstanz-Umbau: die Datenbankuhr als Anker, ergänzt um
-eine Sicherung, die die strenge Ordnung in der Datenbank selbst erzwingt — eine Sequenz, die den
-Mikrosekunden-Anteil vergibt, oder ein `EXCLUDE`-Constraint, der Überschneidungen und leere
-Zustandsintervalle je Objekt zurückweist.
+### Vertagt, nicht verworfen: `clock_timestamp()` plus datenbankseitige Sicherung
 
-- **Was sie besser kann:** Die Zusage hinge nicht mehr an ADR-0021. Sie gälte über Prozessgrenzen
-  hinweg, weil alle Instanzen dieselbe Uhr und dieselbe Sicherung benutzten, und sie gälte auch gegen
-  einen Schreiber, der die Anwendung umgeht (Migrationsskript, Handkorrektur per SQL) — was eine
-  JVM-seitige Quelle grundsätzlich nicht kann.
+Das ist der echte Gegenentwurf, und er ist **heute schon baubar**, nicht erst bei einem
+Mehrinstanz-Umbau: die Datenbankuhr als Anker, ergänzt um eine Sicherung, die die strenge Ordnung in
+der Datenbank selbst erzwingt. Die Bauart ist hier bewusst nicht festgelegt — eine Sequenz allein
+leistet sie nicht, weil streng aufsteigende Zeitstempel gespeicherten Zustand brauchen (der Sache nach
+`GREATEST(clock_timestamp(), letzte Grenze + 1 µs)`); in Frage kommen ein `EXCLUDE`-Constraint, der
+Überschneidungen und leere Zustandsintervalle je Objekt zurückweist, oder eine schreibende
+Hilfsstruktur je Objekt. Die Festlegung gehört in #1517.
+
+- **Was sie besser kann — zwei Gewinne, die getrennt zu haben sind:**
+  - *Instanzunabhängigkeit.* Die Zusage hinge nicht mehr an ADR-0021: Sie gälte über Prozessgrenzen
+    hinweg, weil alle Instanzen dieselbe Uhr und dieselbe Sicherung benutzten. **Dafür** braucht es
+    tatsächlich den Wechsel auf die Datenbankuhr.
+  - *Schutz gegen Schreiber, die die Anwendung umgehen* (Migrationsskript, Handkorrektur per SQL).
+    **Dafür braucht es den Zeitquellenwechsel nicht** — das leistet die datenbankseitige Sicherung
+    allein, auch über der heutigen JVM-Uhr. Wer nur diesen Gewinn will, kauft den Wechsel nicht mit;
+    genau das ist der Gegenstand von #1517.
 - **Was sie heute kostet:** eine Migration auf einer nachweisrelevanten Tabelle, dauerhaft ein
   zusätzliches Statement je historisierter Änderung, und eine Sicherung, die die beiden Ausnahmen der
   Invariante kennen muss — die geteilte Grenze zwischen schließender und öffnender Zeile und die
@@ -130,19 +144,25 @@ Zustandsintervalle je Objekt zurückweist.
   Verzeichnisabgleichs" trägt nur zur Hälfte, weil die Entfernungen über `recordMembershipRemoved`
   bereits lesende Pfade sind. Das Kostenargument ist also real, aber klein — es allein würde die
   Alternative nicht abräumen.
-- **Warum trotzdem nicht heute:** Der Gewinn ist Instanzunabhängigkeit, und die hat keinen Abnehmer,
-  solange ADR-0021 gilt. Dem steht eine Schemaänderung an genau der Tabelle gegenüber, deren
-  Beweiskraft hier verteidigt wird, plus eine Sicherung, die die Invariante ein zweites Mal
-  formulieren muss. Dazu kommt die Prüfbarkeit: Der geforderte Nachweis verlangt einen erzwungenen
-  Uhr-Tick ohne Wartezeit und ohne Wiederholungsschleife. Eine stehende Uhr lässt sich einspeisen, die
-  Uhr eines laufenden Postgres nicht — der Fall ließe sich nur wahrscheinlich machen, nicht
-  herstellen. Die Entscheidung ist damit eine **Vertagung**, keine Ablehnung: Fällt ADR-0021, ist dies
-  der Weg, und die Umstellung trifft eine einzige Klasse, weil alle neun Aufrufstellen bereits durch
-  sie laufen.
+- **Warum trotzdem nicht heute:** Der Gewinn, der nur über diesen Weg zu haben ist, ist
+  Instanzunabhängigkeit — und die hat keinen Abnehmer, solange ADR-0021 gilt; der zweite Gewinn steht
+  über #1517 ohnehin ohne Zeitquellenwechsel offen. Dem steht eine Schemaänderung an genau der
+  Tabelle gegenüber, deren Beweiskraft hier verteidigt wird, plus eine Sicherung, die die Invariante
+  ein zweites Mal formulieren muss — und zwar auf einem Bestand, der sie nachweislich verletzt, weil
+  die vor dieser Änderung entstandenen leeren Intervalle bewusst nicht nachbearbeitet werden: Eine
+  Validierung gegen den Bestand schlüge fehl, und ob `NOT VALID`, eine Einschränkung auf
+  `valid_from >= <Migrationszeitpunkt>` oder doch eine Bereinigung, ist offen (#1517). Dazu kommt die
+  Prüfbarkeit: Der geforderte Nachweis verlangt einen erzwungenen Uhr-Tick ohne Wartezeit und ohne
+  Wiederholungsschleife. Eine stehende Uhr lässt sich einspeisen, die Uhr eines laufenden Postgres
+  nicht — der Fall ließe sich nur wahrscheinlich machen, nicht herstellen. Die Entscheidung ist damit
+  eine **Vertagung**, keine Ablehnung: Fällt ADR-0021, ist dies der Weg, und die Umstellung trifft
+  eine einzige Klasse, weil alle neun Aufrufstellen bereits durch sie laufen.
 
-**Den Wert im `INSERT` erzeugen lassen** (Spalten-Default `clock_timestamp()` oder ein
-`BEFORE INSERT`-Trigger). Diese Ausprägung kostet **null** zusätzliche Statements und entkräftet das
-Kostenargument vollständig — sie scheitert an etwas anderem: Die lückenlose Verkettung verlangt, dass
+### Verworfen: den Wert im `INSERT` erzeugen lassen
+
+**Spalten-Default `clock_timestamp()` oder ein `BEFORE INSERT`-Trigger.** Diese Ausprägung kostet
+**null** zusätzliche Statements und entkräftet das Kostenargument vollständig — sie scheitert an
+etwas anderem: Die lückenlose Verkettung verlangt, dass
 schließende und öffnende Zeile sich denselben Wert teilen. Ein Default oder Trigger erzeugt den Wert
 je Zeile und erst beim Schreiben; die JVM kennt ihn nicht und kann ihn dem `UPDATE ... SET valid_to`
 der Vorgängerzeile deshalb nicht mitgeben. Ihn zurückzulesen kostet genau das Statement wieder, das
@@ -152,15 +172,19 @@ vor dem `UPDATE`, das die Reihenfolge-Zusicherung in `closeOpenGrantInterval` oh
 Hinzu käme, dass ein Trigger die Nulllängen-Marker von den Zustandsintervallen unterscheiden müsste,
 die Fachlogik also ein zweites Mal trüge.
 
-**Die Grenze nur dann um eine Mikrosekunde anheben, wenn der neue `validFrom` dem vorigen `validTo`
-gleicht** (Nachbesserung an der Aufrufstelle statt einer eigenen Zeitquelle). Verworfen: Das prüft
-gegen den zuletzt *gelesenen* Zustand des betroffenen Objekts statt gegen die zuletzt *vergebene*
-Grenze, verteilt die Korrektheit über neun Aufrufstellen, die jede für sich richtig bleiben müssen, und
-lässt die Fälle ungelöst, in denen die Vorgängerzeile gar nicht gelesen wird (`recordGrantCreated`,
+### Verworfen: die Grenze nur bei Gleichheit anheben
+
+**Die Grenze um eine Mikrosekunde anheben, wenn der neue `validFrom` dem vorigen `validTo` gleicht** —
+eine Nachbesserung an der Aufrufstelle statt einer eigenen Zeitquelle. Verworfen: Das prüft gegen den
+zuletzt *gelesenen* Zustand des betroffenen Objekts statt gegen die zuletzt *vergebene* Grenze,
+verteilt die Korrektheit über neun Aufrufstellen, die jede für sich richtig bleiben müssen, und lässt
+die Fälle ungelöst, in denen die Vorgängerzeile gar nicht gelesen wird (`recordGrantCreated`,
 `recordMembershipAdded`, `recordLibraryCreated`).
 
-**Nichts tun und die Grenze im Fachmodell ziehen** („ein Zustand, der kürzer als einen Uhr-Tick
-bestand, muss nicht rekonstruierbar sein"). Vertretbar formulierbar, aber verworfen: Die Grenze läge
+### Verworfen: nichts tun
+
+**Die Grenze im Fachmodell ziehen** („ein Zustand, der kürzer als einen Uhr-Tick bestand, muss nicht
+rekonstruierbar sein"). Vertretbar formulierbar, aber verworfen: Die Grenze läge
 dann bei der Zeitgeberauflösung des Betriebssystems — auf einer Maschine 3,64 ms, auf einer anderen
 1 µs. Eine Nachweiszusage, die von der Wirtsplattform abhängt, ist keine.
 
@@ -175,7 +199,8 @@ dann bei der Zeitgeberauflösung des Betriebssystems — auf einer Maschine 3,64
 - Drei Tests in `PermissionHistoryServiceIntegrationTest`, die einen Stichtag *zwischen* zwei schnell
   aufeinanderfolgenden Operationen nehmen und deshalb in Vollbuilds sporadisch rot waren, sind es
   nicht mehr — die Ursache war dieselbe.
-- Kein zusätzlicher Datenbank-Roundtrip auf dem Schreibpfad.
+- Kein zusätzliches Statement je historisierter Änderung — klein, wie oben eingeordnet, aber
+  dauerhaft und ohne Gegenwert, solange ADR-0021 gilt.
 
 **Schwieriger / bewusst in Kauf genommen:**
 
@@ -194,8 +219,8 @@ dann bei der Zeitgeberauflösung des Betriebssystems — auf einer Maschine 3,64
 - Die Zusage gilt je Prozess. Bei mehreren Backend-Instanzen könnten zwei Änderungen am selben Objekt
   aus verschiedenen Prozessen wieder dieselbe Grenze bekommen; die Uhren zweier Hosts können zudem
   gegeneinander driften. Ein Multi-Instanz-Umbau muss die Quelle deshalb ersetzen — durch die
-  Datenbankuhr samt datenbankseitiger Monotonie-Sicherung (etwa einer Sequenz oder einem
-  `EXCLUDE`-Constraint auf dem Intervall je Objekt), nicht durch eine weitere prozesslokale Variable.
+  Datenbankuhr samt datenbankseitiger Monotonie-Sicherung (Bauart offen, siehe #1517), nicht durch
+  eine weitere prozesslokale Variable.
   Eingetragen in der Fundstellenliste von ADR-0021.
 - Bestandsdaten werden nicht nachbearbeitet: Bereits geschriebene leere Intervalle bleiben, wie sie
   sind (stehende Maintainer-Festlegung, keine Bestandsnachzüge). Die Korrektur wirkt vorwärts — die
@@ -206,5 +231,7 @@ dann bei der Zeitgeberauflösung des Betriebssystems — auf einer Maschine 3,64
   `PermissionHistoryService` gehen; ein Migrationsskript oder eine Handkorrektur per SQL könnte sie
   verletzen, ohne dass etwas es bemerkt. Ein `EXCLUDE`-Constraint, der leere Zustandsintervalle und
   Überschneidungen je Objekt zurückweist und dabei die Nulllängen-Marker ausnimmt, wäre die
-  Ergänzung — bewusst offen gelassen und als eigenes Folge-Issue geführt, nicht Teil dieser
-  Entscheidung.
+  Ergänzung — bewusst offen gelassen und als #1517 geführt, nicht Teil dieser Entscheidung. Dort
+  ist auch zu klären, wie der Constraint mit dem Bestand umgeht, der die Invariante nachweislich
+  verletzt: Die vor dieser Änderung entstandenen leeren Intervalle bleiben stehen, eine Validierung
+  gegen den Bestand schlüge also fehl.
