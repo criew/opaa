@@ -7,6 +7,7 @@ import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.local.LocalAdminAvailabilityGuard;
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcIssuerUris;
 import io.opaa.auth.oidc.OidcProvider;
@@ -45,6 +46,7 @@ public class UserService {
   private final OidcProviderRegistry providerRegistry;
   private final OidcProviderRepository providerRepository;
   private final TokenRoleSynchronizer roleSynchronizer;
+  private final LocalAdminAvailabilityGuard adminGuard;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
   private final Clock clock;
@@ -55,6 +57,7 @@ public class UserService {
       OidcProviderRegistry providerRegistry,
       OidcProviderRepository providerRepository,
       TokenRoleSynchronizer roleSynchronizer,
+      LocalAdminAvailabilityGuard adminGuard,
       AuditEventRecorder auditEventRecorder,
       ApplicationEventPublisher eventPublisher,
       Clock clock) {
@@ -63,6 +66,7 @@ public class UserService {
     this.providerRegistry = providerRegistry;
     this.providerRepository = providerRepository;
     this.roleSynchronizer = roleSynchronizer;
+    this.adminGuard = adminGuard;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
     this.clock = clock;
@@ -223,8 +227,8 @@ public class UserService {
   private User insertUser(String subject, String issuer, String email, String displayName) {
     User newUser = new User(subject, issuer, email, displayName);
     newUser.setOrganizationId(Organization.DEFAULT_ID);
-    // ADR-0025, Entscheidung 3: the address alone is not enough - only the trusted provider's
-    // issuer may mint the initial administrator, see InitialAdminPolicy.
+    // ADR-0033, Entscheidung 5: the address alone is not enough - only the dev issuer mints the
+    // initial administrator any more, see InitialAdminPolicy.
     if (initialAdminPolicy.grantsSystemAdmin(email, issuer)) {
       newUser.setSystemRole(SystemRole.SYSTEM_ADMIN);
     }
@@ -314,6 +318,10 @@ public class UserService {
                       + "“ verwaltet und kann hier nicht geändert werden.");
             });
     SystemRole previousRole = user.getSystemRole();
+    // ADR-0033, Entscheidung 4: the manual withdrawal must leave a login-capable administrator
+    if (previousRole == SystemRole.SYSTEM_ADMIN && role != SystemRole.SYSTEM_ADMIN) {
+      adminGuard.requireAnotherLoginCapableAdmin(actor.organizationId(), user.getId());
+    }
     user.setSystemRole(role);
     User saved = userRepository.save(user);
     if (previousRole != role) {

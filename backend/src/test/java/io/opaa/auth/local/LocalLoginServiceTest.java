@@ -211,7 +211,8 @@ class LocalLoginServiceTest {
         .thenReturn(Optional.of(user));
     when(credentials.findById(user.getId())).thenReturn(Optional.of(row));
     assertThat(service.authenticate(EMAIL, "richtig", "203.0.113.9")).isPresent();
-    verify(networkPolicy, never()).permitsAdminSignIn(eq("203.0.113.9"), any());
+    // consulted once for the administrator from that address, never for the regular account
+    verify(networkPolicy, times(1)).permitsAdminSignIn("203.0.113.9");
   }
 
   @Test

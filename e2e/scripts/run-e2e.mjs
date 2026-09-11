@@ -26,7 +26,7 @@
 // seed profile.
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -219,6 +219,20 @@ function runSeed() {
       '--indexing-timeout-seconds',
       '600',
     )
+    // ADR-0033 (#1534): the Keycloak "demo-admin" no longer becomes SYSTEM_ADMIN by itself; the
+    // seed grants the role through the local bootstrap administrator the backend seeded on its
+    // first start. Its address and fixed password live in e2e/demo-smoke.env, which only the
+    // Compose stack reads - hand the two values to the seed explicitly.
+    const demoEnv = readFileSync(join(repoRoot, envFile), 'utf8')
+    for (const [flag, key] of [
+      ['--local-admin-email', 'OPAA_INITIAL_ADMIN_EMAIL'],
+      ['--local-admin-password', 'OPAA_INITIAL_ADMIN_PASSWORD'],
+    ]) {
+      const match = demoEnv.match(new RegExp(`^${key}=(.*)$`, 'm'))
+      if (match) {
+        seedArgs.push(flag, match[1].trim())
+      }
+    }
   }
   return run(venvPython, seedArgs)
 }

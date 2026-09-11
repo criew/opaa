@@ -41,8 +41,8 @@ import org.springframework.context.ApplicationEventPublisher;
 /**
  * {@link OidcProviderService} against mocked collaborators (#1329, ADR-0025): the invariants a
  * provider row must satisfy before it is written (http(s) issuer, no duplicate issuer, the default
- * stays while another provider exists), the automatic default for the very first OIDC provider,
- * the audit event and the change event every write leaves behind, the SSRF policy every
+ * stays while another provider exists), the automatic default for the very first OIDC provider, the
+ * audit event and the change event every write leaves behind, the SSRF policy every
  * operator-entered address passes through - and, since ADR-0033 (Entscheidung 4), the rules of the
  * LOCAL row and the guarded, acknowledged switch-off of the last enabled provider.
  */
@@ -92,8 +92,7 @@ class OidcProviderServiceTest {
   private void anotherEnabledProviderRemainsBesides(OidcProvider self) {
     when(repository.existsByProviderTypeAndEnabledTrueAndIdNot(ProviderType.OIDC, self.getId()))
         .thenReturn(true);
-    when(repository.existsByProviderTypeAndIdNot(ProviderType.OIDC, self.getId()))
-        .thenReturn(true);
+    when(repository.existsByProviderTypeAndIdNot(ProviderType.OIDC, self.getId())).thenReturn(true);
   }
 
   private static OidcProviderDraft draft(String name, String issuer) {
@@ -293,8 +292,8 @@ class OidcProviderServiceTest {
   }
 
   /**
-   * ADR-0033, Entscheidung 4: the LOCAL row is one row of this table, but no identity provider -
-   * it is never the default, so the very first OIDC provider still becomes the default next to it.
+   * ADR-0033, Entscheidung 4: the LOCAL row is one row of this table, but no identity provider - it
+   * is never the default, so the very first OIDC provider still becomes the default next to it.
    */
   @Test
   void theFirstOidcProviderBecomesTheDefaultEvenNextToTheLocalRow() {
@@ -327,8 +326,8 @@ class OidcProviderServiceTest {
   }
 
   /**
-   * ADR-0033, Entscheidung 4: the last enabled OIDC provider may be switched off - but only with the
-   * caller's acknowledgement and a login-capable local administrator the guard confirms; the
+   * ADR-0033, Entscheidung 4: the last enabled OIDC provider may be switched off - but only with
+   * the caller's acknowledgement and a login-capable local administrator the guard confirms; the
    * refusal without acknowledgement names the missing step and carries a code the UI acts on.
    */
   @Test

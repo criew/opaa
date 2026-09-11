@@ -1,29 +1,31 @@
 package io.opaa.auth;
 
 import io.opaa.auth.oidc.OidcIssuerUris;
-import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * Decides whether a newly provisioned account is the initial system administrator (ADR-0025,
- * Entscheidung 3): the address must match {@code opaa.auth.initial-admin-email} <em>and</em> the
- * account must come from the {@link TrustedProvider}, so a second provider's operator can never
- * mint one. Consulted only when an account is created. A matching address that is refused is
- * logged: it is the one trace an operator has when the first sign-in ended up without rights.
+ * Decides whether a newly provisioned account is the initial system administrator. Since ADR-0033
+ * (Entscheidung 5) the rule has exactly one remaining effect: in the {@code dev} mode the address
+ * {@code opaa.auth.initial-admin-email} issued by the dev issuer becomes {@code SYSTEM_ADMIN}, so
+ * {@code dev-admin} is the administrator of every development and test run (ADR-0005). In the
+ * {@code oidc} mode it grants nothing - not even through the default provider: the first
+ * administrator is the local bootstrap account the seed creates, and provider accounts become
+ * administrators by role assignment alone (manually or through a {@code roles_claim}). Consulted
+ * only when an account is created; a matching address that is refused is logged, the one trace an
+ * operator has when a first sign-in ended up without rights.
  */
 @Component
 public class InitialAdminPolicy {
 
   private static final Logger log = LoggerFactory.getLogger(InitialAdminPolicy.class);
+  private static final String DEV_MODE = "dev";
 
   private final AuthProperties authProperties;
-  private final TrustedProvider trustedProvider;
 
   public InitialAdminPolicy(AuthProperties authProperties, TrustedProvider trustedProvider) {
     this.authProperties = authProperties;
-    this.trustedProvider = trustedProvider;
   }
 
   public boolean grantsSystemAdmin(String email, String issuer) {
@@ -31,21 +33,20 @@ public class InitialAdminPolicy {
     if (initialAdminEmail == null
         || initialAdminEmail.isBlank()
         || email == null
-        || !initialAdminEmail.equalsIgnoreCase(email)) {
+        || !initialAdminEmail.trim().equalsIgnoreCase(email.trim())) {
       return false;
     }
-    Optional<String> trusted = trustedProvider.issuer();
-    if (issuer != null
-        && trusted.isPresent()
-        && OidcIssuerUris.normalize(trusted.get()).equals(OidcIssuerUris.normalize(issuer))) {
+    if (DEV_MODE.equals(authProperties.mode())
+        && issuer != null
+        && OidcIssuerUris.normalize(authProperties.dev().issuer())
+            .equals(OidcIssuerUris.normalize(issuer))) {
       return true;
     }
     log.warn(
-        "Account with the initial administrator address is created WITHOUT SYSTEM_ADMIN: {}"
-            + " (issuer: {}). The rule applies only to the trusted provider.",
-        trusted.isPresent()
-            ? "not the trusted provider's issuer"
-            : "no trusted provider exists yet (auth mode '" + authProperties.mode() + "')",
+        "Account with the initial administrator address is created WITHOUT SYSTEM_ADMIN (issuer:"
+            + " {}): since ADR-0033 the rule applies to the dev issuer only; in the oidc mode the"
+            + " first administrator is the local bootstrap account and provider accounts get the"
+            + " role by assignment.",
         issuer);
     return false;
   }

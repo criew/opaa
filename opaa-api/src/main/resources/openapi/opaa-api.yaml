@@ -883,7 +883,10 @@ paths:
       description: >
         A full replacement of every editable field; enabled, isDefault and sortOrder change only
         through their own operations. Changing jwkSetUri changes which keys attest the tokens of
-        this issuer - the trust anchor of every account of the provider.
+        this issuer - the trust anchor of every account of the provider. For the LOCAL row only
+        displayName is editable: its issuer is fixed to urn:opaa:local (409 for any other value),
+        no address check, discovery or connection test applies to it, and clientId and jwkSetUri
+        are ignored.
       requestBody:
         required: true
         content:
@@ -912,7 +915,25 @@ paths:
       summary: Delete an identity provider (system admin only)
       description: >
         Accounts provisioned through the provider remain; only their sign-in stops. Rejected with
-        409 for the default provider - make another provider the default first.
+        409 for the default provider while another OIDC provider exists - make another provider
+        the default first. The LOCAL row of the local account management is never deletable (409);
+        its switch is enable/disable. Deleting the last enabled OIDC provider is allowed only with
+        acknowledgeLastProvider=true (409 with code LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED
+        otherwise) and only while a login-capable local system administrator exists - a local
+        ACTIVE SYSTEM_ADMIN account with a password (409 with code LAST_LOGIN_CAPABLE_ADMIN
+        otherwise: "zuerst ein lokales Systemverwalterkonto mit Passwort einrichten").
+        Afterwards only local accounts can sign in (ADR-0033, Entscheidung 4).
+      parameters:
+        - name: acknowledgeLastProvider
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: >
+            The caller has seen that this is the last enabled OIDC provider and that afterwards
+            only local accounts can sign in. Required (true) exactly in that case; ignored
+            otherwise.
       responses:
         "204":
           description: Identity provider deleted
@@ -928,6 +949,9 @@ paths:
       operationId: enableOidcProvider
       tags: [admin]
       summary: Enable an identity provider (system admin only)
+      description: >
+        For the LOCAL row this switches the local account management on (audited as
+        LOCAL_ACCOUNTS_ENABLED, ADR-0033 Entscheidung 4).
       parameters:
         - name: providerId
           in: path
@@ -954,7 +978,15 @@ paths:
       summary: Disable an identity provider (system admin only)
       description: >
         Its tokens are refused from the commit on; sessions of its users end with the next
-        request. Rejected with 409 for the default provider.
+        request. Rejected with 409 for the default provider while another enabled OIDC provider
+        exists - make another provider the default first. Disabling the last enabled OIDC provider
+        is allowed only with acknowledgeLastProvider=true (409 with code
+        LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED otherwise) and only while a login-capable local
+        system administrator exists (409 with code LAST_LOGIN_CAPABLE_ADMIN otherwise). For the
+        LOCAL row this is the switch of the local account management (ADR-0033, Entscheidung 4):
+        switching off ends the sessions of every regular local account (audited as
+        LOCAL_ACCOUNTS_DISABLED plus one LOCAL_SESSION_REVOKED per account); local SYSTEM_ADMIN
+        accounts keep signing in.
       parameters:
         - name: providerId
           in: path
@@ -962,6 +994,16 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: acknowledgeLastProvider
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: >
+            The caller has seen that this is the last enabled OIDC provider and that afterwards
+            only local accounts can sign in. Required (true) exactly in that case; ignored
+            otherwise.
       responses:
         "200":
           description: Identity provider disabled
@@ -982,9 +1024,10 @@ paths:
       tags: [admin]
       summary: Make an identity provider the default provider (system admin only)
       description: >
-        Moves the default flag from the previous default. The default provider is the one
-        opaa.auth.initial-admin-email applies to and the one the directory synchronisation is
-        bound to (ADR-0025). Rejected with 409 for a disabled provider.
+        Moves the default flag from the previous default. The default provider is the directory
+        provider - the one the directory synchronisation is bound to (ADR-0025; since ADR-0033 it
+        no longer mints the initial administrator). Rejected with 409 for a disabled provider and
+        for the LOCAL row, which is never the default.
       parameters:
         - name: providerId
           in: path
@@ -9667,6 +9710,11 @@ components:
           AUDIT_LOG_ACCESSED,
           LOCAL_SESSION_REVOKED,
           LOCAL_PASSWORD_CHANGED,
+          LOCAL_ADMIN_SEEDED,
+          LOCAL_ADMIN_RESET,
+          LOCAL_BOOTSTRAP_ACCOUNT_LOGIN,
+          LOCAL_ACCOUNTS_ENABLED,
+          LOCAL_ACCOUNTS_DISABLED,
         ]
       example: ASSET_GRANT_REVOKED
 

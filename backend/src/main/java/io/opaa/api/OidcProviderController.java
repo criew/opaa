@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -31,7 +32,9 @@ import org.springframework.web.bind.annotation.RestController;
  * access bar and {@code @Caller} pattern as {@link LlmModelController}. A provider is a public
  * client: no response carries a secret because none exists. Every response carries the registry's
  * view of the provider ({@link OidcProviderRegistry#healthOf}), so the Anbieterverwaltung can show
- * a provider whose decoder could not be built.
+ * a provider whose decoder could not be built. Disabling or deleting the last enabled OIDC provider
+ * needs {@code acknowledgeLastProvider=true} (ADR-0033, Entscheidung 4); the LOCAL row's
+ * enable/disable is the switch of the local account management.
  */
 @RestController
 @RequestMapping("/api/v1/admin/oidc-providers")
@@ -93,8 +96,11 @@ public class OidcProviderController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @DeleteMapping("/{providerId}")
   public ResponseEntity<Void> deleteProvider(
-      @PathVariable UUID providerId, @Caller CurrentUser caller) {
-    providerService.deleteProvider(caller.organizationId(), caller.id(), providerId);
+      @PathVariable UUID providerId,
+      @RequestParam(defaultValue = "false") boolean acknowledgeLastProvider,
+      @Caller CurrentUser caller) {
+    providerService.deleteProvider(
+        caller.organizationId(), caller.id(), providerId, acknowledgeLastProvider);
     return ResponseEntity.noContent().build();
   }
 
@@ -109,9 +115,12 @@ public class OidcProviderController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping("/{providerId}/disable")
   public OidcProviderResponse disableProvider(
-      @PathVariable UUID providerId, @Caller CurrentUser caller) {
+      @PathVariable UUID providerId,
+      @RequestParam(defaultValue = "false") boolean acknowledgeLastProvider,
+      @Caller CurrentUser caller) {
     return toResponse(
-        providerService.setEnabled(caller.organizationId(), caller.id(), providerId, false));
+        providerService.setEnabled(
+            caller.organizationId(), caller.id(), providerId, false, acknowledgeLastProvider));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

@@ -213,8 +213,11 @@ Anlegen/Ändern/Löschen von Bibliotheken, Spaces und Gruppen, Aufnahme/Rollenä
 Mitgliedern, Eigentümerübergang eines Space, jede bewirkte Änderung eines Verzeichnisabgleichs samt
 Kopfeintrag, die Erteilung/der Entzug der System-Admin-Rolle sowie — seit #1533 — der
 fremdveranlasste Widerruf lokaler Sitzungen (`LOCAL_SESSION_REVOKED`, zunächst nur bei
-Wiederverwendung eines Refresh-Tokens) und das Ändern des eigenen Passworts
-(`LOCAL_PASSWORD_CHANGED`). Noch **nicht** verdrahtet — weil
+Wiederverwendung eines Refresh-Tokens; seit #1534 auch beim Abschalten der lokalen Verwaltung), das
+Ändern des eigenen Passworts (`LOCAL_PASSWORD_CHANGED`) sowie — seit #1534 — die Anlage und der
+Wiederanlauf des Notanker-Kontos (`LOCAL_ADMIN_SEEDED`, `LOCAL_ADMIN_RESET`), jede Anmeldung mit ihm
+(`LOCAL_BOOTSTRAP_ACCOUNT_LOGIN`) und der Schalter der lokalen Verwaltung
+(`LOCAL_ACCOUNTS_ENABLED`/`_DISABLED`). Noch **nicht** verdrahtet — weil
 die jeweilige Funktion selbst noch fehlt, nicht weil sie ausgenommen wäre: Ablauf einer Befristung
 (kein Scheduler), Aussetzen von Grants durch eine gesenkte Freigabe-Obergrenze, Bereitstellung einer
 Bibliothek in einem Space, Eigentümerübernahme ohne Zuständigkeit und der Übergang in „Nachfolge

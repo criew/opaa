@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import mimetypes
+import os
 import sys
 import time
 from pathlib import Path
@@ -27,7 +28,7 @@ from pathlib import Path
 import requests
 
 from api_client import ApiError, Client
-from auth import AuthError, DevHeaderAuth, KeycloakPasswordAuth
+from auth import AuthError, DevHeaderAuth, KeycloakPasswordAuth, LocalPasswordAuth
 from profiles import PROFILES, LibraryDef, Profile, SpaceDef, UserDef
 
 INDEXING_POLL_INTERVAL_SECONDS = 3
@@ -84,25 +85,35 @@ def wait_until_ready(admin_client: Client, timeout_seconds: int = 90) -> None:
     )
 
 
-def provision_users(clients: dict[str, Client], profile: Profile) -> dict[str, str]:
+def provision_users(
+    clients: dict[str, Client], profile: Profile, bootstrap_admin: Client | None
+) -> dict[str, str]:
     """Triggers UserProvisioningFilter for every user by making one authenticated request each,
-    and returns each user's database id, keyed by the profile's own user key."""
+    and returns each user's database id, keyed by the profile's own user key. In the Keycloak
+    profile the admin account no longer becomes SYSTEM_ADMIN by itself (ADR-0033: the first
+    administrator is the local bootstrap account the backend seeds); the role is granted here by
+    that bootstrap account, once, through the regular role API."""
     user_ids: dict[str, str] = {}
     for user in profile.all_users():
         info = clients[user.key].get_ok("/v1/auth/me")
         user_ids[user.key] = info["id"]
         print(f"  Nutzer bereitgestellt: {user.display_name} ({info['systemRole']}, {info['id']})")
     admin_role = clients[profile.admin.key].get_ok("/v1/auth/me")["systemRole"]
+    if admin_role != "SYSTEM_ADMIN" and bootstrap_admin is not None:
+        bootstrap_admin.post_ok(
+            f"/v1/admin/users/{user_ids[profile.admin.key]}/role", json={"role": "SYSTEM_ADMIN"}
+        )
+        print(f"  SYSTEM_ADMIN an {profile.admin.display_name} vergeben (durch das Notanker-Konto)")
+        admin_role = clients[profile.admin.key].get_ok("/v1/auth/me")["systemRole"]
     if admin_role != "SYSTEM_ADMIN":
         raise SystemExit(
             f"Admin-Konto '{profile.admin.identity}' hat nicht die Rolle SYSTEM_ADMIN "
-            f"(tatsächlich: {admin_role}). UserService#findOrCreateUser vergibt SYSTEM_ADMIN nur "
-            "beim allerersten Anlegen der Nutzerzeile, anhand von OPAA_INITIAL_ADMIN_EMAIL zu "
-            "diesem Zeitpunkt - eine nachträglich geänderte Variable hebt eine bereits bestehende "
-            "Nutzerzeile nicht mehr an. Abhilfe: die Nutzerzeile aus der Datenbank entfernen oder "
-            "den Stack mit 'docker compose ... down -v' zurücksetzen und den Seed erneut laufen "
-            f"lassen - diesmal mit OPAA_INITIAL_ADMIN_EMAIL={profile.admin.email} bereits beim "
-            "allerersten Start gesetzt."
+            f"(tatsaechlich: {admin_role}). Im Keycloak-Profil vergibt der Seed die Rolle ueber das "
+            "lokale Notanker-Konto der Systemverwaltung (ADR-0033): OPAA_INITIAL_ADMIN_EMAIL und "
+            "OPAA_INITIAL_ADMIN_PASSWORD muessen beim allerersten Start des Stacks gesetzt gewesen "
+            "sein und dem Seed als --local-admin-email/--local-admin-password bzw. als "
+            "Umgebungsvariablen vorliegen. Abhilfe: den Stack mit 'docker compose ... down -v' "
+            "zuruecksetzen und den Seed erneut laufen lassen."
         )
     return user_ids
 
@@ -343,12 +354,22 @@ def run(args: argparse.Namespace) -> None:
         for user in profile.all_users()
     }
     admin_client = clients[profile.admin.key]
+    bootstrap_admin: Client | None = None
+    if profile.auth_mode == "keycloak" and args.local_admin_email and args.local_admin_password:
+        bootstrap_admin = Client(
+            base_url=args.base_url,
+            auth=LocalPasswordAuth(
+                args.base_url, args.local_admin_email, args.local_admin_password
+            ),
+            rate_limit_wait_seconds=args.rate_limit_wait_seconds,
+            label="notanker",
+        )
 
     print("Warte auf Backend/Keycloak …")
     wait_until_ready(admin_client)
 
     print("1/6 Nutzer bereitstellen (erste authentifizierte Anfrage je Nutzer) …")
-    user_ids = provision_users(clients, profile)
+    user_ids = provision_users(clients, profile, bootstrap_admin)
 
     print("2/6 Spaces einrichten …")
     space_ids: dict[str, str] = {}
@@ -435,6 +456,17 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "> opaa.rate-limit.indexing.window-seconds default of 60)",
     )
     parser.add_argument("--indexing-timeout-seconds", type=int, default=300)
+    parser.add_argument(
+        "--local-admin-email",
+        default=os.environ.get("OPAA_INITIAL_ADMIN_EMAIL", ""),
+        help="E-mail of the local bootstrap administrator (ADR-0033) the 'demo' profile signs in "
+        "as to grant SYSTEM_ADMIN to the Keycloak admin (default: $OPAA_INITIAL_ADMIN_EMAIL)",
+    )
+    parser.add_argument(
+        "--local-admin-password",
+        default=os.environ.get("OPAA_INITIAL_ADMIN_PASSWORD", ""),
+        help="Password of that account (default: $OPAA_INITIAL_ADMIN_PASSWORD)",
+    )
     return parser.parse_args(argv)
 
 

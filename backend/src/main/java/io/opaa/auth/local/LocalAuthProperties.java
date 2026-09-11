@@ -2,7 +2,9 @@ package io.opaa.auth.local;
 
 import io.opaa.security.ValidSecret;
 import java.time.Duration;
+import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.security.web.util.matcher.IpAddressMatcher;
 
 /**
  * {@code opaa.auth.local.*} (ADR-0033, Entscheidungen 6 and 7): the root secret every local key is
@@ -25,6 +27,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     hours)
  * @param cookieSecure whether the refresh cookie carries {@code Secure} (default true; {@code
  *     false} only for local HTTP)
+ * @param initialAdminPassword {@code OPAA_INITIAL_ADMIN_PASSWORD}: the bootstrap administrator's
+ *     password for automated deployments (CI, E2E) - used as is, without a forced change; empty
+ *     means "generate one and print it once" (ADR-0033, Entscheidung 5)
+ * @param adminReset {@code OPAA_LOCAL_ADMIN_RESET}: {@code force} restores the bootstrap
+ *     administrator once at start-up (Entscheidung 5); the operator removes it afterwards
+ * @param adminAllowedCidrs {@code OPAA_LOCAL_ADMIN_ALLOWED_CIDRS}: the networks a local {@code
+ *     SYSTEM_ADMIN} may sign in from (Entscheidung 9); empty means no restriction
  */
 @ConfigurationProperties(prefix = "opaa.auth.local")
 public record LocalAuthProperties(
@@ -34,15 +43,25 @@ public record LocalAuthProperties(
     Duration sessionMaxLifetime,
     Duration adminRefreshTokenTtl,
     Duration adminSessionMaxLifetime,
-    Boolean cookieSecure) {
+    Boolean cookieSecure,
+    String initialAdminPassword,
+    String adminReset,
+    List<String> adminAllowedCidrs) {
 
   public static final Duration MAX_REFRESH_TOKEN_TTL = Duration.ofDays(30);
   public static final Duration MAX_SESSION_MAX_LIFETIME = Duration.ofDays(90);
+  public static final String ADMIN_RESET_FORCE = "force";
+  public static final String INITIAL_ADMIN_PASSWORD_VARIABLE = "OPAA_INITIAL_ADMIN_PASSWORD";
+  public static final String ADMIN_RESET_VARIABLE = "OPAA_LOCAL_ADMIN_RESET";
+  public static final String ADMIN_ALLOWED_CIDRS_VARIABLE = "OPAA_LOCAL_ADMIN_ALLOWED_CIDRS";
 
   private static final String PREFIX = "opaa.auth.local.";
 
   public LocalAuthProperties {
     jwtSecret = jwtSecret == null ? "" : jwtSecret.trim();
+    initialAdminPassword = initialAdminPassword == null ? "" : initialAdminPassword.trim();
+    adminReset = adminReset == null ? "" : adminReset.trim();
+    adminAllowedCidrs = normalizeCidrs(adminAllowedCidrs);
     accessTokenTtl = accessTokenTtl != null ? accessTokenTtl : Duration.ofMinutes(15);
     refreshTokenTtl = refreshTokenTtl != null ? refreshTokenTtl : Duration.ofDays(7);
     sessionMaxLifetime = sessionMaxLifetime != null ? sessionMaxLifetime : Duration.ofDays(30);
@@ -85,6 +104,37 @@ public record LocalAuthProperties(
         Setting.ACCESS_TOKEN_TTL,
         adminRefreshTokenTtl,
         Setting.ADMIN_REFRESH_TOKEN_TTL);
+  }
+
+  public boolean hasInitialAdminPassword() {
+    return !initialAdminPassword.isEmpty();
+  }
+
+  public boolean isAdminResetForced() {
+    return ADMIN_RESET_FORCE.equalsIgnoreCase(adminReset);
+  }
+
+  /** Trimmed, blanks dropped, every entry parseable as an address or CIDR - fail fast otherwise. */
+  private static List<String> normalizeCidrs(List<String> cidrs) {
+    if (cidrs == null) {
+      return List.of();
+    }
+    List<String> normalized =
+        cidrs.stream().filter(c -> c != null && !c.isBlank()).map(String::trim).toList();
+    for (String cidr : normalized) {
+      try {
+        new IpAddressMatcher(cidr);
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException(
+            PREFIX
+                + "admin-allowed-cidrs ("
+                + ADMIN_ALLOWED_CIDRS_VARIABLE
+                + ") contains no valid address or CIDR range: "
+                + cidr,
+            e);
+      }
+    }
+    return normalized;
   }
 
   private static void requirePositive(Duration value, Setting setting) {

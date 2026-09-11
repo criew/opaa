@@ -1,5 +1,6 @@
 package io.opaa.auth.oidc;
 
+import io.opaa.api.types.ProviderType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,4 +31,22 @@ public interface OidcProviderRepository extends JpaRepository<OidcProvider, UUID
 
   /** The one default provider, if any ({@code ux_oidc_providers_single_default}). */
   Optional<OidcProvider> findByDefaultProviderTrue();
+
+  /** How many rows of {@code providerType} exist - the OIDC count decides the first default. */
+  long countByProviderType(ProviderType providerType);
+
+  Optional<OidcProvider> findByProviderType(ProviderType providerType);
+
+  /**
+   * The one LOCAL row (ADR-0033, {@code ux_oidc_providers_single_local}), if the seed created it.
+   */
+  default Optional<OidcProvider> findLocalRow() {
+    return findByProviderType(ProviderType.LOCAL);
+  }
+
+  /** Whether another enabled row of {@code providerType} than {@code id} exists. */
+  boolean existsByProviderTypeAndEnabledTrueAndIdNot(ProviderType providerType, UUID id);
+
+  /** Whether another row of {@code providerType} than {@code id} exists, enabled or not. */
+  boolean existsByProviderTypeAndIdNot(ProviderType providerType, UUID id);
 }

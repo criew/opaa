@@ -27,6 +27,47 @@ class AuthError(RuntimeError):
     pass
 
 
+class LocalPasswordAuth:
+    """Auth provider for a local OPAA account (ADR-0033): POST /api/v1/auth/local/login with
+    e-mail and password, the access token as bearer. Used by the demo profile for the bootstrap
+    system administrator the backend seeds on its first start (#1534) - the one account that can
+    grant SYSTEM_ADMIN to the Keycloak "demo-admin", which no longer gets the role by itself.
+    Tokens are short-lived (15 minutes) and refreshed by signing in again; the refresh cookie is
+    deliberately not used."""
+
+    def __init__(self, base_url: str, email: str, password: str) -> None:
+        self._login_endpoint = f"{base_url.rstrip('/')}/v1/auth/local/login"
+        self._email = email
+        self._password = password
+        self._access_token: str | None = None
+        self._expires_at: float = 0.0
+
+    def headers(self) -> dict[str, str]:
+        if self._access_token is None or time.monotonic() >= self._expires_at:
+            self._fetch_token()
+        return {"Authorization": f"Bearer {self._access_token}"}
+
+    def _fetch_token(self) -> None:
+        response = requests.post(
+            self._login_endpoint,
+            json={"email": self._email, "password": self._password},
+            timeout=30,
+        )
+        if response.status_code != 200:
+            raise AuthError(
+                f"Lokale Anmeldung des Notanker-Kontos '{self._email}' fehlgeschlagen: "
+                f"{response.status_code} {response.text[:300]}"
+            )
+        payload = response.json()
+        if payload.get("passwordChangeRequired"):
+            raise AuthError(
+                "Das Notanker-Konto verlangt einen Passwortwechsel - fuer den Seed muss "
+                "OPAA_INITIAL_ADMIN_PASSWORD beim ersten Start gesetzt gewesen sein."
+            )
+        self._access_token = payload["accessToken"]
+        self._expires_at = time.monotonic() + max(payload.get("expiresInSeconds", 60) - 30, 5)
+
+
 @dataclass
 class DevHeaderAuth:
     """Auth provider for the dev auth profile (X-OPAA-Dev-User header, no token)."""

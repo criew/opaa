@@ -212,12 +212,12 @@ class LocalAdminAvailabilityGuardIntegrationTest {
                     organizationId, enabledProvider.getId()))
         .isInstanceOf(ConflictException.class)
         .hasMessageContaining("lokales Systemverwalterkonto mit Passwort");
-    // a provider whose administrators do not count anyway changes nothing
-    assertThatThrownBy(
+    // excluding a provider whose administrators do not count anyway leaves the enabled one
+    assertThatCode(
             () ->
                 guard.requireLoginCapableAdminWithoutProvider(
                     organizationId, disabledProvider.getId()))
-        .isInstanceOf(ConflictException.class);
+        .doesNotThrowAnyException();
 
     localAccount(SystemRole.SYSTEM_ADMIN, true);
     assertThatCode(

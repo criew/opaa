@@ -49,9 +49,9 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
  * (ADR-0033, Entscheidung 5): the first start creates the LOCAL row and a live bootstrap
  * administrator whose sign-in with the one-time password from the log succeeds and demands a
  * password change; a second start seeds nothing even after the account was deleted; the forced
- * restart restores it; an existing installation gets an {@code INVITED} account; the password stands
- * in exactly one log line and in no audit row; the bootstrap sign-in is audited; and a local {@code
- * SYSTEM_ADMIN} signs in only from the allowed networks (Entscheidung 9).
+ * restart restores it; an existing installation gets an {@code INVITED} account; the password
+ * stands in exactly one log line and in no audit row; the bootstrap sign-in is audited; and a local
+ * {@code SYSTEM_ADMIN} signs in only from the allowed networks (Entscheidung 9).
  */
 // Own context (AGENTS.md, "Spring-Testkontexte"): the shared oidc context runs with the shipped
 // default address, which the seeder rejects on purpose; this class needs a deliverable address and
@@ -232,8 +232,7 @@ class LocalAdminSeederIntegrationTest {
   }
 
   @Test
-  void theForcedRestartRestoresTheAccountEndsItsSessionsAndRecreatesADeletedOne()
-      throws Exception {
+  void theForcedRestartRestoresTheAccountEndsItsSessionsAndRecreatesADeletedOne() throws Exception {
     String password = seedFreshAndReadPassword();
     login(EMAIL, password, null).andExpect(status().isOk());
     UUID userId = bootstrapUser().getId();
@@ -312,8 +311,7 @@ class LocalAdminSeederIntegrationTest {
             .getContentAsString();
     assertThat(stripTimestamp(refusedNetwork)).isEqualTo(stripTimestamp(wrongPassword));
     // regular local accounts are not restricted
-    login(regular.email(), LocalAccountFixtures.PASSWORD, "192.168.7.7")
-        .andExpect(status().isOk());
+    login(regular.email(), LocalAccountFixtures.PASSWORD, "192.168.7.7").andExpect(status().isOk());
     // a refused network is no failed password: the counter stays untouched
     assertThat(bootstrapRow().getFailedLoginAttempts()).isEqualTo(1);
     assertThat(auditTypes()).doesNotContain("LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS");

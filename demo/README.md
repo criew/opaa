@@ -79,6 +79,7 @@ In der eigenen `.env.docker` zusätzlich setzen:
 ```env
 SPRING_PROFILES_ACTIVE=docker,oidc
 OPAA_INITIAL_ADMIN_EMAIL=admin@stadt-rheinfurt.example
+OPAA_INITIAL_ADMIN_PASSWORD=<eigener Wert, nur für die Dauer des Seeds; siehe unten>
 OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example,minio
 OPAA_CREDENTIALS_ENCRYPTION_KEY=<Ausgabe von: openssl rand -base64 32>
 OPAA_AUTH_JWT_SECRET=<Ausgabe von: openssl rand -base64 48>
@@ -95,10 +96,17 @@ OPAA_UPLOAD_S3_SECRET_KEY=OpaaUploads!2026
 
 Herkunft und Zwang jeder einzelnen Variable:
 
-- `OPAA_INITIAL_ADMIN_EMAIL` muss die E-Mail-Adresse des Keycloak-Nutzers `demo-admin` treffen
-  (`keycloak/realm-export.json`) — sonst bekommt kein Konto der Demo `SYSTEM_ADMIN`, und Schritt 1 des
-  Seeds (siehe unten) bricht mit einer klaren Fehlermeldung ab, statt eine falsche Rolle
-  stillschweigend zu akzeptieren.
+- `OPAA_INITIAL_ADMIN_EMAIL` und `OPAA_INITIAL_ADMIN_PASSWORD` sind Adresse und Passwort des
+  **lokalen Notanker-Kontos der Systemverwaltung**, das OPAA beim allerersten Start im `oidc`-Modus
+  anlegt ([ADR-0033](../docs/decisions/0033-lokale-benutzerverwaltung.md), #1534). Seit diesem Stand
+  wird der Keycloak-Nutzer `demo-admin` **nicht mehr von selbst** `SYSTEM_ADMIN`; Schritt 1 des Seeds
+  (siehe unten) meldet sich als Notanker-Konto an und vergibt ihm die Rolle über die reguläre
+  Rollen-API. Dafür muss das Passwort beim allerersten Start gesetzt gewesen sein (ein erzeugtes
+  Passwort stünde nur im Log und würde einen Wechsel erzwingen) und dem Seed als
+  `--local-admin-email`/`--local-admin-password` bzw. als gleichnamige Umgebungsvariablen
+  vorliegen — sonst bricht Schritt 1 mit einer klaren Fehlermeldung ab, statt eine falsche Rolle
+  stillschweigend zu akzeptieren. Die Adresse darf dieselbe sein wie die des Keycloak-Nutzers
+  (zwei Konten unter zwei Issuern); `admin@opaa.local` wird abgelehnt.
 - `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example,minio` ist
   zwingend: Die Zielprüfung ausgehender Abrufe (`opaa.indexing.target-validation`, #267,
   standardmäßig aktiv) lehnt Compose-interne Adressen in privaten Bereichen ab — ohne diesen Eintrag
@@ -399,8 +407,10 @@ Der Lauf richtet über die API ein:
 
 1. **Nutzer bereitstellen** — jeder der vier Demo-Nutzer plus das Admin-Konto meldet sich einmal an
    (`GET /api/v1/auth/me`), was `UserProvisioningFilter` zum ersten Mal einen Datenbanksatz anlegen
-   lässt. Das Admin-Konto muss danach `SYSTEM_ADMIN` tragen — sonst bricht der Lauf ab (siehe oben,
-   `OPAA_INITIAL_ADMIN_EMAIL`).
+   lässt. Trägt `demo-admin` danach noch nicht `SYSTEM_ADMIN`, meldet sich der Seed als lokales
+   Notanker-Konto an (`POST /api/v1/auth/local/login`) und vergibt die Rolle über
+   `POST /api/v1/admin/users/{id}/role`; gelingt das nicht, bricht der Lauf ab (siehe oben,
+   `OPAA_INITIAL_ADMIN_EMAIL`/`OPAA_INITIAL_ADMIN_PASSWORD`).
 2. **Spaces** gemäß `docs/features/demo-instance.md` — „Meldewesen & Ausweise" (Maria Weber, Selin
    Kaya), Marias eigener Space ohne weiteres Mitglied, „Kfz-Zulassung" (Thomas Klein), „Amtsleitung
    Bürgerbüro" (Andrea Vogt).
@@ -505,9 +515,11 @@ Demo-Konten) und mit dem Rheinfurt-Korpus samt Seed-Profil `demo` befüllt.
   erfordert eine Anmeldung mit einem der Rheinfurt-Demo-Konten (siehe „Nutzerkonten" oben). Eine
   Konsequenz dieser Festlegung: Inhalte auf der Instanz — der Rheinfurt-Korpus — sind nur für
   angemeldete Nutzer sichtbar, nicht öffentlich ohne Anmeldung einsehbar.
-- **Administration:** Genau ein Konto trägt die Rolle `SYSTEM_ADMIN` — `OPAA_INITIAL_ADMIN_EMAIL`
-  zeigt auf `admin@stadt-rheinfurt.example`, das Administrationskonto `demo-admin`, nicht mehr auf ein
-  persönliches Konto des Maintainers. Das Keycloak-Konto `demo-admin` samt Passwort stammt bereits aus
+- **Administration:** Zwei Konten tragen die Rolle `SYSTEM_ADMIN`: das lokale Notanker-Konto der
+  Systemverwaltung (`OPAA_INITIAL_ADMIN_EMAIL`, seit ADR-0033 beim ersten Start angelegt; sein
+  Passwort ist nach dem Seed versiegelt zu hinterlegen, nicht im Alltag zu benutzen) und das
+  Administrationskonto `demo-admin`, dem der Seed die Rolle vergibt — nicht mehr ein persönliches
+  Konto des Maintainers. Das Keycloak-Konto `demo-admin` samt Passwort stammt bereits aus
   dem Realm-Import; der Seed-Lauf legt keinen neuen Keycloak-Nutzer an, sondern löst nur dessen
   Erstanmeldung aus, die den zugehörigen OPAA-Datensatz anlegt. Sein Passwort ist nach jedem
   Seed-Lauf bewusst rotiert (siehe „Seed- und `opaa-seed`-Verfahren" unten) und weicht deshalb vom
@@ -646,6 +658,12 @@ Punkt 6. Auf der Instanz ist er im Normalbetrieb **deaktiviert**, sowohl in der 
 Import als auch nachträglich per `kcadm`. Für einen Seed-Lauf wird er ausschließlich für dessen Dauer
 aktiviert und unmittelbar danach wieder deaktiviert — kein dauerhaft scharfer, passwortbasierter
 Tokenweg ohne Client-Secret auf einer erreichbaren Instanz.
+
+**Dritte Vorbedingung (seit ADR-0033, #1534):** Der Seed vergibt `SYSTEM_ADMIN` an `demo-admin` über
+das lokale Notanker-Konto; dessen Passwort wird als `--local-admin-password` (oder
+`OPAA_INITIAL_ADMIN_PASSWORD` in der Umgebung des Aufrufs) übergeben und ist auf der Instanz nach
+dem Lauf über `OPAA_LOCAL_ADMIN_RESET=force` rotierbar. Trägt `demo-admin` die Rolle bereits, wird
+das Konto nicht angefasst.
 
 **Zweite Vorbedingung, symmetrisch zur ersten:** `seed.py` erwartet für `demo-admin` fest das oben
 dokumentierte Demo-Passwort und kennt kein Override-Flag dafür. Weil dieses Passwort nach jedem

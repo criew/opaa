@@ -210,5 +210,28 @@ public enum AuditEventType {
    */
   LOCAL_SESSION_REVOKED,
   /** A local account's password was changed by the person, with the current password verified. */
-  LOCAL_PASSWORD_CHANGED
+  LOCAL_PASSWORD_CHANGED,
+  /**
+   * The bootstrap administrator (the emergency access of the Systemverwaltung) was created by the
+   * seed on the first start - live with a password on a fresh installation, as {@code INVITED}
+   * without one on an existing installation (ADR-0033, Entscheidung 5).
+   */
+  LOCAL_ADMIN_SEEDED,
+  /**
+   * The bootstrap administrator was restored by {@code OPAA_LOCAL_ADMIN_RESET=force}: unlocked,
+   * expiry cleared, new one-time password, every session ended - or recreated after deletion.
+   */
+  LOCAL_ADMIN_RESET,
+  /**
+   * A successful sign-in with the bootstrap account - the one audited sign-in: a privileged
+   * emergency access, not a person (ADR-0033, Entscheidung 13).
+   */
+  LOCAL_BOOTSTRAP_ACCOUNT_LOGIN,
+  /** The local account management was switched on - the LOCAL provider row enabled. */
+  LOCAL_ACCOUNTS_ENABLED,
+  /**
+   * The local account management was switched off; the sessions of every regular local account
+   * ended with it (system administrators keep theirs).
+   */
+  LOCAL_ACCOUNTS_DISABLED
 }

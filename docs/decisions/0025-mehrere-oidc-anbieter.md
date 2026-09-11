@@ -254,7 +254,16 @@ vertippt" ein Totalausfall der Verwaltung mit Datenbankzugriff als einzigem Ausw
   möglich ist und welche Variablen zu setzen sind, schreibt **keine** Markierung und holt die
   Übernahme beim nächsten Start nach.
 
-**Erstadministrator-Regel je Anbieter:** `opaa.auth.initial-admin-email` gilt ausschließlich für
+> **Nachtrag (ADR-0033, gebaut mit #1534):** Die folgende Regel ist aufgehoben. Der
+> Erstadministrator ist das lokale Notanker-Konto, das `LocalAdminSeeder` beim ersten Start anlegt;
+> `InitialAdminPolicy` vergibt `SYSTEM_ADMIN` nur noch für den Dev-Issuer. Konten eines
+> OIDC-Anbieters werden Systemverwalter ausschließlich durch Rollenvergabe. Aus dem Abschnitt „kein
+> Weg ohne Anbieter" gilt seitdem: Ein Zustand ohne OIDC-Anbieter ist zulässig; der letzte
+> aktivierte OIDC-Anbieter darf mit `acknowledgeLastProvider` und geprüftem lokalen
+> Systemverwalterkonto deaktiviert oder gelöscht werden (`LocalAdminAvailabilityGuard`);
+> `OPAA_OIDC_BOOTSTRAP=force` bleibt bis 31.03.2027, Ersatz ist `OPAA_LOCAL_ADMIN_RESET=force`.
+
+**Erstadministrator-Regel je Anbieter (aufgehoben durch ADR-0033):** `opaa.auth.initial-admin-email` galt ausschließlich für
 Konten, die über den **Standardanbieter** (`is_default`) provisioniert werden, und wie heute nur
 beim Anlegen des Kontos. Ein zweiter Anbieter, dessen Betreiber ein Konto mit der
 Erstadmin-Adresse ausstellt, erhält damit kein `SYSTEM_ADMIN` — die Regel lässt sich nicht über

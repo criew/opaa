@@ -1,5 +1,6 @@
 package io.opaa.auth.oidc;
 
+import io.opaa.api.types.ProviderType;
 import io.opaa.auth.AuthProperties;
 import io.opaa.common.ValidationException;
 import java.time.Instant;
@@ -26,13 +27,16 @@ import org.springframework.transaction.annotation.Transactional;
  * set and the next start tries again). Existing rows with no marker get the marker without any
  * seeding, mirroring {@code LlmModelSeeder}.
  *
- * <p><b>{@code OPAA_OIDC_BOOTSTRAP=force} is the documented way back</b> from a mistyped issuer of
- * the only provider: the marker is ignored once, the environment provider is restored - a row with
- * this issuer is overwritten with the environment values, enabled and made the default; otherwise
- * it is created - and the operator removes the variable again.
+ * <p><b>{@code OPAA_OIDC_BOOTSTRAP=force}</b> restores the environment provider once despite the
+ * marker - a row with this issuer is overwritten with the environment values, enabled and made the
+ * default; otherwise it is created. Since ADR-0033 (Entscheidung 5) the way back from a mistyped
+ * provider is the sign-in as local system administrator ({@code OPAA_LOCAL_ADMIN_RESET=force}
+ * restores that account); this variable keeps working until {@value #BOOTSTRAP_FORCE_REMOVAL_DATE}
+ * and warns about its replacement on every use. The LOCAL row of the local account management is no
+ * identity provider: only OIDC rows count as "already there".
  *
  * <p><b>Ablaufdatum:</b> einmalige Übernahme für Bestandsinstallationen, Kandidat zur Entfernung ab
- * v1.0 (der Wiederanlauf bleibt).
+ * v1.0; {@code OPAA_OIDC_BOOTSTRAP=force} entfällt am {@value #BOOTSTRAP_FORCE_REMOVAL_DATE}.
  */
 @Component
 class OidcProviderSeeder {
@@ -40,6 +44,7 @@ class OidcProviderSeeder {
   private static final Logger log = LoggerFactory.getLogger(OidcProviderSeeder.class);
 
   static final String SEEDED_DISPLAY_NAME = "Verzeichnisdienst";
+  static final String BOOTSTRAP_FORCE_REMOVAL_DATE = "31.03.2027";
   private static final String OIDC_MODE = "oidc";
 
   private final OidcProviderRepository repository;
@@ -68,7 +73,7 @@ class OidcProviderSeeder {
     if (markerRepository.seedAlreadyAttempted()) {
       return;
     }
-    if (repository.count() > 0) {
+    if (repository.countByProviderType(ProviderType.OIDC) > 0) {
       log.info(
           "Übernahme der OPAA_OIDC_*-Konfiguration entfällt: Es sind bereits Identitätsanbieter"
               + " hinterlegt. Seed-Marker wird nachträglich gesetzt.");
@@ -91,6 +96,11 @@ class OidcProviderSeeder {
   }
 
   private void forceBootstrap(AuthProperties.OidcAuth oidc) {
+    log.warn(
+        "OPAA_OIDC_BOOTSTRAP=force ist veraltet und entfällt am {}: Der Weg zurück aus einer"
+            + " Anbieter-Fehlkonfiguration ist die Anmeldung als lokaler Systemverwalter;"
+            + " OPAA_LOCAL_ADMIN_RESET=force stellt dessen Konto wieder her (ADR-0033).",
+        BOOTSTRAP_FORCE_REMOVAL_DATE);
     String issuer = requireBootstrapConfiguration(oidc);
     if (issuer == null) {
       return;

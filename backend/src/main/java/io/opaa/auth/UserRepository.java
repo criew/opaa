@@ -55,9 +55,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
       UUID organizationId, String issuer, Collection<String> subjects);
 
   /**
-   * Serializes token-derived role changes of one organization for the rest of the transaction
-   * ({@code TokenRoleSynchronizer}): the "does another administrator remain?" condition below is
-   * only sound when no second withdrawal counts this one's row as still remaining.
+   * Serializes the changes that could remove the last login-capable administrator of one
+   * organization for the rest of the transaction ({@code
+   * io.opaa.auth.local.LocalAdminAvailabilityGuard}, ADR-0033 Entscheidung 4): the "does another
+   * administrator remain?" count is only sound when no second change counts this one's row as still
+   * remaining.
    */
   @Query(
       value =
@@ -68,16 +70,16 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   int lockRoleChanges(@Param("organizationId") UUID organizationId);
 
   /**
-   * Writes {@code role} over {@code SYSTEM_ADMIN} only while another {@code SYSTEM_ADMIN} of the
-   * same organization remains; {@code 0} means the account is the last one and keeps the role.
+   * The administrators the {@code LocalAdminAvailabilityGuard} counts - filtered for login
+   * capability in Java, with the same rule the login applies.
    */
-  @Modifying(clearAutomatically = true, flushAutomatically = true)
-  @Query(
-      "update User u set u.systemRole = :role where u.id = :id"
-          + " and u.systemRole = io.opaa.api.types.SystemRole.SYSTEM_ADMIN"
-          + " and exists (select o.id from User o where o.organizationId = u.organizationId"
-          + " and o.systemRole = io.opaa.api.types.SystemRole.SYSTEM_ADMIN and o.id <> u.id)")
-  int withdrawSystemAdminIfAnotherRemains(@Param("id") UUID id, @Param("role") SystemRole role);
+  List<User> findByOrganizationIdAndSystemRole(UUID organizationId, SystemRole systemRole);
+
+  /**
+   * The regular accounts of {@code issuer} - what switching the local account management off ends
+   * the sessions of (ADR-0033, Entscheidung 4); system administrators keep theirs.
+   */
+  List<User> findByIssuerAndSystemRoleNot(String issuer, SystemRole systemRole);
 
   /** Writes {@code role} only while the stored role is still {@code expected}. */
   @Modifying(clearAutomatically = true, flushAutomatically = true)

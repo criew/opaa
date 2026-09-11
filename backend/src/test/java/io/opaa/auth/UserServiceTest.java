@@ -18,7 +18,6 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.local.LocalAdminAvailabilityGuard;
-import io.opaa.common.ConflictException;
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderRegistry;
@@ -425,7 +424,9 @@ class UserServiceTest {
         .requireAnotherLoginCapableAdmin(organizationId, admin.getId());
 
     assertThatThrownBy(
-            () -> userService.updateRole(userId, SystemRole.USER, actorInOrganization(organizationId)))
+            () ->
+                userService.updateRole(
+                    userId, SystemRole.USER, actorInOrganization(organizationId)))
         .isInstanceOf(ConflictException.class)
         .satisfies(
             e ->
@@ -441,6 +442,7 @@ class UserServiceTest {
     when(userRepository.findByIdAndOrganizationId(regularId, organizationId))
         .thenReturn(Optional.of(regular));
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
     userService.updateRole(regularId, SystemRole.SYSTEM_ADMIN, actorInOrganization(organizationId));
     verify(adminGuard, times(1)).requireAnotherLoginCapableAdmin(any(), any());
   }

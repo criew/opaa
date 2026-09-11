@@ -58,20 +58,14 @@ class Migration010LocalAdminSeedMarkerTest extends AbstractMigrationTest {
   @Test
   void acceptsExactlyTheSingletonRow() throws SQLException {
     assertThatCode(
-            () ->
-                execute(
-                    "INSERT INTO local_admin_seed_marker (id, seeded_at) VALUES (1, now())"))
+            () -> execute("INSERT INTO local_admin_seed_marker (id, seeded_at) VALUES (1, now())"))
         .doesNotThrowAnyException();
     assertThatThrownBy(
-            () ->
-                execute(
-                    "INSERT INTO local_admin_seed_marker (id, seeded_at) VALUES (1, now())"))
+            () -> execute("INSERT INTO local_admin_seed_marker (id, seeded_at) VALUES (1, now())"))
         .isInstanceOf(SQLException.class)
         .hasMessageContaining("local_admin_seed_marker_pkey");
     assertThatThrownBy(
-            () ->
-                execute(
-                    "INSERT INTO local_admin_seed_marker (id, seeded_at) VALUES (2, now())"))
+            () -> execute("INSERT INTO local_admin_seed_marker (id, seeded_at) VALUES (2, now())"))
         .isInstanceOf(SQLException.class)
         .hasMessageContaining("chk_local_admin_seed_marker_singleton");
   }

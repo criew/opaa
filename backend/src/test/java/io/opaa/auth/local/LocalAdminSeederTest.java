@@ -26,6 +26,7 @@ import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.auth.oidc.OidcProviderSeedMarkerRepository;
 import io.opaa.auth.oidc.OidcProvidersChangedEvent;
+import io.opaa.organization.Organization;
 import io.opaa.security.PasswordGenerator;
 import java.time.Clock;
 import java.time.Instant;
@@ -264,8 +265,7 @@ class LocalAdminSeederTest {
     when(marker.seedAlreadyAttempted()).thenReturn(false);
 
     assertThat(seeder("oidc", "  ", "", "").seedIfNeeded()).isEqualTo(Outcome.REJECTED);
-    assertThat(seeder("oidc", "kein-postfach", "", "").seedIfNeeded())
-        .isEqualTo(Outcome.REJECTED);
+    assertThat(seeder("oidc", "kein-postfach", "", "").seedIfNeeded()).isEqualTo(Outcome.REJECTED);
     verify(marker, never()).save(any());
     assertThat(loggedMessages()).anyMatch(m -> m.contains("OPAA_INITIAL_ADMIN_EMAIL"));
   }
@@ -303,6 +303,7 @@ class LocalAdminSeederTest {
   void theForcedResetRestoresALockedExpiredAndDemotedBootstrapAccountAndEndsItsSessions() {
     when(marker.seedAlreadyAttempted()).thenReturn(true);
     User user = User.localAccount(EMAIL, LocalAdminSeeder.DISPLAY_NAME);
+    user.setOrganizationId(Organization.DEFAULT_ID);
     user.setSystemRole(SystemRole.USER);
     LocalCredentials row = new LocalCredentials(user.getId(), "alt", NOW.minusSeconds(3600));
     row.markBootstrap();

@@ -30,3 +30,5 @@ databaseChangeLog:
       file: db/changelog/changes/008-create-local-action-tokens.yaml
   - include:
       file: db/changelog/changes/009-create-local-auth-settings.yaml
+  - include:
+      file: db/changelog/changes/010-create-local-admin-seed-marker.yaml

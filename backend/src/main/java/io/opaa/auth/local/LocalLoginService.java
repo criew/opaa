@@ -9,6 +9,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -21,7 +23,9 @@ import org.springframework.stereotype.Service;
  * SYSTEM_ADMIN}; every refusal is the same empty result. A wrong password of a known account is
  * counted atomically and reported to every {@link LocalLoginAttemptListener}; a successful sign-in
  * resets the counter. Account state comes from {@link LocalCredentials#state} alone - a lock's
- * stale {@code locked_at} after a lockout expired is not a lock.
+ * stale {@code locked_at} after a lockout expired is not a lock. A local {@code SYSTEM_ADMIN}
+ * signing in from outside {@link LocalAdminNetworkPolicy}'s networks is refused like a wrong
+ * password - without a count and without the listeners (ADR-0033, Entscheidung 9).
  */
 @Service
 public class LocalLoginService {
@@ -33,11 +37,14 @@ public class LocalLoginService {
   static final String DUMMY_HASH =
       "{bcrypt}$2a$12$vuBcpQelR7dqUorH5Avrpe4i.bXGwt2/1XUXmrNjTYRnv3MTAdwSS";
 
+  private static final Logger log = LoggerFactory.getLogger(LocalLoginService.class);
+
   private final UserRepository users;
   private final LocalCredentialsRepository credentials;
   private final PasswordEncoder passwordEncoder;
   private final OidcProviderRegistry registry;
   private final List<LocalLoginAttemptListener> listeners;
+  private final LocalAdminNetworkPolicy networkPolicy;
   private final Clock clock;
 
   public LocalLoginService(
@@ -46,17 +53,24 @@ public class LocalLoginService {
       PasswordEncoder passwordEncoder,
       OidcProviderRegistry registry,
       List<LocalLoginAttemptListener> listeners,
+      LocalAdminNetworkPolicy networkPolicy,
       Clock clock) {
     this.users = users;
     this.credentials = credentials;
     this.passwordEncoder = passwordEncoder;
     this.registry = registry;
     this.listeners = List.copyOf(listeners);
+    this.networkPolicy = networkPolicy;
     this.clock = clock;
   }
 
-  /** The account when the sign-in is accepted; empty for every refusal alike. */
-  public Optional<AuthenticatedLocalAccount> authenticate(String email, String password) {
+  /**
+   * The account when the sign-in is accepted; empty for every refusal alike. {@code clientAddress}
+   * is the resolved client address ({@code io.opaa.security.ClientIpResolver}), consulted for local
+   * {@code SYSTEM_ADMIN} accounts only.
+   */
+  public Optional<AuthenticatedLocalAccount> authenticate(
+      String email, String password, String clientAddress) {
     String normalized = email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
     if (normalized.isEmpty() || password == null || password.isEmpty()) {
       return Optional.empty();
@@ -77,6 +91,14 @@ public class LocalLoginService {
     }
     if (!LocalAccountAccess.isLoginCapable(row, now)
         || !LocalAccountAccess.passesManagementSwitch(registry, user)) {
+      return Optional.empty();
+    }
+    if (user.getSystemRole() == SystemRole.SYSTEM_ADMIN
+        && !networkPolicy.permitsAdminSignIn(clientAddress)) {
+      log.warn(
+          "Sign-in of local SYSTEM_ADMIN account {} refused: client address outside"
+              + " OPAA_LOCAL_ADMIN_ALLOWED_CIDRS",
+          user.getId());
       return Optional.empty();
     }
     if (row.getFailedLoginAttempts() != 0) {

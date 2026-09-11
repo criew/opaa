@@ -7,6 +7,7 @@ import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.local.LocalAdminAvailabilityGuard;
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
 import java.util.List;
@@ -24,10 +25,10 @@ import org.springframework.transaction.annotation.Transactional;
  * neither - and only a deviation from the stored role is written, as a role change with its audit
  * event under the {@value #IDENTITY_PROVIDER_ACTOR} system actor.
  *
- * <p>The last {@code SYSTEM_ADMIN} is never withdrawn by a token: the withdrawal is a conditional
- * {@code UPDATE} that writes only if another administrator remains, serialized per organization
- * through an advisory lock so two withdrawals cannot both count the other one as remaining. A
- * refused withdrawal is logged and audited ({@link
+ * <p>The last login-capable {@code SYSTEM_ADMIN} is never withdrawn by a token: the withdrawal runs
+ * through {@link LocalAdminAvailabilityGuard} (ADR-0033, Entscheidung 4) - a conditional {@code
+ * UPDATE} under the organization's advisory lock that writes only if another administrator who can
+ * actually sign in remains. A refused withdrawal is logged and audited ({@link
  * AuditEventType#SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED}); the account keeps the role the provider
  * withdrew. {@code AUDITOR} is not protected.
  */
@@ -39,11 +40,15 @@ public class TokenRoleSynchronizer {
   private static final Logger log = LoggerFactory.getLogger(TokenRoleSynchronizer.class);
 
   private final UserRepository userRepository;
+  private final LocalAdminAvailabilityGuard adminGuard;
   private final AuditEventRecorder auditEventRecorder;
 
   public TokenRoleSynchronizer(
-      UserRepository userRepository, AuditEventRecorder auditEventRecorder) {
+      UserRepository userRepository,
+      LocalAdminAvailabilityGuard adminGuard,
+      AuditEventRecorder auditEventRecorder) {
     this.userRepository = userRepository;
+    this.adminGuard = adminGuard;
     this.auditEventRecorder = auditEventRecorder;
   }
 
@@ -69,10 +74,9 @@ public class TokenRoleSynchronizer {
     if (target == current) {
       return user;
     }
-    userRepository.lockRoleChanges(user.getOrganizationId());
     int written =
         current == SystemRole.SYSTEM_ADMIN
-            ? userRepository.withdrawSystemAdminIfAnotherRemains(user.getId(), target)
+            ? adminGuard.withdrawSystemAdminIfAnotherRemains(user, target)
             : userRepository.changeRoleIfStill(user.getId(), current, target);
     if (written == 0) {
       // zero rows means either "the last administrator" or "a concurrent request already moved

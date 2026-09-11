@@ -127,6 +127,16 @@ opaa:
       admin-refresh-token-ttl: ${OPAA_AUTH_LOCAL_ADMIN_REFRESH_TOKEN_TTL:4h}
       admin-session-max-lifetime: ${OPAA_AUTH_LOCAL_ADMIN_SESSION_MAX_LIFETIME:12h}
       cookie-secure: ${OPAA_AUTH_LOCAL_COOKIE_SECURE:true}
+      # Bootstrap administrator (ADR-0033, Entscheidung 5; io.opaa.auth.local.LocalAdminSeeder):
+      # the account's address is opaa.auth.initial-admin-email above - the seed in the "oidc"
+      # profile refuses the shipped default admin@opaa.local, which is a dev-mode value, not a
+      # mailbox. A set password is used as is (CI/E2E) without a forced change; empty means
+      # "generate one and print it once". "force" restores the account once at start-up. The
+      # CIDR list restricts the sign-in of local SYSTEM_ADMIN accounts to those networks
+      # (Entscheidung 9); empty means no restriction.
+      initial-admin-password: ${OPAA_INITIAL_ADMIN_PASSWORD:}
+      admin-reset: ${OPAA_LOCAL_ADMIN_RESET:}
+      admin-allowed-cidrs: ${OPAA_LOCAL_ADMIN_ALLOWED_CIDRS:}
   http:
     force-http1: ${OPAA_HTTP_FORCE_HTTP1:false}
   query:

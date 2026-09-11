@@ -22,9 +22,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * The last-administrator protection against a real Postgres (#1331, ADR-0025 Entscheidung 4; since
  * ADR-0033 Entscheidung 4 counted by {@code LocalAdminAvailabilityGuard}): the conditional {@code
  * UPDATE} behind {@link TokenRoleSynchronizer} withdraws {@code SYSTEM_ADMIN} only while another
- * <em>login-capable</em> administrator of the organization remains - here an account of the
- * enabled provider row this test saves - a second withdrawal is refused and audited, and a
- * withdrawal a concurrent request already wrote is read back rather than misreported as refused.
+ * <em>login-capable</em> administrator of the organization remains - here an account of the enabled
+ * provider row this test saves - a second withdrawal is refused and audited, and a withdrawal a
+ * concurrent request already wrote is read back rather than misreported as refused.
  */
 @OpaaIntegrationTest
 class TokenRoleSynchronizerIntegrationTest {

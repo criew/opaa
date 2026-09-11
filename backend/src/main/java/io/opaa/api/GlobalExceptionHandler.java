@@ -294,10 +294,15 @@ public class GlobalExceptionHandler {
         .body(new ErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN.value(), Instant.now()));
   }
 
+  /** A conflict may carry a stable {@code code} the client acts on (ADR-0033, Entscheidung 4). */
   @ExceptionHandler(ConflictException.class)
   public ResponseEntity<ErrorResponse> handleConflictException(ConflictException ex) {
-    return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(new ErrorResponse(ex.getMessage(), HttpStatus.CONFLICT.value(), Instant.now()));
+    ErrorResponse body =
+        new ErrorResponse(ex.getMessage(), HttpStatus.CONFLICT.value(), Instant.now());
+    if (ex.getCode() != null) {
+      body.setCode(ex.getCode());
+    }
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
   }
 
   @ExceptionHandler(ValidationException.class)

@@ -15,6 +15,7 @@ import io.opaa.auth.local.LocalRefreshTokenService.IssuedRefreshToken;
 import io.opaa.auth.local.LocalRefreshTokenService.RotationResult;
 import io.opaa.common.ConflictException;
 import io.opaa.common.UnauthorizedException;
+import io.opaa.security.ClientIpResolver;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -59,6 +60,7 @@ public class LocalAuthController {
   private final LocalCredentialsRepository credentials;
   private final UserService userService;
   private final LocalRefreshCookies cookies;
+  private final ClientIpResolver clientIpResolver;
 
   public LocalAuthController(
       LocalLoginService loginService,
@@ -68,7 +70,8 @@ public class LocalAuthController {
       LocalPasswordService passwords,
       LocalCredentialsRepository credentials,
       UserService userService,
-      LocalRefreshCookies cookies) {
+      LocalRefreshCookies cookies,
+      ClientIpResolver clientIpResolver) {
     this.loginService = loginService;
     this.accessTokens = accessTokens;
     this.refreshTokens = refreshTokens;
@@ -77,13 +80,16 @@ public class LocalAuthController {
     this.credentials = credentials;
     this.userService = userService;
     this.cookies = cookies;
+    this.clientIpResolver = clientIpResolver;
   }
 
   @PostMapping("/login")
-  public ResponseEntity<LocalTokenResponse> login(@Valid @RequestBody LocalLoginRequest request) {
+  public ResponseEntity<LocalTokenResponse> login(
+      @Valid @RequestBody LocalLoginRequest request, HttpServletRequest httpRequest) {
     AuthenticatedLocalAccount account =
         loginService
-            .authenticate(request.getEmail(), request.getPassword())
+            .authenticate(
+                request.getEmail(), request.getPassword(), clientIpResolver.resolve(httpRequest))
             .orElseThrow(() -> new UnauthorizedException(LOGIN_FAILED));
     IssuedRefreshToken refresh = refreshTokens.issue(account.user());
     return ResponseEntity.ok()
