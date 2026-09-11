@@ -300,7 +300,9 @@ Wissensbibliothek erteilt, nicht am einzelnen Dokument — das Modell dahinter i
 
 - **Anmeldung über den Verzeichnisdienst des Hauses.** Die Schnittstelle nimmt ein Zugangsmerkmal
   entgegen, das der Identitätsanbieter ausgestellt hat, und prüft es gegen dessen Signaturschlüssel.
-  Eine eigene Benutzer- und Passwortverwaltung gibt es nicht.
+  Eine eigene Benutzer- und Passwortverwaltung gibt es heute nicht; sie ist als optionale lokale
+  Benutzerverwaltung mit einem immer lokalen Systemverwalter-Konto entschieden
+  ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md), Epic #1529) und wird dort gebaut.
 - **Ein Entwicklungsmodus ohne echte Prüfung**, der ausschließlich Entwicklungs- und Testumgebungen
   vorbehalten ist. Er muss ausdrücklich gewählt werden, und das System bricht den Start ab, wenn gar
   kein Verfahren gesetzt ist — eine Installation ist nie versehentlich offen (siehe
