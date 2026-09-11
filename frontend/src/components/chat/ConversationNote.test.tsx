@@ -26,6 +26,13 @@ const FORM_POINT: ChatNoteItem = {
   createdAt: '2026-03-08T09:02:10Z',
 }
 
+const NEW_POINT: ChatNoteItem = {
+  id: 'note-9',
+  text: 'Es geht um einen Landkreis, keine kreisfreie Stadt',
+  kind: 'RAHMEN',
+  createdAt: '2026-03-08T09:05:10Z',
+}
+
 const TOGGLE = 'Gesprächsnotiz · 2'
 
 /** Removal is optimistic in the store; this harness mirrors that locally, so the focus handling
@@ -35,6 +42,7 @@ function Harness({
   completedRounds = 3,
   canRemove = true,
   rollback = false,
+  addable = false,
   onRemove,
 }: {
   initialItems: ChatNoteItem[]
@@ -42,6 +50,8 @@ function Harness({
   canRemove?: boolean
   /** Mirrors a failed DELETE: the point comes back at its own position shortly after. */
   rollback?: boolean
+  /** Offers a way to let a later round's condensation add a point, the way an answer does. */
+  addable?: boolean
   onRemove?: (itemId: string) => void
 }) {
   const [items, setItems] = useState(initialItems)
@@ -67,6 +77,11 @@ function Harness({
         }}
         emptyFocusRef={headerRef}
       />
+      {addable && (
+        <button type="button" onClick={() => setItems((current) => [...current, NEW_POINT])}>
+          Punkt verdichten
+        </button>
+      )}
     </div>
   )
 }
@@ -163,6 +178,23 @@ describe('ConversationNote (#1488)', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'Notizpunkt entfernt. Die Gesprächsnotiz ist jetzt leer.',
     )
+  })
+
+  // "Zugeklappt als Standard; die Zahl ist das Signal, dass sich etwas geändert hat" - a panel that
+  // opens by itself is the opposite of that signal.
+  it('comes back collapsed when a later round condenses a new point', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Harness initialItems={[FRAME_POINT]} completedRounds={5} addable />)
+
+    await user.click(screen.getByRole('button', { name: 'Gesprächsnotiz · 1' }))
+    await user.click(screen.getByRole('button', { name: 'Notizpunkt entfernen' }))
+    expect(screen.queryByRole('button', { name: /Gesprächsnotiz/ })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Punkt verdichten' }))
+
+    const toggle = screen.getByRole('button', { name: 'Gesprächsnotiz · 1' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('region', { name: 'Gesprächsnotiz' })).not.toBeInTheDocument()
   })
 
   it('shows the points without remove buttons in an archived space', async () => {

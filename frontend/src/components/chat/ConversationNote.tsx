@@ -48,9 +48,9 @@ export default function ConversationNote({
   onRemove,
   emptyFocusRef,
 }: ConversationNoteProps) {
-  // Never reset by a removal: removal is optimistic, and a failed one puts the point - and with it
-  // the panel the person had open - back exactly as it was. While the note is empty, `visible` is
-  // false and nothing is rendered anyway.
+  // Survives a removal: removal is optimistic, and a failed one puts the point - and with it the
+  // panel the person had open - back exactly as it was. A note that comes back with a *new* point
+  // is a different case and starts collapsed again, see below.
   const [open, setOpen] = useState(false)
   // The point removed last and the number that remained - the count is captured at the click, not
   // derived from the current list, so a point condensed later does not re-trigger the announcement.
@@ -68,6 +68,15 @@ export default function ConversationNote({
   const rolledBack = lastRemoval !== null && items.some((item) => item.id === lastRemoval.id)
   const announcement =
     lastRemoval === null || rolledBack ? '' : removalAnnouncement(lastRemoval.remaining)
+
+  // A note returning after it was empty starts collapsed - "zugeklappt als Standard; die Zahl ist
+  // das Signal, dass sich etwas geändert hat". A rollback is not a return: it restores what a
+  // failed removal took away, so the panel stays as the person left it.
+  const [previousVisible, setPreviousVisible] = useState(visible)
+  if (previousVisible !== visible) {
+    setPreviousVisible(visible)
+    if (visible && !rolledBack) setOpen(false)
+  }
 
   useEffect(() => {
     const index = pendingFocusIndexRef.current

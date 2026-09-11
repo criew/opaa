@@ -532,7 +532,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         // eventually replaces it.
         title: response.chatTitle ?? state.title,
         // #1488: the note state that went into *this* answer, minus the points removed since it
-        // was sent (see locallyRemovedNoteItemIds). Null only for an ephemeral query without a
+        // was sent (see removedNoteItemIdsByChatId). Null only for an ephemeral query without a
         // persisted chat - the note then stays as it is rather than being emptied.
         noteItems: response.noteItems
           ? visibleNoteItems(response.chatId, response.noteItems)
