@@ -4,6 +4,7 @@ import io.opaa.FakeEmbeddingModel;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.group.sync.DirectoryClient;
+import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.space.SpaceRepository;
 import org.mockito.Mockito;
@@ -57,6 +58,12 @@ class OpaaTestBeans {
   @Bean
   LlmModelCatalogFixtures llmModelCatalogFixtures(JdbcTemplate jdbcTemplate) {
     return new LlmModelCatalogFixtures(jdbcTemplate);
+  }
+
+  @Bean
+  OwnLibraryFixtures ownLibraryFixtures(
+      JdbcTemplate jdbcTemplate, VectorChunkStore vectorChunkStore) {
+    return new OwnLibraryFixtures(jdbcTemplate, vectorChunkStore);
   }
 
   @Bean

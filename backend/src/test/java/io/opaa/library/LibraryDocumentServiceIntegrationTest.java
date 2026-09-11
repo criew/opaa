@@ -26,6 +26,7 @@ import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnLibraryFixtures;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -34,8 +35,6 @@ import java.nio.file.Path;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
@@ -45,7 +44,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -103,6 +101,7 @@ class LibraryDocumentServiceIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private VectorStore vectorStore;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private AssetGrantRepository assetGrantRepository;
@@ -114,7 +113,6 @@ class LibraryDocumentServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
 
@@ -160,23 +158,13 @@ class LibraryDocumentServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    // #1184: fk_documents_parent (NO ACTION, no cascade) forbids deleting a parent before its
-    // attachments -
-    // delete leaf-first, one nesting level per round, instead of deleteAll()'s arbitrary order.
-    // More general than sorting by file_path length (#1227's variant): it holds for attachment
-    // identities that do not embed their parent's path (e.g. RSS attachment URLs).
-    List<Document> remaining = documentRepository.findAll();
-    while (!remaining.isEmpty()) {
-      Set<UUID> referencedAsParent =
-          remaining.stream()
-              .map(Document::getParentDocumentId)
-              .filter(Objects::nonNull)
-              .collect(Collectors.toSet());
-      documentRepository.deleteAll(
-          remaining.stream().filter(d -> !referencedAsParent.contains(d.getId())).toList());
-      remaining = documentRepository.findAll();
-    }
-    libraryRepository.deleteById(libraryId);
+    // Chunks, documents and runs of this class's own library, then the library itself. #1184:
+    // fk_documents_parent is NO ACTION, checked at the end of the statement - one DELETE removes a
+    // parent and its attachments together, which per-entity deletes in arbitrary order cannot.
+    // Written by PermissionHistoryListener when libraryService.createLibrary ran; the table has no
+    // foreign key at all, so a row left here would never fail loudly, only accumulate.
+    jdbcTemplate.update("DELETE FROM library_visibility_history WHERE library_id = ?", libraryId);
+    ownLibraryFixtures.removeLibraries(libraryId);
     // #238 code review, finding 2+4: asset_grant_history.subject_user_id is ON DELETE RESTRICT
     // (see 018-permission-history.yaml's "Deletion survival" comment) - every library/grant
     // operation setUp performs now historises a row referencing editor/viewer, which must be

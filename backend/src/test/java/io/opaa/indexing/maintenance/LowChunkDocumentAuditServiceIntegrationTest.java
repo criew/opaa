@@ -9,8 +9,9 @@ import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnLibraryFixtures;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,15 +34,22 @@ class LowChunkDocumentAuditServiceIntegrationTest {
   private static final String OWNER_EMAIL = "low-chunk-audit-it@example.com";
   private static final String OTHER_ORGANIZATION_OWNER_EMAIL =
       "low-chunk-audit-it-other-org@example.com";
-  // Deterministic, not random: setUp deletes by this id before inserting, so leftovers from a
+  // Deterministic, not random: setUp deletes by these ids before inserting, so leftovers from a
   // prior test method (or a prior interrupted run) are cleaned up rather than accumulating one
   // orphan organization per test invocation.
+  //
+  // An own organization rather than the shared default one: findLowChunkDocuments answers for a
+  // whole organization, and the assertions below name the documents it returns exactly. In the
+  // shared default organization they would see whatever a neighbouring class has indexed.
+  private static final UUID ORGANIZATION_ID =
+      UUID.fromString("11111111-2222-3333-4444-000000000001");
   private static final UUID OTHER_ORGANIZATION_ID =
       UUID.fromString("11111111-2222-3333-4444-555555555555");
 
   @Autowired private LowChunkDocumentAuditService lowChunkDocumentAuditService;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID userId;
@@ -51,6 +59,9 @@ class LowChunkDocumentAuditServiceIntegrationTest {
   @BeforeEach
   void setUp() {
     cleanUpFixtures();
+    jdbcTemplate.update(
+        "INSERT INTO organizations (id, name, created_at) VALUES (?, 'Pruefstelle', now())",
+        ORGANIZATION_ID);
     userId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
@@ -60,17 +71,12 @@ class LowChunkDocumentAuditServiceIntegrationTest {
         "low-chunk-audit-it-" + userId,
         OWNER_EMAIL,
         SystemRole.SYSTEM_ADMIN.name(),
-        Organization.DEFAULT_ID);
+        ORGANIZATION_ID);
 
     library =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
-                Organization.DEFAULT_ID,
-                "Satzungen",
-                null,
-                userId,
-                LibraryVisibility.PRIVATE,
-                false));
+                ORGANIZATION_ID, "Satzungen", null, userId, LibraryVisibility.PRIVATE, false));
 
     // A document's organizationId is always denormalized from its own library's (see
     // DocumentIngestService#processFile) - cross-org scoping is genuinely tested only against a
@@ -102,27 +108,29 @@ class LowChunkDocumentAuditServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    // Mandatory: SpaceRepositoryTest (and any other class sharing this @OpaaIntegrationTest
-    // context) unconditionally deletes every knowledge_libraries row in its own cleanUp() -
-    // leftover documents from this class referencing library/otherOrganizationLibrary would block
-    // that delete with a fk_documents_library_organization RESTRICT violation.
+    // The whole suite shares one database: what this class created goes away with it, scoped to
+    // its own two libraries, their users and the throwaway organization.
     cleanUpFixtures();
   }
 
-  /** Deletes every fixture this class creates, in FK order: documents, libraries, users, org. */
+  /**
+   * Deletes every fixture this class creates, in FK order: documents, libraries, users, org. Found
+   * through the two owner e-mails rather than through the fields above, because this also runs in
+   * {@code @BeforeEach}, where the libraries of an aborted previous method are the ones to remove.
+   */
   private void cleanUpFixtures() {
-    documentRepository.deleteAll();
+    for (String ownerEmail : List.of(OWNER_EMAIL, OTHER_ORGANIZATION_OWNER_EMAIL)) {
+      List<UUID> ownLibraryIds =
+          jdbcTemplate.queryForList(
+              "SELECT id FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users"
+                  + " WHERE email = ?)",
+              UUID.class,
+              ownerEmail);
+      ownLibraryFixtures.removeLibraries(ownLibraryIds.toArray(new UUID[0]));
+      jdbcTemplate.update("DELETE FROM users WHERE email = ?", ownerEmail);
+    }
     jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = ?)",
-        OWNER_EMAIL);
-    jdbcTemplate.update("DELETE FROM users WHERE email = ?", OWNER_EMAIL);
-    jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = ?)",
-        OTHER_ORGANIZATION_OWNER_EMAIL);
-    jdbcTemplate.update("DELETE FROM users WHERE email = ?", OTHER_ORGANIZATION_OWNER_EMAIL);
-    jdbcTemplate.update("DELETE FROM organizations WHERE id = ?", OTHER_ORGANIZATION_ID);
+        "DELETE FROM organizations WHERE id IN (?, ?)", ORGANIZATION_ID, OTHER_ORGANIZATION_ID);
   }
 
   private Document indexedDocument(
@@ -146,7 +154,7 @@ class LowChunkDocumentAuditServiceIntegrationTest {
 
     Page<LowChunkDocumentAuditService.LowChunkDocumentEntry> result =
         lowChunkDocumentAuditService.findLowChunkDocuments(
-            Organization.DEFAULT_ID, 0, PageRequest.of(0, 20));
+            ORGANIZATION_ID, 0, PageRequest.of(0, 20));
 
     assertThat(result.getContent())
         .extracting(LowChunkDocumentAuditService.LowChunkDocumentEntry::fileName)
@@ -162,7 +170,7 @@ class LowChunkDocumentAuditServiceIntegrationTest {
 
     Page<LowChunkDocumentAuditService.LowChunkDocumentEntry> result =
         lowChunkDocumentAuditService.findLowChunkDocuments(
-            Organization.DEFAULT_ID, 3, PageRequest.of(0, 20));
+            ORGANIZATION_ID, 3, PageRequest.of(0, 20));
 
     assertThat(result.getContent())
         .extracting(LowChunkDocumentAuditService.LowChunkDocumentEntry::fileName)
@@ -177,7 +185,7 @@ class LowChunkDocumentAuditServiceIntegrationTest {
 
     Page<LowChunkDocumentAuditService.LowChunkDocumentEntry> firstPage =
         lowChunkDocumentAuditService.findLowChunkDocuments(
-            Organization.DEFAULT_ID, 0, PageRequest.of(0, 2));
+            ORGANIZATION_ID, 0, PageRequest.of(0, 2));
 
     assertThat(firstPage.getContent()).hasSize(2);
     assertThat(firstPage.getTotalElements()).isEqualTo(3);

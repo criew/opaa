@@ -11,11 +11,13 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaMockedDocumentServiceIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnLibraryFixtures;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -49,6 +51,7 @@ class DocumentIngestServiceIntegrationTest {
   @Autowired private VectorStore vectorStore;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   // The mock of @OpaaMockedDocumentServiceIntegrationTest - needed to force the race window
   // this class reproduces (see the class Javadoc).
   @Autowired private DocumentService documentService;
@@ -58,13 +61,6 @@ class DocumentIngestServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    documentRepository.deleteAll();
-
-    jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = 'file-processing-it@example.com')");
-    jdbcTemplate.update("DELETE FROM users WHERE email = 'file-processing-it@example.com'");
     userId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
@@ -86,6 +82,26 @@ class DocumentIngestServiceIntegrationTest {
                 false));
   }
 
+  // By id, not by the e-mail above: ChunkReplacementOrderIntegrationTest uses the same one for its
+  // own user, and this class removes only what it created itself.
+  @AfterEach
+  void removeOwnRows() {
+    ownLibraryFixtures.removeLibraries(targetLibrary.getId());
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
+  }
+
+  /** The chunk ids of this class's own library - the suite shares one vector_store. */
+  private List<UUID> ownVectorChunkIds() {
+    return jdbcTemplate.queryForList(
+        "SELECT id FROM vector_store WHERE metadata->>'library_id' = ?",
+        UUID.class,
+        targetLibrary.getId().toString());
+  }
+
+  private int ownDocumentCount() {
+    return documentRepository.findByLibraryId(targetLibrary.getId()).size();
+  }
+
   @Test
   void filesystemDocumentDeletedWhileBeingIndexedLeavesNoZombieRowOrOrphanedChunks()
       throws IOException {
@@ -98,8 +114,10 @@ class DocumentIngestServiceIntegrationTest {
             inv -> {
               // Simulates a concurrent LibraryDocumentService#deleteDocument (or a connector
               // library delete) landing right after processFile's own initial insert, before the
-              // status transition below ever runs - the exact window this ordering closes.
-              documentRepository.deleteAll();
+              // status transition below ever runs - the exact window this ordering closes. Scoped
+              // to this class's own library: the suite shares one documents table.
+              documentRepository.deleteAll(
+                  documentRepository.findByLibraryId(targetLibrary.getId()));
               return parsed;
             });
 
@@ -107,13 +125,12 @@ class DocumentIngestServiceIntegrationTest {
         documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
     assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
-    assertThat(documentRepository.count())
+    assertThat(ownDocumentCount())
         .as("the deleted row must not be re-inserted as a zombie")
         .isZero();
-    Long chunkCount = jdbcTemplate.queryForObject("SELECT count(*) FROM vector_store", Long.class);
-    assertThat(chunkCount)
+    assertThat(ownVectorChunkIds())
         .as("chunks written for the now-deleted document must not survive as orphans")
-        .isZero();
+        .isEmpty();
   }
 
   @Test
@@ -130,12 +147,11 @@ class DocumentIngestServiceIntegrationTest {
         documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
     assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
-    assertThat(documentRepository.count()).isEqualTo(1);
-    Document doc = documentRepository.findAll().getFirst();
+    assertThat(ownDocumentCount()).isEqualTo(1);
+    Document doc = documentRepository.findByLibraryId(targetLibrary.getId()).getFirst();
     assertThat(doc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(doc.getChecksum()).isNotNull();
-    Long chunkCount = jdbcTemplate.queryForObject("SELECT count(*) FROM vector_store", Long.class);
-    assertThat(chunkCount).isPositive();
+    assertThat(ownVectorChunkIds()).isNotEmpty();
   }
 
   /**
@@ -162,18 +178,21 @@ class DocumentIngestServiceIntegrationTest {
     // Compares the actual sets of chunk ids, not just their counts: equal
     // counts alone would not catch a bug where chunk_full_text ends up populated for the right
     // number of rows but the wrong ids.
-    List<java.util.UUID> vectorChunkIds =
-        jdbcTemplate.queryForList("SELECT id FROM vector_store", java.util.UUID.class);
-    List<java.util.UUID> fullTextChunkIds =
-        jdbcTemplate.queryForList("SELECT chunk_id FROM chunk_full_text", java.util.UUID.class);
+    List<UUID> vectorChunkIds = ownVectorChunkIds();
+    List<UUID> fullTextChunkIds =
+        jdbcTemplate.queryForList(
+            "SELECT chunk_id FROM chunk_full_text WHERE library_id = ?",
+            UUID.class,
+            targetLibrary.getId());
     assertThat(fullTextChunkIds).containsExactlyInAnyOrderElementsOf(vectorChunkIds);
 
     Long fullTextChunkCount = (long) fullTextChunkIds.size();
     Long matches =
         jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM chunk_full_text WHERE content_tsv @@"
+            "SELECT count(*) FROM chunk_full_text WHERE library_id = ? AND content_tsv @@"
                 + " to_tsquery('german', 'Bedürftigkeit')",
-            Long.class);
+            Long.class,
+            targetLibrary.getId());
     assertThat(matches).isEqualTo(fullTextChunkCount);
   }
 }

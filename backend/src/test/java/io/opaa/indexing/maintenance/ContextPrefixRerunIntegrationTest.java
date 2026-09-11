@@ -34,12 +34,14 @@ import io.opaa.library.LibraryAccessService;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnLibraryFixtures;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,20 +66,14 @@ class ContextPrefixRerunIntegrationTest {
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private LibraryAccessService accessService;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
 
   private KnowledgeLibrary library;
   private CurrentUser owner;
 
   @BeforeEach
   void setUp() throws IOException {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    jdbcTemplate.update("DELETE FROM document_metadata_values");
-    jdbcTemplate.update("DELETE FROM documents");
-    jdbcTemplate.update("DELETE FROM library_metadata_field_values");
-    jdbcTemplate.update("DELETE FROM library_metadata_fields");
-    jdbcTemplate.update("DELETE FROM asset_grants");
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE name LIKE 'Kontextpräfix%'");
-    jdbcTemplate.update("DELETE FROM users WHERE email LIKE 'context-prefix-%'");
+    removeOwnFixtures();
     owner = user("owner");
     library = library();
     grantRepository.save(
@@ -97,6 +93,18 @@ class ContextPrefixRerunIntegrationTest {
         }
       }
     }
+  }
+
+  // Both hooks: the @BeforeEach call removes what a method aborted halfway left behind, the
+  // @AfterEach call what this one created. Found by this class's own library name and user e-mail
+  // pattern, never by table - the whole suite shares one database.
+  @AfterEach
+  void removeOwnFixtures() {
+    List<UUID> ownLibraryIds =
+        jdbcTemplate.queryForList(
+            "SELECT id FROM knowledge_libraries WHERE name LIKE 'Kontextpräfix%'", UUID.class);
+    ownLibraryFixtures.removeLibraries(ownLibraryIds.toArray(new UUID[0]));
+    jdbcTemplate.update("DELETE FROM users WHERE email LIKE 'context-prefix-%'");
   }
 
   @Test
