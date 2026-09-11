@@ -1,0 +1,68 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-diagnostic-impersonation-grant-delete-rules
+      author: opaa
+      comment: >-
+        One delete rule for the whole Befugnis (#1509, maintainer decision of 11.09.2026, recorded as
+        the Nachtrag in ADR-0016): a diagnostic impersonation grant is a live operating permission,
+        not a Historienartefakt - once an account involved in it is gone, its subject matter is gone
+        with it, so the row goes too. holder_user_id already cascaded; granted_by_user_id,
+        revoked_by_user_id and scope_group_id follow, because a single remaining RESTRICT would keep
+        blocking exactly the account deletion this decision allows. Every one of these columns is
+        part of a composite key alongside organization_id, which is NOT NULL - SET NULL is not
+        available for any of them. organization_id itself keeps RESTRICT: the tenant root is never
+        deleted, and every other table treats it that way.
+
+        Deliberately accepted reach: through the granter, revoker and scope columns the cascade also
+        removes grants of other, still existing holders - deleting the account of an administrator
+        who issued 40 grants removes those 40, without a revocation event. A future account deletion
+        function must revoke them explicitly instead of relying on this cascade. What stays provable
+        afterwards is the audit_log pair DIAGNOSTIC_IMPERSONATION_GRANTED/_REVOKED, which carries no
+        foreign key to users; the Bestandssatz deliberately does not survive.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.diagnostic_impersonation_grants
+                  DROP CONSTRAINT fk_diagnostic_impersonation_grants_granter_organization;
+
+              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+                  ADD CONSTRAINT fk_diagnostic_impersonation_grants_granter_organization
+                  FOREIGN KEY (granted_by_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE public.diagnostic_impersonation_grants
+                  DROP CONSTRAINT fk_diagnostic_impersonation_grants_revoker_organization;
+
+              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+                  ADD CONSTRAINT fk_diagnostic_impersonation_grants_revoker_organization
+                  FOREIGN KEY (revoked_by_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE public.diagnostic_impersonation_grants
+                  DROP CONSTRAINT fk_diagnostic_impersonation_grants_scope_organization;
+
+              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+                  ADD CONSTRAINT fk_diagnostic_impersonation_grants_scope_organization
+                  FOREIGN KEY (scope_group_id, organization_id) REFERENCES public.groups(id, organization_id) ON DELETE CASCADE;
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE public.diagnostic_impersonation_grants
+                  DROP CONSTRAINT fk_diagnostic_impersonation_grants_granter_organization;
+
+              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+                  ADD CONSTRAINT fk_diagnostic_impersonation_grants_granter_organization
+                  FOREIGN KEY (granted_by_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE public.diagnostic_impersonation_grants
+                  DROP CONSTRAINT fk_diagnostic_impersonation_grants_revoker_organization;
+
+              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+                  ADD CONSTRAINT fk_diagnostic_impersonation_grants_revoker_organization
+                  FOREIGN KEY (revoked_by_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE public.diagnostic_impersonation_grants
+                  DROP CONSTRAINT fk_diagnostic_impersonation_grants_scope_organization;
+
+              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+                  ADD CONSTRAINT fk_diagnostic_impersonation_grants_scope_organization
+                  FOREIGN KEY (scope_group_id, organization_id) REFERENCES public.groups(id, organization_id) ON DELETE RESTRICT;
