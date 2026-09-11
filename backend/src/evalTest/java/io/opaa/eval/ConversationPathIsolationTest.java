@@ -27,7 +27,7 @@ class ConversationPathIsolationTest {
    */
   @Test
   void theMultiTurnPathCountsItsOwnContractVersionSeparately() {
-    assertThat(ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION).isEqualTo(1);
+    assertThat(ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION).isEqualTo(2);
   }
 
   @Test
@@ -94,6 +94,10 @@ class ConversationPathIsolationTest {
         .isEqualTo(
             ConversationDataset.turnCount(
                 ConversationDataset.load(ConversationDataset.file(domain))));
+    // Issue #1522: the same pin watchdog PipelinePathIsolationTest runs over the other six
+    // baselines - a baseline may only name the Ollama it was actually measured with.
+    assertThat(baseline.fixedPoints().pipeline().ollamaImage())
+        .isEqualTo(EvalOllamaEndpoint.PINNED_IMAGE);
   }
 
   /**
@@ -104,15 +108,42 @@ class ConversationPathIsolationTest {
   @Test
   void aBaselineWithoutDecompositionIsRefusedAtLoadTime(@TempDir Path tempDir) throws IOException {
     Path file = tempDir.resolve("pipeline-verwaltung-conversations.json");
+    Files.writeString(file, DECOMPOSITION_OFF_BASELINE_JSON);
+
+    assertThatThrownBy(() -> ConversationBaseline.load(file))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("queryDecompositionEnabled=false");
+  }
+
+  /**
+   * Issue #1522: the multi-turn path shares the pipeline fixed points and with them the origin
+   * guard - a file drawn against an external, possibly GPU-backed endpoint may never become a
+   * comparison point on this path either.
+   */
+  @Test
+  void aBaselineFromAnExternalOllamaEndpointIsRefusedAtLoadTime(@TempDir Path tempDir)
+      throws IOException {
+    Path file = tempDir.resolve("pipeline-verwaltung-conversations.json");
     Files.writeString(
         file,
-        """
+        DECOMPOSITION_OFF_BASELINE_JSON.replace(
+            "\"ollamaImage\": \"ollama/ollama:0.6.5\"",
+            "\"ollamaImage\": \"extern: http://localhost:11434\""));
+
+    assertThatThrownBy(() -> ConversationBaseline.load(file))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("externen Ollama-Endpunkt");
+  }
+
+  private static final String DECOMPOSITION_OFF_BASELINE_JSON =
+      """
         {
-          "conversationMeasurementContractVersion": 1,
+          "conversationMeasurementContractVersion": 2,
           "fixedPoints": {
             "pipeline": {
               "embeddingModel": "nomic-embed-text:v1.5",
               "embeddingModelDigest": "digest",
+              "ollamaImage": "ollama/ollama:0.6.5",
               "embeddingDimensions": 768,
               "chunkSize": 1000,
               "chunkSizeMatchesApplicationDefault": true,
@@ -147,12 +178,7 @@ class ConversationPathIsolationTest {
           "measuredAt": "2026-09-11T00:00:00Z",
           "notes": ""
         }
-        """);
-
-    assertThatThrownBy(() -> ConversationBaseline.load(file))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("queryDecompositionEnabled=false");
-  }
+        """;
 
   /**
    * A changed conversation window, search window or note cap makes the committed baseline
@@ -187,6 +213,7 @@ class ConversationPathIsolationTest {
     return new PipelineBaseline.FixedPoints(
         "nomic-embed-text:v1.5",
         "digest",
+        "ollama/ollama:0.6.5",
         768,
         1000,
         true,

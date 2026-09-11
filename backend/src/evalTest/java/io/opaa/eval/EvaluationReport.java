@@ -82,8 +82,13 @@ public record EvaluationReport(
    * {@code ConfluenceStorageFormat#version()} 1 → 2 (a list item whose text sits in a block child
    * keeps its marker), shifting the collective fingerprint - no corpus in this repository routes a
    * document through either pipeline, so this is a fingerprint-only bump.
+   *
+   * <p><b>Bumped to 10 by issue #1522:</b> {@code ollamaImage} became a checked fixed point, so a
+   * committed baseline states which Ollama produced its vectors instead of leaving that to the
+   * {@code notes}. No measured value moves - all six committed baselines record the pinned
+   * container they were already measured with (ADR-0012, Nachtrag Ollama-Herkunft).
    */
-  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 9;
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 10;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(

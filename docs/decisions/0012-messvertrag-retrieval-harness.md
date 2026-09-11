@@ -959,3 +959,88 @@ Anwohnerparkausweis?“, das Beispiel der Spezifikation selbst), und zählte dan
 Vorthemen-Dokument als Bleed. Die Kuratierungsregel „mindestens sechs unterschiedliche Treffermengen
 je Klasse“ fördert dieses Muster zusätzlich. Das deckt sich mit
 `docs/features/conversation-memory.md`: Themenwechsel werden nicht erkannt — auch nicht im Harness.
+
+---
+
+## Nachtrag: Ollama-Herkunft im Messvertrag (Issue #1522)
+
+**Datum:** 2026-09-11 · **Betrifft:** alle drei Messpfade, alle committeten Baselines.
+
+Seit [#1076](https://github.com/criew/opaa/issues/1076) darf ein Lauf per
+`-Dopaa.eval.ollamaBaseUrl` gegen ein bereits laufendes Host-Ollama zeigen, weil die
+Container-GPU auf der Entwicklungsmaschine nicht verfügbar ist (AMD). Das ist ausdrücklich ein
+Iterationswerkzeug: Ein solcher Lauf embeddet womöglich auf der GPU, deren Kernel nicht bitgleich
+zur CPU rechnen, und ist in der CI nicht reproduzierbar. Der Report weist das aus
+(`externalOllamaEndpoint: true`, `ollamaImage: "extern: …"`), und `requireBaselineComparable`
+bricht den Vergleich eines solchen Reports ab.
+
+Die committete **Baseline** trug diese Eigenschaft bisher nirgends. `ollamaImage` war Report-Feld,
+aber kein Festpunkt; beim Ziehen fiel es weg, und die CPU-Herkunft stand nur als Prosa im
+`notes`-Feld. Damit hing eine tragende Eigenschaft des Messvertrags an der Sorgfalt der ziehenden
+Person statt an einer Prüfung: Ein versehentlich aus einem GPU-Lauf gezogener Vergleichspunkt fiele
+erst auf, wenn die CI dauerhaft Abweichungen meldet — und würde dann vermutlich als Regression
+fehlgedeutet.
+
+### 45. `ollamaImage` ist geprüfter Festpunkt aller drei Baseline-Typen
+
+`Baseline.FixedPoints` und `PipelineBaseline.FixedPoints` führen je ein neues Feld `ollamaImage`;
+der Mehrrunden-Pfad erbt es mit dem geteilten Pipeline-Block (Entscheidung 40). Der Wert ist das
+gepinnte Testcontainer-Image des Laufs (heute `ollama/ollama:0.6.5`). Er wird wie jeder andere
+Festpunkt gegen die Laufkonfiguration verglichen: Weicht er ab, ist die Baseline **unvergleichbar**,
+und es wird keine Metrik geprüft. Das ist kein Sonderfall, sondern die Anwendung von Entscheidung 6
+— dasselbe Modell hinter einer anderen Ollama-Fassung ausgeliefert ist nicht nachweislich dieselbe
+Messung, und der Modell-Digest allein beantwortet diese Frage nicht: Er beschreibt die Gewichte,
+nicht die Laufzeit, die sie auswertet.
+
+**Zusätzlich eine Ladeprüfung** (`BaselineOllamaOrigin`, aufgerufen aus allen drei `load`-Methoden).
+Sie weist genau einen Fall ab: eine Datei, deren `ollamaImage` mit dem Marker `extern: ` beginnt.
+
+Die Prüfung ist eine Aussage über die **Datei**, nicht über einen späteren Lauf. Ein *Report* aus
+einem externen Lauf kommt schon heute nicht in einen Vergleich — `requireBaselineComparable` bricht
+auf `externalOllamaEndpoint` ab, und alle vier Einstiegspunkte rufen es **vor** dem Laden der
+Baseline. Was diese Prüfung ergänzt, ist das andere Ende: Der Fehler, dass die *committete Baseline*
+selbst aus einem solchen Lauf stammt, ist ein Ziehfehler, und der einzige richtige Ausgang ist ein
+neuer Messlauf. Genau das sagt die Meldung. Der Fixpunktvergleich allein sagte stattdessen
+„Messgrundlage geändert" — richtig als Urteil über zwei Läufe, aber irreführend über eine Datei, die
+nie hätte entstehen dürfen.
+
+Den Marker definiert `EvalOllamaEndpoint` einmal und liest ihn dort zurück; die Zeichenkette, die
+ein Lauf schreibt, und die, für die eine Baseline abgelehnt wird, können so nicht auseinanderlaufen.
+
+**Ein fehlender Wert wird nicht abgewiesen**, sondern folgt dem Muster von `metadataFilterEnabled`:
+Er lädt als `null` und erscheint im Vergleich als unvergleichbarer Fixpunkt (`null` gegen das
+gepinnte Image). Das ist die mildere Behandlung mit Absicht — der Regressionsjob schreibt dann noch
+seine Delta-Tabelle und benennt das Feld darin, statt mit einer Ausnahme und ohne Bericht
+abzubrechen. Abgewiesen wird nur, was aktiv falsch ist, nicht was unvollständig ist.
+
+**Kein neuer Guard im Harness.** `PipelineHarnessSupport#requireMeasurableConfiguration` prüft, ob
+ein Lauf etwas anderes misst, als seine Feldnamen behaupten — ein Lauf gegen einen externen
+Endpunkt misst korrekt und darf stattfinden, er darf nur keine Baseline werden. Genau diese
+Unterscheidung liegt bei `requireBaselineComparable` und ab jetzt zusätzlich beim Laden.
+
+**Zwei Docker-freie Wächter** halten die Zusage, die ein Fixpunkt nur mit ihnen einlöst: Das Image
+ist eine Java-Konstante (`EvalOllamaEndpoint.PINNED_IMAGE`, seit diesem Nachtrag einmal statt dreimal
+im Quelltext), die Baselines sind JSON-Dateien, und nichts sonst verbindet beide.
+`PipelinePathIsolationTest` hält deshalb die sechs committeten Baselines gegen die Konstante, und
+sein Gegenstück auf dem Mehrrunden-Pfad prüft dasselbe für die dortige Baseline, sobald sie existiert.
+Ohne sie fiele ein bewusster Image-Wechsel ohne Baseline-Nachzug erst nach über einer Stunde im
+nächtlichen Docker-Lauf auf — und dann für alle Domänen gleichzeitig.
+
+### 46. Alle drei Messverträge steigen: Rohvektor 9 → 10, Pipeline 12 → 13, Mehrrunden 1 → 2
+
+Ein neuer Festpunkt erweitert, was „dieselbe Messung" heißt (Entscheidung 6) — auf allen drei
+Pfaden gleichzeitig, weil alle drei ihre Vektoren aus demselben Ollama beziehen (wie beim
+Ingestion-Fixpunkt aus Entscheidung 29, anders als beim Volltextpfad aus Entscheidung 23). Die
+Zählungen bleiben unabhängig voneinander (Entscheidung 16/41), sie bewegen sich hier nur im selben
+Schritt.
+
+### 47. Reine Fixpunkt-Ergänzung, kein neuer Messlauf
+
+Die sechs committeten Baselines (drei Domänen × zwei Pfade) wurden **ohne** neuen
+`evaluateRetrieval`-Lauf nachgezogen. Eingetragen ist `ollama/ollama:0.6.5` — das Image, mit dem sie
+tatsächlich gemessen wurden: Es ist seit der ersten Fassung des Harness gepinnt und hat sich nie
+bewegt (bis zu diesem Nachtrag als drei gleichlautende Literale, jetzt als eine Konstante), und die
+`notes` jeder der sechs Dateien weisen den zugehörigen Lauf
+als CPU-/Testcontainer-Lauf aus (`eval/baseline/verwaltung.json` nennt das Image dort sogar wörtlich).
+Kein bereits committeter Chunk, keine bereits committete Metrik ändert sich — nur die Beschreibung
+der Messbedingungen wird vollständiger.

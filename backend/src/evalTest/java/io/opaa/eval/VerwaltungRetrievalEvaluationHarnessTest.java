@@ -131,7 +131,6 @@ class VerwaltungRetrievalEvaluationHarnessTest {
   // ":latest") keeps the baseline stable across time. The digest assertion below is the second,
   // stronger layer: even a tag pin does not stop the tag itself from being force-pushed upstream,
   // so we also pin and verify the content digest Ollama reports for the pulled model.
-  private static final String OLLAMA_IMAGE = "ollama/ollama:0.6.5";
   private static final String EMBEDDING_MODEL = "nomic-embed-text:v1.5";
   private static final int EMBEDDING_DIMENSIONS = 768;
 
@@ -244,7 +243,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
       return;
     }
     ollama =
-        new OllamaContainer(DockerImageName.parse(OLLAMA_IMAGE))
+        new OllamaContainer(DockerImageName.parse(EvalOllamaEndpoint.PINNED_IMAGE))
             // Testcontainers' OllamaContainer auto-requests a GPU (device request, all GPUs)
             // whenever the Docker daemon merely *lists* an "nvidia" runtime — regardless of the
             // configured default runtime and regardless of whether that runtime actually works
@@ -801,7 +800,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
             "ollama",
             EMBEDDING_MODEL,
             actualEmbeddingModelDigest,
-            EvalOllamaEndpoint.describeImageOrEndpoint(OLLAMA_IMAGE),
+            EvalOllamaEndpoint.describeImageOrEndpoint(),
             EMBEDDING_DIMENSIONS,
             actualChunkSize,
             actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
@@ -875,7 +874,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
             "ollama",
             EMBEDDING_MODEL,
             actualEmbeddingModelDigest,
-            EvalOllamaEndpoint.describeImageOrEndpoint(OLLAMA_IMAGE),
+            EvalOllamaEndpoint.describeImageOrEndpoint(),
             EMBEDDING_DIMENSIONS,
             actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
             PGVECTOR_INDEX_TYPE,
@@ -912,7 +911,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
               "ollama",
               EMBEDDING_MODEL,
               actualEmbeddingModelDigest,
-              EvalOllamaEndpoint.describeImageOrEndpoint(OLLAMA_IMAGE),
+              EvalOllamaEndpoint.describeImageOrEndpoint(),
               EMBEDDING_DIMENSIONS,
               actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
               PGVECTOR_INDEX_TYPE,
@@ -941,7 +940,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
               "ollama",
               EMBEDDING_MODEL,
               actualEmbeddingModelDigest,
-              EvalOllamaEndpoint.describeImageOrEndpoint(OLLAMA_IMAGE),
+              EvalOllamaEndpoint.describeImageOrEndpoint(),
               EMBEDDING_DIMENSIONS,
               actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
               PGVECTOR_INDEX_TYPE,

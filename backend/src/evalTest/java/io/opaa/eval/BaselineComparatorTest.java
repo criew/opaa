@@ -403,6 +403,47 @@ class BaselineComparatorTest {
     assertThat(result.passed()).isFalse();
   }
 
+  /**
+   * Issue #1522: the same model digest served from a different Ollama is not guaranteed to embed
+   * bit-identically, so the baseline is incomparable rather than regressed.
+   */
+  @Test
+  void detectsOllamaImageDrift() {
+    Baseline baseline =
+        baselineWith(fixedPoints("m1", "d1", "ollama/ollama:0.6.5", "corpus-a", "golden-a"));
+    EvaluationReport report = reportWith(runConfiguration("m1", "d1", "corpus-a", "golden-a"));
+    Baseline externalBaseline =
+        baselineWith(
+            fixedPoints("m1", "d1", "extern: http://localhost:11434", "corpus-a", "golden-a"));
+
+    assertThat(BaselineComparator.compare(baseline, report).baselineValid()).isTrue();
+
+    var result = BaselineComparator.compare(externalBaseline, report);
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly("ollamaImage");
+  }
+
+  /**
+   * Issue #1522: a baseline file predating the field loads as {@code null} and is reported here as
+   * incomparable, rather than being refused at load time - the regression job then still writes a
+   * delta table naming the field (the {@code metadataFilterEnabled} precedent).
+   */
+  @Test
+  void aBaselineWithoutAnOllamaImageIsReportedAsIncomparable() {
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", null, "corpus-a", "golden-a"));
+    EvaluationReport report = reportWith(runConfiguration("m1", "d1", "corpus-a", "golden-a"));
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly("ollamaImage");
+  }
+
   @Test
   void detectsEmbeddingModelDigestDrift() {
     Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
@@ -854,9 +895,15 @@ class BaselineComparatorTest {
 
   private static Baseline.FixedPoints fixedPoints(
       String model, String digest, String corpusSha, String goldenSha) {
+    return fixedPoints(model, digest, "ollama/ollama:0.6.5", corpusSha, goldenSha);
+  }
+
+  private static Baseline.FixedPoints fixedPoints(
+      String model, String digest, String ollamaImage, String corpusSha, String goldenSha) {
     return new Baseline.FixedPoints(
         model,
         digest,
+        ollamaImage,
         768,
         1000,
         true,
