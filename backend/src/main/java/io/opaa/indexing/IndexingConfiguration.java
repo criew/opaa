@@ -63,6 +63,7 @@ import io.opaa.library.LibraryAccessService;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.UploadProperties;
+import io.opaa.library.UploadedOriginalStore;
 import io.opaa.observability.IndexingMetrics;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
@@ -242,14 +243,14 @@ public class IndexingConfiguration {
       KnowledgeLibraryRepository libraryRepository,
       ChecksumService checksumService,
       FilesystemPathAllowlist filesystemPathAllowlist,
-      UploadProperties uploadProperties) {
+      UploadedOriginalStore uploadedOriginalStore) {
     return new StoredDocumentSourceAccess(
         attachmentExtractor,
         documentRepository,
         libraryRepository,
         checksumService,
         filesystemPathAllowlist,
-        uploadProperties);
+        uploadedOriginalStore);
   }
 
   @Bean

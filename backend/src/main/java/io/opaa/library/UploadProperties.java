@@ -11,7 +11,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     be told apart on disk. Deliberately separate from a FILESYSTEM library's own {@code
  *     sourcePath} (#207, ADR-0018): that directory is crawled by the filesystem indexing path and
  *     is operator-managed, whereas this one is written to exclusively by {@link
- *     LibraryDocumentService}.
+ *     LibraryDocumentService}. Read by {@link FilesystemUploadedOriginalStore} alone (ADR-0030).
+ * @param store which storage backend holds the uploaded originals (ADR-0030, Entscheidung 1).
+ *     Default {@code filesystem}, the only one available so far; {@link UploadStorageConfiguration}
+ *     refuses the start on any other value.
  * @param maxFileSize maximum accepted upload size in bytes. Default 50 MiB (52 428 800): generous
  *     enough for a typical scanned Dienstanweisung while still bounding memory and disk use per
  *     upload; see #420's acceptance criteria for the resulting 413 response.
@@ -32,6 +35,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "opaa.upload")
 public record UploadProperties(
     String storagePath,
+    String store,
     long maxFileSize,
     ThreadPool threadPool,
     int pendingRecoveryThresholdMinutes) {
@@ -39,6 +43,9 @@ public record UploadProperties(
   public UploadProperties {
     if (storagePath == null || storagePath.isBlank()) {
       storagePath = "./uploads";
+    }
+    if (store == null || store.isBlank()) {
+      store = FilesystemUploadedOriginalStore.STORE_NAME;
     }
     if (maxFileSize <= 0) {
       maxFileSize = 50L * 1024 * 1024;
