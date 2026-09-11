@@ -39,7 +39,7 @@ Dokument trägt zusätzlich ein Aktenzeichen- und Formularnummer-Muster sowie ei
 synthetische Herkunft.
 
 Ein abschließender Validierungslauf (`generator/validation.py`) prüft die erzeugten Inhalte aller
-sechs Bibliotheken gegen eine Liste von Verbotsmustern (reale Ortsnamen, Straßen außerhalb einer
+sieben Bibliotheken gegen eine Liste von Verbotsmustern (reale Ortsnamen, Straßen außerhalb einer
 Whitelist, reale Postleitzahlen, reale Bankverbindungen) und bricht den Generator-Lauf mit Fehler
 ab, falls eines davon gefunden wird.
 
@@ -66,6 +66,18 @@ Behörden (siehe `rheinfurt_text.py::strip_external_links`).
 Details und Begründung der Quellenauswahl: [`docs/features/demo-instance.md`](../../docs/features/demo-instance.md),
 Abschnitt „Quellen und Lizenzen" (Recherche Issue #709).
 
+## Bibliothek „Formattest auf S3" (#1519)
+
+Die siebte Bibliothek (`formate/`) ist keine Fachablage, sondern eine technische Schaubibliothek:
+je ein Dokument pro Dateiendung, die OPAA zulässt. Ihr Inhalt ist wie der übrige Korpus synthetisch
+und im Rheinfurt-Kontext verfasst (Dokumentenformate, Posteingang, Langzeitarchivierung); jedes
+Dokument nennt im Text sein eigenes Format, damit im Chat erkennbar bleibt, aus welcher Datei eine
+Antwort stammt.
+
+- `formate/13_rahmenvertrag-scandienstleister.doc` — committet, nicht erzeugt: für diese Endung schreibt keine der in `generator/requirements.txt` gepinnten Bibliotheken. Herkunft und Verfahren: [`generator/README.md`](../generator/README.md), Abschnitt "Formate ohne Writer".
+
+**Nicht abgedeckte Endungen:** `.msg`. Für sie liegt in dieser Bibliothek kein Dokument — Begründung in [`generator/README.md`](../generator/README.md), Abschnitt "Formate ohne Writer".
+
 ## Wie diese Dateien entstanden sind
 
 Erzeugt durch [`demo/generator/generate_corpus.py`](../generator/generate_corpus.py); siehe
@@ -81,7 +93,9 @@ sha256sum -c MANIFEST.sha256
 
 ## Umfang
 
-168 Dokumente über sechs Bibliotheken (Zielkorridor 150–300 laut Issue #711):
+181 Dokumente über sieben Bibliotheken (Zielkorridor 150–300 laut Issue #711 für die
+sechs fachlichen Bibliotheken; „Formattest auf S3" ist eine technische Schaubibliothek mit genau
+einem Dokument je unterstützter Endung, #1519):
 
 | Bibliothek | Verzeichnis | Anzahl | Formate |
 |---|---|---|---|
@@ -91,5 +105,6 @@ sha256sum -c MANIFEST.sha256
 | Pressemitteilungen Stadt Rheinfurt | `pressemitteilungen/` | 28 | RSS-XML, HTML |
 | Interne Dienstanweisungen Meldewesen | `interne-dienstanweisungen-meldewesen/` | 26 | `.docx`, `.pdf`, `.pptx` |
 | Ratsinformationen Stadt Rheinfurt | `ratsinformationen/` | 12 | `.md`, `.txt` (ein Präfix je Jahrgang) |
+| Formattest auf S3 | `formate/` | 13 | je ein Dokument pro unterstützter Endung |
 
-Gesamtgröße rund 1,1 MB.
+Gesamtgröße rund 1,2 MB.

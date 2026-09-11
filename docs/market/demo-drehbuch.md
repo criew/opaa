@@ -141,7 +141,7 @@ sind sie mit dem neuen Stand gegenzuprüfen.
 - **Konto:** ein beliebiges Fachkonto
 - **Frage:** „Wie beantrage ich in Rheinfurt eine Fischereierlaubnis?"
 - **Erwartete Antwort:** keine Quelle wird genannt, keine wird erfunden — zu dieser Leistung liegt in
-  keiner der sechs Bibliotheken etwas vor (geprüft: kein Treffer für „Fischer" im gesamten Korpus,
+  keiner der sieben Bibliotheken etwas vor (geprüft: kein Treffer für „Fischer" im gesamten Korpus,
   Stand dieser Anleitung). Einen eigenen Verweigerungsmodus gibt es dafür nicht (mit #697 verworfen);
   die Belegvalidierung greift, sobald ein Beleg tatsächlich ungültig wäre, hier bleibt die
   Kontextmenge schlicht leer.

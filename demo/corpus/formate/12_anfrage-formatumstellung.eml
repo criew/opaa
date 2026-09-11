@@ -1,0 +1,30 @@
+MIME-Version: 1.0
+Date: Mon, 2 Mar 2026 08:00:00 +0100
+Message-ID: <2026030208000010.4-arch-2026-012@stadt-rheinfurt.example>
+From: Stadtarchiv Rheinfurt <stadtarchiv@stadt-rheinfurt.example>
+To: Bürgerbüro Rheinfurt <buergerbuero@stadt-rheinfurt.example>
+Cc: Organisationsstelle <organisation@stadt-rheinfurt.example>
+Subject: Umstellung auf PDF/A-2b zum 1. Oktober 2026
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+
+Sehr geehrte Kolleginnen und Kollegen,
+
+das Stadtarchiv stellt die Übernahme abgeschlossener Vorgänge zum 1. Oktober 2026 auf PDF/A-2b um.
+Bis dahin nehmen wir weiterhin PDF/A-1b entgegen; danach weist die Übernahmeschnittstelle Dateien
+im älteren Profil zurück.
+
+Was das für das Bürgerbüro bedeutet:
+
+- Der Scandienstleister liefert ab dem 1. Juli 2026 nur noch PDF/A-2b.
+- Bereits übernommene Vorgänge werden nicht nachträglich umgewandelt.
+- Für E-Mail-Nachrichten ändert sich nichts; sie bleiben im Ursprungsformat.
+
+Diese Nachricht liegt als E-Mail-Datei (.eml) vor und gehört zum Vorgang AZ 10.4-ARCH-2026-012.
+
+Mit freundlichen Grüßen
+Stadtarchiv Rheinfurt
+Rathausplatz 1, 00000 Rheinfurt
+Telefon 01234/44-1080
+
+Synthetisches Musterdokument der fiktiven Stadt Rheinfurt aus der Bibliothek 'Formattest auf S3' des OPAA-Demo-Korpus (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Es zeigt ein unterstütztes Dateiformat mit echtem Inhalt.

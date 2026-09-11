@@ -234,6 +234,22 @@ DEMO_PROFILE = Profile(
             },
             viewer_keys=("maria", "selin", "thomas", "andrea"),
         ),
+        # The seventh library (#1520): a technical showcase, not a Fachablage - one document per
+        # file extension OPAA admits, read over the S3 connector from the bucket "formattest" of
+        # the same MinIO. It stays with the admin account that creates it and gets no VIEWER grant
+        # and no space association, so it never widens what a fach account sees.
+        LibraryDef(
+            name="Formattest auf S3",
+            description="Technische Schaubibliothek: je ein Dokument pro unterstütztem Dateiformat, aus dem Objektspeicher des Demo-Stacks.",
+            source_type="S3",
+            source_url="http://minio:9000",
+            source_credentials="rheinfurt-archiv:RheinfurtDemo!2026",  # nosec - documented demo credential
+            s3_settings={
+                "pathStyle": True,
+                "scopes": [{"bucket": "formattest"}],
+            },
+            viewer_keys=(),
+        ),
     ),
 )
 
