@@ -507,6 +507,32 @@ class MigrationBaselineTest extends AbstractMigrationTest {
     insertSourceLibrary("RSS_FEED", null, "https://example.org/feed.xml", null, null, null);
   }
 
+  /**
+   * The Confluence space selection is the list-valued part of a library's source configuration
+   * (ADR-0023, Entscheidung 1): a key is unique per library, and the selection dies with it.
+   */
+  @Test
+  void theConfluenceSpaceSelectionIsKeyedPerLibraryAndCascadesWithIt() throws SQLException {
+    UUID first =
+        insertSourceLibrary(
+            "CONFLUENCE", null, "https://wiki.example.org", "enc:v1:a", "CLOUD", null);
+    UUID second =
+        insertSourceLibrary(
+            "CONFLUENCE", null, "https://wiki.example.org", "enc:v1:a", "CLOUD", null);
+    insertConfluenceSpace(first, "ENG");
+    insertConfluenceSpace(second, "ENG");
+
+    assertThatThrownBy(() -> insertConfluenceSpace(first, "ENG"))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("pk_knowledge_library_confluence_spaces");
+
+    execute("DELETE FROM knowledge_libraries WHERE id = '" + first + "'");
+    assertThat(countWhere("knowledge_library_confluence_spaces", "library_id = '" + first + "'"))
+        .isZero();
+    assertThat(countWhere("knowledge_library_confluence_spaces", "library_id = '" + second + "'"))
+        .isEqualTo(1);
+  }
+
   @Test
   void anIndexingRunDeclaresOneOfThreeRunModesAndOneOfThreeTriggerSources() throws SQLException {
     UUID library = insertLibrary(insertUser());
@@ -1604,6 +1630,16 @@ class MigrationBaselineTest extends AbstractMigrationTest {
             + "', '"
             + SEEDED_ORGANIZATION_ID
             + "')");
+  }
+
+  private void insertConfluenceSpace(UUID libraryId, String spaceKey) throws SQLException {
+    execute(
+        "INSERT INTO knowledge_library_confluence_spaces (library_id, space_key, space_name) VALUES"
+            + " ('"
+            + libraryId
+            + "', '"
+            + spaceKey
+            + "', 'Engineering')");
   }
 
   private void insertSourceSyncState(UUID libraryId) throws SQLException {
