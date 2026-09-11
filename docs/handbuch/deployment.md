@@ -316,6 +316,35 @@ kcadm.sh update realms/opaa -s accessTokenLifespan=900 -s ssoSessionIdleTimeout=
   ausschließlich gegen deren Signaturschlüssel (`OPAA_OIDC_JWK_SET_URI`); dieses Secret betrifft nur
   lokale Konten.
 
+**Vertraute Proxys und die Grenzen der lokalen Anmeldung (zwingend hinter einem Reverse-Proxy):**
+
+- `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` — **Pflicht, sobald ein Reverse-Proxy vor dem Backend
+  steht**, und der nginx des Frontend-Containers ist bereits einer. Das Backend schlüsselt seine
+  Rate-Limits je Client-Adresse und prüft die Netzbeschränkung lokaler Systemverwalter
+  (`OPAA_LOCAL_ADMIN_ALLOWED_CIDRS`) an derselben Adresse; `X-Forwarded-For` wird dabei **nur**
+  ausgewertet, wenn die Verbindung selbst aus einem der hier genannten Netze kommt. Ohne Wert (die
+  Vorgabe) wird der Header ignoriert: Hinter dem Proxy sehen dann alle Clients wie eine Adresse aus
+  und teilen sich einen Zähler — die Anmeldegrenze gilt dann für das ganze Haus, und die
+  Netzbeschränkung sieht nur die Adresse des Proxys. Der `oidc`-Betriebsmodus schreibt bei leerem
+  Wert genau diese Folge beim Start als Warnung ins Log. Für den Compose-Stack ist der Wert das
+  Compose-Netz (`docker-compose.yml` legt es fest, `.env.docker.example` trägt ihn passend ein); ein
+  vorgelagerter Proxy auf einem anderen Rechner kommt mit seiner Adresse hinzu. Der Header wird von
+  rechts gelesen: Der Client ist der erste Eintrag, der kein vertrauter Proxy ist — ein vom Client
+  selbst mitgeschickter Anfang der Kette zählt nie, und ein weiterer vertrauter Proxy davor wird
+  übersprungen. `0.0.0.0/0` und `::/0` lehnt der Start ab. Ob die Liste stimmt, zeigt der
+  Diagnose-Endpunkt unter [„Diagnose ohne Shell"](#diagnose-ohne-shell).
+- Die lokale Anmeldung ist je Client-Adresse, je Konto und insgesamt begrenzt
+  (`OPAA_RATE_LIMIT_LOCAL_AUTH_*`, Werte in der Variablentabelle): Eine überschrittene Grenze
+  antwortet `429` mit `Retry-After`. Die globale Grenze je Fenster für Anmeldung, Registrierung und
+  „Passwort vergessen" ist das Frühwarnsignal des Betriebs gegen verteiltes Ausprobieren gestohlener
+  Zugangsdaten — ihr Überschreiten steht als Warnung im Log und als Metrik
+  (`opaa.rate_limit.rejected`, Dimensionen `limit` und `scope`). Nach
+  `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` falschen Passwörtern ist ein lokales Konto für
+  `OPAA_AUTH_LOCAL_LOCKOUT_DURATION` gesperrt; die Anmeldung antwortet währenddessen genau wie bei
+  einem falschen Passwort, die Sperre steht als `LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS` im
+  Nachweisprotokoll und als Metrik `opaa.auth.local_account_lockout`, der einzelne Fehlversuch nur
+  im Anwendungslog (Konto-Kennung, nie die Adresse).
+
 **Was es nicht gibt und deshalb hier auch nicht zu ersetzen ist:** einen Mock-Auth-Modus: Der einzige ungeprüfte Modus ist das Spring-Profil `dev`
 — **es gehört nie auf eine erreichbare Instanz**, siehe die Warnung unter
 [„Entwicklungsmodus (dev)"](#entwicklungsmodus-dev) unten. Nur `SPRING_PROFILES_ACTIVE=...,oidc` ist für
@@ -467,7 +496,17 @@ curl -s http://localhost:8081/actuator/metrics       # Metriken
 curl -s http://localhost:8081/actuator/prometheus    # Prometheus-Format
 docker cp <container>:/app/uploads ./uploads-kopie   # Dateien aus dem Container holen
 docker run --rm -it --network container:<container> nicolaka/netshoot   # Netzwerkdiagnose im selben Netz
+curl -s -H "Authorization: Bearer <token>" https://<host>/api/v1/admin/diagnostics/client-address   # aufgelöste Client-Adresse dieser Anfrage
 ```
+
+Der letzte Aufruf (nur Systemverwaltung, mit dem Zugangstoken einer angemeldeten Sitzung und über
+denselben Weg, den auch die Browser nehmen — also durch den Proxy) zeigt, wie das Backend die
+Adresse **genau dieser** Anfrage auflöst: `remoteAddress` ist die Adresse der Verbindung (hinter
+einem Proxy dessen Adresse), `forwardedFor` der empfangene `X-Forwarded-For`-Header,
+`forwardedForTrusted`, ob er gezählt hat, und `clientAddress` die Adresse, nach der Rate-Limits und
+`OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` diese Anfrage beurteilen. Steht dort die Adresse des Proxys statt
+die des eigenen Rechners, fehlt das Proxy-Netz in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` (siehe
+[„Härtung für erreichbare Deployments"](#härtung-für-erreichbare-deployments)).
 
 > **`docker cp … /app/uploads` gilt nur für die Dateisystem-Ablage.** Mit `OPAA_UPLOAD_STORE=s3`
 > liegen die hochgeladenen Originale im Objektspeicher; das Verzeichnis im Container ist dann leer
@@ -831,6 +870,24 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS` | `120` | nicht gesetzt (Anwendungs-Default gilt) | Max. Aufrufe von `POST /api/v1/libraries/{libraryId}/confluence-webhook` **und** `…/s3-events` pro IP **und Bibliothek** pro Fenster — beide Eingänge sind ohne Sitzung erreichbar, das Limit begrenzt die Signaturprüfungen, die ein Unbekannter auslösen kann; der Eingang sammelt ohnehin, ein Überschreiten kostet Aktualität, keine Korrektheit |
 | `OPAA_RATE_LIMIT_WEBHOOK_WINDOW_SECONDS` | `60` | nicht gesetzt (Anwendungs-Default gilt) | Webhook-Rate-Limit-Fenster in Sekunden |
 | `OPAA_RATE_LIMIT_WEBHOOK_GLOBAL_MAX_REQUESTS` | `600` | nicht gesetzt (Anwendungs-Default gilt) | Max. Webhook-Aufrufe über alle IPs pro Fenster |
+| `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` | — (leer = `X-Forwarded-For` wird ignoriert) | `172.28.0.0/16` (das Compose-Netz aus `docker-compose.yml`) | Kommagetrennte Adressen oder CIDR-Bereiche (IPv4 und IPv6) der vertrauten Reverse-Proxys. Nur wenn die Verbindung aus einem dieser Netze kommt, wird `X-Forwarded-For` ausgewertet — von rechts gelesen, der Client ist der erste Eintrag, der kein vertrauter Proxy ist. Die so aufgelöste Adresse ist der Schlüssel aller Rate-Limits je IP und die Grundlage von `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS`. **Pflicht hinter jedem Reverse-Proxy**, sonst teilen sich alle Clients dahinter einen Zähler (der `oidc`-Modus warnt beim Start). Ein ungültiger Eintrag sowie `0.0.0.0/0` und `::/0` lassen den Start fehlschlagen |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS` | `10` | nicht gesetzt (Anwendungs-Default gilt) | Max. lokale Anmeldeversuche (`POST /api/v1/auth/local/login`) pro Client-Adresse pro Fenster; darüber `429` mit `Retry-After` |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_WINDOW_SECONDS` | `60` | nicht gesetzt (Anwendungs-Default gilt) | Fenster der Anmeldegrenze in Sekunden (gilt auch für die globale Grenze) |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_GLOBAL_MAX_REQUESTS` | `100` | nicht gesetzt (Anwendungs-Default gilt) | Max. lokale Anmeldeversuche über alle Adressen pro Fenster — das Frühwarnsignal gegen verteiltes Ausprobieren gestohlener Zugangsdaten; ein Überschreiten steht als Warnung im Log und als Metrik. In einer großen Organisation mit morgendlicher Anmeldespitze ggf. anheben |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_REFRESH_MAX_REQUESTS` | `30` | nicht gesetzt (Anwendungs-Default gilt) | Max. Sitzungserneuerungen (`POST /api/v1/auth/local/refresh`) pro Client-Adresse pro Fenster |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_REFRESH_WINDOW_SECONDS` | `60` | nicht gesetzt (Anwendungs-Default gilt) | Fenster der Erneuerungsgrenze in Sekunden |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_CHANGE_PASSWORD_MAX_REQUESTS` | `5` | nicht gesetzt (Anwendungs-Default gilt) | Max. Passwortwechsel-Versuche (`POST /api/v1/auth/local/change-password`) **pro Konto** pro Fenster — gezählt vor der Prüfung des aktuellen Passworts |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_CHANGE_PASSWORD_WINDOW_SECONDS` | `300` | nicht gesetzt (Anwendungs-Default gilt) | Fenster der Passwortwechsel-Grenze in Sekunden |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_MAX_REQUESTS` | `5` | nicht gesetzt (Anwendungs-Default gilt) | Max. Registrierungen pro Client-Adresse pro Fenster (der Endpunkt kommt mit der Selbstbedienung; die Grenze steht bereit) |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_WINDOW_SECONDS` | `3600` | nicht gesetzt (Anwendungs-Default gilt) | Fenster der Registrierungsgrenze in Sekunden |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_GLOBAL_MAX_REQUESTS` | `50` | nicht gesetzt (Anwendungs-Default gilt) | Max. Registrierungen über alle Adressen pro Fenster (Warnung und Metrik beim Überschreiten) |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_MAX_REQUESTS_PER_ADDRESS` | `3` | nicht gesetzt (Anwendungs-Default gilt) | Max. Registrierungen, die dieselbe E-Mail-Adresse nennen, pro Fenster |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_MAX_REQUESTS` | `5` | nicht gesetzt (Anwendungs-Default gilt) | Max. „Passwort vergessen"-Anfragen pro Client-Adresse pro Fenster (Endpunkt kommt mit der Selbstbedienung) |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_WINDOW_SECONDS` | `3600` | nicht gesetzt (Anwendungs-Default gilt) | Fenster der „Passwort vergessen"-Grenze in Sekunden |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_GLOBAL_MAX_REQUESTS` | `50` | nicht gesetzt (Anwendungs-Default gilt) | Max. „Passwort vergessen"-Anfragen über alle Adressen pro Fenster (Warnung und Metrik beim Überschreiten) |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_MAX_REQUESTS_PER_ADDRESS` | `3` | nicht gesetzt (Anwendungs-Default gilt) | Max. „Passwort vergessen"-Anfragen, die dieselbe E-Mail-Adresse nennen, pro Fenster |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_SET_PASSWORD_MAX_REQUESTS` | `10` | nicht gesetzt (Anwendungs-Default gilt) | Max. Einlösungen eines Einladungs- oder Rücksetzlinks pro Client-Adresse pro Fenster (Endpunkt kommt mit der Selbstbedienung) |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_SET_PASSWORD_WINDOW_SECONDS` | `900` | nicht gesetzt (Anwendungs-Default gilt) | Fenster der Link-Einlösungsgrenze in Sekunden |
 | **Verzeichnis-Synchronisation (Gruppen)** | | | |
 | `OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION` | `0.3` | nicht gesetzt (Anwendungs-Default gilt) | Plausibilitätsschwelle: Würde ein Synchronisationslauf mehr als diesen Anteil der bestehenden Gruppenmitgliedschaften entfernen, wird er verworfen und gemeldet statt angewendet — Schutz vor einer fehlkonfigurierten Verzeichnisquelle, die scheinbar fast alle Mitgliedschaften löscht. Gemessen ausschließlich an Entfernungen, nicht an Hinzufügungen. Muss echt größer als `0` und höchstens `1` sein — ein ungültiger Wert lässt den Start fehlschlagen, statt sich stillschweigend zu lockern |
 | **Authentifizierung** | | | |
@@ -838,7 +895,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_INITIAL_ADMIN_EMAIL` | `admin@opaa.local` — im Profil `oidc` **abgelehnt** (kein Postfach), im Profil `dev` die Adresse von `dev-admin` | nicht gesetzt (auskommentiert — ein leerer Wert würde im Profil `dev` den Vorgabewert überschreiben und `dev-admin` die Rolle nehmen) | E-Mail-Adresse des **lokalen Notanker-Kontos der Systemverwaltung**, das OPAA beim allerersten Start im Profil `oidc` anlegt (Anzeigename „Systemverwaltung", `SYSTEM_ADMIN`). Ein zustellbares Postfach eintragen, am besten ein Funktionspostfach der IT; ohne Wert oder mit dem Vorgabewert legt der Start kein Konto an, protokolliert einen Fehler und holt die Anlage beim nächsten Start nach. Neuinstallation: Konto scharf, Einmalpasswort einmalig als markierter Block im Anwendungslog (Zeile `Passwort:`), Wechsel bei der ersten Anmeldung erzwungen; Bestandsinstallation: Konto ohne Passwort, Aktivierung mit `OPAA_LOCAL_ADMIN_RESET=force`. Konten eines Identitätsanbieters werden nicht mehr automatisch Systemverwalter (im `dev`-Modus bleibt `dev-admin` Systemverwalter) |
 | `OPAA_INITIAL_ADMIN_PASSWORD` | — (leer) | nicht gesetzt | Optionales Anfangspasswort des Notanker-Kontos für automatisierte Bereitstellung (CI, E2E, Demo-Seed): wird unverändert (nicht getrimmt) übernommen und muss die Passwortrichtlinie erfüllen (12–64 Zeichen, nicht die Adresse, nicht in der Sperrliste — sonst Fehler im Log mit dieser Variable und keine Anlage), kein erzwungener Wechsel, keine Log-Ausgabe. Nur bei der Anlage und beim Wiederanlauf gelesen |
 | `OPAA_LOCAL_ADMIN_RESET` | — (leer) | nicht gesetzt | `force` stellt das Notanker-Konto beim Start einmalig wieder her: entsperrt, Ablauf gelöscht, `SYSTEM_ADMIN` wiederhergestellt, neues Einmalpasswort (Log bzw. `OPAA_INITIAL_ADMIN_PASSWORD`), alle Sitzungen beendet; ein gelöschtes Konto wird mit `OPAA_INITIAL_ADMIN_EMAIL` neu angelegt. Laut protokolliert und auditiert (`LOCAL_ADMIN_RESET`); danach wieder entfernen — jeder weitere Start setzt erneut zurück. Ersetzt `OPAA_OIDC_BOOTSTRAP=force` |
-| `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` | — (leer = keine Beschränkung) | nicht gesetzt | Kommagetrennte Adressen oder CIDR-Bereiche (IPv4 und IPv6), aus denen sich lokale `SYSTEM_ADMIN`-Konten anmelden dürfen; die Abweisung ist dieselbe wie bei einem falschen Passwort. Reguläre lokale Konten sind nicht betroffen. Nur numerische Adressen werden geprüft (kein Hostname, keine DNS-Auflösung); Link-Local-Adressen mit Zone-ID sind kein zulässiger Anmeldeursprung. Ein ungültiger Eintrag lässt den Start fehlschlagen. Bis zur Trusted-Proxy-Auflösung (#1535) zählt die Adresse der Verbindung selbst, nicht `X-Forwarded-For` |
+| `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` | — (leer = keine Beschränkung) | nicht gesetzt | Kommagetrennte Adressen oder CIDR-Bereiche (IPv4 und IPv6), aus denen sich lokale `SYSTEM_ADMIN`-Konten anmelden dürfen; die Abweisung ist dieselbe wie bei einem falschen Passwort. Reguläre lokale Konten sind nicht betroffen. Nur numerische Adressen werden geprüft (kein Hostname, keine DNS-Auflösung); Link-Local-Adressen mit Zone-ID sind kein zulässiger Anmeldeursprung. Ein ungültiger Eintrag lässt den Start fehlschlagen. Geprüft wird die aufgelöste Client-Adresse — hinter einem Reverse-Proxy also die aus `X-Forwarded-For`, sofern der Proxy in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` steht; sonst die Adresse der Verbindung |
 | **Lokale Konten** | | | |
 | `OPAA_AUTH_JWT_SECRET` | — (leer) außerhalb des Profils `dev`; im Profil `dev` fest hinterlegter, **ausdrücklich nicht produktionstauglicher** Wert | nicht gesetzt (auskommentiert — bewusst, siehe Kommentar in `.env.docker.example`) | Wurzelgeheimnis der lokalen Benutzerverwaltung, aus dem die Schlüssel für lokal ausgestellte Tokens und die Prüfwerte der Refresh- und Aktionslinks abgeleitet werden. **Im Profil `oidc` Pflicht: mindestens 32 Zeichen, kein Platzhalter — ohne gültigen Wert bricht der Start mit einer Meldung ab, die diese Variable nennt.** Erzeugen mit `openssl rand -base64 48`; eine Rotation beendet alle lokalen Sitzungen und entwertet alle offenen Links (siehe [„Härtung für erreichbare Deployments"](#härtung-für-erreichbare-deployments) oben) |
 | `OPAA_AUTH_LOCAL_ACCESS_TOKEN_TTL` | `15m` | nicht gesetzt (Anwendungs-Default gilt) | Lebensdauer eines lokal ausgestellten Access-Tokens |
@@ -847,6 +904,8 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_AUTH_LOCAL_ADMIN_REFRESH_TOKEN_TTL` | `4h` | nicht gesetzt (Anwendungs-Default gilt) | Leerlauffrist für lokale Systemverwalterkonten; nie länger als die reguläre Leerlauffrist |
 | `OPAA_AUTH_LOCAL_ADMIN_SESSION_MAX_LIFETIME` | `12h` | nicht gesetzt (Anwendungs-Default gilt) | Absolute Höchstdauer für lokale Systemverwalterkonten; nie länger als die reguläre Höchstdauer |
 | `OPAA_AUTH_LOCAL_COOKIE_SECURE` | `true` | nicht gesetzt (Anwendungs-Default gilt) | Ob das Refresh-Cookie lokaler Sitzungen das `Secure`-Attribut trägt; `false` nur für lokales HTTP ohne TLS |
+| `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` | `5` | nicht gesetzt (Anwendungs-Default gilt) | Anzahl falscher Passwörter, nach der ein lokales Konto gesperrt wird; der Zähler wird atomar geführt und geht bei jeder erfolgreichen Anmeldung, jedem Zurücksetzen und jeder Entsperrung auf null. Ein Wert unter `1` lässt den Start fehlschlagen |
+| `OPAA_AUTH_LOCAL_LOCKOUT_DURATION` | `15m` | nicht gesetzt (Anwendungs-Default gilt) | Feste Dauer der Sperre nach Fehlversuchen (keine Verlängerung durch weitere Versuche); danach ist das Konto ohne Zutun wieder anmeldefähig. Die Anmeldung antwortet während der Sperre genau wie bei einem falschen Passwort; die Sperre wird als `LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS` protokolliert, ihr Ende nicht. Eine Dauer von `0` oder weniger lässt den Start fehlschlagen |
 | **Entwicklungs-Auth (`dev`)** | | | |
 | `OPAA_AUTH_DEV_ISSUER` | `opaa-dev` | `opaa-dev` | Issuer-Claim der synthetischen Tokens |
 | `OPAA_AUTH_DEV_DEFAULT_USER` | `dev-admin` | `dev-admin` | Nutzer, als der ohne `X-OPAA-Dev-User`-Header authentifiziert wird — `.env.docker.example` setzt diesen Block, weil `docker,dev` der Compose-Standardfall ist, und erklärt dort auch die vorkonfigurierten Nutzer |
@@ -891,7 +950,7 @@ OPAA_SERVER_ADDRESS=0.0.0.0
 
 > **Hinweis:** In Docker Compose **muss** `OPAA_SERVER_ADDRESS` auf `0.0.0.0` gesetzt werden, damit das Backend vom Nginx-Reverse-Proxy des Frontend-Containers erreichbar ist.
 
-> **TLS-terminierender Reverse-Proxy davor?** Das Backend wertet `X-Forwarded-*` aus (`server.forward-headers-strategy: framework`), damit Browser-Anfragen desselben Origins hinter dem Proxy nicht fälschlich als cross-origin behandelt werden. Der äußere Proxy **muss** `X-Forwarded-Proto` dabei autoritativ setzen (`proxy_set_header X-Forwarded-Proto $scheme;`) und darf den Wert nicht vom Client durchlassen — ein gespooftes `https` würde sonst die CORS-Prüfung umgehen. Der nginx im Frontend-Container reicht ein eingehendes `X-Forwarded-Proto` unverändert weiter (Fallback: eigenes Schema). Dieselbe Auflage gilt für **`X-Forwarded-For`** (`proxy_set_header X-Forwarded-For $remote_addr;` — die eigene Sicht des Proxys, nicht die vom Client mitgelieferte Kette): Das Rate-Limit des Backends schlüsselt je Client-Adresse nach diesem Header, und die Webhook-Eingänge für Confluence und S3 sind ohne Sitzung erreichbar — ein Client, der den Header selbst setzen darf, bekäme mit jedem Wert einen frischen Zähler und liefe nur noch gegen die globale Grenze.
+> **TLS-terminierender Reverse-Proxy davor?** Das Backend wertet `X-Forwarded-*` aus (`server.forward-headers-strategy: framework`), damit Browser-Anfragen desselben Origins hinter dem Proxy nicht fälschlich als cross-origin behandelt werden. Der äußere Proxy **muss** `X-Forwarded-Proto` dabei autoritativ setzen (`proxy_set_header X-Forwarded-Proto $scheme;`) und darf den Wert nicht vom Client durchlassen — ein gespooftes `https` würde sonst die CORS-Prüfung umgehen. Der nginx im Frontend-Container reicht ein eingehendes `X-Forwarded-Proto` unverändert weiter (Fallback: eigenes Schema). Für **`X-Forwarded-For`** gilt eine andere Regel: Das Backend liest den Header **nur**, wenn die Verbindung aus einem Netz in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` kommt, und nimmt von rechts den ersten Eintrag, der kein vertrauter Proxy ist — der äußere Proxy darf die Kette also anhängen (`$proxy_add_x_forwarded_for`, wie es der nginx im Frontend-Container tut) oder überschreiben (`$remote_addr`), muss aber selbst in der Liste stehen (ein Proxy auf demselben Rechner erscheint dem Container-nginx unter der Gateway-Adresse des Compose-Netzes, die bereits darin liegt; ein Proxy auf einem anderen Rechner kommt mit seiner Adresse hinzu). Ein Client, der den Header selbst setzt, erreicht damit nichts: Das Rate-Limit des Backends und die Netzbeschränkung lokaler Systemverwalter beurteilen ihn nach der so aufgelösten Adresse, und die Webhook-Eingänge für Confluence und S3 sind ohne Sitzung erreichbar, wären also sonst mit jedem Wert einen frischen Zähler wert. Ohne die Variable bleibt der Header wirkungslos und alle Clients hinter dem Proxy teilen sich einen Zähler (siehe [„Härtung für erreichbare Deployments"](#härtung-für-erreichbare-deployments)).
 
 #### Sicherheits-Header und `Strict-Transport-Security`
 

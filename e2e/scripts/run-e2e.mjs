@@ -110,6 +110,10 @@ const composeEnv = {
   OPAA_FRONTEND_PORT: frontendPort,
   OPAA_DB_PORT: dbPort,
   OPAA_KEYCLOAK_PORT: keycloakPort,
+  // docker-compose.yml fixes the network's subnet (ADR-0033: the backend trusts X-Forwarded-For
+  // only from the frontend's network); each stack gets its own range so it can run next to a
+  // developer's own stack, and the matching OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS stands in its env file.
+  OPAA_COMPOSE_SUBNET: isDemo ? '172.30.0.0/16' : '172.29.0.0/16',
   ...(isDemo ? {} : { OPAA_AI_STUB_PORT: aiStubPort }),
 }
 

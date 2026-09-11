@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
  * additionally runs {@link LocalAuthSecretGuard}.
  */
 @Configuration
-@EnableConfigurationProperties(LocalAuthProperties.class)
+@EnableConfigurationProperties({LocalAuthProperties.class, LocalLockoutProperties.class})
 public class LocalAuthConfiguration {
 
   @Bean

@@ -154,7 +154,7 @@ nach `OPAA_AUTH_LOCAL_COOKIE_SECURE`, `Path=/api/v1/auth/local`). Jede abgewiese
 unbekannte Adresse, falsches Passwort, gesperrtes, abgelaufenes oder eingeladenes Konto,
 abgeschaltete Verwaltung — ist dieselbe Antwort mit derselben Antwortzeitklasse (Hash-Vergleich
 auch gegen einen Dummy-Hash); der Fehlversuchszähler wird atomar geführt, die Sperre nach fünf
-Fehlversuchen folgt mit #1535. Anmeldefähig ist nur ein aktives Konto; bei ausgeschalteter
+Fehlversuchen steht unten (#1535). Anmeldefähig ist nur ein aktives Konto; bei ausgeschalteter
 Verwaltung (Schalter = `enabled` der `LOCAL`-Anbieterzeile) nur ein lokaler `SYSTEM_ADMIN`.
 `POST …/refresh` rotiert das Cookie innerhalb seiner Familie (Leerlauffrist 7 Tage, absolute
 Höchstdauer 30 Tage, für lokale Systemverwalter 4 h / 12 h; keine Rotation verlängert das
@@ -218,8 +218,44 @@ Dev-Issuer (`dev-admin` bleibt Systemverwalter); IdP-Konten werden Systemverwalt
 Rollenvergabe. `OPAA_OIDC_BOOTSTRAP=force` funktioniert bis zum 31.03.2027 weiter und warnt bei
 jeder Verwendung mit Ersatz und Datum. Mit `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (IPv4/IPv6, leer =
 keine Beschränkung) melden sich lokale `SYSTEM_ADMIN`-Konten nur aus den genannten Netzen an — die
-Abweisung ist dieselbe wie bei einem falschen Passwort, liegt aber vor der Fehlversuchszählung (aus einem nicht erlaubten Netz lässt sich das Konto nicht sperren); bis #1535
-gilt die Adresse der Verbindung selbst, ohne `X-Forwarded-For`.
+Abweisung ist dieselbe wie bei einem falschen Passwort, liegt aber vor der Fehlversuchszählung (aus einem nicht erlaubten Netz lässt sich das Konto nicht sperren); geprüft
+wird die aufgelöste Client-Adresse (siehe Rate-Limiting unten).
+
+**Rate-Limiting und Kontosperre (gebaut, #1535).** Die Client-Adresse jeder Anfrage bestimmt
+`io.opaa.security.ClientIpResolver` (`TrustedProxyClientIpResolver`), die eine Stelle für
+Rate-Limits und die Netzbeschränkung: `X-Forwarded-For` zählt nur, wenn die Verbindung selbst aus
+einem Netz in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` kommt (Vorgabe leer = Header ignoriert), und
+dann ist der Client der erste Eintrag von rechts, der kein vertrauter Proxy ist — der Eintrag, den
+der nächste vertraute Proxy angehängt hat; ein vom Client mitgeschickter Anfang der Kette und
+weitere vertraute Zwischenstationen zählen nicht. Das Ergebnis ist immer eine numerische Adresse
+(ein Eintrag, der keine ist, fällt auf die Verbindungsadresse zurück; kein DNS). `0.0.0.0/0` und
+`::/0` lehnt der Start ab; der `oidc`-Betriebsmodus warnt bei leerer Liste mit der Folge im
+Klartext. Der Compose-Stack hat dafür ein festes Netz (`docker-compose.yml`, `OPAA_COMPOSE_SUBNET`)
+und `.env.docker.example` den passenden Wert. `GET /api/v1/admin/diagnostics/client-address`
+(Systemverwaltung) zeigt für genau diese Anfrage Verbindungsadresse, empfangenen Header, ob er
+gezählt hat, und die aufgelöste Adresse. Der bestehende `RateLimitFilter` (Sliding Window über
+Caffeine, ein Limiter je Regel, Schlüsselzahl begrenzt) nutzt dieselbe Auflösung und antwortet auf
+jede Überschreitung mit `429`, `Retry-After` und dem einen deutschen Fehlertext; CORS-Preflights
+zählen nicht. Grenzen der lokalen Anmeldung (`opaa.rate-limit.local-auth.*`): Login 10/60 s je
+Adresse, Refresh 30/60 s je Adresse, Passwortwechsel 5/300 s je Konto (vor dem Vergleich des
+aktuellen Passworts), Registrierung 5/3600 s je Adresse und 3/3600 s je E-Mail-Adresse, „Passwort
+vergessen" 5/3600 s je Adresse und 3/3600 s je E-Mail-Adresse, Passwort setzen 10/900 s je
+Adresse; Login, Registrierung und „Passwort vergessen" haben zusätzlich eine globale Grenze je
+Fenster (100 bzw. 50), deren Überschreiten eine Warnung und die Metrik `opaa.rate_limit.rejected`
+(`limit`, `scope=global`) erzeugt. Die adress- und kontobezogenen Grenzen liegen in
+`LocalAuthRateLimiter` (E-Mail-Adressen nur als Hash im Speicher); die Endpunkte der
+Selbstbedienung (#1538) rufen `requireAddressAllowance` auf, die Pfadregeln stehen bereit. Nach
+fünf Fehlversuchen (`OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS`) sperrt `LocalAccountLockoutListener`
+das Konto für feste 15 Minuten (`OPAA_AUTH_LOCAL_LOCKOUT_DURATION`, `locked_reason =
+FAILED_LOGINS`, keine progressive Verlängerung; ein bereits gesperrtes Konto wird weder erneut
+gesperrt noch verlängert): auditiert **einmal** als `LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS`
+(Systemakteur `local-auth`, Subjekt als Pseudonym, ohne Zähler) und als Metrik
+`opaa.auth.local_account_lockout`; der einzelne Fehlversuch steht nur im Anwendungslog mit der
+Konto-ID, nie der Adresse. Die Anmeldung antwortet während der Sperre exakt wie bei einem
+falschen Passwort; Tokens des gesperrten Kontos weist der Validator über den Zustand ab
+(`account_locked:failed_logins`). Das Ende der Sperre erzeugt kein Ereignis; der Zähler geht bei
+der nächsten erfolgreichen Anmeldung auf null. Keine Mail bei dieser Sperre; „Passwort vergessen"
+bleibt offen, und ein eingelöster Rücksetzlink hebt sie auf (#1538).
 
 **Aussperrschutz (gebaut, #1534).** `LocalAdminAvailabilityGuard` ist die eine Stelle für „nie ohne
 anmeldefähigen Systemverwalter": Unter dem Advisory-Lock je Organisation zählt er nur

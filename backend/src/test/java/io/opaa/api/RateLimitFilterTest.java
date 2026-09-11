@@ -29,8 +29,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 class RateLimitFilterTest {
 
-  private static final Decision ALLOWED = Decision.allowed();
-  private static final Decision REJECTED = Decision.rejected(17);
+  private static final Decision ALLOWED = Decision.allow();
+  private static final Decision REJECTED = Decision.reject(17);
 
   private static final String QUERY = "^/api/v1/query";
   private static final String INDEXING = "^/api/v1/libraries/([^/]+)/indexing$";
@@ -312,7 +312,7 @@ class RateLimitFilterTest {
   @Test
   void returns429AndWarnsAndCountsWhenAGlobalLimitIsExceeded() throws Exception {
     when(loginLimiter.tryAcquire(anyString())).thenReturn(ALLOWED);
-    when(globalLoginLimiter.tryAcquire(anyString())).thenReturn(Decision.rejected(42));
+    when(globalLoginLimiter.tryAcquire(anyString())).thenReturn(Decision.reject(42));
     ListAppender<ILoggingEvent> appender = new ListAppender<>();
     appender.start();
     Logger logger = (Logger) LoggerFactory.getLogger(RateLimitFilter.class);

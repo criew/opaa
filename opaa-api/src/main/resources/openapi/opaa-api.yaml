@@ -4275,6 +4275,27 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/diagnostics/client-address:
+    get:
+      operationId: getClientAddressDiagnostics
+      tags: [admin]
+      summary: >
+        Shows the client address of this very request as the rate limiter and the network
+        restriction of local system administrators resolve it (system admin only, ADR-0033
+        Entscheidung 9): the address of the connection, the X-Forwarded-For header as received,
+        whether the connection came from a trusted proxy (OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS) so
+        the header counted, and the resulting client address - the check that the trusted-proxy
+        list is right, without a shell.
+      responses:
+        "200":
+          description: The addresses of this request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientAddressDiagnosticsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/libraries/{libraryId}/diagnostics-lock:
     parameters:
       - name: libraryId
@@ -9717,6 +9738,7 @@ components:
           LOCAL_BOOTSTRAP_ACCOUNT_LOGIN,
           LOCAL_ACCOUNTS_ENABLED,
           LOCAL_ACCOUNTS_DISABLED,
+          LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS,
         ]
       example: ASSET_GRANT_REVOKED
 
@@ -9895,6 +9917,36 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    ClientAddressDiagnosticsResponse:
+      type: object
+      required: [forwardedForTrusted, trustedProxiesConfigured]
+      properties:
+        clientAddress:
+          type: string
+          nullable: true
+          description: >
+            The client address as resolved for this request - the key of the per-address rate
+            limits and the input of OPAA_LOCAL_ADMIN_ALLOWED_CIDRS. Always a numeric address.
+          example: 198.51.100.7
+        remoteAddress:
+          type: string
+          nullable: true
+          description: The address of the connection itself (the proxy's, behind one).
+          example: 172.28.0.3
+        forwardedFor:
+          type: string
+          nullable: true
+          description: The X-Forwarded-For header exactly as it arrived; absent without one.
+          example: "198.51.100.7, 172.28.0.1"
+        forwardedForTrusted:
+          type: boolean
+          description: >
+            Whether the header was honoured - the connection came from a trusted proxy. false with
+            an empty OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS or from an untrusted connection.
+        trustedProxiesConfigured:
+          type: boolean
+          description: Whether OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS names any network at all.
 
     LibraryDiagnosticsLockRequest:
       type: object

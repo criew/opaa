@@ -61,6 +61,7 @@ public class LocalAuthController {
   private final UserService userService;
   private final LocalRefreshCookies cookies;
   private final ClientIpResolver clientIpResolver;
+  private final LocalAuthRateLimiter rateLimiter;
 
   public LocalAuthController(
       LocalLoginService loginService,
@@ -71,7 +72,8 @@ public class LocalAuthController {
       LocalCredentialsRepository credentials,
       UserService userService,
       LocalRefreshCookies cookies,
-      ClientIpResolver clientIpResolver) {
+      ClientIpResolver clientIpResolver,
+      LocalAuthRateLimiter rateLimiter) {
     this.loginService = loginService;
     this.accessTokens = accessTokens;
     this.refreshTokens = refreshTokens;
@@ -81,6 +83,7 @@ public class LocalAuthController {
     this.userService = userService;
     this.cookies = cookies;
     this.clientIpResolver = clientIpResolver;
+    this.rateLimiter = rateLimiter;
   }
 
   @PostMapping("/login")
@@ -147,11 +150,13 @@ public class LocalAuthController {
   /**
    * Every refresh family of the account is revoked ({@code PASSWORD_CHANGED}) and the session this
    * call was made from continues in a fresh family: the answer is a sign-in - a token without
-   * {@code pcr} and a new refresh cookie.
+   * {@code pcr} and a new refresh cookie. The per-account budget (ADR-0033, Entscheidung 9) is
+   * spent before the current password is compared, so a guess costs a token whether right or wrong.
    */
   @PostMapping("/change-password")
   public ResponseEntity<LocalTokenResponse> changePassword(
       @Caller CurrentUser caller, @Valid @RequestBody LocalChangePasswordRequest request) {
+    rateLimiter.requireChangePasswordAllowance(caller.id());
     User user =
         userService
             .findBySubjectAndIssuer(caller.id().toString(), LocalIssuer.URN)

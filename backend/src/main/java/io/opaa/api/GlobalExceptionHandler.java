@@ -343,10 +343,12 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(TooManyRequestsException.class)
   public ResponseEntity<ErrorResponse> handleTooManyRequestsException(TooManyRequestsException ex) {
-    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-        .body(
-            new ErrorResponse(
-                ex.getMessage(), HttpStatus.TOO_MANY_REQUESTS.value(), Instant.now()));
+    ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS);
+    if (ex.retryAfterSeconds() > 0) {
+      response.header(HttpHeaders.RETRY_AFTER, Long.toString(ex.retryAfterSeconds()));
+    }
+    return response.body(
+        new ErrorResponse(ex.getMessage(), HttpStatus.TOO_MANY_REQUESTS.value(), Instant.now()));
   }
 
   @ExceptionHandler(ServiceUnavailableException.class)

@@ -233,5 +233,11 @@ public enum AuditEventType {
    * The local account management was switched off; the sessions of every regular local account
    * ended with it (system administrators keep theirs).
    */
-  LOCAL_ACCOUNTS_DISABLED
+  LOCAL_ACCOUNTS_DISABLED,
+  /**
+   * A local account was locked for the fixed lockout duration after too many failed sign-ins - the
+   * one event of the affair, under the {@code local-auth} system actor; the single failed attempt
+   * is never audited (ADR-0033, Entscheidungen 9 and 13).
+   */
+  LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS
 }

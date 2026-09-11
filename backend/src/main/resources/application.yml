@@ -135,6 +135,12 @@ opaa:
       initial-admin-password: ${OPAA_INITIAL_ADMIN_PASSWORD:}
       admin-reset: ${OPAA_LOCAL_ADMIN_RESET:}
       admin-allowed-cidrs: ${OPAA_LOCAL_ADMIN_ALLOWED_CIDRS:}
+      # Lockout after failed sign-ins (Entscheidung 9; io.opaa.auth.local.LocalAccountLockoutListener):
+      # a fixed duration, no progressive extension; the counter returns to zero on success. The
+      # single failed attempt is an application-log line, the lock an audit event.
+      lockout:
+        max-attempts: ${OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS:5}
+        duration: ${OPAA_AUTH_LOCAL_LOCKOUT_DURATION:15m}
   http:
     force-http1: ${OPAA_HTTP_FORCE_HTTP1:false}
   query:
@@ -362,6 +368,14 @@ opaa:
       acquire-timeout: ${OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_ACQUIRE_TIMEOUT:10s}
   rate-limit:
     enabled: ${OPAA_RATE_LIMIT_ENABLED:true}
+    # ADR-0033, Entscheidung 9: X-Forwarded-For is honoured only when the connection comes from one
+    # of these networks (io.opaa.security.TrustedProxyClientIpResolver; the client is the first
+    # entry from the right that is not a trusted proxy). Empty = the header is ignored and every
+    # request counts under the address of its connection - behind a reverse proxy (the Compose
+    # stack's nginx included) every client then shares one bucket per limit, which the "oidc"
+    # profile warns about at start-up. Serves the rate limits and OPAA_LOCAL_ADMIN_ALLOWED_CIDRS
+    # alike; a wildcard (0.0.0.0/0, ::/0) refuses the start.
+    trusted-proxy-cidrs: ${OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS:}
     query:
       max-requests: ${OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS:10}
       window-seconds: ${OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS:60}
@@ -395,6 +409,37 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS:120}
       window-seconds: ${OPAA_RATE_LIMIT_WEBHOOK_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_WEBHOOK_GLOBAL_MAX_REQUESTS:600}
+    # ADR-0033, Entscheidung 9: the local sign-in and its self-service endpoints. login, refresh,
+    # register, forgot-password and set-password are keyed by client address in RateLimitFilter;
+    # change-password by the authenticated account, register and forgot-password additionally by
+    # the (hashed) e-mail address they name - both in io.opaa.auth.local.LocalAuthRateLimiter. The
+    # global ceilings of login, register and forgot-password are the operator's early warning
+    # against distributed credential stuffing: exceeding one is a WARN line and a metric. The
+    # endpoints of register, forgot-password and set-password arrive with #1538.
+    local-auth:
+      login:
+        max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS:10}
+        window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_WINDOW_SECONDS:60}
+        global-max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_GLOBAL_MAX_REQUESTS:100}
+      refresh:
+        max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_REFRESH_MAX_REQUESTS:30}
+        window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_REFRESH_WINDOW_SECONDS:60}
+      change-password:
+        max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_CHANGE_PASSWORD_MAX_REQUESTS:5}
+        window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_CHANGE_PASSWORD_WINDOW_SECONDS:300}
+      register:
+        max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_MAX_REQUESTS:5}
+        window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_WINDOW_SECONDS:3600}
+        global-max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_GLOBAL_MAX_REQUESTS:50}
+        max-requests-per-address: ${OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_MAX_REQUESTS_PER_ADDRESS:3}
+      forgot-password:
+        max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_MAX_REQUESTS:5}
+        window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_WINDOW_SECONDS:3600}
+        global-max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_GLOBAL_MAX_REQUESTS:50}
+        max-requests-per-address: ${OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_MAX_REQUESTS_PER_ADDRESS:3}
+      set-password:
+        max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_SET_PASSWORD_MAX_REQUESTS:10}
+        window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_SET_PASSWORD_WINDOW_SECONDS:900}
   cors:
     allowed-origins: ${OPAA_CORS_ALLOWED_ORIGINS:http://localhost:5173}
   directory-sync:
