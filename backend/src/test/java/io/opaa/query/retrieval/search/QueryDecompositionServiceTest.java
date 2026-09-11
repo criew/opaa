@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -13,6 +14,7 @@ import ch.qos.logback.core.read.ListAppender;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.observability.QueryMetrics;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.slf4j.LoggerFactory;
@@ -57,11 +59,7 @@ class QueryDecompositionServiceTest {
   }
 
   private String capturedSystemPrompt() {
-    return capturedPrompt().getInstructions().stream()
-        .filter(message -> message.getMessageType() == MessageType.SYSTEM)
-        .map(Message::getText)
-        .findFirst()
-        .orElseThrow();
+    return systemTextOf(capturedPrompt());
   }
 
   @Test
@@ -414,5 +412,64 @@ class QueryDecompositionServiceTest {
 
     assertThat(subQueries).isEmpty();
     verify(metrics).recordDegenerateDecomposition();
+  }
+
+  /**
+   * The anchor-space invariant at the seam this class owns: the instruction this service passes to
+   * {@link DecompositionContext#systemText} must be a <b>fixed</b> text, never one that carries
+   * context of its own. Rendering a context building block into the instruction argument instead of
+   * through {@link DecompositionContext#withContextBlock} would put it in front of the model while
+   * leaving {@code countUnrelated} blind to it - and because the belt is all or nothing, every
+   * sub-query that block legitimizes would take the whole run into the fallback.
+   *
+   * <p>Measured by running two entirely different contexts: once each prompt has its own {@link
+   * DecompositionContext#contextTexts()} taken out, what remains must be identical. Anything the
+   * prompt derives from the context outside the anchor space differs here.
+   */
+  @Test
+  void nothingReachesTheModelOutsideTheInstructionAndTheAnchoredContext() {
+    stubChatModelResponse("Irgendeine Zeile");
+    DecompositionContext first =
+        DecompositionContext.of(
+                "Was kostet der Ausweis?",
+                List.of(new UserMessage("Vorrunde zum Anwohnerparkausweis")))
+            .withContextBlock("Bezugsjahr 2024");
+    DecompositionContext second =
+        DecompositionContext.of(
+                "Welche Frist gilt?", List.of(new UserMessage("Vorrunde zum Widerspruch")))
+            .withContextBlock("Zuständig ist das Ordnungsamt");
+
+    service.decompose(first, 3);
+    service.decompose(second, 3);
+
+    ArgumentCaptor<Prompt> prompts = ArgumentCaptor.forClass(Prompt.class);
+    verify(chatModel, times(2)).call(prompts.capture());
+    assertThat(withoutAnchoredContext(prompts.getAllValues().get(0), first))
+        .isEqualTo(withoutAnchoredContext(prompts.getAllValues().get(1), second));
+    // The blocks do reach the model, and only their own run's does.
+    assertThat(systemTextOf(prompts.getAllValues().get(0)))
+        .contains("Bezugsjahr 2024")
+        .doesNotContain("Ordnungsamt");
+  }
+
+  /**
+   * The whole rendered prompt with every anchored text removed - the instruction, and nothing else
+   * if the invariant holds.
+   */
+  private static String withoutAnchoredContext(Prompt prompt, DecompositionContext context) {
+    String rendered =
+        prompt.getInstructions().stream().map(Message::getText).collect(Collectors.joining("\n"));
+    for (String contextText : context.contextTexts()) {
+      rendered = rendered.replace(contextText, "");
+    }
+    return rendered.strip();
+  }
+
+  private static String systemTextOf(Prompt prompt) {
+    return prompt.getInstructions().stream()
+        .filter(message -> message.getMessageType() == MessageType.SYSTEM)
+        .map(Message::getText)
+        .findFirst()
+        .orElseThrow();
   }
 }

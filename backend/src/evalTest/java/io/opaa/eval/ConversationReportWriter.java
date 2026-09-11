@@ -54,12 +54,7 @@ public final class ConversationReportWriter {
         format(
             "  Gesprächsfenster=%d Nachrichten (gemessen am produktiven ChatMemory), "
                 + "Suchfenster=%s, Notizdeckel=%d\n",
-            profile.windowMessages(),
-            profile.searchWindowTurns()
-                    == ConversationMemoryProfile.SEARCH_WINDOW_WHOLE_CONVERSATION_WINDOW
-                ? "ganzes Gesprächsfenster"
-                : profile.searchWindowTurns() + " Runden",
-            profile.noteCap()));
+            profile.windowMessages(), profile.searchWindowLabel(), profile.noteCap()));
     sb.append(
         format(
             "  query-decomposition-enabled=%s, max-sub-queries=%d, Chat-Modell=%s\n",
@@ -118,10 +113,7 @@ public final class ConversationReportWriter {
         format(
             "Gesprächsfenster %d Nachrichten, Suchfenster %s, Notizdeckel %d, Chat-Modell `%s`.\n\n",
             profile.windowMessages(),
-            profile.searchWindowTurns()
-                    == ConversationMemoryProfile.SEARCH_WINDOW_WHOLE_CONVERSATION_WINDOW
-                ? "ganzes Gesprächsfenster"
-                : profile.searchWindowTurns() + " Runden",
+            profile.searchWindowLabel(),
             profile.noteCap(),
             cfg.pipeline().chatModel()));
     sb.append(format("_%s_\n\n", report.metricWindowNote()));

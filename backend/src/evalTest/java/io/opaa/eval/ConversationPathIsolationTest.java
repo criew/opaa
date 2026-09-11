@@ -135,7 +135,7 @@ class ConversationPathIsolationTest {
             new ConversationBaseline.FixedPoints(
                 pipelineFixedPoints(),
                 20,
-                ConversationMemoryProfile.SEARCH_WINDOW_WHOLE_CONVERSATION_WINDOW,
+                ConversationMemoryProfile.SEARCH_WINDOW_QUESTION_ONLY,
                 0,
                 20),
             Map.of(),

@@ -223,4 +223,23 @@ class AnswerGenerationServiceTest {
         .extracting(Message::getText)
         .containsExactly("Erste Antwort.");
   }
+
+  /**
+   * #1486: an answer that is nothing but a marker leaves no assistant message in the window at all.
+   * An empty assistant message is rejected with 400 by some providers, and the reload path would
+   * rebuild it from the persisted text on every following turn of that chat.
+   */
+  @Test
+  void anAnswerThatIsOnlyAMarkerLeavesNoAssistantMessageInTheWindow() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            new ChatResponse(
+                List.of(new Generation(new AssistantMessage("【source: doc-1#0 | a.md】")))));
+
+    answerGenerationService.generateAnswer("Frage?", List.of(), "conv-only-marker");
+
+    assertThat(chatMemory.get("conv-only-marker"))
+        .extracting(Message::getText)
+        .containsExactly("Frage?");
+  }
 }

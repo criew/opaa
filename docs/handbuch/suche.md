@@ -17,8 +17,8 @@ die Antwort angezeigt wird.
 flowchart LR
     F[Frage] --> S[Suchbereich<br/>und Filter]
     S --> T[Teilfragen]
-    H[Gesprächs-<br/>verlauf] -.-> T
-    H -.-> A
+    H[Gesprächs-<br/>fenster] -.-> |Suchfenster| T
+    H -.-> |ganzes Fenster| A
     T --> V[Vektorsuche]
     T --> L[Volltextsuche]
     V --> Z[Zusammenführen<br/>und Ordnen]
@@ -75,9 +75,12 @@ Zwei Eigenschaften des Fensters sind betrieblich wichtig:
   gespeicherte Antworttext behält sie unverändert; er ist die Grundlage für Fußnoten, Textanker und
   Belegfenster. Ohne Marke im Verlauf kann das Modell keine Marke für ein Dokument wiederholen, das
   in dieser Runde gar nicht im Kontext ist.
-- **Ein Neustart ändert nichts.** Nach einem Neustart oder wenn der prozessinterne Zwischenspeicher
-  abgelaufen ist, wird das Fenster aus den letzten 20 gespeicherten Nachrichten desselben Chats neu
-  gebildet, mit derselben Normalisierung — derselbe Chat schickt denselben Prompt wie davor.
+- **Ein Neustart ändert nichts an der Aufbereitung.** Nach einem Neustart oder wenn der
+  prozessinterne Zwischenspeicher abgelaufen ist, wird das Fenster aus den letzten 20 gespeicherten
+  Nachrichten desselben Chats neu gebildet, durch dieselbe Marken-Entfernung — derselbe Chat schickt
+  denselben Prompt wie davor. Eine Ausnahme betrifft nicht die Aufbereitung, sondern den Bestand:
+  Liefert eine Runde keinen Antworttext (Modellfehler, oder eine Antwort, die nur aus Marken
+  bestand), fehlt sie im laufenden Fenster wie im nachgeladenen gleichermaßen.
 
 Beide Breiten sind Konfigurationswerte (Abschnitt 10.3); in einer Verwaltungsoberfläche erscheinen
 sie nicht.
@@ -149,7 +152,7 @@ flowchart TB
     Q -- ja --> H[Lauf endet:<br/>Antwort ohne Wissensbasis]
     Q -- nein --> S2[2 Metadatenfilter<br/>dem Rechtefilter unterordnen]
     S2 --> S3[3 Teilfragen bilden<br/>n Suchanfragen]
-    V[Gesprächsverlauf<br/>des Chats] -.-> S3
+    V[Suchfenster<br/>letzte 2 Runden] -.-> S3
     S3 --> S4[4 Vektorsuche<br/>x Kandidaten je Suchanfrage]
     S3 --> S5[5 Volltextsuche<br/>x Kandidaten je Suchanfrage]
     S4 --> S6[6 Auswahl je Liste<br/>auf das Budget kürzen]

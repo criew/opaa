@@ -17,22 +17,30 @@ import org.springframework.ai.chat.messages.UserMessage;
  *     production {@link ChatMemory} bean rather than read from a constant - see {@link
  *     #measuredFrom}.
  * @param searchWindowTurns the number of most recent turns the sub-question decomposition sees,
- *     read from the production {@link QueryProperties} - {@link
- *     #SEARCH_WINDOW_WHOLE_CONVERSATION_WINDOW} would mean production hands it the whole window
- *     instead.
+ *     read from the production {@link QueryProperties}; {@link #SEARCH_WINDOW_QUESTION_ONLY} means
+ *     it sees the question alone.
  * @param noteCap the maximum number of Gesprächsnotiz points per chat, {@link
  *     #NO_CONVERSATION_NOTE} while there is no note.
  */
 public record ConversationMemoryProfile(int windowMessages, int searchWindowTurns, int noteCap) {
 
   /**
-   * The value {@link #searchWindowTurns} carried while the decomposition still received the entire
-   * conversation window, before {@code opaa.query.search-window-turns} existed. Kept as a named
-   * value because every baseline drawn before that change reports it, and a reader comparing two
-   * reports has to be able to tell "whole window" from a configured {@code 0}, which today means
-   * "question only".
+   * {@link #searchWindowTurns} of a run whose decomposition sees no conversation at all - the
+   * question and, once it exists, the Gesprächsnotiz.
+   *
+   * <p>A baseline drawn before {@code opaa.query.search-window-turns} existed carries the same
+   * {@code 0} with the opposite meaning ("the whole conversation window", the behaviour of the
+   * time). Such a baseline is told apart by its fixed point differing from the run's - which is
+   * exactly what makes it incomparable, so no report has to guess which reading applies.
    */
-  public static final int SEARCH_WINDOW_WHOLE_CONVERSATION_WINDOW = 0;
+  public static final int SEARCH_WINDOW_QUESTION_ONLY = 0;
+
+  /** How {@link #searchWindowTurns} reads in a report. */
+  public String searchWindowLabel() {
+    return searchWindowTurns == SEARCH_WINDOW_QUESTION_ONLY
+        ? "nur die Frage"
+        : searchWindowTurns + " Runden";
+  }
 
   /** The value of {@link #noteCap} while no Gesprächsnotiz exists. */
   public static final int NO_CONVERSATION_NOTE = 0;

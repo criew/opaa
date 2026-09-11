@@ -115,6 +115,22 @@ class ConversationWindowRestartInvarianceTest {
         .containsExactly("Was bedeutet 【source: x#1 | y.md】 in Ihrer Antwort?");
   }
 
+  /**
+   * The same rule on the reload path: a persisted answer that is nothing but a marker contributes
+   * no window message either, so the reloaded window matches the one the running process held.
+   */
+  @Test
+  void aPersistedAnswerThatIsOnlyAMarkerContributesNoWindowMessage() {
+    List<Message> reloaded =
+        ConversationWindowMessages.reloaded(
+            List.of(
+                new UserMessage(QUESTION),
+                new AssistantMessage("【source: doc-1#0 | a.md】"),
+                new UserMessage(FOLLOW_UP)));
+
+    assertThat(reloaded).extracting(Message::getText).containsExactly(QUESTION, FOLLOW_UP);
+  }
+
   private static ChatResponse answer(String text) {
     return new ChatResponse(List.of(new Generation(new AssistantMessage(text))));
   }

@@ -74,12 +74,11 @@ public class AnswerGenerationService {
         chatClient.prompt().system(systemText).messages(messages).call().chatResponse();
 
     chatMemory.add(conversationId, new UserMessage(question));
-    String assistantText = ChatResponses.textOrNull(response);
-    if (assistantText != null) {
-      // The window gets the answer without its citation markers; the response returned here - and
-      // with it the persisted text - keeps them. See ConversationWindowMessages.
-      chatMemory.add(conversationId, ConversationWindowMessages.answer(assistantText));
-    }
+    // The window gets the answer without its citation markers, and nothing at all when only
+    // markers came back; the response returned here - and with it the persisted text - keeps them.
+    // See ConversationWindowMessages.
+    ConversationWindowMessages.answer(ChatResponses.textOrNull(response))
+        .ifPresent(message -> chatMemory.add(conversationId, message));
 
     return response;
   }

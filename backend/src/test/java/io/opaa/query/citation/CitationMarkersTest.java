@@ -41,14 +41,73 @@ class CitationMarkersTest {
   }
 
   /**
-   * A text without markers must come back byte-identical: the harness scripts marker-free short
-   * answers and relies on taking the same path production takes.
+   * A text without markers must come back byte-identical - and that has to hold for the texts an
+   * answer actually contains, not only for a one-line sentence: the indentation of a YAML block,
+   * the nesting of a list and the two trailing spaces of a hard Markdown line break all carry
+   * meaning the next turn is answered against. The harness relies on the same identity when it
+   * appends a scripted, marker-free short answer.
    */
   @Test
   void aTextWithoutMarkersIsReturnedUnchanged() {
-    String answer = "Ein Anwohnerparkausweis kostet 30,70 Euro pro Jahr.";
+    String answer =
+        "Die Konfiguration sieht so aus:\n"
+            + "\n"
+            + "```yaml\n"
+            + "opaa:\n"
+            + "  query:\n"
+            + "    top-k: 8\n"
+            + "    fetch-k: 25\n"
+            + "```\n"
+            + "\n"
+            + "- Erster Punkt\n"
+            + "  - Untergeordneter Punkt\n"
+            + "- Zweiter Punkt\n"
+            + "\n"
+            + "Erste Zeile eines harten Umbruchs  \n"
+            + "zweite Zeile.\n";
 
     assertThat(CitationMarkers.strip(answer)).isEqualTo(answer);
+  }
+
+  /** A marker inside an indented block takes its own whitespace, never the indentation. */
+  @Test
+  void aMarkerInAnIndentedBlockLeavesTheIndentationAlone() {
+    String answer =
+        "Die Werte lauten:\n"
+            + "  - top-k: 8 【source: doc-1#0 | a.md】\n"
+            + "    - fetch-k: 25\n"
+            + "  - mmr-lambda: 1,0";
+
+    assertThat(CitationMarkers.strip(answer))
+        .isEqualTo(
+            "Die Werte lauten:\n"
+                + "  - top-k: 8\n"
+                + "    - fetch-k: 25\n"
+                + "  - mmr-lambda: 1,0");
+  }
+
+  /** Two markers in a row are one removal, not two - no space is left between them. */
+  @Test
+  void aRunOfMarkersIsRemovedAsOne() {
+    String answer = "Beides gilt 【source: doc-1#0 | a.md】【source: doc-2#1 | b.md】 und weiter.";
+
+    assertThat(CitationMarkers.strip(answer)).isEqualTo("Beides gilt und weiter.");
+  }
+
+  /** A marker glued between two characters leaves nothing where it stood. */
+  @Test
+  void aMarkerWithoutSurroundingSpaceLeavesNoSpace() {
+    String answer = "A【source: doc-1#0 | a.md】B";
+
+    assertThat(CitationMarkers.strip(answer)).isEqualTo("AB");
+  }
+
+  /** A marker at the start of a line does not push the line one space to the right. */
+  @Test
+  void aMarkerAtTheStartOfALineLeavesNoLeadingSpace() {
+    String answer = "Zeile eins.\n【source: doc-1#0 | a.md】 Zeile zwei.";
+
+    assertThat(CitationMarkers.strip(answer)).isEqualTo("Zeile eins.\nZeile zwei.");
   }
 
   /** Something that only looks like a marker is not one - nothing is guessed away. */
