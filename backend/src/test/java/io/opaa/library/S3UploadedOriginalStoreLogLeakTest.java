@@ -104,7 +104,8 @@ class S3UploadedOriginalStoreLogLeakTest {
             UploadS3TargetPolicy.of(properties),
             java.time.Duration.ofSeconds(3),
             1,
-            java.time.Duration.ofMillis(1))) {
+            java.time.Duration.ofMillis(1),
+            S3UploadedOriginalStore.LIST_PAGE_SIZE)) {
       UploadedOriginalStore.AcceptedUpload accepted =
           store.accept(
               libraryId, ".pdf", new ByteArrayInputStream("x".getBytes(StandardCharsets.UTF_8)));

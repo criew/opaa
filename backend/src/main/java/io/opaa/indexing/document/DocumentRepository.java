@@ -360,6 +360,15 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       @Param("errorMessage") String errorMessage, @Param("threshold") Instant threshold);
 
   /**
+   * The {@code file_path} of every row of {@code libraryId}, whatever its status, source type or
+   * parent: the set of locators a stored original may be owned by. Backs {@code
+   * OrphanedOriginalCleanupService}, whose rule is "orphaned is what no row points to" - filtering
+   * rows here would turn that into "what no row of a certain shape points to".
+   */
+  @Query("select d.filePath from Document d where d.libraryId = :libraryId")
+  List<String> findFilePathsByLibraryId(@Param("libraryId") UUID libraryId);
+
+  /**
    * Records which core-metadata extraction version last ran over a document (ADR-0024). A targeted
    * {@code UPDATE} rather than an entity save: it runs from the ingest after the row's own insert
    * has committed, and must not resurrect a row a concurrent delete already removed - the same

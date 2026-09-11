@@ -16,8 +16,10 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
@@ -32,7 +34,10 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Object;
 
 /**
  * Uploaded originals in an S3-compatible object store (ADR-0030, {@code opaa.upload.store=s3}): one
@@ -71,12 +76,16 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
   /** Name prefix of every file this adapter writes under {@code tempDirectory}. */
   static final String TEMP_FILE_PREFIX = "opaa-upload-";
 
+  /** {@code MaxKeys} of every {@code ListObjectsV2} page; the S3 maximum. */
+  static final int LIST_PAGE_SIZE = 1000;
+
   private static final Logger log = LoggerFactory.getLogger(S3UploadedOriginalStore.class);
 
   private final String bucket;
   private final String keyPrefix;
   private final Path tempDirectory;
   private final String endpoint;
+  private final int listPageSize;
   private final S3FailureTranslator translator;
   private final S3SdkClient client;
   private final S3Client s3;
@@ -87,21 +96,27 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
         UploadS3TargetPolicy.of(properties),
         REQUEST_TIMEOUT,
         MAX_RETRIES,
-        RETRY_BACKOFF);
+        RETRY_BACKOFF,
+        LIST_PAGE_SIZE);
   }
 
-  /** With the bounds of the retry strategy chosen by the caller - for tests against a dead port. */
+  /**
+   * With the bounds of the retry strategy and the listing page size chosen by the caller - for
+   * tests against a dead port and for exercising pagination with a handful of objects.
+   */
   S3UploadedOriginalStore(
       UploadS3Properties properties,
       S3RequestGuard.TargetPolicy targetPolicy,
       Duration requestTimeout,
       int maxRetries,
-      Duration retryBackoff) {
+      Duration retryBackoff,
+      int listPageSize) {
     properties.requireComplete();
     this.bucket = properties.bucket();
     this.keyPrefix = properties.keyPrefix();
     this.tempDirectory = properties.tempDirectory();
     this.endpoint = properties.endpointUri().toString();
+    this.listPageSize = listPageSize;
     this.translator =
         new S3FailureTranslator(requestTimeout, maxRetries, UploadS3TargetPolicy.ALLOWLIST_HINT);
     this.client =
@@ -226,6 +241,67 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
   @Override
   public boolean belongsToLibrary(UploadedOriginalRef ref) {
     return resolve(ref).isPresent();
+  }
+
+  @Override
+  public void forEachStoredOriginal(UUID libraryId, Consumer<StoredOriginal> visitor) {
+    String prefix = keyPrefix + libraryId + "/";
+    String continuationToken = null;
+    do {
+      ListObjectsV2Response page = listPage(prefix, continuationToken);
+      for (S3Object object : page.contents()) {
+        String locator = locator(object.key());
+        // The same containment check resolving goes through, so what is listed can also be
+        // deleted: a folder marker under the prefix names no original.
+        if (managedKey(new UploadedOriginalRef(libraryId, locator)) == null) {
+          continue;
+        }
+        // A listing without LastModified leaves the age unknown; the moment of the listing is the
+        // one value that keeps such an object inside every grace period instead of past it.
+        Instant lastModified = object.lastModified();
+        visitor.accept(
+            new StoredOriginal(
+                locator,
+                lastModified == null ? Instant.now() : lastModified,
+                object.size() == null ? 0 : object.size()));
+      }
+      continuationToken =
+          Boolean.TRUE.equals(page.isTruncated()) ? page.nextContinuationToken() : null;
+    } while (continuationToken != null);
+  }
+
+  /**
+   * One {@code ListObjectsV2} page on {@code prefix}'s own level - the delimiter keeps everything
+   * nested deeper out of {@code contents()}, and this adapter never writes there. A page that
+   * claims more without naming a continuation token is a failure, not the last page: reported
+   * short, every unlisted original would look like it is not there at all.
+   */
+  private ListObjectsV2Response listPage(String prefix, String continuationToken) {
+    try {
+      ListObjectsV2Response page =
+          translator.call(
+              S3Operation.LIST_OBJECTS,
+              bucket,
+              null,
+              () ->
+                  s3.listObjectsV2(
+                      ListObjectsV2Request.builder()
+                          .bucket(bucket)
+                          .prefix(prefix)
+                          .delimiter("/")
+                          .maxKeys(listPageSize)
+                          .continuationToken(continuationToken)
+                          .build()));
+      String next = page.nextContinuationToken();
+      if (Boolean.TRUE.equals(page.isTruncated()) && (next == null || next.isBlank())) {
+        throw new S3AccessException.ListingIncomplete(bucket);
+      }
+      return page;
+    } catch (S3AccessException e) {
+      throw unavailable("list", prefix, e);
+    } catch (InterruptedException e) {
+      throw interrupted();
+    }
   }
 
   /**

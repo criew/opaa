@@ -23,10 +23,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * A minimal path-style S3 stand-in for the adapter's unit tests: buckets with objects in memory,
- * {@code ListObjectsV2} with prefix, page size and continuation tokens, {@code HeadBucket}, {@code
- * HeadObject}, {@code GetObject}, {@code PutObject}, {@code DeleteObject}, {@code ListBuckets}, and
- * a script of failures the next requests answer with, regardless of route. Every request is
- * recorded for assertions.
+ * {@code ListObjectsV2} with prefix, delimiter, page size and continuation tokens, {@code
+ * HeadBucket}, {@code HeadObject}, {@code GetObject}, {@code PutObject}, {@code DeleteObject},
+ * {@code ListBuckets}, and a script of failures the next requests answer with, regardless of route.
+ * Every request is recorded for assertions.
  */
 public final class StubS3Server implements AutoCloseable {
 
@@ -53,6 +53,7 @@ public final class StubS3Server implements AutoCloseable {
   private final Deque<Failure> scripted = new ArrayDeque<>();
   private final List<Seen> seen = new CopyOnWriteArrayList<>();
   private volatile boolean omitContinuationToken;
+  private volatile boolean omitLastModified;
 
   public StubS3Server() throws IOException {
     server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -86,8 +87,13 @@ public final class StubS3Server implements AutoCloseable {
   }
 
   /** Truncated listings claim {@code IsTruncated=true} but carry no continuation token. */
-  void omitContinuationToken() {
+  public void omitContinuationToken() {
     omitContinuationToken = true;
+  }
+
+  /** Listings name no {@code LastModified}, as a store that does not record one would. */
+  public void omitLastModified() {
+    omitLastModified = true;
   }
 
   /** The next {@code times} requests - whatever they are - answer {@code status}/{@code code}. */
@@ -261,13 +267,36 @@ public final class StubS3Server implements AutoCloseable {
       HttpExchange exchange, String bucket, Map<String, byte[]> objects, Map<String, String> query)
       throws IOException {
     String prefix = query.getOrDefault("prefix", "");
+    String delimiter = query.get("delimiter");
     int maxKeys = Integer.parseInt(query.getOrDefault("max-keys", "1000"));
     int start =
         query.containsKey("continuation-token")
             ? Integer.parseInt(query.get("continuation-token").substring(1))
             : 0;
-    List<String> keys =
+    List<String> underPrefix =
         objects.keySet().stream().filter(k -> k.startsWith(prefix)).sorted().toList();
+    // With a delimiter, everything nested deeper collapses into CommonPrefixes and leaves
+    // Contents - the paging below therefore runs over the flat keys alone, and the common
+    // prefixes ride along on the first page. Enough for the adapter under test.
+    List<String> keys =
+        delimiter == null
+            ? underPrefix
+            : underPrefix.stream()
+                .filter(k -> !k.substring(prefix.length()).contains(delimiter))
+                .toList();
+    List<String> commonPrefixes =
+        delimiter == null
+            ? List.of()
+            : underPrefix.stream()
+                .filter(k -> k.substring(prefix.length()).contains(delimiter))
+                .map(
+                    k ->
+                        prefix
+                            + k.substring(prefix.length())
+                                .substring(0, k.substring(prefix.length()).indexOf(delimiter) + 1))
+                .distinct()
+                .sorted()
+                .toList();
     int end = Math.min(start + maxKeys, keys.size());
     boolean truncated = end < keys.size();
     StringBuilder xml =
@@ -288,11 +317,20 @@ public final class StubS3Server implements AutoCloseable {
     if (truncated && !omitContinuationToken) {
       xml.append("<NextContinuationToken>t").append(end).append("</NextContinuationToken>");
     }
+    if (start == 0) {
+      for (String commonPrefix : commonPrefixes) {
+        xml.append("<CommonPrefixes><Prefix>")
+            .append(commonPrefix)
+            .append("</Prefix></CommonPrefixes>");
+      }
+    }
     for (String key : keys.subList(start, end)) {
       byte[] bytes = objects.get(key);
       xml.append("<Contents><Key>")
           .append(key)
-          .append("</Key><LastModified>2026-09-01T10:00:00.000Z</LastModified><ETag>&quot;")
+          .append("</Key>")
+          .append(omitLastModified ? "" : "<LastModified>2026-09-01T10:00:00.000Z</LastModified>")
+          .append("<ETag>&quot;")
           .append(md5(bytes))
           .append("&quot;</ETag><Size>")
           .append(bytes.length)

@@ -688,7 +688,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_UPLOAD_S3_PATH_STYLE` | `true` | nicht gesetzt | Adressstil (`opaa.upload.s3.path-style`): `true` = `endpoint/bucket/schlüssel` (MinIO, Ceph), `false` = `bucket.endpoint/schlüssel` (AWS, Hetzner) |
 | `OPAA_UPLOAD_S3_ACCESS_KEY` | — (leer; Pflicht bei `OPAA_UPLOAD_STORE=s3`) | nicht gesetzt | Zugangsschlüssel (`opaa.upload.s3.access-key`). Der Schlüssel braucht `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` und für die Startprüfung `s3:ListBucket` auf dem Bucket. Anders als die Zugangsdaten einer S3-Bibliothek dürfen Zugangsschlüssel und Geheimnis hier Doppelpunkte enthalten; beide erscheinen in keiner Protokollzeile und keiner Meldung |
 | `OPAA_UPLOAD_S3_SECRET_KEY` | — (leer; Pflicht bei `OPAA_UPLOAD_STORE=s3`) | nicht gesetzt | Geheimer Schlüssel (`opaa.upload.s3.secret-key`) |
-| `OPAA_UPLOAD_S3_TEMP_DIRECTORY` | — (leer: das Temp-Verzeichnis der JVM, im Container `/tmp`) | nicht gesetzt | Verzeichnis für die Arbeitsdatei eines Uploads und die lokale Kopie, die Pipeline-Nachzug, Metadaten-Nachlauf und die Rückextraktion von Anhängen brauchen (`opaa.upload.s3.temp-directory`). **Platzbedarf einplanen, und zwar auf zwei Dateisystemen:** In *diesem* Verzeichnis liegen je Upload die Arbeitsdatei in Originalgröße, die bis zum Ende der asynchronen Verarbeitung lebt, und bei einem gleichzeitigen Nachzug derselben Bibliothek die Kopie des Originals; mit parallelen Uploads (`OPAA_UPLOAD_THREAD_POOL_MAX_SIZE` plus Warteschlange) vervielfacht sich das. Im *Temp-Verzeichnis der JVM* (im Container `/tmp`, unabhängig von dieser Variable) liegen daneben der Multipart-Zwischenspeicher von Spring — jede eingehende Datei wird dort in Originalgröße gespoolt, bevor die Arbeitsdatei entsteht — und die Zwischendateien, die das Öffnen eines Anhangs beim Nachextrahieren aus seinem Elterndokument schreibt. Wer nur dieses Verzeichnis auf ein großes Volume legt und `/tmp` in Overlay-Größe belässt, füllt bei parallelen Uploads das falsche Dateisystem. Dateien, die ein hart beendeter Prozess dort zurücklässt (Präfix `opaa-upload-`, älter als der laufende Prozess), räumt der nächste Start weg. Ein verwaistes Objekt im Bucket, das derselbe Abbruch hinterlassen kann, bleibt dagegen liegen — einen Aufräumlauf dafür gibt es noch nicht (#1478); es kostet Speicherplatz und stört den Betrieb sonst nicht |
+| `OPAA_UPLOAD_S3_TEMP_DIRECTORY` | — (leer: das Temp-Verzeichnis der JVM, im Container `/tmp`) | nicht gesetzt | Verzeichnis für die Arbeitsdatei eines Uploads und die lokale Kopie, die Pipeline-Nachzug, Metadaten-Nachlauf und die Rückextraktion von Anhängen brauchen (`opaa.upload.s3.temp-directory`). **Platzbedarf einplanen, und zwar auf zwei Dateisystemen:** In *diesem* Verzeichnis liegen je Upload die Arbeitsdatei in Originalgröße, die bis zum Ende der asynchronen Verarbeitung lebt, und bei einem gleichzeitigen Nachzug derselben Bibliothek die Kopie des Originals; mit parallelen Uploads (`OPAA_UPLOAD_THREAD_POOL_MAX_SIZE` plus Warteschlange) vervielfacht sich das. Im *Temp-Verzeichnis der JVM* (im Container `/tmp`, unabhängig von dieser Variable) liegen daneben der Multipart-Zwischenspeicher von Spring — jede eingehende Datei wird dort in Originalgröße gespoolt, bevor die Arbeitsdatei entsteht — und die Zwischendateien, die das Öffnen eines Anhangs beim Nachextrahieren aus seinem Elterndokument schreibt. Wer nur dieses Verzeichnis auf ein großes Volume legt und `/tmp` in Overlay-Größe belässt, füllt bei parallelen Uploads das falsche Dateisystem. Dateien, die ein hart beendeter Prozess dort zurücklässt (Präfix `opaa-upload-`, älter als der laufende Prozess), räumt der nächste Start weg. Ein verwaistes Objekt im Bucket, das derselbe Abbruch hinterlassen kann, bleibt dagegen liegen, bis ein Betreiber es entfernt — siehe [„Verwaiste Originale aufräumen"](#verwaiste-originale-aufräumen); bis dahin kostet es Speicherplatz und stört den Betrieb sonst nicht |
 | `OPAA_UPLOAD_S3_TARGET_VALIDATION_ENABLED` | `true` | nicht gesetzt | Zieladressprüfung jeder Anfrage an den Objektspeicher (`opaa.upload.s3.target-validation.enabled`) — eigener Namensraum, unabhängig von `OPAA_INDEXING_TARGET_VALIDATION_ENABLED`: das Abschalten der Konnektorprüfung schaltet diese nicht mit ab. Der konfigurierte Endpunkt passiert immer; die Prüfung fängt Anfragen, die woandershin gingen |
 | `OPAA_UPLOAD_S3_TARGET_VALIDATION_ALLOWLIST` | — (leer) | nicht gesetzt | Kommagetrennte Hosts, die die Zieladressprüfung der Originalablage zusätzlich passieren dürfen (`opaa.upload.s3.target-validation.allowlist`); für den konfigurierten Endpunkt selbst nicht nötig |
 | `OPAA_UPLOAD_MAX_FILE_SIZE` | `52428800` (50 MiB, Byte) | nicht gesetzt (Anwendungs-Default gilt) | Maximale Dateigröße beim Dokument-Upload (`spring.servlet.multipart.max-file-size`/`max-request-size` und `opaa.upload.max-file-size` in `application.yml`, dieselbe Variable für beide). **Bei Docker Compose zusätzlich zu beachten:** Der nginx-Reverse-Proxy im Frontend-Container (`frontend/nginx.conf`) setzt `client_max_body_size` unabhängig davon fest auf `52m` — etwas oberhalb dieses Limits, weil nginx die gesamte Multipart-Anfrage misst (inklusive Framing-Overhead), das Backend dagegen nur die Dateigröße. Diese Datei wird beim Image-Build fest eingebacken (kein `envsubst`), wird also **nicht** automatisch aus `OPAA_UPLOAD_MAX_FILE_SIZE` übernommen. Wer `OPAA_UPLOAD_MAX_FILE_SIZE` erhöht, muss `client_max_body_size` in `frontend/nginx.conf` entsprechend mit anheben, sonst weist nginx größere Uploads bereits mit einer eigenen HTML-413-Seite ab, bevor die Backend-Prüfung überhaupt greift. Ein weiterer Reverse-Proxy vor dem Frontend-Container braucht denselben Wert zusätzlich (nginx-Default dort: 1 MB) |
@@ -789,6 +789,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_UPLOAD_THREAD_POOL_MAX_SIZE` | `4` | `4` | Maximale Threads für die asynchrone Verarbeitung hochgeladener Dokumente |
 | `OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY` | `20` | `20` | Task-Queue-Kapazität für den Upload-Pool — bei voller Queue wird der Upload sofort mit Status `FAILED` beantwortet, statt die Aufgabe still zu verwerfen |
 | `OPAA_UPLOAD_PENDING_RECOVERY_THRESHOLD_MINUTES` | `30` | `30` | Minuten, nach denen ein noch `PENDING` hängender Upload beim nächsten Anwendungsstart als durch einen Neustart abgebrochen auf `FAILED` gesetzt wird |
+| `OPAA_UPLOAD_ORPHAN_GRACE_MINUTES` | `60` | `60` | Schonfrist des Aufräumlaufs für verwaiste Originale: Minuten, die ein abgelegtes Original alt sein muss, bevor der Lauf es überhaupt melden oder entfernen darf — ein Upload, dessen Zeile gerade entsteht oder dessen Verarbeitung noch läuft, ist kein verwaistes Original. Ein Melde-Aufruf darf die Frist je Aufruf anheben, nie unterschreiten. Siehe [„Verwaiste Originale aufräumen"](#verwaiste-originale-aufräumen) |
 | **Bibliothek** | | | |
 | `OPAA_LIBRARY_QUOTA_BYTES` | `10737418240` (10 GiB, Byte) | `10737418240` | Speicherkontingent je Wissensbibliothek — Summe der `file_size`-Spalte aller Dokumente einer Bibliothek, durchgesetzt am Upload-Endpunkt (413) **und** an allen vier Konnektorpfaden (FILESYSTEM/HTTP_DIRECTORY/RSS_FEED/CONFLUENCE, dort als übersprungenes Dokument mit `REJECTED`-Ereignis im Laufprotokoll). Zählt den *Bibliotheksinhalt* (die Größe der Quelldateien), nicht den von OPAA tatsächlich belegten Plattenplatz — bei HTTP_DIRECTORY/RSS_FEED liegen die Dateien nur temporär auf der Platte, OPAA behält dauerhaft nur die Chunks im Vektorspeicher; ein Betreiber sieht deshalb ggf. „10 GiB belegt", obwohl der eigene Plattenverbrauch deutlich kleiner ist. **`0` oder ein negativer Wert deaktiviert das Kontingent vollständig** (kein Rückfall auf den Default) — wichtig für Bestandsinstallationen mit Bibliotheken über 10 GiB: das Kontingent wirkt rückwirkend auf bereits gewachsene Bibliotheken, ein Update auf diese Version würde dort sonst jeden weiteren Upload und jedes weitere Konnektordokument ablehnen, bis die Bibliothek unter das Kontingent geschrumpft ist. |
 | **pgvector** | | | |
@@ -1432,8 +1433,9 @@ Sicherungslaufs hochgeladen oder gelöscht, driften die beiden Ziele um die Daue
 auseinander. Wer einen genau zusammenpassenden Stand braucht, hält die Uploads für die Dauer an
 (Backend stoppen). Sonst gilt: **erst die Datenbank sichern, dann die Originale.** Ein in der
 Zwischenzeit hochgeladenes Dokument ist dann ein Objekt ohne Zeile — verwaist, kostet Speicherplatz
-und stört sonst nichts. In der anderen Reihenfolge wäre es eine Zeile ohne Bytes, und die ist im
-Betrieb ein Fehlerbild.
+und stört sonst nichts; eingesammelt wird es von [„Verwaiste Originale
+aufräumen"](#verwaiste-originale-aufräumen), dem nächsten Abschnitt. In der anderen Reihenfolge wäre
+es eine Zeile ohne Bytes, und die ist im Betrieb ein Fehlerbild.
 
 **Wiederherstellen dagegen umgekehrt: erst die Originale, dann die Datenbank.** Sonst zeigen die
 Zeilen auf Objekte, die es noch nicht gibt — jeder Abruf eines Originals scheitert, bis die Kopie
@@ -1442,6 +1444,70 @@ durch ist, und das sieht für die Dauer der Wiederherstellung nach Datenverlust 
 Zu sichern ist außerdem die Konfiguration. Ein Verweis in der Datenbank nennt Bucket und Schlüssel,
 aber nicht, an welchem Endpunkt dieser Bucket liegt; ohne die `OPAA_UPLOAD_S3_*`-Werte ist nach
 einem Ausfall des Wirtsystems nicht mehr abzuleiten, worauf die Installation gezeigt hat.
+
+### Verwaiste Originale aufräumen
+
+Ein verwaistes Original ist eine abgelegte Datei beziehungsweise ein abgelegtes Objekt, auf das keine
+Zeile mehr zeigt: ein fehlgeschlagenes Löschen, ein zwischen Ablegen und Eintragen abgebrochener
+Upload, ein zurückgespielter Datenbankstand — und der planmäßige Fall aus dem Abschnitt darüber, ein
+Upload während des Sicherungslaufs. Auf der Platte fällt so etwas beim Hineinschauen auf, in einem
+Bucket sieht niemand nach. Zwei Endpunkte räumen es auf, `SYSTEM_ADMIN` und je Bibliothek — melden
+und löschen sind bewusst getrennt, damit ein Fehler in der Zuordnung nicht unumkehrbar wird.
+
+Erster Schritt: melden, ohne etwas anzufassen.
+
+```bash
+curl -X POST http://localhost:8081/api/v1/admin/upload-store/orphan-originals/report \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"libraryId": "<Bibliotheks-ID>"}'
+```
+
+Die Antwort nennt zu jedem gefundenen Original seinen `locator` (genau den Wert, den `file_path`
+einer Zeile trüge), Änderungszeit und Größe, dazu `orphanCount` (alle Funde), `scannedCount` (alle
+angesehenen Originale), `referencedCount` (davon die, auf die eine Zeile zeigt) und
+`withinGracePeriodCount` (zu junge, die der Lauf nicht anfasst). Optional hebt `minimumAgeMinutes`
+die Schonfrist für diesen Aufruf an — unterschreiten lässt sie sich nicht.
+
+**Der erste Blick gilt `referencedCount`.** Meldet der Bericht abgelegte Originale, aber `0`
+referenzierte, haben Zeilen und Ablage den Bezug zueinander verloren — dann ist der Bericht kein
+Aufräumauftrag, sondern ein Befund (siehe den letzten Punkt unten).
+
+Zweiter Schritt: die geprüften Locator löschen, und nur diese.
+
+```bash
+curl -X POST http://localhost:8081/api/v1/admin/upload-store/orphan-originals/delete \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"libraryId": "<Bibliotheks-ID>", "locators": ["<locator aus dem Bericht>"]}'
+```
+
+Zeilen und Ablage werden zu Beginn des Aufrufs einmal gelesen, und jeder genannte Locator wird
+gegen diesen Stand geprüft: Wo eine Zeile darauf zeigt, wo die Schonfrist noch läuft oder wo die
+Ablage nichts hält, steht der Locator mit seinem Grund unter `skipped` statt unter `deleted`. Wird
+die Ablage mitten im Lauf unerreichbar, gilt das für die restlichen Locator als fehlgeschlagene
+Entfernung (`DELETE_FAILED`) — der Aufruf bricht nicht ab, damit die Antwort und der
+Prüfprotokoll-Eintrag weiterhin benennen, was tatsächlich entfernt wurde. Jeder Löschaufruf
+hinterlässt genau einen Eintrag im Prüfprotokoll, auch ein abgelehnter; der Melde-Aufruf hinterlässt
+keinen.
+
+Drei Dinge sind im Betrieb wichtig:
+
+- **Schonfrist.** Ein Original, das jünger ist als `OPAA_UPLOAD_ORPHAN_GRACE_MINUTES`, wird weder
+  gemeldet noch gelöscht — ein Upload, dessen Zeile gerade entsteht, ist kein verwaistes Original.
+- **`truncated: true` heißt: zweiter Durchgang nötig.** Ein Bericht listet nur einen Ausschnitt der
+  Funde, zählt in `orphanCount` aber alle. Nach dem Löschen des gelisteten Ausschnitts denselben
+  Bericht erneut abrufen, bis `truncated` auf `false` steht.
+- **Nach einer Umstellung der Ablage meldet der erste Bericht alles.** Wurden die Bytes umgezogen,
+  aber die Verweise nicht umgeschrieben (siehe
+  [„Eine laufende Installation auf den Objektspeicher umstellen"](#eine-laufende-installation-auf-den-objektspeicher-umstellen)),
+  gilt der gesamte Bestand als verwaist — erkennbar an `referencedCount: 0`. Das ist das Signal, die
+  Umstellung zu prüfen — nicht, zu löschen.
+
+Was der Lauf **nicht** sieht: alles, was tiefer liegt als die Ebene der Bibliothek. Die Ablage legt
+dort nie etwas an; was ein anderer Schreiber unter demselben Präfix abgelegt hat, wird deshalb weder
+gemeldet noch je gelöscht. Ebenso wenig erreicht der Lauf die Originale einer bereits gelöschten
+Bibliothek — er arbeitet je Bibliothek, und ohne deren Zeile antwortet er mit „nicht gefunden".
 
 ### Eine laufende Installation auf den Objektspeicher umstellen
 
@@ -1585,6 +1651,7 @@ Drei Unterschiede zum Hinweg:
 | Die Gesundheitsgruppe antwortet mit „nicht gefunden" | Es ist der Verzeichnisweg konfiguriert; die Gruppe gibt es nur beim Objektspeicher |
 | Uploads scheitern, der Speicher ist erreichbar | Der Bucket fehlt oder der Zugangsschlüssel darf nicht schreiben |
 | `docker cp … /app/uploads` liefert ein leeres Verzeichnis | Die Originale liegen im Objektspeicher, nicht im Container |
+| Der Bericht über verwaiste Originale meldet den gesamten Bestand, `referencedCount` ist `0` | Zeilen und Ablage passen nicht zueinander — meist eine Umstellung, bei der die Bytes kopiert, die Verweise aber nicht umgeschrieben wurden. Nichts löschen, bevor das geklärt ist |
 
 ## Datenbank
 

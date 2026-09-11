@@ -11,6 +11,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -166,6 +168,53 @@ class S3UploadedOriginalStoreMinioTest {
     assertThatCode(store::probe).doesNotThrowAnyException();
     assertThat(new UploadStoreHealthIndicator(store).health().getStatus().getCode())
         .isEqualTo("UP");
+  }
+
+  @Test
+  void listingWalksALibraryPageByPageAgainstTheRealStore() throws IOException {
+    UUID library = UUID.randomUUID();
+    UploadS3Properties properties =
+        new UploadS3Properties(
+            minio.endpoint().toString(),
+            MinioFixture.REGION,
+            bucket,
+            "uploads/",
+            true,
+            minio.rootCredentials().accessKey(),
+            minio.rootCredentials().secretKey(),
+            tempDir,
+            new UploadS3Properties.TargetValidation(true, List.of()));
+    try (S3UploadedOriginalStore paging =
+        new S3UploadedOriginalStore(
+            properties,
+            UploadS3TargetPolicy.of(properties),
+            S3UploadedOriginalStore.REQUEST_TIMEOUT,
+            S3UploadedOriginalStore.MAX_RETRIES,
+            S3UploadedOriginalStore.RETRY_BACKOFF,
+            3)) {
+      List<String> own = new ArrayList<>();
+      for (int i = 0; i < 7; i++) {
+        UploadedOriginalStore.AcceptedUpload accepted =
+            paging.accept(library, ".pdf", bytes("Seite " + i));
+        own.add(accepted.store().locator());
+        accepted.release();
+      }
+      storedOriginal("eine andere Bibliothek");
+
+      List<UploadedOriginalStore.StoredOriginal> visited = new ArrayList<>();
+      paging.forEachStoredOriginal(library, visited::add);
+
+      assertThat(visited)
+          .extracting(UploadedOriginalStore.StoredOriginal::locator)
+          .containsExactlyInAnyOrderElementsOf(own);
+      assertThat(visited)
+          .allSatisfy(
+              original -> {
+                assertThat(original.size()).isEqualTo("Seite 0".length());
+                assertThat(original.lastModified())
+                    .isBetween(Instant.now().minusSeconds(120), Instant.now().plusSeconds(5));
+              });
+    }
   }
 
   private UploadedOriginalRef storedOriginal(String content) throws IOException {
