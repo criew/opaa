@@ -7,7 +7,6 @@ import io.opaa.chat.ChatSource;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.metadata.MetadataFilterValidator;
 import io.opaa.library.LibraryAccessService;
-import io.opaa.library.PermissionHistoryService;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.query.answer.AnswerGenerationService;
 import io.opaa.query.answer.ChatResponses;
@@ -17,13 +16,10 @@ import io.opaa.query.citation.CitationValidator;
 import io.opaa.query.retrieval.RetrievalPipeline;
 import io.opaa.query.retrieval.RetrievalPipelineResult;
 import io.opaa.query.retrieval.search.SubQueryDecompositionStage;
-import java.time.Instant;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -59,10 +55,8 @@ public class QueryService {
   private final CitationParser citationParser;
   private final CitationValidator citationValidator;
   private final LibraryAccessService libraryAccessService;
-  private final PermissionHistoryService permissionHistoryService;
   private final ChatService chatService;
   private final QueryMetrics metrics;
-  private final QueryProperties queryProperties;
   private final MetadataFilterValidator metadataFilterValidator;
 
   public QueryService(
@@ -75,10 +69,8 @@ public class QueryService {
       CitationParser citationParser,
       CitationValidator citationValidator,
       LibraryAccessService libraryAccessService,
-      PermissionHistoryService permissionHistoryService,
       ChatService chatService,
       QueryMetrics metrics,
-      QueryProperties queryProperties,
       MetadataFilterValidator metadataFilterValidator) {
     this.retrievalPipeline = retrievalPipeline;
     this.retrievalContextFactory = retrievalContextFactory;
@@ -89,10 +81,8 @@ public class QueryService {
     this.citationParser = citationParser;
     this.citationValidator = citationValidator;
     this.libraryAccessService = libraryAccessService;
-    this.permissionHistoryService = permissionHistoryService;
     this.chatService = chatService;
     this.metrics = metrics;
-    this.queryProperties = queryProperties;
     this.metadataFilterValidator = metadataFilterValidator;
   }
 
@@ -171,11 +161,8 @@ public class QueryService {
                 // durationMs includes its latency rather than silently excluding it.
                 long startTime = System.currentTimeMillis();
 
-                Instant scopeComputedAt = Instant.now();
                 Set<UUID> readableLibraryIds =
                     libraryAccessService.readableLibraryIds(currentUserId, caller.organizationId());
-                maybeCheckAgainstPermissionHistory(
-                    readableLibraryIds, currentUserId, caller.organizationId(), scopeComputedAt);
 
                 // A persisted chat's own settings govern the scope entirely; only an ephemeral
                 // query falls back to the request-level useKnowledge/requestedLibraryIds.
@@ -291,52 +278,6 @@ public class QueryService {
     List<Message> persistedHistory = chatService.historyAsSpringAiMessages(chat.get().getId());
     if (!persistedHistory.isEmpty()) {
       chatMemory.add(conversationKey, persistedHistory);
-    }
-  }
-
-  /**
-   * Samples {@link #checkAgainstPermissionHistory} down to {@link
-   * QueryProperties#permissionHistorySampleRate} of queries: {@code 1.0} checks every query, {@code
-   * 0.0} none. The dice roll happens here rather than inside the check itself, which stays
-   * deterministic and directly testable.
-   */
-  private void maybeCheckAgainstPermissionHistory(
-      Set<UUID> readableScope, UUID currentUserId, UUID organizationId, Instant asOf) {
-    if (ThreadLocalRandom.current().nextDouble() >= queryProperties.permissionHistorySampleRate()) {
-      return;
-    }
-    checkAgainstPermissionHistory(readableScope, currentUserId, organizationId, asOf);
-  }
-
-  /**
-   * Compares the live readable set against the permission history's reconstruction for the same
-   * instant (docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten).
-   * Any library the live computation grants and the history does not is an enforcement drift,
-   * logged as one warning per query with the offending ids only, never the whole readable set.
-   * {@code asOf} must be the instant {@code readableScope} was computed at: a fresh {@code
-   * Instant.now()} here would report a permission change landing in between as a mismatch.
-   */
-  private void checkAgainstPermissionHistory(
-      Set<UUID> readableScope, UUID currentUserId, UUID organizationId, Instant asOf) {
-    if (readableScope.isEmpty()) {
-      return;
-    }
-    Set<UUID> historized =
-        permissionHistoryService.readableLibraryIdsAsOf(currentUserId, organizationId, asOf);
-    Set<UUID> mismatched = new HashSet<>(readableScope);
-    mismatched.removeAll(historized);
-    if (!mismatched.isEmpty()) {
-      log.warn(
-          "Permission history regression check: user {} was granted {} librar{} as readable the"
-              + " permission history does not confirm as of {} - possible enforcement drift"
-              + " between the live and historized rights computation. This checks the full"
-              + " readable set, not the (possibly narrower, #525/#526) scope actually searched:"
-              + " {}",
-          currentUserId,
-          mismatched.size(),
-          mismatched.size() == 1 ? "y" : "ies",
-          asOf,
-          mismatched);
     }
   }
 

@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 class VariantPrerequisitesTest {
 
   private static final QueryProperties PRODUCTION_LIKE =
-      new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, true, 50);
+      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, true, 50);
 
   private static PipelineVariant variant(boolean requiresReindex) {
     return new PipelineVariant("v", "desc", requiresReindex, PipelineVariant.QueryOverrides.NONE);
@@ -29,7 +29,7 @@ class VariantPrerequisitesTest {
 
   @Test
   void aVariantThatEnablesDecompositionIsSkippedForLackOfAChatModel() {
-    var decompositionOn = new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, true, 50);
+    var decompositionOn = new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, true, 50);
 
     var reason = VariantPrerequisites.unmetReason(variant(false), decompositionOn, false);
 
@@ -43,7 +43,7 @@ class VariantPrerequisitesTest {
    */
   @Test
   void aVariantThatEnablesDecompositionRunsOnceAChatModelIsAvailable() {
-    var decompositionOn = new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, true, 50);
+    var decompositionOn = new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, true, 50);
 
     assertThat(VariantPrerequisites.unmetReason(variant(false), decompositionOn, true)).isEmpty();
     assertThat(VariantPrerequisites.unmetReason(variant(false), decompositionOn, true, true, false))
@@ -53,7 +53,7 @@ class VariantPrerequisitesTest {
   /** The full overload keeps the chat-model prerequisite ahead of the later, index-bound ones. */
   @Test
   void theFullOverloadStillSkipsADecomposingVariantWithoutAChatModel() {
-    var decompositionOn = new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, true, 50);
+    var decompositionOn = new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, true, 50);
 
     var reason =
         VariantPrerequisites.unmetReason(variant(false), decompositionOn, false, true, false);
@@ -82,7 +82,7 @@ class VariantPrerequisitesTest {
    */
   @Test
   void theFullTextIndexPrerequisiteOnlyConstrainsAVariantThatUsesTheLexicalPath() {
-    var vectorOnly = new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
+    var vectorOnly = new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, false, 50);
 
     assertThat(VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE, true, true, false))
         .isEmpty();

@@ -52,9 +52,9 @@ class RerankPipelineTest {
   private static final int CANDIDATE_WINDOW = 20;
 
   private static final QueryProperties WITH_RERANKING =
-      new QueryProperties(TOP_K, 25, 1.0, 0.3, 1.0, false, 3, 1, false, CANDIDATE_WINDOW);
+      new QueryProperties(TOP_K, 25, 1.0, 0.3, false, 3, 1, false, CANDIDATE_WINDOW);
   private static final QueryProperties WITHOUT_RERANKING =
-      new QueryProperties(TOP_K, 25, 1.0, 0.3, 1.0, false, 3, 1, false, 0);
+      new QueryProperties(TOP_K, 25, 1.0, 0.3, false, 3, 1, false, 0);
 
   private final VectorStore vectorStore = mock(VectorStore.class);
   private final ChunkEmbeddingLookup chunkEmbeddingLookup = mock(ChunkEmbeddingLookup.class);

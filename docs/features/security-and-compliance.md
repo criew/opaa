@@ -490,17 +490,19 @@ Prüfungen gerade sie häufig betreffen.
 
 **Regressionsprüfung gegen Filterfehler:** Wendet eine Abfrage einen Suchbereich an, der eine nach der
 Historie zu diesem Zeitpunkt nicht lesbare Bibliothek enthält, ist das ein beweisbarer
-Durchsetzungsfehler. Sie läuft als **automatisierte Prüfung gegen die Rechtehistorie**, nicht über eine
-Protokollzeile je Abfrage: Die erste Protokollstufe schreibt Abfragen bewusst nicht mit (siehe
-[Was ausdrücklich nicht protokolliert wird](#was-ausdrücklich-nicht-protokolliert-wird)). Die Prüfung
-braucht die Ereignisse auch nicht dauerhaft, sondern nur im Moment der Ausführung.
+Durchsetzungsfehler. Der Nachweis führt über die **Rechtehistorie** und ihre Rekonstruktion zum
+Stichtag, nicht über eine Protokollzeile je Abfrage: Die erste Protokollstufe schreibt Abfragen bewusst
+nicht mit (siehe
+[Was ausdrücklich nicht protokolliert wird](#was-ausdrücklich-nicht-protokolliert-wird)).
 
-Standardmäßig läuft der Abgleich bei **jeder** Abfrage (`OPAA_QUERY_PERMISSION_HISTORY_SAMPLE_RATE=1.0`)
-— die Zusicherung dieses Abschnitts gilt uneingeschränkt für jede Suche. Er rekonstruiert die
-historisierte Rechteformel über drei Zusatz-Queries gegen anhaltend wachsende Tabellen, was bei hohem
-Abfrageaufkommen spürbar wird; ein Betrieb kann den Anteil geprüfter Abfragen über dieselbe Variable
-absenken (#889). Das ist eine bewusste Performance-/Nachweisbarkeits-Abwägung des Betriebsteams, keine
-Werkseinstellung dieses Projekts — der Regelfall bleibt die vollständige Prüfung.
+Ein laufender Abgleich der live berechneten Rechte gegen die Historie findet je Abfrage **nicht** statt:
+Er beeinflusste weder Suchergebnis noch Zugriffsentscheidung und kostete drei Zusatz-Queries gegen
+anhaltend wachsende Tabellen. Dass beide Rechenwege dieselbe Bibliotheksmenge ergeben, sichert
+stattdessen ein Integrationstest gegen eine echte Datenbank ab — für jede Operation, die die lesbare
+Menge verändert: Berechtigung erteilen, ändern und entziehen, Gruppenmitglied hinzufügen und entfernen,
+Gruppe löschen, Verzeichnisabgleich, Bibliothek anlegen, in der Sichtbarkeit ändern und löschen. Ein
+Schreibpfad, der Leserechte ändert, ohne seine Historienzeile zu schreiben, fällt dort auf, bevor er in
+Betrieb geht.
 
 Das ist bewusst **anders gelöst als über eine Protokollzeile je Abfrage**: Die Rechtemenge bei jeder Suche
 mitzuschreiben würde das Protokoll um eine erhebliche Menge personenbezogener Daten erweitern — genau das,
