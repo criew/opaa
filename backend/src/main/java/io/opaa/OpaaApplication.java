@@ -1,6 +1,7 @@
 package io.opaa;
 
 import io.opaa.auth.AuthProperties;
+import io.opaa.common.PublicBaseUrlProperties;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.SourceHttpProperties;
 import io.opaa.indexing.format.file.mail.MailProperties;
@@ -18,6 +19,7 @@ import io.opaa.library.RemoteContentProperties;
 import io.opaa.library.UploadProperties;
 import io.opaa.library.UploadS3Properties;
 import io.opaa.llm.RerankProperties;
+import io.opaa.mail.SmtpProperties;
 import io.opaa.security.CredentialsEncryptionProperties;
 import io.opaa.security.SettingsEncryptionProperties;
 import org.springframework.boot.SpringApplication;
@@ -46,7 +48,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   TabularProperties.class,
   MailProperties.class,
   OdfProperties.class,
-  RerankProperties.class
+  RerankProperties.class,
+  SmtpProperties.class,
+  PublicBaseUrlProperties.class
 })
 // Enables io.opaa.audit.AuditRetentionScheduler's @Scheduled monthly retention deletion (#395).
 @EnableScheduling

@@ -442,6 +442,18 @@ opaa:
         window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_SET_PASSWORD_WINDOW_SECONDS:900}
   cors:
     allowed-origins: ${OPAA_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  # The address this installation is reachable under from outside, used for the links in mail
+  # (#1536, ADR-0033 Entscheidung 10). A deployment property like opaa.cors.allowed-origins, never
+  # a setting in the administration and never taken from the request's Host header. Without a value
+  # OPAA sends no mail that depends on a link.
+  public-base-url: ${OPAA_PUBLIC_BASE_URL:}
+  mail:
+    # Bounds for the synchronous SMTP send (#1536): the request thread of the person waiting for
+    # their invitation is the one that waits, so a stalled mail server must not hold it for longer
+    # than an operator chose.
+    connect-timeout: ${OPAA_MAIL_CONNECT_TIMEOUT:10s}
+    read-timeout: ${OPAA_MAIL_READ_TIMEOUT:15s}
+    write-timeout: ${OPAA_MAIL_WRITE_TIMEOUT:15s}
   directory-sync:
     change-threshold-fraction: ${OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION:0.3}
   security:
