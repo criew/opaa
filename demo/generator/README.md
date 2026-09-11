@@ -131,22 +131,6 @@ Die Outlook-Nachricht wird nie neu erzeugt; sie wird höchstens durch eine ander
 ersetzt — dann `formate.MSG_FILE_NAME`, den Herkunftssatz in `PRESERVED_FILES` und den Lizenztext
 unter `corpus/THIRD-PARTY-LICENSES/` mit ändern.
 
-## Handkorrektur in der Leistungsbibliothek
-
-`corpus/leistungen-meldewesen-ausweise/002_personalausweis-oder-reisepass-abholen.md` wurde in #942
-**von Hand** geändert: Die Datei nannte Gebühren, die den Einzeldokumenten `001_personalausweis.md`
-und `003_reisepass.md` widersprachen, und das Drehbuch garantiert zu Frage 1 eine widerspruchsfreie
-Antwort. Die Ursache sitzt im Generator — `fee_scale_factor` skaliert je Quelldatei, diese Datei
-zitiert aber Gebühren zweier anderer Leistungen — und ist dort noch nicht behoben (#1525). **Ein
-Generator-Lauf nimmt die Korrektur deshalb zurück.** Wer den Korpus neu erzeugt, stellt diese eine
-Datei wieder her und trägt ihren alten SHA-256 in `MANIFEST.sha256` nach:
-
-```bash
-git checkout -- demo/corpus/leistungen-meldewesen-ausweise/002_personalausweis-oder-reisepass-abholen.md
-# danach die zugehörige Zeile in demo/corpus/MANIFEST.sha256 auf den wiederhergestellten Stand setzen
-cd demo/corpus && sha256sum -c MANIFEST.sha256
-```
-
 ## Werkzeugwahl für PDF/DOCX/PPTX
 
 Issue #711 verlangt ausdrücklich eine begründete Werkzeugwahl. Kandidaten waren pandoc (+LaTeX),
@@ -224,6 +208,22 @@ demo/generator/
 - **Nicht übernommen**: die Abschnitte „Anlaufstellen in Ihrer Nähe" und „Links & Downloads" —
   reale Münchner Adressen, Kartenwidgets und muenchen.de-Downloadlinks, die sich nicht plausibel
   auf Rheinfurt übertragen lassen und für die dieses Projekt keine echten Rheinfurt-Geodaten hat.
+
+## Gebührenbeträge (#1525)
+
+Jeder Euro-Betrag wird mit **einem einzigen korpusweiten Faktor** skaliert
+(`rheinfurt_text.FEE_SCALE_FACTOR`, derzeit 1,15). Der Rheinfurter Betrag hängt damit am
+Gebührentatbestand und nicht an der Datei, die ihn zufällig nennt: Ein Dokument, das die Gebühren
+einer anderen Leistung zitiert („Personalausweis oder Reisepass abholen"), nennt zwangsläufig
+dieselben Beträge wie deren eigene Leistungsbeschreibung und wie das Gebührenverzeichnis der
+Verwaltungsgebührensatzung — ohne Nacharbeit von Hand.
+
+Verworfen wurden zwei naheliegende Alternativen: ein Faktor **je Quelldatei** (der frühere Stand;
+er erzeugte genau diesen Widerspruch und brauchte eine Handkorrektur nach jedem Lauf) und ein je
+Betrag **gehashter** Faktor (widerspruchsfrei über Dokumentgrenzen hinweg, vertauscht aber die
+Reihenfolge zweier nah beieinander liegender Beträge — in der gepinnten Quellauswahl gemessen: acht
+solcher Paare innerhalb eines Dokuments, z. B. 37,00 € → 37,80 € neben 37,50 € → 34,70 €). Ein
+einzelner Faktor ist ordnungserhaltend und braucht dafür keine Zusatzprüfung.
 
 ## Bekannte Eigenheiten der Quelldaten
 
