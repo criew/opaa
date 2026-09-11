@@ -6,10 +6,13 @@ import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
 import java.io.UnsupportedEncodingException;
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -18,20 +21,15 @@ import org.springframework.util.StringUtils;
 /**
  * The one way OPAA sends mail (#1536, ADR-0033 Entscheidung 10).
  *
- * <p><b>{@link #send} never throws.</b> It returns a {@link SendResult}: {@code Skipped} while SMTP
- * is not configured, {@code Failed} with the cause when an attempt fails, {@code Sent} otherwise.
- * The auth flows this exists for are tied to a user action whose result the caller needs at once,
- * so sending is <b>synchronous and bounded by the {@link SmtpProperties} timeouts</b> - no outbox,
- * no retry. A later digest can add a queue without changing this contract.
+ * <p><b>{@link #send} never throws</b> - not for a missing encryption key, not for an unreadable
+ * settings row, not for a mail server that refuses the connection. It returns a {@link SendResult},
+ * and the caller decides what to tell the person waiting for it.
  *
- * <p><b>A failure is never invisible.</b> Every {@code Failed} writes a log line with the cause and
- * the template key, updates {@code last_failure_at}/{@code last_failure_reason} - which the
- * settings page and {@link MailHealthIndicator} read - and carries the cause back to its caller.
- * The recipient appears in the log only shortened ({@link MailRecipients}); a mail server having a
- * bad day must not turn the application log into an address list.
+ * <p><b>No address reaches a log line, {@code last_failure_reason} or an API response:</b> every
+ * cause passes {@link MailRecipients#maskAddresses} first.
  *
- * <p>Messages with an HTML part go out as {@code multipart/alternative}, so a client that renders
- * no HTML still shows the text version rather than markup.
+ * <p>Sending is synchronous and bounded by the {@link SmtpProperties} timeouts - no outbox, no
+ * retry; a message with an HTML part goes out as {@code multipart/alternative}.
  */
 @Service
 public class MailService {
@@ -57,15 +55,26 @@ public class MailService {
 
   /**
    * Renders {@code key} for {@code locale} with {@code variables} and sends it to {@code
-   * recipient}.
+   * recipient}. Returns the outcome; never throws.
    *
    * @param variables the values for the placeholders the template declares; {@code productName} is
    *     supplied from the branding and need not be passed
    */
   public SendResult send(
       MailTemplateKey key, Locale locale, String recipient, Map<String, Object> variables) {
+    try {
+      return attemptSend(key, locale, recipient, variables);
+    } catch (RuntimeException e) {
+      // Guards the whole body, not only the transport: a missing OPAA_SETTINGS_ENCRYPTION_KEY makes
+      // the settings snapshot itself raise, and an account creation must not fail for that.
+      return abort(key, recipient, causeOf(e));
+    }
+  }
+
+  private SendResult attemptSend(
+      MailTemplateKey key, Locale locale, String recipient, Map<String, Object> variables) {
     if (!StringUtils.hasText(recipient)) {
-      return failed(key, recipient, "Keine Empfängeradresse vorhanden");
+      return abort(key, recipient, "Keine Empfängeradresse vorhanden");
     }
     if (!senderProvider.isEnabled()) {
       return new SendResult.Skipped(NOT_CONFIGURED);
@@ -75,35 +84,27 @@ public class MailService {
     try {
       mail = templates.render(key, MailTemplateService.localeTag(locale), variables);
     } catch (RuntimeException e) {
-      return failed(key, recipient, "Die Vorlage konnte nicht gefüllt werden: " + e.getMessage());
+      return abort(key, recipient, "Die Vorlage konnte nicht gefüllt werden: " + e.getMessage());
     }
 
-    JavaMailSender sender;
-    MailSettingsSnapshot snapshot;
-    try {
-      sender = senderProvider.current();
-      snapshot = senderProvider.settings();
-    } catch (RuntimeException e) {
-      return failed(key, recipient, e.getMessage());
-    }
+    JavaMailSender sender = senderProvider.current();
     if (sender == null) {
       return new SendResult.Skipped(NOT_CONFIGURED);
     }
 
     try {
-      sender.send(compose(sender, snapshot, recipient, mail));
+      sender.send(compose(sender, senderProvider.settings(), recipient, mail));
     } catch (Exception e) {
-      return failed(key, recipient, causeOf(e));
+      return transportFailed(key, recipient, causeOf(e));
     }
-    settingsService.recordSendOutcome(Instant.now(), null);
+    recordOutcome(null);
     return new SendResult.Sent(recipient);
   }
 
   /**
-   * Composes the message as a flat {@code multipart/alternative} rather than through {@link
-   * MimeMessageHelper}'s multipart mode: that mode nests alternative inside related inside mixed,
-   * which is what an attachment or an inline image needs and this subsystem has neither of. A
-   * client picking between two alternatives should not have to walk three levels to find them.
+   * Composes a flat {@code multipart/alternative} rather than using {@link MimeMessageHelper}'s
+   * multipart mode, which nests alternative inside related inside mixed - what an attachment needs
+   * and this subsystem has none.
    */
   private MimeMessage compose(
       JavaMailSender sender, MailSettingsSnapshot snapshot, String recipient, RenderedMail mail)
@@ -140,24 +141,64 @@ public class MailService {
     return alternative;
   }
 
-  private SendResult failed(MailTemplateKey key, String recipient, String reason) {
+  /**
+   * A failure before the transport was reached - no recipient, an unrenderable template, an
+   * unreadable configuration. Logged, but deliberately <b>not</b> written to {@code
+   * last_failure_at}/{@code last_failure_reason}: those two answer whether the mail server works,
+   * and a template typo recorded there sends an operator looking at the wrong thing.
+   */
+  private SendResult abort(MailTemplateKey key, String recipient, String reason) {
+    String masked = MailRecipients.maskAddresses(reason);
+    log.warn(
+        "Mailversand abgebrochen (Vorlage {}, Empfaenger {}): {}",
+        key.key(),
+        MailRecipients.shortened(recipient),
+        masked);
+    return new SendResult.Failed(masked);
+  }
+
+  /** The mail server was reached and refused: logged and written to the settings row. */
+  private SendResult transportFailed(MailTemplateKey key, String recipient, String reason) {
+    String masked = MailRecipients.maskAddresses(reason);
     log.warn(
         "Mailversand fehlgeschlagen (Vorlage {}, Empfaenger {}): {}",
         key.key(),
         MailRecipients.shortened(recipient),
-        reason);
-    settingsService.recordSendOutcome(Instant.now(), reason);
-    return new SendResult.Failed(reason);
+        masked);
+    recordOutcome(masked);
+    return new SendResult.Failed(masked);
+  }
+
+  /** A status write must never turn into the failure of the send it is describing. */
+  private void recordOutcome(String failureReason) {
+    try {
+      settingsService.recordSendOutcome(Instant.now(), failureReason);
+    } catch (RuntimeException e) {
+      log.warn("Versandstatus konnte nicht fortgeschrieben werden: {}", e.getMessage());
+    }
   }
 
   /**
-   * The message of the innermost cause. Jakarta Mail wraps the useful part ("Connection refused",
-   * "535 authentication failed") inside a {@code MailSendException} whose own message is a list of
-   * failed recipients - which is exactly the part that must not be logged.
+   * The cause without an address in it. A {@link MailSendException} is unwrapped through its {@code
+   * failedMessages} map and never through its own message: Spring builds that message from the
+   * rejected recipients and, on the common path, constructs the exception from the map with no
+   * cause at all - so walking {@code getCause()} would fall back to exactly that list.
    */
   private static String causeOf(Exception e) {
-    Throwable cause = e;
-    while (cause.getCause() != null) {
+    if (e instanceof MailSendException sendException
+        && !sendException.getFailedMessages().isEmpty()) {
+      Set<String> causes = new LinkedHashSet<>();
+      for (Exception failure : sendException.getFailedMessages().values()) {
+        causes.add(innermostMessageOf(failure));
+      }
+      return String.join("; ", causes);
+    }
+    return innermostMessageOf(e);
+  }
+
+  private static String innermostMessageOf(Throwable throwable) {
+    Throwable cause = throwable;
+    while (cause.getCause() != null && cause.getCause() != cause) {
       cause = cause.getCause();
     }
     String message = cause.getMessage();

@@ -534,6 +534,11 @@ Mit `OPAA_UPLOAD_STORE=s3` liegt der Zustand des Objektspeichers der Originalabl
 Gesamtstatus, sondern in einer eigenen Gruppe: `GET /actuator/health/upload-store` antwortet `UP` mit
 Endpunkt und Bucket oder `DOWN` mit dem Grund (siehe `OPAA_UPLOAD_STORE` in der Tabelle unten).
 
+Aus demselben Grund steht auch der E-Mail-Versand in einer eigenen Gruppe: `GET
+/actuator/health/mail` antwortet `UP`, `DOWN` oder `UNKNOWN` — ohne Einzelheiten, die Ursache steht
+auf der Einstellungsseite und im Protokoll (siehe [„E-Mail-Versand
+(SMTP)"](#e-mail-versand-smtp)).
+
 Thread- und Heap-Dump ohne Shell:
 
 ```bash
@@ -923,7 +928,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_CREDENTIALS_ENCRYPTION_KEY` | — (leer) außerhalb des Profils `dev`; im Profil `dev` fest hinterlegter, **ausdrücklich nicht produktionstauglicher** Schlüssel (siehe [„Zugangsdaten-Verschlüsselung"](#zugangsdaten-verschlüsselung) unten) | nicht gesetzt (auskommentiert — bewusst, siehe Kommentar in `.env.docker.example`) | Base64-kodierter AES-256-Schlüssel (32 rohe Byte) zur Verschlüsselung von `knowledge_libraries.source_credentials` ruhend in der Datenbank. **Ohne Voreinstellung außerhalb des Profils `dev`; erforderlich, sobald eine Bibliothek mit Zugangsdaten gespeichert wird** |
 | `OPAA_SETTINGS_ENCRYPTION_KEY` | — (leer) außerhalb des Profils `dev`; im Profil `dev` fest hinterlegter, **ausdrücklich nicht produktionstauglicher** Schlüssel (siehe [„Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle"](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle) unten) | nicht gesetzt (auskommentiert — bewusst, siehe Kommentar in `.env.docker.example`) | Base64-kodierter AES-256-Schlüssel (32 rohe Byte) zur Verschlüsselung von `llm_models.api_key_ciphertext` ruhend in der Datenbank. **Ohne Voreinstellung außerhalb des Profils `dev`; erforderlich, sobald ein Chat-Modell mit Zugangsschlüssel gespeichert wird — der Start selbst bricht ohne ihn nicht ab** |
 | **E-Mail-Versand** | | | |
-| `OPAA_PUBLIC_BASE_URL` | — (leer) | nicht gesetzt (auskommentiert) | Adresse, unter der die Installation von außen erreichbar ist; Basis jedes Links in einer versendeten E-Mail. Vollständige Adresse mit Schema, ohne abschließenden Schrägstrich. Bewusst eine Umgebungsvariable: der `Host`-Header einer Anfrage wird nie als Basis verwendet. **Ohne Wert unterbleibt jeder Versand, der auf einen Link angewiesen ist** (siehe [„E-Mail-Versand (SMTP)"](#e-mail-versand-smtp)) |
+| `OPAA_PUBLIC_BASE_URL` | — (leer) | nicht gesetzt (auskommentiert) | Adresse, unter der die Installation von außen erreichbar ist; Basis jedes Links in einer versendeten E-Mail. Vollständige Adresse mit Schema, ohne abschließenden Schrägstrich. Bewusst eine Umgebungsvariable: der `Host`-Header einer Anfrage wird nie als Basis verwendet. **Ohne Wert baut OPAA keinen Link; die Verwaltung der Konten bietet die davon abhängigen Abläufe dann nicht an** (siehe [„E-Mail-Versand (SMTP)"](#e-mail-versand-smtp)) |
 | `OPAA_MAIL_CONNECT_TIMEOUT` | `10s` | nicht gesetzt | Zeitgrenze für den Verbindungsaufbau zum SMTP-Server |
 | `OPAA_MAIL_READ_TIMEOUT` | `15s` | nicht gesetzt | Zeitgrenze für die Antwort des SMTP-Servers auf einen Befehl |
 | `OPAA_MAIL_WRITE_TIMEOUT` | `15s` | nicht gesetzt | Zeitgrenze für das Schreiben der Nachricht |
@@ -1378,9 +1383,6 @@ Warum keine Vereinheitlichung:
 
 ## E-Mail-Versand (SMTP)
 
-> **Entwurf.** Dieser Abschnitt ist geschrieben und gegen den gebauten Stand geprüft, aber noch
-> nicht abgenommen.
-
 OPAA versendet E-Mails über einen SMTP-Server, den ein Systemverwalter in der Anwendung einträgt.
 Ohne diese Einstellung versendet OPAA nichts — und meldet das als Ergebnis, statt einen Vorgang
 scheitern zu lassen: Wer ein Konto anlegt, bekommt den Einladungslink dann zur Weitergabe angezeigt.
@@ -1393,7 +1395,9 @@ Zwei Dinge werden getrennt gehalten:
   Protokoll.
 - **Die öffentliche Adresse ist eine Bereitstellungsentscheidung.** `OPAA_PUBLIC_BASE_URL` steht in
   der Umgebung, nicht in der Oberfläche. Jeder Link in einer E-Mail wird daraus gebildet; die
-  Adresse aus dem `Host`-Kopf einer Anfrage wird nie verwendet.
+  Adresse aus dem `Host`-Kopf einer Anfrage wird nie verwendet. Ohne Wert baut OPAA keinen Link —
+  die Verwaltung der Konten prüft das vor jedem Ablauf, der auf einen Link angewiesen ist, und
+  bietet ihn erst gar nicht an.
 
 ### Einrichtung
 
@@ -1461,8 +1465,12 @@ Profil `mail` existiert der Dienst nicht, und der Stapel verhält sich unveränd
 
 Der Zustand des Versands steht an drei Stellen: als „letzter erfolgreicher Versand" und „letzter
 Fehler" auf der Einstellungsseite, als Ergebnis unmittelbar an der auslösenden Aktion, und als
-Eintrag `mail` unter `/actuator/health` — dort nur der Zustand, ohne Einzelheiten. Die Ursache steht
-im Anwendungsprotokoll, dort ohne die Empfängeradresse.
+eigene Gruppe `GET /actuator/health/mail` — dort nur der Zustand, ohne Einzelheiten: `UP` nach einem
+erfolgreichen Versand, `DOWN`, wenn der letzte Versuch fehlschlug, `UNKNOWN` ohne eingerichteten
+Versand oder vor dem ersten Versuch. Bewusst **nicht** im Gesamtstatus unter `/actuator/health` —
+sonst nähme eine einzelne abgelehnte Nachricht die Instanz aus der Lastverteilung, während Chat und
+Suche weiterlaufen; dieselbe Aufteilung wie beim Objektspeicher der Originalablage. Die Ursache
+steht im Anwendungsprotokoll, dort ohne die Empfängeradresse.
 
 | Beobachtung | Ursache | Abhilfe |
 |---|---|---|

@@ -61,6 +61,9 @@ class MailSettingsServiceIntegrationTest {
     jdbcTemplate.update(
         "UPDATE mail_settings SET last_success_at = NULL, last_failure_at = NULL,"
             + " last_failure_reason = NULL WHERE id = 1");
+    // The process-local caches survive every write to the row and are shared with every other
+    // class in this context - without this a provoked failure leaks into the next test.
+    mailSettingsService.resetCaches();
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     userRepository.deleteById(userId);
     organizationRepository.deleteById(organizationId);
@@ -276,6 +279,22 @@ class MailSettingsServiceIntegrationTest {
     mailSettingsService.recordSendOutcome(Instant.now(), "x".repeat(900));
 
     assertThat(mailSettingsService.currentSettings().getLastFailureReason()).hasSize(500);
+  }
+
+  /** #1559 review, LOW 3: a PUT that changes nothing writes no audit entry - like {@code reset}. */
+  @Test
+  void writesNoAuditEntryForAPutThatChangesNothing() {
+    mailSettingsService.updateSettings(organizationId, userId, configured("geheimesKennwort"));
+    mailSettingsService.updateSettings(
+        organizationId, userId, configured(MailSettingsService.PASSWORD_MASK));
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM audit_log WHERE organization_id = ? AND event_type = ?",
+                Integer.class,
+                organizationId,
+                AuditEventType.MAIL_SETTINGS_CHANGED.name()))
+        .isEqualTo(1);
   }
 
   private String storedCiphertext() {

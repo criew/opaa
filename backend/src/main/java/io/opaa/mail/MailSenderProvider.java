@@ -8,22 +8,18 @@ import org.slf4j.LoggerFactory;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * Builds and caches the {@link JavaMailSender} the current {@code mail_settings} describe (#1536,
- * ADR-0033 Entscheidung 10) and throws it away whenever those settings change - a corrected SMTP
- * host takes effect on the next message, <b>without a restart</b>.
+ * Builds the {@link JavaMailSender} the current {@code mail_settings} describe (#1536, ADR-0033
+ * Entscheidung 10) and caches it <b>together with the snapshot it was built from</b>: a corrected
+ * SMTP host takes effect on the next message, without a restart and without a second {@code
+ * AFTER_COMMIT} listener whose order relative to the snapshot rebuild would be undefined.
  *
- * <p><b>{@link #current()} returns {@code null} when mail is not configured</b> ({@code enabled}
- * off or no host). That is not an error: a deployment without a mail server is supported, and
- * {@link MailService} turns it into {@code Skipped}.
+ * <p>{@link #current()} returns {@code null} while mail is not configured - not an error: a
+ * deployment without a mail server is supported and {@link MailService} reports {@code Skipped}.
  *
- * <p>Every connection is bounded by the {@link SmtpProperties} timeouts. Without them a stalled
- * SMTP peer holds the request thread of the person waiting for their invitation for as long as the
- * operating system's default keepalive allows - and the send path is deliberately synchronous
- * (ADR-0033: no outbox, no retry), so that thread is the caller's.
+ * <p>Every connection is bounded by the {@link SmtpProperties} timeouts; the send path is
+ * synchronous, so the thread a stalled peer would hold is the caller's.
  */
 @Component
 public class MailSenderProvider {
@@ -32,9 +28,12 @@ public class MailSenderProvider {
 
   private static final String ENCODING = "UTF-8";
 
+  /** A built transport and the exact snapshot instance it was built from. */
+  private record Cached(MailSettingsSnapshot from, JavaMailSender sender) {}
+
   private final MailSettingsService settingsService;
   private final SmtpProperties properties;
-  private final AtomicReference<JavaMailSender> cached = new AtomicReference<>();
+  private final AtomicReference<Cached> cached = new AtomicReference<>();
 
   public MailSenderProvider(MailSettingsService settingsService, SmtpProperties properties) {
     this.settingsService = settingsService;
@@ -52,31 +51,24 @@ public class MailSenderProvider {
   }
 
   /**
-   * The cached sender, built on first use; {@code null} while mail is not configured. Two threads
-   * racing on the first call may both build one - harmless, {@link JavaMailSenderImpl} holds no
-   * connection until it sends, and only one of the two is kept.
+   * The transport for the current settings, built on first use and rebuilt as soon as {@link
+   * MailSettingsService#snapshot()} hands out a different instance; {@code null} while mail is not
+   * configured. Compared by identity on purpose - the snapshot is replaced wholesale after every
+   * committed change, so identity is the cheapest exact answer to "are these still the settings
+   * this transport was built from".
    */
   public JavaMailSender current() {
     MailSettingsSnapshot snapshot = settingsService.snapshot();
     if (!snapshot.sendable()) {
       return null;
     }
-    JavaMailSender existing = cached.get();
-    if (existing != null) {
-      return existing;
+    Cached existing = cached.get();
+    if (existing != null && existing.from() == snapshot) {
+      return existing.sender();
     }
-    JavaMailSender built = build(snapshot);
-    return cached.compareAndSet(null, built) ? built : cached.get();
-  }
-
-  /** Drops the cached sender; the next {@link #current()} builds from the new settings. */
-  public void invalidate() {
-    cached.set(null);
-  }
-
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-  public void onSettingsChanged(MailSettingsChangedEvent event) {
-    invalidate();
+    Cached rebuilt = new Cached(snapshot, build(snapshot));
+    cached.set(rebuilt);
+    return rebuilt.sender();
   }
 
   private JavaMailSender build(MailSettingsSnapshot snapshot) {
@@ -103,8 +95,7 @@ public class MailSenderProvider {
 
   /**
    * STARTTLS is configured as <em>required</em>, never merely enabled: a server that does not offer
-   * it must fail the connection rather than continue in clear, which is what "enabled" alone would
-   * do.
+   * it must fail the connection rather than continue in clear.
    */
   private static void applyEncryption(Properties props, MailSettingsSnapshot snapshot) {
     switch (snapshot.encryption()) {
@@ -115,7 +106,8 @@ public class MailSenderProvider {
       }
       case NONE ->
           log.info(
-              "SMTP-Verschluesselung ist auf NONE gestellt - die Verbindung zu {} ist unverschluesselt",
+              "SMTP-Verschluesselung ist auf NONE gestellt - die Verbindung zu {} ist"
+                  + " unverschluesselt",
               snapshot.host());
     }
   }

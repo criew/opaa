@@ -1,6 +1,7 @@
 package io.opaa.mail;
 
 import com.samskivert.mustache.Mustache;
+import com.samskivert.mustache.MustacheException;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
@@ -8,6 +9,7 @@ import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.branding.BrandingSettingsService;
 import io.opaa.branding.EffectiveBranding;
+import io.opaa.common.ValidationException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -142,9 +144,7 @@ public class MailTemplateService {
       String subject,
       String bodyPlain,
       String bodyHtml) {
-    MailPlaceholderValidator.requireDeclaredPlaceholders(key, "subject", subject);
-    MailPlaceholderValidator.requireDeclaredPlaceholders(key, "bodyPlain", bodyPlain);
-    MailPlaceholderValidator.requireDeclaredPlaceholders(key, "bodyHtml", bodyHtml);
+    requireUsableContent(key, subject, bodyPlain, bodyHtml);
 
     String resolvedLocale = effectiveLocale(locale);
     MailTemplate row =
@@ -209,9 +209,7 @@ public class MailTemplateService {
             key.defaultBodyPlain());
     String bodyHtml =
         firstNonBlank(draft.bodyHtml(), row.map(MailTemplate::getBodyHtml).orElse(null));
-    MailPlaceholderValidator.requireDeclaredPlaceholders(key, "subject", subject);
-    MailPlaceholderValidator.requireDeclaredPlaceholders(key, "bodyPlain", bodyPlain);
-    MailPlaceholderValidator.requireDeclaredPlaceholders(key, "bodyHtml", bodyHtml);
+    requireUsableContent(key, subject, bodyPlain, bodyHtml);
     return new MailPreview(
         renderContent(key, branding, subject, bodyPlain, bodyHtml, effective), variables);
   }
@@ -228,6 +226,42 @@ public class MailTemplateService {
       }
     }
     return values;
+  }
+
+  /**
+   * Everything an edited template must satisfy before it is stored or previewed: supported tag
+   * forms, declared placeholders only, and a trial render with the key's sample values under the
+   * very compilers the send path uses. The trial render is the part that closes the gap - a syntax
+   * error neither check above can see would otherwise turn every later send into a failure, found
+   * by the person waiting for their invitation.
+   */
+  private void requireUsableContent(
+      MailTemplateKey key, String subject, String bodyPlain, String bodyHtml) {
+    checkField(key, "subject", subject, plainCompiler);
+    checkField(key, "bodyPlain", bodyPlain, plainCompiler);
+    checkField(key, "bodyHtml", bodyHtml, htmlCompiler);
+  }
+
+  private void checkField(
+      MailTemplateKey key, String fieldLabel, String content, Mustache.Compiler compiler) {
+    MailPlaceholderValidator.requireSupportedTags(fieldLabel, content);
+    MailPlaceholderValidator.requireDeclaredPlaceholders(key, fieldLabel, content);
+    if (content == null || content.isBlank()) {
+      return;
+    }
+    try {
+      compiler.compile(content).execute(new HashMap<String, Object>(key.sampleValues()));
+    } catch (RuntimeException e) {
+      // Only a MustacheException says something an editor can act on; anything else (an empty tag
+      // raises a StringIndexOutOfBoundsException, for one) would put a raw Java message on the
+      // page.
+      String detail = e instanceof MustacheException ? " - " + e.getMessage() : "";
+      throw new ValidationException(
+          fieldLabel
+              + ": Die Vorlage konnte nicht verarbeitet werden"
+              + detail
+              + ". Bitte die Platzhalter der Form {{name}} prüfen.");
+    }
   }
 
   private RenderedMail renderContent(

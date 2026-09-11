@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.MailEncryption;
+import jakarta.mail.SendFailedException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import java.util.Locale;
@@ -27,14 +28,16 @@ import org.springframework.mail.javamail.JavaMailSender;
 
 /**
  * #1536, ADR-0033 Entscheidung 10: {@link MailService}'s contract - it never throws, it reports why
- * nothing went out, and it writes the send status that makes a failure visible on the settings page
- * and in the health endpoint.
+ * nothing went out, it lets no recipient address into the cause it hands on, and it writes the send
+ * status only for a failure of the mail server itself.
  *
  * <p>The transport is mocked here on purpose; that a real SMTP conversation works is proved by
  * {@code MailGreenMailIntegrationTest} against an in-JVM server.
  */
 @ExtendWith(MockitoExtension.class)
 class MailServiceTest {
+
+  private static final String RECIPIENT = "erika.mustermann@amt.example";
 
   @Mock private MailSenderProvider senderProvider;
   @Mock private MailTemplateService templates;
@@ -58,8 +61,7 @@ class MailServiceTest {
   void skipsWithoutThrowingWhileSmtpIsNotConfigured() {
     when(senderProvider.isEnabled()).thenReturn(false);
 
-    SendResult result =
-        mailService.send(MailTemplateKey.TEST_MAIL, Locale.GERMAN, "erika@example.org", Map.of());
+    SendResult result = send(MailTemplateKey.TEST_MAIL);
 
     assertThat(result).isInstanceOf(SendResult.Skipped.class);
     assertThat(result.isSent()).isFalse();
@@ -67,27 +69,58 @@ class MailServiceTest {
     verify(settingsService, never()).recordSendOutcome(any(), anyString());
   }
 
+  /**
+   * Regression guard for #1559 review, MEDIUM 5: a missing recipient is not a fault of the mail
+   * server, so it must not appear as one in {@code last_failure_*}.
+   */
   @Test
-  void refusesASendWithoutARecipientAndRecordsItAsAFailure() {
+  void refusesASendWithoutARecipientWithoutTouchingTheMailServerStatus() {
     SendResult result = mailService.send(MailTemplateKey.TEST_MAIL, Locale.GERMAN, "  ", Map.of());
 
     assertThat(result).isInstanceOf(SendResult.Failed.class);
-    verify(settingsService).recordSendOutcome(any(), anyString());
+    verify(settingsService, never()).recordSendOutcome(any(), any());
   }
 
   @Test
-  void turnsAFailedRenderIntoAFailedResultRatherThanSendingAnIncompleteMail() {
+  void turnsAFailedRenderIntoAFailedResultWithoutTouchingTheMailServerStatus() {
     when(senderProvider.isEnabled()).thenReturn(true);
     when(templates.render(any(), anyString(), any()))
         .thenThrow(new IllegalStateException("No method or field with name 'actionUrl'"));
 
-    SendResult result =
-        mailService.send(
-            MailTemplateKey.PASSWORD_RESET, Locale.GERMAN, "erika@example.org", Map.of());
+    SendResult result = send(MailTemplateKey.PASSWORD_RESET);
 
     assertThat(result).isInstanceOf(SendResult.Failed.class);
     assertThat(result.reasonOrNull()).contains("Vorlage").contains("actionUrl");
     verify(sender, never()).send(any(MimeMessage.class));
+    verify(settingsService, never()).recordSendOutcome(any(), any());
+  }
+
+  /**
+   * Regression guard for #1559 review, HIGH 2: {@code snapshot()} raises whenever {@code
+   * OPAA_SETTINGS_ENCRYPTION_KEY} is missing or was rotated. Before the fix that reached the caller
+   * - a 500 on the settings test, and from #1537 on a failed account creation.
+   */
+  @Test
+  void reportsAnUnreadableConfigurationAsFailedInsteadOfThrowing() {
+    when(senderProvider.isEnabled())
+        .thenThrow(new IllegalStateException("OPAA_SETTINGS_ENCRYPTION_KEY ist nicht gesetzt"));
+
+    SendResult result = send(MailTemplateKey.TEST_MAIL);
+
+    assertThat(result).isInstanceOf(SendResult.Failed.class);
+    assertThat(result.reasonOrNull()).contains("OPAA_SETTINGS_ENCRYPTION_KEY");
+    verify(settingsService, never()).recordSendOutcome(any(), any());
+  }
+
+  /** A status write that fails must not turn a sent mail into a failed one. */
+  @Test
+  void stillReportsSentWhenTheStatusWriteItselfFails() {
+    stubConfiguredSender();
+    doThrow(new IllegalStateException("Datenbank nicht erreichbar"))
+        .when(settingsService)
+        .recordSendOutcome(any(), isNull());
+
+    assertThat(send(MailTemplateKey.TEST_MAIL)).isEqualTo(new SendResult.Sent(RECIPIENT));
   }
 
   @Test
@@ -97,8 +130,7 @@ class MailServiceTest {
         .when(sender)
         .send(any(MimeMessage.class));
 
-    SendResult result =
-        mailService.send(MailTemplateKey.TEST_MAIL, Locale.GERMAN, "erika@example.org", Map.of());
+    SendResult result = send(MailTemplateKey.TEST_MAIL);
 
     assertThat(result).isInstanceOf(SendResult.Failed.class);
     assertThat(result.reasonOrNull()).contains("Connection refused");
@@ -107,14 +139,44 @@ class MailServiceTest {
     assertThat(reason.getValue()).contains("Connection refused");
   }
 
+  /**
+   * Regression guard for #1559 review, HIGH 1: {@code JavaMailSenderImpl} throws {@link
+   * MailSendException} built from the failed-messages map <em>without</em> a cause, and its own
+   * message is the list of rejected recipients. Walking {@code getCause()} therefore used to put
+   * the address into the log, into {@code last_failure_reason} and into the API response.
+   */
+  @Test
+  void unwrapsARejectedRecipientThroughTheFailedMessagesAndNeverNamesTheAddress() {
+    stubConfiguredSender();
+    MimeMessage failed = new MimeMessage(Session.getInstance(new Properties()));
+    doThrow(
+            new MailSendException(
+                Map.of(
+                    failed,
+                    new SendFailedException(
+                        "550 5.1.1 <" + RECIPIENT + ">: Recipient address rejected"))))
+        .when(sender)
+        .send(any(MimeMessage.class));
+
+    SendResult result = send(MailTemplateKey.TEST_MAIL);
+
+    assertThat(result.reasonOrNull())
+        .contains("Recipient address rejected")
+        .doesNotContain(RECIPIENT)
+        .doesNotContain("erika.mustermann")
+        .contains("e***@amt.example");
+    ArgumentCaptor<String> reason = ArgumentCaptor.forClass(String.class);
+    verify(settingsService).recordSendOutcome(any(), reason.capture());
+    assertThat(reason.getValue()).doesNotContain("erika.mustermann");
+  }
+
   @Test
   void sendsAMultipartMessageWithBothPartsAndRecordsTheSuccess() throws Exception {
     stubConfiguredSender();
 
-    SendResult result =
-        mailService.send(MailTemplateKey.TEST_MAIL, Locale.GERMAN, "erika@example.org", Map.of());
+    SendResult result = send(MailTemplateKey.TEST_MAIL);
 
-    assertThat(result).isEqualTo(new SendResult.Sent("erika@example.org"));
+    assertThat(result).isEqualTo(new SendResult.Sent(RECIPIENT));
     ArgumentCaptor<MimeMessage> message = ArgumentCaptor.forClass(MimeMessage.class);
     verify(sender).send(message.capture());
     // saveChanges() is what turns the composed parts into the message's own headers; the real
@@ -127,11 +189,24 @@ class MailServiceTest {
   }
 
   @Test
-  void shortensTheRecipientForTheLogKeepingOnlyTheDomain() {
-    assertThat(MailRecipients.shortened("erika.mustermann@amt.example"))
-        .isEqualTo("e***@amt.example");
+  void shortensASingleRecipientForTheLogKeepingOnlyTheDomain() {
+    assertThat(MailRecipients.shortened(RECIPIENT)).isEqualTo("e***@amt.example");
     assertThat(MailRecipients.shortened("keindomain")).isEqualTo("***");
     assertThat(MailRecipients.shortened(null)).isEqualTo("-");
+  }
+
+  @Test
+  void masksEveryAddressInsideAServerMessageAndLeavesTheRestIntact() {
+    assertThat(
+            MailRecipients.maskAddresses(
+                "550 <erika@amt.example>, <max@amt.example>: Recipient address rejected"))
+        .isEqualTo("550 <e***@amt.example>, <m***@amt.example>: Recipient address rejected");
+    assertThat(MailRecipients.maskAddresses("Connection refused")).isEqualTo("Connection refused");
+    assertThat(MailRecipients.maskAddresses(null)).isNull();
+  }
+
+  private SendResult send(MailTemplateKey key) {
+    return mailService.send(key, Locale.GERMAN, RECIPIENT, Map.of());
   }
 
   private void stubConfiguredSender() {

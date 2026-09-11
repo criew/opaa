@@ -17,13 +17,17 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
 /**
  * #1536: what {@link MailSenderProvider} builds from a snapshot - the encryption mode translated
  * into Jakarta Mail properties, the timeouts applied, the authentication flag derived from the
- * username - and that a committed settings change throws the cached transport away.
+ * username - and that the cached transport lives exactly as long as the snapshot it was built from.
  */
 @ExtendWith(MockitoExtension.class)
 class MailSenderProviderTest {
 
+  private static final MailSettingsSnapshot DISABLED =
+      new MailSettingsSnapshot(false, null, null, null, null, MailEncryption.STARTTLS, null, null);
+
   @Mock private MailSettingsService settingsService;
 
+  private MailSettingsSnapshot currentSnapshot = DISABLED;
   private MailSenderProvider provider;
 
   @BeforeEach
@@ -33,22 +37,20 @@ class MailSenderProviderTest {
             settingsService,
             new SmtpProperties(
                 Duration.ofSeconds(7), Duration.ofSeconds(11), Duration.ofSeconds(13)));
+    when(settingsService.snapshot()).thenAnswer(invocation -> currentSnapshot);
   }
 
   @Test
   void reportsNotEnabledAndBuildsNothingWhileSmtpIsSwitchedOff() {
-    when(settingsService.snapshot()).thenReturn(MailSettingsSnapshot.DISABLED);
-
     assertThat(provider.isEnabled()).isFalse();
     assertThat(provider.current()).isNull();
   }
 
   @Test
   void reportsNotEnabledWhenTheSwitchIsOnButNoHostIsConfigured() {
-    when(settingsService.snapshot())
-        .thenReturn(
-            new MailSettingsSnapshot(
-                true, "  ", 587, null, null, MailEncryption.STARTTLS, "opaa@example.org", null));
+    currentSnapshot =
+        new MailSettingsSnapshot(
+            true, "  ", 587, null, null, MailEncryption.STARTTLS, "opaa@example.org", null);
 
     assertThat(provider.isEnabled()).isFalse();
     assertThat(provider.current()).isNull();
@@ -102,21 +104,26 @@ class MailSenderProviderTest {
     assertThat(anonymous.getJavaMailProperties().getProperty("mail.smtp.auth")).isEqualTo("false");
   }
 
+  /**
+   * Regression guard for #1559 review, MEDIUM 7: the cache used to be dropped by its own {@code
+   * AFTER_COMMIT} listener, whose order against the snapshot rebuild was undefined - an
+   * invalidation running first let a concurrent send re-cache the transport of the old settings.
+   */
   @Test
-  void keepsTheSameTransportUntilTheSettingsChangeAndBuildsAFreshOneAfterwards() {
-    when(settingsService.snapshot()).thenReturn(snapshot(MailEncryption.STARTTLS, "kennung"));
-
+  void keepsTheTransportWhileTheSnapshotIsTheSameOneAndRebuildsForAFreshSnapshot() {
+    currentSnapshot = snapshot(MailEncryption.STARTTLS, "kennung");
     JavaMailSender first = provider.current();
     assertThat(provider.current()).isSameAs(first);
 
-    provider.onSettingsChanged(new MailSettingsChangedEvent());
+    currentSnapshot = snapshot(MailEncryption.STARTTLS, "kennung");
+    JavaMailSender second = provider.current();
 
-    assertThat(provider.current()).isNotSameAs(first);
+    assertThat(second).isNotSameAs(first);
+    assertThat(provider.current()).isSameAs(second);
   }
 
   private JavaMailSender build(MailSettingsSnapshot snapshot) {
-    when(settingsService.snapshot()).thenReturn(snapshot);
-    provider.invalidate();
+    currentSnapshot = snapshot;
     return provider.current();
   }
 

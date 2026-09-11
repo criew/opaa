@@ -14,12 +14,11 @@ import org.springframework.boot.health.contributor.Status;
 
 /**
  * #1536, ADR-0033 Entscheidung 10: the {@code mail} indicator reports state and nothing else - the
- * cause belongs on the settings page behind {@code SYSTEM_ADMIN}, not in an endpoint every
- * signed-in caller can read.
+ * cause belongs on the settings page behind {@code SYSTEM_ADMIN}.
  *
  * <p>The distinction that matters operationally: a deployment without a mail server is {@code
- * UNKNOWN} (and therefore does not pull the overall status down), while a deployment whose last
- * attempt failed is {@code DOWN}.
+ * UNKNOWN}, a deployment whose last attempt failed is {@code DOWN}. Which group that status lands
+ * in is {@link MailHealthGroupTest}'s subject.
  */
 @ExtendWith(MockitoExtension.class)
 class MailHealthIndicatorTest {
@@ -33,7 +32,10 @@ class MailHealthIndicatorTest {
 
   @Test
   void reportsUnknownWhileSmtpIsNotConfiguredBecauseThatIsASupportedState() {
-    when(settingsService.snapshot()).thenReturn(MailSettingsSnapshot.DISABLED);
+    when(settingsService.snapshot())
+        .thenReturn(
+            new MailSettingsSnapshot(
+                false, null, null, null, null, MailEncryption.STARTTLS, null, null));
 
     assertThat(indicator.health().getStatus()).isEqualTo(Status.UNKNOWN);
   }
@@ -41,7 +43,7 @@ class MailHealthIndicatorTest {
   @Test
   void reportsUnknownWhileConfiguredButNothingHasBeenSentYet() {
     configured();
-    when(settingsService.status()).thenReturn(MailSendStatus.NEVER_ATTEMPTED);
+    when(settingsService.status()).thenReturn(new MailSendStatus(null, null, null));
 
     assertThat(indicator.health().getStatus()).isEqualTo(Status.UNKNOWN);
   }
@@ -71,6 +73,16 @@ class MailHealthIndicatorTest {
         .thenReturn(new MailSendStatus(LATER, EARLIER, "Connection refused"));
 
     assertThat(indicator.health().getStatus()).isEqualTo(Status.UP);
+  }
+
+  /** A health endpoint answers an unreadable configuration with DOWN, never with a 500. */
+  @Test
+  void reportsDownRatherThanRaisingWhenTheSettingsCannotBeRead() {
+    when(settingsService.snapshot())
+        .thenThrow(new IllegalStateException("OPAA_SETTINGS_ENCRYPTION_KEY ist nicht gesetzt"));
+
+    assertThat(indicator.health().getStatus()).isEqualTo(Status.DOWN);
+    assertThat(indicator.health().getDetails()).isEmpty();
   }
 
   private void configured() {

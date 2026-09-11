@@ -17,26 +17,22 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.util.StringUtils;
 
 /**
- * Reads and changes the systemwide SMTP configuration (#1536, ADR-0033 Entscheidung 10) and keeps
+ * Reads and changes the systemwide SMTP configuration (#1536, ADR-0033 Entscheidung 10) and owns
  * the process-local snapshot every send path reads.
  *
- * <p><b>The snapshot is the point.</b> {@link #snapshot()} answers from an {@link AtomicReference}
- * rather than from the database, so sending a mail opens no transaction and needs the settings
- * encryption key only when the snapshot is (re)built. It is rebuilt lazily on first use and on
- * every {@link MailSettingsChangedEvent} <em>after</em> its transaction committed - a change takes
- * effect in the same process, without a restart, and a rolled-back change never takes effect at
- * all. Process-local without distributed invalidation, per ADR-0021.
+ * <p>{@link #snapshot()} answers from memory, so sending opens no transaction; it is rebuilt on
+ * first use and on every {@link MailSettingsChangedEvent} <em>after</em> its transaction committed,
+ * which is what makes a change effective without a restart. Process-local, per ADR-0021.
  *
- * <p><b>The password never leaves this class in clear other than inside the snapshot.</b> It is
- * stored encrypted by {@link SettingsEncryptor}, answered by the API as {@link #PASSWORD_MASK}, and
- * absent from the audit payload, which records only whether one is set - the convention {@code
- * LlmModelService} established for a model's access key.
+ * <p>The password is stored encrypted by {@link SettingsEncryptor}, answered as {@link
+ * #PASSWORD_MASK} and never part of the audit payload, which records only whether one is set.
  */
 @Service
 public class MailSettingsService {
@@ -49,19 +45,16 @@ public class MailSettingsService {
   public static final String PASSWORD_MASK = "***";
 
   /**
-   * The {@code object_id} every mail-settings audit entry carries - the settings are a singleton
-   * with a fixed id of 1, so the same {@code UUID.nameUUIDFromBytes} convention {@code
-   * BrandingSettingsService} uses applies here.
+   * The {@code object_id} every audit entry about the SMTP configuration carries - a singleton has
+   * no id of its own, so the {@code UUID.nameUUIDFromBytes} convention {@code
+   * BrandingSettingsService} uses applies here. Shared with {@link MailTestService}, whose test
+   * send is an act on these settings.
    */
-  private static final String CONFIGURATION_OBJECT_ID = "mail-settings";
+  static final String SETTINGS_OBJECT_ID = "mail-settings";
 
-  private static final String OBJECT_LABEL = "E-Mail-Versand";
+  static final String SETTINGS_OBJECT_LABEL = "E-Mail-Versand";
 
-  /**
-   * Deliberately permissive: one {@code @}, no whitespace, a dot in the domain part. The mail
-   * server is the authority on what it accepts, and a stricter pattern here would reject valid
-   * internal addresses for no gain.
-   */
+  /** Deliberately permissive - the mail server is the authority on what it accepts. */
   private static final Pattern MAIL_ADDRESS = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
   private static final int MIN_PORT = 1;
@@ -149,23 +142,28 @@ public class MailSettingsService {
         actorUserId);
     repository.save(settings);
 
-    recordChange(organizationId, actorUserId, before, auditState(settings));
+    Map<String, Object> after = auditState(settings);
+    // Nothing changed: no entry, the same rule reset() follows - an audit trail full of no-ops is
+    // an audit trail nobody reads.
+    if (!before.equals(after)) {
+      recordChange(organizationId, actorUserId, before, after);
+    }
     eventPublisher.publishEvent(new MailSettingsChangedEvent());
     return settings;
   }
 
   /**
-   * Writes the outcome of a send attempt to the stored row and to the in-memory status. Called by
+   * Writes the outcome of a send attempt to the stored row and to the in-memory status; called by
    * {@link MailService} only.
    *
-   * <p>Deliberately no transaction of its own: it joins whatever transaction the caller is in, so
-   * no second connection is held while a business transaction runs (agents/roles/developer.md,
-   * "Transaktionen"). The consequence is accepted and named: if the caller's transaction rolls back
-   * after a mail went out, the durable status loses that attempt while the in-memory status - which
-   * is what the health indicator reads - keeps it. Losing the record of a send that happened is the
-   * harmless direction; reporting a send that did not happen is not.
+   * <p><b>Its own short transaction</b> ({@code REQUIRES_NEW}): joining the caller's would hold a
+   * lock on the single {@code mail_settings} row for the rest of a business transaction - every
+   * account creation would queue behind the previous one, and a {@code PUT} of the settings behind
+   * all of them. Both failure directions are accepted: fails the inner transaction, the send stands
+   * and only its status is lost; fails the outer one, the status row keeps an attempt whose
+   * business transaction rolled back - which is correct, because the mail did go out.
    */
-  @Transactional
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void recordSendOutcome(Instant at, String failureReason) {
     MailSettings settings = requireRow();
     if (failureReason == null) {
@@ -184,6 +182,16 @@ public class MailSettingsService {
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onSettingsChanged(MailSettingsChangedEvent event) {
     rebuildSnapshot();
+  }
+
+  /**
+   * Drops both process-local caches so the next read rebuilds them from the database. For tests
+   * that share this bean across classes: the send status is not reset by any write to the row, so
+   * without this a test that provoked a failure leaks that state into the next one.
+   */
+  void resetCaches() {
+    snapshot.set(null);
+    status.set(null);
   }
 
   private MailSettingsSnapshot rebuildSnapshot() {
@@ -288,8 +296,8 @@ public class MailSettingsService {
             .type(AuditEventType.MAIL_SETTINGS_CHANGED)
             .object(
                 AuditObjectType.SYSTEM_SETTING,
-                UUID.nameUUIDFromBytes(CONFIGURATION_OBJECT_ID.getBytes(StandardCharsets.UTF_8)),
-                OBJECT_LABEL)
+                UUID.nameUUIDFromBytes(SETTINGS_OBJECT_ID.getBytes(StandardCharsets.UTF_8)),
+                SETTINGS_OBJECT_LABEL)
             .before(before)
             .after(after)
             .outcome(AuditOutcome.SUCCESS)

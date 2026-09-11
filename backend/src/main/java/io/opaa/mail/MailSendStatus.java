@@ -14,8 +14,6 @@ import java.time.Instant;
 public record MailSendStatus(
     Instant lastSuccessAt, Instant lastFailureAt, String lastFailureReason) {
 
-  static final MailSendStatus NEVER_ATTEMPTED = new MailSendStatus(null, null, null);
-
   /**
    * Whether the last attempt failed: there is a failure, and it is not older than the last success.
    * "Failing right now" is the only state worth taking to a monitoring system - an old failure

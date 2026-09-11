@@ -250,6 +250,73 @@ class MailTemplateServiceIntegrationTest {
         .isInstanceOf(ValidationException.class);
   }
 
+  /**
+   * Regression guard for #1559 review, HIGH 3: {@code {{{displayName}}}} passed the placeholder
+   * check (the name is declared) and would have put an unescaped value into the HTML part; the
+   * other forms passed it too and then failed at render time, i.e. at somebody's invitation.
+   */
+  @Test
+  void refusesAnOverrideWithAnUnescapedOrStructuralTag() {
+    for (String body :
+        List.of(
+            "Hallo {{{displayName}}}",
+            "Hallo {{&displayName}}",
+            "{{>partial}}",
+            "{{#displayName}}x{{/displayName}}")) {
+      assertThatThrownBy(
+              () ->
+                  templateService.update(
+                      organizationId,
+                      userId,
+                      MailTemplateKey.TEST_MAIL,
+                      MailTemplateService.DEFAULT_LOCALE,
+                      "Betreff",
+                      body,
+                      null))
+          .isInstanceOf(ValidationException.class)
+          .hasMessageContaining("bodyPlain")
+          .hasMessageContaining("Nicht unterstützte Vorlagen-Syntax");
+    }
+    assertThat(templateRepository.count()).isZero();
+  }
+
+  /**
+   * The trial render is the backstop behind both checks: an empty tag is neither an unknown
+   * placeholder nor an unsupported tag form, and it raises inside the compiler - stored, it would
+   * have turned every later send of this template into a failure.
+   */
+  @Test
+  void refusesAnOverrideThatCannotBeRenderedAtAll() {
+    assertThatThrownBy(
+            () ->
+                templateService.update(
+                    organizationId,
+                    userId,
+                    MailTemplateKey.TEST_MAIL,
+                    MailTemplateService.DEFAULT_LOCALE,
+                    "Betreff",
+                    "Hallo {{}}",
+                    null))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("bodyPlain")
+        .hasMessageContaining("konnte nicht verarbeitet werden");
+    assertThat(templateRepository.count()).isZero();
+  }
+
+  /** The same bar for a draft: a preview of unusable content is a 400, not a 500. */
+  @Test
+  void refusesADraftPreviewWithAnUnescapedTag() {
+    assertThatThrownBy(
+            () ->
+                templateService.preview(
+                    MailTemplateKey.TEST_MAIL,
+                    MailTemplateService.DEFAULT_LOCALE,
+                    new MailTemplateDraft(null, "Hallo {{{displayName}}}", null),
+                    null))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Nicht unterstützte Vorlagen-Syntax");
+  }
+
   private List<String> auditEventTypes() {
     return jdbcTemplate.queryForList(
         "SELECT event_type FROM audit_log WHERE organization_id = ? AND event_type LIKE 'MAIL_%'"

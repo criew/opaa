@@ -48,9 +48,11 @@ class MailTemplateKeyTest {
         .containsExactlyElementsOf(EXPECTED_KEYS);
   }
 
-  @Test
-  void everyDeclaredPlaceholderHasASampleValue() {
-    assertThat(MailTemplateKey.everyPlaceholderHasASampleValue()).isTrue();
+  @ParameterizedTest
+  @EnumSource(MailTemplateKey.class)
+  void everyDeclaredPlaceholderHasASampleValue(MailTemplateKey key) {
+    assertThat(key.sampleValues()).containsOnlyKeys(key.placeholders().toArray(String[]::new));
+    assertThat(key.sampleValues().values()).noneMatch(String::isBlank);
   }
 
   @ParameterizedTest
@@ -72,6 +74,12 @@ class MailTemplateKeyTest {
                   key, "defaultBodyHtmlContent", key.defaultBodyHtmlContent());
               MailPlaceholderValidator.requireDeclaredPlaceholders(
                   key, "preheader", key.preheader());
+              MailPlaceholderValidator.requireSupportedTags("defaultSubject", key.defaultSubject());
+              MailPlaceholderValidator.requireSupportedTags(
+                  "defaultBodyPlain", key.defaultBodyPlain());
+              MailPlaceholderValidator.requireSupportedTags(
+                  "defaultBodyHtmlContent", key.defaultBodyHtmlContent());
+              MailPlaceholderValidator.requireSupportedTags("preheader", key.preheader());
             })
         .doesNotThrowAnyException();
   }

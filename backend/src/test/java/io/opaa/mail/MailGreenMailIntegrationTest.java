@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.ServerSetup;
+import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -49,6 +50,7 @@ class MailGreenMailIntegrationTest {
 
   @Autowired private MailService mailService;
   @Autowired private MailSettingsService mailSettingsService;
+  @Autowired private MailTestService mailTestService;
   @Autowired private BrandingSettingsService brandingSettingsService;
   @Autowired private MailTemplateRepository templateRepository;
   @Autowired private UserRepository userRepository;
@@ -84,6 +86,9 @@ class MailGreenMailIntegrationTest {
     jdbcTemplate.update(
         "UPDATE mail_settings SET last_success_at = NULL, last_failure_at = NULL,"
             + " last_failure_reason = NULL WHERE id = 1");
+    // The process-local caches survive every write to the row and are shared with every other
+    // class in this context - without this a provoked failure leaks into the next test.
+    mailSettingsService.resetCaches();
     templateRepository.deleteAll();
     brandingSettingsService.updateBranding(organizationId, userId, null, null, null, null);
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
@@ -160,6 +165,28 @@ class MailGreenMailIntegrationTest {
     assertThat(result.reasonOrNull()).isNotBlank();
     assertThat(mailSettingsService.status().lastAttemptFailed()).isTrue();
     assertThat(mailSettingsService.currentSettings().getLastFailureReason()).isNotBlank();
+  }
+
+  /**
+   * #1559 review, LOW 4: the settings test tries out the mail server, so it is an act on the
+   * settings; the template test tries out a wording, so it is an act on that template.
+   */
+  @Test
+  void auditsTheSettingsTestAgainstTheSettingsAndTheTemplateTestAgainstTheTemplate() {
+    configureSmtp();
+
+    mailTestService.sendTestMail(organizationId, userId, RECIPIENT, "Erika Mustermann");
+    mailTestService.sendTemplateTest(
+        organizationId, userId, MailTemplateKey.ACCOUNT_LOCKED, RECIPIENT, "Erika Mustermann");
+
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT object_label FROM audit_log WHERE organization_id = ? AND event_type = ?"
+                    + " ORDER BY recorded_at, object_label",
+                String.class,
+                organizationId,
+                AuditEventType.MAIL_TEST_SENT.name()))
+        .containsExactlyInAnyOrder("E-Mail-Versand", "E-Mail-Vorlage Konto gesperrt");
   }
 
   private void configureSmtp() {

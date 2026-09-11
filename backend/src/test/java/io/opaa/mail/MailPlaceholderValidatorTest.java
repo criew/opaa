@@ -6,11 +6,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.common.ValidationException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * #1536: what {@link MailPlaceholderValidator} counts as a variable reference, and that an
- * undeclared one is rejected with a message naming the field and the accepted names - the check
- * that turns a typo into a 400 for the administrator instead of a failed invitation for a user.
+ * #1536: what an administrator may put into a mail template. Plain variable tags from the key's
+ * declared set and comments are accepted; every other Mustache construct is rejected with a message
+ * naming the field.
  */
 class MailPlaceholderValidatorTest {
 
@@ -23,18 +25,49 @@ class MailPlaceholderValidatorTest {
   }
 
   @Test
-  void ignoresTemplateStructureThatIsNotAVariable() {
-    String content =
-        "{{! ein Kommentar }} {{> partial }} {{#abschnitt}}x{{/abschnitt}} {{^leer}}y{{/leer}}"
-            + " {{= | | =}} {{&unescaped}} {{{tripleStache}}}";
-
-    assertThat(MailPlaceholderValidator.referencedPlaceholders(content)).isEmpty();
+  void doesNotCountCommentsAsVariableReferences() {
+    assertThat(MailPlaceholderValidator.referencedPlaceholders("{{! ein Kommentar }} Text"))
+        .isEmpty();
   }
 
   @Test
   void treatsNullAndEmptyContentAsNoReferences() {
     assertThat(MailPlaceholderValidator.referencedPlaceholders(null)).isEmpty();
     assertThat(MailPlaceholderValidator.referencedPlaceholders("")).isEmpty();
+  }
+
+  /**
+   * Regression guard for #1559 review, HIGH 3: these forms used to be silently skipped as "template
+   * structure". They are not: an unescaped tag puts raw HTML from a variable into the message, and
+   * the remaining forms render to nothing this subsystem can supply - every later send would have
+   * failed, discovered by the person waiting for their mail.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "Hallo {{{displayName}}}",
+        "Hallo {{&displayName}}",
+        "{{>partial}}",
+        "{{=<% %>=}}",
+        "{{#abschnitt}}x{{/abschnitt}}",
+        "{{^leer}}y{{/leer}}"
+      })
+  void rejectsEveryTagFormThatIsNeitherAPlainVariableNorAComment(String content) {
+    assertThatThrownBy(() -> MailPlaceholderValidator.requireSupportedTags("bodyHtml", content))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("bodyHtml")
+        .hasMessageContaining("Nicht unterstützte Vorlagen-Syntax");
+  }
+
+  @Test
+  void acceptsPlainVariablesAndCommentsAsSupportedTags() {
+    assertThatCode(
+            () ->
+                MailPlaceholderValidator.requireSupportedTags(
+                    "bodyPlain", "{{! Hinweis }} Hallo {{displayName}}, {{ actionUrl }}"))
+        .doesNotThrowAnyException();
+    assertThatCode(() -> MailPlaceholderValidator.requireSupportedTags("bodyHtml", null))
+        .doesNotThrowAnyException();
   }
 
   @Test
@@ -44,7 +77,8 @@ class MailPlaceholderValidatorTest {
                 MailPlaceholderValidator.requireDeclaredPlaceholders(
                     MailTemplateKey.PASSWORD_RESET,
                     "bodyPlain",
-                    "Guten Tag {{displayName}}, {{actionUrl}} ({{productName}}, {{expiresAtHuman}})"))
+                    "Guten Tag {{displayName}}, {{actionUrl}} ({{productName}},"
+                        + " {{expiresAtHuman}})"))
         .doesNotThrowAnyException();
   }
 

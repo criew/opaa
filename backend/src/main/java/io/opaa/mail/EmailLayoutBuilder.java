@@ -4,20 +4,16 @@ import org.springframework.stereotype.Component;
 
 /**
  * Wraps a rendered content fragment in the branded HTML frame every OPAA mail shares (#1536,
- * ADR-0033 Entscheidung 10): the operator's product name as the wordmark and their accent colour on
- * the top rule and the button, both taken from {@code BrandingSettings} by {@link
- * MailTemplateService}. No logo in this phase - embedding a {@code bytea} in every message would
- * put half a megabyte on the wire per mail and is a separate decision.
+ * ADR-0033 Entscheidung 10): product name and accent colour from {@code BrandingSettings}, no logo
+ * in this phase.
  *
- * <p>Built to survive mail clients rather than browsers: one centred table with a fixed maximum
- * width, inline styles only (the single form of CSS most clients honour), a declared light colour
- * scheme so no client auto-inverts it into unreadability, and a hidden preheader for the inbox
- * preview line.
+ * <p>Built for mail clients, not browsers: one centred table with a fixed maximum width, inline
+ * styles only, a declared light colour scheme, and a hidden preheader.
  *
- * <p>{@code contentHtml} arrives already rendered and HTML-escaped - {@link MailTemplateService}'s
- * HTML compiler escapes every variable. The values this class places into the frame itself ({@code
- * brandName}, {@code ctaUrl}, {@code ctaText}, {@code preheader}, {@code footerLine}) are escaped
- * here, because they do not come through that compiler.
+ * <p><b>Preconditions.</b> {@code contentHtml} arrives already rendered and HTML-escaped; {@code
+ * accentColor} must match {@code ^#[0-9A-Fa-f]{6}$} - {@code BrandingSettingsService} enforces that
+ * on write, and this class interpolates the value raw into a {@code style} attribute. Every other
+ * value it places into the frame is escaped here.
  */
 @Component
 public class EmailLayoutBuilder {

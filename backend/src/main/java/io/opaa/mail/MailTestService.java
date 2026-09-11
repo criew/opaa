@@ -51,10 +51,20 @@ public class MailTestService {
     this.clock = clock;
   }
 
-  /** Sends {@link MailTemplateKey#TEST_MAIL} to the calling administrator. */
+  /**
+   * Sends {@link MailTemplateKey#TEST_MAIL} to the calling administrator. Audited against the SMTP
+   * settings, not against the template: what is tried out here is the mail server.
+   */
   public SendResult sendTestMail(
       UUID organizationId, UUID actorUserId, String recipient, String displayName) {
-    return send(organizationId, actorUserId, MailTemplateKey.TEST_MAIL, recipient, displayName);
+    return send(
+        organizationId,
+        actorUserId,
+        MailTemplateKey.TEST_MAIL,
+        recipient,
+        displayName,
+        MailSettingsService.SETTINGS_OBJECT_ID,
+        MailSettingsService.SETTINGS_OBJECT_LABEL);
   }
 
   /**
@@ -67,7 +77,14 @@ public class MailTestService {
       MailTemplateKey key,
       String recipient,
       String displayName) {
-    return send(organizationId, actorUserId, key, recipient, displayName);
+    return send(
+        organizationId,
+        actorUserId,
+        key,
+        recipient,
+        displayName,
+        "mail-template:" + key.key(),
+        "E-Mail-Vorlage " + key.label());
   }
 
   private SendResult send(
@@ -75,14 +92,16 @@ public class MailTestService {
       UUID actorUserId,
       MailTemplateKey key,
       String recipient,
-      String displayName) {
+      String displayName,
+      String objectId,
+      String objectLabel) {
     if (!StringUtils.hasText(recipient)) {
       throw new ValidationException(
           "Ihr Konto trägt keine E-Mail-Adresse - eine Testnachricht kann nicht zugestellt werden");
     }
     SendResult result =
         mailService.send(key, Locale.GERMAN, recipient, variables(key, displayName));
-    recordTestSent(organizationId, actorUserId, key, result);
+    recordTestSent(organizationId, actorUserId, objectId, objectLabel, result);
     return result;
   }
 
@@ -104,7 +123,11 @@ public class MailTestService {
   }
 
   private void recordTestSent(
-      UUID organizationId, UUID actorUserId, MailTemplateKey key, SendResult result) {
+      UUID organizationId,
+      UUID actorUserId,
+      String objectId,
+      String objectLabel,
+      SendResult result) {
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
             .organizationId(organizationId)
@@ -112,9 +135,8 @@ public class MailTestService {
             .type(AuditEventType.MAIL_TEST_SENT)
             .object(
                 AuditObjectType.SYSTEM_SETTING,
-                UUID.nameUUIDFromBytes(
-                    ("mail-template:" + key.key()).getBytes(StandardCharsets.UTF_8)),
-                "E-Mail-Vorlage " + key.label())
+                UUID.nameUUIDFromBytes(objectId.getBytes(StandardCharsets.UTF_8)),
+                objectLabel)
             .outcome(result.isSent() ? AuditOutcome.SUCCESS : AuditOutcome.FAILURE)
             .reason(result.reasonOrNull())
             .build());

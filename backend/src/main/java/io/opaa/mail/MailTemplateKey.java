@@ -305,9 +305,8 @@ public enum MailTemplateKey {
 
   /**
    * A representative value per known placeholder, used to prefill the preview and the test send.
-   * Every placeholder any key declares must have an entry here - {@link
-   * #everyPlaceholderHasASampleValue()} would otherwise be the only thing between a new placeholder
-   * and an empty spot in the administrator's preview.
+   * Every placeholder any key declares must have an entry here; {@code MailTemplateKeyTest} fails
+   * for one that does not.
    */
   private static final Map<String, String> SAMPLE_VALUES =
       Map.ofEntries(
@@ -402,12 +401,5 @@ public enum MailTemplateKey {
       }
     }
     return Optional.empty();
-  }
-
-  /** Whether {@link #SAMPLE_VALUES} covers every placeholder every key declares. */
-  static boolean everyPlaceholderHasASampleValue() {
-    return Arrays.stream(values())
-        .flatMap(key -> key.placeholders().stream())
-        .allMatch(SAMPLE_VALUES::containsKey);
   }
 }

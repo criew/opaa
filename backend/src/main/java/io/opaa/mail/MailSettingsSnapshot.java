@@ -23,10 +23,6 @@ public record MailSettingsSnapshot(
     String fromAddress,
     String fromName) {
 
-  /** The state of a deployment that has never configured SMTP; every send is skipped. */
-  static final MailSettingsSnapshot DISABLED =
-      new MailSettingsSnapshot(false, null, null, null, null, MailEncryption.STARTTLS, null, null);
-
   /**
    * Whether a send should be attempted at all: the master switch is on <em>and</em> a host is
    * configured. Either missing means {@link MailService} reports {@code Skipped} rather than
