@@ -63,7 +63,14 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       // Small enough for the "upload too large" refusals; every other fixture is far below it.
       "opaa.upload.max-file-size=4096",
       // Only read by the startup ApplicationRunner, which finds no rows at that point.
-      "opaa.upload.pending-recovery-threshold-minutes=1"
+      "opaa.upload.pending-recovery-threshold-minutes=1",
+      // {@link io.opaa.FakeEmbeddingModel} gives every text the same vector, so every row of
+      // vector_store ties. An HNSW scan would hand back an arbitrary slice of ef_search (40 by
+      // default) candidates that the metadata filter then thins out to its share - which turns
+      // recall into a test oracle and makes a "found all of my own chunks" assertion depend on how
+      // many foreign rows the table happens to hold. At the pgvector maximum the scan is exact for
+      // any table size a test produces.
+      "spring.datasource.hikari.connection-init-sql=SET hnsw.ef_search = 1000"
     })
 @AutoConfigureMockMvc
 @Import({TestcontainersConfiguration.class, OpaaTestBeans.class})
