@@ -3,11 +3,19 @@ import type { ChatMessage } from '../types/chat'
 import type {
   ChatDetail,
   ChatMessageResponse,
+  ChatNoteItem,
   ChatUpdateRequest,
   MetadataFilter,
   SourceReference,
 } from '../types/api'
-import { createChat, getChat, isEmptyMetadataFilter, sendQuery, updateChat } from '../services/api'
+import {
+  createChat,
+  deleteChatNoteItem,
+  getChat,
+  isEmptyMetadataFilter,
+  sendQuery,
+  updateChat,
+} from '../services/api'
 import { useChatListStore } from './chatListStore'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
@@ -77,6 +85,36 @@ interface ConfirmedSettings {
 // when the settings PATCH's response arrived - and its chain entry was already cleaned up - before
 // the GET's own response does (the specific ordering #618 left unguarded).
 const settingsChangeSequenceByChatId = new Map<string, number>()
+
+// Ids of Gesprächsnotiz points the person removed locally whose removal GET chat has not yet
+// confirmed (#1488). Every note state the server delivers is filtered through this set, because an
+// answer carries the note state that went into *it* - an answer that was already in flight when the
+// point was removed still contains it, and applying that state unfiltered would make a removed
+// point briefly reappear. Deliberately module-level, like the settings-persistence maps above: it
+// is never read by a component, only applied to incoming server state.
+const locallyRemovedNoteItemIds = new Set<string>()
+
+/** Drops every point from `locallyRemovedNoteItemIds` the server no longer reports for the chat it
+ * just delivered - that is the confirmation the filter waits for. Ids of other chats' points are
+ * dropped along with them: they are absent from this chat's note too, and a point of a chat that is
+ * not the active one is never filtered against anyway (removeNoteItem rolls back per chat id). */
+function confirmNoteItemRemovals(serverItems: ChatNoteItem[]): void {
+  const stillPresent = new Set(serverItems.map((item) => item.id))
+  locallyRemovedNoteItemIds.forEach((id) => {
+    if (!stillPresent.has(id)) locallyRemovedNoteItemIds.delete(id)
+  })
+}
+
+function visibleNoteItems(serverItems: ChatNoteItem[]): ChatNoteItem[] {
+  return serverItems.filter((item) => !locallyRemovedNoteItemIds.has(item.id))
+}
+
+/** Clears the module-level set of not-yet-confirmed note removals - used by the store's own reset()
+ * (logout) and exported for chatStore.test.ts's beforeEach, since module state survives across
+ * test cases unless cleared explicitly. */
+export function clearRemovedNoteItemCache(): void {
+  locallyRemovedNoteItemIds.clear()
+}
 
 /**
  * Clears both module-level settings-persistence maps (#573 review of #570). Used by the store's
@@ -209,6 +247,9 @@ interface ChatState {
   /** The chat's sticky core-field filter (#1070), null without one. Persisted like the scope via
    * PATCH once a chat exists; before that it shapes the first message's implicit chat creation. */
   metadataFilter: MetadataFilter | null
+  /** The chat's Gesprächsnotiz (#1488), oldest point first, already filtered by the removals the
+   * server has not confirmed yet - empty for a chat without one. */
+  noteItems: ChatNoteItem[]
   /** The in-flight PATCH (if any) from the most recently *started* setScopeAll/
    * addReferencedLibrary/removeReferencedLibrary call across all chats - never rejects (failures
    * are caught and turned into `error` + a local rollback). Exposed for tests/UI only; sendMessage
@@ -232,6 +273,9 @@ interface ChatState {
   clearScope: () => void
   /** Sets or clears (null / no condition) the chat's core-field filter (#1070). */
   setMetadataFilter: (filter: MetadataFilter | null) => void
+  /** Removes one point of the chat's Gesprächsnotiz (#1488) - immediately and without a
+   * confirmation step, optimistically with a rollback (and `error`) if the DELETE fails. */
+  removeNoteItem: (itemId: string) => Promise<void>
   /** Drops the active chat back to its initial, empty state (#440) - used on logout so a
    * subsequent sign-in by a different user never briefly sees the previous user's conversation. */
   reset: () => void
@@ -262,6 +306,7 @@ function applyChatDetail(detail: ChatDetail) {
     referencedLibraryIds: scope === 'libraries' ? referencedLibraryIds : [],
     metadataFilter: normalizeMetadataFilter(detail.metadataFilter),
     messages: detail.messages.map(toChatMessage),
+    noteItems: visibleNoteItems(detail.noteItems ?? []),
   }
 }
 
@@ -288,6 +333,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   scope: 'all',
   referencedLibraryIds: [],
   metadataFilter: null,
+  noteItems: [],
   pendingSettingsUpdate: null,
 
   loadChat: async (chatId: string) => {
@@ -303,6 +349,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // applying this response now would resurrect a chat the user already navigated away from
       // (#548 review, finding d).
       if (requestId !== chatLoadSequence) return
+      // #1488: loading the chat is what confirms a local removal - a point the server no longer
+      // reports leaves the filter set, a point it still reports keeps being filtered out.
+      confirmNoteItemRemovals(detail.noteItems ?? [])
       const detailState = applyChatDetail(detail)
       // #619: a settings change for this exact chat was started while this GET was in flight - its
       // own success/failure handler in applyScopeChange is the authoritative source for scope/
@@ -339,6 +388,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         spaceId: null,
         messages: [],
         title: null,
+        noteItems: [],
       })
     }
   },
@@ -362,6 +412,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       scope: 'all',
       referencedLibraryIds: [],
       metadataFilter: null,
+      noteItems: [],
       isLoadingChat: false,
     })
   },
@@ -473,6 +524,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         // fallback on a first turn, see scheduleTitleReload above for how the LLM-derived title
         // eventually replaces it.
         title: response.chatTitle ?? state.title,
+        // #1488: the note state that went into *this* answer, minus the points removed since it
+        // was sent (see locallyRemovedNoteItemIds). Null only for an ephemeral query without a
+        // persisted chat - the note then stays as it is rather than being emptied.
+        noteItems: response.noteItems ? visibleNoteItems(response.noteItems) : state.noteItems,
       }))
       if (spaceId) {
         // Moves the chat to the top of its space's list after every turn, mirroring the backend's
@@ -540,10 +595,48 @@ export const useChatStore = create<ChatState>((set, get) => ({
     )
   },
 
+  removeNoteItem: async (itemId: string) => {
+    const { chatId, noteItems } = get()
+    if (!chatId) return
+    const index = noteItems.findIndex((item) => item.id === itemId)
+    if (index < 0) return
+    const removed = noteItems[index]
+    const sessionEpoch = currentSessionEpoch()
+
+    // Optimistic: the point is gone from the list and from every note state the server delivers
+    // until a GET chat confirms the removal (see locallyRemovedNoteItemIds).
+    locallyRemovedNoteItemIds.add(itemId)
+    set({ noteItems: noteItems.filter((item) => item.id !== itemId) })
+
+    try {
+      await deleteChatNoteItem(chatId, itemId)
+    } catch (err) {
+      locallyRemovedNoteItemIds.delete(itemId)
+      if (isStaleSessionEpoch(sessionEpoch)) return
+      // A failure arriving after the user switched chats must not push this point into the chat
+      // they are looking at now - the note is per chat.
+      if (get().chatId !== chatId) return
+      const message = err instanceof Error ? err.message : 'Notizpunkt konnte nicht entfernt werden'
+      const current = get().noteItems
+      // A note state that arrived in the meantime may already carry the point again now that the
+      // filter is gone; only put it back when it is actually missing, at the position it had.
+      if (current.some((item) => item.id === itemId)) {
+        set({ error: message })
+        return
+      }
+      const restored = [...current]
+      restored.splice(Math.min(index, restored.length), 0, removed)
+      set({ noteItems: restored, error: message })
+    }
+  },
+
   reset: () => {
     // Invalidates any loadChat still in flight, matching startNewChat above - otherwise a
     // response arriving after reset() could resurrect the previous user's chat.
     chatLoadSequence++
+    // #1488: the pending removals belong to the chat the previous user had open - keeping them
+    // would filter points out of the next user's chats until some load confirmed them.
+    clearRemovedNoteItemCache()
     // #440 review, point 3: both module-level maps are keyed by chatId, not scoped to any
     // particular user - a stale entry for a chat the previous user had open would otherwise
     // survive into the next user's session in the same tab, e.g. letting a late PATCH failure
@@ -560,6 +653,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       scope: 'all',
       referencedLibraryIds: [],
       metadataFilter: null,
+      noteItems: [],
       pendingSettingsUpdate: null,
     })
   },

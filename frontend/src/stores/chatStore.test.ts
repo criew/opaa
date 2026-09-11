@@ -8,6 +8,7 @@ import { server } from '../mocks/server'
 // dropChatSettingsCache) has resolved by the time this file's imports run.
 import { resetAllStores } from './resettableStores'
 import {
+  clearRemovedNoteItemCache,
   clearSettingsPersistenceCache,
   dropChatSettingsCache,
   getConfirmedSettingsForTesting,
@@ -29,6 +30,10 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
 const SPACE_ID = 'space-personal'
 const EXISTING_CHAT_ID = 'chat-personal-1'
 const EMPTY_CHAT_ID = 'chat-engineering-1'
+// The one fixture chat with a Gesprächsnotiz (#1488) - two points, three completed rounds.
+const NOTE_CHAT_ID = 'chat-engineering-2'
+const NOTE_ITEM_ID = '3f1b6d64-4a3c-4f2e-9b1a-0c9d8e7f6a51'
+const OTHER_NOTE_ITEM_ID = '5c2e8a17-9d44-4f81-b3c7-2a6f4e0d1b93'
 
 function resetChatStore() {
   useChatStore.setState({
@@ -42,6 +47,7 @@ function resetChatStore() {
     scope: 'all',
     referencedLibraryIds: [],
     metadataFilter: null,
+    noteItems: [],
     pendingSettingsUpdate: null,
   })
 }
@@ -52,6 +58,8 @@ describe('chatStore', () => {
     // settingsUpdateChains/confirmedSettingsByChatId are module state, not store state (#573) -
     // they survive resetChatStore() above and would otherwise leak between test cases.
     clearSettingsPersistenceCache()
+    // Same reasoning for the not-yet-confirmed note removals (#1488) - module state too.
+    clearRemovedNoteItemCache()
     useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
   })
 
@@ -1846,6 +1854,141 @@ describe('chatStore', () => {
       const state = useChatStore.getState()
       expect(state.scope).toBe('libraries')
       expect(state.referencedLibraryIds).toEqual(['library-a'])
+    })
+  })
+
+  // #1488: the note state the store keeps for the active chat - where it comes from (GET chat,
+  // every answer), and what removing a point does.
+  describe('Gesprächsnotiz (#1488)', () => {
+    const FRAME_POINT = {
+      id: NOTE_ITEM_ID,
+      text: 'Arbeitet im Bürgerbüro Nebenstelle 3',
+      kind: 'RAHMEN' as const,
+      createdAt: '2026-03-08T09:00:10Z',
+    }
+    const YEAR_POINT = {
+      id: OTHER_NOTE_ITEM_ID,
+      text: 'Bezugsjahr 2024',
+      kind: 'RAHMEN' as const,
+      createdAt: '2026-03-08T09:01:10Z',
+    }
+
+    function answerCarrying(noteItems: unknown) {
+      return {
+        answer: 'Antwort',
+        sources: [],
+        metadata: { model: 'gpt-4o', tokenCount: 1, durationMs: 1 },
+        chatId: NOTE_CHAT_ID,
+        chatTitle: 'Anwohnerparkausweis Nebenstelle 3',
+        noteItems,
+      }
+    }
+
+    function noteIds() {
+      return useChatStore.getState().noteItems.map((item) => item.id)
+    }
+
+    it('loads the chat note with the chat', async () => {
+      await useChatStore.getState().loadChat(NOTE_CHAT_ID)
+
+      expect(useChatStore.getState().noteItems.map((item) => item.text)).toEqual([
+        'Arbeitet im Bürgerbüro Nebenstelle 3',
+        'Bezugsjahr 2024',
+      ])
+    })
+
+    it('applies the note state an answer carries', async () => {
+      await useChatStore.getState().loadChat(NOTE_CHAT_ID)
+      server.use(http.post('/api/v1/query', () => HttpResponse.json(answerCarrying([FRAME_POINT]))))
+
+      await useChatStore.getState().sendMessage('Frage')
+
+      expect(noteIds()).toEqual([NOTE_ITEM_ID])
+    })
+
+    // An ephemeral query without a persisted chat answers noteItems: null - that is "no note here",
+    // not "the note is empty now".
+    it('leaves the note untouched when an answer carries none', async () => {
+      await useChatStore.getState().loadChat(NOTE_CHAT_ID)
+      server.use(http.post('/api/v1/query', () => HttpResponse.json(answerCarrying(null))))
+
+      await useChatStore.getState().sendMessage('Frage')
+
+      expect(noteIds()).toEqual([NOTE_ITEM_ID, OTHER_NOTE_ITEM_ID])
+    })
+
+    it('removes a point immediately and the server keeps it removed', async () => {
+      await useChatStore.getState().loadChat(NOTE_CHAT_ID)
+
+      await useChatStore.getState().removeNoteItem(NOTE_ITEM_ID)
+      expect(noteIds()).toEqual([OTHER_NOTE_ITEM_ID])
+      expect(useChatStore.getState().error).toBeNull()
+
+      await useChatStore.getState().loadChat(NOTE_CHAT_ID)
+      expect(noteIds()).toEqual([OTHER_NOTE_ITEM_ID])
+    })
+
+    it("rolls a failed removal back into the point's own position and surfaces the error", async () => {
+      server.use(
+        http.delete('/api/v1/chats/:chatId/note-items/:itemId', () =>
+          HttpResponse.json(
+            { error: 'Notizpunkt konnte nicht entfernt werden', status: 500 },
+            { status: 500 },
+          ),
+        ),
+      )
+      await useChatStore.getState().loadChat(NOTE_CHAT_ID)
+
+      await useChatStore.getState().removeNoteItem(NOTE_ITEM_ID)
+
+      expect(noteIds()).toEqual([NOTE_ITEM_ID, OTHER_NOTE_ITEM_ID])
+      expect(useChatStore.getState().error).toBe('Notizpunkt konnte nicht entfernt werden')
+    })
+
+    // The core of the "no resurrection" acceptance criterion: an answer carries the note state that
+    // went into *it*, so one that was already in flight when the point was removed still contains
+    // it. Applying it unfiltered would put the removed point back in front of the person.
+    it("keeps a point removed while an answer was in flight out of that answer's note state", async () => {
+      const gate = deferred<void>()
+      server.use(
+        http.post('/api/v1/query', async () => {
+          await gate.promise
+          return HttpResponse.json(answerCarrying([FRAME_POINT, YEAR_POINT]))
+        }),
+      )
+      await useChatStore.getState().loadChat(NOTE_CHAT_ID)
+
+      const answering = useChatStore.getState().sendMessage('Frage während der Antwort')
+      await useChatStore.getState().removeNoteItem(NOTE_ITEM_ID)
+      gate.resolve()
+      await answering
+
+      expect(noteIds()).toEqual([OTHER_NOTE_ITEM_ID])
+
+      // And it stays gone once loading the chat confirms the removal.
+      await useChatStore.getState().loadChat(NOTE_CHAT_ID)
+      expect(noteIds()).toEqual([OTHER_NOTE_ITEM_ID])
+    })
+
+    // The filter is a bridge, not a tombstone: once the load confirmed the removal, the id is
+    // released - the same point may be condensed again later and must then show up normally.
+    it('stops filtering a point once loading the chat confirmed its removal', async () => {
+      await useChatStore.getState().loadChat(NOTE_CHAT_ID)
+      await useChatStore.getState().removeNoteItem(NOTE_ITEM_ID)
+      await useChatStore.getState().loadChat(NOTE_CHAT_ID)
+
+      server.use(http.post('/api/v1/query', () => HttpResponse.json(answerCarrying([FRAME_POINT]))))
+      await useChatStore.getState().sendMessage('Frage')
+
+      expect(noteIds()).toEqual([NOTE_ITEM_ID])
+    })
+
+    it('empties the note when a different chat is started', async () => {
+      await useChatStore.getState().loadChat(NOTE_CHAT_ID)
+
+      useChatStore.getState().startNewChat(SPACE_ID)
+
+      expect(noteIds()).toEqual([])
     })
   })
 })
