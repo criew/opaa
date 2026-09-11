@@ -1,6 +1,7 @@
 package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -15,9 +16,11 @@ import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.answer.AnswerGenerationService;
 import io.opaa.query.answer.CaffeineChatMemoryRepository;
+import io.opaa.query.answer.ConversationWindowMessages;
 import io.opaa.query.retrieval.RerankAvailability;
 import io.opaa.query.retrieval.RetrievalContext;
 import io.opaa.query.retrieval.RetrievalState;
+import io.opaa.query.retrieval.search.DecompositionContext;
 import io.opaa.query.retrieval.search.QueryDecompositionService;
 import io.opaa.query.retrieval.search.SubQueryDecompositionStage;
 import java.util.List;
@@ -35,30 +38,32 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 
 /**
- * Binds two fixed points of the multi-turn measurement path to the production behaviour they claim
+ * Binds the fixed points of the multi-turn measurement path to the production behaviour they claim
  * to describe (issue #1484) - the window width is already bound by being measured off the
- * production {@code ChatMemory} ({@link ConversationMemoryProfile#measuredFrom}), and these two
- * close the same gap for the other two assumptions.
+ * production {@code ChatMemory} ({@link ConversationMemoryProfile#measuredFrom}), and these close
+ * the same gap for the other two assumptions.
  *
- * <p>Both are <b>guards, not specifications</b>: production is free to change either, but not
- * silently. When the sub-question decomposition starts seeing a narrower search window, or the
- * conversation window starts carrying normalized answer text, one of these fails - and whoever
- * makes that change updates {@link ConversationMemoryProfile} and re-draws the conversation
- * baseline. Without them the baseline would keep claiming {@code searchWindowTurns = 0} while the
- * run measured something else, and the specification's <b>expected</b> drop of {@code
- * constraint_carryover} would be booked as a regression.
+ * <p>All three are <b>guards, not specifications</b>: production is free to change any of them, but
+ * not silently. When the search window stops being cut where it is cut today, or an entrance into
+ * the conversation window stops normalizing the answer text, one of these fails - and whoever makes
+ * that change updates {@link ConversationMemoryProfile} and re-draws the conversation baseline.
  */
 class ConversationMemoryProductionBindingTest {
 
+  private static final String CITATION =
+      "【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6#0 | anwohnerparken.md】";
+
   /**
-   * The whole conversation window reaches the decomposition, unnarrowed - which is what {@link
-   * ConversationMemoryProfile#SEARCH_WINDOW_WHOLE_CONVERSATION_WINDOW} records as this run's
-   * search-window fixed point.
+   * The search window is cut <b>inside the stage</b>, on the way to the decomposition - which is
+   * why {@link ConversationMemoryProfile#searchWindowTurns} describes what this path measures at
+   * all. The harness hands the whole conversation window to {@code
+   * RetrievalContextFactory#contextFor}; were the cut made before that call instead, this path
+   * would go past it and measure a window production never searches with.
    */
   @Test
-  void theDecompositionSeesTheWholeConversationWindow() {
+  void theDecompositionSeesExactlyTheConfiguredSearchWindow() {
     QueryDecompositionService decomposition = mock(QueryDecompositionService.class);
-    when(decomposition.decompose(anyString(), anyList(), anyInt()))
+    when(decomposition.decompose(any(DecompositionContext.class), anyInt()))
         .thenReturn(List.of("Teilfrage"));
     List<Message> window =
         List.of(
@@ -68,6 +73,7 @@ class ConversationMemoryProductionBindingTest {
             new AssistantMessage("Antwort 2."),
             new UserMessage("Frage 3?"),
             new AssistantMessage("Antwort 3."));
+    QueryProperties properties = new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, true, 0, 20, 2);
 
     RetrievalContext context =
         new RetrievalContext(
@@ -75,37 +81,33 @@ class ConversationMemoryProductionBindingTest {
             window,
             Set.of(UUID.randomUUID()),
             MetadataFilter.NONE,
-            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, true, 0),
+            properties,
             RerankAvailability.SWITCHED_OFF);
 
     new SubQueryDecompositionStage(decomposition).apply(context, RetrievalState.initial());
 
-    @SuppressWarnings("unchecked")
-    ArgumentCaptor<List<Message>> seenHistory = ArgumentCaptor.forClass(List.class);
-    verify(decomposition).decompose(anyString(), seenHistory.capture(), anyInt());
-    assertThat(seenHistory.getValue())
+    ArgumentCaptor<DecompositionContext> seen = ArgumentCaptor.forClass(DecompositionContext.class);
+    verify(decomposition).decompose(seen.capture(), anyInt());
+    assertThat(seen.getValue().searchWindow())
         .as(
-            "the decomposition receives the conversation window unnarrowed - narrowing it changes "
-                + "ConversationMemoryProfile.searchWindowTurns and invalidates the committed "
-                + "conversation baseline")
-        .isEqualTo(context.conversationHistory());
+            "the decomposition receives the last %d turns of the conversation window - a different "
+                + "number of turns changes ConversationMemoryProfile.searchWindowTurns and "
+                + "invalidates the committed conversation baseline",
+            properties.searchWindowTurns())
+        .isEqualTo(
+            window.subList(window.size() - 2 * properties.searchWindowTurns(), window.size()));
   }
 
   /**
-   * The conversation window carries the answer text verbatim, citation markers included - which is
-   * why the harness may append the hand-written short answer unchanged and still take the same path
+   * First entrance into the conversation window: after the answer. The window holds the answer
+   * without its citation markers, while the response the caller persists keeps them - which is why
+   * the harness may append its hand-written, marker-free short answer as-is and still take the path
    * production takes.
    */
   @Test
-  void theConversationWindowCarriesTheAnswerTextUnchanged() {
-    String answerWithCitation =
-        "Ein Anwohnerparkausweis kostet 30,70 Euro pro Jahr. "
-            + "【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6#0 | anwohnerparken.md】";
-    ChatMemory chatMemory =
-        MessageWindowChatMemory.builder()
-            .chatMemoryRepository(new CaffeineChatMemoryRepository(new SimpleMeterRegistry()))
-            .maxMessages(20)
-            .build();
+  void theAnswerEntersTheConversationWindowWithoutItsCitationMarkers() {
+    String answerWithCitation = "Ein Anwohnerparkausweis kostet 30,70 Euro pro Jahr. " + CITATION;
+    ChatMemory chatMemory = productionShapedChatMemory();
     ChatClient chatClient = mock(ChatClient.class, RETURNS_DEEP_STUBS);
     when(chatClient.prompt().system(anyString()).messages(anyList()).call().chatResponse())
         .thenReturn(
@@ -114,15 +116,61 @@ class ConversationMemoryProductionBindingTest {
     when(resolver.resolveChatClient()).thenReturn(chatClient);
     String conversationId = "binding-test-" + UUID.randomUUID();
 
-    new AnswerGenerationService(resolver, chatMemory)
-        .generateAnswer("Was kostet ein Anwohnerparkausweis?", List.of(), conversationId);
+    ChatResponse response =
+        new AnswerGenerationService(resolver, chatMemory)
+            .generateAnswer("Was kostet ein Anwohnerparkausweis?", List.of(), conversationId);
 
+    assertThat(response.getResult().getOutput().getText())
+        .as("the persisted answer keeps its markers - only the window's copy loses them")
+        .isEqualTo(answerWithCitation);
     assertThat(chatMemory.get(conversationId))
         .as(
-            "the window holds question and answer verbatim - once production normalizes the answer "
-                + "on its way in, the harness has to take that same path instead of appending the "
-                + "scripted answer as-is")
+            "the window holds the question verbatim and the answer without markers - the shape the "
+                + "harness reproduces by scripting marker-free short answers")
         .extracting(Message::getText)
-        .containsExactly("Was kostet ein Anwohnerparkausweis?", answerWithCitation);
+        .containsExactly(
+            "Was kostet ein Anwohnerparkausweis?",
+            "Ein Anwohnerparkausweis kostet 30,70 Euro pro Jahr.");
+  }
+
+  /**
+   * Second entrance: the reload on a cache miss. Both entrances normalize through the same {@code
+   * CitationMarkers}, so the window a restarted process rebuilds from the database is the window
+   * the running process held - the invariant the harness relies on when it builds a window from
+   * scripted turns rather than from a persisted chat.
+   */
+  @Test
+  void theReloadedConversationWindowMatchesTheOneTheRunningProcessHeld() {
+    String answerWithCitation = "Ein Anwohnerparkausweis kostet 30,70 Euro pro Jahr. " + CITATION;
+    ChatMemory liveMemory = productionShapedChatMemory();
+    ChatClient chatClient = mock(ChatClient.class, RETURNS_DEEP_STUBS);
+    when(chatClient.prompt().system(anyString()).messages(anyList()).call().chatResponse())
+        .thenReturn(
+            new ChatResponse(List.of(new Generation(new AssistantMessage(answerWithCitation)))));
+    ActiveChatModelResolver resolver = mock(ActiveChatModelResolver.class);
+    when(resolver.resolveChatClient()).thenReturn(chatClient);
+    String conversationId = "binding-test-" + UUID.randomUUID();
+    new AnswerGenerationService(resolver, liveMemory)
+        .generateAnswer("Was kostet ein Anwohnerparkausweis?", List.of(), conversationId);
+
+    // What QueryService#seedConversationMemoryFromPersistedHistory rebuilds from the persisted
+    // rows, which carry the markers: the same texts, or the same chat sends a different prompt
+    // after a restart than before it.
+    List<Message> reloaded =
+        ConversationWindowMessages.reloaded(
+            List.of(
+                new UserMessage("Was kostet ein Anwohnerparkausweis?"),
+                new AssistantMessage(answerWithCitation)));
+
+    assertThat(reloaded)
+        .extracting(Message::getText)
+        .isEqualTo(liveMemory.get(conversationId).stream().map(Message::getText).toList());
+  }
+
+  private static ChatMemory productionShapedChatMemory() {
+    return MessageWindowChatMemory.builder()
+        .chatMemoryRepository(new CaffeineChatMemoryRepository(new SimpleMeterRegistry()))
+        .maxMessages(20)
+        .build();
   }
 }

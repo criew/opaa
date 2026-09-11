@@ -106,7 +106,7 @@ class SearchStatusProbeCacheTest {
             metadataBackfillService,
             modelExtractionCounters,
             contextPrefixRerunService,
-            new QueryProperties(8, 25, 1.0, 0.0, true, 3, 2, true, 50),
+            new QueryProperties(8, 25, 1.0, 0.0, true, 3, 2, true, 50, 20, 2),
             new RetrievalPipelineProperties(Set.of()),
             clock);
   }

@@ -55,7 +55,7 @@ class SearchDiagnosisRerankParityTest {
   private static final int CANDIDATE_WINDOW = 20;
 
   private static final QueryProperties PROPERTIES =
-      new QueryProperties(TOP_K, 25, 1.0, 0.3, false, 3, 1, false, CANDIDATE_WINDOW);
+      new QueryProperties(TOP_K, 25, 1.0, 0.3, false, 3, 1, false, CANDIDATE_WINDOW, 20, 2);
 
   private final VectorStore vectorStore = mock(VectorStore.class);
   private final RerankModelRole rerankModelRole = mock(RerankModelRole.class);

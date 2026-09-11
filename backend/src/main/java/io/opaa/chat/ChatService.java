@@ -23,6 +23,7 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -237,12 +238,19 @@ public class ChatService {
   }
 
   /**
-   * The persisted history as Spring AI messages, ordered by the application-assigned {@code
-   * sequence} (see {@link ChatMessage}'s Javadoc), not {@code created_at}.
+   * The last {@code maxMessages} persisted messages as Spring AI messages, in turn order - ordered
+   * by the application-assigned {@code sequence} (see {@link ChatMessage}'s Javadoc), not {@code
+   * created_at}. The content is the persisted text verbatim; the conversation window's own
+   * normalization happens at its entrance, in {@code QueryService}.
    */
   @Transactional(readOnly = true)
-  public List<Message> historyAsSpringAiMessages(UUID chatId) {
-    return chatMessageRepository.findByChatIdOrderBySequenceAsc(chatId).stream()
+  public List<Message> historyAsSpringAiMessages(UUID chatId, int maxMessages) {
+    if (maxMessages <= 0) {
+      return List.of();
+    }
+    List<ChatMessage> newestFirst =
+        chatMessageRepository.findByChatIdOrderBySequenceDesc(chatId, Limit.of(maxMessages));
+    return newestFirst.reversed().stream()
         .<Message>map(
             m ->
                 m.getRole() == ChatRole.USER

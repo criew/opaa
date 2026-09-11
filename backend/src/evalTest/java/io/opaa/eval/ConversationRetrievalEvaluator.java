@@ -7,6 +7,7 @@ import io.opaa.eval.ConversationEvaluationReport.ConversationRunConfiguration;
 import io.opaa.eval.ConversationEvaluationReport.SwitchTurnBleed;
 import io.opaa.eval.ConversationEvaluationReport.TopicBleedAudit;
 import io.opaa.eval.ConversationEvaluationReport.TurnResult;
+import io.opaa.query.answer.ConversationWindowMessages;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -15,7 +16,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 
@@ -24,11 +24,11 @@ import org.springframework.ai.chat.messages.UserMessage;
  * (issue #1484, docs/features/conversation-memory.md, "Messung").
  *
  * <p><b>The conversation window is built by the production memory, not by this class.</b> Every
- * turn is appended to the {@link ChatMemory} bean a chat request uses, and the window handed to the
- * next turn is whatever that memory returns - so the window width, its eviction order and (once
- * there is one) its normalization are production behaviour, never a second implementation that can
- * drift. The {@code Message} shapes match {@code ChatService#historyAsSpringAiMessages}: the user's
- * question as a {@code UserMessage}, the hand-written short answer as an {@code AssistantMessage}.
+ * turn is appended to the {@link ChatMemory} bean a chat request uses - the question as a {@code
+ * UserMessage}, the hand-written short answer through {@link ConversationWindowMessages#answer},
+ * the same entrance a generated answer takes - and the window handed to the next turn is whatever
+ * that memory returns. Window width, eviction order and citation-marker normalization are therefore
+ * production behaviour by construction, not because a curated dataset happens to avoid them.
  *
  * <p>Takes the retrieval itself as a {@link TurnInvocation} rather than depending on {@code
  * RetrievalPipeline}, for the same reason {@link PipelineRetrievalEvaluator} does: the harness
@@ -116,9 +116,9 @@ public final class ConversationRetrievalEvaluator {
                 window.size(),
                 invocation.rankedChunkFileNames(),
                 invocation.subQueries()));
-        chatMemory.add(
-            conversationId,
-            List.of(new UserMessage(turn.query()), new AssistantMessage(turn.answer())));
+        chatMemory.add(conversationId, new UserMessage(turn.query()));
+        ConversationWindowMessages.answer(turn.answer())
+            .ifPresent(message -> chatMemory.add(conversationId, message));
       }
     } finally {
       chatMemory.clear(conversationId);

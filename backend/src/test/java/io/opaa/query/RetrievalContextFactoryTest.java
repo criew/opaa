@@ -20,7 +20,7 @@ import org.springframework.ai.chat.messages.UserMessage;
 class RetrievalContextFactoryTest {
 
   private static final QueryProperties PROPERTIES =
-      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 1, false, 20);
+      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 1, false, 20, 20, 2);
 
   private final RerankModelRole rerankModelRole = mock(RerankModelRole.class);
   private final RetrievalContextFactory factory =

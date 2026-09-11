@@ -48,7 +48,8 @@ class PipelineHarnessSupportTest {
 
   private static QueryProperties productionLikeProperties(
       int topK, boolean queryDecompositionEnabled) {
-    return new QueryProperties(topK, 25, 1.0, 0.3, queryDecompositionEnabled, 3, 2, true, 50);
+    return new QueryProperties(
+        topK, 25, 1.0, 0.3, queryDecompositionEnabled, 3, 2, true, 50, 20, 2);
   }
 
   private static List<GoldenCase> oneCase() {
@@ -167,7 +168,8 @@ class PipelineHarnessSupportTest {
    */
   @Test
   void aRunWithoutTheLexicalPathIsRejectedAsUnmeasurable() {
-    QueryProperties vectorOnly = new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, false, 50);
+    QueryProperties vectorOnly =
+        new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, false, 50, 20, 2);
 
     assertThatThrownBy(() -> runWith(vectorOnly, RetrievalPipelineProperties.allStagesEnabled()))
         .isInstanceOf(IllegalStateException.class)
@@ -180,7 +182,7 @@ class PipelineHarnessSupportTest {
    */
   @Test
   void aRunThatWouldRerankIsRejectedAsUnmeasurable() {
-    QueryProperties reranking = new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, true, 50);
+    QueryProperties reranking = new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, true, 50, 20, 2);
 
     assertThatThrownBy(
             () -> runWith(reranking, RetrievalPipelineProperties.allStagesEnabled(), true))
@@ -194,7 +196,7 @@ class PipelineHarnessSupportTest {
    */
   @Test
   void aUsableRerankRoleWithAZeroCandidateWindowStaysMeasurable() {
-    QueryProperties windowOff = new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, true, 0);
+    QueryProperties windowOff = new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, true, 0, 20, 2);
 
     assertThatCode(
             () ->

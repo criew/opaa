@@ -33,6 +33,8 @@ final class VariantQueryProperties {
             : production.fullTextSearchEnabled(),
         overrides.rerankCandidateCount() != null
             ? overrides.rerankCandidateCount()
-            : production.rerankCandidateCount());
+            : production.rerankCandidateCount(),
+        production.conversationWindowMessages(),
+        production.searchWindowTurns());
   }
 }
