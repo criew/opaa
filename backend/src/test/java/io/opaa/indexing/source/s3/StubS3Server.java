@@ -24,16 +24,17 @@ import java.util.concurrent.CopyOnWriteArrayList;
 /**
  * A minimal path-style S3 stand-in for the adapter's unit tests: buckets with objects in memory,
  * {@code ListObjectsV2} with prefix, page size and continuation tokens, {@code HeadBucket}, {@code
- * HeadObject}, {@code GetObject}, {@code ListBuckets}, and a script of failures the next requests
- * answer with, regardless of route. Every request is recorded for assertions.
+ * HeadObject}, {@code GetObject}, {@code PutObject}, {@code DeleteObject}, {@code ListBuckets}, and
+ * a script of failures the next requests answer with, regardless of route. Every request is
+ * recorded for assertions.
  */
-final class StubS3Server implements AutoCloseable {
+public final class StubS3Server implements AutoCloseable {
 
   /**
    * One request as the server saw it; {@code target} is the request-line URI - absolute when the
    * client talks through a proxy.
    */
-  record Seen(
+  public record Seen(
       String method, String path, String query, Map<String, String> headers, String target) {}
 
   private record Failure(String method, String pathPrefix, int status, String code) {
@@ -53,24 +54,30 @@ final class StubS3Server implements AutoCloseable {
   private final List<Seen> seen = new CopyOnWriteArrayList<>();
   private volatile boolean omitContinuationToken;
 
-  StubS3Server() throws IOException {
+  public StubS3Server() throws IOException {
     server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
     server.createContext("/", this::handle);
     server.start();
   }
 
-  String endpoint() {
+  public String endpoint() {
     return "http://127.0.0.1:" + server.getAddress().getPort();
   }
 
-  void addBucket(String bucket) {
+  public void addBucket(String bucket) {
     buckets.computeIfAbsent(bucket, b -> new LinkedHashMap<>());
   }
 
-  void putObject(String bucket, String key, byte[] bytes, String contentType) {
+  public void putObject(String bucket, String key, byte[] bytes, String contentType) {
     addBucket(bucket);
     buckets.get(bucket).put(key, bytes);
     contentTypes.put(bucket + "/" + key, contentType);
+  }
+
+  /** Removes {@code key} behind the client's back, as another writer to the bucket would. */
+  public void removeObject(String bucket, String key) {
+    buckets.getOrDefault(bucket, Map.of()).remove(key);
+    contentTypes.remove(bucket + "/" + key);
   }
 
   /** Serves {@code key} chunked, without a {@code Content-Length} the client could reject early. */
@@ -84,18 +91,18 @@ final class StubS3Server implements AutoCloseable {
   }
 
   /** The next {@code times} requests - whatever they are - answer {@code status}/{@code code}. */
-  void failNext(int status, String code, int times) {
+  public void failNext(int status, String code, int times) {
     for (int i = 0; i < times; i++) {
       scripted.add(new Failure(null, null, status, code));
     }
   }
 
   /** The next request with {@code method} whose path starts with {@code pathPrefix} fails. */
-  void failNextMatching(String method, String pathPrefix, int status, String code) {
+  public void failNextMatching(String method, String pathPrefix, int status, String code) {
     scripted.add(new Failure(method, pathPrefix, status, code));
   }
 
-  List<Seen> seen() {
+  public List<Seen> seen() {
     return seen;
   }
 
@@ -154,6 +161,25 @@ final class StubS3Server implements AutoCloseable {
         }
         return;
       }
+      if (method.equals("PUT")) {
+        byte[] body = exchange.getRequestBody().readAllBytes();
+        if (headers.getOrDefault("x-amz-content-sha256", "").startsWith("STREAMING")) {
+          body = decodeAwsChunked(body);
+        }
+        objects.put(key, body);
+        contentTypes.put(
+            bucket + "/" + key, headers.getOrDefault("content-type", "application/octet-stream"));
+        exchange.getResponseHeaders().set("ETag", "\"" + md5(body) + "\"");
+        exchange.sendResponseHeaders(200, -1);
+        return;
+      }
+      if (method.equals("DELETE")) {
+        // S3 answers 204 whether or not the key held an object
+        objects.remove(key);
+        contentTypes.remove(bucket + "/" + key);
+        exchange.sendResponseHeaders(204, -1);
+        return;
+      }
       byte[] bytes = objects.get(key);
       if (bytes == null) {
         error(exchange, 404, "NoSuchKey");
@@ -183,6 +209,38 @@ final class StubS3Server implements AutoCloseable {
     } finally {
       exchange.close();
     }
+  }
+
+  /**
+   * The payload of a SigV4-streaming upload, which the SDK sends over plain HTTP: {@code
+   * <hex-size>;chunk-signature=<sig>\r\n<data>\r\n} repeated, closed by a zero-size chunk and
+   * optional trailers. A real store decodes this itself.
+   */
+  static byte[] decodeAwsChunked(byte[] encoded) {
+    java.io.ByteArrayOutputStream decoded = new java.io.ByteArrayOutputStream();
+    int position = 0;
+    while (position < encoded.length) {
+      int lineEnd = indexOfCrLf(encoded, position);
+      String header = new String(encoded, position, lineEnd - position, StandardCharsets.US_ASCII);
+      int semicolon = header.indexOf(';');
+      int size = Integer.parseInt(semicolon < 0 ? header : header.substring(0, semicolon), 16);
+      if (size == 0) {
+        break;
+      }
+      int dataStart = lineEnd + 2;
+      decoded.write(encoded, dataStart, size);
+      position = dataStart + size + 2;
+    }
+    return decoded.toByteArray();
+  }
+
+  private static int indexOfCrLf(byte[] bytes, int from) {
+    for (int i = from; i + 1 < bytes.length; i++) {
+      if (bytes[i] == '\r' && bytes[i + 1] == '\n') {
+        return i;
+      }
+    }
+    throw new IllegalArgumentException("aws-chunked body without a chunk header line");
   }
 
   private void listBuckets(HttpExchange exchange) throws IOException {
@@ -291,7 +349,7 @@ final class StubS3Server implements AutoCloseable {
   }
 
   /** Every key currently stored in {@code bucket}, for test bookkeeping. */
-  List<String> keys(String bucket) {
+  public List<String> keys(String bucket) {
     return new ArrayList<>(buckets.getOrDefault(bucket, Map.of()).keySet());
   }
 }

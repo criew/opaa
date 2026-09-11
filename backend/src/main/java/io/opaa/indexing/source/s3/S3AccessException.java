@@ -50,6 +50,23 @@ public class S3AccessException extends IOException {
     }
   }
 
+  /**
+   * {@code 403} while putting or deleting an object: {@code permission} ({@code s3:PutObject},
+   * {@code s3:DeleteObject}) is missing.
+   */
+  public static final class WriteForbidden extends S3AccessException {
+    public WriteForbidden(String bucket, String key, String permission) {
+      super(
+          "Das Objekt „"
+              + bucket
+              + "/"
+              + key
+              + "“ darf mit diesen Zugangsdaten nicht geschrieben werden ("
+              + permission
+              + " fehlt).");
+    }
+  }
+
   public static final class BucketNotFound extends S3AccessException {
     public BucketNotFound(String bucket) {
       super(
@@ -148,11 +165,16 @@ public class S3AccessException extends IOException {
 
   /**
    * The target-address validation refused the endpoint, the proxy or a bucket host; the message
-   * names the allowlist variable (ADR-0027, Entscheidung 8).
+   * names the allowlist variable of the side that owns the client (ADR-0027, Entscheidung 8;
+   * ADR-0030, Entscheidung 8).
    */
   public static final class TargetBlocked extends S3AccessException {
     public TargetBlocked(String message) {
-      super(message + " " + TargetAddressValidator.ALLOWLIST_HINT);
+      this(message, TargetAddressValidator.ALLOWLIST_HINT);
+    }
+
+    public TargetBlocked(String message, String allowlistHint) {
+      super(message + " " + allowlistHint);
     }
   }
 
