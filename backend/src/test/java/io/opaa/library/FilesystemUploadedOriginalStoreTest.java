@@ -117,7 +117,8 @@ class FilesystemUploadedOriginalStoreTest {
         store.openForDownload(ref, "bericht.pdf", "application/pdf");
 
     assertThat(content).isPresent();
-    // A local path, not a stream: this is what keeps HTTP range requests working (Entscheidung 5).
+    // A local path, not a stream: this is what keeps HTTP range requests working (ADR-0030,
+    // Entscheidung 6).
     assertThat(content.get().isStreamed()).isFalse();
     assertThat(content.get().path()).isEqualTo(Path.of(ref.locator()));
     assertThat(content.get().fileName()).isEqualTo("bericht.pdf");

@@ -75,15 +75,19 @@ public class StoredDocumentSourceAccess {
    * allowlist can be narrowed after indexing, ADR-0018, Entscheidung 6), and an {@code UPLOAD} file
    * must belong to its library's own storage area. The file is only valid for the duration of the
    * call - an upload store that is not this machine's disk hands out a copy and removes it
-   * afterwards (ADR-0030, Entscheidung 6).
+   * afterwards (ADR-0030, Entscheidung 7).
+   *
+   * <p>{@code runName} names the run in the skip message ("the pipeline re-index", "the metadata
+   * backfill"), so a skipped document stays attributable to its run when two of them overlap.
    */
-  public boolean withLocalSourceFile(Document document, Predicate<Path> action) {
+  public boolean withLocalSourceFile(Document document, String runName, Predicate<Path> action) {
     Optional<Boolean> outcome = withLocalFile(document, action::test);
     if (outcome.isEmpty()) {
       log.info(
-          "Skipping document {}: its file is not readable within the directories this deployment"
-              + " is configured to read",
-          document.getId());
+          "Skipping document {} in the {}: its file is not readable within the directories this"
+              + " deployment is configured to read",
+          document.getId(),
+          runName);
       return false;
     }
     return outcome.get();

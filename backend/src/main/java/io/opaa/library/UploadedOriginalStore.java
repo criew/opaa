@@ -45,9 +45,11 @@ public interface UploadedOriginalStore {
       UploadedOriginalRef ref, String fileName, String declaredContentType);
 
   /**
-   * Runs {@code action} on a local file holding the original's bytes and cleans up a copy it had to
-   * make, or returns empty without running it when {@code ref} does not resolve. The file is only
-   * valid for the duration of the call; {@code action} must not return {@code null}.
+   * Runs {@code action} on a local file holding the original's bytes, or returns empty without
+   * running it when {@code ref} does not resolve. The file is only valid for the duration of the
+   * call, and a copy the store had to make for it is removed on every exit - including one where
+   * {@code action} ends in an exception, which reaches the caller unchanged. {@code action} must
+   * not return {@code null}.
    */
   <T> Optional<T> withLocalFile(UploadedOriginalRef ref, Function<Path, T> action);
 

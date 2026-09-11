@@ -253,7 +253,9 @@ public class PipelineReindexService {
       // for the Mail file itself to change.
       advanced = sourceAccess.withReextractedAttachment(document, file -> reindex(document, file));
     } else {
-      advanced = sourceAccess.withLocalSourceFile(document, file -> reindex(document, file));
+      advanced =
+          sourceAccess.withLocalSourceFile(
+              document, "pipeline re-index", file -> reindex(document, file));
     }
     if (!advanced) {
       return Advance.SKIPPED;

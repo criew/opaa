@@ -94,7 +94,7 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
    * check on its lexical path alone, and this is the point where the file is actually read, deleted
    * or streamed back to an HTTP caller.
    */
-  Path managedFile(UploadedOriginalRef ref) {
+  private Path managedFile(UploadedOriginalRef ref) {
     Path candidate = localPath(ref.locator());
     if (candidate == null) {
       return null;

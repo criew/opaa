@@ -89,22 +89,20 @@ import org.springframework.web.multipart.MultipartFile;
  * delete here only has to handle documents that already had chunks before this call, deferred to
  * after commit (next paragraph) alongside the file, for the same reason.
  *
- * <p><b>Path traversal (#420 acceptance criteria):</b> the caller-supplied original file name is
- * never used to build a filesystem path. The stored file always lives at {@code
- * <storagePath>/<libraryId>/<random-uuid><matched-extension>} - {@code libraryId} comes from the
- * {@code @PathVariable UUID} (Spring rejects anything that does not parse as a UUID before this
- * class ever sees it), the generated file name is a fresh random UUID, and the extension is one of
- * {@link SupportedDocumentFormats#extensions()}, not a suffix sliced out of the original name. The
- * original name is kept only as {@link Document#getFileName()} display metadata, sanitized to its
- * last path segment as a second, defence-in-depth measure even though it is never interpreted as a
- * path.
+ * <p><b>Path traversal (#420 acceptance criteria):</b> the caller-supplied original file name never
+ * reaches the storage. {@link UploadedOriginalStore} is handed the library id - from the
+ * {@code @PathVariable UUID}, which Spring rejects unless it parses as one - and an extension out
+ * of {@link SupportedDocumentFormats#extensions()}, not a suffix sliced out of the original name;
+ * it names the stored original itself (ADR-0030). The original name is kept only as {@link
+ * Document#getFileName()} display metadata, sanitized to its last path segment as a second,
+ * defence-in-depth measure even though it is never interpreted as a path.
  *
- * <p><b>{@link #deleteDocument} only ever deletes a file this class itself wrote (#420 code review,
- * finding 1).</b> A document's {@code file_path} is not always inside {@code
- * opaa.upload.storage-path}: {@code FILESYSTEM}-sourced documents point at the operator-managed
- * indexing directory, and {@code HTTP_DIRECTORY} ones do not name a local file OPAA owns at all.
- * Deleting on the strength of that column alone - without checking {@link Document#getSourceType()}
- * and that the path actually resolves under this library's own upload subdirectory - would let
+ * <p><b>{@link #deleteDocument} only ever deletes an original this application itself stored (#420
+ * code review, finding 1).</b> A document's {@code file_path} is not always a locator of the upload
+ * storage: {@code FILESYSTEM}-sourced documents point at the operator-managed indexing directory,
+ * and {@code HTTP_DIRECTORY} ones do not name a local file OPAA owns at all. Deleting on the
+ * strength of that column alone - without checking {@link Document#getSourceType()} and letting
+ * {@link UploadedOriginalStore} resolve it against this library's own storage area - would let
  * anyone with {@code EDITOR} on a library that also happens to hold crawled documents (every
  * library can, since #419 routes crawl runs into a caller-chosen library rather than a single
  * reserved one) delete a file outside OPAA's own data directory entirely, with no undo.
@@ -260,6 +258,10 @@ public class LibraryDocumentService {
     // library's original at accepted.store() below, after the checks that still reject an upload.
     Path storedFile = accepted.workingFile();
 
+    // Assigned as the last statement of the try below, and read only after it: once the upload has
+    // been handed to the asynchronous task, nothing may run inside a block whose catch discards the
+    // original the task is parsing (it would leave the committed row pointing at a dead file_path).
+    Document storedRow;
     try {
       requireContentMatchesExtension(storedFile, extension);
 
@@ -363,8 +365,7 @@ public class LibraryDocumentService {
             document, accepted, "Die Verarbeitung konnte nicht gestartet werden");
       }
 
-      return new LibraryDocumentEntry(
-          document, LibraryFolderPaths.pathOf(folderRepository, document.getFolderId()));
+      storedRow = document;
     } catch (DataIntegrityViolationException e) {
       // #821 review round 1, finding 5: the save() above can violate two different constraints,
       // and they must not share one message. fk_documents_folder (migration 062) fires when
@@ -395,6 +396,8 @@ public class LibraryDocumentService {
       accepted.discard();
       throw e;
     }
+    return new LibraryDocumentEntry(
+        storedRow, LibraryFolderPaths.pathOf(folderRepository, storedRow.getFolderId()));
   }
 
   /**
@@ -986,10 +989,10 @@ public class LibraryDocumentService {
       throw new NotFoundException("Dokument nicht gefunden");
     }
 
-    // Decided here, acted on after commit below: the row is still readable, and the answer must
-    // not depend on what a concurrent request does to the storage in between.
-    Optional<UploadedOriginalRef> ownOriginal =
-        UploadedOriginalRef.of(document).filter(uploadedOriginalStore::belongsToLibrary);
+    // Read while the row is still there; whether it names an original of this library is decided
+    // by the delete itself, after the commit below - resolving it a second time there is what
+    // catches a locator that only became foreign in between.
+    Optional<UploadedOriginalRef> ownOriginal = UploadedOriginalRef.of(document);
     UUID chunkFilterDocumentId = document.getId();
 
     // ADR-0022, Entscheidung 3 (Nebenpfad-Auflage): a document with attachment rows pointing at

@@ -159,7 +159,7 @@ public class MetadataBackfillService {
                     return true;
                   })
               : sourceAccess.withLocalSourceFile(
-                  document, file -> reextractFromOwnFile(document, file));
+                  document, "metadata backfill", file -> reextractFromOwnFile(document, file));
       if (advanced) {
         runModelStep(document);
       }

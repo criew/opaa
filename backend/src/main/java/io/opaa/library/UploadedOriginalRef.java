@@ -34,6 +34,7 @@ public record UploadedOriginalRef(UUID libraryId, String locator) {
   public static Optional<UploadedOriginalRef> of(Document document) {
     if (document.getSourceType() != DocumentSourceType.UPLOAD
         || document.getFilePath() == null
+        || document.getFilePath().isBlank()
         || document.getLibraryId() == null) {
       return Optional.empty();
     }
