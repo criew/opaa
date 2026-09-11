@@ -53,7 +53,7 @@ class SpaceRepositoryTest {
   @Autowired private OwnUserFixtures ownUserFixtures;
 
   /** Everything that is none of this test method's business - see {@link OwnUserFixtures}. */
-  private Set<UUID> foreignUserIds = Set.of();
+  private Set<UUID> foreignUserIds;
 
   // Organizations are never wiped wholesale: Organization.DEFAULT_ID is seeded once by Liquibase
   // and every other class of this context depends on that row (fk_users_organization). This class

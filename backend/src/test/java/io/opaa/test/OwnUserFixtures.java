@@ -6,6 +6,7 @@ import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.space.SpaceRepository;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -16,8 +17,11 @@ import java.util.stream.Collectors;
  * users}, {@code spaces} or the history tables would take a sibling class's still-needed rows with
  * it.
  *
- * <p>Stateless on purpose: the calling class keeps its own snapshot, so a class that forgets {@link
- * #existingUserIds()} cannot silently delete another class's rows through leftover state here.
+ * <p>Covers users, the spaces they are a member of, and the two permission-history tables that
+ * reference users with RESTRICT. Deliberately <b>not</b> {@code asset_grants}, {@code chats},
+ * libraries or {@code group_memberships}: a class that creates those removes them itself, scoped to
+ * its own ids, and a half-hearted sweep here would turn a loud RESTRICT violation into a silent
+ * partial cleanup.
  */
 public final class OwnUserFixtures {
 
@@ -42,8 +46,17 @@ public final class OwnUserFixtures {
     return users.findAll().stream().map(User::getId).collect(Collectors.toSet());
   }
 
-  /** Removes every user absent from {@code foreignUserIds}, with their spaces and history rows. */
+  /**
+   * Removes every user absent from {@code foreignUserIds}, together with every space they are a
+   * member of - not only the ones they own, so a caller that adds its user to a foreign space would
+   * delete that space too.
+   *
+   * @param foreignUserIds the snapshot from {@link #existingUserIds()}; {@code null} is refused,
+   *     because an accidentally empty snapshot would make this a suite-wide {@code deleteAll()}
+   */
   public void removeUsersCreatedSince(Set<UUID> foreignUserIds) {
+    Objects.requireNonNull(
+        foreignUserIds, "call existingUserIds() in @BeforeEach and keep its result");
     List<UUID> own =
         users.findAll().stream()
             .map(User::getId)

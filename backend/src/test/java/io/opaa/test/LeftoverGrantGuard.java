@@ -15,6 +15,9 @@ import org.springframework.test.context.support.AbstractTestExecutionListener;
  * users}/{@code organizations} is removed by some later class's own cleanup anyway, so checking
  * them would make this guard permanently red and therefore worthless.
  *
+ * <p>The check is global, so once a class really does leave rows behind, every following class of
+ * the same context fails too: the <b>first</b> message names the culprit, the rest is noise.
+ *
  * <p>{@code @TestExecutionListeners} are execution machinery, not part of {@code
  * MergedContextConfiguration} - this guard costs no additional Spring context and no additional
  * container.

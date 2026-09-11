@@ -76,6 +76,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 // split the context; Spring resets them after every test method.
 @MockitoSpyBean(
     types = {UserRepository.class, ChatMessageRepository.class, DirectorySyncStatusRecorder.class})
+// A derived signature must not declare @TestExecutionListeners of its own: like
+// @ContextConfiguration, it is resolved by nearest declaration, so both listeners below would
+// silently disappear there.
 @TestExecutionListeners(
     listeners = {OpaaTestBeanResetListener.class, LeftoverGrantGuard.class},
     mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)

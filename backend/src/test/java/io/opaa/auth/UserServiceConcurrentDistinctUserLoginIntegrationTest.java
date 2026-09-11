@@ -81,7 +81,7 @@ class UserServiceConcurrentDistinctUserLoginIntegrationTest {
   @Autowired private OwnUserFixtures ownUserFixtures;
 
   /** Everything that is none of this test method's business - see {@link OwnUserFixtures}. */
-  private Set<UUID> foreignUserIds = Set.of();
+  private Set<UUID> foreignUserIds;
 
   @BeforeEach
   void rememberForeignUsers() {

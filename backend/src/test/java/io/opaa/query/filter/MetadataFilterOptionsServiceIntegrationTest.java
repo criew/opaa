@@ -243,8 +243,9 @@ class MetadataFilterOptionsServiceIntegrationTest {
     jdbcTemplate.update("DELETE FROM chunk_full_text WHERE library_id IN " + OWN_LIBRARIES);
     jdbcTemplate.update(
         "DELETE FROM vector_store WHERE (metadata->>'library_id')::uuid IN " + OWN_LIBRARIES);
-    // Attachments before their parent: fk_documents_parent is ON DELETE RESTRICT
-    // (ADR-0022), and PostgreSQL checks it per row, not at statement end.
+    // Attachments before their parent: fk_documents_parent carries no ON DELETE clause, so a
+    // single bulk DELETE would have to rely on the check happening at statement end. The separate
+    // statement makes the order explicit instead.
     jdbcTemplate.update(
         "DELETE FROM documents WHERE parent_document_id IS NOT NULL AND library_id IN "
             + OWN_LIBRARIES);
