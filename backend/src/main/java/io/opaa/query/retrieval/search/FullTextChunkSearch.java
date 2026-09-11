@@ -99,7 +99,10 @@ public class FullTextChunkSearch {
       return List.of();
     }
     List<String> wordTokens = wordTokens(question);
-    List<String> identifierLexemes = FullTextIdentifiers.extract(question);
+    // Same bound as the word tokens: an identifier pattern has no length limit of its own, and a
+    // sub-query of the decomposition is not bound by the question's own length limit either.
+    List<String> identifierLexemes =
+        FullTextIdentifiers.extract(question).stream().map(FullTextChunkSearch::truncated).toList();
     if (wordTokens.isEmpty() && identifierLexemes.isEmpty()) {
       return List.of();
     }
@@ -213,12 +216,12 @@ public class FullTextChunkSearch {
       if (Character.isLetterOrDigit(character)) {
         current.append(character);
       } else if (current.length() > 0) {
-        tokens.add(truncated(current));
+        tokens.add(truncated(current.toString()));
         current.setLength(0);
       }
     }
     if (current.length() > 0) {
-      tokens.add(truncated(current));
+      tokens.add(truncated(current.toString()));
     }
     List<String> result = new ArrayList<>(tokens);
     return result.size() <= MAX_QUERY_TOKENS
@@ -226,10 +229,15 @@ public class FullTextChunkSearch {
         : List.copyOf(result.subList(0, MAX_QUERY_TOKENS));
   }
 
-  /** Never cuts a surrogate pair in half - half a pair is not encodable as UTF-8. */
-  private static String truncated(StringBuilder token) {
+  /**
+   * Caps one lexeme at {@link #MAX_QUERY_TOKEN_LENGTH} characters, never cutting a surrogate pair
+   * in half - half a pair is not encodable as UTF-8. The bound itself holds through the character
+   * count alone; the pair check is defence for callers whose tokenization does not, as {@link
+   * #wordTokens} does, split at a surrogate anyway.
+   */
+  private static String truncated(String token) {
     if (token.length() <= MAX_QUERY_TOKEN_LENGTH) {
-      return token.toString();
+      return token;
     }
     int end = MAX_QUERY_TOKEN_LENGTH;
     if (Character.isHighSurrogate(token.charAt(end - 1))) {

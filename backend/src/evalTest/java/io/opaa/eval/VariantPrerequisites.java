@@ -85,10 +85,11 @@ final class VariantPrerequisites {
     if (effective.fullTextSearchEnabled() && !fullTextIndexUpToDate) {
       return Optional.of(
           "Diese Variante lässt den lexikalischen Pfad laufen, aber der Volltextindex der "
-              + "gemessenen Bibliothek steht nicht auf der aktuellen Fassung — Zeilen älterer "
-              + "Fassung tragen nicht die aktuellen Lexeme. Die Variante würde einen "
-              + "geschmälerten lexikalischen Beitrag unter dem Namen der vollen hybriden "
-              + "Konfiguration messen.");
+              + "gemessenen Bibliothek ist nicht auf dem aktuellen Stand — Zeilen älterer Fassung "
+              + "tragen nicht die aktuellen Lexeme, oder es fehlen Zeilen ganz; das Zweite ist "
+              + "kein Rückstand, sondern ein Befund. Die Variante würde einen geschmälerten "
+              + "lexikalischen Beitrag unter dem Namen der vollen hybriden Konfiguration "
+              + "messen.");
     }
     return Optional.empty();
   }

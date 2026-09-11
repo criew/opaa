@@ -90,6 +90,11 @@ public record PipelineEvaluationReport(
    * bump: the filter moves the measured selection of the {@code metadata_filter} class, and the
    * {@code verwaltung} baseline was re-drawn.
    *
+   * <p>Version 11 (issue #1357): {@code HtmlDocumentFormat#version()} moved 2 → 3 and {@code
+   * ConfluenceStorageFormat#version()} 1 → 2 (a list item whose text sits in a block child keeps
+   * its marker) - fingerprint-only, same collective-fingerprint reasoning as versions 5 and 6
+   * above; no corpus in this repository routes a document through either pipeline.
+   *
    * <p>Version 12 (issue #1429): the fixed point {@code fullTextIndexComplete} is named {@code
    * fullTextIndexUpToDate} and its definition narrows. "Complete" covered two states, one of which
    * no longer exists: a chunk's full-text row is written in the same transaction as its vector row,
@@ -98,11 +103,6 @@ public record PipelineEvaluationReport(
    * Narrowed definitions are contract changes by decision 6 of ADR-0012 even when no measured value
    * moves; on a freshly indexed eval corpus the value stays {@code true}, so no baseline is
    * re-measured (see eval/baseline/README.md).
-   *
-   * <p>Version 11 (issue #1357): {@code HtmlDocumentFormat#version()} moved 2 → 3 and {@code
-   * ConfluenceStorageFormat#version()} 1 → 2 (a list item whose text sits in a block child keeps
-   * its marker) - fingerprint-only, same collective-fingerprint reasoning as versions 5 and 6
-   * above; no corpus in this repository routes a document through either pipeline.
    */
   public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 12;
 
