@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Turns repeated pipeline runs into a {@link MultiRunSummary} (issue #1044,
@@ -24,6 +25,25 @@ final class MultiRunAggregator {
   private MultiRunAggregator() {}
 
   /**
+   * What {@link #summarizeViews} needs of a run, whichever measurement path produced it (issue
+   * #1484): the overall aggregate the four metric ranges are taken from, and the search queries the
+   * decomposition produced, keyed by the unit it was called for.
+   *
+   * @param subQueriesByCaseId insertion-ordered - deviating ids are reported in the first run's
+   *     dataset order, matching how every other per-case list in this codebase orders itself.
+   */
+  record RunView(PipelineMetricsAggregate overall, Map<String, List<String>> subQueriesByCaseId) {}
+
+  /** The view of a single-question pipeline run; its unit of decomposition is the golden case. */
+  static RunView viewOf(PipelineEvaluationReport run) {
+    Map<String, List<String>> subQueries = new LinkedHashMap<>();
+    for (PipelineQueryResult result : run.allQueryResults()) {
+      subQueries.put(result.id(), result.subQueries());
+    }
+    return new RunView(run.overall(), subQueries);
+  }
+
+  /**
    * @param runs the variant's repeated {@link PipelineEvaluationReport}s, in run order. Every run
    *     must have evaluated exactly the same golden cases (guaranteed by {@link VariantRunner}
    *     passing the identical {@code goldenCases} list to every run) — a case id present in one run
@@ -31,9 +51,18 @@ final class MultiRunAggregator {
    *     is therefore rejected rather than silently ignored.
    */
   static MultiRunSummary summarize(List<PipelineEvaluationReport> runs) {
+    return summarizeViews(runs.stream().map(MultiRunAggregator::viewOf).toList());
+  }
+
+  /**
+   * The same aggregation over any measurement path's repeated runs. The multi-turn path's unit is a
+   * turn rather than a case, which is where its decomposition actually happens - one call per turn
+   * - so its deviation count answers the same question one level finer.
+   */
+  static MultiRunSummary summarizeViews(List<RunView> runs) {
     if (runs.size() < 2) {
       throw new IllegalArgumentException(
-          "MultiRunAggregator.summarize requires at least two runs to compute a spread, got "
+          "MultiRunAggregator.summarizeViews requires at least two runs to compute a spread, got "
               + runs.size()
               + " — a single run has nothing to aggregate and does not belong here (see "
               + "VariantPrerequisites/VariantRunner for the run-count decision).");
@@ -43,7 +72,7 @@ final class MultiRunAggregator {
     List<Double> mrrAt8 = new ArrayList<>(runs.size());
     List<Double> ndcgAt8 = new ArrayList<>(runs.size());
     List<Double> recallAt8 = new ArrayList<>(runs.size());
-    for (PipelineEvaluationReport run : runs) {
+    for (RunView run : runs) {
       hitRateAt5.add(run.overall().hitRateAt5());
       mrrAt8.add(run.overall().mrrAt8());
       ndcgAt8.add(run.overall().ndcgAt8());
@@ -52,12 +81,7 @@ final class MultiRunAggregator {
 
     int medianRunIndex = medianIndexByNdcg(ndcgAt8);
 
-    // LinkedHashMap: deviating case ids are reported in the first run's dataset order, matching
-    // how every other per-case list in this codebase orders itself.
-    Map<String, List<String>> subQueriesByCaseIdInFirstRun = new LinkedHashMap<>();
-    for (PipelineQueryResult result : runs.get(0).allQueryResults()) {
-      subQueriesByCaseIdInFirstRun.put(result.id(), result.subQueries());
-    }
+    Map<String, List<String>> subQueriesByCaseIdInFirstRun = runs.get(0).subQueriesByCaseId();
 
     List<String> deviatingCaseIds = new ArrayList<>();
     for (Map.Entry<String, List<String>> entry : subQueriesByCaseIdInFirstRun.entrySet()) {
@@ -87,11 +111,8 @@ final class MultiRunAggregator {
         List.copyOf(deviatingCaseIds));
   }
 
-  private static List<String> subQueriesForCase(PipelineEvaluationReport run, String caseId) {
-    return run.allQueryResults().stream()
-        .filter(r -> r.id().equals(caseId))
-        .findFirst()
-        .map(PipelineQueryResult::subQueries)
+  private static List<String> subQueriesForCase(RunView run, String caseId) {
+    return Optional.ofNullable(run.subQueriesByCaseId().get(caseId))
         .orElseThrow(
             () ->
                 new IllegalStateException(

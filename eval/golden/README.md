@@ -120,6 +120,83 @@ einem Fall, dessen Antwort über zwei Dokumente verteilt ist, misst eine Hälfte
 Ergebnis des ganzen Falls. Die Regel entspricht dem, was `city-landmarks` bereits praktiziert
 (`multi_city`/`multi_topic` ohne `answer_span`), nur ist sie jetzt geprüft statt Gewohnheit.
 
+### Mehrrunden-Datensatz `verwaltung-conversations.json` (Issue #1484)
+
+Eine **eigene Datei neben** `verwaltung.json`, nie ein Abschnitt darin: Die beiden werden in
+getrennten Läufen gegen getrennte Baselines gemessen, und ein gemeinsamer Datensatz ließe den
+SHA-256 von `verwaltung.json` — ein Festpunkt jeder committeten Pipeline-Baseline — wandern,
+sobald ein Gesprächsfall kuratiert wird.
+
+Ein Fall ist eine Folge von Runden. Jede Runde trägt ihre Frage, ihre **von Hand geschriebene
+Kurzantwort** (ein bis drei Sätze, aus der `answer_span` des Zieldokuments abgeleitet) und ihre
+eigenen erwarteten Dokumente. Die Kurzantwort ist nötig, weil der Harness keine Antworten erzeugt,
+das Gesprächsfenster in Produktion aber Antworten enthält; sie ist deterministisch, billig und macht
+den Fall reproduzierbar.
+
+```json
+{
+  "id": "verw-conv-001",
+  "domain": "verwaltung",
+  "category": "anaphora_resolution",
+  "turns": [
+    { "query": "Was kostet ein Anwohnerparkausweis?",
+      "answer": "Ein Anwohnerparkausweis kostet 30,70 Euro pro Jahr.",
+      "expected_documents": ["verwaltung-0012_anwohnerparken.md"] },
+    { "query": "Und bei Bedürftigkeit?",
+      "answer": "Bei nachgewiesener Bedürftigkeit entfällt die Gebühr.",
+      "expected_documents": ["verwaltung-0038_verwaltungsgebuehrensatzung.md"],
+      "confusable_document": "verwaltung-0011_anwohnerparken-2023.md" }
+  ],
+  "expected_state": "known_gap",
+  "expected_state_since": "2026-09-11",
+  "expected_state_reason": "Der Folgefragen-Pfad der Zerlegung ist ungemessen (#1288)."
+}
+```
+
+**Die Einpfadigkeit steht am Datensatz, nicht am Fall.** Nach der Einpfad-Regel aus
+`docs/features/retrieval-benchmark.md`, Abschnitt 5, gilt „gelöst" sonst über **beide** Messpfade;
+ein Mehrrunden-Fall kann aber konstruktionsbedingt nur auf dem Pipeline-Pfad laufen — der
+Rohvektor-Pfad misst `similaritySearch` direkt und kennt weder Verlauf noch Zerlegung. Diese
+Eigenschaft gilt für jeden Fall des Datensatzes gleichermaßen und wird deshalb **einmal je Bericht**
+ausgewiesen (`singlePathNote`), nie je Fall.
+
+`expected_state_exception` behält damit exakt die Bedeutung, die es in `verwaltung.json` hat:
+optional, nur auf einem `known_gap`-Fall, und nur für eine tatsächliche, begründete Abweichung
+**dieses einen** Falls. Stünde es auf jedem Fall, liefe das Zustandsfeld-Audit dauerhaft leer — ein
+`known_gap`, den ein neuer Baustein löst, erschiene nie als Fund, und ein verlorener `solved`-Fall nie
+als Rückschritt. Genau dieser Nachweis ist der Zweck der Zustandsfelder.
+
+Ein `topic_switch`-Fall benennt zusätzlich seine **Wechselrunde** (`topic_switch_turn`, 1-basiert,
+mindestens 2): Die Bleed-Zahl wird über genau diese eine Runde gebildet. Abgeleitet wird sie nie —
+eine Ableitung „die erste Runde ohne Dokumentüberschneidung" träfe auch auf eine gewöhnliche
+Rückfrage zu, deren Antwort in einem anderen Dokument steht („Und bei Bedürftigkeit?" nach „Was
+kostet ein Anwohnerparkausweis?"), und zählte dann das richtige Vorthemen-Dokument als Bleed.
+
+| Klasse (`category`) | Runden | Was sie misst | Pflichtfeld |
+|---|---|---|---|
+| `anaphora_resolution` | 2–3 | Rückfrage mit Bezugswort auf die Vorrunde(n); das Zieldokument ist nur mit aufgelöstem Bezug findbar | — |
+| `topic_switch` | 3–4 | Wechsel in Runde 2 oder 3; die erwarteten Dokumente der Wechselrunde sind ausschließlich das neue Thema — ein Altthemen-Dokument im Fenster ist Bleed | `topic_switch_turn` |
+| `constraint_carryover` | 3–5 | eine Angabe aus Runde 1, die in Runde 3 oder später das richtige Dokument vom Verwechslungspartner trennt; Runde 2 ist ein Zwischenthema | `confusable_document` in mindestens einer Runde |
+
+Geprüft wird das Docker-frei durch `io.opaa.eval.ConversationCaseCuration` und
+`ConversationCaseCurationTest` (Teil von `check`):
+
+- jede Runde hat `query`, `answer` und `expected_documents`; die Kurzantwort ist höchstens 400
+  Zeichen lang (die mechanische Obergrenze hinter „ein bis drei Sätze"),
+- die Klasse ist eine der drei oben, mit der Rundenzahl, über die sie definiert ist,
+- die drei Zustandsfelder sind Pflicht — `expected_state`, `expected_state_since` (ISO-Datum) und
+  `expected_state_reason` (nicht leer); `expected_state_exception` bleibt optional und nur auf einem
+  `known_gap`-Fall zulässig, wie bei den Einzelfragen,
+- ein `topic_switch`-Fall benennt `topic_switch_turn` innerhalb seiner Rundenspanne, und keine
+  andere Klasse trägt das Feld,
+- mindestens acht Fälle je Klasse und, über deren Runden, mindestens sechs unterschiedliche
+  Treffermengen — dieselbe `n_eff`-Begründung wie bei den Einzelfragen,
+- jedes erwartete Dokument und jeder Verwechslungspartner steht im Manifest.
+
+**Kuratierung:** Die Fälle selbst entstehen in Issue #1485; bis dahin ist die Datei ein leeres
+Array, und der Lauf meldet sich als „nicht ausgeführt". Der Lauf selbst steht in
+[`eval/README.md`](../README.md), Abschnitt „Dritter Messpfad: Mehrrunden-Fälle".
+
 ---
 
 ## Domäne `city-landmarks` (Issue #234)

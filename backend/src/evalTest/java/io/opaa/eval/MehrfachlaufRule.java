@@ -2,6 +2,7 @@ package io.opaa.eval;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -27,25 +28,37 @@ final class MehrfachlaufRule {
    * @param summary the spread across the repeated runs, or {@code null} for a single-run
    *     measurement.
    */
-  record Measurement(PipelineEvaluationReport report, MultiRunSummary summary) {
+  record Measurement<T>(T report, MultiRunSummary summary) {
 
     boolean multiRun() {
       return summary != null;
     }
   }
 
-  static Measurement measure(
+  static Measurement<PipelineEvaluationReport> measure(
       boolean decompositionEnabled, Supplier<PipelineEvaluationReport> measure) {
+    return measure(decompositionEnabled, measure, MultiRunAggregator::viewOf);
+  }
+
+  /**
+   * The same rule for a measurement that is not a {@link PipelineEvaluationReport} (issue #1484):
+   * {@code view} is the only thing the aggregation needs of a run, so a further measurement path
+   * reuses the rule instead of reimplementing "three runs, median, spread" - and reports the same
+   * spread and the same decomposition-deviation count.
+   */
+  static <T> Measurement<T> measure(
+      boolean decompositionEnabled,
+      Supplier<T> measure,
+      Function<T, MultiRunAggregator.RunView> view) {
     if (!decompositionEnabled) {
-      return new Measurement(measure.get(), null);
+      return new Measurement<>(measure.get(), null);
     }
-    List<PipelineEvaluationReport> runs =
-        new ArrayList<>(MultiRunAggregator.DECOMPOSITION_RUN_COUNT);
+    List<T> runs = new ArrayList<>(MultiRunAggregator.DECOMPOSITION_RUN_COUNT);
     for (int i = 0; i < MultiRunAggregator.DECOMPOSITION_RUN_COUNT; i++) {
       runs.add(measure.get());
     }
-    MultiRunSummary summary = MultiRunAggregator.summarize(runs);
-    return new Measurement(runs.get(summary.medianRunIndex()), summary);
+    MultiRunSummary summary = MultiRunAggregator.summarizeViews(runs.stream().map(view).toList());
+    return new Measurement<>(runs.get(summary.medianRunIndex()), summary);
   }
 
   /** One line per metric plus the deviation count — the Mehrfachlauf-Bericht of a measurement. */

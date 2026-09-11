@@ -375,6 +375,55 @@ Messung"). Die Referenzvariante (keine Parameteränderung) wird zusätzlich gege
 unabhängigen direkten Pipeline-Aufruf desselben Laufs geprüft — bitgleiche Zahlen sind eine
 harte Assertion, keine Beobachtung (Referenzvarianten-Selbstprüfung).
 
+### Dritter Messpfad: Mehrrunden-Fälle (Issue #1484)
+
+Ein vierter, **standardmäßig abgeschalteter** Schritt am Ende desselben Testlaufs misst
+Mehrrunden-Fälle — Gespräche statt Einzelfragen — gegen dasselbe, bereits indizierte Korpus.
+Datensatz: `eval/golden/<domäne>-conversations.json` (siehe
+[`eval/golden/README.md`](golden/README.md)); Spezifikation: `docs/features/conversation-memory.md`,
+Abschnitt „Messung".
+
+```bash
+./gradlew evaluateVerwaltungRetrieval \
+  -Dopaa.eval.queryDecomposition=true \
+  -Dopaa.eval.runConversations=true
+```
+
+**Beide Properties sind nötig.** Der Mehrrunden-Pfad misst, ob ein Bezug einer Rückfrage aufgelöst
+wird; das leistet die Teilfragen-Zerlegung. Ohne sie — oder ohne systemweit aktives Chat-Modell —
+meldet sich der Lauf als **nicht ausgeführt** und schreibt nichts, statt still den Rückfallpfad zu
+messen. Ebenso bei einem leeren Datensatz.
+
+Was der Schritt tut, je Fall:
+
+1. Gesprächsfenster und Suchfenster entstehen aus den vorangegangenen Skriptrunden — **über die
+   produktive `ChatMemory`-Bean**, nicht über eine Nachbildung im Harness. Die Nutzerfrage wird als
+   `UserMessage`, die handgeschriebene Kurzantwort als `AssistantMessage` angehängt, genau wie
+   `ChatService#historyAsSpringAiMessages` es aus einem gespeicherten Chat tut.
+2. Jede Runde läuft über `RetrievalContextFactory#contextFor` + `RetrievalPipeline#run`, mit dem
+   Fenster als Gesprächsverlauf und der (noch leeren) Gesprächsnotiz.
+3. Gemessen wird **je Runde** mit denselben vier Metriken und demselben Fenster wie im
+   Pipeline-Pfad (Hit Rate@5, MRR@8, nDCG@8, Recall@8). Ein Fall gilt als gelöst, wenn **jede**
+   Runde gelöst ist (alle erwarteten Dokumente im Fenster und eines auf Rang 1).
+4. Mehrfachlauf-Regel: drei Läufe, berichtet wird der Median-Lauf nach nDCG@8 — zusammen mit dem
+   Streubereich je Metrik und der Zahl der **Runden**, deren Zerlegung über die Läufe hinweg abwich.
+   Dieser Pfad ruft die Zerlegung einmal je Runde statt einmal je Fall; die Abweichungszahl ist
+   deshalb die Aussage darüber, wie stabil die Messung überhaupt ist.
+
+Bericht: `build/eval-reports/pipeline-conversations-<domäne>.json` und `.md` (nicht committet), mit
+`overall`, `byCategory` (`anaphora_resolution`, `topic_switch`, `constraint_carryover`), `byTurn`
+(je Rundennummer), den Teilfragen je Runde, dem Fall-Urteil je Klasse, dem Zustandsfeld-Audit und
+der **Bleed-Zahl**: wie viele Dokumente des Vorthemas in der vom Fall benannten Wechselrunde
+(`topic_switch_turn`) eines `topic_switch`-Falls noch im Fenster standen.
+
+Der Bericht führt außerdem `singlePathNote`: Mehrrunden-Fälle laufen konstruktionsbedingt nur über
+diesen Pfad (Einpfad-Regel, `docs/features/retrieval-benchmark.md`, Abschnitt 5). Das ist eine
+Eigenschaft des Datensatzes und steht deshalb einmal je Bericht — nicht als
+`expected_state_exception` an jedem Fall, was das Zustandsfeld-Audit dauerhaft stumm stellte.
+
+Der Schritt ist manuell oder per Label zu starten, **nie nächtlich**: Je Runde ein Chat-Aufruf, mal
+drei Läufe — deutlich über dem Budget des nächtlichen Jobs.
+
 ### Report lesen
 
 Der Lauf schreibt zwei Dinge:
