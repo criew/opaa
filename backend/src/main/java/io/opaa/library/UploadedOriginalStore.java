@@ -85,6 +85,20 @@ public interface UploadedOriginalStore {
   void forEachStoredOriginal(UUID organizationId, UUID libraryId, Consumer<StoredOriginal> visitor);
 
   /**
+   * Hands the library ids this store holds a storage area for under {@code organizationId} to
+   * {@code visitor}, one at a time, in the store's own order and without ever holding the whole
+   * listing - the entry point of the cleanup that has no library to start from. <b>Only the level
+   * directly below the organization</b>, and only what names a library: an entry whose name is no
+   * library id came from elsewhere and is never visited, so it can never be reported and never
+   * offered for deletion. The organization is matched by segment, never lexically - another
+   * organization whose id happens to start with this one's is a different storage area. An
+   * organization without a storage area yields nothing.
+   *
+   * @throws UploadStoreUnavailableException when the store cannot be listed right now
+   */
+  void forEachStoredLibrary(UUID organizationId, Consumer<UUID> visitor);
+
+  /**
    * One original as the listing sees it.
    *
    * @param locator the value {@code documents.file_path} carries for this original

@@ -1144,6 +1144,90 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /api/v1/admin/upload-store/orphan-libraries/report:
+    post:
+      operationId: reportOrphanedLibraries
+      tags: [admin, upload-store]
+      summary: >
+        List the storage areas of the caller's own organization that no library row belongs to any
+        more (system admin only, #1518, ADR-0030 "Konsequenzen")
+      description: >
+        The counterpart of orphan-originals/report for the case that run cannot reach: a library
+        deleted after the removal of one of its originals had failed leaves bytes behind that no
+        library-bound call can name any more. Walks the level directly below the caller's own
+        organization - its own subdirectory on the filesystem, its own key level in the bucket -
+        and reports every storage area there that no library row exists for. The organization comes
+        from the caller and is matched by segment, never lexically: an organization whose id starts
+        with another's is a different storage area, and no call ever leaves the caller's own.
+        A storage area a library row exists for is left out even when that row belongs to another
+        organization, and so is one holding no original at all - an emptied directory is nothing
+        this run could remove. Every stored original of a reported area is orphaned by definition;
+        only the grace period (opaa.upload.orphan-grace-minutes, raised but never lowered by
+        minimumAgeMinutes) keeps one out, so an area whose library was just deleted shows its
+        originals under withinGracePeriodCount and becomes deletable one grace period later.
+        Reports only; nothing is changed, and no audit event is written. At most 500 areas and 500
+        orphans across all of them are listed - truncated tells whether a further pass is needed. A
+        storage that cannot be reached answers 503.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrphanedLibraryReportRequest"
+      responses:
+        "200":
+          description: The orphaned storage areas found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrphanedLibraryReportResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/admin/upload-store/orphan-libraries/delete:
+    post:
+      operationId: deleteOrphanedLibraryOriginals
+      tags: [admin, upload-store]
+      summary: >
+        Remove explicitly named originals from the storage area of a deleted library (system admin
+        only, #1518)
+      description: >
+        The second step after orphan-libraries/report, and the same rules as
+        orphan-originals/delete: exactly the originals named by locators go, at most 500 per call,
+        each checked once more against a fresh reading of the storage right before it is removed -
+        one younger than the configured grace period and one the area does not hold are skipped
+        with their reason. A locator outside the caller's own organization or outside libraryId is
+        NOT_IN_STORE, because the storage resolves it against exactly that area. libraryId must
+        name a library that no longer exists anywhere; one that does is rejected with 400, because
+        its originals belong to orphan-originals/delete, which holds them against their rows. A
+        removal the storage does not confirm is reported as DELETE_FAILED and does not end the
+        call. Every call, executed or rejected, is recorded once in the audit log
+        (UPLOAD_ORPHAN_ORIGINALS_DELETED) with the locators it removed. A storage that cannot be
+        read at all answers 503 and records the failure.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrphanedLibraryDeletionRequest"
+      responses:
+        "200":
+          description: What was removed and what was skipped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrphanedOriginalDeletionResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
   /api/v1/admin/search/status:
     get:
       operationId: getSearchStatus
@@ -8270,6 +8354,125 @@ components:
         library's, or not a locator of this storage at all); DELETE_FAILED - the storage did not
         confirm the removal, so the original may still be there.
       enum: [REFERENCED, WITHIN_GRACE_PERIOD, NOT_IN_STORE, DELETE_FAILED]
+
+    OrphanedLibraryReportRequest:
+      type: object
+      properties:
+        minimumAgeMinutes:
+          type: integer
+          minimum: 1
+          description: >
+            Only originals at least this old are reported. Omitted, the configured grace period
+            (opaa.upload.orphan-grace-minutes) applies; a value below it is rejected - the grace
+            period can be raised per call, never lowered.
+
+    OrphanedLibraryReportResponse:
+      type: object
+      required:
+        [
+          libraries,
+          libraryCount,
+          scannedLibraryCount,
+          knownLibraryCount,
+          minimumAgeMinutes,
+          truncated,
+        ]
+      properties:
+        libraries:
+          type: array
+          description: >
+            The orphaned storage areas, at most 500 - in the storage's own order.
+          items:
+            $ref: "#/components/schemas/OrphanedLibraryResponse"
+        libraryCount:
+          type: integer
+          description: >
+            How many orphaned storage areas holding at least one original exist in total, listed
+            or not.
+        scannedLibraryCount:
+          type: integer
+          description: >
+            How many storage areas the organization has at all. What this exceeds libraryCount and
+            knownLibraryCount by are orphaned areas holding no original - leftover directories the
+            filesystem keeps and this run does not remove.
+        knownLibraryCount:
+          type: integer
+          description: >
+            How many of them a library row exists for. The sanity check of the whole report, the
+            same one OrphanedOriginalReportResponse.referencedCount is: an organization with
+            storage areas and none of them known has lost the connection between rows and storage
+            - typically a storage switched over without rewriting file_path - and nothing here
+            should be deleted until that is understood.
+        minimumAgeMinutes:
+          type: integer
+          description: The age threshold this report applied.
+        truncated:
+          type: boolean
+          description: >
+            True when this pass left something unlisted - more orphaned storage areas than
+            libraries names, or a listed one whose orphans are cut short. Delete what is listed and
+            run the report again.
+
+    OrphanedLibraryResponse:
+      type: object
+      required:
+        [
+          libraryId,
+          orphans,
+          orphanCount,
+          scannedCount,
+          withinGracePeriodCount,
+          totalSize,
+          truncated,
+        ]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+          description: >
+            The library this storage area was written for - the value to hand to the delete step.
+            No row carries it any more; it is read from the storage itself.
+        orphans:
+          type: array
+          description: The orphans of this area that this report lists.
+          items:
+            $ref: "#/components/schemas/OrphanedOriginalResponse"
+        orphanCount:
+          type: integer
+          description: How many orphans this area holds in total, listed or not.
+        scannedCount:
+          type: integer
+          description: How many stored originals of this area were looked at.
+        withinGracePeriodCount:
+          type: integer
+          description: >
+            How many of them are still younger than the grace period - not reported, not
+            deletable, expected to age into the next report.
+        totalSize:
+          type: integer
+          format: int64
+          description: The bytes of this area's orphans, listed or not - what removing them frees.
+        truncated:
+          type: boolean
+          description: True when this area holds more orphans than orphans lists.
+
+    OrphanedLibraryDeletionRequest:
+      type: object
+      required: [libraryId, locators]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+          description: >
+            The storage area to remove from, as the report named it. Must be the area of a library
+            that no longer exists.
+        locators:
+          type: array
+          minItems: 1
+          maxItems: 500
+          description: The locators to remove, as the report listed them.
+          items:
+            type: string
 
     ContextPrefixRerunStatusResponse:
       type: object

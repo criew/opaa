@@ -112,6 +112,34 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
     }
   }
 
+  @Override
+  public void forEachStoredLibrary(UUID organizationId, Consumer<UUID> visitor) {
+    Path organizationDirectory = realPath(organizationDirectory(organizationId));
+    if (organizationDirectory == null || !Files.isDirectory(organizationDirectory)) {
+      return;
+    }
+    try (DirectoryStream<Path> entries = Files.newDirectoryStream(organizationDirectory)) {
+      for (Path entry : entries) {
+        // The entry must really sit in this organization's directory rather than lead out of it,
+        // and its own name must be a library id: the real path's parent is the segment-wise
+        // comparison that a lexical startsWith on the entry's own path would not give.
+        Path real = realPath(entry);
+        if (real == null
+            || !Files.isDirectory(real)
+            || !organizationDirectory.equals(real.getParent())) {
+          continue;
+        }
+        UUID libraryId = libraryId(real.getFileName().toString());
+        if (libraryId != null) {
+          visitor.accept(libraryId);
+        }
+      }
+    } catch (IOException e) {
+      log.warn("Could not list the library directories under {}", organizationDirectory, e);
+      throw new UploadStoreUnavailableException();
+    }
+  }
+
   /**
    * The single containment check of this adapter, and the only way a locator ever becomes a path:
    * the real path of {@code ref}'s file when it lies underneath its own library's subdirectory of
@@ -136,6 +164,28 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
       return null;
     }
     return real.startsWith(libraryDirectory) ? real : null;
+  }
+
+  private Path organizationDirectory(UUID organizationId) {
+    return Paths.get(uploadProperties.storagePath())
+        .resolve(organizationId.toString())
+        .toAbsolutePath()
+        .normalize();
+  }
+
+  /**
+   * The library id a directory name stands for, or {@code null} when it names none. Only a name
+   * this adapter would itself have written counts, which is why the parsed id has to render back to
+   * it: {@link UUID#fromString} also accepts abbreviated groups, and such a directory would resolve
+   * to a library whose storage area lies elsewhere.
+   */
+  private static UUID libraryId(String directoryName) {
+    try {
+      UUID libraryId = UUID.fromString(directoryName);
+      return libraryId.toString().equals(directoryName) ? libraryId : null;
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
   }
 
   private Path libraryDirectory(UUID organizationId, UUID libraryId) {

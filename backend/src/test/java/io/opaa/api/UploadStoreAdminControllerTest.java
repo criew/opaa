@@ -20,6 +20,8 @@ import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.NotFoundException;
+import io.opaa.library.OrphanedLibrary;
+import io.opaa.library.OrphanedLibraryReport;
 import io.opaa.library.OrphanedOriginal;
 import io.opaa.library.OrphanedOriginalCleanupService;
 import io.opaa.library.OrphanedOriginalDeletion;
@@ -43,8 +45,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
  * {@link UploadStoreAdminController} in isolation, the cleanup service mocked: the {@code
- * SYSTEM_ADMIN} bar, the caller's own organization as the scope, and the audit rule of the two
- * steps - reporting leaves no event, every delete call leaves exactly one (#1478).
+ * SYSTEM_ADMIN} bar, the caller's own organization as the scope of both runs, and the audit rule of
+ * the two steps - reporting leaves no event, every delete call leaves exactly one.
  */
 @WebMvcTest(UploadStoreAdminController.class)
 @ActiveProfiles("dev")
@@ -240,6 +242,123 @@ class UploadStoreAdminControllerTest {
     assertThat(event.outcome()).isEqualTo(AuditOutcome.FAILURE);
     assertThat(event.reason()).isEqualTo("Bibliothek nicht gefunden");
     assertThat(event.after()).containsEntry("requestedCount", 1).doesNotContainKey("deleted");
+  }
+
+  @Test
+  void bothStorageBoundStepsAsRegularUserReturn403() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/admin/upload-store/orphan-libraries/report")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}")
+                .with(asRegularUser()))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(
+            post("/api/v1/admin/upload-store/orphan-libraries/delete")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + libraryId + "\",\"locators\":[\"a\"]}")
+                .with(asRegularUser()))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(cleanupService);
+    verifyNoInteractions(auditEventRecorder);
+  }
+
+  @Test
+  void theLibraryReportTakesTheOrganizationFromTheCallerAndLeavesNoAuditEvent() throws Exception {
+    // The organization never comes from the request body: it is the whole boundary of this run.
+    UUID deletedLibrary = UUID.randomUUID();
+    when(cleanupService.reportOrphanedLibraries(actingAdminOrganizationId, 180))
+        .thenReturn(
+            new OrphanedLibraryReport(
+                List.of(
+                    new OrphanedLibrary(
+                        deletedLibrary,
+                        List.of(
+                            new OrphanedOriginal(
+                                "s3://bucket/uploads/org/lib/x.pdf",
+                                Instant.parse("2026-09-01T10:00:00Z"),
+                                4711L)),
+                        1,
+                        2,
+                        1,
+                        4711L)),
+                1,
+                5,
+                4,
+                180));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/upload-store/orphan-libraries/report")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"minimumAgeMinutes\":180}")
+                .with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.libraries[0].libraryId").value(deletedLibrary.toString()))
+        .andExpect(
+            jsonPath("$.libraries[0].orphans[0].locator")
+                .value("s3://bucket/uploads/org/lib/x.pdf"))
+        .andExpect(jsonPath("$.libraries[0].orphanCount").value(1))
+        .andExpect(jsonPath("$.libraries[0].scannedCount").value(2))
+        .andExpect(jsonPath("$.libraries[0].withinGracePeriodCount").value(1))
+        .andExpect(jsonPath("$.libraries[0].totalSize").value(4711))
+        .andExpect(jsonPath("$.libraryCount").value(1))
+        .andExpect(jsonPath("$.scannedLibraryCount").value(5))
+        .andExpect(jsonPath("$.knownLibraryCount").value(4))
+        .andExpect(jsonPath("$.minimumAgeMinutes").value(180))
+        .andExpect(jsonPath("$.truncated").value(false));
+
+    verify(cleanupService).reportOrphanedLibraries(actingAdminOrganizationId, 180);
+    verifyNoInteractions(auditEventRecorder);
+  }
+
+  @Test
+  void deletingInAnOrphanedLibraryRecordsOneAuditEventUnderTheSameType() throws Exception {
+    when(cleanupService.deleteInOrphanedLibrary(
+            actingAdminOrganizationId, libraryId, List.of("locator-1")))
+        .thenReturn(new OrphanedOriginalDeletion(List.of("locator-1"), List.of()));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/upload-store/orphan-libraries/delete")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + libraryId + "\",\"locators\":[\"locator-1\"]}")
+                .with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.deleted[0]").value("locator-1"));
+
+    ArgumentCaptor<AuditEvent> auditCaptor = ArgumentCaptor.forClass(AuditEvent.class);
+    verify(auditEventRecorder).recordUserAction(auditCaptor.capture());
+    AuditEvent event = auditCaptor.getValue();
+    assertThat(event.eventType()).isEqualTo(AuditEventType.UPLOAD_ORPHAN_ORIGINALS_DELETED);
+    assertThat(event.objectType()).isEqualTo(AuditObjectType.KNOWLEDGE_LIBRARY);
+    assertThat(event.objectId()).isEqualTo(libraryId);
+    assertThat(event.organizationId()).isEqualTo(actingAdminOrganizationId);
+    assertThat(event.outcome()).isEqualTo(AuditOutcome.SUCCESS);
+    assertThat(event.after())
+        .containsEntry("requestedCount", 1)
+        .containsEntry("deleted", List.of("locator-1"));
+  }
+
+  @Test
+  void aStillExistingLibraryIsRejectedAndTheRejectionIsRecorded() throws Exception {
+    when(cleanupService.deleteInOrphanedLibrary(any(), any(), any()))
+        .thenThrow(new IllegalArgumentException("Die Bibliothek " + libraryId + " existiert"));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/upload-store/orphan-libraries/delete")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + libraryId + "\",\"locators\":[\"locator-1\"]}")
+                .with(asAdmin()))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("Die Bibliothek " + libraryId + " existiert"));
+
+    ArgumentCaptor<AuditEvent> auditCaptor = ArgumentCaptor.forClass(AuditEvent.class);
+    verify(auditEventRecorder).recordUserAction(auditCaptor.capture());
+    assertThat(auditCaptor.getValue().outcome()).isEqualTo(AuditOutcome.FAILURE);
   }
 
   @Test
