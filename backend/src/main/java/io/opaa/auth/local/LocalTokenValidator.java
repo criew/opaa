@@ -78,13 +78,13 @@ public class LocalTokenValidator {
           new LocalTokenRejection(
               LocalTokenMarkers.SESSION_REVOKED, latestRevocationCause(userId)));
     }
-    if (!registry.localAccountsEnabled() && !isSystemAdmin(userId)) {
+    if (!registry.localAccountsEnabled() && !passesManagementSwitch(userId)) {
       return Optional.of(new LocalTokenRejection(LocalTokenMarkers.LOCAL_ACCOUNTS_DISABLED, null));
     }
     return Optional.empty();
   }
 
-  private boolean isSystemAdmin(UUID userId) {
+  private boolean passesManagementSwitch(UUID userId) {
     return users
         .findById(userId)
         .map(user -> LocalAccountAccess.passesManagementSwitch(registry, user))

@@ -31,10 +31,11 @@ import org.springframework.transaction.support.TransactionTemplate;
  * of randomness in base64url; only its HMAC lookup hash is stored. A sign-in opens a family with
  * the idle limit and the absolute end of the account's role; a rotation revokes the presented token
  * as {@code ROTATED} and issues a successor of the same family whose idle limit never passes the
- * family's end. The presentation of an already revoked token - or losing the atomic rotation to a
- * concurrent refresh with the same cookie - is a replay: every family of the account is revoked as
- * {@code REUSE_DETECTED}, every access token of the account is invalidated, the act is audited as
- * {@code LOCAL_SESSION_REVOKED} and logged at WARN with the account id, never the address.
+ * family's end. The presentation of an already <em>rotated</em> token - or losing the atomic
+ * rotation to a concurrent refresh with the same cookie - is a replay: every family of the account
+ * is revoked as {@code REUSE_DETECTED}, every access token of the account is invalidated, the act
+ * is audited as {@code LOCAL_SESSION_REVOKED} and logged at WARN with the account id, never the
+ * address.
  *
  * <p>Transactions: successor insert and {@link LocalRefreshTokenRepository#rotateIfActive} form one
  * transaction that is rolled back when the rotation was lost, so the loser leaves no active
@@ -107,9 +108,14 @@ public class LocalRefreshTokenService {
     if (presented == null) {
       return new RotationResult.Unknown();
     }
-    if (presented.getRevokedAt() != null) {
+    if (presented.getRevocationReason() == RevocationReason.ROTATED) {
       handleReuse(presented, now);
       return new RotationResult.Reused(presented.getUserId());
+    }
+    if (presented.getRevokedAt() != null) {
+      // ended by a sign-out, a password change or an act of administration: the other devices of
+      // the account simply learn that their session is over - no replay, no warning
+      return new RotationResult.Unknown();
     }
     if (!presented.isActive(now)) {
       return new RotationResult.Unknown();

@@ -143,9 +143,33 @@ class LocalRefreshTokenServiceIntegrationTest {
     LocalRefreshToken other = service.findPresented(otherFamily.value()).orElseThrow();
     assertThat(other.isActive(Instant.now())).isFalse();
     assertThat(other.getRevocationReason()).isEqualTo(RevocationReason.REUSE_DETECTED);
-    // ... and a further presentation of the revoked successor is a replay too
-    assertThat(service.rotate(rotated.token().value())).isInstanceOf(RotationResult.Reused.class);
+    // ... and a further presentation of the successor - revoked as REUSE_DETECTED, not ROTATED -
+    // is over, not a second replay: no second warning, no second event
+    assertThat(service.rotate(rotated.token().value())).isEqualTo(new RotationResult.Unknown());
     assertThat(auditedSessionRevocations()).isEqualTo(auditedBefore + 1);
+  }
+
+  /**
+   * Only a rotated token presented again is a replay. A token revoked by a sign-out, a password
+   * change or an administrative act is simply over: another device of the account learns that on
+   * its next refresh without a warning, a family revocation or an audit event.
+   */
+  @Test
+  void aTokenRevokedForAnotherReasonIsUnknownNotAReplay() {
+    long auditedBefore = auditedSessionRevocations();
+    IssuedRefreshToken thisDevice = service.issue(user.user());
+    IssuedRefreshToken otherDevice = service.issue(user.user());
+    service.revokeAllForUser(user.id(), RevocationReason.PASSWORD_CHANGED);
+    IssuedRefreshToken fresh = service.issue(user.user());
+
+    assertThat(service.rotate(otherDevice.value())).isEqualTo(new RotationResult.Unknown());
+    assertThat(service.rotate(thisDevice.value())).isEqualTo(new RotationResult.Unknown());
+
+    // the fresh family is untouched - no family revocation happened
+    assertThat(service.rotate(fresh.value())).isInstanceOf(RotationResult.Rotated.class);
+    assertThat(auditedSessionRevocations()).isEqualTo(auditedBefore);
+    assertThat(service.findPresented(otherDevice.value()).orElseThrow().getRevocationReason())
+        .isEqualTo(RevocationReason.PASSWORD_CHANGED);
   }
 
   @Test

@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.IThrowableProxy;
+import ch.qos.logback.classic.spi.StackTraceElementProxy;
 import ch.qos.logback.core.read.ListAppender;
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.test.LocalAccountFixtures;
@@ -126,7 +128,7 @@ class LocalAuthLogPrivacyIntegrationTest {
     assertThat(logs.list).isNotEmpty();
     assertThat(logs.list).anyMatch(event -> event.getLoggerName().startsWith("io.opaa"));
     for (ILoggingEvent event : logs.list) {
-      String line = event.getFormattedMessage() + " " + String.valueOf(event.getArgumentArray());
+      String line = event.getFormattedMessage() + " " + throwableText(event);
       String where = "log line of " + event.getLoggerName() + " at " + event.getLevel();
       for (String secret : secrets) {
         assertThat(line).as(where).doesNotContain(secret);
@@ -154,6 +156,20 @@ class LocalAuthLogPrivacyIntegrationTest {
           .doesNotContain(LocalAccountFixtures.DISPLAY_NAME)
           .doesNotContain(user.id().toString());
     }
+  }
+
+  /** Message and stack-trace head of a logged exception - they are part of the line. */
+  private static String throwableText(ILoggingEvent event) {
+    IThrowableProxy proxy = event.getThrowableProxy();
+    if (proxy == null) {
+      return "";
+    }
+    StringBuilder text = new StringBuilder(String.valueOf(proxy.getMessage()));
+    StackTraceElementProxy[] frames = proxy.getStackTraceElementProxyArray();
+    for (int i = 0; frames != null && i < Math.min(5, frames.length); i++) {
+      text.append(' ').append(frames[i].getSTEAsString());
+    }
+    return text.toString();
   }
 
   private MvcResult login(String email, String password, int expectedStatus) throws Exception {
