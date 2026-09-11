@@ -17,6 +17,9 @@ export const LOCAL_LOGOUT_MESSAGE =
 /** The one answer to every refused local sign-in (ADR-0033, Entscheidung 9). */
 export const LOCAL_SIGN_IN_FAILED_MESSAGE =
   'Anmeldung nicht möglich. Prüfen Sie E-Mail-Adresse und Passwort.'
+/** The sign-in worked, but the session could not be set up - never the person's mistake. */
+export const LOCAL_SIGN_IN_INCOMPLETE_MESSAGE =
+  'Die Anmeldung war erfolgreich, aber Ihr Konto konnte nicht geladen werden. Bitte versuchen Sie es erneut.'
 export const LOCAL_SIGN_IN_UNREACHABLE_MESSAGE =
   'Die Anmeldung konnte nicht durchgeführt werden. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.'
 

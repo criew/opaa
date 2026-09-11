@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import axios from 'axios'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
 import { setupAuthInterceptors } from '../services/apiInterceptors'
+import { LAST_SESSION_KIND_STORAGE_KEY } from '../services/authApi'
 import { useAuthStore } from './authStore'
 import { useSpaceStore } from './spaceStore'
 import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
@@ -35,15 +36,20 @@ function withLocalConfig() {
   server.use(http.get('/api/v1/auth/config', () => HttpResponse.json(LOCAL_CONFIG)))
 }
 
+/** The non-secret note that gates the one refresh attempt at start-up. */
+function rememberLastLocalSession() {
+  localStorage.setItem(LAST_SESSION_KIND_STORAGE_KEY, 'local')
+}
+
 function setCsrfCookie() {
   document.cookie = 'XSRF-TOKEN=csrf-1; path=/'
 }
 
-function clearCookies() {
-  for (const entry of document.cookie.split(';')) {
-    const name = entry.split('=')[0]?.trim()
-    if (name) document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`
-  }
+/** A local session as it stands after a reload, before anything is renewed. */
+function standingLocalSession() {
+  rememberLastLocalSession()
+  setCsrfCookie()
+  useAuthStore.setState({ sessionKind: 'local', token: 'old', isAuthenticated: true })
 }
 
 /**
@@ -52,7 +58,6 @@ function clearCookies() {
  */
 describe('authStore - local session', () => {
   beforeEach(() => {
-    clearCookies()
     sessionStorage.clear()
     localStorage.clear()
     useAuthStore.setState({
@@ -73,12 +78,11 @@ describe('authStore - local session', () => {
     })
   })
 
-  afterEach(() => {
-    clearCookies()
-  })
-
-  it('makes no refresh call at all while there is no CSRF cookie', async () => {
+  // The CSRF cookie cannot gate this: the backend sets it on every response, so it is already
+  // there after the first GET /auth/config of a signed-out visitor.
+  it('makes no refresh call while this browser never held a local session', async () => {
     withLocalConfig()
+    setCsrfCookie()
     const refreshes = vi.fn()
     server.use(
       http.post('/api/v1/auth/local/refresh', () => {
@@ -96,6 +100,7 @@ describe('authStore - local session', () => {
 
   it('restores the session from the refresh cookie on a reload', async () => {
     withLocalConfig()
+    rememberLastLocalSession()
     setCsrfCookie()
     let sentHeader: string | null = null
     server.use(
@@ -114,13 +119,14 @@ describe('authStore - local session', () => {
     expect(state.sessionKind).toBe('local')
     expect(state.token).toBe('local-access-token')
     expect(state.user).toEqual(ME)
-    expect(sessionStorage.getItem('opaa.auth.sessionKind')).toBe('local')
-    expect(localStorage.getItem('opaa.auth.sessionKind')).toBeNull()
+    // the access token itself is never written anywhere
+    expect(JSON.stringify(localStorage)).not.toContain('local-access-token')
+    expect(JSON.stringify(sessionStorage)).not.toContain('local-access-token')
   })
 
-  it('stays signed out - without a loop - when the refresh is refused', async () => {
+  it('stays signed out - without a loop - and forgets the note when the refresh is refused', async () => {
     withLocalConfig()
-    setCsrfCookie()
+    rememberLastLocalSession()
     let calls = 0
     server.use(
       http.post('/api/v1/auth/local/refresh', () => {
@@ -134,6 +140,35 @@ describe('authStore - local session', () => {
     expect(calls).toBe(1)
     expect(useAuthStore.getState().isAuthenticated).toBe(false)
     expect(useAuthStore.getState().isLoading).toBe(false)
+    expect(localStorage.getItem(LAST_SESSION_KIND_STORAGE_KEY)).toBeNull()
+  })
+
+  // ADR-0033, Entscheidung 8: a session that is over says why, even when the refusal only reaches
+  // the identity call.
+  it('names the cause when the restored session is refused by its marker', async () => {
+    withLocalConfig()
+    rememberLastLocalSession()
+    server.use(
+      http.post('/api/v1/auth/local/refresh', () => HttpResponse.json(TOKEN)),
+      http.get(
+        '/api/v1/auth/me',
+        () =>
+          new HttpResponse(null, {
+            status: 401,
+            headers: {
+              'WWW-Authenticate':
+                'Bearer error="invalid_token", error_description="account_locked:admin"',
+            },
+          }),
+      ),
+    )
+
+    await useAuthStore.getState().initialize()
+
+    const state = useAuthStore.getState()
+    expect(state.isAuthenticated).toBe(false)
+    expect(state.isLoading).toBe(false)
+    expect(state.error).toMatch(/von der Systemverwaltung gesperrt/)
   })
 
   it('signs in with e-mail address and password', async () => {
@@ -154,6 +189,7 @@ describe('authStore - local session', () => {
     expect(state.sessionKind).toBe('local')
     expect(state.isAuthenticated).toBe(true)
     expect(state.token).toBe('local-access-token')
+    expect(localStorage.getItem(LAST_SESSION_KIND_STORAGE_KEY)).toBe('local')
   })
 
   it('answers every refused sign-in with the same sentence', async () => {
@@ -190,6 +226,19 @@ describe('authStore - local session', () => {
     await useAuthStore.getState().loginLocal('erika.muster@stadt.example', 'geheim')
 
     expect(useAuthStore.getState().error).toMatch(/Verbindung/)
+  })
+
+  it('does not blame the credentials when only the identity call fails', async () => {
+    server.use(
+      http.post('/api/v1/auth/local/login', () => HttpResponse.json(TOKEN)),
+      http.get('/api/v1/auth/me', () => new HttpResponse(null, { status: 500 })),
+    )
+
+    const ok = await useAuthStore.getState().loginLocal('erika.muster@stadt.example', 'geheim')
+
+    expect(ok).toBe(false)
+    expect(useAuthStore.getState().error).toMatch(/Konto konnte nicht geladen werden/)
+    expect(useAuthStore.getState().isAuthenticated).toBe(false)
   })
 
   it('does not fetch the identity while a password change is owed', async () => {
@@ -244,7 +293,7 @@ describe('authStore - local session', () => {
   // ADR-0033, Entscheidung 7: presenting the same rotating refresh token twice counts as a replay
   // and revokes every session of the account - concurrent callers must share one request.
   it('renews through a single shared request', async () => {
-    setCsrfCookie()
+    standingLocalSession()
     let calls = 0
     server.use(
       http.post('/api/v1/auth/local/refresh', async () => {
@@ -253,7 +302,6 @@ describe('authStore - local session', () => {
         return HttpResponse.json({ ...TOKEN, accessToken: 'renewed-token' })
       }),
     )
-    useAuthStore.setState({ sessionKind: 'local', token: 'old', isAuthenticated: true })
 
     const [first, second] = await Promise.all([
       useAuthStore.getState().renewToken(),
@@ -266,18 +314,40 @@ describe('authStore - local session', () => {
     expect(useAuthStore.getState().token).toBe('renewed-token')
   })
 
+  // The tab-local single-flight cannot see the other tabs of the same browser, which hold the very
+  // same rotating cookie - the Web Lock serialises them.
+  it('serialises the refresh across tabs through a Web Lock', async () => {
+    standingLocalSession()
+    const requested: string[] = []
+    const locks = {
+      request: vi.fn(async (name: string, call: () => Promise<unknown>) => {
+        requested.push(name)
+        return call()
+      }),
+    }
+    vi.stubGlobal('navigator', { ...navigator, locks })
+    server.use(http.post('/api/v1/auth/local/refresh', () => HttpResponse.json(TOKEN)))
+
+    try {
+      await expect(useAuthStore.getState().renewToken()).resolves.toBe(true)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+
+    expect(requested).toEqual(['opaa.local.refresh'])
+  })
+
   it('reports a refused renewal instead of retrying it', async () => {
-    setCsrfCookie()
+    standingLocalSession()
     server.use(
       http.post('/api/v1/auth/local/refresh', () => new HttpResponse(null, { status: 401 })),
     )
-    useAuthStore.setState({ sessionKind: 'local', token: 'old', isAuthenticated: true })
 
     await expect(useAuthStore.getState().renewToken()).resolves.toBe(false)
   })
 
   it('repeats a refresh once with a freshly primed CSRF cookie', async () => {
-    setCsrfCookie()
+    standingLocalSession()
     let calls = 0
     server.use(
       http.post('/api/v1/auth/local/refresh', () => {
@@ -296,7 +366,6 @@ describe('authStore - local session', () => {
         return HttpResponse.json(TOKEN)
       }),
     )
-    useAuthStore.setState({ sessionKind: 'local', token: 'old', isAuthenticated: true })
 
     await expect(useAuthStore.getState().renewToken()).resolves.toBe(true)
     expect(calls).toBe(2)
@@ -326,7 +395,7 @@ describe('authStore - local session', () => {
     expect(state.isAuthenticated).toBe(false)
     expect(state.sessionKind).toBeNull()
     expect(state.token).toBeNull()
-    expect(sessionStorage.getItem('opaa.auth.sessionKind')).toBeNull()
+    expect(localStorage.getItem(LAST_SESSION_KIND_STORAGE_KEY)).toBeNull()
     expect(useSpaceStore.getState().spaces).toEqual([])
   })
 
@@ -362,6 +431,7 @@ describe('authStore - local session', () => {
     await useAuthStore.getState().logout()
 
     expect(useAuthStore.getState().isAuthenticated).toBe(false)
+    expect(localStorage.getItem(LAST_SESSION_KIND_STORAGE_KEY)).toBeNull()
   })
 
   it.each([
@@ -390,10 +460,12 @@ describe('authStore - local session', () => {
     expect(useAuthStore.getState().error).toBeNull()
     expect(useAuthStore.getState().localAccounts.enabled).toBe(true)
   })
+
   // The whole 401 path of a local session in one go: one shared refresh, one repeat of the
   // original request, no second attempt.
   it('answers a 401 in a local session with exactly one refresh and one repeat', async () => {
-    setCsrfCookie()
+    standingLocalSession()
+    useAuthStore.setState({ token: 'expired-token' })
     let refreshes = 0
     let calls = 0
     server.use(
@@ -408,7 +480,6 @@ describe('authStore - local session', () => {
         return HttpResponse.json({ ok: true })
       }),
     )
-    useAuthStore.setState({ sessionKind: 'local', token: 'expired-token', isAuthenticated: true })
     const client = axios.create({ baseURL: '/api' })
     setupAuthInterceptors(
       client,
@@ -426,7 +497,7 @@ describe('authStore - local session', () => {
   })
 
   it('ends the session without a refresh when the 401 names a marker', async () => {
-    setCsrfCookie()
+    standingLocalSession()
     let refreshes = 0
     server.use(
       http.post('/api/v1/auth/local/refresh', () => {
@@ -445,7 +516,6 @@ describe('authStore - local session', () => {
           }),
       ),
     )
-    useAuthStore.setState({ sessionKind: 'local', token: 'token', isAuthenticated: true })
     const client = axios.create({ baseURL: '/api' })
     setupAuthInterceptors(
       client,

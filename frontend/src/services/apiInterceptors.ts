@@ -50,12 +50,16 @@ interface ChallengeCarrier {
   response?: { headers?: Record<string, unknown>; data?: unknown }
 }
 
+function asChallengeCarrier(error: unknown): ChallengeCarrier {
+  return typeof error === 'object' && error !== null ? (error as ChallengeCarrier) : {}
+}
+
 /**
  * The session-ending marker of a 401, with its cause when the backend named one; null when the
  * challenge names no such marker (an ordinary expired token, which a renewal can still fix).
  */
-export function sessionEndingReason(error: ChallengeCarrier): SessionExpiredReason | null {
-  const challenge = error.response?.headers?.['www-authenticate']
+export function sessionEndingReason(error: unknown): SessionExpiredReason | null {
+  const challenge = asChallengeCarrier(error).response?.headers?.['www-authenticate']
   if (typeof challenge !== 'string') return null
   const described = /error_description="([^"]*)"/.exec(challenge)
   const value = described ? described[1] : challenge
@@ -66,9 +70,9 @@ export function sessionEndingReason(error: ChallengeCarrier): SessionExpiredReas
 
 /** The reason of a 403 that demands a password change; null when the 403 is an ordinary one. */
 export function passwordChangeRequiredReason(
-  error: ChallengeCarrier,
+  error: unknown,
 ): PasswordChangeReason | null | undefined {
-  const body = error.response?.data
+  const body = asChallengeCarrier(error).response?.data
   if (typeof body !== 'object' || body === null) return undefined
   const { code, reason } = body as { code?: unknown; reason?: unknown }
   if (code !== PASSWORD_CHANGE_REQUIRED) return undefined

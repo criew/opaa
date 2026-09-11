@@ -13,6 +13,10 @@ import ChangePasswordPage from './ChangePasswordPage'
  * successful change ends in a working session rather than a new sign-in.
  */
 describe('ChangePasswordPage', () => {
+  // The store actions are real again for every test; a spy from the previous one would silently
+  // make the next assertion about nothing.
+  const { changePassword, logout } = useAuthStore.getState()
+
   beforeEach(() => {
     useAuthStore.setState({
       mode: 'oidc',
@@ -29,6 +33,8 @@ describe('ChangePasswordPage', () => {
       sessionKind: 'local',
       passwordChangeRequired: false,
       passwordChangeReason: null,
+      changePassword,
+      logout,
     })
   })
 
@@ -133,6 +139,22 @@ describe('ChangePasswordPage', () => {
     )
 
     expect(screen.getByText('Anmeldung')).toBeInTheDocument()
+  })
+
+  // The forced change locks every other route - without a way out the only escape would be
+  // closing the browser.
+  it('offers a way out of a forced change', async () => {
+    const logoutSpy = vi.fn().mockResolvedValue(undefined)
+    useAuthStore.setState({
+      passwordChangeRequired: true,
+      passwordChangeReason: 'INITIAL',
+      logout: logoutSpy,
+    })
+    renderWithProviders(<ChangePasswordPage />, { withRouter: true })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abmelden' }))
+
+    expect(logoutSpy).toHaveBeenCalled()
   })
 
   it('points a provider session at its provider instead of offering a mask', () => {

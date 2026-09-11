@@ -8,6 +8,10 @@ import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
 import LoginPage from './LoginPage'
 
 describe('LoginPage', () => {
+  // The store actions are real again for every test; a spy from the previous one would silently
+  // make the next assertion about nothing.
+  const { loginLocal, loginOidc } = useAuthStore.getState()
+
   beforeEach(() => {
     useBrandingStore.setState({ branding: OPAA_BRANDING })
     useAuthStore.setState({
@@ -24,6 +28,8 @@ describe('LoginPage', () => {
       sessionKind: null,
       passwordChangeRequired: false,
       passwordChangeReason: null,
+      loginLocal,
+      loginOidc,
     })
     localStorage.clear()
   })

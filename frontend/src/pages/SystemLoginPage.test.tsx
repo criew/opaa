@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { Route, Routes } from 'react-router'
+import { server } from '../mocks/server'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
@@ -21,6 +23,10 @@ describe('SystemLoginPage', () => {
     passwordMinLength: 12,
   }
 
+  // The store actions are real again for every test; a spy from the previous one would silently
+  // make the next assertion about nothing.
+  const { loginLocal } = useAuthStore.getState()
+
   beforeEach(() => {
     useBrandingStore.setState({ branding: OPAA_BRANDING })
     useAuthStore.setState({
@@ -38,6 +44,7 @@ describe('SystemLoginPage', () => {
       sessionKind: null,
       passwordChangeRequired: false,
       passwordChangeReason: null,
+      loginLocal,
     })
   })
 
@@ -72,15 +79,27 @@ describe('SystemLoginPage', () => {
     expect(loginLocal).toHaveBeenCalledWith('admin@opaa.local', 'notfall')
   })
 
-  it('shows the same sentence a wrong password gets when a regular account signs in here', () => {
-    useAuthStore.setState({
-      error: 'Anmeldung nicht möglich. Prüfen Sie E-Mail-Adresse und Passwort.',
-    })
+  // ADR-0033, Entscheidung 9: a regular local account refused here reads exactly like a wrong
+  // password - the page must not betray which of the two it was.
+  it('shows the same sentence a wrong password gets when a regular account signs in here', async () => {
+    server.use(http.post('/api/v1/auth/local/login', () => new HttpResponse(null, { status: 401 })))
     renderWithProviders(<SystemLoginPage />, { withRouter: true })
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
+    await userEvent.type(screen.getByLabelText('E-Mail-Adresse'), 'erika.muster@stadt.example')
+    await userEvent.type(screen.getByLabelText('Passwort'), 'richtig-aber-kein-admin')
+    await userEvent.click(screen.getByRole('button', { name: 'Anmelden' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
       'Anmeldung nicht möglich. Prüfen Sie E-Mail-Adresse und Passwort.',
     )
+  })
+
+  it('waits for the configuration before showing the mask', () => {
+    useAuthStore.setState({ isLoading: true })
+    renderWithProviders(<SystemLoginPage />, { withRouter: true })
+
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    expect(screen.queryByLabelText('E-Mail-Adresse')).not.toBeInTheDocument()
   })
 
   it('sends the visitor to the regular sign-in once the management is switched on', () => {

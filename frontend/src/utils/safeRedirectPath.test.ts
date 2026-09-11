@@ -10,9 +10,17 @@ describe('safeRedirectPath', () => {
     expect(safeRedirectPath('https://evil.example/pwn')).toBe('/chat')
   })
 
-  it('falls back for a protocol-relative target', () => {
-    expect(safeRedirectPath('//evil.example/pwn')).toBe('/chat')
-    expect(safeRedirectPath('/\\evil.example/pwn')).toBe('/chat')
+  // Every shape the URL parser folds into a protocol-relative target: a backslash counts as a
+  // separator, and a control character is dropped before parsing.
+  it.each([
+    '//evil.example/pwn',
+    '/\\evil.example',
+    '/\\\\evil',
+    '/\\/evil.example',
+    '/\r//evil',
+    '/\t//evil',
+  ])('falls back for the protocol-relative target %j', (target) => {
+    expect(safeRedirectPath(target)).toBe('/chat')
   })
 
   it('falls back for a percent-encoded protocol-relative target', () => {

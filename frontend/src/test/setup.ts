@@ -20,6 +20,17 @@ import {
 import { resetMockAuthConfig, resetMockBranding, resetMockOidcProviders } from '../mocks/fixtures'
 import { resetMockMailSettings, resetMockMailTemplates } from '../mocks/mailFixtures'
 
+/**
+ * MSW passes a handler's `Set-Cookie` into `document.cookie`, which jsdom keeps for the whole file.
+ * A cookie left behind by one test is state the next one never asked for.
+ */
+function clearCookies() {
+  for (const entry of document.cookie.split(';')) {
+    const name = entry.split('=')[0]?.trim()
+    if (name) document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`
+  }
+}
+
 beforeAll(() => server.listen())
 afterEach(() => {
   server.resetHandlers()
@@ -38,5 +49,6 @@ afterEach(() => {
   // The auth config fixture is mutable too (ADR-0033): a test that switches the local account
   // management on must not leave it on for the next one.
   resetMockAuthConfig()
+  clearCookies()
 })
 afterAll(() => server.close())

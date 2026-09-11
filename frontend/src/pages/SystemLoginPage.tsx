@@ -1,6 +1,7 @@
 import Alert from '@mui/material/Alert'
 import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
+import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
@@ -31,6 +32,17 @@ export default function SystemLoginPage() {
 
   if (isAuthenticated) {
     return <Navigate to={redirectTargetOf(location.state, location.search)} replace />
+  }
+  // Until the configuration is in, "switched off" is only the default - showing the mask now would
+  // mean showing it and then redirecting away from it.
+  if (isLoading) {
+    return (
+      <AuthLayout>
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress />
+        </Box>
+      </AuthLayout>
+    )
   }
   if (localAccounts.enabled) {
     return <Navigate to={LOGIN_ROUTE} replace />

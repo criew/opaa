@@ -70,11 +70,6 @@ function readCookie(name: string): string | null {
   }
 }
 
-/** Whether this browser holds the CSRF cookie a refresh or logout would have to double-submit. */
-export function hasCsrfToken(): boolean {
-  return readCookie(CSRF_COOKIE) !== null
-}
-
 /**
  * The double-submit header for the two cookie-bearing endpoints. Empty when no token is present -
  * the caller decides whether to attempt the request at all (the store does not: no cookie means
@@ -190,19 +185,75 @@ export async function changePassword(
   }
 }
 
+/**
+ * The non-secret note that this browser last held a local session (ADR-0033, Entscheidung 7). It
+ * gates the one refresh attempt at start-up. The CSRF cookie cannot do that job: `CsrfCookieFilter`
+ * sets it on *every* response, so it is already there after the first `GET /auth/config` of a
+ * signed-out visitor, and the gate would let a pointless `POST /refresh` through on every page
+ * load. Deliberately in localStorage and deliberately not a secret: it says nothing but "there was
+ * a local session here", survives a tab restart, and gives the refresh token - which stays in the
+ * HttpOnly cookie - away to nobody.
+ */
+export const LAST_SESSION_KIND_STORAGE_KEY = 'opaa.auth.lastSessionKind'
+const LOCAL_SESSION_KIND = 'local'
+
+/** The cross-tab lock name; see {@link performLocalRefresh}. */
+const REFRESH_LOCK_NAME = 'opaa.local.refresh'
+
+export function rememberLocalSession(): void {
+  try {
+    localStorage.setItem(LAST_SESSION_KIND_STORAGE_KEY, LOCAL_SESSION_KIND)
+  } catch {
+    // storage may be unavailable (private mode); the next reload then simply starts signed out
+  }
+}
+
+export function forgetLocalSession(): void {
+  try {
+    localStorage.removeItem(LAST_SESSION_KIND_STORAGE_KEY)
+  } catch {
+    // see rememberLocalSession
+  }
+}
+
+export function hadLocalSession(): boolean {
+  try {
+    return localStorage.getItem(LAST_SESSION_KIND_STORAGE_KEY) === LOCAL_SESSION_KIND
+  } catch {
+    return false
+  }
+}
+
 let inFlightLocalRefresh: Promise<LocalTokenResponse | null> | null = null
 
 /**
- * One shared refresh attempt per moment in time (single-flight): concurrent 401s must not each
- * present the same rotating refresh token, which the backend would read as a replay and answer by
- * revoking the whole family. Without the CSRF cookie there is no local session to restore, and no
- * request is made at all - a regular OIDC sign-in must not see a failed call it never asked for.
+ * Serialises the refresh across every tab of this browser. The refresh token rotates: two tabs
+ * presenting the same one makes the loser a replay in the backend's eyes, which revokes every
+ * session of the account. The Web Lock makes the second tab wait and then present the rotated
+ * token instead. Where `navigator.locks` does not exist (jsdom, older browsers) the call simply
+ * runs - the tab-local single-flight below still holds.
+ */
+async function withRefreshLock<T>(call: () => Promise<T>): Promise<T> {
+  const locks: LockManager | undefined =
+    typeof navigator === 'undefined' ? undefined : navigator.locks
+  if (!locks) return call()
+  return locks.request(REFRESH_LOCK_NAME, call) as Promise<T>
+}
+
+/**
+ * One shared refresh attempt per moment in time: tab-local single-flight around a cross-tab Web
+ * Lock. Without the note of a previous local session no request is made at all - a regular OIDC
+ * sign-in must not see a failed call it never asked for. A `401` is the end of the session: the
+ * note is dropped, so the next page load starts signed out instead of asking again.
  */
 export function performLocalRefresh(): Promise<LocalTokenResponse | null> {
-  if (!hasCsrfToken()) return Promise.resolve(null)
+  if (!hadLocalSession()) return Promise.resolve(null)
   if (!inFlightLocalRefresh) {
-    inFlightLocalRefresh = refreshLocal()
-      .catch(() => null)
+    inFlightLocalRefresh = withRefreshLock(() => refreshLocal())
+      .catch((err: unknown) => {
+        if (axios.isAxiosError(err) && err.response?.status === 401) forgetLocalSession()
+        return null
+      })
       .finally(() => {
         inFlightLocalRefresh = null
       })

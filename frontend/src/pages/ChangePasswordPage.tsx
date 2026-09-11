@@ -40,6 +40,7 @@ export default function ChangePasswordPage() {
   const passwordChangeReason = useAuthStore((s) => s.passwordChangeReason)
   const minLength = useAuthStore((s) => s.localAccounts.passwordMinLength)
   const changePassword = useAuthStore((s) => s.changePassword)
+  const logout = useAuthStore((s) => s.logout)
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -181,6 +182,19 @@ export default function ChangePasswordPage() {
           </Button>
         </Stack>
       </Box>
+      {/* A forced change locks every other route; without this the only way out would be closing
+          the browser. */}
+      <Typography sx={{ mt: 3, fontSize: 12, textAlign: 'center' }}>
+        <Link
+          component="button"
+          type="button"
+          onClick={() => void logout()}
+          color="text.secondary"
+          sx={{ fontSize: 12 }}
+        >
+          Abmelden
+        </Link>
+      </Typography>
     </AuthLayout>
   )
 }

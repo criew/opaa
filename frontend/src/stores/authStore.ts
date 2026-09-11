@@ -13,19 +13,23 @@ import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
 import {
   changePassword as changePasswordRequest,
   describeLocalSignInFailure,
+  forgetLocalSession,
   getAuthConfig,
   getMe,
   loginLocal as loginLocalRequest,
   logoutLocal,
   performLocalRefresh,
+  rememberLocalSession,
   UnknownIssuerError,
 } from '../services/authApi'
 import { clearDevUser, resolveDevUser } from '../services/devAuth'
 import type { SessionExpiredReason } from '../services/apiInterceptors'
+import { sessionEndingReason } from '../services/apiInterceptors'
 import {
   CONFIG_UNAVAILABLE_MESSAGE,
   LOCAL_LOGOUT_MESSAGE,
   LOCAL_SIGN_IN_FAILED_MESSAGE,
+  LOCAL_SIGN_IN_INCOMPLETE_MESSAGE,
   LOCAL_SIGN_IN_UNREACHABLE_MESSAGE,
   NO_PROVIDER_MESSAGE,
   PROVIDER_GONE_MESSAGE,
@@ -47,13 +51,13 @@ import { resetAllStores } from './resettableStores'
  * for the next sign-in. Everything token-related (renewal, 401 handling, logout) works on the
  * active session's manager.
  *
- * A tab holds at most one session, and its kind is remembered next to the flow provider
- * (ADR-0033): a local session keeps its access token in memory only - never in localStorage - and
- * is restored after a reload through the HttpOnly refresh cookie.
+ * A tab holds at most one session, and its kind lives in this store only (ADR-0033): a local
+ * session keeps its access token in memory - never in localStorage - and is restored after a
+ * reload through the HttpOnly refresh cookie, gated by the non-secret note
+ * `opaa.auth.lastSessionKind` (see authApi.ts).
  */
 export const FLOW_PROVIDER_STORAGE_KEY = 'opaa.oidc.flowProvider'
 export const LAST_PROVIDER_STORAGE_KEY = 'opaa.oidc.lastProvider'
-export const SESSION_KIND_STORAGE_KEY = 'opaa.auth.sessionKind'
 
 export {
   CONFIG_UNAVAILABLE_MESSAGE,
@@ -64,6 +68,17 @@ export {
   SESSION_EXPIRED_MESSAGE,
   UNKNOWN_ISSUER_MESSAGE,
   signInFailedMessage,
+}
+
+/**
+ * Why a session that looked established could not be taken up: the backend names the cause in the
+ * challenge of its refusal (ADR-0033, Entscheidung 8) - a locked account or a revoked session is
+ * not the same as a token that merely expired, and the person is told which it was.
+ */
+function sessionSetupFailureMessage(err: unknown, fallback: string): string {
+  if (err instanceof UnknownIssuerError) return UNKNOWN_ISSUER_MESSAGE
+  const reason = sessionEndingReason(err)
+  return reason ? sessionEndMessage(reason) : fallback
 }
 
 interface AuthState {
@@ -235,7 +250,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
    * once the new password stands (ADR-0033, Entscheidung 8).
    */
   async function adoptLocalSession(tokens: LocalTokenResponse) {
-    writeStorage(sessionStorage, SESSION_KIND_STORAGE_KEY, 'local')
+    rememberLocalSession()
     localTokenExpiresAt = Date.now() + tokens.expiresInSeconds * 1000
     const session = {
       token: tokens.accessToken,
@@ -255,22 +270,36 @@ export const useAuthStore = create<AuthState>((set, get) => {
     set({ ...session, user: me })
   }
 
-  /** Forgets the local session in this tab, without calling the backend. */
+  /** Forgets the local session in this browser, without calling the backend. */
   function dropLocalTokens() {
     localTokenExpiresAt = null
-    writeStorage(sessionStorage, SESSION_KIND_STORAGE_KEY, null)
+    forgetLocalSession()
   }
 
-  /** One attempt at the local session behind the refresh cookie; false when there is none. */
-  async function restoreLocalSession(): Promise<boolean> {
+  /**
+   * One attempt at the local session behind the refresh cookie. `none` means there is nothing to
+   * restore and the caller carries on; `restored` and `ended` both mean the outcome - including
+   * its explanation - is already in the store.
+   */
+  async function restoreLocalSession(): Promise<'none' | 'restored' | 'ended'> {
     const tokens = await performLocalRefresh()
-    if (!tokens) return false
+    if (!tokens) return 'none'
     try {
       await adoptLocalSession(tokens)
-      return true
-    } catch {
+      return 'restored'
+    } catch (err) {
+      // The refresh worked, so a session existed; whatever refused the identity call names its
+      // own cause (locked, expired, management switched off) and that is what the person reads.
       dropLocalTokens()
-      return false
+      set({
+        token: null,
+        user: null,
+        isAuthenticated: false,
+        sessionKind: null,
+        isLoading: false,
+        error: sessionSetupFailureMessage(err, SESSION_EXPIRED_MESSAGE),
+      })
+      return 'ended'
     }
   }
 
@@ -310,11 +339,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
         return
       }
       const providers = config.providers ?? []
-      set({
-        mode: config.mode,
-        providers,
-        localAccounts: config.localAccounts ?? LOCAL_ACCOUNTS_DISABLED,
-      })
+      // getAuthConfig() already substitutes the switched-off default for a missing block.
+      set({ mode: config.mode, providers, localAccounts: config.localAccounts })
 
       if (config.mode === 'dev') {
         // No login and no token: the backend authenticates every request as the selected dev
@@ -373,16 +399,15 @@ export const useAuthStore = create<AuthState>((set, get) => {
             user: null,
             isAuthenticated: false,
             isLoading: false,
-            error:
-              err instanceof UnknownIssuerError ? UNKNOWN_ISSUER_MESSAGE : SESSION_EXPIRED_MESSAGE,
+            error: sessionSetupFailureMessage(err, SESSION_EXPIRED_MESSAGE),
           })
         }
         return
       }
-      // No provider session in this tab: one attempt at a local one (ADR-0033). Without the CSRF
-      // cookie there is nothing to restore and no request is made, so a regular OIDC sign-in
-      // never sees a failed call it did not ask for.
-      if (await restoreLocalSession()) return
+      // No provider session in this tab: one attempt at a local one (ADR-0033). Without the note
+      // of an earlier local session nothing is restored and no request is made, so a regular OIDC
+      // sign-in never sees a failed call it did not ask for.
+      if ((await restoreLocalSession()) !== 'none') return
       if (providers.length === 0 && !get().localAccounts.enabled) {
         set({
           userManager: null,
@@ -413,7 +438,6 @@ export const useAuthStore = create<AuthState>((set, get) => {
         return
       }
       writeStorage(localStorage, LAST_PROVIDER_STORAGE_KEY, chosen)
-      writeStorage(sessionStorage, SESSION_KIND_STORAGE_KEY, 'oidc')
       set({ isSigningIn: true, sessionKind: 'oidc', error: null })
       try {
         await userManager.signinRedirect(options?.switchAccount ? { prompt: 'login' } : undefined)
@@ -433,10 +457,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
     loginLocal: async (email, password) => {
       set({ isSigningIn: true, error: null })
+      let tokens
       try {
-        const tokens = await loginLocalRequest(email, password)
-        await adoptLocalSession(tokens)
-        return true
+        tokens = await loginLocalRequest(email, password)
       } catch (err) {
         dropLocalTokens()
         const { status, retryAfterSeconds } = describeLocalSignInFailure(err)
@@ -451,6 +474,23 @@ export const useAuthStore = create<AuthState>((set, get) => {
               : status === null
                 ? LOCAL_SIGN_IN_UNREACHABLE_MESSAGE
                 : LOCAL_SIGN_IN_FAILED_MESSAGE,
+        })
+        return false
+      }
+      try {
+        await adoptLocalSession(tokens)
+        return true
+      } catch (err) {
+        // The credentials were right - the identity call was not. Saying "check e-mail address and
+        // password" here would send the person after a mistake they did not make.
+        dropLocalTokens()
+        set({
+          isSigningIn: false,
+          isAuthenticated: false,
+          token: null,
+          user: null,
+          sessionKind: null,
+          error: sessionSetupFailureMessage(err, LOCAL_SIGN_IN_INCOMPLETE_MESSAGE),
         })
         return false
       }
