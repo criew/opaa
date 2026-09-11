@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
+import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
@@ -18,11 +19,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The last-administrator protection against a real Postgres (#1331, ADR-0025 Entscheidung 4): the
- * conditional {@code UPDATE} behind {@link TokenRoleSynchronizer} withdraws {@code SYSTEM_ADMIN}
- * only while another administrator of the organization remains, a second withdrawal is refused and
- * audited, and a withdrawal a concurrent request already wrote is read back rather than misreported
- * as refused.
+ * The last-administrator protection against a real Postgres (#1331, ADR-0025 Entscheidung 4; since
+ * ADR-0033 Entscheidung 4 counted by {@code LocalAdminAvailabilityGuard}): the conditional {@code
+ * UPDATE} behind {@link TokenRoleSynchronizer} withdraws {@code SYSTEM_ADMIN} only while another
+ * <em>login-capable</em> administrator of the organization remains - here an account of the
+ * enabled provider row this test saves - a second withdrawal is refused and audited, and a
+ * withdrawal a concurrent request already wrote is read back rather than misreported as refused.
  */
 @OpaaIntegrationTest
 class TokenRoleSynchronizerIntegrationTest {
@@ -30,6 +32,7 @@ class TokenRoleSynchronizerIntegrationTest {
   @Autowired private TokenRoleSynchronizer synchronizer;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
+  @Autowired private OidcProviderRepository providerRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organizationId;
@@ -48,6 +51,8 @@ class TokenRoleSynchronizerIntegrationTest {
   void setUp() {
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Rollen")).getId();
+    // only an administrator of an enabled provider is login capable and counts as remaining
+    providerRepository.save(provider);
     first = admin("erste");
     second = admin("zweite");
   }
@@ -68,6 +73,7 @@ class TokenRoleSynchronizerIntegrationTest {
   void tearDown() {
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     userRepository.deleteAll(List.of(first, second));
+    providerRepository.delete(provider);
     organizationRepository.deleteById(organizationId);
   }
 
@@ -98,6 +104,34 @@ class TokenRoleSynchronizerIntegrationTest {
             "SYSTEM_ADMIN_ROLE_REVOKED/SUCCESS",
             "AUDITOR_ROLE_GRANTED/SUCCESS",
             "SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED/DENIED");
+  }
+
+  /** ADR-0033, Entscheidung 4: an administrator whose provider is switched off cannot sign in. */
+  @Test
+  void anAdministratorOfADisabledProviderDoesNotCountAsRemaining() {
+    OidcProvider off =
+        new OidcProvider(
+            "Aus",
+            "https://idp.example/realms/off-" + UUID.randomUUID(),
+            "opaa-frontend",
+            null,
+            OidcClaimMapping.keycloakDefaults());
+    off.disable();
+    providerRepository.save(off);
+    User ofDisabled = new User("aus-" + UUID.randomUUID(), off.getIssuerUri(), null, null);
+    ofDisabled.setOrganizationId(organizationId);
+    ofDisabled.setSystemRole(SystemRole.SYSTEM_ADMIN);
+    ofDisabled = userRepository.save(ofDisabled);
+    try {
+      synchronizer.apply(first, provider, List.of());
+      User result = synchronizer.apply(second, provider, List.of());
+
+      assertThat(result.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
+      assertThat(storedRole(second)).isEqualTo(SystemRole.SYSTEM_ADMIN);
+    } finally {
+      userRepository.delete(ofDisabled);
+      providerRepository.delete(off);
+    }
   }
 
   @Test

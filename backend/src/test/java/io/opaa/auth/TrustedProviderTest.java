@@ -10,7 +10,11 @@ import io.opaa.auth.oidc.OidcProviderRepository;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-/** {@link TrustedProvider}: the default provider in {@code oidc}, the dev issuer in {@code dev}. */
+/**
+ * {@link TrustedProvider}: the default provider in {@code oidc}, the dev issuer in {@code dev} -
+ * since ADR-0033 the binding of the directory synchronisation only; the initial administrator rule
+ * consults it no more ({@code InitialAdminPolicyTest}).
+ */
 class TrustedProviderTest {
 
   private final OidcProviderRepository repository = mock(OidcProviderRepository.class);

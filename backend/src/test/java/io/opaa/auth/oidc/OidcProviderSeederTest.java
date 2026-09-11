@@ -7,10 +7,16 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import io.opaa.api.types.ProviderType;
 import io.opaa.auth.AuthProperties;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.slf4j.LoggerFactory;
 
 /**
  * {@link OidcProviderSeeder} (#1329, ADR-0025 Entscheidung 3): the one-time takeover of the {@code
@@ -40,7 +46,7 @@ class OidcProviderSeederTest {
   @Test
   void seedsTheEnvironmentIssuerAsTheEnabledDefaultProviderAndWritesTheMarker() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
-    when(repository.count()).thenReturn(0L);
+    when(repository.countByProviderType(ProviderType.OIDC)).thenReturn(0L);
 
     seederFor(
             oidc(
@@ -67,7 +73,7 @@ class OidcProviderSeederTest {
   @Test
   void anAuthorityThatDiffersFromTheIssuerIsIgnoredInFavourOfTheIssuer() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
-    when(repository.count()).thenReturn(0L);
+    when(repository.countByProviderType(ProviderType.OIDC)).thenReturn(0L);
 
     seederFor(
             oidc(
@@ -166,10 +172,60 @@ class OidcProviderSeederTest {
     assertThat(captor.getValue().isDefaultProvider()).isTrue();
   }
 
+  /**
+   * ADR-0033, Entscheidung 5: the way back is now the local administrator; the old variable keeps
+   * working until 31.03.2027 and says so - with its replacement - every time it is used.
+   */
+  @Test
+  void forcedBootstrapWarnsAboutItsDeprecationWithTheReplacementAndTheRemovalDate() {
+    ListAppender<ILoggingEvent> logs = new ListAppender<>();
+    logs.start();
+    Logger logger = (Logger) LoggerFactory.getLogger(OidcProviderSeeder.class);
+    logger.addAppender(logs);
+    try {
+      when(markerRepository.seedAlreadyAttempted()).thenReturn(true);
+      when(repository.findByNormalizedIssuerUri(any())).thenReturn(Optional.empty());
+      when(repository.findByDefaultProviderTrue()).thenReturn(Optional.empty());
+      AuthProperties forced =
+          new AuthProperties(
+              "oidc",
+              new AuthProperties.OidcAuth(
+                  null, "opaa-frontend", "https://idp.example/realms/opaa", null, "force", null),
+              null,
+              "admin@opaa.local");
+
+      seederFor(forced).seedIfNeeded();
+
+      assertThat(logs.list)
+          .filteredOn(event -> event.getLevel() == Level.WARN)
+          .map(ILoggingEvent::getFormattedMessage)
+          .anyMatch(
+              message ->
+                  message.contains("OPAA_OIDC_BOOTSTRAP")
+                      && message.contains("OPAA_LOCAL_ADMIN_RESET=force")
+                      && message.contains("31.03.2027"));
+    } finally {
+      logger.detachAppender(logs);
+    }
+  }
+
+  /** The LOCAL row of ADR-0033 is no identity provider: only OIDC rows count as "already there". */
+  @Test
+  void theLocalRowAloneDoesNotStopTheTakeover() {
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    when(repository.countByProviderType(ProviderType.OIDC)).thenReturn(0L);
+    when(repository.count()).thenReturn(1L);
+
+    seederFor(oidc("https://idp.example/realms/opaa", null, null, "opaa-frontend")).seedIfNeeded();
+
+    verify(repository).save(any(OidcProvider.class));
+    verify(markerRepository).save(any(OidcProviderSeedMarker.class));
+  }
+
   @Test
   void writesOnlyTheMarkerWhenProvidersAlreadyExist() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
-    when(repository.count()).thenReturn(2L);
+    when(repository.countByProviderType(ProviderType.OIDC)).thenReturn(2L);
 
     seederFor(oidc("https://idp.example/realms/opaa", null, null, "opaa-frontend")).seedIfNeeded();
 
@@ -180,7 +236,7 @@ class OidcProviderSeederTest {
   @Test
   void leavesNoMarkerWhenTheEnvironmentNamesNoIssuerSoALaterBootstrapStillWorks() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
-    when(repository.count()).thenReturn(0L);
+    when(repository.countByProviderType(ProviderType.OIDC)).thenReturn(0L);
 
     seederFor(oidc("  ", null, null, "opaa-frontend")).seedIfNeeded();
 
@@ -191,7 +247,7 @@ class OidcProviderSeederTest {
   @Test
   void leavesNoMarkerWhenTheClientIdIsMissingSoALaterBootstrapStillWorks() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
-    when(repository.count()).thenReturn(0L);
+    when(repository.countByProviderType(ProviderType.OIDC)).thenReturn(0L);
 
     // an unset OPAA_OIDC_CLIENT_ID binds to the empty string, not to null
     seederFor(oidc("https://idp.example/realms/opaa", null, null, "")).seedIfNeeded();
@@ -203,7 +259,7 @@ class OidcProviderSeederTest {
   @Test
   void leavesNoMarkerWhenTheIssuerIsNoHttpAddress() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
-    when(repository.count()).thenReturn(0L);
+    when(repository.countByProviderType(ProviderType.OIDC)).thenReturn(0L);
 
     seederFor(oidc("idp.example/realms/opaa", null, null, "opaa-frontend")).seedIfNeeded();
 
@@ -231,7 +287,7 @@ class OidcProviderSeederTest {
   @Test
   void theIssuerIsTakenOverExactlyAsTheProviderMintsIt() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
-    when(repository.count()).thenReturn(0L);
+    when(repository.countByProviderType(ProviderType.OIDC)).thenReturn(0L);
 
     seederFor(oidc(" https://tenant.eu.auth0.com/ ", null, null, "opaa-frontend")).seedIfNeeded();
 

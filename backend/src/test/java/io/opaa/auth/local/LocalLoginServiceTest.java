@@ -42,12 +42,14 @@ class LocalLoginServiceTest {
   private static final Instant NOW = Instant.parse("2026-09-11T10:00:00Z");
   private static final String EMAIL = "erika.muster@stadt.example";
   private static final String HASH = "{bcrypt}$2a$12$stored";
+  private static final String CLIENT = "10.20.30.40";
 
   private final UserRepository users = mock(UserRepository.class);
   private final LocalCredentialsRepository credentials = mock(LocalCredentialsRepository.class);
   private final PasswordEncoder encoder = mock(PasswordEncoder.class);
   private final OidcProviderRegistry registry = mock(OidcProviderRegistry.class);
   private final LocalLoginAttemptListener listener = mock(LocalLoginAttemptListener.class);
+  private final LocalAdminNetworkPolicy networkPolicy = mock(LocalAdminNetworkPolicy.class);
   private LocalLoginService service;
 
   private User user;
@@ -62,8 +64,10 @@ class LocalLoginServiceTest {
             encoder,
             registry,
             List.of(listener),
+            networkPolicy,
             Clock.fixed(NOW, ZoneOffset.UTC));
     when(registry.localAccountsEnabled()).thenReturn(true);
+    when(networkPolicy.permitsAdminSignIn(any())).thenReturn(true);
     user = localUser(SystemRole.USER);
     row = activeCredentials(user);
     when(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, EMAIL))
@@ -75,7 +79,7 @@ class LocalLoginServiceTest {
   @Test
   void signsInAnActiveAccountWithTheRightPasswordAndResetsNothingWhenNothingFailedBefore() {
     Optional<LocalLoginService.AuthenticatedLocalAccount> result =
-        service.authenticate("  Erika.Muster@Stadt.Example ", "richtig");
+        service.authenticate("  Erika.Muster@Stadt.Example ", "richtig", CLIENT);
 
     assertThat(result).isPresent();
     assertThat(result.get().user()).isSameAs(user);
@@ -89,7 +93,7 @@ class LocalLoginServiceTest {
 
   @Test
   void aWrongPasswordIsRefusedCountedAndReportedToTheListener() {
-    assertThat(service.authenticate(EMAIL, "falsch")).isEmpty();
+    assertThat(service.authenticate(EMAIL, "falsch", CLIENT)).isEmpty();
 
     verify(encoder, times(1)).matches("falsch", HASH);
     verify(credentials).recordFailedLogin(user.getId(), NOW);
@@ -102,7 +106,7 @@ class LocalLoginServiceTest {
   void anUnknownAddressStillCostsExactlyOneHashComparison() {
     when(users.findByIssuerAndEmailIgnoreCase(any(), any())).thenReturn(Optional.empty());
 
-    assertThat(service.authenticate("niemand@stadt.example", "irgendwas")).isEmpty();
+    assertThat(service.authenticate("niemand@stadt.example", "irgendwas", CLIENT)).isEmpty();
 
     verify(encoder, times(1)).matches(eq("irgendwas"), anyString());
     verify(encoder).matches("irgendwas", LocalLoginService.DUMMY_HASH);
@@ -116,7 +120,7 @@ class LocalLoginServiceTest {
     invited.markEmailVerified(NOW);
     when(credentials.findById(user.getId())).thenReturn(Optional.of(invited));
 
-    assertThat(service.authenticate(EMAIL, "irgendwas")).isEmpty();
+    assertThat(service.authenticate(EMAIL, "irgendwas", CLIENT)).isEmpty();
 
     verify(encoder, times(1)).matches("irgendwas", LocalLoginService.DUMMY_HASH);
     verifyNoMoreInteractions(listener);
@@ -126,7 +130,7 @@ class LocalLoginServiceTest {
   void aLockedAccountIsRefusedEvenWithTheRightPasswordAndNotCountedAsAFailedPassword() {
     row.lock(LockReason.ADMIN, NOW.minus(Duration.ofHours(1)), null);
 
-    assertThat(service.authenticate(EMAIL, "richtig")).isEmpty();
+    assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isEmpty();
 
     verify(encoder, times(1)).matches("richtig", HASH);
     verify(credentials, never()).recordFailedLogin(any(), any());
@@ -138,14 +142,14 @@ class LocalLoginServiceTest {
   void aTemporaryLockoutInTheFutureRefusesTheSignIn() {
     row.recordLockoutUntil(NOW.plus(Duration.ofMinutes(10)), NOW);
 
-    assertThat(service.authenticate(EMAIL, "richtig")).isEmpty();
+    assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isEmpty();
   }
 
   @Test
   void anExpiredAccountIsRefusedEvenWithTheRightPassword() {
     row.setExpiresAt(NOW.minus(Duration.ofDays(1)), NOW);
 
-    assertThat(service.authenticate(EMAIL, "richtig")).isEmpty();
+    assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isEmpty();
     verify(encoder, times(1)).matches("richtig", HASH);
   }
 
@@ -157,7 +161,7 @@ class LocalLoginServiceTest {
     when(withFailures.getFailedLoginAttempts()).thenReturn(3);
     when(credentials.findById(user.getId())).thenReturn(Optional.of(withFailures));
 
-    assertThat(service.authenticate(EMAIL, "richtig")).isPresent();
+    assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isPresent();
 
     // an atomic UPDATE, never a save() of the loaded entity: recordFailedLogin bypasses @Version
     verify(credentials).resetFailedLoginAttempts(user.getId(), NOW);
@@ -168,7 +172,7 @@ class LocalLoginServiceTest {
   void withTheManagementSwitchedOffOnlyALocalSystemAdminSignsIn() {
     when(registry.localAccountsEnabled()).thenReturn(false);
 
-    assertThat(service.authenticate(EMAIL, "richtig")).isEmpty();
+    assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isEmpty();
     verify(listener, never()).onLoginSucceeded(any(), any(), any());
     verify(credentials, never()).recordFailedLogin(any(), any());
 
@@ -178,14 +182,43 @@ class LocalLoginServiceTest {
         .thenReturn(Optional.of(admin));
     when(credentials.findById(admin.getId())).thenReturn(Optional.of(adminRow));
 
-    assertThat(service.authenticate(EMAIL, "richtig")).isPresent();
+    assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isPresent();
+  }
+
+  /**
+   * ADR-0033, Entscheidung 9: a local {@code SYSTEM_ADMIN} outside {@code
+   * OPAA_LOCAL_ADMIN_ALLOWED_CIDRS} is refused like a wrong password - without a count, without the
+   * listener - while regular accounts are never restricted.
+   */
+  @Test
+  void aLocalSystemAdminOutsideTheAllowedNetworksIsRefusedLikeAWrongPassword() {
+    when(networkPolicy.permitsAdminSignIn("203.0.113.9")).thenReturn(false);
+    User admin = localUser(SystemRole.SYSTEM_ADMIN);
+    LocalCredentials adminRow = activeCredentials(admin);
+    when(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, EMAIL))
+        .thenReturn(Optional.of(admin));
+    when(credentials.findById(admin.getId())).thenReturn(Optional.of(adminRow));
+
+    assertThat(service.authenticate(EMAIL, "richtig", "203.0.113.9")).isEmpty();
+
+    verify(encoder, times(1)).matches("richtig", HASH);
+    verify(credentials, never()).recordFailedLogin(any(), any());
+    verify(listener, never()).onLoginSucceeded(any(), any(), any());
+    verify(listener, never()).onPasswordRejected(any(), any(), any());
+
+    assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isPresent();
+    when(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, EMAIL))
+        .thenReturn(Optional.of(user));
+    when(credentials.findById(user.getId())).thenReturn(Optional.of(row));
+    assertThat(service.authenticate(EMAIL, "richtig", "203.0.113.9")).isPresent();
+    verify(networkPolicy, never()).permitsAdminSignIn(eq("203.0.113.9"), any());
   }
 
   @Test
   void aBlankAddressOrPasswordIsRefusedWithoutTouchingTheDatabase() {
-    assertThat(service.authenticate("   ", "richtig")).isEmpty();
-    assertThat(service.authenticate(EMAIL, "")).isEmpty();
-    assertThat(service.authenticate(null, null)).isEmpty();
+    assertThat(service.authenticate("   ", "richtig", CLIENT)).isEmpty();
+    assertThat(service.authenticate(EMAIL, "", CLIENT)).isEmpty();
+    assertThat(service.authenticate(null, null, CLIENT)).isEmpty();
 
     verify(users, never()).findByIssuerAndEmailIgnoreCase(any(), any());
   }

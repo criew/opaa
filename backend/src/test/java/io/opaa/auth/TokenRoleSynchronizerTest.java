@@ -13,6 +13,7 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.local.LocalAdminAvailabilityGuard;
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
 import java.util.List;
@@ -26,14 +27,16 @@ import org.mockito.ArgumentCaptor;
  * {@link TokenRoleSynchronizer} (#1331, ADR-0025 Entscheidung 4): the provider is authoritative for
  * {@code SYSTEM_ADMIN} and {@code AUDITOR} once it has a roles claim - written only on deviation,
  * audited under the identity-provider actor, {@code SYSTEM_ADMIN} before {@code AUDITOR}, and the
- * last administrator is never withdrawn by a token.
+ * last login-capable administrator is never withdrawn by a token - the count is the {@link
+ * LocalAdminAvailabilityGuard}'s (ADR-0033, Entscheidung 4).
  */
 class TokenRoleSynchronizerTest {
 
   private final UserRepository userRepository = mock(UserRepository.class);
+  private final LocalAdminAvailabilityGuard guard = mock(LocalAdminAvailabilityGuard.class);
   private final AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
   private final TokenRoleSynchronizer synchronizer =
-      new TokenRoleSynchronizer(userRepository, auditEventRecorder);
+      new TokenRoleSynchronizer(userRepository, guard, auditEventRecorder);
   private final OidcProvider provider =
       new OidcProvider(
           "Beschäftigte",
@@ -51,7 +54,7 @@ class TokenRoleSynchronizerTest {
     user.setOrganizationId(UUID.randomUUID());
     when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
     when(userRepository.changeRoleIfStill(any(), any(), any())).thenReturn(1);
-    when(userRepository.withdrawSystemAdminIfAnotherRemains(any(), any())).thenReturn(1);
+    when(guard.withdrawSystemAdminIfAnotherRemains(any(), any())).thenReturn(1);
   }
 
   @Test
@@ -86,7 +89,7 @@ class TokenRoleSynchronizerTest {
     synchronizer.apply(user, provider, List.of("opaa-auditor"));
 
     verify(userRepository, never()).changeRoleIfStill(any(), any(), any());
-    verify(userRepository, never()).withdrawSystemAdminIfAnotherRemains(any(), any());
+    verify(guard, never()).withdrawSystemAdminIfAnotherRemains(any(), any());
     verify(auditEventRecorder, never()).recordSystemProcessAction(any());
   }
 
@@ -97,8 +100,8 @@ class TokenRoleSynchronizerTest {
     User result = synchronizer.apply(user, provider, List.of("opaa-auditor"));
 
     assertThat(result.getSystemRole()).isEqualTo(SystemRole.AUDITOR);
-    verify(userRepository).lockRoleChanges(user.getOrganizationId());
-    verify(userRepository).withdrawSystemAdminIfAnotherRemains(user.getId(), SystemRole.AUDITOR);
+    // the guard is the one place that counts login-capable administrators (ADR-0033, 4)
+    verify(guard).withdrawSystemAdminIfAnotherRemains(user, SystemRole.AUDITOR);
     ArgumentCaptor<AuditEvent> audit = ArgumentCaptor.forClass(AuditEvent.class);
     verify(auditEventRecorder, times(2)).recordSystemProcessAction(audit.capture());
     assertThat(audit.getAllValues())
@@ -110,7 +113,7 @@ class TokenRoleSynchronizerTest {
   @Test
   void theLastSystemAdminKeepsTheRoleAndTheRefusalIsAudited() {
     user.setSystemRole(SystemRole.SYSTEM_ADMIN);
-    when(userRepository.withdrawSystemAdminIfAnotherRemains(any(), any())).thenReturn(0);
+    when(guard.withdrawSystemAdminIfAnotherRemains(any(), any())).thenReturn(0);
 
     User result = synchronizer.apply(user, provider, List.of());
 

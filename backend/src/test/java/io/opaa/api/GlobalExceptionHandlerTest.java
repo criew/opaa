@@ -37,6 +37,22 @@ class GlobalExceptionHandlerTest {
   private final GlobalExceptionHandler handler =
       new GlobalExceptionHandler(new UploadProperties(null, null, 52_428_800L, null, 0, 0));
 
+  /** ADR-0033: a conflict may carry a stable code the client acts on; without one, none is sent. */
+  @Test
+  void handleConflictExceptionCarriesTheOptionalCode() {
+    var withCode =
+        handler.handleConflictException(
+            new io.opaa.common.ConflictException("letzter", "LAST_LOGIN_CAPABLE_ADMIN"));
+    assertEquals(409, withCode.getStatusCode().value());
+    assertNotNull(withCode.getBody());
+    assertEquals("LAST_LOGIN_CAPABLE_ADMIN", withCode.getBody().getCode());
+    assertEquals("letzter", withCode.getBody().getError());
+
+    var plain = handler.handleConflictException(new io.opaa.common.ConflictException("doppelt"));
+    assertNotNull(plain.getBody());
+    assertEquals(null, plain.getBody().getCode());
+  }
+
   @Test
   void handleGenericExceptionReturnsInternalServerError() {
     var response = handler.handleGenericException(new RuntimeException("test error"));

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -16,7 +17,7 @@ class LocalAuthPropertiesTest {
   @Test
   void fillsInTheAdrDefaults() {
     LocalAuthProperties properties =
-        new LocalAuthProperties(null, null, null, null, null, null, null);
+        new LocalAuthProperties(null, null, null, null, null, null, null, null, null, null);
 
     assertThat(properties.jwtSecret()).isEmpty();
     assertThat(properties.accessTokenTtl()).isEqualTo(Duration.ofMinutes(15));
@@ -25,6 +26,48 @@ class LocalAuthPropertiesTest {
     assertThat(properties.adminRefreshTokenTtl()).isEqualTo(Duration.ofHours(4));
     assertThat(properties.adminSessionMaxLifetime()).isEqualTo(Duration.ofHours(12));
     assertThat(properties.cookieSecure()).isTrue();
+    assertThat(properties.initialAdminPassword()).isEmpty();
+    assertThat(properties.hasInitialAdminPassword()).isFalse();
+    assertThat(properties.isAdminResetForced()).isFalse();
+    assertThat(properties.adminAllowedCidrs()).isEmpty();
+  }
+
+  @Test
+  void readsTheBootstrapSettingsOfTheLocalAdministrator() {
+    LocalAuthProperties properties =
+        new LocalAuthProperties(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "  ci-passwort  ",
+            " Force ",
+            List.of(" 10.0.0.0/8 ", "", "2001:db8::/32"));
+
+    assertThat(properties.initialAdminPassword()).isEqualTo("ci-passwort");
+    assertThat(properties.hasInitialAdminPassword()).isTrue();
+    assertThat(properties.isAdminResetForced()).isTrue();
+    assertThat(properties.adminAllowedCidrs()).containsExactly("10.0.0.0/8", "2001:db8::/32");
+  }
+
+  @Test
+  void refusesAnUnparseableAdminNetworkNamingTheVariable() {
+    assertThatThrownBy(
+            () ->
+                new LocalAuthProperties(
+                    null, null, null, null, null, null, null, null, null, List.of("10.0.0.0/33")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("OPAA_LOCAL_ADMIN_ALLOWED_CIDRS")
+        .hasMessageContaining("10.0.0.0/33");
+    assertThatThrownBy(
+            () ->
+                new LocalAuthProperties(
+                    null, null, null, null, null, null, null, null, null, List.of("kein-netz")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("OPAA_LOCAL_ADMIN_ALLOWED_CIDRS");
   }
 
   @Test
@@ -98,6 +141,6 @@ class LocalAuthPropertiesTest {
       Duration adminRefresh,
       Duration adminSession) {
     return new LocalAuthProperties(
-        secret, access, refresh, session, adminRefresh, adminSession, null);
+        secret, access, refresh, session, adminRefresh, adminSession, null, null, null, null);
   }
 }
