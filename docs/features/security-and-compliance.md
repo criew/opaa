@@ -211,7 +211,10 @@ schreiben, hängt davon ab, ob die zugrunde liegende Funktion im Code schon exis
 sind: Rechte an Assets (Vergabe/Änderung/Entzug von Grants, Änderung von `visibility`/`listed`),
 Anlegen/Ändern/Löschen von Bibliotheken, Spaces und Gruppen, Aufnahme/Rollenänderung/Entfernen von
 Mitgliedern, Eigentümerübergang eines Space, jede bewirkte Änderung eines Verzeichnisabgleichs samt
-Kopfeintrag, und die Erteilung/der Entzug der System-Admin-Rolle. Noch **nicht** verdrahtet — weil
+Kopfeintrag, die Erteilung/der Entzug der System-Admin-Rolle sowie — seit #1533 — der
+fremdveranlasste Widerruf lokaler Sitzungen (`LOCAL_SESSION_REVOKED`, zunächst nur bei
+Wiederverwendung eines Refresh-Tokens) und das Ändern des eigenen Passworts
+(`LOCAL_PASSWORD_CHANGED`). Noch **nicht** verdrahtet — weil
 die jeweilige Funktion selbst noch fehlt, nicht weil sie ausgenommen wäre: Ablauf einer Befristung
 (kein Scheduler), Aussetzen von Grants durch eine gesenkte Freigabe-Obergrenze, Bereitstellung einer
 Bibliothek in einem Space, Eigentümerübernahme ohne Zuständigkeit und der Übergang in „Nachfolge

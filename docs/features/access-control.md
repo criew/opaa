@@ -145,6 +145,48 @@ Benutzerverwaltung ist im Regelbetrieb abgeschaltet.
 > E-Mail mitgeteilt, und eine beendete Sitzung nennt beim nächsten Aufruf ihren Grund. Der Ist-Stand
 > der Umsetzung steht im Epic.
 
+**Lokale Anmeldung (gebaut, #1533).** Das Backend ist Token-Aussteller für lokale Konten:
+`POST /api/v1/auth/local/login` prüft E-Mail-Adresse (groß-/kleinschreibungsunabhängig, nur unter
+dem lokalen Issuer `urn:opaa:local`) und Passwort und stellt ein HS256-Access-Token (15 Minuten;
+Claims `jti`, `iss`, `sub` = Konto-ID, `iat`, `exp`, `email`, `name`, `pcr`, keine Rolle) sowie ein
+rotierendes Refresh-Token im Cookie `opaa_refresh` aus (`HttpOnly`, `SameSite=Strict`, `Secure`
+nach `OPAA_AUTH_LOCAL_COOKIE_SECURE`, `Path=/api/v1/auth/local`). Jede abgewiesene Anmeldung —
+unbekannte Adresse, falsches Passwort, gesperrtes, abgelaufenes oder eingeladenes Konto,
+abgeschaltete Verwaltung — ist dieselbe Antwort mit derselben Antwortzeitklasse (Hash-Vergleich
+auch gegen einen Dummy-Hash); der Fehlversuchszähler wird atomar geführt, die Sperre nach fünf
+Fehlversuchen folgt mit #1535. Anmeldefähig ist nur ein aktives Konto; bei ausgeschalteter
+Verwaltung (Schalter = `enabled` der `LOCAL`-Anbieterzeile) nur ein lokaler `SYSTEM_ADMIN`.
+`POST …/refresh` rotiert das Cookie innerhalb seiner Familie (Leerlauffrist 7 Tage, absolute
+Höchstdauer 30 Tage, für lokale Systemverwalter 4 h / 12 h; keine Rotation verlängert das
+Familienende); die erneute Vorlage eines bereits rotierten Tokens widerruft die ganze Familie und
+alle Sitzungen des Kontos, wird als `LOCAL_SESSION_REVOKED` protokolliert und als Warnung ins
+Anwendungslog geschrieben (Konto-ID, nie die Adresse). `POST …/logout` widerruft Familie und das
+vorgelegte Access-Token sofort (`jti`-Sperrliste), ohne Protokolleintrag. `refresh` und `logout`
+verlangen das CSRF-Double-Submit-Token (Cookie `XSRF-TOKEN`, Header `X-XSRF-TOKEN`); kein anderer
+Endpunkt tut das. `POST …/change-password` (Bearer) prüft das aktuelle Passwort, wendet die
+Passwortrichtlinie an (Mindestlänge aus den Einstellungen, höchstens 64 Zeichen/72 Byte, nicht die
+eigene Adresse, nicht in der mitgelieferten Sperrliste häufiger Passwörter — Verstöße als
+`fieldErrors` mit Codes `TOO_SHORT`, `TOO_LONG`, `EQUALS_EMAIL`, `TOO_COMMON`), setzt alle vor dem
+Wechsel ausgestellten Access-Tokens außer Kraft, widerruft alle Refresh-Familien außer der
+aktuellen, protokolliert `LOCAL_PASSWORD_CHANGED` und antwortet sofort mit einem neuen Token ohne
+`pcr`. Ein Token mit `pcr = true` erreicht außer `/api/v1/auth/local/*` nichts: jede andere
+Anfrage endet mit `403`, Code `PASSWORD_CHANGE_REQUIRED` und dem Anlass (`INITIAL`,
+`ADMIN_RESET`, `SECURITY`). Lokale Tokens prüft ein eigener Decoder vor der Anbieter-Registry,
+unabhängig von der `LOCAL`-Zeile und ihrem Schalter; jede Abweisung nennt im Header
+`WWW-Authenticate` ihren Grund als `error_description`: `local_accounts_disabled`,
+`account_locked:<admin|failed_logins|inactivity>`, `account_expired`,
+`session_revoked[:<admin_lock|password_changed|admin_reset|reuse_detected|handed_over>]`,
+`unknown_account` — die Oberfläche unterscheidet sie so vom abgelaufenen Token und startet keinen
+Erneuerungsversuch. Der lokale Issuer legt nie ein Konto an (unbekanntes `sub` → `401`) und
+schreibt E-Mail und Anzeigename nicht aus dem Token zurück. `GET /api/v1/auth/config` führt die
+`LOCAL`-Zeile nicht unter `providers`, sondern als `localAccounts { enabled,
+selfRegistrationEnabled, passwordResetEnabled, passwordMinLength }`; die beiden Selbstbedienungs-
+flüsse gelten nur mit gesetzter öffentlicher Basis-URL als verfügbar. Ein täglicher Lauf löscht
+Zeilen der drei Token-Tabellen spätestens sieben Tage nach Ablauf oder Widerruf; Inaktivitätssperre
+und Ablauf-Erinnerungen hängen sich dort ein (#1537, #1538). Alles davon existiert nur im
+`oidc`-Betriebsmodus; der `dev`-Modus kennt weder Aussteller noch Endpunkte. Die Anmeldeseite
+(#1539) und die Systemverwalter-Anmeldung (#1534) folgen.
+
 Die Mandantengrenze gilt auch für die Anmeldung: Eine Identität gehört zu **genau einer** Organisation.
 Es gibt kein Konto, das mehrere Mandanten sieht, und keinen Wechsel zwischen ihnen innerhalb einer
 Sitzung.

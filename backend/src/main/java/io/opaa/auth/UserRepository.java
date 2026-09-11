@@ -23,6 +23,14 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   Optional<User> findBySubjectAndIssuer(String subject, String issuer);
 
   /**
+   * The local sign-in's lookup (ADR-0033, Entscheidung 1): the address compared without regard to
+   * case, but only among the accounts of {@code issuer} - the partial unique index {@code
+   * ux_users_local_email} guarantees at most one row for the local issuer, an OIDC account with the
+   * same address is never found here.
+   */
+  Optional<User> findByIssuerAndEmailIgnoreCase(String issuer, String email);
+
+  /**
    * How many accounts were provisioned through {@code issuer} - what {@code
    * io.opaa.auth.oidc.OidcProviderService} refuses to cut off by changing a provider's issuer
    * (ADR-0025, Entscheidung 2).

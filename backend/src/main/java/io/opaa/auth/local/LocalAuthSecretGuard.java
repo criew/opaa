@@ -7,6 +7,8 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
@@ -23,10 +25,27 @@ import org.springframework.context.annotation.Profile;
 @Profile("oidc")
 public class LocalAuthSecretGuard {
 
+  private static final Logger log = LoggerFactory.getLogger(LocalAuthSecretGuard.class);
+
   private final LocalAuthProperties properties;
 
   public LocalAuthSecretGuard(LocalAuthProperties properties) {
     this.properties = properties;
+  }
+
+  /**
+   * ADR-0033, Entscheidung 7: {@code cookie-secure = false} is allowed for local HTTP, but every
+   * start in this profile says so - the refresh cookie then travels without {@code Secure}.
+   */
+  @PostConstruct
+  void warnAboutInsecureCookie() {
+    if (!Boolean.TRUE.equals(properties.cookieSecure())) {
+      log.warn(
+          "opaa.auth.local.cookie-secure is false (OPAA_AUTH_LOCAL_COOKIE_SECURE): the refresh"
+              + " cookie opaa_refresh is set without the Secure attribute and travels over plain"
+              + " HTTP. Acceptable for local development only - set it to true behind TLS"
+              + " (ADR-0033).");
+    }
   }
 
   @PostConstruct

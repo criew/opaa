@@ -24,6 +24,14 @@ public interface LocalRefreshTokenRepository extends JpaRepository<LocalRefreshT
   Optional<LocalRefreshToken> findByTokenLookupHash(String tokenLookupHash);
 
   /**
+   * The most recently revoked token of the user - its reason is the act that ended the sessions,
+   * which a refused access token names as the cause of {@code session_revoked} (ADR-0033,
+   * Entscheidung 8).
+   */
+  Optional<LocalRefreshToken> findFirstByUserIdAndRevokedAtIsNotNullOrderByRevokedAtDesc(
+      UUID userId);
+
+  /**
    * Rotates the token to its already inserted successor if - and only if - it is still active at
    * {@code now}: not revoked, within its idle limit and within the family's absolute end. Returns 1
    * for the one caller that won the rotation and 0 for every other, who must treat the presented
@@ -60,6 +68,21 @@ public interface LocalRefreshTokenRepository extends JpaRepository<LocalRefreshT
           + " WHERE t.userId = :userId AND t.revokedAt IS NULL")
   int revokeAllForUser(
       @Param("userId") UUID userId,
+      @Param("reason") RevocationReason reason,
+      @Param("now") Instant now);
+
+  /**
+   * Revokes every still active token of the user except those of {@code familyId} - the password
+   * change that keeps the session it was made from (ADR-0033, Entscheidung 11).
+   */
+  @Transactional
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "UPDATE LocalRefreshToken t SET t.revokedAt = :now, t.revocationReason = :reason"
+          + " WHERE t.userId = :userId AND t.familyId <> :familyId AND t.revokedAt IS NULL")
+  int revokeAllForUserExceptFamily(
+      @Param("userId") UUID userId,
+      @Param("familyId") UUID familyId,
       @Param("reason") RevocationReason reason,
       @Param("now") Instant now);
 

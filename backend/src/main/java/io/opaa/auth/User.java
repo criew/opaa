@@ -65,6 +65,16 @@ public class User {
     this.lastLoginAt = Instant.now();
   }
 
+  /**
+   * A local account (ADR-0033, Entscheidung 2): issuer {@link LocalIssuer#URN} and the account's
+   * own id as its subject, so a changed address never changes the identity.
+   */
+  public static User localAccount(String email, String displayName) {
+    User user = new User(null, LocalIssuer.URN, email, displayName);
+    user.subject = user.id.toString();
+    return user;
+  }
+
   public UUID getId() {
     return id;
   }

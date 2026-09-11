@@ -6,8 +6,10 @@ import com.openai.errors.OpenAIRetryableException;
 import com.openai.errors.OpenAIServiceException;
 import com.openai.errors.RateLimitException;
 import io.opaa.api.dto.ErrorResponse;
+import io.opaa.api.dto.FieldError;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
+import io.opaa.common.FieldValidationException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ServiceUnavailableException;
@@ -302,6 +304,22 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleValidationException(ValidationException ex) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .body(new ErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST.value(), Instant.now()));
+  }
+
+  /**
+   * The field-level sibling of {@link #handleValidationException(ValidationException)}: the same
+   * {@code 400} envelope, plus {@code fieldErrors} - one entry per field and violated rule with a
+   * stable code - so a form can mark the fields instead of showing one sentence.
+   */
+  @ExceptionHandler(FieldValidationException.class)
+  public ResponseEntity<ErrorResponse> handleFieldValidationException(FieldValidationException ex) {
+    ErrorResponse body =
+        new ErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST.value(), Instant.now());
+    body.setFieldErrors(
+        ex.fieldErrors().stream()
+            .map(error -> new FieldError(error.field(), error.code(), error.message()))
+            .toList());
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
   }
 
   @ExceptionHandler(UnauthorizedException.class)

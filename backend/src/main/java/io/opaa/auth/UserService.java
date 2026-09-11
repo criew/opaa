@@ -79,6 +79,9 @@ public class UserService {
    */
   public User provisionFromToken(Jwt jwt) {
     String issuer = JwtUserClaims.issuer(jwt);
+    if (LocalIssuer.URN.equals(issuer)) {
+      return findLocalAccount(jwt);
+    }
     Optional<OidcProvider> provider = providerRegistry.findEnabledByIssuer(issuer);
     OidcClaimMapping mapping =
         provider.map(OidcProvider::getClaimMapping).orElseGet(OidcClaimMapping::keycloakDefaults);
@@ -94,6 +97,25 @@ public class UserService {
             ? UserProvisionedEvent.withTokenGroups(
                 user, result.createdHere(), provider.get(), claims.groups())
             : UserProvisionedEvent.withoutTokenGroups(user, result.createdHere()));
+    return user;
+  }
+
+  /**
+   * The local issuer is a finder, never a provisioner (ADR-0033, Entscheidung 8): the account must
+   * already exist under {@code (urn:opaa:local, users.id)} - the token validator has refused an
+   * unknown subject before this runs, and this is the second lock on the same door - and neither
+   * {@code email} nor {@code display_name} is written back from the token; the database is the
+   * source here, not the claim. {@link InitialAdminPolicy} is not consulted. Only the throttled
+   * activity timestamp and the provisioning event are shared with the provider path.
+   */
+  private User findLocalAccount(Jwt jwt) {
+    User user =
+        userRepository
+            .findBySubjectAndIssuer(jwt.getSubject(), LocalIssuer.URN)
+            .orElseThrow(
+                () -> new UserNotFoundException("Kein lokales Konto zu diesem Token vorhanden"));
+    user = touchLastLogin(user);
+    eventPublisher.publishEvent(UserProvisionedEvent.withoutTokenGroups(user, false));
     return user;
   }
 
@@ -140,9 +162,7 @@ public class UserService {
   private User updateExistingUser(User existing, String email, String displayName) {
     Instant now = clock.instant();
     boolean changed = false;
-    Instant lastLoginAt = existing.getLastLoginAt();
-    if (lastLoginAt == null
-        || Duration.between(lastLoginAt, now).compareTo(LAST_LOGIN_UPDATE_THRESHOLD) >= 0) {
+    if (lastLoginDue(existing, now)) {
       existing.setLastLoginAt(now);
       changed = true;
     }
@@ -155,6 +175,21 @@ public class UserService {
       changed = true;
     }
     return changed ? userRepository.save(existing) : existing;
+  }
+
+  private User touchLastLogin(User existing) {
+    Instant now = clock.instant();
+    if (!lastLoginDue(existing, now)) {
+      return existing;
+    }
+    existing.setLastLoginAt(now);
+    return userRepository.save(existing);
+  }
+
+  private static boolean lastLoginDue(User existing, Instant now) {
+    Instant lastLoginAt = existing.getLastLoginAt();
+    return lastLoginAt == null
+        || Duration.between(lastLoginAt, now).compareTo(LAST_LOGIN_UPDATE_THRESHOLD) >= 0;
   }
 
   /**

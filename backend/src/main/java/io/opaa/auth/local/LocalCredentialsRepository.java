@@ -30,4 +30,16 @@ public interface LocalCredentialsRepository extends JpaRepository<LocalCredentia
       "UPDATE LocalCredentials c SET c.failedLoginAttempts = c.failedLoginAttempts + 1,"
           + " c.updatedAt = :now WHERE c.userId = :userId")
   int recordFailedLogin(@Param("userId") UUID userId, @Param("now") Instant now);
+
+  /**
+   * The counterpart of {@link #recordFailedLogin} on a successful sign-in: the counter returns to
+   * zero atomically, so a concurrent failed attempt neither loses its count nor makes the
+   * successful sign-in fail on a stale {@code version}.
+   */
+  @Transactional
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "UPDATE LocalCredentials c SET c.failedLoginAttempts = 0, c.updatedAt = :now"
+          + " WHERE c.userId = :userId AND c.failedLoginAttempts <> 0")
+  int resetFailedLoginAttempts(@Param("userId") UUID userId, @Param("now") Instant now);
 }
