@@ -9,7 +9,7 @@ import { MAIL_FAILING_HOST } from '../mocks/mailHandlers'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { useMailStore } from '../stores/mailStore'
-import type { MailSettingsUpdateRequest } from '../types/api'
+import type { MailSettingsUpdateRequest, MailTemplateUpdateRequest } from '../types/api'
 import MailSettingsPage from './MailSettingsPage'
 
 function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
@@ -172,9 +172,71 @@ describe('MailSettingsPage', () => {
     expect(
       screen.getByRole('button', { name: 'Platzhalter actionUrl einfügen' }),
     ).toBeInTheDocument()
+    // sandbox="" - no script, no form, no access to the surrounding document: a template is
+    // looked at, not executed
     expect(
       await screen.findByTitle('Vorschau der HTML-Fassung', {}, { timeout: 3000 }),
-    ).toBeInTheDocument()
+    ).toHaveAttribute('sandbox', '')
+  })
+
+  it('trennt den abgeschalteten vom nicht eingerichteten Zugang', async () => {
+    signInAs('SYSTEM_ADMIN')
+    setMockMailSettings({ ...mockMailSettings, enabled: false })
+    renderPage()
+
+    const status = await screen.findByRole('region', { name: 'Versandstatus' })
+    expect(within(status).getByText('Versand ausgeschaltet')).toBeInTheDocument()
+    expect(within(status).queryByText('Nicht konfiguriert')).not.toBeInTheDocument()
+  })
+
+  it('sperrt den Testversand einer Vorlage, solange der Entwurf ungespeichert ist', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderPage('/admin/mail/templates')
+
+    const list = await screen.findByRole('navigation', { name: 'Vorlagen' })
+    await user.click(within(list).getByText('Testnachricht'))
+    const subject = await screen.findByLabelText('Betreff')
+    expect(screen.getByRole('button', { name: 'Testmail senden' })).toBeEnabled()
+
+    await user.type(subject, ' (Entwurf)')
+
+    expect(screen.getByRole('button', { name: 'Testmail senden' })).toBeDisabled()
+    expect(screen.getByText(/Zum Testen zuerst speichern/)).toBeInTheDocument()
+  })
+
+  it('weist einen leeren Betreff am Feld ab, statt die Meldung des Backends abzuwarten', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderPage('/admin/mail/templates')
+
+    const list = await screen.findByRole('navigation', { name: 'Vorlagen' })
+    await user.click(within(list).getByText('Testnachricht'))
+    const subject = await screen.findByLabelText('Betreff')
+
+    await user.clear(subject)
+
+    expect(screen.getByText('Betreff darf nicht leer sein.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
+  })
+
+  it('zeigt den Feldfehler des Backends für eine nicht unterstützte Vorlagen-Syntax', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderPage('/admin/mail/templates')
+
+    const list = await screen.findByRole('navigation', { name: 'Vorlagen' })
+    await user.click(within(list).getByText('Testnachricht'))
+    const subject = await screen.findByLabelText('Betreff')
+
+    await user.clear(subject)
+    await user.paste('Hallo {{{displayName}}}')
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+    expect(
+      (await screen.findAllByText(/Nicht unterstützte Vorlagen-Syntax \{\{\{displayName\}\}\}/))
+        .length,
+    ).toBeGreaterThan(0)
   })
 
   it('zeigt den Feldfehler des Backends für einen undeklarierten Platzhalter', async () => {
@@ -191,9 +253,13 @@ describe('MailSettingsPage', () => {
     await user.paste('Hallo {{unbekannt}}')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
+    // verbatim the backend's own message: field name, unknown names, accepted names
     expect(
-      (await screen.findAllByText(/Der Platzhalter „unbekannt" ist in „Betreff" nicht zulässig/))
-        .length,
+      (
+        await screen.findAllByText(
+          /^subject: Unbekannte Platzhalter \{\{unbekannt\}\}\. Erlaubt sind /,
+        )
+      ).length,
     ).toBeGreaterThan(0)
   })
 
@@ -217,6 +283,42 @@ describe('MailSettingsPage', () => {
     expect(window.confirm).toHaveBeenCalled()
     await waitFor(() => expect(screen.getByLabelText('Betreff')).toHaveValue(original))
     expect(within(list).queryByText('angepasst')).not.toBeInTheDocument()
+  })
+
+  it('lässt eine gespeicherte HTML-Fassung beim Speichern unangetastet', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    const stored = mockMailTemplates.find((t) => t.key === 'TEST_MAIL')!
+    stored.bodyHtml = '<p>eigene HTML-Fassung</p>'
+    let sent: MailTemplateUpdateRequest | null = null
+    server.use(
+      http.put('/api/v1/system/mail-templates/:templateKey', async ({ request }) => {
+        sent = (await request.json()) as MailTemplateUpdateRequest
+        return HttpResponse.json({ ...stored, subject: sent.subject, source: 'DATABASE' })
+      }),
+    )
+    renderPage('/admin/mail/templates')
+
+    const list = await screen.findByRole('navigation', { name: 'Vorlagen' })
+    await user.click(within(list).getByText('Testnachricht'))
+    const subject = await screen.findByLabelText('Betreff')
+    await user.type(subject, ' (neu)')
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+    // the PUT is a full replacement: leaving bodyHtml out would quietly drop the override
+    await waitFor(() => expect(sent).not.toBeNull())
+    expect(sent!.bodyHtml).toBe('<p>eigene HTML-Fassung</p>')
+  })
+
+  it('führt einen unbekannten Bereich auf den SMTP-Zugang zurück', async () => {
+    signInAs('SYSTEM_ADMIN')
+    renderPage('/admin/mail/gibtesnicht')
+
+    const tabs = await screen.findByRole('tablist', { name: 'Bereiche der E-Mail-Einstellungen' })
+    expect(within(tabs).getByRole('tab', { name: 'SMTP-Zugang' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   })
 
   it('stellt die beiden Bereiche als eigene Routen bereit', async () => {

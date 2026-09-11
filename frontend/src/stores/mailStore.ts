@@ -19,6 +19,13 @@ import {
 } from '../services/api'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
+/**
+ * Monotone counter over `openTemplate` calls: clicking through the list faster than the answers
+ * arrive must leave the last-clicked template in the editor, not the one whose response happened
+ * to be slowest. The same guard the preview hook uses, for the same reason.
+ */
+let templateRequestSequence = 0
+
 interface MailState {
   settings: MailSettingsResponse | null
   isLoadingSettings: boolean
@@ -151,13 +158,16 @@ export const useMailStore = create<MailState>((set, get) => ({
 
   openTemplate: async (templateKey) => {
     const sessionEpoch = currentSessionEpoch()
+    templateRequestSequence += 1
+    const requestId = templateRequestSequence
+    const isStale = () => isStaleSessionEpoch(sessionEpoch) || requestId !== templateRequestSequence
     set({ isLoadingTemplate: true, templateError: null, template: null })
     try {
       const template = await getMailTemplate(templateKey)
-      if (isStaleSessionEpoch(sessionEpoch)) return
+      if (isStale()) return
       set({ template, isLoadingTemplate: false })
     } catch (err) {
-      if (isStaleSessionEpoch(sessionEpoch)) return
+      if (isStale()) return
       set({
         templateError: messageOf(err, 'Die Vorlage konnte nicht geladen werden'),
         isLoadingTemplate: false,
@@ -165,7 +175,11 @@ export const useMailStore = create<MailState>((set, get) => ({
     }
   },
 
-  closeTemplate: () => set({ template: null, templateError: null, isLoadingTemplate: false }),
+  closeTemplate: () => {
+    // Invalidates an open request too, so a late answer does not reopen what was just closed.
+    templateRequestSequence += 1
+    set({ template: null, templateError: null, isLoadingTemplate: false })
+  },
 
   saveTemplate: async (templateKey, request) => {
     set({ isSavingTemplate: true, templateError: null })

@@ -18,10 +18,10 @@ import io.opaa.mail.SendResult;
  * never hand-written). Shared by {@link SystemMailSettingsController} and {@link
  * SystemMailTemplateController} so the two cannot drift apart in how they represent a send result.
  *
- * <p><b>The password is masked here and nowhere else.</b> {@link #toResponse(MailSettings)} answers
- * {@link MailSettingsService#PASSWORD_MASK} when one is stored and {@code null} when none is - the
- * ciphertext never reaches this class's output, and nothing else in the API returns the field at
- * all.
+ * <p><b>The password is masked here and nowhere else.</b> {@link #toResponse(MailSettings,
+ * boolean)} answers {@link MailSettingsService#PASSWORD_MASK} when one is stored and {@code null}
+ * when none is - the ciphertext never reaches this class's output, and nothing else in the API
+ * returns the field at all.
  */
 final class MailResponseMapper {
 

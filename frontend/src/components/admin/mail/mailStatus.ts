@@ -1,6 +1,6 @@
 import type { MailSendResultResponse, MailSettingsResponse } from '../../../types/api'
 
-export type MailStatusKind = 'UNCONFIGURED' | 'UNTESTED' | 'SUCCESS' | 'FAILURE'
+export type MailStatusKind = 'UNCONFIGURED' | 'DISABLED' | 'UNTESTED' | 'SUCCESS' | 'FAILURE'
 
 export interface MailStatus {
   kind: MailStatusKind
@@ -19,13 +19,24 @@ export function formatMailTimestamp(value: string | null | undefined): string | 
  * (ADR-0033, Entscheidung 10). Which of the two timestamps is the newer one decides the verdict:
  * a success after a failure means the problem is over, and the tile must not keep claiming
  * otherwise.
+ *
+ * „Nicht konfiguriert" and „Versand ausgeschaltet" are separate readings: a complete connection
+ * that is merely switched off is a deliberate decision, and calling it unconfigured would send an
+ * administrator looking for settings that are already there.
  */
 export function mailStatusOf(settings: MailSettingsResponse): MailStatus {
-  if (!settings.enabled || !settings.host) {
+  if (!settings.host) {
     return {
       kind: 'UNCONFIGURED',
       headline: 'Nicht konfiguriert',
       detail: 'Ohne SMTP-Server versendet OPAA keine Einladungen und keine Rücksetzlinks.',
+    }
+  }
+  if (!settings.enabled) {
+    return {
+      kind: 'DISABLED',
+      headline: 'Versand ausgeschaltet',
+      detail: 'Die Verbindung ist hinterlegt; es wird nichts versendet.',
     }
   }
 

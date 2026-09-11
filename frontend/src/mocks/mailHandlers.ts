@@ -23,7 +23,8 @@ import {
  *   back means „unverändert" while an empty string clears it,
  * - a test send answers 200 whatever happens and writes the status fields, so the status tile
  *   reflects what just happened,
- * - a placeholder the template does not declare is a 400 naming the field.
+ * - an unknown placeholder and an unsupported tag form ({{{x}}}, {{#x}}, …) are a 400
+ *   naming the field, with the message the backend itself produces.
  */
 
 /** The host that makes the mock's send attempt fail, so the FAILED path is reachable. */
@@ -31,8 +32,30 @@ export const MAIL_FAILING_HOST = 'smtp.kaputt.example'
 
 const TEST_RECIPIENT = 'admin@opaa.local'
 
+/**
+ * The tag grammar of `MailPlaceholderValidator`: a triple-stache (captured on its own) or an
+ * ordinary double-stache. Kept in step with the backend so the mock rejects exactly what the
+ * backend rejects - a mock that is more permissive would let a template through here that fails
+ * in production.
+ */
+const TEMPLATE_TAG = /(\{\{\{\s*[^{}]*?\s*\}\}\})|\{\{\s*([^{}]*?)\s*\}\}/g
+
+/** Tag prefixes that are neither a plain variable nor a comment (sections, partials, unescaped). */
+const UNSUPPORTED_PREFIXES = '>#/^&='
+
+function braced(names: string[]): string {
+  return names.map((name) => `{{${name}}}`).join(', ')
+}
+
+/** The plain variable names referenced in `content`; comments and unsupported forms are skipped. */
 function placeholdersIn(text: string | null | undefined): string[] {
-  return [...(text ?? '').matchAll(/\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g)].map((match) => match[1])
+  const names = new Set<string>()
+  for (const match of (text ?? '').matchAll(TEMPLATE_TAG)) {
+    const inner = match[2]?.trim()
+    if (!inner || inner.startsWith('!') || UNSUPPORTED_PREFIXES.includes(inner[0])) continue
+    names.add(inner)
+  }
+  return [...names].sort()
 }
 
 function render(text: string, variables: Record<string, string>): string {
@@ -42,27 +65,31 @@ function render(text: string, variables: Record<string, string>): string {
   )
 }
 
-function undeclared(
+/** `MailTemplateService#requireUsableContent`, in the order the backend checks the two rules. */
+function contentError(
   template: MailTemplateResponse,
   fields: Record<string, string | null | undefined>,
-): { field: string; name: string } | null {
-  for (const [field, text] of Object.entries(fields)) {
-    for (const name of placeholdersIn(text)) {
-      if (!template.placeholders.includes(name)) return { field, name }
+): string | null {
+  for (const [fieldLabel, text] of Object.entries(fields)) {
+    for (const match of (text ?? '').matchAll(TEMPLATE_TAG)) {
+      const unsupported =
+        match[1] ?? (UNSUPPORTED_PREFIXES.includes(match[2]?.trim()[0] ?? '') ? match[0] : null)
+      if (unsupported) {
+        return (
+          `${fieldLabel}: Nicht unterstützte Vorlagen-Syntax ${unsupported.trim()}. Erlaubt sind` +
+          ' nur einfache Platzhalter der Form {{name}} und Kommentare der Form {{! ... }}'
+        )
+      }
+    }
+    const unknown = placeholdersIn(text).filter((name) => !template.placeholders.includes(name))
+    if (unknown.length > 0) {
+      return (
+        `${fieldLabel}: Unbekannte Platzhalter ${braced(unknown)}.` +
+        ` Erlaubt sind ${braced(template.placeholders)}`
+      )
     }
   }
   return null
-}
-
-function placeholderError(template: MailTemplateResponse, field: string, name: string) {
-  return HttpResponse.json(
-    {
-      error:
-        `Der Platzhalter „${name}" ist in „${field}" nicht zulässig. Erlaubt sind: ` +
-        template.placeholders.join(', '),
-    },
-    { status: 400 },
-  )
 }
 
 /** Mirrors `MailService`: never an error response, the outcome is the body. */
@@ -153,11 +180,16 @@ export const mailHandlers = [
       return HttpResponse.json({ error: 'Vorlage nicht gefunden' }, { status: 404 })
     }
     const body = (await request.json()) as MailTemplateUpdateRequest
-    const unknown = undeclared(template, {
-      Betreff: body.subject,
-      Text: body.bodyPlain,
-    })
-    if (unknown) return placeholderError(template, unknown.field, unknown.name)
+    // minLength: 1 of MailTemplateUpdateRequest - without it the mock would accept a template the
+    // backend rejects, and the editor's own guard would never be exercised.
+    if (!body.subject?.trim() || !body.bodyPlain?.trim()) {
+      return HttpResponse.json(
+        { error: 'Betreff und Text dürfen nicht leer sein.' },
+        { status: 400 },
+      )
+    }
+    const invalid = contentError(template, { subject: body.subject, bodyPlain: body.bodyPlain })
+    if (invalid) return HttpResponse.json({ error: invalid }, { status: 400 })
 
     template.subject = body.subject
     template.bodyPlain = body.bodyPlain
@@ -190,8 +222,8 @@ export const mailHandlers = [
     const body = (await request.json()) as MailTemplatePreviewRequest
     const subject = body.subject ?? template.subject
     const bodyPlain = body.bodyPlain ?? template.bodyPlain
-    const unknown = undeclared(template, { Betreff: subject, Text: bodyPlain })
-    if (unknown) return placeholderError(template, unknown.field, unknown.name)
+    const invalid = contentError(template, { subject, bodyPlain })
+    if (invalid) return HttpResponse.json({ error: invalid }, { status: 400 })
 
     const variables: Record<string, string> = {}
     for (const name of template.placeholders) {

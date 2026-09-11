@@ -1,4 +1,4 @@
-import { Link as RouterLink, useParams } from 'react-router'
+import { Navigate, Link as RouterLink, useParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Tab from '@mui/material/Tab'
@@ -10,6 +10,10 @@ import MailServerSection from '../components/admin/mail/MailServerSection'
 import MailTemplatesSection from '../components/admin/mail/MailTemplatesSection'
 
 export type MailSettingsTab = 'server' | 'templates'
+
+function isMailSettingsTab(value: string | undefined): value is MailSettingsTab {
+  return value === 'server' || value === 'templates'
+}
 
 // „SMTP-Zugang" statt „Server": Das Formular darunter hat selbst ein Feld „Server", und zwei
 // Bedienelemente derselben Seite mit demselben Namen sind für Screenreader nicht auseinanderzuhalten.
@@ -29,7 +33,13 @@ const tabs: Array<{ value: MailSettingsTab; label: string }> = [
 export default function MailSettingsPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   const { tab } = useParams()
-  const activeTab: MailSettingsTab = tab === 'templates' ? 'templates' : 'server'
+
+  // A typo in the path is not silently reinterpreted as the server tab: the address bar ends up
+  // saying what is actually shown.
+  if (!isMailSettingsTab(tab)) {
+    return <Navigate to="/admin/mail/server" replace />
+  }
+  const activeTab: MailSettingsTab = tab
 
   if (!isSystemAdmin) {
     return (
@@ -82,12 +92,23 @@ export default function MailSettingsPage() {
           ))}
         </Tabs>
 
+        {/* Both panels exist so that every tab's aria-controls points at a real element; the
+            inactive one is hidden, which also unmounts nothing and keeps no request running. */}
         <Box
           role="tabpanel"
-          id={`mail-tabpanel-${activeTab}`}
-          aria-labelledby={`mail-tab-${activeTab}`}
+          id="mail-tabpanel-server"
+          aria-labelledby="mail-tab-server"
+          hidden={activeTab !== 'server'}
         >
-          {activeTab === 'server' ? <MailServerSection /> : <MailTemplatesSection />}
+          {activeTab === 'server' && <MailServerSection />}
+        </Box>
+        <Box
+          role="tabpanel"
+          id="mail-tabpanel-templates"
+          aria-labelledby="mail-tab-templates"
+          hidden={activeTab !== 'templates'}
+        >
+          {activeTab === 'templates' && <MailTemplatesSection />}
         </Box>
       </Box>
     </Box>

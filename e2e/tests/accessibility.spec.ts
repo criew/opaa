@@ -200,6 +200,40 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     );
   });
 
+  // #1542: die E-Mail-Seite bringt zwei eigene Muster mit, die sonst nirgends vorkommen — die
+  // Reiter als Routen (role="tab" auf einem Link) und die Vorschau in einem abgeschotteten
+  // iframe. Beide Reiter und beide Farbschemata, weil die Statuskachel ihren Zustand über einen
+  // Farbpunkt *und* Text führt und genau das im dunklen Schema nachweisbar bleiben muss.
+  test("Verwaltungsbereich: E-Mail in beiden Farbschemata", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/admin/mail/server");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "E-Mail" }),
+    ).toBeVisible();
+    // Wait for the settings call to have landed: the status tile only renders once it has.
+    await expect(page.getByRole("region", { name: "Versandstatus" })).toBeVisible();
+
+    await page.emulateMedia({ colorScheme: "light" });
+    await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (E-Mail, SMTP-Zugang, helles Farbschema)");
+
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expect(page.getByRole("region", { name: "Versandstatus" })).toBeVisible();
+    await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (E-Mail, SMTP-Zugang, dunkles Farbschema)");
+
+    await page.getByRole("tab", { name: "Vorlagen" }).click();
+    await page.waitForURL("**/admin/mail/templates");
+    await page.getByRole("navigation", { name: "Vorlagen" }).getByText("Testnachricht").click();
+    // The debounced preview iframe is the last thing to appear; analysing before it is there
+    // would skip exactly the pattern this block exists for.
+    await expect(page.getByTitle("Vorschau der HTML-Fassung")).toBeVisible();
+    await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (E-Mail, Vorlagen, dunkles Farbschema)");
+
+    await page.emulateMedia({ colorScheme: "light" });
+    await expect(page.getByTitle("Vorschau der HTML-Fassung")).toBeVisible();
+    await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (E-Mail, Vorlagen, helles Farbschema)");
+  });
+
   // #800: die Einstellungsseite lag als einzige globale Seite außerhalb der Suite, obwohl sie
   // mit Badge neben der H1 und Akzent-Avatar eigene Farbkombinationen einführt (#788).
   test("Benutzer-Einstellungen", async ({ authenticatedPage: page }) => {

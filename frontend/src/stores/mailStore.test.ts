@@ -59,13 +59,50 @@ describe('useMailStore', () => {
     expect(summary?.subject).toBe('Eigener Betreff')
   })
 
+  it('lässt die zuletzt geöffnete Vorlage gewinnen, auch wenn ihre Antwort zuerst da ist', async () => {
+    const release: Array<() => void> = []
+    server.use(
+      http.get('/api/v1/system/mail-templates/:templateKey', async ({ params }) => {
+        const key = String(params.templateKey)
+        // the first request is held back, the second answers at once
+        if (key === 'PASSWORD_RESET') {
+          await new Promise<void>((resolve) => release.push(resolve))
+        }
+        return HttpResponse.json({
+          key,
+          label: key,
+          locale: 'de',
+          subject: key,
+          bodyPlain: 'Text',
+          bodyHtml: null,
+          source: 'DEFAULT',
+          placeholders: [],
+          defaultSubject: key,
+          defaultBodyPlain: 'Text',
+          defaultBodyHtml: '<p>Text</p>',
+          updatedAt: null,
+          updatedBy: null,
+        })
+      }),
+    )
+
+    const slow = useMailStore.getState().openTemplate('PASSWORD_RESET')
+    await useMailStore.getState().openTemplate('TEST_MAIL')
+    expect(useMailStore.getState().template?.key).toBe('TEST_MAIL')
+
+    release.forEach((resolve) => resolve())
+    await slow
+
+    expect(useMailStore.getState().template?.key).toBe('TEST_MAIL')
+  })
+
   it('meldet einen undeklarierten Platzhalter als Fehler der Vorlage', async () => {
     await useMailStore.getState().openTemplate('TEST_MAIL')
     await expect(
       useMailStore
         .getState()
         .saveTemplate('TEST_MAIL', { subject: 'Hallo {{unbekannt}}', bodyPlain: 'Text' }),
-    ).rejects.toThrow(/unbekannt/)
-    expect(useMailStore.getState().templateError).toMatch(/unbekannt/)
+    ).rejects.toThrow(/Unbekannte Platzhalter \{\{unbekannt\}\}/)
+    expect(useMailStore.getState().templateError).toMatch(/^subject: Unbekannte Platzhalter/)
   })
 })

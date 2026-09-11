@@ -1447,8 +1447,10 @@ löschen — der Satz ist fest, damit keine Installation mit einer Vorlage ohne 
 - **Vorschau und Testnachricht je Vorlage**: Die Vorschau unter „Administration → E-Mail →
   Vorlagen" zeigt das Ergebnis mit Beispielwerten, ohne etwas zu versenden — Textfassung und
   HTML-Fassung nebeneinander, die HTML-Fassung in einem abgeschotteten Rahmen ohne Skripte. Die
-  Testnachricht schickt genau diese Fassung an die eigene Adresse. „Mit Standard vergleichen"
-  stellt die eigene Fassung dem ausgelieferten Text gegenüber.
+  Testnachricht schickt **die gespeicherte Fassung** an die eigene Adresse — ein Entwurf im Editor
+  muss dafür erst gespeichert werden; die Schaltfläche wartet, solange ungespeicherte Änderungen
+  offen sind. „Mit Standard vergleichen" stellt die eigene Fassung dem ausgelieferten Text
+  gegenüber.
 
 Jede Änderung, jedes Zurücksetzen, jede Änderung der Einstellungen und jede Testnachricht steht im
 Nachweisprotokoll.

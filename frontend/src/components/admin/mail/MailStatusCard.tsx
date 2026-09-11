@@ -7,6 +7,7 @@ import { formatMailTimestamp, mailStatusOf } from './mailStatus'
 
 const dotColor: Record<string, string> = {
   UNCONFIGURED: 'text.disabled',
+  DISABLED: 'text.disabled',
   UNTESTED: 'warning.main',
   SUCCESS: 'success.main',
   FAILURE: 'error.main',

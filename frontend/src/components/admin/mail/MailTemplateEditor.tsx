@@ -50,6 +50,7 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
   const [bodyPlain, setBodyPlain] = useState(template.bodyPlain)
   const [showComparison, setShowComparison] = useState(false)
   const [testResult, setTestResult] = useState<MailSendResultResponse | null>(null)
+  const [isTesting, setIsTesting] = useState(false)
   const subjectRef = useRef<HTMLInputElement>(null)
   const bodyRef = useRef<HTMLTextAreaElement>(null)
   /** Which field a placeholder chip inserts into - the one that had the caret last. */
@@ -57,23 +58,44 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
 
   const preview = useMailTemplatePreview(template.key, subject, bodyPlain)
   const isDirty = subject !== template.subject || bodyPlain !== template.bodyPlain
+  // Mirrors the minLength of MailTemplateUpdateRequest: an empty field would come back as the
+  // framework's own English validation message, and the preview would silently fall back to the
+  // stored version instead of showing the emptiness.
+  const isSubjectEmpty = subject.trim() === ''
+  const isBodyEmpty = bodyPlain.trim() === ''
+  const canSave = isDirty && !isSubjectEmpty && !isBodyEmpty
 
+  /**
+   * Inserts the placeholder at the caret of the field that had it last and hands the focus back
+   * with the caret behind the inserted token - typing on after a chip click is the normal case,
+   * and a chip that drops the caret makes the whole affordance slower than typing the braces.
+   */
   function insertPlaceholder(name: string) {
     const token = `{{${name}}}`
-    if (lastFocused.current === 'subject') {
-      const field = subjectRef.current
-      const at = field?.selectionStart ?? subject.length
-      setSubject(subject.slice(0, at) + token + subject.slice(field?.selectionEnd ?? at))
-      return
+    const intoSubject = lastFocused.current === 'subject'
+    const field = intoSubject ? subjectRef.current : bodyRef.current
+    const value = intoSubject ? subject : bodyPlain
+    const start = field?.selectionStart ?? value.length
+    const end = field?.selectionEnd ?? start
+    const next = value.slice(0, start) + token + value.slice(end)
+    if (intoSubject) {
+      setSubject(next)
+    } else {
+      setBodyPlain(next)
     }
-    const field = bodyRef.current
-    const at = field?.selectionStart ?? bodyPlain.length
-    setBodyPlain(bodyPlain.slice(0, at) + token + bodyPlain.slice(field?.selectionEnd ?? at))
+    const caret = start + token.length
+    // After the state update: the controlled field only carries the new value on the next render.
+    requestAnimationFrame(() => {
+      field?.focus()
+      field?.setSelectionRange(caret, caret)
+    })
   }
 
   async function handleSave() {
     try {
-      await saveTemplate(template.key, { subject, bodyPlain })
+      // bodyHtml unchanged: the PUT is a full replacement, so leaving the field out would quietly
+      // drop an HTML override somebody stored through the API.
+      await saveTemplate(template.key, { subject, bodyPlain, bodyHtml: template.bodyHtml })
       notify(`„${template.label}“ wurde gespeichert.`, 'success')
     } catch {
       // the store holds the backend's field error; the alert below renders it
@@ -98,6 +120,7 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
   }
 
   async function handleTest() {
+    setIsTesting(true)
     setTestResult(null)
     try {
       setTestResult(await sendTemplateTestMail(template.key))
@@ -106,6 +129,8 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
         err instanceof Error ? err.message : 'Der Testversand konnte nicht angestoßen werden.',
         'error',
       )
+    } finally {
+      setIsTesting(false)
     }
   }
 
@@ -143,6 +168,8 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
             onFocus={() => (lastFocused.current = 'subject')}
             onChange={(e) => setSubject(e.target.value)}
             slotProps={{ htmlInput: { maxLength: 300 } }}
+            error={isSubjectEmpty}
+            helperText={isSubjectEmpty ? 'Betreff darf nicht leer sein.' : undefined}
             fullWidth
           />
           <TextField
@@ -152,7 +179,12 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
             onFocus={() => (lastFocused.current = 'body')}
             onChange={(e) => setBodyPlain(e.target.value)}
             slotProps={{ htmlInput: { maxLength: 20000 } }}
-            helperText="Die HTML-Fassung entsteht daraus im gebrandeten Rahmen und wird hier nicht bearbeitet."
+            error={isBodyEmpty}
+            helperText={
+              isBodyEmpty
+                ? 'Text darf nicht leer sein.'
+                : 'Die HTML-Fassung entsteht daraus im gebrandeten Rahmen und wird hier nicht bearbeitet.'
+            }
             multiline
             minRows={10}
             fullWidth
@@ -187,7 +219,7 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
             <Button
               variant="contained"
               onClick={() => void handleSave()}
-              disabled={isSaving || !isDirty}
+              disabled={isSaving || !canSave}
             >
               Speichern
             </Button>
@@ -203,7 +235,13 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
             <Button variant="outlined" onClick={() => setShowComparison(!showComparison)}>
               {showComparison ? 'Vergleich ausblenden' : 'Mit Standard vergleichen'}
             </Button>
-            <Button variant="outlined" onClick={() => void handleTest()} disabled={isSaving}>
+            {/* The endpoint renders the STORED version - it takes nothing but the key. An
+                unsaved draft would therefore produce a mail nobody wrote, so the button waits. */}
+            <Button
+              variant="outlined"
+              onClick={() => void handleTest()}
+              disabled={isSaving || isTesting || isDirty}
+            >
               Testmail senden
             </Button>
             <Button
@@ -214,6 +252,13 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
               Auf Standard zurücksetzen
             </Button>
           </Stack>
+
+          {isDirty && (
+            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+              Zum Testen zuerst speichern: Die Testmail verschickt die gespeicherte Fassung, nicht
+              den Entwurf im Editor.
+            </Typography>
+          )}
 
           {testResult && (
             <Alert severity={mailSendResultSeverity(testResult)}>
