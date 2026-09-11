@@ -45,11 +45,11 @@ Bearbeitungszeit
 Die Fahrerqualifizierungsnachweis wird zentral durch die Bundesdruckerei in Berlin erstellt und direkt zu Ihnen nach Hause geschickt. Aus diesem Grund ist es wichtig, dass Ihre Meldeadresse auch eine zustellfähige Adresse ist.
 
 Gebührenrahmen
-Gebühr Verlängerung befristete Klassen: 51,80 Euro
-zuzüglich (falls erforderlich) : 15,30 Euro für ein Führungszeugnis
+Gebühr Verlängerung befristete Klassen: 50,50 Euro
+zuzüglich (falls erforderlich) : 15 Euro für ein Führungszeugnis
 Gebühr Fahrerqualifikationsnachweis bei
-- erstmaliger Ausstellung, Verlängerung, Änderung der Daten: 38,40 Euro
-- Verlust/ Diebstahl: 43,50 Euro
+- erstmaliger Ausstellung, Verlängerung, Änderung der Daten: 37,40 Euro
+- Verlust/ Diebstahl: 42,40 Euro
 
 Überweisung
 Bankverbindung

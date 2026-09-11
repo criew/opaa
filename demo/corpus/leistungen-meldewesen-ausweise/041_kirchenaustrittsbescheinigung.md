@@ -25,7 +25,7 @@ Bearbeitungszeit
 Ihr Antrag wird üblicherweise innerhalb einer Woche bearbeitet. Wenn Sie nicht alle notwendigen Daten angeben können, verlängert sich die Bearbeitungszeit durch den Suchaufwand. Ein elektronisches Namensverzeichnis existiert leider erst für die Kirchenaustritte ab 2007.
 
 Gebührenrahmen
-8,80 Euro
+11,50 Euro
 Zusätzlich fällt eine Suchgebühr an, wenn Sie notwendige Daten nicht angeben können.
 
 Rechtliche Grundlagen
