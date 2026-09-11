@@ -14,6 +14,8 @@ import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.auth.oidc.OidcClaimMapping;
+import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupMembershipHistoryCause;
@@ -21,6 +23,7 @@ import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.group.GroupMembershipRepository;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
+import io.opaa.group.TokenGroupSynchronizer;
 import io.opaa.group.sync.DirectoryGroup;
 import io.opaa.group.sync.DirectorySyncService;
 import io.opaa.group.sync.DirectorySyncStatusRepository;
@@ -31,6 +34,7 @@ import io.opaa.test.DirectorySyncMockConfiguration;
 import io.opaa.test.DirectorySyncMockResetListener;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -50,9 +54,11 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestExecutionListeners;
+import org.springframework.util.ClassUtils;
 
 /**
  * Exercises #238's Stichtag reconstruction ({@link
@@ -98,7 +104,11 @@ class PermissionHistoryServiceIntegrationTest {
   @Autowired private DirectorySyncService directorySyncService;
   @Autowired private DirectorySyncStatusRepository directorySyncStatusRepository;
   @Autowired private FakeDirectoryClient directoryClient;
+  @Autowired private TokenGroupSynchronizer synchronizer;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private ApplicationContext applicationContext;
+
+  private static final String TOKEN_GROUP_NAME = "Fachbereich 3";
 
   private UUID organizationId;
   private final List<UUID> createdUserIds = new ArrayList<>();
@@ -150,6 +160,10 @@ class PermissionHistoryServiceIntegrationTest {
   }
 
   private UUID createUser() {
+    return createUserEntity().getId();
+  }
+
+  private User createUserEntity() {
     User user =
         new User(
             UUID.randomUUID().toString(),
@@ -157,9 +171,9 @@ class PermissionHistoryServiceIntegrationTest {
             "user@example.com",
             "Test User");
     user.setOrganizationId(organizationId);
-    UUID id = userRepository.save(user).getId();
-    createdUserIds.add(id);
-    return id;
+    User saved = userRepository.save(user);
+    createdUserIds.add(saved.getId());
+    return saved;
   }
 
   private UUID createLibrary(UUID ownerId) {
@@ -433,6 +447,11 @@ class PermissionHistoryServiceIntegrationTest {
    * entry performs the operation and reports what it must have changed; the key names the
    * production method it exercises, followed by a parenthesised distinction where one method has
    * several relevant cases.
+   *
+   * <p>All entries share one {@code @BeforeEach} cycle and therefore one organization: an
+   * organization-wide library one entry leaves behind is readable in every later one, and the
+   * synchronisation's 30% plausibility threshold counts the memberships of every org unit created
+   * here, not only the entry's own.
    */
   private Map<String, Supplier<ReadabilityChange>> readabilityWritePaths() {
     Map<String, Supplier<ReadabilityChange>> paths = new LinkedHashMap<>();
@@ -443,7 +462,13 @@ class PermissionHistoryServiceIntegrationTest {
     paths.put("GroupService#addMember", this::groupMemberAdded);
     paths.put("GroupService#removeMember", this::groupMemberRemoved);
     paths.put("GroupService#deleteGroup", this::groupDeleted);
+    paths.put("TokenGroupSynchronizer#apply (membership added)", this::tokenGroupMembershipAdded);
+    paths.put(
+        "TokenGroupSynchronizer#apply (membership removed)", this::tokenGroupMembershipRemoved);
     paths.put("DirectorySyncService#run (membership added)", this::directorySyncAddedMembership);
+    paths.put(
+        "DirectorySyncService#run (group created with member)",
+        this::directorySyncCreatedGroupWithMembership);
     paths.put(
         "DirectorySyncService#run (membership removed)", this::directorySyncRemovedMembership);
     paths.put("KnowledgeLibraryService#createLibrary", this::libraryCreated);
@@ -451,7 +476,10 @@ class PermissionHistoryServiceIntegrationTest {
         "KnowledgeLibraryService#updateLibrary (visibility widened)", this::visibilityWidened);
     paths.put(
         "KnowledgeLibraryService#updateLibrary (visibility narrowed)", this::visibilityNarrowed);
-    paths.put("KnowledgeLibraryService#deleteLibrary", this::libraryDeleted);
+    paths.put("KnowledgeLibraryService#deleteLibrary (granted reader)", this::libraryDeleted);
+    paths.put(
+        "KnowledgeLibraryService#deleteLibrary (organization-wide library)",
+        this::organizationWideLibraryDeleted);
     return paths;
   }
 
@@ -480,10 +508,10 @@ class PermissionHistoryServiceIntegrationTest {
 
   /**
    * {@link #readabilityWritePaths} is written by hand and cannot notice a write path nobody added
-   * to it. This holds it against the public API of the four services owning the formula's three
-   * inputs: a new or renamed public method fails here until it is either covered above or listed as
-   * unable to change the readable set. It does not reach a write path introduced in some other
-   * class - that remains the reason the enumeration above, not this check, is the actual guarantee.
+   * to it. This holds it against the public API of the classes owning the formula's three inputs: a
+   * new or renamed public method fails here until it is either covered above or listed as unable to
+   * change the readable set. Which classes those are is itself checked by {@link
+   * #everyBeanWritingTheRightsTablesIsAccountedFor}.
    */
   @Test
   void everyPublicMethodOfTheRightsServicesIsEitherCoveredOrClassifiedAsIrrelevant() {
@@ -496,7 +524,8 @@ class PermissionHistoryServiceIntegrationTest {
                 AssetGrantService.class,
                 GroupService.class,
                 KnowledgeLibraryService.class,
-                DirectorySyncService.class)
+                DirectorySyncService.class,
+                TokenGroupSynchronizer.class)
             .flatMap(
                 type ->
                     Arrays.stream(type.getDeclaredMethods())
@@ -523,9 +552,67 @@ class PermissionHistoryServiceIntegrationTest {
   }
 
   /**
-   * The public methods of the four services above that cannot move a library into or out of a
-   * user's readable set: the reads, plus the writes touching neither a grant, nor a membership, nor
-   * a library's existence or visibility. A fresh group grants nothing until it holds a grant, a
+   * Which classes the check above has to reach, read from the context instead of trusted to a
+   * hand-written list of class literals: every bean holding one of the repositories behind the
+   * formula's grant and membership inputs is named below, either as a writer covered by {@link
+   * #readabilityWritePaths} or as a reader. A new bean reaching one of those repositories fails
+   * here.
+   *
+   * <p>{@code KnowledgeLibraryRepository} is deliberately not scanned: some thirty beans inject it,
+   * nearly all of them only to load a library by id, so the list would flag unrelated indexing work
+   * without naming a write path. The library-side inputs - creation, visibility, deletion - run
+   * exclusively through {@link KnowledgeLibraryService}, whose methods the check above classifies
+   * one by one. A write issued through {@code JdbcTemplate} instead of a repository is out of reach
+   * of both checks.
+   */
+  @Test
+  void everyBeanReachingTheGrantOrMembershipTablesIsAccountedFor() {
+    Set<Class<?>> rightsRepositories =
+        Set.of(AssetGrantRepository.class, GroupRepository.class, GroupMembershipRepository.class);
+
+    Set<String> holders = new HashSet<>();
+    for (String beanName : applicationContext.getBeanDefinitionNames()) {
+      Class<?> beanType = applicationContext.getType(beanName, false);
+      if (beanType == null || !beanType.getName().startsWith("io.opaa.")) {
+        continue;
+      }
+      // The bean type of anything transactional is the CGLIB subclass, which declares none of the
+      // target's own fields.
+      Class<?> target = ClassUtils.getUserClass(beanType);
+      for (Field field : target.getDeclaredFields()) {
+        if (rightsRepositories.stream().anyMatch(repo -> repo.isAssignableFrom(field.getType()))) {
+          holders.add(target.getSimpleName());
+        }
+      }
+    }
+
+    assertThat(holders)
+        .as("a bean reaching the grant or membership tables must be classified here")
+        .containsExactlyInAnyOrderElementsOf(BEANS_REACHING_THE_RIGHTS_TABLES);
+  }
+
+  /**
+   * Every bean holding a grant or membership repository. The writers among them are covered by
+   * {@link #readabilityWritePaths}; the rest only read - the two diagnostic services resolve a
+   * group to validate a request, {@link GroupMembershipResolver} and {@link LibraryAccessService}
+   * are the read side of the live formula itself.
+   */
+  private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
+      Set.of(
+          "AssetGrantService",
+          "DiagnosticImpersonationGrantService",
+          "DirectorySyncPlanExecutor",
+          "ForeignDiagnosticContextService",
+          "GroupMembershipResolver",
+          "GroupService",
+          "KnowledgeLibraryService",
+          "LibraryAccessService",
+          "TokenGroupSynchronizer");
+
+  /**
+   * The public methods of the classes above that cannot move a library into or out of a user's
+   * readable set: the reads, plus the writes touching neither a grant, nor a membership, nor a
+   * library's existence or visibility. A fresh group grants nothing until it holds a grant, a
    * renamed group or library keeps every grant it had, a webhook or event credential is no right on
    * the library, and a dry run writes no group data at all.
    */
@@ -546,7 +633,8 @@ class PermissionHistoryServiceIntegrationTest {
           "KnowledgeLibraryService#generateS3EventsToken",
           "KnowledgeLibraryService#removeS3EventsToken",
           "DirectorySyncService#dryRun",
-          "DirectorySyncService#getStatus");
+          "DirectorySyncService#getStatus",
+          "TokenGroupSynchronizer#namespaceOf");
 
   private void assertLiveAndHistoryAgree(ReadabilityChange change) {
     Instant afterTheChange = Instant.now();
@@ -682,7 +770,79 @@ class PermissionHistoryServiceIntegrationTest {
 
     groupService.deleteGroup(group.getId(), currentUserOf(owner));
 
+    assertThat(
+            membershipHistoryRepository.findByGroupIdAndUserIdAndValidToIsNull(
+                group.getId(), member))
+        .as("deleting the group must close the membership interval, not leave it open")
+        .isEmpty();
     return new ReadabilityChange(member, libraryId, false);
+  }
+
+  /**
+   * A token group only exists once someone has signed in with it, so the grant can be placed on it
+   * only afterwards and a second account's sign-in is the membership actually under test. A missing
+   * {@code recordMembershipAdded} in {@code TokenGroupSynchronizer#apply} still shows here: the
+   * live formula grants the library through that membership, the reconstruction knows nothing about
+   * it.
+   */
+  private ReadabilityChange tokenGroupMembershipAdded() {
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    OidcProvider provider = tokenProvider("Beschäftigte");
+    synchronizer.apply(createUserEntity(), provider, List.of(TOKEN_GROUP_NAME));
+    Group tokenGroup = registerTokenGroup(provider, TOKEN_GROUP_NAME);
+    grantService.upsertGrant(
+        libraryId,
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, tokenGroup.getId(), AssetRole.VIEWER),
+        currentUserOf(owner));
+    User member = createUserEntity();
+
+    synchronizer.apply(member, provider, List.of(TOKEN_GROUP_NAME));
+
+    return new ReadabilityChange(member.getId(), libraryId, true);
+  }
+
+  private ReadabilityChange tokenGroupMembershipRemoved() {
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    OidcProvider provider = tokenProvider("Partner");
+    User member = createUserEntity();
+    synchronizer.apply(member, provider, List.of(TOKEN_GROUP_NAME));
+    Group tokenGroup = registerTokenGroup(provider, TOKEN_GROUP_NAME);
+    grantService.upsertGrant(
+        libraryId,
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, tokenGroup.getId(), AssetRole.VIEWER),
+        currentUserOf(owner));
+
+    // The next sign-in's token no longer names the group.
+    synchronizer.apply(member, provider, List.of());
+
+    return new ReadabilityChange(member.getId(), libraryId, false);
+  }
+
+  private OidcProvider tokenProvider(String displayName) {
+    return new OidcProvider(
+        displayName,
+        "https://idp.example/realms/" + UUID.randomUUID(),
+        "opaa-frontend",
+        null,
+        new OidcClaimMapping(null, null, null, null, null, "groups"));
+  }
+
+  /**
+   * The synchronisation creates the group itself, so it is registered for {@link #tearDown} only
+   * afterwards - without this the group blocks deleting the organization.
+   */
+  private Group registerTokenGroup(OidcProvider provider, String name) {
+    Group group =
+        groupRepository
+            .findByOrganizationIdAndKindAndExternalId(
+                organizationId,
+                GroupKind.IDENTITY_PROVIDER,
+                TokenGroupSynchronizer.namespaceOf(provider) + name)
+            .orElseThrow();
+    createdGroupIds.add(group.getId());
+    return group;
   }
 
   private ReadabilityChange directorySyncAddedMembership() {
@@ -700,6 +860,41 @@ class PermissionHistoryServiceIntegrationTest {
             "dir-guid-sync-added", "Referat Zugang", null, Set.of(memberSubject(member))));
 
     return new ReadabilityChange(member, libraryId, true);
+  }
+
+  /**
+   * The group is created by the run itself, which historises its initial members through a
+   * different path than a membership added to an already-known unit ({@code
+   * DirectorySyncPlanExecutor}). The grant can only follow the creation, so it is placed
+   * afterwards; a missing history row for the initial membership still shows in the comparison.
+   */
+  private ReadabilityChange directorySyncCreatedGroupWithMembership() {
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    UUID member = createUser();
+
+    runDirectorySyncReporting(
+        new DirectoryGroup(
+            "dir-guid-sync-created", "Referat Neu", null, Set.of(memberSubject(member))));
+
+    Group created = registerSyncedOrgUnit("dir-guid-sync-created");
+    grantService.upsertGrant(
+        libraryId,
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, created.getId(), AssetRole.VIEWER),
+        currentUserOf(owner));
+
+    return new ReadabilityChange(member, libraryId, true);
+  }
+
+  /** Counterpart of {@link #registerTokenGroup} for a unit the synchronisation created. */
+  private Group registerSyncedOrgUnit(String externalId) {
+    Group group =
+        groupRepository
+            .findByOrganizationIdAndKindAndExternalId(
+                organizationId, GroupKind.ORG_UNIT, externalId)
+            .orElseThrow();
+    createdGroupIds.add(group.getId());
+    return group;
   }
 
   /**
@@ -782,6 +977,25 @@ class PermissionHistoryServiceIntegrationTest {
     libraryService.deleteLibrary(libraryId, currentUserOf(owner));
 
     return new ReadabilityChange(reader, libraryId, false);
+  }
+
+  /**
+   * The deletion closes a grant interval and a visibility interval through two separate calls; a
+   * library readable through its organization-wide visibility rather than a grant is what makes the
+   * second one observable here.
+   */
+  private ReadabilityChange organizationWideLibraryDeleted() {
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    UUID otherUser = createUser();
+    libraryService.updateLibrary(
+        libraryId,
+        libraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION).build(),
+        currentUserOf(owner));
+
+    libraryService.deleteLibrary(libraryId, currentUserOf(owner));
+
+    return new ReadabilityChange(otherUser, libraryId, false);
   }
 
   private Group createAdHocGroup(String name) {

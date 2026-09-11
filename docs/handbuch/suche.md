@@ -152,10 +152,10 @@ Die Leserechte, aus denen der Filter entsteht, werden für die Frage einmal live
 Berechtigungen berechnet. Parallel dazu führt OPAA eine **Rechtehistorie**, in der jede Änderung an
 Berechtigungen, Gruppenmitgliedschaften und Freigaben mit Zeitpunkt festgehalten wird; aus ihr lässt
 sich für Prüfer zu jedem Stichtag rekonstruieren, wer worauf Zugriff hatte. Die Historie wird beim
-Beantworten einer Frage nicht gelesen: Ein Abgleich beider Rechenwege je Anfrage findet nicht statt,
-er kostete zusätzliche Datenbankabfragen ohne Wirkung auf Ergebnis oder Zugriffsentscheidung. Dass
-beide Wege dieselbe Bibliotheksmenge ergeben, sichert die Testsuite für jede Operation ab, die
-Leserechte ändert.
+Beantworten einer Frage nicht gelesen: Ein Abgleich beider Rechenwege je Anfrage findet nicht statt.
+Dass beide Wege dieselbe Bibliotheksmenge ergeben, sichert die Testsuite für jede Operation ab, die
+Leserechte ändert — Berechtigungen, Gruppenmitgliedschaften aus der Verwaltung, dem
+Verzeichnisabgleich und dem Anmeldetoken sowie Bestand und Sichtbarkeit einer Bibliothek.
 
 ### Stufe 2: Metadatenfilter
 
