@@ -189,18 +189,13 @@ _DANGLING_REPLACEMENT = (
 _LINK_INTRO_URL_RE = re.compile(r"\s*unter (?:folgendem |dem )?Link:?\s*https?://\S+")
 _BARE_EXTERNAL_URL_RE = re.compile(r"https?://(?:(?!stadt-rheinfurt\.example)\S)+")
 
-# --- Fee scaling (Issue #1525) ----------------------------------------------
+# --- Fee scaling ------------------------------------------------------------
 #
-# Every Euro amount in the corpus is the same source amount times this one
-# factor, so the Rheinfurt amount is a property of the *fee* and not of the
-# document that happens to quote it: a document citing another service's fees
-# (e.g. "Personalausweis oder Reisepass abholen") necessarily prints the same
-# number as the service's own document and as the Gebührenverzeichnis of the
-# Verwaltungsgebührensatzung. A per-document factor made those three disagree
-# and needed a manual correction after every run; a per-amount *hashed* factor
-# would keep them in agreement but can reorder two close amounts inside one
-# document (measured: 8 such pairs in the pinned source selection), which a
-# single factor cannot.
+# One factor for the whole corpus, so the Rheinfurt amount is a property of the
+# fee rather than of the document quoting it: the same source amount prints the
+# same number everywhere - in a service's own description, in a document citing
+# another service's fees, and in a Satzung's Gebührenverzeichnis alike. Choice
+# of model and the rejected alternatives: demo/generator/README.md.
 FEE_SCALE_FACTOR = 1.15
 
 _EMAIL_RE = re.compile(r"([\w.\-]+)@muenchen\.de")
