@@ -698,8 +698,8 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | `http://localhost:3000` | Erlaubte CORS-Origins (kommagetrennt). Der Anwendungs-Default passt nur außerhalb von Docker Compose (lokaler Vite-Dev-Server auf `:5173`) — die Compose-Belegung trägt deshalb bewusst den Frontend-Host-Port, standardmäßig `http://localhost:3000` (siehe [„Docker-spezifische Variablen"](#docker-spezifische-variablen) oben und [„POST-Anfragen geben 403 Forbidden zurück"](#post-anfragen-geben-403-forbidden-zurück) unten) — sonst schlägt jede POST-Anfrage aus dem Compose-Frontend am CORS-Preflight fehl |
 | `OPAA_INDEXING_DOCUMENT_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `./documents`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.docker.example` lässt die Variable deshalb bewusst auskommentiert; ohne Shell-Export gilt der Compose-Default `./documents` | Host-Pfad für Dokumente (in Container gemountet) |
 | `OPAA_UPLOAD_STORAGE_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `./uploads`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `./uploads` | Host-Pfad für hochgeladene Dokumente (in Container gemountet) |
-| `OPAA_UPLOAD_STORAGE_PATH` | `./uploads` | — (`docker-compose.yml` setzt sie im Backend-Container fest auf `/app/uploads`, nicht über `.env.docker` änderbar) | Container-interner Speicherpfad für hochgeladene Dokumente (`opaa.upload.storage-path`) — bei Docker Compose nicht mit dem Bind-Mount `OPAA_UPLOAD_STORAGE_PATH_HOST` zu verwechseln |
-| `OPAA_UPLOAD_STORE` | `filesystem` | nicht gesetzt (Anwendungs-Default gilt) | Welche Ablage die hochgeladenen Originale hält (`opaa.upload.store`): `filesystem` — die Dateien liegen unter `OPAA_UPLOAD_STORAGE_PATH`, ein dorthin eingehängtes Netzlaufwerk eingeschlossen — oder `s3`, ein S3-kompatibler Objektspeicher nach den `OPAA_UPLOAD_S3_*`-Variablen darunter. Jeder andere Wert bricht den Start mit einer Meldung ab, statt stillschweigend auf das Dateisystem zurückzufallen. Mit `s3` liegt jedes Original als Objekt `<Präfix><Bibliotheks-ID>/<Zufallsname><Endung>` im Bucket, `documents.file_path` trägt `s3://<Bucket>/<Schlüssel>`; ein nicht erreichbarer Objektspeicher bricht den Start **nicht** ab, sondern wird beim Start als Warnung protokolliert und erscheint in `/actuator/health` als eigene Gruppe `upload-store` (`GET /actuator/health/upload-store`) — bewusst nicht im Gesamtstatus, damit ein gestörter Objektspeicher die Instanz nicht aus einer Lastverteilung nimmt, während Chat und Suche weiterlaufen. Der Abruf eines Originals antwortet bei nicht erreichbarem Speicher mit `503` und deutscher Meldung, bei nicht vorhandenem Objekt wie bisher mit `404`. **Downloads S3-gestützter Originale streamen ohne Zwischendatei; HTTP-Bereichsanfragen (`Range`) und die Wiederaufnahme eines abgebrochenen Downloads entfallen dafür** — mit `filesystem` bleiben beide erhalten |
+| `OPAA_UPLOAD_STORAGE_PATH` | `./uploads` | — (`docker-compose.yml` setzt sie im Backend-Container fest auf `/app/uploads`, nicht über `.env.docker` änderbar) | Container-interner Speicherpfad für hochgeladene Dokumente (`opaa.upload.storage-path`) — bei Docker Compose nicht mit dem Bind-Mount `OPAA_UPLOAD_STORAGE_PATH_HOST` zu verwechseln. Darunter liegt je Organisation ein Ordner, darin je Bibliothek einer, darin je Dokument eine Datei unter einem Zufallsnamen: `<Pfad>/<Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` |
+| `OPAA_UPLOAD_STORE` | `filesystem` | nicht gesetzt (Anwendungs-Default gilt) | Welche Ablage die hochgeladenen Originale hält (`opaa.upload.store`): `filesystem` — die Dateien liegen unter `OPAA_UPLOAD_STORAGE_PATH`, ein dorthin eingehängtes Netzlaufwerk eingeschlossen — oder `s3`, ein S3-kompatibler Objektspeicher nach den `OPAA_UPLOAD_S3_*`-Variablen darunter. Jeder andere Wert bricht den Start mit einer Meldung ab, statt stillschweigend auf das Dateisystem zurückzufallen. Mit `s3` liegt jedes Original als Objekt `<Präfix><Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` im Bucket — dieselbe Struktur wie auf der Platte, `documents.file_path` trägt `s3://<Bucket>/<Schlüssel>`; ein nicht erreichbarer Objektspeicher bricht den Start **nicht** ab, sondern wird beim Start als Warnung protokolliert und erscheint in `/actuator/health` als eigene Gruppe `upload-store` (`GET /actuator/health/upload-store`) — bewusst nicht im Gesamtstatus, damit ein gestörter Objektspeicher die Instanz nicht aus einer Lastverteilung nimmt, während Chat und Suche weiterlaufen. Der Abruf eines Originals antwortet bei nicht erreichbarem Speicher mit `503` und deutscher Meldung, bei nicht vorhandenem Objekt wie bisher mit `404`. **Downloads S3-gestützter Originale streamen ohne Zwischendatei; HTTP-Bereichsanfragen (`Range`) und die Wiederaufnahme eines abgebrochenen Downloads entfallen dafür** — mit `filesystem` bleiben beide erhalten |
 | `OPAA_UPLOAD_S3_ENDPOINT` | — (leer; Pflicht bei `OPAA_UPLOAD_STORE=s3`) | nicht gesetzt | Adresse des Objektspeichers, `http://` oder `https://` mit Host und Port, ohne Pfad (`opaa.upload.s3.endpoint`), z. B. `http://minio:9000` im Compose-Netz. Fehlt sie bei `s3`, bricht der Start mit einer Meldung ab, die die Variable nennt. Der konfigurierte Endpunkt selbst passiert die Zieladressprüfung immer (nach Schema, Host und Port), braucht also keinen Eintrag in `OPAA_UPLOAD_S3_TARGET_VALIDATION_ALLOWLIST` |
 | `OPAA_UPLOAD_S3_REGION` | `us-east-1` | nicht gesetzt | Signaturregion (`opaa.upload.s3.region`); bei MinIO/Ceph beliebig, bei AWS die Region des Buckets |
 | `OPAA_UPLOAD_S3_BUCKET` | — (leer; Pflicht bei `OPAA_UPLOAD_STORE=s3`) | nicht gesetzt | Der eine Bucket, in dem alle Originale liegen (`opaa.upload.s3.bucket`). Muss vorhanden sein; OPAA legt ihn nicht an. Verschlüsselung ruhender Daten, Versionierung, Aufbewahrung und Replikation konfiguriert der Betrieb am Bucket, OPAA setzt keine Verschlüsselungskopfzeilen |
@@ -1367,10 +1367,17 @@ konfigurieren lassen:
 ### Was im Objektspeicher liegt
 
 Ein Bucket, ein Objekt je hochgeladenem Dokument. Der Schlüssel ist
-`<Präfix><Bibliotheks-ID>/<Zufallsname><Endung>` — **dieselbe Struktur wie auf der Platte**, ein
-Unterverzeichnis je Bibliothek, darin eine Datei je Dokument unter einem Zufallsnamen. Das Präfix
+`<Präfix><Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` — **dieselbe Struktur wie auf
+der Platte**, dort `<Pfad>/<Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>`. Das Präfix
 ist leer, solange `OPAA_UPLOAD_S3_KEY_PREFIX` nichts anderes sagt; es trennt mehrere Installationen,
 die sich einen Bucket teilen.
+
+**Warum die Organisation im Schlüssel steht.** Damit trägt jedes abgelegte Original seine
+Zugehörigkeit bei sich, statt sie nur in der Datenbank zu haben. Wer in einen Bucket schaut, sieht
+an jedem Objekt, zu welchem Haus es gehört — auch dann, wenn die zugehörige Bibliothek längst
+gelöscht ist und die Dokumentzeile nicht mehr existiert. Der Zugriff prüft beide Ebenen: Ein
+Verweis, dessen Organisations- oder Bibliotheksteil nicht zum abgerufenen Dokument passt, antwortet
+mit „nicht gefunden" — ununterscheidbar von einem unbekannten Dokument.
 
 Der Bucket **muss vorhanden sein** — OPAA legt keinen an. Ordner darin legt OPAA ebenfalls nicht an:
 Objektspeicher kennt keine, der Schrägstrich im Schlüssel ist Teil des Namens.
@@ -1394,6 +1401,23 @@ Objektspeichers ansehen (Host-Port siehe [Services](#services)) oder mit dem Kom
 des Speichers herausholen, etwa `mc stat`/`mc cp` oder `aws s3 cp`. Der Weg über die Oberfläche
 bleibt der einfachere: Die Fundstelle unter einer Antwort führt zum Dokument, und dessen Original
 lädt sich dort herunter.
+
+**Der umgekehrte Weg funktioniert ebenfalls**, und dafür ist das zusätzliche Segment da: Wer im
+Bucket auf ein Objekt stößt, liest an seinem Schlüssel ab, zu welcher Organisation und zu welcher
+Bibliothek es gehört — das erste Segment hinter dem Präfix ist die Organisations-ID, das zweite die
+Bibliotheks-ID. Beide lassen sich nachschlagen, ohne dass ein Verweis in der Datenbank dafür
+gebraucht wird:
+
+```bash
+docker compose exec postgres psql -U opaa -d opaa \
+  -c "SELECT o.name AS organisation, l.name AS bibliothek
+        FROM knowledge_libraries l JOIN organizations o ON o.id = l.organization_id
+       WHERE l.id = '<Bibliotheks-ID aus dem Schlüssel>';"
+```
+
+Liefert die Abfrage keine Zeile, ist die Bibliothek gelöscht — die Organisation steht dann trotzdem
+noch im Schlüssel selbst. Für die Platte gilt dasselbe, dort sind es die beiden Ordnerebenen
+unterhalb des Upload-Verzeichnisses.
 
 > In allen `psql`-Aufrufen dieses Kapitels steht `opaa` für den konfigurierten Datenbankbenutzer
 > (`OPAA_DB_USERNAME`, Voreinstellung `opaa`) und für die Datenbank. Wer ein eigenes Konto
@@ -1532,6 +1556,84 @@ dort nie etwas an; was ein anderer Schreiber unter demselben Präfix abgelegt ha
 gemeldet noch je gelöscht. Ebenso wenig erreicht der Lauf die Originale einer bereits gelöschten
 Bibliothek — er arbeitet je Bibliothek, und ohne deren Zeile antwortet er mit „nicht gefunden".
 
+### Einmalschritt: einen vor dem 11.09.2026 angelegten Bestand einsortieren
+
+Bis zu diesem Stand lag ein Original eine Ebene höher — `<Pfad>/<Bibliotheks-ID>/…` auf der Platte,
+`<Präfix><Bibliotheks-ID>/…` im Bucket. Seit dem Update steht die Organisations-ID davor. **Die
+Anwendung zieht einen vorhandenen Bestand nicht selbst nach**: Sie sucht jedes Original nur noch am
+neuen Ort, und ein Verweis in der alten Form antwortet mit „nicht gefunden". Wer eine Installation
+mit Bestand aktualisiert, führt den Schritt unten einmal aus; eine frisch aufgesetzte Installation
+braucht ihn nicht, und die Demo baut sich ohnehin bei jedem Lauf neu auf.
+
+Anders als die Umstellung zwischen den beiden Ablagen (nächster Abschnitt) ist das **keine reine
+Präfixersetzung**: Welche Organisation vor eine Bibliothek gehört, steht nur in der Datenbank. Der
+Schritt läuft deshalb je Bibliothek — eine Abfrage nennt die Paare, dann ein Verschiebebefehl und
+ein `UPDATE` je Paar. Vorher: Backend stoppen (`docker compose stop backend`) und einen
+Datenbank-Dump ziehen.
+
+**1. Die Paare abfragen.** Jede Zeile der Antwort ist ein Paar `<Organisations-ID>
+<Bibliotheks-ID>`; nur Bibliotheken mit hochgeladenen Dokumenten kommen vor.
+
+```bash
+docker compose exec postgres psql -U opaa -d opaa -t -A -F' ' -c \
+  "SELECT DISTINCT l.organization_id, l.id
+     FROM knowledge_libraries l JOIN documents d ON d.library_id = l.id
+    WHERE d.source_type = 'UPLOAD';"
+```
+
+**2. Bytes verschieben, je Paar.** Auf dem Verzeichnisweg vom Host aus, im Verzeichnis des
+Bind-Mounts (`./uploads`, oder der über `OPAA_UPLOAD_STORAGE_PATH_HOST` verlegte Pfad):
+
+```bash
+mkdir -p ./uploads/<Organisations-ID>
+mv ./uploads/<Bibliotheks-ID> ./uploads/<Organisations-ID>/
+```
+
+Im Objektspeicher dasselbe mit dem Kommandozeilenwerkzeug des Speichers; `<präfix>` ist der Wert aus
+`OPAA_UPLOAD_S3_KEY_PREFIX` und entfällt, wenn keiner gesetzt ist:
+
+```bash
+mc mv --recursive <alias>/<bucket>/<präfix><Bibliotheks-ID>/ \
+                  <alias>/<bucket>/<präfix><Organisations-ID>/<Bibliotheks-ID>/
+```
+
+Mit dem mitgelieferten Dienst läuft derselbe Befehl im Wegwerf-Container aus Schritt 3 des nächsten
+Abschnitts, mit `aws` heißt er `aws s3 mv --recursive s3://…`.
+
+**3. Verweise umschreiben, je Paar.** Eine Präfixersetzung **innerhalb** des Paares — dadurch
+wandern die zusammengesetzten Verweise der Anhangzeilen ohne Sonderfall mit. Auf dem
+Verzeichnisweg (`/app/uploads/` ist der containerinterne Pfad, außerhalb von Containern der dort
+konfigurierte absolute):
+
+```bash
+docker compose exec postgres psql -U opaa -d opaa -c \
+  "UPDATE documents
+      SET file_path = replace(file_path,
+                              '/app/uploads/<Bibliotheks-ID>/',
+                              '/app/uploads/<Organisations-ID>/<Bibliotheks-ID>/')
+    WHERE source_type = 'UPLOAD' AND library_id = '<Bibliotheks-ID>'
+      AND file_path LIKE '/app/uploads/<Bibliotheks-ID>/%';"
+```
+
+Im Objektspeicher mit `s3://<bucket>/<präfix>` statt `/app/uploads/` auf beiden Seiten und
+entsprechend im `LIKE`.
+
+**4. Probe.** Die Zahl muss `0` sein — sie zählt jeden Verweis, der nicht unter seiner eigenen
+Organisation und Bibliothek liegt:
+
+```bash
+docker compose exec postgres psql -U opaa -d opaa -c \
+  "SELECT count(*) FROM documents
+    WHERE source_type = 'UPLOAD'
+      AND file_path NOT LIKE '%/' || organization_id || '/' || library_id || '/%';"
+```
+
+Danach das Backend starten und ein Original in der Oberfläche herunterladen — am besten eine E-Mail
+mit Anhang und den Anhang gleich mit, weil daran sichtbar wird, dass auch die zusammengesetzten
+Verweise noch stimmen. Bleibt ein Paar unbearbeitet, meldet der Bericht über verwaiste Originale
+für diese Bibliothek nichts (ihre Objekte liegen nicht mehr unter ihrem Präfix) und jedes ihrer
+Originale antwortet mit „nicht gefunden"; das Nachholen der beiden Befehle für dieses Paar behebt es.
+
 ### Eine laufende Installation auf den Objektspeicher umstellen
 
 Die Umstellung ist ein **Wartungsfenster**, kein laufender Betriebszustand: Bytes kopieren, dann die
@@ -1556,8 +1658,8 @@ docker compose --profile upload-s3 up -d upload-store upload-store-init
 ```
 
 **3. Bytes kopieren.** Die Verzeichnisstruktur wandert unverändert in den Bucket — ein Unterordner
-je Bibliothek. Mit dem mitgelieferten Dienst genügt ein Wegwerf-Container, der das
-Upload-Verzeichnis und den Speicher gleichzeitig sieht:
+je Organisation, darin einer je Bibliothek. Mit dem mitgelieferten Dienst genügt ein
+Wegwerf-Container, der das Upload-Verzeichnis und den Speicher gleichzeitig sieht:
 
 ```bash
 docker compose --profile upload-s3 run --rm -v ./uploads:/uploads:ro upload-store-init \
@@ -1649,7 +1751,7 @@ Drei Unterschiede zum Hinweg:
 
 - **Ein Schlüsselpräfix gehört in beide Befehle**, und zwar in die Quelle des Kopierens und in den
   zu ersetzenden Wert. Das Verzeichnis muss danach wieder unmittelbar die Unterordner der
-  Bibliotheken enthalten — liegt darunter erst noch ein Ordner mit dem Namen des Präfixes, gilt
+  Organisationen enthalten — liegt darunter erst noch ein Ordner mit dem Namen des Präfixes, gilt
   keine Datei mehr als zur Bibliothek gehörend und **jedes** Original antwortet mit „nicht
   gefunden". Mit Präfix lauten die beiden Zeilen deshalb
   `mc mirror --overwrite store/<bucket>/<präfix> /uploads` und
@@ -1668,6 +1770,7 @@ Drei Unterschiede zum Hinweg:
 | Bild | Wahrscheinliche Ursache |
 |---|---|
 | Alle Originale antworten mit „nicht gefunden", die Suche funktioniert | Die Verweise wurden nicht umgeschrieben, oder Bucket bzw. Schlüsselpräfix in der Konfiguration passen nicht zu dem, was in den Verweisen steht. Nach einem Rückweg mit Schlüsselpräfix kommt eine dritte Ursache dazu: Die Dateien liegen dann eine Ebene zu tief, unter einem Ordner mit dem Namen des Präfixes |
+| Nach einem Update antworten die Originale einer Bibliothek mit „nicht gefunden", ihr Bericht über verwaiste Originale ist leer | Für diese Bibliothek fehlt der [Einmalschritt](#einmalschritt-einen-vor-dem-11092026-angelegten-bestand-einsortieren): Ihre Dateien bzw. Objekte liegen noch ohne Organisationsebene, also weder dort, wo der Abruf sucht, noch dort, wo der Bericht listet |
 | Einzelne Originale fehlen, andere nicht | Die Kopie war unvollständig — Kopierschritt wiederholen, er überträgt nur, was fehlt |
 | Jeder Abruf antwortet mit „Dienst nicht verfügbar", die Gesundheitsgruppe steht auf `DOWN` | Der Objektspeicher ist nicht erreichbar; die Gruppe nennt den Grund |
 | Der Start bricht mit einer Meldung über eine fehlende Variable ab | `OPAA_UPLOAD_STORE=s3` ohne Endpunkt, Bucket oder Zugangsschlüssel |
