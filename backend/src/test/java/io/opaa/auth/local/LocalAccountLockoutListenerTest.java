@@ -84,7 +84,7 @@ class LocalAccountLockoutListenerTest {
   }
 
   @Test
-  void belowTheThresholdNothingIsLockedAndTheAttemptOnlyReachesTheLog() {
+  void belowTheThresholdNothingIsLockedAndNothingIsLogged() {
     LocalCredentials row = activeRowWithFailedAttempts(4);
 
     listener.onPasswordRejected(user, row, NOW);
@@ -92,11 +92,7 @@ class LocalAccountLockoutListenerTest {
     assertThat(row.state(NOW)).isEqualTo(LocalAccountState.ACTIVE);
     verify(repository, never()).save(any());
     verify(audit, never()).recordSystemProcessAction(any());
-    assertThat(logs.list)
-        .filteredOn(event -> event.getLevel() == Level.INFO)
-        .extracting(ILoggingEvent::getFormattedMessage)
-        .anySatisfy(
-            message -> assertThat(message).contains(user.getId().toString()).doesNotContain(EMAIL));
+    assertThat(logs.list).as("the attempt's log line belongs to LocalLoginService").isEmpty();
     assertThat(lockouts()).isZero();
   }
 

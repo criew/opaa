@@ -11,6 +11,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
@@ -24,8 +28,10 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
@@ -51,12 +57,22 @@ class LocalLoginServiceTest {
   private final LocalLoginAttemptListener listener = mock(LocalLoginAttemptListener.class);
   private final LocalAdminNetworkPolicy networkPolicy = mock(LocalAdminNetworkPolicy.class);
   private LocalLoginService service;
+  private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
+  private Logger logger;
 
   private User user;
   private LocalCredentials row;
 
+  @AfterEach
+  void tearDown() {
+    logger.detachAppender(logs);
+  }
+
   @BeforeEach
   void setUp() {
+    logger = (Logger) LoggerFactory.getLogger(LocalLoginService.class);
+    logs.start();
+    logger.addAppender(logs);
     service =
         new LocalLoginService(
             users,
@@ -100,6 +116,7 @@ class LocalLoginServiceTest {
     // the listener sees the row as it is after the count, reloaded past the bulk update
     verify(listener).onPasswordRejected(user, row, NOW);
     verify(listener, never()).onLoginSucceeded(any(), any(), any());
+    assertFailedAttemptLoggedOnce();
   }
 
   @Test
@@ -155,6 +172,21 @@ class LocalLoginServiceTest {
     verify(encoder, times(1)).matches("falsch", HASH);
     verify(credentials, never()).recordFailedLogin(any(), any());
     verify(listener, never()).onPasswordRejected(any(), any(), any());
+    assertFailedAttemptLoggedOnce();
+  }
+
+  /**
+   * ADR-0033, Entscheidung 9: every wrong password of a known account is one INFO line with the
+   * account id, never the address.
+   */
+  private void assertFailedAttemptLoggedOnce() {
+    assertThat(logs.list)
+        .filteredOn(event -> event.getLevel() == Level.INFO)
+        .extracting(ILoggingEvent::getFormattedMessage)
+        .filteredOn(message -> message.contains("wrong password"))
+        .hasSize(1)
+        .allSatisfy(
+            message -> assertThat(message).contains(user.getId().toString()).doesNotContain(EMAIL));
   }
 
   @Test
