@@ -48,6 +48,15 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     nothing. {@code 0} switches the stage off through its own parameter; whether reranking runs
  *     at all is additionally governed by the rerank model role's switch ({@code
  *     OPAA_RERANK_ENABLED}), which is an installation decision, not a retrieval parameter.
+ * @param conversationWindowMessages the width of the conversation window in messages - what {@code
+ *     ConversationMemoryConfiguration}'s {@code ChatMemory} bean retains per conversation and
+ *     therefore what the answer prompt carries. Default 20 (10 turns), at least 2, at most 100, and
+ *     always even: the window is counted in question/answer pairs, and an odd width would drop an
+ *     answer away from its question.
+ * @param searchWindowTurns how many of the most recent turns the sub-question decomposition sees of
+ *     that window (docs/features/conversation-memory.md, "Bauteil 1"). Default 2; {@code 0} means
+ *     "question only". Never more than {@code conversationWindowMessages / 2}: the search must
+ *     never see more of the conversation than the answer does.
  */
 @ConfigurationProperties(prefix = "opaa.query")
 public record QueryProperties(
@@ -59,7 +68,9 @@ public record QueryProperties(
     @DefaultValue("3") int maxSubQueries,
     @DefaultValue("2") int maxChunksPerDocument,
     @DefaultValue("true") boolean fullTextSearchEnabled,
-    @DefaultValue("50") int rerankCandidateCount) {
+    @DefaultValue("50") int rerankCandidateCount,
+    @DefaultValue("20") int conversationWindowMessages,
+    @DefaultValue("2") int searchWindowTurns) {
 
   public QueryProperties {
     if (topK <= 0) {
@@ -99,6 +110,22 @@ public record QueryProperties(
     if (rerankCandidateCount < 0 || rerankCandidateCount > 200) {
       throw new IllegalArgumentException(
           "rerankCandidateCount must be between 0 and 200, got " + rerankCandidateCount);
+    }
+    if (conversationWindowMessages < 2 || conversationWindowMessages > 100) {
+      throw new IllegalArgumentException(
+          "conversationWindowMessages must be between 2 and 100, got "
+              + conversationWindowMessages);
+    }
+    if (conversationWindowMessages % 2 != 0) {
+      throw new IllegalArgumentException(
+          "conversationWindowMessages must be even, got " + conversationWindowMessages);
+    }
+    if (searchWindowTurns < 0 || searchWindowTurns > conversationWindowMessages / 2) {
+      throw new IllegalArgumentException(
+          "searchWindowTurns must be between 0 and conversationWindowMessages / 2 ("
+              + conversationWindowMessages / 2
+              + "), got "
+              + searchWindowTurns);
     }
   }
 }

@@ -41,7 +41,7 @@ class RetrievalPipelineTest {
 
   private static final UUID LIBRARY_ID = UUID.randomUUID();
   private static final QueryProperties PROPERTIES =
-      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, false, 50);
+      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, false, 50, 20, 2);
 
   private final VectorStore vectorStore = mock(VectorStore.class);
   private final ChunkEmbeddingLookup chunkEmbeddingLookup = mock(ChunkEmbeddingLookup.class);
@@ -129,7 +129,7 @@ class RetrievalPipelineTest {
     Document shared = chunk("shared", "doc-shared", 0.9);
     Document firstOnly = chunk("first", "doc-first", 0.8);
     Document secondOnly = chunk("second", "doc-second", 0.7);
-    when(queryDecompositionService.decompose(any(), any(), any(Integer.class)))
+    when(queryDecompositionService.decompose(any(), any(Integer.class)))
         .thenReturn(List.of("q1", "q2"));
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenAnswer(
@@ -139,7 +139,8 @@ class RetrievalPipelineTest {
                   ? List.of(shared, firstOnly)
                   : List.of(shared, secondOnly);
             });
-    QueryProperties twoChunkBudget = new QueryProperties(2, 25, 1.0, 0.3, true, 3, 1, false, 50);
+    QueryProperties twoChunkBudget =
+        new QueryProperties(2, 25, 1.0, 0.3, true, 3, 1, false, 50, 20, 2);
 
     RetrievalPipelineResult withoutFusion =
         pipeline(new RetrievalPipelineProperties(Set.of(RetrievalStageName.RANK_FUSION)))
@@ -178,7 +179,7 @@ class RetrievalPipelineTest {
                     history,
                     Set.of(LIBRARY_ID),
                     MetadataFilter.NONE,
-                    new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50),
+                    new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
                     RerankAvailability.SWITCHED_OFF));
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);

@@ -25,11 +25,20 @@ import org.springframework.stereotype.Component;
  * {@link #buildSearchQuery} builds. {@link QueryProperties#queryDecompositionEnabled} {@code =
  * false} skips the LLM round trip and takes that same fallback. Touches no candidates: at this
  * point in the run there are none.
+ *
+ * <p><b>The search window is cut here, not before the run.</b> A {@link RetrievalContext} carries
+ * the whole conversation window; this stage narrows it to {@link QueryProperties#searchWindowTurns}
+ * turns for the decomposition and for the fallback (docs/features/conversation-memory.md, "Bauteil
+ * 1"). Cutting it in the caller instead would leave every other entry point into the pipeline - the
+ * administration's diagnosis, the evaluation harness - searching on a window production never uses.
  */
 @Component
 public class SubQueryDecompositionStage implements RetrievalStage {
 
   private static final Logger log = LoggerFactory.getLogger(SubQueryDecompositionStage.class);
+
+  /** A turn is a question and its answer - the unit the search window is measured in. */
+  private static final int MESSAGES_PER_TURN = 2;
 
   private final QueryDecompositionService queryDecompositionService;
 
@@ -45,16 +54,17 @@ public class SubQueryDecompositionStage implements RetrievalStage {
   @Override
   public StageOutcome apply(RetrievalContext context, RetrievalState state) {
     QueryProperties properties = context.queryProperties();
+    List<Message> searchWindow =
+        searchWindow(context.conversationHistory(), properties.searchWindowTurns());
     List<String> subQueries =
         properties.queryDecompositionEnabled()
             ? queryDecompositionService.decompose(
-                context.question(), context.conversationHistory(), properties.maxSubQueries())
+                DecompositionContext.of(context.question(), searchWindow),
+                properties.maxSubQueries())
             : List.of();
     boolean decomposed = !subQueries.isEmpty();
     List<String> searchQueries =
-        decomposed
-            ? subQueries
-            : List.of(buildSearchQuery(context.question(), context.conversationHistory()));
+        decomposed ? subQueries : List.of(buildSearchQuery(context.question(), searchWindow));
 
     List<String> notes = new ArrayList<>();
     if (decomposed) {
@@ -74,33 +84,45 @@ public class SubQueryDecompositionStage implements RetrievalStage {
   }
 
   /**
-   * The fallback search query: the plain {@code question}, or - when a conversation is under way -
-   * the first user message of {@code history} prepended to it. {@code history} is passed in rather
-   * than read from the chat memory here, so a caller that already holds it does not pay for a
-   * second lookup.
+   * The most recent {@code turns} turns of {@code conversationWindow}, a turn being a question and
+   * its answer. {@code turns = 0} yields an empty window: the decomposition then sees the question
+   * alone.
    */
-  static String buildSearchQuery(String question, List<Message> history) {
-    if (history.isEmpty()) {
-      return question;
+  static List<Message> searchWindow(List<Message> conversationWindow, int turns) {
+    int messages = turns * MESSAGES_PER_TURN;
+    if (messages <= 0) {
+      return List.of();
     }
+    return conversationWindow.size() <= messages
+        ? conversationWindow
+        : List.copyOf(
+            conversationWindow.subList(
+                conversationWindow.size() - messages, conversationWindow.size()));
+  }
 
-    String firstUserMessage = null;
-    for (Message message : history) {
+  /**
+   * The fallback search query: the plain {@code question}, or - when the search window holds a
+   * preceding turn - the <b>last</b> user message of that window prepended to it. The last one, not
+   * the first: after a topic change the oldest question in the window is the one the current
+   * question is least likely to continue.
+   */
+  static String buildSearchQuery(String question, List<Message> searchWindow) {
+    String lastUserMessage = null;
+    for (Message message : searchWindow) {
       if (message.getMessageType() == MessageType.USER) {
-        firstUserMessage = message.getText();
-        break;
+        lastUserMessage = message.getText();
       }
     }
 
-    if (firstUserMessage == null) {
+    if (lastUserMessage == null) {
       return question;
     }
 
     log.debug(
         "Enriching search query with conversation context: '{}' -> '{} {}'",
         question,
-        firstUserMessage,
+        lastUserMessage,
         question);
-    return firstUserMessage + " " + question;
+    return lastUserMessage + " " + question;
   }
 }

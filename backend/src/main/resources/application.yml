@@ -123,6 +123,12 @@ opaa:
     # for it while reranking runs. An Ebene-1 benchmark value (see QueryProperties); 0 switches the
     # stage off through its own parameter, independently of the role switch below.
     rerank-candidate-count: ${OPAA_QUERY_RERANK_CANDIDATE_COUNT:50}
+    # The conversation window (messages the chat memory keeps, always even) and how many of its
+    # most recent turns the sub-question decomposition sees - the search never sees more of the
+    # conversation than the answer. Ebene-1 benchmark values, only judgeable with the multi-turn
+    # harness (docs/features/conversation-memory.md).
+    conversation-window-messages: ${OPAA_QUERY_CONVERSATION_WINDOW_MESSAGES:20}
+    search-window-turns: ${OPAA_QUERY_SEARCH_WINDOW_TURNS:2}
     # #1070: the entry condition of the core-field filter - the fill level a field must reach in
     # the asking person's search scope before the filter interface offers it. Committed before the
     # first measurement (ADR-0012); overridable for tests and deliberate experiments, not an

@@ -46,9 +46,9 @@ class HybridFusionTest {
 
   private static final UUID LIBRARY_ID = UUID.randomUUID();
   private static final QueryProperties HYBRID =
-      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 1, true, 50);
+      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 1, true, 50, 20, 2);
   private static final QueryProperties VECTOR_ONLY =
-      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 1, false, 50);
+      new QueryProperties(8, 25, 1.0, 0.3, false, 3, 1, false, 50, 20, 2);
 
   private final VectorStore vectorStore = mock(VectorStore.class);
   private final ChunkEmbeddingLookup chunkEmbeddingLookup = mock(ChunkEmbeddingLookup.class);

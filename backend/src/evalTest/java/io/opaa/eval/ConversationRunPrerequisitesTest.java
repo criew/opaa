@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 class ConversationRunPrerequisitesTest {
 
   private static QueryProperties queryProperties(boolean decompositionEnabled) {
-    return new QueryProperties(8, 25, 1.0, 0.3, decompositionEnabled, 3, 2, true, 0);
+    return new QueryProperties(8, 25, 1.0, 0.3, decompositionEnabled, 3, 2, true, 0, 20, 2);
   }
 
   @Test

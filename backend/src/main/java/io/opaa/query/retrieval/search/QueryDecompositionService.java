@@ -3,7 +3,6 @@ package io.opaa.query.retrieval.search;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.query.answer.ChatResponses;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -14,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.stereotype.Service;
 
@@ -91,16 +89,14 @@ public class QueryDecompositionService {
   }
 
   /**
-   * Returns 1 to {@code maxSubQueries} self-contained search queries derived from {@code question}
-   * and {@code conversationHistory}, or an empty list on any failure - see this class's Javadoc.
-   * {@code conversationHistory} is passed through unchanged (already bounded by {@code
-   * io.opaa.query.answer.ConversationMemoryConfiguration#MAX_MESSAGES_PER_CONVERSATION}), the same
-   * history {@code AnswerGenerationService#generateAnswer} sees for the same query.
+   * Returns 1 to {@code maxSubQueries} self-contained search queries derived from {@code context},
+   * or an empty list on any failure - see this class's Javadoc. {@code context} carries both the
+   * material the model is given and, by the anchor-space invariant of {@link DecompositionContext},
+   * the material {@link #countUnrelated} judges the output against.
    */
-  public List<String> decompose(
-      String question, List<Message> conversationHistory, int maxSubQueries) {
+  public List<String> decompose(DecompositionContext context, int maxSubQueries) {
     try {
-      String rawResponse = requestDecomposition(question, conversationHistory, maxSubQueries);
+      String rawResponse = requestDecomposition(context, maxSubQueries);
       List<String> parsed = parse(rawResponse);
       if (parsed.isEmpty()) {
         metrics.recordFailedDecomposition();
@@ -109,7 +105,7 @@ public class QueryDecompositionService {
                 + " retrieval");
         return List.of();
       }
-      long unrelated = countUnrelated(parsed, question, conversationHistory);
+      long unrelated = countUnrelated(parsed, context);
       if (unrelated > 0) {
         boolean allUnrelated = unrelated == parsed.size();
         if (allUnrelated) {
@@ -136,11 +132,9 @@ public class QueryDecompositionService {
     }
   }
 
-  private String requestDecomposition(
-      String question, List<Message> conversationHistory, int maxSubQueries) {
-    String systemText = SYSTEM_PROMPT_TEMPLATE.formatted(maxSubQueries);
-    List<Message> messages = new ArrayList<>(conversationHistory);
-    messages.add(new UserMessage(question));
+  private String requestDecomposition(DecompositionContext context, int maxSubQueries) {
+    String systemText = context.systemText(SYSTEM_PROMPT_TEMPLATE.formatted(maxSubQueries));
+    List<Message> messages = context.promptMessages();
 
     ChatClient chatClient = activeChatModelResolver.resolveChatClient();
     ChatResponse response =
@@ -172,20 +166,22 @@ public class QueryDecompositionService {
   }
 
   /**
-   * How many of {@code subQueries} share no anchor token with the question or the conversation
-   * history: a decomposition is a reformulation of what the user asked, so a sub-query without a
-   * single word in common with either is model output that replaced the question.
+   * How many of {@code subQueries} share no anchor token with {@code context}: a decomposition is a
+   * reformulation of what the user asked in the context it was asked in, so a sub-query without a
+   * single word in common with any of that material is model output that replaced the question.
+   *
+   * <p>The anchor space is {@link DecompositionContext#contextTexts()} - exactly the material the
+   * model was given, by construction rather than by enumeration here.
    *
    * <p>All or nothing: {@link #decompose} falls back as soon as this returns anything above zero,
    * because dropping one sub-query of a correct decomposition loses a whole topic. The check is
-   * skipped - returning zero - when question and history yield at most one anchor, and for a script
-   * without word separators, where every sub-query would look unrelated.
+   * skipped - returning zero - when the context yields at most one anchor, and for a script without
+   * word separators, where every sub-query would look unrelated.
    */
-  private static long countUnrelated(
-      List<String> subQueries, String question, List<Message> conversationHistory) {
-    Set<String> anchors = new HashSet<>(tokenize(question));
-    conversationHistory.forEach(message -> anchors.addAll(tokenize(message.getText())));
-    if (anchors.size() <= 1 || lacksWordBoundaries(question)) {
+  private static long countUnrelated(List<String> subQueries, DecompositionContext context) {
+    Set<String> anchors = new HashSet<>();
+    context.contextTexts().forEach(text -> anchors.addAll(tokenize(text)));
+    if (anchors.size() <= 1 || lacksWordBoundaries(context.question())) {
       return 0;
     }
     return subQueries.stream().filter(subQuery -> !isRelated(subQuery, anchors)).count();

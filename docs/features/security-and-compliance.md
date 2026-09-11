@@ -172,6 +172,20 @@ ersten Stufe nicht geschrieben.
 
 - Erteilung und Entzug der System-Admin-Rolle
 - Deaktivierung eines Kontos, erzwungene Neuanmeldung, Ausstellung und Widerruf von API-Tokens
+- **Lokale Konten** ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md), Epic #1529): Anlage
+  und Einladung (mit Zustellweg: Mail zugestellt, Mail gescheitert, Link angezeigt), Änderung von
+  Ablaufdatum (mit Vorher/Nachher) und der Tatsache einer Änderung von Adresse, Anzeigename oder
+  Anlagegrund (nur der Feldname, nie der Wert), Sperre und Entsperrung mit Grund (Verwalter,
+  Fehlversuche, Inaktivität), administratives Zurücksetzen und Erzeugen eines Passworts, Setzen und
+  Ändern des eigenen Passworts, fremdveranlasster Widerruf von Sitzungen mit Grund, Löschung, Anlage
+  und Wiederanlauf des Notanker-Kontos der Systemverwaltung sowie **jede erfolgreiche Anmeldung dieses
+  einen Notanker-Kontos** (es ist ein privilegiertes Notfallzugangsmittel, keine Person), Anstoß und
+  Abschluss der Übergabe eines lokalen Kontos an eine Anbieteridentität (mit Anbieter-Kennung, nie mit
+  dem Subject), Ein- und Ausschalten der lokalen Verwaltung, der Selbstregistrierung und des
+  Passwort-vergessen-Wegs sowie jede Änderung ihrer Einstellungen. **Nicht** dabei: die eigene
+  Abmeldung, der routinemäßige Ablauf einer Sitzung und der einzelne Fehlversuch (siehe unten). In
+  keinem dieser Ereignisse stehen E-Mail-Adressen, Namen, Anbieter-Subjects oder Freitext; die
+  betroffene Person ist das Pseudonym in `subject_ref`
 - **Jede bewirkte** Rechteänderung aus einem Verzeichnisabgleich — je Änderung, nicht je Lauf, verbunden
   über `correlation_ref`; dazu ein Kopfeintrag des Laufs mit Ergebnis und, oberhalb der Schwelle, mit
   der bestätigenden Person und ihrem Anlass
@@ -213,7 +227,7 @@ die zugehörige Funktion existiert — die Liste selbst bleibt geschlossen und �
 | **Abfragen** — Frage, Suchbegriffe, angewandter Suchbereich, Trefferzahl | Das ist Verhalten, nicht Zugriffsänderung. In der Menge ergibt es das Tätigkeitsprofil, das die Mitbestimmung ausschließt. Die Prüfbarkeit hängt nicht daran: Die Negativfrage beantwortet die Rechtehistorie |
 | **Antwortinhalte, Zitate, Modellaufrufe** | dasselbe, zusätzlich mit Inhalten aus dem Fachverfahren |
 | **Erfolgreiche Anmeldungen und Sitzungsverläufe** | reines Anwesenheitsmerkmal, ohne Aussage über Rechte |
-| **Fehlgeschlagene Anmeldungen und abgewiesene Verbindungsversuche** | Sicherheitsereignisse, die in das zentrale Sicherheitsmonitoring gehören und nicht in das Nachweisprotokoll. Sie kommen mit der [SIEM-Anbindung](#anbindung-an-ein-zentrales-sicherheitsmonitoring), nicht mit dieser Stufe |
+| **Fehlgeschlagene Anmeldungen und abgewiesene Verbindungsversuche** | Sicherheitsereignisse, die in das zentrale Sicherheitsmonitoring gehören und nicht in das Nachweisprotokoll. Sie kommen mit der [SIEM-Anbindung](#anbindung-an-ein-zentrales-sicherheitsmonitoring), nicht mit dieser Stufe. Das gilt unverändert für die lokale Anmeldung ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md)): Der einzelne Fehlversuch steht nur im technischen Anwendungslog (kurze Frist, keine Auswertungsoberfläche, Konto-Kennung statt Adresse); in das Nachweisprotokoll gelangt allein die daraus folgende **Kontosperre** als Zustandsänderung. Der Fehlversuchszähler eines Kontos wird weder ausgegeben noch historisiert und geht bei jeder erfolgreichen Anmeldung, jedem Zurücksetzen und jeder Entsperrung auf null |
 | **Lesezugriffe auf Dokumente und Chats** | Verhalten; wer worauf zugreifen **durfte**, belegt die Rechtehistorie |
 
 **Spätere Stufen** — nicht verworfen, nur nicht hier: das Teilen und Zurückziehen von Chats und
@@ -385,7 +399,7 @@ Ablage unterschiedliche Fristen hätten. Das passt zum Betriebsmodell: eine OPAA
 Die Löschung selbst läuft über `opaa_audit_delete_expired_partitions()` — eine parameterlose,
 `SECURITY DEFINER`-Funktion im Besitz von `opaa_audit_owner` (derselben Rolle, die bereits `audit_log`
 gehört, siehe [Sicherheitsgrad](#der-sicherheitsgrad-der-ersten-stufe-einfaches-anfügen) und
-[ADR-0015](decisions/0015-eigentuemertrennung-protokollablage.md)). Das Anwendungskonto erhält
+[ADR-0015](../decisions/0015-eigentuemertrennung-protokollablage.md)). Das Anwendungskonto erhält
 ausschließlich das Recht, diese eine Funktion aufzurufen (`EXECUTE`) — kein `DROP`, kein `DELETE`, keine
 Parameter, mit denen sich eine bestimmte Partition, Organisation oder ein Zeitraum benennen ließe. Die
 Funktion selbst prüft nur die eine gespeicherte Konfigurationszeile und entfernt ausschließlich
@@ -607,6 +621,21 @@ seinen Chunks, Einbettungen und Zwischenständen; ein Rest im Index wäre der Un
 erfüllten und einer behaupteten Löschpflicht.
 
 ### Export und Auskunft
+
+**Personenbeziehbare Felder lokaler Konten** ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md)):
+Mit der lokalen Benutzerverwaltung kommen zu einem Konto der Anlagegrund (dienstlicher Anlass und
+Befristungsgrund, höchstens 200 Zeichen, für die betroffene Person in ihren Einstellungen einsehbar),
+Ablaufdatum, Sperrzustand mit Grund, der Zeitpunkt der E-Mail-Bestätigung und die Kennzeichnung
+„Passwortwechsel ausstehend" mit Anlass hinzu — alle Teil der Selbstauskunft. Die Sitzungs- und
+Aktionstoken (`local_refresh_tokens`, `local_revoked_tokens`, `local_action_tokens`) sind Betriebsdaten
+mit harter Frist (Lebensdauer begrenzt, Löschung spätestens sieben Tage nach Ablauf oder Widerruf);
+es gibt keine Oberfläche und keine Schnittstelle, die sie je Person ausgibt — die in
+[Zugangskontrolle](./access-control.md#sitzungsverwaltung) zugesagte Übersicht der **eigenen**
+Sitzungen ist die einzige vorgesehene Ausnahme und nur für die Person selbst. Die Kontenliste der
+Verwaltung führt ausschließlich lokale Konten, zeigt Aktivität nur als Klasse („nie", „länger als 90
+Tage nicht", „aktiv") und kennt keinen Export und keinen Massenabruf. Der [Auszug für die
+Personalvertretung](#der-auszug-für-die-personalvertretung) führt diese Felder und die neuen
+Ereignisarten, bevor die lokale Verwaltung erstmals eingeschaltet wird.
 
 Drei Exporte, die auseinanderzuhalten sind, weil sie verschiedene Adressaten haben:
 
