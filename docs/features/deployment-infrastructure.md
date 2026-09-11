@@ -35,9 +35,10 @@ Dieses Dokument beschreibt die Betriebsformen, ihre Voraussetzungen und ihre Gre
 3. **Betrieb ohne Netzanbindung ist ein vorgesehenes Szenario**, keine Ausnahme und kein Sonderfall.
    Er bestimmt Entwurfsentscheidungen mit, statt nachträglich ermöglicht zu werden.
 4. **Der Dateispeicher ist austauschbar — durch Einhängen, nicht durch eine Abstraktion.** OPAA
-   schreibt und liest gegen genau ein konfiguriertes Verzeichnis; ein Netzlaufwerk hängt der Betrieb
-   dort ein. Objektbasierter Speicher ist als eigener Weg vorgesehen, aber **nicht gebaut**. Der
-   **Vektorspeicher** ist davon ausgenommen — er ist auf pgvector festgelegt.
+   liest Quelldokumente gegen genau ein konfiguriertes Verzeichnis; ein Netzlaufwerk hängt der
+   Betrieb dort ein. Die einzige Ausnahme ist die **Originalablage der Uploads**: Sie gehört der
+   Anwendung und hat als einzige einen zweiten, gebauten Weg über objektbasierten Speicher. Der
+   **Vektorspeicher** ist von der Wahl ausgenommen — er ist auf pgvector festgelegt.
 5. **Mandantenfähiger Betrieb ist der Hebel für die Fläche.** Ein Rechenzentrum betreibt eine
    Installation für viele Häuser, die einzeln nie beschaffen würden.
 6. **Die gesamte Konfiguration liegt außerhalb des Abbilds** — in Umgebungsvariablen und
@@ -134,16 +135,27 @@ Basisverzeichnissen hängt, entscheidet der Betrieb durch Einhängen — nicht d
 Konfigurationsvariante. Eine Abstraktion über mehrere Speicherarten ist **nicht gebaut** und für die
 beiden dateibasierten Fälle auch nicht vorgesehen.
 
-Der Upload durch Beschäftigte (#420) schreibt in ein eigenes, zweites konfiguriertes Verzeichnis
-(`OPAA_UPLOAD_STORAGE_PATH`, Standard `./uploads`), bewusst getrennt vom betriebsverwalteten
-Indizierungsverzeichnis — Originale aus dem Upload gehören der Anwendung, Originale im
-Indizierungsverzeichnis bleiben Eigentum der Quelle, aus der sie stammen (siehe
+Der Upload durch Beschäftigte (#420) schreibt in eine eigene, zweite Ablage — standardmäßig ein
+konfiguriertes Verzeichnis (`OPAA_UPLOAD_STORAGE_PATH`, Standard `./uploads`), bewusst getrennt vom
+betriebsverwalteten Indizierungsverzeichnis. Originale aus dem Upload gehören der Anwendung,
+Originale im Indizierungsverzeichnis bleiben Eigentum der Quelle, aus der sie stammen (siehe
 [`deleteDocument`](../features/knowledge-sources.md#upload), das genau diese Grenze durchsetzt).
 `docker-compose.yml` hängt beide Verzeichnisse als eigene Volumes ein
 (`OPAA_UPLOAD_STORAGE_PATH_HOST`, Standard `./uploads`, analog zu
 `OPAA_INDEXING_DOCUMENT_PATH_HOST`) — ohne dieses Volume verschwindet der Upload-Bestand beim
 Neuaufsetzen des Containers, während Datenbankzeilen und Chunks im Vektorspeicher bestehen bleiben
 und auf eine nicht mehr vorhandene Datei zeigen.
+
+Genau diese Eigentumsgrenze ist der Grund, warum ausgerechnet die Upload-Ablage — und nur sie — ein
+zweites Speicher-Backend bekommen durfte: Sie ist der einzige Dateitopf, über den die Anwendung
+selbst verfügt. Seit [ADR-0030](../decisions/0030-originalablage-der-uploads.md) liegt sie hinter
+einem Port mit zwei Adaptern, gewählt über `opaa.upload.store`: `filesystem` (Standard, Verhalten
+wie zuvor) oder `s3` (ein S3-kompatibler Objektspeicher, konfiguriert über `opaa.upload.s3.*`).
+`documents.file_path` trägt in beiden Fällen den Verweis, im zweiten als `s3://<bucket>/<schlüssel>`;
+das Schlüsselschema bildet die Verzeichnisstruktur nach, damit ein Bestand mit einem rekursiven
+Kopieren wandert. Die Umstellung eines vorhandenen Bestands ist ein Betriebsvorgang (Bytes kopieren,
+Präfix in `file_path` ersetzen), kein Nachzug im Code — der Ablauf samt Rückweg steht in
+[deployment.md](../handbuch/deployment.md).
 
 Das löst den größeren Teil der Frage ohne eine Zeile Arbeit: **Ein Netzlaufwerk braucht keine
 Abstraktion.** SMB und NFS werden vom Betriebssystem eingehängt und sehen für die Anwendung aus wie
@@ -153,7 +165,7 @@ ein gewöhnliches Verzeichnis.
 |---|---|---|
 | **Lokales Dateisystem** | kleine Installationen, Erprobung, Betrieb ohne Netzanbindung | **ja** — das konfigurierte Verzeichnis ist der einzige Weg |
 | **Netzlaufwerk** (SMB/NFS) | Häuser, deren Bestände ohnehin auf einem Dateiserver liegen | **ja**, ohne eigenen Pfad im Code — das Netzlaufwerk wird auf das konfigurierte Verzeichnis eingehängt |
-| **Objektspeicher** (S3-kompatibel, auch selbst betrieben) | Rechenzentrumsbetrieb, mandantenfähige Installationen, große Bestände | **nein** — Zielbild, braucht als einziges einen eigenen Pfad im Code |
+| **Objektspeicher** (S3-kompatibel, auch selbst betrieben) | Rechenzentrumsbetrieb, mandantenfähige Installationen, große Bestände | **ja, für die Originalablage der Uploads** (`opaa.upload.store=s3`, ADR-0030) — der einzige Weg mit eigenem Pfad im Code. Für Quelldokumente einer FILESYSTEM-Bibliothek bleibt es beim Verzeichnis; ein S3-Bucket als *Quelle* ist stattdessen der S3-Konnektor |
 
 Unabhängig vom Backend gilt: **Das Quelldokument ist der Beleg.** Es wird nicht nur eingebettet,
 sondern bleibt greifbar, damit der Sprung von der Antwort zur Fundstelle möglich bleibt. Ein Speicher,
@@ -183,26 +195,40 @@ die Betriebsplanung:
   Dateisperren. Wo zwei Installationen oder zwei Instanzen auf dasselbe Verzeichnis zeigen, ist die
   gegenseitige Abgrenzung eine Sache der Betriebsführung, nicht des Dateisystems.
 
-### Objektbasierter Speicher: eigener Weg, ohne Termin
+### Objektbasierter Speicher: eigener Weg, gebaut für die Originalablage
 
 Objektbasierter Speicher ist der einzige der drei Fälle, der wirklich einen eigenen Pfad im Code
-braucht. Er wird als eigener Weg geführt, jedoch **ohne Termin**.
+braucht — und er ist dort gebaut, wo er hingehört: in der Originalablage der Uploads.
 
-Der Grund, warum er kommt, ist der **mandantenfähige Rechenzentrumsbetrieb**: Dort ist ein geteiltes
+Der Grund, warum er kam, ist der **mandantenfähige Rechenzentrumsbetrieb**: Dort ist ein geteiltes
 Netzlaufwerk über viele Häuser hinweg der unangenehmere Weg — bei der Trennung der Mandanten, bei
-Kontingenten je Haus und bei der Sicherung. Er gehört damit in dieselbe Phase wie der mandantenfähige
-Betrieb (**Phase 1**), ohne dass daraus eine Reihenfolge oder ein Zeitpunkt folgt.
+Kontingenten je Haus und bei der Sicherung. Dazu kommt der Mehrinstanzbetrieb, für den ein von
+mehreren Prozessen beschreibbarer Speicher eine der Voraussetzungen ist.
+
+Was das Zielbild bleibt: Er ist **opt-in**, nicht der Normalfall. Das Dateisystem bleibt der
+Standard, weil die kleine Installation ohne Objektspeicher der einfachste Fall bleiben soll.
+Verschlüsselung ruhender Daten, Versionierung, Aufbewahrung und Replikation gehören dem Bucket, nicht
+der Anwendung; OPAA setzt keine Verschlüsselungskopfzeilen. Bereichsanfragen beim Herunterladen
+entfallen auf diesem Weg, und vorsigniert ausgelieferte URLs, die sie zurückbrächten, sind
+ausdrücklich nicht Teil des Schnitts.
 
 Einhänge-Werkzeuge, die objektbasierten Speicher als Verzeichnis erscheinen lassen, gibt es. Sie
 haben aber Nachteile bei Latenz und Konsistenz und bilden die Semantik eines Dateisystems nur
-näherungsweise ab. Sie sind eine Notlösung für den Einzelfall, kein Ersatz für den eigenen Weg.
+näherungsweise ab. Sie bleiben eine Notlösung für den Einzelfall — für die Originalablage sind sie
+seit ADR-0030 auch nicht mehr nötig.
 
-### Kein Objektspeicher-Dienst im mitgelieferten Compose-Stapel
+### Der Objektspeicher-Dienst im Compose-Stapel ist zuschaltbar, nicht Teil des Einstiegs
 
-Der mitgelieferte Stapel bleibt schlank: Datenbank, Anmeldung, Backend, Frontend. Ein zusätzlicher
-Dienst für objektbasierten Speicher wäre etwas, das kleine Installationen nie brauchen und das den
-Einstieg schwerer macht, statt ihn zu erleichtern. Wer objektbasierten Speicher betreibt, bringt ihn
+Der Grundstapel bleibt schlank: Datenbank, Anmeldung, Backend, Frontend. Ein Objektspeicher-Dienst
+darin wäre für kleine Installationen Ballast, und wer objektbasierten Speicher betreibt, bringt ihn
 ohnehin mit.
+
+Einen solchen Dienst gibt es deshalb nur hinter einem eigenen Compose-Profil (`upload-s3`, #1477) —
+mit eigenem Volume, anders als der Korpus-Objektspeicher des Demo-Profils, der eine *Quelle* ist und
+bei jedem Start neu befüllt wird. Ohne das Profil existiert er nicht und der Stapel verhält sich
+unverändert. Sein Zweck ist doppelt: Er macht den Objektspeicherweg ohne fremde Infrastruktur
+erprobbar, und er ist das Ziel, gegen das die Umstellungsanleitung in
+[deployment.md](../handbuch/deployment.md) geschrieben und durchgespielt ist.
 
 ---
 
@@ -624,10 +650,10 @@ hinterlassen kein Ereignis.
 
 ## Offene Fragen / Zukünftige Erweiterungen
 
-- Wie der Weg zu objektbasiertem Speicher im Einzelnen aussieht — Kontingente, Trennung der Mandanten
-  und Sicherung je Organisation —, ist offen. Dass er als eigener Weg geführt wird und dass kein
-  solcher Dienst in den mitgelieferten Stapel gehört, ist entschieden (siehe
-  [Speicher-Backends](#speicher-backends)).
+- Der Weg zu objektbasiertem Speicher ist für die Originalablage der Uploads gebaut (siehe
+  [Speicher-Backends](#speicher-backends)). Offen bleibt daran, was **je Organisation** gilt:
+  Kontingente, Trennung der Mandanten (ein Schlüsselpräfix oder ein eigener Bucket je Haus) und eine
+  Sicherung, die sich je Haus zurückspielen lässt.
 - **Zuordnung von Netzsicherheit und Transportverschlüsselung ist zu klären.** Beides steht hier,
   weil Netztrennung, vorgelagerter Zugangsweg und Zertifikatsverwaltung Betriebsthemen sind und beim
   Betreiber liegen. Ebenso vertretbar wäre die Spezifikation zu Sicherheit und Nachweisführung, die
