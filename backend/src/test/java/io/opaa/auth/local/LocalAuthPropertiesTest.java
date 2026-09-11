@@ -47,7 +47,8 @@ class LocalAuthPropertiesTest {
             " Force ",
             List.of(" 10.0.0.0/8 ", "", "2001:db8::/32"));
 
-    assertThat(properties.initialAdminPassword()).isEqualTo("ci-passwort");
+    // never trimmed: a password may begin or end with a space
+    assertThat(properties.initialAdminPassword()).isEqualTo("  ci-passwort  ");
     assertThat(properties.hasInitialAdminPassword()).isTrue();
     assertThat(properties.isAdminResetForced()).isTrue();
     assertThat(properties.adminAllowedCidrs()).containsExactly("10.0.0.0/8", "2001:db8::/32");

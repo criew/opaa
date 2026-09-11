@@ -58,5 +58,13 @@ class LocalAdminNetworkPolicyTest {
     assertThat(policy.permitsAdminSignIn(null)).isFalse();
     assertThat(policy.permitsAdminSignIn("")).isFalse();
     assertThat(policy.permitsAdminSignIn("kein-netz")).isFalse();
+    // a host name is refused before any matcher could resolve it through DNS
+    assertThat(policy.permitsAdminSignIn("localhost")).isFalse();
+    assertThat(policy.permitsAdminSignIn("10.0.0.1.example")).isFalse();
+    assertThat(LocalAdminNetworkPolicy.isNumericAddress("10.0.0.1")).isTrue();
+    assertThat(LocalAdminNetworkPolicy.isNumericAddress("::1")).isTrue();
+    assertThat(LocalAdminNetworkPolicy.isNumericAddress("fe80::1%eth0")).isTrue();
+    assertThat(LocalAdminNetworkPolicy.isNumericAddress("256.0.0.1")).isFalse();
+    assertThat(LocalAdminNetworkPolicy.isNumericAddress("idp.example")).isFalse();
   }
 }

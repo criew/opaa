@@ -28,8 +28,9 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  * @param cookieSecure whether the refresh cookie carries {@code Secure} (default true; {@code
  *     false} only for local HTTP)
  * @param initialAdminPassword {@code OPAA_INITIAL_ADMIN_PASSWORD}: the bootstrap administrator's
- *     password for automated deployments (CI, E2E) - used as is, without a forced change; empty
- *     means "generate one and print it once" (ADR-0033, Entscheidung 5)
+ *     password for automated deployments (CI, E2E) - used byte for byte, never trimmed (a password
+ *     may begin or end with a space), without a forced change; empty means "generate one and print
+ *     it once" (ADR-0033, Entscheidung 5)
  * @param adminReset {@code OPAA_LOCAL_ADMIN_RESET}: {@code force} restores the bootstrap
  *     administrator once at start-up (Entscheidung 5); the operator removes it afterwards
  * @param adminAllowedCidrs {@code OPAA_LOCAL_ADMIN_ALLOWED_CIDRS}: the networks a local {@code
@@ -59,7 +60,7 @@ public record LocalAuthProperties(
 
   public LocalAuthProperties {
     jwtSecret = jwtSecret == null ? "" : jwtSecret.trim();
-    initialAdminPassword = initialAdminPassword == null ? "" : initialAdminPassword.trim();
+    initialAdminPassword = initialAdminPassword == null ? "" : initialAdminPassword;
     adminReset = adminReset == null ? "" : adminReset.trim();
     adminAllowedCidrs = normalizeCidrs(adminAllowedCidrs);
     accessTokenTtl = accessTokenTtl != null ? accessTokenTtl : Duration.ofMinutes(15);

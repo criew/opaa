@@ -12,6 +12,7 @@ import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.local.LocalAdminAvailabilityGuard;
+import io.opaa.auth.local.LocalCredentialsRepository;
 import io.opaa.auth.local.LocalRefreshTokenRepository;
 import io.opaa.auth.local.LocalTokenRevocationService;
 import io.opaa.auth.local.RevocationReason;
@@ -76,7 +77,7 @@ public class OidcProviderService {
   private final OidcAddressPolicy addressPolicy;
   private final OidcProviderRegistry registry;
   private final LocalAdminAvailabilityGuard adminGuard;
-  private final LocalTokenRevocationService revocation;
+  private final LocalCredentialsRepository credentials;
   private final LocalRefreshTokenRepository refreshTokens;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
@@ -88,7 +89,7 @@ public class OidcProviderService {
       OidcAddressPolicy addressPolicy,
       OidcProviderRegistry registry,
       LocalAdminAvailabilityGuard adminGuard,
-      LocalTokenRevocationService revocation,
+      LocalCredentialsRepository credentials,
       LocalRefreshTokenRepository refreshTokens,
       AuditEventRecorder auditEventRecorder,
       ApplicationEventPublisher eventPublisher,
@@ -98,7 +99,7 @@ public class OidcProviderService {
     this.addressPolicy = addressPolicy;
     this.registry = registry;
     this.adminGuard = adminGuard;
-    this.revocation = revocation;
+    this.credentials = credentials;
     this.refreshTokens = refreshTokens;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
@@ -241,8 +242,12 @@ public class OidcProviderService {
           "Der Standardanbieter kann nicht gelöscht werden. Machen Sie zuerst einen anderen"
               + " Anbieter zum Standard.");
     }
-    if (provider.isEnabled() && isLastEnabledOidcProvider(provider)) {
-      requireLastProviderAcknowledged(acknowledgeLastProvider, "gelöscht");
+    if (provider.isEnabled()) {
+      // every removal of a sign-in path is guarded, not only the last provider's: the only
+      // login-capable administrators may all belong to this one (ADR-0033, Entscheidung 4)
+      if (isLastEnabledOidcProvider(provider)) {
+        requireLastProviderAcknowledged(acknowledgeLastProvider, "gelöscht");
+      }
       adminGuard.requireLoginCapableAdminWithoutProvider(organizationId, provider.getId());
     }
     Map<String, Object> before = auditState(provider);
@@ -295,8 +300,8 @@ public class OidcProviderService {
       }
       if (isLastEnabledOidcProvider(provider)) {
         requireLastProviderAcknowledged(acknowledgeLastProvider, "deaktiviert");
-        adminGuard.requireLoginCapableAdminWithoutProvider(organizationId, provider.getId());
       }
+      adminGuard.requireLoginCapableAdminWithoutProvider(organizationId, provider.getId());
     }
     if (enabled) {
       provider.enable();
@@ -317,8 +322,9 @@ public class OidcProviderService {
 
   /**
    * The management switch (ADR-0033, Entscheidung 4). Switching off ends every session of every
-   * regular local account at once - access tokens through {@code password_invalidated_before},
-   * refresh families through {@link RevocationReason#ADMIN} - and audits each as a foreign-caused
+   * regular local account at once - access tokens through one {@code password_invalidated_before}
+   * update over all regular accounts, refresh families through {@link RevocationReason#ADMIN} for
+   * the accounts that actually hold an active one - and audits exactly those as a foreign-caused
    * {@code LOCAL_SESSION_REVOKED}; local {@code SYSTEM_ADMIN} accounts keep signing in.
    */
   private OidcProvider switchLocalAccounts(
@@ -329,7 +335,7 @@ public class OidcProviderService {
       local.enable();
     } else {
       local.disable();
-      after.put("revokedAccounts", revokeRegularLocalSessions(organizationId, actorUserId));
+      after.put("revokedSessions", revokeRegularLocalSessions(actorUserId));
     }
     repository.save(local);
     recordChange(
@@ -343,26 +349,36 @@ public class OidcProviderService {
     return local;
   }
 
-  private int revokeRegularLocalSessions(UUID organizationId, UUID actorUserId) {
+  /** Returns how many accounts actually had a session ended. */
+  private int revokeRegularLocalSessions(UUID actorUserId) {
     Instant now = clock.instant();
     List<User> regular =
         userRepository.findByIssuerAndSystemRoleNot(LocalIssuer.URN, SystemRole.SYSTEM_ADMIN);
-    for (User user : regular) {
-      revocation.invalidateSessionsIssuedBefore(user.getId());
-      refreshTokens.revokeAllForUser(user.getId(), RevocationReason.ADMIN, now);
-      UUID pseudonym = auditEventRecorder.pseudonymFor(user.getId(), user.getOrganizationId());
+    if (regular.isEmpty()) {
+      return 0;
+    }
+    Map<UUID, User> byId = new HashMap<>();
+    regular.forEach(user -> byId.put(user.getId(), user));
+    credentials.invalidateSessionsIssuedBefore(
+        byId.keySet(), LocalTokenRevocationService.cutoffFor(now), now);
+    List<UUID> withSessions = refreshTokens.findUserIdsWithActiveTokens(byId.keySet(), now);
+    for (UUID userId : withSessions) {
+      User user = byId.get(userId);
+      refreshTokens.revokeAllForUser(userId, RevocationReason.ADMIN, now);
+      // pseudonym and event under the same organization - the account's own
+      UUID pseudonym = auditEventRecorder.pseudonymFor(userId, user.getOrganizationId());
       auditEventRecorder.recordUserActionOnSubject(
           AuditEvent.builder()
-              .organizationId(organizationId)
+              .organizationId(user.getOrganizationId())
               .actor(actorUserId)
               .type(AuditEventType.LOCAL_SESSION_REVOKED)
               .object(AuditObjectType.USER_ACCOUNT, pseudonym, null)
-              .subject(AuditSubjectKind.USER, user.getId())
+              .subject(AuditSubjectKind.USER, userId)
               .after(Map.of("reason", AuditEventType.LOCAL_ACCOUNTS_DISABLED.name()))
               .outcome(AuditOutcome.SUCCESS)
               .build());
     }
-    return regular.size();
+    return withSessions.size();
   }
 
   private boolean isLastEnabledOidcProvider(OidcProvider provider) {

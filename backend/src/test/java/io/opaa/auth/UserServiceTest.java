@@ -115,8 +115,7 @@ class UserServiceTest {
   private UserService userServiceWith(ApplicationEventPublisher eventPublisher) {
     return new UserService(
         userRepository,
-        new InitialAdminPolicy(
-            authProperties, new TrustedProvider(authProperties, providerRepository)),
+        new InitialAdminPolicy(authProperties),
         providerRegistry,
         providerRepository,
         roleSynchronizer,

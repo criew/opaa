@@ -14,15 +14,16 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderRepository;
-import io.opaa.auth.oidc.OidcProviderSeedMarkerRepository;
 import io.opaa.auth.oidc.OidcProvidersChangedEvent;
 import io.opaa.organization.Organization;
 import io.opaa.security.PasswordGenerator;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -37,13 +38,15 @@ import org.springframework.transaction.annotation.Transactional;
  * OPAA_LOCAL_ADMIN_RESET=force} restores it. Two cases of the first start:
  *
  * <ul>
- *   <li><b>Fresh installation</b> - no {@code OidcProviderSeedMarker} and no account yet: the
- *       account is live with {@code OPAA_INITIAL_ADMIN_PASSWORD} (used as is, no forced change) or
- *       with a generated password that is written <em>once</em> as a clearly marked block into the
- *       application log, with the change forced at the first sign-in.
- *   <li><b>Existing installation</b> - the takeover marker exists or {@code users} is not empty:
- *       the account is created {@code INVITED}, without a password and without any log block; the
- *       operator activates it deliberately with the forced restart.
+ *   <li><b>Fresh installation</b> - no account exists yet: the account is live with {@code
+ *       OPAA_INITIAL_ADMIN_PASSWORD} (used as is, checked against the password policy, no forced
+ *       change) or with a generated password that is written <em>once</em> as a clearly marked
+ *       block into the application log, with the change forced at the first sign-in.
+ *   <li><b>Existing installation</b> - {@code users} is not empty: the account is created {@code
+ *       INVITED}, without a password and without any log block; the operator activates it
+ *       deliberately with the forced restart. "No account" rather than "no provider takeover
+ *       marker" is the criterion, because that marker is written in the same start even when this
+ *       seed refused the address.
  * </ul>
  *
  * <p>The shipped default {@code admin@opaa.local} is a dev-mode value, not a mailbox: it and a
@@ -87,9 +90,9 @@ public class LocalAdminSeeder {
   private final LocalCredentialsRepository credentials;
   private final LocalRefreshTokenRepository refreshTokens;
   private final OidcProviderRepository providers;
-  private final OidcProviderSeedMarkerRepository oidcMarker;
   private final LocalAdminSeedMarkerRepository marker;
   private final PasswordEncoder passwordEncoder;
+  private final PasswordPolicy passwordPolicy;
   private final PasswordGenerator passwordGenerator;
   private final AuditEventRecorder audit;
   private final ApplicationEventPublisher events;
@@ -102,9 +105,9 @@ public class LocalAdminSeeder {
       LocalCredentialsRepository credentials,
       LocalRefreshTokenRepository refreshTokens,
       OidcProviderRepository providers,
-      OidcProviderSeedMarkerRepository oidcMarker,
       LocalAdminSeedMarkerRepository marker,
       PasswordEncoder passwordEncoder,
+      PasswordPolicy passwordPolicy,
       PasswordGenerator passwordGenerator,
       AuditEventRecorder audit,
       ApplicationEventPublisher events,
@@ -115,9 +118,9 @@ public class LocalAdminSeeder {
     this.credentials = credentials;
     this.refreshTokens = refreshTokens;
     this.providers = providers;
-    this.oidcMarker = oidcMarker;
     this.marker = marker;
     this.passwordEncoder = passwordEncoder;
+    this.passwordPolicy = passwordPolicy;
     this.passwordGenerator = passwordGenerator;
     this.audit = audit;
     this.events = events;
@@ -154,7 +157,13 @@ public class LocalAdminSeeder {
       return Outcome.REJECTED;
     }
     Instant now = clock.instant();
-    boolean fresh = !oidcMarker.seedAlreadyAttempted() && users.count() == 0;
+    // a fresh installation is one without accounts - not "without the provider takeover marker":
+    // that marker is written in the same start even when this seed refused the address, and the
+    // corrected address on the next start must still yield a live account
+    boolean fresh = users.count() == 0;
+    if (fresh && !environmentPasswordAcceptable(email)) {
+      return Outcome.REJECTED;
+    }
     ensureLocalProviderRow();
     User admin = createBootstrapUser(email);
     LocalCredentials row = new LocalCredentials(admin.getId(), CREATED_REASON, now);
@@ -220,6 +229,9 @@ public class LocalAdminSeeder {
       if (email == null) {
         return Outcome.REJECTED;
       }
+      if (!environmentPasswordAcceptable(email)) {
+        return Outcome.REJECTED;
+      }
       if (users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email).isPresent()) {
         log.error(
             "{}=force: Kein Notanker-Konto angelegt - unter der Adresse aus {} existiert bereits"
@@ -232,6 +244,9 @@ public class LocalAdminSeeder {
       row = new LocalCredentials(admin.getId(), CREATED_REASON, now);
       row.markBootstrap();
       row.markEmailVerified(now);
+    }
+    if (!environmentPasswordAcceptable(admin.getEmail())) {
+      return Outcome.REJECTED;
     }
     ensureLocalProviderRow();
     String generated = applyPassword(row, now);
@@ -285,6 +300,29 @@ public class LocalAdminSeeder {
         problem,
         INITIAL_ADMIN_EMAIL_VARIABLE);
     return null;
+  }
+
+  /**
+   * {@code OPAA_INITIAL_ADMIN_PASSWORD}, if set, must satisfy the {@link PasswordPolicy} like any
+   * password: BCrypt refuses more than 72 bytes with an exception that would abort every start
+   * without naming the variable, and a three-character password must not become an administrator's.
+   * A violation is logged with the variable and the codes; nothing is written.
+   */
+  private boolean environmentPasswordAcceptable(String email) {
+    if (!localAuthProperties.hasInitialAdminPassword()) {
+      return true;
+    }
+    List<PasswordPolicy.Violation> violations =
+        passwordPolicy.check(localAuthProperties.initialAdminPassword(), email);
+    if (violations.isEmpty()) {
+      return true;
+    }
+    log.error(
+        "Kein Notanker-Konto der Systemverwaltung angelegt: {} verletzt die Passwortrichtlinie"
+            + " ({}). Die Variable anpassen und neu starten - die Anlage wird dann nachgeholt.",
+        LocalAuthProperties.INITIAL_ADMIN_PASSWORD_VARIABLE,
+        violations.stream().map(PasswordPolicy.Violation::code).collect(Collectors.joining(", ")));
+    return false;
   }
 
   private static boolean looksLikeAnAddress(String email) {

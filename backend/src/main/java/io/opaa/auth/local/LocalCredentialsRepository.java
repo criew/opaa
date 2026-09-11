@@ -1,6 +1,7 @@
 package io.opaa.auth.local;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -42,4 +43,20 @@ public interface LocalCredentialsRepository extends JpaRepository<LocalCredentia
       "UPDATE LocalCredentials c SET c.failedLoginAttempts = 0, c.updatedAt = :now"
           + " WHERE c.userId = :userId AND c.failedLoginAttempts <> 0")
   int resetFailedLoginAttempts(@Param("userId") UUID userId, @Param("now") Instant now);
+
+  /**
+   * The mass revocation of several accounts in one statement (switching the local account
+   * management off, ADR-0033 Entscheidung 4): every access token of {@code userIds} issued before
+   * {@code cutoff} becomes invalid. Bypasses the optimistic {@code version}, as every bulk update
+   * does; returns the number of rows written.
+   */
+  @Transactional
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "UPDATE LocalCredentials c SET c.passwordInvalidatedBefore = :cutoff, c.updatedAt = :now"
+          + " WHERE c.userId IN :userIds")
+  int invalidateSessionsIssuedBefore(
+      @Param("userIds") Collection<UUID> userIds,
+      @Param("cutoff") Instant cutoff,
+      @Param("now") Instant now);
 }

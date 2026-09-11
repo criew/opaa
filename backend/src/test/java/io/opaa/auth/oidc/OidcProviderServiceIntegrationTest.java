@@ -12,6 +12,8 @@ import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.sun.net.httpserver.HttpServer;
+import io.opaa.api.types.SystemRole;
+import io.opaa.auth.AuthProperties;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
@@ -58,6 +60,7 @@ class OidcProviderServiceIntegrationTest {
   @Autowired private OidcProviderRegistry registry;
   @Autowired private OidcProviderRepository repository;
   @Autowired private UserRepository userRepository;
+  @Autowired private AuthProperties authProperties;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
@@ -72,8 +75,17 @@ class OidcProviderServiceIntegrationTest {
     jdbcTemplate.update("DELETE FROM oidc_providers");
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "OIDC Test Org")).getId();
-    User user = new User(UUID.randomUUID().toString(), "test-issuer", "oidc@example.com", "Test");
+    // a login-capable administrator of this organization that belongs to none of the providers
+    // under test (the dev issuer counts in this dev context): disabling or deleting an enabled
+    // provider is guarded by LocalAdminAvailabilityGuard (ADR-0033, Entscheidung 4)
+    User user =
+        new User(
+            UUID.randomUUID().toString(),
+            authProperties.dev().issuer(),
+            "oidc@example.com",
+            "Test");
     user.setOrganizationId(organizationId);
+    user.setSystemRole(SystemRole.SYSTEM_ADMIN);
     userId = userRepository.save(user).getId();
 
     key = new RSAKeyGenerator(2048).keyID("k1").generate();

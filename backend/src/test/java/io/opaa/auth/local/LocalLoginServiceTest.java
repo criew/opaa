@@ -200,8 +200,12 @@ class LocalLoginServiceTest {
     when(credentials.findById(admin.getId())).thenReturn(Optional.of(adminRow));
 
     assertThat(service.authenticate(EMAIL, "richtig", "203.0.113.9")).isEmpty();
+    // a wrong password from a refused network is not counted either: the account cannot be
+    // locked out from a network it can never sign in from
+    assertThat(service.authenticate(EMAIL, "falsch", "203.0.113.9")).isEmpty();
 
     verify(encoder, times(1)).matches("richtig", HASH);
+    verify(encoder, times(1)).matches("falsch", HASH);
     verify(credentials, never()).recordFailedLogin(any(), any());
     verify(listener, never()).onLoginSucceeded(any(), any(), any());
     verify(listener, never()).onPasswordRejected(any(), any(), any());
@@ -212,7 +216,7 @@ class LocalLoginServiceTest {
     when(credentials.findById(user.getId())).thenReturn(Optional.of(row));
     assertThat(service.authenticate(EMAIL, "richtig", "203.0.113.9")).isPresent();
     // consulted once for the administrator from that address, never for the regular account
-    verify(networkPolicy, times(1)).permitsAdminSignIn("203.0.113.9");
+    verify(networkPolicy, times(2)).permitsAdminSignIn("203.0.113.9");
   }
 
   @Test

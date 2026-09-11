@@ -217,7 +217,7 @@ Dev-Issuer (`dev-admin` bleibt Systemverwalter); IdP-Konten werden Systemverwalt
 Rollenvergabe. `OPAA_OIDC_BOOTSTRAP=force` funktioniert bis zum 31.03.2027 weiter und warnt bei
 jeder Verwendung mit Ersatz und Datum. Mit `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (IPv4/IPv6, leer =
 keine Beschränkung) melden sich lokale `SYSTEM_ADMIN`-Konten nur aus den genannten Netzen an — die
-Abweisung ist dieselbe wie bei einem falschen Passwort, zählt aber nicht als Fehlversuch; bis #1535
+Abweisung ist dieselbe wie bei einem falschen Passwort, liegt aber vor der Fehlversuchszählung (aus einem nicht erlaubten Netz lässt sich das Konto nicht sperren); bis #1535
 gilt die Adresse der Verbindung selbst, ohne `X-Forwarded-For`.
 
 **Aussperrschutz (gebaut, #1534).** `LocalAdminAvailabilityGuard` ist die eine Stelle für „nie ohne
@@ -226,13 +226,14 @@ anmeldefähigen Systemverwalter": Unter dem Advisory-Lock je Organisation zählt
 Anmeldung (aktiv, mit Passwort, nicht gesperrt oder abgelaufen) und Konten eines **aktivierten**
 OIDC-Anbieters (im `dev`-Modus: des Dev-Issuers). Über ihn laufen der Rollenentzug per Token
 (`TokenRoleSynchronizer`) und per Verwaltung (`POST /api/v1/admin/users/{id}/role`, 409 mit Code
-`LAST_LOGIN_CAPABLE_ADMIN`) sowie das Deaktivieren und Löschen des letzten aktivierten
+`LAST_LOGIN_CAPABLE_ADMIN`) sowie das Deaktivieren und Löschen jedes aktivierten
 OIDC-Anbieters; Sperren, Befristen und Löschen lokaler Systemverwalter folgen mit #1537. Die
 `LOCAL`-Zeile ist über die Anbieter-API weder löschbar noch Standard, ihr Issuer nicht änderbar
 (nur der Anzeigename), Adressprüfung und Verbindungstest entfallen für sie; ihr
 Aktivieren/Deaktivieren ist der Schalter der lokalen Verwaltung (`LOCAL_ACCOUNTS_ENABLED`/
-`_DISABLED`), und das Abschalten beendet die Sitzungen aller regulären lokalen Konten
-(`LOCAL_SESSION_REVOKED` je Konto), nicht die der Systemverwalter. Der erste OIDC-Anbieter wird
+`_DISABLED`), und das Abschalten beendet die Sitzungen aller regulären lokalen Konten (ein
+`UPDATE` von `password_invalidated_before`; `LOCAL_SESSION_REVOKED` je Konto mit tatsächlich
+aktiver Sitzung), nicht die der Systemverwalter. Der erste OIDC-Anbieter wird
 auch neben der `LOCAL`-Zeile automatisch Standard; der Standard kann deaktiviert oder gelöscht
 werden, sobald er der letzte aktivierte OIDC-Anbieter ist — nur mit `acknowledgeLastProvider=true`
 (sonst 409 `LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED`) und nur, wenn ein lokales

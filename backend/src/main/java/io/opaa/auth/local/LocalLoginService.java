@@ -26,7 +26,8 @@ import org.springframework.stereotype.Service;
  * resets the counter. Account state comes from {@link LocalCredentials#state} alone - a lock's
  * stale {@code locked_at} after a lockout expired is not a lock. A local {@code SYSTEM_ADMIN}
  * signing in from outside {@link LocalAdminNetworkPolicy}'s networks is refused like a wrong
- * password - without a count and without the listeners (ADR-0033, Entscheidung 9).
+ * password - before the counter, so the account cannot be locked from there, and without the
+ * listeners (ADR-0033, Entscheidung 9); the hash comparison still runs so the timing stays alike.
  */
 @Service
 public class LocalLoginService {
@@ -84,6 +85,16 @@ public class LocalLoginService {
     if (row == null || row.getPasswordHash() == null) {
       return Optional.empty();
     }
+    // the network gate comes before the count: an administrator's account must not be lockable
+    // by failed attempts from a network it can never sign in from (ADR-0033, Entscheidung 9)
+    if (user.getSystemRole() == SystemRole.SYSTEM_ADMIN
+        && !networkPolicy.permitsAdminSignIn(clientAddress)) {
+      log.warn(
+          "Sign-in of local SYSTEM_ADMIN account {} refused: client address outside"
+              + " OPAA_LOCAL_ADMIN_ALLOWED_CIDRS",
+          user.getId());
+      return Optional.empty();
+    }
     if (!passwordMatches) {
       credentials.recordFailedLogin(user.getId(), now);
       LocalCredentials counted = credentials.findById(user.getId()).orElse(row);
@@ -92,14 +103,6 @@ public class LocalLoginService {
     }
     if (!LocalAccountAccess.isLoginCapable(row, now)
         || !LocalAccountAccess.passesManagementSwitch(registry, user)) {
-      return Optional.empty();
-    }
-    if (user.getSystemRole() == SystemRole.SYSTEM_ADMIN
-        && !networkPolicy.permitsAdminSignIn(clientAddress)) {
-      log.warn(
-          "Sign-in of local SYSTEM_ADMIN account {} refused: client address outside"
-              + " OPAA_LOCAL_ADMIN_ALLOWED_CIDRS",
-          user.getId());
       return Optional.empty();
     }
     if (row.getFailedLoginAttempts() != 0) {

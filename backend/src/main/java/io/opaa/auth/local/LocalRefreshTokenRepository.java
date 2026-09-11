@@ -2,6 +2,7 @@ package io.opaa.auth.local;
 
 import java.time.Instant;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -32,6 +33,17 @@ public interface LocalRefreshTokenRepository extends JpaRepository<LocalRefreshT
    */
   Optional<LocalRefreshToken> findFirstByUserIdAndRevocationReasonInOrderByRevokedAtDesc(
       UUID userId, Collection<RevocationReason> reasons);
+
+  /**
+   * Which of {@code userIds} hold at least one active token at {@code now} - the accounts whose
+   * sessions a mass revocation actually ends (switching the local account management off, ADR-0033
+   * Entscheidung 4), so it audits only what changed.
+   */
+  @Query(
+      "SELECT DISTINCT t.userId FROM LocalRefreshToken t WHERE t.userId IN :userIds"
+          + " AND t.revokedAt IS NULL AND t.expiresAt > :now AND t.familyExpiresAt > :now")
+  List<UUID> findUserIdsWithActiveTokens(
+      @Param("userIds") Collection<UUID> userIds, @Param("now") Instant now);
 
   /**
    * Rotates the token to its already inserted successor if - and only if - it is still active at

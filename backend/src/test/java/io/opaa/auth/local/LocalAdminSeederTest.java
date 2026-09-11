@@ -24,7 +24,6 @@ import io.opaa.auth.UserRepository;
 import io.opaa.auth.local.LocalAdminSeeder.Outcome;
 import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderRepository;
-import io.opaa.auth.oidc.OidcProviderSeedMarkerRepository;
 import io.opaa.auth.oidc.OidcProvidersChangedEvent;
 import io.opaa.organization.Organization;
 import io.opaa.security.PasswordGenerator;
@@ -60,10 +59,9 @@ class LocalAdminSeederTest {
   private final LocalCredentialsRepository credentials = mock(LocalCredentialsRepository.class);
   private final LocalRefreshTokenRepository refreshTokens = mock(LocalRefreshTokenRepository.class);
   private final OidcProviderRepository providers = mock(OidcProviderRepository.class);
-  private final OidcProviderSeedMarkerRepository oidcMarker =
-      mock(OidcProviderSeedMarkerRepository.class);
   private final LocalAdminSeedMarkerRepository marker = mock(LocalAdminSeedMarkerRepository.class);
   private final PasswordEncoder encoder = mock(PasswordEncoder.class);
+  private final PasswordPolicy policy = new PasswordPolicy(() -> 12);
   private final PasswordGenerator generator = mock(PasswordGenerator.class);
   private final AuditEventRecorder audit = mock(AuditEventRecorder.class);
   private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
@@ -114,9 +112,9 @@ class LocalAdminSeederTest {
         credentials,
         refreshTokens,
         providers,
-        oidcMarker,
         marker,
         encoder,
+        policy,
         generator,
         audit,
         events,
@@ -125,7 +123,6 @@ class LocalAdminSeederTest {
 
   private LocalAdminSeeder freshInstallationSeeder() {
     when(marker.seedAlreadyAttempted()).thenReturn(false);
-    when(oidcMarker.seedAlreadyAttempted()).thenReturn(false);
     when(users.count()).thenReturn(0L);
     return seeder("oidc", EMAIL, "", "");
   }
@@ -204,7 +201,6 @@ class LocalAdminSeederTest {
   @Test
   void anEnvironmentPasswordIsUsedWithoutAForcedChangeAndWithoutTheLogBlock() {
     when(marker.seedAlreadyAttempted()).thenReturn(false);
-    when(oidcMarker.seedAlreadyAttempted()).thenReturn(false);
     when(users.count()).thenReturn(0L);
 
     Outcome outcome = seeder("oidc", EMAIL, "ci-passwort-aus-der-umgebung", "").seedIfNeeded();
@@ -222,8 +218,7 @@ class LocalAdminSeederTest {
   @Test
   void anExistingInstallationGetsAnInvitedBootstrapAdminWithoutAPasswordOrALogBlock() {
     when(marker.seedAlreadyAttempted()).thenReturn(false);
-    when(oidcMarker.seedAlreadyAttempted()).thenReturn(true);
-    when(users.count()).thenReturn(0L);
+    when(users.count()).thenReturn(3L);
 
     Outcome outcome = seeder("oidc", EMAIL, "", "").seedIfNeeded();
 
@@ -239,19 +234,48 @@ class LocalAdminSeederTest {
     assertThat(recordedAudit().after()).containsEntry("state", "INVITED");
   }
 
+  /**
+   * The provider takeover writes its own marker in the same start even after this seed refused the
+   * address; a corrected address on the next start must still yield a live account - so the
+   * criterion is "no account", never that marker.
+   */
   @Test
-  void anInstallationWithAccountsCountsAsExistingEvenWithoutTheOidcMarker() {
+  void aRejectedAddressFollowedByTheProviderTakeoverStillYieldsALiveAccountOnTheNextStart() {
     when(marker.seedAlreadyAttempted()).thenReturn(false);
-    when(oidcMarker.seedAlreadyAttempted()).thenReturn(false);
-    when(users.count()).thenReturn(3L);
+    when(users.count()).thenReturn(0L);
 
-    assertThat(seeder("oidc", EMAIL, "", "").seedIfNeeded()).isEqualTo(Outcome.SEEDED_INVITED);
+    assertThat(seeder("oidc", "admin@opaa.local", "", "").seedIfNeeded())
+        .isEqualTo(Outcome.REJECTED);
+    // ... the OIDC seeder runs and writes OidcProviderSeedMarker; next start, address corrected:
+    assertThat(seeder("oidc", EMAIL, "", "").seedIfNeeded()).isEqualTo(Outcome.SEEDED_ACTIVE);
+    ArgumentCaptor<LocalCredentials> creds = ArgumentCaptor.forClass(LocalCredentials.class);
+    verify(credentials).save(creds.capture());
+    assertThat(creds.getValue().getPasswordHash()).isNotNull();
+  }
+
+  @Test
+  void anEnvironmentPasswordOutsideThePolicyIsRejectedWithTheVariableAndNoMarker() {
+    when(marker.seedAlreadyAttempted()).thenReturn(false);
+    when(users.count()).thenReturn(0L);
+
+    assertThat(seeder("oidc", EMAIL, "kurz", "").seedIfNeeded()).isEqualTo(Outcome.REJECTED);
+    assertThat(seeder("oidc", EMAIL, "x".repeat(80), "").seedIfNeeded())
+        .isEqualTo(Outcome.REJECTED);
+    verify(marker, never()).save(any());
+    verify(users, never()).saveAndFlush(any());
+    verify(encoder, never()).encode(anyString());
+    assertThat(loggedMessages())
+        .anyMatch(m -> m.contains("OPAA_INITIAL_ADMIN_PASSWORD") && m.contains("TOO_SHORT"))
+        .anyMatch(m -> m.contains("OPAA_INITIAL_ADMIN_PASSWORD") && m.contains("TOO_LONG"))
+        .noneMatch(m -> m.contains("kurz") || m.contains("xxxxxxxx"));
+    // the same check guards the forced restart of a deleted account
+    when(marker.seedAlreadyAttempted()).thenReturn(true);
+    assertThat(seeder("oidc", EMAIL, "kurz", "force").seedIfNeeded()).isEqualTo(Outcome.REJECTED);
   }
 
   @Test
   void theShippedDefaultAddressIsRejectedWithoutAMarkerSoTheNextStartTriesAgain() {
     when(marker.seedAlreadyAttempted()).thenReturn(false);
-    when(oidcMarker.seedAlreadyAttempted()).thenReturn(false);
     when(users.count()).thenReturn(0L);
 
     Outcome outcome = seeder("oidc", "admin@opaa.local", "", "").seedIfNeeded();
@@ -386,7 +410,6 @@ class LocalAdminSeederTest {
   @Test
   void aLocalAccountAlreadyHoldingTheAddressIsAConflictNotASecondBootstrap() {
     when(marker.seedAlreadyAttempted()).thenReturn(false);
-    when(oidcMarker.seedAlreadyAttempted()).thenReturn(false);
     when(users.count()).thenReturn(1L);
     when(users.findByIssuerAndEmailIgnoreCase(eq(LocalIssuer.URN), anyString()))
         .thenReturn(Optional.of(User.localAccount(EMAIL, "Jemand")));

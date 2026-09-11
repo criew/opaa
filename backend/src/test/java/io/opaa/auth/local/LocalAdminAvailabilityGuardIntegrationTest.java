@@ -31,6 +31,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.IllegalTransactionStateException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * {@link LocalAdminAvailabilityGuard} against a real Postgres (ADR-0033, Entscheidung 4): the one
@@ -53,6 +56,7 @@ class LocalAdminAvailabilityGuardIntegrationTest {
   @Autowired private OrganizationRepository organizations;
   @Autowired private PasswordEncoder passwordEncoder;
   @Autowired private AuthProperties authProperties;
+  @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private JdbcTemplate jdbc;
 
   private UUID organizationId;
@@ -120,6 +124,11 @@ class LocalAdminAvailabilityGuardIntegrationTest {
     return users.findById(user.getId()).orElseThrow().getSystemRole();
   }
 
+  /** The {@code require…} checks demand the caller's transaction (the lock must hold to commit). */
+  private void inTransaction(Runnable action) {
+    new TransactionTemplate(transactionManager).executeWithoutResult(status -> action.run());
+  }
+
   @Test
   void countsOnlyLoginCapableSystemAdministratorsOfTheOrganization() {
     assertThat(guard.countLoginCapableSystemAdmins(organizationId)).isZero();
@@ -183,7 +192,10 @@ class LocalAdminAvailabilityGuardIntegrationTest {
 
     assertThat(guard.withdrawSystemAdminIfAnotherRemains(active, SystemRole.USER)).isZero();
     assertThat(storedRole(active)).isEqualTo(SystemRole.SYSTEM_ADMIN);
-    assertThatThrownBy(() -> guard.requireAnotherLoginCapableAdmin(organizationId, active.getId()))
+    assertThatThrownBy(
+            () ->
+                inTransaction(
+                    () -> guard.requireAnotherLoginCapableAdmin(organizationId, active.getId())))
         .isInstanceOf(ConflictException.class)
         .satisfies(
             e ->
@@ -194,8 +206,14 @@ class LocalAdminAvailabilityGuardIntegrationTest {
     lockedRow = rowOf(locked);
     lockedRow.unlock(Instant.now());
     credentials.save(lockedRow);
-    assertThatCode(() -> guard.requireAnotherLoginCapableAdmin(organizationId, active.getId()))
+    assertThatCode(
+            () ->
+                inTransaction(
+                    () -> guard.requireAnotherLoginCapableAdmin(organizationId, active.getId())))
         .doesNotThrowAnyException();
+    // without a surrounding transaction the check refuses to run at all (MANDATORY)
+    assertThatThrownBy(() -> guard.requireAnotherLoginCapableAdmin(organizationId, active.getId()))
+        .isInstanceOf(IllegalTransactionStateException.class);
     assertThat(guard.withdrawSystemAdminIfAnotherRemains(active, SystemRole.USER)).isEqualTo(1);
     assertThat(storedRole(active)).isEqualTo(SystemRole.USER);
     // the withdrawal of a role the account no longer holds writes nothing
@@ -208,22 +226,28 @@ class LocalAdminAvailabilityGuardIntegrationTest {
 
     assertThatThrownBy(
             () ->
-                guard.requireLoginCapableAdminWithoutProvider(
-                    organizationId, enabledProvider.getId()))
+                inTransaction(
+                    () ->
+                        guard.requireLoginCapableAdminWithoutProvider(
+                            organizationId, enabledProvider.getId())))
         .isInstanceOf(ConflictException.class)
         .hasMessageContaining("lokales Systemverwalterkonto mit Passwort");
     // excluding a provider whose administrators do not count anyway leaves the enabled one
     assertThatCode(
             () ->
-                guard.requireLoginCapableAdminWithoutProvider(
-                    organizationId, disabledProvider.getId()))
+                inTransaction(
+                    () ->
+                        guard.requireLoginCapableAdminWithoutProvider(
+                            organizationId, disabledProvider.getId())))
         .doesNotThrowAnyException();
 
     localAccount(SystemRole.SYSTEM_ADMIN, true);
     assertThatCode(
             () ->
-                guard.requireLoginCapableAdminWithoutProvider(
-                    organizationId, enabledProvider.getId()))
+                inTransaction(
+                    () ->
+                        guard.requireLoginCapableAdminWithoutProvider(
+                            organizationId, enabledProvider.getId())))
         .doesNotThrowAnyException();
   }
 

@@ -13,8 +13,12 @@ import io.opaa.common.ConflictException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -31,8 +35,10 @@ import org.springframework.transaction.annotation.Transactional;
  * both count the other one's account as remaining: the token-driven and the manual role withdrawal,
  * disabling or deleting the last enabled OIDC provider, and - with #1537 - locking, expiring or
  * deleting a local administrator. The count happens under the held lock and the write is a
- * conditional {@code UPDATE}; the lock lasts for the rest of the caller's transaction. Refusals
- * carry {@value #ERROR_CODE}.
+ * conditional {@code UPDATE}; the lock lasts for the rest of the caller's transaction - which is
+ * why the {@code require…} checks demand an existing transaction ({@code MANDATORY}): the caller's
+ * own write must commit under the same lock, or the check protects nothing. Refusals carry {@value
+ * #ERROR_CODE}.
  */
 @Component
 public class LocalAdminAvailabilityGuard {
@@ -86,7 +92,7 @@ public class LocalAdminAvailabilityGuard {
    * excludedUserId} remains in the organization - the check before a manual role withdrawal and,
    * with #1537, before locking, expiring or deleting a local administrator.
    */
-  @Transactional
+  @Transactional(propagation = Propagation.MANDATORY)
   public void requireAnotherLoginCapableAdmin(UUID organizationId, UUID excludedUserId) {
     users.lockRoleChanges(organizationId);
     if (countLoginCapable(organizationId, excludedUserId, null) == 0) {
@@ -99,7 +105,7 @@ public class LocalAdminAvailabilityGuard {
    * disabled, no login-capable administrator would remain - the check before disabling or deleting
    * the last enabled provider (ADR-0033, Entscheidung 4).
    */
-  @Transactional
+  @Transactional(propagation = Propagation.MANDATORY)
   public void requireLoginCapableAdminWithoutProvider(UUID organizationId, UUID providerId) {
     users.lockRoleChanges(organizationId);
     if (countLoginCapable(organizationId, null, providerId) == 0) {
@@ -123,19 +129,33 @@ public class LocalAdminAvailabilityGuard {
             .toList();
     String devIssuer =
         DEV_MODE.equals(authProperties.mode()) ? authProperties.dev().issuer() : null;
-    return users.findByOrganizationIdAndSystemRole(organizationId, SystemRole.SYSTEM_ADMIN).stream()
-        .filter(admin -> !admin.getId().equals(excludedUserId))
-        .filter(admin -> isLoginCapable(admin, enabledProviders, devIssuer, now))
+    List<User> admins =
+        users.findByOrganizationIdAndSystemRole(organizationId, SystemRole.SYSTEM_ADMIN).stream()
+            .filter(admin -> !admin.getId().equals(excludedUserId))
+            .toList();
+    Map<UUID, LocalCredentials> localRows =
+        credentials
+            .findAllById(
+                admins.stream()
+                    .filter(admin -> LocalIssuer.URN.equals(admin.getIssuer()))
+                    .map(User::getId)
+                    .toList())
+            .stream()
+            .collect(Collectors.toMap(LocalCredentials::getUserId, Function.identity()));
+    return admins.stream()
+        .filter(admin -> isLoginCapable(admin, localRows, enabledProviders, devIssuer, now))
         .count();
   }
 
-  private boolean isLoginCapable(
-      User admin, List<OidcProvider> enabledProviders, String devIssuer, Instant now) {
+  private static boolean isLoginCapable(
+      User admin,
+      Map<UUID, LocalCredentials> localRows,
+      List<OidcProvider> enabledProviders,
+      String devIssuer,
+      Instant now) {
     if (LocalIssuer.URN.equals(admin.getIssuer())) {
-      return credentials
-          .findById(admin.getId())
-          .map(row -> LocalAccountAccess.isLoginCapable(row, now))
-          .orElse(false);
+      LocalCredentials row = localRows.get(admin.getId());
+      return row != null && LocalAccountAccess.isLoginCapable(row, now);
     }
     if (devIssuer != null && OidcIssuerUris.normalize(devIssuer).equals(normalize(admin))) {
       return true;

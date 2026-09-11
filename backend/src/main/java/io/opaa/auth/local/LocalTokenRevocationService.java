@@ -84,7 +84,7 @@ public class LocalTokenRevocationService {
   }
 
   /** The first whole second after {@code instant}. */
-  static Instant cutoffFor(Instant instant) {
+  public static Instant cutoffFor(Instant instant) {
     return instant.truncatedTo(ChronoUnit.SECONDS).plusSeconds(1);
   }
 }

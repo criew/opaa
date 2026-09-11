@@ -104,8 +104,7 @@ class UserServiceMultiProviderIntegrationTest {
     providerRepository.save(standard);
     try {
       AuthProperties oidc = new AuthProperties("oidc", null, null, adminEmail);
-      InitialAdminPolicy policy =
-          new InitialAdminPolicy(oidc, new TrustedProvider(oidc, providerRepository));
+      InitialAdminPolicy policy = new InitialAdminPolicy(oidc);
       String trusted = providerRepository.findByDefaultProviderTrue().orElseThrow().getIssuerUri();
 
       assertThat(policy.grantsSystemAdmin(adminEmail, trusted)).isFalse();

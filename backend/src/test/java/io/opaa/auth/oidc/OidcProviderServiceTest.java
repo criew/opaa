@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -21,8 +22,8 @@ import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.local.LocalAdminAvailabilityGuard;
+import io.opaa.auth.local.LocalCredentialsRepository;
 import io.opaa.auth.local.LocalRefreshTokenRepository;
-import io.opaa.auth.local.LocalTokenRevocationService;
 import io.opaa.auth.local.RevocationReason;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
@@ -57,7 +58,7 @@ class OidcProviderServiceTest {
   private final OidcAddressPolicy addressPolicy = mock(OidcAddressPolicy.class);
   private final OidcProviderRegistry registry = mock(OidcProviderRegistry.class);
   private final LocalAdminAvailabilityGuard adminGuard = mock(LocalAdminAvailabilityGuard.class);
-  private final LocalTokenRevocationService revocation = mock(LocalTokenRevocationService.class);
+  private final LocalCredentialsRepository credentials = mock(LocalCredentialsRepository.class);
   private final LocalRefreshTokenRepository refreshTokens = mock(LocalRefreshTokenRepository.class);
   private final AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
   private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
@@ -73,7 +74,7 @@ class OidcProviderServiceTest {
             addressPolicy,
             registry,
             adminGuard,
-            revocation,
+            credentials,
             refreshTokens,
             auditEventRecorder,
             eventPublisher,
@@ -389,6 +390,38 @@ class OidcProviderServiceTest {
     verify(eventPublisher).publishEvent(any(OidcProvidersChangedEvent.class));
   }
 
+  /**
+   * The guard runs for every enabled provider, not only the last one: with two enabled providers
+   * and every login-capable administrator at the first, disabling the first still removes the last
+   * login-capable administrator (ADR-0033, Entscheidung 4).
+   */
+  @Test
+  void disablingOrDeletingAnEnabledProviderIsGuardedEvenWhileAnotherOneRemains() {
+    OidcProvider first = provider("Erster", "https://idp.example/realms/a", true, true);
+    OidcProvider second = provider("Zweiter", "https://idp.example/realms/b", true, false);
+    when(repository.findById(second.getId())).thenReturn(Optional.of(second));
+    anotherEnabledProviderRemainsBesides(second);
+    doThrow(
+            new ConflictException(
+                LocalAdminAvailabilityGuard.class.getSimpleName(),
+                LocalAdminAvailabilityGuard.ERROR_CODE))
+        .when(adminGuard)
+        .requireLoginCapableAdminWithoutProvider(ORGANIZATION_ID, second.getId());
+
+    assertThatThrownBy(() -> service.setEnabled(ORGANIZATION_ID, ACTOR_ID, second.getId(), false))
+        .isInstanceOf(ConflictException.class)
+        .satisfies(
+            e ->
+                assertThat(((ConflictException) e).getCode())
+                    .isEqualTo(LocalAdminAvailabilityGuard.ERROR_CODE));
+    assertThatThrownBy(() -> service.deleteProvider(ORGANIZATION_ID, ACTOR_ID, second.getId()))
+        .isInstanceOf(ConflictException.class);
+    assertThat(second.isEnabled()).isTrue();
+    assertThat(first.isEnabled()).isTrue();
+    verify(repository, never()).delete(any());
+    verify(eventPublisher, never()).publishEvent(any());
+  }
+
   /** A provider that is already switched off leaves no sign-in path to lose: no guard, no ack. */
   @Test
   void deletingAnAlreadyDisabledNonDefaultProviderNeedsNoAcknowledgement() {
@@ -470,23 +503,33 @@ class OidcProviderServiceTest {
 
     User regular = User.localAccount("erika@stadt.example", "Erika");
     regular.setOrganizationId(ORGANIZATION_ID);
+    User idle = User.localAccount("max@stadt.example", "Max");
+    idle.setOrganizationId(ORGANIZATION_ID);
     when(userRepository.findByIssuerAndSystemRoleNot(LocalIssuer.URN, SystemRole.SYSTEM_ADMIN))
-        .thenReturn(List.of(regular));
+        .thenReturn(List.of(regular, idle));
+    // only the account with an active session is revoked and audited; the idle one only gets
+    // the cutoff, which the one bulk update writes for every regular account
+    when(refreshTokens.findUserIdsWithActiveTokens(any(), eq(NOW)))
+        .thenReturn(List.of(regular.getId()));
     when(refreshTokens.revokeAllForUser(regular.getId(), RevocationReason.ADMIN, NOW))
         .thenReturn(2);
 
     OidcProvider off = service.setEnabled(ORGANIZATION_ID, ACTOR_ID, local.getId(), false);
 
     assertThat(off.isEnabled()).isFalse();
-    verify(revocation).invalidateSessionsIssuedBefore(regular.getId());
+    verify(credentials)
+        .invalidateSessionsIssuedBefore(
+            eq(java.util.Set.of(regular.getId(), idle.getId())), eq(NOW.plusSeconds(1)), eq(NOW));
     verify(refreshTokens).revokeAllForUser(regular.getId(), RevocationReason.ADMIN, NOW);
+    verify(refreshTokens, never()).revokeAllForUser(eq(idle.getId()), any(), any());
     verify(auditEventRecorder, times(2)).recordUserAction(audit.capture());
     assertThat(audit.getValue().eventType()).isEqualTo(AuditEventType.LOCAL_ACCOUNTS_DISABLED);
-    assertThat(audit.getValue().after()).containsEntry("revokedAccounts", 1);
+    assertThat(audit.getValue().after()).containsEntry("revokedSessions", 1);
     ArgumentCaptor<AuditEvent> revoked = ArgumentCaptor.forClass(AuditEvent.class);
     verify(auditEventRecorder).recordUserActionOnSubject(revoked.capture());
     assertThat(revoked.getValue().eventType()).isEqualTo(AuditEventType.LOCAL_SESSION_REVOKED);
     assertThat(revoked.getValue().subjectId()).isEqualTo(regular.getId());
+    assertThat(revoked.getValue().organizationId()).isEqualTo(ORGANIZATION_ID);
     assertThat(String.valueOf(revoked.getValue().after())).doesNotContain("erika@stadt.example");
     verify(eventPublisher, times(2)).publishEvent(any(OidcProvidersChangedEvent.class));
   }

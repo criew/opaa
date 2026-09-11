@@ -28,7 +28,7 @@ class InitialAdminPolicyTest {
   private final OidcProviderRepository repository = mock(OidcProviderRepository.class);
 
   private InitialAdminPolicy policyFor(AuthProperties properties) {
-    return new InitialAdminPolicy(properties, new TrustedProvider(properties, repository));
+    return new InitialAdminPolicy(properties);
   }
 
   @Test
@@ -52,6 +52,31 @@ class InitialAdminPolicyTest {
     verify(repository, never()).findByDefaultProviderTrue();
   }
 
+  /**
+   * An empty {@code OPAA_INITIAL_ADMIN_EMAIL} in the environment overrides the application default
+   * with a blank; in the dev mode that must not take the role from {@code dev-admin}, so a blank
+   * address falls back to the default dev user's.
+   */
+  @Test
+  void inTheDevModeABlankAddressFallsBackToTheDefaultDevUsersAddress() {
+    AuthProperties dev =
+        new AuthProperties(
+            "dev",
+            null,
+            new AuthProperties.DevAuth(
+                "opaa-dev",
+                "dev-admin",
+                java.util.List.of(
+                    new AuthProperties.DevUser("dev-admin", ADMIN, "Dev Admin"),
+                    new AuthProperties.DevUser("dev-user", "dev-user@opaa.local", "Dev User"))),
+            "");
+    InitialAdminPolicy policy = policyFor(dev);
+
+    assertThat(policy.grantsSystemAdmin(ADMIN, "opaa-dev")).isTrue();
+    assertThat(policy.grantsSystemAdmin("dev-user@opaa.local", "opaa-dev")).isFalse();
+    assertThat(policy.grantsSystemAdmin(ADMIN, DEFAULT_ISSUER)).isFalse();
+  }
+
   @Test
   void inTheDevModeTheDevIssuerStillMintsTheDevAdministrator() {
     AuthProperties dev =
@@ -66,7 +91,8 @@ class InitialAdminPolicyTest {
   }
 
   @Test
-  void aBlankInitialAdminAddressGrantsNothing() {
+  void aBlankAddressWithoutAKnownDefaultDevUserGrantsNothing() {
+    // the default user "dev-admin" is not among the configured users: nothing to fall back to
     AuthProperties dev =
         new AuthProperties(
             "dev", null, new AuthProperties.DevAuth("opaa-dev", "dev-admin", null), "  ");
