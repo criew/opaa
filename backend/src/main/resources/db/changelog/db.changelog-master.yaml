@@ -14,3 +14,19 @@ databaseChangeLog:
   # AbstractMigrationTest's Javadoc and test-master-through-baseline.yaml).
   - include:
       file: db/changelog/changes/001-baseline.yaml
+  # 002 is reserved for the composite fk_documents_parent (#1500); the local-account schema
+  # of ADR-0033 (#1532) starts at 003.
+  - include:
+      file: db/changelog/changes/003-add-provider-type-to-oidc-providers.yaml
+  - include:
+      file: db/changelog/changes/004-add-local-email-unique-index-to-users.yaml
+  - include:
+      file: db/changelog/changes/005-create-local-credentials.yaml
+  - include:
+      file: db/changelog/changes/006-create-local-refresh-tokens.yaml
+  - include:
+      file: db/changelog/changes/007-create-local-revoked-tokens.yaml
+  - include:
+      file: db/changelog/changes/008-create-local-action-tokens.yaml
+  - include:
+      file: db/changelog/changes/009-create-local-auth-settings.yaml

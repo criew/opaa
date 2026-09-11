@@ -97,10 +97,19 @@ class Migration003OidcProviderTypeTest extends AbstractMigrationTest {
   void allowsExactlyOneLocalRow() throws SQLException {
     insertProvider("LOCAL", LocalAccountSchemaSupport.LOCAL_ISSUER, null, false);
 
+    // Both indexes forbid the second row: the partial one on provider_type and the baseline's
+    // issuer index, because chk_oidc_providers_local_row pins every LOCAL row to the same issuer.
+    // Which of the two Postgres reports first is not part of the contract.
     assertThatThrownBy(
             () -> insertProvider("LOCAL", LocalAccountSchemaSupport.LOCAL_ISSUER, null, false))
         .isInstanceOf(SQLException.class)
-        .hasMessageContaining("ux_oidc_providers_single_local");
+        .hasMessageContainingAny(
+            "ux_oidc_providers_single_local", "ux_oidc_providers_issuer_uri_normalized");
+    assertThat(
+            LocalAccountSchemaSupport.indexDefinition(connection, "ux_oidc_providers_single_local"))
+        .isNotNull()
+        .contains("UNIQUE")
+        .contains("WHERE ((provider_type)::text = 'LOCAL'::text)");
   }
 
   @Test

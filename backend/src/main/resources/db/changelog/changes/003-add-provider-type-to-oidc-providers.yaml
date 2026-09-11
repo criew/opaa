@@ -1,0 +1,70 @@
+databaseChangeLog:
+  # #1532 (Epic #1529, ADR-0033 Entscheidung 4): the local account provider is a row of
+  # oidc_providers, not a table of its own - it inherits ordering, audit and the registry refresh.
+  # provider_type tells the two kinds apart. Three CHECKs carry the invariants the ADR names:
+  #   chk_oidc_providers_provider_type   - OIDC or LOCAL, nothing else
+  #   chk_oidc_providers_client_id_by_type - an OIDC row has a client_id, a LOCAL row has none
+  #                                          (there is no code flow against the backend itself)
+  #   chk_oidc_providers_local_row       - the LOCAL row is never the default provider (is_default
+  #                                        means "directory provider" and applies to OIDC rows
+  #                                        only) and carries the fixed issuer urn:opaa:local, which
+  #                                        must survive any edit
+  # ux_oidc_providers_single_local allows at most one LOCAL row; the row itself is created by the
+  # seed (#1534), never by this migration.
+  - changeSet:
+      id: 003-add-provider-type-to-oidc-providers
+      author: opaa
+      comment: "oidc_providers.provider_type (OIDC | LOCAL) with the single-LOCAL-row index and the never-default rule (#1532, ADR-0033)"
+      changes:
+        - addColumn:
+            tableName: oidc_providers
+            columns:
+              - column:
+                  name: provider_type
+                  type: varchar(16)
+                  defaultValue: OIDC
+                  constraints:
+                    nullable: false
+        - sql:
+            comment: "Type enum, never-default-and-fixed-issuer rule for the LOCAL row, at most one LOCAL row"
+            sql: >
+              ALTER TABLE oidc_providers
+              ADD CONSTRAINT chk_oidc_providers_provider_type
+              CHECK (provider_type IN ('OIDC', 'LOCAL'));
+              ALTER TABLE oidc_providers
+              ADD CONSTRAINT chk_oidc_providers_local_row
+              CHECK (provider_type <> 'LOCAL'
+                     OR (is_default = false AND issuer_uri = 'urn:opaa:local'));
+              CREATE UNIQUE INDEX ux_oidc_providers_single_local
+              ON oidc_providers (provider_type) WHERE provider_type = 'LOCAL';
+      rollback:
+        - sql:
+            sql: >
+              DROP INDEX IF EXISTS ux_oidc_providers_single_local;
+              ALTER TABLE oidc_providers DROP CONSTRAINT chk_oidc_providers_local_row;
+              ALTER TABLE oidc_providers DROP CONSTRAINT chk_oidc_providers_provider_type;
+        - dropColumn:
+            tableName: oidc_providers
+            columnName: provider_type
+
+  - changeSet:
+      id: 003-make-client-id-conditional-on-provider-type
+      author: opaa
+      comment: "client_id nullable, present exactly for OIDC rows (#1532, ADR-0033 Entscheidung 4)"
+      changes:
+        - dropNotNullConstraint:
+            tableName: oidc_providers
+            columnName: client_id
+            columnDataType: varchar(255)
+        - sql:
+            sql: >
+              ALTER TABLE oidc_providers
+              ADD CONSTRAINT chk_oidc_providers_client_id_by_type
+              CHECK ((provider_type = 'OIDC') = (client_id IS NOT NULL));
+      rollback:
+        - sql:
+            sql: "ALTER TABLE oidc_providers DROP CONSTRAINT chk_oidc_providers_client_id_by_type;"
+        - addNotNullConstraint:
+            tableName: oidc_providers
+            columnName: client_id
+            columnDataType: varchar(255)

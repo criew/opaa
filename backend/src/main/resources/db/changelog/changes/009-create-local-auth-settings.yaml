@@ -1,0 +1,128 @@
+databaseChangeLog:
+  # #1532 (ADR-0033 Entscheidung 3): the settings of the local account management as a singleton
+  # row (pattern branding_settings). The main switch is not here but the enabled flag of the LOCAL
+  # provider row (Entscheidung 4). Unlike branding_settings the columns are NOT NULL with the ADR's
+  # defaults: there is no "OPAA default resolved at read time" - every value is a policy an
+  # administrator either accepted or changed, and the bounds the ADR names are CHECKs so no write
+  # path can weaken them. self_registration_allowed_domains is a comma-separated list; empty means
+  # "no registration possible", never "every domain". updated_by outlives a deleted administrator
+  # (SET NULL) because the row itself is never deleted.
+  - changeSet:
+      id: 009-create-local-auth-settings
+      author: opaa
+      comment: "local_auth_settings: singleton settings of the local account management (#1532, ADR-0033)"
+      changes:
+        - createTable:
+            tableName: local_auth_settings
+            columns:
+              - column:
+                  name: id
+                  type: integer
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: local_auth_settings_pkey
+                    nullable: false
+              - column:
+                  name: self_registration_enabled
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: self_registration_allowed_domains
+                  type: varchar(2000)
+                  defaultValue: ""
+                  constraints:
+                    nullable: false
+              - column:
+                  name: password_reset_enabled
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: password_min_length
+                  type: integer
+                  defaultValueNumeric: 12
+                  constraints:
+                    nullable: false
+              - column:
+                  name: invitation_token_ttl_hours
+                  type: integer
+                  defaultValueNumeric: 72
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reset_token_ttl_minutes
+                  type: integer
+                  defaultValueNumeric: 30
+                  constraints:
+                    nullable: false
+              - column:
+                  name: default_expiry_days
+                  type: integer
+                  defaultValueNumeric: 90
+                  constraints:
+                    nullable: false
+              - column:
+                  name: inactive_days
+                  type: integer
+                  defaultValueNumeric: 90
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: uuid
+              - column:
+                  name: version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: local_auth_settings
+            baseColumnNames: updated_by
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_local_auth_settings_updated_by
+            onDelete: SET NULL
+        - sql:
+            comment: "Singleton and the bounds ADR-0033 names for each policy value"
+            sql: >
+              ALTER TABLE local_auth_settings
+              ADD CONSTRAINT chk_local_auth_settings_singleton CHECK (id = 1);
+              ALTER TABLE local_auth_settings
+              ADD CONSTRAINT chk_local_auth_settings_password_min_length
+              CHECK (password_min_length BETWEEN 8 AND 64);
+              ALTER TABLE local_auth_settings
+              ADD CONSTRAINT chk_local_auth_settings_invitation_token_ttl
+              CHECK (invitation_token_ttl_hours BETWEEN 1 AND 720);
+              ALTER TABLE local_auth_settings
+              ADD CONSTRAINT chk_local_auth_settings_reset_token_ttl
+              CHECK (reset_token_ttl_minutes BETWEEN 1 AND 1440);
+              ALTER TABLE local_auth_settings
+              ADD CONSTRAINT chk_local_auth_settings_default_expiry_days
+              CHECK (default_expiry_days >= 1);
+              ALTER TABLE local_auth_settings
+              ADD CONSTRAINT chk_local_auth_settings_inactive_days
+              CHECK (inactive_days >= 30);
+      rollback:
+        - dropTable:
+            tableName: local_auth_settings
+
+  - changeSet:
+      id: 009-seed-local-auth-settings
+      author: opaa
+      comment: "The one local_auth_settings row, carrying the column defaults (#1532, ADR-0033)"
+      changes:
+        - sql:
+            sql: "INSERT INTO local_auth_settings (id) VALUES (1);"
+      rollback:
+        - sql:
+            sql: "DELETE FROM local_auth_settings WHERE id = 1;"
