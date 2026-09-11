@@ -21,9 +21,10 @@ demo/
     ├── pressemitteilungen/                   rss.xml + .html
     ├── interne-dienstanweisungen-meldewesen/ .docx, .pdf, .pptx
     ├── ratsinformationen/<jahr>/             .md, .txt (S3-Bucket des Demo-Stacks, #1383)
+    ├── formate/                              je ein Dokument pro unterstützter Endung (S3-Bucket des Demo-Stacks, #1519)
     ├── MANIFEST.sha256                       SHA-256 über alle Dokumente
     ├── SOURCE.md                             Quellen, Lizenzen, Hinweis auf synthetische Inhalte (vom Generator geschrieben)
-    └── THIRD-PARTY-LICENSES/                 Volltext der MIT-Lizenz des LHM-Dienstleistungen-Corpus
+    └── THIRD-PARTY-LICENSES/                 Volltexte der MIT-Lizenz des LHM-Dienstleistungen-Corpus und der Apache-2.0-Lizenz des POI-Testkorpus
 ```
 
 ---
@@ -32,7 +33,7 @@ demo/
 
 ### Was die Demo zeigt
 
-Das Bürgerbüro Rheinfurt mit mehreren Sachgebieten, sechs Wissensbibliotheken, vier
+Das Bürgerbüro Rheinfurt mit mehreren Sachgebieten, sieben Wissensbibliotheken, vier
 Konnektortypen und mehrere Dateiformate:
 
 | Wissensbibliothek | Formate | Quellentyp |
@@ -43,6 +44,21 @@ Konnektortypen und mehrere Dateiformate:
 | Pressemitteilungen Stadt Rheinfurt | RSS-XML + HTML-Detailseiten | `RSS_FEED` (statisch, selbst gehostet) |
 | Interne Dienstanweisungen Meldewesen | `.docx`, `.pdf`, `.pptx` | `UPLOAD` (im Seed automatisiert) |
 | Ratsinformationen Stadt Rheinfurt | `.md`, `.txt` (ein Ordner je Jahrgang) | `S3` (MinIO im Demo-Stack, Bucket `rheinfurt-archiv`; #1383) |
+| Formattest auf S3 | je ein Dokument pro unterstützter Endung | `S3` (MinIO im Demo-Stack, Bucket `formattest`; #1520) |
+
+Die siebte Bibliothek ist keine Fachablage, sondern eine **technische Schaubibliothek**: Sie zeigt,
+dass jedes vom Handbuch zugelassene Dateiformat wirklich verarbeitet wird, und gehört deshalb allein
+dem Demo-Admin — kein Fachkonto bekommt ein Leserecht darauf, und keinem Space ist sie zugeordnet.
+Jedes erzeugte Dokument nennt im Text sein eigenes Format, damit im Chat erkennbar bleibt, aus
+welcher Datei eine Antwort stammt.
+
+**Ein Dokument fällt bewusst aus dem Rahmen:** Die Outlook-Nachricht (`.msg`) lässt sich mit keiner
+Bibliothek erzeugen und stammt deshalb unverändert aus dem Testkorpus des Apache-POI-Projekts
+(Apache License 2.0). Sie ist als einziges Dokument des gesamten Korpus englisch und ohne
+Rheinfurt-Bezug — das ist eine Folge ihrer Herkunft, kein Versehen. Die Bibliotheksbeschreibung sagt
+das auch in der Oberfläche; Herkunft und Lizenz stehen in
+[`corpus/SOURCE.md`](corpus/SOURCE.md) und
+[`corpus/THIRD-PARTY-LICENSES/`](corpus/THIRD-PARTY-LICENSES/).
 
 Begründung der Auswahl, Quellen und Lizenzen des Korpus:
 [`docs/features/demo-instance.md`](../docs/features/demo-instance.md).
@@ -69,6 +85,11 @@ OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180
 OPAA_DEMO_MODE=true
 OPAA_PGVECTOR_DIMENSIONS=768
 OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY=30
+OPAA_UPLOAD_STORE=s3
+OPAA_UPLOAD_S3_ENDPOINT=http://minio:9000
+OPAA_UPLOAD_S3_BUCKET=opaa-uploads
+OPAA_UPLOAD_S3_ACCESS_KEY=opaa-uploads
+OPAA_UPLOAD_S3_SECRET_KEY=OpaaUploads!2026
 ```
 
 Herkunft und Zwang jeder einzelnen Variable:
@@ -123,6 +144,18 @@ Herkunft und Zwang jeder einzelnen Variable:
   als mit einem schnellen Anbieter — ohne die Anhebung kann der letzte Upload oder die letzten zwei
   mit „Die Verarbeitung ist derzeit ausgelastet - bitte später erneut versuchen." fehlschlagen (siehe
   „Seed-Mechanismus (#712)" unten für den Umgang, falls das trotzdem passiert).
+- Der `OPAA_UPLOAD_S3_*`-Block stellt die **Originalablage der Demo auf den Objektspeicher** um
+  ([ADR-0030](../docs/decisions/0030-originalablage-der-uploads.md), #1520): Hochgeladene Originale
+  landen im Bucket `opaa-uploads` desselben `minio`-Containers, der auch die beiden S3-Quellen
+  bereitstellt — nicht im Dienst `upload-store` des Compose-Profils `upload-s3`, der für reguläre
+  Installationen gedacht ist. Ohne diesen Block bleibt die Demo auf der Dateisystem-Ablage
+  (Anwendungs-Default) und zeigt einen gebauten Betriebsweg nicht. Zugangsdaten sind **nicht** der
+  Root-Schlüssel: Der Init-Schritt `minio-seed` legt den Schlüssel `opaa-uploads` an und bindet ihn
+  über `demo/minio/opaa-uploads-policy.json` auf genau diesen einen Bucket — der Root-Schlüssel
+  steckt dagegen als Quellzugangsdaten in den beiden S3-Bibliotheken. Die Zieladressprüfung der
+  Ablage hat einen eigenen Namensraum und lässt ihre eigene konfigurierte Adresse immer zu; der
+  Eintrag `minio` in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` oben betrifft ausschließlich die
+  Konnektoren.
 
 #### 2. Stack starten
 
@@ -159,16 +192,46 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
   wie es auch gegen eine echte Domain liefe.
 
 - **`minio`** (`minio/minio`, gepinnt auf dasselbe Release wie die MinIO-Testfixture des Backends)
-  ist der S3-kompatible Objektspeicher der sechsten Bibliothek „Ratsinformationen Stadt Rheinfurt"
-  (#1383, [ADR-0027](../docs/decisions/0027-s3-konnektor.md), Handbuch
-  [`konnektor-s3.md`](../docs/handbuch/konnektor-s3.md)). Der Einmal-Schritt **`minio-seed`** legt
-  beim Start den Bucket `rheinfurt-archiv` an und spiegelt `demo/corpus/ratsinformationen/` mit
-  seinen Jahrgangsordnern unter das Präfix `ratsinformationen/` (`mc mirror --overwrite`, idempotent;
-  Fortschritt mit `docker compose logs minio-seed`). Kein Volume: Der Bucket wird bei jedem Start aus
-  dem committeten Korpus neu befüllt. Zugangsdaten sind dokumentierte Demo-Werte (Root-Schlüssel
-  `rheinfurt-archiv` / `RheinfurtDemo!2026`), die der Seed der Bibliothek als
-  `accessKey:secretKey` mitgibt — das Backend spricht `minio` Path-Style über das Compose-Netzwerk
-  an, weshalb der Servicename in der Allowlist stehen muss (Schritt 1).
+  ist der **eine** S3-kompatible Objektspeicher der Demo — mit drei Buckets (#1383, #1520,
+  [ADR-0027](../docs/decisions/0027-s3-konnektor.md),
+  [ADR-0030](../docs/decisions/0030-originalablage-der-uploads.md), Handbuch
+  [`konnektor-s3.md`](../docs/handbuch/konnektor-s3.md)):
+
+  | Bucket | Rolle | Inhalt |
+  |---|---|---|
+  | `rheinfurt-archiv` | Quelle der Bibliothek „Ratsinformationen Stadt Rheinfurt" | `demo/corpus/ratsinformationen/` unter dem Präfix `ratsinformationen/`, Jahrgangsordner inklusive |
+  | `formattest` | Quelle der Bibliothek „Formattest auf S3" | `demo/corpus/formate/`, je ein Dokument pro unterstützter Endung |
+  | `opaa-uploads` | **Ablage** der hochgeladenen Originale der Demo | was über die Oberfläche hochgeladen wird, einschließlich der 26 Dokumente der Upload-Bibliothek, die der Seed einspielt |
+
+  Der Einmal-Schritt **`minio-seed`** legt alle drei Buckets an, spiegelt die beiden Korpus-Buckets
+  (`mc mirror --overwrite --remove`, idempotent; Fortschritt mit `docker compose logs minio-seed`)
+  und richtet den auf `opaa-uploads` beschränkten Zugangsschlüssel der Ablage ein
+  (`demo/minio/opaa-uploads-policy.json`). Den Uploads-Bucket **befüllt er nie** — dessen Inhalt
+  gehört der Anwendung allein.
+
+  **Volume:** Der Dienst hat seit #1520 ein benanntes Volume (`opaa-demo-minio-data`), weil die
+  Datenbank der Demo einen Neustart überlebt und eine Dokumentzeile ohne ihr Objekt genau das
+  kaputte Bild ist, das der Aufräumlauf (#1478) anschließend meldet. Die beiden Korpus-Buckets
+  bleiben davon unberührt: `mc mirror --overwrite --remove` erzwingt bei jedem Start wieder den
+  committeten Korpusstand, egal was im Volume lag.
+
+  > **Achtung beim Neustart:** Objekte, Datenbank und damit auch die Dokumentzeilen überleben ein
+  > `docker compose --profile demo down` (ohne `-v`) — die **Konten** nicht. Der `keycloak`-Dienst
+  > hat kein Volume und importiert `keycloak/realm-export.json` bei jedem Start neu; der Export
+  > vergibt keine festen Nutzer-IDs, also bekommt jedes Demo-Konto ein neues `sub` und damit beim
+  > nächsten Login einen **neuen** OPAA-Datensatz ohne Rechte an den vorhandenen Bibliotheken. Der
+  > Bestand ist dann noch da, aber niemand sieht ihn mehr, und ein erneuter Seed-Lauf legt alles
+  > ein zweites Mal an, statt das Vorhandene zu übernehmen (seine Namensprüfung läuft über die
+  > Sitzung des — nun neuen — Admin-Kontos). Wer die Demo neu startet, setzt sie deshalb mit
+  > `docker compose --profile demo down -v` vollständig zurück und seedet neu. Das gilt unverändert
+  > seit #712 und hat mit der Ablage nichts zu tun; behoben wird es in #1526.
+
+  **Zugangsdaten:** Der Root-Schlüssel `rheinfurt-archiv` / `RheinfurtDemo!2026` ist ein
+  dokumentierter Demo-Wert; ihn gibt der Seed den **beiden S3-Bibliotheken** als
+  `accessKey:secretKey` mit, und mit ihm öffnet sich die MinIO-Konsole. Die **Ablage** benutzt
+  stattdessen den eigenen, bucket-beschränkten Schlüssel `opaa-uploads` / `OpaaUploads!2026`
+  (Schritt 1). Das Backend spricht `minio` Path-Style über das Compose-Netzwerk an, weshalb der
+  Servicename für die Konnektoren in der Allowlist stehen muss (Schritt 1).
 
 Alle Quellcontainer binden standardmäßig nur an `127.0.0.1` (Ports `OPAA_DEMO_CORPUS_PORT`, Default
 8091, `OPAA_DEMO_PRESSE_PORT`, Default 8092, `OPAA_DEMO_MINIO_PORT`, Default 8093, und
@@ -178,8 +241,12 @@ ein Hafen nach außen ist dafür nicht nötig:
 
 - <http://127.0.0.1:8091/leistungen-meldewesen-ausweise/> (ebenso für die anderen beiden Verzeichnisse)
 - <http://127.0.0.1:8092/rss.xml>
-- <http://127.0.0.1:8094/> — MinIO-Konsole, Anmeldung mit den Demo-Werten oben; der Bucket
-  `rheinfurt-archiv` zeigt die Jahrgangsordner unter `ratsinformationen/`
+- <http://127.0.0.1:8094/> — **MinIO-Konsole**, der Weg, sich die drei Buckets anzusehen. Anmeldung
+  mit dem Root-Schlüssel oben (`rheinfurt-archiv` / `RheinfurtDemo!2026`), dann „Object Browser":
+  `rheinfurt-archiv` zeigt die Jahrgangsordner unter `ratsinformationen/`, `formattest` die vierzehn
+  Formatmuster, und `opaa-uploads` füllt sich mit je einem Objekt pro hochgeladenem Original —
+  sichtbar unmittelbar nach einem Upload über die Oberfläche. Die Konsole des gepinnten Release ist
+  vollständig; ein zusätzlicher UI-Container ist dafür nicht nötig.
 
 Listing-Format: Apache `IndexOptions FancyIndexing HTMLTable`
 (`webserver/httpd-demo-autoindex.conf`) — die erprobte Referenz, seit #550 aber keine Notwendigkeit
@@ -202,21 +269,21 @@ python seed.py --profile demo
 ```
 
 Der Seed richtet über die öffentliche API alle vier Demo-Nutzer plus das Admin-Konto ein, legt die
-vier Spaces und sechs Wissensbibliotheken an, vergibt die Leserechte, ordnet den drei Sachgebiets- und
+vier Spaces und sieben Wissensbibliotheken an, vergibt die Leserechte, ordnet den drei Sachgebiets- und
 Amtsleitungs-Spaces ihre Bibliotheken als Datenquellen zu (Assoziation als reine Kuratierung, #706 —
 Marias persönlicher Space bleibt bewusst ohne Zuordnung), lädt die 26 Dokumente der internen
-Upload-Bibliothek hoch und stößt die Indizierung der fünf konnektorgespeisten Bibliotheken an —
-darunter die `S3`-Bibliothek, deren Lauf den Bucket `rheinfurt-archiv` des `minio`-Containers liest
-(der Einmal-Schritt `minio-seed` muss dafür durchgelaufen sein, siehe Schritt 2).
-Vollständiger Ablauf, Idempotenz und Fehlerfälle: „Seed-Mechanismus (#712)" unten.
+Upload-Bibliothek hoch und stößt die Indizierung der sechs konnektorgespeisten Bibliotheken an —
+darunter die beiden `S3`-Bibliotheken, deren Läufe die Buckets `rheinfurt-archiv` und `formattest` des
+`minio`-Containers lesen (der Einmal-Schritt `minio-seed` muss dafür durchgelaufen sein, siehe
+Schritt 2). Vollständiger Ablauf, Idempotenz und Fehlerfälle: „Seed-Mechanismus (#712)" unten.
 
 **Wie lange dauert die Erstindizierung, und wie erkennt man, dass sie fertig ist?** Der Seed selbst
 wartet auf jede Indizierung und jeden Upload (Polling gegen `GET
 /api/v1/libraries/{libraryId}/indexing/status` bzw. den Dokumentstatus) und bricht mit einer klaren
 Fehlermeldung ab, wenn etwas schiefgeht — läuft `seed.py` bis zur Ausgabe „Seed-Profil 'demo'
-abgeschlossen." durch, ist die Instanz vollständig gefüllt und durchsuchbar. Bei den 167 Dokumenten
-des Korpus (46 + 37 + 19 + 27 + 12 in den fünf konnektorgespeisten Bibliotheken, 26 Uploads) und lokal
-betriebenen Modellen ist mit einigen Minuten zu rechnen, je nach Ollama-Hardware; ein zweiter Lauf
+abgeschlossen." durch, ist die Instanz vollständig gefüllt und durchsuchbar. Bei den 181 Dokumenten
+des Korpus (46 + 37 + 19 + 27 + 12 + 14 in den sechs konnektorgespeisten Bibliotheken, 26 Uploads) und
+lokal betriebenen Modellen ist mit einigen Minuten zu rechnen, je nach Ollama-Hardware; ein zweiter Lauf
 gegen dieselbe Instanz ist idempotent und legt nichts doppelt an.
 
 #### 4. Anmelden und loslegen
@@ -234,15 +301,17 @@ zu ersetzen. Der Ist-Zustand auf der öffentlichen Instanz opaa.ewerlin.com weic
 
 | Konto | Rolle im Szenario | Spaces | Lesbare Bibliotheken | Passwort |
 |---|---|---|---|---|
-| `demo-admin` (admin@stadt-rheinfurt.example) | Systemadministration | eigener Default-Space | richtet ein, besitzt alle sechs Bibliotheken | `RheinfurtDemo!2026` |
+| `demo-admin` (admin@stadt-rheinfurt.example) | Systemadministration | eigener Default-Space | richtet ein, besitzt alle sieben Bibliotheken — „Formattest auf S3" liest ausschließlich er | `RheinfurtDemo!2026` |
 | `maria.weber` | Sachbearbeiterin Meldewesen | „Meldewesen & Ausweise" (mit Selin), „Maria Weber – persönlich" (allein) | Leistungen Meldewesen & Ausweise, Satzungen & Gebührenordnungen, Pressemitteilungen, Interne Dienstanweisungen Meldewesen, Ratsinformationen | `RheinfurtDemo!2026` |
 | `selin.kaya` | Sachbearbeiterin Meldewesen | „Meldewesen & Ausweise" (mit Maria) | dieselben fünf wie Maria | `RheinfurtDemo!2026` |
 | `thomas.klein` | Sachbearbeiter Kfz-Zulassung | „Kfz-Zulassung" (allein) | Leistungen Kfz-Zulassung, Satzungen & Gebührenordnungen, Pressemitteilungen, Ratsinformationen | `RheinfurtDemo!2026` |
-| `andrea.vogt` | Amtsleitung Bürgerbüro | „Amtsleitung Bürgerbüro" (allein) | alle sechs Bibliotheken | `RheinfurtDemo!2026` |
+| `andrea.vogt` | Amtsleitung Bürgerbüro | „Amtsleitung Bürgerbüro" (allein) | alle sechs fachlichen Bibliotheken (nicht „Formattest auf S3") | `RheinfurtDemo!2026` |
 
 Der Objektspeicher `minio` des Demo-Stacks hat einen eigenen Root-Schlüssel (`rheinfurt-archiv` /
-`RheinfurtDemo!2026`, `docker-compose.yml`) — derselbe offene Demo-Wert, mit dem der Seed die
-`S3`-Bibliothek anlegt und mit dem sich die MinIO-Konsole (Port 8094) öffnen lässt.
+`RheinfurtDemo!2026`, `docker-compose.yml`) — derselbe offene Demo-Wert, mit dem der Seed die beiden
+`S3`-Bibliotheken anlegt und mit dem sich die MinIO-Konsole (Port 8094) öffnen lässt. Die
+Originalablage benutzt davon getrennt den bucket-beschränkten Schlüssel `opaa-uploads` /
+`OpaaUploads!2026`, den der Init-Schritt `minio-seed` anlegt — ebenfalls ein offener Demo-Wert.
 
 Zusätzlich existiert im zweiten Keycloak-Realm `partner` (`keycloak/realm-partner-export.json`,
 ADR-0025) eine **zweite `maria.weber` mit derselben E-Mail** und demselben Passwort — ein
@@ -277,7 +346,7 @@ pip install -r requirements.txt
 python generate_corpus.py
 ```
 
-Läuft erneut, wenn sich eine der sechs Bibliotheken inhaltlich ändern soll (z. B. weitere
+Läuft erneut, wenn sich eine der sieben Bibliotheken inhaltlich ändern soll (z. B. weitere
 Pressemitteilungen, andere Leistungsauswahl). Zwei Läufe erzeugen byte-identische Dateien; die
 Prüfsumme steht in `corpus/MANIFEST.sha256`:
 
@@ -288,6 +357,13 @@ sha256sum -c MANIFEST.sha256
 
 Details zum Reproduktionsverfahren, den verwendeten Quellen und der Werkzeugwahl für PDF/DOCX/PPTX:
 [`generator/README.md`](generator/README.md) und [`corpus/SOURCE.md`](corpus/SOURCE.md).
+
+**Zwei Abweichungen vom „alles kommt aus dem Generator"-Bild**, beide dort ausführlich festgehalten:
+Die Word-97-Datei der Bibliothek „Formattest auf S3" schreibt keine der gepinnten Bibliotheken, sie
+entsteht einmalig über `generator/make_doc_fixture.py` mit LibreOffice und bleibt committet
+(„Formate ohne Writer"); und `corpus/leistungen-meldewesen-ausweise/002_personalausweis-oder-reisepass-abholen.md`
+trägt eine Handkorrektur aus #942, die ein Generator-Lauf zurücknimmt („Handkorrektur in der
+Leistungsbibliothek").
 
 **Was danach neu indiziert werden muss:** Ein erneuter `python seed.py --profile demo`-Lauf gegen eine
 bereits laufende Instanz legt Nutzer, Spaces, Bibliotheken und Rechte nicht doppelt an (idempotent),
@@ -322,11 +398,13 @@ Der Lauf richtet über die API ein:
 2. **Spaces** gemäß `docs/features/demo-instance.md` — „Meldewesen & Ausweise" (Maria Weber, Selin
    Kaya), Marias eigener Space ohne weiteres Mitglied, „Kfz-Zulassung" (Thomas Klein), „Amtsleitung
    Bürgerbüro" (Andrea Vogt).
-3. **Sechs Wissensbibliotheken** im Besitz des Admin-Kontos, je mit eigener Quellkonfiguration
+3. **Sieben Wissensbibliotheken** im Besitz des Admin-Kontos, je mit eigener Quellkonfiguration
    (ADR-0018): drei `HTTP_DIRECTORY` gegen `demo-corpus`, ein `RSS_FEED` gegen
-   `presse.stadt-rheinfurt.example`, ein `UPLOAD`, ein `S3` gegen `minio` (Bucket
-   `rheinfurt-archiv`, Präfix `ratsinformationen/`, Zugangsdaten und typisierte `s3Settings`
-   direkt aus `profiles.py`, [ADR-0027](../docs/decisions/0027-s3-konnektor.md)).
+   `presse.stadt-rheinfurt.example`, ein `UPLOAD`, zwei `S3` gegen `minio` (Bucket
+   `rheinfurt-archiv` mit Präfix `ratsinformationen/` sowie Bucket `formattest` ohne Präfix,
+   Zugangsdaten und typisierte `s3Settings` direkt aus `profiles.py`,
+   [ADR-0027](../docs/decisions/0027-s3-konnektor.md)). „Formattest auf S3" ist die einzige
+   Bibliothek ohne `viewer_keys` und ohne Space-Zuordnung — sie bleibt beim anlegenden Admin-Konto.
 4. **VIEWER-Rechte** exakt nach der Matrix aus `docs/features/demo-instance.md` sowie die 26
    Upload-Dokumente aus `demo/corpus/interne-dienstanweisungen-meldewesen/` — der Seed wartet nach
    dem Hochladen, bis kein Dokument mehr `PENDING` ist (Tika-Parsing und Embedding laufen asynchron,
@@ -334,13 +412,19 @@ Der Lauf richtet über die API ein:
 5. **Space↔Bibliothek-Zuordnungen** (Assoziation als reine Kuratierung, #706) gemäß den
    `library_names` der Space-Definitionen in `profiles.py`: „Meldewesen & Ausweise" bekommt die fünf
    für das Sachgebiet lesbaren Bibliotheken zugeordnet, „Kfz-Zulassung" vier, „Amtsleitung Bürgerbüro"
-   alle sechs; Marias persönlicher Space bleibt bewusst ohne Zuordnung (@Alles-Wissen greift dort
+   alle sechs fachlichen („Formattest auf S3" ist keinem Space zugeordnet, siehe Schritt 3);
+   Marias persönlicher Space bleibt bewusst ohne Zuordnung (@Alles-Wissen greift dort
    weiter auf alle lesbaren Bibliotheken zurück). Die Zuordnung legt die Session des jeweiligen
    Space-Eigentümers an, denn `associateSpaceLibrary` verlangt CURATOR oder höher im Space plus
    mindestens VIEWER auf der Bibliothek — beides hat der Eigentümer nach Schritt 4.
 6. **Indizierung je Bibliothek** über deren eigene Quellkonfiguration (nicht für die `UPLOAD`-Bibliothek
    — die hat keinen eigenen Lauf, ADR-0018, siehe Schritt 4) — der Seed wartet auf `COMPLETED` und
-   bricht bei `documentsFailed > 0` ab.
+   bricht bei `documentsFailed > 0` ab. Für die beiden `S3`-Bibliotheken prüft er zusätzlich eine
+   **Mindestzahl**: Ihr Bucket ist eine exakte Spiegelung eines Korpusverzeichnisses
+   (`expected_documents_dir` in `profiles.py`), also muss der Lauf mindestens so viele Dokumente
+   verarbeitet haben, wie dort Dateien liegen. Ohne diese Prüfung meldete ein Lauf gegen einen noch
+   nicht fertig befüllten Bucket „abgeschlossen" über eine leere Bibliothek — der Einmal-Schritt
+   `minio-seed` muss vorher durch sein (Schritt 2).
 
 Für das minimale, eingefrorene `e2e`-Profil (dev-Auth, keine Keycloak-Anmeldung nötig) braucht es den
 separaten E2E-Stack (`e2e/docker-compose.e2e.yml`), nicht den `demo`-Stack — nur dieser provisioniert
@@ -382,10 +466,13 @@ bereits erfolgreich indizierte Dokumente anzurühren.
 
 **Ratenbegrenzung:** `RateLimitFilter` schlüsselt die Indizierungsauslösung nach Client-IP **und**
 Bibliothek (`opaa.rate-limit.indexing`, Default 1 Anfrage/60s je IP+Bibliothek) sowie zusätzlich über
-ein separates, IP-weites Gesamtkontingent (Default 5 Anfragen/60s). Die vier Trigger des Seeds (eine
-je Konnektor-Bibliothek) landen auf vier verschiedenen Bibliotheken und lösen im Normalfall kein 429
-aus; `seed.py` wartet bei HTTP 429 trotzdem automatisch (`--rate-limit-wait-seconds`, Default 65s) —
-relevant vor allem bei einem erneuten Lauf kurz nach einem vorherigen Versuch oder wenn mehrere
+ein separates, IP-weites Gesamtkontingent (Default 5 Anfragen/60s). Die sechs Trigger des Seeds (einer
+je Konnektor-Bibliothek, seit #1520 einer mehr) landen auf sechs verschiedenen Bibliotheken; das
+je-Bibliothek-Kontingent greift dabei nie, das IP-weite kann es, sobald mehr als fünf Läufe innerhalb
+einer Minute starten. Weil `seed.py` jeden Lauf bis `COMPLETED` abwartet, bevor er den nächsten
+auslöst, ist das praktisch nur bei sehr schnellen Läufen (Testdoppel statt echtem Modell) der Fall —
+und dann wartet `seed.py` bei HTTP 429 automatisch (`--rate-limit-wait-seconds`, Default 65s) und löst
+erneut aus. Dasselbe gilt bei einem erneuten Lauf kurz nach einem vorherigen Versuch oder wenn mehrere
 Seed-Läufe dieselbe IP teilen.
 
 **Keycloak-Anmeldung des Seeds:** Das `demo`-Profil meldet sich über einen eigenen Client
@@ -437,9 +524,11 @@ Demo-Konten) und mit dem Rheinfurt-Korpus samt Seed-Profil `demo` befüllt.
   `postgres`/`backend`/`frontend`/`keycloak` laufen in der Instanz-Compose die beiden schlanken
   httpd-Container `demo-corpus`/`demo-presse` aus „Demo nutzen" oben — beide binden ihre Ports
   ebenfalls ausschließlich auf `127.0.0.1`. Seit #1383 gehören `minio` und der Befüll-Schritt
-  `minio-seed` ebenso dazu (die sechste Bibliothek ist `S3`-gespeist; ohne sie bricht der Seed beim
-  Lauf dieser Bibliothek ab) — samt `minio` in der Allowlist; ob die öffentliche Instanz sie
-  aufnimmt, ist eine Betreiber-Entscheidung nach dem Merge.
+  `minio-seed` ebenso dazu (zwei Bibliotheken sind `S3`-gespeist; ohne sie bricht der Seed beim
+  Lauf dieser Bibliotheken ab) — samt `minio` in der Allowlist, und seit #1520 samt dem Volume
+  `opaa-demo-minio-data` und dem `OPAA_UPLOAD_S3_*`-Block, ohne den die Originale der Instanz
+  weiter auf dem Dateisystem liegen; ob die öffentliche Instanz das aufnimmt, ist eine
+  Betreiber-Entscheidung nach dem Merge.
 - **Betriebsart:** Die Instanz läuft ausschließlich aus vorgebauten GHCR-Images
   (`ghcr.io/criew/opaa-backend:main`, `ghcr.io/criew/opaa-frontend:main`, siehe
   [`../docs/handbuch/deployment.md`, „Deployment aus vorgebauten Images"](../docs/handbuch/deployment.md#deployment-aus-vorgebauten-images-ghcr)).
@@ -513,7 +602,7 @@ nutzen" oben — der Korpus-Container mountet `demo/corpus/`, `demo-presse` moun
    beide internen Hostnamen ab.
 4. Die Indizierung löst aus, wer mindestens `EDITOR` auf der Zielbibliothek hält (ADR-0018;
    `SYSTEM_ADMIN` ist dafür seit #478 nicht mehr erforderlich), über den **Admin-Bereich der
-   Oberfläche** — für den Rheinfurt-Korpus die fünf konnektorgespeisten Bibliotheken vom Typ
+   Oberfläche** — für den Rheinfurt-Korpus die sechs konnektorgespeisten Bibliotheken vom Typ
    `HTTP_DIRECTORY`/`RSS_FEED`/`S3`, deren Quellkonfiguration bereits an der jeweiligen Bibliothek
    gespeichert ist (seit #478 nicht mehr Teil des Anstoß-Requests).
 5. Der Fortschritt ist im Admin-Bereich sichtbar (dahinter `GET

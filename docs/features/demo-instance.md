@@ -72,8 +72,11 @@ QA-Schwesterset [LHM-Dienstleistungen-QA](https://huggingface.co/datasets/it-at-
 Das Bürgerbüro Rheinfurt gliedert sich in Sachgebiete; dazu kommt die Pressestelle der Stadt als externe
 Quelle, die alle lesen. Jede Wissensbibliothek demonstriert einen Konnektortyp und mindestens ein
 Dateiformat. Der Formatvorrat ist durch `SupportedDocumentFormats` gesetzt — `.md`, `.txt`, `.csv`,
-`.pdf`, `.docx`, `.doc`, `.xlsx`, `.pptx`, `.odt`, `.ods`, `.odp` und `.html` (#1058/#1057/#1059); die
-Demo-Bibliotheken unten nutzen davon nur eine Teilmenge:
+`.pdf`, `.docx`, `.doc`, `.xlsx`, `.pptx`, `.odt`, `.ods`, `.odp`, `.html`, `.eml` und `.msg`
+(#1058/#1057/#1059, Mail seit #1189; maßgebliche Liste:
+[`../handbuch/indexierung.md`](../handbuch/indexierung.md), „Anhang: Formatübersicht"). Die sechs
+fachlichen Bibliotheken nutzen davon nur eine Teilmenge; die siebte, technische Bibliothek deckt den
+Vorrat vollständig ab (#1519/#1520):
 
 | Wissensbibliothek | Inhalt | Formate | Quellentyp |
 |---|---|---|---|
@@ -83,6 +86,18 @@ Demo-Bibliotheken unten nutzen davon nur eine Teilmenge:
 | Pressemitteilungen Stadt Rheinfurt | ~20–30 Meldungen (Sperrungen, geänderte Öffnungszeiten, Stadtfest, Jubiläen) | RSS-XML, je Eintrag eine HTML-Detailseite auf demselben Host | `RSS_FEED` (statisch, selbst gehostet) |
 | Interne Dienstanweisungen Meldewesen | Dienstanweisungen, Eskalationsregeln, interne FAQ, Schulungsfolien | `.docx`, `.pdf`, `.pptx` | `UPLOAD` (manueller Upload, im Seed automatisiert) |
 | Ratsinformationen Stadt Rheinfurt | Niederschriften und Beschlussvorlagen des Stadtrats und des Hauptausschusses 2024–2026, ein Schlüsselpräfix je Jahrgang | `.md`, `.txt` | `S3` (MinIO im Demo-Stack, Bucket `rheinfurt-archiv`, Präfix `ratsinformationen/`; #1383, [ADR-0027](../decisions/0027-s3-konnektor.md)) |
+| Formattest auf S3 | Je ein Dokument pro zugelassener Endung, inhaltlich rund um Dokumentenformate, Posteingang und Langzeitarchivierung; jedes erzeugte Dokument nennt sein eigenes Format | alle oben genannten | `S3` (MinIO im Demo-Stack, Bucket `formattest`, ohne Präfix; #1519/#1520) |
+
+Die siebte Bibliothek ist **keine Fachablage, sondern eine technische Schaubibliothek**: Sie belegt,
+dass jedes zugelassene Format tatsächlich durch seine Pipeline geht, statt es nur zu behaupten. Sie
+gehört deshalb dem Admin-Konto allein — kein Fachkonto erhält ein Leserecht, kein Space eine
+Zuordnung, und die Berechtigungsmatrix unten bleibt unverändert. Zwölf ihrer vierzehn Dokumente
+erzeugt der Korpus-Generator; die Word-97-Datei entsteht einmalig über einen LibreOffice-Export und
+die Outlook-Nachricht ist als einzige aus einem Fremdkorpus übernommen (Apache POI, Apache License
+2.0) — sie ist deshalb englisch, was die Bibliotheksbeschreibung im Seed auch sagt. Beides ist in
+`demo/corpus/SOURCE.md` und `demo/generator/README.md` festgehalten. Ihr Objektspeicher ist derselbe
+`minio`-Dienst, in dem die Demo seit #1520 auch ihre hochgeladenen Originale ablegt
+([ADR-0030](../decisions/0030-originalablage-der-uploads.md)).
 
 Zielgröße: 150–300 Dokumente insgesamt — genug für glaubwürdige, belegte Antworten, klein genug für eine
 schnelle Demo-Indizierung. Der Generator folgt dem Muster aus `eval/` (deterministisch, versioniert),
@@ -122,11 +137,12 @@ Admin-Konto:
 | Pressemitteilungen | ✔ | ✔ | ✔ |
 | Interne Dienstanweisungen Meldewesen | ✔ | — | ✔ |
 | Ratsinformationen Stadt Rheinfurt | ✔ | ✔ | ✔ |
+| Formattest auf S3 | — | — | — |
 
 Dieselben Bibliotheken sind den fachlichen Spaces zusätzlich als **Datenquellen zugeordnet**
 (Space↔Bibliothek-Assoziation als reine Kuratierung, #706): „Meldewesen & Ausweise" trägt die fünf
 für das Sachgebiet lesbaren Bibliotheken, „Kfz-Zulassung" seine vier, „Amtsleitung Bürgerbüro" alle
-sechs. `@Alles-Wissen` durchsucht in diesen Spaces genau die zugeordneten Bibliotheken, geschnitten
+sechs fachlichen. `@Alles-Wissen` durchsucht in diesen Spaces genau die zugeordneten Bibliotheken, geschnitten
 mit den Leserechten der fragenden Person. Marias persönlicher Space bleibt bewusst ohne Zuordnung —
 dort greift `@Alles-Wissen` auf alle für sie lesbaren Bibliotheken zurück. Die Zuordnung gewährt
 keinerlei Zugriff; die Matrix oben bleibt die alleinige Rechtequelle.
@@ -174,7 +190,7 @@ Passwörtern (Demo-Werte, keine Secrets), öffentliche Instanz, Korpus-Aktualisi
   [access-control.md](./access-control.md) — sie führt keinen neuen Mechanismus ein, sie führt die
   vorhandenen vor.
 - **Quellzuordnung:** Dass eine Konnektorquelle zu genau einer Wissensbibliothek gehört, ist seit
-  ADR-0018 strukturell gegeben und damit Voraussetzung dafür, dass die sechs Bibliotheken sauber getrennt
+  ADR-0018 strukturell gegeben und damit Voraussetzung dafür, dass die sieben Bibliotheken sauber getrennt
   befüllt werden. Offen sind in **#207** unter anderem die Obergrenze der Freigabe für
   konnektorgespeiste Bibliotheken und der Ausschluss einzelner Konnektordokumente; für die Demo genügen
   gezielte Grants an die vier Nutzer.

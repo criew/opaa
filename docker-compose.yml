@@ -165,25 +165,35 @@ services:
     profiles:
       - demo
 
-  # The S3 source of the Rheinfurt demo (#1383, ADR-0027): one MinIO holding the bucket
-  # "rheinfurt-archiv", from which the sixth demo library ("Ratsinformationen Stadt Rheinfurt",
-  # source type S3, key prefix "ratsinformationen/") reads. The backend reaches it over the Compose
+  # The object store of the Rheinfurt demo (#1383, #1520, ADR-0027/ADR-0030): one MinIO with three
+  # buckets - "rheinfurt-archiv" and "formattest" are *sources* the S3 connector reads (the
+  # libraries "Ratsinformationen Stadt Rheinfurt" and "Formattest auf S3"), "opaa-uploads" is the
+  # *storage* the demo writes its uploaded originals to. The backend reaches it over the Compose
   # network under its service name ("minio", path-style, http) - which the target validation
   # rejects as a private address unless "minio" is on OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST
-  # (demo/README.md, "Installation mit einem Befehl", same reasoning as demo-corpus/demo-presse).
+  # (demo/README.md, "Installation mit einem Befehl", same reasoning as demo-corpus/demo-presse);
+  # the upload store's own check passes its configured endpoint by definition.
   # Root credentials are documented demo values (demo/README.md, "Nutzerkonten"), never secrets;
-  # the seed hands them to the library as accessKey:secretKey. Same pinned image line as the
+  # the seed hands them to the two source libraries as accessKey:secretKey, while the upload store
+  # gets its own bucket-scoped key from "minio-seed" below. Same pinned image line as the
   # backend's MinIO test fixture (MinioFixture.IMAGE): the community line of minio/minio ended
-  # with this release, and the "mc" client the seed step below needs still ships in it. No volume:
-  # the bucket is refilled from the committed corpus on every start by "minio-seed" below.
+  # with this release, and the "mc" client the seed step below needs still ships in it.
+  #
+  # The volume exists for "opaa-uploads" alone: the demo's database survives a restart, and a
+  # document row whose object is gone is exactly the broken picture the orphan sweep (#1478) then
+  # reports. The two source buckets are unaffected by it - "mc mirror --overwrite --remove" forces
+  # them back to the committed corpus on every start, whatever the volume held before.
   minio:
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: rheinfurt-archiv
       MINIO_ROOT_PASSWORD: RheinfurtDemo!2026
+    volumes:
+      - opaa-demo-minio-data:/data
     # Published to 127.0.0.1 only, for the "prüfen im Browser" step (the console at 8094 shows the
-    # bucket, the API at 8093 answers "mc"/"aws s3" from the host) - the backend never uses these.
+    # three buckets, the API at 8093 answers "mc"/"aws s3" from the host) - the backend never uses
+    # these.
     ports:
       - "127.0.0.1:${OPAA_DEMO_MINIO_PORT:-8093}:9000"
       - "127.0.0.1:${OPAA_DEMO_MINIO_CONSOLE_PORT:-8094}:9001"
@@ -195,23 +205,38 @@ services:
     profiles:
       - demo
 
-  # One-shot init step (pattern: ollama-pull): creates the bucket and mirrors the committed
-  # corpus directory demo/corpus/ratsinformationen/ into it under the key prefix the seed's
-  # library scope names (bucket "rheinfurt-archiv", prefix "ratsinformationen/"), year folders
-  # included - so the S3 library shows one folder per year. Idempotent ("mc mb --ignore-existing",
-  # "mc mirror --overwrite --remove": the bucket ends up as an exact copy of the directory, an
-  # object removed from the corpus disappears on the next start), runs to completion and exits; e2e/docker-compose.demo-smoke.yml makes
-  # the backend wait for it so the seed never indexes a half-filled bucket.
+  # One-shot init step (pattern: ollama-pull): creates all three buckets and mirrors the two
+  # committed corpus directories into their source buckets - demo/corpus/ratsinformationen/ under
+  # the key prefix the seed's library scope names (bucket "rheinfurt-archiv", prefix
+  # "ratsinformationen/"), year folders included, and demo/corpus/formate/ into the bucket
+  # "formattest". "opaa-uploads" is only created, never filled: its content belongs to the
+  # application alone. Idempotent ("mc mb --ignore-existing", "mc mirror --overwrite --remove": a
+  # source bucket ends up as an exact copy of its directory, an object removed from the corpus
+  # disappears on the next start), runs to completion and exits;
+  # e2e/docker-compose.demo-smoke.yml makes the backend wait for it so neither the seed indexes a
+  # half-filled bucket nor an upload hits a missing one.
+  #
+  # The upload store gets its own access key rather than the root key the two source libraries
+  # carry as stored credentials, scoped by demo/minio/opaa-uploads-policy.json to that one bucket.
+  # "mc admin policy attach" is the one non-idempotent step (it fails once the mapping exists), so
+  # its failure is tolerated deliberately - and only its failure.
   minio-seed:
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     volumes:
       - ./demo/corpus/ratsinformationen:/corpus/ratsinformationen:ro
+      - ./demo/corpus/formate:/corpus/formate:ro
+      - ./demo/minio/opaa-uploads-policy.json:/policies/opaa-uploads-policy.json:ro
     entrypoint: ["/bin/sh", "-c"]
     command: >-
       "mc alias set demo http://minio:9000 rheinfurt-archiv 'RheinfurtDemo!2026' >/dev/null &&
-      mc mb --ignore-existing demo/rheinfurt-archiv &&
+      mc mb --ignore-existing demo/rheinfurt-archiv demo/formattest demo/opaa-uploads &&
       mc mirror --overwrite --remove /corpus/ratsinformationen demo/rheinfurt-archiv/ratsinformationen &&
-      mc ls --recursive demo/rheinfurt-archiv"
+      mc mirror --overwrite --remove /corpus/formate demo/formattest &&
+      mc admin user add demo opaa-uploads 'OpaaUploads!2026' &&
+      mc admin policy create demo opaa-uploads-rw /policies/opaa-uploads-policy.json &&
+      { mc admin policy attach demo opaa-uploads-rw --user opaa-uploads ||
+      echo 'policy already attached'; } &&
+      mc ls --recursive demo/rheinfurt-archiv demo/formattest"
     depends_on:
       minio:
         condition: service_healthy
@@ -219,12 +244,12 @@ services:
       - demo
 
   # The object store of the uploaded originals (ADR-0030), opt-in via the "upload-s3" Compose
-  # profile. Deliberately a second MinIO next to "minio" above: that one is a *source* the S3
-  # connector reads, refilled from the committed corpus on every start, this one is the *storage*
-  # the application writes to and owns. Hence the named volume - without it the originals would be
-  # gone after "docker compose down -v" while their document rows survive in the database and point
-  # at objects that no longer exist, the same trap the ./uploads bind mount has on the filesystem
-  # path.
+  # profile - the store of a regular installation, which never starts the "demo" profile. The demo
+  # does not use this service: it writes its originals into the "opaa-uploads" bucket of its own
+  # "minio" above (#1520), so a demo stack stays one object store rather than two. Hence the named
+  # volume here too - without it the originals would be gone after "docker compose down -v" while
+  # their document rows survive in the database and point at objects that no longer exist, the same
+  # trap the ./uploads bind mount has on the filesystem path.
   #
   # Without the profile this service does not exist and the stack is unchanged; the backend is
   # deliberately not depends_on it, so an installation that stays on the filesystem store keeps its
@@ -331,3 +356,4 @@ volumes:
   opaa-postgres-data:
   opaa-ollama-data:
   opaa-upload-store-data:
+  opaa-demo-minio-data:
