@@ -1224,6 +1224,7 @@ export const handlers = [
       displayName: body.displayName,
       enabled: true,
       isDefault: mockOidcProviders.length === 0,
+      providerType: 'OIDC',
       sortOrder: mockOidcProviders.length,
       issuerUri: body.issuerUri,
       clientId: body.clientId,

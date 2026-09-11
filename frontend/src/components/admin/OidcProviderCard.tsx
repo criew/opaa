@@ -352,7 +352,7 @@ export default function OidcProviderCard({
           <Mono>{provider.issuerUri}</Mono>
         </MetaItem>
         <MetaItem icon={<BadgeOutlinedIcon />} label="Client-ID">
-          <Mono>{provider.clientId}</Mono>
+          <Mono>{provider.clientId ?? ''}</Mono>
         </MetaItem>
         <MetaItem icon={<KeyOutlinedIcon />} label="JWK-Set">
           {provider.jwkSetUri ? (
