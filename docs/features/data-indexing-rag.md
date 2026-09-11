@@ -381,8 +381,10 @@ themenübergreifenden Gesamtmenge würde MMR dagegen Relevanz gegen Ähnlichkeit
 
 **Ausfallsicherheit:** Scheitert der Zerlegungsaufruf (Zeitüberschreitung, kein aktives Modell,
 unparsebare Antwort), fällt die Suche auf das Verhalten vor #923 zurück — eine Suche mit der
-heutigen `buildSearchQuery`-Logik (Frage, ggf. um die erste Chat-Nachricht ergänzt) — nie auf einen
-Fehler für den Nutzer, höchstens die alte Suchqualität.
+`buildSearchQuery`-Logik (Frage, ggf. um eine Nutzerfrage aus dem Verlauf ergänzt) — nie auf einen
+Fehler für den Nutzer, höchstens die alte Suchqualität. Seit #1486 ist das die **letzte** Nutzerfrage
+des Suchfensters statt der ersten des Chats; siehe
+[conversation-memory.md](./conversation-memory.md), Bauteil 1.
 
 **Degenerierte Zerlegung (#1254):** Ein Fehlschlag ist nicht der einzige schlechte Ausgang. Ein
 kleines Chat-Modell kann formal „erfolgreich" zerlegen und dabei etwas zurückgeben, das mit der
@@ -405,10 +407,12 @@ Fließtext einer Regel mitführte. Zwei Konsequenzen:
 **Grenzen des Wächters.** Er ist eine Teilstring-Prüfung über Wörter ab vier Zeichen, kein Stemmer:
 `Gebühr`/`Gebührenbefreiung` erkennt er, `Buch`/`Bücher` und `Mahnung`/`Mahngebühr` nicht — dort
 greift die Alles-oder-nichts-Regel und es wird zurückgefallen, was sicher, aber nicht kostenlos ist.
-Umgekehrt übersieht er eine degenerierte Ausgabe, sobald die Frage oder der Gesprächsverlauf zufällig
-eines ihrer Wörter enthält; im Mehrturn-Fall ist er deshalb am schwächsten, weil auch
-Assistenzantworten Anker liefern. Ganz aus schaltet er sich nur in zwei Fällen: wenn Frage **und**
-Verlauf zusammen höchstens ein Wort ab vier Zeichen ergeben — dann gibt es nichts, worauf sich
+Umgekehrt übersieht er eine degenerierte Ausgabe, sobald sein Ankerraum zufällig eines ihrer Wörter
+enthält; im Mehrturn-Fall ist er deshalb am schwächsten, weil auch Assistenzantworten Anker liefern.
+Der Ankerraum ist seit #1486 **genau der Zerlegungskontext** (Frage und Suchfenster, nicht mehr der
+ganze Verlauf) — die Invariante steht in
+[conversation-memory.md](./conversation-memory.md), Bauteil 1. Ganz aus schaltet er sich nur in zwei
+Fällen: wenn dieser Kontext insgesamt höchstens ein Wort ab vier Zeichen ergibt — dann gibt es nichts, worauf sich
 beziehen ließe —, und bei einer Schrift ohne Wortgrenzen (Chinesisch, Japanisch, Thai), erkannt
 daran, dass die Frage zu einem einzigen Wort über ihre gesamte Länge zerfällt. Eine kurze Folgefrage
 wird also am Gesprächsverlauf geprüft, nicht ungeprüft durchgelassen. **Die eigentliche Behebung ist

@@ -887,7 +887,7 @@ wörtlich geteilt. Hinzu kommen:
 | Festpunkt | Heutiger Wert | Warum er einer ist |
 |---|---|---|
 | `conversationWindowMessages` | 20 | die Breite des Gesprächsfensters; sie bestimmt, wie viel Verlauf die Zerlegung überhaupt sehen kann |
-| `searchWindowTurns` | 0 = „ganzes Gesprächsfenster" | heute reicht `SubQueryDecompositionStage` den Verlauf ungekürzt weiter; sobald ein eigenes Suchfenster existiert, ändert sich dieser Wert und die Baseline wird laut unvergleichbar statt still weitergerechnet |
+| `searchWindowTurns` | 2 Runden (`opaa.query.search-window-turns`, seit #1486) | `SubQueryDecompositionStage` schneidet aus dem Gesprächsfenster die letzten *n* Runden für die Zerlegung; ändert sich der Wert, wird die Baseline laut unvergleichbar statt still weitergerechnet. `0` heißt heute „nur die Frage" — eine vor #1486 gezogene Baseline trägt dieselbe `0` in der damaligen Bedeutung „ganzes Gesprächsfenster"; sie ist genau deshalb unvergleichbar und muss neu gezogen werden |
 | `conversationNoteCap` | 0 = „keine Notiz" | dasselbe, für die Gesprächsnotiz |
 | `turnCount` | Größe des Datensatzes | eine Kuratierungsrunde, die nur Fälle verlängert, ließe `goldenCaseCount` unberührt |
 
@@ -895,7 +895,8 @@ wörtlich geteilt. Hinzu kommen:
 `ChatMemory`-Bean mehr Nachrichten, als sie halten kann, und zählt, was zurückkommt
 (`ConversationMemoryProfile#measuredFrom`). Eine ins Messwerkzeug kopierte Konstante meldete nach
 einer Produktionsänderung weiter den alten Wert — genau der stille Zustand, den Festpunkte
-verhindern sollen.
+verhindern sollen. `searchWindowTurns` wird aus derselben Quelle gelesen, mit der die Pipeline
+läuft (den produktiven `QueryProperties`), nie aus einem im Harness gepflegten Wert.
 
 **Das Chat-Modell ist auf diesem Pfad ein geprüfter Festpunkt**, nicht nur ein gemeldeter
 (Abweichung von Entscheidung 20, die für den Pipeline-Pfad „keines" als gültigen Wert zulässt): Ohne

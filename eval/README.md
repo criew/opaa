@@ -405,8 +405,9 @@ Was der Schritt tut, je Fall:
 
 1. Gesprächsfenster und Suchfenster entstehen aus den vorangegangenen Skriptrunden — **über die
    produktive `ChatMemory`-Bean**, nicht über eine Nachbildung im Harness. Die Nutzerfrage wird als
-   `UserMessage`, die handgeschriebene Kurzantwort als `AssistantMessage` angehängt, genau wie
-   `ChatService#historyAsSpringAiMessages` es aus einem gespeicherten Chat tut.
+   `UserMessage` angehängt, die handgeschriebene Kurzantwort über `ConversationWindowMessages#answer`
+   — denselben Eingang, den eine erzeugte Antwort nimmt, samt Entfernung der Zitiermarken. Der
+   gemessene Verlauf ist damit der produktive, nicht bloß einer, der zufällig keine Marken enthält.
 2. Jede Runde läuft über `RetrievalContextFactory#contextFor` + `RetrievalPipeline#run`, mit dem
    Fenster als Gesprächsverlauf und der (noch leeren) Gesprächsnotiz.
 3. Gemessen wird **je Runde** mit denselben vier Metriken und demselben Fenster wie im

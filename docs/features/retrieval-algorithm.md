@@ -104,28 +104,38 @@ Umgesetzt (#1070, Teil 1)](./metadata-schema.md#umgesetzt-1070-teil-1).
 
 ### 2. LLM-Teilfragen-Zerlegung/Reformulierung
 
-Stufenname: `SUB_QUERY_DECOMPOSITION`. `SubQueryDecompositionStage` ruft, sofern `opaa.query.query-decomposition-enabled`
-(`OPAA_QUERY_DECOMPOSITION_ENABLED`, Default `true`) aktiv ist, `QueryDecompositionService#decompose`
-auf: Die aktuelle Frage geht zusammen mit dem bisherigen Gesprächsverlauf an das systemweit aktive
-Chat-Modell (`ActiveChatModelResolver`, dieselbe Anbindung wie die Antwortgenerierung), das 1 bis
-`opaa.query.max-sub-queries` (`OPAA_QUERY_MAX_SUB_QUERIES`, Default `3`) eigenständige, vollständige
-Suchanfragen zurückgibt und dabei Folgefragen kontextuell auflöst sowie Tippfehler normalisiert. Scheitert
-der Aufruf (Zeitüberschreitung, kein aktives Modell, unparsebare oder leere Antwort), liefert `decompose`
-eine leere Liste, und `SubQueryDecompositionStage#buildSearchQuery` übernimmt als Rückfallebene das Verhalten von vor
-#923: die reine Frage, oder — bei laufender Konversation — die erste Nutzernachricht der Historie,
-vorangestellt. Dasselbe gilt seit #1254 für eine **degenerierte** Ausgabe: Eine Teilfrage, die zu
-Frage und Gesprächsverlauf keinen Wortbezug hat, hat die Nutzerfrage ersetzt statt sie
-umzuformulieren. Ist auch nur eine Teilfrage ohne Bezug, greift dieselbe Rückfallebene für die ganze
-Zerlegung — mit WARN-Log (Zählwerte, keine Inhalte) und dem Zähler
-`opaa.query.decomposition.fallback` (`reason` = `degenerate`/`pruned`/`failed`), nie stillschweigend.
-Details, Grenzen des Wächters, Diagramm und die Vorher/Nachher-Messung stehen in
+Stufenname: `SUB_QUERY_DECOMPOSITION`. `SubQueryDecompositionStage` schneidet zuerst aus dem
+Gesprächsfenster des Laufs (`RetrievalContext#conversationHistory`) das **Suchfenster**: die letzten
+`opaa.query.search-window-turns` (`OPAA_QUERY_SEARCH_WINDOW_TURNS`, Default `2`) Runden, eine Runde
+sind zwei Nachrichten; `0` heißt „nur die Frage". Der Schnitt liegt bewusst **in der Stufe** und
+nicht bei ihrem Aufrufer — sonst suchten Diagnosewerkzeug und Messpfad, die die Pipeline selbst
+starten, mit einem Fenster, das die Produktion nie verwendet.
+
+Ist `opaa.query.query-decomposition-enabled` (`OPAA_QUERY_DECOMPOSITION_ENABLED`, Default `true`)
+aktiv, ruft die Stufe `QueryDecompositionService#decompose` auf: Frage und Suchfenster gehen als ein
+`DecompositionContext` an das systemweit aktive Chat-Modell (`ActiveChatModelResolver`, dieselbe
+Anbindung wie die Antwortgenerierung), das 1 bis `opaa.query.max-sub-queries`
+(`OPAA_QUERY_MAX_SUB_QUERIES`, Default `3`) eigenständige, vollständige Suchanfragen zurückgibt und
+dabei Folgefragen kontextuell auflöst sowie Tippfehler normalisiert. Scheitert der Aufruf
+(Zeitüberschreitung, kein aktives Modell, unparsebare oder leere Antwort), liefert `decompose` eine
+leere Liste, und `SubQueryDecompositionStage#buildSearchQuery` übernimmt als Rückfallebene: die reine
+Frage, oder — wenn das Suchfenster eine Vorrunde enthält — die **letzte** Nutzernachricht dieses
+Fensters, vorangestellt. Dasselbe gilt seit #1254 für eine **degenerierte** Ausgabe: Eine Teilfrage
+ohne Wortbezug zum Zerlegungskontext hat die Nutzerfrage ersetzt statt sie umzuformulieren. Ist auch
+nur eine Teilfrage ohne Bezug, greift dieselbe Rückfallebene für die ganze Zerlegung — mit WARN-Log
+(Zählwerte, keine Inhalte) und dem Zähler `opaa.query.decomposition.fallback` (`reason` =
+`degenerate`/`pruned`/`failed`), nie stillschweigend. Details, Grenzen des Wächters, Diagramm und die
+Vorher/Nachher-Messung stehen in
 [Teilfragen-Zerlegung und Query-Reformulierung](./data-indexing-rag.md#teilfragen-zerlegung-und-query-reformulierung-multi-query-retrieval-923).
 
-**Zielbild (Epic #1482, [conversation-memory.md](./conversation-memory.md), ADR-0031):** Die
-Zerlegung erhält künftig nicht mehr das ganze Gesprächsfenster, sondern ein **Suchfenster von zwei
-Runden** plus die `RAHMEN`-Punkte der Gesprächsnotiz; der Wächter ankert gegen genau diesen Kontext
-(Invariante), und der Rückfall stellt die **letzte** statt der ersten Nutzernachricht voran. Dieser
-Absatz beschreibt bis zur Umsetzung den Ist-Stand.
+**Ankerraum-Invariante (#1486).** Der Wächter ankert gegen `DecompositionContext#contextTexts()` —
+genau das Material, das dieselbe Instanz dem Modell rendert (Suchfenster, Frage und gerenderte
+Kontextbausteine), nie gegen eine getrennt gepflegte Aufzählung von Quellen. Ein künftiger
+Kontextbaustein — die `RAHMEN`-Punkte der Gesprächsnotiz, [conversation-memory.md](./conversation-memory.md),
+Bauteil 2 — erweitert damit Modellkontext und Ankerraum in einem Schritt.
+
+**Noch offen (Epic #1482, ADR-0031):** die Gesprächsnotiz selbst. Bis dahin besteht der
+Zerlegungskontext aus Frage und Suchfenster.
 
 ### 3. Vektorsuche je Teilfrage
 
@@ -353,11 +363,12 @@ auch für vor #1102 gespeicherte Nachrichten richtig, deren `sources`-JSON noch 
 ### Zusammenfassung als Ablauf
 
 ```
-Frage + Gesprächsverlauf
+Frage + Gesprächsfenster
         ↓
 1. Scope-Bestimmung (persistierter Chat / ephemer, Rechtefilter)
         ↓
-2. LLM-Teilfragen-Zerlegung (1..max-sub-queries Suchanfragen, Fallback: Einzelfrage)
+2. Suchfenster schneiden (search-window-turns Runden), LLM-Teilfragen-Zerlegung
+   (1..max-sub-queries Suchanfragen, Fallback: letzte Nutzerfrage des Suchfensters + Frage)
         ↓
 3. Je Suchanfrage: similaritySearch (fetch-k Kandidaten, Rechtefilter + Schwelle)
         ↓

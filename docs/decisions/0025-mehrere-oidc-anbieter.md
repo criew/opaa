@@ -6,6 +6,21 @@ Vorgeschlagen (05.09.2026, Issue #1327, Epic #1294). Nachtrag zu
 [ADR-0005](0005-authentication-strategy.md), das unverändert gilt, soweit dieser ADR es nicht
 ausdrücklich präzisiert oder — an einer benannten Stelle (Entscheidung 4) — aufhebt.
 
+**Nachtrag mit [ADR-0033](0033-lokale-benutzerverwaltung.md) (Epic #1529):** Der Erstadministrator ist
+ein **lokales Konto** (Seed beim ersten Start), nicht mehr das erste Konto mit
+`opaa.auth.initial-admin-email` beim Standardanbieter — die Erstadministrator-Regel aus Entscheidung 3
+gilt für OIDC-Anbieter nicht mehr (nur noch für den Dev-Issuer). `is_default` bedeutet seitdem nur noch
+„Verzeichnis-Anbieter" (Verzeichnisabgleich); ein Zustand ohne OIDC-Anbieter ist zulässig, und der
+letzte aktivierte OIDC-Anbieter darf mit ausdrücklicher Bestätigung deaktiviert werden, weil der lokale
+Systemverwalter immer anmeldefähig bleibt. `OPAA_OIDC_BOOTSTRAP=force` wird durch
+`OPAA_LOCAL_ADMIN_RESET=force` abgelöst (eine Version Übergang); die `OPAA_OIDC_*`-Variablen behalten
+ihre Bootstrap-Rolle für den ersten Anbieter. `oidc_providers` erhält `provider_type` (`OIDC | LOCAL`),
+und die Registry aus Entscheidung 1 führt den lokalen Issuer als weiteren Decoder. Die Regel „keine
+Zusammenführung" (Grenzen) bekommt eine benannte Ausnahme: die administrativ angestoßene, von der
+betroffenen Person selbst durch Anmeldung beim Anbieter eingelöste Übergabe eines lokalen Kontos an
+eine noch nicht vergebene Anbieteridentität — das Subject stammt aus ihrem Token, nie aus einer Eingabe
+(ADR-0033, Entscheidung 12).
+
 ## Kontext
 
 OPAA kennt genau einen OIDC-Issuer: `OPAA_OIDC_ISSUER_URI`, `OPAA_OIDC_JWK_SET_URI`,
