@@ -64,13 +64,13 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       "opaa.upload.max-file-size=4096",
       // Only read by the startup ApplicationRunner, which finds no rows at that point.
       "opaa.upload.pending-recovery-threshold-minutes=1",
-      // {@link io.opaa.FakeEmbeddingModel} gives every text the same vector, so every row of
-      // vector_store ties. An HNSW scan would hand back an arbitrary slice of ef_search (40 by
-      // default) candidates that the metadata filter then thins out to its share - which turns
-      // recall into a test oracle and makes a "found all of my own chunks" assertion depend on how
-      // many foreign rows the table happens to hold. At the pgvector maximum the scan is exact for
-      // any table size a test produces.
-      "spring.datasource.hikari.connection-init-sql=SET hnsw.ef_search = 1000"
+      // Exact search instead of the production HNSW index (which no test asserts on): every
+      // embedding of a test is FakeEmbeddingModel's one constant vector, so the graph degenerates
+      // into one cluster of ties and a library-filtered scan can walk hundreds of foreign chunks
+      // without ever reaching the dozen of the asking class - measured 0 of 13, at any
+      // ef_search, iterative_scan or scan_mem_multiplier. ANN recall must not decide whether an
+      // assertion holds; at the table sizes of a test the exact scan costs nothing.
+      "spring.ai.vectorstore.pgvector.index-type=none"
     })
 @AutoConfigureMockMvc
 @Import({TestcontainersConfiguration.class, OpaaTestBeans.class})
