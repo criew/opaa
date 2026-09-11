@@ -22,10 +22,9 @@ import org.junit.jupiter.api.Test;
  * organization-boundary rule (#390) demands, against the state {@code
  * db/changelog/changes/001-baseline.yaml} leaves behind.
  *
- * <p>The delete rule is part of the contract in both directions: no database-side cascade
- * (ADR-0022, Entscheidung 4) and no {@code RESTRICT} either - the key keeps the {@code NO ACTION}
- * it had, which is what lets {@code DocumentRepository#deleteByLibraryId} remove a parent and its
- * attachment rows in one statement.
+ * <p>The delete rule is part of the contract: the key keeps the {@code NO ACTION} it had, which is
+ * what ADR-0022, Entscheidung 4 requires - no database-side cascade, because deleting a parent
+ * document stays application code.
  */
 class Migration002DocumentsParentForeignKeyTest extends AbstractMigrationTest {
 
@@ -80,9 +79,8 @@ class Migration002DocumentsParentForeignKeyTest extends AbstractMigrationTest {
   }
 
   /**
-   * {@code confdeltype = 'a'} is {@code NO ACTION}: neither a cascade (which would leave the
-   * document's pgvector chunks orphaned, ADR-0022) nor {@code RESTRICT} (which would reject the
-   * single-statement bulk delete behind {@code KnowledgeLibraryService#deleteLibrary}).
+   * {@code confdeltype = 'a'} is {@code NO ACTION}, the rule the single-column key already had: no
+   * cascade, which would leave the document's pgvector chunks orphaned (ADR-0022).
    */
   @Test
   void theForeignKeyKeepsItsNoActionDeleteRule() throws Exception {
@@ -128,9 +126,9 @@ class Migration002DocumentsParentForeignKeyTest extends AbstractMigrationTest {
   }
 
   /**
-   * The behaviour {@code NO ACTION} buys over {@code RESTRICT}: {@code
-   * DocumentRepository#deleteByLibraryId} removes a parent and its attachment rows in a single
-   * statement, which the database checks only at statement end.
+   * The composite key must not break the bulk delete path: {@code
+   * DocumentRepository#deleteByLibraryId} (behind {@code KnowledgeLibraryService#deleteLibrary})
+   * removes a parent and its attachment rows in a single statement.
    */
   @Test
   void deletingParentAndAttachmentInOneStatementStaysAccepted() throws Exception {

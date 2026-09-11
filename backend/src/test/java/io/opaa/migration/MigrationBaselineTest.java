@@ -1172,6 +1172,12 @@ class MigrationBaselineTest extends AbstractMigrationTest {
    * actually run. The organization-boundary rule is a property of the schema an installation ends
    * up with, not of the baseline alone - without this step a changeset added after the baseline
    * could introduce a single-column key and never be judged by the rule (#1500).
+   *
+   * <p>Runs once per test method, in that method's own cloned database. A future changeset that
+   * creates a cluster-wide object ({@code CREATE ROLE}, as the baseline does for {@code
+   * opaa_audit_owner}) therefore needs the per-method create/drop handling described in {@link
+   * AbstractMigrationTest}'s Javadoc; the second caller would otherwise find the role already
+   * present.
    */
   private void applyEveryChangesetAfterTheBaseline() throws Exception {
     applyChangelog(connection, "db/changelog/db.changelog-master.yaml");

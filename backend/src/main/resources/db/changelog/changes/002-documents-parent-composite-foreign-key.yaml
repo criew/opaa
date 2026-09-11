@@ -8,14 +8,12 @@ databaseChangeLog:
         (parent_document_id, organization_id) -> (id, organization_id), which needs a unique key on
         (id, organization_id) as its target. Before this changeset an attachment row could name a
         parent document of a different organization; afterwards the database rejects it. The delete
-        rule stays exactly what the single-column key had - NO ACTION, the PostgreSQL default: no
-        database-side cascade (ADR-0022, Entscheidung 4 - deleting a parent document stays
-        application code, because a cascade would remove the row and leave its pgvector chunks
-        orphaned), and deliberately not ON DELETE RESTRICT either, since
-        DocumentRepository#deleteByLibraryId removes a parent and its attachment rows in a single
-        statement - NO ACTION checks that at statement end and accepts it, RESTRICT would reject it
-        row by row. parent_document_id stays nullable; a composite foreign key with a NULL column is
-        not checked (MATCH SIMPLE), so parentless rows are unaffected.
+        rule stays exactly what the single-column key had - NO ACTION, the PostgreSQL default, which
+        is what ADR-0022, Entscheidung 4 requires: no database-side cascade, because a cascade would
+        remove the row and leave its pgvector chunks orphaned, so deleting a parent document stays
+        application code. Changing the delete rule is not part of #1500. parent_document_id stays
+        nullable; a composite foreign key with a NULL column is not checked (MATCH SIMPLE), so
+        parentless rows are unaffected.
       changes:
         - sql:
             splitStatements: false
