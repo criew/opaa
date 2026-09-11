@@ -81,7 +81,8 @@ neue Normalfall.
 | Operation | Weg (oben) | Dateisystem | S3 |
 |---|---|---|---|
 | Ablegen aus einem Strom, Rückgabe von Locator **und Arbeitsdatei** | 1, 2 | `Files.copy` an den Zielort, Arbeitsdatei = die abgelegte Datei | Temp-Datei schreiben, `PutObject`, Arbeitsdatei = die Temp-Datei |
-| Freigeben der Arbeitsdatei | 2 | nichts zu tun | Temp-Datei löschen |
+| Freigeben der Arbeitsdatei (Original bleibt) | 2 | nichts zu tun | Temp-Datei löschen |
+| Verwerfen: Original und Arbeitsdatei | 6 | beide löschen | Objekt und Temp-Datei löschen |
 | Lesen zum Ausliefern | 3 | lokale Datei (`FileSystemResource`) | Objektkörper als Strom |
 | Lesen als lokale Kopie für die Dauer einer Aktion | 4, 5 | dieselbe Datei, keine Kopie | `GetObject` in eine Temp-Datei, danach gelöscht |
 | Löschen | 6 | `Files.deleteIfExists` | `DeleteObject` |
@@ -101,7 +102,23 @@ Freigabe ein No-op (die Arbeitsdatei *ist* das abgelegte Original), beim S3-Adap
 Temp-Datei. Prüfsumme, `Files.probeContentType` und Größenermittlung arbeiten unverändert auf dieser
 Arbeitsdatei; nichts an der Inhaltstyp-Erkennung und am Tika-Parsen ändert sich.
 
-Fehlerpfade räumen beides: das bereits abgelegte Original **und** die Arbeitsdatei.
+**Freigeben ist nicht Löschen, und die Freigabe gehört dem asynchronen Auftrag.** Der Port kennt
+drei Ausgänge, und ihre Unterscheidung ist der eigentliche Vertrag:
+
+- **Freigeben** — die Verarbeitung ist durch, die Arbeitsdatei wird nicht mehr gebraucht, das
+  Original bleibt. Dateisystem: nichts zu tun, die Arbeitsdatei *ist* das Original. S3: Temp-Datei
+  löschen.
+- **Verwerfen** — der Upload ist gescheitert, Original und Arbeitsdatei verschwinden beide.
+- **Löschen** — ein längst abgelegtes Original wird entfernt (Weg 6).
+
+Den Freigabe-Aufruf setzt der asynchrone Auftrag ab, nicht `uploadDocument` — dessen Thread ist zu
+diesem Zeitpunkt längst zurück. `LibraryDocumentService` reicht die Freigabe deshalb als Handle
+zusammen mit dem Auftrag weiter, und `DocumentIngestService#processUploadedFileAsync` ruft sie in
+einem `finally` um seinen gesamten Rumpf auf, sodass sie auf jedem Ausgang fällt — auch auf dem, an
+dem die Verarbeitung selbst scheitert. Das Handle ist ein `AutoCloseable` ohne Wissen über die
+Ablage; die Paketgrenze trägt kein Store-Wissen, nur „dieser Auftrag hatte eine Arbeitsdatei, und
+sie ist jetzt frei". Auf den Fehlerpfaden, die noch vor der Übergabe liegen, und in
+`failAlreadyPersistedUpload` verwirft der Aufrufer stattdessen — Verwerfen schließt Freigeben ein.
 
 ### 3. Auflösen heißt Zugehörigkeit **und** Existenz — und schärft den Upload-Weg bewusst nach
 
