@@ -201,8 +201,9 @@ Standard) und das lokale Notanker-Konto der Systemverwaltung an: Adresse aus
 `OPAA_INITIAL_ADMIN_EMAIL` (der alte Vorgabewert `admin@opaa.local`, eine fehlende oder keine
 E-Mail-Adresse werden abgelehnt — Fehler im Log, keine Markierung, Anlage beim nächsten Start),
 Anzeigename „Systemverwaltung", Anlagegrund „Notanker-Konto der Systemverwaltung", `is_bootstrap`,
-`SYSTEM_ADMIN`, Adresse als bestätigt. Auf einer **Neuinstallation** (weder OIDC-Übernahmemarkierung
-noch Konten) ist das Konto scharf: mit `OPAA_INITIAL_ADMIN_PASSWORD`, falls gesetzt (CI/E2E, kein
+`SYSTEM_ADMIN`, Adresse als bestätigt. Auf einer **Neuinstallation** (keine Konten in `users` —
+nicht die OIDC-Übernahmemarkierung, die im selben Start auch nach einer abgelehnten Adresse
+entsteht) ist das Konto scharf: mit `OPAA_INITIAL_ADMIN_PASSWORD`, falls gesetzt (CI/E2E, kein
 erzwungener Wechsel), sonst mit einem erzeugten Einmalpasswort, das **einmalig** als deutlich
 markierter Block ins Anwendungslog geschrieben wird und bei der ersten Anmeldung gewechselt werden
 muss (`pcr` mit Anlass `INITIAL`). Auf einer **Bestandsinstallation** entsteht das Konto als

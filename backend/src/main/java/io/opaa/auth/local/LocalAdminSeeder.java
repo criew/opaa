@@ -212,9 +212,15 @@ public class LocalAdminSeeder {
     User admin;
     LocalCredentials row;
     boolean recreated = existing.isEmpty();
+    // the environment password is checked before any mutation: a refusal must leave the account
+    // exactly as it was (still locked, old password, no revocation) - the transaction would
+    // otherwise commit the partial restore through dirty checking
     if (existing.isPresent()) {
       row = existing.get();
       admin = users.findById(row.getUserId()).orElseThrow();
+      if (!environmentPasswordAcceptable(admin.getEmail())) {
+        return Outcome.REJECTED;
+      }
       row.unlock(now);
       row.setExpiresAt(null, now);
       if (row.getEmailVerifiedAt() == null) {
@@ -244,9 +250,6 @@ public class LocalAdminSeeder {
       row = new LocalCredentials(admin.getId(), CREATED_REASON, now);
       row.markBootstrap();
       row.markEmailVerified(now);
-    }
-    if (!environmentPasswordAcceptable(admin.getEmail())) {
-      return Outcome.REJECTED;
     }
     ensureLocalProviderRow();
     String generated = applyPassword(row, now);

@@ -273,6 +273,37 @@ class LocalAdminSeederTest {
     assertThat(seeder("oidc", EMAIL, "kurz", "force").seedIfNeeded()).isEqualTo(Outcome.REJECTED);
   }
 
+  /**
+   * A refused restart leaves the account exactly as it was: the check runs before any mutation,
+   * because the transaction would otherwise commit a silently unlocked account with its old
+   * password.
+   */
+  @Test
+  void aRefusedRestartLeavesALockedBootstrapAccountUntouched() {
+    when(marker.seedAlreadyAttempted()).thenReturn(true);
+    User user = User.localAccount(EMAIL, LocalAdminSeeder.DISPLAY_NAME);
+    user.setOrganizationId(Organization.DEFAULT_ID);
+    user.setSystemRole(SystemRole.USER);
+    LocalCredentials row = new LocalCredentials(user.getId(), "alt", NOW.minusSeconds(3600));
+    row.markBootstrap();
+    row.setPasswordHash("{bcrypt}alt", NOW.minusSeconds(3600));
+    row.lock(LockReason.ADMIN, NOW.minusSeconds(60), null);
+    when(credentials.findByBootstrapTrue()).thenReturn(Optional.of(row));
+    when(users.findById(user.getId())).thenReturn(Optional.of(user));
+
+    assertThat(seeder("oidc", EMAIL, "kurz", "force").seedIfNeeded()).isEqualTo(Outcome.REJECTED);
+
+    assertThat(row.state(NOW)).isEqualTo(LocalAccountState.LOCKED);
+    assertThat(row.getPasswordHash()).isEqualTo("{bcrypt}alt");
+    assertThat(row.getPasswordInvalidatedBefore()).isNull();
+    assertThat(user.getSystemRole()).isEqualTo(SystemRole.USER);
+    verify(credentials, never()).save(any());
+    verify(users, never()).save(any());
+    verify(refreshTokens, never()).revokeAllForUser(any(), any(), any());
+    verify(audit, never()).recordSystemProcessAction(any());
+    verify(marker, never()).save(any());
+  }
+
   @Test
   void theShippedDefaultAddressIsRejectedWithoutAMarkerSoTheNextStartTriesAgain() {
     when(marker.seedAlreadyAttempted()).thenReturn(false);

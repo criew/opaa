@@ -200,8 +200,10 @@ Anlagegrund „Notanker-Konto der Systemverwaltung", `is_bootstrap = true`, `pas
 true` mit Grund `INITIAL`.
 
 **Neuinstallation und Bestand sind zwei Fälle.** Der Beschluss spricht vom *allerersten Start einer
-Installation*. Findet der Seed eine Installation vor, die bereits Konten hat (die Markierung des
-OIDC-Seeders existiert oder `users` ist nicht leer), legt er das Notanker-Konto **als `INVITED` ohne
+Installation*. Findet der Seed eine Installation vor, die bereits Konten hat (`users` ist nicht
+leer — nicht die Markierung des OIDC-Seeders: die entsteht im selben Start auch dann, wenn der Seed
+die Adresse abgelehnt hat, und eine beim nächsten Start korrigierte Adresse muss noch ein scharfes
+Konto ergeben; Nachtrag aus #1534), legt er das Notanker-Konto **als `INVITED` ohne
 Passwort und ohne Log-Ausgabe** an — es ist vorhanden, aber nicht scharf, und der Betrieb aktiviert es
 bewusst mit `OPAA_LOCAL_ADMIN_RESET=force` (unten). Ein Haus, das lokale Konten organisatorisch
 ausschließt, bekommt damit kein gültiges Passwort in sein Log. Ein Opt-out über eine Variable gibt es

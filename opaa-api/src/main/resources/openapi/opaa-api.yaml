@@ -917,12 +917,13 @@ paths:
         Accounts provisioned through the provider remain; only their sign-in stops. Rejected with
         409 for the default provider while another OIDC provider exists - make another provider
         the default first. The LOCAL row of the local account management is never deletable (409);
-        its switch is enable/disable. Deleting the last enabled OIDC provider is allowed only with
+        its switch is enable/disable. Deleting an enabled OIDC provider is allowed only while a
+        login-capable system administrator remains without it - a local ACTIVE SYSTEM_ADMIN
+        account with a password or an administrator of another enabled provider (409 with code
+        LAST_LOGIN_CAPABLE_ADMIN otherwise: "zuerst ein lokales Systemverwalterkonto mit Passwort
+        einrichten"). Deleting the last enabled OIDC provider additionally needs
         acknowledgeLastProvider=true (409 with code LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED
-        otherwise) and only while a login-capable local system administrator exists - a local
-        ACTIVE SYSTEM_ADMIN account with a password (409 with code LAST_LOGIN_CAPABLE_ADMIN
-        otherwise: "zuerst ein lokales Systemverwalterkonto mit Passwort einrichten").
-        Afterwards only local accounts can sign in (ADR-0033, Entscheidung 4).
+        otherwise); afterwards only local accounts can sign in (ADR-0033, Entscheidung 4).
       parameters:
         - name: acknowledgeLastProvider
           in: query
@@ -979,10 +980,11 @@ paths:
       description: >
         Its tokens are refused from the commit on; sessions of its users end with the next
         request. Rejected with 409 for the default provider while another enabled OIDC provider
-        exists - make another provider the default first. Disabling the last enabled OIDC provider
-        is allowed only with acknowledgeLastProvider=true (409 with code
-        LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED otherwise) and only while a login-capable local
-        system administrator exists (409 with code LAST_LOGIN_CAPABLE_ADMIN otherwise). For the
+        exists - make another provider the default first. Disabling an enabled OIDC provider is
+        allowed only while a login-capable system administrator remains without it (409 with code
+        LAST_LOGIN_CAPABLE_ADMIN otherwise); disabling the last enabled OIDC provider additionally
+        needs acknowledgeLastProvider=true (409 with code LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED
+        otherwise). For the
         LOCAL row this is the switch of the local account management (ADR-0033, Entscheidung 4):
         switching off ends the sessions of every regular local account (audited as
         LOCAL_ACCOUNTS_DISABLED plus one LOCAL_SESSION_REVOKED per account); local SYSTEM_ADMIN
