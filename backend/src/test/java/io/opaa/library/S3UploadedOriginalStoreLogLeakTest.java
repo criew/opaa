@@ -96,6 +96,7 @@ class S3UploadedOriginalStoreLogLeakTest {
             SECRET_KEY,
             tempDir,
             new UploadS3Properties.TargetValidation(true, List.of()));
+    UUID organizationId = UUID.randomUUID();
     UUID libraryId = UUID.randomUUID();
 
     try (S3UploadedOriginalStore store =
@@ -108,7 +109,10 @@ class S3UploadedOriginalStoreLogLeakTest {
             S3UploadedOriginalStore.LIST_PAGE_SIZE)) {
       UploadedOriginalStore.AcceptedUpload accepted =
           store.accept(
-              libraryId, ".pdf", new ByteArrayInputStream("x".getBytes(StandardCharsets.UTF_8)));
+              organizationId,
+              libraryId,
+              ".pdf",
+              new ByteArrayInputStream("x".getBytes(StandardCharsets.UTF_8)));
       UploadedOriginalRef ref = accepted.store();
       accepted.release();
 
@@ -123,11 +127,16 @@ class S3UploadedOriginalStoreLogLeakTest {
       store.delete(ref);
       assertThat(
               store.openForDownload(
-                  new UploadedOriginalRef(libraryId, ref.locator() + "x"), "x", null))
+                  new UploadedOriginalRef(organizationId, libraryId, ref.locator() + "x"),
+                  "x",
+                  null))
           .isEmpty();
       UploadedOriginalStore.AcceptedUpload refused =
           store.accept(
-              libraryId, ".pdf", new ByteArrayInputStream("y".getBytes(StandardCharsets.UTF_8)));
+              organizationId,
+              libraryId,
+              ".pdf",
+              new ByteArrayInputStream("y".getBytes(StandardCharsets.UTF_8)));
       server.failNextMatching("PUT", "/ablage/", 403, "AccessDenied");
       assertThatThrownBy(refused::store).isInstanceOf(java.io.IOException.class);
       refused.discard();

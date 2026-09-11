@@ -172,7 +172,12 @@ class OrphanedOriginalCleanupServiceTest {
     String referencedSince = stored("inzwischen eine Zeile", now.minus(Duration.ofHours(2)));
     rows.add(referencedSince);
     String fresh = stored("zu jung", now.minus(Duration.ofMinutes(5)));
-    String gone = storageDir.resolve(libraryId.toString()).resolve("weg.pdf").toString();
+    String gone =
+        storageDir
+            .resolve(organizationId.toString())
+            .resolve(libraryId.toString())
+            .resolve("weg.pdf")
+            .toString();
     String foreign =
         storageDir.resolve(UUID.randomUUID().toString()).resolve("fremd.pdf").toString();
 
@@ -280,7 +285,11 @@ class OrphanedOriginalCleanupServiceTest {
     // it". The caller who pasted a stale list must see that a row owns the locator, not the
     // harmless "nothing to do here".
     String referencedButGone =
-        storageDir.resolve(libraryId.toString()).resolve("zeile-ohne-objekt.pdf").toString();
+        storageDir
+            .resolve(organizationId.toString())
+            .resolve(libraryId.toString())
+            .resolve("zeile-ohne-objekt.pdf")
+            .toString();
     rows.add(referencedButGone);
 
     OrphanedOriginalDeletion deletion =
@@ -298,6 +307,7 @@ class OrphanedOriginalCleanupServiceTest {
     UploadedOriginalRef ref =
         store
             .accept(
+                organizationId,
                 libraryId,
                 ".pdf",
                 new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)))

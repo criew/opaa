@@ -278,7 +278,10 @@ class LibraryDocumentServiceTest {
     assertThat(ingest.getValue().existingRow()).isTrue();
     assertThat(ingest.getValue().sourceType()).isEqualTo(DocumentSourceType.UPLOAD);
     Path storedFile = DocumentIngests.fileOf(ingest.getValue());
-    assertThat(storedFile.startsWith(storageDir.resolve(libraryId.toString()))).isTrue();
+    assertThat(
+            storedFile.startsWith(
+                storageDir.resolve(organizationId.toString()).resolve(libraryId.toString())))
+        .isTrue();
     assertThat(storedFile.getFileName().toString()).endsWith(".pdf");
   }
 
@@ -547,7 +550,9 @@ class LibraryDocumentServiceTest {
     // block the same file being uploaded again forever - the dedup check now only rejects a
     // still-live (PENDING/INDEXED) match, and replaces a FAILED one.
     grantEditor();
-    Path libraryDir = Files.createDirectories(storageDir.resolve(libraryId.toString()));
+    Path libraryDir =
+        Files.createDirectories(
+            storageDir.resolve(organizationId.toString()).resolve(libraryId.toString()));
     Path oldFailedFile = libraryDir.resolve("old-failed.pdf");
     Files.writeString(oldFailedFile, "content from the failed attempt");
 
@@ -559,6 +564,7 @@ class LibraryDocumentServiceTest {
             5L,
             DocumentSourceType.UPLOAD);
     oldFailedDoc.setLibraryId(libraryId);
+    oldFailedDoc.setOrganizationId(organizationId);
     oldFailedDoc.setStatus(DocumentStatus.FAILED);
     oldFailedDoc.setErrorMessage("Die Datei konnte nicht verarbeitet werden");
 
@@ -666,7 +672,12 @@ class LibraryDocumentServiceTest {
     ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
     verify(documentIngestService).processUploadedFileAsync(ingest.capture(), any(), any());
     Path storedPath = DocumentIngests.fileOf(ingest.getValue()).toAbsolutePath().normalize();
-    Path libraryDir = storageDir.resolve(libraryId.toString()).toAbsolutePath().normalize();
+    Path libraryDir =
+        storageDir
+            .resolve(organizationId.toString())
+            .resolve(libraryId.toString())
+            .toAbsolutePath()
+            .normalize();
     assertThat(storedPath.startsWith(libraryDir))
         .as("Stored file must stay inside the library's own storage directory")
         .isTrue();
@@ -821,12 +832,15 @@ class LibraryDocumentServiceTest {
   void deletingAnUploadedDocumentRemovesChunksTheRowAndTheStoredFile() throws IOException {
     grantEditor();
     UUID documentId = UUID.randomUUID();
-    Path libraryDir = Files.createDirectories(storageDir.resolve(libraryId.toString()));
+    Path libraryDir =
+        Files.createDirectories(
+            storageDir.resolve(organizationId.toString()).resolve(libraryId.toString()));
     Path storedFile = libraryDir.resolve("stored.pdf");
     Files.writeString(storedFile, "content");
 
     Document doc = new Document("report.pdf", storedFile.toString(), "application/pdf", 7L);
     doc.setLibraryId(libraryId);
+    doc.setOrganizationId(organizationId);
     doc.setSourceType(DocumentSourceType.UPLOAD);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
 
@@ -850,12 +864,15 @@ class LibraryDocumentServiceTest {
     // LibraryDocumentServiceIntegrationTest.
     grantEditor();
     UUID documentId = UUID.randomUUID();
-    Path libraryDir = Files.createDirectories(storageDir.resolve(libraryId.toString()));
+    Path libraryDir =
+        Files.createDirectories(
+            storageDir.resolve(organizationId.toString()).resolve(libraryId.toString()));
     Path storedFile = libraryDir.resolve("stored.pdf");
     Files.writeString(storedFile, "content");
 
     Document doc = new Document("report.pdf", storedFile.toString(), "application/pdf", 7L);
     doc.setLibraryId(libraryId);
+    doc.setOrganizationId(organizationId);
     doc.setSourceType(DocumentSourceType.UPLOAD);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
 
@@ -876,12 +893,14 @@ class LibraryDocumentServiceTest {
     UUID documentId = UUID.randomUUID();
     Document doc = new Document("eintrag.html", "https://feed.example/entry", "text/html", 7L);
     doc.setLibraryId(libraryId);
+    doc.setOrganizationId(organizationId);
     doc.setSourceType(DocumentSourceType.RSS_FEED);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
 
     Document attachment =
         new Document("anlage.pdf", "https://feed.example/anlage.pdf", "application/pdf", 3L);
     attachment.setLibraryId(libraryId);
+    attachment.setOrganizationId(organizationId);
     attachment.setSourceType(DocumentSourceType.RSS_FEED);
     attachment.setParentDocumentId(doc.getId());
     when(documentRepository.findByParentDocumentId(doc.getId())).thenReturn(List.of(attachment));
@@ -906,6 +925,7 @@ class LibraryDocumentServiceTest {
     Document outerMail =
         new Document("aussenmail.eml", "https://feed.example/outer", "message/rfc822", 10L);
     outerMail.setLibraryId(libraryId);
+    outerMail.setOrganizationId(organizationId);
     outerMail.setSourceType(DocumentSourceType.RSS_FEED);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(outerMail));
 
@@ -916,6 +936,7 @@ class LibraryDocumentServiceTest {
             "message/rfc822",
             8L);
     innerMail.setLibraryId(libraryId);
+    innerMail.setOrganizationId(organizationId);
     innerMail.setSourceType(DocumentSourceType.RSS_FEED);
     innerMail.setParentDocumentId(outerMail.getId());
     Document grandchildAttachment =
@@ -925,6 +946,7 @@ class LibraryDocumentServiceTest {
             "application/pdf",
             5L);
     grandchildAttachment.setLibraryId(libraryId);
+    grandchildAttachment.setOrganizationId(organizationId);
     grandchildAttachment.setSourceType(DocumentSourceType.RSS_FEED);
     grandchildAttachment.setParentDocumentId(innerMail.getId());
     when(documentRepository.findByParentDocumentId(outerMail.getId()))
@@ -954,12 +976,15 @@ class LibraryDocumentServiceTest {
     // deletion for a reason that has nothing to do with the file.
     grantEditor();
     UUID documentId = UUID.randomUUID();
-    Path libraryDir = Files.createDirectories(storageDir.resolve(libraryId.toString()));
+    Path libraryDir =
+        Files.createDirectories(
+            storageDir.resolve(organizationId.toString()).resolve(libraryId.toString()));
     Path storedFile = libraryDir.resolve("stored.pdf");
     Files.writeString(storedFile, "content");
 
     Document doc = new Document("report.pdf", storedFile.toString(), "application/pdf", 7L);
     doc.setLibraryId(libraryId);
+    doc.setOrganizationId(organizationId);
     doc.setSourceType(DocumentSourceType.UPLOAD);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
     doThrow(new RuntimeException("pgvector unavailable"))
@@ -1006,6 +1031,7 @@ class LibraryDocumentServiceTest {
             10L,
             DocumentSourceType.FILESYSTEM);
     doc.setLibraryId(libraryId);
+    doc.setOrganizationId(organizationId);
     UUID documentId = UUID.randomUUID();
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
 
@@ -1033,6 +1059,7 @@ class LibraryDocumentServiceTest {
             30L,
             DocumentSourceType.FILESYSTEM);
     doc.setLibraryId(libraryId);
+    doc.setOrganizationId(organizationId);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
 
     service.deleteDocument(libraryId, documentId, caller);
@@ -1062,6 +1089,7 @@ class LibraryDocumentServiceTest {
             5L,
             DocumentSourceType.UPLOAD);
     doc.setLibraryId(libraryId);
+    doc.setOrganizationId(organizationId);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
 
     service.deleteDocument(libraryId, documentId, caller);
@@ -1129,6 +1157,7 @@ class LibraryDocumentServiceTest {
             null,
             DocumentSourceType.RSS_FEED);
     entry.setLibraryId(libraryId);
+    entry.setOrganizationId(organizationId);
     Document attachment =
         new Document(
             "anlage.pdf",
@@ -1137,6 +1166,7 @@ class LibraryDocumentServiceTest {
             null,
             DocumentSourceType.RSS_FEED);
     attachment.setLibraryId(libraryId);
+    attachment.setOrganizationId(organizationId);
     attachment.setParentDocumentId(entry.getId());
     UUID documentId = UUID.randomUUID();
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(attachment));
@@ -1183,7 +1213,8 @@ class LibraryDocumentServiceTest {
     uploadedOriginalStore =
         new UploadedOriginalStore() {
           @Override
-          public AcceptedUpload accept(UUID libraryId, String extension, InputStream bytes) {
+          public AcceptedUpload accept(
+              UUID organizationId, UUID libraryId, String extension, InputStream bytes) {
             throw new UnsupportedOperationException();
           }
 
@@ -1213,7 +1244,9 @@ class LibraryDocumentServiceTest {
 
           @Override
           public void forEachStoredOriginal(
-              UUID libraryId, java.util.function.Consumer<StoredOriginal> visitor) {
+              UUID organizationId,
+              UUID libraryId,
+              java.util.function.Consumer<StoredOriginal> visitor) {
             throw new UnsupportedOperationException();
           }
         };
@@ -1284,6 +1317,7 @@ class LibraryDocumentServiceTest {
             null,
             DocumentSourceType.RSS_FEED);
     entry.setLibraryId(libraryId);
+    entry.setOrganizationId(organizationId);
     Document mail =
         new Document(
             "post.eml",
@@ -1292,6 +1326,7 @@ class LibraryDocumentServiceTest {
             null,
             DocumentSourceType.RSS_FEED);
     mail.setLibraryId(libraryId);
+    mail.setOrganizationId(organizationId);
     mail.setParentDocumentId(entry.getId());
     Document attachment = mailAttachmentRow(mail, 0, "anlage.txt");
     attachment.setSourceType(DocumentSourceType.RSS_FEED);
@@ -1337,7 +1372,9 @@ class LibraryDocumentServiceTest {
 
   /** An UPLOAD mail row whose stored file actually exists under this library's upload directory. */
   private Document uploadedMailRow(String fileName) throws IOException {
-    Path libraryDir = Files.createDirectories(storageDir.resolve(libraryId.toString()));
+    Path libraryDir =
+        Files.createDirectories(
+            storageDir.resolve(organizationId.toString()).resolve(libraryId.toString()));
     Path storedFile = libraryDir.resolve(fileName);
     Files.writeString(storedFile, "mail bytes");
     Document mail =
@@ -1348,6 +1385,7 @@ class LibraryDocumentServiceTest {
             Files.size(storedFile),
             DocumentSourceType.UPLOAD);
     mail.setLibraryId(libraryId);
+    mail.setOrganizationId(organizationId);
     return mail;
   }
 
@@ -1361,6 +1399,7 @@ class LibraryDocumentServiceTest {
             13L,
             DocumentSourceType.UPLOAD);
     attachment.setLibraryId(libraryId);
+    attachment.setOrganizationId(organizationId);
     attachment.setParentDocumentId(parent.getId());
     return attachment;
   }
@@ -1388,6 +1427,7 @@ class LibraryDocumentServiceTest {
   private Document remoteDocument(DocumentSourceType sourceType, String url) {
     Document document = new Document("original.pdf", url, null, null, sourceType);
     document.setLibraryId(libraryId);
+    document.setOrganizationId(organizationId);
     return document;
   }
 
@@ -1700,6 +1740,7 @@ class LibraryDocumentServiceTest {
     Document document =
         new Document(fileName, "s3://protokolle/" + key, contentType, 42L, DocumentSourceType.S3);
     document.setLibraryId(libraryId);
+    document.setOrganizationId(organizationId);
     return document;
   }
 
@@ -1803,6 +1844,7 @@ class LibraryDocumentServiceTest {
             10L,
             DocumentSourceType.CONFLUENCE);
     page.setLibraryId(libraryId);
+    page.setOrganizationId(organizationId);
     when(documentRepository.findById(page.getId())).thenReturn(Optional.of(page));
 
     assertThatThrownBy(() -> service.loadContent(page.getId(), caller))
@@ -1822,6 +1864,7 @@ class LibraryDocumentServiceTest {
             6L,
             DocumentSourceType.S3);
     attachment.setLibraryId(libraryId);
+    attachment.setOrganizationId(organizationId);
     attachment.setParentDocumentId(mail.getId());
     when(documentRepository.findById(mail.getId())).thenReturn(Optional.of(mail));
     when(documentRepository.findById(attachment.getId())).thenReturn(Optional.of(attachment));
@@ -1868,6 +1911,7 @@ class LibraryDocumentServiceTest {
             6L,
             DocumentSourceType.S3);
     attachment.setLibraryId(libraryId);
+    attachment.setOrganizationId(organizationId);
     attachment.setParentDocumentId(mail.getId());
     when(documentRepository.findById(mail.getId())).thenReturn(Optional.of(mail));
     when(documentRepository.findById(attachment.getId())).thenReturn(Optional.of(attachment));

@@ -162,7 +162,8 @@ class S3UploadStorageIntegrationTest {
     assertThat(uploaded.document().getStatus()).isEqualTo(DocumentStatus.PENDING);
 
     Document indexed = awaitDocumentStatus(uploaded.document().getId(), DocumentStatus.INDEXED);
-    assertThat(indexed.getFilePath()).startsWith("s3://" + bucket + "/" + libraryId + "/");
+    assertThat(indexed.getFilePath())
+        .startsWith("s3://" + bucket + "/" + organizationId + "/" + libraryId + "/");
     String key = indexed.getFilePath().substring(("s3://" + bucket + "/").length());
     assertThat(objectExists(key)).isTrue();
 

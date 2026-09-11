@@ -95,10 +95,11 @@ import org.springframework.web.multipart.MultipartFile;
  * after commit (next paragraph) alongside the file, for the same reason.
  *
  * <p><b>Path traversal (#420 acceptance criteria):</b> the caller-supplied original file name never
- * reaches the storage. {@link UploadedOriginalStore} is handed the library id - from the
- * {@code @PathVariable UUID}, which Spring rejects unless it parses as one - and an extension out
- * of {@link SupportedDocumentFormats#extensions()}, not a suffix sliced out of the original name;
- * it names the stored original itself (ADR-0030). The original name is kept only as {@link
+ * reaches the storage. {@link UploadedOriginalStore} is handed the organization and library id -
+ * the latter from the {@code @PathVariable UUID}, which Spring rejects unless it parses as one, the
+ * former off the loaded library row - and an extension out of {@link
+ * SupportedDocumentFormats#extensions()}, not a suffix sliced out of the original name; it names
+ * the stored original itself (ADR-0030). The original name is kept only as {@link
  * Document#getFileName()} display metadata, sanitized to its last path segment as a second,
  * defence-in-depth measure even though it is never interpreted as a path.
  *
@@ -260,7 +261,8 @@ public class LibraryDocumentService {
           folderService.resolveOrCreateFolderPath(libraryId, folderId, pathSegments, caller);
     }
 
-    UploadedOriginalStore.AcceptedUpload accepted = acceptUpload(libraryId, extension, file);
+    UploadedOriginalStore.AcceptedUpload accepted =
+        acceptUpload(library.getOrganizationId(), libraryId, extension, file);
     // The working file the rest of this upload reads - the same file the asynchronous processing
     // gets, and the one it releases when it is done (ADR-0030, Entscheidung 2). It only becomes the
     // library's original at accepted.store() below, after the checks that still reject an upload.
@@ -414,10 +416,10 @@ public class LibraryDocumentService {
    * after the bytes were already taken.
    */
   private UploadedOriginalStore.AcceptedUpload acceptUpload(
-      UUID libraryId, String extension, MultipartFile file) {
+      UUID organizationId, UUID libraryId, String extension, MultipartFile file) {
     UploadedOriginalStore.AcceptedUpload accepted = null;
     try (InputStream in = file.getInputStream()) {
-      accepted = uploadedOriginalStore.accept(libraryId, extension, in);
+      accepted = uploadedOriginalStore.accept(organizationId, libraryId, extension, in);
       return accepted;
     } catch (IOException e) {
       if (accepted != null) {

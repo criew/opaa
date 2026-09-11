@@ -87,6 +87,7 @@ public class OrphanedOriginalCleanupService {
     List<OrphanedOriginal> listed = new ArrayList<>();
     int[] counts = new int[4]; // scanned, orphans, within grace period, referenced
     store.forEachStoredOriginal(
+        organizationId,
         libraryId,
         original -> {
           counts[0]++;
@@ -156,6 +157,7 @@ public class OrphanedOriginalCleanupService {
     Set<String> known = new HashSet<>(documentRepository.findFilePathsByLibraryId(libraryId));
     Map<String, UploadedOriginalStore.StoredOriginal> inStore = new HashMap<>();
     store.forEachStoredOriginal(
+        organizationId,
         libraryId,
         original -> {
           if (requested.contains(original.locator())) {
@@ -174,7 +176,7 @@ public class OrphanedOriginalCleanupService {
         skipped.add(skip(locator, OrphanedOriginalSkipReason.NOT_IN_STORE));
       } else if (original.lastModified().isAfter(threshold)) {
         skipped.add(skip(locator, OrphanedOriginalSkipReason.WITHIN_GRACE_PERIOD));
-      } else if (removed(libraryId, locator)) {
+      } else if (removed(organizationId, libraryId, locator)) {
         deleted.add(locator);
       } else {
         skipped.add(skip(locator, OrphanedOriginalSkipReason.DELETE_FAILED));
@@ -194,8 +196,8 @@ public class OrphanedOriginalCleanupService {
    * it. An unreachable store answers that check with an exception - caught here, because one
    * locator's failure must not cost the caller the record of the ones already removed.
    */
-  private boolean removed(UUID libraryId, String locator) {
-    UploadedOriginalRef ref = new UploadedOriginalRef(libraryId, locator);
+  private boolean removed(UUID organizationId, UUID libraryId, String locator) {
+    UploadedOriginalRef ref = new UploadedOriginalRef(organizationId, libraryId, locator);
     try {
       store.delete(ref);
       return !store.belongsToLibrary(ref);
