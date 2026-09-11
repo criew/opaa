@@ -92,8 +92,8 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
     }
     try (DirectoryStream<Path> entries = Files.newDirectoryStream(libraryDirectory)) {
       for (Path entry : entries) {
-        // The same check every other operation goes through, so what is listed can also be read
-        // and deleted: a subdirectory and a link leading out of the area are not originals.
+        // One level only, and the same check every other operation goes through: a subdirectory
+        // (whose content this adapter never wrote) and a link leading out are not originals.
         String locator = entry.toString();
         Path file = managedFile(new UploadedOriginalRef(libraryId, locator));
         if (file == null || !Files.isRegularFile(file)) {

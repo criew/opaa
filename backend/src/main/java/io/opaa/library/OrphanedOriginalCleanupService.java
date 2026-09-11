@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import io.opaa.api.types.OrphanedOriginalSkipReason;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.document.DocumentRepository;
 import java.time.Clock;
@@ -24,13 +25,14 @@ import org.springframework.stereotype.Service;
  * database each leave one behind).
  *
  * <p><b>Two steps, never one.</b> {@link #report} changes nothing; {@link #delete} removes only the
- * locators it is handed and re-checks each of them first. <b>Orphaned is what no row points to</b>
- * - whatever the row's status, source type or parent: a {@code PENDING} or {@code FAILED} row keeps
- * its original, and an attachment row's synthetic path can never match a stored locator, so
- * including every row costs nothing and filtering would be an assumption about the future. <b>An
- * original inside the grace period is never touched</b>: an upload whose row is being written this
- * moment is not an orphan. The known-locator set is bounded by the library's rows; the store is
- * walked one original at a time, never held as a whole.
+ * locators it is handed and checks each of them once more against a fresh reading of rows and
+ * store. <b>Orphaned is what no row points to</b> - whatever the row's status, source type or
+ * parent: a {@code PENDING} or {@code FAILED} row keeps its original, and an attachment row's
+ * synthetic path can never match a stored locator, so including every row costs nothing and
+ * filtering would be an assumption about the future. <b>An original inside the grace period is
+ * never touched</b>: an upload whose row is being written this moment is not an orphan. The
+ * known-locator set is bounded by the library's rows; the store is walked one original at a time,
+ * never held as a whole.
  */
 @Service
 public class OrphanedOriginalCleanupService {
@@ -83,12 +85,13 @@ public class OrphanedOriginalCleanupService {
     Instant threshold = clock.instant().minus(Duration.ofMinutes(appliedMinutes));
     Set<String> known = new HashSet<>(documentRepository.findFilePathsByLibraryId(libraryId));
     List<OrphanedOriginal> listed = new ArrayList<>();
-    int[] counts = new int[3]; // scanned, orphans, within grace period
+    int[] counts = new int[4]; // scanned, orphans, within grace period, referenced
     store.forEachStoredOriginal(
         libraryId,
         original -> {
           counts[0]++;
           if (known.contains(original.locator())) {
+            counts[3]++;
             return;
           }
           if (original.lastModified().isAfter(threshold)) {
@@ -102,12 +105,14 @@ public class OrphanedOriginalCleanupService {
           }
         });
     OrphanedOriginalReport report =
-        new OrphanedOriginalReport(listed, counts[1], counts[0], counts[2], appliedMinutes);
+        new OrphanedOriginalReport(
+            listed, counts[1], counts[0], counts[3], counts[2], appliedMinutes);
     log.info(
-        "Orphan report for library {}: {} stored original(s) scanned, {} orphaned (older than {}"
-            + " minute(s)), {} within the grace period{}",
+        "Orphan report for library {}: {} stored original(s) scanned, {} referenced by a row, {}"
+            + " orphaned (older than {} minute(s)), {} within the grace period{}",
         libraryId,
         report.scannedCount(),
+        report.referencedCount(),
         report.orphanCount(),
         appliedMinutes,
         report.withinGracePeriodCount(),
@@ -117,12 +122,18 @@ public class OrphanedOriginalCleanupService {
 
   /**
    * Removes the originals behind {@code locators} from {@code libraryId}'s storage area - and only
-   * those. Every locator is checked again right before it goes: one a row points to by now, one
-   * still inside the configured grace period and one the store does not hold for this library are
-   * skipped with their reason. A removal the store refused is reported as such, not as done.
+   * those. Rows and store are read once at the start of this call, and every locator is checked
+   * against that reading before it goes: one a row points to, one still inside the configured grace
+   * period and one the store does not hold for this library are skipped with their reason.
+   *
+   * <p><b>A removal that is not confirmed ends that locator, not the call.</b> A store that refuses
+   * or becomes unreachable mid-call makes the remaining locators {@code DELETE_FAILED} and the
+   * result still names every original that actually went - the bytes are gone for good, so the one
+   * record of which ones must survive the failure that happened next.
    *
    * @throws IllegalArgumentException when no or more than {@link #MAX_LISTED} locators are given
-   * @throws UploadStoreUnavailableException when the store cannot be reached
+   * @throws UploadStoreUnavailableException when the store cannot be read at all, before anything
+   *     has been removed
    */
   public OrphanedOriginalDeletion delete(
       UUID organizationId, UUID libraryId, List<String> locators) {
@@ -163,14 +174,10 @@ public class OrphanedOriginalCleanupService {
         skipped.add(skip(locator, OrphanedOriginalSkipReason.NOT_IN_STORE));
       } else if (original.lastModified().isAfter(threshold)) {
         skipped.add(skip(locator, OrphanedOriginalSkipReason.WITHIN_GRACE_PERIOD));
+      } else if (removed(libraryId, locator)) {
+        deleted.add(locator);
       } else {
-        UploadedOriginalRef ref = new UploadedOriginalRef(libraryId, locator);
-        store.delete(ref);
-        if (store.belongsToLibrary(ref)) {
-          skipped.add(skip(locator, OrphanedOriginalSkipReason.DELETE_FAILED));
-        } else {
-          deleted.add(locator);
-        }
+        skipped.add(skip(locator, OrphanedOriginalSkipReason.DELETE_FAILED));
       }
     }
     log.info(
@@ -179,6 +186,26 @@ public class OrphanedOriginalCleanupService {
         deleted.size(),
         skipped.size());
     return new OrphanedOriginalDeletion(deleted, skipped);
+  }
+
+  /**
+   * Whether the original behind {@code locator} is confirmed gone: {@link
+   * UploadedOriginalStore#delete} swallows a refused removal, so only the check afterwards settles
+   * it. An unreachable store answers that check with an exception - caught here, because one
+   * locator's failure must not cost the caller the record of the ones already removed.
+   */
+  private boolean removed(UUID libraryId, String locator) {
+    UploadedOriginalRef ref = new UploadedOriginalRef(libraryId, locator);
+    try {
+      store.delete(ref);
+      return !store.belongsToLibrary(ref);
+    } catch (UploadStoreUnavailableException e) {
+      log.warn(
+          "Upload store did not confirm the removal of {} in library {}; reported as failed",
+          locator,
+          libraryId);
+      return false;
+    }
   }
 
   private static OrphanedOriginalDeletion.Skipped skip(

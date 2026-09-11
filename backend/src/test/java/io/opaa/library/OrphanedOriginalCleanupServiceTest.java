@@ -3,11 +3,13 @@ package io.opaa.library;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.OrphanedOriginalSkipReason;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.document.AttachmentFilePath;
 import io.opaa.indexing.document.DocumentRepository;
@@ -85,6 +87,7 @@ class OrphanedOriginalCleanupServiceTest {
     assertThat(report.orphans().get(0).size()).isEqualTo("verwaist".length());
     assertThat(report.orphanCount()).isEqualTo(1);
     assertThat(report.scannedCount()).isEqualTo(2);
+    assertThat(report.referencedCount()).isEqualTo(1);
     assertThat(report.withinGracePeriodCount()).isZero();
     assertThat(report.minimumAgeMinutes()).isEqualTo(GRACE_MINUTES);
     assertThat(report.isTruncated()).isFalse();
@@ -223,6 +226,52 @@ class OrphanedOriginalCleanupServiceTest {
         .containsExactly(
             new OrphanedOriginalDeletion.Skipped(orphan, OrphanedOriginalSkipReason.DELETE_FAILED));
     assertThat(Path.of(orphan)).exists();
+  }
+
+  @Test
+  void aStoreFailingMidRunStillReportsWhatWasAlreadyRemoved() throws IOException {
+    // The bytes of the first original are gone for good; if the failure on the second one threw
+    // out of the call, the audit entry would name nothing at all and no other record would exist.
+    String first = stored("zuerst weg", now.minus(Duration.ofHours(2)));
+    String second = stored("dann faellt die Ablage aus", now.minus(Duration.ofHours(2)));
+    String third = stored("und bleibt aus", now.minus(Duration.ofHours(2)));
+    doAnswer(
+            invocation -> {
+              UploadedOriginalRef ref = invocation.getArgument(0);
+              if (first.equals(ref.locator())) {
+                invocation.callRealMethod();
+                return null;
+              }
+              throw new UploadStoreUnavailableException();
+            })
+        .when(store)
+        .delete(any());
+
+    OrphanedOriginalDeletion deletion =
+        service.delete(organizationId, libraryId, List.of(first, second, third));
+
+    assertThat(deletion.deleted()).containsExactly(first);
+    assertThat(deletion.skipped())
+        .containsExactly(
+            new OrphanedOriginalDeletion.Skipped(second, OrphanedOriginalSkipReason.DELETE_FAILED),
+            new OrphanedOriginalDeletion.Skipped(third, OrphanedOriginalSkipReason.DELETE_FAILED));
+    assertThat(Path.of(first)).doesNotExist();
+    assertThat(Path.of(second)).exists();
+    assertThat(Path.of(third)).exists();
+  }
+
+  @Test
+  void aReportWithoutASingleReferencedOriginalIsVisibleAsSuch() throws IOException {
+    // The one dangerous picture - storage and rows no longer belong together, typically after a
+    // switch-over that did not rewrite file_path - has to be readable off the report itself.
+    stored("eins", now.minus(Duration.ofHours(2)));
+    stored("zwei", now.minus(Duration.ofHours(2)));
+
+    OrphanedOriginalReport report = service.report(organizationId, libraryId, null);
+
+    assertThat(report.scannedCount()).isEqualTo(2);
+    assertThat(report.referencedCount()).isZero();
+    assertThat(report.orphanCount()).isEqualTo(2);
   }
 
   @Test

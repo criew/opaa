@@ -1433,8 +1433,9 @@ Sicherungslaufs hochgeladen oder gelöscht, driften die beiden Ziele um die Daue
 auseinander. Wer einen genau zusammenpassenden Stand braucht, hält die Uploads für die Dauer an
 (Backend stoppen). Sonst gilt: **erst die Datenbank sichern, dann die Originale.** Ein in der
 Zwischenzeit hochgeladenes Dokument ist dann ein Objekt ohne Zeile — verwaist, kostet Speicherplatz
-und stört sonst nichts; eingesammelt wird es vom Aufräumlauf im nächsten Abschnitt. In der anderen
-Reihenfolge wäre es eine Zeile ohne Bytes, und die ist im Betrieb ein Fehlerbild.
+und stört sonst nichts; eingesammelt wird es von [„Verwaiste Originale
+aufräumen"](#verwaiste-originale-aufräumen), dem nächsten Abschnitt. In der anderen Reihenfolge wäre
+es eine Zeile ohne Bytes, und die ist im Betrieb ein Fehlerbild.
 
 **Wiederherstellen dagegen umgekehrt: erst die Originale, dann die Datenbank.** Sonst zeigen die
 Zeilen auf Objekte, die es noch nicht gibt — jeder Abruf eines Originals scheitert, bis die Kopie
@@ -1464,8 +1465,13 @@ curl -X POST http://localhost:8081/api/v1/admin/upload-store/orphan-originals/re
 
 Die Antwort nennt zu jedem gefundenen Original seinen `locator` (genau den Wert, den `file_path`
 einer Zeile trüge), Änderungszeit und Größe, dazu `orphanCount` (alle Funde), `scannedCount` (alle
-angesehenen Originale) und `withinGracePeriodCount` (zu junge, die der Lauf nicht anfasst). Optional
-hebt `minimumAgeMinutes` die Schonfrist für diesen Aufruf an — unterschreiten lässt sie sich nicht.
+angesehenen Originale), `referencedCount` (davon die, auf die eine Zeile zeigt) und
+`withinGracePeriodCount` (zu junge, die der Lauf nicht anfasst). Optional hebt `minimumAgeMinutes`
+die Schonfrist für diesen Aufruf an — unterschreiten lässt sie sich nicht.
+
+**Der erste Blick gilt `referencedCount`.** Meldet der Bericht abgelegte Originale, aber `0`
+referenzierte, haben Zeilen und Ablage den Bezug zueinander verloren — dann ist der Bericht kein
+Aufräumauftrag, sondern ein Befund (siehe den letzten Punkt unten).
 
 Zweiter Schritt: die geprüften Locator löschen, und nur diese.
 
@@ -1476,10 +1482,14 @@ curl -X POST http://localhost:8081/api/v1/admin/upload-store/orphan-originals/de
   -d '{"libraryId": "<Bibliotheks-ID>", "locators": ["<locator aus dem Bericht>"]}'
 ```
 
-Jeder genannte Locator wird unmittelbar davor erneut geprüft; wo inzwischen eine Zeile darauf zeigt,
-wo die Schonfrist noch läuft oder wo die Ablage nichts mehr hält, steht der Locator mit seinem Grund
-unter `skipped` statt unter `deleted`. Jeder Löschaufruf hinterlässt genau einen Eintrag im
-Prüfprotokoll, auch ein abgelehnter; der Melde-Aufruf hinterlässt keinen.
+Zeilen und Ablage werden zu Beginn des Aufrufs einmal gelesen, und jeder genannte Locator wird
+gegen diesen Stand geprüft: Wo eine Zeile darauf zeigt, wo die Schonfrist noch läuft oder wo die
+Ablage nichts hält, steht der Locator mit seinem Grund unter `skipped` statt unter `deleted`. Wird
+die Ablage mitten im Lauf unerreichbar, gilt das für die restlichen Locator als fehlgeschlagene
+Entfernung (`DELETE_FAILED`) — der Aufruf bricht nicht ab, damit die Antwort und der
+Prüfprotokoll-Eintrag weiterhin benennen, was tatsächlich entfernt wurde. Jeder Löschaufruf
+hinterlässt genau einen Eintrag im Prüfprotokoll, auch ein abgelehnter; der Melde-Aufruf hinterlässt
+keinen.
 
 Drei Dinge sind im Betrieb wichtig:
 
@@ -1491,8 +1501,13 @@ Drei Dinge sind im Betrieb wichtig:
 - **Nach einer Umstellung der Ablage meldet der erste Bericht alles.** Wurden die Bytes umgezogen,
   aber die Verweise nicht umgeschrieben (siehe
   [„Eine laufende Installation auf den Objektspeicher umstellen"](#eine-laufende-installation-auf-den-objektspeicher-umstellen)),
-  gilt der gesamte Bestand als verwaist. Das ist das Signal, die Umstellung zu prüfen — nicht, zu
-  löschen.
+  gilt der gesamte Bestand als verwaist — erkennbar an `referencedCount: 0`. Das ist das Signal, die
+  Umstellung zu prüfen — nicht, zu löschen.
+
+Was der Lauf **nicht** sieht: alles, was tiefer liegt als die Ebene der Bibliothek. Die Ablage legt
+dort nie etwas an; was ein anderer Schreiber unter demselben Präfix abgelegt hat, wird deshalb weder
+gemeldet noch je gelöscht. Ebenso wenig erreicht der Lauf die Originale einer bereits gelöschten
+Bibliothek — er arbeitet je Bibliothek, und ohne deren Zeile antwortet er mit „nicht gefunden".
 
 ### Eine laufende Installation auf den Objektspeicher umstellen
 
@@ -1636,6 +1651,7 @@ Drei Unterschiede zum Hinweg:
 | Die Gesundheitsgruppe antwortet mit „nicht gefunden" | Es ist der Verzeichnisweg konfiguriert; die Gruppe gibt es nur beim Objektspeicher |
 | Uploads scheitern, der Speicher ist erreichbar | Der Bucket fehlt oder der Zugangsschlüssel darf nicht schreiben |
 | `docker cp … /app/uploads` liefert ein leeres Verzeichnis | Die Originale liegen im Objektspeicher, nicht im Container |
+| Der Bericht über verwaiste Originale meldet den gesamten Bestand, `referencedCount` ist `0` | Zeilen und Ablage passen nicht zueinander — meist eine Umstellung, bei der die Bytes kopiert, die Verweise aber nicht umgeschrieben wurden. Nichts löschen, bevor das geklärt ist |
 
 ## Datenbank
 

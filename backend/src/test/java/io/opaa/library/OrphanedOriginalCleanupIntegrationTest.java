@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.api.types.OrphanedOriginalSkipReason;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
@@ -115,33 +116,48 @@ class OrphanedOriginalCleanupIntegrationTest {
     String pending = storedOriginal("noch in Arbeit");
     String failed = storedOriginal("fehlgeschlagen");
     String indexed = storedOriginal("fertig");
+    String foreignSourceType = storedOriginal("Zeile eines anderen Quelltyps");
     String orphan = storedOriginal("verwaist");
-    row("pending.pdf", pending, DocumentStatus.PENDING, null);
-    row("failed.pdf", failed, DocumentStatus.FAILED, null);
-    UUID parentId = row("mail.eml", indexed, DocumentStatus.INDEXED, null);
+    row("pending.pdf", pending, DocumentStatus.PENDING, DocumentSourceType.UPLOAD, null);
+    row("failed.pdf", failed, DocumentStatus.FAILED, DocumentSourceType.UPLOAD, null);
+    UUID parentId =
+        row("mail.eml", indexed, DocumentStatus.INDEXED, DocumentSourceType.UPLOAD, null);
     row(
         "anlage.pdf",
         AttachmentFilePath.of(indexed, 0, "anlage.pdf"),
         DocumentStatus.INDEXED,
+        DocumentSourceType.UPLOAD,
         parentId);
+    // The query is over every row of the library, not over UPLOAD rows: a row of another source
+    // type naming this path protects it too, which is the direction that deletes less.
+    row(
+        "aus-dem-verzeichnis.pdf",
+        foreignSourceType,
+        DocumentStatus.INDEXED,
+        DocumentSourceType.FILESYSTEM,
+        null);
 
     OrphanedOriginalReport report = service.report(organizationId, libraryId, null);
 
     assertThat(report.orphans()).extracting(OrphanedOriginal::locator).containsExactly(orphan);
-    assertThat(report.scannedCount()).isEqualTo(4);
+    assertThat(report.scannedCount()).isEqualTo(5);
+    assertThat(report.referencedCount()).isEqualTo(4);
     assertThat(report.orphanCount()).isEqualTo(1);
 
     OrphanedOriginalDeletion deletion =
-        service.delete(organizationId, libraryId, List.of(orphan, pending));
+        service.delete(organizationId, libraryId, List.of(orphan, pending, foreignSourceType));
 
     assertThat(deletion.deleted()).containsExactly(orphan);
     assertThat(deletion.skipped())
         .containsExactly(
-            new OrphanedOriginalDeletion.Skipped(pending, OrphanedOriginalSkipReason.REFERENCED));
+            new OrphanedOriginalDeletion.Skipped(pending, OrphanedOriginalSkipReason.REFERENCED),
+            new OrphanedOriginalDeletion.Skipped(
+                foreignSourceType, OrphanedOriginalSkipReason.REFERENCED));
     assertThat(Path.of(orphan)).doesNotExist();
     assertThat(Path.of(pending)).exists();
     assertThat(Path.of(failed)).exists();
     assertThat(Path.of(indexed)).exists();
+    assertThat(Path.of(foreignSourceType)).exists();
   }
 
   /** A stored original of the library, old enough to be past the grace period. */
@@ -158,9 +174,13 @@ class OrphanedOriginalCleanupIntegrationTest {
     return ref.locator();
   }
 
-  private UUID row(String fileName, String filePath, DocumentStatus status, UUID parentId) {
-    Document document =
-        new Document(fileName, filePath, "application/pdf", 10L, DocumentSourceType.UPLOAD);
+  private UUID row(
+      String fileName,
+      String filePath,
+      DocumentStatus status,
+      DocumentSourceType sourceType,
+      UUID parentId) {
+    Document document = new Document(fileName, filePath, "application/pdf", 10L, sourceType);
     document.setLibraryId(libraryId);
     document.setOrganizationId(organizationId);
     document.setUploadedByUserId(editor.getId());

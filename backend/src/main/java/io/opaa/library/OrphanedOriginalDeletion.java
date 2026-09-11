@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import io.opaa.api.types.OrphanedOriginalSkipReason;
 import java.util.List;
 
 /**

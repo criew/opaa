@@ -1069,8 +1069,10 @@ paths:
         List the stored originals of one library that no document row points to (system admin
         only, #1478, ADR-0030 "Konsequenzen")
       description: >
-        Walks the storage of uploaded originals - the library's subdirectory on the filesystem or
-        its key prefix in the bucket - and names every stored original whose locator no row of
+        Walks the storage of uploaded originals - the library's own subdirectory on the filesystem,
+        its own key level in the bucket; never anything nested below either, which this storage
+        never writes and which therefore belongs to somebody else - and names every stored original
+        whose locator no row of
         libraryId (which must belong to the caller's own organization, otherwise 404) carries as
         file_path, regardless of the row's status: a PENDING or FAILED row keeps its original. An
         original younger than the grace period (opaa.upload.orphan-grace-minutes, raised but never
@@ -1110,12 +1112,16 @@ paths:
         only, #1478)
       description: >
         The second step after the report: removes exactly the originals named by locators - never
-        anything the report found in the meantime - and re-checks every one of them before it goes:
-        a locator a row of libraryId points to by now, one younger than the configured grace
-        period, or one that is no longer in the library's storage area is skipped with its reason,
-        not deleted. At most 500 locators per call. Every call, executed or rejected, is recorded
-        once in the audit log (UPLOAD_ORPHAN_ORIGINALS_DELETED) with the locators it removed. A
-        storage that cannot be reached answers 503 and records the failure.
+        anything the report found in the meantime. Rows and storage are read once per call, right
+        before the removals, and every named locator is checked against that reading: one a row of
+        libraryId points to, one younger than the configured grace period, and one the library's
+        storage area does not hold are skipped with their reason instead of deleted. At most 500
+        locators per call. A removal the storage does not confirm - it refused, or it became
+        unreachable mid-call - is reported as DELETE_FAILED and does not end the call: the response
+        and the audit entry still name everything that actually went. Every call, executed or
+        rejected, is recorded once in the audit log (UPLOAD_ORPHAN_ORIGINALS_DELETED) with the
+        locators it removed. A storage that cannot be read at all answers 503 and records the
+        failure.
       requestBody:
         required: true
         content:
@@ -8139,7 +8145,15 @@ components:
     OrphanedOriginalReportResponse:
       type: object
       required:
-        [orphans, orphanCount, scannedCount, withinGracePeriodCount, minimumAgeMinutes, truncated]
+        [
+          orphans,
+          orphanCount,
+          scannedCount,
+          referencedCount,
+          withinGracePeriodCount,
+          minimumAgeMinutes,
+          truncated,
+        ]
       properties:
         orphans:
           type: array
@@ -8153,6 +8167,14 @@ components:
         scannedCount:
           type: integer
           description: How many stored originals of the library were looked at.
+        referencedCount:
+          type: integer
+          description: >
+            How many of them a document row of the library points to. The sanity check of the
+            whole report: a library with stored originals whose referencedCount is 0 has lost the
+            connection between rows and storage - typically a storage that was switched over
+            without rewriting file_path - and nothing here should be deleted until that is
+            understood.
         withinGracePeriodCount:
           type: integer
           description: >
@@ -8165,7 +8187,7 @@ components:
           type: boolean
           description: >
             True when more orphans exist than orphans lists. Delete the listed ones and run the
-            report again - the listed ones are not the whole bestand.
+            report again - the listed ones are not all there are.
 
     OrphanedOriginalResponse:
       type: object
@@ -8227,10 +8249,10 @@ components:
       type: string
       description: >
         Why a named locator was not removed: REFERENCED - a document row of the library points to
-        it now; WITHIN_GRACE_PERIOD - the original is younger than the grace period; NOT_IN_STORE -
-        the library's storage area holds no original under this locator (already gone, another
-        library's, or not a locator of this storage at all); DELETE_FAILED - the storage refused
-        the removal, the original is still there.
+        it; WITHIN_GRACE_PERIOD - the original is younger than the grace period; NOT_IN_STORE - the
+        library's storage area holds no original under this locator (already gone, another
+        library's, or not a locator of this storage at all); DELETE_FAILED - the storage did not
+        confirm the removal, so the original may still be there.
       enum: [REFERENCED, WITHIN_GRACE_PERIOD, NOT_IN_STORE, DELETE_FAILED]
 
     ContextPrefixRerunStatusResponse:

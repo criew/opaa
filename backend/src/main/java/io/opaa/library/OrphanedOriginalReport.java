@@ -10,6 +10,9 @@ import java.util.List;
  * @param orphans the listed orphans, in the store's own order
  * @param orphanCount how many orphans exist in total, listed or not
  * @param scannedCount how many stored originals of the library were looked at
+ * @param referencedCount how many of them a row of the library points to - the sanity check of the
+ *     whole report: stored originals but nothing referenced means rows and storage have lost each
+ *     other, and nothing should be deleted until that is understood
  * @param withinGracePeriodCount originals no row points to that are still inside the grace period
  * @param minimumAgeMinutes the age threshold this pass applied
  */
@@ -17,6 +20,7 @@ public record OrphanedOriginalReport(
     List<OrphanedOriginal> orphans,
     int orphanCount,
     int scannedCount,
+    int referencedCount,
     int withinGracePeriodCount,
     int minimumAgeMinutes) {
 

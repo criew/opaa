@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.OrphanedOriginalSkipReason;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.AdminTestSecurityConfig;
@@ -23,7 +24,6 @@ import io.opaa.library.OrphanedOriginal;
 import io.opaa.library.OrphanedOriginalCleanupService;
 import io.opaa.library.OrphanedOriginalDeletion;
 import io.opaa.library.OrphanedOriginalReport;
-import io.opaa.library.OrphanedOriginalSkipReason;
 import io.opaa.library.UploadStoreUnavailableException;
 import java.time.Instant;
 import java.util.List;
@@ -127,6 +127,7 @@ class UploadStoreAdminControllerTest {
                         "s3://bucket/uploads/x.pdf", Instant.parse("2026-09-01T10:00:00Z"), 4711L)),
                 3,
                 42,
+                37,
                 2,
                 180));
 
@@ -141,6 +142,7 @@ class UploadStoreAdminControllerTest {
         .andExpect(jsonPath("$.orphans[0].size").value(4711))
         .andExpect(jsonPath("$.orphanCount").value(3))
         .andExpect(jsonPath("$.scannedCount").value(42))
+        .andExpect(jsonPath("$.referencedCount").value(37))
         .andExpect(jsonPath("$.withinGracePeriodCount").value(2))
         .andExpect(jsonPath("$.minimumAgeMinutes").value(180))
         .andExpect(jsonPath("$.truncated").value(true));

@@ -28,6 +28,7 @@ final class OrphanedOriginalResponseMapper {
         orphans,
         report.orphanCount(),
         report.scannedCount(),
+        report.referencedCount(),
         report.withinGracePeriodCount(),
         report.minimumAgeMinutes(),
         report.isTruncated());
@@ -36,10 +37,7 @@ final class OrphanedOriginalResponseMapper {
   static OrphanedOriginalDeletionResponse toDeletionResponse(OrphanedOriginalDeletion deletion) {
     List<SkippedOrphanedOriginalResponse> skipped = new ArrayList<>();
     for (OrphanedOriginalDeletion.Skipped entry : deletion.skipped()) {
-      skipped.add(
-          new SkippedOrphanedOriginalResponse(
-              entry.locator(),
-              io.opaa.api.dto.OrphanedOriginalSkipReason.fromValue(entry.reason().name())));
+      skipped.add(new SkippedOrphanedOriginalResponse(entry.locator(), entry.reason()));
     }
     return new OrphanedOriginalDeletionResponse(deletion.deleted(), skipped);
   }

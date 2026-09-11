@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.OrphanedOriginalSkipReason;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.source.s3.MinioFixture;
 import java.io.ByteArrayInputStream;

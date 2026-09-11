@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -255,9 +256,14 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
         if (managedKey(new UploadedOriginalRef(libraryId, locator)) == null) {
           continue;
         }
+        // A listing without LastModified leaves the age unknown; the moment of the listing is the
+        // one value that keeps such an object inside every grace period instead of past it.
+        Instant lastModified = object.lastModified();
         visitor.accept(
             new StoredOriginal(
-                locator, object.lastModified(), object.size() == null ? 0 : object.size()));
+                locator,
+                lastModified == null ? Instant.now() : lastModified,
+                object.size() == null ? 0 : object.size()));
       }
       continuationToken =
           Boolean.TRUE.equals(page.isTruncated()) ? page.nextContinuationToken() : null;
@@ -265,9 +271,10 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
   }
 
   /**
-   * One {@code ListObjectsV2} page under {@code prefix}. A page that claims more without naming a
-   * continuation token is a failure, not the last page: reported short, every unlisted original
-   * would look like it is not there at all.
+   * One {@code ListObjectsV2} page on {@code prefix}'s own level - the delimiter keeps everything
+   * nested deeper out of {@code contents()}, and this adapter never writes there. A page that
+   * claims more without naming a continuation token is a failure, not the last page: reported
+   * short, every unlisted original would look like it is not there at all.
    */
   private ListObjectsV2Response listPage(String prefix, String continuationToken) {
     try {
@@ -281,6 +288,7 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
                       ListObjectsV2Request.builder()
                           .bucket(bucket)
                           .prefix(prefix)
+                          .delimiter("/")
                           .maxKeys(listPageSize)
                           .continuationToken(continuationToken)
                           .build()));

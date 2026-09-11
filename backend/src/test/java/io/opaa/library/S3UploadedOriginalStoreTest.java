@@ -429,12 +429,14 @@ class S3UploadedOriginalStoreTest {
     server.putObject(BUCKET, "uploads/" + UUID.randomUUID() + "/fremd.pdf", raw("x"), "a/b");
     server.putObject(BUCKET, libraryId + "/ohne-praefix.pdf", raw("x"), "a/b");
     server.putObject(BUCKET, "uploads/" + libraryId + "/", new byte[0], "a/b");
+    server.putObject(BUCKET, "uploads/" + libraryId + "/fremder-ordner/tief.pdf", raw("x"), "a/b");
     server.seen().clear();
 
     List<UploadedOriginalStore.StoredOriginal> visited = new ArrayList<>();
     store.forEachStoredOriginal(libraryId, visited::add);
 
     assertThat(visited)
+        .as("the library's own level only - a nested key was written by somebody else")
         .extracting(UploadedOriginalStore.StoredOriginal::locator)
         .containsExactlyInAnyOrderElementsOf(own);
     assertThat(visited)
@@ -443,16 +445,38 @@ class S3UploadedOriginalStoreTest {
               assertThat(original.size()).isEqualTo("original 0".length());
               assertThat(original.lastModified()).isEqualTo(Instant.parse("2026-09-01T10:00:00Z"));
             });
+    assertThat(server.keys(BUCKET))
+        .as("nothing about the listing removes a foreign key")
+        .contains("uploads/" + libraryId + "/fremder-ordner/tief.pdf");
     List<StubS3Server.Seen> listings =
         server.seen().stream().filter(seen -> seen.query().contains("list-type=2")).toList();
     assertThat(listings).as("five own objects plus the marker, two per page").hasSize(3);
     assertThat(listings)
-        .allSatisfy(seen -> assertThat(seen.query()).contains("prefix=uploads%2F" + libraryId));
+        .allSatisfy(
+            seen -> {
+              assertThat(seen.query()).contains("prefix=uploads%2F" + libraryId);
+              assertThat(seen.query()).contains("delimiter=%2F");
+            });
     assertThat(listings.get(1).query()).contains("continuation-token=");
     assertThat(server.seen())
         .as("the listing itself costs no HeadObject")
         .extracting(StubS3Server.Seen::method)
         .containsOnly("GET");
+  }
+
+  @Test
+  void anObjectWithoutALastModifiedIsDatedAsOfTheListing() throws IOException {
+    // Unknown age must not read as "ancient": the value has to keep such an object inside every
+    // grace period, and it must not be a NullPointerException either.
+    storedOriginal("ohne Zeitstempel");
+    server.omitLastModified();
+
+    List<UploadedOriginalStore.StoredOriginal> visited = new ArrayList<>();
+    store.forEachStoredOriginal(libraryId, visited::add);
+
+    assertThat(visited).hasSize(1);
+    assertThat(visited.get(0).lastModified())
+        .isBetween(Instant.now().minusSeconds(60), Instant.now().plusSeconds(5));
   }
 
   @Test

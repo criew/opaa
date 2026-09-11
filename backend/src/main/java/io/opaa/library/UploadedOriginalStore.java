@@ -62,13 +62,16 @@ public interface UploadedOriginalStore {
   boolean belongsToLibrary(UploadedOriginalRef ref);
 
   /**
-   * Hands every original this store holds in {@code libraryId}'s own storage area to {@code
-   * visitor}, one at a time, in the store's own order and without ever holding the whole listing: a
-   * large bucket is walked page by page. Exactly the originals a locator of this library would
-   * resolve to are visited - what lies in the area but would not resolve (a link leading out, a
-   * folder marker) is not - and each is reported under the locator {@link AcceptedUpload#store()}
-   * would have returned for it, so a visited locator compares equal to the {@code file_path} of the
-   * row that owns it. A library without a storage area yields nothing.
+   * Hands the originals this store itself wrote on {@code libraryId}'s own level of its storage
+   * area to {@code visitor}, one at a time, in the store's own order and without ever holding the
+   * whole listing: a large bucket is walked page by page. <b>Only that level.</b> This store writes
+   * one flat original per document and nothing below it, so anything nested deeper came from
+   * elsewhere - another writer under the same bucket prefix, a directory somebody put there - and
+   * is never visited, never reported and therefore never offered for deletion. What lies on the
+   * level but would not resolve (a link leading out, a folder marker) is left out too, so every
+   * visited original can also be read and removed. Each is reported under the locator {@link
+   * AcceptedUpload#store()} would have returned for it, so a visited locator compares equal to the
+   * {@code file_path} of the row that owns it. A library without a storage area yields nothing.
    *
    * @throws UploadStoreUnavailableException when the store cannot be listed right now
    */
@@ -78,7 +81,9 @@ public interface UploadedOriginalStore {
    * One original as the listing sees it.
    *
    * @param locator the value {@code documents.file_path} carries for this original
-   * @param lastModified when the original was written, as the store records it
+   * @param lastModified when the original was written, as the store records it; a store whose
+   *     listing does not carry it names the moment of the listing instead, which keeps the grace
+   *     period on the safe side - an original whose age is unknown is never old enough to remove
    * @param size in bytes
    */
   record StoredOriginal(String locator, Instant lastModified, long size) {}
