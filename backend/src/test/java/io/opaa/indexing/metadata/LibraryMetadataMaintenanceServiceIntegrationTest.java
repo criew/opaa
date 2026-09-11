@@ -29,6 +29,7 @@ import io.opaa.library.LibraryDocumentPage;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnLibraryFixtures;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,6 +43,7 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,6 +74,7 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private LibraryAccessService accessService;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
 
   private KnowledgeLibrary library;
   private KnowledgeLibrary otherLibrary;
@@ -82,11 +85,7 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
 
   @BeforeEach
   void setUp() throws IOException {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    jdbcTemplate.update("DELETE FROM documents");
-    jdbcTemplate.update("DELETE FROM asset_grants");
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE name LIKE 'Anker%'");
-    jdbcTemplate.update("DELETE FROM users WHERE email LIKE 'metadata-anchor-%'");
+    removeOwnFixtures();
     owner = user("owner");
     editor = user("editor");
     bothLibraries = user("beide");
@@ -262,7 +261,12 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
     documentMetadataService.reextractFromFile(
         documentRepository.findById(document.getId()).orElseThrow(),
         Path.of(library.getSourcePath()).resolve(document.getFileName()));
-    jdbcTemplate.update("UPDATE documents SET metadata_extraction_version = NULL");
+    // Scoped to this class's own library: on the shared database a blanket UPDATE is worse
+    // than a blanket DELETE - it leaves the neighbour's rows in place with changed content,
+    // so nothing fails, the next class just silently asserts against the wrong values.
+    jdbcTemplate.update(
+        "UPDATE documents SET metadata_extraction_version = NULL WHERE library_id = ?",
+        library.getId());
     backfillService.backfillBatch(Organization.DEFAULT_ID, library.getId(), 10);
 
     assertThat(valueRepository.findByDocumentIdAndFieldKey(document.getId(), "document_type"))
@@ -352,6 +356,18 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
         null,
         fieldKey,
         PageRequest.of(0, 20, Sort.by(Sort.Order.asc("fileName"), Sort.Order.asc("id"))));
+  }
+
+  // Both hooks: the @BeforeEach call removes what a method aborted halfway left behind, the
+  // @AfterEach call what this one created. Found by this class's own library name and user e-mail
+  // pattern, never by table - the whole suite shares one database.
+  @AfterEach
+  void removeOwnFixtures() {
+    List<UUID> ownLibraryIds =
+        jdbcTemplate.queryForList(
+            "SELECT id FROM knowledge_libraries WHERE name LIKE 'Anker%'", UUID.class);
+    ownLibraryFixtures.removeLibraries(ownLibraryIds.toArray(new UUID[0]));
+    jdbcTemplate.update("DELETE FROM users WHERE email LIKE 'metadata-anchor-%'");
   }
 
   private CurrentUser user(String name) {
