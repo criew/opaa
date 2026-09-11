@@ -522,6 +522,55 @@ class S3UploadedOriginalStoreTest {
         .isInstanceOf(UploadStoreUnavailableException.class);
   }
 
+  @Test
+  void theLibraryListingNamesTheLibrariesOfThisOrganizationAndNothingElse() throws IOException {
+    store.close();
+    store = store(properties("inst1-"));
+    UUID secondLibrary = UUID.randomUUID();
+    store.accept(organizationId, libraryId, ".pdf", bytes("eins")).store();
+    store.accept(organizationId, secondLibrary, ".pdf", bytes("zwei")).store();
+    store.accept(UUID.randomUUID(), libraryId, ".pdf", bytes("fremdes Haus")).store();
+    // The prefix ends in "/", so it separates at the segment: a second installation whose key
+    // prefix starts with this one's shares the bucket without ever being listed here.
+    server.putObject(
+        BUCKET,
+        "inst10-" + organizationId + "/" + UUID.randomUUID() + "/fremd.pdf",
+        raw("x"),
+        "a/b");
+    server.putObject(BUCKET, "inst1-" + organizationId + "/lose.pdf", raw("x"), "a/b");
+    server.putObject(BUCKET, "inst1-" + organizationId + "/ablage/tief.pdf", raw("x"), "a/b");
+    // UUID.fromString also accepts abbreviated groups; such a segment would resolve to a library
+    // whose keys lie elsewhere, so only one that renders back to itself counts.
+    server.putObject(BUCKET, "inst1-" + organizationId + "/1-1-1-1-1/kurz.pdf", raw("x"), "a/b");
+    server.seen().clear();
+
+    List<UUID> visited = new ArrayList<>();
+    store.forEachStoredLibrary(organizationId, visited::add);
+
+    assertThat(visited).containsExactlyInAnyOrder(libraryId, secondLibrary);
+    assertThat(server.seen())
+        .filteredOn(seen -> seen.query().contains("list-type=2"))
+        .isNotEmpty()
+        .allSatisfy(
+            seen -> {
+              assertThat(seen.query()).contains("prefix=inst1-" + organizationId + "%2F");
+              assertThat(seen.query()).contains("delimiter=%2F");
+            });
+    assertThat(server.seen())
+        .as("the listing itself changes nothing")
+        .extracting(StubS3Server.Seen::method)
+        .containsOnly("GET");
+  }
+
+  @Test
+  void listingTheLibrariesOfAStoreThatCannotBeReachedIsUnavailable() throws IOException {
+    storedOriginal("inhalt");
+    server.close();
+
+    assertThatThrownBy(() -> store.forEachStoredLibrary(organizationId, libraryId -> {}))
+        .isInstanceOf(UploadStoreUnavailableException.class);
+  }
+
   private void assertNeitherReadableNorDeletable(UploadedOriginalRef ref) {
     assertThat(store.belongsToLibrary(ref)).isFalse();
     assertThat(store.openForDownload(ref, "harmlos.pdf", "application/pdf")).isEmpty();

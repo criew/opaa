@@ -112,6 +112,49 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
     }
   }
 
+  @Override
+  public void forEachStoredLibrary(UUID organizationId, Consumer<UUID> visitor) {
+    Path organizationDirectory = realPath(organizationDirectory(organizationId));
+    if (organizationDirectory == null || !Files.isDirectory(organizationDirectory)) {
+      return;
+    }
+    Path storageRoot = realPath(Paths.get(uploadProperties.storagePath()));
+    try (DirectoryStream<Path> entries = Files.newDirectoryStream(organizationDirectory)) {
+      for (Path entry : entries) {
+        Path real = realPath(entry);
+        if (real == null
+            || !Files.isDirectory(real)
+            || elsewhereInside(real, organizationDirectory, storageRoot)) {
+          continue;
+        }
+        UUID libraryId = libraryId(entry.getFileName().toString());
+        if (libraryId != null) {
+          visitor.accept(libraryId);
+        }
+      }
+    } catch (IOException e) {
+      log.warn("Could not list the library directories under {}", organizationDirectory, e);
+      throw new UploadStoreUnavailableException();
+    }
+  }
+
+  /**
+   * Whether {@code directory} leads to another place <em>inside</em> the storage path than the one
+   * it is listed under - the one case a listing over a whole organization must leave out. A
+   * directory the operator linked to a volume outside the storage path is not that case and is
+   * visited like any other, so what the reads and deletes below resolve stays listable; a link to
+   * another library's or another organization's area is, because it would make those originals
+   * appear under this name and the deletion that follows the report would remove the wrong ones.
+   *
+   * <p>The parent of the real path is the segment-wise comparison; a lexical {@code startsWith} on
+   * the entry's own path would pass every link.
+   */
+  private static boolean elsewhereInside(Path directory, Path listedUnder, Path storageRoot) {
+    return !listedUnder.equals(directory.getParent())
+        && storageRoot != null
+        && directory.startsWith(storageRoot);
+  }
+
   /**
    * The single containment check of this adapter, and the only way a locator ever becomes a path:
    * the real path of {@code ref}'s file when it lies underneath its own library's subdirectory of
@@ -136,6 +179,28 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
       return null;
     }
     return real.startsWith(libraryDirectory) ? real : null;
+  }
+
+  private Path organizationDirectory(UUID organizationId) {
+    return Paths.get(uploadProperties.storagePath())
+        .resolve(organizationId.toString())
+        .toAbsolutePath()
+        .normalize();
+  }
+
+  /**
+   * The library id a directory name stands for, or {@code null} when it names none. Only a name
+   * this adapter would itself have written counts, which is why the parsed id has to render back to
+   * it: {@link UUID#fromString} also accepts abbreviated groups, and such a directory would resolve
+   * to a library whose storage area lies elsewhere.
+   */
+  private static UUID libraryId(String directoryName) {
+    try {
+      UUID libraryId = UUID.fromString(directoryName);
+      return libraryId.toString().equals(directoryName) ? libraryId : null;
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
   }
 
   private Path libraryDirectory(UUID organizationId, UUID libraryId) {

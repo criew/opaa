@@ -99,7 +99,7 @@ Kurz: Ein Update über `docker compose pull` + `docker compose up -d` **gefährd
 
 > **Der Vektorspeicher ist nicht wählbar.** OPAA speichert Vektoren in PostgreSQL mit pgvector; das ist der einzige unterstützte Vektorspeicher. Der Zugriff läuft zwar über eine portable Schnittstelle von Spring AI, ein Wechsel wird aber nicht unterstützt, nicht geprüft und nicht dokumentiert. Metadatenbestand und Vektorindex liegen damit in derselben Datenbank: ein Sicherungslauf, eine Wiederherstellung, ein Nachweispfad. Bekannte Grenze: pgvector stößt bei sehr großen Beständen im Bereich von Millionen Vektoren an Grenzen.
 
-> **Ausnahme: die Migration vom 19.08.2026, die die frühere System-Bibliothek entfernt** (seit der Zusammenfassung der Changesets zur Baseline nicht mehr als eigene Datei sichtbar). Diese Migration löscht bewusst Daten — die früher automatisch angelegte, nur für System-Admins lesbare System-Bibliothek samt ihrer Dokumente, Vektorspeicher-Chunks, Indizierungsaufträge und Grants. Es ist die einzige datenvernichtende Migration; ihr Rollback ist bewusst ein No-op (die entfernten Zeilen ließen sich nicht von danach regulär geschriebenen unterscheiden). **Vor dem Update auf einen Stand mit dieser Migration einen Datenbank-Dump ziehen**, wer den Inhalt der System-Bibliothek noch braucht. Dateien, die ein Dokument der System-Bibliothek einst unter `opaa.upload.storage-path` abgelegt hatte, räumt die Migration nicht mit auf — nur die Datenbankzeilen verschwinden, verwaiste Dateien bleiben auf der Platte liegen und müssen bei Bedarf von Hand entfernt werden.
+> **Ausnahme: die Migration vom 19.08.2026, die die frühere System-Bibliothek entfernt** (seit der Zusammenfassung der Changesets zur Baseline nicht mehr als eigene Datei sichtbar). Diese Migration löscht bewusst Daten — die früher automatisch angelegte, nur für System-Admins lesbare System-Bibliothek samt ihrer Dokumente, Vektorspeicher-Chunks, Indizierungsaufträge und Grants. Es ist die einzige datenvernichtende Migration; ihr Rollback ist bewusst ein No-op (die entfernten Zeilen ließen sich nicht von danach regulär geschriebenen unterscheiden). **Vor dem Update auf einen Stand mit dieser Migration einen Datenbank-Dump ziehen**, wer den Inhalt der System-Bibliothek noch braucht. Dateien, die ein Dokument der System-Bibliothek einst unter `opaa.upload.storage-path` abgelegt hatte, räumt die Migration nicht mit auf — nur die Datenbankzeilen verschwinden, die Dateien bleiben liegen. Wie sie zu finden und zu entfernen sind, steht unter [„Originale gelöschter Bibliotheken"](#originale-gelöschter-bibliotheken) — liegen sie unter ihrer Organisation, findet sie der Aufräumlauf; liegen sie noch auf der obersten Ebene, bleibt es Handarbeit.
 
 Eine Neuindizierung wird erst durch Änderungen nötig, die nichts mit dem Image-Update zu tun haben:
 
@@ -1498,8 +1498,15 @@ Ein verwaistes Original ist eine abgelegte Datei beziehungsweise ein abgelegtes 
 Zeile mehr zeigt: ein fehlgeschlagenes Löschen, ein zwischen Ablegen und Eintragen abgebrochener
 Upload, ein zurückgespielter Datenbankstand — und der planmäßige Fall aus dem Abschnitt darüber, ein
 Upload während des Sicherungslaufs. Auf der Platte fällt so etwas beim Hineinschauen auf, in einem
-Bucket sieht niemand nach. Zwei Endpunkte räumen es auf, `SYSTEM_ADMIN` und je Bibliothek — melden
-und löschen sind bewusst getrennt, damit ein Fehler in der Zuordnung nicht unumkehrbar wird.
+Bucket sieht niemand nach.
+
+Zwei Läufe räumen es auf, beide `SYSTEM_ADMIN`, beide in zwei Schritten — melden und löschen sind
+bewusst getrennt, damit ein Fehler in der Zuordnung nicht unumkehrbar wird. Der erste arbeitet **je
+Bibliothek** und hält deren Ablage gegen deren Dokumentzeilen; er ist der Regelfall. Der zweite
+arbeitet **je Organisation** und findet, was der erste nicht erreichen kann: die Ablage einer
+Bibliothek, die es nicht mehr gibt. Beide bleiben in der Organisation des Aufrufers.
+
+#### Originale einer vorhandenen Bibliothek
 
 Erster Schritt: melden, ohne etwas anzufassen.
 
@@ -1556,8 +1563,69 @@ Drei Dinge sind im Betrieb wichtig:
 
 Was der Lauf **nicht** sieht: alles, was tiefer liegt als die Ebene der Bibliothek. Die Ablage legt
 dort nie etwas an; was ein anderer Schreiber unter demselben Präfix abgelegt hat, wird deshalb weder
-gemeldet noch je gelöscht. Ebenso wenig erreicht der Lauf die Originale einer bereits gelöschten
+gemeldet noch je gelöscht. Ebenso wenig erreicht dieser Lauf die Originale einer bereits gelöschten
 Bibliothek — er arbeitet je Bibliothek, und ohne deren Zeile antwortet er mit „nicht gefunden".
+Dafür gibt es den zweiten Lauf.
+
+#### Originale gelöschter Bibliotheken
+
+Schlägt das Löschen eines Originals fehl und wird die Bibliothek danach entfernt, bleiben Bytes
+zurück, die über keine Bibliothek mehr ansprechbar sind. Der zweite Lauf setzt deshalb nicht an der
+Bibliothek an, sondern an der Ablage: Er sieht auf der Ebene **unter der eigenen Organisation** nach
+und meldet jeden Bibliotheks-Ordner, zu dem es keine Bibliothekszeile mehr gibt. Die Organisation
+kommt vom Aufrufer und steht seit dem 11.09.2026 im Schlüssel selbst — deshalb braucht dieser Lauf
+keine einzige Datenbankzeile, um die Mandantengrenze zu ziehen.
+
+```bash
+curl -X POST http://localhost:8081/api/v1/admin/upload-store/orphan-libraries/report \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{}'
+```
+
+Die Antwort nennt je gemeldetem Ordner seine `libraryId`, die enthaltenen Originale mit `locator`,
+Änderungszeit und Größe, dazu `orphanCount`, `scannedCount`, `withinGracePeriodCount` und
+`totalSize` (die Bytes, die das Löschen freigäbe). Auf Berichtsebene stehen `libraryCount` (alle
+gefundenen Ordner ohne Zeile), `scannedLibraryCount` (alle Ordner der Organisation),
+`knownLibraryCount` (davon die mit Zeile) und `truncated`. `minimumAgeMinutes` hebt auch hier die
+Schonfrist für diesen Aufruf an.
+
+**Der erste Blick gilt `knownLibraryCount`, und hier noch strenger als beim ersten Lauf.** Meldet
+der Bericht Ordner, aber `0` bekannte, ist das kein Aufräumauftrag, sondern ein Befund: Dann zeigen
+`OPAA_UPLOAD_STORAGE_PATH` beziehungsweise `OPAA_UPLOAD_S3_BUCKET`/`OPAA_UPLOAD_S3_KEY_PREFIX`
+vermutlich auf den Bereich einer anderen Installation — dort ist jeder Ordner „ohne Zeile", und der
+Löschendpunkt würde ihren gesamten Bestand in 500er-Schritten entfernen. Erst die Konfiguration
+prüfen, dann löschen.
+
+Gelöscht wird wie beim ersten Lauf: ausdrücklich genannte Locator, höchstens 500 je Aufruf.
+
+```bash
+curl -X POST http://localhost:8081/api/v1/admin/upload-store/orphan-libraries/delete \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"libraryId": "<libraryId aus dem Bericht>", "locators": ["<locator aus dem Bericht>"]}'
+```
+
+Vier Dinge unterscheiden diesen Lauf vom ersten:
+
+- **Er fasst nichts an, wozu es eine Bibliothekszeile gibt** — auch keine aus einer anderen
+  Organisation. Nennt der Löschaufruf eine `libraryId`, die es noch gibt, wird er mit einer Meldung
+  abgewiesen und nichts entfernt; für eine existierende Bibliothek ist der erste Lauf zuständig.
+- **Die Schonfrist zählt ab dem Schreiben des Originals, nicht ab dem Löschen der Bibliothek.**
+  Gemessen wird die Änderungszeit der Datei beziehungsweise des Objekts — genau wie beim ersten
+  Lauf. Ein im Juni hochgeladenes Original, dessen Bibliothek heute gelöscht wurde, steht deshalb
+  sofort unter `orphanCount` und ist sofort löschbar; nur ein eben erst geschriebenes erscheint
+  unter `withinGracePeriodCount`. **Das Löschen einer Bibliothek eröffnet kein Zeitfenster, in dem
+  sich ihre Originale noch zurückholen ließen** — wer eine Bibliothek versehentlich gelöscht hat,
+  findet ihre Originale nur in der Sicherung wieder.
+- **Ein leerer Bibliotheks-Ordner wird nicht gemeldet.** Der Lauf entfernt Originale, keine Ordner;
+  ein leer gewordenes Verzeichnis auf der Platte stünde sonst in jedem künftigen Bericht. In einem
+  Objektspeicher gibt es den Fall nicht — dort ist ein Präfix ohne Objekte nicht vorhanden.
+- **Die oberste Ebene erreicht er nicht.** Ein Eintrag direkt unter dem Upload-Pfad beziehungsweise
+  dem Schlüsselpräfix ist eine Organisation; zu welcher Organisation ein Eintrag gehörte, der keine
+  ist, steht nirgends mehr, und ein Lauf innerhalb einer Organisation darf ihn deshalb weder melden
+  noch löschen. Solche Einträge gibt es nur in einem vor dem 11.09.2026 angelegten Bestand — sie
+  finden sich im Abgleich mit `SELECT id FROM organizations;` und werden von Hand entfernt.
 
 ### Einmalschritt: einen vor dem 11.09.2026 angelegten Bestand einsortieren
 
@@ -1659,7 +1727,10 @@ Ein auf oberster Ebene verbliebener UUID-Ordner ist der Rest einer Bibliothek, d
 Datenbank nicht mehr gibt — Schritt 1 hat ihn deshalb nicht genannt. Nach dem Lauf sind
 Organisations-Ordner und solche Reste beide UUIDs und von außen nicht mehr zu unterscheiden; wer sie
 auseinanderhalten will, gleicht sie gegen `SELECT id FROM organizations;` ab. Ihre Behandlung ist
-nicht Teil dieses Schritts und gehört zum Aufräumlauf ohne Bibliotheksbezug.
+nicht Teil dieses Schritts: Zu welcher Organisation ein solcher Rest gehörte, steht nirgends mehr,
+und der Aufräumlauf ohne Bibliotheksbezug sieht deshalb nur unterhalb der Organisationen nach. Wie
+solche Reste erkannt und entfernt werden, steht unter
+[„Originale gelöschter Bibliotheken"](#originale-gelöschter-bibliotheken).
 
 Danach das Backend starten und ein Original in der Oberfläche herunterladen — am besten eine E-Mail
 mit Anhang und den Anhang gleich mit, weil daran sichtbar wird, dass auch die zusammengesetzten

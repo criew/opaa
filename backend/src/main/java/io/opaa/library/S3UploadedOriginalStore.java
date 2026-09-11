@@ -28,6 +28,7 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CommonPrefix;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -278,6 +279,46 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
     } while (continuationToken != null);
   }
 
+  @Override
+  public void forEachStoredLibrary(UUID organizationId, Consumer<UUID> visitor) {
+    // The prefix ends in "/", so the match is segment-wise: the keys of an organization whose id
+    // started with this one's would begin with that other id plus its own "/" and never match.
+    String prefix = organizationPrefix(organizationId);
+    String continuationToken = null;
+    do {
+      ListObjectsV2Response page = listPage(prefix, continuationToken);
+      // Only the common prefixes: an object lying directly under the organization belongs to no
+      // library, and this adapter never writes one there.
+      for (CommonPrefix commonPrefix : page.commonPrefixes()) {
+        UUID libraryId = libraryId(commonPrefix.prefix(), prefix);
+        if (libraryId != null) {
+          visitor.accept(libraryId);
+        }
+      }
+      continuationToken =
+          Boolean.TRUE.equals(page.isTruncated()) ? page.nextContinuationToken() : null;
+    } while (continuationToken != null);
+  }
+
+  /**
+   * The library id a common prefix stands for, or {@code null} when it names none. Only a prefix
+   * this adapter would itself have written counts, which is why the parsed id has to render back to
+   * the segment: {@link UUID#fromString} also accepts abbreviated groups, and such a prefix would
+   * resolve to a library whose keys lie elsewhere.
+   */
+  private static UUID libraryId(String commonPrefix, String organizationPrefix) {
+    if (!commonPrefix.startsWith(organizationPrefix) || !commonPrefix.endsWith("/")) {
+      return null;
+    }
+    String segment = commonPrefix.substring(organizationPrefix.length(), commonPrefix.length() - 1);
+    try {
+      UUID libraryId = UUID.fromString(segment);
+      return libraryId.toString().equals(segment) ? libraryId : null;
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+
   /**
    * One {@code ListObjectsV2} page on {@code prefix}'s own level - the delimiter keeps everything
    * nested deeper out of {@code contents()}, and this adapter never writes there. A page that
@@ -471,7 +512,12 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
 
   /** Everything a key of this library carries in front of its own random name. */
   private String libraryPrefix(UUID organizationId, UUID libraryId) {
-    return keyPrefix + organizationId + "/" + libraryId + "/";
+    return organizationPrefix(organizationId) + libraryId + "/";
+  }
+
+  /** Everything a key of this organization carries in front of its library segment. */
+  private String organizationPrefix(UUID organizationId) {
+    return keyPrefix + organizationId + "/";
   }
 
   private String locator(String key) {
