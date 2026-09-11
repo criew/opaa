@@ -41,12 +41,14 @@ Das Gedächtnis wird in zwei Bauteile getrennt (Spezifikation:
    Antwort und beim Nachladen aus der Datenbank), nie im persistierten Text.
 2. **Gesprächsnotiz — klein, persistent, sichtbar, löschbar, pro Chat.** Nach jeder Antwort
    verdichtet das systemweit aktive Chat-Modell nebenläufig die **Nutzernachricht** der Runde zu
-   null bis wenigen Notizpunkten (ein Satz, ≤ 200 Zeichen), gedeckelt auf zehn je Chat (ältester
-   fällt). Jeder Punkt trägt intern eine Art: `RAHMEN` (Rolle, Zuständigkeit, Ort, Zeitraum, Fassung,
-   Organisation, Festlegung) erreicht Zerlegung und Antwort, `ANTWORTFORM` (Darstellungswünsche) nur
-   die Antwort. Die Notiz enthält keine Antwortinhalte, keine Themen der Fragen, keine Bewertungen.
-   Sie ist im Chat sichtbar (Kopfzeile), punktweise löschbar, folgt Löschung, Export und
-   Kontolöschung des Chats, wird nicht protokolliert und nicht aggregiert.
+   null bis zwei Notizpunkten (ein Satz, ≤ 200 Zeichen), gedeckelt auf zehn je Chat (ältester
+   fällt). Eine fehlgeschlagene Verdichtung wird **nicht nachgeholt** — die Runde steuert dann
+   keine Punkte bei; Zähler und Logzeile bleiben. Jeder Punkt trägt intern eine Art: `RAHMEN`
+   (Rolle, Zuständigkeit, Ort, Zeitraum, Fassung, Organisation, Festlegung) erreicht Zerlegung und
+   Antwort, `ANTWORTFORM` (Darstellungswünsche) nur die Antwort. Die Notiz enthält keine
+   Antwortinhalte, keine Themen der Fragen, keine Bewertungen. Sie ist im Chat sichtbar (Kopfzeile),
+   punktweise löschbar, wird mit dem Chat gelöscht (und, sobald gebaut, exportiert und mit dem
+   Konto gelöscht), nicht protokolliert und nicht aggregiert.
 3. **Sichtbarkeit ab drei abgeschlossenen Runden.** Die Schaltfläche erscheint, sobald die Notiz
    mindestens einen Punkt hat **und** drei Runden abgeschlossen sind; die Verdichtung läuft ab
    Runde 1. Die Abwägung dazu steht unten.
@@ -116,6 +118,8 @@ unten. Die Untergrenze ist ein fester Wert (Oberflächengröße), kein Parameter
 - Rahmenangaben und Darstellungswünsche gelten über die Fensterbreite hinaus, ohne dass das Fenster
   wächst — und die Person sieht, was gilt, und kann es entfernen.
 - Zitatwiederholung entfällt strukturell; die Belegprüfung sieht weniger „nicht bestätigte" Marken.
+  Gemessen wird das nicht — es gibt keinen Zähler dafür, und der Benchmark endet vor der Antwort;
+  abgesichert wird es durch einen Test auf den markenfreien Prompt.
 - Die Fensterbreite ist benchmarkbar.
 - Die Regel für ein späteres Teilen von Chats ist bereits festgelegt: Die Notiz wird mit dem Chat
   geteilt, Mitlesende sehen sie, nur der Autor ändert sie.
@@ -132,5 +136,11 @@ unten. Die Untergrenze ist ein fester Wert (Oberflächengröße), kein Parameter
   werden; in den zwei Runden vor der Anzeige wirkt die Notiz unsichtbar. Beides ist benannt,
   begrenzt und heilt sich selbst.
 - Die Art eines Notizpunkts wird vom Modell vergeben und ist damit fehlbar; eine falsch als
-  `RAHMEN` eingestufte Darstellungsangabe erreicht die Suche. Der Sicherheitsgurt und die
-  Löschbarkeit sind die Sicherungen; die Klasse `topic_switch` misst, ob die Notiz bleedet.
+  `RAHMEN` eingestufte Darstellungsangabe erreicht die Suche. **Dagegen gibt es keine maschinelle
+  Sicherung.** Der Sicherheitsgurt kann sie nicht leisten — gerenderte Notizpunkte gehören nach der
+  Ankerraum-Invariante zum Ankerraum, und ein zusätzlicher Baustein dort macht die Prüfung nur
+  lockerer, nie strenger; `topic_switch` trägt es auch nicht, weil Themen nie in die Notiz kommen.
+  Was bleibt, sind die Prompt-Regel der Zerlegung (Notiz nur zur Auflösung rückverweisender Wörter)
+  und die Löschbarkeit durch die Person.
+- Eine fehlgeschlagene Verdichtung kostet die Angaben dieser einen Runde; die Person wiederholt sie
+  bei Bedarf. Das ist der Preis dafür, keinen Nachholmechanismus mit eigenem Zustand zu bauen.

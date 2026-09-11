@@ -711,6 +711,15 @@ Korpusdokumente einen Fall der Klasse `literal_term_weak_embedding` aus dem Top-
 > gepinntes Eval-Chat-Modell, Mehrfachlauf-Regel, manuell oder per Label, nicht nächtlich. Schema,
 > Harness-Simulation des Gedächtnisses und Reihenfolge der Messung stehen in
 > [conversation-memory.md, Abschnitt „Messung"](./conversation-memory.md#messung).
+>
+> **Ausnahme von der Zwei-Pfade-Regel (Abschnitt 5, Zustandsfelder; `MAINTENANCE.md`):** „Gelöst"
+> ist bislang auf **beiden** Messpfaden definiert. Mehrrunden-Fälle können konstruktionsbedingt nur
+> auf dem Pipeline-Pfad laufen — der Rohvektor-Pfad misst `similaritySearch` direkt und kennt weder
+> Verlauf noch Zerlegung. Unter der unveränderten Regel bliebe jeder Mehrrunden-Fall dauerhaft
+> `known_gap`. Deshalb gilt: **Eine Fallklasse, die konstruktionsbedingt nur auf einem Messpfad
+> laufen kann, gilt als gelöst, wenn sie auf diesem Pfad gelöst ist.** Die Einpfadigkeit ist am Fall
+> vermerkt und begründet (`expected_state_exception`, wie bei der bestehenden Pfad-Asymmetrie), damit
+> ein Zustandswechsel auch hier eine sichtbare, datierte Entscheidung bleibt.
 
 #### (f) `anaphora_resolution` — Rückfrage mit Bezugswort
 

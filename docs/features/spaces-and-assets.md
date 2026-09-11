@@ -599,7 +599,7 @@ Ein Chat kann an einen Agenten gebunden sein. Ist er das, bestimmt der Agent den
 
 Das Datenmodell hält von Anfang an die Achsen offen, die für Mensch+KI-Gruppenräume gebraucht werden (Teilnehmer mit Lese-/Schreibrolle, Antwort-Bezug für Threads, Erwähnungen), auch wenn diese Funktionen erst später gebaut werden.
 
-**Die Gesprächsnotiz ist Bestandteil des Chats** ([conversation-memory.md](./conversation-memory.md), Epic #1482): eine kleine, sichtbare, punktweise löschbare Liste von Angaben, die die Person in diesem Chat gemacht hat. Sie folgt dem Chat in allem — Löschung, Export, Kontolöschung, Archivierung des Space (dort nur lesbar) — und ist **pro Chat, nie pro Person**: Ein chatübergreifendes Gedächtnis wäre ein systemgepflegtes Profil und ist als Produkthaltung ausgeschlossen (ADR-0031). Wird das Teilen von Chats gebaut, wird die Notiz mit dem Chat geteilt: Mitlesende sehen sie, weil sie die Antworten beeinflusst hat; ändern kann sie nur der Autor.
+**Zielbild (Epic #1482): Die Gesprächsnotiz ist Bestandteil des Chats** ([conversation-memory.md](./conversation-memory.md)): eine kleine, sichtbare, punktweise löschbare Liste von Angaben, die die Person in diesem Chat gemacht hat. Sie folgt dem Chat in allem — Löschung, Archivierung des Space (dort nur lesbar), und sobald gebaut auch Export und Kontolöschung — und ist **pro Chat, nie pro Person**: Ein chatübergreifendes Gedächtnis wäre ein systemgepflegtes Profil und ist als Produkthaltung ausgeschlossen (ADR-0031). Wird das Teilen von Chats gebaut, wird die Notiz mit dem Chat geteilt: Mitlesende sehen sie, weil sie die Antworten beeinflusst hat; ändern kann sie nur der Autor.
 
 #### Private Inhalte: der Hauptbestand des Systems
 

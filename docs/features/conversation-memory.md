@@ -46,12 +46,14 @@ Dienstvereinbarungsthema (ADR-0031, „Verworfene Alternativen").
 4. **Die Notiz enthält nur, was die Person gesagt hat.** Sie wird aus Nutzernachrichten verdichtet,
    nie aus Antworten; sie enthält Angaben, keine Bewertungen; jeder Punkt trägt intern eine Art
    (`RAHMEN` oder `ANTWORTFORM`), und nur `RAHMEN`-Punkte erreichen die Suche. Sie ist im Chat
-   sichtbar (ab der dritten abgeschlossenen Runde), punktweise löschbar, wird mit dem Chat gelöscht
-   und exportiert, und sie ist **pro Chat** — nie pro Person.
+   sichtbar (ab der dritten abgeschlossenen Runde), punktweise löschbar, wird mit dem Chat gelöscht,
+   und sie ist **pro Chat** — nie pro Person.
 5. **Kein Themenwechsel-Detektor.** Themenwechsel werden nicht erkannt, sondern billig gemacht: Ein
    kurzes Suchfenster vergisst das alte Thema nach zwei Runden von selbst.
-6. **Messbar, bevor gebaut wird.** Der Retrieval-Harness bekommt Mehrrunden-Fälle mit Metrik je
-   Runde; der heutige Stand wird gemessen, bevor das Fenster geändert wird.
+6. **Gemessen wird das Retrieval, bevor gebaut wird.** Der Retrieval-Harness bekommt Mehrrunden-Fälle
+   mit Metrik je Runde; der heutige Stand wird gemessen, bevor das Fenster geändert wird. Gemessen
+   werden damit Bleed, Bezugsauflösung und Rahmenübernahme (Fehlerbilder 1 und 3); die
+   Zitatwiederholung (Fehlerbild 2) wird nicht eigenständig gemessen — siehe Erfolgs-Metriken.
 
 ---
 
@@ -157,7 +159,7 @@ Frage r ──► Suche (Suchfenster + RAHMEN-Punkte) ──► Antwort (Fenster
                                                                                           │
                                                                     nebenläufig, nach der Antwort:
                                                                     Verdichtung der Nutzernachricht r
-                                                                    ──► 0..k neue Notizpunkte anhängen
+                                                                    ──► 0..2 neue Notizpunkte anhängen
 ```
 
 - **Wann:** nach jeder Antwort, nebenläufig, für die Nutzernachricht der gerade beendeten Runde
@@ -169,15 +171,25 @@ Frage r ──► Suche (Suchfenster + RAHMEN-Punkte) ──► Antwort (Fenster
 - **Merkmale eines Notizpunkts:** ein Satz, dritte Person, höchstens 200 Zeichen (längere werden
   mit „…" gekürzt), Deutsch, eine Art (`RAHMEN`/`ANTWORTFORM`, vom Modell je Zeile vorangestellt,
   defensiv geparst).
+- **Höchstens zwei Punkte je Runde.** Liefert das Modell mehr, werden nur die ersten zwei
+  übernommen. Sonst verdrängt eine gesprächige Nachricht über den Deckel die Rahmenangabe aus
+  Runde 1 — genau der Fall, für den `constraint_carryover` steht.
 - **Deckel:** höchstens 10 Punkte je Chat. Beim Anhängen über den Deckel hinaus fällt der älteste
-  Punkt weg — deterministisch, kein Modellaufruf, der die bestehende Liste umschreibt. Was die Person
-  gesehen hat, bleibt so, bis es herausfällt oder sie es löscht.
+  Punkt weg — ohne Modellaufruf, der die bestehende Liste umschreibt. Was die Person gesehen hat,
+  bleibt so, bis es herausfällt oder sie es löscht.
 - **Doppelte:** ein wortgleicher Punkt (ohne Berücksichtigung von Groß-/Kleinschreibung und
-  Satzzeichen) wird nicht erneut angehängt.
+  Satzzeichen) wird nicht erneut angehängt. Geprüft wird gegen die aktuelle Liste, nicht gegen
+  entfernte Punkte (siehe Löschsemantik in der Oberfläche).
 - **Fehlschlag der Verdichtung** (kein Modell, Zeitüberschreitung, unparsebare Ausgabe): Notiz
-  unverändert, Warnung im Log ohne Inhalt, Zähler `opaa.chat.note.extraction` mit Grund. Die Runde
-  gilt als **nicht verdichtet** und wird beim nächsten Lauf nachgeholt (alle nicht verdichteten
-  Runden in einem Aufruf). Ein dauerhaft ausgefallenes Modell trifft die Antwort ohnehin früher.
+  unverändert, Warnung im Log ohne Inhalt, Zähler `opaa.chat.note.extraction` mit Grund — und
+  **kein Nachholen**: Diese Runde steuert keine Notizpunkte bei, fertig. Das kostet im schlechtesten
+  Fall eine Rahmenangabe, die die Person bei Bedarf wiederholt, und spart einen Mechanismus mit
+  eigenem Zustand, der einen Neustart überleben und für die letzte Runde eines Chats einen „nächsten
+  Lauf" erfinden müsste. Die Blaupause (Chat-Titel) kennt ebenfalls keinen zweiten Versuch. Ein
+  dauerhaft ausgefallenes Modell trifft die Antwort ohnehin früher.
+- **Archivierung im Schreibfenster:** Wird der Space zwischen Antwort und Verdichtung archiviert,
+  wird das Verdichtungsergebnis verworfen — ein archivierter Space nimmt keine Änderung an einem
+  Chat an, und der Wächter dafür existiert bereits beim Schreiben einer Runde.
 - **Eine Antwort weiß, welche Notiz sie hatte:** Die Antwort auf eine Frage liefert den Notizstand
   mit, der in diese Antwort eingeflossen ist. Das ist der Stand, den die Oberfläche zeigt.
 
@@ -198,6 +210,19 @@ Wörter zu verwenden; eine eigenständige Frage bleibt unverändert. Ohne passen
 jeweilige Block ganz. Die gerenderten Punkte gehören zum Ankerraum des Sicherheitsgurts (Invariante
 in Bauteil 1). Der Systemprompt bleibt wie bisher nicht konfigurierbar.
 
+**Bei abgeschalteter Zerlegung** (`query-decomposition-enabled=false`) erreicht die Notiz die Suche
+gar nicht: Der Rückfall baut die Suchanfrage ohne Modell und ohne Notiz. Das ist akzeptiert —
+abgeschaltete Zerlegung ist eine Benchmark-Konfiguration, keine Auslieferungseinstellung; die Notiz
+wirkt dann nur auf die Antwort.
+
+**Was gegen eine falsch eingestufte Angabe sichert — und was nicht:** Die Art vergibt das Modell,
+und es kann irren; eine Darstellungsangabe, die als `RAHMEN` eingestuft wird, erreicht die Suche.
+Dagegen gibt es **keine maschinelle Sicherung**. Der Sicherheitsgurt kann sie nicht leisten: Nach
+der Ankerraum-Invariante gehören gerenderte Notizpunkte zum Ankerraum, und ein zusätzlicher
+Baustein im Ankerraum macht die Prüfung nur lockerer, nie strenger. Was bleibt, sind die
+Prompt-Regel der Zerlegung (Notiz nur zur Auflösung rückverweisender Wörter) und die Löschbarkeit
+durch die Person.
+
 ### Rechte, Sichtbarkeit, Nachweis — die Produkthaltung
 
 - **Pro Chat, nie pro Person.** Ein Gedächtnis, das Angaben über Chats hinweg sammelt, ist ein vom
@@ -214,9 +239,9 @@ in Bauteil 1). Der Systemprompt bleibt wie bisher nicht konfigurierbar.
   fällt unter dieselben Regeln wie Frage und Antwort: nicht protokolliert, nicht auswertbar, kein
   Administrator-Durchgriff ([Was ausdrücklich nicht protokolliert
   wird](./security-and-compliance.md#was-ausdrücklich-nicht-protokolliert-wird)).
-- **Derselbe Lebenszyklus wie der Chat.** Gelöscht mit dem Chat, Teil des Chat-Exports, Teil der
-  Kontolöschung. Sie erzeugt keine neue Datenkategorie: Alles darin stand bereits in einer
-  Nachricht desselben Chats.
+- **Derselbe Lebenszyklus wie der Chat.** Gelöscht mit dem Chat; sobald Chat-Export und
+  Kontolöschung gebaut sind (Zielbild, #391/#395), schließen sie die Notiz ein. Sie erzeugt keine
+  neue Datenkategorie: Alles darin stand bereits in einer Nachricht desselben Chats.
 - **Kein Ein-/Ausschalter**, weder je Installation noch je Chat. Die Notiz enthält nur, was die
   Person selbst geschrieben hat, sichtbar und löschbar; ein Schalter hätte keinen Adressaten und
   müsste in der Oberfläche erklären, warum die Notiz in dieser Installation fehlt. Wiederaufnahme
@@ -270,8 +295,13 @@ verworfen, weil sie `constraint_carryover` die frühen Angaben kostet.
   Person kann den Punkt schlicht wieder entfernen.
 - **Kein Bearbeiten, kein Hinzufügen, kein „alle entfernen".** Korrigieren heißt: den falschen Punkt
   entfernen und die richtige Angabe in den Chat schreiben — sie steht sofort im Gesprächsfenster und
-  nach der nächsten Antwort in der Notiz. Bei höchstens zehn Punkten ist Einzelentfernen zumutbar.
+  nach der nächsten Antwort in der Notiz. Die Liste ist kurz; Einzelentfernen genügt.
   Wiederaufnahme, wenn Personen nachweislich Angaben wiederholen, weil die Verdichtung sie verfehlt.
+- **Ein entfernter Punkt bleibt entfernt, bis der Server es bestätigt.** Die Antwort auf eine Frage
+  liefert den Notizstand, der in sie eingeflossen ist — bei Entfernen während einer laufenden
+  Antwort ist das der Stand *vor* dem Entfernen. Die Oberfläche filtert deshalb jeden lokal
+  entfernten Punkt aus jedem mitgelieferten Notizstand heraus, bis das Laden des Chats die
+  Entfernung bestätigt; ein gelöschter Punkt taucht nie kurz wieder auf.
 - **Barrierefreiheit:** Schaltfläche mit `aria-expanded`, Panel als benannte Region; Entfernen ist
   eine echte Schaltfläche; Fokus bleibt nach dem Entfernen auf dem nächsten Punkt bzw. der
   Schaltfläche, wenn die Liste leer wird.
@@ -294,15 +324,18 @@ Person es sehen konnte.
 | Ein Punkt (ab Runde 3) | Schaltfläche „Gesprächsnotiz · 1", Liste mit einem Punkt |
 | Alle Punkte entfernt | Schaltfläche verschwindet; sie erscheint wieder, sobald ein neuer Punkt entsteht (Rundengrenze ist dann längst erreicht) |
 | Sehr langer Punkt | entsteht nicht: Kürzung auf 200 Zeichen bei der Verdichtung; die Oberfläche bricht um, kürzt nicht |
-| Notiz während einer laufenden Antwort | Panel bleibt bedienbar, Entfernen erlaubt; die laufende Antwort hat ihren Stand bereits; die Entfernung wirkt ab der nächsten Frage |
+| Notiz während einer laufenden Antwort | Panel bleibt bedienbar, Entfernen erlaubt; die laufende Antwort hat ihren Stand bereits; die Entfernung wirkt ab der nächsten Frage. Der mitgelieferte Notizstand der eintreffenden Antwort enthält den Punkt noch — die Oberfläche filtert lokal entfernte Punkte heraus, bis `GET chat` die Entfernung bestätigt |
 | Chat in archiviertem Space | Notiz sichtbar, Entfernen-Schaltflächen ausgeblendet; keine Verdichtung, weil keine neuen Runden. Der archivierte Space nimmt keine Änderung an einem Chat an; der ganze Chat bleibt löschbar |
+| Space wird zwischen Antwort und Verdichtung archiviert | das Verdichtungsergebnis wird verworfen; die Notiz bleibt auf dem Stand vor der Antwort |
+| Verdichtung schlägt fehl | Runde steuert keine Punkte bei; Log ohne Inhalt, Zähler mit Grund; kein Nachholen |
 | Neuladen mitten in der Unterhaltung | Notiz kommt mit dem Chat aus der Datenbank; Zahl und Punkte sind identisch zu vorher; Panel zugeklappt |
 | Neustart des Backends, Cache-Ablauf | Notiz liegt in der Datenbank; das Gesprächsfenster wird aus den letzten *n* Nachrichten mit derselben Marken-Normalisierung nachgeladen — derselbe Chat schickt vor und nach dem Neustart denselben Prompt |
 | Chat ohne Wissensbasis (Leiste geleert) | Notiz wird geführt und verwendet — sie betrifft das Gespräch, nicht die Suche |
 | Anfrage ohne gespeicherten Chat (nur API) | keine Notiz; nur das flüchtige Gesprächsfenster |
 | Mitlesende eines geteilten Chats (sobald Teilen gebaut ist) | sehen die Notiz, ohne Entfernen-Schaltflächen |
-| Entfernen und Verdichtung gleichzeitig | Entfernen trifft einen Punkt über seine Kennung; die Verdichtung hängt neue Punkte an; kein Konflikt |
-| Löschung des Chats, Kontolöschung, Export | Notiz folgt dem Chat |
+| Entfernen und Verdichtung gleichzeitig | Entfernen trifft einen Punkt über seine Kennung; die Verdichtung hängt neue Punkte an — beides berührt sich technisch nicht. Für die *eigene* Runde tritt der Fall nicht auf: Ein Punkt wird erst mit der nächsten Antwort sichtbar, kann also nicht entfernt werden, während seine Verdichtung läuft. Die Verdichtung einer *späteren* Runde kann einen entfernten Punkt dagegen erneut erzeugen, weil Dedupe nur die aktuelle Liste prüft — das ist die entschiedene Löschsemantik (kein Sperren), und die Person entfernt ihn erneut |
+| Löschung des Chats | Notiz wird mit gelöscht |
+| Chat-Export, Kontolöschung (Zielbild, #391/#395) | schließen die Notiz ein, sobald gebaut |
 
 ---
 
@@ -314,9 +347,10 @@ ein fester Wert.
 
 | Wert | Default | Ebene | Wer, wann, woher |
 |---|---|---|---|
-| Breite des Gesprächsfensters (Nachrichten) | 20 | 1 | Benchmark und Entwicklung; die Wirkung ist nur mit dem Mehrrunden-Harness beurteilbar. Heute Konstante — ohne Property ist der Wert nicht benchmarkbar |
-| Suchfenster (Runden) | 2 | 1 | dito; die Klassen `anaphora_resolution`/`topic_switch` messen genau diesen Wert |
-| Deckel der Notiz (Punkte) | 10 | 1 | dito; Wirkung erst mit `constraint_carryover` sichtbar |
+| Breite des Gesprächsfensters (Nachrichten) | 20 (2 bis 100, gerade) | 1 | Benchmark und Entwicklung; die Wirkung ist nur mit dem Mehrrunden-Harness beurteilbar. Heute Konstante — ohne Property ist der Wert nicht benchmarkbar |
+| Suchfenster (Runden) | 2 (0 bis Fensterbreite ÷ 2) | 1 | dito; die Klassen `anaphora_resolution`/`topic_switch` messen genau diesen Wert. Darf das Gesprächsfenster nicht überschreiten — die Suche sieht nie mehr als die Antwort; 0 heißt „nur Frage und Notiz" |
+| Deckel der Notiz (Punkte) | 10 (1 bis 50) | 1 | dito; Wirkung erst mit `constraint_carryover` sichtbar |
+| Punkte je Runde | 2 | **fester Wert** | schützt frühe Rahmenangaben vor Verdrängung durch eine gesprächige Nachricht; niemand stellt das um |
 | Höchstlänge eines Notizpunkts | 200 Zeichen | **fester Wert** | Niemand stellt das um; es ist eine Oberflächen- und Prompt-Größe |
 | Anzeige-Untergrenze der Notiz (abgeschlossene Runden) | 3 | **fester Wert** | Oberflächengröße; niemand stellt sie um. Sichtbar ab „mindestens ein Punkt und mindestens drei Runden" |
 | Art eines Notizpunkts (`RAHMEN`/`ANTWORTFORM`) | — | **kein Parameter** | interne Unterscheidung, nicht angezeigt, nicht einstellbar |
@@ -365,12 +399,15 @@ billig und macht den Fall reproduzierbar.
 }
 ```
 
-Der Harness simuliert das Gedächtnis deterministisch aus den Skriptrunden: Gesprächsfenster und
-Suchfenster werden aus den vorangegangenen Runden gebildet (mit Marken-Normalisierung, die hier
-trivial ist), die Notiz wird über die produktive Verdichtung aus den Nutzernachrichten der
-vorangegangenen Runden gewonnen. Gemessen wird **je Runde** mit den vier bestehenden Metriken;
-berichtet wird je Runde, je Fall (Mittel) und je Klasse. Ein Fall gilt als gelöst, wenn **jede**
-Runde gelöst ist (bestehende Definition: alle erwarteten Dokumente im Fenster und eines auf Rang 1).
+Der Harness bildet **Gesprächsfenster und Suchfenster deterministisch** aus den Skriptrunden (mit
+Marken-Normalisierung, die hier trivial ist). Die **Notiz ist nicht deterministisch**: Sie entsteht
+über die produktive Verdichtung — ein Modellaufruf je vorangegangener Runde — und ist damit, wie die
+Zerlegung, ein nichtdeterministischer Anteil, für den die Mehrfachlauf-Regel gilt; der Harness
+skriptet die Notiz nicht. Gemessen wird **je Runde** mit den vier bestehenden Metriken; berichtet
+wird je Runde, je Fall (Mittel) und je Klasse. Ein Fall gilt als gelöst, wenn **jede** Runde gelöst
+ist (alle erwarteten Dokumente im Fenster und eines auf Rang 1) — **auf dem Pipeline-Pfad**, dem
+einzigen, auf dem ein Mehrrunden-Fall laufen kann; die Ausnahme von der Zwei-Pfade-Regel steht in
+[retrieval-benchmark.md, Abschnitt 5](./retrieval-benchmark.md#5-neue-golden-fall-klassen).
 
 Die Mehrrunden-Messung braucht die Teilfragen-Zerlegung — ohne sie gibt es keine Auflösung von
 Bezügen. Sie läuft deshalb wie jede zerlegende Messung: gepinntes Eval-Chat-Modell, Mehrfachlauf-Regel
@@ -422,7 +459,7 @@ Wert, den der Harness nicht sehen kann. Wiederaufnahme, sobald es einen Generati
 - **Antwort** ([llm-integration.md](./llm-integration.md), „Übergabe der Passagen"): der Aufruf
   bekommt einen fünften Teil, die Gesprächsnotiz, vor dem Gesprächsverlauf.
 - **Chats** ([spaces-and-assets.md](./spaces-and-assets.md#chats)): Notiz ist Bestandteil des Chats
-  (Löschung, Export, Archivierung, künftiges Teilen).
+  (Löschung, Archivierung, künftiges Teilen; Export und Kontolöschung, sobald gebaut).
 - **Sicherheit und Mitbestimmung** ([security-and-compliance.md](./security-and-compliance.md)):
   Notiz ist Chatinhalt, kein Protokoll, keine Auswertung, kein Profil.
 - **Evaluierung** ([retrieval-benchmark.md](./retrieval-benchmark.md)): Mehrrunden-Fälle, eigene
@@ -459,4 +496,8 @@ Wert, den der Harness nicht sehen kann. Wiederaufnahme, sobald es einen Generati
   Zieldokuments gegen den Verwechslungspartner.
 - Betrieb: `opaa.chat.note.extraction`-Fehlschläge nahe null; Latenz der Antwort unverändert (die
   Verdichtung liegt außerhalb des Anfrage-Threads).
-- Belegprüfung: Anteil „nicht bestätigter" Marken in Runden ≥ 3 sinkt (Zitatwiederholung entfällt).
+- **Nicht gemessen: die Zitatwiederholung (Fehlerbild 2).** Es gibt keinen Zähler über nicht
+  bestätigte Marken, und der Benchmark endet vor der Antwortgenerierung. Die Entfernung der Marken
+  aus dem Gesprächsfenster wird strukturell durch Test abgesichert (derselbe Chat erzeugt vor und
+  nach Cache-Ablauf denselben markenfreien Prompt), nicht durch eine Metrik. Wiederaufnahme, sobald
+  ein Zähler über nicht bestätigte Marken je Antwort existiert — er gehört nicht in dieses Epic.
