@@ -38,13 +38,22 @@ public class UploadPendingRecoveryRunner implements ApplicationRunner {
 
   private final DocumentRepository documentRepository;
   private final UploadProperties uploadProperties;
+  private final UploadedOriginalStore uploadedOriginalStore;
 
   public UploadPendingRecoveryRunner(
-      DocumentRepository documentRepository, UploadProperties uploadProperties) {
+      DocumentRepository documentRepository,
+      UploadProperties uploadProperties,
+      UploadedOriginalStore uploadedOriginalStore) {
     this.documentRepository = documentRepository;
     this.uploadProperties = uploadProperties;
+    this.uploadedOriginalStore = uploadedOriginalStore;
   }
 
+  /**
+   * The rows first, then the store's own leftovers ({@link
+   * UploadedOriginalStore#recoverAfterRestart}): both are what a process that died mid-task leaves
+   * behind, and both are settled before the first request (ADR-0030, Entscheidung 7).
+   */
   @Override
   public void run(ApplicationArguments args) {
     Instant threshold =
@@ -56,5 +65,6 @@ public class UploadPendingRecoveryRunner implements ApplicationRunner {
           recovered,
           uploadProperties.pendingRecoveryThresholdMinutes());
     }
+    uploadedOriginalStore.recoverAfterRestart();
   }
 }
