@@ -72,9 +72,12 @@ class LocalAuthKeyServiceTest {
     String hash = service.lookupHash(Purpose.REFRESH_TOKEN_LOOKUP, "raw-refresh-token");
 
     assertThat(hash).hasSize(64).matches("[0-9a-f]{64}");
-    assertThat(hash).isEqualTo(service.lookupHash(Purpose.REFRESH_TOKEN_LOOKUP, "raw-refresh-token"));
-    assertThat(hash).isNotEqualTo(service.lookupHash(Purpose.ACTION_TOKEN_LOOKUP, "raw-refresh-token"));
-    assertThat(hash).isNotEqualTo(service.lookupHash(Purpose.REFRESH_TOKEN_LOOKUP, "raw-refresh-tokeN"));
+    assertThat(hash)
+        .isEqualTo(service.lookupHash(Purpose.REFRESH_TOKEN_LOOKUP, "raw-refresh-token"));
+    assertThat(hash)
+        .isNotEqualTo(service.lookupHash(Purpose.ACTION_TOKEN_LOOKUP, "raw-refresh-token"));
+    assertThat(hash)
+        .isNotEqualTo(service.lookupHash(Purpose.REFRESH_TOKEN_LOOKUP, "raw-refresh-tokeN"));
     assertThat(hash).isNotEqualTo(unkeyedSha256("raw-refresh-token"));
   }
 

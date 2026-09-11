@@ -10,10 +10,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * Startup behaviour of the local-account configuration (ADR-0033 Entscheidung 6), the way {@link
- * io.opaa.auth.AuthProfileGuardTest} proves {@code AuthProfileGuard}: in the {@code oidc} profile
- * a missing, short or placeholder {@code OPAA_AUTH_JWT_SECRET} refuses the start with a message
- * that names the variable and the command that generates one; the {@code dev} profile starts
- * without any secret at all.
+ * io.opaa.auth.AuthProfileGuardTest} proves {@code AuthProfileGuard}: in the {@code oidc} profile a
+ * missing, short or placeholder {@code OPAA_AUTH_JWT_SECRET} refuses the start with a message that
+ * names the variable and the command that generates one; the {@code dev} profile starts without any
+ * secret at all.
  */
 class LocalAuthSecretGuardTest {
 
@@ -43,8 +43,7 @@ class LocalAuthSecretGuardTest {
   @Test
   void oidcProfileRefusesAPlaceholderSecret() {
     contextRunner
-        .withPropertyValues(
-            "spring.profiles.active=oidc", "opaa.auth.local.jwt-secret=change_me")
+        .withPropertyValues("spring.profiles.active=oidc", "opaa.auth.local.jwt-secret=change_me")
         .run(
             context ->
                 assertThat(context)
@@ -58,7 +57,8 @@ class LocalAuthSecretGuardTest {
   void oidcProfileRefusesAShortSecret() {
     contextRunner
         .withPropertyValues(
-            "spring.profiles.active=oidc", "opaa.auth.local.jwt-secret=nur-31-zeichen-lang-ist-zu-kurz")
+            "spring.profiles.active=oidc",
+            "opaa.auth.local.jwt-secret=nur-31-zeichen-lang-ist-zu-kurz")
         .run(
             context ->
                 assertThat(context)

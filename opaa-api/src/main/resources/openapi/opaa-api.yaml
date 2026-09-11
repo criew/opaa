@@ -10119,6 +10119,13 @@ components:
           maxLength: 200
           description: Dot-separated path to the groups claim, e.g. groups.
 
+    ProviderType:
+      type: string
+      description: >
+        Mirrors io.opaa.api.types.ProviderType (ADR-0033): OIDC for an identity provider the SPA
+        runs a code flow against, LOCAL for the single row of the local account management.
+      enum: [OIDC, LOCAL]
+
     OidcProviderRegistryState:
       type: string
       description: >
@@ -10130,13 +10137,16 @@ components:
 
     OidcProviderResponse:
       type: object
-      description: An identity provider (ADR-0025, #1329). A public client - there is no secret.
+      description: >
+        An identity provider (ADR-0025, #1329) or, for the one row with providerType LOCAL, the
+        local account management (ADR-0033). A public client - there is no secret.
       required:
         [
           id,
           displayName,
           enabled,
           isDefault,
+          providerType,
           sortOrder,
           issuerUri,
           clientId,
@@ -10154,17 +10164,27 @@ components:
           example: Beschäftigte (Keycloak)
         enabled:
           type: boolean
+          description: >
+            For the LOCAL row this is the switch of the local account management (ADR-0033).
         isDefault:
           type: boolean
-          description: The one provider opaa.auth.initial-admin-email applies to.
+          description: >
+            The directory provider (ADR-0025); only an OIDC row is ever the default, the LOCAL row
+            never (ADR-0033).
+        providerType:
+          $ref: "#/components/schemas/ProviderType"
         sortOrder:
           type: integer
         issuerUri:
           type: string
-          description: The token issuer and, for the SPA, the authority of the code flow.
+          description: >
+            The token issuer and, for the SPA, the authority of the code flow; fixed to
+            urn:opaa:local for the LOCAL row.
           example: https://idp.behoerde.example/realms/mitarbeitende
         clientId:
           type: string
+          nullable: true
+          description: Absent (null) for the LOCAL row - there is no code flow against the backend.
           example: opaa-frontend
         jwkSetUri:
           type: string

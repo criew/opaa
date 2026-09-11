@@ -16,8 +16,7 @@ class PasswordGeneratorTest {
     for (int i = 0; i < 200; i++) {
       String password = generator.generate();
       assertThat(password).hasSize(PasswordGenerator.LENGTH).hasSize(20);
-      assertThat(password.chars())
-          .allMatch(c -> PasswordGenerator.ALPHABET.indexOf(c) >= 0);
+      assertThat(password.chars()).allMatch(c -> PasswordGenerator.ALPHABET.indexOf(c) >= 0);
     }
   }
 

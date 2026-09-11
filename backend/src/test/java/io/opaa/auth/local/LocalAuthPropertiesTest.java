@@ -15,7 +15,8 @@ class LocalAuthPropertiesTest {
 
   @Test
   void fillsInTheAdrDefaults() {
-    LocalAuthProperties properties = new LocalAuthProperties(null, null, null, null, null, null, null);
+    LocalAuthProperties properties =
+        new LocalAuthProperties(null, null, null, null, null, null, null);
 
     assertThat(properties.jwtSecret()).isEmpty();
     assertThat(properties.accessTokenTtl()).isEqualTo(Duration.ofMinutes(15));
@@ -50,11 +51,13 @@ class LocalAuthPropertiesTest {
 
   @Test
   void refusesAnIdleLimitLongerThanTheAbsoluteLimit() {
-    assertThatThrownBy(() -> properties(null, null, Duration.ofDays(20), Duration.ofDays(10), null, null))
+    assertThatThrownBy(
+            () -> properties(null, null, Duration.ofDays(20), Duration.ofDays(10), null, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("OPAA_AUTH_LOCAL_REFRESH_TOKEN_TTL")
         .hasMessageContaining("OPAA_AUTH_LOCAL_SESSION_MAX_LIFETIME");
-    assertThatThrownBy(() -> properties(null, null, null, null, Duration.ofHours(13), Duration.ofHours(12)))
+    assertThatThrownBy(
+            () -> properties(null, null, null, null, Duration.ofHours(13), Duration.ofHours(12)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("OPAA_AUTH_LOCAL_ADMIN_REFRESH_TOKEN_TTL")
         .hasMessageContaining("OPAA_AUTH_LOCAL_ADMIN_SESSION_MAX_LIFETIME");
@@ -62,7 +65,8 @@ class LocalAuthPropertiesTest {
 
   @Test
   void refusesAdminLimitsLongerThanTheRegularOnes() {
-    assertThatThrownBy(() -> properties(null, null, null, null, Duration.ofDays(8), Duration.ofDays(9)))
+    assertThatThrownBy(
+            () -> properties(null, null, null, null, Duration.ofDays(8), Duration.ofDays(9)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("OPAA_AUTH_LOCAL_ADMIN_REFRESH_TOKEN_TTL");
   }
@@ -94,6 +98,7 @@ class LocalAuthPropertiesTest {
       Duration session,
       Duration adminRefresh,
       Duration adminSession) {
-    return new LocalAuthProperties(secret, access, refresh, session, adminRefresh, adminSession, null);
+    return new LocalAuthProperties(
+        secret, access, refresh, session, adminRefresh, adminSession, null);
   }
 }

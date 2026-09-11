@@ -54,12 +54,15 @@ class LocalAccountPersistenceIntegrationTest {
 
   @AfterEach
   void cleanUp() {
-    providerRepository.findAll().stream().filter(OidcProvider::isLocal).forEach(providerRepository::delete);
+    providerRepository.findAll().stream()
+        .filter(OidcProvider::isLocal)
+        .forEach(providerRepository::delete);
     userRepository.findAll().stream()
         .filter(u -> LocalAuthProperties.ISSUER.equals(u.getIssuer()))
         .forEach(userRepository::delete);
     settingsRepository
         .findSingleton()
+        .filter(settings -> !settings.values().equals(LocalAuthSettings.Values.defaults()))
         .ifPresent(
             settings -> {
               settings.replace(LocalAuthSettings.Values.defaults(), null, Instant.now());
@@ -78,7 +81,8 @@ class LocalAccountPersistenceIntegrationTest {
     LocalCredentials reloaded = credentialsRepository.findById(user.getId()).orElseThrow();
 
     assertThat(reloaded.getCreatedReason()).isEqualTo("Sachbearbeitung");
-    assertThat(passwordEncoder.matches("korrekt-batterie-pferd-klammer", reloaded.getPasswordHash()))
+    assertThat(
+            passwordEncoder.matches("korrekt-batterie-pferd-klammer", reloaded.getPasswordHash()))
         .isTrue();
     assertThat(reloaded.state(now)).isEqualTo(LocalAccountState.ACTIVE);
     assertThat(reloaded.isBootstrap()).isTrue();
@@ -114,7 +118,8 @@ class LocalAccountPersistenceIntegrationTest {
     refreshTokenRepository.save(refreshToken(familyA, "a2"));
     refreshTokenRepository.save(refreshToken(familyB, "b1"));
 
-    int revoked = refreshTokenRepository.revokeFamily(familyA, RevocationReason.REUSE_DETECTED, now);
+    int revoked =
+        refreshTokenRepository.revokeFamily(familyA, RevocationReason.REUSE_DETECTED, now);
 
     assertThat(revoked).isEqualTo(2);
     assertThat(refreshTokenRepository.revokeFamily(familyA, RevocationReason.REUSE_DETECTED, now))
@@ -133,7 +138,8 @@ class LocalAccountPersistenceIntegrationTest {
 
     assertThat(refreshTokenRepository.revokeAllForUser(user.getId(), RevocationReason.ADMIN, now))
         .isEqualTo(1);
-    assertThat(refreshTokenRepository.deleteExpiredBefore(now.plus(Duration.ofDays(8)))).isEqualTo(3);
+    assertThat(refreshTokenRepository.deleteExpiredBefore(now.plus(Duration.ofDays(8))))
+        .isEqualTo(3);
   }
 
   @Test
@@ -154,24 +160,36 @@ class LocalAccountPersistenceIntegrationTest {
         .isPresent();
     assertThat(actionTokenRepository.markConsumed(token.getId(), now)).isEqualTo(1);
     assertThat(actionTokenRepository.markConsumed(token.getId(), now)).isZero();
-    assertThat(actionTokenRepository.findById(token.getId()).orElseThrow().isRedeemable(now)).isFalse();
-    assertThat(actionTokenRepository.deleteExpiredBefore(now.plus(Duration.ofDays(8)))).isEqualTo(1);
+    assertThat(actionTokenRepository.findById(token.getId()).orElseThrow().isRedeemable(now))
+        .isFalse();
+    assertThat(actionTokenRepository.deleteExpiredBefore(now.plus(Duration.ofDays(8))))
+        .isEqualTo(1);
   }
 
   @Test
   void supersedesOpenTokensOfTheSamePurpose() {
     actionTokenRepository.save(
         new LocalActionToken(
-            user.getId(), ActionTokenPurpose.SET_PASSWORD, "h1", now, now.plus(Duration.ofHours(72))));
+            user.getId(),
+            ActionTokenPurpose.SET_PASSWORD,
+            "h1",
+            now,
+            now.plus(Duration.ofHours(72))));
     actionTokenRepository.save(
         new LocalActionToken(
-            user.getId(), ActionTokenPurpose.RESET_PASSWORD, "h2", now, now.plus(Duration.ofHours(1))));
+            user.getId(),
+            ActionTokenPurpose.RESET_PASSWORD,
+            "h2",
+            now,
+            now.plus(Duration.ofHours(1))));
 
     assertThat(
             actionTokenRepository.consumeOpenTokens(
                 user.getId(), ActionTokenPurpose.SET_PASSWORD, now))
         .isEqualTo(1);
-    assertThat(actionTokenRepository.findByTokenHashAndPurpose("h2", ActionTokenPurpose.RESET_PASSWORD))
+    assertThat(
+            actionTokenRepository.findByTokenHashAndPurpose(
+                "h2", ActionTokenPurpose.RESET_PASSWORD))
         .get()
         .satisfies(token -> assertThat(token.isRedeemable(now)).isTrue());
   }
@@ -184,7 +202,8 @@ class LocalAccountPersistenceIntegrationTest {
 
     assertThat(revokedTokenRepository.existsById(jtiHash)).isTrue();
     assertThat(revokedTokenRepository.deleteExpiredBefore(now)).isZero();
-    assertThat(revokedTokenRepository.deleteExpiredBefore(now.plus(Duration.ofHours(1)))).isEqualTo(1);
+    assertThat(revokedTokenRepository.deleteExpiredBefore(now.plus(Duration.ofHours(1))))
+        .isEqualTo(1);
     assertThat(revokedTokenRepository.existsById(jtiHash)).isFalse();
   }
 
@@ -193,6 +212,8 @@ class LocalAccountPersistenceIntegrationTest {
     LocalAuthSettings settings = settingsRepository.findSingleton().orElseThrow();
     assertThat(settings.values()).isEqualTo(LocalAuthSettings.Values.defaults());
     assertThat(settings.getSelfRegistrationAllowedDomains()).isEmpty();
+    // the row is shared by every test in this context, so only the increment is a fixed fact
+    long versionBefore = settings.getVersion();
 
     settings.replace(
         new LocalAuthSettings.Values(
@@ -212,7 +233,7 @@ class LocalAccountPersistenceIntegrationTest {
     assertThat(reloaded.getDefaultExpiryDays()).isEqualTo(30);
     assertThat(reloaded.getInactiveDays()).isEqualTo(45);
     assertThat(reloaded.getUpdatedBy()).isEqualTo(user.getId());
-    assertThat(reloaded.getVersion()).isEqualTo(1);
+    assertThat(reloaded.getVersion()).isEqualTo(versionBefore + 1);
   }
 
   @Test

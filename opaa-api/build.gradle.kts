@@ -112,6 +112,7 @@ val typeMappingsConfig = mapOf(
     "IndexingRunMode" to "IndexingRunMode",
     "LibraryMetadataFieldType" to "LibraryMetadataFieldType",
     "OrphanedOriginalSkipReason" to "OrphanedOriginalSkipReason",
+    "ProviderType" to "ProviderType",
 )
 
 tasks.withType<Test> {
@@ -188,6 +189,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "IndexingRunMode" to "io.opaa.api.types.IndexingRunMode",
         "LibraryMetadataFieldType" to "io.opaa.api.types.LibraryMetadataFieldType",
         "OrphanedOriginalSkipReason" to "io.opaa.api.types.OrphanedOriginalSkipReason",
+        "ProviderType" to "io.opaa.api.types.ProviderType",
     ))
 }
 

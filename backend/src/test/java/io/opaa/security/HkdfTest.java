@@ -7,7 +7,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.HexFormat;
 import org.junit.jupiter.api.Test;
 
-/** {@link Hkdf} against the RFC 5869 test vectors (Appendix A, SHA-256) and its derivation contract. */
+/**
+ * {@link Hkdf} against the RFC 5869 test vectors (Appendix A, SHA-256) and its derivation contract.
+ */
 class HkdfTest {
 
   private static final HexFormat HEX = HexFormat.of();

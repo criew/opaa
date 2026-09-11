@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * {@link LocalCredentials}: the account state is derived, never stored (ADR-0033 Entscheidung 3) -
- * a lock outranks everything, then expiry, then the invitation that is not yet complete, and only
- * a complete, unlocked, unexpired account is {@code ACTIVE} and therefore able to sign in.
+ * a lock outranks everything, then expiry, then the invitation that is not yet complete, and only a
+ * complete, unlocked, unexpired account is {@code ACTIVE} and therefore able to sign in.
  */
 class LocalCredentialsTest {
 
@@ -35,7 +35,8 @@ class LocalCredentialsTest {
     credentials.setExpiresAt(NOW.plus(Duration.ofDays(1)), NOW);
 
     assertThat(credentials.state(NOW)).isEqualTo(LocalAccountState.ACTIVE);
-    assertThat(credentials.state(NOW.plus(Duration.ofDays(1)))).isEqualTo(LocalAccountState.EXPIRED);
+    assertThat(credentials.state(NOW.plus(Duration.ofDays(1))))
+        .isEqualTo(LocalAccountState.EXPIRED);
     assertThat(credentials.isLoginCapable(NOW.plus(Duration.ofDays(2)))).isFalse();
   }
 
@@ -60,7 +61,8 @@ class LocalCredentialsTest {
 
     credentials.unlock(NOW.plus(Duration.ofMinutes(1)));
 
-    assertThat(credentials.state(NOW.plus(Duration.ofMinutes(1)))).isEqualTo(LocalAccountState.ACTIVE);
+    assertThat(credentials.state(NOW.plus(Duration.ofMinutes(1))))
+        .isEqualTo(LocalAccountState.ACTIVE);
     assertThat(credentials.getLockedAt()).isNull();
     assertThat(credentials.getLockedReason()).isNull();
     assertThat(credentials.getLockoutUntil()).isNull();
@@ -73,7 +75,8 @@ class LocalCredentialsTest {
     credentials.recordLockoutUntil(NOW.plus(Duration.ofMinutes(15)), NOW);
 
     assertThat(credentials.state(NOW)).isEqualTo(LocalAccountState.LOCKED);
-    assertThat(credentials.state(NOW.plus(Duration.ofMinutes(16)))).isEqualTo(LocalAccountState.ACTIVE);
+    assertThat(credentials.state(NOW.plus(Duration.ofMinutes(16))))
+        .isEqualTo(LocalAccountState.ACTIVE);
   }
 
   @Test

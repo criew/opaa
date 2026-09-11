@@ -107,7 +107,8 @@ class Migration003OidcProviderTypeTest extends AbstractMigrationTest {
             error ->
                 assertThat(error.getMessage())
                     .containsAnyOf(
-                        "ux_oidc_providers_single_local", "ux_oidc_providers_issuer_uri_normalized"));
+                        "ux_oidc_providers_single_local",
+                        "ux_oidc_providers_issuer_uri_normalized"));
     assertThat(
             LocalAccountSchemaSupport.indexDefinition(connection, "ux_oidc_providers_single_local"))
         .isNotNull()

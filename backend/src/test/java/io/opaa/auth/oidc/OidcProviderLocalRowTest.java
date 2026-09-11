@@ -63,8 +63,7 @@ class OidcProviderLocalRowTest {
   @Test
   void theLocalRowSharesNoDecoderInputsWithAnyOidcRow() {
     OidcProvider local = OidcProvider.localProvider("Lokale Konten");
-    OidcProvider oidc =
-        new OidcProvider("X", LocalAuthProperties.ISSUER, "opaa", null, null);
+    OidcProvider oidc = new OidcProvider("X", LocalAuthProperties.ISSUER, "opaa", null, null);
 
     assertThat(local.hasSameDecoderInputsAs(oidc)).isFalse();
     assertThat(local.hasSameDecoderInputsAs(OidcProvider.localProvider("Y"))).isTrue();

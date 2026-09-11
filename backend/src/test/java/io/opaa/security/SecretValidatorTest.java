@@ -40,7 +40,7 @@ class SecretValidatorTest {
       strings = {
         "   ",
         "short",
-        "too-short-to-be-a-secret-31chars",
+        "too-short-to-be-a-secret-31char",
         "CHANGE_ME",
         "change-me",
         "changeme",
