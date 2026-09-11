@@ -27,11 +27,20 @@ final class MailResponseMapper {
 
   private MailResponseMapper() {}
 
-  static MailSettingsResponse toResponse(MailSettings settings) {
+  /**
+   * {@code publicBaseUrlConfigured} is passed in rather than read here: it is a property of the
+   * deployment ({@code OPAA_PUBLIC_BASE_URL}), not of the stored settings, and every mail carrying
+   * a link depends on it.
+   */
+  static MailSettingsResponse toResponse(MailSettings settings, boolean publicBaseUrlConfigured) {
     boolean passwordSet = settings.getPasswordCiphertext() != null;
     MailSettingsResponse response =
         new MailSettingsResponse(
-            settings.isEnabled(), passwordSet, settings.getEncryption(), settings.getUpdatedAt());
+            settings.isEnabled(),
+            passwordSet,
+            settings.getEncryption(),
+            settings.getUpdatedAt(),
+            publicBaseUrlConfigured);
     response.setHost(settings.getHost());
     response.setPort(settings.getPort());
     response.setUsername(settings.getUsername());

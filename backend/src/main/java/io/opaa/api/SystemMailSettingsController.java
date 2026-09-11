@@ -5,6 +5,7 @@ import io.opaa.api.dto.MailSettingsResponse;
 import io.opaa.api.dto.MailSettingsUpdateRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.PublicBaseUrl;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.mail.MailSettingsUpdate;
 import io.opaa.mail.MailTestService;
@@ -35,17 +36,22 @@ public class SystemMailSettingsController {
 
   private final MailSettingsService mailSettingsService;
   private final MailTestService mailTestService;
+  private final PublicBaseUrl publicBaseUrl;
 
   public SystemMailSettingsController(
-      MailSettingsService mailSettingsService, MailTestService mailTestService) {
+      MailSettingsService mailSettingsService,
+      MailTestService mailTestService,
+      PublicBaseUrl publicBaseUrl) {
     this.mailSettingsService = mailSettingsService;
     this.mailTestService = mailTestService;
+    this.publicBaseUrl = publicBaseUrl;
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping
   public MailSettingsResponse getMailSettings() {
-    return MailResponseMapper.toResponse(mailSettingsService.currentSettings());
+    return MailResponseMapper.toResponse(
+        mailSettingsService.currentSettings(), publicBaseUrl.isConfigured());
   }
 
   /**
@@ -68,7 +74,8 @@ public class SystemMailSettingsController {
                 request.getPassword(),
                 request.getEncryption(),
                 request.getFromAddress(),
-                request.getFromName())));
+                request.getFromName())),
+        publicBaseUrl.isConfigured());
   }
 
   /**

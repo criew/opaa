@@ -16,6 +16,7 @@ import io.opaa.api.types.MailEncryption;
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.common.PublicBaseUrl;
 import io.opaa.mail.MailSettings;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.mail.MailSettingsUpdate;
@@ -55,6 +56,7 @@ class SystemMailSettingsControllerTest {
   @MockitoBean private MailSettingsService mailSettingsService;
   @MockitoBean private MailTestService mailTestService;
   @MockitoBean private UserService userService;
+  @MockitoBean private PublicBaseUrl publicBaseUrl;
 
   private final UUID adminId = UUID.randomUUID();
   private final UUID organizationId = UUID.randomUUID();
@@ -101,6 +103,25 @@ class SystemMailSettingsControllerTest {
         .andExpect(jsonPath("$.passwordSet").value(true))
         .andExpect(jsonPath("$.host").value("smtp.intern.example"))
         .andExpect(jsonPath("$.lastFailureReason").value("Connection refused"));
+  }
+
+  @Test
+  void reportsWhetherThePublicBaseUrlIsConfiguredSoTheAdministrationCanWarnAboutDeadLinks()
+      throws Exception {
+    when(mailSettingsService.currentSettings()).thenReturn(configuredSettings(null));
+    when(publicBaseUrl.isConfigured()).thenReturn(false);
+
+    mockMvc
+        .perform(get("/api/v1/system/mail-settings").with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.publicBaseUrlConfigured").value(false));
+
+    when(publicBaseUrl.isConfigured()).thenReturn(true);
+
+    mockMvc
+        .perform(get("/api/v1/system/mail-settings").with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.publicBaseUrlConfigured").value(true));
   }
 
   @Test

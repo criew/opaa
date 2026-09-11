@@ -11495,7 +11495,7 @@ components:
         without the secret ever passing through the browser. The three status fields are written by
         every send attempt and are what "letzter erfolgreicher Versand / letzter Fehler" on the
         settings page shows.
-      required: [enabled, passwordSet, encryption, updatedAt]
+      required: [enabled, passwordSet, encryption, updatedAt, publicBaseUrlConfigured]
       properties:
         enabled:
           type: boolean
@@ -11546,6 +11546,13 @@ components:
         updatedAt:
           type: string
           format: date-time
+        publicBaseUrlConfigured:
+          type: boolean
+          description: >
+            Whether OPAA_PUBLIC_BASE_URL is set (ADR-0033, Entscheidung 10). Every mail that
+            carries a link - invitation, password reset, registration - needs it, so the
+            administration page says so here rather than letting an administrator configure SMTP
+            and then wonder why the links in the delivered mail go nowhere.
 
     MailSettingsUpdateRequest:
       type: object
