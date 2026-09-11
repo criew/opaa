@@ -13,7 +13,7 @@
  * io.opaa.indexing.source.s3.S3ClientSettings}), the per-request guard ({@link
  * io.opaa.indexing.source.s3.S3RequestGuard}) and the failure translation ({@link
  * io.opaa.indexing.source.s3.S3FailureTranslator}) are shared with the S3 storage of uploaded
- * originals in {@code io.opaa.library} (ADR-0030, Entscheidung 8); the request meter and the
- * budget stay with the connector's adapter.
+ * originals in {@code io.opaa.library} (ADR-0030, Entscheidung 8); the request meter and the budget
+ * stay with the connector's adapter.
  */
 package io.opaa.indexing.source.s3;

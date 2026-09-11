@@ -42,7 +42,7 @@ class UploadStoreHealthGroupTest {
 
         @Override
         public HttpCodeStatusMapper getHttpCodeStatusMapper() {
-          return HttpCodeStatusMapper.DEFAULT;
+          return status -> 200;
         }
 
         @Override
