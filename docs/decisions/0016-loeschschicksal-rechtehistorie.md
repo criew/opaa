@@ -2,7 +2,7 @@
 
 ## Status
 
-Vorgeschlagen
+Akzeptiert
 
 ## Kontext
 
