@@ -267,7 +267,7 @@ test.describe('Gesprächsnotiz im Chat (#1489)', () => {
           querySelector(selector: string): MeasuredElement | null
           createRange(): {
             selectNodeContents(node: MeasuredElement): void
-            getClientRects(): { length: number }
+            getClientRects(): ArrayLike<{ top: number }>
           }
         }
         getComputedStyle(element: MeasuredElement): { whiteSpace: string; textOverflow: string }
@@ -278,14 +278,16 @@ test.describe('Gesprächsnotiz im Chat (#1489)', () => {
       if (!paragraph) {
         return null
       }
-      // Ein Range über den Textinhalt liefert je Zeile ein Rechteck; das Blockelement selbst
-      // hätte immer genau eines, egal wie viele Zeilen es umbricht.
+      // Ein Range über den Textinhalt liefert Rechtecke je Textlauf, nicht je Zeile - das
+      // Blockelement selbst hätte ohnehin immer genau eines. Wie viele Zeilen es sind, sagen
+      // erst die verschiedenen Oberkanten dieser Rechtecke.
       const range = browser.document.createRange()
       range.selectNodeContents(paragraph)
+      const rects = Array.from(range.getClientRects())
       const style = browser.getComputedStyle(paragraph)
       return {
         text: paragraph.textContent ?? '',
-        lineCount: range.getClientRects().length,
+        lineCount: new Set(rects.map((rect) => Math.round(rect.top))).size,
         scrollWidth: paragraph.scrollWidth,
         clientWidth: paragraph.clientWidth,
         whiteSpace: style.whiteSpace,
