@@ -139,8 +139,11 @@ Benutzerverwaltung ist im Regelbetrieb abgeschaltet.
 > der Konto-UUID als Subject, Backend als Aussteller kurzlebiger Access-Tokens mit rotierendem
 > Refresh-Cookie und sofortigem Widerruf, lokaler Anbieter als Anbieterzeile, Rate-Limiting je Adresse
 > und je Konto mit Sperre nach Fehlversuchen, keine Zusammenführung über die E-Mail (nur eine
-> ausdrückliche administrative Übergabe eines gesperrten lokalen Kontos an eine Anbieteridentität). Der
-> Ist-Stand der Umsetzung steht im Epic.
+> administrativ angestoßene, von der betroffenen Person selbst durch Anmeldung beim Anbieter
+> eingelöste Übergabe eines lokalen Kontos an ihre Anbieteridentität). Kein stiller Eingriff in ein
+> Konto: Sperre, Entsperrung, Zurücksetzen, bevorstehender Ablauf und Übergabe werden der Person per
+> E-Mail mitgeteilt, und eine beendete Sitzung nennt beim nächsten Aufruf ihren Grund. Der Ist-Stand
+> der Umsetzung steht im Epic.
 
 Die Mandantengrenze gilt auch für die Anmeldung: Eine Identität gehört zu **genau einer** Organisation.
 Es gibt kein Konto, das mehrere Mandanten sieht, und keinen Wechsel zwischen ihnen innerhalb einer
