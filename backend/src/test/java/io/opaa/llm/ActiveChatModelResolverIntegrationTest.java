@@ -10,6 +10,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.ServiceUnavailableException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.LlmModelCatalogFixtures;
 import io.opaa.test.OpaaIntegrationTest;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -17,6 +18,8 @@ import java.math.BigDecimal;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -58,6 +61,10 @@ class ActiveChatModelResolverIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private LlmModelCatalogFixtures llmModelCatalogFixtures;
+
+  /** The catalogue content that is none of this test method's business - see the class Javadoc. */
+  private List<Map<String, Object>> foreignModels;
 
   private HttpServer serverA;
   private HttpServer serverB;
@@ -70,10 +77,10 @@ class ActiveChatModelResolverIntegrationTest {
 
   @BeforeEach
   void setUp() throws IOException {
-    jdbcTemplate.update("DELETE FROM llm_models");
-    // The DELETE above bypasses LlmModelService, so no ActiveChatModelChangedEvent fires - without
-    // this, the resolver would keep serving whatever client an earlier test method (sharing this
-    // class's Spring context) built.
+    foreignModels = llmModelCatalogFixtures.takeOverCatalog();
+    // Emptying the catalogue bypasses LlmModelService, so no ActiveChatModelChangedEvent fires -
+    // without this, the resolver would keep serving whatever client an earlier test method (sharing
+    // this class's Spring context) built.
     resolver.resetForTest();
 
     organizationId =
@@ -103,7 +110,7 @@ class ActiveChatModelResolverIntegrationTest {
     // expect, until it happened to trigger an activation of its own.
     resolver.resetForTest();
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
-    jdbcTemplate.update("DELETE FROM llm_models");
+    llmModelCatalogFixtures.restoreCatalog(foreignModels);
     userRepository.deleteById(userId);
     organizationRepository.deleteById(organizationId);
   }

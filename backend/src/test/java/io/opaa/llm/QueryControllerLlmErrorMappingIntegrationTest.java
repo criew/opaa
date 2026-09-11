@@ -9,18 +9,20 @@ import com.sun.net.httpserver.HttpServer;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.test.LlmModelCatalogFixtures;
 import io.opaa.test.OpaaIntegrationTest;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
@@ -46,14 +48,17 @@ class QueryControllerLlmErrorMappingIntegrationTest {
   @Autowired private LlmModelService llmModelService;
   @Autowired private ActiveChatModelResolver resolver;
   @Autowired private UserRepository userRepository;
-  @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private LlmModelCatalogFixtures llmModelCatalogFixtures;
+
+  /** The catalogue content that is none of this test method's business - see the class Javadoc. */
+  private List<Map<String, Object>> foreignModels;
 
   private User devAdmin;
   private HttpServer unreachableServer;
 
   @BeforeEach
   void setUp() throws Exception {
-    jdbcTemplate.update("DELETE FROM llm_models");
+    foreignModels = llmModelCatalogFixtures.takeOverCatalog();
     resolver.resetForTest();
 
     // Provisions "dev-admin" (opaa.auth.initial-admin-email, application.yml) via the real
@@ -89,7 +94,7 @@ class QueryControllerLlmErrorMappingIntegrationTest {
   @AfterEach
   void tearDown() {
     resolver.resetForTest();
-    jdbcTemplate.update("DELETE FROM llm_models");
+    llmModelCatalogFixtures.restoreCatalog(foreignModels);
   }
 
   @Test

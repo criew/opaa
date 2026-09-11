@@ -55,6 +55,11 @@ class OpaaTestBeans {
   }
 
   @Bean
+  LlmModelCatalogFixtures llmModelCatalogFixtures(JdbcTemplate jdbcTemplate) {
+    return new LlmModelCatalogFixtures(jdbcTemplate);
+  }
+
+  @Bean
   OwnOrganizationFixtures ownOrganizationFixtures(JdbcTemplate jdbcTemplate) {
     return new OwnOrganizationFixtures(jdbcTemplate);
   }

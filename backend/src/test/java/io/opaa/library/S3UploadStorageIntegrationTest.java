@@ -11,6 +11,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.GroupMembershipHistoryRepository;
+import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.source.s3.MinioFixture;
@@ -66,6 +67,7 @@ class S3UploadStorageIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private UploadedOriginalStore uploadedOriginalStore;
@@ -77,7 +79,6 @@ class S3UploadStorageIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
     editor = new User("editor-subject-s3", "issuer", "editor-s3@example.com", "Editor");
@@ -92,9 +93,12 @@ class S3UploadStorageIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    // Scoped to this class's own library, not findAll(): the suite shares one database. Peeled
+    // Scoped to this class's own library, not findAll(): the suite shares one database. The chunk
+    // tables carry no foreign key to documents, so they are cleared by library id here instead of
+    // by a TRUNCATE that would take every other class's chunks with it. Documents are then peeled
     // leaf by leaf because fk_documents_parent (ADR-0022) refuses a parent whose attachment rows
     // are still there.
+    vectorChunkStore.deleteByLibraryId(libraryId);
     List<Document> remaining = documentRepository.findByLibraryId(libraryId);
     while (!remaining.isEmpty()) {
       Set<UUID> referencedAsParent =

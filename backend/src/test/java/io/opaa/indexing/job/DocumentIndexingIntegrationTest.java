@@ -14,6 +14,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.document.DocumentService;
@@ -45,6 +46,7 @@ import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextBox;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
@@ -69,6 +71,7 @@ class DocumentIndexingIntegrationTest {
   @Autowired private DocumentIndexingService documentIndexingService;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private VectorStore vectorStore;
+  @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private IndexingJobService indexingJobService;
@@ -154,6 +157,30 @@ class DocumentIndexingIntegrationTest {
                 false));
     targetLibraryId = library.getId();
     grantOwner(targetLibraryId, userId);
+  }
+
+  @AfterEach
+  void tearDown() {
+    // Cleaning up in @BeforeEach alone (above) left this class's chunks, documents and jobs in the
+    // shared tables for whoever ran next (#1510): QueryIntegrationTest, sharing this context and
+    // this vector_store, then retrieved fewer than topK of its own tied chunks. Scoped by this
+    // class's own owner, so an aborted method's rows are found here too.
+    List<UUID> ownLibraryIds =
+        jdbcTemplate.queryForList(
+            "SELECT id FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users"
+                + " WHERE email = 'indexing-it@example.com')",
+            UUID.class);
+    for (UUID libraryId : ownLibraryIds) {
+      vectorChunkStore.deleteByLibraryId(libraryId);
+      // One statement rather than deleteAll(): PostgreSQL checks fk_documents_parent only at its
+      // end, so a parent and its attachment go together (ADR-0022).
+      jdbcTemplate.update("DELETE FROM documents WHERE library_id = ?", libraryId);
+      jdbcTemplate.update("DELETE FROM indexing_jobs WHERE library_id = ?", libraryId);
+    }
+    jdbcTemplate.update(
+        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
+            + " email = 'indexing-it@example.com')");
+    jdbcTemplate.update("DELETE FROM users WHERE email = 'indexing-it@example.com'");
   }
 
   private void grantOwner(UUID libraryId, UUID granteeId) {
