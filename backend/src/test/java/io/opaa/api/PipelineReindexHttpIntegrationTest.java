@@ -20,8 +20,7 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.UploadProperties;
 import io.opaa.organization.Organization;
-import io.opaa.test.EmbeddingModelFakeConfiguration;
-import io.opaa.test.OpaaMockMvcTest;
+import io.opaa.test.OpaaIntegrationTest;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -32,7 +31,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -45,18 +43,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * real HTTP request actually reaches the real service and mutates real chunks - only that the
  * controller forwards whatever a stub happens to return.
  */
-// Own EmbeddingModel fake, unlike every other @OpaaMockMvcTest class: this is the one HTTP-level
-// test that actually runs a real re-index batch (PipelineReindexService re-embeds every rewritten
-// chunk), which would otherwise dial the real, unreachable-in-CI Ollama endpoint
-// (application.yml's default spring.ai.openai.embedding.base-url). Real HTTP client instead of
-// MockMvc against @OpaaIndexingIntegrationTest was evaluated and rejected: Spring Boot 4's
-// TestRestTemplate needs its own opt-in @AutoConfigureTestRestTemplate, which would recreate the
-// same per-class context split this comment already documents, just for a different bean. Own
-// Spring context per AGENTS.md "Spring-Testkontexte"; EmbeddingModelFakeConfiguration is a shared,
-// top-level class in io.opaa.test so a second @OpaaMockMvcTest class with the same need shares this
-// context instead of each declaring its own class-local equivalent.
-@OpaaMockMvcTest
-@Import(EmbeddingModelFakeConfiguration.class)
+@OpaaIntegrationTest
 class PipelineReindexHttpIntegrationTest {
 
   @Autowired private MockMvc mockMvc;

@@ -25,8 +25,8 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -52,11 +52,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * rewrite, the Sammelzuweisung with rejected foreign ids - and the promise that a manual value
  * survives the deterministic Bestandslauf.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class DocumentMetadataCorrectionServiceIntegrationTest {
 
-  private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("metadata-correction");
+  private static final Path classTempDir = OpaaTestDirectory.subdirectory("metadata-correction");
 
   @Autowired private DocumentMetadataCorrectionService correctionService;
   @Autowired private DocumentMetadataService documentMetadataService;

@@ -29,7 +29,7 @@ import io.opaa.library.LibraryFolderRepository;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.organization.Organization;
 import io.opaa.sourceaccess.TargetAddressValidator;
-import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.ProductionDocumentFormats;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -54,7 +54,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * MinIO container per JVM (~3 s start), a handful of small objects per test, well under a minute in
  * total.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class S3FullSyncMinioIntegrationTest {
 
   private static final String FIRST_TEXT = "Erste Fassung.";

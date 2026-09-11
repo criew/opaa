@@ -24,8 +24,8 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.llm.ActiveChatModelDescription;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaMockedChatModelIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -57,11 +57,11 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * ingest, and a freies Schlagwort reaches the full-text index without ever becoming filterable or
  * appearing in a Beleg.
  */
-@OpaaIndexingIntegrationTest
+@OpaaMockedChatModelIntegrationTest
 class ModelMetadataExtractionIntegrationTest {
 
   private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("model-metadata-extraction");
+      OpaaTestDirectory.subdirectory("model-metadata-extraction");
 
   @Autowired private DocumentIngestService documentIngestService;
   @Autowired private DocumentMetadataService documentMetadataService;

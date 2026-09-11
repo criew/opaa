@@ -13,7 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.branding.BrandingDefaults;
 import io.opaa.branding.BrandingLogoValidator;
-import io.opaa.test.OpaaMockMvcTest;
+import io.opaa.test.OpaaIntegrationTest;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -39,14 +39,14 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * about ("PUT verweigert Nicht-Administratoren (403)").
  *
  * <p>Deliberately one class for every HTTP-level concern of this feature rather than one per
- * endpoint. Carries the canonical {@link io.opaa.test.OpaaMockMvcTest} signature (AGENTS.md,
+ * endpoint. Carries the canonical {@link io.opaa.test.OpaaIntegrationTest} signature (AGENTS.md,
  * "Spring-Testkontexte"), so it shares one cached context and one container with every other class
  * on that same meta-annotation, including {@link AuditControllerAuthorizationIntegrationTest} and
  * {@link LibraryControllerCredentialsIntegrationTest}. Everything that does not need MockMvc lives
  * in {@code BrandingSettingsServiceIntegrationTest}, which shares the other, {@link
  * io.opaa.test.OpaaIntegrationTest} context group instead.
  */
-@OpaaMockMvcTest
+@OpaaIntegrationTest
 class BrandingControllerIntegrationTest {
 
   @Autowired private MockMvc mockMvc;

@@ -6,9 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.api.types.SystemRole;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
-import io.opaa.space.SpaceRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnUserFixtures;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,20 +37,22 @@ class UserServiceOrganizationBoundaryIntegrationTest {
 
   @Autowired private UserService userService;
   @Autowired private UserRepository userRepository;
-  @Autowired private SpaceRepository spaceRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organizationA;
   private UUID organizationB;
 
+  @Autowired private OwnUserFixtures ownUserFixtures;
+
+  /** Everything that is none of this test method's business - see {@link OwnUserFixtures}. */
+  private Set<UUID> foreignUserIds;
+
   @BeforeEach
   void setUp() {
-    // Deliberately does not delete all organizations: Organization.DEFAULT_ID is seeded once by
-    // Liquibase and other tests sharing this Spring context rely on that row existing
-    // (fk_users_organization) - see SpaceServiceIntegrationTest's identical reasoning.
-    spaceRepository.deleteAll();
-    userRepository.deleteAll();
+    // Organizations are never wiped wholesale: Organization.DEFAULT_ID is seeded once by Liquibase
+    // and every other class of this shared context depends on that row (fk_users_organization).
+    foreignUserIds = ownUserFixtures.existingUserIds();
     organizationA =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org A")).getId();
     organizationB =
@@ -58,8 +61,7 @@ class UserServiceOrganizationBoundaryIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    spaceRepository.deleteAll();
-    userRepository.deleteAll();
+    ownUserFixtures.removeUsersCreatedSince(foreignUserIds);
     // updateRole writes audit_log rows (fk_audit_log_organization is ON DELETE RESTRICT, migration
     // 017) - purged via JdbcTemplate, same reasoning as SpaceServiceIntegrationTest#tearDown.
     jdbcTemplate.update(

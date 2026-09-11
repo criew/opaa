@@ -73,10 +73,11 @@ class SpaceServiceIntegrationTest {
     associationRepository.deleteAll();
     membershipRepository.deleteAll();
     spaceRepository.deleteAll();
-    // #201: fk_knowledge_libraries_owner_user also references users now, not just fk_spaces_owner
-    // - a leftover personal library from another test class sharing this context (e.g.
-    // UserServicePersonalSpaceIntegrationTest, which has no @AfterEach) would otherwise block
-    // userRepository.deleteAll() below with a RESTRICT violation on that unrelated user.
+    // #201: fk_knowledge_libraries_owner_user references users too, not just fk_spaces_owner - a
+    // library left behind by any class of this shared context would block
+    // userRepository.deleteAll()
+    // below with a RESTRICT violation on a user this class never created. The blanket chain here is
+    // the remaining one of its kind; #1561 tracks narrowing it to this class's own rows.
     libraryRepository.deleteAll();
     // #238 code review, finding 2+4: the same leftover-history risk as the library cleanup above -
     // asset_grant_history.subject_user_id/group_membership_history.user_id are ON DELETE RESTRICT

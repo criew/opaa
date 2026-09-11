@@ -3,38 +3,26 @@ package io.opaa.config;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.TestcontainersConfiguration;
+import io.opaa.test.OpaaPropertyVariantIntegrationTest;
 import java.util.Collections;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.DefaultApplicationArguments;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Against a real Postgres/pgvector instance rather than a mock - the guard's own SQL against {@code
  * pg_attribute} is exactly what needs proving, not the branching around it.
  *
- * <p>Two deviations from the canonical properties, both documented here: {@code
- * spring.ai.vectorstore.pgvector.dimensions=1536} is pinned explicitly so this test does not depend
- * on an operator's {@code OPAA_PGVECTOR_DIMENSIONS} override, and {@code
- * spring.ai.vectorstore.pgvector.initialize-schema=false} because Spring AI's own {@code CREATE
- * TABLE IF NOT EXISTS} would otherwise create {@code vector_store} with the configured dimension
- * before a test gets to simulate a table stuck at a different, older one.
+ * <p>The signature pins {@code spring.ai.vectorstore.pgvector.dimensions=1536} so this test does
+ * not depend on an operator's {@code OPAA_PGVECTOR_DIMENSIONS} override, and switches {@code
+ * initialize-schema} off because Spring AI's own {@code CREATE TABLE IF NOT EXISTS} would otherwise
+ * create {@code vector_store} with the configured dimension before a test gets to simulate a table
+ * stuck at a different, older one. Dropping and recreating that table is also why this class cannot
+ * share the canonical database.
  */
-@SpringBootTest(
-    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    properties = {
-      "spring.ai.vectorstore.pgvector.dimensions=1536",
-      "spring.ai.vectorstore.pgvector.initialize-schema=false"
-    })
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "dev"})
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaPropertyVariantIntegrationTest
 class PgVectorDimensionsGuardIntegrationTest {
 
   @Autowired private PgVectorDimensionsGuard guard;

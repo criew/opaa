@@ -24,8 +24,8 @@ import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
 import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaMockedChatModelIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -61,11 +61,10 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-@OpaaIndexingIntegrationTest
+@OpaaMockedChatModelIntegrationTest
 class DocumentIndexingIntegrationTest {
 
-  private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("document-indexing");
+  private static final Path classTempDir = OpaaTestDirectory.subdirectory("document-indexing");
 
   @Autowired private DocumentIndexingService documentIndexingService;
   @Autowired private DocumentRepository documentRepository;
@@ -924,7 +923,7 @@ class DocumentIndexingIntegrationTest {
     // allowlist no longer covers must not silently succeed. This library is created directly
     // against
     // the repository (bypassing KnowledgeLibraryService's own creation-time check) with a
-    // sourcePath outside this suite's configured allowlist (OpaaIndexingTestDirectory.BASE_DIR,
+    // sourcePath outside this suite's configured allowlist (OpaaTestDirectory.BASE_DIR,
     // not just classTempDir - a sibling of classTempDir is still a subdirectory of BASE_DIR and
     // therefore still inside the allowlist), mirroring how such a library could exist if the
     // allowlist were narrowed after it was created.
@@ -938,8 +937,8 @@ class DocumentIndexingIntegrationTest {
                 LibraryVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
-                OpaaIndexingTestDirectory.BASE_DIR
-                    .resolveSibling("opaa-484-outside-allowlist")
+                OpaaTestDirectory.OUTSIDE_ALLOWLIST_DIR
+                    .resolve("opaa-484")
                     .toAbsolutePath()
                     .toString(),
                 null,

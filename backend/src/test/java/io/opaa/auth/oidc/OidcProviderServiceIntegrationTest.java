@@ -36,7 +36,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.test.context.TestPropertySource;
 
 /**
  * {@link OidcProviderService} and {@link OidcProviderRegistry} against a real Postgres with the
@@ -47,11 +46,7 @@ import org.springframework.test.context.TestPropertySource;
  * restart</em>: the registry rebuilt itself after the commit, and a provider disabled afterwards is
  * refused on the next token.
  */
-// Own context (AGENTS.md, "Spring-Testkontexte"): the address policy resolves every issuer host,
-// and this test's issuers are a fictitious host plus a loopback JWKS server - both refused by the
-// shared context's default policy, so the allowlist has to be widened for this class alone.
 @OpaaIntegrationTest
-@TestPropertySource(properties = "opaa.auth.oidc.target-validation.allowlist=idp.example,127.0.0.1")
 class OidcProviderServiceIntegrationTest {
 
   @Autowired private OidcProviderService service;

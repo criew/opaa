@@ -29,7 +29,7 @@ import io.opaa.organization.Organization;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
-import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.ProductionDocumentFormats;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -70,7 +70,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * encoding matters ({@code Verg%C3%BCtung}, {@code %2E%2E}) be served exactly as a real autoindex
  * would.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class UrlFolderMappingIntegrationTest {
 
   @Autowired private DocumentIngestService documentIngestService;

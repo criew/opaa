@@ -13,7 +13,7 @@ import io.opaa.query.retrieval.RetrievalPipeline;
 import io.opaa.query.retrieval.RetrievalStageName;
 import io.opaa.query.retrieval.StageExplanation;
 import io.opaa.query.retrieval.StageStatus;
-import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -34,7 +34,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * protocol, that the run applies a permission filter it never widens, and that a document outside
  * the Endauswahl is distinguishable as "never found" from "displaced at a stage".
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class SearchDiagnosisIntegrationTest {
 
   private static final UUID DEFAULT_ORGANIZATION_ID =

@@ -11,7 +11,7 @@ import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaIntegrationTest;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
@@ -32,7 +32,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * check; the fake embedding model ties every vector, so retrieval is asserted at threshold 0, as in
  * {@code DocumentIndexingIntegrationTest}.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class ConfluencePageIndexingIntegrationTest {
 
   private static final String PAGE_URL =

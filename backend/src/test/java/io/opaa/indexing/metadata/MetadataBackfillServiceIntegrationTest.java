@@ -22,8 +22,8 @@ import io.opaa.indexing.maintenance.MetadataBackfillService;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -56,11 +56,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * the backfill has to restore all three in batches from the original files - without touching a
  * single chunk, idempotently, and past a document it cannot read.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class MetadataBackfillServiceIntegrationTest {
 
-  private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("metadata-backfill");
+  private static final Path classTempDir = OpaaTestDirectory.subdirectory("metadata-backfill");
 
   @Autowired private MetadataBackfillService backfillService;
   @Autowired private DocumentIngestService documentIngestService;

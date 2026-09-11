@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.format.file.markdown.MarkdownDocumentFormat;
-import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.ProductionDocumentFormats;
 import java.util.Map;
 import java.util.Set;
@@ -19,12 +19,12 @@ import org.springframework.context.ApplicationContext;
  * uses to cover the routing algorithm itself (docs/features/ingestion-pipelines.md, Teil 1). A bean
  * wiring mistake (a pipeline never registered, or registered under the wrong format) would
  * otherwise only surface as a behavioural change in an end-to-end indexing test, not as a routing
- * assertion of its own. Reuses {@code @OpaaIndexingIntegrationTest} verbatim - no class-local
+ * assertion of its own. Reuses {@code @OpaaIntegrationTest} verbatim - no class-local
  * {@code @DynamicPropertySource}/{@code @Import}/{@code @MockitoBean} - so this class shares the
  * cached context with every other class carrying that same signature (AGENTS.md,
  * Spring-Testkontexte).
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class DocumentFormatRegistryRoutingIntegrationTest {
 
   @Autowired private DocumentFormatRegistry registry;

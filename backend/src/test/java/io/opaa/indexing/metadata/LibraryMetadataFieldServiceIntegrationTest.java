@@ -26,8 +26,8 @@ import io.opaa.library.LibraryAccessService;
 import io.opaa.organization.Organization;
 import io.opaa.query.filter.MetadataFilterOptions;
 import io.opaa.query.filter.MetadataFilterOptionsService;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -51,10 +51,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * a value outside the configured list is not storable, the confirmed mapping with its Folgekosten,
  * audit events and chunk rewrite, and what a field deletion takes with it.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class LibraryMetadataFieldServiceIntegrationTest {
 
-  private static final Path classTempDir = OpaaIndexingTestDirectory.subdirectory("library-fields");
+  private static final Path classTempDir = OpaaTestDirectory.subdirectory("library-fields");
 
   @Autowired private LibraryMetadataFieldService fieldService;
   @Autowired private DocumentMetadataCorrectionService correctionService;

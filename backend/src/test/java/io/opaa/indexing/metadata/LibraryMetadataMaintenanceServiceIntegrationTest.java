@@ -27,8 +27,8 @@ import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.LibraryDocumentPage;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,11 +55,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * the counted documents, and that no automatic extraction ever writes or clears the third state -
  * while filters and the Beleg see it as empty.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class LibraryMetadataMaintenanceServiceIntegrationTest {
 
-  private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("metadata-maintenance");
+  private static final Path classTempDir = OpaaTestDirectory.subdirectory("metadata-maintenance");
 
   @Autowired private LibraryMetadataMaintenanceService maintenanceService;
   @Autowired private DocumentMetadataCorrectionService correctionService;
