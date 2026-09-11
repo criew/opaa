@@ -283,6 +283,27 @@ class FullTextChunkSearchIntegrationTest {
   }
 
   /**
+   * A word long enough to exceed PostgreSQL's 2047-byte lexeme limit reaches {@code to_tsquery}
+   * truncated instead of failing the whole query - reachable within the 2000 characters a question
+   * may have, because a multi-byte letter costs up to three bytes each.
+   */
+  @Test
+  void aWordLongerThanPostgresAllowsAsALexemeDoesNotFailTheQuery() {
+    UUID chunkId = seed(readableLibrary, "Die Satzung regelt die Gebühr.");
+    String oversizedWord = "ä".repeat(1500);
+
+    List<Document> hits =
+        fullTextChunkSearch.search(
+            "Satzung " + oversizedWord,
+            Set.of(readableLibrary),
+            MetadataFilter.NONE,
+            List.of(),
+            25);
+
+    assertThat(hits).extracting(Document::getId).containsExactly(chunkId.toString());
+  }
+
+  /**
    * Ties in {@code ts_rank} are the normal case, not an edge case: identically structured documents
    * of one office score the same for a question that names none of them. The order among them must
    * come from the chunk's content, never from its id - a chunk id is a fresh UUID per indexing run,

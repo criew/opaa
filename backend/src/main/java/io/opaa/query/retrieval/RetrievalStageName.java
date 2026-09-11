@@ -1,7 +1,6 @@
 package io.opaa.query.retrieval;
 
 import io.opaa.query.QueryProperties;
-import io.opaa.query.retrieval.search.FullTextIndexCompleteness;
 import io.opaa.query.retrieval.search.QueryDecompositionService;
 
 /**
@@ -66,9 +65,8 @@ public enum RetrievalStageName {
   /**
    * One PostgreSQL full-text query per search query, each with the identical filter from {@link
    * #SEARCH_SCOPE} and the identical {@link QueryProperties#fetchK}, over every library of the
-   * scope - an incomplete full-text index narrows the list, never the scope (see {@link
-   * FullTextIndexCompleteness}). The second stage that adds candidates; its lists enter {@link
-   * #RANK_FUSION} next to the vector path's, one per search query.
+   * scope. The second stage that adds candidates; its lists enter {@link #RANK_FUSION} next to the
+   * vector path's, one per search query.
    *
    * <p>Switched off, the pipeline retrieves through the vector path alone - the {@code vector-only}
    * measurement variant, which {@link QueryProperties#fullTextSearchEnabled()} expresses without

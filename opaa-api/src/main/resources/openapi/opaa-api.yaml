@@ -10092,10 +10092,13 @@ components:
     SearchPathState:
       type: string
       description: >
-        INCOMPLETE is the state hybrid-retrieval.md demands be visible rather than only noticeable
-        in bad answers: the path runs, but not over the whole bestand yet.
-      enum: [ACTIVE, DISABLED, INCOMPLETE]
-      example: INCOMPLETE
+        INCOMPLETE - the vector path runs, but documents are still waiting to be indexed.
+        OUTDATED - the full-text path runs over every chunk, but some rows were written under an
+        older content_tsv_version and lack the lexemes the current one adds until the pipeline
+        re-index has rewritten them (ADR-0028). Both states hybrid-retrieval.md demands be visible
+        rather than only noticeable in bad answers.
+      enum: [ACTIVE, DISABLED, INCOMPLETE, OUTDATED]
+      example: OUTDATED
 
     SearchPathStatusResponse:
       type: object
@@ -10112,12 +10115,14 @@ components:
     LibraryIndexState:
       type: string
       description: >
-        EMPTY - the library holds no chunk at all. READY - every chunk this index needs is there.
-        INCOMPLETE - chunks are missing from this index, so the library is never shown as
-        flawlessly READY while it is quietly missing content the search cannot find. Nothing
-        repairs such a gap in the background (#1270): the remedy is a reindex.
-      enum: [EMPTY, READY, INCOMPLETE]
-      example: INCOMPLETE
+        EMPTY - the library holds no chunk at all. READY - this index is up to date for every
+        chunk. INCOMPLETE - documents of this library are still waiting to be indexed (vector
+        index). OUTDATED - full-text rows of this library were written under an older
+        content_tsv_version; they are still found, they only lack the lexemes the current version
+        adds, until the pipeline re-index has rewritten them (ADR-0028). Nothing rewrites them in
+        the background (#1270).
+      enum: [EMPTY, READY, INCOMPLETE, OUTDATED]
+      example: OUTDATED
 
     LibrarySearchStatusResponse:
       type: object
@@ -10135,7 +10140,7 @@ components:
           vectorIndexState,
           fullTextIndexState,
           fullTextIndexedChunks,
-          fullTextMissingChunks,
+          fullTextOutdatedChunks,
           metadataBackfill,
           modelExtraction,
           contextPrefixRerun,
@@ -10189,16 +10194,18 @@ components:
         fullTextIndexedChunks:
           type: integer
           format: int64
-        fullTextMissingChunks:
+          description: >
+            Full-text rows of this library at the current content_tsv_version - the part of the
+            index an update has already brought up to date.
+        fullTextOutdatedChunks:
           type: integer
           format: int64
           description: >
-            Chunks whose full-text index still needs the pipeline re-index: without a
-            chunk_full_text row, or with a row below the current content_tsv_version. A chunk of the
-            latter kind is still found by the lexical path, it only lacks the lexemes the newer
-            version adds (ADR-0028). Counted by anti-join, never derived as total minus indexed - see
-            FullTextIndexFillState's own documentation for why the two counts cannot be subtracted.
-            The same data source the "Volltextpfad inaktiv oder unvollständig" alarm reads.
+            Full-text rows of this library that are not at the current content_tsv_version and wait
+            for the pipeline re-index. They are still found by the lexical path, they only lack the
+            lexemes the current version adds (ADR-0028). A chunk's full-text row is written in the
+            same transaction as its vector row, so only the version of a row can lag behind, never
+            the row itself. The same data source the display of this backlog reads.
         metadataBackfill:
           $ref: "#/components/schemas/MetadataBackfillStatusResponse"
         modelExtraction:

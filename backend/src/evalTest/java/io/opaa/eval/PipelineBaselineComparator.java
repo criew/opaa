@@ -223,9 +223,9 @@ public final class PipelineBaselineComparator {
         String.valueOf(cfg.fullTextSearchEnabled()));
     addIfDiffers(
         mismatches,
-        "fullTextIndexComplete",
-        String.valueOf(fp.fullTextIndexComplete()),
-        String.valueOf(cfg.fullTextIndexComplete()));
+        "fullTextIndexUpToDate",
+        String.valueOf(fp.fullTextIndexUpToDate()),
+        String.valueOf(cfg.fullTextIndexUpToDate()));
     addIfDiffers(
         mismatches,
         "queryDecompositionEnabled",

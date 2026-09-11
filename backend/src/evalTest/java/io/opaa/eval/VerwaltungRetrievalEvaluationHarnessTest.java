@@ -883,8 +883,8 @@ class VerwaltungRetrievalEvaluationHarnessTest {
             manifest.fileNames().size(),
             "eval/golden/" + DOMAIN.goldenDatasetFileName(),
             GoldenDataset.sha256(goldenFile),
-            // Issue #1049: whether the lexical path could contribute at all in this run.
-            fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isComplete(),
+            // Whether the lexical index of this run sat at the current tsv version.
+            fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isUpToDate(),
             ingestionPipelineFingerprint,
             activeChatModel),
         retrievalPipeline,
@@ -920,7 +920,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
               manifest.fileNames().size(),
               "eval/golden/" + DOMAIN.goldenDatasetFileName(),
               GoldenDataset.sha256(goldenFile),
-              fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isComplete(),
+              fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isUpToDate(),
               ingestionPipelineFingerprint,
               activeChatModel),
           queryProperties,

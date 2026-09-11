@@ -511,17 +511,27 @@ weitere Felder, beide als Gültigkeitsfelder nach Entscheidung 18:
   bewusst **kein** Fixpunkt (die Stufe lief protokollarisch, die Endauswahl war bit-identisch); die
   Auflage, ihn mit der Aufnahme in die Fusion nachzuziehen, stand seit dem Review zu #1048 in
   docs/features/hybrid-retrieval.md, Arbeitspaket 2.
-- **`fullTextIndexComplete`** (bis Issue #1270: `fullTextBackfillComplete`) — ob der Volltextindex
-  der gemessenen Bibliothek vollständig war. Ein Abschnitt ohne Volltextzeile ist für den
-  lexikalischen Pfad unsichtbar; ein Lauf mit `fullTextSearchEnabled = true` über einem halb
-  gefüllten Index misst deshalb einen geschmälerten lexikalischen Beitrag, ohne es zu sagen. Erst
-  beide Felder zusammen beantworten die Frage „hat der lexikalische Pfad in diesem Lauf beigetragen?".
+- **`fullTextIndexUpToDate`** (Issue #1049 bis #1270: `fullTextBackfillComplete`, bis #1429:
+  `fullTextIndexComplete`) — ob der Volltextindex der gemessenen Bibliothek für jeden ihrer
+  Abschnitte auf der aktuellen `content_tsv_version` stand. Eine Zeile älterer Fassung trägt nicht
+  die aktuellen Lexeme; ein Lauf mit `fullTextSearchEnabled = true` über einem Index mit Rückstand
+  misst deshalb einen geschmälerten lexikalischen Beitrag, ohne es zu sagen. Erst beide Felder
+  zusammen beantworten die Frage „hat der lexikalische Pfad in diesem Lauf beigetragen?".
 
   > **Nachtrag (Issue #1270, 09/2026):** Bis dahin hielt ein Tor (`FullTextBackfillGate`) eine
   > unvollständig indizierte Bibliothek vollständig aus dem lexikalischen Pfad heraus, und das Feld
   > beschrieb den Zustand dieses Tors. Tor und Volltext-Nachzug sind entfernt; der Fixpunkt bleibt
-  > mit unveränderter Bedeutung („war der Index vollständig?") und trägt seither seinen heutigen
-  > Namen — Pipeline-Messvertrag Version 6 → 7, reine Umbenennung ohne neuen Messlauf.
+  > mit unveränderter Bedeutung („war der Index vollständig?") und trug seither den Namen
+  > `fullTextIndexComplete` — Pipeline-Messvertrag Version 6 → 7, reine Umbenennung ohne neuen
+  > Messlauf.
+  >
+  > **Nachtrag (Issue #1429, 09/2026):** Der Fixpunkt heißt `fullTextIndexUpToDate`, und seine
+  > Definition **verengt sich**. „Vollständig" umfasste zwei Zustände, von denen es einen nicht mehr
+  > gibt: Seit #1047 entsteht die `chunk_full_text`-Zeile eines Abschnitts in derselben Transaktion
+  > wie seine Vektorzeile, zurückliegen kann nur noch die **Fassung** einer Zeile. Genau das hält
+  > der Fixpunkt jetzt fest. Eine verengte Definition ist nach Entscheidung 6 dieses ADRs eine
+  > Vertragsänderung, auch wenn kein gemessener Wert sich bewegt — Version 11 → 12; auf dem frisch
+  > indizierten Eval-Korpus bleibt der Wert `true`, keine Baseline wird neu gemessen.
 
 Der Harness-Guard (`PipelineHarnessSupport#requireMeasurableConfiguration`) weist zusätzlich einen
 Lauf mit `fullTextSearchEnabled = false` ab — nicht weil er nicht messbar wäre (das ist er, seit der

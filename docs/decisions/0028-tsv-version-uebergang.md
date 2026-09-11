@@ -19,7 +19,8 @@ sich die gespeicherten Lexeme ändern — bisher dreimal, jedes Mal **additiv**:
 Die Konstante hat drei Verbraucher:
 
 1. **Füllstand** (`FullTextIndexFillStateService`, `FullTextIndexFillState`): Eine Zeile alter Fassung
-   zählt als fehlend; die Bibliothek erscheint auf der Administrationsseite als `INCOMPLETE`.
+   zählt als Rückstand; die Bibliothek erscheint auf der Administrationsseite als `OUTDATED`
+   („Nachzug ausstehend", seit #1429; zuvor `INCOMPLETE`).
 2. **Reindex-Auswahl** (`PipelineReindexService`): Ein Dokument, dessen Zeilen unter der aktuellen
    Fassung liegen, wird vom Pipeline-Nachzug ausgewählt — unabhängig von der Pipeline-Version.
 3. **Suchpfad** (`FullTextChunkSearch`): Die Abfrage las bis zu dieser Entscheidung ausschließlich
@@ -83,11 +84,12 @@ gezahlt: Für einen additiv gewachsenen Bestand gibt es keinen Grund, alte Zeile
 `CURRENT_TSV_VERSION` steuert ausschließlich den Füllstand (`FullTextIndexFillStateService`,
 `FullTextIndexFillState`) und die Reindex-Auswahl (`PipelineReindexService`).
 
-Damit bedeutet der Zähler `fullTextMissingChunks` in der Zustandsübersicht: **Abschnitte ohne
-`chunk_full_text`-Zeile oder mit einer Zeile alter Fassung — der Pipeline-Nachzug steht aus.** Ein
-Abschnitt der zweiten Art ist lexikalisch weiterhin findbar, nur ohne die jüngsten Lexeme. Es gibt
-kein weiteres API-Feld für „Zeilen alter Fassung"; der bestehende Zähler trägt diese Bedeutung, die
-OpenAPI-Beschreibung und die Feature-Dokumente nennen sie.
+Damit bedeutet der Zähler `fullTextOutdatedChunks` in der Zustandsübersicht (bis #1429
+`fullTextMissingChunks`): **Abschnitte mit einer `chunk_full_text`-Zeile alter Fassung — der
+Pipeline-Nachzug steht aus.** Ein solcher Abschnitt ist lexikalisch weiterhin findbar, nur ohne die
+jüngsten Lexeme. Seit #1429 zählt dieses Feld ausschließlich den Fassungs-Rückstand: Vektor- und
+Volltextzeile eines Chunks entstehen in derselben Transaktion (#1047), ein Abschnitt ohne
+`chunk_full_text`-Zeile ist kein Zustand, den das Modell noch kennt.
 
 Keine Migration, kein Backfill, keine Sonderbehandlung von Altdaten: Es gibt heute keine Bestandszeilen
 alter Fassung, die anders zu behandeln wären — jede Installation, die Volltext hatte, hat ihn seit
@@ -106,9 +108,9 @@ alter Fassung, die anders zu behandeln wären — jede Installation, die Volltex
   einführen** (als Gleichheit oder als Untergrenze nach Weg 1), bevor sie ausgeliefert wird. Die
   Bedingung steht im Javadoc der Konstante; der PR, der die Konstante anhebt, benennt, ob die
   Änderung additiv ist.
-- **Der Füllstand meldet weiterhin jede Zeile alter Fassung als fehlend.** Das ist gewollt: Er zeigt,
-  was der Nachzug noch zu tun hat, nicht, was unauffindbar ist. Der Alarm „Volltextpfad inaktiv oder
-  unvollständig" bleibt damit nach einem Bump aktiv, bis der Nachzug durch ist.
+- **Der Füllstand meldet weiterhin jede Zeile alter Fassung als Rückstand.** Das ist gewollt: Er
+  zeigt, was der Nachzug noch zu tun hat, nicht, was unauffindbar ist. Der Hinweis „Nachzug
+  ausstehend" bleibt damit nach einem Bump aktiv, bis der Nachzug durch ist.
 - **Der Test `FullTextChunkSearchIntegrationTest#aRowBelowTheCurrentTsvVersionIsStillFound`** hält
   das Verhalten fest; der frühere Test, der die Unsichtbarkeit alter Zeilen prüfte, ist durch ihn
   ersetzt.

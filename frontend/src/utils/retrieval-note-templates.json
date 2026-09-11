@@ -29,20 +29,12 @@
       "template": "fetch-k %d per list"
     },
     {
-      "name": "FULL_TEXT_PERMISSION_FILTER",
-      "template": "permission filter applied inside the query: %d scoped libraries searched, %d of them with an incomplete full-text index"
-    },
-    {
       "name": "FULL_TEXT_SEARCH_LISTS",
       "template": "full-text search, %d list(s)"
     },
     {
       "name": "LEXICAL_PATH_DISABLED",
       "template": "lexical search path switched off (%s)"
-    },
-    {
-      "name": "LEXICAL_SEARCH_FAILED",
-      "template": "lexical search failed for %s: %s"
     },
     {
       "name": "MAX_CHUNKS_PER_DOCUMENT",

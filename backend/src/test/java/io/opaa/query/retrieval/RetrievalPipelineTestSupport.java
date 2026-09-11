@@ -15,7 +15,6 @@ import io.opaa.query.retrieval.ranking.RerankStage;
 import io.opaa.query.retrieval.scope.MetadataFilterStage;
 import io.opaa.query.retrieval.scope.SearchScopeStage;
 import io.opaa.query.retrieval.search.FullTextChunkSearch;
-import io.opaa.query.retrieval.search.FullTextIndexCompleteness;
 import io.opaa.query.retrieval.search.FullTextSearchStage;
 import io.opaa.query.retrieval.search.QueryDecompositionService;
 import io.opaa.query.retrieval.search.SubQueryDecompositionStage;
@@ -74,7 +73,7 @@ public final class RetrievalPipelineTestSupport {
             new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
             new SubQueryDecompositionStage(queryDecompositionService),
             new VectorSearchStage(vectorStore),
-            new FullTextSearchStage(fullTextChunkSearch, mock(FullTextIndexCompleteness.class)),
+            new FullTextSearchStage(fullTextChunkSearch),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new RerankStage(rerankModelRole),

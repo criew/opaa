@@ -72,7 +72,8 @@ Besonderheiten, alle in den `notes` der Dateien selbst festgehalten:
 
 **Neu gezogen mit Issue #1049** (Volltextpfad als Eingangsliste der RRF-Fusion): Die
 Pipeline-Baseline dieser Domäne steht auf Messvertragsversion 3 und trägt die beiden neuen Fixpunkte
-`fullTextSearchEnabled`/`fullTextIndexComplete` (damals `fullTextBackfillComplete`); ihre Zahlen sind durchgängig besser (Gesamt-nDCG@8
+`fullTextSearchEnabled`/`fullTextIndexUpToDate` (damals `fullTextBackfillComplete`, bis Issue
+#1429 `fullTextIndexComplete`); ihre Zahlen sind durchgängig besser (Gesamt-nDCG@8
 0,558 → 0,749). Die **Rohvektor**-Baseline ist davon unberührt — an ihr hat sich ausschließlich der
 Golden-Hash geändert (elf Fälle haben ihre `expected_state_exception` nachgezogen bekommen), jeder
 Metrikwert ist im selben Lauf erneut gemessen und unverändert: Dieser Pfad misst `similaritySearch`
@@ -496,8 +497,9 @@ Dasselbe Verfahren wie unten, mit zwei Präzisierungen:
   `PipelineReportWriter.renderSummary` (Konsolen-Log des Laufs), nie eine eigene Nachrundung — die
   Rundungsregel unten gilt hier wortgleich.
 - Die `fixedPoints` dieses Pfads führen seit Issue #1049 zusätzlich `fullTextSearchEnabled` (ob der
-  lexikalische Pfad seine Listen in die Fusion eingebracht hat) und `fullTextIndexComplete` (ob der
-  Volltextindex der gemessenen Bibliothek vollständig war). Erst beide zusammen
+  lexikalische Pfad seine Listen in die Fusion eingebracht hat) und `fullTextIndexUpToDate` (ob der
+  Volltextindex der gemessenen Bibliothek auf der aktuellen Fassung stand; bis Issue #1429
+  `fullTextIndexComplete`). Erst beide zusammen
   beantworten „hat der Volltextpfad in diesem Lauf beigetragen?" — ohne sie wäre ein
   `vector-only`-Lauf von einem hybriden nicht zu unterscheiden (ADR-0012, Nachtrag Volltextpfad,
   Entscheidung 22).

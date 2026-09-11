@@ -321,8 +321,8 @@ nebenbei die Suchqualität verändert, ist im Nachhinein nicht mehr von einer Re
 > [Arbeitspaket 3](#arbeitspaket-3-fusion)). Dort steht auch die Wirkung.
 >
 > **Die Auflage für #1049 ist erfüllt:** `opaa.query.full-text-search-enabled` ist Fixpunkt des
-> Pipeline-Messvertrags (zusammen mit `fullTextIndexComplete`, dem Füllstand des Volltextindex der
-> gemessenen Bibliothek), die Vertragsversion steht auf 3, und die Pipeline-Baselines aller drei Domänen
+> Pipeline-Messvertrags (zusammen mit `fullTextIndexUpToDate`, seit #1429 der Name des Fixpunkts
+> für die Fassung des Volltextindex der gemessenen Bibliothek), die Vertragsversion stand damit auf 3, und die Pipeline-Baselines aller drei Domänen
 > sind neu gezogen. Der Harness-Guard
 > (`PipelineHarnessSupport#requireMeasurableConfiguration`) weist einen Lauf mit `enabled=false` ab: Die
 > committete Baseline beschreibt die ausgelieferte hybride Konfiguration, ein vector-only-Lauf gehört in
@@ -360,13 +360,13 @@ nächsten Abschnitts und nicht ein Nebeneffekt der Migration.
 >
 > **Bewusst in Kauf genommene Folge:** Ein künftiger Bump der Volltext-Aufbereitung
 > (`FullTextChunkStore.CURRENT_TSV_VERSION`) hat keinen eigenen, billigen Nachzug mehr.
-> Bestandszeilen gelten dann als fehlend und die Bibliothek erscheint auf der Administrationsseite
-> als `INCOMPLETE` — **lexikalisch findbar bleiben sie** (seit #1346,
+> Bestandszeilen liegen dann in einer älteren Fassung und die Bibliothek erscheint auf der
+> Administrationsseite als `OUTDATED` — **lexikalisch findbar bleiben sie** (seit #1346,
 > [ADR-0028](../decisions/0028-tsv-version-uebergang.md): der Suchpfad filtert nicht auf die
 > Fassung), ihnen fehlen bis zum Nachzug nur die Lexeme, die die neue Fassung hinzufügt. Der Weg
 > zurück ist der **Pipeline-Nachzug** (`POST /api/v1/admin/indexing/pipeline-reindex`), der genau
 > dafür versionsbewusst erweitert wurde: Er wählt ein Dokument auch dann aus, wenn nur seine
-> `chunk_full_text`-Zeilen unter der aktuellen `content_tsv_version` liegen (oder fehlen) —
+> `chunk_full_text`-Zeilen unter der aktuellen `content_tsv_version` liegen —
 > unabhängig von der Pipeline-Version, denn ein Bump dieser Konstante hebt keine
 > `DocumentFormat#version()`. **Der Preis ist benannt:** Dieser Weg liest, zerlegt und
 > **bettet neu ein**; er ist damit deutlich teurer als das reine Neuschreiben der `tsvector`-Spalte,
@@ -392,22 +392,24 @@ Eigenschaften gelten unverändert für den **Pipeline-Nachzug**, der seither der
 bereits gespeicherte Zeile neu aufzubereiten (siehe
 [Skalierung und Zielwerte](./deployment-infrastructure.md#skalierung-und-zielwerte)).
 
-**Der Füllstand je Bibliothek ist abfragbarer Zustand**, kein Logeintrag. Er ist die Datenquelle für
-zwei Dinge zugleich: die Zustandsanzeige der [Administrationsseite](#was-die-seite-anzeigt) und den
-Alarm „Volltextpfad inaktiv oder unvollständig". Eine Bibliothek, deren Chunks nur teilweise
-volltextindiziert sind, ist damit ein sichtbarer Betriebszustand und nicht eine Vermutung, die aus
-schlechten Antworten erschlossen werden muss.
+**Der Füllstand je Bibliothek ist abfragbarer Zustand**, kein Logeintrag. Er ist die Datenquelle der
+Zustandsanzeige der [Administrationsseite](#was-die-seite-anzeigt) und ihres Hinweises „Nachzug
+ausstehend". Eine Bibliothek, deren Volltextzeilen noch in einer älteren Fassung liegen, ist damit
+ein sichtbarer Betriebszustand und nicht eine Vermutung, die aus schlechten Antworten erschlossen
+werden muss. Seit #1047 zählt er ausschließlich diesen Fassungs-Rückstand: Vektor- und Volltextzeile
+eines Chunks entstehen in derselben Transaktion, ein Chunk ohne Volltextzeile ist kein Zustand, den
+das Modell noch kennt (#1429).
 
 Dieser Füllstand wird über ein `metadata->>'library_id'`-Prädikat auf `vector_store` ermittelt — ohne
 eigenen Index wäre das bei rund 1 Mio. Chunks ein vollständiger Tabellenscan je Aufruf. Ein
 Ausdrucksindex auf `metadata->>'library_id'` (#1119) trägt ihn; ein zusätzlicher Index auf den
 `::uuid`-Cast, den `fillStateForLibraries` für sein `GROUP BY` verwendet, ist gemessen nicht nötig —
 der Textindex leistet die zeilenbeschränkende Arbeit, der Cast läuft danach nur noch über die bereits
-gefilterten Zeilen. Gelesen wird er an zwei Stellen: auf der Administrationsseite bei jedem
-Seitenaufruf, und im Antwortpfad der Suche durch `FullTextIndexCompleteness` — dort nur noch
-**meldend** (die Zahl der unvollständigen Bibliotheken im Erklärprotokoll), seit das frühere Tor mit
-#1270 entfallen ist. Die Cache-Regel dieser zweiten Aufrufstelle ist unverändert: eine vollständige
-Bibliothek für die Prozesslaufzeit, eine unvollständige höchstens 60 Sekunden.
+gefilterten Zeilen. Im Produktivcode wird er an genau einer Stelle gelesen: auf der
+Administrationsseite bei jedem Seitenaufruf (der Eval-Harness liest ihn zusätzlich, als Fixpunkt
+seines Messvertrags). Der Antwortpfad der Suche liest ihn nicht mehr — der Zähler je Anfrage samt Cache und
+Nachprüfintervall (`FullTextIndexCompleteness`) ist mit #1429 entfallen: Der Rückstand ist ein
+Bestandszustand und gehört auf die Administrationsseite, nicht in jede Anfragenotiz.
 
 Auf einer Neuinstallation entsteht dieser Index erst beim **zweiten** Anwendungsstart: `vector_store`
 wird von Spring AI erst nach Liquibase angelegt, das Changeset überspringt sich deshalb beim ersten
@@ -479,7 +481,7 @@ behebt genau diese Asymmetrie, mit demselben Mechanismus wie bei Aktenzeichen.
   schreibt Gewichte in Positionen, ist dort also stillschweigend wirkungslos. Gebaut ist deshalb
   `setweight(to_tsvector('simple', …), 'A')`.
 - **Eine Änderung der Tokenbildung erhöht `content_tsv_version`.** Bestandszeilen gelten damit als
-  fehlend und werden über den Pipeline-Nachzug neu aufbereitet (seit #1270 gibt es dafür keinen
+  Rückstand und werden über den Pipeline-Nachzug neu aufbereitet (seit #1270 gibt es dafür keinen
   automatischen Nachlauf mehr, siehe Arbeitspaket 2a). Für den lexikalischen Pfad bleiben sie bis
   dahin findbar, nur ohne die neuen Lexeme — Bedingung dafür ist, dass die Änderung additiv ist; eine
   brechende Änderung der Lexemform braucht wieder einen Versionsfilter im Suchpfad
@@ -665,9 +667,11 @@ wie in #912: Werte verschiedener Verfahren sind nicht vergleichbar. Ein Chunk, d
 Volltextpfad unabhängig voneinander finden, ist **ein** Kandidat mit zwei Beiträgen — nicht zwei
 Kandidaten.
 
-**Der Volltextpfad hat dieselbe Ausfallsicherheit wie die Teilfragen-Zerlegung.** Fällt er aus, läuft
-die Fusion mit den verbleibenden Listen weiter. Eine defekte oder fehlende Volltextspalte darf zu
-schlechterer Suchqualität führen, nie zu einem Fehler für den fragenden Menschen.
+**Der Volltextpfad scheitert wie der Vektorpfad** (seit #1429). Das frühere Weiterlaufen mit den
+verbleibenden Listen sicherte gegen eine fehlende Volltextspalte ab — ein Zustand, den es seit
+#1047 nicht mehr gibt. Ohne ihn ist ein Fehler der Volltextabfrage ein Fehler wie jeder andere der
+Suche: Eine halbe hybride Suche liefert eine schlechtere Antwort, die sich sonst als normale
+ausgäbe, statt sichtbar zu scheitern.
 
 ---
 
@@ -1123,13 +1127,13 @@ Arbeitspaket 1 die Erklärbarkeit jeder Stufe verlangt.
   abgeschaltet, aktiviert und erreichbar, aktiviert aber unbelegt oder nicht erreichbar. Der letzte
   Zustand ist eine Störungsmeldung, keine Fußnote. Der Zugangsschlüssel erscheint nie, auch nicht
   gekürzt (unverändert zur bestehenden Modellverwaltung).
-- die **aktiven Suchpfade**: Vektor, Volltext, jeweils mit Zustand. Ein Volltextindex, der noch nicht
-  über den ganzen Bestand aufgebaut ist, ist hier sichtbar und nicht erst an schlechten Antworten
-  spürbar.
+- die **aktiven Suchpfade**: Vektor, Volltext, jeweils mit Zustand. Ein Volltextindex, dessen Zeilen
+  nach einem Update noch in einer älteren Fassung liegen, ist hier sichtbar und nicht erst an
+  schlechten Antworten spürbar.
 - der **Indexstatus** je Bibliothek: Zahl der Dokumente und Chunks, letzter Lauf, Rückstand, Zustand
   von Vektor- und Volltextindex — einschließlich des **Füllstands des Volltextindex** aus
   [Arbeitspaket 2a](#arbeitspaket-2a-volltextspalte-index-und-füllstand), aus derselben Datenquelle, die auch den
-  Alarm „Volltextpfad inaktiv oder unvollständig" auslöst.
+  Hinweis „Nachzug ausstehend" auslöst.
 - der **Stand der Kernfelder** je Bibliothek (seit #1067): wie viele indizierte Dokumente die aktuelle
   Extraktionsversion tragen, wie viele ausstehen (davon: wie viele auf ihren nächsten Konnektorlauf
   warten und von keinem weiteren Bestandslauf-Aufruf erreicht werden), wie viele der letzte
@@ -1634,7 +1638,7 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
 - ~~**Wie wird der Volltextindex bei einer Änderung der Analysekette nachgezogen?**~~ Beantwortet
   mit #1047/#1048/#1093, **neu beantwortet mit #1270.**
   `FullTextChunkStore#CURRENT_TSV_VERSION` markiert weiterhin jede geänderte `tsvector`-Form, und
-  Zeilen unterhalb der aktuellen Version gelten weiterhin als fehlend. Was entfällt, ist der
+  Zeilen unterhalb der aktuellen Version gelten weiterhin als Rückstand. Was entfällt, ist der
   automatische Nachzug: `FullTextBackfillService`/`-Scheduler` zogen solche Zeilen bis dahin in
   kleinen Chargen selbsttätig nach, samt Gift-Chunk-Isolierung (`chunk_full_text_skip`, #1093) und
   einem Tor, das eine noch unvollständige Bibliothek ganz aus dem lexikalischen Pfad hielt. Beides
@@ -1647,13 +1651,12 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   heraus. **Seit #1346 ([ADR-0028](../decisions/0028-tsv-version-uebergang.md)) filtert der
   Suchpfad nicht mehr auf die Fassung:** Eine Zeile alter Fassung bleibt findbar und wird durch den
   Nachzug lediglich um die neuen Lexeme reicher; Bedingung ist, dass jede Anhebung additiv bleibt.
-  Der Mischzustand wird weiterhin ausgewiesen: `fullTextIndexCondition()` zeigt `INCOMPLETE`, der
-  Suchpfad meldet sich als unvollständig, und das Erklärprotokoll jeder Suche nennt die Zahl der
-  betroffenen Bibliotheken (`FULL_TEXT_PERMISSION_FILTER`) — „unvollständig" heißt dort „Nachzug
-  ausstehend", nicht „unauffindbar".
+  Der Mischzustand wird weiterhin ausgewiesen: `fullTextIndexCondition()` zeigt `OUTDATED`, und der
+  Suchpfad meldet denselben Zustand — er heißt „Nachzug ausstehend", nicht „unauffindbar". Seit
+  #1429 steht er nur auf der Administrationsseite, nicht mehr in der Notiz jeder einzelnen Suche.
 
   Der Weg heraus ist der **Pipeline-Nachzug** (`POST /api/v1/admin/indexing/pipeline-reindex`), der
-  ein Dokument seit #1270 auch allein wegen veralteter oder fehlender `chunk_full_text`-Zeilen
+  ein Dokument seit #1270 auch allein wegen `chunk_full_text`-Zeilen alter Fassung
   auswählt — unabhängig von der Pipeline-Version, weil ein Bump dieser Konstante keine
   `DocumentFormat#version()` hebt. **Er ist teurer als der entfernte Backfill:** Er liest, zerlegt
   und bettet neu ein, statt nur die `tsvector`-Spalte zu überschreiben. Ein Bump der

@@ -1,6 +1,7 @@
 package io.opaa.query.retrieval;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -20,7 +21,6 @@ import io.opaa.query.retrieval.ranking.RerankStage;
 import io.opaa.query.retrieval.scope.MetadataFilterStage;
 import io.opaa.query.retrieval.scope.SearchScopeStage;
 import io.opaa.query.retrieval.search.FullTextChunkSearch;
-import io.opaa.query.retrieval.search.FullTextIndexCompleteness;
 import io.opaa.query.retrieval.search.FullTextSearchStage;
 import io.opaa.query.retrieval.search.QueryDecompositionService;
 import io.opaa.query.retrieval.search.SubQueryDecompositionStage;
@@ -63,7 +63,7 @@ class HybridFusionTest {
             new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
             new SubQueryDecompositionStage(queryDecompositionService),
             new VectorSearchStage(vectorStore),
-            new FullTextSearchStage(fullTextChunkSearch, mock(FullTextIndexCompleteness.class)),
+            new FullTextSearchStage(fullTextChunkSearch),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new RerankStage(mock(RerankModelRole.class)),
@@ -132,17 +132,19 @@ class HybridFusionTest {
   }
 
   /**
-   * A failing lexical query costs candidates, never the answer - the fusion runs on with what is
-   * left, and the result is the vector-only selection.
+   * A failing lexical query fails the run rather than quietly handing out the vector-only
+   * selection: that selection is the worse answer, and nothing in it would say so.
    */
   @Test
-  void aFailingLexicalQueryLeavesTheVectorSelectionIntact() {
+  void aFailingLexicalQueryFailsTheRunInsteadOfYieldingTheVectorOnlySelection() {
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-a", 0.8), chunk("vector-b", 0.7)));
     when(fullTextChunkSearch.search(anyString(), any(), any(), any(), anyInt()))
-        .thenThrow(new IllegalStateException("relation chunk_full_text does not exist"));
+        .thenThrow(new IllegalStateException("column content_tsv does not exist"));
 
-    assertThat(run(HYBRID)).extracting(Document::getId).containsExactly("vector-a", "vector-b");
+    assertThatThrownBy(() -> run(HYBRID))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("content_tsv");
   }
 
   /**

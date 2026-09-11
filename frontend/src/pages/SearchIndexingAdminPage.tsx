@@ -84,6 +84,7 @@ const PATH_STATE_LABELS: Record<SearchPathStatusResponse['state'], string> = {
   ACTIVE: 'Aktiv',
   DISABLED: 'Abgeschaltet',
   INCOMPLETE: 'Unvollständig',
+  OUTDATED: 'Nachzug ausstehend',
 }
 
 const STAGE_LABELS: Record<RetrievalStage, string> = {
