@@ -14,6 +14,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.document.DocumentService;
@@ -26,12 +27,14 @@ import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
 import io.opaa.test.OpaaMockedChatModelIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnOrganizationFixtures;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -45,6 +48,7 @@ import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextBox;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
@@ -69,6 +73,8 @@ class DocumentIndexingIntegrationTest {
   @Autowired private DocumentIndexingService documentIndexingService;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private VectorStore vectorStore;
+  @Autowired private VectorChunkStore vectorChunkStore;
+  @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private IndexingJobService indexingJobService;
@@ -84,6 +90,9 @@ class DocumentIndexingIntegrationTest {
 
   private UUID userId;
   private UUID targetLibraryId;
+
+  /** The organizations a single test method created beside {@link Organization#DEFAULT_ID}. */
+  private final List<UUID> throwawayOrganizationIds = new ArrayList<>();
 
   /**
    * {@link CurrentUser} snapshot for {@link #userId} - SYSTEM_ADMIN, {@link
@@ -154,6 +163,61 @@ class DocumentIndexingIntegrationTest {
                 false));
     targetLibraryId = library.getId();
     grantOwner(targetLibraryId, userId);
+  }
+
+  @AfterEach
+  void tearDown() {
+    // Cleaning up in @BeforeEach alone (above) left this class's chunks, documents and runs in the
+    // shared tables for whoever ran next (#1510): QueryIntegrationTest, sharing this context and
+    // this vector_store, then retrieved fewer than topK of its own tied chunks. Both halves are
+    // scoped so that an aborted method's rows are found here too: the class's own fixtures by its
+    // one owner e-mail, the ones a method creates in a throwaway organization by that
+    // organization's id.
+    List<UUID> ownLibraryIds =
+        jdbcTemplate.queryForList(
+            "SELECT id FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users"
+                + " WHERE email = 'indexing-it@example.com')",
+            UUID.class);
+    for (UUID libraryId : ownLibraryIds) {
+      removeContentOf(libraryId);
+      jdbcTemplate.update("DELETE FROM indexing_jobs WHERE library_id = ?", libraryId);
+    }
+    jdbcTemplate.update(
+        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
+            + " email = 'indexing-it@example.com')");
+    jdbcTemplate.update("DELETE FROM users WHERE email = 'indexing-it@example.com'");
+    removeThrowawayOrganizations();
+  }
+
+  /**
+   * Removes the organizations {@link #insertOrganization} created for a single test method, with
+   * everything in them. {@link OwnOrganizationFixtures} stops at {@code knowledge_libraries}, so
+   * the runs and documents underneath go first - a run keeps its organization (RESTRICT) even after
+   * its library is gone ({@code fk_indexing_jobs_library_organization} is ON DELETE SET NULL), and
+   * a still RUNNING one would otherwise also hold {@code uk_indexing_jobs_library_running} against
+   * the next method.
+   */
+  private void removeThrowawayOrganizations() {
+    for (UUID organizationId : throwawayOrganizationIds) {
+      List<UUID> libraryIds =
+          jdbcTemplate.queryForList(
+              "SELECT id FROM knowledge_libraries WHERE organization_id = ?",
+              UUID.class,
+              organizationId);
+      libraryIds.forEach(this::removeContentOf);
+      jdbcTemplate.update("DELETE FROM indexing_jobs WHERE organization_id = ?", organizationId);
+    }
+    ownOrganizationFixtures.removeOrganizations(throwawayOrganizationIds.toArray(new UUID[0]));
+  }
+
+  /**
+   * Chunks and documents of one library - chunks first, they carry no foreign key to a document.
+   */
+  private void removeContentOf(UUID libraryId) {
+    vectorChunkStore.deleteByLibraryId(libraryId);
+    // One statement rather than deleteAll(): PostgreSQL checks fk_documents_parent only at its
+    // end, so a parent and its attachment go together (ADR-0022).
+    jdbcTemplate.update("DELETE FROM documents WHERE library_id = ?", libraryId);
   }
 
   private void grantOwner(UUID libraryId, UUID granteeId) {
@@ -1061,10 +1125,12 @@ class DocumentIndexingIntegrationTest {
     awaitJobCompletion(jobInOrganizationB);
   }
 
+  /** Noted for {@link #removeThrowawayOrganizations()}, which removes them after the method. */
   private UUID insertOrganization(String name) {
     UUID id = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO organizations (id, name, created_at) VALUES (?, ?, now())", id, name);
+    throwawayOrganizationIds.add(id);
     return id;
   }
 

@@ -63,7 +63,20 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       // Small enough for the "upload too large" refusals; every other fixture is far below it.
       "opaa.upload.max-file-size=4096",
       // Only read by the startup ApplicationRunner, which finds no rows at that point.
-      "opaa.upload.pending-recovery-threshold-minutes=1"
+      "opaa.upload.pending-recovery-threshold-minutes=1",
+      // Exact search instead of the production HNSW index (which no test asserts on): every
+      // embedding of a test is FakeEmbeddingModel's one constant vector, so the graph degenerates
+      // into one cluster of ties and a library-filtered scan can walk hundreds of foreign chunks
+      // without ever reaching the dozen of the asking class - measured 0 of 13, at any
+      // ef_search, iterative_scan or scan_mem_multiplier. ANN recall must not decide whether an
+      // assertion holds; at the table sizes of a test the exact scan costs nothing.
+      //
+      // The price: that the production index can be created at all is now only exercised outside
+      // test/build - by the eval harness (own source set, real embeddings, index-type: hnsw), the
+      // E2E stack and bootRun. Concretely at risk is a raised OPAA_PGVECTOR_DIMENSIONS (default
+      // 1536): HNSW indexes at most 2000 dimensions, and PgVectorDimensionsGuard compares the
+      // column against the configuration, not against what is indexable.
+      "spring.ai.vectorstore.pgvector.index-type=none"
     })
 @AutoConfigureMockMvc
 @Import({TestcontainersConfiguration.class, OpaaTestBeans.class})

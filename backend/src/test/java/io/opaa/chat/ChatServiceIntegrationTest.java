@@ -19,9 +19,6 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.group.GroupMembershipHistoryRepository;
-import io.opaa.library.AssetGrantHistoryRepository;
-import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
@@ -30,6 +27,7 @@ import io.opaa.space.SpaceMembership;
 import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
 import io.opaa.test.OpaaMockedDocumentServiceIntegrationTest;
+import io.opaa.test.OwnOrganizationFixtures;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -57,14 +55,11 @@ import tools.jackson.databind.ObjectMapper;
  * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
  * spring.liquibase.enabled=true}, {@code ddl-auto=none}), not Hibernate-generated DDL - see #288
  * and {@link io.opaa.space.SpaceServiceIntegrationTest}'s Javadoc, which this class follows the
- * same pattern from, including its cleanup order: {@code userRepository.deleteAll()} deletes every
- * user in the shared test database, not just this class's own, so every non-system library -
- * regardless of which organization or test class created it - must be gone first, or a leftover
- * library from another class sharing this Spring context blocks the delete with a {@code
- * fk_knowledge_libraries_owner_user} RESTRICT violation. {@code chats.author_id} and {@code
+ * same pattern from, including its cleanup: every row lives in the throwaway organization created
+ * per test method, and only that organization is removed again. {@code chats.author_id} and {@code
  * chats.space_id} are plain {@code UUID} columns without {@code @ManyToOne}; Hibernate does not
- * create foreign keys for those, Liquibase does ({@code fk_chats_space}, {@code fk_chats_author},
- * migration 032).
+ * create foreign keys for those, Liquibase does ({@code fk_chats_space_organization}, {@code
+ * fk_chats_author_organization}).
  */
 @OpaaMockedDocumentServiceIntegrationTest
 class ChatServiceIntegrationTest {
@@ -78,13 +73,11 @@ class ChatServiceIntegrationTest {
   @Autowired private ChatMessageRepository chatMessageRepository;
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private SpaceMembershipRepository spaceMembershipRepository;
-  @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
-  @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
-  @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private ObjectMapper objectMapper;
+  @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
 
   // #557: ChatService#appendTurn triggers ChatTitleGenerationService's real, Spring-managed LLM
   // call on a chat's first turn. That job runs on chatTitleTaskExecutor, genuinely off the calling
@@ -110,29 +103,16 @@ class ChatServiceIntegrationTest {
     doReturn(ChatClient.builder(chatModel).build())
         .when(activeChatModelResolver)
         .resolveChatClient();
-    chatMessageRepository.deleteAll();
-    chatRepository.deleteAll();
-    spaceMembershipRepository.deleteAll();
-    spaceRepository.deleteAll();
-    libraryRepository.deleteAll();
-    grantHistoryRepository.deleteAll();
-    membershipHistoryRepository.deleteAll();
-    userRepository.deleteAll();
+    // Every row this class writes belongs to the throwaway organization created here, so tearDown()
+    // removes exactly that organization and everything in it - a freshly created organization
+    // cannot hold rows of an earlier test method, so there is nothing of its own to wipe first.
     organizationA =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org A")).getId();
   }
 
   @AfterEach
   void tearDown() {
-    chatMessageRepository.deleteAll();
-    chatRepository.deleteAll();
-    spaceMembershipRepository.deleteAll();
-    spaceRepository.deleteAll();
-    libraryRepository.deleteAll();
-    grantHistoryRepository.deleteAll();
-    membershipHistoryRepository.deleteAll();
-    userRepository.deleteAll();
-    organizationRepository.deleteById(organizationA);
+    ownOrganizationFixtures.removeOrganizations(organizationA);
   }
 
   /** A library {@code readerId} may actually read - i.e. also holds an explicit grant on. */
