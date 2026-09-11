@@ -110,7 +110,7 @@ flowchart TB
 | **Manuell** | „Jetzt indizieren" an der Bibliothek, in der Betriebsart, die der Konnektor für den Zustand der Bibliothek vorsieht. Genügt die Rolle EDITOR an der Bibliothek. Bei Confluence gibt es zusätzlich „Vollabgleich starten". |
 | **Zeitplan** | Je Bibliothek einstellbar, Details unten. |
 | **Webhook / Ereignis** | Confluence: Die Instanz meldet geänderte Seiten, OPAA holt wenige Sekunden später genau diese Seiten in einem kurzen Lauf „per Webhook". S3: Der Objektspeicher meldet erzeugte oder gelöschte Objekte (MinIO-Webhook, Ceph-Topic, EventBridge), OPAA prüft die gemeldeten Schlüssel wenige Sekunden später einzeln in einem **Ereignislauf** — ein bestätigtes `404` entfernt das Dokument samt Anhängen, sonst gilt der Stand des Speichers. Ersetzt weder Zeitplan noch Vollabgleich. |
-| **Upload** | Kein Lauf. Jede Datei geht sofort einzeln durch die Dokumentstrecke, auf einem eigenen Thread-Pool, damit ein Upload nie hinter einem langen Verzeichnislauf wartet. |
+| **Upload** | Kein Lauf. Jede Datei geht sofort einzeln durch die Dokumentstrecke, auf einem eigenen Thread-Pool, damit ein Upload nie hinter einem langen Verzeichnislauf wartet. Wo das hochgeladene Original danach liegt, entscheidet der Betrieb: [Originalablage](deployment.md#originalablage). |
 | **Nachzug (Admin)** | Kein regulärer Lauf. Ein Systemadministrator stößt die Neuverarbeitung von Dokumenten an, die mit einer älteren Pipeline-Version erzeugt wurden (Abschnitt 9), oder den Bestandslauf der Kernfelder (Kapitel [Metadaten](metadaten.md)). |
 
 **Zeitplan je Bibliothek.** Jede lauf-basierte Bibliothek kann einen Zeitplan tragen; für
