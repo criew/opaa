@@ -42,8 +42,10 @@ import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import io.opaa.test.ProductionDocumentFormats;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -1158,6 +1160,68 @@ class LibraryDocumentServiceTest {
     content.stream().close();
 
     assertThat(extracted).doesNotExist();
+  }
+
+  @Test
+  void loadContentCapsAStreamedRootOriginalAtTheUploadSizeLimitBeforeExtracting()
+      throws IOException {
+    // An UPLOAD original streamed from an object store (ADR-0030) is not bounded by its stream:
+    // an object swapped in the bucket for a larger one must not be buffered in full, and the
+    // partial copy must not survive.
+    long oversize = uploadProperties.maxFileSize() + 1;
+    uploadedOriginalStore =
+        new UploadedOriginalStore() {
+          @Override
+          public AcceptedUpload accept(UUID libraryId, String extension, InputStream bytes) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public Optional<DocumentContent> openForDownload(
+              UploadedOriginalRef ref, String fileName, String declaredContentType) {
+            return Optional.of(
+                DocumentContent.ofStream(
+                    new ByteArrayInputStream(new byte[(int) oversize]),
+                    fileName,
+                    "message/rfc822"));
+          }
+
+          @Override
+          public <T> Optional<T> withLocalFile(
+              UploadedOriginalRef ref, java.util.function.Function<Path, T> action) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public void delete(UploadedOriginalRef ref) {}
+
+          @Override
+          public boolean belongsToLibrary(UploadedOriginalRef ref) {
+            return true;
+          }
+        };
+    LibraryDocumentService streamingService =
+        serviceWith(new AttachmentExtractionProperties(4, java.time.Duration.ofSeconds(10)));
+    Document mail = uploadedMailRow("gross.eml");
+    Document attachment = mailAttachmentRow(mail, 0, "anlage.txt");
+    UUID documentId = stubAttachmentChain(mail, attachment);
+    long tempFilesBefore = attachmentParentTempFiles();
+
+    assertThatThrownBy(() -> streamingService.loadContent(documentId, caller))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
+
+    verifyNoInteractions(attachmentExtractor);
+    assertThat(attachmentParentTempFiles()).isEqualTo(tempFilesBefore);
+  }
+
+  private static long attachmentParentTempFiles() throws IOException {
+    try (java.util.stream.Stream<Path> entries =
+        Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {
+      return entries
+          .filter(p -> p.getFileName().toString().startsWith("opaa-attachment-parent-"))
+          .count();
+    }
   }
 
   @Test

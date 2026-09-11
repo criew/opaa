@@ -21,6 +21,7 @@ import io.opaa.indexing.source.attachment.AttachmentProperties;
 import io.opaa.indexing.source.attachment.StandaloneAttachmentAccess;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
@@ -718,13 +719,15 @@ public class LibraryDocumentService {
   }
 
   /**
-   * Copies a proxied remote original into a temp file so the pipeline can re-read it - bounded
-   * while copying by {@link RemoteContentProperties#maxBytes()}, which the underlying stream
-   * enforces by throwing before an oversized body is fully written.
+   * Copies a streamed root original into a temp file so the pipeline can re-read it. A proxied
+   * remote body is already bounded by {@link RemoteContentProperties#maxBytes()} through its own
+   * stream; an {@code UPLOAD} original streamed from an object store (ADR-0030) is not, so the copy
+   * is capped at {@link UploadProperties#maxFileSize()} - the most an upload could ever have been -
+   * and an object swapped in the bucket for a larger one cannot fill the temp directory.
    */
   private Path bufferToTempFile(DocumentContent content) throws IOException {
     Path temp = Files.createTempFile("opaa-attachment-parent-", ".tmp");
-    try (InputStream in = content.stream()) {
+    try (InputStream in = BoundedStreams.input(content.stream(), uploadProperties.maxFileSize())) {
       Files.copy(in, temp, StandardCopyOption.REPLACE_EXISTING);
     } catch (IOException | RuntimeException e) {
       deleteQuietly(temp);

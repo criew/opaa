@@ -60,6 +60,15 @@ public interface UploadedOriginalStore {
   boolean belongsToLibrary(UploadedOriginalRef ref);
 
   /**
+   * Runs once at startup ({@code UploadPendingRecoveryRunner}) - after the web server is already
+   * accepting requests, so an implementation must only touch what predates this process: a killed
+   * process has no {@code finally}, so whatever it left behind - working files, local copies - is
+   * removed here, and a store that cannot be reached is reported without failing the start
+   * (ADR-0030, Entscheidung 7 and 9). Nothing to do for a store whose working file is the original.
+   */
+  default void recoverAfterRestart() {}
+
+  /**
    * Bytes taken for an upload, and the local working file the rest of that upload runs on -
    * checksum, content type detection and the asynchronous parsing all read it. The filesystem
    * adapter's working file <em>is</em> the stored original; another backend hands out a local copy.
