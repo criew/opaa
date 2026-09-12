@@ -48,7 +48,9 @@ public record RateLimitProperties(
   public RateLimitProperties {
     trustedProxyCidrs = normalizeTrustedProxies(trustedProxyCidrs);
     localAuth =
-        localAuth != null ? localAuth : new LocalAuthLimits(null, null, null, null, null, null);
+        localAuth != null
+            ? localAuth
+            : new LocalAuthLimits(null, null, null, null, null, null, null);
   }
 
   /**
@@ -127,11 +129,10 @@ public record RateLimitProperties(
 
   /**
    * The limits of the local sign-in (ADR-0033, Entscheidung 9). {@code login}, {@code refresh},
-   * {@code register}, {@code forgotPassword} and {@code setPassword} are keyed by client address in
-   * {@code RateLimitFilter}; {@code changePassword} by the authenticated account and {@code
-   * register}/{@code forgotPassword} additionally by the address they name, both in {@code
-   * io.opaa.auth.local.LocalAuthRateLimiter}. The endpoints of {@code register}, {@code
-   * forgotPassword} and {@code setPassword} arrive with #1538; their limits stand ready.
+   * {@code register}, {@code forgotPassword}, {@code setPassword} and {@code verifyEmail} are keyed
+   * by client address in {@code RateLimitFilter}; {@code changePassword} by the authenticated
+   * account and {@code register}/{@code forgotPassword} additionally by the address they name, both
+   * in {@code io.opaa.auth.local.LocalAuthRateLimiter}.
    */
   public record LocalAuthLimits(
       LocalAuthLimit login,
@@ -139,7 +140,8 @@ public record RateLimitProperties(
       LocalAuthLimit changePassword,
       LocalAuthLimit register,
       LocalAuthLimit forgotPassword,
-      LocalAuthLimit setPassword) {
+      LocalAuthLimit setPassword,
+      LocalAuthLimit verifyEmail) {
 
     public LocalAuthLimits {
       login = login != null ? login : new LocalAuthLimit(10, 60, 100, null);
@@ -149,6 +151,7 @@ public record RateLimitProperties(
       register = register != null ? register : new LocalAuthLimit(5, 3600, 50, 3);
       forgotPassword = forgotPassword != null ? forgotPassword : new LocalAuthLimit(5, 3600, 50, 3);
       setPassword = setPassword != null ? setPassword : new LocalAuthLimit(10, 900, null, null);
+      verifyEmail = verifyEmail != null ? verifyEmail : new LocalAuthLimit(10, 900, null, null);
     }
   }
 

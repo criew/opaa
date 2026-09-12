@@ -410,12 +410,12 @@ opaa:
       window-seconds: ${OPAA_RATE_LIMIT_WEBHOOK_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_WEBHOOK_GLOBAL_MAX_REQUESTS:600}
     # ADR-0033, Entscheidung 9: the local sign-in and its self-service endpoints. login, refresh,
-    # register, forgot-password and set-password are keyed by client address in RateLimitFilter;
-    # change-password by the authenticated account, register and forgot-password additionally by
-    # the (hashed) e-mail address they name - both in io.opaa.auth.local.LocalAuthRateLimiter. The
-    # global ceilings of login, register and forgot-password are the operator's early warning
-    # against distributed credential stuffing: exceeding one is a WARN line and a metric. The
-    # endpoints of register, forgot-password and set-password arrive with #1538.
+    # register, forgot-password, set-password and verify-email are keyed by client address in
+    # RateLimitFilter; change-password by the authenticated account, register and forgot-password
+    # additionally by the (hashed) e-mail address they name - both in
+    # io.opaa.auth.local.LocalAuthRateLimiter. The global ceilings of login, register and
+    # forgot-password are the operator's early warning against distributed credential stuffing:
+    # exceeding one is a WARN line and a metric.
     local-auth:
       login:
         max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS:10}
@@ -440,6 +440,9 @@ opaa:
       set-password:
         max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_SET_PASSWORD_MAX_REQUESTS:10}
         window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_SET_PASSWORD_WINDOW_SECONDS:900}
+      verify-email:
+        max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_VERIFY_EMAIL_MAX_REQUESTS:10}
+        window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_VERIFY_EMAIL_WINDOW_SECONDS:900}
   cors:
     allowed-origins: ${OPAA_CORS_ALLOWED_ORIGINS:http://localhost:5173}
   # The address this installation is reachable under from outside, used for the links in mail
@@ -495,6 +498,10 @@ logging:
     software.amazon.awssdk.http.auth.aws.internal.signer: INFO
     org.apache.hc.client5.http.headers: INFO
     org.apache.hc.client5.http.wire: INFO
+    # The SMTP transport's protocol trace prints every mail on the wire - the links of the local
+    # account management included. Pinned so raising org.eclipse.angus.mail to DEBUG/TRACE for
+    # diagnosis never prints a link token; guarded by LocalSelfServiceIntegrationTest.
+    org.eclipse.angus.mail: INFO
 
 ---
 spring:

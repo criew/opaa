@@ -267,9 +267,11 @@ paths:
         fieldErrors[newPassword] (TOO_SHORT, TOO_LONG, EQUALS_EMAIL, TOO_COMMON) and leaves the
         link open. On success the hash is stored, a forced change cleared, the address confirmed
         (invitation), a failed-login lockout lifted, every access token issued up to now
-        invalidated and every refresh family revoked; audited as LOCAL_PASSWORD_SET. Reachable
-        without OPAA_PUBLIC_BASE_URL - a displayed link must stay redeemable. Only exists in the
-        "oidc" profile.
+        invalidated and every refresh family revoked; audited as LOCAL_PASSWORD_SET. Only the
+        invitation link confirms the address (the invitation is the administrator's act of
+        vouching for it); a reset link leaves an unconfirmed address to the verification link.
+        Reachable without OPAA_PUBLIC_BASE_URL - a displayed link must stay redeemable. Only
+        exists in the "oidc" profile.
       requestBody:
         required: true
         content:
@@ -299,8 +301,10 @@ paths:
         Ask for a password-reset link by e-mail (ADR-0033, Entscheidungen 9 and 11). Exists only
         while local accounts are switched on, the setting passwordResetEnabled is on and
         OPAA_PUBLIC_BASE_URL is configured (what GET /api/v1/auth/config reports as
-        localAccounts.passwordResetEnabled); otherwise it answers exactly like an unknown route
-        (404). Where it exists it always answers 204 after the same response-time class, whether
+        localAccounts.passwordResetEnabled); otherwise it answers with the standard 404 - the
+        state is public through /auth/config anyway (an unknown route under /api answers 401
+        without a session, see #1592). Where it exists it always answers 204 after the same
+        response-time class - the work runs off the request thread - whether
         or not a local account exists under the address: an ACTIVE account and an account in a
         failed-login lockout receive the mail PASSWORD_RESET with a RESET_PASSWORD link
         (local_auth_settings.reset_token_ttl_minutes; a newer link voids the older one); an
@@ -324,7 +328,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: The flow is switched off - indistinguishable from an unknown route
+          description: The flow is switched off (standard 404 body)
           content:
             application/json:
               schema:
@@ -341,16 +345,19 @@ paths:
         Register a local account (ADR-0033, Entscheidung 11). Exists only while local accounts
         are switched on, selfRegistrationEnabled is on with a non-empty domain list and
         OPAA_PUBLIC_BASE_URL is configured (localAccounts.selfRegistrationEnabled in
-        GET /api/v1/auth/config); otherwise it answers exactly like an unknown route (404).
-        Where it exists, a plausible address, a display name and a password that passes the
-        policy (400 with fieldErrors on email, displayName or password otherwise - a field error
-        reveals nothing about accounts) always answer 202 after the same response-time class:
+        GET /api/v1/auth/config); otherwise it answers with the standard 404 (see
+        localForgotPassword). Where it exists, a plausible address, a display name and a password
+        that passes the policy (400 with fieldErrors on email, displayName or password otherwise -
+        a field error reveals nothing about accounts) always answer 202 after the same
+        response-time class, the work running off the request thread:
         for a free address whose domain is on the list an account is created (role USER,
         expiry local_auth_settings.default_expiry_days from now, creation reason
         "Selbstregistrierung", address unconfirmed and therefore not able to sign in) and the
-        mail REGISTRATION_VERIFICATION carries a VERIFY_EMAIL link valid for 24 hours; a taken
-        address (under the local issuer, compared case-insensitively) and a domain outside the
-        list create nothing, send nothing and answer the same. Audited as LOCAL_USER_REGISTERED
+        mail REGISTRATION_VERIFICATION carries a VERIFY_EMAIL link valid for 24 hours; a still
+        unconfirmed self-registration of the same address gets a fresh link (the older one is
+        voided; hash and name stay); a taken address (under the local issuer, compared
+        case-insensitively) and a domain outside the list create nothing, send nothing and answer
+        the same. Audited as LOCAL_USER_REGISTERED
         under the system process local-auth. Counted per client address and per (hashed)
         e-mail address.
       requestBody:
@@ -369,7 +376,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: The flow is switched off - indistinguishable from an unknown route
+          description: The flow is switched off (standard 404 body)
           content:
             application/json:
               schema:
@@ -389,7 +396,7 @@ paths:
         consumed token and a token of an account that is meanwhile locked by the administration
         or expired are the same 400 with code TOKEN_INVALID. The SPA page behind the link
         triggers this POST - a link never has a side effect on GET. Reachable without
-        OPAA_PUBLIC_BASE_URL.
+        OPAA_PUBLIC_BASE_URL; counted per client address like set-password.
       requestBody:
         required: true
         content:
@@ -405,6 +412,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/me/groups:
     get:

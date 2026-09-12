@@ -173,7 +173,7 @@ const templateSeeds: MailTemplateSeed[] = [
 export const mockMailSampleValues: Record<string, string> = {
   productName: 'OPAA',
   displayName: 'Erika Mustermann',
-  actionUrl: 'https://opaa.example.org/konto/passwort?token=BEISPIEL',
+  actionUrl: 'https://opaa.example.org/set-password?token=BEISPIEL',
   expiresAtHuman: 'noch 24 Stunden',
   reason: 'Zu viele fehlgeschlagene Anmeldeversuche',
   count: '7',

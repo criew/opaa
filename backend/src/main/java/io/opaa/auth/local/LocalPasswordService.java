@@ -98,9 +98,10 @@ public class LocalPasswordService {
    * Redeems a {@code SET_PASSWORD} (invitation) or {@code RESET_PASSWORD} link - exactly once - and
    * sets the password. Every refused token is the same {@link
    * LocalActionTokenService#invalidToken}: unknown, expired, consumed, of another purpose, or of an
-   * account that may no longer redeem a link ({@link LocalAccountAccess#mayRedeemLink}). The
-   * redeemed link proves possession of the mailbox (or the administrator's hand-over), so an
-   * unconfirmed address counts as confirmed; a failed-login lockout is lifted, every other open
+   * account that may no longer redeem a link ({@link LocalAccountAccess#mayRedeemLink}). An
+   * invitation link confirms the address - the invitation is the administrator's act of vouching
+   * for it; a reset link does not, so a reset of a self-registered, unconfirmed account leaves the
+   * confirmation to the verification link. A failed-login lockout is lifted, every other open
    * password link of the account is consumed, and the act is audited as {@code LOCAL_PASSWORD_SET}
    * with the link's purpose.
    */
@@ -125,7 +126,7 @@ public class LocalPasswordService {
     policy.require("newPassword", newPassword, user.getEmail());
     row.setPasswordHash(passwordEncoder.encode(newPassword), now);
     row.clearPasswordChangeRequirement(now);
-    if (row.getEmailVerifiedAt() == null) {
+    if (token.getPurpose() == ActionTokenPurpose.SET_PASSWORD && row.getEmailVerifiedAt() == null) {
       row.markEmailVerified(now);
     }
     if (row.getLockedReason() == LockReason.FAILED_LOGINS) {
@@ -133,8 +134,8 @@ public class LocalPasswordService {
     } else {
       row.resetFailedLoginAttempts(now);
     }
-    row.invalidateSessionsIssuedBefore(LocalTokenRevocationService.cutoffFor(now), now);
     credentials.save(row);
+    revocation.invalidateSessionsIssuedBefore(user.getId());
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.SET_PASSWORD);
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.RESET_PASSWORD);
     refreshTokens.revokeAllForUser(user.getId(), RevocationReason.PASSWORD_CHANGED);

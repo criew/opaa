@@ -83,16 +83,18 @@ public class LocalSelfServiceAccountService {
    * #CREATED_REASON}, address unconfirmed. A taken address is a {@link ConflictException} ({@code
    * EMAIL_TAKEN}); an insert lost to a concurrent registration surfaces as the unique index's
    * {@code DataIntegrityViolationException} - the caller treats both as "no account", silently. The
-   * personal space is not provisioned here: the first sign-in after the confirmation creates it on
-   * the path every sign-in takes, so an unconfirmed registration leaves no space behind.
+   * one exception is a still unconfirmed self-registration of the same address: it gets a fresh
+   * verification link (the older one is voided) and nothing else - neither the hash nor the name
+   * are replaced, or a second registration could plant a password the first person then confirms.
+   * The personal space is not provisioned here: the first sign-in after the confirmation creates it
+   * on the path every sign-in takes, so an unconfirmed registration leaves no space behind.
    */
   @Transactional
   public Registered register(String email, String displayName, String passwordHash) {
     Instant now = clock.instant();
-    if (users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email).isPresent()) {
-      throw new ConflictException(
-          "Unter dieser E-Mail-Adresse besteht bereits ein lokales Konto.",
-          LocalUserService.EMAIL_TAKEN);
+    Optional<User> existing = users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email);
+    if (existing.isPresent()) {
+      return pendingRegistration(existing.get(), now).orElseThrow(LocalUserService::addressTaken);
     }
     User user = User.localAccount(email, displayName);
     user.setOrganizationId(Organization.DEFAULT_ID);
@@ -117,6 +119,25 @@ public class LocalSelfServiceAccountService {
             .outcome(AuditOutcome.SUCCESS)
             .build());
     return new Registered(user, row, verification);
+  }
+
+  /** The account again with a fresh verification link, if it is a self-registration still open. */
+  private Optional<Registered> pendingRegistration(User user, Instant now) {
+    return credentials
+        .findById(user.getId())
+        .filter(
+            row ->
+                row.getEmailVerifiedAt() == null
+                    && row.getPasswordHash() != null
+                    && CREATED_REASON.equals(row.getCreatedReason())
+                    && LocalAccountAccess.mayRedeemLink(row, now))
+        .map(
+            row ->
+                new Registered(
+                    user,
+                    row,
+                    actionTokens.issue(
+                        user.getId(), ActionTokenPurpose.VERIFY_EMAIL, VERIFY_EMAIL_TTL)));
   }
 
   /**

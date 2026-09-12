@@ -5,10 +5,10 @@ import io.opaa.auth.local.LocalSelfServiceAccountService.Registered;
 import io.opaa.auth.oidc.OidcProviderRegistry;
 import io.opaa.common.ConflictException;
 import io.opaa.common.PublicBaseUrl;
+import io.opaa.mail.MailDispatchExecutor;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,21 +20,21 @@ import org.springframework.stereotype.Service;
  * The self-service of local accounts as the API sees it (ADR-0033, Entscheidungen 9, 10 and 11):
  * the two link flows exist only while the management is switched on, the setting is on (with a
  * domain list for registration) and a public base URL can carry a link; the two link endpoints
- * exist always. Nothing here tells the caller whether an address has an account: "forgot password"
- * and a registration answer after the same {@link #RESPONSE_FLOOR} whether or not a mail leaves, a
- * registration pays the hashing cost before it looks at the address, a taken address is silently no
- * account, and mail leaves on a thread of its own - synchronous SMTP would let the response time
- * betray the account. Deliberately not {@code @Transactional}: the account writes are one
- * transaction each in {@link LocalSelfServiceAccountService} and {@link LocalPasswordService}, and
- * the send follows their commit.
+ * exist always. Nothing here tells the caller whether an address has an account: after the field
+ * checks - which reveal nothing about accounts - "forgot password" and a registration hand their
+ * whole work (hash, lookup, account, mail) to the {@link MailDispatchExecutor} and answer after
+ * exactly {@link #RESPONSE_FLOOR}, so the response time is the same constant in every outcome;
+ * synchronous hashing or SMTP would let it betray the account. Deliberately not
+ * {@code @Transactional}: the account writes are one transaction each in {@link
+ * LocalSelfServiceAccountService} and {@link LocalPasswordService}, run on the executor's thread,
+ * and the send follows their commit.
  */
 @Service
 public class LocalSelfServiceService {
 
   /**
-   * The least time either of the two address-taking flows takes to answer - well above the database
-   * work of the account-exists path, so the difference between "account" and "no account"
-   * disappears in it.
+   * The time either of the two address-taking flows takes to answer, whatever the outcome: the work
+   * itself runs off the request thread, so nothing but this constant shapes the response time.
    */
   public static final Duration RESPONSE_FLOOR = Duration.ofMillis(250);
 
@@ -60,7 +60,8 @@ public class LocalSelfServiceService {
       OidcProviderRegistry registry,
       PublicBaseUrl publicBaseUrl,
       PasswordEncoder passwordEncoder,
-      PasswordPolicy policy) {
+      PasswordPolicy policy,
+      MailDispatchExecutor dispatch) {
     this(
         accounts,
         passwords,
@@ -70,12 +71,7 @@ public class LocalSelfServiceService {
         publicBaseUrl,
         passwordEncoder,
         policy,
-        Executors.newSingleThreadExecutor(
-            runnable -> {
-              Thread thread = new Thread(runnable, "local-self-service-mailer");
-              thread.setDaemon(true);
-              return thread;
-            }));
+        (Executor) dispatch);
   }
 
   LocalSelfServiceService(
@@ -120,48 +116,48 @@ public class LocalSelfServiceService {
     accounts.verifyEmail(rawToken);
   }
 
-  /** Always returns after {@link #RESPONSE_FLOOR}; a mail leaves only for an eligible account. */
+  /** Answers after {@link #RESPONSE_FLOOR}; a mail leaves only for an eligible account. */
   public void requestPasswordReset(String email) {
     String address = LocalUserService.requireAddress(email);
     long deadline = System.nanoTime() + RESPONSE_FLOOR.toNanos();
-    try {
-      accounts
-          .issueResetLinkFor(address)
-          .ifPresent(
-              link -> executor.execute(() -> mailer.sendPasswordReset(link.user(), link.token())));
-    } finally {
-      holdUntil(deadline);
-    }
+    executor.execute(
+        () ->
+            accounts
+                .issueResetLinkFor(address)
+                .ifPresent(link -> mailer.sendPasswordReset(link.user(), link.token())));
+    holdUntil(deadline);
   }
 
   /**
    * Field errors for a bad address, name or password come first - they reveal nothing about
-   * accounts. Then the hash is computed whatever follows, the domain checked against the list, and
-   * the account created unless the address is taken (found, or lost in a race on the unique index);
-   * only a created account gets the verification mail. Every path answers after the floor.
+   * accounts. Everything after them runs on the executor: the hash, the domain check against the
+   * list, the account unless the address is taken (found, or lost in a race on the unique index) or
+   * still an unconfirmed self-registration (which gets its link again), and the verification mail.
    */
   public void register(String email, String displayName, String password) {
     String address = LocalUserService.requireAddress(email);
     String name = LocalUserService.requireText("displayName", displayName, DISPLAY_NAME_MAX_LENGTH);
     policy.require("password", password, address);
     long deadline = System.nanoTime() + RESPONSE_FLOOR.toNanos();
-    try {
-      String hash = passwordEncoder.encode(password);
-      if (!isDomainAllowed(address)) {
-        return;
-      }
-      Registered registered;
-      try {
-        registered = accounts.register(address, name, hash);
-      } catch (ConflictException | DataIntegrityViolationException taken) {
-        return;
-      }
-      log.info("Self-registration created local account {}", registered.user().getId());
-      executor.execute(
-          () -> mailer.sendRegistrationVerification(registered.user(), registered.verification()));
-    } finally {
-      holdUntil(deadline);
+    executor.execute(() -> registerOffThread(address, name, password));
+    holdUntil(deadline);
+  }
+
+  private void registerOffThread(String address, String name, String password) {
+    String hash = passwordEncoder.encode(password);
+    if (!isDomainAllowed(address)) {
+      return;
     }
+    Registered registered;
+    try {
+      registered = accounts.register(address, name, hash);
+    } catch (ConflictException | DataIntegrityViolationException taken) {
+      return;
+    }
+    log.info(
+        "Self-registration issued a verification link for local account {}",
+        registered.user().getId());
+    mailer.sendRegistrationVerification(registered.user(), registered.verification());
   }
 
   private boolean linksPossible() {

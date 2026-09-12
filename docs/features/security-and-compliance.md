@@ -225,9 +225,10 @@ mit Grund `ADMIN` oder `INACTIVITY`, `LOCAL_USER_UNLOCKED`, `LOCAL_USER_PASSWORD
 `LOCAL_USER_DELETED`, `LOCAL_ACCOUNTS_SETTINGS_CHANGED`; Subjekt als Pseudonym, nie Adresse, Name
 oder Anlagegrund als Wert), sowie — seit #1538 — das Setzen des eigenen Passworts über einen
 Einladungs- oder Rücksetzlink (`LOCAL_PASSWORD_SET` mit dem Zweck des Links) und die
-Selbstregistrierung (`LOCAL_USER_REGISTERED` unter dem Systemprozess `local-auth`; die Anfrage
-„Passwort vergessen" und die Bestätigung der Adresse ändern für sich keinen Zustand und erzeugen
-kein Ereignis). Noch **nicht** verdrahtet — weil
+Selbstregistrierung (`LOCAL_USER_REGISTERED` unter dem Systemprozess `local-auth`). Die Anfrage
+„Passwort vergessen" ändert keinen Zustand; die Bestätigung der eigenen Adresse ist eine Handlung
+der Person am eigenen Konto und nach ADR-0033, Entscheidung 13, kein Verwaltungsakt — beide
+erzeugen kein Ereignis. Noch **nicht** verdrahtet — weil
 die jeweilige Funktion selbst noch fehlt, nicht weil sie ausgenommen wäre: Ablauf einer Befristung
 (kein Scheduler), Aussetzen von Grants durch eine gesenkte Freigabe-Obergrenze, Bereitstellung einer
 Bibliothek in einem Space, Eigentümerübernahme ohne Zuständigkeit und der Übergang in „Nachfolge

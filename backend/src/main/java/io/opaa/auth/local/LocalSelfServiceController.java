@@ -18,13 +18,14 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 /**
  * The self-service endpoints of local accounts under {@code /api/v1/auth/local} (ADR-0033,
  * Entscheidungen 9 and 11): redeeming an invitation or reset link, asking for a reset link,
- * registering, confirming the address. A switched-off flow is refused as the very {@link
- * NoResourceFoundException} an unknown route raises - before the address is counted or touched - so
- * nothing about the installation is probed through it; an available flow spends the address's
- * budget ({@link LocalAuthRateLimiter}) before anything happens with the address. The two
+ * registering, confirming the address. A switched-off flow answers with the standard 404 ({@link
+ * NoResourceFoundException}, rendered like a path nobody serves) before the address is counted or
+ * touched; the state of the flows is public through {@code GET /api/v1/auth/config} anyway, and an
+ * unknown route under {@code /api} answers 401 without a session, so the 404 hides the endpoint's
+ * existence only from a caller who does not look closely (#1592). An available flow spends the
+ * address's budget ({@link LocalAuthRateLimiter}) before anything happens with the address. The two
  * address-taking bodies are bound without {@code @Valid} on purpose: their field rules are checked
- * behind the availability gate, so a well-formed body never yields anything but the 404 while the
- * flow is off. Exists in the {@code oidc} profile only.
+ * behind the availability gate. Exists in the {@code oidc} profile only.
  */
 @RestController
 @RequestMapping("/api/v1/auth/local")
@@ -76,7 +77,7 @@ public class LocalSelfServiceController {
     return ResponseEntity.noContent().build();
   }
 
-  /** What Spring raises for a path nobody serves - the handler renders it as the standard 404. */
+  /** What Spring raises for a path nobody serves - the handler renders the standard 404 body. */
   private static NoResourceFoundException unknownRoute(String path) {
     return new NoResourceFoundException(HttpMethod.POST, BASE_PATH + path, BASE_PATH + path);
   }

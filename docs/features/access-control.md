@@ -304,12 +304,12 @@ jede Überschreitung mit `429`, `Retry-After` und dem einen deutschen Fehlertext
 zählen nicht. Grenzen der lokalen Anmeldung (`opaa.rate-limit.local-auth.*`): Login 10/60 s je
 Adresse, Refresh 30/60 s je Adresse, Passwortwechsel 5/300 s je Konto (vor dem Vergleich des
 aktuellen Passworts), Registrierung 5/3600 s je Adresse und 3/3600 s je E-Mail-Adresse, „Passwort
-vergessen" 5/3600 s je Adresse und 3/3600 s je E-Mail-Adresse, Passwort setzen 10/900 s je
-Adresse; Login, Registrierung und „Passwort vergessen" haben zusätzlich eine globale Grenze je
+vergessen" 5/3600 s je Adresse und 3/3600 s je E-Mail-Adresse, Passwort setzen und E-Mail
+bestätigen je 10/900 s je Adresse; Login, Registrierung und „Passwort vergessen" haben zusätzlich eine globale Grenze je
 Fenster (100 bzw. 50), deren Überschreiten eine Warnung und die Metrik `opaa.rate_limit.rejected`
 (`limit`, `scope=global`) erzeugt. Die adress- und kontobezogenen Grenzen liegen in
 `LocalAuthRateLimiter` (E-Mail-Adressen nur als Hash im Speicher); die Endpunkte der
-Selbstbedienung (#1538) rufen `requireAddressAllowance` auf, die Pfadregeln stehen bereit. Nach
+Selbstbedienung (#1538) rufen `requireAddressAllowance` vor jeder Verarbeitung auf. Nach
 fünf Fehlversuchen (`OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS`) sperrt `LocalAccountLockoutListener`
 das Konto für feste 15 Minuten (`OPAA_AUTH_LOCAL_LOCKOUT_DURATION`, `locked_reason =
 FAILED_LOGINS`, keine progressive Verlängerung; die Sperre setzt den Zähler auf null, während der
@@ -409,38 +409,47 @@ löst einen Einladungs- (`SET_PASSWORD`) oder Rücksetzlink (`RESET_PASSWORD`) a
 ein: unbekannt, abgelaufen, verbraucht, falscher Zweck und ein Konto, das inzwischen durch Verwalter
 oder Inaktivität gesperrt oder abgelaufen ist, antworten alle mit derselben 400 `TOKEN_INVALID`; die
 Passwortrichtlinie antwortet mit Feldfehlern und lässt den Link offen. Der eingelöste Link setzt den
-Hash, hebt einen erzwungenen Wechsel auf, bestätigt die Adresse (der Link belegt den Zugriff auf das
-Postfach), hebt eine **Fehlversuch-Sperre** auf (nicht die Sperre durch Verwalter oder Inaktivität),
-entwertet alle übrigen offenen Passwortlinks des Kontos und beendet jede Sitzung
-(`password_invalidated_before`, Familien `PASSWORD_CHANGED`); Ereignis `LOCAL_PASSWORD_SET` mit dem
-Zweck des Links. **Passwort vergessen** existiert nur, solange die Verwaltung eingeschaltet, die
-Einstellung an und `OPAA_PUBLIC_BASE_URL` gesetzt ist — sonst antwortet der Endpunkt exakt wie eine
-unbekannte Route (404), damit die Existenz des Flusses nicht sondiert wird; die SPA kennt den Stand
-aus `/auth/config`. Wo er existiert, antwortet er immer 204 nach derselben **festen Zeitklasse**
-(mindestens 250 ms, weit über der Datenbankarbeit des Konto-existiert-Pfads), unabhängig davon, ob
-ein Konto besteht: ein aktives Konto und ein Konto in Fehlversuch-Sperre erhalten die Mail
-`PASSWORD_RESET` mit einem `RESET_PASSWORD`-Link (`reset_token_ttl_minutes`; ein neuer Link entwertet
-ältere), Konten mit Verwalter- oder Inaktivitätssperre, abgelaufene und eingeladene Konten sowie
-unbekannte Adressen erhalten nichts und antworten gleich. Der Versand läuft auf einem eigenen Thread,
-weil ein synchroner SMTP-Versand die Antwortzeit verraten würde; die Anfrage ändert keinen Zustand
-und wird nicht protokolliert — Sitzungen enden erst beim Einlösen. **Selbstregistrierung** existiert
-nur mit Verwaltung an, `self_registration_enabled`, **nichtleerer Domänenliste** und Basis-URL (sonst
-404 wie oben). Adresse, Anzeigename und Passwort werden zuerst geprüft (Feldfehler `email`,
-`displayName`, `password` — sie verraten nichts über Konten); danach wird der Hash **immer**
-berechnet und erst dann die Domäne gegen die Liste und die Adresse gegen den lokalen Issuer geprüft:
-eine freie Adresse mit erlaubter Domäne wird als Konto angelegt (Rolle `USER`, Ablauf **Pflicht** aus
+Hash, hebt einen erzwungenen Wechsel auf, bestätigt beim **Einladungslink** die Adresse (die
+Einladung ist der Akt, mit dem der Verwalter für sie bürgt — ein Rücksetzlink bestätigt nichts, eine
+unbestätigte Selbstregistrierung bleibt auf ihren Bestätigungslink angewiesen), hebt eine
+**Fehlversuch-Sperre** auf (nicht die Sperre durch Verwalter oder Inaktivität), entwertet alle
+übrigen offenen Passwortlinks des Kontos und beendet jede Sitzung (`password_invalidated_before`,
+Familien `PASSWORD_CHANGED`); Ereignis `LOCAL_PASSWORD_SET` mit dem Zweck des Links. **Passwort
+vergessen** existiert nur, solange die Verwaltung eingeschaltet, die Einstellung an und
+`OPAA_PUBLIC_BASE_URL` gesetzt ist — sonst antwortet der Endpunkt mit der Standard-404. Der Zustand
+der Flüsse ist über `/auth/config` ohnehin öffentlich; eine tatsächlich unbekannte Route unter
+`/api` antwortet ohne Sitzung mit 401, die 404 verbirgt den Endpunkt also nur vor einem flüchtigen
+Blick (vollständige Ununterscheidbarkeit: #1592). Wo er existiert, antwortet er immer 204 nach
+**genau derselben Zeit** (250 ms; nach der Prüfung der Adresse läuft die gesamte Arbeit — Suche,
+Link, Versand — auf dem Mail-Thread `MailDispatchExecutor`, die Anfrage wartet nur die feste Frist
+ab), unabhängig davon, ob ein Konto besteht: ein aktives Konto und ein Konto in Fehlversuch-Sperre
+erhalten die Mail `PASSWORD_RESET` mit einem `RESET_PASSWORD`-Link (`reset_token_ttl_minutes`; ein
+neuer Link entwertet ältere), Konten mit Verwalter- oder Inaktivitätssperre, abgelaufene und
+eingeladene Konten sowie unbekannte Adressen erhalten nichts und antworten gleich. Die Anfrage
+ändert keinen Zustand und wird nicht protokolliert — Sitzungen enden erst beim Einlösen.
+**Selbstregistrierung** existiert nur mit Verwaltung an, `self_registration_enabled`, **nichtleerer
+Domänenliste** und Basis-URL (sonst 404 wie oben). Adresse, Anzeigename und Passwort werden zuerst
+geprüft (Feldfehler `email`, `displayName`, `password` — sie verraten nichts über Konten); alles
+danach läuft auf dem Mail-Thread, die Antwort ist in jedem Ausgang die **dieselbe 202 nach
+derselben Zeit**: Hash, Domäne gegen die Liste (exakt), Adresse gegen den lokalen Issuer — eine
+freie Adresse mit erlaubter Domäne wird als Konto angelegt (Rolle `USER`, Ablauf **Pflicht** aus
 `default_expiry_days`, Anlagegrund „Selbstregistrierung", Adresse unbestätigt und damit `INVITED`,
 nicht anmeldefähig) und erhält `REGISTRATION_VERIFICATION` mit einem 24 Stunden gültigen
-`VERIFY_EMAIL`-Link; eine belegte Adresse (auch bei gleichzeitiger Anlage, Unique-Index) und eine
-fremde Domäne legen nichts an, senden nichts — auch keine Hinweis-Mail — und antworten mit derselben
-202 nach derselben Zeitklasse. Ereignis `LOCAL_USER_REGISTERED` unter dem Systemakteur `local-auth`.
-Der persönliche Space entsteht erst bei der ersten Anmeldung nach der Bestätigung, auf dem Weg jeder
-Anmeldung — eine nie bestätigte Registrierung hinterlässt keinen Space. **E-Mail bestätigen** löst
-den `VERIFY_EMAIL`-Link genau einmal ein und setzt `email_verified_at` (400 `TOKEN_INVALID` wie
-oben); danach ist das Konto `ACTIVE`. Die Rate-Limits aus #1535 greifen je Client-Adresse über die
-Pfadregeln und je E-Mail-Adresse vor jeder Verarbeitung — bei abgeschaltetem Fluss aber erst nach
-der 404. Kein Roh-Token steht in Log, Datenbank oder Protokoll. Die Seiten (#1540) und das
-Handbuchkapitel (#1543) folgen.
+`VERIFY_EMAIL`-Link; eine **noch unbestätigte Selbstregistrierung derselben Adresse** erhält einen
+neuen Link (der ältere ist entwertet), Hash und Name bleiben — sonst könnte eine zweite
+Registrierung ein Passwort hinterlegen, das die erste Person dann bestätigt; eine belegte Adresse
+(auch bei gleichzeitiger Anlage, Unique-Index) und eine fremde Domäne legen nichts an und senden
+nichts — auch keine Hinweis-Mail. Ereignis `LOCAL_USER_REGISTERED` unter dem Systemakteur
+`local-auth`, nur bei der Anlage. Der persönliche Space entsteht erst bei der ersten Anmeldung nach
+der Bestätigung, auf dem Weg jeder Anmeldung — eine nie bestätigte Registrierung hinterlässt keinen
+Space. **E-Mail bestätigen** löst den `VERIFY_EMAIL`-Link genau einmal ein und setzt
+`email_verified_at` (400 `TOKEN_INVALID` wie oben); danach ist das Konto `ACTIVE`. Die Rate-Limits
+aus #1535 greifen je Client-Adresse über die Pfadregeln (auch für `verify-email`, 10/900 s) und je
+E-Mail-Adresse vor jeder Verarbeitung — bei abgeschaltetem Fluss aber erst nach der 404. Der
+Mail-Thread hat eine begrenzte Warteschlange (1000); ein Versand, der keinen Platz findet, wird mit
+einer Warnung verworfen. Kein Roh-Token steht in Log, Datenbank oder Protokoll; der
+Protokollmitschnitt des SMTP-Transports (`org.eclipse.angus.mail`) ist in `application.yml` auf
+`INFO` festgenagelt. Die Seiten (#1540) und das Handbuchkapitel (#1543) folgen.
 
 Die Mandantengrenze gilt auch für die Anmeldung: Eine Identität gehört zu **genau einer** Organisation.
 Es gibt kein Konto, das mehrere Mandanten sieht, und keinen Wechsel zwischen ihnen innerhalb einer

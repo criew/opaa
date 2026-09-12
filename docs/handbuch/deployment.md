@@ -893,16 +893,18 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_RATE_LIMIT_LOCAL_AUTH_REFRESH_WINDOW_SECONDS` | `60` | nicht gesetzt (Anwendungs-Default gilt) | Fenster der Erneuerungsgrenze in Sekunden |
 | `OPAA_RATE_LIMIT_LOCAL_AUTH_CHANGE_PASSWORD_MAX_REQUESTS` | `5` | nicht gesetzt (Anwendungs-Default gilt) | Max. Passwortwechsel-Versuche (`POST /api/v1/auth/local/change-password`) **pro Konto** pro Fenster — gezählt vor der Prüfung des aktuellen Passworts |
 | `OPAA_RATE_LIMIT_LOCAL_AUTH_CHANGE_PASSWORD_WINDOW_SECONDS` | `300` | nicht gesetzt (Anwendungs-Default gilt) | Fenster der Passwortwechsel-Grenze in Sekunden |
-| `OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_MAX_REQUESTS` | `5` | nicht gesetzt (Anwendungs-Default gilt) | Max. Registrierungen pro Client-Adresse pro Fenster (der Endpunkt kommt mit der Selbstbedienung; die Grenze steht bereit) |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_MAX_REQUESTS` | `5` | nicht gesetzt (Anwendungs-Default gilt) | Max. Registrierungen pro Client-Adresse pro Fenster |
 | `OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_WINDOW_SECONDS` | `3600` | nicht gesetzt (Anwendungs-Default gilt) | Fenster der Registrierungsgrenze in Sekunden |
 | `OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_GLOBAL_MAX_REQUESTS` | `50` | nicht gesetzt (Anwendungs-Default gilt) | Max. Registrierungen über alle Adressen pro Fenster (Warnung und Metrik beim Überschreiten) |
 | `OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_MAX_REQUESTS_PER_ADDRESS` | `3` | nicht gesetzt (Anwendungs-Default gilt) | Max. Registrierungen, die dieselbe E-Mail-Adresse nennen, pro Fenster |
-| `OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_MAX_REQUESTS` | `5` | nicht gesetzt (Anwendungs-Default gilt) | Max. „Passwort vergessen"-Anfragen pro Client-Adresse pro Fenster (Endpunkt kommt mit der Selbstbedienung) |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_MAX_REQUESTS` | `5` | nicht gesetzt (Anwendungs-Default gilt) | Max. „Passwort vergessen"-Anfragen pro Client-Adresse pro Fenster |
 | `OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_WINDOW_SECONDS` | `3600` | nicht gesetzt (Anwendungs-Default gilt) | Fenster der „Passwort vergessen"-Grenze in Sekunden |
 | `OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_GLOBAL_MAX_REQUESTS` | `50` | nicht gesetzt (Anwendungs-Default gilt) | Max. „Passwort vergessen"-Anfragen über alle Adressen pro Fenster (Warnung und Metrik beim Überschreiten) |
 | `OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_MAX_REQUESTS_PER_ADDRESS` | `3` | nicht gesetzt (Anwendungs-Default gilt) | Max. „Passwort vergessen"-Anfragen, die dieselbe E-Mail-Adresse nennen, pro Fenster |
-| `OPAA_RATE_LIMIT_LOCAL_AUTH_SET_PASSWORD_MAX_REQUESTS` | `10` | nicht gesetzt (Anwendungs-Default gilt) | Max. Einlösungen eines Einladungs- oder Rücksetzlinks pro Client-Adresse pro Fenster (Endpunkt kommt mit der Selbstbedienung) |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_SET_PASSWORD_MAX_REQUESTS` | `10` | nicht gesetzt (Anwendungs-Default gilt) | Max. Einlösungen eines Einladungs- oder Rücksetzlinks pro Client-Adresse pro Fenster |
 | `OPAA_RATE_LIMIT_LOCAL_AUTH_SET_PASSWORD_WINDOW_SECONDS` | `900` | nicht gesetzt (Anwendungs-Default gilt) | Fenster der Link-Einlösungsgrenze in Sekunden |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_VERIFY_EMAIL_MAX_REQUESTS` | `10` | nicht gesetzt (Anwendungs-Default gilt) | Max. Einlösungen eines Bestätigungslinks der Selbstregistrierung pro Client-Adresse pro Fenster |
+| `OPAA_RATE_LIMIT_LOCAL_AUTH_VERIFY_EMAIL_WINDOW_SECONDS` | `900` | nicht gesetzt (Anwendungs-Default gilt) | Fenster der Bestätigungsgrenze in Sekunden |
 | **Verzeichnis-Synchronisation (Gruppen)** | | | |
 | `OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION` | `0.3` | nicht gesetzt (Anwendungs-Default gilt) | Plausibilitätsschwelle: Würde ein Synchronisationslauf mehr als diesen Anteil der bestehenden Gruppenmitgliedschaften entfernen, wird er verworfen und gemeldet statt angewendet — Schutz vor einer fehlkonfigurierten Verzeichnisquelle, die scheinbar fast alle Mitgliedschaften löscht. Gemessen ausschließlich an Entfernungen, nicht an Hinzufügungen. Muss echt größer als `0` und höchstens `1` sein — ein ungültiger Wert lässt den Start fehlschlagen, statt sich stillschweigend zu lockern |
 | **Authentifizierung** | | | |

@@ -401,7 +401,8 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
 - **Rate-Limiting je Adresse, je Konto und global** (qnop ADR-0027, ergänzt um die globale Grenze,
   die jeder bestehende Endpunkt hat): Login 10/60 s je IP, Refresh 30/60 s je IP, Passwortwechsel
   5/300 s je Subject, Registrierung 5/3600 s je IP und 3/3600 s je Adresse, Passwort vergessen
-  5/3600 s je IP und 3/3600 s je Adresse, Passwort setzen 10/900 s je IP; dazu für Login,
+  5/3600 s je IP und 3/3600 s je Adresse, Passwort setzen und E-Mail-Bestätigung je 10/900 s je
+  IP; dazu für Login,
   Registrierung und Passwort vergessen eine **globale Grenze je Fenster** (`globalMaxRequests`, wie
   `OPAA_RATE_LIMIT_QUERY_GLOBAL_MAX_REQUESTS`) gegen verteiltes Credential Stuffing, deren
   Überschreiten eine `WARN`-Zeile und eine Metrik erzeugt — das Frühwarnsignal des Betriebs. Antwort
@@ -473,7 +474,13 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
 - **`MailService.send(key, locale, recipient, vars)`** liefert ein versiegeltes
   `SendResult { Sent \| Skipped(reason) \| Failed(reason) }` und wirft nie; `Skipped`, wenn SMTP nicht
   konfiguriert ist. Versand **synchron** mit Timeouts, ohne Outbox und ohne Wiederholung: Die
-  Auth-Mails sind an eine Nutzeraktion gebunden, deren Ergebnis der Aufrufer sofort braucht. **Ein
+  Auth-Mails sind an eine Nutzeraktion gebunden, deren Ergebnis der Aufrufer sofort braucht.
+  *Nachtrag (#1538):* Die beiden Selbstbedienungsflüsse „Passwort vergessen" und
+  Selbstregistrierung sind die Ausnahme — ihr Aufrufer darf das Ergebnis gerade **nicht** erfahren,
+  und ein synchroner Versand würde die Antwortzeit verraten; ihre gesamte Arbeit läuft nach der
+  Feldprüfung auf einem eigenen Mail-Thread mit begrenzter Warteschlange (`MailDispatchExecutor`,
+  denselben nutzt die Notanker-Benachrichtigung aus Entscheidung 5), die Antwort kommt nach fester
+  Frist. **Ein
   `Failed` bleibt nicht unsichtbar:** Log-Zeile mit Grund und Vorlagenschlüssel (ohne Adresse),
   Fortschreibung von `last_failure_at`/`last_failure_reason`, Anzeige „letzter erfolgreicher Versand"
   und „letzter Fehler" auf der Einstellungsseite und ein Health-Indikator `mail` (Zustand ohne
@@ -554,14 +561,17 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
   (Standard aus): Rolle immer `USER`, Ablaufdatum **Pflicht** (`default_expiry_days`), Anlagegrund
   „Selbstregistrierung", Konto bis zur Bestätigung (`VERIFY_EMAIL`, 24 Stunden) nicht anmeldefähig;
   bei belegter Adresse entsteht kein zweites Konto, die Antwort ist identisch (202); keine Hinweis-Mail
-  an die belegte Adresse (sie wäre selbst ein Aufzählungskanal). Das Einschalten ist ein Audit-Ereignis
+  an die belegte Adresse (sie wäre selbst ein Aufzählungskanal). Eine noch unbestätigte
+  Selbstregistrierung derselben Adresse erhält ihren Bestätigungslink erneut (Hash und Name
+  bleiben), damit sie keine Sackgasse ist. Das Einschalten ist ein Audit-Ereignis
   und nach `security-and-compliance.md` ein Punkt der Dienstvereinbarung; das Handbuch sagt das.
 - **Passwort vergessen** nur bei `password_reset_enabled` und gesetzter Basis-URL: immer 204 nach
   konstanter Zeitklasse, unabhängig davon, ob ein aktives Konto existiert; Konten mit
   Verwalter- oder Inaktivitätssperre, abgelaufene und eingeladene Konten erhalten keine Mail — ein
-  Konto in Fehlversuch-Sperre schon (Entscheidung 9). **Abgeschaltete Flüsse antworten 404 wie eine
-  unbekannte Route**, damit ihre Existenz nicht sondiert wird; die SPA kennt den Zustand aus
-  `/auth/config`.
+  Konto in Fehlversuch-Sperre schon (Entscheidung 9). **Abgeschaltete Flüsse antworten mit der
+  Standard-404**; der Zustand der Flüsse ist über `/auth/config` ohnehin öffentlich, und eine
+  unbekannte Route unter `/api` antwortet ohne Sitzung mit 401 — die 404 ist also keine
+  Ununterscheidbarkeit, nur kein Hinweis auf den Fluss (vollständige Verkleidung: #1592).
 - **Passwort ändern** (mit aktuellem Passwort) steht jedem lokalen Konto in den
   Benutzereinstellungen offen und widerruft die übrigen Sitzungen.
 

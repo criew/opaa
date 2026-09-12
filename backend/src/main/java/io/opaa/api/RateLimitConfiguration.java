@@ -38,6 +38,7 @@ public class RateLimitConfiguration {
   static final String LOCAL_REGISTER_PATTERN = "^/api/v1/auth/local/register$";
   static final String LOCAL_FORGOT_PASSWORD_PATTERN = "^/api/v1/auth/local/forgot-password$";
   static final String LOCAL_SET_PASSWORD_PATTERN = "^/api/v1/auth/local/set-password$";
+  static final String LOCAL_VERIFY_EMAIL_PATTERN = "^/api/v1/auth/local/verify-email$";
 
   @Bean
   TrustedProxyClientIpResolver clientIpResolver(RateLimitProperties properties) {
@@ -102,6 +103,7 @@ public class RateLimitConfiguration {
             LOCAL_FORGOT_PASSWORD_PATTERN,
             localAuth.forgotPassword()));
     rules.add(rule("local-auth-set-password", LOCAL_SET_PASSWORD_PATTERN, localAuth.setPassword()));
+    rules.add(rule("local-auth-verify-email", LOCAL_VERIFY_EMAIL_PATTERN, localAuth.verifyEmail()));
 
     var registration =
         new FilterRegistrationBean<>(

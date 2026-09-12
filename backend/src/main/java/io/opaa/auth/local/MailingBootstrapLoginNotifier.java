@@ -3,6 +3,7 @@ package io.opaa.auth.local;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.mail.MailDispatchExecutor;
 import io.opaa.mail.MailService;
 import io.opaa.mail.MailTemplateKey;
 import java.time.Instant;
@@ -12,7 +13,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,8 +21,8 @@ import org.springframework.stereotype.Component;
 /**
  * Tells every <em>other</em> system administrator of the organization that the bootstrap account
  * was used (ADR-0033, Entscheidung 5: mail {@code BOOTSTRAP_ACCOUNT_USED}), next to the audit event
- * {@link BootstrapAccountLoginListener} writes. The sends run on a thread of their own: the
- * emergency sign-in must not wait for a mail server, and a failed send is the mail subsystem's
+ * {@link BootstrapAccountLoginListener} writes. The sends run on the {@link MailDispatchExecutor}:
+ * the emergency sign-in must not wait for a mail server, and a failed send is the mail subsystem's
  * business ({@code MailService} logs and records it). One WARN line with the account id - never the
  * address - stays, so an operator reading the log sees the emergency access was used.
  */
@@ -38,16 +38,9 @@ public class MailingBootstrapLoginNotifier implements BootstrapLoginNotifier {
   private final Executor executor;
 
   @Autowired
-  public MailingBootstrapLoginNotifier(UserRepository users, MailService mail) {
-    this(
-        users,
-        mail,
-        Executors.newSingleThreadExecutor(
-            runnable -> {
-              Thread thread = new Thread(runnable, "bootstrap-login-notifier");
-              thread.setDaemon(true);
-              return thread;
-            }));
+  public MailingBootstrapLoginNotifier(
+      UserRepository users, MailService mail, MailDispatchExecutor dispatch) {
+    this(users, mail, (Executor) dispatch);
   }
 
   MailingBootstrapLoginNotifier(UserRepository users, MailService mail, Executor executor) {
