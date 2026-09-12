@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { assetRoleLabel } from '../utils/labels'
 import { mailHandlers } from './mailHandlers'
 import { localUserHandlers } from './localUserHandlers'
+import { localAuthHandlers } from './localAuthHandlers'
 
 /** Per-library countdown of the mock metadata backfill; see the handler below. */
 const mockMetadataBackfillRemaining = new Map<string, number>()
@@ -3151,9 +3152,11 @@ export const handlers = [
     return HttpResponse.json(mockUser)
   }),
 
-  // The mail administration (#1542) lives in its own module: this file is long past the 800-line
-  // mark the coding conventions set, and its fixtures are a self-contained set.
+  // The mail administration (#1542) and the public self-service of local accounts (#1540) live in
+  // their own modules: this file is long past the 800-line mark the coding conventions set, and
+  // both bring a self-contained set of fixtures.
   ...mailHandlers,
   // Same reason for the local account management (#1541).
   ...localUserHandlers,
+  ...localAuthHandlers,
 ]

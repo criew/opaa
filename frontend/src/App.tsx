@@ -12,6 +12,10 @@ import SettingsPage from './pages/SettingsPage'
 import LoginPage from './pages/LoginPage'
 import SystemLoginPage from './pages/SystemLoginPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
+import SetPasswordPage from './pages/SetPasswordPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import RegisterPage from './pages/RegisterPage'
+import VerifyEmailPage from './pages/VerifyEmailPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import SpacePage from './pages/SpacePage'
 import SpacesOverviewPage from './pages/SpacesOverviewPage'
@@ -98,6 +102,15 @@ export default function App() {
             {/* Outside the application shell on purpose: while a password change is owed, every
                 route but /api/v1/auth/local/* answers 403 (ADR-0033, Entscheidung 8). */}
             <Route path="/account/password" element={<ChangePasswordPage />} />
+            {/* The self-service pages of local accounts (#1540), public like the sign-in page.
+                ADR-0033, Entscheidung 11: the two link targets work whatever the switches say -
+                a link from an invitation or an administrative reset must never run into a
+                redirect - while /register and /forgot-password are pages only where the
+                installation offers the flow (the pages redirect to /login otherwise). */}
+            <Route path="/set-password" element={<SetPasswordPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/register" element={<RegisterPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route
               element={

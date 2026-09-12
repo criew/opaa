@@ -1,5 +1,6 @@
 import type { SessionExpiredReason } from '../services/apiInterceptors'
-import type { PasswordChangeReason } from '../types/auth'
+import type { FieldError, PasswordChangeReason } from '../types/auth'
+import { PASSWORD_MAX_LENGTH } from './passwordStrength'
 
 export const CONFIG_UNAVAILABLE_MESSAGE =
   'Die Authentifizierungskonfiguration konnte nicht geladen werden.'
@@ -31,20 +32,30 @@ export function signInFailedMessage(providerName: string, detail: string): strin
 }
 
 /**
- * The wait hint after a refused rate-limited sign-in. `retryAfterSeconds` is the `Retry-After`
- * header; without a usable value the hint stays unquantified rather than inventing a duration.
+ * "in 30 Sekunden" / "in 2 Minuten" from the `Retry-After` header - null without a usable value,
+ * so a caller can say "später" rather than invent a duration.
  */
-export function tooManyAttemptsMessage(retryAfterSeconds: number | null): string {
-  if (retryAfterSeconds === null || retryAfterSeconds <= 0) {
-    return 'Zu viele Anmeldeversuche. Bitte versuchen Sie es später erneut.'
-  }
-  if (retryAfterSeconds < 60) {
-    return `Zu viele Anmeldeversuche. Bitte versuchen Sie es in ${retryAfterSeconds} Sekunden erneut.`
-  }
+function retryAfterPhrase(retryAfterSeconds: number | null): string | null {
+  if (retryAfterSeconds === null || retryAfterSeconds <= 0) return null
+  if (retryAfterSeconds < 60) return `in ${retryAfterSeconds} Sekunden`
   const minutes = Math.ceil(retryAfterSeconds / 60)
-  return `Zu viele Anmeldeversuche. Bitte versuchen Sie es in ${minutes} ${
-    minutes === 1 ? 'Minute' : 'Minuten'
-  } erneut.`
+  return `in ${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'}`
+}
+
+/** The wait hint after a refused rate-limited sign-in. */
+export function tooManyAttemptsMessage(retryAfterSeconds: number | null): string {
+  const phrase = retryAfterPhrase(retryAfterSeconds)
+  return `Zu viele Anmeldeversuche. Bitte versuchen Sie es ${phrase ?? 'später'} erneut.`
+}
+
+/**
+ * The wait hint of a rate-limited self-service request (ADR-0033, Entscheidung 9). Deliberately
+ * worded without naming attempts: the limit also counts requests of other people from the same
+ * network, and "zu viele Versuche" would read as an accusation.
+ */
+export function tooManyRequestsMessage(retryAfterSeconds: number | null): string {
+  const phrase = retryAfterPhrase(retryAfterSeconds)
+  return `Es wurden zu viele Anfragen gestellt. Bitte versuchen Sie es ${phrase ?? 'später'} erneut.`
 }
 
 /**
@@ -118,7 +129,7 @@ export function passwordFieldErrorMessage(code: string, minLength: number): stri
     case 'TOO_SHORT':
       return `Das Passwort muss mindestens ${minLength} Zeichen lang sein.`
     case 'TOO_LONG':
-      return 'Das Passwort darf höchstens 64 Zeichen lang sein.'
+      return `Das Passwort darf höchstens ${PASSWORD_MAX_LENGTH} Zeichen lang sein.`
     case 'EQUALS_EMAIL':
       return 'Das Passwort darf nicht Ihrer E-Mail-Adresse entsprechen.'
     case 'TOO_COMMON':
@@ -127,3 +138,97 @@ export function passwordFieldErrorMessage(code: string, minLength: number): stri
       return 'Das Passwort erfüllt die Vorgaben nicht.'
   }
 }
+
+/**
+ * The password rule as a sentence beside the field (ADR-0033, Entscheidung 9) - the minimum comes
+ * from `/auth/config`, the maximum and the block list from the policy itself. It names everything
+ * the backend checks, so a refusal is never the first time a person hears of a rule.
+ */
+export function passwordPolicyText(minLength: number): string {
+  return (
+    `Mindestens ${minLength} Zeichen, höchstens ${PASSWORD_MAX_LENGTH}. Das Passwort darf nicht` +
+    ' Ihrer E-Mail-Adresse entsprechen und nicht auf der Liste besonders häufiger Passwörter stehen.'
+  )
+}
+
+/** The field-error codes of an address, as the person reads them. */
+function emailFieldErrorMessage(code: string): string {
+  switch (code) {
+    case 'INVALID_ADDRESS':
+      return 'Bitte geben Sie eine gültige E-Mail-Adresse an.'
+    case 'REQUIRED':
+      return 'Bitte geben Sie Ihre E-Mail-Adresse an.'
+    case 'TOO_LONG':
+      return 'Die E-Mail-Adresse ist zu lang.'
+    default:
+      return 'Die E-Mail-Adresse wurde nicht angenommen.'
+  }
+}
+
+/** The field-error codes of a display name, as the person reads them. */
+function displayNameFieldErrorMessage(code: string): string {
+  switch (code) {
+    case 'REQUIRED':
+      return 'Bitte geben Sie Ihren Namen an.'
+    case 'TOO_LONG':
+      return 'Der Name ist zu lang - höchstens 255 Zeichen.'
+    default:
+      return 'Der Name wurde nicht angenommen.'
+  }
+}
+
+/**
+ * The `fieldErrors` of a refused request as one sentence per field, ready for the field's helper
+ * text. A field may carry several codes at once - the policy reports every violated rule, so the
+ * form can name all of them instead of one at a time.
+ */
+export function fieldErrorMessages(
+  fieldErrors: FieldError[],
+  minLength: number,
+): Record<string, string> {
+  const byField: Record<string, string[]> = {}
+  for (const entry of fieldErrors) {
+    const sentence =
+      entry.field === 'email'
+        ? emailFieldErrorMessage(entry.code)
+        : entry.field === 'displayName'
+          ? displayNameFieldErrorMessage(entry.code)
+          : passwordFieldErrorMessage(entry.code, minLength)
+    const collected = byField[entry.field] ?? []
+    if (!collected.includes(sentence)) collected.push(sentence)
+    byField[entry.field] = collected
+  }
+  return Object.fromEntries(
+    Object.entries(byField).map(([field, sentences]) => [field, sentences.join(' ')]),
+  )
+}
+
+/**
+ * The one answer to every unusable link (ADR-0033, Entscheidung 11): unknown, expired, already
+ * redeemed, of the wrong purpose, or of an account that has meanwhile been locked or has expired.
+ * Telling the cases apart would turn a link into an oracle about accounts.
+ */
+export const LINK_INVALID_MESSAGE = 'Dieser Link ist nicht mehr gültig.'
+
+/**
+ * The acknowledgement of "Passwort vergessen" and of a registration - identical for an address
+ * that has an account and one that has none, which is the whole point of it.
+ */
+export const MAIL_SENT_MESSAGE =
+  'Wenn zu dieser Adresse ein Konto besteht, haben wir eine E-Mail geschickt.'
+
+export const PASSWORD_SET_MESSAGE = 'Passwort festgelegt — Sie können sich jetzt anmelden.'
+
+export const EMAIL_VERIFIED_MESSAGE = 'E-Mail-Adresse bestätigt — Sie können sich jetzt anmelden.'
+
+/** A self-service request that did not reach the backend; never the person's mistake. */
+export const SELF_SERVICE_UNREACHABLE_MESSAGE =
+  'Die Anfrage konnte nicht übermittelt werden. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.'
+
+/**
+ * A flow the installation does not offer answers like an unknown route (404). The pages redirect to
+ * the sign-in page when the configuration already says so; this sentence covers the race in which
+ * the switch was turned off between page load and submission.
+ */
+export const SELF_SERVICE_DISABLED_MESSAGE =
+  'Diese Funktion steht in dieser Installation nicht zur Verfügung. Bitte wenden Sie sich an die Systemverwaltung.'

@@ -20,6 +20,7 @@ import {
 import { resetMockAuthConfig, resetMockBranding, resetMockOidcProviders } from '../mocks/fixtures'
 import { resetMockMailSettings, resetMockMailTemplates } from '../mocks/mailFixtures'
 import { resetMockLocalAuthSettings, resetMockLocalUsers } from '../mocks/localUserFixtures'
+import { resetMockSelfServiceTokens } from '../mocks/localAuthFixtures'
 
 /**
  * MSW passes a handler's `Set-Cookie` into `document.cookie`, which jsdom keeps for the whole file.
@@ -54,6 +55,9 @@ afterEach(() => {
   // The auth config fixture is mutable too (ADR-0033): a test that switches the local account
   // management on must not leave it on for the next one.
   resetMockAuthConfig()
+  // A self-service link is single-use in the mock, as it is in the backend - a link one test
+  // redeemed would read as invalid in the next.
+  resetMockSelfServiceTokens()
   clearCookies()
 })
 afterAll(() => server.close())

@@ -21,7 +21,12 @@ export class UnknownIssuerError extends Error {
 // what bounds the cross-tab refresh lock (see performLocalRefresh): a request that never settles
 // would otherwise keep every other tab of this browser waiting for its own renewal.
 const AUTH_REQUEST_TIMEOUT_MS = 15_000
-const authClient = axios.create({ baseURL: '/api', timeout: AUTH_REQUEST_TIMEOUT_MS })
+/**
+ * Exported for the self-service calls in {@link ./selfServiceApi}: same base URL, same timeout and
+ * the same deliberate absence of the renew interceptor - a second client would be a second set of
+ * those decisions to keep in step.
+ */
+export const authClient = axios.create({ baseURL: '/api', timeout: AUTH_REQUEST_TIMEOUT_MS })
 
 export async function getAuthConfig(): Promise<AuthConfig> {
   const { data } = await authClient.get<AuthConfig>('/v1/auth/config')
@@ -288,10 +293,16 @@ export function describeLocalSignInFailure(err: unknown): {
   if (!axios.isAxiosError(err) || !err.response) {
     return { status: null, retryAfterSeconds: null }
   }
-  const header = err.response.headers['retry-after']
-  const seconds = typeof header === 'string' ? Number.parseInt(header, 10) : Number.NaN
   return {
     status: err.response.status,
-    retryAfterSeconds: Number.isFinite(seconds) ? seconds : null,
+    retryAfterSeconds: retryAfterSecondsOf(err),
   }
+}
+
+/** The `Retry-After` seconds of a refused request; null when the header is absent or unusable. */
+export function retryAfterSecondsOf(err: unknown): number | null {
+  if (!axios.isAxiosError(err) || !err.response) return null
+  const header = err.response.headers['retry-after']
+  const seconds = typeof header === 'string' ? Number.parseInt(header, 10) : Number.NaN
+  return Number.isFinite(seconds) ? seconds : null
 }
