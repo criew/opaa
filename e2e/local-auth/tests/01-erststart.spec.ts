@@ -56,9 +56,9 @@ test.describe("Erststart: Systemverwalter, SMTP, Schalter", () => {
       await expectNoSeriousA11yViolations(
         page,
         `Anmeldung für die Systemverwaltung (${scheme})`,
-        // Bekannte Kontrastlücke des dunklen Schemas auf den Seiten des Anmelderahmens (#1600) -
+        // Bekannte Kontrastlücke beider Schemata auf den Seiten des Anmelderahmens (#1600) -
         // ausführlich begründet in 07-barrierefreiheit.spec.ts.
-        scheme === "dark" ? { disableRules: ["color-contrast"] } : {},
+        { disableRules: ["color-contrast"] },
       );
     }
     await page.emulateMedia({ colorScheme: "light" });

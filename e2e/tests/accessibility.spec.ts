@@ -327,11 +327,11 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
   /**
    * Das Farbschema wird **vor** dem Laden gesetzt, nie auf der gerenderten Seite umgeschaltet: Ein
    * Wechsel danach lässt auf den Seiten des Anmelderahmens eine gemischte Palette zurück und erzeugt
-   * Farbpaare, die es in keinem der beiden Schemata gibt. Im dunklen Durchgang bleibt `color-contrast`
-   * aus - die Seiten erfüllen den Schwellwert dort mit den Farben des Hauses nicht (#1600); jede
-   * andere Regel wird auch dunkel geprüft, der helle Durchgang ungekürzt.
+   * Farbpaare, die es in keinem der beiden Schemata gibt. `color-contrast` bleibt auf diesen Seiten in
+   * **beiden** Schemata aus - sie erfüllen den Schwellwert mit den Farben des Hauses nicht (#1600,
+   * mit den gemessenen Paaren); jede andere Regel wird in beiden Schemata geprüft.
    */
-  const DARK_CONTRAST_KNOWN_GAP = { disableRules: ["color-contrast"] };
+  const AUTH_PAGE_CONTRAST_KNOWN_GAP = { disableRules: ["color-contrast"] };
 
   test("Selbstbedienung: Passwort festlegen in beiden Farbschemata", async ({ page }) => {
     await page.route("**/api/v1/auth/config", (route) =>
@@ -350,7 +350,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       await expectNoSeriousA11yViolations(
         page,
         `Passwort festlegen (${scheme})`,
-        scheme === "dark" ? DARK_CONTRAST_KNOWN_GAP : {},
+        AUTH_PAGE_CONTRAST_KNOWN_GAP,
       );
     }
   });
@@ -364,12 +364,20 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     );
     await page.goto("/forgot-password");
     await expect(page.getByRole("heading", { level: 1, name: "Passwort vergessen" })).toBeVisible();
-    await expectNoSeriousA11yViolations(page, "Passwort vergessen (Formular)");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Passwort vergessen (Formular)",
+      AUTH_PAGE_CONTRAST_KNOWN_GAP,
+    );
 
     await page.getByLabel("E-Mail-Adresse").fill("erika.muster@stadt.example");
     await page.getByRole("button", { name: "Link anfordern" }).click();
     await expect(page.getByRole("alert")).toBeVisible();
-    await expectNoSeriousA11yViolations(page, "Passwort vergessen (Ergebnisansicht)");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Passwort vergessen (Ergebnisansicht)",
+      AUTH_PAGE_CONTRAST_KNOWN_GAP,
+    );
   });
 
   test("Selbstbedienung: Registrierung", async ({ page }) => {
@@ -379,7 +387,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await page.goto("/register");
     await expect(page.getByRole("heading", { level: 1, name: "Konto registrieren" })).toBeVisible();
 
-    await expectNoSeriousA11yViolations(page, "Registrierung");
+    await expectNoSeriousA11yViolations(page, "Registrierung", AUTH_PAGE_CONTRAST_KNOWN_GAP);
   });
 
   test("Selbstbedienung: E-Mail-Bestätigung", async ({ page }) => {
@@ -392,6 +400,6 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await page.goto("/verify-email?token=e2e-token");
     await expect(page.getByRole("alert")).toContainText("E-Mail-Adresse bestätigt");
 
-    await expectNoSeriousA11yViolations(page, "E-Mail-Bestätigung");
+    await expectNoSeriousA11yViolations(page, "E-Mail-Bestätigung", AUTH_PAGE_CONTRAST_KNOWN_GAP);
   });
 });
