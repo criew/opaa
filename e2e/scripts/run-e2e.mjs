@@ -12,10 +12,11 @@
 // host ports and its own env file (OPAA_ENV_FILE, see docker-compose.yml),
 // so this script never reads or writes a developer's own .env.docker.
 //
-// Two targets, one script (Issue #232 - reuse this infrastructure instead
+// Three targets, one script (Issue #232 - reuse this infrastructure instead
 // of copying it):
-//   node scripts/run-e2e.mjs                  # default target "e2e" (pnpm test)
-//   node scripts/run-e2e.mjs --target demo     # demo-profile smoke test (pnpm run test:demo-smoke)
+//   node scripts/run-e2e.mjs                       # default target "e2e" (pnpm test)
+//   node scripts/run-e2e.mjs --target demo         # demo-profile smoke test (pnpm run test:demo-smoke)
+//   node scripts/run-e2e.mjs --target local-auth   # local sign-in (pnpm run test:local-auth)
 // The "demo" target starts the Compose "demo" profile (Rheinfurt corpus,
 // Keycloak login, docs/features/demo-instance.md) with ai-stub standing in
 // for the chat/embedding provider, seeds it with `demo/seed/seed.py
@@ -24,6 +25,15 @@
 // deliberately not part of `pnpm test`: indexing the ~150-300 real
 // documents of the Rheinfurt corpus takes far longer than the minimal e2e
 // seed profile.
+//
+// The "local-auth" target (ADR-0033, #1543) starts the operating mode "oidc"
+// *without* Keycloak - an installation with no OIDC provider at all, which is
+// what a first start produces - plus the mail catcher of the "mail" profile,
+// and runs the specs under e2e/local-auth/tests/. It is the only target that
+// exercises a real sign-in (the regular suite runs the "dev" auth profile, see
+// ADR-0009), and the only one that runs *no* seed: the accounts under test are
+// the one the backend seeds itself and the ones its own administration
+// creates.
 
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
@@ -52,12 +62,13 @@ if (targetFlagIndex !== -1) {
     rawArgs.splice(targetFlagIndex, 2)
   }
 }
-if (target !== 'e2e' && target !== 'demo') {
-  console.error(`Unbekanntes --target "${target}" (erwartet: "e2e" oder "demo")`)
+if (target !== 'e2e' && target !== 'demo' && target !== 'local-auth') {
+  console.error(`Unbekanntes --target "${target}" (erwartet: "e2e", "demo" oder "local-auth")`)
   process.exit(1)
 }
 const extraTestArgs = rawArgs
 const isDemo = target === 'demo'
+const isLocalAuth = target === 'local-auth'
 
 // The "demo" Compose profile's Keycloak realm (keycloak/realm-export.json) has a static
 // redirectUris list scoped to http://localhost:3000, and this run's own
@@ -71,26 +82,77 @@ const isDemo = target === 'demo'
 // such static reference anywhere, so they reuse the "e2e" target's own non-default ports below -
 // avoids colliding with a developer's own local Postgres/backend on the same host, exactly like
 // the "e2e" target already does.
-const composeProjectName =
-  process.env.COMPOSE_PROJECT_NAME ?? (isDemo ? 'opaa-demo-smoke' : 'opaa-e2e')
-const backendPort = process.env.OPAA_BACKEND_PORT ?? '18081'
-const frontendPort = process.env.OPAA_FRONTEND_PORT ?? (isDemo ? '3000' : '13000')
-const dbPort = process.env.OPAA_DB_PORT ?? '15432'
+const projectNames = { e2e: 'opaa-e2e', demo: 'opaa-demo-smoke', 'local-auth': 'opaa-local-auth' }
+const composeProjectName = process.env.COMPOSE_PROJECT_NAME ?? projectNames[target]
+// Each target gets its own host ports so two of them - or one of them and a developer's own stack -
+// can run side by side. Only the "demo" target's frontend port is pinned (its Keycloak realm's
+// redirectUris, see the comment above).
+const backendPort = process.env.OPAA_BACKEND_PORT ?? (isLocalAuth ? '18082' : '18081')
+const frontendPort =
+  process.env.OPAA_FRONTEND_PORT ?? (isDemo ? '3000' : isLocalAuth ? '13001' : '13000')
+const dbPort = process.env.OPAA_DB_PORT ?? (isLocalAuth ? '15433' : '15432')
+// The mail catcher's own host ports (e2e/docker-compose.local-auth.yml): the scenarios read the
+// links out of its HTTP API from this Node/Playwright process, the same way the "e2e" target
+// reaches ai-stub's /last-chat-model directly.
+const mailpitWebPort = process.env.OPAA_MAILPIT_WEB_PORT ?? '18025'
+const mailpitSmtpPort = process.env.OPAA_MAILPIT_SMTP_PORT ?? '11025'
 // test(e2e) #760: ai-stub's own host-published port (docker-compose.e2e.yml), so a scenario can
 // call its GET /last-chat-model directly from the Node/Playwright process - see that file's own
 // comment. Only relevant for the "e2e" target; the "demo" target's ai-stub stand-in
 // (docker-compose.demo-smoke.yml) does not publish one, and no demo-smoke scenario needs it.
-const aiStubPort = process.env.OPAA_AI_STUB_PORT ?? '18089'
+const aiStubPort = process.env.OPAA_AI_STUB_PORT ?? (isLocalAuth ? '18090' : '18089')
 const keycloakPort = '8180'
 const baseUrl = process.env.E2E_BASE_URL ?? `http://localhost:${frontendPort}`
 const readyUrl = `${baseUrl}/api/v1/auth/config`
 const skipBuild = process.env.E2E_SKIP_BUILD === 'true'
 
-const overlayFile = isDemo ? 'e2e/docker-compose.demo-smoke.yml' : 'e2e/docker-compose.e2e.yml'
-const envFile = isDemo ? 'e2e/demo-smoke.env' : 'e2e/e2e.env'
+const overlayFiles = {
+  e2e: 'e2e/docker-compose.e2e.yml',
+  demo: 'e2e/docker-compose.demo-smoke.yml',
+  'local-auth': 'e2e/docker-compose.local-auth.yml',
+}
+const envFiles = {
+  e2e: 'e2e/e2e.env',
+  demo: 'e2e/demo-smoke.env',
+  'local-auth': 'e2e/local-auth.env',
+}
+const overlayFile = overlayFiles[target]
+const envFile = envFiles[target]
+
+/**
+ * One value out of this run's own env file. Only the Compose stack reads that file (it is passed as
+ * OPAA_ENV_FILE, never interpolated by Compose itself), so anything the seed or the Playwright
+ * process also needs has to be handed over explicitly.
+ */
+function envFileValue(key) {
+  const match = readFileSync(join(repoRoot, envFile), 'utf8').match(
+    new RegExp(`^${key}=(.*)$`, 'm'),
+  )
+  return match ? match[1].trim() : undefined
+}
+
+// ADR-0033, Entscheidung 5: the one account that exists on a first start. Its password is fixed in
+// e2e/local-auth.env (the documented CI path), so the scenarios can sign in with it instead of
+// scraping the one-time password out of the container log.
+const bootstrapAdmin = isLocalAuth
+  ? {
+      email: envFileValue('OPAA_INITIAL_ADMIN_EMAIL') ?? '',
+      password: envFileValue('OPAA_INITIAL_ADMIN_PASSWORD') ?? '',
+    }
+  : { email: '', password: '' }
+if (isLocalAuth && (!bootstrapAdmin.email || !bootstrapAdmin.password)) {
+  console.error(
+    `${envFile} muss OPAA_INITIAL_ADMIN_EMAIL und OPAA_INITIAL_ADMIN_PASSWORD setzen - ` +
+      'ohne beide gibt es in diesem Ziel keinen Anmeldeweg.',
+  )
+  process.exit(1)
+}
 const composeArgs = [
   'compose',
   ...(isDemo ? ['--profile', 'demo'] : []),
+  // The mail catcher is profile-gated in docker-compose.yml (#1536) so a plain `docker compose up`
+  // never starts it; naming the service in the `up` call below would not start it without this.
+  ...(isLocalAuth ? ['--profile', 'mail'] : []),
   '-f',
   'docker-compose.yml',
   '-f',
@@ -115,9 +177,16 @@ const composeEnv = {
   // run next to a developer's own stack, and the matching OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS
   // stands in its env file. The backend port is bound to 127.0.0.1, which is where this script and
   // the seed reach it.
-  OPAA_COMPOSE_SUBNET: isDemo ? '172.30.0.0/16' : '172.29.0.0/16',
-  OPAA_COMPOSE_FRONTEND_ADDRESS: isDemo ? '172.30.0.10' : '172.29.0.10',
+  OPAA_COMPOSE_SUBNET: isDemo ? '172.30.0.0/16' : isLocalAuth ? '172.31.0.0/16' : '172.29.0.0/16',
+  OPAA_COMPOSE_FRONTEND_ADDRESS: isDemo
+    ? '172.30.0.10'
+    : isLocalAuth
+      ? '172.31.0.10'
+      : '172.29.0.10',
   ...(isDemo ? {} : { OPAA_AI_STUB_PORT: aiStubPort }),
+  ...(isLocalAuth
+    ? { OPAA_MAILPIT_WEB_PORT: mailpitWebPort, OPAA_MAILPIT_SMTP_PORT: mailpitSmtpPort }
+    : {}),
 }
 
 let tornDown = false
@@ -136,7 +205,14 @@ function run(command, args, { cwd = repoRoot, env = process.env } = {}) {
 }
 
 function dumpLogs() {
-  const logPath = join(e2eDir, isDemo ? 'docker-compose.demo-smoke.log' : 'docker-compose.log')
+  const logPath = join(
+    e2eDir,
+    isDemo
+      ? 'docker-compose.demo-smoke.log'
+      : isLocalAuth
+        ? 'docker-compose.local-auth.log'
+        : 'docker-compose.log',
+  )
   console.log(`\n> Saving container logs to ${logPath}`)
   const result = spawnSync('docker', [...composeArgs, 'logs', '--no-color', '--timestamps'], {
     cwd: repoRoot,
@@ -230,14 +306,13 @@ function runSeed() {
     // seed grants the role through the local bootstrap administrator the backend seeded on its
     // first start. Its address and fixed password live in e2e/demo-smoke.env, which only the
     // Compose stack reads - hand the two values to the seed explicitly.
-    const demoEnv = readFileSync(join(repoRoot, envFile), 'utf8')
     for (const [flag, key] of [
       ['--local-admin-email', 'OPAA_INITIAL_ADMIN_EMAIL'],
       ['--local-admin-password', 'OPAA_INITIAL_ADMIN_PASSWORD'],
     ]) {
-      const match = demoEnv.match(new RegExp(`^${key}=(.*)$`, 'm'))
-      if (match) {
-        seedArgs.push(flag, match[1].trim())
+      const value = envFileValue(key)
+      if (value) {
+        seedArgs.push(flag, value)
       }
     }
   }
@@ -281,10 +356,15 @@ async function main() {
         'minio-seed',
         'ai-stub',
       ]
-    : ['ai-stub', 'rss-feed', 'postgres', 'backend', 'frontend']
+    : isLocalAuth
+      ? // No keycloak and no rss-feed: this target's whole point is an installation without an
+        // OIDC provider, and no scenario indexes anything.
+        ['ai-stub', 'mailpit', 'postgres', 'backend', 'frontend']
+      : ['ai-stub', 'rss-feed', 'postgres', 'backend', 'frontend']
   console.log(
-    `> Starting ${isDemo ? 'demo' : 'E2E'} stack (${services.join(', ')}) as Compose project "${composeProjectName}"` +
-      ` on ports ${dbPort}/${backendPort}/${frontendPort}`,
+    `> Starting ${target} stack (${services.join(', ')}) as Compose project "${composeProjectName}"` +
+      ` on ports ${dbPort}/${backendPort}/${frontendPort}` +
+      (isLocalAuth ? `, mailpit on ${mailpitSmtpPort}/${mailpitWebPort}` : ''),
   )
   const upArgs = [...composeArgs, 'up', '-d', ...services]
   if (!skipBuild) {
@@ -309,14 +389,20 @@ async function main() {
     return
   }
 
-  console.log(`> Seeding ${target} data profile (demo/seed/seed.py --profile ${target})`)
-  const seedStatus = runSeed()
-  if (seedStatus !== 0) {
-    console.error('Seed run failed')
-    dumpLogs()
-    teardown()
-    process.exitCode = seedStatus
-    return
+  // The "local-auth" target runs no seed on purpose: a first start is the state under test, and
+  // the only account that exists at this point is the bootstrap administrator the backend seeded
+  // itself (ADR-0033, Entscheidung 5). Seeding with the dev-auth header would not even work here -
+  // this stack runs "oidc".
+  if (!isLocalAuth) {
+    console.log(`> Seeding ${target} data profile (demo/seed/seed.py --profile ${target})`)
+    const seedStatus = runSeed()
+    if (seedStatus !== 0) {
+      console.error('Seed run failed')
+      dumpLogs()
+      teardown()
+      process.exitCode = seedStatus
+      return
+    }
   }
 
   console.log('> Running Playwright tests')
@@ -328,6 +414,12 @@ async function main() {
     // to know the other exists.
     playwrightArgs.push('--config', 'demo-smoke/playwright.config.ts')
   }
+  if (isLocalAuth) {
+    // Same reasoning as the "demo" target above: its own config with its own testDir
+    // (e2e/local-auth/tests), so these specs - which need a stack the regular suite does not have -
+    // can never be picked up by a bare `playwright test`.
+    playwrightArgs.push('--config', 'local-auth/playwright.config.ts')
+  }
   playwrightArgs.push(...extraTestArgs)
   const testStatus = run('pnpm', playwrightArgs, {
     cwd: e2eDir,
@@ -335,6 +427,17 @@ async function main() {
       ...process.env,
       E2E_BASE_URL: baseUrl,
       ...(isDemo ? {} : { E2E_AI_STUB_BASE_URL: `http://localhost:${aiStubPort}` }),
+      ...(isLocalAuth
+        ? {
+            E2E_MAILPIT_BASE_URL: `http://localhost:${mailpitWebPort}`,
+            // What a scenario enters as the SMTP host/port in the administration: the Compose
+            // service name, because the *backend* connects, not the browser.
+            E2E_SMTP_HOST: 'mailpit',
+            E2E_SMTP_PORT: '1025',
+            E2E_BOOTSTRAP_ADMIN_EMAIL: bootstrapAdmin.email,
+            E2E_BOOTSTRAP_ADMIN_PASSWORD: bootstrapAdmin.password,
+          }
+        : {}),
     },
   })
 

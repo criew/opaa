@@ -242,12 +242,20 @@ export default function UserFormDialog({
             />
           </Box>
           <Box>
-            <FieldLabel htmlFor="user-form-role">Rolle</FieldLabel>
+            <FieldLabel id="user-form-role-label" htmlFor="user-form-role">
+              Rolle
+            </FieldLabel>
             <TextField
               id="user-form-role"
               select
               fullWidth
               size="small"
+              // Ein <label for> benennt nur echte Formularelemente; MUIs Auswahl rendert eine
+              // Anzeige mit role="combobox", die ihren Namen über aria-labelledby braucht (axe
+              // aria-input-field-name, serious). Muster wie in LibraryGrantsDialog.
+              slotProps={{
+                select: { SelectDisplayProps: { 'aria-labelledby': 'user-form-role-label' } },
+              }}
               value={draft.systemRole}
               onChange={(e) => update({ systemRole: e.target.value as SystemRole })}
               error={Boolean(fieldErrors.systemRole)}

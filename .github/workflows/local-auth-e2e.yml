@@ -1,0 +1,148 @@
+name: E2E Lokale Anmeldung
+
+# Bewusst NICHT bei jedem Pull Request und kein Required Check (ADR-0033, #1543): der Lauf startet
+# einen eigenen Compose-Stack im Betriebsmodus "oidc" ohne Keycloak samt Mail-Fänger, legt Konten an,
+# verschickt echte Mails an diesen Fänger und fährt acht Szenarien mit echten Anmeldevorgängen durch -
+# mehrere Minuten je Lauf. Die Fachszenarien der regulären Suite (.github/workflows/e2e.yml) laufen
+# weiterhin im dev-Modus ohne Anmeldevorgang (ADR-0009); diese Suite ist die zusätzliche Abnahme des
+# lokalen Anmeldewegs.
+#
+# Nächtlich wie die übrigen Docker-Läufe, dazu per Label "local-auth-suite" an einem Pull Request -
+# das Opt-in für Änderungen an der lokalen Anmeldung, ohne jeden PR zu belasten.
+on:
+  schedule:
+    # Nach E2E (3:17), Demo-Smoke (3:42) und Confluence (4:25 UTC), damit nicht mehrere
+    # speicherhungrige Container um denselben Runner konkurrieren.
+    - cron: '55 4 * * *'
+  workflow_dispatch: {}
+  # Kein branches-Filter: die Suite muss auch auf gestapelten PRs (Basis = anderer Feature-Branch)
+  # per Label startbar sein; das Opt-in regelt die if-Bedingung des Jobs.
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+# github.sha in der Gruppe: ein manueller workflow_dispatch und der nächtliche Lauf teilen nie eine
+# Gruppe, solange sie nicht denselben Commit treffen (wie in e2e.yml und demo-smoke.yml).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}-${{ github.event.label.name || 'none' }}
+  cancel-in-progress: true
+
+env:
+  COMPOSE_PROJECT_NAME: opaa-local-auth
+
+jobs:
+  local-auth:
+    name: Lokaler Anmeldeweg im Compose-Stack
+    if: github.event_name != 'pull_request' || github.event.label.name == 'local-auth-suite'
+    runs-on: ubuntu-latest
+    # Acht Szenarien mit je mehreren echten Anmeldungen, dazu der Image-Build unten. Großzügig
+    # bemessen, weil dieser Job auf keinem Merge-blockierenden Pfad liegt.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      # Derselbe Pre-Build-und-Load-Ablauf wie in e2e.yml und demo-smoke.yml, getaggt für das
+      # Compose-Projekt "opaa-local-auth" (<projekt>-<service>:latest), damit run-e2e.mjs mit
+      # E2E_SKIP_BUILD=true diese Images verwendet statt sie im getakteten Lauf neu zu bauen.
+      - name: Backend-Image bauen
+        uses: docker/build-push-action@v7
+        with:
+          # Repo-Wurzel als Kontext (#896): der Gradle-Build des Backends hängt über
+          # settings.gradle.kts am Nachbarmodul opaa-api/.
+          context: .
+          file: backend/Dockerfile
+          tags: opaa-local-auth-backend:latest
+          load: true
+          cache-from: type=gha,scope=local-auth-backend
+          cache-to: type=gha,mode=max,scope=local-auth-backend
+
+      - name: Frontend-Image bauen
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: frontend/Dockerfile
+          tags: opaa-local-auth-frontend:latest
+          load: true
+          cache-from: type=gha,scope=local-auth-frontend
+          cache-to: type=gha,mode=max,scope=local-auth-frontend
+
+      # Installiert die in "packageManager" der e2e/package.json gepinnte pnpm-Version.
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: e2e/package.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: e2e/pnpm-lock.yaml
+
+      - name: E2E-Abhängigkeiten installieren
+        working-directory: e2e
+        run: pnpm install --frozen-lockfile
+
+      - name: E2E-Suite typprüfen
+        working-directory: e2e
+        run: pnpm run typecheck
+
+      - name: Playwright-Version ermitteln
+        id: playwright-version
+        working-directory: e2e
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Playwright-Browser zwischenspeichern
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
+      - name: Playwright-Browser installieren
+        working-directory: e2e
+        timeout-minutes: 6
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
+            pnpm exec playwright install chromium
+          else
+            pnpm exec playwright install --with-deps chromium
+          fi
+
+      - name: Szenarien der lokalen Anmeldung ausführen
+        working-directory: e2e
+        run: pnpm run test:local-auth
+        env:
+          E2E_SKIP_BUILD: 'true'
+
+      # if: !cancelled() (nicht failure()): läuft der Job in timeout-minutes, markiert GitHub ihn als
+      # cancelled, nicht als failed - if: failure() überspränge den Upload genau dann, wenn er am
+      # meisten gebraucht wird (wie in e2e.yml und demo-smoke.yml).
+      - name: Playwright-Bericht hochladen
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: local-auth-playwright-report
+          path: e2e/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Traces und Screenshots hochladen
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: local-auth-playwright-traces
+          path: e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Container-Logs hochladen
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: local-auth-docker-compose-logs
+          path: e2e/docker-compose.local-auth.log
+          if-no-files-found: ignore
+          retention-days: 14

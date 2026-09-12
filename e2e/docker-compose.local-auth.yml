@@ -1,0 +1,88 @@
+# Overlay applied only by scripts/run-e2e.mjs --target local-auth (`-f docker-compose.yml -f
+# e2e/docker-compose.local-auth.yml --profile mail`), never by a developer's own `docker compose
+# up`. The target exercises the local sign-in of ADR-0033 end to end: the real operating mode
+# "oidc" with no OIDC provider at all, the mail catcher of the "mail" profile standing in for a
+# house's SMTP server, and no seed run - a first start is the state under test.
+
+# Same anchor pattern as e2e/docker-compose.e2e.yml, for the same reason (PR #453 review): one
+# place to change pgvector's column width and ai-stub's own default together.
+x-embedding-dimensions: &embedding-dimensions "1536"
+
+services:
+  backend:
+    depends_on:
+      ai-stub:
+        # Not service_started: Spring AI's PgVectorStore can probe the embedding provider's
+        # dimension via a real POST /v1/embeddings call while the backend is still starting up -
+        # waiting for the stub's own /health first is what actually guarantees it can already
+        # answer that call (see e2e/docker-compose.e2e.yml's identical comment).
+        condition: service_healthy
+      mailpit:
+        # Scenario 1 configures SMTP against mailpit and sends a test mail as its very first act,
+        # so the catcher has to be answering before the backend is even reachable - a started
+        # container is not enough, mailpit binds its SMTP listener a moment later.
+        condition: service_healthy
+    environment:
+      OPAA_PGVECTOR_DIMENSIONS: *embedding-dimensions
+      # This stack uses its own host ports (see run-e2e.mjs) so it can run alongside a developer's
+      # own stack and alongside the other two E2E targets; both values depend on the frontend's
+      # actual port and therefore cannot live in e2e/local-auth.env.
+      OPAA_CORS_ALLOWED_ORIGINS: http://localhost:${OPAA_FRONTEND_PORT}
+      # ADR-0033, Entscheidung 10: the base URL of every link in a mail. Without it the invitation,
+      # reset and registration flows are switched off (GET /api/v1/auth/config reports them as
+      # disabled and the administration refuses to enable them), which is the one thing this target
+      # must not run into - the links are what its scenarios read out of mailpit.
+      OPAA_PUBLIC_BASE_URL: http://localhost:${OPAA_FRONTEND_PORT}
+      # ADR-0033, Entscheidung 9: every browser request of this suite arrives from the same resolved
+      # client address, so all scenarios share one bucket per endpoint. Scenario 4 alone spends five
+      # deliberate failed sign-ins, and each scenario signs in at least once - with the production
+      # default of 10 per 60s the suite would hit a 429 instead of the behaviour under test, and a
+      # 429 is indistinguishable from a wrong password in the UI. Raised, not disabled: the limiter
+      # stays in the request path, and LocalAuthRateLimitIntegrationTest covers the limits
+      # themselves against their real values.
+      OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS: "200"
+      OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_GLOBAL_MAX_REQUESTS: "400"
+      OPAA_RATE_LIMIT_LOCAL_AUTH_SET_PASSWORD_MAX_REQUESTS: "100"
+      OPAA_RATE_LIMIT_LOCAL_AUTH_VERIFY_EMAIL_MAX_REQUESTS: "100"
+      OPAA_RATE_LIMIT_LOCAL_AUTH_CHANGE_PASSWORD_MAX_REQUESTS: "100"
+      OPAA_RATE_LIMIT_LOCAL_AUTH_REFRESH_MAX_REQUESTS: "200"
+      # The two self-service flows are limited per address as well as per IP (3 per hour), and
+      # scenario 3 and scenario 6 each use an address more than once across their steps.
+      OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_MAX_REQUESTS: "100"
+      OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_MAX_REQUESTS_PER_ADDRESS: "50"
+      OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_GLOBAL_MAX_REQUESTS: "200"
+      OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_MAX_REQUESTS: "100"
+      OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_MAX_REQUESTS_PER_ADDRESS: "50"
+      OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_GLOBAL_MAX_REQUESTS: "200"
+      # The account lockout itself is deliberately left at its production values (5 attempts,
+      # 15 minutes): scenario 4 drives it on purpose and then has the administrator unlock the
+      # account, which is the documented way out - it never waits the duration out.
+
+  # Stands in for a real chat/embedding provider (see e2e/local-auth.env's OPAA_OPENAI_BASE_URL and
+  # e2e/ai-stub/server.mjs) - reused as-is from the "e2e" target rather than duplicated, exactly
+  # like e2e/docker-compose.demo-smoke.yml does. No scenario of this target asks a chat question;
+  # the stub is here only so the backend's own start-up probe finds an answer.
+  ai-stub:
+    image: node:24-alpine
+    working_dir: /app
+    volumes:
+      - ./e2e/ai-stub:/app:ro
+    command: ["node", "server.mjs"]
+    environment:
+      PORT: "8089"
+      EMBEDDING_DIMENSIONS: *embedding-dimensions
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8089/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  # The mail catcher of docker-compose.yml's "mail" profile (#1536), unchanged except for the host
+  # ports: the scenarios read the invitation, reset and confirmation links out of its HTTP API
+  # (GET /api/v1/messages, GET /api/v1/message/{id}) from the Playwright process, so the web port
+  # has to be published on a port of this stack's own. The backend reaches it over the Compose
+  # network under the name "mailpit" - which is what a scenario enters into the SMTP settings.
+  mailpit:
+    ports:
+      - "127.0.0.1:${OPAA_MAILPIT_SMTP_PORT:-11025}:1025"
+      - "127.0.0.1:${OPAA_MAILPIT_WEB_PORT:-18025}:8025"

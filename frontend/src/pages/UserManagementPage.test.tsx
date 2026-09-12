@@ -188,6 +188,21 @@ describe('UserManagementPage', () => {
     expect(screen.queryByTestId('setup-link-value')).not.toBeInTheDocument()
   }, 20000)
 
+  // regression guard for #1543: MUIs Auswahl rendert eine Anzeige mit role="combobox", die ein
+  // <label for> nicht benennt - die E2E-Barrierefreiheitsprüfung des Dialogs fiel darüber
+  // (axe aria-input-field-name, serious).
+  it('gives the role selector an accessible name', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderWithProviders(<UserManagementPage />, { withRouter: true })
+    await screen.findByRole('table', { name: 'Lokale Konten' })
+
+    await user.click(screen.getByRole('button', { name: /Konto anlegen/ }))
+    const dialog = await screen.findByRole('dialog')
+
+    expect(within(dialog).getByRole('combobox', { name: 'Rolle' })).toBeInTheDocument()
+  })
+
   it('refuses the creation reason as a required field before any request', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
