@@ -109,6 +109,12 @@ interface AuthState {
 
   initialize: () => Promise<void>
   /**
+   * Re-reads what `GET /api/v1/auth/config` says about the sign-in - operating mode, providers and
+   * the local-accounts block - and touches nothing about the session. Unlike {@link initialize} it
+   * therefore never signs anybody in.
+   */
+  refreshPublicAuthConfig: () => Promise<void>
+  /**
    * Starts the sign-in at `providerId` (default: the suggested provider). `switchAccount` sends
    * `prompt=login`, so the provider asks for credentials even with a running SSO session.
    */
@@ -447,6 +453,28 @@ export const useAuthStore = create<AuthState>((set, get) => {
       )
     },
 
+    /**
+     * Die öffentliche Anmeldekonfiguration ist nach jedem Sitzungsende veraltet (#1612): Während
+     * einer Sitzung kann die Systemverwaltung die lokale Anmeldung, „Passwort vergessen", die
+     * Selbstregistrierung oder einen Identitätsanbieter umgeschaltet haben. Ohne dieses Nachladen
+     * zeigte die Anmeldeseite den Stand vom Anwendungsstart, bis jemand die Seite neu lud.
+     *
+     * Bewusst **nicht** `initialize()`: Das meldet im Betriebsmodus `dev` sofort wieder an und
+     * machte die gerade beendete Sitzung rückgängig.
+     */
+    refreshPublicAuthConfig: async () => {
+      try {
+        const config = await getAuthConfig()
+        set({
+          mode: config.mode,
+          providers: config.providers ?? [],
+          localAccounts: config.localAccounts,
+        })
+      } catch {
+        // Der letzte bekannte Stand ist besser als keiner: Eine nicht erreichbare Konfiguration
+        // darf die Anmeldeseite nicht leer räumen, und das Abmelden gilt unabhängig davon.
+      }
+    },
     loginOidc: async (providerId, options) => {
       const chosen = providerId ?? get().suggestedProvider()?.id
       const provider = get().providers.find((p) => p.id === chosen)
@@ -581,6 +609,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
           passwordChangeReason: null,
           error: null,
         })
+        await get().refreshPublicAuthConfig()
         return
       }
       if (mode === 'oidc' && userManager) {
@@ -607,6 +636,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
         passwordChangeReason: null,
         error: null,
       })
+      // Nach einem signoutRedirect() ist die Seite ohnehin fort; erreicht wird das hier auf dem
+      // Weg, auf dem der Anbieter keinen end_session_endpoint hat und die Anwendung stehen bleibt.
+      await get().refreshPublicAuthConfig()
     },
 
     // #737 review: read the token live from the UserManager rather than the store's own snapshot -
@@ -700,6 +732,11 @@ export const useAuthStore = create<AuthState>((set, get) => {
         void get()
           .initialize()
           .then(() => set({ error: UNKNOWN_ISSUER_MESSAGE }))
+      } else {
+        // Derselbe Grund wie beim Abmelden (#1612): Endet die Sitzung, weil die Systemverwaltung
+        // die lokale Anmeldung abgeschaltet hat, nennt die Anmeldeseite sonst weiter das Formular
+        // vom Anwendungsstart. Nicht abgewartet - das Sitzungsende gilt sofort.
+        void get().refreshPublicAuthConfig()
       }
     },
 

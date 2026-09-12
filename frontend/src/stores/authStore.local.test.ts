@@ -487,6 +487,85 @@ describe('authStore - local session', () => {
     expect(localStorage.getItem(LAST_SESSION_KIND_STORAGE_KEY)).toBeNull()
   })
 
+  /**
+   * Die öffentliche Anmeldekonfiguration ist nach jedem Sitzungsende veraltet (#1612): Wer die
+   * lokale Anmeldung umschaltet und sich dann abmeldet, bekam die Anmeldeseite im Stand vom
+   * Anwendungsstart zu sehen - ein Formular, das es nicht mehr gibt, oder keines, obwohl es
+   * wieder eines gibt. Erst ein echtes Neuladen der Seite zeigte den wahren Stand.
+   */
+  it('reloads the sign-in configuration on logout, so the sign-in page needs no page reload', async () => {
+    setCsrfCookie()
+    let localAccountsEnabled = true
+    server.use(
+      http.get('/api/v1/auth/config', () =>
+        HttpResponse.json({
+          ...LOCAL_CONFIG,
+          localAccounts: { ...LOCAL_CONFIG.localAccounts, enabled: localAccountsEnabled },
+        }),
+      ),
+      http.post('/api/v1/auth/local/logout', () => new HttpResponse(null, { status: 204 })),
+      http.get('/api/v1/auth/me', () => HttpResponse.json(ME)),
+      http.post('/api/v1/auth/local/login', () => HttpResponse.json(TOKEN)),
+    )
+    await useAuthStore.getState().initialize()
+    await useAuthStore.getState().loginLocal('erika.muster@stadt.example', 'geheim')
+    expect(useAuthStore.getState().localAccounts.enabled).toBe(true)
+
+    // Die Systemverwaltung schaltet die lokale Anmeldung ab, während diese Sitzung läuft.
+    localAccountsEnabled = false
+    await useAuthStore.getState().logout()
+
+    expect(useAuthStore.getState().localAccounts.enabled).toBe(false)
+  })
+
+  it('reloads the sign-in configuration when the session ends without a logout click', async () => {
+    setCsrfCookie()
+    let localAccountsEnabled = true
+    server.use(
+      http.get('/api/v1/auth/config', () =>
+        HttpResponse.json({
+          ...LOCAL_CONFIG,
+          localAccounts: { ...LOCAL_CONFIG.localAccounts, enabled: localAccountsEnabled },
+        }),
+      ),
+      http.get('/api/v1/auth/me', () => HttpResponse.json(ME)),
+      http.post('/api/v1/auth/local/login', () => HttpResponse.json(TOKEN)),
+    )
+    await useAuthStore.getState().initialize()
+    await useAuthStore.getState().loginLocal('erika.muster@stadt.example', 'geheim')
+
+    // Genau der Weg, den das Abschalten der lokalen Anmeldung für die eigene Sitzung nimmt: Sie
+    // endet serverseitig, ohne dass jemand auf „Abmelden" geklickt hat.
+    localAccountsEnabled = false
+    useAuthStore.getState().expireSession('local_accounts_disabled')
+
+    await vi.waitFor(() => expect(useAuthStore.getState().localAccounts.enabled).toBe(false))
+    expect(useAuthStore.getState().isAuthenticated).toBe(false)
+  })
+
+  it('keeps the last known sign-in configuration when the reload fails', async () => {
+    setCsrfCookie()
+    let configFails = false
+    server.use(
+      http.get('/api/v1/auth/config', () =>
+        configFails ? new HttpResponse(null, { status: 503 }) : HttpResponse.json(LOCAL_CONFIG),
+      ),
+      http.post('/api/v1/auth/local/logout', () => new HttpResponse(null, { status: 204 })),
+      http.get('/api/v1/auth/me', () => HttpResponse.json(ME)),
+      http.post('/api/v1/auth/local/login', () => HttpResponse.json(TOKEN)),
+    )
+    await useAuthStore.getState().initialize()
+    await useAuthStore.getState().loginLocal('erika.muster@stadt.example', 'geheim')
+
+    configFails = true
+    await useAuthStore.getState().logout()
+
+    // Eine nicht erreichbare Konfiguration ist kein Grund, die Anmeldeseite leer zu räumen: Der
+    // letzte bekannte Stand ist besser als gar keiner, und das Abmelden gilt trotzdem.
+    expect(useAuthStore.getState().localAccounts.enabled).toBe(true)
+    expect(useAuthStore.getState().isAuthenticated).toBe(false)
+  })
+
   it.each([
     ['local_accounts_disabled', /abgeschaltet/],
     ['account_locked:failed_logins', /mehreren Fehlversuchen/],
