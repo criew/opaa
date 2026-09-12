@@ -66,9 +66,27 @@ describe('AreaPageHeader', () => {
     expect(screen.getByText('Gilt für die gesamte Anwendung.')).toBeInTheDocument()
 
     // Die Beschreibung steht unter der Titelzeile, nicht in ihr - sonst wäre die Zeile je nach
-    // Textlänge unterschiedlich hoch und der Titel der Nachbarseite stünde woanders.
-    const titelzeile = heading.parentElement!
+    // Textlänge unterschiedlich hoch und der Titel der Nachbarseite stünde woanders. Der Titel
+    // sitzt in der Gruppe aus Zeichen und Titel, die Titelzeile ist also sein Großelternteil.
+    const titelzeile = heading.parentElement!.parentElement!
     expect(within(titelzeile).queryByText('Gilt für die gesamte Anwendung.')).toBeNull()
+  })
+
+  it('starts the description at the page edge, not under the title', () => {
+    renderWithProviders(
+      <AreaPageHeader
+        icon={PaletteOutlinedIcon}
+        title="Branding"
+        description="Gilt für die gesamte Anwendung."
+      />,
+    )
+
+    // Die Beschreibung ist ein Geschwister der Titelzeile, kein Kind der Gruppe aus Zeichen und
+    // Titel: So läuft die linke Kante durch, statt unter dem Zeichen ein Loch zu lassen.
+    const zeichenGruppe = screen.getByRole('heading', { level: 1 }).parentElement!
+    const beschreibung = screen.getByText('Gilt für die gesamte Anwendung.')
+    expect(zeichenGruppe.contains(beschreibung)).toBe(false)
+    expect(beschreibung.previousElementSibling).toBe(zeichenGruppe.parentElement)
   })
 
   it('leaves out meta and action when a page has neither', () => {

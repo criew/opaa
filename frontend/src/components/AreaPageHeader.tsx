@@ -46,55 +46,60 @@ export default function AreaPageHeader({
   icon: Icon,
 }: AreaPageHeaderProps) {
   return (
-    <Box sx={{ mb: 3, display: 'flex', alignItems: 'flex-start', gap: { xs: 1.25, sm: 1.5 } }}>
-      {/* Die Höhe ist die **Textzeile** des Titels, nicht die der Titelzeile: Die trägt die
-          Mindesthöhe einer Schaltfläche, der Text sitzt darin oben, und ein darauf zentriertes
-          Zeichen säße acht Pixel zu tief. So liegt seine Mitte auf der Mitte des Titels, und eine
-          mehrzeilige Beschreibung verschiebt es nicht - dieselbe Position auf jeder Seite ist der
-          Zweck dieses Bausteins. `aria-hidden`, weil der Titel daneben dasselbe sagt. */}
-      <Box
-        aria-hidden
-        sx={(theme) => ({
-          flex: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          height:
-            Number(theme.typography.h5.fontSize) * Number(theme.typography.h5.lineHeight ?? 1),
-          color: 'primary.main',
-        })}
-      >
-        {/* Etwa anderthalb Mal die Versalhöhe des Titels: genug, um als Zeichen des Bereichs zu
-            wirken, wenig genug, um den Titel nicht zu überstimmen. */}
-        <Icon sx={{ fontSize: { xs: 21, sm: 24 } }} />
-      </Box>
-      <Box sx={{ minWidth: 0, flex: 1 }}>
-        {/* Eine Flex-Box, kein Stack: MUIs Stack setzt seinen Abstand als `margin-left` auf die
+    <Box sx={{ mb: 3 }}>
+      {/* Eine Flex-Box, kein Stack: MUIs Stack setzt seinen Abstand als `margin-left` auf die
           Geschwister und überschreibt damit das `ml: auto`, mit dem die Handlung an den rechten
           Rand rückt. Die Mindesthöhe ist die einer Schaltfläche - ohne sie stünde die
           Beschreibung auf Seiten mit Handlung vier Pixel tiefer als auf den übrigen, genau der
           Sprung, den dieser Baustein beseitigen soll. */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 2,
+          rowGap: 1,
+          flexWrap: 'wrap',
+          minHeight: 36.5,
+        }}
+      >
+        {/* Zeichen und Titel bilden eine Gruppe mit eigenem, engerem Abstand und bleiben damit
+            auch beim Umbruch zusammen. Die Beschreibung steht bewusst außerhalb: Sie beginnt an
+            der linken Kante der Seite, nicht unter dem Titel - so läuft eine Kante durch, statt
+            unter dem Zeichen ein Loch zu lassen. */}
         <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'baseline',
-            gap: 2,
-            rowGap: 1,
-            flexWrap: 'wrap',
-            minHeight: 36.5,
-          }}
+          sx={{ display: 'flex', alignItems: 'baseline', gap: { xs: 1.25, sm: 1.5 }, minWidth: 0 }}
         >
+          {/* Die Höhe ist die **Textzeile** des Titels, nicht die der Titelzeile: Die trägt die
+              Mindesthöhe einer Schaltfläche, der Text sitzt darin oben, und ein darauf zentriertes
+              Zeichen säße acht Pixel zu tief. `aria-hidden`, weil der Titel daneben dasselbe sagt. */}
+          <Box
+            aria-hidden
+            sx={(theme) => ({
+              flex: 'none',
+              alignSelf: 'flex-start',
+              display: 'flex',
+              alignItems: 'center',
+              height:
+                Number(theme.typography.h5.fontSize) * Number(theme.typography.h5.lineHeight ?? 1),
+              color: 'primary.main',
+            })}
+          >
+            {/* Etwa anderthalb Mal die Versalhöhe des Titels: genug, um als Zeichen des Bereichs
+                zu wirken, wenig genug, um den Titel nicht zu überstimmen. */}
+            <Icon sx={{ fontSize: { xs: 21, sm: 24 } }} />
+          </Box>
           <PageHeading title={title} documentTitle={documentTitle} />
-          {meta && (
-            <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
-              {meta}
-            </Typography>
-          )}
-          {action && <Box sx={{ ml: 'auto', flex: 'none', alignSelf: 'center' }}>{action}</Box>}
         </Box>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5, maxWidth: '80ch' }}>
-          {description}
-        </Typography>
+        {meta && (
+          <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+            {meta}
+          </Typography>
+        )}
+        {action && <Box sx={{ ml: 'auto', flex: 'none', alignSelf: 'center' }}>{action}</Box>}
       </Box>
+      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5, maxWidth: '80ch' }}>
+        {description}
+      </Typography>
     </Box>
   )
 }
