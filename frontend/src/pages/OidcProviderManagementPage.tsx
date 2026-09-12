@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -22,7 +22,7 @@ import OidcProviderSetupInstructions from '../components/admin/OidcProviderSetup
 export default function OidcProviderManagementPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   const mode = useAuthStore((s) => s.mode)
-  const providers = useOidcProviderStore((s) => s.providers)
+  const allProviders = useOidcProviderStore((s) => s.providers)
   const isLoading = useOidcProviderStore((s) => s.isLoading)
   const error = useOidcProviderStore((s) => s.error)
   const loadProviders = useOidcProviderStore((s) => s.loadProviders)
@@ -32,6 +32,15 @@ export default function OidcProviderManagementPage() {
     provider?: OidcProviderResponse
     opening: number
   }>({ open: false, opening: 0 })
+
+  // Die `LOCAL`-Zeile ist keine Anbieterzeile dieser Seite (ADR-0033, Entscheidung 4): ihr
+  // `enabled` ist der Schalter der lokalen Benutzerverwaltung und wird dort bedient
+  // (Administration → Benutzer). Zwei Schalter für denselben Zustand wären zwei Wahrheiten.
+  const providers = useMemo(
+    () => allProviders.filter((provider) => provider.providerType === 'OIDC'),
+    [allProviders],
+  )
+  const enabledCount = providers.filter((provider) => provider.enabled).length
 
   useEffect(() => {
     if (isSystemAdmin) void loadProviders()
@@ -70,7 +79,8 @@ export default function OidcProviderManagementPage() {
         </Box>
         <GlobalScopeNote>
           Gilt für die gesamte Anwendung. Die Reihenfolge ist die der Anmeldeseite; Änderungen
-          wirken ohne Neustart.
+          wirken ohne Neustart. Lokale Konten sind kein Anbieter dieser Liste – sie werden unter
+          Administration → Benutzer geführt.
         </GlobalScopeNote>
 
         {mode === 'dev' && (
@@ -141,6 +151,9 @@ export default function OidcProviderManagementPage() {
                   position={index + 1}
                   isFirst={index === 0}
                   isLast={index === providers.length - 1}
+                  isLastEnabled={provider.enabled && enabledCount === 1}
+                  canDisable={!provider.isDefault || enabledCount <= 1}
+                  canDelete={!provider.isDefault || providers.length === 1}
                   onEdit={(p) =>
                     setDialog((d) => ({ open: true, provider: p, opening: d.opening + 1 }))
                   }

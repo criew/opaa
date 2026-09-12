@@ -11,6 +11,7 @@ import { useOidcProviderStore } from './oidcProviderStore'
 import { useMailStore } from './mailStore'
 import { useNotificationStore } from './notificationStore'
 import { useSearchAdminStore } from './searchAdminStore'
+import { useUserAdminStore } from './userAdminStore'
 import { useMetadataFilterOptionsStore } from './metadataFilterOptionsStore'
 import { bumpSessionEpoch } from './sessionEpoch'
 
@@ -52,6 +53,7 @@ function resettableStores() {
     useMailStore,
     useNotificationStore,
     useSearchAdminStore,
+    useUserAdminStore,
     useMetadataFilterOptionsStore,
   ]
 }

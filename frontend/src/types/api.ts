@@ -233,6 +233,25 @@ export type TrackedDocumentResponse = components['schemas']['TrackedDocumentResp
 export type ChunkInspectionResponse = components['schemas']['ChunkInspectionResponse']
 export type DocumentChunksResponse = components['schemas']['DocumentChunksResponse']
 
+export type ProviderType = components['schemas']['ProviderType']
+export type MailDeliveryPath = components['schemas']['MailDeliveryPath']
+export type LockReason = components['schemas']['LockReason']
+export type LocalAccountState = components['schemas']['LocalAccountState']
+export type LocalAccountActivity = components['schemas']['LocalAccountActivity']
+export type LocalUserCreationMode = components['schemas']['LocalUserCreationMode']
+export type LocalUserResponse = components['schemas']['LocalUserResponse']
+export type LocalUserPageResponse = components['schemas']['LocalUserPageResponse']
+export type LocalUserSummaryResponse = components['schemas']['LocalUserSummaryResponse']
+export type LocalUserCreateRequest = components['schemas']['LocalUserCreateRequest']
+export type LocalUserCreatedResponse = components['schemas']['LocalUserCreatedResponse']
+export type LocalUserUpdateRequest = components['schemas']['LocalUserUpdateRequest']
+export type LocalUserLockRequest = components['schemas']['LocalUserLockRequest']
+export type LocalUserPasswordResetResponse = components['schemas']['LocalUserPasswordResetResponse']
+export type LocalUserGeneratedPasswordResponse =
+  components['schemas']['LocalUserGeneratedPasswordResponse']
+export type LocalAuthSettingsResponse = components['schemas']['LocalAuthSettingsResponse']
+export type LocalAuthSettingsUpdateRequest = components['schemas']['LocalAuthSettingsUpdateRequest']
+
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (
     typeof data === 'object' &&

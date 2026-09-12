@@ -109,6 +109,13 @@ const client = axios.create({
   baseURL: '/api',
 })
 
+/**
+ * The one configured axios instance - interceptors, base URL, auth header. Exported so an
+ * endpoint module split out of this file (`localUserApi.ts`, #1541) shares the same client
+ * instead of building a second one that would miss the token refresh.
+ */
+export const apiClient = client
+
 setupAuthInterceptors(
   client,
   () => useAuthStore.getState().getAccessToken(),
@@ -1510,21 +1517,37 @@ export async function updateOidcProvider(
   }
 }
 
-export async function deleteOidcProvider(providerId: string): Promise<void> {
+/**
+ * `acknowledgeLastProvider` is the confirmation the backend demands for the last *enabled* OIDC
+ * provider (409 `LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED` without it): afterwards only local
+ * accounts can sign in (ADR-0033, Entscheidung 4).
+ */
+export async function deleteOidcProvider(
+  providerId: string,
+  acknowledgeLastProvider = false,
+): Promise<void> {
   try {
-    await client.delete(`/v1/admin/oidc-providers/${providerId}`)
+    await client.delete(`/v1/admin/oidc-providers/${providerId}`, {
+      params: acknowledgeLastProvider ? { acknowledgeLastProvider: true } : undefined,
+    })
   } catch (err) {
     normalizeError(err)
   }
 }
 
+/** Disabling the last enabled OIDC provider needs the same acknowledgement as deleting it. */
 export async function setOidcProviderEnabled(
   providerId: string,
   enabled: boolean,
+  acknowledgeLastProvider = false,
 ): Promise<OidcProviderResponse> {
   try {
     const { data } = await client.post<OidcProviderResponse>(
       `/v1/admin/oidc-providers/${providerId}/${enabled ? 'enable' : 'disable'}`,
+      null,
+      {
+        params: !enabled && acknowledgeLastProvider ? { acknowledgeLastProvider: true } : undefined,
+      },
     )
     return data
   } catch (err) {

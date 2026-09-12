@@ -22,8 +22,16 @@ interface OidcProviderState {
     providerId: string,
     request: OidcProviderRequest,
   ) => Promise<OidcProviderResponse>
-  deleteExistingProvider: (providerId: string) => Promise<void>
-  setProviderEnabled: (providerId: string, enabled: boolean) => Promise<OidcProviderResponse>
+  /**
+   * `acknowledgeLastProvider` travels to the backend only for the last enabled OIDC provider -
+   * see {@link deleteOidcProvider} (ADR-0033, Entscheidung 4).
+   */
+  deleteExistingProvider: (providerId: string, acknowledgeLastProvider?: boolean) => Promise<void>
+  setProviderEnabled: (
+    providerId: string,
+    enabled: boolean,
+    acknowledgeLastProvider?: boolean,
+  ) => Promise<OidcProviderResponse>
   makeProviderDefault: (providerId: string) => Promise<OidcProviderResponse>
   /** Moves the provider one position up or down in the sign-in page order. */
   moveProvider: (providerId: string, direction: 'up' | 'down') => Promise<void>
@@ -76,13 +84,13 @@ export const useOidcProviderStore = create<OidcProviderState>((set, get) => ({
     return updated
   },
 
-  deleteExistingProvider: async (providerId) => {
-    await deleteOidcProvider(providerId)
+  deleteExistingProvider: async (providerId, acknowledgeLastProvider = false) => {
+    await deleteOidcProvider(providerId, acknowledgeLastProvider)
     set({ providers: get().providers.filter((p) => p.id !== providerId) })
   },
 
-  setProviderEnabled: async (providerId, enabled) => {
-    const updated = await setOidcProviderEnabled(providerId, enabled)
+  setProviderEnabled: async (providerId, enabled, acknowledgeLastProvider = false) => {
+    const updated = await setOidcProviderEnabled(providerId, enabled, acknowledgeLastProvider)
     set({ providers: get().providers.map((p) => (p.id === providerId ? updated : p)) })
     return updated
   },

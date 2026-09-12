@@ -19,6 +19,7 @@ import {
 // belongs in that test file's own beforeEach.
 import { resetMockAuthConfig, resetMockBranding, resetMockOidcProviders } from '../mocks/fixtures'
 import { resetMockMailSettings, resetMockMailTemplates } from '../mocks/mailFixtures'
+import { resetMockLocalAuthSettings, resetMockLocalUsers } from '../mocks/localUserFixtures'
 
 /**
  * MSW passes a handler's `Set-Cookie` into `document.cookie`, which jsdom keeps for the whole file.
@@ -46,6 +47,10 @@ afterEach(() => {
   // Same reason: the mail settings and templates are mutable so a PUT shows up on the next GET.
   resetMockMailSettings()
   resetMockMailTemplates()
+  // Same reason: the local accounts and their settings are mutable, so a lock or a created account
+  // shows up on the next GET (#1541).
+  resetMockLocalUsers()
+  resetMockLocalAuthSettings()
   // The auth config fixture is mutable too (ADR-0033): a test that switches the local account
   // management on must not leave it on for the next one.
   resetMockAuthConfig()

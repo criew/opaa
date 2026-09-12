@@ -320,4 +320,72 @@ describe('OidcProviderManagementPage', () => {
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
     expect(await screen.findByText('Datenbank nicht erreichbar')).toBeInTheDocument()
   })
+
+  /**
+   * ADR-0033, Entscheidung 4 (#1541): Die `LOCAL`-Zeile steht in derselben Tabelle, ist aber kein
+   * Anbieter dieser Seite - ihr Schalter ist der Schalter der Benutzerverwaltung.
+   */
+  it('does not list the local account management among the providers', async () => {
+    signInAs('SYSTEM_ADMIN')
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+
+    const cards = await screen.findAllByRole('article')
+    expect(cards).toHaveLength(3)
+    expect(screen.queryByText('Lokale Konten')).not.toBeInTheDocument()
+    expect(screen.getByText(/unter\s+Administration → Benutzer geführt/)).toBeInTheDocument()
+  })
+
+  it('names the consequence of disabling the last enabled provider and sends the acknowledgement', async () => {
+    // only the default is left enabled: disabling it is the step into a local-only installation
+    mockOidcProviders
+      .filter((provider) => !provider.isDefault && provider.providerType === 'OIDC')
+      .forEach((provider) => {
+        provider.enabled = false
+      })
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    const acknowledged: Array<string | null> = []
+    server.events.on('request:start', ({ request }) => {
+      const url = new URL(request.url)
+      if (url.pathname.endsWith('/disable')) {
+        acknowledged.push(url.searchParams.get('acknowledgeLastProvider'))
+      }
+    })
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+
+    const cards = await screen.findAllByRole('article')
+    await user.click(within(cards[0]).getByRole('button', { name: 'Deaktivieren' }))
+
+    expect(window.confirm).toHaveBeenCalledWith(
+      expect.stringContaining('Danach können sich nur noch lokale Konten anmelden'),
+    )
+    await waitFor(() => expect(acknowledged).toEqual(['true']))
+    await waitFor(() =>
+      expect(useOidcProviderStore.getState().providers.find((p) => p.isDefault)?.enabled).toBe(
+        false,
+      ),
+    )
+    server.events.removeAllListeners('request:start')
+  })
+
+  it('explains the lockout guard when the backend refuses the last provider', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    server.use(
+      http.post('/api/v1/admin/oidc-providers/:providerId/disable', () =>
+        HttpResponse.json(
+          { error: 'Kein anmeldefähiger Systemverwalter', code: 'LAST_LOGIN_CAPABLE_ADMIN' },
+          { status: 409 },
+        ),
+      ),
+    )
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+
+    const cards = await screen.findAllByRole('article')
+    await user.click(within(cards[1]).getByRole('button', { name: 'Deaktivieren' }))
+
+    expect(
+      await within(cards[1]).findByText(/lokales Systemverwalterkonto mit Passwort/),
+    ).toBeInTheDocument()
+  })
 })

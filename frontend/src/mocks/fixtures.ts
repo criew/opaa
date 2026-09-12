@@ -691,6 +691,32 @@ function initialOidcProviders(): OidcProviderResponse[] {
       createdAt: '2026-09-03T08:00:00Z',
       updatedAt: '2026-09-03T08:00:00Z',
     },
+    // Die eine LOCAL-Zeile (ADR-0033, Entscheidung 4): sie steht in derselben Tabelle und kommt
+    // über dieselbe API, ist aber kein Anbieter der Anbieterseite - ihr `enabled` ist der
+    // Schalter der lokalen Benutzerverwaltung (#1541).
+    {
+      id: 'oidc-provider-local',
+      displayName: 'Lokale Konten',
+      enabled: true,
+      isDefault: false,
+      providerType: 'LOCAL',
+      sortOrder: 3,
+      issuerUri: 'urn:opaa:local',
+      clientId: null,
+      jwkSetUri: null,
+      claimMapping: {
+        emailClaim: 'email',
+        displayNameClaim: 'name',
+        rolesClaim: null,
+        systemAdminRole: null,
+        auditorRole: null,
+        groupsClaim: null,
+      },
+      registryState: 'READY',
+      registryMessage: null,
+      createdAt: '2026-09-01T07:00:00Z',
+      updatedAt: '2026-09-01T07:00:00Z',
+    },
   ]
 }
 

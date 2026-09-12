@@ -9,10 +9,13 @@ describe('oidcProviderStore', () => {
 
   it('loads the providers in sign-in order', async () => {
     await useOidcProviderStore.getState().loadProviders()
+    // Die LOCAL-Zeile kommt mit: der Store führt die Tabelle, das Filtern auf Anbieter ist Sache
+    // der Anbieterseite (#1541).
     expect(useOidcProviderStore.getState().providers.map((p) => p.displayName)).toEqual([
       'Verzeichnisdienst',
       'Partnerportal',
       'Landesportal',
+      'Lokale Konten',
     ])
   })
 
@@ -32,6 +35,7 @@ describe('oidcProviderStore', () => {
       'oidc-provider-partner',
       'oidc-provider-beschaeftigte',
       'oidc-provider-land',
+      'oidc-provider-local',
     ])
     expect(mockOidcProviders.find((p) => p.id === 'oidc-provider-partner')?.sortOrder).toBe(0)
   })
@@ -42,6 +46,7 @@ describe('oidcProviderStore', () => {
     expect(useOidcProviderStore.getState().providers.map((p) => p.id)).toEqual([
       'oidc-provider-beschaeftigte',
       'oidc-provider-land',
+      'oidc-provider-local',
     ])
   })
 })
