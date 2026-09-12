@@ -19,6 +19,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import io.opaa.auth.local.LocalAccountSelfDisclosure;
 import io.opaa.auth.oidc.OidcAddressPolicy;
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcJwtDecoderFactory;
@@ -113,6 +114,10 @@ class OidcUnknownIssuerAccessTest {
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private UserService userService;
+
+  // Der Controller dieser Scheibe liest seit ADR-0033 den Anlagegrund des eigenen Kontos; die
+  // @WebMvcTest-Scheibe scannt das Paket io.opaa.auth.local nicht mit.
+  @MockitoBean private LocalAccountSelfDisclosure localAccountSelfDisclosure;
 
   @BeforeAll
   static void generateKey() throws Exception {
