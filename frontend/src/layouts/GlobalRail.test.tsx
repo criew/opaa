@@ -99,7 +99,8 @@ describe('GlobalRail', () => {
     })
     renderRailAt('/admin/branding')
     const adminLink = screen.getByRole('link', { name: 'Admin' })
-    expect(adminLink).toHaveAttribute('href', '/admin/groups')
+    // #1541: der Einstieg führt auf „Benutzer", den ersten Unterpunkt von „Benutzer & Gruppen"
+    expect(adminLink).toHaveAttribute('href', '/admin/users')
     // Any /admin page counts as the admin scope, not only the link's own target.
     expect(adminLink).toHaveAttribute('aria-current', 'true')
   })

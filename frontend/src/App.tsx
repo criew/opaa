@@ -18,6 +18,7 @@ import SpacesOverviewPage from './pages/SpacesOverviewPage'
 import SpaceCreatePage from './pages/SpaceCreatePage'
 import SpaceManagementPage from './pages/SpaceManagementPage'
 import GroupManagementPage from './pages/GroupManagementPage'
+import UserManagementPage from './pages/UserManagementPage'
 import LibraryManagementPage from './pages/LibraryManagementPage'
 import LibraryCreatePage from './pages/LibraryCreatePage'
 import LibraryDetailPage from './pages/LibraryDetailPage'
@@ -33,7 +34,11 @@ import MailSettingsPage from './pages/MailSettingsPage'
 
 const ADMIN_SECTIONS = [
   { label: 'Allgemein & Branding', to: '/admin/branding' },
-  { label: 'Benutzer & Gruppen', to: '/admin/groups' },
+  // „Benutzer & Gruppen" als zwei Einträge statt als Tabs auf einer Seite (#1541): die
+  // Sekundärspalte *ist* die Bereichsnavigation, und ein Tab-Paar darüber wäre eine zweite
+  // Navigation für dieselbe Entscheidung. Jedes Ziel bleibt so direkt verlinkbar.
+  { label: 'Benutzer', to: '/admin/users' },
+  { label: 'Gruppen', to: '/admin/groups' },
   { label: 'Modelle', to: '/admin/models' },
   { label: 'Identitätsanbieter', to: '/admin/identity-providers' },
   { label: 'E-Mail', to: '/admin/mail' },
@@ -123,6 +128,7 @@ export default function App() {
               {/* Global areas render inside the frame from mockup 2b (#787): no space
                   column, a light secondary column with the area navigation instead. */}
               <Route element={<AdminAreaLayout />}>
+                <Route path="admin/users" element={<UserManagementPage />} />
                 <Route path="admin/groups" element={<GroupManagementPage />} />
                 <Route path="admin/branding" element={<BrandingSettingsPage />} />
                 <Route path="admin/models" element={<LlmModelManagementPage />} />
