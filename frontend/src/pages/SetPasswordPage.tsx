@@ -41,6 +41,20 @@ const MISMATCH_MESSAGE = 'Die beiden Eingaben stimmen nicht überein.'
 /** The fields this form can show an error at, in the order the focus walks them. */
 const FIELDS = ['newPassword', 'repeatedPassword'] as const
 
+/**
+ * The house's mark on a page reached cold from a mail, so the person can tell whose installation
+ * asks them for a password (#583, guidelines 7). Deliberately without heading semantics - the
+ * PageHeading of the branch below is this page's one h1. In every branch, because every one of them
+ * is what the link leads to.
+ */
+function BrandHead() {
+  return (
+    <Box sx={{ mb: 3 }}>
+      <BrandMark orientation="vertical" variant="h6" logoHeight={32} />
+    </Box>
+  )
+}
+
 function SignInLink({ children = 'Zur Anmeldung' }: { children?: string }) {
   return (
     <Link component={RouterLink} to={LOGIN_ROUTE}>
@@ -129,6 +143,7 @@ export default function SetPasswordPage() {
   if (done) {
     return (
       <AuthLayout>
+        <BrandHead />
         <AuthNotice heading={HEADING} severity="success" message={PASSWORD_SET_MESSAGE}>
           <SignInLink />
         </AuthNotice>
@@ -142,6 +157,7 @@ export default function SetPasswordPage() {
   if (isLoading) {
     return (
       <AuthLayout>
+        <BrandHead />
         <AuthLoading heading={HEADING} />
       </AuthLayout>
     )
@@ -152,6 +168,7 @@ export default function SetPasswordPage() {
   if (linkInvalid || token === '') {
     return (
       <AuthLayout>
+        <BrandHead />
         <AuthNotice
           heading={HEADING}
           severity="error"
@@ -176,12 +193,7 @@ export default function SetPasswordPage() {
 
   return (
     <AuthLayout>
-      {/* The house's mark on a page reached cold from a mail, so the person can tell whose
-          installation asks them for a password (#583, guidelines 7). Deliberately without heading
-          semantics - the PageHeading below is this page's one h1. */}
-      <Box sx={{ mb: 3 }}>
-        <BrandMark orientation="vertical" variant="h6" logoHeight={32} />
-      </Box>
+      <BrandHead />
       <PageHeading title={HEADING} variant="h6" />
       {formError && (
         <Alert ref={alertRef} tabIndex={-1} severity="error" sx={{ mt: 2, textAlign: 'left' }}>

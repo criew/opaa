@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { useLocation, useSearchParams } from 'react-router'
 
 /**
  * Reads the raw token of a mail link once and takes it out of the address bar immediately
@@ -18,6 +18,7 @@ import { useSearchParams } from 'react-router'
  */
 export function useLinkToken(): string {
   const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
   // The initializer runs once; every later render sees the value from before the URL was cleaned.
   const [token] = useState(() => searchParams.get('token') ?? '')
 
@@ -25,8 +26,10 @@ export function useLinkToken(): string {
     if (!searchParams.has('token')) return
     const remaining = new URLSearchParams(searchParams)
     remaining.delete('token')
-    setSearchParams(remaining, { replace: true })
-  }, [searchParams, setSearchParams])
+    // The router state is carried over: replacing the entry without it would drop whatever a
+    // caller put there (a redirect target, for instance) as a side effect of cleaning the URL.
+    setSearchParams(remaining, { replace: true, state: location.state })
+  }, [searchParams, setSearchParams, location.state])
 
   return token
 }

@@ -507,9 +507,9 @@ welche Daten gespeichert werden; den Datenschutzhinweis des Hauses gibt die Syst
 solange es dafür keine Seite im Produkt gibt (#143).
 
 **Passwort ändern** (`/account/password`) nutzt dieselben Bausteine; nur eine abgewiesene
-**aktuelle** Eingabe wird geleert, ein abgewiesenes neues Passwort lässt die übrigen Felder stehen. In den Benutzereinstellungen
-erscheint der Abschnitt „Ihr Konto" mit der Schaltfläche „Passwort ändern" **nur für lokale
-Sitzungen**; eine Anbietersitzung verweist dort auf ihren Identitätsanbieter, die
+**aktuelle** Eingabe wird geleert, ein abgewiesenes neues Passwort lässt die übrigen Felder stehen.
+In den Benutzereinstellungen erscheint der Abschnitt „Ihr Konto" mit der Schaltfläche „Passwort
+ändern" **nur für lokale Sitzungen**; eine Anbietersitzung verweist dort auf ihren Identitätsanbieter, die
 Entwicklungsanmeldung auf nichts. Der freiwillige Wechsel kehrt danach in die Einstellungen zurück
 und bleibt angemeldet — das Backend stellt in derselben Antwort eine Sitzung aus. Derselbe Abschnitt
 zeigt der Person ihren **Anlagegrund** („Anlass des Kontos"), den die Systemverwaltung bei der Anlage

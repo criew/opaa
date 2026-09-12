@@ -163,7 +163,9 @@ describe('SettingsPage', () => {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/account/password" element={<ChangePasswordPage />} />
       </Routes>,
-      { withRouter: true, initialRoute: '/settings' },
+      // The password page brings an AuthLayout with a NotificationHost of its own; a second host
+      // from the helper would show every popup twice.
+      { withRouter: true, initialRoute: '/settings', withNotificationHost: false },
     )
 
     await userEvent.click(screen.getByRole('link', { name: 'Passwort ändern' }))

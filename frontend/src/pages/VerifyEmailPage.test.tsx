@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { describe, expect, it } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
-import { Route, Routes, useLocation } from 'react-router'
+import { screen } from '@testing-library/react'
+import { BrowserRouter, Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import { server } from '../mocks/server'
 import { MOCK_RATE_LIMITED_TOKEN, MOCK_VERIFY_EMAIL_TOKEN } from '../mocks/localAuthFixtures'
@@ -11,25 +11,30 @@ import VerifyEmailPage from './VerifyEmailPage'
  * ADR-0033, Entscheidung 11: the link is a plain GET, the confirming POST happens on this page - and
  * exactly once, because the token is single-use. Reachable whatever the self-service switches say.
  */
-/** Makes the query of the current location assertable - the token must not stay in it. */
-function QueryProbe() {
-  return <span data-testid="query">{useLocation().search}</span>
-}
-
 describe('VerifyEmailPage', () => {
+  const routes = (
+    <Routes>
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/login" element={<div>Anmeldung</div>} />
+    </Routes>
+  )
+
   function renderAt(search: string, strict = false) {
-    const page = (
-      <>
-        <QueryProbe />
-        <Routes>
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="/login" element={<div>Anmeldung</div>} />
-        </Routes>
-      </>
-    )
-    return renderWithProviders(strict ? <StrictMode>{page}</StrictMode> : page, {
+    return renderWithProviders(strict ? <StrictMode>{routes}</StrictMode> : routes, {
       withRouter: true,
       initialRoute: `/verify-email${search}`,
+      withNotificationHost: false,
+    })
+  }
+
+  /**
+   * The page in a real {@link BrowserRouter} on jsdom's own `window.location`: a MemoryRouter keeps
+   * its location in React state, where `window.location` never changes and the regression below
+   * could not be seen at all.
+   */
+  function renderInBrowser(search: string) {
+    window.history.replaceState({}, '', `/verify-email${search}`)
+    return renderWithProviders(<BrowserRouter>{routes}</BrowserRouter>, {
       withNotificationHost: false,
     })
   }
@@ -55,17 +60,37 @@ describe('VerifyEmailPage', () => {
   })
 
   /**
-   * ADR-0033, Entscheidung 9: no raw token in any log. The confirming POST must leave with a clean
-   * referrer, which the installation's `Referrer-Policy: same-origin` would otherwise fill with the
-   * token - see useLinkToken.
+   * ADR-0033, Entscheidung 9: no raw token in any log. This page is where the order is load-bearing -
+   * the confirming POST goes out during mount, so the URL has to be clean *before* it, not merely
+   * afterwards. Asserted on `window.location` at the moment the request starts, because that is what
+   * the browser reads the referrer from.
    */
-  it('takes the token out of the address bar and still confirms', async () => {
-    renderAt(`?token=${MOCK_VERIFY_EMAIL_TOKEN}`)
+  it('has no token in the address bar when the confirming request starts', async () => {
+    const seen: string[] = []
+    server.events.on('request:start', () => seen.push(window.location.search))
+    const historyBefore = window.history.length
+    renderInBrowser(`?token=${MOCK_VERIFY_EMAIL_TOKEN}`)
 
     expect(
       await screen.findByText('E-Mail-Adresse bestätigt — Sie können sich jetzt anmelden.'),
     ).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByTestId('query').textContent).toBe(''))
+    server.events.removeAllListeners('request:start')
+
+    expect(seen).toEqual([''])
+    // replaceState, not pushState: the back button must not lead onto a URL with the token in it.
+    expect(window.history.length).toBe(historyBefore)
+  })
+
+  // Whatever else the link carries stays: the token is removed, not the query.
+  it('keeps the other query parameters of the link', async () => {
+    const seen: string[] = []
+    server.events.on('request:start', () => seen.push(window.location.search))
+    renderInBrowser(`?x=1&token=${MOCK_VERIFY_EMAIL_TOKEN}`)
+
+    await screen.findByText('E-Mail-Adresse bestätigt — Sie können sich jetzt anmelden.')
+    server.events.removeAllListeners('request:start')
+
+    expect(seen).toEqual(['?x=1'])
   })
 
   it('answers an unusable link with the one wording', async () => {

@@ -36,11 +36,11 @@ function BrandHead() {
 
 /**
  * The page behind the verification link. The link itself is a plain `GET`; the confirming `POST`
- * happens here - and exactly once per token, which the ref guards: React's StrictMode mounts an
+ * happens here - and exactly once per mount, which the ref guards: React's StrictMode runs the
  * effect twice in development, and the token is single-use, so the second call would consume
- * nothing and report the link as invalid right after it worked. The ref holds the token rather
- * than a flag, so it states the invariant it guards ("this token has been sent") instead of "some
- * request has gone out".
+ * nothing and report the link as invalid right after it worked. The ref holds the token rather than
+ * a flag, so a mount whose token changed would still send - the guard is "this token has been
+ * sent", not "some request has gone out".
  */
 export default function VerifyEmailPage() {
   // Reads the token and takes it out of the address bar before this page's first request leaves, so

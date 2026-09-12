@@ -49,7 +49,7 @@ describe('SystemLoginPage', () => {
   })
 
   it('offers the mask while the local account management is switched off', () => {
-    renderWithProviders(<SystemLoginPage />, { withRouter: true })
+    renderWithProviders(<SystemLoginPage />, { withRouter: true, withNotificationHost: false })
 
     expect(screen.getByLabelText('E-Mail-Adresse')).toBeInTheDocument()
     expect(screen.getByLabelText('Passwort')).toBeInTheDocument()
@@ -61,7 +61,7 @@ describe('SystemLoginPage', () => {
   })
 
   it('offers no self-service links', () => {
-    renderWithProviders(<SystemLoginPage />, { withRouter: true })
+    renderWithProviders(<SystemLoginPage />, { withRouter: true, withNotificationHost: false })
 
     expect(screen.queryByRole('link', { name: 'Passwort vergessen?' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Konto registrieren' })).not.toBeInTheDocument()
@@ -70,7 +70,7 @@ describe('SystemLoginPage', () => {
   it('signs in with the entered credentials', async () => {
     const loginLocal = vi.fn().mockResolvedValue(true)
     useAuthStore.setState({ loginLocal })
-    renderWithProviders(<SystemLoginPage />, { withRouter: true })
+    renderWithProviders(<SystemLoginPage />, { withRouter: true, withNotificationHost: false })
 
     await userEvent.type(screen.getByLabelText('E-Mail-Adresse'), 'admin@opaa.local')
     await userEvent.type(screen.getByLabelText('Passwort'), 'notfall')
@@ -83,7 +83,7 @@ describe('SystemLoginPage', () => {
   // password - the page must not betray which of the two it was.
   it('shows the same sentence a wrong password gets when a regular account signs in here', async () => {
     server.use(http.post('/api/v1/auth/local/login', () => new HttpResponse(null, { status: 401 })))
-    renderWithProviders(<SystemLoginPage />, { withRouter: true })
+    renderWithProviders(<SystemLoginPage />, { withRouter: true, withNotificationHost: false })
 
     await userEvent.type(screen.getByLabelText('E-Mail-Adresse'), 'erika.muster@stadt.example')
     await userEvent.type(screen.getByLabelText('Passwort'), 'richtig-aber-kein-admin')
@@ -96,7 +96,7 @@ describe('SystemLoginPage', () => {
 
   it('waits for the configuration before showing the mask', () => {
     useAuthStore.setState({ isLoading: true })
-    renderWithProviders(<SystemLoginPage />, { withRouter: true })
+    renderWithProviders(<SystemLoginPage />, { withRouter: true, withNotificationHost: false })
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
     expect(screen.queryByLabelText('E-Mail-Adresse')).not.toBeInTheDocument()
@@ -109,7 +109,7 @@ describe('SystemLoginPage', () => {
         <Route path="/login/system" element={<SystemLoginPage />} />
         <Route path="/login" element={<div>Reguläre Anmeldung</div>} />
       </Routes>,
-      { withRouter: true, initialRoute: '/login/system' },
+      { withRouter: true, initialRoute: '/login/system', withNotificationHost: false },
     )
 
     expect(screen.getByText('Reguläre Anmeldung')).toBeInTheDocument()
@@ -122,7 +122,7 @@ describe('SystemLoginPage', () => {
         <Route path="/login/system" element={<SystemLoginPage />} />
         <Route path="/chat" element={<div>Chat</div>} />
       </Routes>,
-      { withRouter: true, initialRoute: '/login/system' },
+      { withRouter: true, initialRoute: '/login/system', withNotificationHost: false },
     )
 
     expect(screen.getByText('Chat')).toBeInTheDocument()

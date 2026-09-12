@@ -53,7 +53,7 @@ describe('LoginPage', () => {
 
   it('renders the product name as the page heading', () => {
     useAuthStore.setState({ mode: 'oidc' })
-    renderWithProviders(<LoginPage />, { withRouter: true })
+    renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
     expect(screen.getByText('OPAA')).toBeInTheDocument()
   })
 
@@ -74,7 +74,10 @@ describe('LoginPage', () => {
       },
     })
 
-    const { container } = renderWithProviders(<LoginPage />, { withRouter: true })
+    const { container } = renderWithProviders(<LoginPage />, {
+      withRouter: true,
+      withNotificationHost: false,
+    })
 
     expect(screen.getByText('Landesamt-Assistent')).toBeInTheDocument()
     expect(screen.getByText('Kurz und klar')).toBeInTheDocument()
@@ -86,7 +89,10 @@ describe('LoginPage', () => {
     useAuthStore.setState({ mode: 'oidc' })
     useBrandingStore.setState({ branding: OPAA_BRANDING })
 
-    const { container } = renderWithProviders(<LoginPage />, { withRouter: true })
+    const { container } = renderWithProviders(<LoginPage />, {
+      withRouter: true,
+      withNotificationHost: false,
+    })
 
     expect(screen.getByText(OPAA_BRANDING.productName)).toBeInTheDocument()
     expect(container.querySelector('img')).toBeNull()
@@ -94,7 +100,7 @@ describe('LoginPage', () => {
 
   it('renders the directory-service sign-in as the primary action (mockup 1f)', () => {
     useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst] })
-    renderWithProviders(<LoginPage />, { withRouter: true })
+    renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
     expect(
       screen.getByRole('button', { name: /anmelden bei verzeichnisdienst/i }),
     ).toBeInTheDocument()
@@ -106,7 +112,7 @@ describe('LoginPage', () => {
 
   it('offers no credential form — there is no password-based mode', () => {
     useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst] })
-    renderWithProviders(<LoginPage />, { withRouter: true })
+    renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
     expect(screen.queryByLabelText(/benutzername/i)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/passwort/i)).not.toBeInTheDocument()
   })
@@ -116,7 +122,7 @@ describe('LoginPage', () => {
       mode: 'oidc',
       error: 'Die Authentifizierungskonfiguration konnte nicht geladen werden.',
     })
-    renderWithProviders(<LoginPage />, { withRouter: true })
+    renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
     expect(screen.getByText('Anmeldung fehlgeschlagen')).toBeInTheDocument()
     expect(
       screen.getByText('Die Authentifizierungskonfiguration konnte nicht geladen werden.'),
@@ -125,7 +131,11 @@ describe('LoginPage', () => {
 
   it('redirects away from login when already authenticated', () => {
     useAuthStore.setState({ mode: 'oidc', isAuthenticated: true })
-    renderWithProviders(<LoginPage />, { withRouter: true, initialRoute: '/login' })
+    renderWithProviders(<LoginPage />, {
+      withRouter: true,
+      initialRoute: '/login',
+      withNotificationHost: false,
+    })
     expect(screen.queryByRole('button', { name: /mit sso anmelden/i })).not.toBeInTheDocument()
   })
 
@@ -134,7 +144,7 @@ describe('LoginPage', () => {
   describe('several providers (#1332)', () => {
     it('with exactly one provider the page behaves as before', () => {
       useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst] })
-      renderWithProviders(<LoginPage />, { withRouter: true })
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
       expect(screen.getAllByRole('button')).toHaveLength(2)
       expect(
         screen.getByRole('button', { name: /anmelden bei verzeichnisdienst/i }),
@@ -146,7 +156,7 @@ describe('LoginPage', () => {
     it('shows both providers in order and starts the flow at the chosen one', async () => {
       const loginOidc = vi.fn().mockResolvedValue(undefined)
       useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst, partner], loginOidc })
-      renderWithProviders(<LoginPage />, { withRouter: true })
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
 
       const buttons = screen.getAllByRole('button', { name: /anmelden bei/i })
       expect(buttons).toHaveLength(2)
@@ -167,7 +177,7 @@ describe('LoginPage', () => {
       localStorage.setItem('opaa.oidc.lastProvider', 'p-partner')
       const loginOidc = vi.fn().mockResolvedValue(undefined)
       useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst, partner], loginOidc })
-      renderWithProviders(<LoginPage />, { withRouter: true })
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
 
       const partnerButton = screen.getByRole('button', { name: /anmelden bei partnerportal/i })
       expect(partnerButton.className).toMatch(/MuiButton-contained/)
@@ -188,7 +198,7 @@ describe('LoginPage', () => {
         providers: [],
         error: 'Es ist kein Identitätsanbieter für die Anmeldung verfügbar.',
       })
-      renderWithProviders(<LoginPage />, { withRouter: true })
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
       expect(screen.queryByRole('button', { name: /anmelden bei/i })).not.toBeInTheDocument()
       expect(screen.getByText(/kein Identitätsanbieter/)).toBeInTheDocument()
     })
@@ -205,7 +215,7 @@ describe('LoginPage', () => {
 
     it('shows no mask while the management is switched off', () => {
       useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst] })
-      renderWithProviders(<LoginPage />, { withRouter: true })
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
       expect(screen.queryByLabelText('Passwort')).not.toBeInTheDocument()
       expect(
         screen.getByRole('link', { name: 'Anmeldung für die Systemverwaltung' }),
@@ -218,7 +228,7 @@ describe('LoginPage', () => {
         providers: [verzeichnisdienst],
         localAccounts: localEnabled,
       })
-      renderWithProviders(<LoginPage />, { withRouter: true })
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
 
       const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
       expect(headings).toEqual(['Mit Identitätsanbieter', 'Mit Konto dieser Installation'])
@@ -235,7 +245,7 @@ describe('LoginPage', () => {
 
     it('shows the mask alone when there is no provider', () => {
       useAuthStore.setState({ mode: 'oidc', providers: [], localAccounts: localEnabled })
-      renderWithProviders(<LoginPage />, { withRouter: true })
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
 
       expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Anmeldung')
       expect(screen.getByLabelText('E-Mail-Adresse')).toBeInTheDocument()
@@ -252,7 +262,7 @@ describe('LoginPage', () => {
           selfRegistrationEnabled: true,
         },
       })
-      renderWithProviders(<LoginPage />, { withRouter: true })
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
 
       expect(screen.getByRole('link', { name: 'Passwort vergessen?' })).toHaveAttribute(
         'href',
@@ -266,7 +276,7 @@ describe('LoginPage', () => {
 
     it('hides the self-service links while the flows are unavailable', () => {
       useAuthStore.setState({ mode: 'oidc', providers: [], localAccounts: localEnabled })
-      renderWithProviders(<LoginPage />, { withRouter: true })
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
 
       expect(screen.queryByRole('link', { name: 'Passwort vergessen?' })).not.toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Konto registrieren' })).not.toBeInTheDocument()
@@ -280,7 +290,7 @@ describe('LoginPage', () => {
         localAccounts: localEnabled,
         loginLocal,
       })
-      renderWithProviders(<LoginPage />, { withRouter: true })
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
 
       await userEvent.type(screen.getByLabelText('E-Mail-Adresse'), '  erika@stadt.example  ')
       await userEvent.type(screen.getByLabelText('Passwort'), 'geheim')
@@ -291,7 +301,7 @@ describe('LoginPage', () => {
 
     it('shows the password on demand and hides it again', async () => {
       useAuthStore.setState({ mode: 'oidc', providers: [], localAccounts: localEnabled })
-      renderWithProviders(<LoginPage />, { withRouter: true })
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
 
       expect(screen.getByLabelText('Passwort')).toHaveAttribute('type', 'password')
       await userEvent.click(screen.getByRole('button', { name: 'Passwort anzeigen' }))
@@ -313,7 +323,7 @@ describe('LoginPage', () => {
         localAccounts: localEnabled,
         loginLocal,
       })
-      renderWithProviders(<LoginPage />, { withRouter: true })
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
 
       await userEvent.type(screen.getByLabelText('E-Mail-Adresse'), 'erika@stadt.example')
       await userEvent.type(screen.getByLabelText('Passwort'), 'falsch')
@@ -328,7 +338,7 @@ describe('LoginPage', () => {
 
     it('points at the system administrators sign-in when nothing else is offered', () => {
       useAuthStore.setState({ mode: 'oidc', providers: [] })
-      renderWithProviders(<LoginPage />, { withRouter: true })
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
 
       expect(screen.getByText(/keine Anmeldung eingerichtet/)).toBeInTheDocument()
       expect(

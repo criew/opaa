@@ -1,18 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Route, Routes, useLocation } from 'react-router'
+import { BrowserRouter, Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
+import { server } from '../mocks/server'
 import { useAuthStore } from '../stores/authStore'
 import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
 import { MOCK_RATE_LIMITED_TOKEN, MOCK_SET_PASSWORD_TOKEN } from '../mocks/localAuthFixtures'
 import { PASSWORD_MAX_LENGTH } from '../utils/passwordStrength'
 import SetPasswordPage from './SetPasswordPage'
-
-/** Makes the query of the current location assertable - the token must not stay in it. */
-function QueryProbe() {
-  return <span data-testid="query">{useLocation().search}</span>
-}
 
 /**
  * ADR-0033, Entscheidung 11: one page for an invitation and for a reset, a neutral heading, and one
@@ -32,18 +28,39 @@ describe('SetPasswordPage', () => {
     })
   })
 
+  const routes = (
+    <Routes>
+      <Route path="/set-password" element={<SetPasswordPage />} />
+      <Route path="/login" element={<div>Anmeldung</div>} />
+      <Route path="/forgot-password" element={<div>Link anfordern</div>} />
+    </Routes>
+  )
+
   function renderAt(search: string) {
-    return renderWithProviders(
-      <>
-        <QueryProbe />
-        <Routes>
-          <Route path="/set-password" element={<SetPasswordPage />} />
-          <Route path="/login" element={<div>Anmeldung</div>} />
-          <Route path="/forgot-password" element={<div>Link anfordern</div>} />
-        </Routes>
-      </>,
-      { withRouter: true, initialRoute: `/set-password${search}`, withNotificationHost: false },
-    )
+    return renderWithProviders(routes, {
+      withRouter: true,
+      initialRoute: `/set-password${search}`,
+      withNotificationHost: false,
+    })
+  }
+
+  /**
+   * The same page in a real {@link BrowserRouter} on jsdom's own `window.location` - the only way to
+   * observe what a request's referrer would be. A MemoryRouter keeps its location in React state,
+   * where `window.location` never changes and the regression this guards could not be seen.
+   */
+  function renderInBrowser(search: string) {
+    window.history.replaceState({}, '', `/set-password${search}`)
+    return renderWithProviders(<BrowserRouter>{routes}</BrowserRouter>, {
+      withNotificationHost: false,
+    })
+  }
+
+  /** The `window.location.search` of every request the page makes, in order. */
+  function recordSearchPerRequest(): string[] {
+    const seen: string[] = []
+    server.events.on('request:start', () => seen.push(window.location.search))
+    return seen
   }
 
   async function fillAndSubmit(password = 'Sommerregen-42x', repeated = password) {
@@ -77,17 +94,37 @@ describe('SetPasswordPage', () => {
   /**
    * ADR-0033, Entscheidung 9: no raw token in any log. While the token stands in the URL it is the
    * referrer of every same-origin request, and the installation's nginx sends
-   * `Referrer-Policy: same-origin` - the token would end up in its access log.
+   * `Referrer-Policy: same-origin` - the token would end up in its access log. Asserted on
+   * `window.location` **at the moment each request starts**, because that is what the browser reads
+   * the referrer from; the order is the whole point, so a cleaned URL after the fact proves nothing.
    */
-  it('takes the token out of the address bar before any request', async () => {
-    renderAt(`?token=${MOCK_SET_PASSWORD_TOKEN}`)
+  it('has no token in the address bar when a request starts', async () => {
+    const seen = recordSearchPerRequest()
+    const historyBefore = window.history.length
+    renderInBrowser(`?token=${MOCK_SET_PASSWORD_TOKEN}`)
 
-    await waitFor(() => expect(screen.getByTestId('query').textContent).toBe(''))
     // The page kept what it read: the redemption still works after the URL was cleaned.
     await fillAndSubmit()
     expect(
       await screen.findByText('Passwort festgelegt — Sie können sich jetzt anmelden.'),
     ).toBeInTheDocument()
+    server.events.removeAllListeners('request:start')
+
+    expect(seen).toEqual([''])
+    // replaceState, not pushState: the back button must not lead onto a URL with the token in it.
+    expect(window.history.length).toBe(historyBefore)
+  })
+
+  // Whatever else the link carries stays: the token is removed, not the query.
+  it('keeps the other query parameters of the link', async () => {
+    const seen = recordSearchPerRequest()
+    renderInBrowser(`?x=1&token=${MOCK_SET_PASSWORD_TOKEN}`)
+
+    await fillAndSubmit()
+    await screen.findByText('Passwort festgelegt — Sie können sich jetzt anmelden.')
+    server.events.removeAllListeners('request:start')
+
+    expect(seen).toEqual(['?x=1'])
   })
 
   /**

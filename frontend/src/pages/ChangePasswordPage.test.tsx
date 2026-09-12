@@ -48,20 +48,20 @@ describe('ChangePasswordPage', () => {
       passwordChangeRequired: true,
       passwordChangeReason: reason as never,
     })
-    renderWithProviders(<ChangePasswordPage />, { withRouter: true })
+    renderWithProviders(<ChangePasswordPage />, { withRouter: true, withNotificationHost: false })
 
     expect(screen.getByText(sentence)).toBeInTheDocument()
   })
 
   it('shows the policy the new password has to meet', () => {
-    renderWithProviders(<ChangePasswordPage />, { withRouter: true })
+    renderWithProviders(<ChangePasswordPage />, { withRouter: true, withNotificationHost: false })
     expect(screen.getByText(/Mindestens 12 Zeichen, höchstens 64/)).toBeInTheDocument()
   })
 
   it('refuses two differing entries without calling the backend', async () => {
     const changePassword = vi.fn()
     useAuthStore.setState({ changePassword })
-    renderWithProviders(<ChangePasswordPage />, { withRouter: true })
+    renderWithProviders(<ChangePasswordPage />, { withRouter: true, withNotificationHost: false })
 
     await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), 'alt')
     await userEvent.type(screen.getByLabelText('Neues Passwort'), 'ein-neues-passwort')
@@ -80,7 +80,7 @@ describe('ChangePasswordPage', () => {
         <Route path="/account/password" element={<ChangePasswordPage />} />
         <Route path="/chat" element={<div>Chat</div>} />
       </Routes>,
-      { withRouter: true, initialRoute: '/account/password' },
+      { withRouter: true, initialRoute: '/account/password', withNotificationHost: false },
     )
 
     await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), 'alt')
@@ -112,7 +112,11 @@ describe('ChangePasswordPage', () => {
         <Route path="/settings" element={<div>Ihre Einstellungen</div>} />
         <Route path="/login" element={<div>Anmeldung</div>} />
       </Routes>,
-      { withRouter: true, initialRoute: '/account/password?from=%2Fsettings' },
+      {
+        withRouter: true,
+        initialRoute: '/account/password?from=%2Fsettings',
+        withNotificationHost: false,
+      },
     )
 
     await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), mockLocalAccount.password)
@@ -133,7 +137,7 @@ describe('ChangePasswordPage', () => {
   // must not make the person retype what was already right.
   it('clears and focuses the current password only when that was what was refused', async () => {
     useAuthStore.setState({ changePassword, token: 'altes-token' })
-    renderWithProviders(<ChangePasswordPage />, { withRouter: true })
+    renderWithProviders(<ChangePasswordPage />, { withRouter: true, withNotificationHost: false })
 
     await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), 'falsch')
     await userEvent.type(screen.getByLabelText('Neues Passwort'), 'Sommerregen-42x')
@@ -156,7 +160,7 @@ describe('ChangePasswordPage', () => {
         ),
       )
     useAuthStore.setState({ changePassword })
-    renderWithProviders(<ChangePasswordPage />, { withRouter: true })
+    renderWithProviders(<ChangePasswordPage />, { withRouter: true, withNotificationHost: false })
 
     await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), 'alt')
     await userEvent.type(screen.getByLabelText('Neues Passwort'), 'passwort1234')
@@ -173,7 +177,7 @@ describe('ChangePasswordPage', () => {
       .fn()
       .mockRejectedValue(new FieldValidationError([], 'Das Passwort wurde nicht angenommen.'))
     useAuthStore.setState({ changePassword })
-    renderWithProviders(<ChangePasswordPage />, { withRouter: true })
+    renderWithProviders(<ChangePasswordPage />, { withRouter: true, withNotificationHost: false })
 
     await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), 'alt')
     await userEvent.type(screen.getByLabelText('Neues Passwort'), 'ein-neues-passwort')
@@ -190,7 +194,7 @@ describe('ChangePasswordPage', () => {
         <Route path="/account/password" element={<ChangePasswordPage />} />
         <Route path="/login" element={<div>Anmeldung</div>} />
       </Routes>,
-      { withRouter: true, initialRoute: '/account/password' },
+      { withRouter: true, initialRoute: '/account/password', withNotificationHost: false },
     )
 
     expect(screen.getByText('Anmeldung')).toBeInTheDocument()
@@ -205,7 +209,7 @@ describe('ChangePasswordPage', () => {
       passwordChangeReason: 'INITIAL',
       logout: logoutSpy,
     })
-    renderWithProviders(<ChangePasswordPage />, { withRouter: true })
+    renderWithProviders(<ChangePasswordPage />, { withRouter: true, withNotificationHost: false })
 
     await userEvent.click(screen.getByRole('button', { name: 'Abmelden' }))
 
@@ -214,7 +218,7 @@ describe('ChangePasswordPage', () => {
 
   it('points a provider session at its provider instead of offering a mask', () => {
     useAuthStore.setState({ sessionKind: 'oidc' })
-    renderWithProviders(<ChangePasswordPage />, { withRouter: true })
+    renderWithProviders(<ChangePasswordPage />, { withRouter: true, withNotificationHost: false })
 
     expect(screen.getByText(/verwaltet Ihr Identitätsanbieter/)).toBeInTheDocument()
     expect(screen.queryByLabelText('Neues Passwort')).not.toBeInTheDocument()
