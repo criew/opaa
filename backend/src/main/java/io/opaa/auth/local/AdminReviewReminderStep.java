@@ -4,6 +4,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -26,14 +27,15 @@ import org.springframework.stereotype.Component;
  * (the window of {@link ExpiryReminderStep}) and, on the first day of a quarter, every account
  * without an expiry date (the bootstrap account left out - having no expiry is its purpose). One
  * mail per administrator per organization, never two with different numbers on the same morning. A
- * first of the quarter on which the run did not happen is a reminder not sent. At most {@link
- * #MAX_MAILS_PER_RUN} mails per run.
+ * first of the quarter on which the run did not happen is a reminder not sent. Bounded by {@link
+ * #TIME_BUDGET} of sending like {@link ExpiryReminderStep}, with an ERROR line on abort; the
+ * inactivity lock is the one step that catches up on the next day, the reminders are not.
  */
 @Component
 @Order(30)
 public class AdminReviewReminderStep implements LocalAccountMaintenanceStep {
 
-  public static final int MAX_MAILS_PER_RUN = 200;
+  public static final Duration TIME_BUDGET = Duration.ofMinutes(5);
 
   private static final Logger log = LoggerFactory.getLogger(AdminReviewReminderStep.class);
 
@@ -95,6 +97,7 @@ public class AdminReviewReminderStep implements LocalAccountMaintenanceStep {
         countPerOrganization.merge(user.getOrganizationId(), 1L, Long::sum);
       }
     }
+    long started = System.nanoTime();
     int sent = 0;
     for (Map.Entry<UUID, Long> entry : countPerOrganization.entrySet()) {
       if (entry.getValue() == 0) {
@@ -105,11 +108,12 @@ public class AdminReviewReminderStep implements LocalAccountMaintenanceStep {
               .filter(admin -> admin.getEmail() != null && !admin.getEmail().isBlank())
               .toList();
       for (User admin : admins) {
-        if (sent >= MAX_MAILS_PER_RUN) {
-          log.warn(
-              "Admin review reminder: stopped after {} mails; further administrators get none"
-                  + " from this run",
-              MAX_MAILS_PER_RUN);
+        if (MaintenanceBudget.exhausted(started, TIME_BUDGET)) {
+          log.error(
+              "Admin review reminder: stopped after {} because {} mails took longer than the"
+                  + " budget; further administrators get no reminder from this run",
+              TIME_BUDGET,
+              sent);
           return;
         }
         mailer.sendReviewReminder(admin, entry.getValue());

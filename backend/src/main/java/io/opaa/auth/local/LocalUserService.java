@@ -263,9 +263,13 @@ public class LocalUserService {
     if (update.noExpiry() || update.expiresAt() != null) {
       Instant target = update.noExpiry() ? null : update.expiresAt();
       if (!java.util.Objects.equals(target, row.getExpiresAt())) {
-        if (target != null
-            && !target.isAfter(now)
-            && user.getSystemRole() == SystemRole.SYSTEM_ADMIN) {
+        boolean expiresNow = target != null && !target.isAfter(now);
+        if (expiresNow && userId.equals(actor.id())) {
+          // an expiry in the past is a lock by another name
+          throw new ConflictException(
+              "Das eigene Konto kann nicht abgelaufen werden.", SELF_LOCKOUT);
+        }
+        if (expiresNow && user.getSystemRole() == SystemRole.SYSTEM_ADMIN) {
           adminGuard.requireAnotherLoginCapableAdmin(actor.organizationId(), user.getId());
         }
         before.put("expiresAt", expiryValue(row.getExpiresAt()));

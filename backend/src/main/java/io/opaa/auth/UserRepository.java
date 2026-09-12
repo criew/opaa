@@ -90,7 +90,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   /**
    * Per-table counts of the rows that reference the user through an {@code ON DELETE RESTRICT}
    * foreign key - what deleting a local account has to be clear of (#1537). One statement, so the
-   * refusal can name the reason in the log without a query per table.
+   * refusal can name the reason in the log without a query per table. <b>Every new {@code ON DELETE
+   * RESTRICT} reference to {@code users} needs a sub-query here</b>; a reference this list misses
+   * is caught only by the constraint itself, without its name in the log.
    */
   @Query(
       value =
@@ -98,16 +100,16 @@ public interface UserRepository extends JpaRepository<User, UUID> {
               + " (SELECT count(*) FROM knowledge_libraries WHERE owner_user_id = :id) AS libraries,"
               + " (SELECT count(*) FROM spaces WHERE owner_id = :id AND is_default = false) AS spaces,"
               + " (SELECT count(*) FROM chats WHERE author_id = :id) AS chats,"
-              + " (SELECT count(*) FROM group_membership_history WHERE user_id = :id) AS groupHistory,"
-              + " (SELECT count(*) FROM asset_grant_history WHERE subject_user_id = :id) AS grantHistory,"
+              + " (SELECT count(*) FROM group_membership_history WHERE user_id = :id) AS group_history,"
+              + " (SELECT count(*) FROM asset_grant_history WHERE subject_user_id = :id) AS grant_history,"
               + " (SELECT count(*) FROM asset_grants WHERE subject_user_id = :id"
               + "   OR granted_by_user_id = :id) AS grants,"
               + " (SELECT count(*) FROM space_asset_associations WHERE created_by_user_id = :id)"
               + "   AS associations,"
               + " (SELECT count(*) FROM audit_incident_scope_grants WHERE requested_by_user_id = :id"
-              + "   OR approved_by_user_id = :id OR subject_user_id = :id) AS incidentScopes,"
+              + "   OR approved_by_user_id = :id OR subject_user_id = :id) AS incident_scopes,"
               + " (SELECT count(*) FROM diagnostic_impersonation_grants WHERE granted_by_user_id = :id"
-              + "   OR revoked_by_user_id = :id) AS impersonationGrants",
+              + "   OR revoked_by_user_id = :id) AS impersonation_grants",
       nativeQuery = true)
   DeletionBlockers countDeletionBlockers(@Param("id") UUID userId);
 

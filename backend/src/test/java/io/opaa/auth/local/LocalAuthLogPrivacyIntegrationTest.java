@@ -138,9 +138,9 @@ class LocalAuthLogPrivacyIntegrationTest {
     List<String> personal =
         List.of(
             user.email(), user.email().toUpperCase(), victim.email(), victim.email().toUpperCase());
-    assertThat(logs.list).isNotEmpty();
-    assertThat(logs.list).anyMatch(event -> event.getLoggerName().startsWith("io.opaa"));
-    for (ILoggingEvent event : logs.list) {
+    assertThat(snapshot()).isNotEmpty();
+    assertThat(snapshot()).anyMatch(event -> event.getLoggerName().startsWith("io.opaa"));
+    for (ILoggingEvent event : snapshot()) {
       String line = event.getFormattedMessage() + " " + throwableText(event);
       String where = "log line of " + event.getLoggerName() + " at " + event.getLevel();
       for (String secret : secrets) {
@@ -180,6 +180,14 @@ class LocalAuthLogPrivacyIntegrationTest {
     }
   }
 
+  /**
+   * The events so far, copied once: background threads (pool housekeeping at TRACE) keep appending
+   * while the assertions iterate.
+   */
+  private List<ILoggingEvent> snapshot() {
+    return List.of(logs.list.toArray(new ILoggingEvent[0]));
+  }
+
   /** Message and stack-trace head of a logged exception - they are part of the line. */
   private static String throwableText(ILoggingEvent event) {
     IThrowableProxy proxy = event.getThrowableProxy();
@@ -212,7 +220,7 @@ class LocalAuthLogPrivacyIntegrationTest {
     try {
       assertThat(seeder.restoreBootstrapAdmin()).isEqualTo(LocalAdminSeeder.Outcome.RESET);
       List<ILoggingEvent> blocks =
-          logs.list.stream()
+          snapshot().stream()
               .filter(event -> event.getFormattedMessage().contains("EINMALIGE AUSGABE"))
               .toList();
       assertThat(blocks).hasSize(1);
@@ -224,7 +232,7 @@ class LocalAuthLogPrivacyIntegrationTest {
       String token = JsonPath.read(login.getResponse().getContentAsString(), "$.accessToken");
 
       List<String> personal = List.of(bootstrap.email(), bootstrap.email().toUpperCase());
-      for (ILoggingEvent event : logs.list) {
+      for (ILoggingEvent event : snapshot()) {
         String line = event.getFormattedMessage() + " " + throwableText(event);
         String where = "log line of " + event.getLoggerName() + " at " + event.getLevel();
         if (event != blocks.getFirst()) {
@@ -335,8 +343,8 @@ class LocalAuthLogPrivacyIntegrationTest {
             lockReason,
             reasonText,
             "Erika Eingeladen");
-    assertThat(logs.list).anyMatch(event -> event.getLoggerName().startsWith("io.opaa"));
-    for (ILoggingEvent event : logs.list) {
+    assertThat(snapshot()).anyMatch(event -> event.getLoggerName().startsWith("io.opaa"));
+    for (ILoggingEvent event : snapshot()) {
       String line = event.getFormattedMessage() + " " + throwableText(event);
       String where = "log line of " + event.getLoggerName() + " at " + event.getLevel();
       for (String secret : secrets) {

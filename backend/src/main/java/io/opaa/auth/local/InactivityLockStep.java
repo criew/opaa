@@ -25,7 +25,8 @@ import org.springframework.stereotype.Component;
  * mail. The bootstrap account is exempt (its purpose is to stay unused); the last login-capable
  * system administrator is skipped with a WARN line naming the account id, never the address. Two
  * queries for the whole population, one transaction per lock, at most {@link #MAX_LOCKS_PER_RUN}
- * locks (and mails) per run - the rest waits for the next day.
+ * locks (and mails) per run - the rest waits for the next day: unlike the reminders, this step
+ * catches up, because an account inactive today is inactive tomorrow too.
  */
 @Component
 @Order(10)

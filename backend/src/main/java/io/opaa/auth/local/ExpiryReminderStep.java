@@ -3,6 +3,7 @@ package io.opaa.auth.local;
 import io.opaa.api.types.LocalAccountState;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -24,16 +25,20 @@ import org.springframework.stereotype.Component;
  * - gets {@code ACCOUNT_EXPIRING}. Sent once because each expiry lies on exactly one calendar day;
  * a day on which the run did not happen is a reminder not sent, not one sent twice. The system
  * administrators are told by {@link AdminReviewReminderStep}, which merges the count with the
- * quarterly review. Locked, expired and still invited accounts get no reminder. At most {@link
- * #MAX_MAILS_PER_RUN} mails per run - the daily run holds the one scheduler thread for the whole
- * synchronous send.
+ * quarterly review. Locked, expired and still invited accounts get no reminder.
+ *
+ * <p>The run is bounded by time, not by a number of mails: the daily run holds the one scheduler
+ * thread for the whole synchronous send, so after {@link #TIME_BUDGET} since the step began it
+ * stops with an ERROR line naming how many accounts got no reminder. Unlike the inactivity lock,
+ * which catches up on the next day, a reminder not sent today is not sent tomorrow - the window has
+ * moved on - which is why the budget is generous and the abort is an error, not a warning.
  */
 @Component
 @Order(20)
 public class ExpiryReminderStep implements LocalAccountMaintenanceStep {
 
   public static final int LEAD_DAYS = 14;
-  public static final int MAX_MAILS_PER_RUN = 200;
+  public static final Duration TIME_BUDGET = Duration.ofMinutes(5);
 
   private static final Logger log = LoggerFactory.getLogger(ExpiryReminderStep.class);
 
@@ -41,22 +46,25 @@ public class ExpiryReminderStep implements LocalAccountMaintenanceStep {
   private final UserRepository users;
   private final LocalAccountMailer mailer;
   private final ZoneId zone;
+  private final Duration budget;
 
   @Autowired
   public ExpiryReminderStep(
       LocalCredentialsRepository credentials, UserRepository users, LocalAccountMailer mailer) {
-    this(credentials, users, mailer, ZoneId.systemDefault());
+    this(credentials, users, mailer, ZoneId.systemDefault(), TIME_BUDGET);
   }
 
   ExpiryReminderStep(
       LocalCredentialsRepository credentials,
       UserRepository users,
       LocalAccountMailer mailer,
-      ZoneId zone) {
+      ZoneId zone,
+      Duration budget) {
     this.credentials = credentials;
     this.users = users;
     this.mailer = mailer;
     this.zone = zone;
+    this.budget = budget;
   }
 
   @Override
@@ -96,24 +104,35 @@ public class ExpiryReminderStep implements LocalAccountMaintenanceStep {
     Map<UUID, User> byId =
         users.findAllById(expiring.stream().map(LocalCredentials::getUserId).toList()).stream()
             .collect(Collectors.toMap(User::getId, Function.identity()));
+    long started = System.nanoTime();
     int sent = 0;
+    int skipped = 0;
     for (LocalCredentials row : expiring) {
       User user = byId.get(row.getUserId());
       if (user == null) {
         continue;
       }
-      if (sent >= MAX_MAILS_PER_RUN) {
-        log.warn(
-            "Expiry reminder: stopped after {} mails; {} more accounts expire in {} days and get"
-                + " no reminder from this run",
-            MAX_MAILS_PER_RUN,
-            expiring.size() - sent,
+      if (MaintenanceBudget.exhausted(started, budget)) {
+        skipped = expiring.size() - sent;
+        log.error(
+            "Expiry reminder: stopped after {} because {} mails took longer than the budget of {};"
+                + " {} account(s) expiring in {} days get no reminder - the window will have moved"
+                + " on tomorrow",
+            budget,
+            sent,
+            budget,
+            skipped,
             LEAD_DAYS);
         break;
       }
       mailer.sendExpiring(user, row.getExpiresAt());
       sent++;
     }
-    log.info("Expiry reminder: {} local account(s) expire in {} days", sent, LEAD_DAYS);
+    log.info(
+        "Expiry reminder: {} local account(s) expire in {} days, {} reminded, {} not",
+        expiring.size(),
+        LEAD_DAYS,
+        sent,
+        skipped);
   }
 }

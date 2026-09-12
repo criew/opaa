@@ -403,6 +403,15 @@ class LocalUserAdminIntegrationTest {
     asAdmin(delete(LOCAL_USERS + "/" + admin.id()))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("SELF_DELETE"));
+    // an expiry in the past is a lock by another name - even with a second administrator around
+    LocalAccount other = fixtures.activeAdmin("zweite-" + UUID.randomUUID() + "@stadt.example");
+    asAdminJson(
+            patch(LOCAL_USERS + "/" + admin.id()),
+            "{\"expiresAt\":\"" + Instant.now().minusSeconds(60) + "\"}")
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("SELF_LOCKOUT"));
+    assertThat(credentials.findById(admin.id()).orElseThrow().getExpiresAt()).isNull();
+    assertThat(credentials.findById(other.id()).orElseThrow().getExpiresAt()).isNull();
     assertThat(credentials.findById(admin.id()).orElseThrow().state(Instant.now()))
         .isEqualTo(LocalAccountState.ACTIVE);
   }
@@ -410,12 +419,14 @@ class LocalUserAdminIntegrationTest {
   @Test
   void theLastLoginCapableAdministratorKeepsRoleAndExpiryButNotWhenAnotherRemains()
       throws Exception {
-    // the acting administrator is the only login-capable one
+    // the acting administrator is the only login-capable one; expiring the own account is refused
+    // as a self-lockout before the guard is even asked (the guard's own refusal on expiry is proved
+    // at the service level by the concurrent-lock test and the guard's integration test)
     asAdminJson(
             patch(LOCAL_USERS + "/" + admin.id()),
             "{\"expiresAt\":\"" + Instant.now().minusSeconds(60) + "\"}")
         .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("LAST_LOGIN_CAPABLE_ADMIN"));
+        .andExpect(jsonPath("$.code").value("SELF_LOCKOUT"));
     asAdminJson(patch(LOCAL_USERS + "/" + admin.id()), "{\"systemRole\":\"USER\"}")
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("LAST_LOGIN_CAPABLE_ADMIN"));
