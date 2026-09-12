@@ -23,6 +23,8 @@ import StarOutlineRoundedIcon from '@mui/icons-material/StarOutlineRounded'
 import StarRoundedIcon from '@mui/icons-material/StarRounded'
 import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined'
 import type { OidcProviderResponse } from '../../types/api'
+import { apiErrorMessage } from '../../services/apiErrorDetails'
+import { PROVIDER_CONFLICT_MESSAGES } from './oidcProviderConflicts'
 import { notify } from '../../stores/notificationStore'
 import { useOidcProviderStore } from '../../stores/oidcProviderStore'
 import { fontFamily, radius } from '../../theme/tokens'
@@ -41,6 +43,17 @@ export const DISABLE_CONSEQUENCE =
 export const DELETE_CONSEQUENCE =
   'Nutzer dieses Anbieters können sich nicht mehr anmelden. Die Konten bleiben erhalten und ' +
   'werden wieder nutzbar, sobald ein Anbieter mit derselben Issuer-URI existiert.'
+/**
+ * Der Konsequenz-Text des **letzten aktivierten** Anbieters (ADR-0033, Entscheidung 4). Er ist
+ * zugleich die Bestätigung, die das Backend als `acknowledgeLastProvider` verlangt - ohne sie
+ * antwortet es 409 `LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED`.
+ */
+export const LAST_PROVIDER_CONSEQUENCE =
+  'Dies ist der letzte aktivierte Identitätsanbieter. Danach können sich nur noch lokale Konten ' +
+  'anmelden – über die Anmeldeseite und, für die Systemverwaltung, über /login/system. Ein ' +
+  'vertippter Anbieter lässt sich aus der lokalen Anmeldung heraus korrigieren, ohne ' +
+  'Datenbankzugriff und ohne Umgebungsvariable.'
+
 export const DEFAULT_CONSEQUENCE =
   'Der Standardanbieter ist der einzige, der weder deaktiviert noch gelöscht werden kann; die ' +
   'Erstadministrator-Regel und der Verzeichnisabgleich gelten nur für seine Konten.'
@@ -159,6 +172,16 @@ interface OidcProviderCardProps {
   position: number
   isFirst: boolean
   isLast: boolean
+  /** The only enabled OIDC provider left: disabling or deleting it needs the acknowledgement. */
+  isLastEnabled: boolean
+  /**
+   * Whether the backend would accept a disable/delete at all. The default provider is refused
+   * while another enabled provider exists (disable) respectively another provider at all
+   * (delete) - but it *is* disposable once it is the last one (ADR-0033, Entscheidung 4), which
+   * is what makes a misconfigured single provider correctable from the local sign-in.
+   */
+  canDisable: boolean
+  canDelete: boolean
   onEdit: (provider: OidcProviderResponse) => void
 }
 
@@ -172,6 +195,9 @@ export default function OidcProviderCard({
   position,
   isFirst,
   isLast,
+  isLastEnabled,
+  canDisable,
+  canDelete,
   onEdit,
 }: OidcProviderCardProps) {
   const setProviderEnabled = useOidcProviderStore((s) => s.setProviderEnabled)
@@ -187,21 +213,26 @@ export default function OidcProviderCard({
     try {
       await action()
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : fallback)
+      setLocalError(apiErrorMessage(err, PROVIDER_CONFLICT_MESSAGES, fallback))
     } finally {
       setBusy(false)
     }
   }
 
   function toggleEnabled() {
+    const consequence = isLastEnabled
+      ? `${DISABLE_CONSEQUENCE}\n\n${LAST_PROVIDER_CONSEQUENCE}`
+      : DISABLE_CONSEQUENCE
     if (
       provider.enabled &&
-      !window.confirm(`„${provider.displayName}“ deaktivieren?\n\n${DISABLE_CONSEQUENCE}`)
+      !window.confirm(`„${provider.displayName}“ deaktivieren?\n\n${consequence}`)
     ) {
       return
     }
     void run(async () => {
-      await setProviderEnabled(provider.id, !provider.enabled)
+      // The confirmation above *is* the acknowledgement the backend demands - it is only sent
+      // after the person read what happens next (ADR-0033, Entscheidung 4).
+      await setProviderEnabled(provider.id, !provider.enabled, isLastEnabled)
       notify(
         provider.enabled
           ? `„${provider.displayName}“ wurde deaktiviert.`
@@ -226,11 +257,14 @@ export default function OidcProviderCard({
   }
 
   function remove() {
-    if (!window.confirm(`„${provider.displayName}“ löschen?\n\n${DELETE_CONSEQUENCE}`)) {
+    const consequence = isLastEnabled
+      ? `${DELETE_CONSEQUENCE}\n\n${LAST_PROVIDER_CONSEQUENCE}`
+      : DELETE_CONSEQUENCE
+    if (!window.confirm(`„${provider.displayName}“ löschen?\n\n${consequence}`)) {
       return
     }
     void run(async () => {
-      await deleteExistingProvider(provider.id)
+      await deleteExistingProvider(provider.id, isLastEnabled)
       notify(`„${provider.displayName}“ wurde gelöscht.`, 'success')
     }, 'Löschen fehlgeschlagen')
   }
@@ -352,7 +386,7 @@ export default function OidcProviderCard({
           <Mono>{provider.issuerUri}</Mono>
         </MetaItem>
         <MetaItem icon={<BadgeOutlinedIcon />} label="Client-ID">
-          <Mono>{provider.clientId}</Mono>
+          <Mono>{provider.clientId ?? ''}</Mono>
         </MetaItem>
         <MetaItem icon={<KeyOutlinedIcon />} label="JWK-Set">
           {provider.jwkSetUri ? (
@@ -412,7 +446,7 @@ export default function OidcProviderCard({
         >
           Bearbeiten
         </Button>
-        {!provider.isDefault && (
+        {canDisable && (
           <Button
             size="small"
             startIcon={<PowerSettingsNewOutlinedIcon />}
@@ -432,7 +466,7 @@ export default function OidcProviderCard({
             Zum Standard machen
           </Button>
         )}
-        {!provider.isDefault && (
+        {canDelete && (
           <Button
             size="small"
             color="error"
@@ -453,9 +487,10 @@ export default function OidcProviderCard({
         >
           <InfoOutlinedIcon aria-hidden="true" sx={{ fontSize: 16, mt: '1px', flex: 'none' }} />
           <Typography sx={{ fontSize: 12.5, lineHeight: 1.5 }}>
-            Standardanbieter: Erstadministrator-Regel und Verzeichnisabgleich gelten für seine
-            Konten. Er kann erst deaktiviert oder gelöscht werden, wenn ein anderer Anbieter zum
-            Standard gemacht wurde.
+            Standardanbieter: Verzeichnisabgleich und Erstadministrator-Regel gelten für seine
+            Konten. Solange ein weiterer Anbieter existiert, muss zuerst dieser zum Standard gemacht
+            werden; als letzter Anbieter ist er deaktivier- und löschbar – danach melden sich nur
+            noch lokale Konten an.
           </Typography>
         </Stack>
       )}

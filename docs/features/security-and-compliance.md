@@ -173,10 +173,13 @@ ersten Stufe nicht geschrieben.
 - Erteilung und Entzug der System-Admin-Rolle
 - Deaktivierung eines Kontos, erzwungene Neuanmeldung, Ausstellung und Widerruf von API-Tokens
 - **Lokale Konten** ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md), Epic #1529): Anlage
-  und Einladung (mit Zustellweg: Mail zugestellt, Mail gescheitert, Link angezeigt), Änderung von
+  und Einladung (mit Zustellweg: Mail zugestellt, Mail gescheitert, Link angezeigt),
+  Selbstregistrierung, Änderung von
   Ablaufdatum (mit Vorher/Nachher) und der Tatsache einer Änderung von Adresse, Anzeigename oder
-  Anlagegrund (nur der Feldname, nie der Wert), Sperre und Entsperrung mit Grund (Verwalter,
-  Fehlversuche, Inaktivität), administratives Zurücksetzen und Erzeugen eines Passworts, Setzen und
+  Anlagegrund (nur der Feldname, nie der Wert), Sperre und Entsperrung mit Grund (Verwalter oder
+  Inaktivität), die **Sperre eines Kontos nach mehreren Fehlversuchen** als eigenes Ereignis
+  (die daraus folgende Zustandsänderung — nie der einzelne Fehlversuch, nie der Zähler),
+  administratives Zurücksetzen und Erzeugen eines Passworts, Setzen und
   Ändern des eigenen Passworts, fremdveranlasster Widerruf von Sitzungen mit Grund, Löschung, Anlage
   und Wiederanlauf des Notanker-Kontos der Systemverwaltung sowie **jede erfolgreiche Anmeldung dieses
   einen Notanker-Kontos** (es ist ein privilegiertes Notfallzugangsmittel, keine Person), Anstoß und
@@ -214,14 +217,34 @@ schreiben, hängt davon ab, ob die zugrunde liegende Funktion im Code schon exis
 sind: Rechte an Assets (Vergabe/Änderung/Entzug von Grants, Änderung von `visibility`/`listed`),
 Anlegen/Ändern/Löschen von Bibliotheken, Spaces und Gruppen, Aufnahme/Rollenänderung/Entfernen von
 Mitgliedern, Eigentümerübergang eines Space, jede bewirkte Änderung eines Verzeichnisabgleichs samt
-Kopfeintrag, und die Erteilung/der Entzug der System-Admin-Rolle. Noch **nicht** verdrahtet — weil
+Kopfeintrag, die Erteilung/der Entzug der System-Admin-Rolle sowie — seit #1533 — der
+fremdveranlasste Widerruf lokaler Sitzungen (`LOCAL_SESSION_REVOKED`, zunächst nur bei
+Wiederverwendung eines Refresh-Tokens; seit #1534 auch beim Abschalten der lokalen Verwaltung), das
+Ändern des eigenen Passworts (`LOCAL_PASSWORD_CHANGED`) sowie — seit #1534 — die Anlage und der
+Wiederanlauf des Notanker-Kontos (`LOCAL_ADMIN_SEEDED`, `LOCAL_ADMIN_RESET`), jede Anmeldung mit ihm
+(`LOCAL_BOOTSTRAP_ACCOUNT_LOGIN`) und der Schalter der lokalen Verwaltung
+(`LOCAL_ACCOUNTS_ENABLED`/`_DISABLED`), sowie — seit #1537 — die Verwaltung lokaler Konten
+(`LOCAL_USER_CREATED`, `LOCAL_USER_INVITED` und `LOCAL_USER_PASSWORD_RESET_REQUESTED` je mit
+Zustellweg, `LOCAL_USER_CHANGED` mit Vorher/Nachher nur für das Ablaufdatum, `LOCAL_USER_LOCKED`
+mit Grund `ADMIN` oder `INACTIVITY`, `LOCAL_USER_UNLOCKED`, `LOCAL_USER_PASSWORD_GENERATED`,
+`LOCAL_USER_DELETED`, `LOCAL_ACCOUNTS_SETTINGS_CHANGED`; Subjekt als Pseudonym, nie Adresse, Name
+oder Anlagegrund als Wert), sowie — seit #1538 — das Setzen des eigenen Passworts über einen
+Einladungs- oder Rücksetzlink (`LOCAL_PASSWORD_SET` mit dem Zweck des Links) und die
+Selbstregistrierung (`LOCAL_USER_REGISTERED` unter dem Systemprozess `local-auth`), sowie — seit
+#1535 — die Sperre eines Kontos nach mehreren Fehlversuchen
+(`LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS`, einmal je Sperre, ohne Zähler) und — seit #1542 — die
+Mail-Einstellungen (`MAIL_SETTINGS_CHANGED` ohne den Passwortwert, `MAIL_TEMPLATE_CHANGED`,
+`MAIL_TEMPLATE_RESET`, `MAIL_TEST_SENT`). Die Anfrage
+„Passwort vergessen" ändert keinen Zustand; die Bestätigung der eigenen Adresse ist eine Handlung
+der Person am eigenen Konto und nach ADR-0033, Entscheidung 13, kein Verwaltungsakt — beide
+erzeugen kein Ereignis. Noch **nicht** verdrahtet — weil
 die jeweilige Funktion selbst noch fehlt, nicht weil sie ausgenommen wäre: Ablauf einer Befristung
 (kein Scheduler), Aussetzen von Grants durch eine gesenkte Freigabe-Obergrenze, Bereitstellung einer
 Bibliothek in einem Space, Eigentümerübernahme ohne Zuständigkeit und der Übergang in „Nachfolge
 offen", Deaktivierung eines Kontos, erzwungene Neuanmeldung, API-Tokens, sämtliche
 Systemeinstellungen (Governance, Protokollkonfiguration, Modellvorgaben, Freigabe-Obergrenze
-konnektor-gespeister Bibliotheken) sowie sämtliche Ereignisse lokaler Konten und der
-Mail-Einstellungen (ADR-0033, Epic #1529). Jede dieser Lücken schließt das jeweilige Folge-Issue, sobald
+konnektor-gespeister Bibliotheken) sowie Anstoß und Abschluss der Übergabe eines lokalen Kontos an
+eine Anbieteridentität (#1594). Jede dieser Lücken schließt das jeweilige Folge-Issue, sobald
 die zugehörige Funktion existiert — die Liste selbst bleibt geschlossen und ändert sich nicht.
 
 ### Was ausdrücklich nicht protokolliert wird
@@ -613,7 +636,11 @@ Rechte betrifft, die dort bereits beendet waren, bleibt die Rechtehistorie ohne 
 Private Chats und Artefakte des Nutzers folgen den
 [Offboarding-Regeln für den Standard-Space](./access-control.md#der-lebenszyklus-eines-kontos): Der
 Standard-Space wird deaktiviert statt gelöscht, private Inhalte bleiben darin unzugänglich — für
-niemanden, auch nicht für einen Nachfolger. Geteilte Chats und Artefakte sind Arbeitsergebnisse der
+niemanden, auch nicht für einen Nachfolger. Das ist der Sperr-Pfad, der Regelweg für jedes Konto,
+das je benutzt wurde. Die **echte Löschung** eines lokalen Kontos (#1537) ist auf Konten beschränkt,
+die nichts referenziert — keine Bibliothek, kein Chat, kein Eintrag in Rechte- oder
+Nachweisbeständen; praktisch ein nie benutztes Konto —, und löscht dessen persönlichen Space mit
+(als `SPACE_DELETED` protokolliert), weil das Schema einen Space ohne Eigentümer nicht zulässt. Geteilte Chats und Artefakte sind Arbeitsergebnisse der
 Organisation und verschwinden nicht mit dem Konto ihres Erstellers, werden aber nach Ablauf der
 Aufbewahrungsfrist gelöscht.
 
@@ -677,7 +704,11 @@ Der Auslieferungszustand ist der sichere Zustand. Wer OPAA aufsetzt, soll nichts
 sicher zu sein — er soll etwas einschalten müssen, um es nicht zu sein, und das begründen.
 
 - **Keine Vorgabekennwörter, keine Vorgabekonten.** Der erste Verwaltungszugang entsteht bei der
-  Einrichtung, nicht im Auslieferungszustand.
+  Einrichtung, nicht im Auslieferungszustand. Das eine Konto, das OPAA sich beim allerersten Start
+  selbst anlegt — das Notanker-Konto der Systemverwaltung — ist kein Vorgabekonto in diesem Sinn: Seine
+  Adresse muss der Betrieb vorher benennen (der ausgelieferte Vorgabewert wird abgelehnt), sein
+  Passwort ist zufällig erzeugt, steht einmalig im Log und muss bei der ersten Anmeldung gewechselt
+  werden.
 - **Verschlüsselung auf dem Transportweg durchgehend**, auch zwischen den Bestandteilen des Systems.
   Ruhende Daten liegen im verschlüsselten Speicher des Betreibers; Schlüsselverwaltung und -wechsel sind
   dokumentiert und liegen beim Betreiber.
@@ -690,6 +721,25 @@ sicher zu sein — er soll etwas einschalten müssen, um es nicht zu sein, und d
   oder Bestandteile; die Einzelheiten gehen ins Protokoll.
 - **Grenzen sind voreingestellt**, nicht optional — Größen von Uploads, Anzahl gleichzeitiger Anfragen,
   Verbrauchsgrenzen je Nutzer (siehe [Monitoring, Kosten & Governance](./monitoring-and-governance.md)).
+- **Passwörter liegen nie im Klartext und nie umkehrbar.** Ein Passwort eines lokalen Kontos wird
+  ausschließlich als Prüfwert eines bewusst langsamen Verfahrens mit Arbeitsfaktor gespeichert, mit
+  einem Präfix versehen, das das Verfahren benennt — damit ein späterer Wechsel des Verfahrens eine
+  Konfigurationsänderung ist und nicht ein Datenbankeingriff. Verglichen wird nur über dieses
+  Verfahren, auch bei unbekannter Kennung (gegen einen festen Vergleichswert), damit die Antwortzeit
+  nicht verrät, ob eine Adresse existiert. Weder das Anwendungslog noch das Nachweisprotokoll noch
+  eine API-Antwort enthalten jemals ein Passwort, ein Roh-Token oder einen Einladungslink; ein Test
+  hält das maschinell fest. Die Richtlinie verlangt eine Mindestlänge und schließt die häufigsten
+  Passwörter aus, verzichtet aber bewusst auf Komplexitätsregeln und auf einen erzwungenen
+  periodischen Wechsel — beides verschiebt Passwörter erfahrungsgemäß auf Zettel.
+- **Der Anmeldeweg ist begrenzt, bevor er antwortet.** Anmeldung, Erneuerung, Passwortwechsel,
+  Registrierung und die beiden Link-Flüsse haben je eigene Grenzen — je Client-Adresse, je Konto
+  beziehungsweise je E-Mail-Adresse und zusätzlich eine globale Grenze je Zeitfenster gegen verteiltes
+  Ausprobieren gestohlener Zugangsdaten. Eine überschrittene Grenze antwortet mit einer Wartezeit; das
+  Überschreiten der globalen Grenze erzeugt eine Warnung und eine Metrik und ist damit ein
+  Frühwarnsignal für den Betrieb. Mehrere falsche Passwörter in Folge sperren zusätzlich das Konto für
+  eine feste Frist. Die Client-Adresse dafür wird nur aus einem Weiterleitungs-Header übernommen, wenn
+  die Verbindung selbst aus einem als vertrauenswürdig benannten Netz kommt; die Vorgabe ist, dem
+  Header nicht zu trauen. Die konkreten Werte stehen im Produkthandbuch, nicht hier.
 - **Härtungs- und Konfigurationsleitfäden** sind Teil des Produkts, nicht Beratungsleistung: eine
   dokumentierte Referenzkonfiguration, eine Liste der sicherheitsrelevanten Einstellungen mit ihrer
   Voreinstellung und eine Prüfliste für die Inbetriebnahme.

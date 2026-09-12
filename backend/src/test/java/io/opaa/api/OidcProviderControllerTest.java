@@ -153,6 +153,7 @@ class OidcProviderControllerTest {
         .andExpect(jsonPath("$[0].enabled").value(true))
         .andExpect(jsonPath("$[0].claimMapping.emailClaim").value("email"))
         .andExpect(jsonPath("$[0].registryState").value("READY"))
+        .andExpect(jsonPath("$[0].providerType").value("OIDC"))
         .andExpect(jsonPath("$[0].clientSecret").doesNotExist());
   }
 
@@ -229,7 +230,7 @@ class OidcProviderControllerTest {
   @Test
   void theServicesConflictsPassThroughAs409() throws Exception {
     UUID id = UUID.randomUUID();
-    when(providerService.setEnabled(actingAdminOrganizationId, actingAdminId, id, false))
+    when(providerService.setEnabled(actingAdminOrganizationId, actingAdminId, id, false, false))
         .thenThrow(new ConflictException("Der Standardanbieter kann nicht deaktiviert werden."));
 
     mockMvc
@@ -237,6 +238,51 @@ class OidcProviderControllerTest {
         .andExpect(status().isConflict())
         .andExpect(
             jsonPath("$.error").value("Der Standardanbieter kann nicht deaktiviert werden."));
+  }
+
+  /**
+   * ADR-0033, Entscheidung 4: disabling or deleting the last enabled provider needs the caller's
+   * acknowledgement, handed through as a query parameter; a refusal by the guard carries its code.
+   */
+  @Test
+  void theAcknowledgementOfTheLastProviderIsHandedThroughAndTheGuardsCodePassesAs409()
+      throws Exception {
+    UUID id = UUID.randomUUID();
+    OidcProvider disabled = provider("Einziger", "https://idp.example");
+    disabled.disable();
+    when(providerService.setEnabled(actingAdminOrganizationId, actingAdminId, id, false, true))
+        .thenReturn(disabled);
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/oidc-providers/" + id + "/disable")
+                .param("acknowledgeLastProvider", "true")
+                .with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.enabled").value(false));
+    verify(providerService).setEnabled(actingAdminOrganizationId, actingAdminId, id, false, true);
+
+    when(providerService.setEnabled(actingAdminOrganizationId, actingAdminId, id, false, false))
+        .thenThrow(
+            new ConflictException(
+                "Zuerst ein lokales Systemverwalterkonto mit Passwort einrichten.",
+                "LAST_LOGIN_CAPABLE_ADMIN"));
+    mockMvc
+        .perform(post("/api/v1/admin/oidc-providers/" + id + "/disable").with(asAdmin()))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("LAST_LOGIN_CAPABLE_ADMIN"));
+
+    mockMvc
+        .perform(
+            delete("/api/v1/admin/oidc-providers/" + id)
+                .param("acknowledgeLastProvider", "true")
+                .with(asAdmin()))
+        .andExpect(status().isNoContent());
+    verify(providerService).deleteProvider(actingAdminOrganizationId, actingAdminId, id, true);
+    mockMvc
+        .perform(delete("/api/v1/admin/oidc-providers/" + id).with(asAdmin()))
+        .andExpect(status().isNoContent());
+    verify(providerService).deleteProvider(actingAdminOrganizationId, actingAdminId, id, false);
   }
 
   @Test

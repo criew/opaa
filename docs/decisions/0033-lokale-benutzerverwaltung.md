@@ -2,7 +2,10 @@
 
 ## Status
 
-Vorgeschlagen (11.09.2026, Issue #1531, Epic #1529). Setzt den Beschluss aus #1368 vom 10.09.2026
+**Akzeptiert (12.09.2026)** — mit dem Abschluss von Epic #1529 ist jede Entscheidung dieses ADR
+umgesetzt; die eine Ausnahme ist die Übergabe eines lokalen Kontos an eine Anbieteridentität
+(Entscheidung 12), die als #1594 nach dem Epic folgt. Vorgeschlagen am 11.09.2026 (Issue #1531,
+Epic #1529). Setzt den Beschluss aus #1368 vom 10.09.2026
 um. Nachtrag zu [ADR-0005](0005-authentication-strategy.md) und
 [ADR-0025](0025-mehrere-oidc-anbieter.md), die weiter gelten, soweit dieser ADR sie nicht an einer
 benannten Stelle präzisiert oder aufhebt (Entscheidungen 4, 5 und 12). Architekturvorbild ist qnop
@@ -513,7 +516,8 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
 - **Rate-Limiting je Adresse, je Konto und global** (qnop ADR-0027, ergänzt um die globale Grenze,
   die jeder bestehende Endpunkt hat): Login 10/60 s je IP, Refresh 30/60 s je IP, Passwortwechsel
   5/300 s je Subject, Registrierung 5/3600 s je IP und 3/3600 s je Adresse, Passwort vergessen
-  5/3600 s je IP und 3/3600 s je Adresse, Passwort setzen 10/900 s je IP; dazu für Login,
+  5/3600 s je IP und 3/3600 s je Adresse, Passwort setzen und E-Mail-Bestätigung je 10/900 s je
+  IP; dazu für Login,
   Registrierung und Passwort vergessen eine **globale Grenze je Fenster** (`globalMaxRequests`, wie
   `OPAA_RATE_LIMIT_QUERY_GLOBAL_MAX_REQUESTS`) gegen verteiltes Credential Stuffing, deren
   Überschreiten eine `WARN`-Zeile und eine Metrik erzeugt — das Frühwarnsignal des Betriebs. Antwort
@@ -661,7 +665,15 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
 - **`MailService.send(key, locale, recipient, vars)`** liefert ein versiegeltes
   `SendResult { Sent \| Skipped(reason) \| Failed(reason) }` und wirft nie; `Skipped`, wenn SMTP nicht
   konfiguriert ist. Versand **synchron** mit Timeouts, ohne Outbox und ohne Wiederholung: Die
-  Auth-Mails sind an eine Nutzeraktion gebunden, deren Ergebnis der Aufrufer sofort braucht. **Ein
+  Auth-Mails sind an eine Nutzeraktion gebunden, deren Ergebnis der Aufrufer sofort braucht.
+  *Nachtrag (#1538):* Die beiden Selbstbedienungsflüsse „Passwort vergessen" und
+  Selbstregistrierung sind die Ausnahme — ihr Aufrufer darf das Ergebnis gerade **nicht** erfahren,
+  und ein synchroner Versand würde die Antwortzeit verraten; ihre Kontoarbeit läuft nach der
+  Feldprüfung auf einem eigenen Mail-Thread mit begrenzter Warteschlange (`MailDispatchExecutor`,
+  denselben nutzt die Notanker-Benachrichtigung aus Entscheidung 5), die Antwort kommt nach fester
+  Frist — bei der Registrierung nach dem Größeren aus Frist und dem einen BCrypt, den sie in jedem
+  Ausgang zuerst auf dem Anfrage-Thread bezahlt, damit kein Klartext-Passwort in der Warteschlange
+  wartet: gleiche Antwortzeit in jedem Ausgang, nicht gleich der Frist. **Ein
   `Failed` bleibt nicht unsichtbar:** Log-Zeile mit Grund und Vorlagenschlüssel (ohne Adresse),
   Fortschreibung von `last_failure_at`/`last_failure_reason`, Anzeige „letzter erfolgreicher Versand"
   und „letzter Fehler" auf der Einstellungsseite und ein Health-Indikator `mail` (Zustand ohne
@@ -744,7 +756,12 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
   (Standard aus): Rolle immer `USER`, Ablaufdatum **Pflicht** (`default_expiry_days`), Anlagegrund
   „Selbstregistrierung", Konto bis zur Bestätigung (`VERIFY_EMAIL`, 24 Stunden) nicht anmeldefähig;
   bei belegter Adresse entsteht kein zweites Konto, die Antwort ist identisch (202); keine Hinweis-Mail
-  an die belegte Adresse (sie wäre selbst ein Aufzählungskanal). Das Einschalten ist ein Audit-Ereignis
+  an die belegte Adresse (sie wäre selbst ein Aufzählungskanal). Eine noch unbestätigte
+  Selbstregistrierung derselben Adresse erhält ihren Bestätigungslink erneut, damit sie keine
+  Sackgasse ist — **Hash und Name bleiben** dabei, als bewusste Regel gegen ein Pre-Hijacking:
+  Sonst könnte eine zweite Registrierung ein Passwort hinterlegen, das die erste Person mit dem
+  neuen Link bestätigt. Ein administratives Zurücksetzen bestätigt die Adresse nicht; bei
+  abgeschalteter Selbstregistrierung ist der Ausweg Löschen und Einladen. Das Einschalten ist ein Audit-Ereignis
   und nach `security-and-compliance.md` ein Punkt der Dienstvereinbarung; das Handbuchkapitel aus
   #1543 sagt das.
 - **Passwort vergessen** nur bei `password_reset_enabled` und gesetzter Basis-URL: immer 204 nach
@@ -922,7 +939,11 @@ unangetastet — sie sind für den Verzeichnis-Lebenszyklus reserviert.
   `docs/features/security-and-compliance.md` (geschlossene Ereignisliste einschließlich der
   `MAIL_*`-Ereignisse, Umsetzungsstand, „Was ausdrücklich nicht protokolliert wird", „Export und
   Auskunft") sind mit diesem ADR nachgezogen; `docs/features/user-frontends.md` und ADR-0019 tragen
-  den Hinweis. Die Absätze „gebaut" folgen mit den Sub-Issues; `demo/` zieht mit #1543 nach.
+  den Hinweis. Mit #1543 sind die Abschnitte beider Spezifikationen zu einer geschlossenen Darstellung
+  des gebauten Stands zusammengeführt, `docs/features/demo-instance.md` ist nachgezogen, und das
+  Produkthandbuch hat das Kapitel „Benutzerverwaltung" sowie die Betriebsabschnitte des
+  Deployment-Kapitels (Erststart, lokale Verwaltung, Notfallprozedur, Nacharbeit nach einer
+  Rücksicherung).
 
 ## Stakeholder-Bewertung
 

@@ -22,8 +22,16 @@ interface OidcProviderState {
     providerId: string,
     request: OidcProviderRequest,
   ) => Promise<OidcProviderResponse>
-  deleteExistingProvider: (providerId: string) => Promise<void>
-  setProviderEnabled: (providerId: string, enabled: boolean) => Promise<OidcProviderResponse>
+  /**
+   * `acknowledgeLastProvider` travels to the backend only for the last enabled OIDC provider -
+   * see {@link deleteOidcProvider} (ADR-0033, Entscheidung 4).
+   */
+  deleteExistingProvider: (providerId: string, acknowledgeLastProvider?: boolean) => Promise<void>
+  setProviderEnabled: (
+    providerId: string,
+    enabled: boolean,
+    acknowledgeLastProvider?: boolean,
+  ) => Promise<OidcProviderResponse>
   makeProviderDefault: (providerId: string) => Promise<OidcProviderResponse>
   /** Moves the provider one position up or down in the sign-in page order. */
   moveProvider: (providerId: string, direction: 'up' | 'down') => Promise<void>
@@ -76,13 +84,13 @@ export const useOidcProviderStore = create<OidcProviderState>((set, get) => ({
     return updated
   },
 
-  deleteExistingProvider: async (providerId) => {
-    await deleteOidcProvider(providerId)
+  deleteExistingProvider: async (providerId, acknowledgeLastProvider = false) => {
+    await deleteOidcProvider(providerId, acknowledgeLastProvider)
     set({ providers: get().providers.filter((p) => p.id !== providerId) })
   },
 
-  setProviderEnabled: async (providerId, enabled) => {
-    const updated = await setOidcProviderEnabled(providerId, enabled)
+  setProviderEnabled: async (providerId, enabled, acknowledgeLastProvider = false) => {
+    const updated = await setOidcProviderEnabled(providerId, enabled, acknowledgeLastProvider)
     set({ providers: get().providers.map((p) => (p.id === providerId ? updated : p)) })
     return updated
   },
@@ -99,14 +107,27 @@ export const useOidcProviderStore = create<OidcProviderState>((set, get) => ({
     return updated
   },
 
+  /*
+   * Getauscht wird mit dem nächsten **OIDC**-Nachbarn, nicht mit dem nächsten Eintrag der Liste
+   * (Review-Runde 1, MEDIUM 5): Die `LOCAL`-Zeile steht mit in `oidc_providers` und kann zwischen
+   * zwei Anbietern liegen. Ein Tausch mit ihr hätte die sichtbare Reihenfolge der Anbieterseite
+   * nicht verändert - ein verschluckter Klick plus ein Reihenfolge-Audit ohne Wirkung. Ihre eigene
+   * Position bleibt unberührt, und die gesendete Liste enthält weiter alle Zeilen, weil die API
+   * die vollständige Reihenfolge erwartet.
+   */
   moveProvider: async (providerId, direction) => {
-    const ordered = sortProviders(get().providers).map((p) => p.id)
-    const index = ordered.indexOf(providerId)
-    const target = direction === 'up' ? index - 1 : index + 1
-    if (index < 0 || target < 0 || target >= ordered.length) return
-    const next = [...ordered]
-    next[index] = ordered[target]
-    next[target] = ordered[index]
+    const ordered = sortProviders(get().providers)
+    const index = ordered.findIndex((p) => p.id === providerId)
+    if (index < 0 || ordered[index].providerType !== 'OIDC') return
+    const step = direction === 'up' ? -1 : 1
+    let target = index + step
+    while (target >= 0 && target < ordered.length && ordered[target].providerType !== 'OIDC') {
+      target += step
+    }
+    if (target < 0 || target >= ordered.length) return
+    const next = ordered.map((p) => p.id)
+    next[index] = ordered[target].id
+    next[target] = ordered[index].id
     const providers = await reorderOidcProviders(next)
     set({ providers: sortProviders(providers) })
   },

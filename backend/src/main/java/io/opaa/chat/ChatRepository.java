@@ -30,6 +30,9 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
    */
   boolean existsBySpaceId(UUID spaceId);
 
+  /** Whether the user authored any chat ({@code fk_chats_author_organization} is RESTRICT). */
+  boolean existsByAuthorId(UUID authorId);
+
   /**
    * Backs the overview card's "Chats" figure and the archived-space visibility rule of {@code
    * SpaceService#listSpaces} with one grouped query for the whole list instead of a lookup per

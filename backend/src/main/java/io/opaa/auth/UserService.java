@@ -7,6 +7,7 @@ import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.local.LocalAdminAvailabilityGuard;
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcIssuerUris;
 import io.opaa.auth.oidc.OidcProvider;
@@ -45,6 +46,7 @@ public class UserService {
   private final OidcProviderRegistry providerRegistry;
   private final OidcProviderRepository providerRepository;
   private final TokenRoleSynchronizer roleSynchronizer;
+  private final LocalAdminAvailabilityGuard adminGuard;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
   private final Clock clock;
@@ -55,6 +57,7 @@ public class UserService {
       OidcProviderRegistry providerRegistry,
       OidcProviderRepository providerRepository,
       TokenRoleSynchronizer roleSynchronizer,
+      LocalAdminAvailabilityGuard adminGuard,
       AuditEventRecorder auditEventRecorder,
       ApplicationEventPublisher eventPublisher,
       Clock clock) {
@@ -63,6 +66,7 @@ public class UserService {
     this.providerRegistry = providerRegistry;
     this.providerRepository = providerRepository;
     this.roleSynchronizer = roleSynchronizer;
+    this.adminGuard = adminGuard;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
     this.clock = clock;
@@ -79,6 +83,9 @@ public class UserService {
    */
   public User provisionFromToken(Jwt jwt) {
     String issuer = JwtUserClaims.issuer(jwt);
+    if (LocalIssuer.URN.equals(issuer)) {
+      return findLocalAccount(jwt);
+    }
     Optional<OidcProvider> provider = providerRegistry.findEnabledByIssuer(issuer);
     OidcClaimMapping mapping =
         provider.map(OidcProvider::getClaimMapping).orElseGet(OidcClaimMapping::keycloakDefaults);
@@ -94,6 +101,25 @@ public class UserService {
             ? UserProvisionedEvent.withTokenGroups(
                 user, result.createdHere(), provider.get(), claims.groups())
             : UserProvisionedEvent.withoutTokenGroups(user, result.createdHere()));
+    return user;
+  }
+
+  /**
+   * The local issuer is a finder, never a provisioner (ADR-0033, Entscheidung 8): the account must
+   * already exist under {@code (urn:opaa:local, users.id)} - the token validator has refused an
+   * unknown subject before this runs, and this is the second lock on the same door - and neither
+   * {@code email} nor {@code display_name} is written back from the token; the database is the
+   * source here, not the claim. {@link InitialAdminPolicy} is not consulted. Only the throttled
+   * activity timestamp and the provisioning event are shared with the provider path.
+   */
+  private User findLocalAccount(Jwt jwt) {
+    User user =
+        userRepository
+            .findBySubjectAndIssuer(jwt.getSubject(), LocalIssuer.URN)
+            .orElseThrow(
+                () -> new UserNotFoundException("Kein lokales Konto zu diesem Token vorhanden"));
+    user = touchLastLogin(user);
+    eventPublisher.publishEvent(UserProvisionedEvent.withoutTokenGroups(user, false));
     return user;
   }
 
@@ -140,9 +166,7 @@ public class UserService {
   private User updateExistingUser(User existing, String email, String displayName) {
     Instant now = clock.instant();
     boolean changed = false;
-    Instant lastLoginAt = existing.getLastLoginAt();
-    if (lastLoginAt == null
-        || Duration.between(lastLoginAt, now).compareTo(LAST_LOGIN_UPDATE_THRESHOLD) >= 0) {
+    if (lastLoginDue(existing, now)) {
       existing.setLastLoginAt(now);
       changed = true;
     }
@@ -155,6 +179,21 @@ public class UserService {
       changed = true;
     }
     return changed ? userRepository.save(existing) : existing;
+  }
+
+  private User touchLastLogin(User existing) {
+    Instant now = clock.instant();
+    if (!lastLoginDue(existing, now)) {
+      return existing;
+    }
+    existing.setLastLoginAt(now);
+    return userRepository.save(existing);
+  }
+
+  private static boolean lastLoginDue(User existing, Instant now) {
+    Instant lastLoginAt = existing.getLastLoginAt();
+    return lastLoginAt == null
+        || Duration.between(lastLoginAt, now).compareTo(LAST_LOGIN_UPDATE_THRESHOLD) >= 0;
   }
 
   /**
@@ -188,8 +227,8 @@ public class UserService {
   private User insertUser(String subject, String issuer, String email, String displayName) {
     User newUser = new User(subject, issuer, email, displayName);
     newUser.setOrganizationId(Organization.DEFAULT_ID);
-    // ADR-0025, Entscheidung 3: the address alone is not enough - only the trusted provider's
-    // issuer may mint the initial administrator, see InitialAdminPolicy.
+    // ADR-0033, Entscheidung 5: the address alone is not enough - only the dev issuer mints the
+    // initial administrator any more, see InitialAdminPolicy.
     if (initialAdminPolicy.grantsSystemAdmin(email, issuer)) {
       newUser.setSystemRole(SystemRole.SYSTEM_ADMIN);
     }
@@ -279,6 +318,10 @@ public class UserService {
                       + "“ verwaltet und kann hier nicht geändert werden.");
             });
     SystemRole previousRole = user.getSystemRole();
+    // ADR-0033, Entscheidung 4: the manual withdrawal must leave a login-capable administrator
+    if (previousRole == SystemRole.SYSTEM_ADMIN && role != SystemRole.SYSTEM_ADMIN) {
+      adminGuard.requireAnotherLoginCapableAdmin(actor.organizationId(), user.getId());
+    }
     user.setSystemRole(role);
     User saved = userRepository.save(user);
     if (previousRole != role) {

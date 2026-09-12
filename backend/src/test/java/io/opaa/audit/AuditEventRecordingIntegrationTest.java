@@ -725,6 +725,10 @@ class AuditEventRecordingIntegrationTest {
     // supported before this PR.
     UUID actingAdmin = createUser();
     User actingAdminUser = userRepository.findById(actingAdmin).orElseThrow();
+    // a second login-capable administrator (dev issuer, ADR-0033 Entscheidung 4): the withdrawal
+    // below is guarded by LocalAdminAvailabilityGuard and would otherwise be the last one
+    actingAdminUser.setSystemRole(SystemRole.SYSTEM_ADMIN);
+    actingAdminUser = userRepository.save(actingAdminUser);
     UUID targetUser = createUser();
     String targetEmail = userRepository.findById(targetUser).orElseThrow().getEmail();
 

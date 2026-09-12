@@ -1,0 +1,290 @@
+package io.opaa.auth.local;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import io.opaa.api.types.LockReason;
+import io.opaa.api.types.SystemRole;
+import io.opaa.auth.LocalIssuer;
+import io.opaa.auth.User;
+import io.opaa.auth.UserRepository;
+import io.opaa.auth.oidc.OidcProviderRegistry;
+import io.opaa.organization.Organization;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+/**
+ * Credential verification of the local sign-in (ADR-0033, Entscheidung 9): the address is matched
+ * case-insensitively within the local issuer only; exactly one {@link PasswordEncoder#matches} runs
+ * per attempt - against a fixed dummy hash when there is no account or no password - so the
+ * response-time class never tells an unknown address from a wrong password; only an {@code ACTIVE}
+ * account signs in, and with the management switched off only a local {@code SYSTEM_ADMIN}. Every
+ * refusal is the same empty result. The failed-login counter is incremented and reset here; the
+ * lockout after five attempts (#1535) hangs on {@link LocalLoginAttemptListener}.
+ */
+class LocalLoginServiceTest {
+
+  private static final Instant NOW = Instant.parse("2026-09-11T10:00:00Z");
+  private static final String EMAIL = "erika.muster@stadt.example";
+  private static final String HASH = "{bcrypt}$2a$12$stored";
+  private static final String CLIENT = "10.20.30.40";
+
+  private final UserRepository users = mock(UserRepository.class);
+  private final LocalCredentialsRepository credentials = mock(LocalCredentialsRepository.class);
+  private final PasswordEncoder encoder = mock(PasswordEncoder.class);
+  private final OidcProviderRegistry registry = mock(OidcProviderRegistry.class);
+  private final LocalLoginAttemptListener listener = mock(LocalLoginAttemptListener.class);
+  private final LocalAdminNetworkPolicy networkPolicy = mock(LocalAdminNetworkPolicy.class);
+  private LocalLoginService service;
+  private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
+  private Logger logger;
+
+  private User user;
+  private LocalCredentials row;
+
+  @AfterEach
+  void tearDown() {
+    logger.detachAppender(logs);
+  }
+
+  @BeforeEach
+  void setUp() {
+    logger = (Logger) LoggerFactory.getLogger(LocalLoginService.class);
+    logs.start();
+    logger.addAppender(logs);
+    service =
+        new LocalLoginService(
+            users,
+            credentials,
+            encoder,
+            registry,
+            List.of(listener),
+            networkPolicy,
+            Clock.fixed(NOW, ZoneOffset.UTC));
+    when(registry.localAccountsEnabled()).thenReturn(true);
+    when(networkPolicy.permitsAdminSignIn(any())).thenReturn(true);
+    user = localUser(SystemRole.USER);
+    row = activeCredentials(user);
+    when(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, EMAIL))
+        .thenReturn(Optional.of(user));
+    when(credentials.findById(user.getId())).thenReturn(Optional.of(row));
+    when(encoder.matches("richtig", HASH)).thenReturn(true);
+  }
+
+  @Test
+  void signsInAnActiveAccountWithTheRightPasswordAndResetsNothingWhenNothingFailedBefore() {
+    Optional<LocalLoginService.AuthenticatedLocalAccount> result =
+        service.authenticate("  Erika.Muster@Stadt.Example ", "richtig", CLIENT);
+
+    assertThat(result).isPresent();
+    assertThat(result.get().user()).isSameAs(user);
+    assertThat(result.get().credentials()).isSameAs(row);
+    verify(users).findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, EMAIL);
+    verify(encoder, times(1)).matches("richtig", HASH);
+    verify(listener).onLoginSucceeded(user, row, NOW);
+    verify(credentials, never()).save(any());
+    verify(credentials, never()).recordFailedLogin(any(), any());
+  }
+
+  @Test
+  void aWrongPasswordIsRefusedCountedAndReportedToTheListener() {
+    assertThat(service.authenticate(EMAIL, "falsch", CLIENT)).isEmpty();
+
+    verify(encoder, times(1)).matches("falsch", HASH);
+    verify(credentials).recordFailedLogin(user.getId(), NOW);
+    // the listener sees the row as it is after the count, reloaded past the bulk update
+    verify(listener).onPasswordRejected(user, row, NOW);
+    verify(listener, never()).onLoginSucceeded(any(), any(), any());
+    assertFailedAttemptLoggedOnce();
+  }
+
+  @Test
+  void anUnknownAddressStillCostsExactlyOneHashComparison() {
+    when(users.findByIssuerAndEmailIgnoreCase(any(), any())).thenReturn(Optional.empty());
+
+    assertThat(service.authenticate("niemand@stadt.example", "irgendwas", CLIENT)).isEmpty();
+
+    verify(encoder, times(1)).matches(eq("irgendwas"), anyString());
+    verify(encoder).matches("irgendwas", LocalLoginService.DUMMY_HASH);
+    verifyNoMoreInteractions(listener);
+    verify(credentials, never()).recordFailedLogin(any(), any());
+  }
+
+  @Test
+  void anInvitedAccountWithoutAPasswordIsComparedAgainstTheDummyHash() {
+    LocalCredentials invited = new LocalCredentials(user.getId(), "Einladung", NOW);
+    invited.markEmailVerified(NOW);
+    when(credentials.findById(user.getId())).thenReturn(Optional.of(invited));
+
+    assertThat(service.authenticate(EMAIL, "irgendwas", CLIENT)).isEmpty();
+
+    verify(encoder, times(1)).matches("irgendwas", LocalLoginService.DUMMY_HASH);
+    verifyNoMoreInteractions(listener);
+  }
+
+  @Test
+  void aLockedAccountIsRefusedEvenWithTheRightPasswordAndNotCountedAsAFailedPassword() {
+    row.lock(LockReason.ADMIN, NOW.minus(Duration.ofHours(1)), null);
+
+    assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isEmpty();
+
+    verify(encoder, times(1)).matches("richtig", HASH);
+    verify(credentials, never()).recordFailedLogin(any(), any());
+    verify(listener, never()).onPasswordRejected(any(), any(), any());
+    verify(listener, never()).onLoginSucceeded(any(), any(), any());
+  }
+
+  @Test
+  void aTemporaryLockoutInTheFutureRefusesTheSignIn() {
+    row.recordLockoutUntil(NOW.plus(Duration.ofMinutes(10)), NOW);
+
+    assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isEmpty();
+  }
+
+  @Test
+  void aWrongPasswordDuringALockoutIsNeitherCountedNorReported() {
+    // #1535: attempts during the lockout neither extend it nor spend the budget after it
+    row.recordLockoutUntil(NOW.plus(Duration.ofMinutes(10)), NOW.minusSeconds(60));
+
+    assertThat(service.authenticate(EMAIL, "falsch", CLIENT)).isEmpty();
+
+    verify(encoder, times(1)).matches("falsch", HASH);
+    verify(credentials, never()).recordFailedLogin(any(), any());
+    verify(listener, never()).onPasswordRejected(any(), any(), any());
+    assertFailedAttemptLoggedOnce();
+  }
+
+  /**
+   * ADR-0033, Entscheidung 9: every wrong password of a known account is one INFO line with the
+   * account id, never the address.
+   */
+  private void assertFailedAttemptLoggedOnce() {
+    assertThat(logs.list)
+        .filteredOn(event -> event.getLevel() == Level.INFO)
+        .extracting(ILoggingEvent::getFormattedMessage)
+        .filteredOn(message -> message.contains("wrong password"))
+        .hasSize(1)
+        .allSatisfy(
+            message -> assertThat(message).contains(user.getId().toString()).doesNotContain(EMAIL));
+  }
+
+  @Test
+  void anExpiredAccountIsRefusedEvenWithTheRightPassword() {
+    row.setExpiresAt(NOW.minus(Duration.ofDays(1)), NOW);
+
+    assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isEmpty();
+    verify(encoder, times(1)).matches("richtig", HASH);
+  }
+
+  @Test
+  void aSuccessfulSignInResetsAnEarlierFailedLoginCount() {
+    LocalCredentials withFailures = mock(LocalCredentials.class);
+    when(withFailures.isLoginCapable(NOW)).thenReturn(true);
+    when(withFailures.getPasswordHash()).thenReturn(HASH);
+    when(withFailures.getFailedLoginAttempts()).thenReturn(3);
+    when(credentials.findById(user.getId())).thenReturn(Optional.of(withFailures));
+
+    assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isPresent();
+
+    // an atomic UPDATE, never a save() of the loaded entity: recordFailedLogin bypasses @Version
+    verify(credentials).resetFailedLoginAttempts(user.getId(), NOW);
+    verify(credentials, never()).save(any());
+  }
+
+  @Test
+  void withTheManagementSwitchedOffOnlyALocalSystemAdminSignsIn() {
+    when(registry.localAccountsEnabled()).thenReturn(false);
+
+    assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isEmpty();
+    verify(listener, never()).onLoginSucceeded(any(), any(), any());
+    verify(credentials, never()).recordFailedLogin(any(), any());
+
+    User admin = localUser(SystemRole.SYSTEM_ADMIN);
+    LocalCredentials adminRow = activeCredentials(admin);
+    when(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, EMAIL))
+        .thenReturn(Optional.of(admin));
+    when(credentials.findById(admin.getId())).thenReturn(Optional.of(adminRow));
+
+    assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isPresent();
+  }
+
+  /**
+   * ADR-0033, Entscheidung 9: a local {@code SYSTEM_ADMIN} outside {@code
+   * OPAA_LOCAL_ADMIN_ALLOWED_CIDRS} is refused like a wrong password - without a count, without the
+   * listener - while regular accounts are never restricted.
+   */
+  @Test
+  void aLocalSystemAdminOutsideTheAllowedNetworksIsRefusedLikeAWrongPassword() {
+    when(networkPolicy.permitsAdminSignIn("203.0.113.9")).thenReturn(false);
+    User admin = localUser(SystemRole.SYSTEM_ADMIN);
+    LocalCredentials adminRow = activeCredentials(admin);
+    when(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, EMAIL))
+        .thenReturn(Optional.of(admin));
+    when(credentials.findById(admin.getId())).thenReturn(Optional.of(adminRow));
+
+    assertThat(service.authenticate(EMAIL, "richtig", "203.0.113.9")).isEmpty();
+    // a wrong password from a refused network is not counted either: the account cannot be
+    // locked out from a network it can never sign in from
+    assertThat(service.authenticate(EMAIL, "falsch", "203.0.113.9")).isEmpty();
+
+    verify(encoder, times(1)).matches("richtig", HASH);
+    verify(encoder, times(1)).matches("falsch", HASH);
+    verify(credentials, never()).recordFailedLogin(any(), any());
+    verify(listener, never()).onLoginSucceeded(any(), any(), any());
+    verify(listener, never()).onPasswordRejected(any(), any(), any());
+
+    assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isPresent();
+    when(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, EMAIL))
+        .thenReturn(Optional.of(user));
+    when(credentials.findById(user.getId())).thenReturn(Optional.of(row));
+    assertThat(service.authenticate(EMAIL, "richtig", "203.0.113.9")).isPresent();
+    // consulted once for the administrator from that address, never for the regular account
+    verify(networkPolicy, times(2)).permitsAdminSignIn("203.0.113.9");
+  }
+
+  @Test
+  void aBlankAddressOrPasswordIsRefusedWithoutTouchingTheDatabase() {
+    assertThat(service.authenticate("   ", "richtig", CLIENT)).isEmpty();
+    assertThat(service.authenticate(EMAIL, "", CLIENT)).isEmpty();
+    assertThat(service.authenticate(null, null, CLIENT)).isEmpty();
+
+    verify(users, never()).findByIssuerAndEmailIgnoreCase(any(), any());
+  }
+
+  private static User localUser(SystemRole role) {
+    UUID id = UUID.randomUUID();
+    User user = new User(id.toString(), LocalIssuer.URN, EMAIL, "Erika Muster");
+    user.setOrganizationId(Organization.DEFAULT_ID);
+    user.setSystemRole(role);
+    return user;
+  }
+
+  private static LocalCredentials activeCredentials(User user) {
+    LocalCredentials row = new LocalCredentials(user.getId(), "Testkonto", NOW);
+    row.setPasswordHash(HASH, NOW);
+    row.markEmailVerified(NOW);
+    return row;
+  }
+}

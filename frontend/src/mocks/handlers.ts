@@ -1,5 +1,8 @@
 import { http, HttpResponse } from 'msw'
 import { assetRoleLabel } from '../utils/labels'
+import { mailHandlers } from './mailHandlers'
+import { localUserHandlers } from './localUserHandlers'
+import { localAuthHandlers } from './localAuthHandlers'
 
 /** Per-library countdown of the mock metadata backfill; see the handler below. */
 const mockMetadataBackfillRemaining = new Map<string, number>()
@@ -16,6 +19,8 @@ import {
   getRandomMockResponse,
   mockErrorResponse,
   mockAuthConfig,
+  mockLocalAccount,
+  mockLocalTokenResponse,
   mockBranding,
   setMockBranding,
   mockEmbeddingInfo,
@@ -496,6 +501,16 @@ function extractionSettingsOf(libraryId: string) {
 }
 
 const disabledRegistryStates = new Map<string, OidcProviderResponse['registryState']>()
+
+/** Die OIDC-Zeilen außer `providerId`; die LOCAL-Zeile ist kein Anbieter dieser Regeln. */
+function otherOidcProviders(providerId: string) {
+  return mockOidcProviders.filter((p) => p.id !== providerId && p.providerType === 'OIDC')
+}
+
+/** `acknowledgeLastProvider=true` aus der Anfrage (ADR-0033, Entscheidung 4). */
+function acknowledgesLastProvider(request: Request): boolean {
+  return new URL(request.url).searchParams.get('acknowledgeLastProvider') === 'true'
+}
 
 export const handlers = [
   http.get('/api/health', () => {
@@ -1216,8 +1231,9 @@ export const handlers = [
 
   // identity providers (ADR-0025, #1329 admin API) - public clients, no secret in any payload;
   // (disabledRegistryStates remembers a disabled provider's decoder state until it is re-enabled)
-  // the same invariants as OidcProviderService: the default is neither disable- nor deletable,
-  // a duplicate issuer is a conflict.
+  // the same invariants as OidcProviderService: the default is neither disable- nor deletable
+  // while another provider is there, the last enabled one only with acknowledgeLastProvider
+  // (ADR-0033, Entscheidung 4), a duplicate issuer is a conflict.
   http.get('/api/v1/admin/oidc-providers', () => {
     return HttpResponse.json([...mockOidcProviders].sort((a, b) => a.sortOrder - b.sortOrder))
   }),
@@ -1242,6 +1258,7 @@ export const handlers = [
       displayName: body.displayName,
       enabled: true,
       isDefault: mockOidcProviders.length === 0,
+      providerType: 'OIDC',
       sortOrder: mockOidcProviders.length,
       issuerUri: body.issuerUri,
       clientId: body.clientId,
@@ -1315,14 +1332,31 @@ export const handlers = [
     return HttpResponse.json(provider)
   }),
 
-  http.delete('/api/v1/admin/oidc-providers/:providerId', ({ params }) => {
+  http.delete('/api/v1/admin/oidc-providers/:providerId', ({ params, request }) => {
     const provider = mockOidcProviders.find((p) => p.id === String(params.providerId))
     if (!provider) {
       return HttpResponse.json({ error: 'Anbieter nicht gefunden' }, { status: 404 })
     }
-    if (provider.isDefault) {
+    if (provider.providerType === 'LOCAL') {
+      return HttpResponse.json(
+        { error: 'Die lokale Benutzerverwaltung kann nicht gelöscht werden.', code: 'LOCAL_ROW' },
+        { status: 409 },
+      )
+    }
+    const others = otherOidcProviders(provider.id)
+    if (provider.isDefault && others.length > 0) {
       return HttpResponse.json(
         { error: 'Der Standardanbieter kann nicht gelöscht werden.' },
+        { status: 409 },
+      )
+    }
+    // ADR-0033, Entscheidung 4: der letzte aktivierte Anbieter nur mit ausdrücklicher Bestätigung.
+    if (provider.enabled && !others.some((p) => p.enabled) && !acknowledgesLastProvider(request)) {
+      return HttpResponse.json(
+        {
+          error: 'Danach können sich nur noch lokale Konten anmelden – bitte bestätigen.',
+          code: 'LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED',
+        },
         { status: 409 },
       )
     }
@@ -1342,14 +1376,24 @@ export const handlers = [
     return HttpResponse.json(provider)
   }),
 
-  http.post('/api/v1/admin/oidc-providers/:providerId/disable', ({ params }) => {
+  http.post('/api/v1/admin/oidc-providers/:providerId/disable', ({ params, request }) => {
     const provider = mockOidcProviders.find((p) => p.id === String(params.providerId))
     if (!provider) {
       return HttpResponse.json({ error: 'Anbieter nicht gefunden' }, { status: 404 })
     }
-    if (provider.isDefault) {
+    const others = otherOidcProviders(provider.id)
+    if (provider.isDefault && others.some((p) => p.enabled)) {
       return HttpResponse.json(
         { error: 'Der Standardanbieter kann nicht deaktiviert werden.' },
+        { status: 409 },
+      )
+    }
+    if (provider.enabled && !others.some((p) => p.enabled) && !acknowledgesLastProvider(request)) {
+      return HttpResponse.json(
+        {
+          error: 'Danach können sich nur noch lokale Konten anmelden – bitte bestätigen.',
+          code: 'LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED',
+        },
         { status: 409 },
       )
     }
@@ -3012,6 +3056,65 @@ export const handlers = [
     return HttpResponse.json(mockAuthConfig)
   }),
 
+  // ADR-0033: the local sign-in of the mocks knows exactly one account. Every refusal is the same
+  // answer, as the backend's is - unknown address and wrong password are indistinguishable.
+  http.post('/api/v1/auth/local/login', async ({ request }) => {
+    const body = (await request.json()) as { email?: string; password?: string }
+    if (
+      body.email?.trim().toLowerCase() !== mockLocalAccount.email ||
+      body.password !== mockLocalAccount.password
+    ) {
+      return HttpResponse.json(
+        {
+          error: 'Anmeldung fehlgeschlagen. Prüfen Sie E-Mail-Adresse und Passwort.',
+          status: 401,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 401 },
+      )
+    }
+    return HttpResponse.json(mockLocalTokenResponse, {
+      headers: { 'Set-Cookie': 'XSRF-TOKEN=mock-csrf-token; Path=/' },
+    })
+  }),
+
+  http.post('/api/v1/auth/local/refresh', () => HttpResponse.json(mockLocalTokenResponse)),
+
+  http.post('/api/v1/auth/local/logout', () => new HttpResponse(null, { status: 204 })),
+
+  http.post('/api/v1/auth/local/change-password', async ({ request }) => {
+    const body = (await request.json()) as { currentPassword?: string; newPassword?: string }
+    if (body.currentPassword !== mockLocalAccount.password) {
+      return HttpResponse.json(
+        {
+          error: 'Das aktuelle Passwort ist nicht korrekt.',
+          status: 400,
+          timestamp: new Date().toISOString(),
+          fieldErrors: [
+            {
+              field: 'currentPassword',
+              code: 'WRONG_PASSWORD',
+              message: 'Das aktuelle Passwort ist nicht korrekt.',
+            },
+          ],
+        },
+        { status: 400 },
+      )
+    }
+    if ((body.newPassword ?? '').length < (mockAuthConfig.localAccounts?.passwordMinLength ?? 12)) {
+      return HttpResponse.json(
+        {
+          error: 'Das Passwort erfüllt die Vorgaben nicht.',
+          status: 400,
+          timestamp: new Date().toISOString(),
+          fieldErrors: [{ field: 'newPassword', code: 'TOO_SHORT', message: 'Passwort zu kurz' }],
+        },
+        { status: 400 },
+      )
+    }
+    return HttpResponse.json({ ...mockLocalTokenResponse, passwordChangeRequired: false })
+  }),
+
   // readable without authentication, like the real endpoint - the sign-in page renders
   // before there is a session and still shows the operator's mark.
   http.get('/api/v1/branding', () => {
@@ -3066,4 +3169,12 @@ export const handlers = [
   http.get('/api/v1/auth/me', () => {
     return HttpResponse.json(mockUser)
   }),
+
+  // The mail administration (#1542) and the public self-service of local accounts (#1540) live in
+  // their own modules: this file is long past the 800-line mark the coding conventions set, and
+  // both bring a self-contained set of fixtures.
+  ...mailHandlers,
+  // Same reason for the local account management (#1541).
+  ...localUserHandlers,
+  ...localAuthHandlers,
 ]

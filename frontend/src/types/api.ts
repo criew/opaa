@@ -189,6 +189,18 @@ export type OidcProviderTestRequest = components['schemas']['OidcProviderTestReq
 export type OidcProviderTestResponse = components['schemas']['OidcProviderTestResponse']
 export type EmbeddingInfoResponse = components['schemas']['EmbeddingInfoResponse']
 
+export type MailEncryption = components['schemas']['MailEncryption']
+export type MailSettingsResponse = components['schemas']['MailSettingsResponse']
+export type MailSettingsUpdateRequest = components['schemas']['MailSettingsUpdateRequest']
+export type MailSendOutcome = components['schemas']['MailSendOutcome']
+export type MailSendResultResponse = components['schemas']['MailSendResultResponse']
+export type MailTemplateSource = components['schemas']['MailTemplateSource']
+export type MailTemplateSummaryResponse = components['schemas']['MailTemplateSummaryResponse']
+export type MailTemplateResponse = components['schemas']['MailTemplateResponse']
+export type MailTemplateUpdateRequest = components['schemas']['MailTemplateUpdateRequest']
+export type MailTemplatePreviewRequest = components['schemas']['MailTemplatePreviewRequest']
+export type MailTemplatePreviewResponse = components['schemas']['MailTemplatePreviewResponse']
+
 export type SearchModelRole = components['schemas']['SearchModelRole']
 export type SearchModelRoleState = components['schemas']['SearchModelRoleState']
 export type SearchModelRoleStatusResponse = components['schemas']['SearchModelRoleStatusResponse']
@@ -222,6 +234,25 @@ export type TrackedDocumentOutcome = components['schemas']['TrackedDocumentOutco
 export type TrackedDocumentResponse = components['schemas']['TrackedDocumentResponse']
 export type ChunkInspectionResponse = components['schemas']['ChunkInspectionResponse']
 export type DocumentChunksResponse = components['schemas']['DocumentChunksResponse']
+
+export type ProviderType = components['schemas']['ProviderType']
+export type MailDeliveryPath = components['schemas']['MailDeliveryPath']
+export type LockReason = components['schemas']['LockReason']
+export type LocalAccountState = components['schemas']['LocalAccountState']
+export type LocalAccountActivity = components['schemas']['LocalAccountActivity']
+export type LocalUserCreationMode = components['schemas']['LocalUserCreationMode']
+export type LocalUserResponse = components['schemas']['LocalUserResponse']
+export type LocalUserPageResponse = components['schemas']['LocalUserPageResponse']
+export type LocalUserSummaryResponse = components['schemas']['LocalUserSummaryResponse']
+export type LocalUserCreateRequest = components['schemas']['LocalUserCreateRequest']
+export type LocalUserCreatedResponse = components['schemas']['LocalUserCreatedResponse']
+export type LocalUserUpdateRequest = components['schemas']['LocalUserUpdateRequest']
+export type LocalUserLockRequest = components['schemas']['LocalUserLockRequest']
+export type LocalUserPasswordResetResponse = components['schemas']['LocalUserPasswordResetResponse']
+export type LocalUserGeneratedPasswordResponse =
+  components['schemas']['LocalUserGeneratedPasswordResponse']
+export type LocalAuthSettingsResponse = components['schemas']['LocalAuthSettingsResponse']
+export type LocalAuthSettingsUpdateRequest = components['schemas']['LocalAuthSettingsUpdateRequest']
 
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (

@@ -2,6 +2,8 @@ package io.opaa.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.auth.oidc.OidcClaimMapping;
@@ -11,9 +13,11 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /**
- * {@link InitialAdminPolicy} (#1330, ADR-0025 Entscheidung 3): the initial administrator's address
- * grants {@code SYSTEM_ADMIN} only through the default provider ({@code oidc}) or the dev issuer
- * ({@code dev}) - never through a second provider, whose operator could otherwise mint one.
+ * {@link InitialAdminPolicy} (ADR-0033, Entscheidung 5): the initial administrator's address grants
+ * {@code SYSTEM_ADMIN} through the dev issuer of the {@code dev} mode only - never through an OIDC
+ * provider, not even the default one. In the {@code oidc} mode the first administrator is the local
+ * bootstrap account the seed creates; provider accounts become administrators by role assignment
+ * alone.
  */
 class InitialAdminPolicyTest {
 
@@ -24,10 +28,11 @@ class InitialAdminPolicyTest {
   private final OidcProviderRepository repository = mock(OidcProviderRepository.class);
 
   private InitialAdminPolicy policyFor(AuthProperties properties) {
-    return new InitialAdminPolicy(properties, new TrustedProvider(properties, repository));
+    return new InitialAdminPolicy(properties);
   }
 
-  private InitialAdminPolicy oidcPolicy() {
+  @Test
+  void grantsNothingThroughAnOidcProviderNotEvenTheDefaultOne() {
     OidcProvider standard =
         new OidcProvider(
             "Beschäftigte",
@@ -37,62 +42,63 @@ class InitialAdminPolicyTest {
             OidcClaimMapping.keycloakDefaults());
     standard.markDefault();
     when(repository.findByDefaultProviderTrue()).thenReturn(Optional.of(standard));
-    return policyFor(new AuthProperties("oidc", null, null, ADMIN));
-  }
+    InitialAdminPolicy policy = policyFor(new AuthProperties("oidc", null, null, ADMIN));
 
-  @Test
-  void grantsThroughTheDefaultProviderOnly() {
-    InitialAdminPolicy policy = oidcPolicy();
-
-    assertThat(policy.grantsSystemAdmin(ADMIN, DEFAULT_ISSUER)).isTrue();
-    assertThat(policy.grantsSystemAdmin("Admin@OPAA.local", DEFAULT_ISSUER + "/")).isTrue();
-    // the capture attempt ADR-0025 closes: same address, issued by the partner provider
+    assertThat(policy.grantsSystemAdmin(ADMIN, DEFAULT_ISSUER)).isFalse();
+    assertThat(policy.grantsSystemAdmin(ADMIN, DEFAULT_ISSUER + "/")).isFalse();
     assertThat(policy.grantsSystemAdmin(ADMIN, PARTNER_ISSUER)).isFalse();
-    assertThat(policy.grantsSystemAdmin("other@opaa.local", DEFAULT_ISSUER)).isFalse();
+    assertThat(policy.grantsSystemAdmin(ADMIN, LocalIssuer.URN)).isFalse();
+    // the default provider is not even consulted: the rule has no OIDC branch any more
+    verify(repository, never()).findByDefaultProviderTrue();
   }
 
-  /** The stored issuer keeps the provider's spelling; the comparison ignores trailing slashes. */
+  /**
+   * An empty {@code OPAA_INITIAL_ADMIN_EMAIL} in the environment overrides the application default
+   * with a blank; in the dev mode that must not take the role from {@code dev-admin}, so a blank
+   * address falls back to the default dev user's.
+   */
   @Test
-  void aDefaultProviderStoredWithATrailingSlashStillMatchesItsIssuer() {
-    OidcProvider auth0 =
-        new OidcProvider(
-            "Auth0",
-            "https://tenant.eu.auth0.com/",
-            "opaa-frontend",
+  void inTheDevModeABlankAddressFallsBackToTheDefaultDevUsersAddress() {
+    AuthProperties dev =
+        new AuthProperties(
+            "dev",
             null,
-            OidcClaimMapping.keycloakDefaults());
-    auth0.markDefault();
-    when(repository.findByDefaultProviderTrue()).thenReturn(Optional.of(auth0));
-    InitialAdminPolicy policy = policyFor(new AuthProperties("oidc", null, null, ADMIN));
+            new AuthProperties.DevAuth(
+                "opaa-dev",
+                "dev-admin",
+                java.util.List.of(
+                    new AuthProperties.DevUser("dev-admin", ADMIN, "Dev Admin"),
+                    new AuthProperties.DevUser("dev-user", "dev-user@opaa.local", "Dev User"))),
+            "");
+    InitialAdminPolicy policy = policyFor(dev);
 
-    assertThat(policy.grantsSystemAdmin(ADMIN, "https://tenant.eu.auth0.com/")).isTrue();
-    assertThat(policy.grantsSystemAdmin(ADMIN, "https://tenant.eu.auth0.com")).isTrue();
-  }
-
-  @Test
-  void grantsNothingWhileNoDefaultProviderExists() {
-    when(repository.findByDefaultProviderTrue()).thenReturn(Optional.empty());
-    InitialAdminPolicy policy = policyFor(new AuthProperties("oidc", null, null, ADMIN));
-
+    assertThat(policy.grantsSystemAdmin(ADMIN, "opaa-dev")).isTrue();
+    assertThat(policy.grantsSystemAdmin("dev-user@opaa.local", "opaa-dev")).isFalse();
     assertThat(policy.grantsSystemAdmin(ADMIN, DEFAULT_ISSUER)).isFalse();
   }
 
   @Test
-  void inTheDevModeTheDevIssuerIsTheTrustedProvider() {
+  void inTheDevModeTheDevIssuerStillMintsTheDevAdministrator() {
     AuthProperties dev =
         new AuthProperties(
             "dev", null, new AuthProperties.DevAuth("opaa-dev", "dev-admin", null), ADMIN);
     InitialAdminPolicy policy = policyFor(dev);
 
     assertThat(policy.grantsSystemAdmin(ADMIN, "opaa-dev")).isTrue();
+    assertThat(policy.grantsSystemAdmin("Admin@OPAA.local", "opaa-dev")).isTrue();
+    assertThat(policy.grantsSystemAdmin("other@opaa.local", "opaa-dev")).isFalse();
     assertThat(policy.grantsSystemAdmin(ADMIN, DEFAULT_ISSUER)).isFalse();
   }
 
   @Test
-  void aBlankInitialAdminAddressGrantsNothing() {
-    InitialAdminPolicy policy = policyFor(new AuthProperties("oidc", null, null, "  "));
+  void aBlankAddressWithoutAKnownDefaultDevUserGrantsNothing() {
+    // the default user "dev-admin" is not among the configured users: nothing to fall back to
+    AuthProperties dev =
+        new AuthProperties(
+            "dev", null, new AuthProperties.DevAuth("opaa-dev", "dev-admin", null), "  ");
+    InitialAdminPolicy policy = policyFor(dev);
 
-    assertThat(policy.grantsSystemAdmin(ADMIN, DEFAULT_ISSUER)).isFalse();
-    assertThat(policy.grantsSystemAdmin(null, DEFAULT_ISSUER)).isFalse();
+    assertThat(policy.grantsSystemAdmin(ADMIN, "opaa-dev")).isFalse();
+    assertThat(policy.grantsSystemAdmin(null, "opaa-dev")).isFalse();
   }
 }

@@ -1,6 +1,7 @@
 package io.opaa.auth.oidc;
 
 import com.nimbusds.jose.jwk.JWKSet;
+import io.opaa.auth.LocalIssuer;
 
 /**
  * Probes a provider before it is saved (#1329, the "Verbindungstest" of the Anbieterverwaltung):
@@ -28,6 +29,10 @@ public class OidcProviderConnectionTester {
   public record TestOutcome(boolean success, String message) {}
 
   public TestOutcome test(String issuerUri, String jwkSetUri) {
+    if (issuerUri != null && LocalIssuer.URN.equals(issuerUri.trim())) {
+      // ADR-0033, Entscheidung 4: the LOCAL row has no discovery and no JWK set to probe
+      return new TestOutcome(true, "Für die lokalen Konten entfällt der Verbindungstest.");
+    }
     String override = jwkSetUri == null || jwkSetUri.isBlank() ? null : jwkSetUri.trim();
     String jwksAddress;
     String discoveryNote = "Discovery-Dokument gefunden";

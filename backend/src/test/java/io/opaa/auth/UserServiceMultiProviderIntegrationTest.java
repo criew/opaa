@@ -16,10 +16,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * The account identity under several providers, against a real Postgres (#1330, ADR-0025
  * Entscheidung 2 and 3): the same person at two providers is two accounts - the e-mail never merges
- * them - and the initial administrator's address grants {@code SYSTEM_ADMIN} only through the
- * trusted provider: the dev issuer in this context's {@code dev} mode, and - the {@code oidc}
- * branch, exercised against a real {@code oidc_providers} row with the same repository - the
- * default provider.
+ * them - and the initial administrator's address grants {@code SYSTEM_ADMIN} only through the dev
+ * issuer of this context's {@code dev} mode; in the {@code oidc} branch - exercised against a real
+ * {@code oidc_providers} row with the same repository - not even the default provider mints one
+ * (ADR-0033, Entscheidung 5).
  */
 @OpaaIntegrationTest
 class UserServiceMultiProviderIntegrationTest {
@@ -82,8 +82,12 @@ class UserServiceMultiProviderIntegrationTest {
     assertThat(throughOtherIssuer.getSystemRole()).isEqualTo(SystemRole.USER);
   }
 
+  /**
+   * ADR-0033, Entscheidung 5: in the {@code oidc} mode the rule grants nothing any more - not even
+   * through the default provider row; the first administrator is the local bootstrap account.
+   */
   @Test
-  void inTheOidcModeTheDefaultProviderRowIsTheTrustedOne() {
+  void inTheOidcModeNotEvenTheDefaultProviderRowMintsAnAdministrator() {
     String adminEmail = authProperties.initialAdminEmail();
     String defaultIssuer = "https://idp.example/realms/" + UUID.randomUUID() + "/";
     OidcProvider standard =
@@ -100,15 +104,15 @@ class UserServiceMultiProviderIntegrationTest {
     providerRepository.save(standard);
     try {
       AuthProperties oidc = new AuthProperties("oidc", null, null, adminEmail);
-      InitialAdminPolicy policy =
-          new InitialAdminPolicy(oidc, new TrustedProvider(oidc, providerRepository));
+      InitialAdminPolicy policy = new InitialAdminPolicy(oidc);
       String trusted = providerRepository.findByDefaultProviderTrue().orElseThrow().getIssuerUri();
 
-      assertThat(policy.grantsSystemAdmin(adminEmail, trusted)).isTrue();
-      assertThat(policy.grantsSystemAdmin(adminEmail, OidcIssuerUrisTrim.of(trusted))).isTrue();
+      assertThat(policy.grantsSystemAdmin(adminEmail, trusted)).isFalse();
+      assertThat(policy.grantsSystemAdmin(adminEmail, OidcIssuerUrisTrim.of(trusted))).isFalse();
       assertThat(policy.grantsSystemAdmin(adminEmail, "https://partner.example/realms/b"))
           .isFalse();
-      assertThat(policy.grantsSystemAdmin("other@behoerde.example", trusted)).isFalse();
+      // the directory binding of the default provider is untouched by that
+      assertThat(new TrustedProvider(oidc, providerRepository).matches(trusted)).isTrue();
     } finally {
       providerRepository.deleteById(standard.getId());
     }

@@ -23,6 +23,14 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   Optional<User> findBySubjectAndIssuer(String subject, String issuer);
 
   /**
+   * The local sign-in's lookup (ADR-0033, Entscheidung 1): the address compared without regard to
+   * case, but only among the accounts of {@code issuer} - the partial unique index {@code
+   * ux_users_local_email} guarantees at most one row for the local issuer, an OIDC account with the
+   * same address is never found here.
+   */
+  Optional<User> findByIssuerAndEmailIgnoreCase(String issuer, String email);
+
+  /**
    * How many accounts were provisioned through {@code issuer} - what {@code
    * io.opaa.auth.oidc.OidcProviderService} refuses to cut off by changing a provider's issuer
    * (ADR-0025, Entscheidung 2).
@@ -47,9 +55,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
       UUID organizationId, String issuer, Collection<String> subjects);
 
   /**
-   * Serializes token-derived role changes of one organization for the rest of the transaction
-   * ({@code TokenRoleSynchronizer}): the "does another administrator remain?" condition below is
-   * only sound when no second withdrawal counts this one's row as still remaining.
+   * Serializes the changes that could remove the last login-capable administrator of one
+   * organization for the rest of the transaction ({@code
+   * io.opaa.auth.local.LocalAdminAvailabilityGuard}, ADR-0033 Entscheidung 4): the "does another
+   * administrator remain?" count is only sound when no second change counts this one's row as still
+   * remaining.
    */
   @Query(
       value =
@@ -60,16 +70,69 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   int lockRoleChanges(@Param("organizationId") UUID organizationId);
 
   /**
-   * Writes {@code role} over {@code SYSTEM_ADMIN} only while another {@code SYSTEM_ADMIN} of the
-   * same organization remains; {@code 0} means the account is the last one and keeps the role.
+   * The administrators the {@code LocalAdminAvailabilityGuard} counts - filtered for login
+   * capability in Java, with the same rule the login applies.
    */
-  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  List<User> findByOrganizationIdAndSystemRole(UUID organizationId, SystemRole systemRole);
+
+  /**
+   * The regular accounts of {@code issuer} - what switching the local account management off ends
+   * the sessions of (ADR-0033, Entscheidung 4); system administrators keep theirs.
+   */
+  List<User> findByIssuerAndSystemRoleNot(String issuer, SystemRole systemRole);
+
+  /** The local accounts of one organization - what the local account list is built from (#1537). */
+  List<User> findByOrganizationIdAndIssuer(UUID organizationId, String issuer);
+
+  /** Every account of {@code issuer} - what the daily local-account run walks (#1537). */
+  List<User> findByIssuer(String issuer);
+
+  /**
+   * Per-table counts of the rows that reference the user through an {@code ON DELETE RESTRICT}
+   * foreign key - what deleting a local account has to be clear of (#1537). One statement, so the
+   * refusal can name the reason in the log without a query per table. <b>Every new {@code ON DELETE
+   * RESTRICT} reference to {@code users} needs a sub-query here</b>; a reference this list misses
+   * is caught only by the constraint itself, without its name in the log.
+   */
   @Query(
-      "update User u set u.systemRole = :role where u.id = :id"
-          + " and u.systemRole = io.opaa.api.types.SystemRole.SYSTEM_ADMIN"
-          + " and exists (select o.id from User o where o.organizationId = u.organizationId"
-          + " and o.systemRole = io.opaa.api.types.SystemRole.SYSTEM_ADMIN and o.id <> u.id)")
-  int withdrawSystemAdminIfAnotherRemains(@Param("id") UUID id, @Param("role") SystemRole role);
+      value =
+          "SELECT"
+              + " (SELECT count(*) FROM knowledge_libraries WHERE owner_user_id = :id) AS libraries,"
+              + " (SELECT count(*) FROM spaces WHERE owner_id = :id AND is_default = false) AS spaces,"
+              + " (SELECT count(*) FROM chats WHERE author_id = :id) AS chats,"
+              + " (SELECT count(*) FROM group_membership_history WHERE user_id = :id) AS group_history,"
+              + " (SELECT count(*) FROM asset_grant_history WHERE subject_user_id = :id) AS grant_history,"
+              + " (SELECT count(*) FROM asset_grants WHERE subject_user_id = :id"
+              + "   OR granted_by_user_id = :id) AS grants,"
+              + " (SELECT count(*) FROM space_asset_associations WHERE created_by_user_id = :id)"
+              + "   AS associations,"
+              + " (SELECT count(*) FROM audit_incident_scope_grants WHERE requested_by_user_id = :id"
+              + "   OR approved_by_user_id = :id OR subject_user_id = :id) AS incident_scopes,"
+              + " (SELECT count(*) FROM diagnostic_impersonation_grants WHERE granted_by_user_id = :id"
+              + "   OR revoked_by_user_id = :id) AS impersonation_grants",
+      nativeQuery = true)
+  DeletionBlockers countDeletionBlockers(@Param("id") UUID userId);
+
+  /** The result of {@link #countDeletionBlockers}; every non-zero count refuses the deletion. */
+  interface DeletionBlockers {
+    long getLibraries();
+
+    long getSpaces();
+
+    long getChats();
+
+    long getGroupHistory();
+
+    long getGrantHistory();
+
+    long getGrants();
+
+    long getAssociations();
+
+    long getIncidentScopes();
+
+    long getImpersonationGrants();
+  }
 
   /** Writes {@code role} only while the stored role is still {@code expected}. */
   @Modifying(clearAutomatically = true, flushAutomatically = true)

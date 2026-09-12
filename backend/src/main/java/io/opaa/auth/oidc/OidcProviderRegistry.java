@@ -41,6 +41,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * #RETRY_INTERVAL} passed - at most once per interval, however many request threads carry that
  * issuer - so it does not stay out until the next restart. Process-local without distributed
  * invalidation, per ADR-0021.
+ *
+ * <p>The {@code LOCAL} row (ADR-0033, Entscheidung 4) is read from the same enabled rows but gets
+ * no decoder from the factory - the local issuer's decoder is fixed and registered next to this
+ * registry ({@code io.opaa.auth.local.LocalIssuerAuthenticationManagerResolver}); what the row
+ * contributes is its {@code enabled} flag, {@link #localAccountsEnabled()}, the management switch
+ * the token validator and the login consult without a query of their own.
  */
 public class OidcProviderRegistry implements AuthenticationManagerResolver<String> {
 
@@ -63,6 +69,7 @@ public class OidcProviderRegistry implements AuthenticationManagerResolver<Strin
   private final Object lock = new Object();
   private volatile Map<String, Entry> entries;
   private volatile Map<String, Failure> failures = Map.of();
+  private volatile boolean localAccountsEnabled;
 
   public OidcProviderRegistry(
       OidcProviderRepository repository,
@@ -90,8 +97,13 @@ public class OidcProviderRegistry implements AuthenticationManagerResolver<Strin
       Map<String, Entry> previous = entries == null ? Map.of() : entries;
       Map<String, Entry> built = new LinkedHashMap<>();
       Map<String, Failure> failed = new LinkedHashMap<>();
+      boolean localEnabled = false;
       for (OidcProvider provider :
           repository.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc()) {
+        if (provider.isLocal()) {
+          localEnabled = true;
+          continue;
+        }
         String issuer = OidcIssuerUris.normalize(provider.getIssuerUri());
         Entry reusable = previous.get(issuer);
         try {
@@ -112,10 +124,12 @@ public class OidcProviderRegistry implements AuthenticationManagerResolver<Strin
       // insertion order is the sign-in page order - Map.copyOf would lose it
       entries = Collections.unmodifiableMap(built);
       failures = Collections.unmodifiableMap(failed);
+      localAccountsEnabled = localEnabled;
       log.info(
-          "OIDC provider registry refreshed: {} ready, {} unavailable",
+          "OIDC provider registry refreshed: {} ready, {} unavailable, local accounts {}",
           built.size(),
-          failed.size());
+          failed.size(),
+          localEnabled ? "enabled" : "disabled");
     }
   }
 
@@ -143,7 +157,16 @@ public class OidcProviderRegistry implements AuthenticationManagerResolver<Strin
     return Optional.ofNullable(loaded().get(OidcIssuerUris.normalize(issuer))).map(Entry::provider);
   }
 
-  /** The enabled providers whose decoder is ready, in sign-in page order. */
+  /**
+   * The management switch of local accounts (ADR-0033, Entscheidung 4): the {@code enabled} flag of
+   * the {@code LOCAL} row as of the last refresh - {@code false} while no such row exists.
+   */
+  public boolean localAccountsEnabled() {
+    loaded();
+    return localAccountsEnabled;
+  }
+
+  /** The enabled OIDC providers whose decoder is ready, in sign-in page order. */
   public List<OidcProvider> enabledProviders() {
     return loaded().values().stream().map(Entry::provider).toList();
   }

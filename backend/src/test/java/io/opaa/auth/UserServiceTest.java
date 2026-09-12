@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -16,6 +17,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.local.LocalAdminAvailabilityGuard;
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderRegistry;
@@ -58,6 +60,7 @@ class UserServiceTest {
   private OidcProviderRegistry providerRegistry;
   private OidcProviderRepository providerRepository;
   private TokenRoleSynchronizer roleSynchronizer;
+  private LocalAdminAvailabilityGuard adminGuard;
   private UserService userService;
   private final List<UserProvisionedEvent> publishedEvents = new ArrayList<>();
 
@@ -103,6 +106,7 @@ class UserServiceTest {
     providerRegistry = mock(OidcProviderRegistry.class);
     providerRepository = mock(OidcProviderRepository.class);
     roleSynchronizer = mock(TokenRoleSynchronizer.class);
+    adminGuard = mock(LocalAdminAvailabilityGuard.class);
     when(providerRegistry.findEnabledByIssuer(any())).thenReturn(Optional.empty());
     when(providerRepository.findByNormalizedIssuerUri(any())).thenReturn(Optional.empty());
     userService = userServiceWith(event -> publishedEvents.add((UserProvisionedEvent) event));
@@ -111,11 +115,11 @@ class UserServiceTest {
   private UserService userServiceWith(ApplicationEventPublisher eventPublisher) {
     return new UserService(
         userRepository,
-        new InitialAdminPolicy(
-            authProperties, new TrustedProvider(authProperties, providerRepository)),
+        new InitialAdminPolicy(authProperties),
         providerRegistry,
         providerRepository,
         roleSynchronizer,
+        adminGuard,
         auditEventRecorder,
         eventPublisher,
         clock);
@@ -178,6 +182,54 @@ class UserServiceTest {
     assertThat(fromPartner.user()).isSameAs(atPartner);
     assertThat(fromPartner.provider()).isSameAs(partner);
     assertThat(fromPartner.tokenGroups()).containsExactly("Fachbereich 3");
+  }
+
+  /**
+   * ADR-0033, Entscheidung 8: the local issuer is a finder, never a provisioner - a structurally
+   * valid token with an unknown subject creates no account, and the stored address and display name
+   * are never overwritten from the token (the database is the source, not the claim).
+   */
+  @Test
+  void provisionFromTokenNeverCreatesAnAccountForTheLocalIssuer() {
+    when(userRepository.findBySubjectAndIssuer(any(), eq(LocalIssuer.URN)))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> userService.provisionFromToken(localToken(UUID.randomUUID())))
+        .isInstanceOf(UserNotFoundException.class);
+
+    verify(userRepository, never()).saveAndFlush(any());
+    verify(userRepository, never()).save(any());
+    assertThat(publishedEvents).isEmpty();
+  }
+
+  @Test
+  void provisionFromTokenFindsALocalAccountWithoutWritingTheClaimsBack() {
+    UUID id = UUID.randomUUID();
+    User stored = new User(id.toString(), LocalIssuer.URN, "gespeichert@stadt.example", "Amt");
+    stored.setLastLoginAt(clock.instant());
+    when(userRepository.findBySubjectAndIssuer(id.toString(), LocalIssuer.URN))
+        .thenReturn(Optional.of(stored));
+
+    User result = userService.provisionFromToken(localToken(id));
+
+    assertThat(result).isSameAs(stored);
+    assertThat(result.getEmail()).isEqualTo("gespeichert@stadt.example");
+    assertThat(result.getDisplayName()).isEqualTo("Amt");
+    verify(userRepository, never()).save(any());
+    assertThat(onlyEvent().user()).isSameAs(stored);
+    assertThat(onlyEvent().createdHere()).isFalse();
+  }
+
+  private static Jwt localToken(UUID subject) {
+    return Jwt.withTokenValue("t")
+        .header("alg", "HS256")
+        .claim("sub", subject.toString())
+        .claim("iss", LocalIssuer.URN)
+        .claim("email", "aus-dem-token@stadt.example")
+        .claim("name", "Aus dem Token")
+        .issuedAt(Instant.now())
+        .expiresAt(Instant.now().plusSeconds(60))
+        .build();
   }
 
   @Test
@@ -350,6 +402,48 @@ class UserServiceTest {
 
     assertThat(user.getDisplayName()).isEqualTo("New Name");
     verify(userRepository, times(1)).save(any(User.class));
+  }
+
+  /**
+   * ADR-0033, Entscheidung 4: the manual withdrawal of {@code SYSTEM_ADMIN} runs through the one
+   * guard too - refused as 409 {@code LAST_LOGIN_CAPABLE_ADMIN} when no other login-capable
+   * administrator remains, and nothing is written then. A grant is never guarded.
+   */
+  @Test
+  void updateRoleAsksTheGuardBeforeWithdrawingSystemAdminAndWritesNothingWhenRefused() {
+    UUID organizationId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    User admin = new User("sub", "issuer1", "admin@example.com", "Admin");
+    admin.setOrganizationId(organizationId);
+    admin.setSystemRole(SystemRole.SYSTEM_ADMIN);
+    when(userRepository.findByIdAndOrganizationId(userId, organizationId))
+        .thenReturn(Optional.of(admin));
+    doThrow(new ConflictException("letzter", LocalAdminAvailabilityGuard.ERROR_CODE))
+        .when(adminGuard)
+        .requireAnotherLoginCapableAdmin(organizationId, admin.getId());
+
+    assertThatThrownBy(
+            () ->
+                userService.updateRole(
+                    userId, SystemRole.USER, actorInOrganization(organizationId)))
+        .isInstanceOf(ConflictException.class)
+        .satisfies(
+            e ->
+                assertThat(((ConflictException) e).getCode())
+                    .isEqualTo(LocalAdminAvailabilityGuard.ERROR_CODE));
+    verify(userRepository, never()).save(any(User.class));
+    verify(auditEventRecorder, never()).recordUserActionOnSubject(any());
+
+    // a grant to SYSTEM_ADMIN does not consult the guard
+    User regular = new User("sub2", "issuer1", "u@example.com", "U");
+    regular.setOrganizationId(organizationId);
+    UUID regularId = UUID.randomUUID();
+    when(userRepository.findByIdAndOrganizationId(regularId, organizationId))
+        .thenReturn(Optional.of(regular));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
+    userService.updateRole(regularId, SystemRole.SYSTEM_ADMIN, actorInOrganization(organizationId));
+    verify(adminGuard, times(1)).requireAnotherLoginCapableAdmin(any(), any());
   }
 
   @Test

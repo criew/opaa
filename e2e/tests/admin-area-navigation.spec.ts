@@ -13,13 +13,34 @@ test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)',
   // auch auf einem überlaufenden Layout - nachgemessen im Review zu #803). Dafür steht der
   // Geometrie-Test darunter.
   test('Wechsel über die Sekundärspalte', async ({ authenticatedPage: page }) => {
-    await page.goto('/admin/groups')
+    await page.goto('/admin/users')
     const column = page.getByRole('navigation', { name: 'Administration' })
     await expect(column).toBeVisible()
 
     await column.getByRole('link', { name: 'Modelle' }).click()
     await page.waitForURL('**/admin/models')
     await expect(page.getByRole('heading', { level: 1, name: 'Modelle' })).toBeVisible()
+
+    // #1542: der Eintrag „E-Mail" landet auf dem Server-Tab, der selbst eine Route ist.
+    await column.getByRole('link', { name: 'E-Mail' }).click()
+    await page.waitForURL('**/admin/mail/server')
+    await expect(page.getByRole('heading', { level: 1, name: 'E-Mail' })).toBeVisible()
+    await expect(
+      page.getByRole('tab', { name: 'SMTP-Zugang' }).and(page.locator('[aria-selected="true"]')),
+    ).toBeVisible()
+
+    // #1541: „Benutzer & Gruppen" sind zwei Einträge; „Benutzer" ist zugleich das Ziel des
+    // Admin-Einstiegs in der globalen Leiste.
+    await column.getByRole('link', { name: 'Benutzer', exact: true }).click()
+    await page.waitForURL('**/admin/users')
+    await expect(page.getByRole('heading', { level: 1, name: 'Benutzer' })).toBeVisible()
+    // Das Suchfeld statt der Tabelle: Im dev-Stack gibt es kein lokales Konto, die Liste zeigt
+    // dort ihren Leerzustand ohne <table>.
+    await expect(page.getByRole('searchbox', { name: 'Lokale Konten suchen' })).toBeVisible()
+
+    await column.getByRole('link', { name: 'Gruppen', exact: true }).click()
+    await page.waitForURL('**/admin/groups')
+    await expect(page.getByRole('heading', { level: 1, name: 'Gruppen' })).toBeVisible()
 
     await column.getByRole('link', { name: 'Allgemein & Branding' }).click()
     await page.waitForURL('**/admin/branding')
@@ -48,11 +69,15 @@ test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)',
     // decides whether the column still fits into 320 px (#1053).
     for (const label of [
       'Allgemein & Branding',
-      'Benutzer & Gruppen',
+      'Benutzer',
+      'Gruppen',
       'Modelle',
+      'E-Mail',
       'Suche & Indexierung',
     ]) {
-      const box = await column.getByRole('link', { name: label }).boundingBox()
+      const box = await column
+        .getByRole('link', { name: label, exact: true })
+        .boundingBox()
       expect(box, `Ziel "${label}" ist gerendert`).not.toBeNull()
       expect(box!.x, `Ziel "${label}" beginnt im Viewport`).toBeGreaterThanOrEqual(0)
       expect(box!.x + box!.width, `Ziel "${label}" endet im Viewport`).toBeLessThanOrEqual(320)

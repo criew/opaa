@@ -6,8 +6,10 @@ import com.openai.errors.OpenAIRetryableException;
 import com.openai.errors.OpenAIServiceException;
 import com.openai.errors.RateLimitException;
 import io.opaa.api.dto.ErrorResponse;
+import io.opaa.api.dto.FieldError;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
+import io.opaa.common.FieldValidationException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ServiceUnavailableException;
@@ -292,16 +294,42 @@ public class GlobalExceptionHandler {
         .body(new ErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN.value(), Instant.now()));
   }
 
+  /** A conflict may carry a stable {@code code} the client acts on (ADR-0033, Entscheidung 4). */
   @ExceptionHandler(ConflictException.class)
   public ResponseEntity<ErrorResponse> handleConflictException(ConflictException ex) {
-    return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(new ErrorResponse(ex.getMessage(), HttpStatus.CONFLICT.value(), Instant.now()));
+    ErrorResponse body =
+        new ErrorResponse(ex.getMessage(), HttpStatus.CONFLICT.value(), Instant.now());
+    if (ex.getCode() != null) {
+      body.setCode(ex.getCode());
+    }
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
   }
 
+  /** A refusal may carry a stable {@code code} the client acts on (e.g. {@code TOKEN_INVALID}). */
   @ExceptionHandler(ValidationException.class)
   public ResponseEntity<ErrorResponse> handleValidationException(ValidationException ex) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .body(new ErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST.value(), Instant.now()));
+    ErrorResponse body =
+        new ErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST.value(), Instant.now());
+    if (ex.getCode() != null) {
+      body.setCode(ex.getCode());
+    }
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+  }
+
+  /**
+   * The field-level sibling of {@link #handleValidationException(ValidationException)}: the same
+   * {@code 400} envelope, plus {@code fieldErrors} - one entry per field and violated rule with a
+   * stable code - so a form can mark the fields instead of showing one sentence.
+   */
+  @ExceptionHandler(FieldValidationException.class)
+  public ResponseEntity<ErrorResponse> handleFieldValidationException(FieldValidationException ex) {
+    ErrorResponse body =
+        new ErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST.value(), Instant.now());
+    body.setFieldErrors(
+        ex.fieldErrors().stream()
+            .map(error -> new FieldError(error.field(), error.code(), error.message()))
+            .toList());
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
   }
 
   @ExceptionHandler(UnauthorizedException.class)
@@ -320,10 +348,12 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(TooManyRequestsException.class)
   public ResponseEntity<ErrorResponse> handleTooManyRequestsException(TooManyRequestsException ex) {
-    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-        .body(
-            new ErrorResponse(
-                ex.getMessage(), HttpStatus.TOO_MANY_REQUESTS.value(), Instant.now()));
+    ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS);
+    if (ex.retryAfterSeconds() > 0) {
+      response.header(HttpHeaders.RETRY_AFTER, Long.toString(ex.retryAfterSeconds()));
+    }
+    return response.body(
+        new ErrorResponse(ex.getMessage(), HttpStatus.TOO_MANY_REQUESTS.value(), Instant.now()));
   }
 
   @ExceptionHandler(ServiceUnavailableException.class)

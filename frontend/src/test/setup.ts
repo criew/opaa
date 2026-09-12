@@ -17,7 +17,21 @@ import {
 // times out. Verified by adding a bare `import '../services/api'` here and watching
 // SpaceCreatePage.test.tsx go red on its own. Store state that has to be reset between tests
 // belongs in that test file's own beforeEach.
-import { resetMockBranding, resetMockOidcProviders } from '../mocks/fixtures'
+import { resetMockAuthConfig, resetMockBranding, resetMockOidcProviders } from '../mocks/fixtures'
+import { resetMockMailSettings, resetMockMailTemplates } from '../mocks/mailFixtures'
+import { resetMockLocalAuthSettings, resetMockLocalUsers } from '../mocks/localUserFixtures'
+import { resetMockSelfServiceTokens } from '../mocks/localAuthFixtures'
+
+/**
+ * MSW passes a handler's `Set-Cookie` into `document.cookie`, which jsdom keeps for the whole file.
+ * A cookie left behind by one test is state the next one never asked for.
+ */
+function clearCookies() {
+  for (const entry of document.cookie.split(';')) {
+    const name = entry.split('=')[0]?.trim()
+    if (name) document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`
+  }
+}
 
 beforeAll(() => server.listen())
 afterEach(() => {
@@ -31,5 +45,19 @@ afterEach(() => {
   // a test that configures a brand colour would silently set the stage for the next one.
   resetMockBranding()
   resetMockOidcProviders()
+  // Same reason: the mail settings and templates are mutable so a PUT shows up on the next GET.
+  resetMockMailSettings()
+  resetMockMailTemplates()
+  // Same reason: the local accounts and their settings are mutable, so a lock or a created account
+  // shows up on the next GET (#1541).
+  resetMockLocalUsers()
+  resetMockLocalAuthSettings()
+  // The auth config fixture is mutable too (ADR-0033): a test that switches the local account
+  // management on must not leave it on for the next one.
+  resetMockAuthConfig()
+  // A self-service link is single-use in the mock, as it is in the backend - a link one test
+  // redeemed would read as invalid in the next.
+  resetMockSelfServiceTokens()
+  clearCookies()
 })
 afterAll(() => server.close())

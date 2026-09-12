@@ -108,6 +108,39 @@ opaa:
     # sets it. Starting without one of those profiles fails fast, see
     # io.opaa.auth.AuthProfileGuard.
     initial-admin-email: ${OPAA_INITIAL_ADMIN_EMAIL:admin@opaa.local}
+    # Local accounts (ADR-0033): the one secret every key of the local token issuer is derived from
+    # (HKDF, io.opaa.security.LocalAuthKeyService - access-token signature, refresh-token lookup,
+    # action-token lookup) and the session limits of the local issuer. No default for the secret on
+    # purpose: the "oidc" profile refuses to start without a strong one (at least 32 characters, no
+    # placeholder - io.opaa.auth.local.LocalAuthSecretGuard); the dev profile below sets an
+    # explicitly-marked non-production value. Rotating the secret ends every local session and
+    # invalidates every open invitation, reset and handover link - the documented step after a
+    # database restore. The limits are validated at startup in every profile (LocalAuthProperties):
+    # refresh-token-ttl is the idle limit (at most 30 days), session-max-lifetime the absolute end
+    # of a session no refresh extends (at most 90 days); local SYSTEM_ADMIN accounts get the shorter
+    # admin-* values. The issuer of local accounts is fixed to urn:opaa:local and not configurable.
+    local:
+      jwt-secret: ${OPAA_AUTH_JWT_SECRET:}
+      access-token-ttl: ${OPAA_AUTH_LOCAL_ACCESS_TOKEN_TTL:15m}
+      refresh-token-ttl: ${OPAA_AUTH_LOCAL_REFRESH_TOKEN_TTL:7d}
+      session-max-lifetime: ${OPAA_AUTH_LOCAL_SESSION_MAX_LIFETIME:30d}
+      admin-refresh-token-ttl: ${OPAA_AUTH_LOCAL_ADMIN_REFRESH_TOKEN_TTL:4h}
+      admin-session-max-lifetime: ${OPAA_AUTH_LOCAL_ADMIN_SESSION_MAX_LIFETIME:12h}
+      cookie-secure: ${OPAA_AUTH_LOCAL_COOKIE_SECURE:true}
+      # Bootstrap administrator (ADR-0033, Entscheidungen 5 and 9; LocalAdminSeeder): address from
+      # opaa.auth.initial-admin-email above (the "oidc" seed refuses the dev default). A set
+      # password is used as is without a forced change, empty means "generate and print once";
+      # "force" restores the account once at start-up; the CIDR list limits the sign-in of local
+      # SYSTEM_ADMIN accounts to those networks, empty means no restriction.
+      initial-admin-password: ${OPAA_INITIAL_ADMIN_PASSWORD:}
+      admin-reset: ${OPAA_LOCAL_ADMIN_RESET:}
+      admin-allowed-cidrs: ${OPAA_LOCAL_ADMIN_ALLOWED_CIDRS:}
+      # Lockout after failed sign-ins (Entscheidung 9; io.opaa.auth.local.LocalAccountLockoutListener):
+      # a fixed duration, no progressive extension; the counter returns to zero on success. The
+      # single failed attempt is an application-log line, the lock an audit event.
+      lockout:
+        max-attempts: ${OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS:5}
+        duration: ${OPAA_AUTH_LOCAL_LOCKOUT_DURATION:15m}
   http:
     force-http1: ${OPAA_HTTP_FORCE_HTTP1:false}
   chat:
@@ -342,6 +375,14 @@ opaa:
       acquire-timeout: ${OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_ACQUIRE_TIMEOUT:10s}
   rate-limit:
     enabled: ${OPAA_RATE_LIMIT_ENABLED:true}
+    # ADR-0033, Entscheidung 9: X-Forwarded-For is honoured only when the connection comes from one
+    # of these networks (io.opaa.security.TrustedProxyClientIpResolver; the client is the first
+    # entry from the right that is not a trusted proxy). Empty = the header is ignored and every
+    # request counts under the address of its connection - behind a reverse proxy (the Compose
+    # stack's nginx included) every client then shares one bucket per limit, which the "oidc"
+    # profile warns about at start-up. Serves the rate limits and OPAA_LOCAL_ADMIN_ALLOWED_CIDRS
+    # alike; a wildcard (0.0.0.0/0, ::/0) refuses the start.
+    trusted-proxy-cidrs: ${OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS:}
     query:
       max-requests: ${OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS:10}
       window-seconds: ${OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS:60}
@@ -375,8 +416,54 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS:120}
       window-seconds: ${OPAA_RATE_LIMIT_WEBHOOK_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_WEBHOOK_GLOBAL_MAX_REQUESTS:600}
+    # ADR-0033, Entscheidung 9: the local sign-in and its self-service endpoints. login, refresh,
+    # register, forgot-password, set-password and verify-email are keyed by client address in
+    # RateLimitFilter; change-password by the authenticated account, register and forgot-password
+    # additionally by the (hashed) e-mail address they name - both in
+    # io.opaa.auth.local.LocalAuthRateLimiter. The global ceilings of login, register and
+    # forgot-password are the operator's early warning against distributed credential stuffing:
+    # exceeding one is a WARN line and a metric.
+    local-auth:
+      login:
+        max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS:10}
+        window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_WINDOW_SECONDS:60}
+        global-max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_GLOBAL_MAX_REQUESTS:100}
+      refresh:
+        max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_REFRESH_MAX_REQUESTS:30}
+        window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_REFRESH_WINDOW_SECONDS:60}
+      change-password:
+        max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_CHANGE_PASSWORD_MAX_REQUESTS:5}
+        window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_CHANGE_PASSWORD_WINDOW_SECONDS:300}
+      register:
+        max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_MAX_REQUESTS:5}
+        window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_WINDOW_SECONDS:3600}
+        global-max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_GLOBAL_MAX_REQUESTS:50}
+        max-requests-per-address: ${OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_MAX_REQUESTS_PER_ADDRESS:3}
+      forgot-password:
+        max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_MAX_REQUESTS:5}
+        window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_WINDOW_SECONDS:3600}
+        global-max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_GLOBAL_MAX_REQUESTS:50}
+        max-requests-per-address: ${OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_MAX_REQUESTS_PER_ADDRESS:3}
+      set-password:
+        max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_SET_PASSWORD_MAX_REQUESTS:10}
+        window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_SET_PASSWORD_WINDOW_SECONDS:900}
+      verify-email:
+        max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_VERIFY_EMAIL_MAX_REQUESTS:10}
+        window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_VERIFY_EMAIL_WINDOW_SECONDS:900}
   cors:
     allowed-origins: ${OPAA_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  # The address this installation is reachable under from outside, used for the links in mail
+  # (#1536, ADR-0033 Entscheidung 10). A deployment property like opaa.cors.allowed-origins, never
+  # a setting in the administration and never taken from the request's Host header. Without a value
+  # OPAA sends no mail that depends on a link.
+  public-base-url: ${OPAA_PUBLIC_BASE_URL:}
+  mail:
+    # Bounds for the synchronous SMTP send (#1536): the request thread of the person waiting for
+    # their invitation is the one that waits, so a stalled mail server must not hold it for longer
+    # than an operator chose.
+    connect-timeout: ${OPAA_MAIL_CONNECT_TIMEOUT:10s}
+    read-timeout: ${OPAA_MAIL_READ_TIMEOUT:15s}
+    write-timeout: ${OPAA_MAIL_WRITE_TIMEOUT:15s}
   directory-sync:
     change-threshold-fraction: ${OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION:0.3}
   security:
@@ -418,6 +505,10 @@ logging:
     software.amazon.awssdk.http.auth.aws.internal.signer: INFO
     org.apache.hc.client5.http.headers: INFO
     org.apache.hc.client5.http.wire: INFO
+    # The SMTP transport's protocol trace prints every mail on the wire - the links of the local
+    # account management included. Pinned so raising org.eclipse.angus.mail to DEBUG/TRACE for
+    # diagnosis never prints a link token; guarded by LocalSelfServiceIntegrationTest.
+    org.eclipse.angus.mail: INFO
 
 ---
 spring:
@@ -480,6 +571,15 @@ spring:
 opaa:
   auth:
     mode: dev
+    local:
+      # NICHT FUER DEN PRODUKTIVBETRIEB - a fixed, publicly-known secret so bootRun and the backend
+      # test suite (all activate "dev", see AGENTS.md) have working local-issuer keys without
+      # operator setup. LocalAuthSecretGuard does not run in this profile; any deployment that does
+      # not activate "dev" falls back to the (empty) base value above and must set
+      # OPAA_AUTH_JWT_SECRET itself - see docs/handbuch/deployment.md. The value carries
+      # io.opaa.security.SecretValidator.NON_PRODUCTION_MARKER, so the "oidc" profile refuses it
+      # even when copied over (SecretValidatorTest#rejectsTheShippedDevDefault).
+      jwt-secret: ${OPAA_AUTH_JWT_SECRET:NICHT-FUER-DEN-PRODUKTIVBETRIEB-opaa-dev-jwt-secret-2026}
     dev:
       issuer: ${OPAA_AUTH_DEV_ISSUER:opaa-dev}
       default-user: ${OPAA_AUTH_DEV_DEFAULT_USER:dev-admin}

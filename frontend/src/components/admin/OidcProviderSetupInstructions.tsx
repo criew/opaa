@@ -9,7 +9,7 @@ import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import DnsOutlinedIcon from '@mui/icons-material/DnsOutlined'
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
 import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined'
-import { notify } from '../../stores/notificationStore'
+import { copyToClipboard } from '../../utils/clipboard'
 import { fontFamily, radius } from '../../theme/tokens'
 import SectionHead from '../SectionHead'
 import { StateDot } from './OidcProviderCard'
@@ -32,16 +32,6 @@ const codeSx = {
   borderRadius: `${radius.xs}px`,
   bgcolor: (t: { palette: { text: { primary: string } } }) => alpha(t.palette.text.primary, 0.05),
 } as const
-
-async function copyToClipboard(value: string, what: string) {
-  try {
-    if (!navigator.clipboard) throw new Error('Clipboard API unavailable')
-    await navigator.clipboard.writeText(value)
-    notify(`${what} kopiert.`, 'success')
-  } catch {
-    notify(`${what} konnte nicht kopiert werden – bitte manuell markieren.`, 'error')
-  }
-}
 
 interface CopyableValueProps {
   label: string

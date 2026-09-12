@@ -76,7 +76,7 @@ export default function GlobalRail() {
       ? [
           {
             label: 'Admin',
-            to: '/admin/groups',
+            to: '/admin/users',
             activePrefixes: ['/admin'],
             icon: SettingsOutlinedIcon,
           },

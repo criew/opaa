@@ -44,6 +44,14 @@ import type {
   LlmModelResponse,
   LlmModelTestRequest,
   LlmModelTestResponse,
+  MailSendResultResponse,
+  MailSettingsResponse,
+  MailSettingsUpdateRequest,
+  MailTemplatePreviewRequest,
+  MailTemplatePreviewResponse,
+  MailTemplateResponse,
+  MailTemplateSummaryResponse,
+  MailTemplateUpdateRequest,
   NotificationResponse,
   QueryRequest,
   QueryResponse,
@@ -101,11 +109,19 @@ const client = axios.create({
   baseURL: '/api',
 })
 
+/**
+ * The one configured axios instance - interceptors, base URL, auth header. Exported so an
+ * endpoint module split out of this file (`localUserApi.ts`, #1541) shares the same client
+ * instead of building a second one that would miss the token refresh.
+ */
+export const apiClient = client
+
 setupAuthInterceptors(
   client,
   () => useAuthStore.getState().getAccessToken(),
   () => useAuthStore.getState().renewToken(),
   (reason) => useAuthStore.getState().expireSession(reason),
+  (reason) => useAuthStore.getState().requirePasswordChange(reason),
 )
 
 //  (review): a bare 413 alone doesn't tell us the oversized body was a file - normalizeError is
@@ -1514,21 +1530,37 @@ export async function updateOidcProvider(
   }
 }
 
-export async function deleteOidcProvider(providerId: string): Promise<void> {
+/**
+ * `acknowledgeLastProvider` is the confirmation the backend demands for the last *enabled* OIDC
+ * provider (409 `LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED` without it): afterwards only local
+ * accounts can sign in (ADR-0033, Entscheidung 4).
+ */
+export async function deleteOidcProvider(
+  providerId: string,
+  acknowledgeLastProvider = false,
+): Promise<void> {
   try {
-    await client.delete(`/v1/admin/oidc-providers/${providerId}`)
+    await client.delete(`/v1/admin/oidc-providers/${providerId}`, {
+      params: acknowledgeLastProvider ? { acknowledgeLastProvider: true } : undefined,
+    })
   } catch (err) {
     normalizeError(err)
   }
 }
 
+/** Disabling the last enabled OIDC provider needs the same acknowledgement as deleting it. */
 export async function setOidcProviderEnabled(
   providerId: string,
   enabled: boolean,
+  acknowledgeLastProvider = false,
 ): Promise<OidcProviderResponse> {
   try {
     const { data } = await client.post<OidcProviderResponse>(
       `/v1/admin/oidc-providers/${providerId}/${enabled ? 'enable' : 'disable'}`,
+      null,
+      {
+        params: !enabled && acknowledgeLastProvider ? { acknowledgeLastProvider: true } : undefined,
+      },
     )
     return data
   } catch (err) {
@@ -1565,6 +1597,110 @@ export async function testOidcProvider(
     const { data } = await client.post<OidcProviderTestResponse>(
       '/v1/admin/oidc-providers/test',
       request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+// mail (ADR-0033, Entscheidung 10; #1536 API) - SYSTEM_ADMIN only. The SMTP password never
+// travels back: a response carries the mask "***", and sending that mask again means
+// "unverändert". Both test endpoints answer 200 with the outcome in the body, never an error.
+export async function getMailSettings(): Promise<MailSettingsResponse> {
+  try {
+    const { data } = await client.get<MailSettingsResponse>('/v1/system/mail-settings')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateMailSettings(
+  request: MailSettingsUpdateRequest,
+): Promise<MailSettingsResponse> {
+  try {
+    const { data } = await client.put<MailSettingsResponse>('/v1/system/mail-settings', request)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function sendMailSettingsTest(): Promise<MailSendResultResponse> {
+  try {
+    const { data } = await client.post<MailSendResultResponse>('/v1/system/mail-settings/test')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getMailTemplates(): Promise<MailTemplateSummaryResponse[]> {
+  try {
+    const { data } = await client.get<MailTemplateSummaryResponse[]>('/v1/system/mail-templates')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getMailTemplate(templateKey: string): Promise<MailTemplateResponse> {
+  try {
+    const { data } = await client.get<MailTemplateResponse>(
+      `/v1/system/mail-templates/${templateKey}`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateMailTemplate(
+  templateKey: string,
+  request: MailTemplateUpdateRequest,
+): Promise<MailTemplateResponse> {
+  try {
+    const { data } = await client.put<MailTemplateResponse>(
+      `/v1/system/mail-templates/${templateKey}`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function resetMailTemplate(templateKey: string): Promise<MailTemplateResponse> {
+  try {
+    const { data } = await client.delete<MailTemplateResponse>(
+      `/v1/system/mail-templates/${templateKey}`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function previewMailTemplate(
+  templateKey: string,
+  request: MailTemplatePreviewRequest,
+): Promise<MailTemplatePreviewResponse> {
+  try {
+    const { data } = await client.post<MailTemplatePreviewResponse>(
+      `/v1/system/mail-templates/${templateKey}/preview`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function sendMailTemplateTest(templateKey: string): Promise<MailSendResultResponse> {
+  try {
+    const { data } = await client.post<MailSendResultResponse>(
+      `/v1/system/mail-templates/${templateKey}/test`,
     )
     return data
   } catch (err) {

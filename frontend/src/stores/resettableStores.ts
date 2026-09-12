@@ -8,8 +8,10 @@ import { useIndexingStore } from './indexingStore'
 import { useGrantStore } from './grantStore'
 import { useLlmModelStore } from './llmModelStore'
 import { useOidcProviderStore } from './oidcProviderStore'
+import { useMailStore } from './mailStore'
 import { useNotificationStore } from './notificationStore'
 import { useSearchAdminStore } from './searchAdminStore'
+import { useUserAdminStore } from './userAdminStore'
 import { useMetadataFilterOptionsStore } from './metadataFilterOptionsStore'
 import { bumpSessionEpoch } from './sessionEpoch'
 
@@ -48,8 +50,10 @@ function resettableStores() {
     useGrantStore,
     useLlmModelStore,
     useOidcProviderStore,
+    useMailStore,
     useNotificationStore,
     useSearchAdminStore,
+    useUserAdminStore,
     useMetadataFilterOptionsStore,
   ]
 }

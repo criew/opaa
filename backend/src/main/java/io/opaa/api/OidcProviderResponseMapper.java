@@ -42,6 +42,7 @@ final class OidcProviderResponseMapper {
             provider.getDisplayName(),
             provider.isEnabled(),
             provider.isDefaultProvider(),
+            provider.getProviderType(),
             provider.getSortOrder(),
             provider.getIssuerUri(),
             provider.getClientId(),

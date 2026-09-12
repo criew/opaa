@@ -393,6 +393,9 @@ UI-Sprache ist Deutsch, Anrede „Sie", `aria-label` deutsch. Verbindliche Begri
 | **Belege / Belegfenster** | alle Fundstellen einer Antwort in der seitlichen Leiste                                      |
 | **Systemverwaltung**      | Admin-Bereich und -Rolle                                                                     |
 | **Anmeldung / Kennung**   | nie „Login"/„Username" in Nutzertexten                                                       |
+| **Kontozustand**          | Eingeladen · Aktiv · Gesperrt · Abgelaufen — als Punkt **und** Wort, nie als farbiger Chip; die Sperre nennt ihren Grund in Klammern (Verwalter · Fehlversuche · Inaktivität) |
+| **Anlagegrund**           | der dienstliche Anlass eines lokalen Kontos; Pflichtangabe, für die betroffene Person einsehbar |
+| **Aktivität**             | nie · länger als 90 Tage nicht · aktiv — nur diese Klassen, nie ein Zeitstempel und nie ein Sortierkriterium |
 | Claim                     | „Fragen. Belegen. Entscheiden."                                                              |
 
 Nicht verwendet werden: „Workspace", „Library", „Datei-Upload" (stattdessen „Upload"),

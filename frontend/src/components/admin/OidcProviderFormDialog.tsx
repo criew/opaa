@@ -67,7 +67,7 @@ function draftFromProvider(provider: OidcProviderResponse): OidcProviderDraft {
   return {
     displayName: provider.displayName,
     issuerUri: provider.issuerUri,
-    clientId: provider.clientId,
+    clientId: provider.clientId ?? '',
     jwkSetUri: provider.jwkSetUri ?? '',
     emailClaim: provider.claimMapping.emailClaim ?? 'email',
     displayNameClaim: provider.claimMapping.displayNameClaim ?? 'name',

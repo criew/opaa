@@ -1,11 +1,14 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
+import ChangePasswordPage from './ChangePasswordPage'
 import SettingsPage from './SettingsPage'
 import { useAuthStore } from '../stores/authStore'
 import { useUiStore } from '../stores/uiStore'
 import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
+import { mockLocalAccount } from '../mocks/fixtures'
 
 function renderPage() {
   return renderWithProviders(<SettingsPage />, { withRouter: true, initialRoute: '/settings' })
@@ -24,6 +27,8 @@ describe('SettingsPage', () => {
       },
       mode: 'oidc',
       isAuthenticated: true,
+      isLoading: false,
+      sessionKind: 'oidc',
     })
   })
 
@@ -121,5 +126,75 @@ describe('SettingsPage', () => {
       'href',
       '/admin/branding',
     )
+  })
+  // ADR-0033, Entscheidung 11: the creation reason belongs to the person's own self-disclosure.
+  it('shows the creation reason a system administrator recorded', () => {
+    useAuthStore.setState({
+      user: {
+        id: 'user-1',
+        email: 'b.wagner@example.de',
+        displayName: 'B. Wagner',
+        systemRole: 'USER',
+        createdReason: 'Projektbefristung Digitalisierung bis 31.12.2026',
+      },
+      sessionKind: 'local',
+    })
+    renderPage()
+
+    expect(screen.getByText('Anlass des Kontos')).toBeInTheDocument()
+    expect(screen.getByText('Projektbefristung Digitalisierung bis 31.12.2026')).toBeInTheDocument()
+  })
+
+  it('leaves the creation reason out for an account that has none', () => {
+    renderPage()
+    expect(screen.queryByText('Anlass des Kontos')).not.toBeInTheDocument()
+  })
+
+  /**
+   * The password section belongs to local accounts only (#1540). Walked rather than asserted on the
+   * `href`: what matters is that the button reaches the page **and** hands it the way back, so a
+   * voluntary change ends here instead of on the chat page - an `href` assertion would pass even if
+   * the return target were missing.
+   */
+  it('leads a local session to the password page and back again', async () => {
+    useAuthStore.setState({ sessionKind: 'local', token: 'lokales-token' })
+    renderWithProviders(
+      <Routes>
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/account/password" element={<ChangePasswordPage />} />
+      </Routes>,
+      // The password page brings an AuthLayout with a NotificationHost of its own; a second host
+      // from the helper would show every popup twice.
+      { withRouter: true, initialRoute: '/settings', withNotificationHost: false },
+    )
+
+    await userEvent.click(screen.getByRole('link', { name: 'Passwort ändern' }))
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Passwort ändern' }),
+    ).toBeInTheDocument()
+
+    await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), mockLocalAccount.password)
+    await userEvent.type(screen.getByLabelText('Neues Passwort'), 'Sommerregen-42x')
+    await userEvent.type(screen.getByLabelText('Neues Passwort wiederholen'), 'Sommerregen-42x')
+    await userEvent.click(screen.getByRole('button', { name: 'Passwort speichern' }))
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ihre Einstellungen' }),
+    ).toBeInTheDocument()
+  })
+
+  it('points a provider session at its provider instead', () => {
+    renderPage()
+
+    expect(screen.queryByRole('link', { name: 'Passwort ändern' })).not.toBeInTheDocument()
+    expect(screen.getByText(/Ihr Passwort verwaltet der Identitätsanbieter/)).toBeInTheDocument()
+  })
+
+  it('says nothing about passwords in the development sign-in', () => {
+    useAuthStore.setState({ mode: 'dev', sessionKind: null })
+    renderPage()
+
+    expect(screen.queryByRole('link', { name: 'Passwort ändern' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Ihr Passwort verwaltet/)).not.toBeInTheDocument()
   })
 })

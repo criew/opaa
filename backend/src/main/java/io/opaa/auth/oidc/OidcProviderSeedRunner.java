@@ -1,5 +1,6 @@
 package io.opaa.auth.oidc;
 
+import io.opaa.auth.local.LocalAdminSeeder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.SmartInitializingSingleton;
@@ -7,10 +8,16 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
 /**
- * Triggers {@link OidcProviderSeeder#seedIfNeeded()} once at startup and then loads {@link
- * OidcProviderRegistry} so the first bearer token never pays for the build - the same thin shape as
- * {@code LlmModelSeedRunner}: the transactional work lives in the seeder bean, because
- * {@code @Transactional} only applies through that bean's own proxy.
+ * Triggers the two bootstrap seeds once at startup - {@link LocalAdminSeeder#seedIfNeeded()} first,
+ * then {@link OidcProviderSeeder#seedIfNeeded()} - and then loads {@link OidcProviderRegistry} so
+ * the first bearer token never pays for the build - the same thin shape as {@code
+ * LlmModelSeedRunner}: the transactional work lives in the seeder beans, because
+ * {@code @Transactional} only applies through a bean's own proxy.
+ *
+ * <p>The order is a contract (ADR-0033, Entscheidung 5): the provider takeover writes {@code
+ * OidcProviderSeedMarker}, and that marker is what tells the local seed an existing installation
+ * from a fresh one. Run the other way round, every fresh installation with {@code OPAA_OIDC_*} set
+ * would get an {@code INVITED} bootstrap administrator instead of a live one.
  *
  * <p>A {@link SmartInitializingSingleton}, not an {@code ApplicationRunner}: runners execute after
  * the web server already accepts requests, and a first sign-in in that window would provision the
@@ -27,16 +34,27 @@ public class OidcProviderSeedRunner implements SmartInitializingSingleton {
 
   private static final Logger log = LoggerFactory.getLogger(OidcProviderSeedRunner.class);
 
+  private final LocalAdminSeeder localAdminSeeder;
   private final OidcProviderSeeder seeder;
   private final OidcProviderRegistry registry;
 
-  public OidcProviderSeedRunner(OidcProviderSeeder seeder, OidcProviderRegistry registry) {
+  public OidcProviderSeedRunner(
+      LocalAdminSeeder localAdminSeeder, OidcProviderSeeder seeder, OidcProviderRegistry registry) {
+    this.localAdminSeeder = localAdminSeeder;
     this.seeder = seeder;
     this.registry = registry;
   }
 
   @Override
   public void afterSingletonsInstantiated() {
+    try {
+      localAdminSeeder.seedIfNeeded();
+    } catch (DataIntegrityViolationException e) {
+      log.warn(
+          "Notanker-Konto der Systemverwaltung konnte nicht angelegt werden - vermutlich hat eine"
+              + " andere Instanz die Anlage bereits durchgeführt",
+          e);
+    }
     try {
       seeder.seedIfNeeded();
     } catch (DataIntegrityViolationException e) {

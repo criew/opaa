@@ -23,6 +23,9 @@ public interface SpaceRepository extends JpaRepository<Space, UUID> {
 
   boolean existsByOwnerIdAndIsDefaultTrue(UUID ownerId);
 
+  /** Every space the user owns - what deleting a local account has to be clear of (#1537). */
+  List<Space> findByOwnerId(UUID ownerId);
+
   /**
    * Inserts the user's default space and its owner {@code ADMIN} membership in a single round trip,
    * silently doing nothing if a default space for {@code ownerId} already exists - see {@link

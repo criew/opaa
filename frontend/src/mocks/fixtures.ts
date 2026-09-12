@@ -39,7 +39,7 @@ export interface MockLibraryFolder {
   name: string
   createdAt: string
 }
-import type { AuthConfig, AuthUser } from '../types/auth'
+import type { AuthConfig, AuthUser, LocalAccountsConfig, LocalTokenResponse } from '../types/auth'
 import type {
   DocumentMetadataFieldResponse,
   DocumentTypeVocabularyEntryResponse,
@@ -381,7 +381,53 @@ export const mockErrorResponse = {
   timestamp: '2025-01-15T10:30:00Z',
 }
 
-export const mockAuthConfig: AuthConfig = { mode: 'dev', providers: [] }
+/**
+ * The local account management as the mocks present it by default: switched off, like a fresh
+ * installation (ADR-0033, Entscheidung 4). Tests that need the mask switch it on with
+ * {@link setMockLocalAccounts}.
+ */
+export const mockLocalAccountsConfig: LocalAccountsConfig = {
+  enabled: false,
+  selfRegistrationEnabled: false,
+  passwordResetEnabled: false,
+  passwordMinLength: 12,
+}
+
+export let mockAuthConfig: AuthConfig = {
+  mode: 'dev',
+  providers: [],
+  localAccounts: mockLocalAccountsConfig,
+}
+
+/** Switches the mocked local account management, e.g. to show the password mask. */
+export function setMockLocalAccounts(localAccounts: Partial<LocalAccountsConfig>) {
+  mockAuthConfig = {
+    ...mockAuthConfig,
+    localAccounts: {
+      ...mockLocalAccountsConfig,
+      ...mockAuthConfig.localAccounts,
+      ...localAccounts,
+    },
+  }
+}
+
+/** Puts the mocked auth config back to the default of a dev-mode installation. */
+export function resetMockAuthConfig() {
+  mockAuthConfig = { mode: 'dev', providers: [], localAccounts: mockLocalAccountsConfig }
+}
+
+/** The credentials the mocked local sign-in accepts; everything else is refused with 401. */
+export const mockLocalAccount = {
+  email: 'erika.muster@stadt.example',
+  password: 'Mustergueltig-2026',
+}
+
+/** A minted local session as POST /api/v1/auth/local/{login,refresh,change-password} returns it. */
+export const mockLocalTokenResponse: LocalTokenResponse = {
+  accessToken: 'mock-local-access-token',
+  expiresInSeconds: 900,
+  passwordChangeRequired: false,
+}
 
 /**
  * Mutable so the handlers can reflect a PUT back on the next GET - the branding form's whole point
@@ -581,7 +627,8 @@ function initialOidcProviders(): OidcProviderResponse[] {
       displayName: 'Verzeichnisdienst',
       enabled: true,
       isDefault: true,
-      sortOrder: 0,
+      providerType: 'OIDC',
+      sortOrder: 1,
       issuerUri: 'http://localhost:8180/realms/opaa',
       clientId: 'opaa-frontend',
       jwkSetUri: 'http://keycloak:8180/realms/opaa/protocol/openid-connect/certs',
@@ -603,7 +650,8 @@ function initialOidcProviders(): OidcProviderResponse[] {
       displayName: 'Partnerportal',
       enabled: true,
       isDefault: false,
-      sortOrder: 1,
+      providerType: 'OIDC',
+      sortOrder: 2,
       issuerUri: 'https://partner.example/realms/extern',
       clientId: 'opaa-partner',
       jwkSetUri: null,
@@ -625,7 +673,8 @@ function initialOidcProviders(): OidcProviderResponse[] {
       displayName: 'Landesportal',
       enabled: true,
       isDefault: false,
-      sortOrder: 2,
+      providerType: 'OIDC',
+      sortOrder: 3,
       issuerUri: 'https://land.example/realms/verwaltung',
       clientId: 'opaa-land',
       jwkSetUri: null,
@@ -641,6 +690,34 @@ function initialOidcProviders(): OidcProviderResponse[] {
       registryMessage: null,
       createdAt: '2026-09-03T08:00:00Z',
       updatedAt: '2026-09-03T08:00:00Z',
+    },
+    // Die eine LOCAL-Zeile (ADR-0033, Entscheidung 4): sie steht in derselben Tabelle und kommt
+    // über dieselbe API, ist aber kein Anbieter der Anbieterseite - ihr `enabled` ist der
+    // Schalter der lokalen Benutzerverwaltung (#1541). `sortOrder: 0`, weil der Seed sie vor
+    // jedem Anbieter anlegt: damit liegt sie in der Sortierung **vor** den Anbietern und das
+    // Verschieben muss sie überspringen (Review-Runde 1, MEDIUM 5).
+    {
+      id: 'oidc-provider-local',
+      displayName: 'Lokale Konten',
+      enabled: true,
+      isDefault: false,
+      providerType: 'LOCAL',
+      sortOrder: 0,
+      issuerUri: 'urn:opaa:local',
+      clientId: null,
+      jwkSetUri: null,
+      claimMapping: {
+        emailClaim: 'email',
+        displayNameClaim: 'name',
+        rolesClaim: null,
+        systemAdminRole: null,
+        auditorRole: null,
+        groupsClaim: null,
+      },
+      registryState: 'READY',
+      registryMessage: null,
+      createdAt: '2026-09-01T07:00:00Z',
+      updatedAt: '2026-09-01T07:00:00Z',
     },
   ]
 }

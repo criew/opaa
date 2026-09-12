@@ -1,0 +1,12 @@
+/** Routes referenced from more than one module. Paths stay English (AGENTS.md). */
+export const LOGIN_ROUTE = '/login'
+export const SYSTEM_LOGIN_ROUTE = '/login/system'
+export const PASSWORD_ROUTE = '/account/password'
+export const FORGOT_PASSWORD_ROUTE = '/forgot-password'
+export const REGISTER_ROUTE = '/register'
+/** Target of both link kinds in the mails - an invitation and an administrative reset (#1540). */
+export const SET_PASSWORD_ROUTE = '/set-password'
+export const VERIFY_EMAIL_ROUTE = '/verify-email'
+export const SETTINGS_ROUTE = '/settings'
+/** Where a sign-in lands when it carries no target of its own. */
+export const AFTER_SIGN_IN_ROUTE = '/chat'

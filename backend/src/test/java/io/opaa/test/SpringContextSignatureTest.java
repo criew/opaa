@@ -21,9 +21,9 @@ import org.springframework.test.context.MergedContextConfiguration;
 
 /**
  * Draws the line AGENTS.md, "Spring-Testkontexte", describes: the whole backend suite runs on the
- * four signatures listed in {@link #CANONICAL_SIGNATURES} and starts exactly four Spring contexts -
- * and therefore four Testcontainers Postgres instances, since {@code TestcontainersConfiguration}
- * declares the container as an ordinary singleton bean.
+ * signatures listed in {@link #CANONICAL_SIGNATURES} and starts exactly that many Spring contexts -
+ * and therefore that many Testcontainers Postgres instances, since {@code
+ * TestcontainersConfiguration} declares the container as an ordinary singleton bean.
  *
  * <p>{@code MergedContextConfiguration} <em>is</em> Spring's context cache key, and {@link
  * BootstrapUtils} builds it per test class without starting anything - so this check is a classpath
@@ -45,7 +45,15 @@ class SpringContextSignatureTest {
           OpaaIntegrationTest.class,
           OpaaMockedChatModelIntegrationTest.class,
           OpaaMockedDocumentServiceIntegrationTest.class,
-          OpaaPropertyVariantIntegrationTest.class);
+          OpaaPropertyVariantIntegrationTest.class,
+          // The local-auth family (ADR-0033, #1543): the only signatures on the oidc profile, which
+          // the four above cannot provide - under local,dev the DevAuthFilter authenticates every
+          // request before a bearer token is read, so a local session cannot be driven at all. Each
+          // variant states in its own Javadoc why its properties cannot be the family's base.
+          OpaaLocalAuthMockMvcTest.class,
+          OpaaLocalAuthLinkTest.class,
+          OpaaLocalAuthSeedTest.class,
+          OpaaLocalAuthRateLimitTest.class);
 
   @Test
   void everySpringBackedTestUsesOneOfTheCanonicalSignatures() {

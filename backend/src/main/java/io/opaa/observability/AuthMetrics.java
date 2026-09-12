@@ -14,13 +14,20 @@ import io.micrometer.core.instrument.MeterRegistry;
  */
 public class AuthMetrics {
 
+  public static final String ACCOUNT_LOCKOUT_METRIC = "opaa.auth.local_account_lockout";
+
   private final Counter personalSpaceProvisioningFailedCounter;
+  private final Counter accountLockoutCounter;
 
   public AuthMetrics(MeterRegistry meterRegistry) {
     this.personalSpaceProvisioningFailedCounter =
         Counter.builder("opaa.auth.personal_space_provisioning")
             .tag("result", "failed")
             .description("Failed personal space provisioning attempts")
+            .register(meterRegistry);
+    this.accountLockoutCounter =
+        Counter.builder(ACCOUNT_LOCKOUT_METRIC)
+            .description("Local accounts locked after too many failed sign-ins (ADR-0033)")
             .register(meterRegistry);
   }
 
@@ -31,5 +38,9 @@ public class AuthMetrics {
   /** Total failed attempts since startup - logged alongside every failure, see the call site. */
   public double personalSpaceProvisioningFailedCount() {
     return personalSpaceProvisioningFailedCounter.count();
+  }
+
+  public void recordAccountLockedAfterFailedLogins() {
+    accountLockoutCounter.increment();
   }
 }

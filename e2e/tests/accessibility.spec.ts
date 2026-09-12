@@ -155,6 +155,43 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     );
   });
 
+  // #1541: die Benutzerverwaltung führt die dichteste Kombination des Bereichs — Schalter mit
+  // Konsequenz, Zustandspunkt plus Text in der Tabelle und ein Zeilenmenü aus Nur-Icon-Schaltern.
+  // Beide Farbschemata, weil der Zustand über einen Farbpunkt *und* Text geführt wird.
+  test("Verwaltungsbereich: Benutzer in beiden Farbschemata", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/admin/users");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Benutzer" }),
+    ).toBeVisible();
+    // Beide Aufrufe müssen gelandet sein, bevor axe analysiert: Der Schalter erscheint erst mit
+    // den Einstellungen (vorher steht dort ein Skeleton), und die Liste ist im dev-Stack **leer**
+    // — es gibt dort kein lokales Konto, also steht statt der Tabelle der Leerzustand. Auf die
+    // Tabelle zu warten wäre ein Timeout.
+    const localSignInSwitch = page.getByRole("switch", {
+      name: "Lokale Anmeldung aktiv",
+    });
+    const list = page
+      .getByRole("table", { name: "Lokale Konten" })
+      .or(page.getByText("Kein lokales Konto entspricht den gewählten Filtern."));
+    await expect(localSignInSwitch).toBeVisible();
+    await expect(list.first()).toBeVisible();
+
+    await page.emulateMedia({ colorScheme: "light" });
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (Benutzer, helles Farbschema)",
+    );
+
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expect(list.first()).toBeVisible();
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (Benutzer, dunkles Farbschema)",
+    );
+  });
+
   test("Verwaltungsbereich: Gruppen", async ({ authenticatedPage: page }) => {
     await page.goto("/admin/groups");
     await expect(
@@ -200,6 +237,59 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     );
   });
 
+  // #1542: die E-Mail-Seite bringt zwei eigene Muster mit, die sonst nirgends vorkommen — die
+  // Reiter als Routen (role="tab" auf einem Link) und die Vorschau in einem abgeschotteten
+  // iframe. Beide Reiter und beide Farbschemata, weil die Statuskachel ihren Zustand über einen
+  // Farbpunkt *und* Text führt und genau das im dunklen Schema nachweisbar bleiben muss.
+  /**
+   * Die Vorschau der HTML-Fassung läuft in einem `iframe` mit leerem `sandbox` (#1542) - darin
+   * führt kein Skript aus, also auch nicht das, das axe in jeden Rahmen injiziert. axe wartet
+   * darauf bis zu seiner frameWaitTime und lässt den Test in den Timeout laufen. Der Rahmeninhalt
+   * ist eine gerenderte Mail, keine Oberfläche dieser Anwendung; geprüft wird die Seite um ihn
+   * herum, einschließlich seines eigenen `title` (axe frame-title greift auf dem Elternrahmen).
+   */
+  const PREVIEW_IFRAME_EXCLUDED = {
+    exclude: ['iframe[title="Vorschau der HTML-Fassung"]'],
+  };
+
+  test("Verwaltungsbereich: E-Mail in beiden Farbschemata", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/admin/mail/server");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "E-Mail" }),
+    ).toBeVisible();
+    // Wait for the settings call to have landed: the status tile only renders once it has.
+    await expect(page.getByRole("region", { name: "Versandstatus" })).toBeVisible();
+
+    await page.emulateMedia({ colorScheme: "light" });
+    await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (E-Mail, SMTP-Zugang, helles Farbschema)");
+
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expect(page.getByRole("region", { name: "Versandstatus" })).toBeVisible();
+    await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (E-Mail, SMTP-Zugang, dunkles Farbschema)");
+
+    await page.getByRole("tab", { name: "Vorlagen" }).click();
+    await page.waitForURL("**/admin/mail/templates");
+    await page.getByRole("navigation", { name: "Vorlagen" }).getByText("Testnachricht").click();
+    // The debounced preview iframe is the last thing to appear; analysing before it is there
+    // would skip exactly the pattern this block exists for.
+    await expect(page.getByTitle("Vorschau der HTML-Fassung")).toBeVisible();
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (E-Mail, Vorlagen, dunkles Farbschema)",
+      PREVIEW_IFRAME_EXCLUDED,
+    );
+
+    await page.emulateMedia({ colorScheme: "light" });
+    await expect(page.getByTitle("Vorschau der HTML-Fassung")).toBeVisible();
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (E-Mail, Vorlagen, helles Farbschema)",
+      PREVIEW_IFRAME_EXCLUDED,
+    );
+  });
+
   // #800: die Einstellungsseite lag als einzige globale Seite außerhalb der Suite, obwohl sie
   // mit Badge neben der H1 und Akzent-Avatar eigene Farbkombinationen einführt (#788).
   test("Benutzer-Einstellungen", async ({ authenticatedPage: page }) => {
@@ -209,5 +299,107 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     ).toBeVisible();
 
     await expectNoSeriousA11yViolations(page, "Benutzer-Einstellungen");
+  });
+  /**
+   * #1540: Die vier Selbstbedienungsseiten rendern ohne Sitzung wie die Anmeldeseite, auf
+   * Navy-Grund mit eigener Karte, und führen als einzige Seiten Passwortfeld mit Sichtbarkeits-
+   * Umschalter, Stärkeanzeige und Ergebnisansicht ein. Die Konfiguration wird wie bei der
+   * Anmeldeseite abgefangen: Der Stack läuft im dev-Modus, in dem die lokale Kontoverwaltung aus
+   * ist und /register sowie /forgot-password deshalb umleiten würden.
+   *
+   * Vertrag für weitere E2E-Tests (#1543): `/set-password` und `/verify-email` **entfernen den
+   * Token sofort aus der URL** (ADR-0033, Entscheidung 9 — er stünde sonst als Referrer im
+   * nginx-Zugriffslog). Nach dem Laden enthält `page.url()` kein `token=` mehr, und ein Neuladen
+   * der Seite zeigt „Dieser Link ist nicht mehr gültig." — ein Test muss den Link also jedes Mal
+   * frisch aufrufen statt die Seite neu zu laden.
+   */
+  const LOCAL_ACCOUNTS_CONFIG = {
+    mode: "oidc",
+    providers: [],
+    localAccounts: {
+      enabled: true,
+      selfRegistrationEnabled: true,
+      passwordResetEnabled: true,
+      passwordMinLength: 12,
+    },
+  };
+
+  /**
+   * Das Farbschema wird **vor** dem Laden gesetzt, nie auf der gerenderten Seite umgeschaltet: Ein
+   * Wechsel danach lässt auf den Seiten des Anmelderahmens eine gemischte Palette zurück und erzeugt
+   * Farbpaare, die es in keinem der beiden Schemata gibt. `color-contrast` bleibt auf diesen Seiten in
+   * **beiden** Schemata aus - sie erfüllen den Schwellwert mit den Farben des Hauses nicht (#1600,
+   * mit den gemessenen Paaren); jede andere Regel wird in beiden Schemata geprüft.
+   */
+  const AUTH_PAGE_CONTRAST_KNOWN_GAP = { disableRules: ["color-contrast"] };
+
+  test("Selbstbedienung: Passwort festlegen in beiden Farbschemata", async ({ page }) => {
+    await page.route("**/api/v1/auth/config", (route) =>
+      route.fulfill({ json: LOCAL_ACCOUNTS_CONFIG }),
+    );
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto("/set-password?token=e2e-token");
+      await expect(
+        page.getByRole("heading", { level: 1, name: "Passwort festlegen" }),
+      ).toBeVisible();
+      // Die Stärkeanzeige und der Generator gehören zur Seite, die geprüft wird - ohne Eingabe wäre
+      // genau der Teil mit eigenen Farbrollen nicht im Baum.
+      await page.getByRole("button", { name: "Sicheres Passwort erzeugen" }).click();
+      await expect(page.getByTestId("password-strength")).toBeVisible();
+      await expectNoSeriousA11yViolations(
+        page,
+        `Passwort festlegen (${scheme})`,
+        AUTH_PAGE_CONTRAST_KNOWN_GAP,
+      );
+    }
+  });
+
+  test("Selbstbedienung: Passwort vergessen mit Ergebnisansicht", async ({ page }) => {
+    await page.route("**/api/v1/auth/config", (route) =>
+      route.fulfill({ json: LOCAL_ACCOUNTS_CONFIG }),
+    );
+    await page.route("**/api/v1/auth/local/forgot-password", (route) =>
+      route.fulfill({ status: 204 }),
+    );
+    await page.goto("/forgot-password");
+    await expect(page.getByRole("heading", { level: 1, name: "Passwort vergessen" })).toBeVisible();
+    await expectNoSeriousA11yViolations(
+      page,
+      "Passwort vergessen (Formular)",
+      AUTH_PAGE_CONTRAST_KNOWN_GAP,
+    );
+
+    await page.getByLabel("E-Mail-Adresse").fill("erika.muster@stadt.example");
+    await page.getByRole("button", { name: "Link anfordern" }).click();
+    await expect(page.getByRole("alert")).toBeVisible();
+    await expectNoSeriousA11yViolations(
+      page,
+      "Passwort vergessen (Ergebnisansicht)",
+      AUTH_PAGE_CONTRAST_KNOWN_GAP,
+    );
+  });
+
+  test("Selbstbedienung: Registrierung", async ({ page }) => {
+    await page.route("**/api/v1/auth/config", (route) =>
+      route.fulfill({ json: LOCAL_ACCOUNTS_CONFIG }),
+    );
+    await page.goto("/register");
+    await expect(page.getByRole("heading", { level: 1, name: "Konto registrieren" })).toBeVisible();
+
+    await expectNoSeriousA11yViolations(page, "Registrierung", AUTH_PAGE_CONTRAST_KNOWN_GAP);
+  });
+
+  test("Selbstbedienung: E-Mail-Bestätigung", async ({ page }) => {
+    await page.route("**/api/v1/auth/config", (route) =>
+      route.fulfill({ json: LOCAL_ACCOUNTS_CONFIG }),
+    );
+    await page.route("**/api/v1/auth/local/verify-email", (route) =>
+      route.fulfill({ status: 204 }),
+    );
+    await page.goto("/verify-email?token=e2e-token");
+    await expect(page.getByRole("alert")).toContainText("E-Mail-Adresse bestätigt");
+
+    await expectNoSeriousA11yViolations(page, "E-Mail-Bestätigung", AUTH_PAGE_CONTRAST_KNOWN_GAP);
   });
 });

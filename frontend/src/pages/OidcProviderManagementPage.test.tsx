@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
 import { mockOidcProviders } from '../mocks/fixtures'
@@ -89,7 +89,9 @@ describe('OidcProviderManagementPage', () => {
     expect(mockOidcProviders.find((p) => p.displayName === 'Landesportal')?.clientId).toBe(
       'opaa-land',
     )
-  })
+    // 20 s statt der voreingestellten 5: Der Test tippt in vier MUI-Felder, und jede Eingabe
+    // rendert die Seite neu - auf einer ausgelasteten Maschine reicht das Standardlimit nicht.
+  }, 20000)
 
   it('asks for confirmation before a roles claim is set and saves it afterwards', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -117,7 +119,7 @@ describe('OidcProviderManagementPage', () => {
           ?.claimMapping,
       ).toMatchObject({ rolesClaim: 'realm_access.roles', systemAdminRole: 'opaa-admin' })
     })
-  })
+  }, 20000)
 
   /** ADR-0025: the confirmation is answered by its own button only - a second click on the
    * footer button cannot stand in for it, and editing without a new roles claim needs none. */
@@ -155,7 +157,7 @@ describe('OidcProviderManagementPage', () => {
         'Verzeichnisdienst (Haus)',
       )
     })
-  })
+  }, 20000)
 
   it('makes a reachable provider the default with a consequence hint, and refuses an unreachable one', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -237,7 +239,9 @@ describe('OidcProviderManagementPage', () => {
       const cards = screen.getAllByRole('article')
       expect(within(cards[0]).getByRole('heading', { level: 2 })).toHaveTextContent('Partnerportal')
     })
-    expect(mockOidcProviders.find((p) => p.displayName === 'Partnerportal')?.sortOrder).toBe(0)
+    // Die gesendete Reihenfolge enthält alle Zeilen der Tabelle; Position 0 hält die LOCAL-Zeile,
+    // der erste Anbieter liegt damit auf 1 (#1541).
+    expect(mockOidcProviders.find((p) => p.displayName === 'Partnerportal')?.sortOrder).toBe(1)
   })
 
   it('shows the API message when an issuer change is refused for a provider with accounts', async () => {
@@ -319,5 +323,76 @@ describe('OidcProviderManagementPage', () => {
     )
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
     expect(await screen.findByText('Datenbank nicht erreichbar')).toBeInTheDocument()
+  })
+
+  /**
+   * ADR-0033, Entscheidung 4 (#1541): Die `LOCAL`-Zeile steht in derselben Tabelle, ist aber kein
+   * Anbieter dieser Seite - ihr Schalter ist der Schalter der Benutzerverwaltung.
+   */
+  it('does not list the local account management among the providers', async () => {
+    signInAs('SYSTEM_ADMIN')
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+
+    const cards = await screen.findAllByRole('article')
+    expect(cards).toHaveLength(3)
+    expect(screen.queryByText('Lokale Konten')).not.toBeInTheDocument()
+    expect(screen.getByText(/unter\s+Administration → Benutzer geführt/)).toBeInTheDocument()
+  })
+
+  it('names the consequence of disabling the last enabled provider and sends the acknowledgement', async () => {
+    // only the default is left enabled: disabling it is the step into a local-only installation
+    mockOidcProviders
+      .filter((provider) => !provider.isDefault && provider.providerType === 'OIDC')
+      .forEach((provider) => {
+        provider.enabled = false
+      })
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    const acknowledged: Array<string | null> = []
+    const record = ({ request }: { request: Request }) => {
+      const url = new URL(request.url)
+      if (url.pathname.endsWith('/disable')) {
+        acknowledged.push(url.searchParams.get('acknowledgeLastProvider'))
+      }
+    }
+    server.events.on('request:start', record)
+    // Removed even when an assertion below throws - a listener left behind would watch every
+    // request of the remaining tests in this file.
+    onTestFinished(() => server.events.removeListener('request:start', record))
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+
+    const cards = await screen.findAllByRole('article')
+    await user.click(within(cards[0]).getByRole('button', { name: 'Deaktivieren' }))
+
+    expect(window.confirm).toHaveBeenCalledWith(
+      expect.stringContaining('Danach können sich nur noch lokale Konten anmelden'),
+    )
+    await waitFor(() => expect(acknowledged).toEqual(['true']))
+    await waitFor(() =>
+      expect(useOidcProviderStore.getState().providers.find((p) => p.isDefault)?.enabled).toBe(
+        false,
+      ),
+    )
+  })
+
+  it('explains the lockout guard when the backend refuses the last provider', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    server.use(
+      http.post('/api/v1/admin/oidc-providers/:providerId/disable', () =>
+        HttpResponse.json(
+          { error: 'Kein anmeldefähiger Systemverwalter', code: 'LAST_LOGIN_CAPABLE_ADMIN' },
+          { status: 409 },
+        ),
+      ),
+    )
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+
+    const cards = await screen.findAllByRole('article')
+    await user.click(within(cards[1]).getByRole('button', { name: 'Deaktivieren' }))
+
+    expect(
+      await within(cards[1]).findByText(/lokales Systemverwalterkonto mit Passwort/),
+    ).toBeInTheDocument()
   })
 })

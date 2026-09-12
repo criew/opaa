@@ -199,5 +199,108 @@ public enum AuditEventType {
 
   // Zugriff auf die Protokolldaten selbst
   /** Any read, evaluation or export of audit data, including rejected attempts (see outcome). */
-  AUDIT_LOG_ACCESSED
+  AUDIT_LOG_ACCESSED,
+
+  // Lokale Konten (ADR-0033, Entscheidung 13)
+  /**
+   * A local account's sessions were revoked by something other than the person's own sign-out -
+   * here the reuse of a rotated refresh token; later a lock, a reset or a handover. Written under
+   * the {@code local-auth} system actor with the reason in {@code after}; the person's own logout
+   * and the routine expiry of a session are deliberately no event.
+   */
+  LOCAL_SESSION_REVOKED,
+  /** A local account's password was changed by the person, with the current password verified. */
+  LOCAL_PASSWORD_CHANGED,
+  /**
+   * The bootstrap administrator (the emergency access of the Systemverwaltung) was created by the
+   * seed on the first start - live with a password on a fresh installation, as {@code INVITED}
+   * without one on an existing installation (ADR-0033, Entscheidung 5).
+   */
+  LOCAL_ADMIN_SEEDED,
+  /**
+   * The bootstrap administrator was restored by {@code OPAA_LOCAL_ADMIN_RESET=force}: unlocked,
+   * expiry cleared, new one-time password, every session ended - or recreated after deletion.
+   */
+  LOCAL_ADMIN_RESET,
+  /**
+   * A successful sign-in with the bootstrap account - the one audited sign-in: a privileged
+   * emergency access, not a person (ADR-0033, Entscheidung 13).
+   */
+  LOCAL_BOOTSTRAP_ACCOUNT_LOGIN,
+  /** The local account management was switched on - the LOCAL provider row enabled. */
+  LOCAL_ACCOUNTS_ENABLED,
+  /**
+   * The local account management was switched off; the sessions of every regular local account
+   * ended with it (system administrators keep theirs).
+   */
+  LOCAL_ACCOUNTS_DISABLED,
+  /**
+   * A local account was locked for the fixed lockout duration after too many failed sign-ins - the
+   * one event of the affair, under the {@code local-auth} system actor; the single failed attempt
+   * is never audited (ADR-0033, Entscheidungen 9 and 13).
+   */
+  LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS,
+
+  // Mail-Infrastruktur (#1536, ADR-0033 Entscheidung 13)
+  /**
+   * The SMTP settings changed. The before/after payload never carries the password itself, only
+   * whether one is stored - the same convention {@link #LLM_MODEL_CHANGED} uses for a model's
+   * access key.
+   */
+  MAIL_SETTINGS_CHANGED,
+  /** A mail template was overridden for a locale, replacing the delivered German default. */
+  MAIL_TEMPLATE_CHANGED,
+  /** A mail template override was removed; the delivered default applies again. */
+  MAIL_TEMPLATE_RESET,
+  /**
+   * A test mail was sent from the administration. Distinct from a change event because it leaves
+   * the installation - an auditor asking "who had this deployment send mail, and when" should find
+   * it by its own name.
+   */
+  MAIL_TEST_SENT,
+
+  // Verwaltung lokaler Konten (#1537, ADR-0033 Entscheidungen 11 and 13). Subject is the account
+  // as a pseudonym; no event carries an address, a name or the value of the creation reason.
+  /** A local account was created by an administrator; {@code after} names mode and expiry. */
+  LOCAL_USER_CREATED,
+  /**
+   * The invitation link was issued; {@code after.deliveryPath} says whether it went out by mail or
+   * was handed to the administrator for hand-over (MAIL_SENT, MAIL_FAILED, LINK_DISPLAYED).
+   */
+  LOCAL_USER_INVITED,
+  /**
+   * An administrator changed the account: before/after for {@code expiresAt} only, otherwise just
+   * the names of the changed fields in {@code after.changedFields}.
+   */
+  LOCAL_USER_CHANGED,
+  /**
+   * Locked by an administrator or by the daily run for inactivity; {@code after.reason} says which.
+   */
+  LOCAL_USER_LOCKED,
+  /** Unlocked by an administrator. */
+  LOCAL_USER_UNLOCKED,
+  /**
+   * An administrator issued a password-reset link; {@code after.deliveryPath} as for the
+   * invitation.
+   */
+  LOCAL_USER_PASSWORD_RESET_REQUESTED,
+  /** An administrator set a generated password; the change is forced at the next sign-in. */
+  LOCAL_USER_PASSWORD_GENERATED,
+  /** A local account that owned nothing was deleted; its pseudonym stays in the trail. */
+  LOCAL_USER_DELETED,
+  /**
+   * The settings row of the local account management changed; before/after of the changed keys
+   * only.
+   */
+  LOCAL_ACCOUNTS_SETTINGS_CHANGED,
+  /**
+   * The person set a password through an invitation or reset link (ADR-0033, Entscheidung 11);
+   * {@code after.purpose} names which of the two.
+   */
+  LOCAL_PASSWORD_SET,
+  /**
+   * A local account was created by self-registration (system process {@code local-auth}); the
+   * address stays unconfirmed until the verification link is redeemed.
+   */
+  LOCAL_USER_REGISTERED
 }

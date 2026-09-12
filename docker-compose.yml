@@ -36,8 +36,11 @@ services:
     env_file: ${OPAA_ENV_FILE:-.env.docker}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # Loopback only, like postgres (ADR-0033, Entscheidung 9): a direct connection to the backend
+    # port from outside the host would carry a spoofable X-Forwarded-For past the frontend's nginx.
+    # The frontend container reaches the backend over the Compose network, never through this port.
     ports:
-      - "${OPAA_BACKEND_PORT:-8081}:8080"
+      - "127.0.0.1:${OPAA_BACKEND_PORT:-8081}:8080"
     volumes:
       - ${OPAA_INDEXING_DOCUMENT_PATH_HOST:-./documents}:/app/documents
       - ${OPAA_UPLOAD_STORAGE_PATH_HOST:-./uploads}:/app/uploads
@@ -54,6 +57,12 @@ services:
     env_file: ${OPAA_ENV_FILE:-.env.docker}
     ports:
       - "${OPAA_FRONTEND_PORT:-3000}:80"
+    # A fixed address inside the subnet below, so OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS can trust
+    # exactly this container's nginx (ADR-0033, Entscheidung 9) - not the whole network, whose
+    # gateway address every host process and every other container could speak from.
+    networks:
+      default:
+        ipv4_address: ${OPAA_COMPOSE_FRONTEND_ADDRESS:-172.28.0.10}
     depends_on:
       - backend
 
@@ -357,8 +366,48 @@ services:
     profiles:
       - ollama
 
+  # Mailpit as the mail server of the local stack (#1536, ADR-0033 Entscheidung 10): entirely
+  # opt-in via the "mail" Compose profile, started with `docker compose --profile mail up`. Without
+  # the profile this service does not exist and the stack behaves exactly as before - OPAA sends
+  # nothing until an administrator configures SMTP in the settings anyway.
+  #
+  # It accepts everything and delivers nothing: every message stays in its own web interface, which
+  # is what makes it usable for a demo, for the E2E suite and for looking at a template by hand
+  # without a single mail leaving the machine. Settings to enter under "E-Mail-Versand": host
+  # "mailpit" (the backend reaches it over the Compose network), port 1025, encryption NONE, no
+  # credentials. Both ports are published to 127.0.0.1 only.
+  mailpit:
+    image: axllent/mailpit:v1.31.1
+    environment:
+      MP_MAX_MESSAGES: 500
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    ports:
+      - "127.0.0.1:${OPAA_MAILPIT_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${OPAA_MAILPIT_WEB_PORT:-8025}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+    profiles:
+      - mail
+
 volumes:
   opaa-postgres-data:
   opaa-ollama-data:
   opaa-upload-store-data:
   opaa-demo-minio-data:
+
+# ADR-0033, Entscheidung 9: a fixed subnet, so the frontend service above can hold a fixed address
+# (OPAA_COMPOSE_FRONTEND_ADDRESS) that OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS in .env.docker names -
+# the backend honours X-Forwarded-For only from that nginx. Both values are read from the shell
+# environment or .env (not .env.docker, which Compose does not interpolate): override them together
+# when the range collides with another network on the host, and change
+# OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS with them. e2e/scripts/run-e2e.mjs gives its own stacks their
+# own ranges so they can run next to a developer's stack.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${OPAA_COMPOSE_SUBNET:-172.28.0.0/16}

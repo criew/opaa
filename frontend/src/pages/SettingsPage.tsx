@@ -11,6 +11,7 @@ import Link from '@mui/material/Link'
 import { Link as RouterLink } from 'react-router'
 import { useAuthStore } from '../stores/authStore'
 import type { AuthMode } from '../types/auth'
+import { PASSWORD_ROUTE, SETTINGS_ROUTE } from '../routes'
 import { useUiStore } from '../stores/uiStore'
 import type { ThemeMode } from '../stores/uiStore'
 import { useBrandingStore } from '../stores/brandingStore'
@@ -35,7 +36,11 @@ export default function SettingsPage() {
   const operatorDefault = useBrandingStore((s) => s.branding.defaultColorScheme)
   const user = useAuthStore((s) => s.user)
   const authMode = useAuthStore((s) => s.mode)
+  const sessionKind = useAuthStore((s) => s.sessionKind)
   const isSystemAdmin = user?.systemRole === 'SYSTEM_ADMIN'
+  // ADR-0033, Entscheidung 11: the creation reason belongs to the person's own self-disclosure -
+  // an account of an identity provider has none, and the block then stays away entirely.
+  const createdReason = user?.createdReason?.trim() || null
 
   // The toggle shows what actually applies, which for someone who has never chosen is the
   // operator's default - not an empty selection they would have to interpret (#583).
@@ -81,6 +86,50 @@ export default function SettingsPage() {
                 </Typography>
               )}
             </Box>
+          </Box>
+        )}
+
+        {(createdReason || sessionKind !== null) && (
+          <Box component="section" sx={{ mb: 5 }}>
+            <SectionHead>Ihr Konto</SectionHead>
+            {createdReason && (
+              <Box sx={{ mb: sessionKind === null ? 0 : 2.5 }}>
+                <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                  Anlass des Kontos
+                </Typography>
+                <Typography sx={{ fontSize: 13.5, mt: 0.25 }}>{createdReason}</Typography>
+                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+                  So hat Ihre Systemverwaltung den dienstlichen Anlass Ihres Kontos festgehalten.
+                </Typography>
+              </Box>
+            )}
+            {sessionKind === 'local' ? (
+              <Box>
+                <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+                  Ihr Passwort gilt nur für diese Installation. Nach einer Änderung bleiben Sie hier
+                  angemeldet; Ihre übrigen Sitzungen werden beendet.
+                </Typography>
+                {/* The password page returns to where it was opened from; without the target a
+                    voluntary change would end on the chat page (see redirectTargetOf). */}
+                <Button
+                  component={RouterLink}
+                  to={PASSWORD_ROUTE}
+                  state={{ from: SETTINGS_ROUTE }}
+                  size="small"
+                  variant="outlined"
+                  sx={{ mt: 1.5 }}
+                >
+                  Passwort ändern
+                </Button>
+              </Box>
+            ) : (
+              sessionKind === 'oidc' && (
+                <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+                  Ihr Passwort verwaltet der Identitätsanbieter, über den Sie sich angemeldet haben
+                  — ändern Sie es dort.
+                </Typography>
+              )
+            )}
           </Box>
         )}
 
