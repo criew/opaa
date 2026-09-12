@@ -471,7 +471,8 @@ Wert, den der Harness nicht sehen kann. Wiederaufnahme, sobald es einen Generati
 > Zwei-Zeilen-Grenze die Jahres- oder Fassungszeile abschneidet. Einzelfälle, Ursachen und der
 > Vorbehalt, dass der Vergleich kein reines A/B über Fenster und Notiz ist, stehen in
 > [`eval/corpus/verwaltung/MAINTENANCE.md`](../../eval/corpus/verwaltung/MAINTENANCE.md),
-> Abschnitt „Befund der Nachmessung".
+> Abschnitt „Befund der Nachmessung". Folgearbeit außerhalb dieses Epics: #1586 (Verdichtung hält
+> die Rahmenangabe nicht) und #1587 (Wirkung der Instruktionszeile getrennt messen).
 
 ---
 

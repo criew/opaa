@@ -454,7 +454,8 @@ wirkt nicht" aussahen:
 
 Beides ist ein Ergebnis, kein Messfehler: Die Notiz ist gebaut, verdrahtet und in jeder der 83
 Runden erfolgreich verdichtet worden; sie erreicht die Zerlegung auch — aber der Weg von der
-Nutzeräußerung über die Verdichtung bis in die Teilfrage hält die Fassungsangabe nicht.
+Nutzeräußerung über die Verdichtung bis in die Teilfrage hält die Fassungsangabe nicht. Als
+Folgearbeit außerhalb von Epic #1482 aufgenommen in **#1586**.
 
 #### Der Vergleich ist kein reines A/B über Fenster und Notiz
 
@@ -465,8 +466,8 @@ obwohl eine erste Runde weder ein Gesprächsfenster noch eine Notiz hat. Drei Fa
 solchen Runden: `cc-006#1` und `cc-007#1` sind hinzugekommen, `cc-009#1` ist weggefallen.
 
 Wer die Klassenzahlen liest, liest also die Summe aus drei Änderungen (Suchfenster, Notiz,
-Instruktionszeile), nicht aus zweien. Eine saubere Trennung kostete einen weiteren Messlauf mit
-abgeschalteter Notiz-Zeile und ist als Folgearbeit vermerkt, nicht in #1490 enthalten.
+Instruktionszeile), nicht aus zweien. Eine saubere Trennung kostet einen weiteren Messlauf mit
+abgeschalteter Notiz-Zeile und ist als **#1587** aufgenommen, nicht in #1490 enthalten.
 
 #### Wo die Nachmessung von der Vorhersage der Spezifikation abweicht
 
