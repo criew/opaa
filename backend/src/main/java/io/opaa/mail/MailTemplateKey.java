@@ -154,7 +154,7 @@ public enum MailTemplateKey {
       """
       Guten Tag {{displayName}},
 
-      Ihr Zugang zu {{productName}} ist wieder freigeschaltet. Sie können sich hier anmelden:
+      Ihr Zugang zu {{productName}} ist wieder freigeschaltet.
 
       {{actionUrl}}
       """,

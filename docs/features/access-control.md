@@ -190,8 +190,11 @@ schreibt E-Mail und Anzeigename nicht aus dem Token zurück. `GET /api/v1/auth/c
 selfRegistrationEnabled, passwordResetEnabled, passwordMinLength }`; die beiden Selbstbedienungs-
 flüsse gelten nur mit gesetzter öffentlicher Basis-URL als verfügbar. Ein täglicher Lauf löscht
 Zeilen der drei Token-Tabellen spätestens sieben Tage nach Ablauf oder Widerruf; Inaktivitätssperre
-und Ablauf-Erinnerungen hängen sich dort ein (#1537). Alles davon existiert nur im
-`oidc`-Betriebsmodus; der `dev`-Modus kennt weder Aussteller noch Endpunkte. Die Anmeldeseite
+und Ablauf-Erinnerungen hängen sich dort ein (#1537). Aussteller, Anmelde-Endpunkte und
+`pcr`-Filter existieren nur im `oidc`-Betriebsmodus; die Verwaltungs-Endpunkte lokaler Konten und
+der Schalter (#1537) sind profilunabhängig, damit die Oberfläche (#1541) und die E2E-Suite im
+`dev`-Modus laufen — ein dort angelegtes lokales Konto kann sich mangels Aussteller nicht
+anmelden. Die Anmeldeseite
 (#1539) und die Systemverwalter-Anmeldung (#1534) folgen.
 
 **Erstadministrator und Notanker-Konto (gebaut, #1534).** Beim allerersten Start im
@@ -323,10 +326,14 @@ Rollenentzug und Löschen des letzten anmeldefähigen Systemverwalters laufen ü
 `LOCAL_USER_PASSWORD_RESET_REQUESTED`; für ein Konto ohne Passwort wird die Einladung erneut
 gesendet) oder mit **erzeugtem Passwort** (einmalig in der Antwort, Wechsel mit Anlass `ADMIN_RESET`,
 `LOCAL_USER_PASSWORD_GENERATED`) — beides beendet alle Sitzungen. **Löschen** ist die Ausnahme:
-nur ein Konto ohne Bibliotheken, ohne Space außer dem persönlichen und ohne Chats (sonst 409
-`ACCOUNT_OWNS_CONTENT` mit dem Rat zu sperren), nie das Notanker-Konto (409 `BOOTSTRAP_ACCOUNT`);
-der persönliche Space, Zugangsdaten, Tokens und die Pseudonymzuordnung gehen mit, das Protokoll
-behält seine pseudonymen Zeilen (`LOCAL_USER_DELETED`). **Einstellungen:** `enabled` schaltet die
+nur ein Konto, das nichts referenziert — keine Bibliothek, kein Space außer dem persönlichen, kein
+Chat und kein Eintrag in den Rechte- und Nachweisbeständen mit Nutzerbezug (Gruppenhistorie,
+Grant-Historie, Grants, Space-Zuordnungen, Klärungsvorgänge, Diagnosefreigaben) —, praktisch also
+ein nie benutztes Konto; sonst 409 `ACCOUNT_OWNS_CONTENT` mit dem Rat zu sperren (die blockierenden
+Tabellen stehen nur im Anwendungslog), nie das Notanker-Konto (409 `BOOTSTRAP_ACCOUNT`). Der
+persönliche Space wird als `SPACE_DELETED` protokolliert mitgelöscht, Zugangsdaten, Tokens und die
+Pseudonymzuordnung gehen mit, das Protokoll behält seine pseudonymen Zeilen (`LOCAL_USER_DELETED`). Ein `PATCH` mit einem Ablaufdatum in der Vergangenheit lässt das Konto sofort ablaufen (beim
+Anlegen ist ein vergangenes Datum ein 400). **Einstellungen:** `enabled` schaltet die
 `LOCAL`-Zeile über denselben Pfad wie die Anbieter-API (die Antwort nennt beim Abschalten die Zahl der
 beendeten Sitzungen), die übrigen Werte liegen in `local_auth_settings` mit den Grenzen aus ADR-0033
 (`LOCAL_ACCOUNTS_SETTINGS_CHANGED` mit Vorher/Nachher der geänderten Schlüssel); Selbstregistrierung
@@ -335,10 +342,12 @@ nur mit Domänenliste, „Passwort vergessen" und Selbstregistrierung nur einsch
 Konten ohne Aktivität über `inactive_days` (`locked_reason INACTIVITY`, `LOCAL_USER_LOCKED` unter dem
 Systemakteur `local-auth`, Mail `ACCOUNT_LOCKED`; das Notanker-Konto ausgenommen, der letzte
 anmeldefähige Systemverwalter wird mit einer Warnung übersprungen), erinnert 14 Tage vor einem
-Ablauf die Person (`ACCOUNT_EXPIRING`) und die Systemverwalter (`ADMIN_REVIEW_REMINDER` mit der Zahl
-der auslaufenden Konten) — einmalig über das Tagesfenster des Laufs — und schickt am ersten Tag
-eines Quartals die Wiedervorlage `ADMIN_REVIEW_REMINDER` mit der Zahl der Konten ohne Ablaufdatum und
-dem Link zur Liste, ohne Namen. Jede Anmeldung mit dem Notanker-Konto löst jetzt die Mail
+Ablauf die Person (`ACCOUNT_EXPIRING`, nur aktive Konten, Kalendertag in der Zeitzone des Laufs,
+einmalig) und schickt den Systemverwaltern je Lauf höchstens **eine** Wiedervorlage
+`ADMIN_REVIEW_REMINDER` mit der Zahl der Konten, die ihren Blick brauchen — die in 14 Tagen
+auslaufenden und am ersten Tag eines Quartals zusätzlich alle ohne Ablaufdatum — und dem Link zur
+Liste, ohne Namen; je Lauf höchstens 200 Sperren bzw. Mails, der Rest folgt am nächsten Tag. Sperren,
+erzeugtes Passwort und Adresswechsel entwerten jeden offenen Einladungs- und Rücksetzlink. Jede Anmeldung mit dem Notanker-Konto löst jetzt die Mail
 `BOOTSTRAP_ACCOUNT_USED` an alle übrigen Systemverwalter aus. Die Oberfläche (#1541), die
 Selbstbedienung mit dem Einlösen der Links (#1538) und das Handbuchkapitel (#1543) folgen.
 

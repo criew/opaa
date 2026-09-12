@@ -4,6 +4,7 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
+import io.opaa.api.types.LocalAccountState;
 import io.opaa.api.types.LockReason;
 import io.opaa.api.types.MailDeliveryPath;
 import io.opaa.api.types.PasswordChangeReason;
@@ -17,12 +18,10 @@ import io.opaa.auth.UserProvisionedEvent;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.UserService;
 import io.opaa.auth.local.LocalActionTokenService.IssuedActionToken;
-import io.opaa.chat.ChatRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.NotFoundException;
-import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.security.PasswordGenerator;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceRepository;
@@ -37,6 +36,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -73,6 +74,8 @@ public class LocalUserService {
   static final String TOO_LONG = "TOO_LONG";
   static final String IN_THE_PAST = "IN_THE_PAST";
 
+  private static final Logger log = LoggerFactory.getLogger(LocalUserService.class);
+
   private final UserRepository users;
   private final LocalCredentialsRepository credentials;
   private final LocalAuthSettingsRepository settings;
@@ -82,9 +85,7 @@ public class LocalUserService {
   private final UserService userService;
   private final PasswordEncoder passwordEncoder;
   private final PasswordGenerator passwordGenerator;
-  private final KnowledgeLibraryRepository libraries;
   private final SpaceRepository spaces;
-  private final ChatRepository chats;
   private final AuditEventRecorder audit;
   private final ApplicationEventPublisher events;
   private final Clock clock;
@@ -99,9 +100,7 @@ public class LocalUserService {
       UserService userService,
       PasswordEncoder passwordEncoder,
       PasswordGenerator passwordGenerator,
-      KnowledgeLibraryRepository libraries,
       SpaceRepository spaces,
-      ChatRepository chats,
       AuditEventRecorder audit,
       ApplicationEventPublisher events,
       Clock clock) {
@@ -114,9 +113,7 @@ public class LocalUserService {
     this.userService = userService;
     this.passwordEncoder = passwordEncoder;
     this.passwordGenerator = passwordGenerator;
-    this.libraries = libraries;
     this.spaces = spaces;
-    this.chats = chats;
     this.audit = audit;
     this.events = events;
     this.clock = clock;
@@ -183,7 +180,12 @@ public class LocalUserService {
     User user = User.localAccount(email, displayName);
     user.setOrganizationId(actor.organizationId());
     user.setLastLoginAt(null);
-    user = users.saveAndFlush(user);
+    try {
+      user = users.saveAndFlush(user);
+    } catch (DataIntegrityViolationException raceLost) {
+      // two requests with the same address raced past the check: ux_users_local_email decided
+      throw addressTaken();
+    }
     LocalCredentials row = new LocalCredentials(user.getId(), createdReason, now);
     row.markEmailVerified(now);
     row.setExpiresAt(expiresAt, now);
@@ -237,6 +239,8 @@ public class LocalUserService {
       if (!email.equalsIgnoreCase(user.getEmail())) {
         requireAddressFree(email, user.getId());
         user.setEmail(email);
+        // a link mailed to the old address must not set the password of the new one
+        closeOpenLinks(user.getId());
         changed.add("email");
       }
     }
@@ -325,6 +329,7 @@ public class LocalUserService {
     row.lock(reason, now, null);
     row.invalidateSessionsIssuedBefore(LocalTokenRevocationService.cutoffFor(now), now);
     credentials.save(row);
+    closeOpenLinks(user.getId());
     int revoked =
         refreshTokens.revokeAllForUser(user.getId(), RevocationReason.ACCOUNT_LOCKED, now);
     Map<String, Object> after = Map.of("reason", reason.name());
@@ -348,7 +353,8 @@ public class LocalUserService {
     Instant now = clock.instant();
     LocalUserOverview current = load(actor.organizationId(), userId);
     LocalCredentials row = current.credentials();
-    if (row.getLockedAt() == null && row.getFailedLoginAttempts() == 0) {
+    if (current.state() != LocalAccountState.LOCKED && row.getFailedLoginAttempts() == 0) {
+      // an expired failed-login lockout leaves locked_at as a trace but nothing to lift
       throw new ConflictException("Das Konto ist nicht gesperrt.", NOT_LOCKED);
     }
     Map<String, Object> before =
@@ -412,6 +418,7 @@ public class LocalUserService {
     }
     row.invalidateSessionsIssuedBefore(LocalTokenRevocationService.cutoffFor(now), now);
     credentials.save(row);
+    closeOpenLinks(userId);
     recordAdminAct(actor, current.user(), AuditEventType.LOCAL_USER_PASSWORD_GENERATED, null, null);
     recordSessionsRevoked(actor, current.user(), now);
     return password;
@@ -432,10 +439,15 @@ public class LocalUserService {
   // ---- deletion
 
   /**
-   * Deletes an account that owns nothing (ADR-0033, Entscheidung 11): no knowledge library, no
-   * space besides the personal one, no chat. The personal space goes first (its owner reference is
-   * RESTRICT), everything else - credentials, tokens, memberships, the pseudonym mapping - by the
-   * schema's cascades. A remaining RESTRICT reference surfaces as the same 409 as the checks.
+   * Deletes an account that nothing references (ADR-0033, Entscheidung 11): no knowledge library,
+   * no space besides the personal one, no chat - and no row of the rights and evidence tables that
+   * point at a user with {@code ON DELETE RESTRICT} (group membership history, grant history,
+   * grants, space associations, incident scopes, impersonation grants). In practice that is an
+   * account that was never used; every other one is locked, not deleted. The personal space goes
+   * first, audited as {@code SPACE_DELETED} like any space deletion ({@code
+   * fk_spaces_owner_organization} is RESTRICT and leaves no choice); credentials, tokens,
+   * memberships and the pseudonym mapping follow by the schema's cascades. The refusal names the
+   * blocking tables in the log only - the response says "referenced", nothing more.
    */
   @Transactional
   public void delete(CurrentUser actor, UUID userId) {
@@ -451,32 +463,89 @@ public class LocalUserService {
     if (user.getSystemRole() == SystemRole.SYSTEM_ADMIN) {
       adminGuard.requireAnotherLoginCapableAdmin(actor.organizationId(), userId);
     }
-    List<Space> owned = spaces.findByOwnerId(userId);
-    boolean ownsContent =
-        !libraries.findByOrganizationIdAndOwnerUserId(user.getOrganizationId(), userId).isEmpty()
-            || owned.stream().anyMatch(space -> !space.isDefault())
-            || chats.existsByAuthorId(userId);
-    if (ownsContent) {
-      throw ownsContent();
+    List<String> blockers = blockers(users.countDeletionBlockers(userId));
+    if (!blockers.isEmpty()) {
+      log.info("Local account {} is not deleted: still referenced by {}", userId, blockers);
+      throw stillReferenced();
     }
     Map<String, Object> before = new LinkedHashMap<>();
     before.put("systemRole", user.getSystemRole().name());
     before.put("state", current.state().name());
     recordAdminAct(actor, user, AuditEventType.LOCAL_USER_DELETED, before, null);
+    List<Space> personal = spaces.findByOwnerId(userId);
+    for (Space space : personal) {
+      audit.recordUserAction(
+          AuditEvent.builder()
+              .organizationId(space.getOrganizationId())
+              .actor(actor.id())
+              .type(AuditEventType.SPACE_DELETED)
+              .object(AuditObjectType.SPACE, space.getId(), space.getName())
+              .before(spaceAuditPayload(space))
+              .outcome(AuditOutcome.SUCCESS)
+              .build());
+    }
     try {
-      spaces.deleteAll(owned);
+      spaces.deleteAll(personal);
       users.delete(user);
       users.flush();
-    } catch (DataIntegrityViolationException stillReferenced) {
-      throw ownsContent();
+    } catch (DataIntegrityViolationException referencedMeanwhile) {
+      log.info("Local account {} is not deleted: a reference appeared during the deletion", userId);
+      throw stillReferenced();
     }
   }
 
-  private static ConflictException ownsContent() {
+  private static List<String> blockers(UserRepository.DeletionBlockers counts) {
+    List<String> blockers = new ArrayList<>();
+    if (counts.getLibraries() > 0) {
+      blockers.add("knowledge_libraries");
+    }
+    if (counts.getSpaces() > 0) {
+      blockers.add("spaces");
+    }
+    if (counts.getChats() > 0) {
+      blockers.add("chats");
+    }
+    if (counts.getGroupHistory() > 0) {
+      blockers.add("group_membership_history");
+    }
+    if (counts.getGrantHistory() > 0) {
+      blockers.add("asset_grant_history");
+    }
+    if (counts.getGrants() > 0) {
+      blockers.add("asset_grants");
+    }
+    if (counts.getAssociations() > 0) {
+      blockers.add("space_asset_associations");
+    }
+    if (counts.getIncidentScopes() > 0) {
+      blockers.add("audit_incident_scope_grants");
+    }
+    if (counts.getImpersonationGrants() > 0) {
+      blockers.add("diagnostic_impersonation_grants");
+    }
+    return blockers;
+  }
+
+  private static ConflictException stillReferenced() {
     return new ConflictException(
-        "Das Konto besitzt noch Inhalte (Bibliotheken, Spaces oder Chats) und kann deshalb nicht"
-            + " gelöscht werden. Sperren Sie es stattdessen.",
+        "Das Konto ist noch in Inhalts-, Rechte- oder Nachweisbeständen referenziert und kann"
+            + " deshalb nicht gelöscht werden. Sperren Sie es stattdessen.",
         ACCOUNT_OWNS_CONTENT);
+  }
+
+  /** The same payload {@code SpaceService} writes for a space deletion. */
+  private static Map<String, Object> spaceAuditPayload(Space space) {
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("name", space.getName());
+    payload.put("visibility", space.getVisibility().name());
+    payload.put("ownerId", space.getOwnerId().toString());
+    return payload;
+  }
+
+  /** Every open invitation or reset link of the account is closed - see the callers. */
+  private void closeOpenLinks(UUID userId) {
+    actionTokens.consumeOpen(userId, ActionTokenPurpose.SET_PASSWORD);
+    actionTokens.consumeOpen(userId, ActionTokenPurpose.RESET_PASSWORD);
   }
 
   // ---- helpers
@@ -495,9 +564,13 @@ public class LocalUserService {
   private void requireAddressFree(String email, UUID self) {
     Optional<User> taken = users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email);
     if (taken.isPresent() && !taken.get().getId().equals(self)) {
-      throw new ConflictException(
-          "Unter dieser E-Mail-Adresse besteht bereits ein lokales Konto.", EMAIL_TAKEN);
+      throw addressTaken();
     }
+  }
+
+  private static ConflictException addressTaken() {
+    return new ConflictException(
+        "Diese E-Mail-Adresse kann für ein lokales Konto nicht verwendet werden.", EMAIL_TAKEN);
   }
 
   private static String requireAddress(String email) {

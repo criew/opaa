@@ -620,7 +620,11 @@ Rechte betrifft, die dort bereits beendet waren, bleibt die Rechtehistorie ohne 
 Private Chats und Artefakte des Nutzers folgen den
 [Offboarding-Regeln für den Standard-Space](./access-control.md#der-lebenszyklus-eines-kontos): Der
 Standard-Space wird deaktiviert statt gelöscht, private Inhalte bleiben darin unzugänglich — für
-niemanden, auch nicht für einen Nachfolger. Geteilte Chats und Artefakte sind Arbeitsergebnisse der
+niemanden, auch nicht für einen Nachfolger. Das ist der Sperr-Pfad, der Regelweg für jedes Konto,
+das je benutzt wurde. Die **echte Löschung** eines lokalen Kontos (#1537) ist auf Konten beschränkt,
+die nichts referenziert — keine Bibliothek, kein Chat, kein Eintrag in Rechte- oder
+Nachweisbeständen; praktisch ein nie benutztes Konto —, und löscht dessen persönlichen Space mit
+(als `SPACE_DELETED` protokolliert), weil das Schema einen Space ohne Eigentümer nicht zulässt. Geteilte Chats und Artefakte sind Arbeitsergebnisse der
 Organisation und verschwinden nicht mit dem Konto ihres Erstellers, werden aber nach Ablauf der
 Aufbewahrungsfrist gelöscht.
 

@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.ServerSetup;
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.LocalAccountState;
 import io.opaa.api.types.MailEncryption;
@@ -21,10 +22,16 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
+import io.opaa.group.Group;
+import io.opaa.group.GroupMembershipHistory;
+import io.opaa.group.GroupMembershipHistoryCause;
+import io.opaa.group.GroupMembershipHistoryRepository;
+import io.opaa.group.GroupRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.mail.MailSettingsUpdate;
+import io.opaa.mail.MailTestSupport;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.LocalAccountFixtures;
@@ -97,6 +104,8 @@ class LocalUserAdminIntegrationTest {
   @Autowired private LocalUserAdminService adminService;
   @Autowired private UserRepository users;
   @Autowired private KnowledgeLibraryRepository libraries;
+  @Autowired private GroupRepository groups;
+  @Autowired private GroupMembershipHistoryRepository groupHistory;
   @Autowired private OrganizationRepository organizations;
   @Autowired private MailSettingsService mailSettings;
   @Autowired private AuditEventRecorder audit;
@@ -126,7 +135,7 @@ class LocalUserAdminIntegrationTest {
   void tearDown() {
     greenMail.stop();
     configureSmtp(false);
-    mailSettings.resetCaches();
+    MailTestSupport.resetCaches(mailSettings);
     actionTokenRepository.deleteAll();
     deleteLocalAuditRows();
     fixtures.cleanUp();
@@ -637,6 +646,14 @@ class LocalUserAdminIntegrationTest {
                 Long.class,
                 user.id()))
         .isZero();
+    // the personal space went the audited way of every space deletion
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM audit_log WHERE event_type = 'SPACE_DELETED'"
+                    + " AND object_type = 'SPACE' AND organization_id = ?",
+                Long.class,
+                Organization.DEFAULT_ID))
+        .isEqualTo(1L);
     // the pseudonymised trail stays, the mapping is gone
     assertThat(
             jdbc.queryForObject(
@@ -670,6 +687,43 @@ class LocalUserAdminIntegrationTest {
       assertThat(users.findById(owner.id())).isPresent();
     } finally {
       libraries.delete(library);
+    }
+
+    // a former group membership is a RESTRICT reference in the evidence tables: the account is
+    // locked, not deleted - with the generic answer and the table in the log only
+    LocalAccount formerMember =
+        fixtures.activeUser("ehemalig-" + UUID.randomUUID() + "@stadt.example");
+    Group group =
+        groups.save(
+            new Group(
+                Organization.DEFAULT_ID,
+                GroupKind.AD_HOC,
+                "Projekt " + UUID.randomUUID(),
+                null,
+                null,
+                null));
+    GroupMembershipHistory history =
+        groupHistory.save(
+            new GroupMembershipHistory(
+                group.getId(),
+                Organization.DEFAULT_ID,
+                formerMember.id(),
+                GroupMembershipHistoryCause.ADDED,
+                admin.id(),
+                Instant.now().minus(Duration.ofDays(1))));
+    try {
+      MvcResult refused =
+          asAdmin(delete(LOCAL_USERS + "/" + formerMember.id()))
+              .andExpect(status().isConflict())
+              .andExpect(jsonPath("$.code").value("ACCOUNT_OWNS_CONTENT"))
+              .andReturn();
+      assertThat(refused.getResponse().getContentAsString())
+          .contains("Sperren Sie es stattdessen")
+          .doesNotContain("group_membership_history");
+      assertThat(users.findById(formerMember.id())).isPresent();
+    } finally {
+      groupHistory.delete(history);
+      groups.delete(group);
     }
 
     // the bootstrap account is never deleted
@@ -771,6 +825,71 @@ class LocalUserAdminIntegrationTest {
         .andExpect(status().isForbidden());
   }
 
+  /**
+   * An older invitation or reset link must not outlive the act that makes it a liability: a lock, a
+   * generated password and a changed address each close every open link of the account.
+   */
+  @Test
+  void aLockAGeneratedPasswordAndAChangedAddressCloseEveryOpenLink() throws Exception {
+    configureSmtp(false);
+    LocalAccount user = fixtures.activeUser("erika-" + UUID.randomUUID() + "@stadt.example");
+    String resetToken = resetLink(user.id());
+    asAdmin(post(LOCAL_USERS + "/" + user.id() + "/lock")).andExpect(status().isOk());
+    assertThat(actionTokens.findRedeemable(resetToken, ActionTokenPurpose.RESET_PASSWORD))
+        .isEmpty();
+    asAdmin(post(LOCAL_USERS + "/" + user.id() + "/unlock")).andExpect(status().isOk());
+
+    resetToken = resetLink(user.id());
+    asAdmin(post(LOCAL_USERS + "/" + user.id() + "/password")).andExpect(status().isOk());
+    assertThat(actionTokens.findRedeemable(resetToken, ActionTokenPurpose.RESET_PASSWORD))
+        .isEmpty();
+
+    resetToken = resetLink(user.id());
+    asAdminJson(
+            patch(LOCAL_USERS + "/" + user.id()),
+            "{\"email\":\"neu-" + UUID.randomUUID() + "@stadt.example\"}")
+        .andExpect(status().isOk());
+    assertThat(actionTokens.findRedeemable(resetToken, ActionTokenPurpose.RESET_PASSWORD))
+        .isEmpty();
+
+    // an invitation link too
+    LocalAccount invited = fixtures.invitedUser("neu-" + UUID.randomUUID() + "@stadt.example");
+    String invitationToken = resetLink(invited.id());
+    assertThat(actionTokens.findRedeemable(invitationToken, ActionTokenPurpose.SET_PASSWORD))
+        .isPresent();
+    asAdminJson(
+            patch(LOCAL_USERS + "/" + invited.id()),
+            "{\"email\":\"anders-" + UUID.randomUUID() + "@stadt.example\"}")
+        .andExpect(status().isOk());
+    assertThat(actionTokens.findRedeemable(invitationToken, ActionTokenPurpose.SET_PASSWORD))
+        .isEmpty();
+  }
+
+  /** An expired failed-login lockout leaves a trace but nothing to lift: unlock is refused. */
+  @Test
+  void anExpiredFailedLoginLockoutIsNotUnlockable() throws Exception {
+    LocalAccount user = fixtures.activeUser("erika-" + UUID.randomUUID() + "@stadt.example");
+    LocalCredentials row = fixtures.credentialsOf(user);
+    row.recordLockoutUntil(Instant.now().minusSeconds(5), Instant.now().minusSeconds(900));
+    row.resetFailedLoginAttempts(Instant.now());
+    fixtures.save(row);
+
+    asAdmin(post(LOCAL_USERS + "/" + user.id() + "/unlock"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("NOT_LOCKED"));
+    assertThat(auditRows("LOCAL_USER_UNLOCKED", user.id())).isEmpty();
+  }
+
+  /** The raw token of a link issued through the reset endpoint (SMTP off: link displayed). */
+  private String resetLink(UUID userId) throws Exception {
+    MvcResult issued =
+        asAdmin(post(LOCAL_USERS + "/" + userId + "/password-reset"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.deliveryPath").value("LINK_DISPLAYED"))
+            .andReturn();
+    return tokenIn(JsonPath.read(issued.getResponse().getContentAsString(), "$.setupUrl"));
+  }
+
   // ---- helpers
 
   private User localAdmin(UUID organizationId) {
@@ -821,7 +940,10 @@ class LocalUserAdminIntegrationTest {
   private void deleteLocalAuditRows() {
     jdbc.update(
         "DELETE FROM audit_log WHERE event_type LIKE 'LOCAL_USER_%' OR event_type IN"
-            + " ('LOCAL_SESSION_REVOKED', 'SYSTEM_ADMIN_ROLE_REVOKED', 'SYSTEM_ADMIN_ROLE_GRANTED')");
+            + " ('LOCAL_SESSION_REVOKED', 'SYSTEM_ADMIN_ROLE_REVOKED', 'SYSTEM_ADMIN_ROLE_GRANTED')"
+            + " OR (event_type IN ('MAIL_SETTINGS_CHANGED', 'SPACE_DELETED')"
+            + " AND organization_id = ?)",
+        Organization.DEFAULT_ID);
   }
 
   private void configureSmtp(boolean enabled) {

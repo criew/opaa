@@ -27,6 +27,13 @@ public record LocalUserQuery(
   public static final int MAX_PAGE_SIZE = 50;
   public static final int DEFAULT_PAGE_SIZE = 25;
 
+  /**
+   * Pages beyond this are refused; with the page size cap it keeps {@code page * size} in range.
+   */
+  public static final int MAX_PAGE = 100_000;
+
+  public static final int MAX_QUERY_LENGTH = 320;
+
   public enum Sort {
     DISPLAY_NAME,
     EMAIL,
@@ -35,8 +42,9 @@ public record LocalUserQuery(
   }
 
   public LocalUserQuery {
-    if (page < 0) {
-      throw new ValidationException("Die Seitennummer darf nicht negativ sein.");
+    if (page < 0 || page > MAX_PAGE) {
+      throw new ValidationException(
+          "Die Seitennummer muss zwischen 0 und " + MAX_PAGE + " liegen.");
     }
     if (size < 1 || size > MAX_PAGE_SIZE) {
       throw new ValidationException(
@@ -46,5 +54,9 @@ public record LocalUserQuery(
       sort = Sort.DISPLAY_NAME;
     }
     query = query == null || query.isBlank() ? null : query.trim();
+    if (query != null && query.length() > MAX_QUERY_LENGTH) {
+      throw new ValidationException(
+          "Der Suchbegriff darf höchstens " + MAX_QUERY_LENGTH + " Zeichen lang sein.");
+    }
   }
 }

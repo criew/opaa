@@ -26,6 +26,12 @@ import org.springframework.stereotype.Service;
  * link whose delivery event is missing - the request answers 500, and the administrator's repeat
  * supersedes the link and writes the event. Deliberately not {@code @Transactional}: a send of up
  * to the SMTP timeouts must never hold a database connection.
+ *
+ * <p>The list is filtered, sorted and paged in memory over every local account of the organization:
+ * the state is derived ({@code LocalCredentials#state}) and the activity a class, both one rule
+ * that a second SQL formulation would only duplicate, and the population is small by design
+ * (ADR-0033: local accounts are the exception, a page holds at most 50). A repository query with
+ * {@code Pageable} is the step to take once an installation carries thousands of them.
  */
 @Service
 public class LocalUserAdminService {
@@ -46,8 +52,8 @@ public class LocalUserAdminService {
             .filter(overview -> matches(overview, query))
             .sorted(comparator(query))
             .toList();
-    int from = Math.min(query.page() * query.size(), matching.size());
-    int to = Math.min(from + query.size(), matching.size());
+    int from = (int) Math.min((long) query.page() * query.size(), matching.size());
+    int to = (int) Math.min((long) from + query.size(), matching.size());
     return new LocalUserPage(
         matching.subList(from, to), matching.size(), query.page(), query.size());
   }

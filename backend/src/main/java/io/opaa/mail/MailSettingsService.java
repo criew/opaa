@@ -195,11 +195,11 @@ public class MailSettingsService {
 
   /**
    * Drops both process-local caches so the next read rebuilds them from the database. For tests
-   * that share this bean across classes (also outside this package): the send status is not reset
-   * by any write to the row, so without this a test that provoked a failure leaks that state into
-   * the next one.
+   * that share this bean across classes: the send status is not reset by any write to the row, so
+   * without this a test that provoked a failure leaks that state into the next one. Tests outside
+   * this package reach it through {@code io.opaa.mail.MailTestSupport}.
    */
-  public void resetCaches() {
+  void resetCaches() {
     snapshot.set(null);
     status.set(null);
   }

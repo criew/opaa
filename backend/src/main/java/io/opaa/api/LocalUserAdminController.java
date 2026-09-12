@@ -178,6 +178,10 @@ public class LocalUserAdminController {
   }
 
   private static boolean descending(String direction) {
-    return direction != null && "desc".equals(direction.trim().toLowerCase(Locale.ROOT));
+    return switch (direction == null ? "" : direction.trim().toLowerCase(Locale.ROOT)) {
+      case "asc", "" -> false;
+      case "desc" -> true;
+      default -> throw new ValidationException("Sortierrichtung nur asc oder desc.");
+    };
   }
 }

@@ -50,6 +50,16 @@ public class LocalActionTokenService {
     return new IssuedActionToken(raw, expiresAt);
   }
 
+  /**
+   * Consumes every open link of the purpose without issuing a new one - after an act that makes an
+   * older link a liability: a generated password, a lock, a changed address (ADR-0033, Entscheidung
+   * 11). Returns how many links were closed.
+   */
+  @Transactional
+  public int consumeOpen(UUID userId, ActionTokenPurpose purpose) {
+    return repository.consumeOpenTokens(userId, purpose, clock.instant());
+  }
+
   /** The open, unexpired token behind {@code rawToken} for {@code purpose}, if any. */
   @Transactional(readOnly = true)
   public Optional<LocalActionToken> findRedeemable(String rawToken, ActionTokenPurpose purpose) {
@@ -63,8 +73,8 @@ public class LocalActionTokenService {
   }
 
   /**
-   * Consumes the token behind {@code rawToken} and returns it - exactly once: a second call, a
-   * concurrent one, an expired or unknown token all yield empty.
+   * Consumes the token behind {@code rawToken} and returns it as stored after the consumption -
+   * exactly once: a second call, a concurrent one, an expired or unknown token all yield empty.
    */
   @Transactional
   public Optional<LocalActionToken> redeem(String rawToken, ActionTokenPurpose purpose) {
@@ -72,9 +82,12 @@ public class LocalActionTokenService {
     if (token.isEmpty()) {
       return Optional.empty();
     }
-    return repository.markConsumed(token.get().getId(), clock.instant()) == 1
-        ? token
-        : Optional.empty();
+    if (repository.markConsumed(token.get().getId(), clock.instant()) != 1) {
+      return Optional.empty();
+    }
+    // re-read: the bulk update cleared the persistence context, the instance above is detached
+    // and still says consumedAt == null
+    return repository.findById(token.get().getId());
   }
 
   private String hash(String rawToken) {

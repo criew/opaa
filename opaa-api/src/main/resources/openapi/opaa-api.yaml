@@ -432,6 +432,7 @@ paths:
             type: string
             enum: [asc, desc]
             default: asc
+          description: Anything else is refused with 400.
         - name: page
           in: query
           required: false
@@ -549,7 +550,10 @@ paths:
       summary: Change display name, e-mail address, expiry date, creation reason or role of a local account (system admin only)
       description: >
         Every absent field stays unchanged; expiresAt sets a new expiry date, noExpiry=true
-        removes it. An expiry date in the past on a SYSTEM_ADMIN and the withdrawal of the
+        removes it. Unlike the creation, a date in the past is accepted here: it expires the
+        account at once (state EXPIRED, running tokens refused as account_expired) - the
+        administrative act the ADR names next to the lock. An expiry date in the past on a
+        SYSTEM_ADMIN and the withdrawal of the
         SYSTEM_ADMIN role are refused with 409 and code LAST_LOGIN_CAPABLE_ADMIN while no other
         login-capable system administrator remains (ADR-0033, Entscheidung 4). The role change
         runs through the same path as POST /api/v1/admin/users/{id}/role and is audited as a role
@@ -583,12 +587,16 @@ paths:
       summary: Delete a local account that owns nothing (system admin only)
       description: >
         Locking is the rule, deletion the exception (ADR-0033, Entscheidung 11): an account is
-        deleted only while it owns no knowledge library, no space besides its personal one and
-        no chat - otherwise 409 with code ACCOUNT_OWNS_CONTENT and the advice to lock it
-        instead. The personal space, the local credentials, every token and the pseudonym mapping
-        go with it; the audit trail keeps its pseudonymised rows (ADR-0015). Refused with 409 for
-        the caller's own account (SELF_DELETE), for the bootstrap account (BOOTSTRAP_ACCOUNT) and
-        for the last login-capable system administrator (LAST_LOGIN_CAPABLE_ADMIN).
+        deleted only while nothing references it - no knowledge library, no space besides its
+        personal one, no chat, and no row of the rights and evidence tables that keep a user
+        reference (group membership history, grant history, grants, space associations,
+        incident scopes, impersonation grants). In practice that is an account that was never
+        used; any other one answers 409 with code ACCOUNT_OWNS_CONTENT and the advice to lock it
+        instead (the blocking tables are named in the log only). The personal space is deleted
+        with it (audited as SPACE_DELETED), the local credentials, every token and the pseudonym
+        mapping follow; the audit trail keeps its pseudonymised rows (ADR-0015). Refused with 409
+        for the caller's own account (SELF_DELETE), for the bootstrap account (BOOTSTRAP_ACCOUNT)
+        and for the last login-capable system administrator (LAST_LOGIN_CAPABLE_ADMIN).
       responses:
         "204":
           description: Local account deleted
@@ -5578,7 +5586,9 @@ components:
           type: string
           format: date-time
           nullable: true
-          description: A new expiry date; ignored while noExpiry is true.
+          description: >
+            A new expiry date; ignored while noExpiry is true. May lie in the past - the account
+            is then EXPIRED at once.
         noExpiry:
           type: boolean
           default: false

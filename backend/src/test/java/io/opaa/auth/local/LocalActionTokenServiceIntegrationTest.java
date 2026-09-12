@@ -66,11 +66,10 @@ class LocalActionTokenServiceIntegrationTest {
         .isPresent();
     assertThat(service.findRedeemable(issued.rawToken(), ActionTokenPurpose.RESET_PASSWORD))
         .isEmpty();
-    assertThat(service.redeem(issued.rawToken(), ActionTokenPurpose.SET_PASSWORD))
-        .isPresent()
-        .get()
-        .extracting(LocalActionToken::getUserId)
-        .isEqualTo(user.id());
+    LocalActionToken redeemed =
+        service.redeem(issued.rawToken(), ActionTokenPurpose.SET_PASSWORD).orElseThrow();
+    assertThat(redeemed.getUserId()).isEqualTo(user.id());
+    assertThat(redeemed.getConsumedAt()).isNotNull();
     assertThat(service.redeem(issued.rawToken(), ActionTokenPurpose.SET_PASSWORD)).isEmpty();
     assertThat(service.findRedeemable(issued.rawToken(), ActionTokenPurpose.SET_PASSWORD))
         .isEmpty();
@@ -89,6 +88,22 @@ class LocalActionTokenServiceIntegrationTest {
     assertThat(service.findRedeemable(second.rawToken(), ActionTokenPurpose.SET_PASSWORD))
         .isPresent();
     assertThat(service.findRedeemable(reset.rawToken(), ActionTokenPurpose.RESET_PASSWORD))
+        .isPresent();
+  }
+
+  @Test
+  void consumingOpenLinksClosesThePurposeWithoutIssuingANewOne() {
+    LocalActionTokenService.IssuedActionToken invitation =
+        service.issue(user.id(), ActionTokenPurpose.SET_PASSWORD, Duration.ofHours(1));
+    LocalActionTokenService.IssuedActionToken reset =
+        service.issue(user.id(), ActionTokenPurpose.RESET_PASSWORD, Duration.ofHours(1));
+
+    assertThat(service.consumeOpen(user.id(), ActionTokenPurpose.RESET_PASSWORD)).isEqualTo(1);
+    assertThat(service.consumeOpen(user.id(), ActionTokenPurpose.RESET_PASSWORD)).isZero();
+
+    assertThat(service.findRedeemable(reset.rawToken(), ActionTokenPurpose.RESET_PASSWORD))
+        .isEmpty();
+    assertThat(service.findRedeemable(invitation.rawToken(), ActionTokenPurpose.SET_PASSWORD))
         .isPresent();
   }
 

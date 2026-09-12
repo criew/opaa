@@ -193,6 +193,15 @@ class LocalUserAdminControllerTest {
     mockMvc
         .perform(get("/api/v1/admin/local-users").with(asAdmin()).param("sort", "lastLoginAt"))
         .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(get("/api/v1/admin/local-users").with(asAdmin()).param("direction", "sideways"))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(get("/api/v1/admin/local-users").with(asAdmin()).param("page", "100000000"))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(get("/api/v1/admin/local-users").with(asAdmin()).param("query", "x".repeat(321)))
+        .andExpect(status().isBadRequest());
   }
 
   @Test

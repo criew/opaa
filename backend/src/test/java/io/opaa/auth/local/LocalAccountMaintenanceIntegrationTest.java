@@ -16,6 +16,7 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.mail.MailSettingsUpdate;
+import io.opaa.mail.MailTestSupport;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.LocalAccountFixtures;
@@ -30,6 +31,8 @@ import java.net.ServerSocket;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -54,7 +57,7 @@ class LocalAccountMaintenanceIntegrationTest {
 
   @Autowired private InactivityLockStep inactivityLock;
   @Autowired private ExpiryReminderStep expiryReminder;
-  @Autowired private QuarterlyReviewReminderStep quarterlyReminder;
+  @Autowired private AdminReviewReminderStep adminReminder;
   @Autowired private LocalAccountFixturesFactory fixturesFactory;
   @Autowired private LocalCredentialsRepository credentials;
   @Autowired private UserRepository users;
@@ -98,9 +101,11 @@ class LocalAccountMaintenanceIntegrationTest {
         Organization.DEFAULT_ID,
         admin.id(),
         new MailSettingsUpdate(false, null, null, null, "", MailEncryption.STARTTLS, null, null));
-    mailSettings.resetCaches();
+    MailTestSupport.resetCaches(mailSettings);
     jdbc.update(
-        "DELETE FROM audit_log WHERE event_type IN ('LOCAL_USER_LOCKED', 'LOCAL_SESSION_REVOKED')");
+        "DELETE FROM audit_log WHERE event_type IN ('LOCAL_USER_LOCKED', 'LOCAL_SESSION_REVOKED')"
+            + " OR (event_type = 'MAIL_SETTINGS_CHANGED' AND organization_id = ?)",
+        Organization.DEFAULT_ID);
     fixtures.cleanUp();
   }
 
@@ -189,10 +194,19 @@ class LocalAccountMaintenanceIntegrationTest {
     LocalAccount later = fixtures.activeUser("spaeter-" + UUID.randomUUID() + "@stadt.example");
     LocalAccount unlimited =
         fixtures.activeUser("unbefristet-" + UUID.randomUUID() + "@stadt.example");
-    expiresAt(soon, now.plus(Duration.ofDays(13)).plus(Duration.ofHours(12)));
+    LocalAccount lockedSoon =
+        fixtures.activeUser("gesperrt-" + UUID.randomUUID() + "@stadt.example");
+    Instant inWindow =
+        ExpiryReminderStep.windowOf(now, ZoneId.systemDefault()).from().plusSeconds(3600);
+    expiresAt(soon, inWindow);
+    expiresAt(lockedSoon, inWindow);
+    LocalCredentials lockedRow = fixtures.credentialsOf(lockedSoon);
+    lockedRow.lock(LockReason.ADMIN, now, null);
+    fixtures.save(lockedRow);
     expiresAt(later, now.plus(Duration.ofDays(20)));
 
     expiryReminder.run(now);
+    adminReminder.run(now);
 
     assertThat(greenMail.waitForIncomingEmail(10_000, 2)).isTrue();
     List<String> recipients =
@@ -210,7 +224,9 @@ class LocalAccountMaintenanceIntegrationTest {
     // further administrators); never the accounts outside the window
     assertThat(recipients)
         .contains(soon.email(), admin.email())
-        .doesNotContain(later.email(), unlimited.email());
+        .doesNotContain(later.email(), unlimited.email(), lockedSoon.email());
+    // one mail per administrator, with the number of accounts expiring in the window
+    assertThat(recipients.stream().filter(admin.email()::equals).count()).isEqualTo(1);
     for (MimeMessage message : greenMail.getReceivedMessages()) {
       String body = plainText(message);
       assertThat(body).doesNotContain(later.email()).doesNotContain(unlimited.email());
@@ -219,6 +235,7 @@ class LocalAccountMaintenanceIntegrationTest {
 
     // the next day's run lies outside the window: no second reminder
     expiryReminder.run(now.plus(Duration.ofDays(1)));
+    adminReminder.run(now.plus(Duration.ofDays(1)));
     Thread.sleep(300);
     assertThat(greenMail.getReceivedMessages()).hasSize(afterFirstRun);
   }
@@ -229,13 +246,14 @@ class LocalAccountMaintenanceIntegrationTest {
     LocalAccount two = fixtures.activeUser("zwei-" + UUID.randomUUID() + "@stadt.example");
     LocalAccount limited = fixtures.activeUser("befristet-" + UUID.randomUUID() + "@stadt.example");
     expiresAt(limited, Instant.now().plus(Duration.ofDays(30)));
-    Instant quarterStart = Instant.parse("2026-10-01T03:20:00Z");
+    Instant quarterStart =
+        LocalDate.of(2026, 10, 1).atTime(3, 20).atZone(ZoneId.systemDefault()).toInstant();
 
-    quarterlyReminder.run(quarterStart.plus(Duration.ofDays(1)));
+    adminReminder.run(quarterStart.plus(Duration.ofDays(1)));
     Thread.sleep(300);
     assertThat(greenMail.getReceivedMessages()).isEmpty();
 
-    quarterlyReminder.run(quarterStart);
+    adminReminder.run(quarterStart);
 
     assertThat(greenMail.waitForIncomingEmail(10_000, 1)).isTrue();
     MimeMessage mail =
