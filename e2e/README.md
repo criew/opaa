@@ -34,6 +34,11 @@ e2e/
     tests/demo-smoke.spec.ts
   demo-smoke.env             Environment für den Demo-Smoke-Stack (Keycloak-Anmeldung, kein Secret enthalten)
   docker-compose.demo-smoke.yml  Compose-Overlay: ai-stub statt echtem Anbieter
+  local-auth/                    Szenarien der lokalen Anmeldung (#1543, siehe unten) — eigene
+    playwright.config.ts         Konfiguration aus demselben Grund wie beim Demo-Smoke
+    tests/*.spec.ts
+  local-auth.env             Environment für den local-auth-Stack (Betriebsmodus oidc ohne Keycloak)
+  docker-compose.local-auth.yml  Compose-Overlay: Mail-Fänger, öffentliche Basis-URL, weitere Grenzen
 ```
 
 Neue Szenarien kommen als weitere `*.spec.ts`-Dateien unter `tests/`; neue wiederverwendbare
@@ -132,9 +137,9 @@ OPAA kennt zwei Auth-Modi (`opaa.auth.mode`: `oidc`, `dev` — siehe
 - `oidc` bräuchte zusätzlich Keycloak (siehe `docker-compose.yml`, Profil `oidc`): ein weiterer
   Container, der Realm-Import und der Weiterleitungsablauf des Autorisierungscode-Flusses im
   Prüfpfad — mehr Fehlerquellen ohne Aussagewert für die Fachszenarien. Der Anmeldeablauf selbst
-  ist bewusst nicht Teil **dieses** Laufs (Ziel `e2e`) — er ist stattdessen das eine Szenario des
-  separaten Demo-Smoke-Laufs (Ziel `demo`, siehe unten „Demo-Smoke (#232)"), der genau diesen
-  echten Keycloak-Login prüft.
+  ist bewusst nicht Teil **dieses** Laufs (Ziel `e2e`). Er wird in den beiden anderen Zielen
+  geprüft: den echten Keycloak-Login im Demo-Smoke (Ziel `demo`, siehe unten), die lokale Anmeldung
+  samt Einladung, Rücksetzung und Sperre im Ziel `local-auth` (siehe unten, #1543).
 
 `e2e/fixtures/auth.ts` kapselt die Nutzerwahl als einzigen wiederverwendbaren Baustein: Der
 Query-Parameter `?devUser=<subject>` wird beim Laden der Anwendung ausgewertet, für die Dauer der
@@ -535,6 +540,69 @@ dort für die Begründung), sondern nächtlich per `schedule` und manuell per `w
 vor Präsentationen oder nach Änderungen am Korpus/Seed lässt er sich damit gezielt auslösen, ohne
 im Required-Pfad jedes PRs zu hängen.
 
+## Lokale Anmeldung (#1543)
+
+Ein dritter, eigenständig startbarer Lauf — und der einzige, der einen **echten Anmeldevorgang**
+übt. Die Suite oben läuft im `dev`-Auth-Modus, in dem jede Anfrage bereits authentifiziert ist
+(ADR-0009, Punkt 3); der lokale Anmeldeweg aus ADR-0033 wäre damit ungeprüft.
+
+```bash
+cd e2e
+pnpm install
+pnpm exec playwright install --with-deps chromium   # einmalig
+pnpm run test:local-auth
+```
+
+`pnpm run test:local-auth` (→ `scripts/run-e2e.mjs --target local-auth`) nutzt denselben
+Lebenszyklus wie die beiden anderen Ziele, mit drei Unterschieden:
+
+- **Betriebsmodus `oidc` ohne Keycloak.** `local-auth.env` setzt `SPRING_PROFILES_ACTIVE=docker,oidc`
+  und bewusst **keine** `OPAA_OIDC_*`-Variable. Eine Installation ohne jeden OIDC-Anbieter ist seit
+  ADR-0033 (Entscheidung 4) ein zulässiger Zustand und genau der, den ein Erststart hinterlässt:
+  `GET /api/v1/auth/config` liefert eine leere Anbieterliste und den Block `localAccounts`, und der
+  einzige Weg hinein ist die lokale Anmeldung.
+- **Mail-Fänger statt Mailserver.** Das Compose-Profil `mail` bringt Mailpit mit (`--profile mail`).
+  Sein SMTP-Zugang wird von Szenario 1 über die Oberfläche eingetragen — Mailserver sind eine
+  Verwaltungseinstellung, keine Umgebungsvariable (ADR-0033, Entscheidung 10). Die Szenarien lesen
+  Einladungs-, Rücksetz- und Bestätigungslinks über Mailpits HTTP-API zurück
+  (`fixtures/mailpit.ts`); deren Port veröffentlicht der Stack auf dem Host, wie die `e2e`-Suite es
+  für `ai-stub` tut.
+- **Kein Seed-Lauf.** Geprüft wird der Erststart: Das einzige Konto, das es zu Beginn gibt, ist das
+  Notanker-Konto, das das Backend selbst gesät hat; alle weiteren legt seine eigene Verwaltung an.
+  Sein Passwort steht fest in `local-auth.env` (`OPAA_INITIAL_ADMIN_PASSWORD`, der in ADR-0033
+  Entscheidung 5 dafür vorgesehene CI-Weg), damit kein Szenario das Einmalpasswort aus dem
+  Container-Log fischen muss.
+
+Eigene Ports und ein eigenes Subnetz (`172.31.0.0/16`), damit der Lauf neben einem Dev-Stack und
+neben den beiden anderen Zielen stehen kann. Die Rate-Limits der Anmelde-Endpunkte sind im Overlay
+angehoben — jede Seite dieses Laufs kommt von derselben aufgelösten Client-Adresse, und die
+Produktionsvorgabe (10 Anmeldungen je Minute) wäre nach Szenario 4 erschöpft. Die **Kontosperre**
+bleibt bei ihren Produktionswerten: Sie ist Prüfgegenstand.
+
+Die Szenarien liegen unter `local-auth/tests/` und sind **nach Dateinamen geordnet**, weil sie eine
+Installation nacheinander weiterbauen (Szenario 1 schaltet ein, was die folgenden brauchen). Jedes
+stellt seinen Ausgangszustand in der eigenen Vorbereitung über dieselben idempotenten Helfer her
+(`fixtures/localAuth.ts`), läuft also auch einzeln (`--grep`).
+
+| Datei | Prüft |
+| --- | --- |
+| `01-erststart.spec.ts` | Anmeldung auf `/login/system`, gleiche Antwort bei falschem Passwort, SMTP-Einrichtung mit belegter Testmail, Einschalten der lokalen Verwaltung und die Weiterleitung von `/login/system` danach |
+| `02-einladung.spec.ts` | Einladung, Link aus der Mail, Passwort setzen, Einmaligkeit des Links, erste Anmeldung, persönlicher Space, Anlagegrund in den eigenen Einstellungen — dazu der erzwungene Wechsel nach einem erzeugten Anfangspasswort |
+| `03-passwort-vergessen.spec.ts` | Gleiche Antwort für unbekannte Adressen und keine Mail, Rücksetzen über den Link, Ende der laufenden Sitzung mit Grund |
+| `04-sperre.spec.ts` | Sperre nach fünf Fehlversuchen, unveränderte Antwort auch bei richtigem Passwort, Entsperren durch die Verwaltung, offener Rücksetzweg trotz Sperre |
+| `05-abschalten.spec.ts` | Abschalten der Verwaltung: Nutzer-Sitzung endet, Verwalter-Sitzung bleibt, `/login/system` weiter erreichbar; Zustand wird am Ende wiederhergestellt |
+| `06-selbstregistrierung.spec.ts` | Einschalten nur mit Domänenliste, Registrierung innerhalb und außerhalb der Liste, Bestätigung der Adresse, erste Anmeldung |
+| `07-barrierefreiheit.spec.ts` | axe über die Zustände, die nur dieses Ziel erreicht (Anmeldemaske eingeschaltet, Fehlermeldung, erzwungener Wechsel, die beiden Einmal-Dialoge, Kontenliste) |
+| `08-csp.spec.ts` | Keine CSP-Verstöße: der lokale Aussteller braucht keine zusätzliche Herkunft, anders als der OIDC-Weg |
+
+`/login/system` wird in Szenario 1 auf Barrierefreiheit geprüft und nicht in Szenario 7: Die Route
+leitet weiter, sobald die lokale Verwaltung eingeschaltet ist, und Szenario 1 ist das einzige, das
+davor läuft.
+
+`.github/workflows/local-auth-e2e.yml` fährt den Lauf nächtlich und auf Zuruf
+(`workflow_dispatch`), dazu an einem Pull Request über das Label `local-auth-suite` — kein Required
+Check, Muster der Confluence-Suite (#1171).
+
 ## CI
 
 `.github/workflows/e2e.yml` führt die Suite aus bei:
@@ -560,6 +628,10 @@ wenige Sekunden), nicht auf den Image-Build davor — der Job hat dafür ein eig
 
 Bei Fehlschlägen (inkl. Timeout/Cancel) werden Playwright-HTML-Report, Traces/Screenshots sowie die
 Container-Logs (`docker-compose.log`) als Workflow-Artefakte hochgeladen.
+
+Die beiden anderen Ziele haben eigene Workflows mit demselben Aufbau:
+`.github/workflows/demo-smoke.yml` und `.github/workflows/local-auth-e2e.yml` — beide nächtlich,
+keiner ein Required Check, der zweite zusätzlich per Label startbar.
 
 > **Hinweis für später:** Sollte der `e2e`-Job jemals wieder bei Pull Requests laufen und als
 > Required Check konfiguriert werden, blockiert ein `paths-ignore` reine Doku-PRs dauerhaft im

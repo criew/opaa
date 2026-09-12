@@ -69,7 +69,8 @@ Drei Eigenschaften prägen alles Weitere:
 | Suche und Antwort | Rechtefilter, Teilfragen, Vektor- und Volltextsuche, Fusion, Reranking, Dokument-Vervollständigung, Belegprüfung | [Suche](suche.md) |
 | Diagnose | Testfrage im gewählten Rechtekontext, jede Stufe einzeln, „Dokument verfolgen" | [Suche](suche.md), Abschnitt 8 |
 | Modelle | Chat-, Embedding- und Rerank-Rolle, Endpunkte, Zugangsdaten | [Deployment](deployment.md), Abschnitte „LLM-Anbieter" und „Reranking einschalten" |
-| Authentifizierung | Entwicklungsmodus und OIDC mit Keycloak | [Deployment](deployment.md), Abschnitt „Authentifizierung" |
+| Authentifizierung | Entwicklungsmodus, OIDC mit einem oder mehreren Anbietern, lokale Konten mit Passwort | [Deployment](deployment.md), Abschnitt „Authentifizierung" |
+| Konten verwalten | Lokale Konten anlegen, einladen, sperren, zurücksetzen, befristen; Rollen; Selbstregistrierung | [Benutzerverwaltung](benutzerverwaltung.md) |
 | E-Mail-Versand | SMTP als Verwaltungseinstellung, öffentliche Basis-URL aus der Umgebung, zwölf überschreibbare Vorlagen, Testversand | [Deployment](deployment.md), Abschnitt „E-Mail-Versand (SMTP)" |
 | Installation und Update | Docker Compose, Umgebungsvariablen, Härtung, Update-Verhalten des Index | [Deployment](deployment.md) |
 
@@ -79,7 +80,8 @@ Drei Eigenschaften prägen alles Weitere:
 
 | Kapitel | Inhalt |
 |---|---|
-| [Deployment](deployment.md) | Installation aus Images, Update-Ablauf und Folgen für den Index, alle Umgebungsvariablen, Härtung, Modellanbieter, Authentifizierung, E-Mail-Versand, Originalablage der Uploads, Fehlerbehebung |
+| [Deployment](deployment.md) | Installation aus Images, Update-Ablauf und Folgen für den Index, alle Umgebungsvariablen, Härtung, Modellanbieter, Authentifizierung samt Erststart und Notfallprozedur, E-Mail-Versand, Originalablage der Uploads, Fehlerbehebung |
+| [Benutzerverwaltung](benutzerverwaltung.md) | Lokale Konten: anlegen und einladen, Link-Übergabe ohne Mailserver, Sperren und Entsperren, Zurücksetzen, Anlagegrund und Ablaufdatum, Auflagenprüfung, Rollen, Löschen gegen Sperren, Selbstregistrierung, Selbstbedienung, Regeln und Fristen |
 | [Indexierung](indexierung.md) | Aufnahmestrecke: Bibliothek, Quelle, Lauf, Dokument; Zeitplan; Dokumentstrecke Schritt für Schritt; Anhänge; Löscherkennung; Protokoll; Pipeline-Versionen und Nachzug; Formatübersicht |
 | [Suche](suche.md) | Abfragestrecke: Suchbereich, Filter, Teilfragen, zwei Suchpfade, Fusion, Reranking, Vervollständigung, Antwort, Belegprüfung, Diagnose, Konfiguration |
 | [Metadaten](metadaten.md) | Kernfelder, Format- und Bibliotheksfelder, Vokabular, Ermittlung, Bestandslauf, Pflege, Wirkung in Filter, Kontextpräfix und Beleg |
@@ -95,14 +97,16 @@ Diese Kapitel sind im Epic #1282 vorgesehen; bis dahin steht der jeweilige Inhal
 |---|---|
 | Bibliotheken und Berechtigungen | Organisationen, Räume, Bibliotheken, Rollen, Freigaben, Ordner in Upload-Bibliotheken, Speicherkontingent, Löschen und Ausschluss von Dokumenten |
 | Modelle | Chat-, Embedding- und Rerank-Modellrolle, verwaltete Modelle, Endpunkte, Fehlerbilder |
-| Authentifizierung | Auth-Modi, Keycloak-Anbindung, Erstadministrator, Härtung des Realms |
+| Authentifizierung | Auth-Modi, Keycloak-Anbindung und Härtung des Realms an einer Stelle; heute im Deployment-Kapitel, die lokalen Konten in [Benutzerverwaltung](benutzerverwaltung.md) |
 | Betrieb | Backup und Wiederherstellung, Update-Ablauf, Log- und Metrik-Übersicht, Single-Instance-Annahme, Grenzwerte auf einer Seite |
 
 ## 5. Lesewege nach Anlass
 
 | Anlass | Reihenfolge |
 |---|---|
-| Erste Installation | [Deployment](deployment.md) Schnellstart und Konfiguration → [Deployment](deployment.md) Härtung → [Indexierung](indexierung.md) Abschnitt 2 |
+| Erste Installation | [Deployment](deployment.md) Schnellstart und Konfiguration → [Deployment](deployment.md) „Erststart und Systemverwalter-Konto" → [Deployment](deployment.md) Härtung → [Indexierung](indexierung.md) Abschnitt 2 |
+| Konten anlegen oder entziehen | [Benutzerverwaltung](benutzerverwaltung.md) → [Deployment](deployment.md) „E-Mail-Versand (SMTP)", falls Einladungen per Mail gehen sollen |
+| Niemand kommt mehr herein | [Deployment](deployment.md) „Notfallprozedur: wieder hereinkommen" → [Benutzerverwaltung](benutzerverwaltung.md) Abschnitt 4 |
 | Neue Quelle anschließen | das Konnektor-Kapitel des Quellentyps → [Indexierung](indexierung.md) Abschnitte 3 und 7 (Zeitplan, Löscherkennung) |
 | Dokumente fehlen oder sind veraltet | [Indexierung](indexierung.md) Abschnitte 7 bis 9 → Laufprotokoll der Bibliothek → Format-Kapitel des Dokuments |
 | Eine Antwort ist schlecht | [Suche](suche.md) Abschnitte 8 und 9 → Diagnosewerkzeug → je nach Befund [Indexierung](indexierung.md) oder [Metadaten](metadaten.md) |
@@ -136,6 +140,10 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Modellrolle** | Eine der drei Aufgaben, für die ein externes Modell konfiguriert wird: Chat, Embedding, Reranking |
 | **Rechteprofil** | Eine Gruppe samt der Bibliotheken, die sie lesen darf; der voreingestellte Kontext des Diagnosewerkzeugs |
 | **Diagnosesperre** | Grundzustand jeder Bibliothek, der sie aus einer Diagnose im Rechtekontext einer benannten Person heraushält |
+| **Lokales Konto** | Ein Konto, das OPAA selbst führt: Anmeldung mit E-Mail-Adresse und Passwort, verwaltet unter Administration → Benutzer; Gegenstück zu einem Konto aus einem Identitätsanbieter |
+| **Notanker-Konto** | Das eine lokale Systemverwalterkonto, das OPAA beim Erststart anlegt; Notfallzugangsmittel, kein Arbeitskonto |
+| **Anlagegrund** | Pflichtangabe zu jedem lokalen Konto: der dienstliche Anlass und der Grund seiner Befristung; die betroffene Person kann ihn lesen |
+| **Aktivitätsklasse** | Die einzige Angabe zur Nutzung eines lokalen Kontos in der Kontenliste („nie", „länger nicht genutzt", „aktiv") — kein Zeitstempel, nicht sortierbar |
 
 ## 7. Konventionen
 

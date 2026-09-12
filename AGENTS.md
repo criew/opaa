@@ -109,12 +109,13 @@ pnpm test                               # Stack via Docker Compose starten, Suit
 
 ## Spring-Testkontexte
 
-Die gesamte Backend-Suite läuft auf **vier** Spring-Kontexten und damit vier Testcontainers-Postgres
-je Test-JVM (Issue #1481; `TestcontainersConfiguration` deklariert den Container als gewöhnliches
-Singleton-`@Bean`, es gilt also exakt: ein Kontext = ein Container). Jeder Backend-Test, der einen
-Anwendungskontext startet, trägt genau eine der vier Meta-Annotationen aus `io.opaa.test`
-(`backend/src/test/java/io/opaa/test/`) — niemals eine eigene
-`@SpringBootTest`/`@ActiveProfiles`/`@Import`/`@Testcontainers`-Kombination:
+Die gesamte Backend-Suite läuft auf **acht** Spring-Kontexten und damit acht Testcontainers-Postgres
+je Test-JVM (Issues #1481 und #1543; `TestcontainersConfiguration` deklariert den Container als
+gewöhnliches Singleton-`@Bean`, es gilt also exakt: ein Kontext = ein Container). Jeder
+Backend-Test, der einen Anwendungskontext startet, trägt genau eine der acht Meta-Annotationen aus
+`io.opaa.test` (`backend/src/test/java/io/opaa/test/`) — niemals eine eigene
+`@SpringBootTest`/`@ActiveProfiles`/`@Import`/`@Testcontainers`-Kombination. Vier davon bilden die
+Familie des `local,dev`-Profils, vier die des Betriebsmodus `oidc`:
 
 - **`@OpaaIntegrationTest`** — die kanonische Signatur, die drei Viertel der Suite tragen: echtes
   Postgres, ganze Anwendung auf `RANDOM_PORT`, MockMvc (`@AutoConfigureMockMvc`),
@@ -135,7 +136,25 @@ Anwendungskontext startet, trägt genau eine der vier Meta-Annotationen aus `io.
   Schema-Initialisierung). Technischer Grund: eine Nachbarklasse prüft genau den Default, und der
   pgvector-Wächter zerstört und erzeugt `vector_store` neu.
 
-Die drei Varianten sind über `@OpaaIntegrationTest` selbst meta-annotiert und ergänzen nur ihre
+Vier weitere tragen den Betriebsmodus **`oidc`**, den die vier oben nicht liefern können: Unter
+`local,dev` authentifiziert `DevAuthFilter` jede Anfrage, bevor überhaupt ein Bearer-Token gelesen
+wird — eine lokale Sitzung ist dort nicht fahrbar. Das ist die harte technische Begründung dieser
+zweiten Familie (ADR-0033, #1543):
+
+- **`@OpaaLocalAuthMockMvcTest`** — die Basis: Profil `oidc`, MockMvc, geteiltes Postgres, ein
+  starkes Test-Secret (sonst verweigert `LocalAuthSecretGuard` den Start) und angehobene
+  `opaa.rate-limit.local-auth.*`-Grenzen, weil jede Klasse ihre Anmeldungen von der einen Adresse
+  von MockMvc aus fährt.
+- **`@OpaaLocalAuthLinkTest`** — dieselbe Basis plus `opaa.public-base-url` und den
+  Einstellungs-Schlüssel. Technischer Grund: Ohne Basis-URL sind die Link-Flüsse abgeschaltet, und
+  Klassen auf der Basis prüfen genau das.
+- **`@OpaaLocalAuthSeedTest`** — dieselbe Basis plus eine zustellbare Erstadministrator-Adresse und
+  eine Netzbeschränkung. Technischer Grund: Die Basis trägt den ausgelieferten Vorgabewert, den der
+  Seed ablehnt — und eine Klasse prüft diese Ablehnung.
+- **`@OpaaLocalAuthRateLimitTest`** — dieselbe Basis mit den **echten** Grenzen. Technischer Grund:
+  Die Grenzen sind hier Prüfgegenstand.
+
+Die Varianten sind jeweils über die Basis ihrer Familie meta-annotiert und ergänzen nur ihre
 Abweichung. Eine Variante muss **nicht fachlich zusammengehören**: Wo eine Abweichung ohnehin einen
 eigenen Kontext kostet, fährt fachlich Unverwandtes bewusst mit (der S3-Upload-Speicher in der
 Chat-Modell-Signatur, das Test-Dokumentformat in der `DocumentService`-Signatur). **Ein Kontext mehr
@@ -329,7 +348,7 @@ wiederkehrende Quelle verlorener Wartezeit erwiesen.
 - `docs/AGENT-ORGANIZATION.md` — Agenten-Rollen, Idee-bis-Merge-Workflow und Kollaborationsregeln
 - `docs/decisions/` — Architecture Decision Records (ADRs), u. a. [ADR-0021](docs/decisions/0021-single-instance-betrieb.md) zur Single-Instance-Annahme des Backends
 - `docs/features/` — Feature-Spezifikationen
-- `docs/handbuch/` — Produkthandbuch des gebauten Ist-Stands (`deployment.md`, `indexierung.md` mit je einem Kapitel pro Konnektor und Format, `metadaten.md`); Regeln der Kapitel in Issue #1282
+- `docs/handbuch/` — Produkthandbuch des gebauten Ist-Stands (`deployment.md`, `benutzerverwaltung.md`, `indexierung.md` mit je einem Kapitel pro Konnektor und Format, `metadaten.md`, `suche.md`); Regeln der Kapitel in `docs/handbuch/README.md`, Abschnitt „Konventionen"
 - `.github/ISSUE_TEMPLATE/` — Issue-Templates
 - `.github/PULL_REQUEST_TEMPLATE.md` — PR-Template
 - `CONTRIBUTING.md` — Leitfaden für Beitragende

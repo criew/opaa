@@ -69,6 +69,49 @@ regulären Aktualisierung trennen — damit ist die Datenbank und mit ihr der ge
 also kein Aktualisierungs-, sondern ein Neuaufsetzschritt; danach ist zwingend eine vollständige
 Neuindizierung nötig.
 
+### Vorbereitungsschritte für Bestandsinstallationen
+
+**Ein Update auf einen Stand mit lokaler Benutzerverwaltung verlangt eine Vorbereitung. Ohne sie
+startet das Backend nicht mehr.** Die Schritte einmalig **vor** dem `docker compose up -d` in der
+`.env.docker` erledigen:
+
+1. **`OPAA_AUTH_JWT_SECRET` setzen — Pflicht.** Das Wurzelgeheimnis des anwendungseigenen
+   Ausstellers. Im Betriebsmodus `oidc` bricht der Start ohne es ab, ebenso bei weniger als 32
+   Zeichen oder einem erkannten Platzhalter (`change_me`, `secret`, …). Erzeugen mit:
+
+   ```bash
+   openssl rand -base64 48
+   ```
+
+   Der Wert gehört zu den Geheimnissen der Installation: Eine Rotation beendet alle lokalen
+   Sitzungen und entwertet alle offenen Einladungs-, Rücksetz- und Übergabelinks.
+
+2. **`OPAA_INITIAL_ADMIN_EMAIL` auf ein zustellbares Postfach setzen — Pflicht, sobald ein
+   Systemverwalterkonto gebraucht wird.** Der frühere Vorgabewert `admin@opaa.local` wird abgelehnt;
+   OPAA legt dann kein Konto an und sagt das im Log. Am besten ein Funktionspostfach der IT. Siehe
+   [„Erststart und Systemverwalter-Konto"](#erststart-und-systemverwalter-konto) unten — auf einer
+   Bestandsinstallation entsteht das Konto **ohne** Passwort und wird bei Bedarf über die
+   Notfallprozedur aktiviert.
+
+3. **`OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen — dringend empfohlen, sobald ein Reverse-Proxy vor
+   dem Backend steht**, und der nginx des Frontend-Containers ist bereits einer. Eingetragen wird die
+   **feste Adresse des Frontend-Containers als `/32`**, nicht das ganze Compose-Netz;
+   `.env.docker.example` zeigt den Wert. Ohne ihn teilen alle Clients einen Zähler: Die Anmeldegrenze
+   gilt dann für das ganze Haus, und die Netzbeschränkung lokaler Systemverwalter sieht nur den Proxy.
+   Der Start schreibt bei leerem Wert eine Warnung mit genau dieser Folge ins Log. Einzelheiten unter
+   [„Härtung für erreichbare Deployments"](#härtung-für-erreichbare-deployments).
+
+4. **`OPAA_PUBLIC_BASE_URL` setzen — empfohlen, Pflicht für Einladungen per Mail.** Die öffentliche
+   Adresse der Installation; sie steht in jedem Link einer Mail. Ohne sie lassen sich „Passwort
+   vergessen" und Selbstregistrierung nicht einschalten, und Einladungslinks werden zur Übergabe
+   angezeigt statt versendet. Siehe [„E-Mail-Versand (SMTP)"](#e-mail-versand-smtp).
+
+Was sich **nicht** ändert: Bestehende Konten, Rollen, Rechte und der Index bleiben, wie sie sind. Wer
+bisher einen Identitätsanbieter betreibt, betreibt ihn unverändert weiter; die lokale
+Benutzerverwaltung bleibt ausgeschaltet, bis sie jemand einschaltet. Die eine inhaltliche Änderung am
+Bestand: **`OPAA_INITIAL_ADMIN_EMAIL` macht kein Konto eines Identitätsanbieters mehr zum
+Systemverwalter** — bereits vergebene Rollen bleiben, die Regel griff nur beim Anlegen eines Kontos.
+
 Ohne ein solches Skript entspricht der Ablauf diesen Schritten, ausgeführt im Verzeichnis mit der `docker-compose.yml`:
 
 ```bash
@@ -263,7 +306,7 @@ TLS-terminierender nginx auf dem Host davor, Keycloak unter dem Unterpfad `/idp`
 `testuser` deaktiviert, das Passwort des Administrationskontos nach jedem Seed-Lauf rotiert und der
 Client `opaa-seed` nur für die Dauer eines Seed-Laufs aktiviert.
 
-Die folgende Liste geht die sieben tatsächlich im Repository liegenden Vorgabewerte durch. Wo eine
+Die folgende Liste geht die acht tatsächlich im Repository liegenden Vorgabewerte durch. Wo eine
 Gegenmaßnahme **zwingend** ist, steht das dabei; alles andere ist eine Empfehlung, deren Unterlassung
 begründet werden sollte, kein hartes Muss.
 
@@ -276,6 +319,7 @@ begründet werden sollte, kein hartes Muss.
 | 5 | `docker-compose.yml:20`, `43`, `59`, `77` | `postgres` und `backend` (8081) binden auf `127.0.0.1`; `frontend` (3000) und `keycloak` (8180) veröffentlichen ihre Ports ohne Adressangabe und binden damit auf allen Schnittstellen | Auf `127.0.0.1` gebunden schützt vor Zugriff aus dem Netz, aber nicht vor jedem anderen Prozess und Nutzerkonto auf demselben Host (beim Backend-Port wäre eine direkte Verbindung aus dem Netz zudem der Weg, `X-Forwarded-For` am Frontend-nginx vorbei zu setzen). Die übrigen zwei Ports sind dagegen aus dem Netz erreichbar, sobald keine Firewall davorsteht — bei `keycloak` ist das der konkrete Ausnutzungsweg zu Punkt 3: Die Admin-Konsole wäre netzweit ansprechbar, unabhängig davon, ob ein vorgelagerter Reverse-Proxy nur bestimmte Pfade durchreicht | Hinter einem Reverse-Proxy alle Ports auf `127.0.0.1:` binden, so wie es `postgres` und `backend` bereits vormachen — für `keycloak` **zwingend** (sonst bleibt die Admin-Konsole trotz Proxy direkt aus dem Netz erreichbar), für `frontend` **empfohlen** (der Reverse-Proxy ist dann der einzige Weg). Für `postgres` **empfohlen**, die `ports:`-Zuordnung für den erreichbaren Betrieb ganz zu entfernen statt sie nur auf Loopback zu binden — Backend und `postgres` erreichen sich ohnehin über das interne Compose-Netz (Servicename `postgres`), ein Host-Port wird dafür nicht gebraucht. Für lokale Entwicklung (Anschluss mit einem Datenbank-Client vom Host aus, direkter Aufruf der Admin-Konsole) bleiben die bisherigen Bindungen dagegen sinnvoll — deshalb sind sie dort nicht als Fehler markiert |
 | 6 | `keycloak/realm-export.json` (Client `opaa-seed`) | Öffentlicher Client mit `directAccessGrantsEnabled: true` (Resource-Owner-Password-Grant) und ohne Client-Secret, ausschließlich für das Seed-Skript der Demo (`demo/seed/seed.py`) gedacht, das sich damit als Demo-Nutzer anmeldet und Bibliotheken, Rechte und Chats über die reguläre API anlegt | Erlaubt einen passwortbasierten Tokenweg **ohne Secret** gegen jedes Realm-Konto — auf einer erreichbaren Instanz ein zusätzlicher, von der eigentlichen Anmeldung (`opaa-frontend`, `directAccessGrantsEnabled: false`, Authorization-Code + PKCE) unabhängiger Angriffsweg, unabhängig davon, wessen Passwort betroffen ist | **Zwingend.** Client `opaa-seed` aus dem Realm-Export entfernen oder auf `enabled: false` setzen, bevor der Realm auf einer erreichbaren Instanz importiert wird. Wer die Demo dort dennoch erneut seeden will, aktiviert den Client nur für die Dauer des Laufs wieder (per `kcadm` oder Admin-Konsole) oder legt die Rechte direkt über die Keycloak-Admin-Konsole/API an, statt den Client dauerhaft scharf zu lassen |
 | 7 | `docker-compose.yml` (Service `upload-store`, nur Compose-Profil `upload-s3`) | Root-Zugangsdaten des mitgelieferten Objektspeichers der Originalablage als Compose-Vorgabe (`opaa-uploads`/`OpaaUploads!2026`), dieselben Werte auskommentiert in `.env.docker.example` | Wer das Profil in einem erreichbaren Betrieb nutzt und die Vorgabe behält, schützt die Originale **aller** hochgeladenen Dokumente mit Zugangsdaten, die im Repository stehen. Die S3-API ist zwar nur an `127.0.0.1` gebunden — das schützt vor dem Netz, aber nicht vor anderen Prozessen und Konten auf demselben Host | **Zwingend**, sobald das Profil außerhalb einer Erprobung läuft: eigene Werte über `OPAA_UPLOAD_STORE_ROOT_USER`/`OPAA_UPLOAD_STORE_ROOT_PASSWORD` in `.env` oder der Prozessumgebung setzen (nicht in `.env.docker`, siehe Punkt 3) und dieselben Werte als `OPAA_UPLOAD_S3_ACCESS_KEY`/`OPAA_UPLOAD_S3_SECRET_KEY` in `.env.docker` eintragen. Der mitgelieferte Dienst ist als Erprobungs- und Umstellungsziel gedacht; im erreichbaren Betrieb ist ein hauseigener Objektspeicher mit eigenen Zugangsdaten, Verschlüsselung ruhender Daten und Versionierung der Regelfall (siehe [„Originalablage"](#originalablage)) |
+| 8 | `.env.docker.example` und `e2e/local-auth.env` (`OPAA_AUTH_LOCAL_COOKIE_SECURE`) | Die Anwendungsvorgabe ist `true`; die Beispiel- und Testdateien zeigen, wie sie für rein lokales HTTP auf `false` gesetzt wird | Auf `false` gesetzt reist das Refresh-Cookie auch über eine unverschlüsselte Verbindung — wer mitliest, hält eine Sitzung, die sich selbst erneuert. Der Wert ist leicht aus einer Entwicklungskonfiguration mitgeschleppt | **Zwingend.** Auf einer erreichbaren Instanz bleibt `OPAA_AUTH_LOCAL_COOKIE_SECURE` ungesetzt (damit `true`), und die Anwendung liegt hinter TLS. Der `oidc`-Betriebsmodus schreibt bei `false` zu jedem Start eine Warnung ins Log — diese Zeile ist der Prüfpunkt nach jedem Übernehmen einer Beispielkonfiguration |
 
 **Änderungen am Realm auf einer bereits laufenden Instanz:** Wie bei Punkt 4 oben importiert
 `--import-realm` einen Realm nur, wenn er noch nicht existiert — auf einer Instanz mit bereits
@@ -309,7 +353,7 @@ kcadm.sh create clients/<id-des-clients-opaa-seed>/protocol-mappers/models -r op
   -s 'config."access.token.claim"=true'
 ```
 
-**Zugangsdaten, die zusätzlich zu ersetzen sind (empfohlen, unabhängig von den sechs Fundstellen oben):**
+**Zugangsdaten, die zusätzlich zu ersetzen sind (empfohlen, unabhängig von den Fundstellen der Tabelle oben):**
 
 - `OPAA_DB_USERNAME`/`OPAA_DB_PASSWORD` — die Vorgabewerte `opaa`/`opaa` sind für die Entwicklung gewählt,
   nicht für den Betrieb. Eine Änderung nach der Ersteinrichtung verlangt `docker compose down -v` (siehe
@@ -373,11 +417,32 @@ kcadm.sh create clients/<id-des-clients-opaa-seed>/protocol-mappers/models -r op
   hohe Anzahl gleichzeitig geführter Schlüssel begrenzt; darüber werden die am wenigsten genutzten
   vergessen und beginnen bei der nächsten Anfrage ein frisches Fenster (die Grenze fällt dann für
   diese Adressen offen aus, nicht geschlossen) — die globale Grenze fängt genau diesen Fall auf.
+- **Die Erneuerung einer lokalen Sitzung im Browser ist nur über einen sicheren Ursprung
+  abgestimmt.** Die Oberfläche serialisiert das Erneuern über die Sperren-Schnittstelle des Browsers,
+  und die steht ausschließlich in einem *Secure Context* zur Verfügung — also unter `https://` oder
+  auf `localhost`. Wird die Anwendung über `http://` unter einem Hostnamen oder einer IP-Adresse
+  ausgeliefert, fällt die Abstimmung zwischen mehreren Tabs still weg: Zwei Tabs können dasselbe
+  Refresh-Token gleichzeitig vorlegen, das zweite gilt als Wiederverwendung, und **alle** Sitzungen
+  des Kontos werden widerrufen. Das Fehlerbild ist „die Sitzung bricht beim Arbeiten in mehreren Tabs
+  immer wieder ab". Abhilfe ist dieselbe wie bei Punkt 8 der Tabelle: TLS davor.
 
-**Was es nicht gibt und deshalb hier auch nicht zu ersetzen ist:** einen Mock-Auth-Modus: Der einzige ungeprüfte Modus ist das Spring-Profil `dev`
-— **es gehört nie auf eine erreichbare Instanz**, siehe die Warnung unter
-[„Entwicklungsmodus (dev)"](#entwicklungsmodus-dev) unten. Nur `SPRING_PROFILES_ACTIVE=...,oidc` ist für
-den erreichbaren Betrieb zulässig.
+**Was organisatorisch zu klären ist, bevor die lokale Benutzerverwaltung eingeschaltet wird:** Drei
+Punkte gehören nach `docs/features/security-and-compliance.md` in eine Dienstvereinbarung oder eine
+vergleichbare Regelung, und zwar **vor** dem Einschalten, nicht danach:
+
+- **Der Schalter selbst** und der Schalter der Selbstregistrierung — beide erzeugen Konten außerhalb
+  des Verzeichnisdienstes, also außerhalb des Ein- und Austrittsprozesses des Hauses.
+- **Der Auszug für die Personalvertretung** mit der geschlossenen Liste der Nachweisereignisse
+  — sie ist dokumentiert, bevor das erste lokale Konto entsteht, nicht erst auf Nachfrage.
+- **Eine jährliche Vorlage** dieses Auszugs, zusätzlich zur vierteljährlichen Wiedervorlage der
+  Kontenprüfung, die OPAA selbst an die Systemverwaltung schickt
+  ([Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 6).
+
+**Einen Mock-Auth-Modus gibt es nicht** — er steht deshalb auch nicht in der Liste oben. Der einzige
+Modus ohne Prüfung von Anmeldedaten ist das Spring-Profil `dev`, und **es gehört nie auf eine
+erreichbare Instanz** (siehe die Warnung unter
+[„Entwicklungsmodus (dev)"](#entwicklungsmodus-dev) unten). Für den erreichbaren Betrieb ist
+ausschließlich `SPRING_PROFILES_ACTIVE=...,oidc` zulässig.
 
 **Woran erkennbar ist, was zwingend und was nur empfohlen ist:** Die Tabelle und die Liste oben markieren
 jeden Punkt einzeln als „Zwingend" oder „Empfohlen". Als Faustregel: Ein bekanntes, öffentlich im
@@ -976,6 +1041,9 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_UPLOAD_STORE_CONSOLE_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8096`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `8096` | Host-Port der MinIO-Konsole des mitgelieferten Objektspeichers der Originalablage (nur `upload-s3`-Compose-Profil) — zum Nachsehen eines Originals im Bucket, Anmeldung mit `OPAA_UPLOAD_STORE_ROOT_USER`/`OPAA_UPLOAD_STORE_ROOT_PASSWORD`. An `127.0.0.1` gebunden, kein öffentlicher Zugang |
 | `OPAA_MAILPIT_SMTP_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `1025`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `1025` | Host-Port des SMTP-Dienstes von Mailpit (nur `mail`-Compose-Profil). Das Backend erreicht Mailpit über das Compose-Netzwerk unter `mailpit:1025`, nicht über diesen Port. An `127.0.0.1` gebunden |
 | `OPAA_MAILPIT_WEB_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8025`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `8025` | Host-Port der Weboberfläche von Mailpit (nur `mail`-Compose-Profil) — dort liegen die abgefangenen Nachrichten. An `127.0.0.1` gebunden |
+| **Netz des Compose-Stacks** | | | |
+| `OPAA_COMPOSE_SUBNET` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `172.28.0.0/16`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default | Festes Subnetz des Compose-Netzwerks. Nötig, damit der Frontend-Container eine feste Adresse halten kann, der das Backend `X-Forwarded-For` glauben darf. Nur ändern, wenn der Bereich mit einem anderen Netz des Hosts kollidiert — dann **zusammen** mit der Adresse unten und mit `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` |
+| `OPAA_COMPOSE_FRONTEND_ADDRESS` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `172.28.0.10`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default | Feste Adresse des Frontend-Containers im Subnetz oben. Genau dieser Wert gehört als `/32` in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS`; `.env.docker.example` trägt ihn so ein. Die drei E2E-Ziele vergeben sich eigene Bereiche, damit sie neben einem Entwicklungsstack laufen können |
 | **Mitgelieferter Objektspeicher (`upload-s3`)** | | | |
 | `OPAA_UPLOAD_STORE_ROOT_USER` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `opaa-uploads`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `opaa-uploads` | Zugangsschlüssel des Dienstes `upload-store` selbst (nur `upload-s3`-Compose-Profil). Muss mit `OPAA_UPLOAD_S3_ACCESS_KEY` in `.env.docker` übereinstimmen — die beiden Werte stehen bewusst in verschiedenen Dateien, weil Compose die eine Seite selbst einsetzt und die andere erst im Container gelesen wird |
 | `OPAA_UPLOAD_STORE_ROOT_PASSWORD` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `OpaaUploads!2026`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `OpaaUploads!2026` | Geheimer Schlüssel des Dienstes `upload-store` (nur `upload-s3`-Compose-Profil). Muss mit `OPAA_UPLOAD_S3_SECRET_KEY` in `.env.docker` übereinstimmen. Der mitgelieferte Wert ist eine dokumentierte Entwicklungsvorgabe wie die übrigen Zugangsdaten dieses Stacks und für eine erreichbare Installation zu ersetzen (siehe [Härtung](#härtung-für-erreichbare-deployments)) |
@@ -1292,8 +1360,8 @@ Backend den Start mit einer Fehlermeldung ab**.
 
 | Modus | Profil | Zweck |
 |-------|--------|-------|
-| `oidc` | `oidc` | Der einzige für den Betrieb zulässige Modus |
-| `dev` | `dev` | Lokale Entwicklung und automatisierte Tests — **keinerlei Prüfung von Anmeldedaten** |
+| `oidc` | `oidc` | **Betriebsmodus: OIDC-Anbieter und lokale Konten** — der einzige für den Betrieb zulässige Modus. Der Name ist historisch; seit der lokalen Benutzerverwaltung enthält dieser Modus zusätzlich einen anwendungseigenen Aussteller für Konten, die OPAA selbst führt (siehe unten). Umbenannt wurde er nicht, weil das jede bestehende `SPRING_PROFILES_ACTIVE` im Feld gebrochen hätte |
+| `dev` | `dev` | Lokale Entwicklung und automatisierte Tests — **keinerlei Prüfung von Anmeldedaten**, kein Aussteller, keine lokalen Konten |
 
 ### Entwicklungsmodus (`dev`)
 
@@ -1374,6 +1442,146 @@ Die Variablen `OPAA_OIDC_ISSUER_URI`, `OPAA_OIDC_CLIENT_ID` und `OPAA_OIDC_JWK_S
 - **`AUDITOR` ist nicht geschützt:** Ein per Token entzogener letzter Prüfer ist nur im Anbieter wiederherstellbar.
 - **Eine Organisation:** Alle Anbieter provisionieren in dieselbe Organisation.
 
+### Erststart und Systemverwalter-Konto
+
+**Beim allerersten Start im Betriebsmodus `oidc` legt OPAA sich seinen ersten Systemverwalter selbst
+an** — als **lokales** Konto, unabhängig davon, ob ein Identitätsanbieter konfiguriert ist. Das ist
+der Weg hinein, bevor irgendetwas eingerichtet ist, und zugleich der Weg zurück, wenn ein Anbieter
+falsch konfiguriert wurde.
+
+Zwei Variablen steuern das:
+
+```env
+# Pflicht: die Adresse des ersten Systemverwalters - ein zustellbares Postfach,
+# am besten ein Funktionspostfach der IT.
+OPAA_INITIAL_ADMIN_EMAIL=it-postfach@beispielstadt.de
+
+# Optional: ein festes Anfangspasswort statt eines erzeugten. Für CI und
+# automatisierte Bereitstellung gedacht; dann wird kein Wechsel erzwungen.
+#OPAA_INITIAL_ADMIN_PASSWORD=
+```
+
+**Wo das Einmalpasswort steht.** Ist `OPAA_INITIAL_ADMIN_PASSWORD` nicht gesetzt, erzeugt OPAA ein
+Passwort und schreibt es **einmalig** als deutlich markierten Block in das Anwendungslog:
+
+```text
+=====================================================================
+  NOTANKER-KONTO DER SYSTEMVERWALTUNG - EINMALIGE AUSGABE
+  Anmeldung:  mit der Adresse aus OPAA_INITIAL_ADMIN_EMAIL
+  Passwort:   <hier steht das erzeugte Passwort>
+  Der Wechsel des Passworts wird bei der ersten Anmeldung erzwungen.
+  Diese Ausgabe erscheint einmalig und wird nicht wiederholt.
+=====================================================================
+```
+
+Zu lesen mit `docker compose logs backend | grep -A5 NOTANKER` direkt nach dem ersten Start. Danach
+nennt das Log nur noch, **dass** gesät wurde, nie wieder den Wert. Die Kehrseite ist bekannt und
+bewusst in Kauf genommen: **Eine Log-Weiterleitung sieht diesen Block.** Drei Dinge halten den
+Schaden klein — das Passwort ist nur bis zur ersten Anmeldung gültig (der Wechsel wird erzwungen),
+das Konto ist ohne Anmeldung wertlos, und wer das Log nicht belasten will, setzt
+`OPAA_INITIAL_ADMIN_PASSWORD` und übernimmt die Übergabe selbst.
+
+**Die Adresse muss zustellbar sein, und der ausgelieferte Vorgabewert wird abgelehnt.** Steht in
+`OPAA_INITIAL_ADMIN_EMAIL` nichts, etwas ohne `@` oder der frühere Vorgabewert `admin@opaa.local`,
+legt OPAA **kein** Konto an, schreibt einen Fehler ins Log und nennt die Variable. Es merkt sich
+diesen Versuch nicht: Ein Start mit korrigierter Adresse holt die Anlage nach. Der Grund ist
+einfach — die Adresse wird zum Anmeldenamen eines privilegierten Kontos an einem erreichbaren
+Formular, und unter `admin@opaa.local` erreicht niemand ein Postfach, also auch keinen Rücksetzlink.
+
+**Erststart und Bestandsinstallation sind zwei Fälle.** Findet OPAA beim Säen bereits Konten eines
+bestehenden Anbieters vor, legt es das Konto **ohne Passwort** an („eingeladen") und schreibt kein
+Passwort ins Log. Es ist dann vorhanden, aber nicht scharf; ein Haus, das lokale Konten
+organisatorisch ausschließt, bekommt damit kein gültiges Passwort in sein Log. Wer es später braucht,
+aktiviert es bewusst über die Notfallprozedur unten.
+
+**Das Notanker-Konto ist ein Notfallzugangsmittel, kein Arbeitskonto.** Für den Betrieb gilt:
+
+1. **Einmal anmelden, Passwort wechseln** (wird erzwungen, wenn es erzeugt wurde).
+2. **Persönliche Verwalterkonten anlegen** — je Person eines, über
+   [Benutzerverwaltung](benutzerverwaltung.md). Die tägliche Arbeit läuft über diese Konten.
+3. **Das Passwort des Notanker-Kontos versiegelt hinterlegen** — dort, wo das Haus andere
+   Notfallzugänge hinterlegt. Es ist der Weg zurück, wenn die Anbieteranbindung bricht.
+
+Das Konto bleibt anmeldefähig und ist gegen die eigenen Verwaltungswege geschützt: Es lässt sich
+nicht sperren, nicht befristen, nicht herabsetzen und nicht löschen. **Jede erfolgreiche Anmeldung
+mit ihm steht im Nachweisprotokoll** (`LOCAL_BOOTSTRAP_ACCOUNT_LOGIN`) und löst eine Nachricht an
+alle übrigen Systemverwalter aus — „wurde der Notfallzugang benutzt?" ist die Prüferfrage zu jedem
+Notfallkonto, und sie soll beantwortbar sein. Erkannt wird es an einer internen Markierung, nicht an
+seiner Adresse: Adresse und Anzeigename dürfen sich ändern, ohne dass der Notweg verloren geht.
+
+> **Ein Konto eines Identitätsanbieters wird nicht mehr durch `OPAA_INITIAL_ADMIN_EMAIL` zum
+> Systemverwalter.** Die Variable bezeichnet ausschließlich das lokale Notanker-Konto. IdP-Konten
+> erhalten die Rolle entweder über die Benutzer-Rollenvergabe oder über den Rollen-Claim ihres
+> Anbieters. Im `dev`-Modus ist `dev-admin` unverändert Systemverwalter.
+
+### Lokale Benutzerverwaltung
+
+Die Verwaltung lokaler Konten ist **ein Schalter unter Administration → Benutzer** und im
+Auslieferungszustand **aus**. Was sie im Alltag leistet — anlegen, einladen, sperren, zurücksetzen,
+befristen, Selbstregistrierung — steht im Kapitel [Benutzerverwaltung](benutzerverwaltung.md). Für
+den Betrieb sind vier Dinge wichtig:
+
+- **Abgeschaltet heißt: nur Systemverwalter.** Ist der Schalter aus, können sich reguläre lokale
+  Konten nicht anmelden, und laufende Sitzungen enden beim nächsten Aufruf. Lokale
+  Systemverwalterkonten passieren weiter. Ihre eigene Anmeldeseite ist `/login/system`; die reguläre
+  Anmeldeseite verlinkt sie unauffällig, damit die Verwaltung hereinkommt, ohne dass die Maske allen
+  angeboten wird.
+- **Die Empfehlung lautet: im Regelbetrieb aus.** Wer einen Identitätsanbieter betreibt, lässt die
+  Verwaltung regulärer lokaler Konten ausgeschaltet und befristet die Systemverwalterkonten. Lokale
+  Konten laufen am Verzeichnis und damit am Austrittsprozess vorbei; die Gegenmittel (Pflicht-Anlass,
+  Ablaufdatum, Sperre nach Inaktivität, Erinnerungen, vierteljährliche Wiedervorlage) machen das
+  beherrschbar, ersetzen den Prozess aber nicht.
+- **Einladungen und Rücksetzlinks brauchen Mail und eine öffentliche Adresse.** Ohne beides zeigt
+  OPAA den Link zur Übergabe an, und die Selbstbedienungsflüsse „Passwort vergessen" und
+  Selbstregistrierung lassen sich gar nicht einschalten. Siehe
+  [„E-Mail-Versand (SMTP)"](#e-mail-versand-smtp) unten.
+- **Es gibt keinen zweiten Faktor.** Eine Anmeldung mit einem zweiten Faktor (TOTP) ist für lokale
+  Systemverwalterkonten die naheliegende nächste Härtung, aber **nicht gebaut**. Bis dahin
+  kompensieren: die Netzbeschränkung `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (lässt die Anmeldung lokaler
+  Systemverwalter nur aus den genannten Netzen zu; leer = keine Beschränkung), kurze Sitzungsfristen
+  für diese Konten (eigene, kürzere Vorgaben, siehe Variablentabelle), die Auditierung des
+  Notanker-Kontos und die Empfehlung oben.
+
+### Notfallprozedur: wieder hereinkommen
+
+Für den Fall, dass sich **niemand** mehr anmelden kann — der letzte Anbieter ist falsch
+konfiguriert, das Notanker-Konto wurde gelöscht oder sein Passwort ist verloren:
+
+```env
+OPAA_LOCAL_ADMIN_RESET=force
+```
+
+Setzen, Backend neu starten, **danach wieder entfernen**. Der Start stellt einmalig einen
+anmeldefähigen lokalen Systemverwalter her: Das Notanker-Konto wird entsperrt, ein Ablaufdatum
+entfernt, die Systemverwalter-Rolle wiederhergestellt, ein neues Einmalpasswort gesetzt (im Log oder
+aus `OPAA_INITIAL_ADMIN_PASSWORD`) und alle seine Sitzungen beendet. Wurde das Konto gelöscht, legt
+der Start es mit der konfigurierten Adresse neu an. Der Vorgang steht laut im Log und im
+Nachweisprotokoll (`LOCAL_ADMIN_RESET`).
+
+**Die Variable bleibt nicht stehen.** Jeder weitere Start mit gesetztem Wert setzt das Konto erneut
+zurück; das Log sagt das beim Durchlauf.
+
+Anschließend läuft die Reparatur über die Oberfläche: als lokaler Systemverwalter anmelden, unter
+Administration → Benutzer → Anbieter den falschen Anbieter korrigieren oder einen neuen anlegen. **Ein
+Datenbankeingriff ist dafür nicht nötig**, und die frühere Variable `OPAA_OIDC_BOOTSTRAP=force` ist
+dafür nicht mehr der Weg — sie wird mit dem Datum in
+[„Migrationen aus älteren Ständen"](#migrationen-aus-älteren-ständen) entfernt.
+
+### Nacharbeit nach einer Rücksicherung der Datenbank
+
+Eine zurückgesicherte Datenbank bringt Zustände mit, die bis zur lokalen Benutzerverwaltung außerhalb
+von OPAA lagen: widerrufene Sitzungen gelten wieder, verbrauchte Einladungs- und Rücksetzlinks sind
+wieder einlösbar, und ein nach einem Verdacht geänderter Passworthash ist auf den alten Stand
+zurückgefallen. Deshalb gehören nach **jeder** Rücksicherung zwei Schritte dazu:
+
+1. **`OPAA_AUTH_JWT_SECRET` rotieren.** Ein neuer Wert beendet alle lokalen Sitzungen und entwertet
+   alle offenen Einladungs-, Rücksetz- und Übergabelinks in einem Schritt — alle Prüfwerte hängen an
+   diesem Geheimnis. Das ist der eine Handgriff, der einen Aufräumlauf ersetzt.
+2. **Sperren und Rücksetzungen seit dem Sicherungszeitpunkt erneut vornehmen.** Wer zwischen
+   Sicherung und Rücksicherung gesperrt oder zurückgesetzt wurde, ist es danach nicht mehr. Das
+   Nachweisprotokoll der Zwischenzeit ist die Liste, die dabei abzuarbeiten ist — sofern es selbst
+   nicht Teil der Rücksicherung war.
+
 ### Testkonten im Überblick
 
 Im Repository existieren mehrere Testkonto-Muster nebeneinander. Sie sind **bewusst nicht
@@ -1382,11 +1590,13 @@ und folgt dessen jeweils eigenem Mechanismus:
 
 | Muster | Geltungsbereich | Nutzer |
 |--------|------------------|--------|
+| **Notanker-Konto der Systemverwaltung** (`OPAA_INITIAL_ADMIN_EMAIL`, siehe [„Erststart und Systemverwalter-Konto"](#erststart-und-systemverwalter-konto) oben) | Jede Installation im Betriebsmodus `oidc` — **kein Testkonto, sondern ein echtes Konto dieser Installation**; es steht hier, weil es in CI-, E2E- und Demo-Stacks mit einem festen Passwort bestückt wird | Die Adresse aus `OPAA_INITIAL_ADMIN_EMAIL`, Anzeigename „Systemverwaltung", Rolle `SYSTEM_ADMIN`. Passwort: einmalig im Log oder aus `OPAA_INITIAL_ADMIN_PASSWORD`. Die im Repository stehenden Werte sind `RheinfurtNotanker!2026` (Demo-Smoke, `e2e/demo-smoke.env`) und `E2eNotankerKonto!2026` (Ziel `local-auth`, `e2e/local-auth.env`) — dokumentierte Testwerte zweier Stacks, die ein Befehl erzeugt und wieder wegwirft, niemals Vorgaben für eine Installation |
 | Entwicklungsnutzer des `dev`-Profils (`opaa.auth.dev.users`) | Lokale Entwicklung, `dev`-Auth-Modus (siehe [„Entwicklungsmodus (dev)"](#entwicklungsmodus-dev) oben) | `dev-admin` (`admin@opaa.local`, `SYSTEM_ADMIN`), `dev-user` (regulärer Nutzer) |
-| Keycloak-Realm-Nutzer (`keycloak/realm-export.json`) | `oidc`-Auth-Modus mit dem gebündelten Keycloak (siehe [„OIDC (Keycloak)"](#oidc-keycloak) oben) | `testuser`/`testpass` (E-Mail `test@opaa.local`) — wird zum `SYSTEM_ADMIN`, sobald `OPAA_INITIAL_ADMIN_EMAIL` in der lokalen `.env.docker` auf dieselbe Adresse gesetzt ist, sonst ein regulärer Nutzer |
-| Demo-Realm-Nutzer (`keycloak/realm-export.json`) | Demo-Instanz „Stadt Rheinfurt" (Compose-Profil `demo`, befüllt durch das Seed-Skript `demo/seed/seed.py`) | `demo-admin` (`admin@stadt-rheinfurt.example`, `SYSTEM_ADMIN` bei entsprechend gesetztem `OPAA_INITIAL_ADMIN_EMAIL`), `maria.weber`, `selin.kaya`, `thomas.klein`, `andrea.vogt` — alle mit dem offenen Demo-Passwort `RheinfurtDemo!2026`. Zusätzlich der Client `opaa-seed` (Resource Owner Password Grant, `directAccessGrantsEnabled: true`) — ausschließlich für das Seed-Skript, nie für eine reguläre Anmeldung |
+| Keycloak-Realm-Nutzer (`keycloak/realm-export.json`) | `oidc`-Auth-Modus mit dem gebündelten Keycloak (siehe [„OIDC (Keycloak)"](#oidc-keycloak) oben) | `testuser`/`testpass` (E-Mail `test@opaa.local`) — ein regulärer Nutzer. Die Rolle `SYSTEM_ADMIN` erhält er **nicht** mehr über `OPAA_INITIAL_ADMIN_EMAIL` (diese Variable bezeichnet seit der lokalen Benutzerverwaltung nur noch das Notanker-Konto), sondern durch Rollenvergabe — angemeldet als lokaler Systemverwalter — oder über den Rollen-Claim des Anbieters |
+| Demo-Realm-Nutzer (`keycloak/realm-export.json`) | Demo-Instanz „Stadt Rheinfurt" (Compose-Profil `demo`, befüllt durch das Seed-Skript `demo/seed/seed.py`) | `demo-admin` (`admin@stadt-rheinfurt.example`; die Rolle `SYSTEM_ADMIN` vergibt der Seed-Lauf über das Notanker-Konto, nicht mehr `OPAA_INITIAL_ADMIN_EMAIL`), `maria.weber`, `selin.kaya`, `thomas.klein`, `andrea.vogt` — alle mit dem offenen Demo-Passwort `RheinfurtDemo!2026`. Zusätzlich der Client `opaa-seed` (Resource Owner Password Grant, `directAccessGrantsEnabled: true`) — ausschließlich für das Seed-Skript, nie für eine reguläre Anmeldung |
 | Partner-Realm-Nutzer (`keycloak/realm-partner-export.json`) | Zweiter Identitätsanbieter (Realm `partner`, Client `opaa-partner`) auf demselben Keycloak — nicht beim Start übernommen, sondern über die Anbieterverwaltung anzulegen (der Demo-Smoke-Lauf tut genau das) | `maria.weber` mit **derselben E-Mail** wie im Realm `opaa` und dem Demo-Passwort `RheinfurtDemo!2026` — ein eigenes, zweites Konto ohne die Rechte der Demo-Maria: der Nachweis, dass Konten zweier Anbieter nie zusammengeführt werden |
-| E2E-Suite (`e2e/e2e.env`, `e2e/docker-compose.e2e.yml`) | Playwright-Suite | Wiederverwendet `dev-admin` und `dev-user` aus dem `dev`-Profil, ergänzt um `dev-outsider` und `dev-format-pipelines` (nur für diese Suite, über `OPAA_AUTH_DEV_USERS_*` hinzugefügt) |
+| E2E-Suite (`e2e/e2e.env`, `e2e/docker-compose.e2e.yml`) | Playwright-Suite, Ziel `e2e` | Wiederverwendet `dev-admin` und `dev-user` aus dem `dev`-Profil, ergänzt um `dev-outsider` und `dev-format-pipelines` (nur für diese Suite, über `OPAA_AUTH_DEV_USERS_*` hinzugefügt) |
+| E2E-Ziel `local-auth` (`e2e/local-auth.env`, `e2e/docker-compose.local-auth.yml`) | Playwright-Lauf gegen den Betriebsmodus `oidc` **ohne** Keycloak — der einzige, der einen echten lokalen Anmeldevorgang übt | Nur das Notanker-Konto der ersten Zeile, mit festem Passwort. Alle weiteren Konten legen die Szenarien selbst über die Verwaltung an und werfen sie mit dem Stack wieder weg |
 | Quellenzugangsdaten (`sourceCredentials`, siehe [„Zugangsdaten-Verschlüsselung"](#zugangsdaten-verschlüsselung) oben) | Kein Testkonto für OPAA selbst — Basic-Auth-Zugangsdaten (`user:password`), mit denen eine `HTTP_DIRECTORY`- oder `RSS_FEED`-Bibliothek eine *externe* Dokumentenquelle abruft | Kein fester Beispielwert; frei je Bibliothek |
 
 Warum keine Vereinheitlichung:
@@ -1403,7 +1613,12 @@ Warum keine Vereinheitlichung:
 - Die E2E-Suite legt bewusst **kein** eigenes Kontoschema an, sondern läuft im `dev`-Auth-Modus und
   nutzt dessen Nutzer weiter: Die Filterkette ist dort identisch zur OIDC-Konfiguration, die Suite
   übt also dieselben Autorisierungsregeln aus, ohne Keycloak, Realm-Import und Anmeldeablauf im
-  Prüfpfad zu haben. Den echten Keycloak-Login prüft allein der separate Demo-Smoke-Lauf.
+  Prüfpfad zu haben. Die Anmeldevorgänge selbst prüfen zwei eigene Läufe: den Keycloak-Login der
+  Demo-Smoke-Lauf, die lokale Anmeldung das Ziel `local-auth`.
+- Das Notanker-Konto ist das eine Muster, das **nicht** vereinheitlicht werden kann: Es ist ein echtes
+  Konto der jeweiligen Installation. Dass es in drei Stacks mit einem festen, im Repository stehenden
+  Passwort bestückt ist, ist der dafür vorgesehene Weg für automatisierte Bereitstellung — und genau
+  der Grund, warum `OPAA_INITIAL_ADMIN_PASSWORD` auf einer erreichbaren Instanz ungesetzt bleibt.
 
 ## E-Mail-Versand (SMTP)
 
@@ -2122,6 +2337,11 @@ docker compose down -v
 > `phi3:mini`, zusammen rund 2,5 GB). Ein danach erneut gestarteter Stack lädt beide Modelle über
 > `ollama-pull` vollständig neu herunter, siehe [„Lokal betriebenes Ollama im Compose-Stack"](#lokal-betriebenes-ollama-im-compose-stack).
 
+> **Nach einer Rücksicherung aus einem Dump sind zwei Schritte nachzuholen**, sobald lokale Konten im
+> Einsatz sind: das Signaturgeheimnis rotieren und die Sperren der Zwischenzeit erneut setzen. Warum
+> und in welcher Reihenfolge, steht unter
+> [„Nacharbeit nach einer Rücksicherung der Datenbank"](#nacharbeit-nach-einer-rücksicherung-der-datenbank).
+
 ## Volltextsuche (lexikalischer Suchpfad)
 
 Neben der Vektorsuche läuft eine klassische Volltextsuche direkt in PostgreSQL — `tsvector` mit der
@@ -2239,9 +2459,9 @@ Das Backend bindet standardmäßig an `localhost`, was nur von innerhalb des Con
 
 CORS ist wahrscheinlich falsch konfiguriert. Sicherstellen, dass `OPAA_CORS_ALLOWED_ORIGINS` mit der Frontend-URL übereinstimmt (z. B. `http://localhost:3000`). GET-Anfragen können funktionieren, weil sie keinen CORS-Preflight auslösen, während POST-Anfragen mit `Content-Type: application/json` dies tun.
 
-### Passwort-Authentifizierung für Benutzer fehlgeschlagen
+### PostgreSQL: "Passwort-Authentifizierung für Benutzer fehlgeschlagen"
 
-Das PostgreSQL-Volume enthält noch Daten von einer früheren Initialisierung mit anderen Anmeldeinformationen. `docker compose down -v` ausführen, um das Volume zu entfernen und neu zu starten.
+Betrifft die **Datenbank**, nicht ein Benutzerkonto von OPAA: Das PostgreSQL-Volume enthält noch Daten von einer früheren Initialisierung mit anderen Anmeldeinformationen. `docker compose down -v` ausführen, um das Volume zu entfernen und neu zu starten.
 
 ### OIDC: "Completing sign in..." hängt
 
@@ -2254,6 +2474,53 @@ Das PostgreSQL-Volume enthält noch Daten von einer früheren Initialisierung mi
 Das Backend-Laufzeitimage enthält keine Shell (siehe [Backend-Laufzeitimage](#backend-laufzeitimage)).
 Statt `docker exec … sh` die dort beschriebenen Wege nutzen: Logs, `/actuator`, `docker cp` oder einen
 Werkzeug-Container im selben Netzwerk-Namensraum.
+
+### Das Backend startet nicht und nennt `OPAA_AUTH_JWT_SECRET`
+
+Im Betriebsmodus `oidc` ist das Geheimnis Pflicht, mindestens 32 Zeichen lang und darf kein erkannter
+Platzhalter sein. Mit `openssl rand -base64 48` erzeugen und in `.env.docker` setzen; Einzelheiten
+unter [„Vorbereitungsschritte für Bestandsinstallationen"](#vorbereitungsschritte-für-bestandsinstallationen).
+Dieselbe Prüfung gilt für die Sitzungsfristen: Eine Obergrenze oder eine verletzte Reihenfolge
+(Zugangstoken ≤ Leerlauffrist ≤ Höchstdauer) nennt die Meldung mit Variablennamen.
+
+### Kein Einmalpasswort im Log zu finden
+
+Drei Ursachen, in dieser Reihenfolge zu prüfen:
+
+- **`OPAA_INITIAL_ADMIN_PASSWORD` ist gesetzt.** Dann erzeugt OPAA keines und schreibt keinen Block.
+- **Die Adresse wurde abgelehnt.** Eine Fehlerzeile nennt `OPAA_INITIAL_ADMIN_EMAIL` und den Grund
+  (leer, keine Adresse, oder der abgelehnte Vorgabewert `admin@opaa.local`). Korrigieren und neu
+  starten — die Anlage wird nachgeholt.
+- **Es ist eine Bestandsinstallation.** Fand der Start bereits Konten vor, entsteht das Konto ohne
+  Passwort und ohne Log-Ausgabe. Aktivierung über
+  [„Notfallprozedur: wieder hereinkommen"](#notfallprozedur-wieder-hereinkommen).
+
+Ein bereits gesäter Stand wiederholt die Ausgabe nicht. Wer das Passwort verloren hat, nutzt die
+Notfallprozedur.
+
+### Die Anmeldung antwortet `429` mit `Retry-After`
+
+Die Rate-Grenze der Anmeldung ist erreicht. Steht ein Reverse-Proxy davor und ist
+`OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` nicht gesetzt, **teilen alle Clients einen Zähler** — dann trifft
+die Grenze das ganze Haus. Die aufgelöste Client-Adresse zeigt der Diagnose-Endpunkt unter
+[„Diagnose ohne Shell"](#diagnose-ohne-shell); stimmt sie nicht mit der Adresse des Browsers überein,
+ist die Proxy-Liste die Ursache.
+
+### Eine Anmeldung wird abgelehnt, ohne einen Grund zu nennen
+
+Das ist beabsichtigt: Unbekannte Adresse, falsches Passwort, gesperrtes, abgelaufenes und noch nicht
+bestätigtes Konto beantwortet OPAA **identisch**. Den Zustand eines Kontos zeigt die Kontenliste unter
+Administration → Benutzer ([Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 6). Kommt eine Person
+dagegen in die Anwendung und wird sofort auf „Passwort ändern" geführt, ist ein Wechsel erzwungen — die
+Seite nennt den Anlass.
+
+### Eine Sitzung bricht beim Arbeiten in mehreren Tabs wiederholt ab
+
+Die Abstimmung der Sitzungserneuerung zwischen Tabs braucht einen sicheren Ursprung. Wird die
+Anwendung über `http://` unter einem Hostnamen oder einer IP ausgeliefert, fällt sie still weg; zwei
+Tabs legen dann dasselbe Token vor, und das gilt als Wiederverwendung. Abhilfe ist TLS — siehe den
+Punkt zur Sitzungserneuerung unter
+[„Härtung für erreichbare Deployments"](#härtung-für-erreichbare-deployments).
 
 ### Umgebungsvariablen-Änderungen treten nicht in Kraft
 

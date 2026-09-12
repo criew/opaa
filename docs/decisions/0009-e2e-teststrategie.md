@@ -67,7 +67,8 @@ OIDC-Konfiguration. `e2e/fixtures/auth.ts` wählt den Nutzer über den Query-Par
 
 Der Alternative `oidc` hätte einen weiteren Container, den Realm-Import und den Weiterleitungsablauf
 des Autorisierungscode-Flusses in den Prüfpfad gebracht — zusätzliche Fehlerquellen ohne Aussagewert
-für die Fachszenarien. Der Anmeldeablauf selbst ist bewusst nicht Teil der Suite.
+für die Fachszenarien. Der Anmeldeablauf selbst ist bewusst nicht Teil der Suite — siehe
+[Nachtrag vom 12.09.2026](#12092026--drittes-ziel-ein-echter-anmeldevorgang-gegen-lokale-konten).
 
 Standardmäßig stehen zwei Nutzer bereit: `dev-admin` (E-Mail `admin@opaa.local`, entspricht dem
 Standardwert von `opaa.auth.initial-admin-email` und wird damit als `SYSTEM_ADMIN` angelegt, nötig
@@ -202,3 +203,28 @@ bleibt unverändert, damit erkennbar bleibt, was wann galt.
   Regressionen, nur später und ohne PR-Latenz. Wer eine UI-Änderung vor dem Merge gegen die Suite
   prüfen will, führt sie lokal aus.
 - **Verweis:** #1226 · `.github/workflows/e2e.yml` · `e2e/README.md`, Abschnitt „CI"
+
+### 12.09.2026 — Drittes Ziel: ein echter Anmeldevorgang gegen lokale Konten
+
+- **Punkt:** Punkt 3 („Auth-Modus `dev`") stellt fest: „Der Anmeldeablauf selbst ist bewusst nicht
+  Teil der Suite." Das blieb richtig, solange OPAA keine eigene Anmeldung hatte — mit ADR-0033
+  (Epic #1529) ist das Backend selbst Token-Aussteller für lokale Konten, und damit wäre der einzige
+  Anmeldeweg einer Installation ohne Identitätsanbieter ungeprüft.
+- **Entscheidung:** `scripts/run-e2e.mjs` bekommt mit #1543 ein drittes Ziel `local-auth`
+  (`pnpm run test:local-auth`). Es startet den Betriebsmodus `oidc` **ohne** Keycloak — eine
+  Installation ohne jeden OIDC-Anbieter ist seit ADR-0033 Entscheidung 4 ein zulässiger Zustand —
+  dazu den Mail-Fänger des Compose-Profils `mail`, und führt **keinen** Seed-Lauf aus: Geprüft wird
+  der Erststart, dessen einziges Konto das vom Backend selbst gesäte Notanker-Konto ist. Die
+  Szenarien liegen unter `e2e/local-auth/tests/` mit eigener Playwright-Konfiguration, damit sie nie
+  in `pnpm test` mitlaufen. Punkt 3 gilt für das Ziel `e2e` unverändert weiter: Diese Suite übt
+  keinen Anmeldevorgang, und `e2e/fixtures/auth.ts` bleibt der Weg über `?devUser=`.
+- **Begründung:** Ein Anmeldeweg, den niemand durchläuft, ist der Teil einer Anwendung, bei dem ein
+  Fehler am teuersten ist — er sperrt aus. Der Aufwand, den Punkt 3 gegen `oidc` abgewogen hat
+  (zweiter Container, Realm-Import, Weiterleitungsablauf), entsteht hier nicht: Der lokale Aussteller
+  braucht keinen zweiten Container und keine Weiterleitung, nur ein Formular und einen Mail-Fänger.
+  Der erste Lauf hat zwei Fehler gefunden, die keine Unit- und keine Integrationsebene gezeigt hatte
+  (fehlender zugänglicher Name der Rollenauswahl, irreführender Grund beim Abschalten der
+  Verwaltung, #1595) — genau die Klasse von Befunden, für die es ein Browserziel gibt.
+- **Verweis:** #1543 (Epic #1529) · ADR-0033 · `e2e/local-auth/` · `e2e/local-auth.env` ·
+  `e2e/docker-compose.local-auth.yml` · `.github/workflows/local-auth-e2e.yml` · `e2e/README.md`,
+  Abschnitt „Lokale Anmeldung (#1543)"
