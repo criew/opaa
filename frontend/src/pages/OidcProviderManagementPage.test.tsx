@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
 import { mockOidcProviders } from '../mocks/fixtures'
@@ -345,12 +345,16 @@ describe('OidcProviderManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
     const acknowledged: Array<string | null> = []
-    server.events.on('request:start', ({ request }) => {
+    const record = ({ request }: { request: Request }) => {
       const url = new URL(request.url)
       if (url.pathname.endsWith('/disable')) {
         acknowledged.push(url.searchParams.get('acknowledgeLastProvider'))
       }
-    })
+    }
+    server.events.on('request:start', record)
+    // Removed even when an assertion below throws - a listener left behind would watch every
+    // request of the remaining tests in this file.
+    onTestFinished(() => server.events.removeListener('request:start', record))
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
 
     const cards = await screen.findAllByRole('article')
@@ -365,7 +369,6 @@ describe('OidcProviderManagementPage', () => {
         false,
       ),
     )
-    server.events.removeAllListeners('request:start')
   })
 
   it('explains the lockout guard when the backend refuses the last provider', async () => {

@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
 import {
@@ -365,12 +365,15 @@ describe('UserManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
     const requested: string[] = []
-    server.events.on('request:start', ({ request }) => {
+    const record = ({ request }: { request: Request }) => {
       const url = new URL(request.url)
       if (url.pathname === '/api/v1/admin/local-users') {
         requested.push(url.searchParams.get('query') ?? '')
       }
-    })
+    }
+    server.events.on('request:start', record)
+    // Removed even when an assertion below throws - see the same guard in the provider page test.
+    onTestFinished(() => server.events.removeListener('request:start', record))
     renderWithProviders(<UserManagementPage />, { withRouter: true })
     await screen.findByRole('table', { name: 'Lokale Konten' })
 
@@ -382,7 +385,6 @@ describe('UserManagementPage', () => {
     )
     // Four keystrokes, one request: the field is debounced (#1541).
     expect(requested.filter((query) => query !== '')).toEqual(['vogt'])
-    server.events.removeAllListeners('request:start')
   })
 
   it('sorts only by an allow-listed field', async () => {
