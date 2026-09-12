@@ -190,7 +190,7 @@ schreibt E-Mail und Anzeigename nicht aus dem Token zurück. `GET /api/v1/auth/c
 selfRegistrationEnabled, passwordResetEnabled, passwordMinLength }`; die beiden Selbstbedienungs-
 flüsse gelten nur mit gesetzter öffentlicher Basis-URL als verfügbar. Ein täglicher Lauf löscht
 Zeilen der drei Token-Tabellen spätestens sieben Tage nach Ablauf oder Widerruf; Inaktivitätssperre
-und Ablauf-Erinnerungen hängen sich dort ein (#1537, #1538). Alles davon existiert nur im
+und Ablauf-Erinnerungen hängen sich dort ein (#1537). Alles davon existiert nur im
 `oidc`-Betriebsmodus; der `dev`-Modus kennt weder Aussteller noch Endpunkte. Die Anmeldeseite
 (#1539) und die Systemverwalter-Anmeldung (#1534) folgen.
 
@@ -212,7 +212,7 @@ nächsten Start einmalig (entsperrt, Ablauf gelöscht, neues Einmalpasswort, `SY
 wiederhergestellt, alle Sitzungen widerrufen; ein gelöschtes Konto wird neu angelegt) — auditiert
 als `LOCAL_ADMIN_RESET`; die Anlage als `LOCAL_ADMIN_SEEDED`. Jede erfolgreiche Anmeldung mit dem
 Notanker-Konto (erkannt über `is_bootstrap`, nicht über die Adresse) ist ein Audit-Ereignis
-`LOCAL_BOOTSTRAP_ACCOUNT_LOGIN`; die Mail an die übrigen Systemverwalter folgt mit #1537. Die
+`LOCAL_BOOTSTRAP_ACCOUNT_LOGIN`; die Mail an die übrigen Systemverwalter (`BOOTSTRAP_ACCOUNT_USED`) schickt #1537. Die
 Erstadministrator-Regel für OIDC-Konten ist aufgehoben: `InitialAdminPolicy` wirkt nur noch für den
 Dev-Issuer (`dev-admin` bleibt Systemverwalter); IdP-Konten werden Systemverwalter allein durch
 Rollenvergabe. `OPAA_OIDC_BOOTSTRAP=force` funktioniert bis zum 31.03.2027 weiter und warnt bei
@@ -276,7 +276,7 @@ Anmeldung (aktiv, mit Passwort, nicht gesperrt oder abgelaufen) und Konten eines
 OIDC-Anbieters (im `dev`-Modus: des Dev-Issuers). Über ihn laufen der Rollenentzug per Token
 (`TokenRoleSynchronizer`) und per Verwaltung (`POST /api/v1/admin/users/{id}/role`, 409 mit Code
 `LAST_LOGIN_CAPABLE_ADMIN`) sowie das Deaktivieren und Löschen jedes aktivierten
-OIDC-Anbieters; Sperren, Befristen und Löschen lokaler Systemverwalter folgen mit #1537. Die
+OIDC-Anbieters sowie — seit #1537 — Sperren, Befristen und Löschen lokaler Systemverwalter. Die
 `LOCAL`-Zeile ist über die Anbieter-API weder löschbar noch Standard, ihr Issuer nicht änderbar
 (nur der Anzeigename), Adressprüfung und Verbindungstest entfallen für sie; ihr
 Aktivieren/Deaktivieren ist der Schalter der lokalen Verwaltung (`LOCAL_ACCOUNTS_ENABLED`/
@@ -287,6 +287,60 @@ auch neben der `LOCAL`-Zeile automatisch Standard; der Standard kann deaktiviert
 werden, sobald er der letzte aktivierte OIDC-Anbieter ist — nur mit `acknowledgeLastProvider=true`
 (sonst 409 `LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED`) und nur, wenn ein lokales
 Systemverwalterkonto mit Passwort besteht (sonst 409 `LAST_LOGIN_CAPABLE_ADMIN`).
+
+**Kontolebenszyklus lokaler Konten (gebaut, #1537).** Die Verwaltung lokaler Konten liegt unter
+`/api/v1/admin/local-users` und `/api/v1/admin/local-auth-settings` (nur `SYSTEM_ADMIN`, auf die
+eigene Organisation begrenzt). **Anlegen** mit E-Mail-Adresse, Anzeigename, Rolle, Pflicht-Anlagegrund
+(höchstens 200 Zeichen, zweckgebunden, für die Person einsehbar, nie als Wert im Protokoll) und
+Ablaufdatum — vorbelegt mit `default_expiry_days`, ausdrücklich auf „ohne Ablauf" setzbar, nie
+stillschweigend unbefristet —, entweder **per Einladung** (Konto `INVITED`, Adresse vom Verwalter
+bestätigt, Aktionstoken `SET_PASSWORD` mit `invitation_token_ttl_hours`, Mail
+`LOCAL_ACCOUNT_INVITATION`) oder **mit erzeugtem Anfangspasswort** (einmalig in der Antwort, Wechsel
+bei der ersten Anmeldung mit Anlass `INITIAL`). **Link-Rückfall:** Geht die Mail nicht hinaus — SMTP
+aus, Versand fehlgeschlagen oder `OPAA_PUBLIC_BASE_URL` nicht gesetzt —, enthält die Antwort den Link
+genau einmal (ohne Basis-URL als Pfad relativ zur Installation `/konto/passwort?token=…`); der
+Zustellweg steht im Protokoll (`LOCAL_USER_INVITED` mit `MAIL_SENT`, `MAIL_FAILED` oder
+`LINK_DISPLAYED`). Eine E-Mail-Adresse ist nur unter dem lokalen Issuer eindeutig (409 `EMAIL_TAKEN`).
+Der persönliche Space entsteht auf demselben Weg wie bei jeder Anmeldung. Die **Liste** führt
+ausschließlich lokale Konten mit Zustand, Rolle, Ablauf, Anlagegrund und **Aktivität nur als Klasse**
+(`NEVER`, `INACTIVE_90_DAYS`, `ACTIVE` — nie als Zeitstempel, nicht danach sortierbar), mit den
+Prüffiltern „offene Einladungen" (`status=INVITED`), „ohne Ablaufdatum" und „länger als 90 Tage nicht
+genutzt", Seitengröße höchstens 50, kein Export; `…/summary` liefert die Zahlen für den Hinweis der
+Oberfläche und das Datum der nächsten Wiedervorlage. **Ändern** (`PATCH`) von Anzeigename, Adresse,
+Anlagegrund und Ablaufdatum ist ein `LOCAL_USER_CHANGED` mit Vorher/Nachher **nur für das
+Ablaufdatum** und sonst nur den Namen der geänderten Felder; die Rolle läuft über denselben Pfad wie
+`POST /api/v1/admin/users/{id}/role` (Rollenereignisse, Aussperrschutz). **Sperren** (`locked_reason
+ADMIN`) beendet alle Sitzungen sofort (`password_invalidated_before` am Konto, Refresh-Familien
+`ACCOUNT_LOCKED`; `LOCAL_SESSION_REVOKED` nur, wenn tatsächlich eine Sitzung lief), ersetzt eine
+Fehlversuch-Sperre und setzt den Zähler zurück; **Entsperren** hebt jede Sperre und den Zähler auf.
+Beides wird der Person per Mail mitgeteilt (`ACCOUNT_LOCKED` mit dem Grund, den der Verwalter für die
+Person formuliert — nur in der Mail, nie im Protokoll —, `ACCOUNT_UNLOCKED`). Selbstsperre und
+Selbstlöschung sind 409 (`SELF_LOCKOUT`, `SELF_DELETE`); Sperren, Ablauf in der Vergangenheit,
+Rollenentzug und Löschen des letzten anmeldefähigen Systemverwalters laufen über den Aussperrschutz
+(409 `LAST_LOGIN_CAPABLE_ADMIN`, auch bei zwei gleichzeitigen Anfragen). **Zurücksetzen** per Link
+(`RESET_PASSWORD`, `reset_token_ttl_minutes`, ein neuer Link entwertet ältere, Mail
+`ADMIN_PASSWORD_RESET`, Link-Rückfall und Zustellweg wie bei der Einladung,
+`LOCAL_USER_PASSWORD_RESET_REQUESTED`; für ein Konto ohne Passwort wird die Einladung erneut
+gesendet) oder mit **erzeugtem Passwort** (einmalig in der Antwort, Wechsel mit Anlass `ADMIN_RESET`,
+`LOCAL_USER_PASSWORD_GENERATED`) — beides beendet alle Sitzungen. **Löschen** ist die Ausnahme:
+nur ein Konto ohne Bibliotheken, ohne Space außer dem persönlichen und ohne Chats (sonst 409
+`ACCOUNT_OWNS_CONTENT` mit dem Rat zu sperren), nie das Notanker-Konto (409 `BOOTSTRAP_ACCOUNT`);
+der persönliche Space, Zugangsdaten, Tokens und die Pseudonymzuordnung gehen mit, das Protokoll
+behält seine pseudonymen Zeilen (`LOCAL_USER_DELETED`). **Einstellungen:** `enabled` schaltet die
+`LOCAL`-Zeile über denselben Pfad wie die Anbieter-API (die Antwort nennt beim Abschalten die Zahl der
+beendeten Sitzungen), die übrigen Werte liegen in `local_auth_settings` mit den Grenzen aus ADR-0033
+(`LOCAL_ACCOUNTS_SETTINGS_CHANGED` mit Vorher/Nachher der geänderten Schlüssel); Selbstregistrierung
+nur mit Domänenliste, „Passwort vergessen" und Selbstregistrierung nur einschaltbar, wenn
+`OPAA_PUBLIC_BASE_URL` gesetzt ist (409 `PUBLIC_BASE_URL_REQUIRED`). Der **tägliche Lauf** sperrt
+Konten ohne Aktivität über `inactive_days` (`locked_reason INACTIVITY`, `LOCAL_USER_LOCKED` unter dem
+Systemakteur `local-auth`, Mail `ACCOUNT_LOCKED`; das Notanker-Konto ausgenommen, der letzte
+anmeldefähige Systemverwalter wird mit einer Warnung übersprungen), erinnert 14 Tage vor einem
+Ablauf die Person (`ACCOUNT_EXPIRING`) und die Systemverwalter (`ADMIN_REVIEW_REMINDER` mit der Zahl
+der auslaufenden Konten) — einmalig über das Tagesfenster des Laufs — und schickt am ersten Tag
+eines Quartals die Wiedervorlage `ADMIN_REVIEW_REMINDER` mit der Zahl der Konten ohne Ablaufdatum und
+dem Link zur Liste, ohne Namen. Jede Anmeldung mit dem Notanker-Konto löst jetzt die Mail
+`BOOTSTRAP_ACCOUNT_USED` an alle übrigen Systemverwalter aus. Die Oberfläche (#1541), die
+Selbstbedienung mit dem Einlösen der Links (#1538) und das Handbuchkapitel (#1543) folgen.
 
 Die Mandantengrenze gilt auch für die Anmeldung: Eine Identität gehört zu **genau einer** Organisation.
 Es gibt kein Konto, das mehrere Mandanten sieht, und keinen Wechsel zwischen ihnen innerhalb einer

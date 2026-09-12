@@ -81,6 +81,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
    */
   List<User> findByIssuerAndSystemRoleNot(String issuer, SystemRole systemRole);
 
+  /** The local accounts of one organization - what the local account list is built from (#1537). */
+  List<User> findByOrganizationIdAndIssuer(UUID organizationId, String issuer);
+
+  /** Every account of {@code issuer} - what the daily local-account run walks (#1537). */
+  List<User> findByIssuer(String issuer);
+
   /** Writes {@code role} only while the stored role is still {@code expected}. */
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("update User u set u.systemRole = :role where u.id = :id and u.systemRole = :expected")

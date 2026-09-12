@@ -2,6 +2,7 @@ package io.opaa.auth.local;
 
 import java.time.Instant;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,6 +18,10 @@ public interface LocalCredentialsRepository extends JpaRepository<LocalCredentia
 
   /** The one bootstrap account ({@code ux_local_credentials_single_bootstrap}), if it exists. */
   Optional<LocalCredentials> findByBootstrapTrue();
+
+  /** The accounts expiring in {@code [from, to)} - the expiry reminder's window (#1537). */
+  List<LocalCredentials> findByExpiresAtGreaterThanEqualAndExpiresAtLessThan(
+      Instant from, Instant to);
 
   /**
    * Counts one failed sign-in atomically in the database ({@code n = n + 1}, ADR-0033 Entscheidung

@@ -114,7 +114,8 @@ class LocalUserAdminControllerTest {
             post("/api/v1/admin/local-users")
                 .with(asUser())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{}"))
+                .content(
+                    "{\"email\":\"x@stadt.example\",\"displayName\":\"X\",\"mode\":\"INVITE\",\"createdReason\":\"x\"}"))
         .andExpect(status().isForbidden());
     mockMvc
         .perform(get("/api/v1/admin/local-users/" + id).with(asUser()))
@@ -142,7 +143,8 @@ class LocalUserAdminControllerTest {
             put("/api/v1/admin/local-auth-settings")
                 .with(asUser())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{}"))
+                .content(
+                    "{\"enabled\":false,\"selfRegistrationEnabled\":false,\"selfRegistrationAllowedDomains\":[],\"passwordResetEnabled\":false,\"passwordMinLength\":12,\"invitationTokenTtlHours\":72,\"resetTokenTtlMinutes\":30,\"defaultExpiryDays\":90,\"inactiveDays\":90}"))
         .andExpect(status().isForbidden());
   }
 
@@ -313,9 +315,7 @@ class LocalUserAdminControllerTest {
         .andExpect(jsonPath("$.id").value(id.toString()));
     verify(adminService)
         .update(
-            eq(caller),
-            eq(id),
-            eq(new LocalUserUpdate(null, "Erika Neu", null, null, true, null)));
+            eq(caller), eq(id), eq(new LocalUserUpdate(null, "Erika Neu", null, null, true, null)));
 
     when(adminService.update(any(), eq(id), any()))
         .thenThrow(new ConflictException("Letzter Systemverwalter", "LAST_LOGIN_CAPABLE_ADMIN"));

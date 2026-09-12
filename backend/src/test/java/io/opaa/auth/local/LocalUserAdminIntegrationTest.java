@@ -75,7 +75,13 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 @OpaaLocalAuthMockMvcTest
 // Own context: the link flows need OPAA_PUBLIC_BASE_URL, which the shared local-auth context
 // deliberately leaves unset (its sign-in-page test proves the flows off without one).
-@TestPropertySource(properties = "opaa.public-base-url=https://opaa.test.example")
+@TestPropertySource(
+    properties = {
+      "opaa.public-base-url=https://opaa.test.example",
+      // the SMTP password of the GreenMail account is stored encrypted; the oidc profile ships no
+      // key
+      "opaa.security.settings.encryption-key=c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE="
+    })
 class LocalUserAdminIntegrationTest {
 
   private static final String LOGIN = "/api/v1/auth/local/login";

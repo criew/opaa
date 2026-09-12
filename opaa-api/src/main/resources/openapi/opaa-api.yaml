@@ -5547,11 +5547,13 @@ components:
           $ref: "#/components/schemas/MailDeliveryPath"
         setupUrl:
           type: string
+          format: password
           nullable: true
           description: >
             The single-use link to set the password - present exactly once, only when the mail
             was not sent (MAIL_FAILED or LINK_DISPLAYED). Without OPAA_PUBLIC_BASE_URL a path
-            relative to the installation.
+            relative to the installation. A bearer secret - format password keeps it out of the
+            DTO's toString().
         initialPassword:
           type: string
           format: password
@@ -5607,8 +5609,11 @@ components:
           $ref: "#/components/schemas/MailDeliveryPath"
         setupUrl:
           type: string
+          format: password
           nullable: true
-          description: The single-use link, present exactly once when the mail was not sent.
+          description: >
+            The single-use link, present exactly once when the mail was not sent. A bearer secret
+            - format password keeps it out of the DTO's toString().
 
     LocalUserGeneratedPasswordResponse:
       type: object

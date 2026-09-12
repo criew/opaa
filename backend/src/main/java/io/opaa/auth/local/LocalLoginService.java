@@ -1,5 +1,6 @@
 package io.opaa.auth.local;
 
+import io.opaa.api.types.LocalAccountState;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;

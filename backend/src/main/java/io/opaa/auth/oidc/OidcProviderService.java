@@ -12,6 +12,7 @@ import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.local.LocalAdminAvailabilityGuard;
+import io.opaa.auth.local.LocalAdminSeeder;
 import io.opaa.auth.local.LocalCredentialsRepository;
 import io.opaa.auth.local.LocalRefreshTokenRepository;
 import io.opaa.auth.local.LocalTokenRevocationService;
@@ -288,7 +289,7 @@ public class OidcProviderService {
       return provider;
     }
     if (provider.isLocal()) {
-      return switchLocalAccounts(organizationId, actorUserId, provider, enabled);
+      return switchLocalAccounts(organizationId, actorUserId, provider, enabled).provider();
     }
     if (!enabled) {
       if (provider.isDefaultProvider()
@@ -327,15 +328,17 @@ public class OidcProviderService {
    * the accounts that actually hold an active one - and audits exactly those as a foreign-caused
    * {@code LOCAL_SESSION_REVOKED}; local {@code SYSTEM_ADMIN} accounts keep signing in.
    */
-  private OidcProvider switchLocalAccounts(
+  private LocalAccountsSwitch switchLocalAccounts(
       UUID organizationId, UUID actorUserId, OidcProvider local, boolean enabled) {
     Map<String, Object> after = new HashMap<>();
     after.put("enabled", enabled);
+    int revokedSessions = 0;
     if (enabled) {
       local.enable();
     } else {
       local.disable();
-      after.put("revokedSessions", revokeRegularLocalSessions(actorUserId));
+      revokedSessions = revokeRegularLocalSessions(actorUserId);
+      after.put("revokedSessions", revokedSessions);
     }
     repository.save(local);
     recordChange(
@@ -346,8 +349,33 @@ public class OidcProviderService {
         Map.of("enabled", !enabled),
         after);
     eventPublisher.publishEvent(new OidcProvidersChangedEvent());
-    return local;
+    return new LocalAccountsSwitch(local, revokedSessions);
   }
+
+  /**
+   * The management switch by value rather than by row id - the settings endpoint of the local
+   * account management (#1537) flips it and quotes how many regular accounts lost a session. A
+   * missing LOCAL row (an installation whose seed never ran, the {@code dev} mode) is created
+   * switched off first, so the change is audited like any other.
+   */
+  @Transactional
+  public LocalAccountsSwitch setLocalAccountsEnabled(
+      UUID organizationId, UUID actorUserId, boolean enabled) {
+    OidcProvider local =
+        repository
+            .findLocalRow()
+            .orElseGet(
+                () ->
+                    repository.save(
+                        OidcProvider.localProvider(LocalAdminSeeder.LOCAL_PROVIDER_DISPLAY_NAME)));
+    if (local.isEnabled() == enabled) {
+      return new LocalAccountsSwitch(local, 0);
+    }
+    return switchLocalAccounts(organizationId, actorUserId, local, enabled);
+  }
+
+  /** The LOCAL row after the switch and how many regular accounts had a session ended. */
+  public record LocalAccountsSwitch(OidcProvider provider, int revokedSessions) {}
 
   /** Returns how many accounts actually had a session ended. */
   private int revokeRegularLocalSessions(UUID actorUserId) {

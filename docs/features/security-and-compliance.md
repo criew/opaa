@@ -217,7 +217,12 @@ Wiederverwendung eines Refresh-Tokens; seit #1534 auch beim Abschalten der lokal
 Ändern des eigenen Passworts (`LOCAL_PASSWORD_CHANGED`) sowie — seit #1534 — die Anlage und der
 Wiederanlauf des Notanker-Kontos (`LOCAL_ADMIN_SEEDED`, `LOCAL_ADMIN_RESET`), jede Anmeldung mit ihm
 (`LOCAL_BOOTSTRAP_ACCOUNT_LOGIN`) und der Schalter der lokalen Verwaltung
-(`LOCAL_ACCOUNTS_ENABLED`/`_DISABLED`). Noch **nicht** verdrahtet — weil
+(`LOCAL_ACCOUNTS_ENABLED`/`_DISABLED`), sowie — seit #1537 — die Verwaltung lokaler Konten
+(`LOCAL_USER_CREATED`, `LOCAL_USER_INVITED` und `LOCAL_USER_PASSWORD_RESET_REQUESTED` je mit
+Zustellweg, `LOCAL_USER_CHANGED` mit Vorher/Nachher nur für das Ablaufdatum, `LOCAL_USER_LOCKED`
+mit Grund `ADMIN` oder `INACTIVITY`, `LOCAL_USER_UNLOCKED`, `LOCAL_USER_PASSWORD_GENERATED`,
+`LOCAL_USER_DELETED`, `LOCAL_ACCOUNTS_SETTINGS_CHANGED`; Subjekt als Pseudonym, nie Adresse, Name
+oder Anlagegrund als Wert). Noch **nicht** verdrahtet — weil
 die jeweilige Funktion selbst noch fehlt, nicht weil sie ausgenommen wäre: Ablauf einer Befristung
 (kein Scheduler), Aussetzen von Grants durch eine gesenkte Freigabe-Obergrenze, Bereitstellung einer
 Bibliothek in einem Space, Eigentümerübernahme ohne Zuständigkeit und der Übergang in „Nachfolge

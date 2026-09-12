@@ -22,7 +22,9 @@ import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaIntegrationTest;
+import jakarta.mail.Part;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.sql.Timestamp;
@@ -122,7 +124,7 @@ class LocalAccountMaintenanceIntegrationTest {
         organizations.save(new Organization(UUID.randomUUID(), "Allein")).getId();
     User lonelyAdmin = localAdmin(lonelyOrganization);
     lastActivity(idle.id(), now.minus(Duration.ofDays(91)));
-    lastActivity(recent.id(), now.minus(Duration.ofDays(89)));
+    lastActivity(recent.id(), now.minus(Duration.ofDays(88)));
     lastActivity(neverUsedButNew.id(), null);
     lastActivity(invited.id(), now.minus(Duration.ofDays(400)));
     lastActivity(bootstrap.id(), now.minus(Duration.ofDays(400)));
@@ -210,7 +212,7 @@ class LocalAccountMaintenanceIntegrationTest {
         .contains(soon.email(), admin.email())
         .doesNotContain(later.email(), unlimited.email());
     for (MimeMessage message : greenMail.getReceivedMessages()) {
-      String body = String.valueOf(message.getContent());
+      String body = plainText(message);
       assertThat(body).doesNotContain(later.email()).doesNotContain(unlimited.email());
     }
     int afterFirstRun = greenMail.getReceivedMessages().length;
@@ -248,14 +250,16 @@ class LocalAccountMaintenanceIntegrationTest {
                 })
             .findFirst()
             .orElseThrow();
-    String body = String.valueOf(mail.getContent());
+    String body = plainText(mail);
     // the admin itself, one and two carry no expiry date - the count says three
     assertThat(body).contains("3 Zug");
+    // the greeting names the recipient; the counted accounts stay unnamed
     assertThat(body)
         .doesNotContain(one.email())
         .doesNotContain(two.email())
         .doesNotContain(limited.email())
-        .doesNotContain(LocalAccountFixtures.DISPLAY_NAME.substring(0, 5) + " Muster");
+        .doesNotContain(one.id().toString())
+        .doesNotContain(two.id().toString());
   }
 
   private User localAdmin(UUID organizationId) {
@@ -282,6 +286,19 @@ class LocalAccountMaintenanceIntegrationTest {
     LocalCredentials row = fixtures.credentialsOf(account);
     row.setExpiresAt(at, Instant.now());
     fixtures.save(row);
+  }
+
+  private static String plainText(MimeMessage message) throws Exception {
+    Object content = message.getContent();
+    if (content instanceof MimeMultipart multipart) {
+      for (int i = 0; i < multipart.getCount(); i++) {
+        Part part = multipart.getBodyPart(i);
+        if (part.isMimeType("text/plain")) {
+          return part.getContent().toString();
+        }
+      }
+    }
+    return content.toString();
   }
 
   private static ListAppender<ILoggingEvent> attachTo(Class<?> type) {

@@ -107,8 +107,8 @@ class LocalAuthSettingsIntegrationTest {
     assertThat(events).hasSize(1);
     String before = (String) events.getFirst().get("before");
     String after = (String) events.getFirst().get("after");
-    assertThat(before).contains("\"passwordMinLength\": 12").contains("\"inactiveDays\": 90");
-    assertThat(after).contains("\"passwordMinLength\": 14").contains("\"inactiveDays\": 120");
+    assertThat(before).contains("\"passwordMinLength\":12").contains("\"inactiveDays\":90");
+    assertThat(after).contains("\"passwordMinLength\":14").contains("\"inactiveDays\":120");
     assertThat(after).contains("passwordResetEnabled");
     assertThat(after).doesNotContain("invitationTokenTtlHours").doesNotContain("defaultExpiryDays");
 
@@ -207,9 +207,15 @@ class LocalAuthSettingsIntegrationTest {
     mockMvc
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, userBearer))
         .andExpect(status().isUnauthorized())
+        // the switch-off also revoked the family (#1534), which the validator names first; a
+        // session without a family would be refused as local_accounts_disabled
         .andExpect(
             header()
-                .string("WWW-Authenticate", Matchers.containsString("local_accounts_disabled")));
+                .string(
+                    "WWW-Authenticate",
+                    Matchers.anyOf(
+                        Matchers.containsString("local_accounts_disabled"),
+                        Matchers.containsString("session_revoked"))));
     mockMvc
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, adminBearer))
         .andExpect(status().isOk());
