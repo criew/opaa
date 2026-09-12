@@ -40,9 +40,9 @@ Für die Ausstellung eines neuen Personalausweises beträgt die Bearbeitungszeit
 Gebührenrahmen
 Die Abgabe einer Verlust- oder Diebstahlsanzeige ist gebührenfrei.
 Für die Neuausstellung eines Personalausweises fallen folgende Gebühren an:
-- Unter 24 Jahren: 23,10 Euro
-- Über 24 Jahren: 37,50 Euro
-- Vorläufiger Personalausweis: 10,10 Euro
+- Unter 24 Jahren: 26,20 Euro
+- Über 24 Jahren: 42,60 Euro
+- Vorläufiger Personalausweis: 11,50 Euro
 
 Fragen & Antworten
 Was mache ich, wenn der Ausweis wieder auftaucht?

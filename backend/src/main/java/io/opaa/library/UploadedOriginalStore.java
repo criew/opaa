@@ -16,11 +16,11 @@ import java.util.function.Function;
  * adapter alone; a caller only ever holds an {@link UploadedOriginalRef}.
  *
  * <p><b>Resolving a locator means three things, and every read and delete below does all three</b>
- * (ADR-0030, Entscheidung 3): the original belongs to the library it is asked for, links are
- * followed before that is decided, and it actually exists. A locator that fails any of them is
- * indistinguishable from one that fails another - that is what lets {@code
- * LibraryDocumentService#loadContent} answer the same 404 for a foreign, a tampered and a vanished
- * original.
+ * (ADR-0030, Entscheidung 3 and its addendum to Entscheidung 4): the original belongs to the
+ * organization <em>and</em> the library it is asked for, links are followed before that is decided,
+ * and it actually exists. A locator that fails any of them is indistinguishable from one that fails
+ * another - that is what lets {@code LibraryDocumentService#loadContent} answer the same 404 for a
+ * foreign, a tampered and a vanished original.
  *
  * <p><b>An attachment row's synthetic locator resolves to "not there", and that is not an
  * error.</b> Attachment bytes are never stored (ADR-0022): {@code <parent>/<index>/<name>} lies
@@ -32,11 +32,13 @@ import java.util.function.Function;
 public interface UploadedOriginalStore {
 
   /**
-   * Takes {@code bytes} for a new original of {@code libraryId} under a freshly allocated name
-   * ending in {@code extension} and returns the local working file they were written to. The caller
-   * closes the stream. Nothing is left behind when accepting fails.
+   * Takes {@code bytes} for a new original of {@code libraryId}, which belongs to {@code
+   * organizationId}, under a freshly allocated name ending in {@code extension} and returns the
+   * local working file they were written to. The caller closes the stream. Nothing is left behind
+   * when accepting fails.
    */
-  AcceptedUpload accept(UUID libraryId, String extension, InputStream bytes) throws IOException;
+  AcceptedUpload accept(UUID organizationId, UUID libraryId, String extension, InputStream bytes)
+      throws IOException;
 
   /**
    * The original behind {@code ref} as servable content, or empty when it does not resolve - both
@@ -58,24 +60,47 @@ public interface UploadedOriginalStore {
   /** Removes the original behind {@code ref}; one that does not resolve is left alone. */
   void delete(UploadedOriginalRef ref);
 
-  /** Whether {@code ref} resolves to an original this store holds for {@code ref}'s library. */
+  /**
+   * Whether {@code ref} resolves to an original this store holds for {@code ref}'s library inside
+   * {@code ref}'s organization. A locator whose organization segment names another organization is
+   * not this library's, however well the library segment matches.
+   */
   boolean belongsToLibrary(UploadedOriginalRef ref);
 
   /**
-   * Hands the originals this store itself wrote on {@code libraryId}'s own level of its storage
-   * area to {@code visitor}, one at a time, in the store's own order and without ever holding the
-   * whole listing: a large bucket is walked page by page. <b>Only that level.</b> This store writes
-   * one flat original per document and nothing below it, so anything nested deeper came from
-   * elsewhere - another writer under the same bucket prefix, a directory somebody put there - and
-   * is never visited, never reported and therefore never offered for deletion. What lies on the
-   * level but would not resolve (a link leading out, a folder marker) is left out too, so every
-   * visited original can also be read and removed. Each is reported under the locator {@link
-   * AcceptedUpload#store()} would have returned for it, so a visited locator compares equal to the
-   * {@code file_path} of the row that owns it. A library without a storage area yields nothing.
+   * Hands the originals this store itself wrote on {@code libraryId}'s own level of {@code
+   * organizationId}'s storage area to {@code visitor}, one at a time, in the store's own order and
+   * without ever holding the whole listing: a large bucket is walked page by page. <b>Only that
+   * level.</b> This store writes one flat original per document and nothing below it, so anything
+   * nested deeper came from elsewhere - another writer under the same bucket prefix, a directory
+   * somebody put there - and is never visited, never reported and therefore never offered for
+   * deletion. What lies on the level but would not resolve (a link leading out, a folder marker) is
+   * left out too, so every visited original can also be read and removed. Each is reported under
+   * the locator {@link AcceptedUpload#store()} would have returned for it, so a visited locator
+   * compares equal to the {@code file_path} of the row that owns it. A library without a storage
+   * area yields nothing.
    *
    * @throws UploadStoreUnavailableException when the store cannot be listed right now
    */
-  void forEachStoredOriginal(UUID libraryId, Consumer<StoredOriginal> visitor);
+  void forEachStoredOriginal(UUID organizationId, UUID libraryId, Consumer<StoredOriginal> visitor);
+
+  /**
+   * Hands the library ids this store holds a storage area for under {@code organizationId} to
+   * {@code visitor}, one at a time, in the store's own order and without ever holding the whole
+   * listing - the entry point of the cleanup that has no library to start from. <b>Only the level
+   * directly below the organization</b>, matched by segment and never lexically, and only what
+   * names a library: an entry whose name is no library id came from elsewhere and is never visited,
+   * so it can never be reported and never offered for deletion. An organization without a storage
+   * area yields nothing.
+   *
+   * <p><b>One storage area is left out although the operations above resolve it:</b> one that leads
+   * to another area of the same storage - a relinked directory on the filesystem. Its originals
+   * have their own name and are reachable under it; offering them twice would let one library's
+   * originals be deleted under another's.
+   *
+   * @throws UploadStoreUnavailableException when the store cannot be listed right now
+   */
+  void forEachStoredLibrary(UUID organizationId, Consumer<UUID> visitor);
 
   /**
    * One original as the listing sees it.

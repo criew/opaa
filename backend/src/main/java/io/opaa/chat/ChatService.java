@@ -87,6 +87,7 @@ public class ChatService {
   private final ChatMessageWriter chatMessageWriter;
   private final ChatTitleGenerationService chatTitleGenerationService;
   private final MetadataFilterValidator metadataFilterValidator;
+  private final ChatNoteService chatNoteService;
 
   public ChatService(
       ChatRepository chatRepository,
@@ -98,8 +99,10 @@ public class ChatService {
       ObjectMapper objectMapper,
       ChatMessageWriter chatMessageWriter,
       ChatTitleGenerationService chatTitleGenerationService,
-      MetadataFilterValidator metadataFilterValidator) {
+      MetadataFilterValidator metadataFilterValidator,
+      ChatNoteService chatNoteService) {
     this.metadataFilterValidator = metadataFilterValidator;
+    this.chatNoteService = chatNoteService;
     this.chatRepository = chatRepository;
     this.chatMessageRepository = chatMessageRepository;
     this.spaceRepository = spaceRepository;
@@ -382,12 +385,27 @@ public class ChatService {
     return current != null ? current.getTitle() : null;
   }
 
+  /**
+   * Removes one point of a chat's Gesprächsnotiz (#1487) - author only, like every other
+   * chat-scoped operation, and refused while the chat's space is archived, like every other change
+   * to an existing chat (#613 review, finding 2). A point of another chat, or of a chat the caller
+   * does not author, is a 404 either way: the same lookup that hides a foreign chat hides its note.
+   */
+  @Transactional
+  public void deleteNoteItem(UUID chatId, UUID itemId, UUID authorId) {
+    Chat chat = getOwnedChat(chatId, authorId);
+    requireSpaceNotArchived(chat.getSpaceId());
+    if (!chatNoteService.deletePoint(chatId, itemId)) {
+      throw new NotFoundException("Notizpunkt nicht gefunden");
+    }
+  }
+
   private ChatConversation toConversation(Chat chat) {
     List<ChatTurn> messages =
         chatMessageRepository.findByChatIdOrderBySequenceAsc(chat.getId()).stream()
             .map(this::toTurn)
             .toList();
-    return new ChatConversation(chat, messages);
+    return new ChatConversation(chat, messages, chatNoteService.points(chat.getId()));
   }
 
   private ChatTurn toTurn(ChatMessage message) {

@@ -16,8 +16,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param endpoint the object store's address, {@code http}/{@code https} with host and port
  * @param region the signing region; blank falls back to the SDK-neutral {@code us-east-1}
  * @param bucket the one bucket every original lies in
- * @param keyPrefix prepended to every key, empty by default; {@code <keyPrefix><libraryId>/<uuid>}
- *     mirrors the directory layout of the filesystem adapter (ADR-0030, Entscheidung 4)
+ * @param keyPrefix prepended to every key, empty by default; {@code
+ *     <keyPrefix><organizationId>/<libraryId>/<uuid>} mirrors the directory layout of the
+ *     filesystem adapter (ADR-0030, Entscheidung 4 and its addendum)
  * @param pathStyle {@code endpoint/bucket/key} when {@code true} (MinIO, Ceph, the default), {@code
  *     bucket.endpoint/key} otherwise (AWS, Hetzner)
  * @param tempDirectory where working files and local copies are written; {@code null} means the

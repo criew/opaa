@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-mail-templates
+      author: opaa
+      comment: >-
+        #1536, ADR-0033 Entscheidung 10: administrator overrides of the delivered mail templates.
+        The table holds only overrides - the registry of which templates exist is
+        io.opaa.mail.MailTemplateKey in code, so an override that is deleted falls back to the
+        delivered German default rather than leaving a template without content. Unique per
+        (template_key, locale): resolution is exact row, then the default locale row, then the
+        code default. The locale column is prepared but only ever holds 'de' today (ADR-0033,
+        Grenzen).
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE public.mail_templates (
+                  id uuid NOT NULL,
+                  template_key character varying(60) NOT NULL,
+                  locale character varying(10) NOT NULL,
+                  subject character varying(300) NOT NULL,
+                  body_plain text NOT NULL,
+                  body_html text,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_by uuid,
+                  CONSTRAINT mail_templates_pkey PRIMARY KEY (id),
+                  CONSTRAINT ux_mail_templates_key_locale UNIQUE (template_key, locale)
+              );
+      rollback:
+        - sql:
+            sql: |
+              DROP TABLE IF EXISTS public.mail_templates;

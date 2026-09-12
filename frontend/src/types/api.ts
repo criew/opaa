@@ -169,6 +169,8 @@ export type ChatDetail = components['schemas']['ChatDetail']
 export type ChatMessageResponse = components['schemas']['ChatMessageResponse']
 export type ChatCreateRequest = components['schemas']['ChatCreateRequest']
 export type ChatUpdateRequest = components['schemas']['ChatUpdateRequest']
+export type ChatNoteItem = components['schemas']['ChatNoteItem']
+export type ChatNoteItemKind = components['schemas']['ChatNoteItemKind']
 
 export type ColorScheme = components['schemas']['ColorScheme']
 export type BrandingResponse = components['schemas']['BrandingResponse']

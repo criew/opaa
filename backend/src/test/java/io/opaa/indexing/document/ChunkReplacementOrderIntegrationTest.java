@@ -9,8 +9,9 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaMockedDocumentServiceIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnLibraryFixtures;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -23,11 +24,11 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * The order in which a changed document's chunks are exchanged: the previous chunks survive until
@@ -40,13 +41,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * processRssEntry} has no parse step of its own - it is handed already-extracted text - so only its
  * empty and success cases exist to test.
  */
-// Same single @MockitoBean DocumentService as DocumentIngestServiceIntegrationTest, so both classes
-// share one context: the mock is what makes an unparseable Tika document reproducible at all.
-@OpaaIndexingIntegrationTest
+@OpaaMockedDocumentServiceIntegrationTest
 class ChunkReplacementOrderIntegrationTest {
 
   private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("chunk-replacement-order");
+      OpaaTestDirectory.subdirectory("chunk-replacement-order");
 
   private static final String FIRST_TEXT =
       "Die erste Fassung dieses Dokuments beschreibt das Verfahren zur Aktenfuehrung.";
@@ -57,20 +56,17 @@ class ChunkReplacementOrderIntegrationTest {
   @Autowired private DocumentRepository documentRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
-  @MockitoBean private DocumentService documentService;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
+  // The mock of @OpaaMockedDocumentServiceIntegrationTest - what makes an unparseable Tika
+  // document reproducible at all.
+  @Autowired private DocumentService documentService;
 
   private KnowledgeLibrary targetLibrary;
+  private UUID userId;
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    documentRepository.deleteAll();
-
-    jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = 'file-processing-it@example.com')");
-    jdbcTemplate.update("DELETE FROM users WHERE email = 'file-processing-it@example.com'");
-    UUID userId = UUID.randomUUID();
+    userId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
             + " organization_id) VALUES (?, ?, 'test-issuer', 'file-processing-it@example.com',"
@@ -366,8 +362,16 @@ class ChunkReplacementOrderIntegrationTest {
         null);
   }
 
+  // By id, not by the e-mail above: DocumentIngestServiceIntegrationTest uses the same one for its
+  // own user, and this class removes only what it created itself.
+  @AfterEach
+  void removeOwnRows() {
+    ownLibraryFixtures.removeLibraries(targetLibrary.getId());
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
+  }
+
   private UUID onlyDocumentId() {
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = documentRepository.findByLibraryId(targetLibrary.getId());
     assertThat(documents).hasSize(1);
     return documents.getFirst().getId();
   }

@@ -7,7 +7,7 @@ import java.sql.SQLException;
 import java.util.UUID;
 
 /**
- * JDBC helpers shared by the delta tests of the local-account changesets (003-009, #1532): seeding
+ * JDBC helpers shared by the delta tests of the local-account changesets (004-010, #1532): seeding
  * the {@code users} rows every local table hangs off, and reading index definitions and column
  * facts back out of the Postgres catalog.
  */

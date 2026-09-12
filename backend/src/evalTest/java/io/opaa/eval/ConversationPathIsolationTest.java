@@ -27,7 +27,7 @@ class ConversationPathIsolationTest {
    */
   @Test
   void theMultiTurnPathCountsItsOwnContractVersionSeparately() {
-    assertThat(ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION).isEqualTo(1);
+    assertThat(ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION).isEqualTo(2);
   }
 
   @Test
@@ -70,10 +70,9 @@ class ConversationPathIsolationTest {
    * invariants - the Docker-free half of "the committed baseline is internally consistent",
    * modelled on {@code PipelinePathIsolationTest#committedPipelineBaselinesStayLoadableAndValid}.
    *
-   * <p>This path has no regression test class and no Gradle task reading the file yet (issue #1485:
-   * the decision which job carries a 249-call measurement belongs to the epic's last step), so
-   * without this test nothing at all would read it and a hand-edited group would stay unnoticed
-   * until that decision is made.
+   * <p>Docker-free on purpose even though {@link ConversationBaselineRegressionCheck} reads the
+   * same file since issue #1553: that check needs a measurement run of well over an hour, this one
+   * catches a hand-edited group on every build.
    */
   @Test
   void theCommittedConversationBaselineStaysLoadableAndValid() throws IOException {
@@ -94,6 +93,31 @@ class ConversationPathIsolationTest {
         .isEqualTo(
             ConversationDataset.turnCount(
                 ConversationDataset.load(ConversationDataset.file(domain))));
+    // Issue #1522: the same pin watchdog PipelinePathIsolationTest runs over the other six
+    // baselines - a baseline may only name the Ollama it was actually measured with.
+    assertThat(baseline.fixedPoints().pipeline().ollamaImage())
+        .isEqualTo(EvalOllamaEndpoint.PINNED_IMAGE);
+  }
+
+  /**
+   * The committed baseline measures the two Gesprächsgedächtnis dimensions productively (#1490).
+   * Pinned rather than merely observed: while it still carried the pre-#1486/#1487 values, the
+   * verdict granted them a named "nicht beurteilt" tolerance — a baseline falling back to those
+   * values would silently switch this path's comparison off again, now without that tolerance to
+   * catch it.
+   */
+  @Test
+  void theCommittedBaselineMeasuresTheProductionConversationMemory() throws IOException {
+    EvalDomainConfig domain = EvalDomainConfig.VERWALTUNG;
+
+    ConversationBaseline baseline =
+        ConversationBaseline.load(
+            RepoPaths.evalDir().resolve("baseline").resolve(domain.conversationBaselineFileName()));
+
+    assertThat(baseline.fixedPoints().searchWindowTurns())
+        .isNotEqualTo(ConversationMemoryProfile.SEARCH_WINDOW_QUESTION_ONLY);
+    assertThat(baseline.fixedPoints().conversationNoteCap())
+        .isNotEqualTo(ConversationMemoryProfile.NO_CONVERSATION_NOTE);
   }
 
   /**
@@ -104,15 +128,42 @@ class ConversationPathIsolationTest {
   @Test
   void aBaselineWithoutDecompositionIsRefusedAtLoadTime(@TempDir Path tempDir) throws IOException {
     Path file = tempDir.resolve("pipeline-verwaltung-conversations.json");
+    Files.writeString(file, DECOMPOSITION_OFF_BASELINE_JSON);
+
+    assertThatThrownBy(() -> ConversationBaseline.load(file))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("queryDecompositionEnabled=false");
+  }
+
+  /**
+   * Issue #1522: the multi-turn path shares the pipeline fixed points and with them the origin
+   * guard - a file drawn against an external, possibly GPU-backed endpoint may never become a
+   * comparison point on this path either.
+   */
+  @Test
+  void aBaselineFromAnExternalOllamaEndpointIsRefusedAtLoadTime(@TempDir Path tempDir)
+      throws IOException {
+    Path file = tempDir.resolve("pipeline-verwaltung-conversations.json");
     Files.writeString(
         file,
-        """
+        DECOMPOSITION_OFF_BASELINE_JSON.replace(
+            "\"ollamaImage\": \"ollama/ollama:0.6.5\"",
+            "\"ollamaImage\": \"extern: http://localhost:11434\""));
+
+    assertThatThrownBy(() -> ConversationBaseline.load(file))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("externen Ollama-Endpunkt");
+  }
+
+  private static final String DECOMPOSITION_OFF_BASELINE_JSON =
+      """
         {
-          "conversationMeasurementContractVersion": 1,
+          "conversationMeasurementContractVersion": 2,
           "fixedPoints": {
             "pipeline": {
               "embeddingModel": "nomic-embed-text:v1.5",
               "embeddingModelDigest": "digest",
+              "ollamaImage": "ollama/ollama:0.6.5",
               "embeddingDimensions": 768,
               "chunkSize": 1000,
               "chunkSizeMatchesApplicationDefault": true,
@@ -147,12 +198,7 @@ class ConversationPathIsolationTest {
           "measuredAt": "2026-09-11T00:00:00Z",
           "notes": ""
         }
-        """);
-
-    assertThatThrownBy(() -> ConversationBaseline.load(file))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("queryDecompositionEnabled=false");
-  }
+        """;
 
   /**
    * A changed conversation window, search window or note cap makes the committed baseline
@@ -187,6 +233,7 @@ class ConversationPathIsolationTest {
     return new PipelineBaseline.FixedPoints(
         "nomic-embed-text:v1.5",
         "digest",
+        "ollama/ollama:0.6.5",
         768,
         1000,
         true,
@@ -261,6 +308,7 @@ class ConversationPathIsolationTest {
         Map.of(),
         Map.of(),
         new ConversationEvaluationReport.CaseOutcomeSummary(0, 0, Map.of()),
+        null,
         null,
         null,
         List.of());

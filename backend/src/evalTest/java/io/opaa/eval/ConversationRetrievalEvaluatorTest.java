@@ -3,6 +3,9 @@ package io.opaa.eval;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.api.types.ChatNoteItemKind;
+import io.opaa.chat.ChatNoteCandidate;
+import io.opaa.chat.ChatNoteList;
 import io.opaa.eval.ConversationEvaluationReport.ConversationRunConfiguration;
 import io.opaa.query.answer.CaffeineChatMemoryRepository;
 import java.util.LinkedHashMap;
@@ -62,6 +65,7 @@ class ConversationRetrievalEvaluatorTest {
       implements ConversationRetrievalEvaluator.TurnInvocation {
 
     private final Map<String, List<Message>> windows = new LinkedHashMap<>();
+    private final Map<String, List<String>> notes = new LinkedHashMap<>();
     private final List<List<String>> rankings;
     private int call;
 
@@ -71,8 +75,12 @@ class ConversationRetrievalEvaluatorTest {
 
     @Override
     public ConversationRetrievalEvaluator.TurnInvocationResult invoke(
-        ConversationCase conversationCase, int turnIndex, List<Message> conversationWindow) {
+        ConversationCase conversationCase,
+        int turnIndex,
+        List<Message> conversationWindow,
+        List<String> conversationNote) {
       windows.put(conversationCase.turnId(turnIndex), conversationWindow);
+      notes.put(conversationCase.turnId(turnIndex), conversationNote);
       return new ConversationRetrievalEvaluator.TurnInvocationResult(
           rankings.get(call++), List.of("Teilfrage " + (turnIndex + 1)));
     }
@@ -310,6 +318,248 @@ class ConversationRetrievalEvaluatorTest {
     assertThat(report.cases().getFirst().turns().get(1).bledDocuments())
         .as("the follow-up turn is not a change turn and is never attributed bleed")
         .isEmpty();
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // Gesprächsnotiz (#1487)
+  // ---------------------------------------------------------------------------------------
+
+  /**
+   * The note's timing, mirroring production: a point condensed from turn 1's question reaches turn
+   * 2, never turn 1 itself - the condensation runs after the answer.
+   */
+  @Test
+  void aPointCondensedFromATurnReachesTheNextTurnAndNotItsOwn() {
+    ConversationCase conversationCase = twoTurnCase("constraint_carryover");
+    RecordingPipeline pipeline = new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B)));
+
+    ConversationRetrievalEvaluator.evaluateCase(
+        conversationCase,
+        chatMemory(20),
+        pipeline,
+        userMessage -> List.of(new ChatNoteCandidate("Bezugsjahr 2024", ChatNoteItemKind.RAHMEN)),
+        10);
+
+    assertThat(pipeline.notes.get("verw-conv-001#1")).isEmpty();
+    assertThat(pipeline.notes.get("verw-conv-001#2")).containsExactly("Bezugsjahr 2024");
+  }
+
+  /**
+   * The report carries what each turn actually received (#1490). Without it a run cannot tell "the
+   * note never carried the Angabe" from "the decomposition ignored it" - the two explanations of a
+   * fallen constraint_carryover that call for opposite follow-up work.
+   */
+  @Test
+  void theReportRecordsTheNoteEachTurnReceived() {
+    ConversationCase conversationCase = twoTurnCase("constraint_carryover");
+    RecordingPipeline pipeline = new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B)));
+
+    ConversationRetrievalEvaluator.CaseOutcome outcome =
+        ConversationRetrievalEvaluator.evaluateCase(
+            conversationCase,
+            chatMemory(20),
+            pipeline,
+            userMessage ->
+                List.of(new ChatNoteCandidate("Bezugsjahr 2024", ChatNoteItemKind.RAHMEN)),
+            10);
+
+    ConversationEvaluationReport.ConversationCaseResult caseResult =
+        ConversationRetrievalEvaluator.report(List.of(outcome), runConfiguration())
+            .cases()
+            .getFirst();
+    assertThat(caseResult.turns().get(0).conversationNote()).isEmpty();
+    assertThat(caseResult.turns().get(1).conversationNote()).containsExactly("Bezugsjahr 2024");
+  }
+
+  /** Only RAHMEN points reach the decomposition - the same filter production applies. */
+  @Test
+  void anAntwortformPointNeverReachesTheDecomposition() {
+    RecordingPipeline pipeline = new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B)));
+
+    ConversationRetrievalEvaluator.evaluateCase(
+        twoTurnCase("constraint_carryover"),
+        chatMemory(20),
+        pipeline,
+        userMessage ->
+            List.of(
+                new ChatNoteCandidate("Möchte knappe Antworten", ChatNoteItemKind.ANTWORTFORM),
+                new ChatNoteCandidate("Bezugsjahr 2024", ChatNoteItemKind.RAHMEN)),
+        10);
+
+    assertThat(pipeline.notes.get("verw-conv-001#2")).containsExactly("Bezugsjahr 2024");
+  }
+
+  /** The cap is the production one ({@link ChatNoteList}): the oldest point falls out first. */
+  @Test
+  void theNoteIsCappedAndDropsItsOldestPointFirst() {
+    ConversationCase threeTurns =
+        new ConversationCase(
+            "verw-conv-004",
+            "verwaltung",
+            "constraint_carryover",
+            List.of(
+                new ConversationCase.Turn("Frage 1?", "Antwort 1.", List.of(DOC_A), null),
+                new ConversationCase.Turn("Frage 2?", "Antwort 2.", List.of(DOC_B), null),
+                new ConversationCase.Turn("Frage 3?", "Antwort 3.", List.of(DOC_C), null)),
+            null,
+            GoldenCase.ExpectedState.KNOWN_GAP,
+            "2026-09-11",
+            "Grund",
+            null);
+    RecordingPipeline pipeline =
+        new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B), List.of(DOC_C)));
+
+    ConversationRetrievalEvaluator.evaluateCase(
+        threeTurns,
+        chatMemory(20),
+        pipeline,
+        userMessage ->
+            List.of(new ChatNoteCandidate("Angabe zu " + userMessage, ChatNoteItemKind.RAHMEN)),
+        1);
+
+    assertThat(pipeline.notes.get("verw-conv-004#2")).containsExactly("Angabe zu Frage 1?");
+    assertThat(pipeline.notes.get("verw-conv-004#3"))
+        .as("the cap of one drops the point of turn 1 when turn 2's point arrives")
+        .containsExactly("Angabe zu Frage 2?");
+  }
+
+  /** A point the note already holds is not appended twice - the production deduplication. */
+  @Test
+  void aRepeatedPointDoesNotEnterTheNoteTwice() {
+    ConversationCase conversationCase = twoTurnCase("constraint_carryover");
+    RecordingPipeline pipeline = new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B)));
+
+    ConversationRetrievalEvaluator.evaluateCase(
+        conversationCase,
+        chatMemory(20),
+        pipeline,
+        userMessage -> List.of(new ChatNoteCandidate("Bezugsjahr 2024", ChatNoteItemKind.RAHMEN)),
+        10);
+
+    assertThat(pipeline.notes.get("verw-conv-001#2")).containsExactly("Bezugsjahr 2024");
+  }
+
+  /**
+   * The harness reproduces production's defensive catch, not only its prompt: a failing
+   * condensation costs that turn its points and nothing else. Without it a single transient model
+   * error in one turn of one case would discard the whole multi-turn measurement - three runs of
+   * the dataset under the Mehrfachlauf-Regel.
+   *
+   * <p>And it must <b>say so</b>: a silent catch would let a run whose every condensation failed
+   * report a complete measurement while still declaring its note cap as a checked fixed point - the
+   * comparator would hold it comparable, and the numbers would read as evidence that the note does
+   * not help.
+   */
+  @Test
+  void aFailingCondensationCostsItsTurnButNeverTheRun() {
+    ConversationCase threeTurns =
+        new ConversationCase(
+            "verw-conv-006",
+            "verwaltung",
+            "constraint_carryover",
+            List.of(
+                new ConversationCase.Turn("Frage 1?", "Antwort 1.", List.of(DOC_A), null),
+                new ConversationCase.Turn("Frage 2?", "Antwort 2.", List.of(DOC_B), null),
+                new ConversationCase.Turn("Frage 3?", "Antwort 3.", List.of(DOC_C), null)),
+            null,
+            GoldenCase.ExpectedState.KNOWN_GAP,
+            "2026-09-11",
+            "Grund",
+            null);
+    RecordingPipeline pipeline =
+        new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B), List.of(DOC_C)));
+
+    ConversationRetrievalEvaluator.CaseOutcome outcome =
+        ConversationRetrievalEvaluator.evaluateCase(
+            threeTurns,
+            chatMemory(20),
+            pipeline,
+            userMessage -> {
+              if ("Frage 2?".equals(userMessage)) {
+                throw new IllegalStateException("Modell nicht erreichbar");
+              }
+              return List.of(
+                  new ChatNoteCandidate("Angabe zu " + userMessage, ChatNoteItemKind.RAHMEN));
+            },
+            10);
+
+    assertThat(outcome.turns()).as("every turn of the case was still measured").hasSize(3);
+    assertThat(pipeline.notes.get("verw-conv-006#3"))
+        .as("the failed turn contributes nothing and is not caught up on")
+        .containsExactly("Angabe zu Frage 1?");
+
+    var audit =
+        ConversationRetrievalEvaluator.report(List.of(outcome), runConfiguration())
+            .noteCondensation();
+    assertThat(audit.attemptedCondensations()).isEqualTo(3);
+    assertThat(audit.failedCondensations()).isEqualTo(1);
+    assertThat(audit.failedTurnIds())
+        .as("the report names the turn, so a run without a note cannot look like a clean one")
+        .containsExactly("verw-conv-006#2");
+  }
+
+  /** A run measured without a note reports an absent section, not a clean one. */
+  @Test
+  void aRunWithoutANoteHasNoCondensationSection() {
+    ConversationRetrievalEvaluator.CaseOutcome outcome =
+        ConversationRetrievalEvaluator.evaluateCase(
+            twoTurnCase("anaphora_resolution"),
+            chatMemory(20),
+            new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B))));
+
+    assertThat(
+            ConversationRetrievalEvaluator.report(List.of(outcome), runConfiguration())
+                .noteCondensation())
+        .isNull();
+  }
+
+  /** Every condensation succeeding is reported as such, not by the section's absence. */
+  @Test
+  void aRunWhoseCondensationsAllSucceedReportsZeroFailures() {
+    ConversationRetrievalEvaluator.CaseOutcome outcome =
+        ConversationRetrievalEvaluator.evaluateCase(
+            twoTurnCase("constraint_carryover"),
+            chatMemory(20),
+            new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B))),
+            userMessage ->
+                List.of(new ChatNoteCandidate("Angabe zu " + userMessage, ChatNoteItemKind.RAHMEN)),
+            10);
+
+    var audit =
+        ConversationRetrievalEvaluator.report(List.of(outcome), runConfiguration())
+            .noteCondensation();
+    assertThat(audit.attemptedCondensations()).isEqualTo(2);
+    assertThat(audit.failedCondensations()).isZero();
+    assertThat(audit.failedTurnIds()).isEmpty();
+  }
+
+  /** Each case starts from an empty note, exactly as each starts from an empty window. */
+  @Test
+  void noCaseInheritsAnotherCasesNote() {
+    ConversationCase first = twoTurnCase("constraint_carryover");
+    ConversationCase second =
+        new ConversationCase(
+            "verw-conv-005",
+            "verwaltung",
+            "constraint_carryover",
+            first.turns(),
+            null,
+            GoldenCase.ExpectedState.KNOWN_GAP,
+            "2026-09-11",
+            "Grund",
+            null);
+    RecordingPipeline pipeline =
+        new RecordingPipeline(
+            List.of(List.of(DOC_A), List.of(DOC_B), List.of(DOC_A), List.of(DOC_B)));
+
+    ConversationRetrievalEvaluator.evaluateAll(
+        List.of(first, second),
+        chatMemory(20),
+        pipeline,
+        userMessage -> List.of(new ChatNoteCandidate("Bezugsjahr 2024", ChatNoteItemKind.RAHMEN)),
+        10);
+
+    assertThat(pipeline.notes.get("verw-conv-005#1")).isEmpty();
   }
 
   @Test

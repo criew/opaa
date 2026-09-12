@@ -11,11 +11,13 @@ import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnLibraryFixtures;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.vectorstore.SearchRequest;
@@ -32,7 +34,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * check; the fake embedding model ties every vector, so retrieval is asserted at threshold 0, as in
  * {@code DocumentIndexingIntegrationTest}.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class ConfluencePageIndexingIntegrationTest {
 
   private static final String PAGE_URL =
@@ -43,14 +45,14 @@ class ConfluencePageIndexingIntegrationTest {
   @Autowired private VectorStore vectorStore;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
 
   private KnowledgeLibrary library;
+  private UUID owner;
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    documentRepository.deleteAll();
-    UUID owner = UUID.randomUUID();
+    owner = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
             + " organization_id) VALUES (?, ?, 'test-issuer', ?, 'Confluence IT', now(), 'USER', ?)",
@@ -76,6 +78,12 @@ class ConfluencePageIndexingIntegrationTest {
         io.opaa.api.types.ConfluenceEdition.DATA_CENTER,
         List.of(new io.opaa.library.ConfluenceSpaceSelection("ENG", "Engineering")));
     library = libraryRepository.save(library);
+  }
+
+  @AfterEach
+  void removeOwnRows() {
+    ownLibraryFixtures.removeLibraries(library.getId());
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", owner);
   }
 
   @Test
@@ -121,6 +129,9 @@ class ConfluencePageIndexingIntegrationTest {
                 .query("Wie lange dauert ein Bauantrag?")
                 .topK(10)
                 .similarityThreshold(0.0)
+                // The suite shares one vector_store: without this the hit count below would be
+                // whatever every other class of this context happens to have indexed.
+                .filterExpression("library_id == '" + library.getId() + "'")
                 .build());
     assertThat(hits).hasSize(2);
     assertThat(hits)

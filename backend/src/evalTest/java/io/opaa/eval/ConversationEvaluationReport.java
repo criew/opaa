@@ -30,6 +30,8 @@ import java.util.Map;
  * @param expectedStateAudit declared vs. measured case state, at the case-level criterion above.
  * @param topicBleed how many documents of the previous topic stood in the window of a topic change,
  *     {@code null} for a dataset without a {@code topic_switch} case.
+ * @param noteCondensation how many of the run's Gespraechsnotiz condensations failed, {@code null}
+ *     for a run measured without a note - see {@link NoteCondensationAudit}.
  */
 public record ConversationEvaluationReport(
     int conversationMeasurementContractVersion,
@@ -42,6 +44,7 @@ public record ConversationEvaluationReport(
     CaseOutcomeSummary caseOutcomes,
     ExpectedStateAudit.Result expectedStateAudit,
     TopicBleedAudit topicBleed,
+    NoteCondensationAudit noteCondensation,
     List<ConversationCaseResult> cases) {
 
   /**
@@ -51,8 +54,12 @@ public record ConversationEvaluationReport(
    * is counted independently of the raw-vector path's: raising a contract version invalidates every
    * committed baseline of that path, and this path's arrival changes nothing about what the other
    * two measure.
+   *
+   * <p>Version 2 (issue #1522): {@code ollamaImage} became a checked fixed point of the shared
+   * pipeline block, so a committed baseline of this path states which Ollama produced its vectors
+   * (ADR-0012, Nachtrag Ollama-Herkunft). No measured value moves.
    */
-  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 1;
+  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 2;
 
   /**
    * The Einpfad-Regel of docs/features/retrieval-benchmark.md §5, recorded <b>once per report</b>:
@@ -96,6 +103,22 @@ public record ConversationEvaluationReport(
       ConversationMemoryProfile memoryProfile,
       int turnCount) {}
 
+  /**
+   * How the Gesprächsnotiz of this run actually came about (#1487): one condensation call per turn,
+   * and how many of them failed. A failed call costs its turn the points and never the run - which
+   * is exactly why the count has to be reported: a run in which <em>every</em> call failed measures
+   * standalone turns while still declaring {@code conversationNoteCap} as a checked fixed point,
+   * and would otherwise read like a run that proved the note ineffective.
+   *
+   * <p>Deliberately an observation, never a fixed point: the comparator pins what a run measured
+   * <em>with</em>, while this says how well the run went. {@code null} for a run measured without a
+   * note at all - an absent section, not a clean one, the idiom {@link TopicBleedAudit} uses.
+   *
+   * @param failedTurnIds the turns whose condensation failed, in run order
+   */
+  public record NoteCondensationAudit(
+      int attemptedCondensations, int failedCondensations, List<String> failedTurnIds) {}
+
   /** How many cases were solved in full, overall and per case class. */
   public record CaseOutcomeSummary(
       int cases, int solvedCases, Map<String, ClassOutcome> byCategory) {}
@@ -117,6 +140,11 @@ public record ConversationEvaluationReport(
    *
    * @param conversationWindowMessages how many messages this turn's conversation window actually
    *     held - 0 for the first turn of a case, and capped by the production window width.
+   * @param conversationNote the {@code RAHMEN} points this turn received (#1490), empty for the
+   *     first turn of a case and for a run measured without a note. Recorded for the same reason
+   *     {@code subQueries} is: once the search window is narrower than the case, the note is the
+   *     only way an early Rahmenangabe can reach the search at all, so a report without it cannot
+   *     tell "the note never carried the Angabe" from "the decomposition ignored it".
    * @param subQueries the search queries decomposition produced for this turn: the observation the
    *     whole path exists for, since a follow-up question that was not resolved shows up here
    *     before it shows up in the metrics.
@@ -138,6 +166,7 @@ public record ConversationEvaluationReport(
       Integer rankingMargin,
       boolean solved,
       int conversationWindowMessages,
+      List<String> conversationNote,
       int chunksReturned,
       int distinctDocumentsReturned,
       List<String> subQueries,

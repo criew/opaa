@@ -30,10 +30,15 @@ public final class ConversationReportWriter {
         StandardCharsets.UTF_8);
   }
 
-  public static void writeMarkdown(ConversationEvaluationReport report, Path target)
+  /**
+   * @param multiRunSummary the spread across the three runs of the Mehrfachlauf-Regel, or {@code
+   *     null} for a single-run measurement.
+   */
+  public static void writeMarkdown(
+      ConversationEvaluationReport report, MultiRunSummary multiRunSummary, Path target)
       throws IOException {
     Files.createDirectories(target.getParent());
-    Files.writeString(target, renderMarkdown(report), StandardCharsets.UTF_8);
+    Files.writeString(target, renderMarkdown(report, multiRunSummary), StandardCharsets.UTF_8);
   }
 
   /** The console/test-report summary of a run. */
@@ -94,6 +99,7 @@ public final class ConversationReportWriter {
                         "  %-24s %d von %d gelöst\n",
                         caseClass, outcome.solvedCases(), outcome.cases())));
     sb.append('\n');
+    sb.append(renderNoteCondensation(report.noteCondensation()));
     sb.append(renderBleed(report.topicBleed()));
     sb.append(ExpectedStateAudit.renderSummary(report.expectedStateAudit()));
     sb.append(
@@ -103,8 +109,39 @@ public final class ConversationReportWriter {
     return sb.toString();
   }
 
-  /** The same run as a Markdown block — the form a job summary or a PR comment carries. */
-  public static String renderMarkdown(ConversationEvaluationReport report) {
+  /**
+   * How the Gesprächsnotiz of this run came about (#1487). The line is not decoration: a failed
+   * condensation costs its turn the points and never the run, so a run whose model was unreachable
+   * throughout still produces a complete report - one that measures standalone turns while
+   * declaring a note cap as a fixed point. Whoever reads a multi-turn result reads this first.
+   */
+  private static String renderNoteCondensation(
+      ConversationEvaluationReport.NoteCondensationAudit audit) {
+    if (audit == null) {
+      return "Gesprächsnotiz: dieser Lauf wurde ohne Notiz gemessen.\n\n";
+    }
+    if (audit.failedCondensations() == 0) {
+      return format(
+          "Gesprächsnotiz: %d Verdichtungen, alle erfolgreich.\n\n",
+          audit.attemptedCondensations());
+    }
+    return format(
+        "Gesprächsnotiz: %d Verdichtungen, davon %d FEHLGESCHLAGEN (%s) — diese Runden sind ohne "
+            + "Notizpunkte gemessen worden; bei durchgehendem Fehlschlag misst der Lauf trotz "
+            + "gesetztem Notizdeckel Einzelrunden.\n\n",
+        audit.attemptedCondensations(),
+        audit.failedCondensations(),
+        String.join(", ", audit.failedTurnIds()));
+  }
+
+  /**
+   * The same run as a Markdown block — the form a job summary or a PR comment carries. Since issue
+   * #1553 the Mehrfachlauf block is part of it rather than console output alone: the CI job renders
+   * this file into its summary, and without it the spread and the deviation count of a measurement
+   * that is never deterministic would only exist in the workflow log.
+   */
+  public static String renderMarkdown(
+      ConversationEvaluationReport report, MultiRunSummary multiRunSummary) {
     var cfg = report.runConfiguration();
     var profile = cfg.memoryProfile();
     StringBuilder sb = new StringBuilder();
@@ -117,6 +154,13 @@ public final class ConversationReportWriter {
             profile.noteCap(),
             cfg.pipeline().chatModel()));
     sb.append(format("_%s_\n\n", report.metricWindowNote()));
+
+    sb.append("### Mehrfachlauf\n\n");
+    sb.append(
+        multiRunSummary == null
+            ? "Einfachmessung — die Mehrfachlauf-Regel greift nur bei aktiver "
+                + "Teilfragen-Zerlegung (docs/features/retrieval-benchmark.md, Abschnitt 3).\n\n"
+            : "```\n" + MehrfachlaufRule.render(multiRunSummary) + "\n```\n\n");
 
     sb.append("### Je Fallklasse (Runden)\n\n");
     appendMarkdownTable(sb, report.byCategory(), "");
@@ -139,18 +183,20 @@ public final class ConversationReportWriter {
             "| **gesamt** | %d | %d |\n",
             report.caseOutcomes().cases(), report.caseOutcomes().solvedCases()));
 
+    sb.append('\n').append(renderNoteCondensation(report.noteCondensation()));
     sb.append('\n').append(renderBleed(report.topicBleed())).append('\n');
     sb.append(ExpectedStateAudit.renderMarkdown(report.expectedStateAudit()));
-    sb.append("\n### Teilfragen je Runde\n\n");
+    sb.append("\n### Gesprächsnotiz und Teilfragen je Runde\n\n");
     for (ConversationCaseResult caseResult : report.cases()) {
       sb.append(format("- `%s` (%s)\n", caseResult.id(), caseResult.category()));
       for (TurnResult turn : caseResult.turns()) {
         sb.append(
             format(
-                "  - `%s` %s — Fenster %d Nachrichten, Teilfragen %s\n",
+                "  - `%s` %s — Fenster %d Nachrichten, Notiz %s, Teilfragen %s\n",
                 turn.turnId(),
                 turn.solved() ? "gelöst" : "nicht gelöst",
                 turn.conversationWindowMessages(),
+                turn.conversationNote(),
                 turn.subQueries()));
       }
     }

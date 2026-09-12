@@ -78,6 +78,7 @@ class SpecEnumParityTest {
         Arguments.of("DiagnosticTargetKind", DiagnosticTargetKind.values()),
         Arguments.of("ChatStatus", ChatStatus.values()),
         Arguments.of("ChatRole", ChatRole.values()),
+        Arguments.of("ChatNoteItemKind", ChatNoteItemKind.values()),
         Arguments.of("ColorScheme", ColorScheme.values()),
         Arguments.of("NotificationType", NotificationType.values()),
         Arguments.of("ScheduleFrequency", ScheduleFrequency.values()),

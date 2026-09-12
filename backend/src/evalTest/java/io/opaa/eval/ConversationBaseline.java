@@ -68,9 +68,11 @@ public record ConversationBaseline(
   }
 
   /**
-   * The load-time guards of {@link PipelineBaseline#load}, plus the two this path adds: a baseline
-   * whose fixed points claim neither decomposition nor a chat model describes a run that measured
-   * nothing this path is about, and would be compared against a real run as if it had.
+   * The load-time guards of {@link PipelineBaseline#load} - including the external-origin guard of
+   * {@link BaselineOllamaOrigin}, which this path inherits with the shared fixed-point block - plus
+   * the two this path adds: a baseline whose fixed points claim neither decomposition nor a chat
+   * model describes a run that measured nothing this path is about, and would be compared against a
+   * real run as if it had.
    */
   private static void validate(ConversationBaseline baseline, Path file) {
     var fixedPoints = baseline.fixedPoints();
@@ -81,6 +83,8 @@ public record ConversationBaseline(
               + " carries no fixedPoints.pipeline block — without it no fixed point of the run can "
               + "be compared and every metric check would run against an unknown configuration.");
     }
+    BaselineOllamaOrigin.refuseExternalOrigin(
+        fixedPoints.pipeline().ollamaImage(), file, "Conversation baseline");
     if (!fixedPoints.pipeline().queryDecompositionEnabled()
         || fixedPoints.pipeline().chatModel() == null) {
       throw new IllegalStateException(

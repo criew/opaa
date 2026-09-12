@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface MailSettingsRepository extends JpaRepository<MailSettings, Integer> {
 
-  /** The one row; created by changeset 011-mail-settings, never by application code. */
+  /** The one row; created by changeset 012-mail-settings, never by application code. */
   default Optional<MailSettings> findSingleton() {
     return findById(MailSettings.SINGLETON_ID);
   }

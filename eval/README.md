@@ -200,12 +200,19 @@ Baseline-Vergleich damit ab.
 - **Ein solcher Lauf ist nicht baseline-tauglich** — analog zum GPU-Opt-out oben: CPU- und
   GPU-Embedding-Kernel liefern nicht notwendigerweise bitgleiche Vektoren, und ein natives
   Host-Ollama ist ohnehin nicht dieselbe, reproduzierbare Umgebung wie der gepinnte
-  `ollama/ollama:0.6.5`-Testcontainer. `checkRetrievalBaseline`/`checkCityLandmarksRetrievalBaseline`
-  gegen einen solchen Lauf laufen zu lassen ist ohne Aussagekraft; beide Baseline-Vergleiche brechen
-  deshalb hart ab, wenn der Report von einem externen Endpunkt stammt — der Rohvektor-Pfad über
+  `ollama/ollama:0.6.5`-Testcontainer. Einen `check…RetrievalBaseline`-Lauf gegen einen solchen
+  Report zu stellen ist ohne Aussagekraft; **alle drei** Messpfade brechen deshalb hart ab, wenn der
+  Report von einem externen Endpunkt stammt — der Rohvektor-Pfad über
   `BaselineComparator.requireBaselineComparable`, der Pipeline-Pfad über
-  `PipelineBaselineComparator.requireBaselineComparable` (beide Pfade teilen sich denselben Lauf und
-  denselben Index, also gilt der Vorbehalt für beide).
+  `PipelineBaselineComparator.requireBaselineComparable`, der Mehrrunden-Pfad über
+  `ConversationBaselineComparator.requireBaselineComparable` (alle Pfade teilen sich denselben Lauf
+  und denselben Index, also gilt der Vorbehalt für alle). Jeder Einstiegspunkt ruft die Prüfung
+  **vor** dem Laden der Baseline.
+- **Auch eine daraus gezogene Baseline wird abgewiesen** (Issue #1522): Der Report trägt in
+  `ollamaImage` den Wert `extern: <url>` statt des gepinnten Images, und `ollamaImage` ist seither
+  ein geprüfter Festpunkt jedes Baseline-Typs. Eine Baseline-Datei mit diesem Präfix scheitert beim
+  Laden mit benannter Begründung — der Punkt, an dem der Fehler entsteht, ist das Ziehen, nicht der
+  nächste Vergleich (siehe `eval/baseline/README.md`, „Ollama-Herkunft").
 - Ohne die Property ist das Verhalten byte-identisch zum bisherigen Stand (Testcontainer, CPU) — CI
   setzt die Property nie, bleibt also unberührt.
 
@@ -384,6 +391,14 @@ Datensatz: `eval/golden/<domäne>-conversations.json` (siehe
 Abschnitt „Messung".
 
 ```bash
+# Messung und Baseline-Vergleich in einem Aufruf (Issue #1553) — die Task setzt beide
+# Properties selbst:
+./gradlew checkVerwaltungConversationBaseline
+
+# Nur messen, ohne Urteil gegen die Baseline:
+./gradlew evaluateVerwaltungConversations
+
+# Gleichwertig, mit den Properties von Hand:
 ./gradlew evaluateVerwaltungRetrieval \
   -Dopaa.eval.queryDecomposition=true \
   -Dopaa.eval.runConversations=true
@@ -413,7 +428,9 @@ Was der Schritt tut, je Fall:
 
 Bericht: `build/eval-reports/pipeline-conversations-<domäne>.json` und `.md` (nicht committet), mit
 `overall`, `byCategory` (`anaphora_resolution`, `topic_switch`, `constraint_carryover`), `byTurn`
-(je Rundennummer), den Teilfragen je Runde, dem Fall-Urteil je Klasse, dem Zustandsfeld-Audit und
+(je Rundennummer), den Notizpunkten und Teilfragen je Runde (`conversationNote`/`subQueries` —
+beides zusammen, weil sonst nicht zu trennen ist, ob eine Angabe die Notiz nie erreicht hat oder die
+Zerlegung sie ignoriert hat), dem Fall-Urteil je Klasse, dem Zustandsfeld-Audit und
 der **Bleed-Zahl**: wie viele Dokumente des Vorthemas in der vom Fall benannten Wechselrunde
 (`topic_switch_turn`) eines `topic_switch`-Falls noch im Fenster standen.
 
@@ -422,8 +439,22 @@ diesen Pfad (Einpfad-Regel, `docs/features/retrieval-benchmark.md`, Abschnitt 5)
 Eigenschaft des Datensatzes und steht deshalb einmal je Bericht — nicht als
 `expected_state_exception` an jedem Fall, was das Zustandsfeld-Audit dauerhaft stumm stellte.
 
-Der Schritt ist manuell oder per Label zu starten, **nie nächtlich**: Je Runde ein Chat-Aufruf, mal
-drei Läufe — deutlich über dem Budget des nächtlichen Jobs.
+Baseline-Vergleich: `eval/baseline/pipeline-<domäne>-conversations.json`, geladen von
+`ConversationBaselineRegressionCheck` und verglichen nach denselben Regeln wie der Pipeline-Pfad
+(`ConversationBaselineComparator`, ADR-0013). Das Urteil hat dieselben **drei** Ausgänge wie dort:
+„keine Regression", „Regression" und „unvergleichbar" (`ConversationBaselineVerdict`). Der vierte
+Ausgang „nicht beurteilt", den dieser Pfad zwischen #1553 und #1490 trug, ist mit der Neuziehung
+der Baseline entfallen — er galt zwei namentlich genannten Festpunkten, deren Neumessung
+angekündigt war (ADR-0012, Entscheidung 50). Die Delta-Tabelle landet in
+`build/eval-reports/conversation-baseline-comparison-<domäne>.md`.
+
+In der CI trägt diesen Pfad seit Issue #1553 ein **eigener Job** `conversations` in
+`.github/workflows/retrieval-regression.yml` — mit denselben Auslösern wie die
+Einzelfragen-Domänen (nächtlich, `workflow_dispatch`, Label `evaluation`), aber eigenem
+Zeitbudget: Je Runde ein Chat-Aufruf für die Zerlegung und einer für die Notiz, mal drei Läufe.
+Ein eigener Job und nicht ein weiterer Eintrag der `evaluate`-Matrix, weil dieser Pfad nur mit
+aktiver Zerlegung misst und die beiden Baselines dieser Domäne ohne sie gezogen wurden — ein
+Harness-Lauf kann nicht beides bedienen.
 
 ### Report lesen
 

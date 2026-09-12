@@ -285,6 +285,52 @@ wird nie mit ihr verglichen.
   Vorsignierte Links (`GetObject` mit Ablauf) sind Zielbild, weil sie eine Signatur mit dem
   Bibliotheksschlüssel an den Browser geben und ein eigenes Rechtemodell brauchen (wer den Beleg
   sieht, darf dann das Objekt laden).
+
+  > **Nachtrag (Issue #1524, 09/2026): kein Beleg-*Link*, aber ein Beleg-*Abruf*.** Die Annahme
+  > dieses Punktes — ein Objekt wird nur von einem Lauf gelesen — galt für die **Indexierung** und
+  > wurde stillschweigend auch für das Lesen eines Originals mitgenommen. Das trägt nicht: Anders
+  > als eine Confluence-Seite, deren Beleg über den Tieflink zur Quelle führt, hat ein S3-Dokument
+  > *keinen* zweiten Weg. Der Klick auf den Beleg endete deshalb im 404 von
+  > `LibraryDocumentService#loadOriginal`, obwohl das Original vorhanden war.
+  >
+  > Der Abruf eines Originals ist seither ein **zweiter, bewusst hinzugefügter Lesepfad** neben dem
+  > Lauf: `S3OriginalAccess` baut die Verbindung der Bibliothek wie ein Lauf, lädt das Objekt in
+  > eine temporäre Datei und liefert es als Strom aus, der die Datei beim Schließen entfernt. Was
+  > dabei gilt und warum:
+  >
+  > - **Keine eigene Rechtelogik.** Die Prüfung auf `VIEWER` der Bibliothek steht in `loadContent`
+  >   vor jeder Verzweigung; dieser Pfad erbt sie und fügt keine zweite hinzu.
+  > - **Nur innerhalb der Geltungsbereiche.** Ein Schlüssel, der in keinem konfigurierten Bereich
+  >   mehr liegt (Bereiche wurden nach der Indexierung enger gefasst), ist nicht abrufbar. Geprüft
+  >   wird der **Bereich**, nicht die Ein-/Ausschlussmuster: Der Bereich sagt, mit welchem Bucket
+  >   und Präfix diese Bibliothek überhaupt sprechen darf — er bestimmt auch den Bucket-Hostnamen,
+  >   den die Zieladressprüfung freigeben muss —, das Muster sagt nur, was davon in den Index soll.
+  >   Ein Muster, das ein bereits aufgenommenes Objekt seither ausschließt, entfernt es mit dem
+  >   nächsten Vollabgleich; bis dahin bleibt sein Beleg abrufbar.
+  > - **Zieladressprüfung bleibt.** Anders als bei der Originalablage (ADR-0030, Entscheidung 8) ist
+  >   der Endpoint hier eine Benutzereingabe; der Client entsteht über `S3ClientFactory` mit deren
+  >   Prüfung, nicht daran vorbei.
+  > - **Kurze Geduld statt Laufgeduld.** `createForProbe` (kurzes Zeitlimit, eine Wiederholung) —
+  >   der Abruf hängt an einem Anfrage-Thread, nicht an einem unbeaufsichtigten Lauf.
+  > - **Obergrenze** wie im Lauf: `max-object-size-bytes`, damit ein im Bucket ausgetauschtes,
+  >   übergroßes Objekt das Temp-Verzeichnis nicht füllt.
+  > - **Zwei Fehlerbilder wie bei der Originalablage (ADR-0030, Entscheidung 9):** Objekt weg,
+  >   archiviert, zu groß oder mit `403` beantwortet → dasselbe `404` wie jeder andere „gibt es
+  >   nicht"-Fall, ohne Unterscheidbarkeit; Speicher nicht erreichbar oder die Anfrage als ganze
+  >   abgelehnt → `503`, dessen Meldung keine Einzelheit der Quellkonfiguration nennt. Das `403`
+  >   gehört zum ersten Bild, weil ein Speicher ohne `s3:ListBucket` einen **fehlenden** Schlüssel
+  >   mit `403` statt `404` beantwortet — als Speicherstörung gelesen, würde ein gelöschtes Objekt
+  >   „derzeit nicht erreichbar" melden. Die Originalablage löst denselben Fall genauso auf.
+  > - **Die Antwort steht in der OpenAPI-Spezifikation.** `getDocumentContent` deklariert seither
+  >   `503` und sagt, für welche Quellentypen der Satz „jede Störung wird als dasselbe `404`
+  >   beantwortet" noch gilt: für die lokalen und die durchgereichten, nicht für die beiden über
+  >   einen Objektspeicher bedienten (dieser hier und die Originalablage nach ADR-0030).
+  >
+  > Unverändert bleibt: `Document#getDeepLinkSourceUrl` liefert für `S3` weiter `null` (`s3://`
+  > öffnet kein Browser), die Dokumentliste zeigt Bucket und Schlüssel als Text, und **vorsignierte
+  > Links bleiben Zielbild** — der Abruf läuft durch OPAA, nicht über eine Signatur im Browser.
+  > Damit fällt die Annahme, S3-Objekte würden nur innerhalb eines Laufs gelesen: Ein Leserecht auf
+  > die Bibliothek genügt seither, jedes Objekt ihres Bestands wiederholt und auf Zuruf zu laden.
 - **Ordner:** Die Präfixsegmente eines Schlüssels relativ zum Präfix seines Bereichs werden als
   schreibgeschützte Ordner gespiegelt (`SourceFolderMirror`, #1277; `S3` kommt in
   `LibraryFolderService.MIRRORED_SOURCE_TYPES`). Bei genau **einem** Bereich ist dessen Präfix die
@@ -602,8 +648,11 @@ Kompaktkonstruktor liest keine Spring-Property.
   für die HTTP-Konnektoren, einmal nachgebildet am SDK-Client. Eine Änderung an der einen Stelle
   erreicht die andere nicht von selbst; Entscheidung 8 listet die Stücke, damit ein Review sie
   abhaken kann.
-- **Kein Beleg-Link** im ersten Ausbau; wer das Objekt öffnen will, braucht den Pfad und einen
-  eigenen Zugang zum Speicher.
+- **Kein Beleg-Link** im ersten Ausbau; wer das Objekt außerhalb von OPAA öffnen will, braucht den
+  Pfad und einen eigenen Zugang zum Speicher. Seit dem Nachtrag zu Entscheidung 5 (#1524) lädt der
+  Klick auf den Beleg das Original **durch OPAA** — das kostet je Klick einen `GetObject` gegen den
+  Speicher, bei AWS also Abrufentgelt, und es macht jedes Objekt des Bestands für jeden
+  Leseberechtigten der Bibliothek wiederholt ladbar.
 - **Die Anlage ist netzabhängig** (Endpoint-Prüfung vor dem Speichern), wie bei Confluence.
 - **Umbenennen und Verschieben bauen Dokumente neu** (Identität ist der Schlüssel), mit neuer
   Zerlegung und neuen Einbettungen. Ein Bucket, in dem Präfixe regelmäßig umgeräumt werden, kostet

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 
-import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
@@ -21,6 +20,7 @@ import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnLibraryFixtures;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -34,16 +34,9 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -58,26 +51,8 @@ import org.springframework.web.multipart.MultipartFile;
  * the part a mocked {@link LibraryDocumentService} in the unit test cannot prove - that a recursive
  * delete actually removes every contained document's row, vector store chunks and stored file.
  */
-// Own @DynamicPropertySource (below) means Spring's context cache still keys this to its own
-// context regardless of the shared @OpaaIntegrationTest base - documented exception per AGENTS.md.
 @OpaaIntegrationTest
 class LibraryFolderServiceIntegrationTest {
-
-  @TempDir static Path uploadStorageDir;
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("opaa.upload.storage-path", () -> uploadStorageDir.toAbsolutePath().toString());
-  }
-
-  @TestConfiguration
-  static class TestConfig {
-    @Bean
-    @Primary
-    EmbeddingModel testEmbeddingModel() {
-      return new FakeEmbeddingModel();
-    }
-  }
 
   @Autowired private LibraryFolderService folderService;
   @Autowired private LibraryDocumentService documentService;
@@ -89,6 +64,7 @@ class LibraryFolderServiceIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
 
@@ -121,7 +97,6 @@ class LibraryFolderServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
 
@@ -145,24 +120,16 @@ class LibraryFolderServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    documentRepository.findByLibraryId(libraryId).forEach(documentRepository::delete);
-    folderRepository
-        .findByLibraryIdAndParentFolderIdOrderByNameAsc(libraryId, null)
-        .forEach(this::deleteRecursively);
-    libraryRepository.deleteById(libraryId);
+    // Chunks, documents and runs of this class's own library, then the library itself - its
+    // folders go with it (fk_library_folders_library is ON DELETE CASCADE).
+    jdbcTemplate.update("DELETE FROM library_visibility_history WHERE library_id = ?", libraryId);
+    ownLibraryFixtures.removeLibraries(libraryId);
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId(), viewer.getId()));
     membershipHistoryRepository.deleteByUserIdIn(List.of(editor.getId(), viewer.getId()));
     userRepository.deleteById(editor.getId());
     userRepository.deleteById(viewer.getId());
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
-  }
-
-  private void deleteRecursively(LibraryFolder folder) {
-    folderRepository
-        .findByLibraryIdAndParentFolderIdOrderByNameAsc(libraryId, folder.getId())
-        .forEach(this::deleteRecursively);
-    folderRepository.delete(folder);
   }
 
   private MultipartFile textFile(String originalFileName, String content) {

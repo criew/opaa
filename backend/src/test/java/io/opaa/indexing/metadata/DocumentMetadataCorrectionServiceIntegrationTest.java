@@ -25,8 +25,9 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnLibraryFixtures;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -41,6 +42,7 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,11 +54,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * rewrite, the Sammelzuweisung with rejected foreign ids - and the promise that a manual value
  * survives the deterministic Bestandslauf.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class DocumentMetadataCorrectionServiceIntegrationTest {
 
-  private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("metadata-correction");
+  private static final Path classTempDir = OpaaTestDirectory.subdirectory("metadata-correction");
 
   @Autowired private DocumentMetadataCorrectionService correctionService;
   @Autowired private DocumentMetadataService documentMetadataService;
@@ -68,6 +69,7 @@ class DocumentMetadataCorrectionServiceIntegrationTest {
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private LibraryAccessService accessService;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
 
   private KnowledgeLibrary library;
   private KnowledgeLibrary otherLibrary;
@@ -78,11 +80,7 @@ class DocumentMetadataCorrectionServiceIntegrationTest {
 
   @BeforeEach
   void setUp() throws IOException {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    jdbcTemplate.update("DELETE FROM documents");
-    jdbcTemplate.update("DELETE FROM asset_grants");
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE name LIKE 'Korrektur%'");
-    jdbcTemplate.update("DELETE FROM users WHERE email LIKE 'metadata-correction-%'");
+    removeOwnFixtures();
     owner = user("owner", SystemRole.USER);
     editor = user("editor", SystemRole.USER);
     viewer = user("viewer", SystemRole.USER);
@@ -245,7 +243,12 @@ class DocumentMetadataCorrectionServiceIntegrationTest {
         MetadataValueInput.date(LocalDate.of(2024, 5, 17), DatePrecision.YEAR),
         editor);
     // The Altbestand shape: the run has to re-extract this document from its file.
-    jdbcTemplate.update("UPDATE documents SET metadata_extraction_version = NULL");
+    // Scoped to this class's own library: on the shared database a blanket UPDATE is worse
+    // than a blanket DELETE - it leaves the neighbour's rows in place with changed content,
+    // so nothing fails, the next class just silently asserts against the wrong values.
+    jdbcTemplate.update(
+        "UPDATE documents SET metadata_extraction_version = NULL WHERE library_id = ?",
+        library.getId());
 
     backfillService.backfillBatch(Organization.DEFAULT_ID, library.getId(), 10);
 
@@ -491,6 +494,18 @@ class DocumentMetadataCorrectionServiceIntegrationTest {
     }
     assertThat(replayed.keySet()).containsExactlyInAnyOrderElementsOf(stored.keySet());
     replayed.forEach((key, after) -> assertThat(after).containsEntry("value", stored.get(key)));
+  }
+
+  // Both hooks: the @BeforeEach call removes what a method aborted halfway left behind, the
+  // @AfterEach call what this one created. Found by this class's own library name and user e-mail
+  // pattern, never by table - the whole suite shares one database.
+  @AfterEach
+  void removeOwnFixtures() {
+    List<UUID> ownLibraryIds =
+        jdbcTemplate.queryForList(
+            "SELECT id FROM knowledge_libraries WHERE name LIKE 'Korrektur%'", UUID.class);
+    ownLibraryFixtures.removeLibraries(ownLibraryIds.toArray(new UUID[0]));
+    jdbcTemplate.update("DELETE FROM users WHERE email LIKE 'metadata-correction-%'");
   }
 
   private CurrentUser user(String name, SystemRole role) {

@@ -162,6 +162,39 @@ Schlüsselschema: `<key-prefix><libraryId>/<uuid><endung>`, mit leerem `key-pref
 gehört genau einer Organisation, und die Mandantenfähigkeit (#1442) kann über `key-prefix` oder
 einen eigenen Bucket je Haus trennen, ohne das Schema zu ändern.
 
+> **Nachtrag (Issue #1544, 11.09.2026): das Organisationssegment kommt doch — `<key-prefix><organizationId>/<libraryId>/<uuid><endung>`, und `<storage-path>/<organizationId>/<libraryId>/<uuid><endung>` auf der Platte.**
+> Die Begründung oben stimmt, beantwortet aber die falsche Frage. „Eine Bibliothek gehört genau
+> einer Organisation" gilt, solange es die Bibliothekszeile gibt. #1518 ist der Fall, in dem es sie
+> nicht gibt: Ein `DeleteObject` schlägt fehl, danach wird die Bibliothek gelöscht — und vom
+> zurückgebliebenen Objekt führt kein Weg mehr zu seiner Organisation. Ein Aufräumlauf über die
+> **ganze** Ablage, den der Punkt „Löschen einer Bibliothek" in Entscheidung 11 bewusst nicht
+> vorsah, kann in einer mandantenfähigen Installation deshalb die Grenze nicht ziehen, die er
+> einhalten müsste. Die Redundanz, die Entscheidung 4 als überflüssig verworfen hat, ist genau das,
+> was diese Grenze trägt: **Jedes abgelegte Original nennt seine Organisation, ohne dass eine
+> Datenbankzeile befragt werden muss.**
+>
+> Was sich mit ändert und was nicht:
+>
+> - **Beide Ablagen ziehen gemeinsam.** Sonst wäre die Umstellung zwischen ihnen (Entscheidung 5)
+>   keine Präfixersetzung mehr, und das Handbuchkapitel dazu würde falsch. Die Gleichheit der
+>   beiden Strukturen ist die tragende Eigenschaft, nicht die konkrete Tiefe.
+> - **Die Zugehörigkeitsprüfung beider Adapter prüft künftig beide Segmente.** Ein Locator, dessen
+>   Organisationssegment nicht zur Bibliothek passt, löst auf „nicht vorhanden" auf — dieselbe
+>   Sicherheitseigenschaft, die Entscheidung 3 für die Bibliothek festlegt, eine Ebene höher und
+>   ununterscheidbar von jedem anderen „gibt es nicht"-Fall.
+> - **Der Aufräumlauf (#1478) listet weiterhin je Bibliothek**, nur unterhalb des neuen, längeren
+>   Präfixes. Der Lauf ohne Bibliotheksbezug ist weiterhin #1518; dieser Nachtrag schafft nur seine
+>   Voraussetzung.
+> - **Buckets je Organisation bleiben unberührt möglich** (#1442). Die physische Trennung ist die
+>   stärkere und wird eine Frage der Konfiguration, nicht des Schemas; das Segment im Schlüssel
+>   verbaut sie nicht, sondern macht sie im geteilten Bucket entbehrlich.
+> - **Kein Bestandsnachzug im Code**, keine Doppellese-Phase, keine Bestandserkennung. Es gibt keine
+>   Produktivinstallation, und genau deshalb ist der Zeitpunkt richtig: Nach der ersten wäre
+>   dieselbe Änderung ein Migrationsprojekt. Für Entwicklungsrechner und die Demo steht ein
+>   dokumentierter Einmalschritt im Handbuch — anders als Entscheidung 5 ist er **keine** reine
+>   Präfixersetzung, weil die Organisation je Bibliothek nachgeschlagen werden muss. Die Demo baut
+>   sich ohnehin bei jedem Lauf neu auf.
+
 **Anhangzeilen sind die Ausnahme.** Ihr `file_path` ist synthetisch
 (`<elternpfad>/<index>/<dateiname>`) und benennt kein abgelegtes Objekt. Der Store löst ihn nie auf:
 auf den **Lesewegen** löst der Store ihn nie auf, weil `isReExtractableAttachment` die Form am
@@ -382,7 +415,8 @@ Clientbau deutlich mehr hängt als am Prüfschritt. Ersetzt durch Entscheidung 8
 
 ## Referenzen
 
-- Epic #1440, Umsetzung in #1475, #1476, #1477, #1478
+- Epic #1440, Umsetzung in #1475, #1476, #1477, #1478; Nachtrag zu Entscheidung 4 in #1544
+  (Voraussetzung für #1518)
 - [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md) — Quellkonfiguration in der Bibliothek
 - [ADR-0021](0021-single-instance-betrieb.md) — Single-Instance-Annahme
 - [ADR-0022](0022-anhang-als-eigenes-dokument.md) — Anhang als eigenes Dokument

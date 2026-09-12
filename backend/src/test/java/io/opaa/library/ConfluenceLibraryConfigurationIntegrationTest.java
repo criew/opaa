@@ -32,7 +32,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.TestPropertySource;
 
 /**
  * {@code CONFLUENCE} as a library's quellentyp (ADR-0023, #1133): configuration validated per
@@ -40,13 +39,11 @@ import org.springframework.test.context.TestPropertySource;
  * and the multi-library model of the epic - several libraries against the same instance with the
  * same or different tokens and overlapping selections, created by different people.
  */
-// Own Spring context on purpose: creating a CONFLUENCE library re-checks the edition against the
-// instance (ADR-0023, Entscheidung 2), and the only instance a test can offer is the loopback test
-// double - which the default target validation rejects. Every other @OpaaIntegrationTest class
-// keeps
-// the shared context; this property split is the one this class needs.
+// Creating a CONFLUENCE library re-checks the edition against the instance (ADR-0023,
+// Entscheidung 2), and the only instance a test can offer is the loopback test double - reachable
+// because the shared signature allowlists 127.0.0.1/localhost by name, with the validation itself
+// left on.
 @OpaaIntegrationTest
-@TestPropertySource(properties = "opaa.indexing.target-validation.enabled=false")
 class ConfluenceLibraryConfigurationIntegrationTest {
 
   private FakeConfluenceServer cloud;

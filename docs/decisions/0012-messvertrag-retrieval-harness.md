@@ -919,6 +919,11 @@ Indizierungslauf. Er gehorcht der Mehrfachlauf-Regel (drei Läufe, Median nach n
 `docs/features/retrieval-benchmark.md`) und ist damit **nicht** nächtlich tragbar: je Runde ein
 Chat-Aufruf, mal drei.
 
+> **Überholt durch Entscheidung 49 (Issue #1553):** Der Pfad läuft nächtlich — aber in einem
+> **eigenen** Job mit eigenem Zeitbudget, nicht im Job der Einzelfragen-Domänen, dessen Budget er
+> tatsächlich sprengte. Die Opt-in-Mechanik bleibt unverändert; sie wird seither von der Task
+> gesetzt statt vom Aufrufer.
+
 Fehlt die Zerlegung, das Chat-Modell oder der Datensatz, meldet sich der Lauf als **nicht
 ausgeführt** und schreibt nichts. Das ist die Anwendung von Entscheidung 15 auf diesen Pfad: Ohne
 Zerlegung erreichte eine Rückfrage die Suche als Rückfall-Verkettung, und die Zahlen beschrieben den
@@ -959,3 +964,185 @@ Anwohnerparkausweis?“, das Beispiel der Spezifikation selbst), und zählte dan
 Vorthemen-Dokument als Bleed. Die Kuratierungsregel „mindestens sechs unterschiedliche Treffermengen
 je Klasse“ fördert dieses Muster zusätzlich. Das deckt sich mit
 `docs/features/conversation-memory.md`: Themenwechsel werden nicht erkannt — auch nicht im Harness.
+
+---
+
+## Nachtrag: Ollama-Herkunft im Messvertrag (Issue #1522)
+
+**Datum:** 2026-09-11 · **Betrifft:** alle drei Messpfade, alle committeten Baselines.
+
+Seit [#1076](https://github.com/criew/opaa/issues/1076) darf ein Lauf per
+`-Dopaa.eval.ollamaBaseUrl` gegen ein bereits laufendes Host-Ollama zeigen, weil die
+Container-GPU auf der Entwicklungsmaschine nicht verfügbar ist (AMD). Das ist ausdrücklich ein
+Iterationswerkzeug: Ein solcher Lauf embeddet womöglich auf der GPU, deren Kernel nicht bitgleich
+zur CPU rechnen, und ist in der CI nicht reproduzierbar. Der Report weist das aus
+(`externalOllamaEndpoint: true`, `ollamaImage: "extern: …"`), und `requireBaselineComparable`
+bricht den Vergleich eines solchen Reports ab.
+
+Die committete **Baseline** trug diese Eigenschaft bisher nirgends. `ollamaImage` war Report-Feld,
+aber kein Festpunkt; beim Ziehen fiel es weg, und die CPU-Herkunft stand nur als Prosa im
+`notes`-Feld. Damit hing eine tragende Eigenschaft des Messvertrags an der Sorgfalt der ziehenden
+Person statt an einer Prüfung: Ein versehentlich aus einem GPU-Lauf gezogener Vergleichspunkt fiele
+erst auf, wenn die CI dauerhaft Abweichungen meldet — und würde dann vermutlich als Regression
+fehlgedeutet.
+
+### 45. `ollamaImage` ist geprüfter Festpunkt aller drei Baseline-Typen
+
+`Baseline.FixedPoints` und `PipelineBaseline.FixedPoints` führen je ein neues Feld `ollamaImage`;
+der Mehrrunden-Pfad erbt es mit dem geteilten Pipeline-Block (Entscheidung 40). Der Wert ist das
+gepinnte Testcontainer-Image des Laufs (heute `ollama/ollama:0.6.5`). Er wird wie jeder andere
+Festpunkt gegen die Laufkonfiguration verglichen: Weicht er ab, ist die Baseline **unvergleichbar**,
+und es wird keine Metrik geprüft. Das ist kein Sonderfall, sondern die Anwendung von Entscheidung 6
+— dasselbe Modell hinter einer anderen Ollama-Fassung ausgeliefert ist nicht nachweislich dieselbe
+Messung, und der Modell-Digest allein beantwortet diese Frage nicht: Er beschreibt die Gewichte,
+nicht die Laufzeit, die sie auswertet.
+
+**Zusätzlich eine Ladeprüfung** (`BaselineOllamaOrigin`, aufgerufen aus allen drei `load`-Methoden).
+Sie weist genau einen Fall ab: eine Datei, deren `ollamaImage` mit dem Marker `extern: ` beginnt.
+
+Die Prüfung ist eine Aussage über die **Datei**, nicht über einen späteren Lauf. Ein *Report* aus
+einem externen Lauf kommt schon heute nicht in einen Vergleich — `requireBaselineComparable` bricht
+auf `externalOllamaEndpoint` ab, und alle vier Einstiegspunkte rufen es **vor** dem Laden der
+Baseline. Was diese Prüfung ergänzt, ist das andere Ende: Der Fehler, dass die *committete Baseline*
+selbst aus einem solchen Lauf stammt, ist ein Ziehfehler, und der einzige richtige Ausgang ist ein
+neuer Messlauf. Genau das sagt die Meldung. Der Fixpunktvergleich allein sagte stattdessen
+„Messgrundlage geändert" — richtig als Urteil über zwei Läufe, aber irreführend über eine Datei, die
+nie hätte entstehen dürfen.
+
+Den Marker definiert `EvalOllamaEndpoint` einmal und liest ihn dort zurück; die Zeichenkette, die
+ein Lauf schreibt, und die, für die eine Baseline abgelehnt wird, können so nicht auseinanderlaufen.
+
+**Ein fehlender Wert wird nicht abgewiesen**, sondern folgt dem Muster von `metadataFilterEnabled`:
+Er lädt als `null` und erscheint im Vergleich als unvergleichbarer Fixpunkt (`null` gegen das
+gepinnte Image). Das ist die mildere Behandlung mit Absicht — der Regressionsjob schreibt dann noch
+seine Delta-Tabelle und benennt das Feld darin, statt mit einer Ausnahme und ohne Bericht
+abzubrechen. Abgewiesen wird nur, was aktiv falsch ist, nicht was unvollständig ist.
+
+**Kein neuer Guard im Harness.** `PipelineHarnessSupport#requireMeasurableConfiguration` prüft, ob
+ein Lauf etwas anderes misst, als seine Feldnamen behaupten — ein Lauf gegen einen externen
+Endpunkt misst korrekt und darf stattfinden, er darf nur keine Baseline werden. Genau diese
+Unterscheidung liegt bei `requireBaselineComparable` und ab jetzt zusätzlich beim Laden.
+
+**Zwei Docker-freie Wächter** halten die Zusage, die ein Fixpunkt nur mit ihnen einlöst: Das Image
+ist eine Java-Konstante (`EvalOllamaEndpoint.PINNED_IMAGE`, seit diesem Nachtrag einmal statt dreimal
+im Quelltext), die Baselines sind JSON-Dateien, und nichts sonst verbindet beide.
+`PipelinePathIsolationTest` hält deshalb die sechs committeten Baselines gegen die Konstante, und
+sein Gegenstück auf dem Mehrrunden-Pfad prüft dasselbe für die dortige Baseline, sobald sie existiert.
+Ohne sie fiele ein bewusster Image-Wechsel ohne Baseline-Nachzug erst nach über einer Stunde im
+nächtlichen Docker-Lauf auf — und dann für alle Domänen gleichzeitig.
+
+### 46. Alle drei Messverträge steigen: Rohvektor 9 → 10, Pipeline 12 → 13, Mehrrunden 1 → 2
+
+Ein neuer Festpunkt erweitert, was „dieselbe Messung" heißt (Entscheidung 6) — auf allen drei
+Pfaden gleichzeitig, weil alle drei ihre Vektoren aus demselben Ollama beziehen (wie beim
+Ingestion-Fixpunkt aus Entscheidung 29, anders als beim Volltextpfad aus Entscheidung 23). Die
+Zählungen bleiben unabhängig voneinander (Entscheidung 16/41), sie bewegen sich hier nur im selben
+Schritt.
+
+### 47. Reine Fixpunkt-Ergänzung, kein neuer Messlauf
+
+Die sechs committeten Baselines (drei Domänen × zwei Pfade) wurden **ohne** neuen
+`evaluateRetrieval`-Lauf nachgezogen. Eingetragen ist `ollama/ollama:0.6.5` — das Image, mit dem sie
+tatsächlich gemessen wurden: Es ist seit der ersten Fassung des Harness gepinnt und hat sich nie
+bewegt (bis zu diesem Nachtrag als drei gleichlautende Literale, jetzt als eine Konstante), und die
+`notes` jeder der sechs Dateien weisen den zugehörigen Lauf
+als CPU-/Testcontainer-Lauf aus (`eval/baseline/verwaltung.json` nennt das Image dort sogar wörtlich).
+Kein bereits committeter Chunk, keine bereits committete Metrik ändert sich — nur die Beschreibung
+der Messbedingungen wird vollständiger.
+
+## Nachtrag: Verdrahtung des Mehrrunden-Vergleichs (Issue #1553)
+
+Der Nachtrag zum Mehrrunden-Messpfad (Entscheidungen 38–44) beschreibt den Messvertrag dieses
+Pfads, und mit #1485 ist seine Baseline gezogen. Gefehlt hat bis hierher die Verbindung: Kein
+Aufrufer lud `eval/baseline/pipeline-<domäne>-conversations.json` für einen Vergleich, und der
+Messpfad lief in keinem CI-Job. Ein Messvertrag, den niemand gegen eine Messung hält, ist eine
+Absichtserklärung. Dieser Nachtrag schließt die Lücke; am Messgegenstand aller drei Pfade ändert er
+nichts, und keine Vertragsversion steigt.
+
+### 48. Eigenes Task-Paar, nicht ein drittes Urteil im bestehenden Check
+
+`evaluate<Domäne>Conversations` und `check<Domäne>ConversationBaseline` sind ein zweites Paar neben
+`evaluate<Domäne>Retrieval`/`check<Domäne>RetrievalBaseline`, kein weiterer Testklassen-Eintrag im
+bestehenden Check. Der technische Grund ist zwingend und kein Geschmacksurteil: Der Mehrrunden-Pfad
+misst ausschließlich mit aktiver Teilfragen-Zerlegung (Entscheidung 42), die Rohvektor- und die
+Pipeline-Baseline derselben Domäne wurden dagegen mit `queryDecompositionEnabled: false` gezogen
+(Entscheidung 15). Ein Harness-Lauf, der beides bediente, machte die beiden bestehenden Baselines
+unvergleichbar — er hätte genau die Prüfung abgeschaltet, an die dieser Pfad angeschlossen werden
+soll.
+
+Die beiden Properties, ohne die dieser Pfad nichts misst, setzt die Task selbst und überschreibt
+dabei einen gleichnamigen `-D`-Wert. Ein Aufrufer, der sie vergisst, bekäme sonst einen Lauf ohne
+Mehrrunden-Bericht, der erst im Baseline-Test als „No multi-turn report found" auffällt.
+
+### 49. Ein eigener CI-Job mit eigenem Zeitbudget, gleiche Auslöser
+
+Der Job `conversations` in `.github/workflows/retrieval-regression.yml` läuft nächtlich, per
+`workflow_dispatch` und beim Label `evaluation` — dieselben Auslöser wie die Einzelfragen-Domänen.
+Damit fällt die bisherige Festlegung „manuell, nie nächtlich" aus Entscheidung 42: Sie stammt aus
+der Zeit, in der dieser Pfad an einen Job der Einzelfragen-Domänen angehängt worden wäre und dessen
+Budget gesprengt hätte. Als eigener Job mit eigenem Budget konkurriert er mit niemandem, und die
+Alternative — ein Messpfad, der ausschließlich auf einer Entwicklermaschine läuft — heißt in der
+Praxis, dass er zwischen zwei Messzyklen monatelang ungelaufen bleibt.
+
+Das Budget ist mit 300 Minuten bewusst großzügig: Eine Messung dauert auf einer Entwicklermaschine
+14–29 Minuten (83 Runden, je Runde ein Zerlegungs- und ein Notiz-Aufruf), die Mehrfachlauf-Regel
+verlangt drei davon, und für die Chat-Aufruf-Rate eines GitHub-Runners gab es zunächst keine
+Messung.
+
+> **Gemessen (Issue #1490):** Der erste vollständige Lauf dieses Jobs (GitHub-Actions-Lauf
+> 34648243211, kalter Modell-Cache) brauchte **118 Minuten**, davon 117 Minuten 45 Sekunden für
+> `checkVerwaltungConversationBaseline` selbst. Das sind 39 % des Budgets; der Faktor zur
+> Entwicklermaschine liegt bei rund 2,3 (52 Minuten lokal für denselben Task-Lauf). Das Budget
+> bleibt vorerst bei 300 Minuten: Eine Messung ist kein Verteilungsbild, und der Job muss auch einen
+> langsameren Runner und einen kalten Cache überstehen. Wer es verengt, zieht vorher zwei bis drei
+> weitere nächtliche Läufe heran.
+
+### 50. Vier Urteile statt drei: „nicht beurteilt" als eigener Ausgang
+
+Der Pipeline-Pfad kennt drei Ausgänge: keine Regression, Regression, unvergleichbare Baseline — und
+lässt den letzten fehlschlagen. Der Mehrrunden-Pfad bekommt einen vierten, **„nicht beurteilt"**
+(`ConversationBaselineVerdict`), und lässt nur diesen bestehen.
+
+Der Grund ist die Lage der committeten Baseline: Sie wurde vor dem Suchfenster (#1486) und vor der
+Gesprächsnotiz (#1487) gezogen und trägt `searchWindowTurns: 0` und `conversationNoteCap: 0`,
+während jeder heutige Lauf 2 und 10 misst. Sie ist damit unvergleichbar — vorhergesehen, angekündigt
+und in #1490 neu zu ziehen. Ein Job, der von seinem Merge an dauerhaft rot steht, wird nicht gelesen
+und schaltet die Prüfung damit gründlicher ab, als sie nie geschrieben zu haben.
+
+**Die Ausnahme gilt zwei namentlich genannten Feldern, nicht der Unvergleichbarkeit an sich.**
+Weicht ein Festpunkt außerhalb von `searchWindowTurns`/`conversationNoteCap` ab — Korpus, Modell,
+Golden-Datensatz, Vertragsversion, Ollama-Image —, ist der Lauf rot wie auf dem Pipeline-Pfad. In
+beiden Fällen steht die Abweichung im Klartext im Bericht und in der Job-Zusammenfassung: Ein
+unbeurteilter Pfad, der das verschwiege, sähe in einem grünen Lauf aus wie ein geprüfter.
+
+**Die Ausnahme kann ihren Grund nicht überleben.**
+`ConversationPathIsolationTest#theNotJudgedGateIsStillNeededByTheCommittedBaseline` hält die
+committete Datei gegen genau die beiden Vor-#1486/#1487-Werte. Zieht #1490 die Baseline neu, wird
+dieser Docker-freie Test rot und erzwingt, dass die Ausnahme mit ihm entfernt wird — statt als
+stille Dauertoleranz stehen zu bleiben.
+
+> **Eingelöst mit Issue #1490 (12.09.2026): Dieser Ausgang existiert nicht mehr.** Die
+> Mehrrunden-Baseline ist mit `searchWindowTurns: 2` und `conversationNoteCap: 10` neu gezogen, die
+> angekündigte Unvergleichbarkeit damit aufgelöst. `ConversationBaselineVerdict` kennt seither
+> dieselben **drei** Ausgänge wie der Pipeline-Pfad; eine Abweichung in diesen beiden Feldern ist
+> wieder „unvergleichbar" und lässt den Job fehlschlagen. Der obige Wächter ist durch
+> `ConversationPathIsolationTest#theCommittedBaselineMeasuresTheProductionConversationMemory`
+> ersetzt, der die Gegenrichtung sperrt: Eine Baseline, die auf die beiden Vor-#1486/#1487-Werte
+> zurückfiele, schaltete den Vergleich dieses Pfads wieder ab — jetzt ohne Toleranz, die das
+> benennen würde.
+
+### 51. Der Mehrfachlauf-Block gehört in den Bericht, nicht nur in die Konsole
+
+`ConversationReportWriter` schreibt die drei Läufe, den Median-Lauf, den Streubereich je Metrik und
+die Zahl der Runden mit abweichender Zerlegung in die Markdown-Datei, die die Job-Zusammenfassung
+rendert. Auf den beiden anderen Pfaden steht dieser Block nur im Log, was dort hinnehmbar ist, weil
+ihre gemessene Konfiguration deterministisch ist. Dieser Pfad ruft die Zerlegung einmal je **Runde**
+und ist damit der instabilste der drei; die Abweichungszahl ist hier keine Randnotiz, sondern die
+Aussage darüber, wie belastbar der Rest des Berichts überhaupt ist.
+
+> **Ergänzt mit Issue #1490:** Jede Runde führt im Bericht zusätzlich die `RAHMEN`-Punkte, die sie
+> erhalten hat (`conversationNote`), neben den Teilfragen, die aus ihr entstanden sind. Ohne dieses
+> Feld kann ein Bericht die beiden Erklärungen einer gefallenen `constraint_carryover`-Zahl nicht
+> trennen — „die Notiz hat die Angabe nie getragen" gegen „die Zerlegung hat sie ignoriert" —, und
+> genau die verlangen entgegengesetzte Folgearbeit. Eine Beobachtung, kein Festpunkt: Keine
+> gemessene Zahl bewegt sich, die Vertragsversion bleibt bei 2.

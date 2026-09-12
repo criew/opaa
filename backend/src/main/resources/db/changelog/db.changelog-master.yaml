@@ -14,27 +14,34 @@ databaseChangeLog:
   # AbstractMigrationTest's Javadoc and test-master-through-baseline.yaml).
   - include:
       file: db/changelog/changes/001-baseline.yaml
-  # 002 is reserved for the composite fk_documents_parent (#1500); the local-account schema
-  # of ADR-0033 (#1532) starts at 003.
   - include:
-      file: db/changelog/changes/003-add-provider-type-to-oidc-providers.yaml
+      file: db/changelog/changes/002-documents-parent-composite-foreign-key.yaml
   - include:
-      file: db/changelog/changes/004-add-local-email-unique-index-to-users.yaml
+      file: db/changelog/changes/003-diagnostic-impersonation-grant-delete-rules.yaml
+  # Kontoschema der lokalen Benutzerverwaltung (#1532, ADR-0033 Entscheidungen 3 und 4). Der
+  # Epic-Stapel war auf 003 geschnitten; 003 ist auf main inzwischen belegt, deshalb beginnt der
+  # Block bei 004 (#1543).
   - include:
-      file: db/changelog/changes/005-create-local-credentials.yaml
+      file: db/changelog/changes/004-add-provider-type-to-oidc-providers.yaml
   - include:
-      file: db/changelog/changes/006-create-local-refresh-tokens.yaml
+      file: db/changelog/changes/005-add-local-email-unique-index-to-users.yaml
   - include:
-      file: db/changelog/changes/007-create-local-revoked-tokens.yaml
+      file: db/changelog/changes/006-create-local-credentials.yaml
   - include:
-      file: db/changelog/changes/008-create-local-action-tokens.yaml
+      file: db/changelog/changes/007-create-local-refresh-tokens.yaml
   - include:
-      file: db/changelog/changes/009-create-local-auth-settings.yaml
+      file: db/changelog/changes/008-create-local-revoked-tokens.yaml
   - include:
-      file: db/changelog/changes/010-create-local-admin-seed-marker.yaml
+      file: db/changelog/changes/009-create-local-action-tokens.yaml
+  - include:
+      file: db/changelog/changes/010-create-local-auth-settings.yaml
+  - include:
+      file: db/changelog/changes/011-create-local-admin-seed-marker.yaml
   # Mail-Infrastruktur (#1536, ADR-0033 Entscheidung 10) - unabhaengig vom Kontoschema oben, aber
   # nach ihm eingehaengt, weil der Epic-Stapel diese Reihenfolge hat.
   - include:
-      file: db/changelog/changes/011-mail-settings.yaml
+      file: db/changelog/changes/012-mail-settings.yaml
   - include:
-      file: db/changelog/changes/012-mail-templates.yaml
+      file: db/changelog/changes/013-mail-templates.yaml
+  - include:
+      file: db/changelog/changes/030-chat-note-items.yaml

@@ -46,11 +46,8 @@ import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceCreation;
-import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
-import io.opaa.test.DirectorySyncMockConfiguration;
-import io.opaa.test.DirectorySyncMockResetListener;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.ArrayList;
@@ -61,10 +58,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
@@ -83,14 +78,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * audit_log.organization_id} is a plain {@code UUID} column with a real foreign key ({@code
  * fk_audit_log_organization}, migration 017) that only the versioned changelog creates.
  */
-// Shares one context with
-// DirectorySyncServiceIntegrationTest/PermissionHistoryServiceIntegrationTest
-// via the identical DirectorySyncMockConfiguration import (#903).
 @OpaaIntegrationTest
-@Import(DirectorySyncMockConfiguration.class)
-@TestExecutionListeners(
-    listeners = DirectorySyncMockResetListener.class,
-    mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 class AuditEventRecordingIntegrationTest {
 
   @Autowired private io.opaa.auth.AuthProperties authProperties;
@@ -106,7 +94,6 @@ class AuditEventRecordingIntegrationTest {
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private SpaceService spaceService;
   @Autowired private SpaceRepository spaceRepository;
-  @Autowired private SpaceMembershipRepository spaceMembershipRepository;
   @Autowired private DirectorySyncService directorySyncService;
   @Autowired private DirectorySyncStatusRepository directorySyncStatusRepository;
   @Autowired private FakeDirectoryClient directoryClient;
@@ -135,7 +122,11 @@ class AuditEventRecordingIntegrationTest {
     directorySyncStatusRepository
         .findByOrganizationId(organizationId)
         .ifPresent(status -> directorySyncStatusRepository.deleteById(status.getId()));
-    spaceMembershipRepository.deleteAll();
+    // Only the spaces of this test's own organization; their memberships go with them
+    // (Space#memberships cascades, and so does fk_space_memberships_space_organization). Nothing of
+    // this class is missed: a membership carries both its space's and its user's organization
+    // (fk_space_memberships_space_organization and fk_space_memberships_user_organization), so it
+    // cannot exist outside the organization filtered for here.
     spaceRepository.deleteAll(
         spaceRepository.findAll().stream()
             .filter(s -> s.getOrganizationId().equals(organizationId))

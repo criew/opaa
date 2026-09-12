@@ -26,12 +26,13 @@ import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Both steps of the cleanup against a real MinIO ({@link MinioFixture}, ADR-0030): the report names
- * the objects no row points to, deleting removes exactly the named ones and nothing else, and the
- * next report is empty. The clock runs two hours ahead of the store, so an object written a moment
- * ago is already past the grace period without the test having to wait. Row lookups are mocked -
- * the rows themselves are covered by {@code OrphanedOriginalCleanupIntegrationTest}. Skipped
- * without Docker; the CI runs it.
+ * Both steps of both cleanup runs against a real MinIO ({@link MinioFixture}, ADR-0030): the report
+ * names the objects no row points to - and, over the whole organization, the key levels no library
+ * row belongs to any more - deleting removes exactly the named ones and nothing else, and the next
+ * report is empty. The clock runs two hours ahead of the store, so an object written a moment ago
+ * is already past the grace period without the test having to wait. Row lookups are mocked - the
+ * rows themselves are covered by {@code OrphanedOriginalCleanupIntegrationTest}. Skipped without
+ * Docker; the CI runs it.
  */
 @Testcontainers(disabledWithoutDocker = true)
 class OrphanedOriginalCleanupMinioTest {
@@ -80,6 +81,8 @@ class OrphanedOriginalCleanupMinioTest {
     KnowledgeLibrary library = mock(KnowledgeLibrary.class);
     when(library.getOrganizationId()).thenReturn(organizationId);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryRepository.existsById(libraryId)).thenReturn(true);
+    when(libraryRepository.findIdsByOrganizationId(organizationId)).thenReturn(List.of(libraryId));
     DocumentRepository documentRepository = mock(DocumentRepository.class);
     when(documentRepository.findFilePathsByLibraryId(libraryId)).thenReturn(rows);
     UploadProperties uploadProperties =
@@ -119,18 +122,74 @@ class OrphanedOriginalCleanupMinioTest {
         .containsExactly(
             new OrphanedOriginalDeletion.Skipped(
                 otherLibrarysObject, OrphanedOriginalSkipReason.NOT_IN_STORE));
-    assertThat(store.belongsToLibrary(new UploadedOriginalRef(libraryId, orphan))).isFalse();
-    assertThat(store.belongsToLibrary(new UploadedOriginalRef(libraryId, keptOrphan))).isTrue();
-    assertThat(store.belongsToLibrary(new UploadedOriginalRef(libraryId, owned))).isTrue();
-    assertThat(store.belongsToLibrary(new UploadedOriginalRef(otherLibrary, otherLibrarysObject)))
+    assertThat(store.belongsToLibrary(new UploadedOriginalRef(organizationId, libraryId, orphan)))
+        .isFalse();
+    assertThat(
+            store.belongsToLibrary(new UploadedOriginalRef(organizationId, libraryId, keptOrphan)))
+        .isTrue();
+    assertThat(store.belongsToLibrary(new UploadedOriginalRef(organizationId, libraryId, owned)))
+        .isTrue();
+    assertThat(
+            store.belongsToLibrary(
+                new UploadedOriginalRef(organizationId, otherLibrary, otherLibrarysObject)))
         .isTrue();
 
     OrphanedOriginalReport after = service.report(organizationId, libraryId, null);
     assertThat(after.orphans()).extracting(OrphanedOriginal::locator).containsExactly(keptOrphan);
   }
 
+  @Test
+  void theStorageAreaOfADeletedLibraryIsFoundInTheBucketAndCanBeEmptied() throws IOException {
+    UUID deletedLibrary = UUID.randomUUID();
+    String orphan = storedOriginal(deletedLibrary, "Rest einer gelöschten Bibliothek");
+    String keptOrphan = storedOriginal(deletedLibrary, "verwaist, aber nicht genannt");
+    String ownedByALivingLibrary = storedOriginal(libraryId, "gehört einer Zeile");
+    rows.add(ownedByALivingLibrary);
+    UUID foreignOrganizationsLibrary = UUID.randomUUID();
+    UploadedOriginalStore.AcceptedUpload foreign =
+        store.accept(UUID.randomUUID(), foreignOrganizationsLibrary, ".pdf", bytes("anderes Haus"));
+    String foreignLocator = foreign.store().locator();
+    foreign.release();
+
+    OrphanedLibraryReport report = service.reportOrphanedLibraries(organizationId, null);
+
+    assertThat(report.libraries())
+        .extracting(OrphanedLibrary::libraryId)
+        .containsExactly(deletedLibrary);
+    assertThat(report.libraries().get(0).orphans())
+        .extracting(OrphanedOriginal::locator)
+        .containsExactlyInAnyOrder(orphan, keptOrphan);
+    assertThat(report.knownLibraryCount()).isEqualTo(1);
+    assertThat(report.scannedLibraryCount()).isEqualTo(2);
+
+    OrphanedOriginalDeletion deletion =
+        service.deleteInOrphanedLibrary(
+            organizationId, deletedLibrary, List.of(orphan, foreignLocator));
+
+    assertThat(deletion.deleted()).containsExactly(orphan);
+    assertThat(deletion.skipped())
+        .containsExactly(
+            new OrphanedOriginalDeletion.Skipped(
+                foreignLocator, OrphanedOriginalSkipReason.NOT_IN_STORE));
+    assertThat(
+            store.belongsToLibrary(
+                new UploadedOriginalRef(organizationId, deletedLibrary, keptOrphan)))
+        .isTrue();
+    assertThat(
+            store.belongsToLibrary(
+                new UploadedOriginalRef(organizationId, libraryId, ownedByALivingLibrary)))
+        .isTrue();
+
+    OrphanedLibraryReport after = service.reportOrphanedLibraries(organizationId, null);
+
+    assertThat(after.libraries().get(0).orphans())
+        .extracting(OrphanedOriginal::locator)
+        .containsExactly(keptOrphan);
+  }
+
   private String storedOriginal(UUID library, String content) throws IOException {
-    UploadedOriginalStore.AcceptedUpload accepted = store.accept(library, ".pdf", bytes(content));
+    UploadedOriginalStore.AcceptedUpload accepted =
+        store.accept(organizationId, library, ".pdf", bytes(content));
     UploadedOriginalRef ref = accepted.store();
     accepted.release();
     return ref.locator();

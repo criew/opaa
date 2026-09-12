@@ -21,8 +21,9 @@ import io.opaa.indexing.format.DocumentFormatRegistry;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnLibraryFixtures;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
@@ -48,6 +49,7 @@ import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextBox;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,11 +64,10 @@ import org.springframework.transaction.PlatformTransactionManager;
  * further Dokumentart sources against the seeded vocabulary of the database: the Kompositum ending
  * in a file name, the document head, and the file format.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class CoreMetadataIndexingIntegrationTest {
 
-  private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("core-metadata-indexing");
+  private static final Path classTempDir = OpaaTestDirectory.subdirectory("core-metadata-indexing");
 
   @Autowired private DocumentIngestService documentIngestService;
   @Autowired private DocumentMetadataService documentMetadataService;
@@ -81,18 +82,14 @@ class CoreMetadataIndexingIntegrationTest {
   @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
 
   private KnowledgeLibrary targetLibrary;
+  private UUID userId;
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    documentRepository.deleteAll();
-    jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = 'core-metadata-it@example.com')");
-    jdbcTemplate.update("DELETE FROM users WHERE email = 'core-metadata-it@example.com'");
-    UUID userId = UUID.randomUUID();
+    userId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
             + " organization_id) VALUES (?, ?, 'test-issuer', 'core-metadata-it@example.com',"
@@ -112,6 +109,19 @@ class CoreMetadataIndexingIntegrationTest {
                 false));
   }
 
+  @AfterEach
+  void removeOwnRows() {
+    ownLibraryFixtures.removeLibraries(targetLibrary.getId());
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
+  }
+
+  /** The one document of this class's own library - the suite shares one documents table. */
+  private Document onlyOwnDocument() {
+    List<Document> own = documentRepository.findByLibraryId(targetLibrary.getId());
+    assertThat(own).hasSize(1);
+    return own.getFirst();
+  }
+
   @Test
   void pdfPropertiesAndFileNameConventionFillAllThreeFieldsAtTheDocumentAndOnEveryChunk()
       throws IOException {
@@ -123,7 +133,7 @@ class CoreMetadataIndexingIntegrationTest {
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(DocumentIngestResult.PROCESSED);
 
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     assertThat(document.getMetadataExtractionVersion())
         .isEqualTo(CoreMetadataExtractor.EXTRACTION_VERSION);
     List<DocumentMetadataValue> values = valueRepository.findByDocumentId(document.getId());
@@ -168,7 +178,7 @@ class CoreMetadataIndexingIntegrationTest {
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(DocumentIngestResult.PROCESSED);
 
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
     assertThat(core.title()).isEqualTo("Vermerk zur Fristsetzung");
     assertThat(core.documentDate()).isEqualTo(LocalDate.of(2024, 11, 5));
@@ -208,7 +218,7 @@ class CoreMetadataIndexingIntegrationTest {
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(DocumentIngestResult.PROCESSED);
 
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
     assertThat(core.title()).isEqualTo("Sozialgebührenbefreiungssatzung");
     assertThat(core.documentTypeCode()).isEqualTo("SATZUNG_ORDNUNG");
@@ -231,7 +241,7 @@ class CoreMetadataIndexingIntegrationTest {
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(DocumentIngestResult.PROCESSED);
 
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
     assertThat(core.documentTypeCode()).isEqualTo("SATZUNG_ORDNUNG");
     assertThat(core.documentTypeOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
@@ -254,7 +264,7 @@ class CoreMetadataIndexingIntegrationTest {
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(DocumentIngestResult.PROCESSED);
 
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
     assertThat(core.documentTypeCode()).isEqualTo("DIENSTANWEISUNG");
     assertThat(core.documentTypeOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
@@ -285,7 +295,7 @@ class CoreMetadataIndexingIntegrationTest {
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(DocumentIngestResult.PROCESSED);
 
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
     assertThat(core.documentTypeCode()).isNull();
     assertThat(chunkMetadata(document.getId()))
@@ -317,7 +327,7 @@ class CoreMetadataIndexingIntegrationTest {
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(DocumentIngestResult.PROCESSED);
 
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
     assertThat(core.documentTypeCode()).isNull();
   }
@@ -341,7 +351,7 @@ class CoreMetadataIndexingIntegrationTest {
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(DocumentIngestResult.PROCESSED);
 
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
     assertThat(core.documentTypeCode()).isNull();
     // The backfill reads the file the same way, without chunking.
@@ -360,7 +370,7 @@ class CoreMetadataIndexingIntegrationTest {
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(DocumentIngestResult.PROCESSED);
 
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
     assertThat(core.documentTypeCode()).isEqualTo("PRAESENTATION");
     assertThat(core.documentTypeLabel()).isEqualTo("Präsentation");
@@ -388,7 +398,7 @@ class CoreMetadataIndexingIntegrationTest {
                 null))
         .isEqualTo(DocumentIngestResult.PROCESSED);
 
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
     assertThat(core.documentTypeCode()).isNull();
     assertThat(core.title()).isEqualTo("Rat beschliesst Hundesteuersatzung fuer 2024");
@@ -417,7 +427,7 @@ class CoreMetadataIndexingIntegrationTest {
                 null))
         .isEqualTo(DocumentIngestResult.PROCESSED);
 
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
     assertThat(core.title()).isEqualTo("Gebuehrensatzung 2024");
     assertThat(core.documentTypeCode()).isNull();
@@ -447,7 +457,7 @@ class CoreMetadataIndexingIntegrationTest {
                 null))
         .isEqualTo(DocumentIngestResult.PROCESSED);
 
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
     assertThat(core.documentDate()).isEqualTo(LocalDate.of(2026, 3, 12));
     assertThat(core.documentDatePrecision()).isEqualTo(DatePrecision.DAY);
@@ -473,7 +483,7 @@ class CoreMetadataIndexingIntegrationTest {
 
     documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
     assertThat(core.documentTypeCode()).isNull();
     assertThat(core.documentDate()).isEqualTo(LocalDate.of(2024, 1, 1));
@@ -486,7 +496,7 @@ class CoreMetadataIndexingIntegrationTest {
     Path file = classTempDir.resolve("2026-03-12_Dienstanweisung_Homeoffice.pdf");
     writePdf(file, null, LocalDate.of(2025, 6, 30));
     documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     List<UUID> chunkIdsBefore = chunkIds(document.getId());
 
     // A person overrides the Dokumentart (the ingest read DIENSTANWEISUNG from the file name) and
@@ -520,7 +530,7 @@ class CoreMetadataIndexingIntegrationTest {
     Path file = classTempDir.resolve("Protokoll_Sitzung.pdf");
     writePdf(file, null, null);
     documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     assertThat(documentMetadataService.coreMetadataFor(document.getId()).documentTypeCode())
         .isEqualTo("PROTOKOLL");
     // Simulate a corrected file name whose tokens no longer name a Dokumentart.
@@ -548,7 +558,7 @@ class CoreMetadataIndexingIntegrationTest {
     Path file = classTempDir.resolve("Protokoll_Sitzung.pdf");
     writePdf(file, null, null);
     documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     jdbcTemplate.update(
         "UPDATE documents SET file_name = 'Vermerk_2020-01-01.pdf', metadata_extraction_version ="
             + " NULL WHERE id = ?",
@@ -598,7 +608,7 @@ class CoreMetadataIndexingIntegrationTest {
     Path file = classTempDir.resolve("anlage.pdf");
     writePdf(file, null, null);
     documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     valueRepository.save(
         DocumentMetadataValue.derived(
                 document.getId(), CoreMetadataField.DOCUMENT_TYPE, "test-model", 0.8, 1)
@@ -643,7 +653,7 @@ class CoreMetadataIndexingIntegrationTest {
                 DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(DocumentIngestResult.PROCESSED);
 
-    Document document = documentRepository.findAll().getFirst();
+    Document document = onlyOwnDocument();
     Map<String, DocumentMetadataValue> byKey = new java.util.HashMap<>();
     valueRepository
         .findByDocumentId(document.getId())

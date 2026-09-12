@@ -29,10 +29,11 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 
 /**
  * The S3 adapter against a real MinIO ({@link MinioFixture}, ADR-0030): store and serve, delete,
- * delete of a missing object, containment against a foreign key, the synthetic attachment locator,
- * the working file after release and the local copy after the action. The container's private
- * address is reached with the target validation on and no allowlist entry - the configured endpoint
- * passes on its own (Entscheidung 8). Skipped without Docker; the CI runs it.
+ * delete of a missing object, containment against a key of another library and of another
+ * organization, the synthetic attachment locator, the working file after release and the local copy
+ * after the action. The container's private address is reached with the target validation on and no
+ * allowlist entry - the configured endpoint passes on its own (Entscheidung 8). Skipped without
+ * Docker; the CI runs it.
  */
 @Testcontainers(disabledWithoutDocker = true)
 class S3UploadedOriginalStoreMinioTest {
@@ -43,6 +44,7 @@ class S3UploadedOriginalStoreMinioTest {
 
   @TempDir static Path tempDir;
 
+  private final UUID organizationId = UUID.randomUUID();
   private final UUID libraryId = UUID.randomUUID();
 
   @BeforeAll
@@ -71,14 +73,16 @@ class S3UploadedOriginalStoreMinioTest {
   }
 
   @Test
-  void anUploadIsStoredUnderTheLibrarysPrefixAndServedBackAsAStream() throws IOException {
+  void anUploadIsStoredUnderItsOrganizationAndLibraryPrefixAndServedBackAsAStream()
+      throws IOException {
     UploadedOriginalStore.AcceptedUpload accepted =
-        store.accept(libraryId, ".pdf", bytes("%PDF-1.4 bescheid"));
+        store.accept(organizationId, libraryId, ".pdf", bytes("%PDF-1.4 bescheid"));
     UploadedOriginalRef ref = accepted.store();
     accepted.release();
 
-    assertThat(ref.locator()).startsWith("s3://" + bucket + "/uploads/" + libraryId + "/");
-    assertThat(keysUnder("uploads/" + libraryId + "/")).hasSize(1);
+    String libraryPrefix = "uploads/" + organizationId + "/" + libraryId + "/";
+    assertThat(ref.locator()).startsWith("s3://" + bucket + "/" + libraryPrefix);
+    assertThat(keysUnder(libraryPrefix)).hasSize(1);
     assertThat(accepted.workingFile()).as("the working file is gone after release").doesNotExist();
 
     Optional<DocumentContent> content =
@@ -127,7 +131,8 @@ class S3UploadedOriginalStoreMinioTest {
   @Test
   void aKeyOfAnotherLibraryIsNeitherReadNorDeleted() throws IOException {
     UploadedOriginalRef own = storedOriginal("fremdes Original");
-    UploadedOriginalRef foreign = new UploadedOriginalRef(UUID.randomUUID(), own.locator());
+    UploadedOriginalRef foreign =
+        new UploadedOriginalRef(organizationId, UUID.randomUUID(), own.locator());
 
     assertThat(store.belongsToLibrary(foreign)).isFalse();
     assertThat(store.openForDownload(foreign, "x.pdf", null)).isEmpty();
@@ -138,10 +143,26 @@ class S3UploadedOriginalStoreMinioTest {
   }
 
   @Test
+  void aKeyOfAnotherOrganizationIsNeitherReadNorDeletedUnderTheSameLibraryId() throws IOException {
+    // Everything but the organization segment matches: same library id, same object. Against a
+    // real store too, that segment alone has to answer "not there" (ADR-0030, Nachtrag zu 4).
+    UploadedOriginalRef own = storedOriginal("Original der eigenen Organisation");
+    UploadedOriginalRef foreign =
+        new UploadedOriginalRef(UUID.randomUUID(), libraryId, own.locator());
+
+    assertThat(store.belongsToLibrary(foreign)).isFalse();
+    assertThat(store.openForDownload(foreign, "x.pdf", null)).isEmpty();
+    assertThat(store.withLocalFile(foreign, this::readString)).isEmpty();
+    store.delete(foreign);
+
+    assertThat(exists(keyOf(own))).as("the other organization's original is untouched").isTrue();
+  }
+
+  @Test
   void anAttachmentsSyntheticLocatorResolvesToNothingAndLeavesItsParentAlone() throws IOException {
     UploadedOriginalRef parent = storedOriginal("die Mail mit ihrer Anlage");
     UploadedOriginalRef attachment =
-        new UploadedOriginalRef(libraryId, parent.locator() + "/0/anlage.pdf");
+        new UploadedOriginalRef(organizationId, libraryId, parent.locator() + "/0/anlage.pdf");
 
     assertThat(store.belongsToLibrary(attachment)).isFalse();
     assertThat(store.openForDownload(attachment, "anlage.pdf", null)).isEmpty();
@@ -154,7 +175,7 @@ class S3UploadedOriginalStoreMinioTest {
   @Test
   void aDiscardedUploadLeavesNoObjectAndNoWorkingFile() throws IOException {
     UploadedOriginalStore.AcceptedUpload accepted =
-        store.accept(libraryId, ".pdf", bytes("verworfen"));
+        store.accept(organizationId, libraryId, ".pdf", bytes("verworfen"));
     UploadedOriginalRef ref = accepted.store();
 
     accepted.discard();
@@ -195,14 +216,18 @@ class S3UploadedOriginalStoreMinioTest {
       List<String> own = new ArrayList<>();
       for (int i = 0; i < 7; i++) {
         UploadedOriginalStore.AcceptedUpload accepted =
-            paging.accept(library, ".pdf", bytes("Seite " + i));
+            paging.accept(organizationId, library, ".pdf", bytes("Seite " + i));
         own.add(accepted.store().locator());
         accepted.release();
       }
       storedOriginal("eine andere Bibliothek");
+      UploadedOriginalStore.AcceptedUpload otherTenant =
+          paging.accept(UUID.randomUUID(), library, ".pdf", bytes("andere Organisation"));
+      otherTenant.store();
+      otherTenant.release();
 
       List<UploadedOriginalStore.StoredOriginal> visited = new ArrayList<>();
-      paging.forEachStoredOriginal(library, visited::add);
+      paging.forEachStoredOriginal(organizationId, library, visited::add);
 
       assertThat(visited)
           .extracting(UploadedOriginalStore.StoredOriginal::locator)
@@ -217,8 +242,55 @@ class S3UploadedOriginalStoreMinioTest {
     }
   }
 
+  @Test
+  void theLibraryListingWalksAnOrganizationPageByPageAgainstTheRealStore() throws IOException {
+    UUID organization = UUID.randomUUID();
+    UploadS3Properties properties =
+        new UploadS3Properties(
+            minio.endpoint().toString(),
+            MinioFixture.REGION,
+            bucket,
+            "uploads/",
+            true,
+            minio.rootCredentials().accessKey(),
+            minio.rootCredentials().secretKey(),
+            tempDir,
+            new UploadS3Properties.TargetValidation(true, List.of()));
+    try (S3UploadedOriginalStore paging =
+        new S3UploadedOriginalStore(
+            properties,
+            UploadS3TargetPolicy.of(properties),
+            S3UploadedOriginalStore.REQUEST_TIMEOUT,
+            S3UploadedOriginalStore.MAX_RETRIES,
+            S3UploadedOriginalStore.RETRY_BACKOFF,
+            3)) {
+      List<UUID> own = new ArrayList<>();
+      for (int i = 0; i < 7; i++) {
+        UUID library = UUID.randomUUID();
+        own.add(library);
+        UploadedOriginalStore.AcceptedUpload accepted =
+            paging.accept(organization, library, ".pdf", bytes("Bibliothek " + i));
+        accepted.store();
+        accepted.release();
+      }
+      UploadedOriginalStore.AcceptedUpload otherTenant =
+          paging.accept(UUID.randomUUID(), UUID.randomUUID(), ".pdf", bytes("anderes Haus"));
+      otherTenant.store();
+      otherTenant.release();
+
+      List<UUID> visited = new ArrayList<>();
+      paging.forEachStoredLibrary(organization, visited::add);
+
+      assertThat(visited).containsExactlyInAnyOrderElementsOf(own);
+      assertThat(keysUnder("uploads/" + organization + "/"))
+          .as("the listing removes nothing")
+          .hasSize(7);
+    }
+  }
+
   private UploadedOriginalRef storedOriginal(String content) throws IOException {
-    UploadedOriginalStore.AcceptedUpload accepted = store.accept(libraryId, ".pdf", bytes(content));
+    UploadedOriginalStore.AcceptedUpload accepted =
+        store.accept(organizationId, libraryId, ".pdf", bytes(content));
     UploadedOriginalRef ref = accepted.store();
     accepted.release();
     return ref;

@@ -94,6 +94,7 @@ class ConversationRunPrerequisitesTest {
         new ConversationEvaluationReport.CaseOutcomeSummary(0, 0, Map.of()),
         null,
         null,
+        null,
         List.of(
             new ConversationEvaluationReport.ConversationCaseResult(
                 "verw-conv-001",
@@ -116,6 +117,7 @@ class ConversationRunPrerequisitesTest {
                         7,
                         true,
                         0,
+                        List.of(),
                         1,
                         1,
                         subQueries,

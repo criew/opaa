@@ -25,8 +25,8 @@ Eine zusätzliche Vollmacht ist nicht erforderlich.
 
 Dauer & Kosten
 Gebührenrahmen
-- Beglaubigung einer Unterschrift oder eines Handzeichens: 21,20 Euro
-- Unterschriftsbeglaubigungen von Firmen und Vereinsvertretern: 53 Euro
+- Beglaubigung einer Unterschrift oder eines Handzeichens: 23 Euro
+- Unterschriftsbeglaubigungen von Firmen und Vereinsvertretern: 57,50 Euro
 
 Barzahlung
 Kasse vor Ort

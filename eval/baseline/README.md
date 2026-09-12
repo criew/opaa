@@ -99,6 +99,16 @@ Baseline-Neuziehung, nach dem Verfahren unten; das ist gewollt und kein Nebeneff
 Zustandswechsel behauptet, dass sich das Messergebnis geändert hat, also muss das gemessene
 Ergebnis mitkommen.
 
+**Eine reine Textänderung ist davon ausgenommen.** Wird ausschließlich ein `expected_state_reason`
+(oder ein anderer nicht messrelevanter Text) präzisiert, bewegt sich zwar der Hash, aber keine
+Messgrundlage: Der Fixpunkt `goldenDatasetSha256` wird dann **ohne** neuen Messlauf nachgezogen, und
+der PR hält fest, welche Felder sich geändert haben und dass `query`, die erwarteten Dokumente, ein
+etwaiger `confusable_document`/`topic_switch_turn` und jedes `expected_state` unberührt sind. Diese
+Abgrenzung ist keine Neuerfindung — `verwaltung.json` und `pipeline-verwaltung.json` sind für Issue
+#1049 genau so behandelt worden („ausschließlich der Fixpunkt `goldenDatasetSha256` nachgezogen …
+ohne neuen Messlauf"), zuletzt die Mehrrunden-Baseline in #1490. Sobald ein **messrelevantes** Feld
+sich bewegt, gilt wieder der Absatz darüber.
+
 ## Domäne `city-landmarks` (Issue #234)
 
 `city-landmarks.json` ist die separate Baseline für die zweite Domäne — eigene Gruppen, eigene
@@ -129,7 +139,9 @@ Gruppennamen, Fallzahlen und Zahlenwerte unterscheiden sich zwischen den beiden 
   Issue #721 (Messvertrag-Version 2, ADR-0012 Nachtrag) zusätzlich `chunkOverlap` (vorher nur
   Report-Metadatum — für eine einchunkige Domäne folgenlos, für eine mehrchunkige aber
   messgrundlagenbestimmend) sowie `documentTopK`/`chunkTopK` (das jetzt ausdrücklich
-  dokumentbezogene k-Fenster, siehe `io.opaa.eval.DocumentRanking`). Weicht auch nur eines davon
+  dokumentbezogene k-Fenster, siehe `io.opaa.eval.DocumentRanking`). Seit Issue #1522 zusätzlich
+  `ollamaImage` — das gepinnte Testcontainer-Image, das die Vektoren erzeugt hat; siehe
+  [Ollama-Herkunft](#ollama-herkunft-issue-1522) unten. Weicht auch nur eines davon
   vom aktuellen Lauf ab, ist die Baseline **ungültig** für diesen Lauf — der Job meldet das
   ausdrücklich als "Baseline ungültig, Messgrundlage geändert" und vergleicht dann **keine** Metrik,
   weil ein Vergleich unter unterschiedlicher Messgrundlage keine Aussage über Retrieval-Qualität
@@ -409,6 +421,33 @@ Unabhängig von Toleranzen: Verletzt der Lauf die Ein-Chunk-Invariante (ADR-0010
 Toleranzfall. Eine verletzte Invariante bedeutet, dass "ein Treffer = eine Entität" nicht mehr gilt,
 wodurch jede Metrik bedeutungslos wird.
 
+## Ollama-Herkunft (Issue #1522)
+
+`ollamaImage` ist in allen drei Baseline-Typen ein **geprüfter** Festpunkt: Es benennt das gepinnte
+Testcontainer-Image, mit dem die Vektoren dieser Baseline entstanden sind (heute
+`ollama/ollama:0.6.5`). Weicht der Wert vom Lauf ab, ist die Baseline unvergleichbar — wie bei jedem
+anderen Festpunkt. Der Modell-Digest allein deckt das nicht ab: Er beschreibt die Gewichte, nicht die
+Laufzeit, die sie auswertet.
+
+Zusätzlich wird eine Baseline-Datei **beim Laden abgewiesen**, wenn ihr Wert mit dem Präfix
+`extern: ` beginnt. Den schreibt ein Lauf mit `-Dopaa.eval.ollamaBaseUrl` (siehe `eval/README.md`,
+„Externer Ollama-Endpunkt"): Ein solcher Lauf ist für die lokale Iteration gedacht, embeddet
+womöglich auf der GPU und ist in der CI nicht reproduzierbar. Die Ablehnung sagt, was der
+Fixpunktvergleich nicht sagen könnte — nicht „Messgrundlage geändert", sondern „diese Datei hätte so
+nie entstehen dürfen, der Lauf ist zu wiederholen".
+
+Ein **fehlendes** `ollamaImage` wird dagegen nicht abgewiesen: Es lädt als `null` und erscheint im
+Vergleich als unvergleichbarer Fixpunkt, genau wie ein fehlendes `metadataFilterEnabled`. So schreibt
+der Regressionsjob noch seine Delta-Tabelle und benennt das Feld darin, statt ohne Bericht
+abzubrechen.
+
+Wer eine Baseline zieht, übernimmt den Wert unverändert aus dem `runConfiguration`-Block des
+Reports — steht dort `extern: …`, ist der Lauf zu wiederholen, nicht der Wert zu korrigieren. Dass
+die committeten Dateien das tatsächlich gepinnte Image nennen, prüfen zwei Docker-freie Wächter in
+`PipelinePathIsolationTest`/`ConversationPathIsolationTest` gegen `EvalOllamaEndpoint.PINNED_IMAGE`;
+ein Image-Wechsel ohne Baseline-Nachzug fällt damit im `check` auf statt erst im nächtlichen Lauf.
+Begründung: ADR-0012, Nachtrag Ollama-Herkunft.
+
 ## Besonderheiten der Pipeline-Baselines (Issue #1040)
 
 ### Aufbau
@@ -512,19 +551,33 @@ Dasselbe Verfahren wie unten, mit zwei Präzisierungen:
   Pipeline-Reports (`build/eval-reports/pipeline-metrics-<domäne>.json`) desselben Laufs gezählt
   (`hitRateAt5 > 0` bzw. `ndcgAt8 > 0`) — nicht aus den Mittelwerten zurückgerechnet.
 
-## Besonderheiten der Mehrrunden-Baseline (Issues #1484/#1485)
+## Besonderheiten der Mehrrunden-Baseline (Issues #1484/#1485/#1490)
 
 `pipeline-verwaltung-conversations.json` ist die Baseline des dritten Messpfads
-(`docs/features/conversation-memory.md`, Abschnitt „Messung"). **Gezogen mit Issue #1485**, aus
-einem CPU-Testcontainer-Lauf vom 2026-09-11 gegen die dort erstkuratierten 27 Fälle mit 83 Runden;
-Typ (`ConversationBaseline`) und Vergleich (`ConversationBaselineComparator`) stammen aus #1484.
+(`docs/features/conversation-memory.md`, Abschnitt „Messung"). **Erstmals gezogen mit Issue #1485**
+aus einem CPU-Testcontainer-Lauf vom 2026-09-11 gegen die dort erstkuratierten 27 Fälle mit 83
+Runden; Typ (`ConversationBaseline`) und Vergleich (`ConversationBaselineComparator`) stammen aus
+#1484. Die heute committeten Zahlen stammen aus der Neuziehung in #1490 (siehe unten).
 
-**Noch an keine Regressionstestklasse verdrahtet, bewusst.** `registerEvalDomain` in
-`backend/build.gradle.kts` kennt bislang nur den Rohvektor- und den Pipeline-Pfad, und der
-Mehrrunden-Schritt ist ohnehin manuell oder per Label zu starten, nie nächtlich: Je Runde ein
-Chat-Aufruf, mal drei Läufe. Eine Verdrahtung, die den nächtlichen Job rot färben könnte, wäre
-also erst zusammen mit einer Entscheidung darüber sinnvoll, welcher Job diesen Pfad trägt —
-Folgearbeit außerhalb von #1485.
+**Verglichen wird sie seit Issue #1553** von `VerwaltungConversationBaselineRegressionTest` über
+`ConversationBaselineRegressionCheck` — dem Gegenstück zu `PipelineBaselineRegressionCheck`. Der
+Messlauf und der Vergleich stecken in einem eigenen Task-Paar
+(`evaluateVerwaltungConversations` / `checkVerwaltungConversationBaseline`), nicht im
+`check…RetrievalBaseline` der Domäne: Dieser Pfad misst nur mit aktiver Teilfragen-Zerlegung, die
+beiden anderen Baselines dieser Domäne wurden ohne sie gezogen. In der CI trägt ihn der Job
+`conversations` in `.github/workflows/retrieval-regression.yml`, mit denselben Auslösern wie die
+Einzelfragen-Domänen (nächtlich, `workflow_dispatch`, Label `evaluation`) und einem eigenen
+Zeitbudget.
+
+**Neu gezogen mit Issue #1490** aus einem CPU-Testcontainer-Lauf vom 2026-09-12, nach dem
+verengten Suchfenster (#1486) und der Gesprächsnotiz (#1487): Die Datei trägt seither
+`searchWindowTurns: 2` und `conversationNoteCap: 10` und ist damit wieder vergleichbar. Die
+Erstziehung aus #1485 stammte aus der Zeit davor (`0`/`0`) und wurde deshalb zwischen #1553 und
+#1490 als **„nicht beurteilt"** gemeldet — ein vierter Urteilsausgang für genau diese zwei
+Festpunkte (ADR-0012, Entscheidung 50). **Dieser Ausgang ist mit der Neuziehung entfallen**;
+`ConversationBaselineVerdict` kennt wieder dieselben drei Ausgänge wie der Pipeline-Pfad, und
+`ConversationPathIsolationTest#theCommittedBaselineMeasuresTheProductionConversationMemory` sperrt
+den Rückweg auf die beiden Vor-#1486/#1487-Werte.
 
 Aufbau wie die Pipeline-Baseline, mit vier Unterschieden:
 

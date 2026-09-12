@@ -123,9 +123,12 @@ Benutzer authentifizieren sich über:
 bequemer, sondern die Voraussetzung dafür, dass der Kontenlebenszyklus überhaupt an einer Stelle geführt
 werden kann. Lokale Konten laufen am zentralen Ausscheideprozess vorbei; jedes dauerhaft betriebene
 lokale Konto ist deshalb eine Ausnahme, die begründet und regelmäßig überprüft gehört. OPAA macht das
-sichtbar statt es zu verbieten: Jedes lokale Konto trägt einen Anlagegrund und ein Ablaufdatum, die
-Verwaltung zeigt dauerhaft, wie viele lokale Konten ohne Ablaufdatum bestehen, und die lokale
-Benutzerverwaltung ist im Regelbetrieb abgeschaltet.
+sichtbar statt es zu verbieten: Jedes lokale Konto trägt einen Anlagegrund (Pflicht, zweckgebunden)
+und in der Regel ein Ablaufdatum; die Verwaltung führt die Liste der lokalen Konten mit Filtern
+„ohne Ablaufdatum", „länger als 90 Tage nicht genutzt" und „offene Einladungen", erinnert Person und
+Systemverwaltung vor einem Ablauf per E-Mail, legt der Systemverwaltung einmal im Quartal die Konten
+ohne Ablaufdatum zur Wiedervorlage vor, sperrt lokale Konten nach einer Inaktivitätsfrist automatisch,
+und die lokale Benutzerverwaltung ist im Regelbetrieb abgeschaltet.
 
 > **Lokale Benutzerverwaltung** (Epic #1529, Beschluss aus #1368 vom 10.09.2026): Der
 > **Erstadministrator ist immer ein lokales Konto**, das beim allerersten Start entsteht (Einmalpasswort

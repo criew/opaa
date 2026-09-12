@@ -195,6 +195,16 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
   Compose-Profil `demo` zugeordnet (`docker-compose.yml`, Kommentar am `keycloak`-Service), damit die
   Demo nie ohne Anmeldung erreichbar ist — `docker compose --profile demo up` genügt damit allein,
   kein zweiter, leicht vergessener `--profile oidc` auf jedem dokumentierten Befehl.
+
+  **Neustart:** Der Dienst hat bewusst kein Volume und importiert `keycloak/realm-export.json` bei
+  jedem Start neu. Beide Realm-Exporte vergeben deshalb je Konto eine **feste Nutzer-ID** (`"id"`
+  unter `users`, #1526); Keycloak übernimmt sie, das `sub` im Token bleibt damit über einen
+  Neustart hinweg gleich, und OPAA findet zu jedem Konto (Schlüssel: `subject` + `issuer`) seinen
+  vorhandenen Datensatz samt Spaces und Rechten wieder. Ein `docker compose --profile demo down`
+  **ohne** `-v` erhält damit die ganze Demo: Datenbank, Objektspeicher und Konten. Wer den Realm
+  ändert, startet einfach neu — die Datei führt, nicht ein Keycloak-Zustand. **Ein neuer Eintrag
+  unter `users` braucht dabei seine eigene feste `"id"`**, sonst gilt für dieses eine Konto wieder
+  das alte Verhalten: neues `sub` bei jedem Start, neuer rechteloser Datensatz bei jedem Login.
 - **`demo-corpus`** (`httpd:2.4-alpine`) liefert die drei `HTTP_DIRECTORY`-Bibliotheken als getrennte
   Unterverzeichnisse aus: `leistungen-meldewesen-ausweise/`, `leistungen-kfz-zulassung/`,
   `satzungen-gebuehrenordnungen/`. `interne-dienstanweisungen-meldewesen/` (die `UPLOAD`-Bibliothek,
@@ -205,7 +215,8 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
   realistische Domain statt `localhost`, damit die Demo das `RSS_FEED`-Konnektorverhalten so vorführt,
   wie es auch gegen eine echte Domain liefe.
 
-- **`minio`** (`minio/minio`, gepinnt auf dasselbe Release wie die MinIO-Testfixture des Backends)
+- **`minio`** (`quay.io/minio/minio`, gepinnt auf dasselbe Release wie die MinIO-Testfixture des
+  Backends; die Quelle ist quay.io, seit MinIO das Docker-Hub-Repository entfernt hat — #1578)
   ist der **eine** S3-kompatible Objektspeicher der Demo — mit drei Buckets (#1383, #1520,
   [ADR-0027](../docs/decisions/0027-s3-konnektor.md),
   [ADR-0030](../docs/decisions/0030-originalablage-der-uploads.md), Handbuch
@@ -215,7 +226,7 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
   |---|---|---|
   | `rheinfurt-archiv` | Quelle der Bibliothek „Ratsinformationen Stadt Rheinfurt" | `demo/corpus/ratsinformationen/` unter dem Präfix `ratsinformationen/`, Jahrgangsordner inklusive |
   | `formattest` | Quelle der Bibliothek „Formattest auf S3" | `demo/corpus/formate/`, je ein Dokument pro unterstützter Endung |
-  | `opaa-uploads` | **Ablage** der hochgeladenen Originale der Demo | was über die Oberfläche hochgeladen wird, einschließlich der 26 Dokumente der Upload-Bibliothek, die der Seed einspielt |
+  | `opaa-uploads` | **Ablage** der hochgeladenen Originale der Demo | was über die Oberfläche hochgeladen wird, einschließlich der 26 Dokumente der Upload-Bibliothek, die der Seed einspielt — je Original ein Objekt unter `<Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` ([ADR-0030](../docs/decisions/0030-originalablage-der-uploads.md), Entscheidung 4 mit Nachtrag) |
 
   Der Einmal-Schritt **`minio-seed`** legt alle drei Buckets an, spiegelt die beiden Korpus-Buckets
   (`mc mirror --overwrite --remove`, idempotent; Fortschritt mit `docker compose logs minio-seed`)
@@ -229,16 +240,13 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
   bleiben davon unberührt: `mc mirror --overwrite --remove` erzwingt bei jedem Start wieder den
   committeten Korpusstand, egal was im Volume lag.
 
-  > **Achtung beim Neustart:** Objekte, Datenbank und damit auch die Dokumentzeilen überleben ein
-  > `docker compose --profile demo down` (ohne `-v`) — die **Konten** nicht. Der `keycloak`-Dienst
-  > hat kein Volume und importiert `keycloak/realm-export.json` bei jedem Start neu; der Export
-  > vergibt keine festen Nutzer-IDs, also bekommt jedes Demo-Konto ein neues `sub` und damit beim
-  > nächsten Login einen **neuen** OPAA-Datensatz ohne Rechte an den vorhandenen Bibliotheken. Der
-  > Bestand ist dann noch da, aber niemand sieht ihn mehr, und ein erneuter Seed-Lauf legt alles
-  > ein zweites Mal an, statt das Vorhandene zu übernehmen (seine Namensprüfung läuft über die
-  > Sitzung des — nun neuen — Admin-Kontos). Wer die Demo neu startet, setzt sie deshalb mit
-  > `docker compose --profile demo down -v` vollständig zurück und seedet neu. Das gilt unverändert
-  > seit #712 und hat mit der Ablage nichts zu tun; behoben wird es in #1526.
+  > **Neustart:** Objekte, Datenbank, Dokumentzeilen **und Konten** überleben ein
+  > `docker compose --profile demo down` (ohne `-v`). Die Konten tun das seit #1526, weil beide
+  > Realm-Exporte je Eintrag eine feste Nutzer-ID vergeben (siehe „Stack starten", Punkt
+  > `keycloak`): Das `sub` im Token bleibt gleich, OPAA findet seinen vorhandenen Datensatz samt
+  > Rechten wieder, und ein erneuter Seed-Lauf bleibt auch über den Neustart hinweg idempotent.
+  > Vollständig zurücksetzen (`down -v` plus neuer Seed) muss nur, wer den Bestand selbst loswerden
+  > will.
 
   **Zugangsdaten:** Der Root-Schlüssel `rheinfurt-archiv` / `RheinfurtDemo!2026` ist ein
   dokumentierter Demo-Wert; ihn gibt der Seed den **beiden S3-Bibliotheken** als
@@ -259,7 +267,8 @@ ein Hafen nach außen ist dafür nicht nötig:
   mit dem Root-Schlüssel oben (`rheinfurt-archiv` / `RheinfurtDemo!2026`), dann „Object Browser":
   `rheinfurt-archiv` zeigt die Jahrgangsordner unter `ratsinformationen/`, `formattest` die vierzehn
   Formatmuster, und `opaa-uploads` füllt sich mit je einem Objekt pro hochgeladenem Original —
-  sichtbar unmittelbar nach einem Upload über die Oberfläche. Die Konsole des gepinnten Release ist
+  sichtbar unmittelbar nach einem Upload über die Oberfläche, zwei Ordnerebenen tief: erst die
+  Organisation, darin die Bibliothek. Die Konsole des gepinnten Release ist
   vollständig; ein zusätzlicher UI-Container ist dafür nicht nötig.
 
 Listing-Format: Apache `IndexOptions FancyIndexing HTMLTable`
@@ -372,12 +381,11 @@ sha256sum -c MANIFEST.sha256
 Details zum Reproduktionsverfahren, den verwendeten Quellen und der Werkzeugwahl für PDF/DOCX/PPTX:
 [`generator/README.md`](generator/README.md) und [`corpus/SOURCE.md`](corpus/SOURCE.md).
 
-**Zwei Abweichungen vom „alles kommt aus dem Generator"-Bild**, beide dort ausführlich festgehalten:
-Die Word-97-Datei der Bibliothek „Formattest auf S3" schreibt keine der gepinnten Bibliotheken, sie
+**Eine Abweichung vom „alles kommt aus dem Generator"-Bild**, dort ausführlich festgehalten: Die
+Word-97-Datei der Bibliothek „Formattest auf S3" schreibt keine der gepinnten Bibliotheken, sie
 entsteht einmalig über `generator/make_doc_fixture.py` mit LibreOffice und bleibt committet
-(„Formate ohne Writer"); und `corpus/leistungen-meldewesen-ausweise/002_personalausweis-oder-reisepass-abholen.md`
-trägt eine Handkorrektur aus #942, die ein Generator-Lauf zurücknimmt („Handkorrektur in der
-Leistungsbibliothek").
+(„Formate ohne Writer"). Alles andere — auch jeder Gebührenbetrag — kommt aus dem Lauf selbst und
+braucht keine Nacharbeit von Hand (#1525).
 
 **Was danach neu indiziert werden muss:** Ein erneuter `python seed.py --profile demo`-Lauf gegen eine
 bereits laufende Instanz legt Nutzer, Spaces, Bibliotheken und Rechte nicht doppelt an (idempotent),
@@ -497,6 +505,24 @@ bewusst getrennt vom `opaa-frontend`-Client, dessen `directAccessGrantsEnabled` 
 `false` bleibt. **Dieser Client gehört vor jedem erreichbaren Deployment entfernt oder deaktiviert**
 (`../docs/handbuch/deployment.md`, Härtungstabelle, Punkt 6) — er ist ein passwortbasierter Tokenweg
 ohne Secret gegen jedes Realm-Konto und darf nicht dauerhaft scharf bleiben.
+
+Der Client trägt dafür einen Audience-Mapper (`oidc-audience-mapper`,
+`included.client.audience=opaa-frontend`): Das Backend nimmt ein Token nur an, wenn dessen `azp`
+die `client_id` der Anbieterzeile nennt oder diese in `aud` steht
+([ADR-0025](../docs/decisions/0025-mehrere-oidc-anbieter.md), Entscheidung 1). Keycloak setzt `azp`
+immer auf den anfragenden Client, hier also `opaa-seed` — ohne den Mapper endet jeder API-Aufruf des
+Seed-Laufs mit HTTP 401, obwohl der Tokenerwerb selbst erfolgreich war. Maßgeblich ist dabei die
+`client_id` der Anbieterzeile in der Anbieterverwaltung, nicht `OPAA_OIDC_CLIENT_ID`: Die Variable
+ist nur der Bootstrap-Wert des ersten Starts, danach führt die Datenbank. Lautet sie nicht
+`opaa-frontend`, muss der Mapper auf denselben Wert zeigen. Ein
+Keycloak, dessen Realm bereits importiert ist (eigenes Volume oder bestehende Datenbank), liest den
+Export nicht erneut — dort wird der Mapper per `kcadm` nachgezogen
+([„Härtung für erreichbare Deployments"](../docs/handbuch/deployment.md#härtung-für-erreichbare-deployments),
+Absatz „Änderungen am Realm auf einer bereits laufenden Instanz").
+
+Schlägt ein Seed-Lauf an dieser Stelle fehl, benennt `seed.py` die Ablehnung als solche und gibt den
+`WWW-Authenticate`-Header des Backends aus — „nicht erreichbar" meldet es nur, wenn tatsächlich
+nichts geantwortet hat.
 
 ### Öffentliche Instanz betreiben (opaa.ewerlin.com)
 
@@ -701,6 +727,13 @@ die Daten bleiben also erhalten. Die Ausgabe der Läufe wird protokolliert und w
 Instanz folgt dem `main`-Stand damit mit höchstens einem Tag Verzug; ein Push auf `main` erscheint
 nicht sofort, sondern beim nächsten nächtlichen Lauf. Wer schneller sein will, ruft das Skript von
 Hand auf.
+
+**Einmalig beim ersten Aufruf nach #1526:** Der Realm-Export vergibt seither feste Nutzer-IDs; die
+bestehenden Konten der Instanz tragen noch die zufälligen aus ihrem letzten Import. Beim ersten
+Deployment danach wechselt also jedes `sub` einmal, und jedes Demo-Konto bekäme beim nächsten Login
+eine zweite, rechtelose Zeile. Dieser eine Lauf braucht deshalb den zurücksetzenden Schalter
+(`down -v`) und anschließend einen vollständigen Seed; ab dann bleiben die Konten über jeden
+Neustart hinweg dieselben.
 
 Auf der Testinstanz sind `nomic-embed-text` und `OPAA_PGVECTOR_DIMENSIONS=768` fest aneinander
 gekoppelt: Wer das Embedding-Modell wechselt, muss beide Werte gemeinsam ändern und die Datenbank

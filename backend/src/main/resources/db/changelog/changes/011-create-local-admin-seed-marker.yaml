@@ -1,0 +1,34 @@
+databaseChangeLog:
+  # #1534 (ADR-0033 Entscheidung 5): the singleton marker of the bootstrap-administrator seed,
+  # the same shape as oidc_provider_seed_marker and llm_model_seed_marker. Written by
+  # io.opaa.auth.local.LocalAdminSeeder in the same transaction as the account it creates, never
+  # by this migration - "never attempted" and "attempted" must stay distinguishable after the
+  # account was deleted, so a later start does not resurrect it; only OPAA_LOCAL_ADMIN_RESET=force
+  # does that deliberately.
+  - changeSet:
+      id: 011-create-local-admin-seed-marker
+      author: opaa
+      comment: "local_admin_seed_marker: singleton marker of the bootstrap-administrator seed (#1534, ADR-0033)"
+      changes:
+        - createTable:
+            tableName: local_admin_seed_marker
+            columns:
+              - column:
+                  name: id
+                  type: integer
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: local_admin_seed_marker_pkey
+                    nullable: false
+              - column:
+                  name: seeded_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: >-
+              ALTER TABLE local_admin_seed_marker
+              ADD CONSTRAINT chk_local_admin_seed_marker_singleton CHECK (id = 1)
+      rollback:
+        - dropTable:
+            tableName: local_admin_seed_marker

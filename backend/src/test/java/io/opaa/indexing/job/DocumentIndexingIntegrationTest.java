@@ -14,6 +14,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.document.DocumentService;
@@ -24,14 +25,16 @@ import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
 import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaMockedChatModelIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnOrganizationFixtures;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -45,6 +48,7 @@ import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextBox;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
@@ -61,15 +65,16 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-@OpaaIndexingIntegrationTest
+@OpaaMockedChatModelIntegrationTest
 class DocumentIndexingIntegrationTest {
 
-  private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("document-indexing");
+  private static final Path classTempDir = OpaaTestDirectory.subdirectory("document-indexing");
 
   @Autowired private DocumentIndexingService documentIndexingService;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private VectorStore vectorStore;
+  @Autowired private VectorChunkStore vectorChunkStore;
+  @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private IndexingJobService indexingJobService;
@@ -86,6 +91,9 @@ class DocumentIndexingIntegrationTest {
   private UUID userId;
   private UUID targetLibraryId;
 
+  /** The organizations a single test method created beside {@link Organization#DEFAULT_ID}. */
+  private final List<UUID> throwawayOrganizationIds = new ArrayList<>();
+
   /**
    * {@link CurrentUser} snapshot for {@link #userId} - SYSTEM_ADMIN, {@link
    * Organization#DEFAULT_ID}.
@@ -96,12 +104,6 @@ class DocumentIndexingIntegrationTest {
 
   @BeforeEach
   void setUp() throws IOException {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    // Children first: another class in this shared context may leave attachment rows behind, and
-    // deleteAll()'s row order would otherwise trip fk_documents_parent (ADR-0022).
-    jdbcTemplate.update("DELETE FROM documents WHERE parent_document_id IS NOT NULL");
-    documentRepository.deleteAll();
-    indexingJobRepository.deleteAll();
     // Clean up any leftover files from previous tests
     if (Files.exists(classTempDir)) {
       try (var files = Files.list(classTempDir)) {
@@ -119,15 +121,9 @@ class DocumentIndexingIntegrationTest {
     // every trigger needs a caller-chosen library and a caller who actually holds at least
     // EDITOR on it - a system admin is not bypassed for an ordinary library (the /trigger
     // endpoint already requires SYSTEM_ADMIN, so bypassing the EDITOR check for that flag too
-    // would make it unreachable in practice). userId is granted
-    // OWNER on its own library explicitly below, exactly like a real KnowledgeLibraryService
-    // library creation would. The previous run's library is deleted first -
-    // fk_knowledge_libraries_owner_user is RESTRICT, so the user row cannot go while it still owns
-    // one.
-    jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = 'indexing-it@example.com')");
-    jdbcTemplate.update("DELETE FROM users WHERE email = 'indexing-it@example.com'");
+    // would make it unreachable in practice). userId is granted OWNER on its own library
+    // explicitly below, exactly like a real KnowledgeLibraryService library creation would.
+    removeOwnFixtures();
     userId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
@@ -155,6 +151,75 @@ class DocumentIndexingIntegrationTest {
                 false));
     targetLibraryId = library.getId();
     grantOwner(targetLibraryId, userId);
+  }
+
+  @AfterEach
+  void tearDown() {
+    removeOwnFixtures();
+  }
+
+  /**
+   * Everything this class created, in both hooks: the {@code @AfterEach} call removes what a method
+   * created, the {@code @BeforeEach} call what a method aborted halfway left behind. Scoped by this
+   * class's one owner e-mail and by the throwaway organizations a method created - never by table,
+   * the whole suite shares one database.
+   */
+  private void removeOwnFixtures() {
+    List<UUID> ownLibraryIds = ownLibraryIds();
+    for (UUID libraryId : ownLibraryIds) {
+      removeContentOf(libraryId);
+      jdbcTemplate.update("DELETE FROM indexing_jobs WHERE library_id = ?", libraryId);
+    }
+    jdbcTemplate.update(
+        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
+            + " email = 'indexing-it@example.com')");
+    jdbcTemplate.update("DELETE FROM users WHERE email = 'indexing-it@example.com'");
+    removeThrowawayOrganizations();
+  }
+
+  private List<UUID> ownLibraryIds() {
+    return jdbcTemplate.queryForList(
+        "SELECT id FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users"
+            + " WHERE email = 'indexing-it@example.com')",
+        UUID.class);
+  }
+
+  /** Every document of this class's own libraries - the suite shares one documents table. */
+  private List<Document> ownDocuments() {
+    return ownLibraryIds().stream()
+        .flatMap(libraryId -> documentRepository.findByLibraryId(libraryId).stream())
+        .toList();
+  }
+
+  /**
+   * Removes the organizations {@link #insertOrganization} created for a single test method, with
+   * everything in them. {@link OwnOrganizationFixtures} stops at {@code knowledge_libraries}, so
+   * the runs and documents underneath go first - a run keeps its organization (RESTRICT) even after
+   * its library is gone ({@code fk_indexing_jobs_library_organization} is ON DELETE SET NULL), and
+   * a still RUNNING one would otherwise also hold {@code uk_indexing_jobs_library_running} against
+   * the next method.
+   */
+  private void removeThrowawayOrganizations() {
+    for (UUID organizationId : throwawayOrganizationIds) {
+      List<UUID> libraryIds =
+          jdbcTemplate.queryForList(
+              "SELECT id FROM knowledge_libraries WHERE organization_id = ?",
+              UUID.class,
+              organizationId);
+      libraryIds.forEach(this::removeContentOf);
+      jdbcTemplate.update("DELETE FROM indexing_jobs WHERE organization_id = ?", organizationId);
+    }
+    ownOrganizationFixtures.removeOrganizations(throwawayOrganizationIds.toArray(new UUID[0]));
+  }
+
+  /**
+   * Chunks and documents of one library - chunks first, they carry no foreign key to a document.
+   */
+  private void removeContentOf(UUID libraryId) {
+    vectorChunkStore.deleteByLibraryId(libraryId);
+    // One statement rather than deleteAll(): PostgreSQL checks fk_documents_parent only at its
+    // end, so a parent and its attachment go together (ADR-0022).
+    jdbcTemplate.update("DELETE FROM documents WHERE library_id = ?", libraryId);
   }
 
   private void grantOwner(UUID libraryId, UUID granteeId) {
@@ -189,7 +254,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsFailed()).isZero();
     assertThat(completedJob.getDocumentsSkipped()).isZero();
 
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(2);
     assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
     assertThat(documents).allMatch(d -> d.getIndexedAt() != null);
@@ -247,7 +312,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getEventsTruncatedCount()).isZero();
 
     // Verify only the supported file was indexed
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(1);
     assertThat(documents.getFirst().getFileName()).isEqualTo("good.txt");
     assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.INDEXED);
@@ -333,7 +398,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(2);
     assertThat(completedJob.getDocumentsFailed()).isZero();
 
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(2);
     assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
@@ -386,7 +451,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsFailed()).isZero();
     assertThat(completedJob.getDocumentsSkipped()).isZero();
 
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(3);
     assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
@@ -420,7 +485,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(2);
     assertThat(completedJob.getDocumentsFailed()).isZero();
 
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(2);
     assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
@@ -457,7 +522,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(1);
     assertThat(completedJob.getDocumentsFailed()).isZero();
 
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(1);
     assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
@@ -503,7 +568,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsFailed()).isZero();
     assertThat(completedJob.getDocumentsSkipped()).isZero();
 
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(1);
     assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(documents.getFirst().getChunkCount()).isPositive();
@@ -567,7 +632,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsFailed()).isZero();
     assertThat(completedJob.getDocumentsSkipped()).isZero();
 
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(2);
     assertThat(documents)
         .allSatisfy(d -> assertThat(d.getStatus()).isEqualTo(DocumentStatus.INDEXED));
@@ -631,7 +696,7 @@ class DocumentIndexingIntegrationTest {
     // The document row itself is kept, marked FAILED with the same user-facing message a scan PDF
     // gets (DocumentService#NO_EXTRACTABLE_TEXT_MESSAGE) - not deleted or left INDEXED with zero
     // chunks.
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(1);
     assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.FAILED);
     assertThat(documents.getFirst().getErrorMessage())
@@ -653,7 +718,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsProcessed()).isZero();
     assertThat(completedJob.getDocumentsFailed()).isZero();
     assertThat(completedJob.getDocumentsSkipped()).isEqualTo(1);
-    List<Document> documents = documentRepository.findAll();
+    List<Document> documents = ownDocuments();
     assertThat(documents).hasSize(1);
     assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.FAILED);
     assertThat(documents.getFirst().getErrorMessage())
@@ -676,7 +741,7 @@ class DocumentIndexingIntegrationTest {
         vectorStore.similaritySearch(
             SearchRequest.builder().query("content").topK(100).similarityThreshold(0.0).build());
     assertThat(initialResults).isNotEmpty();
-    Document initialDoc = documentRepository.findAll().getFirst();
+    Document initialDoc = ownDocuments().getFirst();
     assertThat(initialDoc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(initialDoc.getChecksum()).isNotNull();
     assertThat(initialDoc.getLibraryId()).isEqualTo(targetLibraryId);
@@ -689,10 +754,10 @@ class DocumentIndexingIntegrationTest {
     var completedSecondJob = indexingJobRepository.findById(secondJob.getId()).orElseThrow();
     assertThat(completedSecondJob.getDocumentsProcessed()).isEqualTo(1);
     assertThat(completedSecondJob.getDocumentsSkipped()).isZero();
-    assertThat(documentRepository.count()).isEqualTo(1);
+    assertThat(ownDocuments()).hasSize(1);
 
     // Verify the document content was actually re-indexed
-    Document reindexedDoc = documentRepository.findAll().getFirst();
+    Document reindexedDoc = ownDocuments().getFirst();
     assertThat(reindexedDoc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(reindexedDoc.getIndexedAt()).isNotNull();
     assertThat(reindexedDoc.getChecksum()).isNotEqualTo(initialDoc.getChecksum());
@@ -786,7 +851,7 @@ class DocumentIndexingIntegrationTest {
                 otherLibraryId, filePath("shared-source.txt")))
         .as("the second library has its own, independent document")
         .isPresent();
-    assertThat(documentRepository.count()).isEqualTo(2);
+    assertThat(ownDocuments()).hasSize(2);
   }
 
   private String filePath(String fileName) {
@@ -908,8 +973,8 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedSecondJob.getDocumentsSkipped()).isEqualTo(1);
 
     // Document record should still be there, unchanged
-    assertThat(documentRepository.count()).isEqualTo(1);
-    Document doc = documentRepository.findAll().getFirst();
+    assertThat(ownDocuments()).hasSize(1);
+    Document doc = ownDocuments().getFirst();
     assertThat(doc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(doc.getChecksum()).isNotNull();
     assertThat(doc.getChecksum()).hasSize(64);
@@ -924,7 +989,7 @@ class DocumentIndexingIntegrationTest {
     // allowlist no longer covers must not silently succeed. This library is created directly
     // against
     // the repository (bypassing KnowledgeLibraryService's own creation-time check) with a
-    // sourcePath outside this suite's configured allowlist (OpaaIndexingTestDirectory.BASE_DIR,
+    // sourcePath outside this suite's configured allowlist (OpaaTestDirectory.BASE_DIR,
     // not just classTempDir - a sibling of classTempDir is still a subdirectory of BASE_DIR and
     // therefore still inside the allowlist), mirroring how such a library could exist if the
     // allowlist were narrowed after it was created.
@@ -938,8 +1003,8 @@ class DocumentIndexingIntegrationTest {
                 LibraryVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
-                OpaaIndexingTestDirectory.BASE_DIR
-                    .resolveSibling("opaa-484-outside-allowlist")
+                OpaaTestDirectory.OUTSIDE_ALLOWLIST_DIR
+                    .resolve("opaa-484")
                     .toAbsolutePath()
                     .toString(),
                 null,
@@ -958,8 +1023,9 @@ class DocumentIndexingIntegrationTest {
     assertThat(failedJob.getStatus()).isEqualTo(JobStatus.FAILED);
     assertThat(failedJob.getErrorMessage()).contains("außerhalb");
     assertThat(documentRepository.findByLibraryId(outsideAllowlistLibrary.getId())).isEmpty();
-
-    libraryRepository.deleteById(outsideAllowlistLibrary.getId());
+    // The library is not deleted here: fk_indexing_jobs_library_organization is ON DELETE SET NULL,
+    // so the run above would survive with a NULL library_id and no later cleanup would find it.
+    // removeOwnFixtures() owns this library through userId and removes its runs first.
   }
 
   // --- indexing_jobs organization boundary, exercised against two real organizations ---
@@ -1062,10 +1128,12 @@ class DocumentIndexingIntegrationTest {
     awaitJobCompletion(jobInOrganizationB);
   }
 
+  /** Noted for {@link #removeThrowawayOrganizations()}, which removes them after the method. */
   private UUID insertOrganization(String name) {
     UUID id = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO organizations (id, name, created_at) VALUES (?, ?, now())", id, name);
+    throwawayOrganizationIds.add(id);
     return id;
   }
 

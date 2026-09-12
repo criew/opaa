@@ -28,10 +28,10 @@ import org.springframework.boot.health.contributor.Status;
 /**
  * The S3 adapter against the {@link StubS3Server} (ADR-0030): accepting and storing as two steps,
  * the three exits of an accepted upload, streaming download, the local copy that is gone on every
- * exit, the containment of a locator by bucket and library prefix, the synthetic attachment
- * locator, the two answers "not there" and "not reachable", and the startup sweep. The stub is
- * reached on the loopback with the target validation switched on - the configured endpoint passes
- * on its own (Entscheidung 8).
+ * exit, the containment of a locator by bucket, organization and library prefix, the synthetic
+ * attachment locator, the two answers "not there" and "not reachable", and the startup sweep. The
+ * stub is reached on the loopback with the target validation switched on - the configured endpoint
+ * passes on its own (Entscheidung 8).
  */
 class S3UploadedOriginalStoreTest {
 
@@ -39,6 +39,7 @@ class S3UploadedOriginalStoreTest {
 
   @TempDir Path tempDir;
 
+  private final UUID organizationId = UUID.randomUUID();
   private final UUID libraryId = UUID.randomUUID();
   private StubS3Server server;
   private S3UploadedOriginalStore store;
@@ -87,7 +88,7 @@ class S3UploadedOriginalStoreTest {
   @Test
   void acceptingWritesAWorkingFileAndOnlyStoringPutsTheObject() throws IOException {
     UploadedOriginalStore.AcceptedUpload accepted =
-        store.accept(libraryId, ".pdf", bytes("inhalt"));
+        store.accept(organizationId, libraryId, ".pdf", bytes("inhalt"));
 
     assertThat(accepted.workingFile()).hasParent(tempDir).hasContent("inhalt");
     assertThat(accepted.workingFile().getFileName().toString())
@@ -99,8 +100,10 @@ class S3UploadedOriginalStoreTest {
 
     assertThat(server.keys(BUCKET)).hasSize(1);
     String key = server.keys(BUCKET).get(0);
-    assertThat(key).startsWith(libraryId + "/").endsWith(".pdf");
+    // <keyPrefix><organizationId>/<libraryId>/<uuid><extension>, here with an empty key prefix.
+    assertThat(key).startsWith(organizationId + "/" + libraryId + "/").endsWith(".pdf");
     assertThat(ref.locator()).isEqualTo("s3://" + BUCKET + "/" + key);
+    assertThat(ref.organizationId()).isEqualTo(organizationId);
     assertThat(ref.libraryId()).isEqualTo(libraryId);
     assertThat(accepted.workingFile()).as("the working file outlives store()").exists();
     assertThat(server.seen()).extracting(StubS3Server.Seen::method).containsExactly("PUT");
@@ -109,7 +112,7 @@ class S3UploadedOriginalStoreTest {
   @Test
   void discardingBeforeStoringNeverTouchesTheBucket() throws IOException {
     UploadedOriginalStore.AcceptedUpload accepted =
-        store.accept(libraryId, ".pdf", bytes("inhalt"));
+        store.accept(organizationId, libraryId, ".pdf", bytes("inhalt"));
 
     accepted.discard();
 
@@ -120,7 +123,7 @@ class S3UploadedOriginalStoreTest {
   @Test
   void discardingAfterStoringRemovesObjectAndWorkingFile() throws IOException {
     UploadedOriginalStore.AcceptedUpload accepted =
-        store.accept(libraryId, ".pdf", bytes("inhalt"));
+        store.accept(organizationId, libraryId, ".pdf", bytes("inhalt"));
     accepted.store();
 
     accepted.discard();
@@ -135,7 +138,7 @@ class S3UploadedOriginalStoreTest {
   @Test
   void releasingRemovesOnlyTheWorkingFile() throws IOException {
     UploadedOriginalStore.AcceptedUpload accepted =
-        store.accept(libraryId, ".pdf", bytes("inhalt"));
+        store.accept(organizationId, libraryId, ".pdf", bytes("inhalt"));
     UploadedOriginalRef ref = accepted.store();
 
     accepted.release();
@@ -155,7 +158,7 @@ class S3UploadedOriginalStoreTest {
           }
         };
 
-    assertThatThrownBy(() -> store.accept(libraryId, ".pdf", failing))
+    assertThatThrownBy(() -> store.accept(organizationId, libraryId, ".pdf", failing))
         .isInstanceOf(IOException.class);
 
     assertThat(ownTempFiles()).isEmpty();
@@ -165,7 +168,7 @@ class S3UploadedOriginalStoreTest {
   @Test
   void aRefusedPutIsAnIOExceptionAndLeavesNoObject() throws IOException {
     UploadedOriginalStore.AcceptedUpload accepted =
-        store.accept(libraryId, ".pdf", bytes("inhalt"));
+        store.accept(organizationId, libraryId, ".pdf", bytes("inhalt"));
     server.failNextMatching("PUT", "/" + BUCKET + "/", 403, "AccessDenied");
 
     assertThatThrownBy(accepted::store)
@@ -265,16 +268,24 @@ class S3UploadedOriginalStoreTest {
   }
 
   @Test
-  void aLocatorInAnotherLibrarysPrefixIsNeitherReadNorDeletedNorEvenLookedUp() throws IOException {
+  void aLocatorOutsideTheOwnOrganizationAndLibraryPrefixIsNeitherReadNorDeletedNorEvenLookedUp()
+      throws IOException {
     UploadedOriginalRef own = storedOriginal("fremd");
     String key = own.locator().substring(("s3://" + BUCKET + "/").length());
-    UploadedOriginalRef foreign = new UploadedOriginalRef(UUID.randomUUID(), own.locator());
+    UploadedOriginalRef foreignLibrary =
+        new UploadedOriginalRef(organizationId, UUID.randomUUID(), own.locator());
+    // The same library, the same key - only the organization segment differs, and that alone
+    // has to make it "not there" (ADR-0030, Nachtrag zu Entscheidung 4).
+    UploadedOriginalRef foreignOrganization =
+        new UploadedOriginalRef(UUID.randomUUID(), libraryId, own.locator());
     UploadedOriginalRef otherBucket =
-        new UploadedOriginalRef(libraryId, "s3://anderer-bucket/" + key);
-    UploadedOriginalRef noPath = new UploadedOriginalRef(libraryId, "/var/opaa/uploads/x.pdf");
+        new UploadedOriginalRef(organizationId, libraryId, "s3://anderer-bucket/" + key);
+    UploadedOriginalRef noPath =
+        new UploadedOriginalRef(organizationId, libraryId, "/var/opaa/uploads/x.pdf");
     server.seen().clear();
 
-    for (UploadedOriginalRef ref : List.of(foreign, otherBucket, noPath)) {
+    for (UploadedOriginalRef ref :
+        List.of(foreignLibrary, foreignOrganization, otherBucket, noPath)) {
       assertNeitherReadableNorDeletable(ref);
     }
 
@@ -286,7 +297,7 @@ class S3UploadedOriginalStoreTest {
   void anAttachmentsSyntheticLocatorResolvesToNothingAndLeavesItsParentAlone() throws IOException {
     UploadedOriginalRef parent = storedOriginal("die Mail mit ihrer Anlage");
     UploadedOriginalRef attachment =
-        new UploadedOriginalRef(libraryId, parent.locator() + "/0/anlage.pdf");
+        new UploadedOriginalRef(organizationId, libraryId, parent.locator() + "/0/anlage.pdf");
     server.seen().clear();
 
     assertNeitherReadableNorDeletable(attachment);
@@ -327,17 +338,19 @@ class S3UploadedOriginalStoreTest {
 
     UploadedOriginalRef ref = storedOriginal("inhalt");
 
+    String libraryPrefix = "mandant-a/uploads/" + organizationId + "/" + libraryId + "/";
     assertThat(server.keys(BUCKET))
         .singleElement()
-        .satisfies(key -> assertThat(key).startsWith("mandant-a/uploads/" + libraryId + "/"));
-    assertThat(ref.locator())
-        .startsWith("s3://" + BUCKET + "/mandant-a/uploads/" + libraryId + "/");
+        .satisfies(key -> assertThat(key).startsWith(libraryPrefix));
+    assertThat(ref.locator()).startsWith("s3://" + BUCKET + "/" + libraryPrefix);
     assertThat(store.belongsToLibrary(ref)).isTrue();
     // the same key without the prefix names nothing of this store
     String key = server.keys(BUCKET).get(0);
     UploadedOriginalRef unprefixed =
         new UploadedOriginalRef(
-            libraryId, "s3://" + BUCKET + "/" + key.substring("mandant-a/uploads/".length()));
+            organizationId,
+            libraryId,
+            "s3://" + BUCKET + "/" + key.substring("mandant-a/uploads/".length()));
     assertNeitherReadableNorDeletable(unprefixed);
   }
 
@@ -426,14 +439,19 @@ class S3UploadedOriginalStoreTest {
     for (int i = 0; i < 5; i++) {
       own.add(storedOriginal("original " + i).locator());
     }
+    String libraryPrefix = "uploads/" + organizationId + "/" + libraryId + "/";
     server.putObject(BUCKET, "uploads/" + UUID.randomUUID() + "/fremd.pdf", raw("x"), "a/b");
-    server.putObject(BUCKET, libraryId + "/ohne-praefix.pdf", raw("x"), "a/b");
-    server.putObject(BUCKET, "uploads/" + libraryId + "/", new byte[0], "a/b");
-    server.putObject(BUCKET, "uploads/" + libraryId + "/fremder-ordner/tief.pdf", raw("x"), "a/b");
+    // the same library under another organization, which the prefix alone must keep out
+    server.putObject(
+        BUCKET, "uploads/" + UUID.randomUUID() + "/" + libraryId + "/fremd.pdf", raw("x"), "a/b");
+    server.putObject(
+        BUCKET, organizationId + "/" + libraryId + "/ohne-praefix.pdf", raw("x"), "a/b");
+    server.putObject(BUCKET, libraryPrefix, new byte[0], "a/b");
+    server.putObject(BUCKET, libraryPrefix + "fremder-ordner/tief.pdf", raw("x"), "a/b");
     server.seen().clear();
 
     List<UploadedOriginalStore.StoredOriginal> visited = new ArrayList<>();
-    store.forEachStoredOriginal(libraryId, visited::add);
+    store.forEachStoredOriginal(organizationId, libraryId, visited::add);
 
     assertThat(visited)
         .as("the library's own level only - a nested key was written by somebody else")
@@ -447,14 +465,15 @@ class S3UploadedOriginalStoreTest {
             });
     assertThat(server.keys(BUCKET))
         .as("nothing about the listing removes a foreign key")
-        .contains("uploads/" + libraryId + "/fremder-ordner/tief.pdf");
+        .contains(libraryPrefix + "fremder-ordner/tief.pdf");
     List<StubS3Server.Seen> listings =
         server.seen().stream().filter(seen -> seen.query().contains("list-type=2")).toList();
     assertThat(listings).as("five own objects plus the marker, two per page").hasSize(3);
     assertThat(listings)
         .allSatisfy(
             seen -> {
-              assertThat(seen.query()).contains("prefix=uploads%2F" + libraryId);
+              assertThat(seen.query())
+                  .contains("prefix=uploads%2F" + organizationId + "%2F" + libraryId);
               assertThat(seen.query()).contains("delimiter=%2F");
             });
     assertThat(listings.get(1).query()).contains("continuation-token=");
@@ -472,7 +491,7 @@ class S3UploadedOriginalStoreTest {
     server.omitLastModified();
 
     List<UploadedOriginalStore.StoredOriginal> visited = new ArrayList<>();
-    store.forEachStoredOriginal(libraryId, visited::add);
+    store.forEachStoredOriginal(organizationId, libraryId, visited::add);
 
     assertThat(visited).hasSize(1);
     assertThat(visited.get(0).lastModified())
@@ -484,7 +503,7 @@ class S3UploadedOriginalStoreTest {
     storedOriginal("inhalt");
     server.close();
 
-    assertThatThrownBy(() -> store.forEachStoredOriginal(libraryId, original -> {}))
+    assertThatThrownBy(() -> store.forEachStoredOriginal(organizationId, libraryId, original -> {}))
         .isInstanceOf(UploadStoreUnavailableException.class);
   }
 
@@ -499,7 +518,56 @@ class S3UploadedOriginalStoreTest {
     storedOriginal("zwei");
     server.omitContinuationToken();
 
-    assertThatThrownBy(() -> store.forEachStoredOriginal(libraryId, original -> {}))
+    assertThatThrownBy(() -> store.forEachStoredOriginal(organizationId, libraryId, original -> {}))
+        .isInstanceOf(UploadStoreUnavailableException.class);
+  }
+
+  @Test
+  void theLibraryListingNamesTheLibrariesOfThisOrganizationAndNothingElse() throws IOException {
+    store.close();
+    store = store(properties("inst1-"));
+    UUID secondLibrary = UUID.randomUUID();
+    store.accept(organizationId, libraryId, ".pdf", bytes("eins")).store();
+    store.accept(organizationId, secondLibrary, ".pdf", bytes("zwei")).store();
+    store.accept(UUID.randomUUID(), libraryId, ".pdf", bytes("fremdes Haus")).store();
+    // The prefix ends in "/", so it separates at the segment: a second installation whose key
+    // prefix starts with this one's shares the bucket without ever being listed here.
+    server.putObject(
+        BUCKET,
+        "inst10-" + organizationId + "/" + UUID.randomUUID() + "/fremd.pdf",
+        raw("x"),
+        "a/b");
+    server.putObject(BUCKET, "inst1-" + organizationId + "/lose.pdf", raw("x"), "a/b");
+    server.putObject(BUCKET, "inst1-" + organizationId + "/ablage/tief.pdf", raw("x"), "a/b");
+    // UUID.fromString also accepts abbreviated groups; such a segment would resolve to a library
+    // whose keys lie elsewhere, so only one that renders back to itself counts.
+    server.putObject(BUCKET, "inst1-" + organizationId + "/1-1-1-1-1/kurz.pdf", raw("x"), "a/b");
+    server.seen().clear();
+
+    List<UUID> visited = new ArrayList<>();
+    store.forEachStoredLibrary(organizationId, visited::add);
+
+    assertThat(visited).containsExactlyInAnyOrder(libraryId, secondLibrary);
+    assertThat(server.seen())
+        .filteredOn(seen -> seen.query().contains("list-type=2"))
+        .isNotEmpty()
+        .allSatisfy(
+            seen -> {
+              assertThat(seen.query()).contains("prefix=inst1-" + organizationId + "%2F");
+              assertThat(seen.query()).contains("delimiter=%2F");
+            });
+    assertThat(server.seen())
+        .as("the listing itself changes nothing")
+        .extracting(StubS3Server.Seen::method)
+        .containsOnly("GET");
+  }
+
+  @Test
+  void listingTheLibrariesOfAStoreThatCannotBeReachedIsUnavailable() throws IOException {
+    storedOriginal("inhalt");
+    server.close();
+
+    assertThatThrownBy(() -> store.forEachStoredLibrary(organizationId, libraryId -> {}))
         .isInstanceOf(UploadStoreUnavailableException.class);
   }
 
@@ -512,7 +580,8 @@ class S3UploadedOriginalStoreTest {
   }
 
   private UploadedOriginalRef storedOriginal(String content) throws IOException {
-    UploadedOriginalStore.AcceptedUpload accepted = store.accept(libraryId, ".pdf", bytes(content));
+    UploadedOriginalStore.AcceptedUpload accepted =
+        store.accept(organizationId, libraryId, ".pdf", bytes(content));
     UploadedOriginalRef ref = accepted.store();
     accepted.release();
     return ref;

@@ -10,7 +10,7 @@ import io.opaa.chat.ChatSource;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.query.retrieval.ranking.ChunkEmbeddingLookup;
-import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaMockedChatModelIntegrationTest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,10 +32,7 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.task.SyncTaskExecutor;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.bean.override.convention.TestBean;
 
 /**
  * Exercises the permission-aware vector search (#202) end to end against a real Postgres schema:
@@ -43,10 +40,7 @@ import org.springframework.test.context.bean.override.convention.TestBean;
  * library_id} metadata points at, or {@link QueryService#query} never even calls {@link
  * VectorStore#similaritySearch} for it - see {@link #userWithoutAnyGrantSeesNothing}.
  */
-// Own @TestBean chatTitleTaskExecutor override below means Spring's context cache still keys this
-// to its own context regardless of the shared @OpaaIndexingIntegrationTest base - documented
-// exception per AGENTS.md.
-@OpaaIndexingIntegrationTest
+@OpaaMockedChatModelIntegrationTest
 class QueryIntegrationTest {
 
   private static final UUID DEFAULT_ORGANIZATION_ID =
@@ -59,39 +53,6 @@ class QueryIntegrationTest {
   // once in setUp() below to always hand back a ChatClient wrapping the class-wide chatModel mock
   // above, so every existing when(chatModel...) stub in this class keeps working unchanged.
   @Autowired private ActiveChatModelResolver activeChatModelResolver;
-
-  /**
-   * #616: replaces {@code ChatConfiguration#chatTitleTaskExecutor} with a same-name, fully
-   * synchronous executor for this test class only - the real one runs #557's chat-title LLM call on
-   * a separate thread, racing this class's {@code when(chatModel...)} re-stubbing (see the {@code
-   * promptCaptor} usages below) against that async call landing on the very same, shared {@code
-   * chatModel} mock (from {@link io.opaa.test.OpaaIndexingMockConfiguration}) it stubs. Mockito's
-   * stubbing API is not thread-safe against a concurrent invocation of the mock being stubbed,
-   * which is exactly what corrupted CI runs with {@code MockitoException at
-   * QueryIntegrationTest.java:562} (#616) - a still-in-flight title job from an earlier {@code
-   * queryService.query(...)} call (in this test or, since {@code chatModel} is reused across every
-   * test method in this class's shared Spring context, an earlier test) invoking the mock exactly
-   * while a later {@code when(...)} call was mid-setup. {@link SyncTaskExecutor} runs the title job
-   * on the calling thread instead, so by the time {@code queryService.query(...)} returns, the
-   * title generation call has already completed (or failed) - never racing anything that runs after
-   * it.
-   *
-   * <p>{@code @TestBean(enforceOverride = true)}, not a same-name {@code @Bean} in a
-   * {@code @TestConfiguration}: a plain {@code @Bean} with a name that no longer matches - after,
-   * say, a rename of {@code ChatConfiguration#chatTitleTaskExecutor} - would silently become an
-   * *additional* bean instead of replacing anything, and the flake this class exists to prevent
-   * would come back without a single test here failing loudly to say why. {@code enforceOverride =
-   * true} instead makes context startup itself fail if no bean named {@code chatTitleTaskExecutor}
-   * exists to replace. Not a mocked {@code TaskExecutor} (the way {@code chatModel} above is a
-   * mock): a mock would never actually run the submitted title-generation task at all, which would
-   * hide the very call this class stubs {@code chatModel} for instead of making it deterministic.
-   */
-  @TestBean(name = "chatTitleTaskExecutor", enforceOverride = true)
-  private TaskExecutor chatTitleTaskExecutor;
-
-  private static TaskExecutor chatTitleTaskExecutor() {
-    return new SyncTaskExecutor();
-  }
 
   @Autowired private VectorStore vectorStore;
   @Autowired private VectorChunkStore vectorChunkStore;
@@ -369,20 +330,16 @@ class QueryIntegrationTest {
     // gives the user a real, non-empty readable set with a second, ungranted library present in
     // the same store, and asserts on the *count* of results, not just their content.
     //
-    // The granted library A (10 chunks) and ungranted library B (250 chunks, inserted first) are
-    // deliberately lopsided so a broken, post-hoc filter is distinguishable from the correct,
-    // search-time filter even at fetchK=25 candidates: FakeEmbeddingModel gives every text an
-    // identical embedding (see its Javadoc), so all 260 chunks tie on similarity, and a tied ANN
-    // scan returns ties in something close to insertion order. A correct, search-time filter only
-    // ever sees A's 10 members and returns all of them as candidates - MmrSelector then narrows
-    // those 10 down to topK (8), all "a"-prefixed. A post-filter instead requests the unfiltered
-    // top-25 of 260 tied candidates first: with B outnumbering A 25:1 and ordered first, that
-    // top-25
-    // is overwhelmingly (typically entirely) B, leaving far fewer than 8 - usually zero -
-    // authorized
-    // candidates once filtered afterward. See the PR description for the reproduction: reverting
-    // QueryService's filterExpression(...) call turns this test red while every other test in this
-    // class, QueryControllerTest and io.opaa.library.* stay green.
+    // The granted library A (13 chunks in 11 documents) and ungranted library B (250 chunks) are
+    // deliberately lopsided, and every B chunk is strictly closer to the question than every A
+    // chunk (see the embedding offset below), so a broken, post-hoc filter is distinguishable from
+    // the correct, search-time one at fetchK=25 candidates: the correct filter only ever sees A's
+    // 13 members and returns all of them as candidates - MmrSelector then narrows those 13 down to
+    // topK (8), all "a"-prefixed. A post-filter would request the unfiltered top-25 of 263
+    // candidates first, which are then all of B, and be left with nothing authorized to answer
+    // from. See the PR description for the reproduction: reverting QueryService's
+    // filterExpression(...) call turns this test red while every other test in this class,
+    // QueryControllerTest and io.opaa.library.* stay green.
     //
     // #932 review: the granted set below includes one multi-chunk document (see
     // #grantedChunksWithOneMultiChunkDocument's Javadoc for the exact shape, placement, and why
@@ -414,8 +371,21 @@ class QueryIntegrationTest {
                   "library_id",
                   ungrantedLibraryId.toString())));
     }
-    chunks.addAll(grantedChunksWithOneMultiChunkDocument());
+    List<Document> grantedChunks = grantedChunksWithOneMultiChunkDocument();
+    chunks.addAll(grantedChunks);
     vectorStore.add(chunks);
+    // What this test's name claims has to be created deliberately: FakeEmbeddingModel gives every
+    // text the same vector, so nothing would outscore anything. Moving the granted chunks off that
+    // vector puts every unauthorized chunk strictly closer to the question (cosine distance 0.0
+    // against 0.0156) while staying far above opaa.query.similarity-threshold. The row count is
+    // asserted because an UPDATE that silently matched nothing would leave the fixture toothless.
+    int movedChunks =
+        jdbcTemplate.update(
+            "UPDATE vector_store SET embedding = embedding + ?::vector"
+                + " WHERE metadata->>'library_id' = ?",
+            offsetFromTheFakeEmbedding(),
+            libraryId.toString());
+    assertThat(movedChunks).isEqualTo(grantedChunks.size());
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
@@ -463,6 +433,15 @@ class QueryIntegrationTest {
    * exactly {@code topK} and every source stays "a"-prefixed regardless of which tier, if any,
    * actually fires for a given run's tie-broken selection.
    */
+  /** {@code [5,0,0,...]} of the embedding dimension - added to a stored chunk's embedding. */
+  private static String offsetFromTheFakeEmbedding() {
+    StringBuilder offset = new StringBuilder("[5");
+    for (int dimension = 1; dimension < 1536; dimension++) {
+      offset.append(",0");
+    }
+    return offset.append("]").toString();
+  }
+
   private List<Document> grantedChunksWithOneMultiChunkDocument() {
     List<Document> chunks = new ArrayList<>();
     for (int chunkIndex = 0; chunkIndex < 3; chunkIndex++) {
@@ -650,8 +629,12 @@ class QueryIntegrationTest {
 
     queryService.query("Mach daraus eine Tabelle", chatId, asCaller(userId), true, List.of());
 
+    // The *answer* prompt, not simply the last captured one: since #1487 the last call of a turn
+    // is the Gesprächsnotiz condensation, which deliberately carries only the current question.
     boolean firstQuestionInPrompt =
-        promptCaptor.getValue().getInstructions().stream()
+        promptCaptor.getAllValues().stream()
+            .filter(prompt -> prompt.getContents().contains("CITATION RULES"))
+            .flatMap(prompt -> prompt.getInstructions().stream())
             .anyMatch(m -> m.getText() != null && m.getText().contains("Ausgaben bei Apple"));
     assertThat(firstQuestionInPrompt)
         .as("the second prompt must include the first question, rehydrated from chat_messages")
@@ -747,7 +730,7 @@ class QueryIntegrationTest {
     // MockitoException at this line before the fix. If #557's title job (or this stranger
     // query's own answer call) ever reaches this stub from any thread but this JUnit test
     // thread - i.e. the real, ChatConfiguration-backed chatTitleTaskExecutor pool, not the
-    // synchronous TestBean override at the top of this class - callThreadNames below fails.
+    // inline executor of this class's signature - callThreadNames below fails.
     List<String> callThreadNames = new ArrayList<>();
     when(chatModel.call(promptCaptor.capture()))
         .thenAnswer(
@@ -802,10 +785,10 @@ class QueryIntegrationTest {
    * (title generation) after the answer is already built - mocked here to fail, proving the answer
    * {@code query()} returns is entirely unaffected and the chat keeps its synchronous
    * prefix-derived fallback title rather than surfacing the failure. In production this second call
-   * genuinely runs off the request thread (#557); in this test class it runs synchronously instead
-   * (see {@link #chatTitleTaskExecutor}'s Javadoc, #616), so no {@code await()} is needed below -
-   * by the time {@code queryService.query(...)} returns, the failing title generation call has
-   * already happened.
+   * genuinely runs off the request thread (#557); under this class's signature it runs inline
+   * instead ({@code SynchronousChatTitleExecutorConfiguration}, #616), so no {@code await()} is
+   * needed below - by the time {@code queryService.query(...)} returns, the failing title
+   * generation call has already happened.
    */
   @Test
   void queryAnswerSucceedsEvenWhenTitleGenerationFailsAfterwards() {

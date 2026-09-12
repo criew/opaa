@@ -26,8 +26,8 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -41,6 +41,7 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,11 +53,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * different numbers and different value lists over the same bestand, and the per-person cache is
  * discarded on every rights change - a grant, a group membership - through the real write paths.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class MetadataFilterOptionsServiceIntegrationTest {
 
+  private static final String OWN_LIBRARIES =
+      "(SELECT id FROM knowledge_libraries WHERE name LIKE 'Optionen-%')";
+
   private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("metadata-filter-options");
+      OpaaTestDirectory.subdirectory("metadata-filter-options");
 
   @Autowired private MetadataFilterOptionsService optionsService;
   @Autowired private MetadataFilterOptionsCache cache;
@@ -81,12 +85,9 @@ class MetadataFilterOptionsServiceIntegrationTest {
   @BeforeEach
   void setUp() throws IOException {
     cache.invalidateAll();
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    jdbcTemplate.update("DELETE FROM documents");
-    jdbcTemplate.update("DELETE FROM asset_grants");
-    jdbcTemplate.update("DELETE FROM group_memberships");
-    // Users, groups and libraries of earlier runs stay: the grant and membership history rows the
-    // real write paths wrote reference them with RESTRICT. Every run creates its own, by id.
+    // Both hooks run the same scoped cleanup: this one guards against a method that broke off
+    // halfway, the @AfterEach one leaves the shared database as it was found.
+    removeOwnFixtures();
     admin = user("admin", SystemRole.SYSTEM_ADMIN);
     onlyA = user("nur-a", SystemRole.USER);
     both = user("beide", SystemRole.USER);
@@ -230,6 +231,37 @@ class MetadataFilterOptionsServiceIntegrationTest {
   private static MetadataFilterOptions.FieldOption field(
       MetadataFilterOptions options, CoreMetadataField field) {
     return options.fields().stream().filter(f -> f.field() == field).findFirst().orElseThrow();
+  }
+
+  /**
+   * The suite shares one database: this class removes its own users and libraries again instead of
+   * leaving them for the next class's blanket {@code deleteAll()} to trip over. Both prefixes are
+   * this class's own, so nothing of a sibling is touched.
+   */
+  @AfterEach
+  void removeOwnFixtures() {
+    jdbcTemplate.update("DELETE FROM chunk_full_text WHERE library_id IN " + OWN_LIBRARIES);
+    jdbcTemplate.update(
+        "DELETE FROM vector_store WHERE (metadata->>'library_id')::uuid IN " + OWN_LIBRARIES);
+    // Attachments before their parent: fk_documents_parent carries no ON DELETE clause, so a
+    // single bulk DELETE would have to rely on the check happening at statement end. The separate
+    // statement makes the order explicit instead.
+    jdbcTemplate.update(
+        "DELETE FROM documents WHERE parent_document_id IS NOT NULL AND library_id IN "
+            + OWN_LIBRARIES);
+    jdbcTemplate.update("DELETE FROM documents WHERE library_id IN " + OWN_LIBRARIES);
+    jdbcTemplate.update("DELETE FROM asset_grants WHERE library_id IN " + OWN_LIBRARIES);
+    jdbcTemplate.update(
+        "DELETE FROM group_memberships WHERE user_id IN (SELECT id FROM users WHERE subject LIKE 'metadata-options-%')");
+    // History rows reference users with RESTRICT - they go before the users themselves.
+    jdbcTemplate.update(
+        "DELETE FROM asset_grant_history WHERE subject_user_id IN (SELECT id FROM users WHERE"
+            + " subject LIKE 'metadata-options-%')");
+    jdbcTemplate.update(
+        "DELETE FROM group_membership_history WHERE user_id IN (SELECT id FROM users WHERE subject"
+            + " LIKE 'metadata-options-%')");
+    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE name LIKE 'Optionen-%'");
+    jdbcTemplate.update("DELETE FROM users WHERE subject LIKE 'metadata-options-%'");
   }
 
   private CurrentUser user(String name, SystemRole role) {

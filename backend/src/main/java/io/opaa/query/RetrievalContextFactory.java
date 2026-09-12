@@ -43,9 +43,24 @@ public class RetrievalContextFactory {
       List<Message> conversationHistory,
       Set<UUID> searchScope,
       MetadataFilter metadataFilter) {
+    return contextFor(question, conversationHistory, List.of(), searchScope, metadataFilter);
+  }
+
+  /**
+   * The same context with the {@code RAHMEN} points of the chat's Gesprächsnotiz (#1487). Only the
+   * chat query has them; the administration's diagnosis and the single-question evaluation path run
+   * outside a chat and use the overload above.
+   */
+  public RetrievalContext contextFor(
+      String question,
+      List<Message> conversationHistory,
+      List<String> conversationNote,
+      Set<UUID> searchScope,
+      MetadataFilter metadataFilter) {
     return new RetrievalContext(
         question,
         conversationHistory,
+        conversationNote,
         searchScope,
         metadataFilter,
         queryProperties,

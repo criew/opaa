@@ -4,7 +4,6 @@ import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SystemRole;
@@ -12,12 +11,15 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.GroupMembershipHistoryRepository;
+import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.source.s3.MinioFixture;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
-import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaMockedChatModelIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OpaaTestUploadStore;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -33,20 +35,13 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.health.actuate.endpoint.CompositeHealthDescriptor;
 import org.springframework.boot.health.actuate.endpoint.HealthEndpoint;
 import org.springframework.boot.health.actuate.endpoint.SystemHealthDescriptor;
 import org.springframework.boot.health.contributor.Status;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
@@ -56,38 +51,14 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
  * afterwards - is served back from the bucket and removed from it on deletion; and the store's
  * health contributor sits in its own group, not in the overall status. Skipped without Docker.
  */
-// Own @DynamicPropertySource (the S3 store and the MinIO endpoint) and a class-local
-// @TestConfiguration mean Spring's context cache keys this to its own context regardless of the
-// shared @OpaaIntegrationTest base - documented exception per AGENTS.md.
-@OpaaIntegrationTest
+@OpaaMockedChatModelIntegrationTest
 class S3UploadStorageIntegrationTest {
 
-  private static MinioFixture minio;
-  private static String bucket;
-
-  @TempDir static Path tempDir;
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    minio = MinioFixture.get();
-    bucket = minio.createBucket("opaa-upload-store");
-    registry.add("opaa.upload.store", () -> "s3");
-    registry.add("opaa.upload.s3.endpoint", () -> minio.endpoint().toString());
-    registry.add("opaa.upload.s3.bucket", () -> bucket);
-    registry.add("opaa.upload.s3.access-key", () -> minio.rootCredentials().accessKey());
-    registry.add("opaa.upload.s3.secret-key", () -> minio.rootCredentials().secretKey());
-    registry.add("opaa.upload.s3.temp-directory", () -> tempDir.toAbsolutePath().toString());
-    registry.add("opaa.upload.max-file-size", () -> 4096);
-  }
-
-  @TestConfiguration
-  static class TestConfig {
-    @Bean
-    @Primary
-    EmbeddingModel testEmbeddingModel() {
-      return new FakeEmbeddingModel();
-    }
-  }
+  // Bucket, endpoint and credentials come from OpaaS3UploadStoreInitializer, part of this class's
+  // signature; both refer to the same JVM-wide MinIO and the same working directory.
+  private static final MinioFixture minio = MinioFixture.get();
+  private static final String bucket = OpaaTestUploadStore.BUCKET;
+  private static final Path tempDir = OpaaTestDirectory.subdirectory("upload-s3-temp");
 
   @Autowired private LibraryDocumentService documentService;
   @Autowired private KnowledgeLibraryService libraryService;
@@ -96,6 +67,7 @@ class S3UploadStorageIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private UploadedOriginalStore uploadedOriginalStore;
@@ -107,7 +79,6 @@ class S3UploadStorageIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
     editor = new User("editor-subject-s3", "issuer", "editor-s3@example.com", "Editor");
@@ -122,7 +93,13 @@ class S3UploadStorageIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    List<Document> remaining = documentRepository.findAll();
+    // Scoped to this class's own library, not findAll(): the suite shares one database. The chunk
+    // tables carry no foreign key to documents, so they are cleared by library id here instead of
+    // by a TRUNCATE that would take every other class's chunks with it. Documents are then peeled
+    // leaf by leaf because fk_documents_parent (ADR-0022) refuses a parent whose attachment rows
+    // are still there.
+    vectorChunkStore.deleteByLibraryId(libraryId);
+    List<Document> remaining = documentRepository.findByLibraryId(libraryId);
     while (!remaining.isEmpty()) {
       Set<UUID> referencedAsParent =
           remaining.stream()
@@ -131,8 +108,11 @@ class S3UploadStorageIntegrationTest {
               .collect(Collectors.toSet());
       documentRepository.deleteAll(
           remaining.stream().filter(d -> !referencedAsParent.contains(d.getId())).toList());
-      remaining = documentRepository.findAll();
+      remaining = documentRepository.findByLibraryId(libraryId);
     }
+    // Written by PermissionHistoryListener when libraryService.createLibrary above ran. It has no
+    // foreign key at all, so a row left here would never fail loudly, only accumulate.
+    jdbcTemplate.update("DELETE FROM library_visibility_history WHERE library_id = ?", libraryId);
     libraryRepository.deleteById(libraryId);
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId()));
     membershipHistoryRepository.deleteByUserIdIn(List.of(editor.getId()));
@@ -162,7 +142,8 @@ class S3UploadStorageIntegrationTest {
     assertThat(uploaded.document().getStatus()).isEqualTo(DocumentStatus.PENDING);
 
     Document indexed = awaitDocumentStatus(uploaded.document().getId(), DocumentStatus.INDEXED);
-    assertThat(indexed.getFilePath()).startsWith("s3://" + bucket + "/" + libraryId + "/");
+    assertThat(indexed.getFilePath())
+        .startsWith("s3://" + bucket + "/" + organizationId + "/" + libraryId + "/");
     String key = indexed.getFilePath().substring(("s3://" + bucket + "/").length());
     assertThat(objectExists(key)).isTrue();
 

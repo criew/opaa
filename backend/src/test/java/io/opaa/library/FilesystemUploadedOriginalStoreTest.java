@@ -21,14 +21,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The containment check of the filesystem adapter (ADR-0030, Entscheidung 1) and the store/read/
- * delete contract built on it. Everything here is about what a tampered, foreign or vanished {@code
- * file_path} may reach: no read and no deletion ever gets past {@code managedFile}.
+ * The containment check of the filesystem adapter (ADR-0030, Entscheidung 1 and the addendum to
+ * Entscheidung 4) and the store/read/delete contract built on it. Everything here is about what a
+ * tampered, foreign or vanished {@code file_path} may reach: no read and no deletion ever gets past
+ * {@code managedFile}, and that check now spans both segments - organization and library.
  */
 class FilesystemUploadedOriginalStoreTest {
 
   @TempDir Path storageDir;
 
+  private final UUID organizationId = UUID.randomUUID();
   private final UUID libraryId = UUID.randomUUID();
   private FilesystemUploadedOriginalStore store;
 
@@ -40,19 +42,22 @@ class FilesystemUploadedOriginalStoreTest {
   }
 
   @Test
-  void anAcceptedUploadIsStoredUnderTheLibrarysOwnDirectoryAndItsPathIsTheLocator()
+  void anAcceptedUploadIsStoredUnderItsOrganizationAndLibraryAndItsPathIsTheLocator()
       throws IOException {
     UploadedOriginalStore.AcceptedUpload accepted =
-        store.accept(libraryId, ".pdf", bytes("content"));
+        store.accept(organizationId, libraryId, ".pdf", bytes("content"));
 
+    // <storage-path>/<organizationId>/<libraryId>/<uuid><extension>, spelled out here rather than
+    // through the helper: this is the layout the handbook and the S3 adapter's key schema share.
     assertThat(accepted.workingFile())
-        .hasParent(storageDir.resolve(libraryId.toString()))
+        .hasParent(storageDir.resolve(organizationId.toString()).resolve(libraryId.toString()))
         .hasContent("content");
     assertThat(accepted.workingFile().getFileName().toString()).endsWith(".pdf");
 
     UploadedOriginalRef ref = accepted.store();
 
     assertThat(Path.of(ref.locator())).isEqualTo(accepted.workingFile());
+    assertThat(ref.organizationId()).isEqualTo(organizationId);
     assertThat(ref.libraryId()).isEqualTo(libraryId);
     assertThat(store.belongsToLibrary(ref)).isTrue();
   }
@@ -62,7 +67,7 @@ class FilesystemUploadedOriginalStoreTest {
     // The window between accepting and storing is where the content/extension and deduplication
     // checks reject an upload (ADR-0030, Entscheidung 2) - nothing may stay behind then.
     UploadedOriginalStore.AcceptedUpload accepted =
-        store.accept(libraryId, ".pdf", bytes("content"));
+        store.accept(organizationId, libraryId, ".pdf", bytes("content"));
 
     accepted.discard();
 
@@ -74,7 +79,7 @@ class FilesystemUploadedOriginalStoreTest {
     // ADR-0030, Entscheidung 2: releasing ends the working file's life, not the original's. Here
     // they are the same file, so releasing has nothing to do - the original must survive it.
     UploadedOriginalStore.AcceptedUpload accepted =
-        store.accept(libraryId, ".pdf", bytes("content"));
+        store.accept(organizationId, libraryId, ".pdf", bytes("content"));
     UploadedOriginalRef ref = accepted.store();
 
     accepted.release();
@@ -86,7 +91,7 @@ class FilesystemUploadedOriginalStoreTest {
   @Test
   void aDiscardedUploadLeavesNothingBehind() throws IOException {
     UploadedOriginalStore.AcceptedUpload accepted =
-        store.accept(libraryId, ".pdf", bytes("content"));
+        store.accept(organizationId, libraryId, ".pdf", bytes("content"));
     UploadedOriginalRef ref = accepted.store();
 
     accepted.discard();
@@ -105,10 +110,10 @@ class FilesystemUploadedOriginalStoreTest {
           }
         };
 
-    assertThatThrownBy(() -> store.accept(libraryId, ".pdf", failing))
+    assertThatThrownBy(() -> store.accept(organizationId, libraryId, ".pdf", failing))
         .isInstanceOf(IOException.class);
 
-    assertThat(storageDir.resolve(libraryId.toString())).isEmptyDirectory();
+    assertThat(libraryDirectory()).isEmptyDirectory();
   }
 
   @Test
@@ -160,20 +165,40 @@ class FilesystemUploadedOriginalStoreTest {
   @Test
   void aPathInsideAnotherLibrarysDirectoryIsNeitherReadNorDeleted() throws IOException {
     UUID otherLibraryId = UUID.randomUUID();
-    Path foreign = Files.createDirectories(storageDir.resolve(otherLibraryId.toString()));
+    Path foreign =
+        Files.createDirectories(
+            storageDir.resolve(organizationId.toString()).resolve(otherLibraryId.toString()));
     Path foreignFile = foreign.resolve("fremd.pdf");
     Files.writeString(foreignFile, "content of another library");
-    UploadedOriginalRef ref = new UploadedOriginalRef(libraryId, foreignFile.toString());
+    UploadedOriginalRef ref =
+        new UploadedOriginalRef(organizationId, libraryId, foreignFile.toString());
 
     assertNeitherReadableNorDeletable(ref);
     assertThat(foreignFile).exists();
   }
 
   @Test
+  void anOriginalOfAnotherOrganizationIsNeitherReadNorDeletedUnderTheSameLibraryId()
+      throws IOException {
+    // The library segment alone would match here - same library id, same random name. Only the
+    // organization segment tells the two apart, and it must, or a walk over the whole storage area
+    // could not draw the tenant boundary without a database row (ADR-0030, Nachtrag zu 4).
+    UUID otherOrganizationId = UUID.randomUUID();
+    UploadedOriginalRef foreign =
+        store.accept(otherOrganizationId, libraryId, ".pdf", bytes("fremde Organisation")).store();
+    UploadedOriginalRef claimed =
+        new UploadedOriginalRef(organizationId, libraryId, foreign.locator());
+
+    assertNeitherReadableNorDeletable(claimed);
+    assertThat(Path.of(foreign.locator())).exists();
+  }
+
+  @Test
   void aPathOutsideTheStorageDirectoryIsNeitherReadNorDeleted() throws IOException {
     Path outside = Files.createTempDirectory("outside-upload-storage").resolve("fremd.pdf");
     Files.writeString(outside, "never written by this service");
-    UploadedOriginalRef ref = new UploadedOriginalRef(libraryId, outside.toString());
+    UploadedOriginalRef ref =
+        new UploadedOriginalRef(organizationId, libraryId, outside.toString());
 
     assertNeitherReadableNorDeletable(ref);
     assertThat(outside).exists();
@@ -183,10 +208,10 @@ class FilesystemUploadedOriginalStoreTest {
   void aSymlinkLeadingOutOfTheLibraryDirectoryIsNeitherReadNorDeleted() throws IOException {
     Path outside = Files.createTempDirectory("outside-upload-storage").resolve("geheim.pdf");
     Files.writeString(outside, "not ours");
-    Path libraryDirectory = Files.createDirectories(storageDir.resolve(libraryId.toString()));
+    Path libraryDirectory = Files.createDirectories(libraryDirectory());
     Path link = libraryDirectory.resolve("harmlos.pdf");
     assumeTrue(createSymbolicLink(link, outside), "needs symlink support (Windows: privileged)");
-    UploadedOriginalRef ref = new UploadedOriginalRef(libraryId, link.toString());
+    UploadedOriginalRef ref = new UploadedOriginalRef(organizationId, libraryId, link.toString());
 
     // Lexically the link lies inside the library's own directory; only resolving it shows that its
     // bytes do not.
@@ -203,7 +228,7 @@ class FilesystemUploadedOriginalStoreTest {
     // not take the parent's original with it.
     UploadedOriginalRef parent = storedOriginal("die Mail mit ihrer Anlage");
     UploadedOriginalRef attachment =
-        new UploadedOriginalRef(libraryId, parent.locator() + "/0/anlage.pdf");
+        new UploadedOriginalRef(organizationId, libraryId, parent.locator() + "/0/anlage.pdf");
 
     assertNeitherReadableNorDeletable(attachment);
     assertThat(Path.of(parent.locator())).exists();
@@ -221,7 +246,8 @@ class FilesystemUploadedOriginalStoreTest {
   void aLocatorThatIsNoPathOnThisMachineIsSimplyUnavailable() {
     // What an S3 locator would look like to this adapter, and what a corrupted column can hold.
     UploadedOriginalRef ref =
-        new UploadedOriginalRef(libraryId, "s3://bucket/" + libraryId + "/object.pdf");
+        new UploadedOriginalRef(
+            organizationId, libraryId, "s3://bucket/" + libraryId + "/object.pdf");
 
     assertNeitherReadableNorDeletable(ref);
   }
@@ -231,13 +257,30 @@ class FilesystemUploadedOriginalStoreTest {
     Document filesystemDocument =
         new Document(
             "dienstanweisung.txt",
-            storageDir.resolve(libraryId.toString()).resolve("egal.txt").toString(),
+            libraryDirectory().resolve("egal.txt").toString(),
             "text/plain",
             10L,
             DocumentSourceType.FILESYSTEM);
     filesystemDocument.setLibraryId(libraryId);
+    filesystemDocument.setOrganizationId(organizationId);
 
     assertThat(UploadedOriginalRef.of(filesystemDocument)).isEmpty();
+  }
+
+  @Test
+  void anUploadRowWithoutAnOrganizationNamesNoOriginalEither() {
+    // Both segments are part of the reference, so a row that cannot name one of them names no
+    // original at all - it is never routed into the store, neither to read nor to delete.
+    Document upload =
+        new Document(
+            "bescheid.pdf",
+            libraryDirectory().resolve("bescheid.pdf").toString(),
+            "application/pdf",
+            10L,
+            DocumentSourceType.UPLOAD);
+    upload.setLibraryId(libraryId);
+
+    assertThat(UploadedOriginalRef.of(upload)).isEmpty();
   }
 
   @Test
@@ -245,10 +288,10 @@ class FilesystemUploadedOriginalStoreTest {
       throws IOException {
     UploadedOriginalRef first = storedOriginal("eins");
     UploadedOriginalRef second = storedOriginal("zwei");
-    store.accept(UUID.randomUUID(), ".pdf", bytes("fremde Bibliothek")).store();
+    store.accept(organizationId, UUID.randomUUID(), ".pdf", bytes("fremde Bibliothek")).store();
 
     List<UploadedOriginalStore.StoredOriginal> visited = new ArrayList<>();
-    store.forEachStoredOriginal(libraryId, visited::add);
+    store.forEachStoredOriginal(organizationId, libraryId, visited::add);
 
     assertThat(visited)
         .extracting(UploadedOriginalStore.StoredOriginal::locator)
@@ -262,10 +305,23 @@ class FilesystemUploadedOriginalStoreTest {
   }
 
   @Test
+  void listingLeavesOutTheSameLibraryIdUnderAnotherOrganization() throws IOException {
+    UploadedOriginalRef own = storedOriginal("eigenes Original");
+    store.accept(UUID.randomUUID(), libraryId, ".pdf", bytes("fremde Organisation")).store();
+
+    List<UploadedOriginalStore.StoredOriginal> visited = new ArrayList<>();
+    store.forEachStoredOriginal(organizationId, libraryId, visited::add);
+
+    assertThat(visited)
+        .extracting(UploadedOriginalStore.StoredOriginal::locator)
+        .containsExactly(own.locator());
+  }
+
+  @Test
   void listingALibraryWithoutAStorageAreaVisitsNothing() {
     List<UploadedOriginalStore.StoredOriginal> visited = new ArrayList<>();
 
-    store.forEachStoredOriginal(UUID.randomUUID(), visited::add);
+    store.forEachStoredOriginal(organizationId, UUID.randomUUID(), visited::add);
 
     assertThat(visited).isEmpty();
   }
@@ -275,7 +331,7 @@ class FilesystemUploadedOriginalStoreTest {
     // The listing and the resolution must agree: what the listing reports, delete must be able
     // to remove; a subdirectory and a link leading out of the area resolve to nothing.
     UploadedOriginalRef own = storedOriginal("eigenes Original");
-    Path libraryDirectory = storageDir.resolve(libraryId.toString());
+    Path libraryDirectory = libraryDirectory();
     Files.createDirectories(libraryDirectory.resolve("unterordner"));
     Files.writeString(libraryDirectory.resolve("unterordner").resolve("tief.pdf"), "tief");
     Path outside = Files.createTempDirectory("outside-upload-storage").resolve("geheim.pdf");
@@ -283,7 +339,7 @@ class FilesystemUploadedOriginalStoreTest {
     boolean linked = createSymbolicLink(libraryDirectory.resolve("harmlos.pdf"), outside);
 
     List<UploadedOriginalStore.StoredOriginal> visited = new ArrayList<>();
-    store.forEachStoredOriginal(libraryId, visited::add);
+    store.forEachStoredOriginal(organizationId, libraryId, visited::add);
 
     assertThat(visited)
         .extracting(UploadedOriginalStore.StoredOriginal::locator)
@@ -294,6 +350,101 @@ class FilesystemUploadedOriginalStoreTest {
     }
   }
 
+  @Test
+  void theLibraryListingNamesEveryStorageAreaOfThisOrganizationAndNoOther() throws IOException {
+    storedOriginal("eigenes Original");
+    UUID secondLibrary = UUID.randomUUID();
+    store.accept(organizationId, secondLibrary, ".pdf", bytes("zweite Bibliothek")).store();
+    UUID foreignOrganization = UUID.randomUUID();
+    UUID foreignLibrary = UUID.randomUUID();
+    store.accept(foreignOrganization, foreignLibrary, ".pdf", bytes("fremdes Haus")).store();
+
+    List<UUID> visited = new ArrayList<>();
+    store.forEachStoredLibrary(organizationId, visited::add);
+
+    assertThat(visited).containsExactlyInAnyOrder(libraryId, secondLibrary);
+
+    List<UUID> foreign = new ArrayList<>();
+    store.forEachStoredLibrary(foreignOrganization, foreign::add);
+
+    assertThat(foreign).containsExactly(foreignLibrary);
+  }
+
+  @Test
+  void theLibraryListingNamesOnlyDirectoriesThisAdapterWouldHaveWritten() throws IOException {
+    // Only a directory whose name is a library id counts: a file, a directory named something
+    // else and one whose name merely starts with a library id are not storage areas, and a run
+    // that offered them for deletion would delete what it cannot attribute.
+    storedOriginal("eigenes Original");
+    Path organizationDirectory = storageDir.resolve(organizationId.toString());
+    Files.writeString(organizationDirectory.resolve("hinweis.txt"), "kein Ordner");
+    Files.createDirectories(organizationDirectory.resolve("ablage"));
+    Files.createDirectories(organizationDirectory.resolve(libraryId + "-alt"));
+    Files.createDirectories(organizationDirectory.resolve("1-1-1-1-1"));
+
+    List<UUID> visited = new ArrayList<>();
+    store.forEachStoredLibrary(organizationId, visited::add);
+
+    assertThat(visited).containsExactly(libraryId);
+  }
+
+  @Test
+  void theLibraryListingLeavesOutALinkToAnotherAreaOfTheSameStorage() throws IOException {
+    UUID foreignOrganization = UUID.randomUUID();
+    UUID foreignLibrary = UUID.randomUUID();
+    store.accept(foreignOrganization, foreignLibrary, ".pdf", bytes("fremdes Haus")).store();
+    Path organizationDirectory = storageDir.resolve(organizationId.toString());
+    Files.createDirectories(organizationDirectory);
+    assumeTrue(
+        createSymbolicLink(
+            organizationDirectory.resolve(foreignLibrary.toString()),
+            storageDir.resolve(foreignOrganization.toString()).resolve(foreignLibrary.toString())),
+        "symbolic links are not available here");
+
+    List<UUID> visited = new ArrayList<>();
+    store.forEachStoredLibrary(organizationId, visited::add);
+
+    assertThat(visited).isEmpty();
+  }
+
+  @Test
+  void theLibraryListingVisitsADirectoryTheOperatorLinkedOutOfTheStoragePath() throws IOException {
+    // The listing and the operations must agree: what a download resolves, the report has to see -
+    // otherwise the orphans of a directory the operator moved to another volume are found by
+    // nobody. Only a link to another area of the same storage stays out, because there the
+    // originals have their own name.
+    Path ownVolume = Files.createTempDirectory("outside-upload-storage");
+    Files.writeString(ownVolume.resolve("umgezogen.pdf"), "auf dem anderen Volume");
+    Path organizationDirectory = storageDir.resolve(organizationId.toString());
+    Files.createDirectories(organizationDirectory);
+    assumeTrue(
+        createSymbolicLink(organizationDirectory.resolve(libraryId.toString()), ownVolume),
+        "symbolic links are not available here");
+    String locator =
+        organizationDirectory.resolve(libraryId.toString()).resolve("umgezogen.pdf").toString();
+
+    List<UUID> visitedLibraries = new ArrayList<>();
+    store.forEachStoredLibrary(organizationId, visitedLibraries::add);
+    List<UploadedOriginalStore.StoredOriginal> visitedOriginals = new ArrayList<>();
+    store.forEachStoredOriginal(organizationId, libraryId, visitedOriginals::add);
+
+    assertThat(visitedLibraries).containsExactly(libraryId);
+    assertThat(visitedOriginals)
+        .extracting(UploadedOriginalStore.StoredOriginal::locator)
+        .containsExactly(locator);
+    assertThat(store.belongsToLibrary(new UploadedOriginalRef(organizationId, libraryId, locator)))
+        .isTrue();
+  }
+
+  @Test
+  void listingTheLibrariesOfAnOrganizationWithoutAStorageAreaVisitsNothing() {
+    List<UUID> visited = new ArrayList<>();
+
+    store.forEachStoredLibrary(UUID.randomUUID(), visited::add);
+
+    assertThat(visited).isEmpty();
+  }
+
   private void assertNeitherReadableNorDeletable(UploadedOriginalRef ref) {
     assertThat(store.belongsToLibrary(ref)).isFalse();
     assertThat(store.openForDownload(ref, "harmlos.pdf", "application/pdf")).isEmpty();
@@ -301,8 +452,12 @@ class FilesystemUploadedOriginalStoreTest {
     store.delete(ref);
   }
 
+  private Path libraryDirectory() {
+    return storageDir.resolve(organizationId.toString()).resolve(libraryId.toString());
+  }
+
   private UploadedOriginalRef storedOriginal(String content) throws IOException {
-    return store.accept(libraryId, ".pdf", bytes(content)).store();
+    return store.accept(organizationId, libraryId, ".pdf", bytes(content)).store();
   }
 
   private static InputStream bytes(String content) {

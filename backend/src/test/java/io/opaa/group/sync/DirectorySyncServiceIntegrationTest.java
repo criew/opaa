@@ -13,8 +13,6 @@ import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.group.GroupMembershipRepository;
 import io.opaa.group.GroupRepository;
 import io.opaa.organization.Organization;
-import io.opaa.test.DirectorySyncMockConfiguration;
-import io.opaa.test.DirectorySyncMockResetListener;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
@@ -27,8 +25,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.TestExecutionListeners;
 
 /**
  * Exercises {@link DirectorySyncService} against a real Postgres database with the real, versioned
@@ -43,14 +39,7 @@ import org.springframework.test.context.TestExecutionListeners;
  * - the one seam between the synchronisation policy under test and an actual directory, per {@link
  * DirectoryClient}'s own javadoc.
  */
-// Shares one context with
-// AuditEventRecordingIntegrationTest/PermissionHistoryServiceIntegrationTest
-// via the identical DirectorySyncMockConfiguration import (#903).
 @OpaaIntegrationTest
-@Import(DirectorySyncMockConfiguration.class)
-@TestExecutionListeners(
-    listeners = DirectorySyncMockResetListener.class,
-    mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 class DirectorySyncServiceIntegrationTest {
 
   @Autowired private DirectorySyncService directorySyncService;
@@ -68,6 +57,9 @@ class DirectorySyncServiceIntegrationTest {
   // multi-organization management exists.
   private UUID organizationId;
 
+  /** Static so the {@code @BeforeEach} wipe also catches what a method that failed midway left. */
+  private static final List<UUID> createdUserIds = new ArrayList<>();
+
   @BeforeEach
   void setUp() {
     wipeOrganizationData();
@@ -75,12 +67,11 @@ class DirectorySyncServiceIntegrationTest {
     directoryClient.respondWith();
   }
 
-  // Scoped to Organization.DEFAULT_ID (the only organization this class ever uses), not a blanket
-  // deleteAll(): this class now shares its Spring context with AuditEventRecordingIntegrationTest
-  // and PermissionHistoryServiceIntegrationTest (#903), which create their own, randomly generated
-  // organizations - an unscoped wipe here would delete their still-in-use fixtures if a test run
-  // ever interleaved at the method level. Called from both @BeforeEach and @AfterEach so this
-  // class's own data neither survives into, nor depends on leftovers from, another test's run.
+  // Scoped to the users this class created, not every user of Organization.DEFAULT_ID: the whole
+  // suite shares one database, and the dev auth filter provisions dev-admin/dev-user into that same
+  // organization, each with a personal space that makes an unscoped delete fail on
+  // fk_spaces_owner_organization. Called from both @BeforeEach and @AfterEach so this class's own
+  // data neither survives into, nor depends on leftovers from, another test's run.
   private void wipeOrganizationData() {
     statusRepository
         .findByOrganizationId(Organization.DEFAULT_ID)
@@ -90,17 +81,17 @@ class DirectorySyncServiceIntegrationTest {
     // and group_membership_history.user_id is ON DELETE RESTRICT (see
     // 018-permission-history.yaml's "Deletion survival" comment) - history must go before the
     // users below.
-    List<UUID> userIds =
-        userRepository.findByOrganizationId(Organization.DEFAULT_ID).stream()
-            .map(User::getId)
-            .toList();
-    membershipHistoryRepository.deleteByUserIdIn(userIds);
+    List<UUID> userIds = List.copyOf(createdUserIds);
+    if (!userIds.isEmpty()) {
+      membershipHistoryRepository.deleteByUserIdIn(userIds);
+    }
     membershipRepository.deleteAll(
         groups.stream()
             .flatMap(group -> membershipRepository.findByGroupId(group.getId()).stream())
             .toList());
     groupRepository.deleteAll(groups);
-    userRepository.deleteAll(userRepository.findByOrganizationId(Organization.DEFAULT_ID));
+    userRepository.deleteAllById(userIds);
+    createdUserIds.clear();
   }
 
   @AfterEach
@@ -116,7 +107,9 @@ class DirectorySyncServiceIntegrationTest {
   private UUID createUser(UUID organizationId, String subject, String issuer) {
     User user = new User(subject, issuer, subject + "@example.com", "Test User");
     user.setOrganizationId(organizationId);
-    return userRepository.save(user).getId();
+    UUID id = userRepository.save(user).getId();
+    createdUserIds.add(id);
+    return id;
   }
 
   private Group persistOrgUnit(String externalId, String name, UUID... memberIds) {

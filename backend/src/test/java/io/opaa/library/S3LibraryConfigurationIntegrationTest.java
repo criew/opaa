@@ -31,10 +31,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -44,14 +42,10 @@ import org.springframework.test.web.servlet.MockMvc;
  * validation refusing a private endpoint, proxy or bucket host before anything is stored. No object
  * store is contacted: saving resolves and checks addresses only.
  */
-// Own Spring context on purpose: saving an S3 library passes its endpoint through the target
-// validation, and the only endpoint a test can name without depending on public DNS is localhost -
-// which that validation rejects unless allowlisted. The validation itself stays on, so the private
-// endpoint, proxy and bucket-host refusals below are the real ones. MockMvc for the raw-body check
-// of the API responses.
+// Saving an S3 library passes its endpoint through the target validation; localhost is allowlisted
+// by the shared signature, by host name only - so the private endpoint, proxy and bucket-host
+// refusals below are still the real ones.
 @OpaaIntegrationTest
-@AutoConfigureMockMvc
-@TestPropertySource(properties = "opaa.indexing.target-validation.allowlist=localhost")
 class S3LibraryConfigurationIntegrationTest {
 
   private static final String ENDPOINT = "http://localhost:9000";

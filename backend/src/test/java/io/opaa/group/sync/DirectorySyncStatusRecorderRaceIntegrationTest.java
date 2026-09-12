@@ -15,6 +15,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,9 +60,19 @@ class DirectorySyncStatusRecorderRaceIntegrationTest {
   @Autowired private DirectorySyncStatusRecorder statusRecorder;
   @Autowired private DirectorySyncStatusRepository statusRepository;
 
+  // Only this organization's row: directory_sync_status holds at most one per organization
+  // (uk_directory_sync_status_organization), and the rows of other classes are none of this
+  // class's business.
   @BeforeEach
-  void cleanUp() {
-    statusRepository.deleteAll();
+  void removeOwnStatus() {
+    statusRepository
+        .findByOrganizationId(Organization.DEFAULT_ID)
+        .ifPresent(status -> statusRepository.deleteById(status.getId()));
+  }
+
+  @AfterEach
+  void removeOwnStatusAgain() {
+    removeOwnStatus();
   }
 
   @Test
@@ -91,9 +102,8 @@ class DirectorySyncStatusRecorderRaceIntegrationTest {
       executor.shutdown();
     }
 
-    List<DirectorySyncStatus> persisted = statusRepository.findAll();
-    assertThat(persisted).hasSize(1);
-    DirectorySyncStatus status = persisted.getFirst();
+    DirectorySyncStatus status =
+        statusRepository.findByOrganizationId(organizationId).orElseThrow();
     assertThat(status.getOrganizationId()).isEqualTo(organizationId);
     assertThat(status.getLastOutcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
     assertThat(status.getLastRunAt()).isNotNull();
@@ -117,9 +127,8 @@ class DirectorySyncStatusRecorderRaceIntegrationTest {
         "Zweiter Lauf",
         0.0);
 
-    List<DirectorySyncStatus> persisted = statusRepository.findAll();
-    assertThat(persisted).hasSize(1);
-    DirectorySyncStatus status = persisted.getFirst();
+    DirectorySyncStatus status =
+        statusRepository.findByOrganizationId(organizationId).orElseThrow();
     assertThat(status.getLastOutcome()).isEqualTo(DirectorySyncOutcome.UNREACHABLE);
     assertThat(status.getLastMessage()).isEqualTo("Zweiter Lauf");
     // lastAppliedAt is the timestamp of the last run that actually changed rights, so the later

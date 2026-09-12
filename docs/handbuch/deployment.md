@@ -99,7 +99,7 @@ Kurz: Ein Update über `docker compose pull` + `docker compose up -d` **gefährd
 
 > **Der Vektorspeicher ist nicht wählbar.** OPAA speichert Vektoren in PostgreSQL mit pgvector; das ist der einzige unterstützte Vektorspeicher. Der Zugriff läuft zwar über eine portable Schnittstelle von Spring AI, ein Wechsel wird aber nicht unterstützt, nicht geprüft und nicht dokumentiert. Metadatenbestand und Vektorindex liegen damit in derselben Datenbank: ein Sicherungslauf, eine Wiederherstellung, ein Nachweispfad. Bekannte Grenze: pgvector stößt bei sehr großen Beständen im Bereich von Millionen Vektoren an Grenzen.
 
-> **Ausnahme: die Migration vom 19.08.2026, die die frühere System-Bibliothek entfernt** (seit der Zusammenfassung der Changesets zur Baseline nicht mehr als eigene Datei sichtbar). Diese Migration löscht bewusst Daten — die früher automatisch angelegte, nur für System-Admins lesbare System-Bibliothek samt ihrer Dokumente, Vektorspeicher-Chunks, Indizierungsaufträge und Grants. Es ist die einzige datenvernichtende Migration; ihr Rollback ist bewusst ein No-op (die entfernten Zeilen ließen sich nicht von danach regulär geschriebenen unterscheiden). **Vor dem Update auf einen Stand mit dieser Migration einen Datenbank-Dump ziehen**, wer den Inhalt der System-Bibliothek noch braucht. Dateien, die ein Dokument der System-Bibliothek einst unter `opaa.upload.storage-path` abgelegt hatte, räumt die Migration nicht mit auf — nur die Datenbankzeilen verschwinden, verwaiste Dateien bleiben auf der Platte liegen und müssen bei Bedarf von Hand entfernt werden.
+> **Ausnahme: die Migration vom 19.08.2026, die die frühere System-Bibliothek entfernt** (seit der Zusammenfassung der Changesets zur Baseline nicht mehr als eigene Datei sichtbar). Diese Migration löscht bewusst Daten — die früher automatisch angelegte, nur für System-Admins lesbare System-Bibliothek samt ihrer Dokumente, Vektorspeicher-Chunks, Indizierungsaufträge und Grants. Es ist die einzige datenvernichtende Migration; ihr Rollback ist bewusst ein No-op (die entfernten Zeilen ließen sich nicht von danach regulär geschriebenen unterscheiden). **Vor dem Update auf einen Stand mit dieser Migration einen Datenbank-Dump ziehen**, wer den Inhalt der System-Bibliothek noch braucht. Dateien, die ein Dokument der System-Bibliothek einst unter `opaa.upload.storage-path` abgelegt hatte, räumt die Migration nicht mit auf — nur die Datenbankzeilen verschwinden, die Dateien bleiben liegen. Wie sie zu finden und zu entfernen sind, steht unter [„Originale gelöschter Bibliotheken"](#originale-gelöschter-bibliotheken) — liegen sie unter ihrer Organisation, findet sie der Aufräumlauf; liegen sie noch auf der obersten Ebene, bleibt es Handarbeit.
 
 Eine Neuindizierung wird erst durch Änderungen nötig, die nichts mit dem Image-Update zu tun haben:
 
@@ -277,17 +277,36 @@ begründet werden sollte, kein hartes Muss.
 | 6 | `keycloak/realm-export.json` (Client `opaa-seed`) | Öffentlicher Client mit `directAccessGrantsEnabled: true` (Resource-Owner-Password-Grant) und ohne Client-Secret, ausschließlich für das Seed-Skript der Demo (`demo/seed/seed.py`) gedacht, das sich damit als Demo-Nutzer anmeldet und Bibliotheken, Rechte und Chats über die reguläre API anlegt | Erlaubt einen passwortbasierten Tokenweg **ohne Secret** gegen jedes Realm-Konto — auf einer erreichbaren Instanz ein zusätzlicher, von der eigentlichen Anmeldung (`opaa-frontend`, `directAccessGrantsEnabled: false`, Authorization-Code + PKCE) unabhängiger Angriffsweg, unabhängig davon, wessen Passwort betroffen ist | **Zwingend.** Client `opaa-seed` aus dem Realm-Export entfernen oder auf `enabled: false` setzen, bevor der Realm auf einer erreichbaren Instanz importiert wird. Wer die Demo dort dennoch erneut seeden will, aktiviert den Client nur für die Dauer des Laufs wieder (per `kcadm` oder Admin-Konsole) oder legt die Rechte direkt über die Keycloak-Admin-Konsole/API an, statt den Client dauerhaft scharf zu lassen |
 | 7 | `docker-compose.yml` (Service `upload-store`, nur Compose-Profil `upload-s3`) | Root-Zugangsdaten des mitgelieferten Objektspeichers der Originalablage als Compose-Vorgabe (`opaa-uploads`/`OpaaUploads!2026`), dieselben Werte auskommentiert in `.env.docker.example` | Wer das Profil in einem erreichbaren Betrieb nutzt und die Vorgabe behält, schützt die Originale **aller** hochgeladenen Dokumente mit Zugangsdaten, die im Repository stehen. Die S3-API ist zwar nur an `127.0.0.1` gebunden — das schützt vor dem Netz, aber nicht vor anderen Prozessen und Konten auf demselben Host | **Zwingend**, sobald das Profil außerhalb einer Erprobung läuft: eigene Werte über `OPAA_UPLOAD_STORE_ROOT_USER`/`OPAA_UPLOAD_STORE_ROOT_PASSWORD` in `.env` oder der Prozessumgebung setzen (nicht in `.env.docker`, siehe Punkt 3) und dieselben Werte als `OPAA_UPLOAD_S3_ACCESS_KEY`/`OPAA_UPLOAD_S3_SECRET_KEY` in `.env.docker` eintragen. Der mitgelieferte Dienst ist als Erprobungs- und Umstellungsziel gedacht; im erreichbaren Betrieb ist ein hauseigener Objektspeicher mit eigenen Zugangsdaten, Verschlüsselung ruhender Daten und Versionierung der Regelfall (siehe [„Originalablage"](#originalablage)) |
 
-**Realm-Lebensdauern auf einer bereits laufenden Instanz:** `keycloak/realm-export.json`
-setzt `accessTokenLifespan`, `ssoSessionIdleTimeout` und `ssoSessionMaxLifespan` explizit. Wie
-bei Punkt 4 oben importiert `--import-realm` einen Realm dabei nur, wenn er noch nicht existiert
-— auf einer Instanz mit bereits importiertem Realm wirkt eine spätere Änderung dieser Werte im
-Repository also **nicht von selbst**. Ein erneuter, vollständiger Import
-würde außerdem die dokumentierte Härtung der Konten aus Punkt 1 zurückdrehen. Die Lebensdauern
-müssen stattdessen gezielt über `kcadm` (oder die Admin-Konsole) nachgezogen werden:
+**Änderungen am Realm auf einer bereits laufenden Instanz:** Wie bei Punkt 4 oben importiert
+`--import-realm` einen Realm nur, wenn er noch nicht existiert — auf einer Instanz mit bereits
+importiertem Realm (Keycloak mit eigenem Volume oder eigener Datenbank) wirkt eine spätere
+Änderung an `keycloak/realm-export.json` also **nicht von selbst**. Ein erneuter, vollständiger
+Import würde außerdem die dokumentierte Härtung der Konten aus Punkt 1 zurückdrehen. Zwei
+Änderungen, die deshalb gezielt über `kcadm` (oder die Admin-Konsole) nachzuziehen sind:
+
+*Lebensdauern* — `keycloak/realm-export.json` setzt `accessTokenLifespan`, `ssoSessionIdleTimeout`
+und `ssoSessionMaxLifespan` explizit:
 
 ```bash
 kcadm.sh config credentials --server http://localhost:8180 --realm master --user admin
 kcadm.sh update realms/opaa -s accessTokenLifespan=900 -s ssoSessionIdleTimeout=3600 -s ssoSessionMaxLifespan=36000
+```
+
+*Audience-Mapper des Seed-Clients* — der Client `opaa-seed` aus Punkt 6 trägt im Export einen
+`oidc-audience-mapper` auf `opaa-frontend`. Ohne ihn nennt sein Token die `client_id` der
+Anbieterzeile weder in `azp` noch in `aud`, und das Backend weist jeden Aufruf eines Seed-Laufs mit
+HTTP 401 ab (siehe [„OIDC (Keycloak)"](#oidc-keycloak)). Maßgeblich ist dabei genau diese
+`client_id` aus der Anbieterverwaltung — `OPAA_OIDC_CLIENT_ID` ist nur ihr Bootstrap-Wert und wirkt
+auf einer laufenden Installation nicht mehr (siehe
+[„Bestandsübernahme aus `OPAA_OIDC_*`"](#bestandsübernahme-aus-opaa_oidc_)). Lautet sie nicht
+`opaa-frontend`, gehört ihr Wert in `included.client.audience`:
+
+```bash
+kcadm.sh create clients/<id-des-clients-opaa-seed>/protocol-mappers/models -r opaa \
+  -s name=opaa-frontend-audience -s protocol=openid-connect \
+  -s protocolMapper=oidc-audience-mapper \
+  -s 'config."included.client.audience"=opaa-frontend' \
+  -s 'config."access.token.claim"=true'
 ```
 
 **Zugangsdaten, die zusätzlich zu ersetzen sind (empfohlen, unabhängig von den sechs Fundstellen oben):**
@@ -750,8 +769,8 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | `http://localhost:3000` | Erlaubte CORS-Origins (kommagetrennt). Der Anwendungs-Default passt nur außerhalb von Docker Compose (lokaler Vite-Dev-Server auf `:5173`) — die Compose-Belegung trägt deshalb bewusst den Frontend-Host-Port, standardmäßig `http://localhost:3000` (siehe [„Docker-spezifische Variablen"](#docker-spezifische-variablen) oben und [„POST-Anfragen geben 403 Forbidden zurück"](#post-anfragen-geben-403-forbidden-zurück) unten) — sonst schlägt jede POST-Anfrage aus dem Compose-Frontend am CORS-Preflight fehl |
 | `OPAA_INDEXING_DOCUMENT_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `./documents`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.docker.example` lässt die Variable deshalb bewusst auskommentiert; ohne Shell-Export gilt der Compose-Default `./documents` | Host-Pfad für Dokumente (in Container gemountet) |
 | `OPAA_UPLOAD_STORAGE_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `./uploads`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `./uploads` | Host-Pfad für hochgeladene Dokumente (in Container gemountet) |
-| `OPAA_UPLOAD_STORAGE_PATH` | `./uploads` | — (`docker-compose.yml` setzt sie im Backend-Container fest auf `/app/uploads`, nicht über `.env.docker` änderbar) | Container-interner Speicherpfad für hochgeladene Dokumente (`opaa.upload.storage-path`) — bei Docker Compose nicht mit dem Bind-Mount `OPAA_UPLOAD_STORAGE_PATH_HOST` zu verwechseln |
-| `OPAA_UPLOAD_STORE` | `filesystem` | nicht gesetzt (Anwendungs-Default gilt) | Welche Ablage die hochgeladenen Originale hält (`opaa.upload.store`): `filesystem` — die Dateien liegen unter `OPAA_UPLOAD_STORAGE_PATH`, ein dorthin eingehängtes Netzlaufwerk eingeschlossen — oder `s3`, ein S3-kompatibler Objektspeicher nach den `OPAA_UPLOAD_S3_*`-Variablen darunter. Jeder andere Wert bricht den Start mit einer Meldung ab, statt stillschweigend auf das Dateisystem zurückzufallen. Mit `s3` liegt jedes Original als Objekt `<Präfix><Bibliotheks-ID>/<Zufallsname><Endung>` im Bucket, `documents.file_path` trägt `s3://<Bucket>/<Schlüssel>`; ein nicht erreichbarer Objektspeicher bricht den Start **nicht** ab, sondern wird beim Start als Warnung protokolliert und erscheint in `/actuator/health` als eigene Gruppe `upload-store` (`GET /actuator/health/upload-store`) — bewusst nicht im Gesamtstatus, damit ein gestörter Objektspeicher die Instanz nicht aus einer Lastverteilung nimmt, während Chat und Suche weiterlaufen. Der Abruf eines Originals antwortet bei nicht erreichbarem Speicher mit `503` und deutscher Meldung, bei nicht vorhandenem Objekt wie bisher mit `404`. **Downloads S3-gestützter Originale streamen ohne Zwischendatei; HTTP-Bereichsanfragen (`Range`) und die Wiederaufnahme eines abgebrochenen Downloads entfallen dafür** — mit `filesystem` bleiben beide erhalten |
+| `OPAA_UPLOAD_STORAGE_PATH` | `./uploads` | — (`docker-compose.yml` setzt sie im Backend-Container fest auf `/app/uploads`, nicht über `.env.docker` änderbar) | Container-interner Speicherpfad für hochgeladene Dokumente (`opaa.upload.storage-path`) — bei Docker Compose nicht mit dem Bind-Mount `OPAA_UPLOAD_STORAGE_PATH_HOST` zu verwechseln. Darunter liegt je Organisation ein Ordner, darin je Bibliothek einer, darin je Dokument eine Datei unter einem Zufallsnamen: `<Pfad>/<Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` |
+| `OPAA_UPLOAD_STORE` | `filesystem` | nicht gesetzt (Anwendungs-Default gilt) | Welche Ablage die hochgeladenen Originale hält (`opaa.upload.store`): `filesystem` — die Dateien liegen unter `OPAA_UPLOAD_STORAGE_PATH`, ein dorthin eingehängtes Netzlaufwerk eingeschlossen — oder `s3`, ein S3-kompatibler Objektspeicher nach den `OPAA_UPLOAD_S3_*`-Variablen darunter. Jeder andere Wert bricht den Start mit einer Meldung ab, statt stillschweigend auf das Dateisystem zurückzufallen. Mit `s3` liegt jedes Original als Objekt `<Präfix><Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` im Bucket — dieselbe Struktur wie auf der Platte, `documents.file_path` trägt `s3://<Bucket>/<Schlüssel>`; ein nicht erreichbarer Objektspeicher bricht den Start **nicht** ab, sondern wird beim Start als Warnung protokolliert und erscheint in `/actuator/health` als eigene Gruppe `upload-store` (`GET /actuator/health/upload-store`) — bewusst nicht im Gesamtstatus, damit ein gestörter Objektspeicher die Instanz nicht aus einer Lastverteilung nimmt, während Chat und Suche weiterlaufen. Der Abruf eines Originals antwortet bei nicht erreichbarem Speicher mit `503` und deutscher Meldung, bei nicht vorhandenem Objekt wie bisher mit `404`. **Downloads S3-gestützter Originale streamen ohne Zwischendatei; HTTP-Bereichsanfragen (`Range`) und die Wiederaufnahme eines abgebrochenen Downloads entfallen dafür** — mit `filesystem` bleiben beide erhalten |
 | `OPAA_UPLOAD_S3_ENDPOINT` | — (leer; Pflicht bei `OPAA_UPLOAD_STORE=s3`) | nicht gesetzt | Adresse des Objektspeichers, `http://` oder `https://` mit Host und Port, ohne Pfad (`opaa.upload.s3.endpoint`), z. B. `http://minio:9000` im Compose-Netz. Fehlt sie bei `s3`, bricht der Start mit einer Meldung ab, die die Variable nennt. Der konfigurierte Endpunkt selbst passiert die Zieladressprüfung immer (nach Schema, Host und Port), braucht also keinen Eintrag in `OPAA_UPLOAD_S3_TARGET_VALIDATION_ALLOWLIST` |
 | `OPAA_UPLOAD_S3_REGION` | `us-east-1` | nicht gesetzt | Signaturregion (`opaa.upload.s3.region`); bei MinIO/Ceph beliebig, bei AWS die Region des Buckets |
 | `OPAA_UPLOAD_S3_BUCKET` | — (leer; Pflicht bei `OPAA_UPLOAD_STORE=s3`) | nicht gesetzt | Der eine Bucket, in dem alle Originale liegen (`opaa.upload.s3.bucket`). Muss vorhanden sein; OPAA legt ihn nicht an. Verschlüsselung ruhender Daten, Versionierung, Aufbewahrung und Replikation konfiguriert der Betrieb am Bucket, OPAA setzt keine Verschlüsselungskopfzeilen |
@@ -794,6 +813,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_QUERY_SEARCH_WINDOW_TURNS` | `2` | `2` | Wie viele der jüngsten Runden die Teilfragen-Zerlegung vom Gesprächsfenster sieht (0 bis `OPAA_QUERY_CONVERSATION_WINDOW_MESSAGES` ÷ 2) — die Suche sieht nie mehr vom Gespräch als die Antwort. `0` heißt „nur die Frage". Derselbe Ausschnitt gilt für den Rückfall, der die letzte Nutzerfrage des Fensters voranstellt |
 | `OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT` | `2` | `2` | Nach der Fusions-/MMR-Auswahl bevorzugt bis zu diese viele Chunks je bereits ausgewähltem Dokument aus der ohnehin berechtigungs- und schwellenwertgefilterten Kandidatenmenge — zweistufige Verdrängung: zuerst der schwächste Chunk eines Dokuments, das schon mit mindestens zwei Chunks vertreten ist; existiert keine solche Quelle, der auswahlrang-letzte Chunk der Gesamtauswahl, sofern das zu vervollständigende Dokument mit seinem besten Chunk strikt besser rankt als dieser (die Dokumentvielfalt darf dabei sinken) — auf `max(1, OPAA_QUERY_TOP_K / 4)` solcher Verdrängungen je Abfrage gedeckelt (bei Default `OPAA_QUERY_TOP_K=8` also 2), damit eine einzelne Abfrage nicht mehrere Themen zugunsten eines einzigen verdrängt. `1` schaltet die Dokument-Vervollständigung vollständig ab |
 | `OPAA_QUERY_FULL_TEXT_SEARCH_ENABLED` | `true` | `true` | Ob der lexikalische Suchpfad seine Volltextabfrage ausführt und seine Trefferliste in die Ergebnis-Fusion einbringt (siehe [„Volltextsuche (lexikalischer Suchpfad)"](#volltextsuche-lexikalischer-suchpfad)). `false` spart die Abfrage und lässt die Suche rein vektoriell laufen — der Pfad erscheint dann weiterhin im Erklärprotokoll der Suche und weist sich dort als abgeschaltet aus. Der Wert wirkt unmittelbar auf die Antwort; auf der Verwaltungs-Evaldomäne kostet `false` gemessen 15 Prozentpunkte Hit Rate@5 (0,935 → 0,783) |
+| `OPAA_CHAT_NOTE_MAX_ITEMS` | `10` | `10` | Notizpunkte, die die Gesprächsnotiz eines Chats höchstens hält (1–50) — beim Anhängen darüber hinaus fällt der älteste Punkt weg. Alles andere an der Notiz ist ein fester Wert: zwei Punkte je Runde, 200 Zeichen je Punkt, das Modell (das systemweit aktive Chat-Modell) und die Tatsache, dass verdichtet wird |
 | `OPAA_RERANK_ENABLED` | `false` | `false` | **Der Schalter der Rerank-Modellrolle** — bewusst getrennt von den drei Endpunktangaben darunter: „Reranking aus" soll eine Aussage sein und nicht das ununterscheidbare Ergebnis einer vergessenen Konfigurationszeile. Steht er auf `true`, ohne dass `OPAA_RERANK_BASE_URL` und `OPAA_RERANK_MODEL` gesetzt sind, oder antwortet der Endpunkt nicht, meldet die Anwendung das beim Start als Fehler im Log und führt den Zustand danach fortlaufend abfragbar weiter; die Suche läuft in diesem Fall ohne Reranking weiter. Voreingestellt aus: Die Rolle ist gebaut, nicht aktiviert (siehe [„Reranking einschalten"](#reranking-einschalten)) |
 | `OPAA_RERANK_BASE_URL` | — (leer) | nicht gesetzt | Basis-Adresse des Rerank-Endpunkts, ohne den Pfad `/rerank` (Beispiel: `http://reranker:80`). Erwartet wird ein Dienst, der `POST {Basis-Adresse}/rerank` beantwortet — vLLM, Text Embeddings Inference, Infinity, Jina, Cohere und Voyage tun das. Der Dienst muss mindestens `OPAA_QUERY_RERANK_CANDIDATE_COUNT` Dokumente je Anfrage annehmen (bei Text Embeddings Inference: `--max-client-batch-size`). **Keine Anmeldedaten in der Adresse**: Eine Adresse der Form `https://benutzer:geheim@host` wird abgelehnt und lässt die Rolle als unbelegt gelten (Startmeldung im Log, Zustand „unbelegt" auf der Seite „Suche & Indexierung"), weil die Basis-Adresse in Log und Statusanzeige erscheint; der Zugangsschlüssel gehört in `OPAA_RERANK_API_KEY` |
 | `OPAA_RERANK_MODEL` | — (leer) | nicht gesetzt | Modell-Kennung, die mit jeder Rerank-Anfrage mitgeschickt wird (Beispiel: `BAAI/bge-reranker-v2-m3`). Zusammen mit der Basis-Adresse *belegt* sie die Rolle; fehlt eine der beiden, gilt die Rolle als unbelegt |
@@ -879,7 +899,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_RATE_LIMIT_SOURCE_TEST_MAX_REQUESTS` | `10` | nicht gesetzt (Anwendungs-Default gilt) | Max. Verbindungstests (`POST /api/v1/libraries/source-test`) pro IP pro Fenster |
 | `OPAA_RATE_LIMIT_SOURCE_TEST_WINDOW_SECONDS` | `60` | nicht gesetzt (Anwendungs-Default gilt) | Verbindungstest-Rate-Limit-Fenster in Sekunden |
 | `OPAA_RATE_LIMIT_SOURCE_TEST_GLOBAL_MAX_REQUESTS` | `30` | nicht gesetzt (Anwendungs-Default gilt) | Max. Verbindungstests über alle IPs pro Fenster |
-| `OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS` | `20` | nicht gesetzt (Anwendungs-Default gilt) | Max. Aufrufe von `GET /api/v1/documents/{documentId}/content` pro IP pro Fenster — der synchrone Proxy-Abruf für HTTP_DIRECTORY/RSS_FEED-Originale hat dieselbe outbound-Verbindungs-Charakteristik wie der Verbindungstest oben, ist aber routinemäßig jedem VIEWER erreichbar |
+| `OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS` | `20` | nicht gesetzt (Anwendungs-Default gilt) | Max. Aufrufe von `GET /api/v1/documents/{documentId}/content` pro IP pro Fenster — der synchrone Proxy-Abruf für HTTP_DIRECTORY/RSS_FEED-Originale und der Objektabruf für S3-Originale haben dieselbe outbound-Verbindungs-Charakteristik wie der Verbindungstest oben, sind aber routinemäßig jedem VIEWER erreichbar |
 | `OPAA_RATE_LIMIT_DOCUMENT_CONTENT_WINDOW_SECONDS` | `60` | nicht gesetzt (Anwendungs-Default gilt) | Content-Endpunkt-Rate-Limit-Fenster in Sekunden |
 | `OPAA_RATE_LIMIT_DOCUMENT_CONTENT_GLOBAL_MAX_REQUESTS` | `100` | nicht gesetzt (Anwendungs-Default gilt) | Max. Aufrufe von `GET /api/v1/documents/{documentId}/content` über alle IPs pro Fenster |
 | `OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS` | `120` | nicht gesetzt (Anwendungs-Default gilt) | Max. Aufrufe von `POST /api/v1/libraries/{libraryId}/confluence-webhook` **und** `…/s3-events` pro IP **und Bibliothek** pro Fenster — beide Eingänge sind ohne Sitzung erreichbar, das Limit begrenzt die Signaturprüfungen, die ein Unbekannter auslösen kann; der Eingang sammelt ohnehin, ein Überschreiten kostet Aktualität, keine Korrektheit |
@@ -1344,6 +1364,8 @@ Die Variablen `OPAA_OIDC_ISSUER_URI`, `OPAA_OIDC_CLIENT_ID` und `OPAA_OIDC_JWK_S
 
 **Adressprüfung.** Jede von der Systemverwaltung eingegebene Issuer- und JWK-Set-Adresse durchläuft dieselbe Prüfung gegen private Netzbereiche wie die Datenquellen (SSRF-Schutz), mit eigener Konfiguration `OPAA_OIDC_TARGET_VALIDATION_ENABLED` (Vorgabe `true`) und `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` (Hosts, kommagetrennt). Ein hausinterner Anbieter mit privater Adresse gehört in die Allowlist; die Bootstrap-Adressen brauchen keinen Eintrag. Discovery-Dokument und JWK-Set werden vom Backend selbst abgerufen, ohne Weiterleitungen zu folgen.
 
+**Tokenprüfung (`azp`/`aud`).** Ein Token wird nur angenommen, wenn sein `azp`-Claim (authorized party) die `client_id` der Anbieterzeile nennt, der Claim ganz fehlt, oder `aud` die `client_id` enthält — sonst weist das Backend die Anfrage mit HTTP 401 ab und nennt den Grund im `WWW-Authenticate`-Header. Bei einem öffentlichen Client ist das die einzige Kontrolle dagegen, dass ein Token, das derselbe Anbieter für eine **andere** Anwendung ausgestellt hat, hier angenommen wird. Praktische Folge für eigene Dienst-Clients: Keycloak setzt `azp` immer auf den anfragenden Client, ein zweiter Client braucht deshalb einen Audience-Mapper auf die `client_id` dieser Installation. Der mitgelieferte Seed-Client `opaa-seed` ist genau dieser Fall und trägt den Mapper im Realm-Export (siehe [„Härtung für erreichbare Deployments"](#härtung-für-erreichbare-deployments), Punkt 6 und der Absatz zu Änderungen am Realm).
+
 #### Grenzen
 
 - **Keine Kontenzusammenführung:** Zwei Anbieter, dieselbe E-Mail — zwei Konten mit getrennten Rechten. Wer eine Person von einem Anbieter zum anderen umzieht, vergibt ihre Rechte neu.
@@ -1566,10 +1588,17 @@ konfigurieren lassen:
 ### Was im Objektspeicher liegt
 
 Ein Bucket, ein Objekt je hochgeladenem Dokument. Der Schlüssel ist
-`<Präfix><Bibliotheks-ID>/<Zufallsname><Endung>` — **dieselbe Struktur wie auf der Platte**, ein
-Unterverzeichnis je Bibliothek, darin eine Datei je Dokument unter einem Zufallsnamen. Das Präfix
+`<Präfix><Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` — **dieselbe Struktur wie auf
+der Platte**, dort `<Pfad>/<Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>`. Das Präfix
 ist leer, solange `OPAA_UPLOAD_S3_KEY_PREFIX` nichts anderes sagt; es trennt mehrere Installationen,
 die sich einen Bucket teilen.
+
+**Warum die Organisation im Schlüssel steht.** Damit trägt jedes abgelegte Original seine
+Zugehörigkeit bei sich, statt sie nur in der Datenbank zu haben. Wer in einen Bucket schaut, sieht
+an jedem Objekt, zu welchem Haus es gehört — auch dann, wenn die zugehörige Bibliothek längst
+gelöscht ist und die Dokumentzeile nicht mehr existiert. Der Zugriff prüft beide Ebenen: Ein
+Verweis, dessen Organisations- oder Bibliotheksteil nicht zum abgerufenen Dokument passt, antwortet
+mit „nicht gefunden" — ununterscheidbar von einem unbekannten Dokument.
 
 Der Bucket **muss vorhanden sein** — OPAA legt keinen an. Ordner darin legt OPAA ebenfalls nicht an:
 Objektspeicher kennt keine, der Schrägstrich im Schlüssel ist Teil des Namens.
@@ -1593,6 +1622,23 @@ Objektspeichers ansehen (Host-Port siehe [Services](#services)) oder mit dem Kom
 des Speichers herausholen, etwa `mc stat`/`mc cp` oder `aws s3 cp`. Der Weg über die Oberfläche
 bleibt der einfachere: Die Fundstelle unter einer Antwort führt zum Dokument, und dessen Original
 lädt sich dort herunter.
+
+**Der umgekehrte Weg funktioniert ebenfalls**, und dafür ist das zusätzliche Segment da: Wer im
+Bucket auf ein Objekt stößt, liest an seinem Schlüssel ab, zu welcher Organisation und zu welcher
+Bibliothek es gehört — das erste Segment hinter dem Präfix ist die Organisations-ID, das zweite die
+Bibliotheks-ID. Beide lassen sich nachschlagen, ohne dass ein Verweis in der Datenbank dafür
+gebraucht wird:
+
+```bash
+docker compose exec postgres psql -U opaa -d opaa \
+  -c "SELECT o.name AS organisation, l.name AS bibliothek
+        FROM knowledge_libraries l JOIN organizations o ON o.id = l.organization_id
+       WHERE l.id = '<Bibliotheks-ID aus dem Schlüssel>';"
+```
+
+Liefert die Abfrage keine Zeile, ist die Bibliothek gelöscht — die Organisation steht dann trotzdem
+noch im Schlüssel selbst. Für die Platte gilt dasselbe, dort sind es die beiden Ordnerebenen
+unterhalb des Upload-Verzeichnisses.
 
 > In allen `psql`-Aufrufen dieses Kapitels steht `opaa` für den konfigurierten Datenbankbenutzer
 > (`OPAA_DB_USERNAME`, Voreinstellung `opaa`) und für die Datenbank. Wer ein eigenes Konto
@@ -1673,8 +1719,15 @@ Ein verwaistes Original ist eine abgelegte Datei beziehungsweise ein abgelegtes 
 Zeile mehr zeigt: ein fehlgeschlagenes Löschen, ein zwischen Ablegen und Eintragen abgebrochener
 Upload, ein zurückgespielter Datenbankstand — und der planmäßige Fall aus dem Abschnitt darüber, ein
 Upload während des Sicherungslaufs. Auf der Platte fällt so etwas beim Hineinschauen auf, in einem
-Bucket sieht niemand nach. Zwei Endpunkte räumen es auf, `SYSTEM_ADMIN` und je Bibliothek — melden
-und löschen sind bewusst getrennt, damit ein Fehler in der Zuordnung nicht unumkehrbar wird.
+Bucket sieht niemand nach.
+
+Zwei Läufe räumen es auf, beide `SYSTEM_ADMIN`, beide in zwei Schritten — melden und löschen sind
+bewusst getrennt, damit ein Fehler in der Zuordnung nicht unumkehrbar wird. Der erste arbeitet **je
+Bibliothek** und hält deren Ablage gegen deren Dokumentzeilen; er ist der Regelfall. Der zweite
+arbeitet **je Organisation** und findet, was der erste nicht erreichen kann: die Ablage einer
+Bibliothek, die es nicht mehr gibt. Beide bleiben in der Organisation des Aufrufers.
+
+#### Originale einer vorhandenen Bibliothek
 
 Erster Schritt: melden, ohne etwas anzufassen.
 
@@ -1721,15 +1774,191 @@ Drei Dinge sind im Betrieb wichtig:
   Funde, zählt in `orphanCount` aber alle. Nach dem Löschen des gelisteten Ausschnitts denselben
   Bericht erneut abrufen, bis `truncated` auf `false` steht.
 - **Nach einer Umstellung der Ablage meldet der erste Bericht alles.** Wurden die Bytes umgezogen,
-  aber die Verweise nicht umgeschrieben (siehe
-  [„Eine laufende Installation auf den Objektspeicher umstellen"](#eine-laufende-installation-auf-den-objektspeicher-umstellen)),
-  gilt der gesamte Bestand als verwaist — erkennbar an `referencedCount: 0`. Das ist das Signal, die
-  Umstellung zu prüfen — nicht, zu löschen.
+  aber die Verweise nicht umgeschrieben, gilt der gesamte Bestand als verwaist — erkennbar an
+  `referencedCount: 0`. Das ist das Signal, die Umstellung zu prüfen — nicht, zu löschen. Zwei
+  Vorgänge können in diesen Zustand führen, und beide sind gemeint:
+  [„Eine laufende Installation auf den Objektspeicher umstellen"](#eine-laufende-installation-auf-den-objektspeicher-umstellen)
+  für den ganzen Bestand und der
+  [Einmalschritt](#einmalschritt-einen-vor-dem-11092026-angelegten-bestand-einsortieren) für eine
+  einzelne Bibliothek, deren Bytes verschoben, deren Verweise aber noch nicht umgeschrieben wurden.
 
 Was der Lauf **nicht** sieht: alles, was tiefer liegt als die Ebene der Bibliothek. Die Ablage legt
 dort nie etwas an; was ein anderer Schreiber unter demselben Präfix abgelegt hat, wird deshalb weder
-gemeldet noch je gelöscht. Ebenso wenig erreicht der Lauf die Originale einer bereits gelöschten
+gemeldet noch je gelöscht. Ebenso wenig erreicht dieser Lauf die Originale einer bereits gelöschten
 Bibliothek — er arbeitet je Bibliothek, und ohne deren Zeile antwortet er mit „nicht gefunden".
+Dafür gibt es den zweiten Lauf.
+
+#### Originale gelöschter Bibliotheken
+
+Schlägt das Löschen eines Originals fehl und wird die Bibliothek danach entfernt, bleiben Bytes
+zurück, die über keine Bibliothek mehr ansprechbar sind. Der zweite Lauf setzt deshalb nicht an der
+Bibliothek an, sondern an der Ablage: Er sieht auf der Ebene **unter der eigenen Organisation** nach
+und meldet jeden Bibliotheks-Ordner, zu dem es keine Bibliothekszeile mehr gibt. Die Organisation
+kommt vom Aufrufer und steht seit dem 11.09.2026 im Schlüssel selbst — deshalb braucht dieser Lauf
+keine einzige Datenbankzeile, um die Mandantengrenze zu ziehen.
+
+```bash
+curl -X POST http://localhost:8081/api/v1/admin/upload-store/orphan-libraries/report \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{}'
+```
+
+Die Antwort nennt je gemeldetem Ordner seine `libraryId`, die enthaltenen Originale mit `locator`,
+Änderungszeit und Größe, dazu `orphanCount`, `scannedCount`, `withinGracePeriodCount` und
+`totalSize` (die Bytes, die das Löschen freigäbe). Auf Berichtsebene stehen `libraryCount` (alle
+gefundenen Ordner ohne Zeile), `scannedLibraryCount` (alle Ordner der Organisation),
+`knownLibraryCount` (davon die mit Zeile) und `truncated`. `minimumAgeMinutes` hebt auch hier die
+Schonfrist für diesen Aufruf an.
+
+**Der erste Blick gilt `knownLibraryCount`, und hier noch strenger als beim ersten Lauf.** Meldet
+der Bericht Ordner, aber `0` bekannte, ist das kein Aufräumauftrag, sondern ein Befund: Dann zeigen
+`OPAA_UPLOAD_STORAGE_PATH` beziehungsweise `OPAA_UPLOAD_S3_BUCKET`/`OPAA_UPLOAD_S3_KEY_PREFIX`
+vermutlich auf den Bereich einer anderen Installation — dort ist jeder Ordner „ohne Zeile", und der
+Löschendpunkt würde ihren gesamten Bestand in 500er-Schritten entfernen. Erst die Konfiguration
+prüfen, dann löschen.
+
+Gelöscht wird wie beim ersten Lauf: ausdrücklich genannte Locator, höchstens 500 je Aufruf.
+
+```bash
+curl -X POST http://localhost:8081/api/v1/admin/upload-store/orphan-libraries/delete \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"libraryId": "<libraryId aus dem Bericht>", "locators": ["<locator aus dem Bericht>"]}'
+```
+
+Vier Dinge unterscheiden diesen Lauf vom ersten:
+
+- **Er fasst nichts an, wozu es eine Bibliothekszeile gibt** — auch keine aus einer anderen
+  Organisation. Nennt der Löschaufruf eine `libraryId`, die es noch gibt, wird er mit einer Meldung
+  abgewiesen und nichts entfernt; für eine existierende Bibliothek ist der erste Lauf zuständig.
+- **Die Schonfrist zählt ab dem Schreiben des Originals, nicht ab dem Löschen der Bibliothek.**
+  Gemessen wird die Änderungszeit der Datei beziehungsweise des Objekts — genau wie beim ersten
+  Lauf. Ein im Juni hochgeladenes Original, dessen Bibliothek heute gelöscht wurde, steht deshalb
+  sofort unter `orphanCount` und ist sofort löschbar; nur ein eben erst geschriebenes erscheint
+  unter `withinGracePeriodCount`. **Das Löschen einer Bibliothek eröffnet kein Zeitfenster, in dem
+  sich ihre Originale noch zurückholen ließen** — wer eine Bibliothek versehentlich gelöscht hat,
+  findet ihre Originale nur in der Sicherung wieder.
+- **Ein leerer Bibliotheks-Ordner wird nicht gemeldet.** Der Lauf entfernt Originale, keine Ordner;
+  ein leer gewordenes Verzeichnis auf der Platte stünde sonst in jedem künftigen Bericht. In einem
+  Objektspeicher gibt es den Fall nicht — dort ist ein Präfix ohne Objekte nicht vorhanden.
+- **Die oberste Ebene erreicht er nicht.** Ein Eintrag direkt unter dem Upload-Pfad beziehungsweise
+  dem Schlüsselpräfix ist eine Organisation; zu welcher Organisation ein Eintrag gehörte, der keine
+  ist, steht nirgends mehr, und ein Lauf innerhalb einer Organisation darf ihn deshalb weder melden
+  noch löschen. Solche Einträge gibt es nur in einem vor dem 11.09.2026 angelegten Bestand — sie
+  finden sich im Abgleich mit `SELECT id FROM organizations;` und werden von Hand entfernt.
+
+### Einmalschritt: einen vor dem 11.09.2026 angelegten Bestand einsortieren
+
+Bis zu diesem Stand lag ein Original eine Ebene höher — `<Pfad>/<Bibliotheks-ID>/…` auf der Platte,
+`<Präfix><Bibliotheks-ID>/…` im Bucket. Seit dem Update steht die Organisations-ID davor. **Die
+Anwendung zieht einen vorhandenen Bestand nicht selbst nach**: Sie sucht jedes Original nur noch am
+neuen Ort, und ein Verweis in der alten Form antwortet mit „nicht gefunden". Wer eine Installation
+mit Bestand aktualisiert, führt den Schritt unten einmal aus; eine frisch aufgesetzte Installation
+braucht ihn nicht, und die Demo baut sich ohnehin bei jedem Lauf neu auf.
+
+Anders als die Umstellung zwischen den beiden Ablagen (nächster Abschnitt) ist das **keine reine
+Präfixersetzung**: Welche Organisation vor eine Bibliothek gehört, steht nur in der Datenbank. Der
+Schritt läuft deshalb je Bibliothek — eine Abfrage nennt die Paare, dann ein Verschiebebefehl und
+ein `UPDATE` je Paar. Vorher: Backend stoppen (`docker compose stop backend`) und einen
+Datenbank-Dump ziehen.
+
+> **Schritt 2 und Schritt 3 gehören zusammen.** Wer die Bytes verschiebt und die Verweise nicht
+> umschreibt, hinterlässt eine Bibliothek, deren Objekte am neuen Ort liegen, während ihre Zeilen
+> noch auf den alten zeigen — der Bericht über verwaiste Originale meldet dann ihren **gesamten
+> Bestand** als verwaist (`referencedCount: 0`), und über den Löschendpunkt wäre er entfernbar.
+> Beide Schritte je Paar unmittelbar nacheinander ausführen, nicht erst alle Verschiebungen und
+> danach alle `UPDATE`s. Siehe [„Verwaiste Originale aufräumen"](#verwaiste-originale-aufräumen).
+
+**1. Die Paare abfragen.** Jede Zeile der Antwort ist ein Paar `<Organisations-ID>
+<Bibliotheks-ID>`.
+
+```bash
+docker compose exec postgres psql -U opaa -d opaa -t -A -F' ' -c \
+  "SELECT organization_id, id FROM knowledge_libraries;"
+```
+
+**Bewusst alle Bibliotheken, nicht nur die mit hochgeladenen Dokumenten.** Eine Bibliothek ohne
+Upload-Zeilen kann trotzdem Bytes in der Ablage haben — ein verwaistes Original aus einem
+fehlgeschlagenen Löschen zum Beispiel. Bliebe ihr Ordner auf der alten Ebene liegen, sähe danach
+keine Stelle mehr hin: Der Bericht über verwaiste Originale listet nur noch unterhalb der
+Organisation, und die Probe in Schritt 4 zählt Datenbankzeilen. Aus einem verwaisten Original würde
+ein unsichtbares. Ein Verschiebebefehl auf ein nicht vorhandenes Verzeichnis ist dagegen ein
+harmloser Fehlschlag: Er meldet „nicht gefunden" und ändert nichts.
+
+**2. Bytes verschieben, je Paar.** Auf dem Verzeichnisweg vom Host aus, im Verzeichnis des
+Bind-Mounts (`./uploads`, oder der über `OPAA_UPLOAD_STORAGE_PATH_HOST` verlegte Pfad):
+
+```bash
+mkdir -p ./uploads/<Organisations-ID>
+mv ./uploads/<Bibliotheks-ID> ./uploads/<Organisations-ID>/
+```
+
+Im Objektspeicher dasselbe mit dem Kommandozeilenwerkzeug des Speichers; `<präfix>` ist der Wert aus
+`OPAA_UPLOAD_S3_KEY_PREFIX` und entfällt, wenn keiner gesetzt ist:
+
+```bash
+mc mv --recursive <alias>/<bucket>/<präfix><Bibliotheks-ID>/ \
+                  <alias>/<bucket>/<präfix><Organisations-ID>/<Bibliotheks-ID>/
+```
+
+Mit dem mitgelieferten Dienst läuft derselbe Befehl im Wegwerf-Container aus Schritt 3 des nächsten
+Abschnitts, mit `aws` heißt er `aws s3 mv --recursive s3://…`.
+
+**3. Verweise umschreiben, je Paar.** Eine Präfixersetzung **innerhalb** des Paares — dadurch
+wandern die zusammengesetzten Verweise der Anhangzeilen ohne Sonderfall mit. Auf dem
+Verzeichnisweg (`/app/uploads/` ist der containerinterne Pfad, außerhalb von Containern der dort
+konfigurierte absolute):
+
+```bash
+docker compose exec postgres psql -U opaa -d opaa -c \
+  "UPDATE documents
+      SET file_path = replace(file_path,
+                              '/app/uploads/<Bibliotheks-ID>/',
+                              '/app/uploads/<Organisations-ID>/<Bibliotheks-ID>/')
+    WHERE source_type = 'UPLOAD' AND library_id = '<Bibliotheks-ID>'
+      AND file_path LIKE '/app/uploads/<Bibliotheks-ID>/%';"
+```
+
+Im Objektspeicher mit `s3://<bucket>/<präfix>` statt `/app/uploads/` auf beiden Seiten und
+entsprechend im `LIKE`.
+
+**4. Probe, zweimal — einmal die Verweise, einmal die Bytes.** Die Zahl muss `0` sein; sie zählt
+jeden Verweis, der nicht unter seiner eigenen Organisation und Bibliothek liegt. Bewusst ohne
+führenden Schrägstrich vor der Organisations-ID, damit die Abfrage auch mit einem Schlüsselpräfix
+ohne abschließendes `/` (etwa `inst1-`) richtig zählt:
+
+```bash
+docker compose exec postgres psql -U opaa -d opaa -c \
+  "SELECT count(*) FROM documents
+    WHERE source_type = 'UPLOAD'
+      AND file_path NOT LIKE '%' || organization_id || '/' || library_id || '/%';"
+```
+
+Die zweite Probe gilt der Ablage selbst, denn die erste sähe einen Lauf mit umgeschriebenen
+Verweisen und nicht verschobenen Bytes für in Ordnung an. Auf oberster Ebene darf danach **kein
+Eintrag mehr eine Bibliotheks-ID sein**:
+
+```bash
+ls ./uploads                                  # Verzeichnisweg: nur Organisations-Ordner
+mc ls --recursive <alias>/<bucket>/<präfix>   # Objektspeicher: jeder Schlüssel zwei Ebenen tief
+```
+
+Ein auf oberster Ebene verbliebener UUID-Ordner ist der Rest einer Bibliothek, die es in der
+Datenbank nicht mehr gibt — Schritt 1 hat ihn deshalb nicht genannt. Nach dem Lauf sind
+Organisations-Ordner und solche Reste beide UUIDs und von außen nicht mehr zu unterscheiden; wer sie
+auseinanderhalten will, gleicht sie gegen `SELECT id FROM organizations;` ab. Ihre Behandlung ist
+nicht Teil dieses Schritts: Zu welcher Organisation ein solcher Rest gehörte, steht nirgends mehr,
+und der Aufräumlauf ohne Bibliotheksbezug sieht deshalb nur unterhalb der Organisationen nach. Wie
+solche Reste erkannt und entfernt werden, steht unter
+[„Originale gelöschter Bibliotheken"](#originale-gelöschter-bibliotheken).
+
+Danach das Backend starten und ein Original in der Oberfläche herunterladen — am besten eine E-Mail
+mit Anhang und den Anhang gleich mit, weil daran sichtbar wird, dass auch die zusammengesetzten
+Verweise noch stimmen. Bleibt ein Paar **ganz** unbearbeitet, ist das der harmlose Fall: Der Bericht
+über verwaiste Originale meldet für diese Bibliothek nichts und jedes ihrer Originale antwortet mit
+„nicht gefunden"; das Nachholen beider Befehle für dieses Paar behebt es. Der riskante Fall ist die
+halb ausgeführte Bibliothek aus dem Kasten oben.
 
 ### Eine laufende Installation auf den Objektspeicher umstellen
 
@@ -1755,8 +1984,8 @@ docker compose --profile upload-s3 up -d upload-store upload-store-init
 ```
 
 **3. Bytes kopieren.** Die Verzeichnisstruktur wandert unverändert in den Bucket — ein Unterordner
-je Bibliothek. Mit dem mitgelieferten Dienst genügt ein Wegwerf-Container, der das
-Upload-Verzeichnis und den Speicher gleichzeitig sieht:
+je Organisation, darin einer je Bibliothek. Mit dem mitgelieferten Dienst genügt ein
+Wegwerf-Container, der das Upload-Verzeichnis und den Speicher gleichzeitig sieht:
 
 ```bash
 docker compose --profile upload-s3 run --rm -v ./uploads:/uploads:ro upload-store-init \
@@ -1848,7 +2077,7 @@ Drei Unterschiede zum Hinweg:
 
 - **Ein Schlüsselpräfix gehört in beide Befehle**, und zwar in die Quelle des Kopierens und in den
   zu ersetzenden Wert. Das Verzeichnis muss danach wieder unmittelbar die Unterordner der
-  Bibliotheken enthalten — liegt darunter erst noch ein Ordner mit dem Namen des Präfixes, gilt
+  Organisationen enthalten — liegt darunter erst noch ein Ordner mit dem Namen des Präfixes, gilt
   keine Datei mehr als zur Bibliothek gehörend und **jedes** Original antwortet mit „nicht
   gefunden". Mit Präfix lauten die beiden Zeilen deshalb
   `mc mirror --overwrite store/<bucket>/<präfix> /uploads` und
@@ -1867,6 +2096,7 @@ Drei Unterschiede zum Hinweg:
 | Bild | Wahrscheinliche Ursache |
 |---|---|
 | Alle Originale antworten mit „nicht gefunden", die Suche funktioniert | Die Verweise wurden nicht umgeschrieben, oder Bucket bzw. Schlüsselpräfix in der Konfiguration passen nicht zu dem, was in den Verweisen steht. Nach einem Rückweg mit Schlüsselpräfix kommt eine dritte Ursache dazu: Die Dateien liegen dann eine Ebene zu tief, unter einem Ordner mit dem Namen des Präfixes |
+| Nach einem Update antworten die Originale einer Bibliothek mit „nicht gefunden", ihr Bericht über verwaiste Originale ist leer | Für diese Bibliothek fehlt der [Einmalschritt](#einmalschritt-einen-vor-dem-11092026-angelegten-bestand-einsortieren): Ihre Dateien bzw. Objekte liegen noch ohne Organisationsebene, also weder dort, wo der Abruf sucht, noch dort, wo der Bericht listet |
 | Einzelne Originale fehlen, andere nicht | Die Kopie war unvollständig — Kopierschritt wiederholen, er überträgt nur, was fehlt |
 | Jeder Abruf antwortet mit „Dienst nicht verfügbar", die Gesundheitsgruppe steht auf `DOWN` | Der Objektspeicher ist nicht erreichbar; die Gruppe nennt den Grund |
 | Der Start bricht mit einer Meldung über eine fehlende Variable ab | `OPAA_UPLOAD_STORE=s3` ohne Endpunkt, Bucket oder Zugangsschlüssel |

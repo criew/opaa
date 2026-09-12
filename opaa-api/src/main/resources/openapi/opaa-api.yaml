@@ -1906,6 +1906,92 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /api/v1/admin/upload-store/orphan-libraries/report:
+    post:
+      operationId: reportOrphanedLibraries
+      tags: [admin, upload-store]
+      summary: >
+        List the storage areas of the caller's own organization that no library row belongs to any
+        more (system admin only, #1518, ADR-0030 "Konsequenzen")
+      description: >
+        The counterpart of orphan-originals/report for the case that run cannot reach: a library
+        deleted after the removal of one of its originals had failed leaves bytes behind that no
+        library-bound call can name any more. Walks the level directly below the caller's own
+        organization - its own subdirectory on the filesystem, its own key level in the bucket -
+        and reports every storage area there that no library row exists for. The organization comes
+        from the caller and is matched by segment, never lexically: an organization whose id starts
+        with another's is a different storage area, and no call ever leaves the caller's own.
+        A storage area a library row exists for is left out even when that row belongs to another
+        organization, and so is one holding no original at all - an emptied directory is nothing
+        this run could remove. Every stored original of a reported area is orphaned by definition,
+        and the grace period (opaa.upload.orphan-grace-minutes, raised but never lowered by
+        minimumAgeMinutes) is the only thing that keeps one out. It is measured from when the
+        original was written, not from when the library was deleted: an original older than the
+        period is offered the moment its library's row is gone, so deleting a library opens no
+        window in which its originals could still be recovered.
+        Reports only; nothing is changed, and no audit event is written. At most 500 areas and 500
+        orphans across all of them are listed - truncated tells whether a further pass is needed. A
+        storage that cannot be reached answers 503.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrphanedLibraryReportRequest"
+      responses:
+        "200":
+          description: The orphaned storage areas found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrphanedLibraryReportResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/admin/upload-store/orphan-libraries/delete:
+    post:
+      operationId: deleteOrphanedLibraryOriginals
+      tags: [admin, upload-store]
+      summary: >
+        Remove explicitly named originals from the storage area of a deleted library (system admin
+        only, #1518)
+      description: >
+        The second step after orphan-libraries/report, and the same rules as
+        orphan-originals/delete: exactly the originals named by locators go, at most 500 per call,
+        each checked once more against a fresh reading of the storage right before it is removed -
+        one younger than the configured grace period and one the area does not hold are skipped
+        with their reason. A locator outside the caller's own organization or outside libraryId is
+        NOT_IN_STORE, because the storage resolves it against exactly that area. libraryId must
+        name a library that no longer exists anywhere; one that does is rejected with 400, because
+        its originals belong to orphan-originals/delete, which holds them against their rows. A
+        removal the storage does not confirm is reported as DELETE_FAILED and does not end the
+        call. Every call, executed or rejected, is recorded once in the audit log
+        (UPLOAD_ORPHAN_ORIGINALS_DELETED) with the locators it removed. A storage that cannot be
+        read at all answers 503 and records the failure.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrphanedLibraryDeletionRequest"
+      responses:
+        "200":
+          description: What was removed and what was skipped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrphanedOriginalDeletionResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
   /api/v1/admin/search/status:
     get:
       operationId: getSearchStatus
@@ -2519,6 +2605,41 @@ paths:
           description: Chat deleted
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /api/v1/chats/{chatId}/note-items/{itemId}:
+    parameters:
+      - name: chatId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: deleteChatNoteItem
+      tags: [chat]
+      summary: >
+        Remove one point of a chat's Gesprächsnotiz (#1487) - author only, and rejected with 409
+        while the chat's space is archived, like every other change to an existing chat (#543).
+      description: >
+        Immediate and without a confirmation step: the point stops reaching the prompts with the
+        next question. It is deliberately not blocked for the future - if the person states the
+        same thing again, the condensation may create it again (docs/features/conversation-memory.md,
+        "Zustand und Bedienung"). A point that does not belong to this chat, or a chat the caller
+        does not author, both answer 404.
+      responses:
+        "204":
+          description: Note point removed
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/libraries:
     get:
@@ -3905,15 +4026,29 @@ paths:
         validates the configured proxy host the same way, applies the library's own stored
         proxy/credentials to the outbound request without ever exposing them in the response, and
         streams the response directly to the caller (no temp file) bounded by its own, smaller size
-        limit and request timeout than a background indexing run uses. Answered with
+        limit and request timeout than a background indexing run uses. S3 documents are fetched
+        from the library's own object store on demand (#1524) - an s3://bucket/key identity opens
+        nowhere in a browser and, unlike a Confluence page, has no deep link to fall back on, so
+        this endpoint is the only way to such an original. The fetch uses the connector's own
+        access layer: the library's stored source configuration, the same target-address
+        validation and object size bound an indexing run applies, but a short, probe-sized timeout
+        instead of a run's patience; a key that no longer lies in one of the library's configured
+        scopes is not served. Answered with
         Content-Disposition: inline and the file's original name/content type (the document's own
         stored content type first, the proxied response's own declared type - normalized, no
         parameters - only as a fallback), so a client can render it inline instead of forcing a
         download. A document from another organization, without a
-        library grant, of an unsupported sourceType, whose local file has since been moved or deleted
-        on disk, or whose remote source is unreachable/rejected are all answered with the same 404 -
-        no response here reveals whether a given documentId exists, nor whether "not found" means
-        "no such document" or "source currently unreachable". There is no 403: VIEWER is the lowest
+        library grant, of an unsupported sourceType (CONFLUENCE, whose original is the page in the
+        instance itself), whose local file has since been moved or deleted on disk, whose remote
+        source is unreachable/rejected, or whose S3 object is gone, archived, above the size bound
+        or outside the library's scopes are all answered with the same 404 - no response here
+        reveals whether a given documentId exists, and for the local and proxied sourceTypes it
+        does not reveal whether "not found" means "no such document" or "source currently
+        unreachable" either. The two object-store-backed paths are the deliberate exception: an
+        UPLOAD original in an S3 upload storage (ADR-0030, Entscheidung 9) and an S3 document's own
+        object (ADR-0027) answer 503 when the store cannot be reached or refuses the application -
+        a temporary condition a caller must not read as "this original does not exist". Its message
+        names no detail of the stored configuration. There is no 403: VIEWER is the lowest
         AssetRole, so any grant at all already satisfies this floor - a caller either clears it or
         has no grant, which is the 404 case above. 429 is answered when this endpoint is under
         load: either by its own rate limit, or - for an attachment document, whose bytes are
@@ -3931,6 +4066,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/v1/libraries/{libraryId}/grants:
     parameters:
@@ -6439,6 +6576,17 @@ components:
             frontend picks up the LLM-derived title (if generation succeeds) on a later reload of
             the chat, e.g. GET /chats/{chatId}.
           example: Rückstellung für Altlastensanierung
+        noteItems:
+          type: array
+          nullable: true
+          description: >
+            The Gesprächsnotiz state that went into *this* answer (#1487), oldest point first, or
+            null for an ephemeral query that has no persisted chat. Like chatTitle above, this is
+            deliberately never the state of the condensation this turn triggers: that runs
+            asynchronously after the answer is returned, so a point condensed from this turn's own
+            question first appears with the next answer or on a reload of the chat.
+          items:
+            $ref: "#/components/schemas/ChatNoteItem"
 
     SourceReference:
       type: object
@@ -7080,6 +7228,38 @@ components:
       enum: [USER, ASSISTANT]
       example: USER
 
+    ChatNoteItemKind:
+      type: string
+      description: >
+        What a Gesprächsnotiz point says about the asking person, and therefore which prompt it
+        reaches (docs/features/conversation-memory.md, "Bauteil 2"): RAHMEN (role, responsibility,
+        place, period, version, organization, decision) reaches the sub-question decomposition and
+        the answer, ANTWORTFORM (wishes about presentation) only the answer. Delivered so a client
+        can reason about it; the Oberfläche deliberately does not show it, and it is not
+        configurable.
+      enum: [RAHMEN, ANTWORTFORM]
+      example: RAHMEN
+
+    ChatNoteItem:
+      type: object
+      description: >
+        One point of a chat's Gesprächsnotiz - a single sentence of at most 200 characters,
+        condensed from a user message of this chat, in the order it was appended (oldest first).
+      required: [id, text, kind, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        text:
+          type: string
+          maxLength: 200
+          example: Arbeitet im Bürgerbüro Nebenstelle 3
+        kind:
+          $ref: "#/components/schemas/ChatNoteItemKind"
+        createdAt:
+          type: string
+          format: date-time
+
     ChatSummary:
       type: object
       description: A chat as listed in its space - without its messages, see ChatDetail for those.
@@ -7163,6 +7343,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ChatMessageResponse"
+        noteItems:
+          type: array
+          description: >
+            The chat's Gesprächsnotiz (#1487), oldest point first - always present, empty while
+            nothing has been condensed yet. Optional in the schema rather than required so a client
+            written before the note existed still type-checks; the server always sends it. Only the
+            author may remove a point, via DELETE /api/v1/chats/{chatId}/note-items/{itemId}.
+          items:
+            $ref: "#/components/schemas/ChatNoteItem"
         createdAt:
           type: string
           format: date-time
@@ -9808,6 +9997,126 @@ components:
         library's, or not a locator of this storage at all); DELETE_FAILED - the storage did not
         confirm the removal, so the original may still be there.
       enum: [REFERENCED, WITHIN_GRACE_PERIOD, NOT_IN_STORE, DELETE_FAILED]
+
+    OrphanedLibraryReportRequest:
+      type: object
+      properties:
+        minimumAgeMinutes:
+          type: integer
+          minimum: 1
+          description: >
+            Only originals at least this old are reported. Omitted, the configured grace period
+            (opaa.upload.orphan-grace-minutes) applies; a value below it is rejected - the grace
+            period can be raised per call, never lowered.
+
+    OrphanedLibraryReportResponse:
+      type: object
+      required:
+        [
+          libraries,
+          libraryCount,
+          scannedLibraryCount,
+          knownLibraryCount,
+          minimumAgeMinutes,
+          truncated,
+        ]
+      properties:
+        libraries:
+          type: array
+          description: >
+            The orphaned storage areas, at most 500 - in the storage's own order.
+          items:
+            $ref: "#/components/schemas/OrphanedLibraryResponse"
+        libraryCount:
+          type: integer
+          description: >
+            How many orphaned storage areas holding at least one original exist in total, listed
+            or not.
+        scannedLibraryCount:
+          type: integer
+          description: >
+            How many storage areas the organization has at all. What this exceeds libraryCount and
+            knownLibraryCount by are orphaned areas holding no original - leftover directories the
+            filesystem keeps and this run does not remove.
+        knownLibraryCount:
+          type: integer
+          description: >
+            How many of them a library row exists for. The sanity check of the whole report, the
+            same one OrphanedOriginalReportResponse.referencedCount is: an organization with
+            storage areas and none of them known has lost the connection between rows and storage
+            - typically a storage switched over without rewriting file_path - and nothing here
+            should be deleted until that is understood.
+        minimumAgeMinutes:
+          type: integer
+          description: The age threshold this report applied.
+        truncated:
+          type: boolean
+          description: >
+            True when this pass left something unlisted - more orphaned storage areas than
+            libraries names, or a listed one whose orphans are cut short. Delete what is listed and
+            run the report again.
+
+    OrphanedLibraryResponse:
+      type: object
+      required:
+        [
+          libraryId,
+          orphans,
+          orphanCount,
+          scannedCount,
+          withinGracePeriodCount,
+          totalSize,
+          truncated,
+        ]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+          description: >
+            The library this storage area was written for - the value to hand to the delete step.
+            No row carries it any more; it is read from the storage itself.
+        orphans:
+          type: array
+          description: The orphans of this area that this report lists.
+          items:
+            $ref: "#/components/schemas/OrphanedOriginalResponse"
+        orphanCount:
+          type: integer
+          description: How many orphans this area holds in total, listed or not.
+        scannedCount:
+          type: integer
+          description: How many stored originals of this area were looked at.
+        withinGracePeriodCount:
+          type: integer
+          description: >
+            How many of them were written less than a grace period ago - not reported, not
+            deletable, expected to age into the next report. The age of the original decides, not
+            the moment its library was deleted.
+        totalSize:
+          type: integer
+          format: int64
+          description: The bytes of this area's orphans, listed or not - what removing them frees.
+        truncated:
+          type: boolean
+          description: True when this area holds more orphans than orphans lists.
+
+    OrphanedLibraryDeletionRequest:
+      type: object
+      required: [libraryId, locators]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+          description: >
+            The storage area to remove from, as the report named it. Must be the area of a library
+            that no longer exists.
+        locators:
+          type: array
+          minItems: 1
+          maxItems: 500
+          description: The locators to remove, as the report listed them.
+          items:
+            type: string
 
     ContextPrefixRerunStatusResponse:
       type: object

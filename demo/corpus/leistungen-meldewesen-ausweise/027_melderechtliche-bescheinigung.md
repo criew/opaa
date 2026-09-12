@@ -31,8 +31,8 @@ bei persönlicher Vorsprache sofort.
 bei schriftliche Antragstellung: etwa 3 Wochen
 
 Gebührenrahmen
-Bearbeitungsgebühr pro Bescheinigung: 4,30 Euro
-Bearbeitungsgebühr pro mehrsprachiges Formular (Übersetzungshilfe) 4,30 Euro
+Bearbeitungsgebühr pro Bescheinigung: 5,80 Euro
+Bearbeitungsgebühr pro mehrsprachiges Formular (Übersetzungshilfe) 5,80 Euro
 - Bescheinigung für Rentenzwecke: Gebührenfrei
 
 Überweisung
@@ -46,7 +46,7 @@ Fragen & Antworten
 Benötigen Sie die Meldebescheinigung mit den Angaben zum Wohnsitz oder Familienstand zur Vorlage bei einer Behörde innerhalb der EU?
 Dann können Sie ein zusätzliches Formular mit der Übersetzungshilfe in der jeweiligen Landessprache erhalten.
 Sie haben Ihre Abmeldebescheinigung verloren?
-Sie können bei uns eine Zweitschrift beantragen. Die Gebühr beträgt 4,30 Euro. Wenn Sie persönlich vorbeikommen (Personalausweis oder Reisepass mitbringen!), erhalten Sie die Zweitschrift sofort.
+Sie können bei uns eine Zweitschrift beantragen. Die Gebühr beträgt 5,80 Euro. Wenn Sie persönlich vorbeikommen (Personalausweis oder Reisepass mitbringen!), erhalten Sie die Zweitschrift sofort.
 Oder Sie schicken uns einen formlosen Antrag per Post oder per Fax. Dann erhalten Sie die Zweitschrift an Ihre aktuelle Anschrift zugesandt.
 Muss ich, um eine Meldebescheinigung für mein Kind zu erhalten, eine Vollmacht des nicht anwesenden Elternteils mitbringen?
 Das ist nicht notwendig. Voraussetzung ist allerdings, dass die anwesende Person auch als Mutter/ Vater eingetragen ist.

@@ -20,14 +20,16 @@ import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnLibraryFixtures;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,15 +40,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * AsyncIndexingExecutor} (FILESYSTEM), removes a document - row and vector store chunks - that
  * vanished from the source, but only once a run finished successfully. Runs against the real
  * Liquibase schema and a real {@code vector_store} table (AGENTS.md "Reproduktionsnachweis"), the
- * same Testcontainers/fake-embedding-model setup every {@link
- * io.opaa.test.OpaaIndexingIntegrationTest} class shares - the whole point of these tests is
- * proving chunks are actually gone from pgvector, not just that a repository method was called.
+ * same Testcontainers/fake-embedding-model setup every {@link io.opaa.test.OpaaIntegrationTest}
+ * class shares - the whole point of these tests is proving chunks are actually gone from pgvector,
+ * not just that a repository method was called.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class StaleDocumentCleanupIntegrationTest {
 
-  private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("stale-document-cleanup");
+  private static final Path classTempDir = OpaaTestDirectory.subdirectory("stale-document-cleanup");
 
   @Autowired private DocumentIndexingService documentIndexingService;
   @Autowired private DocumentRepository documentRepository;
@@ -54,15 +55,13 @@ class StaleDocumentCleanupIntegrationTest {
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private IndexingRunEventRepository indexingRunEventRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
 
   private UUID userId;
   private UUID targetLibraryId;
 
   @BeforeEach
   void setUp() throws IOException {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    documentRepository.deleteAll();
-    indexingJobRepository.deleteAll();
     if (Files.exists(classTempDir)) {
       try (var files = Files.list(classTempDir)) {
         files.forEach(
@@ -76,10 +75,6 @@ class StaleDocumentCleanupIntegrationTest {
       }
     }
 
-    jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = 'stale-cleanup-it@example.com')");
-    jdbcTemplate.update("DELETE FROM users WHERE email = 'stale-cleanup-it@example.com'");
     userId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
@@ -107,6 +102,12 @@ class StaleDocumentCleanupIntegrationTest {
                 false));
     targetLibraryId = library.getId();
     grantOwner(targetLibraryId, userId);
+  }
+
+  @AfterEach
+  void removeOwnRows() {
+    ownLibraryFixtures.removeLibraries(targetLibraryId);
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
   }
 
   private void grantOwner(UUID libraryId, UUID granteeId) {

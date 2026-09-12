@@ -25,8 +25,9 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.UploadProperties;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnLibraryFixtures;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -46,6 +47,7 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -61,17 +63,17 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * that is exactly the state of every chunk written before the abstraction existed, the corpus the
  * whole mechanism is meant to be able to reach again.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class PipelineReindexServiceIntegrationTest {
 
-  private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("pipeline-reindex");
+  private static final Path classTempDir = OpaaTestDirectory.subdirectory("pipeline-reindex");
 
   @Autowired private PipelineReindexService reindexService;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private VectorStore vectorStore;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private UploadProperties uploadProperties;
   @Autowired private DocumentFormatRegistry pipelineRegistry;
 
@@ -81,15 +83,6 @@ class PipelineReindexServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    // A single-statement delete, not documentRepository.deleteAll(): per-entity deletes in
-    // arbitrary order trip fk_documents_parent for a bestand with attachment child rows, while
-    // one statement removes parents and children together.
-    jdbcTemplate.update("DELETE FROM documents");
-    jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = 'pipeline-reindex-it@example.com')");
-    jdbcTemplate.update("DELETE FROM users WHERE email = 'pipeline-reindex-it@example.com'");
     userId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
@@ -127,6 +120,35 @@ class PipelineReindexServiceIntegrationTest {
                 false));
   }
 
+  // Scoped by owner rather than by the two fields above: a test method may add a third library
+  // of its own, and that one has to go as well before its owner can (fk_knowledge_libraries_-
+  // owner_user_organization is RESTRICT).
+  @AfterEach
+  void removeOwnRows() {
+    ownLibraryFixtures.removeLibraries(ownLibraryIds().toArray(new UUID[0]));
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
+  }
+
+  private List<UUID> ownLibraryIds() {
+    return jdbcTemplate.queryForList(
+        "SELECT id FROM knowledge_libraries WHERE owner_user_id = ?", UUID.class, userId);
+  }
+
+  /**
+   * The progress entry of this class's own libraries. {@code progressForOrganization} reports every
+   * library of the shared organization, so the entries of other classes are filtered out here
+   * rather than trusting the order of the result.
+   */
+  private PipelineVersionProgress ownProgress() {
+    List<UUID> ownLibraryIds = ownLibraryIds();
+    List<PipelineVersionProgress> own =
+        reindexService.progressForOrganization(Organization.DEFAULT_ID).stream()
+            .filter(entry -> ownLibraryIds.contains(entry.libraryId()))
+            .toList();
+    assertThat(own).hasSize(1);
+    return own.getFirst();
+  }
+
   @Test
   void thePreAbstractionCorpusCountsAsStaleAndIsReportedPerLibrary() throws IOException {
     Document legacy = persistedFilesystemDocument("altbestand.txt", "Alter Inhalt");
@@ -137,8 +159,8 @@ class PipelineReindexServiceIntegrationTest {
     List<PipelineVersionProgress> progress =
         reindexService.progressForOrganization(Organization.DEFAULT_ID);
 
-    assertThat(progress).hasSize(1);
-    PipelineVersionProgress libraryProgress = progress.getFirst();
+    assertThat(progress).extracting(PipelineVersionProgress::libraryId).contains(library.getId());
+    PipelineVersionProgress libraryProgress = ownProgress();
     assertThat(libraryProgress.libraryId()).isEqualTo(library.getId());
     assertThat(libraryProgress.totalChunks()).isEqualTo(2);
     assertThat(libraryProgress.currentVersionChunks()).isEqualTo(1);
@@ -153,8 +175,7 @@ class PipelineReindexServiceIntegrationTest {
     Document document = persistedFilesystemDocument("fremd.txt", "Inhalt");
     seedChunk(document.getId(), "fremder chunk", "docling-pdf", (short) 4);
 
-    PipelineVersionProgress progress =
-        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+    PipelineVersionProgress progress = ownProgress();
 
     assertThat(progress.totalChunks()).isEqualTo(1);
     assertThat(progress.currentVersionChunks()).isZero();
@@ -171,8 +192,7 @@ class PipelineReindexServiceIntegrationTest {
     Document document = persistedFilesystemPdfDocument("satzung.pdf");
     seedChunk(document.getId(), "alter chunk", TikaFallbackFormat.ID, TikaFallbackFormat.VERSION);
 
-    PipelineVersionProgress progress =
-        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+    PipelineVersionProgress progress = ownProgress();
     assertThat(progress.staleChunks()).isEqualTo(1);
     assertThat(progress.currentVersionChunks()).isZero();
     assertThat(progress.isComplete()).isFalse();
@@ -183,12 +203,7 @@ class PipelineReindexServiceIntegrationTest {
 
     assertThat(result.reindexedDocuments()).isEqualTo(1);
     assertThat(pipelineIdsOf(document.getId())).containsOnly(pdfPipeline.id());
-    assertThat(
-            reindexService
-                .progressForOrganization(Organization.DEFAULT_ID)
-                .getFirst()
-                .staleChunks())
-        .isZero();
+    assertThat(ownProgress().staleChunks()).isZero();
   }
 
   @Test
@@ -210,8 +225,7 @@ class PipelineReindexServiceIntegrationTest {
         TikaFallbackFormat.VERSION,
         ChunkFormatMetadata.NO_ROUTING_EXTENSION);
 
-    PipelineVersionProgress progress =
-        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+    PipelineVersionProgress progress = ownProgress();
 
     assertThat(progress.staleChunks()).isZero();
     assertThat(progress.currentVersionChunks()).isEqualTo(1);
@@ -236,8 +250,7 @@ class PipelineReindexServiceIntegrationTest {
         TikaFallbackFormat.VERSION,
         ".pdf");
 
-    PipelineVersionProgress progress =
-        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+    PipelineVersionProgress progress = ownProgress();
     assertThat(progress.staleChunks()).isEqualTo(1);
     assertThat(progress.isComplete()).isFalse();
 
@@ -301,8 +314,7 @@ class PipelineReindexServiceIntegrationTest {
     Document document = persistedFilesystemPdfDocument("satzung.pdf");
     seedChunk(document.getId(), library.getId(), "html chunk", "html", (short) 1, ".pdf");
 
-    PipelineVersionProgress progress =
-        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+    PipelineVersionProgress progress = ownProgress();
     assertThat(progress.staleChunks()).isEqualTo(1);
     assertThat(progress.currentVersionChunks()).isZero();
     assertThat(progress.isComplete()).isFalse();
@@ -342,8 +354,7 @@ class PipelineReindexServiceIntegrationTest {
         (short) 1,
         ".pdf");
 
-    PipelineVersionProgress progress =
-        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+    PipelineVersionProgress progress = ownProgress();
 
     assertThat(progress.totalChunks()).isEqualTo(1);
     assertThat(progress.currentVersionChunks()).isZero();
@@ -356,12 +367,7 @@ class PipelineReindexServiceIntegrationTest {
 
     assertThat(result.reindexedDocuments()).isEqualTo(1);
     assertThat(pipelineIdsOf(document.getId())).containsOnly(pdfPipeline.id());
-    assertThat(
-            reindexService
-                .progressForOrganization(Organization.DEFAULT_ID)
-                .getFirst()
-                .staleChunks())
-        .isZero();
+    assertThat(ownProgress().staleChunks()).isZero();
   }
 
   @Test
@@ -383,8 +389,7 @@ class PipelineReindexServiceIntegrationTest {
         (short) 1,
         ".xyz-not-claimed-by-any-pipeline");
 
-    PipelineVersionProgress progress =
-        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+    PipelineVersionProgress progress = ownProgress();
     assertThat(progress.staleChunks()).isEqualTo(1);
     assertThat(progress.isComplete()).isFalse();
 
@@ -394,12 +399,7 @@ class PipelineReindexServiceIntegrationTest {
 
     assertThat(result.reindexedDocuments()).isEqualTo(1);
     assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackFormat.ID);
-    assertThat(
-            reindexService
-                .progressForOrganization(Organization.DEFAULT_ID)
-                .getFirst()
-                .staleChunks())
-        .isZero();
+    assertThat(ownProgress().staleChunks()).isZero();
   }
 
   @Test
@@ -413,8 +413,7 @@ class PipelineReindexServiceIntegrationTest {
     seedChunk(
         document.getId(), "alter chunk", htmlPipeline.id(), (short) (htmlPipeline.version() - 1));
 
-    PipelineVersionProgress progress =
-        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+    PipelineVersionProgress progress = ownProgress();
     assertThat(progress.staleChunks()).isEqualTo(1);
 
     PipelineReindexResult result =
@@ -665,12 +664,7 @@ class PipelineReindexServiceIntegrationTest {
         (short) (FullTextChunkStore.CURRENT_TSV_VERSION - 1),
         chunkId);
     assertThat(currentVersionFullTextRowsOf(document.getId())).isZero();
-    assertThat(
-            reindexService
-                .progressForOrganization(Organization.DEFAULT_ID)
-                .getFirst()
-                .staleChunks())
-        .isEqualTo(1);
+    assertThat(ownProgress().staleChunks()).isEqualTo(1);
 
     PipelineReindexResult result =
         reindexService.reindexBatch(
@@ -687,12 +681,7 @@ class PipelineReindexServiceIntegrationTest {
                     Organization.DEFAULT_ID, TikaFallbackFormat.ID, TikaFallbackFormat.VERSION, 10)
                 .isEmpty())
         .isTrue();
-    assertThat(
-            reindexService
-                .progressForOrganization(Organization.DEFAULT_ID)
-                .getFirst()
-                .staleChunks())
-        .isZero();
+    assertThat(ownProgress().staleChunks()).isZero();
   }
 
   @Test
@@ -720,8 +709,7 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(fullTextRowCountOf(document.getId()))
         .isEqualTo(chunkTextsOf(document.getId()).size());
 
-    PipelineVersionProgress progress =
-        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+    PipelineVersionProgress progress = ownProgress();
     assertThat(progress.staleChunks()).isZero();
     assertThat(progress.isComplete()).isTrue();
 
@@ -747,8 +735,7 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(reindexBatch(2).reindexedDocuments()).isEqualTo(1);
     assertThat(reindexBatch(2).isEmpty()).isTrue();
 
-    PipelineVersionProgress progress =
-        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+    PipelineVersionProgress progress = ownProgress();
     assertThat(progress.staleChunks()).isZero();
     assertThat(progress.currentVersionChunks()).isEqualTo(progress.totalChunks());
   }
@@ -788,12 +775,7 @@ class PipelineReindexServiceIntegrationTest {
     // progress figures keep showing - but the batch itself drains instead of reselecting it
     // forever.
     assertThat(reindexBatch(10).isEmpty()).isTrue();
-    assertThat(
-            reindexService
-                .progressForOrganization(Organization.DEFAULT_ID)
-                .getFirst()
-                .staleChunks())
-        .isEqualTo(1);
+    assertThat(ownProgress().staleChunks()).isEqualTo(1);
   }
 
   @Test
@@ -817,12 +799,7 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(chunkTextsOf(document.getId())).containsExactly("alter chunk");
     // A call that only skipped is the signal to stop; the outstanding chunk stays visible.
     assertThat(result.isEmpty()).isTrue();
-    assertThat(
-            reindexService
-                .progressForOrganization(Organization.DEFAULT_ID)
-                .getFirst()
-                .staleChunks())
-        .isEqualTo(1);
+    assertThat(ownProgress().staleChunks()).isEqualTo(1);
   }
 
   @Test
@@ -831,7 +808,8 @@ class PipelineReindexServiceIntegrationTest {
     // library's own configured sourcePath, so containment alone would let it through - only the
     // allowlist rejects it. This is the "operator narrowed (or emptied) the allowlist after the
     // library was created" case FilesystemPathAllowlist exists for.
-    Path withdrawnDirectory = Files.createTempDirectory("withdrawn-source-path");
+    Path withdrawnDirectory =
+        Files.createTempDirectory(OpaaTestDirectory.OUTSIDE_ALLOWLIST_DIR, "withdrawn-source-path");
     Path file = withdrawnDirectory.resolve("satzung.txt");
     Files.writeString(file, "Inhalt in einem nicht mehr erlaubten Quellverzeichnis. ".repeat(20));
     KnowledgeLibrary withdrawnLibrary =
@@ -867,7 +845,9 @@ class PipelineReindexServiceIntegrationTest {
     // storagePath would let every upload pass silently as "skipped" and nobody would notice that
     // uploads are never re-indexed at all.
     Path managedDirectory =
-        Path.of(uploadProperties.storagePath()).resolve(uploadLibrary.getId().toString());
+        Path.of(uploadProperties.storagePath())
+            .resolve(Organization.DEFAULT_ID.toString())
+            .resolve(uploadLibrary.getId().toString());
     Files.createDirectories(managedDirectory);
     Path file = managedDirectory.resolve(UUID.randomUUID() + "-vermerk.txt");
     Files.writeString(file, "Ein hochgeladener Vermerk über Verwaltungsgebühren. ".repeat(20));
@@ -967,7 +947,7 @@ class PipelineReindexServiceIntegrationTest {
             + " WHERE content = ?",
         "chunk mit defekten metadaten");
 
-    assertThat(reindexService.progressForOrganization(Organization.DEFAULT_ID)).isNotEmpty();
+    assertThat(ownProgress().staleChunks()).isPositive();
 
     PipelineReindexResult result = reindexBatch(10);
 
@@ -1125,7 +1105,9 @@ class PipelineReindexServiceIntegrationTest {
                     .build())
             .build();
     Path managedDirectory =
-        Path.of(uploadProperties.storagePath()).resolve(uploadLibrary.getId().toString());
+        Path.of(uploadProperties.storagePath())
+            .resolve(Organization.DEFAULT_ID.toString())
+            .resolve(uploadLibrary.getId().toString());
     Files.createDirectories(managedDirectory);
     Path emlFile = managedDirectory.resolve(UUID.randomUUID() + ".eml");
     Files.write(emlFile, DefaultMessageWriter.asBytes(message));

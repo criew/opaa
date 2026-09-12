@@ -39,7 +39,7 @@ Rechtliche Grundlagen
 
 Fragen & Antworten
 Sie haben Ihre Abmeldebescheinigung verloren?
-Sie können bei uns eine Zweitschrift beantragen. Die Gebühr beträgt 4,50 Euro. Wenn Sie hierfür persönlich vorbeikommen (Personalausweis oder Reisepass mitbringen!), erhalten Sie die Zweitschrift sofort.
+Sie können bei uns eine Zweitschrift beantragen. Die Gebühr beträgt 5,80 Euro. Wenn Sie hierfür persönlich vorbeikommen (Personalausweis oder Reisepass mitbringen!), erhalten Sie die Zweitschrift sofort.
 Stellen Sie den Antrag per Post, Mail oder Fax, teilen Sie uns bitte Ihre aktuelle Anschrift mit, damit wir Ihnen die Zweitschrift zuschicken können.
 
 ---

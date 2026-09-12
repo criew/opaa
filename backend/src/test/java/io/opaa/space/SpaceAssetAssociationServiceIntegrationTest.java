@@ -11,12 +11,9 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.chat.ChatRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
-import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.library.AssetGrant;
-import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -26,6 +23,7 @@ import io.opaa.notification.NotificationRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnOrganizationFixtures;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -33,7 +31,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Runs against a real Postgres database with the real, versioned Liquibase schema applied - same
@@ -44,51 +41,29 @@ class SpaceAssetAssociationServiceIntegrationTest {
 
   @Autowired private SpaceAssetAssociationService associationService;
   @Autowired private SpaceRepository spaceRepository;
-  @Autowired private SpaceMembershipRepository membershipRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private LibraryAccessService libraryAccessService;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
-  @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
-  @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
-  @Autowired private ChatRepository chatRepository;
   @Autowired private SpaceAssetAssociationRepository associationRepository;
   @Autowired private NotificationRepository notificationRepository;
-  @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
 
   private UUID organizationA;
 
+  // Every row this class writes belongs to the throwaway organization created here, so tearDown()
+  // removes exactly that organization and everything in it. No cleanup in this hook: a freshly
+  // created organization cannot hold rows of an earlier test method.
   @BeforeEach
   void setUp() {
-    chatRepository.deleteAll();
-    associationRepository.deleteAll();
-    notificationRepository.deleteAll();
-    membershipRepository.deleteAll();
-    spaceRepository.deleteAll();
-    grantRepository.deleteAll();
-    libraryRepository.deleteAll();
-    grantHistoryRepository.deleteAll();
-    membershipHistoryRepository.deleteAll();
-    userRepository.deleteAll();
     organizationA =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org A")).getId();
   }
 
   @AfterEach
   void tearDown() {
-    chatRepository.deleteAll();
-    associationRepository.deleteAll();
-    notificationRepository.deleteAll();
-    membershipRepository.deleteAll();
-    spaceRepository.deleteAll();
-    grantRepository.deleteAll();
-    libraryRepository.deleteAll();
-    grantHistoryRepository.deleteAll();
-    membershipHistoryRepository.deleteAll();
-    userRepository.deleteAll();
-    jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationA);
-    organizationRepository.deleteById(organizationA);
+    ownOrganizationFixtures.removeOrganizations(organizationA);
   }
 
   private UUID createUser() {

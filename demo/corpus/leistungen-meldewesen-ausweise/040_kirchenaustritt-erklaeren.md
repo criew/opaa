@@ -38,8 +38,8 @@ Bringen Sie bitte einen Dolmetscher mit, falls Sie nicht oder nur wenig deutsch 
 
 Dauer & Kosten
 Gebührenrahmen
-Aufnahme einer Austrittserklärung: 21,30 Euro pro Person.
-Austrittsbescheinigung (auf Antrag): 8,50 Euro.
+Aufnahme einer Austrittserklärung: 28,70 Euro pro Person.
+Austrittsbescheinigung (auf Antrag): 11,50 Euro.
 
 Barzahlung
 Kasse vor Ort

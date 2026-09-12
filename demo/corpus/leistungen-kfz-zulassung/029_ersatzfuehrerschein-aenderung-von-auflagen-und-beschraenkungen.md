@@ -43,8 +43,8 @@ Bearbeitungszeit
 Etwa acht Wochen
 
 Gebührenrahmen
-- Gebühr bei Besitz eines deutschen Kartenführerscheins: 40,50 Euro
-- zuzüglich (falls erforderlich): 30,40 Euro für Eintrag Schlüsselzahl B196, B96, B197
+- Gebühr bei Besitz eines deutschen Kartenführerscheins: 43,80 Euro
+- zuzüglich (falls erforderlich): 32,90 Euro für Eintrag Schlüsselzahl B196, B96, B197
 
 Überweisung
 Bankverbindung

@@ -6,7 +6,7 @@ import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.maintenance.FullTextIndexFillState;
 import io.opaa.indexing.maintenance.FullTextIndexFillStateService;
-import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -22,7 +22,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * is the very number {@link FullTextIndexFillStateService} produces, not a second count with its
  * own logic (#1053 acceptance criterion 2).
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class SearchStatusIntegrationTest {
 
   private static final UUID DEFAULT_ORGANIZATION_ID =

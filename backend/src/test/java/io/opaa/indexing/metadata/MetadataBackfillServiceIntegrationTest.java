@@ -22,8 +22,9 @@ import io.opaa.indexing.maintenance.MetadataBackfillService;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnLibraryFixtures;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -44,6 +45,7 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -56,11 +58,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * the backfill has to restore all three in batches from the original files - without touching a
  * single chunk, idempotently, and past a document it cannot read.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class MetadataBackfillServiceIntegrationTest {
 
-  private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("metadata-backfill");
+  private static final Path classTempDir = OpaaTestDirectory.subdirectory("metadata-backfill");
 
   @Autowired private MetadataBackfillService backfillService;
   @Autowired private DocumentIngestService documentIngestService;
@@ -69,20 +70,16 @@ class MetadataBackfillServiceIntegrationTest {
   @Autowired private DocumentRepository documentRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private VectorStore vectorStore;
   @Autowired private ChecksumService checksumService;
 
   private KnowledgeLibrary library;
+  private UUID userId;
 
   @BeforeEach
   void setUp() throws IOException {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    jdbcTemplate.update("DELETE FROM documents");
-    jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = 'metadata-backfill-it@example.com')");
-    jdbcTemplate.update("DELETE FROM users WHERE email = 'metadata-backfill-it@example.com'");
-    UUID userId = UUID.randomUUID();
+    userId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
             + " organization_id) VALUES (?, ?, 'test-issuer', 'metadata-backfill-it@example.com',"
@@ -114,6 +111,12 @@ class MetadataBackfillServiceIntegrationTest {
         Files.deleteIfExists(file);
       }
     }
+  }
+
+  @AfterEach
+  void removeOwnRows() {
+    ownLibraryFixtures.removeLibraries(library.getId());
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
   }
 
   @Test
@@ -206,9 +209,13 @@ class MetadataBackfillServiceIntegrationTest {
     backfillService.backfillBatch(Organization.DEFAULT_ID, library.getId(), 10);
     assertThat(progress().isComplete()).isTrue();
 
+    // Scoped to this class's own library: on the shared database a blanket UPDATE is worse
+    // than a blanket DELETE - it leaves the neighbour's rows in place with changed content,
+    // so nothing fails, the next class just silently asserts against the wrong values.
     jdbcTemplate.update(
-        "UPDATE documents SET metadata_extraction_version = ?",
-        CoreMetadataExtractor.EXTRACTION_VERSION - 1);
+        "UPDATE documents SET metadata_extraction_version = ? WHERE library_id = ?",
+        CoreMetadataExtractor.EXTRACTION_VERSION - 1,
+        library.getId());
 
     MetadataBackfillProgress outdated = progress();
     assertThat(outdated.pendingDocuments()).isEqualTo(3);
@@ -220,7 +227,7 @@ class MetadataBackfillServiceIntegrationTest {
 
     assertThat(rerun.processedDocuments()).isEqualTo(3);
     assertThat(progress().isComplete()).isTrue();
-    assertThat(documentRepository.findAll())
+    assertThat(documentRepository.findByLibraryId(library.getId()))
         .allSatisfy(
             document ->
                 assertThat(document.getMetadataExtractionVersion())
@@ -271,9 +278,13 @@ class MetadataBackfillServiceIntegrationTest {
         DocumentMetadataValue.manual(faqDocument.getId(), CoreMetadataField.DOCUMENT_TYPE, null)
             .assignVocabularyCode("VERMERK"));
     valueRepository.flush();
+    // Scoped to this class's own library: on the shared database a blanket UPDATE is worse
+    // than a blanket DELETE - it leaves the neighbour's rows in place with changed content,
+    // so nothing fails, the next class just silently asserts against the wrong values.
     jdbcTemplate.update(
-        "UPDATE documents SET metadata_extraction_version = ?",
-        CoreMetadataExtractor.EXTRACTION_VERSION - 1);
+        "UPDATE documents SET metadata_extraction_version = ? WHERE library_id = ?",
+        CoreMetadataExtractor.EXTRACTION_VERSION - 1,
+        library.getId());
 
     MetadataBackfillResult rerun =
         backfillService.backfillBatch(Organization.DEFAULT_ID, library.getId(), 10);
@@ -603,11 +614,20 @@ class MetadataBackfillServiceIntegrationTest {
               documentIngestService.ingest(DocumentIngest.localFile(library, file).build(), null))
           .isEqualTo(DocumentIngestResult.PROCESSED);
     }
-    jdbcTemplate.update("DELETE FROM document_metadata_values");
-    jdbcTemplate.update("UPDATE documents SET metadata_extraction_version = NULL");
+    // All three scoped to this class's own library: on the shared database a blanket UPDATE is
+    // as destructive as a blanket DELETE - it would strip the metadata of every other class's
+    // chunks.
+    jdbcTemplate.update(
+        "DELETE FROM document_metadata_values WHERE document_id IN (SELECT id FROM documents"
+            + " WHERE library_id = ?)",
+        library.getId());
+    jdbcTemplate.update(
+        "UPDATE documents SET metadata_extraction_version = NULL WHERE library_id = ?",
+        library.getId());
     jdbcTemplate.update(
         "UPDATE vector_store SET metadata = (metadata::jsonb - 'doc_type' - 'doc_date' -"
-            + " 'doc_date_precision')::json");
+            + " 'doc_date_precision')::json WHERE metadata->>'library_id' = ?",
+        library.getId().toString());
     assertThat(allChunkMetadata())
         .isNotEmpty()
         .allSatisfy(metadata -> assertThat(metadata).doesNotContainKey("doc_type"));
@@ -723,10 +743,13 @@ class MetadataBackfillServiceIntegrationTest {
         "SELECT id FROM vector_store ORDER BY id", (rs, i) -> UUID.fromString(rs.getString("id")));
   }
 
+  /** The chunk metadata of this class's own library - the suite shares one vector_store. */
   private List<Map<String, Object>> allChunkMetadata() {
     return jdbcTemplate.query(
-        "SELECT metadata::text AS metadata FROM vector_store ORDER BY id",
-        (rs, i) -> parseJson(rs.getString("metadata")));
+        "SELECT metadata::text AS metadata FROM vector_store WHERE metadata->>'library_id' = ?"
+            + " ORDER BY id",
+        (rs, i) -> parseJson(rs.getString("metadata")),
+        library.getId().toString());
   }
 
   private List<Map<String, Object>> chunkMetadata(UUID documentId) {

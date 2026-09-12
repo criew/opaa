@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.auth.DevAuthFilter;
-import io.opaa.test.OpaaMockMvcTest;
+import io.opaa.test.OpaaIntegrationTest;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +21,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * log capturing it actually see - the same reasoning {@link
  * LibraryControllerCredentialsIntegrationTest} documents for library source credentials.
  */
-@OpaaMockMvcTest
+@OpaaIntegrationTest
 class LlmModelControllerBaseUrlCredentialsIntegrationTest {
 
   private static final String SECRET_IN_BASE_URL = "benutzer:geheim";

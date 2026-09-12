@@ -208,6 +208,23 @@ Relevanzbewertung — genau das, was die Szenarien unten prüfen sollen. Antwort
 eigentlichen Sinn ist Sache von Epic #224, nicht dieser Suite. Die lokale Modellbereitstellung
 für echte Chat-/Embedding-Läufe bleibt eigenes, noch offenes Issue (#256).
 
+Über dieselbe Route laufen noch etliche weitere Prompts — Teilfragen-Zerlegung
+(`QueryDecompositionService`), Chat-Titel (`ChatTitleGenerationService`), Modellmetadaten
+(`ModelMetadataExtractor`), der Verbindungstest der Modellverwaltung (`LlmModelService`) und
+`ChatHealthIndicator`. **Die Gesprächsnotiz ist der einzige Prompt mit einer eigenen Regel; alle
+übrigen fallen auf den Zitat-Echo-/Ohne-Kontext-Zweig oben.** Praktisch sichtbar ist das beim
+Chat-Titel: Sein Prompt trägt keine Zitationsmarkierung, also bekommt jeder erzeugte Titel dieser
+Suite denselben Text — Szenarien verankern sich deshalb nie an einem Titelwortlaut (siehe
+`fixtures/chat.ts`, `chatSidebarEntries`).
+
+Die **Gesprächsnotiz** (`io.opaa.chat.ChatNoteExtractionService`, #1489) braucht die Ausnahme, weil
+die „Ohne-Kontext"-Antwort sonst in **jeder** Runde jedes Chats zu einem Notizpunkt würde und
+„kein Punkt, keine Schaltfläche" gar nicht prüfbar wäre. Der Stub erkennt den Verdichtungs-Prompt an
+einem festen Textstück und beantwortet ihn als reine Funktion der Nutzernachricht: „Ich arbeite …"
+ergibt den `RAHMEN`-Punkt „Arbeitet …", „bitte knapp" den `ANTWORTFORM`-Punkt „Möchte knappe
+Antworten", jede andere Nachricht das Sentinel `KEINE`. Die Auswertung der Antwort (Art-Präfix,
+200-Zeichen-Deckel, höchstens zwei Zeilen) bleibt die produktive.
+
 ## Serialisierungs-Konvention
 
 `playwright.config.ts` setzt `fullyParallel: false` und `workers: 1`: alle Specs teilen sich einen
@@ -393,6 +410,39 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   Die wiederverwendbaren Bausteine (Chat starten/fragen, zitierte Quelle prüfen, Bibliothek anlegen
   und befüllen, Bibliothek mit einer Person teilen) leben in `fixtures/chat.ts`, extrahiert aus
   `knowledge-libraries.spec.ts` (#424) und von beiden Dateien importiert, statt dupliziert.
+
+- `tests/conversation-note.spec.ts` (#1489, T7 von Epic #1482) — die Gesprächsnotiz über den
+  vollen Stack (`docs/features/conversation-memory.md`, „Oberfläche", ADR-0031): Ein Chat mit einer
+  Rahmenangabe in Runde 1 zeigt nach Runde 2 **keine** Schaltfläche und nach Runde 3
+  „Gesprächsnotiz · 1", zugeklappt; das aufgeklappte Panel nennt den Punkt. Ein Punkt wird entfernt,
+  die Zahl sinkt, und nach einem Neuladen ist er fort (das Panel wieder zugeklappt — Aufklappen ist
+  Sitzungszustand); mit dem letzten Punkt verschwindet die Schaltfläche, auch über ein Neuladen
+  hinweg. Drei Runden ohne jede Angabe über die Person erzeugen keine Schaltfläche. Ein sehr langer
+  Punkt (195 Zeichen, knapp unter dem Deckel der Verdichtung) bricht um und wird nicht gekürzt.
+
+  Zwei Dinge trägt nur dieses Szenario, weil nur ein echter Browser sie zeigt: der Umbruch (jsdom
+  rechnet kein CSS, ein späteres `noWrap`/`textOverflow: ellipsis` bliebe in den Unit-Tests der
+  Komponente grün) und dass die Art eines Punktes (`RAHMEN`/`ANTWORTFORM`) nirgends im sichtbaren
+  Text steht, obwohl beide Arten in der Liste vorkommen.
+
+  Die Verdichtung läuft nebenläufig **nach** der Antwort, ein Punkt wird also erst mit der
+  *nächsten* Antwort sichtbar. Jedes Szenario wartet deshalb auf den Notizstand, den der Server
+  tatsächlich hält (`GET /api/v1/chats/{chatId}`), bevor es weiterfragt — nie auf eine Zeitspanne.
+
+  Für den Negativnachweis „nach Runde 2 keine Schaltfläche" genügt dieses Warten allein aber
+  **nicht**, und die Stelle ist die einzige der Datei, an der die Rundenuntergrenze überhaupt
+  diskriminiert (nach Runde 3 liegt jede denkbare Zählregel über drei). Der Client kennt den
+  Notizstand ausschließlich aus den Antworten, die er selbst bekommen hat, und eine Antwort trägt
+  den Stand *vor* ihrer Runde; ein Nachladen für den bereits aktiven Chat gibt es nicht. Ob die
+  Verdichtung von Runde 1 bis Runde 2 fertig war, entscheidet also ein Rennen — verliert sie es,
+  wäre die Abwesenheit schon durch eine leere Notiz erfüllt und der Nachweis stillschweigend
+  wertlos. Das Szenario lädt deshalb an dieser Stelle die Seite neu: Danach kommen Punktzahl **und**
+  Rundenzahl aus demselben `GET chat` (ein Punkt, zwei Runden), und der Schritt deckt zugleich
+  „Neuladen unterhalb der Schwelle" ab.
+
+  Alle Chats dieser Datei leeren vorher ihre Chip-Leiste — die Notiz wird ohne Wissensbasis geführt
+  und verwendet (entschiedener Randfall der Spezifikation), und eine unscoped Suche über den
+  wachsenden Korpus brächte dem Prüfgegenstand nichts.
 
 - `tests/format-pipelines-upload.spec.ts` (#1109) — lädt XLSX, HTML und EML in einem Durchlauf
   hoch und prüft, dass alle drei nach der Verarbeitung als indiziert erscheinen. Deckt damit Formate

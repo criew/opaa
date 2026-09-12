@@ -4,6 +4,13 @@
 
 Vorgeschlagen
 
+**Nachtrag mit [ADR-0033](0033-lokale-benutzerverwaltung.md) (Epic #1529):** Mit der lokalen
+Benutzerverwaltung entsteht in `io.opaa.mail` ein Mail-Subsystem (SMTP-Einstellungen in der
+Datenbank, `MailService` mit `SendResult`, Vorlagen-Registry `MailTemplateKey` mit Überschreibung in
+`mail_templates`). Der Kanal E-Mail des Benachrichtigungssystems (#1297) nutzt dieses Subsystem
+unverändert und ergänzt nur Vorlagen und gegebenenfalls einen Digest; an der Tabelle `notifications`
+und den beiden Endpunkten dieses ADR ändert das nichts.
+
 ## Kontext
 
 `docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren` verlangt für #203/#686:

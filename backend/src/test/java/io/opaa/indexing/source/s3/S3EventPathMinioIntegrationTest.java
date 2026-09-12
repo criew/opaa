@@ -18,7 +18,7 @@ import io.opaa.indexing.job.JobTriggerSource;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.OpaaIntegrationTest;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -34,7 +34,6 @@ import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.MinIOContainer;
-import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.checksums.RequestChecksumCalculation;
@@ -58,11 +57,11 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
  *
  * <p>The real executor bean reaches the container because the shared context's target-validation
  * allowlist names the Docker host address ({@code OpaaIndexingTargetAllowlistInitializer}); this
- * class therefore shares its context with every other {@link OpaaIndexingIntegrationTest}. Budget:
- * one extra MinIO container and one sshd sidecar per test method (~3 s each), plus one debounce
- * wait per expected run; the CI runs it.
+ * class therefore shares its context with every other {@link OpaaIntegrationTest}. Budget: one
+ * extra MinIO container and one sshd sidecar per test method (~3 s each), plus one debounce wait
+ * per expected run; the CI runs it.
  */
-@OpaaIndexingIntegrationTest
+@OpaaIntegrationTest
 class S3EventPathMinioIntegrationTest {
 
   private static final String TOKEN = "ereignis-token-fuer-den-test";
@@ -138,7 +137,7 @@ class S3EventPathMinioIntegrationTest {
             + library.getId()
             + "/s3-events";
     minio =
-        new MinIOContainer(DockerImageName.parse(MinioFixture.IMAGE))
+        new MinIOContainer(MinioFixture.imageName())
             .withEnv("MINIO_NOTIFY_WEBHOOK_ENABLE_OPAA", "on")
             .withEnv("MINIO_NOTIFY_WEBHOOK_ENDPOINT_OPAA", endpoint)
             .withEnv("MINIO_NOTIFY_WEBHOOK_AUTH_TOKEN_OPAA", TOKEN);

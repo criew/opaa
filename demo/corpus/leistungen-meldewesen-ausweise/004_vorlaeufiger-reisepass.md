@@ -28,7 +28,7 @@ Bearbeitungszeit
 Den vorläufigen Reisepass können Sie sofort mitnehmen.
 
 Gebührenrahmen
-23,30 Euro
+29,90 Euro
 
 Barzahlung
 Kasse vor Ort

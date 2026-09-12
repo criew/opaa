@@ -1,5 +1,6 @@
 package io.opaa.eval;
 
+import io.opaa.chat.ChatNoteProperties;
 import io.opaa.query.QueryProperties;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,8 +20,9 @@ import org.springframework.ai.chat.messages.UserMessage;
  * @param searchWindowTurns the number of most recent turns the sub-question decomposition sees,
  *     read from the production {@link QueryProperties}; {@link #SEARCH_WINDOW_QUESTION_ONLY} means
  *     it sees the question alone.
- * @param noteCap the maximum number of Gesprächsnotiz points per chat, {@link
- *     #NO_CONVERSATION_NOTE} while there is no note.
+ * @param noteCap the maximum number of Gesprächsnotiz points per chat, read from the production
+ *     {@link ChatNoteProperties}; {@link #NO_CONVERSATION_NOTE} for a run measured before the note
+ *     existed.
  */
 public record ConversationMemoryProfile(int windowMessages, int searchWindowTurns, int noteCap) {
 
@@ -42,7 +44,11 @@ public record ConversationMemoryProfile(int windowMessages, int searchWindowTurn
         : searchWindowTurns + " Runden";
   }
 
-  /** The value of {@link #noteCap} while no Gesprächsnotiz exists. */
+  /**
+   * The value {@link #noteCap} carries in a baseline drawn before the Gesprächsnotiz existed
+   * (#1487). A run measures the production cap instead, which is what makes such a baseline
+   * incomparable - correctly so: its numbers were measured without a note.
+   */
   public static final int NO_CONVERSATION_NOTE = 0;
 
   /**
@@ -63,7 +69,9 @@ public record ConversationMemoryProfile(int windowMessages, int searchWindowTurn
    * measured conversation.
    */
   public static ConversationMemoryProfile measuredFrom(
-      ChatMemory chatMemory, QueryProperties queryProperties) {
+      ChatMemory chatMemory,
+      QueryProperties queryProperties,
+      ChatNoteProperties chatNoteProperties) {
     String probeKey = "eval-window-probe-" + UUID.randomUUID();
     List<org.springframework.ai.chat.messages.Message> probe = new ArrayList<>(PROBE_MESSAGE_COUNT);
     for (int i = 0; i < PROBE_MESSAGE_COUNT; i++) {
@@ -81,7 +89,7 @@ public record ConversationMemoryProfile(int windowMessages, int searchWindowTurn
                 + "unbounded, in which case it is not a fixed point this path can report.");
       }
       return new ConversationMemoryProfile(
-          windowMessages, queryProperties.searchWindowTurns(), NO_CONVERSATION_NOTE);
+          windowMessages, queryProperties.searchWindowTurns(), chatNoteProperties.maxItems());
     } finally {
       chatMemory.clear(probeKey);
     }

@@ -3,21 +3,22 @@ package io.opaa.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
-import io.opaa.group.GroupMembershipHistoryRepository;
-import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnUserFixtures;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,19 +48,20 @@ class UserServicePersonalSpaceIntegrationTest {
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
-  @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
-  @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
+
+  @Autowired private OwnUserFixtures ownUserFixtures;
+
+  /** Everything that is none of this test method's business - see {@link OwnUserFixtures}. */
+  private Set<UUID> foreignUserIds;
 
   @BeforeEach
-  void cleanUp() {
-    spaceRepository.deleteAll();
-    libraryRepository.deleteAll();
-    // #238 code review, finding 2+4: RESTRICT foreign keys from the permission-history tables mean
-    // a blanket userRepository.deleteAll() below would otherwise fail from the second test method
-    // onward.
-    grantHistoryRepository.deleteAll();
-    membershipHistoryRepository.deleteAll();
-    userRepository.deleteAll();
+  void rememberForeignUsers() {
+    foreignUserIds = ownUserFixtures.existingUserIds();
+  }
+
+  @AfterEach
+  void removeOwnUsers() {
+    ownUserFixtures.removeUsersCreatedSince(foreignUserIds);
   }
 
   @Test
@@ -130,15 +132,17 @@ class UserServicePersonalSpaceIntegrationTest {
     //
     // Inserted directly via userRepository, not userService.findOrCreateUser (#307): the latter
     // would report this user as brand new and populate SpaceService's personalSpaceProvisioned
-    // cache before the deleteAll() below ever runs, so the two ensureDefaultSpace calls under test
+    // cache before the delete below ever runs, so the two ensureDefaultSpace calls under test
     // would hit that cache instead of exercising the race this test targets - a false negative this
-    // test's own out-of-band deleteAll() would never see in production, where a default space is
+    // test's own out-of-band delete would never see in production, where a default space is
     // never deleted (see SpaceService#deleteSpace's guard).
     User newUser =
         new User(UUID.randomUUID().toString(), "test-issuer", "race@example.com", "Race");
     newUser.setOrganizationId(Organization.DEFAULT_ID);
     User user = userRepository.save(newUser);
-    spaceRepository.deleteAll();
+    // Only this user's own spaces: the whole suite shares one database, so a blanket deleteAll()
+    // here would take every other class's spaces with it.
+    spaceRepository.deleteAll(spaceRepository.findDistinctByMembershipsUserId(user.getId()));
     assertThat(spaceRepository.findDistinctByMembershipsUserId(user.getId())).isEmpty();
 
     int threadCount = 2;

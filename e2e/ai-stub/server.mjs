@@ -26,6 +26,10 @@
 // rest back in the assistant's answer, so every retrieved chunk is deterministically "cited" -
 // again handing control back to the permission filter (which chunks reach the prompt at all)
 // rather than to any model judgement.
+//
+// Gesprächsnotiz condensation (test(e2e) #1489): the same endpoint also serves
+// io.opaa.chat.ChatNoteExtractionService, whose prompt is recognised by NOTE_PROMPT_MARKER below
+// and answered with a fixed line per user message - see condensedNote().
 import { createServer } from 'node:http'
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8089
@@ -44,6 +48,49 @@ const CITATION_PATTERN = /【source:\s*([a-zA-Z0-9-]+)#(\d+)\s*\|\s*(.+?)】/g
 const EXAMPLE_CITATION_DOCUMENT_ID = '3fa85f64-5717-4562-b3fc-2c963f66afa6'
 
 const NO_CONTEXT_ANSWER = 'Dazu liegen mir keine Informationen in den zugänglichen Dokumenten vor.'
+
+// --- Gesprächsnotiz condensation (test(e2e) #1489) ---------------------------------------------
+//
+// io.opaa.chat.ChatNoteExtractionService sends one further prompt per finished turn, asking for
+// the durable Angaben of the user message. Without a rule of its own the stub would answer it with
+// its one fixed no-context sentence above, which ChatNoteExtraction.parse() happily turns into a
+// note point - every turn of every chat in this suite would then carry one, and "kein Punkt, keine
+// Schaltfläche" could not be tested at all. The rules below make the condensation a pure function
+// of the user message instead: a message carrying one of the phrases produces exactly that point,
+// every other message produces the sentinel.
+//
+// Coupled to two fixed strings of the production prompt (ChatNoteExtraction.PROMPT_TEMPLATE). A
+// change to either fails loudly rather than silently: unrecognised, the prompt falls through to
+// the citation echo above, whose answer becomes a note point on every single turn.
+const NOTE_PROMPT_MARKER = 'Aus der folgenden Nachricht einer Person'
+const NOTE_MESSAGE_PATTERN = /(?:^|\n)Nachricht:\s*([\s\S]*)$/
+const NOTE_NOTHING_SENTINEL = 'KEINE'
+
+// Kind prefix and third person mirror what the prompt asks a real model for, so the parsing this
+// suite exercises (ChatNoteExtraction.parse: kind prefix, 200-character cap, at most two lines) is
+// the production one, not a shortcut around it.
+const NOTE_RULES = [
+  {
+    pattern: /\bIch arbeite\s+([^.!?\n]{0,398}[^\s.!?\n])/i,
+    line: (match) => `RAHMEN: Arbeitet ${match[1]}`,
+  },
+  {
+    pattern: /\bbitte\s+knapp\b/i,
+    line: () => 'ANTWORTFORM: Möchte knappe Antworten',
+  },
+]
+
+function condensedNote(combinedText) {
+  const message = NOTE_MESSAGE_PATTERN.exec(combinedText)
+  if (message === null) {
+    return NOTE_NOTHING_SENTINEL
+  }
+  const lines = NOTE_RULES.flatMap((rule) => {
+    const match = rule.pattern.exec(message[1])
+    return match === null ? [] : [rule.line(match)]
+  })
+  return lines.length > 0 ? lines.join('\n') : NOTE_NOTHING_SENTINEL
+}
 
 // test(e2e) #760, PR review finding 2: every managed chat model in this suite points at this same
 // stub, so a scenario that activates a *different* model and then asks a chat question cannot
@@ -131,10 +178,13 @@ const server = createServer(async (req, res) => {
         .filter((match) => match[1] !== EXAMPLE_CITATION_DOCUMENT_ID)
         .map((match) => match[0])
       const uniqueCitations = [...new Set(citations)]
-      const content =
+      const answer =
         uniqueCitations.length > 0
           ? `Antwort auf Basis der bereitgestellten Dokumente. ${uniqueCitations.join(' ')}`
           : NO_CONTEXT_ANSWER
+      const content = combinedText.includes(NOTE_PROMPT_MARKER)
+        ? condensedNote(combinedText)
+        : answer
 
       sendJson(res, 200, {
         id: 'chatcmpl-stub',

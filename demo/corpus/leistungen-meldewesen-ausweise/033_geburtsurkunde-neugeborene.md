@@ -46,7 +46,7 @@ Bearbeitungszeit
 Bitte beachten Sie, dass die Bearbeitung zur Zeit – ab Vorliegen vollständiger Unterlagen, beim Geburtenbüro des Standesamt Rheinfurt ungefähr 3 Wochen beträgt.
 
 Gebührenrahmen
-Geburtsurkunde: 12,30 Euro (pro Exemplar)
+Geburtsurkunde: 13,80 Euro (pro Exemplar)
 Sie erhalten drei gebührenfreie Bescheinigungen: Elterngeld, Kindergeld, Mutterschaftshilfe im Standesamt
 
 Kreditkarte

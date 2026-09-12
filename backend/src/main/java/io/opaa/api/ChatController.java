@@ -70,6 +70,13 @@ public class ChatController {
     return ResponseEntity.noContent().build();
   }
 
+  @DeleteMapping("/chats/{chatId}/note-items/{itemId}")
+  public ResponseEntity<Void> deleteChatNoteItem(
+      @PathVariable UUID chatId, @PathVariable UUID itemId, @Caller CurrentUser caller) {
+    chatService.deleteNoteItem(chatId, itemId, caller.id());
+    return ResponseEntity.noContent().build();
+  }
+
   private ChatCreation toChatCreation(ChatCreateRequest request) {
     ChatCreation creation = new ChatCreation();
     if (request == null) {

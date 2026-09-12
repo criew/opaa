@@ -2,21 +2,10 @@ package io.opaa.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.FakeEmbeddingModel;
-import io.opaa.TestcontainersConfiguration;
+import io.opaa.test.OpaaIntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Verifies the single, OpenAI-compatible connection path application.yml wires since #762: both
@@ -33,28 +22,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * autoconfiguration and still matters because {@code io.opaa.llm.LlmModelSeeder} reads {@code
  * spring.ai.openai.chat.*} directly for the one-time takeover into {@code llm_models} on first
  * start (docs/handbuch/deployment.md, section "LLM-Anbieter"). {@code @MockitoBean private
- * ChatModel chatModel} below therefore no longer replaces a bean the excluded autoconfiguration
- * would have produced; it exists only so this test's own {@code Environment} assertions do not need
- * a real, reachable chat endpoint to load the application context.
+ * ChatModel} bean of the shared test configuration therefore no longer replaces a bean the excluded
+ * autoconfiguration would have produced; it exists only so a test's {@code Environment} assertions
+ * do not need a real, reachable chat endpoint to load the application context.
  */
-// Own context (proves the application's default provider wiring against production-shaped
-// properties), shared TestcontainersConfiguration container config.
-@SpringBootTest
-@Import(TestcontainersConfiguration.class)
-@ActiveProfiles("dev")
-@Testcontainers(disabledWithoutDocker = true)
+@OpaaIntegrationTest
 class ProviderConfigurationTest {
-
-  @TestConfiguration
-  static class TestConfig {
-    @Bean
-    @Primary
-    EmbeddingModel testEmbeddingModel() {
-      return new FakeEmbeddingModel();
-    }
-  }
-
-  @MockitoBean private ChatModel chatModel;
 
   @Autowired private Environment environment;
 
@@ -73,8 +46,8 @@ class ProviderConfigurationTest {
 
   @Test
   void baseUrlDefaultsToALocallyOperatedOllamaServer() {
-    // No profile activates "local"/"docker" here (only "dev"), so this is the top-level default -
-    // the same address the "local" profile documents explicitly for a bootRun/host setup.
+    // The "local" profile the suite activates alongside "dev" overrides nothing (application.yml
+    // documents it as a no-op), and "docker" is not active - so this is the top-level default.
     assertThat(environment.getProperty("spring.ai.openai.base-url"))
         .isEqualTo("http://localhost:11434/v1");
     assertThat(environment.getProperty("spring.ai.openai.chat.base-url"))

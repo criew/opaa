@@ -28,6 +28,7 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CommonPrefix;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -41,9 +42,12 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 
 /**
  * Uploaded originals in an S3-compatible object store (ADR-0030, {@code opaa.upload.store=s3}): one
- * object per document under {@code <keyPrefix><libraryId>/<uuid><extension>}, {@code
- * s3://<bucket>/<key>} as the locator, one client for the whole lifetime of the application, no
- * request budget.
+ * object per document under {@code <keyPrefix><organizationId>/<libraryId>/<uuid><extension>},
+ * {@code s3://<bucket>/<key>} as the locator, one client for the whole lifetime of the application,
+ * no request budget. The organization segment is what lets a walk over the whole bucket tell the
+ * tenants apart without a database row (ADR-0030, addendum to Entscheidung 4), and it is the same
+ * structure the filesystem adapter writes - that keeps the migration between the two a prefix
+ * replacement (Entscheidung 5).
  *
  * <p>Accepting writes a working file under {@code tempDirectory}; only {@link
  * AcceptedUpload#store()} puts it into the bucket, so an upload the checks between the two reject
@@ -51,11 +55,12 @@ import software.amazon.awssdk.services.s3.model.S3Object;
  * every exit of its action. Serving streams the object body without a local copy, which is why HTTP
  * range requests are not available for these originals (Entscheidung 6).
  *
- * <p>Resolving a locator is the key prefix of the library plus {@code HeadObject}: a locator in
- * another bucket, another library's prefix, or one naming no object - an attachment row's synthetic
- * one included - resolves to "not there" without an error. A store that cannot be reached is the
- * other case: reads raise {@link UploadStoreUnavailableException}, a deletion logs and leaves the
- * object for the orphan cleanup (Entscheidung 9).
+ * <p>Resolving a locator is the key prefix of the organization and library plus {@code HeadObject}:
+ * a locator in another bucket, under another organization's or another library's prefix, or one
+ * naming no object - an attachment row's synthetic one included - resolves to "not there" without
+ * an error. A store that cannot be reached is the other case: reads raise {@link
+ * UploadStoreUnavailableException}, a deletion logs and leaves the object for the orphan cleanup
+ * (Entscheidung 9).
  */
 public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoCloseable {
 
@@ -137,8 +142,8 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
   }
 
   @Override
-  public AcceptedUpload accept(UUID libraryId, String extension, InputStream bytes)
-      throws IOException {
+  public AcceptedUpload accept(
+      UUID organizationId, UUID libraryId, String extension, InputStream bytes) throws IOException {
     Path workingFile = createTempFile(extension);
     try {
       Files.copy(bytes, workingFile, StandardCopyOption.REPLACE_EXISTING);
@@ -147,7 +152,10 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
       throw e;
     }
     return new AcceptedObject(
-        libraryId, keyPrefix + libraryId + "/" + UUID.randomUUID() + extension, workingFile);
+        organizationId,
+        libraryId,
+        libraryPrefix(organizationId, libraryId) + UUID.randomUUID() + extension,
+        workingFile);
   }
 
   @Override
@@ -244,8 +252,9 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
   }
 
   @Override
-  public void forEachStoredOriginal(UUID libraryId, Consumer<StoredOriginal> visitor) {
-    String prefix = keyPrefix + libraryId + "/";
+  public void forEachStoredOriginal(
+      UUID organizationId, UUID libraryId, Consumer<StoredOriginal> visitor) {
+    String prefix = libraryPrefix(organizationId, libraryId);
     String continuationToken = null;
     do {
       ListObjectsV2Response page = listPage(prefix, continuationToken);
@@ -253,7 +262,7 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
         String locator = locator(object.key());
         // The same containment check resolving goes through, so what is listed can also be
         // deleted: a folder marker under the prefix names no original.
-        if (managedKey(new UploadedOriginalRef(libraryId, locator)) == null) {
+        if (managedKey(new UploadedOriginalRef(organizationId, libraryId, locator)) == null) {
           continue;
         }
         // A listing without LastModified leaves the age unknown; the moment of the listing is the
@@ -268,6 +277,46 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
       continuationToken =
           Boolean.TRUE.equals(page.isTruncated()) ? page.nextContinuationToken() : null;
     } while (continuationToken != null);
+  }
+
+  @Override
+  public void forEachStoredLibrary(UUID organizationId, Consumer<UUID> visitor) {
+    // The prefix ends in "/", so the match is segment-wise: the keys of an organization whose id
+    // started with this one's would begin with that other id plus its own "/" and never match.
+    String prefix = organizationPrefix(organizationId);
+    String continuationToken = null;
+    do {
+      ListObjectsV2Response page = listPage(prefix, continuationToken);
+      // Only the common prefixes: an object lying directly under the organization belongs to no
+      // library, and this adapter never writes one there.
+      for (CommonPrefix commonPrefix : page.commonPrefixes()) {
+        UUID libraryId = libraryId(commonPrefix.prefix(), prefix);
+        if (libraryId != null) {
+          visitor.accept(libraryId);
+        }
+      }
+      continuationToken =
+          Boolean.TRUE.equals(page.isTruncated()) ? page.nextContinuationToken() : null;
+    } while (continuationToken != null);
+  }
+
+  /**
+   * The library id a common prefix stands for, or {@code null} when it names none. Only a prefix
+   * this adapter would itself have written counts, which is why the parsed id has to render back to
+   * the segment: {@link UUID#fromString} also accepts abbreviated groups, and such a prefix would
+   * resolve to a library whose keys lie elsewhere.
+   */
+  private static UUID libraryId(String commonPrefix, String organizationPrefix) {
+    if (!commonPrefix.startsWith(organizationPrefix) || !commonPrefix.endsWith("/")) {
+      return null;
+    }
+    String segment = commonPrefix.substring(organizationPrefix.length(), commonPrefix.length() - 1);
+    try {
+      UUID libraryId = UUID.fromString(segment);
+      return libraryId.toString().equals(segment) ? libraryId : null;
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
   }
 
   /**
@@ -422,10 +471,10 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
 
   /**
    * The single containment check of this adapter: the key behind {@code ref}'s locator when it lies
-   * in this bucket under {@code ref}'s own library prefix and names an object, empty otherwise. A
-   * {@code 403} on the {@code HeadObject} is "not there" too: without {@code s3:ListBucket}, AWS
-   * answers a missing key with {@code 403} instead of {@code 404}, and the two must stay
-   * indistinguishable to the caller - a rights gap shows in {@link #probe()}, not here.
+   * in this bucket under {@code ref}'s own organization and library prefix and names an object,
+   * empty otherwise. A {@code 403} on the {@code HeadObject} is "not there" too: without {@code
+   * s3:ListBucket}, AWS answers a missing key with {@code 403} instead of {@code 404}, and the two
+   * must stay indistinguishable to the caller - a rights gap shows in {@link #probe()}, not here.
    *
    * @throws UploadStoreUnavailableException when the store cannot answer
    */
@@ -457,8 +506,18 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
       return null;
     }
     String key = ref.locator().substring(bucketPrefix.length());
-    String libraryPrefix = keyPrefix + ref.libraryId() + "/";
+    String libraryPrefix = libraryPrefix(ref.organizationId(), ref.libraryId());
     return key.length() > libraryPrefix.length() && key.startsWith(libraryPrefix) ? key : null;
+  }
+
+  /** Everything a key of this library carries in front of its own random name. */
+  private String libraryPrefix(UUID organizationId, UUID libraryId) {
+    return organizationPrefix(organizationId) + libraryId + "/";
+  }
+
+  /** Everything a key of this organization carries in front of its library segment. */
+  private String organizationPrefix(UUID organizationId) {
+    return keyPrefix + organizationId + "/";
   }
 
   private String locator(String key) {
@@ -539,12 +598,14 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
    */
   private final class AcceptedObject implements AcceptedUpload {
 
+    private final UUID organizationId;
     private final UUID libraryId;
     private final String key;
     private final Path workingFile;
     private volatile boolean stored;
 
-    private AcceptedObject(UUID libraryId, String key, Path workingFile) {
+    private AcceptedObject(UUID organizationId, UUID libraryId, String key, Path workingFile) {
+      this.organizationId = organizationId;
       this.libraryId = libraryId;
       this.key = key;
       this.workingFile = workingFile;
@@ -574,7 +635,7 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
         Thread.currentThread().interrupt();
         throw new InterruptedIOException("interrupted while storing " + key);
       }
-      return new UploadedOriginalRef(libraryId, locator(key));
+      return new UploadedOriginalRef(organizationId, libraryId, locator(key));
     }
 
     @Override

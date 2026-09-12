@@ -1,0 +1,46 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-mail-settings
+      author: opaa
+      comment: >-
+        #1536, ADR-0033 Entscheidung 10: the systemwide SMTP configuration, a singleton row the
+        same shape branding_settings has (id = 1, seeded here, resolved against defaults in code) -
+        OPAA is deployed once per Behörde, and "der Mailversand" is what that one deployment does.
+        The password is never stored in clear: password_ciphertext holds the "enc:v1:"-prefixed
+        AES-256-GCM blob io.opaa.security.SettingsEncryptor writes, the same column convention
+        llm_models.api_key_ciphertext established. Deliberately no address check on host: an
+        internal mail server is the normal case and the setting is SYSTEM_ADMIN only. The three
+        status columns are written by every send attempt and are the only durable record that mail
+        is actually working - a Failed that is only visible in the log of a container nobody reads
+        is not visible at all.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE public.mail_settings (
+                  id integer NOT NULL,
+                  enabled boolean DEFAULT false NOT NULL,
+                  host character varying(255),
+                  port integer,
+                  username character varying(255),
+                  password_ciphertext text,
+                  encryption character varying(20) DEFAULT 'STARTTLS' NOT NULL,
+                  from_address character varying(320),
+                  from_name character varying(120),
+                  last_success_at timestamp with time zone,
+                  last_failure_at timestamp with time zone,
+                  last_failure_reason character varying(500),
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_by uuid,
+                  CONSTRAINT mail_settings_pkey PRIMARY KEY (id),
+                  CONSTRAINT chk_mail_settings_singleton CHECK ((id = 1)),
+                  CONSTRAINT chk_mail_settings_encryption CHECK ((encryption IN ('NONE', 'STARTTLS', 'SSL'))),
+                  CONSTRAINT chk_mail_settings_port CHECK (((port IS NULL) OR ((port >= 1) AND (port <= 65535))))
+              );
+
+              INSERT INTO public.mail_settings (id, updated_at)
+                  VALUES (1, now());
+      rollback:
+        - sql:
+            sql: |
+              DROP TABLE IF EXISTS public.mail_settings;

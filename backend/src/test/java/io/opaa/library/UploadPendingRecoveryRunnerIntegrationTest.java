@@ -15,6 +15,7 @@ import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnLibraryFixtures;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -26,8 +27,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 
 /**
  * Runs {@link UploadPendingRecoveryRunner} against a real Postgres database with the real,
@@ -41,20 +40,10 @@ import org.springframework.test.context.DynamicPropertySource;
  * test cares about do not exist yet at that point, so the automatic startup run is a harmless
  * no-op, and the assertions below need a run that happens after {@link #setUp} has seeded data.
  */
-// Own @DynamicPropertySource (below, a short pending-recovery threshold) means Spring's context
-// cache still keys this to its own context regardless of the shared @OpaaIntegrationTest base -
-// documented exception per AGENTS.md.
 @OpaaIntegrationTest
 class UploadPendingRecoveryRunnerIntegrationTest {
 
   private static final ApplicationArguments NO_ARGS = new DefaultApplicationArguments();
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    // A short threshold so the test can distinguish "old enough" from "too recent" with second-
-    // scale sleeps/offsets instead of the 30-minute production default.
-    registry.add("opaa.upload.pending-recovery-threshold-minutes", () -> 1);
-  }
 
   @Autowired private UploadPendingRecoveryRunner runner;
   @Autowired private DocumentRepository documentRepository;
@@ -64,6 +53,7 @@ class UploadPendingRecoveryRunnerIntegrationTest {
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
 
   private UUID organizationId;
   private User editor;
@@ -85,7 +75,8 @@ class UploadPendingRecoveryRunnerIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    documentRepository.deleteAll();
+    ownLibraryFixtures.removeContentOf(libraryId);
+    jdbcTemplate.update("DELETE FROM library_visibility_history WHERE library_id = ?", libraryId);
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId()));
     membershipHistoryRepository.deleteByUserIdIn(List.of(editor.getId()));
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);

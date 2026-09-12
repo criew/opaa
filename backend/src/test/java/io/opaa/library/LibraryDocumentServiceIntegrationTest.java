@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
@@ -26,6 +25,8 @@ import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnLibraryFixtures;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -34,8 +35,6 @@ import java.nio.file.Path;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
@@ -45,25 +44,18 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -87,44 +79,17 @@ import org.springframework.web.multipart.MultipartFile;
  * for a directory/URL indexing run, wherever a test needs the eventual {@code INDEXED}/{@code
  * FAILED} outcome rather than the immediate {@code PENDING} response.
  */
-// Own @DynamicPropertySource (below) means Spring's context cache still keys this to its own
-// context regardless of the shared @OpaaIntegrationTest base - documented exception per AGENTS.md.
 @OpaaIntegrationTest
 class LibraryDocumentServiceIntegrationTest {
 
-  @TempDir static Path uploadStorageDir;
+  private static final Path uploadStorageDir = OpaaTestDirectory.UPLOAD_STORAGE_DIR;
 
-  // #742 review, finding 3: a base directory the FILESYSTEM loadContent tests below can use as a
-  // library's sourcePath, alongside the shared suite's fixed "/data,/tmp" default (see
-  // application.yml's comment on filesystem.allowlist) rather than replacing it - the existing
-  // FILESYSTEM-flavoured tests elsewhere in this class (e.g.
-  // uploadingIntoAConnectorLibraryIsRejectedWithConflict) still rely on "/data/documents" resolving
-  // under that default.
-  @TempDir static Path filesystemAllowlistDir;
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("opaa.upload.storage-path", () -> uploadStorageDir.toAbsolutePath().toString());
-    registry.add("opaa.upload.max-file-size", () -> 4096);
-    registry.add(
-        "opaa.indexing.filesystem.allowlist",
-        () -> "/data,/tmp," + filesystemAllowlistDir.toAbsolutePath());
-    // #747: target validation stays enabled (application.yml's own default) - only 127.0.0.1 is
-    // allowlisted, so this suite's own local HttpServer instances are reachable for the remote
-    // content proxy tests without weakening the check for anything else (mirrors
-    // BoundedDownloaderTest#downloadRejectsARedirectToABlockedTargetWhenValidationIsEnabled's
-    // identical, narrowly scoped allowlist).
-    registry.add("opaa.indexing.target-validation.allowlist", () -> "127.0.0.1");
-  }
-
-  @TestConfiguration
-  static class TestConfig {
-    @Bean
-    @Primary
-    EmbeddingModel testEmbeddingModel() {
-      return new FakeEmbeddingModel();
-    }
-  }
+  // #742 review, finding 3: a base directory the FILESYSTEM loadContent tests below use as a
+  // library's sourcePath. Underneath the suite-wide allowlisted base, so it needs no allowlist
+  // entry of its own; the "/data,/tmp" entries the other FILESYSTEM-flavoured tests here rely on
+  // (e.g. uploadingIntoAConnectorLibraryIsRejectedWithConflict) stay in place alongside it.
+  private static final Path filesystemAllowlistDir =
+      OpaaTestDirectory.subdirectory("library-document-service");
 
   @Autowired private LibraryDocumentService documentService;
   @Autowired private KnowledgeLibraryService libraryService;
@@ -136,6 +101,7 @@ class LibraryDocumentServiceIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private VectorStore vectorStore;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private AssetGrantRepository assetGrantRepository;
@@ -147,7 +113,6 @@ class LibraryDocumentServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
 
@@ -193,22 +158,13 @@ class LibraryDocumentServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    // #1184: fk_documents_parent (RESTRICT) forbids deleting a parent before its attachments -
-    // delete leaf-first, one nesting level per round, instead of deleteAll()'s arbitrary order.
-    // More general than sorting by file_path length (#1227's variant): it holds for attachment
-    // identities that do not embed their parent's path (e.g. RSS attachment URLs).
-    List<Document> remaining = documentRepository.findAll();
-    while (!remaining.isEmpty()) {
-      Set<UUID> referencedAsParent =
-          remaining.stream()
-              .map(Document::getParentDocumentId)
-              .filter(Objects::nonNull)
-              .collect(Collectors.toSet());
-      documentRepository.deleteAll(
-          remaining.stream().filter(d -> !referencedAsParent.contains(d.getId())).toList());
-      remaining = documentRepository.findAll();
-    }
-    libraryRepository.deleteById(libraryId);
+    // Chunks, documents and runs of this class's own library, then the library itself. #1184:
+    // fk_documents_parent is NO ACTION, checked at the end of the statement - one DELETE removes a
+    // parent and its attachments together, which per-entity deletes in arbitrary order cannot.
+    // Written by PermissionHistoryListener when libraryService.createLibrary ran; the table has no
+    // foreign key at all, so a row left here would never fail loudly, only accumulate.
+    jdbcTemplate.update("DELETE FROM library_visibility_history WHERE library_id = ?", libraryId);
+    ownLibraryFixtures.removeLibraries(libraryId);
     // #238 code review, finding 2+4: asset_grant_history.subject_user_id is ON DELETE RESTRICT
     // (see 018-permission-history.yaml's "Deletion survival" comment) - every library/grant
     // operation setUp performs now historises a row referencing editor/viewer, which must be
@@ -628,7 +584,12 @@ class LibraryDocumentServiceIntegrationTest {
 
     Document saved = documentRepository.findById(response.document().getId()).orElseThrow();
     Path storedFile = Path.of(saved.getFilePath()).toAbsolutePath().normalize();
-    Path libraryDir = uploadStorageDir.resolve(libraryId.toString()).toAbsolutePath().normalize();
+    Path libraryDir =
+        uploadStorageDir
+            .resolve(organizationId.toString())
+            .resolve(libraryId.toString())
+            .toAbsolutePath()
+            .normalize();
     assertThat(storedFile.startsWith(libraryDir)).isTrue();
     assertThat(saved.getFileName()).isEqualTo("evil.txt");
   }
@@ -874,18 +835,14 @@ class LibraryDocumentServiceIntegrationTest {
   @Test
   void loadContentAnswers404WhenTheStoredSourceUrlIsBlockedByTheTargetAllowlist()
       throws IOException {
-    // #748 review, finding 4: the previous version of this test pointed at
-    // "http://169.254.169.254/original.pdf" - never reachable in CI either, so it stayed green
-    // even with the allowlist re-check removed entirely (the request would simply time out/refuse
-    // the connection either way, producing the identical 404). This version instead binds a real,
-    // listening HttpServer addressed as "localhost" - loopback (always blocked once target
-    // validation is enabled), but a different literal host string than the "127.0.0.1" this
-    // suite's own configureProperties allowlists for its other local test servers (the allowlist
-    // matches literally, not by resolved address), so it is neither allowlisted nor unreachable.
-    // Not a 127/8 alias like 127.0.0.2: macOS binds only 127.0.0.1 by default (#966).
-    // requestsReceived proves the request never left this process when the re-check is in place;
-    // with it removed, the request would succeed and both assertions below would fail.
-    HttpServer blockedServer = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
+    // #748 review, finding 4: a real, listening HttpServer, reachable through the 127/8 alias
+    // "127.0.0.2" - loopback (always blocked once target validation is enabled) and a different
+    // literal host string than the "localhost"/"127.0.0.1" the signature allowlists for the other
+    // local test servers (the allowlist matches by host string, never by resolved address). Bound
+    // on the wildcard address rather than on 127.0.0.2 itself, because macOS binds only 127.0.0.1
+    // by default (#966). requestsReceived proves the request never left this process while the
+    // re-check is in place; with it removed, the request would succeed and both assertions fail.
+    HttpServer blockedServer = HttpServer.create(new InetSocketAddress(0), 0);
     blockedServer.start();
     AtomicInteger requestsReceived = new AtomicInteger();
     blockedServer.createContext(
@@ -897,7 +854,7 @@ class LibraryDocumentServiceIntegrationTest {
           exchange.getResponseBody().write(bytes);
           exchange.close();
         });
-    String blockedBaseUrl = "http://localhost:" + blockedServer.getAddress().getPort();
+    String blockedBaseUrl = "http://127.0.0.2:" + blockedServer.getAddress().getPort();
     KnowledgeLibrary remoteLibrary =
         KnowledgeLibrary.ownedByUser(
             organizationId,
@@ -2287,7 +2244,8 @@ class LibraryDocumentServiceIntegrationTest {
   }
 
   private void assertNoFilesStored() throws IOException {
-    Path libraryDir = uploadStorageDir.resolve(libraryId.toString());
+    Path libraryDir =
+        uploadStorageDir.resolve(organizationId.toString()).resolve(libraryId.toString());
     if (!Files.exists(libraryDir)) {
       return;
     }

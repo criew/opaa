@@ -95,6 +95,39 @@ class PipelineBaselineTest {
         .hasMessageContaining("allExpectedDocumentsHitAt8");
   }
 
+  /**
+   * Issue #1522: a file drawn from a run against an external Ollama endpoint may never become a
+   * comparison point - the only correct outcome is to re-measure, which a fixed-point mismatch
+   * ("measurement grounds changed") would not say.
+   */
+  @Test
+  void rejectsAPipelineBaselineDrawnFromAnExternalOllamaEndpoint() throws IOException {
+    Path file = tempDir.resolve("pipeline-baseline.json");
+    Files.writeString(
+        file,
+        VALID_JSON.replace(
+            "\"ollamaImage\": \"ollama/ollama:0.6.5\"",
+            "\"ollamaImage\": \"extern: http://localhost:11434\""));
+
+    assertThatThrownBy(() -> PipelineBaseline.load(file))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("externen Ollama-Endpunkt")
+        .hasMessageContaining("opaa.eval.ollamaBaseUrl");
+  }
+
+  /**
+   * A missing value is not refused at load time (unlike an external one): it reaches {@link
+   * PipelineBaselineComparator} as {@code null} and is reported there as an incomparable fixed
+   * point, so the regression job still writes its delta table.
+   */
+  @Test
+  void loadsAPipelineBaselineWithoutAnOllamaImageAndLeavesItToTheComparator() throws IOException {
+    Path file = tempDir.resolve("pipeline-baseline.json");
+    Files.writeString(file, VALID_JSON.replace("\"ollamaImage\": \"ollama/ollama:0.6.5\",", ""));
+
+    assertThat(PipelineBaseline.load(file).fixedPoints().ollamaImage()).isNull();
+  }
+
   private static final String VALID_JSON =
       """
       {
@@ -102,6 +135,7 @@ class PipelineBaselineTest {
         "fixedPoints": {
           "embeddingModel": "nomic-embed-text:v1.5",
           "embeddingModelDigest": "abc",
+          "ollamaImage": "ollama/ollama:0.6.5",
           "embeddingDimensions": 768,
           "chunkSize": 1000,
           "chunkSizeMatchesApplicationDefault": true,

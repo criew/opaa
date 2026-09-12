@@ -39,6 +39,7 @@ jobs:
       backendCore: ${{ steps.filter.outputs.backendCore }}
       frontend: ${{ steps.filter.outputs.frontend }}
       scripts: ${{ steps.filter.outputs.scripts }}
+      seed: ${{ steps.filter.outputs.seed }}
     steps:
       - uses: dorny/paths-filter@v4
         id: filter
@@ -84,6 +85,14 @@ jobs:
               - '.github/workflows/ci.yml'
             scripts:
               - '.github/scripts/**'
+              - '.github/workflows/ci.yml'
+            # keycloak/** belongs to the seed filter because demo/seed/test_seed.py
+            # asserts the realm export keeps the audience mapper the seed's token
+            # path depends on (#1515) - otherwise only the nightly demo smoke run
+            # would notice its removal.
+            seed:
+              - 'demo/seed/**'
+              - 'keycloak/**'
               - '.github/workflows/ci.yml'
 
   # The backend suite runs as three parallel package shards (see `testShards` in
@@ -228,6 +237,25 @@ jobs:
       # Der Tagesreport läuft nur nachts; ein Fehler fiele sonst erst dann auf.
       - name: Test
         run: pytest .github/scripts/test_daily_report.py
+
+  seed-script:
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.seed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+
+      - name: Install dependencies
+        run: pip install pytest -r demo/seed/requirements.txt
+
+      # Der Seed-Lauf selbst wird nur vom nächtlichen Demo-Smoke ausgeübt; was ohne
+      # laufenden Stack prüfbar ist, gehört deshalb in jeden PR-Lauf.
+      - name: Test
+        run: pytest demo/seed
 
   frontend:
     needs: changes

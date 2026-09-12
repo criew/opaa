@@ -80,6 +80,7 @@ class QueryControllerTest {
             List.of(sourceReference("doc.md", 0.9, 2, Instant.parse("2025-01-15T10:30:00Z"), true)),
             new QueryOutcome("gpt-4o", 500, 1200L, false, false, null),
             chatId,
+            null,
             null);
     when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
         .thenReturn(response);
@@ -112,6 +113,7 @@ class QueryControllerTest {
             List.of(),
             new QueryOutcome("gpt-4o", 100, 500L, false, false, null),
             chatId,
+            null,
             null);
     when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
         .thenReturn(response);
@@ -134,6 +136,7 @@ class QueryControllerTest {
             List.of(),
             new QueryOutcome("gpt-4o", 100, 500L, false, false, null),
             UUID.randomUUID(),
+            null,
             null);
     when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
         .thenReturn(response);
@@ -163,6 +166,7 @@ class QueryControllerTest {
             List.of(),
             new QueryOutcome("gpt-4o", 100, 500L, false, false, null),
             UUID.randomUUID(),
+            null,
             null);
     when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
         .thenReturn(response);
@@ -272,6 +276,7 @@ class QueryControllerTest {
             List.of(),
             new QueryOutcome("gpt-4o", 100, 500L, false, false, null),
             chatId,
+            null,
             null);
     when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
         .thenReturn(response);

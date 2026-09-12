@@ -707,6 +707,10 @@ export const handlers = [
       ...mockResponse,
       chatId,
       chatTitle,
+      // Mirrors QueryResponse#noteItems (#1487): the note state that went into *this* answer -
+      // never one the condensation of this very turn would produce, and null for an ephemeral
+      // query that has no persisted chat at all.
+      noteItems: mockChatDetails[chatId]?.noteItems ?? null,
     })
   }),
 
@@ -738,6 +742,7 @@ export const handlers = [
       metadataFilter: body.metadataFilter ?? null,
       status: 'PRIVATE',
       messages: [],
+      noteItems: [],
       createdAt: now,
       updatedAt: now,
     }
@@ -778,6 +783,19 @@ export const handlers = [
     }
     chat.updatedAt = new Date().toISOString()
     return HttpResponse.json(chat)
+  }),
+
+  // Mirrors ChatController#deleteChatNoteItem (#1487): removing one point of the Gesprächsnotiz,
+  // immediately and without a confirmation step.
+  http.delete('/api/v1/chats/:chatId/note-items/:itemId', ({ params }) => {
+    const chatId = String(params.chatId)
+    const itemId = String(params.itemId)
+    const chat = mockChatDetails[chatId]
+    if (!chat?.noteItems?.some((item) => item.id === itemId)) {
+      return HttpResponse.json({ error: 'Notizpunkt nicht gefunden' }, { status: 404 })
+    }
+    chat.noteItems = chat.noteItems.filter((item) => item.id !== itemId)
+    return new HttpResponse(null, { status: 204 })
   }),
 
   http.delete('/api/v1/chats/:chatId', ({ params }) => {

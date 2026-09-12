@@ -8,7 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.opaa.api.types.SystemRole;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
-import io.opaa.test.OpaaMockMvcTest;
+import io.opaa.test.OpaaIntegrationTest;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -40,7 +40,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * existing, see {@code SpaceServiceIntegrationTest}'s identical reasoning) - only the throwaway
  * second organization and its one throwaway user are created and torn down per test.
  */
-@OpaaMockMvcTest
+@OpaaIntegrationTest
 class AdminControllerOrganizationBoundaryIntegrationTest {
 
   @Autowired private MockMvc mockMvc;

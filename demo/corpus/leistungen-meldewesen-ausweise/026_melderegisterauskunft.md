@@ -35,8 +35,8 @@ Etwa 3 Wochen
 
 Gebührenrahmen
 Die Höhe der Gebühr ist davon abhängig, ob die Daten der gesuchte Person elektronisch gespeichert sind (ab 20.09.1975), oder aufwendig in verfilmten Karteien ermittelt werden muss.
-Eine einfache Melderegisterauskunft kostet dann 11 Euro, beziehungsweise 16,50 Euro.
-Eine erweiterte Melderegisterauskunft kostet 16,50 Euro.
+Eine einfache Melderegisterauskunft kostet dann 11,50 Euro, beziehungsweise 17,20 Euro.
+Eine erweiterte Melderegisterauskunft kostet 17,20 Euro.
 Sie erhalten mit der beantragten Melderegisterauskunft eine Rechnung (Gebührenbescheid).
 
 Rechtliche Grundlagen

@@ -710,14 +710,38 @@ Korpusdokumente einen Fall der Klasse `literal_term_weak_embedding` aus dem Top-
 
 ### Mehrrunden-Klassen (Epic #1482, Gesprächsgedächtnis)
 
-> **Stand (09/2026):** spezifiziert, noch nicht gebaut. Die drei Klassen unterscheiden sich von den
+> **Stand (09/2026):** gebaut (#1484/#1485), verglichen und in der CI (#1553), nachgemessen nach
+> Suchfenster und Gesprächsnotiz (#1490). Die drei Klassen unterscheiden sich von den
 > fünf obigen in der Form: Ein Fall ist eine **Folge von Runden**, jede mit eigener Frage, eigener
 > handgeschriebener Kurzantwort und eigenen erwarteten Dokumenten; gemessen wird je Runde, ein Fall
 > gilt als gelöst, wenn jede Runde gelöst ist. Sie liegen in einem eigenen Datensatz
 > (`eval/golden/verwaltung-conversations.json`) mit eigener Baseline und laufen nur zerlegend —
-> gepinntes Eval-Chat-Modell, Mehrfachlauf-Regel, manuell oder per Label, nicht nächtlich. Schema,
+> gepinntes Eval-Chat-Modell, Mehrfachlauf-Regel. Sie laufen nächtlich, per `workflow_dispatch`
+> und beim Label `evaluation`, aber in einem **eigenen** Job mit eigenem Zeitbudget
+> (`conversations` in `.github/workflows/retrieval-regression.yml`); an den Job der
+> Einzelfragen-Domänen angehängt sprengten sie dessen Budget (ADR-0012, Entscheidung 49). Schema,
 > Harness-Simulation des Gedächtnisses und Reihenfolge der Messung stehen in
 > [conversation-memory.md, Abschnitt „Messung"](./conversation-memory.md#messung).
+>
+> **Umsetzungsstand je Klasse nach der Nachmessung vom 2026-09-12** (Median aus drei Läufen,
+> CPU-Testcontainer; Vorher = Referenzlauf vom 2026-09-11 ohne Suchfenster und ohne Notiz).
+> Vollständige Tabellen, Einzelfälle und Ursachen:
+> [`eval/corpus/verwaltung/MAINTENANCE.md`](../../eval/corpus/verwaltung/MAINTENANCE.md),
+> Abschnitt „Befund der Nachmessung".
+>
+> | Klasse | nDCG@8 über ihre Runden | gelöste Fälle | Bewertung |
+> |---|---|---|---|
+> | `anaphora_resolution` | 0,722 → 0,763 | 4 → 5 von 9 | Bedingung „darf nicht fallen" erfüllt |
+> | `topic_switch` | 0,713 → 0,776 | 2 → 2 von 9 | Metriken steigen, Fallzahl unverändert |
+> | `constraint_carryover` | 0,857 → 0,835 | 4 → 1 von 9 | Bedingung „mindestens die Referenz" **nicht** erfüllt |
+>
+> Die empfindlichere Vergleichsgröße, die #1485 für diesen Schritt festgelegt hat — Zielrunden,
+> deren Teilfrage die Rahmenangabe trägt — fällt von **4 von 9 auf 1 von 9**. Die Gesprächsnotiz
+> ist gebaut und verdichtet in jeder Runde erfolgreich, trägt die Fassungsangabe aber nur in drei
+> von neun Fällen bis zur Zielrunde, und die Zerlegung nimmt sie dort in einem von drei auf. Der
+> Vergleich ist außerdem kein reines A/B über Fenster und Notiz: #1487 hat der festen
+> Zerlegungs-Instruktion eine Zeile hinzugefügt, die bei jedem Aufruf mitgeht, und 18 der 27 ersten
+> Runden — die weder Fenster noch Notiz haben — liefern seither andere Teilfragen.
 >
 > **Ausnahme von der Zwei-Pfade-Regel (Abschnitt 5, Zustandsfelder; `MAINTENANCE.md`):** „Gelöst"
 > ist bislang auf **beiden** Messpfaden definiert. Mehrrunden-Fälle können konstruktionsbedingt nur

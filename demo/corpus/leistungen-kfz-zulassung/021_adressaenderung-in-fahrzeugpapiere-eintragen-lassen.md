@@ -23,7 +23,7 @@ bei Gewerbebetrieben:
 
 Dauer & Kosten
 Gebührenrahmen
-10,30 Euro
+13,80 Euro
 
 Auskunftshinweise
 Man darf eine andere Person beauftragen. Eine schriftliche Vollmacht wird dazu nicht benötigt. Es reicht, wenn die Person die erforderlichen Unterlagen mitbringt.

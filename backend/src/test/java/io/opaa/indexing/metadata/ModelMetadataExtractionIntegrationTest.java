@@ -13,6 +13,7 @@ import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.api.types.SystemRole;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
@@ -24,8 +25,8 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.llm.ActiveChatModelDescription;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
-import io.opaa.test.OpaaIndexingIntegrationTest;
-import io.opaa.test.OpaaIndexingTestDirectory;
+import io.opaa.test.OpaaMockedChatModelIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -57,11 +58,11 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * ingest, and a freies Schlagwort reaches the full-text index without ever becoming filterable or
  * appearing in a Beleg.
  */
-@OpaaIndexingIntegrationTest
+@OpaaMockedChatModelIntegrationTest
 class ModelMetadataExtractionIntegrationTest {
 
   private static final Path classTempDir =
-      OpaaIndexingTestDirectory.subdirectory("model-metadata-extraction");
+      OpaaTestDirectory.subdirectory("model-metadata-extraction");
 
   @Autowired private DocumentIngestService documentIngestService;
   @Autowired private DocumentMetadataService documentMetadataService;
@@ -79,6 +80,7 @@ class ModelMetadataExtractionIntegrationTest {
   @Autowired private LibraryMetadataFieldRepository libraryFieldRepository;
   @Autowired private LibraryMetadataFieldValueRepository libraryFieldValueRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private VectorChunkStore vectorChunkStore;
 
   private KnowledgeLibrary library;
 
@@ -554,12 +556,24 @@ class ModelMetadataExtractionIntegrationTest {
     removeOwnRows();
   }
 
-  /** One DELETE per table, in dependency order - a self-referencing parent chain and all. */
+  /**
+   * One DELETE per table, in dependency order - a self-referencing parent chain and all. Everything
+   * is scoped to the libraries of this class's own owner, which is why this works in
+   * {@code @BeforeEach} as well, where {@link #library} of the aborted previous method is no longer
+   * known.
+   */
   private void removeOwnRows() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    // A single statement rather than deleteAll(): PostgreSQL checks the self-reference of
-    // documents.parent_document_id only after it, so a parent and its attachment go together.
-    jdbcTemplate.update("DELETE FROM documents");
+    List<UUID> ownLibraryIds =
+        jdbcTemplate.queryForList(
+            "SELECT id FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users"
+                + " WHERE email = 'model-extraction-it@example.com')",
+            UUID.class);
+    for (UUID libraryId : ownLibraryIds) {
+      vectorChunkStore.deleteByLibraryId(libraryId);
+      // A single statement rather than deleteAll(): PostgreSQL checks the self-reference of
+      // documents.parent_document_id only after it, so a parent and its attachment go together.
+      jdbcTemplate.update("DELETE FROM documents WHERE library_id = ?", libraryId);
+    }
     jdbcTemplate.update(
         "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
             + " email = 'model-extraction-it@example.com')");

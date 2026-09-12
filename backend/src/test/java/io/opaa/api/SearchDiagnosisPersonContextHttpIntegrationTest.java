@@ -19,8 +19,7 @@ import io.opaa.diagnosticaccess.DiagnosticImpersonationGrant;
 import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantRepository;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
-import io.opaa.test.EmbeddingModelFakeConfiguration;
-import io.opaa.test.OpaaMockMvcTest;
+import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -29,7 +28,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -47,11 +45,7 @@ import tools.jackson.databind.node.ObjectNode;
  * befugnis, it writes its protocol entry, and it never searches a diagnosegesperrte library - exist
  * nowhere in that slice.
  */
-// Shares the EmbeddingModelFakeConfiguration context with PipelineReindexHttpIntegrationTest: a
-// person-context run reaches the real retrieval pipeline, whose vector stage would otherwise dial
-// the real, unreachable-in-CI embedding endpoint.
-@OpaaMockMvcTest
-@Import(EmbeddingModelFakeConfiguration.class)
+@OpaaIntegrationTest
 class SearchDiagnosisPersonContextHttpIntegrationTest {
 
   private static final String QUESTION = "Was gilt bei Gebührenbefreiung wegen Bedürftigkeit?";

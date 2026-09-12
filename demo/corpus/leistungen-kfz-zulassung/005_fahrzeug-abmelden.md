@@ -7,7 +7,7 @@
 Wer sein Fahrzeug abmelden will, kann es für einen Zeitraum bis zu sieben Jahren außer Betrieb setzen.
 
 - Sie können auch ein Fahrzeug mit einem auswärtigen Kennzeichen abmelden (Eine Reservierung eines auswärtigen Kennzeichens ist nicht möglich). Dazu müssen Sie die gleichen Unterlagen wie bei der Abmeldung eines Rheinfurter Fahrzeugs mitbringen.
-- Es besteht die Möglichkeit, das bestehende Kennzeichen für eine spätere Wiederinbetriebnahme (das selbe Fahrzeug auf den selben Halter), als “Verbleibskennzeichen“ für 12 Monate zu reservieren. Die Gebühr von 2,30 Euro für die Reservierung wird bei der Außerbetriebsetzung mit verrechnet.
+- Es besteht die Möglichkeit, das bestehende Kennzeichen für eine spätere Wiederinbetriebnahme (das selbe Fahrzeug auf den selben Halter), als “Verbleibskennzeichen“ für 12 Monate zu reservieren. Die Gebühr von 3 Euro für die Reservierung wird bei der Außerbetriebsetzung mit verrechnet.
 - Das bestehende Kennzeichen kann auch für ein anderes Fahrzeug (auf dieselbe*denselben Halter*in für drei Monate) reserviert werden.
 - Kurze Kennzeichenkombinationen (nur ein oder zwei Buchstaben und eine oder zwei Ziffern oder ein Buchstabe und drei Ziffern) können nicht reserviert werden.
 
@@ -22,10 +22,10 @@ Benötigte Unterlagen
 
 Dauer & Kosten
 Gebührenrahmen
-- bei Rheinfurter und auswärtigen Kennzeichen: 6,90 Euro
-- mit Verwertungsnachweis: zusätzlich 4,50 Euro (wenn Sie den Nachweis bei der Abmeldung vorlegen)
-- nachträglicher Verwertungsnachweis: 9,10 Euro (wenn Sie den Nachweis erst vorlegen, nachdem das Fahrzeug außer Betrieb gesetzt wurde)
-- Reservierung der Kennzeichen: 2,30 Euro
+- bei Rheinfurter und auswärtigen Kennzeichen: 9 Euro
+- mit Verwertungsnachweis: zusätzlich 5,90 Euro (wenn Sie den Nachweis bei der Abmeldung vorlegen)
+- nachträglicher Verwertungsnachweis: 11,70 Euro (wenn Sie den Nachweis erst vorlegen, nachdem das Fahrzeug außer Betrieb gesetzt wurde)
+- Reservierung der Kennzeichen: 3 Euro
 
 Barzahlung
 Kasse vor Ort

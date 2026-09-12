@@ -8,7 +8,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.test.OpaaMockMvcTest;
+import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.AfterEach;
@@ -30,11 +30,11 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * inside {@code AuditQueryService} itself rather than {@code @PreAuthorize}) against a real
  * Postgres, so both the 403 for a plain USER and the 200 for an AUDITOR come from production code.
  *
- * <p>Carries the canonical {@link io.opaa.test.OpaaMockMvcTest} signature (AGENTS.md, "Spring-
+ * <p>Carries the canonical {@link io.opaa.test.OpaaIntegrationTest} signature (AGENTS.md, "Spring-
  * Testkontexte"), so it shares one cached context and one container with every other class on that
  * same meta-annotation.
  */
-@OpaaMockMvcTest
+@OpaaIntegrationTest
 class AuditControllerAuthorizationIntegrationTest {
 
   @Autowired private MockMvc mockMvc;

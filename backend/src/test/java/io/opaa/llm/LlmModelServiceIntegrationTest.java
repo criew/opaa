@@ -10,6 +10,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.ValidationException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.LlmModelCatalogFixtures;
 import io.opaa.test.OpaaIntegrationTest;
 import java.math.BigDecimal;
 import java.util.List;
@@ -29,11 +30,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * produce different ciphertexts, that at most one model is ever active, and that every change
  * writes exactly one audit event of the right, distinct type.
  *
- * <p>{@code @BeforeEach}/{@code @AfterEach} clear {@code llm_models} rather than assuming it starts
- * empty: {@link LlmModelSeeder} (triggered once by {@link LlmModelSeedRunner}) seeds one row from
- * the {@code dev} profile's Ollama configuration on every fresh application context, including the
- * one this test shares with its siblings on the canonical {@link io.opaa.test.OpaaIntegrationTest}
- * signature (AGENTS.md, "Spring-Testkontexte"). Clearing the table this way doubles as the exact
+ * <p>{@code @BeforeEach}/{@code @AfterEach} take the catalogue over and hand it back unchanged
+ * ({@link io.opaa.test.LlmModelCatalogFixtures}) rather than assuming it starts empty: {@link
+ * LlmModelSeeder} (triggered once by {@link LlmModelSeedRunner}) seeds one row from the {@code dev}
+ * profile's Ollama configuration on every fresh application context, including the one this test
+ * shares with its siblings on the canonical {@link io.opaa.test.OpaaIntegrationTest} signature
+ * (AGENTS.md, "Spring-Testkontexte"). Emptying it for the duration of a method doubles as the exact
  * reproduction scenario {@link #seedingNeverResumesOnceAttemptedEvenAfterEveryModelIsDeleted()}
  * needs: a Systemverwaltung deleting every managed model, followed by a restart.
  */
@@ -46,16 +48,21 @@ class LlmModelServiceIntegrationTest {
 
   @Autowired private LlmModelService llmModelService;
   @Autowired private LlmModelSeeder llmModelSeeder;
+  @Autowired private ActiveChatModelResolver resolver;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private LlmModelCatalogFixtures llmModelCatalogFixtures;
 
   private UUID organizationId;
   private UUID userId;
 
+  /** The catalogue content that is none of this test method's business - see the class Javadoc. */
+  private List<Map<String, Object>> foreignModels;
+
   @BeforeEach
   void setUp() {
-    jdbcTemplate.update("DELETE FROM llm_models");
+    foreignModels = llmModelCatalogFixtures.takeOverCatalog();
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "LLM Test Org")).getId();
     User user = new User(UUID.randomUUID().toString(), "test-issuer", "llm@example.com", "Test");
@@ -65,8 +72,13 @@ class LlmModelServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    // First statement of the cleanup: anything that throws before it would leave the catalogue
+    // emptied for every following class, and the seeder never refills it (its marker is set).
+    llmModelCatalogFixtures.restoreCatalog(foreignModels);
+    // The restore bypasses LlmModelService, so no ActiveChatModelChangedEvent fires - without this,
+    // the resolver would keep the client it built for a model this method has just deleted.
+    resolver.resetForTest();
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
-    jdbcTemplate.update("DELETE FROM llm_models");
     userRepository.deleteById(userId);
     organizationRepository.deleteById(organizationId);
   }

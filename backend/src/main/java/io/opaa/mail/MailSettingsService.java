@@ -340,6 +340,6 @@ public class MailSettingsService {
                 new IllegalStateException(
                     "mail_settings has no row with id="
                         + MailSettings.SINGLETON_ID
-                        + " - changeset 011-mail-settings should have created it"));
+                        + " - changeset 012-mail-settings should have created it"));
   }
 }

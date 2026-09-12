@@ -21,7 +21,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst „dafür“ zu „Formular KAE-07“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst „dafür“ zu „Formular KAE-07“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
   },
   {
     "id": "verw-conv-ana-002",
@@ -45,7 +45,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst „seine“ zu „Formular BUE-08“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst „seine“ zu „Formular BUE-08“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
   },
   {
     "id": "verw-conv-ana-003",
@@ -69,7 +69,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst „danach“ zu „Dienstanweisung BAU-DA-2/2024“ auf und hält das Dokument gegen die amtsübergreifende Aufbewahrungs-Dienstanweisung auf Rang 1."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst „danach“ zu „Dienstanweisung BAU-DA-2/2024“ auf und hält das Dokument gegen die amtsübergreifende Aufbewahrungs-Dienstanweisung auf Rang 1."
   },
   {
     "id": "verw-conv-ana-004",
@@ -100,7 +100,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 verliert den Bezug auf die Verwaltungsgebührensatzung (verwaltung-0038 außerhalb des Fensters); Runde 3 verlangt zusätzlich den Schritt Verwaltungsgebührensatzung → Kämmerei → deren Gebührenordnung, den kein Fenster-Baustein leistet (siehe MAINTENANCE.md, Vermerk zu dieser Runde)."
+    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht; Suchfenster (#1486) und Gesprächsnotiz (#1487) haben sie für diesen Fall nicht gebracht. Symptom im Lauf vom 2026-09-12: Runde 2 stellt verwaltung-0039_gebuehrenordnung-kaemmerei.md auf Rang 1 und das Ziel auf Rang 2; Runde 3 verlangt zusätzlich den Schritt Verwaltungsgebührensatzung → Kämmerei → deren Gebührenordnung, den kein Fenster-Baustein leistet (siehe MAINTENANCE.md, Vermerk zu dieser Runde)."
   },
   {
     "id": "verw-conv-ana-005",
@@ -124,7 +124,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 verliert den Bezug auf ORD-DA-2/2024; verwaltung-0022 liegt außerhalb des Fensters."
+    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-12: Runde 2 verfehlt ORD-DA-2/2024 ganz; Rang 1 belegt verwaltung-vertretungsregelung.md."
   },
   {
     "id": "verw-conv-ana-006",
@@ -146,9 +146,9 @@
         ]
       }
     ],
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 verliert den Bezug auf Formular JUG-07; verwaltung-0055 liegt außerhalb des Fensters."
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-12",
+    "expected_state_reason": "Gelöst seit dem Umbau aus #1486/#1487, gemessen am 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 erhält den Notizpunkt „Formular JUG-07“, und beide Runden führen verwaltung-0055_formularhinweis-jugendamt-7.md auf Rang 1."
   },
   {
     "id": "verw-conv-ana-007",
@@ -180,7 +180,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 1 und 3 sind gelöst; Runde 2 verliert den Bezug auf das Antragsformular des Standesamts (verwaltung-0029 außerhalb des Fensters)."
+    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-12: Runde 1 ist gelöst; Runde 2 verfehlt verwaltung-0029_formularhinweis-standesamt-7.md ganz, und Runde 3 hält es nur auf Rang 2 hinter dem Formularhinweis des Sozialamts."
   },
   {
     "id": "verw-conv-ana-008",
@@ -204,7 +204,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst die Rückfrage nach den typischen Ausfüllfehlern zu „Formular PER-08“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst die Rückfrage nach den typischen Ausfüllfehlern zu „Formular PER-08“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
   },
   {
     "id": "verw-conv-ana-009",
@@ -237,7 +237,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Suchfenster und Teilfragen-Zerlegung (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 1 verfehlt die Gebührenordnung Jugendamt; Runde 3 verliert den Bezug auf JUG-DA-2/2024 (verwaltung-0054 außerhalb des Fensters)."
+    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-12: Runde 1 führt die Beitragssatzung 2023 zwar auf Rang 1, verfehlt aber die Gebührenordnung Jugendamt aus ihrer dreiteiligen Treffermenge; Runde 3 verliert JUG-DA-2/2024 ganz."
   },
   {
     "id": "verw-conv-ts-001",
@@ -267,9 +267,9 @@
       }
     ],
     "topic_switch_turn": 3,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Wechselrunde 3 ist gelöst und ohne Dokument des Vorthemas; offen ist die Vorrunde 2, in der die Aufbewahrungs-Dienstanweisung Rang 1 belegt."
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-12",
+    "expected_state_reason": "Gelöst seit dem Umbau aus #1486/#1487, gemessen am 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 hält BAU-DA-1/2023 auf Rang 1 statt der amtsübergreifenden Aufbewahrungs-Dienstanweisung; alle drei Runden sind gelöst, die Wechselrunde 3 ohne Dokument des Vorthemas. Welcher der beiden Bausteine das bewirkt hat, ist nicht auflösbar — die Runden 2 und 3 haben zusätzlich den Notizpunkt „Bauanweisungen“ erhalten."
   },
   {
     "id": "verw-conv-ts-002",
@@ -301,7 +301,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Wechselrunde 2 selbst ist offen: die Zerlegung erfindet eine Rechtsgrundlage, Rang 1 belegt verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-12: Die Wechselrunde 2 ist gelöst, die Folgerunde 3 im neuen Thema nicht — der Notizpunkt „SOZ-08“ aus dem Altthema steht in ihrer Teilfrage, und verwaltung-0008_formularhinweis-sozialamt-8.md verdrängt die Abfallgebührensatzung ganz."
   },
   {
     "id": "verw-conv-ts-003",
@@ -333,7 +333,7 @@
     "topic_switch_turn": 3,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Wechselrunde 3 ist gelöst; offen ist die Vorrunde 2, die die Verwaltungsgebührensatzung aus dem Fenster verliert."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-12: Die Wechselrunde 3 ist gelöst; offen ist die Vorrunde 2, in der verwaltung-0039_gebuehrenordnung-kaemmerei.md die Verwaltungsgebührensatzung auf Rang 2 drückt."
   },
   {
     "id": "verw-conv-ts-004",
@@ -372,7 +372,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Wechselrunde 2 ist offen (verwaltung-0048 außerhalb des Fensters), ebenso die Rückkehr zum Altthema in Runde 4 (verwaltung-0060 außerhalb des Fensters)."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-12: Die Wechselrunde 2 ist gelöst; offen sind die Folgerunde 3 im neuen Thema (verwaltung-0048 außerhalb des Fensters) und die Rückkehr zum Altthema in Runde 4 (verwaltung-0060 außerhalb des Fensters)."
   },
   {
     "id": "verw-conv-ts-005",
@@ -404,7 +404,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Wechselrunde 2 und Folgerunde 3 sind offen; verwaltung-0035 liegt in beiden außerhalb des Fensters."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-12: Die Wechselrunde 2 ist gelöst; offen ist die Folgerunde 3, in der verwaltung-0035 außerhalb des Fensters liegt."
   },
   {
     "id": "verw-conv-ts-006",
@@ -436,7 +436,7 @@
     "topic_switch_turn": 3,
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Alle drei Runden führen ihr erwartetes Dokument auf Rang 1; die Wechselrunde 3 enthält kein Dokument des Vorthemas."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Alle drei Runden führen ihr erwartetes Dokument auf Rang 1; die Wechselrunde 3 enthält kein Dokument des Vorthemas."
   },
   {
     "id": "verw-conv-ts-007",
@@ -476,7 +476,7 @@
     "topic_switch_turn": 3,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Wechselrunde 3 und Folgerunde 4 sind gelöst; offen ist die Vorrunde 2, die den Bezug auf das Standesamt verliert (verwaltung-0027 außerhalb des Fensters)."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-12: Wechselrunde 3 und Folgerunde 4 sind gelöst; offen ist die Vorrunde 2, die verwaltung-0027_dienstanweisung-standesamt-1-2024.md nur auf Rang 3 hält. Dasselbe Dokument steht in der Wechselrunde 3 als Altthema im Fenster (Bleed)."
   },
   {
     "id": "verw-conv-ts-008",
@@ -509,7 +509,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: kurzes Suchfenster und Rückfall-Reparatur (Bauteil 1, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Wechselrunde 2 ist gelöst; offen ist die Folgerunde 3 im neuen Thema (verwaltung-0006 außerhalb des Fensters)."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-12: Die Wechselrunde 2 ist gelöst, trägt aber verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md des Altthemas im Fenster (Bleed); offen ist die Folgerunde 3 im neuen Thema."
   },
   {
     "id": "verw-conv-ts-009",
@@ -546,9 +546,9 @@
       }
     ],
     "topic_switch_turn": 2,
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Wechselrunde 2 und die Rückkehr durch Neubenennung in Runde 4 treffen beide ihr Dokument auf Rang 1; die Wechselrunde enthält kein Dokument des Vorthemas."
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-12",
+    "expected_state_reason": "Rückschritt gegenüber dem Referenzlauf vom 2026-09-11, in dem der Fall gelöst war. Symptom im Lauf vom 2026-09-12: Die Wechselrunden 2 und 3 nennen KAE-DA-1/2024 in ihrer Teilfrage, ordnen sie aber dem Jugendamt des Altthemas zu; verwaltung-0053 bzw. verwaltung-0054 belegen Rang 1, das Ziel jeweils Rang 2."
   },
   {
     "id": "verw-conv-cc-001",
@@ -580,9 +580,8 @@
       }
     ],
     "expected_state": "known_gap",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482) — die Rahmenangabe aus Runde 1 erreicht die Teilfrage der Zielrunde nicht; siehe expected_state_exception zum gemessenen Treffer.",
-    "expected_state_exception": "Gemessen gelöst, aber nicht durch die übernommene Rahmenangabe: Die Teilfrage der Zielrunde 3 nennt weder „Fassung 2023“ noch ein Datum; dass die Fassung 2023 trotzdem vor der Fassung 2024 steht, hängt am Wortlaut, den die Zerlegung in diesem Lauf erzeugt hat. Bleibt known_gap nach derselben Regel wie metadata_filter vor #1070 — ein Treffer ohne den geprüften Mechanismus belegt keine Fähigkeit."
+    "expected_state_since": "2026-09-12",
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe aus Runde 1 erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-12: Der Notizpunkt lautet „Arzt“ und trägt die Fassung 2023 nicht; die Zielrunde 3 stellt die Fassung 2024 auf Rang 1, das Ziel auf Rang 2. Die bis 2026-09-11 geführte erwartete Abweichung ist damit gegenstandslos und entfernt — der Fall ist jetzt auch gemessen offen."
   },
   {
     "id": "verw-conv-cc-002",
@@ -613,9 +612,9 @@
         "confusable_document": "verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md"
       }
     ],
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Teilfrage der Zielrunde 3 trägt die Angabe „Fassung 2023“ nicht; Rang 1 belegt verwaltung-0011_gebuehrenordnung-bauamt.md, das Ziel steht auf Rang 2, der Verwechslungspartner auf Rang 3."
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-12",
+    "expected_state_reason": "Gelöst mit der Gesprächsnotiz (#1487), gemessen am 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Die Verdichtung der Runde 1 hinterlässt den RAHMEN-Punkt „2023“, die Teilfrage der Zielrunde 3 trägt ihn („galt es 2023“), und die Fassung 2023 steht auf Rang 1 vor der Fassung 2024. Der einzige Fall des Datensatzes, in dem die Übernahme über die Notiz nachweislich trägt."
   },
   {
     "id": "verw-conv-cc-003",
@@ -653,9 +652,9 @@
         "confusable_document": "verwaltung-0005_dienstanweisung-sozialamt-1-2024.md"
       }
     ],
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Teilfrage der Zielrunde 4 trägt die Angabe aus Runde 1 wörtlich („Die Dienstanweisung SOZ-DA-1/2023 besagt …“); das Ziel steht auf Rang 1, der Verwechslungspartner SOZ-DA-1/2024 auf Rang 3. Der klarste Beleg des Datensatzes dafür, dass die Übernahme im 20-Nachrichten-Fenster funktionieren kann."
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-12",
+    "expected_state_reason": "Rückschritt gegenüber dem Referenzlauf vom 2026-09-11, in dem die Angabe im ganzen Gesprächsfenster stand, das die Zerlegung damals sah. Symptom im Lauf vom 2026-09-12: Die Notiz trägt „Prüfer“ und „Bearbeiter“, kein Jahr; die Zielrunde 4 stellt SOZ-DA-2/2024 auf Rang 1, das Ziel auf Rang 2. Offen ist zusätzlich das Zwischenthema in Runde 2."
   },
   {
     "id": "verw-conv-cc-004",
@@ -688,7 +687,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Teilfrage der Zielrunde 3 nennt das Ordnungsamt, aber kein Jahr; der Verwechslungspartner ORD-DA-1/2024 belegt Rang 1, das Ziel Rang 2. Zusätzlich verfehlt das Zwischenthema in Runde 2 die Vertretungsregelung."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-12: Der Notizpunkt trägt „Zeitraum: 2023“, die Teilfrage der Zielrunde 3 nimmt ihn nicht auf; der Verwechslungspartner ORD-DA-1/2024 belegt Rang 1, das Ziel Rang 2. Das Zwischenthema in Runde 2 ist seit diesem Lauf gelöst."
   },
   {
     "id": "verw-conv-cc-005",
@@ -726,9 +725,9 @@
         "confusable_document": "verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md"
       }
     ],
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Teilfrage der Zielrunde 4 trägt die Angabe aus Runde 1 („nach der Fassung 2024“); Ziel auf Rang 1, Verwechslungspartner auf Rang 2."
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-12",
+    "expected_state_reason": "Rückschritt gegenüber dem Referenzlauf vom 2026-09-11, in dem die Angabe im ganzen Gesprächsfenster stand, das die Zerlegung damals sah. Symptom im Lauf vom 2026-09-12: Die Notiz trägt „Berater“ und einen aus dem Zwischenthema verdichteten Punkt, kein Jahr; die Zielrunde 4 stellt die Fassung 2023 auf Rang 1, das Ziel steht auf Rang 4."
   },
   {
     "id": "verw-conv-cc-006",
@@ -761,7 +760,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zielrunde 3 ist getroffen; offen ist Runde 1, in der bereits die Fassungsfrage selbst die Personalausweisgebührensatzung 2023 aus dem Fenster verliert."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-12: Runde 1 ist seit diesem Lauf gelöst, die Zielrunde 3 dagegen nicht mehr — der Notizpunkt „Prüfer“ trägt die Fassung 2023 nicht, und die Teilfrage behauptet stattdessen die Fassung 2024, die damit Rang 1 belegt."
   },
   {
     "id": "verw-conv-cc-007",
@@ -794,7 +793,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 1 und Zielrunde 3 sind offen; in Runde 3 liegt die Kindertagesstättenbeitragssatzung 2023 außerhalb des Fensters."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-12: Runde 1 ist seit diesem Lauf gelöst; offen ist die Zielrunde 3, deren Notiz („Mitarbeiter“, „Formular UMW-08“) kein Jahr trägt — die Kindertagesstättenbeitragssatzung 2023 steht erst auf Rang 5."
   },
   {
     "id": "verw-conv-cc-008",
@@ -841,7 +840,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: Gesprächsnotiz (Bauteil 2, Epic #1482). Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zielrunde 5 ist getroffen und trägt die Angabe „BAU-DA-1/2024“ in ihrer Teilfrage; offen sind Runde 1 und das Zwischenthema in Runde 3, in denen jeweils SOZ-DA-1/2024 Rang 1 belegt."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-12: Das Zwischenthema in Runde 3 ist seit diesem Lauf gelöst; offen sind Runde 1 und die Zielrunde 5, deren Notizpunkt „Bauamt“ die Fassung 2024 nicht trägt — BAU-DA-1/2023 belegt Rang 1, das Ziel Rang 2."
   },
   {
     "id": "verw-conv-cc-009",
@@ -879,8 +878,8 @@
         "confusable_document": "verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md"
       }
     ],
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Gemessen am 2026-09-11 auf dem Pipeline-Pfad (Einpfad-Regel): Die Teilfrage der Zielrunde 4 trägt die Angabe aus Runde 1 („in der Fassung 2024“); Ziel auf Rang 1, Verwechslungspartner auf Rang 2."
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-12",
+    "expected_state_reason": "Rückschritt gegenüber dem Referenzlauf vom 2026-09-11, in dem der Fall gelöst war. Symptom im Lauf vom 2026-09-12: Der Notizpunkt trägt „Zeitraum: seit 2024, Fassung: 2024“, die Teilfrage der Zielrunde 4 nimmt ihn nicht auf; verwaltung-0003_gebuehrenordnung-sozialamt.md belegt Rang 1, das Ziel Rang 3. Offen ist zusätzlich Runde 1, die weder Fenster noch Notiz hat — sie hängt an der festen Notiz-Regel, die #1487 in die Zerlegungs-Instruktion aufgenommen hat."
   }
 ]
