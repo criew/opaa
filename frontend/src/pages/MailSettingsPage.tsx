@@ -1,12 +1,11 @@
-import { Navigate, Link as RouterLink, useParams } from 'react-router'
+import { Navigate, useParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Tab from '@mui/material/Tab'
-import Tabs from '@mui/material/Tabs'
 import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
 import { useAuthStore } from '../stores/authStore'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
+import AreaTabs from '../components/AreaTabs'
 import MailServerSection from '../components/admin/mail/MailServerSection'
 import MailTemplatesSection from '../components/admin/mail/MailTemplatesSection'
 import { contentWidth } from '../theme/tokens'
@@ -64,55 +63,15 @@ export default function MailSettingsPage() {
           description="Gilt für die gesamte Anwendung. Einladungen, Rücksetzlinks und Hinweise an Konten gehen über diesen Zugang; Änderungen wirken ohne Neustart."
         />
 
-        <Tabs
+        <AreaTabs
+          tabs={tabs}
           value={activeTab}
-          aria-label="Bereiche der E-Mail-Einstellungen"
-          sx={{
-            borderBottom: 1,
-            borderColor: 'divider',
-            mb: 3,
-            minHeight: 42,
-            '& .MuiTab-root': {
-              textTransform: 'none',
-              fontSize: 13.5,
-              fontWeight: 500,
-              minHeight: 42,
-              px: 2,
-            },
-          }}
+          href={(value) => `/admin/mail/${value}`}
+          label="Bereiche der E-Mail-Einstellungen"
+          idPrefix="mail"
         >
-          {tabs.map((entry) => (
-            <Tab
-              key={entry.value}
-              label={entry.label}
-              value={entry.value}
-              component={RouterLink}
-              to={`/admin/mail/${entry.value}`}
-              id={`mail-tab-${entry.value}`}
-              aria-controls={`mail-tabpanel-${entry.value}`}
-            />
-          ))}
-        </Tabs>
-
-        {/* Both panels exist so that every tab's aria-controls points at a real element. The
-            inactive one is hidden and renders no children, so no request of the other area keeps
-            running in the background. */}
-        <Box
-          role="tabpanel"
-          id="mail-tabpanel-server"
-          aria-labelledby="mail-tab-server"
-          hidden={activeTab !== 'server'}
-        >
-          {activeTab === 'server' && <MailServerSection />}
-        </Box>
-        <Box
-          role="tabpanel"
-          id="mail-tabpanel-templates"
-          aria-labelledby="mail-tab-templates"
-          hidden={activeTab !== 'templates'}
-        >
-          {activeTab === 'templates' && <MailTemplatesSection />}
-        </Box>
+          {(value) => (value === 'server' ? <MailServerSection /> : <MailTemplatesSection />)}
+        </AreaTabs>
       </Box>
     </Box>
   )
