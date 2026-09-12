@@ -33,6 +33,10 @@ public class OidcSecurityConfig {
   private static final String LOCAL_LOGIN = "/api/v1/auth/local/login";
   private static final String LOCAL_REFRESH = "/api/v1/auth/local/refresh";
   private static final String LOCAL_LOGOUT = "/api/v1/auth/local/logout";
+  private static final String LOCAL_SET_PASSWORD = "/api/v1/auth/local/set-password";
+  private static final String LOCAL_FORGOT_PASSWORD = "/api/v1/auth/local/forgot-password";
+  private static final String LOCAL_REGISTER = "/api/v1/auth/local/register";
+  private static final String LOCAL_VERIFY_EMAIL = "/api/v1/auth/local/verify-email";
 
   /**
    * ADR-0033, Entscheidung 7: the double-submit CSRF token is required exactly where the refresh
@@ -93,9 +97,18 @@ public class OidcSecurityConfig {
                     .permitAll()
                     .requestMatchers("/api/v1/auth/config")
                     .permitAll()
-                    // ADR-0033: the local sign-in and the two cookie-bearing session endpoints
+                    // ADR-0033: the local sign-in, the two cookie-bearing session endpoints and
+                    // the self-service of #1538 (link redemption, forgot password, registration)
                     // have no bearer token yet (or no longer); change-password stays bearer-only.
-                    .requestMatchers(HttpMethod.POST, LOCAL_LOGIN, LOCAL_REFRESH, LOCAL_LOGOUT)
+                    .requestMatchers(
+                        HttpMethod.POST,
+                        LOCAL_LOGIN,
+                        LOCAL_REFRESH,
+                        LOCAL_LOGOUT,
+                        LOCAL_SET_PASSWORD,
+                        LOCAL_FORGOT_PASSWORD,
+                        LOCAL_REGISTER,
+                        LOCAL_VERIFY_EMAIL)
                     .permitAll()
                     // #582/#583: branding is readable without authentication. The sign-in
                     // page is the first thing a user sees and has to carry the operator's own

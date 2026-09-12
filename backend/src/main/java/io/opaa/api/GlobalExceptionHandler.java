@@ -305,10 +305,15 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
   }
 
+  /** A refusal may carry a stable {@code code} the client acts on (e.g. {@code TOKEN_INVALID}). */
   @ExceptionHandler(ValidationException.class)
   public ResponseEntity<ErrorResponse> handleValidationException(ValidationException ex) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .body(new ErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST.value(), Instant.now()));
+    ErrorResponse body =
+        new ErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST.value(), Instant.now());
+    if (ex.getCode() != null) {
+      body.setCode(ex.getCode());
+    }
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
   }
 
   /**

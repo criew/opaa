@@ -572,12 +572,12 @@ public class LocalUserService {
     }
   }
 
-  private static ConflictException addressTaken() {
+  static ConflictException addressTaken() {
     return new ConflictException(
         "Diese E-Mail-Adresse kann für ein lokales Konto nicht verwendet werden.", EMAIL_TAKEN);
   }
 
-  private static String requireAddress(String email) {
+  static String requireAddress(String email) {
     String trimmed = email == null ? "" : email.trim();
     int at = trimmed.indexOf('@');
     boolean plausible =
@@ -593,7 +593,7 @@ public class LocalUserService {
     return trimmed;
   }
 
-  private static String requireText(String field, String value, int maxLength) {
+  static String requireText(String field, String value, int maxLength) {
     String trimmed = value == null ? "" : value.trim();
     if (trimmed.isEmpty()) {
       throw new FieldValidationException(

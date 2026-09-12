@@ -312,7 +312,7 @@ public enum MailTemplateKey {
       Map.ofEntries(
           Map.entry("productName", "OPAA"),
           Map.entry("displayName", "Erika Mustermann"),
-          Map.entry("actionUrl", "https://opaa.example.org/konto/passwort?token=BEISPIEL"),
+          Map.entry("actionUrl", "https://opaa.example.org/set-password?token=BEISPIEL"),
           Map.entry("expiresAtHuman", "noch 24 Stunden"),
           Map.entry("reason", "Zu viele fehlgeschlagene Anmeldeversuche"),
           Map.entry("count", "7"),

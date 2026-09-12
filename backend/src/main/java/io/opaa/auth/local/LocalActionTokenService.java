@@ -1,5 +1,6 @@
 package io.opaa.auth.local;
 
+import io.opaa.common.ValidationException;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.security.LocalAuthKeyService.Purpose;
 import java.security.SecureRandom;
@@ -22,6 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class LocalActionTokenService {
+
+  /** The one code every refused link answers with - unknown, expired and consumed alike. */
+  public static final String TOKEN_INVALID = "TOKEN_INVALID";
+
+  static final String TOKEN_INVALID_MESSAGE = "Dieser Link ist nicht mehr gültig.";
 
   private static final int TOKEN_BYTES = 32;
   private static final SecureRandom RANDOM = new SecureRandom();
@@ -88,6 +94,11 @@ public class LocalActionTokenService {
     // re-read: the bulk update cleared the persistence context, the instance above is detached
     // and still says consumedAt == null
     return repository.findById(token.get().getId());
+  }
+
+  /** The 400 a link endpoint answers with for every refused token (ADR-0033, Entscheidung 11). */
+  public static ValidationException invalidToken() {
+    return new ValidationException(TOKEN_INVALID_MESSAGE, TOKEN_INVALID);
   }
 
   private String hash(String rawToken) {

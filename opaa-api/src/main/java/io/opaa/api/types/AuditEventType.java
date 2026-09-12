@@ -292,5 +292,15 @@ public enum AuditEventType {
    * The settings row of the local account management changed; before/after of the changed keys
    * only.
    */
-  LOCAL_ACCOUNTS_SETTINGS_CHANGED
+  LOCAL_ACCOUNTS_SETTINGS_CHANGED,
+  /**
+   * The person set a password through an invitation or reset link (ADR-0033, Entscheidung 11);
+   * {@code after.purpose} names which of the two.
+   */
+  LOCAL_PASSWORD_SET,
+  /**
+   * A local account was created by self-registration (system process {@code local-auth}); the
+   * address stays unconfirmed until the verification link is redeemed.
+   */
+  LOCAL_USER_REGISTERED
 }
