@@ -17,8 +17,7 @@ import type { ThemeMode } from '../stores/uiStore'
 import { useBrandingStore } from '../stores/brandingStore'
 import { resolveThemeMode } from '../theme/colorScheme'
 import GlobalBadge from '../components/GlobalBadge'
-import GlobalScopeNote from '../components/GlobalScopeNote'
-import PageHeading from '../components/a11y/PageHeading'
+import AreaPageHeader from '../components/AreaPageHeader'
 import { userInitial } from '../utils/userInitial'
 import SectionHead from '../components/SectionHead'
 
@@ -57,13 +56,11 @@ export default function SettingsPage() {
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <Box sx={{ maxWidth: 640 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-          <PageHeading title="Ihre Einstellungen" />
-          <GlobalBadge />
-        </Box>
-        <GlobalScopeNote sx={{ mt: 0.5, mb: 3 }}>
-          Gelten für Sie persönlich in allen Spaces.
-        </GlobalScopeNote>
+        <AreaPageHeader
+          title="Ihre Einstellungen"
+          meta={<GlobalBadge />}
+          description="Gelten für Sie persönlich in allen Spaces."
+        />
 
         {/* Mockup 2c: the profile block - display only; editing name, language or picture
             needs backend support that does not exist yet (#788, Abgrenzung). */}

@@ -17,6 +17,7 @@ import type { ColorScheme } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
 import { useBrandingStore, OPAA_BRANDING } from '../stores/brandingStore'
 import PageHeading from '../components/a11y/PageHeading'
+import AreaPageHeader from '../components/AreaPageHeader'
 import BrandingPreview from '../components/admin/BrandingPreview'
 import { checkAccentContrast, formatContrastRatio, parseHexColor } from '../utils/contrast'
 
@@ -104,7 +105,7 @@ export default function BrandingSettingsPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: 4, maxWidth: 720 }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: 720 }}>
         <PageHeading title="Branding" gutterBottom />
         <Alert severity="info">
           Das Branding wird von der Systemverwaltung gepflegt. Für Ihr Konto ist diese Seite nicht
@@ -166,13 +167,11 @@ export default function BrandingSettingsPage() {
   }
 
   return (
-    <Box sx={{ flexGrow: 1, p: 4, maxWidth: 960, overflowY: 'auto' }}>
-      <PageHeading title="Branding" gutterBottom />
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Gilt für die gesamte Anwendung: Produktname, Claim, Logo, Akzentfarbe und Farbschema-Vorgabe
-        Ihres Hauses. Änderungen sind ohne Neuinstallation für alle Nutzenden wirksam. Ein leeres
-        Feld bedeutet: der OPAA-Standard gilt wieder.
-      </Typography>
+    <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: 960, overflowY: 'auto' }}>
+      <AreaPageHeader
+        title="Branding"
+        description="Gilt für die gesamte Anwendung: Produktname, Claim, Logo, Akzentfarbe und Farbschema-Vorgabe Ihres Hauses. Änderungen sind ohne Neuinstallation für alle Nutzenden wirksam. Ein leeres Feld bedeutet: der OPAA-Standard gilt wieder."
+      />
 
       {storeError && (
         <Alert severity="error" sx={{ mb: 2 }}>

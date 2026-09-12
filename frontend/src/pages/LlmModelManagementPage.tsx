@@ -17,7 +17,7 @@ import { testLlmModel } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import PageHeading from '../components/a11y/PageHeading'
-import GlobalScopeNote from '../components/GlobalScopeNote'
+import AreaPageHeader from '../components/AreaPageHeader'
 import CreateLlmModelDialog from '../components/admin/CreateLlmModelDialog'
 
 const BASE_URL_HELP_TEXT =
@@ -451,7 +451,7 @@ export default function LlmModelManagementPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: 4, maxWidth: 720 }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: 720 }}>
         <PageHeading title="Modelle" gutterBottom />
         <Alert severity="info">
           Die Modellverwaltung wird von der Systemverwaltung gepflegt. Für Ihr Konto ist diese Seite
@@ -463,20 +463,16 @@ export default function LlmModelManagementPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 2.5, flexWrap: 'wrap' }}>
-        <PageHeading title="Modelle" />
-        <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
-          {models.length === 1 ? '1 Chat-Modell' : `${models.length} Chat-Modelle`}
-        </Typography>
-        <Button
-          variant="contained"
-          onClick={() => setCreateDialogOpen(true)}
-          sx={{ ml: 'auto', flex: 'none' }}
-        >
-          Neues Modell
-        </Button>
-      </Box>
-      <GlobalScopeNote />
+      <AreaPageHeader
+        title="Modelle"
+        meta={models.length === 1 ? '1 Chat-Modell' : `${models.length} Chat-Modelle`}
+        description="Gilt für die gesamte Anwendung. Änderungen wirken sich auf alle Spaces und Benutzer aus. Das aktive Modell beantwortet jede Frage dieser Installation."
+        action={
+          <Button variant="contained" onClick={() => setCreateDialogOpen(true)}>
+            Neues Modell
+          </Button>
+        }
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

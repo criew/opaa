@@ -13,7 +13,7 @@ import { notify } from '../stores/notificationStore'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
 import { radius } from '../theme/tokens'
 import PageHeading from '../components/a11y/PageHeading'
-import GlobalScopeNote from '../components/GlobalScopeNote'
+import AreaPageHeader from '../components/AreaPageHeader'
 import SectionHead from '../components/SectionHead'
 import OidcProviderCard from '../components/admin/OidcProviderCard'
 import OidcProviderFormDialog from '../components/admin/OidcProviderFormDialog'
@@ -48,7 +48,7 @@ export default function OidcProviderManagementPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: 4, maxWidth: 720 }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: 720 }}>
         <PageHeading title="Identitätsanbieter" gutterBottom />
         <Alert severity="info">
           Die Anbieterverwaltung wird von der Systemverwaltung gepflegt. Für Ihr Konto ist diese
@@ -63,25 +63,16 @@ export default function OidcProviderManagementPage() {
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <Box sx={{ maxWidth: 1040 }}>
-        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 2.5, flexWrap: 'wrap' }}>
-          <PageHeading title="Identitätsanbieter" />
-          <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
-            {providers.length === 1 ? '1 Anbieter' : `${providers.length} Anbieter`}
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={openCreateDialog}
-            sx={{ ml: 'auto', flex: 'none' }}
-          >
-            Neuer Anbieter
-          </Button>
-        </Box>
-        <GlobalScopeNote>
-          Gilt für die gesamte Anwendung. Die Reihenfolge ist die der Anmeldeseite; Änderungen
-          wirken ohne Neustart. Lokale Konten sind kein Anbieter dieser Liste – sie werden unter
-          Administration → Benutzer geführt.
-        </GlobalScopeNote>
+        <AreaPageHeader
+          title="Identitätsanbieter"
+          meta={providers.length === 1 ? '1 Anbieter' : `${providers.length} Anbieter`}
+          description="Gilt für die gesamte Anwendung. Die Reihenfolge ist die der Anmeldeseite; Änderungen wirken ohne Neustart. Lokale Konten sind kein Anbieter dieser Liste – sie werden unter Administration → Benutzer geführt."
+          action={
+            <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateDialog}>
+              Neuer Anbieter
+            </Button>
+          }
+        />
 
         {mode === 'dev' && (
           <Alert severity="info" sx={{ mb: 2 }}>

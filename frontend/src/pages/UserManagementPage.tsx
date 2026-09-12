@@ -13,7 +13,7 @@ import { useAuthStore } from '../stores/authStore'
 import { notify } from '../stores/notificationStore'
 import { useUserAdminStore } from '../stores/userAdminStore'
 import PageHeading from '../components/a11y/PageHeading'
-import GlobalScopeNote from '../components/GlobalScopeNote'
+import AreaPageHeader from '../components/AreaPageHeader'
 import AccountFilterBar from '../components/admin/users/AccountFilterBar'
 import AccountList from '../components/admin/users/AccountList'
 import LocalAuthSettingsCard from '../components/admin/users/LocalAuthSettingsCard'
@@ -212,7 +212,7 @@ export default function UserManagementPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: 4, maxWidth: 720 }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: 720 }}>
         <PageHeading title="Benutzer" gutterBottom />
         <Alert severity="info">
           Die Benutzerverwaltung wird von der Systemverwaltung gepflegt. Für Ihr Konto ist diese
@@ -225,12 +225,10 @@ export default function UserManagementPage() {
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <Box sx={{ maxWidth: 1180 }}>
-        <PageHeading title="Benutzer" gutterBottom />
-        <GlobalScopeNote>
-          Gilt für die gesamte Anwendung. Lokale Konten werden hier angelegt und geführt; Konten
-          eines Identitätsanbieters erscheinen mit ihrer Rolle, ihr Lebenszyklus liegt beim
-          Anbieter.
-        </GlobalScopeNote>
+        <AreaPageHeader
+          title="Benutzer"
+          description="Gilt für die gesamte Anwendung. Lokale Konten werden hier angelegt und geführt; Konten eines Identitätsanbieters erscheinen mit ihrer Rolle, ihr Lebenszyklus liegt beim Anbieter."
+        />
 
         <Tabs
           value={activeTab}

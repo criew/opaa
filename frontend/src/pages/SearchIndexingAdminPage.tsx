@@ -27,7 +27,7 @@ import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import PageHeading from '../components/a11y/PageHeading'
-import GlobalScopeNote from '../components/GlobalScopeNote'
+import AreaPageHeader from '../components/AreaPageHeader'
 import SectionHead from '../components/SectionHead'
 import ChunkContent from '../components/searchadmin/ChunkContent'
 import DiagnosisForm from '../components/searchadmin/DiagnosisForm'
@@ -586,7 +586,7 @@ export default function SearchIndexingAdminPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: 4, maxWidth: 720 }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: 720 }}>
         <PageHeading title="Suche & Indexierung" gutterBottom />
         <Alert severity="info">
           Suche und Indexierung werden von der Systemverwaltung betreut. Für Ihr Konto ist diese
@@ -598,12 +598,10 @@ export default function SearchIndexingAdminPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <PageHeading title="Suche & Indexierung" gutterBottom />
-      <GlobalScopeNote>
-        Diese Seite zeigt die aktive Konfiguration an und ändert sie nicht. Sie beantwortet, warum
-        ein Dokument in einer Antwort steht oder fehlt. Der einzige Eingriff ist das Nachrüsten der
-        Kernfelder je Bibliothek — ein bewusster Start, kein Automatismus.
-      </GlobalScopeNote>
+      <AreaPageHeader
+        title="Suche & Indexierung"
+        description="Diese Seite zeigt die aktive Konfiguration an und ändert sie nicht. Sie beantwortet, warum ein Dokument in einer Antwort steht oder fehlt. Der einzige Eingriff ist das Nachrüsten der Kernfelder je Bibliothek — ein bewusster Start, kein Automatismus."
+      />
 
       {statusError && (
         <Alert severity="error" sx={{ mb: 3 }}>
