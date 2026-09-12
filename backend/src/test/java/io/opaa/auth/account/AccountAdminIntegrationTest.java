@@ -9,6 +9,9 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.local.LocalCredentials;
 import io.opaa.auth.local.LocalCredentialsRepository;
+import io.opaa.auth.oidc.OidcClaimMapping;
+import io.opaa.auth.oidc.OidcProvider;
+import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
@@ -37,11 +40,13 @@ class AccountAdminIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private LocalCredentialsRepository credentialsRepository;
   @Autowired private OrganizationRepository organizationRepository;
+  @Autowired private OidcProviderRepository providerRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private final String marker = "acct-" + UUID.randomUUID().toString().substring(0, 8);
   private final List<UUID> createdUserIds = new ArrayList<>();
   private UUID otherOrganizationId;
+  private UUID createdProviderId;
 
   @BeforeEach
   void cleanBefore() {
@@ -59,6 +64,10 @@ class AccountAdminIntegrationTest {
       userRepository.deleteById(id);
     }
     createdUserIds.clear();
+    if (createdProviderId != null) {
+      providerRepository.deleteById(createdProviderId);
+      createdProviderId = null;
+    }
     if (otherOrganizationId != null) {
       userRepository.deleteAll(userRepository.findByOrganizationId(otherOrganizationId));
       jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", otherOrganizationId);
@@ -126,6 +135,55 @@ class AccountAdminIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.total").value(1))
         .andExpect(jsonPath("$.items[0].providerType").value("LOCAL"));
+  }
+
+  /**
+   * Die einzige nichttriviale Verknüpfung des Endpunkts: Ein Konto findet seine Anbieterzeile über
+   * den <em>normalisierten</em> Issuer, und {@code roleManagedByProvider} fällt aus deren
+   * Claim-Zuordnung. Der Dienst-Test prüft das gegen ein Mock-Repository - hier steht eine echte
+   * Zeile in der Datenbank, mit dem abschließenden Schrägstrich, den die Normalisierung wegnimmt.
+   */
+  @Test
+  void resolvesTheProviderRowOfAnAccountAndReadsItsRoleClaimFromIt() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/admin/accounts").with(dev("dev-admin")))
+        .andExpect(status().isOk());
+    OidcProvider provider =
+        new OidcProvider(
+            marker + " Partnerportal",
+            "https://idp." + marker + ".example/realms/partner/",
+            "opaa-partner",
+            null,
+            new OidcClaimMapping("email", "name", "realm_access.roles", "opaa-admin", null, null));
+    provider.enable();
+    createdProviderId = providerRepository.save(provider).getId();
+    User account =
+        new User(
+            UUID.randomUUID().toString(),
+            // ohne den abschließenden Schrägstrich der gespeicherten Zeile
+            "https://idp." + marker + ".example/realms/partner",
+            marker + "-p.admin@partner.example",
+            marker + " P. Admin");
+    account.setOrganizationId(Organization.DEFAULT_ID);
+    createdUserIds.add(userRepository.save(account).getId());
+
+    mockMvc
+        .perform(get("/api/v1/admin/accounts").with(dev("dev-admin")).param("query", marker))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.total").value(1))
+        .andExpect(jsonPath("$.items[0].provider.displayName").value(marker + " Partnerportal"))
+        .andExpect(jsonPath("$.items[0].provider.enabled").value(true))
+        .andExpect(jsonPath("$.items[0].roleManagedByProvider").value(true))
+        .andExpect(jsonPath("$.items[0].local").doesNotExist());
+
+    // Ein deaktivierter Anbieter führt die Rollen nicht mehr - er stellt keine Tokens mehr aus.
+    provider.disable();
+    providerRepository.save(provider);
+    mockMvc
+        .perform(get("/api/v1/admin/accounts").with(dev("dev-admin")).param("query", marker))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].provider.enabled").value(false))
+        .andExpect(jsonPath("$.items[0].roleManagedByProvider").value(false));
   }
 
   @Test

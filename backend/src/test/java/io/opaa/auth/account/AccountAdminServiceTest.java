@@ -218,8 +218,8 @@ class AccountAdminServiceTest {
     assertThat(page.items())
         .extracting(a -> a.user().getDisplayName())
         .containsExactly(
-            // die beiden lokalen zuerst (untereinander nach ihrer stabilen Zweitordnung),
-            // dann die Anbieter nach Namen, zuletzt das Konto ohne Anbieterzeile
+            // die beiden lokalen zuerst, innerhalb der Stufe nach Namen; dann die Anbieter nach
+            // ihrem Namen (Partnerportal vor Verzeichnisdienst), zuletzt das Konto ohne Zeile
             "Erika Muster", "Klaus Weber", "P. Admin", "Maria Weber", "Alte Anbieterin");
     assertThat(page.items().get(0).isLocal()).isTrue();
     assertThat(page.items().get(1).isLocal()).isTrue();
@@ -240,6 +240,11 @@ class AccountAdminServiceTest {
             SystemRole.USER,
             SystemRole.USER,
             SystemRole.SYSTEM_ADMIN);
+    // innerhalb der Rolle nach Namen, nicht nach der zufälligen ID
+    assertThat(page.items())
+        .extracting(a -> a.user().getDisplayName())
+        .containsExactly(
+            "Alte Anbieterin", "Erika Muster", "Klaus Weber", "Maria Weber", "P. Admin");
     // absteigend beginnt bei der Systemverwaltung - der Wert, den eine Prüfung zuerst sucht
     AccountPage descending =
         service.list(ORGANIZATION, query().sort(AccountQuery.Sort.ROLE).descending(true).build());
@@ -252,8 +257,12 @@ class AccountAdminServiceTest {
 
     assertThat(page.items().get(0).local().state()).isEqualTo(LocalAccountState.LOCKED);
     assertThat(page.items().get(1).local().state()).isEqualTo(LocalAccountState.ACTIVE);
-    // die drei Anbieterkonten tragen keinen Zustand aus OPAAs Hand und stehen dahinter
+    // die drei Anbieterkonten tragen keinen Zustand aus OPAAs Hand und stehen dahinter, unter
+    // sich nach Namen geordnet
     assertThat(page.items().subList(2, 5)).allMatch(a -> a.local() == null);
+    assertThat(page.items().subList(2, 5))
+        .extracting(a -> a.user().getDisplayName())
+        .containsExactly("Alte Anbieterin", "Maria Weber", "P. Admin");
   }
 
   @Test

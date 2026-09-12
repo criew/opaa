@@ -663,8 +663,13 @@ mit harter Frist (Lebensdauer begrenzt, Löschung spätestens sieben Tage nach A
 es gibt keine Oberfläche und keine Schnittstelle, die sie je Person ausgibt — die in
 [Zugangskontrolle](./access-control.md#sitzungsverwaltung) zugesagte Übersicht der **eigenen**
 Sitzungen ist die einzige vorgesehene Ausnahme und nur für die Person selbst. Die Kontenliste der
-Verwaltung führt ausschließlich lokale Konten, zeigt Aktivität nur als Klasse („nie", „länger als 90
-Tage nicht", „aktiv") und kennt keinen Export und keinen Massenabruf. Der [Auszug für die
+Verwaltung zeigt Aktivität nur als Klasse („nie", „länger als 90 Tage nicht", „aktiv"), lässt sich
+nicht danach sortieren und kennt keinen Export und keinen Massenabruf. Seit dem 12.09.2026 (#1601)
+führt sie **alle Konten der Organisation**, lokale wie die der Identitätsanbieter; die
+Aktivitätsklasse erscheint dabei **nur an lokalen Zeilen** — für ein Anbieterkonto gibt OPAA keine
+aus, sein Lebenszyklus liegt beim Anbieter. Die drei Zusagen dieses Absatzes — Klasse statt
+Zeitstempel, keine Sortierung danach, kein Export — gelten unverändert und sind der Gegenstand der
+Auflage, nicht die Frage, welche Konten die Liste führt. Der [Auszug für die
 Personalvertretung](#der-auszug-für-die-personalvertretung) führt diese Felder und die neuen
 Ereignisarten, bevor die lokale Verwaltung erstmals eingeschaltet wird.
 

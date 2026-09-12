@@ -81,8 +81,10 @@ function compare(a: AccountResponse, b: AccountResponse, key: SortKey): number {
     return left < right ? -1 : 1
   }
   if (left === right) {
-    // Stabile Zweitordnung wie im Backend, damit eine Seite reproduzierbar bleibt.
-    return a.id.localeCompare(b.id)
+    // Zweitordnung wie im Backend: erst der Anzeigename, dann die ID - sonst stünden die vielen
+    // Gleichstände der drei Rangfolgen in der Reihenfolge zufälliger Kennungen.
+    const byName = (a.displayName ?? '').localeCompare(b.displayName ?? '', 'de-DE')
+    return byName !== 0 ? byName : a.id.localeCompare(b.id)
   }
   return left.localeCompare(right, 'de-DE')
 }

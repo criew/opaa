@@ -187,22 +187,20 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       "Verwaltungsbereich (Konten, dunkles Farbschema)",
     );
 
+    // Das Schema vor dem Laden setzen, nicht auf der gerenderten Seite (#1600, adb95b5d): Ein
+    // Wechsel danach hat auf den Anmeldeseiten CI-eigene Kontrastbefunde erzeugt.
     const localSignInSwitch = page.getByRole("switch", {
       name: "Lokale Anmeldung aktiv",
     });
-    await page.goto("/admin/users/settings");
-    await expect(localSignInSwitch).toBeVisible();
-    await expectNoSeriousA11yViolations(
-      page,
-      "Verwaltungsbereich (Benutzer-Einstellungen, dunkles Farbschema)",
-    );
-
-    await page.emulateMedia({ colorScheme: "light" });
-    await expect(localSignInSwitch).toBeVisible();
-    await expectNoSeriousA11yViolations(
-      page,
-      "Verwaltungsbereich (Benutzer-Einstellungen, helles Farbschema)",
-    );
+    for (const scheme of ["dark", "light"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto("/admin/users/settings");
+      await expect(localSignInSwitch).toBeVisible();
+      await expectNoSeriousA11yViolations(
+        page,
+        `Verwaltungsbereich (Benutzer-Einstellungen, ${scheme === "dark" ? "dunkles" : "helles"} Farbschema)`,
+      );
+    }
   });
 
   test("Verwaltungsbereich: Gruppen", async ({ authenticatedPage: page }) => {

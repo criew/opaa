@@ -27,7 +27,12 @@ final class AccountResponseMapper {
             account.providerType(),
             account.user().getIssuer(),
             account.roleManagedByProvider(),
-            account.user().getCreatedAt());
+            // Für ein lokales Konto die Zeile der Zugangsdaten, wie die Schwesterliste sie nennt:
+            // Beide entstehen heute in derselben Transaktion, laufen aber mit der Übergabe aus
+            // Entscheidung 12 auseinander - dann zeigten zwei Listen zwei Daten für dasselbe Konto.
+            account.local() == null
+                ? account.user().getCreatedAt()
+                : account.local().credentials().getCreatedAt());
     OidcProvider provider = account.provider();
     if (provider != null) {
       response.setProvider(

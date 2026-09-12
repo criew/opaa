@@ -172,7 +172,14 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
       />
       <SetupLinkDialog handover={handover} onClose={() => setHandover(null)} />
       <GeneratedPasswordDialog generated={generated} onClose={() => setGenerated(null)} />
-      <RoleChangeDialog account={roleChange} onClose={() => setRoleChange(null)} />
+      {/* `key` wie beim UserFormDialog darüber: MUI unmountet beim Schließen nur die Kinder des
+          Dialogs, nicht die Komponente. Ohne den Schlüssel trüge die zuletzt gewählte Rolle in das
+          nächste geöffnete Konto — und „Speichern" wäre dort sofort aktiv. */}
+      <RoleChangeDialog
+        key={roleChange?.id ?? 'none'}
+        account={roleChange}
+        onClose={() => setRoleChange(null)}
+      />
       {accounts.length > 0 && (
         <Typography sx={{ fontSize: 11.5, color: 'text.secondary', mt: 2 }}>
           Aktivität erscheint nur als Klasse und nur für lokale Konten; sie ist nicht sortierbar.

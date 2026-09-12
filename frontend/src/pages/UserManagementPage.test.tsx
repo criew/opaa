@@ -248,6 +248,34 @@ describe('UserManagementPage', () => {
     expect(await screen.findByText(/ist jetzt Revision/)).toBeInTheDocument()
   })
 
+  /**
+   * Regressionsschutz zum Review von #1601: Der Rollendialog überlebte das Schließen (MUI unmountet
+   * nur die Kinder), trug die zuletzt gewählte Rolle in das nächste geöffnete Konto und hatte dort
+   * sofort ein aktives „Speichern" — ein Klick hätte SYSTEM_ADMIN an das falsche Konto vergeben.
+   */
+  it('starts the role dialog fresh for the next account after an abandoned change', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+
+    const first = await openRowMenu(user, 'Maria Weber')
+    await user.click(within(first).getByRole('menuitem', { name: /Rolle ändern/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Rolle von „Maria Weber“ ändern' })
+    await user.click(within(dialog).getByRole('combobox', { name: 'Rolle' }))
+    await user.click(await screen.findByRole('option', { name: 'Systemverwaltung' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Abbrechen' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    const second = await openRowMenu(user, 'Thomas Klein')
+    await user.click(within(second).getByRole('menuitem', { name: /Rolle ändern/ }))
+    const next = await screen.findByRole('dialog', { name: 'Rolle von „Thomas Klein“ ändern' })
+    // Die Auswahl zeigt die Rolle DIESES Kontos, nicht die verworfene des vorherigen …
+    expect(within(next).getByRole('combobox', { name: 'Rolle' })).toHaveTextContent('Nutzer')
+    // … und ohne eigene Änderung gibt es nichts zu speichern.
+    expect(within(next).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+  }, 20000)
+
   it('refuses the role change of an account whose provider manages the roles', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()

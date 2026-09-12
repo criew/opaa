@@ -1,66 +1,18 @@
 import type {
   LocalAuthSettingsResponse,
   LocalAuthSettingsUpdateRequest,
-  LocalAccountState,
   LocalUserCreateRequest,
   LocalUserCreatedResponse,
   LocalUserGeneratedPasswordResponse,
-  LocalUserPageResponse,
   LocalUserPasswordResetResponse,
   LocalUserResponse,
   LocalUserSummaryResponse,
   LocalUserUpdateRequest,
-  SystemRole,
 } from '../types/api'
 import { apiClient, normalizeError } from './api'
 
-/** The four sort fields the backend allows; activity is deliberately not one of them (ADR-0033). */
-export type LocalUserSortField = 'displayName' | 'email' | 'expiresAt' | 'createdAt'
-
-export interface LocalUserQuery {
-  /** Substring of address or display name; empty means no restriction. */
-  query?: string
-  status?: LocalAccountState | null
-  role?: SystemRole | null
-  withoutExpiry?: boolean
-  inactive?: boolean
-  sort?: LocalUserSortField
-  direction?: 'asc' | 'desc'
-  page?: number
-  size?: number
-}
-
 /** Rows per page; the backend refuses more than 50 (ADR-0033, Entscheidung 11). */
 export const LOCAL_USER_PAGE_SIZE = 25
-
-function queryString(query: LocalUserQuery): string {
-  const params = new URLSearchParams()
-  if (query.query) params.set('query', query.query)
-  if (query.status) params.set('status', query.status)
-  if (query.role) params.set('role', query.role)
-  if (query.withoutExpiry) params.set('withoutExpiry', 'true')
-  if (query.inactive) params.set('inactive', 'true')
-  params.set('sort', query.sort ?? 'displayName')
-  params.set('direction', query.direction ?? 'asc')
-  params.set('page', String(query.page ?? 0))
-  params.set('size', String(query.size ?? LOCAL_USER_PAGE_SIZE))
-  return params.toString()
-}
-
-/**
- * The account list of the local user management (#1537/#1541). Lists local accounts only - never
- * an account of an OIDC provider - and carries no activity timestamp and no export.
- */
-export async function listLocalUsers(query: LocalUserQuery): Promise<LocalUserPageResponse> {
-  try {
-    const { data } = await apiClient.get<LocalUserPageResponse>(
-      `/v1/admin/local-users?${queryString(query)}`,
-    )
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
 
 export async function getLocalUserSummary(): Promise<LocalUserSummaryResponse> {
   try {

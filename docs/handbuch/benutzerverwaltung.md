@@ -172,8 +172,9 @@ Der Zustand sortiert damit das nach oben, was eine Entscheidung braucht.
 Ein **Konto eines Identitätsanbieters** zeigt Herkunft und Rolle, aber weder Zustand noch Ablauf
 noch Aktivität: Sein Lebenszyklus liegt beim Anbieter, und die Prüfpflicht dieses Kapitels gilt ihm
 nicht. Steht in seiner Zustandsspalte „Anbieter deaktiviert", kann sich niemand mehr über diesen
-Anbieter anmelden; „Unbekannter Anbieter" heißt, dass zu seinem Issuer keine Anbieterzeile mehr
-existiert — das Konto bleibt, der Weg hinein ist zu. Sein Zeilenmenü bietet „Rolle ändern"
+Anbieter anmelden; „Anmeldung nicht möglich" heißt, dass zu seinem Issuer gar keine Anbieterzeile
+mehr existiert — das Konto bleibt, der Weg hinein ist zu. In der Spalte Herkunft steht dann „Kein
+Anbieter", und der Tooltip nennt den Issuer. Sein Zeilenmenü bietet „Rolle ändern"
 (Abschnitt 7) und den Weg zur Anbieterverwaltung.
 
 Drei Filter bedienen die Prüfpflicht — sie beschreiben lokale Konten und blenden Anbieterkonten
@@ -271,7 +272,7 @@ Ein Konto eines Identitätsanbieters sieht keinen dieser Punkte; sein Passwort v
 
 ## 11. Regeln und Fristen
 
-Die Karte „Lokale Anmeldung" unter Administration → Benutzer führt die Regeln, die für alle lokalen
+Die Karte „Lokale Anmeldung" unter Administration → Benutzer → Einstellungen führt die Regeln, die für alle lokalen
 Konten gelten. Sie wirken ab der nächsten Anwendung, nicht rückwirkend auf bestehende Passwörter.
 
 | Einstellung | Bedeutung | Grenzen |

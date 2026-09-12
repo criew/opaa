@@ -15,6 +15,7 @@ import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import type { AccountResponse, LocalAccountState, LocalUserResponse } from '../../../types/api'
 import { useUserAdminStore } from '../../../stores/userAdminStore'
 import type { AccountSortField } from '../../../services/accountApi'
@@ -85,20 +86,34 @@ function LocalStateCell({ user }: { user: LocalUserResponse }) {
  * The lifecycle of a provider account lies with its provider: the cell says where it is kept and,
  * when that provider issues no tokens any more, that this way in is closed - with the reason in
  * its tooltip.
+ *
+ * Der Hinweis trägt ein Symbol in der Signalfarbe, der Text bleibt `text.secondary`:
+ * `warning.main` als reiner Text misst auf heller Fläche rund 1,8:1 und unterschreitet 4,5:1 -
+ * dieselbe Stelle wurde in SourceEvidenceDrawer und ChatInput bereits zweimal so beseitigt (#697).
+ * Ein Symbol braucht nur 3:1 und darf die Farbe behalten.
  */
 function ProviderStateCell({ account }: { account: AccountResponse }) {
   const hint = providerStateHint(account)
   const cell = (
-    <Typography
+    <Stack
+      direction="row"
+      spacing={0.5}
       component="span"
-      sx={{
-        fontSize: 13,
-        color: hint ? 'warning.main' : 'text.secondary',
-        fontWeight: hint ? 500 : 400,
-      }}
+      sx={{ alignItems: 'flex-start', display: 'inline-flex', minWidth: 0 }}
     >
-      {providerStateText(account)}
-    </Typography>
+      {hint && (
+        <WarningAmberIcon
+          aria-hidden="true"
+          sx={{ fontSize: 14, mt: '2px', flex: 'none', color: 'warning.main' }}
+        />
+      )}
+      <Typography
+        component="span"
+        sx={{ fontSize: 13, color: 'text.secondary', fontWeight: hint ? 500 : 400 }}
+      >
+        {providerStateText(account)}
+      </Typography>
+    </Stack>
   )
   return hint ? <Tooltip title={hint}>{cell}</Tooltip> : cell
 }
@@ -167,7 +182,14 @@ function SortableLabel({ field, label }: SortableLabelProps) {
   )
 }
 
-function SortableHead({ fields, width }: { fields: AccountSortField[]; width?: string }) {
+interface SortableHeadProps {
+  fields: AccountSortField[]
+  width?: string
+  /** The column's second, unsortable value - „Aktivität" under „Ablauf". */
+  secondLine?: string
+}
+
+function SortableHead({ fields, width, secondLine }: SortableHeadProps) {
   const filters = useUserAdminStore((s) => s.filters)
   const active = fields.includes(filters.sort)
   return (
@@ -187,6 +209,11 @@ function SortableHead({ fields, width }: { fields: AccountSortField[]; width?: s
           </Box>
         ))}
       </Stack>
+      {secondLine && (
+        <Box component="span" sx={{ display: 'block', color: 'text.disabled' }}>
+          {secondLine}
+        </Box>
+      )}
     </TableCell>
   )
 }
@@ -470,18 +497,11 @@ export default function AccountList({ currentUserId, ...handlers }: AccountListP
               <SortableHead fields={['origin']} width="15%" />
               <SortableHead fields={['role']} width="13%" />
               <SortableHead fields={['status']} width="16%" />
-              <TableCell sx={{ width: '11%' }}>
-                <SortableLabel field="expiresAt" label="Ablauf" />
-                <Box component="span" sx={{ display: 'block', color: 'text.disabled' }}>
-                  Aktivität
-                </Box>
-              </TableCell>
-              <TableCell sx={{ width: '19%' }}>
-                <SortableLabel field="createdAt" label="Angelegt" />
-                <Box component="span" sx={{ display: 'block', color: 'text.disabled' }}>
-                  Anlagegrund
-                </Box>
-              </TableCell>
+              {/* Zwei Zeilen im Kopf, aber nur die obere sortiert: `sortDirection` gehört
+                  trotzdem an die Zelle, sonst meldet keine Spalte eine Richtung, sobald nach
+                  Ablauf oder Anlagedatum sortiert wird. */}
+              <SortableHead fields={['expiresAt']} width="11%" secondLine="Aktivität" />
+              <SortableHead fields={['createdAt']} width="19%" secondLine="Anlagegrund" />
               <TableCell align="right" sx={{ width: 56 }}>
                 <span style={visuallyHidden}>Aktionen</span>
               </TableCell>

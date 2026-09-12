@@ -988,7 +988,7 @@ entgegen `security-and-compliance.md` in das Nachweisprotokoll (→ nur die Sper
 der Übergabepfad war ein stiller Weg in private Inhalte (→ zweistufig, von der Person eingelöst,
 Pflicht-Anlass, Unterrichtung, Umfangsanzeige); `security-and-compliance.md` fehlte in der
 Nachzugsliste (→ nachgezogen). Übernommen wurden außerdem: kein Personenbezug im Klartext im Protokoll,
-Korrektur der Behauptung zu `last_login_at`, Kontenliste nur lokal mit Aktivität als Klasse und ohne
+Korrektur der Behauptung zu `last_login_at`, Kontenliste mit Aktivität als Klasse, ohne Sortierung danach und ohne
 Export, offener Rücksetzweg bei Fehlversuch-Sperre, Anlass bei erzwungenem Wechsel und im
 Sitzungsmarker, Zweckbindung und Sichtbarkeit des Anlagegrunds, harte Fristen für die Token-Tabellen,
 `LOCAL_SESSION_REVOKED` nur fremdveranlasst, Zähler nie ausgeben, Pflicht-Befristung
@@ -1010,6 +1010,18 @@ Befristen des Notanker-Kontos) mit Entscheidung 3 grundsätzlich ausgeschlossen.
 Punkte — Unterrichtung des Personalrats vor dem Einschalten der Schalter, jährliche Vorlage des
 Auszugs — gehören ebenfalls ins Handbuch (#1543).
 
+**Nachtrag vom 12.09.2026 zur Auflage „Kontenliste" (#1601).** Auf Maßgabe des Maintainers führt die
+Liste unter Administration → Benutzer seither **alle** Konten der Organisation, nicht mehr nur die
+lokalen. Was der Personalrat zugesagt bekam, bleibt davon unberührt und ist der eigentliche
+Gegenstand der Auflage: Aktivität nur als Klasse, keine Sortierung danach, kein Export, kein
+Massenabruf. Zusätzlich enger als zuvor: Die Aktivitätsklasse erscheint **ausschließlich an lokalen
+Zeilen** — für ein Konto eines Identitätsanbieters gibt OPAA gar keine aus. Damit entsteht kein
+Auswertungspfad über die Beschäftigten, die über das Verzeichnis kommen; ihre Zeile nennt Herkunft,
+Rolle und ob der Anbieter noch Tokens ausstellt. Ob diese Erweiterung eine erneute Befassung der
+Personalvertretung verlangt, entscheidet der Betreiber der jeweiligen Installation — die Zusagen,
+auf die sich die Bewertung stützt, sind eingehalten. `security-and-compliance.md` ist entsprechend
+nachgezogen.
+
 ## Zuschnitt der Sub-Issues (gegen diesen ADR geprüft)
 
 | Issue | Folgt aus diesem ADR | Zu korrigieren |
@@ -1023,9 +1035,10 @@ Auszugs — gehören ebenfalls ins Handbuch (#1543).
 | #1538 Selbstbedienung | `set-password` für beide Zwecke, `forgot-password` 204 konstant und offen bei Fehlversuch-Sperre, Registrierung nur mit Domänenliste und Pflicht-Ablauf, 404 für abgeschaltete Flüsse (11) | Domänenliste, Pflicht-Ablauf, fester Anlagegrund; Fehlversuch-Sperre blockiert den Rücksetzweg nicht; keine Hinweis-Mail an belegte Adressen |
 | #1539 Anmeldeseite und Sitzung | `sessionKind`, Refresh nur mit CSRF-Cookie, Marker mit Gründen ohne Erneuerung, `/login/system`, `pcr`-Anlass als Klartext (7, 8) | Grund-Anzeige für alle Marker und den `pcr`-Anlass |
 | #1540 Selbstbedienungsseiten | eine Seite für Einladung und Zurücksetzen, Richtlinie sichtbar, Sperrliste im Feldfehler, Anlagegrund in den eigenen Einstellungen (9, 11) | Maximum 64 Zeichen; Anlagegrund einsehbar |
-| #1541 Benutzerverwaltung | Zustände mit Grund, Schalter mit Konsequenz-Dialog und Vorbedingungen (Basis-URL, Domänenliste), Filter statt Zähler, Aktivität als Klasse, kein Export, Notanker-Konto mit abgeblendeten Aktionen (Sperren, Ablauf, Rolle, Löschen, Übergabe) und Hinweis (4, 5, 11) | **nur lokale Konten**; Aktivität als Klasse ohne Sortierung; kein Export; Notanker-Aktionen abgeblendet statt 409 im Nachhinein; Aktion „Übergabe anstoßen" mit Pflicht-Anlass; Konsequenz-Dialog des letzten OIDC-Anbieters zeigt den Guard-Fehler |
+| #1541 Benutzerverwaltung | Zustände mit Grund, Schalter mit Konsequenz-Dialog und Vorbedingungen (Basis-URL, Domänenliste), Filter statt Zähler, Aktivität als Klasse, kein Export, Notanker-Konto mit abgeblendeten Aktionen (Sperren, Ablauf, Rolle, Löschen, Übergabe) und Hinweis (4, 5, 11) | **nur lokale Konten** (Zuschnitt von #1541; mit #1601 auf alle Konten erweitert, siehe den Nachtrag oben); Aktivität als Klasse ohne Sortierung; kein Export; Notanker-Aktionen abgeblendet statt 409 im Nachhinein; Aktion „Übergabe anstoßen" mit Pflicht-Anlass; Konsequenz-Dialog des letzten OIDC-Anbieters zeigt den Guard-Fehler |
 | #1542 E-Mail-Einstellungen | Maskierung `***`, Testversand, „letzter Erfolg / letzter Fehler", Vorlagen mit Vorschau (10) | Statusanzeige; Hinweis und Sperre der Schalter ohne `OPAA_PUBLIC_BASE_URL` |
 | #1543 E2E und Handbuch | E2E-Ziel ohne Keycloak, Handbuchkapitel, Variablen, **Demo-Stack** (5, 6, 9, 10) | Vorbereitungsschritte für Bestandsinstallationen (`OPAA_AUTH_JWT_SECRET` mit Erzeugungsbefehl, echter Wert für `OPAA_INITIAL_ADMIN_EMAIL`, `OPAA_TRUSTED_PROXY_CIDRS` hinter jedem Reverse-Proxy mit **jedem Hop** in der Liste (Compose-Subnetz und äußerer Proxy; nur der Peer allein legt alle Clients in einen Bucket) und mit Präfixlänge je Eintrag — sonst scheitern Anmeldung und Schreibvorgänge an der CORS-Prüfung; Auflage an den äußeren Proxy: `X-Forwarded-For`, `X-Forwarded-Proto` und bei abweichendem Port `X-Forwarded-Port` (kein RFC-7239 `Forwarded`, kein Port in `X-Forwarded-Host`); Wechsel einer Datenbank von `dev` auf `oidc`: Dev-Konten zählen nicht als Bestand, das Notanker-Konto entsteht scharf), Härtungskapitel-Absatz zum JWT-Secret ersetzen, Hinweis zu `forward-headers-strategy` in „Netzwerkzugang" auf `native`/`server.tomcat.remoteip.internal-proxies` umschreiben, Härtungstabelle um `cookie-secure`, Tabelle „Migrationen aus älteren Ständen" mit 31.03.2027 und der umbenannten Proxy-Variable, Nacharbeit nach Rücksicherung, Notanker-Prozedur (versiegeltes Passwort, persönliche Konten), Empfehlung „technisches Log höchstens 90 Tage", Dienstvereinbarungs-Hinweise (Schalter, Auszug vor dem Einschalten, jährliche Vorlage), MFA-Folgeschritt, `oidc` als „Betriebsmodus"; **Demo:** `demo/seed/seed.py` meldet sich als Notanker an und vergibt `demo-admin` die Rolle, `demo/README.md`, `e2e/demo-smoke.env` (`OPAA_INITIAL_ADMIN_PASSWORD`), `docs/features/demo-instance.md`, `.env.example` |
+| #1601 Kontenliste aller Konten | zwei Bereiche als Routen, alle Konten mit Herkunft je Zeile, Zeilenmenü nach Kontotyp, Rolle über den bestehenden Rollenendpunkt (11, Nachtrag vom 12.09.2026) | Aktivitätsklasse **nur** an lokalen Zeilen; sieben Sortierfelder ohne die Aktivität; kein Export; für Anbieterkonten keine Sperr-, Ablauf- oder Löschhandlung, weil es serverseitig keine gibt |
 | **neu** | Übergabe eines lokalen Kontos an eine Anbieteridentität, zweistufig (12) — Sub-Issue nach #1537, #1538 und #1539 | anzulegen |
 
 ## Verworfene Alternativen

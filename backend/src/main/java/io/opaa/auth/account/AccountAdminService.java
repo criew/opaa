@@ -159,7 +159,8 @@ public class AccountAdminService {
           case EXPIRES_AT ->
               Comparator.comparing(
                   AccountAdminService::expiresAt, Comparator.nullsLast(Comparator.naturalOrder()));
-          case CREATED_AT -> Comparator.comparing(a -> a.user().getCreatedAt());
+          // dieselbe Quelle, nach der die Spalte anzeigt (AccountResponseMapper)
+          case CREATED_AT -> Comparator.comparing(AccountAdminService::createdAt);
           // Erst der Typ, dann der Anbietername: Die Spalte zeigt eine Kategorie („Lokal") neben
           // Eigennamen, und eine rein alphabetische Ordnung stellte „Kein Anbieter" zwischen sie.
           case ORIGIN ->
@@ -171,7 +172,22 @@ public class AccountAdminService {
     if (query.descending()) {
       comparator = comparator.reversed();
     }
-    return comparator.thenComparing(a -> a.user().getId());
+    // Zweitordnung nach dem Anzeigenamen, erst danach nach der ID: Die drei Rangfolgen unten
+    // ordnen Kategorien, in denen viele Zeilen gleichauf liegen - ohne diesen Schritt stünden sie
+    // in der Reihenfolge zufälliger UUIDs, und zwei gleiche Anfragen lieferten zwei Reihenfolgen.
+    // Die Zweitordnung bleibt aufsteigend, auch wenn die erste umgedreht wurde.
+    return comparator
+        .thenComparing(
+            a -> a.user().getDisplayName() == null ? "" : a.user().getDisplayName(),
+            String.CASE_INSENSITIVE_ORDER)
+        .thenComparing(a -> a.user().getId());
+  }
+
+  /** The creation the list shows: the credentials row for a local account, the user row else. */
+  private static Instant createdAt(AccountOverview account) {
+    return account.local() == null
+        ? account.user().getCreatedAt()
+        : account.local().credentials().getCreatedAt();
   }
 
   /** Only a local account has an expiry date; every other account sorts as "without". */

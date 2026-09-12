@@ -575,7 +575,7 @@ statt versendet.
 `GET /api/v1/admin/accounts` — lokale Konten und Konten der Identitätsanbieter in einer Tabelle,
 jede Zeile mit ihrer **Herkunft** als Symbol und Wort („Lokal" mit Schlüssel, der Anzeigename des
 Anbieters mit Gebäude; ein Konto unter einem Issuer ohne Anbieterzeile — eine gelöschte Zeile, im
-`dev`-Modus der synthetische Dev-Issuer — steht als „Unbekannter Anbieter" mit seinem Issuer im
+`dev`-Modus der synthetische Dev-Issuer — steht als „Kein Anbieter" mit seinem Issuer im
 Tooltip). Ein **Hinweisbanner** aus `…/local-users/summary` nennt lokale Konten ohne
 Ablaufdatum und offene Einladungen, sagt die Auflage („begründet und befristet, regelmäßig zu
 überprüfen") und springt in den jeweiligen Filter — der Sprung setzt die Herkunft auf „Lokal". Die
@@ -583,13 +583,17 @@ Ablaufdatum und offene Einladungen, sagt die Auflage („begründet und befriste
 Herkunft (alle, lokal, alle Anbieter, ein einzelner Anbieter), die Filter Zustand/Rolle/Auflage —
 Zustand und Auflage beschreiben lokale Konten und grenzen die Liste auf sie ein —, Sortierung nach
 den sieben erlaubten Feldern — auch nach Herkunft, Rolle und Zustand, die als Kategorien eine feste
-Rangfolge haben statt einer alphabetischen — und Seitenblättern (höchstens 50 je Seite). Spalten sind Name, E-Mail,
-Herkunft, Rolle (mit dem Etikett „Vom Anbieter geführt", wenn ein aktivierter Anbieter die Rollen
-über seinen Claim führt), Zustand als Punkt **und** Text (Eingeladen, Aktiv, Gesperrt mit Grund,
-Abgelaufen) samt Etikett „Passwortwechsel ausstehend" — bei Anbieterkonten stattdessen „Beim
-Anbieter", „Anbieter deaktiviert" oder „Unbekannter Anbieter" —, Ablauf, **Aktivität als Klasse**
+Rangfolge haben statt einer alphabetischen — und Seitenblättern (höchstens 50 je Seite).
+**Sieben Spalten**, weil Name und Adresse sich eine Zelle teilen und Ablauf und Aktivität ebenso:
+Name mit der Adresse darunter, Herkunft, Rolle (mit dem Etikett „Vom Anbieter geführt", wenn ein
+aktivierter Anbieter die Rollen über seinen Claim führt), Zustand als Punkt **und** Text
+(Eingeladen, Aktiv, Gesperrt mit Grund, Abgelaufen) samt Etikett „Passwortwechsel ausstehend" — bei
+Anbieterkonten stattdessen „Beim Anbieter", „Anbieter deaktiviert" oder „Anmeldung nicht möglich",
+Letzteres mit einem Warnsymbol in der Signalfarbe und dem Grund im Tooltip (der Text selbst bleibt
+sekundär, weil die Signalfarbe als Fließtext den Kontrastschwellwert unterschreitet) —, Ablauf mit
+der **Aktivität als Klasse** darunter
 („nie", „länger als 90 Tage nicht", „aktiv" — nicht sortierbar und **nur für lokale Konten**; ein
-Anbieterkonto trägt keine) und Anlagedatum mit gekürztem Anlagegrund; unter Tablet-Breite wird
+Anbieterkonto trägt keine), und Anlagedatum mit gekürztem Anlagegrund; unter Tablet-Breite wird
 daraus eine Kartenliste. Das **Zeilenmenü hängt vom Kontotyp ab**: Ein lokales Konto führt
 Bearbeiten, Sperren beziehungsweise Entsperren (nur am jeweils passenden Zustand), Rücksetz-Link per
 E-Mail, Passwort erzeugen und — nachrangig unter einer Trennlinie, weil Sperren der Regelweg ist —
