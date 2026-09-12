@@ -155,6 +155,33 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     );
   });
 
+  // #1541: die Benutzerverwaltung führt die dichteste Kombination des Bereichs — Schalter mit
+  // Konsequenz, Zustandspunkt plus Text in der Tabelle und ein Zeilenmenü aus Nur-Icon-Schaltern.
+  // Beide Farbschemata, weil der Zustand über einen Farbpunkt *und* Text geführt wird.
+  test("Verwaltungsbereich: Benutzer in beiden Farbschemata", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/admin/users");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Benutzer" }),
+    ).toBeVisible();
+    // Wait for the list call to have landed: the table only renders once it has.
+    await expect(page.getByRole("table", { name: "Lokale Konten" })).toBeVisible();
+
+    await page.emulateMedia({ colorScheme: "light" });
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (Benutzer, helles Farbschema)",
+    );
+
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expect(page.getByRole("table", { name: "Lokale Konten" })).toBeVisible();
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (Benutzer, dunkles Farbschema)",
+    );
+  });
+
   test("Verwaltungsbereich: Gruppen", async ({ authenticatedPage: page }) => {
     await page.goto("/admin/groups");
     await expect(

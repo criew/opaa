@@ -398,8 +398,7 @@ einmalig) und schickt den Systemverwaltern je Lauf höchstens **eine** Wiedervor
 auslaufenden und am ersten Tag eines Quartals zusätzlich alle ohne Ablaufdatum — und dem Link zur
 Liste, ohne Namen; je Lauf höchstens 200 Sperren bzw. Mails, der Rest folgt am nächsten Tag. Sperren,
 erzeugtes Passwort und Adresswechsel entwerten jeden offenen Einladungs- und Rücksetzlink. Jede Anmeldung mit dem Notanker-Konto löst jetzt die Mail
-`BOOTSTRAP_ACCOUNT_USED` an alle übrigen Systemverwalter aus. Die Oberfläche (#1541) und das
-Handbuchkapitel (#1543) folgen.
+`BOOTSTRAP_ACCOUNT_USED` an alle übrigen Systemverwalter aus. Das Handbuchkapitel (#1543) folgt.
 
 **Selbstregistrierung und Passwort vergessen (gebaut, #1538).** Die Selbstbedienung lokaler Konten
 liegt ohne Anmeldung unter `/api/v1/auth/local/{set-password, forgot-password, register,
@@ -458,6 +457,40 @@ Mail-Thread hat eine begrenzte Warteschlange (1000); ein Versand, der keinen Pla
 einer Warnung verworfen. Kein Roh-Token steht in Log, Datenbank oder Protokoll; der
 Protokollmitschnitt des SMTP-Transports (`org.eclipse.angus.mail`) ist in `application.yml` auf
 `INFO` festgenagelt. Die Seiten (#1540) und das Handbuchkapitel (#1543) folgen.
+
+**Benutzerverwaltung (gebaut, #1541).** Unter Administration → Benutzer (`/admin/users`, nur
+`SYSTEM_ADMIN`; andere sehen den Hinweis statt der Verwaltung) liegt die Oberfläche zu dieser API.
+„Benutzer & Gruppen" ist dort in zwei Einträge der Sekundärspalte geteilt — „Benutzer" und
+„Gruppen" —, und der Admin-Einstieg der globalen Leiste führt auf „Benutzer". Die Kopfkarte
+**Lokale Anmeldung** trägt die drei Schalter: `Lokale Anmeldung aktiv` (Abschalten nur nach einem
+Konsequenz-Dialog; die Rückmeldung nennt die Zahl der Konten, die ihre Sitzung verloren haben),
+`Selbstregistrierung` (Konsequenz-Dialog „öffentlich erreichbares Formular, Rate-Limits gelten",
+nur mit nichtleerer Domänenliste) und `Passwort vergessen`; die beiden linkgebundenen Schalter sind
+**gesperrt und begründet**, solange `OPAA_PUBLIC_BASE_URL` fehlt, und ein 409
+`PUBLIC_BASE_URL_REQUIRED` erscheint als Satz mit dem nächsten Schritt. Darunter stehen die Regeln
+und Fristen (Domänen, Mindestlänge, vorbelegtes Ablaufdatum, Inaktivitätsfrist, Gültigkeit der
+beiden Links) und der Zustand des Mailversands mit Verweis auf die E-Mail-Seite — ohne SMTP werden
+Einladung und Rücksetzlink zur Übergabe angezeigt statt versendet. Ein **Hinweisbanner** aus
+`…/summary` nennt Konten ohne Ablaufdatum und offene Einladungen, sagt die Auflage („begründet und
+befristet, regelmäßig zu überprüfen") und springt in den jeweiligen Filter. Die **Tabelle** führt
+Suche (300 ms entprellt), die Filter Zustand/Rolle/Auflage, Sortierung nach den vier erlaubten
+Feldern und Seitenblättern; Spalten sind Name, E-Mail, Rolle, Zustand als Punkt **und** Text
+(Eingeladen, Aktiv, Gesperrt mit Grund, Abgelaufen) samt Etikett „Passwortwechsel ausstehend",
+Ablauf, **Aktivität als Klasse** („nie", „länger als 90 Tage nicht", „aktiv" — nicht sortierbar) und
+Anlagedatum mit gekürztem Anlagegrund; unter Tablet-Breite wird daraus eine Kartenliste. Das
+Zeilenmenü führt Bearbeiten, Sperren beziehungsweise Entsperren (nur am jeweils passenden Zustand),
+Rücksetz-Link per E-Mail, Passwort erzeugen und — nachrangig unter einer Trennlinie, weil Sperren
+der Regelweg ist — Löschen; am eigenen Konto sind Sperren und Löschen deaktiviert, am Notanker-Konto
+das Löschen. Anlegen und Bearbeiten laufen über einen Dialog mit Pflicht-Anlagegrund (Hilfetext
+nennt, was nicht hineingehört), vorbelegtem Ablaufdatum samt ausdrücklichem „kein Ablaufdatum" und
+der Wahl zwischen Einladung und Anfangspasswort; Einladungslink und erzeugtes Passwort erscheinen
+**genau einmal** in einem eigenen Dialog mit Kopierschaltfläche, Zustellweg-Satz und dem Hinweis,
+dass die Ansicht nicht wiederkehrt. Es gibt **keinen Export**. Auf der Anbieterseite erscheint die
+`LOCAL`-Zeile nicht als Anbieter (ihr Schalter ist der obige), und das Deaktivieren oder Löschen des
+**letzten aktivierten** OIDC-Anbieters zeigt vorher die Konsequenz („danach können sich nur noch
+lokale Konten anmelden") und sendet erst dann `acknowledgeLastProvider=true`; die beiden Konfliktcodes
+`LAST_LOGIN_CAPABLE_ADMIN` und `LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED` erscheinen als Sätze mit dem
+nächsten Schritt.
 
 Die Mandantengrenze gilt auch für die Anmeldung: Eine Identität gehört zu **genau einer** Organisation.
 Es gibt kein Konto, das mehrere Mandanten sieht, und keinen Wechsel zwischen ihnen innerhalb einer
