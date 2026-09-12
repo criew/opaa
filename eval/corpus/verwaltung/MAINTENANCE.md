@@ -390,7 +390,9 @@ Referenzlauf und gilt unverändert für jede Nachmessung.
 Derselbe Aufbau, jetzt mit dem verengten Suchfenster (**2 Runden**, #1486) und der Gesprächsnotiz
 (**Deckel 10**, #1487). Median aus drei Läufen; min = median = max in allen vier Metriken, 0 von 83
 Runden mit abweichender Zerlegung, und ein zweiter, vollständig getrennter Aufruf lieferte jede Zahl
-bitgleich. Alle 83 Notiz-Verdichtungen sind gelungen.
+bitgleich. Der CI-Job `conversations (verwaltung)` hat dieselbe Konfiguration auf fremder Hardware
+ein drittes Mal gemessen und die committete Baseline mit Delta ±0,000 in jeder Gruppe und jeder
+Metrik bestätigt (Lauf 34659775338, 93 Minuten). Alle 83 Notiz-Verdichtungen sind gelungen.
 
 **Je Klasse, über die Runden der Klasse:**
 
