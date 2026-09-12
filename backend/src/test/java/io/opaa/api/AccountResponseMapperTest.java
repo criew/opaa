@@ -85,6 +85,8 @@ class AccountResponseMapperTest {
     UUID id = UUID.randomUUID();
     User user = User.localAccount("erika@stadt.example", "Erika Muster");
     setId(user, id);
+    // Die Nutzerzeile entsteht mit `Instant.now()`, die Zugangsdatenzeile mit CREATED - genau
+    // deshalb trennt die Zusicherung unten die beiden Quellen wirklich.
     LocalCredentials row = new LocalCredentials(id, "Projekt Bauamt", CREATED);
     row.setPasswordHash("hash", CREATED);
     row.markEmailVerified(CREATED);
@@ -104,6 +106,11 @@ class AccountResponseMapperTest {
     assertThat(response.getLocal().getActivity()).isEqualTo(LocalAccountActivity.NEVER);
     assertThat(response.getLocal().getCreatedReason()).isEqualTo("Projekt Bauamt");
     assertThat(response.getLocal().getCreatedAt()).isEqualTo(CREATED);
+    // „Angelegt" kommt für ein lokales Konto aus der Zugangsdatenzeile, nicht aus der Nutzerzeile
+    // - dieselbe Quelle, aus der die Schwesterliste ihre Spalte füllt. Ohne diese Zeile fiele ein
+    // Rückfall auf user.getCreatedAt() keinem Test auf.
+    assertThat(response.getCreatedAt()).isEqualTo(CREATED);
+    assertThat(response.getCreatedAt()).isNotEqualTo(user.getCreatedAt());
   }
 
   @Test

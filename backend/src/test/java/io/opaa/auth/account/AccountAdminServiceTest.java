@@ -35,6 +35,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AccountAdminServiceTest {
 
   private static final Instant NOW = Instant.parse("2026-09-12T12:00:00Z");
+
+  /** Älter als NOW, damit ein Sortierfall die Zeile der Zugangsdaten von der Nutzerzeile trennt. */
+  private static final Instant EARLIER = Instant.parse("2026-01-04T09:00:00Z");
+
   private static final UUID ORGANIZATION = UUID.randomUUID();
 
   @Mock private UserRepository users;
@@ -85,10 +89,10 @@ class AccountAdminServiceTest {
     klaus = local("klaus@stadt.example", "Klaus Weber");
     User orphan = local("orphan@stadt.example", "Ohne Zeile");
 
-    LocalCredentials erikaRow = new LocalCredentials(erika.getId(), "Vertretung", NOW);
-    erikaRow.setPasswordHash("hash", NOW);
-    erikaRow.markEmailVerified(NOW);
-    erikaRow.setExpiresAt(NOW.plus(Duration.ofDays(30)), NOW);
+    LocalCredentials erikaRow = new LocalCredentials(erika.getId(), "Vertretung", EARLIER);
+    erikaRow.setPasswordHash("hash", EARLIER);
+    erikaRow.markEmailVerified(EARLIER);
+    erikaRow.setExpiresAt(NOW.plus(Duration.ofDays(30)), EARLIER);
     LocalCredentials klausRow = new LocalCredentials(klaus.getId(), "Prüfung", NOW);
     klausRow.setPasswordHash("hash", NOW);
     klausRow.markEmailVerified(NOW);
@@ -263,6 +267,20 @@ class AccountAdminServiceTest {
     assertThat(page.items().subList(2, 5))
         .extracting(a -> a.user().getDisplayName())
         .containsExactly("Alte Anbieterin", "Maria Weber", "P. Admin");
+  }
+
+  @Test
+  void sortsByTheCreationTheListShowsNotByTheUserRow() {
+    // Die Zugangsdatenzeilen tragen bewusst eine andere Reihenfolge als die Nutzerzeilen: Erikas
+    // Zeile ist älter als die von Klaus, ihre Nutzerzeile entstand aber später (Instant.now() beim
+    // Anlegen im Setup). Nach der Nutzerzeile sortiert stünde Klaus vorn.
+    AccountPage page =
+        service.list(
+            ORGANIZATION,
+            query().providerType(ProviderType.LOCAL).sort(AccountQuery.Sort.CREATED_AT).build());
+
+    assertThat(page.items()).extracting(a -> a.local().credentials().getCreatedAt()).isSorted();
+    assertThat(page.items().get(0).local().credentials().getCreatedAt()).isEqualTo(EARLIER);
   }
 
   @Test

@@ -69,6 +69,13 @@ describe('userAdminStore', () => {
 
     await state().setFilters({ sort: 'status', direction: 'desc' })
     expect(state().accounts[0].local).toBeUndefined()
+    // Die Gleichstandsregel bleibt aufsteigend, auch wenn die Primärordnung umgedreht ist — wie im
+    // Backend (AccountAdminService#comparator). Sonst lieferten Testdoppel und Backend für
+    // dieselbe Anfrage zwei Reihenfolgen.
+    const ohneZustand = state()
+      .accounts.filter((account) => !account.local)
+      .map((account) => account.displayName ?? '')
+    expect(ohneZustand).toEqual([...ohneZustand].sort((a, b) => a.localeCompare(b, 'de-DE')))
   })
 
   it('sorts only by the seven allow-listed fields', async () => {

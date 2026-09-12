@@ -70,7 +70,8 @@ function sortValue(account: AccountResponse, key: SortKey): string {
   }
 }
 
-function compare(a: AccountResponse, b: AccountResponse, key: SortKey): number {
+/** Nur das Feld, nach dem sortiert wird - ohne Gleichstandsregel, damit `desc` genau dieses Ergebnis umdreht. */
+function comparePrimary(a: AccountResponse, b: AccountResponse, key: SortKey): number {
   const left = sortValue(a, key)
   const right = sortValue(b, key)
   if (key === 'expiresAt') {
@@ -80,13 +81,18 @@ function compare(a: AccountResponse, b: AccountResponse, key: SortKey): number {
     if (right === '') return -1
     return left < right ? -1 : 1
   }
-  if (left === right) {
-    // Zweitordnung wie im Backend: erst der Anzeigename, dann die ID - sonst stünden die vielen
-    // Gleichstände der drei Rangfolgen in der Reihenfolge zufälliger Kennungen.
-    const byName = (a.displayName ?? '').localeCompare(b.displayName ?? '', 'de-DE')
-    return byName !== 0 ? byName : a.id.localeCompare(b.id)
-  }
   return left.localeCompare(right, 'de-DE')
+}
+
+/**
+ * Die Gleichstandsregel des Backends (AccountAdminService#comparator): erst der Anzeigename, dann
+ * die ID. Sie bleibt **aufsteigend**, auch wenn die Primärordnung umgedreht wurde - sonst lieferten
+ * Doppel und Backend für `direction=desc` zwei verschiedene Reihenfolgen, und ein Test schriebe
+ * eine fest, die es gegen das echte Backend nicht gibt.
+ */
+function compareTieBreak(a: AccountResponse, b: AccountResponse): number {
+  const byName = (a.displayName ?? '').localeCompare(b.displayName ?? '', 'de-DE')
+  return byName !== 0 ? byName : a.id.localeCompare(b.id)
 }
 
 export const accountHandlers = [
@@ -136,8 +142,9 @@ export const accountHandlers = [
           (account.displayName ?? '').toLowerCase().includes(query),
       )
       .sort((a, b) => {
-        const order = compare(a, b, sort as SortKey)
-        return direction === 'desc' ? -order : order
+        const primary = comparePrimary(a, b, sort as SortKey)
+        if (primary !== 0) return direction === 'desc' ? -primary : primary
+        return compareTieBreak(a, b)
       })
     const from = page * size
     return HttpResponse.json({

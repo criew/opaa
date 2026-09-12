@@ -584,7 +584,8 @@ Herkunft (alle, lokal, alle Anbieter, ein einzelner Anbieter), die Filter Zustan
 Zustand und Auflage beschreiben lokale Konten und grenzen die Liste auf sie ein —, Sortierung nach
 den sieben erlaubten Feldern — auch nach Herkunft, Rolle und Zustand, die als Kategorien eine feste
 Rangfolge haben statt einer alphabetischen — und Seitenblättern (höchstens 50 je Seite).
-**Sieben Spalten**, weil Name und Adresse sich eine Zelle teilen und Ablauf und Aktivität ebenso:
+**Sieben Spalten** — sechs mit Werten und die Spalte der Zeilenmenüs —, weil Name und Adresse sich
+eine Zelle teilen und Ablauf und Aktivität ebenso:
 Name mit der Adresse darunter, Herkunft, Rolle (mit dem Etikett „Vom Anbieter geführt", wenn ein
 aktivierter Anbieter die Rollen über seinen Claim führt), Zustand als Punkt **und** Text
 (Eingeladen, Aktiv, Gesperrt mit Grund, Abgelaufen) samt Etikett „Passwortwechsel ausstehend" — bei
