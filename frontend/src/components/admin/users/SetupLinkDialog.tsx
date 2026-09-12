@@ -45,7 +45,7 @@ export default function SetupLinkDialog({
       aria-labelledby="setup-link-title"
       // Ohne `onClose` schließt weder ein Klick daneben noch Escape: Beides würde den Wert
       // vernichten, der genau einmal existiert (Review-Runde 1, LOW 7). Geschlossen wird allein
-      // über die Schaltfläche, die dafür den Fokus erhält.
+      // über die Schaltfläche.
     >
       <DialogTitle id="setup-link-title">{title}</DialogTitle>
       <DialogContent>

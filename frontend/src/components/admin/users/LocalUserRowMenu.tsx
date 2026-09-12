@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Box from '@mui/material/Box'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
@@ -156,6 +157,7 @@ export default function LocalUserRowMenu({
     : user.bootstrap
       ? BOOTSTRAP_DELETE_TOOLTIP
       : ''
+  const reasonId = `local-user-${user.id}-menu-reason`
 
   return (
     <>
@@ -204,6 +206,7 @@ export default function LocalUserRowMenu({
             // `aria-required-children` (Review-Runde 1). Die Begründung hängt deshalb als
             // `title` am Eintrag selbst und steht zusätzlich als Text darunter.
             title={lockDisabled ? SELF_ACTION_TOOLTIP : undefined}
+            aria-describedby={lockDisabled ? reasonId : undefined}
           >
             <ListItemIcon>
               <LockOutlinedIcon fontSize="small" />
@@ -224,7 +227,12 @@ export default function LocalUserRowMenu({
           Passwort erzeugen
         </MenuItem>
         <Divider />
-        <MenuItem onClick={remove} disabled={deleteDisabled} title={deleteTooltip || undefined}>
+        <MenuItem
+          onClick={remove}
+          disabled={deleteDisabled}
+          title={deleteTooltip || undefined}
+          aria-describedby={deleteDisabled ? reasonId : undefined}
+        >
           <ListItemIcon>
             <DeleteOutlineIcon fontSize="small" color={deleteDisabled ? undefined : 'error'} />
           </ListItemIcon>
@@ -233,9 +241,19 @@ export default function LocalUserRowMenu({
           </Typography>
         </MenuItem>
         {(lockDisabled || deleteDisabled) && (
-          <Typography sx={{ fontSize: 11.5, color: 'text.secondary', px: 2, py: 1, maxWidth: 320 }}>
-            {isSelf ? SELF_ACTION_TOOLTIP : BOOTSTRAP_DELETE_TOOLTIP}
-          </Typography>
+          // Ein `<li role="presentation">` statt eines Absatzes: Ein `<p>` unter `role="menu"`
+          // verletzt `aria-required-children` (Nachprüfung N3). Der deaktivierte Eintrag verweist
+          // über `aria-describedby` hierher, damit die Begründung auch vorgelesen wird.
+          <Box
+            component="li"
+            role="presentation"
+            id={reasonId}
+            sx={{ px: 2, py: 1, maxWidth: 320 }}
+          >
+            <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+              {isSelf ? SELF_ACTION_TOOLTIP : BOOTSTRAP_DELETE_TOOLTIP}
+            </Typography>
+          </Box>
         )}
       </Menu>
     </>

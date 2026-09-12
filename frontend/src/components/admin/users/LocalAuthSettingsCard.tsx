@@ -244,14 +244,19 @@ export default function LocalAuthSettingsCard() {
 
   const domains = parseDomains(draft.domains)
 
+  /**
+   * `discardDraft` nur dort, wo der Entwurf tatsächlich gespeichert wurde (Nachprüfung N4): Ein
+   * Schalterklick verwarf sonst still, was jemand gerade in die Regeln getippt hatte.
+   */
   async function persist(
     request: LocalAuthSettingsUpdateRequest,
     success: (saved: LocalAuthSettingsResponse) => string,
+    discardDraft = false,
   ) {
     setError(null)
     try {
       const saved = await saveSettings(request)
-      setEdited(null)
+      if (discardDraft) setEdited(null)
       notify(success(saved), 'success')
     } catch (err) {
       setError(localUserErrorMessage(err, 'Die Einstellung konnte nicht gespeichert werden.'))
@@ -301,10 +306,16 @@ export default function LocalAuthSettingsCard() {
     ) {
       return
     }
-    saveSwitch({ selfRegistrationEnabled: next, selfRegistrationAllowedDomains: domains }, () =>
+    saveSwitch(
+      // Die Domänenliste reist **nur in Einschaltrichtung** mit (Nachprüfung N1): Beim Ausschalten
+      // wäre sie kein Teil der Handlung, und ein halb getippter Eintrag würde mitgespeichert.
       next
-        ? 'Die Selbstregistrierung ist eingeschaltet.'
-        : 'Die Selbstregistrierung ist abgeschaltet.',
+        ? { selfRegistrationEnabled: true, selfRegistrationAllowedDomains: domains }
+        : { selfRegistrationEnabled: false },
+      () =>
+        next
+          ? 'Die Selbstregistrierung ist eingeschaltet.'
+          : 'Die Selbstregistrierung ist abgeschaltet.',
     )
   }
 
@@ -322,6 +333,7 @@ export default function LocalAuthSettingsCard() {
     void persist(
       requestOf(settings!, draft!),
       () => 'Die Regeln der lokalen Anmeldung wurden gespeichert.',
+      true,
     )
   }
 

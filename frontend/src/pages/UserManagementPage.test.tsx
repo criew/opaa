@@ -435,6 +435,36 @@ describe('UserManagementPage', () => {
     expect(bodies[0].selfRegistrationEnabled).toBe(true)
   }, 20000)
 
+  /** Nachprüfung N1: Beim **Ausschalten** ist die Domänenliste kein Teil der Handlung. */
+  it('leaves the typed domain list out of a self-registration switch-off', async () => {
+    setMockLocalAuthSettings({ ...mockLocalAuthSettings, selfRegistrationEnabled: true })
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    const bodies: LocalAuthSettingsUpdateRequest[] = []
+    server.use(
+      http.put('/api/v1/admin/local-auth-settings', async ({ request }) => {
+        const body = (await request.json()) as LocalAuthSettingsUpdateRequest
+        bodies.push(body)
+        setMockLocalAuthSettings({ ...mockLocalAuthSettings, ...body })
+        return HttpResponse.json(mockLocalAuthSettings)
+      }),
+    )
+    renderWithProviders(<UserManagementPage />, { withRouter: true })
+
+    const domains = await screen.findByLabelText(/Adress-Domänen/)
+    await user.clear(domains)
+    await user.type(domains, 'stadt.exa')
+
+    await user.click(screen.getByRole('switch', { name: 'Selbstregistrierung' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0].selfRegistrationEnabled).toBe(false)
+    expect(bodies[0].selfRegistrationAllowedDomains).toEqual(['stadt.example'])
+    // Der halb getippte Eintrag steht weiter im Formular - ein Schalterklick verwirft ihn nicht
+    // (Nachprüfung N4).
+    expect(screen.getByLabelText(/Adress-Domänen/)).toHaveValue('stadt.exa')
+  }, 20000)
+
   it('asks before self-registration is switched on and refuses it without a domain list', async () => {
     setMockLocalAuthSettings({ ...mockLocalAuthSettings, selfRegistrationAllowedDomains: [] })
     signInAs('SYSTEM_ADMIN')

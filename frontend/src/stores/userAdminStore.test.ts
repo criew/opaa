@@ -8,6 +8,7 @@ import {
   mockLocalUsers,
 } from '../mocks/localUserFixtures'
 import { apiErrorCode, apiFieldErrors } from '../services/apiErrorDetails'
+import { resetAllStores } from './resettableStores'
 import { INITIAL_LOCAL_USER_FILTERS, useUserAdminStore } from './userAdminStore'
 
 function state() {
@@ -105,6 +106,32 @@ describe('userAdminStore', () => {
     await expect(state().lockUser(LAST_ADMIN_USER_ID)).rejects.toSatisfy(
       (err: unknown) => apiErrorCode(err) === 'LAST_LOGIN_CAPABLE_ADMIN',
     )
+  })
+
+  /**
+   * Nachprüfung N2: Der Epoch-Schutz einer Mutation muss die Epoche **vor** dem Request fassen.
+   * Wurde sie erst danach gefasst, war sie immer die neue, und eine Antwort nach einer Abmeldung
+   * füllte den gerade geleerten Store erneut - gemessen an `summary`.
+   */
+  it('does not write a mutation answer back into a store that was reset meanwhile', async () => {
+    await state().loadUsers()
+    await state().loadSummary()
+    expect(state().summary).not.toBeNull()
+
+    server.use(
+      http.post('/api/v1/admin/local-users/:id/lock', async ({ params }) => {
+        // Die Abmeldung fällt zwischen Anfrage und Antwort - genau das Fenster, das der Schutz
+        // abdecken muss.
+        resetAllStores()
+        const locked = mockLocalUsers.find((account) => account.id === String(params.id))!
+        return HttpResponse.json({ ...locked, status: 'LOCKED', lockedReason: 'ADMIN' })
+      }),
+    )
+
+    await state().lockUser('local-user-klein')
+
+    expect(state().users).toEqual([])
+    expect(state().summary).toBeNull()
   })
 
   it('reports a failed list load without emptying what is already shown', async () => {

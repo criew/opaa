@@ -86,8 +86,11 @@ interface UserAdminState {
   deleteUser: (id: string) => Promise<void>
   resetUserPassword: (id: string) => Promise<LocalUserPasswordResetResponse>
   generateUserPassword: (id: string) => Promise<LocalUserGeneratedPasswordResponse>
-  /** Adopts a mutation's own row and refreshes the review counts; internal to the store. */
-  patchRow: (updated: LocalUserResponse) => Promise<void>
+  /**
+   * Adopts a mutation's own row and refreshes the review counts; internal to the store.
+   * `sessionEpoch` is the epoch the caller captured **before** its request (Nachprüfung N2).
+   */
+  patchRow: (sessionEpoch: number, updated: LocalUserResponse) => Promise<void>
 }
 
 const emptyState = {
@@ -198,10 +201,12 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
   },
 
   /*
-   * Auch die Mutationen prüfen die Sitzungs-Epoche vor dem Zurückschreiben (Review-Runde 1,
+   * Auch die Mutationen prüfen die Sitzungs-Epoche, bevor sie zurückschreiben (Review-Runde 1,
    * LOW 9): Eine Anfrage, die erst nach einer Abmeldung antwortet, würde sonst Daten des
-   * vorherigen Kontos in einen gerade geleerten Store schreiben. Der Fehler wird weiter geworfen,
-   * damit der Aufrufer seine Meldung zeigen kann - er rendert dann ohnehin nicht mehr.
+   * vorherigen Kontos in einen gerade geleerten Store schreiben. Die Epoche wird dazu **vor** dem
+   * `await` gefasst - nach dem Request gefasst wäre sie immer die neue und der Vergleich
+   * wirkungslos (Nachprüfung N2). Der Fehler wird weiter geworfen, damit der Aufrufer seine
+   * Meldung zeigen kann.
    */
   saveSettings: async (request) => {
     const sessionEpoch = currentSessionEpoch()
@@ -226,20 +231,23 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
   },
 
   updateUser: async (id, request) => {
+    const sessionEpoch = currentSessionEpoch()
     const updated = await updateLocalUser(id, request)
-    await get().patchRow(updated)
+    await get().patchRow(sessionEpoch, updated)
     return updated
   },
 
   lockUser: async (id, reason) => {
+    const sessionEpoch = currentSessionEpoch()
     const updated = await lockLocalUser(id, reason)
-    await get().patchRow(updated)
+    await get().patchRow(sessionEpoch, updated)
     return updated
   },
 
   unlockUser: async (id) => {
+    const sessionEpoch = currentSessionEpoch()
     const updated = await unlockLocalUser(id)
-    await get().patchRow(updated)
+    await get().patchRow(sessionEpoch, updated)
     return updated
   },
 
@@ -260,8 +268,7 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
     return result
   },
 
-  patchRow: async (updated) => {
-    const sessionEpoch = currentSessionEpoch()
+  patchRow: async (sessionEpoch, updated) => {
     if (isStaleSessionEpoch(sessionEpoch)) return
     set({ users: get().users.map((u) => (u.id === updated.id ? updated : u)) })
     await get().loadSummary()
