@@ -13,39 +13,38 @@ import org.junit.jupiter.api.Test;
 class ConversationBaselineVerdictTest {
 
   /**
-   * The acceptance criterion of #1553: an incomparable baseline is reported <b>as</b> a fixed-point
-   * deviation, never as a regression — and, while it deviates in exactly the two fields #1490
-   * re-measures, it does not fail the run.
+   * Since #1490 the two Gesprächsgedächtnis fixed points are judged like any other: the named
+   * tolerance that let them deviate without failing was removed together with the baseline it
+   * described. A run against a baseline drawn before the search window and the Gesprächsnotiz is
+   * incomparable, not merely unjudged.
    */
   @Test
-  void aBaselineIncomparableOnlyInTheFieldsAwaitingRemeasurementIsReportedNotFailed() {
+  void aBaselineFromBeforeTheSearchWindowAndTheNoteIsIncomparableAndFails() {
     ConversationBaselineVerdict verdict =
         ConversationBaselineVerdict.of(
             incomparable(
                 new BaselineComparator.FixedPointMismatch("searchWindowTurns", "0", "2"),
                 new BaselineComparator.FixedPointMismatch("conversationNoteCap", "0", "10")));
 
-    assertThat(verdict.kind()).isEqualTo(ConversationBaselineVerdict.Kind.NOT_JUDGED);
-    assertThat(verdict.failing()).isFalse();
-    assertThat(verdict.headline()).contains("nicht beurteilt");
-    assertThat(verdict.headline() + verdict.detail()).doesNotContain("Regression");
+    assertThat(verdict.kind()).isEqualTo(ConversationBaselineVerdict.Kind.INCOMPARABLE);
+    assertThat(verdict.failing()).isTrue();
+    assertThat(verdict.headline()).contains("ungültig");
+    assertThat(verdict.headline() + verdict.detail()).doesNotContain("Regression im");
     assertThat(verdict.detail())
         .contains("searchWindowTurns: Baseline=0, aktuell=2")
-        .contains("conversationNoteCap: Baseline=0, aktuell=10")
-        .contains("#1490");
+        .contains("conversationNoteCap: Baseline=0, aktuell=10");
   }
 
   /**
-   * The other half of the same criterion: the tolerance is for the two declared fields, not for
-   * incomparability as such. A moved corpus, model or golden dataset is red exactly as on the
-   * pipeline path — otherwise the gate above would switch the whole comparison off for good.
+   * The acceptance criterion of #1553, unchanged: an incomparable baseline is reported <b>as</b> a
+   * fixed-point deviation, never as a regression. A moved corpus, model or golden dataset is red
+   * exactly as on the pipeline path.
    */
   @Test
-  void aFixedPointDeviationBeyondTheDeclaredOnesFailsTheRun() {
+  void aMovedMeasurementBasisIsNamedAsSuchAndFailsTheRun() {
     ConversationBaselineVerdict verdict =
         ConversationBaselineVerdict.of(
             incomparable(
-                new BaselineComparator.FixedPointMismatch("searchWindowTurns", "0", "2"),
                 new BaselineComparator.FixedPointMismatch(
                     "corpusManifestSha256", "e129bb86", "aaaaaaaa")));
 
@@ -58,13 +57,13 @@ class ConversationBaselineVerdictTest {
   }
 
   /**
-   * An invalid baseline that names no deviating fixed point is not the announced state — {@code
-   * allMatch} is true on an empty stream, so the gate would otherwise stand open for exactly the
-   * result {@code ConversationBaselineComparator} calls "a harness bug". No producer creates it
-   * today; the coupling that prevents it is an invariant of one method, not of the public record.
+   * An invalid baseline that names no deviating fixed point still says so in its detail rather than
+   * rendering an empty deviation list — the result {@code ConversationBaselineComparator} calls "a
+   * harness bug". No producer creates it today; the coupling that prevents it is an invariant of
+   * one method, not of the public record.
    */
   @Test
-  void anInvalidBaselineWithoutANamedDeviationFailsRatherThanPassingAsNotJudged() {
+  void anInvalidBaselineWithoutANamedDeviationSaysSoAndFails() {
     ConversationBaselineVerdict verdict = ConversationBaselineVerdict.of(incomparable());
 
     assertThat(verdict.kind()).isEqualTo(ConversationBaselineVerdict.Kind.INCOMPARABLE);
@@ -98,11 +97,11 @@ class ConversationBaselineVerdictTest {
   }
 
   /**
-   * The Markdown the CI job renders carries the deviation table in the not-judged case too — a
-   * summary that only said "nicht beurteilt" would leave the reader without the reason.
+   * The Markdown the CI job renders carries the deviation table in the incomparable case too — a
+   * summary that only said "ungültig" would leave the reader without the reason.
    */
   @Test
-  void theNotJudgedMarkdownCarriesTheDeviationTable() {
+  void theIncomparableMarkdownCarriesTheDeviationTable() {
     ConversationBaselineComparator.ComparisonResult result =
         incomparable(new BaselineComparator.FixedPointMismatch("searchWindowTurns", "0", "2"));
 
@@ -117,7 +116,7 @@ class ConversationBaselineVerdictTest {
         .contains(
             "## Mehrrunden-Messpfad gegen Baseline (`eval/baseline/"
                 + "pipeline-verwaltung-conversations.json`)")
-        .contains("nicht beurteilt")
+        .contains("ungültig")
         .contains("| `searchWindowTurns` | `0` | `2` |");
   }
 

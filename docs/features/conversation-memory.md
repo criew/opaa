@@ -1,8 +1,9 @@
 # Gesprächsgedächtnis: Gesprächsfenster und Gesprächsnotiz
 
-> **Status: Entschieden (Maintainer, 11.09.2026), Umsetzung in Epic #1482.** Architekturentscheidung
-> in [ADR-0031](../decisions/0031-gespraechsgedaechtnis.md). Das Handbuch beschreibt den Ist-Stand und
-> wird mit den Umsetzungs-Issues nachgezogen.
+> **Status: Umgesetzt und nachgemessen (Epic #1482, abgeschlossen 12.09.2026).**
+> Architekturentscheidung in [ADR-0031](../decisions/0031-gespraechsgedaechtnis.md), dort seit der
+> Nachmessung (#1490) **akzeptiert** — samt Abschnitt „Gemessene Wirkung", der benennt, welche der
+> drei Erwartungen die Messung bestätigt und welche nicht. Das Handbuch beschreibt den Ist-Stand.
 
 ## Motivation
 
@@ -458,6 +459,24 @@ Wert, den der Harness nicht sehen kann. Wiederaufnahme, sobald es einen Generati
    2 erreichen; `topic_switch` darf nicht fallen (Notiz bleedet nicht).
 5. Zustandswechsel (`known_gap` → `solved`) datiert eintragen, Baseline ziehen, Befund an #1446.
 
+> **Ergebnis der Schritte 3–5 (Nachmessung vom 2026-09-12, Issue #1490).** Von den drei Bedingungen
+> der Schritte 3 und 4 ist eine erfüllt, eine teilweise und eine nicht:
+> `anaphora_resolution` fällt nicht, sondern steigt (nDCG@8 0,722 → 0,763; 4 → 5 von 9 Fällen);
+> `topic_switch` steigt in allen vier Rundenmetriken (nDCG@8 0,713 → 0,776), bleibt auf Fallebene
+> aber bei 2 von 9; `constraint_carryover` erreicht die Referenz aus Schritt 2 **nicht** wieder
+> (nDCG@8 0,857 → 0,835; 4 → 1 von 9 Fällen). Die für Schritt 4 und 5 festgelegte, empfindlichere
+> Vergleichsgröße — Zielrunden, deren Teilfrage die Rahmenangabe trägt — fällt von 4 von 9 auf
+> 1 von 9. Die Verdichtung läuft dabei fehlerfrei (83 von 83 Aufrufen ohne Fehlschlag), hinterlässt
+> aber in 8 der 27 Gespräche über alle Runden **keinen einzigen** `RAHMEN`-Punkt; wo sie einen
+> hinterlässt, trägt er die Fassungsangabe nur in drei von neun Fällen. Auslöser ist das
+> Antwortformat des Verdichtungsmodells, wirksam werden zwei Regeln der Auswertung selbst: Sie nimmt
+> die ersten zwei Zeilen, und eine Zeile mit unbekanntem Artpräfix wird zu `ANTWORTFORM` und erreicht
+> die Suche nie. Einzelfälle, Ursachen und der
+> Vorbehalt, dass der Vergleich kein reines A/B über Fenster und Notiz ist, stehen in
+> [`eval/corpus/verwaltung/MAINTENANCE.md`](../../eval/corpus/verwaltung/MAINTENANCE.md),
+> Abschnitt „Befund der Nachmessung". Folgearbeit außerhalb dieses Epics: #1586 (Verdichtung hält
+> die Rahmenangabe nicht) und #1587 (Wirkung der Instruktionszeile getrennt messen).
+
 ---
 
 ## Integrationspunkte
@@ -497,11 +516,12 @@ Wert, den der Harness nicht sehen kann. Wiederaufnahme, sobald es einen Generati
 
 ## Erfolgs-Metriken
 
-- `topic_switch`: Anteil gelöster Fälle nach Bauteil 1 gegenüber dem heutigen Stand; Bleed-Zahl
-  (Altthemen-Dokumente im Fenster der Wechselrunde) sinkt.
+- `topic_switch`: Anteil gelöster Fälle nach Bauteil 1 gegenüber dem heutigen Stand. Die Bleed-Zahl
+  ist als Kriterium zurückgezogen — sie hat auf dem Datensatz kaum Dynamikbereich
+  (`eval/corpus/verwaltung/MAINTENANCE.md`, Abschnitt „Themen-Bleed").
 - `anaphora_resolution`: kein Fall verschlechtert sich durch das kurze Suchfenster.
-- `constraint_carryover`: nach der Notiz mindestens der heutige Stand, gemessen am Rang des
-  Zieldokuments gegen den Verwechslungspartner.
+- `constraint_carryover`: nach der Notiz mindestens der heutige Stand, gemessen an den Zielrunden,
+  deren Teilfrage die Rahmenangabe trägt.
 - Betrieb: `opaa.chat.note.extraction`-Fehlschläge nahe null; Latenz der Antwort unverändert (die
   Verdichtung liegt außerhalb des Anfrage-Threads).
 - **Nicht gemessen: die Zitatwiederholung (Fehlerbild 2).** Es gibt keinen Zähler über nicht

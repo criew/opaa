@@ -2,7 +2,7 @@
 
 ## Status
 
-Vorgeschlagen
+Akzeptiert (12.09.2026, nach der Nachmessung in Issue #1490)
 
 ## Kontext
 
@@ -110,6 +110,62 @@ unten. Die Untergrenze ist ein fester Wert (Oberflächengröße), kein Parameter
 | Notizpunkte bearbeiten oder manuell anlegen; „alle entfernen" | Oberfläche und API für einen Weg, den der Chat selbst bietet (falschen Punkt entfernen, richtige Angabe schreiben); bei zehn Punkten ist Einzelentfernen zumutbar | Personen wiederholen nachweislich Angaben, weil die Verdichtung sie verfehlt |
 | Ein-/Ausschalter je Installation oder Chat | kein Adressat: die Notiz enthält nur, was die Person selbst geschrieben hat, sichtbar und löschbar; die Oberfläche müsste das Fehlen erklären | eine konkrete Dienstvereinbarungsklausel verlangt es |
 | Fallklasse `long_horizon` im Retrieval-Harness | misst nichts, was `constraint_carryover` nicht misst — der Mechanismus ist derselbe; die Antwortkontinuität über die Fensterbreite hinaus ist mit Ranking-Metriken nicht messbar; ~100 Skriptrunden Kuratierung | ein Generationsharness (Relevanz, Faktentreue) existiert |
+
+## Gemessene Wirkung (Issue #1490, 12.09.2026)
+
+Diese Entscheidung ist vollständig umgesetzt (#1486, #1487, #1488, #1489) und nachgemessen. Sie wird
+**mit** diesem Ergebnis akzeptiert, nicht trotz ihm: Zwei ihrer drei Erwartungen bestätigt die
+Messung, die dritte nicht. Wer dieses Dokument in einem Jahr liest, soll das sofort sehen.
+
+Median aus drei Läufen, CPU-Testcontainer, auf CI-Hardware mit Delta ±0,000 gegengeprüft; **vorher**
+ist der Referenzlauf vom 11.09.2026 ohne Suchfenster und ohne Notiz (Issue #1485).
+
+| Klasse | nDCG@8 über ihre Runden | gelöste Fälle |
+|---|---|---|
+| `anaphora_resolution` | 0,722 → 0,763 | 4 → 5 von 9 |
+| `topic_switch` | 0,713 → 0,776 | 2 → 2 von 9 |
+| `constraint_carryover` | 0,857 → 0,835 | 4 → 1 von 9 |
+| gesamt (83 Runden) | 0,771 → 0,796 | 10 → 8 von 27 |
+
+**Bauteil 1 (Gesprächsfenster) trägt.** Das Suchfenster von zwei Runden hebt beide Klassen, für die
+es gebaut wurde, in allen vier Rundenmetriken und den Gesamtwert über alle 83 Runden. Die
+Wiederaufnahmebedingung der verworfenen **Themenwechsel-Erkennung** ist damit nicht eingetreten —
+aber knapp: Sie lautete „`topic_switch` zeigt nach dem Fenster-Umbau in mehr als einem Viertel der
+Fälle weiterhin Bleed", gemessen sind 2 von 9 Wechselrunden, also 22 % gegen eine Schwelle von
+25 %. Ein einziger weiterer Fall hätte sie überschritten; bei n = 9 ist der Abstand kleiner als ein
+Fall. Tragend ist deshalb nicht der Schwellenwert, sondern was in den beiden Runden geschieht: **Das
+Ziel bleibt in beiden auf Rang 1** — das Altthemen-Dokument steht im Fenster, ohne die Wechselrunde
+zu kosten. Die Kennzahl selbst ist als Kriterium zurückgezogen (sie hat auf dem Datensatz kaum
+Dynamikbereich, und das schneidet in beide Richtungen); beurteilt wird über den Anteil gelöster
+Fälle.
+
+**Bauteil 2 (Gesprächsnotiz) erfüllt seinen Zweck heute nicht.** Die Klasse, für die es gebaut
+wurde, erreicht ihren Ausgangswert nicht wieder. Die dafür festgelegte, empfindlichere
+Vergleichsgröße — Zielrunden, deren Teilfrage die Rahmenangabe trägt — fällt von 4 von 9 auf 1 von
+9. Der Mechanismus existiert und ist verdrahtet: Die Verdichtung läuft in allen 83 Runden ohne
+Fehlschlag, die `RAHMEN`-Punkte erreichen die Zerlegung. Aber in 8 der 27 Gespräche entsteht
+überhaupt kein `RAHMEN`-Punkt, und wo einer entsteht, trägt er die Fassungsangabe in nur drei von
+neun Fällen bis zur Zielrunde. Ursache sind zwei Regeln der Auswertung im Zusammenspiel mit dem
+Antwortformat des Modells: Es werden die **ersten zwei** Zeilen übernommen, und eine Zeile mit
+unbekanntem Artpräfix wird `ANTWORTFORM` und erreicht die Suche nie. Beides ist OPAAs Code, nicht
+Modellschwäche — **#1586**.
+
+**Die verworfene Alternative „Zerlegung ohne Notiz (nur Suchfenster)" bleibt verworfen.** Die
+Messung widerlegt nicht ihre Begründung, sondern zeigt, dass der gewählte Weg heute schlecht
+ausgeführt ist: Wo die Angabe die Teilfrage erreicht (`verw-conv-cc-002`), löst sie den Fall.
+Gegenevidenz gibt es ebenfalls und sie steht hier, nicht nur im Befund: In `verw-conv-ts-002#3`
+zieht ein Notizpunkt aus dem **alten** Thema („SOZ-08") das Altthemen-Dokument auf Rang 1 und kostet
+den Fall — die Notiz kann also auch schaden. Ob die Filterung auf `RAHMEN` dafür eng genug ist, ist
+mit einem Fall nicht entschieden.
+
+**Ein Vorbehalt zum Vergleich.** Die Umsetzung von Bauteil 2 hat der festen Instruktion der
+Teilfragen-Zerlegung eine Zeile über die Gesprächsnotiz hinzugefügt, die bei jedem Aufruf mitgeht.
+18 der 27 ersten Runden — ohne Fenster und ohne Notiz — liefern seither andere Teilfragen. Die
+Zahlen oben sind die Summe aus drei Änderungen, nicht aus zweien; die Trennung ist **#1587**.
+
+Vollständige Herleitung, Einzelfälle und Symptomtabellen:
+[`eval/corpus/verwaltung/MAINTENANCE.md`](../../eval/corpus/verwaltung/MAINTENANCE.md), Abschnitt
+„Befund der Nachmessung"; Abschlussbefund in Issue #1446.
 
 ## Konsequenzen
 

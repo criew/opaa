@@ -186,16 +186,17 @@ public final class ConversationReportWriter {
     sb.append('\n').append(renderNoteCondensation(report.noteCondensation()));
     sb.append('\n').append(renderBleed(report.topicBleed())).append('\n');
     sb.append(ExpectedStateAudit.renderMarkdown(report.expectedStateAudit()));
-    sb.append("\n### Teilfragen je Runde\n\n");
+    sb.append("\n### Gesprächsnotiz und Teilfragen je Runde\n\n");
     for (ConversationCaseResult caseResult : report.cases()) {
       sb.append(format("- `%s` (%s)\n", caseResult.id(), caseResult.category()));
       for (TurnResult turn : caseResult.turns()) {
         sb.append(
             format(
-                "  - `%s` %s — Fenster %d Nachrichten, Teilfragen %s\n",
+                "  - `%s` %s — Fenster %d Nachrichten, Notiz %s, Teilfragen %s\n",
                 turn.turnId(),
                 turn.solved() ? "gelöst" : "nicht gelöst",
                 turn.conversationWindowMessages(),
+                turn.conversationNote(),
                 turn.subQueries()));
       }
     }

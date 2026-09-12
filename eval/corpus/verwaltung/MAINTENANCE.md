@@ -303,24 +303,28 @@ im Fenster (Ränge 1 und 4) und schieben das erwartete Dokument auf Rang 9. `exa
 statt geglättet: Ein größerer Korpus kann auf dem schwellenlosen Messpfad jedes Fenster verschieben —
 wer die beiden Dokumente entfernte, verlöre dafür die Messbarkeit der Leerwert-Regel.
 
-## Mehrrunden-Fallklassen (Issue #1485)
+## Mehrrunden-Fallklassen (Issues #1485/#1490)
 
 Drei weitere Klassen messen seit #1485 Gespräche statt Einzelfragen: `anaphora_resolution`,
 `topic_switch` und `constraint_carryover` (`docs/features/conversation-memory.md`, Abschnitt
-„Messung"). Sie liegen in einem **eigenen** Datensatz mit **eigener** Baseline und laufen weder im
-nächtlichen Job noch in `checkVerwaltungRetrievalBaseline` mit, sondern nur auf ausdrückliche
-Anforderung:
+„Messung"). Sie liegen in einem **eigenen** Datensatz mit **eigener** Baseline und laufen nicht im
+`checkVerwaltungRetrievalBaseline` der Domäne mit, sondern in einem eigenen Task-Paar:
 
 ```bash
 cd backend
-./gradlew evaluateVerwaltungRetrieval \
-  -Dopaa.eval.queryDecomposition=true \
-  -Dopaa.eval.runConversations=true
+./gradlew evaluateVerwaltungConversations     # nur messen und berichten
+./gradlew checkVerwaltungConversationBaseline # messen und gegen die Baseline urteilen
 ```
 
-Ohne beide Schalter meldet sich der Schritt als **nicht ausgeführt** und schreibt nichts. Der Grund
-für die Zurückhaltung ist der Preis: ein Zerlegungsaufruf je **Runde**, und nach der
-Mehrfachlauf-Regel dreimal — 249 Modellaufrufe für 83 Runden.
+Beide Tasks setzen `-Dopaa.eval.runConversations` und `-Dopaa.eval.queryDecomposition` selbst
+(#1553); ohne beide meldet sich der Schritt als **nicht ausgeführt** und schreibt nichts. In der CI
+trägt ihn seit #1553 der eigene Job `conversations` in
+`.github/workflows/retrieval-regression.yml` — nächtlich, per `workflow_dispatch` und beim Label
+`evaluation`, mit eigenem Zeitbudget. Der Preis ist der Grund für das eigene Budget: ein
+Zerlegungs- und ein Notiz-Aufruf je **Runde**, und nach der Mehrfachlauf-Regel dreimal — 498
+Modellaufrufe für 83 Runden. Gemessene Laufzeiten: rund 14 Minuten je Messung auf einer
+Entwicklermaschine (CPU-Testcontainer), 52 Minuten für den ganzen Task-Lauf einschließlich
+Indizierung und Einzelfragen-Teil; auf einem GitHub-Runner 118 Minuten (Lauf 34648243211).
 
 **Einpfad-Regel.** Für diese drei Klassen gilt „gelöst" auf dem **Pipeline-Pfad allein**, nicht wie
 sonst auf beiden: Der Rohvektor-Pfad misst `similaritySearch` direkt und kennt weder Gesprächsverlauf
@@ -342,114 +346,163 @@ für jede künftige Ergänzung dieser Klassen.
    Dokumente des aufgelösten Amtes nach vorn zieht. Maßstab: Die Runde muss ohne aufgelösten Bezug
    scheitern **und** mit ihm gelingen können.
 2. **Die Kurzantwort der Runde 1 eines `constraint_carryover`-Falls darf den Verwechslungspartner
-   nicht benennen.** Sie geht als `AssistantMessage` ins Gesprächsfenster, und das ganze Fenster
-   geht an die Zerlegung: Ein Satz wie „… galt bis zum 31. Dezember 2023; sie wurde durch die
+   nicht benennen.** Sie geht als `AssistantMessage` ins Gesprächsfenster, und das Fenster geht in
+   die Zerlegung: Ein Satz wie „… galt bis zum 31. Dezember 2023; sie wurde durch die
    Fassung 2024 ersetzt" stellt den Bezeichner des Verwechslungspartners als Aussage des Assistenten
    in den Kontext. Inhaltlich ist der Satz belegt — als Messaufbau macht er den zentralen Befund
-   mehrdeutig und würde ab T5 die Gesprächsnotiz gegen einen selbst eingebauten Störer prüfen statt
-   gegen die Rahmenübernahme.
+   mehrdeutig und prüfte die Gesprächsnotiz gegen einen selbst eingebauten Störer statt gegen die
+   Rahmenübernahme.
 
 ### Wer pflegt was
 
 | Teil | Pflegeverantwortung | Heutiger Stand |
 |---|---|---|
-| `anaphora_resolution` (9 Fälle, 21 Runden) | QA Engineer. Die Fälle hängen an einzelnen Korpusdokumenten: Eine Generator-Änderung, die einen Formularhinweis oder eine Dienstanweisung umbenennt, macht die Rückfrage der Folgerunde unauflösbar. Regel 1 oben gilt für jede neue Runde. | vorhanden (#1485), 4 von 9 gelöst |
-| `topic_switch` (9 Fälle, 30 Runden) | QA Engineer. Zusätzlich zu prüfen ist bei jeder Korpusänderung, dass die erwarteten Dokumente der Wechselrunde und die der Vorrunden **disjunkt** bleiben — sonst zählt die Bleed-Zahl das richtige Dokument mit. `topic_switch_turn` wird nie abgeleitet, sondern am Fall benannt. | vorhanden (#1485), 2 von 9 gelöst, Bleed 0 |
-| `constraint_carryover` (9 Fälle, 32 Runden) | QA Engineer. Der Verwechslungspartner ist das Empfindliche: Er muss inhaltsgleich zum Ziel bleiben und sich nur in der Rahmenangabe (Fassung/Jahr) unterscheiden. Verschwindet eine der beiden Fassungen aus dem Korpus, misst die Klasse nichts mehr. Regel 2 oben gilt für jede neue Runde-1-Antwort. | vorhanden (#1485), 4 von 9 gelöst |
-| Mehrrunden-Datensatz (`eval/golden/verwaltung-conversations.json`) | QA Engineer, wie beim Einzelfragen-Datensatz. Von Hand kuratiert, kein Generator; die Regeln stehen in `io.opaa.eval.ConversationCaseCuration` und werden von `ConversationCaseCurationTest` Docker-frei auf die committete Datei angewandt. | vorhanden (#1485), 27 Fälle mit 83 Runden |
-| Mehrrunden-Baseline (`eval/baseline/pipeline-verwaltung-conversations.json`) | QA Engineer, analog zu den beiden anderen Baselines dieser Domäne; Neuziehung nach demselben Verfahren wie oben. | vorhanden (#1485), noch an keine Regressionstestklasse verdrahtet |
+| `anaphora_resolution` (9 Fälle, 21 Runden) | QA Engineer. Die Fälle hängen an einzelnen Korpusdokumenten: Eine Generator-Änderung, die einen Formularhinweis oder eine Dienstanweisung umbenennt, macht die Rückfrage der Folgerunde unauflösbar. Regel 1 oben gilt für jede neue Runde. | 5 von 9 gelöst (#1490; vorher 4) |
+| `topic_switch` (9 Fälle, 30 Runden) | QA Engineer. Zusätzlich zu prüfen ist bei jeder Korpusänderung, dass die erwarteten Dokumente der Wechselrunde und die der Vorrunden **disjunkt** bleiben — sonst zählt die Bleed-Zahl das richtige Dokument mit. `topic_switch_turn` wird nie abgeleitet, sondern am Fall benannt. | 2 von 9 gelöst (#1490; vorher 2), Bleed 2 Dokumente in 2 von 9 Wechselrunden |
+| `constraint_carryover` (9 Fälle, 32 Runden) | QA Engineer. Der Verwechslungspartner ist das Empfindliche: Er muss inhaltsgleich zum Ziel bleiben und sich nur in der Rahmenangabe (Fassung/Jahr) unterscheiden. Verschwindet eine der beiden Fassungen aus dem Korpus, misst die Klasse nichts mehr. Regel 2 oben gilt für jede neue Runde-1-Antwort. | 1 von 9 gelöst (#1490; vorher 4) |
+| Mehrrunden-Datensatz (`eval/golden/verwaltung-conversations.json`) | QA Engineer, wie beim Einzelfragen-Datensatz. Von Hand kuratiert, kein Generator; die Regeln stehen in `io.opaa.eval.ConversationCaseCuration` und werden von `ConversationCaseCurationTest` Docker-frei auf die committete Datei angewandt. | 27 Fälle mit 83 Runden, 8 `solved` / 19 `known_gap` (#1490) |
+| Mehrrunden-Baseline (`eval/baseline/pipeline-verwaltung-conversations.json`) | QA Engineer, analog zu den beiden anderen Baselines dieser Domäne; Neuziehung nach demselben Verfahren wie oben. | Neu gezogen mit #1490 (Lauf vom 2026-09-12); verglichen von `VerwaltungConversationBaselineRegressionTest` über `checkVerwaltungConversationBaseline` (#1553) |
 
-### Befund des Erstlaufs (2026-09-11)
+### Referenzbefund vor Fenster und Notiz (2026-09-11, Issue #1485)
 
 CPU-Testcontainer, `qwen2.5:1.5b-instruct` bei Temperatur 0, Gesprächsfenster 20 Nachrichten
 (am produktiven `ChatMemory` gemessen), Suchfenster = ganzes Gesprächsfenster, keine Gesprächsnotiz.
-Median aus drei Läufen.
+Median aus drei Läufen. Dies ist die **Vorher**-Seite des Vergleichs unten.
 
-| Klasse | Fälle | gelöst gemessen | `solved` deklariert | Bleed |
-|---|---|---|---|---|
-| `anaphora_resolution` | 9 | 4 | 4 | — |
-| `topic_switch` | 9 | 2 | 2 | 0 Dokumente in 0 von 9 Wechselrunden |
-| `constraint_carryover` | 9 | 4 | 3 | — |
+| Klasse | Fälle | gelöst gemessen | Bleed |
+|---|---|---|---|
+| `anaphora_resolution` | 9 | 4 | — |
+| `topic_switch` | 9 | 2 | 0 Dokumente in 0 von 9 Wechselrunden |
+| `constraint_carryover` | 9 | 4 | — |
 
-Je Runde (alle Klassen zusammen):
-
-| Gruppe | n | Hit Rate@5 | MRR@8 | nDCG@8 | Recall@8 |
-|---|---|---|---|---|---|
-| Runde 1 | 27 | 0,963 | 0,915 | 0,913 | 0,951 |
-| Runde 2 | 27 | 0,704 | 0,631 | 0,649 | 0,704 |
-| Runde 3 | 21 | 0,810 | 0,668 | 0,704 | 0,810 |
-| Runde 4 | 7 | 0,857 | 0,857 | 0,857 | 0,857 |
-| Runde 5 | 1 | 1,000 | 1,000 | 1,000 | 1,000 |
-
-**Wiederholbarkeit.** Min = Median = Max über die drei Läufe in allen vier Metriken, und **0 von 83
-Runden** hatten über die Läufe hinweg eine abweichende Zerlegung.
+Je Runde (alle Klassen zusammen): Runde 1 nDCG@8 0,913 · Runde 2 0,649 · Runde 3 0,704 · Runde 4
+0,857 · Runde 5 1,000; über alle 83 Runden Hit Rate@5 0,831 / MRR@8 0,756 / nDCG@8 0,771 /
+Recall@8 0,827.
 
 **Die Rundennummer ist nicht der saubere Schnitt.** Die Gruppe `turn:2` mischt drei Bauarten:
 neun echte Rückfragen (`anaphora_resolution`), fünf Wechselrunden mit explizitem Marker und neun
 `constraint_carryover`-Zwischenthemen, die konstruktionsbedingt eigenständige Fragen sind. Der
-Abstand zwischen Runde 1 und Runde 2 belegt deshalb für sich genommen nichts. Über die von Hand
-bestimmte Menge der Runden, deren Frage **ohne den Verlauf nicht auflösbar** ist, sieht es so aus:
+Abstand zwischen Runde 1 und Runde 2 belegt deshalb für sich genommen nichts — das galt für den
+Referenzlauf und gilt unverändert für jede Nachmessung.
 
-| Rundenart | n | gelöst | nDCG@8 |
-|---|---|---|---|
-| eigenständige erste Runden | 27 | 23 | 0,913 |
-| Rückfragen mit Bezugswort | 22 | 10 | 0,512 |
-| Wechsel- und Rückkehrrunden | 11 | 7 | 0,694 |
-| `constraint_carryover`: Zwischenthemen und Zielrunden | 23 | 18 | 0,887 |
+### Befund der Nachmessung (2026-09-12, Issue #1490)
 
-0,913 gegen 0,512 bei nDCG@8, 23 von 27 gegen 10 von 22 gelöst: Das ist der Preis der Rückfrage auf
-diesem Datensatz.
+Derselbe Aufbau, jetzt mit dem verengten Suchfenster (**2 Runden**, #1486) und der Gesprächsnotiz
+(**Deckel 10**, #1487). Median aus drei Läufen; min = median = max in allen vier Metriken, 0 von 83
+Runden mit abweichender Zerlegung, und ein zweiter, vollständig getrennter Aufruf lieferte jede Zahl
+bitgleich. Der CI-Job `conversations (verwaltung)` hat dieselbe Konfiguration auf fremder Hardware
+ein drittes Mal gemessen und die committete Baseline mit Delta ±0,000 in jeder Gruppe und jeder
+Metrik bestätigt (Lauf 34659775338, 93 Minuten). Die Notiz-Verdichtung lief in allen 83 Runden
+ohne Fehlschlag — was nicht heißt, dass sie etwas hinterlassen hätte: In **8 der 27 Gespräche**
+(`ana-003`, `-004`, `-009`, `ts-003`, `-004`, `-005`, `-007`, `-008`) entstand über alle Runden
+**kein einziger `RAHMEN`-Punkt**, und nur 38 der 83 Runden haben überhaupt einen bekommen. Der
+Bericht zählt Aufrufe ohne Ausnahme, nicht Ergebnisse (`condenseInto` meldet nur einen
+Modellfehler); die Punkte selbst stehen seit #1490 je Runde im Feld `conversationNote`.
 
-Die Menge der 22 Rückfragerunden ist von Hand bestimmt und deshalb hier benannt — sie lässt sich
-aus den Symptomtabellen unten nicht ableiten, weil die dort nur die **offenen** Runden führen.
-Mitglied ist jede Runde ab Nummer 2, deren Frage ohne den Verlauf nicht auflösbar ist; Wechselrunden
-(die ihr neues Thema selbst benennen), Rückkehrrunden durch Neubenennung (`ts-004#4`, `ts-009#4`)
-und die eigenständigen Zwischenthemen der `constraint_carryover`-Fälle gehören **nicht** dazu.
+**Je Klasse, über die Runden der Klasse:**
 
-- `anaphora_resolution` (12): `ana-001#2`, `-002#2`, `-003#2`, `-004#2`, `-004#3`, `-005#2`,
-  `-006#2`, `-007#2`, `-007#3`, `-008#2`, `-009#2`, `-009#3`
-- `topic_switch` (10): `ts-001#2`, `-002#3`, `-003#2`, `-004#3`, `-005#3`, `-006#2`, `-007#2`,
-  `-007#4`, `-008#3`, `-009#3`
+| Klasse | n | Hit Rate@5 | MRR@8 | nDCG@8 | Recall@8 |
+|---|---|---|---|---|---|
+| `anaphora_resolution` | 21 | 0,762 → **0,810** | 0,724 → **0,762** | 0,722 → **0,763** | 0,746 → **0,794** |
+| `topic_switch` | 30 | 0,767 → **0,833** | 0,701 → **0,761** | 0,713 → **0,776** | 0,767 → **0,833** |
+| `constraint_carryover` | 32 | 0,938 → **0,969** | 0,829 → **0,790** | 0,857 → **0,835** | 0,938 → **0,969** |
+| gesamt | 83 | 0,831 → **0,880** | 0,756 → **0,772** | 0,771 → **0,796** | 0,827 → **0,876** |
 
-Gelöst sind davon zehn: `ana-001#2`, `ana-002#2`, `ana-003#2`, `ana-007#3`, `ana-008#2`,
-`ana-009#2`, `ts-002#3`, `ts-006#2`, `ts-007#4`, `ts-009#3`.
+**Je Klasse, auf Fallebene** (gelöst = jede Runde der Klasse gelöst):
 
-### Wo die Messung von der Vorhersage der Spezifikation abweicht
+| Klasse | Fälle | gelöst vorher | gelöst jetzt | Bleed |
+|---|---|---|---|---|
+| `anaphora_resolution` | 9 | 4 | **5** | — |
+| `topic_switch` | 9 | 2 | **2** | 0 → **2** Dokumente in 2 von 9 Wechselrunden |
+| `constraint_carryover` | 9 | 4 | **1** | — |
+| gesamt | 27 | 10 | **8** | |
 
-`docs/features/conversation-memory.md`, Abschnitt „Reihenfolge", sagt drei Dinge voraus. **Eine der
-drei trifft zu, zwei nicht.** Eine Abweichung ist ein Ergebnis, kein Makel — sie steht hier so, wie
-sie gemessen wurde.
+**Je Runde:** Runde 1 (n=27) nDCG@8 0,913 → 0,936 · Runde 2 (n=27) 0,649 → 0,853 · Runde 3 (n=21)
+0,704 → 0,597 · Runde 4 (n=7) 0,857 → 0,652 · Runde 5 (n=1) 1,000 → 0,631.
 
-- **`anaphora_resolution` „überwiegend gelöst" — trifft nicht zu.** Gemessen sind **4 von 9**, also
-  weniger als die Hälfte; die Vorhersage lautete „überwiegend". Ursache am Protokoll: In den vier
-  gelösten Fällen trägt die erzeugte Teilfrage die aufgelöste Entität („Formular BUE-08",
-  „Dienstanweisung BAU-DA-2/2024") und funktioniert trotz ihrer Aussageform; in den fünf offenen
-  fällt genau diese Entität weg, und die Rückfrage erreicht die Suche ohne ihren Gegenstand. Das
-  Fehlerbild ist damit nicht „das Fenster ist zu breit", sondern „die Zerlegung beantwortet die
-  Rückfrage aus dem Verlauf, statt sie zu einer Suchanfrage umzuformulieren". Für T4 heißt das: Der
-  Ausgangswert dieser Klasse ist **niedrig**, nicht erwartungsgemäß hoch — „darf nicht fallen" ist
-  eine schwache Bedingung, wenn der Ausgangswert bei 4 von 9 liegt.
-- **`topic_switch` „mit Bleed" — trifft nicht zu.** Bleed ist **0** in 9 von 9 Wechselrunden. Siehe
-  den eigenen Abschnitt unten; die Kennzahl hat auf diesem Datensatz praktisch keinen
-  Dynamikbereich.
-- **`constraint_carryover` „innerhalb des heutigen 20-Nachrichten-Fensters teilweise gelöst" —
-  trifft zu**, und aus dem vorhergesagten Grund. In **4 von 9** Zielrunden trägt die erzeugte
-  Teilfrage die Angabe aus Runde 1 wörtlich („Die Dienstanweisung SOZ-DA-1/2023 besagt …", „nach
-  der Fassung 2024"); alle vier sind gelöst. In den übrigen fünf fehlt sie; zwei davon sind
-  trotzdem getroffen, drei nicht. Das ganze Fenster geht heute an die Zerlegung, und manchmal nimmt
-  sie die Angabe mit — genau die Referenz, die das kurze Suchfenster plus Notiz nicht
-  unterschreiten darf.
+**Verbesserte Fälle (3):** `verw-conv-ana-006`, `verw-conv-ts-001`, `verw-conv-cc-002`.
+**Verschlechterte Fälle (5):** `verw-conv-ts-009`, `verw-conv-cc-001`, `verw-conv-cc-003`,
+`verw-conv-cc-005`, `verw-conv-cc-009`. Auf Rundenebene sind 10 Runden hinzugekommen und 12
+weggefallen.
 
-> **Die Vergleichsgröße für T4 und T5 ist „Zielrunden, deren Teilfrage die Angabe trägt" — heute
-> **4 von 9** (`cc-003`, `-005`, `-008`, `-009`), abzulesen im Feld `subQueries` des
-> Mehrrunden-Reports.** Sie ist empfindlicher als der Anteil gelöster Fälle: Ein Fall kann aus
-> Gründen scheitern, die mit der Übernahme nichts zu tun haben (bei `cc-008` ist die Zielrunde 5
-> getroffen und trägt die Angabe, offen sind Runde 1 und ein Zwischenthema), und er kann getroffen
-> sein, ohne dass die Angabe je in einer Teilfrage stand (`cc-001`). Die beiden Mengen sind **nicht**
-> deckungsgleich: gelöste Fälle sind `cc-001`, `-003`, `-005`, `-009`, Zielrunden mit der Angabe
-> sind `cc-003`, `-005`, `-008`, `-009`. Beide Male vier, aber nicht dieselben vier.
+#### Die Vergleichsgröße: Zielrunden, deren Teilfrage die Rahmenangabe trägt
 
-### Themen-Bleed: warum die Zahl 0 ist und was sie nicht taugt
+**4 von 9 im Referenzlauf, 1 von 9 hier** — und nicht einer der vier von damals. Die Erwartung war,
+dass #1486 diese Zahl gegen null drückt und #1487 sie wiederherstellt; der erste Teil trifft zu, der
+zweite nicht.
+
+Der Bericht führt seit #1490 je Runde auch die Notizpunkte, die sie erhalten hat (Feld
+`conversationNote`), sodass sich zwei Ursachen trennen lassen, die vorher beide wie „die Notiz
+wirkt nicht" aussahen:
+
+| Zielrunde | Notizpunkte, die sie erhielt | trägt die Teilfrage die Angabe? |
+|---|---|---|
+| `cc-001#3` | „Arzt" | nein |
+| `cc-002#3` | „2023" | **ja** („galt es 2023") |
+| `cc-003#4` | „Prüfer", „Bearbeiter" | nein |
+| `cc-004#3` | „Rechtssprechende, Zuständigkeit: Ordnungsamt, Ort: Berlin, **Zeitraum: 2023**, …" | nein |
+| `cc-005#4` | „Berater", „Formular für Personensegmentierung" | nein |
+| `cc-006#3` | „Prüfer" | nein — die Teilfrage behauptet stattdessen die Fassung **2024** |
+| `cc-007#3` | „Mitarbeiter", „Formular UMW-08" | nein |
+| `cc-008#5` | „Bauamt" | nein |
+| `cc-009#4` | „Person, Zuständigkeit: Finanzamt, …, **Zeitraum: seit 2024, Fassung: 2024**, …", „STA-08" | nein |
+
+1. **Die Notiz trägt die Rahmenangabe in nur 3 von 9 Fällen** (`cc-002`, `cc-004`, `cc-009`). In den
+   übrigen sechs trägt **kein** Punkt ein Jahr; der erste ist durchgängig ein Rollenwort. Auslöser
+   ist das Antwortformat: `qwen2.5:1.5b-instruct` füllt die Aufzählung der Arten aus dem Prompt als
+   Vorlage aus („RAHMEN: Arzt", „ZUSTANDGEBIT: Zuständig für …", „ZEITALGM: 2023", „FASUNG: Fassung
+   2023", …), statt höchstens zwei Zeilen mit `RAHMEN:`/`ANTWORTFORM:`-Präfix zu liefern. Was daraus
+   einen leeren Punkt macht, sind aber **zwei Regeln in OPAAs eigenem Code**, nicht das Modell
+   allein:
+
+   - `ChatNoteExtraction.parse` nimmt die **ersten zwei** Zeilen (`MAX_POINTS_PER_TURN`); die Jahres-
+     oder Fassungszeile steht an vierter bis sechster Stelle und fällt heraus.
+   - `ChatNoteExtraction.kindOf` stuft eine Zeile mit **unbekanntem** Artpräfix („ZUSTANDGEBIT:") auf
+     `ANTWORTFORM` herab, und nur `RAHMEN`-Punkte erreichen die Suche. Von den zwei geparsten Punkten
+     bleibt damit einer übrig — bei `verw-conv-cc-001` genau `[„Arzt"]`.
+
+   Beide Regeln sind für sich begründet (ein redseliges Modell darf die Rahmenangabe aus Runde 1
+   nicht über den Deckel schieben; eine Zeile ohne erkennbare Art landet dort, wo ein überflüssiger
+   Punkt am wenigsten schadet). Zusammen mit diesem Antwortformat kosten sie die Angabe. Aufgenommen
+   als #1586.
+2. **Wo die Notiz sie trägt, nimmt die Zerlegung sie in einem von drei Fällen auf** (`cc-002` ja,
+   `cc-004` und `cc-009` nein). Die Teilfrage der Zielrunde ist fast durchgängig eine **erfundene
+   Aussage** über den Gegenstand statt einer Suchanfrage — dasselbe Fehlerbild, das der
+   Referenzbefund schon für `anaphora_resolution` beschrieben hat.
+
+Beides ist ein Ergebnis, kein Messfehler: Die Notiz ist gebaut, verdrahtet und in jeder der 83
+Runden erfolgreich verdichtet worden; sie erreicht die Zerlegung auch — aber der Weg von der
+Nutzeräußerung über die Verdichtung bis in die Teilfrage hält die Fassungsangabe nicht. Als
+Folgearbeit außerhalb von Epic #1482 aufgenommen in **#1586**.
+
+#### Der Vergleich ist kein reines A/B über Fenster und Notiz
+
+#1487 hat der **festen** Zerlegungs-Instruktion eine Zeile über die Gesprächsnotiz hinzugefügt, die
+bei jedem Aufruf mitgeht — auch bei einem ohne Notiz und ohne Verlauf. Messbar: **18 der 27 ersten
+Runden** liefern andere Teilfragen als im Referenzlauf, **13 der 27** eine andere Trefferliste,
+obwohl eine erste Runde weder ein Gesprächsfenster noch eine Notiz hat. Drei Fall-Urteile hängen an
+solchen Runden: `cc-006#1` und `cc-007#1` sind hinzugekommen, `cc-009#1` ist weggefallen.
+
+Wer die Klassenzahlen liest, liest also die Summe aus drei Änderungen (Suchfenster, Notiz,
+Instruktionszeile), nicht aus zweien. Eine saubere Trennung kostet einen weiteren Messlauf mit
+abgeschalteter Notiz-Zeile und ist als **#1587** aufgenommen, nicht in #1490 enthalten.
+
+#### Wo die Nachmessung von der Vorhersage der Spezifikation abweicht
+
+`docs/features/conversation-memory.md`, Abschnitt „Reihenfolge", sagt für die Schritte 3 und 4 drei
+Dinge voraus. **Eine trifft zu, zwei nicht.**
+
+- **„`anaphora_resolution` darf nicht fallen" — trifft zu.** Die Klasse steigt in allen vier
+  Metriken und von 4 auf 5 gelöste Fälle.
+- **„`topic_switch` muss steigen" — trifft auf der Metrikebene zu, auf der Fallebene nicht.** Alle
+  vier Rundenmetriken steigen, die Zahl gelöster Fälle bleibt bei 2 von 9: `ts-001` kommt hinzu,
+  `ts-009` fällt weg.
+- **„`constraint_carryover` muss mindestens die Referenz aus Schritt 2 wieder erreichen" — trifft
+  nicht zu.** Auf Fallebene 1 statt 4; MRR@8 und nDCG@8 der Klasse liegen unter der Referenz
+  (0,829 → 0,790 bzw. 0,857 → 0,835), Hit Rate@5 und Recall@8 darüber. Das ist der eine
+  Nachweis, den dieser Schritt schuldig bleibt.
+
+### Themen-Bleed: warum die Zahl wenig taugt
 
 Die Bleed-Zahl zählt ausschließlich die **erwarteten Dokumente der Vorrunden dieses Falls**, die im
 Trefferfenster der Wechselrunde stehen. Über die neun Wechselrunden sind das zusammen **zwölf**
@@ -458,88 +511,88 @@ namentlich festgelegte Dokumente: **siebenmal** genau eines (`ts-001`, `-002`, `
 drei Dokumenten aus 72 müsste also unter die acht Treffer der Wechselrunde geraten. Jede andere
 Verschmutzung durch Geschwisterdokumente des Altthemas ist per Definition unsichtbar.
 
-**Die Kennzahl hat auf diesem Datensatz damit praktisch keinen Dynamikbereich — in beide
-Richtungen.** Sie taugt weder als Verbesserungsmaß für T4 („`topic_switch` muss steigen") noch als
-Regressionswächter für T5 („die Notiz bleedet nicht"): Sie kann kaum fallen, weil sie schon bei 0
-liegt, und kaum steigen, weil dafür eines von zwölf benannten Dokumenten in ein Achterfenster
-geraten müsste. `topic_switch` wird in T4 und T5 deshalb über den **Anteil gelöster Fälle**
-beurteilt (heute 2 von 9), nicht über die Bleed-Zahl.
+**Die Kennzahl hat auf diesem Datensatz praktisch keinen Dynamikbereich — in beide Richtungen**, und
+war als Kriterium schon in #1485 zurückgezogen. Die Nachmessung bestätigt das: Sie steigt von 0 auf
+2 Dokumente in 2 von 9 Wechselrunden (`ts-007#3`: die Dienstanweisung des Standesamts aus Runde 2;
+`ts-008#2`: die Personalaktenauskunftsgebührensatzung aus Runde 1, auf Rang 4, während das Ziel der
+Wechselrunde auf Rang 1 steht). **Beide Wechselrunden sind trotzdem gelöst** — das
+Altthemen-Dokument steht im Fenster, ohne das Ziel von Rang 1 zu verdrängen. `topic_switch` wird deshalb über den **Anteil gelöster
+Fälle** beurteilt, nicht über die Bleed-Zahl.
 
-Zwei Gründe, warum sie hier bei 0 liegt:
+Der Datensatz misst zudem eine Verschmutzung nicht, die die Nachmessung sichtbar gemacht hat: In
+`ts-002#3` — einer **Folgerunde** im neuen Thema, nicht der Wechselrunde — steht der Notizpunkt
+„SOZ-08" aus dem Altthema in der Teilfrage und zieht den Formularhinweis des Sozialamts auf Rang 1.
+Die Bleed-Zahl sieht nur die Wechselrunde und kann das nicht zeigen.
 
-1. **Die Zerlegung nutzt den Verlauf kaum.** In allen neun Wechselrunden erzeugt sie keine an den
-   Verlauf geankerte Teilfrage, sondern eine frei erfundene Aussage über das **neue** Thema — etwa
-   „Dienstanweisung KAE-DA-1/2024 ist eine Regelwerkverordnung … des Bundesamt für
-   Arbeitssicherheit (BAG)". Ein Altthema, das nicht in die Teilfrage gerät, kann auch nicht ins
-   Trefferfenster bluten. Der Sicherheitsgurt greift dabei oft: `QueryDecompositionService`
-   verwirft die Zerlegung als „degenerate"/„pruned" und fällt auf die Einzelanfrage zurück.
+Zwei Gründe, warum die Zahl so klein bleibt:
+
+1. **Die Zerlegung nutzt den Verlauf kaum.** In den Wechselrunden erzeugt sie meist keine an den
+   Verlauf geankerte Teilfrage, sondern eine frei erfundene Aussage über das **neue** Thema. Ein
+   Altthema, das nicht in die Teilfrage gerät, kann auch nicht ins Trefferfenster bluten. Der
+   Sicherheitsgurt greift dabei oft: `QueryDecompositionService` verwirft die Zerlegung als
+   „degenerate"/„pruned" und fällt auf die Einzelanfrage zurück.
 2. **Fünf der neun Wechselfragen tragen eine Kennung** („Formular STA-07", „BUE-DA-2/2024") und sind
    damit für sich allein tragfähig; die vier übrigen (`ts-002`, `-003`, `-006`, `-007`) nennen ihr
    neues Thema immerhin mit vollem Namen. **Eine kurze, unterbestimmte Wechselfrage fehlt im
    Datensatz** — sie wäre die einzige Bauart, bei der die Zerlegung überhaupt auf den Verlauf
-   zurückgreifen müsste. Ob ein bis zwei solche Fälle nachgezogen werden, ist als Entscheidung an
-   #1446 vermerkt und keine Datenpflege: Sie kostet eine bewusste Baseline-Neuziehung.
+   zurückgreifen müsste. Ob ein bis zwei solche Fälle nachgezogen werden, ist eine Entscheidung
+   außerhalb dieses Epics und keine Datenpflege: Sie kostet eine bewusste Baseline-Neuziehung.
 
 ### `known_gap`-Fälle
 
-**18 von 27 Fällen**, Stand 2026-09-11. Die Einzelbegründung steht je Fall im Feld
+**19 von 27 Fällen**, Stand 2026-09-12. Die Einzelbegründung steht je Fall im Feld
 `expected_state_reason`; die Tabellen führen zusätzlich das gemessene Symptom.
 
-#### anaphora_resolution (5 Fälle)
+#### anaphora_resolution (4 Fälle)
 
-| Fall | Symptom im Lauf vom 2026-09-11 (Pipeline-Pfad) |
+| Fall | Symptom im Lauf vom 2026-09-12 (Pipeline-Pfad) |
 |---|---|
-| `verw-conv-ana-004` | Runde 2 außerhalb des Fensters: verwaltung-0038_verwaltungsgebuehrensatzung.md; Runde 3 im Fenster, aber Rang 1: verwaltung-0011_gebuehrenordnung-bauamt.md |
-| `verw-conv-ana-005` | Runde 2 außerhalb des Fensters: verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md |
-| `verw-conv-ana-006` | Runde 2 außerhalb des Fensters: verwaltung-0055_formularhinweis-jugendamt-7.md |
-| `verw-conv-ana-007` | Runden 1 und 3 gelöst; Runde 2 außerhalb des Fensters: verwaltung-0029_formularhinweis-standesamt-7.md |
-| `verw-conv-ana-009` | Runde 1 außerhalb des Fensters: verwaltung-0052_gebuehrenordnung-jugendamt.md; Runde 3 außerhalb des Fensters: verwaltung-0054_dienstanweisung-jugendamt-2-2024.md |
+| `verw-conv-ana-004` | Runde 2 mit falschem Rang 1 (verwaltung-0039_gebuehrenordnung-kaemmerei.md, Ziel auf Rang 2); Runde 3 außerhalb des Fensters |
+| `verw-conv-ana-005` | Runde 2 außerhalb des Fensters: verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md; Rang 1 belegt die Vertretungsregelung |
+| `verw-conv-ana-007` | Runde 2 außerhalb des Fensters: verwaltung-0029_formularhinweis-standesamt-7.md; Runde 3 hält es nur auf Rang 2 (im Referenzlauf war Runde 3 gelöst) |
+| `verw-conv-ana-009` | Runde 1 findet die Gebührenordnung Jugendamt nicht (zwei von drei erwarteten Dokumenten); Runde 3 außerhalb des Fensters: verwaltung-0054_dienstanweisung-jugendamt-2-2024.md |
 
 > **Vermerk zu `verw-conv-ana-004#3`** („Gilt **sie** auch für eine Eilbearbeitung?" →
 > `verwaltung-0039_gebuehrenordnung-kaemmerei.md`): Diese Runde ist der Bauart nach kein
 > Anaphern-, sondern ein Multi-Hop-Fall. Das Wort „Kämmerei" fällt im ganzen Gesprächsfenster nicht;
 > der Schritt Verwaltungsgebührensatzung → Kämmerei → deren Gebührenordnung steht nur im
-> Geschäftsverteilungsplan. Sie wird deshalb auch in T4 und T5 nicht kippen. Der Fall bleibt im
-> Datensatz — er ist `known_gap` und verzerrt keine Zahl nach oben —, taugt aber nicht als Beleg
-> für oder gegen einen Fenster-Baustein.
+> Geschäftsverteilungsplan. Der Fall bleibt im Datensatz — er ist `known_gap` und verzerrt keine
+> Zahl nach oben —, taugt aber nicht als Beleg für oder gegen einen Fenster-Baustein. Die
+> Nachmessung bestätigt das: Die Runde ist unverändert offen.
 
-#### topic_switch (7 Fälle, Bleed in keinem)
+#### topic_switch (7 Fälle)
 
-| Fall | Wechselrunde | Symptom im Lauf vom 2026-09-11 (Pipeline-Pfad) |
+| Fall | Wechselrunde | Symptom im Lauf vom 2026-09-12 (Pipeline-Pfad) |
 |---|---|---|
-| `verw-conv-ts-001` | 3 (gelöst) | Runde 2 im Fenster, aber Rang 1: verwaltung-dienstanweisung-aktenaufbewahrung.md |
-| `verw-conv-ts-002` | 2 (offen) | Wechselrunde selbst: Rang 1 verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md; die Zerlegung erfindet eine Rechtsgrundlage |
-| `verw-conv-ts-003` | 3 (gelöst) | Runde 2 außerhalb des Fensters: verwaltung-0038_verwaltungsgebuehrensatzung.md |
-| `verw-conv-ts-004` | 2 (offen) | Wechselrunde außerhalb des Fensters: verwaltung-0048_formularhinweis-personalamt-7.md; die Rückkehr zum Altthema in Runde 4 verliert verwaltung-0060_dienstanweisung-umweltamt-2-2024.md |
-| `verw-conv-ts-005` | 2 (offen) | Wechselrunde und Folgerunde 3 außerhalb des Fensters: verwaltung-0035_dienstanweisung-buergeramt-2-2024.md |
-| `verw-conv-ts-007` | 3 (gelöst) | Wechselrunde 3 und Folgerunde 4 gelöst; Runde 2 vor dem Wechsel außerhalb des Fensters: verwaltung-0027_dienstanweisung-standesamt-1-2024.md |
-| `verw-conv-ts-008` | 2 (gelöst) | Folgerunde 3 im neuen Thema außerhalb des Fensters: verwaltung-0006_dienstanweisung-sozialamt-2-2024.md |
+| `verw-conv-ts-002` | 2 (gelöst) | Folgerunde 3 im neuen Thema offen: der Notizpunkt „SOZ-08" aus dem Altthema steht in der Teilfrage, verwaltung-0008_formularhinweis-sozialamt-8.md verdrängt die Abfallgebührensatzung |
+| `verw-conv-ts-003` | 3 (gelöst) | Vorrunde 2 mit falschem Rang 1: verwaltung-0039_gebuehrenordnung-kaemmerei.md, Ziel auf Rang 2 |
+| `verw-conv-ts-004` | 2 (gelöst) | Folgerunde 3 außerhalb des Fensters: verwaltung-0048_formularhinweis-personalamt-7.md; die Rückkehr zum Altthema in Runde 4 verliert verwaltung-0060_dienstanweisung-umweltamt-2-2024.md |
+| `verw-conv-ts-005` | 2 (gelöst) | Folgerunde 3 außerhalb des Fensters: verwaltung-0035_dienstanweisung-buergeramt-2-2024.md |
+| `verw-conv-ts-007` | 3 (gelöst, mit Bleed) | Vorrunde 2 mit falschem Rang 1, Ziel auf Rang 3; in der Wechselrunde 3 steht dasselbe Altthemen-Dokument im Fenster |
+| `verw-conv-ts-008` | 2 (gelöst, mit Bleed) | Folgerunde 3 im neuen Thema außerhalb des Fensters: verwaltung-0006_dienstanweisung-sozialamt-2-2024.md |
+| `verw-conv-ts-009` | 2 (offen) | **Rückschritt:** Wechselrunden 2 und 3 nennen KAE-DA-1/2024 in der Teilfrage, ordnen sie aber dem Jugendamt des Altthemas zu; verwaltung-0053 bzw. verwaltung-0054 belegen Rang 1 |
 
-#### constraint_carryover (6 Fälle, davon einer mit erwarteter Abweichung)
+#### constraint_carryover (8 Fälle)
 
-| Fall | Symptom im Lauf vom 2026-09-11 (Pipeline-Pfad) |
+| Fall | Symptom im Lauf vom 2026-09-12 (Pipeline-Pfad) |
 |---|---|
-| `verw-conv-cc-001` | gemessen gelöst **(erwartete Abweichung: Treffer ohne den geprüften Mechanismus — die Teilfrage der Zielrunde trägt die Angabe nicht)** |
-| `verw-conv-cc-002` | Zielrunde 3 ohne die Angabe in der Teilfrage: Rang 1 verwaltung-0011_gebuehrenordnung-bauamt.md, Ziel auf Rang 2, Verwechslungspartner auf Rang 3 |
-| `verw-conv-cc-004` | Zielrunde 3 nennt das Ordnungsamt, aber kein Jahr: Verwechslungspartner ORD-DA-1/2024 auf Rang 1, Ziel auf Rang 2; zusätzlich verfehlt das Zwischenthema in Runde 2 die Vertretungsregelung |
-| `verw-conv-cc-006` | Zielrunde 3 getroffen; Runde 1 außerhalb des Fensters: verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md |
-| `verw-conv-cc-007` | Runde 1 mit falschem Rang 1; Zielrunde 3 außerhalb des Fensters: verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md |
-| `verw-conv-cc-008` | Zielrunde 5 getroffen und mit der Angabe „BAU-DA-1/2024" in der Teilfrage; offen sind Runde 1 und das Zwischenthema in Runde 3, in denen jeweils verwaltung-0005_dienstanweisung-sozialamt-1-2024.md Rang 1 belegt |
+| `verw-conv-cc-001` | **Rückschritt:** Zielrunde 3 stellt die Fassung 2024 auf Rang 1; Notizpunkt „Arzt" ohne Jahr |
+| `verw-conv-cc-003` | **Rückschritt:** Zielrunde 4 stellt SOZ-DA-2/2024 auf Rang 1, Ziel auf Rang 2; zusätzlich offen ist das Zwischenthema in Runde 2 |
+| `verw-conv-cc-004` | Zielrunde 3 nimmt den Notizpunkt mit „Zeitraum: 2023" nicht auf: Verwechslungspartner ORD-DA-1/2024 auf Rang 1, Ziel auf Rang 2. Das Zwischenthema in Runde 2 ist neu gelöst |
+| `verw-conv-cc-005` | **Rückschritt:** Zielrunde 4 stellt die Fassung 2023 auf Rang 1, Ziel auf Rang 4 |
+| `verw-conv-cc-006` | Runde 1 neu gelöst; Zielrunde 3 dafür offen — die Teilfrage behauptet die Fassung 2024, die damit Rang 1 belegt |
+| `verw-conv-cc-007` | Runde 1 neu gelöst; Zielrunde 3 offen, Ziel erst auf Rang 5 |
+| `verw-conv-cc-008` | Zwischenthema in Runde 3 neu gelöst; offen sind Runde 1 und die Zielrunde 5 (BAU-DA-1/2023 auf Rang 1, Ziel auf Rang 2) |
+| `verw-conv-cc-009` | **Rückschritt:** Zielrunde 4 nimmt den Notizpunkt mit „Fassung: 2024" nicht auf, Ziel auf Rang 3; Runde 1 ist ebenfalls weggefallen — sie hat weder Fenster noch Notiz und hängt an der Instruktionszeile aus #1487 |
 
 ### Erwartete Abweichungen dieser Klassen (`expected_state_exception`)
 
-**Fortschreibung innerhalb dieses PRs:** Der erste Lauf führte `verw-conv-cc-005` und
-`verw-conv-cc-009` mit einer erwarteten Abweichung; die Begründung lautete, die Fassung 2024 stehe
-in der Rangfolge ohnehin vor der Fassung 2023, ein Treffer auf sie belege also nichts. **Dieses
-Argument ist durch den korrigierten Lauf widerlegt** und deshalb zurückgezogen: Ohne den
-Verwechslungspartner im Gesprächsfenster steht bei `verw-conv-cc-001` die Fassung **2023** auf
-Rang 1, eine generelle Bevorzugung der neueren Fassung gibt es also nicht. Beide Fälle tragen
-zudem die Angabe aus Runde 1 wörtlich in der Teilfrage ihrer Zielrunde und stehen seither auf
-`solved`.
-
-| Fall | Grund |
-|---|---|
-| `verw-conv-cc-001` | Gemessen gelöst, aber nicht durch die übernommene Rahmenangabe: Die Teilfrage der Zielrunde nennt weder „Fassung 2023" noch ein Datum; dass die Fassung 2023 trotzdem vor der Fassung 2024 steht, hängt am Wortlaut, den die Zerlegung in diesem Lauf erzeugt hat. Bleibt `known_gap` nach derselben Regel wie `metadata_filter` vor #1070 — ein Treffer ohne den geprüften Mechanismus belegt keine Fähigkeit. |
+**Derzeit keine.** Die einzige, die es je gab, trug `verw-conv-cc-001`: Der Fall galt als
+`known_gap`, wurde im Referenzlauf aber gelöst gemessen — ohne den geprüften Mechanismus, weil die
+Teilfrage der Zielrunde die Angabe nicht trug. Mit der Nachmessung ist er **auch gemessen offen**;
+die Ausnahme hat damit keinen Gegenstand mehr und ist am Fall entfernt. Ein `known_gap`-Fall, den
+die heutige Rangfolge zufällig löst, bekommt sie jederzeit wieder — nach derselben Regel wie
+`metadata_filter` vor #1070.
 
 ## Overfitting-Risiko
 

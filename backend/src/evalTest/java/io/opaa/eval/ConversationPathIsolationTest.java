@@ -100,13 +100,14 @@ class ConversationPathIsolationTest {
   }
 
   /**
-   * The tolerance {@link ConversationBaselineVerdict#PENDING_REMEASUREMENT_FIELDS} grants may not
-   * outlive its reason (issue #1553). It exists because the committed baseline predates the search
-   * window (#1486) and the Gesprächsnotiz (#1487); this test pins exactly that, so the re-measured
-   * baseline of #1490 turns it red and forces the tolerance out of the verdict rules with it.
+   * The committed baseline measures the two Gesprächsgedächtnis dimensions productively (#1490).
+   * Pinned rather than merely observed: while it still carried the pre-#1486/#1487 values, the
+   * verdict granted them a named "nicht beurteilt" tolerance — a baseline falling back to those
+   * values would silently switch this path's comparison off again, now without that tolerance to
+   * catch it.
    */
   @Test
-  void theNotJudgedGateIsStillNeededByTheCommittedBaseline() throws IOException {
+  void theCommittedBaselineMeasuresTheProductionConversationMemory() throws IOException {
     EvalDomainConfig domain = EvalDomainConfig.VERWALTUNG;
 
     ConversationBaseline baseline =
@@ -114,17 +115,9 @@ class ConversationPathIsolationTest {
             RepoPaths.evalDir().resolve("baseline").resolve(domain.conversationBaselineFileName()));
 
     assertThat(baseline.fixedPoints().searchWindowTurns())
-        .as(
-            "Die committete Baseline trägt nicht mehr den Wert aus der Zeit vor #1486 — sie ist "
-                + "offenbar neu gezogen (#1490). Dann ist die Nicht-beurteilt-Ausnahme in "
-                + "ConversationBaselineVerdict.PENDING_REMEASUREMENT_FIELDS gegenstandslos und "
-                + "muss zusammen mit dieser Prüfung entfernt werden.")
-        .isEqualTo(ConversationMemoryProfile.SEARCH_WINDOW_QUESTION_ONLY);
+        .isNotEqualTo(ConversationMemoryProfile.SEARCH_WINDOW_QUESTION_ONLY);
     assertThat(baseline.fixedPoints().conversationNoteCap())
-        .as("Dasselbe für die Gesprächsnotiz (#1487).")
-        .isEqualTo(ConversationMemoryProfile.NO_CONVERSATION_NOTE);
-    assertThat(ConversationBaselineVerdict.PENDING_REMEASUREMENT_FIELDS)
-        .containsExactlyInAnyOrder("searchWindowTurns", "conversationNoteCap");
+        .isNotEqualTo(ConversationMemoryProfile.NO_CONVERSATION_NOTE);
   }
 
   /**

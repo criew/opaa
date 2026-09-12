@@ -344,6 +344,33 @@ class ConversationRetrievalEvaluatorTest {
     assertThat(pipeline.notes.get("verw-conv-001#2")).containsExactly("Bezugsjahr 2024");
   }
 
+  /**
+   * The report carries what each turn actually received (#1490). Without it a run cannot tell "the
+   * note never carried the Angabe" from "the decomposition ignored it" - the two explanations of a
+   * fallen constraint_carryover that call for opposite follow-up work.
+   */
+  @Test
+  void theReportRecordsTheNoteEachTurnReceived() {
+    ConversationCase conversationCase = twoTurnCase("constraint_carryover");
+    RecordingPipeline pipeline = new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B)));
+
+    ConversationRetrievalEvaluator.CaseOutcome outcome =
+        ConversationRetrievalEvaluator.evaluateCase(
+            conversationCase,
+            chatMemory(20),
+            pipeline,
+            userMessage ->
+                List.of(new ChatNoteCandidate("Bezugsjahr 2024", ChatNoteItemKind.RAHMEN)),
+            10);
+
+    ConversationEvaluationReport.ConversationCaseResult caseResult =
+        ConversationRetrievalEvaluator.report(List.of(outcome), runConfiguration())
+            .cases()
+            .getFirst();
+    assertThat(caseResult.turns().get(0).conversationNote()).isEmpty();
+    assertThat(caseResult.turns().get(1).conversationNote()).containsExactly("Bezugsjahr 2024");
+  }
+
   /** Only RAHMEN points reach the decomposition - the same filter production applies. */
   @Test
   void anAntwortformPointNeverReachesTheDecomposition() {
