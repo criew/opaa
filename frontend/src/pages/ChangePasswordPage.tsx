@@ -5,18 +5,22 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { Navigate, Link as RouterLink, useLocation, useNavigate } from 'react-router'
-import FieldLabel from '../components/wizard/FieldLabel'
 import AuthLayout from '../components/auth/AuthLayout'
+import NewPasswordField from '../components/auth/NewPasswordField'
+import PasswordField from '../components/auth/PasswordField'
 import SectionEyebrow from '../components/auth/SectionEyebrow'
 import PageHeading from '../components/a11y/PageHeading'
 import { FieldValidationError } from '../services/authApi'
 import { useAuthStore } from '../stores/authStore'
 import { notify } from '../stores/notificationStore'
 import { AFTER_SIGN_IN_ROUTE, LOGIN_ROUTE } from '../routes'
-import { passwordChangeReasonMessage, passwordFieldErrorMessage } from '../utils/authMessages'
+import {
+  fieldErrorMessages,
+  passwordChangeReasonMessage,
+  passwordPolicyText,
+} from '../utils/authMessages'
 import { redirectTargetOf } from '../utils/safeRedirectPath'
 import { radius } from '../theme/tokens'
 
@@ -70,14 +74,7 @@ export default function ChangePasswordPage() {
       navigate(redirectTargetOf(location.state, location.search), { replace: true })
     } catch (err) {
       if (err instanceof FieldValidationError && err.fieldErrors.length > 0) {
-        setFieldErrors(
-          Object.fromEntries(
-            err.fieldErrors.map((entry) => [
-              entry.field,
-              passwordFieldErrorMessage(entry.code, minLength),
-            ]),
-          ),
-        )
+        setFieldErrors(fieldErrorMessages(err.fieldErrors, minLength))
       } else if (err instanceof FieldValidationError) {
         setFormError(err.message)
       } else {
@@ -123,55 +120,38 @@ export default function ChangePasswordPage() {
       <Box component="form" onSubmit={submit} noValidate sx={{ mt: 3 }}>
         <SectionEyebrow id="change-password-title">Neues Passwort</SectionEyebrow>
         <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5, mb: 2 }}>
-          {`Mindestens ${minLength} Zeichen, höchstens 64. Das Passwort darf nicht Ihrer E-Mail-Adresse entsprechen und nicht auf der Liste besonders häufiger Passwörter stehen.`}
+          {passwordPolicyText(minLength)}
         </Typography>
         <Stack spacing={2}>
-          <Box>
-            <FieldLabel htmlFor="change-password-current">Aktuelles Passwort</FieldLabel>
-            <TextField
-              id="change-password-current"
-              inputRef={currentRef}
-              type="password"
-              size="small"
-              fullWidth
-              autoComplete="current-password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              disabled={busy}
-              error={Boolean(fieldErrors.currentPassword)}
-              helperText={fieldErrors.currentPassword}
-            />
-          </Box>
-          <Box>
-            <FieldLabel htmlFor="change-password-new">Neues Passwort</FieldLabel>
-            <TextField
-              id="change-password-new"
-              type="password"
-              size="small"
-              fullWidth
-              autoComplete="new-password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              disabled={busy}
-              error={Boolean(fieldErrors.newPassword)}
-              helperText={fieldErrors.newPassword}
-            />
-          </Box>
-          <Box>
-            <FieldLabel htmlFor="change-password-repeat">Neues Passwort wiederholen</FieldLabel>
-            <TextField
-              id="change-password-repeat"
-              type="password"
-              size="small"
-              fullWidth
-              autoComplete="new-password"
-              value={repeatedPassword}
-              onChange={(e) => setRepeatedPassword(e.target.value)}
-              disabled={busy}
-              error={Boolean(fieldErrors.repeatedPassword)}
-              helperText={fieldErrors.repeatedPassword}
-            />
-          </Box>
+          <PasswordField
+            id="change-password-current"
+            label="Aktuelles Passwort"
+            value={currentPassword}
+            onChange={setCurrentPassword}
+            autoComplete="current-password"
+            disabled={busy}
+            errorMessage={fieldErrors.currentPassword}
+            inputRef={currentRef}
+          />
+          <NewPasswordField
+            id="change-password-new"
+            label="Neues Passwort"
+            value={newPassword}
+            onChange={setNewPassword}
+            minLength={minLength}
+            disabled={busy}
+            errorMessage={fieldErrors.newPassword}
+            onGenerated={setRepeatedPassword}
+          />
+          <PasswordField
+            id="change-password-repeat"
+            label="Neues Passwort wiederholen"
+            value={repeatedPassword}
+            onChange={setRepeatedPassword}
+            autoComplete="new-password"
+            disabled={busy}
+            errorMessage={fieldErrors.repeatedPassword}
+          />
           <Button
             type="submit"
             variant="contained"

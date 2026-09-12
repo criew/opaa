@@ -91,6 +91,33 @@ describe('ChangePasswordPage', () => {
     expect(await screen.findByText('Chat')).toBeInTheDocument()
   })
 
+  /**
+   * The voluntary change out of the user settings: the store adopts the session the backend mints in
+   * the same answer, so the person stays signed in and returns to where they started - no sign-in
+   * page in between (ADR-0033, Entscheidung 8).
+   */
+  it('keeps a voluntary change signed in and returns to the settings', async () => {
+    const changePassword = vi.fn().mockResolvedValue(undefined)
+    useAuthStore.setState({ changePassword })
+    renderWithProviders(
+      <Routes>
+        <Route path="/account/password" element={<ChangePasswordPage />} />
+        <Route path="/settings" element={<div>Ihre Einstellungen</div>} />
+        <Route path="/login" element={<div>Anmeldung</div>} />
+      </Routes>,
+      { withRouter: true, initialRoute: '/account/password?from=%2Fsettings' },
+    )
+
+    await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), 'alt')
+    await userEvent.type(screen.getByLabelText('Neues Passwort'), 'ein-neues-passwort')
+    await userEvent.type(screen.getByLabelText('Neues Passwort wiederholen'), 'ein-neues-passwort')
+    await userEvent.click(screen.getByRole('button', { name: 'Passwort speichern' }))
+
+    expect(await screen.findByText('Ihre Einstellungen')).toBeInTheDocument()
+    expect(screen.queryByText('Anmeldung')).not.toBeInTheDocument()
+    expect(useAuthStore.getState().isAuthenticated).toBe(true)
+  })
+
   it('shows a policy violation at the offending field', async () => {
     const changePassword = vi
       .fn()

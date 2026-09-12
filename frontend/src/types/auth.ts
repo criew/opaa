@@ -47,6 +47,12 @@ export interface AuthUser {
   email: string | null
   displayName: string | null
   systemRole: SystemRole
+  /**
+   * The creation reason a system administrator recorded for a local account (ADR-0033,
+   * Entscheidung 11): part of the person's own self-disclosure, which is why the user settings show
+   * it. Absent for an account of an identity provider - it has none.
+   */
+  createdReason?: string | null
 }
 
 export type UserInfoResponse = components['schemas']['UserInfoResponse']

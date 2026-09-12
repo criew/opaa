@@ -24,6 +24,7 @@ describe('SettingsPage', () => {
       },
       mode: 'oidc',
       isAuthenticated: true,
+      sessionKind: 'oidc',
     })
   })
 
@@ -121,5 +122,54 @@ describe('SettingsPage', () => {
       'href',
       '/admin/branding',
     )
+  })
+  // ADR-0033, Entscheidung 11: the creation reason belongs to the person's own self-disclosure.
+  it('shows the creation reason a system administrator recorded', () => {
+    useAuthStore.setState({
+      user: {
+        id: 'user-1',
+        email: 'b.wagner@example.de',
+        displayName: 'B. Wagner',
+        systemRole: 'USER',
+        createdReason: 'Projektbefristung Digitalisierung bis 31.12.2026',
+      },
+      sessionKind: 'local',
+    })
+    renderPage()
+
+    expect(screen.getByText('Anlass des Kontos')).toBeInTheDocument()
+    expect(screen.getByText('Projektbefristung Digitalisierung bis 31.12.2026')).toBeInTheDocument()
+  })
+
+  it('leaves the creation reason out for an account that has none', () => {
+    renderPage()
+    expect(screen.queryByText('Anlass des Kontos')).not.toBeInTheDocument()
+  })
+
+  // The password section belongs to local accounts only (#1540); a provider account is pointed at
+  // its provider instead of being offered a mask that would not work.
+  it('offers the password change to a local session', () => {
+    useAuthStore.setState({ sessionKind: 'local' })
+    renderPage()
+
+    expect(screen.getByRole('link', { name: 'Passwort ändern' })).toHaveAttribute(
+      'href',
+      '/account/password',
+    )
+  })
+
+  it('points a provider session at its provider instead', () => {
+    renderPage()
+
+    expect(screen.queryByRole('link', { name: 'Passwort ändern' })).not.toBeInTheDocument()
+    expect(screen.getByText(/Ihr Passwort verwaltet der Identitätsanbieter/)).toBeInTheDocument()
+  })
+
+  it('says nothing about passwords in the development sign-in', () => {
+    useAuthStore.setState({ mode: 'dev', sessionKind: null })
+    renderPage()
+
+    expect(screen.queryByRole('link', { name: 'Passwort ändern' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Ihr Passwort verwaltet/)).not.toBeInTheDocument()
   })
 })
