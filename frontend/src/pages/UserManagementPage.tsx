@@ -89,10 +89,15 @@ export default function UserManagementPage() {
 
         <LocalUserReviewNotice
           summary={summary}
+          // Der Sprung setzt jeden anderen Filter zurück (Review-Runde 1, LOW 10): Der Hinweis
+          // nennt eine Zahl über alle Konten, und eine stehende Rollen- oder Zustandsauswahl
+          // zeigte danach weniger Zeilen, als die Zahl verspricht.
           onShowWithoutExpiry={() =>
-            void setFilters({ review: 'WITHOUT_EXPIRY', status: null, query: '' })
+            void setFilters({ review: 'WITHOUT_EXPIRY', status: null, role: null, query: '' })
           }
-          onShowInvited={() => void setFilters({ status: 'INVITED', review: 'ALL', query: '' })}
+          onShowInvited={() =>
+            void setFilters({ status: 'INVITED', review: 'ALL', role: null, query: '' })
+          }
         />
 
         {error && (

@@ -34,7 +34,9 @@ test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)',
     await column.getByRole('link', { name: 'Benutzer', exact: true }).click()
     await page.waitForURL('**/admin/users')
     await expect(page.getByRole('heading', { level: 1, name: 'Benutzer' })).toBeVisible()
-    await expect(page.getByRole('table', { name: 'Lokale Konten' })).toBeVisible()
+    // Das Suchfeld statt der Tabelle: Im dev-Stack gibt es kein lokales Konto, die Liste zeigt
+    // dort ihren Leerzustand ohne <table>.
+    await expect(page.getByRole('searchbox', { name: 'Lokale Konten suchen' })).toBeVisible()
 
     await column.getByRole('link', { name: 'Gruppen', exact: true }).click()
     await page.waitForURL('**/admin/groups')

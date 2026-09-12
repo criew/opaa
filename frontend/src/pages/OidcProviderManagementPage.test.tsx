@@ -89,7 +89,9 @@ describe('OidcProviderManagementPage', () => {
     expect(mockOidcProviders.find((p) => p.displayName === 'Landesportal')?.clientId).toBe(
       'opaa-land',
     )
-  })
+    // 20 s statt der voreingestellten 5: Der Test tippt in vier MUI-Felder, und jede Eingabe
+    // rendert die Seite neu - auf einer ausgelasteten Maschine reicht das Standardlimit nicht.
+  }, 20000)
 
   it('asks for confirmation before a roles claim is set and saves it afterwards', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -117,7 +119,7 @@ describe('OidcProviderManagementPage', () => {
           ?.claimMapping,
       ).toMatchObject({ rolesClaim: 'realm_access.roles', systemAdminRole: 'opaa-admin' })
     })
-  })
+  }, 20000)
 
   /** ADR-0025: the confirmation is answered by its own button only - a second click on the
    * footer button cannot stand in for it, and editing without a new roles claim needs none. */
@@ -155,7 +157,7 @@ describe('OidcProviderManagementPage', () => {
         'Verzeichnisdienst (Haus)',
       )
     })
-  })
+  }, 20000)
 
   it('makes a reachable provider the default with a consequence hint, and refuses an unreachable one', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -237,7 +239,9 @@ describe('OidcProviderManagementPage', () => {
       const cards = screen.getAllByRole('article')
       expect(within(cards[0]).getByRole('heading', { level: 2 })).toHaveTextContent('Partnerportal')
     })
-    expect(mockOidcProviders.find((p) => p.displayName === 'Partnerportal')?.sortOrder).toBe(0)
+    // Die gesendete Reihenfolge enthält alle Zeilen der Tabelle; Position 0 hält die LOCAL-Zeile,
+    // der erste Anbieter liegt damit auf 1 (#1541).
+    expect(mockOidcProviders.find((p) => p.displayName === 'Partnerportal')?.sortOrder).toBe(1)
   })
 
   it('shows the API message when an issuer change is refused for a provider with accounts', async () => {

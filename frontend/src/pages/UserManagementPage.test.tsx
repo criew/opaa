@@ -11,6 +11,7 @@ import {
   setMockLocalAuthSettings,
   setMockLocalUsers,
 } from '../mocks/localUserFixtures'
+import type { LocalAuthSettingsUpdateRequest, LocalUserUpdateRequest } from '../types/api'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { useMailStore } from '../stores/mailStore'
@@ -257,6 +258,64 @@ describe('UserManagementPage', () => {
     )
   })
 
+  /**
+   * Regressionsschutz zu Review-Runde 1 (HIGH 2): Der PATCH sendete `expiresAt` immer mit —
+   * auf 23:59:59 Ortszeit zurückgerechnet. Eine reine Namensänderung verschob damit das
+   * Ablaufdatum und stand als Fristverschiebung im `LOCAL_USER_CHANGED`-Ereignis, das
+   * Vorher/Nachher ausschließlich für `expires_at` führt.
+   */
+  it('leaves the expiry date out of a PATCH that only renames an account', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    const bodies: LocalUserUpdateRequest[] = []
+    server.use(
+      http.patch('/api/v1/admin/local-users/:id', async ({ params, request }) => {
+        const body = (await request.json()) as LocalUserUpdateRequest
+        bodies.push(body)
+        const stored = mockLocalUsers.find((account) => account.id === String(params.id))!
+        return HttpResponse.json({ ...stored, displayName: body.displayName ?? stored.displayName })
+      }),
+    )
+    renderWithProviders(<UserManagementPage />, { withRouter: true })
+    await screen.findByRole('table', { name: 'Lokale Konten' })
+
+    const menu = await openRowMenu(user, 'T. Klein')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
+    const dialog = await screen.findByRole('dialog')
+    const name = within(dialog).getByLabelText('Anzeigename')
+    await user.clear(name)
+    await user.type(name, 'T. Klein-Meier')
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0].displayName).toBe('T. Klein-Meier')
+    expect(bodies[0]).not.toHaveProperty('expiresAt')
+    expect(bodies[0].noExpiry).toBe(false)
+  }, 20000)
+
+  it('sends the new expiry date when it actually changed', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    const bodies: LocalUserUpdateRequest[] = []
+    server.use(
+      http.patch('/api/v1/admin/local-users/:id', async ({ params, request }) => {
+        bodies.push((await request.json()) as LocalUserUpdateRequest)
+        return HttpResponse.json(mockLocalUsers.find((a) => a.id === String(params.id))!)
+      }),
+    )
+    renderWithProviders(<UserManagementPage />, { withRouter: true })
+    await screen.findByRole('table', { name: 'Lokale Konten' })
+
+    const menu = await openRowMenu(user, 'T. Klein')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Kein Ablaufdatum' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0].noExpiry).toBe(true)
+  }, 20000)
+
   it('shows the backend reason when a deletion is refused', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
@@ -318,6 +377,64 @@ describe('UserManagementPage', () => {
     await waitFor(() => expect(useUserAdminStore.getState().settings?.enabled).toBe(false))
   })
 
+  /**
+   * Regressionsschutz zu Review-Runde 1 (HIGH 1): Der Schalter speicherte den halb getippten
+   * Regel-Entwurf mit — gemessen wurde eine Ablauf-Vorbelegung, die von 365 auf 3 sprang, und ein
+   * leeres Zahlenfeld ließ das Umschalten als `NaN` still scheitern.
+   */
+  it('saves a switch from the server state, not from the half-typed rules draft', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    const bodies: LocalAuthSettingsUpdateRequest[] = []
+    server.use(
+      http.put('/api/v1/admin/local-auth-settings', async ({ request }) => {
+        const body = (await request.json()) as LocalAuthSettingsUpdateRequest
+        bodies.push(body)
+        setMockLocalAuthSettings({ ...mockLocalAuthSettings, ...body })
+        return HttpResponse.json(mockLocalAuthSettings)
+      }),
+    )
+    renderWithProviders(<UserManagementPage />, { withRouter: true })
+
+    const expiryField = await screen.findByLabelText(/Vorbelegtes Ablaufdatum/)
+    await user.clear(expiryField)
+    await user.type(expiryField, '3')
+    const minLength = screen.getByLabelText(/Mindestlänge des Passworts/)
+    await user.clear(minLength)
+
+    await user.click(screen.getByRole('switch', { name: 'Passwort vergessen' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0].passwordResetEnabled).toBe(false)
+    expect(bodies[0].defaultExpiryDays).toBe(365)
+    expect(bodies[0].passwordMinLength).toBe(12)
+    expect(await screen.findByText(/ist abgeschaltet/)).toBeInTheDocument()
+  }, 20000)
+
+  it('carries the typed domain list into the self-registration switch', async () => {
+    setMockLocalAuthSettings({ ...mockLocalAuthSettings, selfRegistrationAllowedDomains: [] })
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    const bodies: LocalAuthSettingsUpdateRequest[] = []
+    server.use(
+      http.put('/api/v1/admin/local-auth-settings', async ({ request }) => {
+        const body = (await request.json()) as LocalAuthSettingsUpdateRequest
+        bodies.push(body)
+        setMockLocalAuthSettings({ ...mockLocalAuthSettings, ...body })
+        return HttpResponse.json(mockLocalAuthSettings)
+      }),
+    )
+    renderWithProviders(<UserManagementPage />, { withRouter: true })
+
+    await user.type(await screen.findByLabelText(/Adress-Domänen/), 'amt.example')
+    await user.click(screen.getByRole('switch', { name: 'Selbstregistrierung' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    // Die Domänenliste ist die Vorbedingung genau dieses Schalters und reist deshalb mit.
+    expect(bodies[0].selfRegistrationAllowedDomains).toEqual(['amt.example'])
+    expect(bodies[0].selfRegistrationEnabled).toBe(true)
+  }, 20000)
+
   it('asks before self-registration is switched on and refuses it without a domain list', async () => {
     setMockLocalAuthSettings({ ...mockLocalAuthSettings, selfRegistrationAllowedDomains: [] })
     signInAs('SYSTEM_ADMIN')
@@ -350,6 +467,18 @@ describe('UserManagementPage', () => {
     expect(await screen.findByRole('switch', { name: 'Passwort vergessen' })).toBeDisabled()
     expect(screen.getByRole('switch', { name: 'Selbstregistrierung' })).toBeDisabled()
     expect(screen.getByText(/OPAA_PUBLIC_BASE_URL nicht gesetzt/)).toBeInTheDocument()
+  })
+
+  /** Review-Runde 1, MEDIUM 6: Ein Schalter auf „ein" darf nicht behaupten, der Fluss wirke. */
+  it('says why a switched-on link flow is currently unreachable', async () => {
+    setMockLocalAuthSettings({ ...mockLocalAuthSettings, enabled: false })
+    signInAs('SYSTEM_ADMIN')
+    renderWithProviders(<UserManagementPage />, { withRouter: true })
+
+    expect(await screen.findByRole('switch', { name: 'Passwort vergessen' })).toBeChecked()
+    expect(
+      screen.getByText(/Derzeit nicht erreichbar, weil die lokale Anmeldung abgeschaltet ist/),
+    ).toBeInTheDocument()
   })
 
   it('points at the mail settings when nothing can be sent', async () => {

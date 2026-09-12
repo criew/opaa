@@ -135,6 +135,8 @@ interface LinkFlowSwitchProps {
   disabled: boolean
   /** Set while the flow cannot be switched on at all - the switch is then locked with this hint. */
   lockedHint: string | null
+  /** Set while the flow is switched on but has no effect - the switch says so instead of lying. */
+  ineffectiveHint: string | null
   onChange: (next: boolean) => void
 }
 
@@ -143,7 +145,14 @@ interface LinkFlowSwitchProps {
  * und sagt warum (ADR-0033, Entscheidung 10) - der Tooltip erscheint nur dann, damit er nicht als
  * leeres `aria-label` am Bedienelement hängt.
  */
-function LinkFlowSwitch({ label, checked, disabled, lockedHint, onChange }: LinkFlowSwitchProps) {
+function LinkFlowSwitch({
+  label,
+  checked,
+  disabled,
+  lockedHint,
+  ineffectiveHint,
+  onChange,
+}: LinkFlowSwitchProps) {
   const control = (
     <FormControlLabel
       control={
@@ -156,13 +165,40 @@ function LinkFlowSwitch({ label, checked, disabled, lockedHint, onChange }: Link
       label={label}
     />
   )
-  return lockedHint === null ? (
-    control
-  ) : (
-    <Tooltip title={lockedHint}>
-      <span>{control}</span>
-    </Tooltip>
+  return (
+    <Box>
+      {lockedHint === null ? (
+        control
+      ) : (
+        <Tooltip title={lockedHint}>
+          <span>{control}</span>
+        </Tooltip>
+      )}
+      {ineffectiveHint !== null && (
+        <Typography sx={{ fontSize: 12, color: 'text.secondary', ml: 6, mt: -0.5 }}>
+          {ineffectiveHint}
+        </Typography>
+      )}
+    </Box>
   )
+}
+
+/**
+ * Warum ein eingeschalteter Fluss gerade trotzdem nicht erreichbar ist (Review-Runde 1, MEDIUM 6).
+ * Ein Schalter, der „ein" zeigt, obwohl das Backend den Fluss als abgeschaltet meldet, wäre eine
+ * falsche Auskunft; den gespeicherten Wert ändert der Satz nicht.
+ */
+function ineffectiveReason(settings: LocalAuthSettingsResponse, domains?: string[]): string | null {
+  if (!settings.publicBaseUrlConfigured) {
+    return 'Derzeit nicht erreichbar: ohne OPAA_PUBLIC_BASE_URL meldet das Backend den Fluss als abgeschaltet.'
+  }
+  if (!settings.enabled) {
+    return 'Derzeit nicht erreichbar, weil die lokale Anmeldung abgeschaltet ist.'
+  }
+  if (domains && domains.length === 0) {
+    return 'Derzeit nicht erreichbar, weil keine Adress-Domäne eingetragen ist.'
+  }
+  return null
 }
 
 /**
@@ -208,18 +244,32 @@ export default function LocalAuthSettingsCard() {
 
   const domains = parseDomains(draft.domains)
 
-  async function save(
-    overrides: Partial<LocalAuthSettingsUpdateRequest>,
+  async function persist(
+    request: LocalAuthSettingsUpdateRequest,
     success: (saved: LocalAuthSettingsResponse) => string,
   ) {
     setError(null)
     try {
-      const saved = await saveSettings(requestOf(settings!, draft!, overrides))
+      const saved = await saveSettings(request)
       setEdited(null)
       notify(success(saved), 'success')
     } catch (err) {
       setError(localUserErrorMessage(err, 'Die Einstellung konnte nicht gespeichert werden.'))
     }
+  }
+
+  /**
+   * Ein Schalterklick speichert den **Serverstand** plus seine eigene Änderung – nie den Entwurf
+   * der Regeln darunter (Review-Runde 1, HIGH 1): Ein halb getippter Zahlenwert würde sonst
+   * mitgespeichert, und ein leeres Feld ließe den Schalter als `NaN` still an der Validierung
+   * scheitern. `overrides` darf die Domänenliste mitführen – sie ist die Vorbedingung des
+   * Selbstregistrierungs-Schalters und gehört damit zu genau dieser Handlung.
+   */
+  function saveSwitch(
+    overrides: Partial<LocalAuthSettingsUpdateRequest>,
+    success: (saved: LocalAuthSettingsResponse) => string,
+  ) {
+    void persist(requestOf(settings!, draftOf(settings!), overrides), success)
   }
 
   function toggleEnabled(next: boolean) {
@@ -229,7 +279,7 @@ export default function LocalAuthSettingsCard() {
     ) {
       return
     }
-    void save({ enabled: next }, (saved) =>
+    saveSwitch({ enabled: next }, (saved) =>
       next
         ? 'Die lokale Anmeldung ist eingeschaltet.'
         : `Die lokale Anmeldung ist abgeschaltet. ${
@@ -251,7 +301,7 @@ export default function LocalAuthSettingsCard() {
     ) {
       return
     }
-    void save({ selfRegistrationEnabled: next }, () =>
+    saveSwitch({ selfRegistrationEnabled: next, selfRegistrationAllowedDomains: domains }, () =>
       next
         ? 'Die Selbstregistrierung ist eingeschaltet.'
         : 'Die Selbstregistrierung ist abgeschaltet.',
@@ -259,7 +309,7 @@ export default function LocalAuthSettingsCard() {
   }
 
   function togglePasswordReset(next: boolean) {
-    void save({ passwordResetEnabled: next }, () =>
+    saveSwitch({ passwordResetEnabled: next }, () =>
       next ? '„Passwort vergessen" ist eingeschaltet.' : '„Passwort vergessen" ist abgeschaltet.',
     )
   }
@@ -269,7 +319,10 @@ export default function LocalAuthSettingsCard() {
       setError(DOMAIN_REQUIRED_HINT)
       return
     }
-    void save({}, () => 'Die Regeln der lokalen Anmeldung wurden gespeichert.')
+    void persist(
+      requestOf(settings!, draft!),
+      () => 'Die Regeln der lokalen Anmeldung wurden gespeichert.',
+    )
   }
 
   const baseUrlMissing = !settings.publicBaseUrlConfigured
@@ -320,6 +373,11 @@ export default function LocalAuthSettingsCard() {
           lockedHint={
             baseUrlMissing && !settings.selfRegistrationEnabled ? PUBLIC_BASE_URL_HINT : null
           }
+          ineffectiveHint={
+            settings.selfRegistrationEnabled
+              ? ineffectiveReason(settings, parseDomains(draftOf(settings).domains))
+              : null
+          }
           onChange={toggleSelfRegistration}
         />
         <LinkFlowSwitch
@@ -329,6 +387,7 @@ export default function LocalAuthSettingsCard() {
           lockedHint={
             baseUrlMissing && !settings.passwordResetEnabled ? PUBLIC_BASE_URL_HINT : null
           }
+          ineffectiveHint={settings.passwordResetEnabled ? ineffectiveReason(settings) : null}
           onChange={togglePasswordReset}
         />
       </Box>

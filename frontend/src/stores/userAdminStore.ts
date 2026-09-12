@@ -86,6 +86,8 @@ interface UserAdminState {
   deleteUser: (id: string) => Promise<void>
   resetUserPassword: (id: string) => Promise<LocalUserPasswordResetResponse>
   generateUserPassword: (id: string) => Promise<LocalUserGeneratedPasswordResponse>
+  /** Adopts a mutation's own row and refreshes the review counts; internal to the store. */
+  patchRow: (updated: LocalUserResponse) => Promise<void>
 }
 
 const emptyState = {
@@ -195,56 +197,73 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
     }
   },
 
+  /*
+   * Auch die Mutationen prüfen die Sitzungs-Epoche vor dem Zurückschreiben (Review-Runde 1,
+   * LOW 9): Eine Anfrage, die erst nach einer Abmeldung antwortet, würde sonst Daten des
+   * vorherigen Kontos in einen gerade geleerten Store schreiben. Der Fehler wird weiter geworfen,
+   * damit der Aufrufer seine Meldung zeigen kann - er rendert dann ohnehin nicht mehr.
+   */
   saveSettings: async (request) => {
+    const sessionEpoch = currentSessionEpoch()
     set({ isSavingSettings: true, settingsError: null })
     try {
       const settings = await updateLocalAuthSettings(request)
+      if (isStaleSessionEpoch(sessionEpoch)) return settings
       set({ settings, isSavingSettings: false })
       return settings
     } catch (err) {
-      set({ isSavingSettings: false })
+      if (!isStaleSessionEpoch(sessionEpoch)) set({ isSavingSettings: false })
       throw err
     }
   },
 
   createUser: async (request) => {
+    const sessionEpoch = currentSessionEpoch()
     const created = await createLocalUser(request)
+    if (isStaleSessionEpoch(sessionEpoch)) return created
     await Promise.all([get().loadUsers(), get().loadSummary()])
     return created
   },
 
   updateUser: async (id, request) => {
     const updated = await updateLocalUser(id, request)
-    set({ users: get().users.map((u) => (u.id === id ? updated : u)) })
-    await get().loadSummary()
+    await get().patchRow(updated)
     return updated
   },
 
   lockUser: async (id, reason) => {
     const updated = await lockLocalUser(id, reason)
-    set({ users: get().users.map((u) => (u.id === id ? updated : u)) })
-    await get().loadSummary()
+    await get().patchRow(updated)
     return updated
   },
 
   unlockUser: async (id) => {
     const updated = await unlockLocalUser(id)
-    set({ users: get().users.map((u) => (u.id === id ? updated : u)) })
-    await get().loadSummary()
+    await get().patchRow(updated)
     return updated
   },
 
   deleteUser: async (id) => {
+    const sessionEpoch = currentSessionEpoch()
     await deleteLocalUser(id)
+    if (isStaleSessionEpoch(sessionEpoch)) return
     await Promise.all([get().loadUsers(), get().loadSummary()])
   },
 
   resetUserPassword: async (id) => requestLocalUserPasswordReset(id),
 
   generateUserPassword: async (id) => {
+    const sessionEpoch = currentSessionEpoch()
     const result = await generateLocalUserPassword(id)
     // The generated password forces a change at the next sign-in, so the row's marker changes.
-    await get().loadUsers()
+    if (!isStaleSessionEpoch(sessionEpoch)) await get().loadUsers()
     return result
+  },
+
+  patchRow: async (updated) => {
+    const sessionEpoch = currentSessionEpoch()
+    if (isStaleSessionEpoch(sessionEpoch)) return
+    set({ users: get().users.map((u) => (u.id === updated.id ? updated : u)) })
+    await get().loadSummary()
   },
 }))

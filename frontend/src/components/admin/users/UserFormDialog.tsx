@@ -149,14 +149,25 @@ export default function UserFormDialog({
     setSubmitting(true)
     try {
       if (isEdit) {
+        /*
+         * Das Ablaufdatum reist nur mit, wenn der **Tag** sich geändert hat (Review-Runde 1,
+         * HIGH 2): Ein unverändertes Feld würde sonst auf 23:59:59 Ortszeit zurückgerechnet und
+         * damit das gespeicherte Datum verschieben - und weil `LOCAL_USER_CHANGED` Vorher/Nachher
+         * ausschließlich für `expires_at` führt, stünde eine reine Namensänderung als
+         * Fristverschiebung im Protokoll.
+         */
+        const storedExpiry = toDateInputValue(user.expiresAt)
+        const expiryChanged = !draft.noExpiry && draft.expiresAt !== storedExpiry
+        const expiryRemoved = draft.noExpiry && Boolean(user.expiresAt)
         const request: LocalUserUpdateRequest = {
           email: draft.email.trim(),
           displayName: draft.displayName.trim(),
           systemRole: draft.systemRole,
           createdReason: draft.createdReason.trim(),
-          // noExpiry is the only way to remove a date - an absent expiresAt means „unchanged".
-          noExpiry: draft.noExpiry,
-          ...(draft.noExpiry ? {} : { expiresAt: fromDateInputValue(draft.expiresAt) }),
+          // noExpiry is the only way to remove a date; `false` plus an absent expiresAt means
+          // „unchanged" (the flag itself is not optional in the request schema).
+          noExpiry: expiryRemoved,
+          ...(expiryChanged ? { expiresAt: fromDateInputValue(draft.expiresAt) } : {}),
         }
         onUpdated(await updateUser(user.id, request))
       } else {

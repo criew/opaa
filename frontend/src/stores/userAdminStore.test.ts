@@ -7,7 +7,7 @@ import {
   OWNS_CONTENT_USER_ID,
   mockLocalUsers,
 } from '../mocks/localUserFixtures'
-import { apiErrorCode } from '../services/apiErrorDetails'
+import { apiErrorCode, apiFieldErrors } from '../services/apiErrorDetails'
 import { INITIAL_LOCAL_USER_FILTERS, useUserAdminStore } from './userAdminStore'
 
 function state() {
@@ -137,6 +137,47 @@ describe('userAdminStore', () => {
     expect(state().users.length).toBeGreaterThan(0)
   })
 
+  /**
+   * Das Testdoppel prüft **alle fünf** Zahlengrenzen aus ADR-0033 (Review-Runde 1, HIGH 1) — sonst
+   * hätte ein Feld, dessen Grenze nur das Backend kennt, in den Tests nie eine Ablehnung erzeugt.
+   */
+  it.each([
+    ['passwordMinLength', 7],
+    ['invitationTokenTtlHours', 0],
+    ['resetTokenTtlMinutes', 5000],
+    ['defaultExpiryDays', 0],
+    ['inactiveDays', 29],
+  ] as const)('refuses %s out of range with a field error', async (field, value) => {
+    await state().loadSettings()
+    const settings = state().settings!
+    const request = {
+      enabled: settings.enabled,
+      selfRegistrationEnabled: settings.selfRegistrationEnabled,
+      selfRegistrationAllowedDomains: settings.selfRegistrationAllowedDomains,
+      passwordResetEnabled: settings.passwordResetEnabled,
+      passwordMinLength: settings.passwordMinLength,
+      invitationTokenTtlHours: settings.invitationTokenTtlHours,
+      resetTokenTtlMinutes: settings.resetTokenTtlMinutes,
+      defaultExpiryDays: settings.defaultExpiryDays,
+      inactiveDays: settings.inactiveDays,
+      [field]: value,
+    }
+
+    await expect(state().saveSettings(request)).rejects.toSatisfy((err: unknown) =>
+      apiFieldErrors(err).some((violation) => violation.field === field),
+    )
+  })
+
+  it('refuses an empty number field the way an empty input would send it', async () => {
+    await state().loadSettings()
+    const settings = state().settings!
+    await expect(
+      state().saveSettings({ ...settings, passwordMinLength: Number.NaN }),
+    ).rejects.toSatisfy((err: unknown) =>
+      apiFieldErrors(err).some((violation) => violation.field === 'passwordMinLength'),
+    )
+  })
+
   it('names the number of ended sessions when the local sign-in is switched off', async () => {
     await state().loadSettings()
     const settings = state().settings!
@@ -156,5 +197,10 @@ describe('userAdminStore', () => {
     expect(saved.enabled).toBe(false)
     expect(saved.revokedSessions).toBeGreaterThan(0)
     expect(state().settings?.enabled).toBe(false)
+
+    // Die Zahl gehört nur in die Antwort des abschaltenden PUT: Ein GET danach darf sie nicht
+    // führen (Review-Runde 1, LOW 11).
+    await state().loadSettings()
+    expect(state().settings?.revokedSessions ?? null).toBeNull()
   })
 })

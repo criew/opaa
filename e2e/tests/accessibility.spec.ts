@@ -165,8 +165,15 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Benutzer" }),
     ).toBeVisible();
-    // Wait for the list call to have landed: the table only renders once it has.
-    await expect(page.getByRole("table", { name: "Lokale Konten" })).toBeVisible();
+    // Beide Aufrufe müssen gelandet sein, bevor axe analysiert: die Karte erscheint erst mit den
+    // Einstellungen, und die Liste ist im dev-Stack **leer** — es gibt dort kein lokales Konto, also
+    // steht statt der Tabelle der Leerzustand. Auf die Tabelle zu warten wäre ein Timeout.
+    const settingsCard = page.getByRole("region", { name: "Lokale Anmeldung" });
+    const list = page
+      .getByRole("table", { name: "Lokale Konten" })
+      .or(page.getByText("Kein lokales Konto entspricht den gewählten Filtern."));
+    await expect(settingsCard).toBeVisible();
+    await expect(list.first()).toBeVisible();
 
     await page.emulateMedia({ colorScheme: "light" });
     await expectNoSeriousA11yViolations(
@@ -175,7 +182,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     );
 
     await page.emulateMedia({ colorScheme: "dark" });
-    await expect(page.getByRole("table", { name: "Lokale Konten" })).toBeVisible();
+    await expect(list.first()).toBeVisible();
     await expectNoSeriousA11yViolations(
       page,
       "Verwaltungsbereich (Benutzer, dunkles Farbschema)",

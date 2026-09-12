@@ -38,7 +38,15 @@ export default function SetupLinkDialog({
   const title = kind === 'INVITE' ? 'Einladungslink übergeben' : 'Rücksetzlink übergeben'
 
   return (
-    <Dialog open fullWidth maxWidth="sm" onClose={onClose} aria-labelledby="setup-link-title">
+    <Dialog
+      open
+      fullWidth
+      maxWidth="sm"
+      aria-labelledby="setup-link-title"
+      // Ohne `onClose` schließt weder ein Klick daneben noch Escape: Beides würde den Wert
+      // vernichten, der genau einmal existiert (Review-Runde 1, LOW 7). Geschlossen wird allein
+      // über die Schaltfläche, die dafür den Fokus erhält.
+    >
       <DialogTitle id="setup-link-title">{title}</DialogTitle>
       <DialogContent>
         <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>
@@ -63,10 +71,12 @@ export default function SetupLinkDialog({
         >
           {url}
         </Box>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
-          Ohne gesetzte öffentliche Basis-URL ist dies ein Pfad relativ zur Installation – setzen
-          Sie die Adresse Ihrer Installation davor.
-        </Typography>
+        {url.startsWith('/') && (
+          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
+            Dies ist ein Pfad relativ zur Installation, weil keine öffentliche Basis-URL gesetzt ist
+            – setzen Sie die Adresse Ihrer Installation davor.
+          </Typography>
+        )}
         <Alert severity="info" sx={{ mt: 2 }}>
           {SHOWN_ONCE_HINT}
         </Alert>

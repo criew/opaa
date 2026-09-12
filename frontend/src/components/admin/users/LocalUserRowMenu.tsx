@@ -197,16 +197,19 @@ export default function LocalUserRowMenu({
             Entsperren
           </MenuItem>
         ) : (
-          <Tooltip title={lockDisabled ? SELF_ACTION_TOOLTIP : ''} placement="left">
-            <span>
-              <MenuItem onClick={lock} disabled={lockDisabled} sx={{ width: '100%' }}>
-                <ListItemIcon>
-                  <LockOutlinedIcon fontSize="small" />
-                </ListItemIcon>
-                Sperren
-              </MenuItem>
-            </span>
-          </Tooltip>
+          <MenuItem
+            onClick={lock}
+            disabled={lockDisabled}
+            // Kein <span> um den Eintrag: Ein Zwischenelement im `menu` verletzt
+            // `aria-required-children` (Review-Runde 1). Die Begründung hängt deshalb als
+            // `title` am Eintrag selbst und steht zusätzlich als Text darunter.
+            title={lockDisabled ? SELF_ACTION_TOOLTIP : undefined}
+          >
+            <ListItemIcon>
+              <LockOutlinedIcon fontSize="small" />
+            </ListItemIcon>
+            Sperren
+          </MenuItem>
         )}
         <MenuItem onClick={resetPassword}>
           <ListItemIcon>
@@ -221,18 +224,19 @@ export default function LocalUserRowMenu({
           Passwort erzeugen
         </MenuItem>
         <Divider />
-        <Tooltip title={deleteTooltip} placement="left">
-          <span>
-            <MenuItem onClick={remove} disabled={deleteDisabled} sx={{ width: '100%' }}>
-              <ListItemIcon>
-                <DeleteOutlineIcon fontSize="small" color={deleteDisabled ? undefined : 'error'} />
-              </ListItemIcon>
-              <Typography sx={{ fontSize: 14, color: deleteDisabled ? undefined : 'error.main' }}>
-                Löschen
-              </Typography>
-            </MenuItem>
-          </span>
-        </Tooltip>
+        <MenuItem onClick={remove} disabled={deleteDisabled} title={deleteTooltip || undefined}>
+          <ListItemIcon>
+            <DeleteOutlineIcon fontSize="small" color={deleteDisabled ? undefined : 'error'} />
+          </ListItemIcon>
+          <Typography sx={{ fontSize: 14, color: deleteDisabled ? undefined : 'error.main' }}>
+            Löschen
+          </Typography>
+        </MenuItem>
+        {(lockDisabled || deleteDisabled) && (
+          <Typography sx={{ fontSize: 11.5, color: 'text.secondary', px: 2, py: 1, maxWidth: 320 }}>
+            {isSelf ? SELF_ACTION_TOOLTIP : BOOTSTRAP_DELETE_TOOLTIP}
+          </Typography>
+        )}
       </Menu>
     </>
   )

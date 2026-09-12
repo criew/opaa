@@ -104,6 +104,40 @@ function expiryFrom(request: {
   return date.toISOString()
 }
 
+/**
+ * Die fünf Zahlengrenzen aus ADR-0033 in der Reihenfolge, in der das Backend sie prüft. `NaN` aus
+ * einem leeren Eingabefeld fällt durch jeden Vergleich und ist damit ebenfalls ein 400 - genau das
+ * Verhalten, das ein Schalterklick nicht auslösen darf (Review-Runde 1, HIGH 1).
+ */
+function firstOutOfRange(
+  body: LocalAuthSettingsUpdateRequest,
+): { field: string; message: string } | null {
+  const bounds: Array<[keyof LocalAuthSettingsUpdateRequest, number, number, string]> = [
+    ['passwordMinLength', 8, 64, 'Die Mindestlänge liegt zwischen 8 und 64 Zeichen'],
+    ['invitationTokenTtlHours', 1, 720, 'Der Einladungslink gilt 1 bis 720 Stunden'],
+    ['resetTokenTtlMinutes', 1, 1440, 'Der Rücksetzlink gilt 1 bis 1440 Minuten'],
+    [
+      'defaultExpiryDays',
+      1,
+      Number.MAX_SAFE_INTEGER,
+      'Das vorbelegte Ablaufdatum braucht mindestens 1 Tag',
+    ],
+    [
+      'inactiveDays',
+      30,
+      Number.MAX_SAFE_INTEGER,
+      'Die Inaktivitätsfrist beträgt mindestens 30 Tage',
+    ],
+  ]
+  for (const [field, min, max, message] of bounds) {
+    const value = body[field]
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
+      return { field, message }
+    }
+  }
+  return null
+}
+
 export const localUserHandlers = [
   http.get('/api/v1/admin/local-users', ({ request }) => {
     const url = new URL(request.url)
@@ -172,6 +206,7 @@ export const localUserHandlers = [
       return conflict('EMAIL_TAKEN', 'Unter dieser Adresse existiert bereits ein lokales Konto')
     }
 
+    const expiresAt = expiryFrom(body)
     const created: LocalUserResponse = {
       id: `local-user-${mockLocalUsers.length + 1}`,
       email,
@@ -180,7 +215,7 @@ export const localUserHandlers = [
       status: body.mode === 'INVITE' ? 'INVITED' : 'ACTIVE',
       passwordChangeRequired: body.mode === 'INITIAL_PASSWORD',
       ...(body.mode === 'INITIAL_PASSWORD' ? { passwordChangeReason: 'INITIAL' as const } : {}),
-      ...(expiryFrom(body) ? { expiresAt: expiryFrom(body) } : {}),
+      ...(expiresAt ? { expiresAt } : {}),
       createdReason: body.createdReason.trim(),
       createdAt: new Date().toISOString(),
       activity: 'NEVER',
@@ -351,28 +386,27 @@ export const localUserHandlers = [
         },
       ])
     }
-    if (body.passwordMinLength < 8 || body.passwordMinLength > 64) {
-      return badRequest('Die Mindestlänge liegt zwischen 8 und 64 Zeichen', [
-        {
-          field: 'passwordMinLength',
-          code: 'OUT_OF_RANGE',
-          message: 'Die Mindestlänge liegt zwischen 8 und 64 Zeichen',
-        },
+    const outOfRange = firstOutOfRange(body)
+    if (outOfRange) {
+      return badRequest(outOfRange.message, [
+        { field: outOfRange.field, code: 'OUT_OF_RANGE', message: outOfRange.message },
       ])
     }
 
     const switchedOff = previous.enabled && !body.enabled
-    setMockLocalAuthSettings({
-      ...body,
-      publicBaseUrlConfigured: previous.publicBaseUrlConfigured,
-      ...(switchedOff
+    // `revokedSessions` gehört nur in die Antwort des abschaltenden PUT, nicht dauerhaft in die
+    // Einstellungen: ein GET danach würde sonst eine Zahl führen, die das Backend nie liefert
+    // (Review-Runde 1, LOW 11).
+    setMockLocalAuthSettings({ ...body, publicBaseUrlConfigured: previous.publicBaseUrlConfigured })
+    return HttpResponse.json(
+      switchedOff
         ? {
+            ...mockLocalAuthSettings,
             revokedSessions: mockLocalUsers.filter(
               (user) => user.systemRole !== 'SYSTEM_ADMIN' && user.status === 'ACTIVE',
             ).length,
           }
-        : {}),
-    })
-    return HttpResponse.json(mockLocalAuthSettings)
+        : mockLocalAuthSettings,
+    )
   }),
 ]

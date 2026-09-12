@@ -628,7 +628,7 @@ function initialOidcProviders(): OidcProviderResponse[] {
       enabled: true,
       isDefault: true,
       providerType: 'OIDC',
-      sortOrder: 0,
+      sortOrder: 1,
       issuerUri: 'http://localhost:8180/realms/opaa',
       clientId: 'opaa-frontend',
       jwkSetUri: 'http://keycloak:8180/realms/opaa/protocol/openid-connect/certs',
@@ -651,7 +651,7 @@ function initialOidcProviders(): OidcProviderResponse[] {
       enabled: true,
       isDefault: false,
       providerType: 'OIDC',
-      sortOrder: 1,
+      sortOrder: 2,
       issuerUri: 'https://partner.example/realms/extern',
       clientId: 'opaa-partner',
       jwkSetUri: null,
@@ -674,7 +674,7 @@ function initialOidcProviders(): OidcProviderResponse[] {
       enabled: true,
       isDefault: false,
       providerType: 'OIDC',
-      sortOrder: 2,
+      sortOrder: 3,
       issuerUri: 'https://land.example/realms/verwaltung',
       clientId: 'opaa-land',
       jwkSetUri: null,
@@ -693,14 +693,16 @@ function initialOidcProviders(): OidcProviderResponse[] {
     },
     // Die eine LOCAL-Zeile (ADR-0033, Entscheidung 4): sie steht in derselben Tabelle und kommt
     // über dieselbe API, ist aber kein Anbieter der Anbieterseite - ihr `enabled` ist der
-    // Schalter der lokalen Benutzerverwaltung (#1541).
+    // Schalter der lokalen Benutzerverwaltung (#1541). `sortOrder: 0`, weil der Seed sie vor
+    // jedem Anbieter anlegt: damit liegt sie in der Sortierung **vor** den Anbietern und das
+    // Verschieben muss sie überspringen (Review-Runde 1, MEDIUM 5).
     {
       id: 'oidc-provider-local',
       displayName: 'Lokale Konten',
       enabled: true,
       isDefault: false,
       providerType: 'LOCAL',
-      sortOrder: 3,
+      sortOrder: 0,
       issuerUri: 'urn:opaa:local',
       clientId: null,
       jwkSetUri: null,

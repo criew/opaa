@@ -37,8 +37,9 @@ export default function GeneratedPasswordDialog({
       open
       fullWidth
       maxWidth="sm"
-      onClose={onClose}
       aria-labelledby="generated-password-title"
+      // Siehe SetupLinkDialog: Das Passwort existiert genau einmal, also schließt weder Escape
+      // noch ein Klick daneben – allein die Schaltfläche (Review-Runde 1, LOW 7).
     >
       <DialogTitle id="generated-password-title">Passwort übergeben</DialogTitle>
       <DialogContent>
