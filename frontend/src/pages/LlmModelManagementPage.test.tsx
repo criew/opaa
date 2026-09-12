@@ -248,17 +248,38 @@ describe('LlmModelManagementPage', () => {
     expect(within(zeile).getByText('Ohne Schlüssel')).toBeInTheDocument()
   })
 
-  it('shows the read-only embedding block with provider, model and dimensions', async () => {
+  it('shows the embedding model as a table with provider, model and dimensions', async () => {
     signInAs('SYSTEM_ADMIN')
 
     renderEmbedding()
 
-    await waitFor(() => {
-      expect(screen.getByText('nomic-embed-text')).toBeInTheDocument()
-    })
-    expect(screen.getByText('openai')).toBeInTheDocument()
-    expect(screen.getByText('1536')).toBeInTheDocument()
+    const tabelle = await screen.findByRole('table', { name: 'Einbettungsmodell' })
+    expect(
+      within(tabelle)
+        .getAllByRole('columnheader')
+        .map((z) => z.textContent),
+    ).toEqual(['Modell', 'Anbieter', 'Dimensionen'])
+    expect(within(tabelle).getByText('nomic-embed-text')).toBeInTheDocument()
+    expect(within(tabelle).getByText('openai')).toBeInTheDocument()
+    expect(within(tabelle).getByText('1536')).toBeInTheDocument()
     expect(screen.getByText(/vollständige Neuindizierung/i)).toBeInTheDocument()
+  })
+
+  /**
+   * Der eigentliche Unterschied zum Nachbarreiter: Am Einbettungsmodell ist nichts zu ändern.
+   * Ein Wechsel machte bestehende Vektoren unvergleichbar - die Ansicht darf deshalb nicht
+   * einmal so aussehen, als ginge es.
+   */
+  it('offers nothing to operate in the embedding area', async () => {
+    signInAs('SYSTEM_ADMIN')
+
+    renderEmbedding()
+    await screen.findByRole('table', { name: 'Einbettungsmodell' })
+
+    const panel = screen.getByRole('tabpanel')
+    expect(within(panel).queryAllByRole('button')).toEqual([])
+    expect(within(panel).queryAllByRole('textbox')).toEqual([])
+    expect(within(panel).queryAllByRole('menuitem')).toEqual([])
   })
 
   it('creates a model without an API key without a validation error', async () => {

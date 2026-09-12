@@ -13,6 +13,7 @@ import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { LlmModelResponse } from '../../../types/api'
 import { fontFamily } from '../../../theme/tokens'
+import { MODEL_TABLE_SX } from './modelTableStyles'
 import ModelRowMenu from './ModelRowMenu'
 
 interface ModelListProps {
@@ -118,16 +119,7 @@ export default function ModelList({ models, onEdit }: ModelListProps) {
       role="region"
       aria-label="Tabelle Chat-Modelle, horizontal scrollbar"
     >
-      <Table
-        size="small"
-        aria-label="Chat-Modelle"
-        sx={{
-          minWidth: 720,
-          tableLayout: 'fixed',
-          '& th': { fontFamily: fontFamily.mono, fontSize: 10, letterSpacing: '0.08em' },
-          '& td': { fontSize: 13, py: 1.25, verticalAlign: 'top', overflow: 'hidden' },
-        }}
-      >
+      <Table size="small" aria-label="Chat-Modelle" sx={{ minWidth: 720, ...MODEL_TABLE_SX }}>
         <TableHead>
           <TableRow>
             <TableCell>Modell</TableCell>
