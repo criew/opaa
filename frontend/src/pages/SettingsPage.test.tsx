@@ -1,11 +1,14 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
+import ChangePasswordPage from './ChangePasswordPage'
 import SettingsPage from './SettingsPage'
 import { useAuthStore } from '../stores/authStore'
 import { useUiStore } from '../stores/uiStore'
 import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
+import { mockLocalAccount } from '../mocks/fixtures'
 
 function renderPage() {
   return renderWithProviders(<SettingsPage />, { withRouter: true, initialRoute: '/settings' })
@@ -24,6 +27,7 @@ describe('SettingsPage', () => {
       },
       mode: 'oidc',
       isAuthenticated: true,
+      isLoading: false,
       sessionKind: 'oidc',
     })
   })
@@ -146,16 +150,35 @@ describe('SettingsPage', () => {
     expect(screen.queryByText('Anlass des Kontos')).not.toBeInTheDocument()
   })
 
-  // The password section belongs to local accounts only (#1540); a provider account is pointed at
-  // its provider instead of being offered a mask that would not work.
-  it('offers the password change to a local session', () => {
-    useAuthStore.setState({ sessionKind: 'local' })
-    renderPage()
-
-    expect(screen.getByRole('link', { name: 'Passwort ändern' })).toHaveAttribute(
-      'href',
-      '/account/password',
+  /**
+   * The password section belongs to local accounts only (#1540). Walked rather than asserted on the
+   * `href`: what matters is that the button reaches the page **and** hands it the way back, so a
+   * voluntary change ends here instead of on the chat page - an `href` assertion would pass even if
+   * the return target were missing.
+   */
+  it('leads a local session to the password page and back again', async () => {
+    useAuthStore.setState({ sessionKind: 'local', token: 'lokales-token' })
+    renderWithProviders(
+      <Routes>
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/account/password" element={<ChangePasswordPage />} />
+      </Routes>,
+      { withRouter: true, initialRoute: '/settings' },
     )
+
+    await userEvent.click(screen.getByRole('link', { name: 'Passwort ändern' }))
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Passwort ändern' }),
+    ).toBeInTheDocument()
+
+    await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), mockLocalAccount.password)
+    await userEvent.type(screen.getByLabelText('Neues Passwort'), 'Sommerregen-42x')
+    await userEvent.type(screen.getByLabelText('Neues Passwort wiederholen'), 'Sommerregen-42x')
+    await userEvent.click(screen.getByRole('button', { name: 'Passwort speichern' }))
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ihre Einstellungen' }),
+    ).toBeInTheDocument()
   })
 
   it('points a provider session at its provider instead', () => {

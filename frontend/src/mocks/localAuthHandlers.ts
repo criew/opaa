@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { mockAuthConfig, mockLocalAccount } from './fixtures'
 import {
   consumeMockToken,
+  isConsumedMockToken,
   MOCK_RATE_LIMITED_EMAIL,
   MOCK_RATE_LIMITED_TOKEN,
   MOCK_RETRY_AFTER_SECONDS,
@@ -19,7 +20,8 @@ import {
  *   one without (204 / 202), so no page can turn into an account oracle,
  * - a switched-off flow answers 404 like an unknown route, read from the same
  *   `localAccounts` block the SPA gets from `/auth/config`,
- * - the password policy answers with `fieldErrors` on the field that carries the password.
+ * - the password policy answers with `fieldErrors` on the field that carries the password, and the
+ *   checks are staged as the backend stages them, so one answer names one field.
  */
 
 /** Mirrors the backend's minimum; the maximum and the block list are the policy's own. */
@@ -49,6 +51,13 @@ function tooManyRequests() {
     },
     { status: 429, headers: { 'Retry-After': String(MOCK_RETRY_AFTER_SECONDS) } },
   )
+}
+
+function fieldErrorResponse(
+  message: string,
+  fieldErrors: { field: string; code: string; message: string }[],
+) {
+  return HttpResponse.json(errorBody(message, { fieldErrors }), { status: 400 })
 }
 
 function notFound() {
@@ -100,41 +109,43 @@ function isPlausibleAddress(email: string): boolean {
 export const localAuthHandlers = [
   http.post('/api/v1/auth/local/set-password', async ({ request }) => {
     const body = (await request.json()) as { token?: string; newPassword?: string }
-    const password = body.newPassword ?? ''
-    // The policy is checked before the link is consumed, as in the backend: a refused password
-    // leaves the link open, or a typo would cost the person their invitation.
-    const violations = passwordViolations('newPassword', password, mockLocalAccount.email)
-    if (violations.length > 0) {
-      return HttpResponse.json(
-        errorBody('Das neue Passwort entspricht nicht der Passwortrichtlinie.', {
-          fieldErrors: violations,
-        }),
-        { status: 400 },
-      )
-    }
-    if (body.token !== MOCK_SET_PASSWORD_TOKEN || !consumeMockToken(`set:${body.token}`)) {
+    if (body.token === MOCK_RATE_LIMITED_TOKEN) return tooManyRequests()
+    // Order as in the backend: the link is validated first, and only a valid one gets its password
+    // checked. A refused password does not consume the link, though - a typo must not cost the
+    // person their invitation (LocalPasswordService).
+    if (body.token !== MOCK_SET_PASSWORD_TOKEN || isConsumedMockToken(`set:${body.token}`)) {
       return tokenInvalid()
     }
+    const violations = passwordViolations(
+      'newPassword',
+      body.newPassword ?? '',
+      mockLocalAccount.email,
+    )
+    if (violations.length > 0) {
+      return fieldErrorResponse(
+        'Das neue Passwort entspricht nicht der Passwortrichtlinie.',
+        violations,
+      )
+    }
+    consumeMockToken(`set:${body.token}`)
     return new HttpResponse(null, { status: 204 })
   }),
 
   http.post('/api/v1/auth/local/forgot-password', async ({ request }) => {
-    if (!mockAuthConfig.localAccounts?.passwordResetEnabled) return notFound()
+    // Both halves of what the backend reports as passwordResetEnabled: the flow exists only while
+    // the management itself is on (ADR-0033, Entscheidung 4).
+    if (!mockAuthConfig.localAccounts?.enabled) return notFound()
+    if (!mockAuthConfig.localAccounts.passwordResetEnabled) return notFound()
     const body = (await request.json()) as { email?: string }
     const email = (body.email ?? '').trim()
     if (!isPlausibleAddress(email)) {
-      return HttpResponse.json(
-        errorBody('Bitte geben Sie eine gültige E-Mail-Adresse an.', {
-          fieldErrors: [
-            {
-              field: 'email',
-              code: 'INVALID_ADDRESS',
-              message: 'Bitte geben Sie eine gültige E-Mail-Adresse an.',
-            },
-          ],
-        }),
-        { status: 400 },
-      )
+      return fieldErrorResponse('Bitte geben Sie eine gültige E-Mail-Adresse an.', [
+        {
+          field: 'email',
+          code: 'INVALID_ADDRESS',
+          message: 'Bitte geben Sie eine gültige E-Mail-Adresse an.',
+        },
+      ])
     }
     if (email.toLowerCase() === MOCK_RATE_LIMITED_EMAIL) return tooManyRequests()
     // The same answer for an address with an account and one without - that is the whole contract.
@@ -142,7 +153,8 @@ export const localAuthHandlers = [
   }),
 
   http.post('/api/v1/auth/local/register', async ({ request }) => {
-    if (!mockAuthConfig.localAccounts?.selfRegistrationEnabled) return notFound()
+    if (!mockAuthConfig.localAccounts?.enabled) return notFound()
+    if (!mockAuthConfig.localAccounts.selfRegistrationEnabled) return notFound()
     const body = (await request.json()) as {
       email?: string
       displayName?: string
@@ -150,34 +162,33 @@ export const localAuthHandlers = [
     }
     const email = (body.email ?? '').trim()
     const displayName = (body.displayName ?? '').trim()
-    const fieldErrors: { field: string; code: string; message: string }[] = []
+    // Staged like the backend (LocalUserService.requireAddress, requireText, PasswordPolicy): the
+    // first failing check throws, so one answer carries the errors of one field only. Several codes
+    // at once happen within the password policy, never across fields.
     if (!isPlausibleAddress(email)) {
-      fieldErrors.push({
-        field: 'email',
-        code: 'INVALID_ADDRESS',
-        message: 'Bitte geben Sie eine gültige E-Mail-Adresse an.',
-      })
+      return fieldErrorResponse('Bitte geben Sie eine gültige E-Mail-Adresse an.', [
+        {
+          field: 'email',
+          code: 'INVALID_ADDRESS',
+          message: 'Bitte geben Sie eine gültige E-Mail-Adresse an.',
+        },
+      ])
     }
     if (displayName === '') {
-      fieldErrors.push({
-        field: 'displayName',
-        code: 'REQUIRED',
-        message: 'Das Feld darf nicht leer sein.',
-      })
-    } else if (displayName.length > 255) {
-      fieldErrors.push({
-        field: 'displayName',
-        code: 'TOO_LONG',
-        message: 'Höchstens 255 Zeichen sind erlaubt.',
-      })
+      return fieldErrorResponse('Bitte füllen Sie das Feld aus.', [
+        { field: 'displayName', code: 'REQUIRED', message: 'Das Feld darf nicht leer sein.' },
+      ])
     }
-    fieldErrors.push(...passwordViolations('password', body.password ?? '', email))
-    if (fieldErrors.length > 0) {
-      return HttpResponse.json(
-        errorBody('Die Eingaben wurden nicht angenommen.', { fieldErrors }),
-        {
-          status: 400,
-        },
+    if (displayName.length > 255) {
+      return fieldErrorResponse('Die Eingabe ist zu lang.', [
+        { field: 'displayName', code: 'TOO_LONG', message: 'Höchstens 255 Zeichen sind erlaubt.' },
+      ])
+    }
+    const violations = passwordViolations('password', body.password ?? '', email)
+    if (violations.length > 0) {
+      return fieldErrorResponse(
+        'Das neue Passwort entspricht nicht der Passwortrichtlinie.',
+        violations,
       )
     }
     if (email.toLowerCase() === MOCK_RATE_LIMITED_EMAIL) return tooManyRequests()
@@ -188,9 +199,10 @@ export const localAuthHandlers = [
   http.post('/api/v1/auth/local/verify-email', async ({ request }) => {
     const body = (await request.json()) as { token?: string }
     if (body.token === MOCK_RATE_LIMITED_TOKEN) return tooManyRequests()
-    if (body.token !== MOCK_VERIFY_EMAIL_TOKEN || !consumeMockToken(`verify:${body.token}`)) {
+    if (body.token !== MOCK_VERIFY_EMAIL_TOKEN || isConsumedMockToken(`verify:${body.token}`)) {
       return tokenInvalid()
     }
+    consumeMockToken(`verify:${body.token}`)
     return new HttpResponse(null, { status: 204 })
   }),
 ]

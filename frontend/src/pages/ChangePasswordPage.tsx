@@ -12,6 +12,7 @@ import NewPasswordField from '../components/auth/NewPasswordField'
 import PasswordField from '../components/auth/PasswordField'
 import SectionEyebrow from '../components/auth/SectionEyebrow'
 import PageHeading from '../components/a11y/PageHeading'
+import { useErrorFocus } from '../hooks/useErrorFocus'
 import { FieldValidationError } from '../services/authApi'
 import { useAuthStore } from '../stores/authStore'
 import { notify } from '../stores/notificationStore'
@@ -25,6 +26,8 @@ import { redirectTargetOf } from '../utils/safeRedirectPath'
 import { radius } from '../theme/tokens'
 
 const MISMATCH_MESSAGE = 'Die beiden Eingaben stimmen nicht überein.'
+/** The fields this form can show an error at, in the order the focus walks them. */
+const FIELDS = ['currentPassword', 'newPassword', 'repeatedPassword'] as const
 const UNAVAILABLE_MESSAGE =
   'Das Passwort konnte nicht geändert werden. Bitte versuchen Sie es erneut.'
 
@@ -53,6 +56,14 @@ export default function ChangePasswordPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const currentRef = useRef<HTMLInputElement>(null)
+  const newRef = useRef<HTMLInputElement>(null)
+  const repeatedRef = useRef<HTMLInputElement>(null)
+  const alertRef = useRef<HTMLDivElement>(null)
+  const focusFirstError = useErrorFocus(
+    FIELDS,
+    { currentPassword: currentRef, newPassword: newRef, repeatedPassword: repeatedRef },
+    alertRef,
+  )
 
   if (isLoading) return null
   if (!isAuthenticated) return <Navigate to={LOGIN_ROUTE} replace />
@@ -63,6 +74,7 @@ export default function ChangePasswordPage() {
     if (newPassword !== repeatedPassword) {
       setFieldErrors({ repeatedPassword: MISMATCH_MESSAGE })
       setFormError(null)
+      focusFirstError({ repeatedPassword: MISMATCH_MESSAGE })
       return
     }
     setBusy(true)
@@ -73,15 +85,21 @@ export default function ChangePasswordPage() {
       notify('Ihr Passwort wurde geändert.', 'success')
       navigate(redirectTargetOf(location.state, location.search), { replace: true })
     } catch (err) {
+      let errors: Record<string, string> = {}
       if (err instanceof FieldValidationError && err.fieldErrors.length > 0) {
-        setFieldErrors(fieldErrorMessages(err.fieldErrors, minLength))
+        const { byField, unassigned } = fieldErrorMessages(err.fieldErrors, minLength, FIELDS)
+        errors = byField
+        setFieldErrors(byField)
+        setFormError(unassigned.length > 0 ? unassigned.join(' ') : null)
       } else if (err instanceof FieldValidationError) {
         setFormError(err.message)
       } else {
         setFormError(UNAVAILABLE_MESSAGE)
       }
-      setCurrentPassword('')
-      currentRef.current?.focus()
+      // The current password is cleared only when it was the thing refused; clearing it after a
+      // rejected *new* password would make the person retype what was already right.
+      if (errors.currentPassword) setCurrentPassword('')
+      focusFirstError(errors)
     } finally {
       setBusy(false)
     }
@@ -113,12 +131,18 @@ export default function ChangePasswordPage() {
         </Alert>
       )}
       {formError && (
-        <Alert severity="error" sx={{ mt: 2, textAlign: 'left' }}>
+        <Alert ref={alertRef} tabIndex={-1} severity="error" sx={{ mt: 2, textAlign: 'left' }}>
           {formError}
         </Alert>
       )}
-      <Box component="form" onSubmit={submit} noValidate sx={{ mt: 3 }}>
-        <SectionEyebrow id="change-password-title">Neues Passwort</SectionEyebrow>
+      <Box
+        component="form"
+        aria-labelledby="change-password-title"
+        onSubmit={submit}
+        noValidate
+        sx={{ mt: 3 }}
+      >
+        <SectionEyebrow id="change-password-title">Neues Passwort wählen</SectionEyebrow>
         <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5, mb: 2 }}>
           {passwordPolicyText(minLength)}
         </Typography>
@@ -142,6 +166,7 @@ export default function ChangePasswordPage() {
             disabled={busy}
             errorMessage={fieldErrors.newPassword}
             onGenerated={setRepeatedPassword}
+            inputRef={newRef}
           />
           <PasswordField
             id="change-password-repeat"
@@ -151,6 +176,7 @@ export default function ChangePasswordPage() {
             autoComplete="new-password"
             disabled={busy}
             errorMessage={fieldErrors.repeatedPassword}
+            inputRef={repeatedRef}
           />
           <Button
             type="submit"

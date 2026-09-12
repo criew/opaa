@@ -37,7 +37,7 @@ describe('ForgotPasswordPage', () => {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/login" element={<div>Anmeldung</div>} />
       </Routes>,
-      { withRouter: true, initialRoute: '/forgot-password' },
+      { withRouter: true, initialRoute: '/forgot-password', withNotificationHost: false },
     )
   }
 
@@ -59,14 +59,25 @@ describe('ForgotPasswordPage', () => {
     expect(screen.queryByLabelText('E-Mail-Adresse')).not.toBeInTheDocument()
   })
 
-  it('shows a rejected address at the field', async () => {
+  it('shows a rejected address at the field and moves the focus there', async () => {
     renderPage()
     await request('keine-adresse')
 
     expect(
       await screen.findByText('Bitte geben Sie eine gültige E-Mail-Adresse an.'),
     ).toBeInTheDocument()
-    expect(screen.getByLabelText('E-Mail-Adresse')).toBeInTheDocument()
+    // accessibility.md 2.7: the correction starts where the focus is.
+    expect(screen.getByLabelText('E-Mail-Adresse')).toHaveFocus()
+  })
+
+  // A refusal that names no field at all has to be reachable too: the message above the form takes
+  // the focus, so it is not only announced but also where the reader is.
+  it('focuses the form-level message of a rate-limited request', async () => {
+    renderPage()
+    await request(MOCK_RATE_LIMITED_EMAIL)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveFocus()
   })
 
   it('names the wait from Retry-After when the limit refuses the request', async () => {
@@ -95,5 +106,10 @@ describe('ForgotPasswordPage', () => {
 
     expect(screen.queryByText('Anmeldung')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('E-Mail-Adresse')).not.toBeInTheDocument()
+    // Not an empty card: heading and a spoken wait notice (guidelines 5.7).
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Passwort vergessen' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Wird geladen …')
   })
 })

@@ -61,6 +61,16 @@ describe('generateStrongPassword', () => {
     }
   })
 
+  // Code points, like the backend's policy: an emoji is one character there, and a meter counting
+  // UTF-16 units would call a password long enough that the backend refuses.
+  it('counts characters, not UTF-16 units', () => {
+    const twelveEmoji = '🙂'.repeat(12)
+
+    expect(twelveEmoji.length).toBe(24)
+    expect(passwordStrength(twelveEmoji, 12).score).toBeGreaterThanOrEqual(2)
+    expect(passwordStrength('🙂'.repeat(11), 12).label).toBe('schwach')
+  })
+
   it('does not repeat itself', () => {
     const seen = new Set(Array.from({ length: 20 }, () => generateStrongPassword(12)))
     expect(seen.size).toBe(20)

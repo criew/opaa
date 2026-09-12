@@ -6,6 +6,7 @@ import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { FieldValidationError } from '../services/authApi'
 import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
+import { mockLocalAccount, mockLocalTokenResponse, mockUser } from '../mocks/fixtures'
 import ChangePasswordPage from './ChangePasswordPage'
 
 /**
@@ -92,13 +93,19 @@ describe('ChangePasswordPage', () => {
   })
 
   /**
-   * The voluntary change out of the user settings: the store adopts the session the backend mints in
-   * the same answer, so the person stays signed in and returns to where they started - no sign-in
-   * page in between (ADR-0033, Entscheidung 8).
+   * The voluntary change out of the user settings, with the **real** store action against the
+   * mocked endpoint: a spy would only prove that the page calls something. What matters is that the
+   * store adopts the session the backend mints in the same answer - new access token, no forced
+   * change left, identity loaded - so the person stays signed in and returns to where they started
+   * instead of landing on the sign-in page (ADR-0033, Entscheidung 8).
    */
   it('keeps a voluntary change signed in and returns to the settings', async () => {
-    const changePassword = vi.fn().mockResolvedValue(undefined)
-    useAuthStore.setState({ changePassword })
+    useAuthStore.setState({
+      changePassword,
+      token: 'altes-token',
+      passwordChangeRequired: true,
+      passwordChangeReason: 'ADMIN_RESET',
+    })
     renderWithProviders(
       <Routes>
         <Route path="/account/password" element={<ChangePasswordPage />} />
@@ -108,14 +115,35 @@ describe('ChangePasswordPage', () => {
       { withRouter: true, initialRoute: '/account/password?from=%2Fsettings' },
     )
 
-    await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), 'alt')
-    await userEvent.type(screen.getByLabelText('Neues Passwort'), 'ein-neues-passwort')
-    await userEvent.type(screen.getByLabelText('Neues Passwort wiederholen'), 'ein-neues-passwort')
+    await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), mockLocalAccount.password)
+    await userEvent.type(screen.getByLabelText('Neues Passwort'), 'Sommerregen-42x')
+    await userEvent.type(screen.getByLabelText('Neues Passwort wiederholen'), 'Sommerregen-42x')
     await userEvent.click(screen.getByRole('button', { name: 'Passwort speichern' }))
 
     expect(await screen.findByText('Ihre Einstellungen')).toBeInTheDocument()
     expect(screen.queryByText('Anmeldung')).not.toBeInTheDocument()
-    expect(useAuthStore.getState().isAuthenticated).toBe(true)
+    const state = useAuthStore.getState()
+    expect(state.isAuthenticated).toBe(true)
+    expect(state.token).toBe(mockLocalTokenResponse.accessToken)
+    expect(state.passwordChangeRequired).toBe(false)
+    expect(state.user?.email).toBe(mockUser.email)
+  })
+
+  // The wrong current password is the one refusal that clears the field; a rejected *new* password
+  // must not make the person retype what was already right.
+  it('clears and focuses the current password only when that was what was refused', async () => {
+    useAuthStore.setState({ changePassword, token: 'altes-token' })
+    renderWithProviders(<ChangePasswordPage />, { withRouter: true })
+
+    await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), 'falsch')
+    await userEvent.type(screen.getByLabelText('Neues Passwort'), 'Sommerregen-42x')
+    await userEvent.type(screen.getByLabelText('Neues Passwort wiederholen'), 'Sommerregen-42x')
+    await userEvent.click(screen.getByRole('button', { name: 'Passwort speichern' }))
+
+    expect(await screen.findByText('Das aktuelle Passwort ist nicht korrekt.')).toBeInTheDocument()
+    expect(screen.getByLabelText<HTMLInputElement>('Aktuelles Passwort').value).toBe('')
+    expect(screen.getByLabelText('Aktuelles Passwort')).toHaveFocus()
+    expect(screen.getByLabelText<HTMLInputElement>('Neues Passwort').value).toBe('Sommerregen-42x')
   })
 
   it('shows a policy violation at the offending field', async () => {

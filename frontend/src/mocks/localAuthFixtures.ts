@@ -13,7 +13,7 @@ export const MOCK_VERIFY_EMAIL_TOKEN = 'mock-verify-email-token'
 /** The address whose requests the mock refuses with 429, so the wait hint is reachable. */
 export const MOCK_RATE_LIMITED_EMAIL = 'zu-oft@stadt.example'
 
-/** The verification link the mock refuses with 429 - the same wait hint for a link-only page. */
+/** The link the mock refuses with 429 - the wait hint of the two token-bearing endpoints. */
 export const MOCK_RATE_LIMITED_TOKEN = 'mock-rate-limited-token'
 
 /** The `Retry-After` the mock sends with a 429, in seconds. */
@@ -26,10 +26,12 @@ export const MOCK_RETRY_AFTER_SECONDS = 120
  */
 const consumedTokens = new Set<string>()
 
-export function consumeMockToken(token: string): boolean {
-  if (consumedTokens.has(token)) return false
+export function isConsumedMockToken(token: string): boolean {
+  return consumedTokens.has(token)
+}
+
+export function consumeMockToken(token: string): void {
   consumedTokens.add(token)
-  return true
 }
 
 export function resetMockSelfServiceTokens(): void {

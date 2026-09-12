@@ -26,6 +26,12 @@ import UserManagementPage from './pages/UserManagementPage'
 import LibraryManagementPage from './pages/LibraryManagementPage'
 import LibraryCreatePage from './pages/LibraryCreatePage'
 import LibraryDetailPage from './pages/LibraryDetailPage'
+import {
+  FORGOT_PASSWORD_ROUTE,
+  REGISTER_ROUTE,
+  SET_PASSWORD_ROUTE,
+  VERIFY_EMAIL_ROUTE,
+} from './routes'
 import { useAuthStore } from './stores/authStore'
 import { useBrandingStore } from './stores/brandingStore'
 import { useUiStore } from './stores/uiStore'
@@ -107,10 +113,10 @@ export default function App() {
                 a link from an invitation or an administrative reset must never run into a
                 redirect - while /register and /forgot-password are pages only where the
                 installation offers the flow (the pages redirect to /login otherwise). */}
-            <Route path="/set-password" element={<SetPasswordPage />} />
-            <Route path="/verify-email" element={<VerifyEmailPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+            <Route path={SET_PASSWORD_ROUTE} element={<SetPasswordPage />} />
+            <Route path={VERIFY_EMAIL_ROUTE} element={<VerifyEmailPage />} />
+            <Route path={FORGOT_PASSWORD_ROUTE} element={<ForgotPasswordPage />} />
+            <Route path={REGISTER_ROUTE} element={<RegisterPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route
               element={

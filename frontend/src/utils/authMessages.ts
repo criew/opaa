@@ -1,6 +1,6 @@
 import type { SessionExpiredReason } from '../services/apiInterceptors'
 import type { FieldError, PasswordChangeReason } from '../types/auth'
-import { PASSWORD_MAX_LENGTH } from './passwordStrength'
+import { PASSWORD_MAX_BYTES, PASSWORD_MAX_LENGTH } from './passwordStrength'
 
 export const CONFIG_UNAVAILABLE_MESSAGE =
   'Die Authentifizierungskonfiguration konnte nicht geladen werden.'
@@ -126,10 +126,14 @@ export function passwordFieldErrorMessage(code: string, minLength: number): stri
   switch (code) {
     case 'WRONG_PASSWORD':
       return 'Das aktuelle Passwort ist nicht korrekt.'
+    case 'REQUIRED':
+      return 'Bitte geben Sie ein Passwort ein.'
     case 'TOO_SHORT':
       return `Das Passwort muss mindestens ${minLength} Zeichen lang sein.`
     case 'TOO_LONG':
-      return `Das Passwort darf höchstens ${PASSWORD_MAX_LENGTH} Zeichen lang sein.`
+      // Both halves of the ceiling (ADR-0033, Entscheidung 9): BCrypt reads 72 bytes, so a
+      // password of 64 umlauts is refused for a reason "höchstens 64 Zeichen" would not explain.
+      return `Das Passwort darf höchstens ${PASSWORD_MAX_LENGTH} Zeichen und ${PASSWORD_MAX_BYTES} Byte lang sein; Umlaute und Sonderzeichen zählen mehrfach.`
     case 'EQUALS_EMAIL':
       return 'Das Passwort darf nicht Ihrer E-Mail-Adresse entsprechen.'
     case 'TOO_COMMON':
@@ -146,8 +150,10 @@ export function passwordFieldErrorMessage(code: string, minLength: number): stri
  */
 export function passwordPolicyText(minLength: number): string {
   return (
-    `Mindestens ${minLength} Zeichen, höchstens ${PASSWORD_MAX_LENGTH}. Das Passwort darf nicht` +
-    ' Ihrer E-Mail-Adresse entsprechen und nicht auf der Liste besonders häufiger Passwörter stehen.'
+    `Mindestens ${minLength} Zeichen, höchstens ${PASSWORD_MAX_LENGTH} Zeichen und` +
+    ` ${PASSWORD_MAX_BYTES} Byte (Umlaute und Sonderzeichen zählen mehrfach). Das Passwort darf` +
+    ' nicht Ihrer E-Mail-Adresse entsprechen und nicht auf der Liste besonders häufiger Passwörter' +
+    ' stehen.'
   )
 }
 
@@ -171,36 +177,65 @@ function displayNameFieldErrorMessage(code: string): string {
     case 'REQUIRED':
       return 'Bitte geben Sie Ihren Namen an.'
     case 'TOO_LONG':
-      return 'Der Name ist zu lang - höchstens 255 Zeichen.'
+      return 'Der Name ist zu lang — höchstens 255 Zeichen.'
     default:
       return 'Der Name wurde nicht angenommen.'
   }
 }
 
+/** The field names whose codes have a wording of their own; everything else is a password field. */
+const EMAIL_FIELDS = ['email']
+const DISPLAY_NAME_FIELDS = ['displayName']
+const PASSWORD_FIELDS = ['password', 'newPassword', 'currentPassword']
+
+function fieldErrorSentence(entry: FieldError, minLength: number): string {
+  if (EMAIL_FIELDS.includes(entry.field)) return emailFieldErrorMessage(entry.code)
+  if (DISPLAY_NAME_FIELDS.includes(entry.field)) return displayNameFieldErrorMessage(entry.code)
+  if (PASSWORD_FIELDS.includes(entry.field)) return passwordFieldErrorMessage(entry.code, minLength)
+  // A field this frontend does not know about: the backend's own message is German and meant for
+  // the person, so it is a better answer than a password sentence about a field that is none.
+  return entry.message?.trim() || 'Die Eingabe wurde nicht angenommen.'
+}
+
+export interface FieldErrorMessages {
+  /** One sentence per field the form renders, ready for that field's helper text. */
+  byField: Record<string, string>
+  /**
+   * The sentences of fields this form does not render. They belong in the form-level alert - a
+   * refusal that named a field nobody can see would otherwise vanish without a trace, and the form
+   * would look as if nothing had happened.
+   */
+  unassigned: string[]
+}
+
 /**
- * The `fieldErrors` of a refused request as one sentence per field, ready for the field's helper
- * text. A field may carry several codes at once - the policy reports every violated rule, so the
- * form can name all of them instead of one at a time.
+ * The `fieldErrors` of a refused request, split by whether the form has a field to show them at. A
+ * field may carry several codes at once - the policy reports every violated rule of one field, so
+ * the form can name all of them instead of one at a time.
  */
 export function fieldErrorMessages(
   fieldErrors: FieldError[],
   minLength: number,
-): Record<string, string> {
+  renderedFields: readonly string[],
+): FieldErrorMessages {
   const byField: Record<string, string[]> = {}
+  const unassigned: string[] = []
   for (const entry of fieldErrors) {
-    const sentence =
-      entry.field === 'email'
-        ? emailFieldErrorMessage(entry.code)
-        : entry.field === 'displayName'
-          ? displayNameFieldErrorMessage(entry.code)
-          : passwordFieldErrorMessage(entry.code, minLength)
+    const sentence = fieldErrorSentence(entry, minLength)
+    if (!renderedFields.includes(entry.field)) {
+      if (!unassigned.includes(sentence)) unassigned.push(sentence)
+      continue
+    }
     const collected = byField[entry.field] ?? []
     if (!collected.includes(sentence)) collected.push(sentence)
     byField[entry.field] = collected
   }
-  return Object.fromEntries(
-    Object.entries(byField).map(([field, sentences]) => [field, sentences.join(' ')]),
-  )
+  return {
+    byField: Object.fromEntries(
+      Object.entries(byField).map(([field, sentences]) => [field, sentences.join(' ')]),
+    ),
+    unassigned,
+  }
 }
 
 /**

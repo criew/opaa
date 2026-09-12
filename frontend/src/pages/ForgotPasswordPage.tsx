@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -8,10 +8,12 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { Navigate, Link as RouterLink } from 'react-router'
 import AuthLayout from '../components/auth/AuthLayout'
+import AuthLoading from '../components/auth/AuthLoading'
 import AuthNotice from '../components/auth/AuthNotice'
 import SectionEyebrow from '../components/auth/SectionEyebrow'
 import FieldLabel from '../components/wizard/FieldLabel'
 import PageHeading from '../components/a11y/PageHeading'
+import { useErrorFocus } from '../hooks/useErrorFocus'
 import { FieldValidationError } from '../services/authApi'
 import { FlowUnavailableError, forgotPassword, RateLimitedError } from '../services/selfServiceApi'
 import { useAuthStore } from '../stores/authStore'
@@ -26,6 +28,8 @@ import {
 import { radius } from '../theme/tokens'
 
 const HEADING = 'Passwort vergessen'
+/** The one field this form can show an error at. */
+const FIELDS = ['email'] as const
 
 /**
  * Asks for a password-reset link. The acknowledgement is the same for an address with an account
@@ -43,6 +47,15 @@ export default function ForgotPasswordPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
+  const emailRef = useRef<HTMLInputElement>(null)
+  const alertRef = useRef<HTMLDivElement>(null)
+  const focusFirstError = useErrorFocus(FIELDS, { email: emailRef }, alertRef)
+
+  function failWith(errors: Record<string, string>, message: string | null) {
+    setFieldErrors(errors)
+    setFormError(message)
+    focusFirstError(errors)
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -55,15 +68,16 @@ export default function ForgotPasswordPage() {
       setDone(true)
     } catch (err) {
       if (err instanceof FieldValidationError && err.fieldErrors.length > 0) {
-        setFieldErrors(fieldErrorMessages(err.fieldErrors, minLength))
+        const { byField, unassigned } = fieldErrorMessages(err.fieldErrors, minLength, FIELDS)
+        failWith(byField, unassigned.length > 0 ? unassigned.join(' ') : null)
       } else if (err instanceof FieldValidationError) {
-        setFormError(err.message)
+        failWith({}, err.message)
       } else if (err instanceof RateLimitedError) {
-        setFormError(tooManyRequestsMessage(err.retryAfterSeconds))
+        failWith({}, tooManyRequestsMessage(err.retryAfterSeconds))
       } else if (err instanceof FlowUnavailableError) {
-        setFormError(SELF_SERVICE_DISABLED_MESSAGE)
+        failWith({}, SELF_SERVICE_DISABLED_MESSAGE)
       } else {
-        setFormError(SELF_SERVICE_UNREACHABLE_MESSAGE)
+        failWith({}, SELF_SERVICE_UNREACHABLE_MESSAGE)
       }
     } finally {
       setBusy(false)
@@ -72,7 +86,13 @@ export default function ForgotPasswordPage() {
 
   // "Not known yet" is not "switched off": while the configuration is still loading nothing is
   // decided, or a reload of this page would bounce to the sign-in page before the answer arrives.
-  if (isLoading) return null
+  if (isLoading) {
+    return (
+      <AuthLayout>
+        <AuthLoading heading={HEADING} />
+      </AuthLayout>
+    )
+  }
   if (!enabled) return <Navigate to={LOGIN_ROUTE} replace />
 
   if (done) {
@@ -96,11 +116,17 @@ export default function ForgotPasswordPage() {
     <AuthLayout>
       <PageHeading title={HEADING} variant="h6" />
       {formError && (
-        <Alert severity="error" sx={{ mt: 2, textAlign: 'left' }}>
+        <Alert ref={alertRef} tabIndex={-1} severity="error" sx={{ mt: 2, textAlign: 'left' }}>
           {formError}
         </Alert>
       )}
-      <Box component="form" onSubmit={submit} noValidate sx={{ mt: 3 }}>
+      <Box
+        component="form"
+        aria-labelledby="forgot-password-title"
+        onSubmit={submit}
+        noValidate
+        sx={{ mt: 3 }}
+      >
         <SectionEyebrow id="forgot-password-title">Link anfordern</SectionEyebrow>
         <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5, mb: 2 }}>
           Geben Sie die E-Mail-Adresse Ihres Kontos an. Wir schicken Ihnen einen Link, mit dem Sie
@@ -111,6 +137,7 @@ export default function ForgotPasswordPage() {
             <FieldLabel htmlFor="forgot-password-email">E-Mail-Adresse</FieldLabel>
             <TextField
               id="forgot-password-email"
+              inputRef={emailRef}
               type="email"
               size="small"
               fullWidth

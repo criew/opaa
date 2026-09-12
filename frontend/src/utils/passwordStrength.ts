@@ -6,8 +6,10 @@
  * asks for.
  */
 
-/** The policy's ceiling (ADR-0033, Entscheidung 9); BCrypt reads at most 72 bytes. */
+/** The policy's ceiling in characters (ADR-0033, Entscheidung 9). */
 export const PASSWORD_MAX_LENGTH = 64
+/** The second half of that ceiling: BCrypt reads at most 72 bytes of UTF-8. */
+export const PASSWORD_MAX_BYTES = 72
 
 export type PasswordStrengthScore = 0 | 1 | 2 | 3 | 4
 
@@ -30,12 +32,15 @@ const GENEROUS_LENGTH = 20
  * may the meter beside it.
  */
 export function passwordStrength(password: string, minLength: number): PasswordStrength {
-  if (password.length === 0) return { score: 0, label: LABELS[0] }
-  if (password.length < minLength) return { score: 1, label: LABELS[1] }
+  // Code points, not UTF-16 units, like the backend's policy: an emoji is one character there, and
+  // a meter that counted it as two would call a password long enough that the backend refuses.
+  const length = [...password].length
+  if (length === 0) return { score: 0, label: LABELS[0] }
+  if (length < minLength) return { score: 1, label: LABELS[1] }
   let steps = 2
-  if (password.length >= Math.max(minLength, COMFORTABLE_LENGTH)) steps++
+  if (length >= Math.max(minLength, COMFORTABLE_LENGTH)) steps++
   const mixed = /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password)
-  if (mixed || password.length >= Math.max(minLength, GENEROUS_LENGTH)) steps++
+  if (mixed || length >= Math.max(minLength, GENEROUS_LENGTH)) steps++
   const score = Math.min(steps, 4) as PasswordStrengthScore
   return { score, label: LABELS[score] }
 }
@@ -73,7 +78,9 @@ function pick(chars: string): string {
 /**
  * A password that meets the policy by construction: at least `minLength` characters (never more
  * than {@link PASSWORD_MAX_LENGTH}), one character of each class, nothing from a word list - so it
- * can be neither too short, too long nor too common, and it cannot equal an e-mail address.
+ * can be neither too short, too long nor too common, and it cannot equal an e-mail address. Every
+ * character is ASCII, so the character count is also the byte count and
+ * {@link PASSWORD_MAX_BYTES} cannot be exceeded either.
  */
 export function generateStrongPassword(
   minLength: number,

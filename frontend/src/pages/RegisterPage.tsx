@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -8,11 +8,13 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { Navigate, Link as RouterLink } from 'react-router'
 import AuthLayout from '../components/auth/AuthLayout'
+import AuthLoading from '../components/auth/AuthLoading'
 import AuthNotice from '../components/auth/AuthNotice'
 import NewPasswordField from '../components/auth/NewPasswordField'
 import SectionEyebrow from '../components/auth/SectionEyebrow'
 import FieldLabel from '../components/wizard/FieldLabel'
 import PageHeading from '../components/a11y/PageHeading'
+import { useErrorFocus } from '../hooks/useErrorFocus'
 import { FieldValidationError } from '../services/authApi'
 import { FlowUnavailableError, RateLimitedError, register } from '../services/selfServiceApi'
 import { useAuthStore } from '../stores/authStore'
@@ -28,6 +30,8 @@ import {
 import { radius } from '../theme/tokens'
 
 const HEADING = 'Konto registrieren'
+/** The fields this form can show an error at, in the order the focus walks them. */
+const FIELDS = ['displayName', 'email', 'password'] as const
 
 /**
  * Registers an account of this installation. The acknowledgement is the same for a free address and
@@ -47,6 +51,21 @@ export default function RegisterPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
+  const displayNameRef = useRef<HTMLInputElement>(null)
+  const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
+  const alertRef = useRef<HTMLDivElement>(null)
+  const focusFirstError = useErrorFocus(
+    FIELDS,
+    { displayName: displayNameRef, email: emailRef, password: passwordRef },
+    alertRef,
+  )
+
+  function failWith(errors: Record<string, string>, message: string | null) {
+    setFieldErrors(errors)
+    setFormError(message)
+    focusFirstError(errors)
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -59,15 +78,16 @@ export default function RegisterPage() {
       setDone(true)
     } catch (err) {
       if (err instanceof FieldValidationError && err.fieldErrors.length > 0) {
-        setFieldErrors(fieldErrorMessages(err.fieldErrors, minLength))
+        const { byField, unassigned } = fieldErrorMessages(err.fieldErrors, minLength, FIELDS)
+        failWith(byField, unassigned.length > 0 ? unassigned.join(' ') : null)
       } else if (err instanceof FieldValidationError) {
-        setFormError(err.message)
+        failWith({}, err.message)
       } else if (err instanceof RateLimitedError) {
-        setFormError(tooManyRequestsMessage(err.retryAfterSeconds))
+        failWith({}, tooManyRequestsMessage(err.retryAfterSeconds))
       } else if (err instanceof FlowUnavailableError) {
-        setFormError(SELF_SERVICE_DISABLED_MESSAGE)
+        failWith({}, SELF_SERVICE_DISABLED_MESSAGE)
       } else {
-        setFormError(SELF_SERVICE_UNREACHABLE_MESSAGE)
+        failWith({}, SELF_SERVICE_UNREACHABLE_MESSAGE)
       }
     } finally {
       setBusy(false)
@@ -75,7 +95,13 @@ export default function RegisterPage() {
   }
 
   // See ForgotPasswordPage: nothing is decided while the configuration is still loading.
-  if (isLoading) return null
+  if (isLoading) {
+    return (
+      <AuthLayout>
+        <AuthLoading heading={HEADING} />
+      </AuthLayout>
+    )
+  }
   if (!enabled) return <Navigate to={LOGIN_ROUTE} replace />
 
   if (done) {
@@ -92,13 +118,16 @@ export default function RegisterPage() {
               Zur Anmeldung
             </Link>
             {/* A second registration of an address that is still unconfirmed sends the
-                verification link again (#1538) - so "no mail arrived" has a way out that needs no
-                administrator, and the entries are still in the form behind this. */}
+                verification link again and keeps the stored hash and name (#1538) - so "no mail
+                arrived" has a way out that needs no administrator. The entry stays what it was;
+                the sentence says so, because the form behind this still shows a password field
+                whose content is no longer what decides. */}
             <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
               Keine E-Mail erhalten?{' '}
               <Link component="button" type="button" onClick={() => setDone(false)}>
                 Registrierung erneut absenden
-              </Link>
+              </Link>{' '}
+              — Ihr Passwort von vorhin bleibt gültig.
             </Typography>
           </Stack>
         </AuthNotice>
@@ -110,11 +139,17 @@ export default function RegisterPage() {
     <AuthLayout>
       <PageHeading title={HEADING} variant="h6" />
       {formError && (
-        <Alert severity="error" sx={{ mt: 2, textAlign: 'left' }}>
+        <Alert ref={alertRef} tabIndex={-1} severity="error" sx={{ mt: 2, textAlign: 'left' }}>
           {formError}
         </Alert>
       )}
-      <Box component="form" onSubmit={submit} noValidate sx={{ mt: 3 }}>
+      <Box
+        component="form"
+        aria-labelledby="register-title"
+        onSubmit={submit}
+        noValidate
+        sx={{ mt: 3 }}
+      >
         <SectionEyebrow id="register-title">Neues Konto</SectionEyebrow>
         <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5, mb: 2 }}>
           Ihr Haus lässt die Registrierung für bestimmte E-Mail-Domänen zu. Nach der Registrierung
@@ -125,6 +160,7 @@ export default function RegisterPage() {
             <FieldLabel htmlFor="register-display-name">Name</FieldLabel>
             <TextField
               id="register-display-name"
+              inputRef={displayNameRef}
               size="small"
               fullWidth
               autoComplete="name"
@@ -139,6 +175,7 @@ export default function RegisterPage() {
             <FieldLabel htmlFor="register-email">E-Mail-Adresse</FieldLabel>
             <TextField
               id="register-email"
+              inputRef={emailRef}
               type="email"
               size="small"
               fullWidth
@@ -162,6 +199,7 @@ export default function RegisterPage() {
               minLength={minLength}
               disabled={busy}
               errorMessage={fieldErrors.password}
+              inputRef={passwordRef}
             />
           </Box>
           <Button

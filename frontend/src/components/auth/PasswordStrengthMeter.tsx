@@ -15,27 +15,21 @@ const STEP_COLOR = [
 interface PasswordStrengthMeterProps {
   password: string
   minLength: number
-  /** Ties the bar to its field, so the rating is read out with it. */
-  id: string
 }
 
 /**
  * The strength estimate as four steps plus its word (ADR-0033, Entscheidung 9). Orientation, not a
  * gate: the bar never blocks the submit, because the backend's policy is what decides and a "stark"
  * password can still be on the list of the most common ones. The word carries the meaning for
- * anyone who does not see the colours; the bar itself is decorative.
+ * anyone who does not see the colours, and it is a polite live region so a change of rating is
+ * announced while typing; the bar itself is decorative and hidden from assistive technology.
  */
-export default function PasswordStrengthMeter({
-  password,
-  minLength,
-  id,
-}: PasswordStrengthMeterProps) {
+export default function PasswordStrengthMeter({ password, minLength }: PasswordStrengthMeterProps) {
   if (password.length === 0) return null
   const { score, label } = passwordStrength(password, minLength)
 
   return (
     <Box
-      id={id}
       sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mt: 1 }}
       data-testid="password-strength"
     >
@@ -53,7 +47,10 @@ export default function PasswordStrengthMeter({
           />
         ))}
       </Box>
-      <Typography sx={{ fontSize: 11.5, fontWeight: 500, color: 'text.secondary', minWidth: 78 }}>
+      <Typography
+        aria-live="polite"
+        sx={{ fontSize: 11.5, fontWeight: 500, color: 'text.secondary', minWidth: 78 }}
+      >
         {`Stärke: ${label}`}
       </Typography>
     </Box>

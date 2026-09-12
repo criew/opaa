@@ -23,6 +23,8 @@ interface NewPasswordFieldProps {
    * with a repeat field can keep it in step with a password nobody typed.
    */
   onGenerated?: (value: string) => void
+  /** Lets the form move the focus here - the first field with an error takes it after a refusal. */
+  inputRef?: React.Ref<HTMLInputElement>
 }
 
 /**
@@ -40,6 +42,7 @@ export default function NewPasswordField({
   disabled = false,
   errorMessage,
   onGenerated,
+  inputRef,
 }: NewPasswordFieldProps) {
   const [visible, setVisible] = useState(false)
 
@@ -60,10 +63,11 @@ export default function NewPasswordField({
         autoComplete="new-password"
         disabled={disabled}
         errorMessage={errorMessage}
+        inputRef={inputRef}
         visible={visible}
         onVisibleChange={setVisible}
       />
-      <PasswordStrengthMeter password={value} minLength={minLength} id={`${id}-strength`} />
+      <PasswordStrengthMeter password={value} minLength={minLength} />
       <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }}>
         <Button
           type="button"

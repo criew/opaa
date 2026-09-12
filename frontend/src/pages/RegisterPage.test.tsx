@@ -92,17 +92,31 @@ describe('RegisterPage', () => {
     expect(screen.getByText(/Mindestens 12 Zeichen, höchstens 64/)).toBeInTheDocument()
   })
 
-  it('marks every rejected entry at its own field', async () => {
+  /**
+   * The backend checks in stages and the first failure answers (LocalUserService.requireAddress,
+   * requireText, PasswordPolicy) - so one answer names one field, and the page has to mark that
+   * field and take the focus there. A form that expected all three at once would hide two of them.
+   */
+  it.each([
+    [
+      'the address',
+      { email: 'keine-adresse' },
+      'Bitte geben Sie eine gültige E-Mail-Adresse an.',
+      'E-Mail-Adresse',
+    ],
+    ['the name', { name: '' }, 'Bitte geben Sie Ihren Namen an.', 'Name'],
+    [
+      'the password',
+      { password: 'kurz' },
+      'Das Passwort muss mindestens 12 Zeichen lang sein.',
+      'Passwort',
+    ],
+  ])('marks a rejected %s at its field and focuses it', async (_what, entry, sentence, label) => {
     renderPage()
-    await submit({ name: '', email: 'keine-adresse', password: 'kurz' })
+    await submit(entry)
 
-    expect(
-      await screen.findByText('Bitte geben Sie eine gültige E-Mail-Adresse an.'),
-    ).toBeInTheDocument()
-    expect(screen.getByText('Bitte geben Sie Ihren Namen an.')).toBeInTheDocument()
-    expect(
-      screen.getByText('Das Passwort muss mindestens 12 Zeichen lang sein.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText(sentence)).toBeInTheDocument()
+    expect(screen.getByLabelText(label)).toHaveFocus()
   })
 
   it('generates a password that gets through', async () => {
