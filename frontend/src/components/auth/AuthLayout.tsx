@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import { keyframes } from '@mui/material/styles'
+import NotificationHost from '../NotificationHost'
 import { navyRoles, radius } from '../../theme/tokens'
 
 // One staged entrance for the card (guidelines 4.5); the theme collapses it under
@@ -44,6 +45,9 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       >
         {children}
       </Box>
+      {/* The popup notifications of these screens would otherwise go nowhere: the app-wide host
+          hangs in AppShell, and nothing before a session renders inside it (guidelines 5.9). */}
+      <NotificationHost />
     </Box>
   )
 }

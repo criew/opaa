@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../../test/test-utils'
+import AuthLayout from './AuthLayout'
 import NewPasswordField from './NewPasswordField'
 import PasswordField from './PasswordField'
 
@@ -30,6 +31,18 @@ describe('PasswordField', () => {
 
     expect(field).toHaveAttribute('type', 'text')
     expect(screen.getByRole('button', { name: 'Passwort verbergen' })).toBeInTheDocument()
+  })
+
+  // accessibility.md 2.1: revealing a long generated password may not be a mouse-only action.
+  it('reaches the toggle by keyboard', async () => {
+    renderWithProviders(<Harness />)
+    screen.getByLabelText('Passwort').focus()
+
+    await userEvent.tab()
+
+    expect(screen.getByRole('button', { name: 'Passwort anzeigen' })).toHaveFocus()
+    await userEvent.keyboard('{Enter}')
+    expect(screen.getByLabelText('Passwort')).toHaveAttribute('type', 'text')
   })
 })
 
@@ -68,10 +81,21 @@ describe('NewPasswordField', () => {
     expect(screen.getByTestId('password-strength')).toHaveTextContent('Stärke: stark')
   })
 
-  it('copies the entry and says so', async () => {
+  /**
+   * Deliberately without the helper's own NotificationHost and inside the AuthLayout the pages
+   * actually use: the app-wide host hangs in AppShell, which nothing before a session renders in -
+   * so a test that relied on the helper's host would pass while the popup went nowhere in the
+   * product.
+   */
+  it('copies the entry and says so on a screen that has no application shell', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
-    renderWithProviders(<NewPasswordHarness />)
+    renderWithProviders(
+      <AuthLayout>
+        <NewPasswordHarness />
+      </AuthLayout>,
+      { withNotificationHost: false },
+    )
 
     await userEvent.type(screen.getByLabelText('Neues Passwort'), 'Sommerregen-42x')
     await userEvent.click(screen.getByRole('button', { name: 'Kopieren' }))
@@ -87,7 +111,12 @@ describe('NewPasswordField', () => {
       value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
       configurable: true,
     })
-    renderWithProviders(<NewPasswordHarness />)
+    renderWithProviders(
+      <AuthLayout>
+        <NewPasswordHarness />
+      </AuthLayout>,
+      { withNotificationHost: false },
+    )
 
     await userEvent.type(screen.getByLabelText('Neues Passwort'), 'Sommerregen-42x')
     await userEvent.click(screen.getByRole('button', { name: 'Kopieren' }))

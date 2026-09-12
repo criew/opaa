@@ -75,13 +75,12 @@ export default function PasswordField({
             endAdornment: (
               <InputAdornment position="end">
                 <Tooltip title={toggleLabel}>
-                  <IconButton
-                    aria-label={toggleLabel}
-                    edge="end"
-                    size="small"
-                    tabIndex={-1}
-                    onClick={toggle}
-                  >
+                  {/* Reachable by keyboard like any control (accessibility.md 2.1): taking it out
+                      of the tab order would make revealing a long generated password a
+                      mouse-only action. The label names what the next activation does, which is
+                      why there is no aria-pressed - both would say the state twice, in opposite
+                      directions. */}
+                  <IconButton aria-label={toggleLabel} edge="end" size="small" onClick={toggle}>
                     {visible ? (
                       <VisibilityOffOutlinedIcon fontSize="small" />
                     ) : (

@@ -15,11 +15,23 @@ const theme = createAppTheme('dark')
 interface AppRenderOptions extends RenderOptions {
   initialRoute?: string
   withRouter?: boolean
+  /**
+   * Set false for a tree that mounts a {@link NotificationHost} of its own (AuthLayout does) - two
+   * hosts show the same popup twice, and a test asserting on it would then find two elements.
+   * Setting it false is also the only way to prove that a component's popup reaches a host the
+   * product actually mounts, rather than the one this helper adds.
+   */
+  withNotificationHost?: boolean
 }
 
 export function renderWithProviders(
   ui: ReactElement,
-  { initialRoute = '/', withRouter = false, ...renderOptions }: AppRenderOptions = {},
+  {
+    initialRoute = '/',
+    withRouter = false,
+    withNotificationHost = true,
+    ...renderOptions
+  }: AppRenderOptions = {},
 ) {
   // Notifications from a previous test would otherwise pop up over this render - the queue is
   // app-global (guidelines 5.9), not scoped to a component tree.
@@ -32,7 +44,7 @@ export function renderWithProviders(
         {children}
         {/* Mounted app-wide by AppShell; mirrored here so component tests observe the popup
             notifications their interactions raise (guidelines 5.9). */}
-        <NotificationHost />
+        {withNotificationHost && <NotificationHost />}
       </ThemeProvider>
     )
 
