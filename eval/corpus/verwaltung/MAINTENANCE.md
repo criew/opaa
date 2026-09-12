@@ -495,9 +495,9 @@ Verschmutzung durch Geschwisterdokumente des Altthemas ist per Definition unsich
 **Die Kennzahl hat auf diesem Datensatz praktisch keinen Dynamikbereich — in beide Richtungen**, und
 war als Kriterium schon in #1485 zurückgezogen. Die Nachmessung bestätigt das: Sie steigt von 0 auf
 2 Dokumente in 2 von 9 Wechselrunden (`ts-007#3`: die Dienstanweisung des Standesamts aus Runde 2;
-`ts-008#2`: die Personalaktenauskunftsgebührensatzung aus Runde 1, auf Rang 4 hinter drei richtigen
-Treffern). **Beide Wechselrunden sind trotzdem gelöst** — das Altthemen-Dokument steht im Fenster,
-ohne das Ziel von Rang 1 zu verdrängen. `topic_switch` wird deshalb über den **Anteil gelöster
+`ts-008#2`: die Personalaktenauskunftsgebührensatzung aus Runde 1, auf Rang 4, während das Ziel der
+Wechselrunde auf Rang 1 steht). **Beide Wechselrunden sind trotzdem gelöst** — das
+Altthemen-Dokument steht im Fenster, ohne das Ziel von Rang 1 zu verdrängen. `topic_switch` wird deshalb über den **Anteil gelöster
 Fälle** beurteilt, nicht über die Bleed-Zahl.
 
 Der Datensatz misst zudem eine Verschmutzung nicht, die die Nachmessung sichtbar gemacht hat: In
