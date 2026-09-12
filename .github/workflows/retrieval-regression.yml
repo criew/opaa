@@ -509,8 +509,8 @@ jobs:
             # Chat-Modells für die Zerlegung und einer für die Gesprächsnotiz, und die
             # Mehrfachlauf-Regel verlangt drei Messungen (docs/features/retrieval-benchmark.md,
             # Abschnitt 3). Auf einer Entwicklermaschine (CPU/Testcontainer) dauert eine Messung
-            # 20-29 Minuten, der Mehrrunden-Schritt insgesamt also rund 60-90 Minuten; dazu kommt
-            # der Einzelfragen-Teil desselben Harness-Laufs (verwaltung: rund 7 Minuten lokal).
+            # 14-29 Minuten, der ganze Task-Lauf einschließlich Indizierung und
+            # Einzelfragen-Teil rund 52 Minuten.
             # Ein GitHub-Runner ist deutlich langsamer. Gemessene Anhaltspunkte: verwaltung
             # (Einzelfragen) lag im Lauf 34648243211 bei 16 min 28 s gegen rund 7 min lokal, also
             # Faktor ~2,4 einschließlich Modell-Zug; bei city-landmarks ist der Faktor deutlich
@@ -678,9 +678,10 @@ jobs:
               'Seine Zahlen sind mit denen des Rohvektor- und des Pipeline-Pfads nicht ' +
               'vergleichbar (ADR-0012, Nachtrag Mehrrunden-Messpfad): Dort ist jede Zeile eine ' +
               'Einzelfrage ohne Verlauf, hier eine Runde eines Gesprächs. Eine unvergleichbare ' +
-              'Baseline ist kein Fehlschlag dieses Jobs, sondern erscheint als „nicht beurteilt" ' +
-              'mit ihrer Festpunktabweichung — ein roter Lauf meint deshalb eine Regression, eine ' +
-              'unerwartet verschobene Messgrundlage oder einen fehlgeschlagenen Messlauf.';
+              'Baseline lässt diesen Job fehlschlagen — die Messgrundlage hat sich bewegt, und ' +
+              'ihre Festpunktabweichung steht in der Tabelle unten. Ein roter Lauf meint deshalb ' +
+              'eine Regression, eine verschobene Messgrundlage oder einen fehlgeschlagenen ' +
+              'Messlauf.';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const commentBody = `${{ matrix.failure_prefix }} ${runUrl}\n\n${pathNote}\n\n${details}`;
             const issueBody = `${marker}\n\n${{ matrix.issue_intro }}\n\n${pathNote}\n\nWorkflow-Lauf: ${runUrl}\n\n${details}`;
@@ -712,12 +713,9 @@ jobs:
               });
             }
 
-      # Trägt die Vergleichstabelle mit, anders als der gleichnamige Schritt im Job `evaluate`.
-      # Grund ist der vierte Ausgang dieses Pfads: Ein grüner Lauf kann „keine Regression" oder
-      # „nicht beurteilt" bedeuten. Ein Schließ-Kommentar, der nur „wieder grün" sagt, ließe einen
-      # Leser, der bloß das Issue sieht, den unbeurteilten Zustand für eine bestandene Prüfung
-      # halten — genau die Verwechslung, gegen die jede andere Ausgabestelle dieses Jobs den
-      # Zustand ausdrücklich benennt.
+      # Trägt die Vergleichstabelle mit, anders als der gleichnamige Schritt im Job `evaluate`:
+      # Ein Schließ-Kommentar, der nur „wieder grün" sagt, lässt einen Leser, der bloß das Issue
+      # sieht, ohne die Deltas, um die es ging.
       - name: Alarm-Issue bei erneutem Bestehen schließen
         if: success() && github.event_name != 'pull_request'
         uses: actions/github-script@v9
@@ -750,9 +748,7 @@ jobs:
                 issue_number: existing.number,
                 body: '${{ matrix.success_comment }} ' +
                   `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}` +
-                  '\n\nGrün heißt auf diesem Pfad nicht zwingend „geprüft": Welches Urteil ' +
-                  'dahinter steht — keine Regression oder nicht beurteilt —, steht in der ' +
-                  'Tabelle unten.\n\n' + comparison,
+                  '\n\n' + comparison,
               });
               await github.rest.issues.update({
                 owner: context.repo.owner,

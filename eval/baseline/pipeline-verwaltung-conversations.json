@@ -25,7 +25,7 @@
       "corpusManifestSha256": "e129bb86365f08bb553dab2401b91d82233e5efd84516b0b151c25b6e1590480",
       "corpusDocumentCount": 72,
       "goldenDatasetFile": "eval/golden/verwaltung-conversations.json",
-      "goldenDatasetSha256": "a9a712755234c316f0efbc07ffb18b68d871b8a81fc2bc8fdf5889f4010b4ff6",
+      "goldenDatasetSha256": "d4ed6cde55dafdbb8bee8f7dd7adbde6872ae729200d365c5c418df78ae90fad",
       "goldenCaseCount": 27,
       "ingestionPipelineFingerprint": "confluence:2,docx:3,email:5,html:3,markdown:1,odp:2,odt:2,pdf:1,pptx:1,tabular:1,tika-fallback:1",
       "metadataFilterEnabled": false

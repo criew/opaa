@@ -1,8 +1,9 @@
 # Gesprächsgedächtnis: Gesprächsfenster und Gesprächsnotiz
 
-> **Status: Entschieden (Maintainer, 11.09.2026), Umsetzung in Epic #1482.** Architekturentscheidung
-> in [ADR-0031](../decisions/0031-gespraechsgedaechtnis.md). Das Handbuch beschreibt den Ist-Stand und
-> wird mit den Umsetzungs-Issues nachgezogen.
+> **Status: Umgesetzt und nachgemessen (Epic #1482, abgeschlossen 12.09.2026).**
+> Architekturentscheidung in [ADR-0031](../decisions/0031-gespraechsgedaechtnis.md), dort seit der
+> Nachmessung (#1490) **akzeptiert** — samt Abschnitt „Gemessene Wirkung", der benennt, welche der
+> drei Erwartungen die Messung bestätigt und welche nicht. Das Handbuch beschreibt den Ist-Stand.
 
 ## Motivation
 
@@ -465,10 +466,12 @@ Wert, den der Harness nicht sehen kann. Wiederaufnahme, sobald es einen Generati
 > aber bei 2 von 9; `constraint_carryover` erreicht die Referenz aus Schritt 2 **nicht** wieder
 > (nDCG@8 0,857 → 0,835; 4 → 1 von 9 Fällen). Die für Schritt 4 und 5 festgelegte, empfindlichere
 > Vergleichsgröße — Zielrunden, deren Teilfrage die Rahmenangabe trägt — fällt von 4 von 9 auf
-> 1 von 9. Die Notiz entsteht dabei zuverlässig (83 von 83 Verdichtungen erfolgreich) und erreicht
-> die Zerlegung; sie trägt die Fassungsangabe aber nur in drei von neun Fällen bis zur Zielrunde,
-> weil das Verdichtungsmodell die Artenaufzählung des Prompts als Vorlage ausfüllt und die
-> Zwei-Zeilen-Grenze die Jahres- oder Fassungszeile abschneidet. Einzelfälle, Ursachen und der
+> 1 von 9. Die Verdichtung läuft dabei fehlerfrei (83 von 83 Aufrufen ohne Fehlschlag), hinterlässt
+> aber in 8 der 27 Gespräche über alle Runden **keinen einzigen** `RAHMEN`-Punkt; wo sie einen
+> hinterlässt, trägt er die Fassungsangabe nur in drei von neun Fällen. Auslöser ist das
+> Antwortformat des Verdichtungsmodells, wirksam werden zwei Regeln der Auswertung selbst: Sie nimmt
+> die ersten zwei Zeilen, und eine Zeile mit unbekanntem Artpräfix wird zu `ANTWORTFORM` und erreicht
+> die Suche nie. Einzelfälle, Ursachen und der
 > Vorbehalt, dass der Vergleich kein reines A/B über Fenster und Notiz ist, stehen in
 > [`eval/corpus/verwaltung/MAINTENANCE.md`](../../eval/corpus/verwaltung/MAINTENANCE.md),
 > Abschnitt „Befund der Nachmessung". Folgearbeit außerhalb dieses Epics: #1586 (Verdichtung hält

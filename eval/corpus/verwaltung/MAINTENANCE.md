@@ -392,7 +392,12 @@ Derselbe Aufbau, jetzt mit dem verengten Suchfenster (**2 Runden**, #1486) und d
 Runden mit abweichender Zerlegung, und ein zweiter, vollständig getrennter Aufruf lieferte jede Zahl
 bitgleich. Der CI-Job `conversations (verwaltung)` hat dieselbe Konfiguration auf fremder Hardware
 ein drittes Mal gemessen und die committete Baseline mit Delta ±0,000 in jeder Gruppe und jeder
-Metrik bestätigt (Lauf 34659775338, 93 Minuten). Alle 83 Notiz-Verdichtungen sind gelungen.
+Metrik bestätigt (Lauf 34659775338, 93 Minuten). Die Notiz-Verdichtung lief in allen 83 Runden
+ohne Fehlschlag — was nicht heißt, dass sie etwas hinterlassen hätte: In **8 der 27 Gespräche**
+(`ana-003`, `-004`, `-009`, `ts-003`, `-004`, `-005`, `-007`, `-008`) entstand über alle Runden
+**kein einziger `RAHMEN`-Punkt**, und nur 38 der 83 Runden haben überhaupt einen bekommen. Der
+Bericht zählt Aufrufe ohne Ausnahme, nicht Ergebnisse (`condenseInto` meldet nur einen
+Modellfehler); die Punkte selbst stehen seit #1490 je Runde im Feld `conversationNote`.
 
 **Je Klasse, über die Runden der Klasse:**
 
@@ -443,12 +448,23 @@ wirkt nicht" aussahen:
 | `cc-009#4` | „Person, Zuständigkeit: Finanzamt, …, **Zeitraum: seit 2024, Fassung: 2024**, …", „STA-08" | nein |
 
 1. **Die Notiz trägt die Rahmenangabe in nur 3 von 9 Fällen** (`cc-002`, `cc-004`, `cc-009`). In den
-   übrigen sechs ist der einzige `RAHMEN`-Punkt ein Rollenwort ohne Jahr. Ursache ist das Format der
-   Verdichtung: `qwen2.5:1.5b-instruct` füllt die Aufzählung der Arten aus dem Prompt als Vorlage
-   aus („RAHMEN: Arzt", „ZUSTANDGEBIT: …", „ZEITALGM: 2023", „FASUNG: Fassung 2023", …), statt
-   höchstens zwei Zeilen mit `RAHMEN:`/`ANTWORTFORM:`-Präfix zu liefern. `ChatNoteExtraction.parse`
-   nimmt die ersten zwei Zeilen — die Jahres- oder Fassungszeile steht an vierter bis sechster
-   Stelle und fällt heraus.
+   übrigen sechs trägt **kein** Punkt ein Jahr; der erste ist durchgängig ein Rollenwort. Auslöser
+   ist das Antwortformat: `qwen2.5:1.5b-instruct` füllt die Aufzählung der Arten aus dem Prompt als
+   Vorlage aus („RAHMEN: Arzt", „ZUSTANDGEBIT: Zuständig für …", „ZEITALGM: 2023", „FASUNG: Fassung
+   2023", …), statt höchstens zwei Zeilen mit `RAHMEN:`/`ANTWORTFORM:`-Präfix zu liefern. Was daraus
+   einen leeren Punkt macht, sind aber **zwei Regeln in OPAAs eigenem Code**, nicht das Modell
+   allein:
+
+   - `ChatNoteExtraction.parse` nimmt die **ersten zwei** Zeilen (`MAX_POINTS_PER_TURN`); die Jahres-
+     oder Fassungszeile steht an vierter bis sechster Stelle und fällt heraus.
+   - `ChatNoteExtraction.kindOf` stuft eine Zeile mit **unbekanntem** Artpräfix („ZUSTANDGEBIT:") auf
+     `ANTWORTFORM` herab, und nur `RAHMEN`-Punkte erreichen die Suche. Von den zwei geparsten Punkten
+     bleibt damit einer übrig — bei `verw-conv-cc-001` genau `[„Arzt"]`.
+
+   Beide Regeln sind für sich begründet (ein redseliges Modell darf die Rahmenangabe aus Runde 1
+   nicht über den Deckel schieben; eine Zeile ohne erkennbare Art landet dort, wo ein überflüssiger
+   Punkt am wenigsten schadet). Zusammen mit diesem Antwortformat kosten sie die Angabe. Aufgenommen
+   als #1586.
 2. **Wo die Notiz sie trägt, nimmt die Zerlegung sie in einem von drei Fällen auf** (`cc-002` ja,
    `cc-004` und `cc-009` nein). Die Teilfrage der Zielrunde ist fast durchgängig eine **erfundene
    Aussage** über den Gegenstand statt einer Suchanfrage — dasselbe Fehlerbild, das der

@@ -148,7 +148,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Gelöst mit Suchfenster (#1486) und Gesprächsnotiz (#1487), gemessen am 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 erhält den Notizpunkt „Formular JUG-07“, und beide Runden führen verwaltung-0055_formularhinweis-jugendamt-7.md auf Rang 1."
+    "expected_state_reason": "Gelöst seit dem Umbau aus #1486/#1487, gemessen am 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 erhält den Notizpunkt „Formular JUG-07“, und beide Runden führen verwaltung-0055_formularhinweis-jugendamt-7.md auf Rang 1."
   },
   {
     "id": "verw-conv-ana-007",
@@ -269,7 +269,7 @@
     "topic_switch_turn": 3,
     "expected_state": "solved",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Gelöst mit dem verengten Suchfenster (#1486), gemessen am 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 hält BAU-DA-1/2023 auf Rang 1 statt der amtsübergreifenden Aufbewahrungs-Dienstanweisung; alle drei Runden sind gelöst, die Wechselrunde 3 ohne Dokument des Vorthemas."
+    "expected_state_reason": "Gelöst seit dem Umbau aus #1486/#1487, gemessen am 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 hält BAU-DA-1/2023 auf Rang 1 statt der amtsübergreifenden Aufbewahrungs-Dienstanweisung; alle drei Runden sind gelöst, die Wechselrunde 3 ohne Dokument des Vorthemas. Welcher der beiden Bausteine das bewirkt hat, ist nicht auflösbar — die Runden 2 und 3 haben zusätzlich den Notizpunkt „Bauanweisungen“ erhalten."
   },
   {
     "id": "verw-conv-ts-002",
