@@ -145,10 +145,14 @@ und die lokale Benutzerverwaltung ist im Regelbetrieb abgeschaltet.
 > administrativ angestoßene, von der betroffenen Person selbst durch Anmeldung beim Anbieter
 > eingelöste Übergabe eines lokalen Kontos an ihre Anbieteridentität). Kein stiller Eingriff in ein
 > Konto: Sperre, Entsperrung, Zurücksetzen, bevorstehender Ablauf und Übergabe werden der Person per
-> E-Mail mitgeteilt, und eine beendete Sitzung nennt beim nächsten Aufruf ihren Grund. Der Ist-Stand
-> der Umsetzung steht im Epic.
+> E-Mail mitgeteilt, und eine beendete Sitzung nennt beim nächsten Aufruf ihren Grund.
+>
+> **Gebaut ist alles davon bis auf die Übergabe** (#1594); die Abschnitte unten beschreiben den
+> Stand. Die Bedienung im Alltag steht im Produkthandbuch, Kapitel „Benutzerverwaltung".
 
-**Lokale Anmeldung (gebaut, #1533).** Das Backend ist Token-Aussteller für lokale Konten:
+### Aussteller, Tokens und Sitzungen lokaler Konten
+
+Das Backend ist Token-Aussteller für lokale Konten:
 `POST /api/v1/auth/local/login` prüft E-Mail-Adresse (groß-/kleinschreibungsunabhängig, nur unter
 dem lokalen Issuer `urn:opaa:local`) und Passwort und stellt ein HS256-Access-Token (15 Minuten;
 Claims `jti`, `iss`, `sub` = Konto-ID, `iat`, `exp`, `email`, `name`, `pcr`, keine Rolle) sowie ein
@@ -157,7 +161,7 @@ nach `OPAA_AUTH_LOCAL_COOKIE_SECURE`, `Path=/api/v1/auth/local`). Jede abgewiese
 unbekannte Adresse, falsches Passwort, gesperrtes, abgelaufenes oder eingeladenes Konto,
 abgeschaltete Verwaltung — ist dieselbe Antwort mit derselben Antwortzeitklasse (Hash-Vergleich
 auch gegen einen Dummy-Hash); der Fehlversuchszähler wird atomar geführt, die Sperre nach fünf
-Fehlversuchen steht unten (#1535). Anmeldefähig ist nur ein aktives Konto; bei ausgeschalteter
+Fehlversuchen steht weiter unten. Anmeldefähig ist nur ein aktives Konto; bei ausgeschalteter
 Verwaltung (Schalter = `enabled` der `LOCAL`-Anbieterzeile) nur ein lokaler `SYSTEM_ADMIN`.
 `POST …/refresh` rotiert das Cookie innerhalb seiner Familie (Leerlauffrist 7 Tage, absolute
 Höchstdauer 30 Tage, für lokale Systemverwalter 4 h / 12 h; keine Rotation verlängert das
@@ -193,13 +197,14 @@ schreibt E-Mail und Anzeigename nicht aus dem Token zurück. `GET /api/v1/auth/c
 selfRegistrationEnabled, passwordResetEnabled, passwordMinLength }`; die beiden Selbstbedienungs-
 flüsse gelten nur mit gesetzter öffentlicher Basis-URL als verfügbar. Ein täglicher Lauf löscht
 Zeilen der drei Token-Tabellen spätestens sieben Tage nach Ablauf oder Widerruf; Inaktivitätssperre
-und Ablauf-Erinnerungen hängen sich dort ein (#1537). Aussteller, Anmelde-Endpunkte und
+und Ablauf-Erinnerungen hängen sich dort ein. Aussteller, Anmelde-Endpunkte und
 `pcr`-Filter existieren nur im `oidc`-Betriebsmodus; die Verwaltungs-Endpunkte lokaler Konten und
-der Schalter (#1537) sind profilunabhängig, damit die Oberfläche (#1541) und die E2E-Suite im
+der Schalter (#1537) sind profilunabhängig, damit die Oberfläche und die E2E-Suite im
 `dev`-Modus laufen — ein dort angelegtes lokales Konto kann sich mangels Aussteller nicht anmelden.
-Die Anmeldeseite (#1539) steht im nächsten Absatz.
 
-**Anmeldeseite (gebaut, #1539).** Die Oberfläche kennt zwei Sitzungsarten. Die **lokale Sitzung**
+### Sitzungsführung in der Oberfläche
+
+Die Oberfläche kennt zwei Sitzungsarten. Die **lokale Sitzung**
 hält ihr Access-Token ausschließlich im Speicher — nichts im `localStorage` — und wird nach einem
 Neuladen über das HttpOnly-Cookie wiederhergestellt: Beim Start versucht die Anwendung genau
 **einen** Erneuerungsaufruf, und das auch nur, wenn zuletzt eine lokale Sitzung bestand. Diesen
@@ -236,21 +241,9 @@ und der Anlass (`INITIAL`, `ADMIN_RESET`, `SECURITY`) steht dort als Klartextsat
 Wechsel übernimmt die Sitzung, die das Backend in derselben Antwort ausstellt — es folgt keine
 erneute Anmeldung.
 
-Die **Anmeldeseite** zeigt die Passwortmaske nur, solange die lokale Verwaltung eingeschaltet ist;
-Anbieterkacheln und Maske stehen als getrennte, benannte Bereiche untereinander („Mit
-Identitätsanbieter" zuerst, dann „Mit Konto dieser Installation"). Die Links „Passwort vergessen?"
-und „Konto registrieren" erscheinen nur, wenn `GET /api/v1/auth/config` den jeweiligen Fluss als
-verfügbar meldet. Jede abgewiesene Anmeldung liest sich gleich („Anmeldung nicht möglich. Prüfen Sie
-E-Mail-Adresse und Passwort."); eine Begrenzung nennt die Wartezeit aus `Retry-After`, ein nicht
-erreichbares Backend sagt genau das. Nach einer Abweisung springt der Fokus zurück ins erste Feld.
-Der Vertrauenshinweis ist kontextabhängig formuliert. Die **Systemverwalter-Anmeldung**
-(`/login/system`) ist immer erreichbar — der Weg zurück in eine Installation, deren letzter
-Anbieter falsch konfiguriert ist —, erscheint als stiller Fußlink der Anmeldeseite und leitet auf
-`/login` um, sobald die lokale Verwaltung eingeschaltet ist. Ein Rücksprungziel aus `?from=` oder
-dem Router-Zustand wird auf einen Pfad desselben Origins normalisiert, bevor es verwendet wird. Im
-`dev`-Betriebsmodus ändert sich nichts.
+### Der erste Systemverwalter, das Notanker-Konto und der Aussperrschutz
 
-**Erstadministrator und Notanker-Konto (gebaut, #1534).** Beim allerersten Start im
+Beim allerersten Start im
 `oidc`-Betriebsmodus legt `LocalAdminSeeder` — vor dem Webserver, gegen Wiederholung durch eine
 Markierungszeile gesichert — die `LOCAL`-Anbieterzeile („Lokale Konten", deaktiviert, nie
 Standard) und das lokale Notanker-Konto der Systemverwaltung an: Adresse aus
@@ -268,7 +261,8 @@ nächsten Start einmalig (entsperrt, Ablauf gelöscht, neues Einmalpasswort, `SY
 wiederhergestellt, alle Sitzungen widerrufen; ein gelöschtes Konto wird neu angelegt) — auditiert
 als `LOCAL_ADMIN_RESET`; die Anlage als `LOCAL_ADMIN_SEEDED`. Jede erfolgreiche Anmeldung mit dem
 Notanker-Konto (erkannt über `is_bootstrap`, nicht über die Adresse) ist ein Audit-Ereignis
-`LOCAL_BOOTSTRAP_ACCOUNT_LOGIN`; die Mail an die übrigen Systemverwalter (`BOOTSTRAP_ACCOUNT_USED`) schickt #1537. Die
+`LOCAL_BOOTSTRAP_ACCOUNT_LOGIN` und löst die Mail `BOOTSTRAP_ACCOUNT_USED` an alle übrigen
+Systemverwalter aus. Die
 Erstadministrator-Regel für OIDC-Konten ist aufgehoben: `InitialAdminPolicy` wirkt nur noch für den
 Dev-Issuer (`dev-admin` bleibt Systemverwalter); IdP-Konten werden Systemverwalter allein durch
 Rollenvergabe. `OPAA_OIDC_BOOTSTRAP=force` funktioniert bis zum 31.03.2027 weiter und warnt bei
@@ -277,7 +271,28 @@ keine Beschränkung) melden sich lokale `SYSTEM_ADMIN`-Konten nur aus den genann
 Abweisung ist dieselbe wie bei einem falschen Passwort, liegt aber vor der Fehlversuchszählung (aus einem nicht erlaubten Netz lässt sich das Konto nicht sperren); geprüft
 wird die aufgelöste Client-Adresse (siehe Rate-Limiting unten).
 
-**Rate-Limiting und Kontosperre (gebaut, #1535).** Die Client-Adresse jeder Anfrage bestimmt
+**Aussperrschutz.** `LocalAdminAvailabilityGuard` ist die eine Stelle für „nie ohne
+anmeldefähigen Systemverwalter": Unter dem Advisory-Lock je Organisation zählt er nur
+**anmeldefähige** Systemverwalter — lokale Konten nach derselben `isLoginCapable`-Regel wie die
+Anmeldung (aktiv, mit Passwort, nicht gesperrt oder abgelaufen) und Konten eines **aktivierten**
+OIDC-Anbieters (im `dev`-Modus: des Dev-Issuers). Über ihn laufen der Rollenentzug per Token
+(`TokenRoleSynchronizer`) und per Verwaltung (`POST /api/v1/admin/users/{id}/role`, 409 mit Code
+`LAST_LOGIN_CAPABLE_ADMIN`) sowie das Deaktivieren und Löschen jedes aktivierten
+OIDC-Anbieters sowie Sperren, Befristen und Löschen lokaler Systemverwalter. Die
+`LOCAL`-Zeile ist über die Anbieter-API weder löschbar noch Standard, ihr Issuer nicht änderbar
+(nur der Anzeigename), Adressprüfung und Verbindungstest entfallen für sie; ihr
+Aktivieren/Deaktivieren ist der Schalter der lokalen Verwaltung (`LOCAL_ACCOUNTS_ENABLED`/
+`_DISABLED`), und das Abschalten beendet die Sitzungen aller regulären lokalen Konten (ein
+`UPDATE` von `password_invalidated_before`; `LOCAL_SESSION_REVOKED` je Konto mit tatsächlich
+aktiver Sitzung), nicht die der Systemverwalter. Der erste OIDC-Anbieter wird
+auch neben der `LOCAL`-Zeile automatisch Standard; der Standard kann deaktiviert oder gelöscht
+werden, sobald er der letzte aktivierte OIDC-Anbieter ist — nur mit `acknowledgeLastProvider=true`
+(sonst 409 `LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED`) und nur, wenn ein lokales
+Systemverwalterkonto mit Passwort besteht (sonst 409 `LAST_LOGIN_CAPABLE_ADMIN`).
+
+### Client-Adresse, Grenzen der Anmeldung und Kontosperre
+
+Die Client-Adresse jeder Anfrage bestimmt
 `io.opaa.security.ClientIpResolver` (`TrustedProxyClientIpResolver`), die eine Stelle für
 Rate-Limits und die Netzbeschränkung: `X-Forwarded-For` zählt nur, wenn die Verbindung selbst aus
 einem Netz in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` kommt (Vorgabe leer = Header ignoriert), und
@@ -312,7 +327,7 @@ bestätigen je 10/900 s je Adresse; Login, Registrierung und „Passwort vergess
 Fenster (100 bzw. 50), deren Überschreiten eine Warnung und die Metrik `opaa.rate_limit.rejected`
 (`limit`, `scope=global`) erzeugt. Die adress- und kontobezogenen Grenzen liegen in
 `LocalAuthRateLimiter` (E-Mail-Adressen nur als Hash im Speicher); die Endpunkte der
-Selbstbedienung (#1538) rufen `requireAddressAllowance` vor jeder Verarbeitung auf. Nach
+Selbstbedienung rufen `requireAddressAllowance` vor jeder Verarbeitung auf. Nach
 fünf Fehlversuchen (`OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS`) sperrt `LocalAccountLockoutListener`
 das Konto für feste 15 Minuten (`OPAA_AUTH_LOCAL_LOCKOUT_DURATION`, `locked_reason =
 FAILED_LOGINS`, keine progressive Verlängerung; die Sperre setzt den Zähler auf null, während der
@@ -323,28 +338,11 @@ Konto-ID, nie der Adresse. Die Anmeldung antwortet während der Sperre exakt wie
 falschen Passwort; Tokens des gesperrten Kontos weist der Validator über den Zustand ab
 (`account_locked:failed_logins`). Das Ende der Sperre erzeugt kein Ereignis; der Zähler geht auch
 bei jeder erfolgreichen Anmeldung auf null. Keine Mail bei dieser Sperre; „Passwort vergessen"
-bleibt offen, und ein eingelöster Rücksetzlink hebt sie auf (#1538).
+bleibt offen, und ein eingelöster Rücksetzlink hebt sie auf.
 
-**Aussperrschutz (gebaut, #1534).** `LocalAdminAvailabilityGuard` ist die eine Stelle für „nie ohne
-anmeldefähigen Systemverwalter": Unter dem Advisory-Lock je Organisation zählt er nur
-**anmeldefähige** Systemverwalter — lokale Konten nach derselben `isLoginCapable`-Regel wie die
-Anmeldung (aktiv, mit Passwort, nicht gesperrt oder abgelaufen) und Konten eines **aktivierten**
-OIDC-Anbieters (im `dev`-Modus: des Dev-Issuers). Über ihn laufen der Rollenentzug per Token
-(`TokenRoleSynchronizer`) und per Verwaltung (`POST /api/v1/admin/users/{id}/role`, 409 mit Code
-`LAST_LOGIN_CAPABLE_ADMIN`) sowie das Deaktivieren und Löschen jedes aktivierten
-OIDC-Anbieters sowie — seit #1537 — Sperren, Befristen und Löschen lokaler Systemverwalter. Die
-`LOCAL`-Zeile ist über die Anbieter-API weder löschbar noch Standard, ihr Issuer nicht änderbar
-(nur der Anzeigename), Adressprüfung und Verbindungstest entfallen für sie; ihr
-Aktivieren/Deaktivieren ist der Schalter der lokalen Verwaltung (`LOCAL_ACCOUNTS_ENABLED`/
-`_DISABLED`), und das Abschalten beendet die Sitzungen aller regulären lokalen Konten (ein
-`UPDATE` von `password_invalidated_before`; `LOCAL_SESSION_REVOKED` je Konto mit tatsächlich
-aktiver Sitzung), nicht die der Systemverwalter. Der erste OIDC-Anbieter wird
-auch neben der `LOCAL`-Zeile automatisch Standard; der Standard kann deaktiviert oder gelöscht
-werden, sobald er der letzte aktivierte OIDC-Anbieter ist — nur mit `acknowledgeLastProvider=true`
-(sonst 409 `LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED`) und nur, wenn ein lokales
-Systemverwalterkonto mit Passwort besteht (sonst 409 `LAST_LOGIN_CAPABLE_ADMIN`).
+### Kontolebenszyklus lokaler Konten
 
-**Kontolebenszyklus lokaler Konten (gebaut, #1537).** Die Verwaltung lokaler Konten liegt unter
+Die Verwaltung lokaler Konten liegt unter
 `/api/v1/admin/local-users` und `/api/v1/admin/local-auth-settings` (nur `SYSTEM_ADMIN`, auf die
 eigene Organisation begrenzt). **Anlegen** mit E-Mail-Adresse, Anzeigename, Rolle, Pflicht-Anlagegrund
 (höchstens 200 Zeichen, zweckgebunden, für die Person einsehbar, nie als Wert im Protokoll) und
@@ -400,13 +398,14 @@ einmalig) und schickt den Systemverwaltern je Lauf höchstens **eine** Wiedervor
 `ADMIN_REVIEW_REMINDER` mit der Zahl der Konten, die ihren Blick brauchen — die in 14 Tagen
 auslaufenden und am ersten Tag eines Quartals zusätzlich alle ohne Ablaufdatum — und dem Link zur
 Liste, ohne Namen; je Lauf höchstens 200 Sperren bzw. Mails, der Rest folgt am nächsten Tag. Sperren,
-erzeugtes Passwort und Adresswechsel entwerten jeden offenen Einladungs- und Rücksetzlink. Jede Anmeldung mit dem Notanker-Konto löst jetzt die Mail
-`BOOTSTRAP_ACCOUNT_USED` an alle übrigen Systemverwalter aus. Das Handbuchkapitel (#1543) folgt.
+erzeugtes Passwort und Adresswechsel entwerten jeden offenen Einladungs- und Rücksetzlink.
 
-**Selbstregistrierung und Passwort vergessen (gebaut, #1538).** Die Selbstbedienung lokaler Konten
+### Selbstbedienung: Passwort setzen, Passwort vergessen, Selbstregistrierung
+
+Die Selbstbedienung lokaler Konten
 liegt ohne Anmeldung unter `/api/v1/auth/local/{set-password, forgot-password, register,
 verify-email}`; die Links in den Mails zeigen auf die SPA-Routen `/set-password?token=…` und
-`/verify-email?token=…` (Seiten in #1540), nie auf einen `GET` mit Nebenwirkung. **Passwort setzen**
+`/verify-email?token=…`, nie auf einen `GET` mit Nebenwirkung. **Passwort setzen**
 löst einen Einladungs- (`SET_PASSWORD`) oder Rücksetzlink (`RESET_PASSWORD`) atomar und genau einmal
 ein: unbekannt, abgelaufen, verbraucht, falscher Zweck und ein Konto, das inzwischen durch Verwalter
 oder Inaktivität gesperrt oder abgelaufen ist, antworten alle mit derselben 400 `TOKEN_INVALID`; die
@@ -459,9 +458,25 @@ E-Mail-Adresse vor jeder Verarbeitung — bei abgeschaltetem Fluss aber erst nac
 Mail-Thread hat eine begrenzte Warteschlange (1000); ein Versand, der keinen Platz findet, wird mit
 einer Warnung verworfen. Kein Roh-Token steht in Log, Datenbank oder Protokoll; der
 Protokollmitschnitt des SMTP-Transports (`org.eclipse.angus.mail`) ist in `application.yml` auf
-`INFO` festgenagelt. Das Handbuchkapitel (#1543) folgt.
+`INFO` festgenagelt.
 
-**Selbstbedienungsseiten (gebaut, #1540).** Die vier Seiten liegen außerhalb des
+### Anmeldeseite und Selbstbedienungsseiten
+
+Die **Anmeldeseite** zeigt die Passwortmaske nur, solange die lokale Verwaltung eingeschaltet ist;
+Anbieterkacheln und Maske stehen als getrennte, benannte Bereiche untereinander („Mit
+Identitätsanbieter" zuerst, dann „Mit Konto dieser Installation"). Die Links „Passwort vergessen?"
+und „Konto registrieren" erscheinen nur, wenn `GET /api/v1/auth/config` den jeweiligen Fluss als
+verfügbar meldet. Jede abgewiesene Anmeldung liest sich gleich („Anmeldung nicht möglich. Prüfen Sie
+E-Mail-Adresse und Passwort."); eine Begrenzung nennt die Wartezeit aus `Retry-After`, ein nicht
+erreichbares Backend sagt genau das. Nach einer Abweisung springt der Fokus zurück ins erste Feld.
+Der Vertrauenshinweis ist kontextabhängig formuliert. Die **Systemverwalter-Anmeldung**
+(`/login/system`) ist immer erreichbar — der Weg zurück in eine Installation, deren letzter
+Anbieter falsch konfiguriert ist —, erscheint als stiller Fußlink der Anmeldeseite und leitet auf
+`/login` um, sobald die lokale Verwaltung eingeschaltet ist. Ein Rücksprungziel aus `?from=` oder
+dem Router-Zustand wird auf einen Pfad desselben Origins normalisiert, bevor es verwendet wird. Im
+`dev`-Betriebsmodus ändert sich nichts.
+
+**Die vier Selbstbedienungsseiten** liegen außerhalb des
 Anwendungsrahmens und ohne Sitzung: `/set-password?token=…` (Einladung **und** Rücksetzung — eine
 Seite, Überschrift „Passwort festlegen", die die Herkunft des Links bewusst nicht nennt),
 `/verify-email?token=…`, `/forgot-password` und `/register`. Die beiden Linkziele funktionieren
@@ -520,7 +535,9 @@ festgehalten hat: Er ist Teil der Selbstauskunft (ADR-0033, Entscheidung 11) und
 Oberfläche über `GET /api/v1/auth/me` (`createdReason`, leer bei einem Konto eines
 Identitätsanbieters).
 
-**Benutzerverwaltung (gebaut, #1541).** Unter Administration → Benutzer (`/admin/users`, nur
+### Benutzerverwaltung in der Administration
+
+Unter Administration → Benutzer (`/admin/users`, nur
 `SYSTEM_ADMIN`; andere sehen den Hinweis statt der Verwaltung) liegt die Oberfläche zu dieser API.
 „Benutzer & Gruppen" ist dort in zwei Einträge der Sekundärspalte geteilt — „Benutzer" und
 „Gruppen" —, und der Admin-Einstieg der globalen Leiste führt auf „Benutzer". Die Kopfkarte
@@ -712,6 +729,15 @@ Verzeichnisgruppen.
    mehr, Token-Gruppen enden mit der nächsten Anmeldung) oder das Deaktivieren des ganzen Anbieters in
    der Anbieterverwaltung (ab dem nächsten Token abgewiesen, Konten bleiben).
 
+**Lokale Konten haben denselben Lebenszyklus, aber keinen Automatismus, der ihn von außen anstößt.**
+Sie entstehen durch eine Einladung der Systemverwaltung oder durch Selbstregistrierung, nicht durch
+eine Bereitstellung; ihr Ausscheiden erkennt kein Verzeichnis. Genau deshalb hängen an ihnen die
+Ersatzmechanismen aus den Abschnitten oben: Pflicht-Anlagegrund und Ablaufdatum bei der Anlage,
+Sperre nach Inaktivität, Erinnerung vor dem Ablauf, vierteljährliche Wiedervorlage der Konten ohne
+Ablaufdatum und die Empfehlung, die lokale Verwaltung im Regelbetrieb abgeschaltet zu lassen. Der
+Regelweg beim Ausscheiden ist auch hier die **Sperre**, nicht die Löschung; gelöscht werden kann nur
+ein Konto ohne Besitz, praktisch also ein nie benutztes.
+
 **Die Deaktivierung wird nie durch offene Eigentumsfragen aufgehalten.** Eine Regel, die verlangt, erst
 die Nachfolge für dutzende Assets zu klären, wird am Freitagnachmittag umgangen und schützt dann gerade
 nicht. Was mit den Assets geschieht, steht unter [Offboarding](#offboarding).
@@ -779,6 +805,17 @@ Verbindungsversuch wird als Sicherheitsereignis festgehalten, der zulässige nic
   Hintergrund fortgeführt. Ein Lauf, der die Rechte einer beendeten Sitzung weiterträgt, wäre genau die
   Lücke, die die sofortige Wirkung von Rechteänderungen aushebelt.
 
+**Für lokale Konten hält OPAA diese Fristen selbst**, weil es für sie der Aussteller ist: ein
+kurzlebiges Zugangstoken, dazu ein rotierendes Refresh-Token mit einer Leerlauffrist und einer
+absoluten Höchstdauer, die keine Rotation verlängert — für lokale Systemverwalterkonten mit eigenen,
+deutlich kürzeren Werten. Die Zahlen sind organisationsweite Betriebseinstellungen und stehen in der
+Variablenliste des Deployment-Kapitels. Widerruf wirkt **sofort**, nicht erst mit dem Ablauf: einzeln
+über die Sperrliste der Zugangstokens (Abmeldung), auf einen Schlag über einen Zeitstempel am Konto
+(Passwortwechsel, Sperre, Zurücksetzen, Abschalten der Verwaltung). Die Vorlage eines bereits
+rotierten Refresh-Tokens gilt als Wiederverwendung und beendet **alle** Sitzungen des Kontos. Eine
+Übersicht der eigenen Sitzungen gibt es für lokale Konten noch nicht — der Weg, alle übrigen
+Sitzungen zu beenden, ist der eigene Passwortwechsel.
+
 ### Erzwungene Neuanmeldung
 
 Eine erzwungene Neuanmeldung beendet bestehende Sitzungen und verlangt eine erneute Authentisierung. Sie
@@ -789,10 +826,17 @@ wird ausgelöst:
   Weiterarbeit zur Kenntnis zu nehmen ist;
 - **automatisch** bei Sperrung oder Ausscheiden im Verzeichnis;
 - **automatisch** bei einer Rechteänderung, die den Zugang selbst betrifft (Entzug der
-  System-Admin-Rolle, Wechsel der Organisationseinheit).
+  System-Admin-Rolle, Wechsel der Organisationseinheit);
+- **automatisch** bei jedem Verwaltungsakt an einem lokalen Konto, der seine Zugangsdaten oder seinen
+  Zustand ändert: Passwortwechsel, Sperre, Zurücksetzen durch die Systemverwaltung, Abschalten der
+  lokalen Verwaltung und die erkannte Wiederverwendung eines Refresh-Tokens.
 
 Der Vorgang ist protokollpflichtig. Er ist ein Verwaltungsakt gegenüber der betroffenen Person und kein
-stiller Eingriff: Wer neu anmelden muss, erfährt beim nächsten Aufruf, dass und warum.
+stiller Eingriff: Wer neu anmelden muss, erfährt beim nächsten Aufruf, dass und warum. Für lokale
+Konten ist das technisch eingelöst — die Abweisung trägt einen Marker mit Anlass, den die Oberfläche
+als deutschen Satz zeigt, und die Verwaltungsakte an einem Konto werden der Person zusätzlich per
+E-Mail mitgeteilt. Die einzige Ausnahme ist die Sperre nach Fehlversuchen: Sie löst bewusst keine
+Mail aus, weil sie sonst ein Belästigungskanal für jeden wäre, der eine Adresse kennt.
 
 ---
 

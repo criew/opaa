@@ -2,7 +2,10 @@
 
 ## Status
 
-Vorgeschlagen (11.09.2026, Issue #1531, Epic #1529). Setzt den Beschluss aus #1368 vom 10.09.2026
+**Akzeptiert (12.09.2026)** — mit dem Abschluss von Epic #1529 ist jede Entscheidung dieses ADR
+umgesetzt; die eine Ausnahme ist die Übergabe eines lokalen Kontos an eine Anbieteridentität
+(Entscheidung 12), die als #1594 nach dem Epic folgt. Vorgeschlagen am 11.09.2026 (Issue #1531,
+Epic #1529). Setzt den Beschluss aus #1368 vom 10.09.2026
 um. Nachtrag zu [ADR-0005](0005-authentication-strategy.md) und
 [ADR-0025](0025-mehrere-oidc-anbieter.md), die weiter gelten, soweit dieser ADR sie nicht an einer
 benannten Stelle präzisiert oder aufhebt (Entscheidungen 4, 5 und 12). Architekturvorbild ist qnop
@@ -936,7 +939,11 @@ unangetastet — sie sind für den Verzeichnis-Lebenszyklus reserviert.
   `docs/features/security-and-compliance.md` (geschlossene Ereignisliste einschließlich der
   `MAIL_*`-Ereignisse, Umsetzungsstand, „Was ausdrücklich nicht protokolliert wird", „Export und
   Auskunft") sind mit diesem ADR nachgezogen; `docs/features/user-frontends.md` und ADR-0019 tragen
-  den Hinweis. Die Absätze „gebaut" folgen mit den Sub-Issues; `demo/` zieht mit #1543 nach.
+  den Hinweis. Mit #1543 sind die Abschnitte beider Spezifikationen zu einer geschlossenen Darstellung
+  des gebauten Stands zusammengeführt, `docs/features/demo-instance.md` ist nachgezogen, und das
+  Produkthandbuch hat das Kapitel „Benutzerverwaltung" sowie die Betriebsabschnitte des
+  Deployment-Kapitels (Erststart, lokale Verwaltung, Notfallprozedur, Nacharbeit nach einer
+  Rücksicherung).
 
 ## Stakeholder-Bewertung
 

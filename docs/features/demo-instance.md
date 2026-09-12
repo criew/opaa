@@ -5,7 +5,8 @@
 > **Abgrenzung:** Dieses Dokument beschreibt ausschließlich den **Demo-Korpus und seine
 > Vorführbarkeit**. Das Rechte- und Space-Modell, das die Demo vorführt, ist in
 > [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md) entschieden und wird hier **nicht
-> wiederholt**; Identität und Kontenlebenszyklus stehen in
+> wiederholt**; Identität und Kontenlebenszyklus — einschließlich der lokalen Benutzerverwaltung, die
+> die Demo bewusst nicht einschaltet — stehen in
 > [Identität, Rechte & Mandanten](./access-control.md). Der Eval-Korpus und die Retrieval-Regression
 > stehen in [Suchqualität messbar machen](./search-quality-evaluation.md) — dessen Abschnitt
 > „Öffentliche Demo" beschreibt den bisherigen Superhelden-Stand und wird durch dieses Konzept
@@ -40,7 +41,8 @@ lesen dürfen.
    RSS-Feed (selbst gehostete, statische XML) und manueller Upload (DOCX, PDF, PPTX).
 4. **Ein Befehl installiert alles:** Compose-Profil `demo` plus Seed-Skript richten Nutzer, Spaces,
    Bibliotheken, Berechtigungen und Indizierung ein. Angemeldet wird sich über Keycloak, wie in einer
-   echten Installation. Zielplattform ist gleichgültig — lokal, opaa.ewerlin.com oder ein alternativer
+   echten Installation — daneben besteht, wie in jeder Installation, das lokale Konto der
+   Systemverwaltung. Zielplattform ist gleichgültig — lokal, opaa.ewerlin.com oder ein alternativer
    Host.
 5. **E2E-Tests getrennt, Seed-Infrastruktur geteilt:** Der Seed-Mechanismus kennt zwei Datenprofile —
    `demo` (reich, darf sich weiterentwickeln) und `e2e` (minimal, eingefroren). Die Demo selbst wird nur
@@ -119,10 +121,22 @@ von Space"):
 | Selin Kaya | Sachbearbeiterin Meldewesen | Space „Meldewesen & Ausweise" |
 | Thomas Klein | Sachbearbeiter Kfz-Zulassung | Space „Kfz-Zulassung", alleiniges Mitglied |
 | Andrea Vogt | Amtsleitung Bürgerbüro | Space „Amtsleitung Bürgerbüro", alleiniges Mitglied |
-| Administrationskonto | Systemadministration | richtet ein und indiziert (`SYSTEM_ADMIN`) |
+| Administrationskonto (`demo-admin`) | Systemadministration | richtet ein und indiziert (`SYSTEM_ADMIN`) |
 
-Das Administrationskonto ist ein reguläres Konto aus dem Keycloak-Realm der Demo; die Systemrolle
-erhält es über `OPAA_INITIAL_ADMIN_EMAIL` wie in jeder anderen Installation. Die Space-Spalte zählt nur
+Das Administrationskonto ist ein reguläres Konto aus dem Keycloak-Realm der Demo. Die Systemrolle
+erhält es **nicht mehr** über `OPAA_INITIAL_ADMIN_EMAIL` — diese Variable bezeichnet seit
+[ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md) das lokale Notanker-Konto, und die
+Erstadministrator-Regel für Konten eines Identitätsanbieters ist aufgehoben. Der Seed-Lauf meldet sich
+stattdessen als dieses lokale Konto an und vergibt `demo-admin` die Rolle.
+
+**Die Demo zeigt damit beide Anmeldewege, bleibt aber bei Keycloak.** Vorgeführt wird die reguläre
+Anmeldung über den Identitätsanbieter; daneben existiert das eine lokale Konto der Systemverwaltung,
+das jede Installation hat — mit dem Anlagegrund „Notanker-Konto der Systemverwaltung" und einer
+Befristung, damit die Demo auch in diesem Punkt vorführt, was sie empfiehlt. Die lokale
+Benutzerverwaltung für reguläre Konten bleibt **ausgeschaltet**, ebenso Selbstregistrierung und
+„Passwort vergessen": Eine öffentlich erreichbare Demo-Instanz mit offenem Registrierungsformular
+wäre eine eigene Härtungsaussage, die niemand getroffen hat. Wer den lokalen Anmeldeweg vollständig
+sehen will, findet ihn im E2E-Ziel `local-auth` (`e2e/local-auth/`), das genau dafür existiert. Die Space-Spalte zählt nur
 die fachlich gestellten Spaces auf: Jeder Nutzer bekommt beim ersten Login zusätzlich automatisch seinen
 Default-Space (`SpaceService#ensureDefaultSpace`, `isDefault`), der nicht eigens eingerichtet wird.
 
