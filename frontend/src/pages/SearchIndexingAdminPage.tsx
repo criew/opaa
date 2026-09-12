@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link as RouterLink } from 'react-router'
+import { Link as RouterLink, Navigate, useParams } from 'react-router'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -28,6 +28,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ManageSearchOutlinedIcon from '@mui/icons-material/ManageSearchOutlined'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
+import AreaTabs from '../components/AreaTabs'
 import SectionHead from '../components/SectionHead'
 import PageSection from '../components/PageSection'
 import KeyValueList from '../components/KeyValueList'
@@ -553,22 +554,69 @@ function ChunkPreviewDialog({ chunkId, onClose }: { chunkId: string | null; onCl
   )
 }
 
-export default function SearchIndexingAdminPage() {
-  const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
+export type SearchAdminTab = 'overview' | 'index' | 'diagnosis'
+
+function isSearchAdminTab(value: string | undefined): value is SearchAdminTab {
+  return value === 'overview' || value === 'index' || value === 'diagnosis'
+}
+
+// „Indexstatus" statt „Bibliotheken": Der Katalog führt bereits einen Hauptbereich dieses Namens,
+// und gemeint ist hier nicht der Bestand selbst, sondern sein Zustand im Index.
+const tabs: Array<{ value: SearchAdminTab; label: string }> = [
+  { value: 'overview', label: 'Überblick' },
+  { value: 'index', label: 'Indexstatus' },
+  { value: 'diagnosis', label: 'Diagnose' },
+]
+
+/** Modellrollen und Suchpfade: läuft die Suche überhaupt, und welche ihrer Wege sind aktiv. */
+function OverviewSection() {
   const status = useSearchAdminStore((s) => s.status)
-  const profiles = useSearchAdminStore((s) => s.profiles)
-  const personContextAvailable = useSearchAdminStore((s) => s.personContextAvailable)
-  const personContextHint = useSearchAdminStore((s) => s.personContextHint)
   const statusError = useSearchAdminStore((s) => s.statusError)
-  const diagnosis = useSearchAdminStore((s) => s.diagnosis)
-  const diagnosisError = useSearchAdminStore((s) => s.diagnosisError)
-  const running = useSearchAdminStore((s) => s.isRunningDiagnosis)
-  const documentChunks = useSearchAdminStore((s) => s.documentChunks)
-  const documentChunksError = useSearchAdminStore((s) => s.documentChunksError)
-  const loadingDocumentChunks = useSearchAdminStore((s) => s.isLoadingDocumentChunks)
   const loadStatus = useSearchAdminStore((s) => s.loadStatus)
-  const runDiagnosis = useSearchAdminStore((s) => s.runDiagnosis)
-  const loadDocumentChunks = useSearchAdminStore((s) => s.loadDocumentChunks)
+
+  useEffect(() => {
+    void loadStatus()
+  }, [loadStatus])
+
+  return (
+    <>
+      {statusError && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {statusError}
+        </Alert>
+      )}
+
+      <PageSection title="Modellrollen">
+        {/* Untereinander, nicht nebeneinander: Jede Rolle trägt jetzt zwei Angaben unter ihrer
+            Zeile, und drei umbrechende Spalten stünden versetzt statt bündig. */}
+        <Stack spacing={2.5}>
+          {status?.modelRoles.map((role) => (
+            <ModelRoleCard key={role.role} role={role} />
+          ))}
+        </Stack>
+      </PageSection>
+
+      <PageSection title="Suchpfade">
+        <Stack spacing={1.5}>
+          {status?.searchPaths.map((path) => (
+            <StatusLine
+              key={path.path}
+              headline={`${PATH_LABELS[path.path]} — ${PATH_STATE_LABELS[path.state]}`}
+              tone={path.state === 'ACTIVE' ? 'success' : 'warning'}
+              detail={path.detail}
+            />
+          ))}
+        </Stack>
+      </PageSection>
+    </>
+  )
+}
+
+/** Der Bestand im Index je Bibliothek - und die beiden einzigen Eingriffe dieser Seite. */
+function IndexStatusSection() {
+  const status = useSearchAdminStore((s) => s.status)
+  const statusError = useSearchAdminStore((s) => s.statusError)
+  const loadStatus = useSearchAdminStore((s) => s.loadStatus)
   const backfillRuns = useSearchAdminStore((s) => s.metadataBackfillRuns)
   const startMetadataBackfill = useSearchAdminStore((s) => s.startMetadataBackfill)
   const pauseMetadataBackfill = useSearchAdminStore((s) => s.pauseMetadataBackfill)
@@ -576,17 +624,138 @@ export default function SearchIndexingAdminPage() {
   const startContextPrefixRerun = useSearchAdminStore((s) => s.startContextPrefixRerun)
   const pauseContextPrefixRerun = useSearchAdminStore((s) => s.pauseContextPrefixRerun)
 
+  useEffect(() => {
+    void loadStatus()
+  }, [loadStatus])
+
+  return (
+    <>
+      {statusError && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {statusError}
+        </Alert>
+      )}
+
+      <Box sx={{ mb: 4 }}>
+        <SectionHead>Indexstatus je Bibliothek</SectionHead>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          „Kernfelder" zeigt, wie viele Dokumente die aktuelle Extraktion der Kernfelder tragen, wie
+          gut jedes Feld befüllt ist und wie viele Dokumente je Feld noch ohne Wert sind — derselbe
+          Pflege-Anker, den die Einstellungen der Bibliothek zeigen; von Hand als „kein Wert
+          ermittelbar" gekennzeichnete Felder zählen nicht mit. Beide Läufe dieser Ansicht — das
+          Nachrüsten der Kernfelder und der Kontextpräfix-Nachlauf — lesen die Originaldateien in
+          Chargen erneut; die Suche bleibt währenddessen verfügbar, ein angehaltener Lauf setzt beim
+          nächsten unverarbeiteten Dokument fort.
+        </Typography>
+        <LibraryStatusTable
+          libraries={status?.libraries ?? []}
+          backfillRuns={backfillRuns}
+          contextPrefixRuns={contextPrefixRuns}
+          onStartBackfill={(libraryId) => void startMetadataBackfill(libraryId)}
+          onPauseBackfill={pauseMetadataBackfill}
+          onStartContextPrefixRerun={(libraryId) => void startContextPrefixRerun(libraryId)}
+          onPauseContextPrefixRerun={pauseContextPrefixRerun}
+        />
+      </Box>
+    </>
+  )
+}
+
+/**
+ * Die Diagnose und die Chunk-Ansicht eines Dokuments.
+ *
+ * Beide liegen bewusst in einem Reiter: Ein Klick auf einen Dokumenttitel in der Diagnose springt
+ * in die Chunk-Ansicht darunter. Getrennt wäre das ein Reiterwechsel mit Parameter - ohne
+ * Ladegewinn, denn die Chunk-Ansicht holt von sich aus nichts.
+ */
+function DiagnosisSection() {
+  const profiles = useSearchAdminStore((s) => s.profiles)
+  const personContextAvailable = useSearchAdminStore((s) => s.personContextAvailable)
+  const personContextHint = useSearchAdminStore((s) => s.personContextHint)
+  const contextError = useSearchAdminStore((s) => s.contextError)
+  const diagnosis = useSearchAdminStore((s) => s.diagnosis)
+  const diagnosisError = useSearchAdminStore((s) => s.diagnosisError)
+  const running = useSearchAdminStore((s) => s.isRunningDiagnosis)
+  const documentChunks = useSearchAdminStore((s) => s.documentChunks)
+  const documentChunksError = useSearchAdminStore((s) => s.documentChunksError)
+  const loadingDocumentChunks = useSearchAdminStore((s) => s.isLoadingDocumentChunks)
+  const runDiagnosis = useSearchAdminStore((s) => s.runDiagnosis)
+  const loadDocumentChunks = useSearchAdminStore((s) => s.loadDocumentChunks)
+  const loadDiagnosisContext = useSearchAdminStore((s) => s.loadDiagnosisContext)
+
   const [previewChunkId, setPreviewChunkId] = useState<string | null>(null)
   const documentChunkSectionRef = useRef<DocumentChunkSectionHandle>(null)
 
   useEffect(() => {
-    if (isSystemAdmin) void loadStatus()
-  }, [isSystemAdmin, loadStatus])
+    void loadDiagnosisContext()
+  }, [loadDiagnosisContext])
 
   const navigation: ChunkNavigation = {
     onShowChunk: setPreviewChunkId,
     onShowDocument: (documentId) => documentChunkSectionRef.current?.showDocument(documentId),
   }
+
+  return (
+    <>
+      {contextError && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {contextError}
+        </Alert>
+      )}
+
+      <Box sx={{ mb: 4 }}>
+        <SectionHead>Diagnose</SectionHead>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Die Diagnose führt eine frisch eingegebene Testfrage im gewählten Rechtekontext aus und
+          zeigt jede Stufe einzeln. Sie liest keine bestehenden Gespräche und beantwortet nur den
+          jetzigen Zustand - sie ist kein Nachweis über zurückliegende Zugriffe.
+        </Typography>
+        <DiagnosisForm
+          profiles={profiles}
+          personContextAvailable={personContextAvailable}
+          personContextHint={personContextHint}
+          running={running}
+          onRunDiagnosis={runDiagnosis}
+        />
+        {diagnosisError && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {diagnosisError}
+          </Alert>
+        )}
+        {diagnosis && <DiagnosisResult diagnosis={diagnosis} navigation={navigation} />}
+      </Box>
+
+      <DocumentChunkSection
+        ref={documentChunkSectionRef}
+        documentChunks={documentChunks}
+        documentChunksError={documentChunksError}
+        loading={loadingDocumentChunks}
+        onLoadDocumentChunks={(documentId) => void loadDocumentChunks(documentId)}
+      />
+
+      <ChunkPreviewDialog chunkId={previewChunkId} onClose={() => setPreviewChunkId(null)} />
+    </>
+  )
+}
+
+/**
+ * Suche und Indexierung der Systemverwaltung in drei Bereichen (#1616): „Überblick" beantwortet,
+ * ob die Suche läuft; „Indexstatus" zeigt den Bestand je Bibliothek und trägt die beiden
+ * Chargenläufe; „Diagnose" beantwortet, warum ein Dokument in einer Antwort steht oder fehlt.
+ *
+ * Die Bereiche sind eigene Routen (`/admin/search/overview`, `/index`, `/diagnosis`) wie bei der
+ * Benutzer- und der E-Mail-Seite: Ein Verweis soll im richtigen Bereich landen, und ein Neuladen
+ * ihn behalten. Jeder Bereich lädt nur, was er zeigt.
+ */
+export default function SearchIndexingAdminPage() {
+  const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
+  const { tab } = useParams()
+
+  // A typo in the path is not silently reinterpreted: the address bar says what is shown.
+  if (!isSearchAdminTab(tab)) {
+    return <Navigate to="/admin/search/overview" replace />
+  }
+  const activeTab: SearchAdminTab = tab
 
   if (!isSystemAdmin) {
     return (
@@ -606,90 +775,22 @@ export default function SearchIndexingAdminPage() {
         <AreaPageHeader
           icon={ManageSearchOutlinedIcon}
           title="Suche & Indexierung"
-          description="Diese Seite zeigt die aktive Konfiguration an und ändert sie nicht. Sie beantwortet, warum ein Dokument in einer Antwort steht oder fehlt. Der einzige Eingriff ist das Nachrüsten der Kernfelder je Bibliothek — ein bewusster Start, kein Automatismus."
+          description="Diese Seite zeigt die aktive Konfiguration an und ändert sie nicht. Sie beantwortet, warum ein Dokument in einer Antwort steht oder fehlt. Die einzigen Eingriffe sind die beiden Chargenläufe unter „Indexstatus“ — bewusste Starts, kein Automatismus."
         />
 
-        {statusError && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {statusError}
-          </Alert>
-        )}
-
-        <PageSection title="Modellrollen">
-          {/* Untereinander, nicht nebeneinander: Jede Rolle trägt jetzt zwei Angaben unter ihrer
-              Zeile, und drei umbrechende Spalten stünden versetzt statt bündig. */}
-          <Stack spacing={2.5}>
-            {status?.modelRoles.map((role) => (
-              <ModelRoleCard key={role.role} role={role} />
-            ))}
-          </Stack>
-        </PageSection>
-
-        <PageSection title="Suchpfade">
-          <Stack spacing={1.5}>
-            {status?.searchPaths.map((path) => (
-              <StatusLine
-                key={path.path}
-                headline={`${PATH_LABELS[path.path]} — ${PATH_STATE_LABELS[path.state]}`}
-                tone={path.state === 'ACTIVE' ? 'success' : 'warning'}
-                detail={path.detail}
-              />
-            ))}
-          </Stack>
-        </PageSection>
-
-        <Box sx={{ mb: 4 }}>
-          <SectionHead>Indexstatus je Bibliothek</SectionHead>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            „Kernfelder" zeigt, wie viele Dokumente die aktuelle Extraktion der Kernfelder tragen,
-            wie gut jedes Feld befüllt ist und wie viele Dokumente je Feld noch ohne Wert sind —
-            derselbe Pflege-Anker, den die Einstellungen der Bibliothek zeigen; von Hand als „kein
-            Wert ermittelbar" gekennzeichnete Felder zählen nicht mit. Das Nachrüsten liest die
-            Originaldateien in Chargen erneut; die Suche bleibt währenddessen verfügbar, ein
-            angehaltener Lauf setzt beim nächsten unverarbeiteten Dokument fort.
-          </Typography>
-          <LibraryStatusTable
-            libraries={status?.libraries ?? []}
-            backfillRuns={backfillRuns}
-            contextPrefixRuns={contextPrefixRuns}
-            onStartBackfill={(libraryId) => void startMetadataBackfill(libraryId)}
-            onPauseBackfill={pauseMetadataBackfill}
-            onStartContextPrefixRerun={(libraryId) => void startContextPrefixRerun(libraryId)}
-            onPauseContextPrefixRerun={pauseContextPrefixRerun}
-          />
-        </Box>
-
-        <Box sx={{ mb: 4 }}>
-          <SectionHead>Diagnose</SectionHead>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Die Diagnose führt eine frisch eingegebene Testfrage im gewählten Rechtekontext aus und
-            zeigt jede Stufe einzeln. Sie liest keine bestehenden Gespräche und beantwortet nur den
-            jetzigen Zustand - sie ist kein Nachweis über zurückliegende Zugriffe.
-          </Typography>
-          <DiagnosisForm
-            profiles={profiles}
-            personContextAvailable={personContextAvailable}
-            personContextHint={personContextHint}
-            running={running}
-            onRunDiagnosis={runDiagnosis}
-          />
-          {diagnosisError && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              {diagnosisError}
-            </Alert>
-          )}
-          {diagnosis && <DiagnosisResult diagnosis={diagnosis} navigation={navigation} />}
-        </Box>
-
-        <DocumentChunkSection
-          ref={documentChunkSectionRef}
-          documentChunks={documentChunks}
-          documentChunksError={documentChunksError}
-          loading={loadingDocumentChunks}
-          onLoadDocumentChunks={(documentId) => void loadDocumentChunks(documentId)}
-        />
-
-        <ChunkPreviewDialog chunkId={previewChunkId} onClose={() => setPreviewChunkId(null)} />
+        <AreaTabs
+          tabs={tabs}
+          value={activeTab}
+          href={(value) => `/admin/search/${value}`}
+          label="Bereiche von Suche und Indexierung"
+          idPrefix="search"
+        >
+          {(value) => {
+            if (value === 'overview') return <OverviewSection />
+            if (value === 'index') return <IndexStatusSection />
+            return <DiagnosisSection />
+          }}
+        </AreaTabs>
       </Box>
     </Box>
   )

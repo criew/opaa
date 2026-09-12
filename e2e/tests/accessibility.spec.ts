@@ -230,21 +230,42 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (Branding)");
   });
 
-  // #1053: die dichteste Seite des Verwaltungsbereichs — achtspaltige Tabelle, Akkordeons je
-  // Suchstufe und Statuschips in drei Farbrollen.
-  test("Verwaltungsbereich: Suche & Indexierung", async ({
+  // #1053: die dichteste Seite des Verwaltungsbereichs — die zehnspaltige Bibliothekstabelle und
+  // die Akkordeons je Suchstufe. Seit #1616 liegen die Bereiche in eigenen Reitern, und axe prüft
+  // nur, was gerade sichtbar ist: Jeder Reiter wird deshalb einzeln besucht.
+  test("Verwaltungsbereich: Suche & Indexierung in allen Reitern", async ({
     authenticatedPage: page,
   }) => {
     await page.goto("/admin/search");
+    // Der nackte Pfad leitet auf den ersten Reiter um.
+    await page.waitForURL("**/admin/search/overview");
     await expect(
       page.getByRole("heading", { level: 1, name: "Suche & Indexierung" }),
     ).toBeVisible();
-    // Wait for the status call to have landed: the chat role chip only renders once it has.
-    await expect(page.getByLabel(/^Chat: /)).toBeVisible();
+    // Wait for the status call to have landed: the chat role line only renders once it has.
+    await expect(page.getByText(/^Chat — /)).toBeVisible();
 
     await expectNoSeriousA11yViolations(
       page,
-      "Verwaltungsbereich (Suche & Indexierung)",
+      "Verwaltungsbereich (Suche & Indexierung, Überblick)",
+    );
+
+    await page.getByRole("tab", { name: "Indexstatus" }).click();
+    await page.waitForURL("**/admin/search/index");
+    await expect(
+      page.getByRole("table", { name: "Indexstatus je Bibliothek" }),
+    ).toBeVisible();
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (Suche & Indexierung, Indexstatus)",
+    );
+
+    await page.getByRole("tab", { name: "Diagnose" }).click();
+    await page.waitForURL("**/admin/search/diagnosis");
+    await expect(page.getByRole("textbox", { name: /Testfrage/ })).toBeVisible();
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (Suche & Indexierung, Diagnose)",
     );
   });
 

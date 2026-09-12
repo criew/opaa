@@ -163,7 +163,11 @@ export default function App() {
                     Vorlagenverwaltung dort landet (#1542). */}
                 <Route path="admin/mail" element={<Navigate to="/admin/mail/server" replace />} />
                 <Route path="admin/mail/:tab" element={<MailSettingsPage />} />
-                <Route path="admin/search" element={<SearchIndexingAdminPage />} />
+                <Route
+                  path="admin/search"
+                  element={<Navigate to="/admin/search/overview" replace />}
+                />
+                <Route path="admin/search/:tab" element={<SearchIndexingAdminPage />} />
               </Route>
               {/* Mockup 2c (#788): the user settings render in the bare global frame -
                   no space column, no secondary column. */}
