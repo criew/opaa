@@ -37,7 +37,6 @@ public class LocalPasswordService {
   private final LocalCredentialsRepository credentials;
   private final UserRepository users;
   private final LocalActionTokenService actionTokens;
-  private final LocalActionTokenRepository actionTokenRepository;
   private final PasswordEncoder passwordEncoder;
   private final PasswordPolicy policy;
   private final LocalTokenRevocationService revocation;
@@ -49,7 +48,6 @@ public class LocalPasswordService {
       LocalCredentialsRepository credentials,
       UserRepository users,
       LocalActionTokenService actionTokens,
-      LocalActionTokenRepository actionTokenRepository,
       PasswordEncoder passwordEncoder,
       PasswordPolicy policy,
       LocalTokenRevocationService revocation,
@@ -59,7 +57,6 @@ public class LocalPasswordService {
     this.credentials = credentials;
     this.users = users;
     this.actionTokens = actionTokens;
-    this.actionTokenRepository = actionTokenRepository;
     this.passwordEncoder = passwordEncoder;
     this.policy = policy;
     this.revocation = revocation;
@@ -138,8 +135,8 @@ public class LocalPasswordService {
     }
     row.invalidateSessionsIssuedBefore(LocalTokenRevocationService.cutoffFor(now), now);
     credentials.save(row);
-    actionTokenRepository.consumeOpenTokens(user.getId(), ActionTokenPurpose.SET_PASSWORD, now);
-    actionTokenRepository.consumeOpenTokens(user.getId(), ActionTokenPurpose.RESET_PASSWORD, now);
+    actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.SET_PASSWORD);
+    actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.RESET_PASSWORD);
     refreshTokens.revokeAllForUser(user.getId(), RevocationReason.PASSWORD_CHANGED);
     record(user, AuditEventType.LOCAL_PASSWORD_SET, Map.of("purpose", token.getPurpose().name()));
     return user;
