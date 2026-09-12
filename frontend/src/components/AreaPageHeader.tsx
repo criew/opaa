@@ -46,21 +46,26 @@ export default function AreaPageHeader({
   icon: Icon,
 }: AreaPageHeaderProps) {
   return (
-    <Box sx={{ mb: 3, display: 'flex', alignItems: 'flex-start', gap: { xs: 1.5, sm: 2 } }}>
-      {/* An der Titelzeile ausgerichtet, nicht an der Mitte des Kopfblocks: Eine zweizeilige
-          Beschreibung darf das Zeichen nicht verschieben - dieselbe Position auf jeder Seite ist
-          der Zweck dieses Bausteins. `aria-hidden`, weil der Titel daneben dasselbe sagt. */}
+    <Box sx={{ mb: 3, display: 'flex', alignItems: 'flex-start', gap: { xs: 1.25, sm: 1.5 } }}>
+      {/* Die Höhe ist die **Textzeile** des Titels, nicht die der Titelzeile: Die trägt die
+          Mindesthöhe einer Schaltfläche, der Text sitzt darin oben, und ein darauf zentriertes
+          Zeichen säße acht Pixel zu tief. So liegt seine Mitte auf der Mitte des Titels, und eine
+          mehrzeilige Beschreibung verschiebt es nicht - dieselbe Position auf jeder Seite ist der
+          Zweck dieses Bausteins. `aria-hidden`, weil der Titel daneben dasselbe sagt. */}
       <Box
         aria-hidden
-        sx={{
+        sx={(theme) => ({
           flex: 'none',
           display: 'flex',
           alignItems: 'center',
-          height: 36.5,
+          height:
+            Number(theme.typography.h5.fontSize) * Number(theme.typography.h5.lineHeight ?? 1),
           color: 'primary.main',
-        }}
+        })}
       >
-        <Icon sx={{ fontSize: { xs: 26, sm: 30 } }} />
+        {/* Etwa anderthalb Mal die Versalhöhe des Titels: genug, um als Zeichen des Bereichs zu
+            wirken, wenig genug, um den Titel nicht zu überstimmen. */}
+        <Icon sx={{ fontSize: { xs: 21, sm: 24 } }} />
       </Box>
       <Box sx={{ minWidth: 0, flex: 1 }}>
         {/* Eine Flex-Box, kein Stack: MUIs Stack setzt seinen Abstand als `margin-left` auf die
