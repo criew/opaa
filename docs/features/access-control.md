@@ -456,7 +456,49 @@ E-Mail-Adresse vor jeder Verarbeitung — bei abgeschaltetem Fluss aber erst nac
 Mail-Thread hat eine begrenzte Warteschlange (1000); ein Versand, der keinen Platz findet, wird mit
 einer Warnung verworfen. Kein Roh-Token steht in Log, Datenbank oder Protokoll; der
 Protokollmitschnitt des SMTP-Transports (`org.eclipse.angus.mail`) ist in `application.yml` auf
-`INFO` festgenagelt. Die Seiten (#1540) und das Handbuchkapitel (#1543) folgen.
+`INFO` festgenagelt. Das Handbuchkapitel (#1543) folgt.
+
+**Selbstbedienungsseiten (gebaut, #1540).** Die vier Seiten liegen außerhalb des
+Anwendungsrahmens und ohne Sitzung: `/set-password?token=…` (Einladung **und** Rücksetzung — eine
+Seite, Überschrift „Passwort festlegen", die die Herkunft des Links bewusst nicht nennt),
+`/verify-email?token=…`, `/forgot-password` und `/register`. Die beiden Linkziele funktionieren
+**immer**, auch bei ausgeschalteten Schaltern — ein Link aus einer Einladung oder einer
+administrativen Rücksetzung darf nicht in eine Umleitung laufen; `/forgot-password` und `/register`
+leiten auf `/login` um, sobald `localAccounts` den jeweiligen Fluss nicht als verfügbar meldet,
+entscheiden aber nichts, solange die Konfiguration noch lädt. `/verify-email` löst den `POST` beim
+Laden **genau einmal** aus (`useRef`-Sperre gegen den doppelten Effektlauf im StrictMode — der
+zweite Aufruf würde den gerade verbrauchten Link als ungültig melden) und zeigt „wird geprüft",
+„bestätigt" oder „Link ungültig"; eine Begrenzung nennt dort die Wartezeit und sagt, dass der Link
+dadurch nicht verbraucht ist.
+
+Jedes Passwortfeld trägt einen Sichtbarkeits-Umschalter (außerhalb der Tab-Reihenfolge), die
+Richtlinie steht als Satz daneben („mindestens n Zeichen, höchstens 64, nicht die eigene Adresse,
+nicht auf der Sperrliste" — das Minimum aus `/auth/config`), und eine vierstufige Stärkeanzeige
+bewertet die Eingabe als **Orientierung**: Sie blockiert nichts, weil das Backend entscheidet.
+„Sicheres Passwort erzeugen" baut über die Web-Crypto-API ein Passwort, das die Richtlinie per
+Konstruktion erfüllt, macht es sichtbar und lässt es kopieren; wo es ein Wiederholungsfeld gibt,
+füllt es dieses mit. Feldfehler erscheinen am Feld, und **jede** verletzte Regel einer Antwort wird
+genannt, nicht nur die erste. Erfolg und Scheitern sind eine **eigene Ansicht** an der Stelle des
+Formulars, nicht eine Popup-Meldung: „Wenn zu dieser Adresse ein Konto besteht, haben wir eine
+E-Mail geschickt." (vergessen und registrieren — für bekannte und unbekannte Adressen gleich),
+„Passwort festgelegt — Sie können sich jetzt anmelden.", „Dieser Link ist nicht mehr gültig." (eine
+Meldung für unbekannt, abgelaufen, verbraucht, falscher Zweck und fehlenden Token) — jede mit einem
+Weg zurück. Die Registrierungsbestätigung bietet „Registrierung erneut absenden" an, weil eine
+erneute Registrierung derselben unbestätigten Adresse den Bestätigungslink erneut schickt. Eine 429
+nennt die Wartezeit aus `Retry-After`, ohne von „Versuchen" zu sprechen — die Grenze zählt auch
+Anfragen anderer aus demselben Netz. Die Registrierung zeigt weder Rolle noch Ablaufdatum und sagt,
+welche Daten gespeichert werden; den Datenschutzhinweis des Hauses gibt die Systemverwaltung heraus,
+solange es dafür keine Seite im Produkt gibt (#143).
+
+**Passwort ändern** (`/account/password`) nutzt dieselben Bausteine. In den Benutzereinstellungen
+erscheint der Abschnitt „Ihr Konto" mit der Schaltfläche „Passwort ändern" **nur für lokale
+Sitzungen**; eine Anbietersitzung verweist dort auf ihren Identitätsanbieter, die
+Entwicklungsanmeldung auf nichts. Der freiwillige Wechsel kehrt danach in die Einstellungen zurück
+und bleibt angemeldet — das Backend stellt in derselben Antwort eine Sitzung aus. Derselbe Abschnitt
+zeigt der Person ihren **Anlagegrund** („Anlass des Kontos"), den die Systemverwaltung bei der Anlage
+festgehalten hat: Er ist Teil der Selbstauskunft (ADR-0033, Entscheidung 11) und erreicht die
+Oberfläche über `GET /api/v1/auth/me` (`createdReason`, leer bei einem Konto eines
+Identitätsanbieters).
 
 **Benutzerverwaltung (gebaut, #1541).** Unter Administration → Benutzer (`/admin/users`, nur
 `SYSTEM_ADMIN`; andere sehen den Hinweis statt der Verwaltung) liegt die Oberfläche zu dieser API.

@@ -281,4 +281,79 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
 
     await expectNoSeriousA11yViolations(page, "Benutzer-Einstellungen");
   });
+  /**
+   * #1540: Die vier Selbstbedienungsseiten rendern ohne Sitzung wie die Anmeldeseite, auf
+   * Navy-Grund mit eigener Karte, und führen als einzige Seiten Passwortfeld mit Sichtbarkeits-
+   * Umschalter, Stärkeanzeige und Ergebnisansicht ein. Die Konfiguration wird wie bei der
+   * Anmeldeseite abgefangen: Der Stack läuft im dev-Modus, in dem die lokale Kontoverwaltung aus
+   * ist und /register sowie /forgot-password deshalb umleiten würden.
+   */
+  const LOCAL_ACCOUNTS_CONFIG = {
+    mode: "oidc",
+    providers: [],
+    localAccounts: {
+      enabled: true,
+      selfRegistrationEnabled: true,
+      passwordResetEnabled: true,
+      passwordMinLength: 12,
+    },
+  };
+
+  test("Selbstbedienung: Passwort festlegen in beiden Farbschemata", async ({ page }) => {
+    await page.route("**/api/v1/auth/config", (route) =>
+      route.fulfill({ json: LOCAL_ACCOUNTS_CONFIG }),
+    );
+    await page.goto("/set-password?token=e2e-token");
+    await expect(page.getByRole("heading", { level: 1, name: "Passwort festlegen" })).toBeVisible();
+    // Die Stärkeanzeige und der Generator gehören zur Seite, die geprüft wird - ohne Eingabe wäre
+    // genau der Teil mit eigenen Farbrollen nicht im Baum.
+    await page.getByRole("button", { name: "Sicheres Passwort erzeugen" }).click();
+    await expect(page.getByTestId("password-strength")).toBeVisible();
+
+    await page.emulateMedia({ colorScheme: "light" });
+    await expectNoSeriousA11yViolations(page, "Passwort festlegen (helles Farbschema)");
+
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expectNoSeriousA11yViolations(page, "Passwort festlegen (dunkles Farbschema)");
+  });
+
+  test("Selbstbedienung: Passwort vergessen mit Ergebnisansicht", async ({ page }) => {
+    await page.route("**/api/v1/auth/config", (route) =>
+      route.fulfill({ json: LOCAL_ACCOUNTS_CONFIG }),
+    );
+    await page.route("**/api/v1/auth/local/forgot-password", (route) =>
+      route.fulfill({ status: 204 }),
+    );
+    await page.goto("/forgot-password");
+    await expect(page.getByRole("heading", { level: 1, name: "Passwort vergessen" })).toBeVisible();
+    await expectNoSeriousA11yViolations(page, "Passwort vergessen (Formular)");
+
+    await page.getByLabel("E-Mail-Adresse").fill("erika.muster@stadt.example");
+    await page.getByRole("button", { name: "Link anfordern" }).click();
+    await expect(page.getByRole("alert")).toBeVisible();
+    await expectNoSeriousA11yViolations(page, "Passwort vergessen (Ergebnisansicht)");
+  });
+
+  test("Selbstbedienung: Registrierung", async ({ page }) => {
+    await page.route("**/api/v1/auth/config", (route) =>
+      route.fulfill({ json: LOCAL_ACCOUNTS_CONFIG }),
+    );
+    await page.goto("/register");
+    await expect(page.getByRole("heading", { level: 1, name: "Konto registrieren" })).toBeVisible();
+
+    await expectNoSeriousA11yViolations(page, "Registrierung");
+  });
+
+  test("Selbstbedienung: E-Mail-Bestätigung", async ({ page }) => {
+    await page.route("**/api/v1/auth/config", (route) =>
+      route.fulfill({ json: LOCAL_ACCOUNTS_CONFIG }),
+    );
+    await page.route("**/api/v1/auth/local/verify-email", (route) =>
+      route.fulfill({ status: 204 }),
+    );
+    await page.goto("/verify-email?token=e2e-token");
+    await expect(page.getByRole("alert")).toContainText("E-Mail-Adresse bestätigt");
+
+    await expectNoSeriousA11yViolations(page, "E-Mail-Bestätigung");
+  });
 });
