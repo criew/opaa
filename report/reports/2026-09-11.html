@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-09-11</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Freitag, 11. September 2026</h1>
+<nav class="blaettern"><a href="2026-09-10.html" rel="prev" title="Donnerstag, 10. September 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/34666804765" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">64</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+62</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">44</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">42</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1482">#1482</a> feat: Gesprächsgedächtnis — Gesprächsfenster und sichtbare Gesprächsnotiz</span>
+<span class="epic-progress">10 / 10 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li>Gesprächsgedächtnis vollständig umgesetzt und gemergt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1523">#1523</a></span>Gesprächsfenster kurz und wörtlich mit Suchfenster und Ankerraum</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1570">#1570</a></span>Gesprächsnotiz mit Verdichtung, Rendering und API</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1580">#1580</a></span>E2E-Tests für Gesprächsnotiz im Browser</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1583">#1583</a></span>test(eval): Mehrrunden-Baseline verdrahten und den Messpfad in die CI nehmen (+1026/−44, 17 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1580">#1580</a></span>test(e2e): Gesprächsnotiz im Browser — Anzeige ab Runde 3, Entfernen, Neuladen (+476/−10, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1572">#1572</a></span>feat(chat): Gesprächsnotiz im Chat anzeigen und Punkte entfernen (+1059/−12, 13 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1570">#1570</a></span>feat(chat): Gesprächsnotiz — Verdichtung, Rendering in Zerlegung und Antwort, API (+3823/−204, 66 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1523">#1523</a></span>feat(query): Gesprächsfenster kurz und wörtlich — Suchfenster, Ankerraum-Invariante, Rückfall, Zitiermarken (+1709/−293, 59 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1521">#1521</a></span>test(eval): Mehrrunden-Golden-Fälle kuratieren, erstmessen und Baseline ziehen (+1338/−10, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1499">#1499</a></span>test(eval): Mehrrunden-Fälle im Pipeline-Messpfad — Schema, Lauf je Runde, Bericht je Klasse (+3862/−248, 36 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1494">#1494</a></span>docs(query): Spezifikation und ADR-0031 zum Gesprächsgedächtnis (+728/−2, 6 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1529">#1529</a> feat: Lokale Benutzerverwaltung — Konten mit Passwort, lokaler Systemverwalter und Mail-Infrastruktur</span>
+<span class="epic-progress">3 / 16 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 19%"></div></div>
+<ul><li>Lokale Benutzerverwaltung mit 16 Tickets angelegt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1531">#1531</a></span>ADR-0033 zur lokalen Verwaltung dokumentiert</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1548">#1548</a></span>ADR-0033 mit Review-Befunden überarbeitet</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1557">#1557</a></span>docs(adr): ADR-0033 — Review-Befunde zu PR #1554 nachziehen (Seed-Reihenfolge, Notanker-Sperre, RemoteIpValve) (+229/−104, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1554">#1554</a></span>docs(adr): ADR-0033 — Review-Befunde aus PR #1548 einarbeiten (Trusted-Proxy, Seed-Bestandsfall, Notanker, Guard, Anti-Aufzählung) (+249/−113, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1548">#1548</a></span>docs(adr): ADR-0033 Lokale Benutzerverwaltung — Identität, Token-Aussteller, Erstadministrator und Mail (Vorbild qnop) (+2094/−9, 8 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1440">#1440</a> feat: Upload-Originale im S3-kompatiblen Objektspeicher ablegen</span>
+<span class="epic-progress">5 / 5 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li>Upload-Originale im S3-Objektspeicher vollständig umgesetzt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1491">#1491</a></span>Port für Originalablage mit Dateisystem-Adapter</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1498">#1498</a></span>S3-Adapter mit MinIO-Abdeckung</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1516">#1516</a></span>Aufräumlauf für verwaiste Originale in beiden Ablagen</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1516">#1516</a></span>feat(library): Aufräumlauf für verwaiste Originale in beiden Ablagen (+2255/−98, 36 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1508">#1508</a></span>docs(deployment): Betriebsweg der Originalablage — Compose-Dienst, Umstellung eines Bestands, Handbuchkapitel (+538/−37, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1498">#1498</a></span>feat(library): S3-Adapter der Originalablage samt Konfiguration und MinIO-Abdeckung (+3789/−443, 35 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1491">#1491</a></span>refactor(library): Port für die Originalablage der Uploads mit Dateisystem-Adapter (+1016/−250, 20 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1479">#1479</a></span>docs(decisions): ADR-0030 — Originalablage der Uploads: ein Port, zwei Adapter, Dateisystem als Standard (+391/−0, 1 Datei)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/1579">#1579</a></span>MinIO-Image-Quelle von Docker Hub zu quay.io gewechselt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1546">#1546</a></span>Spring-Testkontexte von 23 auf vier konsolidiert</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1577">#1577</a></span>Pauschale Löschungen in Testklassen eingegrenzt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1507">#1507</a></span>Rechtehistorie mit streng monotonen Intervallgrenzen</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1579">#1579</a></span>fix(ci): MinIO-Image von quay.io statt Docker Hub ziehen (+33/−20, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1577">#1577</a></span>test(indexing,library,auth): Pauschale Löschungen der Gruppe A eingrenzen (Teil 2 von #1561) (+531/−332, 22 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1569">#1569</a></span>test(space,chat,llm): Pauschale Löschungen über geteilte Tabellen eingrenzen (Teil 1 von #1561) (+362/−155, 16 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1566">#1566</a></span>feat(library): Verwaiste Originale ohne Bibliotheksbezug finden und entfernen (+1641/−77, 20 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1560">#1560</a></span>docs(decisions): ADR-0016 auf Akzeptiert setzen (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1558">#1558</a></span>refactor(library): Organisation in den Schlüssel der Originalablage (+620/−201, 24 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1555">#1555</a></span>fix(db): Löschschicksal der Diagnose-Vollmacht vereinheitlichen (CASCADE für alle beteiligten Konten) (+439/−6, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1551">#1551</a></span>fix(db): fk_documents_parent als zusammengesetzten Fremdschlüssel führen (+387/−19, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1550">#1550</a></span>fix(demo): Gebührenfaktor am Betrag statt an der Quelldatei, feste Nutzer-IDs im Realm-Export (+381/−299, 77 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1549">#1549</a></span>fix(demo): Seed-Lauf benennt ein abgelehntes Token statt &quot;nicht erreichbar&quot; (+304/−15, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1547">#1547</a></span>feat(library): Beleg-Sprung auf S3-Dokumente liefert das Original aus (+818/−35, 13 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1546">#1546</a></span>refactor(test): Spring-Testkontexte auf vier konsolidieren (+1517/−1265, 90 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1545">#1545</a></span>docs(decisions): ADR-0032 auf Akzeptiert setzen (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1530">#1530</a></span>docs(decisions): ADR-0030 auf Akzeptiert setzen (+2/−2, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1528">#1528</a></span>test(eval): Ollama-Herkunft als geprüften Festpunkt in die Baselines aufnehmen (+547/−60, 30 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1527">#1527</a></span>feat(demo): Formatkorpus und Objektspeicher-Ablage der Demo (+2147/−116, 37 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1514">#1514</a></span>chore(deps): actions/download-artifact action auf v8 aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1513">#1513</a></span>chore(deps): org.apache.james:apache-mime4j-dom auf v0.8.15 aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1512">#1512</a></span>chore(deps): npm (non-major) aktualisieren (+150/−150, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1511">#1511</a></span>chore(deps): aws-java-sdk-v2 monorepo aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1507">#1507</a></span>fix(library): Rechtehistorie verliert Zustände kürzer als ein Uhr-Tick — streng monotone Intervallgrenzen (+646/−38, 11 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1506">#1506</a></span>test(diagnosticaccess): Diagnose-Vollmachten im eigenen tearDown abräumen (+27/−0, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1504">#1504</a></span>chore(db): Liquibase-Historie ein zweites Mal zu einer Baseline zusammenfassen (+2278/−7978, 79 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1502">#1502</a></span>refactor(library): Sichtbarkeit einer Bibliothek strukturell auf io.opaa.library beschränken (+33/−11, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1493">#1493</a></span>refactor(indexing)!: Volltext-Füllstand auf den Fassungs-Rückstand beschränken (+634/−699, 60 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1480">#1480</a></span>refactor(query): Rechteprobe je Anfrage entfernen, Historien-Schreibpfade per Test absichern (+746/−263, 32 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-09-12 um 06:51 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-09-11T00:00:00 bis 2026-09-11T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>

@@ -5,8 +5,33 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-11T04:58:09Z</updated>
+  <updated>2026-09-12T04:51:07Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Freitag, 11. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-11.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-11.html</id>
+    <updated>2026-09-12T04:51:07Z</updated>
+    <summary type="text">feat: Gesprächsgedächtnis — Gesprächsfenster und sichtbare Gesprächsnotiz:
+— Gesprächsgedächtnis vollständig umgesetzt und gemergt
+— Gesprächsfenster kurz und wörtlich mit Suchfenster und Ankerraum
+— Gesprächsnotiz mit Verdichtung, Rendering und API
+— E2E-Tests für Gesprächsnotiz im Browser
+feat: Lokale Benutzerverwaltung — Konten mit Passwort, lokaler Systemverwalter und Mail-Infrastruktur:
+— Lokale Benutzerverwaltung mit 16 Tickets angelegt
+— ADR-0033 zur lokalen Verwaltung dokumentiert
+— ADR-0033 mit Review-Befunden überarbeitet
+feat: Upload-Originale im S3-kompatiblen Objektspeicher ablegen:
+— Upload-Originale im S3-Objektspeicher vollständig umgesetzt
+— Port für Originalablage mit Dateisystem-Adapter
+— S3-Adapter mit MinIO-Abdeckung
+— Aufräumlauf für verwaiste Originale in beiden Ablagen
+Sonstiges:
+— MinIO-Image-Quelle von Docker Hub zu quay.io gewechselt
+— Spring-Testkontexte von 23 auf vier konsolidiert
+— Pauschale Löschungen in Testklassen eingegrenzt
+— Rechtehistorie mit streng monotonen Intervallgrenzen</summary>
+  </entry>
   <entry>
     <title>Tagesreport Donnerstag, 10. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-10.html"/>
