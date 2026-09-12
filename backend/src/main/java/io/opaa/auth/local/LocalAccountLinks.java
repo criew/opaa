@@ -21,7 +21,12 @@ public final class LocalAccountLinks {
 
   public static final String TOKEN_QUERY = "token";
   public static final String LOGIN_PATH = "login";
-  public static final String ADMIN_LOCAL_USERS_PATH = "admin/local-users";
+
+  /**
+   * The administration's list of local accounts - the SPA route of #1541, not the API path {@code
+   * /api/v1/admin/local-users} the list is fed from. The quarterly review reminder links here.
+   */
+  public static final String ADMIN_LOCAL_USERS_PATH = "admin/users";
 
   private LocalAccountLinks() {}
 

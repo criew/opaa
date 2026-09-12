@@ -23,6 +23,6 @@ public class LocalAccountSelfDisclosure {
 
   @Transactional(readOnly = true)
   public Optional<String> createdReasonOf(UUID userId) {
-    return credentials.findById(userId).map(LocalCredentials::getCreatedReason);
+    return credentials.findCreatedReasonByUserId(userId);
   }
 }

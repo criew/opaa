@@ -16,6 +16,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 public interface LocalCredentialsRepository extends JpaRepository<LocalCredentials, UUID> {
 
+  /**
+   * The creation reason alone - the one field {@code GET /api/v1/auth/me} needs (ADR-0033,
+   * Entscheidung 11). A projection rather than {@code findById}: loading the whole row would pull
+   * the password hash and the lock state into a response path that has no business with either.
+   */
+  @Query("SELECT c.createdReason FROM LocalCredentials c WHERE c.userId = :userId")
+  Optional<String> findCreatedReasonByUserId(@Param("userId") UUID userId);
+
   /** The one bootstrap account ({@code ux_local_credentials_single_bootstrap}), if it exists. */
   Optional<LocalCredentials> findByBootstrapTrue();
 

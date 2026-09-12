@@ -27,6 +27,18 @@ class LocalAccountLinksTest {
         .isEqualTo("https://opaa.amt.example/verify-email?token=a%2Bb");
   }
 
+  /**
+   * The reminder mail's link has to reach a page, not the API: {@code /api/v1/admin/local-users} is
+   * the endpoint the list is fed from, {@code /admin/users} the route of the page (#1541).
+   */
+  @Test
+  void theAdminListLinkPointsAtTheSpaRouteNotAtTheApiPath() {
+    assertThat(LocalAccountLinks.ADMIN_LOCAL_USERS_PATH).isEqualTo("admin/users");
+    assertThat(
+            LocalAccountLinks.absoluteOrEmpty(CONFIGURED, LocalAccountLinks.ADMIN_LOCAL_USERS_PATH))
+        .isEqualTo("https://opaa.amt.example/admin/users");
+  }
+
   @Test
   void withoutABaseUrlTheLinksAreRelativeToTheInstallation() {
     assertThat(LocalAccountLinks.setPasswordLink(NONE, "t")).isEqualTo("/set-password?token=t");
