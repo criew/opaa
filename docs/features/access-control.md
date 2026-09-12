@@ -351,7 +351,7 @@ bestätigt, Aktionstoken `SET_PASSWORD` mit `invitation_token_ttl_hours`, Mail
 `LOCAL_ACCOUNT_INVITATION`) oder **mit erzeugtem Anfangspasswort** (einmalig in der Antwort, Wechsel
 bei der ersten Anmeldung mit Anlass `INITIAL`). **Link-Rückfall:** Geht die Mail nicht hinaus — SMTP
 aus, Versand fehlgeschlagen oder `OPAA_PUBLIC_BASE_URL` nicht gesetzt —, enthält die Antwort den Link
-genau einmal (ohne Basis-URL als Pfad relativ zur Installation `/konto/passwort?token=…`); der
+genau einmal (ohne Basis-URL als Pfad relativ zur Installation `/set-password?token=…`); der
 Zustellweg steht im Protokoll (`LOCAL_USER_INVITED` mit `MAIL_SENT`, `MAIL_FAILED` oder
 `LINK_DISPLAYED`). Eine E-Mail-Adresse ist nur unter dem lokalen Issuer eindeutig (409 `EMAIL_TAKEN`).
 Der persönliche Space entsteht auf demselben Weg wie bei jeder Anmeldung. Die **Liste** führt
@@ -398,8 +398,49 @@ einmalig) und schickt den Systemverwaltern je Lauf höchstens **eine** Wiedervor
 auslaufenden und am ersten Tag eines Quartals zusätzlich alle ohne Ablaufdatum — und dem Link zur
 Liste, ohne Namen; je Lauf höchstens 200 Sperren bzw. Mails, der Rest folgt am nächsten Tag. Sperren,
 erzeugtes Passwort und Adresswechsel entwerten jeden offenen Einladungs- und Rücksetzlink. Jede Anmeldung mit dem Notanker-Konto löst jetzt die Mail
-`BOOTSTRAP_ACCOUNT_USED` an alle übrigen Systemverwalter aus. Die Oberfläche (#1541), die
-Selbstbedienung mit dem Einlösen der Links (#1538) und das Handbuchkapitel (#1543) folgen.
+`BOOTSTRAP_ACCOUNT_USED` an alle übrigen Systemverwalter aus. Die Oberfläche (#1541) und das
+Handbuchkapitel (#1543) folgen.
+
+**Selbstregistrierung und Passwort vergessen (gebaut, #1538).** Die Selbstbedienung lokaler Konten
+liegt ohne Anmeldung unter `/api/v1/auth/local/{set-password, forgot-password, register,
+verify-email}`; die Links in den Mails zeigen auf die SPA-Routen `/set-password?token=…` und
+`/verify-email?token=…` (Seiten in #1540), nie auf einen `GET` mit Nebenwirkung. **Passwort setzen**
+löst einen Einladungs- (`SET_PASSWORD`) oder Rücksetzlink (`RESET_PASSWORD`) atomar und genau einmal
+ein: unbekannt, abgelaufen, verbraucht, falscher Zweck und ein Konto, das inzwischen durch Verwalter
+oder Inaktivität gesperrt oder abgelaufen ist, antworten alle mit derselben 400 `TOKEN_INVALID`; die
+Passwortrichtlinie antwortet mit Feldfehlern und lässt den Link offen. Der eingelöste Link setzt den
+Hash, hebt einen erzwungenen Wechsel auf, bestätigt die Adresse (der Link belegt den Zugriff auf das
+Postfach), hebt eine **Fehlversuch-Sperre** auf (nicht die Sperre durch Verwalter oder Inaktivität),
+entwertet alle übrigen offenen Passwortlinks des Kontos und beendet jede Sitzung
+(`password_invalidated_before`, Familien `PASSWORD_CHANGED`); Ereignis `LOCAL_PASSWORD_SET` mit dem
+Zweck des Links. **Passwort vergessen** existiert nur, solange die Verwaltung eingeschaltet, die
+Einstellung an und `OPAA_PUBLIC_BASE_URL` gesetzt ist — sonst antwortet der Endpunkt exakt wie eine
+unbekannte Route (404), damit die Existenz des Flusses nicht sondiert wird; die SPA kennt den Stand
+aus `/auth/config`. Wo er existiert, antwortet er immer 204 nach derselben **festen Zeitklasse**
+(mindestens 250 ms, weit über der Datenbankarbeit des Konto-existiert-Pfads), unabhängig davon, ob
+ein Konto besteht: ein aktives Konto und ein Konto in Fehlversuch-Sperre erhalten die Mail
+`PASSWORD_RESET` mit einem `RESET_PASSWORD`-Link (`reset_token_ttl_minutes`; ein neuer Link entwertet
+ältere), Konten mit Verwalter- oder Inaktivitätssperre, abgelaufene und eingeladene Konten sowie
+unbekannte Adressen erhalten nichts und antworten gleich. Der Versand läuft auf einem eigenen Thread,
+weil ein synchroner SMTP-Versand die Antwortzeit verraten würde; die Anfrage ändert keinen Zustand
+und wird nicht protokolliert — Sitzungen enden erst beim Einlösen. **Selbstregistrierung** existiert
+nur mit Verwaltung an, `self_registration_enabled`, **nichtleerer Domänenliste** und Basis-URL (sonst
+404 wie oben). Adresse, Anzeigename und Passwort werden zuerst geprüft (Feldfehler `email`,
+`displayName`, `password` — sie verraten nichts über Konten); danach wird der Hash **immer**
+berechnet und erst dann die Domäne gegen die Liste und die Adresse gegen den lokalen Issuer geprüft:
+eine freie Adresse mit erlaubter Domäne wird als Konto angelegt (Rolle `USER`, Ablauf **Pflicht** aus
+`default_expiry_days`, Anlagegrund „Selbstregistrierung", Adresse unbestätigt und damit `INVITED`,
+nicht anmeldefähig) und erhält `REGISTRATION_VERIFICATION` mit einem 24 Stunden gültigen
+`VERIFY_EMAIL`-Link; eine belegte Adresse (auch bei gleichzeitiger Anlage, Unique-Index) und eine
+fremde Domäne legen nichts an, senden nichts — auch keine Hinweis-Mail — und antworten mit derselben
+202 nach derselben Zeitklasse. Ereignis `LOCAL_USER_REGISTERED` unter dem Systemakteur `local-auth`.
+Der persönliche Space entsteht erst bei der ersten Anmeldung nach der Bestätigung, auf dem Weg jeder
+Anmeldung — eine nie bestätigte Registrierung hinterlässt keinen Space. **E-Mail bestätigen** löst
+den `VERIFY_EMAIL`-Link genau einmal ein und setzt `email_verified_at` (400 `TOKEN_INVALID` wie
+oben); danach ist das Konto `ACTIVE`. Die Rate-Limits aus #1535 greifen je Client-Adresse über die
+Pfadregeln und je E-Mail-Adresse vor jeder Verarbeitung — bei abgeschaltetem Fluss aber erst nach
+der 404. Kein Roh-Token steht in Log, Datenbank oder Protokoll. Die Seiten (#1540) und das
+Handbuchkapitel (#1543) folgen.
 
 Die Mandantengrenze gilt auch für die Anmeldung: Eine Identität gehört zu **genau einer** Organisation.
 Es gibt kein Konto, das mehrere Mandanten sieht, und keinen Wechsel zwischen ihnen innerhalb einer

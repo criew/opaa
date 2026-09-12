@@ -173,7 +173,8 @@ ersten Stufe nicht geschrieben.
 - Erteilung und Entzug der System-Admin-Rolle
 - Deaktivierung eines Kontos, erzwungene Neuanmeldung, Ausstellung und Widerruf von API-Tokens
 - **Lokale Konten** ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md), Epic #1529): Anlage
-  und Einladung (mit Zustellweg: Mail zugestellt, Mail gescheitert, Link angezeigt), Änderung von
+  und Einladung (mit Zustellweg: Mail zugestellt, Mail gescheitert, Link angezeigt),
+  Selbstregistrierung, Änderung von
   Ablaufdatum (mit Vorher/Nachher) und der Tatsache einer Änderung von Adresse, Anzeigename oder
   Anlagegrund (nur der Feldname, nie der Wert), Sperre und Entsperrung mit Grund (Verwalter,
   Fehlversuche, Inaktivität), administratives Zurücksetzen und Erzeugen eines Passworts, Setzen und
@@ -222,7 +223,11 @@ Wiederanlauf des Notanker-Kontos (`LOCAL_ADMIN_SEEDED`, `LOCAL_ADMIN_RESET`), je
 Zustellweg, `LOCAL_USER_CHANGED` mit Vorher/Nachher nur für das Ablaufdatum, `LOCAL_USER_LOCKED`
 mit Grund `ADMIN` oder `INACTIVITY`, `LOCAL_USER_UNLOCKED`, `LOCAL_USER_PASSWORD_GENERATED`,
 `LOCAL_USER_DELETED`, `LOCAL_ACCOUNTS_SETTINGS_CHANGED`; Subjekt als Pseudonym, nie Adresse, Name
-oder Anlagegrund als Wert). Noch **nicht** verdrahtet — weil
+oder Anlagegrund als Wert), sowie — seit #1538 — das Setzen des eigenen Passworts über einen
+Einladungs- oder Rücksetzlink (`LOCAL_PASSWORD_SET` mit dem Zweck des Links) und die
+Selbstregistrierung (`LOCAL_USER_REGISTERED` unter dem Systemprozess `local-auth`; die Anfrage
+„Passwort vergessen" und die Bestätigung der Adresse ändern für sich keinen Zustand und erzeugen
+kein Ereignis). Noch **nicht** verdrahtet — weil
 die jeweilige Funktion selbst noch fehlt, nicht weil sie ausgenommen wäre: Ablauf einer Befristung
 (kein Scheduler), Aussetzen von Grants durch eine gesenkte Freigabe-Obergrenze, Bereitstellung einer
 Bibliothek in einem Space, Eigentümerübernahme ohne Zuständigkeit und der Übergang in „Nachfolge
