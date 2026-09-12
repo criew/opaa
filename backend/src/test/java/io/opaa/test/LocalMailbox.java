@@ -7,6 +7,7 @@ import com.icegreen.greenmail.util.ServerSetup;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.mail.MailSettingsUpdate;
+import io.opaa.mail.MailTestSupport;
 import io.opaa.organization.Organization;
 import jakarta.mail.Part;
 import jakarta.mail.internet.MimeMessage;
@@ -49,7 +50,7 @@ public final class LocalMailbox {
       greenMail.stop();
     }
     configure(false);
-    mailSettings.resetCaches();
+    MailTestSupport.resetCaches(mailSettings);
   }
 
   /** Waits up to {@code timeoutMillis} for at least {@code count} messages. */

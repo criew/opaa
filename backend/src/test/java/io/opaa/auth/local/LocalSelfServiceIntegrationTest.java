@@ -354,7 +354,8 @@ class LocalSelfServiceIntegrationTest {
     // and it is a RESET_PASSWORD token with the settings' TTL
     List<LocalActionToken> open =
         activeTokens.stream()
-            .flatMap(t -> actionTokens.findRedeemable(t, ActionTokenPurpose.RESET_PASSWORD).stream())
+            .flatMap(
+                t -> actionTokens.findRedeemable(t, ActionTokenPurpose.RESET_PASSWORD).stream())
             .toList();
     assertThat(open).hasSize(1);
     assertThat(open.getFirst().getUserId()).isEqualTo(active.id());
@@ -548,14 +549,18 @@ class LocalSelfServiceIntegrationTest {
   void theSelfServiceLeaksNoTokenPasswordOrPersonIntoLogsOrAuditRows() throws Exception {
     replaceSettings(withRegistration(true, List.of(DOMAIN)));
     Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    // the SMTP transport's wire trace is the mail itself (it carries the link by definition), not a
-    // log of OPAA's - it stays at INFO while everything else is captured at TRACE
+    // the SMTP wire on both ends (the transport's protocol trace, GreenMail's line log) is the mail
+    // itself - it carries the link and the mailbox by definition - and no log of OPAA's; both are
+    // muted to INFO resp. WARN while everything else is captured at TRACE
     Logger smtpWire = (Logger) LoggerFactory.getLogger("org.eclipse.angus.mail");
+    Logger greenMailWire = (Logger) LoggerFactory.getLogger("com.icegreen.greenmail");
     Level previous = root.getLevel();
     Level previousSmtp = smtpWire.getLevel();
+    Level previousGreenMail = greenMailWire.getLevel();
     ListAppender<ILoggingEvent> logs = new ListAppender<>();
     root.setLevel(Level.TRACE);
     smtpWire.setLevel(Level.INFO);
+    greenMailWire.setLevel(Level.WARN);
     logs.start();
     root.addAppender(logs);
     try {
@@ -607,6 +612,7 @@ class LocalSelfServiceIntegrationTest {
       root.detachAppender(logs);
       root.setLevel(previous);
       smtpWire.setLevel(previousSmtp);
+      greenMailWire.setLevel(previousGreenMail);
     }
   }
 
