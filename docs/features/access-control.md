@@ -193,9 +193,8 @@ Zeilen der drei Token-Tabellen spätestens sieben Tage nach Ablauf oder Widerruf
 und Ablauf-Erinnerungen hängen sich dort ein (#1537). Aussteller, Anmelde-Endpunkte und
 `pcr`-Filter existieren nur im `oidc`-Betriebsmodus; die Verwaltungs-Endpunkte lokaler Konten und
 der Schalter (#1537) sind profilunabhängig, damit die Oberfläche (#1541) und die E2E-Suite im
-`dev`-Modus laufen — ein dort angelegtes lokales Konto kann sich mangels Aussteller nicht
-anmelden. Die Anmeldeseite
-(#1539) ist gebaut (siehe nächster Absatz); der Erstadministrator folgt mit #1534.
+`dev`-Modus laufen — ein dort angelegtes lokales Konto kann sich mangels Aussteller nicht anmelden.
+Die Anmeldeseite (#1539) steht im nächsten Absatz.
 
 **Anmeldeseite (gebaut, #1539).** Die Oberfläche kennt zwei Sitzungsarten. Die **lokale Sitzung**
 hält ihr Access-Token ausschließlich im Speicher — nichts im `localStorage` — und wird nach einem
