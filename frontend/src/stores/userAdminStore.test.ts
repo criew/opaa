@@ -51,7 +51,27 @@ describe('userAdminStore', () => {
     expect(state().accounts.map((account) => account.displayName)).toEqual(['T. Klein'])
   })
 
-  it('sorts only by the four allow-listed fields', async () => {
+  it('ranks origin, role and state instead of ordering their words alphabetically', async () => {
+    await state().setFilters({ sort: 'origin' })
+    const origins = state().accounts.map((a) => a.providerType)
+    expect(origins[0]).toBe('LOCAL')
+    expect(origins.at(-1)).toBe('OIDC')
+    // das Konto ohne Anbieterzeile steht hinter denen mit einer
+    expect(state().accounts.at(-1)?.provider).toBeUndefined()
+
+    await state().setFilters({ sort: 'role' })
+    expect(state().accounts[0].systemRole).toBe('USER')
+    expect(state().accounts.at(-1)?.systemRole).toBe('SYSTEM_ADMIN')
+
+    await state().setFilters({ sort: 'status' })
+    expect(state().accounts[0].local?.status).toBe('LOCKED')
+    expect(state().accounts.at(-1)?.local).toBeUndefined()
+
+    await state().setFilters({ sort: 'status', direction: 'desc' })
+    expect(state().accounts[0].local).toBeUndefined()
+  })
+
+  it('sorts only by the seven allow-listed fields', async () => {
     await state().setFilters({ sort: 'email', direction: 'desc' })
     const emails = state().accounts.map((account) => account.email)
     expect(emails).toEqual([...emails].sort().reverse())

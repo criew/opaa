@@ -8,10 +8,9 @@ import io.opaa.common.ValidationException;
 import java.util.UUID;
 
 /**
- * Filter, sort and page of the account list of the administration (#1601). The bounds and the four
- * sort fields are those of {@link LocalUserQuery} - the activity class is deliberately not a sort
- * field (ADR-0033, Entscheidung 11). {@code status}, {@code withoutExpiry} and {@code inactive}
- * describe local accounts only and therefore narrow the list to them ({@link #localOnly()}).
+ * Filter, sort and page of the account list of the administration (#1601). The bounds are those of
+ * {@link LocalUserQuery}. {@code status}, {@code withoutExpiry} and {@code inactive} describe local
+ * accounts only and therefore narrow the list to them ({@link #localOnly()}).
  */
 public record AccountQuery(
     String query,
@@ -21,7 +20,7 @@ public record AccountQuery(
     LocalAccountState status,
     boolean withoutExpiry,
     boolean inactive,
-    LocalUserQuery.Sort sort,
+    Sort sort,
     boolean descending,
     int page,
     int size) {
@@ -30,6 +29,27 @@ public record AccountQuery(
   public static final int DEFAULT_PAGE_SIZE = LocalUserQuery.DEFAULT_PAGE_SIZE;
   public static final int MAX_PAGE = LocalUserQuery.MAX_PAGE;
   public static final int MAX_QUERY_LENGTH = LocalUserQuery.MAX_QUERY_LENGTH;
+
+  /**
+   * The sort fields of the account list. The four of {@link LocalUserQuery.Sort} plus the three
+   * columns the list gained with the provider accounts (#1601). The activity class is deliberately
+   * not among them and never will be (ADR-0033, Entscheidung 11): a list sortable by "last used" is
+   * the evaluation path that decision rules out. The three added ones carry no such risk - origin,
+   * role and state say where an account comes from and whether it can sign in, not when someone
+   * worked.
+   */
+  public enum Sort {
+    DISPLAY_NAME,
+    EMAIL,
+    EXPIRES_AT,
+    CREATED_AT,
+    /** Local accounts first, then the providers by name; an unknown issuer last. */
+    ORIGIN,
+    /** By privilege: Nutzer, Revision, Systemverwaltung - the order the labels read in. */
+    ROLE,
+    /** By what needs attention: gesperrt, abgelaufen, eingeladen, aktiv; provider accounts last. */
+    STATUS
+  }
 
   public AccountQuery {
     if (page < 0 || page > MAX_PAGE) {
@@ -41,7 +61,7 @@ public record AccountQuery(
           "Die Seitengröße muss zwischen 1 und " + MAX_PAGE_SIZE + " liegen.");
     }
     if (sort == null) {
-      sort = LocalUserQuery.Sort.DISPLAY_NAME;
+      sort = Sort.DISPLAY_NAME;
     }
     query = query == null || query.isBlank() ? null : query.trim();
     if (query != null && query.length() > MAX_QUERY_LENGTH) {

@@ -17,7 +17,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import type { AccountResponse, LocalAccountState, LocalUserResponse } from '../../../types/api'
 import { useUserAdminStore } from '../../../stores/userAdminStore'
-import type { LocalUserSortField } from '../../../services/localUserApi'
+import type { AccountSortField } from '../../../services/accountApi'
 import { fontFamily, radius } from '../../../theme/tokens'
 import MetaBadge from '../../MetaBadge'
 import AccountOriginTag from './AccountOriginTag'
@@ -112,15 +112,31 @@ function StateCell({ account }: { account: AccountResponse }) {
 }
 
 interface SortableLabelProps {
-  field: LocalUserSortField
+  field: AccountSortField
   label: string
 }
 
-const SORT_DESCRIPTION: Record<LocalUserSortField, string> = {
+/** What the screen reader announces after a click - the field, and for the three ranked ones
+ *  the order itself, because „aufsteigend" says nothing about a category. */
+const SORT_DESCRIPTION: Record<AccountSortField, string> = {
   displayName: 'Name',
   email: 'E-Mail-Adresse',
+  origin: 'Herkunft, lokale Konten zuerst',
+  role: 'Rolle: Nutzer, Revision, Systemverwaltung',
+  status: 'Zustand: gesperrt, abgelaufen, eingeladen, aktiv',
   expiresAt: 'Ablaufdatum',
   createdAt: 'Anlagedatum',
+}
+
+/** The column head's own word, where the announcement above is a sentence. */
+const SORT_LABEL: Record<AccountSortField, string> = {
+  displayName: 'Name',
+  email: 'E-Mail',
+  origin: 'Herkunft',
+  role: 'Rolle',
+  status: 'Zustand',
+  expiresAt: 'Ablauf',
+  createdAt: 'Angelegt',
 }
 
 /** One sort control; several of them share a header cell where one column carries two values. */
@@ -151,11 +167,14 @@ function SortableLabel({ field, label }: SortableLabelProps) {
   )
 }
 
-function SortableHead({ fields }: { fields: LocalUserSortField[] }) {
+function SortableHead({ fields, width }: { fields: AccountSortField[]; width?: string }) {
   const filters = useUserAdminStore((s) => s.filters)
   const active = fields.includes(filters.sort)
   return (
-    <TableCell sortDirection={active ? filters.direction : false}>
+    <TableCell
+      sortDirection={active ? filters.direction : false}
+      sx={width ? { width } : undefined}
+    >
       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
         {fields.map((field, index) => (
           <Box key={field} component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
@@ -164,7 +183,7 @@ function SortableHead({ fields }: { fields: LocalUserSortField[] }) {
                 ·
               </Box>
             )}
-            <SortableLabel field={field} label={SORT_DESCRIPTION[field].replace('-Adresse', '')} />
+            <SortableLabel field={field} label={SORT_LABEL[field]} />
           </Box>
         ))}
       </Stack>
@@ -448,9 +467,9 @@ export default function AccountList({ currentUserId, ...handlers }: AccountListP
           <TableHead>
             <TableRow>
               <SortableHead fields={['displayName', 'email']} />
-              <TableCell sx={{ width: '15%' }}>Herkunft</TableCell>
-              <TableCell sx={{ width: '13%' }}>Rolle</TableCell>
-              <TableCell sx={{ width: '16%' }}>Zustand</TableCell>
+              <SortableHead fields={['origin']} width="15%" />
+              <SortableHead fields={['role']} width="13%" />
+              <SortableHead fields={['status']} width="16%" />
               <TableCell sx={{ width: '11%' }}>
                 <SortableLabel field="expiresAt" label="Ablauf" />
                 <Box component="span" sx={{ display: 'block', color: 'text.disabled' }}>

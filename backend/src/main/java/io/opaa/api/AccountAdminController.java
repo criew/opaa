@@ -54,7 +54,7 @@ public class AccountAdminController {
             status,
             withoutExpiry,
             inactive,
-            AdminListSortParams.sortOf(sort),
+            AdminListSortParams.accountSortOf(sort),
             AdminListSortParams.descending(direction),
             page,
             size);

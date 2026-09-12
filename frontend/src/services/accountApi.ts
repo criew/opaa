@@ -6,7 +6,17 @@ import type {
   UserInfo,
 } from '../types/api'
 import { apiClient, normalizeError } from './api'
-import { LOCAL_USER_PAGE_SIZE, type LocalUserSortField } from './localUserApi'
+import { LOCAL_USER_PAGE_SIZE } from './localUserApi'
+
+/**
+ * The sort fields of the account list (#1601): the four of the local list plus the three columns
+ * it gained with the provider accounts. The activity class is not among them and never will be
+ * (ADR-0033, Entscheidung 11) - a list sortable by „last used" is the evaluation path that
+ * decision rules out. Origin, role and state say where an account comes from and whether it can
+ * sign in, not when someone worked.
+ */
+export type AccountSortField =
+  'displayName' | 'email' | 'origin' | 'role' | 'status' | 'expiresAt' | 'createdAt'
 
 /**
  * The filter of the account list (#1601). `status`, `withoutExpiry` and `inactive` describe local
@@ -20,7 +30,7 @@ export interface AccountQuery {
   status?: LocalAccountState | null
   withoutExpiry?: boolean
   inactive?: boolean
-  sort?: LocalUserSortField
+  sort?: AccountSortField
   direction?: 'asc' | 'desc'
   page?: number
   size?: number

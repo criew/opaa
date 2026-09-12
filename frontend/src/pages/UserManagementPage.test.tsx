@@ -761,6 +761,51 @@ describe('UserManagementPage', () => {
     expect(useUserAdminStore.getState().error).toBeNull()
   })
 
+  it('sorts by origin, role and state - and by nothing the activity says', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderAccounts()
+    const table = await screen.findByRole('table', { name: 'Konten' })
+
+    // Herkunft: lokale Konten zuerst, dann die Anbieter nach Namen, zuletzt ein Konto ohne
+    // Anbieterzeile - eine Kategorie neben Eigennamen ordnet sich nicht alphabetisch.
+    await user.click(within(table).getByRole('button', { name: /Herkunft/ }))
+    await waitFor(() => expect(useUserAdminStore.getState().filters.sort).toBe('origin'))
+    await waitFor(() => {
+      const origins = useUserAdminStore
+        .getState()
+        .accounts.map((account) =>
+          account.providerType === 'LOCAL' ? 'LOKAL' : (account.provider?.displayName ?? 'OHNE'),
+        )
+      expect(origins[0]).toBe('LOKAL')
+      expect(origins.at(-1)).toBe('OHNE')
+      // Partnerportal vor Verzeichnisdienst
+      expect(origins.indexOf('Partnerportal')).toBeLessThan(origins.indexOf('Verzeichnisdienst'))
+    })
+
+    // Rolle: nach Privileg, was zugleich die Reihenfolge der Beschriftungen ist
+    await user.click(within(table).getByRole('button', { name: /Rolle/ }))
+    await waitFor(() => expect(useUserAdminStore.getState().filters.sort).toBe('role'))
+    await waitFor(() => {
+      const roles = useUserAdminStore.getState().accounts.map((account) => account.systemRole)
+      expect(roles[0]).toBe('USER')
+      expect(roles.at(-1)).toBe('SYSTEM_ADMIN')
+    })
+
+    // Zustand: was Handlung braucht, zuerst; Anbieterkonten zuletzt, sie tragen keinen
+    await user.click(within(table).getByRole('button', { name: /Zustand/ }))
+    await waitFor(() => expect(useUserAdminStore.getState().filters.sort).toBe('status'))
+    await waitFor(() => {
+      const accounts = useUserAdminStore.getState().accounts
+      expect(accounts[0].local?.status).toBe('LOCKED')
+      expect(accounts.at(-1)?.local).toBeUndefined()
+    })
+
+    // Die Aktivität bleibt, was sie ist: eine Klasse ohne Sortierung.
+    expect(within(table).queryByRole('button', { name: /Aktivität/ })).not.toBeInTheDocument()
+    expect(useUserAdminStore.getState().error).toBeNull()
+  }, 20000)
+
   it('falls back to a card list below tablet width', async () => {
     window.matchMedia = (query: string) =>
       ({ ...desktopMatchMedia(query), matches: false }) as MediaQueryList

@@ -966,9 +966,17 @@ paths:
           required: false
           schema:
             type: string
-            enum: [displayName, email, expiresAt, createdAt]
+            enum: [displayName, email, origin, role, status, expiresAt, createdAt]
             default: displayName
-          description: The allow-listed sort fields; activity is deliberately not one of them. Accounts without an expiry date sort last under expiresAt.
+          description: >
+            The allow-listed sort fields; the activity class is deliberately not one of them
+            (ADR-0033, Entscheidung 11). Three of them order a category rather than a text, and do
+            so by a fixed rank: "origin" puts local accounts first, then the providers by name,
+            then the accounts whose issuer has no provider row; "role" sorts by privilege (USER,
+            AUDITOR, SYSTEM_ADMIN - the order the German labels read in); "status" by what needs
+            attention first (LOCKED, EXPIRED, INVITED, ACTIVE), with the provider accounts last
+            because they carry no state of OPAA's making. Accounts without an expiry date sort
+            last under expiresAt.
         - name: direction
           in: query
           required: false

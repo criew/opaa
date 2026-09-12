@@ -749,7 +749,13 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
   Anbieter —, und die Prüffilter (Zustand, ohne Ablaufdatum, länger nicht genutzt) grenzen die
   Liste auf lokale Konten ein. Ein Anbieterkonto bietet in dieser Sicht genau eine Handlung, die
   Rolle über den bestehenden Rollenendpunkt; Sperren, Befristen und Löschen kennt OPAA für es
-  nicht. `users.last_login_at`
+  nicht. **Sortierbar sind dort sieben Felder** — Name, E-Mail, Herkunft, Rolle, Zustand, Ablauf,
+  Anlagedatum: Die drei hinzugekommenen ordnen eine Kategorie und tun das nach fester Rangfolge
+  (Herkunft: lokal zuerst, dann Anbieter nach Namen, zuletzt ein Issuer ohne Anbieterzeile; Rolle
+  nach Privileg; Zustand nach Dringlichkeit, Anbieterkonten zuletzt). Sie sagen, woher ein Konto
+  kommt und ob es sich anmelden kann — **nicht, wann jemand gearbeitet hat**; die Aktivität bleibt
+  als einziges Feld von der Sortierung ausgenommen, und das ist der Kern dieser Regel, nicht die
+  Zahl der Felder. `users.last_login_at`
   ist ein bei jeder Anfrage gedrosselt fortgeschriebener **Aktivitätszeitstempel** (fünf Minuten
   Auflösung, `UserService#updateExistingUser`), kein Anmeldezeitpunkt — er wird nirgends als solcher
   ausgegeben.

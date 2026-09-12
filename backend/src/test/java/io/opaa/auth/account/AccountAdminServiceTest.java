@@ -11,7 +11,6 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.local.LocalCredentials;
 import io.opaa.auth.local.LocalCredentialsRepository;
-import io.opaa.auth.local.LocalUserQuery;
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderRepository;
@@ -197,12 +196,11 @@ class AccountAdminServiceTest {
   @Test
   void sortsByExpiryWithAccountsWithoutOneLastAndByEmail() {
     AccountPage byExpiry =
-        service.list(ORGANIZATION, query().sort(LocalUserQuery.Sort.EXPIRES_AT).build());
+        service.list(ORGANIZATION, query().sort(AccountQuery.Sort.EXPIRES_AT).build());
     assertThat(byExpiry.items().get(0).user()).isSameAs(erika);
 
     AccountPage byEmailDescending =
-        service.list(
-            ORGANIZATION, query().sort(LocalUserQuery.Sort.EMAIL).descending(true).build());
+        service.list(ORGANIZATION, query().sort(AccountQuery.Sort.EMAIL).descending(true).build());
     assertThat(byEmailDescending.items())
         .extracting(a -> a.user().getEmail())
         .containsExactly(
@@ -211,6 +209,51 @@ class AccountAdminServiceTest {
             "klaus@stadt.example",
             "ghost@stadt.example",
             "erika@stadt.example");
+  }
+
+  @Test
+  void sortsByOriginWithLocalAccountsFirstAndAnUnknownIssuerLast() {
+    AccountPage page = service.list(ORGANIZATION, query().sort(AccountQuery.Sort.ORIGIN).build());
+
+    assertThat(page.items())
+        .extracting(a -> a.user().getDisplayName())
+        .containsExactly(
+            // die beiden lokalen zuerst (untereinander nach ihrer stabilen Zweitordnung),
+            // dann die Anbieter nach Namen, zuletzt das Konto ohne Anbieterzeile
+            "Erika Muster", "Klaus Weber", "P. Admin", "Maria Weber", "Alte Anbieterin");
+    assertThat(page.items().get(0).isLocal()).isTrue();
+    assertThat(page.items().get(1).isLocal()).isTrue();
+    assertThat(page.items().get(2).provider()).isSameAs(partner);
+    assertThat(page.items().get(3).provider()).isSameAs(directory);
+    assertThat(page.items().get(4).provider()).isNull();
+  }
+
+  @Test
+  void sortsByRoleByPrivilegeNotByTheEnumsOwnOrder() {
+    AccountPage page = service.list(ORGANIZATION, query().sort(AccountQuery.Sort.ROLE).build());
+
+    assertThat(page.items())
+        .extracting(a -> a.user().getSystemRole())
+        .containsExactly(
+            SystemRole.USER,
+            SystemRole.USER,
+            SystemRole.USER,
+            SystemRole.USER,
+            SystemRole.SYSTEM_ADMIN);
+    // absteigend beginnt bei der Systemverwaltung - der Wert, den eine Prüfung zuerst sucht
+    AccountPage descending =
+        service.list(ORGANIZATION, query().sort(AccountQuery.Sort.ROLE).descending(true).build());
+    assertThat(descending.items().get(0).user().getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
+  }
+
+  @Test
+  void sortsByStateWithWhatNeedsAttentionFirstAndProviderAccountsLast() {
+    AccountPage page = service.list(ORGANIZATION, query().sort(AccountQuery.Sort.STATUS).build());
+
+    assertThat(page.items().get(0).local().state()).isEqualTo(LocalAccountState.LOCKED);
+    assertThat(page.items().get(1).local().state()).isEqualTo(LocalAccountState.ACTIVE);
+    // die drei Anbieterkonten tragen keinen Zustand aus OPAAs Hand und stehen dahinter
+    assertThat(page.items().subList(2, 5)).allMatch(a -> a.local() == null);
   }
 
   @Test
@@ -269,7 +312,7 @@ class AccountAdminServiceTest {
     private LocalAccountState status;
     private boolean withoutExpiry;
     private boolean inactive;
-    private LocalUserQuery.Sort sort = LocalUserQuery.Sort.DISPLAY_NAME;
+    private AccountQuery.Sort sort = AccountQuery.Sort.DISPLAY_NAME;
     private boolean descending;
     private int page;
     private int size = AccountQuery.DEFAULT_PAGE_SIZE;
@@ -309,7 +352,7 @@ class AccountAdminServiceTest {
       return this;
     }
 
-    QueryBuilder sort(LocalUserQuery.Sort value) {
+    QueryBuilder sort(AccountQuery.Sort value) {
       this.sort = value;
       return this;
     }

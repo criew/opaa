@@ -157,6 +157,18 @@ Ein exakter Zeitstempel der letzten Nutzung wäre der Rohstoff für eine Anwesen
 Aktivität lässt sich deshalb auch **nicht sortieren**, und es gibt **keinen Export** der Liste. Das
 ist eine dauerhafte Eigenschaft dieser Ansicht.
 
+Sortieren lässt sich über die Spaltenköpfe Name, E-Mail, Herkunft, Rolle, Zustand, Ablauf und
+Angelegt. Drei davon ordnen keine Wörter, sondern Kategorien, und tun das nach einer festen
+Reihenfolge statt alphabetisch:
+
+| Spalte | Reihenfolge aufsteigend |
+|---|---|
+| Herkunft | lokale Konten, dann die Anbieter nach Namen, zuletzt Konten ohne Anbieterzeile |
+| Rolle | Nutzer, Revision, Systemverwaltung |
+| Zustand | gesperrt, abgelaufen, eingeladen, aktiv — Anbieterkonten zuletzt, sie tragen keinen |
+
+Der Zustand sortiert damit das nach oben, was eine Entscheidung braucht.
+
 Ein **Konto eines Identitätsanbieters** zeigt Herkunft und Rolle, aber weder Zustand noch Ablauf
 noch Aktivität: Sein Lebenszyklus liegt beim Anbieter, und die Prüfpflicht dieses Kapitels gilt ihm
 nicht. Steht in seiner Zustandsspalte „Anbieter deaktiviert", kann sich niemand mehr über diesen

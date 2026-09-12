@@ -370,9 +370,12 @@ Oberfläche und das Datum der nächsten Wiedervorlage. Daneben liefert
 `GET /api/v1/admin/accounts` (#1601, nur `SYSTEM_ADMIN`, eigene Organisation) **alle** Konten
 seitenweise: lokale mit derselben `LocalUserResponse` unter `local`, Anbieterkonten mit `provider`
 (Anzeigename und ob der Anbieter noch Tokens ausstellt; abwesend, wenn die Anbieterzeile gelöscht
-wurde) und `roleManagedByProvider`. Es gelten dieselben Grenzen — vier Sortierfelder ohne die
-Aktivität, höchstens 50 Zeilen je Seite, kein Export —, und die Aktivitätsklasse steht **nur** an
-lokalen Zeilen. Filter: `query` (E-Mail und Anzeigename beider Kontotypen), `providerType`,
+wurde) und `roleManagedByProvider`. Es gelten dieselben Grenzen — höchstens 50 Zeilen je Seite, kein
+Export, keine Sortierung nach der Aktivität —, und die Aktivitätsklasse steht **nur** an lokalen
+Zeilen. Sortierbar sind `displayName`, `email`, `origin`, `role`, `status`, `expiresAt` und
+`createdAt`; die drei Kategoriefelder ordnen nach fester Rangfolge (Herkunft: lokal, dann Anbieter
+nach Namen, dann ein Issuer ohne Anbieterzeile; Rolle nach Privileg; Zustand nach Dringlichkeit mit
+den Anbieterkonten zuletzt). Filter: `query` (E-Mail und Anzeigename beider Kontotypen), `providerType`,
 `providerId`, `role` sowie `status`, `withoutExpiry` und `inactive`, die die Liste auf lokale Konten
 eingrenzen. **Ändern** (`PATCH`) von Anzeigename, Adresse,
 Anlagegrund und Ablaufdatum ist ein `LOCAL_USER_CHANGED` mit Vorher/Nachher **nur für das
@@ -579,7 +582,8 @@ Ablaufdatum und offene Einladungen, sagt die Auflage („begründet und befriste
 **Filterleiste** führt Suche (300 ms entprellt, über E-Mail und Anzeigename beider Kontotypen), die
 Herkunft (alle, lokal, alle Anbieter, ein einzelner Anbieter), die Filter Zustand/Rolle/Auflage —
 Zustand und Auflage beschreiben lokale Konten und grenzen die Liste auf sie ein —, Sortierung nach
-den vier erlaubten Feldern und Seitenblättern (höchstens 50 je Seite). Spalten sind Name, E-Mail,
+den sieben erlaubten Feldern — auch nach Herkunft, Rolle und Zustand, die als Kategorien eine feste
+Rangfolge haben statt einer alphabetischen — und Seitenblättern (höchstens 50 je Seite). Spalten sind Name, E-Mail,
 Herkunft, Rolle (mit dem Etikett „Vom Anbieter geführt", wenn ein aktivierter Anbieter die Rollen
 über seinen Claim führt), Zustand als Punkt **und** Text (Eingeladen, Aktiv, Gesperrt mit Grund,
 Abgelaufen) samt Etikett „Passwortwechsel ausstehend" — bei Anbieterkonten stattdessen „Beim

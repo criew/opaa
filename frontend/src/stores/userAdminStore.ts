@@ -15,7 +15,7 @@ import type {
   SystemRole,
   UserInfo,
 } from '../types/api'
-import { changeUserRole, listAccounts } from '../services/accountApi'
+import { changeUserRole, listAccounts, type AccountSortField } from '../services/accountApi'
 import {
   createLocalUser,
   deleteLocalUser,
@@ -27,7 +27,6 @@ import {
   unlockLocalUser,
   updateLocalAuthSettings,
   updateLocalUser,
-  type LocalUserSortField,
   LOCAL_USER_PAGE_SIZE,
 } from '../services/localUserApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
@@ -46,7 +45,7 @@ export interface AccountFilters {
   status: LocalAccountState | null
   role: SystemRole | null
   review: LocalUserReviewFilter
-  sort: LocalUserSortField
+  sort: AccountSortField
   direction: 'asc' | 'desc'
   page: number
 }

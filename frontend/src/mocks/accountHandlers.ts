@@ -11,8 +11,26 @@ import { LAST_ADMIN_USER_ID, mockLocalUsers, setMockLocalUsers } from './localUs
  * anmeldefähige Systemverwalter mit 409 `LAST_LOGIN_CAPABLE_ADMIN`.
  */
 
-const SORT_KEYS = ['displayName', 'email', 'expiresAt', 'createdAt'] as const
+const SORT_KEYS = [
+  'displayName',
+  'email',
+  'origin',
+  'role',
+  'status',
+  'expiresAt',
+  'createdAt',
+] as const
 type SortKey = (typeof SORT_KEYS)[number]
+
+/** Dieselben Rangfolgen wie im Backend (AccountAdminService): Rolle nach Privileg, Zustand nach
+ *  Dringlichkeit, Herkunft erst nach Typ und dann nach Anbietername. */
+const ROLE_RANK: Record<string, number> = { USER: 0, AUDITOR: 1, SYSTEM_ADMIN: 2 }
+const STATUS_RANK: Record<string, number> = { LOCKED: 0, EXPIRED: 1, INVITED: 2, ACTIVE: 3 }
+
+function originKey(account: AccountResponse): string {
+  if (account.providerType === 'LOCAL') return '0'
+  return account.provider ? `1${account.provider.displayName.toLowerCase()}` : '2'
+}
 
 function badRequest(error: string) {
   return HttpResponse.json(
@@ -42,6 +60,13 @@ function sortValue(account: AccountResponse, key: SortKey): string {
       return account.createdAt
     case 'expiresAt':
       return account.local?.expiresAt ?? ''
+    case 'origin':
+      return originKey(account)
+    case 'role':
+      return String(ROLE_RANK[account.systemRole] ?? 9)
+    case 'status':
+      // Ein Anbieterkonto trägt keinen Zustand aus OPAAs Hand und sortiert zuletzt.
+      return String(account.local ? (STATUS_RANK[account.local.status] ?? 9) : 4)
   }
 }
 
@@ -54,6 +79,10 @@ function compare(a: AccountResponse, b: AccountResponse, key: SortKey): number {
     if (left === '') return 1
     if (right === '') return -1
     return left < right ? -1 : 1
+  }
+  if (left === right) {
+    // Stabile Zweitordnung wie im Backend, damit eine Seite reproduzierbar bleibt.
+    return a.id.localeCompare(b.id)
   }
   return left.localeCompare(right, 'de-DE')
 }
@@ -69,7 +98,9 @@ export const accountHandlers = [
       return badRequest('Die Seitengröße muss zwischen 1 und 50 liegen.')
     }
     if (!SORT_KEYS.includes(sort as SortKey)) {
-      return badRequest('Sortierung nur nach displayName, email, expiresAt oder createdAt.')
+      return badRequest(
+        'Sortierung nur nach displayName, email, origin, role, status, expiresAt oder createdAt.',
+      )
     }
     if (direction !== 'asc' && direction !== 'desc') {
       return badRequest('Sortierrichtung nur asc oder desc.')

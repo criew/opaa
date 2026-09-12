@@ -23,7 +23,6 @@ import io.opaa.auth.account.AccountPage;
 import io.opaa.auth.account.AccountQuery;
 import io.opaa.auth.local.LocalCredentials;
 import io.opaa.auth.local.LocalUserOverview;
-import io.opaa.auth.local.LocalUserQuery;
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
 import java.time.Instant;
@@ -151,7 +150,7 @@ class AccountAdminControllerTest {
                 LocalAccountState.INVITED,
                 true,
                 true,
-                LocalUserQuery.Sort.CREATED_AT,
+                AccountQuery.Sort.CREATED_AT,
                 true,
                 1,
                 10));
@@ -166,6 +165,9 @@ class AccountAdminControllerTest {
         .perform(get("/api/v1/admin/accounts").with(asAdmin()).param("sort", "activity"))
         .andExpect(status().isBadRequest());
     mockMvc
+        .perform(get("/api/v1/admin/accounts").with(asAdmin()).param("sort", "lastLoginAt"))
+        .andExpect(status().isBadRequest());
+    mockMvc
         .perform(get("/api/v1/admin/accounts").with(asAdmin()).param("direction", "sideways"))
         .andExpect(status().isBadRequest());
     mockMvc
@@ -174,6 +176,27 @@ class AccountAdminControllerTest {
     mockMvc
         .perform(get("/api/v1/admin/accounts").with(asAdmin()).param("query", "x".repeat(321)))
         .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void theThreeColumnsOfTheAccountListAreSortableToo() throws Exception {
+    when(adminService.list(eq(organizationId), any()))
+        .thenReturn(new AccountPage(List.of(), 0, 0, 25));
+
+    for (var entry :
+        java.util.Map.of(
+                "origin", AccountQuery.Sort.ORIGIN,
+                "role", AccountQuery.Sort.ROLE,
+                "status", AccountQuery.Sort.STATUS)
+            .entrySet()) {
+      mockMvc
+          .perform(get("/api/v1/admin/accounts").with(asAdmin()).param("sort", entry.getKey()))
+          .andExpect(status().isOk());
+      ArgumentCaptor<AccountQuery> query = ArgumentCaptor.forClass(AccountQuery.class);
+      verify(adminService, org.mockito.Mockito.atLeastOnce())
+          .list(eq(organizationId), query.capture());
+      assertThat(query.getValue().sort()).isEqualTo(entry.getValue());
+    }
   }
 
   private RequestPostProcessor asAdmin() {

@@ -1,5 +1,6 @@
 package io.opaa.auth.account;
 
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -159,6 +160,13 @@ public class AccountAdminService {
               Comparator.comparing(
                   AccountAdminService::expiresAt, Comparator.nullsLast(Comparator.naturalOrder()));
           case CREATED_AT -> Comparator.comparing(a -> a.user().getCreatedAt());
+          // Erst der Typ, dann der Anbietername: Die Spalte zeigt eine Kategorie („Lokal") neben
+          // Eigennamen, und eine rein alphabetische Ordnung stellte „Kein Anbieter" zwischen sie.
+          case ORIGIN ->
+              Comparator.<AccountOverview, Integer>comparing(AccountAdminService::originRank)
+                  .thenComparing(AccountAdminService::providerName, String.CASE_INSENSITIVE_ORDER);
+          case ROLE -> Comparator.comparingInt(a -> roleRank(a.user().getSystemRole()));
+          case STATUS -> Comparator.comparingInt(AccountAdminService::statusRank);
         };
     if (query.descending()) {
       comparator = comparator.reversed();
@@ -169,5 +177,46 @@ public class AccountAdminService {
   /** Only a local account has an expiry date; every other account sorts as "without". */
   private static Instant expiresAt(AccountOverview account) {
     return account.local() == null ? null : account.local().credentials().getExpiresAt();
+  }
+
+  /** Local accounts first, then the accounts of a provider, then those whose issuer has no row. */
+  private static int originRank(AccountOverview account) {
+    if (account.isLocal()) {
+      return 0;
+    }
+    return account.provider() == null ? 2 : 1;
+  }
+
+  private static String providerName(AccountOverview account) {
+    return account.provider() == null ? "" : account.provider().getDisplayName();
+  }
+
+  /**
+   * By privilege, which is also the order the German labels read in: Nutzer, Revision,
+   * Systemverwaltung. The enum's own order is none - it grew as the roles were added.
+   */
+  private static int roleRank(SystemRole role) {
+    return switch (role) {
+      case USER -> 0;
+      case AUDITOR -> 1;
+      case SYSTEM_ADMIN -> 2;
+    };
+  }
+
+  /**
+   * By what needs attention first: a locked account, then an expired one, then an invitation nobody
+   * redeemed, then the accounts that are simply working. A provider account has no state of OPAA's
+   * making and sorts last, the way an account without an expiry date does.
+   */
+  private static int statusRank(AccountOverview account) {
+    if (account.local() == null) {
+      return 4;
+    }
+    return switch (account.local().state()) {
+      case LOCKED -> 0;
+      case EXPIRED -> 1;
+      case INVITED -> 2;
+      case ACTIVE -> 3;
+    };
   }
 }
