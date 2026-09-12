@@ -471,14 +471,30 @@ zweite Aufruf würde den gerade verbrauchten Link als ungültig melden) und zeig
 „bestätigt" oder „Link ungültig"; eine Begrenzung nennt dort die Wartezeit und sagt, dass der Link
 dadurch nicht verbraucht ist.
 
-Jedes Passwortfeld trägt einen Sichtbarkeits-Umschalter (außerhalb der Tab-Reihenfolge), die
-Richtlinie steht als Satz daneben („mindestens n Zeichen, höchstens 64, nicht die eigene Adresse,
-nicht auf der Sperrliste" — das Minimum aus `/auth/config`), und eine vierstufige Stärkeanzeige
-bewertet die Eingabe als **Orientierung**: Sie blockiert nichts, weil das Backend entscheidet.
-„Sicheres Passwort erzeugen" baut über die Web-Crypto-API ein Passwort, das die Richtlinie per
-Konstruktion erfüllt, macht es sichtbar und lässt es kopieren; wo es ein Wiederholungsfeld gibt,
-füllt es dieses mit. Feldfehler erscheinen am Feld, und **jede** verletzte Regel einer Antwort wird
-genannt, nicht nur die erste. Erfolg und Scheitern sind eine **eigene Ansicht** an der Stelle des
+**Kein Roh-Token in der Adresszeile.** Beide Seiten lesen den Token genau einmal und **entfernen ihn
+sofort aus der URL**, bevor die erste Anfrage der Seite hinausgeht: Solange er dort steht, ist er der
+Referrer jeder gleichherkünftigen Anfrage, und das nginx der Installation sendet
+`Referrer-Policy: same-origin` — der Token stünde damit in dessen Zugriffsprotokoll, entgegen
+ADR-0033, Entscheidung 9. Die Seite behält den gelesenen Wert, der Fluss kostet das also nichts;
+**ein Neuladen verliert den Token** und die Seite liest sich dann als ungültiger Link. Das ist die
+billigere Folge, weil der Link aus der Mail weiter funktioniert — beide Fehlertexte sagen genau das
+(„Ein erneutes Laden dieser Seite hilft nicht — öffnen Sie den Link aus der E-Mail noch einmal.").
+Nach einem erfolgreich eingelösten Passwortlink beendet die Seite außerdem eine **noch offene lokale
+Sitzung dieses Tabs** ohne Abmeldeaufruf: Das Backend hat alle Sitzungen des Kontos widerrufen, und
+„Zur Anmeldung" würde sonst mit einem toten Token in die Anwendung führen.
+
+Jedes Passwortfeld trägt einen Sichtbarkeits-Umschalter (tastaturerreichbar wie jedes
+Bedienelement), die Richtlinie steht als Satz daneben („mindestens n Zeichen, höchstens 64 Zeichen
+und 72 Byte, nicht die eigene Adresse, nicht auf der Sperrliste" — das Minimum aus `/auth/config`),
+und eine vierstufige Stärkeanzeige bewertet die Eingabe als **Orientierung**: Sie blockiert nichts,
+weil das Backend entscheidet, zählt Codepoints wie die Richtlinie und meldet ihre Bewertung als
+höfliche Live-Region. „Sicheres Passwort erzeugen" baut über die Web-Crypto-API ein Passwort, das die
+Richtlinie per Konstruktion erfüllt, macht es sichtbar und lässt es kopieren; wo es ein
+Wiederholungsfeld gibt, füllt es dieses mit. Feldfehler erscheinen am Feld — **je Feld** alle
+verletzten Regeln einer Antwort, weil die Richtlinie sie gesammelt meldet; nennt eine Abweisung ein
+Feld, das das Formular nicht zeigt, erscheint ihr Satz in der Meldung über dem Formular statt zu
+verschwinden. Nach einer Abweisung springt der Fokus auf das erste betroffene Feld, und wenn keines
+benannt ist, auf die Meldung selbst. Erfolg und Scheitern sind eine **eigene Ansicht** an der Stelle des
 Formulars, nicht eine Popup-Meldung: „Wenn zu dieser Adresse ein Konto besteht, haben wir eine
 E-Mail geschickt." (vergessen und registrieren — für bekannte und unbekannte Adressen gleich),
 „Passwort festgelegt — Sie können sich jetzt anmelden.", „Dieser Link ist nicht mehr gültig." (eine
@@ -490,7 +506,8 @@ Anfragen anderer aus demselben Netz. Die Registrierung zeigt weder Rolle noch Ab
 welche Daten gespeichert werden; den Datenschutzhinweis des Hauses gibt die Systemverwaltung heraus,
 solange es dafür keine Seite im Produkt gibt (#143).
 
-**Passwort ändern** (`/account/password`) nutzt dieselben Bausteine. In den Benutzereinstellungen
+**Passwort ändern** (`/account/password`) nutzt dieselben Bausteine; nur eine abgewiesene
+**aktuelle** Eingabe wird geleert, ein abgewiesenes neues Passwort lässt die übrigen Felder stehen. In den Benutzereinstellungen
 erscheint der Abschnitt „Ihr Konto" mit der Schaltfläche „Passwort ändern" **nur für lokale
 Sitzungen**; eine Anbietersitzung verweist dort auf ihren Identitätsanbieter, die
 Entwicklungsanmeldung auf nichts. Der freiwillige Wechsel kehrt danach in die Einstellungen zurück

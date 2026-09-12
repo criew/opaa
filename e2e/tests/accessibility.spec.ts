@@ -287,6 +287,12 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
    * Umschalter, Stärkeanzeige und Ergebnisansicht ein. Die Konfiguration wird wie bei der
    * Anmeldeseite abgefangen: Der Stack läuft im dev-Modus, in dem die lokale Kontoverwaltung aus
    * ist und /register sowie /forgot-password deshalb umleiten würden.
+   *
+   * Vertrag für weitere E2E-Tests (#1543): `/set-password` und `/verify-email` **entfernen den
+   * Token sofort aus der URL** (ADR-0033, Entscheidung 9 — er stünde sonst als Referrer im
+   * nginx-Zugriffslog). Nach dem Laden enthält `page.url()` kein `token=` mehr, und ein Neuladen
+   * der Seite zeigt „Dieser Link ist nicht mehr gültig." — ein Test muss den Link also jedes Mal
+   * frisch aufrufen statt die Seite neu zu laden.
    */
   const LOCAL_ACCOUNTS_CONFIG = {
     mode: "oidc",
