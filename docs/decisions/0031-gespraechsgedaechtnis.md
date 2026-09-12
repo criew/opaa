@@ -129,11 +129,15 @@ ist der Referenzlauf vom 11.09.2026 ohne Suchfenster und ohne Notiz (Issue #1485
 
 **Bauteil 1 (Gesprächsfenster) trägt.** Das Suchfenster von zwei Runden hebt beide Klassen, für die
 es gebaut wurde, in allen vier Rundenmetriken und den Gesamtwert über alle 83 Runden. Die
-Wiederaufnahmebedingung der verworfenen **Themenwechsel-Erkennung** ist damit nicht eingetreten:
-Sie lautete „`topic_switch` zeigt nach dem Fenster-Umbau in mehr als einem Viertel der Fälle
-weiterhin Bleed", gemessen sind 2 von 9 Wechselrunden — und in beiden bleibt das Ziel auf Rang 1.
-Die Kennzahl selbst ist als Kriterium zurückgezogen (sie hat auf dem Datensatz kaum
-Dynamikbereich); beurteilt wird über den Anteil gelöster Fälle.
+Wiederaufnahmebedingung der verworfenen **Themenwechsel-Erkennung** ist damit nicht eingetreten —
+aber knapp: Sie lautete „`topic_switch` zeigt nach dem Fenster-Umbau in mehr als einem Viertel der
+Fälle weiterhin Bleed", gemessen sind 2 von 9 Wechselrunden, also 22 % gegen eine Schwelle von
+25 %. Ein einziger weiterer Fall hätte sie überschritten; bei n = 9 ist der Abstand kleiner als ein
+Fall. Tragend ist deshalb nicht der Schwellenwert, sondern was in den beiden Runden geschieht: **Das
+Ziel bleibt in beiden auf Rang 1** — das Altthemen-Dokument steht im Fenster, ohne die Wechselrunde
+zu kosten. Die Kennzahl selbst ist als Kriterium zurückgezogen (sie hat auf dem Datensatz kaum
+Dynamikbereich, und das schneidet in beide Richtungen); beurteilt wird über den Anteil gelöster
+Fälle.
 
 **Bauteil 2 (Gesprächsnotiz) erfüllt seinen Zweck heute nicht.** Die Klasse, für die es gebaut
 wurde, erreicht ihren Ausgangswert nicht wieder. Die dafür festgelegte, empfindlichere

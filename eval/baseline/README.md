@@ -99,6 +99,16 @@ Baseline-Neuziehung, nach dem Verfahren unten; das ist gewollt und kein Nebeneff
 Zustandswechsel behauptet, dass sich das Messergebnis geändert hat, also muss das gemessene
 Ergebnis mitkommen.
 
+**Eine reine Textänderung ist davon ausgenommen.** Wird ausschließlich ein `expected_state_reason`
+(oder ein anderer nicht messrelevanter Text) präzisiert, bewegt sich zwar der Hash, aber keine
+Messgrundlage: Der Fixpunkt `goldenDatasetSha256` wird dann **ohne** neuen Messlauf nachgezogen, und
+der PR hält fest, welche Felder sich geändert haben und dass `query`, die erwarteten Dokumente, ein
+etwaiger `confusable_document`/`topic_switch_turn` und jedes `expected_state` unberührt sind. Diese
+Abgrenzung ist keine Neuerfindung — `verwaltung.json` und `pipeline-verwaltung.json` sind für Issue
+#1049 genau so behandelt worden („ausschließlich der Fixpunkt `goldenDatasetSha256` nachgezogen …
+ohne neuen Messlauf"), zuletzt die Mehrrunden-Baseline in #1490. Sobald ein **messrelevantes** Feld
+sich bewegt, gilt wieder der Absatz darüber.
+
 ## Domäne `city-landmarks` (Issue #234)
 
 `city-landmarks.json` ist die separate Baseline für die zweite Domäne — eigene Gruppen, eigene
