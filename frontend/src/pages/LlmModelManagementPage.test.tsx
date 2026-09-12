@@ -1,7 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished } from 'vitest'
 import { http, HttpResponse } from 'msw'
+import { Navigate, Route, Routes } from 'react-router'
 import { server } from '../mocks/server'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
@@ -25,6 +26,23 @@ function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
   })
 }
 
+/**
+ * Die Seite liest ihren Bereich aus der Route (`/admin/models/:tab`), also montieren die Tests sie
+ * unter denselben Routen wie App.tsx - einschließlich der Umleitung des bloßen Pfades.
+ */
+function renderPage(route = '/admin/models/chat') {
+  return renderWithProviders(
+    <Routes>
+      <Route path="/admin/models" element={<Navigate to="/admin/models/chat" replace />} />
+      <Route path="/admin/models/:tab" element={<LlmModelManagementPage />} />
+    </Routes>,
+    { withRouter: true, initialRoute: route },
+  )
+}
+
+const renderChat = () => renderPage('/admin/models/chat')
+const renderEmbedding = () => renderPage('/admin/models/embedding')
+
 describe('LlmModelManagementPage', () => {
   beforeEach(() => {
     useLlmModelStore.setState({
@@ -36,10 +54,71 @@ describe('LlmModelManagementPage', () => {
   })
 
   /** #759 acceptance criterion: no route/entry for anyone but SYSTEM_ADMIN. */
+  /**
+   * Die Bereiche sind Routen, keine Zustände (#1619): Ein Verweis soll im richtigen Bereich
+   * landen, und ein Neuladen ihn behalten. Der bloße Pfad landet auf den Chat-Modellen, und ein
+   * Tippfehler wird nicht stillschweigend umgedeutet.
+   */
+  it('lands on the chat models', async () => {
+    signInAs('SYSTEM_ADMIN')
+    renderPage('/admin/models')
+
+    expect(await screen.findByRole('tab', { name: 'Chat-Modelle' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  it('sends an unknown area back to the chat models', async () => {
+    signInAs('SYSTEM_ADMIN')
+    renderPage('/admin/models/quatsch')
+
+    expect(await screen.findByRole('tab', { name: 'Chat-Modelle' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  /**
+   * Jeder Bereich holt nur, was er zeigt. Vorher lud die Seite die Modellliste **und** die
+   * Einbettungsangaben, obwohl immer nur eines davon sichtbar war.
+   */
+  it('fetches only the models in the chat area', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const aufrufe: string[] = []
+    const horcher = ({ request }: { request: Request }) => {
+      const pfad = new URL(request.url).pathname
+      if (pfad.startsWith('/api/v1/admin/models')) aufrufe.push(pfad)
+    }
+    server.events.on('request:start', horcher)
+    onTestFinished(() => server.events.removeListener('request:start', horcher))
+
+    renderChat()
+    await screen.findByText('Ollama lokal')
+
+    expect(aufrufe).toEqual(['/api/v1/admin/models'])
+  })
+
+  it('fetches only the embedding info in the embedding area', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const aufrufe: string[] = []
+    const horcher = ({ request }: { request: Request }) => {
+      const pfad = new URL(request.url).pathname
+      if (pfad.startsWith('/api/v1/admin/models')) aufrufe.push(pfad)
+    }
+    server.events.on('request:start', horcher)
+    onTestFinished(() => server.events.removeListener('request:start', horcher))
+
+    renderEmbedding()
+    await screen.findByText('nomic-embed-text')
+
+    expect(aufrufe).toEqual(['/api/v1/admin/models/embedding-info'])
+  })
+
   it('shows no model management to a user who is not a system administrator', () => {
     signInAs('USER')
 
-    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
+    renderChat()
 
     expect(screen.queryByRole('button', { name: 'Neues Modell' })).not.toBeInTheDocument()
     expect(screen.getByText(/nicht freigegeben/i)).toBeInTheDocument()
@@ -48,7 +127,7 @@ describe('LlmModelManagementPage', () => {
   it('lists the configured models with the active one clearly marked', async () => {
     signInAs('SYSTEM_ADMIN')
 
-    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
+    renderChat()
 
     await waitFor(() => {
       expect(screen.getByText('Ollama lokal')).toBeInTheDocument()
@@ -62,7 +141,7 @@ describe('LlmModelManagementPage', () => {
   it('renders the model card headings as level 2', async () => {
     signInAs('SYSTEM_ADMIN')
 
-    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
+    renderChat()
 
     await waitFor(() => {
       expect(screen.getByText('Ollama lokal')).toBeInTheDocument()
@@ -73,7 +152,7 @@ describe('LlmModelManagementPage', () => {
   it('shows the read-only embedding block with provider, model and dimensions', async () => {
     signInAs('SYSTEM_ADMIN')
 
-    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
+    renderEmbedding()
 
     await waitFor(() => {
       expect(screen.getByText('nomic-embed-text')).toBeInTheDocument()
@@ -87,7 +166,7 @@ describe('LlmModelManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
-    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
+    renderChat()
     await user.click(screen.getByRole('button', { name: 'Neues Modell' }))
     const dialog = within(screen.getByRole('dialog'))
 
@@ -121,7 +200,7 @@ describe('LlmModelManagementPage', () => {
     })
     const user = userEvent.setup()
 
-    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
+    renderChat()
     await waitFor(() => screen.getByText('Modell B'))
     await user.click(screen.getByText('Modell B'))
     await user.click(screen.getByRole('button', { name: '"Modell B" als aktives Modell setzen' }))
@@ -141,7 +220,7 @@ describe('LlmModelManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
-    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
+    renderChat()
     await waitFor(() => screen.getByText('Ollama lokal'))
     await user.click(screen.getByText('Ollama lokal'))
 
@@ -173,7 +252,7 @@ describe('LlmModelManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
-    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
+    renderChat()
     await waitFor(() => screen.getByText('Ollama lokal'))
     await user.click(screen.getByText('Ollama lokal'))
     await user.click(screen.getByRole('button', { name: '"Ollama lokal" speichern' }))
@@ -202,7 +281,7 @@ describe('LlmModelManagementPage', () => {
     })
     const user = userEvent.setup()
 
-    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
+    renderChat()
     await waitFor(() => screen.getByText('Modell mit Schlüssel'))
     await user.click(screen.getByText('Modell mit Schlüssel'))
     await user.click(
@@ -224,7 +303,7 @@ describe('LlmModelManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
-    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
+    renderChat()
     await waitFor(() => screen.getByText('Ollama lokal'))
     await user.click(screen.getByText('Ollama lokal'))
     await user.click(screen.getByRole('button', { name: 'Verbindung zu "Ollama lokal" testen' }))
@@ -243,7 +322,7 @@ describe('LlmModelManagementPage', () => {
     )
     const user = userEvent.setup()
 
-    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
+    renderChat()
     await waitFor(() => screen.getByText('Ollama lokal'))
     await user.click(screen.getByText('Ollama lokal'))
     await user.click(screen.getByRole('button', { name: 'Verbindung zu "Ollama lokal" testen' }))
@@ -258,7 +337,7 @@ describe('LlmModelManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
-    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
+    renderChat()
     await waitFor(() => screen.getByText('Ollama lokal'))
     await user.click(screen.getByText('Ollama lokal'))
 
@@ -303,7 +382,7 @@ describe('LlmModelManagementPage', () => {
     )
     const user = userEvent.setup()
 
-    renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
+    renderChat()
     await waitFor(() => screen.getByText('Modell A'))
     await user.click(screen.getByText('Modell A'))
     await user.click(screen.getByRole('button', { name: '"Modell A" löschen' }))

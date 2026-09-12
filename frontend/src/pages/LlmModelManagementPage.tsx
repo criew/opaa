@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Navigate, useParams } from 'react-router'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -6,7 +7,6 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
-import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -19,7 +19,7 @@ import { confirmAction } from '../stores/confirmStore'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
-import PageSection from '../components/PageSection'
+import AreaTabs from '../components/AreaTabs'
 import KeyValueList from '../components/KeyValueList'
 import CreateLlmModelDialog from '../components/admin/CreateLlmModelDialog'
 import { contentWidth } from '../theme/tokens'
@@ -402,29 +402,54 @@ function EmbeddingInfoSection() {
   }, [loadEmbeddingInfo])
 
   return (
-    <Box sx={{ mt: 4 }}>
-      <PageSection
-        title="Einbettungsmodell"
-        description="Anders als das Chat-Modell lässt sich das Einbettungsmodell hier nicht ändern: Ein Wechsel macht bestehende Vektoren unvergleichbar und würde eine vollständige Neuindizierung aller Wissensbibliotheken erfordern."
-      >
-        {embeddingInfo ? (
-          <KeyValueList
-            entries={[
-              { label: 'Anbieter', value: embeddingInfo.provider },
-              { label: 'Modell', value: embeddingInfo.model },
-              { label: 'Dimensionen', value: embeddingInfo.dimensions },
-            ]}
-          />
-        ) : (
-          <Typography color="text.secondary">Einbettungskonfiguration wird geladen …</Typography>
-        )}
-      </PageSection>
-    </Box>
+    <>
+      {/* Keine eigene Überschrift: Der Reiter heißt bereits „Einbettung", und „Einbettungsmodell"
+          darunter wäre dieselbe Aussage ein zweites Mal. Benannt ist der Bereich über den Reiter,
+          auf den sein Panel zeigt. */}
+      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2.5, maxWidth: '80ch' }}>
+        Anders als das Chat-Modell lässt sich das Einbettungsmodell hier nicht ändern: Ein Wechsel
+        macht bestehende Vektoren unvergleichbar und würde eine vollständige Neuindizierung aller
+        Wissensbibliotheken erfordern.
+      </Typography>
+      {embeddingInfo ? (
+        <KeyValueList
+          entries={[
+            { label: 'Anbieter', value: embeddingInfo.provider },
+            { label: 'Modell', value: embeddingInfo.model },
+            { label: 'Dimensionen', value: embeddingInfo.dimensions },
+          ]}
+        />
+      ) : (
+        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+          Einbettungskonfiguration wird geladen …
+        </Typography>
+      )}
+    </>
   )
 }
 
-export default function LlmModelManagementPage() {
-  const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
+export type LlmModelTab = 'chat' | 'embedding'
+
+function isLlmModelTab(value: string | undefined): value is LlmModelTab {
+  return value === 'chat' || value === 'embedding'
+}
+
+// „Chat-Modelle" statt „Chat": Der Hauptbereich der Anwendung heißt ebenso, und gemeint ist hier
+// nicht das Gespräch, sondern das Modell, das es beantwortet.
+const tabs: Array<{ value: LlmModelTab; label: string }> = [
+  { value: 'chat', label: 'Chat-Modelle' },
+  { value: 'embedding', label: 'Einbettung' },
+]
+
+/**
+ * Die Chat-Modelle: der einzige Bereich dieser Seite, in dem etwas angelegt, geprüft, aktiviert
+ * oder gelöscht wird.
+ *
+ * Zählung und „Neues Modell" stehen hier und nicht im Seitenkopf - sie gelten nur für diesen
+ * Bereich, und im Einbettungs-Reiter wäre beides eine Aussage über etwas, das dort nicht zu sehen
+ * ist (Muster der Kontenliste unter „Benutzer").
+ */
+function ChatModelsSection() {
   const models = useLlmModelStore((s) => s.models)
   const isLoading = useLlmModelStore((s) => s.isLoading)
   const error = useLlmModelStore((s) => s.error)
@@ -432,8 +457,78 @@ export default function LlmModelManagementPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
   useEffect(() => {
-    if (isSystemAdmin) void loadModels()
-  }, [isSystemAdmin, loadModels])
+    void loadModels()
+  }, [loadModels])
+
+  return (
+    <>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 2,
+          flexWrap: 'wrap',
+          mb: 2,
+        }}
+      >
+        <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+          {models.length === 1 ? '1 Chat-Modell' : `${models.length} Chat-Modelle`}
+        </Typography>
+        <Button variant="contained" onClick={() => setCreateDialogOpen(true)}>
+          Neues Modell
+        </Button>
+      </Box>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {isLoading ? (
+        <Typography color="text.secondary">Modelle werden geladen …</Typography>
+      ) : models.length === 0 ? (
+        <Typography color="text.secondary">Es sind noch keine Modelle hinterlegt.</Typography>
+      ) : (
+        <Stack spacing={1}>
+          {models.map((model) => (
+            // Keyed on id alone (#759 review): a remount on every save/activate/delete reload
+            // dropped the open panel, the just-shown test result and the save confirmation right
+            // after the action that produced them - see updateExistingModel's own comment for how
+            // the card now re-seeds its draft from the server response instead.
+            <LlmModelCard key={model.id} model={model} />
+          ))}
+        </Stack>
+      )}
+
+      <CreateLlmModelDialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        onCreated={() => setCreateDialogOpen(false)}
+      />
+    </>
+  )
+}
+
+/**
+ * Die Modellverwaltung der Systemverwaltung in zwei Bereichen (#1619): „Chat-Modelle" führt die
+ * Modelle, die Fragen beantworten; „Einbettung" nennt das Modell, das den Index trägt - und das
+ * sich bewusst nicht ändern lässt.
+ *
+ * Die Bereiche sind eigene Routen (`/admin/models/chat`, `/admin/models/embedding`) wie auf den
+ * übrigen Bereichsseiten: Ein Verweis soll im richtigen Bereich landen, und ein Neuladen ihn
+ * behalten. Jeder Bereich lädt nur, was er zeigt.
+ */
+export default function LlmModelManagementPage() {
+  const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
+  const { tab } = useParams()
+
+  // A typo in the path is not silently reinterpreted: the address bar says what is shown.
+  if (!isLlmModelTab(tab)) {
+    return <Navigate to="/admin/models/chat" replace />
+  }
+  const activeTab: LlmModelTab = tab
 
   if (!isSystemAdmin) {
     return (
@@ -453,46 +548,18 @@ export default function LlmModelManagementPage() {
         <AreaPageHeader
           icon={PsychologyOutlinedIcon}
           title="Modelle"
-          meta={models.length === 1 ? '1 Chat-Modell' : `${models.length} Chat-Modelle`}
-          description="Gilt für die gesamte Anwendung. Änderungen wirken sich auf alle Spaces und Benutzer aus. Das aktive Modell beantwortet jede Frage dieser Installation."
-          action={
-            <Button variant="contained" onClick={() => setCreateDialogOpen(true)}>
-              Neues Modell
-            </Button>
-          }
+          description="Gilt für die gesamte Anwendung. Änderungen wirken sich auf alle Spaces und Benutzer aus. Das aktive Chat-Modell beantwortet jede Frage dieser Installation."
         />
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        {isLoading ? (
-          <Typography color="text.secondary">Modelle werden geladen …</Typography>
-        ) : models.length === 0 ? (
-          <Typography color="text.secondary">Es sind noch keine Modelle hinterlegt.</Typography>
-        ) : (
-          <Stack spacing={1}>
-            {models.map((model) => (
-              // Keyed on id alone (#759 review): a remount on every save/activate/delete reload
-              // dropped the open panel, the just-shown test result and the save confirmation right
-              // after the action that produced them - see updateExistingModel's own comment for how
-              // the card now re-seeds its draft from the server response instead.
-              <LlmModelCard key={model.id} model={model} />
-            ))}
-          </Stack>
-        )}
-
-        <Divider sx={{ my: 4 }} />
-
-        <EmbeddingInfoSection />
-
-        <CreateLlmModelDialog
-          open={createDialogOpen}
-          onClose={() => setCreateDialogOpen(false)}
-          onCreated={() => setCreateDialogOpen(false)}
-        />
+        <AreaTabs
+          tabs={tabs}
+          value={activeTab}
+          href={(value) => `/admin/models/${value}`}
+          label="Bereiche der Modellverwaltung"
+          idPrefix="models"
+        >
+          {(value) => (value === 'chat' ? <ChatModelsSection /> : <EmbeddingInfoSection />)}
+        </AreaTabs>
       </Box>
     </Box>
   )
