@@ -143,13 +143,17 @@ test.describe('Demo-Smoke (#232)', () => {
     await page.goto('/admin/identity-providers')
     await expect(page.getByRole('heading', { name: 'Identitätsanbieter' })).toBeVisible()
     // the seeded provider from e2e/demo-smoke.env's OPAA_OIDC_* bootstrap values (ADR-0025,
-    // Entscheidung 3) is listed as the default
-    await expect(page.getByRole('article', { name: 'Verzeichnisdienst' })).toBeVisible()
+    // Entscheidung 3) is listed as the default. Since #1625 the providers are table rows; a row's
+    // accessible name is the concatenation of its cells, hence the regular expression.
+    const providerTable = page.getByRole('table', { name: 'Identitätsanbieter' })
+    await expect(
+      providerTable.getByRole('row', { name: new RegExp('Verzeichnisdienst') }),
+    ).toBeVisible()
 
-    const partnerCard = page.getByRole('article', { name: PARTNER_PROVIDER_NAME })
+    const partnerRow = providerTable.getByRole('row', { name: new RegExp(PARTNER_PROVIDER_NAME) })
     // Repeat-safe: a Playwright retry runs against the same, still-running stack - the provider
     // a previous attempt created is still there, and the issuer is unique per provider.
-    if ((await partnerCard.count()) === 0) {
+    if ((await partnerRow.count()) === 0) {
       await page.getByRole('button', { name: 'Neuer Anbieter' }).click()
       const dialog = page.getByRole('dialog')
       // anchored: "Anzeigename-Claim" is a second textbox of the same dialog
@@ -162,13 +166,13 @@ test.describe('Demo-Smoke (#232)', () => {
       await dialog.getByRole('button', { name: 'Anlegen' }).click()
       await expect(page.getByRole('dialog')).toBeHidden()
     }
-    await expect(partnerCard).toBeVisible()
+    await expect(partnerRow).toBeVisible()
     // its decoder was built after the commit, without a restart - exact: "Nicht erreichbar"
     // contains the same word
-    await expect(partnerCard.getByText('Erreichbar', { exact: true })).toBeVisible({
+    await expect(partnerRow.getByText('Erreichbar', { exact: true })).toBeVisible({
       timeout: 30_000,
     })
-    await expect(partnerCard.getByText('Nicht erreichbar', { exact: true })).toHaveCount(0)
+    await expect(partnerRow.getByText('Nicht erreichbar', { exact: true })).toHaveCount(0)
 
     await logout(page)
     await expect(page.getByRole('button', { name: 'Anmelden bei Verzeichnisdienst' })).toBeVisible()
