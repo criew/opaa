@@ -241,6 +241,17 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
   // Reiter als Routen (role="tab" auf einem Link) und die Vorschau in einem abgeschotteten
   // iframe. Beide Reiter und beide Farbschemata, weil die Statuskachel ihren Zustand über einen
   // Farbpunkt *und* Text führt und genau das im dunklen Schema nachweisbar bleiben muss.
+  /**
+   * Die Vorschau der HTML-Fassung läuft in einem `iframe` mit leerem `sandbox` (#1542) - darin
+   * führt kein Skript aus, also auch nicht das, das axe in jeden Rahmen injiziert. axe wartet
+   * darauf bis zu seiner frameWaitTime und lässt den Test in den Timeout laufen. Der Rahmeninhalt
+   * ist eine gerenderte Mail, keine Oberfläche dieser Anwendung; geprüft wird die Seite um ihn
+   * herum, einschließlich seines eigenen `title` (axe frame-title greift auf dem Elternrahmen).
+   */
+  const PREVIEW_IFRAME_EXCLUDED = {
+    exclude: ['iframe[title="Vorschau der HTML-Fassung"]'],
+  };
+
   test("Verwaltungsbereich: E-Mail in beiden Farbschemata", async ({
     authenticatedPage: page,
   }) => {
@@ -264,11 +275,19 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     // The debounced preview iframe is the last thing to appear; analysing before it is there
     // would skip exactly the pattern this block exists for.
     await expect(page.getByTitle("Vorschau der HTML-Fassung")).toBeVisible();
-    await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (E-Mail, Vorlagen, dunkles Farbschema)");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (E-Mail, Vorlagen, dunkles Farbschema)",
+      PREVIEW_IFRAME_EXCLUDED,
+    );
 
     await page.emulateMedia({ colorScheme: "light" });
     await expect(page.getByTitle("Vorschau der HTML-Fassung")).toBeVisible();
-    await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (E-Mail, Vorlagen, helles Farbschema)");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (E-Mail, Vorlagen, helles Farbschema)",
+      PREVIEW_IFRAME_EXCLUDED,
+    );
   });
 
   // #800: die Einstellungsseite lag als einzige globale Seite außerhalb der Suite, obwohl sie
