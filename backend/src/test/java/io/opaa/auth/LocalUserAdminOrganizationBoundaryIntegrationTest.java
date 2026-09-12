@@ -16,7 +16,7 @@ import io.opaa.auth.local.LocalCredentials;
 import io.opaa.auth.local.LocalCredentialsRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
-import io.opaa.test.OpaaMockMvcTest;
+import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -37,7 +37,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * the acting administrator's organization. Without SMTP and without a public base URL the
  * invitation falls back to the displayed link, here relative to the installation.
  */
-@OpaaMockMvcTest
+@OpaaIntegrationTest
 class LocalUserAdminOrganizationBoundaryIntegrationTest {
 
   private static final String LOCAL_USERS = "/api/v1/admin/local-users";

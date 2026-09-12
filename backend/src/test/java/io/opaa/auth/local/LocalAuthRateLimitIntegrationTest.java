@@ -12,7 +12,7 @@ import io.opaa.common.TooManyRequestsException;
 import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
-import io.opaa.test.OpaaLocalAuthMockMvcTest;
+import io.opaa.test.OpaaLocalAuthRateLimitTest;
 import jakarta.servlet.http.Cookie;
 import java.net.URI;
 import java.util.Map;
@@ -23,7 +23,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -40,17 +39,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 // Own context (AGENTS.md, "Spring-Testkontexte"): the shared oidc context widens the local-auth
 // limits so its many sign-ins from one address pass; this class needs the production defaults
 // and a trusted proxy range to prove the limits and the header resolution themselves.
-@OpaaLocalAuthMockMvcTest
-@TestPropertySource(
-    properties = {
-      "opaa.rate-limit.trusted-proxy-cidrs=10.0.0.0/8",
-      "opaa.rate-limit.local-auth.login.max-requests=10",
-      "opaa.rate-limit.local-auth.login.window-seconds=60",
-      "opaa.rate-limit.local-auth.login.global-max-requests=1000",
-      "opaa.rate-limit.local-auth.refresh.max-requests=3",
-      "opaa.rate-limit.local-auth.change-password.max-requests=5",
-      "opaa.rate-limit.local-auth.change-password.window-seconds=300"
-    })
+@OpaaLocalAuthRateLimitTest
 class LocalAuthRateLimitIntegrationTest {
 
   private static final String LOGIN = "/api/v1/auth/local/login";

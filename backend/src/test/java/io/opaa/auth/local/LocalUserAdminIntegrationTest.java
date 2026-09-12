@@ -37,7 +37,7 @@ import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
-import io.opaa.test.OpaaLocalAuthMockMvcTest;
+import io.opaa.test.OpaaLocalAuthLinkTest;
 import jakarta.mail.Part;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
@@ -65,7 +65,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -79,16 +78,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
  * administrator - also under two concurrent requests - and a list that shows local accounts only.
  * Mail goes to an in-JVM GreenMail; every link path is proved by the message that arrived.
  */
-@OpaaLocalAuthMockMvcTest
-// Own context: the link flows need OPAA_PUBLIC_BASE_URL, which the shared local-auth context
-// deliberately leaves unset (its sign-in-page test proves the flows off without one).
-@TestPropertySource(
-    properties = {
-      "opaa.public-base-url=https://opaa.test.example",
-      // the SMTP password of the GreenMail account is stored encrypted; the oidc profile ships no
-      // key
-      "opaa.security.settings.encryption-key=c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE="
-    })
+@OpaaLocalAuthLinkTest
 class LocalUserAdminIntegrationTest {
 
   private static final String LOGIN = "/api/v1/auth/local/login";

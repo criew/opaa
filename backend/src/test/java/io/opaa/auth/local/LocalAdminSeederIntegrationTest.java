@@ -24,7 +24,7 @@ import io.opaa.organization.Organization;
 import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
-import io.opaa.test.OpaaLocalAuthMockMvcTest;
+import io.opaa.test.OpaaLocalAuthSeedTest;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +40,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
@@ -58,15 +57,10 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 // Own context (AGENTS.md, "Spring-Testkontexte"): the shared oidc context runs with the shipped
 // default address, which the seeder rejects on purpose; this class needs a deliverable address and
 // the admin network restriction, both constant properties of this class alone.
-@OpaaLocalAuthMockMvcTest
-@TestPropertySource(
-    properties = {
-      "opaa.auth.initial-admin-email=" + LocalAdminSeederIntegrationTest.EMAIL,
-      "opaa.auth.local.admin-allowed-cidrs=127.0.0.1/32,10.0.0.0/8"
-    })
+@OpaaLocalAuthSeedTest
 class LocalAdminSeederIntegrationTest {
 
-  static final String EMAIL = "it-postfach@stadt.example";
+  private static final String EMAIL = OpaaLocalAuthSeedTest.INITIAL_ADMIN_EMAIL;
   private static final String LOGIN = "/api/v1/auth/local/login";
   private static final String ME = "/api/v1/auth/me";
   private static final Pattern PASSWORD_LINE = Pattern.compile("Passwort:\\s+(\\S+)");

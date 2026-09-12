@@ -17,12 +17,21 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * Entscheidung 8, #1533): the {@code oidc} profile - the only one in which the issuer, its
  * endpoints and the {@code pcr} filter exist - over the shared {@link TestcontainersConfiguration}
  * Postgres, with a strong test secret so {@code LocalAuthSecretGuard} lets the context start.
- * {@link OpaaMockMvcTest} runs {@code dev}, where {@code DevAuthFilter} authenticates every request
- * before a bearer token is ever read, so it cannot exercise a local session at all.
+ * {@link OpaaIntegrationTest} runs {@code local,dev}, where {@code DevAuthFilter} authenticates
+ * every request before a bearer token is ever read, so it cannot exercise a local session at all -
+ * that is the hard technical reason this fifth signature exists next to the four of #1481.
  *
  * <p>Every class carrying this exact signature shares one Spring context and one Postgres (Issue
  * #843); no {@code OPAA_OIDC_*} bootstrap is set, so {@code OidcProviderSeeder} seeds nothing and
  * the LOCAL provider row is created by the test itself ({@link LocalAccountFixtures}).
+ *
+ * <p>Three variants are meta-annotated over this one and add only the properties that are
+ * themselves the subject under test, the way {@link OpaaPropertyVariantIntegrationTest} does for
+ * the canonical signature: {@link OpaaLocalAuthLinkTest} (a public base URL - classes on the base
+ * signature prove the link flows are off <em>without</em> one), {@link OpaaLocalAuthSeedTest} (a
+ * deliverable initial administrator address - the base carries the shipped default, which the seed
+ * refuses) and {@link OpaaLocalAuthRateLimitTest} (the production rate limits - the base raises
+ * them, see below). Each is listed in {@code SpringContextSignatureTest}.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)

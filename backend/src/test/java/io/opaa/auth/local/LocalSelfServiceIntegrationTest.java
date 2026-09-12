@@ -24,7 +24,7 @@ import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.LocalMailbox;
-import io.opaa.test.OpaaLocalAuthMockMvcTest;
+import io.opaa.test.OpaaLocalAuthLinkTest;
 import jakarta.mail.internet.MimeMessage;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -42,7 +42,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -59,17 +58,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * an in-JVM GreenMail; every link is proved by the message - which is also the point of
  * synchronisation, since the two address-taking flows do their work off the request thread.
  */
-@OpaaLocalAuthMockMvcTest
-// Own context: the link flows need OPAA_PUBLIC_BASE_URL, which the shared local-auth context
-// deliberately leaves unset; the properties are those of LocalUserAdminIntegrationTest, so both
-// classes share one context.
-@TestPropertySource(
-    properties = {
-      "opaa.public-base-url=https://opaa.test.example",
-      // the SMTP password of the GreenMail account is stored encrypted; the oidc profile ships no
-      // key
-      "opaa.security.settings.encryption-key=c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE="
-    })
+@OpaaLocalAuthLinkTest
 class LocalSelfServiceIntegrationTest {
 
   private static final String LOGIN = "/api/v1/auth/local/login";
