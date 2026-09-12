@@ -134,7 +134,7 @@ export default function OidcProviderManagementPage() {
               </Button>
             </Box>
           ) : (
-            <Stack spacing={1.5}>
+            <Stack spacing={0}>
               {providers.map((provider, index) => (
                 <OidcProviderCard
                   key={provider.id}

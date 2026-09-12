@@ -7,7 +7,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
-import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -18,6 +17,8 @@ import { useAuthStore } from '../stores/authStore'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
+import PageSection from '../components/PageSection'
+import KeyValueList from '../components/KeyValueList'
 import CreateLlmModelDialog from '../components/admin/CreateLlmModelDialog'
 import { contentWidth } from '../theme/tokens'
 
@@ -188,8 +189,6 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
     <Accordion
       expanded={expanded}
       onChange={(_event, isExpanded) => setExpanded(isExpanded)}
-      variant="outlined"
-      disableGutters
       // Level 2: the cards are the first headings after the page's h1 (the "Einbettungsmodell"
       // h2 follows below them); MUI's default heading element is an h3, which skips a level.
       slotProps={{ heading: { component: 'h2' } }}
@@ -400,40 +399,22 @@ function EmbeddingInfoSection() {
 
   return (
     <Box sx={{ mt: 4 }}>
-      <Typography variant="h6" component="h2" gutterBottom>
-        Einbettungsmodell
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Anders als das Chat-Modell lässt sich das Einbettungsmodell hier nicht ändern: Ein Wechsel
-        macht bestehende Vektoren unvergleichbar und würde eine vollständige Neuindizierung aller
-        Wissensbibliotheken erfordern.
-      </Typography>
-      <Paper variant="outlined" sx={{ p: 3 }}>
+      <PageSection
+        title="Einbettungsmodell"
+        description="Anders als das Chat-Modell lässt sich das Einbettungsmodell hier nicht ändern: Ein Wechsel macht bestehende Vektoren unvergleichbar und würde eine vollständige Neuindizierung aller Wissensbibliotheken erfordern."
+      >
         {embeddingInfo ? (
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={4}>
-            <Box>
-              <Typography variant="caption" color="text.secondary" component="div">
-                Anbieter
-              </Typography>
-              <Typography>{embeddingInfo.provider}</Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary" component="div">
-                Modell
-              </Typography>
-              <Typography>{embeddingInfo.model}</Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary" component="div">
-                Dimensionen
-              </Typography>
-              <Typography>{embeddingInfo.dimensions}</Typography>
-            </Box>
-          </Stack>
+          <KeyValueList
+            entries={[
+              { label: 'Anbieter', value: embeddingInfo.provider },
+              { label: 'Modell', value: embeddingInfo.model },
+              { label: 'Dimensionen', value: embeddingInfo.dimensions },
+            ]}
+          />
         ) : (
           <Typography color="text.secondary">Einbettungskonfiguration wird geladen …</Typography>
         )}
-      </Paper>
+      </PageSection>
     </Box>
   )
 }

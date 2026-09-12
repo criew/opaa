@@ -47,12 +47,7 @@ function DocumentChunkList({ document }: { document: DocumentChunksResponse }) {
           {document.chunks.map((chunk) => {
             const location = chunk.metadata.location
             return (
-              <Accordion
-                key={chunk.chunkId}
-                variant="outlined"
-                disableGutters
-                slotProps={{ heading: { component: 'h4' } }}
-              >
+              <Accordion key={chunk.chunkId} slotProps={{ heading: { component: 'h4' } }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Stack
                     direction="row"

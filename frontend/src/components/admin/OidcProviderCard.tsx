@@ -278,12 +278,13 @@ export default function OidcProviderCard({
       component="article"
       aria-labelledby={titleId}
       data-testid={`oidc-provider-card-${provider.id}`}
+      // Ein Eintrag einer Liste, kein Kasten (#1608): Die Trennlinie unten reicht, um ihn vom
+      // nächsten zu scheiden - dieselbe Sprache, die die Kontenliste spricht.
       sx={{
-        border: 1,
+        borderBottom: 1,
         borderColor: 'divider',
-        borderRadius: `${radius.md}px`,
-        bgcolor: 'background.paper',
-        p: { xs: 2, md: 2.5 },
+        py: { xs: 2, md: 2.5 },
+        '&:last-of-type': { borderBottom: 0 },
       }}
     >
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>

@@ -539,12 +539,7 @@ export default function S3SourceForm({
       </Box>
 
       {/* Stage 5: advanced - key patterns, proxy, TLS */}
-      <Accordion
-        variant="outlined"
-        disableGutters
-        expanded={advancedOpen}
-        onChange={(_e, open) => setAdvancedOpen(open)}
-      >
+      <Accordion expanded={advancedOpen} onChange={(_e, open) => setAdvancedOpen(open)}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />} id={`${idPrefix}-advanced`}>
           <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
             Erweitert: Ein-/Ausschlussmuster, Proxy, TLS

@@ -4,7 +4,6 @@ import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
-import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
@@ -192,182 +191,180 @@ export default function BrandingSettingsPage() {
           </Alert>
         )}
 
-        <Paper variant="outlined" sx={{ p: 3 }}>
-          <Stack spacing={3}>
-            <TextField
-              label="Produktname"
-              value={productName}
-              onChange={(e) => setProductName(e.target.value)}
-              slotProps={{ htmlInput: { maxLength: MAX_PRODUCT_NAME_LENGTH } }}
-              helperText={`Erscheint in Seitenleiste, Anmeldeseite und Fenstertitel. Leer lassen für „${OPAA_BRANDING.productName}“.`}
-              fullWidth
-            />
+        <Stack spacing={3}>
+          <TextField
+            label="Produktname"
+            value={productName}
+            onChange={(e) => setProductName(e.target.value)}
+            slotProps={{ htmlInput: { maxLength: MAX_PRODUCT_NAME_LENGTH } }}
+            helperText={`Erscheint in Seitenleiste, Anmeldeseite und Fenstertitel. Leer lassen für „${OPAA_BRANDING.productName}“.`}
+            fullWidth
+          />
 
-            <TextField
-              label="Claim"
-              value={claim}
-              onChange={(e) => setClaim(e.target.value)}
-              slotProps={{ htmlInput: { maxLength: MAX_CLAIM_LENGTH } }}
-              helperText={`Kurzer Satz unter dem Produktnamen. Leer lassen für „${OPAA_BRANDING.claim}“.`}
-              fullWidth
-            />
+          <TextField
+            label="Claim"
+            value={claim}
+            onChange={(e) => setClaim(e.target.value)}
+            slotProps={{ htmlInput: { maxLength: MAX_CLAIM_LENGTH } }}
+            helperText={`Kurzer Satz unter dem Produktnamen. Leer lassen für „${OPAA_BRANDING.claim}“.`}
+            fullWidth
+          />
 
-            <Box>
-              <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
-                <TextField
-                  label="Primärfarbe"
-                  value={primaryColor}
-                  onChange={(e) => setPrimaryColor(e.target.value)}
-                  error={primaryColor.trim() !== '' && !isColorValid}
-                  helperText={
-                    primaryColor.trim() !== '' && !isColorValid
-                      ? 'Bitte einen sechsstelligen Hex-Wert mit führendem „#“ angeben, zum Beispiel #1292EE.'
-                      : 'Akzentfarbe für Schaltflächen, Verweise und Fokusrahmen.'
-                  }
-                  sx={{ flexGrow: 1 }}
-                />
-                <TextField
-                  type="color"
-                  label="Auswählen"
-                  value={isColorValid ? primaryColor : OPAA_BRANDING.primaryColor}
-                  onChange={(e) => setPrimaryColor(e.target.value.toUpperCase())}
-                  sx={{ width: 96 }}
-                />
-              </Stack>
-            </Box>
+          <Box>
+            <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
+              <TextField
+                label="Primärfarbe"
+                value={primaryColor}
+                onChange={(e) => setPrimaryColor(e.target.value)}
+                error={primaryColor.trim() !== '' && !isColorValid}
+                helperText={
+                  primaryColor.trim() !== '' && !isColorValid
+                    ? 'Bitte einen sechsstelligen Hex-Wert mit führendem „#“ angeben, zum Beispiel #1292EE.'
+                    : 'Akzentfarbe für Schaltflächen, Verweise und Fokusrahmen.'
+                }
+                sx={{ flexGrow: 1 }}
+              />
+              <TextField
+                type="color"
+                label="Auswählen"
+                value={isColorValid ? primaryColor : OPAA_BRANDING.primaryColor}
+                onChange={(e) => setPrimaryColor(e.target.value.toUpperCase())}
+                sx={{ width: 96 }}
+              />
+            </Stack>
+          </Box>
 
-            {failingChecks.length > 0 && (
-              <Alert severity="warning">
-                <AlertTitle>Kontrast unterschritten</AlertTitle>
-                Die gewählte Farbe erreicht den empfohlenen Kontrast nicht überall. Sie können
-                trotzdem speichern — die Entscheidung liegt bei Ihrem Haus.
-                <Box component="ul" sx={{ pl: 2.5, mb: 0, mt: 1 }}>
-                  {failingChecks.map((check) => (
-                    <li key={check.label}>
-                      {check.label}: {formatContrastRatio(check.ratio)} statt mindestens{' '}
-                      {formatContrastRatio(check.required)}
-                    </li>
-                  ))}
-                </Box>
+          {failingChecks.length > 0 && (
+            <Alert severity="warning">
+              <AlertTitle>Kontrast unterschritten</AlertTitle>
+              Die gewählte Farbe erreicht den empfohlenen Kontrast nicht überall. Sie können
+              trotzdem speichern — die Entscheidung liegt bei Ihrem Haus.
+              <Box component="ul" sx={{ pl: 2.5, mb: 0, mt: 1 }}>
+                {failingChecks.map((check) => (
+                  <li key={check.label}>
+                    {check.label}: {formatContrastRatio(check.ratio)} statt mindestens{' '}
+                    {formatContrastRatio(check.required)}
+                  </li>
+                ))}
+              </Box>
+            </Alert>
+          )}
+
+          <Box>
+            {/* Level 2 (also below): these section headings follow the page's h1 directly;
+                the subtitle2 look is only visual. */}
+            <Typography variant="subtitle2" component="h2" gutterBottom>
+              Farbschema-Vorgabe
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              Gilt für alle, die in ihren eigenen Einstellungen noch nichts gewählt haben. Eine
+              persönliche Wahl bleibt unberührt.
+            </Typography>
+            <ToggleButtonGroup
+              value={colorScheme}
+              exclusive
+              onChange={(_e, value: ColorScheme | null) => {
+                if (value !== null) setColorScheme(value)
+              }}
+              aria-label="Farbschema-Vorgabe"
+            >
+              {colorSchemeOptions.map((option) => (
+                <ToggleButton key={option.value} value={option.value}>
+                  <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    {option.icon}
+                    {option.label}
+                  </Box>
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+          </Box>
+
+          <Divider />
+
+          <Box>
+            <Typography variant="subtitle2" component="h2" gutterBottom>
+              Logo
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              PNG oder JPEG, höchstens {MAX_LOGO_SIZE_BYTES / 1024} KiB. SVG wird nicht angenommen,
+              weil eine SVG-Datei Skripte enthalten kann.
+            </Typography>
+            {logoError && (
+              <Alert severity="error" sx={{ mb: 1.5 }}>
+                {logoError}
               </Alert>
             )}
-
-            <Box>
-              {/* Level 2 (also below): these section headings follow the page's h1 directly;
-                the subtitle2 look is only visual. */}
-              <Typography variant="subtitle2" component="h2" gutterBottom>
-                Farbschema-Vorgabe
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                Gilt für alle, die in ihren eigenen Einstellungen noch nichts gewählt haben. Eine
-                persönliche Wahl bleibt unberührt.
-              </Typography>
-              <ToggleButtonGroup
-                value={colorScheme}
-                exclusive
-                onChange={(_e, value: ColorScheme | null) => {
-                  if (value !== null) setColorScheme(value)
-                }}
-                aria-label="Farbschema-Vorgabe"
-              >
-                {colorSchemeOptions.map((option) => (
-                  <ToggleButton key={option.value} value={option.value}>
-                    <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      {option.icon}
-                      {option.label}
-                    </Box>
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
-            </Box>
-
-            <Divider />
-
-            <Box>
-              <Typography variant="subtitle2" component="h2" gutterBottom>
-                Logo
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                PNG oder JPEG, höchstens {MAX_LOGO_SIZE_BYTES / 1024} KiB. SVG wird nicht
-                angenommen, weil eine SVG-Datei Skripte enthalten kann.
-              </Typography>
-              {logoError && (
-                <Alert severity="error" sx={{ mb: 1.5 }}>
-                  {logoError}
-                </Alert>
-              )}
-              <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                <Button component="label" variant="outlined">
-                  Logo auswählen
-                  <Box
-                    component="input"
-                    type="file"
-                    ref={fileInputRef}
-                    accept={ACCEPTED_LOGO_TYPES.join(',')}
-                    hidden
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      selectLogo(e.target.files?.[0] ?? null)
-                    }
-                  />
+            <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+              <Button component="label" variant="outlined">
+                Logo auswählen
+                <Box
+                  component="input"
+                  type="file"
+                  ref={fileInputRef}
+                  accept={ACCEPTED_LOGO_TYPES.join(',')}
+                  hidden
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    selectLogo(e.target.files?.[0] ?? null)
+                  }
+                />
+              </Button>
+              {branding.logoUrl && (
+                <Button color="error" onClick={() => void handleRemoveLogo()} disabled={isSaving}>
+                  Logo entfernen
                 </Button>
-                {branding.logoUrl && (
-                  <Button color="error" onClick={() => void handleRemoveLogo()} disabled={isSaving}>
-                    Logo entfernen
-                  </Button>
-                )}
-                {logoFile && (
-                  <Typography variant="body2" color="text.secondary">
-                    {logoFile.name} — wird beim Speichern übernommen
-                  </Typography>
-                )}
-              </Stack>
-            </Box>
-
-            <Divider />
-
-            <Box>
-              <Typography variant="subtitle2" component="h2" gutterBottom>
-                Vorschau
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                So wirkt die Einstellung in beiden Farbschemata — beide sind gleichermaßen
-                verbindlich.
-              </Typography>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <Box sx={{ flex: 1 }}>
-                  <BrandingPreview mode="light" {...effectivePreview} />
-                </Box>
-                <Box sx={{ flex: 1 }}>
-                  <BrandingPreview mode="dark" {...effectivePreview} />
-                </Box>
-              </Stack>
-            </Box>
-
-            <Stack direction="row" spacing={2}>
-              <Button
-                variant="contained"
-                onClick={() => void handleSave()}
-                disabled={isSaving || (primaryColor.trim() !== '' && !isColorValid)}
-              >
-                Speichern
-              </Button>
-              <Button
-                onClick={() => {
-                  setProductName('')
-                  setClaim('')
-                  setPrimaryColor('')
-                  setColorScheme(OPAA_BRANDING.defaultColorScheme)
-                  setLogoFile(null)
-                  setLogoError(null)
-                  if (fileInputRef.current) fileInputRef.current.value = ''
-                }}
-                disabled={isSaving}
-              >
-                Auf OPAA-Standard zurücksetzen
-              </Button>
+              )}
+              {logoFile && (
+                <Typography variant="body2" color="text.secondary">
+                  {logoFile.name} — wird beim Speichern übernommen
+                </Typography>
+              )}
             </Stack>
+          </Box>
+
+          <Divider />
+
+          <Box>
+            <Typography variant="subtitle2" component="h2" gutterBottom>
+              Vorschau
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              So wirkt die Einstellung in beiden Farbschemata — beide sind gleichermaßen
+              verbindlich.
+            </Typography>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <Box sx={{ flex: 1 }}>
+                <BrandingPreview mode="light" {...effectivePreview} />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <BrandingPreview mode="dark" {...effectivePreview} />
+              </Box>
+            </Stack>
+          </Box>
+
+          <Stack direction="row" spacing={2}>
+            <Button
+              variant="contained"
+              onClick={() => void handleSave()}
+              disabled={isSaving || (primaryColor.trim() !== '' && !isColorValid)}
+            >
+              Speichern
+            </Button>
+            <Button
+              onClick={() => {
+                setProductName('')
+                setClaim('')
+                setPrimaryColor('')
+                setColorScheme(OPAA_BRANDING.defaultColorScheme)
+                setLogoFile(null)
+                setLogoError(null)
+                if (fileInputRef.current) fileInputRef.current.value = ''
+              }}
+              disabled={isSaving}
+            >
+              Auf OPAA-Standard zurücksetzen
+            </Button>
           </Stack>
-        </Paper>
+        </Stack>
       </Box>
     </Box>
   )

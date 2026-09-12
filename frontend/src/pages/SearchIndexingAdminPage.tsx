@@ -14,7 +14,6 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
-import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
@@ -29,6 +28,9 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
 import SectionHead from '../components/SectionHead'
+import PageSection from '../components/PageSection'
+import KeyValueList from '../components/KeyValueList'
+import StatusLine, { type StatusTone } from '../components/StatusLine'
 import ChunkContent from '../components/searchadmin/ChunkContent'
 import DiagnosisForm from '../components/searchadmin/DiagnosisForm'
 import DocumentChunkSection, {
@@ -187,34 +189,34 @@ interface ChunkNavigation {
   onShowDocument: (documentId: string) => void
 }
 
+/**
+ * Eine Modellrolle als Block, nicht als Karte (#1608): Der Zustand steht im Punkt und im Wort, die
+ * beiden Angaben darunter in einer Schlüssel-Wert-Liste. Ein Fehler bleibt ein Alert - der ist
+ * eine Meldung, kein ruhender Inhalt.
+ */
 function ModelRoleCard({ role }: { role: SearchModelRoleStatusResponse }) {
+  const tone: StatusTone = role.faulted ? 'error' : role.state === 'ACTIVE' ? 'success' : 'neutral'
   return (
-    <Paper variant="outlined" sx={{ p: 2.5, flex: 1, minWidth: 260 }}>
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 1 }}>
-        <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>{ROLE_LABELS[role.role]}</Typography>
-        <Chip
-          size="small"
-          label={ROLE_STATE_LABELS[role.state]}
-          color={role.faulted ? 'error' : role.state === 'ACTIVE' ? 'success' : 'default'}
-          aria-label={`${ROLE_LABELS[role.role]}: ${ROLE_STATE_LABELS[role.state]}`}
+    <Box>
+      <StatusLine
+        headline={`${ROLE_LABELS[role.role]} — ${ROLE_STATE_LABELS[role.state]}`}
+        tone={tone}
+        detail={role.faulted ? undefined : role.detail}
+      >
+        {role.faulted && (
+          <Alert severity="error" sx={{ mb: 1 }}>
+            {role.detail}
+          </Alert>
+        )}
+        <KeyValueList
+          valueFont="mono"
+          entries={[
+            { label: 'Endpunkt', value: role.endpoint ?? 'nicht hinterlegt' },
+            { label: 'Modell-Kennung', value: role.modelIdentifier ?? 'nicht hinterlegt' },
+          ]}
         />
-      </Stack>
-      {role.faulted ? (
-        <Alert severity="error" sx={{ mb: 1 }}>
-          {role.detail}
-        </Alert>
-      ) : (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          {role.detail}
-        </Typography>
-      )}
-      <Typography variant="caption" color="text.secondary" component="div">
-        Endpunkt: {role.endpoint ?? 'nicht hinterlegt'}
-      </Typography>
-      <Typography variant="caption" color="text.secondary" component="div">
-        Modell-Kennung: {role.modelIdentifier ?? 'nicht hinterlegt'}
-      </Typography>
-    </Paper>
+      </StatusLine>
+    </Box>
   )
 }
 
@@ -266,7 +268,7 @@ function StagePanel({
   navigation: ChunkNavigation
 }) {
   return (
-    <Accordion variant="outlined" disableGutters slotProps={{ heading: { component: 'h3' } }}>
+    <Accordion slotProps={{ heading: { component: 'h3' } }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexGrow: 1 }}>
           <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
@@ -392,7 +394,7 @@ function DiagnosisResult({
           Die Endauswahl ist leer - in diesem Rechtekontext hätte diese Frage keinen Beleg.
         </Typography>
       ) : (
-        <TableContainer component={Paper} variant="outlined">
+        <TableContainer>
           <Table size="small" aria-label="Endauswahl">
             <TableHead>
               <TableRow>
@@ -611,38 +613,28 @@ export default function SearchIndexingAdminPage() {
           </Alert>
         )}
 
-        <Box sx={{ mb: 4 }}>
-          <SectionHead>Modellrollen</SectionHead>
-          <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', rowGap: 2 }}>
+        <PageSection title="Modellrollen">
+          {/* Untereinander, nicht nebeneinander: Jede Rolle trägt jetzt zwei Angaben unter ihrer
+              Zeile, und drei umbrechende Spalten stünden versetzt statt bündig. */}
+          <Stack spacing={2.5}>
             {status?.modelRoles.map((role) => (
               <ModelRoleCard key={role.role} role={role} />
             ))}
           </Stack>
-        </Box>
+        </PageSection>
 
-        <Box sx={{ mb: 4 }}>
-          <SectionHead>Suchpfade</SectionHead>
+        <PageSection title="Suchpfade">
           <Stack spacing={1.5}>
             {status?.searchPaths.map((path) => (
-              <Paper key={path.path} variant="outlined" sx={{ p: 2 }}>
-                <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 0.5 }}>
-                  <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
-                    {PATH_LABELS[path.path]}
-                  </Typography>
-                  <Chip
-                    size="small"
-                    label={PATH_STATE_LABELS[path.state]}
-                    color={path.state === 'ACTIVE' ? 'success' : 'warning'}
-                    aria-label={`${PATH_LABELS[path.path]}: ${PATH_STATE_LABELS[path.state]}`}
-                  />
-                </Stack>
-                <Typography variant="body2" color="text.secondary">
-                  {path.detail}
-                </Typography>
-              </Paper>
+              <StatusLine
+                key={path.path}
+                headline={`${PATH_LABELS[path.path]} — ${PATH_STATE_LABELS[path.state]}`}
+                tone={path.state === 'ACTIVE' ? 'success' : 'warning'}
+                detail={path.detail}
+              />
             ))}
           </Stack>
-        </Box>
+        </PageSection>
 
         <Box sx={{ mb: 4 }}>
           <SectionHead>Indexstatus je Bibliothek</SectionHead>

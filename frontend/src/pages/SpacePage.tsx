@@ -150,12 +150,7 @@ export default function SpacePage() {
           </Stack>
         </Paper>
 
-        <Accordion
-          expanded={chatsExpanded}
-          onChange={(_, expanded) => setChatsExpanded(expanded)}
-          variant="outlined"
-          disableGutters
-        >
+        <Accordion expanded={chatsExpanded} onChange={(_, expanded) => setChatsExpanded(expanded)}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
             <Typography component="h2" variant="h6">
               Chats
@@ -170,8 +165,6 @@ export default function SpacePage() {
         <Accordion
           expanded={membersExpanded}
           onChange={(_, expanded) => setMembersExpanded(expanded)}
-          variant="outlined"
-          disableGutters
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
             <Typography component="h2" variant="h6">
@@ -215,8 +208,6 @@ export default function SpacePage() {
         <Accordion
           expanded={librariesExpanded}
           onChange={(_, expanded) => setLibrariesExpanded(expanded)}
-          variant="outlined"
-          disableGutters
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
             <Typography component="h2" variant="h6">

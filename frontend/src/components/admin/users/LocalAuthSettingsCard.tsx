@@ -5,7 +5,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Link from '@mui/material/Link'
-import Paper from '@mui/material/Paper'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
@@ -16,9 +15,8 @@ import type { LocalAuthSettingsResponse, LocalAuthSettingsUpdateRequest } from '
 import { useMailStore } from '../../../stores/mailStore'
 import { notify } from '../../../stores/notificationStore'
 import { useUserAdminStore } from '../../../stores/userAdminStore'
-import { radius } from '../../../theme/tokens'
 import FieldLabel from '../../wizard/FieldLabel'
-import SectionHead from '../../SectionHead'
+import PageSection from '../../PageSection'
 import { mailStatusOf } from '../mail/mailStatus'
 import { localUserErrorMessage } from './localUserLabels'
 
@@ -340,14 +338,7 @@ export default function LocalAuthSettingsCard() {
   const baseUrlMissing = !settings.publicBaseUrlConfigured
 
   return (
-    <Paper
-      variant="outlined"
-      component="section"
-      aria-labelledby="local-auth-settings-title"
-      sx={{ p: { xs: 2, md: 2.5 }, borderRadius: `${radius.md}px`, mb: 3 }}
-    >
-      <SectionHead id="local-auth-settings-title">Lokale Anmeldung</SectionHead>
-
+    <PageSection title="Lokale Anmeldung">
       {baseUrlMissing && (
         <Alert severity="info" sx={{ mb: 2 }}>
           {PUBLIC_BASE_URL_HINT}
@@ -464,6 +455,6 @@ export default function LocalAuthSettingsCard() {
           </Button>
         </Stack>
       </Box>
-    </Paper>
+    </PageSection>
   )
 }

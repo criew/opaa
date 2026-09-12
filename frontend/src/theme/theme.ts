@@ -372,6 +372,47 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
             },
           },
         },
+        /*
+         * Aufklappbare Einträge tragen ihre Trennung in einer Linie, nicht in einem Rahmen
+         * (#1608). Vorher war jeder Eintrag eine gerahmte Karte; mehrere davon untereinander
+         * lesen sich als Stapel von Kästen statt als Liste. Die Vorgabe steht hier und nicht in
+         * den Seiten, damit sie für jedes Aufklappelement der Anwendung gilt.
+         */
+        MuiAccordion: {
+          defaultProps: {
+            disableGutters: true,
+            elevation: 0,
+            square: true,
+          },
+          styleOverrides: {
+            root: {
+              backgroundColor: 'transparent',
+              backgroundImage: 'none',
+              border: 0,
+              borderBottom: `1px solid ${roles.border}`,
+              borderRadius: 0,
+              // MUIs eigene Trennlinie über dem Element entfällt - die untere trägt sie alle.
+              '&::before': { display: 'none' },
+              '&:last-of-type': { borderBottom: 0 },
+              '&.Mui-expanded': { margin: 0 },
+            },
+          },
+        },
+        MuiAccordionSummary: {
+          styleOverrides: {
+            root: {
+              paddingLeft: 0,
+              paddingRight: 0,
+              '&.Mui-expanded': { minHeight: 48 },
+            },
+            content: { '&.Mui-expanded': { margin: '12px 0' } },
+          },
+        },
+        MuiAccordionDetails: {
+          styleOverrides: {
+            root: { paddingLeft: 0, paddingRight: 0 },
+          },
+        },
         MuiTableRow: {
           styleOverrides: {
             root: {

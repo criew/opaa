@@ -76,12 +76,15 @@ describe('SearchIndexingAdminPage', () => {
 
     renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
 
+    // Rolle und Zustand stehen seit #1608 im Text der Zeile, nicht mehr als `aria-label` an einem
+    // Chip: Die Aussage ist damit für alle sichtbar dieselbe, nicht nur für Screenreader.
     await waitFor(() => {
-      expect(screen.getByLabelText('Chat: Aktiv und erreichbar')).toBeInTheDocument()
+      expect(screen.getByText('Chat — Aktiv und erreichbar')).toBeInTheDocument()
     })
-    expect(screen.getByLabelText('Einbettung: Aktiv und erreichbar')).toBeInTheDocument()
-    expect(screen.getByLabelText('Reranking: Ausdrücklich abgeschaltet')).toBeInTheDocument()
-    expect(screen.getByText('Endpunkt: http://localhost:11434/v1')).toBeInTheDocument()
+    expect(screen.getByText('Einbettung — Aktiv und erreichbar')).toBeInTheDocument()
+    expect(screen.getByText('Reranking — Ausdrücklich abgeschaltet')).toBeInTheDocument()
+    // Endpunkt und Kennung stehen als Schlüssel-Wert-Paar, nicht mehr in einem Fließtext
+    expect(screen.getByText('http://localhost:11434/v1')).toBeInTheDocument()
     expect(document.body.textContent).not.toMatch(/Schlüssel|apiKey|Bearer/)
   })
 

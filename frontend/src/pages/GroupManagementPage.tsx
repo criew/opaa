@@ -61,12 +61,7 @@ function GroupCard({ group }: { group: GroupListResponse }) {
   }, [allUsers, details?.members])
 
   return (
-    <Accordion
-      expanded={expanded}
-      onChange={(_event, isExpanded) => setExpanded(isExpanded)}
-      variant="outlined"
-      disableGutters
-    >
+    <Accordion expanded={expanded} onChange={(_event, isExpanded) => setExpanded(isExpanded)}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexGrow: 1 }}>
           <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>{group.name}</Typography>

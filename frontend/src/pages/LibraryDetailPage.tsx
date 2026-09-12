@@ -3016,7 +3016,7 @@ function LibraryIndexingHistorySection({
       ) : (
         <Stack spacing={1}>
           {runs.map((run) => (
-            <Accordion key={run.id} disableGutters variant="outlined">
+            <Accordion key={run.id}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Stack
                   direction="row"

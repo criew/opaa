@@ -3,7 +3,6 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
-import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
@@ -13,6 +12,7 @@ import { useMailStore } from '../../../stores/mailStore'
 import { notify } from '../../../stores/notificationStore'
 import { useMailTemplatePreview } from '../../../hooks/useMailTemplatePreview'
 import { radius } from '../../../theme/tokens'
+import PageSection from '../../PageSection'
 import SectionHead from '../../SectionHead'
 import MailTemplatePreviewPane from './MailTemplatePreviewPane'
 import { mailSendResultMessage, mailSendResultSeverity } from './mailStatus'
@@ -159,7 +159,7 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
         </Alert>
       )}
 
-      <Paper variant="outlined" sx={{ p: 2.5, mb: 2.5 }}>
+      <PageSection title="Wortlaut">
         <Stack spacing={2.5}>
           <TextField
             label="Betreff"
@@ -266,31 +266,26 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
             </Alert>
           )}
         </Stack>
-      </Paper>
+      </PageSection>
 
       {showComparison && (
-        <Paper variant="outlined" sx={{ p: 2.5, mb: 2.5 }}>
-          <Box component="section" aria-labelledby="mail-compare-head">
-            <SectionHead id="mail-compare-head">Gegenüberstellung mit dem Standard</SectionHead>
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              <ComparisonColumn
-                heading="Ausgelieferter Standard"
-                subject={template.defaultSubject}
-                bodyPlain={template.defaultBodyPlain}
-              />
-              <ComparisonColumn heading="Ihre Fassung" subject={subject} bodyPlain={bodyPlain} />
-            </Stack>
-          </Box>
-        </Paper>
+        <PageSection title="Gegenüberstellung mit dem Standard">
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+            <ComparisonColumn
+              heading="Ausgelieferter Standard"
+              subject={template.defaultSubject}
+              bodyPlain={template.defaultBodyPlain}
+            />
+            <ComparisonColumn heading="Ihre Fassung" subject={subject} bodyPlain={bodyPlain} />
+          </Stack>
+        </PageSection>
       )}
 
-      <Paper variant="outlined" sx={{ p: 2.5 }}>
-        <MailTemplatePreviewPane
-          preview={preview.preview}
-          error={preview.error}
-          isLoading={preview.isLoading}
-        />
-      </Paper>
+      <MailTemplatePreviewPane
+        preview={preview.preview}
+        error={preview.error}
+        isLoading={preview.isLoading}
+      />
     </Box>
   )
 }
