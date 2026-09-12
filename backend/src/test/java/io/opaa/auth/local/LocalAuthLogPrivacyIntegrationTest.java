@@ -398,6 +398,109 @@ class LocalAuthLogPrivacyIntegrationTest {
             + " OR event_type = 'LOCAL_SESSION_REVOKED'");
   }
 
+  /**
+   * The self-service link endpoints (#1538): redeeming an invitation link and an administrative
+   * reset link leaves neither the raw token nor the new password in any log line, and {@code
+   * LOCAL_PASSWORD_SET} carries the token's purpose but no address, no name and no account id.
+   * Registration and "forgot password" need a public base URL and are covered in {@code
+   * LocalSelfServiceIntegrationTest}.
+   */
+  @Test
+  void theLinkRedemptionLeaksNeitherTheTokenNorTheNewPasswordNorThePerson() throws Exception {
+    LocalAccount admin = fixtures.activeAdmin("verwaltung-" + UUID.randomUUID() + "@stadt.example");
+    String adminBearer = bearer(login(admin.email(), LocalAccountFixtures.PASSWORD, 200));
+    String invitedEmail = "eingeladen-" + UUID.randomUUID() + "@stadt.example";
+    MvcResult invited =
+        mockMvc
+            .perform(
+                post("/api/v1/admin/local-users")
+                    .header(HttpHeaders.AUTHORIZATION, adminBearer)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        "{\"email\":\""
+                            + invitedEmail
+                            + "\",\"displayName\":\"Erika Eingeladen\",\"mode\":\"INVITE\","
+                            + "\"createdReason\":\"Vertretung\"}"))
+            .andExpect(status().isCreated())
+            .andReturn();
+    String invitedBody = invited.getResponse().getContentAsString();
+    String invitationToken = tokenIn(JsonPath.read(invitedBody, "$.setupUrl"));
+    UUID invitedId = UUID.fromString(JsonPath.read(invitedBody, "$.user.id"));
+    String secondPassword = "zweites-sicheres-passwort-2026";
+    mockMvc
+        .perform(
+            post("/api/v1/auth/local/set-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("token", invitationToken, "newPassword", NEW_PASSWORD))))
+        .andExpect(status().isNoContent());
+    login(invitedEmail, NEW_PASSWORD, 200);
+    MvcResult reset =
+        mockMvc
+            .perform(
+                post("/api/v1/admin/local-users/" + invitedId + "/password-reset")
+                    .header(HttpHeaders.AUTHORIZATION, adminBearer))
+            .andExpect(status().isOk())
+            .andReturn();
+    String resetToken =
+        tokenIn(JsonPath.read(reset.getResponse().getContentAsString(), "$.setupUrl"));
+    mockMvc
+        .perform(
+            post("/api/v1/auth/local/set-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("token", resetToken, "newPassword", secondPassword))))
+        .andExpect(status().isNoContent());
+    mockMvc
+        .perform(
+            post("/api/v1/auth/local/set-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("token", resetToken, "newPassword", secondPassword))))
+        .andExpect(status().isBadRequest());
+    login(invitedEmail, secondPassword, 200);
+
+    List<String> secrets = List.of(invitationToken, resetToken, NEW_PASSWORD, secondPassword);
+    List<String> personal =
+        List.of(invitedEmail, invitedEmail.toUpperCase(), admin.email(), "Erika Eingeladen");
+    assertThat(logs.list).anyMatch(event -> event.getLoggerName().startsWith("io.opaa"));
+    for (ILoggingEvent event : logs.list) {
+      String line = event.getFormattedMessage() + " " + throwableText(event);
+      String where = "log line of " + event.getLoggerName() + " at " + event.getLevel();
+      for (String secret : secrets) {
+        assertThat(line).as(where).doesNotContain(secret);
+      }
+      boolean ours = event.getLoggerName().startsWith("io.opaa");
+      if (ours || event.getLevel().isGreaterOrEqual(Level.INFO)) {
+        for (String value : personal) {
+          assertThat(line).as(where).doesNotContain(value);
+        }
+      }
+    }
+
+    List<Map<String, Object>> events =
+        jdbc.queryForList(
+            "SELECT event_type, actor_ref, object_label, subject_ref, CAST(before AS text) AS before,"
+                + " CAST(after AS text) AS after, reason FROM audit_log"
+                + " WHERE event_type = 'LOCAL_PASSWORD_SET'");
+    assertThat(events).hasSize(2);
+    assertThat(events)
+        .extracting(row -> (String) row.get("after"))
+        .anySatisfy(after -> assertThat(after).contains("SET_PASSWORD"))
+        .anySatisfy(after -> assertThat(after).contains("RESET_PASSWORD"));
+    for (Map<String, Object> row : events) {
+      String text = String.valueOf(row.values());
+      assertThat(text)
+          .doesNotContain(invitedEmail)
+          .doesNotContain("Erika Eingeladen")
+          .doesNotContain(invitedId.toString())
+          .doesNotContain(admin.id().toString());
+      for (String secret : secrets) {
+        assertThat(text).doesNotContain(secret);
+      }
+    }
+    jdbc.update(
+        "DELETE FROM audit_log WHERE event_type LIKE 'LOCAL_USER_%'"
+            + " OR event_type IN ('LOCAL_SESSION_REVOKED', 'LOCAL_PASSWORD_SET')");
+  }
+
   private static String tokenIn(String link) {
     Matcher matcher = Pattern.compile("token=([A-Za-z0-9_-]+)").matcher(link);
     assertThat(matcher.find()).as("token in %s", link).isTrue();
