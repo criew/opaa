@@ -98,9 +98,9 @@ const mailpitWebPort = process.env.OPAA_MAILPIT_WEB_PORT ?? '18025'
 const mailpitSmtpPort = process.env.OPAA_MAILPIT_SMTP_PORT ?? '11025'
 // test(e2e) #760: ai-stub's own host-published port (docker-compose.e2e.yml), so a scenario can
 // call its GET /last-chat-model directly from the Node/Playwright process - see that file's own
-// comment. Only relevant for the "e2e" target; the "demo" target's ai-stub stand-in
-// (docker-compose.demo-smoke.yml) does not publish one, and no demo-smoke scenario needs it.
-const aiStubPort = process.env.OPAA_AI_STUB_PORT ?? (isLocalAuth ? '18090' : '18089')
+// comment. Only relevant for the "e2e" target; the ai-stub stand-ins of the "demo" and "local-auth"
+// targets publish no host port, and no scenario of theirs needs one.
+const aiStubPort = process.env.OPAA_AI_STUB_PORT ?? '18089'
 const keycloakPort = '8180'
 const baseUrl = process.env.E2E_BASE_URL ?? `http://localhost:${frontendPort}`
 const readyUrl = `${baseUrl}/api/v1/auth/config`
@@ -183,7 +183,7 @@ const composeEnv = {
     : isLocalAuth
       ? '172.31.0.10'
       : '172.29.0.10',
-  ...(isDemo ? {} : { OPAA_AI_STUB_PORT: aiStubPort }),
+  ...(isDemo || isLocalAuth ? {} : { OPAA_AI_STUB_PORT: aiStubPort }),
   ...(isLocalAuth
     ? { OPAA_MAILPIT_WEB_PORT: mailpitWebPort, OPAA_MAILPIT_SMTP_PORT: mailpitSmtpPort }
     : {}),
@@ -426,7 +426,9 @@ async function main() {
     env: {
       ...process.env,
       E2E_BASE_URL: baseUrl,
-      ...(isDemo ? {} : { E2E_AI_STUB_BASE_URL: `http://localhost:${aiStubPort}` }),
+      ...(isDemo || isLocalAuth
+        ? {}
+        : { E2E_AI_STUB_BASE_URL: `http://localhost:${aiStubPort}` }),
       ...(isLocalAuth
         ? {
             E2E_MAILPIT_BASE_URL: `http://localhost:${mailpitWebPort}`,

@@ -189,7 +189,13 @@ unabhängig von der `LOCAL`-Zeile und ihrem Schalter; jede Abweisung nennt im He
 `account_locked:<admin|failed_logins|inactivity>`, `account_expired`, `account_not_active`,
 `session_revoked[:<admin_lock|password_changed|admin_reset|reuse_detected|handed_over>]`,
 `unknown_account`, `malformed_token` — die Oberfläche unterscheidet sie so vom abgelaufenen Token
-und startet keinen Erneuerungsversuch. Nur ein anmeldefähiges (`ACTIVE`) Konto passiert den
+und startet keinen Erneuerungsversuch. **`local_accounts_disabled` erreicht ein bestehendes Token
+heute nicht:** Das Abschalten der Verwaltung widerruft die Sitzungen regulärer lokaler Konten sofort
+mit dem Anlass `ADMIN`, und die Widerrufsprüfung liegt vor der Schalterprüfung — abgewiesen wird
+deshalb mit `session_revoked:admin_reset`, also mit einem Anlass, der die Person „Passwort
+zurückgesetzt" lesen lässt. Der Marker greift nur für ein Token, das ohne diesen Widerruf entstanden
+wäre. Das ist eine Abweichung von ADR-0033, Entscheidung 4, und als #1595 festgehalten; das
+E2E-Szenario hält den Ist-Wert fest. Nur ein anmeldefähiges (`ACTIVE`) Konto passiert den
 Validator; der Anlass von `session_revoked` ist der letzte Verwaltungsakt an den Refresh-Familien
 des Kontos. Der lokale Issuer legt nie ein Konto an (unbekanntes `sub` → `401`) und
 schreibt E-Mail und Anzeigename nicht aus dem Token zurück. `GET /api/v1/auth/config` führt die

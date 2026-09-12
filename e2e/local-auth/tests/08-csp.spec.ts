@@ -3,6 +3,7 @@ import {
   acceptConfirmDialogs,
   bootstrapAdmin,
   enableLocalAccounts,
+  openUserAdministration,
   signInSuccessfully,
 } from "../../fixtures/localAuth";
 
@@ -17,6 +18,17 @@ import {
  * house that uses local accounts, which is exactly what must not happen quietly.
  */
 test.describe("Content Security Policy der lokalen Anmeldung", () => {
+  test.beforeAll(async ({ browser }) => {
+    const context = await browser.newContext();
+    const admin = await context.newPage();
+    acceptConfirmDialogs(admin);
+    await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password, {
+      route: "/login/system",
+    });
+    await enableLocalAccounts(admin);
+    await context.close();
+  });
+
   test("keine CSP-Verstöße auf Anmeldung, Selbstbedienung und Verwaltung", async ({ browser }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
@@ -38,7 +50,7 @@ test.describe("Content Security Policy der lokalen Anmeldung", () => {
 
     // Then a real session and the administration, where the list and the settings card load.
     await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password);
-    await enableLocalAccounts(page);
+    await openUserAdministration(page);
     await page.goto("/admin/mail/server");
     await expect(page.getByRole("switch", { name: "Versand aktiv" })).toBeVisible();
 

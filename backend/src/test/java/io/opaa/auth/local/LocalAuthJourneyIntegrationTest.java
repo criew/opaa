@@ -29,7 +29,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -77,7 +76,6 @@ class LocalAuthJourneyIntegrationTest {
   @Autowired private LocalCredentialsRepository credentials;
   @Autowired private UserRepository users;
   @Autowired private MailSettingsService mailSettings;
-  @Autowired private JdbcTemplate jdbc;
 
   private LocalAccountFixtures fixtures;
   private LocalAccount bootstrapAdmin;
@@ -87,13 +85,13 @@ class LocalAuthJourneyIntegrationTest {
     fixtures = fixturesFactory.create();
     fixtures.cleanUp();
     actionTokens.deleteAll();
-    jdbc.update("DELETE FROM audit_log WHERE event_type LIKE 'LOCAL_%'");
     fixtures.localProvider(true);
     bootstrapAdmin = seededBootstrapAdmin();
   }
 
   @AfterEach
   void tearDown() {
+    actionTokens.deleteAll();
     fixtures.cleanUp();
   }
 
@@ -227,6 +225,50 @@ class LocalAuthJourneyIntegrationTest {
         .andExpect(jsonPath("$.email").value(invitedAddress))
         .andExpect(jsonPath("$.createdReason").value("Sachbearbeitung, Vertretung"));
 
+    // 5a. The refresh rotates within its family, and presenting the *old* cookie again is a replay:
+    //     it ends every session of the account, not just that one (ADR-0033, Entscheidung 7). This
+    // is
+    //     the step the single-purpose tests cover only in isolation - here the rotated session is
+    // one
+    //     a real sign-in produced.
+    MvcResult rotated =
+        mockMvc
+            .perform(withCsrf(post(REFRESH), invitedSignIn).cookie(invitedCookie))
+            .andExpect(status().isOk())
+            .andReturn();
+    Cookie rotatedCookie = refreshCookie(rotated);
+    String rotatedBearer = bearer(rotated);
+    assertThat(rotatedCookie.getValue()).isNotEqualTo(invitedCookie.getValue());
+    mockMvc
+        .perform(get(ME).header(HttpHeaders.AUTHORIZATION, rotatedBearer))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(withCsrf(post(REFRESH), invitedSignIn).cookie(invitedCookie))
+        .andExpect(status().isUnauthorized());
+
+    // The whole family is dead, successor included - not only the token that was replayed.
+    mockMvc
+        .perform(withCsrf(post(REFRESH), invitedSignIn).cookie(rotatedCookie))
+        .andExpect(status().isUnauthorized());
+    // And so is the access token of that session, naming the cause. Asserted on the token of the
+    // sign-in, not on the one the rotation minted: a freshly minted token carries an {@code iat} no
+    // earlier than the account's current cutoff and may therefore sit up to a second ahead of the
+    // clock (LocalAccessTokenService#issue), while the cutoff of this replay is the first whole
+    // second after it - the newest token is not reliably older than its own account's new cutoff.
+    // The sign-in's token unambiguously is, which makes the assertion independent of that window.
+    mockMvc
+        .perform(get(ME).header(HttpHeaders.AUTHORIZATION, invitedBearer))
+        .andExpect(status().isUnauthorized())
+        .andExpect(
+            result ->
+                assertThat(result.getResponse().getHeader(HttpHeaders.WWW_AUTHENTICATE))
+                    .contains("session_revoked:reuse_detected"));
+
+    // The account itself is untouched by the replay - it signs in again and carries on.
+    MvcResult afterReplay = login(invitedAddress, INVITED_PASSWORD, 200);
+    String invitedBearerAgain = bearer(afterReplay);
+
     // 6. The administrator locks the account. That ends its session at once - the token is refused
     //    with the cause, not with a bare "expired" (ADR-0033, Entscheidung 8).
     mockMvc
@@ -238,7 +280,7 @@ class LocalAuthJourneyIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value(LocalAccountState.LOCKED.name()));
     mockMvc
-        .perform(get(ME).header(HttpHeaders.AUTHORIZATION, invitedBearer))
+        .perform(get(ME).header(HttpHeaders.AUTHORIZATION, invitedBearerAgain))
         .andExpect(status().isUnauthorized())
         .andExpect(
             result ->
@@ -251,7 +293,7 @@ class LocalAuthJourneyIntegrationTest {
     // 7. And the refresh token of that ended session is refused too - indistinguishably from an
     //    unknown one, with the cookie cleared.
     mockMvc
-        .perform(withCsrf(post(REFRESH), invitedSignIn).cookie(invitedCookie))
+        .perform(withCsrf(post(REFRESH), afterReplay).cookie(refreshCookie(afterReplay)))
         .andExpect(status().isUnauthorized());
 
     // 8. A locked account cannot sign in again either, with the same answer as always.

@@ -83,7 +83,7 @@ test.describe("Einladung, Passwort setzen, erste Anmeldung", () => {
     await expect(user.getByRole("heading", { level: 1, name: "Passwort festlegen" })).toBeVisible();
     // ADR-0033, Entscheidung 9: the raw token is out of the address bar before anything else - it
     // would otherwise stand in the nginx access log as a referrer.
-    expect(user.url()).not.toContain("token=");
+    await expect.poll(() => user.url()).not.toContain("token=");
 
     await user.locator("#set-password-new").fill(invitedPassword);
     await user.locator("#set-password-repeat").fill(invitedPassword);

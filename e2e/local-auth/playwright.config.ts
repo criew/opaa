@@ -30,11 +30,14 @@ export default defineConfig({
   // read in the report, not papered over.
   retries: 0,
   workers: 1,
+  // Bericht, Traces und Screenshots landen unter e2e/, nicht unter e2e/local-auth/: Von dort lädt der
+  // Workflow sie hoch (.github/workflows/local-auth-e2e.yml), wie bei den beiden anderen Zielen.
+  outputDir: "../test-results",
   reporter: process.env.CI
     ? [
         ["list"],
-        ["html", { open: "never" }],
-        ["json", { outputFile: "test-results/results.json" }],
+        ["html", { open: "never", outputFolder: "../playwright-report" }],
+        ["json", { outputFile: "../test-results/local-auth-results.json" }],
       ]
     : [["list"]],
   use: {

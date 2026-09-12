@@ -1502,8 +1502,10 @@ aktiviert es bewusst über die Notfallprozedur unten.
 3. **Das Passwort des Notanker-Kontos versiegelt hinterlegen** — dort, wo das Haus andere
    Notfallzugänge hinterlegt. Es ist der Weg zurück, wenn die Anbieteranbindung bricht.
 
-Das Konto bleibt anmeldefähig und ist gegen die eigenen Verwaltungswege geschützt: Es lässt sich
-nicht sperren, nicht befristen, nicht herabsetzen und nicht löschen. **Jede erfolgreiche Anmeldung
+Das Konto bleibt anmeldefähig. **Es lässt sich nicht löschen**; Sperren, Befristen und Herabsetzen
+lehnt OPAA ab, solange es der letzte anmeldefähige Systemverwalter ist — also genau dann, wenn der
+Schritt die Installation aussperren würde. Von der Sperre nach Inaktivität ist es ausgenommen (sein
+Zweck ist, unbenutzt zu bleiben). **Jede erfolgreiche Anmeldung
 mit ihm steht im Nachweisprotokoll** (`LOCAL_BOOTSTRAP_ACCOUNT_LOGIN`) und löst eine Nachricht an
 alle übrigen Systemverwalter aus — „wurde der Notfallzugang benutzt?" ist die Prüferfrage zu jedem
 Notfallkonto, und sie soll beantwortbar sein. Erkannt wird es an einer internen Markierung, nicht an
@@ -1616,7 +1618,7 @@ Warum keine Vereinheitlichung:
   Prüfpfad zu haben. Die Anmeldevorgänge selbst prüfen zwei eigene Läufe: den Keycloak-Login der
   Demo-Smoke-Lauf, die lokale Anmeldung das Ziel `local-auth`.
 - Das Notanker-Konto ist das eine Muster, das **nicht** vereinheitlicht werden kann: Es ist ein echtes
-  Konto der jeweiligen Installation. Dass es in drei Stacks mit einem festen, im Repository stehenden
+  Konto der jeweiligen Installation. Dass es in zwei Stacks mit einem festen, im Repository stehenden
   Passwort bestückt ist, ist der dafür vorgesehene Weg für automatisierte Bereitstellung — und genau
   der Grund, warum `OPAA_INITIAL_ADMIN_PASSWORD` auf einer erreichbaren Instanz ungesetzt bleibt.
 

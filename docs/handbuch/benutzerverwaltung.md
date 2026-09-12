@@ -189,7 +189,9 @@ Raum außer seinem persönlichen. Sonst lehnt OPAA die Löschung ab und verweist
 Praxis heißt das: Löschen ist der Weg für ein Konto, das nie benutzt wurde — eine falsch getippte
 Adresse, eine Einladung an die falsche Person, ein Testkonto. Für alles andere gilt die Sperre.
 
-Das Notanker-Konto der Systemverwaltung lässt sich nicht löschen.
+Das Notanker-Konto der Systemverwaltung lässt sich **nicht löschen**. Sperren, Befristen und
+Herabsetzen sind daran nicht grundsätzlich gesperrt — sie werden abgelehnt, solange es der letzte
+anmeldefähige Systemverwalter ist. Von der Sperre nach Inaktivität ist es ausgenommen.
 
 ## 9. Selbstregistrierung
 

@@ -90,7 +90,6 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     await expect(
       user.getByText("Wenn zu dieser Adresse ein Konto besteht, haben wir eine E-Mail geschickt."),
     ).toBeVisible();
-    await expect.poll(() => mailCount(), { timeout: 5_000 }).toBe(0);
 
     // An address inside the list does create an account - unconfirmed, and therefore not yet able
     // to sign in.
@@ -107,6 +106,12 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     const verifyPath = linkPathIn(confirmation);
     expect(verifyPath).toContain("/verify-email");
 
+    // Erst hier ist bewiesen, dass die fremde Domäne oben **nichts** ausgelöst hat: Das Postfach hält
+    // genau diese eine Nachricht. Eine Zählung direkt nach der abgelehnten Registrierung wäre schon
+    // erfüllt gewesen, bevor irgendein Versand hätte stattfinden können.
+    expect(await mailCount()).toBe(1);
+    expect(confirmation.recipients.map((a) => a.toLowerCase())).toEqual([address.toLowerCase()]);
+
     await user.goto("/login");
     await user.getByLabel("E-Mail-Adresse").fill(address);
     await user.getByLabel("Passwort", { exact: true }).fill(password);
@@ -119,7 +124,7 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     await expect(
       user.getByText("E-Mail-Adresse bestätigt — Sie können sich jetzt anmelden."),
     ).toBeVisible();
-    expect(user.url()).not.toContain("token=");
+    await expect.poll(() => user.url()).not.toContain("token=");
 
     await signInSuccessfully(user, address, password);
     await user.goto("/spaces");

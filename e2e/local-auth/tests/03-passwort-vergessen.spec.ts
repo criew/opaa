@@ -48,12 +48,23 @@ test.describe("Passwort vergessen, Rücksetzen, alte Sitzung endet", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Passwort vergessen" })).toBeVisible();
     await page.getByLabel("E-Mail-Adresse").fill("gibt-es-nicht@stadt.example");
     await page.getByRole("button", { name: "Link anfordern" }).click();
-
     await expect(
       page.getByText("Wenn zu dieser Adresse ein Konto besteht, haben wir eine E-Mail geschickt."),
     ).toBeVisible();
-    // Nothing is sent - and the page says exactly what it says for an address that does exist.
-    await expect.poll(() => mailCount(), { timeout: 5_000 }).toBe(0);
+
+    // Der Gegenbeweis im selben Postfach: Ohne ihn wäre "keine Mail" schon erfüllt, bevor überhaupt
+    // etwas versendet werden konnte - der Versand läuft auf einem eigenen Thread, die Antwort kommt
+    // nach fester Frist. Die bekannte Adresse liefert genau eine Nachricht; danach steht fest, dass
+    // die unbekannte keine geliefert hat, und nicht bloß, dass noch keine da war.
+    await page.goto("/forgot-password");
+    await page.getByLabel("E-Mail-Adresse").fill(address);
+    await page.getByRole("button", { name: "Link anfordern" }).click();
+    await expect(
+      page.getByText("Wenn zu dieser Adresse ein Konto besteht, haben wir eine E-Mail geschickt."),
+    ).toBeVisible();
+    const delivered = await waitForMail(address);
+    expect(delivered.recipients.map((a) => a.toLowerCase())).toEqual([address.toLowerCase()]);
+    expect(await mailCount()).toBe(1);
   });
 
   test("die Person setzt ein neues Passwort, die laufende Sitzung endet mit Grund", async ({
@@ -81,7 +92,7 @@ test.describe("Passwort vergessen, Rücksetzen, alte Sitzung endet", () => {
 
     await reset.goto(resetPath);
     await expect(reset.getByRole("heading", { level: 1, name: "Passwort festlegen" })).toBeVisible();
-    expect(reset.url()).not.toContain("token=");
+    await expect.poll(() => reset.url()).not.toContain("token=");
     await reset.locator("#set-password-new").fill(newPassword);
     await reset.locator("#set-password-repeat").fill(newPassword);
     await reset.getByRole("button", { name: "Passwort festlegen" }).click();

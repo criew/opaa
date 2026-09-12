@@ -9,7 +9,7 @@ import {
   signInSuccessfully,
   uniqueAddress,
 } from "../../fixtures/localAuth";
-import { clearMailbox, waitForMail } from "../../fixtures/mailpit";
+import { clearMailbox, linkPathIn, waitForMail } from "../../fixtures/mailpit";
 
 /**
  * Scenario 4 of #1543: the account lockout after failed sign-ins, and the way back out.
@@ -118,7 +118,19 @@ test.describe("Fehlversuche sperren, Verwalter entsperrt", () => {
       user.getByText("Wenn zu dieser Adresse ein Konto besteht, haben wir eine E-Mail geschickt."),
     ).toBeVisible();
     const mail = await waitForMail(address);
-    expect(mail.text).toContain("/set-password");
+    const resetPath = linkPathIn(mail);
+    expect(resetPath).toContain("/set-password");
+
+    // Und der eingelöste Link hebt die Sperre auf - das ist der Ausweg, den der Absatz verspricht.
+    const recovered = "Uferschwalbe-Kiesbank-52";
+    await user.goto(resetPath);
+    await user.locator("#set-password-new").fill(recovered);
+    await user.locator("#set-password-repeat").fill(recovered);
+    await user.getByRole("button", { name: "Passwort festlegen" }).click();
+    await expect(
+      user.getByText("Passwort festgelegt — Sie können sich jetzt anmelden."),
+    ).toBeVisible();
+    await signInSuccessfully(user, address, recovered);
 
     await userContext.close();
   });
