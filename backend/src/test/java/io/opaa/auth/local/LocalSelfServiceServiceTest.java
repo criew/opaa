@@ -35,9 +35,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 /**
  * The anti-enumeration mechanics of {@link LocalSelfServiceService} (ADR-0033, Entscheidungen 9 and
  * 11) in isolation: after the field checks, "forgot password" and a registration do nothing on the
- * caller's thread but hand one task to the executor and answer after exactly the response floor;
- * the task pays the hashing cost whether or not the address is free or its domain allowed, treats a
- * taken address (found or lost in a race) as silently no account, and sends mail only for a link
+ * caller's thread but hand one task to the executor and answer after the response floor - a
+ * registration pays the one BCrypt on the caller's thread first, whether or not the address is free
+ * or its domain allowed, so the clear-text password never waits in the queue; the task treats a
+ * taken address (found or lost in a race) as silently no account and sends mail only for a link
  * that was issued; the availability of the two flows is the conjunction of switch, setting, domain
  * list and public base URL.
  */
@@ -47,6 +48,7 @@ class LocalSelfServiceServiceTest {
   private static final String HASH = "{bcrypt}hash";
   private static final long FLOOR = LocalSelfServiceService.RESPONSE_FLOOR.toMillis();
   private static final long EPSILON = 50;
+  private static final long CEILING = 4 * FLOOR;
 
   private final LocalSelfServiceAccountService accounts =
       mock(LocalSelfServiceAccountService.class);
@@ -111,8 +113,9 @@ class LocalSelfServiceServiceTest {
     long unknown = millis(() -> service.requestPasswordReset("niemand@stadt.example"));
     long known = millis(() -> service.requestPasswordReset("erika@stadt.example"));
 
-    assertThat(unknown).isBetween(FLOOR, FLOOR + EPSILON);
-    assertThat(known).isBetween(FLOOR, FLOOR + EPSILON);
+    assertThat(unknown).isBetween(FLOOR, CEILING);
+    assertThat(known).isBetween(FLOOR, CEILING);
+    assertThat(Math.abs(known - unknown)).isLessThanOrEqualTo(EPSILON);
     // nothing happened on the caller's thread: one task each, the lookup inside it
     verifyNoInteractions(accounts, mailer);
     assertThat(queued).hasSize(2);
@@ -135,12 +138,16 @@ class LocalSelfServiceServiceTest {
     long lost = millis(() -> service.register("verloren@stadt.example", "Wer", PASSWORD));
 
     for (long ms : List.of(foreign, taken, lost)) {
-      assertThat(ms).isBetween(FLOOR, FLOOR + EPSILON);
+      assertThat(ms).isBetween(FLOOR, CEILING);
     }
-    verifyNoInteractions(encoder, accounts, mailer);
+    assertThat(Math.max(foreign, Math.max(taken, lost)) - Math.min(foreign, Math.min(taken, lost)))
+        .isLessThanOrEqualTo(EPSILON);
+    // the hash is paid on the caller's thread in every outcome - the clear-text password never
+    // reaches the queue; everything else waits there
+    verify(encoder, times(3)).encode(PASSWORD);
+    verifyNoInteractions(accounts, mailer);
     assertThat(queued).hasSize(3);
     queued.forEach(Runnable::run);
-    verify(encoder, times(3)).encode(PASSWORD);
     verify(accounts, never()).register(eq("wer@anderswo.example"), anyString(), anyString());
     verify(accounts).register("belegt@stadt.example", "Wer", HASH);
     verify(accounts).register("verloren@stadt.example", "Wer", HASH);
@@ -157,6 +164,7 @@ class LocalSelfServiceServiceTest {
 
     service.register("neu@stadt.example", "Neu", PASSWORD);
 
+    verify(encoder).encode(PASSWORD);
     verifyNoInteractions(accounts, mailer);
     assertThat(queued).hasSize(1);
     queued.getFirst().run();

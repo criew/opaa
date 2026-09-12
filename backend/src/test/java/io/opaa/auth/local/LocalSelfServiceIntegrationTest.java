@@ -83,6 +83,7 @@ class LocalSelfServiceIntegrationTest {
   private static final String DOMAIN = "stadt.example";
   private static final long FLOOR = LocalSelfServiceService.RESPONSE_FLOOR.toMillis();
   private static final long EPSILON = 50;
+  private static final long CEILING = 4 * FLOOR;
   private static final int REPETITIONS = 3;
 
   @Autowired private MockMvc mockMvc;
@@ -332,7 +333,7 @@ class LocalSelfServiceIntegrationTest {
       }
     }
     assertThat(fastest)
-        .allSatisfy((email, ms) -> assertThat(ms).as(email).isBetween(FLOOR - 5, FLOOR + EPSILON));
+        .allSatisfy((email, ms) -> assertThat(ms).as(email).isBetween(FLOOR - 5, CEILING));
     long spread =
         fastest.values().stream().mapToLong(Long::longValue).max().orElseThrow()
             - fastest.values().stream().mapToLong(Long::longValue).min().orElseThrow();
@@ -494,7 +495,7 @@ class LocalSelfServiceIntegrationTest {
       }
     }
     assertThat(fastest)
-        .allSatisfy((name, ms) -> assertThat(ms).as(name).isBetween(FLOOR - 5, FLOOR + EPSILON));
+        .allSatisfy((name, ms) -> assertThat(ms).as(name).isBetween(FLOOR - 5, CEILING));
     long spread =
         fastest.values().stream().mapToLong(Long::longValue).max().orElseThrow()
             - fastest.values().stream().mapToLong(Long::longValue).min().orElseThrow();

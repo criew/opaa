@@ -43,9 +43,24 @@ public class MailDispatchExecutor implements Executor {
                   "Mail dispatch queue is full ({} sends pending): a send was dropped",
                   QUEUE_CAPACITY));
 
+  /**
+   * A task that fails leaves one ERROR line - the exception's class and its address-masked message
+   * - instead of an unmasked stack trace on the thread's stderr; the work it stood for (an account,
+   * a link) simply did not happen, which the mail subsystem's records do not know about.
+   */
   @Override
   public void execute(Runnable send) {
-    executor.execute(send);
+    executor.execute(
+        () -> {
+          try {
+            send.run();
+          } catch (RuntimeException e) {
+            log.error(
+                "Mail dispatch task failed with {}: {}",
+                e.getClass().getName(),
+                MailRecipients.maskAddresses(e.getMessage()));
+          }
+        });
   }
 
   /** How many sends are waiting - for tests and diagnostics. */

@@ -22,9 +22,10 @@ import org.springframework.stereotype.Service;
  * domain list for registration) and a public base URL can carry a link; the two link endpoints
  * exist always. Nothing here tells the caller whether an address has an account: after the field
  * checks - which reveal nothing about accounts - "forgot password" and a registration hand their
- * whole work (hash, lookup, account, mail) to the {@link MailDispatchExecutor} and answer after
- * exactly {@link #RESPONSE_FLOOR}, so the response time is the same constant in every outcome;
- * synchronous hashing or SMTP would let it betray the account. Deliberately not
+ * account work (lookup, account, mail) to the {@link MailDispatchExecutor} and answer after {@link
+ * #RESPONSE_FLOOR}, so the response time is the same constant in every outcome; a registration
+ * hashes on the request thread first - in every outcome, so the clear-text password never sits in a
+ * queue - and synchronous lookups or SMTP would let the time betray the account. Deliberately not
  * {@code @Transactional}: the account writes are one transaction each in {@link
  * LocalSelfServiceAccountService} and {@link LocalPasswordService}, run on the executor's thread,
  * and the send follows their commit.
@@ -33,8 +34,10 @@ import org.springframework.stereotype.Service;
 public class LocalSelfServiceService {
 
   /**
-   * The time either of the two address-taking flows takes to answer, whatever the outcome: the work
-   * itself runs off the request thread, so nothing but this constant shapes the response time.
+   * The least time either of the two address-taking flows takes to answer, whatever the outcome:
+   * the account work runs off the request thread, so nothing outcome-dependent shapes the response
+   * time - "forgot password" answers after exactly this, a registration after the larger of this
+   * and the one BCrypt it always pays first.
    */
   public static final Duration RESPONSE_FLOOR = Duration.ofMillis(250);
 
@@ -130,21 +133,25 @@ public class LocalSelfServiceService {
 
   /**
    * Field errors for a bad address, name or password come first - they reveal nothing about
-   * accounts. Everything after them runs on the executor: the hash, the domain check against the
-   * list, the account unless the address is taken (found, or lost in a race on the unique index) or
-   * still an unconfirmed self-registration (which gets its link again), and the verification mail.
+   * accounts. The hash is computed here, on the request thread and in every outcome (a foreign
+   * domain and a taken address included), so the clear-text password never waits in the executor's
+   * queue; the response time is then the same constant for every outcome - the larger of the floor
+   * and one BCrypt - not the floor itself. Everything after the hash runs on the executor: the
+   * domain check against the list, the account unless the address is taken (found, or lost in a
+   * race on the unique index) or still an unconfirmed self-registration (which gets its link
+   * again), and the verification mail.
    */
   public void register(String email, String displayName, String password) {
     String address = LocalUserService.requireAddress(email);
     String name = LocalUserService.requireText("displayName", displayName, DISPLAY_NAME_MAX_LENGTH);
     policy.require("password", password, address);
     long deadline = System.nanoTime() + RESPONSE_FLOOR.toNanos();
-    executor.execute(() -> registerOffThread(address, name, password));
+    String hash = passwordEncoder.encode(password);
+    executor.execute(() -> registerOffThread(address, name, hash));
     holdUntil(deadline);
   }
 
-  private void registerOffThread(String address, String name, String password) {
-    String hash = passwordEncoder.encode(password);
+  private void registerOffThread(String address, String name, String hash) {
     if (!isDomainAllowed(address)) {
       return;
     }

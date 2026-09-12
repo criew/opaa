@@ -477,10 +477,12 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
   Auth-Mails sind an eine Nutzeraktion gebunden, deren Ergebnis der Aufrufer sofort braucht.
   *Nachtrag (#1538):* Die beiden Selbstbedienungsflüsse „Passwort vergessen" und
   Selbstregistrierung sind die Ausnahme — ihr Aufrufer darf das Ergebnis gerade **nicht** erfahren,
-  und ein synchroner Versand würde die Antwortzeit verraten; ihre gesamte Arbeit läuft nach der
+  und ein synchroner Versand würde die Antwortzeit verraten; ihre Kontoarbeit läuft nach der
   Feldprüfung auf einem eigenen Mail-Thread mit begrenzter Warteschlange (`MailDispatchExecutor`,
   denselben nutzt die Notanker-Benachrichtigung aus Entscheidung 5), die Antwort kommt nach fester
-  Frist. **Ein
+  Frist — bei der Registrierung nach dem Größeren aus Frist und dem einen BCrypt, den sie in jedem
+  Ausgang zuerst auf dem Anfrage-Thread bezahlt, damit kein Klartext-Passwort in der Warteschlange
+  wartet: gleiche Antwortzeit in jedem Ausgang, nicht gleich der Frist. **Ein
   `Failed` bleibt nicht unsichtbar:** Log-Zeile mit Grund und Vorlagenschlüssel (ohne Adresse),
   Fortschreibung von `last_failure_at`/`last_failure_reason`, Anzeige „letzter erfolgreicher Versand"
   und „letzter Fehler" auf der Einstellungsseite und ein Health-Indikator `mail` (Zustand ohne
@@ -562,8 +564,11 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
   „Selbstregistrierung", Konto bis zur Bestätigung (`VERIFY_EMAIL`, 24 Stunden) nicht anmeldefähig;
   bei belegter Adresse entsteht kein zweites Konto, die Antwort ist identisch (202); keine Hinweis-Mail
   an die belegte Adresse (sie wäre selbst ein Aufzählungskanal). Eine noch unbestätigte
-  Selbstregistrierung derselben Adresse erhält ihren Bestätigungslink erneut (Hash und Name
-  bleiben), damit sie keine Sackgasse ist. Das Einschalten ist ein Audit-Ereignis
+  Selbstregistrierung derselben Adresse erhält ihren Bestätigungslink erneut, damit sie keine
+  Sackgasse ist — **Hash und Name bleiben** dabei, als bewusste Regel gegen ein Pre-Hijacking:
+  Sonst könnte eine zweite Registrierung ein Passwort hinterlegen, das die erste Person mit dem
+  neuen Link bestätigt. Ein administratives Zurücksetzen bestätigt die Adresse nicht; bei
+  abgeschalteter Selbstregistrierung ist der Ausweg Löschen und Einladen. Das Einschalten ist ein Audit-Ereignis
   und nach `security-and-compliance.md` ein Punkt der Dienstvereinbarung; das Handbuch sagt das.
 - **Passwort vergessen** nur bei `password_reset_enabled` und gesetzter Basis-URL: immer 204 nach
   konstanter Zeitklasse, unabhängig davon, ob ein aktives Konto existiert; Konten mit

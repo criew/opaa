@@ -422,28 +422,36 @@ der Flüsse ist über `/auth/config` ohnehin öffentlich; eine tatsächlich unbe
 Blick (vollständige Ununterscheidbarkeit: #1592). Wo er existiert, antwortet er immer 204 nach
 **genau derselben Zeit** (250 ms; nach der Prüfung der Adresse läuft die gesamte Arbeit — Suche,
 Link, Versand — auf dem Mail-Thread `MailDispatchExecutor`, die Anfrage wartet nur die feste Frist
-ab), unabhängig davon, ob ein Konto besteht: ein aktives Konto und ein Konto in Fehlversuch-Sperre
+ab; scheitert eine Aufgabe dort, bleibt eine `ERROR`-Zeile mit Ausnahmeklasse und maskierter
+Nachricht), unabhängig davon, ob ein Konto besteht: ein aktives Konto und ein Konto in Fehlversuch-Sperre
 erhalten die Mail `PASSWORD_RESET` mit einem `RESET_PASSWORD`-Link (`reset_token_ttl_minutes`; ein
 neuer Link entwertet ältere), Konten mit Verwalter- oder Inaktivitätssperre, abgelaufene und
 eingeladene Konten sowie unbekannte Adressen erhalten nichts und antworten gleich. Die Anfrage
 ändert keinen Zustand und wird nicht protokolliert — Sitzungen enden erst beim Einlösen.
 **Selbstregistrierung** existiert nur mit Verwaltung an, `self_registration_enabled`, **nichtleerer
 Domänenliste** und Basis-URL (sonst 404 wie oben). Adresse, Anzeigename und Passwort werden zuerst
-geprüft (Feldfehler `email`, `displayName`, `password` — sie verraten nichts über Konten); alles
-danach läuft auf dem Mail-Thread, die Antwort ist in jedem Ausgang die **dieselbe 202 nach
-derselben Zeit**: Hash, Domäne gegen die Liste (exakt), Adresse gegen den lokalen Issuer — eine
+geprüft (Feldfehler `email`, `displayName`, `password` — sie verraten nichts über Konten); danach
+wird der **Hash in jedem Ausgang auf dem Anfrage-Thread** berechnet (das Klartext-Passwort wartet
+nie in einer Warteschlange), und alles Weitere läuft auf dem Mail-Thread — die Antwort ist in
+jedem Ausgang **dieselbe 202 nach derselben Zeit** (dem Größeren aus fester Frist und einem
+BCrypt, nicht der Frist selbst): Domäne gegen die Liste (exakt), Adresse gegen den lokalen Issuer
+— eine
 freie Adresse mit erlaubter Domäne wird als Konto angelegt (Rolle `USER`, Ablauf **Pflicht** aus
 `default_expiry_days`, Anlagegrund „Selbstregistrierung", Adresse unbestätigt und damit `INVITED`,
 nicht anmeldefähig) und erhält `REGISTRATION_VERIFICATION` mit einem 24 Stunden gültigen
 `VERIFY_EMAIL`-Link; eine **noch unbestätigte Selbstregistrierung derselben Adresse** erhält einen
 neuen Link (der ältere ist entwertet), Hash und Name bleiben — sonst könnte eine zweite
-Registrierung ein Passwort hinterlegen, das die erste Person dann bestätigt; eine belegte Adresse
+Registrierung ein Passwort hinterlegen, das die erste Person dann bestätigt (bewusste Regel gegen
+ein Pre-Hijacking); eine belegte Adresse
 (auch bei gleichzeitiger Anlage, Unique-Index) und eine fremde Domäne legen nichts an und senden
 nichts — auch keine Hinweis-Mail. Ereignis `LOCAL_USER_REGISTERED` unter dem Systemakteur
 `local-auth`, nur bei der Anlage. Der persönliche Space entsteht erst bei der ersten Anmeldung nach
 der Bestätigung, auf dem Weg jeder Anmeldung — eine nie bestätigte Registrierung hinterlässt keinen
 Space. **E-Mail bestätigen** löst den `VERIFY_EMAIL`-Link genau einmal ein und setzt
-`email_verified_at` (400 `TOKEN_INVALID` wie oben); danach ist das Konto `ACTIVE`. Die Rate-Limits
+`email_verified_at` (400 `TOKEN_INVALID` wie oben); danach ist das Konto `ACTIVE`. Ein
+administratives Zurücksetzen macht eine unbestätigte Selbstregistrierung **nicht** anmeldefähig —
+der Rücksetzlink bestätigt nichts; ist die Selbstregistrierung inzwischen abgeschaltet, ist der Weg
+für den Verwalter das Löschen des unbestätigten Kontos und eine Einladung. Die Rate-Limits
 aus #1535 greifen je Client-Adresse über die Pfadregeln (auch für `verify-email`, 10/900 s) und je
 E-Mail-Adresse vor jeder Verarbeitung — bei abgeschaltetem Fluss aber erst nach der 404. Der
 Mail-Thread hat eine begrenzte Warteschlange (1000); ein Versand, der keinen Platz findet, wird mit

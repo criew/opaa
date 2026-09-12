@@ -63,6 +63,36 @@ class MailDispatchExecutorTest {
     }
   }
 
+  @Test
+  void aFailingTaskLeavesOneMaskedErrorLineAndTheThreadKeepsWorking() throws Exception {
+    MailDispatchExecutor executor = new MailDispatchExecutor();
+    Logger logger = (Logger) LoggerFactory.getLogger(MailDispatchExecutor.class);
+    ListAppender<ILoggingEvent> logs = new ListAppender<>();
+    logs.start();
+    logger.addAppender(logs);
+    try {
+      CountDownLatch survived = new CountDownLatch(1);
+      executor.execute(
+          () -> {
+            throw new IllegalStateException("connection pool exhausted for erika@stadt.example");
+          });
+      executor.execute(survived::countDown);
+      assertThat(survived.await(5, TimeUnit.SECONDS)).isTrue();
+      assertThat(logs.list)
+          .anySatisfy(
+              event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+                assertThat(event.getFormattedMessage())
+                    .contains("java.lang.IllegalStateException")
+                    .contains("connection pool exhausted")
+                    .doesNotContain("erika@stadt.example");
+              });
+    } finally {
+      logger.detachAppender(logs);
+      executor.shutdown();
+    }
+  }
+
   private static void await(CountDownLatch latch) {
     try {
       latch.await();
