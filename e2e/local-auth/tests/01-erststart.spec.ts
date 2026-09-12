@@ -47,11 +47,14 @@ test.describe("Erststart: Systemverwalter, SMTP, Schalter", () => {
     ).toBeVisible();
 
     // The only scenario that can check this route: it redirects to /login as soon as the management
-    // is on, which the last test of this file switches.
-    await page.emulateMedia({ colorScheme: "light" });
-    await expectNoSeriousA11yViolations(page, "Anmeldung für die Systemverwaltung (hell)");
-    await page.emulateMedia({ colorScheme: "dark" });
-    await expectNoSeriousA11yViolations(page, "Anmeldung für die Systemverwaltung (dunkel)");
+    // is on, which the last test of this file switches. The scheme is set before loading, never
+    // switched on a rendered page - see the first scenario of 07-barrierefreiheit.spec.ts for why.
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto("/login/system");
+      await expect(page.getByLabel("E-Mail-Adresse")).toBeVisible();
+      await expectNoSeriousA11yViolations(page, `Anmeldung für die Systemverwaltung (${scheme})`);
+    }
     await page.emulateMedia({ colorScheme: "light" });
 
     // A wrong password answers the same way every rejected local sign-in does (ADR-0033,

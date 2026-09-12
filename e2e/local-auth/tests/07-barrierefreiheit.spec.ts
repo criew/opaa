@@ -53,13 +53,17 @@ test.describe("Barrierefreiheit der lokalen Anmeldung (axe-core)", () => {
   test("Anmeldeseite mit eingeschalteter lokaler Anmeldung in beiden Farbschemata", async ({
     page,
   }) => {
-    await page.goto("/login");
-    await expect(page.getByLabel("E-Mail-Adresse")).toBeVisible();
-
-    await page.emulateMedia({ colorScheme: "light" });
-    await expectNoSeriousA11yViolations(page, "Anmeldeseite mit lokaler Maske (helles Farbschema)");
-    await page.emulateMedia({ colorScheme: "dark" });
-    await expectNoSeriousA11yViolations(page, "Anmeldeseite mit lokaler Maske (dunkles Farbschema)");
+    // Das Schema wird **vor** dem Laden gesetzt und für den zweiten Durchgang neu geladen. Wird es
+    // erst danach umgestellt, mischt sich auf den Seiten des Anmelderahmens die Palette: Ein Teil der
+    // Farben folgt der Medienabfrage sofort, der von der Anwendung aufgelöste Teil nicht — axe sieht
+    // dann Paare, die es in keinem der beiden Schemata gibt (#1600). Geprüft wird damit auch das, was
+    // eine Person tatsächlich sieht: eine Seite, die unter ihrem Schema geladen wurde.
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto("/login");
+      await expect(page.getByLabel("E-Mail-Adresse")).toBeVisible();
+      await expectNoSeriousA11yViolations(page, `Anmeldeseite mit lokaler Maske (${scheme})`);
+    }
   });
 
   test("Anmeldeseite mit Fehlermeldung", async ({ page }) => {
@@ -104,14 +108,17 @@ test.describe("Barrierefreiheit der lokalen Anmeldung (axe-core)", () => {
 
     const userContext = await browser.newContext();
     const user = await userContext.newPage();
+    await user.emulateMedia({ colorScheme: "light" });
     await signInSuccessfully(user, forced, initial);
     await expect(user).toHaveURL(/\/account\/password/);
     await expect(user.getByText("Neues Passwort erforderlich")).toBeVisible();
+    await expectNoSeriousA11yViolations(user, "Erzwungener Passwortwechsel (hell)");
 
-    await user.emulateMedia({ colorScheme: "light" });
-    await expectNoSeriousA11yViolations(user, "Erzwungener Passwortwechsel (helles Farbschema)");
+    // Neu laden statt nur umschalten - siehe die Begründung im ersten Szenario dieser Datei.
     await user.emulateMedia({ colorScheme: "dark" });
-    await expectNoSeriousA11yViolations(user, "Erzwungener Passwortwechsel (dunkles Farbschema)");
+    await user.reload();
+    await expect(user.getByText("Neues Passwort erforderlich")).toBeVisible();
+    await expectNoSeriousA11yViolations(user, "Erzwungener Passwortwechsel (dunkel)");
 
     await userContext.close();
     await adminContext.close();
