@@ -3,6 +3,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
+import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
 import { useAuthStore } from '../stores/authStore'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
@@ -58,6 +59,7 @@ export default function MailSettingsPage() {
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <Box sx={{ maxWidth: contentWidth.areaContent }}>
         <AreaPageHeader
+          icon={MailOutlinedIcon}
           title="E-Mail"
           description="Gilt für die gesamte Anwendung. Einladungen, Rücksetzlinks und Hinweise an Konten gehen über diesen Zugang; Änderungen wirken ohne Neustart."
         />

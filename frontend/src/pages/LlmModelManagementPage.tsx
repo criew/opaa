@@ -11,6 +11,7 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import PsychologyOutlinedIcon from '@mui/icons-material/PsychologyOutlined'
 import type { LlmModelResponse } from '../types/api'
 import { testLlmModel } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
@@ -450,6 +451,7 @@ export default function LlmModelManagementPage() {
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <Box sx={{ maxWidth: contentWidth.areaContent }}>
         <AreaPageHeader
+          icon={PsychologyOutlinedIcon}
           title="Modelle"
           meta={models.length === 1 ? '1 Chat-Modell' : `${models.length} Chat-Modelle`}
           description="Gilt für die gesamte Anwendung. Änderungen wirken sich auf alle Spaces und Benutzer aus. Das aktive Modell beantwortet jede Frage dieser Installation."

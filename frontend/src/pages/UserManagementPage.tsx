@@ -8,6 +8,7 @@ import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
+import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
 import type { AccountResponse, LocalUserResponse } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
 import { notify } from '../stores/notificationStore'
@@ -227,6 +228,7 @@ export default function UserManagementPage() {
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <Box sx={{ maxWidth: contentWidth.areaContent }}>
         <AreaPageHeader
+          icon={BadgeOutlinedIcon}
           title="Benutzer"
           description="Gilt für die gesamte Anwendung. Lokale Konten werden hier angelegt und geführt; Konten eines Identitätsanbieters erscheinen mit ihrer Rolle, ihr Lebenszyklus liegt beim Anbieter."
         />

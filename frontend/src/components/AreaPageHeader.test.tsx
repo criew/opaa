@@ -1,6 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import Button from '@mui/material/Button'
+import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
 import { renderWithProviders } from '../test/test-utils'
 import AreaPageHeader from './AreaPageHeader'
 
@@ -50,6 +51,7 @@ describe('AreaPageHeader', () => {
   it('renders the title as the page heading, with the meta and the action beside it', () => {
     renderWithProviders(
       <AreaPageHeader
+        icon={PaletteOutlinedIcon}
         title="Gruppen"
         meta="2 Gruppen"
         description="Gilt für die gesamte Anwendung."
@@ -70,7 +72,9 @@ describe('AreaPageHeader', () => {
   })
 
   it('leaves out meta and action when a page has neither', () => {
-    renderWithProviders(<AreaPageHeader title="E-Mail" description="Gilt für alles." />)
+    renderWithProviders(
+      <AreaPageHeader icon={PaletteOutlinedIcon} title="E-Mail" description="Gilt für alles." />,
+    )
 
     expect(screen.getByRole('heading', { level: 1, name: 'E-Mail' })).toBeInTheDocument()
     expect(screen.queryByRole('button')).toBeNull()
@@ -102,6 +106,39 @@ describe('AreaPageHeader', () => {
 
     expect(quelltext).toContain('contentWidth.areaContent')
     expect(quelltext).not.toMatch(/maxWidth: \d/)
+  })
+
+  it('shows the area mark without announcing it a second time', () => {
+    const { container } = renderWithProviders(
+      <AreaPageHeader icon={PaletteOutlinedIcon} title="Branding" description="Gilt für alles." />,
+    )
+
+    const zeichen = container.querySelector('svg')
+    expect(zeichen).toBeInTheDocument()
+    // Der Titel daneben sagt dasselbe; eine zweite Ansage wäre nur Lärm.
+    expect(zeichen!.closest('[aria-hidden="true"]')).not.toBeNull()
+  })
+
+  /**
+   * Das Zeichen ist der visuelle Anker des Bereichs (#1614). Eine neue Seite ohne eines fiele
+   * sonst erst jemandem im Betrieb auf - und zwei Bereiche mit demselben Zeichen wären kein
+   * Anker mehr, sondern eine Verwechslung.
+   */
+  it.each(BEREICHSSEITEN)('%s carries an area mark', (datei) => {
+    const quelltext = quelltextVon(datei)
+
+    expect(quelltext).toMatch(/icon=\{\w+Icon\}/)
+    expect(quelltext).toContain("from '@mui/icons-material/")
+  })
+
+  it('gives every area its own mark', () => {
+    const zeichen = BEREICHSSEITEN.map((datei) => {
+      const treffer = quelltextVon(datei).match(/icon=\{(\w+)\}/)
+      if (!treffer) throw new Error(`Kein Zeichen in ${datei}`)
+      return treffer[1]
+    })
+
+    expect(new Set(zeichen).size).toBe(BEREICHSSEITEN.length)
   })
 
   it.each(BEREICHSSEITEN)('%s uses PageHeading directly only where access is refused', (datei) => {

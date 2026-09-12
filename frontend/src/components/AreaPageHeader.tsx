@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ElementType, ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import PageHeading from './a11y/PageHeading'
@@ -17,6 +17,11 @@ interface AreaPageHeaderProps {
   meta?: ReactNode
   /** The page's one primary action, pushed to the trailing edge of the title row. */
   action?: ReactNode
+  /**
+   * The area's own mark, left of title and description - an outline icon from
+   * `@mui/icons-material`. Decorative: the title already says the same thing.
+   */
+  icon: ElementType
 }
 
 /**
@@ -38,35 +43,53 @@ export default function AreaPageHeader({
   description,
   meta,
   action,
+  icon: Icon,
 }: AreaPageHeaderProps) {
   return (
-    <Box sx={{ mb: 3 }}>
-      {/* Eine Flex-Box, kein Stack: MUIs Stack setzt seinen Abstand als `margin-left` auf die
+    <Box sx={{ mb: 3, display: 'flex', alignItems: 'flex-start', gap: { xs: 1.5, sm: 2 } }}>
+      {/* An der Titelzeile ausgerichtet, nicht an der Mitte des Kopfblocks: Eine zweizeilige
+          Beschreibung darf das Zeichen nicht verschieben - dieselbe Position auf jeder Seite ist
+          der Zweck dieses Bausteins. `aria-hidden`, weil der Titel daneben dasselbe sagt. */}
+      <Box
+        aria-hidden
+        sx={{
+          flex: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          height: 36.5,
+          color: 'primary.main',
+        }}
+      >
+        <Icon sx={{ fontSize: { xs: 26, sm: 30 } }} />
+      </Box>
+      <Box sx={{ minWidth: 0, flex: 1 }}>
+        {/* Eine Flex-Box, kein Stack: MUIs Stack setzt seinen Abstand als `margin-left` auf die
           Geschwister und überschreibt damit das `ml: auto`, mit dem die Handlung an den rechten
           Rand rückt. Die Mindesthöhe ist die einer Schaltfläche - ohne sie stünde die
           Beschreibung auf Seiten mit Handlung vier Pixel tiefer als auf den übrigen, genau der
           Sprung, den dieser Baustein beseitigen soll. */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'baseline',
-          gap: 2,
-          rowGap: 1,
-          flexWrap: 'wrap',
-          minHeight: 36.5,
-        }}
-      >
-        <PageHeading title={title} documentTitle={documentTitle} />
-        {meta && (
-          <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
-            {meta}
-          </Typography>
-        )}
-        {action && <Box sx={{ ml: 'auto', flex: 'none', alignSelf: 'center' }}>{action}</Box>}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: 2,
+            rowGap: 1,
+            flexWrap: 'wrap',
+            minHeight: 36.5,
+          }}
+        >
+          <PageHeading title={title} documentTitle={documentTitle} />
+          {meta && (
+            <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+              {meta}
+            </Typography>
+          )}
+          {action && <Box sx={{ ml: 'auto', flex: 'none', alignSelf: 'center' }}>{action}</Box>}
+        </Box>
+        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5, maxWidth: '80ch' }}>
+          {description}
+        </Typography>
       </Box>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5, maxWidth: '80ch' }}>
-        {description}
-      </Typography>
     </Box>
   )
 }

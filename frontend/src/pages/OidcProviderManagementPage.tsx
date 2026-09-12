@@ -7,6 +7,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import AddIcon from '@mui/icons-material/Add'
+import FingerprintOutlinedIcon from '@mui/icons-material/FingerprintOutlined'
 import type { OidcProviderResponse } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
 import { notify } from '../stores/notificationStore'
@@ -64,6 +65,7 @@ export default function OidcProviderManagementPage() {
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <Box sx={{ maxWidth: contentWidth.areaContent }}>
         <AreaPageHeader
+          icon={FingerprintOutlinedIcon}
           title="Identitätsanbieter"
           meta={providers.length === 1 ? '1 Anbieter' : `${providers.length} Anbieter`}
           description="Gilt für die gesamte Anwendung. Die Reihenfolge ist die der Anmeldeseite; Änderungen wirken ohne Neustart. Lokale Konten sind kein Anbieter dieser Liste – sie werden unter Administration → Benutzer geführt."

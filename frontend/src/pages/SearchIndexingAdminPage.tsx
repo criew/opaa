@@ -25,6 +25,7 @@ import Typography from '@mui/material/Typography'
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import ManageSearchOutlinedIcon from '@mui/icons-material/ManageSearchOutlined'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
 import SectionHead from '../components/SectionHead'
@@ -603,6 +604,7 @@ export default function SearchIndexingAdminPage() {
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <Box sx={{ maxWidth: contentWidth.areaContent }}>
         <AreaPageHeader
+          icon={ManageSearchOutlinedIcon}
           title="Suche & Indexierung"
           description="Diese Seite zeigt die aktive Konfiguration an und ändert sie nicht. Sie beantwortet, warum ein Dokument in einer Antwort steht oder fehlt. Der einzige Eingriff ist das Nachrüsten der Kernfelder je Bibliothek — ein bewusster Start, kein Automatismus."
         />
