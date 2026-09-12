@@ -1518,7 +1518,7 @@ seiner Adresse: Adresse und Anzeigename dürfen sich ändern, ohne dass der Notw
 
 ### Lokale Benutzerverwaltung
 
-Die Verwaltung lokaler Konten ist **ein Schalter unter Administration → Benutzer** und im
+Die Verwaltung lokaler Konten ist **ein Schalter unter Administration → Benutzer → Einstellungen** und im
 Auslieferungszustand **aus**. Was sie im Alltag leistet — anlegen, einladen, sperren, zurücksetzen,
 befristen, Selbstregistrierung — steht im Kapitel [Benutzerverwaltung](benutzerverwaltung.md). Für
 den Betrieb sind vier Dinge wichtig:

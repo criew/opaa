@@ -56,7 +56,7 @@ export default function MailSettingsPage() {
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <Box sx={{ maxWidth: 1040 }}>
-        <PageHeading title="E-Mail" />
+        <PageHeading title="E-Mail" gutterBottom />
         <GlobalScopeNote>
           Gilt für die gesamte Anwendung. Einladungen, Rücksetzlinks und Hinweise an Konten gehen
           über diesen Zugang; Änderungen wirken ohne Neustart.

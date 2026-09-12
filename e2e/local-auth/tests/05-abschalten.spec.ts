@@ -6,7 +6,7 @@ import {
   createActiveAccount,
   enableLocalAccounts,
   expectSessionEndedWith,
-  openUserAdministration,
+  openLocalAuthSettings,
   signInSuccessfully,
   uniqueAddress,
 } from "../../fixtures/localAuth";
@@ -57,7 +57,7 @@ test.describe("Verwaltung abschalten: Nutzer-Sitzung endet, Verwalter bleibt", (
     const admin = await adminContext.newPage();
     acceptConfirmDialogs(admin);
     await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password);
-    await openUserAdministration(admin);
+    await openLocalAuthSettings(admin);
 
     const toggle = admin.getByRole("switch", { name: "Lokale Anmeldung aktiv" });
     await expect(toggle).toBeChecked();

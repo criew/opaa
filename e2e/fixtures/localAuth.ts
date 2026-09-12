@@ -82,9 +82,27 @@ export function acceptConfirmDialogs(page: Page): void {
   });
 }
 
-/** The administration's user page, waited for until its settings card has actually loaded. */
-export async function openUserAdministration(page: Page): Promise<void> {
-  await page.goto("/admin/users");
+/**
+ * The account list of the administration (#1601: „Benutzer" has two areas, each its own route),
+ * waited for until the list itself has loaded - the table if there is a row, otherwise its empty
+ * state. Waiting for the filter bar alone would pass while the first page is still on its way.
+ */
+export async function openAccountList(page: Page): Promise<void> {
+  await page.goto("/admin/users/accounts");
+  await expect(page.getByRole("searchbox", { name: "Konten suchen" })).toBeVisible({
+    timeout: 20_000,
+  });
+  await expect(
+    page
+      .getByRole("table", { name: "Konten" })
+      .or(page.getByText("Kein Konto entspricht den gewählten Filtern."))
+      .first(),
+  ).toBeVisible({ timeout: 20_000 });
+}
+
+/** The settings area of the administration's user page, waited for until its card has loaded. */
+export async function openLocalAuthSettings(page: Page): Promise<void> {
+  await page.goto("/admin/users/settings");
   await expect(page.getByRole("switch", { name: "Lokale Anmeldung aktiv" })).toBeVisible({
     timeout: 20_000,
   });
@@ -126,7 +144,7 @@ export async function configureSmtp(page: Page): Promise<void> {
 
 /** Switches the local account management on, confirming the consequence dialog. */
 export async function enableLocalAccounts(page: Page): Promise<void> {
-  await openUserAdministration(page);
+  await openLocalAuthSettings(page);
   const toggle = page.getByRole("switch", { name: "Lokale Anmeldung aktiv" });
   if (!(await toggle.isChecked())) {
     await toggle.click();
@@ -154,7 +172,7 @@ export async function createActiveAccount(
   { email, displayName, reason }: { email: string; displayName: string; reason: string },
   password: string,
 ): Promise<void> {
-  await openUserAdministration(adminPage);
+  await openAccountList(adminPage);
   await adminPage.getByRole("button", { name: "Konto anlegen" }).click();
   const dialog = adminPage.getByRole("dialog", { name: "Lokales Konto anlegen" });
   await expect(dialog).toBeVisible();

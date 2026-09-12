@@ -147,7 +147,14 @@ export default function App() {
               {/* Global areas render inside the frame from mockup 2b (#787): no space
                   column, a light secondary column with the area navigation instead. */}
               <Route element={<AdminAreaLayout />}>
-                <Route path="admin/users" element={<UserManagementPage />} />
+                {/* Die beiden Bereiche der Benutzerseite sind Routen wie bei der E-Mail-Seite
+                    (#1601): der Sprung aus dem Auflagen-Hinweis landet in der Kontenliste, der aus
+                    der Anmeldeseite in den Einstellungen, und ein Neuladen behält den Bereich. */}
+                <Route
+                  path="admin/users"
+                  element={<Navigate to="/admin/users/accounts" replace />}
+                />
+                <Route path="admin/users/:tab" element={<UserManagementPage />} />
                 <Route path="admin/groups" element={<GroupManagementPage />} />
                 <Route path="admin/branding" element={<BrandingSettingsPage />} />
                 <Route path="admin/models" element={<LlmModelManagementPage />} />

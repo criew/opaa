@@ -6,7 +6,7 @@ import {
   configureSmtp,
   createActiveAccount,
   enableLocalAccounts,
-  openUserAdministration,
+  openAccountList,
   signInSuccessfully,
   uniqueAddress,
 } from "../../fixtures/localAuth";
@@ -107,7 +107,7 @@ test.describe("Barrierefreiheit der lokalen Anmeldung (axe-core)", () => {
     await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password);
 
     const forced = uniqueAddress("peter.wendt");
-    await openUserAdministration(admin);
+    await openAccountList(admin);
     await admin.getByRole("button", { name: "Konto anlegen" }).click();
     const dialog = admin.getByRole("dialog", { name: "Lokales Konto anlegen" });
     await dialog.locator("#user-form-email").fill(forced);
@@ -164,7 +164,7 @@ test.describe("Barrierefreiheit der lokalen Anmeldung (axe-core)", () => {
 
     const invited = uniqueAddress("sabine.krause");
     await clearMailbox();
-    await openUserAdministration(admin);
+    await openAccountList(admin);
     await admin.getByRole("button", { name: "Konto anlegen" }).click();
     const dialog = admin.getByRole("dialog", { name: "Lokales Konto anlegen" });
     await dialog.locator("#user-form-email").fill(invited);

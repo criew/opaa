@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { assetRoleLabel } from '../utils/labels'
 import { mailHandlers } from './mailHandlers'
 import { localUserHandlers } from './localUserHandlers'
+import { accountHandlers } from './accountHandlers'
 import { localAuthHandlers } from './localAuthHandlers'
 
 /** Per-library countdown of the mock metadata backfill; see the handler below. */
@@ -3176,5 +3177,6 @@ export const handlers = [
   ...mailHandlers,
   // Same reason for the local account management (#1541).
   ...localUserHandlers,
+  ...accountHandlers,
   ...localAuthHandlers,
 ]

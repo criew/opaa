@@ -3,7 +3,8 @@ import {
   acceptConfirmDialogs,
   bootstrapAdmin,
   enableLocalAccounts,
-  openUserAdministration,
+  openAccountList,
+  openLocalAuthSettings,
   signInSuccessfully,
 } from "../../fixtures/localAuth";
 
@@ -50,7 +51,8 @@ test.describe("Content Security Policy der lokalen Anmeldung", () => {
 
     // Then a real session and the administration, where the list and the settings card load.
     await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password);
-    await openUserAdministration(page);
+    await openAccountList(page);
+    await openLocalAuthSettings(page);
     await page.goto("/admin/mail/server");
     await expect(page.getByRole("switch", { name: "Versand aktiv" })).toBeVisible();
 

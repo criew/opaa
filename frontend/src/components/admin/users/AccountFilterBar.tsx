@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
-import AddIcon from '@mui/icons-material/Add'
 import type { LocalAccountState, SystemRole } from '../../../types/api'
+import { useOidcProviderStore } from '../../../stores/oidcProviderStore'
 import {
   useUserAdminStore,
+  type AccountFilters,
   type LocalUserReviewFilter,
-  type LocalUserFilters,
 } from '../../../stores/userAdminStore'
 import {
   LOCAL_ACCOUNT_STATE_LABEL,
@@ -27,16 +26,37 @@ const REVIEW_OPTIONS: Array<{ value: LocalUserReviewFilter; label: string }> = [
   { value: 'INACTIVE', label: 'Länger als 90 Tage nicht genutzt' },
 ]
 
-const selectSx = { minWidth: 170, flex: '0 1 200px' } as const
+const PROVIDER_OPTION_PREFIX = 'provider:'
+
+const selectSx = { minWidth: 150, flex: '0 1 180px' } as const
+
+/** The one select value of the origin filter, folded from the two store fields. */
+function originValue(filters: AccountFilters): string {
+  if (filters.providerId) return `${PROVIDER_OPTION_PREFIX}${filters.providerId}`
+  return filters.providerType ?? 'ALL'
+}
+
+function originPatch(value: string): Partial<AccountFilters> {
+  if (value.startsWith(PROVIDER_OPTION_PREFIX)) {
+    return { providerType: 'OIDC', providerId: value.slice(PROVIDER_OPTION_PREFIX.length) }
+  }
+  if (value === 'LOCAL' || value === 'OIDC') return { providerType: value, providerId: null }
+  return { providerType: null, providerId: null }
+}
 
 /**
- * Suche, Filter und die eine primäre Handlung der Liste (#1541). Die drei Prüffilter der Auflage
- * aus ADR-0033 sind „Zustand: Eingeladen" (offene Einladungen), „ohne Ablaufdatum" und „länger als
- * 90 Tage nicht genutzt"; nach Aktivität wird nicht sortiert, sie ist nur eine Klasse.
+ * Suche und Filter der Kontenliste (#1541, #1601); die primäre Handlung steht im Kopf des
+ * Bereichs darüber, damit diese Zeile nur Filter trägt. Die Herkunft wählt
+ * zwischen allen, lokalen und Anbieterkonten oder einem einzelnen Anbieter; die drei Prüffilter
+ * der Auflage aus ADR-0033 - „Zustand: Eingeladen", „ohne Ablaufdatum", „länger als 90 Tage nicht
+ * genutzt" - beschreiben lokale Konten und grenzen die Liste auf sie ein. Nach Aktivität wird
+ * nicht sortiert, sie ist nur eine Klasse.
  */
-export default function LocalUserFilterBar({ onCreate }: { onCreate: () => void }) {
+export default function AccountFilterBar() {
   const filters = useUserAdminStore((s) => s.filters)
   const setFilters = useUserAdminStore((s) => s.setFilters)
+  const providers = useOidcProviderStore((s) => s.providers)
+  const loadProviders = useOidcProviderStore((s) => s.loadProviders)
   /**
    * Das Suchfeld ist während des Tippens lokal und folgt dem Store, sobald dessen `query` von
    * anderer Stelle gesetzt wird (der Filter-Sprung des Auflagen-Hinweises). Abgeleitet beim
@@ -46,6 +66,10 @@ export default function LocalUserFilterBar({ onCreate }: { onCreate: () => void 
   const [typed, setTyped] = useState<{ value: string; basedOn: string } | null>(null)
   const search = typed && typed.basedOn === filters.query ? typed.value : filters.query
 
+  useEffect(() => {
+    void loadProviders()
+  }, [loadProviders])
+
   // Debounced: a request per keystroke would make the table flicker and would hit the rate limit
   // of the admin API for nothing. The timer is cleared on every change, so only the last one fires.
   useEffect(() => {
@@ -54,9 +78,12 @@ export default function LocalUserFilterBar({ onCreate }: { onCreate: () => void 
     return () => clearTimeout(timer)
   }, [search, filters.query, setFilters])
 
-  function update(patch: Partial<LocalUserFilters>) {
+  function update(patch: Partial<AccountFilters>) {
     void setFilters(patch)
   }
+
+  // The LOCAL row is the switch of the local account management, not a provider to pick here.
+  const providerOptions = providers.filter((provider) => provider.providerType !== 'LOCAL')
 
   return (
     <Stack
@@ -72,9 +99,27 @@ export default function LocalUserFilterBar({ onCreate }: { onCreate: () => void 
           onChange={(e) => setTyped({ value: e.target.value, basedOn: filters.query })}
           placeholder="Name oder E-Mail-Adresse suchen …"
           type="search"
-          slotProps={{ htmlInput: { 'aria-label': 'Lokale Konten suchen' } }}
+          slotProps={{ htmlInput: { 'aria-label': 'Konten suchen' } }}
         />
       </Box>
+      <TextField
+        size="small"
+        select
+        sx={selectSx}
+        label="Herkunft"
+        value={originValue(filters)}
+        onChange={(e) => update(originPatch(e.target.value))}
+      >
+        <MenuItem value="ALL">Alle Konten</MenuItem>
+        <MenuItem value="LOCAL">Lokal</MenuItem>
+        <MenuItem value="OIDC">Alle Anbieter</MenuItem>
+        {providerOptions.map((provider) => (
+          <MenuItem key={provider.id} value={`${PROVIDER_OPTION_PREFIX}${provider.id}`}>
+            {provider.displayName}
+            {provider.enabled ? '' : ' (deaktiviert)'}
+          </MenuItem>
+        ))}
+      </TextField>
       <TextField
         size="small"
         select
@@ -114,7 +159,7 @@ export default function LocalUserFilterBar({ onCreate }: { onCreate: () => void 
       <TextField
         size="small"
         select
-        sx={{ minWidth: 200, flex: '0 1 240px' }}
+        sx={{ minWidth: 180, flex: '0 1 220px' }}
         label="Auflage"
         value={filters.review}
         onChange={(e) => update({ review: e.target.value as LocalUserReviewFilter })}
@@ -125,14 +170,6 @@ export default function LocalUserFilterBar({ onCreate }: { onCreate: () => void 
           </MenuItem>
         ))}
       </TextField>
-      <Button
-        variant="contained"
-        startIcon={<AddIcon />}
-        onClick={onCreate}
-        sx={{ ml: { sm: 'auto' }, flex: 'none' }}
-      >
-        Konto anlegen
-      </Button>
     </Stack>
   )
 }

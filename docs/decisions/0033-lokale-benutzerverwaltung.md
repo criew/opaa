@@ -737,12 +737,19 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
   Mail; einmal im Quartal erhalten die Systemverwalter eine Wiedervorlage (`ADMIN_REVIEW_REMINDER`)
   mit der Zahl der Konten ohne Ablaufdatum und dem Link zur Liste — keine Namen in der Mail.
   Systemverwalterkonten sind nicht ausgenommen.
-- **Die Kontenliste ist kein Auswertungspfad:** Sie führt **ausschließlich lokale Konten** (die Rolle
-  eines OIDC-Kontos wird nicht in dieser Sicht verwaltet — ein fehlender Aufrufer dafür ist ein
-  eigenes Thema, keine Rechtfertigung für eine Beschäftigtenliste), zeigt Aktivität nur als Klasse
-  („nie", „länger als 90 Tage nicht", „aktiv") ohne exakten Zeitstempel und ohne Sortierung danach,
-  und kennt **keinen Export und keinen Massenabruf** (keine CSV-Ausgabe, Seitengröße höchstens 50).
-  Das ist eine dauerhafte Eigenschaft, keine Umfangsentscheidung eines Issues. `users.last_login_at`
+- **Die Kontenliste ist kein Auswertungspfad:** Sie zeigt Aktivität nur als Klasse („nie", „länger
+  als 90 Tage nicht", „aktiv") ohne exakten Zeitstempel und ohne Sortierung danach, und kennt
+  **keinen Export und keinen Massenabruf** (keine CSV-Ausgabe, Seitengröße höchstens 50). Das ist
+  eine dauerhafte Eigenschaft, keine Umfangsentscheidung eines Issues. **Ergänzung vom 12.09.2026
+  (#1601, Maßgabe des Maintainers):** Die Liste unter Administration → Benutzer führt **alle Konten
+  der Organisation**, lokale wie die der Identitätsanbieter, mit sichtbarer Herkunft je Zeile
+  (`GET /api/v1/admin/accounts`); `GET /api/v1/admin/local-users` bleibt die auf lokale Konten
+  beschränkte Liste der Verwaltung. Die Aktivitätsklasse wird dabei **nur für lokale Konten**
+  ausgegeben — für ein Anbieterkonto besteht keine Prüfpflicht, sein Lebenszyklus liegt beim
+  Anbieter —, und die Prüffilter (Zustand, ohne Ablaufdatum, länger nicht genutzt) grenzen die
+  Liste auf lokale Konten ein. Ein Anbieterkonto bietet in dieser Sicht genau eine Handlung, die
+  Rolle über den bestehenden Rollenendpunkt; Sperren, Befristen und Löschen kennt OPAA für es
+  nicht. `users.last_login_at`
   ist ein bei jeder Anfrage gedrosselt fortgeschriebener **Aktivitätszeitstempel** (fünf Minuten
   Auflösung, `UserService#updateExistingUser`), kein Anmeldezeitpunkt — er wird nirgends als solcher
   ausgegeben.
@@ -1107,7 +1114,9 @@ Auszugs — gehören ebenfalls ins Handbuch (#1543).
   Filter, Erinnerungen und Wiedervorlage sind es (11).
 - **Kontenliste mit allen Konten und exakter „letzter Anmeldung":** eine nach Aktivität sortierbare
   Beschäftigtenliste — genau der Auswertungspfad, den `security-and-compliance.md` ausschließt; und
-  `last_login_at` ist ohnehin ein Aktivitäts-, kein Anmeldezeitstempel (11).
+  `last_login_at` ist ohnehin ein Aktivitäts-, kein Anmeldezeitstempel (11). Die gemeinsame Liste
+  aller Konten seit #1601 ist davon unterschieden: ohne Zeitstempel, ohne Aktivität für
+  Anbieterkonten, ohne Sortierung nach Aktivität, ohne Export (Ergänzung zu 11).
 - **Exportierbare Kontenliste** (Betrieb): ein Vollabzug mit anderem Namen; die Prüferfrage
   beantwortet die gefilterte Liste (11).
 - **Hinweis-Mail „Konto existiert bereits" bei der Registrierung:** selbst ein Aufzählungskanal (11).

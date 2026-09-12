@@ -2,9 +2,10 @@
 
 > **Entwurf.** Dieses Kapitel beschreibt die Verwaltung **lokaler Konten** — derjenigen Konten, die
 > OPAA selbst führt. Konten, die über einen Identitätsanbieter entstehen, werden dort verwaltet, wo
-> sie herkommen, und erscheinen in dieser Liste nie. Einrichtung des Anmeldewegs, Erststart,
-> Umgebungsvariablen und E-Mail-Versand stehen im Kapitel [Deployment](deployment.md); hier geht es
-> um die täglichen Abläufe.
+> sie herkommen; in der Kontenliste stehen sie mit ihrer Herkunft und ihrer Rolle, aber ohne
+> Zustand, Ablauf und Aktivität — was sich an ihnen ändern lässt, sagen die Abschnitte 6 und 7.
+> Einrichtung des Anmeldewegs, Erststart, Umgebungsvariablen und E-Mail-Versand stehen im Kapitel
+> [Deployment](deployment.md); hier geht es um die täglichen Abläufe.
 
 ## 1. Wann diese Verwaltung gebraucht wird
 
@@ -22,8 +23,9 @@ Regelbetrieb **aus** zu lassen: Lokale Konten laufen an den Ein- und Austrittspr
 vorbei, und jedes von ihnen ist ein Zugang, den niemand automatisch entzieht. Die Gegenmittel dazu
 stehen in Abschnitt 6.
 
-Einschalten, Abschalten und die Regeln darunter liegen unter **Administration → Benutzer** in der
-Karte „Lokale Anmeldung". Jede dieser Änderungen steht im Nachweisprotokoll.
+Einschalten, Abschalten und die Regeln darunter liegen unter **Administration → Benutzer →
+Einstellungen** in der Karte „Lokale Anmeldung"; die Konten selbst stehen im Bereich **Konten**
+daneben. Jede dieser Änderungen steht im Nachweisprotokoll.
 
 ```mermaid
 flowchart LR
@@ -144,13 +146,26 @@ Adresse noch nicht bestätigt hat, wird dadurch nicht anmeldefähig.
 
 ## 6. Die Liste und die Auflagenprüfung
 
-Die Kontenliste führt **ausschließlich lokale Konten** mit Zustand, Rolle, Ablauf, Anlagedatum,
-Anlagegrund und einer **Aktivitätsklasse**. Die Klasse ist grob — „nie", „länger nicht genutzt",
-„aktiv" — und bewusst so: Ein exakter Zeitstempel der letzten Nutzung wäre der Rohstoff für eine
-Anwesenheitsauswertung. Nach Aktivität lässt sich deshalb auch **nicht sortieren**, und es gibt
-**keinen Export** der Liste. Das ist eine dauerhafte Eigenschaft dieser Ansicht.
+Die Kontenliste im Bereich **Konten** führt **alle Konten der Installation** — lokale und die der
+Identitätsanbieter. Die **Herkunft** steht an jeder Zeile: „Lokal" mit einem Schlüssel, sonst der
+Name des Anbieters. Der Filter „Herkunft" grenzt auf lokale Konten, auf alle Anbieter oder auf einen
+einzelnen Anbieter ein.
 
-Drei Filter bedienen die Prüfpflicht:
+Ein **lokales Konto** zeigt Zustand, Rolle, Ablauf, Anlagedatum, Anlagegrund und eine
+**Aktivitätsklasse**. Die Klasse ist grob — „nie", „länger nicht genutzt", „aktiv" — und bewusst so:
+Ein exakter Zeitstempel der letzten Nutzung wäre der Rohstoff für eine Anwesenheitsauswertung. Nach
+Aktivität lässt sich deshalb auch **nicht sortieren**, und es gibt **keinen Export** der Liste. Das
+ist eine dauerhafte Eigenschaft dieser Ansicht.
+
+Ein **Konto eines Identitätsanbieters** zeigt Herkunft und Rolle, aber weder Zustand noch Ablauf
+noch Aktivität: Sein Lebenszyklus liegt beim Anbieter, und die Prüfpflicht dieses Kapitels gilt ihm
+nicht. Steht in seiner Zustandsspalte „Anbieter deaktiviert", kann sich niemand mehr über diesen
+Anbieter anmelden; „Unbekannter Anbieter" heißt, dass zu seinem Issuer keine Anbieterzeile mehr
+existiert — das Konto bleibt, der Weg hinein ist zu. Sein Zeilenmenü bietet „Rolle ändern"
+(Abschnitt 7) und den Weg zur Anbieterverwaltung.
+
+Drei Filter bedienen die Prüfpflicht — sie beschreiben lokale Konten und blenden Anbieterkonten
+aus:
 
 - **ohne Ablaufdatum** — die Konten, die keine Befristung tragen,
 - **länger nicht genutzt** — Kandidaten für eine Sperre oder Löschung,
@@ -174,6 +189,12 @@ Bibliotheken werden dort vergeben, nicht hier.
 | **Nutzer** | Der Regelfall: fragen, eigene Inhalte verwalten, nutzen, was freigegeben ist |
 | **Systemverwaltung** | Alles unter „Administration": Konten, Anbieter, Modelle, E-Mail, Suche, Erscheinungsbild |
 | **Revision** | Lesender Zugriff auf das Nachweisprotokoll, ohne Verwaltungsrechte |
+
+Die Rolle eines lokalen Kontos steht im Dialog „Bearbeiten". Die Rolle eines Anbieterkontos ändert
+die Systemverwaltung über „Rolle ändern …" im Zeilenmenü — es sei denn, der Anbieter führt die
+Rollen über seinen Rollen-Claim; dann ist der Eintrag deaktiviert und sagt das, weil ein hier
+gesetzter Wert bei der nächsten Anmeldung der Person überschrieben würde. Für beide Kontotypen gilt
+derselbe Schutz: Dem letzten anmeldefähigen Systemverwalter lässt sich die Rolle nicht entziehen.
 
 Systemverwalterkonten sind **persönliche** Konten, je Person eines — keine Sammelkonten. Das
 Notanker-Konto, das der Erststart anlegt, ist davon ausgenommen und kein Arbeitskonto; wofür es
@@ -264,8 +285,9 @@ nicht. Die Eingabemasken zeigen die Regel an und bieten „Sicheres Passwort erz
 - **Keinen zweiten Faktor.** Lokale Konten melden sich mit Adresse und Passwort an. Für lokale
   Systemverwalterkonten lässt sich stattdessen der Zugang auf bestimmte Netze begrenzen; das Kapitel
   [Deployment](deployment.md) beschreibt, wie.
-- **Keine Verwaltung der Konten eines Identitätsanbieters.** Deren Rollen werden über den Anbieter
-  geführt.
+- **Keine Verwaltung des Lebenszyklus der Konten eines Identitätsanbieters.** Sperren, Befristen
+  und Löschen erfolgen beim Anbieter; hier sind diese Konten mit Herkunft und Rolle sichtbar, und
+  nur die Rolle lässt sich ändern.
 - **Kein Export und kein Massenabruf der Kontenliste** (Abschnitt 6).
 - **Keine Übersicht der eigenen Sitzungen.** Eine Person kann ihre übrigen Sitzungen über einen
   Passwortwechsel beenden, aber nicht einzeln einsehen oder abmelden.

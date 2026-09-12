@@ -5,7 +5,7 @@ import {
   configureSmtp,
   createActiveAccount,
   enableLocalAccounts,
-  openUserAdministration,
+  openAccountList,
   signInSuccessfully,
   uniqueAddress,
 } from "../../fixtures/localAuth";
@@ -80,8 +80,8 @@ test.describe("Fehlversuche sperren, Verwalter entsperrt", () => {
     acceptConfirmDialogs(admin);
     await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password);
     await clearMailbox();
-    await openUserAdministration(admin);
-    const table = admin.getByRole("table", { name: "Lokale Konten" });
+    await openAccountList(admin);
+    const table = admin.getByRole("table", { name: "Konten" });
     await expect(table).toContainText("Gesperrt (Fehlversuche)");
 
     await admin.getByRole("button", { name: `Aktionen für „${displayName}“` }).click();

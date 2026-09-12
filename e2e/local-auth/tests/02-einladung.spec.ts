@@ -4,7 +4,7 @@ import {
   bootstrapAdmin,
   configureSmtp,
   enableLocalAccounts,
-  openUserAdministration,
+  openAccountList,
   signInSuccessfully,
   uniqueAddress,
 } from "../../fixtures/localAuth";
@@ -43,7 +43,7 @@ test.describe("Einladung, Passwort setzen, erste Anmeldung", () => {
     await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password);
 
     await clearMailbox();
-    await openUserAdministration(admin);
+    await openAccountList(admin);
     await admin.getByRole("button", { name: "Konto anlegen" }).click();
 
     const dialog = admin.getByRole("dialog", { name: "Lokales Konto anlegen" });
@@ -58,8 +58,8 @@ test.describe("Einladung, Passwort setzen, erste Anmeldung", () => {
     await dialog.getByRole("button", { name: "Anlegen" }).click();
 
     await expect(admin.getByText(`Die Einladung wurde an ${invited} versendet.`)).toBeVisible();
-    await expect(admin.getByRole("table", { name: "Lokale Konten" })).toContainText(invitedName);
-    await expect(admin.getByRole("table", { name: "Lokale Konten" })).toContainText("Eingeladen");
+    await expect(admin.getByRole("table", { name: "Konten" })).toContainText(invitedName);
+    await expect(admin.getByRole("table", { name: "Konten" })).toContainText("Eingeladen");
 
     const invitation = await waitForMail(invited);
     const setupPath = linkPathIn(invitation);
@@ -114,8 +114,8 @@ test.describe("Einladung, Passwort setzen, erste Anmeldung", () => {
     await expect(user.getByRole("link", { name: "Passwort ändern" })).toBeVisible();
 
     // The administration now sees the account as ACTIVE, without ever having seen the password.
-    await openUserAdministration(admin);
-    await expect(admin.getByRole("table", { name: "Lokale Konten" })).toContainText("Aktiv");
+    await openAccountList(admin);
+    await expect(admin.getByRole("table", { name: "Konten" })).toContainText("Aktiv");
 
     await userContext.close();
     await adminContext.close();
@@ -128,7 +128,7 @@ test.describe("Einladung, Passwort setzen, erste Anmeldung", () => {
     await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password);
 
     const address = uniqueAddress("thomas.kranz");
-    await openUserAdministration(admin);
+    await openAccountList(admin);
     await admin.getByRole("button", { name: "Konto anlegen" }).click();
     const dialog = admin.getByRole("dialog", { name: "Lokales Konto anlegen" });
     await dialog.locator("#user-form-email").fill(address);

@@ -4,7 +4,8 @@ import {
   bootstrapAdmin,
   configureSmtp,
   enableLocalAccounts,
-  openUserAdministration,
+  openAccountList,
+  openLocalAuthSettings,
   signInSuccessfully,
   uniqueAddress,
 } from "../../fixtures/localAuth";
@@ -43,7 +44,7 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
   }) => {
     acceptConfirmDialogs(page);
     await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password);
-    await openUserAdministration(page);
+    await openLocalAuthSettings(page);
 
     await page.locator("#local-auth-domains").fill("");
     await page.getByRole("switch", { name: "Selbstregistrierung" }).click();
@@ -69,7 +70,7 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     const admin = await adminContext.newPage();
     acceptConfirmDialogs(admin);
     await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password);
-    await openUserAdministration(admin);
+    await openLocalAuthSettings(admin);
 
     await admin.locator("#local-auth-domains").fill("stadt.example");
     await admin.getByRole("switch", { name: "Selbstregistrierung" }).click();
@@ -136,11 +137,14 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     await expect(user.getByText("Anlass des Kontos")).toBeVisible();
     await expect(user.getByText("Selbstregistrierung")).toBeVisible();
 
-    await openUserAdministration(admin);
-    const row = admin.getByRole("table", { name: "Lokale Konten" });
+    // Das selbstregistrierte Konto steht im Bereich „Konten", der Schalter im Bereich
+    // „Einstellungen" (#1601) - zwei Routen, also zwei Aufrufe.
+    await openAccountList(admin);
+    const row = admin.getByRole("table", { name: "Konten" });
     await expect(row).toContainText("Neue Kollegin");
 
     // Switch it back off: it is off by default for a reason, and no later scenario expects it on.
+    await openLocalAuthSettings(admin);
     await admin.getByRole("switch", { name: "Selbstregistrierung" }).click();
     await expect(admin.getByText("Die Selbstregistrierung ist abgeschaltet.")).toBeVisible();
 
