@@ -5968,6 +5968,16 @@ components:
         systemRole:
           type: string
           example: USER
+        createdReason:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: >
+            The creation reason a system administrator recorded when the local account was created
+            (ADR-0033, Entscheidung 11) - part of the person's own self-disclosure, which is why
+            this endpoint carries it and the user settings show it. Null for an account of an
+            identity provider, which has no such reason.
+          example: Projektbefristung Digitalisierung bis 31.12.2026
 
     UserSummaryResponse:
       type: object
