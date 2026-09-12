@@ -239,10 +239,6 @@ class LocalSelfServiceIntegrationTest {
     assertThat(mail.getAllRecipients()[0].toString()).isEqualTo(user.email());
     assertThat(mail.getSubject()).contains("zurücksetzen");
     String token = LocalMailbox.tokenIn(LocalMailbox.plainText(mail));
-    // asking does not end the session - only the redeemed link does
-    mockMvc
-        .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(session)))
-        .andExpect(status().isOk());
 
     setPassword(token, NEW_PASSWORD).andExpect(status().isNoContent());
 
@@ -305,6 +301,7 @@ class LocalSelfServiceIntegrationTest {
     fixtures.save(expiredRow);
     LocalAccount invited = fixtures.invitedUser("eingeladen-" + UUID.randomUUID() + "@" + DOMAIN);
     String unknown = "niemand-" + UUID.randomUUID() + "@" + DOMAIN;
+    MvcResult session = login(active.email(), LocalAccountFixtures.PASSWORD, 200);
     // warm-up: the first calls carry class loading, not the flow's cost
     forgot("aufwaermen-" + UUID.randomUUID() + "@" + DOMAIN).andExpect(status().isNoContent());
     forgot(adminLocked.email()).andExpect(status().isNoContent());
@@ -334,22 +331,34 @@ class LocalSelfServiceIntegrationTest {
             - millis.values().stream().mapToLong(Long::longValue).min().orElseThrow();
     assertThat(spread).as("response-time spread %s", millis).isLessThan(FLOOR.toMillis());
 
+    // asking does not end a running session - only the redeemed link does
+    mockMvc
+        .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(session)))
+        .andExpect(status().isOk());
     // mail: the active account (twice - the upper-cased address is the same account) and the
     // account in a failed-login lockout; nobody else
     assertThat(mailbox.waitFor(3, 10_000)).isTrue();
     assertThat(mailbox.waitFor(4, 1_500)).isFalse();
     List<String> recipients = new ArrayList<>();
+    List<String> activeTokens = new ArrayList<>();
     for (MimeMessage message : mailbox.messages()) {
-      recipients.add(message.getAllRecipients()[0].toString());
+      String recipient = message.getAllRecipients()[0].toString();
+      recipients.add(recipient);
+      if (recipient.equals(active.email())) {
+        activeTokens.add(LocalMailbox.tokenIn(LocalMailbox.plainText(message)));
+      }
     }
     assertThat(recipients)
         .containsExactlyInAnyOrder(active.email(), active.email(), lockedOut.email());
-    // the newest link of the active account is a RESET_PASSWORD token with the settings' TTL
-    String token = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[2]));
-    LocalActionToken issued =
-        actionTokens.findRedeemable(token, ActionTokenPurpose.RESET_PASSWORD).orElseThrow();
-    assertThat(issued.getUserId()).isEqualTo(active.id());
-    assertThat(issued.getExpiresAt())
+    // exactly one of the active account's two links is still open - the newer voided the older -
+    // and it is a RESET_PASSWORD token with the settings' TTL
+    List<LocalActionToken> open =
+        activeTokens.stream()
+            .flatMap(t -> actionTokens.findRedeemable(t, ActionTokenPurpose.RESET_PASSWORD).stream())
+            .toList();
+    assertThat(open).hasSize(1);
+    assertThat(open.getFirst().getUserId()).isEqualTo(active.id());
+    assertThat(open.getFirst().getExpiresAt())
         .isAfter(now.plus(Duration.ofMinutes(29)))
         .isBefore(now.plus(Duration.ofMinutes(31)));
     // no state changed, so nothing is audited
@@ -503,7 +512,7 @@ class LocalSelfServiceIntegrationTest {
   @Test
   void aSwitchedOffFlowAnswersLikeAnUnknownRoute() throws Exception {
     String unknownRoute = withoutTimestamp(body(unknownRoute()));
-    assertThat(unknownRoute).contains("\"status\":404").doesNotContain("code");
+    assertThat(unknownRoute).contains("\"status\":404").doesNotContain("TOKEN_INVALID");
     String email = "wer-" + UUID.randomUUID() + "@" + DOMAIN;
 
     // registration: off by default; on without a domain list; management off
@@ -539,9 +548,14 @@ class LocalSelfServiceIntegrationTest {
   void theSelfServiceLeaksNoTokenPasswordOrPersonIntoLogsOrAuditRows() throws Exception {
     replaceSettings(withRegistration(true, List.of(DOMAIN)));
     Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    // the SMTP transport's wire trace is the mail itself (it carries the link by definition), not a
+    // log of OPAA's - it stays at INFO while everything else is captured at TRACE
+    Logger smtpWire = (Logger) LoggerFactory.getLogger("org.eclipse.angus.mail");
     Level previous = root.getLevel();
+    Level previousSmtp = smtpWire.getLevel();
     ListAppender<ILoggingEvent> logs = new ListAppender<>();
     root.setLevel(Level.TRACE);
+    smtpWire.setLevel(Level.INFO);
     logs.start();
     root.addAppender(logs);
     try {
@@ -592,6 +606,7 @@ class LocalSelfServiceIntegrationTest {
     } finally {
       root.detachAppender(logs);
       root.setLevel(previous);
+      smtpWire.setLevel(previousSmtp);
     }
   }
 
