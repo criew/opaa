@@ -31,6 +31,13 @@ const SEITENQUELLEN = import.meta.glob('../pages/*.tsx', {
   eager: true,
 }) as Record<string, string>
 
+/**
+ * Die sieben Seiten der Administration. „Ihre Einstellungen" fehlt bewusst: Sie trägt denselben
+ * Kopf, aber nicht dieselbe Breite - ihr Inhalt ist ein Formular in Lesebreite, keine Tabelle
+ * (#1607).
+ */
+const ADMINISTRATIONSSEITEN = BEREICHSSEITEN.filter((datei) => datei !== 'SettingsPage.tsx')
+
 function quelltextVon(datei: string): string {
   const quelltext = SEITENQUELLEN[`../pages/${datei}`]
   if (!quelltext) {
@@ -83,6 +90,18 @@ describe('AreaPageHeader', () => {
     // Kein zweiter, handgeschriebener Kopf daneben: der Geltungshinweis gehört in die
     // `description` des Bausteins, nicht als eigener Absatz unter eine eigene Überschrift.
     expect(quelltext).not.toContain('GlobalScopeNote')
+  })
+
+  /**
+   * Die Inhaltsbreite ist eine Eigenschaft des Bereichs, nicht der einzelnen Seite (#1607): Vorher
+   * standen dort fünf verschiedene Werte, und die rechte Kante sprang beim Wechsel zwischen zwei
+   * Menüpunkten. Eine nackte Zahl ist der Weg zurück dorthin.
+   */
+  it.each(ADMINISTRATIONSSEITEN)('%s takes its content width from the tokens', (datei) => {
+    const quelltext = quelltextVon(datei)
+
+    expect(quelltext).toContain('contentWidth.areaContent')
+    expect(quelltext).not.toMatch(/maxWidth: \d/)
   })
 
   it.each(BEREICHSSEITEN)('%s uses PageHeading directly only where access is refused', (datei) => {

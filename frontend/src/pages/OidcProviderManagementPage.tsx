@@ -11,7 +11,7 @@ import type { OidcProviderResponse } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
 import { notify } from '../stores/notificationStore'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
-import { radius } from '../theme/tokens'
+import { contentWidth, radius } from '../theme/tokens'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
 import SectionHead from '../components/SectionHead'
@@ -48,7 +48,7 @@ export default function OidcProviderManagementPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: 720 }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
         <PageHeading title="Identitätsanbieter" gutterBottom />
         <Alert severity="info">
           Die Anbieterverwaltung wird von der Systemverwaltung gepflegt. Für Ihr Konto ist diese
@@ -62,7 +62,7 @@ export default function OidcProviderManagementPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: 1040 }}>
+      <Box sx={{ maxWidth: contentWidth.areaContent }}>
         <AreaPageHeader
           title="Identitätsanbieter"
           meta={providers.length === 1 ? '1 Anbieter' : `${providers.length} Anbieter`}

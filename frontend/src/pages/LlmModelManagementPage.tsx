@@ -19,6 +19,7 @@ import { useLlmModelStore } from '../stores/llmModelStore'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
 import CreateLlmModelDialog from '../components/admin/CreateLlmModelDialog'
+import { contentWidth } from '../theme/tokens'
 
 const BASE_URL_HELP_TEXT =
   'Der OpenAI-kompatible Endpunkt der Modellschnittstelle. Auch lokal betriebene Modellserver ' +
@@ -451,7 +452,7 @@ export default function LlmModelManagementPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: 720 }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
         <PageHeading title="Modelle" gutterBottom />
         <Alert severity="info">
           Die Modellverwaltung wird von der Systemverwaltung gepflegt. Für Ihr Konto ist diese Seite
@@ -463,48 +464,50 @@ export default function LlmModelManagementPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <AreaPageHeader
-        title="Modelle"
-        meta={models.length === 1 ? '1 Chat-Modell' : `${models.length} Chat-Modelle`}
-        description="Gilt für die gesamte Anwendung. Änderungen wirken sich auf alle Spaces und Benutzer aus. Das aktive Modell beantwortet jede Frage dieser Installation."
-        action={
-          <Button variant="contained" onClick={() => setCreateDialogOpen(true)}>
-            Neues Modell
-          </Button>
-        }
-      />
+      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+        <AreaPageHeader
+          title="Modelle"
+          meta={models.length === 1 ? '1 Chat-Modell' : `${models.length} Chat-Modelle`}
+          description="Gilt für die gesamte Anwendung. Änderungen wirken sich auf alle Spaces und Benutzer aus. Das aktive Modell beantwortet jede Frage dieser Installation."
+          action={
+            <Button variant="contained" onClick={() => setCreateDialogOpen(true)}>
+              Neues Modell
+            </Button>
+          }
+        />
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
 
-      {isLoading ? (
-        <Typography color="text.secondary">Modelle werden geladen …</Typography>
-      ) : models.length === 0 ? (
-        <Typography color="text.secondary">Es sind noch keine Modelle hinterlegt.</Typography>
-      ) : (
-        <Stack spacing={1}>
-          {models.map((model) => (
-            // Keyed on id alone (#759 review): a remount on every save/activate/delete reload
-            // dropped the open panel, the just-shown test result and the save confirmation right
-            // after the action that produced them - see updateExistingModel's own comment for how
-            // the card now re-seeds its draft from the server response instead.
-            <LlmModelCard key={model.id} model={model} />
-          ))}
-        </Stack>
-      )}
+        {isLoading ? (
+          <Typography color="text.secondary">Modelle werden geladen …</Typography>
+        ) : models.length === 0 ? (
+          <Typography color="text.secondary">Es sind noch keine Modelle hinterlegt.</Typography>
+        ) : (
+          <Stack spacing={1}>
+            {models.map((model) => (
+              // Keyed on id alone (#759 review): a remount on every save/activate/delete reload
+              // dropped the open panel, the just-shown test result and the save confirmation right
+              // after the action that produced them - see updateExistingModel's own comment for how
+              // the card now re-seeds its draft from the server response instead.
+              <LlmModelCard key={model.id} model={model} />
+            ))}
+          </Stack>
+        )}
 
-      <Divider sx={{ my: 4 }} />
+        <Divider sx={{ my: 4 }} />
 
-      <EmbeddingInfoSection />
+        <EmbeddingInfoSection />
 
-      <CreateLlmModelDialog
-        open={createDialogOpen}
-        onClose={() => setCreateDialogOpen(false)}
-        onCreated={() => setCreateDialogOpen(false)}
-      />
+        <CreateLlmModelDialog
+          open={createDialogOpen}
+          onClose={() => setCreateDialogOpen(false)}
+          onCreated={() => setCreateDialogOpen(false)}
+        />
+      </Box>
     </Box>
   )
 }

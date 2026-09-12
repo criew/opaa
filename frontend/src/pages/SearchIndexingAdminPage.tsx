@@ -54,6 +54,7 @@ import { translateListLabel, translateStageNote } from '../utils/retrievalProtoc
 import { getSearchChunk } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useSearchAdminStore } from '../stores/searchAdminStore'
+import { contentWidth } from '../theme/tokens'
 
 function formatMetadataValue(value: unknown): string {
   if (value == null) return '—'
@@ -586,7 +587,7 @@ export default function SearchIndexingAdminPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: 720 }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
         <PageHeading title="Suche & Indexierung" gutterBottom />
         <Alert severity="info">
           Suche und Indexierung werden von der Systemverwaltung betreut. Für Ihr Konto ist diese
@@ -598,102 +599,104 @@ export default function SearchIndexingAdminPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <AreaPageHeader
-        title="Suche & Indexierung"
-        description="Diese Seite zeigt die aktive Konfiguration an und ändert sie nicht. Sie beantwortet, warum ein Dokument in einer Antwort steht oder fehlt. Der einzige Eingriff ist das Nachrüsten der Kernfelder je Bibliothek — ein bewusster Start, kein Automatismus."
-      />
-
-      {statusError && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {statusError}
-        </Alert>
-      )}
-
-      <Box sx={{ mb: 4 }}>
-        <SectionHead>Modellrollen</SectionHead>
-        <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', rowGap: 2 }}>
-          {status?.modelRoles.map((role) => (
-            <ModelRoleCard key={role.role} role={role} />
-          ))}
-        </Stack>
-      </Box>
-
-      <Box sx={{ mb: 4 }}>
-        <SectionHead>Suchpfade</SectionHead>
-        <Stack spacing={1.5}>
-          {status?.searchPaths.map((path) => (
-            <Paper key={path.path} variant="outlined" sx={{ p: 2 }}>
-              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 0.5 }}>
-                <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
-                  {PATH_LABELS[path.path]}
-                </Typography>
-                <Chip
-                  size="small"
-                  label={PATH_STATE_LABELS[path.state]}
-                  color={path.state === 'ACTIVE' ? 'success' : 'warning'}
-                  aria-label={`${PATH_LABELS[path.path]}: ${PATH_STATE_LABELS[path.state]}`}
-                />
-              </Stack>
-              <Typography variant="body2" color="text.secondary">
-                {path.detail}
-              </Typography>
-            </Paper>
-          ))}
-        </Stack>
-      </Box>
-
-      <Box sx={{ mb: 4 }}>
-        <SectionHead>Indexstatus je Bibliothek</SectionHead>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          „Kernfelder" zeigt, wie viele Dokumente die aktuelle Extraktion der Kernfelder tragen, wie
-          gut jedes Feld befüllt ist und wie viele Dokumente je Feld noch ohne Wert sind — derselbe
-          Pflege-Anker, den die Einstellungen der Bibliothek zeigen; von Hand als „kein Wert
-          ermittelbar" gekennzeichnete Felder zählen nicht mit. Das Nachrüsten liest die
-          Originaldateien in Chargen erneut; die Suche bleibt währenddessen verfügbar, ein
-          angehaltener Lauf setzt beim nächsten unverarbeiteten Dokument fort.
-        </Typography>
-        <LibraryStatusTable
-          libraries={status?.libraries ?? []}
-          backfillRuns={backfillRuns}
-          contextPrefixRuns={contextPrefixRuns}
-          onStartBackfill={(libraryId) => void startMetadataBackfill(libraryId)}
-          onPauseBackfill={pauseMetadataBackfill}
-          onStartContextPrefixRerun={(libraryId) => void startContextPrefixRerun(libraryId)}
-          onPauseContextPrefixRerun={pauseContextPrefixRerun}
+      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+        <AreaPageHeader
+          title="Suche & Indexierung"
+          description="Diese Seite zeigt die aktive Konfiguration an und ändert sie nicht. Sie beantwortet, warum ein Dokument in einer Antwort steht oder fehlt. Der einzige Eingriff ist das Nachrüsten der Kernfelder je Bibliothek — ein bewusster Start, kein Automatismus."
         />
-      </Box>
 
-      <Box sx={{ mb: 4 }}>
-        <SectionHead>Diagnose</SectionHead>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Die Diagnose führt eine frisch eingegebene Testfrage im gewählten Rechtekontext aus und
-          zeigt jede Stufe einzeln. Sie liest keine bestehenden Gespräche und beantwortet nur den
-          jetzigen Zustand - sie ist kein Nachweis über zurückliegende Zugriffe.
-        </Typography>
-        <DiagnosisForm
-          profiles={profiles}
-          personContextAvailable={personContextAvailable}
-          personContextHint={personContextHint}
-          running={running}
-          onRunDiagnosis={runDiagnosis}
-        />
-        {diagnosisError && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {diagnosisError}
+        {statusError && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {statusError}
           </Alert>
         )}
-        {diagnosis && <DiagnosisResult diagnosis={diagnosis} navigation={navigation} />}
+
+        <Box sx={{ mb: 4 }}>
+          <SectionHead>Modellrollen</SectionHead>
+          <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', rowGap: 2 }}>
+            {status?.modelRoles.map((role) => (
+              <ModelRoleCard key={role.role} role={role} />
+            ))}
+          </Stack>
+        </Box>
+
+        <Box sx={{ mb: 4 }}>
+          <SectionHead>Suchpfade</SectionHead>
+          <Stack spacing={1.5}>
+            {status?.searchPaths.map((path) => (
+              <Paper key={path.path} variant="outlined" sx={{ p: 2 }}>
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 0.5 }}>
+                  <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
+                    {PATH_LABELS[path.path]}
+                  </Typography>
+                  <Chip
+                    size="small"
+                    label={PATH_STATE_LABELS[path.state]}
+                    color={path.state === 'ACTIVE' ? 'success' : 'warning'}
+                    aria-label={`${PATH_LABELS[path.path]}: ${PATH_STATE_LABELS[path.state]}`}
+                  />
+                </Stack>
+                <Typography variant="body2" color="text.secondary">
+                  {path.detail}
+                </Typography>
+              </Paper>
+            ))}
+          </Stack>
+        </Box>
+
+        <Box sx={{ mb: 4 }}>
+          <SectionHead>Indexstatus je Bibliothek</SectionHead>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            „Kernfelder" zeigt, wie viele Dokumente die aktuelle Extraktion der Kernfelder tragen,
+            wie gut jedes Feld befüllt ist und wie viele Dokumente je Feld noch ohne Wert sind —
+            derselbe Pflege-Anker, den die Einstellungen der Bibliothek zeigen; von Hand als „kein
+            Wert ermittelbar" gekennzeichnete Felder zählen nicht mit. Das Nachrüsten liest die
+            Originaldateien in Chargen erneut; die Suche bleibt währenddessen verfügbar, ein
+            angehaltener Lauf setzt beim nächsten unverarbeiteten Dokument fort.
+          </Typography>
+          <LibraryStatusTable
+            libraries={status?.libraries ?? []}
+            backfillRuns={backfillRuns}
+            contextPrefixRuns={contextPrefixRuns}
+            onStartBackfill={(libraryId) => void startMetadataBackfill(libraryId)}
+            onPauseBackfill={pauseMetadataBackfill}
+            onStartContextPrefixRerun={(libraryId) => void startContextPrefixRerun(libraryId)}
+            onPauseContextPrefixRerun={pauseContextPrefixRerun}
+          />
+        </Box>
+
+        <Box sx={{ mb: 4 }}>
+          <SectionHead>Diagnose</SectionHead>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Die Diagnose führt eine frisch eingegebene Testfrage im gewählten Rechtekontext aus und
+            zeigt jede Stufe einzeln. Sie liest keine bestehenden Gespräche und beantwortet nur den
+            jetzigen Zustand - sie ist kein Nachweis über zurückliegende Zugriffe.
+          </Typography>
+          <DiagnosisForm
+            profiles={profiles}
+            personContextAvailable={personContextAvailable}
+            personContextHint={personContextHint}
+            running={running}
+            onRunDiagnosis={runDiagnosis}
+          />
+          {diagnosisError && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {diagnosisError}
+            </Alert>
+          )}
+          {diagnosis && <DiagnosisResult diagnosis={diagnosis} navigation={navigation} />}
+        </Box>
+
+        <DocumentChunkSection
+          ref={documentChunkSectionRef}
+          documentChunks={documentChunks}
+          documentChunksError={documentChunksError}
+          loading={loadingDocumentChunks}
+          onLoadDocumentChunks={(documentId) => void loadDocumentChunks(documentId)}
+        />
+
+        <ChunkPreviewDialog chunkId={previewChunkId} onClose={() => setPreviewChunkId(null)} />
       </Box>
-
-      <DocumentChunkSection
-        ref={documentChunkSectionRef}
-        documentChunks={documentChunks}
-        documentChunksError={documentChunksError}
-        loading={loadingDocumentChunks}
-        onLoadDocumentChunks={(documentId) => void loadDocumentChunks(documentId)}
-      />
-
-      <ChunkPreviewDialog chunkId={previewChunkId} onClose={() => setPreviewChunkId(null)} />
     </Box>
   )
 }

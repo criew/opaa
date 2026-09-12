@@ -8,6 +8,7 @@ import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
 import MailServerSection from '../components/admin/mail/MailServerSection'
 import MailTemplatesSection from '../components/admin/mail/MailTemplatesSection'
+import { contentWidth } from '../theme/tokens'
 
 export type MailSettingsTab = 'server' | 'templates'
 
@@ -43,7 +44,7 @@ export default function MailSettingsPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: 720 }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
         <PageHeading title="E-Mail" gutterBottom />
         <Alert severity="info">
           Die E-Mail-Einstellungen werden von der Systemverwaltung gepflegt. Für Ihr Konto ist diese
@@ -55,7 +56,7 @@ export default function MailSettingsPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: 1040 }}>
+      <Box sx={{ maxWidth: contentWidth.areaContent }}>
         <AreaPageHeader
           title="E-Mail"
           description="Gilt für die gesamte Anwendung. Einladungen, Rücksetzlinks und Hinweise an Konten gehen über diesen Zugang; Änderungen wirken ohne Neustart."

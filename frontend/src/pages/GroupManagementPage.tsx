@@ -19,6 +19,7 @@ import CreateGroupDialog from '../components/CreateGroupDialog'
 import FieldLabel from '../components/wizard/FieldLabel'
 import MetaBadge from '../components/MetaBadge'
 import AreaPageHeader from '../components/AreaPageHeader'
+import { contentWidth } from '../theme/tokens'
 
 function GroupCard({ group }: { group: GroupListResponse }) {
   const details = useGroupStore((s) => s.groupDetails[group.id])
@@ -287,40 +288,42 @@ export default function GroupManagementPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <AreaPageHeader
-        title="Gruppen"
-        meta={groups.length === 1 ? '1 Gruppe' : `${groups.length} Gruppen`}
-        description="Gilt für die gesamte Anwendung. Änderungen wirken sich auf alle Spaces und Benutzer aus. Gruppen tragen Eigentum und Freigaben."
-        action={
-          <Button variant="contained" onClick={() => setCreateDialogOpen(true)}>
-            Neue Gruppe
-          </Button>
-        }
-      />
+      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+        <AreaPageHeader
+          title="Gruppen"
+          meta={groups.length === 1 ? '1 Gruppe' : `${groups.length} Gruppen`}
+          description="Gilt für die gesamte Anwendung. Änderungen wirken sich auf alle Spaces und Benutzer aus. Gruppen tragen Eigentum und Freigaben."
+          action={
+            <Button variant="contained" onClick={() => setCreateDialogOpen(true)}>
+              Neue Gruppe
+            </Button>
+          }
+        />
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
 
-      {isLoading ? (
-        <Typography color="text.secondary">Gruppen werden geladen …</Typography>
-      ) : groups.length === 0 ? (
-        <Typography color="text.secondary">Es sind noch keine Gruppen vorhanden.</Typography>
-      ) : (
-        <Stack spacing={1}>
-          {groups.map((group) => (
-            <GroupCard key={group.id} group={group} />
-          ))}
-        </Stack>
-      )}
+        {isLoading ? (
+          <Typography color="text.secondary">Gruppen werden geladen …</Typography>
+        ) : groups.length === 0 ? (
+          <Typography color="text.secondary">Es sind noch keine Gruppen vorhanden.</Typography>
+        ) : (
+          <Stack spacing={1}>
+            {groups.map((group) => (
+              <GroupCard key={group.id} group={group} />
+            ))}
+          </Stack>
+        )}
 
-      <CreateGroupDialog
-        open={createDialogOpen}
-        onClose={() => setCreateDialogOpen(false)}
-        onCreated={() => setCreateDialogOpen(false)}
-      />
+        <CreateGroupDialog
+          open={createDialogOpen}
+          onClose={() => setCreateDialogOpen(false)}
+          onCreated={() => setCreateDialogOpen(false)}
+        />
+      </Box>
     </Box>
   )
 }

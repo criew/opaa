@@ -21,6 +21,7 @@ import LocalUserReviewNotice from '../components/admin/users/LocalUserReviewNoti
 import RoleChangeDialog from '../components/admin/users/RoleChangeDialog'
 import UserFormDialog from '../components/admin/users/UserFormDialog'
 import SetupLinkDialog, { type SetupLinkHandover } from '../components/admin/users/SetupLinkDialog'
+import { contentWidth } from '../theme/tokens'
 import GeneratedPasswordDialog, {
   type GeneratedPassword,
 } from '../components/admin/users/GeneratedPasswordDialog'
@@ -212,7 +213,7 @@ export default function UserManagementPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: 720 }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
         <PageHeading title="Benutzer" gutterBottom />
         <Alert severity="info">
           Die Benutzerverwaltung wird von der Systemverwaltung gepflegt. Für Ihr Konto ist diese
@@ -224,7 +225,7 @@ export default function UserManagementPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: 1180 }}>
+      <Box sx={{ maxWidth: contentWidth.areaContent }}>
         <AreaPageHeader
           title="Benutzer"
           description="Gilt für die gesamte Anwendung. Lokale Konten werden hier angelegt und geführt; Konten eines Identitätsanbieters erscheinen mit ihrer Rolle, ihr Lebenszyklus liegt beim Anbieter."
