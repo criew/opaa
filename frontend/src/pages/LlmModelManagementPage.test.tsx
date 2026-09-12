@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, onTestFinished } from 'vitest'
+import userEvent, { type UserEvent } from '@testing-library/user-event'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { Navigate, Route, Routes } from 'react-router'
 import { server } from '../mocks/server'
@@ -43,7 +43,78 @@ function renderPage(route = '/admin/models/chat') {
 const renderChat = () => renderPage('/admin/models/chat')
 const renderEmbedding = () => renderPage('/admin/models/embedding')
 
+/** jsdom has no matchMedia; the table renders only on a desktop viewport (guidelines 5.3). */
+function desktopMatchMedia(query: string): MediaQueryList {
+  return {
+    matches: query.includes('min-width'),
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  } as unknown as MediaQueryList
+}
+
+/** Die Tabellenzeile eines Modells - erkannt am Anzeigenamen, den ihre erste Spalte führt. */
+function rowOf(name: string) {
+  return screen.getByRole('row', { name: new RegExp(name) })
+}
+
+async function openRowMenu(user: UserEvent, name: string) {
+  await user.click(within(rowOf(name)).getByRole('button', { name: `Aktionen für „${name}“` }))
+  return screen.findByRole('menu')
+}
+
+/**
+ * Öffnet das Formular eines Modells über „Bearbeiten" seines Zeilenmenüs - und sichert dabei zu,
+ * dass der Dialog das Modell trägt, dessen Zeile ihn geöffnet hat.
+ */
+async function openEditDialog(user: UserEvent, name: string) {
+  const menu = await openRowMenu(user, name)
+  await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText(`„${name}“ bearbeiten`)).toBeInTheDocument()
+  return dialog
+}
+
+/**
+ * Zeichnet jeden Aufruf der Modell-Endpunkte samt Rumpf auf.
+ *
+ * Beim API-Schlüssel ist der **gesendete** Request der Prüfgegenstand: Die Dreiwege-Konvention von
+ * `LlmModelRequest` - weggelassen heißt unverändert, leerer Text heißt entfernen, alles andere
+ * heißt setzen - ist am Ergebnis allein nicht zu unterscheiden.
+ */
+function recordModelRequests() {
+  const aufrufe: Array<{ method: string; path: string; body: Record<string, unknown> | null }> = []
+  const horcher = async ({ request }: { request: Request }) => {
+    const path = new URL(request.url).pathname
+    if (!path.startsWith('/api/v1/admin/models')) return
+    // `clone()` vor dem Lesen, damit der Rumpf des Originals für den Handler unberührt bleibt;
+    // Aufrufe ohne Rumpf (GET, DELETE, Aktivierung) tragen `null`.
+    const body = await request
+      .clone()
+      .json()
+      .then((rumpf) => rumpf as Record<string, unknown>)
+      .catch(() => null)
+    aufrufe.push({ method: request.method, path, body })
+  }
+  server.events.on('request:start', horcher)
+  onTestFinished(() => server.events.removeListener('request:start', horcher))
+  return aufrufe
+}
+
 describe('LlmModelManagementPage', () => {
+  const originalMatchMedia = window.matchMedia
+
+  beforeAll(() => {
+    window.matchMedia = desktopMatchMedia
+  })
+  afterAll(() => {
+    window.matchMedia = originalMatchMedia
+  })
+
   beforeEach(() => {
     useLlmModelStore.setState({
       models: [],
@@ -129,24 +200,52 @@ describe('LlmModelManagementPage', () => {
 
     renderChat()
 
-    await waitFor(() => {
-      expect(screen.getByText('Ollama lokal')).toBeInTheDocument()
-    })
-    expect(screen.getByLabelText('Aktives Modell')).toBeInTheDocument()
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+    // Der Zustand steht als Wort in der Zeile des Modells, nicht allein als Farbe.
+    expect(within(rowOf('Ollama lokal')).getByText('Aktiv')).toBeInTheDocument()
   })
 
-  // regression guard for #958: the model cards are the first headings after the page's h1
-  // (the "Einbettungsmodell" h2 follows below them), so the accordion heading must be level 2 -
-  // MUI's default renders an h3 there, which skips a level.
-  it('renders the model card headings as level 2', async () => {
+  /**
+   * Die Tabelle ist die Übersicht (#1621): Jede Spalte ist benannt, und jede Zeile führt ihr
+   * Modell mit Kennung, Endpunkt und Zugang, ohne dass etwas aufgeklappt werden muss.
+   */
+  /**
+   * Regressionsschutz zu #958 in neuer Form: Die Seite hatte je Modell eine Überschrift, und MUI
+   * setzte dort standardmäßig ein `h3` — eine übersprungene Stufe unter dem `h1` der Seite. Die
+   * Überschriften sind mit der Tabelle entfallen; damit die Stufenfolge nicht später wieder
+   * bricht, hält dieser Test fest, dass der Bereich außer dem Seitentitel keine trägt.
+   */
+  it('keeps the heading structure flat below the page title', async () => {
+    signInAs('SYSTEM_ADMIN')
+
+    renderChat()
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+
+    const stufen = screen
+      .getAllByRole('heading')
+      .map((h) => Number(h.tagName.slice(1)))
+      .sort((a, b) => a - b)
+    expect(stufen[0]).toBe(1)
+    // Keine Stufe wird übersprungen: entweder gibt es nur das h1, oder die nächste ist ein h2.
+    expect(stufen.every((stufe, i) => i === 0 || stufe - stufen[i - 1] <= 1)).toBe(true)
+  })
+
+  it('names its columns and carries each model in one row', async () => {
     signInAs('SYSTEM_ADMIN')
 
     renderChat()
 
-    await waitFor(() => {
-      expect(screen.getByText('Ollama lokal')).toBeInTheDocument()
-    })
-    expect(screen.getByRole('heading', { level: 2, name: /Ollama lokal/ })).toBeInTheDocument()
+    const tabelle = await screen.findByRole('table', { name: 'Chat-Modelle' })
+    expect(
+      within(tabelle)
+        .getAllByRole('columnheader')
+        .map((spalte) => spalte.textContent),
+    ).toEqual(['Modell', 'Endpunkt', 'Zustand', 'Zugang', 'Aktionen'])
+
+    const zeile = within(tabelle).getByRole('row', { name: /Ollama lokal/ })
+    expect(within(zeile).getByText('phi3:mini')).toBeInTheDocument()
+    expect(within(zeile).getByText('http://ollama:11434/v1')).toBeInTheDocument()
+    expect(within(zeile).getByText('Ohne Schlüssel')).toBeInTheDocument()
   })
 
   it('shows the read-only embedding block with provider, model and dimensions', async () => {
@@ -201,15 +300,21 @@ describe('LlmModelManagementPage', () => {
     const user = userEvent.setup()
 
     renderChat()
-    await waitFor(() => screen.getByText('Modell B'))
-    await user.click(screen.getByText('Modell B'))
-    await user.click(screen.getByRole('button', { name: '"Modell B" als aktives Modell setzen' }))
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+    const menu = await openRowMenu(user, 'Modell B')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Aktiv setzen' }))
 
     await waitFor(() => {
       expect(
         useLlmModelStore.getState().models.find((m) => m.displayName === 'Modell B')?.active,
       ).toBe(true)
     })
+    // Sichtbar in der Liste, und zwar an beiden Zeilen: Aktiv ist immer genau ein Modell.
+    await waitFor(() => {
+      expect(within(rowOf('Modell B')).getByText('Aktiv')).toBeInTheDocument()
+    })
+    expect(within(rowOf('Ollama lokal')).getByText('Nicht aktiv')).toBeInTheDocument()
+    expect(await screen.findByText(/„Modell B“ ist jetzt das aktive Modell/)).toBeInTheDocument()
   })
 
   /**
@@ -218,50 +323,60 @@ describe('LlmModelManagementPage', () => {
    */
   it('changes the display name and saves without touching the stored API key', async () => {
     signInAs('SYSTEM_ADMIN')
+    const aufrufe = recordModelRequests()
     const user = userEvent.setup()
 
     renderChat()
-    await waitFor(() => screen.getByText('Ollama lokal'))
-    await user.click(screen.getByText('Ollama lokal'))
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+    const dialog = await openEditDialog(user, 'Ollama lokal')
 
-    const nameField = screen.getByLabelText('Anzeigename', { exact: false })
+    const nameField = within(dialog).getByLabelText('Anzeigename', { exact: false })
     await user.clear(nameField)
     await user.type(nameField, 'Ollama umbenannt')
-    // The button's aria-label references the model as the server still knows it - the not-yet-
-    // saved draft name typed above only takes effect in the label after the save completes.
-    await user.click(screen.getByRole('button', { name: '"Ollama lokal" speichern' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() => {
       expect(
         useLlmModelStore.getState().models.find((m) => m.displayName === 'Ollama umbenannt'),
       ).toBeTruthy()
     })
+    // Dreiwege-Konvention: Das unberührte Schlüsselfeld lässt `apiKey` im Request ganz weg - und
+    // genau das heißt „unverändert".
+    const gesendet = aufrufe.find((aufruf) => aufruf.method === 'PUT')!
+    expect(gesendet.body).toMatchObject({ displayName: 'Ollama umbenannt' })
+    expect(gesendet.body).not.toHaveProperty('apiKey')
     const saved = useLlmModelStore
       .getState()
       .models.find((m) => m.displayName === 'Ollama umbenannt')!
     expect(saved.apiKeySet).toBe(false)
-    expect(screen.getByLabelText('API-Schlüssel (optional)')).toHaveValue('')
+
+    // Das Feld zeigt den gespeicherten Schlüssel auch nach dem Rundlauf durch Speichern und
+    // erneutes Öffnen nicht.
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const wieder = await openEditDialog(user, 'Ollama umbenannt')
+    expect(within(wieder).getByLabelText('API-Schlüssel (optional)')).toHaveValue('')
   })
 
   /**
-   * #759 review: the panel must stay open and show a visible confirmation after a save - a
-   * remount that collapses the card or drops the just-produced message is exactly what this
-   * guards against.
+   * #759 review: Ein Speichern bestätigt sich sichtbar, und die Liste führt danach den neuen Wert.
+   * Eine Bestätigung, die niemand zu sehen bekommt, und eine Liste, die noch den alten Namen
+   * zeigt, sind genau das, was hier ausgeschlossen wird.
    */
-  it('keeps the panel open and confirms the save via a status message', async () => {
+  it('closes the dialog, confirms the save and shows the new value in the list', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
     renderChat()
-    await waitFor(() => screen.getByText('Ollama lokal'))
-    await user.click(screen.getByText('Ollama lokal'))
-    await user.click(screen.getByRole('button', { name: '"Ollama lokal" speichern' }))
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+    const dialog = await openEditDialog(user, 'Ollama lokal')
+    const nameField = within(dialog).getByLabelText('Anzeigename', { exact: false })
+    await user.clear(nameField)
+    await user.type(nameField, 'Ollama umbenannt')
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
-    await waitFor(() => {
-      expect(screen.getByRole('status')).toHaveTextContent(/wurde gespeichert/i)
-    })
-    // Still expanded and showing the form, not a remounted, collapsed card.
-    expect(screen.getByLabelText('Anzeigename', { exact: false })).toBeVisible()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(await screen.findByText(/„Ollama umbenannt“ wurde gespeichert/)).toBeInTheDocument()
+    await waitFor(() => expect(rowOf('Ollama umbenannt')).toBeInTheDocument())
   })
 
   /**
@@ -279,23 +394,34 @@ describe('LlmModelManagementPage', () => {
       maxTokens: 2000,
       apiKey: 'geheim',
     })
+    const aufrufe = recordModelRequests()
     const user = userEvent.setup()
 
     renderChat()
-    await waitFor(() => screen.getByText('Modell mit Schlüssel'))
-    await user.click(screen.getByText('Modell mit Schlüssel'))
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+    expect(
+      within(rowOf('Modell mit Schlüssel')).getByText('Schlüssel hinterlegt'),
+    ).toBeInTheDocument()
+
+    const dialog = await openEditDialog(user, 'Modell mit Schlüssel')
     await user.click(
-      screen.getByRole('button', {
+      within(dialog).getByRole('button', {
         name: 'Gespeicherten Schlüssel von "Modell mit Schlüssel" entfernen',
       }),
     )
-    await user.click(screen.getByRole('button', { name: '"Modell mit Schlüssel" speichern' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() => {
       expect(
         useLlmModelStore.getState().models.find((m) => m.displayName === 'Modell mit Schlüssel')
           ?.apiKeySet,
       ).toBe(false)
+    })
+    // Dreiwege-Konvention: Die ausdrückliche Anforderung sendet den leeren Text - und genau das
+    // heißt „entfernen", im Unterschied zum weggelassenen Feld.
+    expect(aufrufe.find((aufruf) => aufruf.method === 'PUT')!.body?.apiKey).toBe('')
+    await waitFor(() => {
+      expect(within(rowOf('Modell mit Schlüssel')).getByText('Ohne Schlüssel')).toBeInTheDocument()
     })
   })
 
@@ -304,13 +430,11 @@ describe('LlmModelManagementPage', () => {
     const user = userEvent.setup()
 
     renderChat()
-    await waitFor(() => screen.getByText('Ollama lokal'))
-    await user.click(screen.getByText('Ollama lokal'))
-    await user.click(screen.getByRole('button', { name: 'Verbindung zu "Ollama lokal" testen' }))
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+    const menu = await openRowMenu(user, 'Ollama lokal')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Verbindung testen' }))
 
-    await waitFor(() => {
-      expect(screen.getByText(/Verbindung erfolgreich/i)).toBeInTheDocument()
-    })
+    expect(await screen.findByText(/Verbindung erfolgreich/i)).toBeInTheDocument()
   })
 
   it('shows the API failure message on a failed connection test, form stays editable', async () => {
@@ -323,29 +447,34 @@ describe('LlmModelManagementPage', () => {
     const user = userEvent.setup()
 
     renderChat()
-    await waitFor(() => screen.getByText('Ollama lokal'))
-    await user.click(screen.getByText('Ollama lokal'))
-    await user.click(screen.getByRole('button', { name: 'Verbindung zu "Ollama lokal" testen' }))
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+    const dialog = await openEditDialog(user, 'Ollama lokal')
+    await user.click(within(dialog).getByRole('button', { name: 'Verbindung testen' }))
 
-    await waitFor(() => {
-      expect(screen.getByText('Modell nicht erreichbar')).toBeInTheDocument()
-    })
-    expect(screen.getByLabelText('Anzeigename', { exact: false })).toBeEnabled()
+    expect(await within(dialog).findByText('Modell nicht erreichbar')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Anzeigename', { exact: false })).toBeEnabled()
   })
 
   it('rejects deleting the active model client-side, with a visible reason', async () => {
     signInAs('SYSTEM_ADMIN')
+    const aufrufe = recordModelRequests()
     const user = userEvent.setup()
 
     renderChat()
-    await waitFor(() => screen.getByText('Ollama lokal'))
-    await user.click(screen.getByText('Ollama lokal'))
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+    const menu = await openRowMenu(user, 'Ollama lokal')
 
-    const deleteButton = screen.getByRole('button', { name: '"Ollama lokal" löschen' })
-    expect(deleteButton).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByText(/aktive Modell kann nicht gelöscht werden/i)).toBeInTheDocument()
+    const loeschen = within(menu).getByRole('menuitem', { name: 'Löschen' })
+    expect(loeschen).toHaveAttribute('aria-disabled', 'true')
+    // Der Grund steht im DOM und ist über `aria-describedby` mit dem gesperrten Eintrag verbunden,
+    // wird also auch vorgelesen - ein Tooltip fände nur eine Maus.
+    const grund = within(menu).getByText(/aktive Modell kann nicht gelöscht werden/i)
+    expect(loeschen).toHaveAttribute('aria-describedby', grund.closest('li')!.id)
 
-    await user.click(deleteButton)
+    // Der Eintrag nimmt auch keinen Klick an - `pointer-events: none`, nicht bloß ein Vermerk im
+    // Namen; testing-library weist den Versuch genau deshalb ab. Es geht kein Löschaufruf hinaus.
+    await expect(user.click(loeschen)).rejects.toThrow(/pointer-events/)
+    expect(aufrufe.filter((aufruf) => aufruf.method === 'DELETE')).toEqual([])
     expect(
       useLlmModelStore.getState().models.find((m) => m.displayName === 'Ollama lokal'),
     ).toBeTruthy()
@@ -383,13 +512,11 @@ describe('LlmModelManagementPage', () => {
     const user = userEvent.setup()
 
     renderChat()
-    await waitFor(() => screen.getByText('Modell A'))
-    await user.click(screen.getByText('Modell A'))
-    await user.click(screen.getByRole('button', { name: '"Modell A" löschen' }))
-    await answerConfirm(user, 'Modell "Modell A" löschen?', 'Löschen')
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+    const menu = await openRowMenu(user, 'Modell A')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Löschen' }))
+    await answerConfirm(user, /Modell „Modell A“ löschen\?/, 'Löschen')
 
-    await waitFor(() => {
-      expect(screen.getByText(/nicht gelöscht werden/i)).toBeInTheDocument()
-    })
+    expect(await screen.findByText(/nicht gelöscht werden/i)).toBeInTheDocument()
   })
 })
