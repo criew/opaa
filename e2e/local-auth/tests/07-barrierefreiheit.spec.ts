@@ -56,7 +56,7 @@ test.describe("Barrierefreiheit der lokalen Anmeldung (axe-core)", () => {
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext();
     const admin = await context.newPage();
-    acceptConfirmDialogs(admin);
+    await acceptConfirmDialogs(admin);
     await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password, {
       route: "/login/system",
     });
@@ -103,7 +103,7 @@ test.describe("Barrierefreiheit der lokalen Anmeldung (axe-core)", () => {
   test("erzwungener Passwortwechsel mit Anlass", async ({ browser }) => {
     const adminContext = await browser.newContext();
     const admin = await adminContext.newPage();
-    acceptConfirmDialogs(admin);
+    await acceptConfirmDialogs(admin);
     await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password);
 
     const forced = uniqueAddress("peter.wendt");
@@ -159,7 +159,7 @@ test.describe("Barrierefreiheit der lokalen Anmeldung (axe-core)", () => {
   test("Einladungslink-Dialog und die Seite, auf die er führt", async ({ browser }) => {
     const adminContext = await browser.newContext();
     const admin = await adminContext.newPage();
-    acceptConfirmDialogs(admin);
+    await acceptConfirmDialogs(admin);
     await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password);
 
     const invited = uniqueAddress("sabine.krause");

@@ -24,8 +24,8 @@ import { clearMailbox, waitForMail } from "../../fixtures/mailpit";
  * runnable on its own.
  */
 test.describe("Erststart: Systemverwalter, SMTP, Schalter", () => {
-  test.beforeEach(({ page }) => {
-    acceptConfirmDialogs(page);
+  test.beforeEach(async ({ page }) => {
+    await acceptConfirmDialogs(page);
   });
 
   test("der Systemverwalter meldet sich auf /login/system an", async ({ page }) => {

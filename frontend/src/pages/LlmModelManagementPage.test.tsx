@@ -1,9 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
-import { renderWithProviders } from '../test/test-utils'
+import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import LlmModelManagementPage from './LlmModelManagementPage'
@@ -302,16 +302,15 @@ describe('LlmModelManagementPage', () => {
       ),
     )
     const user = userEvent.setup()
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     renderWithProviders(<LlmModelManagementPage />, { withRouter: true })
     await waitFor(() => screen.getByText('Modell A'))
     await user.click(screen.getByText('Modell A'))
     await user.click(screen.getByRole('button', { name: '"Modell A" löschen' }))
+    await answerConfirm(user, 'Modell "Modell A" löschen?', 'Löschen')
 
     await waitFor(() => {
       expect(screen.getByText(/nicht gelöscht werden/i)).toBeInTheDocument()
     })
-    confirmSpy.mockRestore()
   })
 })

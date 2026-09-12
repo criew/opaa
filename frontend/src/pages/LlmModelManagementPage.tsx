@@ -14,6 +14,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { LlmModelResponse } from '../types/api'
 import { testLlmModel } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
+import { confirmAction } from '../stores/confirmStore'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
@@ -134,11 +135,13 @@ function LlmModelCard({ model }: { model: LlmModelResponse }) {
 
   async function handleDelete() {
     if (model.active) return
-    if (
-      !window.confirm(
-        `Modell "${model.displayName}" löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
-      )
-    ) {
+    const confirmed = await confirmAction({
+      question: `Modell "${model.displayName}" löschen?`,
+      consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+      confirmLabel: 'Löschen',
+      tone: 'danger',
+    })
+    if (!confirmed) {
       return
     }
     setLocalError(null)

@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithProviders } from '../test/test-utils'
+import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import LibraryGrantsDialog from './LibraryGrantsDialog'
 import { useAuthStore } from '../stores/authStore'
 import { useGrantStore } from '../stores/grantStore'
@@ -343,11 +343,11 @@ describe('LibraryGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /entziehen/i }))
+    await answerConfirm(userEventInstance, 'Freigabe für "Alice" entziehen?', 'Entziehen')
 
     await waitFor(() => {
       expect(mockRevokeLibraryGrant).toHaveBeenCalledWith(library.id, 'grant-1')
@@ -578,13 +578,18 @@ describe('LibraryGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
     renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /entziehen/i }))
 
-    expect(confirmSpy).toHaveBeenCalledWith(expect.stringMatching(/eigene freigabe/i))
+    // Das Overlay liegt über dem Freigabe-Dialog; die Frage macht es eindeutig.
+    const question = 'Freigabe für "Manager" entziehen?'
+    expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
+      /eigene freigabe/i,
+    )
+    await answerConfirm(userEventInstance, question, 'Abbrechen')
+
     expect(mockRevokeLibraryGrant).not.toHaveBeenCalled()
   })
 

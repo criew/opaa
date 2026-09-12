@@ -1,12 +1,12 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { Route, Routes } from 'react-router'
 import { server } from '../mocks/server'
 import { mockMailSettings, mockMailTemplates, setMockMailSettings } from '../mocks/mailFixtures'
 import { MAIL_FAILING_HOST } from '../mocks/mailHandlers'
-import { renderWithProviders } from '../test/test-utils'
+import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { useMailStore } from '../stores/mailStore'
 import type { MailSettingsUpdateRequest, MailTemplateUpdateRequest } from '../types/api'
@@ -43,7 +43,6 @@ function renderPage(route = '/admin/mail/server') {
 describe('MailSettingsPage', () => {
   beforeEach(() => {
     useMailStore.getState().reset()
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
   it('zeigt einem Konto ohne Systemverwaltung nur den Hinweis', () => {
@@ -279,8 +278,8 @@ describe('MailSettingsPage', () => {
     await waitFor(() => expect(within(list).getByText('angepasst')).toBeInTheDocument())
 
     await user.click(screen.getByRole('button', { name: 'Auf Standard zurücksetzen' }))
+    await answerConfirm(user, /auf den ausgelieferten Standard zurücksetzen\?/, 'Zurücksetzen')
 
-    expect(window.confirm).toHaveBeenCalled()
     await waitFor(() => expect(screen.getByLabelText('Betreff')).toHaveValue(original))
     expect(within(list).queryByText('angepasst')).not.toBeInTheDocument()
   })

@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { GroupListResponse, UserInfo } from '../types/api'
 import { getUsers } from '../services/api'
+import { confirmAction } from '../stores/confirmStore'
 import { useGroupStore } from '../stores/groupStore'
 import { groupKindLabel } from '../utils/labels'
 import CreateGroupDialog from '../components/CreateGroupDialog'
@@ -138,11 +139,13 @@ function GroupCard({ group }: { group: GroupListResponse }) {
                 variant="outlined"
                 size="small"
                 onClick={async () => {
-                  if (
-                    !window.confirm(
-                      `Gruppe "${group.name}" löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
-                    )
-                  ) {
+                  const confirmed = await confirmAction({
+                    question: `Gruppe "${group.name}" löschen?`,
+                    consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+                    confirmLabel: 'Löschen',
+                    tone: 'danger',
+                  })
+                  if (!confirmed) {
                     return
                   }
                   setLocalError(null)

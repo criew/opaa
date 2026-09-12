@@ -29,7 +29,7 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext();
     const admin = await context.newPage();
-    acceptConfirmDialogs(admin);
+    await acceptConfirmDialogs(admin);
     await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password, {
       route: "/login/system",
     });
@@ -42,7 +42,7 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     page,
     browser,
   }) => {
-    acceptConfirmDialogs(page);
+    await acceptConfirmDialogs(page);
     await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password);
     await openLocalAuthSettings(page);
 
@@ -68,7 +68,7 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
   }) => {
     const adminContext = await browser.newContext();
     const admin = await adminContext.newPage();
-    acceptConfirmDialogs(admin);
+    await acceptConfirmDialogs(admin);
     await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password);
     await openLocalAuthSettings(admin);
 

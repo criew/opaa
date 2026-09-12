@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithProviders } from '../../test/test-utils'
+import { answerConfirm, renderWithProviders } from '../../test/test-utils'
 import DocumentMetadataPanel from './DocumentMetadataPanel'
 import type { DocumentMetadataFieldResponse, DocumentMetadataResponse } from '../../types/api'
 
@@ -132,7 +132,6 @@ describe('DocumentMetadataPanel', () => {
   })
 
   it('deletes a value after confirmation and shows the field as empty', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderWithProviders(
       <DocumentMetadataPanel
         libraryId="library-team"
@@ -146,6 +145,7 @@ describe('DocumentMetadataPanel', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Titel von dienstanweisung.pdf löschen' }),
     )
+    await answerConfirm(user, 'Titel von "dienstanweisung.pdf" löschen?', 'Löschen')
 
     await waitFor(() =>
       expect(mockDeleteDocumentMetadataValue).toHaveBeenCalledWith(

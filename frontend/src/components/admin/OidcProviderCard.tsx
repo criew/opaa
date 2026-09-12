@@ -25,6 +25,7 @@ import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined'
 import type { OidcProviderResponse } from '../../types/api'
 import { apiErrorMessage } from '../../services/apiErrorDetails'
 import { PROVIDER_CONFLICT_MESSAGES } from './oidcProviderConflicts'
+import { confirmAction } from '../../stores/confirmStore'
 import { notify } from '../../stores/notificationStore'
 import { useOidcProviderStore } from '../../stores/oidcProviderStore'
 import { fontFamily, radius } from '../../theme/tokens'
@@ -219,13 +220,18 @@ export default function OidcProviderCard({
     }
   }
 
-  function toggleEnabled() {
+  async function toggleEnabled() {
     const consequence = isLastEnabled
       ? `${DISABLE_CONSEQUENCE}\n\n${LAST_PROVIDER_CONSEQUENCE}`
       : DISABLE_CONSEQUENCE
     if (
       provider.enabled &&
-      !window.confirm(`„${provider.displayName}“ deaktivieren?\n\n${consequence}`)
+      !(await confirmAction({
+        question: `„${provider.displayName}“ deaktivieren?`,
+        consequence,
+        confirmLabel: 'Deaktivieren',
+        tone: 'caution',
+      }))
     ) {
       return
     }
@@ -242,11 +248,14 @@ export default function OidcProviderCard({
     }, 'Änderung fehlgeschlagen')
   }
 
-  function makeDefault() {
+  async function makeDefault() {
     if (
-      !window.confirm(
-        `„${provider.displayName}“ zum Standardanbieter machen?\n\n${DEFAULT_CONSEQUENCE}`,
-      )
+      !(await confirmAction({
+        question: `„${provider.displayName}“ zum Standardanbieter machen?`,
+        consequence: DEFAULT_CONSEQUENCE,
+        confirmLabel: 'Zum Standard machen',
+        tone: 'caution',
+      }))
     ) {
       return
     }
@@ -256,11 +265,18 @@ export default function OidcProviderCard({
     }, 'Änderung fehlgeschlagen')
   }
 
-  function remove() {
+  async function remove() {
     const consequence = isLastEnabled
       ? `${DELETE_CONSEQUENCE}\n\n${LAST_PROVIDER_CONSEQUENCE}`
       : DELETE_CONSEQUENCE
-    if (!window.confirm(`„${provider.displayName}“ löschen?\n\n${consequence}`)) {
+    if (
+      !(await confirmAction({
+        question: `„${provider.displayName}“ löschen?`,
+        consequence,
+        confirmLabel: 'Löschen',
+        tone: 'danger',
+      }))
+    ) {
       return
     }
     void run(async () => {
@@ -451,7 +467,7 @@ export default function OidcProviderCard({
           <Button
             size="small"
             startIcon={<PowerSettingsNewOutlinedIcon />}
-            onClick={toggleEnabled}
+            onClick={() => void toggleEnabled()}
             disabled={busy}
           >
             {provider.enabled ? 'Deaktivieren' : 'Aktivieren'}
@@ -461,7 +477,7 @@ export default function OidcProviderCard({
           <Button
             size="small"
             startIcon={<StarOutlineRoundedIcon />}
-            onClick={makeDefault}
+            onClick={() => void makeDefault()}
             disabled={busy}
           >
             Zum Standard machen
@@ -472,7 +488,7 @@ export default function OidcProviderCard({
             size="small"
             color="error"
             startIcon={<DeleteOutlineIcon />}
-            onClick={remove}
+            onClick={() => void remove()}
             disabled={busy}
             sx={{ ml: { sm: 'auto' } }}
           >

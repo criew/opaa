@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
 import { mockOidcProviders } from '../mocks/fixtures'
-import { renderWithProviders } from '../test/test-utils'
+import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
 import OidcProviderManagementPage from './OidcProviderManagementPage'
@@ -31,7 +31,6 @@ function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER', mode: 'dev' | 'oidc' = 'o
 describe('OidcProviderManagementPage', () => {
   beforeEach(() => {
     useOidcProviderStore.setState({ providers: [], isLoading: false, error: null })
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
   it('shows no provider management to a user who is not a system administrator', () => {
@@ -162,21 +161,23 @@ describe('OidcProviderManagementPage', () => {
   it('makes a reachable provider the default with a consequence hint, and refuses an unreachable one', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
     const cards = await screen.findAllByRole('article')
     const partner = cards[1]
     const land = cards[2]
 
     await user.click(within(partner).getByRole('button', { name: 'Zum Standard machen' }))
-    expect(confirm).toHaveBeenLastCalledWith(
-      expect.stringMatching(/weder deaktiviert noch gelöscht/),
-    )
+    const standardfrage = await screen.findByRole('dialog', {
+      name: /zum Standardanbieter machen\?/,
+    })
+    expect(standardfrage).toHaveTextContent(/weder deaktiviert noch gelöscht/)
+    await user.click(within(standardfrage).getByRole('button', { name: 'Zum Standard machen' }))
     // the mock mirrors OidcProviderService#makeDefault: an unreachable provider is refused
     expect(await within(partner).findByText(/nicht abrufbar/)).toBeInTheDocument()
     expect(within(cards[0]).getByLabelText('Standardanbieter')).toBeInTheDocument()
 
     await user.click(within(land).getByRole('button', { name: 'Zum Standard machen' }))
+    await answerConfirm(user, /zum Standardanbieter machen\?/, 'Zum Standard machen')
     await waitFor(() => {
       expect(within(land).getByLabelText('Standardanbieter')).toBeInTheDocument()
     })
@@ -210,18 +211,22 @@ describe('OidcProviderManagementPage', () => {
   it('disables, re-enables and deletes a non-default provider with a consequence hint', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
     const partner = (await screen.findAllByRole('article'))[1]
 
     await user.click(within(partner).getByRole('button', { name: 'Deaktivieren' }))
-    expect(confirm).toHaveBeenLastCalledWith(expect.stringMatching(/nicht mehr anmelden/))
+    const abschaltfrage = await screen.findByRole('dialog', { name: /deaktivieren\?/ })
+    expect(abschaltfrage).toHaveTextContent(/nicht mehr anmelden/)
+    await user.click(within(abschaltfrage).getByRole('button', { name: 'Deaktivieren' }))
     expect(await within(partner).findByText('Deaktiviert')).toBeInTheDocument()
+    // Das Einschalten fragt nicht - es nimmt niemandem die Anmeldung.
     await user.click(within(partner).getByRole('button', { name: 'Aktivieren' }))
     expect(await within(partner).findByRole('button', { name: 'Deaktivieren' })).toBeInTheDocument()
 
     await user.click(within(partner).getByRole('button', { name: 'Löschen' }))
-    expect(confirm).toHaveBeenLastCalledWith(expect.stringMatching(/Konten bleiben erhalten/))
+    const loeschfrage = await screen.findByRole('dialog', { name: /löschen\?/ })
+    expect(loeschfrage).toHaveTextContent(/Konten bleiben erhalten/)
+    await user.click(within(loeschfrage).getByRole('button', { name: 'Löschen' }))
     await waitFor(() => {
       expect(screen.queryByText('Partnerportal')).not.toBeInTheDocument()
     })
@@ -364,9 +369,12 @@ describe('OidcProviderManagementPage', () => {
     const cards = await screen.findAllByRole('article')
     await user.click(within(cards[0]).getByRole('button', { name: 'Deaktivieren' }))
 
-    expect(window.confirm).toHaveBeenCalledWith(
-      expect.stringContaining('Danach können sich nur noch lokale Konten anmelden'),
-    )
+    // Die Bestätigung *ist* das Acknowledgement, das das Backend verlangt (ADR-0025):
+    // Der Zusatzsatz zum letzten Anbieter muss deshalb vor dem Absenden gestanden haben.
+    const letzterAnbieter = await screen.findByRole('dialog', { name: /deaktivieren\?/ })
+    expect(letzterAnbieter).toHaveTextContent('Danach können sich nur noch lokale Konten anmelden')
+    await user.click(within(letzterAnbieter).getByRole('button', { name: 'Deaktivieren' }))
+
     await waitFor(() => expect(acknowledged).toEqual(['true']))
     await waitFor(() =>
       expect(useOidcProviderStore.getState().providers.find((p) => p.isDefault)?.enabled).toBe(
@@ -390,6 +398,7 @@ describe('OidcProviderManagementPage', () => {
 
     const cards = await screen.findAllByRole('article')
     await user.click(within(cards[1]).getByRole('button', { name: 'Deaktivieren' }))
+    await answerConfirm(user, /deaktivieren\?/, 'Deaktivieren')
 
     expect(
       await within(cards[1]).findByText(/lokales Systemverwalterkonto mit Passwort/),

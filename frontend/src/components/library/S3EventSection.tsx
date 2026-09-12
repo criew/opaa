@@ -10,6 +10,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { S3ScopeRef } from '../../types/api'
 import { generateS3EventsToken, removeS3EventsToken } from '../../services/api'
+import { confirmAction } from '../../stores/confirmStore'
 import { useLibraryStore } from '../../stores/libraryStore'
 
 interface S3EventSectionProps {
@@ -31,7 +32,6 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [revealed, setRevealed] = useState<{ token: string; url: string } | null>(null)
-  const [confirm, setConfirm] = useState<'rotate' | 'remove' | null>(null)
 
   const generate = async () => {
     setBusy(true)
@@ -78,6 +78,30 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
   )
   const insecureOrigin = window.location.protocol !== 'https:'
 
+  // Rotieren und Entfernen entwerten, was im Objektspeicher hinterlegt ist: Der sendet weiter,
+  // OPAA antwortet 401, und auf seiner Seite ist davon nichts zu sehen.
+  const askRotate = async () => {
+    const ok = await confirmAction({
+      question: 'Token neu erzeugen?',
+      consequence:
+        'Das bisherige Token gilt sofort nicht mehr. Bis das neue im Objektspeicher hinterlegt ist, werden Benachrichtigungen abgewiesen.',
+      confirmLabel: 'Neu erzeugen',
+      tone: 'caution',
+    })
+    if (ok) await generate()
+  }
+
+  const askRemove = async () => {
+    const ok = await confirmAction({
+      question: 'Benachrichtigung entfernen?',
+      consequence:
+        'Der Objektspeicher kann OPAA danach nicht mehr benachrichtigen; Benachrichtigungen mit dem bisherigen Token werden abgewiesen. Änderungen erreichen den Index dann erst mit dem nächsten geplanten Lauf.',
+      confirmLabel: 'Entfernen',
+      tone: 'danger',
+    })
+    if (ok) await remove()
+  }
+
   return (
     <Box data-testid="s3-event-section">
       <Typography variant="body2">
@@ -96,13 +120,13 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
         <Button
           size="small"
           variant="outlined"
-          onClick={() => (tokenSet ? setConfirm('rotate') : void generate())}
+          onClick={() => void (tokenSet ? askRotate() : generate())}
           disabled={busy}
         >
           {tokenSet ? 'Token neu erzeugen' : 'Benachrichtigung einrichten'}
         </Button>
         {tokenSet && (
-          <Button size="small" color="error" onClick={() => setConfirm('remove')} disabled={busy}>
+          <Button size="small" color="error" onClick={() => void askRemove()} disabled={busy}>
             Benachrichtigung entfernen
           </Button>
         )}
@@ -112,39 +136,6 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
           {error}
         </Alert>
       )}
-
-      {/* Rotating or removing invalidates what the store has configured - the store keeps
-          sending, OPAA answers 401, and nothing on the store's side shows it. */}
-      <Dialog
-        open={confirm !== null}
-        onClose={() => setConfirm(null)}
-        aria-labelledby="s3-event-confirm-title"
-      >
-        <DialogTitle id="s3-event-confirm-title">
-          {confirm === 'remove' ? 'Benachrichtigung entfernen?' : 'Token neu erzeugen?'}
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2">
-            {confirm === 'remove'
-              ? 'Der Objektspeicher kann OPAA danach nicht mehr benachrichtigen; Benachrichtigungen mit dem bisherigen Token werden abgewiesen. Änderungen erreichen den Index dann erst mit dem nächsten geplanten Lauf.'
-              : 'Das bisherige Token gilt sofort nicht mehr. Bis das neue im Objektspeicher hinterlegt ist, werden Benachrichtigungen abgewiesen.'}
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirm(null)}>Abbrechen</Button>
-          <Button
-            variant="contained"
-            color={confirm === 'remove' ? 'error' : 'primary'}
-            onClick={() => {
-              const action = confirm
-              setConfirm(null)
-              void (action === 'remove' ? remove() : generate())
-            }}
-          >
-            {confirm === 'remove' ? 'Entfernen' : 'Neu erzeugen'}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       <Dialog
         open={revealed !== null}
