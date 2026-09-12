@@ -132,7 +132,7 @@ class MailGreenMailIntegrationTest {
                 "displayName",
                 "Erika Mustermann",
                 "actionUrl",
-                "https://opaa.amt.example/konto/passwort?token=T",
+                "https://opaa.amt.example/set-password?token=T",
                 "expiresAtHuman",
                 "noch 24 Stunden"));
 
@@ -145,12 +145,12 @@ class MailGreenMailIntegrationTest {
 
     assertThat(partOfType(received, "text/plain"))
         .contains("Erika Mustermann")
-        .contains("https://opaa.amt.example/konto/passwort?token=T");
+        .contains("https://opaa.amt.example/set-password?token=T");
     assertThat(partOfType(received, "text/html"))
         .contains("Landesamt-Assistent")
         .contains("#7A1FA2")
         .contains("Passwort festlegen")
-        .contains("https://opaa.amt.example/konto/passwort?token=T");
+        .contains("https://opaa.amt.example/set-password?token=T");
   }
 
   @Test

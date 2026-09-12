@@ -22,13 +22,19 @@ import org.springframework.test.web.servlet.MvcResult;
 
 /**
  * Without {@code OPAA_PUBLIC_BASE_URL} (ADR-0033, Entscheidungen 10 and 11) the two link flows do
- * not exist, whatever the settings say: {@code forgot-password} and {@code register} answer exactly
- * like an unknown route, while the two link endpoints stay reachable - an invitation handed over as
- * a displayed link must still be redeemable. Runs in the shared local-auth context, which
+ * not exist, whatever the settings say: {@code forgot-password} and {@code register} answer with
+ * the standard 404 body - not with what an unknown route under the same prefix answers, which is
+ * 401 without a session (#1592) - while the two link endpoints stay reachable: an invitation handed
+ * over as a displayed link must still be redeemable. Runs in the shared local-auth context, which
  * deliberately has no base URL.
  */
 @OpaaLocalAuthMockMvcTest
 class LocalSelfServiceUnavailableIntegrationTest {
+
+  /** What GlobalExceptionHandler renders for a path nobody serves. */
+  static final String STANDARD_404 =
+      "{\"error\":\"Die angeforderte Ressource wurde nicht gefunden\",\"status\":404,"
+          + "\"timestamp\":\"…\",\"code\":null,\"fieldErrors\":null,\"reason\":null}";
 
   @Autowired private MockMvc mockMvc;
   @Autowired private LocalAccountFixturesFactory fixturesFactory;
@@ -61,17 +67,14 @@ class LocalSelfServiceUnavailableIntegrationTest {
   }
 
   @Test
-  void theLinkFlowsAnswerLikeAnUnknownRouteWhileNoPublicBaseUrlIsConfigured() throws Exception {
-    String unknown =
-        withoutTimestamp(
-            body(
-                mockMvc
-                    .perform(
-                        post("/unbekannte-route-" + UUID.randomUUID())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("{}"))
-                    .andExpect(status().isNotFound())
-                    .andReturn()));
+  void theLinkFlowsAnswerWithTheStandard404WhileNoPublicBaseUrlIsConfigured() throws Exception {
+    // the honest baseline: an unknown route under /api answers 401 without a session
+    mockMvc
+        .perform(
+            post("/api/v1/auth/local/unbekannt-" + UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isUnauthorized());
     String email = "wer-" + UUID.randomUUID() + "@stadt.example";
     MvcResult forgot =
         mockMvc
@@ -91,9 +94,9 @@ class LocalSelfServiceUnavailableIntegrationTest {
                             + "\",\"displayName\":\"Wer\",\"password\":\"sicheres-passwort-2026\"}"))
             .andReturn();
     assertThat(forgot.getResponse().getStatus()).isEqualTo(404);
-    assertThat(withoutTimestamp(body(forgot))).isEqualTo(unknown);
+    assertThat(withoutTimestamp(body(forgot))).isEqualTo(STANDARD_404);
     assertThat(register.getResponse().getStatus()).isEqualTo(404);
-    assertThat(withoutTimestamp(body(register))).isEqualTo(unknown);
+    assertThat(withoutTimestamp(body(register))).isEqualTo(STANDARD_404);
 
     mockMvc
         .perform(

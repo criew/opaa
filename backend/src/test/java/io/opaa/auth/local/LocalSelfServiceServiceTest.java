@@ -2,10 +2,12 @@ package io.opaa.auth.local;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -21,6 +23,7 @@ import io.opaa.common.FieldValidationException;
 import io.opaa.common.PublicBaseUrl;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Executor;
@@ -31,16 +34,19 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * The anti-enumeration mechanics of {@link LocalSelfServiceService} (ADR-0033, Entscheidungen 9 and
- * 11) in isolation: every answer of "forgot password" and of a registration takes at least the
- * response floor, a registration pays the hashing cost whether or not the address is free or its
- * domain allowed, a taken address (found or lost in a race) is silently no account, mail leaves on
- * the executor and never on the caller's thread, and the availability of the two flows is the
- * conjunction of switch, setting, domain list and public base URL.
+ * 11) in isolation: after the field checks, "forgot password" and a registration do nothing on the
+ * caller's thread but hand one task to the executor and answer after exactly the response floor;
+ * the task pays the hashing cost whether or not the address is free or its domain allowed, treats a
+ * taken address (found or lost in a race) as silently no account, and sends mail only for a link
+ * that was issued; the availability of the two flows is the conjunction of switch, setting, domain
+ * list and public base URL.
  */
 class LocalSelfServiceServiceTest {
 
   private static final String PASSWORD = "sicheres-passwort-2026";
   private static final String HASH = "{bcrypt}hash";
+  private static final long FLOOR = LocalSelfServiceService.RESPONSE_FLOOR.toMillis();
+  private static final long EPSILON = 50;
 
   private final LocalSelfServiceAccountService accounts =
       mock(LocalSelfServiceAccountService.class);
@@ -50,7 +56,7 @@ class LocalSelfServiceServiceTest {
   private final OidcProviderRegistry registry = mock(OidcProviderRegistry.class);
   private final PublicBaseUrl publicBaseUrl = mock(PublicBaseUrl.class);
   private final PasswordEncoder encoder = mock(PasswordEncoder.class);
-  private final List<Runnable> queued = new java.util.ArrayList<>();
+  private final List<Runnable> queued = new ArrayList<>();
   private final Executor executor = queued::add;
   private LocalSelfServiceService service;
 
@@ -95,7 +101,7 @@ class LocalSelfServiceServiceTest {
   }
 
   @Test
-  void forgotPasswordTakesAtLeastTheFloorWhetherOrNotAMailLeaves() {
+  void forgotPasswordAnswersAfterTheFloorAndDoesItsWorkOnTheExecutor() {
     when(accounts.issueResetLinkFor("niemand@stadt.example")).thenReturn(Optional.empty());
     User user = User.localAccount("erika@stadt.example", "Erika");
     IssuedActionToken token = new IssuedActionToken("roh", Instant.now().plusSeconds(60));
@@ -105,13 +111,16 @@ class LocalSelfServiceServiceTest {
     long unknown = millis(() -> service.requestPasswordReset("niemand@stadt.example"));
     long known = millis(() -> service.requestPasswordReset("erika@stadt.example"));
 
-    assertThat(unknown).isGreaterThanOrEqualTo(LocalSelfServiceService.RESPONSE_FLOOR.toMillis());
-    assertThat(known).isGreaterThanOrEqualTo(LocalSelfServiceService.RESPONSE_FLOOR.toMillis());
-    // the mail is queued, not sent on the caller's thread
-    verifyNoInteractions(mailer);
-    assertThat(queued).hasSize(1);
-    queued.getFirst().run();
+    assertThat(unknown).isBetween(FLOOR, FLOOR + EPSILON);
+    assertThat(known).isBetween(FLOOR, FLOOR + EPSILON);
+    // nothing happened on the caller's thread: one task each, the lookup inside it
+    verifyNoInteractions(accounts, mailer);
+    assertThat(queued).hasSize(2);
+    queued.forEach(Runnable::run);
+    verify(accounts).issueResetLinkFor("niemand@stadt.example");
+    verify(accounts).issueResetLinkFor("erika@stadt.example");
     verify(mailer).sendPasswordReset(user, token);
+    verify(mailer, times(1)).sendPasswordReset(any(), any());
   }
 
   @Test
@@ -125,17 +134,21 @@ class LocalSelfServiceServiceTest {
     long taken = millis(() -> service.register("belegt@stadt.example", "Wer", PASSWORD));
     long lost = millis(() -> service.register("verloren@stadt.example", "Wer", PASSWORD));
 
-    verify(encoder, org.mockito.Mockito.times(3)).encode(PASSWORD);
-    verify(accounts, never()).register(eq("wer@anderswo.example"), anyString(), anyString());
-    assertThat(queued).isEmpty();
-    verifyNoInteractions(mailer);
     for (long ms : List.of(foreign, taken, lost)) {
-      assertThat(ms).isGreaterThanOrEqualTo(LocalSelfServiceService.RESPONSE_FLOOR.toMillis());
+      assertThat(ms).isBetween(FLOOR, FLOOR + EPSILON);
     }
+    verifyNoInteractions(encoder, accounts, mailer);
+    assertThat(queued).hasSize(3);
+    queued.forEach(Runnable::run);
+    verify(encoder, times(3)).encode(PASSWORD);
+    verify(accounts, never()).register(eq("wer@anderswo.example"), anyString(), anyString());
+    verify(accounts).register("belegt@stadt.example", "Wer", HASH);
+    verify(accounts).register("verloren@stadt.example", "Wer", HASH);
+    verifyNoInteractions(mailer);
   }
 
   @Test
-  void aRegistrationOfAFreeAddressCreatesTheAccountWithTheHashAndQueuesTheMail() {
+  void aRegistrationOfAFreeAddressCreatesTheAccountWithTheHashAndMailsTheLink() {
     User user = User.localAccount("neu@stadt.example", "Neu");
     IssuedActionToken token =
         new IssuedActionToken("roh", Instant.now().plus(Duration.ofHours(24)));
@@ -144,10 +157,10 @@ class LocalSelfServiceServiceTest {
 
     service.register("neu@stadt.example", "Neu", PASSWORD);
 
-    verify(accounts).register("neu@stadt.example", "Neu", HASH);
-    verifyNoInteractions(mailer);
+    verifyNoInteractions(accounts, mailer);
     assertThat(queued).hasSize(1);
     queued.getFirst().run();
+    verify(accounts).register("neu@stadt.example", "Neu", HASH);
     verify(mailer).sendRegistrationVerification(user, token);
   }
 
@@ -155,28 +168,19 @@ class LocalSelfServiceServiceTest {
   void aRegistrationRefusesBadInputWithFieldErrorsBeforeAnyCost() {
     assertThatThrownBy(() -> service.register("keine-adresse", "Wer", PASSWORD))
         .isInstanceOf(FieldValidationException.class)
-        .satisfies(
-            e ->
-                assertThat(((FieldValidationException) e).fieldErrors())
-                    .extracting(FieldValidationException.FieldError::field)
-                    .containsExactly("email"));
+        .satisfies(e -> assertThat(fields(e)).containsExactly("email"));
     assertThatThrownBy(() -> service.register("wer@stadt.example", " ", PASSWORD))
         .isInstanceOf(FieldValidationException.class)
-        .satisfies(
-            e ->
-                assertThat(((FieldValidationException) e).fieldErrors())
-                    .extracting(FieldValidationException.FieldError::field)
-                    .containsExactly("displayName"));
+        .satisfies(e -> assertThat(fields(e)).containsExactly("displayName"));
     assertThatThrownBy(() -> service.register("wer@stadt.example", "Wer", "kurz"))
         .isInstanceOf(FieldValidationException.class)
-        .satisfies(
-            e ->
-                assertThat(((FieldValidationException) e).fieldErrors())
-                    .extracting(FieldValidationException.FieldError::field)
-                    .containsExactly("password"));
+        .satisfies(e -> assertThat(fields(e)).containsExactly("password"));
+    assertThatThrownBy(() -> service.requestPasswordReset("keine-adresse"))
+        .isInstanceOf(FieldValidationException.class)
+        .satisfies(e -> assertThat(fields(e)).containsExactly("email"));
 
-    verify(encoder, never()).encode(anyString());
-    verifyNoInteractions(accounts);
+    assertThat(queued).isEmpty();
+    verifyNoInteractions(encoder, accounts, mailer);
   }
 
   @Test
@@ -186,7 +190,13 @@ class LocalSelfServiceServiceTest {
 
     verify(passwords).setPasswordByLink("roh", PASSWORD);
     verify(accounts).verifyEmail("roh");
+    assertThat(queued).isEmpty();
     verifyNoInteractions(mailer);
+  }
+
+  private static List<String> fields(Throwable e) {
+    return ((FieldValidationException) e)
+        .fieldErrors().stream().map(FieldValidationException.FieldError::field).toList();
   }
 
   private void settings(Values values) {

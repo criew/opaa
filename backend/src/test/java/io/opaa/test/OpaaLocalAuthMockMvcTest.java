@@ -43,7 +43,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       "opaa.rate-limit.local-auth.forgot-password.max-requests=100000",
       "opaa.rate-limit.local-auth.forgot-password.global-max-requests=100000",
       "opaa.rate-limit.local-auth.forgot-password.max-requests-per-address=100000",
-      "opaa.rate-limit.local-auth.set-password.max-requests=100000"
+      "opaa.rate-limit.local-auth.set-password.max-requests=100000",
+      "opaa.rate-limit.local-auth.verify-email.max-requests=100000"
     })
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)

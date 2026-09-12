@@ -26,6 +26,8 @@ import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.LocalMailbox;
 import io.opaa.test.OpaaLocalAuthMockMvcTest;
 import jakarta.mail.internet.MimeMessage;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -51,9 +53,11 @@ import org.springframework.test.web.servlet.MvcResult;
  * accounts and accounts in a failed-login lockout, a redeemed reset link lifts that lockout and
  * ends every session, a link is redeemable once and a newer one voids the older, self-registration
  * creates an account that signs in only after the address is confirmed, a taken address and a
- * foreign domain answer exactly like a free one, the password policy answers with field errors,
- * switched-off flows answer like an unknown route, and no token, password or person reaches a log
- * line or an audit row. Mail goes to an in-JVM GreenMail; every link is proved by the message.
+ * foreign domain answer exactly like a free one, a still unconfirmed self-registration gets its
+ * link again, the password policy answers with field errors, switched-off flows answer with the
+ * standard 404, and no token, password or person reaches a log line or an audit row. Mail goes to
+ * an in-JVM GreenMail; every link is proved by the message - which is also the point of
+ * synchronisation, since the two address-taking flows do their work off the request thread.
  */
 @OpaaLocalAuthMockMvcTest
 // Own context: the link flows need OPAA_PUBLIC_BASE_URL, which the shared local-auth context
@@ -77,7 +81,9 @@ class LocalSelfServiceIntegrationTest {
   private static final String LOCAL_USERS = "/api/v1/admin/local-users";
   private static final String NEW_PASSWORD = "neues-sicheres-passwort-2026";
   private static final String DOMAIN = "stadt.example";
-  private static final Duration FLOOR = LocalSelfServiceService.RESPONSE_FLOOR;
+  private static final long FLOOR = LocalSelfServiceService.RESPONSE_FLOOR.toMillis();
+  private static final long EPSILON = 50;
+  private static final int REPETITIONS = 3;
 
   @Autowired private MockMvc mockMvc;
   @Autowired private LocalAccountFixturesFactory fixturesFactory;
@@ -306,9 +312,7 @@ class LocalSelfServiceIntegrationTest {
     forgot("aufwaermen-" + UUID.randomUUID() + "@" + DOMAIN).andExpect(status().isNoContent());
     forgot(adminLocked.email()).andExpect(status().isNoContent());
 
-    Map<String, Long> millis = new java.util.LinkedHashMap<>();
-    Map<String, String> bodies = new java.util.LinkedHashMap<>();
-    for (String email :
+    List<String> cases =
         List.of(
             unknown,
             active.email(),
@@ -316,29 +320,33 @@ class LocalSelfServiceIntegrationTest {
             adminLocked.email(),
             expired.email(),
             invited.email(),
-            active.email().toUpperCase())) {
-      long start = System.nanoTime();
-      MvcResult result = forgot(email).andExpect(status().isNoContent()).andReturn();
-      millis.put(email, (System.nanoTime() - start) / 1_000_000);
-      bodies.put(email, result.getResponse().getContentAsString());
+            active.email().toUpperCase());
+    Map<String, Long> fastest = new java.util.LinkedHashMap<>();
+    for (int repetition = 0; repetition < REPETITIONS; repetition++) {
+      for (String email : cases) {
+        long start = System.nanoTime();
+        MvcResult result = forgot(email).andExpect(status().isNoContent()).andReturn();
+        long ms = (System.nanoTime() - start) / 1_000_000;
+        assertThat(result.getResponse().getContentAsString()).isEmpty();
+        fastest.merge(email, ms, Math::min);
+      }
     }
-    assertThat(bodies.values()).containsOnly("");
-    assertThat(millis)
-        .allSatisfy(
-            (email, ms) -> assertThat(ms).as(email).isGreaterThanOrEqualTo(FLOOR.toMillis() - 5));
+    assertThat(fastest)
+        .allSatisfy((email, ms) -> assertThat(ms).as(email).isBetween(FLOOR - 5, FLOOR + EPSILON));
     long spread =
-        millis.values().stream().mapToLong(Long::longValue).max().orElseThrow()
-            - millis.values().stream().mapToLong(Long::longValue).min().orElseThrow();
-    assertThat(spread).as("response-time spread %s", millis).isLessThan(FLOOR.toMillis());
+        fastest.values().stream().mapToLong(Long::longValue).max().orElseThrow()
+            - fastest.values().stream().mapToLong(Long::longValue).min().orElseThrow();
+    assertThat(spread).as("response-time spread %s", fastest).isLessThanOrEqualTo(EPSILON);
 
     // asking does not end a running session - only the redeemed link does
     mockMvc
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(session)))
         .andExpect(status().isOk());
-    // mail: the active account (twice - the upper-cased address is the same account) and the
-    // account in a failed-login lockout; nobody else
-    assertThat(mailbox.waitFor(3, 10_000)).isTrue();
-    assertThat(mailbox.waitFor(4, 1_500)).isFalse();
+    // mail: the active account (twice per round - the upper-cased address is the same account)
+    // and the account in a failed-login lockout; nobody else
+    int expectedMails = 3 * REPETITIONS;
+    assertThat(mailbox.waitFor(expectedMails, 10_000)).isTrue();
+    assertThat(mailbox.waitFor(expectedMails + 1, 1_500)).isFalse();
     List<String> recipients = new ArrayList<>();
     List<String> activeTokens = new ArrayList<>();
     for (MimeMessage message : mailbox.messages()) {
@@ -348,9 +356,10 @@ class LocalSelfServiceIntegrationTest {
         activeTokens.add(LocalMailbox.tokenIn(LocalMailbox.plainText(message)));
       }
     }
-    assertThat(recipients)
-        .containsExactlyInAnyOrder(active.email(), active.email(), lockedOut.email());
-    // exactly one of the active account's two links is still open - the newer voided the older -
+    assertThat(recipients).hasSize(expectedMails).containsOnly(active.email(), lockedOut.email());
+    assertThat(recipients.stream().filter(lockedOut.email()::equals).count())
+        .isEqualTo(REPETITIONS);
+    // exactly one of the active account's links is still open - each newer one voided the older -
     // and it is a RESET_PASSWORD token with the settings' TTL
     List<LocalActionToken> open =
         activeTokens.stream()
@@ -377,6 +386,8 @@ class LocalSelfServiceIntegrationTest {
     register(email, "Neue Person", NEW_PASSWORD)
         .andExpect(status().isAccepted())
         .andExpect(content().string(""));
+    // the account and the mail are made off the request thread; the mail is the sync point
+    assertThat(mailbox.waitFor(1, 10_000)).isTrue();
 
     User user = users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email).orElseThrow();
     assertThat(user.getSystemRole()).isEqualTo(SystemRole.USER);
@@ -394,7 +405,22 @@ class LocalSelfServiceIntegrationTest {
     assertThat(spacesOwnedBy(user.getId())).isZero();
     login(email, NEW_PASSWORD, 401);
 
-    assertThat(mailbox.waitFor(1, 10_000)).isTrue();
+    // an administrative reset link sets a password but confirms nothing - the invitation is the
+    // administrator's act of vouching, a reset is not
+    mockMvc
+        .perform(
+            post(LOCAL_USERS + "/" + user.getId() + "/password-reset")
+                .header(HttpHeaders.AUTHORIZATION, adminBearer))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.deliveryPath").value("MAIL_SENT"));
+    assertThat(mailbox.waitFor(2, 10_000)).isTrue();
+    String resetToken = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[1]));
+    setPassword(resetToken, "zweites-sicheres-passwort-2026").andExpect(status().isNoContent());
+    row = credentials.findById(user.getId()).orElseThrow();
+    assertThat(row.getEmailVerifiedAt()).isNull();
+    assertThat(row.state(Instant.now())).isEqualTo(LocalAccountState.INVITED);
+    login(email, "zweites-sicheres-passwort-2026", 401);
+
     MimeMessage mail = mailbox.messages()[0];
     assertThat(mail.getAllRecipients()[0].toString()).isEqualTo(email);
     String text = LocalMailbox.plainText(mail);
@@ -412,7 +438,7 @@ class LocalSelfServiceIntegrationTest {
     row = credentials.findById(user.getId()).orElseThrow();
     assertThat(row.getEmailVerifiedAt()).isNotNull();
     assertThat(row.state(Instant.now())).isEqualTo(LocalAccountState.ACTIVE);
-    MvcResult session = login(email, NEW_PASSWORD, 200);
+    MvcResult session = login(email, "zweites-sicheres-passwort-2026", 200);
     mockMvc
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(session)))
         .andExpect(status().isOk())
@@ -436,34 +462,57 @@ class LocalSelfServiceIntegrationTest {
     replaceSettings(withRegistration(true, List.of(DOMAIN)));
     LocalAccount taken = fixtures.activeUser("belegt-" + UUID.randomUUID() + "@" + DOMAIN);
     String foreign = "fremd-" + UUID.randomUUID() + "@anderswo.example";
-    String free = "frei-" + UUID.randomUUID() + "@" + DOMAIN;
     // warm-up
     register("aufwaermen-" + UUID.randomUUID() + "@" + DOMAIN, "Aufwärmen", NEW_PASSWORD)
         .andExpect(status().isAccepted());
     assertThat(mailbox.waitFor(1, 10_000)).isTrue();
 
-    Map<String, Long> millis = new java.util.LinkedHashMap<>();
-    Map<String, String> bodies = new java.util.LinkedHashMap<>();
-    for (String email : List.of(taken.email().toUpperCase(), foreign, free, taken.email())) {
-      long start = System.nanoTime();
-      MvcResult result =
-          register(email, "Irgendwer", NEW_PASSWORD).andExpect(status().isAccepted()).andReturn();
-      millis.put(email, (System.nanoTime() - start) / 1_000_000);
-      bodies.put(email, result.getResponse().getContentAsString());
+    Map<String, Long> fastest = new java.util.LinkedHashMap<>();
+    List<String> free = new ArrayList<>();
+    for (int repetition = 0; repetition < REPETITIONS; repetition++) {
+      String freeAddress = "frei-" + UUID.randomUUID() + "@" + DOMAIN;
+      free.add(freeAddress);
+      Map<String, String> cases =
+          Map.of(
+              "taken-upper",
+              taken.email().toUpperCase(),
+              "foreign",
+              foreign,
+              "free",
+              freeAddress,
+              "taken",
+              taken.email());
+      for (Map.Entry<String, String> testCase : cases.entrySet()) {
+        long start = System.nanoTime();
+        MvcResult result =
+            register(testCase.getValue(), "Irgendwer", NEW_PASSWORD)
+                .andExpect(status().isAccepted())
+                .andReturn();
+        long ms = (System.nanoTime() - start) / 1_000_000;
+        assertThat(result.getResponse().getContentAsString()).isEmpty();
+        fastest.merge(testCase.getKey(), ms, Math::min);
+      }
     }
-    assertThat(bodies.values()).containsOnly("");
-    assertThat(millis)
-        .allSatisfy(
-            (email, ms) -> assertThat(ms).as(email).isGreaterThanOrEqualTo(FLOOR.toMillis() - 5));
+    assertThat(fastest)
+        .allSatisfy((name, ms) -> assertThat(ms).as(name).isBetween(FLOOR - 5, FLOOR + EPSILON));
     long spread =
-        millis.values().stream().mapToLong(Long::longValue).max().orElseThrow()
-            - millis.values().stream().mapToLong(Long::longValue).min().orElseThrow();
-    assertThat(spread).as("response-time spread %s", millis).isLessThan(FLOOR.toMillis());
+        fastest.values().stream().mapToLong(Long::longValue).max().orElseThrow()
+            - fastest.values().stream().mapToLong(Long::longValue).min().orElseThrow();
+    assertThat(spread).as("response-time spread %s", fastest).isLessThanOrEqualTo(EPSILON);
 
-    // one account per address, none for the foreign domain, one mail for the free address only
-    assertThat(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, taken.email()))
-        .map(User::getId)
-        .contains(taken.id());
+    // the free addresses got their account and their mail; the mail is the sync point for all
+    // the work queued before it (one thread, in order)
+    assertThat(mailbox.waitFor(1 + REPETITIONS, 10_000)).isTrue();
+    assertThat(mailbox.waitFor(2 + REPETITIONS, 1_500)).isFalse();
+    List<String> recipients = new ArrayList<>();
+    for (MimeMessage message : mailbox.messages()) {
+      recipients.add(message.getAllRecipients()[0].toString());
+    }
+    assertThat(recipients).containsAll(free).doesNotContain(taken.email(), foreign);
+    for (String address : free) {
+      assertThat(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, address)).isPresent();
+    }
+    // one account per address, none for the foreign domain, the taken account untouched
     assertThat(
             jdbc.queryForObject(
                 "SELECT count(*) FROM users WHERE issuer = ? AND lower(email) = lower(?)",
@@ -472,14 +521,45 @@ class LocalSelfServiceIntegrationTest {
                 taken.email()))
         .isEqualTo(1);
     assertThat(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, foreign)).isEmpty();
-    assertThat(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, free)).isPresent();
-    assertThat(mailbox.waitFor(2, 10_000)).isTrue();
-    assertThat(mailbox.waitFor(3, 1_500)).isFalse();
-    assertThat(mailbox.messages()[1].getAllRecipients()[0].toString()).isEqualTo(free);
-    // the taken account is untouched
     assertThat(fixtures.credentialsOf(taken).getPasswordHash())
         .isEqualTo(taken.credentials().getPasswordHash());
-    assertThat(auditRows("LOCAL_USER_REGISTERED")).hasSize(2);
+    assertThat(auditRows("LOCAL_USER_REGISTERED")).hasSize(1 + REPETITIONS);
+  }
+
+  @Test
+  void aStillUnconfirmedSelfRegistrationGetsItsLinkAgainAndNothingElse() throws Exception {
+    replaceSettings(withRegistration(true, List.of(DOMAIN)));
+    String email = "neu-" + UUID.randomUUID() + "@" + DOMAIN;
+    register(email, "Erste Person", NEW_PASSWORD).andExpect(status().isAccepted());
+    assertThat(mailbox.waitFor(1, 10_000)).isTrue();
+    User user = users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email).orElseThrow();
+    String firstHash = credentials.findById(user.getId()).orElseThrow().getPasswordHash();
+    String first = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[0]));
+
+    register(email.toUpperCase(), "Zweite Person", "anderes-sicheres-passwort-2026")
+        .andExpect(status().isAccepted());
+
+    assertThat(mailbox.waitFor(2, 10_000)).isTrue();
+    String second = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[1]));
+    assertThat(second).isNotEqualTo(first);
+    // one account, name and hash of the first registration, the first link voided
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM users WHERE issuer = ? AND lower(email) = lower(?)",
+                Integer.class,
+                LocalIssuer.URN,
+                email))
+        .isEqualTo(1);
+    assertThat(users.findById(user.getId()).orElseThrow().getDisplayName())
+        .isEqualTo("Erste Person");
+    assertThat(credentials.findById(user.getId()).orElseThrow().getPasswordHash())
+        .isEqualTo(firstHash);
+    assertThat(actionTokens.findRedeemable(first, ActionTokenPurpose.VERIFY_EMAIL)).isEmpty();
+    verify(second).andExpect(status().isNoContent());
+    login(email, NEW_PASSWORD, 200);
+    login(email, "anderes-sicheres-passwort-2026", 401);
+    // the second registration created nothing and is no event
+    assertThat(auditRows("LOCAL_USER_REGISTERED")).hasSize(1);
   }
 
   @Test
@@ -504,36 +584,44 @@ class LocalSelfServiceIntegrationTest {
     register(email, "Name", "password12345")
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.fieldErrors[?(@.code == 'TOO_COMMON')]").exists());
-    assertThat(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email)).isEmpty();
     assertThat(mailbox.waitFor(1, 1_000)).isFalse();
+    assertThat(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email)).isEmpty();
   }
 
   // ---- switched-off flows
 
   @Test
-  void aSwitchedOffFlowAnswersLikeAnUnknownRoute() throws Exception {
-    String unknownRoute = withoutTimestamp(body(unknownRoute()));
-    assertThat(unknownRoute).contains("\"status\":404").doesNotContain("TOKEN_INVALID");
+  void aSwitchedOffFlowAnswersWithTheStandard404() throws Exception {
+    // the honest baseline: an unknown route under /api answers 401 without a session, so the 404
+    // only hides the endpoint from a caller who does not look closely (#1592)
+    mockMvc
+        .perform(
+            post("/api/v1/auth/local/unbekannt-" + UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isUnauthorized());
+    String standard404 = LocalSelfServiceUnavailableIntegrationTest.STANDARD_404;
     String email = "wer-" + UUID.randomUUID() + "@" + DOMAIN;
 
     // registration: off by default; on without a domain list; management off
     assertThat(withoutTimestamp(body(register(email, "Name", NEW_PASSWORD).andReturn())))
-        .isEqualTo(unknownRoute);
+        .isEqualTo(standard404);
     replaceSettings(withRegistration(true, List.of()));
     assertThat(withoutTimestamp(body(register(email, "Name", NEW_PASSWORD).andReturn())))
-        .isEqualTo(unknownRoute);
+        .isEqualTo(standard404);
     replaceSettings(withRegistration(true, List.of(DOMAIN)));
     register(email, "Name", NEW_PASSWORD).andExpect(status().isAccepted());
+    assertThat(mailbox.waitFor(1, 10_000)).isTrue();
     fixtures.localProvider(false);
     assertThat(withoutTimestamp(body(register(email, "Name", NEW_PASSWORD).andReturn())))
-        .isEqualTo(unknownRoute);
-    assertThat(withoutTimestamp(body(forgot(email).andReturn()))).isEqualTo(unknownRoute);
+        .isEqualTo(standard404);
+    assertThat(withoutTimestamp(body(forgot(email).andReturn()))).isEqualTo(standard404);
     fixtures.localProvider(true);
 
     // forgot password: on by default, off by the setting
     forgot(email).andExpect(status().isNoContent());
     replaceSettings(withPasswordReset(false));
-    assertThat(withoutTimestamp(body(forgot(email).andReturn()))).isEqualTo(unknownRoute);
+    assertThat(withoutTimestamp(body(forgot(email).andReturn()))).isEqualTo(standard404);
     // the link endpoints stay reachable whatever the switches say
     setPassword("kein-token", NEW_PASSWORD)
         .andExpect(status().isBadRequest())
@@ -549,17 +637,20 @@ class LocalSelfServiceIntegrationTest {
   void theSelfServiceLeaksNoTokenPasswordOrPersonIntoLogsOrAuditRows() throws Exception {
     replaceSettings(withRegistration(true, List.of(DOMAIN)));
     Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    // the SMTP wire on both ends (the transport's protocol trace, GreenMail's line log) is the mail
-    // itself - it carries the link and the mailbox by definition - and no log of OPAA's; both are
-    // muted to INFO resp. WARN while everything else is captured at TRACE
-    Logger smtpWire = (Logger) LoggerFactory.getLogger("org.eclipse.angus.mail");
+    // the SMTP transport's protocol trace prints every mail on the wire - the link included - and
+    // is pinned to INFO in application.yml; the test relies on the pin, so it checks it is there
+    // (S3LogLeakTest pattern) and does not touch that logger. GreenMail's line and mailbox log is
+    // the receiving end of the same wire (test server, not OPAA) and is muted here.
+    try (InputStream yml = getClass().getResourceAsStream("/application.yml")) {
+      assertThat(yml).isNotNull();
+      assertThat(new String(yml.readAllBytes(), StandardCharsets.UTF_8))
+          .contains("    org.eclipse.angus.mail: INFO\n");
+    }
     Logger greenMailWire = (Logger) LoggerFactory.getLogger("com.icegreen.greenmail");
     Level previous = root.getLevel();
-    Level previousSmtp = smtpWire.getLevel();
     Level previousGreenMail = greenMailWire.getLevel();
     ListAppender<ILoggingEvent> logs = new ListAppender<>();
     root.setLevel(Level.TRACE);
-    smtpWire.setLevel(Level.INFO);
     greenMailWire.setLevel(Level.WARN);
     logs.start();
     root.addAppender(logs);
@@ -578,8 +669,9 @@ class LocalSelfServiceIntegrationTest {
       List<String> secrets =
           List.of(verification, reset, NEW_PASSWORD, "zweites-sicheres-passwort-2026");
       List<String> personal = List.of(email, email.toUpperCase(), "Neue Person");
-      assertThat(logs.list).anyMatch(event -> event.getLoggerName().startsWith("io.opaa"));
-      for (ILoggingEvent event : logs.list) {
+      List<ILoggingEvent> captured = new ArrayList<>(logs.list);
+      assertThat(captured).anyMatch(event -> event.getLoggerName().startsWith("io.opaa"));
+      for (ILoggingEvent event : captured) {
         String line = event.getFormattedMessage();
         String where = "log line of " + event.getLoggerName() + " at " + event.getLevel();
         for (String secret : secrets) {
@@ -611,7 +703,6 @@ class LocalSelfServiceIntegrationTest {
     } finally {
       root.detachAppender(logs);
       root.setLevel(previous);
-      smtpWire.setLevel(previousSmtp);
       greenMailWire.setLevel(previousGreenMail);
     }
   }
@@ -666,16 +757,6 @@ class LocalSelfServiceIntegrationTest {
         post(VERIFY_EMAIL)
             .contentType(MediaType.APPLICATION_JSON)
             .content(json(Map.of("token", token))));
-  }
-
-  private MvcResult unknownRoute() throws Exception {
-    return mockMvc
-        .perform(
-            post("/unbekannte-route-" + UUID.randomUUID())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{}"))
-        .andExpect(status().isNotFound())
-        .andReturn();
   }
 
   private MvcResult login(String email, String password, int expectedStatus) throws Exception {

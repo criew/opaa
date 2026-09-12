@@ -227,7 +227,7 @@ class LocalUserAdminControllerTest {
         .thenReturn(
             new LocalUserCreated(
                 overview(id, "neu@stadt.example"),
-                new LinkDelivery(MailDeliveryPath.LINK_DISPLAYED, "/konto/passwort?token=abc"),
+                new LinkDelivery(MailDeliveryPath.LINK_DISPLAYED, "/set-password?token=abc"),
                 null));
 
     mockMvc
@@ -244,7 +244,7 @@ class LocalUserAdminControllerTest {
         .andExpect(jsonPath("$.mode").value("INVITE"))
         .andExpect(jsonPath("$.emailSent").value(false))
         .andExpect(jsonPath("$.deliveryPath").value("LINK_DISPLAYED"))
-        .andExpect(jsonPath("$.setupUrl").value("/konto/passwort?token=abc"))
+        .andExpect(jsonPath("$.setupUrl").value("/set-password?token=abc"))
         .andExpect(jsonPath("$.initialPassword").doesNotExist());
     ArgumentCaptor<LocalUserCreation> creation = ArgumentCaptor.forClass(LocalUserCreation.class);
     verify(adminService).create(eq(caller), creation.capture());

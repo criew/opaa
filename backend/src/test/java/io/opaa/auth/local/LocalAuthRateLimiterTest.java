@@ -35,6 +35,7 @@ class LocalAuthRateLimiterTest {
             new LocalAuthLimit(2, 300, null, null),
             new LocalAuthLimit(5, 3600, 50, 2),
             new LocalAuthLimit(5, 3600, 50, 1),
+            null,
             null);
     return new LocalAuthRateLimiter(
         new RateLimitProperties(enabled, null, ANY, ANY, ANY, ANY, ANY, limits),

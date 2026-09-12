@@ -18,8 +18,8 @@ class PublicBaseUrlTest {
 
     assertThat(base.isConfigured()).isFalse();
     assertThat(base.base()).isEmpty();
-    assertThat(base.link("konto/passwort")).isEmpty();
-    assertThat(base.link("konto/passwort", "token", "T")).isEmpty();
+    assertThat(base.link("set-password")).isEmpty();
+    assertThat(base.link("set-password", "token", "T")).isEmpty();
   }
 
   @Test
@@ -32,7 +32,7 @@ class PublicBaseUrlTest {
     PublicBaseUrl base = new PublicBaseUrl(new PublicBaseUrlProperties("https://opaa.amt.example"));
 
     assertThat(base.isConfigured()).isTrue();
-    assertThat(base.link("konto/passwort")).contains("https://opaa.amt.example/konto/passwort");
+    assertThat(base.link("set-password")).contains("https://opaa.amt.example/set-password");
   }
 
   @Test
@@ -40,15 +40,15 @@ class PublicBaseUrlTest {
     PublicBaseUrl base =
         new PublicBaseUrl(new PublicBaseUrlProperties("https://opaa.amt.example///"));
 
-    assertThat(base.link("/konto/passwort/")).contains("https://opaa.amt.example/konto/passwort");
+    assertThat(base.link("/set-password/")).contains("https://opaa.amt.example/set-password");
   }
 
   @Test
   void percentEncodesTheQueryValueSoATokenCannotBreakOutOfTheUrl() {
     PublicBaseUrl base = new PublicBaseUrl(new PublicBaseUrlProperties("https://opaa.amt.example"));
 
-    assertThat(base.link("konto/passwort", "token", "a b&c=d"))
-        .contains("https://opaa.amt.example/konto/passwort?token=a+b%26c%3Dd");
+    assertThat(base.link("set-password", "token", "a b&c=d"))
+        .contains("https://opaa.amt.example/set-password?token=a+b%26c%3Dd");
   }
 
   @Test

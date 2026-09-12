@@ -25,9 +25,9 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * The order of the guards in {@link LocalSelfServiceController} (ADR-0033, Entscheidungen 9 and
- * 11): a switched-off flow is refused as an unknown route before the address is counted or touched,
- * an available flow spends the address's budget before anything is done with the address, and a
- * spent budget stops the request. The flows themselves are proved by the integration tests.
+ * 11): a switched-off flow is refused with the standard 404 before the address is counted or
+ * touched, an available flow spends the address's budget before anything is done with the address,
+ * and a spent budget stops the request. The flows themselves are proved by the integration tests.
  */
 class LocalSelfServiceControllerTest {
 
@@ -43,7 +43,7 @@ class LocalSelfServiceControllerTest {
   }
 
   @Test
-  void aSwitchedOffFlowIsAnUnknownRouteBeforeTheAddressIsCounted() {
+  void aSwitchedOffFlowIsAStandard404BeforeTheAddressIsCounted() {
     when(service.isPasswordResetAvailable()).thenReturn(false);
     when(service.isSelfRegistrationAvailable()).thenReturn(false);
 

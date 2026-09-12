@@ -71,6 +71,10 @@ class RateLimitPropertiesTest {
     assertThat(limits.setPassword().windowSeconds()).isEqualTo(900);
     assertThat(limits.setPassword().hasGlobalLimit()).isFalse();
     assertThat(limits.setPassword().hasAddressLimit()).isFalse();
+    assertThat(limits.verifyEmail().maxRequests()).isEqualTo(10);
+    assertThat(limits.verifyEmail().windowSeconds()).isEqualTo(900);
+    assertThat(limits.verifyEmail().hasGlobalLimit()).isFalse();
+    assertThat(limits.verifyEmail().hasAddressLimit()).isFalse();
   }
 
   @Test
@@ -79,7 +83,7 @@ class RateLimitPropertiesTest {
         properties(
                 null,
                 new LocalAuthLimits(
-                    new LocalAuthLimit(3, 30, null, null), null, null, null, null, null))
+                    new LocalAuthLimit(3, 30, null, null), null, null, null, null, null, null))
             .localAuth();
 
     assertThat(limits.login().maxRequests()).isEqualTo(3);

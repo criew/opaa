@@ -126,14 +126,14 @@ class LocalUserResponseMapperTest {
         LocalUserResponseMapper.toCreated(
             new LocalUserCreated(
                 overview,
-                new LinkDelivery(MailDeliveryPath.MAIL_FAILED, "https://x/konto/passwort?token=t"),
+                new LinkDelivery(MailDeliveryPath.MAIL_FAILED, "https://x/set-password?token=t"),
                 null),
             LocalUserCreationMode.INVITE);
     assertThat(invited.getUser().getId()).isEqualTo(id);
     assertThat(invited.getMode()).isEqualTo(LocalUserCreationMode.INVITE);
     assertThat(invited.getEmailSent()).isFalse();
     assertThat(invited.getDeliveryPath()).isEqualTo(MailDeliveryPath.MAIL_FAILED);
-    assertThat(invited.getSetupUrl()).isEqualTo("https://x/konto/passwort?token=t");
+    assertThat(invited.getSetupUrl()).isEqualTo("https://x/set-password?token=t");
     assertThat(invited.getInitialPassword()).isNull();
 
     LocalUserCreatedResponse sent =
@@ -157,10 +157,10 @@ class LocalUserResponseMapperTest {
 
     LocalUserPasswordResetResponse reset =
         LocalUserResponseMapper.toPasswordReset(
-            new LinkDelivery(MailDeliveryPath.LINK_DISPLAYED, "/konto/passwort?token=t"));
+            new LinkDelivery(MailDeliveryPath.LINK_DISPLAYED, "/set-password?token=t"));
     assertThat(reset.getEmailSent()).isFalse();
     assertThat(reset.getDeliveryPath()).isEqualTo(MailDeliveryPath.LINK_DISPLAYED);
-    assertThat(reset.getSetupUrl()).isEqualTo("/konto/passwort?token=t");
+    assertThat(reset.getSetupUrl()).isEqualTo("/set-password?token=t");
   }
 
   @Test
