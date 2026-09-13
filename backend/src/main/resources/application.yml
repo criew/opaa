@@ -451,9 +451,11 @@ opaa:
         max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_VERIFY_EMAIL_MAX_REQUESTS:10}
         window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_VERIFY_EMAIL_WINDOW_SECONDS:900}
       # Preview and redemption of a handover code share one budget (#1563, ADR-0033
-      # Entscheidung 12): one redemption is one of each, by the same person.
+      # Entscheidung 12): one redemption is one of each, by the same person. The budget is
+      # deliberately wider than the other link flows - a handover is what a whole migration runs
+      # through, and a Behörde sits behind one client address.
       handover:
-        max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_HANDOVER_MAX_REQUESTS:10}
+        max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_HANDOVER_MAX_REQUESTS:60}
         window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_HANDOVER_WINDOW_SECONDS:900}
   cors:
     allowed-origins: ${OPAA_CORS_ALLOWED_ORIGINS:http://localhost:5173}

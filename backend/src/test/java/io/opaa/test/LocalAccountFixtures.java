@@ -92,14 +92,20 @@ public final class LocalAccountFixtures {
    * An enabled OIDC provider row, committed with the change event the registry listens for - the
    * counterpart of {@link #localProvider} for the handover tests (#1563). Written straight through
    * the repository on purpose: {@code OidcProviderService} would probe the issuer, and a test
-   * issuer resolves nowhere.
+   * issuer resolves nowhere. The JWK set address is set for the same reason - without it the
+   * registry runs discovery against that address the moment it builds the decoder; with it, the
+   * decoder is built without a single outbound call.
    */
   public OidcProvider oidcProvider(String displayName, String issuerUri, String clientId) {
     return transactions.execute(
         status -> {
           OidcProvider row =
               new OidcProvider(
-                  displayName, issuerUri, clientId, null, OidcClaimMapping.keycloakDefaults());
+                  displayName,
+                  issuerUri,
+                  clientId,
+                  issuerUri + "/protocol/openid-connect/certs",
+                  OidcClaimMapping.keycloakDefaults());
           row.enable();
           OidcProvider saved = providers.save(row);
           events.publishEvent(new OidcProvidersChangedEvent());

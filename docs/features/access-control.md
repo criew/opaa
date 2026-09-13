@@ -618,8 +618,12 @@ nächsten Schritt.
 
 ### Übergabe eines lokalen Kontos an eine Anbieteridentität (gebaut, #1563)
 
-Der eine benannte Ausnahmeweg zum Zusammenführungsverbot aus ADR-0025 — und der einzige, den ein
-Verwalter nicht allein gehen kann (ADR-0033, Entscheidung 12). Er löst das Problem, an dem der alte
+Der eine benannte Ausnahmeweg zum Zusammenführungsverbot aus ADR-0025 (ADR-0033, Entscheidung 12).
+Ein Verwalter kann ihn nicht allein gehen: Der Code geht an die hinterlegte Adresse, und die
+Identität kommt aus einer Anmeldung beim Anbieter, die nur die Person führen kann. Der Vorbehalt
+gilt dem **Link-Rückfall** — geht die Mail nicht hinaus, hält der Verwalter den Code in der Hand und
+muss ihn so übergeben, dass er sicher ist, mit der Person zu sprechen; die Oberfläche sagt das an
+der Anzeige des Links. Er löst das Problem, an dem der alte
 Modus `basic` scheiterte: Wer im Anlaufbetrieb ohne Identitätsanbieter startet und später auf einen
 umstellt, nimmt Spaces, Mitgliedschaften und Rolle mit, statt sie an der alten Identität
 zurückzulassen.
@@ -661,8 +665,13 @@ nächste Anmeldung über den Anbieter findet das Konto über den gewöhnlichen S
 dem angestoßenen Anbieter ist 409 `PROVIDER_MISMATCH`. Der Aussperrschutz greift **auch beim
 Einlösen**: Zwischen Anstoß und Einlösung können Wochen liegen, und erst die Einlösung nimmt den
 lokalen Verwalter weg. Unbekannter, abgelaufener, verbrauchter und zweckfremder Code sind dieselbe
-Antwort (400 `TOKEN_INVALID`). Einen Rückweg von einer Anbieteridentität zu einem lokalen Konto gibt
-es nicht.
+Antwort (400 `TOKEN_INVALID`) — und ebenso ein Code, dessen Konto inzwischen durch die Verwaltung
+oder wegen Inaktivität gesperrt oder abgelaufen ist: Eine Übergabe hebt keinen dieser Zustände auf
+(eine laufende Fehlversuch-Sperre zählt nicht dagegen, sie endet von selbst). Ein Adresswechsel,
+eine Sperre und ein erzeugtes Passwort schließen den offenen Übergabecode wie jeden anderen
+offenen Link des Kontos, und mit einer gelöschten Anbieterzeile verschwinden alle für sie
+vorbereiteten Übergaben (`ON DELETE CASCADE`). Einen Rückweg von einer Anbieteridentität zu einem
+lokalen Konto gibt es nicht.
 
 Die Mandantengrenze gilt auch für die Anmeldung: Eine Identität gehört zu **genau einer** Organisation.
 Es gibt kein Konto, das mehrere Mandanten sieht, und keinen Wechsel zwischen ihnen innerhalb einer

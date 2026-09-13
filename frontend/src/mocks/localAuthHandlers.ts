@@ -212,8 +212,6 @@ export const localAuthHandlers = [
       provider: {
         id: provider?.id ?? 'mock-provider',
         displayName: provider?.displayName ?? 'Identitätsanbieter der Stadt',
-        issuerUri: provider?.issuerUri ?? 'https://idp.stadt.example/realms/beschaeftigte',
-        clientId: provider?.clientId ?? 'opaa-frontend',
       },
       scope: {
         personalSpaceName: 'Mein Space',

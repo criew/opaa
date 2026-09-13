@@ -266,7 +266,18 @@ Person, sie wird nirgends eingegeben.
 | Es bliebe kein weiterer anmeldefähiger Systemverwalter | Abgelehnt — beim Anstoßen **und** beim Einlösen. Zwischen beidem können Wochen liegen; geprüft wird der Stand im Moment der Handlung. |
 | Unter dieser Anbieteridentität besteht schon ein Konto | Abgelehnt. Zwei Konten werden nie zusammengeführt. Wer sich vorher bereits über den Anbieter angemeldet hat, hat zwei Konten und keinen Übergabeweg; die Inhalte des lokalen Kontos müssen dann von Hand übertragen werden. |
 | Die Person meldet sich bei einem anderen Anbieter an | Abgelehnt. Die Übergabe gilt für den Anbieter, den der Anstoß genannt hat. |
+| Das Konto ist inzwischen gesperrt oder abgelaufen | Abgelehnt, mit derselben Antwort wie ein ungültiger Link. Eine Übergabe hebt weder eine Sperre noch ein Ablaufdatum auf: Wer zwischen Anstoß und Einlösung ausscheidet, kommt über den Link nicht zurück herein. Eine Sperre nach Fehlversuchen ist davon ausgenommen — sie endet von selbst. |
+| Die Systemverwaltung hat das Konto inzwischen geändert | Ein Adresswechsel, eine Sperre und ein erzeugtes Passwort schließen den offenen Übergabe-Link — wie sie einen Einladungs- oder Rücksetzlink schließen. Die Übergabe wird dann neu angestoßen. |
+| Der Identitätsanbieter wurde gelöscht | Mit der Anbieterzeile verschwinden alle für sie vorbereiteten Übergaben. Die Links laufen ins Leere und werden nach dem Anlegen des neuen Anbieters neu angestoßen. |
 | Der Link ist abgelaufen, verbraucht oder unbekannt | Dieselbe Antwort für alle drei: Der Link ist nicht mehr gültig. Die Systemverwaltung stößt die Übergabe dann erneut an. |
+
+> **Bei einer Sammelumstellung an die Grenze denken.** Vorschau und Einlösung teilen sich ein
+> Anfragebudget je Client-Adresse — und eine Behörde sitzt in der Regel mit allen Arbeitsplätzen
+> hinter einer Adresse. Die Vorgabe von 60 Anfragen je 15 Minuten trägt rund 30 Einlösungen in
+> diesem Zeitraum; wer eine ganze Abteilung an einem Vormittag umstellt, hebt sie vorübergehend
+> über `OPAA_RATE_LIMIT_LOCAL_AUTH_HANDOVER_MAX_REQUESTS` an. Eine überschrittene Grenze ist keine
+> verbrauchte Übergabe: Der Link bleibt gültig, die Person versucht es nach der genannten Wartezeit
+> erneut.
 
 > **Der Anlass steht nicht im Nachweisprotokoll.** Protokolliert werden Anstoß und Abschluss mit der
 > Kennung des Anbieters, dem Zustellweg und Zahlen — nie die Kennung der Person beim Anbieter, nie

@@ -455,7 +455,7 @@ describe('UserManagementPage', () => {
     expect(within(lockedMenu).queryByRole('menuitem', { name: 'Sperren' })).not.toBeInTheDocument()
     await user.click(within(lockedMenu).getByRole('menuitem', { name: 'Entsperren' }))
     await waitFor(() => expect(within(rowOf('T. Klein')).getByText('Aktiv')).toBeInTheDocument())
-  }, 20000)
+  })
 
   it('offers neither locking nor deletion on the own row and none on the bootstrap account', async () => {
     signInAs('SYSTEM_ADMIN')

@@ -29,6 +29,10 @@ import org.springframework.test.context.TestPropertySource;
       "opaa.rate-limit.local-auth.login.global-max-requests=1000",
       "opaa.rate-limit.local-auth.refresh.max-requests=3",
       "opaa.rate-limit.local-auth.change-password.max-requests=5",
-      "opaa.rate-limit.local-auth.change-password.window-seconds=300"
+      "opaa.rate-limit.local-auth.change-password.window-seconds=300",
+      // #1563: small enough to exhaust in a test; the production default is wide on purpose
+      // (a handover is what a whole migration runs through), which no test could drive.
+      "opaa.rate-limit.local-auth.handover.max-requests=3",
+      "opaa.rate-limit.local-auth.handover.window-seconds=900"
     })
 public @interface OpaaLocalAuthRateLimitTest {}

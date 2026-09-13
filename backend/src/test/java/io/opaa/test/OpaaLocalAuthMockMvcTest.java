@@ -54,7 +54,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       "opaa.rate-limit.local-auth.forgot-password.max-requests-per-address=100000",
       "opaa.rate-limit.local-auth.set-password.max-requests=100000",
       "opaa.rate-limit.local-auth.verify-email.max-requests=100000",
-      "opaa.rate-limit.local-auth.handover.max-requests=100000"
+      "opaa.rate-limit.local-auth.handover.max-requests=100000",
+      // #1563: the provider rows these classes create point at a host that exists nowhere. The
+      // allowlist short-circuits the sign-in's address check before it would resolve it, so no
+      // class of this family makes a DNS lookup for a fixture. The check itself stays on.
+      "opaa.auth.oidc.target-validation.allowlist=" + OpaaLocalAuthMockMvcTest.PROVIDER_HOST
     })
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
@@ -64,4 +68,7 @@ public @interface OpaaLocalAuthMockMvcTest {
 
   /** A public, deliberately non-production secret that passes {@code @ValidSecret}. */
   String JWT_SECRET = "mockmvc-local-auth-integration-test-key-0123456789-abcdefghij";
+
+  /** The host every OIDC provider fixture of this family uses; see the allowlist above. */
+  String PROVIDER_HOST = "idp.test.example";
 }

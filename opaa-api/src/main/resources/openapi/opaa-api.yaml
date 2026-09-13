@@ -6390,17 +6390,17 @@ components:
 
     LocalHandoverProvider:
       type: object
-      description: The provider the administration chose - the SPA starts the code flow at it.
-      required: [id, displayName, issuerUri, clientId]
+      description: >
+        The provider the administration chose - the SPA starts the code flow at it. Only the id and
+        the name: the SPA already holds issuer and client id of every enabled provider from
+        GET /api/v1/auth/config, and repeating them here would be a second source for the same two
+        values.
+      required: [id, displayName]
       properties:
         id:
           type: string
           format: uuid
         displayName:
-          type: string
-        issuerUri:
-          type: string
-        clientId:
           type: string
 
     LocalHandoverScope:

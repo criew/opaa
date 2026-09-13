@@ -57,11 +57,7 @@ public class LocalHandoverController {
     return new LocalHandoverPreviewResponse(
         preview.user().getDisplayName(),
         preview.reason(),
-        new LocalHandoverProvider(
-            provider.getId(),
-            provider.getDisplayName(),
-            provider.getIssuerUri(),
-            provider.getClientId()),
+        new LocalHandoverProvider(provider.getId(), provider.getDisplayName()),
         scope,
         preview.expiresAt());
   }
