@@ -5,7 +5,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Link from '@mui/material/Link'
-import Paper from '@mui/material/Paper'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
@@ -13,12 +12,12 @@ import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import type { LocalAuthSettingsResponse, LocalAuthSettingsUpdateRequest } from '../../../types/api'
+import { confirmAction } from '../../../stores/confirmStore'
 import { useMailStore } from '../../../stores/mailStore'
 import { notify } from '../../../stores/notificationStore'
 import { useUserAdminStore } from '../../../stores/userAdminStore'
-import { radius } from '../../../theme/tokens'
 import FieldLabel from '../../wizard/FieldLabel'
-import SectionHead from '../../SectionHead'
+import PageSection from '../../PageSection'
 import { mailStatusOf } from '../mail/mailStatus'
 import { localUserErrorMessage } from './localUserLabels'
 
@@ -277,10 +276,15 @@ export default function LocalAuthSettingsCard() {
     void persist(requestOf(settings!, draftOf(settings!), overrides), success)
   }
 
-  function toggleEnabled(next: boolean) {
+  async function toggleEnabled(next: boolean) {
     if (
       !next &&
-      !window.confirm(`Lokale Anmeldung abschalten?\n\n${DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE}`)
+      !(await confirmAction({
+        question: 'Lokale Anmeldung abschalten?',
+        consequence: DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE,
+        confirmLabel: 'Abschalten',
+        tone: 'caution',
+      }))
     ) {
       return
     }
@@ -295,14 +299,19 @@ export default function LocalAuthSettingsCard() {
     )
   }
 
-  function toggleSelfRegistration(next: boolean) {
+  async function toggleSelfRegistration(next: boolean) {
     if (next && domains.length === 0) {
       setError(DOMAIN_REQUIRED_HINT)
       return
     }
     if (
       next &&
-      !window.confirm(`Selbstregistrierung einschalten?\n\n${SELF_REGISTRATION_CONSEQUENCE}`)
+      !(await confirmAction({
+        question: 'Selbstregistrierung einschalten?',
+        consequence: SELF_REGISTRATION_CONSEQUENCE,
+        confirmLabel: 'Einschalten',
+        tone: 'caution',
+      }))
     ) {
       return
     }
@@ -340,14 +349,7 @@ export default function LocalAuthSettingsCard() {
   const baseUrlMissing = !settings.publicBaseUrlConfigured
 
   return (
-    <Paper
-      variant="outlined"
-      component="section"
-      aria-labelledby="local-auth-settings-title"
-      sx={{ p: { xs: 2, md: 2.5 }, borderRadius: `${radius.md}px`, mb: 3 }}
-    >
-      <SectionHead id="local-auth-settings-title">Lokale Anmeldung</SectionHead>
-
+    <PageSection title="Lokale Anmeldung">
       {baseUrlMissing && (
         <Alert severity="info" sx={{ mb: 2 }}>
           {PUBLIC_BASE_URL_HINT}
@@ -373,7 +375,7 @@ export default function LocalAuthSettingsCard() {
             <Switch
               checked={settings.enabled}
               disabled={isSaving}
-              onChange={(e) => toggleEnabled(e.target.checked)}
+              onChange={(e) => void toggleEnabled(e.target.checked)}
             />
           }
           label="Lokale Anmeldung aktiv"
@@ -390,7 +392,7 @@ export default function LocalAuthSettingsCard() {
               ? ineffectiveReason(settings, parseDomains(draftOf(settings).domains))
               : null
           }
-          onChange={toggleSelfRegistration}
+          onChange={(next) => void toggleSelfRegistration(next)}
         />
         <LinkFlowSwitch
           label="Passwort vergessen"
@@ -464,6 +466,6 @@ export default function LocalAuthSettingsCard() {
           </Button>
         </Stack>
       </Box>
-    </Paper>
+    </PageSection>
   )
 }

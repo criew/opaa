@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type {
+  AccountResponse,
   LocalAccountState,
   LocalAuthSettingsResponse,
   LocalAuthSettingsUpdateRequest,
@@ -10,21 +11,22 @@ import type {
   LocalUserResponse,
   LocalUserSummaryResponse,
   LocalUserUpdateRequest,
+  ProviderType,
   SystemRole,
+  UserInfo,
 } from '../types/api'
+import { changeUserRole, listAccounts, type AccountSortField } from '../services/accountApi'
 import {
   createLocalUser,
   deleteLocalUser,
   generateLocalUserPassword,
   getLocalAuthSettings,
   getLocalUserSummary,
-  listLocalUsers,
   lockLocalUser,
   requestLocalUserPasswordReset,
   unlockLocalUser,
   updateLocalAuthSettings,
   updateLocalUser,
-  type LocalUserSortField,
   LOCAL_USER_PAGE_SIZE,
 } from '../services/localUserApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
@@ -32,18 +34,26 @@ import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 /** The one review filter of ADR-0033 that is not a state: „ohne Ablaufdatum" / „inaktiv". */
 export type LocalUserReviewFilter = 'ALL' | 'WITHOUT_EXPIRY' | 'INACTIVE'
 
-export interface LocalUserFilters {
+/**
+ * The filters of the account list (#1601). `providerType` and `providerId` select the origin;
+ * `status` and `review` describe local accounts only and narrow the list to them.
+ */
+export interface AccountFilters {
   query: string
+  providerType: ProviderType | null
+  providerId: string | null
   status: LocalAccountState | null
   role: SystemRole | null
   review: LocalUserReviewFilter
-  sort: LocalUserSortField
+  sort: AccountSortField
   direction: 'asc' | 'desc'
   page: number
 }
 
-export const INITIAL_LOCAL_USER_FILTERS: LocalUserFilters = {
+export const INITIAL_ACCOUNT_FILTERS: AccountFilters = {
   query: '',
+  providerType: null,
+  providerId: null,
   status: null,
   role: null,
   review: 'ALL',
@@ -53,10 +63,10 @@ export const INITIAL_LOCAL_USER_FILTERS: LocalUserFilters = {
 }
 
 interface UserAdminState {
-  users: LocalUserResponse[]
+  accounts: AccountResponse[]
   total: number
   size: number
-  filters: LocalUserFilters
+  filters: AccountFilters
   isLoading: boolean
   error: string | null
 
@@ -67,14 +77,14 @@ interface UserAdminState {
   settingsError: string | null
 
   reset: () => void
-  /** Loads the page the current {@link LocalUserFilters} describe. */
-  loadUsers: () => Promise<void>
+  /** Loads the page the current {@link AccountFilters} describe. */
+  loadAccounts: () => Promise<void>
   /**
    * Merges `patch` into the filters and reloads. Every change but an explicit page jump returns
    * to the first page: a filter that narrows the result would otherwise land on a page that no
    * longer exists and show an empty list.
    */
-  setFilters: (patch: Partial<LocalUserFilters>) => Promise<void>
+  setFilters: (patch: Partial<AccountFilters>) => Promise<void>
   loadSummary: () => Promise<void>
   loadSettings: () => Promise<void>
   saveSettings: (request: LocalAuthSettingsUpdateRequest) => Promise<LocalAuthSettingsResponse>
@@ -86,18 +96,20 @@ interface UserAdminState {
   deleteUser: (id: string) => Promise<void>
   resetUserPassword: (id: string) => Promise<LocalUserPasswordResetResponse>
   generateUserPassword: (id: string) => Promise<LocalUserGeneratedPasswordResponse>
+  /** The role of any account, local or of a provider, over the one role endpoint. */
+  changeRole: (id: string, role: SystemRole) => Promise<UserInfo>
   /**
-   * Adopts a mutation's own row and refreshes the review counts; internal to the store.
+   * Adopts a local mutation's own row and refreshes the review counts; internal to the store.
    * `sessionEpoch` is the epoch the caller captured **before** its request (Nachprüfung N2).
    */
   patchRow: (sessionEpoch: number, updated: LocalUserResponse) => Promise<void>
 }
 
 const emptyState = {
-  users: [] as LocalUserResponse[],
+  accounts: [] as AccountResponse[],
   total: 0,
   size: LOCAL_USER_PAGE_SIZE,
-  filters: INITIAL_LOCAL_USER_FILTERS,
+  filters: INITIAL_ACCOUNT_FILTERS,
   isLoading: false,
   error: null as string | null,
   summary: null as LocalUserSummaryResponse | null,
@@ -111,15 +123,27 @@ function messageOf(err: unknown, fallback: string): string {
   return err instanceof Error && err.message ? err.message : fallback
 }
 
+/** A local mutation's row, folded back into the account row it belongs to. */
+function withLocal(account: AccountResponse, local: LocalUserResponse): AccountResponse {
+  return {
+    ...account,
+    email: local.email,
+    displayName: local.displayName,
+    systemRole: local.systemRole,
+    local,
+  }
+}
+
 /**
- * Monotone counter over `loadUsers` calls: typing in the search field faster than the answers
+ * Monotone counter over `loadAccounts` calls: typing in the search field faster than the answers
  * arrive must leave the last query's page in the table, not the one whose response was slowest.
  */
 let listRequestSequence = 0
 
 /**
- * The local account management of the Systemverwaltung (#1541, ADR-0033 Entscheidungen 4 and 11):
- * the account list with its filters, the review counts and the settings of the local sign-in.
+ * The account administration of the Systemverwaltung (#1541, #1601, ADR-0033 Entscheidungen 4
+ * and 11): the list of every account with its filters, the review counts of the local accounts
+ * and the settings of the local sign-in.
  *
  * Unlike {@link useOidcProviderStore} the list is **not** patched from a mutation's own response
  * alone: every act can move a row out of the current filter (a locked account under „Zustand:
@@ -134,16 +158,19 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
     set({ ...emptyState })
   },
 
-  loadUsers: async () => {
+  loadAccounts: async () => {
     const sessionEpoch = currentSessionEpoch()
     listRequestSequence += 1
     const requestId = listRequestSequence
     const isStale = () => isStaleSessionEpoch(sessionEpoch) || requestId !== listRequestSequence
-    const { query, status, role, review, sort, direction, page } = get().filters
+    const { query, providerType, providerId, status, role, review, sort, direction, page } =
+      get().filters
     set({ isLoading: true, error: null })
     try {
-      const result = await listLocalUsers({
+      const result = await listAccounts({
         query: query.trim(),
+        providerType,
+        providerId,
         status,
         role,
         withoutExpiry: review === 'WITHOUT_EXPIRY',
@@ -153,11 +180,11 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
         page,
       })
       if (isStale()) return
-      set({ users: result.items, total: result.total, size: result.size, isLoading: false })
+      set({ accounts: result.items, total: result.total, size: result.size, isLoading: false })
     } catch (err) {
       if (isStale()) return
       set({
-        error: messageOf(err, 'Die lokalen Konten konnten nicht geladen werden'),
+        error: messageOf(err, 'Die Konten konnten nicht geladen werden'),
         isLoading: false,
       })
     }
@@ -167,7 +194,7 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
     set({
       filters: { ...get().filters, ...patch, page: patch.page ?? 0 },
     })
-    await get().loadUsers()
+    await get().loadAccounts()
   },
 
   loadSummary: async () => {
@@ -226,7 +253,7 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
     const sessionEpoch = currentSessionEpoch()
     const created = await createLocalUser(request)
     if (isStaleSessionEpoch(sessionEpoch)) return created
-    await Promise.all([get().loadUsers(), get().loadSummary()])
+    await Promise.all([get().loadAccounts(), get().loadSummary()])
     return created
   },
 
@@ -255,7 +282,7 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
     const sessionEpoch = currentSessionEpoch()
     await deleteLocalUser(id)
     if (isStaleSessionEpoch(sessionEpoch)) return
-    await Promise.all([get().loadUsers(), get().loadSummary()])
+    await Promise.all([get().loadAccounts(), get().loadSummary()])
   },
 
   resetUserPassword: async (id) => requestLocalUserPasswordReset(id),
@@ -264,13 +291,36 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
     const sessionEpoch = currentSessionEpoch()
     const result = await generateLocalUserPassword(id)
     // The generated password forces a change at the next sign-in, so the row's marker changes.
-    if (!isStaleSessionEpoch(sessionEpoch)) await get().loadUsers()
+    if (!isStaleSessionEpoch(sessionEpoch)) await get().loadAccounts()
     return result
+  },
+
+  changeRole: async (id, role) => {
+    const sessionEpoch = currentSessionEpoch()
+    const info = await changeUserRole(id, role)
+    if (isStaleSessionEpoch(sessionEpoch)) return info
+    const systemRole = info.systemRole as SystemRole
+    set({
+      accounts: get().accounts.map((account) =>
+        account.id === id
+          ? {
+              ...account,
+              systemRole,
+              local: account.local ? { ...account.local, systemRole } : account.local,
+            }
+          : account,
+      ),
+    })
+    return info
   },
 
   patchRow: async (sessionEpoch, updated) => {
     if (isStaleSessionEpoch(sessionEpoch)) return
-    set({ users: get().users.map((u) => (u.id === updated.id ? updated : u)) })
+    set({
+      accounts: get().accounts.map((account) =>
+        account.id === updated.id ? withLocal(account, updated) : account,
+      ),
+    })
     await get().loadSummary()
   },
 }))

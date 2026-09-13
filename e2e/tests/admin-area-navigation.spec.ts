@@ -32,11 +32,13 @@ test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)',
     // #1541: „Benutzer & Gruppen" sind zwei Einträge; „Benutzer" ist zugleich das Ziel des
     // Admin-Einstiegs in der globalen Leiste.
     await column.getByRole('link', { name: 'Benutzer', exact: true }).click()
-    await page.waitForURL('**/admin/users')
+    // #1601: „Benutzer" hat zwei Bereiche als eigene Routen; der nackte Pfad leitet auf die Konten.
+    await page.waitForURL('**/admin/users/accounts')
     await expect(page.getByRole('heading', { level: 1, name: 'Benutzer' })).toBeVisible()
-    // Das Suchfeld statt der Tabelle: Im dev-Stack gibt es kein lokales Konto, die Liste zeigt
-    // dort ihren Leerzustand ohne <table>.
-    await expect(page.getByRole('searchbox', { name: 'Lokale Konten suchen' })).toBeVisible()
+    await expect(page.getByRole('searchbox', { name: 'Konten suchen' })).toBeVisible()
+    await page.getByRole('tab', { name: 'Einstellungen' }).click()
+    await page.waitForURL('**/admin/users/settings')
+    await expect(page.getByRole('switch', { name: 'Lokale Anmeldung aktiv' })).toBeVisible()
 
     await column.getByRole('link', { name: 'Gruppen', exact: true }).click()
     await page.waitForURL('**/admin/groups')

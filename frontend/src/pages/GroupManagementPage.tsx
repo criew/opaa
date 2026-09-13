@@ -11,15 +11,17 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import type { GroupListResponse, UserInfo } from '../types/api'
 import { getUsers } from '../services/api'
+import { confirmAction } from '../stores/confirmStore'
 import { useGroupStore } from '../stores/groupStore'
 import { groupKindLabel } from '../utils/labels'
 import CreateGroupDialog from '../components/CreateGroupDialog'
 import FieldLabel from '../components/wizard/FieldLabel'
 import MetaBadge from '../components/MetaBadge'
-import PageHeading from '../components/a11y/PageHeading'
-import GlobalScopeNote from '../components/GlobalScopeNote'
+import AreaPageHeader from '../components/AreaPageHeader'
+import { contentWidth } from '../theme/tokens'
 
 function GroupCard({ group }: { group: GroupListResponse }) {
   const details = useGroupStore((s) => s.groupDetails[group.id])
@@ -61,12 +63,7 @@ function GroupCard({ group }: { group: GroupListResponse }) {
   }, [allUsers, details?.members])
 
   return (
-    <Accordion
-      expanded={expanded}
-      onChange={(_event, isExpanded) => setExpanded(isExpanded)}
-      variant="outlined"
-      disableGutters
-    >
+    <Accordion expanded={expanded} onChange={(_event, isExpanded) => setExpanded(isExpanded)}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexGrow: 1 }}>
           <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>{group.name}</Typography>
@@ -143,11 +140,13 @@ function GroupCard({ group }: { group: GroupListResponse }) {
                 variant="outlined"
                 size="small"
                 onClick={async () => {
-                  if (
-                    !window.confirm(
-                      `Gruppe "${group.name}" löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
-                    )
-                  ) {
+                  const confirmed = await confirmAction({
+                    question: `Gruppe "${group.name}" löschen?`,
+                    consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+                    confirmLabel: 'Löschen',
+                    tone: 'danger',
+                  })
+                  if (!confirmed) {
                     return
                   }
                   setLocalError(null)
@@ -288,44 +287,43 @@ export default function GroupManagementPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 2.5, flexWrap: 'wrap' }}>
-        <PageHeading title="Gruppen" />
-        <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
-          {groups.length === 1 ? '1 Gruppe' : `${groups.length} Gruppen`} für Eigentum und Freigaben
-        </Typography>
-        <Button
-          variant="contained"
-          onClick={() => setCreateDialogOpen(true)}
-          sx={{ ml: 'auto', flex: 'none' }}
-        >
-          Neue Gruppe
-        </Button>
+      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+        <AreaPageHeader
+          icon={GroupsOutlinedIcon}
+          title="Gruppen"
+          meta={groups.length === 1 ? '1 Gruppe' : `${groups.length} Gruppen`}
+          description="Gilt für die gesamte Anwendung. Änderungen wirken sich auf alle Spaces und Benutzer aus. Gruppen tragen Eigentum und Freigaben."
+          action={
+            <Button variant="contained" onClick={() => setCreateDialogOpen(true)}>
+              Neue Gruppe
+            </Button>
+          }
+        />
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        {isLoading ? (
+          <Typography color="text.secondary">Gruppen werden geladen …</Typography>
+        ) : groups.length === 0 ? (
+          <Typography color="text.secondary">Es sind noch keine Gruppen vorhanden.</Typography>
+        ) : (
+          <Stack spacing={1}>
+            {groups.map((group) => (
+              <GroupCard key={group.id} group={group} />
+            ))}
+          </Stack>
+        )}
+
+        <CreateGroupDialog
+          open={createDialogOpen}
+          onClose={() => setCreateDialogOpen(false)}
+          onCreated={() => setCreateDialogOpen(false)}
+        />
       </Box>
-      <GlobalScopeNote />
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      {isLoading ? (
-        <Typography color="text.secondary">Gruppen werden geladen …</Typography>
-      ) : groups.length === 0 ? (
-        <Typography color="text.secondary">Es sind noch keine Gruppen vorhanden.</Typography>
-      ) : (
-        <Stack spacing={1}>
-          {groups.map((group) => (
-            <GroupCard key={group.id} group={group} />
-          ))}
-        </Stack>
-      )}
-
-      <CreateGroupDialog
-        open={createDialogOpen}
-        onClose={() => setCreateDialogOpen(false)}
-        onCreated={() => setCreateDialogOpen(false)}
-      />
     </Box>
   )
 }

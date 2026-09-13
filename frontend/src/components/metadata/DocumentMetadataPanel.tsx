@@ -10,6 +10,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import type { DocumentMetadataFieldResponse } from '../../types/api'
 import { deleteDocumentMetadataValue, getDocumentMetadata } from '../../services/api'
+import { confirmAction } from '../../stores/confirmStore'
 import { metadataOriginLabel } from '../../utils/labels'
 import EditMetadataValueDialog from './EditMetadataValueDialog'
 
@@ -90,11 +91,14 @@ export default function DocumentMetadataPanel({
   }
 
   async function handleDelete(field: DocumentMetadataFieldResponse) {
-    if (
-      !window.confirm(
-        `${field.label} von "${fileName}" löschen? Das Feld ist danach leer; die nächste automatische Extraktion darf es wieder befüllen.`,
-      )
-    ) {
+    const confirmed = await confirmAction({
+      question: `${field.label} von "${fileName}" löschen?`,
+      consequence:
+        'Das Feld ist danach leer; die nächste automatische Extraktion darf es wieder befüllen.',
+      confirmLabel: 'Löschen',
+      tone: 'caution',
+    })
+    if (!confirmed) {
       return
     }
     try {

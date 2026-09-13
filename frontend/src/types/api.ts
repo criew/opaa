@@ -253,6 +253,9 @@ export type LocalUserGeneratedPasswordResponse =
   components['schemas']['LocalUserGeneratedPasswordResponse']
 export type LocalAuthSettingsResponse = components['schemas']['LocalAuthSettingsResponse']
 export type LocalAuthSettingsUpdateRequest = components['schemas']['LocalAuthSettingsUpdateRequest']
+export type AccountResponse = components['schemas']['AccountResponse']
+export type AccountPageResponse = components['schemas']['AccountPageResponse']
+export type AccountProviderResponse = components['schemas']['AccountProviderResponse']
 
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (

@@ -737,12 +737,25 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
   Mail; einmal im Quartal erhalten die Systemverwalter eine Wiedervorlage (`ADMIN_REVIEW_REMINDER`)
   mit der Zahl der Konten ohne Ablaufdatum und dem Link zur Liste — keine Namen in der Mail.
   Systemverwalterkonten sind nicht ausgenommen.
-- **Die Kontenliste ist kein Auswertungspfad:** Sie führt **ausschließlich lokale Konten** (die Rolle
-  eines OIDC-Kontos wird nicht in dieser Sicht verwaltet — ein fehlender Aufrufer dafür ist ein
-  eigenes Thema, keine Rechtfertigung für eine Beschäftigtenliste), zeigt Aktivität nur als Klasse
-  („nie", „länger als 90 Tage nicht", „aktiv") ohne exakten Zeitstempel und ohne Sortierung danach,
-  und kennt **keinen Export und keinen Massenabruf** (keine CSV-Ausgabe, Seitengröße höchstens 50).
-  Das ist eine dauerhafte Eigenschaft, keine Umfangsentscheidung eines Issues. `users.last_login_at`
+- **Die Kontenliste ist kein Auswertungspfad:** Sie zeigt Aktivität nur als Klasse („nie", „länger
+  als 90 Tage nicht", „aktiv") ohne exakten Zeitstempel und ohne Sortierung danach, und kennt
+  **keinen Export und keinen Massenabruf** (keine CSV-Ausgabe, Seitengröße höchstens 50). Das ist
+  eine dauerhafte Eigenschaft, keine Umfangsentscheidung eines Issues. **Ergänzung vom 12.09.2026
+  (#1601, Maßgabe des Maintainers):** Die Liste unter Administration → Benutzer führt **alle Konten
+  der Organisation**, lokale wie die der Identitätsanbieter, mit sichtbarer Herkunft je Zeile
+  (`GET /api/v1/admin/accounts`); `GET /api/v1/admin/local-users` bleibt die auf lokale Konten
+  beschränkte Liste der Verwaltung. Die Aktivitätsklasse wird dabei **nur für lokale Konten**
+  ausgegeben — für ein Anbieterkonto besteht keine Prüfpflicht, sein Lebenszyklus liegt beim
+  Anbieter —, und die Prüffilter (Zustand, ohne Ablaufdatum, länger nicht genutzt) grenzen die
+  Liste auf lokale Konten ein. Ein Anbieterkonto bietet in dieser Sicht genau eine Handlung, die
+  Rolle über den bestehenden Rollenendpunkt; Sperren, Befristen und Löschen kennt OPAA für es
+  nicht. **Sortierbar sind dort sieben Felder** — Name, E-Mail, Herkunft, Rolle, Zustand, Ablauf,
+  Anlagedatum: Die drei hinzugekommenen ordnen eine Kategorie und tun das nach fester Rangfolge
+  (Herkunft: lokal zuerst, dann Anbieter nach Namen, zuletzt ein Issuer ohne Anbieterzeile; Rolle
+  nach Privileg; Zustand nach Dringlichkeit, Anbieterkonten zuletzt). Sie sagen, woher ein Konto
+  kommt und ob es sich anmelden kann — **nicht, wann jemand gearbeitet hat**; die Aktivität bleibt
+  als einziges Feld von der Sortierung ausgenommen, und das ist der Kern dieser Regel, nicht die
+  Zahl der Felder. `users.last_login_at`
   ist ein bei jeder Anfrage gedrosselt fortgeschriebener **Aktivitätszeitstempel** (fünf Minuten
   Auflösung, `UserService#updateExistingUser`), kein Anmeldezeitpunkt — er wird nirgends als solcher
   ausgegeben.
@@ -975,7 +988,7 @@ entgegen `security-and-compliance.md` in das Nachweisprotokoll (→ nur die Sper
 der Übergabepfad war ein stiller Weg in private Inhalte (→ zweistufig, von der Person eingelöst,
 Pflicht-Anlass, Unterrichtung, Umfangsanzeige); `security-and-compliance.md` fehlte in der
 Nachzugsliste (→ nachgezogen). Übernommen wurden außerdem: kein Personenbezug im Klartext im Protokoll,
-Korrektur der Behauptung zu `last_login_at`, Kontenliste nur lokal mit Aktivität als Klasse und ohne
+Korrektur der Behauptung zu `last_login_at`, Kontenliste mit Aktivität als Klasse, ohne Sortierung danach und ohne
 Export, offener Rücksetzweg bei Fehlversuch-Sperre, Anlass bei erzwungenem Wechsel und im
 Sitzungsmarker, Zweckbindung und Sichtbarkeit des Anlagegrunds, harte Fristen für die Token-Tabellen,
 `LOCAL_SESSION_REVOKED` nur fremdveranlasst, Zähler nie ausgeben, Pflicht-Befristung
@@ -997,6 +1010,18 @@ Befristen des Notanker-Kontos) mit Entscheidung 3 grundsätzlich ausgeschlossen.
 Punkte — Unterrichtung des Personalrats vor dem Einschalten der Schalter, jährliche Vorlage des
 Auszugs — gehören ebenfalls ins Handbuch (#1543).
 
+**Nachtrag vom 12.09.2026 zur Auflage „Kontenliste" (#1601).** Auf Maßgabe des Maintainers führt die
+Liste unter Administration → Benutzer seither **alle** Konten der Organisation, nicht mehr nur die
+lokalen. Was der Personalrat zugesagt bekam, bleibt davon unberührt und ist der eigentliche
+Gegenstand der Auflage: Aktivität nur als Klasse, keine Sortierung danach, kein Export, kein
+Massenabruf. Zusätzlich enger als zuvor: Die Aktivitätsklasse erscheint **ausschließlich an lokalen
+Zeilen** — für ein Konto eines Identitätsanbieters gibt OPAA gar keine aus. Damit entsteht kein
+Auswertungspfad über die Beschäftigten, die über das Verzeichnis kommen; ihre Zeile nennt Herkunft,
+Rolle und ob der Anbieter noch Tokens ausstellt. Ob diese Erweiterung eine erneute Befassung der
+Personalvertretung verlangt, entscheidet der Betreiber der jeweiligen Installation — die Zusagen,
+auf die sich die Bewertung stützt, sind eingehalten. `security-and-compliance.md` ist entsprechend
+nachgezogen.
+
 ## Zuschnitt der Sub-Issues (gegen diesen ADR geprüft)
 
 | Issue | Folgt aus diesem ADR | Zu korrigieren |
@@ -1010,9 +1035,10 @@ Auszugs — gehören ebenfalls ins Handbuch (#1543).
 | #1538 Selbstbedienung | `set-password` für beide Zwecke, `forgot-password` 204 konstant und offen bei Fehlversuch-Sperre, Registrierung nur mit Domänenliste und Pflicht-Ablauf, 404 für abgeschaltete Flüsse (11) | Domänenliste, Pflicht-Ablauf, fester Anlagegrund; Fehlversuch-Sperre blockiert den Rücksetzweg nicht; keine Hinweis-Mail an belegte Adressen |
 | #1539 Anmeldeseite und Sitzung | `sessionKind`, Refresh nur mit CSRF-Cookie, Marker mit Gründen ohne Erneuerung, `/login/system`, `pcr`-Anlass als Klartext (7, 8) | Grund-Anzeige für alle Marker und den `pcr`-Anlass |
 | #1540 Selbstbedienungsseiten | eine Seite für Einladung und Zurücksetzen, Richtlinie sichtbar, Sperrliste im Feldfehler, Anlagegrund in den eigenen Einstellungen (9, 11) | Maximum 64 Zeichen; Anlagegrund einsehbar |
-| #1541 Benutzerverwaltung | Zustände mit Grund, Schalter mit Konsequenz-Dialog und Vorbedingungen (Basis-URL, Domänenliste), Filter statt Zähler, Aktivität als Klasse, kein Export, Notanker-Konto mit abgeblendeten Aktionen (Sperren, Ablauf, Rolle, Löschen, Übergabe) und Hinweis (4, 5, 11) | **nur lokale Konten**; Aktivität als Klasse ohne Sortierung; kein Export; Notanker-Aktionen abgeblendet statt 409 im Nachhinein; Aktion „Übergabe anstoßen" mit Pflicht-Anlass; Konsequenz-Dialog des letzten OIDC-Anbieters zeigt den Guard-Fehler |
+| #1541 Benutzerverwaltung | Zustände mit Grund, Schalter mit Konsequenz-Dialog und Vorbedingungen (Basis-URL, Domänenliste), Filter statt Zähler, Aktivität als Klasse, kein Export, Notanker-Konto mit abgeblendeten Aktionen (Sperren, Ablauf, Rolle, Löschen, Übergabe) und Hinweis (4, 5, 11) | **nur lokale Konten** (Zuschnitt von #1541; mit #1601 auf alle Konten erweitert, siehe den Nachtrag oben); Aktivität als Klasse ohne Sortierung; kein Export; Notanker-Aktionen abgeblendet statt 409 im Nachhinein; Aktion „Übergabe anstoßen" mit Pflicht-Anlass; Konsequenz-Dialog des letzten OIDC-Anbieters zeigt den Guard-Fehler |
 | #1542 E-Mail-Einstellungen | Maskierung `***`, Testversand, „letzter Erfolg / letzter Fehler", Vorlagen mit Vorschau (10) | Statusanzeige; Hinweis und Sperre der Schalter ohne `OPAA_PUBLIC_BASE_URL` |
 | #1543 E2E und Handbuch | E2E-Ziel ohne Keycloak, Handbuchkapitel, Variablen, **Demo-Stack** (5, 6, 9, 10) | Vorbereitungsschritte für Bestandsinstallationen (`OPAA_AUTH_JWT_SECRET` mit Erzeugungsbefehl, echter Wert für `OPAA_INITIAL_ADMIN_EMAIL`, `OPAA_TRUSTED_PROXY_CIDRS` hinter jedem Reverse-Proxy mit **jedem Hop** in der Liste (Compose-Subnetz und äußerer Proxy; nur der Peer allein legt alle Clients in einen Bucket) und mit Präfixlänge je Eintrag — sonst scheitern Anmeldung und Schreibvorgänge an der CORS-Prüfung; Auflage an den äußeren Proxy: `X-Forwarded-For`, `X-Forwarded-Proto` und bei abweichendem Port `X-Forwarded-Port` (kein RFC-7239 `Forwarded`, kein Port in `X-Forwarded-Host`); Wechsel einer Datenbank von `dev` auf `oidc`: Dev-Konten zählen nicht als Bestand, das Notanker-Konto entsteht scharf), Härtungskapitel-Absatz zum JWT-Secret ersetzen, Hinweis zu `forward-headers-strategy` in „Netzwerkzugang" auf `native`/`server.tomcat.remoteip.internal-proxies` umschreiben, Härtungstabelle um `cookie-secure`, Tabelle „Migrationen aus älteren Ständen" mit 31.03.2027 und der umbenannten Proxy-Variable, Nacharbeit nach Rücksicherung, Notanker-Prozedur (versiegeltes Passwort, persönliche Konten), Empfehlung „technisches Log höchstens 90 Tage", Dienstvereinbarungs-Hinweise (Schalter, Auszug vor dem Einschalten, jährliche Vorlage), MFA-Folgeschritt, `oidc` als „Betriebsmodus"; **Demo:** `demo/seed/seed.py` meldet sich als Notanker an und vergibt `demo-admin` die Rolle, `demo/README.md`, `e2e/demo-smoke.env` (`OPAA_INITIAL_ADMIN_PASSWORD`), `docs/features/demo-instance.md`, `.env.example` |
+| #1601 Kontenliste aller Konten | zwei Bereiche als Routen, alle Konten mit Herkunft je Zeile, Zeilenmenü nach Kontotyp, Rolle über den bestehenden Rollenendpunkt (11, Nachtrag vom 12.09.2026) | Aktivitätsklasse **nur** an lokalen Zeilen; sieben Sortierfelder ohne die Aktivität; kein Export; für Anbieterkonten keine Sperr-, Ablauf- oder Löschhandlung, weil es serverseitig keine gibt |
 | **neu** | Übergabe eines lokalen Kontos an eine Anbieteridentität, zweistufig (12) — Sub-Issue nach #1537, #1538 und #1539 | anzulegen |
 
 ## Verworfene Alternativen
@@ -1107,7 +1133,9 @@ Auszugs — gehören ebenfalls ins Handbuch (#1543).
   Filter, Erinnerungen und Wiedervorlage sind es (11).
 - **Kontenliste mit allen Konten und exakter „letzter Anmeldung":** eine nach Aktivität sortierbare
   Beschäftigtenliste — genau der Auswertungspfad, den `security-and-compliance.md` ausschließt; und
-  `last_login_at` ist ohnehin ein Aktivitäts-, kein Anmeldezeitstempel (11).
+  `last_login_at` ist ohnehin ein Aktivitäts-, kein Anmeldezeitstempel (11). Die gemeinsame Liste
+  aller Konten seit #1601 ist davon unterschieden: ohne Zeitstempel, ohne Aktivität für
+  Anbieterkonten, ohne Sortierung nach Aktivität, ohne Export (Ergänzung zu 11).
 - **Exportierbare Kontenliste** (Betrieb): ein Vollabzug mit anderem Namen; die Prüferfrage
   beantwortet die gefilterte Liste (11).
 - **Hinweis-Mail „Konto existiert bereits" bei der Registrierung:** selbst ein Aufzählungskanal (11).

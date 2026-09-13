@@ -155,41 +155,52 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     );
   });
 
-  // #1541: die Benutzerverwaltung führt die dichteste Kombination des Bereichs — Schalter mit
-  // Konsequenz, Zustandspunkt plus Text in der Tabelle und ein Zeilenmenü aus Nur-Icon-Schaltern.
-  // Beide Farbschemata, weil der Zustand über einen Farbpunkt *und* Text geführt wird.
+  // #1541/#1601: die Benutzerverwaltung führt die dichteste Kombination des Bereichs — eine
+  // Tab-Leiste, Zustandspunkt plus Text und Herkunft mit Symbol plus Wort in der Tabelle, ein
+  // Zeilenmenü aus Nur-Icon-Schaltern und die Schalterkarte mit Konsequenz. Beide Bereiche und
+  // beide Farbschemata, weil Zustand und Herkunft je über Farbe *und* Text geführt werden.
   test("Verwaltungsbereich: Benutzer in beiden Farbschemata", async ({
     authenticatedPage: page,
   }) => {
-    await page.goto("/admin/users");
+    await page.goto("/admin/users/accounts");
     await expect(
       page.getByRole("heading", { level: 1, name: "Benutzer" }),
     ).toBeVisible();
-    // Beide Aufrufe müssen gelandet sein, bevor axe analysiert: Der Schalter erscheint erst mit
-    // den Einstellungen (vorher steht dort ein Skeleton), und die Liste ist im dev-Stack **leer**
-    // — es gibt dort kein lokales Konto, also steht statt der Tabelle der Leerzustand. Auf die
-    // Tabelle zu warten wäre ein Timeout.
-    const localSignInSwitch = page.getByRole("switch", {
-      name: "Lokale Anmeldung aktiv",
-    });
+    // Die Liste muss gelandet sein, bevor axe analysiert (vorher steht dort ein Skeleton). Im
+    // dev-Stack führt sie die Entwicklungsnutzer als Konten ohne Anbieterzeile; der Leerzustand
+    // bleibt als Alternative stehen, damit der Test nicht an einem leeren Stapel scheitert.
     const list = page
-      .getByRole("table", { name: "Lokale Konten" })
-      .or(page.getByText("Kein lokales Konto entspricht den gewählten Filtern."));
-    await expect(localSignInSwitch).toBeVisible();
+      .getByRole("table", { name: "Konten" })
+      .or(page.getByText("Kein Konto entspricht den gewählten Filtern."));
     await expect(list.first()).toBeVisible();
 
     await page.emulateMedia({ colorScheme: "light" });
     await expectNoSeriousA11yViolations(
       page,
-      "Verwaltungsbereich (Benutzer, helles Farbschema)",
+      "Verwaltungsbereich (Konten, helles Farbschema)",
     );
 
     await page.emulateMedia({ colorScheme: "dark" });
     await expect(list.first()).toBeVisible();
     await expectNoSeriousA11yViolations(
       page,
-      "Verwaltungsbereich (Benutzer, dunkles Farbschema)",
+      "Verwaltungsbereich (Konten, dunkles Farbschema)",
     );
+
+    // Das Schema vor dem Laden setzen, nicht auf der gerenderten Seite (#1600, adb95b5d): Ein
+    // Wechsel danach hat auf den Anmeldeseiten CI-eigene Kontrastbefunde erzeugt.
+    const localSignInSwitch = page.getByRole("switch", {
+      name: "Lokale Anmeldung aktiv",
+    });
+    for (const scheme of ["dark", "light"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto("/admin/users/settings");
+      await expect(localSignInSwitch).toBeVisible();
+      await expectNoSeriousA11yViolations(
+        page,
+        `Verwaltungsbereich (Benutzer-Einstellungen, ${scheme === "dark" ? "dunkles" : "helles"} Farbschema)`,
+      );
+    }
   });
 
   test("Verwaltungsbereich: Gruppen", async ({ authenticatedPage: page }) => {
@@ -219,21 +230,42 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (Branding)");
   });
 
-  // #1053: die dichteste Seite des Verwaltungsbereichs — achtspaltige Tabelle, Akkordeons je
-  // Suchstufe und Statuschips in drei Farbrollen.
-  test("Verwaltungsbereich: Suche & Indexierung", async ({
+  // #1053: die dichteste Seite des Verwaltungsbereichs — die zehnspaltige Bibliothekstabelle und
+  // die Akkordeons je Suchstufe. Seit #1616 liegen die Bereiche in eigenen Reitern, und axe prüft
+  // nur, was gerade sichtbar ist: Jeder Reiter wird deshalb einzeln besucht.
+  test("Verwaltungsbereich: Suche & Indexierung in allen Reitern", async ({
     authenticatedPage: page,
   }) => {
     await page.goto("/admin/search");
+    // Der nackte Pfad leitet auf den ersten Reiter um.
+    await page.waitForURL("**/admin/search/overview");
     await expect(
       page.getByRole("heading", { level: 1, name: "Suche & Indexierung" }),
     ).toBeVisible();
-    // Wait for the status call to have landed: the chat role chip only renders once it has.
-    await expect(page.getByLabel(/^Chat: /)).toBeVisible();
+    // Wait for the status call to have landed: the chat role line only renders once it has.
+    await expect(page.getByText(/^Chat — /)).toBeVisible();
 
     await expectNoSeriousA11yViolations(
       page,
-      "Verwaltungsbereich (Suche & Indexierung)",
+      "Verwaltungsbereich (Suche & Indexierung, Überblick)",
+    );
+
+    await page.getByRole("tab", { name: "Indexstatus" }).click();
+    await page.waitForURL("**/admin/search/index");
+    await expect(
+      page.getByRole("table", { name: "Indexstatus je Bibliothek" }),
+    ).toBeVisible();
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (Suche & Indexierung, Indexstatus)",
+    );
+
+    await page.getByRole("tab", { name: "Diagnose" }).click();
+    await page.waitForURL("**/admin/search/diagnosis");
+    await expect(page.getByRole("textbox", { name: /Testfrage/ })).toBeVisible();
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (Suche & Indexierung, Diagnose)",
     );
   });
 

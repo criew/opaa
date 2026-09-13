@@ -12,7 +12,7 @@ import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined'
 import { copyToClipboard } from '../../utils/clipboard'
 import { fontFamily, radius } from '../../theme/tokens'
 import SectionHead from '../SectionHead'
-import { StateDot } from './OidcProviderCard'
+import ProviderStateDot from './providers/ProviderStateDot'
 import { PROVIDER_STATE_LABEL, type ProviderState } from './oidcProviderState'
 
 const eyebrowSx = {
@@ -84,13 +84,14 @@ function Step({ number, icon, title, children }: StepProps) {
   return (
     <Box
       component="li"
+      // Ein Schritt einer Anleitung ist ein Listeneintrag, kein Kasten (#1608): Die Trennlinie
+      // unten scheidet ihn vom nächsten, das Symbol links führt das Auge.
       sx={{
         listStyle: 'none',
-        border: 1,
+        borderBottom: 1,
         borderColor: 'divider',
-        borderRadius: `${radius.md}px`,
-        bgcolor: 'background.paper',
-        p: 2,
+        py: 2,
+        '&:last-of-type': { borderBottom: 0 },
         display: 'flex',
         flexDirection: 'column',
         gap: 1.5,
@@ -199,13 +200,7 @@ export default function OidcProviderSetupInstructions() {
       <Box
         component="section"
         aria-labelledby="oidc-state-legend-title"
-        sx={{
-          mt: 3,
-          border: 1,
-          borderColor: 'divider',
-          borderRadius: `${radius.md}px`,
-          p: 2,
-        }}
+        sx={{ mt: 3, pt: 2, borderTop: 1, borderColor: 'divider' }}
       >
         <Typography id="oidc-state-legend-title" component="h3" sx={{ ...eyebrowSx, mb: 1.5 }}>
           Status verstehen
@@ -223,7 +218,7 @@ export default function OidcProviderSetupInstructions() {
           {(['reachable', 'unreachable', 'disabled'] as const).map((state) => (
             <Box key={state}>
               <Stack component="dt" direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                <StateDot state={state} />
+                <ProviderStateDot state={state} />
                 <Typography component="span" sx={{ fontSize: 13, fontWeight: 500 }}>
                   {PROVIDER_STATE_LABEL[state]}
                 </Typography>

@@ -7,15 +7,16 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import AddIcon from '@mui/icons-material/Add'
+import FingerprintOutlinedIcon from '@mui/icons-material/FingerprintOutlined'
 import type { OidcProviderResponse } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
 import { notify } from '../stores/notificationStore'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
-import { radius } from '../theme/tokens'
+import { contentWidth, radius } from '../theme/tokens'
 import PageHeading from '../components/a11y/PageHeading'
-import GlobalScopeNote from '../components/GlobalScopeNote'
+import AreaPageHeader from '../components/AreaPageHeader'
 import SectionHead from '../components/SectionHead'
-import OidcProviderCard from '../components/admin/OidcProviderCard'
+import ProviderList from '../components/admin/providers/ProviderList'
 import OidcProviderFormDialog from '../components/admin/OidcProviderFormDialog'
 import OidcProviderSetupInstructions from '../components/admin/OidcProviderSetupInstructions'
 
@@ -40,7 +41,6 @@ export default function OidcProviderManagementPage() {
     () => allProviders.filter((provider) => provider.providerType === 'OIDC'),
     [allProviders],
   )
-  const enabledCount = providers.filter((provider) => provider.enabled).length
 
   useEffect(() => {
     if (isSystemAdmin) void loadProviders()
@@ -48,7 +48,7 @@ export default function OidcProviderManagementPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: 4, maxWidth: 720 }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
         <PageHeading title="Identitätsanbieter" gutterBottom />
         <Alert severity="info">
           Die Anbieterverwaltung wird von der Systemverwaltung gepflegt. Für Ihr Konto ist diese
@@ -62,26 +62,18 @@ export default function OidcProviderManagementPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: 1040 }}>
-        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 2.5, flexWrap: 'wrap' }}>
-          <PageHeading title="Identitätsanbieter" />
-          <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
-            {providers.length === 1 ? '1 Anbieter' : `${providers.length} Anbieter`}
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={openCreateDialog}
-            sx={{ ml: 'auto', flex: 'none' }}
-          >
-            Neuer Anbieter
-          </Button>
-        </Box>
-        <GlobalScopeNote>
-          Gilt für die gesamte Anwendung. Die Reihenfolge ist die der Anmeldeseite; Änderungen
-          wirken ohne Neustart. Lokale Konten sind kein Anbieter dieser Liste – sie werden unter
-          Administration → Benutzer geführt.
-        </GlobalScopeNote>
+      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+        <AreaPageHeader
+          icon={FingerprintOutlinedIcon}
+          title="Identitätsanbieter"
+          meta={providers.length === 1 ? '1 Anbieter' : `${providers.length} Anbieter`}
+          description="Gilt für die gesamte Anwendung. Die Reihenfolge ist die der Anmeldeseite; Änderungen wirken ohne Neustart. Lokale Konten sind kein Anbieter dieser Liste – sie werden unter Administration → Benutzer geführt."
+          action={
+            <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateDialog}>
+              Neuer Anbieter
+            </Button>
+          }
+        />
 
         {mode === 'dev' && (
           <Alert severity="info" sx={{ mb: 2 }}>
@@ -143,23 +135,12 @@ export default function OidcProviderManagementPage() {
               </Button>
             </Box>
           ) : (
-            <Stack spacing={1.5}>
-              {providers.map((provider, index) => (
-                <OidcProviderCard
-                  key={provider.id}
-                  provider={provider}
-                  position={index + 1}
-                  isFirst={index === 0}
-                  isLast={index === providers.length - 1}
-                  isLastEnabled={provider.enabled && enabledCount === 1}
-                  canDisable={!provider.isDefault || enabledCount <= 1}
-                  canDelete={!provider.isDefault || providers.length === 1}
-                  onEdit={(p) =>
-                    setDialog((d) => ({ open: true, provider: p, opening: d.opening + 1 }))
-                  }
-                />
-              ))}
-            </Stack>
+            <ProviderList
+              providers={providers}
+              onEdit={(p) =>
+                setDialog((d) => ({ open: true, provider: p, opening: d.opening + 1 }))
+              }
+            />
           )}
         </Box>
 

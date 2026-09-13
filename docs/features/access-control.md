@@ -366,7 +366,18 @@ ausschließlich lokale Konten mit Zustand, Rolle, Ablauf, Anlagegrund und **Akti
 (`NEVER`, `INACTIVE_90_DAYS`, `ACTIVE` — nie als Zeitstempel, nicht danach sortierbar), mit den
 Prüffiltern „offene Einladungen" (`status=INVITED`), „ohne Ablaufdatum" und „länger als 90 Tage nicht
 genutzt", Seitengröße höchstens 50, kein Export; `…/summary` liefert die Zahlen für den Hinweis der
-Oberfläche und das Datum der nächsten Wiedervorlage. **Ändern** (`PATCH`) von Anzeigename, Adresse,
+Oberfläche und das Datum der nächsten Wiedervorlage. Daneben liefert
+`GET /api/v1/admin/accounts` (#1601, nur `SYSTEM_ADMIN`, eigene Organisation) **alle** Konten
+seitenweise: lokale mit derselben `LocalUserResponse` unter `local`, Anbieterkonten mit `provider`
+(Anzeigename und ob der Anbieter noch Tokens ausstellt; abwesend, wenn die Anbieterzeile gelöscht
+wurde) und `roleManagedByProvider`. Es gelten dieselben Grenzen — höchstens 50 Zeilen je Seite, kein
+Export, keine Sortierung nach der Aktivität —, und die Aktivitätsklasse steht **nur** an lokalen
+Zeilen. Sortierbar sind `displayName`, `email`, `origin`, `role`, `status`, `expiresAt` und
+`createdAt`; die drei Kategoriefelder ordnen nach fester Rangfolge (Herkunft: lokal, dann Anbieter
+nach Namen, dann ein Issuer ohne Anbieterzeile; Rolle nach Privileg; Zustand nach Dringlichkeit mit
+den Anbieterkonten zuletzt). Filter: `query` (E-Mail und Anzeigename beider Kontotypen), `providerType`,
+`providerId`, `role` sowie `status`, `withoutExpiry` und `inactive`, die die Liste auf lokale Konten
+eingrenzen. **Ändern** (`PATCH`) von Anzeigename, Adresse,
 Anlagegrund und Ablaufdatum ist ein `LOCAL_USER_CHANGED` mit Vorher/Nachher **nur für das
 Ablaufdatum** und sonst nur den Namen der geänderten Felder; die Rolle läuft über denselben Pfad wie
 `POST /api/v1/admin/users/{id}/role` (Rollenereignisse, Aussperrschutz). **Sperren** (`locked_reason
@@ -543,34 +554,61 @@ Identitätsanbieters).
 
 ### Benutzerverwaltung in der Administration
 
-Unter Administration → Benutzer (`/admin/users`, nur
-`SYSTEM_ADMIN`; andere sehen den Hinweis statt der Verwaltung) liegt die Oberfläche zu dieser API.
+Unter Administration → Benutzer (`/admin/users`, nur `SYSTEM_ADMIN`; andere sehen den Hinweis statt
+der Verwaltung) liegt die Oberfläche zu dieser API — seit #1601 in zwei Bereichen, die eigene Routen
+sind (`/admin/users/accounts`, `/admin/users/settings`; der nackte Pfad leitet auf die Konten).
 „Benutzer & Gruppen" ist dort in zwei Einträge der Sekundärspalte geteilt — „Benutzer" und
-„Gruppen" —, und der Admin-Einstieg der globalen Leiste führt auf „Benutzer". Die Kopfkarte
-**Lokale Anmeldung** trägt die drei Schalter: `Lokale Anmeldung aktiv` (Abschalten nur nach einem
-Konsequenz-Dialog; die Rückmeldung nennt die Zahl der Konten, die ihre Sitzung verloren haben),
-`Selbstregistrierung` (Konsequenz-Dialog „öffentlich erreichbares Formular, Rate-Limits gelten",
-nur mit nichtleerer Domänenliste) und `Passwort vergessen`; die beiden linkgebundenen Schalter sind
-**gesperrt und begründet**, solange `OPAA_PUBLIC_BASE_URL` fehlt, und ein 409
-`PUBLIC_BASE_URL_REQUIRED` erscheint als Satz mit dem nächsten Schritt. Darunter stehen die Regeln
-und Fristen (Domänen, Mindestlänge, vorbelegtes Ablaufdatum, Inaktivitätsfrist, Gültigkeit der
-beiden Links) und der Zustand des Mailversands mit Verweis auf die E-Mail-Seite — ohne SMTP werden
-Einladung und Rücksetzlink zur Übergabe angezeigt statt versendet. Ein **Hinweisbanner** aus
-`…/summary` nennt Konten ohne Ablaufdatum und offene Einladungen, sagt die Auflage („begründet und
-befristet, regelmäßig zu überprüfen") und springt in den jeweiligen Filter. Die **Tabelle** führt
-Suche (300 ms entprellt), die Filter Zustand/Rolle/Auflage, Sortierung nach den vier erlaubten
-Feldern und Seitenblättern; Spalten sind Name, E-Mail, Rolle, Zustand als Punkt **und** Text
-(Eingeladen, Aktiv, Gesperrt mit Grund, Abgelaufen) samt Etikett „Passwortwechsel ausstehend",
-Ablauf, **Aktivität als Klasse** („nie", „länger als 90 Tage nicht", „aktiv" — nicht sortierbar) und
-Anlagedatum mit gekürztem Anlagegrund; unter Tablet-Breite wird daraus eine Kartenliste. Das
-Zeilenmenü führt Bearbeiten, Sperren beziehungsweise Entsperren (nur am jeweils passenden Zustand),
-Rücksetz-Link per E-Mail, Passwort erzeugen und — nachrangig unter einer Trennlinie, weil Sperren
-der Regelweg ist — Löschen; am eigenen Konto sind Sperren und Löschen deaktiviert, am Notanker-Konto
-das Löschen. Anlegen und Bearbeiten laufen über einen Dialog mit Pflicht-Anlagegrund (Hilfetext
-nennt, was nicht hineingehört), vorbelegtem Ablaufdatum samt ausdrücklichem „kein Ablaufdatum" und
-der Wahl zwischen Einladung und Anfangspasswort; Einladungslink und erzeugtes Passwort erscheinen
-**genau einmal** in einem eigenen Dialog mit Kopierschaltfläche, Zustellweg-Satz und dem Hinweis,
-dass die Ansicht nicht wiederkehrt. Es gibt **keinen Export**. Auf der Anbieterseite erscheint die
+„Gruppen" —, und der Admin-Einstieg der globalen Leiste führt auf „Benutzer".
+
+**Bereich „Einstellungen".** Die Karte **Lokale Anmeldung** trägt die drei Schalter: `Lokale
+Anmeldung aktiv` (Abschalten nur nach einem Konsequenz-Dialog; die Rückmeldung nennt die Zahl der
+Konten, die ihre Sitzung verloren haben), `Selbstregistrierung` (Konsequenz-Dialog „öffentlich
+erreichbares Formular, Rate-Limits gelten", nur mit nichtleerer Domänenliste) und `Passwort
+vergessen`; die beiden linkgebundenen Schalter sind **gesperrt und begründet**, solange
+`OPAA_PUBLIC_BASE_URL` fehlt, und ein 409 `PUBLIC_BASE_URL_REQUIRED` erscheint als Satz mit dem
+nächsten Schritt. Darunter stehen die Regeln und Fristen (Domänen, Mindestlänge, vorbelegtes
+Ablaufdatum, Inaktivitätsfrist, Gültigkeit der beiden Links) und der Zustand des Mailversands mit
+Verweis auf die E-Mail-Seite — ohne SMTP werden Einladung und Rücksetzlink zur Übergabe angezeigt
+statt versendet.
+
+**Bereich „Konten".** Die Liste führt **alle Konten der Organisation** über
+`GET /api/v1/admin/accounts` — lokale Konten und Konten der Identitätsanbieter in einer Tabelle,
+jede Zeile mit ihrer **Herkunft** als Symbol und Wort („Lokal" mit Schlüssel, der Anzeigename des
+Anbieters mit Gebäude; ein Konto unter einem Issuer ohne Anbieterzeile — eine gelöschte Zeile, im
+`dev`-Modus der synthetische Dev-Issuer — steht als „Kein Anbieter" mit seinem Issuer im
+Tooltip). Ein **Hinweisbanner** aus `…/local-users/summary` nennt lokale Konten ohne
+Ablaufdatum und offene Einladungen, sagt die Auflage („begründet und befristet, regelmäßig zu
+überprüfen") und springt in den jeweiligen Filter — der Sprung setzt die Herkunft auf „Lokal". Die
+**Filterleiste** führt Suche (300 ms entprellt, über E-Mail und Anzeigename beider Kontotypen), die
+Herkunft (alle, lokal, alle Anbieter, ein einzelner Anbieter), die Filter Zustand/Rolle/Auflage —
+Zustand und Auflage beschreiben lokale Konten und grenzen die Liste auf sie ein —, Sortierung nach
+den sieben erlaubten Feldern — auch nach Herkunft, Rolle und Zustand, die als Kategorien eine feste
+Rangfolge haben statt einer alphabetischen — und Seitenblättern (höchstens 50 je Seite).
+**Sieben Spalten** — sechs mit Werten und die Spalte der Zeilenmenüs —, weil Name und Adresse sich
+eine Zelle teilen und Ablauf und Aktivität ebenso:
+Name mit der Adresse darunter, Herkunft, Rolle (mit dem Etikett „Vom Anbieter geführt", wenn ein
+aktivierter Anbieter die Rollen über seinen Claim führt), Zustand als Punkt **und** Text
+(Eingeladen, Aktiv, Gesperrt mit Grund, Abgelaufen) samt Etikett „Passwortwechsel ausstehend" — bei
+Anbieterkonten stattdessen „Beim Anbieter", „Anbieter deaktiviert" oder „Anmeldung nicht möglich",
+Letzteres mit einem Warnsymbol in der Signalfarbe und dem Grund im Tooltip (der Text selbst bleibt
+sekundär, weil die Signalfarbe als Fließtext den Kontrastschwellwert unterschreitet) —, Ablauf mit
+der **Aktivität als Klasse** darunter
+(„nie", „länger als 90 Tage nicht", „aktiv" — nicht sortierbar und **nur für lokale Konten**; ein
+Anbieterkonto trägt keine), und Anlagedatum mit gekürztem Anlagegrund; unter Tablet-Breite wird
+daraus eine Kartenliste. Das **Zeilenmenü hängt vom Kontotyp ab**: Ein lokales Konto führt
+Bearbeiten, Sperren beziehungsweise Entsperren (nur am jeweils passenden Zustand), Rücksetz-Link per
+E-Mail, Passwort erzeugen und — nachrangig unter einer Trennlinie, weil Sperren der Regelweg ist —
+Löschen; am eigenen Konto sind Sperren und Löschen deaktiviert, am Notanker-Konto das Löschen. Ein
+Anbieterkonto führt „Rolle ändern …" (Dialog über `POST /api/v1/admin/users/{id}/role`, denselben
+Endpunkt wie für lokale Konten; deaktiviert und begründet, wenn der Anbieter die Rollen führt; die
+Ablehnung des Aussperrschutzes erscheint als Satz mit dem nächsten Schritt), den Verweis „Anbieter
+verwalten" und den Hinweis, dass Sperren, Befristen und Löschen beim Anbieter erfolgen — dafür gibt
+es serverseitig keine Operation. Anlegen und Bearbeiten lokaler Konten laufen über einen Dialog mit
+Pflicht-Anlagegrund (Hilfetext nennt, was nicht hineingehört), vorbelegtem Ablaufdatum samt
+ausdrücklichem „kein Ablaufdatum" und der Wahl zwischen Einladung und Anfangspasswort;
+Einladungslink und erzeugtes Passwort erscheinen **genau einmal** in einem eigenen Dialog mit
+Kopierschaltfläche, Zustellweg-Satz und dem Hinweis, dass die Ansicht nicht wiederkehrt.
+Es gibt **keinen Export**. Auf der Anbieterseite erscheint die
 `LOCAL`-Zeile nicht als Anbieter (ihr Schalter ist der obige), und das Deaktivieren oder Löschen des
 **letzten aktivierten** OIDC-Anbieters zeigt vorher die Konsequenz („danach können sich nur noch
 lokale Konten anmelden") und sendet erst dann `acknowledgeLastProvider=true`; die beiden Konfliktcodes

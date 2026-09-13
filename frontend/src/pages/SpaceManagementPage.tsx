@@ -14,6 +14,7 @@ import { useNavigate, useParams } from 'react-router'
 import type { LibraryListResponse, SpaceRole, SpaceVisibility, UserSummary } from '../types/api'
 import { getLibraries } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
+import { confirmAction } from '../stores/confirmStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useUserSearch } from '../hooks/useUserSearch'
 import {
@@ -300,14 +301,14 @@ export default function SpaceManagementPage() {
                 <Button
                   variant="outlined"
                   onClick={async () => {
-                    if (
-                      !window.confirm(
-                        'Diesen Space archivieren? Er nimmt danach keinen neuen Inhalt mehr an ' +
-                          'und wird aus den regulären Listen ausgeblendet.',
-                      )
-                    ) {
-                      return
-                    }
+                    const confirmed = await confirmAction({
+                      question: 'Diesen Space archivieren?',
+                      consequence:
+                        'Er nimmt danach keinen neuen Inhalt mehr an und wird aus den regulären Listen ausgeblendet.',
+                      confirmLabel: 'Archivieren',
+                      tone: 'caution',
+                    })
+                    if (!confirmed) return
                     setLocalError(null)
                     setDeleteBlockedByChats(false)
                     try {
@@ -328,13 +329,13 @@ export default function SpaceManagementPage() {
                   color="error"
                   variant="outlined"
                   onClick={async () => {
-                    if (
-                      !window.confirm(
-                        'Diesen Space löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
-                      )
-                    ) {
-                      return
-                    }
+                    const confirmed = await confirmAction({
+                      question: 'Diesen Space löschen?',
+                      consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+                      confirmLabel: 'Löschen',
+                      tone: 'danger',
+                    })
+                    if (!confirmed) return
                     setLocalError(null)
                     setDeleteBlockedByChats(false)
                     try {
@@ -445,13 +446,12 @@ export default function SpaceManagementPage() {
                           color="error"
                           size="small"
                           onClick={async () => {
-                            if (
-                              !window.confirm(
-                                `${member.displayName ?? member.userId} aus diesem Space entfernen?`,
-                              )
-                            ) {
-                              return
-                            }
+                            const confirmed = await confirmAction({
+                              question: `${member.displayName ?? member.userId} aus diesem Space entfernen?`,
+                              confirmLabel: 'Entfernen',
+                              tone: 'caution',
+                            })
+                            if (!confirmed) return
                             setLocalError(null)
                             try {
                               await removeMember(spaceId, member.userId)
@@ -471,13 +471,12 @@ export default function SpaceManagementPage() {
                         <Button
                           size="small"
                           onClick={async () => {
-                            if (
-                              !window.confirm(
-                                `Verantwortung an ${member.displayName ?? member.userId} übertragen?`,
-                              )
-                            ) {
-                              return
-                            }
+                            const confirmed = await confirmAction({
+                              question: `Verantwortung an ${member.displayName ?? member.userId} übertragen?`,
+                              confirmLabel: 'Übertragen',
+                              tone: 'caution',
+                            })
+                            if (!confirmed) return
                             setLocalError(null)
                             try {
                               await transferOwnership(spaceId, member.userId)

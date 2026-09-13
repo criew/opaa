@@ -1,11 +1,11 @@
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
-import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import { ThemeProvider } from '@mui/material/styles'
 import { useMemo } from 'react'
 import type { PaletteMode } from '@mui/material'
+import { radius } from '../../theme/tokens'
 import { createAppTheme } from '../../theme/theme'
 
 interface BrandingPreviewProps {
@@ -39,8 +39,11 @@ export default function BrandingPreview({
 
   return (
     <ThemeProvider theme={theme}>
-      <Paper
-        variant="outlined"
+      {/* Der eine Rahmen, der im Bereich bleibt (#1608): Er zeigt nicht einen Inhaltsblock der
+          Seite, sondern ein Abbild der Anwendung - wie ein Bilderrahmen sagt er „das hier ist eine
+          Vorschau", nicht „das hier gehört zusammen". */}
+      <Box
+        component="figure"
         // aria-hidden + inert: everything in here is a rendering of values the form already
         // exposes as labelled fields - announcing them a second time would add noise, not
         // information. inert also removes the preview's buttons from the tab order; without it,
@@ -48,7 +51,11 @@ export default function BrandingPreview({
         aria-hidden
         inert
         sx={{
+          m: 0,
           p: 2.5,
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: `${radius.md}px`,
           bgcolor: 'background.default',
           color: 'text.primary',
           display: 'flex',
@@ -85,7 +92,7 @@ export default function BrandingPreview({
           </Button>
           <Chip label="Fundstelle" size="small" color="primary" variant="outlined" />
         </Box>
-      </Paper>
+      </Box>
     </ThemeProvider>
   )
 }

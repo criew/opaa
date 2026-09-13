@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithProviders } from '../test/test-utils'
+import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import LibraryCreatePage from './LibraryCreatePage'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
@@ -642,14 +642,12 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
 
   it('asks before discarding entered values on cancel', async () => {
     const user = userEvent.setup()
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
     renderPage()
 
     await user.type(screen.getByLabelText(/Name/), 'R')
     await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
+    await answerConfirm(user, 'Eingaben verwerfen und den Assistenten verlassen?', 'Abbrechen')
 
-    expect(confirmSpy).toHaveBeenCalled()
     expect(mockNavigate).not.toHaveBeenCalled()
-    confirmSpy.mockRestore()
   })
 })

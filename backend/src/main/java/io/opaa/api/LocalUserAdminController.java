@@ -18,9 +18,7 @@ import io.opaa.auth.local.LocalUserAdminService;
 import io.opaa.auth.local.LocalUserCreation;
 import io.opaa.auth.local.LocalUserQuery;
 import io.opaa.auth.local.LocalUserUpdate;
-import io.opaa.common.ValidationException;
 import jakarta.validation.Valid;
-import java.util.Locale;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -72,8 +70,8 @@ public class LocalUserAdminController {
             role,
             withoutExpiry,
             inactive,
-            sortOf(sort),
-            descending(direction),
+            AdminListSortParams.sortOf(sort),
+            AdminListSortParams.descending(direction),
             page,
             size);
     return LocalUserResponseMapper.toPage(
@@ -162,26 +160,5 @@ public class LocalUserAdminController {
   public LocalUserGeneratedPasswordResponse generateLocalUserPassword(
       @PathVariable UUID id, @Caller CurrentUser caller) {
     return new LocalUserGeneratedPasswordResponse(adminService.generatePassword(caller, id));
-  }
-
-  /** The allow-list of sort fields; the activity is deliberately not one of them. */
-  private static LocalUserQuery.Sort sortOf(String sort) {
-    return switch (sort == null ? "" : sort.trim()) {
-      case "displayName", "" -> LocalUserQuery.Sort.DISPLAY_NAME;
-      case "email" -> LocalUserQuery.Sort.EMAIL;
-      case "expiresAt" -> LocalUserQuery.Sort.EXPIRES_AT;
-      case "createdAt" -> LocalUserQuery.Sort.CREATED_AT;
-      default ->
-          throw new ValidationException(
-              "Sortierung nur nach displayName, email, expiresAt oder createdAt.");
-    };
-  }
-
-  private static boolean descending(String direction) {
-    return switch (direction == null ? "" : direction.trim().toLowerCase(Locale.ROOT)) {
-      case "asc", "" -> false;
-      case "desc" -> true;
-      default -> throw new ValidationException("Sortierrichtung nur asc oder desc.");
-    };
   }
 }

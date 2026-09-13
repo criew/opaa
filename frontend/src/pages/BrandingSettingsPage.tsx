@@ -4,7 +4,6 @@ import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
-import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
@@ -13,12 +12,15 @@ import Typography from '@mui/material/Typography'
 import DarkModeIcon from '@mui/icons-material/DarkMode'
 import LightModeIcon from '@mui/icons-material/LightMode'
 import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness'
+import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
 import type { ColorScheme } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
 import { useBrandingStore, OPAA_BRANDING } from '../stores/brandingStore'
 import PageHeading from '../components/a11y/PageHeading'
+import AreaPageHeader from '../components/AreaPageHeader'
 import BrandingPreview from '../components/admin/BrandingPreview'
 import { checkAccentContrast, formatContrastRatio, parseHexColor } from '../utils/contrast'
+import { contentWidth } from '../theme/tokens'
 
 /** Mirrors `BrandingLogoValidator` in the backend - rejected there too, just less pleasantly. */
 const ACCEPTED_LOGO_TYPES = ['image/png', 'image/jpeg']
@@ -104,7 +106,7 @@ export default function BrandingSettingsPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: 4, maxWidth: 720 }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
         <PageHeading title="Branding" gutterBottom />
         <Alert severity="info">
           Das Branding wird von der Systemverwaltung gepflegt. Für Ihr Konto ist diese Seite nicht
@@ -166,26 +168,31 @@ export default function BrandingSettingsPage() {
   }
 
   return (
-    <Box sx={{ flexGrow: 1, p: 4, maxWidth: 960, overflowY: 'auto' }}>
-      <PageHeading title="Branding" gutterBottom />
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Gilt für die gesamte Anwendung: Produktname, Claim, Logo, Akzentfarbe und Farbschema-Vorgabe
-        Ihres Hauses. Änderungen sind ohne Neuinstallation für alle Nutzenden wirksam. Ein leeres
-        Feld bedeutet: der OPAA-Standard gilt wieder.
-      </Typography>
+    <Box
+      sx={{
+        flexGrow: 1,
+        p: { xs: 2.5, md: 5 },
+        overflowY: 'auto',
+      }}
+    >
+      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+        <AreaPageHeader
+          icon={PaletteOutlinedIcon}
+          title="Branding"
+          description="Gilt für die gesamte Anwendung: Produktname, Claim, Logo, Akzentfarbe und Farbschema-Vorgabe Ihres Hauses. Änderungen sind ohne Neuinstallation für alle Nutzenden wirksam. Ein leeres Feld bedeutet: der OPAA-Standard gilt wieder."
+        />
 
-      {storeError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {storeError}
-        </Alert>
-      )}
-      {saved && !storeError && (
-        <Alert severity="success" sx={{ mb: 2 }}>
-          Das Branding wurde gespeichert und ist sofort wirksam.
-        </Alert>
-      )}
+        {storeError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {storeError}
+          </Alert>
+        )}
+        {saved && !storeError && (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            Das Branding wurde gespeichert und ist sofort wirksam.
+          </Alert>
+        )}
 
-      <Paper variant="outlined" sx={{ p: 3 }}>
         <Stack spacing={3}>
           <TextField
             label="Produktname"
@@ -360,7 +367,7 @@ export default function BrandingSettingsPage() {
             </Button>
           </Stack>
         </Stack>
-      </Paper>
+      </Box>
     </Box>
   )
 }

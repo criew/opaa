@@ -156,8 +156,17 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await gotoLibraryDetail(adminPage, LIBRARY_NAME)
     await adminPage.getByRole('tab', { name: 'Verwaltung' }).click()
     await adminPage.getByRole('button', { name: 'Rechte verwalten' }).click()
-    adminPage.once('dialog', (dialog) => dialog.accept())
     await adminPage.getByRole('button', { name: 'Freigabe für Dev User entziehen' }).click()
+    // The confirmation is the app's own overlay (#1610) and opens on top of the still-open "Rechte
+    // verwalten" dialog, so two elements carry role="dialog" while it stands. Hence the id the
+    // overlay gives every confirmation, rather than the role: its own button says "Entziehen".
+    const confirmRevoke = adminPage
+      .getByRole('dialog')
+      .filter({ has: adminPage.locator('#confirm-question') })
+    await confirmRevoke.locator('#confirm-accept').click()
+    // Awaited before anything else is looked up: everything below is ambiguous or wrong while the
+    // overlay stands - its own question names "Dev User" too, and it is the second role="dialog".
+    await expect(confirmRevoke).toHaveCount(0)
     // Not "the grant list is empty": the creator's own OWNER grant is a row in this same list and
     // outlives every other grant, so the list is never actually empty here - only "Dev User"'s row
     // is gone.

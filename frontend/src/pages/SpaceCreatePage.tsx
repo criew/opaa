@@ -22,6 +22,7 @@ import PageHeading from '../components/a11y/PageHeading'
 import FieldLabel from '../components/wizard/FieldLabel'
 import WizardStepBar from '../components/wizard/WizardStepBar'
 import { getLibraries } from '../services/api'
+import { confirmAction } from '../stores/confirmStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useUserSearch } from '../hooks/useUserSearch'
 import {
@@ -99,9 +100,14 @@ export default function SpaceCreatePage() {
 
   const isDirty = name.trim() !== '' || description.trim() !== '' || pendingMembers.length > 0
 
-  const handleCancel = () => {
-    if (isDirty && !window.confirm('Eingaben verwerfen und den Assistenten verlassen?')) {
-      return
+  const handleCancel = async () => {
+    if (isDirty) {
+      const confirmed = await confirmAction({
+        question: 'Eingaben verwerfen und den Assistenten verlassen?',
+        confirmLabel: 'Verwerfen',
+        tone: 'caution',
+      })
+      if (!confirmed) return
     }
     navigate('/spaces')
   }
@@ -409,7 +415,7 @@ export default function SpaceCreatePage() {
             borderColor: 'divider',
           }}
         >
-          <Button variant="text" onClick={handleCancel} disabled={submitting}>
+          <Button variant="text" onClick={() => void handleCancel()} disabled={submitting}>
             Abbrechen
           </Button>
           <Box sx={{ flex: 1 }} />
