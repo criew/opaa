@@ -123,16 +123,10 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     ).toBeVisible();
 
     await page.emulateMedia({ colorScheme: "light" });
-    await expectNoSeriousA11yViolations(
-      page,
-      "Spaces-Übersicht (helles Farbschema)",
-    );
+    await expectNoSeriousA11yViolations(page, "Spaces-Übersicht (helles Farbschema)");
 
     await page.emulateMedia({ colorScheme: "dark" });
-    await expectNoSeriousA11yViolations(
-      page,
-      "Spaces-Übersicht (dunkles Farbschema)",
-    );
+    await expectNoSeriousA11yViolations(page, "Spaces-Übersicht (dunkles Farbschema)");
   });
 
   test("Wissensbibliotheken", async ({ authenticatedPage: page }) => {
@@ -142,17 +136,11 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     ).toBeVisible();
 
     await page.emulateMedia({ colorScheme: "light" });
-    await expectNoSeriousA11yViolations(
-      page,
-      "Wissensbibliotheken (helles Farbschema)",
-    );
+    await expectNoSeriousA11yViolations(page, "Wissensbibliotheken (helles Farbschema)");
 
     // #957: der „Eigentümer"-Chip fiel nur im Dunkelschema durch.
     await page.emulateMedia({ colorScheme: "dark" });
-    await expectNoSeriousA11yViolations(
-      page,
-      "Wissensbibliotheken (dunkles Farbschema)",
-    );
+    await expectNoSeriousA11yViolations(page, "Wissensbibliotheken (dunkles Farbschema)");
   });
 
   // #1541/#1601: die Benutzerverwaltung führt die dichteste Kombination des Bereichs — eine
@@ -175,17 +163,11 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expect(list.first()).toBeVisible();
 
     await page.emulateMedia({ colorScheme: "light" });
-    await expectNoSeriousA11yViolations(
-      page,
-      "Verwaltungsbereich (Konten, helles Farbschema)",
-    );
+    await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (Konten, helles Farbschema)");
 
     await page.emulateMedia({ colorScheme: "dark" });
     await expect(list.first()).toBeVisible();
-    await expectNoSeriousA11yViolations(
-      page,
-      "Verwaltungsbereich (Konten, dunkles Farbschema)",
-    );
+    await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (Konten, dunkles Farbschema)");
 
     // Das Schema vor dem Laden setzen, nicht auf der gerenderten Seite (#1600, adb95b5d): Ein
     // Wechsel danach hat auf den Anmeldeseiten CI-eigene Kontrastbefunde erzeugt.
@@ -263,10 +245,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await page.getByRole("tab", { name: "Diagnose" }).click();
     await page.waitForURL("**/admin/search/diagnosis");
     await expect(page.getByRole("textbox", { name: /Testfrage/ })).toBeVisible();
-    await expectNoSeriousA11yViolations(
-      page,
-      "Verwaltungsbereich (Suche & Indexierung, Diagnose)",
-    );
+    await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (Suche & Indexierung, Diagnose)");
   });
 
   // #1542: die E-Mail-Seite bringt zwei eigene Muster mit, die sonst nirgends vorkommen — die
@@ -358,12 +337,13 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
 
   /**
    * Das Farbschema wird **vor** dem Laden gesetzt, nie auf der gerenderten Seite umgeschaltet: Ein
-   * Wechsel danach lässt auf den Seiten des Anmelderahmens eine gemischte Palette zurück und erzeugt
-   * Farbpaare, die es in keinem der beiden Schemata gibt. `color-contrast` bleibt auf diesen Seiten in
-   * **beiden** Schemata aus - sie erfüllen den Schwellwert mit den Farben des Hauses nicht (#1600,
-   * mit den gemessenen Paaren); jede andere Regel wird in beiden Schemata geprüft.
+   * Wechsel danach liesse eine gemischte Palette zurueck und erzeugte Farbpaare, die es in keinem
+   * der beiden Schemata gibt.
+   *
+   * `color-contrast` lief hier bis #1600 aus: Eine konfigurierte Hausfarbe wurde unveraendert als
+   * Textfarbe uebernommen und unterschritt im Dunkelschema die Schwelle. Seit die Farbe je Schema
+   * abgeleitet wird, pruefen diese Seiten wieder ungekuerzt.
    */
-  const AUTH_PAGE_CONTRAST_KNOWN_GAP = { disableRules: ["color-contrast"] };
 
   test("Selbstbedienung: Passwort festlegen in beiden Farbschemata", async ({ page }) => {
     await page.route("**/api/v1/auth/config", (route) =>
@@ -379,11 +359,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       // genau der Teil mit eigenen Farbrollen nicht im Baum.
       await page.getByRole("button", { name: "Sicheres Passwort erzeugen" }).click();
       await expect(page.getByTestId("password-strength")).toBeVisible();
-      await expectNoSeriousA11yViolations(
-        page,
-        `Passwort festlegen (${scheme})`,
-        AUTH_PAGE_CONTRAST_KNOWN_GAP,
-      );
+      await expectNoSeriousA11yViolations(page, `Passwort festlegen (${scheme})`);
     }
   });
 
@@ -396,20 +372,12 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     );
     await page.goto("/forgot-password");
     await expect(page.getByRole("heading", { level: 1, name: "Passwort vergessen" })).toBeVisible();
-    await expectNoSeriousA11yViolations(
-      page,
-      "Passwort vergessen (Formular)",
-      AUTH_PAGE_CONTRAST_KNOWN_GAP,
-    );
+    await expectNoSeriousA11yViolations(page, "Passwort vergessen (Formular)");
 
     await page.getByLabel("E-Mail-Adresse").fill("erika.muster@stadt.example");
     await page.getByRole("button", { name: "Link anfordern" }).click();
     await expect(page.getByRole("alert")).toBeVisible();
-    await expectNoSeriousA11yViolations(
-      page,
-      "Passwort vergessen (Ergebnisansicht)",
-      AUTH_PAGE_CONTRAST_KNOWN_GAP,
-    );
+    await expectNoSeriousA11yViolations(page, "Passwort vergessen (Ergebnisansicht)");
   });
 
   test("Selbstbedienung: Registrierung", async ({ page }) => {
@@ -419,7 +387,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await page.goto("/register");
     await expect(page.getByRole("heading", { level: 1, name: "Konto registrieren" })).toBeVisible();
 
-    await expectNoSeriousA11yViolations(page, "Registrierung", AUTH_PAGE_CONTRAST_KNOWN_GAP);
+    await expectNoSeriousA11yViolations(page, "Registrierung");
   });
 
   test("Selbstbedienung: E-Mail-Bestätigung", async ({ page }) => {
@@ -432,6 +400,6 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await page.goto("/verify-email?token=e2e-token");
     await expect(page.getByRole("alert")).toContainText("E-Mail-Adresse bestätigt");
 
-    await expectNoSeriousA11yViolations(page, "E-Mail-Bestätigung", AUTH_PAGE_CONTRAST_KNOWN_GAP);
+    await expectNoSeriousA11yViolations(page, "E-Mail-Bestätigung");
   });
 });

@@ -53,13 +53,7 @@ test.describe("Erststart: Systemverwalter, SMTP, Schalter", () => {
       await page.emulateMedia({ colorScheme: scheme });
       await page.goto("/login/system");
       await expect(page.getByLabel("E-Mail-Adresse")).toBeVisible();
-      await expectNoSeriousA11yViolations(
-        page,
-        `Anmeldung für die Systemverwaltung (${scheme})`,
-        // Bekannte Kontrastlücke beider Schemata auf den Seiten des Anmelderahmens (#1600) -
-        // ausführlich begründet in 07-barrierefreiheit.spec.ts.
-        { disableRules: ["color-contrast"] },
-      );
+      await expectNoSeriousA11yViolations(page, `Anmeldung für die Systemverwaltung (${scheme})`);
     }
     await page.emulateMedia({ colorScheme: "light" });
 

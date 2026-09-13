@@ -1,7 +1,7 @@
 import { alpha, createTheme, darken } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import type { PaletteMode } from '@mui/material'
-import { deriveAccentSurface } from '../utils/contrast'
+import { deriveAccentSurface, deriveAccentText } from '../utils/contrast'
 import { deDE } from '@mui/material/locale'
 import type { BrandingOverrides, SchemeRoles } from './tokens'
 import {
@@ -58,7 +58,12 @@ function resolveAccent(roles: SchemeRoles, branding?: BrandingOverrides) {
   // Hover/press derive from that surface, keeping the sampled -8%/-16% rhythm.
   const accentSurface = deriveAccentSurface(brandColor)
   return {
-    accent: brandColor,
+    // #1600: Die Rolle `accent` färbt Text, Verweise und Indikatoren — dort gilt 4,5:1 gegen den
+    // Grund des jeweiligen Schemas, und die Vorgabewerte der Rollen halten das nachweislich ein.
+    // Eine konfigurierte Hausfarbe umging diese Zusicherung bisher: Sie wurde unverändert
+    // übernommen. Jetzt wird sie so weit vom Grund weggerückt, wie die Schwelle verlangt — nicht
+    // weiter. Die Fläche bleibt davon unberührt (`accentSurface` oben).
+    accent: deriveAccentText(brandColor, [roles.bg1, roles.bg2, roles.bg3]),
     accentSurface,
     accentHover: darken(accentSurface, 0.08),
     accentPress: darken(accentSurface, 0.16),

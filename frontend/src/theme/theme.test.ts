@@ -187,7 +187,9 @@ describe('createAppTheme', () => {
   test('a light branding colour gets a darkened action surface (#634)', () => {
     const theme = createAppTheme('light', { primaryColor: '#61B5F6' })
 
-    expect(theme.palette.primary.main).toBe('#61B5F6')
+    // #1600: Als *Text* auf hellem Grund erreicht dieses Blau 4,5:1 nicht - die Rolle rückt
+    // deshalb vom Grund weg. Die Fläche darunter ist davon unberührt und folgt weiter #634.
+    expect(theme.palette.primary.main).not.toBe('#61B5F6')
     const button = theme.components?.MuiButton?.styleOverrides?.root as {
       variants: Array<{ style: { backgroundColor: string } }>
     }
@@ -220,7 +222,57 @@ describe('createAppTheme', () => {
   test('the sidebar theme derives its accent from a branding color like the app theme', () => {
     const theme = createSidebarTheme('light', { primaryColor: '#7A1FA2' })
 
-    expect(theme.palette.primary.main).toBe('#7A1FA2')
+    // #1600: Die Seitenleiste ist auch im hellen Schema dunkel (navy). Ein dunkles Violett wäre
+    // dort als Verweis nicht lesbar, also rückt es vom Grund weg - dieselbe Ableitung wie im
+    // Dunkelschema der Anwendung, und deshalb hier *nicht* mehr die konfigurierte Farbe selbst.
+    expect(theme.palette.primary.main).not.toBe('#7A1FA2')
+    const vorher = contrastRatio('#7A1FA2', navyRoles.bg1) as number
+    const nachher = contrastRatio(theme.palette.primary.main, navyRoles.bg1) as number
+    expect(nachher).toBeGreaterThan(vorher)
+  })
+
+  /**
+   * #1600: Dieses Violett ist der Grenzfall - selbst nach den sechs zugelassenen Schritten bleibt
+   * es unter der Schwelle. Die Ableitung bricht dann bewusst ab, statt die Farbe bis zur
+   * Unkenntlichkeit aufzuhellen (dieselbe Begrenzung wie bei der Fläche in #634); das
+   * Branding-Formular meldet den Rest über `checkAccentContrast`.
+   */
+  test('a colour beyond the bounded steps stops instead of being repainted (#1600)', () => {
+    const theme = createSidebarTheme('light', { primaryColor: '#7A1FA2' })
+
+    expect(contrastRatio(theme.palette.primary.main, navyRoles.bg3)).toBeLessThan(
+      TEXT_CONTRAST_MINIMUM,
+    )
+  })
+
+  /**
+   * #1600: Der gemessene Fall aus der Demo-Installation. `#1153EE` erreicht auf Weiß 6,0:1, im
+   * Dunkelschema aber nur 3,3:1 - jeder Verweis, jedes „Passwort vergessen?" und jeder aktive
+   * Reiter lag darunter, in der ganzen Anwendung.
+   */
+  test.each(['light', 'dark'] as const)(
+    'a house colour reaches the text threshold in the %s scheme (#1600)',
+    (mode) => {
+      const theme = createAppTheme(mode, { primaryColor: '#1153EE' })
+      const roles = mode === 'dark' ? darkRoles : lightRoles
+
+      for (const ground of [roles.bg1, roles.bg2, roles.bg3]) {
+        expect(contrastRatio(theme.palette.primary.main, ground)).toBeGreaterThanOrEqual(
+          TEXT_CONTRAST_MINIMUM,
+        )
+      }
+    },
+  )
+
+  /** #1600: Die Fläche folgt weiter #634 - die Anhebung des Textes fasst sie nicht an. */
+  test('the filled surface keeps its own derivation when the text colour moves (#1600)', () => {
+    const theme = createAppTheme('dark', { primaryColor: '#1153EE' })
+    const button = theme.components?.MuiButton?.styleOverrides?.root as {
+      variants: Array<{ style: { backgroundColor: string } }>
+    }
+
+    expect(button.variants[0].style.backgroundColor).toBe('#1153EE')
+    expect(theme.palette.primary.main).not.toBe('#1153EE')
   })
 
   test('an empty branding object behaves exactly like no branding', () => {
