@@ -22,7 +22,7 @@ export default function AppFooter() {
         flexShrink: 0,
       }}
     >
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
         {productName} {APP_VERSION}
       </Typography>
       {/* Only rendered on demo instances (OPAA_DEMO_MODE), see DemoNotice.tsx / #230. */}

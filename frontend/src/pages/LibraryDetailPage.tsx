@@ -260,7 +260,7 @@ function DiagnosticsLockControl({
           </Button>
         )}
       </Stack>
-      <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.5 }}>
+      <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mt: 0.5 }}>
         Solange gesperrt, bleibt diese Bibliothek von einer Suchdiagnose im Rechtekontext einer
         anderen Person ausgeschlossen — dort ist dann weder ein Treffer noch ein Titel aus ihr zu
         sehen.
@@ -481,7 +481,7 @@ export default function LibraryDetailPage() {
         {storeError ? (
           <Alert severity="error">{storeError}</Alert>
         ) : (
-          <Typography color="text.secondary">Bibliothek wird geladen …</Typography>
+          <Typography sx={{ color: 'text.secondary' }}>Bibliothek wird geladen …</Typography>
         )}
       </Box>
     )
@@ -701,12 +701,12 @@ export default function LibraryDetailPage() {
             <Typography variant="body2">
               <strong>Edition:</strong>{' '}
               {details.confluenceEdition ? confluenceEditionLabel(details.confluenceEdition) : '—'}{' '}
-              <Typography component="span" variant="caption" color="text.secondary">
+              <Typography component="span" variant="caption" sx={{ color: 'text.secondary' }}>
                 (erkannt, nach der Anlage nicht änderbar)
               </Typography>
             </Typography>
             <ConfluenceSpacesSummary spaces={details.confluenceSpaces} />
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               Dieser Umfang gilt für alle Leseberechtigten der Bibliothek.
             </Typography>
             <Stack
@@ -779,7 +779,7 @@ export default function LibraryDetailPage() {
             }}
           >
             <S3ScopesSummary settings={details.s3Settings} />
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               Dieser Umfang gilt für alle Leseberechtigten der Bibliothek.
             </Typography>
             <Stack
@@ -864,7 +864,7 @@ export default function LibraryDetailPage() {
                   '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
                 }}
               />
-              <Typography variant="body2" color="text.secondary" role="status">
+              <Typography variant="body2" sx={{ color: 'text.secondary' }} role="status">
                 {run.totalDocuments > 0
                   ? isRssFeedRun
                     ? `${run.documentCount + run.documentsSkipped} von ${run.totalDocuments} Feed-Einträgen verarbeitet (${run.documentsIndexedTotal} Dokumente indiziert)`
@@ -1018,7 +1018,7 @@ export default function LibraryDetailPage() {
             >
               <Stack spacing={2}>
                 {details && (
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     Quellentyp: {documentSourceTypeLabel(details.sourceType)} — kann nach der Anlage
                     nicht geändert werden.
                   </Typography>
@@ -1690,7 +1690,7 @@ function LibraryDocumentsSection({
               </Typography>
               {isAttachment && <Chip label="Anhang" size="small" variant="outlined" />}
             </Stack>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               {formatFileSize(document.fileSize)} · {document.chunkCount}{' '}
               {document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'} ·{' '}
               {formatIndexedAt(document.indexedAt)}
@@ -1701,7 +1701,7 @@ function LibraryDocumentsSection({
               its bucket and the key's folders below the scope prefix the same way (ADR-0027) - as
               text, since an s3:// path is no link a browser could open. */}
             {document.sourceContainerKey && (
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                 {document.sourceType === 'S3'
                   ? `Bucket: ${document.sourceContainerKey}`
                   : `Space: ${confluenceSpaceLabel(document.sourceContainerKey)}`}
@@ -1709,7 +1709,7 @@ function LibraryDocumentsSection({
               </Typography>
             )}
             {options.viaFileName && (
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                 Anhang von: {options.viaFileName}
               </Typography>
             )}
@@ -1718,7 +1718,7 @@ function LibraryDocumentsSection({
               own to place it in the structure; the link navigates into that folder and
               clears the active search (navigateToFolder). */}
             {document.folderPath && (
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                 Ordner:{' '}
                 <Link
                   component="button"
@@ -1733,7 +1733,10 @@ function LibraryDocumentsSection({
               stammt (#468) - der Link macht sichtbar, aus welchem Eintrag sie gefunden
               wurde, statt sie im Index kontextlos stehen zu lassen. */}
             {document.sourceEntryUrl && (
-              <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+              <Typography
+                variant="caption"
+                sx={{ color: 'text.secondary', wordBreak: 'break-word' }}
+              >
                 Herkunft:{' '}
                 <Link href={document.sourceEntryUrl} target="_blank" rel="noopener noreferrer">
                   {document.sourceEntryUrl}
@@ -1746,7 +1749,10 @@ function LibraryDocumentsSection({
               only shown when sourceEntryUrl above is absent, to avoid the same remote
               address appearing twice for an RSS attachment. */}
             {!document.sourceEntryUrl && document.sourceUrl && (
-              <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+              <Typography
+                variant="caption"
+                sx={{ color: 'text.secondary', wordBreak: 'break-word' }}
+              >
                 Quelle:{' '}
                 <Link href={document.sourceUrl} target="_blank" rel="noopener noreferrer">
                   {document.sourceUrl}
@@ -2028,7 +2034,7 @@ function LibraryDocumentsSection({
           </Link>
           {breadcrumb.map((item, index) =>
             index === breadcrumb.length - 1 ? (
-              <Typography key={item.id} color="text.primary">
+              <Typography key={item.id} sx={{ color: 'text.primary' }}>
                 {item.name}
               </Typography>
             ) : (
@@ -2138,7 +2144,7 @@ function LibraryDocumentsSection({
             }
             label="Alle auf dieser Seite auswählen"
           />
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             {selectedDocumentIds.length} ausgewählt
           </Typography>
           <Button
@@ -2164,7 +2170,7 @@ function LibraryDocumentsSection({
           <Skeleton variant="rounded" height={64} />
         </Stack>
       ) : documents.length === 0 && folders.length === 0 ? (
-        <Typography color="text.secondary">
+        <Typography sx={{ color: 'text.secondary' }}>
           {searchInput
             ? 'Kein Dokument entspricht dieser Suche.'
             : isUploadLibrary
@@ -2216,7 +2222,7 @@ function LibraryDocumentsSection({
                 <Typography sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
                   {folder.name}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                   {folder.documentCount} {folder.documentCount === 1 ? 'Dokument' : 'Dokumente'}
                 </Typography>
               </Box>
@@ -2293,7 +2299,7 @@ function LibraryDocumentsSection({
             gap: 1,
           }}
         >
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
             {isSearchActive
               ? `${pageState.totalElements.toLocaleString('de-DE')} Treffer für „${pageState.q}“`
               : `${pageState.totalElements.toLocaleString('de-DE')} ${
@@ -2573,7 +2579,7 @@ function LibrarySpacesSection({ libraryId }: LibrarySpacesSectionProps) {
         // association will land.
         <Skeleton variant="rounded" height={32} sx={{ maxWidth: 360 }} />
       ) : associations.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           Diese Bibliothek ist derzeit keinem Space als Datenquelle zugeordnet. Die Zuordnung
           erfolgt in den Einstellungen des jeweiligen Space.
         </Typography>
@@ -2725,7 +2731,7 @@ function LibraryIndexingSection({
                 <strong>Zertifikatsprüfung aussetzen:</strong>{' '}
                 {library.sourceInsecureSsl ? 'ja' : 'nein'}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                 Zugangsdaten sind aus Sicherheitsgründen nie Teil einer API-Antwort - diese Ansicht
                 zeigt sie deshalb weder ein noch aus.
               </Typography>
@@ -2781,7 +2787,7 @@ function LibraryIndexingSection({
             {scheduleFrequencyLabel(library.schedule?.frequency ?? 'DISABLED')}
           </Typography>
           {configKind === 'confluence' && (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               {(() => {
                 const days =
                   library.confluenceFullSyncIntervalDays ??
@@ -2796,7 +2802,7 @@ function LibraryIndexingSection({
             </Typography>
           )}
           {library.schedule?.nextRunAt && (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               Nächster geplanter Lauf:{' '}
               {new Date(library.schedule.nextRunAt).toLocaleString('de-DE', {
                 dateStyle: 'medium',
@@ -2916,8 +2922,7 @@ function RunMetricsLine({ run }: { run: IndexingRunResponse }) {
   return (
     <Typography
       variant="body2"
-      color="text.secondary"
-      sx={{ mb: 1.5 }}
+      sx={{ color: 'text.secondary', mb: 1.5 }}
       data-testid={`run-metrics-${run.id}`}
     >
       {label}
@@ -3002,7 +3007,7 @@ function LibraryIndexingHistorySection({
   return (
     <Box>
       {runs.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           Es liegen noch keine Läufe vor. Der erste Lauf startet über „Jetzt indizieren“ oben auf
           der Seite oder über den Zeitplan.
         </Typography>
@@ -3022,13 +3027,13 @@ function LibraryIndexingHistorySection({
                     color={runStatusChipColor(run.status)}
                     variant="outlined"
                   />
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     {formatRunTimestamp(run.startedAt)}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     {indexingTriggerSourceLabel(run.triggeredBy)}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     {run.documentCount} verarbeitet
                     {run.documentsSkipped > 0 ? `, ${run.documentsSkipped} übersprungen` : ''}
                     {run.documentsFailed > 0 ? `, ${run.documentsFailed} fehlgeschlagen` : ''}
@@ -3060,13 +3065,13 @@ function LibraryIndexingHistorySection({
               </AccordionSummary>
               <AccordionDetails>
                 {run.message && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
                     {run.message}
                   </Typography>
                 )}
                 <RunMetricsLine run={run} />
                 {run.events.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Dieser Lauf hat keine übersprungenen, fehlgeschlagenen oder abweichend erkannten
                     Elemente protokolliert.
                   </Typography>
@@ -3090,8 +3095,11 @@ function LibraryIndexingHistorySection({
                         {event.reference && (
                           <Typography
                             variant="caption"
-                            color="text.secondary"
-                            sx={{ display: 'block', wordBreak: 'break-word' }}
+                            sx={{
+                              color: 'text.secondary',
+                              display: 'block',
+                              wordBreak: 'break-word',
+                            }}
                           >
                             {event.reference}
                           </Typography>
@@ -3099,7 +3107,7 @@ function LibraryIndexingHistorySection({
                       </Box>
                     ))}
                     {run.eventsTruncatedCount > 0 && (
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                         … und {run.eventsTruncatedCount} weitere
                       </Typography>
                     )}

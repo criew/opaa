@@ -290,14 +290,14 @@ function StagePanel({
         {stage.notes.length > 0 && (
           <Box sx={{ mb: 1.5 }}>
             {stage.notes.map((note) => (
-              <Typography key={note} variant="body2" color="text.secondary">
+              <Typography key={note} variant="body2" sx={{ color: 'text.secondary' }}>
                 {translateStageNote(note)}
               </Typography>
             ))}
           </Box>
         )}
         {stage.verdicts.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             Diese Stufe hat über keinen einzelnen Kandidaten entschieden.
           </Typography>
         ) : (
@@ -358,7 +358,7 @@ function DiagnosisResult({
   return (
     <Box sx={{ mt: 3 }}>
       <SectionHead component="h3">Ergebnis</SectionHead>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
         {diagnosis.contextLabel} · Suchbereich:{' '}
         {diagnosis.searchScope.length === 0
           ? 'keine Bibliothek'
@@ -392,7 +392,7 @@ function DiagnosisResult({
       </Stack>
       <SectionHead component="h3">Endauswahl</SectionHead>
       {diagnosis.finalSelection.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           Die Endauswahl ist leer - in diesem Rechtekontext hätte diese Frage keinen Beleg.
         </Typography>
       ) : (
@@ -487,7 +487,7 @@ function ChunkPreviewDialog({ chunkId, onClose }: { chunkId: string | null; onCl
         {!error && !chunk && (
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
             <CircularProgress size={20} />
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               Chunk wird geladen …
             </Typography>
           </Stack>
@@ -524,7 +524,7 @@ function ChunkPreviewDialog({ chunkId, onClose }: { chunkId: string | null; onCl
                 Metadaten
               </Typography>
               {metadataEntries.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                   Zu diesem Chunk sind keine Metadaten gespeichert.
                 </Typography>
               ) : (
@@ -638,7 +638,7 @@ function IndexStatusSection() {
 
       <Box sx={{ mb: 4 }}>
         <SectionHead>Indexstatus je Bibliothek</SectionHead>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
           „Kernfelder" zeigt, wie viele Dokumente die aktuelle Extraktion der Kernfelder tragen, wie
           gut jedes Feld befüllt ist und wie viele Dokumente je Feld noch ohne Wert sind — derselbe
           Pflege-Anker, den die Einstellungen der Bibliothek zeigen; von Hand als „kein Wert
@@ -705,7 +705,7 @@ function DiagnosisSection() {
 
       <Box sx={{ mb: 4 }}>
         <SectionHead>Diagnose</SectionHead>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
           Die Diagnose führt eine frisch eingegebene Testfrage im gewählten Rechtekontext aus und
           zeigt jede Stufe einzeln. Sie liest keine bestehenden Gespräche und beantwortet nur den
           jetzigen Zustand - sie ist kein Nachweis über zurückliegende Zugriffe.

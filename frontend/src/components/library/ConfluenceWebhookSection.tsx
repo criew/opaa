@@ -94,7 +94,7 @@ export default function ConfluenceWebhookSection({
         <strong>Webhook:</strong>{' '}
         {secretSet ? 'eingerichtet — Änderungen werden sofort aufgenommen' : 'nicht eingerichtet'}
       </Typography>
-      <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.25 }}>
+      <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mt: 0.25 }}>
         Confluence kann OPAA über geänderte Seiten benachrichtigen; die gemeldeten Seiten werden
         dann gezielt neu geholt. Löschungen übernimmt weiterhin nur der Vollabgleich, sofern
         Confluence die Seite nicht selbst als im Papierkorb ausweist. Das Geheimnis wird nur einmal

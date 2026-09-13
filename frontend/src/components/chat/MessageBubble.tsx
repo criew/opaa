@@ -130,8 +130,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             (message.searchedLibraries?.length ?? 0) > 0 && (
               <Typography
                 variant="body2"
-                color="text.secondary"
-                sx={{ mt: 1 }}
+                sx={{ color: 'text.secondary', mt: 1 }}
                 data-testid="searched-libraries"
               >
                 Durchsucht wurden: {message.searchedLibraries!.map((l) => l.name).join(', ')}

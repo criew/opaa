@@ -48,19 +48,19 @@ function MetadataBackfillCell({
         {backfill.currentDocuments} / {backfill.totalDocuments} aktuell
       </Typography>
       {backfill.pendingDocuments > 0 && (
-        <Typography variant="caption" color="warning.main" component="div">
+        <Typography variant="caption" sx={{ color: 'warning.main' }} component="div">
           {plural(backfill.pendingDocuments, 'Dokument ausstehend', 'Dokumente ausstehend')}
         </Typography>
       )}
       {backfill.awaitingConnectorRunDocuments > 0 && (
-        <Typography variant="caption" color="text.secondary" component="div">
+        <Typography variant="caption" sx={{ color: 'text.secondary' }} component="div">
           {backfill.awaitingConnectorRunDocuments === 1
             ? 'davon 1 Dokument wartet auf den nächsten Konnektorlauf'
             : `davon ${backfill.awaitingConnectorRunDocuments} Dokumente warten auf den nächsten Konnektorlauf`}
         </Typography>
       )}
       {backfill.lastSkippedDocuments > 0 && (
-        <Typography variant="caption" color="warning.main" component="div">
+        <Typography variant="caption" sx={{ color: 'warning.main' }} component="div">
           {plural(
             backfill.lastSkippedDocuments,
             'Dokument zuletzt übersprungen',
@@ -70,7 +70,7 @@ function MetadataBackfillCell({
       )}
       <Typography
         variant="caption"
-        color="text.secondary"
+        sx={{ color: 'text.secondary' }}
         component="div"
         aria-label={`Füllgrad je Kernfeld: ${library.libraryName}`}
       >
@@ -85,7 +85,7 @@ function MetadataBackfillCell({
           settings show, counted over the organization here. */}
       <Typography
         variant="caption"
-        color="text.secondary"
+        sx={{ color: 'text.secondary' }}
         component="div"
         aria-label={`Dokumente ohne Wert je Kernfeld: ${library.libraryName}`}
       >
@@ -103,7 +103,7 @@ function MetadataBackfillCell({
       {library.modelExtraction.calls > 0 && (
         <Typography
           variant="caption"
-          color="text.secondary"
+          sx={{ color: 'text.secondary' }}
           component="div"
           aria-label={`Modellgestützte Extraktion: ${library.libraryName}`}
         >
@@ -115,7 +115,7 @@ function MetadataBackfillCell({
         </Typography>
       )}
       {run?.error && (
-        <Typography variant="caption" color="error.main" component="div" role="alert">
+        <Typography variant="caption" sx={{ color: 'error.main' }} component="div" role="alert">
           {run.error}
         </Typography>
       )}
@@ -160,7 +160,7 @@ function ContextPrefixCell({
         {rerun.currentDocuments} / {rerun.totalDocuments} mit aktuellem Präfix
       </Typography>
       {rerun.pendingDocuments > 0 && (
-        <Typography variant="caption" color="warning.main" component="div">
+        <Typography variant="caption" sx={{ color: 'warning.main' }} component="div">
           {plural(
             rerun.pendingDocuments,
             'Dokument wartet auf Neu-Einbetten',
@@ -169,7 +169,7 @@ function ContextPrefixCell({
         </Typography>
       )}
       {rerun.lastSkippedDocuments > 0 && (
-        <Typography variant="caption" color="warning.main" component="div">
+        <Typography variant="caption" sx={{ color: 'warning.main' }} component="div">
           {plural(
             rerun.lastSkippedDocuments,
             'Dokument zuletzt fehlgeschlagen',
@@ -178,7 +178,7 @@ function ContextPrefixCell({
         </Typography>
       )}
       {run?.error && (
-        <Typography variant="caption" color="error.main" component="div" role="alert">
+        <Typography variant="caption" sx={{ color: 'error.main' }} component="div" role="alert">
           {run.error}
         </Typography>
       )}
@@ -217,7 +217,7 @@ export default function LibraryStatusTable({
 }) {
   if (libraries.length === 0) {
     return (
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
         Es ist noch keine Wissensbibliothek angelegt.
       </Typography>
     )
@@ -258,7 +258,7 @@ export default function LibraryStatusTable({
               <TableCell align="right">
                 {`${library.vectorChunkCount} / ${library.chunkCount}`}
                 {library.vectorChunkCount !== library.chunkCount && (
-                  <Typography variant="caption" color="text.secondary" component="div">
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }} component="div">
                     Vektorindex und Dokumentzählung weichen ab
                   </Typography>
                 )}
@@ -283,7 +283,7 @@ export default function LibraryStatusTable({
                   color={library.fullTextIndexState === 'OUTDATED' ? 'warning' : 'default'}
                 />
                 {library.fullTextOutdatedChunks > 0 && (
-                  <Typography variant="caption" color="text.secondary" component="div">
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }} component="div">
                     {plural(
                       library.fullTextOutdatedChunks,
                       'Abschnitt in älterer Fassung',

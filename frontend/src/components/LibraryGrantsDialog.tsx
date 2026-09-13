@@ -275,9 +275,9 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
         )}
 
         {isLoading ? (
-          <Typography color="text.secondary">Berechtigungen werden geladen …</Typography>
+          <Typography sx={{ color: 'text.secondary' }}>Berechtigungen werden geladen …</Typography>
         ) : grants.length === 0 ? (
-          <Typography color="text.secondary">
+          <Typography sx={{ color: 'text.secondary' }}>
             Es sind noch keine Freigaben für diese Bibliothek erteilt.
           </Typography>
         ) : (
@@ -307,7 +307,7 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
                     {/* grantedByUserId names whoever conferred the role the grant carries now, not
                         whoever created the row - so it is never paired with createdAt, which would
                         assert a granter/date combination that never existed. */}
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                       {permissionSubjectTypeLabel(grant.subjectType)} · Rolle vergeben von{' '}
                       {grantedByDisplayName(grant)} · zuletzt geändert am{' '}
                       {new Date(grant.updatedAt).toLocaleDateString('de-DE')}
@@ -388,7 +388,7 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
                     onChange={(e) => setManualUserId(e.target.value)}
                     size="small"
                   />
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     Die Nutzerauswahl konnte nicht geladen werden; die Nutzer-ID muss bekannt sein.
                   </Typography>
                 </Stack>
@@ -457,7 +457,7 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
                     size="small"
                   />
                 )}
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                   {manualGroupEntry
                     ? 'Jede Gruppe der eigenen Organisation ist zulässig, auch ohne eigene Mitgliedschaft.'
                     : 'Diese Auswahl zeigt nur Gruppen, in denen Sie selbst Mitglied sind.'}{' '}
@@ -493,7 +493,7 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
                 ))}
               </Select>
             </FormControl>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               {assetRoleDescription(role)}
             </Typography>
 

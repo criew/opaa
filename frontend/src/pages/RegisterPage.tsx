@@ -219,7 +219,7 @@ export default function RegisterPage() {
         gespeichert. Den Datenschutzhinweis Ihres Hauses erhalten Sie von Ihrer Systemverwaltung.
       </Typography>
       <Typography sx={{ mt: 2, fontSize: 12, textAlign: 'center' }}>
-        <Link component={RouterLink} to={LOGIN_ROUTE} color="text.secondary">
+        <Link component={RouterLink} to={LOGIN_ROUTE} sx={{ color: 'text.secondary' }}>
           Sie haben schon ein Konto? Zur Anmeldung
         </Link>
       </Typography>

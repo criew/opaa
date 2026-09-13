@@ -160,7 +160,7 @@ export default function ForgotPasswordPage() {
         </Stack>
       </Box>
       <Typography sx={{ mt: 3, fontSize: 12, textAlign: 'center' }}>
-        <Link component={RouterLink} to={LOGIN_ROUTE} color="text.secondary">
+        <Link component={RouterLink} to={LOGIN_ROUTE} sx={{ color: 'text.secondary' }}>
           Zurück zur Anmeldung
         </Link>
       </Typography>

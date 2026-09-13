@@ -330,7 +330,7 @@ export default function ConfluenceSourceForm({
               label={`Confluence ${confluenceEditionLabel(values.edition)}`}
               data-testid={`${idPrefix}-edition`}
             />
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               {editionFixed
                 ? 'nach der Anlage nicht änderbar'
                 : 'erkannt aus der Antwort der Instanz — nach der Anlage nicht änderbar'}

@@ -99,7 +99,7 @@ export default function MetadataExtractionSettingsSection({
             }
             label="Modellgestützte Extraktion"
           />
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             Ergänzt nur die unscharfen Felder, die die regelbasierte Extraktion leer gelassen hat
             (Dokumentart, Auswahlfelder dieser Bibliothek). Ein Wert unterhalb der Konfidenzschwelle
             von {formatShare(settings.confidenceThreshold)} oder außerhalb der Werteliste bleibt
@@ -118,7 +118,7 @@ export default function MetadataExtractionSettingsSection({
             }
             label="Freie Schlagworte"
           />
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             Höchstens fünf Schlagworte je Dokument. Sie verbessern die Auffindbarkeit im Volltext,
             sind aber nie filterbar und erscheinen nicht im Beleg.
           </Typography>
@@ -159,7 +159,7 @@ export default function MetadataExtractionSettingsSection({
       <Typography variant="subtitle2" component="h4" sx={{ mb: 0.5 }}>
         Extraktionsgüte
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
         Herkunft der Werte über {quality?.totalDocuments ?? 0} aufgenommene Dokumente dieser
         Bibliothek.
       </Typography>
@@ -184,7 +184,7 @@ export default function MetadataExtractionSettingsSection({
         ))}
       </Stack>
       {stats && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1.5 }}>
           Modellaufrufe: {stats.calls} · übernommen: {stats.acceptedValues} · verworfen (Konfidenz):{' '}
           {stats.rejectedBelowThreshold} · verworfen (Werteliste): {stats.rejectedOutsideVocabulary}{' '}
           · Fehler/Zeitüberschreitungen: {stats.failures} · nicht angefragt (ausgelastet):{' '}

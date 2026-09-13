@@ -452,7 +452,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
             {/* #697 review, Befund 2: warning.main auf heller Fläche unterschreitet 4,5:1 (docs/design/accessibility.md
                 2.4) - text.secondary erfüllt den Kontrast in beiden Schemata; die Aussage ist an sich schon eine
                 Warnung, sie braucht keine zusätzliche Signalfarbe, um verstanden zu werden. */}
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               Antwortet ohne Dokumente.
             </Typography>
             <Chip
@@ -703,7 +703,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
                 })}
               </List>
             ) : (
-              <Typography variant="body2" color="text.secondary" sx={{ p: 1.5 }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary', p: 1.5 }}>
                 Keine passende Bibliothek gefunden
               </Typography>
             )}

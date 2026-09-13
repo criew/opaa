@@ -195,8 +195,7 @@ export default function ChangePasswordPage() {
           component="button"
           type="button"
           onClick={() => void logout()}
-          color="text.secondary"
-          sx={{ fontSize: 12 }}
+          sx={{ color: 'text.secondary', fontSize: 12 }}
         >
           Abmelden
         </Link>

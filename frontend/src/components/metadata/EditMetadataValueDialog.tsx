@@ -108,7 +108,7 @@ export default function EditMetadataValueDialog({
       </DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             Dokument: {fileName}
           </Typography>
           {error && <Alert severity="error">{error}</Alert>}
@@ -119,7 +119,7 @@ export default function EditMetadataValueDialog({
             vocabulary={vocabulary}
             disabled={submitting}
           />
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
             Ein von Hand gesetzter Wert wird als „manuell" gekennzeichnet und von keiner
             automatischen Extraktion überschrieben.
           </Typography>

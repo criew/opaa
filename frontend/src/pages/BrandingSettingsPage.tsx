@@ -258,7 +258,7 @@ export default function BrandingSettingsPage() {
             <Typography variant="subtitle2" component="h2" gutterBottom>
               Farbschema-Vorgabe
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
               Gilt für alle, die in ihren eigenen Einstellungen noch nichts gewählt haben. Eine
               persönliche Wahl bleibt unberührt.
             </Typography>
@@ -287,7 +287,7 @@ export default function BrandingSettingsPage() {
             <Typography variant="subtitle2" component="h2" gutterBottom>
               Logo
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
               PNG oder JPEG, höchstens {MAX_LOGO_SIZE_BYTES / 1024} KiB. SVG wird nicht angenommen,
               weil eine SVG-Datei Skripte enthalten kann.
             </Typography>
@@ -316,7 +316,7 @@ export default function BrandingSettingsPage() {
                 </Button>
               )}
               {logoFile && (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                   {logoFile.name} — wird beim Speichern übernommen
                 </Typography>
               )}
@@ -329,7 +329,7 @@ export default function BrandingSettingsPage() {
             <Typography variant="subtitle2" component="h2" gutterBottom>
               Vorschau
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
               So wirkt die Einstellung in beiden Farbschemata — beide sind gleichermaßen
               verbindlich.
             </Typography>
