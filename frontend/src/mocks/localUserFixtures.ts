@@ -26,6 +26,15 @@ export const OWNS_CONTENT_USER_ID = 'local-user-weber'
  */
 export const LAST_ADMIN_USER_ID = 'local-user-hoffmann'
 
+/**
+ * Die eine Regel hinter „ohne Ablaufdatum" – wie im Backend (`LocalCredentials`): ohne Befristung
+ * und nicht das Notanker-Konto, das unbefristet bleiben soll. Zähler des Hinweises und beide
+ * Listenfilter lesen sie hier, damit der Test-Doppelgänger dieselbe Menge liefert wie das Backend.
+ */
+export function countsAsWithoutExpiry(user: LocalUserResponse): boolean {
+  return !user.expiresAt && !user.bootstrap
+}
+
 function initialLocalUsers(): LocalUserResponse[] {
   return [
     {

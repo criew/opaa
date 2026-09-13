@@ -62,9 +62,7 @@ public class LocalUserAdminService {
     List<LocalUserOverview> all = accounts.allOf(organizationId);
     return new LocalUserSummary(
         all.size(),
-        all.stream()
-            .filter(o -> o.credentials().getExpiresAt() == null && !o.credentials().isBootstrap())
-            .count(),
+        all.stream().filter(o -> o.credentials().countsAsWithoutExpiry()).count(),
         all.stream().filter(o -> o.state() == LocalAccountState.LOCKED).count(),
         all.stream().filter(o -> o.state() == LocalAccountState.INVITED).count(),
         nextReviewOn(LocalDate.ofInstant(clock.instant(), ZoneId.systemDefault())));
@@ -141,7 +139,7 @@ public class LocalUserAdminService {
     if (query.role() != null && overview.user().getSystemRole() != query.role()) {
       return false;
     }
-    if (query.withoutExpiry() && overview.credentials().getExpiresAt() != null) {
+    if (query.withoutExpiry() && !overview.credentials().countsAsWithoutExpiry()) {
       return false;
     }
     if (query.inactive() && !overview.isInactive()) {

@@ -43,6 +43,25 @@ class LocalCredentialsTest {
     assertThat(credentials.isLoginCapable(NOW.plus(Duration.ofDays(2)))).isFalse();
   }
 
+  /**
+   * The one rule behind the review obligation "ohne Ablaufdatum" (ADR-0033, Entscheidung 11): the
+   * standing notice's count, both list filters and the quarterly reminder read it here, so they
+   * cannot drift apart again (#1603).
+   */
+  @Test
+  void anAccountCountsAsWithoutExpiryUnlessItHasOneOrIsTheBootstrapAccount() {
+    LocalCredentials credentials = activeCredentials();
+    assertThat(credentials.countsAsWithoutExpiry()).isTrue();
+
+    credentials.setExpiresAt(NOW.plus(Duration.ofDays(30)), NOW);
+    assertThat(credentials.countsAsWithoutExpiry()).isFalse();
+
+    LocalCredentials bootstrap = activeCredentials();
+    bootstrap.markBootstrap();
+    assertThat(bootstrap.getExpiresAt()).isNull();
+    assertThat(bootstrap.countsAsWithoutExpiry()).isFalse();
+  }
+
   @Test
   void aLockOutranksExpiryAndInvitation() {
     LocalCredentials credentials = credentials();

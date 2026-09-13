@@ -53,6 +53,7 @@ class AccountAdminServiceTest {
   private User ghost;
   private User erika;
   private User klaus;
+  private LocalCredentials klausRow;
 
   @BeforeEach
   void setUp() {
@@ -93,7 +94,7 @@ class AccountAdminServiceTest {
     erikaRow.setPasswordHash("hash", EARLIER);
     erikaRow.markEmailVerified(EARLIER);
     erikaRow.setExpiresAt(NOW.plus(Duration.ofDays(30)), EARLIER);
-    LocalCredentials klausRow = new LocalCredentials(klaus.getId(), "Prüfung", NOW);
+    klausRow = new LocalCredentials(klaus.getId(), "Prüfung", NOW);
     klausRow.setPasswordHash("hash", NOW);
     klausRow.markEmailVerified(NOW);
     klausRow.lock(io.opaa.api.types.LockReason.ADMIN, NOW, null);
@@ -177,6 +178,18 @@ class AccountAdminServiceTest {
                         .build())
                 .total())
         .isZero();
+  }
+
+  /**
+   * Regression guard for #1603: "ohne Ablaufdatum" is the review obligation's filter, and the
+   * bootstrap account is not subject to it - it must never appear there, just as the count of the
+   * standing notice leaves it out.
+   */
+  @Test
+  void theBootstrapAccountIsNeverAMatchOfTheWithoutExpiryFilter() {
+    klausRow.markBootstrap();
+
+    assertThat(service.list(ORGANIZATION, query().withoutExpiry(true).build()).total()).isZero();
   }
 
   @Test

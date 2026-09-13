@@ -736,7 +736,15 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
   genutzt", „offene Einladungen"; 14 Tage vor einem Ablauf erhalten Person und Systemverwalter eine
   Mail; einmal im Quartal erhalten die Systemverwalter eine Wiedervorlage (`ADMIN_REVIEW_REMINDER`)
   mit der Zahl der Konten ohne Ablaufdatum und dem Link zur Liste — keine Namen in der Mail.
-  Systemverwalterkonten sind nicht ausgenommen.
+  Systemverwalterkonten sind nicht ausgenommen. **Ergänzung vom 13.09.2026 (#1603):** Zähler und
+  Filter „ohne Ablaufdatum" meinen **dieselbe Menge** — ebenso die Teilmenge „ohne Ablaufdatum",
+  die in die Wiedervorlage eingeht (deren Zahl fasst sie mit den auslaufenden Konten zusammen) —,
+  und diese eine Menge nimmt das **Notanker-Konto** aus. Die Auflage meint Konten, die befristet
+  werden *können*; das Notanker-Konto ist der Weg zurück in eine ausgesperrte Installation und soll
+  nach Entscheidung 5 unbefristet bleiben (die Durchsetzung im Code beschränkt sich heute auf die
+  Löschsperre und die Ausnahme von der Inaktivitätssperre — siehe #1640). Es in einer Prüfliste zu führen, die zum Befristen auffordert, wäre eine Einladung,
+  den Notweg zu schließen. Das gilt nur für dieses eine Konto — jedes andere Systemverwalterkonto
+  bleibt Teil der Auflage.
 - **Die Kontenliste ist kein Auswertungspfad:** Sie zeigt Aktivität nur als Klasse („nie", „länger
   als 90 Tage nicht", „aktiv") ohne exakten Zeitstempel und ohne Sortierung danach, und kennt
   **keinen Export und keinen Massenabruf** (keine CSV-Ausgabe, Seitengröße höchstens 50). Das ist

@@ -10,7 +10,8 @@ import io.opaa.common.ValidationException;
  * the list is a review instrument, not an export.
  *
  * @param query case-insensitive substring of address or display name, or {@code null}
- * @param withoutExpiry only accounts without an expiry date
+ * @param withoutExpiry only accounts counting as without an expiry date ({@link
+ *     LocalCredentials#countsAsWithoutExpiry()})
  * @param inactive only accounts whose activity class is {@code NEVER} or {@code INACTIVE_90_DAYS}
  */
 public record LocalUserQuery(

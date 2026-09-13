@@ -1,7 +1,12 @@
 import { http, HttpResponse } from 'msw'
 import type { AccountResponse, SystemRole } from '../types/api'
 import { mockProviderAccounts, setMockProviderAccounts, toLocalAccount } from './accountFixtures'
-import { LAST_ADMIN_USER_ID, mockLocalUsers, setMockLocalUsers } from './localUserFixtures'
+import {
+  countsAsWithoutExpiry,
+  LAST_ADMIN_USER_ID,
+  mockLocalUsers,
+  setMockLocalUsers,
+} from './localUserFixtures'
 
 /**
  * Die Kontenliste (#1601) und der Rollenendpunkt als MSW-Handler - mit den Invarianten, auf die
@@ -131,7 +136,7 @@ export const accountHandlers = [
         const local = account.local
         if (!local) return false
         if (status && local.status !== status) return false
-        if (withoutExpiry && local.expiresAt) return false
+        if (withoutExpiry && !countsAsWithoutExpiry(local)) return false
         if (inactive && local.activity === 'ACTIVE') return false
         return true
       })

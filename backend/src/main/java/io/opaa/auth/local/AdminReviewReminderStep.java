@@ -91,7 +91,7 @@ public class AdminReviewReminderStep implements LocalAccountMaintenanceStep {
     if (isQuarterStart(LocalDate.ofInstant(now, zone))) {
       for (LocalCredentials row : credentials.findAllById(byId.keySet())) {
         User user = byId.get(row.getUserId());
-        if (row.isBootstrap() || row.getExpiresAt() != null || user == null) {
+        if (user == null || !row.countsAsWithoutExpiry()) {
           continue;
         }
         countPerOrganization.merge(user.getOrganizationId(), 1L, Long::sum);

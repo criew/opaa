@@ -323,20 +323,24 @@ describe('UserManagementPage', () => {
     renderAccounts()
 
     const notice = await screen.findByTestId('local-user-review-notice')
-    expect(notice).toHaveTextContent('3 lokale Konten ohne Ablaufdatum')
+    expect(notice).toHaveTextContent('2 lokale Konten ohne Ablaufdatum')
     expect(notice).toHaveTextContent('1 offene Einladung')
     expect(notice).toHaveTextContent(/regelmäßig zu überprüfen/)
 
     await user.click(within(notice).getByRole('button', { name: /ohne Ablaufdatum anzeigen/ }))
     await waitFor(() => expect(useUserAdminStore.getState().filters.review).toBe('WITHOUT_EXPIRY'))
     expect(useUserAdminStore.getState().filters.providerType).toBe('LOCAL')
-    await waitFor(() =>
+    // Die Zahl im Hinweis und die Zeilen hinter dem Sprung sind dieselbe Menge (#1603): Das
+    // Notanker-Konto soll unbefristet bleiben und steht in keiner von beiden.
+    await waitFor(() => {
+      const accounts = useUserAdminStore.getState().accounts
+      expect(accounts).toHaveLength(2)
       expect(
-        useUserAdminStore
-          .getState()
-          .accounts.every((account) => account.local && !account.local.expiresAt),
-      ).toBe(true),
-    )
+        accounts.every(
+          (account) => account.local && !account.local.expiresAt && !account.local.bootstrap,
+        ),
+      ).toBe(true)
+    })
 
     await user.click(screen.getByRole('button', { name: /Offene Einladungen anzeigen/ }))
     await waitFor(() => expect(useUserAdminStore.getState().filters.status).toBe('INVITED'))
@@ -490,6 +494,37 @@ describe('UserManagementPage', () => {
       expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
     )
   })
+
+  /**
+   * Das Notanker-Konto steht nicht im Hinweis zur Auflage (#1603) – der Hilfetext unter „Kein
+   * Ablaufdatum" darf ihm deshalb keinen versprechen, einem regulären Konto dagegen schon. Beide
+   * Richtungen stehen hier, damit eine vertauschte Unterscheidung auffällt.
+   */
+  it('tells the bootstrap account it stays unlimited and a regular one about the notice', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+
+    const menu = await openRowMenu(user, 'Systemverwaltung', 'admin@opaa.local')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
+
+    const bootstrapDialog = await screen.findByRole('dialog')
+    expect(within(bootstrapDialog).getByText(/soll unbefristet bleiben/)).toBeInTheDocument()
+    expect(within(bootstrapDialog).queryByText(/erscheint im Hinweis zur/)).not.toBeInTheDocument()
+    await user.click(within(bootstrapDialog).getByRole('button', { name: 'Abbrechen' }))
+    // erst wenn der Dialog fort ist, ist die Tabelle wieder erreichbar
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    // „M. Weber (Partner)" trägt ebenfalls kein Ablaufdatum, ist aber ein reguläres Konto
+    // der Zeilenname geht als RegExp in die Suche - die Klammern des Anzeigenamens nicht mit
+    const regularMenu = await openRowMenu(user, 'M. Weber (Partner)', 'M\\. Weber')
+    await user.click(within(regularMenu).getByRole('menuitem', { name: 'Bearbeiten' }))
+
+    const regularDialog = await screen.findByRole('dialog')
+    expect(within(regularDialog).getByText(/erscheint im Hinweis zur/)).toBeInTheDocument()
+    expect(within(regularDialog).queryByText(/soll unbefristet bleiben/)).not.toBeInTheDocument()
+  }, 20000)
 
   /**
    * Regressionsschutz zu Review-Runde 1 (HIGH 2): Der PATCH sendete `expiresAt` immer mit —

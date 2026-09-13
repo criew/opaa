@@ -572,7 +572,10 @@ paths:
           schema:
             type: boolean
             default: false
-          description: Only accounts without an expiry date.
+          description: >
+            Only accounts without an expiry date - the bootstrap account excepted, which is meant
+            to stay unlimited and carries no review obligation (ADR-0033, Entscheidung 11). The
+            same set the withoutExpiry count of the summary reports.
         - name: inactive
           in: query
           required: false
@@ -953,7 +956,9 @@ paths:
           schema:
             type: boolean
             default: false
-          description: Only local accounts without an expiry date; implies providerType=LOCAL.
+          description: >
+            Only local accounts without an expiry date, the bootstrap account excepted - the same
+            set the local list and the summary report; implies providerType=LOCAL.
         - name: inactive
           in: query
           required: false
@@ -6031,7 +6036,9 @@ components:
         withoutExpiry:
           type: integer
           format: int64
-          description: Accounts without an expiry date - what the quarterly reminder counts.
+          description: >
+            Accounts without an expiry date, the bootstrap account excepted - what the quarterly
+            reminder counts and what the withoutExpiry filter of both account lists shows.
         locked:
           type: integer
           format: int64

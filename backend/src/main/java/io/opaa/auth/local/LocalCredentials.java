@@ -113,6 +113,17 @@ public class LocalCredentials {
     return state(now) == LocalAccountState.ACTIVE;
   }
 
+  /**
+   * Whether this account belongs to the review obligation's "ohne Ablaufdatum" (ADR-0033,
+   * Entscheidung 11): no expiry set, and not the bootstrap account - that one is meant to stay
+   * unlimited as the way back into a locked-out installation. The single rule behind the standing
+   * notice's count, both list filters, and the share the quarterly reminder adds for accounts
+   * without an expiry.
+   */
+  public boolean countsAsWithoutExpiry() {
+    return expiresAt == null && !bootstrap;
+  }
+
   private boolean isLocked(Instant now) {
     if (lockedReason == LockReason.FAILED_LOGINS) {
       return lockoutUntil != null && lockoutUntil.isAfter(now);

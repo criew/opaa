@@ -6,6 +6,7 @@ import type {
   LocalUserUpdateRequest,
 } from '../types/api'
 import {
+  countsAsWithoutExpiry,
   LAST_ADMIN_USER_ID,
   MAIL_FAILING_ADDRESS_SUFFIX,
   MOCK_SELF_USER_ID,
@@ -166,7 +167,7 @@ export const localUserHandlers = [
             user.displayName.toLowerCase().includes(query)) &&
           (!status || user.status === status) &&
           (!role || user.systemRole === role) &&
-          (!withoutExpiry || !user.expiresAt) &&
+          (!withoutExpiry || countsAsWithoutExpiry(user)) &&
           (!inactive || user.activity === 'NEVER' || user.activity === 'INACTIVE_90_DAYS'),
       )
       .sort((a, b) => compare(a, b, sort) * direction)
@@ -182,7 +183,7 @@ export const localUserHandlers = [
   http.get('/api/v1/admin/local-users/summary', () => {
     return HttpResponse.json({
       total: mockLocalUsers.length,
-      withoutExpiry: mockLocalUsers.filter((user) => !user.expiresAt).length,
+      withoutExpiry: mockLocalUsers.filter(countsAsWithoutExpiry).length,
       locked: mockLocalUsers.filter((user) => user.status === 'LOCKED').length,
       invitedPending: mockLocalUsers.filter((user) => user.status === 'INVITED').length,
       lastReviewHint: 'Die nächste Wiedervorlage geht am 01.10.2026 an die Systemverwaltung.',
