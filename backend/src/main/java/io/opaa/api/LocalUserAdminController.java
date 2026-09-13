@@ -4,6 +4,8 @@ import io.opaa.api.dto.LocalUserCreateRequest;
 import io.opaa.api.dto.LocalUserCreatedResponse;
 import io.opaa.api.dto.LocalUserCreationMode;
 import io.opaa.api.dto.LocalUserGeneratedPasswordResponse;
+import io.opaa.api.dto.LocalUserHandoverRequest;
+import io.opaa.api.dto.LocalUserHandoverResponse;
 import io.opaa.api.dto.LocalUserLockRequest;
 import io.opaa.api.dto.LocalUserPageResponse;
 import io.opaa.api.dto.LocalUserPasswordResetResponse;
@@ -153,6 +155,20 @@ public class LocalUserAdminController {
   public LocalUserPasswordResetResponse requestLocalUserPasswordReset(
       @PathVariable UUID id, @Caller CurrentUser caller) {
     return LocalUserResponseMapper.toPasswordReset(adminService.requestPasswordReset(caller, id));
+  }
+
+  /**
+   * ADR-0033, Entscheidung 12: the administration names the provider and the reason, nothing about
+   * the identity - the subject comes from the person's own provider token at redemption.
+   */
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @PostMapping("/{id}/handover")
+  public LocalUserHandoverResponse requestLocalUserHandover(
+      @PathVariable UUID id,
+      @Valid @RequestBody LocalUserHandoverRequest request,
+      @Caller CurrentUser caller) {
+    return LocalUserResponseMapper.toHandover(
+        adminService.requestHandover(caller, id, request.getProviderId(), request.getReason()));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

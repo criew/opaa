@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -73,6 +74,17 @@ public class User {
     User user = new User(null, LocalIssuer.URN, email, displayName);
     user.subject = user.id.toString();
     return user;
+  }
+
+  /**
+   * Hands the account over to a provider identity (ADR-0033, Entscheidung 12): the one act that
+   * ever changes {@code (issuer, subject)} of an existing row. Everything keyed by {@code id} -
+   * spaces, memberships, the system role and the pseudonym of the audit trail - stays untouched,
+   * which is the whole point of the handover.
+   */
+  public void handOverTo(String issuer, String subject) {
+    this.issuer = Objects.requireNonNull(issuer, "issuer");
+    this.subject = Objects.requireNonNull(subject, "subject");
   }
 
   public UUID getId() {

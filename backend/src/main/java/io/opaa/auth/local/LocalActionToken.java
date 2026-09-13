@@ -40,6 +40,14 @@ public class LocalActionToken {
   @Column(name = "consumed_at")
   private Instant consumedAt;
 
+  /** Set exactly for {@link ActionTokenPurpose#HANDOVER}: the provider the administration chose. */
+  @Column(name = "provider_id")
+  private UUID providerId;
+
+  /** Set exactly for {@link ActionTokenPurpose#HANDOVER}: the reason, for the person to read. */
+  @Column(name = "reason", length = 200)
+  private String reason;
+
   protected LocalActionToken() {}
 
   public LocalActionToken(
@@ -54,6 +62,22 @@ public class LocalActionToken {
     this.tokenHash = Objects.requireNonNull(tokenHash, "tokenHash");
     this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
     this.expiresAt = Objects.requireNonNull(expiresAt, "expiresAt");
+  }
+
+  /**
+   * A handover link (ADR-0033, Entscheidung 12): provider and reason belong to the code, not to the
+   * account - the account stops being a local one the moment the code is redeemed.
+   */
+  public LocalActionToken(
+      UUID userId,
+      String tokenHash,
+      Instant createdAt,
+      Instant expiresAt,
+      UUID providerId,
+      String reason) {
+    this(userId, ActionTokenPurpose.HANDOVER, tokenHash, createdAt, expiresAt);
+    this.providerId = Objects.requireNonNull(providerId, "providerId");
+    this.reason = Objects.requireNonNull(reason, "reason");
   }
 
   /** Not yet consumed and not yet expired. */
@@ -87,6 +111,14 @@ public class LocalActionToken {
 
   public Instant getConsumedAt() {
     return consumedAt;
+  }
+
+  public UUID getProviderId() {
+    return providerId;
+  }
+
+  public String getReason() {
+    return reason;
   }
 
   @Override

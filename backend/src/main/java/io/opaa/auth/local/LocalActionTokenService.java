@@ -48,11 +48,25 @@ public class LocalActionTokenService {
   public IssuedActionToken issue(UUID userId, ActionTokenPurpose purpose, Duration ttl) {
     Instant now = clock.instant();
     repository.consumeOpenTokens(userId, purpose, now);
-    byte[] bytes = new byte[TOKEN_BYTES];
-    RANDOM.nextBytes(bytes);
-    String raw = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    String raw = randomToken();
     Instant expiresAt = now.plus(ttl);
     repository.save(new LocalActionToken(userId, purpose, hash(raw), now, expiresAt));
+    return new IssuedActionToken(raw, expiresAt);
+  }
+
+  /**
+   * Issues a handover link (ADR-0033, Entscheidung 12): like {@link #issue} for {@link
+   * ActionTokenPurpose#HANDOVER}, but the code also carries the provider the administration chose
+   * and the reason it gave, so neither can be supplied - or mistyped - at redemption.
+   */
+  @Transactional
+  public IssuedActionToken issueHandover(
+      UUID userId, Duration ttl, UUID providerId, String reason) {
+    Instant now = clock.instant();
+    repository.consumeOpenTokens(userId, ActionTokenPurpose.HANDOVER, now);
+    String raw = randomToken();
+    Instant expiresAt = now.plus(ttl);
+    repository.save(new LocalActionToken(userId, hash(raw), now, expiresAt, providerId, reason));
     return new IssuedActionToken(raw, expiresAt);
   }
 
@@ -99,6 +113,12 @@ public class LocalActionTokenService {
   /** The 400 a link endpoint answers with for every refused token (ADR-0033, Entscheidung 11). */
   public static ValidationException invalidToken() {
     return new ValidationException(TOKEN_INVALID_MESSAGE, TOKEN_INVALID);
+  }
+
+  private static String randomToken() {
+    byte[] bytes = new byte[TOKEN_BYTES];
+    RANDOM.nextBytes(bytes);
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
   }
 
   private String hash(String rawToken) {

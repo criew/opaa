@@ -40,6 +40,14 @@ public class RateLimitConfiguration {
   static final String LOCAL_SET_PASSWORD_PATTERN = "^/api/v1/auth/local/set-password$";
   static final String LOCAL_VERIFY_EMAIL_PATTERN = "^/api/v1/auth/local/verify-email$";
 
+  /**
+   * The two handover endpoints of #1563 share one budget, like the outbound probes above: a
+   * redemption is one preview plus one redeem by the same person, and an unauthenticated caller
+   * without a valid code gets nothing out of either. The group is non-capturing on purpose - a
+   * capturing one would give each path its own bucket and double the budget.
+   */
+  static final String LOCAL_HANDOVER_PATTERN = "^/api/v1/auth/local/handover/(?:preview|redeem)$";
+
   @Bean
   TrustedProxyClientIpResolver clientIpResolver(RateLimitProperties properties) {
     return new TrustedProxyClientIpResolver(properties.trustedProxyCidrs());
@@ -104,6 +112,7 @@ public class RateLimitConfiguration {
             localAuth.forgotPassword()));
     rules.add(rule("local-auth-set-password", LOCAL_SET_PASSWORD_PATTERN, localAuth.setPassword()));
     rules.add(rule("local-auth-verify-email", LOCAL_VERIFY_EMAIL_PATTERN, localAuth.verifyEmail()));
+    rules.add(rule("local-auth-handover", LOCAL_HANDOVER_PATTERN, localAuth.handover()));
 
     var registration =
         new FilterRegistrationBean<>(

@@ -10,6 +10,9 @@ import java.util.Objects;
  */
 public record LocalTokenRejection(String marker, String cause) {
 
+  /** The cause of {@link RevocationReason#HANDED_OVER} (ADR-0033, Entscheidung 12). */
+  public static final String HANDED_OVER_CAUSE = "handed_over";
+
   public LocalTokenRejection {
     Objects.requireNonNull(marker, "marker");
   }
@@ -37,7 +40,7 @@ public record LocalTokenRejection(String marker, String cause) {
       case PASSWORD_CHANGED -> "password_changed";
       case ADMIN_RESET, ADMIN -> "admin_reset";
       case REUSE_DETECTED -> "reuse_detected";
-      case HANDED_OVER -> "handed_over";
+      case HANDED_OVER -> HANDED_OVER_CAUSE;
       case ROTATED, LOGOUT -> null;
     };
   }

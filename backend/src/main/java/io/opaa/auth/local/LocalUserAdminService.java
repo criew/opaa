@@ -3,6 +3,7 @@ package io.opaa.auth.local;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.LocalAccountState;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.local.LocalHandoverAccountService.HandoverStarted;
 import io.opaa.auth.local.LocalUserService.CreatedAccount;
 import io.opaa.auth.local.LocalUserService.ResetLinkIssued;
 import java.time.Clock;
@@ -37,11 +38,17 @@ import org.springframework.stereotype.Service;
 public class LocalUserAdminService {
 
   private final LocalUserService accounts;
+  private final LocalHandoverAccountService handovers;
   private final LocalAccountMailer mailer;
   private final Clock clock;
 
-  public LocalUserAdminService(LocalUserService accounts, LocalAccountMailer mailer, Clock clock) {
+  public LocalUserAdminService(
+      LocalUserService accounts,
+      LocalHandoverAccountService handovers,
+      LocalAccountMailer mailer,
+      Clock clock) {
     this.accounts = accounts;
+    this.handovers = handovers;
     this.mailer = mailer;
     this.clock = clock;
   }
@@ -117,6 +124,20 @@ public class LocalUserAdminService {
             ? AuditEventType.LOCAL_USER_INVITED
             : AuditEventType.LOCAL_USER_PASSWORD_RESET_REQUESTED,
         delivery.path());
+    return delivery;
+  }
+
+  /**
+   * Starts a handover (ADR-0033, Entscheidung 12), the same two-phase shape as an invitation: the
+   * code in one transaction, the mail after its commit, the delivery path in a second one. The
+   * administration names the provider and the reason here - never an identity.
+   */
+  public LinkDelivery requestHandover(
+      CurrentUser actor, UUID userId, UUID providerId, String reason) {
+    HandoverStarted started = handovers.start(actor, userId, providerId, reason);
+    LinkDelivery delivery = mailer.sendHandoverRequested(started.user(), started.token());
+    handovers.recordHandoverRequested(
+        actor, started.user(), started.provider().getId(), delivery.path());
     return delivery;
   }
 

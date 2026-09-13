@@ -37,6 +37,8 @@ public class OidcSecurityConfig {
   private static final String LOCAL_FORGOT_PASSWORD = "/api/v1/auth/local/forgot-password";
   private static final String LOCAL_REGISTER = "/api/v1/auth/local/register";
   private static final String LOCAL_VERIFY_EMAIL = "/api/v1/auth/local/verify-email";
+  private static final String LOCAL_HANDOVER_PREVIEW = "/api/v1/auth/local/handover/preview";
+  private static final String LOCAL_HANDOVER_REDEEM = "/api/v1/auth/local/handover/redeem";
 
   /**
    * ADR-0033, Entscheidung 7: the double-submit CSRF token is required exactly where the refresh
@@ -100,6 +102,11 @@ public class OidcSecurityConfig {
                     // ADR-0033: the local sign-in, the two cookie-bearing session endpoints and
                     // the self-service of #1538 (link redemption, forgot password, registration)
                     // have no bearer token yet (or no longer); change-password stays bearer-only.
+                    // ADR-0033, Entscheidung 12: the two handover endpoints of #1563 must stay
+                    // bearer-free - a provider token in the header would be provisioned into a new
+                    // account by UserProvisioningFilter before the controller runs, which is the
+                    // one thing the redemption has to find absent. They verify the provider token
+                    // from the body themselves (LocalHandoverService).
                     .requestMatchers(
                         HttpMethod.POST,
                         LOCAL_LOGIN,
@@ -108,7 +115,9 @@ public class OidcSecurityConfig {
                         LOCAL_SET_PASSWORD,
                         LOCAL_FORGOT_PASSWORD,
                         LOCAL_REGISTER,
-                        LOCAL_VERIFY_EMAIL)
+                        LOCAL_VERIFY_EMAIL,
+                        LOCAL_HANDOVER_PREVIEW,
+                        LOCAL_HANDOVER_REDEEM)
                     .permitAll()
                     // #582/#583: branding is readable without authentication. The sign-in
                     // page is the first thing a user sees and has to carry the operator's own

@@ -14,6 +14,9 @@ public interface GroupMembershipRepository extends JpaRepository<GroupMembership
 
   Optional<GroupMembership> findByGroupIdAndUserId(UUID groupId, UUID userId);
 
+  /** How many groups the account is a member of - part of what a handover moves (#1563). */
+  long countByUserId(UUID userId);
+
   @Query("select m.group.id from GroupMembership m where m.userId = :userId")
   Set<UUID> findGroupIdsByUserId(@Param("userId") UUID userId);
 
