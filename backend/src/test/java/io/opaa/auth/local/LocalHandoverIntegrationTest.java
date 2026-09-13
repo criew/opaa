@@ -347,6 +347,55 @@ class LocalHandoverIntegrationTest {
   }
 
   /**
+   * The state machine lets a lock outrank the expiry, so an expired account in a failed-login
+   * lockout reports {@code LOCKED} with {@code FAILED_LOGINS} - the one state a link may still be
+   * redeemed in. Five wrong passwords of the person would otherwise have reopened the handover for
+   * a quarter of an hour, and a redeemed handover deletes the expiry date with the row that carries
+   * it. The expiry is therefore read on its own; the temporary lockout keeps its meaning.
+   */
+  @Test
+  void aFailedLoginLockoutDoesNotReopenTheCodeOfAnExpiredAccount() throws Exception {
+    Instant now = Instant.now();
+    LocalAccount expired = fixtures.activeUser(address("abgelaufen"));
+    String expiredCode = tokenIn(startHandover(expired.id(), provider.getId(), REASON, 200));
+    LocalCredentials expiredRow = fixtures.credentialsOf(expired);
+    expiredRow.setExpiresAt(now.minusSeconds(60), now);
+    expiredRow.lock(LockReason.FAILED_LOGINS, now, now.plusSeconds(900));
+    fixtures.save(expiredRow);
+
+    mockMvc
+        .perform(json(post(PREVIEW), "{\"token\":\"" + expiredCode + "\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value(LocalActionTokenService.TOKEN_INVALID));
+    mockMvc
+        .perform(
+            json(post(REDEEM), redeemBody(expiredCode, providerTokens.token(ISSUER, "abgelaufen"))))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value(LocalActionTokenService.TOKEN_INVALID));
+    assertThat(users.findById(expired.id()).orElseThrow().getIssuer()).isEqualTo(LocalIssuer.URN);
+    assertThat(credentials.findById(expired.id()).orElseThrow().getExpiresAt()).isNotNull();
+  }
+
+  /** The other direction of the same rule: a lockout alone is no reason to refuse the code. */
+  @Test
+  void aFailedLoginLockoutAloneLeavesTheCodeRedeemable() throws Exception {
+    Instant now = Instant.now();
+    LocalAccount person = fixtures.activeUser(address("gesperrt-nach-fehlversuchen"));
+    String code = tokenIn(startHandover(person.id(), provider.getId(), REASON, 200));
+    LocalCredentials row = fixtures.credentialsOf(person);
+    row.lock(LockReason.FAILED_LOGINS, now, now.plusSeconds(900));
+    fixtures.save(row);
+
+    mockMvc.perform(json(post(PREVIEW), "{\"token\":\"" + code + "\"}")).andExpect(status().isOk());
+    String subject = "erika-" + UUID.randomUUID();
+    mockMvc
+        .perform(json(post(REDEEM), redeemBody(code, providerTokens.token(ISSUER, subject))))
+        .andExpect(status().isNoContent());
+    foreignAccounts.add(person.id());
+    assertThat(users.findById(person.id()).orElseThrow().getSubject()).isEqualTo(subject);
+  }
+
+  /**
    * An act of the administration closes the open handover code, exactly as it closes an invitation
    * or a reset link: after a changed address the code went to the old one, and after a lock or a
    * generated password it would carry the person past the act.
