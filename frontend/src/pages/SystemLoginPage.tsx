@@ -8,7 +8,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import { Navigate, Link as RouterLink, useLocation } from 'react-router'
-import BrandMark from '../components/BrandMark'
+import PageHeading from '../components/a11y/PageHeading'
 import AuthLayout from '../components/auth/AuthLayout'
 import LocalSignInForm from '../components/auth/LocalSignInForm'
 import { useAuthStore } from '../stores/authStore'
@@ -50,9 +50,7 @@ export default function SystemLoginPage() {
 
   return (
     <AuthLayout>
-      <Box component="h1" sx={{ m: 0, mb: 3.5 }}>
-        <BrandMark orientation="vertical" variant="h5" logoHeight={40} showClaim />
-      </Box>
+      <PageHeading title="Anmeldung für die Systemverwaltung" variant="h5" sx={{ mb: 3 }} />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2.5, textAlign: 'left' }}>

@@ -12,7 +12,7 @@ import { notify } from '../stores/notificationStore'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
 import AreaTabs from '../components/AreaTabs'
-import KeyValueList from '../components/KeyValueList'
+import EmbeddingInfoTable from '../components/admin/models/EmbeddingInfoTable'
 import LlmModelFormDialog from '../components/admin/models/LlmModelFormDialog'
 import ModelList from '../components/admin/models/ModelList'
 import { contentWidth } from '../theme/tokens'
@@ -128,13 +128,7 @@ function EmbeddingInfoSection() {
         Wissensbibliotheken erfordern.
       </Typography>
       {embeddingInfo ? (
-        <KeyValueList
-          entries={[
-            { label: 'Anbieter', value: embeddingInfo.provider },
-            { label: 'Modell', value: embeddingInfo.model },
-            { label: 'Dimensionen', value: embeddingInfo.dimensions },
-          ]}
-        />
+        <EmbeddingInfoTable info={embeddingInfo} />
       ) : (
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
           Einbettungskonfiguration wird geladen …

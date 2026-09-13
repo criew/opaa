@@ -7,8 +7,8 @@ interface BrandMarkProps {
   logoHeight?: number
   /** Whether to render the claim under the product name. */
   showClaim?: boolean
-  /** Typography variant of the product name - the sidebar and the sign-in page differ here. */
-  variant?: 'h6' | 'h5'
+  /** Typography variant of the product name - sidebar, sign-in card and brand panel differ here. */
+  variant?: 'h6' | 'h5' | 'h4'
   /** 'vertical' stacks logo, name and claim centered - the sign-in card's block (mockup 1f). */
   orientation?: 'horizontal' | 'vertical'
   /**
