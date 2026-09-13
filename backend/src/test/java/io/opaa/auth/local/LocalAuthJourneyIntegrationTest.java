@@ -21,7 +21,9 @@ import io.opaa.test.LocalMailbox;
 import io.opaa.test.OpaaLocalAuthLinkTest;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.servlet.http.Cookie;
+import java.util.EnumSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -74,6 +76,7 @@ class LocalAuthJourneyIntegrationTest {
   @Autowired private LocalAdminSeedMarkerRepository seedMarker;
   @Autowired private LocalActionTokenRepository actionTokens;
   @Autowired private LocalCredentialsRepository credentials;
+  @Autowired private LocalRefreshTokenRepository refreshTokens;
   @Autowired private UserRepository users;
   @Autowired private MailSettingsService mailSettings;
 
@@ -165,6 +168,16 @@ class LocalAuthJourneyIntegrationTest {
     mockMvc
         .perform(get(LOCAL_USERS).header(HttpHeaders.AUTHORIZATION, adminBearer))
         .andExpect(status().isOk());
+    // The session the change ended is gone with it, naming the cause. Unambiguous on this token:
+    // the seeded account carried no earlier cutoff, so the iat of the sign-in lies below the one
+    // the change sets (LocalAccessTokenService#issue) whatever second the two fall into.
+    mockMvc
+        .perform(get(ME).header(HttpHeaders.AUTHORIZATION, pcrBearer))
+        .andExpect(status().isUnauthorized())
+        .andExpect(
+            result ->
+                assertThat(result.getResponse().getHeader(HttpHeaders.WWW_AUTHENTICATE))
+                    .contains("session_revoked:password_changed"));
 
     // 3. The administrator invites an account. It is INVITED, has no password, and the link went
     // out
@@ -243,6 +256,9 @@ class LocalAuthJourneyIntegrationTest {
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, rotatedBearer))
         .andExpect(status().isOk());
 
+    assertThat(reuseDetectedRevocationOf(invitedId))
+        .as("no reuse has been detected for this account before the replay")
+        .isEmpty();
     mockMvc
         .perform(withCsrf(post(REFRESH), invitedSignIn).cookie(invitedCookie))
         .andExpect(status().isUnauthorized());
@@ -251,19 +267,14 @@ class LocalAuthJourneyIntegrationTest {
     mockMvc
         .perform(withCsrf(post(REFRESH), invitedSignIn).cookie(rotatedCookie))
         .andExpect(status().isUnauthorized());
-    // And so is the access token of that session, naming the cause. Asserted on the token of the
-    // sign-in, not on the one the rotation minted: a freshly minted token carries an {@code iat} no
-    // earlier than the account's current cutoff and may therefore sit up to a second ahead of the
-    // clock (LocalAccessTokenService#issue), while the cutoff of this replay is the first whole
-    // second after it - the newest token is not reliably older than its own account's new cutoff.
-    // The sign-in's token unambiguously is, which makes the assertion independent of that window.
-    mockMvc
-        .perform(get(ME).header(HttpHeaders.AUTHORIZATION, invitedBearer))
-        .andExpect(status().isUnauthorized())
-        .andExpect(
-            result ->
-                assertThat(result.getResponse().getHeader(HttpHeaders.WWW_AUTHENTICATE))
-                    .contains("session_revoked:reuse_detected"));
+    // And it died as a *detected reuse* - the branch that also invalidates every access token of
+    // the account. Asserted on the reason rather than through a request with the session's token: a
+    // token is minted no earlier than the cutoff in force when it was issued
+    // (LocalAccessTokenService#issue) and iat resolves to whole seconds, so in the second of the
+    // set-password cutoff this account holds no live token the replay's own cutoff can reach.
+    assertThat(reuseDetectedRevocationOf(invitedId))
+        .as("the replay is recorded as a detected reuse, not as a routine rotation")
+        .isPresent();
 
     // The account itself is untouched by the replay - it signs in again and carries on.
     MvcResult afterReplay = login(invitedAddress, INVITED_PASSWORD, 200);
@@ -334,6 +345,12 @@ class LocalAuthJourneyIntegrationTest {
                 .content(json(Map.of("email", email, "password", password))))
         .andExpect(status().is(expectedStatus))
         .andReturn();
+  }
+
+  /** The most recent revocation of the account caused by a detected refresh-token reuse. */
+  private Optional<LocalRefreshToken> reuseDetectedRevocationOf(UUID userId) {
+    return refreshTokens.findFirstByUserIdAndRevocationReasonInOrderByRevokedAtDesc(
+        userId, EnumSet.of(RevocationReason.REUSE_DETECTED));
   }
 
   private long localAccountCount() {
