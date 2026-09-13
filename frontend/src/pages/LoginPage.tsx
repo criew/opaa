@@ -11,8 +11,8 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import SwitchAccountOutlinedIcon from '@mui/icons-material/SwitchAccountOutlined'
 import { Navigate, Link as RouterLink, useLocation } from 'react-router'
 import type { SignInProvider } from '../types/auth'
-import BrandMark from '../components/BrandMark'
 import ProviderMonogram from '../components/ProviderMonogram'
+import PageHeading from '../components/a11y/PageHeading'
 import AuthLayout from '../components/auth/AuthLayout'
 import LocalSignInForm from '../components/auth/LocalSignInForm'
 import SectionEyebrow from '../components/auth/SectionEyebrow'
@@ -165,9 +165,9 @@ export default function LoginPage() {
         #582's read endpoint is reachable without authentication (#583) - otherwise the first
         thing a user sees would be the only thing that could not carry their house's mark.
       */}
-      <Box component="h1" sx={{ m: 0, mb: 3.5 }}>
-        <BrandMark orientation="vertical" variant="h5" logoHeight={40} showClaim />
-      </Box>
+      {/* Die Überschrift benennt die Seite, nicht das Produkt: Ein Screenreader sagte hier vorher
+          nur den Markennamen, obwohl die Marke daneben ohnehin steht. */}
+      <PageHeading title="Anmelden" variant="h5" sx={{ mb: 3 }} />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2.5, textAlign: 'left' }}>
