@@ -231,9 +231,11 @@ describe('LibraryMetadataFieldsSection', () => {
     })
 
     expect(await screen.findByText(/7 Dokumente warten auf Neu-Einbetten/)).toBeInTheDocument()
+    // In den Reiter, der den Nachlauf trägt - nicht auf den Überblick, von dem aus noch ein
+    // Klick nötig wäre.
     expect(screen.getByRole('link', { name: /Suche & Indexierung/ })).toHaveAttribute(
       'href',
-      '/admin/search',
+      '/admin/search/index',
     )
   })
 

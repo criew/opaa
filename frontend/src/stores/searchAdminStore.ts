@@ -75,6 +75,8 @@ interface SearchAdminState {
   personContextAvailable: boolean
   personContextHint: string
   statusError: string | null
+  /** Fehler des Diagnosekontexts - eigener Zustand, weil ihn nur der Diagnose-Reiter lädt. */
+  contextError: string | null
   diagnosis: SearchDiagnosisResponse | null
   diagnosisError: string | null
   isRunningDiagnosis: boolean
@@ -85,6 +87,7 @@ interface SearchAdminState {
   contextPrefixRuns: Record<string, LibraryBatchRun>
   reset: () => void
   loadStatus: () => Promise<void>
+  loadDiagnosisContext: () => Promise<void>
   runDiagnosis: (request: SearchDiagnosisRequest) => Promise<void>
   loadDocumentChunks: (documentId: string) => Promise<void>
   startMetadataBackfill: (libraryId: string) => Promise<void>
@@ -97,6 +100,7 @@ const EMPTY: Omit<
   SearchAdminState,
   | 'reset'
   | 'loadStatus'
+  | 'loadDiagnosisContext'
   | 'runDiagnosis'
   | 'loadDocumentChunks'
   | 'startMetadataBackfill'
@@ -109,6 +113,7 @@ const EMPTY: Omit<
   personContextAvailable: false,
   personContextHint: '',
   statusError: null,
+  contextError: null,
   diagnosis: null,
   diagnosisError: null,
   isRunningDiagnosis: false,
@@ -197,25 +202,42 @@ export const useSearchAdminStore = create<SearchAdminState>((set, get) => {
 
     reset: () => set({ ...EMPTY }),
 
+    /**
+     * Status und Diagnosekontext werden getrennt geladen (#1616): Sie speisen verschiedene Reiter,
+     * und ein Reiter soll nur holen, was er zeigt. Vorher lief beides in einem `Promise.all` mit
+     * einem gemeinsamen Fehlerzustand - ein nicht erreichbarer Diagnosekontext verdeckte damit den
+     * Indexstatus, den er gar nicht betrifft.
+     */
     loadStatus: async () => {
       const sessionEpoch = currentSessionEpoch()
       try {
-        const [status, context] = await Promise.all([
-          getSearchStatus(),
-          getSearchDiagnosisContext(),
-        ])
+        const status = await getSearchStatus()
         if (isStaleSessionEpoch(sessionEpoch)) return
-        set({
-          status,
-          profiles: context.permissionProfiles,
-          personContextAvailable: context.personContextAvailable,
-          personContextHint: context.personContextHint,
-          statusError: null,
-        })
+        set({ status, statusError: null })
       } catch (err) {
         if (isStaleSessionEpoch(sessionEpoch)) return
         set({
           statusError: err instanceof Error ? err.message : 'Status konnte nicht geladen werden',
+        })
+      }
+    },
+
+    loadDiagnosisContext: async () => {
+      const sessionEpoch = currentSessionEpoch()
+      try {
+        const context = await getSearchDiagnosisContext()
+        if (isStaleSessionEpoch(sessionEpoch)) return
+        set({
+          profiles: context.permissionProfiles,
+          personContextAvailable: context.personContextAvailable,
+          personContextHint: context.personContextHint,
+          contextError: null,
+        })
+      } catch (err) {
+        if (isStaleSessionEpoch(sessionEpoch)) return
+        set({
+          contextError:
+            err instanceof Error ? err.message : 'Der Diagnosekontext konnte nicht geladen werden',
         })
       }
     },

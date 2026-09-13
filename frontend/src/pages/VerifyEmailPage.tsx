@@ -6,7 +6,6 @@ import Typography from '@mui/material/Typography'
 import { Link as RouterLink } from 'react-router'
 import AuthLayout from '../components/auth/AuthLayout'
 import AuthNotice from '../components/auth/AuthNotice'
-import BrandMark from '../components/BrandMark'
 import PageHeading from '../components/a11y/PageHeading'
 import { useLinkToken } from '../hooks/useLinkToken'
 import { RateLimitedError, verifyEmail } from '../services/selfServiceApi'
@@ -20,19 +19,6 @@ import {
 const HEADING = 'E-Mail-Adresse bestätigen'
 
 type Status = 'checking' | 'confirmed' | 'invalid' | 'rateLimited'
-
-/**
- * The house's mark on a page reached cold from a mail, so the person can tell whose installation
- * they are confirming an address for (#583, guidelines 7). Deliberately without heading semantics -
- * the page's one h1 follows below.
- */
-function BrandHead() {
-  return (
-    <Box sx={{ mb: 3 }}>
-      <BrandMark orientation="vertical" variant="h6" logoHeight={32} />
-    </Box>
-  )
-}
 
 /**
  * The page behind the verification link. The link itself is a plain `GET`; the confirming `POST`
@@ -74,8 +60,7 @@ export default function VerifyEmailPage() {
   if (status === 'checking') {
     return (
       <AuthLayout>
-        <BrandHead />
-        <PageHeading title={HEADING} variant="h6" />
+        <PageHeading title={HEADING} variant="h5" />
         <Box
           sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 3, color: 'text.secondary' }}
         >
@@ -91,7 +76,6 @@ export default function VerifyEmailPage() {
   if (status === 'rateLimited') {
     return (
       <AuthLayout>
-        <BrandHead />
         <AuthNotice
           heading={HEADING}
           severity="warning"
@@ -108,7 +92,6 @@ export default function VerifyEmailPage() {
 
   return (
     <AuthLayout>
-      <BrandHead />
       <AuthNotice
         heading={HEADING}
         severity={status === 'confirmed' ? 'success' : 'error'}

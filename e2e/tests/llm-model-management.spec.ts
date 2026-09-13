@@ -91,40 +91,48 @@ async function gotoModelManagement(page: Page): Promise<void> {
     page.goto('/admin/models'),
   ])
   await expect(page.getByRole('heading', { name: 'Modelle' })).toBeVisible()
-  // Observed locally: a model card's Accordion (MUI Collapse) can settle at an intermediate
-  // height instead of completing its expand transition - `aria-expanded` still flips to "true" (a
-  // plain prop, unaffected), but fields further down the form never actually become visible that
-  // way, hanging a scenario on a timeout. Disabling all CSS transitions/animations on this page
-  // removes that class of animation-timing flakiness entirely, without touching any product
-  // behaviour under test - this suite is about the model management flow, not Accordion motion.
+  // Motion is not under test here. With every CSS transition/animation off, row menus, the form
+  // dialog and the popup notifications reach their final state at once, which takes a whole class
+  // of animation-timing flakiness out of this flow without touching any behaviour under test.
   await page.addStyleTag({
     content: '*, *::before, *::after { transition: none !important; animation: none !important; }',
   })
 }
 
 /**
- * Scopes every assertion/interaction for one specific model to its own card, keyed by id rather
- * than by display name or role name. Necessary, not just nice-to-have: `AccordionDetails` stays
- * mounted in the DOM while collapsed (only its height animates), so every card's own "API-
- * Schlüssel" field, "Aktiv"-Chip, etc. are simultaneously present for every model on the page at
- * once - a page-wide `getByLabel`/`getByRole` query without this scope resolves to one element
- * per model instead of the one this test actually means (a real strict-mode violation observed
- * locally, not a hypothetical). `data-testid="llm-model-card-<id>"` on the card's `Accordion`
- * root (`LlmModelCard`, #760) is the one non-role/label selector this file needs - added in this
- * same PR and actually used here, per e2e/README.md's "Selektor-Konvention".
+ * Die Tabellenzeile eines Modells, erkannt am Anzeigenamen in ihrer ersten Spalte. Der zugängliche
+ * Name einer Zeile ist die Verkettung aller ihrer Zellen, deshalb ein regulärer Ausdruck
+ * (Teiltreffer) statt eines Namens - und deshalb genügt der je Lauf eindeutige Anzeigename, um
+ * genau eine Zeile zu treffen.
  */
-function modelCard(page: Page, modelId: string): Locator {
-  return page.getByTestId(`llm-model-card-${modelId}`)
+function modelRow(page: Page, displayName: string): Locator {
+  return page.getByRole('row', { name: new RegExp(displayName) })
 }
 
-/** Expands modelId's card (idempotent) and waits for the expansion to have actually completed. */
-async function expandModelCard(page: Page, modelId: string): Promise<void> {
-  const card = modelCard(page, modelId)
-  const summary = card.getByRole('button', { expanded: false })
-  if ((await summary.count()) > 0) {
-    await summary.click()
-  }
-  await expect(card.getByRole('button', { expanded: true })).toBeVisible()
+/**
+ * Öffnet das Zeilenmenü eines Modells und liefert das Menü selbst - es hängt in einem Portal
+ * außerhalb der Zeile und ist über sie nicht erreichbar. Schaltfläche und Menü tragen denselben
+ * Namen, der das Modell nennt; beide sind damit eindeutig einem Modell zugeordnet.
+ */
+async function openRowMenu(page: Page, displayName: string): Promise<Locator> {
+  await modelRow(page, displayName)
+    .getByRole('button', { name: `Aktionen für „${displayName}“` })
+    .click()
+  const menu = page.getByRole('menu', { name: `Aktionen für „${displayName}“` })
+  await expect(menu).toBeVisible()
+  return menu
+}
+
+/**
+ * Öffnet über „Bearbeiten“ des Zeilenmenüs den Formular-Dialog - und sichert dabei zu, dass er
+ * das Modell trägt, dessen Zeile ihn geöffnet hat.
+ */
+async function openEditDialog(page: Page, displayName: string): Promise<Locator> {
+  const menu = await openRowMenu(page, displayName)
+  await menu.getByRole('menuitem', { name: 'Bearbeiten' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByText(`„${displayName}“ bearbeiten`)).toBeVisible()
+  return dialog
 }
 
 test.describe.serial('Modellverwaltung (#760)', () => {
@@ -209,28 +217,25 @@ test.describe.serial('Modellverwaltung (#760)', () => {
     expect(created.apiKeySet).toBe(false)
     await expect(page.getByRole('dialog')).not.toBeVisible()
 
-    const card = modelCard(page, created.id)
-    await expect(card).toBeVisible()
-    await expandModelCard(page, created.id)
+    const row = modelRow(page, CONNECTION_TEST_MODEL_NAME)
+    await expect(row).toBeVisible()
+    const menu = await openRowMenu(page, CONNECTION_TEST_MODEL_NAME)
     await Promise.all([
       page.waitForResponse(
         (response) =>
           response.request().method() === 'POST' &&
           response.url().endsWith(`/api/v1/admin/models/${created.id}/activate`),
       ),
-      card
-        .getByRole('button', { name: `"${CONNECTION_TEST_MODEL_NAME}" als aktives Modell setzen` })
-        .click(),
+      menu.getByRole('menuitem', { name: 'Aktiv setzen' }).click(),
     ])
 
-    // "Aktiv setzen" verschwindet ausschließlich für das jetzt aktive Modell (LlmModelCard rendert
-    // den Button nur, solange !model.active) - und der Chip erscheint stattdessen.
-    await expect(
-      card.getByRole('button', {
-        name: `"${CONNECTION_TEST_MODEL_NAME}" als aktives Modell setzen`,
-      }),
-    ).toHaveCount(0)
-    await expect(card.getByLabel('Aktives Modell')).toBeVisible()
+    // Der Zustand steht als Wort in der Zeile - „Aktiv“ statt „Nicht aktiv“, die Farbe trägt
+    // nie allein.
+    await expect(row.getByText('Aktiv', { exact: true })).toBeVisible()
+    // Und „Aktiv setzen“ verschwindet ausschließlich für das jetzt aktive Modell (ModelRowMenu
+    // führt den Eintrag nur, solange !model.active).
+    const menuAfterActivation = await openRowMenu(page, CONNECTION_TEST_MODEL_NAME)
+    await expect(menuAfterActivation.getByRole('menuitem', { name: 'Aktiv setzen' })).toHaveCount(0)
 
     const models = await fetchModels(page)
     const active = models.filter((model) => model.active)
@@ -266,14 +271,19 @@ test.describe.serial('Modellverwaltung (#760)', () => {
 
   test('4. Löschen des aktiven Modells ist gesperrt', async ({ authenticatedPage: page }) => {
     await gotoModelManagement(page)
-    const card = modelCard(page, connectionTestModelId!)
-    await expandModelCard(page, connectionTestModelId!)
+    const menu = await openRowMenu(page, CONNECTION_TEST_MODEL_NAME)
 
-    const deleteButton = card.getByRole('button', {
-      name: `"${CONNECTION_TEST_MODEL_NAME}" löschen`,
-    })
-    await expect(deleteButton).toHaveAttribute('aria-disabled', 'true')
-    await expect(card.getByText(/aktive Modell kann nicht gelöscht werden/i)).toBeVisible()
+    const deleteItem = menu.getByRole('menuitem', { name: 'Löschen' })
+    await expect(deleteItem).toHaveAttribute('aria-disabled', 'true')
+    // Der Grund steht im Menü und ist über `aria-describedby` mit dem gesperrten Eintrag
+    // verbunden, wird also auch vorgelesen - ein Tooltip fände nur eine Maus.
+    const reason = menu
+      .locator('li')
+      .filter({ hasText: /aktive Modell kann nicht gelöscht werden/i })
+    await expect(reason).toBeVisible()
+    const reasonId = await reason.getAttribute('id')
+    expect(reasonId).toBeTruthy()
+    await expect(deleteItem).toHaveAttribute('aria-describedby', reasonId!)
 
     // Nicht nur die UI-Sperre - auch serverseitig abgelehnt (409), falls die Anfrage die
     // client-seitige Sperre umginge.
@@ -319,13 +329,13 @@ test.describe.serial('Modellverwaltung (#760)', () => {
     // here uses, gives the page a real, awaited round trip to the server rather than a client-side
     // reload directly on the heels of the just-completed create request.
     await gotoModelManagement(page)
-    const card = modelCard(page, created.id)
-    await expect(card).toBeVisible()
-    await expandModelCard(page, created.id)
+    // Die Zeile sagt, *dass* ein Schlüssel hinterlegt ist - nie welcher.
+    await expect(modelRow(page, KEY_MODEL_NAME).getByText('Schlüssel hinterlegt')).toBeVisible()
 
-    await expect(card.getByLabel('API-Schlüssel', { exact: false })).toHaveValue('')
+    const editDialog = await openEditDialog(page, KEY_MODEL_NAME)
+    await expect(editDialog.getByLabel('API-Schlüssel', { exact: false })).toHaveValue('')
     await expect(
-      card.getByRole('button', {
+      editDialog.getByRole('button', {
         name: `Gespeicherten Schlüssel von "${KEY_MODEL_NAME}" entfernen`,
       }),
     ).toBeVisible()
