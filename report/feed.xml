@@ -5,8 +5,27 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-12T04:51:07Z</updated>
+  <updated>2026-09-13T05:09:09Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Samstag, 12. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-12.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-12.html</id>
+    <updated>2026-09-13T05:09:09Z</updated>
+    <summary type="text">feat: Lokale Benutzerverwaltung — Konten mit Passwort, lokaler Systemverwalter und Mail-Infrastruktur:
+— Reise-Test der lokalen Anmeldung auf Sekundenauflösung des Widerrufs untersucht
+— Zähler und Filter für Konten ohne Ablaufdatum vereinheitlicht
+— Benutzerverwaltung mit Tabs für Konten und Einstellungen geplant
+— E2E-Ziel mit lokaler Anmeldung und Handbuchkapitel auf main gemergt
+feat: Gesprächsgedächtnis — Gesprächsfenster und sichtbare Gesprächsnotiz:
+— Mehrrunden-Klassen nach Fenster und Notiz nachmessen abgeschlossen
+— Baseline neu gezogen und auf main gemergt
+Sonstiges:
+— Chat-Modelle als Tabelle mit Zeilenmenü statt Karten geplant
+— Seite Modelle in Reiter für Chat und Einbettung gliedern geplant
+— Sekundärtext wird als Primärtext dargestellt — Farb-Prop greift nicht
+— Suche &amp; Indexierung in thematische Reiter gliedern geplant</summary>
+  </entry>
   <entry>
     <title>Tagesreport Freitag, 11. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-11.html"/>
