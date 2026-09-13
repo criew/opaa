@@ -76,7 +76,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             color: navyRoles.fg1,
             // Tiefe statt einer flachen Fläche: ein weicher Kern oben links, gerade so viel, dass
             // die Fläche nicht als Block liegt (guidelines 4.3 - Atmosphäre, keine Effekte).
-            backgroundImage: `radial-gradient(70% 55% at 20% 22%, ${alpha('#1292EE', 0.28)} 0%, transparent 72%)`,
+            backgroundImage: `radial-gradient(70% 55% at 20% 22%, ${alpha(navyRoles.accent, 0.28)} 0%, transparent 72%)`,
           }}
         >
           <BrandPanel />
