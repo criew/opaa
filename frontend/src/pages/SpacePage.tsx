@@ -8,7 +8,6 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
-import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
@@ -119,20 +118,22 @@ export default function SpacePage() {
         </Alert>
       )}
       <Stack spacing={2.5}>
-        <Paper variant="outlined" sx={{ p: 2.5 }}>
+        {/* Der Kopf des Space stand bis #1609 in einem Kasten, während alles darunter durch Linien
+            gegliedert ist. Jetzt trägt ihn dieselbe Haarlinie wie jeden Abschnitt der Seite. */}
+        <Box component="header" sx={{ borderBottom: 1, borderColor: 'divider', pb: 2 }}>
           <Stack
             direction={{ xs: 'column', md: 'row' }}
             spacing={2}
             sx={{ justifyContent: 'space-between' }}
           >
             <Box>
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
                 <PageHeading title={space.name} />
                 {space.isDefault && (
                   <Chip label="Standard" size="small" color="primary" variant="outlined" />
                 )}
               </Stack>
-              <Typography color="text.secondary">
+              <Typography sx={{ color: 'text.secondary' }}>
                 {space.description || 'Keine Beschreibung hinterlegt.'}
               </Typography>
             </Box>
@@ -148,7 +149,7 @@ export default function SpacePage() {
               )}
             </Stack>
           </Stack>
-        </Paper>
+        </Box>
 
         <Accordion expanded={chatsExpanded} onChange={(_, expanded) => setChatsExpanded(expanded)}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>

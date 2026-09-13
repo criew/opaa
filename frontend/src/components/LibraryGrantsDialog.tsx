@@ -294,10 +294,12 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
                     alignItems: 'center',
                     flexWrap: 'wrap',
                     gap: 1,
-                    p: 1.5,
-                    border: '1px solid',
+                    py: 1.25,
+                    // Der Dialog bringt seine Fläche mit; die Einträge darin sind Zeilen mit einem
+                    // Trenner unten (#1608, Regel 2), keine Kästen im Kasten.
+                    borderBottom: 1,
                     borderColor: 'divider',
-                    borderRadius: '10px',
+                    '&:last-of-type': { borderBottom: 0 },
                   }}
                 >
                   <Stack spacing={0.25} sx={{ minWidth: 160, flexGrow: 1 }}>
