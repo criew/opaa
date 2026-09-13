@@ -84,6 +84,7 @@ class LocalUserAdminIntegrationTest {
   private static final String LOGIN = "/api/v1/auth/local/login";
   private static final String ME = "/api/v1/auth/me";
   private static final String LOCAL_USERS = "/api/v1/admin/local-users";
+  private static final String ACCOUNTS = "/api/v1/admin/accounts";
   private static final Pattern TOKEN_IN_LINK = Pattern.compile("token=([A-Za-z0-9_-]+)");
 
   @Autowired private MockMvc mockMvc;
@@ -806,6 +807,44 @@ class LocalUserAdminIntegrationTest {
       assertThat(JsonPath.<String>read(body, "$.lastReviewHint")).contains("Wiedervorlage");
     } finally {
       users.delete(oidcUser);
+    }
+  }
+
+  /**
+   * Regression guard for #1603: the standing notice names a number and jumps into the filter that
+   * is supposed to show exactly those rows - on the local list and on the account list alike. The
+   * bootstrap account has no expiry by design and belongs in neither.
+   */
+  @Test
+  void theCountOfAccountsWithoutExpiryAndBothReviewFiltersDescribeTheSameSet() throws Exception {
+    String suffix = UUID.randomUUID().toString();
+    LocalAccount notanker = fixtures.activeAdmin("notanker-" + suffix + "@stadt.example");
+    LocalCredentials notankerRow = fixtures.credentialsOf(notanker);
+    notankerRow.markBootstrap();
+    fixtures.save(notankerRow);
+    LocalAccount open = fixtures.activeUser("unbefristet-" + suffix + "@stadt.example");
+    LocalAccount limited = fixtures.activeUser("befristet-" + suffix + "@stadt.example");
+    LocalCredentials limitedRow = fixtures.credentialsOf(limited);
+    limitedRow.setExpiresAt(Instant.now().plus(Duration.ofDays(10)), Instant.now());
+    fixtures.save(limitedRow);
+
+    MvcResult summary =
+        asAdmin(get(LOCAL_USERS + "/summary")).andExpect(status().isOk()).andReturn();
+    int counted = JsonPath.read(summary.getResponse().getContentAsString(), "$.withoutExpiry");
+    // the administrator of the setup and `open`; the bootstrap account carries no obligation
+    assertThat(counted).isEqualTo(2);
+
+    for (String list : List.of(LOCAL_USERS, ACCOUNTS)) {
+      String body =
+          asAdmin(get(list).param("withoutExpiry", "true"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+      assertThat(JsonPath.<Integer>read(body, "$.total")).as(list).isEqualTo(counted);
+      assertThat(JsonPath.<List<String>>read(body, "$.items[*].email"))
+          .as(list)
+          .containsExactlyInAnyOrder(admin.email(), open.email());
     }
   }
 
