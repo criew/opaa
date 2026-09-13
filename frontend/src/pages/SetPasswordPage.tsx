@@ -12,7 +12,6 @@ import AuthNotice from '../components/auth/AuthNotice'
 import NewPasswordField from '../components/auth/NewPasswordField'
 import PasswordField from '../components/auth/PasswordField'
 import SectionEyebrow from '../components/auth/SectionEyebrow'
-import BrandMark from '../components/BrandMark'
 import PageHeading from '../components/a11y/PageHeading'
 import { useErrorFocus } from '../hooks/useErrorFocus'
 import { useLinkToken } from '../hooks/useLinkToken'
@@ -40,20 +39,6 @@ const HEADING = 'Passwort festlegen'
 const MISMATCH_MESSAGE = 'Die beiden Eingaben stimmen nicht überein.'
 /** The fields this form can show an error at, in the order the focus walks them. */
 const FIELDS = ['newPassword', 'repeatedPassword'] as const
-
-/**
- * The house's mark on a page reached cold from a mail, so the person can tell whose installation
- * asks them for a password (#583, guidelines 7). Deliberately without heading semantics - the
- * PageHeading of the branch below is this page's one h1. In every branch, because every one of them
- * is what the link leads to.
- */
-function BrandHead() {
-  return (
-    <Box sx={{ mb: 3 }}>
-      <BrandMark orientation="vertical" variant="h6" logoHeight={32} />
-    </Box>
-  )
-}
 
 function SignInLink({ children = 'Zur Anmeldung' }: { children?: string }) {
   return (
@@ -143,7 +128,6 @@ export default function SetPasswordPage() {
   if (done) {
     return (
       <AuthLayout>
-        <BrandHead />
         <AuthNotice heading={HEADING} severity="success" message={PASSWORD_SET_MESSAGE}>
           <SignInLink />
         </AuthNotice>
@@ -157,7 +141,6 @@ export default function SetPasswordPage() {
   if (isLoading) {
     return (
       <AuthLayout>
-        <BrandHead />
         <AuthLoading heading={HEADING} />
       </AuthLayout>
     )
@@ -168,7 +151,6 @@ export default function SetPasswordPage() {
   if (linkInvalid || token === '') {
     return (
       <AuthLayout>
-        <BrandHead />
         <AuthNotice
           heading={HEADING}
           severity="error"
@@ -193,8 +175,7 @@ export default function SetPasswordPage() {
 
   return (
     <AuthLayout>
-      <BrandHead />
-      <PageHeading title={HEADING} variant="h6" />
+      <PageHeading title={HEADING} variant="h5" />
       {formError && (
         <Alert ref={alertRef} tabIndex={-1} severity="error" sx={{ mt: 2, textAlign: 'left' }}>
           {formError}

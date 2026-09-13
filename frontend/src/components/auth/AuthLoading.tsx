@@ -12,7 +12,7 @@ import PageHeading from '../a11y/PageHeading'
 export default function AuthLoading({ heading }: { heading: string }) {
   return (
     <>
-      <PageHeading title={heading} variant="h6" />
+      <PageHeading title={heading} variant="h5" />
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 3, color: 'text.secondary' }}>
         <CircularProgress size={20} aria-hidden="true" />
         <Typography role="status" sx={{ fontSize: 13.5 }}>
