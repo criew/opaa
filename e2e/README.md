@@ -269,9 +269,10 @@ lassen.
   Farbschemata, Space-Seite, Wissensbibliotheken, Verwaltungsbereich (Gruppen) und
   Benutzer-Einstellungen werden im Ausgangszustand gegen WCAG 2.1 A/AA geprüft. Verstöße der Stufen „serious" und „critical"
   lassen den Test fehlschlagen; „minor"/„moderate" landen als Annotation im Playwright-Report.
-  Ausnahmen stehen als `KNOWN_EXCEPTIONS` in der Spec, jede mit Begründung und Issue
-  (derzeit: Kontrast der Akzentfarbe, #634 — suite-weit für gefüllte primäre Buttons/Chips,
-  auf der Einstellungsseite zusätzlich seitenlokal für Akzent-Links). Die Anmeldeseite ist im dev-Auth-Modus nur sichtbar,
+  Ausnahmen werden am Aufrufort als `exclude`/`disableRules` übergeben, jede mit Begründung und
+  Issue; derzeit gibt es keine (die suite-weite Kontrastausnahme #634 ist mit #1600 entfallen).
+  Gemessen wird erst, wenn die endlichen Animationen der Seite ausgeklungen sind — sonst liest axe
+  Zwischenfarben einer Einblendung (#1643). Die Anmeldeseite ist im dev-Auth-Modus nur sichtbar,
   wenn `/api/v1/auth/config` per `page.route` eine OIDC-Konfiguration zurückgibt — die
   erfundene Anbieterzeile (Issuer-URI) wird dabei nie kontaktiert. Das dunkle Farbschema wird über
   `page.emulateMedia({ colorScheme: 'dark' })` aktiviert (die Voreinstellung „System" folgt

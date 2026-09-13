@@ -380,6 +380,25 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Passwort vergessen (Ergebnisansicht)");
   });
 
+  /**
+   * Wächter für die Wartelogik aus `fixtures/a11y.ts`: Die Einblendung wird auf 3 s gedehnt, sodass
+   * axe ohne das Warten garantiert eine Zwischenfarbe der 240-ms-Animation misst und
+   * `color-contrast` fehlschlägt (#1643). Ohne diesen Test fiele ein Wegfall der Wartezeile auf
+   * den sporadischen Fehlschlag zurück, den `retries: 1` zusätzlich verdeckt.
+   */
+  test("Selbstbedienung: gedehnte Einblendung bleibt messbar", async ({ page }) => {
+    await page.route("**/api/v1/auth/config", (route) =>
+      route.fulfill({ json: LOCAL_ACCOUNTS_CONFIG }),
+    );
+    await page.goto("/forgot-password");
+    await page.addStyleTag({
+      content: "*, *::before, *::after { animation-duration: 3s !important }",
+    });
+    await expect(page.getByRole("heading", { level: 1, name: "Passwort vergessen" })).toBeVisible();
+
+    await expectNoSeriousA11yViolations(page, "Passwort vergessen (gedehnte Einblendung)");
+  });
+
   test("Selbstbedienung: Registrierung", async ({ page }) => {
     await page.route("**/api/v1/auth/config", (route) =>
       route.fulfill({ json: LOCAL_ACCOUNTS_CONFIG }),
