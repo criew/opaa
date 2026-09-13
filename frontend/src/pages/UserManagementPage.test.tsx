@@ -497,9 +497,10 @@ describe('UserManagementPage', () => {
 
   /**
    * Das Notanker-Konto steht nicht im Hinweis zur Auflage (#1603) – der Hilfetext unter „Kein
-   * Ablaufdatum" darf ihm deshalb keinen versprechen.
+   * Ablaufdatum" darf ihm deshalb keinen versprechen, einem regulären Konto dagegen schon. Beide
+   * Richtungen stehen hier, damit eine vertauschte Unterscheidung auffällt.
    */
-  it('tells the bootstrap account it stays unlimited instead of promising it the notice', async () => {
+  it('tells the bootstrap account it stays unlimited and a regular one about the notice', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
     renderAccounts()
@@ -508,9 +509,21 @@ describe('UserManagementPage', () => {
     const menu = await openRowMenu(user, 'Systemverwaltung', 'admin@opaa.local')
     await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
 
-    const dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByText(/soll unbefristet bleiben/)).toBeInTheDocument()
-    expect(within(dialog).queryByText(/erscheint im Hinweis zur/)).not.toBeInTheDocument()
+    const bootstrapDialog = await screen.findByRole('dialog')
+    expect(within(bootstrapDialog).getByText(/soll unbefristet bleiben/)).toBeInTheDocument()
+    expect(within(bootstrapDialog).queryByText(/erscheint im Hinweis zur/)).not.toBeInTheDocument()
+    await user.click(within(bootstrapDialog).getByRole('button', { name: 'Abbrechen' }))
+    // erst wenn der Dialog fort ist, ist die Tabelle wieder erreichbar
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    // „M. Weber (Partner)" trägt ebenfalls kein Ablaufdatum, ist aber ein reguläres Konto
+    // der Zeilenname geht als RegExp in die Suche - die Klammern des Anzeigenamens nicht mit
+    const regularMenu = await openRowMenu(user, 'M. Weber (Partner)', 'M\\. Weber')
+    await user.click(within(regularMenu).getByRole('menuitem', { name: 'Bearbeiten' }))
+
+    const regularDialog = await screen.findByRole('dialog')
+    expect(within(regularDialog).getByText(/erscheint im Hinweis zur/)).toBeInTheDocument()
+    expect(within(regularDialog).queryByText(/soll unbefristet bleiben/)).not.toBeInTheDocument()
   }, 20000)
 
   /**

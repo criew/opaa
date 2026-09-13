@@ -193,8 +193,8 @@ ausgesperrte Installation und deshalb kein Fall für die Auflagenprüfung.
 Dazu kommen zwei Automatiken, die die Prüfung am Laufen halten: Vor einem Ablauf erhalten die Person
 und die Systemverwaltung eine Nachricht, und einmal im Quartal geht eine Wiedervorlage an die
 Systemverwaltung — mit der Zahl der Konten ohne Ablaufdatum und einem Link auf die Liste, ohne Namen.
-Systemverwalterkonten sind von keiner dieser Regeln ausgenommen; einzig das Notanker-Konto bleibt
-außen vor, aus dem Grund im Absatz zuvor.
+Systemverwalterkonten sind von keiner dieser Regeln ausgenommen; einzig in der Zahl der
+Wiedervorlage bleibt das Notanker-Konto außen vor, aus dem Grund im Absatz zuvor.
 
 ## 7. Rollen
 
