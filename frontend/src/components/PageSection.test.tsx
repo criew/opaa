@@ -24,14 +24,26 @@ const QUELLEN = {
     import: 'default',
     eager: true,
   }) as Record<string, string>),
+  ...(import.meta.glob('./chat/*.tsx', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>),
+  ...(import.meta.glob('./metadata/*.tsx', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>),
 }
 
 /**
- * Die Dateien des Verwaltungsbereichs. Seiten außerhalb (Chat, Katalog, Space-Ansichten) sind
- * nicht Gegenstand von #1608 und stehen deshalb nicht in dieser Liste.
+ * Die Dateien, für die die Regel gilt: der Verwaltungsbereich (#1608) und seit #1609 auch Chat,
+ * Katalog und die Space-Ansichten. Nicht in der Liste steht, was gar keinen ruhenden Inhalt trägt
+ * (Dialoge als eigene Dateien, Formularseiten ohne Blöcke).
  */
 const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
   if (pfad.startsWith('./admin/') || pfad.includes('/searchadmin/')) return true
+  if (pfad.startsWith('./chat/') || pfad.startsWith('./metadata/')) return true
   return [
     'BrandingSettingsPage',
     'UserManagementPage',
@@ -40,6 +52,11 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
     'OidcProviderManagementPage',
     'MailSettingsPage',
     'SearchIndexingAdminPage',
+    // #1609: außerhalb der Administration
+    'LibraryDetailPage',
+    'LibraryManagementPage',
+    'SpacePage',
+    'SpaceManagementPage',
   ].some((seite) => pfad.endsWith(`${seite}.tsx`))
 })
 
@@ -55,6 +72,17 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  *   Akzentkante, kein Block.
  * - `GeneratedPasswordDialog`, `SetupLinkDialog`: der einmalig angezeigte Wert zum Abschreiben —
  *   derselbe Fall wie ein Codeblock.
+ *
+ * Mit #1609 kommen die beiden Fälle des Chats dazu. Sie sind der vierte Grund, aus dem ein Rahmen
+ * Bedeutung trägt, und in #1609 ausdrücklich benannt:
+ *
+ * - `MessageBubble`: die Blase grenzt zwei Sprecher voneinander ab. Nur die Frage trägt sie; die
+ *   Antwort steht schon als Fließtext ohne Blase. Ohne diese eine Fläche verlöre der Verlauf
+ *   seinen Wechsel.
+ * - `SourceFootnotes`: kein Kasten um Inhalt, sondern ein 11 px großes Etikett am Treffer
+ *   („ohne Angabe im gefilterten Feld") — derselbe Fall wie ein Chip.
+ * - `ChatInput`: die Eingabezeile ist ein Bedienelement, und ihr Vorschlagsfeld eine schwebende
+ *   Ebene. Beides bringt seine Fläche zu Recht mit.
  */
 const AUSNAHMEN = [
   'BrandingPreview.tsx',
@@ -63,7 +91,22 @@ const AUSNAHMEN = [
   'OidcProviderSetupInstructions.tsx',
   'GeneratedPasswordDialog.tsx',
   'SetupLinkDialog.tsx',
+  'MessageBubble.tsx',
+  'SourceFootnotes.tsx',
+  'ChatInput.tsx',
 ]
+
+/**
+ * Dateien, die eine **schwebende Ebene** selbst bauen und dafür `Paper` zu Recht verwenden — die
+ * Prüfung auf `<Paper` lässt nur sie aus, alle übrigen gelten ausnahmslos.
+ *
+ * - `ChatInput`: das Vorschlagsfeld über der Eingabezeile (`elevation={4}`). Es liegt über dem
+ *   Verlauf, nicht in ihm; genau dafür ist `Paper` da.
+ *
+ * Im Verwaltungsbereich steht diese Liste leer: Dort baut keine Datei eine schwebende Ebene
+ * selbst, Dialoge und Menüs bringen ihre Fläche aus MUI mit.
+ */
+const SCHWEBENDE_EBENEN = ['ChatInput.tsx']
 
 describe('PageSection', () => {
   it('renders the head over its content and names the section for assistive tech', () => {
@@ -110,23 +153,25 @@ describe('PageSection', () => {
   })
 
   /**
-   * Die Regel aus #1608, maschinell gezogen: Im Verwaltungsbereich rahmt kein ruhender Inhalt
-   * sich selbst ein. `Paper` ist die Fläche schwebender Ebenen — Dialoge, Menüs, Popover —, und
-   * die bringen sie selbst mit; eine Seite, die sie wieder für einen Inhaltsblock benutzt, fällt
-   * hier auf.
+   * Die Regel aus #1608, maschinell gezogen: Kein ruhender Inhalt rahmt sich selbst ein. `Paper`
+   * ist die Fläche schwebender Ebenen — Dialoge, Menüs, Popover —, und die bringen sie selbst
+   * mit; eine Seite, die sie wieder für einen Inhaltsblock benutzt, fällt hier auf.
    */
-  it.each(VERWALTUNGSDATEIEN)('%s uses no Paper for resting content', (pfad) => {
-    // Gilt ohne Ausnahme: `Paper` ist die Fläche schwebender Ebenen, und die bringen sie selbst
-    // mit. Auch die vier Ausnahmen unten rahmen mit `border`, nicht mit einer Fläche.
-    expect(QUELLEN[pfad]).not.toContain('<Paper')
-  })
+  it.each(VERWALTUNGSDATEIEN.filter((p) => !SCHWEBENDE_EBENEN.some((a) => p.endsWith(a))))(
+    '%s uses no Paper for resting content',
+    (pfad) => {
+      expect(QUELLEN[pfad]).not.toContain('<Paper')
+    },
+  )
 
   it.each(VERWALTUNGSDATEIEN.filter((p) => !AUSNAHMEN.some((a) => p.endsWith(a))))(
     '%s frames no resting content in a card',
     (pfad) => {
       const quelltext = QUELLEN[pfad]
 
-      expect(quelltext).not.toContain('<Paper')
+      if (!SCHWEBENDE_EBENEN.some((a) => pfad.endsWith(a))) {
+        expect(quelltext).not.toContain('<Paper')
+      }
       // Ein voller Rahmen ringsum ist nur als gestrichelter Leerzustand zulässig („hier wäre
       // etwas"); die Trennung von Einträgen läuft über `borderBottom`. Wo ein Rahmen etwas
       // Fremdes markiert statt Inhalt zu bündeln, steht die Datei oben in AUSNAHMEN — mit Grund.

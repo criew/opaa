@@ -108,6 +108,7 @@ import MetadataExtractionSettingsSection from '../components/metadata/MetadataEx
 import { coreMetadataFieldLabel } from '../components/metadata/metadataValues'
 import BulkMetadataDialog from '../components/metadata/BulkMetadataDialog'
 import PageHeading from '../components/a11y/PageHeading'
+import PageSection from '../components/PageSection'
 import FieldLabel from '../components/wizard/FieldLabel'
 import MetaBadge from '../components/MetaBadge'
 
@@ -163,50 +164,6 @@ function formatIndexedAt(indexedAt: string | null | undefined): string {
 /** The page's areas; the active one is shareable via the "tab" search param (URL as state). */
 type LibraryDetailTab = 'dokumente' | 'indizierung' | 'verwaltung'
 
-interface DetailCardProps {
-  title: string
-  /** One sentence on what this block is for - every block explains itself (guidelines 5.7). */
-  description?: string
-  /** Optional action rendered next to the title (e.g. "Bearbeiten"). */
-  action?: ReactNode
-  children: ReactNode
-}
-
-/**
- * Bordered surface for one thematic block of the detail page: title, an explaining sentence and
- * the content - separation via border and surface, not shadow (guidelines 4.3, 5.4).
- */
-function DetailCard({ title, description, action, children }: DetailCardProps) {
-  return (
-    <Box
-      component="section"
-      sx={{
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 1,
-        bgcolor: 'background.paper',
-        p: { xs: 2, md: 3 },
-      }}
-    >
-      <Stack
-        direction="row"
-        sx={{ alignItems: 'flex-start', justifyContent: 'space-between', gap: 1.5 }}
-      >
-        <Typography component="h2" sx={{ fontSize: 15, fontWeight: 600, lineHeight: 1.25 }}>
-          {title}
-        </Typography>
-        {action}
-      </Stack>
-      {description && (
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>
-          {description}
-        </Typography>
-      )}
-      <Box sx={{ mt: 2 }}>{children}</Box>
-    </Box>
-  )
-}
-
 /** The hero's per-source glyph - the one pictorial anchor of the page. */
 function sourceGlyphIcon(sourceType: DocumentSourceType | undefined) {
   switch (sourceType) {
@@ -232,9 +189,10 @@ interface HeroStatTileProps {
 }
 
 /**
- * One key figure of the hero as a quiet bordered tile. The text stays a single flat statement
- * ("87 Dokumente") - one element for screen readers and text queries alike; the icon carries no
- * text of its own.
+ * Eine Kennzahl der Bühne als Glied eines Bandes (#1609): keine Kachel, sondern ein Eintrag, den
+ * eine senkrechte Haarlinie vom nächsten trennt. Der Text bleibt eine flache Aussage
+ * („87 Dokumente") — ein Element für Screenreader und Textsuche gleichermaßen; das Symbol trägt
+ * keinen eigenen Text.
  */
 function HeroStatTile({ icon, children }: HeroStatTileProps) {
   return (
@@ -243,12 +201,12 @@ function HeroStatTile({ icon, children }: HeroStatTileProps) {
         display: 'flex',
         alignItems: 'center',
         gap: 1,
-        border: 1,
+        pr: 2.25,
+        // Die Linie steht rechts statt links: Bricht das Band um, beginnt die erste Kennzahl jeder
+        // Zeile bündig an der Seitenkante, ohne hängenden Strich davor.
+        borderRight: 1,
         borderColor: 'divider',
-        borderRadius: 1,
-        bgcolor: 'background.paper',
-        px: 1.75,
-        py: 1,
+        '&:last-of-type': { borderRight: 0, pr: 0 },
       }}
     >
       <Box aria-hidden sx={{ display: 'flex', color: 'text.disabled' }}>
@@ -545,26 +503,30 @@ export default function LibraryDetailPage() {
         Zurück zur Übersicht
       </Link>
 
-      {/* Quellen-Bühne: one surface carrying identity, key figures, scope and actions - border
-          plus a restrained accent glow (the 10%-derivation formula the Global badge established),
-          no shadow on a resting surface (guidelines 4.3). The entrance is one directed 200ms
-          reveal; reduced motion switches it off (guidelines 4.5). */}
+      {/* Quellen-Bühne (#1609): Identität, Kennzahlen, Umfang und Aktionen der Bibliothek — als
+          Bühne mit einer Grundlinie, nicht als Kasten. Der zurückhaltende Akzentschein bleibt: Er
+          gibt der Seite ihre Atmosphäre, ohne eine Fläche zu behaupten, und läuft nach unten in
+          den Seitengrund aus. Der Auftritt ist ein gerichteter 200-ms-Einblendvorgang; reduzierte
+          Bewegung schaltet ihn ab (guidelines 4.5). */}
       <Box
+        component="header"
         sx={(theme) => ({
           position: 'relative',
-          overflow: 'hidden',
-          border: 1,
+          borderBottom: 1,
           borderColor: 'divider',
-          borderRadius: '16px',
-          bgcolor: 'background.paper',
-          p: { xs: 2.5, md: 3.5 },
+          pb: { xs: 2.5, md: 3 },
           mb: 3,
           '&::before': {
             content: '""',
             position: 'absolute',
-            inset: 0,
+            // Der Schein greift über die linke Seitenkante hinaus, damit er als Lichtstimmung
+            // liest und nicht als Fläche mit einer eigenen Kante.
+            top: -24,
+            left: { xs: -20, md: -56 },
+            right: 0,
+            bottom: 0,
             pointerEvents: 'none',
-            background: `radial-gradient(520px 220px at 0% 0%, ${alpha(theme.palette.primary.main, 0.09)}, transparent 70%)`,
+            background: `radial-gradient(560px 240px at 0% 0%, ${alpha(theme.palette.primary.main, 0.1)}, transparent 72%)`,
           },
           '@keyframes opaaHeroIn': {
             from: { opacity: 0, transform: 'translateY(6px)' },
@@ -680,9 +642,9 @@ export default function LibraryDetailPage() {
             document count) is decided by the library's own, unchanging sourceType. */}
         <Stack
           direction="row"
-          spacing={1.5}
+          spacing={2.25}
           useFlexGap
-          sx={{ flexWrap: 'wrap', mt: 2.5, position: 'relative' }}
+          sx={{ flexWrap: 'wrap', rowGap: 1, mt: 2.5, position: 'relative' }}
         >
           <HeroStatTile icon={<DescriptionOutlinedIcon sx={{ fontSize: 16 }} />}>
             {(library.documentCount ?? 0).toLocaleString('de-DE')}{' '}
@@ -776,10 +738,13 @@ export default function LibraryDetailPage() {
                 sx={{
                   alignItems: 'flex-start',
                   mt: 0.5,
-                  px: 1.25,
+                  pl: 1.5,
+                  pr: 1.25,
                   py: 1,
-                  borderRadius: 2,
-                  border: 1,
+                  // Hervorhebung als Signalkante links statt als Rahmen ringsum (#1608, Regel 4):
+                  // dasselbe Mittel wie im Bestätigungs-Overlay, damit ein Hinweis überall gleich
+                  // aussieht. Die Signalfarbe bleibt in Kante und Symbol — nie im Fließtext.
+                  borderLeft: 3,
                   borderColor: 'warning.main',
                   bgcolor: (theme) => alpha(theme.palette.warning.main, 0.08),
                 }}
@@ -844,10 +809,13 @@ export default function LibraryDetailPage() {
                 sx={{
                   alignItems: 'flex-start',
                   mt: 0.5,
-                  px: 1.25,
+                  pl: 1.5,
+                  pr: 1.25,
                   py: 1,
-                  borderRadius: 2,
-                  border: 1,
+                  // Hervorhebung als Signalkante links statt als Rahmen ringsum (#1608, Regel 4):
+                  // dasselbe Mittel wie im Bestätigungs-Overlay, damit ein Hinweis überall gleich
+                  // aussieht. Die Signalfarbe bleibt in Kante und Symbol — nie im Fließtext.
+                  borderLeft: 3,
                   borderColor: 'warning.main',
                   bgcolor: (theme) => alpha(theme.palette.warning.main, 0.08),
                 }}
@@ -1031,20 +999,20 @@ export default function LibraryDetailPage() {
           aria-labelledby="library-tab-verwaltung"
           hidden={activeTab !== 'verwaltung'}
         >
-          <Stack spacing={3}>
-            <DetailCard
+          <Stack>
+            <PageSection
               title="Metadatenfelder"
               description="Eigene typisierte Felder dieser Bibliothek, ihre Wirkstellen und ihre Wertelisten."
             >
               <LibraryMetadataFieldsSection libraryId={libraryId} canManageSchema={canEdit} />
-            </DetailCard>
-            <DetailCard
+            </PageSection>
+            <PageSection
               title="Modellgestützte Extraktion"
               description="Ob das Sprachmodell leer gebliebene Felder ergänzt und freie Schlagworte vergibt — und wie gut die Extraktion diese Bibliothek beschreibt."
             >
               <MetadataExtractionSettingsSection libraryId={libraryId} canManage={canEdit} />
-            </DetailCard>
-            <DetailCard
+            </PageSection>
+            <PageSection
               title="Stammdaten"
               description="Name, Beschreibung und Verteilungsstufe dieser Bibliothek."
             >
@@ -1140,9 +1108,9 @@ export default function LibraryDetailPage() {
                   />
                 )}
               </Stack>
-            </DetailCard>
+            </PageSection>
 
-            <DetailCard
+            <PageSection
               title="Freigabe"
               description="In diesen Spaces steht die Bibliothek als Datenquelle bereit. Wer sie darüber hinaus lesen oder bearbeiten darf, regeln die Rechte."
               action={
@@ -1157,10 +1125,10 @@ export default function LibraryDetailPage() {
               }
             >
               <LibrarySpacesSection key={`spaces-${libraryId}`} libraryId={libraryId} />
-            </DetailCard>
+            </PageSection>
 
             {canDelete && (
-              <DetailCard
+              <PageSection
                 title="Bibliothek löschen"
                 description={
                   details && details.sourceType !== 'UPLOAD'
@@ -1176,7 +1144,7 @@ export default function LibraryDetailPage() {
                 >
                   Bibliothek löschen
                 </Button>
-              </DetailCard>
+              </PageSection>
             )}
           </Stack>
         </Box>
@@ -2679,8 +2647,8 @@ function LibraryIndexingSection({
   const configKind = documentSourceTypeConfigKind[library.sourceType]
 
   return (
-    <Stack spacing={3}>
-      <DetailCard
+    <Stack>
+      <PageSection
         title="Quellkonfiguration"
         description="Woher diese Bibliothek ihre Dokumente bezieht. Nur für Verwaltende sichtbar."
         action={
@@ -2782,12 +2750,12 @@ function LibraryIndexingSection({
             library={library}
           />
         )}
-      </DetailCard>
+      </PageSection>
 
       {/* #485: Zeitplan - nur für Verwaltende sichtbar/bearbeitbar, dieselbe Schwelle wie die
           Quellkonfiguration (canEditSource). */}
       {canEditSource && (
-        <DetailCard
+        <PageSection
           title="Zeitplan"
           description="Wann diese Bibliothek automatisch indiziert wird."
           action={
@@ -2853,10 +2821,10 @@ function LibraryIndexingSection({
             }
             library={library}
           />
-        </DetailCard>
+        </PageSection>
       )}
 
-      <DetailCard
+      <PageSection
         title="Letzte Indizierungsläufe"
         description="Jeder Lauf mit seinen Kennzahlen und seinem Protokoll — aufklappen für die Einzelheiten."
       >
@@ -2870,7 +2838,7 @@ function LibraryIndexingSection({
           </Typography>
         )}
         <LibraryIndexingHistorySection libraryId={libraryId} sourceType={library.sourceType} />
-      </DetailCard>
+      </PageSection>
     </Stack>
   )
 }
