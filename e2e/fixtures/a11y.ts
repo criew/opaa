@@ -39,6 +39,33 @@ function describeViolation(violation: Violation): string {
 }
 
 /**
+ * Settles the page before it is measured: waits until every finite animation and transition has
+ * reached its end state. axe derives an element's effective colour from the frame it sees, so a
+ * page still fading in yields interpolated colours that exist in no end state, and
+ * `color-contrast` reports pairs the interface never shows (#1643). Endless animations (loading
+ * indicators) are skipped - waiting for them would never return.
+ *
+ * A string expression: the E2E suite compiles without DOM typings, so `document` is unknown here.
+ */
+const SETTLE_ANIMATIONS = `
+  (async () => {
+    const pending = () =>
+      document.getAnimations().filter((animation) => {
+        if (animation.playState === 'finished') return false;
+        const timing = animation.effect && animation.effect.getComputedTiming();
+        return !!timing && timing.iterations !== Infinity;
+      });
+    // Several passes because one animation can start the next (staged entrances); the bound keeps
+    // an unexpected chain from hanging the test instead of failing it.
+    for (let pass = 0; pass < 5; pass++) {
+      const running = pending();
+      if (running.length === 0) return;
+      await Promise.all(running.map((animation) => animation.finished.catch(() => undefined)));
+    }
+  })()
+`
+
+/**
  * Runs axe against the current page state and fails on serious/critical violations.
  *
  * @param context human-readable label for the page/state under test, used in the failure message
@@ -48,6 +75,8 @@ export async function expectNoSeriousA11yViolations(
   context: string,
   options: A11yCheckOptions = {},
 ): Promise<void> {
+  await page.evaluate(SETTLE_ANIMATIONS)
+
   let builder = new AxeBuilder({ page }).withTags(WCAG_TAGS)
   if (options.disableRules?.length) {
     builder = builder.disableRules(options.disableRules)
