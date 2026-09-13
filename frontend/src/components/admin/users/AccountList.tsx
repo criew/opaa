@@ -222,6 +222,7 @@ interface RowHandlers {
   onEdit: (user: LocalUserResponse) => void
   onSetupLink: (handover: SetupLinkHandover) => void
   onGeneratedPassword: (user: LocalUserResponse, password: string) => void
+  onHandover: (user: LocalUserResponse) => void
   onChangeRole: (account: AccountResponse) => void
 }
 

@@ -21,6 +21,8 @@ import LocalUserReviewNotice from '../components/admin/users/LocalUserReviewNoti
 import RoleChangeDialog from '../components/admin/users/RoleChangeDialog'
 import UserFormDialog from '../components/admin/users/UserFormDialog'
 import SetupLinkDialog, { type SetupLinkHandover } from '../components/admin/users/SetupLinkDialog'
+import HandoverDialog, { type HandoverTarget } from '../components/admin/users/HandoverDialog'
+import HandoverLinkDialog from '../components/admin/users/HandoverLinkDialog'
 import { contentWidth } from '../theme/tokens'
 import GeneratedPasswordDialog, {
   type GeneratedPassword,
@@ -65,6 +67,11 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
   const [handover, setHandover] = useState<SetupLinkHandover | null>(null)
   const [generated, setGenerated] = useState<GeneratedPassword | null>(null)
   const [roleChange, setRoleChange] = useState<AccountResponse | null>(null)
+  const [handoverTarget, setHandoverTarget] = useState<HandoverTarget | null>(null)
+  const [handoverLink, setHandoverLink] = useState<{
+    user: LocalUserResponse
+    url: string
+  } | null>(null)
 
   useEffect(() => {
     void loadAccounts()
@@ -137,6 +144,7 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
             password,
           })
         }
+        onHandover={(user) => setHandoverTarget({ user })}
         onChangeRole={setRoleChange}
       />
 
@@ -172,6 +180,14 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
         }}
       />
       <SetupLinkDialog handover={handover} onClose={() => setHandover(null)} />
+      {/* `key` wie beim UserFormDialog: Anbieterwahl und Anlass gehören zu genau einem Konto. */}
+      <HandoverDialog
+        key={`handover-${handoverTarget?.user.id ?? 'none'}`}
+        target={handoverTarget}
+        onClose={() => setHandoverTarget(null)}
+        onLinkDisplayed={(user, url) => setHandoverLink({ user, url })}
+      />
+      <HandoverLinkDialog handover={handoverLink} onClose={() => setHandoverLink(null)} />
       <GeneratedPasswordDialog generated={generated} onClose={() => setGenerated(null)} />
       {/* `key` wie beim UserFormDialog darüber: MUI unmountet beim Schließen nur die Kinder des
           Dialogs, nicht die Komponente. Ohne den Schlüssel trüge die zuletzt gewählte Rolle in das

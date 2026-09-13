@@ -93,6 +93,13 @@ function linkFor(email: string): string {
     : `/konto/passwort?token=${token}`
 }
 
+function handoverLinkFor(email: string): string {
+  const token = `mock-handover-${encodeURIComponent(email)}`
+  return mockLocalAuthSettings.publicBaseUrlConfigured
+    ? `https://opaa.stadt.example/handover?token=${token}`
+    : `/handover?token=${token}`
+}
+
 function expiryFrom(request: {
   expiresAt?: string | null
   noExpiry?: boolean
@@ -351,6 +358,50 @@ export const localUserHandlers = [
           ? 'MAIL_FAILED'
           : 'LINK_DISPLAYED',
       ...(sent ? {} : { setupUrl: linkFor(user.email) }),
+    })
+  }),
+
+  // #1563: der Anstoß nennt Anbieter und Anlass und nie eine Identität; das Notanker-Konto ist
+  // ausgeschlossen, und der Link erscheint - wie bei der Einladung - nur, wenn keine Mail ging.
+  http.post('/api/v1/admin/local-users/:id/handover', async ({ params, request }) => {
+    const user = find(String(params.id))
+    if (!user) return notFound()
+    const body = (await request.json()) as { providerId?: string; reason?: string }
+    if (user.bootstrap) {
+      return conflict(
+        'BOOTSTRAP_ACCOUNT',
+        'Das Notanker-Konto der Systemverwaltung kann nicht übergeben werden.',
+      )
+    }
+    if (user.id === LAST_ADMIN_USER_ID) {
+      return conflict(
+        'LAST_LOGIN_CAPABLE_ADMIN',
+        'Der letzte anmeldefähige Systemverwalter kann nicht entfernt werden.',
+      )
+    }
+    if (!body.providerId) {
+      return badRequest('Wählen Sie einen aktivierten Identitätsanbieter.', [
+        {
+          field: 'providerId',
+          code: 'NOT_ELIGIBLE',
+          message: 'Wählen Sie einen aktivierten Identitätsanbieter.',
+        },
+      ])
+    }
+    if (!body.reason || body.reason.trim().length === 0) {
+      return badRequest('Bitte füllen Sie das Feld aus.', [
+        { field: 'reason', code: 'REQUIRED', message: 'Das Feld darf nicht leer sein.' },
+      ])
+    }
+    const sent = mailGoesOut(user.email)
+    return HttpResponse.json({
+      emailSent: sent,
+      deliveryPath: sent
+        ? 'MAIL_SENT'
+        : mockLocalAuthSettings.publicBaseUrlConfigured
+          ? 'MAIL_FAILED'
+          : 'LINK_DISPLAYED',
+      ...(sent ? {} : { handoverUrl: handoverLinkFor(user.email) }),
     })
   }),
 

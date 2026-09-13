@@ -70,8 +70,8 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  *   nicht Inhalt der Seite.
  * - `OidcProviderSetupInstructions`: das Symbolfeld eines Schritts, ein 32 px großes Quadrat mit
  *   Akzentkante, kein Block.
- * - `GeneratedPasswordDialog`, `SetupLinkDialog`: der einmalig angezeigte Wert zum Abschreiben —
- *   derselbe Fall wie ein Codeblock.
+ * - `GeneratedPasswordDialog`, `SetupLinkDialog`, `HandoverLinkDialog`: der einmalig angezeigte
+ *   Wert zum Abschreiben — derselbe Fall wie ein Codeblock.
  *
  * Mit #1609 kommen die beiden Fälle des Chats dazu. Sie sind der vierte Grund, aus dem ein Rahmen
  * Bedeutung trägt, und in #1609 ausdrücklich benannt:
@@ -94,6 +94,7 @@ const AUSNAHMEN = [
   'OidcProviderSetupInstructions.tsx',
   'GeneratedPasswordDialog.tsx',
   'SetupLinkDialog.tsx',
+  'HandoverLinkDialog.tsx',
   'MessageBubble.tsx',
   'SourceFootnotes.tsx',
   'ChatInput.tsx',

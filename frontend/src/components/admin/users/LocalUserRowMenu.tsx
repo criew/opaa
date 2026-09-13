@@ -14,6 +14,7 @@ import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
+import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined'
 import type { LocalUserResponse } from '../../../types/api'
 import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
@@ -42,6 +43,11 @@ export const SELF_ACTION_TOOLTIP =
   'Das eigene Konto kann hier nicht gesperrt oder gelöscht werden – sonst wäre die Verwaltung ' +
   'nach einem Fehlgriff nicht mehr erreichbar.'
 
+export const BOOTSTRAP_HANDOVER_TOOLTIP =
+  'Das Notanker-Konto der Systemverwaltung kann nicht übergeben werden – es ist der Weg zurück in ' +
+  'eine Installation ohne funktionierenden Identitätsanbieter und muss deshalb ein lokales Konto ' +
+  'bleiben.'
+
 export const BOOTSTRAP_DELETE_TOOLTIP =
   'Das Notanker-Konto der Systemverwaltung kann nicht gelöscht werden – es ist der Weg zurück in ' +
   'eine Installation ohne funktionierenden Identitätsanbieter.'
@@ -53,6 +59,8 @@ interface LocalUserRowMenuProps {
   onEdit: (user: LocalUserResponse) => void
   onSetupLink: (handover: SetupLinkHandover) => void
   onGeneratedPassword: (user: LocalUserResponse, password: string) => void
+  /** Opens the handover dialog (#1563); the act itself is the person's, not the menu's. */
+  onHandover: (user: LocalUserResponse) => void
 }
 
 /**
@@ -72,6 +80,7 @@ export default function LocalUserRowMenu({
   onEdit,
   onSetupLink,
   onGeneratedPassword,
+  onHandover,
 }: LocalUserRowMenuProps) {
   const lockUser = useUserAdminStore((s) => s.lockUser)
   const unlockUser = useUserAdminStore((s) => s.unlockUser)
@@ -185,6 +194,7 @@ export default function LocalUserRowMenu({
   }
 
   const lockDisabled = isSelf
+  const handoverDisabled = user.bootstrap
   const deleteDisabled = isSelf || user.bootstrap
   const deleteTooltip = isSelf
     ? SELF_ACTION_TOOLTIP
@@ -192,6 +202,7 @@ export default function LocalUserRowMenu({
       ? BOOTSTRAP_DELETE_TOOLTIP
       : ''
   const reasonId = `local-user-${user.id}-menu-reason`
+  const handoverReasonId = `local-user-${user.id}-handover-reason`
 
   return (
     <>
@@ -260,6 +271,32 @@ export default function LocalUserRowMenu({
           </ListItemIcon>
           Passwort erzeugen
         </MenuItem>
+        <MenuItem
+          onClick={() => {
+            close()
+            onHandover(user)
+          }}
+          disabled={handoverDisabled}
+          title={handoverDisabled ? BOOTSTRAP_HANDOVER_TOOLTIP : undefined}
+          aria-describedby={handoverDisabled ? handoverReasonId : undefined}
+        >
+          <ListItemIcon>
+            <SwapHorizOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          Übergabe anstoßen
+        </MenuItem>
+        {handoverDisabled && (
+          <Box
+            component="li"
+            role="presentation"
+            id={handoverReasonId}
+            sx={{ px: 2, py: 1, maxWidth: 320 }}
+          >
+            <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+              {BOOTSTRAP_HANDOVER_TOOLTIP}
+            </Typography>
+          </Box>
+        )}
         <Divider />
         <MenuItem
           onClick={() => void remove()}

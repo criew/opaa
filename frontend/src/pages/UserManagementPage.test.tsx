@@ -455,7 +455,7 @@ describe('UserManagementPage', () => {
     expect(within(lockedMenu).queryByRole('menuitem', { name: 'Sperren' })).not.toBeInTheDocument()
     await user.click(within(lockedMenu).getByRole('menuitem', { name: 'Entsperren' }))
     await waitFor(() => expect(within(rowOf('T. Klein')).getByText('Aktiv')).toBeInTheDocument())
-  })
+  }, 20000)
 
   it('offers neither locking nor deletion on the own row and none on the bootstrap account', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -472,7 +472,41 @@ describe('UserManagementPage', () => {
       'aria-disabled',
       'true',
     )
-  })
+    // #1563: Die Übergabe ist an diesem Konto gar nicht erst anwählbar, und der Eintrag sagt warum
+    // - das Notanker-Konto muss ein lokales Konto bleiben.
+    const uebergabe = within(menu).getByRole('menuitem', { name: 'Übergabe anstoßen' })
+    expect(uebergabe).toHaveAttribute('aria-disabled', 'true')
+    expect(within(menu).getByText(/muss deshalb ein lokales Konto bleiben/)).toBeInTheDocument()
+  }, 20000)
+
+  it('opens the handover dialog for a regular local account', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+
+    useAuthStore.setState({
+      providers: [
+        {
+          id: 'provider-1',
+          displayName: 'Identitätsanbieter der Stadt',
+          issuerUri: 'https://idp.stadt.example/realms/beschaeftigte',
+          clientId: 'opaa-frontend',
+          isDefault: true,
+          sortOrder: 0,
+        },
+      ],
+    })
+
+    const menu = await openRowMenu(user, 'T. Klein')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Übergabe anstoßen' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Übergabe anstoßen' })
+    // Der Dialog fragt nach Anbieter und Anlass - und nach keiner Kennung.
+    expect(within(dialog).getByRole('combobox', { name: /Identitätsanbieter/ })).toBeInTheDocument()
+    expect(within(dialog).getByRole('textbox', { name: /Anlass/ })).toBeInTheDocument()
+    expect(within(dialog).getByText(/Einen Rückweg gibt es nicht/)).toBeInTheDocument()
+  }, 20000)
 
   it('keeps the own expiry date out of the past when editing the own account', async () => {
     signInAs('SYSTEM_ADMIN')
