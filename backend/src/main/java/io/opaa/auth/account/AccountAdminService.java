@@ -127,7 +127,7 @@ public class AccountAdminService {
       if (query.status() != null && local.state() != query.status()) {
         return false;
       }
-      if (query.withoutExpiry() && local.credentials().getExpiresAt() != null) {
+      if (query.withoutExpiry() && !local.credentials().countsAsWithoutExpiry()) {
         return false;
       }
       if (query.inactive() && !local.isInactive()) {

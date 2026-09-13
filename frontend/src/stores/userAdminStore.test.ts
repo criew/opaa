@@ -43,9 +43,12 @@ describe('userAdminStore', () => {
 
     await state().setFilters({ review: 'WITHOUT_EXPIRY' })
     expect(state().filters.page).toBe(0)
-    expect(state().accounts.every((account) => account.local && !account.local.expiresAt)).toBe(
-      true,
-    )
+    // das Notanker-Konto ist unbefristet gedacht und deshalb kein Treffer des Filters (#1603)
+    expect(
+      state().accounts.every(
+        (account) => account.local && !account.local.expiresAt && !account.local.bootstrap,
+      ),
+    ).toBe(true)
 
     await state().setFilters({ review: 'ALL', status: 'INVITED' })
     expect(state().accounts.map((account) => account.displayName)).toEqual(['T. Klein'])

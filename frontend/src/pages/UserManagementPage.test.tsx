@@ -323,20 +323,24 @@ describe('UserManagementPage', () => {
     renderAccounts()
 
     const notice = await screen.findByTestId('local-user-review-notice')
-    expect(notice).toHaveTextContent('3 lokale Konten ohne Ablaufdatum')
+    expect(notice).toHaveTextContent('2 lokale Konten ohne Ablaufdatum')
     expect(notice).toHaveTextContent('1 offene Einladung')
     expect(notice).toHaveTextContent(/regelmäßig zu überprüfen/)
 
     await user.click(within(notice).getByRole('button', { name: /ohne Ablaufdatum anzeigen/ }))
     await waitFor(() => expect(useUserAdminStore.getState().filters.review).toBe('WITHOUT_EXPIRY'))
     expect(useUserAdminStore.getState().filters.providerType).toBe('LOCAL')
-    await waitFor(() =>
+    // Die Zahl im Hinweis und die Zeilen hinter dem Sprung sind dieselbe Menge (#1603): Das
+    // Notanker-Konto soll unbefristet bleiben und steht in keiner von beiden.
+    await waitFor(() => {
+      const accounts = useUserAdminStore.getState().accounts
+      expect(accounts).toHaveLength(2)
       expect(
-        useUserAdminStore
-          .getState()
-          .accounts.every((account) => account.local && !account.local.expiresAt),
-      ).toBe(true),
-    )
+        accounts.every(
+          (account) => account.local && !account.local.expiresAt && !account.local.bootstrap,
+        ),
+      ).toBe(true)
+    })
 
     await user.click(screen.getByRole('button', { name: /Offene Einladungen anzeigen/ }))
     await waitFor(() => expect(useUserAdminStore.getState().filters.status).toBe('INVITED'))

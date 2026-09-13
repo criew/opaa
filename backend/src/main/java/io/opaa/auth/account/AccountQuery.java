@@ -10,7 +10,8 @@ import java.util.UUID;
 /**
  * Filter, sort and page of the account list of the administration (#1601). The bounds are those of
  * {@link LocalUserQuery}. {@code status}, {@code withoutExpiry} and {@code inactive} describe local
- * accounts only and therefore narrow the list to them ({@link #localOnly()}).
+ * accounts only and therefore narrow the list to them ({@link #localOnly()}); {@code withoutExpiry}
+ * means the same set here as on the local list and in the standing notice's count.
  */
 public record AccountQuery(
     String query,
