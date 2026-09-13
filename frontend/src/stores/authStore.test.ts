@@ -210,6 +210,22 @@ describe('authStore', () => {
     expect(useIndexingStore.getState().runsByLibrary).toEqual({})
   })
 
+  /**
+   * Schutz gegen die naheliegende Fehlimplementierung von #1612: Das Nachladen der öffentlichen
+   * Anmeldekonfiguration beim Abmelden darf nicht über `initialize()` laufen. Das meldet im
+   * Betriebsmodus `dev` sofort wieder an und machte damit die gerade beendete Sitzung rückgängig.
+   */
+  it('does not sign in again while reloading the sign-in configuration on logout', async () => {
+    await useAuthStore.getState().initialize()
+    expect(useAuthStore.getState().isAuthenticated).toBe(true)
+    expect(useAuthStore.getState().mode).toBe('dev')
+
+    await useAuthStore.getState().logout()
+
+    expect(useAuthStore.getState().isAuthenticated).toBe(false)
+    expect(useAuthStore.getState().user).toBeNull()
+  })
+
   it('returns access token via getAccessToken', async () => {
     useAuthStore.setState({ token: 'test-token' })
     await expect(useAuthStore.getState().getAccessToken()).resolves.toBe('test-token')
