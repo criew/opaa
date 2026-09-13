@@ -66,7 +66,7 @@ export default function ChatRedirect() {
           {spacesError ? (
             <Alert severity="error">{spacesError}</Alert>
           ) : (
-            <Typography color="text.secondary">Kein Arbeitsraum verfügbar.</Typography>
+            <Typography sx={{ color: 'text.secondary' }}>Kein Arbeitsraum verfügbar.</Typography>
           )}
           <Button variant="outlined" onClick={() => void loadSpaces()}>
             Erneut versuchen

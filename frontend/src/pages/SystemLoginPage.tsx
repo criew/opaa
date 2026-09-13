@@ -75,7 +75,7 @@ export default function SystemLoginPage() {
       </Stack>
 
       <Typography sx={{ mt: 2, fontSize: 12, textAlign: 'center' }}>
-        <Link component={RouterLink} to={LOGIN_ROUTE} color="text.secondary">
+        <Link component={RouterLink} to={LOGIN_ROUTE} sx={{ color: 'text.secondary' }}>
           Zur regulären Anmeldung
         </Link>
       </Typography>

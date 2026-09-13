@@ -27,7 +27,7 @@ function DocumentChunkList({ document }: { document: DocumentChunksResponse }) {
       <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>
         {document.documentTitle ?? document.documentId}
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
         Bibliothek: {document.libraryName ?? '—'} ·{' '}
         {plural(stored, 'gespeicherter Chunk', 'gespeicherte Chunks')}, laut Dokument{' '}
         {document.chunkCount}
@@ -39,7 +39,7 @@ function DocumentChunkList({ document }: { document: DocumentChunksResponse }) {
         </Alert>
       )}
       {stored === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           Für dieses Dokument ist kein Chunk gespeichert.
         </Typography>
       ) : (
@@ -110,7 +110,7 @@ export default function DocumentChunkSection({
   return (
     <Box ref={sectionRef}>
       <SectionHead>Chunks eines Dokuments</SectionHead>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
         Zeigt alle gespeicherten Chunks eines Dokuments in Reihenfolge - so, wie die
         Indexierungs-Pipeline sie abgelegt hat, mit Zuschnitt, Kontextpräfix und Fundort. Ein Klick
         auf einen Dokumenttitel in der Diagnose führt hierher.

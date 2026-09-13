@@ -157,7 +157,7 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
       </Box>
 
       {error && (
-        <Typography color="error.main" variant="body2" sx={{ mb: 1 }}>
+        <Typography variant="body2" sx={{ color: 'error.main', mb: 1 }}>
           {error}
         </Typography>
       )}
@@ -167,7 +167,7 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
           <CircularProgress size={20} />
         </Box>
       ) : !chats || chats.length === 0 ? (
-        <Typography color="text.secondary" variant="body2">
+        <Typography sx={{ color: 'text.secondary' }} variant="body2">
           Noch keine Chats in diesem Space.
         </Typography>
       ) : (

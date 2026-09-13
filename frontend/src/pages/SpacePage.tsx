@@ -176,7 +176,7 @@ export default function SpacePage() {
             <Divider sx={{ mb: 2 }} />
             {canManage(space.userRole, isOwner) ? (
               members.length === 0 ? (
-                <Typography color="text.secondary">Keine Mitglieder gefunden.</Typography>
+                <Typography sx={{ color: 'text.secondary' }}>Keine Mitglieder gefunden.</Typography>
               ) : (
                 <Stack spacing={1}>
                   {members.map((member) => (
@@ -225,9 +225,11 @@ export default function SpacePage() {
               </Alert>
             )}
             {isLoadingLibraryAssociations ? (
-              <Typography color="text.secondary">Datenquellen werden geladen …</Typography>
+              <Typography sx={{ color: 'text.secondary' }}>
+                Datenquellen werden geladen …
+              </Typography>
             ) : !hasLibraryAssociations ? (
-              <Typography color="text.secondary">
+              <Typography sx={{ color: 'text.secondary' }}>
                 Diesem Space sind keine Bibliotheken zugeordnet — die Suche greift auf alle für Sie
                 lesbaren Bibliotheken zurück.
               </Typography>
@@ -237,7 +239,7 @@ export default function SpacePage() {
               // viewer cannot read. Spec (docs/features/spaces-and-assets.md#suchbereich-je-
               // chatart): a valid state, not an error, and deliberately without a count of the
               // unreadable libraries.
-              <Typography color="text.secondary">
+              <Typography sx={{ color: 'text.secondary' }}>
                 In diesem Space ist für Sie derzeit kein Wissen verfügbar.
               </Typography>
             ) : (

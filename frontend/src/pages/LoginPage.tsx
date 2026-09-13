@@ -240,7 +240,7 @@ export default function LoginPage() {
           only visible way to the local system administrators' sign-in. */}
       {!hasLocalForm && (
         <Typography sx={{ mt: 2, fontSize: 12, textAlign: 'center' }}>
-          <Link component={RouterLink} to={SYSTEM_LOGIN_ROUTE} color="text.secondary">
+          <Link component={RouterLink} to={SYSTEM_LOGIN_ROUTE} sx={{ color: 'text.secondary' }}>
             Anmeldung für die Systemverwaltung
           </Link>
         </Typography>

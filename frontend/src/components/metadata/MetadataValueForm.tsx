@@ -59,7 +59,7 @@ export default function MetadataValueForm({
         }
         label="Kein Wert ermittelbar"
       />
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
         „Kein Wert ermittelbar“ heißt: Dieses Dokument hat keinen solchen Wert. Es zählt danach
         nicht mehr zu den Dokumenten ohne Wert, und keine automatische Extraktion ändert das.
       </Typography>

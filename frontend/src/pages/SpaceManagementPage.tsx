@@ -370,7 +370,7 @@ export default function SpaceManagementPage() {
             </Alert>
           )}
           {isLoadingMembers ? (
-            <Typography color="text.secondary">Mitgliederliste wird geladen …</Typography>
+            <Typography sx={{ color: 'text.secondary' }}>Mitgliederliste wird geladen …</Typography>
           ) : members.length === 0 && !canManage && !isOwner ? (
             // #674 review, nit c: a MEMBER or CURATOR reaching this page directly by URL gets a
             // silent empty list from listSpaceMembers's 403 handling (#144) - without this, that
@@ -590,15 +590,15 @@ export default function SpaceManagementPage() {
 
         <Box>
           <SectionHead>Datenquellen</SectionHead>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
             Eine Zuordnung stellt eine Bibliothek in diesem Space bereit, gewährt aber niemandem
             zusätzlichen Zugriff — nur Mitglieder mit eigenem Leserecht auf die Bibliothek sehen
             ihre Treffer.
           </Typography>
           {isLoadingLibraryAssociations ? (
-            <Typography color="text.secondary">Datenquellen werden geladen …</Typography>
+            <Typography sx={{ color: 'text.secondary' }}>Datenquellen werden geladen …</Typography>
           ) : libraryAssociations.length === 0 ? (
-            <Typography color="text.secondary" sx={{ mb: 2 }}>
+            <Typography sx={{ color: 'text.secondary', mb: 2 }}>
               Diesem Space sind keine Bibliotheken zugeordnet.
             </Typography>
           ) : (

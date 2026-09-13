@@ -116,8 +116,10 @@ export default function BrandMark({
       {!logoOnly && showClaim && branding.claim && (
         <Typography
           variant="caption"
-          color="text.secondary"
-          sx={vertical ? { display: 'block', fontSize: 12.5, mt: 0.5 } : undefined}
+          sx={{
+            color: 'text.secondary',
+            ...(vertical ? { display: 'block', fontSize: 12.5, mt: 0.5 } : {}),
+          }}
         >
           {branding.claim}
         </Typography>

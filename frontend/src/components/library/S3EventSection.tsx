@@ -110,7 +110,7 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
           ? 'Token hinterlegt — gemeldete Änderungen werden wenige Sekunden später geprüft'
           : 'nicht eingerichtet'}
       </Typography>
-      <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.25 }}>
+      <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mt: 0.25 }}>
         Der Objektspeicher kann OPAA über erzeugte und gelöschte Objekte benachrichtigen; die
         gemeldeten Schlüssel werden dann wenige Sekunden später einzeln geprüft. Ein Löschereignis
         entfernt das Dokument erst, wenn der Speicher das Fehlen des Objekts bestätigt. Der Zeitplan

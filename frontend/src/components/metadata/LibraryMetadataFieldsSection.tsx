@@ -118,7 +118,7 @@ function ChangeImpactNotice({
   }
   if (!impact) {
     return (
-      <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mt: 2 }}>
         Folgekosten werden ermittelt …
       </Typography>
     )
@@ -303,7 +303,7 @@ export default function LibraryMetadataFieldsSection({
           </Button>
         )}
       </Stack>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
         Eigene Felder dieser Bibliothek, zusätzlich zu Titel, Dokumentart und Datum/Stand. Jedes
         Feld muss im Filter oder im Kontextpräfix wirken; höchstens fünf Felder je Bibliothek und
         höchstens zwei davon in der Belegzeile.
@@ -332,7 +332,7 @@ export default function LibraryMetadataFieldsSection({
       {coreContextPrefix && (
         <Box sx={{ mb: 2 }}>
           <Typography variant="subtitle2">Kernfelder im Kontextpräfix</Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             Der Titel steht immer im Kontextpräfix. Dokumentart und Datum/Stand sind je Bibliothek
             eine bewusste Entscheidung — eingeschaltet kostet jede spätere Änderung daran ein
             Neu-Einbetten.
@@ -356,7 +356,7 @@ export default function LibraryMetadataFieldsSection({
         </Box>
       )}
       {fields.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           Diese Bibliothek führt keine eigenen Metadatenfelder — der Normalfall.
         </Typography>
       ) : (
@@ -365,7 +365,7 @@ export default function LibraryMetadataFieldsSection({
             <Box key={field.fieldKey}>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
                 <Typography variant="subtitle2">{field.label}</Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                   {field.fieldKey} · {TYPE_LABELS[field.type]}
                 </Typography>
                 {effectChips(field).map((chip) => (
@@ -392,7 +392,7 @@ export default function LibraryMetadataFieldsSection({
                 )}
               </Stack>
               {field.valuePattern && (
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                   Muster: {field.valuePattern}
                 </Typography>
               )}
