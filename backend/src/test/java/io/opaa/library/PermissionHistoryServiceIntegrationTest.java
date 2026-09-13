@@ -725,7 +725,11 @@ class PermissionHistoryServiceIntegrationTest {
    * Every bean holding a grant or membership repository. The writers among them are covered by
    * {@link #readabilityWritePaths}; the rest only read - the two diagnostic services resolve a
    * group to validate a request, {@link GroupMembershipResolver} and {@link LibraryAccessService}
-   * are the read side of the live formula itself.
+   * are the read side of the live formula itself. {@code LocalHandoverAccountService} (#1563) only
+   * counts: the preview of a handover tells the person how many memberships move with their
+   * account, and the handover itself rewrites the identity of a {@code users} row - it writes no
+   * membership and no grant, and everything keyed by {@code users.id} therefore survives it
+   * untouched.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -737,6 +741,7 @@ class PermissionHistoryServiceIntegrationTest {
           "GroupService",
           "KnowledgeLibraryService",
           "LibraryAccessService",
+          "LocalHandoverAccountService",
           "TokenGroupSynchronizer");
 
   /**
