@@ -157,7 +157,8 @@ export default function App() {
                 <Route path="admin/users/:tab" element={<UserManagementPage />} />
                 <Route path="admin/groups" element={<GroupManagementPage />} />
                 <Route path="admin/branding" element={<BrandingSettingsPage />} />
-                <Route path="admin/models" element={<LlmModelManagementPage />} />
+                <Route path="admin/models" element={<Navigate to="/admin/models/chat" replace />} />
+                <Route path="admin/models/:tab" element={<LlmModelManagementPage />} />
                 <Route path="admin/identity-providers" element={<OidcProviderManagementPage />} />
                 {/* Die beiden Bereiche der E-Mail-Seite sind Routen, damit ein Verweis auf die
                     Vorlagenverwaltung dort landet (#1542). */}
