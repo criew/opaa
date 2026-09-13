@@ -22,7 +22,7 @@ test.describe("Content Security Policy der lokalen Anmeldung", () => {
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext();
     const admin = await context.newPage();
-    acceptConfirmDialogs(admin);
+    await acceptConfirmDialogs(admin);
     await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password, {
       route: "/login/system",
     });
@@ -33,7 +33,7 @@ test.describe("Content Security Policy der lokalen Anmeldung", () => {
   test("keine CSP-Verstöße auf Anmeldung, Selbstbedienung und Verwaltung", async ({ browser }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
-    acceptConfirmDialogs(page);
+    await acceptConfirmDialogs(page);
     const violations: string[] = [];
     page.on("console", (message) => {
       if (message.text().includes("Content Security Policy")) {

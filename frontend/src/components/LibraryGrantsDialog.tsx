@@ -34,6 +34,7 @@ import type {
 } from '../types/api'
 import { getGroups, getMyGroups } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
+import { confirmAction } from '../stores/confirmStore'
 import { useGrantStore } from '../stores/grantStore'
 import { useUserSearch } from '../hooks/useUserSearch'
 import { assetRoleDescription, assetRoleLabel, permissionSubjectTypeLabel } from '../utils/labels'
@@ -189,10 +190,15 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
     // last-active-OWNER guard can block it) and has an easy-to-miss consequence - it can lock the
     // caller out of this very dialog, which the generic "cannot be undone" wording does not say.
     const isSelf = grant.subjectType === 'USER' && grant.subjectId === currentUserId
-    const question = isSelf
-      ? `Freigabe für "${subjectDisplayName(grant)}" entziehen? Das ist Ihre eigene Freigabe - Sie verlieren dadurch möglicherweise selbst den Zugriff auf diese Rechteansicht. Diese Aktion kann nicht rückgängig gemacht werden.`
-      : `Freigabe für "${subjectDisplayName(grant)}" entziehen? Diese Aktion kann nicht rückgängig gemacht werden.`
-    if (!window.confirm(question)) {
+    const confirmed = await confirmAction({
+      question: `Freigabe für "${subjectDisplayName(grant)}" entziehen?`,
+      consequence: isSelf
+        ? 'Das ist Ihre eigene Freigabe - Sie verlieren dadurch möglicherweise selbst den Zugriff auf diese Rechteansicht. Diese Aktion kann nicht rückgängig gemacht werden.'
+        : 'Diese Aktion kann nicht rückgängig gemacht werden.',
+      confirmLabel: 'Entziehen',
+      tone: 'danger',
+    })
+    if (!confirmed) {
       return
     }
     setRowError(null)

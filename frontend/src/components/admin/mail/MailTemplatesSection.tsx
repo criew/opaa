@@ -5,13 +5,13 @@ import Chip from '@mui/material/Chip'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
-import Paper from '@mui/material/Paper'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import { useMailStore } from '../../../stores/mailStore'
 import SectionHead from '../../SectionHead'
+import { radius } from '../../../theme/tokens'
 import MailTemplateEditor from './MailTemplateEditor'
 
 /** Wofür eine Vorlage verwendet wird — der Zweck in einem Satz, in der Sprache der Verwaltung. */
@@ -66,11 +66,20 @@ export default function MailTemplatesSection() {
       )}
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} sx={{ alignItems: 'flex-start' }}>
-        <Paper
-          variant="outlined"
+        {/* Eine senkrechte Linie trennt die Auswahl vom Inhalt, kein Rahmen ringsum (#1608) -
+            dieselbe Trennung, die die Bereichsnavigation der Seite links schon nutzt. */}
+        <Box
           component="nav"
           aria-label="Vorlagen"
-          sx={{ p: 2, width: { xs: '100%', md: 320 }, flex: 'none' }}
+          sx={{
+            width: { xs: '100%', md: 320 },
+            flex: 'none',
+            pr: { md: 2 },
+            borderRight: { md: 1 },
+            borderBottom: { xs: 1, md: 0 },
+            borderColor: 'divider',
+            pb: { xs: 2, md: 0 },
+          }}
         >
           <SectionHead id="mail-template-list-head">Vorlagen</SectionHead>
           <List disablePadding aria-labelledby="mail-template-list-head">
@@ -106,7 +115,7 @@ export default function MailTemplatesSection() {
               </ListItem>
             ))}
           </List>
-        </Paper>
+        </Box>
 
         <Box sx={{ flexGrow: 1, minWidth: 0, width: '100%' }}>
           {isLoadingTemplate && (
@@ -116,14 +125,23 @@ export default function MailTemplatesSection() {
             </Box>
           )}
           {!isLoadingTemplate && !template && (
-            <Paper variant="outlined" sx={{ p: 3, textAlign: 'center' }}>
+            <Box
+              sx={{
+                border: 1,
+                borderStyle: 'dashed',
+                borderColor: 'divider',
+                borderRadius: `${radius.md}px`,
+                p: 3,
+                textAlign: 'center',
+              }}
+            >
               <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
                 Keine Vorlage ausgewählt.
               </Typography>
               <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
                 Wählen Sie links eine Vorlage, um Betreff und Wortlaut anzupassen.
               </Typography>
-            </Paper>
+            </Box>
           )}
           {!isLoadingTemplate && template && (
             // Der Schlüssel trägt den Stand: Nach Speichern oder Zurücksetzen ist die Antwort

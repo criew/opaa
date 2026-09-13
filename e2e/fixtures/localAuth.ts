@@ -70,16 +70,26 @@ export async function signOut(page: Page): Promise<void> {
 }
 
 /**
- * Accepts every `window.confirm` of this page for the rest of the scenario.
+ * Accepts every confirmation of this page for the rest of the scenario.
  *
  * The consequence dialogs of the administration (switching the local account management off,
- * locking, resetting, deleting) are native confirms; without a handler Playwright dismisses them,
- * and the action under test silently does not happen.
+ * locking, resetting, deleting) are the app's own confirmation overlay (#1610), not a browser
+ * dialog: they are part of the page and block it until they are answered. A registered handler is
+ * what keeps the promise scenario-wide - Playwright runs it whenever the overlay stands between it
+ * and an action or an auto-waiting assertion - so no scenario has to know which of its steps asks.
+ *
+ * The accepting button carries the verb of the action ("Löschen", "Abschalten", ...), so it is
+ * addressed by its fixed id, not by a name. Playwright's default wait for the overlay to be hidden
+ * again after the handler is kept on purpose: the click really does close it, and the wait turns a
+ * confirmation that stays open into a failure here rather than into a puzzling one later.
  */
-export function acceptConfirmDialogs(page: Page): void {
-  page.on("dialog", (dialog) => {
-    void dialog.accept();
-  });
+export async function acceptConfirmDialogs(page: Page): Promise<void> {
+  await page.addLocatorHandler(
+    page.getByRole("dialog").filter({ has: page.locator("#confirm-question") }),
+    async (overlay) => {
+      await overlay.locator("#confirm-accept").click();
+    },
+  );
 }
 
 /**

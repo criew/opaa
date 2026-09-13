@@ -300,11 +300,13 @@ function AccountCard(props: RowProps) {
     <Box
       component="article"
       aria-label={account.displayName ?? account.email ?? account.id}
+      // Auch schmal ein Listeneintrag, keine Karte (#1608) - dieselbe Sprache wie die Tabelle
+      // daneben, nur einspaltig.
       sx={{
-        border: 1,
+        borderBottom: 1,
         borderColor: 'divider',
-        borderRadius: `${radius.md}px`,
-        p: 1.5,
+        py: 1.5,
+        '&:last-of-type': { borderBottom: 0 },
       }}
     >
       <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
@@ -519,7 +521,7 @@ export default function AccountList({ currentUserId, ...handlers }: AccountListP
           </TableBody>
         </Table>
       ) : (
-        <Stack spacing={1}>
+        <Stack spacing={0}>
           {accounts.map((account) => (
             <AccountCard
               key={account.id}

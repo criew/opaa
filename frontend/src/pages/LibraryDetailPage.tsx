@@ -73,6 +73,7 @@ import type {
 import { detachSpaceLibrary, getLibraryFolder, getLibrarySpaceAssociations } from '../services/api'
 import { confluenceEditionLabel } from '../utils/labels'
 import { useAuthStore } from '../stores/authStore'
+import { confirmAction } from '../stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { DEFAULT_PAGE_SIZE, useDocumentStore } from '../stores/documentStore'
 import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
@@ -472,10 +473,15 @@ export default function LibraryDetailPage() {
     // gesamten indizierten Bestand - eine stärkere Wirkung als bei einer UPLOAD-Bibliothek, deren
     // Löschung blockiert bleibt, solange sie noch Dokumente enthält.
     const isConnectorLibrary = details != null && details.sourceType !== 'UPLOAD'
-    const confirmMessage = isConnectorLibrary
-      ? `Bibliothek "${library.name}" löschen? Das entfernt auch alle indizierten Dokumente dieser Bibliothek. Diese Aktion kann nicht rückgängig gemacht werden.`
-      : `Bibliothek "${library.name}" löschen? Diese Aktion kann nicht rückgängig gemacht werden.`
-    if (!window.confirm(confirmMessage)) return
+    const confirmed = await confirmAction({
+      question: `Bibliothek "${library.name}" löschen?`,
+      consequence: isConnectorLibrary
+        ? 'Das entfernt auch alle indizierten Dokumente dieser Bibliothek. Diese Aktion kann nicht rückgängig gemacht werden.'
+        : 'Diese Aktion kann nicht rückgängig gemacht werden.',
+      confirmLabel: 'Löschen',
+      tone: 'danger',
+    })
+    if (!confirmed) return
     setLocalError(null)
     try {
       await deleteExistingLibrary(libraryId)
@@ -1528,13 +1534,19 @@ function LibraryDocumentsSection({
     } catch {
       // Falls back to the (possibly stale) count already shown in the row above.
     }
-    const confirmMessage =
+    const question =
       documentCount > 0
         ? `Ordner "${folder.name}" und ${documentCount} ${
             documentCount === 1 ? 'Dokument' : 'Dokumente'
-          } löschen? Diese Aktion kann nicht rückgängig gemacht werden.`
-        : `Ordner "${folder.name}" löschen? Diese Aktion kann nicht rückgängig gemacht werden.`
-    if (!window.confirm(confirmMessage)) return
+          } löschen?`
+        : `Ordner "${folder.name}" löschen?`
+    const confirmed = await confirmAction({
+      question,
+      consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+      confirmLabel: 'Löschen',
+      tone: 'danger',
+    })
+    if (!confirmed) return
     try {
       await removeFolder(libraryId, folder.id)
       onDocumentsChanged()
@@ -1630,13 +1642,13 @@ function LibraryDocumentsSection({
   }
 
   async function handleDelete(document: LibraryDocumentResponse) {
-    if (
-      !window.confirm(
-        `Dokument "${document.fileName}" löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
-      )
-    ) {
-      return
-    }
+    const confirmed = await confirmAction({
+      question: `Dokument "${document.fileName}" löschen?`,
+      consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+      confirmLabel: 'Löschen',
+      tone: 'danger',
+    })
+    if (!confirmed) return
     try {
       await removeDocument(libraryId, document.id)
       onDocumentsChanged()
@@ -2019,8 +2031,9 @@ function LibraryDocumentsSection({
       )}
       {/* #822: hidden while either folder dialog is open - both already show the same
           documentStore.folderError locally (see NewFolderDialog/RenameFolderDialog below), and
-          showing it here too would duplicate the message on the page behind the dialog. Delete
-          has no dialog of its own (a window.confirm instead), so this remains its only display. */}
+          showing it here too would duplicate the message on the page behind the dialog. The
+          delete confirmation overlay shows no error of its own, so this stays the only display
+          for a failed folder deletion. */}
       {folderError && !newFolderDialogOpen && !renameFolderTarget && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={clearFolderError}>
           {folderError}
@@ -2558,7 +2571,12 @@ function LibrarySpacesSection({ libraryId }: LibrarySpacesSectionProps) {
   }, [libraryId])
 
   async function handleDetach(spaceId: string, spaceName: string) {
-    if (!window.confirm(`Bereitstellung im Space "${spaceName}" lösen?`)) return
+    const confirmed = await confirmAction({
+      question: `Bereitstellung im Space "${spaceName}" lösen?`,
+      confirmLabel: 'Lösen',
+      tone: 'neutral',
+    })
+    if (!confirmed) return
     setError(null)
     try {
       await detachSpaceLibrary(spaceId, libraryId)
@@ -3016,7 +3034,7 @@ function LibraryIndexingHistorySection({
       ) : (
         <Stack spacing={1}>
           {runs.map((run) => (
-            <Accordion key={run.id} disableGutters variant="outlined">
+            <Accordion key={run.id}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Stack
                   direction="row"

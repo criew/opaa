@@ -15,6 +15,7 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import type { LocalUserResponse } from '../../../types/api'
+import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
 import { useUserAdminStore } from '../../../stores/userAdminStore'
 import type { SetupLinkHandover } from './SetupLinkDialog'
@@ -55,9 +56,12 @@ interface LocalUserRowMenuProps {
 }
 
 /**
- * Das Zeilenmenü eines lokalen Kontos (#1541). Jede Handlung bestätigt ihre Konsequenz über
- * `window.confirm` (projektweites Muster), die einmaligen Anzeigen – Link und erzeugtes Passwort –
- * laufen über ihren eigenen Dialog.
+ * Das Zeilenmenü eines lokalen Kontos (#1541). Jede Handlung außer „Entsperren" legt ihre
+ * Konsequenz vorher im Bestätigungs-Overlay vor (Richtlinie 5.10); die einmaligen Anzeigen –
+ * Link und erzeugtes Passwort – laufen über ihren eigenen Dialog.
+ *
+ * Das Menü schließt sich, bevor das Overlay aufgeht: Zwei übereinanderliegende Ebenen mit
+ * eigenem Fokusfang wären sonst weder mit der Tastatur noch mit einem Screenreader zu verlassen.
  *
  * „Entsperren" erscheint nur an einem gesperrten Konto (sonst 409 `NOT_LOCKED`), „Löschen" steht
  * nachrangig unter einer Trennlinie: Sperren ist der Regelweg (ADR-0033, Entscheidung 11).
@@ -91,8 +95,18 @@ export default function LocalUserRowMenu({
     }
   }
 
-  function lock() {
-    if (!window.confirm(`„${user.displayName}“ sperren?\n\n${LOCK_CONSEQUENCE}`)) return close()
+  async function lock() {
+    close()
+    if (
+      !(await confirmAction({
+        question: `„${user.displayName}“ sperren?`,
+        consequence: LOCK_CONSEQUENCE,
+        confirmLabel: 'Sperren',
+        tone: 'caution',
+      }))
+    ) {
+      return
+    }
     void run(async () => {
       await lockUser(user.id)
       return `„${user.displayName}“ wurde gesperrt.`
@@ -106,11 +120,17 @@ export default function LocalUserRowMenu({
     }, 'Das Konto konnte nicht entsperrt werden.')
   }
 
-  function resetPassword() {
+  async function resetPassword() {
+    close()
     if (
-      !window.confirm(`Passwort von „${user.displayName}“ zurücksetzen?\n\n${RESET_CONSEQUENCE}`)
+      !(await confirmAction({
+        question: `Passwort von „${user.displayName}“ zurücksetzen?`,
+        consequence: RESET_CONSEQUENCE,
+        confirmLabel: 'Zurücksetzen',
+        tone: 'caution',
+      }))
     ) {
-      return close()
+      return
     }
     void run(async () => {
       const result = await resetUserPassword(user.id)
@@ -127,13 +147,17 @@ export default function LocalUserRowMenu({
     }, 'Das Zurücksetzen ist fehlgeschlagen.')
   }
 
-  function generatePassword() {
+  async function generatePassword() {
+    close()
     if (
-      !window.confirm(
-        `Passwort für „${user.displayName}“ erzeugen?\n\n${GENERATE_PASSWORD_CONSEQUENCE}`,
-      )
+      !(await confirmAction({
+        question: `Passwort für „${user.displayName}“ erzeugen?`,
+        consequence: GENERATE_PASSWORD_CONSEQUENCE,
+        confirmLabel: 'Erzeugen',
+        tone: 'caution',
+      }))
     ) {
-      return close()
+      return
     }
     void run(async () => {
       const result = await generateUserPassword(user.id)
@@ -142,8 +166,18 @@ export default function LocalUserRowMenu({
     }, 'Das Passwort konnte nicht erzeugt werden.')
   }
 
-  function remove() {
-    if (!window.confirm(`„${user.displayName}“ löschen?\n\n${DELETE_CONSEQUENCE}`)) return close()
+  async function remove() {
+    close()
+    if (
+      !(await confirmAction({
+        question: `„${user.displayName}“ löschen?`,
+        consequence: DELETE_CONSEQUENCE,
+        confirmLabel: 'Löschen',
+        tone: 'danger',
+      }))
+    ) {
+      return
+    }
     void run(async () => {
       await deleteUser(user.id)
       return `„${user.displayName}“ wurde gelöscht.`
@@ -200,7 +234,7 @@ export default function LocalUserRowMenu({
           </MenuItem>
         ) : (
           <MenuItem
-            onClick={lock}
+            onClick={() => void lock()}
             disabled={lockDisabled}
             // Kein <span> um den Eintrag: Ein Zwischenelement im `menu` verletzt
             // `aria-required-children` (Review-Runde 1). Die Begründung hängt deshalb als
@@ -214,13 +248,13 @@ export default function LocalUserRowMenu({
             Sperren
           </MenuItem>
         )}
-        <MenuItem onClick={resetPassword}>
+        <MenuItem onClick={() => void resetPassword()}>
           <ListItemIcon>
             <MailOutlinedIcon fontSize="small" />
           </ListItemIcon>
           Rücksetz-Link per E-Mail
         </MenuItem>
-        <MenuItem onClick={generatePassword}>
+        <MenuItem onClick={() => void generatePassword()}>
           <ListItemIcon>
             <KeyOutlinedIcon fontSize="small" />
           </ListItemIcon>
@@ -228,7 +262,7 @@ export default function LocalUserRowMenu({
         </MenuItem>
         <Divider />
         <MenuItem
-          onClick={remove}
+          onClick={() => void remove()}
           disabled={deleteDisabled}
           title={deleteTooltip || undefined}
           aria-describedby={deleteDisabled ? reasonId : undefined}

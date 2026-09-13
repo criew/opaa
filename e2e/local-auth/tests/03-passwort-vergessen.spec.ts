@@ -27,7 +27,7 @@ test.describe("Passwort vergessen, Rücksetzen, alte Sitzung endet", () => {
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext();
     const admin = await context.newPage();
-    acceptConfirmDialogs(admin);
+    await acceptConfirmDialogs(admin);
     await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password, {
       route: "/login/system",
     });

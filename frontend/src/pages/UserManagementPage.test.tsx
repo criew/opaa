@@ -14,7 +14,7 @@ import {
 } from '../mocks/localUserFixtures'
 import { resetMockProviderAccounts } from '../mocks/accountFixtures'
 import type { LocalAuthSettingsUpdateRequest, LocalUserUpdateRequest } from '../types/api'
-import { renderWithProviders } from '../test/test-utils'
+import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { useMailStore } from '../stores/mailStore'
 import { useUserAdminStore } from '../stores/userAdminStore'
@@ -101,7 +101,6 @@ describe('UserManagementPage', () => {
     useUserAdminStore.getState().reset()
     useMailStore.getState().reset()
     resetMockProviderAccounts()
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
   it('shows no user management to an account that is not a system administrator', () => {
@@ -443,10 +442,14 @@ describe('UserManagementPage', () => {
     const menu = await openRowMenu(user, 'T. Klein')
     await user.click(within(menu).getByRole('menuitem', { name: 'Sperren' }))
 
+    // Die Folge steht im Overlay, bevor gesperrt wird - sie ist die Entscheidungsgrundlage.
+    const sperrfrage = await screen.findByRole('dialog', { name: /„T\. Klein“ sperren\?/ })
+    expect(sperrfrage).toHaveTextContent('Sitzungen enden sofort')
+    await user.click(within(sperrfrage).getByRole('button', { name: 'Sperren' }))
+
     await waitFor(() =>
       expect(within(rowOf('T. Klein')).getByText('Gesperrt (Verwalter)')).toBeInTheDocument(),
     )
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('Sitzungen enden sofort'))
 
     const lockedMenu = await openRowMenu(user, 'T. Klein')
     expect(within(lockedMenu).queryByRole('menuitem', { name: 'Sperren' })).not.toBeInTheDocument()
@@ -558,10 +561,13 @@ describe('UserManagementPage', () => {
     const menu = await openRowMenu(user, 'M. Weber (Partner)', 'm.weber@partner.example')
     await user.click(within(menu).getByRole('menuitem', { name: 'Löschen' }))
 
+    const loeschfrage = await screen.findByRole('dialog', { name: /„M\. Weber.*“ löschen\?/ })
+    expect(loeschfrage).toHaveTextContent('Sperren ist der Regelweg')
+    await user.click(within(loeschfrage).getByRole('button', { name: 'Löschen' }))
+
     expect(
       await screen.findByText(/in Nachweis- oder Rechtebeständen referenziert/),
     ).toBeInTheDocument()
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('Sperren ist der Regelweg'))
   })
 
   it('shows the lockout guard refusal as the next step to take', async () => {
@@ -573,6 +579,7 @@ describe('UserManagementPage', () => {
 
     const menu = await openRowMenu(user, 'J. Hoffmann')
     await user.click(within(menu).getByRole('menuitem', { name: 'Sperren' }))
+    await answerConfirm(user, /„J\. Hoffmann“ sperren\?/, 'Sperren')
 
     expect(
       await screen.findByText(/Richten Sie zuerst ein weiteres Systemverwalterkonto/),
@@ -587,11 +594,13 @@ describe('UserManagementPage', () => {
 
     const resetMenu = await openRowMenu(user, 'R. Sommer')
     await user.click(within(resetMenu).getByRole('menuitem', { name: /Rücksetz-Link/ }))
+    await answerConfirm(user, /Passwort von „R\. Sommer“ zurücksetzen\?/, 'Zurücksetzen')
     await waitFor(() => expect(screen.getByText(/wurde an .* versendet/)).toBeInTheDocument())
     expect(screen.queryByTestId('setup-link-value')).not.toBeInTheDocument()
 
     const deleteMenu = await openRowMenu(user, 'R. Sommer')
     await user.click(within(deleteMenu).getByRole('menuitem', { name: 'Löschen' }))
+    await answerConfirm(user, /„R\. Sommer“ löschen\?/, 'Löschen')
     await waitFor(() => expect(screen.queryByText('R. Sommer')).not.toBeInTheDocument())
   })
 
@@ -602,9 +611,12 @@ describe('UserManagementPage', () => {
 
     await user.click(await screen.findByRole('switch', { name: 'Lokale Anmeldung aktiv' }))
 
-    expect(window.confirm).toHaveBeenCalledWith(
-      expect.stringContaining('Lokale Systemverwalter bleiben angemeldet'),
-    )
+    const abschaltfrage = await screen.findByRole('dialog', {
+      name: 'Lokale Anmeldung abschalten?',
+    })
+    expect(abschaltfrage).toHaveTextContent('Lokale Systemverwalter bleiben angemeldet')
+    await user.click(within(abschaltfrage).getByRole('button', { name: 'Abschalten' }))
+
     expect(await screen.findByText(/haben ihre Sitzung verloren/)).toBeInTheDocument()
     await waitFor(() => expect(useUserAdminStore.getState().settings?.enabled).toBe(false))
   })
@@ -660,6 +672,7 @@ describe('UserManagementPage', () => {
 
     await user.type(await screen.findByLabelText(/Adress-Domänen/), 'amt.example')
     await user.click(screen.getByRole('switch', { name: 'Selbstregistrierung' }))
+    await answerConfirm(user, 'Selbstregistrierung einschalten?', 'Einschalten')
 
     await waitFor(() => expect(bodies).toHaveLength(1))
     // Die Domänenliste ist die Vorbedingung genau dieses Schalters und reist deshalb mit.
@@ -709,9 +722,11 @@ describe('UserManagementPage', () => {
 
     await user.type(screen.getByLabelText(/Adress-Domänen/), 'stadt.example')
     await user.click(screen.getByRole('switch', { name: 'Selbstregistrierung' }))
-    expect(window.confirm).toHaveBeenCalledWith(
-      expect.stringContaining('öffentlich erreichbares Formular'),
-    )
+    const einschaltfrage = await screen.findByRole('dialog', {
+      name: 'Selbstregistrierung einschalten?',
+    })
+    expect(einschaltfrage).toHaveTextContent('öffentlich erreichbares Formular')
+    await user.click(within(einschaltfrage).getByRole('button', { name: 'Einschalten' }))
     await waitFor(() =>
       expect(useUserAdminStore.getState().settings?.selfRegistrationEnabled).toBe(true),
     )

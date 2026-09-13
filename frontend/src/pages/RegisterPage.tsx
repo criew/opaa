@@ -137,7 +137,7 @@ export default function RegisterPage() {
 
   return (
     <AuthLayout>
-      <PageHeading title={HEADING} variant="h6" />
+      <PageHeading title={HEADING} variant="h5" />
       {formError && (
         <Alert ref={alertRef} tabIndex={-1} severity="error" sx={{ mt: 2, textAlign: 'left' }}>
           {formError}

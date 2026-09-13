@@ -25,7 +25,7 @@ test.describe("Einladung, Passwort setzen, erste Anmeldung", () => {
 
   test.beforeAll(async ({ browser }) => {
     const page = await browser.newPage();
-    acceptConfirmDialogs(page);
+    await acceptConfirmDialogs(page);
     await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password, {
       route: "/login/system",
     });
@@ -39,7 +39,7 @@ test.describe("Einladung, Passwort setzen, erste Anmeldung", () => {
   }) => {
     const adminContext = await browser.newContext();
     const admin = await adminContext.newPage();
-    acceptConfirmDialogs(admin);
+    await acceptConfirmDialogs(admin);
     await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password);
 
     await clearMailbox();
@@ -124,7 +124,7 @@ test.describe("Einladung, Passwort setzen, erste Anmeldung", () => {
   test("ein Anfangspasswort erzwingt den Wechsel bei der ersten Anmeldung", async ({ browser }) => {
     const adminContext = await browser.newContext();
     const admin = await adminContext.newPage();
-    acceptConfirmDialogs(admin);
+    await acceptConfirmDialogs(admin);
     await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password);
 
     const address = uniqueAddress("thomas.kranz");

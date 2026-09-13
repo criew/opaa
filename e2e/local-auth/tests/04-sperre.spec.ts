@@ -32,7 +32,7 @@ test.describe("Fehlversuche sperren, Verwalter entsperrt", () => {
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext();
     const admin = await context.newPage();
-    acceptConfirmDialogs(admin);
+    await acceptConfirmDialogs(admin);
     await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password, {
       route: "/login/system",
     });
@@ -77,7 +77,7 @@ test.describe("Fehlversuche sperren, Verwalter entsperrt", () => {
     // unlocking takes nothing away from anyone.
     const adminContext = await browser.newContext();
     const admin = await adminContext.newPage();
-    acceptConfirmDialogs(admin);
+    await acceptConfirmDialogs(admin);
     await signInSuccessfully(admin, bootstrapAdmin.email, bootstrapAdmin.password);
     await clearMailbox();
     await openAccountList(admin);

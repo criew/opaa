@@ -1,7 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished } from 'vitest'
 import { delay, http, HttpResponse } from 'msw'
+import { Navigate, Route, Routes } from 'react-router'
 import { server } from '../mocks/server'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
@@ -14,23 +15,6 @@ import {
   mockSearchStatus,
 } from '../mocks/fixtures'
 import SearchIndexingAdminPage from './SearchIndexingAdminPage'
-
-// A test wrapper around the real table counts its renders without reaching into React internals:
-// the page must not re-render it while the diagnosis form is typed in.
-const { libraryStatusTableRenderSpy } = vi.hoisted(() => ({
-  libraryStatusTableRenderSpy: vi.fn(),
-}))
-vi.mock('../components/searchadmin/LibraryStatusTable', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('../components/searchadmin/LibraryStatusTable')>()
-  return {
-    ...actual,
-    default: (props: Parameters<typeof actual.default>[0]) => {
-      libraryStatusTableRenderSpy()
-      return <actual.default {...props} />
-    },
-  }
-})
 
 function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
   useAuthStore.setState({
@@ -49,6 +33,33 @@ function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
   })
 }
 
+/**
+ * Die Seite liest ihren Bereich aus der Route (`/admin/search/:tab`), also montieren die Tests sie
+ * unter denselben Routen wie App.tsx - einschließlich der Umleitung des bloßen Pfades.
+ */
+function renderPage(route = '/admin/search/overview') {
+  return renderWithProviders(
+    <Routes>
+      <Route path="/admin/search" element={<Navigate to="/admin/search/overview" replace />} />
+      <Route path="/admin/search/:tab" element={<SearchIndexingAdminPage />} />
+    </Routes>,
+    { withRouter: true, initialRoute: route },
+  )
+}
+
+const renderOverview = () => renderPage('/admin/search/overview')
+const renderIndex = () => renderPage('/admin/search/index')
+const renderDiagnosis = () => renderPage('/admin/search/diagnosis')
+
+/**
+ * „Der Diagnosekontext ist geladen“ - der Hinweis unter „Sicht als“ nennt die Voreinstellung erst,
+ * wenn Rechteprofile vorliegen; vorher erklärt er die leere Liste. Für den Diagnose-Reiter ist er
+ * damit dasselbe Bereitschaftssignal, das die Tabelle für den Indexstatus-Reiter ist.
+ */
+async function waitForDiagnosisContext() {
+  await screen.findByText(/Voreingestellt ist ein Rechteprofil/)
+}
+
 async function runDiagnosis(user: ReturnType<typeof userEvent.setup>) {
   await user.type(
     screen.getByRole('textbox', { name: /Testfrage/ }),
@@ -62,26 +73,94 @@ describe('SearchIndexingAdminPage', () => {
     useSearchAdminStore.getState().reset()
   })
 
+  /**
+   * Die Bereiche sind Routen, keine Zustände (#1616): Ein Verweis soll im richtigen Bereich
+   * landen, und ein Neuladen ihn behalten. Der bloße Pfad landet deshalb auf dem ersten Reiter,
+   * und ein Tippfehler wird nicht stillschweigend umgedeutet - die Adresszeile sagt, was zu
+   * sehen ist.
+   */
+  it('lands on the overview and keeps a typo out of the address bar', async () => {
+    signInAs('SYSTEM_ADMIN')
+    renderPage('/admin/search')
+
+    expect(await screen.findByRole('tab', { name: 'Überblick' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  it('sends an unknown area back to the overview', async () => {
+    signInAs('SYSTEM_ADMIN')
+    renderPage('/admin/search/quatsch')
+
+    expect(await screen.findByRole('tab', { name: 'Überblick' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  /**
+   * Jeder Reiter holt nur, was er zeigt. Vorher lud die Seite Status **und** Diagnosekontext in
+   * einem Zug, obwohl das meiste davon unsichtbar blieb.
+   */
+  it('fetches only what the open area shows', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const aufrufe: string[] = []
+    const horcher = ({ request }: { request: Request }) => {
+      const pfad = new URL(request.url).pathname
+      if (pfad.startsWith('/api/v1/admin/search/')) aufrufe.push(pfad)
+    }
+    server.events.on('request:start', horcher)
+    onTestFinished(() => server.events.removeListener('request:start', horcher))
+
+    renderIndex()
+    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+
+    expect(aufrufe).toEqual(['/api/v1/admin/search/status'])
+  })
+
+  it('fetches the diagnosis context, and no status, in the diagnosis area', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const aufrufe: string[] = []
+    const horcher = ({ request }: { request: Request }) => {
+      const pfad = new URL(request.url).pathname
+      if (pfad.startsWith('/api/v1/admin/search/')) aufrufe.push(pfad)
+    }
+    server.events.on('request:start', horcher)
+    onTestFinished(() => server.events.removeListener('request:start', horcher))
+
+    renderDiagnosis()
+    await waitForDiagnosisContext()
+
+    expect(aufrufe).toEqual(['/api/v1/admin/search/diagnosis-context'])
+  })
+
   it('shows nothing but a note to a user who is not a system administrator', () => {
     signInAs('USER')
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderOverview()
 
     expect(screen.getByText(/nicht freigegeben/i)).toBeInTheDocument()
+    // Ohne die Rolle fehlt auch die Reiterleiste: Keiner der drei Bereiche ist erreichbar - die
+    // Diagnose also auch dann nicht, wenn ihr Reiter der geöffnete wäre.
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Diagnose ausführen' })).not.toBeInTheDocument()
   })
 
   it('shows the three model roles and never an access key', async () => {
     signInAs('SYSTEM_ADMIN')
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderOverview()
 
+    // Rolle und Zustand stehen seit #1608 im Text der Zeile, nicht mehr als `aria-label` an einem
+    // Chip: Die Aussage ist damit für alle sichtbar dieselbe, nicht nur für Screenreader.
     await waitFor(() => {
-      expect(screen.getByLabelText('Chat: Aktiv und erreichbar')).toBeInTheDocument()
+      expect(screen.getByText('Chat — Aktiv und erreichbar')).toBeInTheDocument()
     })
-    expect(screen.getByLabelText('Einbettung: Aktiv und erreichbar')).toBeInTheDocument()
-    expect(screen.getByLabelText('Reranking: Ausdrücklich abgeschaltet')).toBeInTheDocument()
-    expect(screen.getByText('Endpunkt: http://localhost:11434/v1')).toBeInTheDocument()
+    expect(screen.getByText('Einbettung — Aktiv und erreichbar')).toBeInTheDocument()
+    expect(screen.getByText('Reranking — Ausdrücklich abgeschaltet')).toBeInTheDocument()
+    // Endpunkt und Kennung stehen als Schlüssel-Wert-Paar, nicht mehr in einem Fließtext
+    expect(screen.getByText('http://localhost:11434/v1')).toBeInTheDocument()
     expect(document.body.textContent).not.toMatch(/Schlüssel|apiKey|Bearer/)
   })
 
@@ -106,7 +185,7 @@ describe('SearchIndexingAdminPage', () => {
       ),
     )
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderOverview()
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/keine Rerank-Modellrolle hinterlegt/)
@@ -116,7 +195,7 @@ describe('SearchIndexingAdminPage', () => {
   it('shows the per-library index status including the low-chunk metric', async () => {
     signInAs('SYSTEM_ADMIN')
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderIndex()
 
     const table = await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
     const row = within(table).getByText('Satzungen & Gebuehrenordnungen').closest('tr')
@@ -144,24 +223,28 @@ describe('SearchIndexingAdminPage', () => {
     expect(within(readyRow as HTMLElement).queryByText(/Abschnitt/)).toBeNull()
   })
 
-  it('does not re-render the library status table while typing in the diagnosis form', async () => {
+  // Nur der aktive Reiter ist montiert: Die Tabelle des Indexstatus steht während der Diagnose gar
+  // nicht im DOM - auch nicht verborgen -, kann von einem Tastendruck im Diagnoseformular also
+  // weder neu gerendert werden noch ihre Daten laden.
+  it('keeps the library status table out of the DOM while the diagnosis tab is open', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
-
-    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
-    const rendersAfterMount = libraryStatusTableRenderSpy.mock.calls.length
+    renderDiagnosis()
+    await waitForDiagnosisContext()
 
     await user.type(screen.getByRole('textbox', { name: /Testfrage/ }), 'Wer')
 
-    expect(libraryStatusTableRenderSpy.mock.calls.length).toBe(rendersAfterMount)
+    expect(
+      screen.queryByRole('table', { name: 'Indexstatus je Bibliothek' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Satzungen & Gebuehrenordnungen')).not.toBeInTheDocument()
   })
 
   it('shows the core-field extraction state and the fill per field in the library row', async () => {
     signInAs('SYSTEM_ADMIN')
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderIndex()
 
     const table = await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
     const row = within(table).getByText('Satzungen & Gebuehrenordnungen').closest('tr')
@@ -256,7 +339,7 @@ describe('SearchIndexingAdminPage', () => {
       }),
     )
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderIndex()
     const user = userEvent.setup()
     await user.click(
       await screen.findByRole('button', {
@@ -311,7 +394,7 @@ describe('SearchIndexingAdminPage', () => {
       }),
     )
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderIndex()
     const table = await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
     const row = within(table).getByText('Satzungen & Gebuehrenordnungen').closest('tr')
     // The Mischzustand is visible in the same table as the rest of the index state.
@@ -349,7 +432,7 @@ describe('SearchIndexingAdminPage', () => {
       }),
     )
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderIndex()
     const user = userEvent.setup()
     await user.click(
       await screen.findByRole('button', {
@@ -372,10 +455,11 @@ describe('SearchIndexingAdminPage', () => {
   it('offers the person context only with the befugnis, and explains why it is unselectable', async () => {
     signInAs('SYSTEM_ADMIN')
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderDiagnosis()
     const user = userEvent.setup()
 
-    const contextSelect = await screen.findByRole('combobox', { name: /Sicht als/ })
+    await waitForDiagnosisContext()
+    const contextSelect = screen.getByRole('combobox', { name: /Sicht als/ })
     await user.click(contextSelect)
 
     const options = within(screen.getByRole('listbox')).getAllByRole('option')
@@ -397,7 +481,7 @@ describe('SearchIndexingAdminPage', () => {
       ),
     )
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderDiagnosis()
 
     expect(
       await screen.findByText(/Ein Rechteprofil ist eine Gruppe zusammen mit den Bibliotheken/),
@@ -430,10 +514,11 @@ describe('SearchIndexingAdminPage', () => {
       }),
     )
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderDiagnosis()
     const user = userEvent.setup()
 
-    const contextSelect = await screen.findByRole('combobox', { name: /Sicht als/ })
+    await waitForDiagnosisContext()
+    const contextSelect = screen.getByRole('combobox', { name: /Sicht als/ })
     await user.click(contextSelect)
     await user.click(within(screen.getByRole('listbox')).getByRole('option', { name: /Person/ }))
 
@@ -481,10 +566,11 @@ describe('SearchIndexingAdminPage', () => {
       ),
     )
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderDiagnosis()
     const user = userEvent.setup()
 
-    const contextSelect = await screen.findByRole('combobox', { name: /Sicht als/ })
+    await waitForDiagnosisContext()
+    const contextSelect = screen.getByRole('combobox', { name: /Sicht als/ })
     await user.click(contextSelect)
     await user.click(within(screen.getByRole('listbox')).getByRole('option', { name: /Person/ }))
     await user.click(screen.getByRole('textbox', { name: /Testfrage/ }))
@@ -524,9 +610,9 @@ describe('SearchIndexingAdminPage', () => {
       ),
     )
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderDiagnosis()
     const user = userEvent.setup()
-    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+    await waitForDiagnosisContext()
     await user.type(screen.getByRole('textbox', { name: /Dokument verfolgen/ }), 'doc-personalakte')
     await runDiagnosis(user)
 
@@ -540,9 +626,9 @@ describe('SearchIndexingAdminPage', () => {
   it('shows every pipeline stage of the run with its own candidate verdicts', async () => {
     signInAs('SYSTEM_ADMIN')
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderDiagnosis()
     const user = userEvent.setup()
-    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+    await waitForDiagnosisContext()
     await runDiagnosis(user)
 
     await waitFor(() => {
@@ -573,9 +659,9 @@ describe('SearchIndexingAdminPage', () => {
       }),
     )
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderDiagnosis()
     const user = userEvent.setup()
-    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+    await waitForDiagnosisContext()
 
     await user.click(await screen.findByRole('combobox', { name: /Metadatenfilter: Dokumentart/ }))
     await user.click(within(screen.getByRole('listbox')).getByRole('option', { name: 'Vermerk' }))
@@ -595,9 +681,9 @@ describe('SearchIndexingAdminPage', () => {
   it('says plainly whether a tracked document was never found or displaced at a stage', async () => {
     signInAs('SYSTEM_ADMIN')
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderDiagnosis()
     const user = userEvent.setup()
-    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+    await waitForDiagnosisContext()
     await user.type(screen.getByRole('textbox', { name: /Dokument verfolgen/ }), 'doc-formular')
     await runDiagnosis(user)
 
@@ -628,9 +714,9 @@ describe('SearchIndexingAdminPage', () => {
       ),
     )
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderDiagnosis()
     const user = userEvent.setup()
-    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+    await waitForDiagnosisContext()
     await runDiagnosis(user)
 
     await waitFor(() => {
@@ -642,7 +728,7 @@ describe('SearchIndexingAdminPage', () => {
   it('states that the diagnosis reads no conversations and answers only the current state', () => {
     signInAs('SYSTEM_ADMIN')
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderDiagnosis()
 
     expect(screen.getByText(/liest keine bestehenden Gespräche/)).toBeInTheDocument()
     expect(screen.getByText(/kein Nachweis über zurückliegende Zugriffe/)).toBeInTheDocument()
@@ -651,9 +737,9 @@ describe('SearchIndexingAdminPage', () => {
   it('opens a chunk preview from a stage table with content, metadata and a copyable id', async () => {
     signInAs('SYSTEM_ADMIN')
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderDiagnosis()
     const user = userEvent.setup()
-    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+    await waitForDiagnosisContext()
     await runDiagnosis(user)
 
     await user.click(await screen.findByRole('button', { name: /^Vektorsuche/ }))
@@ -694,9 +780,9 @@ describe('SearchIndexingAdminPage', () => {
       ),
     )
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderDiagnosis()
     const user = userEvent.setup()
-    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+    await waitForDiagnosisContext()
     await runDiagnosis(user)
 
     const selection = await screen.findByRole('table', { name: 'Endauswahl' })
@@ -711,9 +797,9 @@ describe('SearchIndexingAdminPage', () => {
   it('lists every stored chunk of a document in order and flags a count mismatch', async () => {
     signInAs('SYSTEM_ADMIN')
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderDiagnosis()
     const user = userEvent.setup()
-    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+    await waitForDiagnosisContext()
 
     await user.click(screen.getByRole('textbox', { name: 'Dokument-ID' }))
     await user.paste(MOCK_SATZUNG_DOCUMENT_ID)
@@ -738,9 +824,9 @@ describe('SearchIndexingAdminPage', () => {
   it('reports an unknown document id instead of an empty list', async () => {
     signInAs('SYSTEM_ADMIN')
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderDiagnosis()
     const user = userEvent.setup()
-    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+    await waitForDiagnosisContext()
 
     await user.click(screen.getByRole('textbox', { name: 'Dokument-ID' }))
     await user.paste('99999999-9999-4999-8999-999999999999')
@@ -752,9 +838,9 @@ describe('SearchIndexingAdminPage', () => {
   it('jumps from a document title in the diagnosis to the chunks of that document', async () => {
     signInAs('SYSTEM_ADMIN')
 
-    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderDiagnosis()
     const user = userEvent.setup()
-    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+    await waitForDiagnosisContext()
     await runDiagnosis(user)
 
     const selection = await screen.findByRole('table', { name: 'Endauswahl' })

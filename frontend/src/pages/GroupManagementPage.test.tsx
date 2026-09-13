@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithProviders } from '../test/test-utils'
+import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import GroupManagementPage from './GroupManagementPage'
 import { useGroupStore } from '../stores/groupStore'
 import type { GroupListResponse, GroupResponse } from '../types/api'
@@ -162,6 +162,20 @@ describe('GroupManagementPage', () => {
     expect(screen.getByText(/aus dem verzeichnis synchronisiert/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /gruppe löschen/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^entfernen$/i })).not.toBeInTheDocument()
+  })
+
+  it('deletes an ad-hoc group once the confirmation was answered', async () => {
+    setGroupState([adHocGroup], { 'group-phoenix': adHocDetails })
+    renderWithProviders(<GroupManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
+    await user.click(await screen.findByRole('button', { name: /gruppe löschen/i }))
+    await answerConfirm(user, 'Gruppe "Projektbeteiligte Phoenix" löschen?', 'Löschen')
+
+    await waitFor(() => {
+      expect(mockDeleteGroup).toHaveBeenCalledWith('group-phoenix')
+    })
   })
 
   it('creates a new group through the dialog', async () => {

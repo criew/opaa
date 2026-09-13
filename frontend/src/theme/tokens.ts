@@ -249,6 +249,22 @@ export const letterSpacing = {
  */
 export const spacingGridPx = 4
 
+/**
+ * Breiten der Bereichsseiten (#1607). Die Seiten hinter einer Bereichsnavigation bilden einen
+ * Satz: Läuft der Inhalt der einen bis zum Fensterrand und der anderen nur bis 960 px, springt die
+ * rechte Kante beim Wechsel zwischen zwei Menüpunkten. Deshalb steht die Breite hier und nicht in
+ * jeder Seite.
+ *
+ * `areaContent` ist die Breite der Kontenliste, der breitesten dieser Seiten - sie trägt sieben
+ * Spalten und gibt damit das Maß vor. `notice` ist die schmalere Fläche der Seiten, die statt
+ * Inhalten nur einen Hinweis zeigen (kein Zugriff): Ein Satz in Lesebreite, nicht über die halbe
+ * Fensterbreite gezogen.
+ */
+export const contentWidth = {
+  areaContent: 1180,
+  notice: 720,
+} as const
+
 /** Radii (guidelines 4.2). `md` is the 10px default for cards, inputs, buttons, dialogs. */
 export const radius = {
   xs: 4,

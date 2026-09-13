@@ -289,7 +289,8 @@ mit Herkunft, Konfidenz und Modell-Kennung.
 Ein Bestand, der vor dieser Fähigkeit aufgenommen wurde, ist leer; ebenso liegen nach einem
 Software-Update mit neuer Extraktionsversion alle Dokumente auf dem alten Regelstand. Beides zieht
 der **Bestandslauf** nach. Er läuft nicht von selbst: Ein Systemadministrator startet ihn je
-Bibliothek auf der Seite **„Suche & Indexierung"** über „Kernfelder nachrüsten"; „Anhalten" und
+Bibliothek auf der Seite **„Suche & Indexierung"** im Reiter **„Indexstatus"** über „Kernfelder
+nachrüsten"; „Anhalten" und
 „Weiter" stehen an derselben Schaltfläche.
 
 Was ein Lauf tut:
@@ -412,7 +413,8 @@ Was der Filter tut:
   und in Fundstellenzeile und Belegfenster als **„ohne Angabe"** gekennzeichnet. Ein zu weiter
   Filter ist ein sichtbares Ärgernis, ein zu enger ein unsichtbarer Fehler.
 - Das Erklärprotokoll einer Antwort nennt den aktiven Filter und je Pfad, wie viele Kandidaten nur
-  wegen der Leerwert-Regel enthalten sind. Die Diagnose auf „Suche & Indexierung" nimmt einen
+  wegen der Leerwert-Regel enthalten sind. Die Diagnose auf „Suche & Indexierung" — im gleichnamigen
+  Reiter — nimmt einen
   Filter entgegen, damit „Sicht als" die gefilterte Frage einer Person prüfen kann.
 
 Die Optionen werden je Person und Suchbereich für fünf Minuten zwischengespeichert und bei jeder
@@ -443,7 +445,8 @@ zunächst auch nicht, weil noch kein Dokument einen Wert trägt.
 **Das Speichern setzt nichts in Bewegung.** Es merkt nur die betroffenen Dokumente vor — genau die,
 die die Vorschau gezählt hat, denn die Auswahl steht auf Dokumentebene über einen Abdruck des
 zuletzt eingebetteten Präfix. Den **Kontextpräfix-Nachlauf** startet ein Systemadministrator je
-Bibliothek auf der Seite **„Suche & Indexierung"**; die Bibliothekseinstellungen zeigen dafür „N
+Bibliothek auf der Seite **„Suche & Indexierung"** im Reiter **„Indexstatus"**; die
+Bibliothekseinstellungen zeigen dafür „N
 Dokumente warten auf Neu-Einbetten". Der Lauf bettet die Abschnitte **unter ihren eigenen Kennungen**
 neu ein, ohne neu zu zerlegen: Belege und Deep Links überleben, die Suche bleibt durchgehend
 verfügbar, und ein Dokument, das nicht verarbeitet werden kann, behält alles, was es hatte. Anhalten

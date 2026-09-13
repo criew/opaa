@@ -5,7 +5,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
-import Paper from '@mui/material/Paper'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
@@ -20,7 +19,7 @@ import type {
 } from '../../../types/api'
 import { useMailStore } from '../../../stores/mailStore'
 import { notify } from '../../../stores/notificationStore'
-import SectionHead from '../../SectionHead'
+import PageSection from '../../PageSection'
 import MailStatusCard from './MailStatusCard'
 import { mailSendResultMessage, mailSendResultSeverity } from './mailStatus'
 
@@ -187,8 +186,7 @@ export default function MailServerSection() {
         </Alert>
       )}
 
-      <Paper variant="outlined" sx={{ p: 3 }}>
-        <SectionHead id="mail-server-fields">Verbindung</SectionHead>
+      <PageSection title="Verbindung">
         <Stack spacing={2.5} component="section" aria-labelledby="mail-server-fields">
           <FormControlLabel
             control={
@@ -331,7 +329,7 @@ export default function MailServerSection() {
             </Alert>
           )}
         </Stack>
-      </Paper>
+      </PageSection>
     </Box>
   )
 }

@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithProviders } from '../test/test-utils'
+import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import SpaceManagementPage from './SpaceManagementPage'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
@@ -295,11 +295,11 @@ describe('SpaceManagementPage', () => {
 
   it('archives the space via the store when the owner confirms', async () => {
     setSpaceState(teamSpace)
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderWithProviders(<SpaceManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: /space archivieren/i }))
+    await answerConfirm(user, 'Diesen Space archivieren?', 'Archivieren')
 
     await waitFor(() => {
       expect(mockArchiveSpace).toHaveBeenCalledWith('space-team')
@@ -315,11 +315,11 @@ describe('SpaceManagementPage', () => {
       ),
     )
     setSpaceState(teamSpace)
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderWithProviders(<SpaceManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: /^space löschen$/i }))
+    await answerConfirm(user, 'Diesen Space löschen?', 'Löschen')
 
     const alertRegion = await screen.findByRole('alert')
     const archiveAction = within(alertRegion).getByRole('button', { name: /space archivieren/i })
