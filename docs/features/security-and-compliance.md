@@ -234,7 +234,11 @@ Selbstregistrierung (`LOCAL_USER_REGISTERED` unter dem Systemprozess `local-auth
 #1535 — die Sperre eines Kontos nach mehreren Fehlversuchen
 (`LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS`, einmal je Sperre, ohne Zähler) und — seit #1542 — die
 Mail-Einstellungen (`MAIL_SETTINGS_CHANGED` ohne den Passwortwert, `MAIL_TEMPLATE_CHANGED`,
-`MAIL_TEMPLATE_RESET`, `MAIL_TEST_SENT`). Die Anfrage
+`MAIL_TEMPLATE_RESET`, `MAIL_TEST_SENT`) und — seit #1563 — Anstoß und Abschluss der Übergabe
+eines lokalen Kontos an eine Anbieteridentität (`LOCAL_USER_HANDOVER_REQUESTED` mit
+Anbieter-Kennung und Zustellweg, `LOCAL_USER_HANDED_OVER` mit Anbieter-Kennung und den Zahlen
+dessen, was mitgegangen ist — nie mit dem Subject der Anbieteridentität; das Widerrufsereignis der
+Sitzungen trägt den Grund `HANDED_OVER`). Die Anfrage
 „Passwort vergessen" ändert keinen Zustand; die Bestätigung der eigenen Adresse ist eine Handlung
 der Person am eigenen Konto und nach ADR-0033, Entscheidung 13, kein Verwaltungsakt — beide
 erzeugen kein Ereignis. Noch **nicht** verdrahtet — weil
@@ -243,8 +247,7 @@ die jeweilige Funktion selbst noch fehlt, nicht weil sie ausgenommen wäre: Abla
 Bibliothek in einem Space, Eigentümerübernahme ohne Zuständigkeit und der Übergang in „Nachfolge
 offen", Deaktivierung eines Kontos, erzwungene Neuanmeldung, API-Tokens, sämtliche
 Systemeinstellungen (Governance, Protokollkonfiguration, Modellvorgaben, Freigabe-Obergrenze
-konnektor-gespeister Bibliotheken) sowie Anstoß und Abschluss der Übergabe eines lokalen Kontos an
-eine Anbieteridentität (#1594). Jede dieser Lücken schließt das jeweilige Folge-Issue, sobald
+konnektor-gespeister Bibliotheken). Jede dieser Lücken schließt das jeweilige Folge-Issue, sobald
 die zugehörige Funktion existiert — die Liste selbst bleibt geschlossen und ändert sich nicht.
 
 ### Was ausdrücklich nicht protokolliert wird

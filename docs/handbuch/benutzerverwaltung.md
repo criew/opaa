@@ -227,7 +227,53 @@ Das Notanker-Konto der Systemverwaltung lässt sich **nicht löschen**. Sperren,
 Herabsetzen sind daran nicht grundsätzlich gesperrt — sie werden abgelehnt, solange es der letzte
 anmeldefähige Systemverwalter ist. Von der Sperre nach Inaktivität ist es ausgenommen.
 
-## 9. Selbstregistrierung
+## 9. Ein Konto an einen Identitätsanbieter übergeben
+
+Stellt eine Installation, die mit lokalen Konten angefangen hat, später auf einen Identitätsanbieter
+um, soll niemand von vorn beginnen: Räume, Mitgliedschaften und Rolle hängen am Konto, nicht am
+Passwort. Dafür gibt es die **Übergabe** — den einzigen Weg, auf dem ein Konto seine Identität
+wechselt.
+
+**Die Übergabe braucht zwei Parteien.** Die Systemverwaltung stößt sie an und wählt dabei nur den
+Anbieter; **einlösen kann sie allein die betroffene Person**, indem sie sich bei diesem Anbieter
+anmeldet. Damit kann niemand ein fremdes Konto auf eine Kennung schreiben, die er selbst
+kontrolliert — und niemand sich vertippen: Die Kennung beim Anbieter kommt aus der Anmeldung der
+Person, sie wird nirgends eingegeben.
+
+**So läuft es ab**
+
+1. Zeilenmenü des Kontos → **„Übergabe anstoßen …"**. Der Dialog fragt nach dem
+   Identitätsanbieter und nach einem **Anlass** (Pflichtfeld, höchstens 200 Zeichen; er gehört zur
+   Sache, nicht zur Person — dieselbe Regel wie beim Anlagegrund). Ein Feld für eine Kennung gibt es
+   nicht.
+2. Die Person erhält eine E-Mail mit einem Link, der **72 Stunden** und **einmal** gilt. Geht die
+   Nachricht nicht hinaus, zeigt OPAA den Link genau einmal zur Übergabe von Hand an — mit demselben
+   Rückfall wie bei der Einladung (Abschnitt 2). Bis hierher ändert sich am Konto nichts: Es bleibt
+   mit Passwort benutzbar.
+3. Der Link führt auf eine Seite, die zeigt, **was mitgeht**: der persönliche Raum, die Zahl der
+   Raum- und Gruppenmitgliedschaften und die Rolle, dazu der Anlass und der Name des Anbieters. Die
+   Seite nennt auch, was danach gilt: Anmeldung nur noch über den Anbieter, das bisherige Passwort
+   verfällt, einen Rückweg gibt es nicht.
+4. Ein Klick führt zur Anmeldung beim Anbieter. Danach ist die Übergabe vollzogen: Das Konto gehört
+   zur Anbieteridentität, alle laufenden Sitzungen enden, und die Person bekommt eine
+   Bestätigungsmail. Inhalte, Mitgliedschaften und Rolle sind unverändert.
+
+**Was abgelehnt wird**
+
+| Fall | Antwort |
+|---|---|
+| Das Notanker-Konto der Systemverwaltung | Abgelehnt. Der Menüeintrag ist an diesem Konto abgeblendet und nennt den Grund: Es ist der Weg zurück in eine Installation ohne funktionierenden Identitätsanbieter und muss deshalb ein lokales Konto bleiben. |
+| Es bliebe kein weiterer anmeldefähiger Systemverwalter | Abgelehnt — beim Anstoßen **und** beim Einlösen. Zwischen beidem können Wochen liegen; geprüft wird der Stand im Moment der Handlung. |
+| Unter dieser Anbieteridentität besteht schon ein Konto | Abgelehnt. Zwei Konten werden nie zusammengeführt. Wer sich vorher bereits über den Anbieter angemeldet hat, hat zwei Konten und keinen Übergabeweg; die Inhalte des lokalen Kontos müssen dann von Hand übertragen werden. |
+| Die Person meldet sich bei einem anderen Anbieter an | Abgelehnt. Die Übergabe gilt für den Anbieter, den der Anstoß genannt hat. |
+| Der Link ist abgelaufen, verbraucht oder unbekannt | Dieselbe Antwort für alle drei: Der Link ist nicht mehr gültig. Die Systemverwaltung stößt die Übergabe dann erneut an. |
+
+> **Der Anlass steht nicht im Nachweisprotokoll.** Protokolliert werden Anstoß und Abschluss mit der
+> Kennung des Anbieters, dem Zustellweg und Zahlen — nie die Kennung der Person beim Anbieter, nie
+> ihre Adresse, ihr Name oder der Anlass im Wortlaut. Den Anlass liest die betroffene Person auf der
+> Einlöseseite.
+
+## 10. Selbstregistrierung
 
 Selbstregistrierung ist **aus** und wirkt nur mit einer **nichtleeren Liste zulässiger
 Adressdomänen**. Eine leere Liste bedeutet „niemand kann sich registrieren" — nicht „alle". Die
@@ -252,7 +298,7 @@ Drei Eigenschaften, die im Alltag auffallen:
 Das Einschalten der Selbstregistrierung ist ein Punkt, der vor der Inbetriebnahme mit der
 Personalvertretung zu klären ist; das Kapitel [Deployment](deployment.md) führt die Punkte auf.
 
-## 10. Was Nutzende selbst können
+## 11. Was Nutzende selbst können
 
 Ein lokales Konto findet in seinen eigenen Einstellungen:
 
@@ -266,11 +312,11 @@ Ohne Anmeldung, wenn der Fluss eingeschaltet ist:
   nicht. Wer keine Nachricht erhält, hat entweder kein Konto unter dieser Adresse, oder das Konto ist
   von der Verwaltung gesperrt, abgelaufen oder noch eingeladen. In diesen Fällen hilft nur die
   Systemverwaltung.
-- **„Konto registrieren"** — siehe Abschnitt 9.
+- **„Konto registrieren"** — siehe Abschnitt 10.
 
 Ein Konto eines Identitätsanbieters sieht keinen dieser Punkte; sein Passwort verwaltet der Anbieter.
 
-## 11. Regeln und Fristen
+## 12. Regeln und Fristen
 
 Die Karte „Lokale Anmeldung" unter Administration → Benutzer → Einstellungen führt die Regeln, die für alle lokalen
 Konten gelten. Sie wirken ab der nächsten Anwendung, nicht rückwirkend auf bestehende Passwörter.
@@ -293,7 +339,7 @@ nicht. Die Eingabemasken zeigen die Regel an und bieten „Sicheres Passwort erz
 > Sonderzeichen zählen mehrfach; eine sehr lange Passphrase aus Sonderzeichen kann deshalb vor der
 > Zeichengrenze abgewiesen werden. Die Eingabemaske sagt das im Feldfehler.
 
-## 12. Was es hier nicht gibt
+## 13. Was es hier nicht gibt
 
 - **Keinen zweiten Faktor.** Lokale Konten melden sich mit Adresse und Passwort an. Für lokale
   Systemverwalterkonten lässt sich stattdessen der Zugang auf bestimmte Netze begrenzen; das Kapitel
@@ -304,5 +350,7 @@ nicht. Die Eingabemasken zeigen die Regel an und bieten „Sicheres Passwort erz
 - **Kein Export und kein Massenabruf der Kontenliste** (Abschnitt 6).
 - **Keine Übersicht der eigenen Sitzungen.** Eine Person kann ihre übrigen Sitzungen über einen
   Passwortwechsel beenden, aber nicht einzeln einsehen oder abmelden.
-- **Kein Zusammenführen eines lokalen Kontos mit einer Anbieteridentität.** Ein Weg, ein lokales
-  Konto an einen Identitätsanbieter zu übergeben, ist vorgesehen, aber noch nicht gebaut (#1594).
+- **Kein Zusammenführen zweier bestehender Konten.** Der einzige Weg, ein lokales Konto an eine
+  Anbieteridentität zu binden, ist die Übergabe aus Abschnitt 9 — und nur, solange unter dieser
+  Identität noch kein Konto besteht. Einen Rückweg von einer Anbieteridentität zu einem lokalen
+  Konto gibt es nicht.

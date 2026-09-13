@@ -147,8 +147,8 @@ und die lokale Benutzerverwaltung ist im Regelbetrieb abgeschaltet.
 > Konto: Sperre, Entsperrung, Zurücksetzen, bevorstehender Ablauf und Übergabe werden der Person per
 > E-Mail mitgeteilt, und eine beendete Sitzung nennt beim nächsten Aufruf ihren Grund.
 >
-> **Gebaut ist alles davon bis auf die Übergabe** (#1594); die Abschnitte unten beschreiben den
-> Stand. Die Bedienung im Alltag steht im Produkthandbuch, Kapitel „Benutzerverwaltung".
+> **Gebaut ist alles davon, die Übergabe eingeschlossen** (#1563); die Abschnitte unten beschreiben
+> den Stand. Die Bedienung im Alltag steht im Produkthandbuch, Kapitel „Benutzerverwaltung".
 
 ### Aussteller, Tokens und Sitzungen lokaler Konten
 
@@ -597,8 +597,9 @@ der **Aktivität als Klasse** darunter
 Anbieterkonto trägt keine), und Anlagedatum mit gekürztem Anlagegrund; unter Tablet-Breite wird
 daraus eine Kartenliste. Das **Zeilenmenü hängt vom Kontotyp ab**: Ein lokales Konto führt
 Bearbeiten, Sperren beziehungsweise Entsperren (nur am jeweils passenden Zustand), Rücksetz-Link per
-E-Mail, Passwort erzeugen und — nachrangig unter einer Trennlinie, weil Sperren der Regelweg ist —
-Löschen; am eigenen Konto sind Sperren und Löschen deaktiviert, am Notanker-Konto das Löschen. Ein
+E-Mail, Passwort erzeugen, „Übergabe anstoßen …" und — nachrangig unter einer Trennlinie, weil
+Sperren der Regelweg ist — Löschen; am eigenen Konto sind Sperren und Löschen deaktiviert, am
+Notanker-Konto das Löschen und die Übergabe (beide mit sichtbarer Begründung am Eintrag). Ein
 Anbieterkonto führt „Rolle ändern …" (Dialog über `POST /api/v1/admin/users/{id}/role`, denselben
 Endpunkt wie für lokale Konten; deaktiviert und begründet, wenn der Anbieter die Rollen führt; die
 Ablehnung des Aussperrschutzes erscheint als Satz mit dem nächsten Schritt), den Verweis „Anbieter
@@ -614,6 +615,54 @@ Es gibt **keinen Export**. Auf der Anbieterseite erscheint die
 lokale Konten anmelden") und sendet erst dann `acknowledgeLastProvider=true`; die beiden Konfliktcodes
 `LAST_LOGIN_CAPABLE_ADMIN` und `LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED` erscheinen als Sätze mit dem
 nächsten Schritt.
+
+### Übergabe eines lokalen Kontos an eine Anbieteridentität (gebaut, #1563)
+
+Der eine benannte Ausnahmeweg zum Zusammenführungsverbot aus ADR-0025 — und der einzige, den ein
+Verwalter nicht allein gehen kann (ADR-0033, Entscheidung 12). Er löst das Problem, an dem der alte
+Modus `basic` scheiterte: Wer im Anlaufbetrieb ohne Identitätsanbieter startet und später auf einen
+umstellt, nimmt Spaces, Mitgliedschaften und Rolle mit, statt sie an der alten Identität
+zurückzulassen.
+
+**Anstoßen.** `POST /api/v1/admin/local-users/{id}/handover` (nur `SYSTEM_ADMIN`) nennt die Kennung
+eines **aktivierten OIDC-Anbieters** und einen **Pflicht-Anlass** (höchstens 200 Zeichen,
+zweckgebunden wie der Anlagegrund) — und sonst nichts: Es gibt kein Feld für eine Identität. OPAA
+erzeugt einen einmaligen Übergabecode (72 Stunden, HMAC-Hash wie jeder Aktionstoken; ein neuer Code
+entwertet den älteren), an dem Anbieter und Anlass hängen, schickt den Link an die **hinterlegte**
+Adresse des Kontos (`ACCOUNT_HANDOVER_REQUESTED`) und protokolliert `LOCAL_USER_HANDOVER_REQUESTED`
+mit Anbieter-Kennung und Zustellweg. Geht die Mail nicht hinaus oder fehlt `OPAA_PUBLIC_BASE_URL`,
+enthält die Antwort den Link **genau einmal** zur Übergabe von Hand — wie bei der Einladung. Das
+lokale Konto bleibt bis zur Einlösung unverändert benutzbar. Abgelehnt wird der Anstoß für das
+Notanker-Konto (409 `BOOTSTRAP_ACCOUNT`) und dann, wenn kein weiterer anmeldefähiger Systemverwalter
+bliebe (409 `LAST_LOGIN_CAPABLE_ADMIN`).
+
+**Einlösen.** Der Link führt auf die Seite `/handover`, die den Code sofort aus der Adresszeile
+nimmt und über `POST /api/v1/auth/local/handover/preview` zeigt, **was mitgeht**: persönlicher
+Space, Zahl der Space- und Gruppenmitgliedschaften, Systemrolle — dazu der Anlass der
+Systemverwaltung und der Name des Anbieters, bei dem die Anmeldung erfolgt. Die Person wählt hier
+nichts aus; der Anbieter steht am Code. Ein Klick startet den Code-Flow bei genau diesem Anbieter;
+nach dem Rücksprung ruft die Seite `POST /api/v1/auth/local/handover/redeem` auf — mit dem
+Access-Token des Anbieters **im Rumpf der Anfrage**, nie im `Authorization`-Header, und ohne
+irgendeinen anderen Aufruf dazwischen: Ein Bearer-Token im Header würde das Konto anlegen, dessen
+Abwesenheit diese Anfrage gerade prüfen muss. Der Endpunkt ist ohne Sitzung erreichbar und prüft das
+Anbieter-Token selbst über dieselbe Anbieter-Registry wie jede andere Anfrage (Signatur, Issuer,
+Ablauf, `azp`).
+
+**Was dabei geschieht** — in einer Transaktion: `users.issuer` und `users.subject` werden auf die
+Identität **aus dem geprüften Token** umgeschrieben, die lokalen Zugangsdaten sowie alle Link- und
+Sperrlisteneinträge des Kontos gelöscht, alle Sitzungen widerrufen (Sitzungsmarker
+`session_revoked:handed_over`) und der Code verbraucht. Danach die Mail `ACCOUNT_HANDED_OVER` und
+das Ereignis `LOCAL_USER_HANDED_OVER` mit Anbieter-Kennung und Zahlen, **nie** mit dem Subject. Die
+nächste Anmeldung über den Anbieter findet das Konto über den gewöhnlichen Schlüssel
+`(Issuer, Subject)`; im Provisionierer gibt es dafür keinen Sonderpfad.
+
+**Grenzen.** Unter `(Issuer, Subject)` darf noch kein Konto bestehen — sonst 409
+`PROVIDER_ACCOUNT_EXISTS`, und es wird nichts zusammengeführt. Eine Anmeldung bei einem anderen als
+dem angestoßenen Anbieter ist 409 `PROVIDER_MISMATCH`. Der Aussperrschutz greift **auch beim
+Einlösen**: Zwischen Anstoß und Einlösung können Wochen liegen, und erst die Einlösung nimmt den
+lokalen Verwalter weg. Unbekannter, abgelaufener, verbrauchter und zweckfremder Code sind dieselbe
+Antwort (400 `TOKEN_INVALID`). Einen Rückweg von einer Anbieteridentität zu einem lokalen Konto gibt
+es nicht.
 
 Die Mandantengrenze gilt auch für die Anmeldung: Eine Identität gehört zu **genau einer** Organisation.
 Es gibt kein Konto, das mehrere Mandanten sieht, und keinen Wechsel zwischen ihnen innerhalb einer
