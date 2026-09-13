@@ -5,7 +5,13 @@ import { BrowserRouter, Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import { server } from '../mocks/server'
 import { MOCK_HANDOVER_TOKEN, MOCK_RATE_LIMITED_TOKEN } from '../mocks/localAuthFixtures'
-import { clearPendingHandover, setPendingHandover } from '../stores/handoverFlow'
+import {
+  clearHandoverInFlight,
+  clearPendingHandover,
+  isHandoverInFlight,
+  markHandoverInFlight,
+  setPendingHandover,
+} from '../stores/handoverFlow'
 import { useAuthStore } from '../stores/authStore'
 import HandoverPage from './HandoverPage'
 
@@ -33,10 +39,12 @@ describe('HandoverPage', () => {
 
   beforeEach(() => {
     clearPendingHandover()
+    clearHandoverInFlight()
   })
 
   afterEach(() => {
     clearPendingHandover()
+    clearHandoverInFlight()
     vi.restoreAllMocks()
   })
 
@@ -90,6 +98,38 @@ describe('HandoverPage', () => {
       await screen.findByText(/Ihr Zugang gehört jetzt zu Ihrer Anbieteridentität/),
     ).toBeInTheDocument()
     expect(completeHandover).toHaveBeenCalledWith('provider-access-token')
+  })
+
+  /**
+   * The two failure directions of the redemption are not the same failure: once `redeem` answered,
+   * the account belongs to the provider identity, and the page must not then say that the previous
+   * access is unchanged - it would send the person back to a password that no longer exists.
+   */
+  it('keeps the handover valid when only the session after it fails', async () => {
+    const completeHandover = vi.fn().mockRejectedValue(new Error('me unreachable'))
+    useAuthStore.setState({ completeHandover })
+    setPendingHandover({ code: MOCK_HANDOVER_TOKEN, providerToken: 'provider-access-token' })
+    renderAt('')
+
+    expect(
+      await screen.findByText(/Ihr Zugang gehört jetzt zu Ihrer Anbieteridentität/),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/das ändert an der Übergabe nichts/i)).toBeInTheDocument()
+    expect(screen.queryByText(/bisheriger Zugang besteht unverändert weiter/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Zur Anmeldung' })).toBeInTheDocument()
+  })
+
+  /** The note of the trip to the provider is the page's to clear, whichever visit this is. */
+  it('clears the in-flight note of the redirect', async () => {
+    markHandoverInFlight()
+    useAuthStore.setState({ completeHandover: vi.fn().mockResolvedValue(undefined) })
+    setPendingHandover({ code: MOCK_HANDOVER_TOKEN, providerToken: 'provider-access-token' })
+    renderAt('')
+
+    expect(
+      await screen.findByText(/Ihr Zugang gehört jetzt zu Ihrer Anbieteridentität/),
+    ).toBeInTheDocument()
+    expect(isHandoverInFlight()).toBe(false)
   })
 
   it('reads an unusable code as an invalid link and offers the way back', async () => {

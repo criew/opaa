@@ -25,6 +25,7 @@ import {
 } from '../services/authApi'
 import { clearDevUser, resolveDevUser } from '../services/devAuth'
 import type { SessionExpiredReason } from '../services/apiInterceptors'
+import { AUTH_CALLBACK_ROUTE } from '../routes'
 import { sessionEndingReason } from '../services/apiInterceptors'
 import {
   CONFIG_UNAVAILABLE_MESSAGE,
@@ -41,7 +42,12 @@ import {
   signInFailedMessage,
   tooManyAttemptsMessage,
 } from '../utils/authMessages'
-import { setPendingHandover } from './handoverFlow'
+import {
+  clearHandoverInFlight,
+  isHandoverInFlight,
+  markHandoverInFlight,
+  setPendingHandover,
+} from './handoverFlow'
 import { notify } from './notificationStore'
 import { resetAllStores } from './resettableStores'
 
@@ -446,10 +452,18 @@ export const useAuthStore = create<AuthState>((set, get) => {
         }
         return
       }
+      // #1563: a handover comes back through this callback, and on that trip the local session
+      // must stay untouched - it is about to be revoked, and ADR-0033 Entscheidung 12 allows no
+      // authenticated call between the callback and the redemption, the local refresh and
+      // /auth/me of the restore included. The note lives only for that trip: any other route
+      // clears it, so an abandoned flow cannot suppress the restore of the next session.
+      const handoverCallback =
+        isHandoverInFlight() && window.location.pathname === AUTH_CALLBACK_ROUTE
+      if (!handoverCallback) clearHandoverInFlight()
       // No provider session in this tab: one attempt at a local one (ADR-0033). Without the note
       // of an earlier local session nothing is restored and no request is made, so a regular OIDC
       // sign-in never sees a failed call it did not ask for.
-      if ((await restoreLocalSession()) !== 'none') return
+      if (!handoverCallback && (await restoreLocalSession()) !== 'none') return
       if (providers.length === 0 && !get().localAccounts.enabled) {
         set({
           userManager: null,
@@ -579,6 +593,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
       try {
         const oidcUser = await userManager.signinRedirectCallback()
         const handoverCode = (oidcUser.state as { handoverCode?: string } | undefined)?.handoverCode
+        if (!handoverCode) clearHandoverInFlight()
         if (handoverCode) {
           // ADR-0033, Entscheidung 12: not one authenticated request between the callback and the
           // redemption - the account this token names must not exist yet, and /auth/me would
@@ -597,6 +612,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         })
         return 'session'
       } catch (err) {
+        clearHandoverInFlight()
         if (err instanceof UnknownIssuerError) {
           dropLocalSession()
           set({ error: UNKNOWN_ISSUER_MESSAGE, isLoading: false })
@@ -619,10 +635,12 @@ export const useAuthStore = create<AuthState>((set, get) => {
       }
       writeStorage(localStorage, LAST_PROVIDER_STORAGE_KEY, providerId)
       set({ isSigningIn: true, error: null })
+      markHandoverInFlight()
       try {
         await userManager.signinRedirect({ state: { handoverCode: code } })
         return true
       } catch (err) {
+        clearHandoverInFlight()
         writeStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY, null)
         set({
           isSigningIn: false,

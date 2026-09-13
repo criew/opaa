@@ -25,6 +25,7 @@ import {
 } from '../services/handoverApi'
 import { LinkInvalidError, RateLimitedError } from '../services/selfServiceApi'
 import {
+  clearHandoverInFlight,
   clearPendingHandover,
   peekPendingHandover,
   type PendingHandover,
@@ -42,7 +43,15 @@ const SYSTEM_ROLE_TEXT: Record<string, string> = {
   SYSTEM_ADMIN: 'Systemverwaltung',
 }
 
-type Status = 'loading' | 'ready' | 'redeeming' | 'done' | 'invalid' | 'failed'
+type Status =
+  | 'loading'
+  | 'ready'
+  | 'redeeming'
+  | 'done'
+  /** The handover holds, only the session that should follow it did not come up. */
+  | 'doneWithoutSession'
+  | 'invalid'
+  | 'failed'
 
 /**
  * The page behind the handover link (#1563, ADR-0033 Entscheidung 12). It runs in two visits of the
@@ -99,19 +108,29 @@ export default function HandoverPage() {
     started.current = true
     if (pending) {
       clearPendingHandover()
-      redeemHandover(pending.code, pending.providerToken)
-        .then(() => completeHandover(pending.providerToken))
-        .then(() => setStatus('done'))
-        .catch((err: unknown) => {
+      clearHandoverInFlight()
+      redeemHandover(pending.code, pending.providerToken).then(
+        // Two failure directions, and only the first one may read as "nothing happened": once the
+        // redemption answered, the account belongs to the provider identity whatever comes after.
+        // Taking up the session is the part that may still fail - and saying "your access is
+        // unchanged" there would send the person back to a password that no longer exists.
+        () =>
+          completeHandover(pending.providerToken).then(
+            () => setStatus('done'),
+            () => setStatus('doneWithoutSession'),
+          ),
+        (err: unknown) => {
           if (err instanceof LinkInvalidError) {
             setStatus('invalid')
             return
           }
           setMessage(describe(err))
           setStatus('failed')
-        })
+        },
+      )
       return
     }
+    clearHandoverInFlight()
     if (token === '') return
     previewHandover(token).then(
       (result) => {
@@ -171,6 +190,23 @@ export default function HandoverPage() {
             onClick={() => navigate(AFTER_SIGN_IN_ROUTE, { replace: true })}
           >
             Weiter zu OPAA
+          </Button>
+        </AuthNotice>
+      </AuthLayout>
+    )
+  }
+
+  if (status === 'doneWithoutSession') {
+    return (
+      <AuthLayout>
+        <AuthNotice
+          heading={HEADING}
+          severity="success"
+          message="Ihr Zugang gehört jetzt zu Ihrer Anbieteridentität. Ihr bisheriges Passwort gilt nicht mehr."
+          detail="Die Anmeldung hier konnte anschließend nicht hergestellt werden — das ändert an der Übergabe nichts. Melden Sie sich über die Anmeldeseite bei Ihrem Anbieter an; Ihre Spaces, Mitgliedschaften und Ihre Rolle sind unverändert geblieben."
+        >
+          <Button variant="contained" onClick={() => navigate(LOGIN_ROUTE, { replace: true })}>
+            Zur Anmeldung
           </Button>
         </AuthNotice>
       </AuthLayout>
