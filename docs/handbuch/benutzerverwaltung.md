@@ -273,11 +273,11 @@ Person, sie wird nirgends eingegeben.
 
 > **Bei einer Sammelumstellung an die Grenze denken.** Vorschau und Einlösung teilen sich ein
 > Anfragebudget je Client-Adresse — und eine Behörde sitzt in der Regel mit allen Arbeitsplätzen
-> hinter einer Adresse. Die Vorgabe von 60 Anfragen je 15 Minuten trägt rund 30 Einlösungen in
-> diesem Zeitraum; wer eine ganze Abteilung an einem Vormittag umstellt, hebt sie vorübergehend
-> über `OPAA_RATE_LIMIT_LOCAL_AUTH_HANDOVER_MAX_REQUESTS` an. Eine überschrittene Grenze ist keine
-> verbrauchte Übergabe: Der Link bleibt gültig, die Person versucht es nach der genannten Wartezeit
-> erneut.
+> hinter einer Adresse, je Person fallen zwei Aufrufe an. Wer eine ganze Abteilung an einem
+> Vormittag umstellt, hebt das Budget vorübergehend an; die Vorgabe und die beiden Variablen stehen
+> in der Variablentabelle des Kapitels [Deployment](deployment.md). Eine überschrittene Grenze ist
+> keine verbrauchte Übergabe: Der Link bleibt gültig, die Person versucht es nach der genannten
+> Wartezeit erneut.
 
 > **Der Anlass steht nicht im Nachweisprotokoll.** Protokolliert werden Anstoß und Abschluss mit der
 > Kennung des Anbieters, dem Zustellweg und Zahlen — nie die Kennung der Person beim Anbieter, nie

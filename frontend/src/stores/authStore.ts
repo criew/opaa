@@ -427,6 +427,15 @@ export const useAuthStore = create<AuthState>((set, get) => {
         const suggested = get().suggestedProvider()
         if (suggested) activate(suggested.id, false)
       }
+      // #1563: a handover comes back through this callback, and on that trip the local session
+      // must stay untouched - it is about to be revoked, and ADR-0033 Entscheidung 12 allows no
+      // authenticated call between the callback and the redemption, the local refresh and
+      // /auth/me of the restore included. The note lives only for that trip: any other route
+      // clears it - read before the branches below, so no early return walks past the cleanup -
+      // and an abandoned flow therefore cannot suppress the restore of the next session.
+      const handoverCallback =
+        isHandoverInFlight() && window.location.pathname === AUTH_CALLBACK_ROUTE
+      if (!handoverCallback) clearHandoverInFlight()
       const oidcUser = active ? await active.getUser() : null
       if (oidcUser && !oidcUser.expired) {
         try {
@@ -452,14 +461,6 @@ export const useAuthStore = create<AuthState>((set, get) => {
         }
         return
       }
-      // #1563: a handover comes back through this callback, and on that trip the local session
-      // must stay untouched - it is about to be revoked, and ADR-0033 Entscheidung 12 allows no
-      // authenticated call between the callback and the redemption, the local refresh and
-      // /auth/me of the restore included. The note lives only for that trip: any other route
-      // clears it, so an abandoned flow cannot suppress the restore of the next session.
-      const handoverCallback =
-        isHandoverInFlight() && window.location.pathname === AUTH_CALLBACK_ROUTE
-      if (!handoverCallback) clearHandoverInFlight()
       // No provider session in this tab: one attempt at a local one (ADR-0033). Without the note
       // of an earlier local session nothing is restored and no request is made, so a regular OIDC
       // sign-in never sees a failed call it did not ask for.
@@ -587,6 +588,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
       // meantime, whose manager was never built) there is nothing to complete the callback with
       const flowProvider = readStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY)
       if (!userManager || !flowProvider || flowProvider !== activeProviderId) {
+        clearHandoverInFlight()
         set({ error: PROVIDER_GONE_MESSAGE, isLoading: false })
         return 'failed'
       }
