@@ -30,7 +30,7 @@ export default function AuthNotice({
 }: AuthNoticeProps) {
   return (
     <>
-      <PageHeading title={heading} variant="h6" />
+      <PageHeading title={heading} variant="h5" />
       <Alert severity={severity} sx={{ mt: 2, textAlign: 'left' }}>
         {message}
       </Alert>
