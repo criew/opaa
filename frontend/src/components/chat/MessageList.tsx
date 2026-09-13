@@ -106,7 +106,7 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
             sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, mb: 2 }}
           >
             <CircularProgress size={20} />
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               Denkt nach …
             </Typography>
           </Box>

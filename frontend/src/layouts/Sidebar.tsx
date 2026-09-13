@@ -246,7 +246,7 @@ export default function Sidebar() {
               <Typography variant="overline" sx={{ color: 'rgba(255, 255, 255, 0.55)' }}>
                 Chats
               </Typography>
-              <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
                 Kein Space verfügbar.
               </Typography>
             </>

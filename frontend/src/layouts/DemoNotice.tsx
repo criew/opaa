@@ -45,7 +45,7 @@ export default function DemoNotice() {
         }}
       >
         <InfoOutlinedIcon fontSize="inherit" color="action" aria-hidden="true" />
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
           Demo-Instanz mit synthetischen Inhalten der fiktiven Stadt Rheinfurt — keine
           Faktenautorität.{' '}
           <Link component="button" type="button" onClick={() => setOpen(true)}>

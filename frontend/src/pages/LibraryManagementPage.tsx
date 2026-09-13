@@ -176,7 +176,7 @@ function LibraryListItem({ library }: { library: LibraryListResponse }) {
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', width: '100%' }}>
         <Box sx={{ minWidth: 0, flexGrow: 1 }}>
           <Typography sx={{ fontWeight: 600 }}>{library.name}</Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             {ownerTypeSummary(library)} · {libraryVisibilityLabel(library.visibility)}
             {library.listed ? ' · gelistet' : ''} · {documentCountSummary(library.documentCount)}
           </Typography>
@@ -233,9 +233,11 @@ export default function LibraryManagementPage() {
       )}
 
       {isLoading ? (
-        <Typography color="text.secondary">Bibliotheken werden geladen …</Typography>
+        <Typography sx={{ color: 'text.secondary' }}>Bibliotheken werden geladen …</Typography>
       ) : libraries.length === 0 ? (
-        <Typography color="text.secondary">Es sind noch keine Bibliotheken vorhanden.</Typography>
+        <Typography sx={{ color: 'text.secondary' }}>
+          Es sind noch keine Bibliotheken vorhanden.
+        </Typography>
       ) : isDesktop ? (
         <LibraryTable libraries={libraries} />
       ) : (

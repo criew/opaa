@@ -99,11 +99,11 @@ export default function NotificationBell() {
                   {notification.title}
                 </Typography>
                 {notification.body && (
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     {notification.body}
                   </Typography>
                 )}
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                   {formatCreatedAt(notification.createdAt)}
                 </Typography>
               </Box>

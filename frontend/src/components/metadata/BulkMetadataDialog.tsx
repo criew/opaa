@@ -142,7 +142,7 @@ export default function BulkMetadataDialog({
                 onChange={setValue}
                 vocabulary={vocabulary}
               />
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                 Der Wert wird für jedes ausgewählte Dokument als „manuell" gesetzt und ersetzt dort
                 den bisherigen Wert des Feldes.
               </Typography>

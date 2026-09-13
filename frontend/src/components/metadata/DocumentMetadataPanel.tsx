@@ -121,7 +121,7 @@ export default function DocumentMetadataPanel({
         </Alert>
       )}
       {fields === null && !error ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           Metadaten werden geladen …
         </Typography>
       ) : (

@@ -330,7 +330,7 @@ export default function SpaceCreatePage() {
             {libraryLoadError ? (
               <Alert severity="error">{libraryLoadError}</Alert>
             ) : availableLibraries.length === 0 ? (
-              <Typography color="text.secondary">
+              <Typography sx={{ color: 'text.secondary' }}>
                 Sie haben derzeit keinen Zugriff auf eine Bibliothek.
               </Typography>
             ) : (

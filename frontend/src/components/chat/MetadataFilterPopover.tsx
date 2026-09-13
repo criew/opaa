@@ -240,7 +240,7 @@ export default function MetadataFilterPopover({
         <Typography component="h2" sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
           Nach Kernfeldern filtern
         </Typography>
-        <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 1.5 }}>
+        <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mb: 1.5 }}>
           Der Filter gilt für jede Frage dieses Chats. Ein Dokument ohne Angabe im gefilterten Feld
           bleibt gefunden und wird als „ohne Angabe“ gekennzeichnet.
         </Typography>
@@ -260,11 +260,11 @@ export default function MetadataFilterPopover({
               <Typography sx={{ fontSize: 13, fontWeight: 500 }}>Dokumentart</Typography>
               {typeField?.offered ? (
                 <>
-                  <Typography variant="caption" color="text.secondary" component="p">
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }} component="p">
                     {fillLevelText(typeField)}
                   </Typography>
                   {options.documentTypes.length === 0 ? (
-                    <Typography variant="caption" color="text.secondary" component="p">
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }} component="p">
                       Im Suchbereich kommt keine Dokumentart vor.
                     </Typography>
                   ) : (
@@ -296,7 +296,7 @@ export default function MetadataFilterPopover({
                 typeField && (
                   <Typography
                     variant="caption"
-                    color="text.secondary"
+                    sx={{ color: 'text.secondary' }}
                     component="p"
                     data-testid="filter-field-not-offered"
                   >
@@ -311,7 +311,11 @@ export default function MetadataFilterPopover({
               <Typography sx={{ fontSize: 13, fontWeight: 500 }}>Datum/Stand</Typography>
               {dateField?.offered ? (
                 <>
-                  <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 1 }}>
+                  <Typography
+                    variant="caption"
+                    component="p"
+                    sx={{ color: 'text.secondary', mb: 1 }}
+                  >
                     {fillLevelText(dateField)}
                     {options.documentDateMin &&
                       options.documentDateMax &&
@@ -344,7 +348,7 @@ export default function MetadataFilterPopover({
                 dateField && (
                   <Typography
                     variant="caption"
-                    color="text.secondary"
+                    sx={{ color: 'text.secondary' }}
                     component="p"
                     data-testid="filter-field-not-offered"
                   >
@@ -362,7 +366,7 @@ export default function MetadataFilterPopover({
               .map((field) => (
                 <Box key={field.fieldKey} data-testid="filter-format-field">
                   <Typography sx={{ fontSize: 13, fontWeight: 500 }}>{field.label}</Typography>
-                  <Typography variant="caption" color="text.secondary" component="p">
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }} component="p">
                     {`${field.label} bei ${field.filledDocuments} von ${field.totalDocuments} Dokumenten vorhanden`}
                     {field.valuesCapped && ` · die ${field.values.length} häufigsten Werte`}
                   </Typography>
@@ -416,11 +420,11 @@ export default function MetadataFilterPopover({
                 </Typography>
                 {field.offered ? (
                   <>
-                    <Typography variant="caption" color="text.secondary" component="p">
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }} component="p">
                       {fillLevelText(field)}
                     </Typography>
                     {field.type === 'SELECT' && field.values.length === 0 && (
-                      <Typography variant="caption" color="text.secondary" component="p">
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }} component="p">
                         Im Suchbereich kommt kein Wert dieses Feldes vor.
                       </Typography>
                     )}
@@ -524,7 +528,7 @@ export default function MetadataFilterPopover({
                 ) : (
                   <Typography
                     variant="caption"
-                    color="text.secondary"
+                    sx={{ color: 'text.secondary' }}
                     component="p"
                     data-testid="filter-field-not-offered"
                   >

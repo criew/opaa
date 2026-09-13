@@ -81,7 +81,7 @@ export default function MetadataMaintenanceAnchor({
                   } ohne Wert (${formatShare(field.missingShare)})`}
             </Typography>
             {field.notDeterminableDocuments > 0 && (
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                 {field.notDeterminableDocuments} × kein Wert ermittelbar
               </Typography>
             )}

@@ -137,7 +137,7 @@ export default function ConversationNote({
               <Typography component="h2" sx={{ fontSize: 15, fontWeight: 600 }}>
                 Gesprächsnotiz
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
                 Diese Angaben hat OPAA aus Ihren Nachrichten in diesem Chat festgehalten. Sie
                 fließen in die nächsten Antworten ein.
               </Typography>

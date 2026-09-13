@@ -307,9 +307,11 @@ export default function GroupManagementPage() {
         )}
 
         {isLoading ? (
-          <Typography color="text.secondary">Gruppen werden geladen …</Typography>
+          <Typography sx={{ color: 'text.secondary' }}>Gruppen werden geladen …</Typography>
         ) : groups.length === 0 ? (
-          <Typography color="text.secondary">Es sind noch keine Gruppen vorhanden.</Typography>
+          <Typography sx={{ color: 'text.secondary' }}>
+            Es sind noch keine Gruppen vorhanden.
+          </Typography>
         ) : (
           <Stack spacing={1}>
             {groups.map((group) => (
