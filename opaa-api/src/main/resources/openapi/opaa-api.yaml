@@ -415,6 +415,100 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /api/v1/auth/local/handover/preview:
+    post:
+      operationId: localHandoverPreview
+      tags: [auth]
+      security: []
+      summary: >
+        What a handover would move (ADR-0033, Entscheidung 12), read with the raw code from the
+        handover link and nothing else. Deliberately unauthenticated and deliberately a POST: the
+        code is a bearer secret and must not stand in a query string, and the call must reach the
+        backend before any provider token exists. It consumes nothing - the code stays redeemable -
+        and answers the provider the administration chose, the reason it gave, and the person's own
+        scope (personal space, memberships, system role), so the page can name the provider rather
+        than let anybody pick one. An unknown, expired or already consumed code and a code of
+        another purpose are the same 400 with code TOKEN_INVALID. Only exists in the "oidc" profile.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalHandoverCodeRequest"
+      responses:
+        "200":
+          description: What the handover would move
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalHandoverPreviewResponse"
+        "400":
+          description: The link is invalid (code TOKEN_INVALID)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/local/handover/redeem:
+    post:
+      operationId: localHandoverRedeem
+      tags: [auth]
+      security: []
+      summary: >
+        Redeem a handover (ADR-0033, Entscheidung 12) - the one named exception to the merge ban of
+        ADR-0025, and the person's own act. The provider's access token travels in the **body**,
+        never in the Authorization header: a bearer token reaching the resource server is
+        provisioned by UserProvisioningFilter before any controller runs, which would create the
+        very account this call must find absent. The endpoint is therefore permitAll and verifies
+        the token itself through OidcProviderRegistry - the same decoder, issuer, expiry and azp
+        validators the resource server uses - and the subject it writes comes from that token
+        alone, never from an input of the administration. The identity under (issuer, subject) must
+        not exist yet; nothing is ever merged. On success, in one transaction: users.issuer and
+        users.subject are rewritten, local_credentials and every token row of the account are
+        deleted, every session is revoked (session marker session_revoked:handed_over) and the code
+        is consumed; the mail ACCOUNT_HANDED_OVER and the audit event LOCAL_USER_HANDED_OVER (the
+        provider id and counts, never the subject) follow. There is no way back. Only exists in the
+        "oidc" profile.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalHandoverRedeemRequest"
+      responses:
+        "204":
+          description: >
+            Handed over; the account now signs in through the provider, and the SPA may load the
+            session with the provider token it already holds
+        "400":
+          description: The link is invalid (code TOKEN_INVALID)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: >
+            The provider token is missing, unverifiable, expired or of an issuer no enabled
+            provider owns
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            An account already exists under this provider identity (PROVIDER_ACCOUNT_EXISTS - there
+            is no merge), the token belongs to another provider than the one the handover names
+            (PROVIDER_MISMATCH), the account is the emergency-anchor account (BOOTSTRAP_ACCOUNT) or
+            it is the last login-capable system administrator (LAST_LOGIN_CAPABLE_ADMIN)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /api/v1/me/groups:
     get:
       operationId: listMyGroups
@@ -901,6 +995,53 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/local-users/{id}/handover:
+    post:
+      operationId: requestLocalUserHandover
+      tags: [admin]
+      summary: Start the handover of a local account to a provider identity (system admin only)
+      description: >
+        ADR-0033, Entscheidung 12 - the one named exception to the merge ban of ADR-0025, and the
+        only one an administrator alone cannot complete: this call names the enabled OIDC provider
+        and a mandatory reason, nothing else. It issues a single-use HANDOVER code valid for 72
+        hours (a newer one voids an older one), mails the link to the address stored on the account
+        (ACCOUNT_HANDOVER_REQUESTED) and audits LOCAL_USER_HANDOVER_REQUESTED with the delivery
+        path. Link fallback exactly as for the invitation: is SMTP off, does the send fail or is no
+        OPAA_PUBLIC_BASE_URL configured, the answer carries handoverUrl exactly once. The account
+        stays usable until the person redeems; the subject is never named here - it comes from the
+        person's own provider token at redemption. Refused with 409 for the emergency-anchor
+        account (BOOTSTRAP_ACCOUNT) and when no other login-capable system administrator would
+        remain (LAST_LOGIN_CAPABLE_ADMIN, checked here and again at redemption). A provider that is
+        unknown, disabled or the LOCAL row is a 400 with fieldErrors on providerId.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalUserHandoverRequest"
+      responses:
+        "200":
+          description: Handover started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalUserHandoverResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/admin/accounts:
     get:
@@ -6177,6 +6318,134 @@ components:
           type: string
           format: password
           description: The generated password, returned exactly once.
+
+    LocalUserHandoverRequest:
+      type: object
+      description: >
+        What the administration decides about a handover - the provider and the reason, and nothing
+        about the identity: the subject comes from the person's own token at redemption (ADR-0033,
+        Entscheidung 12).
+      required: [providerId, reason]
+      properties:
+        providerId:
+          type: string
+          format: uuid
+          description: An enabled OIDC provider; the LOCAL row and a disabled row are refused.
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: >
+            The service-related occasion of the handover, bound to that purpose like the creation
+            reason - the person reads it on the redemption page. Never a value in the audit trail
+            (ADR-0033, Entscheidung 13) and gone with the code once it is redeemed.
+          example: Umstellung auf den Identitätsanbieter der Stadt
+
+    LocalUserHandoverResponse:
+      type: object
+      required: [emailSent, deliveryPath]
+      properties:
+        emailSent:
+          type: boolean
+        deliveryPath:
+          $ref: "#/components/schemas/MailDeliveryPath"
+        handoverUrl:
+          type: string
+          format: password
+          nullable: true
+          description: >
+            The single-use link, present exactly once when the mail was not sent. A bearer secret -
+            format password keeps it out of the DTO's toString().
+
+    LocalHandoverCodeRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 512
+          description: The raw code from the handover link's token query.
+
+    LocalHandoverRedeemRequest:
+      type: object
+      required: [token, providerToken]
+      properties:
+        token:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 512
+          description: The raw code from the handover link's token query.
+        providerToken:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 8192
+          description: >
+            The access token the provider issued to the person, in the body rather than in the
+            Authorization header (see localHandoverRedeem). Verified here with the provider's own
+            decoder; its sub becomes the account's subject.
+
+    LocalHandoverProvider:
+      type: object
+      description: The provider the administration chose - the SPA starts the code flow at it.
+      required: [id, displayName, issuerUri, clientId]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        issuerUri:
+          type: string
+        clientId:
+          type: string
+
+    LocalHandoverScope:
+      type: object
+      description: >
+        What moves with the account - the person's own content, counted, so the redemption page can
+        show it before the irreversible step (ADR-0033, Entscheidung 12).
+      required: [spaceMemberships, groupMemberships, systemRole]
+      properties:
+        personalSpaceName:
+          type: string
+          nullable: true
+          description: The name of the personal space, or null while none was provisioned yet.
+        spaceMemberships:
+          type: integer
+          format: int32
+          description: How many spaces the account is a member of.
+        groupMemberships:
+          type: integer
+          format: int32
+          description: How many groups the account is a member of.
+        systemRole:
+          $ref: "#/components/schemas/SystemRole"
+
+    LocalHandoverPreviewResponse:
+      type: object
+      description: >
+        Everything the redemption page shows before the person signs in at the provider. It carries
+        the account's display name for recognition, never its address and never a subject.
+      required: [displayName, reason, provider, scope, expiresAt]
+      properties:
+        displayName:
+          type: string
+          description: The name of the account being handed over - the person's own.
+        reason:
+          type: string
+          description: The reason the administration gave when it started the handover.
+        provider:
+          $ref: "#/components/schemas/LocalHandoverProvider"
+        scope:
+          $ref: "#/components/schemas/LocalHandoverScope"
+        expiresAt:
+          type: string
+          format: date-time
+          description: When the code expires.
 
     LocalAuthSettingsResponse:
       type: object
@@ -11457,6 +11726,8 @@ components:
           LOCAL_ACCOUNTS_SETTINGS_CHANGED,
           LOCAL_PASSWORD_SET,
           LOCAL_USER_REGISTERED,
+          LOCAL_USER_HANDOVER_REQUESTED,
+          LOCAL_USER_HANDED_OVER,
         ]
       example: ASSET_GRANT_REVOKED
 

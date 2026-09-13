@@ -302,5 +302,17 @@ public enum AuditEventType {
    * A local account was created by self-registration (system process {@code local-auth}); the
    * address stays unconfirmed until the verification link is redeemed.
    */
-  LOCAL_USER_REGISTERED
+  LOCAL_USER_REGISTERED,
+  /**
+   * An administrator started the handover of a local account to a provider identity (ADR-0033,
+   * Entscheidung 12); {@code after} names the chosen provider and the delivery path of the link,
+   * never the reason and never a subject.
+   */
+  LOCAL_USER_HANDOVER_REQUESTED,
+  /**
+   * The person redeemed the handover: the account now belongs to the provider identity. {@code
+   * after} carries the provider id and the counts of what moved - never the provider subject
+   * (ADR-0033, Entscheidung 13).
+   */
+  LOCAL_USER_HANDED_OVER
 }
