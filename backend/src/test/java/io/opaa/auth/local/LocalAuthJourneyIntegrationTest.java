@@ -21,6 +21,7 @@ import io.opaa.test.LocalMailbox;
 import io.opaa.test.OpaaLocalAuthLinkTest;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.servlet.http.Cookie;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -243,6 +244,7 @@ class LocalAuthJourneyIntegrationTest {
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, rotatedBearer))
         .andExpect(status().isOk());
 
+    Instant beforeTheReplay = Instant.now();
     mockMvc
         .perform(withCsrf(post(REFRESH), invitedSignIn).cookie(invitedCookie))
         .andExpect(status().isUnauthorized());
@@ -251,19 +253,14 @@ class LocalAuthJourneyIntegrationTest {
     mockMvc
         .perform(withCsrf(post(REFRESH), invitedSignIn).cookie(rotatedCookie))
         .andExpect(status().isUnauthorized());
-    // And so is the access token of that session, naming the cause. Asserted on the token of the
-    // sign-in, not on the one the rotation minted: a freshly minted token carries an {@code iat} no
-    // earlier than the account's current cutoff and may therefore sit up to a second ahead of the
-    // clock (LocalAccessTokenService#issue), while the cutoff of this replay is the first whole
-    // second after it - the newest token is not reliably older than its own account's new cutoff.
-    // The sign-in's token unambiguously is, which makes the assertion independent of that window.
-    mockMvc
-        .perform(get(ME).header(HttpHeaders.AUTHORIZATION, invitedBearer))
-        .andExpect(status().isUnauthorized())
-        .andExpect(
-            result ->
-                assertThat(result.getResponse().getHeader(HttpHeaders.WWW_AUTHENTICATE))
-                    .contains("session_revoked:reuse_detected"));
+    // And the access tokens with it: the cutoff of the account has moved past the replay, so every
+    // token issued up to that moment is refused. Asserted on the cutoff, not through a request:
+    // {@code iat} resolves to whole seconds and a token is minted no earlier than the cutoff in
+    // force when it was issued (LocalAccessTokenService#issue), so within the second of the
+    // set-password cutoff no live token of this account is provably older than the new one (#1606).
+    assertThat(credentials.findById(invitedId).orElseThrow().getPasswordInvalidatedBefore())
+        .as("the replay invalidates every access token of the account issued before it")
+        .isAfter(beforeTheReplay);
 
     // The account itself is untouched by the replay - it signs in again and carries on.
     MvcResult afterReplay = login(invitedAddress, INVITED_PASSWORD, 200);
