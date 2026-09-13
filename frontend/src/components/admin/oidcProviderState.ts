@@ -13,9 +13,3 @@ export const PROVIDER_STATE_LABEL: Record<ProviderState, string> = {
   unreachable: 'Nicht erreichbar',
   disabled: 'Deaktiviert',
 }
-
-export const PROVIDER_STATE_DETAIL: Record<ProviderState, string> = {
-  reachable: 'Anmeldung über diesen Anbieter möglich',
-  unreachable: 'Anmeldungen schlagen fehl, bis das Backend die Schlüssel abrufen kann',
-  disabled: 'Auf der Anmeldeseite nicht sichtbar; Konten bleiben erhalten',
-}

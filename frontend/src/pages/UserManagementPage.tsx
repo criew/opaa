@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react'
-import { Navigate, Link as RouterLink, useParams } from 'react-router'
+import { Navigate, useParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import Tab from '@mui/material/Tab'
-import Tabs from '@mui/material/Tabs'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
+import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
 import type { AccountResponse, LocalUserResponse } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
 import { notify } from '../stores/notificationStore'
 import { useUserAdminStore } from '../stores/userAdminStore'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
+import AreaTabs from '../components/AreaTabs'
 import AccountFilterBar from '../components/admin/users/AccountFilterBar'
 import AccountList from '../components/admin/users/AccountList'
 import LocalAuthSettingsCard from '../components/admin/users/LocalAuthSettingsCard'
@@ -227,59 +227,26 @@ export default function UserManagementPage() {
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <Box sx={{ maxWidth: contentWidth.areaContent }}>
         <AreaPageHeader
+          icon={BadgeOutlinedIcon}
           title="Benutzer"
           description="Gilt für die gesamte Anwendung. Lokale Konten werden hier angelegt und geführt; Konten eines Identitätsanbieters erscheinen mit ihrer Rolle, ihr Lebenszyklus liegt beim Anbieter."
         />
 
-        <Tabs
+        <AreaTabs
+          tabs={tabs}
           value={activeTab}
-          aria-label="Bereiche der Benutzerverwaltung"
-          sx={{
-            borderBottom: 1,
-            borderColor: 'divider',
-            mb: 3,
-            minHeight: 42,
-            '& .MuiTab-root': {
-              textTransform: 'none',
-              fontSize: 13.5,
-              fontWeight: 500,
-              minHeight: 42,
-              px: 2,
-            },
-          }}
+          href={(value) => `/admin/users/${value}`}
+          label="Bereiche der Benutzerverwaltung"
+          idPrefix="users"
         >
-          {tabs.map((entry) => (
-            <Tab
-              key={entry.value}
-              label={entry.label}
-              value={entry.value}
-              component={RouterLink}
-              to={`/admin/users/${entry.value}`}
-              id={`users-tab-${entry.value}`}
-              aria-controls={`users-tabpanel-${entry.value}`}
-            />
-          ))}
-        </Tabs>
-
-        {/* Both panels exist so that every tab's aria-controls points at a real element. The
-            inactive one is hidden and renders no children, so no request of the other area keeps
-            running in the background. */}
-        <Box
-          role="tabpanel"
-          id="users-tabpanel-accounts"
-          aria-labelledby="users-tab-accounts"
-          hidden={activeTab !== 'accounts'}
-        >
-          {activeTab === 'accounts' && <AccountsSection currentUserId={currentUserId} />}
-        </Box>
-        <Box
-          role="tabpanel"
-          id="users-tabpanel-settings"
-          aria-labelledby="users-tab-settings"
-          hidden={activeTab !== 'settings'}
-        >
-          {activeTab === 'settings' && <LocalAuthSettingsCard />}
-        </Box>
+          {(value) =>
+            value === 'accounts' ? (
+              <AccountsSection currentUserId={currentUserId} />
+            ) : (
+              <LocalAuthSettingsCard />
+            )
+          }
+        </AreaTabs>
       </Box>
     </Box>
   )

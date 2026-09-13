@@ -34,11 +34,10 @@ function sortModels(list: LlmModelResponse[]): LlmModelResponse[] {
  * **Mutations patch `models` locally from the server's own response, they never call {@link
  * loadModels} again (#759 review).** `loadModels` sets `isLoading: true` while it runs, and
  * `LlmModelManagementPage` swaps the whole list for a "wird geladen" message whenever that flag is
- * set - so a full reload after every save/activate/delete briefly unmounted every
- * `LlmModelCard`, silently collapsing whichever panel the person was just looking at (and, for
- * save, dropping the confirmation it had just produced) a moment after the action that caused it.
- * Each mutation below already gets back everything it needs from its own response (or, for
- * delete, needs nothing back at all) to keep `models` correct without paying that price.
+ * set - a full reload after every save, activate or delete would therefore blank the list for a
+ * moment, right after the action that caused it. Each mutation below already gets back everything
+ * it needs from its own response (or, for delete, needs nothing back at all) to keep `models`
+ * correct without paying that price.
  */
 export const useLlmModelStore = create<LlmModelState>((set, get) => ({
   models: [],

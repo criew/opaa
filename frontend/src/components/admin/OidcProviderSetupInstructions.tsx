@@ -12,7 +12,7 @@ import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined'
 import { copyToClipboard } from '../../utils/clipboard'
 import { fontFamily, radius } from '../../theme/tokens'
 import SectionHead from '../SectionHead'
-import { StateDot } from './OidcProviderCard'
+import ProviderStateDot from './providers/ProviderStateDot'
 import { PROVIDER_STATE_LABEL, type ProviderState } from './oidcProviderState'
 
 const eyebrowSx = {
@@ -218,7 +218,7 @@ export default function OidcProviderSetupInstructions() {
           {(['reachable', 'unreachable', 'disabled'] as const).map((state) => (
             <Box key={state}>
               <Stack component="dt" direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                <StateDot state={state} />
+                <ProviderStateDot state={state} />
                 <Typography component="span" sx={{ fontSize: 13, fontWeight: 500 }}>
                   {PROVIDER_STATE_LABEL[state]}
                 </Typography>

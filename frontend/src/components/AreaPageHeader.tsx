@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ElementType, ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import PageHeading from './a11y/PageHeading'
@@ -17,6 +17,11 @@ interface AreaPageHeaderProps {
   meta?: ReactNode
   /** The page's one primary action, pushed to the trailing edge of the title row. */
   action?: ReactNode
+  /**
+   * The area's own mark, left of title and description - an outline icon from
+   * `@mui/icons-material`. Decorative: the title already says the same thing.
+   */
+  icon: ElementType
 }
 
 /**
@@ -38,6 +43,7 @@ export default function AreaPageHeader({
   description,
   meta,
   action,
+  icon: Icon,
 }: AreaPageHeaderProps) {
   return (
     <Box sx={{ mb: 3 }}>
@@ -56,7 +62,34 @@ export default function AreaPageHeader({
           minHeight: 36.5,
         }}
       >
-        <PageHeading title={title} documentTitle={documentTitle} />
+        {/* Zeichen und Titel bilden eine Gruppe mit eigenem, engerem Abstand und bleiben damit
+            auch beim Umbruch zusammen. Die Beschreibung steht bewusst außerhalb: Sie beginnt an
+            der linken Kante der Seite, nicht unter dem Titel - so läuft eine Kante durch, statt
+            unter dem Zeichen ein Loch zu lassen. */}
+        <Box
+          sx={{ display: 'flex', alignItems: 'baseline', gap: { xs: 1.25, sm: 1.5 }, minWidth: 0 }}
+        >
+          {/* Die Höhe ist die **Textzeile** des Titels, nicht die der Titelzeile: Die trägt die
+              Mindesthöhe einer Schaltfläche, der Text sitzt darin oben, und ein darauf zentriertes
+              Zeichen säße acht Pixel zu tief. `aria-hidden`, weil der Titel daneben dasselbe sagt. */}
+          <Box
+            aria-hidden
+            sx={(theme) => ({
+              flex: 'none',
+              alignSelf: 'flex-start',
+              display: 'flex',
+              alignItems: 'center',
+              height:
+                Number(theme.typography.h5.fontSize) * Number(theme.typography.h5.lineHeight ?? 1),
+              color: 'primary.main',
+            })}
+          >
+            {/* Etwa anderthalb Mal die Versalhöhe des Titels: genug, um als Zeichen des Bereichs
+                zu wirken, wenig genug, um den Titel nicht zu überstimmen. */}
+            <Icon sx={{ fontSize: { xs: 21, sm: 24 } }} />
+          </Box>
+          <PageHeading title={title} documentTitle={documentTitle} />
+        </Box>
         {meta && (
           <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
             {meta}

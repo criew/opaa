@@ -51,10 +51,19 @@ describe('LoginPage', () => {
     sortOrder: 1,
   }
 
-  it('renders the product name as the page heading', () => {
+  /**
+   * Die Überschrift benennt die Seite, die Marke steht daneben. Vorher war der Produktname selbst
+   * das `h1` — ein Screenreader sagte damit „OPAA" statt zu sagen, wo man ist.
+   */
+  it('names the page in its heading and shows the mark beside it', () => {
     useAuthStore.setState({ mode: 'oidc' })
     renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Anmelden' })).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+    // Die Marke ist eine Angabe, keine Überschriftenebene.
     expect(screen.getByText('OPAA')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'OPAA' })).toBeNull()
   })
 
   /**
