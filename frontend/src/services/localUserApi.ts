@@ -4,6 +4,7 @@ import type {
   LocalUserCreateRequest,
   LocalUserCreatedResponse,
   LocalUserGeneratedPasswordResponse,
+  LocalUserHandoverResponse,
   LocalUserPasswordResetResponse,
   LocalUserResponse,
   LocalUserSummaryResponse,
@@ -90,6 +91,27 @@ export async function requestLocalUserPasswordReset(
   try {
     const { data } = await apiClient.post<LocalUserPasswordResetResponse>(
       `/v1/admin/local-users/${id}/password-reset`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Starts the handover of a local account to a provider identity (ADR-0033, Entscheidung 12). The
+ * administration names the provider and the reason and nothing else - the identity comes from the
+ * person's own provider token when they redeem the link.
+ */
+export async function requestLocalUserHandover(
+  id: string,
+  providerId: string,
+  reason: string,
+): Promise<LocalUserHandoverResponse> {
+  try {
+    const { data } = await apiClient.post<LocalUserHandoverResponse>(
+      `/v1/admin/local-users/${id}/handover`,
+      { providerId, reason: reason.trim() },
     )
     return data
   } catch (err) {

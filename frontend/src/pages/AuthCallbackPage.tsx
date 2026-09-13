@@ -5,7 +5,9 @@ import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
 import { useAuthStore } from '../stores/authStore'
+import { isHandoverInFlight } from '../stores/handoverFlow'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { AFTER_SIGN_IN_ROUTE, HANDOVER_ROUTE, LOGIN_ROUTE } from '../routes'
 
 export default function AuthCallbackPage() {
   usePageTitle('Anmeldung')
@@ -17,16 +19,25 @@ export default function AuthCallbackPage() {
   const navigate = useNavigate()
 
   // initialize() already activated the manager of the provider this tab started the flow at
-  // (ADR-0025); handleOidcCallback reports it when that provider is gone in the meantime.
+  // (ADR-0025); handleOidcCallback reports it when that provider is gone in the meantime. A
+  // callback that carries a handover (#1563) goes back to the page that started it, which holds
+  // the provider token for the one redemption call - there is no session yet, on purpose.
   useEffect(() => {
     if (!isLoading && mode === 'oidc') {
-      void handleOidcCallback()
+      void handleOidcCallback().then((outcome) => {
+        if (outcome === 'handover') {
+          navigate(HANDOVER_ROUTE, { replace: true })
+        }
+      })
     }
-  }, [isLoading, mode, handleOidcCallback])
+  }, [isLoading, mode, handleOidcCallback, navigate])
 
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/chat', { replace: true })
+    // A handover owns this callback until its page has run (#1563): a session this tab happens to
+    // hold - a local one restored at start-up, an OIDC one from before - must not carry the person
+    // into the application and leave the redemption unfinished.
+    if (isAuthenticated && !isHandoverInFlight()) {
+      navigate(AFTER_SIGN_IN_ROUTE, { replace: true })
     }
   }, [isAuthenticated, navigate])
 
@@ -44,7 +55,7 @@ export default function AuthCallbackPage() {
       {error ? (
         <>
           <Typography color="error">{error}</Typography>
-          <Button variant="outlined" onClick={() => navigate('/login', { replace: true })}>
+          <Button variant="outlined" onClick={() => navigate(LOGIN_ROUTE, { replace: true })}>
             Zur Anmeldung
           </Button>
         </>

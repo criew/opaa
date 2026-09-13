@@ -5,6 +5,7 @@ import { server } from '../mocks/server'
 import { setupAuthInterceptors } from '../services/apiInterceptors'
 import { LAST_SESSION_KIND_STORAGE_KEY } from '../services/authApi'
 import { useAuthStore } from './authStore'
+import { clearHandoverInFlight, markHandoverInFlight } from './handoverFlow'
 import { useSpaceStore } from './spaceStore'
 import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
 
@@ -60,6 +61,7 @@ describe('authStore - local session', () => {
   beforeEach(() => {
     sessionStorage.clear()
     localStorage.clear()
+    clearHandoverInFlight()
     useAuthStore.setState({
       mode: null,
       user: null,
@@ -96,6 +98,50 @@ describe('authStore - local session', () => {
     expect(refreshes).not.toHaveBeenCalled()
     expect(useAuthStore.getState().isAuthenticated).toBe(false)
     expect(useAuthStore.getState().error).toBeNull()
+  })
+
+  /**
+   * #1563, ADR-0033 Entscheidung 12: between the provider callback and the redemption the SPA makes
+   * **no** authenticated call - and the local refresh plus the identity call of the start-up
+   * restore are exactly such calls, with the token of the session the handover is about to revoke.
+   * The note lives only for the trip to the provider; anything but the callback route clears it, so
+   * an abandoned flow cannot suppress the next restore in this tab.
+   */
+  it('restores no local session on the callback of a running handover', async () => {
+    withLocalConfig()
+    rememberLastLocalSession()
+    setCsrfCookie()
+    markHandoverInFlight()
+    window.history.replaceState({}, '', '/auth/callback')
+    const refreshes = vi.fn()
+    server.use(
+      http.post('/api/v1/auth/local/refresh', () => {
+        refreshes()
+        return HttpResponse.json(TOKEN)
+      }),
+    )
+
+    await useAuthStore.getState().initialize()
+
+    expect(refreshes).not.toHaveBeenCalled()
+    expect(useAuthStore.getState().isAuthenticated).toBe(false)
+    clearHandoverInFlight()
+    window.history.replaceState({}, '', '/')
+  })
+
+  it('restores the local session again once the handover note is stale', async () => {
+    withLocalConfig()
+    rememberLastLocalSession()
+    setCsrfCookie()
+    markHandoverInFlight()
+    window.history.replaceState({}, '', '/chat')
+    server.use(http.post('/api/v1/auth/local/refresh', () => HttpResponse.json(TOKEN)))
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json(ME)))
+
+    await useAuthStore.getState().initialize()
+
+    expect(useAuthStore.getState().isAuthenticated).toBe(true)
+    window.history.replaceState({}, '', '/')
   })
 
   it('restores the session from the refresh cookie on a reload', async () => {

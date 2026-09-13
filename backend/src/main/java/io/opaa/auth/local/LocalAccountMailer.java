@@ -56,6 +56,28 @@ public class LocalAccountMailer {
     return deliverLink(MailTemplateKey.ADMIN_PASSWORD_RESET, user, token);
   }
 
+  /** The handover link (ADR-0033, Entscheidung 12); same fallback as an invitation. */
+  public LinkDelivery sendHandoverRequested(User user, IssuedActionToken token) {
+    return deliverLink(
+        MailTemplateKey.ACCOUNT_HANDOVER_REQUESTED,
+        user,
+        token,
+        LocalAccountLinks.handoverLink(publicBaseUrl, token.rawToken()));
+  }
+
+  /**
+   * The confirmation after a redeemed handover. No link fallback: nothing is left to hand over -
+   * the account already belongs to the provider identity, and the link only points at the sign-in.
+   */
+  public void sendHandedOver(User user) {
+    send(
+        MailTemplateKey.ACCOUNT_HANDED_OVER,
+        user,
+        Map.of(
+            "actionUrl",
+            LocalAccountLinks.absoluteOrEmpty(publicBaseUrl, LocalAccountLinks.LOGIN_PATH)));
+  }
+
   /**
    * The self-service reset link (#1538). No link fallback: the flow exists only with a public base
    * URL, and its caller must never learn whether a mail left (ADR-0033, Entscheidung 11).
@@ -129,7 +151,12 @@ public class LocalAccountMailer {
   }
 
   private LinkDelivery deliverLink(MailTemplateKey key, User user, IssuedActionToken token) {
-    String link = LocalAccountLinks.setPasswordLink(publicBaseUrl, token.rawToken());
+    return deliverLink(
+        key, user, token, LocalAccountLinks.setPasswordLink(publicBaseUrl, token.rawToken()));
+  }
+
+  private LinkDelivery deliverLink(
+      MailTemplateKey key, User user, IssuedActionToken token, String link) {
     if (!publicBaseUrl.isConfigured()) {
       return new LinkDelivery(MailDeliveryPath.LINK_DISPLAYED, link);
     }

@@ -25,6 +25,7 @@ import {
 } from '../services/authApi'
 import { clearDevUser, resolveDevUser } from '../services/devAuth'
 import type { SessionExpiredReason } from '../services/apiInterceptors'
+import { AUTH_CALLBACK_ROUTE } from '../routes'
 import { sessionEndingReason } from '../services/apiInterceptors'
 import {
   CONFIG_UNAVAILABLE_MESSAGE,
@@ -41,6 +42,12 @@ import {
   signInFailedMessage,
   tooManyAttemptsMessage,
 } from '../utils/authMessages'
+import {
+  clearHandoverInFlight,
+  isHandoverInFlight,
+  markHandoverInFlight,
+  setPendingHandover,
+} from './handoverFlow'
 import { notify } from './notificationStore'
 import { resetAllStores } from './resettableStores'
 
@@ -119,7 +126,24 @@ interface AuthState {
    * `prompt=login`, so the provider asks for credentials even with a running SSO session.
    */
   loginOidc: (providerId?: string, options?: { switchAccount?: boolean }) => Promise<void>
-  handleOidcCallback: () => Promise<void>
+  /**
+   * Completes the provider redirect. Answers what the callback was: an ordinary session, a handover
+   * whose provider token is now waiting in {@link ./handoverFlow} - deliberately **without** any
+   * authenticated call, `/auth/me` included (ADR-0033, Entscheidung 12) - or a failure whose reason
+   * is in {@link AuthState.error}.
+   */
+  handleOidcCallback: () => Promise<'session' | 'handover' | 'failed'>
+  /**
+   * Starts the provider sign-in of a handover (#1563): the code rides through the redirect in
+   * oidc-client-ts's own sign-in state, so the page that comes back has it without any storage of
+   * our own. The provider is the one the handover names - never one the person picks.
+   */
+  startHandoverSignIn: (providerId: string, code: string) => Promise<boolean>
+  /**
+   * Takes up the provider session right after a redeemed handover: the local session of this
+   * browser is over for good, and the account now answers under the provider identity.
+   */
+  completeHandover: (providerToken: string) => Promise<void>
   /**
    * Signs in with an account of this installation. Returns whether it worked; the reason of a
    * refusal is in {@link AuthState.error}, in one wording for every refused sign-in.
@@ -403,6 +427,15 @@ export const useAuthStore = create<AuthState>((set, get) => {
         const suggested = get().suggestedProvider()
         if (suggested) activate(suggested.id, false)
       }
+      // #1563: a handover comes back through this callback, and on that trip the local session
+      // must stay untouched - it is about to be revoked, and ADR-0033 Entscheidung 12 allows no
+      // authenticated call between the callback and the redemption, the local refresh and
+      // /auth/me of the restore included. The note lives only for that trip: any other route
+      // clears it - read before the branches below, so no early return walks past the cleanup -
+      // and an abandoned flow therefore cannot suppress the restore of the next session.
+      const handoverCallback =
+        isHandoverInFlight() && window.location.pathname === AUTH_CALLBACK_ROUTE
+      if (!handoverCallback) clearHandoverInFlight()
       const oidcUser = active ? await active.getUser() : null
       if (oidcUser && !oidcUser.expired) {
         try {
@@ -431,7 +464,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
       // No provider session in this tab: one attempt at a local one (ADR-0033). Without the note
       // of an earlier local session nothing is restored and no request is made, so a regular OIDC
       // sign-in never sees a failed call it did not ask for.
-      if ((await restoreLocalSession()) !== 'none') return
+      if (!handoverCallback && (await restoreLocalSession()) !== 'none') return
       if (providers.length === 0 && !get().localAccounts.enabled) {
         set({
           userManager: null,
@@ -555,11 +588,22 @@ export const useAuthStore = create<AuthState>((set, get) => {
       // meantime, whose manager was never built) there is nothing to complete the callback with
       const flowProvider = readStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY)
       if (!userManager || !flowProvider || flowProvider !== activeProviderId) {
+        clearHandoverInFlight()
         set({ error: PROVIDER_GONE_MESSAGE, isLoading: false })
-        return
+        return 'failed'
       }
       try {
         const oidcUser = await userManager.signinRedirectCallback()
+        const handoverCode = (oidcUser.state as { handoverCode?: string } | undefined)?.handoverCode
+        if (!handoverCode) clearHandoverInFlight()
+        if (handoverCode) {
+          // ADR-0033, Entscheidung 12: not one authenticated request between the callback and the
+          // redemption - the account this token names must not exist yet, and /auth/me would
+          // create it.
+          setPendingHandover({ code: handoverCode, providerToken: oidcUser.access_token })
+          set({ isLoading: false })
+          return 'handover'
+        }
         const me = await getMe(oidcUser.access_token)
         set({
           token: oidcUser.access_token,
@@ -568,17 +612,64 @@ export const useAuthStore = create<AuthState>((set, get) => {
           isLoading: false,
           sessionKind: 'oidc',
         })
+        return 'session'
       } catch (err) {
+        clearHandoverInFlight()
         if (err instanceof UnknownIssuerError) {
           dropLocalSession()
           set({ error: UNKNOWN_ISSUER_MESSAGE, isLoading: false })
-          return
+          return 'failed'
         }
         set({
           error: err instanceof Error ? err.message : 'OIDC-Rückmeldung fehlgeschlagen',
           isLoading: false,
         })
+        return 'failed'
       }
+    },
+
+    startHandoverSignIn: async (providerId, code) => {
+      const provider = get().providers.find((p) => p.id === providerId)
+      const userManager = activate(providerId, true)
+      if (!provider || !userManager) {
+        set({ error: PROVIDER_GONE_MESSAGE })
+        return false
+      }
+      writeStorage(localStorage, LAST_PROVIDER_STORAGE_KEY, providerId)
+      set({ isSigningIn: true, error: null })
+      markHandoverInFlight()
+      try {
+        await userManager.signinRedirect({ state: { handoverCode: code } })
+        return true
+      } catch (err) {
+        clearHandoverInFlight()
+        writeStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY, null)
+        set({
+          isSigningIn: false,
+          error: signInFailedMessage(
+            provider.displayName,
+            err instanceof Error ? err.message : String(err),
+          ),
+        })
+        return false
+      }
+    },
+
+    completeHandover: async (providerToken) => {
+      resetAllStores()
+      endLocalSession()
+      const me = await getMe(providerToken)
+      set({
+        token: providerToken,
+        user: me,
+        isAuthenticated: true,
+        isLoading: false,
+        isSigningIn: false,
+        sessionKind: 'oidc',
+        passwordChangeRequired: false,
+        passwordChangeReason: null,
+        error: null,
+      })
     },
 
     logout: async () => {

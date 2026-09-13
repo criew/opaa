@@ -9,6 +9,7 @@ import io.opaa.auth.local.LocalCredentials;
 import io.opaa.auth.local.LocalCredentialsRepository;
 import io.opaa.auth.local.LocalRefreshTokenRepository;
 import io.opaa.auth.local.LocalRevokedTokenRepository;
+import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.auth.oidc.OidcProvidersChangedEvent;
@@ -84,6 +85,68 @@ public final class LocalAccountFixtures {
           OidcProvider saved = providers.save(row);
           events.publishEvent(new OidcProvidersChangedEvent());
           return saved;
+        });
+  }
+
+  /**
+   * An enabled OIDC provider row, committed with the change event the registry listens for - the
+   * counterpart of {@link #localProvider} for the handover tests (#1563). Written straight through
+   * the repository on purpose: {@code OidcProviderService} would probe the issuer, and a test
+   * issuer resolves nowhere. The JWK set address is set for the same reason - without it the
+   * registry runs discovery against that address the moment it builds the decoder; with it, the
+   * decoder is built without a single outbound call.
+   */
+  public OidcProvider oidcProvider(String displayName, String issuerUri, String clientId) {
+    return transactions.execute(
+        status -> {
+          OidcProvider row =
+              new OidcProvider(
+                  displayName,
+                  issuerUri,
+                  clientId,
+                  issuerUri + "/protocol/openid-connect/certs",
+                  OidcClaimMapping.keycloakDefaults());
+          row.enable();
+          OidcProvider saved = providers.save(row);
+          events.publishEvent(new OidcProvidersChangedEvent());
+          return saved;
+        });
+  }
+
+  /** Removes an account whatever its issuer - a handed-over one is no longer a local one. */
+  public void deleteAccount(UUID userId) {
+    transactions.executeWithoutResult(
+        status -> {
+          jdbc.update("DELETE FROM local_action_tokens WHERE user_id = ?", userId);
+          jdbc.update("DELETE FROM local_refresh_tokens WHERE user_id = ?", userId);
+          jdbc.update("DELETE FROM local_revoked_tokens WHERE user_id = ?", userId);
+          jdbc.update("DELETE FROM spaces WHERE owner_id = ?", userId);
+          credentials.deleteById(userId);
+          users.findById(userId).ifPresent(users::delete);
+        });
+  }
+
+  /** Switches an existing provider row off and tells the registry. */
+  public void disableProvider(UUID providerId) {
+    transactions.executeWithoutResult(
+        status -> {
+          providers
+              .findById(providerId)
+              .ifPresent(
+                  row -> {
+                    row.disable();
+                    providers.save(row);
+                  });
+          events.publishEvent(new OidcProvidersChangedEvent());
+        });
+  }
+
+  /** Removes an OIDC provider row again and tells the registry. */
+  public void deleteProvider(UUID providerId) {
+    transactions.executeWithoutResult(
+        status -> {
+          providers.findById(providerId).ifPresent(providers::delete);
+          events.publishEvent(new OidcProvidersChangedEvent());
         });
   }
 

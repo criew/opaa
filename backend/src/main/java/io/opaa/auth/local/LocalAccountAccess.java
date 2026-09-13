@@ -27,12 +27,20 @@ final class LocalAccountAccess {
    * 11): not after a lock by the administration or for inactivity and not after the expiry date - a
    * failed-login lockout is the one state a redeemed reset link lifts, and an open invitation is
    * what a set-password link exists for.
+   *
+   * <p>The expiry is read on its own, before the derived state: {@link LocalCredentials#state} lets
+   * a lock outrank it, so an expired account in a failed-login lockout reports {@code LOCKED} with
+   * {@code FAILED_LOGINS} - the one state the rule below lets pass - and {@code EXPIRED} would
+   * never be seen. Five wrong passwords would have reopened every link of an expired account for a
+   * quarter of an hour, the handover included, and a redeemed handover deletes the expiry date with
+   * the row that carries it.
    */
   static boolean mayRedeemLink(LocalCredentials credentials, Instant now) {
-    LocalAccountState state = credentials.state(now);
-    if (state == LocalAccountState.EXPIRED) {
+    Instant expiresAt = credentials.getExpiresAt();
+    if (expiresAt != null && !expiresAt.isAfter(now)) {
       return false;
     }
+    LocalAccountState state = credentials.state(now);
     return state != LocalAccountState.LOCKED
         || credentials.getLockedReason() == LockReason.FAILED_LOGINS;
   }

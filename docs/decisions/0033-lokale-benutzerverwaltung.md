@@ -3,8 +3,8 @@
 ## Status
 
 **Akzeptiert (12.09.2026)** — mit dem Abschluss von Epic #1529 ist jede Entscheidung dieses ADR
-umgesetzt; die eine Ausnahme ist die Übergabe eines lokalen Kontos an eine Anbieteridentität
-(Entscheidung 12), die als #1594 nach dem Epic folgt. Vorgeschlagen am 11.09.2026 (Issue #1531,
+umgesetzt; die Übergabe eines lokalen Kontos an eine Anbieteridentität (Entscheidung 12) ist mit
+#1563 nach dem Epic gefolgt. Vorgeschlagen am 11.09.2026 (Issue #1531,
 Epic #1529). Setzt den Beschluss aus #1368 vom 10.09.2026
 um. Nachtrag zu [ADR-0005](0005-authentication-strategy.md) und
 [ADR-0025](0025-mehrere-oidc-anbieter.md), die weiter gelten, soweit dieser ADR sie nicht an einer
@@ -837,8 +837,10 @@ Vorgang, weil sie ihn selbst abschließt. `system_role` bleibt (bei einem Anbiet
 wird sie ohnehin beim nächsten Token geführt); die nächste Anmeldung über den Anbieter findet das
 Konto über den bestehenden Schlüssel — kein Sonderpfad im Provisionierer. Ausgeschlossen sind das
 Notanker-Konto und jede Übergabe, die den letzten gesicherten Systemverwalter entfernen würde
-(Guard aus Entscheidung 4). Einen Rückweg gibt es nicht; das ist vertretbar, weil die Person selbst
-einlöst. Die Umsetzung ist ein eigenes Sub-Issue des Epics nach der Admin-API und der Anmeldeseite.
+(Guard aus Entscheidung 4; #1563 prüft ihn beim Anstoßen **und** beim Einlösen, weil dazwischen
+Wochen liegen können und erst die Einlösung den lokalen Verwalter entfernt). Einen Rückweg gibt es
+nicht; das ist vertretbar, weil die Person selbst einlöst. Die Umsetzung ist ein eigenes Sub-Issue
+des Epics nach der Admin-API und der Anmeldeseite (#1563).
 
 ### 13. Audit-Ereignisse
 

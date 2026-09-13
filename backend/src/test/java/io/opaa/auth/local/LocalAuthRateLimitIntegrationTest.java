@@ -46,6 +46,8 @@ class LocalAuthRateLimitIntegrationTest {
   private static final String REFRESH = "/api/v1/auth/local/refresh";
   private static final String CHANGE_PASSWORD = "/api/v1/auth/local/change-password";
   private static final String DIAGNOSTICS = "/api/v1/admin/diagnostics/client-address";
+  private static final String HANDOVER_PREVIEW = "/api/v1/auth/local/handover/preview";
+  private static final String HANDOVER_REDEEM = "/api/v1/auth/local/handover/redeem";
 
   /** Throttled attempts name no account: a known one would be locked after five (#1535). */
   private static final String UNKNOWN = "niemand@stadt.example";
@@ -160,6 +162,35 @@ class LocalAuthRateLimitIntegrationTest {
         .andExpect(header().exists(HttpHeaders.RETRY_AFTER));
   }
 
+  /**
+   * #1563: the two handover endpoints share one budget - a redemption is one preview plus one
+   * redemption by the same person, and an unauthenticated caller without a valid code gets nothing
+   * out of either. Driven with an unusable code, which the endpoints refuse long before they touch
+   * an account.
+   */
+  @Test
+  void thePreviewAndTheRedemptionOfAHandoverShareOneBudget() throws Exception {
+    String body = "{\"token\":\"kein-code\",\"providerToken\":\"kein-token\"}";
+    mockMvc
+        .perform(handover(HANDOVER_PREVIEW, "{\"token\":\"kein-code\"}", "203.0.113.61"))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(handover(HANDOVER_REDEEM, body, "203.0.113.61"))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(handover(HANDOVER_PREVIEW, "{\"token\":\"kein-code\"}", "203.0.113.61"))
+        .andExpect(status().isBadRequest());
+
+    mockMvc
+        .perform(handover(HANDOVER_REDEEM, body, "203.0.113.61"))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(header().exists(HttpHeaders.RETRY_AFTER));
+    // another address keeps its own budget
+    mockMvc
+        .perform(handover(HANDOVER_PREVIEW, "{\"token\":\"kein-code\"}", "203.0.113.62"))
+        .andExpect(status().isBadRequest());
+  }
+
   @Test
   void theSixthPasswordChangeAttemptOfOneAccountIs429AndAnotherAccountIsNotAffected()
       throws Exception {
@@ -243,6 +274,11 @@ class LocalAuthRateLimitIntegrationTest {
                         "newPassword",
                         "neues-sicheres-passwort-2026")));
     return mockMvc.perform(request);
+  }
+
+  private static MockHttpServletRequestBuilder handover(
+      String path, String body, String remoteAddr) {
+    return post(path).contentType(MediaType.APPLICATION_JSON).content(body).with(from(remoteAddr));
   }
 
   private static RequestPostProcessor from(String remoteAddr) {

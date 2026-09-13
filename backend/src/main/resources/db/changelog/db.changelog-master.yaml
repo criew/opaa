@@ -43,5 +43,8 @@ databaseChangeLog:
       file: db/changelog/changes/012-mail-settings.yaml
   - include:
       file: db/changelog/changes/013-mail-templates.yaml
+  # Uebergabe eines lokalen Kontos an eine Anbieteridentitaet (#1563, ADR-0033 Entscheidung 12).
+  - include:
+      file: db/changelog/changes/014-local-action-token-handover.yaml
   - include:
       file: db/changelog/changes/030-chat-note-items.yaml

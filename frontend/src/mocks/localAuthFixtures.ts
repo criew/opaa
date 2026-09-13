@@ -10,6 +10,9 @@ export const MOCK_SET_PASSWORD_TOKEN = 'mock-set-password-token'
 /** The verification link of a self-registered account that the mock accepts, once. */
 export const MOCK_VERIFY_EMAIL_TOKEN = 'mock-verify-email-token'
 
+/** The handover link the mock accepts, once (#1563). */
+export const MOCK_HANDOVER_TOKEN = 'mock-handover-token'
+
 /** The address whose requests the mock refuses with 429, so the wait hint is reachable. */
 export const MOCK_RATE_LIMITED_EMAIL = 'zu-oft@stadt.example'
 

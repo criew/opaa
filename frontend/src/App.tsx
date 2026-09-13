@@ -16,6 +16,7 @@ import SetPasswordPage from './pages/SetPasswordPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import RegisterPage from './pages/RegisterPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
+import HandoverPage from './pages/HandoverPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import SpacePage from './pages/SpacePage'
 import SpacesOverviewPage from './pages/SpacesOverviewPage'
@@ -28,6 +29,7 @@ import LibraryCreatePage from './pages/LibraryCreatePage'
 import LibraryDetailPage from './pages/LibraryDetailPage'
 import {
   FORGOT_PASSWORD_ROUTE,
+  HANDOVER_ROUTE,
   REGISTER_ROUTE,
   SET_PASSWORD_ROUTE,
   VERIFY_EMAIL_ROUTE,
@@ -117,6 +119,10 @@ export default function App() {
             <Route path={VERIFY_EMAIL_ROUTE} element={<VerifyEmailPage />} />
             <Route path={FORGOT_PASSWORD_ROUTE} element={<ForgotPasswordPage />} />
             <Route path={REGISTER_ROUTE} element={<RegisterPage />} />
+            {/* ADR-0033, Entscheidung 12: the handover link and, after the provider redirect, the
+                page that redeems it - public like the other link targets, because the person has
+                no OPAA session at that moment and must not get one before the redemption. */}
+            <Route path={HANDOVER_ROUTE} element={<HandoverPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route
               element={

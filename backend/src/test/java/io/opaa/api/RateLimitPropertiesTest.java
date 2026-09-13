@@ -83,7 +83,14 @@ class RateLimitPropertiesTest {
         properties(
                 null,
                 new LocalAuthLimits(
-                    new LocalAuthLimit(3, 30, null, null), null, null, null, null, null, null))
+                    new LocalAuthLimit(3, 30, null, null),
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null))
             .localAuth();
 
     assertThat(limits.login().maxRequests()).isEqualTo(3);

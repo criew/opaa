@@ -3,6 +3,7 @@ package io.opaa.api;
 import io.opaa.api.dto.LocalAuthSettingsResponse;
 import io.opaa.api.dto.LocalUserCreatedResponse;
 import io.opaa.api.dto.LocalUserCreationMode;
+import io.opaa.api.dto.LocalUserHandoverResponse;
 import io.opaa.api.dto.LocalUserPageResponse;
 import io.opaa.api.dto.LocalUserPasswordResetResponse;
 import io.opaa.api.dto.LocalUserResponse;
@@ -66,6 +67,14 @@ final class LocalUserResponseMapper {
         "Die nächste Wiedervorlage zur Prüfung der lokalen Konten geht am "
             + DATE.format(summary.nextReviewOn())
             + " an die Systemverwaltung.");
+    return response;
+  }
+
+  /** The handover link, carried exactly once and only when the mail did not go out (#1563). */
+  static LocalUserHandoverResponse toHandover(LinkDelivery delivery) {
+    LocalUserHandoverResponse response =
+        new LocalUserHandoverResponse(delivery.emailSent(), delivery.path());
+    response.setHandoverUrl(delivery.link());
     return response;
   }
 

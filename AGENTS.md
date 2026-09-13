@@ -109,13 +109,13 @@ pnpm test                               # Stack via Docker Compose starten, Suit
 
 ## Spring-Testkontexte
 
-Die gesamte Backend-Suite läuft auf **acht** Spring-Kontexten und damit acht Testcontainers-Postgres
-je Test-JVM (Issues #1481 und #1543; `TestcontainersConfiguration` deklariert den Container als
-gewöhnliches Singleton-`@Bean`, es gilt also exakt: ein Kontext = ein Container). Jeder
-Backend-Test, der einen Anwendungskontext startet, trägt genau eine der acht Meta-Annotationen aus
+Die gesamte Backend-Suite läuft auf **neun** Spring-Kontexten und damit neun Testcontainers-Postgres
+je Test-JVM (Issues #1481, #1543 und #1563; `TestcontainersConfiguration` deklariert den Container
+als gewöhnliches Singleton-`@Bean`, es gilt also exakt: ein Kontext = ein Container). Jeder
+Backend-Test, der einen Anwendungskontext startet, trägt genau eine der neun Meta-Annotationen aus
 `io.opaa.test` (`backend/src/test/java/io/opaa/test/`) — niemals eine eigene
 `@SpringBootTest`/`@ActiveProfiles`/`@Import`/`@Testcontainers`-Kombination. Vier davon bilden die
-Familie des `local,dev`-Profils, vier die des Betriebsmodus `oidc`:
+Familie des `local,dev`-Profils, fünf die des Betriebsmodus `oidc`:
 
 - **`@OpaaIntegrationTest`** — die kanonische Signatur, die drei Viertel der Suite tragen: echtes
   Postgres, ganze Anwendung auf `RANDOM_PORT`, MockMvc (`@AutoConfigureMockMvc`),
@@ -136,7 +136,7 @@ Familie des `local,dev`-Profils, vier die des Betriebsmodus `oidc`:
   Schema-Initialisierung). Technischer Grund: eine Nachbarklasse prüft genau den Default, und der
   pgvector-Wächter zerstört und erzeugt `vector_store` neu.
 
-Vier weitere tragen den Betriebsmodus **`oidc`**, den die vier oben nicht liefern können: Unter
+Fünf weitere tragen den Betriebsmodus **`oidc`**, den die vier oben nicht liefern können: Unter
 `local,dev` authentifiziert `DevAuthFilter` jede Anfrage, bevor überhaupt ein Bearer-Token gelesen
 wird — eine lokale Sitzung ist dort nicht fahrbar. Das ist die harte technische Begründung dieser
 zweiten Familie (ADR-0033, #1543):
@@ -153,6 +153,13 @@ zweiten Familie (ADR-0033, #1543):
   Seed ablehnt — und eine Klasse prüft diese Ablehnung.
 - **`@OpaaLocalAuthRateLimitTest`** — dieselbe Basis mit den **echten** Grenzen. Technischer Grund:
   Die Grenzen sind hier Prüfgegenstand.
+- **`@OpaaLocalAuthProviderTest`** — dieselbe Basis plus einen Ersatz für die Decoder-Fabrik der
+  Anbieter-Registry (`OidcProviderTokenTestConfiguration`, ein echter `NimbusJwtDecoder` über einen
+  lokal erzeugten Schlüssel). Technischer Grund: Die Übergabe eines lokalen Kontos an eine
+  Anbieteridentität (ADR-0033, Entscheidung 12) wird mit einem **prüfbaren Anbieter-Token**
+  eingelöst; die Produktionsfabrik müsste dafür ein JWK-Set aus dem Netz holen. Diesen Ersatz in
+  die Basis zu ziehen, nähme ihn allen Klassen der Familie — auch denen, die unmittelbar daneben
+  den Decoder des lokalen Issuers fahren.
 
 Die Varianten sind jeweils über die Basis ihrer Familie meta-annotiert und ergänzen nur ihre
 Abweichung. Eine Variante muss **nicht fachlich zusammengehören**: Wo eine Abweichung ohnehin einen

@@ -9,7 +9,7 @@ import java.nio.charset.StandardCharsets;
  * English paths like every route of the SPA, the raw token as the {@code token} query. A link is
  * absolute only with {@code OPAA_PUBLIC_BASE_URL}; without one it is a path relative to the
  * installation, so an invitation handed to the administrator stays redeemable where no mail could
- * ever carry a link. The pages behind the paths are #1539/#1540/#1541.
+ * ever carry a link. The pages behind the paths are #1539/#1540/#1541/#1563.
  */
 public final class LocalAccountLinks {
 
@@ -18,6 +18,9 @@ public final class LocalAccountLinks {
 
   /** The page that confirms the address of a self-registered account ({@code ?token=…}). */
   public static final String VERIFY_EMAIL_PATH = "verify-email";
+
+  /** The page that redeems a handover of the account to a provider identity ({@code ?token=…}). */
+  public static final String HANDOVER_PATH = "handover";
 
   public static final String TOKEN_QUERY = "token";
   public static final String LOGIN_PATH = "login";
@@ -38,6 +41,11 @@ public final class LocalAccountLinks {
   /** Absolute with a configured base, otherwise {@code /verify-email?token=…}. */
   static String verifyEmailLink(PublicBaseUrl base, String rawToken) {
     return tokenLink(base, VERIFY_EMAIL_PATH, rawToken);
+  }
+
+  /** Absolute with a configured base, otherwise {@code /handover?token=…}. */
+  static String handoverLink(PublicBaseUrl base, String rawToken) {
+    return tokenLink(base, HANDOVER_PATH, rawToken);
   }
 
   /** The absolute link to {@code path}, or an empty string while no base is configured. */

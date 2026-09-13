@@ -400,6 +400,81 @@ class LocalAuthLogPrivacyIntegrationTest {
   }
 
   /**
+   * Starting a handover (#1563, ADR-0033 Entscheidung 12): neither the raw handover code nor the
+   * reason the administration gave nor an address reaches a log line, and {@code
+   * LOCAL_USER_HANDOVER_REQUESTED} carries the provider id and the delivery path and nothing else.
+   * The redemption itself needs a verifiable provider token and is covered in {@code
+   * LocalHandoverIntegrationTest}, whose context has one.
+   */
+  @Test
+  void startingAHandoverLeaksNeitherTheCodeNorTheReasonNorThePerson() throws Exception {
+    LocalAccount admin = fixtures.activeAdmin("verwaltung-" + UUID.randomUUID() + "@stadt.example");
+    String adminBearer = bearer(login(admin.email(), LocalAccountFixtures.PASSWORD, 200));
+    var provider =
+        fixtures.oidcProvider(
+            "Beschäftigte",
+            "https://idp.test.example/realms/" + UUID.randomUUID(),
+            "opaa-frontend");
+    String reason = "Umstellung auf den Identitätsanbieter der Stadt, Referat 3";
+    try {
+      MvcResult started =
+          mockMvc
+              .perform(
+                  post("/api/v1/admin/local-users/" + user.id() + "/handover")
+                      .header(HttpHeaders.AUTHORIZATION, adminBearer)
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .content(
+                          "{\"providerId\":\""
+                              + provider.getId()
+                              + "\",\"reason\":\""
+                              + reason
+                              + "\"}"))
+              .andExpect(status().isOk())
+              .andReturn();
+      String code =
+          tokenIn(JsonPath.read(started.getResponse().getContentAsString(), "$.handoverUrl"));
+
+      List<String> personal =
+          List.of(
+              user.email(),
+              user.email().toUpperCase(),
+              admin.email(),
+              reason,
+              LocalAccountFixtures.DISPLAY_NAME);
+      for (ILoggingEvent event : snapshot()) {
+        String line = event.getFormattedMessage() + " " + throwableText(event);
+        String where = "log line of " + event.getLoggerName() + " at " + event.getLevel();
+        assertThat(line).as(where).doesNotContain(code);
+        boolean ours = event.getLoggerName().startsWith("io.opaa");
+        if (ours || event.getLevel().isGreaterOrEqual(Level.INFO)) {
+          for (String value : personal) {
+            assertThat(line).as(where).doesNotContain(value);
+          }
+        }
+      }
+
+      List<Map<String, Object>> events =
+          jdbc.queryForList(
+              "SELECT event_type, actor_ref, object_label, subject_ref,"
+                  + " CAST(before AS text) AS before, CAST(after AS text) AS after, reason"
+                  + " FROM audit_log WHERE event_type = 'LOCAL_USER_HANDOVER_REQUESTED'");
+      assertThat(events).hasSize(1);
+      String after = (String) events.getFirst().get("after");
+      assertThat(after).contains("LINK_DISPLAYED").contains(provider.getId().toString());
+      assertThat(String.valueOf(events.getFirst().values()))
+          .doesNotContain(user.email())
+          .doesNotContain(admin.email())
+          .doesNotContain(LocalAccountFixtures.DISPLAY_NAME)
+          .doesNotContain(reason)
+          .doesNotContain(code)
+          .doesNotContain(user.id().toString());
+    } finally {
+      jdbc.update("DELETE FROM audit_log WHERE event_type = 'LOCAL_USER_HANDOVER_REQUESTED'");
+      fixtures.deleteProvider(provider.getId());
+    }
+  }
+
+  /**
    * The self-service link endpoints (#1538): redeeming an invitation link and an administrative
    * reset link leaves neither the raw token nor the new password in any log line, and {@code
    * LOCAL_PASSWORD_SET} carries the token's purpose but no address, no name and no account id.

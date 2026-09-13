@@ -53,7 +53,8 @@ class SpringContextSignatureTest {
           OpaaLocalAuthMockMvcTest.class,
           OpaaLocalAuthLinkTest.class,
           OpaaLocalAuthSeedTest.class,
-          OpaaLocalAuthRateLimitTest.class);
+          OpaaLocalAuthRateLimitTest.class,
+          OpaaLocalAuthProviderTest.class);
 
   @Test
   void everySpringBackedTestUsesOneOfTheCanonicalSignatures() {

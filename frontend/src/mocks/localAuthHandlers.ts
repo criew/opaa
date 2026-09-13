@@ -6,6 +6,7 @@ import {
   MOCK_RATE_LIMITED_EMAIL,
   MOCK_RATE_LIMITED_TOKEN,
   MOCK_RETRY_AFTER_SECONDS,
+  MOCK_HANDOVER_TOKEN,
   MOCK_SET_PASSWORD_TOKEN,
   MOCK_VERIFY_EMAIL_TOKEN,
 } from './localAuthFixtures'
@@ -194,6 +195,50 @@ export const localAuthHandlers = [
     if (email.toLowerCase() === MOCK_RATE_LIMITED_EMAIL) return tooManyRequests()
     // A taken address, a domain outside the list and a free address all answer alike.
     return new HttpResponse(null, { status: 202 })
+  }),
+
+  // #1563: die Vorschau verbraucht nichts, die Einlösung genau einmal - und sie verlangt ein
+  // Anbieter-Token im Body, nie im Authorization-Header.
+  http.post('/api/v1/auth/local/handover/preview', async ({ request }) => {
+    const body = (await request.json()) as { token?: string }
+    if (body.token === MOCK_RATE_LIMITED_TOKEN) return tooManyRequests()
+    if (body.token !== MOCK_HANDOVER_TOKEN || isConsumedMockToken(`handover:${body.token}`)) {
+      return tokenInvalid()
+    }
+    const provider = mockAuthConfig.providers?.[0]
+    return HttpResponse.json({
+      displayName: 'Erika Muster',
+      reason: 'Umstellung auf den Identitätsanbieter der Stadt',
+      provider: {
+        id: provider?.id ?? 'mock-provider',
+        displayName: provider?.displayName ?? 'Identitätsanbieter der Stadt',
+      },
+      scope: {
+        personalSpaceName: 'Mein Space',
+        spaceMemberships: 3,
+        groupMemberships: 1,
+        systemRole: 'USER',
+      },
+      expiresAt: new Date(Date.now() + 72 * 3600 * 1000).toISOString(),
+    })
+  }),
+
+  http.post('/api/v1/auth/local/handover/redeem', async ({ request }) => {
+    const body = (await request.json()) as { token?: string; providerToken?: string }
+    if (body.token === MOCK_RATE_LIMITED_TOKEN) return tooManyRequests()
+    if (body.token !== MOCK_HANDOVER_TOKEN || isConsumedMockToken(`handover:${body.token}`)) {
+      return tokenInvalid()
+    }
+    if (!body.providerToken) {
+      return HttpResponse.json(
+        errorBody('Die Anmeldung beim Identitätsanbieter konnte nicht geprüft werden.', {
+          status: 401,
+        }),
+        { status: 401 },
+      )
+    }
+    consumeMockToken(`handover:${body.token}`)
+    return new HttpResponse(null, { status: 204 })
   }),
 
   http.post('/api/v1/auth/local/verify-email', async ({ request }) => {

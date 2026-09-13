@@ -61,7 +61,14 @@ public class LocalTokenValidator {
     }
     LocalCredentials row = credentials.findById(userId).orElse(null);
     if (row == null) {
-      return Optional.of(new LocalTokenRejection(LocalTokenMarkers.UNKNOWN_ACCOUNT, null));
+      // A handed-over account (ADR-0033, Entscheidung 12) has no credentials row any more, but its
+      // revoked families still name the act - so a token left in another tab says what happened
+      // instead of the bare "unknown account" every other missing row means.
+      String cause = latestRevocationCause(userId);
+      return Optional.of(
+          LocalTokenRejection.HANDED_OVER_CAUSE.equals(cause)
+              ? new LocalTokenRejection(LocalTokenMarkers.SESSION_REVOKED, cause)
+              : new LocalTokenRejection(LocalTokenMarkers.UNKNOWN_ACCOUNT, null));
     }
     Instant now = clock.instant();
     if (!LocalAccountAccess.isLoginCapable(row, now)) {

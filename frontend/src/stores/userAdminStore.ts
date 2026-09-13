@@ -7,6 +7,7 @@ import type {
   LocalUserCreateRequest,
   LocalUserCreatedResponse,
   LocalUserGeneratedPasswordResponse,
+  LocalUserHandoverResponse,
   LocalUserPasswordResetResponse,
   LocalUserResponse,
   LocalUserSummaryResponse,
@@ -23,6 +24,7 @@ import {
   getLocalAuthSettings,
   getLocalUserSummary,
   lockLocalUser,
+  requestLocalUserHandover,
   requestLocalUserPasswordReset,
   unlockLocalUser,
   updateLocalAuthSettings,
@@ -96,6 +98,12 @@ interface UserAdminState {
   deleteUser: (id: string) => Promise<void>
   resetUserPassword: (id: string) => Promise<LocalUserPasswordResetResponse>
   generateUserPassword: (id: string) => Promise<LocalUserGeneratedPasswordResponse>
+  /** Starts a handover (#1563); the row keeps its state until the person redeems the link. */
+  requestHandover: (
+    id: string,
+    providerId: string,
+    reason: string,
+  ) => Promise<LocalUserHandoverResponse>
   /** The role of any account, local or of a provider, over the one role endpoint. */
   changeRole: (id: string, role: SystemRole) => Promise<UserInfo>
   /**
@@ -286,6 +294,10 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
   },
 
   resetUserPassword: async (id) => requestLocalUserPasswordReset(id),
+
+  // Nothing to patch into the list: the account stays exactly as it is until the person redeems.
+  requestHandover: async (id, providerId, reason) =>
+    requestLocalUserHandover(id, providerId, reason),
 
   generateUserPassword: async (id) => {
     const sessionEpoch = currentSessionEpoch()

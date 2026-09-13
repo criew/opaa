@@ -1,0 +1,49 @@
+databaseChangeLog:
+  # #1563 (ADR-0033 Entscheidung 12): a HANDOVER link binds the provider the administration chose
+  # and the reason it gave. Both live on the token row and nowhere else - the account stops being a
+  # local one when the code is redeemed, so a column on local_credentials would vanish with it, and
+  # the reason must never become an audit value (Entscheidung 13). provider_id cascades: a deleted
+  # provider voids every handover prepared for it instead of leaving a link to an identity nobody
+  # can present any more. The CHECK makes the pairing an invariant of the schema rather than of one
+  # code path - only a HANDOVER row carries the two, and it carries both.
+  - changeSet:
+      id: 014-local-action-token-handover
+      author: opaa
+      comment: "local_action_tokens: provider and reason of a handover link (#1563, ADR-0033 Entscheidung 12)"
+      changes:
+        - addColumn:
+            tableName: local_action_tokens
+            columns:
+              - column:
+                  name: provider_id
+                  type: uuid
+              - column:
+                  name: reason
+                  type: varchar(200)
+        - addForeignKeyConstraint:
+            baseTableName: local_action_tokens
+            baseColumnNames: provider_id
+            referencedTableName: oidc_providers
+            referencedColumnNames: id
+            constraintName: fk_local_action_tokens_provider
+            onDelete: CASCADE
+        - sql:
+            sql: >
+              ALTER TABLE local_action_tokens
+              ADD CONSTRAINT chk_local_action_tokens_handover
+              CHECK ((purpose = 'HANDOVER') = (provider_id IS NOT NULL AND reason IS NOT NULL));
+      rollback:
+        - sql:
+            sql: >
+              ALTER TABLE local_action_tokens
+              DROP CONSTRAINT chk_local_action_tokens_handover;
+        - dropForeignKeyConstraint:
+            baseTableName: local_action_tokens
+            constraintName: fk_local_action_tokens_provider
+        - dropColumn:
+            tableName: local_action_tokens
+            columns:
+              - column:
+                  name: provider_id
+              - column:
+                  name: reason
