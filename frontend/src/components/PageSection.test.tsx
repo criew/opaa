@@ -83,6 +83,9 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  *   („ohne Angabe im gefilterten Feld") — derselbe Fall wie ein Chip.
  * - `ChatInput`: die Eingabezeile ist ein Bedienelement, und ihr Vorschlagsfeld eine schwebende
  *   Ebene. Beides bringt seine Fläche zu Recht mit.
+ * - `LibraryManagementPage`: die Kachel je Bibliothek ist eine `ButtonBase` — ein Bedienelement,
+ *   das den Weg in die Detailansicht trägt. Ohne Begrenzung wäre unklar, wie weit die Trefferfläche
+ *   reicht; das ist der dritte Fall aus #1608, nicht ein Kasten um ruhenden Inhalt.
  */
 const AUSNAHMEN = [
   'BrandingPreview.tsx',
@@ -94,6 +97,7 @@ const AUSNAHMEN = [
   'MessageBubble.tsx',
   'SourceFootnotes.tsx',
   'ChatInput.tsx',
+  'LibraryManagementPage.tsx',
 ]
 
 /**
@@ -175,7 +179,12 @@ describe('PageSection', () => {
       // Ein voller Rahmen ringsum ist nur als gestrichelter Leerzustand zulässig („hier wäre
       // etwas"); die Trennung von Einträgen läuft über `borderBottom`. Wo ein Rahmen etwas
       // Fremdes markiert statt Inhalt zu bündeln, steht die Datei oben in AUSNAHMEN — mit Grund.
-      const vollerRahmen = quelltext.match(/border: 1,/g)?.length ?? 0
+      // Beide Schreibweisen zählen: `border: 1` und `border: '1px solid'` ergeben dieselbe Kante,
+      // und bis #1609 fiel die zweite durch das Raster (fünf Fundstellen, darunter der Kasten um
+      // „Metadaten-Pflege").
+      const vollerRahmen =
+        (quelltext.match(/border: 1,/g)?.length ?? 0) +
+        (quelltext.match(/border: '1px solid/g)?.length ?? 0)
       const gestrichelt = quelltext.match(/borderStyle: 'dashed'/g)?.length ?? 0
       expect(vollerRahmen).toBe(gestrichelt)
     },

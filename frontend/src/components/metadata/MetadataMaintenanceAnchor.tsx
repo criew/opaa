@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { LibraryMetadataMaintenanceResponse } from '../../types/api'
 import { getLibraryMetadataMaintenance } from '../../services/api'
 import { formatShare } from '../../utils/labels'
+import PageSection from '../PageSection'
 
 interface MetadataMaintenanceAnchorProps {
   libraryId: string
@@ -52,19 +52,11 @@ export default function MetadataMaintenanceAnchor({
   }, [libraryId, refreshToken])
 
   return (
-    <Box
-      component="section"
-      aria-label="Metadaten-Pflege"
-      sx={{ mb: 3, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
+    <PageSection
+      title="Metadaten-Pflege"
+      headingLevel="h3"
+      description={`Dokumente ohne Wert je Feld, bezogen auf ${maintenance?.totalDocuments ?? 0} indizierte Dokumente dieser Bibliothek. Felder, die von Hand als „kein Wert ermittelbar" gekennzeichnet sind, zählen nicht mit.`}
     >
-      <Typography variant="subtitle1" component="h3" sx={{ mb: 0.5 }}>
-        Metadaten-Pflege
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-        Dokumente ohne Wert je Feld, bezogen auf {maintenance?.totalDocuments ?? 0} indizierte
-        Dokumente dieser Bibliothek. Felder, die von Hand als „kein Wert ermittelbar" gekennzeichnet
-        sind, zählen nicht mit.
-      </Typography>
       {error && (
         <Alert severity="error" sx={{ mb: 1 }} onClose={() => setError(null)}>
           {error}
@@ -111,6 +103,6 @@ export default function MetadataMaintenanceAnchor({
           </Stack>
         ))}
       </Stack>
-    </Box>
+    </PageSection>
   )
 }

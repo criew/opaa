@@ -2184,10 +2184,12 @@ function LibraryDocumentsSection({
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: 2,
-                p: 1.5,
-                border: '1px solid',
+                py: 1.25,
+                // Ein Eintrag einer Liste ist eine Zeile mit einem Trenner unten (#1608, Regel 2),
+                // kein eigener Kasten. Der letzte trägt keinen, sonst schließt die Liste doppelt.
+                borderBottom: 1,
                 borderColor: 'divider',
-                borderRadius: 1,
+                '&:last-of-type': { borderBottom: 0 },
               }}
             >
               <Box
@@ -2231,13 +2233,18 @@ function LibraryDocumentsSection({
               )}
             </Box>
           ))}
-          {/* #1184: one bordered card per top-level document; its attachments hang visibly INSIDE
-              the same card - indented, on a guide line, separated by hairlines - instead of
-              floating as free boxes between unrelated documents. */}
+          {/* #1184: Ein Dokument der obersten Ebene mit seinen Anhängen ist eine Gruppe. Sie hält
+              seit #1609 ohne Rahmen zusammen: Die Anhänge hängen eingerückt an einer Führungslinie
+              unter ihrem Dokument, und ein Trenner unten schließt die Gruppe gegen die nächste ab
+              — dieselbe Zeilensprache wie überall sonst. */}
           {documentGroups.map(({ parent, attachments }) => (
             <Box
               key={parent.id}
-              sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
+              sx={{
+                borderBottom: 1,
+                borderColor: 'divider',
+                '&:last-of-type': { borderBottom: 0 },
+              }}
             >
               {renderDocumentRow(parent, { attachments })}
               {isGroupExpanded(parent.id) && attachments.length > 0 && (
