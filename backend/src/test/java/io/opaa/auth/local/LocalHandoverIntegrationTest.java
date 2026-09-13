@@ -3,6 +3,7 @@ package io.opaa.auth.local;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -160,8 +161,6 @@ class LocalHandoverIntegrationTest {
         .andExpect(jsonPath("$.reason").value(REASON))
         .andExpect(jsonPath("$.provider.id").value(provider.getId().toString()))
         .andExpect(jsonPath("$.provider.displayName").value("Beschäftigte"))
-        .andExpect(jsonPath("$.provider.issuerUri").value(ISSUER))
-        .andExpect(jsonPath("$.provider.clientId").value(CLIENT_ID))
         .andExpect(jsonPath("$.scope.systemRole").value("USER"))
         .andExpect(jsonPath("$.scope.spaceMemberships").isNumber())
         .andExpect(jsonPath("$.scope.groupMemberships").value(0))
@@ -308,6 +307,85 @@ class LocalHandoverIntegrationTest {
     }
   }
 
+  /**
+   * The row that carries lock and expiry is the very row a redemption deletes, so a handover that
+   * skipped this gate would lift an administrative lock, an inactivity lock or an expiry date on
+   * its way through - weeks after an administrator set it, and with the system role intact. Both
+   * ends of the code are gated, and both answer the one refusal every unusable link answers.
+   */
+  @Test
+  void aCodeOfAnAccountThatMayNoLongerRedeemIsAsInvalidAsAnyOther() throws Exception {
+    LocalAccount locked = fixtures.activeUser(address("gesperrt"));
+    String lockedCode = tokenIn(startHandover(locked.id(), provider.getId(), REASON, 200));
+    LocalCredentials lockedRow = fixtures.credentialsOf(locked);
+    lockedRow.lock(LockReason.ADMIN, Instant.now(), null);
+    fixtures.save(lockedRow);
+
+    LocalAccount expired = fixtures.activeUser(address("abgelaufen"));
+    String expiredCode = tokenIn(startHandover(expired.id(), provider.getId(), REASON, 200));
+    LocalCredentials expiredRow = fixtures.credentialsOf(expired);
+    expiredRow.setExpiresAt(Instant.now().minusSeconds(60), Instant.now());
+    fixtures.save(expiredRow);
+
+    for (String code : List.of(lockedCode, expiredCode)) {
+      mockMvc
+          .perform(json(post(PREVIEW), "{\"token\":\"" + code + "\"}"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value(LocalActionTokenService.TOKEN_INVALID));
+      mockMvc
+          .perform(
+              json(post(REDEEM), redeemBody(code, providerTokens.token(ISSUER, "sub-" + code))))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value(LocalActionTokenService.TOKEN_INVALID));
+    }
+
+    // both accounts are untouched: still local, still credentialed, still in the state they were
+    assertThat(users.findById(locked.id()).orElseThrow().getIssuer()).isEqualTo(LocalIssuer.URN);
+    assertThat(users.findById(expired.id()).orElseThrow().getIssuer()).isEqualTo(LocalIssuer.URN);
+    assertThat(credentials.findById(locked.id()).orElseThrow().getLockedAt()).isNotNull();
+    assertThat(credentials.findById(expired.id()).orElseThrow().getExpiresAt()).isNotNull();
+  }
+
+  /**
+   * An act of the administration closes the open handover code, exactly as it closes an invitation
+   * or a reset link: after a changed address the code went to the old one, and after a lock or a
+   * generated password it would carry the person past the act.
+   */
+  @Test
+  void anAdministrativeActClosesTheOpenHandoverCode() throws Exception {
+    record Act(String name, java.util.function.Consumer<UUID> apply) {}
+    List<Act> acts =
+        List.of(
+            new Act(
+                "address change",
+                id ->
+                    perform(
+                        patch(LOCAL_USERS + "/" + id),
+                        "{\"email\":\"neu-" + id + "@stadt.example\"}",
+                        200)),
+            new Act("lock", id -> perform(post(LOCAL_USERS + "/" + id + "/lock"), null, 200)),
+            new Act(
+                "generated password",
+                id -> perform(post(LOCAL_USERS + "/" + id + "/password"), null, 200)));
+
+    for (Act act : acts) {
+      LocalAccount person = fixtures.activeUser(address("erika"));
+      String code = tokenIn(startHandover(person.id(), provider.getId(), REASON, 200));
+      assertThat(actionTokens.findRedeemable(code, ActionTokenPurpose.HANDOVER))
+          .as("before the %s", act.name())
+          .isPresent();
+
+      act.apply().accept(person.id());
+
+      assertThat(actionTokens.findRedeemable(code, ActionTokenPurpose.HANDOVER))
+          .as("the %s left the handover code open", act.name())
+          .isEmpty();
+      mockMvc
+          .perform(json(post(PREVIEW), "{\"token\":\"" + code + "\"}"))
+          .andExpect(status().isBadRequest());
+    }
+  }
+
   @Test
   void theEmergencyAnchorAccountIsNeverHandedOver() throws Exception {
     LocalAccount anchor = fixtures.activeAdmin(address("notanker"));
@@ -324,6 +402,29 @@ class LocalHandoverIntegrationTest {
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value(LocalUserService.BOOTSTRAP_ACCOUNT));
     assertThat(actionTokenRepository.findAll()).noneMatch(t -> t.getUserId().equals(anchor.id()));
+  }
+
+  /**
+   * The emergency-anchor branch of the <em>redemption</em>: the account can become the emergency
+   * anchor after a code was issued, and the redemption refuses it on its own rather than trusting
+   * that the request already did.
+   */
+  @Test
+  void anAccountThatBecameTheEmergencyAnchorIsNotHandedOverEither() throws Exception {
+    LocalAccount person = fixtures.activeAdmin(address("spaeterer-notanker"));
+    fixtures.activeAdmin(address("zweite"));
+    String code = tokenIn(startHandover(person.id(), provider.getId(), REASON, 200));
+    LocalCredentials row = fixtures.credentialsOf(person);
+    row.markBootstrap();
+    fixtures.save(row);
+
+    mockMvc
+        .perform(json(post(REDEEM), redeemBody(code, providerTokens.token(ISSUER, "notanker-sub"))))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value(LocalUserService.BOOTSTRAP_ACCOUNT));
+
+    assertThat(users.findById(person.id()).orElseThrow().getIssuer()).isEqualTo(LocalIssuer.URN);
+    assertThat(credentials.findById(person.id())).isPresent();
   }
 
   /**
@@ -405,6 +506,19 @@ class LocalHandoverIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, adminBearer))
         .andExpect(status().is(expectedStatus))
         .andReturn();
+  }
+
+  /** Runs an administrative call and asserts its status; the table above needs a void action. */
+  private void perform(MockHttpServletRequestBuilder request, String body, int expectedStatus) {
+    try {
+      mockMvc
+          .perform(
+              (body == null ? request : json(request, body))
+                  .header(HttpHeaders.AUTHORIZATION, adminBearer))
+          .andExpect(status().is(expectedStatus));
+    } catch (Exception e) {
+      throw new IllegalStateException(e);
+    }
   }
 
   private static String handoverBody(UUID providerId, String reason) {

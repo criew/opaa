@@ -175,6 +175,10 @@ public class LocalHandoverAccountService {
   public HandoverPreview preview(String rawToken) {
     LocalActionToken token = redeemableToken(rawToken);
     User user = localAccount(token.getUserId());
+    // The same gate the redemption applies, and for the same reason: a code whose account may no
+    // longer redeem is simply not a link any more - and must not hand out the account's name, the
+    // reason or the scope on the way to that refusal.
+    redeemableCredentials(user.getId());
     OidcProvider provider =
         providers
             .findById(token.getProviderId())
@@ -205,8 +209,7 @@ public class LocalHandoverAccountService {
       throw new ConflictException(PROVIDER_MISMATCH_MESSAGE, PROVIDER_MISMATCH);
     }
     User user = localAccount(token.getUserId());
-    LocalCredentials row =
-        credentials.findById(user.getId()).orElseThrow(LocalActionTokenService::invalidToken);
+    LocalCredentials row = redeemableCredentials(user.getId());
     if (row.isBootstrap()) {
       throw new ConflictException(BOOTSTRAP_MESSAGE, LocalUserService.BOOTSTRAP_ACCOUNT);
     }
@@ -266,6 +269,22 @@ public class LocalHandoverAccountService {
   private LocalActionToken redeemableToken(String rawToken) {
     return actionTokens
         .findRedeemable(rawToken, ActionTokenPurpose.HANDOVER)
+        .orElseThrow(LocalActionTokenService::invalidToken);
+  }
+
+  /**
+   * The account's credentials, provided it may still redeem a link ({@link
+   * LocalAccountAccess#mayRedeemLink}) - the row that carries lock and expiry is the very row a
+   * redemption deletes, so without this gate a handover would lift an administrative lock, an
+   * inactivity lock or an expiry date on its way through. A running failed-login lockout does not
+   * count: it ends by itself, and holding the code plus an identity at the provider is a stronger
+   * proof than the one it asks for.
+   */
+  private LocalCredentials redeemableCredentials(UUID userId) {
+    Instant now = clock.instant();
+    return credentials
+        .findById(userId)
+        .filter(row -> LocalAccountAccess.mayRedeemLink(row, now))
         .orElseThrow(LocalActionTokenService::invalidToken);
   }
 
