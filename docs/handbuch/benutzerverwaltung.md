@@ -187,8 +187,8 @@ aus:
 Ein Hinweis über der Liste nennt die beiden Zahlen „Konten ohne Ablaufdatum" und „offene
 Einladungen" und führt direkt in den passenden Filter. Er verschwindet, sobald beide null sind. Die
 Zahl und die Liste dahinter meinen dieselben Konten: Das Notanker-Konto der Systemverwaltung
-erscheint in keiner von beiden. Es soll unbefristet bleiben und lässt sich gar nicht befristen — es
-ist der Weg zurück in eine ausgesperrte Installation und deshalb kein Fall für die Auflagenprüfung.
+erscheint in keiner von beiden. Es soll unbefristet bleiben — es ist der Weg zurück in eine
+ausgesperrte Installation und deshalb kein Fall für die Auflagenprüfung.
 
 Dazu kommen zwei Automatiken, die die Prüfung am Laufen halten: Vor einem Ablauf erhalten die Person
 und die Systemverwaltung eine Nachricht, und einmal im Quartal geht eine Wiedervorlage an die

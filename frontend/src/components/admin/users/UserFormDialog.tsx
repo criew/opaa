@@ -46,6 +46,14 @@ export const NO_EXPIRY_HELP =
   'Ein Konto ohne Ablaufdatum ist eine ausdrückliche Entscheidung und erscheint im Hinweis zur ' +
   'Auflage, bis es befristet wird.'
 
+/**
+ * Das Notanker-Konto zählt nicht zur Auflagenprüfung (ADR-0033, Entscheidung 11) – der Satz oben
+ * verspräche ihm sonst einen Hinweis, in dem es nie auftaucht.
+ */
+export const NO_EXPIRY_HELP_BOOTSTRAP =
+  'Das Notanker-Konto der Systemverwaltung soll unbefristet bleiben; es erscheint nicht im Hinweis ' +
+  'zur Auflage.'
+
 const MODE_LABEL: Record<LocalUserCreationMode, string> = {
   INVITE: 'Einladung per E-Mail senden',
   INITIAL_PASSWORD: 'Anfangspasswort jetzt erzeugen (Wechsel bei der ersten Anmeldung)',
@@ -293,7 +301,7 @@ export default function UserFormDialog({
             />
             {draft.noExpiry && (
               <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-                {NO_EXPIRY_HELP}
+                {user?.bootstrap ? NO_EXPIRY_HELP_BOOTSTRAP : NO_EXPIRY_HELP}
               </Typography>
             )}
           </Box>

@@ -828,11 +828,15 @@ class LocalUserAdminIntegrationTest {
     limitedRow.setExpiresAt(Instant.now().plus(Duration.ofDays(10)), Instant.now());
     fixtures.save(limitedRow);
 
+    // The whole population of the organization at this point: the setup starts from a cleaned
+    // table, so these are the only local accounts, and the count over all of them is comparable
+    // with the unnarrowed list.
+    List<String> obliged = List.of(admin.email(), open.email());
+
     MvcResult summary =
         asAdmin(get(LOCAL_USERS + "/summary")).andExpect(status().isOk()).andReturn();
     int counted = JsonPath.read(summary.getResponse().getContentAsString(), "$.withoutExpiry");
-    // the administrator of the setup and `open`; the bootstrap account carries no obligation
-    assertThat(counted).isEqualTo(2);
+    assertThat(counted).isEqualTo(obliged.size());
 
     for (String list : List.of(LOCAL_USERS, ACCOUNTS)) {
       String body =
@@ -844,7 +848,8 @@ class LocalUserAdminIntegrationTest {
       assertThat(JsonPath.<Integer>read(body, "$.total")).as(list).isEqualTo(counted);
       assertThat(JsonPath.<List<String>>read(body, "$.items[*].email"))
           .as(list)
-          .containsExactlyInAnyOrder(admin.email(), open.email());
+          .containsExactlyInAnyOrderElementsOf(obliged)
+          .doesNotContain(notanker.email(), limited.email());
     }
   }
 

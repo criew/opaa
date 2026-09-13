@@ -115,10 +115,10 @@ public class LocalCredentials {
 
   /**
    * Whether this account belongs to the review obligation's "ohne Ablaufdatum" (ADR-0033,
-   * Entscheidung 11): no expiry set, and not the bootstrap account - that one must stay unlimited
-   * as the way back into a locked-out installation and is protected against being given an expiry.
-   * The single rule behind the standing notice's count, both list filters and the quarterly
-   * reminder; they would drift apart again if any of them formulated it a second time (#1603).
+   * Entscheidung 11): no expiry set, and not the bootstrap account - that one is meant to stay
+   * unlimited as the way back into a locked-out installation. The single rule behind the standing
+   * notice's count, both list filters, and the share the quarterly reminder adds for accounts
+   * without an expiry.
    */
   public boolean countsAsWithoutExpiry() {
     return expiresAt == null && !bootstrap;

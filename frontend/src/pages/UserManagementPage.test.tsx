@@ -496,6 +496,24 @@ describe('UserManagementPage', () => {
   })
 
   /**
+   * Das Notanker-Konto steht nicht im Hinweis zur Auflage (#1603) – der Hilfetext unter „Kein
+   * Ablaufdatum" darf ihm deshalb keinen versprechen.
+   */
+  it('tells the bootstrap account it stays unlimited instead of promising it the notice', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+
+    const menu = await openRowMenu(user, 'Systemverwaltung', 'admin@opaa.local')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/soll unbefristet bleiben/)).toBeInTheDocument()
+    expect(within(dialog).queryByText(/erscheint im Hinweis zur/)).not.toBeInTheDocument()
+  }, 20000)
+
+  /**
    * Regressionsschutz zu Review-Runde 1 (HIGH 2): Der PATCH sendete `expiresAt` immer mit —
    * auf 23:59:59 Ortszeit zurückgerechnet. Eine reine Namensänderung verschob damit das
    * Ablaufdatum und stand als Fristverschiebung im `LOCAL_USER_CHANGED`-Ereignis, das
