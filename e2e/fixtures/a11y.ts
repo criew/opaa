@@ -39,29 +39,43 @@ function describeViolation(violation: Violation): string {
 }
 
 /**
- * Settles the page before it is measured: waits until every finite animation and transition has
- * reached its end state. axe derives an element's effective colour from the frame it sees, so a
- * page still fading in yields interpolated colours that exist in no end state, and
- * `color-contrast` reports pairs the interface never shows (#1643). Endless animations (loading
- * indicators) are skipped - waiting for them would never return.
+ * Settles the page before it is measured: waits until the running finite animations and
+ * transitions have reached their end state. axe derives an element's effective colour from the
+ * frame it sees, so a page still fading in yields interpolated colours that exist in no end state,
+ * and `color-contrast` reports pairs the interface never shows (#1643). Skipped are animations
+ * that would never settle - endless repetition (loading indicators), unbounded duration, and
+ * paused ones. Returns the number of animations still running when the wait gave up, so a caller
+ * can surface that instead of silently measuring an unsettled page.
  *
  * A string expression: the E2E suite compiles without DOM typings, so `document` is unknown here.
  */
 const SETTLE_ANIMATIONS = `
   (async () => {
+    const deadline = Date.now() + 5000;
     const pending = () =>
       document.getAnimations().filter((animation) => {
-        if (animation.playState === 'finished') return false;
+        if (animation.playState === 'finished' || animation.playState === 'paused') return false;
         const timing = animation.effect && animation.effect.getComputedTiming();
-        return !!timing && timing.iterations !== Infinity;
+        if (!timing) return false;
+        return (
+          timing.iterations !== Infinity &&
+          typeof timing.duration === 'number' &&
+          Number.isFinite(timing.duration)
+        );
       });
-    // Several passes because one animation can start the next (staged entrances); the bound keeps
-    // an unexpected chain from hanging the test instead of failing it.
+    // Several passes because one animation can start the next (staged entrances); pass count and
+    // deadline together keep an unexpected chain from hanging the test instead of reporting it.
     for (let pass = 0; pass < 5; pass++) {
       const running = pending();
-      if (running.length === 0) return;
-      await Promise.all(running.map((animation) => animation.finished.catch(() => undefined)));
+      if (running.length === 0) return 0;
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) break;
+      await Promise.race([
+        Promise.all(running.map((animation) => animation.finished.catch(() => undefined))),
+        new Promise((resolve) => setTimeout(resolve, remaining)),
+      ]);
     }
+    return pending().length;
   })()
 `
 
@@ -75,7 +89,13 @@ export async function expectNoSeriousA11yViolations(
   context: string,
   options: A11yCheckOptions = {},
 ): Promise<void> {
-  await page.evaluate(SETTLE_ANIMATIONS)
+  const unsettled = (await page.evaluate(SETTLE_ANIMATIONS)) as number
+  if (unsettled > 0) {
+    test.info().annotations.push({
+      type: 'a11y-unsettled',
+      description: `${context}: ${unsettled} Animation(en) liefen noch, als axe gemessen hat — gemeldete Farben können Zwischenstände sein (#1643).`,
+    })
+  }
 
   let builder = new AxeBuilder({ page }).withTags(WCAG_TAGS)
   if (options.disableRules?.length) {

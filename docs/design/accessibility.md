@@ -116,12 +116,15 @@ Ausschnitt.
   „serious" und „critical" lassen die Prüfung fehlschlagen, „minor"/„moderate" erscheinen als
   Annotation im Report.
 - Gemessen wird stets der **ausklingende** Zustand: Vor jedem axe-Lauf wartet die Prüfung auf das
-  Ende aller endlichen Animationen und Übergänge der Seite (`e2e/fixtures/a11y.ts`). axe leitet die
-  wirksame Farbe aus dem Bild ab, das es gerade sieht — während einer Einblendung sind das
-  Zwischenwerte, die es in keinem Endzustand gibt, und `color-contrast` meldet dann Farbpaare, die
-  die Oberfläche nie zeigt (#1643). Endlose Animationen (Ladeanzeigen) bleiben ausgenommen, sonst
-  käme die Prüfung nie zurück. Die Regel deswegen abzuschalten wäre der falsche Weg — sie ist
-  genau die, die einen echten Kontrastfehler findet.
+  Ende der laufenden endlichen Animationen und Übergänge der Seite (`e2e/fixtures/a11y.ts`), in
+  mehreren Durchgängen, damit gestaffelte Ketten mitgenommen werden. axe leitet die wirksame Farbe
+  aus dem Bild ab, das es gerade sieht — während einer Einblendung sind das Zwischenwerte, die es
+  in keinem Endzustand gibt, und `color-contrast` meldet dann Farbpaare, die die Oberfläche nie
+  zeigt (#1643). Ausgenommen bleibt, was nie zur Ruhe käme: unendliche Wiederholungszahl
+  (Ladeanzeigen), unbegrenzte Dauer und angehaltene Animationen. Läuft nach der Wartezeit noch
+  etwas, erscheint das als Annotation im Report, statt still gemessen zu werden. Die Regel
+  deswegen abzuschalten wäre der falsche Weg — sie ist genau die, die einen echten Kontrastfehler
+  findet.
 - Ausnahmen werden einzeln im Code begründet und mit einem Issue verknüpft — nie pauschal
   abgeschaltet: im Lint als `// eslint-disable-next-line jsx-a11y-x/<regel>` mit Begründung und
   Issue direkt darüber, in der E2E-Suite als dokumentierter `exclude`-/`disableRules`-Eintrag
