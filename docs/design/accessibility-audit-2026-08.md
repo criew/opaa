@@ -43,7 +43,7 @@ Alle Kernabläufe sind ohne Maus vollständig durchführbar:
 | Belegfenster | ✓ Fokus wandert hinein, **Escape schließt und der Fokus kehrt zum Auslöser zurück** |
 | @-Vorschlagsliste | ✓ erscheint nach `@`, per Pfeiltasten bedienbar |
 | Chat umbenennen | ✓ Menüpunkt aktivierbar, Inline-Feld „Chat-Titel“ erhält den Fokus; ✗ nach Escape/Commit fällt der Fokus auf `body` (Befund #959) |
-| Chat löschen | ✓ Bestätigung über nativen `window.confirm`-Dialog (nativ tastatur- und screenreader-tauglich; gestalterisch designsystem-fremd, kein Barriere-Befund) |
+| Chat löschen | ✓ Bestätigung über das Bestätigungs-Overlay der Anwendung (Richtlinie 5.10); der zur Prüfzeit hier verwendete native `window.confirm` war designsystem-fremd, aber kein Barriere-Befund — er ist mit #1610 abgelöst |
 | Bibliothek anlegen (Assistent) | ✓ per Tab bedienbar |
 | Branding (Formular inkl. Warnung) | ✓ Felder beschriftet und erreichbar |
 

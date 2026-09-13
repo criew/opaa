@@ -372,6 +372,51 @@ bleiben: der Validierungsfehler am Formular, der Ladefehler des Bereichs, ein da
 Zustandshinweis („nur Leserechte"). Faustregel: Was nach einem Seitenwechsel noch gilt, ist ein
 Inline-Zustand — was einen Klick quittiert, ist eine Benachrichtigung.
 
+### 5.10 Bestätigungen
+
+Eine folgenreiche Handlung wird über das **Bestätigungs-Overlay** der Anwendung abgesichert, nie
+über `window.confirm` (#1610). Der Browser-Dialog stellt seine Frage in Systemschrift, presst die
+Folge in denselben Textklumpen und lässt mit „OK" bestätigen — er benennt also genau das nicht,
+was zugesagt wird.
+
+Der Mechanismus ist derselbe wie bei den Benachrichtigungen: `confirmAction(options)` aus
+`frontend/src/stores/confirmStore.ts`, gerendert genau einmal durch `ConfirmHost` in der
+AppShell. Der Aufruf bleibt dadurch so kurz wie der ersetzte:
+
+```ts
+if (!(await confirmAction({ question, consequence, confirmLabel, tone }))) return
+```
+
+**Aufbau.** Die **Folge ist der Hauptinhalt**, nicht die Frage. Die Frage steht als Titel darüber
+in 17 px, die Folge darunter in 13,5 px `fg-2` in Lesebreite. Links trägt der Dialog eine 3 px
+starke Signalkante, bei gewichtigen Tönen zusätzlich ein Symbol neben dem Titel.
+
+**Die Schaltfläche trägt das Verb der Handlung** — „Löschen", „Abschalten", „Verwerfen",
+„Sperren". Nie „OK", nie „Ja". Wer nur die Schaltfläche liest, muss trotzdem wissen, was er
+zusagt.
+
+**Drei Töne**, mehr nicht:
+
+| Ton | Wofür | Kante | Vorgabefokus |
+| --- | --- | --- | --- |
+| `danger` | unwiderruflich: löschen, Zugang entziehen | Gefahr | **Abbrechen** |
+| `caution` | folgenreich, aber umkehrbar: abschalten, einschalten | Warnung | die Handlung |
+| `neutral` | Eingaben verwerfen, Zuordnung lösen | Rahmen | die Handlung |
+
+Bei `danger` liegt der Fokus bewusst auf „Abbrechen": Ein Enter aus dem Reflex heraus bricht dann
+ab, statt zu löschen.
+
+**Abbruch ist die sichere Antwort.** Escape, ein Klick daneben und eine verdrängende zweite
+Anfrage lösen alle zu „nein" auf. Eine Bestätigung entsteht nur durch den Klick auf die
+benannte Handlung.
+
+Die Signalfarbe steht in Kante und Symbol, nie im Fließtext — `warning.main` als Text misst auf
+heller Fläche rund 1,8:1 und verfehlt 4,5:1 (dieselbe Regel wie in 4.1 und bei `StatusLine`).
+
+**Wann überhaupt bestätigen?** Nur, wenn die Handlung nicht folgenlos rückgängig zu machen ist
+oder fremde Arbeit trifft. Eine Bestätigung, die reflexhaft weggeklickt wird, schützt nichts und
+kostet jeden Vorgang einen Klick.
+
 ---
 
 ## 6 · Sprache und Begriffe

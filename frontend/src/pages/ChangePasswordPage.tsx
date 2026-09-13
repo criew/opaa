@@ -108,7 +108,7 @@ export default function ChangePasswordPage() {
   if (sessionKind !== 'local') {
     return (
       <AuthLayout>
-        <PageHeading title="Passwort ändern" variant="h6" />
+        <PageHeading title="Passwort ändern" variant="h5" />
         <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 1 }}>
           Das Passwort dieses Kontos verwaltet Ihr Identitätsanbieter. Ändern Sie es dort.
         </Typography>
@@ -123,7 +123,7 @@ export default function ChangePasswordPage() {
 
   return (
     <AuthLayout>
-      <PageHeading title="Passwort ändern" variant="h6" />
+      <PageHeading title="Passwort ändern" variant="h5" />
       {passwordChangeRequired && (
         <Alert severity="info" sx={{ mt: 2, textAlign: 'left' }}>
           <AlertTitle>Neues Passwort erforderlich</AlertTitle>

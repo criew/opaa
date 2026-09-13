@@ -3,7 +3,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithProviders } from '../test/test-utils'
+import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import { server } from '../mocks/server'
 import LibraryDetailPage from './LibraryDetailPage'
 import { useAuthStore } from '../stores/authStore'
@@ -420,10 +420,10 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
     await user.click(await screen.findByRole('button', { name: /bibliothek löschen/i }))
+    await answerConfirm(user, 'Bibliothek "Rechtsquellen Soziales" löschen?', 'Löschen')
 
     await waitFor(() => {
       expect(mockDeleteLibrary).toHaveBeenCalledWith('library-team')
@@ -439,15 +439,19 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
     await user.click(await screen.findByRole('button', { name: /bibliothek löschen/i }))
 
+    const question = 'Bibliothek "Rechtsquellen Soziales" löschen?'
+    expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
+      /indizierten dokumente/i,
+    )
+    await answerConfirm(user, question, 'Löschen')
+
     await waitFor(() => {
       expect(mockDeleteLibrary).toHaveBeenCalledWith('library-team')
     })
-    expect(confirmSpy).toHaveBeenCalledWith(expect.stringMatching(/indizierten dokumente/i))
   })
 
   // #1257: the Diagnosesperre state and its control - visible to everyone who can read the
@@ -673,12 +677,12 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     await screen.findByText('dienstanweisung-2024.pdf')
     await user.click(
       screen.getByRole('button', { name: /dokument dienstanweisung-2024\.pdf löschen/i }),
     )
+    await answerConfirm(user, 'Dokument "dienstanweisung-2024.pdf" löschen?', 'Löschen')
 
     await waitFor(() => {
       expect(mockDeleteLibraryDocument).toHaveBeenCalledWith('library-team', 'document-1')
@@ -2639,7 +2643,6 @@ describe('LibraryDetailPage', () => {
           }),
         ),
       )
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
       mockDeleteLibraryFolder.mockResolvedValueOnce(undefined)
       mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
 
@@ -2651,12 +2654,11 @@ describe('LibraryDetailPage', () => {
       )
       await user.click(await screen.findByRole('menuitem', { name: /löschen/i }))
 
+      await answerConfirm(user, 'Ordner "Protokolle" und 7 Dokumente löschen?', 'Löschen')
+
       await waitFor(() => {
-        expect(confirmSpy).toHaveBeenCalledWith(
-          expect.stringContaining('Ordner "Protokolle" und 7 Dokumente löschen?'),
-        )
+        expect(mockDeleteLibraryFolder).toHaveBeenCalledWith('library-mine', 'folder-protokolle')
       })
-      expect(mockDeleteLibraryFolder).toHaveBeenCalledWith('library-mine', 'folder-protokolle')
       await waitFor(() => {
         expect(
           screen.queryByRole('button', { name: /ordner protokolle öffnen/i }),
@@ -2676,8 +2678,6 @@ describe('LibraryDetailPage', () => {
           HttpResponse.json({ error: 'Interner Serverfehler' }, { status: 500 }),
         ),
       )
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
-
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
       const user = userEvent.setup()
 
@@ -2686,11 +2686,8 @@ describe('LibraryDetailPage', () => {
       )
       await user.click(await screen.findByRole('menuitem', { name: /löschen/i }))
 
-      await waitFor(() => {
-        expect(confirmSpy).toHaveBeenCalledWith(
-          expect.stringContaining('Ordner "Protokolle" und 3 Dokumente löschen?'),
-        )
-      })
+      await answerConfirm(user, 'Ordner "Protokolle" und 3 Dokumente löschen?', 'Abbrechen')
+
       expect(mockDeleteLibraryFolder).not.toHaveBeenCalled()
     })
 

@@ -12,6 +12,7 @@ import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import type { LocalAuthSettingsResponse, LocalAuthSettingsUpdateRequest } from '../../../types/api'
+import { confirmAction } from '../../../stores/confirmStore'
 import { useMailStore } from '../../../stores/mailStore'
 import { notify } from '../../../stores/notificationStore'
 import { useUserAdminStore } from '../../../stores/userAdminStore'
@@ -275,10 +276,15 @@ export default function LocalAuthSettingsCard() {
     void persist(requestOf(settings!, draftOf(settings!), overrides), success)
   }
 
-  function toggleEnabled(next: boolean) {
+  async function toggleEnabled(next: boolean) {
     if (
       !next &&
-      !window.confirm(`Lokale Anmeldung abschalten?\n\n${DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE}`)
+      !(await confirmAction({
+        question: 'Lokale Anmeldung abschalten?',
+        consequence: DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE,
+        confirmLabel: 'Abschalten',
+        tone: 'caution',
+      }))
     ) {
       return
     }
@@ -293,14 +299,19 @@ export default function LocalAuthSettingsCard() {
     )
   }
 
-  function toggleSelfRegistration(next: boolean) {
+  async function toggleSelfRegistration(next: boolean) {
     if (next && domains.length === 0) {
       setError(DOMAIN_REQUIRED_HINT)
       return
     }
     if (
       next &&
-      !window.confirm(`Selbstregistrierung einschalten?\n\n${SELF_REGISTRATION_CONSEQUENCE}`)
+      !(await confirmAction({
+        question: 'Selbstregistrierung einschalten?',
+        consequence: SELF_REGISTRATION_CONSEQUENCE,
+        confirmLabel: 'Einschalten',
+        tone: 'caution',
+      }))
     ) {
       return
     }
@@ -364,7 +375,7 @@ export default function LocalAuthSettingsCard() {
             <Switch
               checked={settings.enabled}
               disabled={isSaving}
-              onChange={(e) => toggleEnabled(e.target.checked)}
+              onChange={(e) => void toggleEnabled(e.target.checked)}
             />
           }
           label="Lokale Anmeldung aktiv"
@@ -381,7 +392,7 @@ export default function LocalAuthSettingsCard() {
               ? ineffectiveReason(settings, parseDomains(draftOf(settings).domains))
               : null
           }
-          onChange={toggleSelfRegistration}
+          onChange={(next) => void toggleSelfRegistration(next)}
         />
         <LinkFlowSwitch
           label="Passwort vergessen"

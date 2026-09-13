@@ -2,7 +2,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { renderWithProviders } from '../../test/test-utils'
+import { answerConfirm, renderWithProviders } from '../../test/test-utils'
 import { server } from '../../mocks/server'
 import ChatList from './ChatList'
 import { useChatListStore } from '../../stores/chatListStore'
@@ -69,13 +69,13 @@ describe('ChatList', () => {
   })
 
   it('deletes a chat after confirmation', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     const user = userEvent.setup()
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
     await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
     await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ löschen'))
+    await answerConfirm(user, '„Architektur des Projekts“ wirklich löschen?', 'Löschen')
 
     await waitFor(() => {
       expect(screen.queryByText('Architektur des Projekts')).not.toBeInTheDocument()
@@ -83,13 +83,13 @@ describe('ChatList', () => {
   })
 
   it('does not delete a chat when the confirmation is cancelled', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
     const user = userEvent.setup()
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
     await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
     await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ löschen'))
+    await answerConfirm(user, '„Architektur des Projekts“ wirklich löschen?', 'Abbrechen')
 
     expect(screen.getByText('Architektur des Projekts')).toBeInTheDocument()
   })
@@ -102,13 +102,13 @@ describe('ChatList', () => {
         return HttpResponse.json({ error: 'Löschen fehlgeschlagen' }, { status: 500 })
       }),
     )
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     const user = userEvent.setup()
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
     await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
     await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ löschen'))
+    await answerConfirm(user, '„Architektur des Projekts“ wirklich löschen?', 'Löschen')
 
     expect(await screen.findByText('Löschen fehlgeschlagen')).toBeInTheDocument()
     expect(screen.getByText('Architektur des Projekts')).toBeInTheDocument()

@@ -12,6 +12,7 @@ import Typography from '@mui/material/Typography'
 import DarkModeIcon from '@mui/icons-material/DarkMode'
 import LightModeIcon from '@mui/icons-material/LightMode'
 import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness'
+import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
 import type { ColorScheme } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
 import { useBrandingStore, OPAA_BRANDING } from '../stores/brandingStore'
@@ -176,6 +177,7 @@ export default function BrandingSettingsPage() {
     >
       <Box sx={{ maxWidth: contentWidth.areaContent }}>
         <AreaPageHeader
+          icon={PaletteOutlinedIcon}
           title="Branding"
           description="Gilt für die gesamte Anwendung: Produktname, Claim, Logo, Akzentfarbe und Farbschema-Vorgabe Ihres Hauses. Änderungen sind ohne Neuinstallation für alle Nutzenden wirksam. Ein leeres Feld bedeutet: der OPAA-Standard gilt wieder."
         />

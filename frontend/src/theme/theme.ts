@@ -422,6 +422,19 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
             },
           },
         },
+        // Der Grund hinter einer schwebenden Ebene tritt zurück, statt nur dunkler zu werden: Auf
+        // dem fast schwarzen Grund des dunklen Schemas bleibt eine Abdunklung allein fast
+        // wirkungslos. `invisible` ist ausgenommen - Menüs und Popover bringen bewusst keinen mit.
+        MuiBackdrop: {
+          styleOverrides: {
+            root: {
+              '&:not(.MuiBackdrop-invisible)': {
+                backgroundColor: alpha(navy[900], isDark ? 0.72 : 0.42),
+                backdropFilter: 'blur(2px)',
+              },
+            },
+          },
+        },
         MuiDialog: {
           styleOverrides: {
             paper: {

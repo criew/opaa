@@ -9,6 +9,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import type { MailSendResultResponse, MailTemplateResponse } from '../../../types/api'
 import { useMailStore } from '../../../stores/mailStore'
+import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
 import { useMailTemplatePreview } from '../../../hooks/useMailTemplatePreview'
 import { radius } from '../../../theme/tokens'
@@ -104,10 +105,12 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
 
   async function handleReset() {
     if (
-      !window.confirm(
-        `„${template.label}“ auf den ausgelieferten Standard zurücksetzen? Die angepasste Fassung` +
-          ' geht dabei verloren.',
-      )
+      !(await confirmAction({
+        question: `„${template.label}“ auf den ausgelieferten Standard zurücksetzen?`,
+        consequence: 'Die angepasste Fassung geht dabei verloren.',
+        confirmLabel: 'Zurücksetzen',
+        tone: 'caution',
+      }))
     ) {
       return
     }

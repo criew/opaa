@@ -9,6 +9,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { generateConfluenceWebhookSecret, removeConfluenceWebhookSecret } from '../../services/api'
+import { confirmAction } from '../../stores/confirmStore'
 import { useLibraryStore } from '../../stores/libraryStore'
 
 interface ConfluenceWebhookSectionProps {
@@ -30,7 +31,6 @@ export default function ConfluenceWebhookSection({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [revealed, setRevealed] = useState<{ secret: string; url: string } | null>(null)
-  const [confirm, setConfirm] = useState<'rotate' | 'remove' | null>(null)
 
   const generate = async () => {
     setBusy(true)
@@ -63,6 +63,31 @@ export default function ConfluenceWebhookSection({
     }
   }
 
+  // Rotieren und Entfernen entwerten, was Confluence gespeichert hat: Confluence sendet weiter,
+  // OPAA antwortet 401, und in Confluence ist davon nichts zu sehen. Ein Fehlgriff darf das nicht
+  // auslösen.
+  const askRotate = async () => {
+    const ok = await confirmAction({
+      question: 'Geheimnis neu erzeugen?',
+      consequence:
+        'Das bisherige Geheimnis gilt sofort nicht mehr. Bis das neue in Confluence hinterlegt ist, werden Benachrichtigungen abgewiesen.',
+      confirmLabel: 'Neu erzeugen',
+      tone: 'caution',
+    })
+    if (ok) await generate()
+  }
+
+  const askRemove = async () => {
+    const ok = await confirmAction({
+      question: 'Webhook entfernen?',
+      consequence:
+        'Confluence kann OPAA danach nicht mehr benachrichtigen; Benachrichtigungen mit dem bisherigen Geheimnis werden abgewiesen. Änderungen erreichen den Index dann erst mit dem nächsten geplanten Lauf.',
+      confirmLabel: 'Entfernen',
+      tone: 'danger',
+    })
+    if (ok) await remove()
+  }
+
   return (
     <Box data-testid="confluence-webhook-section">
       <Typography variant="body2">
@@ -79,13 +104,13 @@ export default function ConfluenceWebhookSection({
         <Button
           size="small"
           variant="outlined"
-          onClick={() => (secretSet ? setConfirm('rotate') : void generate())}
+          onClick={() => void (secretSet ? askRotate() : generate())}
           disabled={busy}
         >
           {secretSet ? 'Geheimnis neu erzeugen' : 'Webhook einrichten'}
         </Button>
         {secretSet && (
-          <Button size="small" color="error" onClick={() => setConfirm('remove')} disabled={busy}>
+          <Button size="small" color="error" onClick={() => void askRemove()} disabled={busy}>
             Webhook entfernen
           </Button>
         )}
@@ -95,39 +120,6 @@ export default function ConfluenceWebhookSection({
           {error}
         </Alert>
       )}
-
-      {/* Rotating or removing invalidates what Confluence has stored - Confluence keeps sending,
-          OPAA answers 401, and nothing in Confluence shows it; a stray click must not do that. */}
-      <Dialog
-        open={confirm !== null}
-        onClose={() => setConfirm(null)}
-        aria-labelledby="confluence-webhook-confirm-title"
-      >
-        <DialogTitle id="confluence-webhook-confirm-title">
-          {confirm === 'remove' ? 'Webhook entfernen?' : 'Geheimnis neu erzeugen?'}
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2">
-            {confirm === 'remove'
-              ? 'Confluence kann OPAA danach nicht mehr benachrichtigen; Benachrichtigungen mit dem bisherigen Geheimnis werden abgewiesen. Änderungen erreichen den Index dann erst mit dem nächsten geplanten Lauf.'
-              : 'Das bisherige Geheimnis gilt sofort nicht mehr. Bis das neue in Confluence hinterlegt ist, werden Benachrichtigungen abgewiesen.'}
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirm(null)}>Abbrechen</Button>
-          <Button
-            variant="contained"
-            color={confirm === 'remove' ? 'error' : 'primary'}
-            onClick={() => {
-              const action = confirm
-              setConfirm(null)
-              void (action === 'remove' ? remove() : generate())
-            }}
-          >
-            {confirm === 'remove' ? 'Entfernen' : 'Neu erzeugen'}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       <Dialog
         open={revealed !== null}

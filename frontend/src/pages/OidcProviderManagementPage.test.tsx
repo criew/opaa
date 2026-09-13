@@ -1,12 +1,13 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
+import userEvent, { type UserEvent } from '@testing-library/user-event'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
 import { mockOidcProviders } from '../mocks/fixtures'
-import { renderWithProviders } from '../test/test-utils'
+import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
+import { DEFAULT_PROVIDER_HINT } from '../components/admin/providers/ProviderRowMenu'
 import OidcProviderManagementPage from './OidcProviderManagementPage'
 
 function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER', mode: 'dev' | 'oidc' = 'oidc') {
@@ -23,15 +24,75 @@ function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER', mode: 'dev' | 'oidc' = 'o
   })
 }
 
+/** jsdom has no matchMedia; the table renders only on a desktop viewport (guidelines 5.3). */
+function desktopMatchMedia(query: string): MediaQueryList {
+  return {
+    matches: query.includes('min-width'),
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  } as unknown as MediaQueryList
+}
+
+const findProviderTable = () => screen.findByRole('table', { name: 'Identitätsanbieter' })
+
+/** Die Anbieterzeilen in ihrer Reihenfolge - der Tabellenkörper, ohne die Kopfzeile. */
+function providerRows() {
+  const table = screen.getByRole('table', { name: 'Identitätsanbieter' })
+  const [, koerper] = within(table).getAllByRole('rowgroup')
+  return within(koerper).getAllByRole('row')
+}
+
+/** Die Tabellenzeile eines Anbieters - erkannt am Anzeigenamen, den ihre Anbieterspalte führt. */
+function rowOf(name: string) {
+  return screen.getByRole('row', { name: new RegExp(name) })
+}
+
+async function openRowMenu(user: UserEvent, name: string) {
+  await findProviderTable()
+  await user.click(within(rowOf(name)).getByRole('button', { name: `Aktionen für „${name}“` }))
+  return screen.findByRole('menu')
+}
+
+/** Wählt eine Handlung im Zeilenmenü eines Anbieters. */
+async function clickRowAction(user: UserEvent, name: string, action: string) {
+  const menu = await openRowMenu(user, name)
+  await user.click(within(menu).getByRole('menuitem', { name: action }))
+}
+
 /**
- * The provider management (#1333, ADR-0025): list with state, order and default, the form
- * dialog without any secret field, the roles-claim confirmation, the connection test, the
- * consequence hints, and the setup instructions composed from this app's own origin.
+ * Öffnet das Formular eines Anbieters über „Bearbeiten“ seines Zeilenmenüs - und sichert dabei zu,
+ * dass der Dialog den Anbieter trägt, dessen Zeile ihn geöffnet hat.
+ */
+async function openEditDialog(user: UserEvent, name: string) {
+  await clickRowAction(user, name, 'Bearbeiten')
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByRole('textbox', { name: /^Anzeigename\s*\*?$/ })).toHaveValue(name)
+  return dialog
+}
+
+/**
+ * The provider management (#1333, ADR-0025, table with row menu since #1625): the list with state,
+ * order and default, the form dialog without any secret field, the roles-claim confirmation, the
+ * connection test, the consequence hints, and the setup instructions composed from this app's own
+ * origin.
  */
 describe('OidcProviderManagementPage', () => {
+  const originalMatchMedia = window.matchMedia
+
+  beforeAll(() => {
+    window.matchMedia = desktopMatchMedia
+  })
+  afterAll(() => {
+    window.matchMedia = originalMatchMedia
+  })
+
   beforeEach(() => {
     useOidcProviderStore.setState({ providers: [], isLoading: false, error: null })
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
   it('shows no provider management to a user who is not a system administrator', () => {
@@ -45,22 +106,46 @@ describe('OidcProviderManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
 
-    const cards = await screen.findAllByRole('article')
-    expect(cards.map((c) => within(c).getByRole('heading', { level: 2 }).textContent)).toEqual([
-      'Verzeichnisdienst',
-      'Partnerportal',
-      'Landesportal',
-    ])
-    expect(within(cards[0]).getByLabelText('Standardanbieter')).toBeInTheDocument()
-    expect(within(cards[0]).getByText('Erreichbar')).toBeInTheDocument()
-    expect(within(cards[1]).getByText('Nicht erreichbar')).toBeInTheDocument()
+    const table = await findProviderTable()
+    const zeilen = providerRows()
+    expect(zeilen).toHaveLength(3)
+    // Die Reihenfolge dieser Liste *ist* die Reihenfolge der Anmeldeseite: Zeilenfolge und die
+    // sichtbare Positionsziffer müssen dasselbe sagen, sonst trägt die Liste ihre Aussage nicht.
     expect(
-      within(cards[1]).getByText('Discovery-Dokument: Antwort mit HTTP 503.'),
+      ['Verzeichnisdienst', 'Partnerportal', 'Landesportal'].map((name) =>
+        zeilen.indexOf(rowOf(name)),
+      ),
+    ).toEqual([0, 1, 2])
+    expect(zeilen.map((zeile) => within(zeile).getAllByRole('cell')[0].textContent)).toEqual([
+      '1',
+      '2',
+      '3',
+    ])
+    // Wofür die Ziffer steht, sagt der Spaltenkopf - auch vorgelesen.
+    expect(
+      within(table).getByRole('columnheader', { name: /^Nr\.\s*auf der Anmeldeseite$/ }),
     ).toBeInTheDocument()
-    expect(within(cards[1]).getByText('Rollen aus dem Token')).toBeInTheDocument()
-    // the default can neither be disabled nor deleted
-    expect(within(cards[0]).queryByRole('button', { name: 'Löschen' })).not.toBeInTheDocument()
-    expect(within(cards[0]).queryByRole('button', { name: 'Deaktivieren' })).not.toBeInTheDocument()
+
+    expect(within(zeilen[0]).getByLabelText('Standardanbieter')).toBeInTheDocument()
+    expect(within(zeilen[1]).queryByLabelText('Standardanbieter')).not.toBeInTheDocument()
+    expect(within(zeilen[0]).getByText('Erreichbar')).toBeInTheDocument()
+    expect(within(zeilen[1]).getByText('Nicht erreichbar')).toBeInTheDocument()
+    expect(within(zeilen[1]).getByText('Rollen aus dem Token')).toBeInTheDocument()
+  })
+
+  /**
+   * „Nicht erreichbar" allein sagt nicht, ob die Adresse falsch ist oder der Dienst steht. Die
+   * Antwort des Anbieters steht deshalb wörtlich in der Zeile - sie ist der erste Anhaltspunkt
+   * bei einer Störung.
+   */
+  it('names why an unreachable provider cannot be reached', async () => {
+    signInAs('SYSTEM_ADMIN')
+
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+    const zeile = await screen.findByRole('row', { name: /Partnerportal/ })
+
+    expect(within(zeile).getByText('Nicht erreichbar')).toBeInTheDocument()
+    expect(within(zeile).getByText('Discovery-Dokument: Antwort mit HTTP 503.')).toBeInTheDocument()
   })
 
   it('creates a provider through the dialog without any secret field', async () => {
@@ -97,8 +182,7 @@ describe('OidcProviderManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
-    await user.click((await screen.findAllByRole('button', { name: 'Bearbeiten' }))[0])
-    const dialog = await screen.findByRole('dialog')
+    const dialog = await openEditDialog(user, 'Verzeichnisdienst')
 
     await user.type(within(dialog).getByLabelText(/^Rollen-Claim/), 'realm_access.roles')
     await user.type(within(dialog).getByLabelText(/SYSTEM_ADMIN/), 'opaa-admin')
@@ -127,8 +211,7 @@ describe('OidcProviderManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
-    await user.click((await screen.findAllByRole('button', { name: 'Bearbeiten' }))[0])
-    const dialog = await screen.findByRole('dialog')
+    const dialog = await openEditDialog(user, 'Verzeichnisdienst')
 
     await user.type(within(dialog).getByLabelText(/^Rollen-Claim/), 'realm_access.roles')
     await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
@@ -159,29 +242,72 @@ describe('OidcProviderManagementPage', () => {
     })
   }, 20000)
 
+  /**
+   * Die Verhaltensänderung von #1625: Am Standardanbieter **fehlen** „Deaktivieren“ und „Löschen“
+   * nicht mehr, sie sind gesperrt und nennen ihren Grund. Eine fehlende Handlung wirft die Frage
+   * auf, ob sie je da war; eine gesperrte beantwortet sie.
+   */
+  it('locks disabling and deleting on the default provider and names the reason', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+
+    const menu = await openRowMenu(user, 'Verzeichnisdienst')
+    const deaktivieren = within(menu).getByRole('menuitem', { name: 'Deaktivieren' })
+    const loeschen = within(menu).getByRole('menuitem', { name: 'Löschen' })
+    expect(deaktivieren).toHaveAttribute('aria-disabled', 'true')
+    expect(loeschen).toHaveAttribute('aria-disabled', 'true')
+    // Der Grund steht im DOM und ist über `aria-describedby` mit beiden gesperrten Einträgen
+    // verbunden, wird also auch vorgelesen - ein Tooltip fände nur eine Maus.
+    const grund = within(menu).getByText(DEFAULT_PROVIDER_HINT)
+    expect(deaktivieren).toHaveAttribute('aria-describedby', grund.closest('li')!.id)
+    expect(loeschen).toHaveAttribute('aria-describedby', grund.closest('li')!.id)
+
+    // Gesperrt heißt auch: Der Eintrag nimmt keinen Klick an - `pointer-events: none`, nicht bloß
+    // ein Vermerk im Namen; testing-library weist den Versuch genau deshalb ab.
+    await expect(user.click(deaktivieren)).rejects.toThrow(/pointer-events/)
+    expect(useOidcProviderStore.getState().providers.find((p) => p.isDefault)?.enabled).toBe(true)
+  })
+
   it('makes a reachable provider the default with a consequence hint, and refuses an unreachable one', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
-    const cards = await screen.findAllByRole('article')
-    const partner = cards[1]
-    const land = cards[2]
 
-    await user.click(within(partner).getByRole('button', { name: 'Zum Standard machen' }))
-    expect(confirm).toHaveBeenLastCalledWith(
-      expect.stringMatching(/weder deaktiviert noch gelöscht/),
-    )
-    // the mock mirrors OidcProviderService#makeDefault: an unreachable provider is refused
-    expect(await within(partner).findByText(/nicht abrufbar/)).toBeInTheDocument()
-    expect(within(cards[0]).getByLabelText('Standardanbieter')).toBeInTheDocument()
-
-    await user.click(within(land).getByRole('button', { name: 'Zum Standard machen' }))
-    await waitFor(() => {
-      expect(within(land).getByLabelText('Standardanbieter')).toBeInTheDocument()
+    await clickRowAction(user, 'Partnerportal', 'Zum Standard machen')
+    const standardfrage = await screen.findByRole('dialog', {
+      name: /zum Standardanbieter machen\?/,
     })
-    expect(within(cards[0]).queryByLabelText('Standardanbieter')).not.toBeInTheDocument()
-    expect(within(cards[0]).getByRole('button', { name: 'Deaktivieren' })).toBeInTheDocument()
+    expect(standardfrage).toHaveTextContent(/weder deaktiviert noch gelöscht/)
+    await user.click(within(standardfrage).getByRole('button', { name: 'Zum Standard machen' }))
+
+    // the mock mirrors OidcProviderService#makeDefault: an unreachable provider is refused. Die
+    // Ablehnung kommt als Benachrichtigung, nicht mehr als Meldung in der Zeile - und nennt den
+    // Grund, den das Backend gemeldet hat.
+    const abweisung = await screen.findByRole('alert')
+    expect(abweisung).toHaveTextContent(/nicht abrufbar/)
+    expect(abweisung).toHaveTextContent('Discovery-Dokument: Antwort mit HTTP 503.')
+    expect(
+      within(rowOf('Verzeichnisdienst')).getByLabelText('Standardanbieter'),
+    ).toBeInTheDocument()
+
+    await clickRowAction(user, 'Landesportal', 'Zum Standard machen')
+    await answerConfirm(user, /zum Standardanbieter machen\?/, 'Zum Standard machen')
+    await waitFor(() => {
+      expect(within(rowOf('Landesportal')).getByLabelText('Standardanbieter')).toBeInTheDocument()
+    })
+    expect(
+      within(rowOf('Verzeichnisdienst')).queryByLabelText('Standardanbieter'),
+    ).not.toBeInTheDocument()
+
+    // Die Sperre hing am Standard, nicht am Anbieter: Der vorherige Standard ist jetzt
+    // deaktivierbar, und sein Menü führt keinen Grund mehr.
+    const altesMenu = await openRowMenu(user, 'Verzeichnisdienst')
+    expect(within(altesMenu).getByRole('menuitem', { name: 'Deaktivieren' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(within(altesMenu).queryByText(DEFAULT_PROVIDER_HINT)).not.toBeInTheDocument()
   })
 
   it('warns when no provider is the default', async () => {
@@ -199,8 +325,7 @@ describe('OidcProviderManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
-    await user.click((await screen.findAllByRole('button', { name: 'Bearbeiten' }))[1])
-    const dialog = await screen.findByRole('dialog')
+    const dialog = await openEditDialog(user, 'Partnerportal')
 
     await user.click(within(dialog).getByRole('button', { name: 'Verbindung testen' }))
 
@@ -210,18 +335,29 @@ describe('OidcProviderManagementPage', () => {
   it('disables, re-enables and deletes a non-default provider with a consequence hint', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
-    const partner = (await screen.findAllByRole('article'))[1]
 
-    await user.click(within(partner).getByRole('button', { name: 'Deaktivieren' }))
-    expect(confirm).toHaveBeenLastCalledWith(expect.stringMatching(/nicht mehr anmelden/))
-    expect(await within(partner).findByText('Deaktiviert')).toBeInTheDocument()
-    await user.click(within(partner).getByRole('button', { name: 'Aktivieren' }))
-    expect(await within(partner).findByRole('button', { name: 'Deaktivieren' })).toBeInTheDocument()
+    await clickRowAction(user, 'Partnerportal', 'Deaktivieren')
+    const abschaltfrage = await screen.findByRole('dialog', { name: /deaktivieren\?/ })
+    expect(abschaltfrage).toHaveTextContent(/nicht mehr anmelden/)
+    await user.click(within(abschaltfrage).getByRole('button', { name: 'Deaktivieren' }))
+    await waitFor(() => {
+      expect(within(rowOf('Partnerportal')).getByText('Deaktiviert')).toBeInTheDocument()
+    })
 
-    await user.click(within(partner).getByRole('button', { name: 'Löschen' }))
-    expect(confirm).toHaveBeenLastCalledWith(expect.stringMatching(/Konten bleiben erhalten/))
+    // Das Einschalten fragt nicht - es nimmt niemandem die Anmeldung. Der Anbieter kommt mit dem
+    // Decoder-Zustand zurück, den er vor dem Abschalten hatte.
+    await clickRowAction(user, 'Partnerportal', 'Aktivieren')
+    await waitFor(() => {
+      expect(within(rowOf('Partnerportal')).getByText('Nicht erreichbar')).toBeInTheDocument()
+    })
+
+    const menu = await openRowMenu(user, 'Partnerportal')
+    expect(within(menu).getByRole('menuitem', { name: 'Deaktivieren' })).toBeInTheDocument()
+    await user.click(within(menu).getByRole('menuitem', { name: 'Löschen' }))
+    const loeschfrage = await screen.findByRole('dialog', { name: /löschen\?/ })
+    expect(loeschfrage).toHaveTextContent(/Konten bleiben erhalten/)
+    await user.click(within(loeschfrage).getByRole('button', { name: 'Löschen' }))
     await waitFor(() => {
       expect(screen.queryByText('Partnerportal')).not.toBeInTheDocument()
     })
@@ -231,13 +367,19 @@ describe('OidcProviderManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
-    await screen.findAllByRole('article')
+    await findProviderTable()
+    // Die Enden der Liste haben keinen Schritt mehr in ihre Richtung.
+    expect(
+      screen.getByRole('button', { name: '„Verzeichnisdienst“ nach oben verschieben' }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: '„Landesportal“ nach unten verschieben' }),
+    ).toBeDisabled()
 
     await user.click(screen.getByRole('button', { name: '„Partnerportal“ nach oben verschieben' }))
 
     await waitFor(() => {
-      const cards = screen.getAllByRole('article')
-      expect(within(cards[0]).getByRole('heading', { level: 2 })).toHaveTextContent('Partnerportal')
+      expect(providerRows().indexOf(rowOf('Partnerportal'))).toBe(0)
     })
     // Die gesendete Reihenfolge enthält alle Zeilen der Tabelle; Position 0 hält die LOCAL-Zeile,
     // der erste Anbieter liegt damit auf 1 (#1541).
@@ -248,8 +390,7 @@ describe('OidcProviderManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
-    await user.click((await screen.findAllByRole('button', { name: 'Bearbeiten' }))[0])
-    const dialog = await screen.findByRole('dialog')
+    const dialog = await openEditDialog(user, 'Verzeichnisdienst')
     const issuer = within(dialog).getByLabelText(/^Issuer-URI/)
     await user.clear(issuer)
     await user.type(issuer, 'https://idp.example/realms/neu')
@@ -263,7 +404,7 @@ describe('OidcProviderManagementPage', () => {
   it('shows the redirect URI and origin of this installation in the setup instructions', async () => {
     signInAs('SYSTEM_ADMIN')
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
-    await screen.findAllByRole('article')
+    await findProviderTable()
 
     expect(screen.getByTestId('oidc-redirect-uri')).toHaveTextContent(
       `${window.location.origin}/auth/callback`,
@@ -282,7 +423,7 @@ describe('OidcProviderManagementPage', () => {
       configurable: true,
     })
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
-    await screen.findAllByRole('article')
+    await findProviderTable()
 
     await user.click(screen.getByRole('button', { name: 'Weiterleitungs-URI kopieren' }))
     expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/auth/callback`)
@@ -290,22 +431,33 @@ describe('OidcProviderManagementPage', () => {
       screen.getByRole('button', { name: 'Web-Origin und Abmelde-Weiterleitung kopieren' }),
     ).toBeInTheDocument()
 
+    // Die Zeile nennt nur das Zustandswort; was es bedeutet, steht hier - deshalb muss die Legende
+    // die drei Zustände samt Erläuterung führen (#1625).
     const legend = screen.getByRole('region', { name: 'Status verstehen' })
     expect(within(legend).getByText('Erreichbar')).toBeInTheDocument()
     expect(within(legend).getByText('Nicht erreichbar')).toBeInTheDocument()
     expect(within(legend).getByText('Deaktiviert')).toBeInTheDocument()
+    expect(within(legend).getByText(/Anmeldungen funktionieren/)).toBeInTheDocument()
+    expect(within(legend).getByText(/Anmeldungen schlagen fehl/)).toBeInTheDocument()
+    expect(within(legend).getByText(/Konten bleiben erhalten/)).toBeInTheDocument()
   })
 
-  /** #1369: the card surfaces the claim mapping instead of hiding it in the dialog. */
-  it('summarises each provider’s claim mapping on its card', async () => {
+  /** #1369, #1625: die Liste nennt, was der Anbieter aus dem Token holt, statt es im Dialog zu
+   * verstecken - vor allem, wer über ihn Systemverwalter wird. */
+  it('summarises in the list what each provider takes from the token', async () => {
     signInAs('SYSTEM_ADMIN')
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
-    const cards = await screen.findAllByRole('article')
+    await findProviderTable()
     // the fixture's first provider manages roles in OPAA, the second reads them from the token
-    expect(within(cards[0]).getByText(/Rollen werden in OPAA verwaltet/)).toBeInTheDocument()
-    expect(within(cards[1]).queryByText(/Rollen werden in OPAA verwaltet/)).not.toBeInTheDocument()
-    expect(within(cards[1]).getByText('Rollen aus dem Token')).toBeInTheDocument()
-    expect(within(cards[0]).getByText('Position 1 auf der Anmeldeseite')).toBeInTheDocument()
+    const verzeichnis = rowOf('Verzeichnisdienst')
+    expect(within(verzeichnis).getByText('Rollen in OPAA verwaltet')).toBeInTheDocument()
+    expect(within(verzeichnis).getByText('Keine Gruppen aus dem Token')).toBeInTheDocument()
+
+    const partner = rowOf('Partnerportal')
+    expect(within(partner).queryByText('Rollen in OPAA verwaltet')).not.toBeInTheDocument()
+    expect(within(partner).getByText('Rollen aus dem Token')).toBeInTheDocument()
+    expect(within(partner).getByText('SYSTEM_ADMIN = opaa-admin')).toBeInTheDocument()
+    expect(within(partner).getByText('Gruppen aus groups')).toBeInTheDocument()
   })
 
   it('explains in the dev mode that providers only take effect in the OIDC mode', async () => {
@@ -333,8 +485,8 @@ describe('OidcProviderManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
 
-    const cards = await screen.findAllByRole('article')
-    expect(cards).toHaveLength(3)
+    await findProviderTable()
+    expect(providerRows()).toHaveLength(3)
     expect(screen.queryByText('Lokale Konten')).not.toBeInTheDocument()
     expect(screen.getByText(/unter\s+Administration → Benutzer geführt/)).toBeInTheDocument()
   })
@@ -361,12 +513,16 @@ describe('OidcProviderManagementPage', () => {
     onTestFinished(() => server.events.removeListener('request:start', record))
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
 
-    const cards = await screen.findAllByRole('article')
-    await user.click(within(cards[0]).getByRole('button', { name: 'Deaktivieren' }))
+    // Als letzter aktivierter Anbieter ist auch der Standard abschaltbar - die Sperre des
+    // Standardanbieters endet genau hier (ADR-0033, Entscheidung 4).
+    await clickRowAction(user, 'Verzeichnisdienst', 'Deaktivieren')
 
-    expect(window.confirm).toHaveBeenCalledWith(
-      expect.stringContaining('Danach können sich nur noch lokale Konten anmelden'),
-    )
+    // Die Bestätigung *ist* das Acknowledgement, das das Backend verlangt (ADR-0025):
+    // Der Zusatzsatz zum letzten Anbieter muss deshalb vor dem Absenden gestanden haben.
+    const letzterAnbieter = await screen.findByRole('dialog', { name: /deaktivieren\?/ })
+    expect(letzterAnbieter).toHaveTextContent('Danach können sich nur noch lokale Konten anmelden')
+    await user.click(within(letzterAnbieter).getByRole('button', { name: 'Deaktivieren' }))
+
     await waitFor(() => expect(acknowledged).toEqual(['true']))
     await waitFor(() =>
       expect(useOidcProviderStore.getState().providers.find((p) => p.isDefault)?.enabled).toBe(
@@ -388,11 +544,12 @@ describe('OidcProviderManagementPage', () => {
     )
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
 
-    const cards = await screen.findAllByRole('article')
-    await user.click(within(cards[1]).getByRole('button', { name: 'Deaktivieren' }))
+    await clickRowAction(user, 'Partnerportal', 'Deaktivieren')
+    await answerConfirm(user, /deaktivieren\?/, 'Deaktivieren')
 
-    expect(
-      await within(cards[1]).findByText(/lokales Systemverwalterkonto mit Passwort/),
-    ).toBeInTheDocument()
+    // Die Erklärung erscheint als Benachrichtigung, nicht mehr als Meldung im Anbietereintrag.
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /lokales Systemverwalterkonto mit Passwort/,
+    )
   })
 })

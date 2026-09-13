@@ -1,11 +1,14 @@
 import type { ReactElement } from 'react'
-import { render, type RenderOptions } from '@testing-library/react'
+import { render, screen, within, type RenderOptions } from '@testing-library/react'
+import type { UserEvent } from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import { createAppTheme } from '../theme/theme'
+import ConfirmHost from '../components/ConfirmHost'
 import NotificationHost from '../components/NotificationHost'
 import { useAuthStore } from '../stores/authStore'
+import { useConfirmStore } from '../stores/confirmStore'
 import { useNotificationStore } from '../stores/notificationStore'
 import type { LocalAccountsConfig, SessionKind } from '../types/auth'
 import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
@@ -36,6 +39,9 @@ export function renderWithProviders(
   // Notifications from a previous test would otherwise pop up over this render - the queue is
   // app-global (guidelines 5.9), not scoped to a component tree.
   useNotificationStore.getState().reset()
+  // Eine offene Bestaetigung aus einem vorherigen Test haelt sonst ihr Overlay ueber diesem
+  // Render und faengt jeden Klick ab; `reset` beantwortet sie zugleich mit `false`.
+  useConfirmStore.getState().reset()
 
   function Wrapper({ children }: { children: React.ReactNode }) {
     const content = (
@@ -45,6 +51,9 @@ export function renderWithProviders(
         {/* Mounted app-wide by AppShell; mirrored here so component tests observe the popup
             notifications their interactions raise (guidelines 5.9). */}
         {withNotificationHost && <NotificationHost />}
+        {/* Ebenso app-weit von der AppShell montiert (#1610): Ohne ihn liefe ein `confirmAction`
+            im Test ins Leere und seine Handlung haenge fuer immer am `await`. */}
+        <ConfirmHost />
       </ThemeProvider>
     )
 
@@ -84,4 +93,23 @@ export function setMockAuthState({
     passwordChangeReason: null,
     localAccounts,
   })
+}
+
+/**
+ * Beantwortet das Bestätigungs-Overlay (#1610), das eine folgenreiche Handlung absichert.
+ *
+ * Die Frage wird mitgegeben und nicht nur die Schaltfläche geklickt: Sie ist der Text, den ein
+ * Screenreader beim Öffnen vorliest, und damit das, was den Rückfall auf eine falsche
+ * Bestätigung sichtbar macht. Über die Frage ist das Overlay außerdem eindeutig, auch wenn es
+ * über einem anderen Dialog liegt.
+ *
+ * @param verb die Beschriftung der bestätigenden Schaltfläche - „Abbrechen" lehnt ab.
+ */
+export async function answerConfirm(
+  user: UserEvent,
+  question: string | RegExp,
+  verb: string | RegExp,
+) {
+  const dialog = await screen.findByRole('dialog', { name: question })
+  await user.click(within(dialog).getByRole('button', { name: verb }))
 }

@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { renderWithProviders } from '../test/test-utils'
+import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import { server } from '../mocks/server'
 import SpaceCreatePage from './SpaceCreatePage'
 import { useSpaceStore } from '../stores/spaceStore'
@@ -107,15 +107,13 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
   })
 
   it('asks before cancelling once something was entered', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
     const user = userEvent.setup()
     renderWithProviders(<SpaceCreatePage />, { withRouter: true })
 
     await user.type(screen.getByLabelText(/Name/), 'W')
     await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
+    await answerConfirm(user, 'Eingaben verwerfen und den Assistenten verlassen?', 'Abbrechen')
 
-    expect(confirmSpy).toHaveBeenCalled()
     expect(mockNavigate).not.toHaveBeenCalled()
-    confirmSpy.mockRestore()
   })
 })

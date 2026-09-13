@@ -11,8 +11,10 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import type { GroupListResponse, UserInfo } from '../types/api'
 import { getUsers } from '../services/api'
+import { confirmAction } from '../stores/confirmStore'
 import { useGroupStore } from '../stores/groupStore'
 import { groupKindLabel } from '../utils/labels'
 import CreateGroupDialog from '../components/CreateGroupDialog'
@@ -138,11 +140,13 @@ function GroupCard({ group }: { group: GroupListResponse }) {
                 variant="outlined"
                 size="small"
                 onClick={async () => {
-                  if (
-                    !window.confirm(
-                      `Gruppe "${group.name}" löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
-                    )
-                  ) {
+                  const confirmed = await confirmAction({
+                    question: `Gruppe "${group.name}" löschen?`,
+                    consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+                    confirmLabel: 'Löschen',
+                    tone: 'danger',
+                  })
+                  if (!confirmed) {
                     return
                   }
                   setLocalError(null)
@@ -285,6 +289,7 @@ export default function GroupManagementPage() {
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <Box sx={{ maxWidth: contentWidth.areaContent }}>
         <AreaPageHeader
+          icon={GroupsOutlinedIcon}
           title="Gruppen"
           meta={groups.length === 1 ? '1 Gruppe' : `${groups.length} Gruppen`}
           description="Gilt für die gesamte Anwendung. Änderungen wirken sich auf alle Spaces und Benutzer aus. Gruppen tragen Eigentum und Freigaben."

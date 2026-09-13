@@ -26,6 +26,7 @@ import { EMPTY_CONFLUENCE_VALUES, type ConfluenceSourceValues } from '../utils/c
 import { EMPTY_S3_VALUES, type S3SourceValues } from '../utils/s3Source'
 import WizardStepBar from '../components/wizard/WizardStepBar'
 import { getMyGroups, testLibrarySource, upsertLibraryGrant } from '../services/api'
+import { confirmAction } from '../stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
 import { useUserSearch } from '../hooks/useUserSearch'
@@ -176,9 +177,14 @@ export default function LibraryCreatePage() {
     s3.scopes.some((scope) => scope.bucket !== '' || scope.prefix !== '') ||
     pendingGrants.length > 0
 
-  const handleCancel = () => {
-    if (isDirty && !window.confirm('Eingaben verwerfen und den Assistenten verlassen?')) {
-      return
+  const handleCancel = async () => {
+    if (isDirty) {
+      const confirmed = await confirmAction({
+        question: 'Eingaben verwerfen und den Assistenten verlassen?',
+        confirmLabel: 'Verwerfen',
+        tone: 'caution',
+      })
+      if (!confirmed) return
     }
     navigate('/libraries')
   }
@@ -852,7 +858,7 @@ export default function LibraryCreatePage() {
             borderColor: 'divider',
           }}
         >
-          <Button variant="text" onClick={handleCancel} disabled={submitting}>
+          <Button variant="text" onClick={() => void handleCancel()} disabled={submitting}>
             Abbrechen
           </Button>
           <Box sx={{ flex: 1 }} />

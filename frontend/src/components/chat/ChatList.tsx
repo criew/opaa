@@ -25,6 +25,7 @@ import { useLocation, useNavigate } from 'react-router'
 import { blue } from '../../theme/tokens'
 import type { ChatSummary } from '../../types/api'
 import { useChatListStore } from '../../stores/chatListStore'
+import { confirmAction } from '../../stores/confirmStore'
 import { useSpaceStore } from '../../stores/spaceStore'
 
 function chatTitle(chat: ChatSummary): string {
@@ -105,9 +106,12 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
   }
 
   async function handleDelete(chat: ChatSummary) {
-    const confirmed = window.confirm(
-      `„${chatTitle(chat)}“ wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
-    )
+    const confirmed = await confirmAction({
+      question: `„${chatTitle(chat)}“ wirklich löschen?`,
+      consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+      confirmLabel: 'Löschen',
+      tone: 'danger',
+    })
     if (!confirmed) return
     await deleteChatFromList(spaceId, chat.id)
     if (location.pathname === `/spaces/${spaceId}/chats/${chat.id}`) {

@@ -6,6 +6,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import DarkModeIcon from '@mui/icons-material/DarkMode'
 import LightModeIcon from '@mui/icons-material/LightMode'
 import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness'
+import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined'
 import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
 import { Link as RouterLink } from 'react-router'
@@ -57,6 +58,7 @@ export default function SettingsPage() {
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <Box sx={{ maxWidth: 640 }}>
         <AreaPageHeader
+          icon={TuneOutlinedIcon}
           title="Ihre Einstellungen"
           meta={<GlobalBadge />}
           description="Gelten für Sie persönlich in allen Spaces."
