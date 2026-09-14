@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-09-13</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Sonntag, 13. September 2026</h1>
+<nav class="blaettern"><a href="2026-09-12.html" rel="prev" title="Samstag, 12. September 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/34786937520" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">58</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+12</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">22</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">20</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1529">#1529</a> feat: Lokale Benutzerverwaltung — Konten mit Passwort, lokaler Systemverwalter und Mail-Infrastruktur</span>
+<span class="epic-progress">19 / 19 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/1601">#1601</a></span>Benutzerverwaltung mit Tabs Konten und Einstellungen umgesetzt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1563">#1563</a></span>Übergabe lokaler Konten an Anbieteridentitäten administrativ angestoßen</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1603">#1603</a></span>Filter und Hinweis ohne Ablaufdatum zählen konsistent</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1606">#1606</a></span>Reise-Test der lokalen Anmeldung von Sekundenauflösung befreit</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1642">#1642</a></span>feat(auth): Übergabe eines lokalen Kontos an eine Anbieteridentität (+3844/−58, 71 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1639">#1639</a></span>fix(auth): Filter „ohne Ablaufdatum&quot; nimmt das Notanker-Konto aus (+200/−32, 19 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1638">#1638</a></span>fix(test): Reise-Test der lokalen Anmeldung von der Sekundenauflösung des Widerrufs lösen (+30/−13, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1602">#1602</a></span>feat(auth): Benutzerverwaltung mit Bereichen „Konten&quot; und „Einstellungen&quot; — gemeinsame Liste lokaler und Anbieterkonten (+61997/−5338, 501 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/1627">#1627</a></span>Anmeldeseiten nutzen die volle Breite mit Markenfläche</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1625">#1625</a></span>Identitätsanbieter als Tabelle mit Zeilenmenü dargestellt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1621">#1621</a></span>Chat-Modelle als Tabelle statt aufklappbarer Karten</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1619">#1619</a></span>Seite Modelle in Reiter Chat-Modelle und Einbettung gegliedert</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1644">#1644</a></span>fix(e2e): Barrierefreiheitsprüfung misst erst die ausgeklungene Seite (+36/−0, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1636">#1636</a></span>fix(frontend): Hausfarbe als Text auf den Kontrastschwellwert heben (+246/−112, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1634">#1634</a></span>fix(frontend): Sekundärtext über sx färben statt über das nicht greifende color-Prop (+229/−134, 41 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1633">#1633</a></span>fix(frontend): Sekundärtext über sx färben statt über das nicht greifende color-Prop (+229/−134, 41 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1632">#1632</a></span>feat(frontend): Ruhige Oberfläche auch außerhalb der Administration — Katalog, Space-Ansichten, Chat (+155/−131, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1628">#1628</a></span>feat(frontend): Anmeldeseiten nutzen die Breite — Marke neben dem Formular (+186/−78, 13 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1626">#1626</a></span>feat(frontend): Identitätsanbieter als Tabelle mit Zeilenmenü statt als Karten (+1055/−693, 22 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1624">#1624</a></span>feat(frontend): Einbettungsmodell in derselben Tabellenform wie die Chat-Modelle (+1168/−717, 27 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1622">#1622</a></span>feat(frontend): Chat-Modelle als Tabelle mit Zeilenmenü statt als aufklappbare Karten (+2160/−1495, 33 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1620">#1620</a></span>feat(frontend): Seite „Modelle&quot; in Reiter für Chat-Modelle und Einbettung gliedern (+2321/−1509, 34 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1618">#1618</a></span>feat(frontend): „Suche &amp; Indexierung&quot; in drei thematische Reiter gliedern (+2982/−1784, 46 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1615">#1615</a></span>feat(frontend): Jede Bereichsseite bekommt ihr eigenes Symbol im Seitenkopf (+3091/−1789, 51 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1613">#1613</a></span>fix(auth): Anmeldekonfiguration nach dem Sitzungsende neu laden (+132/−0, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1611">#1611</a></span>fix(frontend): Bestätigungen als eigenes Overlay statt als Browser-Dialog (+3944/−2037, 91 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1605">#1605</a></span>fix(frontend): Seitenkopf, Inhaltsbreite und Kastenwerk der Bereichsseiten vereinheitlichen (+4758/−2324, 104 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1596">#1596</a></span>chore(deps): aws-java-sdk-v2 monorepo aktualisieren (+1/−1, 1 Datei)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-09-14 um 07:16 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-09-13T00:00:00 bis 2026-09-13T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>

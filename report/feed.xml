@@ -5,8 +5,24 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-13T05:09:09Z</updated>
+  <updated>2026-09-14T05:16:21Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Sonntag, 13. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-13.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-13.html</id>
+    <updated>2026-09-14T05:16:21Z</updated>
+    <summary type="text">feat: Lokale Benutzerverwaltung — Konten mit Passwort, lokaler Systemverwalter und Mail-Infrastruktur:
+— Benutzerverwaltung mit Tabs Konten und Einstellungen umgesetzt
+— Übergabe lokaler Konten an Anbieteridentitäten administrativ angestoßen
+— Filter und Hinweis ohne Ablaufdatum zählen konsistent
+— Reise-Test der lokalen Anmeldung von Sekundenauflösung befreit
+Sonstiges:
+— Anmeldeseiten nutzen die volle Breite mit Markenfläche
+— Identitätsanbieter als Tabelle mit Zeilenmenü dargestellt
+— Chat-Modelle als Tabelle statt aufklappbarer Karten
+— Seite Modelle in Reiter Chat-Modelle und Einbettung gegliedert</summary>
+  </entry>
   <entry>
     <title>Tagesreport Samstag, 12. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-12.html"/>
