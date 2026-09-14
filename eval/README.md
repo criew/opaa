@@ -33,7 +33,7 @@ eval/
 ├── golden/                          Golden-Query-Datasets, committet (siehe eval/golden/README.md)
 │   ├── comic-characters.json
 │   ├── city-landmarks.json
-│   └── verwaltung.json               fünf Fallklassen mit Zustandsfeldern (Issue #1043)
+│   └── verwaltung.json               fünf Fallklassen mit Zustandsfeldern je Pfad (Issues #1043, #1658)
 └── variants/                        Variantenvergleiche, committet (siehe eval/variants/README.md, Issue #1041)
     └── comic-characters-selection-mechanics.json
 ```
@@ -51,8 +51,8 @@ organisationsweite Vertretungsregelung und einen Geschäftsverteilungsplan). Sie
 Domäne, die nicht Abdeckung, sondern **benannte Fehlerbilder** misst: Ihre 49 Golden-Fälle tragen
 je eine der fünf Fallklassen `literal_term_weak_embedding`, `exact_identifier`, `compound_word`,
 `multi_hop` und `metadata_filter` als `category`, und jeder Fall führt seinen zuletzt bewusst
-akzeptierten Zustand (`expected_state`) mit Datum und Begründung. 29 der 49 Fälle sind heute als
-`known_gap` geführt — das ist der Zweck der Domäne, kein Mangel; die Liste steht in
+akzeptierten Zustand je Messpfad (`expected_state.raw_vector`, `expected_state.pipeline`) mit Datum
+und Begründung. 22 bzw. 23 der 49 Fälle sind heute als `known_gap` geführt — das ist der Zweck der Domäne, kein Mangel; die Liste steht in
 `eval/corpus/verwaltung/MAINTENANCE.md`.
 
 ## Retrieval-Evaluation ausführen (Issue #227)
@@ -273,7 +273,7 @@ Die beiden Pfade messen **unterschiedliche Dinge und sind nicht ineinander umrec
 | Metriken | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | **Hit Rate@5, MRR@8, nDCG@8, Recall@8** |
 | Report | `build/eval-reports/retrieval-metrics[-<domäne>].json` | `build/eval-reports/pipeline-metrics-<domäne>.json` |
 | Baseline | `eval/baseline/<domäne>.json` | `eval/baseline/pipeline-<domäne>.json` |
-| Zustandsfelder-Audit | Abschnitt „Zustandsfelder" im Report (nur `verwaltung`) | ebenso, am Fenster dieses Pfads |
+| Zustandsfelder-Audit | Abschnitt „Zustandsfelder" im Report, gegen `expected_state.raw_vector` | gegen `expected_state.pipeline`, am Fenster dieses Pfads |
 | Vergleich im nächtlichen Job | `BaselineRegressionTest` | `PipelineBaselineRegressionTest` |
 
 Weil die Schwelle im Pipeline-Pfad tatsächlich greift, kann ein Dokument dort ganz aus der
@@ -436,8 +436,8 @@ der **Bleed-Zahl**: wie viele Dokumente des Vorthemas in der vom Fall benannten 
 
 Der Bericht führt außerdem `singlePathNote`: Mehrrunden-Fälle laufen konstruktionsbedingt nur über
 diesen Pfad (Einpfad-Regel, `docs/features/retrieval-benchmark.md`, Abschnitt 5). Das ist eine
-Eigenschaft des Datensatzes und steht deshalb einmal je Bericht — nicht als
-`expected_state_exception` an jedem Fall, was das Zustandsfeld-Audit dauerhaft stumm stellte.
+Eigenschaft des Datensatzes und steht deshalb einmal je Bericht, nicht am Fall; die Zustandsfelder
+dieses Datensatzes bleiben flach und beschreiben den einen gemessenen Pfad (#1658).
 
 Baseline-Vergleich: `eval/baseline/pipeline-<domäne>-conversations.json`, geladen von
 `ConversationBaselineRegressionCheck` und verglichen nach denselben Regeln wie der Pipeline-Pfad

@@ -18,22 +18,10 @@ class PipelineRetrievalEvaluatorTest {
 
   private static GoldenCase goldenCase(String id, List<String> expected) {
     return new GoldenCase(
-        id,
-        "test",
-        "frage " + id,
-        expected,
-        "cat",
-        "easy",
-        "de",
-        "t",
-        null,
-        null,
-        null,
-        null,
-        null);
+        id, "test", "frage " + id, expected, "cat", "easy", "de", "t", null, null);
   }
 
-  private static PipelineEvaluationReport.PipelineRunConfiguration runConfiguration() {
+  static PipelineEvaluationReport.PipelineRunConfiguration runConfiguration() {
     return new PipelineEvaluationReport.PipelineRunConfiguration(
         "test-domain",
         "ollama",

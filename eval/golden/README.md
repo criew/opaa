@@ -31,41 +31,63 @@ produktive `MarkdownDocumentFormat` auflöst (dasselbe Format, auf das `Document
   wofür sie da ist: Neun Fälle, die alle dasselbe Dokument erwarten, sind eine Beobachtung, und die
   Toleranz aus ADR-0013 rechnet ohnehin mit `distinctExpectedDocumentSets` statt mit `n`
   (Herleitung der Sechs: `GoldenCaseCuration.MINIMUM_DISTINCT_EXPECTED_SETS_PER_CLASS`),
-- vollständige Zustandsfelder mit ISO-Datum, Treffermenge im Fenster [1, 15], eindeutige
+- vollständige Zustandsfelder je Messpfad mit ISO-Datum, Treffermenge im Fenster [1, 15], eindeutige
   `id`/`query`, jedes erwartete Dokument im Manifest.
 
-### Zustandsfelder (Issue #1043)
+### Zustandsfelder (Issue #1043, je Messpfad seit #1658)
 
-Jeder Fall führt drei Pflichtfelder — ab dem ersten committeten Fall, nicht nachgerüstet:
+Jeder Fall **aller drei Einzelfragen-Datensätze** führt ein Pflichtfeld `expected_state` mit je
+einem Eintrag für den Rohvektor- und den Pipeline-Pfad, jeder mit Zustand, Datum und Grund:
 
 ```json
-"expected_state": "known_gap",
-"expected_state_since": "2026-09-01",
-"expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): …; gemessen am 2026-09-01 (Pipeline-Pfad): …"
+"expected_state": {
+  "raw_vector": {
+    "state": "known_gap",
+    "since": "2026-09-14",
+    "reason": "Kennungen werden als bedeutungsarme Tokens eingebettet (Roadmap 1a): …"
+  },
+  "pipeline": {
+    "state": "solved",
+    "since": "2026-09-14",
+    "reason": "Gelöst seit #1156 (strukturbewusstes Markdown-Chunking); …"
+  }
+}
 ```
 
-Ein Fall darf zusätzlich `expected_state_exception` tragen: die committete Begründung, warum
-seine gemessene Lage dauerhaft von der deklarierten abweicht (eine Pfad-Asymmetrie, oder ein
-`known_gap`-Fall, den die Rangfolge heute ohne den geprüften Mechanismus zufällig löst). Das Audit
-führt solche Fälle getrennt von den Befunden — sonst stünde in jedem Lauf dieselbe erwartete Meldung
-in der Fundliste.
+Festgeschrieben wird der **gemessene Ist-Zustand jedes Pfads**, wie eine Baseline je Pfad
+(Maintainer-Entscheidung vom 14.09.2026). Das Audit eines Pfads prüft nur gegen den eigenen
+Eintrag; eine dauerhafte Pfad-Asymmetrie sind zwei verschiedene Zustände und kein Befund. Die
+früheren Flachfelder `expected_state_since`, `expected_state_reason` und `expected_state_exception`
+sind entfallen, `GoldenCaseCurationTest` weist sie in einem committeten Datensatz ab. Ein Treffer
+ohne den geprüften Mechanismus wird auf seinem Pfad als `solved` geführt, und sein Grund beginnt mit
+dem festen Präfix `Ohne geprüften Mechanismus: ` (nur auf `solved`, nur als exakter Anfang; Regel
+und Fallliste in [`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md)). Wer einen Datensatz mit einem Generator neu erzeugt, muss die Zustände danach
+aus einem Messlauf wieder eintragen — die Generatoren kennen sie nicht.
 
-**Wann ein Fall als `solved` gilt** (`io.opaa.eval.ExpectedStateAudit#isSolved`): alle erwarteten
-Dokumente im Fenster **und** ein erwartetes Dokument auf Rang 1 — und zwar auf **beiden**
-Messpfaden. Die Rang-1-Bedingung ist nicht Kosmetik: Beide Fassungen einer Satzung sind inhaltlich
+`comic-characters.json` und `city-landmarks.json` deklarieren Zustände erst seit #1658; übernommen
+ist der Ist-Zustand aus dem nächtlichen Lauf vom 14.09.2026. Ihre `known_gap`-Gründe nennen bis
+dahin nur Quelllauf und Symptom; den fehlenden Baustein je Eintrag ergänzt #1657, unabhängig davon,
+ob sich die Baselines bewegen.
+
+**Wann ein Fall auf einem Pfad als `solved` gilt** (`io.opaa.eval.ExpectedStateAudit#isSolved`):
+alle erwarteten Dokumente im Fenster dieses Pfads **und** ein erwartetes Dokument auf Rang 1. Die
+Rang-1-Bedingung ist nicht Kosmetik: Beide Fassungen einer Satzung sind inhaltlich
 nahezu identisch und ranken deshalb nebeneinander, sodass „die richtige Fassung liegt irgendwo im
 Fenster" auch dann erfüllt ist, wenn die falsche obenauf steht — genau die Fähigkeit, die
 `metadata_filter` messen soll. Vor #1070 wären ohne die Zusatzbedingung 9 von 9 Fällen dieser
-Klasse „gelöst" gewesen, mit ihr waren es 4 — und auch diese vier wurden als `known_gap` geführt,
-weil ein Treffer ohne Filtermechanismus keine Fähigkeit belegt. Genau diese Strenge macht den
-heutigen Stand aussagekräftig: Seit dem Kernfeld-Filter (#1070, Teil 2) sind 9 der 12 Fälle
-`solved`, und zwar auf beiden Messpfaden und mit dem geprüften Mechanismus (Begründung je Fall im
+Klasse „gelöst" gewesen, mit ihr waren es 4 — und auch diese vier wurden damals als `known_gap`
+geführt, weil ein Treffer ohne Filtermechanismus keine Fähigkeit belegt. Genau diese Strenge macht den
+heutigen Stand aussagekräftig: Seit dem Kernfeld-Filter (#1070, Teil 2) waren 9 der 12 Fälle
+`solved`, heute sind es 10 je Pfad (seit #1308 auch `verw-meta-001`), jeweils mit dem geprüften
+Mechanismus (Begründung je Fall im
 Datensatz, Zusammenfassung in
 [`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md)).
 
-Der Bericht beider Pfade führt in jedem Lauf einen Abschnitt „Zustandsfelder", der die deklarierten
-Zustände gegen die gemessenen hält und beide Abweichungsrichtungen namentlich nennt — als JSON-Feld
-`expectedStateAudit`, als Textblock im Lauf-Log **und** als Markdown-Abschnitt unter der
+Der Bericht beider Pfade führt in jedem Lauf einen Abschnitt „Zustandsfelder
+(`expected_state.raw_vector`)" bzw. „(`expected_state.pipeline`)", der die deklarierten Zustände
+dieses Pfads gegen die gemessenen hält und beide Abweichungsrichtungen namentlich nennt — als
+JSON-Feld `expectedStateAudit` (mit `stateField`), als Textblock im Lauf-Log **und** als
+Markdown-Abschnitt unter der
 Delta-Tabelle, die der nächtliche Job in Job-Zusammenfassung, PR-Kommentar und Alarm-Issue
 veröffentlicht. Ein
 `known_gap`-Fall, den ein neuer Baustein löst, wird damit sichtbar, statt als stillschweigende
@@ -154,17 +176,17 @@ den Fall reproduzierbar.
 ```
 
 **Die Einpfadigkeit steht am Datensatz, nicht am Fall.** Nach der Einpfad-Regel aus
-`docs/features/retrieval-benchmark.md`, Abschnitt 5, gilt „gelöst" sonst über **beide** Messpfade;
-ein Mehrrunden-Fall kann aber konstruktionsbedingt nur auf dem Pipeline-Pfad laufen — der
+`docs/features/retrieval-benchmark.md`, Abschnitt 5, kann ein Mehrrunden-Fall konstruktionsbedingt
+nur auf dem Pipeline-Pfad laufen — der
 Rohvektor-Pfad misst `similaritySearch` direkt und kennt weder Verlauf noch Zerlegung. Diese
 Eigenschaft gilt für jeden Fall des Datensatzes gleichermaßen und wird deshalb **einmal je Bericht**
 ausgewiesen (`singlePathNote`), nie je Fall.
 
-`expected_state_exception` behält damit exakt die Bedeutung, die es in `verwaltung.json` hat:
-optional, nur auf einem `known_gap`-Fall, und nur für eine tatsächliche, begründete Abweichung
-**dieses einen** Falls. Stünde es auf jedem Fall, liefe das Zustandsfeld-Audit dauerhaft leer — ein
-`known_gap`, den ein neuer Baustein löst, erschiene nie als Fund, und ein verlorener `solved`-Fall nie
-als Rückschritt. Genau dieser Nachweis ist der Zweck der Zustandsfelder.
+Die Zustandsfelder dieses Datensatzes bleiben deshalb **flach** (`expected_state`,
+`expected_state_since`, `expected_state_reason`) und beschreiben den einen gemessenen Pfad; ein
+Eintrag je Pfad wie in den Einzelfragen-Datensätzen hätte keinen zweiten Pfad zu füllen (#1658).
+Das Audit dieses Pfads nennt als nachzuziehendes Feld `expected_state`. `expected_state_exception`
+ist auch hier entfallen.
 
 Ein `topic_switch`-Fall benennt zusätzlich seine **Wechselrunde** (`topic_switch_turn`, 1-basiert,
 mindestens 2): Die Bleed-Zahl wird über genau diese eine Runde gebildet. Abgeleitet wird sie nie —
@@ -185,8 +207,8 @@ Geprüft wird das Docker-frei durch `io.opaa.eval.ConversationCaseCuration` und
   Zeichen lang (die mechanische Obergrenze hinter „ein bis drei Sätze"),
 - die Klasse ist eine der drei oben, mit der Rundenzahl, über die sie definiert ist,
 - die drei Zustandsfelder sind Pflicht — `expected_state`, `expected_state_since` (ISO-Datum) und
-  `expected_state_reason` (nicht leer); `expected_state_exception` bleibt optional und nur auf einem
-  `known_gap`-Fall zulässig, wie bei den Einzelfragen,
+  `expected_state_reason` (nicht leer); ein `expected_state_exception` weist
+  `ConversationCaseCurationTest` im committeten Datensatz ab,
 - ein `topic_switch`-Fall benennt `topic_switch_turn` innerhalb seiner Rundenspanne, und keine
   andere Klasse trägt das Feld,
 - mindestens acht Fälle je Klasse und, über deren Runden, mindestens sechs unterschiedliche

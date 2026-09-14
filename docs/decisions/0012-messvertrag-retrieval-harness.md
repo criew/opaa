@@ -30,7 +30,10 @@ Fixpunkt-Ergänzung ohne neuen Messlauf für alle drei Baselines) und den
 [Nachtrag zur Rangreserve](#nachtrag-rangreserve-grenzstabilität-issue-1151)
 (Issue #1151/PR #1206: `MarginAggregate` weist je Golden-Fall/-Gruppe aus, wie knapp ein Treffer das
 Fenster erreicht hat — bewusst nur im Report ausgewiesen, kein Fixpunkt, keine Messvertragsänderung
-auf beiden Pfaden; Folgeentscheidung, ob/wie das ein Fehlerkriterium wird, in Issue #1210).
+auf beiden Pfaden; Folgeentscheidung, ob/wie das ein Fehlerkriterium wird, in Issue #1210) und den
+[Nachtrag zum erwarteten Zustand je Messpfad](#nachtrag-erwarteter-zustand-je-messpfad-issue-1658)
+(Issue #1658: `expected_state` je Pfad, `expected_state_exception` entfällt; nur der Golden-Hash
+wird nachgezogen, keine Messvertragsversion steigt).
 Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
 Review-Nacharbeit desselben PRs umgesetzt (`measurementContractVersion` im Report, `allQueryResults`
 im JSON-Report, `recallAt10Ceiling` je Gruppe).
@@ -563,6 +566,9 @@ deshalb `known_gap` mit committeter `expected_state_exception`. Ob diese Definit
 produktiven zweiten Suchpfad noch die richtige ist, ist eine offene Frage an die Spezifikation und
 wird hier nicht entschieden.
 
+> **Beantwortet mit Issue #1658 (Entscheidung 52):** Der erwartete Zustand wird je Messpfad geführt;
+> die Regel „gelöst auf beiden Pfaden" und `expected_state_exception` entfallen.
+
 ---
 
 ## Nachtrag: Strukturbewusstes Markdown-Chunking (Issue #1103)
@@ -943,6 +949,10 @@ laufen kann, gilt als gelöst, wenn sie auf diesem Pfad gelöst ist.**
 **Vermerkt wird sie einmal je Bericht** (`singlePathNote`), nicht je Fall. Sie ist eine Eigenschaft
 der Messanordnung: Sie gilt für jeden Fall des Datensatzes gleichermaßen und ändert sich nie.
 
+> **Seit Issue #1658 (Entscheidung 52)** gibt es `expected_state_exception` auf keinem Pfad mehr.
+> Die Einpfad-Regel bleibt; die flachen Zustandsfelder dieses Datensatzes sind der Zustand des einen
+> gemessenen Pfads. Der folgende Absatz beschreibt den Stand davor.
+
 `expected_state_exception` behält damit die Bedeutung, die es auf dem Einzelfragen-Pfad hat —
 optional, nur auf einem `known_gap`-Fall, und nur für eine tatsächliche Abweichung **dieses einen**
 Falls. Stünde es auf jedem Fall, reichte der Harness es als `acceptedDeviationReason` an
@@ -1146,3 +1156,79 @@ Aussage darüber, wie belastbar der Rest des Berichts überhaupt ist.
 > trennen — „die Notiz hat die Angabe nie getragen" gegen „die Zerlegung hat sie ignoriert" —, und
 > genau die verlangen entgegengesetzte Folgearbeit. Eine Beobachtung, kein Festpunkt: Keine
 > gemessene Zahl bewegt sich, die Vertragsversion bleibt bei 2.
+
+---
+
+## Nachtrag: Erwarteter Zustand je Messpfad (Issue #1658)
+
+**Datum:** 2026-09-14 · **Betrifft:** die Zustandsfelder der drei Einzelfragen-Datensätze, das
+Zustandsfeld-Audit beider Einzelfragen-Pfade, den Golden-Hash der sechs Einzelfragen-Baselines.
+
+Jeder Golden-Fall trug bis hierher **einen** `expected_state` für beide Messpfade, und ein Fall galt
+nur als gelöst, wenn ihn beide Pfade lösten (Spezifikation, Abschnitt 5; Folge für den Volltextpfad
+in Entscheidung 23). Eine dauerhafte Pfad-Asymmetrie ließ sich nur als Freitext in
+`expected_state_exception` ausdrücken. Das hat zweimal versagt: Sieben Ausnahmen aus #1049 waren
+unbemerkt widerlegt, drei davon beschrieben das Gegenteil des gemessenen Stands (#1655); und nach der
+Ursachenanalyse in #1308 blieben in `verwaltung` 13 Fälle dauerhaft asymmetrisch, die ohne Ausnahme
+jede Nacht als Audit-Befund erschienen und neue Befunde verdeckt hätten. Eine Ausnahme wirkte zudem
+je Fall, nicht je Pfad, und hätte einen späteren Wechsel auf dem anderen Pfad mit stummgeschaltet.
+
+### 52. Der erwartete Zustand wird je Messpfad geführt, das Audit prüft je Pfad
+
+Maintainer-Entscheidung vom 14.09.2026: **Der gemessene Ist-Zustand beider Pfade ist der
+festgeschriebene Stand, wie eine Baseline je Pfad; das Audit meldet nur Abweichungen davon, getrennt
+je Pfad.**
+
+- **Schema.** `expected_state` ist ein Objekt mit den Einträgen `raw_vector` und `pipeline`, jeder
+  mit `state` (`solved`/`known_gap`), `since` (ISO-Datum) und `reason`. Beide Einträge sind Pflicht
+  (`GoldenCaseCuration#validateStates`, für alle drei Domänen). `expected_state_since`,
+  `expected_state_reason` und `expected_state_exception` entfallen; ein Docker-freier Test weist sie
+  in einem committeten Datensatz ab, weil `GoldenCase` unbekannte Schlüssel sonst still ignorierte.
+- **Audit.** `ExpectedStateAudit` bewertet jeden Pfad nur gegen dessen eigenen Eintrag
+  (`MeasurementPath`) und führt im Report `stateField`, also das Feld, das ein Befund nachzuziehen
+  verlangt. Es kennt nur noch die beiden Abweichungsrichtungen; die Listen „erwartete Abweichung"
+  und „Ausnahme deklariert, keine Abweichung gemessen" entfallen. „Gelöst" bleibt eine Definition
+  (alle erwarteten Dokumente im Fenster **und** ein erwartetes auf Rang 1), angewandt auf das Fenster
+  des jeweiligen Pfads.
+- **Treffer ohne den geprüften Mechanismus.** Früher der zweite Anwendungsfall einer Ausnahme; jetzt
+  wird ein solcher Fall auf dem Pfad, der ihn löst, als `solved` festgeschrieben, und sein Grund
+  beginnt mit dem festen Präfix `Ohne geprüften Mechanismus: ` (Maintainer-Entscheidung vom
+  14.09.2026; Regel und Fallliste in `eval/corpus/verwaltung/MAINTENANCE.md`). `GoldenCaseCuration`
+  lässt das Präfix nur auf `solved` und nur als exakten Anfang zu — ohne neues Schemafeld. Kippt ein
+  solcher Fall, meldet das Audit einen Rückschritt, und der Zustand wird bewusst auf `known_gap`
+  nachgezogen. Das Kriterium ist strukturell: Präfix genau dann, wenn der Mechanismus der
+  Fallklasse in diesem Pfad der Messung fehlt oder abgeschaltet ist (Zuordnungstabelle in
+  `docs/features/retrieval-benchmark.md` §5); „schon vor dem Mechanismus gelöst“ ist bewusst kein
+  Kriterium, weil es ohne Nachweis je Fall nicht messbar ist. Es tragen `verwaltung` 17 Rohvektor-
+  und 4 Pipeline-Gründe, `comic-characters` 2 Pipeline-Gründe, `city-landmarks` keine (Golden-Hash
+  `verwaltung` `aba8a638…` → `9c5af619…`, `comic-characters` `e5054926…` → `05e8d0f9…`, ohne neuen
+  Messlauf).
+- **Mehrrunden-Pfad.** Er misst konstruktionsbedingt einen Pfad (Entscheidung 43). Seine flachen
+  Zustandsfelder sind bereits der Zustand dieses einen Pfads; ein Eintrag je Pfad hätte keinen
+  zweiten Pfad zu füllen und stünde im Widerspruch dazu, dass die Einpfadigkeit am Datensatz und
+  nicht am Fall vermerkt ist. Der Datensatz bleibt deshalb unverändert (kein Hash-Wechsel), nur das
+  dort nie gesetzte `expected_state_exception` entfällt aus dem Schema.
+
+### 53. Keine Messvertragsversion steigt; nur der Golden-Hash wird nachgezogen
+
+Entscheidung 6 macht eine Änderung an Metrikdefinitionen und Festpunkten zur Vertragsänderung. Das
+Zustandsfeld-Audit ist beides nicht: Es berechnet keine Metrik, fließt in kein Regressionsurteil ein
+und lässt keinen Lauf fehlschlagen. Was sich am Datensatz ändert, deckt der bestehende Festpunkt
+`goldenDatasetSha256` bereits ab. `measurementContractVersion` (10), die Pipeline-Version (13) und die
+Mehrrunden-Version (2) bleiben deshalb unverändert.
+
+Die sechs Einzelfragen-Baselines haben **ohne** neuen Messlauf nur `goldenDatasetSha256` nachgezogen
+bekommen, mit datiertem Nachtrag in `notes`. Das ist zulässig, weil keine Anfrage, kein erwartetes
+Dokument und kein Filterfeld sich bewegt und die eingetragenen Zustände genau die Fallergebnisse von
+Läufen wiedergeben, deren Metriken die committeten Baselines bestätigen:
+
+| Domäne | Quelle der Zustände | Fälle | gelöst Rohvektor | gelöst Pipeline | je Pfad verschieden |
+|---|---|---|---|---|---|
+| `verwaltung` | CI-Lauf 34840623079 (Golden-Hash `4ff44ccc…`), bestätigt durch den lokalen CPU-Lauf `checkVerwaltungRetrievalBaseline` dieses Umbaus: beide Audits ohne Abweichung | 49 | 27 | 26 | 13 |
+| `comic-characters` | nächtlicher Lauf 34819759178 (Stand `6ff4c5f1`; insgesamt rot wegen `verwaltung`, Job `evaluate (comic-characters)` grün) | 121 | 44 | 52 | 10 |
+| `city-landmarks` | nächtlicher Lauf 34819759178 (Stand `6ff4c5f1`; Job `evaluate (city-landmarks)` grün) | 108 | 106 | 104 | 2 |
+
+Für `verwaltung` sind die gemessenen Ursachen aus #1308 ohne Informationsverlust auf die Gründe je
+Pfad aufgeteilt. `comic-characters` und `city-landmarks` deklarieren erstmals Zustände; ihre Gründe
+nennen den Quelllauf und das gemessene Symptom. Den fehlenden Baustein je `known_gap`-Eintrag
+ergänzt #1657, unabhängig davon, ob die Neuvermessung dort die Baselines bewegt.

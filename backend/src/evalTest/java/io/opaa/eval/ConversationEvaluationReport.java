@@ -63,23 +63,16 @@ public record ConversationEvaluationReport(
 
   /**
    * The Einpfad-Regel of docs/features/retrieval-benchmark.md §5, recorded <b>once per report</b>:
-   * "solved" is defined over both measurement paths, but a multi-turn case can only ever run on the
-   * pipeline path - the raw-vector path searches directly and knows neither conversation history
-   * nor decomposition. A class that can structurally run on one path only counts as solved when it
-   * is solved on that path.
-   *
-   * <p>A property of the measurement setup, not of a case: it holds for every case of this dataset
-   * and never changes. Putting it on each case as an {@code expected_state_exception} would leave
-   * {@link ExpectedStateAudit} permanently silent - a {@code known_gap} a new building block solves
-   * would never appear as a finding, and a lost {@code solved} case never as a regression, which is
-   * precisely what the state fields exist to show.
+   * a multi-turn case can only ever run on the pipeline path - the raw-vector path searches
+   * directly and knows neither conversation history nor decomposition. The dataset's one flat state
+   * per case is therefore that path's state; a property of the measurement setup, not of a case.
    */
   public static final String SINGLE_PATH_NOTE =
       "Einpfad-Messung: Mehrrunden-Fälle laufen konstruktionsbedingt nur über den Pipeline-Pfad — "
-          + "der Rohvektor-Pfad kennt weder Gesprächsverlauf noch Teilfragen-Zerlegung. Ein Fall "
-          + "gilt deshalb als gelöst, wenn er auf diesem Pfad gelöst ist "
+          + "der Rohvektor-Pfad kennt weder Gesprächsverlauf noch Teilfragen-Zerlegung. Der "
+          + "deklarierte Zustand eines Falls (expected_state) ist deshalb der Zustand dieses Pfads "
           + "(docs/features/retrieval-benchmark.md, Abschnitt 5, Einpfad-Regel). Die Einpfadigkeit "
-          + "ist eine Eigenschaft dieses Datensatzes, kein expected_state_exception am Fall.";
+          + "ist eine Eigenschaft dieses Datensatzes, nicht des einzelnen Falls.";
 
   /**
    * The key of the per-turn group: the turn number, 1-based. Unprefixed like the report's category

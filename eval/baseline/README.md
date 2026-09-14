@@ -75,7 +75,7 @@ Pipeline-Baseline dieser Domäne steht auf Messvertragsversion 3 und trägt die 
 `fullTextSearchEnabled`/`fullTextIndexUpToDate` (damals `fullTextBackfillComplete`, bis Issue
 #1429 `fullTextIndexComplete`); ihre Zahlen sind durchgängig besser (Gesamt-nDCG@8
 0,558 → 0,749). Die **Rohvektor**-Baseline ist davon unberührt — an ihr hat sich ausschließlich der
-Golden-Hash geändert (elf Fälle haben ihre `expected_state_exception` nachgezogen bekommen), jeder
+Golden-Hash geändert (elf Fälle haben ihre damalige `expected_state_exception` nachgezogen bekommen), jeder
 Metrikwert ist im selben Lauf erneut gemessen und unverändert: Dieser Pfad misst `similaritySearch`
 direkt und kennt den Volltextpfad nicht.
 
@@ -93,21 +93,38 @@ Domänen `comic-characters`/`city-landmarks` haben denselben Fixpunkt und diesel
 Vertragsversionen bekommen, aber **keine** neue Messung: Kein Fall dieser Domänen trägt ein
 `filter`-Feld.
 
-Ein Zustandswechsel eines Falls (`expected_state`) ändert die Golden-Dataset-Datei und damit deren
-SHA-256 — einen Fixpunkt beider Baselines. Eine Zustandspflege ist deshalb **immer** auch eine
+Ein Zustandswechsel eines Falls auf einem Messpfad (`expected_state.raw_vector.state` oder
+`expected_state.pipeline.state`) ändert die Golden-Dataset-Datei und damit deren SHA-256 — einen
+Fixpunkt beider Baselines. Eine Zustandspflege ist deshalb **immer** auch eine
 Baseline-Neuziehung, nach dem Verfahren unten; das ist gewollt und kein Nebeneffekt: Ein
 Zustandswechsel behauptet, dass sich das Messergebnis geändert hat, also muss das gemessene
 Ergebnis mitkommen.
 
-**Eine reine Textänderung ist davon ausgenommen.** Wird ausschließlich ein `expected_state_reason`
-(oder ein anderer nicht messrelevanter Text) präzisiert, bewegt sich zwar der Hash, aber keine
+**Eine reine Textänderung ist davon ausgenommen.** Wird ausschließlich ein Grund
+(`expected_state.<pfad>.reason`, im Mehrrunden-Datensatz `expected_state_reason`) oder ein anderer
+nicht messrelevanter Text präzisiert, bewegt sich zwar der Hash, aber keine
 Messgrundlage: Der Fixpunkt `goldenDatasetSha256` wird dann **ohne** neuen Messlauf nachgezogen, und
 der PR hält fest, welche Felder sich geändert haben und dass `query`, die erwarteten Dokumente, ein
-etwaiger `confusable_document`/`topic_switch_turn` und jedes `expected_state` unberührt sind. Diese
+etwaiger `confusable_document`/`topic_switch_turn` und jeder erwartete Zustand unberührt sind. Diese
 Abgrenzung ist keine Neuerfindung — `verwaltung.json` und `pipeline-verwaltung.json` sind für Issue
 #1049 genau so behandelt worden („ausschließlich der Fixpunkt `goldenDatasetSha256` nachgezogen …
 ohne neuen Messlauf"), zuletzt die Mehrrunden-Baseline in #1490. Sobald ein **messrelevantes** Feld
 sich bewegt, gilt wieder der Absatz darüber.
+
+**Umstellung auf den Zustand je Messpfad (Issue #1658, 2026-09-14).** Das Schema von
+`expected_state` hat sich in allen drei Einzelfragen-Datensätzen geändert (ein Eintrag je Pfad,
+`expected_state_exception` entfällt), `comic-characters` und `city-landmarks` deklarieren erstmals
+Zustände. Alle sechs Einzelfragen-Baselines haben deshalb **ohne** neuen Messlauf nur
+`goldenDatasetSha256` nachgezogen bekommen (`verwaltung` `4ff44ccc…` → `aba8a638…` und nach dem
+Präfix `Ohne geprüften Mechanismus: ` → `88bf30ca…`, nach dem strukturellen Präfix-Kriterium →
+`9c5af619…`; `comic-characters` `20ceafc0…` → `e5054926…` → `05e8d0f9…`, `city-landmarks` `7739c6ff…` → `40dcb03a…`), jeweils
+mit datiertem Nachtrag in `notes`. Das ist kein Zustandswechsel im Sinne des vorletzten Absatzes:
+Eingetragen ist genau der Zustand, den die Fallergebnisse eines Laufs zeigen, dessen Metriken die
+committete Baseline bestätigen (`verwaltung`: CI-Lauf 34840623079 und der lokale
+`checkVerwaltungRetrievalBaseline` dieses Umbaus; `comic-characters`/`city-landmarks`: die grünen
+Jobs beider Domänen im nächtlichen Lauf 34819759178, der wegen `verwaltung` insgesamt rot war). `query`, erwartete Dokumente und alle Filterfelder sind unberührt; die
+Mehrrunden-Baseline ist nicht betroffen, weil ihr Datensatz unverändert blieb. Keine
+Messvertragsversion steigt (ADR-0012, Nachtrag „Erwarteter Zustand je Messpfad").
 
 ## Domäne `city-landmarks` (Issue #234)
 

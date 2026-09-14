@@ -27,11 +27,9 @@ import java.util.TreeMap;
  *       out of the search window, which is the whole point of that class.
  *   <li><b>The state fields are mandatory</b>, with the same shape and the same reasoning as in
  *       {@link GoldenCaseCuration}: a state that may be left empty is a state nobody can tell a
- *       known gap from a regression by. {@code expected_state_exception} keeps its meaning from
- *       there - an optional, written reason why a <b>single</b> case deviates from its declared
- *       state on purpose, only on a {@code known_gap} case. The single-pathedness of this
- *       measurement is a property of the dataset, not of a case, and is recorded once per report
- *       ({@link ConversationEvaluationReport#SINGLE_PATH_NOTE}).
+ *       known gap from a regression by. They stay flat rather than per path: the single-pathedness
+ *       of this measurement is a property of the dataset, not of a case, and is recorded once per
+ *       report ({@link ConversationEvaluationReport#SINGLE_PATH_NOTE}).
  *   <li><b>A {@code constraint_carryover} case names a {@link #CONFUSABLE_DOCUMENT_RULE confusable
  *       document}</b> in at least one turn; a {@code topic_switch} case names its {@link
  *       #TOPIC_SWITCH_TURN_RULE change turn}.
@@ -279,14 +277,6 @@ public final class ConversationCaseCuration {
     String id = conversationCase.id();
     if (conversationCase.expectedState() == null) {
       violations.add(new Violation(id, "expected_state is missing"));
-    }
-    if (conversationCase.expectedStateException() != null
-        && conversationCase.expectedStateException().isBlank()) {
-      violations.add(new Violation(id, "expected_state_exception is present but blank"));
-    }
-    if (conversationCase.expectedStateException() != null
-        && conversationCase.expectedState() == GoldenCase.ExpectedState.SOLVED) {
-      violations.add(new Violation(id, GoldenCaseCuration.EXCEPTION_ONLY_ON_KNOWN_GAP_RULE));
     }
     if (conversationCase.expectedStateReason() == null
         || conversationCase.expectedStateReason().isBlank()) {

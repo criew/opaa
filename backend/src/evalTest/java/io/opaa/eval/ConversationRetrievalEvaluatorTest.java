@@ -56,8 +56,7 @@ class ConversationRetrievalEvaluatorTest {
         null,
         GoldenCase.ExpectedState.KNOWN_GAP,
         "2026-09-11",
-        "Der Folgefragen-Pfad der Zerlegung ist noch ungemessen.",
-        null);
+        "Der Folgefragen-Pfad der Zerlegung ist noch ungemessen.");
   }
 
   /** Records the window every turn was invoked with, and answers with a scripted ranking. */
@@ -121,8 +120,7 @@ class ConversationRetrievalEvaluatorTest {
             3,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
-            "Grund",
-            null);
+            "Grund");
     RecordingPipeline pipeline =
         new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B), List.of(DOC_C)));
 
@@ -147,8 +145,7 @@ class ConversationRetrievalEvaluatorTest {
             null,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
-            "Grund",
-            null);
+            "Grund");
     RecordingPipeline pipeline =
         new RecordingPipeline(
             List.of(List.of(DOC_A), List.of(DOC_B), List.of(DOC_A), List.of(DOC_B)));
@@ -225,8 +222,7 @@ class ConversationRetrievalEvaluatorTest {
             3,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
-            "Themen-Bleed nach einem Wechsel ist ungemessen.",
-            null);
+            "Themen-Bleed nach einem Wechsel ist ungemessen.");
     // The change turn's window still holds the old topic's document.
     List<ConversationRetrievalEvaluator.CaseOutcome> outcomes =
         List.of(
@@ -251,9 +247,8 @@ class ConversationRetrievalEvaluatorTest {
   /**
    * The state audit has to be able to speak on this path: a {@code known_gap} case a run solves is
    * the finding the whole epic is measured by, and a {@code solved} case that stops being solved is
-   * a regression. Both are invisible the moment every case carries an {@code
-   * expected_state_exception} - which is why the single-pathedness of this measurement sits on the
-   * report ({@link ConversationEvaluationReport#SINGLE_PATH_NOTE}), not on the cases.
+   * a regression. The single-pathedness of this measurement sits on the report ({@link
+   * ConversationEvaluationReport#SINGLE_PATH_NOTE}), and the audit points at the flat field.
    */
   @Test
   void aKnownGapCaseTheRunSolvesIsReportedAsAFinding() {
@@ -270,7 +265,7 @@ class ConversationRetrievalEvaluatorTest {
     assertThat(report.singlePathNote()).isEqualTo(ConversationEvaluationReport.SINGLE_PATH_NOTE);
     assertThat(report.expectedStateAudit().unexpectedlySolved()).containsExactly("verw-conv-001");
     assertThat(report.expectedStateAudit().matchesDeclaredStates()).isFalse();
-    assertThat(report.expectedStateAudit().acceptedDeviations()).isEmpty();
+    assertThat(report.expectedStateAudit().stateField()).isEqualTo("expected_state");
   }
 
   /**
@@ -296,8 +291,7 @@ class ConversationRetrievalEvaluatorTest {
             3,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
-            "Grund",
-            null);
+            "Grund");
     // Turn 2 expects a document no earlier turn expects, and turn 1's document stands in its
     // window - a derivation would book that as bleed.
     List<ConversationRetrievalEvaluator.CaseOutcome> outcomes =
@@ -404,8 +398,7 @@ class ConversationRetrievalEvaluatorTest {
             null,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
-            "Grund",
-            null);
+            "Grund");
     RecordingPipeline pipeline =
         new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B), List.of(DOC_C)));
 
@@ -464,8 +457,7 @@ class ConversationRetrievalEvaluatorTest {
             null,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
-            "Grund",
-            null);
+            "Grund");
     RecordingPipeline pipeline =
         new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B), List.of(DOC_C)));
 
@@ -546,8 +538,7 @@ class ConversationRetrievalEvaluatorTest {
             null,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
-            "Grund",
-            null);
+            "Grund");
     RecordingPipeline pipeline =
         new RecordingPipeline(
             List.of(List.of(DOC_A), List.of(DOC_B), List.of(DOC_A), List.of(DOC_B)));

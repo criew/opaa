@@ -4,10 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.eval.GoldenCaseCuration.Violation;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Docker-free guard for the committed multi-turn dataset and for the rules themselves (issue #1484)
@@ -66,8 +69,7 @@ class ConversationCaseCurationTest {
             null,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
-            "Grund",
-            null);
+            "Grund");
 
     List<Violation> violations =
         ConversationCaseCuration.validate(List.of(incomplete), DOMAIN, Set.of("a.md"));
@@ -95,8 +97,7 @@ class ConversationCaseCurationTest {
             null,
             GoldenCase.ExpectedState.SOLVED,
             "2026-09-11",
-            "Grund",
-            null);
+            "Grund");
     ConversationCase tooShort =
         new ConversationCase(
             "verw-conv-002",
@@ -108,8 +109,7 @@ class ConversationCaseCurationTest {
             null,
             GoldenCase.ExpectedState.SOLVED,
             "2026-09-11",
-            "Grund",
-            null);
+            "Grund");
 
     List<Violation> violations =
         ConversationCaseCuration.validate(
@@ -137,8 +137,7 @@ class ConversationCaseCurationTest {
             null,
             null,
             null,
-            "   ",
-            null);
+            "   ");
 
     List<Violation> violations =
         ConversationCaseCuration.validate(List.of(stateless), DOMAIN, Set.of("a.md"));
@@ -152,31 +151,22 @@ class ConversationCaseCurationTest {
   }
 
   /**
-   * {@code expected_state_exception} keeps the meaning it has on the single-question path: an
-   * optional reason for a <b>single</b> case's deliberate deviation, only on a {@code known_gap}
-   * one. The single-pathedness of this whole measurement is recorded once per report instead - on
-   * every case it would leave {@link ExpectedStateAudit} permanently silent.
+   * This path measures one path only, so its flat state fields are that path's state and there is
+   * no deviation to excuse. {@link ConversationCase} ignores unknown keys; a retired {@code
+   * expected_state_exception} left in the dataset would be a statement nobody reads.
    */
   @Test
-  void anExceptionOnASolvedCaseCouldOnlyEverExcuseARegression() {
-    ConversationCase solvedWithException =
-        new ConversationCase(
-            "verw-conv-001",
-            DOMAIN,
-            "anaphora_resolution",
-            List.of(
-                new ConversationCase.Turn("Frage 1?", "Antwort 1.", List.of("a.md"), null),
-                new ConversationCase.Turn("Frage 2?", "Antwort 2.", List.of("a.md"), null)),
-            null,
-            GoldenCase.ExpectedState.SOLVED,
-            "2026-09-11",
-            "Grund",
-            "Einpfadigkeit");
+  void theCommittedDatasetCarriesNoRetiredExceptionField() throws IOException {
+    JsonNode root =
+        JsonMapper.builder()
+            .build()
+            .readTree(Files.readAllBytes(ConversationDataset.file(EvalDomainConfig.VERWALTUNG)));
 
-    assertThat(
-            ConversationCaseCuration.validate(List.of(solvedWithException), DOMAIN, Set.of("a.md")))
-        .extracting(Violation::rule)
-        .contains(GoldenCaseCuration.EXCEPTION_ONLY_ON_KNOWN_GAP_RULE);
+    for (JsonNode conversationCase : root) {
+      assertThat(conversationCase.has("expected_state_exception"))
+          .as("%s carries expected_state_exception", conversationCase.get("id").asString())
+          .isFalse();
+    }
   }
 
   @Test
@@ -193,8 +183,7 @@ class ConversationCaseCurationTest {
             null,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
-            "Grund",
-            null);
+            "Grund");
     ConversationCase outsideItsScript =
         new ConversationCase(
             "verw-conv-002",
@@ -204,8 +193,7 @@ class ConversationCaseCurationTest {
             4,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
-            "Grund",
-            null);
+            "Grund");
     ConversationCase wrongClassWithSwitchTurn =
         new ConversationCase(
             "verw-conv-003",
@@ -217,8 +205,7 @@ class ConversationCaseCurationTest {
             2,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
-            "Grund",
-            null);
+            "Grund");
 
     List<Violation> violations =
         ConversationCaseCuration.validate(
@@ -254,8 +241,7 @@ class ConversationCaseCurationTest {
             null,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
-            "Grund",
-            null);
+            "Grund");
 
     assertThat(
             ConversationCaseCuration.validate(
@@ -277,8 +263,7 @@ class ConversationCaseCurationTest {
             null,
             GoldenCase.ExpectedState.KNOWN_GAP,
             "2026-09-11",
-            "Grund",
-            null);
+            "Grund");
 
     List<Violation> violations =
         ConversationCaseCuration.validate(List.of(onlyCase), DOMAIN, Set.of("a.md"));

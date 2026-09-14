@@ -10,7 +10,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-002",
@@ -23,7 +35,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-003",
@@ -36,7 +60,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-004",
@@ -49,7 +85,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-005",
@@ -62,7 +110,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-006",
@@ -75,7 +135,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-007",
@@ -88,7 +160,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-008",
@@ -101,7 +185,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-009",
@@ -114,7 +210,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-010",
@@ -127,7 +235,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-011",
@@ -140,7 +260,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-012",
@@ -153,7 +285,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-013",
@@ -166,7 +310,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-014",
@@ -179,7 +335,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-015",
@@ -192,7 +360,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-016",
@@ -205,7 +385,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-017",
@@ -218,7 +410,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-018",
@@ -231,7 +435,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-019",
@@ -244,7 +460,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-city_overview-020",
@@ -257,7 +485,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-001",
@@ -270,7 +510,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Hagia Sophia wurde 532 erbaut bzw. gegründet, im Jahr 537 eröffnet, geht auf Pläne von Isidor von Milet zurück."
+    "answer_span": "Hagia Sophia wurde 532 erbaut bzw. gegründet, im Jahr 537 eröffnet, geht auf Pläne von Isidor von Milet zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-002",
@@ -283,7 +535,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Topkapı-Palast wurde 1460 erbaut bzw. gegründet, geht auf Pläne von Mehmed II. zurück."
+    "answer_span": "Topkapı-Palast wurde 1460 erbaut bzw. gegründet, geht auf Pläne von Mehmed II. zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-003",
@@ -296,7 +560,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Dolmabahçe-Palast wurde 1823 erbaut bzw. gegründet, im Jahr 1856 eröffnet, geht auf Pläne von Nikołos Karapeti Balyan zurück."
+    "answer_span": "Dolmabahçe-Palast wurde 1823 erbaut bzw. gegründet, im Jahr 1856 eröffnet, geht auf Pläne von Nikołos Karapeti Balyan zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-004",
@@ -309,7 +585,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Hagia Irene wurde 501 erbaut bzw. gegründet."
+    "answer_span": "Hagia Irene wurde 501 erbaut bzw. gegründet.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-005",
@@ -322,7 +610,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Kleine Hagia Sophia wurde 526 erbaut bzw. gegründet, geht auf Pläne von Isidor von Milet zurück."
+    "answer_span": "Kleine Hagia Sophia wurde 526 erbaut bzw. gegründet, geht auf Pläne von Isidor von Milet zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-006",
@@ -335,7 +635,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Rumeli Hisarı wurde 1451 erbaut bzw. gegründet."
+    "answer_span": "Rumeli Hisarı wurde 1451 erbaut bzw. gegründet.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-007",
@@ -348,7 +660,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Çırağan-Palast befindet sich in Istanbul in Türkei und ist die 8. von 12 in diesem Dokument beschriebenen Sehenswürdigkeiten Istanbuls. Çırağan-Palast wurde 1863 erbaut bzw. gegründet, geht auf Pläne von Balyan zurück."
+    "answer_span": "Çırağan-Palast befindet sich in Istanbul in Türkei und ist die 8. von 12 in diesem Dokument beschriebenen Sehenswürdigkeiten Istanbuls. Çırağan-Palast wurde 1863 erbaut bzw. gegründet, geht auf Pläne von Balyan zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-008",
@@ -361,7 +685,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Beylerbeyi-Palast wurde 1865 erbaut bzw. gegründet, geht auf Pläne von Balyan zurück."
+    "answer_span": "Beylerbeyi-Palast wurde 1865 erbaut bzw. gegründet, geht auf Pläne von Balyan zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-009",
@@ -374,7 +710,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Apostelkirche wurde 501 erbaut bzw. gegründet."
+    "answer_span": "Apostelkirche wurde 501 erbaut bzw. gegründet.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-010",
@@ -387,7 +735,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Kreml wurde 1420 erbaut bzw. gegründet, geht auf Pläne von Aloisio da Milano zurück."
+    "answer_span": "Kreml wurde 1420 erbaut bzw. gegründet, geht auf Pläne von Aloisio da Milano zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-011",
@@ -400,7 +760,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Olympiastadion Luschniki wurde 1956 erbaut bzw. gegründet."
+    "answer_span": "Olympiastadion Luschniki wurde 1956 erbaut bzw. gegründet.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-012",
@@ -413,7 +785,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Russische Staatsbibliothek wurde 1862 erbaut bzw. gegründet."
+    "answer_span": "Russische Staatsbibliothek wurde 1862 erbaut bzw. gegründet.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-013",
@@ -426,7 +810,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Fernsehturm Ostankino wurde 1960 erbaut bzw. gegründet, geht auf Pläne von Leonid Batalov zurück."
+    "answer_span": "Fernsehturm Ostankino wurde 1960 erbaut bzw. gegründet, geht auf Pläne von Leonid Batalov zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-014",
@@ -439,7 +835,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Tretjakow-Galerie wurde 1856 erbaut bzw. gegründet, geht auf Pläne von Wiktor Michailowitsch Wasnezow zurück."
+    "answer_span": "Tretjakow-Galerie wurde 1856 erbaut bzw. gegründet, geht auf Pläne von Wiktor Michailowitsch Wasnezow zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-015",
@@ -452,7 +860,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Puschkin-Museum wurde 1912 erbaut bzw. gegründet, geht auf Pläne von Roman Iwanowitsch Klein zurück."
+    "answer_span": "Puschkin-Museum wurde 1912 erbaut bzw. gegründet, geht auf Pläne von Roman Iwanowitsch Klein zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-001",
@@ -465,7 +885,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'federal cultural heritage site in Russia', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'federal cultural heritage site in Russia', was auf eine besondere kulturelle oder historische Bedeutung hinweist.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-016",
@@ -478,7 +910,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Gorki-Park wurde 1928 erbaut bzw. gegründet, im Jahr 1927 eröffnet."
+    "answer_span": "Gorki-Park wurde 1928 erbaut bzw. gegründet, im Jahr 1927 eröffnet.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-017",
@@ -491,7 +935,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Schuchow-Radioturm wurde 1922 erbaut bzw. gegründet, geht auf Pläne von Wladimir Grigorjewitsch Schuchow zurück."
+    "answer_span": "Schuchow-Radioturm wurde 1922 erbaut bzw. gegründet, geht auf Pläne von Wladimir Grigorjewitsch Schuchow zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-018",
@@ -504,7 +960,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Grabmal des unbekannten Soldaten wurde 1967 erbaut bzw. gegründet."
+    "answer_span": "Grabmal des unbekannten Soldaten wurde 1967 erbaut bzw. gegründet.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-019",
@@ -517,7 +985,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Kropotkinskaja wurde 1935 erbaut bzw. gegründet, geht auf Pläne von Yakov Likhtenberg zurück."
+    "answer_span": "Kropotkinskaja wurde 1935 erbaut bzw. gegründet, geht auf Pläne von Yakov Likhtenberg zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-020",
@@ -530,7 +1010,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Krim-Brücke wurde 1936 erbaut bzw. gegründet, im Jahr 1938 eröffnet, geht auf Pläne von Alexander Wassiljewitsch Wlassow zurück."
+    "answer_span": "Krim-Brücke wurde 1936 erbaut bzw. gegründet, im Jahr 1938 eröffnet, geht auf Pläne von Alexander Wassiljewitsch Wlassow zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-021",
@@ -543,7 +1035,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Crystal Palace wurde 1851 erbaut bzw. gegründet, geht auf Pläne von Owen Jones zurück."
+    "answer_span": "Crystal Palace wurde 1851 erbaut bzw. gegründet, geht auf Pläne von Owen Jones zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-022",
@@ -556,7 +1060,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "James’s Palace wurde 1536 erbaut bzw. gegründet."
+    "answer_span": "James’s Palace wurde 1536 erbaut bzw. gegründet.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-023",
@@ -569,7 +1085,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Old Royal Naval College wurde 1696 erbaut bzw. gegründet, geht auf Pläne von John Webb zurück."
+    "answer_span": "Old Royal Naval College wurde 1696 erbaut bzw. gegründet, geht auf Pläne von John Webb zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-024",
@@ -582,7 +1110,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Grade-II-Bauwerk', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Grade-II-Bauwerk', was auf eine besondere kulturelle oder historische Bedeutung hinweist.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-landmark_detail-025",
@@ -595,7 +1135,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "St Paul’s Church wurde 1633 erbaut bzw. gegründet, geht auf Pläne von Inigo Jones zurück."
+    "answer_span": "St Paul’s Church wurde 1633 erbaut bzw. gegründet, geht auf Pläne von Inigo Jones zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt city-0024_birmingham.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt city-0106_cardiff.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+      }
+    }
   },
   {
     "id": "city-boundary_span-002",
@@ -608,7 +1160,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'bien de interés cultural', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'bien de interés cultural', was auf eine besondere kulturelle oder historische Bedeutung hinweist.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-003",
@@ -621,7 +1185,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'bien de interés cultural', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'bien de interés cultural', was auf eine besondere kulturelle oder historische Bedeutung hinweist.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-004",
@@ -634,7 +1210,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Real Academia de Bellas Artes de San Fernando wurde 1752 erbaut bzw. gegründet, geht auf Pläne von José Benito de Churriguera zurück."
+    "answer_span": "Real Academia de Bellas Artes de San Fernando wurde 1752 erbaut bzw. gegründet, geht auf Pläne von José Benito de Churriguera zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-005",
@@ -647,7 +1235,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Il Gesù wurde 1568 erbaut bzw. gegründet, geht auf Pläne von Giacomo Barozzi da Vignola zurück."
+    "answer_span": "Il Gesù wurde 1568 erbaut bzw. gegründet, geht auf Pläne von Giacomo Barozzi da Vignola zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-006",
@@ -660,7 +1260,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "La Trinité (Paris) wurde 1860 erbaut bzw. gegründet, geht auf Pläne von Théodore Ballu zurück."
+    "answer_span": "La Trinité (Paris) wurde 1860 erbaut bzw. gegründet, geht auf Pläne von Théodore Ballu zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-007",
@@ -673,7 +1285,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Baudenkmal', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Baudenkmal', was auf eine besondere kulturelle oder historische Bedeutung hinweist.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-008",
@@ -686,7 +1310,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Cantacuzino Palast wurde 1902 erbaut bzw. gegründet, geht auf Pläne von Ion D."
+    "answer_span": "Cantacuzino Palast wurde 1902 erbaut bzw. gegründet, geht auf Pläne von Ion D.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-009",
@@ -699,7 +1335,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Kathedrale des Heiligen Basilius des Großen wurde 1909 erbaut bzw. gegründet."
+    "answer_span": "Kathedrale des Heiligen Basilius des Großen wurde 1909 erbaut bzw. gegründet.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-010",
@@ -712,7 +1360,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Belarussische Kulturerbeliste', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Belarussische Kulturerbeliste', was auf eine besondere kulturelle oder historische Bedeutung hinweist.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-011",
@@ -725,7 +1385,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Belarussische Kulturerbeliste', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Belarussische Kulturerbeliste', was auf eine besondere kulturelle oder historische Bedeutung hinweist.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-012",
@@ -738,7 +1410,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Church of Holy Trinity wurde 1864 erbaut bzw. gegründet."
+    "answer_span": "Church of Holy Trinity wurde 1864 erbaut bzw. gegründet.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-013",
@@ -751,7 +1435,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Belarussische Kulturerbeliste', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Belarussische Kulturerbeliste', was auf eine besondere kulturelle oder historische Bedeutung hinweist.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-014",
@@ -764,7 +1460,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Belarussische Kulturerbeliste', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Belarussische Kulturerbeliste', was auf eine besondere kulturelle oder historische Bedeutung hinweist.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-015",
@@ -777,7 +1485,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Historisches Denkmal in Ungarn', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'Historisches Denkmal in Ungarn', was auf eine besondere kulturelle oder historische Bedeutung hinweist.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-016",
@@ -790,7 +1510,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'unbewegliches Denkmal (Polen)', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'unbewegliches Denkmal (Polen)', was auf eine besondere kulturelle oder historische Bedeutung hinweist.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-017",
@@ -803,7 +1535,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Staszic-Palast wurde 1820 erbaut bzw. gegründet, geht auf Pläne von Antonio Corazzi zurück."
+    "answer_span": "Staszic-Palast wurde 1820 erbaut bzw. gegründet, geht auf Pläne von Antonio Corazzi zurück.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-018",
@@ -816,7 +1560,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'unbewegliches Denkmal (Polen)', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'unbewegliches Denkmal (Polen)', was auf eine besondere kulturelle oder historische Bedeutung hinweist.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-019",
@@ -829,7 +1585,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'federal cultural heritage site in Russia', was auf eine besondere kulturelle oder historische Bedeutung hinweist."
+    "answer_span": "Der Ort steht unter dem dokumentierten Schutzstatus 'federal cultural heritage site in Russia', was auf eine besondere kulturelle oder historische Bedeutung hinweist.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-boundary_span-020",
@@ -842,7 +1610,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "John the Baptist (Nizhny Novgorod) wurde 1683 erbaut bzw. gegründet."
+    "answer_span": "John the Baptist (Nizhny Novgorod) wurde 1683 erbaut bzw. gegründet.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-cross_chunk-001",
@@ -855,7 +1635,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Topkapı-Palast entstand später als Hagia Sophia."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Topkapı-Palast entstand später als Hagia Sophia.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-cross_chunk-002",
@@ -868,7 +1660,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Olympiastadion Luschniki entstand später als Kreml."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Olympiastadion Luschniki entstand später als Kreml.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-cross_chunk-003",
@@ -881,7 +1685,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: St. James’s Palace entstand früher als Crystal Palace."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: St. James’s Palace entstand früher als Crystal Palace.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-cross_chunk-004",
@@ -894,7 +1710,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Isaakskathedrale entstand später als Eremitage."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Isaakskathedrale entstand später als Eremitage.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-cross_chunk-005",
@@ -907,7 +1735,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Schloss Charlottenburg entstand im selben Jahr wie Brandenburger Tor."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Schloss Charlottenburg entstand im selben Jahr wie Brandenburger Tor.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-cross_chunk-006",
@@ -920,7 +1760,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Museo Reina Sofía entstand später als Königspalast Madrid."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Museo Reina Sofía entstand später als Königspalast Madrid.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-cross_chunk-007",
@@ -933,7 +1785,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Goldenes Tor (Kiew) entstand später als Sophienkathedrale."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Goldenes Tor (Kiew) entstand später als Sophienkathedrale.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-cross_chunk-008",
@@ -946,7 +1810,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Trajanssäule entstand früher als Engelsburg."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Trajanssäule entstand früher als Engelsburg.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-cross_chunk-009",
@@ -959,7 +1835,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Palais du Luxembourg entstand später als Bastille."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Palais du Luxembourg entstand später als Bastille.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-cross_chunk-010",
@@ -972,7 +1860,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Ehrenmal der Radiologie entstand früher als Dialog im Dunkeln."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Ehrenmal der Radiologie entstand früher als Dialog im Dunkeln.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-cross_chunk-011",
@@ -985,7 +1885,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Nationalmuseum des rumänischen Bauern entstand früher als Parlamentspalast."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Nationalmuseum des rumänischen Bauern entstand früher als Parlamentspalast.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-cross_chunk-012",
@@ -998,7 +1910,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Mariä-Namen-Kathedrale entstand früher als Kirche des heiligen Simon und der heiligen Helena (Minsk)."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Mariä-Namen-Kathedrale entstand früher als Kirche des heiligen Simon und der heiligen Helena (Minsk).",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-cross_chunk-013",
@@ -1011,7 +1935,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Ernst Museum entstand früher als Stalindenkmal."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Ernst Museum entstand früher als Stalindenkmal.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-cross_chunk-014",
@@ -1024,7 +1960,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Königliches Schloss Warschau entstand früher als Kulturpalast."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Königliches Schloss Warschau entstand früher als Kulturpalast.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-cross_chunk-015",
@@ -1037,7 +1985,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Österreichische Nationalbibliothek entstand früher als Schloss Belvedere."
+    "answer_span": "Im Vergleich der in diesem Dokument beschriebenen Sehenswürdigkeiten gilt: Österreichische Nationalbibliothek entstand früher als Schloss Belvedere.",
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_city-001",
@@ -1051,7 +2011,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_city-002",
@@ -1065,7 +2037,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_city-003",
@@ -1079,7 +2063,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_city-004",
@@ -1093,7 +2089,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_city-005",
@@ -1107,7 +2115,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_city-006",
@@ -1121,7 +2141,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_city-007",
@@ -1135,7 +2167,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_city-008",
@@ -1149,7 +2193,19 @@
     "difficulty": "easy",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_topic-001",
@@ -1163,7 +2219,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt city-0088_kaliningrad.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+      }
+    }
   },
   {
     "id": "city-multi_topic-002",
@@ -1177,7 +2245,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_topic-003",
@@ -1191,7 +2271,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_topic-004",
@@ -1205,7 +2297,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_topic-005",
@@ -1219,7 +2323,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt city-0058_dusseldorf.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt city-0058_dusseldorf.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+      }
+    }
   },
   {
     "id": "city-multi_topic-006",
@@ -1233,7 +2349,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt city-0088_kaliningrad.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+      }
+    }
   },
   {
     "id": "city-multi_topic-007",
@@ -1247,7 +2375,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_topic-008",
@@ -1261,7 +2401,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_topic-009",
@@ -1275,7 +2427,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_topic-010",
@@ -1289,7 +2453,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_topic-011",
@@ -1303,7 +2479,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_topic-012",
@@ -1317,7 +2505,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_topic-013",
@@ -1331,7 +2531,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_topic-014",
@@ -1345,7 +2557,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_topic-015",
@@ -1359,7 +2583,19 @@
     "difficulty": "medium",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_topic-016",
@@ -1373,7 +2609,19 @@
     "difficulty": "hard",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_topic-017",
@@ -1387,7 +2635,19 @@
     "difficulty": "hard",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_topic-018",
@@ -1401,7 +2661,19 @@
     "difficulty": "hard",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_topic-019",
@@ -1415,7 +2687,19 @@
     "difficulty": "hard",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   },
   {
     "id": "city-multi_topic-020",
@@ -1429,6 +2713,18 @@
     "difficulty": "hard",
     "language": "de",
     "type": "factual",
-    "answer_span": null
+    "answer_span": null,
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+      }
+    }
   }
 ]

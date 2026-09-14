@@ -11,9 +11,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": "(1) Von der Erhebung der in dieser Satzung festgelegten Gebühren für allgemeine Amtshandlungen der Stadtverwaltung wird auf schriftlichen Antrag ganz oder teilweise befreit, wer nachweislich bedürftig im Sinne des Zwölften Buches Sozialgesetzbuch (SGB XII) ist oder laufende Leistungen nach dem Zweiten Buch Sozialgesetzbuch (SGB II, umgangssprachlich Bürgergeld) bezieht.",
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0038_verwaltungsgebuehrensatzung.md)"
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0038_verwaltungsgebuehrensatzung.md)"
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0038_verwaltungsgebuehrensatzung.md)"
+      }
+    }
   },
   {
     "id": "verw-lit-002",
@@ -28,9 +37,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0043_formularhinweis-kaemmerei-8.md)"
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0043_formularhinweis-kaemmerei-8.md)"
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0043_formularhinweis-kaemmerei-8.md)"
+      }
+    }
   },
   {
     "id": "verw-lit-003",
@@ -44,9 +62,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Hinweise der Kämmerei der Stadt Kalkstadt zum Ausfüllen von Formular KAE-08, das für den Antrag auf Gebührenbefreiung nach § 3 oder Gebührenermäßigung nach § 13 verwendet wird.",
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-0042_formularhinweis-kaemmerei-7.md"
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-0042_formularhinweis-kaemmerei-7.md"
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-0042_formularhinweis-kaemmerei-7.md"
+      }
+    }
   },
   {
     "id": "verw-lit-004",
@@ -61,9 +88,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md, verwaltung-0041_dienstanweisung-kaemmerei-2-2024.md)"
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md, verwaltung-0041_dienstanweisung-kaemmerei-2-2024.md)"
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md, verwaltung-0041_dienstanweisung-kaemmerei-2-2024.md)"
+      }
+    }
   },
   {
     "id": "verw-lit-005",
@@ -78,9 +114,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-vertretungsregelung.md"
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-vertretungsregelung.md"
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-vertretungsregelung.md"
+      }
+    }
   },
   {
     "id": "verw-lit-006",
@@ -94,9 +139,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Die Gebührenposition 7 unterliegt unverändert der Gebührenbefreiung wegen Bedürftigkeit nach § 3 und der Gebührenermäßigung für eingetragene Vereine nach § 13 der Verwaltungsgebührensatzung.",
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Fehlender lexikalischer Pfad im Rohvektor-Pfad (Roadmap 1a/1b): dort in keinem gemessenen Stand gelöst. Der Pipeline-Pfad löste ihn bis #1156 (Rang 1); seit #1156 steht die Gebührenordnung Kämmerei auf Rang 4 hinter Dienstanweisungen anderer Ämter, deren Abschnitts-Chunks der Frage näher liegen. Auf keinem Pfad gelöst, deshalb kein Befund. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Fehlender lexikalischer Pfad im Rohvektor-Pfad (Roadmap 1a/1b): dort in keinem gemessenen Stand gelöst. Der Pipeline-Pfad löste ihn bis #1156 (Rang 1); seit #1156 steht die Gebührenordnung Kämmerei auf Rang 4 hinter Dienstanweisungen anderer Ämter, deren Abschnitts-Chunks der Frage näher liegen. Auf keinem Pfad gelöst, deshalb kein Befund. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Fehlender lexikalischer Pfad im Rohvektor-Pfad (Roadmap 1a/1b): dort in keinem gemessenen Stand gelöst. Der Pipeline-Pfad löste ihn bis #1156 (Rang 1); seit #1156 steht die Gebührenordnung Kämmerei auf Rang 4 hinter Dienstanweisungen anderer Ämter, deren Abschnitts-Chunks der Frage näher liegen. Auf keinem Pfad gelöst, deshalb kein Befund. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      }
+    }
   },
   {
     "id": "verw-lit-007",
@@ -110,9 +164,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": "(1) In Fällen, die von § 3 nicht erfasst sind, aber eine vergleichbare wirtschaftliche Notlage begründen, kann die Kämmerei auf begründeten Antrag eine Stundung oder eine anteilige Gebührenermäßigung gewähren.\n\n(2) Über den Härtefallantrag entscheidet die Amtsleitung der Kämmerei, nicht die für den Regelfall zuständige Sachbearbeitung.",
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0038_verwaltungsgebuehrensatzung.md)"
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0038_verwaltungsgebuehrensatzung.md)"
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0038_verwaltungsgebuehrensatzung.md)"
+      }
+    }
   },
   {
     "id": "verw-lit-008",
@@ -126,9 +189,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": "(3) Diese Ermäßigung ist unabhängig von der Gebührenbefreiung wegen Bedürftigkeit nach § 3 dieser Satzung zu beantragen; ein gleichzeitiger Anspruch aus § 3 und § 13 für dieselbe Amtshandlung besteht nicht, da § 3 natürliche Personen in einer persönlichen Notlage betrifft und § 13 juristische Personen in Vereinsform unabhängig von deren wirtschaftlicher Lage.",
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Gelöst ohne eigenen Baustein, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; der Pipeline-Pfad löste ihn bis #1156, verlor ihn mit #1156 und löst ihn seit dem Kernfeld-Titel im Präfix (#1341) wieder, der Rohvektor-Pfad löst ihn erst seit #1341; die Ausnahme entfällt"
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Ohne geprüften Mechanismus: Gelöst ohne eigenen Baustein, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; der Pipeline-Pfad löste ihn bis #1156, verlor ihn mit #1156 und löst ihn seit dem Kernfeld-Titel im Präfix (#1341) wieder, der Rohvektor-Pfad löst ihn erst seit #1341; die Ausnahme entfällt"
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Gelöst ohne eigenen Baustein, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; der Pipeline-Pfad löste ihn bis #1156, verlor ihn mit #1156 und löst ihn seit dem Kernfeld-Titel im Präfix (#1341) wieder, der Rohvektor-Pfad löst ihn erst seit #1341; die Ausnahme entfällt"
+      }
+    }
   },
   {
     "id": "verw-lit-009",
@@ -142,9 +214,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Hinweise der Kämmerei der Stadt Kalkstadt zum Ausfüllen von Formular KAE-07, das für den regulären Antrag auf eine Amtshandlung verwendet wird.",
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Gelöst ohne eigenen Baustein, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; beide Pfade lösen ihn seit #1156 (strukturbewusstes Markdown-Chunking), vorher keiner; der Zustand war nicht nachgezogen"
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Ohne geprüften Mechanismus: Gelöst ohne eigenen Baustein, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; beide Pfade lösen ihn seit #1156 (strukturbewusstes Markdown-Chunking), vorher keiner; der Zustand war nicht nachgezogen"
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Gelöst ohne eigenen Baustein, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; beide Pfade lösen ihn seit #1156 (strukturbewusstes Markdown-Chunking), vorher keiner; der Zustand war nicht nachgezogen"
+      }
+    }
   },
   {
     "id": "verw-id-001",
@@ -158,9 +239,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Dienstanweisung des Sozialamts der Stadt Kalkstadt, Aktenzeichen SOZ-DA-1/2023, gültig ab dem 1.",
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Rückschritt durch den gewollten Kernfeld-Titel im Kontextpräfix (#1341, Maintainer-Entscheidung 2026-09-14): bis dahin auf beiden Pfaden gelöst, seither auf dem Rohvektor-Pfad Rang 2 hinter SOZ-DA-2/2024; die Kennung wird als bedeutungsarmes Token eingebettet (Roadmap 1a). Pipeline-Pfad gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Pipeline-Pfads führt den Fall deshalb als offenen Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Rückschritt durch den gewollten Kernfeld-Titel im Kontextpräfix (#1341, Maintainer-Entscheidung 2026-09-14): bis dahin gelöst, seither Rang 2 hinter SOZ-DA-2/2024; die Kennung wird als bedeutungsarmes Token eingebettet (Roadmap 1a). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Gelöst in allen gemessenen Ständen: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1. Der Kernfeld-Titel im Kontextpräfix (#1341) kostet nur den Rohvektor-Pfad Rang 1. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      }
+    }
   },
   {
     "id": "verw-id-002",
@@ -174,9 +264,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Dienstanweisung des Sozialamts der Stadt Kalkstadt, Aktenzeichen SOZ-DA-1/2024, gültig ab dem 1.",
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Kennungen werden als bedeutungsarme Tokens eingebettet (Roadmap 1a): vor #1156 auf beiden Pfaden Rang 2, von #1156 bis #1341 auf beiden Pfaden gelöst, seit #1341 (Kernfeld-Titel im Kontextpräfix) auf dem Rohvektor-Pfad Rang 2 hinter SOZ-DA-2/2024. Pipeline-Pfad gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Pipeline-Pfads führt den Fall deshalb als offenen Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Kennungen werden als bedeutungsarme Tokens eingebettet (Roadmap 1a): vor #1156 Rang 2, von #1156 bis #1341 gelöst, seit #1341 (Kernfeld-Titel im Kontextpräfix) Rang 2 hinter SOZ-DA-2/2024. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Gelöst seit #1156 (strukturbewusstes Markdown-Chunking); vor #1156 Rang 2, weil Kennungen als bedeutungsarme Tokens eingebettet werden (Roadmap 1a). Der Kernfeld-Titel im Kontextpräfix (#1341) kostet nur den Rohvektor-Pfad Rang 1. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      }
+    }
   },
   {
     "id": "verw-id-003",
@@ -190,9 +289,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Dienstanweisung des Bauamts der Stadt Kalkstadt, Aktenzeichen BAU-DA-2/2024, gültig ab dem 1.",
-    "expected_state": "solved",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-08-31",
+        "reason": "Ohne geprüften Mechanismus: Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-08-31",
+        "reason": "Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+      }
+    }
   },
   {
     "id": "verw-id-004",
@@ -206,9 +314,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Dienstanweisung des Bauamts der Stadt Kalkstadt, Aktenzeichen BAU-DA-1/2023, gültig ab dem 1.",
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Rückschritt durch #1156 auf dem Rohvektor-Pfad: bis dahin Rang 1, seither steht eine Nachbar-Dienstanweisung des Bauamts vorn (6a4e6bae: BAU-DA-1/2024, 5ca38424: BAU-DA-2/2024) — die Abschnitts-Chunks der Dienstanweisungen lauten nahezu gleich, und die Kennung wird als bedeutungsarmes Token eingebettet (Roadmap 1a). Pipeline-Pfad in allen gemessenen Ständen gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Pipeline-Pfads führt den Fall deshalb als offenen Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Rückschritt durch #1156: bis dahin Rang 1, seither steht eine Nachbar-Dienstanweisung des Bauamts vorn (6a4e6bae: BAU-DA-1/2024, 5ca38424: BAU-DA-2/2024) – die Abschnitts-Chunks der Dienstanweisungen lauten nahezu gleich, und die Kennung wird als bedeutungsarmes Token eingebettet (Roadmap 1a). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Gelöst in allen gemessenen Ständen: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; die Nachbar-Dienstanweisung, die seit #1156 auf dem Rohvektor-Pfad vorn steht, verdrängt es hier nicht. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      }
+    }
   },
   {
     "id": "verw-id-005",
@@ -222,9 +339,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Dienstanweisung des Ordnungsamts der Stadt Kalkstadt, Aktenzeichen ORD-DA-1/2023, gültig ab dem 1.",
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Kennungen werden als bedeutungsarme Tokens eingebettet (Roadmap 1a): vor #1156 auf beiden Pfaden Rang 2, von #1156 bis #1341 auf beiden Pfaden gelöst, seit #1341 (Kernfeld-Titel im Kontextpräfix) auf dem Rohvektor-Pfad Rang 2 hinter ORD-DA-1/2024. Pipeline-Pfad gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Pipeline-Pfads führt den Fall deshalb als offenen Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Kennungen werden als bedeutungsarme Tokens eingebettet (Roadmap 1a): vor #1156 Rang 2, von #1156 bis #1341 gelöst, seit #1341 (Kernfeld-Titel im Kontextpräfix) Rang 2 hinter ORD-DA-1/2024. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Gelöst seit #1156 (strukturbewusstes Markdown-Chunking); vor #1156 Rang 2, weil Kennungen als bedeutungsarme Tokens eingebettet werden (Roadmap 1a). Der Kernfeld-Titel im Kontextpräfix (#1341) kostet nur den Rohvektor-Pfad Rang 1. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      }
+    }
   },
   {
     "id": "verw-id-006",
@@ -238,9 +364,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Hinweise der Kämmerei der Stadt Kalkstadt zum Ausfüllen von Formular KAE-07, das für den regulären Antrag auf eine Amtshandlung verwendet wird.",
-    "expected_state": "solved",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-08-31",
+        "reason": "Ohne geprüften Mechanismus: Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-08-31",
+        "reason": "Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+      }
+    }
   },
   {
     "id": "verw-id-007",
@@ -254,9 +389,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Hinweise der Kämmerei der Stadt Kalkstadt zum Ausfüllen von Formular KAE-08, das für den Antrag auf Gebührenbefreiung nach § 3 oder Gebührenermäßigung nach § 13 verwendet wird.",
-    "expected_state": "solved",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-08-31",
+        "reason": "Ohne geprüften Mechanismus: Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-08-31",
+        "reason": "Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+      }
+    }
   },
   {
     "id": "verw-id-008",
@@ -270,9 +414,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Hinweise des Bürgeramts der Stadt Kalkstadt zum Ausfüllen von Formular BUE-08, das für den Antrag auf eine nachträgliche Änderung der Antragsdaten oder auf Gebührenermäßigung nach § 13 verwendet wird.",
-    "expected_state": "solved",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-08-31",
+        "reason": "Ohne geprüften Mechanismus: Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-08-31",
+        "reason": "Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+      }
+    }
   },
   {
     "id": "verw-id-009",
@@ -286,9 +439,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": "(1) Eingetragene, gemeinnützige Vereine mit Sitz in der Stadt Kalkstadt erhalten auf schriftlichen Antrag eine Ermäßigung von 50 Prozent auf die nach dieser Satzung für allgemeine Amtshandlungen der Stadtverwaltung zu entrichtenden Gebühren.\n\n(2) Der Nachweis der Gemeinnützigkeit erfolgt durch Vorlage des aktuellen Freistellungsbescheids des Finanzamts.",
-    "expected_state": "solved",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-08-31",
+        "reason": "Ohne geprüften Mechanismus: Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-08-31",
+        "reason": "Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+      }
+    }
   },
   {
     "id": "verw-id-010",
@@ -303,9 +465,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": null,
-    "expected_state": "solved",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-08-31",
+        "reason": "Ohne geprüften Mechanismus: Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-08-31",
+        "reason": "Gelöst gemessen: die Kennung ist zusammen mit dem Amtskontext eindeutig genug für die Vektorsuche (2026-09-01)"
+      }
+    }
   },
   {
     "id": "verw-comp-001",
@@ -321,9 +492,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md, verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md, verwaltung-0033_gebuehrenordnung-buergeramt.md)"
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md, verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md, verwaltung-0033_gebuehrenordnung-buergeramt.md)"
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Keine Komposita-Zerlegung (Roadmap 1a, Decompounding): die Frage nennt nur den Wortbestandteil, das Dokument führt das Kompositum; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md, verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md, verwaltung-0033_gebuehrenordnung-buergeramt.md)"
+      }
+    }
   },
   {
     "id": "verw-comp-002",
@@ -338,9 +518,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156. Pipeline-Pfad bis #1156 gelöst, seither nicht: #1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform; hier verdrängen die Formularhinweise des Ordnungsamts die Gebührenordnung Umweltamt. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Rohvektor-Pfads führt den Fall deshalb als offenen Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Ohne geprüften Mechanismus: Gelöst seit #1156 (strukturbewusstes Markdown-Chunking), vorher nicht, ohne Komposita-Zerlegung (Roadmap 1a). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Keine Komposita-Zerlegung (Roadmap 1a). Bis #1156 gelöst, seither nicht: #1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst – eine strukturelle Asymmetrie der Fensterform; hier verdrängen die Formularhinweise des Ordnungsamts die Gebührenordnung Umweltamt. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      }
+    }
   },
   {
     "id": "verw-comp-003",
@@ -355,9 +544,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156. Pipeline-Pfad bis #1156 gelöst, seither nicht: #1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform; hier verdrängen die beiden Fassungen der Sozialgebührenbefreiungssatzung und die Baugenehmigungsgebührensatzung die Gebührenordnung Kulturamt. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Rohvektor-Pfads führt den Fall deshalb als offenen Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Ohne geprüften Mechanismus: Gelöst seit #1156 (strukturbewusstes Markdown-Chunking), vorher nicht, ohne Komposita-Zerlegung (Roadmap 1a). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Keine Komposita-Zerlegung (Roadmap 1a). Bis #1156 gelöst, seither nicht: #1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst – eine strukturelle Asymmetrie der Fensterform; hier verdrängen die beiden Fassungen der Sozialgebührenbefreiungssatzung und die Baugenehmigungsgebührensatzung die Gebührenordnung Kulturamt. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      }
+    }
   },
   {
     "id": "verw-comp-004",
@@ -373,9 +571,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156 (vorher beide Satzungsfassungen außerhalb des Fensters). Pipeline-Pfad in keinem gemessenen Stand gelöst; seit #1156 füllen die beiden Fassungen der Gewerbeanmeldegebührensatzung die Auswahl, die Gebührenordnung Ordnungsamt fällt heraus (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Rohvektor-Pfads führt den Fall deshalb als offenen Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Ohne geprüften Mechanismus: Gelöst seit #1156 (strukturbewusstes Markdown-Chunking), ohne Komposita-Zerlegung (Roadmap 1a); vorher beide Satzungsfassungen außerhalb des Fensters. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Keine Komposita-Zerlegung (Roadmap 1a). In keinem gemessenen Stand gelöst; seit #1156 füllen die beiden Fassungen der Gewerbeanmeldegebührensatzung die Auswahl, die Gebührenordnung Ordnungsamt fällt heraus (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst – eine strukturelle Asymmetrie der Fensterform). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      }
+    }
   },
   {
     "id": "verw-comp-005",
@@ -391,9 +598,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156 (vorher beide Satzungsfassungen außerhalb des Fensters). Pipeline-Pfad in keinem gemessenen Stand gelöst: Gebührenordnung und Formularhinweise des Bauamts belegen die Auswahl, die Fassungen der Baugenehmigungsgebührensatzung fehlen; seit #1156 verschärft (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Rohvektor-Pfads führt den Fall deshalb als offenen Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Ohne geprüften Mechanismus: Gelöst seit #1156 (strukturbewusstes Markdown-Chunking), ohne Komposita-Zerlegung (Roadmap 1a); vorher beide Satzungsfassungen außerhalb des Fensters. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Keine Komposita-Zerlegung (Roadmap 1a). In keinem gemessenen Stand gelöst: Gebührenordnung und Formularhinweise des Bauamts belegen die Auswahl, die Fassungen der Baugenehmigungsgebührensatzung fehlen; seit #1156 verschärft (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst – eine strukturelle Asymmetrie der Fensterform). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      }
+    }
   },
   {
     "id": "verw-comp-006",
@@ -409,9 +625,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Rückschritt durch #1156: Mit #1049 auf beiden Pfaden gelöst, seit #1156 auf dem Pipeline-Pfad nicht mehr — die beiden Fassungen der Kindertagesstättenbeitragssatzung füllen die Auswahl, die Gebührenordnung Jugendamt fällt heraus (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform). Rohvektor-Pfad weiterhin gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Rohvektor-Pfads führt den Fall deshalb als offenen Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Ohne geprüften Mechanismus: Gelöst schon vor #1049 und in allen gemessenen Ständen gelöst geblieben (vor #1156, #1156, vor #1341, #1341); die Verdrängung durch #1156 betrifft nur die Auswahl des Pipeline-Pfads. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Rückschritt durch #1156: mit #1049 gelöst, seit #1156 nicht mehr – die beiden Fassungen der Kindertagesstättenbeitragssatzung füllen die Auswahl, die Gebührenordnung Jugendamt fällt heraus (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst – eine strukturelle Asymmetrie der Fensterform). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      }
+    }
   },
   {
     "id": "verw-comp-007",
@@ -426,9 +651,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156. Pipeline-Pfad in keinem gemessenen Stand gelöst: vor #1156 fehlte die Personenstandsurkundengebührensatzung, seither fehlt die Gebührenordnung Standesamt, weil Formularhinweise des Ordnungsamts die Auswahl belegen (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Rohvektor-Pfads führt den Fall deshalb als offenen Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Ohne geprüften Mechanismus: Gelöst seit #1156 (strukturbewusstes Markdown-Chunking), vorher nicht, ohne Komposita-Zerlegung (Roadmap 1a). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Keine Komposita-Zerlegung (Roadmap 1a). In keinem gemessenen Stand gelöst: vor #1156 fehlte die Personenstandsurkundengebührensatzung, seither fehlt die Gebührenordnung Standesamt, weil Formularhinweise des Ordnungsamts die Auswahl belegen (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst – eine strukturelle Asymmetrie der Fensterform). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      }
+    }
   },
   {
     "id": "verw-comp-008",
@@ -443,9 +677,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156. Pipeline-Pfad bis #1156 gelöst, seither nicht: #1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform; hier verdrängen Formularhinweise des Ordnungs- und des Personalamts die Gebührenordnung Personalamt. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Rohvektor-Pfads führt den Fall deshalb als offenen Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Ohne geprüften Mechanismus: Gelöst seit #1156 (strukturbewusstes Markdown-Chunking), vorher nicht, ohne Komposita-Zerlegung (Roadmap 1a). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Keine Komposita-Zerlegung (Roadmap 1a). Bis #1156 gelöst, seither nicht: #1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst – eine strukturelle Asymmetrie der Fensterform; hier verdrängen Formularhinweise des Ordnungs- und des Personalamts die Gebührenordnung Personalamt. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      }
+    }
   },
   {
     "id": "verw-comp-009",
@@ -461,9 +704,18 @@
     "language": "de",
     "type": "factual",
     "answer_span": null,
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Gelöst ohne Komposita-Zerlegung, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; der Pipeline-Pfad löste ihn schon vor #1156, der Rohvektor-Pfad seit #1156 — die Ausnahme 'Rohvektor-Pfad strukturell nicht lösbar' ist seither veraltet"
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Ohne geprüften Mechanismus: Gelöst ohne Komposita-Zerlegung, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; der Pipeline-Pfad löste ihn schon vor #1156, der Rohvektor-Pfad seit #1156 — die Ausnahme 'Rohvektor-Pfad strukturell nicht lösbar' ist seither veraltet"
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Ohne geprüften Mechanismus: Gelöst ohne Komposita-Zerlegung, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; der Pipeline-Pfad löste ihn schon vor #1156, der Rohvektor-Pfad seit #1156 — die Ausnahme 'Rohvektor-Pfad strukturell nicht lösbar' ist seither veraltet"
+      }
+    }
   },
   {
     "id": "verw-hop-001",
@@ -478,9 +730,18 @@
     "language": "de",
     "type": "procedural",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0038_verwaltungsgebuehrensatzung.md, verwaltung-vertretungsregelung.md)"
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0038_verwaltungsgebuehrensatzung.md, verwaltung-vertretungsregelung.md)"
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0038_verwaltungsgebuehrensatzung.md, verwaltung-vertretungsregelung.md)"
+      }
+    }
   },
   {
     "id": "verw-hop-002",
@@ -495,9 +756,18 @@
     "language": "de",
     "type": "procedural",
     "answer_span": null,
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Beide Glieder der Kette gefunden, zusammengeführt von keinem Verfahren; gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; der Pipeline-Pfad löste ihn bis #1156, verlor ihn mit #1156 und löst ihn seit dem Kernfeld-Titel im Präfix (#1341) wieder, der Rohvektor-Pfad löst ihn erst seit #1341"
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Ohne geprüften Mechanismus: Beide Glieder der Kette gefunden, zusammengeführt von keinem Verfahren; gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; der Pipeline-Pfad löste ihn bis #1156, verlor ihn mit #1156 und löst ihn seit dem Kernfeld-Titel im Präfix (#1341) wieder, der Rohvektor-Pfad löst ihn erst seit #1341"
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Ohne geprüften Mechanismus: Beide Glieder der Kette gefunden, zusammengeführt von keinem Verfahren; gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; der Pipeline-Pfad löste ihn bis #1156, verlor ihn mit #1156 und löst ihn seit dem Kernfeld-Titel im Präfix (#1341) wieder, der Rohvektor-Pfad löst ihn erst seit #1341"
+      }
+    }
   },
   {
     "id": "verw-hop-003",
@@ -512,9 +782,18 @@
     "language": "de",
     "type": "procedural",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Rückschritt durch den gewollten Kernfeld-Titel im Kontextpräfix (#1341, Maintainer-Entscheidung 2026-09-14): bis dahin auf beiden Pfaden gelöst, seither stehen auf dem Rohvektor-Pfad Personenstandsurkunden- und Abfallgebührensatzung vor beiden Belegdokumenten (Ränge 4 und 3). Pipeline-Pfad gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Pipeline-Pfads führt den Fall deshalb als offenen Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Rückschritt durch den gewollten Kernfeld-Titel im Kontextpräfix (#1341, Maintainer-Entscheidung 2026-09-14): bis dahin gelöst, seither stehen Personenstandsurkunden- und Abfallgebührensatzung vor beiden Belegdokumenten (Ränge 4 und 3). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Ohne geprüften Mechanismus: Gelöst in allen gemessenen Ständen: beide Belegdokumente im Fenster, eines auf Rang 1, ohne ein Verfahren, das die Kette zusammenführt (Roadmap 3c). Der Kernfeld-Titel im Kontextpräfix (#1341) kostet nur den Rohvektor-Pfad Rang 1. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      }
+    }
   },
   {
     "id": "verw-hop-004",
@@ -529,9 +808,18 @@
     "language": "de",
     "type": "procedural",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md)"
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md)"
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md)"
+      }
+    }
   },
   {
     "id": "verw-hop-005",
@@ -546,9 +834,18 @@
     "language": "de",
     "type": "procedural",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c). Pipeline-Pfad in allen gemessenen Ständen gelöst. Rohvektor-Pfad gelöst von #1156 bis #1341, seit #1341 Ränge 4 und 2 hinter der Gebührenordnung Kulturamt — die bisherige Ausnahme, der Rohvektor-Pfad könne ihn strukturell nicht lösen, ist damit widerlegt. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Pipeline-Pfads führt den Fall deshalb als offenen Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c). Vor #1156 ungelöst, gelöst von #1156 bis #1341, seit #1341 Ränge 4 und 2 hinter der Gebührenordnung Kulturamt – die frühere Ausnahme, der Rohvektor-Pfad könne den Fall strukturell nicht lösen, ist damit widerlegt. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Ohne geprüften Mechanismus: Gelöst in allen gemessenen Ständen: beide Belegdokumente im Fenster, eines auf Rang 1, ohne ein Verfahren, das die Kette zusammenführt (Roadmap 3c). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      }
+    }
   },
   {
     "id": "verw-hop-006",
@@ -563,9 +860,18 @@
     "language": "de",
     "type": "procedural",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-vertretungsregelung.md)"
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-vertretungsregelung.md)"
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-vertretungsregelung.md)"
+      }
+    }
   },
   {
     "id": "verw-hop-007",
@@ -580,9 +886,18 @@
     "language": "de",
     "type": "procedural",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c). Der Pipeline-Pfad löste ihn bis #1156; seit #1156 steht die Bibliotheksbenutzungsgebührensatzung auf Rang 1 vor beiden Belegdokumenten. Der Rohvektor-Pfad löste ihn in keinem gemessenen Stand. Auf keinem Pfad gelöst, deshalb kein Befund. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c). Der Pipeline-Pfad löste ihn bis #1156; seit #1156 steht die Bibliotheksbenutzungsgebührensatzung auf Rang 1 vor beiden Belegdokumenten. Der Rohvektor-Pfad löste ihn in keinem gemessenen Stand. Auf keinem Pfad gelöst, deshalb kein Befund. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c). Der Pipeline-Pfad löste ihn bis #1156; seit #1156 steht die Bibliotheksbenutzungsgebührensatzung auf Rang 1 vor beiden Belegdokumenten. Der Rohvektor-Pfad löste ihn in keinem gemessenen Stand. Auf keinem Pfad gelöst, deshalb kein Befund. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      }
+    }
   },
   {
     "id": "verw-hop-008",
@@ -597,9 +912,18 @@
     "language": "de",
     "type": "procedural",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-vertretungsregelung.md)"
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-vertretungsregelung.md)"
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-08-31",
+        "reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c); gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-vertretungsregelung.md)"
+      }
+    }
   },
   {
     "id": "verw-hop-009",
@@ -614,9 +938,18 @@
     "language": "de",
     "type": "procedural",
     "answer_span": null,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c). Der Pipeline-Pfad löste ihn bis #1156; seither belegen die beiden Kämmerei-Dienstanweisungen die ganze Auswahl und die Vertretungsregelung fällt heraus (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform). Der Rohvektor-Pfad löste ihn in keinem gemessenen Stand. Auf keinem Pfad gelöst, deshalb kein Befund. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c). Der Pipeline-Pfad löste ihn bis #1156; seither belegen die beiden Kämmerei-Dienstanweisungen die ganze Auswahl und die Vertretungsregelung fällt heraus (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform). Der Rohvektor-Pfad löste ihn in keinem gemessenen Stand. Auf keinem Pfad gelöst, deshalb kein Befund. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-09-14",
+        "reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c). Der Pipeline-Pfad löste ihn bis #1156; seither belegen die beiden Kämmerei-Dienstanweisungen die ganze Auswahl und die Vertretungsregelung fällt heraus (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform). Der Rohvektor-Pfad löste ihn in keinem gemessenen Stand. Auf keinem Pfad gelöst, deshalb kein Befund. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+      }
+    }
   },
   {
     "id": "verw-meta-001",
@@ -634,9 +967,18 @@
       "documentDateFrom": "2024-01-01"
     },
     "confusable_document": "verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md",
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Gelöst mit dem Kernfeld-Filter (#1070), gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; die Einbettungsähnlichkeit stellt die erwartete Satzung seit dem Kernfeld-Titel im Präfix (#1341) auch auf dem Rohvektor-Pfad nach vorn"
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Gelöst mit dem Kernfeld-Filter (#1070), gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; die Einbettungsähnlichkeit stellt die erwartete Satzung seit dem Kernfeld-Titel im Präfix (#1341) auch auf dem Rohvektor-Pfad nach vorn"
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-14",
+        "reason": "Gelöst mit dem Kernfeld-Filter (#1070), gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; die Einbettungsähnlichkeit stellt die erwartete Satzung seit dem Kernfeld-Titel im Präfix (#1341) auch auf dem Rohvektor-Pfad nach vorn"
+      }
+    }
   },
   {
     "id": "verw-meta-002",
@@ -655,9 +997,18 @@
       "documentDateTo": "2023-12-31"
     },
     "confusable_document": "verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md",
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-05",
-    "expected_state_reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2023-01-01 bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2023-01-01 bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2023-01-01 bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+      }
+    }
   },
   {
     "id": "verw-meta-003",
@@ -674,9 +1025,18 @@
     "filter": null,
     "filter_note": "„derzeit gültig“ ist eine Gültigkeits-/Nachfolgeaussage (gueltig_bis, ersetzt_durch), kein Datumsvergleich: beide Fassungen tragen ein stand_datum vor dem heutigen Tag, ein Datumsfenster auf Datum/Stand träfe beide oder keine. Braucht das Bibliotheksfeld Gültigkeit/aktuelle Fassung aus #1071; bis dahin ohne Kernfeld-Filter und known_gap.",
     "confusable_document": "verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md",
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-05",
-    "expected_state_reason": "Kein Kernfeld-Filter trifft die Frage (#1070, siehe filter_note): „derzeit gültig\" ist eine Gültigkeits-/Nachfolgeaussage, kein Datumsvergleich — der Fall wird ungefiltert gemessen, bis #1071 das Bibliotheksfeld liefert. Gemessen am 2026-09-05 auf beiden Messpfaden ungelöst: Rang 1 belegt verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md."
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-09-05",
+        "reason": "Kein Kernfeld-Filter trifft die Frage (#1070, siehe filter_note): „derzeit gültig\" ist eine Gültigkeits-/Nachfolgeaussage, kein Datumsvergleich — der Fall wird ungefiltert gemessen, bis #1071 das Bibliotheksfeld liefert. Gemessen am 2026-09-05 auf beiden Messpfaden ungelöst: Rang 1 belegt verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md."
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-09-05",
+        "reason": "Kein Kernfeld-Filter trifft die Frage (#1070, siehe filter_note): „derzeit gültig\" ist eine Gültigkeits-/Nachfolgeaussage, kein Datumsvergleich — der Fall wird ungefiltert gemessen, bis #1071 das Bibliotheksfeld liefert. Gemessen am 2026-09-05 auf beiden Messpfaden ungelöst: Rang 1 belegt verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md."
+      }
+    }
   },
   {
     "id": "verw-meta-004",
@@ -694,9 +1054,18 @@
       "documentDateTo": "2023-12-31"
     },
     "confusable_document": "verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md",
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-05",
-    "expected_state_reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+      }
+    }
   },
   {
     "id": "verw-meta-005",
@@ -713,9 +1082,18 @@
     "filter": null,
     "filter_note": "„gilt heute“ ist dieselbe Gültigkeits-/Nachfolgeaussage wie bei verw-meta-003: kein Kernfeld-Filter trifft sie, ohne die falsche Fassung ebenso einzuschließen. Braucht das Bibliotheksfeld aus #1071; bis dahin ohne Kernfeld-Filter und known_gap.",
     "confusable_document": "verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md",
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-05",
-    "expected_state_reason": "Kein Kernfeld-Filter trifft die Frage (#1070, siehe filter_note): „gilt heute\" ist eine Gültigkeits-/Nachfolgeaussage, kein Datumsvergleich — der Fall wird ungefiltert gemessen, bis #1071 das Bibliotheksfeld liefert. Gemessen am 2026-09-05 auf beiden Messpfaden ungelöst: Rang 1 belegt verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md."
+    "expected_state": {
+      "raw_vector": {
+        "state": "known_gap",
+        "since": "2026-09-05",
+        "reason": "Kein Kernfeld-Filter trifft die Frage (#1070, siehe filter_note): „gilt heute\" ist eine Gültigkeits-/Nachfolgeaussage, kein Datumsvergleich — der Fall wird ungefiltert gemessen, bis #1071 das Bibliotheksfeld liefert. Gemessen am 2026-09-05 auf beiden Messpfaden ungelöst: Rang 1 belegt verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md."
+      },
+      "pipeline": {
+        "state": "known_gap",
+        "since": "2026-09-05",
+        "reason": "Kein Kernfeld-Filter trifft die Frage (#1070, siehe filter_note): „gilt heute\" ist eine Gültigkeits-/Nachfolgeaussage, kein Datumsvergleich — der Fall wird ungefiltert gemessen, bis #1071 das Bibliotheksfeld liefert. Gemessen am 2026-09-05 auf beiden Messpfaden ungelöst: Rang 1 belegt verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md."
+      }
+    }
   },
   {
     "id": "verw-meta-006",
@@ -734,9 +1112,18 @@
       "documentDateTo": "2024-12-31"
     },
     "confusable_document": "verwaltung-0004_dienstanweisung-sozialamt-1-2023.md",
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-05",
-    "expected_state_reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2024-01-01 bis 2024-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0004_dienstanweisung-sozialamt-1-2023.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2024-01-01 bis 2024-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0004_dienstanweisung-sozialamt-1-2023.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2024-01-01 bis 2024-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0004_dienstanweisung-sozialamt-1-2023.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+      }
+    }
   },
   {
     "id": "verw-meta-007",
@@ -755,9 +1142,18 @@
       "documentDateTo": "2023-12-31"
     },
     "confusable_document": "verwaltung-0013_dienstanweisung-bauamt-1-2024.md",
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-05",
-    "expected_state_reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2023-01-01 bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0013_dienstanweisung-bauamt-1-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2023-01-01 bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0013_dienstanweisung-bauamt-1-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2023-01-01 bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0013_dienstanweisung-bauamt-1-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+      }
+    }
   },
   {
     "id": "verw-meta-008",
@@ -775,9 +1171,18 @@
       "documentDateTo": "2023-12-31"
     },
     "confusable_document": "verwaltung-0021_dienstanweisung-ordnungsamt-1-2024.md",
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-05",
-    "expected_state_reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0021_dienstanweisung-ordnungsamt-1-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0021_dienstanweisung-ordnungsamt-1-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0021_dienstanweisung-ordnungsamt-1-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+      }
+    }
   },
   {
     "id": "verw-meta-009",
@@ -797,9 +1202,18 @@
       ]
     },
     "confusable_document": "verwaltung-0038_verwaltungsgebuehrensatzung.md",
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-05",
-    "expected_state_reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Die Dokumentart DIENSTANWEISUNG schließt die Satzung aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Dienstanweisung auf Rang 1, Verwechslungspartner (verwaltung-0038_verwaltungsgebuehrensatzung.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Die Dokumentart DIENSTANWEISUNG schließt die Satzung aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Dienstanweisung auf Rang 1, Verwechslungspartner (verwaltung-0038_verwaltungsgebuehrensatzung.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Die Dokumentart DIENSTANWEISUNG schließt die Satzung aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Dienstanweisung auf Rang 1, Verwechslungspartner (verwaltung-0038_verwaltungsgebuehrensatzung.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+      }
+    }
   },
   {
     "id": "verw-meta-010",
@@ -819,9 +1233,18 @@
     },
     "confusable_document": null,
     "no_value_field": "documentDate",
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-05",
-    "expected_state_reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Datum/Stand keinen Wert und bleibt trotzdem im Fenster; gemessen am 2026-09-05 auf beiden Messpfaden auf Rang 1 — Fehlerrichtung „Filter greift zu stark\" ohne Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Datum/Stand keinen Wert und bleibt trotzdem im Fenster; gemessen am 2026-09-05 auf beiden Messpfaden auf Rang 1 — Fehlerrichtung „Filter greift zu stark\" ohne Befund."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Datum/Stand keinen Wert und bleibt trotzdem im Fenster; gemessen am 2026-09-05 auf beiden Messpfaden auf Rang 1 — Fehlerrichtung „Filter greift zu stark\" ohne Befund."
+      }
+    }
   },
   {
     "id": "verw-meta-011",
@@ -842,9 +1265,18 @@
     },
     "confusable_document": null,
     "no_value_field": "documentType",
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-05",
-    "expected_state_reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Dokumentart keinen Wert und bleibt trotzdem im Fenster; gemessen am 2026-09-05 auf beiden Messpfaden auf Rang 1 — Fehlerrichtung „Filter greift zu stark\" ohne Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Dokumentart keinen Wert und bleibt trotzdem im Fenster; gemessen am 2026-09-05 auf beiden Messpfaden auf Rang 1 — Fehlerrichtung „Filter greift zu stark\" ohne Befund."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Dokumentart keinen Wert und bleibt trotzdem im Fenster; gemessen am 2026-09-05 auf beiden Messpfaden auf Rang 1 — Fehlerrichtung „Filter greift zu stark\" ohne Befund."
+      }
+    }
   },
   {
     "id": "verw-meta-012",
@@ -867,8 +1299,17 @@
     },
     "confusable_document": null,
     "no_value_field": "documentDate",
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-05",
-    "expected_state_reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Datum/Stand keinen Wert und bleibt trotzdem im Fenster; gemessen am 2026-09-05 auf beiden Messpfaden auf Rang 1 — Fehlerrichtung „Filter greift zu stark\" ohne Befund."
+    "expected_state": {
+      "raw_vector": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Datum/Stand keinen Wert und bleibt trotzdem im Fenster; gemessen am 2026-09-05 auf beiden Messpfaden auf Rang 1 — Fehlerrichtung „Filter greift zu stark\" ohne Befund."
+      },
+      "pipeline": {
+        "state": "solved",
+        "since": "2026-09-05",
+        "reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Datum/Stand keinen Wert und bleibt trotzdem im Fenster; gemessen am 2026-09-05 auf beiden Messpfaden auf Rang 1 — Fehlerrichtung „Filter greift zu stark\" ohne Befund."
+      }
+    }
   }
 ]

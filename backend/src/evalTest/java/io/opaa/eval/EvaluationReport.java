@@ -25,9 +25,8 @@ public record EvaluationReport(
     // Issue #721 code review, Wichtig 3: whether every applicable answer_span actually resolved to
     // a chunk of one of its expected_documents — see AnswerSpanResolutionResult's Javadoc.
     AnswerSpanResolutionResult answerSpanResolution,
-    // Issue #1043, docs/features/retrieval-benchmark.md §5 "Zustandsfelder": declared vs. measured
-    // case state. Null for a domain whose golden dataset carries no expected_state fields —
-    // absent, not "audited and clean" (see ExpectedStateAudit#evaluate).
+    // docs/features/retrieval-benchmark.md §5 "Zustandsfelder": declared vs. measured case state
+    // (expected_state.raw_vector). Null if no case declares a state, i.e. absent, not clean.
     ExpectedStateAudit.Result expectedStateAudit,
     // Issue #1070 (Teil 2): whether the core-field filter itself worked, in its two error
     // directions — see MetadataFilterAudit. Null for a domain without a single filtered case.

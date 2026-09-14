@@ -22,19 +22,7 @@ class RetrievalMetricsTest {
 
   private static GoldenCase caseWithExpected(List<String> expected) {
     return new GoldenCase(
-        "t",
-        "test",
-        "query",
-        expected,
-        "category",
-        "difficulty",
-        "en",
-        "type",
-        null,
-        null,
-        null,
-        null,
-        null);
+        "t", "test", "query", expected, "category", "difficulty", "en", "type", null, null);
   }
 
   @Test

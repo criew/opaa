@@ -18,19 +18,7 @@ class VariantOutcomeTest {
         PipelineRetrievalEvaluator.evaluateAll(
             List.of(
                 new GoldenCase(
-                    "a",
-                    "test",
-                    "frage",
-                    List.of("a.md"),
-                    "cat",
-                    "easy",
-                    "de",
-                    "t",
-                    null,
-                    null,
-                    null,
-                    null,
-                    null)),
+                    "a", "test", "frage", List.of("a.md"), "cat", "easy", "de", "t", null, null)),
             VariantComparisonRunnerTest.toPipeline(Map.of("frage", List.of("a.md")))),
         VariantComparisonRunnerTest.runConfiguration());
   }

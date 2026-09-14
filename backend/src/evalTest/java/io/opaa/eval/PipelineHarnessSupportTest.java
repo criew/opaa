@@ -55,19 +55,7 @@ class PipelineHarnessSupportTest {
   private static List<GoldenCase> oneCase() {
     return List.of(
         new GoldenCase(
-            "a",
-            "test",
-            "frage",
-            List.of("a.md"),
-            "cat",
-            "easy",
-            "de",
-            "t",
-            null,
-            null,
-            null,
-            null,
-            null));
+            "a", "test", "frage", List.of("a.md"), "cat", "easy", "de", "t", null, null));
   }
 
   /**

@@ -637,7 +637,8 @@ Zwei Folgerungen sind verbindlich:
 > mehr (`verw-meta-003`, dessen ersten Rang jetzt ein lexikalischer Treffer belegt). Genau einer der
 > zwölf — `verw-comp-006` — wird auch vom Rohvektor-Pfad gelöst und wechselt deshalb auf `solved`;
 > die übrigen elf bleiben `known_gap` und tragen ihre Pfad-Asymmetrie als
-> `expected_state_exception` committet (siehe
+> `expected_state_exception` committet (mit #1308 entfernt; seit #1658 führt jeder Fall seinen
+> Zustand je Messpfad, siehe
 > [Retrieval-Benchmark §5](./retrieval-benchmark.md) und
 > `eval/corpus/verwaltung/MAINTENANCE.md`).
 
@@ -947,7 +948,7 @@ gleichem Recall@8 (0,778), sodass diese eine Klasse die Wahl nicht mehr entschei
 #1050-Lauf. `metadata_filter` zeigt in beiden Fenstern dieselbe kleine Abweichung gegenüber der
 Referenz (0,855 → 0,840) — das deckt sich mit der im Report dokumentierten Einschränkung, dass diese
 Klasse ohne echten Metadatenfilter gelöst wird (die richtige Fassung rankt zufällig oben, siehe
-`expectedStateAudit.acceptedDeviations` im JSON-Report) und ist kein Reranking-Effekt.
+`expectedStateAudit.acceptedDeviations` im damaligen JSON-Report; seit #1658 entfallen) und ist kein Reranking-Effekt.
 
 **Latenz, gemessen als Nebenprodukt dieses Laufs (kein Ersatz für das zurückgestellte
 [Arbeitspaket „Latenz-/Hardwareprofil"](#arbeitspaket-latenz-hardwareprofil)):** Der Pipeline-Messpfad

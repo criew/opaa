@@ -24,9 +24,8 @@ public record PipelineEvaluationReport(
     Map<String, PipelineMetricsAggregate> byCategory,
     Map<String, PipelineMetricsAggregate> byDifficulty,
     Map<String, PipelineMetricsAggregate> byLanguage,
-    // Issue #1043, docs/features/retrieval-benchmark.md §5 "Zustandsfelder": declared vs. measured
-    // case state, at this path's own window. Null for a domain whose golden dataset carries no
-    // expected_state fields (see ExpectedStateAudit#evaluate).
+    // docs/features/retrieval-benchmark.md §5 "Zustandsfelder": declared (expected_state.pipeline)
+    // vs. measured case state at this path's own window. Null if no case declares a state.
     ExpectedStateAudit.Result expectedStateAudit,
     // Issue #1070 (Teil 2): whether the core-field filter itself worked at this path's window, in
     // its two error directions — see MetadataFilterAudit. Null without a single filtered case.

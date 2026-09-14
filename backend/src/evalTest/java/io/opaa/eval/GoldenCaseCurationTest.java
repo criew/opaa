@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Docker-free guard for the curated {@code verwaltung} golden dataset (issue #1043): the rules of
@@ -29,11 +31,25 @@ import org.junit.jupiter.api.Test;
  */
 class GoldenCaseCurationTest {
 
-  private static List<GoldenCase> verwaltungCases() throws IOException {
+  private static final List<EvalDomainConfig> ALL_DOMAINS =
+      List.of(
+          EvalDomainConfig.COMIC_CHARACTERS,
+          EvalDomainConfig.CITY_LANDMARKS,
+          EvalDomainConfig.VERWALTUNG);
+
+  private static List<GoldenCase> goldenCases(EvalDomainConfig domain) throws IOException {
     return GoldenDataset.load(
-        RepoPaths.evalDir()
-            .resolve("golden")
-            .resolve(EvalDomainConfig.VERWALTUNG.goldenDatasetFileName()));
+        RepoPaths.evalDir().resolve("golden").resolve(domain.goldenDatasetFileName()));
+  }
+
+  private static List<GoldenCase> verwaltungCases() throws IOException {
+    return goldenCases(EvalDomainConfig.VERWALTUNG);
+  }
+
+  private static GoldenCase.ExpectedStateByPath bothPaths(
+      GoldenCase.ExpectedState state, String since, String reason) {
+    GoldenCase.PathState pathState = new GoldenCase.PathState(state, since, reason);
+    return new GoldenCase.ExpectedStateByPath(pathState, pathState);
   }
 
   private static Path corpusDir() {
@@ -60,23 +76,62 @@ class GoldenCaseCurationTest {
   }
 
   /**
-   * Every case's declared state fields are present and self-consistent — the schema half of §5's
-   * requirement. The reason text is deliberately not pattern-checked: what makes it useful is that
-   * a human wrote it, and any pattern would only invite a formulation that satisfies the pattern.
+   * Every case of every domain declares state, date and reason on both measurement paths — the
+   * schema half of §5's requirement. Beyond the without-mechanism prefix the reason text is
+   * deliberately not pattern-checked: what makes it useful is that a human wrote it.
    */
   @Test
-  void everyVerwaltungCaseDeclaresItsState() throws IOException {
-    for (GoldenCase goldenCase : verwaltungCases()) {
-      assertThat(goldenCase.expectedState())
-          .as("expected_state of %s", goldenCase.id())
-          .isNotNull();
-      assertThat(goldenCase.expectedStateSince())
-          .as("expected_state_since of %s", goldenCase.id())
-          .isNotBlank();
-      assertThat(goldenCase.expectedStateReason())
-          .as("expected_state_reason of %s", goldenCase.id())
-          .isNotBlank();
+  void everyCaseOfEveryDomainDeclaresItsStateOnBothPaths() throws IOException {
+    for (EvalDomainConfig domain : ALL_DOMAINS) {
+      List<GoldenCaseCuration.Violation> violations =
+          GoldenCaseCuration.validateStates(goldenCases(domain));
+      assertThat(violations)
+          .as("state fields of eval/golden/%s: %s", domain.goldenDatasetFileName(), violations)
+          .isEmpty();
     }
+  }
+
+  /**
+   * The retired flat fields must not survive in a committed dataset: {@link GoldenCase} ignores
+   * unknown keys, so a leftover {@code expected_state_exception} would be a statement nobody reads,
+   * and a misspelled per-path key would silently leave a state unread.
+   */
+  @Test
+  void noDatasetCarriesRetiredOrUnknownStateKeys() throws IOException {
+    List<String> problems = new ArrayList<>();
+    for (EvalDomainConfig domain : ALL_DOMAINS) {
+      JsonNode root =
+          JsonMapper.builder()
+              .build()
+              .readTree(
+                  Files.readAllBytes(
+                      RepoPaths.evalDir()
+                          .resolve("golden")
+                          .resolve(domain.goldenDatasetFileName())));
+      for (JsonNode goldenCase : root) {
+        String id = domain.name() + "/" + goldenCase.get("id").asString();
+        for (String retired :
+            List.of("expected_state_since", "expected_state_reason", "expected_state_exception")) {
+          if (goldenCase.has(retired)) {
+            problems.add(id + " carries " + retired);
+          }
+        }
+        JsonNode state = goldenCase.get("expected_state");
+        if (state == null || !state.isObject()) {
+          problems.add(id + ": expected_state is not an object");
+          continue;
+        }
+        if (!Set.copyOf(state.propertyNames()).equals(Set.of("raw_vector", "pipeline"))) {
+          problems.add(id + ": expected_state keys " + state.propertyNames());
+        }
+        for (JsonNode pathState : state) {
+          if (!Set.copyOf(pathState.propertyNames()).equals(Set.of("state", "since", "reason"))) {
+            problems.add(id + ": path state keys " + pathState.propertyNames());
+          }
+        }
+      }
+    }
+    assertThat(problems).isEmpty();
   }
 
   /**
@@ -128,21 +183,15 @@ class GoldenCaseCurationTest {
    *
    * <p>All three domains rather than only {@code verwaltung}: the check costs nothing beyond
    * chunking the documents a span points at, and a {@code city-landmarks} span broken by a future
-   * chunking change is exactly as expensive to find late. The state- and class-related rules above
-   * stay verwaltung-specific — only that domain declares those fields.
+   * chunking change is exactly as expensive to find late. Only the class and filter rules stay
+   * verwaltung-specific; the state fields are checked for all three domains above.
    */
   @Test
   void everyAnswerSpanOfEveryDomainResolvesToAChunkOfItsExpectedDocument() throws IOException {
     int checkedSpans = 0;
     List<String> unresolved = new ArrayList<>();
-    for (EvalDomainConfig domain :
-        List.of(
-            EvalDomainConfig.COMIC_CHARACTERS,
-            EvalDomainConfig.CITY_LANDMARKS,
-            EvalDomainConfig.VERWALTUNG)) {
-      List<GoldenCase> cases =
-          GoldenDataset.load(
-              RepoPaths.evalDir().resolve("golden").resolve(domain.goldenDatasetFileName()));
+    for (EvalDomainConfig domain : ALL_DOMAINS) {
+      List<GoldenCase> cases = goldenCases(domain);
       checkedSpans += resolveSpans(domain, cases, unresolved);
     }
 
@@ -208,10 +257,7 @@ class GoldenCaseCurationTest {
         "de",
         "factual",
         answerSpan,
-        GoldenCase.ExpectedState.SOLVED,
-        "2026-08-31",
-        "Testfixture",
-        null);
+        bothPaths(GoldenCase.ExpectedState.SOLVED, "2026-08-31", "Testfixture"));
   }
 
   @Test
@@ -240,20 +286,60 @@ class GoldenCaseCurationTest {
             "de",
             "f",
             null,
-            null,
-            null,
-            null,
             null);
 
-    List<GoldenCaseCuration.Violation> violations =
-        GoldenCaseCuration.validate(List.of(withoutState), "test-domain", Set.of("a.md"));
+    assertThat(GoldenCaseCuration.validate(List.of(withoutState), "test-domain", Set.of("a.md")))
+        .extracting(GoldenCaseCuration.Violation::rule)
+        .contains("expected_state is missing");
+  }
 
-    assertThat(violations)
+  /** Each path is declared on its own; one declared path does not stand in for the other. */
+  @Test
+  void rejectsAStateDeclaredForOnlyOnePath() {
+    GoldenCase rawVectorOnly =
+        new GoldenCase(
+            "a",
+            "test-domain",
+            "frage",
+            List.of("a.md"),
+            "multi_hop",
+            "medium",
+            "de",
+            "f",
+            null,
+            new GoldenCase.ExpectedStateByPath(
+                new GoldenCase.PathState(GoldenCase.ExpectedState.SOLVED, "2026-09-14", "Grund"),
+                null));
+
+    assertThat(GoldenCaseCuration.validate(List.of(rawVectorOnly), "test-domain", Set.of("a.md")))
+        .extracting(GoldenCaseCuration.Violation::rule)
+        .contains("expected_state.pipeline is missing")
+        .noneMatch(rule -> rule.startsWith("expected_state.raw_vector"));
+  }
+
+  @Test
+  void rejectsAPathStateWithoutStateDateOrReason() {
+    GoldenCase incomplete =
+        new GoldenCase(
+            "a",
+            "test-domain",
+            "frage",
+            List.of("a.md"),
+            "multi_hop",
+            "medium",
+            "de",
+            "f",
+            null,
+            new GoldenCase.ExpectedStateByPath(
+                new GoldenCase.PathState(GoldenCase.ExpectedState.SOLVED, "2026-09-14", "Grund"),
+                new GoldenCase.PathState(null, null, "  ")));
+
+    assertThat(GoldenCaseCuration.validate(List.of(incomplete), "test-domain", Set.of("a.md")))
         .extracting(GoldenCaseCuration.Violation::rule)
         .contains(
-            "expected_state is missing",
-            "expected_state_since is missing",
-            "expected_state_reason is missing or blank");
+            "expected_state.pipeline.state is missing",
+            "expected_state.pipeline.since is missing",
+            "expected_state.pipeline.reason is missing or blank");
   }
 
   @Test
@@ -269,14 +355,69 @@ class GoldenCaseCurationTest {
             "de",
             "f",
             null,
-            GoldenCase.ExpectedState.KNOWN_GAP,
-            "irgendwann 2026",
-            "Grund",
-            null);
+            new GoldenCase.ExpectedStateByPath(
+                new GoldenCase.PathState(
+                    GoldenCase.ExpectedState.KNOWN_GAP, "irgendwann 2026", "Grund"),
+                new GoldenCase.PathState(
+                    GoldenCase.ExpectedState.KNOWN_GAP, "2026-09-14", "Grund")));
 
     assertThat(GoldenCaseCuration.validate(List.of(badDate), "test-domain", Set.of("a.md")))
         .extracting(GoldenCaseCuration.Violation::rule)
-        .contains("expected_state_since 'irgendwann 2026' is not an ISO date");
+        .contains("expected_state.raw_vector.since 'irgendwann 2026' is not an ISO date");
+  }
+
+  private static GoldenCase withRawVectorReason(GoldenCase.ExpectedState state, String reason) {
+    return new GoldenCase(
+        "a",
+        "test-domain",
+        "frage",
+        List.of("a.md"),
+        "multi_hop",
+        "medium",
+        "de",
+        "f",
+        null,
+        new GoldenCase.ExpectedStateByPath(
+            new GoldenCase.PathState(state, "2026-09-14", reason),
+            new GoldenCase.PathState(GoldenCase.ExpectedState.SOLVED, "2026-09-14", "Grund")));
+  }
+
+  /**
+   * The marker for a hit without the tested mechanism only makes sense on a solved state: a
+   * known_gap with it would claim a hit that is not there.
+   */
+  @Test
+  void rejectsTheWithoutMechanismPrefixOnAKnownGap() {
+    String marked = GoldenCaseCuration.WITHOUT_MECHANISM_PREFIX + "rankt zufällig oben";
+
+    assertThat(
+            GoldenCaseCuration.validateStates(
+                List.of(withRawVectorReason(GoldenCase.ExpectedState.KNOWN_GAP, marked))))
+        .extracting(GoldenCaseCuration.Violation::rule)
+        .contains(GoldenCaseCuration.WITHOUT_MECHANISM_PREFIX_RULE);
+    assertThat(
+            GoldenCaseCuration.validateStates(
+                List.of(withRawVectorReason(GoldenCase.ExpectedState.SOLVED, marked))))
+        .isEmpty();
+  }
+
+  /** The marker is searchable only in its exact form, at the start of the reason. */
+  @Test
+  void rejectsTheWithoutMechanismMarkerOutsideItsExactPrefixForm() {
+    assertThat(GoldenCaseCuration.WITHOUT_MECHANISM_PREFIX)
+        .isEqualTo("Ohne geprüften Mechanismus: ");
+    for (String misplaced :
+        List.of(
+            "Gelöst. Ohne geprüften Mechanismus: rankt zufällig oben",
+            "ohne geprüften Mechanismus: rankt zufällig oben",
+            "Ohne geprüften Mechanismus rankt zufällig oben")) {
+      assertThat(
+              GoldenCaseCuration.validateStates(
+                  List.of(withRawVectorReason(GoldenCase.ExpectedState.SOLVED, misplaced))))
+          .as(misplaced)
+          .extracting(GoldenCaseCuration.Violation::rule)
+          .contains(GoldenCaseCuration.WITHOUT_MECHANISM_PREFIX_RULE);
+    }
   }
 
   @Test
@@ -326,52 +467,16 @@ class GoldenCaseCurationTest {
         .noneMatch(rule -> rule.contains("case class 'multi_hop' has"));
   }
 
+  /** The committed datasets use the marker at all, so a renamed prefix cannot pass unnoticed. */
   @Test
-  void rejectsABlankExpectedStateException() {
-    GoldenCase blankException =
-        new GoldenCase(
-            "a",
-            "test-domain",
-            "frage",
-            List.of("a.md"),
-            "multi_hop",
-            "medium",
-            "de",
-            "f",
-            null,
-            GoldenCase.ExpectedState.KNOWN_GAP,
-            "2026-08-31",
-            "Grund",
-            "   ");
-
-    assertThat(GoldenCaseCuration.validate(List.of(blankException), "test-domain", Set.of("a.md")))
-        .extracting(GoldenCaseCuration.Violation::rule)
-        .contains("expected_state_exception is present but blank");
-  }
-
-  @Test
-  void rejectsAnExpectedStateExceptionOnASolvedCase() {
-    GoldenCase solvedWithException =
-        new GoldenCase(
-            "a",
-            "test-domain",
-            "frage",
-            List.of("a.md"),
-            "multi_hop",
-            "medium",
-            "de",
-            "f",
-            null,
-            GoldenCase.ExpectedState.SOLVED,
-            "2026-09-01",
-            "Grund",
-            "vorsorgliche Ausnahme");
-
-    assertThat(
-            GoldenCaseCuration.validate(
-                List.of(solvedWithException), "test-domain", Set.of("a.md")))
-        .extracting(GoldenCaseCuration.Violation::rule)
-        .contains(GoldenCaseCuration.EXCEPTION_ONLY_ON_KNOWN_GAP_RULE);
+  void theVerwaltungDatasetMarksHitsWithoutTheTestedMechanism() throws IOException {
+    assertThat(verwaltungCases())
+        .anyMatch(
+            c ->
+                c.expectedState()
+                    .rawVector()
+                    .reason()
+                    .startsWith(GoldenCaseCuration.WITHOUT_MECHANISM_PREFIX));
   }
 
   /** The state enum's JSON spelling is part of the committed dataset's schema, not an internal. */
@@ -379,8 +484,11 @@ class GoldenCaseCurationTest {
   void statesDeserializeFromTheirJsonSpelling() throws IOException {
     List<GoldenCase> cases = verwaltungCases();
     assertThat(cases)
-        .extracting(GoldenCase::expectedState)
-        .containsAnyOf(GoldenCase.ExpectedState.SOLVED, GoldenCase.ExpectedState.KNOWN_GAP);
+        .extracting(c -> c.expectedState().rawVector().state())
+        .contains(GoldenCase.ExpectedState.SOLVED, GoldenCase.ExpectedState.KNOWN_GAP);
+    assertThat(cases)
+        .extracting(c -> c.expectedState().pipeline().state())
+        .contains(GoldenCase.ExpectedState.SOLVED, GoldenCase.ExpectedState.KNOWN_GAP);
   }
 
   // --- filter fields of issue #1070 -------------------------------------------------------------
@@ -401,10 +509,7 @@ class GoldenCaseCurationTest {
         "de",
         "factual",
         null,
-        GoldenCase.ExpectedState.KNOWN_GAP,
-        "2026-09-05",
-        "Testfixture",
-        null,
+        bothPaths(GoldenCase.ExpectedState.KNOWN_GAP, "2026-09-05", "Testfixture"),
         filter,
         filterNote,
         confusable,

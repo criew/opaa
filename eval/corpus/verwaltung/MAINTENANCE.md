@@ -57,7 +57,7 @@ Filter tut, wenn er gesetzt ist.
 | Generator (`generate_verwaltung_corpus.py`) | Wer eine Korpusänderung vornimmt — reguläre Entwickler-Issue-Arbeit, kein dedizierter Owner. Review durch den Code Reviewer wie bei jedem PR. | vorhanden (#1042) |
 | Korpus (`eval/corpus/verwaltung/*.md`, `MANIFEST.sha256`) | Wird nie von Hand editiert — jede Änderung läuft ausschließlich über einen Generator-Lauf, committet als Teil desselben PRs, der den Generator ändert. | vorhanden (#1042) |
 | Golden Dataset (`eval/golden/verwaltung.json`) | QA Engineer (`docs/AGENT-ORGANIZATION.md`, „der QA Engineer ist Eigentümer der RAG-Evaluierung im laufenden Betrieb"). Von Hand kuratiert, kein Generator — die Regeln stehen in `io.opaa.eval.GoldenCaseCuration` und werden von `GoldenCaseCurationTest` auf die committete Datei angewandt. | vorhanden (#1043), 49 Fälle (drei Fälle der Leerwert-Regel kamen mit #1070, Teil 2 hinzu) |
-| Zustandsfelder je Fall (`expected_state`) | Wer eine Zustandsänderung auslöst (ein neuer Retrieval-Baustein), zieht sie im selben PR nach — begründet und datiert; Regel siehe unten. | vorhanden (#1043) |
+| Zustandsfelder je Fall und Messpfad (`expected_state.raw_vector`, `expected_state.pipeline`) | Wer eine Zustandsänderung auslöst (ein neuer Retrieval-Baustein), zieht sie im selben PR nach — je betroffenem Pfad begründet und datiert; Regel siehe unten. | vorhanden (#1043), je Pfad seit #1658 |
 | Baselines (`eval/baseline/verwaltung.json`, `eval/baseline/pipeline-verwaltung.json`) | QA Engineer, analog zu `eval/baseline/README.md` für die bestehenden zwei Domänen. | vorhanden (#1043) |
 
 ## Wie eine Baseline-Neuziehung abläuft — und woran sie erkennbar bewusst war
@@ -80,7 +80,7 @@ festgehalten").
    Commit.
 4. **Chunk-Zahl-Invariante und Kuratierungsregeln erneut prüfen.** `./gradlew evalUnitTest` muss
    grün bleiben (Docker-frei: `VerwaltungChunkSizeDryRunTest` für die Chunk-Zahl,
-   `GoldenCaseCurationTest` für Fallklassen-Mindestzahlen, Zustandsfelder und die
+   `GoldenCaseCurationTest` für Fallklassen-Mindestzahlen, Zustandsfelder je Pfad und die
    `answer_span`-Auflösung). Danach `./gradlew checkVerwaltungRetrievalBaseline` (braucht Docker).
 5. **Golden Dataset gegen den neuen Korpus neu kuratieren, sofern der Korpus sich geändert hat.**
    Ein Golden-Case, dessen `expected_documents` sich durch die Korpusänderung verschiebt, muss vor
@@ -100,13 +100,26 @@ festgehalten").
 
 ## Zustandsfelder: wann ein Fall als gelöst gilt
 
-`expected_state` ist der zuletzt **bewusst akzeptierte** Zustand eines Falls, nicht das Ergebnis
-des letzten Laufs. Gesetzt wird er nach einer für alle Klassen gleichen Regel
-(`io.opaa.eval.ExpectedStateAudit#isSolved`):
+`expected_state` führt für **jeden Messpfad getrennt** den zuletzt **bewusst akzeptierten** Zustand
+eines Falls, nicht das Ergebnis des letzten Laufs (#1658, Maintainer-Entscheidung vom 14.09.2026):
 
-> Ein Fall gilt als `solved`, wenn alle seine erwarteten Dokumente im Fenster des Messpfads liegen
-> **und** ein erwartetes Dokument auf Rang 1 steht — und zwar auf **beiden** Messpfaden
-> (Rohvektor und Pipeline). Sonst `known_gap`.
+```json
+"expected_state": {
+  "raw_vector": { "state": "known_gap", "since": "2026-09-14", "reason": "…" },
+  "pipeline":   { "state": "solved",    "since": "2026-09-14", "reason": "…" }
+}
+```
+
+Beide Einträge sind Pflicht, jeder mit ISO-Datum und nicht leerem Grund (`GoldenCaseCuration`).
+Welcher Zustand eingetragen wird, entscheidet für beide Pfade dieselbe Regel
+(`io.opaa.eval.ExpectedStateAudit#isSolved`), angewandt auf das Fenster **dieses** Pfads:
+
+> Ein Fall gilt auf einem Messpfad als `solved`, wenn alle seine erwarteten Dokumente im Fenster
+> dieses Pfads liegen **und** ein erwartetes Dokument auf Rang 1 steht. Sonst `known_gap`.
+
+Der gemessene Ist-Zustand beider Pfade ist der festgeschriebene Stand, wie eine Baseline je Pfad.
+Eine dauerhafte Pfad-Asymmetrie sind damit zwei verschiedene Zustände, keine Ausnahme: Das Audit
+jedes Pfads prüft nur gegen den eigenen Eintrag und meldet nur Abweichungen davon.
 
 Die Rang-1-Bedingung ist nicht Strenge um ihrer selbst willen: Die beiden Fassungen einer Satzung
 unterscheiden sich nur im Frontmatter und ranken deshalb unmittelbar nebeneinander. Ohne sie wäre
@@ -138,49 +151,82 @@ eine Zusicherung des Ergebnisses. Diese Ausnahme ist bewusst und vom Koordinator
 beauftragt (Kommentar an #1070) — sie taugt nicht als Vorbild für einen Fall, der eine noch
 ungebaute Fähigkeit misst.
 
-### Erwartete Abweichungen (`expected_state_exception`)
+### Keine Ausnahmen mehr (`expected_state_exception` entfällt, #1658)
 
-Ein Fall darf einen vierten, optionalen Text tragen: die committete Begründung, **warum** seine
-gemessene Lage dauerhaft von der deklarierten abweicht. Das Audit führt solche Fälle getrennt von
-den Befunden; nur unerklärte Abweichungen gelten als Befund. Ohne diese Trennung stünde in jedem
-Lauf dieselbe erwartete Meldung in der Fundliste — und niemand läse sie nach dem dritten Mal noch.
+Bis #1658 trug ein Fall einen optionalen Ausnahmetext, der eine dauerhaft erwartete Abweichung
+vom einen, gemeinsamen Zustand erklärte. Das Feld wirkte je **Fall**, nicht je **Pfad**: Eine
+Ausnahme für die Asymmetrie auf dem einen Pfad hätte auch einen späteren Gewinn oder Verlust auf dem
+anderen Pfad stummgeschaltet, und die Ausnahmetexte veralteten unbemerkt (sieben aus #1049 waren
+widerlegt, #1655). Mit dem Zustand je Pfad hat das Feld keinen Gegenstand mehr und ist entfernt;
+`GoldenCaseCurationTest` weist es in einem committeten Datensatz ab.
 
-**Derzeit keine** (Stand 2026-09-14, #1308), und bis #1658 werden keine gesetzt.
+Das gilt auch für den zweiten Anwendungsfall der früheren Ausnahme, den **Treffer ohne den
+geprüften Mechanismus** (ein `known_gap`-Fall, den die heutige Rangfolge zufällig löst): Er wird auf
+dem Pfad, der ihn löst, als `solved` festgeschrieben.
 
-**Übergang bis #1658:** Eine `expected_state_exception` wirkt heute je **Fall**, nicht je **Pfad**. `ExpectedStateAudit` akzeptiert eine Abweichung, sobald der Fall eine Ausnahme trägt, gleich auf welchem Pfad sie auftritt. Eine Ausnahme für die Asymmetrie auf dem einen Pfad würde deshalb auch einen späteren Gewinn oder Verlust auf dem anderen Pfad unter „erwartete Abweichungen“ ablegen und stummschalten. Genau diesen Wechsel will §5 sichtbar machen. Mit #1658 wird der erwartete Zustand je Pfad geführt, und das Feld entfällt. Bis dahin bleiben die gemessenen Asymmetrien als offene Befunde im Audit stehen. Die gemessene Ursache steht im Feld `expected_state_reason`. Das Audit lässt keinen Lauf fehlschlagen.
+**Präfix `Ohne geprüften Mechanismus: `** (Maintainer-Entscheidung vom 14.09.2026). Der `reason`
+eines solchen Pfadzustands beginnt mit genau diesem Präfix, gefolgt von der Begründung, damit die
+Fälle ohne Prosa-Lesen auffindbar sind. Das Kriterium ist strukturell: Ein Fall bekommt das Präfix
+auf einem Pfad genau dann, wenn er dort heute gelöst ist, obwohl der Mechanismus seiner Fallklasse
+in diesem Pfad in dieser Messung nicht vorhanden oder abgeschaltet ist. Wirkt der Mechanismus im
+Pfad, bleibt der Grund ohne Präfix; ob er zu genau diesem Treffer beiträgt, wird nicht je Fall
+bewertet. Die Zuordnung Fallklasse → Mechanismus → Pfade steht als Tabelle in
+`docs/features/retrieval-benchmark.md`, Abschnitt 5 (Umsetzungsstand). Für diese Domäne:
 
-Mit #1308 sind die elf bisherigen Ausnahmen entfernt:
+| Fallklasse | Mechanismus | vorhanden |
+|---|---|---|
+| `literal_term_weak_embedding` | lexikalischer Pfad in der Fusion | nur Pipeline |
+| `exact_identifier` | unzerlegte Kennungs-Lexeme des Volltextpfads (`FullTextIdentifiers`) | nur Pipeline |
+| `compound_word` | Komposita-Zerlegung | keiner |
+| `multi_hop` | Zusammenführung von Ketten; Teilfragen-Zerlegung in den Baselines abgeschaltet | keiner |
+| `metadata_filter` | Kernfeld-Filter | beide, wenn der Fall einen `filter` trägt |
 
-- Vier sind gegenstandslos, weil ihr Fall jetzt auf beiden Pfaden gelöst ist: `verw-lit-008`, `verw-comp-009`, `verw-hop-002` und `verw-meta-001`.
-- Die sieben übrigen aus #1049 (`verw-lit-006`, `verw-comp-002`/`-003`/`-008`, `verw-hop-005`/`-007`/`-009`) nannten einen Grund, den die CPU-Läufe widerlegen: Der Rohvektor-Pfad könne den Fall ohne Volltextpfad strukturell nicht lösen.
-  - Den Pipeline-Pfad hat #1156 sechs dieser Fälle gekostet.
-  - `verw-hop-005` hat der Rohvektor-Pfad zwischen #1156 und #1341 gelöst.
+`GoldenCaseCuration` lässt das Präfix nur auf einem `solved`-Zustand und nur als exakten Anfang des
+Grunds zu. Verliert ein solcher Fall seinen Treffer, meldet das Audit ihn als Rückschritt („als
+`solved` geführt, aber nicht gelöst“). Er wird dann bewusst und datiert auf `known_gap` nachgezogen,
+mit dem fehlenden Mechanismus als Grund — kein Datenpflegefehler, sondern der erwartbare Ausgang
+eines Treffers, den nie ein Mechanismus trug.
 
-Die heute gemessenen Asymmetrien sind teils strukturell. Seit #1156 misst der Rohvektor-Pfad ein Fenster aus zehn Dokumenten, der Pipeline-Pfad acht Chunk-Plätze, die im Mittel 3,3 Dokumente abdecken. Diese unterschiedliche Fensterform bleibt bestehen, bis sich die Produktionsauswahl ändert. Die Rang-1-Verluste durch #1341 folgen dagegen aus dem gewollten Präfix-Titel. Mit #1658 bekommen beide Gruppen ihren Zustand je Pfad.
+| Pfad | Fälle mit Präfix (Stand 2026-09-14) |
+|---|---|
+| Rohvektor | `verw-lit-008`, `-009`; `verw-id-003`, `-006` bis `-010`; `verw-comp-002` bis `-009`; `verw-hop-002` (17) |
+| Pipeline | `verw-comp-009`; `verw-hop-002`, `-003`, `-005` (4) |
 
-Offene Befunde im Lauf vom 2026-09-14:
+In `comic-characters` tragen es `comic-filter-017` und `-089` auf dem Pipeline-Pfad (die Domäne
+wendet keinen Filter an), in `city-landmarks` kein Fall; der Mehrrunden-Datensatz führt flache
+Zustandsfelder und ist nicht betroffen.
 
-| Audit | Befund | Fälle | gemessene Ursache |
+**Überführung der 13 asymmetrischen Fälle aus #1308.** Die Zustände je Pfad sind aus den
+Fallergebnissen eines aktuellen CPU-Laufs übernommen (CI-Lauf 34840623079, Golden-Hash `4ff44ccc…`);
+sie decken sich mit den offenen Befunden, die #1308 gemessen hatte. Der bisherige gemeinsame Grund
+jedes Falls ist ohne Informationsverlust auf die beiden Pfade aufgeteilt; entfallen ist nur der
+Übergangssatz zur fehlenden Ausnahme. Symmetrische Fälle tragen auf beiden Pfaden ihren bisherigen
+Grund.
+
+| Fälle | Rohvektor-Pfad | Pipeline-Pfad | gemessene Ursache |
 |---|---|---|---|
-| Rohvektor | als `known_gap` geführt, aber gelöst | `verw-comp-002`, `-003`, `-004`, `-005`, `-006`, `-007`, `-008` | Fensterform seit #1156: Zehn Dokumente reichen, acht Chunk-Plätze des Pipeline-Pfads nicht, weil wenige Dokumente sie mit mehreren Abschnitten füllen. |
-| Pipeline | als `known_gap` geführt, aber gelöst | `verw-id-001`, `-002`, `-004`, `-005`, `verw-hop-003`, `-005` | Der Rohvektor-Pfad verliert Rang 1: `verw-id-004` seit #1156, die übrigen seit dem Kernfeld-Titel im Kontextpräfix (#1341). |
+| `verw-comp-002`, `-003`, `-004`, `-005`, `-006`, `-007`, `-008` | `solved` | `known_gap` | Fensterform seit #1156: Zehn Dokumente reichen, acht Chunk-Plätze des Pipeline-Pfads nicht, weil wenige Dokumente sie mit mehreren Abschnitten füllen. |
+| `verw-id-001`, `-002`, `-004`, `-005`, `verw-hop-003`, `-005` | `known_gap` | `solved` | Der Rohvektor-Pfad verliert Rang 1: `verw-id-004` seit #1156, die übrigen seit dem Kernfeld-Titel im Kontextpräfix (#1341). |
 
-> **Offene Frage an die Spezifikation.** Diese Befunde entstehen daraus, dass ein Fall erst als
-> gelöst gilt, wenn ihn *beide* Messpfade lösen. Diese Definition stammt aus #1043, als beide Pfade
-> praktisch dasselbe Retrieval maßen. #1658 beantwortet die Frage, indem der erwartete Zustand je
-> Pfad geführt wird. #1308 trifft dazu keine Entscheidung.
+Im Lauf auf dem Stand dieses Umbaus (CPU/Testcontainer, `checkVerwaltungRetrievalBaseline`) melden
+beide Audits keine Abweichung.
 
 Jede Zustandsänderung ist ein bewusster Vorgang mit Datum und Begründung im selben PR wie ihr
-Auslöser — nie eine Datenpflege nebenbei. Der Zustandsfelder-Abschnitt beider Reports **und** beider
-Markdown-Delta-Tabellen (Job-Zusammenfassung, PR-Kommentar, Alarm-Issue) meldet Abweichungen in
-beide Richtungen; er lässt den Lauf bewusst **nicht** fehlschlagen, weil die Entscheidung über einen
-Zustandswechsel eine menschliche ist.
+Auslöser — nie eine Datenpflege nebenbei —, und sie betrifft nur den Pfad, auf dem sie gemessen
+ist. Der Zustandsfelder-Abschnitt beider Reports **und** beider Markdown-Delta-Tabellen
+(Job-Zusammenfassung, PR-Kommentar, Alarm-Issue) meldet Abweichungen in beide Richtungen und nennt
+das Feld, das nachzuziehen ist; er lässt den Lauf bewusst **nicht** fehlschlagen, weil die
+Entscheidung über einen Zustandswechsel eine menschliche ist.
 
 ## `known_gap`-Fälle
 
-**29 von 49 Fällen**, Stand 2026-09-14 (#1308, siehe „Zustandspflege mit #1308" unten). Die Tabelle
-darunter gibt diesen Stand wieder; die Symptomtabellen je Klasse beschreiben weiterhin die Läufe
-vom 2026-09-01/-05, für die 21 mit #1308 gepflegten Fälle gilt der neue Abschnitt.
+**Je Pfad, Stand 2026-09-14 (#1658):** Rohvektor-Pfad 22 von 49, Pipeline-Pfad 23 von 49; auf
+beiden Pfaden `known_gap` sind 16. Die Tabelle darunter gibt diesen Stand wieder; die
+Symptomtabellen je Klasse beschreiben weiterhin die Läufe vom 2026-09-01/-05, für die 21 mit #1308
+gepflegten Fälle gilt der Abschnitt „Zustandspflege mit #1308".
+
+**Stand vor #1658: 29 von 49 Fällen** unter der damaligen Regel „gelöst auf beiden Pfaden",
+2026-09-14 (#1308).
 
 **Stand vor #1308: 30 von 49 Fällen**, 2026-09-05. Mit Issue #1070 (Teil 2) sind neun Fälle der Klasse
 `metadata_filter` auf `solved` gewechselt — der erste Zustandswechsel dieser Klasse überhaupt, und
@@ -191,19 +237,19 @@ davor.
 **Stand vor #1070: 36 von 46 Fällen**, 2026-09-01. Mit Issue #1049 hatte sich genau **ein** Zustand geändert:
 `verw-comp-006` ist von `known_gap` auf `solved` gewechselt — er ist der einzige Fall, den seither
 **beide** Messpfade lösen, und damit der einzige, der die Solved-Definition erfüllt. Elf weitere
-Fälle löst nur der Pipeline-Pfad; sie bleiben `known_gap` und haben ihre Pfad-Asymmetrie als
-erwartete Abweichung nachgezogen bekommen (siehe oben). Das ist der Zweck dieser Domäne, kein
+Fälle löst nur der Pipeline-Pfad; sie bleiben `known_gap` und haben ihre Pfad-Asymmetrie damals
+als erwartete Abweichung nachgezogen bekommen (seit #1658 entfallen, siehe oben). Das ist der Zweck dieser Domäne, kein
 Mangel: „Ein Fall, den heute keine Variante löst, ist der wertvollste im Datensatz"
-(`docs/features/retrieval-benchmark.md`, Abschnitt 4). Die Begründung steht je Fall im Feld
-`expected_state_reason`; die Tabellen unten führen zusätzlich das gemessene Symptom.
+(`docs/features/retrieval-benchmark.md`, Abschnitt 4). Die Begründung steht je Fall und Pfad im
+Feld `expected_state.<pfad>.reason`; die Tabellen unten führen zusätzlich das gemessene Symptom.
 
-| Klasse | Fälle | davon `known_gap` | fehlender Baustein |
-|---|---|---|---|
-| `literal_term_weak_embedding` | 9 | 7 | lexikalischer Pfad und Fusion (Roadmap 1a/1b) — die #938-Klasse |
-| `exact_identifier` | 10 | 4 | Schutz unzerlegter Kennungs-Tokens (Roadmap 1a) |
-| `compound_word` | 9 | 8 | Komposita-Zerlegung (Roadmap 1a) |
-| `multi_hop` | 9 | 8 | Zusammenführung mehrgliedriger Ketten (Messgrundlage für Roadmap 3c) |
-| `metadata_filter` | 12 | 2 | für `verw-meta-003`/`-005`: Bibliotheksfeld Gültigkeit (#1071) |
+| Klasse | Fälle | `known_gap` Rohvektor | `known_gap` Pipeline | fehlender Baustein |
+|---|---|---|---|---|
+| `literal_term_weak_embedding` | 9 | 7 | 7 | lexikalischer Pfad und Fusion (Roadmap 1a/1b) — die #938-Klasse |
+| `exact_identifier` | 10 | 4 | 0 | Schutz unzerlegter Kennungs-Tokens (Roadmap 1a) — im Volltextpfad gebaut, fehlt dem Rohvektor-Pfad |
+| `compound_word` | 9 | 1 | 8 | Komposita-Zerlegung (Roadmap 1a) |
+| `multi_hop` | 9 | 8 | 6 | Zusammenführung mehrgliedriger Ketten (Messgrundlage für Roadmap 3c) |
+| `metadata_filter` | 12 | 2 | 2 | für `verw-meta-003`/`-005`: Bibliotheksfeld Gültigkeit (#1071) |
 
 ### Zustandspflege mit #1308 (2026-09-14)
 
@@ -233,7 +279,7 @@ Zwei Änderungen erklären jede Abweichung:
   - **Pipeline-Pfad:** #1156 löst `verw-lit-009`, `verw-id-002` und `verw-id-005` neu. Er verliert `verw-lit-006`, `-008`, `verw-comp-002`, `-003`, `-006`, `-008` und `verw-hop-002`, `-007`, `-009`.
 - **#1341** kostet den Rohvektor-Pfad bei `verw-id-001`, `-002`, `-005`, `verw-hop-003` und `-005` Rang 1. Auf demselben Pfad löst #1341 `verw-lit-008`, `verw-hop-002` und `verw-meta-001` neu und holt `verw-id-008` zurück. Den Pipeline-Pfad löst #1341 bei `verw-lit-008` und `verw-hop-002` wieder.
 
-Gelöst heißt unverändert: auf beiden Pfaden alle erwarteten Dokumente im Fenster und ein erwartetes auf Rang 1. „R“ steht für den Rohvektor-Pfad, „P“ für den Pipeline-Pfad, „g“ für gelöst.
+Gelöst hieß zum Zeitpunkt dieser Pflege: auf beiden Pfaden alle erwarteten Dokumente im Fenster und ein erwartetes auf Rang 1. Die Spalte „Zustand“ gibt diesen gemeinsamen Zustand wieder; seit #1658 steht der Zustand je Pfad in der Spalte „main R/P“. „R“ steht für den Rohvektor-Pfad, „P“ für den Pipeline-Pfad, „g“ für gelöst.
 
 | Fall | Zustand | vor #1156 R/P | #1156 R/P | main R/P | Ursache |
 |---|---|---|---|---|---|
@@ -254,7 +300,7 @@ Die vier Rang-1-Verluste auf dem Rohvektor-Pfad durch #1341 (`verw-id-001`, `-00
 
 Die Rückschritte durch #1156 waren seit #1306 als unerklärte Audit-Befunde bekannt und sind jetzt gemessen. Ob die Engführung der Produktionsauswahl hingenommen oder mit einem Baustein zur Dokumentvielfalt behoben wird, entscheidet diese Pflege nicht.
 
-Die Fälle mit Pfad-Asymmetrie tragen bis #1658 keine Ausnahme (Begründung unter „Erwartete Abweichungen“ oben).
+Die 13 Fälle mit Pfad-Asymmetrie führen seit #1658 je Pfad ihren eigenen Zustand (Überführung unter „Keine Ausnahmen mehr“ oben).
 
 Der Befund der ersten Kuratierung (Stand vor #1049): `literal_term_weak_embedding` war
 **vollständig** ungelöst (0 von 9), obwohl der Anfragebegriff wörtlich im Zieldokument steht —
@@ -395,8 +441,10 @@ Indizierung und Einzelfragen-Teil; auf einem GitHub-Runner 118 Minuten (Lauf 346
 sonst auf beiden: Der Rohvektor-Pfad misst `similaritySearch` direkt und kennt weder Gesprächsverlauf
 noch Zerlegung, ein Mehrrunden-Fall kann dort konstruktionsbedingt nicht laufen
 (`docs/features/retrieval-benchmark.md`, Abschnitt 5). Die Einpfadigkeit ist eine Eigenschaft des
-Datensatzes und steht deshalb einmal je Bericht (`singlePathNote`) — sie ist **kein**
-`expected_state_exception` am Fall, weil das Zustandsfeld-Audit sonst dauerhaft leer liefe.
+Datensatzes und steht deshalb einmal je Bericht (`singlePathNote`), nicht am Fall. Die
+Zustandsfelder dieses Datensatzes bleiben deshalb flach (`expected_state`, `expected_state_since`,
+`expected_state_reason`): Sie beschreiben den einen gemessenen Pfad, einen zweiten Eintrag gäbe es
+nicht zu füllen (#1658).
 
 ### Zwei Konstruktionsregeln, die beim Kuratieren zu beachten sind
 
@@ -650,15 +698,15 @@ Zwei Gründe, warum die Zahl so klein bleibt:
 | `verw-conv-cc-008` | Zwischenthema in Runde 3 neu gelöst; offen sind Runde 1 und die Zielrunde 5 (BAU-DA-1/2023 auf Rang 1, Ziel auf Rang 2) |
 | `verw-conv-cc-009` | **Rückschritt:** Zielrunde 4 nimmt den Notizpunkt mit „Fassung: 2024" nicht auf, Ziel auf Rang 3; Runde 1 ist ebenfalls weggefallen — sie hat weder Fenster noch Notiz und hängt an der Instruktionszeile aus #1487 |
 
-### Erwartete Abweichungen dieser Klassen (`expected_state_exception`)
+### Keine Ausnahmen dieser Klassen (`expected_state_exception` entfällt, #1658)
 
-**Derzeit keine.** Die einzige, die es je gab, trug `verw-conv-cc-001`: Der Fall galt als
-`known_gap`, wurde im Referenzlauf aber gelöst gemessen — ohne den geprüften Mechanismus, weil die
-Teilfrage der Zielrunde die Angabe nicht trug. Mit der Nachmessung ist er **auch gemessen offen**;
-die Ausnahme hat damit keinen Gegenstand mehr und ist am Fall entfernt. Ein `known_gap`-Fall, den
-die heutige Rangfolge zufällig löst, bekäme sie nach derselben Regel wie `metadata_filter` vor
-#1070 wieder; bis #1658 werden aber keine Ausnahmen gesetzt, weil eine Ausnahme heute je Fall statt
-je Pfad wirkt (siehe „Erwartete Abweichungen“ der Einzelfragen-Klassen oben).
+Das Feld ist auch aus diesem Datensatz entfernt. Die einzige Ausnahme, die es je gab, trug
+`verw-conv-cc-001`: Der Fall galt als `known_gap`, wurde im Referenzlauf aber gelöst gemessen —
+ohne den geprüften Mechanismus, weil die Teilfrage der Zielrunde die Angabe nicht trug. Mit der
+Nachmessung vom 2026-09-12 ist er auch gemessen offen, die Ausnahme war schon vorher entfernt. Ein
+`known_gap`-Fall, den die Rangfolge künftig ohne den Mechanismus löst, wird nach derselben Regel wie
+bei den Einzelfragen-Klassen als `solved` festgeschrieben, und der Grund benennt den fehlenden
+Mechanismus (siehe „Keine Ausnahmen mehr“ oben).
 
 ## Overfitting-Risiko
 

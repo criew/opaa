@@ -19,33 +19,9 @@ class MultiRunAggregatorTest {
     var goldenCases =
         List.of(
             new GoldenCase(
-                "a",
-                "test",
-                "frage a",
-                List.of("a.md"),
-                "cat",
-                "easy",
-                "de",
-                "t",
-                null,
-                null,
-                null,
-                null,
-                null),
+                "a", "test", "frage a", List.of("a.md"), "cat", "easy", "de", "t", null, null),
             new GoldenCase(
-                "b",
-                "test",
-                "frage b",
-                List.of("b.md"),
-                "cat",
-                "easy",
-                "de",
-                "t",
-                null,
-                null,
-                null,
-                null,
-                null));
+                "b", "test", "frage b", List.of("b.md"), "cat", "easy", "de", "t", null, null));
     return PipelineRetrievalEvaluator.report(
         PipelineRetrievalEvaluator.evaluateAll(
             goldenCases,
@@ -152,19 +128,7 @@ class MultiRunAggregatorTest {
     var goldenCasesRunB =
         List.of(
             new GoldenCase(
-                "a",
-                "test",
-                "frage a",
-                List.of("a.md"),
-                "cat",
-                "easy",
-                "de",
-                "t",
-                null,
-                null,
-                null,
-                null,
-                null));
+                "a", "test", "frage a", List.of("a.md"), "cat", "easy", "de", "t", null, null));
     var runB =
         PipelineRetrievalEvaluator.report(
             PipelineRetrievalEvaluator.evaluateAll(

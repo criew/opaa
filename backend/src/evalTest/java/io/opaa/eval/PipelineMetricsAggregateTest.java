@@ -21,19 +21,7 @@ class PipelineMetricsAggregateTest {
 
   private static GoldenCase goldenCase(String id, String category, List<String> expected) {
     return new GoldenCase(
-        id,
-        "test",
-        "query " + id,
-        expected,
-        category,
-        "easy",
-        "de",
-        "t",
-        null,
-        null,
-        null,
-        null,
-        null);
+        id, "test", "query " + id, expected, category, "easy", "de", "t", null, null);
   }
 
   private static RetrievalMetrics.WindowedQueryResult at8(

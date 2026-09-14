@@ -833,8 +833,7 @@ class RetrievalEvaluationHarnessTest {
             answerSpanOverall,
             documentWindowCoverage,
             answerSpanResolution,
-            // Issue #1043: declared vs. measured case state. Null for this domain, whose
-            // golden dataset carries no expected_state fields.
+            // Declared vs. measured case state on this path (expected_state.raw_vector).
             ExpectedStateAudit.fromRawVectorResults(results),
             MetadataFilterAudit.fromRawVectorResults(results),
             worstQueries,
