@@ -184,8 +184,8 @@ class GoldenCaseCurationTest {
    *
    * <p>All three domains rather than only {@code verwaltung}: the check costs nothing beyond
    * chunking the documents a span points at, and a {@code city-landmarks} span broken by a future
-   * chunking change is exactly as expensive to find late. The state- and class-related rules above
-   * stay verwaltung-specific; the state fields are checked for all three domains above.
+   * chunking change is exactly as expensive to find late. Only the class and filter rules stay
+   * verwaltung-specific; the state fields are checked for all three domains above.
    */
   @Test
   void everyAnswerSpanOfEveryDomainResolvesToAChunkOfItsExpectedDocument() throws IOException {

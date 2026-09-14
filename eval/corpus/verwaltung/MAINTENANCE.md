@@ -210,8 +210,8 @@ davor.
 Fälle löst nur der Pipeline-Pfad; sie bleiben `known_gap` und haben ihre Pfad-Asymmetrie damals
 als erwartete Abweichung nachgezogen bekommen (seit #1658 entfallen, siehe oben). Das ist der Zweck dieser Domäne, kein
 Mangel: „Ein Fall, den heute keine Variante löst, ist der wertvollste im Datensatz"
-(`docs/features/retrieval-benchmark.md`, Abschnitt 4). Die Begründung steht je Fall im Feld
-`expected_state_reason`; die Tabellen unten führen zusätzlich das gemessene Symptom.
+(`docs/features/retrieval-benchmark.md`, Abschnitt 4). Die Begründung steht je Fall und Pfad im
+Feld `expected_state.<pfad>.reason`; die Tabellen unten führen zusätzlich das gemessene Symptom.
 
 | Klasse | Fälle | `known_gap` Rohvektor | `known_gap` Pipeline | fehlender Baustein |
 |---|---|---|---|---|

@@ -64,8 +64,9 @@ fehlenden Mechanismus. Wer einen Datensatz mit einem Generator neu erzeugt, muss
 aus einem Messlauf wieder eintragen — die Generatoren kennen sie nicht.
 
 `comic-characters.json` und `city-landmarks.json` deklarieren Zustände erst seit #1658; übernommen
-ist der Ist-Zustand aus dem nächtlichen Lauf vom 14.09.2026, die Einzelbegründungen folgen mit der
-Neuvermessung in #1657.
+ist der Ist-Zustand aus dem nächtlichen Lauf vom 14.09.2026. Ihre `known_gap`-Gründe nennen bis
+dahin nur Quelllauf und Symptom; den fehlenden Baustein je Eintrag ergänzt #1657, unabhängig davon,
+ob sich die Baselines bewegen.
 
 **Wann ein Fall auf einem Pfad als `solved` gilt** (`io.opaa.eval.ExpectedStateAudit#isSolved`):
 alle erwarteten Dokumente im Fenster dieses Pfads **und** ein erwartetes Dokument auf Rang 1. Die
@@ -75,8 +76,9 @@ Fenster" auch dann erfüllt ist, wenn die falsche obenauf steht — genau die F�
 `metadata_filter` messen soll. Vor #1070 wären ohne die Zusatzbedingung 9 von 9 Fällen dieser
 Klasse „gelöst" gewesen, mit ihr waren es 4 — und auch diese vier wurden damals als `known_gap`
 geführt, weil ein Treffer ohne Filtermechanismus keine Fähigkeit belegt. Genau diese Strenge macht den
-heutigen Stand aussagekräftig: Seit dem Kernfeld-Filter (#1070, Teil 2) sind 9 der 12 Fälle
-`solved`, und zwar auf beiden Messpfaden und mit dem geprüften Mechanismus (Begründung je Fall im
+heutigen Stand aussagekräftig: Seit dem Kernfeld-Filter (#1070, Teil 2) waren 9 der 12 Fälle
+`solved`, heute sind es 10 je Pfad (seit #1308 auch `verw-meta-001`), jeweils mit dem geprüften
+Mechanismus (Begründung je Fall im
 Datensatz, Zusammenfassung in
 [`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md)).
 

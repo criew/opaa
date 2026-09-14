@@ -1215,10 +1215,10 @@ Läufen wiedergeben, deren Metriken die committeten Baselines bestätigen:
 | Domäne | Quelle der Zustände | Fälle | gelöst Rohvektor | gelöst Pipeline | je Pfad verschieden |
 |---|---|---|---|---|---|
 | `verwaltung` | CI-Lauf 34840623079 (Golden-Hash `4ff44ccc…`), bestätigt durch den lokalen CPU-Lauf `checkVerwaltungRetrievalBaseline` dieses Umbaus: beide Audits ohne Abweichung | 49 | 27 | 26 | 13 |
-| `comic-characters` | nächtlicher Lauf 34819759178 (Stand `6ff4c5f1`), grün | 121 | 44 | 52 | 10 |
-| `city-landmarks` | nächtlicher Lauf 34819759178 (Stand `6ff4c5f1`), grün | 108 | 106 | 104 | 2 |
+| `comic-characters` | nächtlicher Lauf 34819759178 (Stand `6ff4c5f1`; insgesamt rot wegen `verwaltung`, Job `evaluate (comic-characters)` grün) | 121 | 44 | 52 | 10 |
+| `city-landmarks` | nächtlicher Lauf 34819759178 (Stand `6ff4c5f1`; Job `evaluate (city-landmarks)` grün) | 108 | 106 | 104 | 2 |
 
 Für `verwaltung` sind die gemessenen Ursachen aus #1308 ohne Informationsverlust auf die Gründe je
 Pfad aufgeteilt. `comic-characters` und `city-landmarks` deklarieren erstmals Zustände; ihre Gründe
-nennen den Quelllauf und das gemessene Symptom, die Einzelbegründung folgt mit der Neuvermessung
-dieser Domänen in #1657.
+nennen den Quelllauf und das gemessene Symptom. Den fehlenden Baustein je `known_gap`-Eintrag
+ergänzt #1657, unabhängig davon, ob die Neuvermessung dort die Baselines bewegt.

@@ -100,8 +100,9 @@ Baseline-Neuziehung, nach dem Verfahren unten; das ist gewollt und kein Nebeneff
 Zustandswechsel behauptet, dass sich das Messergebnis geändert hat, also muss das gemessene
 Ergebnis mitkommen.
 
-**Eine reine Textänderung ist davon ausgenommen.** Wird ausschließlich ein `expected_state_reason`
-(oder ein anderer nicht messrelevanter Text) präzisiert, bewegt sich zwar der Hash, aber keine
+**Eine reine Textänderung ist davon ausgenommen.** Wird ausschließlich ein Grund
+(`expected_state.<pfad>.reason`, im Mehrrunden-Datensatz `expected_state_reason`) oder ein anderer
+nicht messrelevanter Text präzisiert, bewegt sich zwar der Hash, aber keine
 Messgrundlage: Der Fixpunkt `goldenDatasetSha256` wird dann **ohne** neuen Messlauf nachgezogen, und
 der PR hält fest, welche Felder sich geändert haben und dass `query`, die erwarteten Dokumente, ein
 etwaiger `confusable_document`/`topic_switch_turn` und jeder erwartete Zustand unberührt sind. Diese
@@ -119,8 +120,8 @@ Zustände. Alle sechs Einzelfragen-Baselines haben deshalb **ohne** neuen Messla
 mit datiertem Nachtrag in `notes`. Das ist kein Zustandswechsel im Sinne des vorletzten Absatzes:
 Eingetragen ist genau der Zustand, den die Fallergebnisse eines Laufs zeigen, dessen Metriken die
 committete Baseline bestätigen (`verwaltung`: CI-Lauf 34840623079 und der lokale
-`checkVerwaltungRetrievalBaseline` dieses Umbaus; `comic-characters`/`city-landmarks`: der grüne
-nächtliche Lauf 34819759178). `query`, erwartete Dokumente und alle Filterfelder sind unberührt; die
+`checkVerwaltungRetrievalBaseline` dieses Umbaus; `comic-characters`/`city-landmarks`: die grünen
+Jobs beider Domänen im nächtlichen Lauf 34819759178, der wegen `verwaltung` insgesamt rot war). `query`, erwartete Dokumente und alle Filterfelder sind unberührt; die
 Mehrrunden-Baseline ist nicht betroffen, weil ihr Datensatz unverändert blieb. Keine
 Messvertragsversion steigt (ADR-0012, Nachtrag „Erwarteter Zustand je Messpfad").
 

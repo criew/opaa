@@ -34,9 +34,8 @@ public record GoldenCase(
     // GoldenCaseCuration#SINGLE_DOCUMENT_ANSWER_SPAN_RULE for the reasoning and the enforcement.
     @JsonProperty("answer_span") String answerSpan,
     // docs/features/retrieval-benchmark.md §5 "Zustandsfelder": the last deliberately accepted
-    // state
-    // of this case, separately for each measurement path, so a red case is distinguishable from a
-    // regression without asking anyone's memory. Required on every case of every committed
+    // state of this case, separately for each measurement path, so a red case is distinguishable
+    // from a regression without asking anyone's memory. Required on every case of every committed
     // dataset (GoldenCaseCurationTest); null only in synthetic test cases.
     @JsonProperty("expected_state") ExpectedStateByPath expectedState,
     // Issue #1070 (Teil 2): the core-field filter both measurement paths apply for this case -

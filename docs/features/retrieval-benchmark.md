@@ -613,8 +613,8 @@ Drei Milderungen, keine Lösungen:
 > aus Fallergebnissen übernommen, nicht neu gemessen: `verwaltung` aus einem aktuellen CPU-Lauf (13
 > Fälle mit je Pfad verschiedenem Zustand, Gründe aus der Ursachenmessung von #1308 je Pfad
 > aufgeteilt); `comic-characters` (10 asymmetrische Fälle) und `city-landmarks` (2) deklarieren
-> damit erstmals Zustände, übernommen aus dem nächtlichen Lauf vom 14.09.2026, Einzelbegründungen
-> folgen mit der Neuvermessung in #1657. Die Golden-Hash-Fixpunkte aller sechs Einzelfragen-Baselines
+> damit erstmals Zustände, übernommen aus dem nächtlichen Lauf vom 14.09.2026 (Jobs dieser beiden
+> Domänen grün); den fehlenden Baustein je `known_gap`-Eintrag ergänzt #1657. Die Golden-Hash-Fixpunkte aller sechs Einzelfragen-Baselines
 > sind ohne neuen Messlauf nachgezogen; keine Messvertragsversion steigt, weil sich weder eine
 > Metrikdefinition noch ein Fixpunkt ändert (ADR-0012, Nachtrag „Erwarteter Zustand je Messpfad").
 > Einzelbegründungen: `eval/corpus/verwaltung/MAINTENANCE.md`.
