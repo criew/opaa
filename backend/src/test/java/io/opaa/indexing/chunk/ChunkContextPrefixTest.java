@@ -50,6 +50,73 @@ class ChunkContextPrefixTest {
     assertThat(ChunkContextPrefix.structureContextFrom(42, "37,00 EUR")).isNull();
   }
 
+  // regression guard for #1308: a Markdown H1 equal to the title must not repeat it in the prefix
+  @Test
+  void dropsALeadingHeadingThatRepeatsTheTitleFromTheStructureContext() {
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Verwaltungsgebührensatzung",
+                List.of(),
+                "Abschn. Verwaltungsgebührensatzung › § 7 Gebühren",
+                "37,00 EUR"))
+        .isEqualTo("Verwaltungsgebührensatzung › § 7 Gebühren");
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Verwaltungsgebührensatzung",
+                List.of("Fassung 2026"),
+                "Abschn.  verwaltungsGEBÜHRENsatzung  › § 7 Gebühren",
+                "37,00 EUR"))
+        .as("the title comparison ignores case and surrounding or repeated whitespace")
+        .isEqualTo("Verwaltungsgebührensatzung › Fassung 2026 › § 7 Gebühren");
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Verwaltungsgebührensatzung",
+                List.of(),
+                "Abschn. Verwaltungsgebührensatzung",
+                "Satzung der Stadt Kalkstadt"))
+        .as("a path that is nothing but the title leaves no Strukturkontext")
+        .isEqualTo("Verwaltungsgebührensatzung");
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Verwaltungsgebührensatzung",
+                List.of(),
+                "Abschn. Gebührenordnung › § 7 Gebühren",
+                "37,00 EUR"))
+        .as("a heading that differs from the title stays")
+        .isEqualTo("Verwaltungsgebührensatzung › Gebührenordnung › § 7 Gebühren");
+  }
+
+  // regression guard for #1308: the repetition check must see through the Markdown heading marker
+  @Test
+  void dropsTheStructureContextWhenTheChunkOpensWithItAsAMarkdownHeading() {
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Satzung",
+                List.of(),
+                "Abschn. § 7 Gebühren",
+                "   ### § 7 Gebühren\n\n37,00 EUR"))
+        .isEqualTo("Satzung");
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Verwaltungsgebührensatzung",
+                List.of(),
+                "Abschn. Verwaltungsgebührensatzung › § 7 Gebühren",
+                "## § 7 Gebühren\n\n37,00 EUR"))
+        .isEqualTo("Verwaltungsgebührensatzung");
+  }
+
   @Test
   void formatsThePrefixInBracketsAheadOfTheUntouchedChunkText() {
     assertThat(ChunkContextPrefix.format("Satzung › Fassung 2026", "37,00 EUR"))
