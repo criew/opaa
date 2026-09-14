@@ -1481,9 +1481,12 @@ durch `›`; ein leeres Segment entfällt vollständig, und ein Präfix ohne jed
   demselben Dokument einen Präfix, den die Aufnahme ihm bewusst verweigert hatte.
 - **Der Strukturkontext ist der Abschnittspfad des Chunks**, gelesen aus seinem Fundort und nur dort,
   wo dieser einen Abschnitt nennt (`Abschn. …`). Eine Seiten-, Folien- oder Zeilenangabe benennt keinen
-  Inhalt und würde beide Indizes nur verdünnen. Beginnt der Chunk-Text bereits mit der Überschrift —
-  eine Pipeline, die an Überschriften schneidet, behält sie im Text —, entfällt das Segment ebenfalls:
-  Es davorzustellen fügt nichts hinzu.
+  Inhalt und würde beide Indizes nur verdünnen. Führende Überschriften, die dem Titel entsprechen
+  (ohne Beachtung von Groß-/Kleinschreibung und Leerraum), entfallen aus dem Pfad — sonst stünde der
+  Titel bei einer H1 gleich dem Titel doppelt im Präfix (#1308); bleibt nichts übrig, entfällt das
+  Segment. Beginnt der Chunk-Text bereits mit dem Pfad oder dem gekürzten Rest, auch hinter einer
+  Markdown-Überschriftenmarke (`## `) — eine Pipeline, die an Überschriften schneidet, behält sie im
+  Text —, entfällt das Segment ebenfalls: Es davorzustellen fügt nichts hinzu.
 - **Der Volltextindex liest dieselbe `EMBED`-Form wie die Einbettung** (`FullTextChunkStore`), statt
   den Präfix ein zweites Mal zu bilden — die beiden können damit nicht auseinanderlaufen. Der
   gespeicherte Chunk-Text bleibt unangetastet, der Beleg zitiert weiter den Originalwortlaut. Weil sich

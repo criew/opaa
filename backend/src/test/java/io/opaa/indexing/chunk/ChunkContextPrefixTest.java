@@ -36,18 +36,142 @@ class ChunkContextPrefixTest {
 
   @Test
   void takesTheStructureContextOnlyFromASectionFundortTheChunkDoesNotAlreadyOpenWith() {
-    assertThat(ChunkContextPrefix.structureContextFrom("Abschn. § 7 Gebühren", "37,00 EUR"))
+    assertThat(
+            ChunkContextPrefix.structureContextFrom("Satzung", "Abschn. § 7 Gebühren", "37,00 EUR"))
         .isEqualTo("§ 7 Gebühren");
-    assertThat(ChunkContextPrefix.structureContextFrom("S. 2–4", "37,00 EUR"))
+    assertThat(ChunkContextPrefix.structureContextFrom("Satzung", "S. 2–4", "37,00 EUR"))
         .as("a page number names no content")
         .isNull();
     assertThat(
             ChunkContextPrefix.structureContextFrom(
-                "Abschn. § 7 Gebühren", "§ 7 Gebühren\n\n37,00 EUR"))
+                "Satzung", "Abschn. § 7 Gebühren", "§ 7 Gebühren\n\n37,00 EUR"))
         .as("a pipeline that cuts on headings keeps them in the text; repeating adds nothing")
         .isNull();
-    assertThat(ChunkContextPrefix.structureContextFrom(null, "37,00 EUR")).isNull();
-    assertThat(ChunkContextPrefix.structureContextFrom(42, "37,00 EUR")).isNull();
+    assertThat(ChunkContextPrefix.structureContextFrom("Satzung", null, "37,00 EUR")).isNull();
+    assertThat(ChunkContextPrefix.structureContextFrom("Satzung", 42, "37,00 EUR")).isNull();
+  }
+
+  // regression guard for #1308: a Markdown H1 equal to the title must not repeat it in the prefix
+  @Test
+  void dropsALeadingHeadingThatRepeatsTheTitleFromTheStructureContext() {
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Verwaltungsgebührensatzung",
+                List.of(),
+                "Abschn. Verwaltungsgebührensatzung › § 7 Gebühren",
+                "37,00 EUR"))
+        .isEqualTo("Verwaltungsgebührensatzung › § 7 Gebühren");
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Verwaltungsgebührensatzung",
+                List.of("Fassung 2026"),
+                "Abschn.  verwaltungsGEBÜHRENsatzung  › § 7 Gebühren",
+                "37,00 EUR"))
+        .as("the title comparison ignores case and surrounding or repeated whitespace")
+        .isEqualTo("Verwaltungsgebührensatzung › Fassung 2026 › § 7 Gebühren");
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Verwaltungsgebührensatzung",
+                List.of(),
+                "Abschn. Verwaltungsgebührensatzung",
+                "Satzung der Stadt Kalkstadt"))
+        .as("a path that is nothing but the title leaves no Strukturkontext")
+        .isEqualTo("Verwaltungsgebührensatzung");
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Verwaltungsgebührensatzung",
+                List.of(),
+                "Abschn. Gebührenordnung › § 7 Gebühren",
+                "37,00 EUR"))
+        .as("a heading that differs from the title stays")
+        .isEqualTo("Verwaltungsgebührensatzung › Gebührenordnung › § 7 Gebühren");
+  }
+
+  // regression guard for #1308: the repetition check must see through the Markdown heading marker
+  @Test
+  void dropsTheStructureContextWhenTheChunkOpensWithItAsAMarkdownHeading() {
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Satzung",
+                List.of(),
+                "Abschn. § 7 Gebühren",
+                "   ### § 7 Gebühren\n\n37,00 EUR"))
+        .isEqualTo("Satzung");
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Verwaltungsgebührensatzung",
+                List.of(),
+                "Abschn. Verwaltungsgebührensatzung › § 7 Gebühren",
+                "## § 7 Gebühren\n\n37,00 EUR"))
+        .isEqualTo("Verwaltungsgebührensatzung");
+  }
+
+  @Test
+  void keepsNoStructureContextWhenTheChunkOpensWithTheWholeHeadingPathIncludingTheTitle() {
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Verwaltungsgebührensatzung",
+                List.of(),
+                "Abschn. Verwaltungsgebührensatzung › § 7 Gebühren",
+                "Verwaltungsgebührensatzung › § 7 Gebühren\n\n37,00 EUR"))
+        .as("the heading-section pipelines open every chunk with its full heading path")
+        .isEqualTo("Verwaltungsgebührensatzung");
+  }
+
+  @Test
+  void dropsTheStructureContextWhenTheChunkOpensWithSeveralMarkdownHeadingLinesSpellingIt() {
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Satzung",
+                List.of(),
+                "Abschn. Gebührenordnung › § 7 Gebühren",
+                "# Gebührenordnung\n\n## § 7 Gebühren\n\n37,00 EUR"))
+        .isEqualTo("Satzung");
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Gebührenordnung",
+                List.of(),
+                "Abschn. Gebührenordnung › § 7 Gebühren",
+                "# Gebührenordnung\n\n## § 7 Gebühren\n\n37,00 EUR"))
+        .isEqualTo("Gebührenordnung");
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Satzung",
+                List.of(),
+                "Abschn. Gebührenordnung › § 7 Gebühren",
+                "# Gebührenordnung\n\n## § 8 Fälligkeit\n\n37,00 EUR"))
+        .as("heading lines naming a different section keep the context")
+        .isEqualTo("Satzung › Gebührenordnung › § 7 Gebühren");
+  }
+
+  // The stamp decides which documents the Nachlauf re-embeds; changing its input spelling would
+  // select every document at once. The expected values are SHA-256 over NUL-joined segments.
+  @Test
+  void keepsTheStampOfTitleAndValuesStable() {
+    assertThat(ChunkContextPrefix.stampOf("Satzung", List.of("Fassung 2026", "Kommune")))
+        .isEqualTo("4b19fe3a56d3562766dc8c7527910c27");
+    assertThat(ChunkContextPrefix.stampOf(null, null))
+        .isEqualTo("e3b0c44298fc1c149afbf4c8996fb924");
   }
 
   @Test
