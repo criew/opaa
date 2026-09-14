@@ -367,6 +367,59 @@ class GoldenCaseCurationTest {
         .contains("expected_state.raw_vector.since 'irgendwann 2026' is not an ISO date");
   }
 
+  private static GoldenCase withRawVectorReason(GoldenCase.ExpectedState state, String reason) {
+    return new GoldenCase(
+        "a",
+        "test-domain",
+        "frage",
+        List.of("a.md"),
+        "multi_hop",
+        "medium",
+        "de",
+        "f",
+        null,
+        new GoldenCase.ExpectedStateByPath(
+            new GoldenCase.PathState(state, "2026-09-14", reason),
+            new GoldenCase.PathState(GoldenCase.ExpectedState.SOLVED, "2026-09-14", "Grund")));
+  }
+
+  /**
+   * The marker for a hit without the tested mechanism only makes sense on a solved state: a
+   * known_gap with it would claim a hit that is not there.
+   */
+  @Test
+  void rejectsTheWithoutMechanismPrefixOnAKnownGap() {
+    String marked = GoldenCaseCuration.WITHOUT_MECHANISM_PREFIX + "rankt zufällig oben";
+
+    assertThat(
+            GoldenCaseCuration.validateStates(
+                List.of(withRawVectorReason(GoldenCase.ExpectedState.KNOWN_GAP, marked))))
+        .extracting(GoldenCaseCuration.Violation::rule)
+        .contains(GoldenCaseCuration.WITHOUT_MECHANISM_PREFIX_RULE);
+    assertThat(
+            GoldenCaseCuration.validateStates(
+                List.of(withRawVectorReason(GoldenCase.ExpectedState.SOLVED, marked))))
+        .isEmpty();
+  }
+
+  /** The marker is searchable only in its exact form, at the start of the reason. */
+  @Test
+  void rejectsTheWithoutMechanismMarkerOutsideItsExactPrefixForm() {
+    assertThat(GoldenCaseCuration.WITHOUT_MECHANISM_PREFIX).isEqualTo("Ohne geprüften Mechanismus: ");
+    for (String misplaced :
+        List.of(
+            "Gelöst. Ohne geprüften Mechanismus: rankt zufällig oben",
+            "ohne geprüften Mechanismus: rankt zufällig oben",
+            "Ohne geprüften Mechanismus rankt zufällig oben")) {
+      assertThat(
+              GoldenCaseCuration.validateStates(
+                  List.of(withRawVectorReason(GoldenCase.ExpectedState.SOLVED, misplaced))))
+          .as(misplaced)
+          .extracting(GoldenCaseCuration.Violation::rule)
+          .contains(GoldenCaseCuration.WITHOUT_MECHANISM_PREFIX_RULE);
+    }
+  }
+
   @Test
   void rejectsAnExpectedDocumentThatIsNotInTheCorpus() {
     assertThat(
@@ -412,6 +465,18 @@ class GoldenCaseCurationTest {
         .extracting(GoldenCaseCuration.Violation::rule)
         .anyMatch(rule -> rule.contains("distinct expected_documents sets"))
         .noneMatch(rule -> rule.contains("case class 'multi_hop' has"));
+  }
+
+  /** The committed datasets use the marker at all, so a renamed prefix cannot pass unnoticed. */
+  @Test
+  void theVerwaltungDatasetMarksHitsWithoutTheTestedMechanism() throws IOException {
+    assertThat(verwaltungCases())
+        .anyMatch(
+            c ->
+                c.expectedState()
+                    .rawVector()
+                    .reason()
+                    .startsWith(GoldenCaseCuration.WITHOUT_MECHANISM_PREFIX));
   }
 
   /** The state enum's JSON spelling is part of the committed dataset's schema, not an internal. */
