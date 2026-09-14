@@ -31,9 +31,6 @@ class RetrievalMetricsTest {
         "en",
         "type",
         null,
-        null,
-        null,
-        null,
         null);
   }
 

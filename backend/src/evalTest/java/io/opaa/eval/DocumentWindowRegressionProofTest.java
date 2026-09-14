@@ -74,9 +74,6 @@ class DocumentWindowRegressionProofTest {
         "en",
         "synthetic",
         null,
-        null,
-        null,
-        null,
         null);
   }
 

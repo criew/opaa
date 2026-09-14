@@ -64,9 +64,6 @@ class PipelineHarnessSupportTest {
             "de",
             "t",
             null,
-            null,
-            null,
-            null,
             null));
   }
 

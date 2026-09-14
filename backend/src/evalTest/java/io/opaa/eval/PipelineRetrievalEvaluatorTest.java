@@ -27,13 +27,10 @@ class PipelineRetrievalEvaluatorTest {
         "de",
         "t",
         null,
-        null,
-        null,
-        null,
         null);
   }
 
-  private static PipelineEvaluationReport.PipelineRunConfiguration runConfiguration() {
+  static PipelineEvaluationReport.PipelineRunConfiguration runConfiguration() {
     return new PipelineEvaluationReport.PipelineRunConfiguration(
         "test-domain",
         "ollama",

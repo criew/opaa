@@ -30,9 +30,6 @@ class PipelineMetricsAggregateTest {
         "de",
         "t",
         null,
-        null,
-        null,
-        null,
         null);
   }
 

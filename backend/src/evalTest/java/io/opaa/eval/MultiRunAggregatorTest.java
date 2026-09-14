@@ -28,9 +28,6 @@ class MultiRunAggregatorTest {
                 "de",
                 "t",
                 null,
-                null,
-                null,
-                null,
                 null),
             new GoldenCase(
                 "b",
@@ -41,9 +38,6 @@ class MultiRunAggregatorTest {
                 "easy",
                 "de",
                 "t",
-                null,
-                null,
-                null,
                 null,
                 null));
     return PipelineRetrievalEvaluator.report(
@@ -160,9 +154,6 @@ class MultiRunAggregatorTest {
                 "easy",
                 "de",
                 "t",
-                null,
-                null,
-                null,
                 null,
                 null));
     var runB =

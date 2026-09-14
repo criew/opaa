@@ -37,7 +37,7 @@ class PipelinePathIsolationTest {
 
   private static GoldenCase goldenCase(List<String> expected) {
     return new GoldenCase(
-        "a", "test", "frage", expected, "cat", "easy", "de", "t", null, null, null, null, null);
+        "a", "test", "frage", expected, "cat", "easy", "de", "t", null, null);
   }
 
   /**

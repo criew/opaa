@@ -185,8 +185,7 @@ class ConversationHarnessSupportTest {
         null,
         GoldenCase.ExpectedState.KNOWN_GAP,
         "2026-09-11",
-        "Grund",
-        null);
+        "Grund");
   }
 
   private static PipelineHarnessSupport.RunIdentity identity() {

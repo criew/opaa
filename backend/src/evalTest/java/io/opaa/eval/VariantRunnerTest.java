@@ -63,9 +63,6 @@ class VariantRunnerTest {
                 "de",
                 "t",
                 null,
-                null,
-                null,
-                null,
                 null));
     Map<String, List<String>> rankedFileNames =
         Map.of("frage a", hitRateForCaseA > 0 ? List.of("a.md") : List.of());
@@ -197,9 +194,6 @@ class VariantRunnerTest {
                           "easy",
                           "de",
                           "t",
-                          null,
-                          null,
-                          null,
                           null,
                           null));
               return PipelineRetrievalEvaluator.report(

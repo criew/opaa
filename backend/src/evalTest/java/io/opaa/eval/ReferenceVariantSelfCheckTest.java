@@ -48,9 +48,6 @@ class ReferenceVariantSelfCheckTest {
                 "de",
                 "t",
                 null,
-                null,
-                null,
-                null,
                 null));
     return PipelineRetrievalEvaluator.report(
         PipelineRetrievalEvaluator.evaluateAll(

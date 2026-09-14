@@ -34,9 +34,6 @@ class VariantReportWriterTest {
             "de",
             "t",
             null,
-            null,
-            null,
-            null,
             null);
     return PipelineRetrievalEvaluator.report(
         PipelineRetrievalEvaluator.evaluateAll(
@@ -159,9 +156,6 @@ class VariantReportWriterTest {
             "easy",
             "de",
             "t",
-            null,
-            null,
-            null,
             null,
             null);
     List<List<String>> subQueriesPerRun =

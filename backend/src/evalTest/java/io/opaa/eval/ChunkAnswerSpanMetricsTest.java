@@ -19,9 +19,6 @@ class ChunkAnswerSpanMetricsTest {
         "de",
         "factual",
         span,
-        null,
-        null,
-        null,
         null);
   }
 
@@ -37,9 +34,6 @@ class ChunkAnswerSpanMetricsTest {
             "easy",
             "en",
             "t",
-            null,
-            null,
-            null,
             null,
             null);
 
