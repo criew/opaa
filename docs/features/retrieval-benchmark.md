@@ -582,6 +582,19 @@ Drei Milderungen, keine Lösungen:
 > Transaktion wie seine Vektorzeile, zurückliegen kann nur noch die Fassung einer Zeile. Auch dies
 > eine reine Fixpunkt-Umbenennung ohne neuen Messlauf — auf dem frisch indizierten Korpus bleibt
 > der Wert `true`.
+>
+> **Fortschreibung (Issue #1308, 09/2026):** Seit #1341 steht im Kontextpräfix der Kernfeld Titel
+> statt des humanisierten Dateinamens — gewollt (Maintainer-Entscheidung 14.09.2026). Die
+> Einbettungseingabe aller 998 Chunks der Verwaltungsdomäne unterscheidet sich gegenüber dem Stand
+> davor ausschließlich in diesem Titel; auf dem Pipeline-Pfad liefert er über den Volltextindex
+> zusätzlich Lexeme. Beide Baselines der Domäne sind neu gezogen, und **14 Fälle** haben ihre
+> Zustandsfelder nachgezogen bekommen, nach der unveränderten Regel „gelöst auf beiden Pfaden":
+> fünf wechseln auf `solved` (`verw-lit-008`, `verw-lit-009`, `verw-comp-009`, `verw-hop-002`,
+> `verw-meta-001`), vier auf `known_gap` (`verw-id-001`, `verw-id-004`, `verw-hop-003` verlieren Rang 1
+> auf dem Rohvektor-Pfad, `verw-comp-006` das Fenster auf dem Pipeline-Pfad), fünf behalten
+> `known_gap` und bekommen ihre Pfad-Asymmetrie als `expected_state_exception`. Erstmals gibt es
+> dabei Ausnahmen in der **Gegenrichtung** — auf dem Rohvektor-Pfad gelöst, auf dem Pipeline-Pfad
+> nicht (`verw-comp-004` bis `-007`). Einzelbegründungen: `eval/corpus/verwaltung/MAINTENANCE.md`.
 
 
 Fünf Kategorien kommen hinzu. Jede hat ein benanntes Fehlerbild, eine überprüfbare Ground Truth und

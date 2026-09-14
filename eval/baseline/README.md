@@ -55,7 +55,7 @@ Anfang an ein Urteil (`checkVerwaltungRetrievalBaseline` führt beide Vergleiche
 Besonderheiten, alle in den `notes` der Dateien selbst festgehalten:
 
 - **Die Zahlen sind bewusst niedrig** (Gesamt-nDCG@10 0,575 / nDCG@8 0,558). Diese Domäne misst
-  benannte Fehlerbilder, nicht Abdeckung: 30 der 49 Fälle sind als `known_gap` geführt (siehe
+  benannte Fehlerbilder, nicht Abdeckung: 29 der 49 Fälle sind als `known_gap` geführt (siehe
   [`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md)). Eine spätere
   Verbesserung dieser Zahlen ist der erwartete Nutzen eines Retrieval-Bausteins — sie ist der
   Grund, warum die Baseline **jetzt** gezogen wurde und nicht danach.
