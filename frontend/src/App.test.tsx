@@ -23,13 +23,19 @@ describe('App', () => {
     })
   })
 
-  it('redirects to the default space and its most recently used chat by default', async () => {
+  it('redirects to an empty chat in the default space by default', async () => {
     render(<App />)
     await waitFor(() => {
       expect(
         screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen'),
       ).toBeInTheDocument()
     })
+    // Not merely "a chat page rendered": the route must be the not-yet-persisted draft, and the
+    // draft's empty state must be what the user sees - no messages of an earlier conversation.
+    expect(window.location.pathname).toMatch(/^\/spaces\/[^/]+\/chats\/new$/)
+    expect(
+      screen.getByRole('heading', { name: 'Womit kann ich Ihnen heute helfen?' }),
+    ).toBeInTheDocument()
   })
 
   it('shows the administration column to a SYSTEM_ADMIN (#805)', async () => {

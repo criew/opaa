@@ -179,14 +179,56 @@ describe('Sidebar', () => {
     expect(screen.getByText('Persönlich · 1 Mitglied')).toBeInTheDocument()
   })
 
-  it('navigates to a space chosen in the switcher', async () => {
+  it('opens an empty chat in a space chosen in the switcher', async () => {
     const user = userEvent.setup()
     renderSidebarAtRoute('/chat')
 
     await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
     await user.click(screen.getByRole('menuitem', { name: /Engineering/ }))
 
-    expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-engineering')
+    expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-engineering/chats/new')
+  })
+
+  // An archived space rejects new chats server-side (ChatService) and ChatList disables its
+  // "Neuer Chat" button, so it must land on its overview rather than on a draft whose first
+  // message would fail.
+  it('sends an archived space chosen in the switcher to its overview instead', async () => {
+    useSpaceStore.setState({
+      spaces: [
+        {
+          id: 'space-personal',
+          name: 'Meine Dokumente',
+          description: 'Private',
+          isDefault: true,
+          archived: false,
+          visibility: 'PRIVATE',
+          memberCount: 1,
+          userRole: 'ADMIN',
+          createdAt: '2026-03-01T10:00:00Z',
+          updatedAt: '2026-03-01T10:00:00Z',
+        },
+        {
+          id: 'space-archived',
+          name: 'Stillgelegt',
+          description: 'Abgeschlossenes Vorhaben',
+          isDefault: false,
+          archived: true,
+          visibility: 'PRIVATE',
+          memberCount: 2,
+          userRole: 'ADMIN',
+          createdAt: '2026-03-01T10:00:00Z',
+          updatedAt: '2026-03-01T10:00:00Z',
+        },
+      ],
+      isLoadingList: false,
+    })
+    const user = userEvent.setup()
+    renderSidebarAtRoute('/chat')
+
+    await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
+    await user.click(screen.getByRole('menuitem', { name: /Stillgelegt/ }))
+
+    expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-archived')
   })
 
   it('navigates to the spaces overview via the switcher', async () => {
