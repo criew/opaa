@@ -77,9 +77,8 @@ class GoldenCaseCurationTest {
 
   /**
    * Every case of every domain declares state, date and reason on both measurement paths — the
-   * schema half of §5's requirement. The reason text is deliberately not pattern-checked: what
-   * makes it useful is that a human wrote it, and any pattern would only invite a formulation that
-   * satisfies the pattern.
+   * schema half of §5's requirement. Beyond the without-mechanism prefix the reason text is
+   * deliberately not pattern-checked: what makes it useful is that a human wrote it.
    */
   @Test
   void everyCaseOfEveryDomainDeclaresItsStateOnBothPaths() throws IOException {
@@ -405,7 +404,8 @@ class GoldenCaseCurationTest {
   /** The marker is searchable only in its exact form, at the start of the reason. */
   @Test
   void rejectsTheWithoutMechanismMarkerOutsideItsExactPrefixForm() {
-    assertThat(GoldenCaseCuration.WITHOUT_MECHANISM_PREFIX).isEqualTo("Ohne geprüften Mechanismus: ");
+    assertThat(GoldenCaseCuration.WITHOUT_MECHANISM_PREFIX)
+        .isEqualTo("Ohne geprüften Mechanismus: ");
     for (String misplaced :
         List.of(
             "Gelöst. Ohne geprüften Mechanismus: rankt zufällig oben",

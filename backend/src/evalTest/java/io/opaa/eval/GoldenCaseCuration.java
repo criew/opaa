@@ -7,6 +7,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -68,6 +69,19 @@ public final class GoldenCaseCuration {
    * Upper bound of the existing set-question window (docs/features/search-quality-evaluation.md).
    */
   public static final int MAXIMUM_EXPECTED_DOCUMENTS = 15;
+
+  /**
+   * Fixed start of the reason of a solved path state whose hit is not attributable to the mechanism
+   * its case class measures (docs/features/retrieval-benchmark.md §5).
+   */
+  public static final String WITHOUT_MECHANISM_PREFIX = "Ohne geprüften Mechanismus: ";
+
+  private static final String WITHOUT_MECHANISM_MARKER_PHRASE = "geprüften mechanismus";
+
+  public static final String WITHOUT_MECHANISM_PREFIX_RULE =
+      "the marker '"
+          + WITHOUT_MECHANISM_PREFIX.strip()
+          + "' is allowed only as the exact start of a solved state's reason";
 
   /**
    * The five case classes of docs/features/retrieval-benchmark.md §5, in the order the
@@ -249,6 +263,18 @@ public final class GoldenCaseCuration {
         violations);
   }
 
+  /**
+   * A marked reason starts with the exact prefix and belongs to a solved state; any other mention
+   * of the marker phrase would escape a search for the prefix.
+   */
+  private static boolean withoutMechanismMarkerIsWellFormed(GoldenCase.PathState pathState) {
+    String reason = pathState.reason();
+    if (reason.startsWith(WITHOUT_MECHANISM_PREFIX)) {
+      return pathState.state() == GoldenCase.ExpectedState.SOLVED;
+    }
+    return !reason.toLowerCase(Locale.ROOT).contains(WITHOUT_MECHANISM_MARKER_PHRASE);
+  }
+
   private static void validatePathState(
       String id, String field, GoldenCase.PathState pathState, List<Violation> violations) {
     if (pathState == null) {
@@ -260,6 +286,8 @@ public final class GoldenCaseCuration {
     }
     if (pathState.reason() == null || pathState.reason().isBlank()) {
       violations.add(new Violation(id, field + ".reason is missing or blank"));
+    } else if (!withoutMechanismMarkerIsWellFormed(pathState)) {
+      violations.add(new Violation(id + " (" + field + ")", WITHOUT_MECHANISM_PREFIX_RULE));
     }
     String since = pathState.since();
     if (since == null || since.isBlank()) {

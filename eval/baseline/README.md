@@ -115,7 +115,8 @@ sich bewegt, gilt wieder der Absatz darüber.
 `expected_state` hat sich in allen drei Einzelfragen-Datensätzen geändert (ein Eintrag je Pfad,
 `expected_state_exception` entfällt), `comic-characters` und `city-landmarks` deklarieren erstmals
 Zustände. Alle sechs Einzelfragen-Baselines haben deshalb **ohne** neuen Messlauf nur
-`goldenDatasetSha256` nachgezogen bekommen (`verwaltung` `4ff44ccc…` → `aba8a638…`,
+`goldenDatasetSha256` nachgezogen bekommen (`verwaltung` `4ff44ccc…` → `aba8a638…` und nach dem
+Präfix `Ohne geprüften Mechanismus: ` in 28 Pfad-Gründen → `88bf30ca…`,
 `comic-characters` `20ceafc0…` → `e5054926…`, `city-landmarks` `7739c6ff…` → `40dcb03a…`), jeweils
 mit datiertem Nachtrag in `notes`. Das ist kein Zustandswechsel im Sinne des vorletzten Absatzes:
 Eingetragen ist genau der Zustand, den die Fallergebnisse eines Laufs zeigen, dessen Metriken die

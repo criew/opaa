@@ -535,9 +535,22 @@ Drei Milderungen, keine Lösungen:
 > #1658 wird der erwartete Zustand **je Messpfad** geführt (`expected_state.raw_vector`,
 > `expected_state.pipeline`; Schema unter „Zustandsfelder" unten), und das Audit jedes Pfads prüft
 > nur gegen den eigenen Eintrag. Eine dauerhafte Pfad-Asymmetrie sind damit zwei verschiedene
-> Zustände; die Fundliste bleibt leer, solange nichts Neues passiert ist. Ein Treffer ohne den
-> geprüften Mechanismus wird auf dem Pfad, der ihn liefert, als `solved` festgeschrieben, und sein
-> Grund benennt den fehlenden Mechanismus — kippt er später, meldet das Audit ihn als Rückschritt.
+> Zustände; die Fundliste bleibt leer, solange nichts Neues passiert ist.
+>
+> **Treffer ohne den geprüften Mechanismus** (Maintainer-Entscheidung 14.09.2026) bleiben auf ihrem
+> Pfad `solved`. Ihr `reason` beginnt mit dem festen Präfix `Ohne geprüften Mechanismus: `, gefolgt
+> von der eigentlichen Begründung, damit sie ohne Prosa-Lesen auffindbar sind. Gesetzt wird das
+> Präfix, wenn der Treffer auf diesem Pfad nicht dem Mechanismus zuzurechnen ist, den die Fallklasse
+> misst: weil der Mechanismus auf dem Pfad nicht existiert (Komposita-Zerlegung und Zusammenführung
+> von Ketten gibt es auf keinem Pfad, lexikalischen Pfad und unzerlegte Kennungs-Tokens nur auf dem
+> Pipeline-Pfad), weil der Fall dort nachweislich schon vor dem Mechanismus gelöst war (etwa
+> `verw-meta-007`/`-009` vor dem Kernfeld-Filter) oder weil der Grund selbst einen Treffer ohne
+> eigenen Baustein festhält. Nur ein `solved`-Zustand darf das Präfix tragen, und nur als exakten
+> Anfang des Grunds (`GoldenCaseCuration`). Verliert ein solcher Fall seinen Treffer, meldet das
+> Audit ihn als Rückschritt („als `solved` geführt, aber nicht gelöst“); der Zustand wird dann
+> bewusst und datiert auf `known_gap` nachgezogen — der Rückschritt ist dort erwartbar, weil nie ein
+> Mechanismus ihn trug.
+>
 > Eine Ausnahme (`expected_state_exception`) gibt es nicht mehr. Das Audit meldet, es lässt den Lauf
 > nicht fehlschlagen: Ein Zustandswechsel bleibt eine bewusste, datierte Entscheidung.
 >

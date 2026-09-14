@@ -1191,8 +1191,13 @@ je Pfad.**
   (alle erwarteten Dokumente im Fenster **und** ein erwartetes auf Rang 1), angewandt auf das Fenster
   des jeweiligen Pfads.
 - **Treffer ohne den geprüften Mechanismus.** Früher der zweite Anwendungsfall einer Ausnahme; jetzt
-  wird ein solcher Fall auf dem Pfad, der ihn löst, als `solved` festgeschrieben, und der Grund
-  benennt den fehlenden Mechanismus. Kippt er später, meldet das Audit einen Rückschritt.
+  wird ein solcher Fall auf dem Pfad, der ihn löst, als `solved` festgeschrieben, und sein Grund
+  beginnt mit dem festen Präfix `Ohne geprüften Mechanismus: ` (Maintainer-Entscheidung vom
+  14.09.2026; Regel und Fallliste in `eval/corpus/verwaltung/MAINTENANCE.md`). `GoldenCaseCuration`
+  lässt das Präfix nur auf `solved` und nur als exakten Anfang zu — ohne neues Schemafeld. Kippt ein
+  solcher Fall, meldet das Audit einen Rückschritt, und der Zustand wird bewusst auf `known_gap`
+  nachgezogen. In `verwaltung` tragen es 19 Rohvektor- und 9 Pipeline-Gründe (Golden-Hash
+  `aba8a638…` → `88bf30ca…`, ohne neuen Messlauf).
 - **Mehrrunden-Pfad.** Er misst konstruktionsbedingt einen Pfad (Entscheidung 43). Seine flachen
   Zustandsfelder sind bereits der Zustand dieses einen Pfads; ein Eintrag je Pfad hätte keinen
   zweiten Pfad zu füllen und stünde im Widerspruch dazu, dass die Einpfadigkeit am Datensatz und

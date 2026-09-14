@@ -59,8 +59,9 @@ Festgeschrieben wird der **gemessene Ist-Zustand jedes Pfads**, wie eine Baselin
 Eintrag; eine dauerhafte Pfad-Asymmetrie sind zwei verschiedene Zustände und kein Befund. Die
 früheren Flachfelder `expected_state_since`, `expected_state_reason` und `expected_state_exception`
 sind entfallen, `GoldenCaseCurationTest` weist sie in einem committeten Datensatz ab. Ein Treffer
-ohne den geprüften Mechanismus wird auf seinem Pfad als `solved` geführt, und der Grund benennt den
-fehlenden Mechanismus. Wer einen Datensatz mit einem Generator neu erzeugt, muss die Zustände danach
+ohne den geprüften Mechanismus wird auf seinem Pfad als `solved` geführt, und sein Grund beginnt mit
+dem festen Präfix `Ohne geprüften Mechanismus: ` (nur auf `solved`, nur als exakter Anfang; Regel
+und Fallliste in [`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md)). Wer einen Datensatz mit einem Generator neu erzeugt, muss die Zustände danach
 aus einem Messlauf wieder eintragen — die Generatoren kennen sie nicht.
 
 `comic-characters.json` und `city-landmarks.json` deklarieren Zustände erst seit #1658; übernommen

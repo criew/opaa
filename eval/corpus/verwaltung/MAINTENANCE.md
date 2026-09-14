@@ -162,9 +162,35 @@ widerlegt, #1655). Mit dem Zustand je Pfad hat das Feld keinen Gegenstand mehr u
 
 Das gilt auch für den zweiten Anwendungsfall der früheren Ausnahme, den **Treffer ohne den
 geprüften Mechanismus** (ein `known_gap`-Fall, den die heutige Rangfolge zufällig löst): Er wird auf
-dem Pfad, der ihn löst, als `solved` festgeschrieben, und der Grund benennt, dass der Mechanismus
-fehlt (Vorbild: `verw-lit-008`, „Gelöst ohne eigenen Baustein“). Kippt er später, meldet das Audit
-ihn als Rückschritt — genau die Nachricht, die der Grund vorwegnimmt.
+dem Pfad, der ihn löst, als `solved` festgeschrieben.
+
+**Präfix `Ohne geprüften Mechanismus: `** (Maintainer-Entscheidung vom 14.09.2026). Der `reason`
+eines solchen Pfadzustands beginnt mit genau diesem Präfix, gefolgt von der Begründung, damit die
+Fälle ohne Prosa-Lesen auffindbar sind. Gesetzt wird es, wenn der Treffer auf diesem Pfad nicht dem
+Mechanismus der Fallklasse zuzurechnen ist:
+
+- der Mechanismus existiert auf dem Pfad nicht — Komposita-Zerlegung (`compound_word`) und
+  Zusammenführung von Ketten (`multi_hop`) auf keinem Pfad; lexikalischer Pfad
+  (`literal_term_weak_embedding`) und unzerlegte Kennungs-Tokens (`exact_identifier`) nur auf dem
+  Pipeline-Pfad,
+- der Fall war auf dem Pfad nachweislich schon vor dem Mechanismus gelöst (`verw-meta-007`/`-009`
+  auf beiden Pfaden, `verw-meta-001` auf dem Pipeline-Pfad, jeweils vor dem Kernfeld-Filter aus
+  #1070),
+- oder der Grund selbst hält einen Treffer ohne eigenen Baustein fest (`verw-lit-008`/`-009`).
+
+`GoldenCaseCuration` lässt das Präfix nur auf einem `solved`-Zustand und nur als exakten Anfang des
+Grunds zu. Verliert ein solcher Fall seinen Treffer, meldet das Audit ihn als Rückschritt („als
+`solved` geführt, aber nicht gelöst“). Er wird dann bewusst und datiert auf `known_gap` nachgezogen,
+mit dem fehlenden Mechanismus als Grund — kein Datenpflegefehler, sondern der erwartbare Ausgang
+eines Treffers, den nie ein Mechanismus trug.
+
+| Pfad | Fälle mit Präfix (Stand 2026-09-14) |
+|---|---|
+| Rohvektor | `verw-lit-008`, `-009`; `verw-id-003`, `-006` bis `-010`; `verw-comp-002` bis `-009`; `verw-hop-002`; `verw-meta-007`, `-009` (19) |
+| Pipeline | `verw-lit-008`, `-009`; `verw-comp-009`; `verw-hop-002`, `-003`, `-005`; `verw-meta-001`, `-007`, `-009` (9) |
+
+`comic-characters` und `city-landmarks` messen keine benannten Mechanismen und tragen das Präfix
+nicht; der Mehrrunden-Datensatz ebenfalls nicht.
 
 **Überführung der 13 asymmetrischen Fälle aus #1308.** Die Zustände je Pfad sind aus den
 Fallergebnissen eines aktuellen CPU-Laufs übernommen (CI-Lauf 34840623079, Golden-Hash `4ff44ccc…`);
