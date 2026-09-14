@@ -411,7 +411,8 @@ Zerlegung, ein nichtdeterministischer Anteil, für den die Mehrfachlauf-Regel gi
 skriptet die Notiz nicht. Gemessen wird **je Runde** mit den vier bestehenden Metriken; berichtet
 wird je Runde, je Fall (Mittel) und je Klasse. Ein Fall gilt als gelöst, wenn **jede** Runde gelöst
 ist (alle erwarteten Dokumente im Fenster und eines auf Rang 1) — **auf dem Pipeline-Pfad**, dem
-einzigen, auf dem ein Mehrrunden-Fall laufen kann; die Ausnahme von der Zwei-Pfade-Regel steht in
+einzigen, auf dem ein Mehrrunden-Fall laufen kann. Die Zustandsfelder bleiben deshalb flach, ohne
+Eintrag je Pfad (#1658); die Einpfad-Regel steht in
 [retrieval-benchmark.md, Abschnitt 5](./retrieval-benchmark.md#5-neue-golden-fall-klassen).
 
 Die Mehrrunden-Messung braucht die Teilfragen-Zerlegung — ohne sie gibt es keine Auflösung von

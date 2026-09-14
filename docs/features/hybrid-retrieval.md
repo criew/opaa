@@ -637,7 +637,8 @@ Zwei Folgerungen sind verbindlich:
 > mehr (`verw-meta-003`, dessen ersten Rang jetzt ein lexikalischer Treffer belegt). Genau einer der
 > zwölf — `verw-comp-006` — wird auch vom Rohvektor-Pfad gelöst und wechselt deshalb auf `solved`;
 > die übrigen elf bleiben `known_gap` und tragen ihre Pfad-Asymmetrie als
-> `expected_state_exception` committet (siehe
+> `expected_state_exception` committet (mit #1308 entfernt; seit #1658 führt jeder Fall seinen
+> Zustand je Messpfad, siehe
 > [Retrieval-Benchmark §5](./retrieval-benchmark.md) und
 > `eval/corpus/verwaltung/MAINTENANCE.md`).
 
