@@ -145,21 +145,31 @@ gemessene Lage dauerhaft von der deklarierten abweicht. Das Audit führt solche 
 den Befunden; nur unerklärte Abweichungen gelten als Befund. Ohne diese Trennung stünde in jedem
 Lauf dieselbe erwartete Meldung in der Fundliste — und niemand läse sie nach dem dritten Mal noch.
 
-Derzeit 16 Fälle (Stand 2026-09-14, #1308):
+**Derzeit keine** (Stand 2026-09-14, #1308). Mit #1308 sind alle Ausnahmen entfallen:
 
-| Fall | Grund |
-|---|---|
-| `verw-lit-006`, `verw-comp-002`, `verw-comp-003`, `verw-comp-008`, `verw-hop-005`, `verw-hop-007`, `verw-hop-009` | Pfad-Asymmetrie in die andere Richtung, seit Issue #1049: auf dem **Pipeline**-Pfad durch den lexikalischen Pfad in der Fusion gelöst, auf dem Rohvektor-Pfad strukturell nicht lösbar — dieser misst `similaritySearch` direkt und kennt den Volltextpfad nicht. Bleiben `known_gap` nach derselben Regel wie `verw-comp-006`. **Nicht mit #1308 überprüft:** Im Lauf vom 2026-09-14 trifft der Text nur noch auf `verw-hop-005` zu; `verw-lit-006`, `verw-hop-007` und `verw-hop-009` löst keiner der Pfade, `verw-comp-002`/`-003`/`-008` nur der Rohvektor-Pfad (Folge-Issue #1655). |
-| `verw-id-001`, `verw-id-002`, `verw-id-004`, `verw-id-005`, `verw-hop-003` | Pfad-Asymmetrie, festgehalten mit #1308: auf dem Pipeline-Pfad gelöst, auf dem Rohvektor-Pfad nicht — dort steht das erwartete Dokument seit dem Kernfeld-Titel im Kontextpräfix (#1341) nicht mehr auf Rang 1 (`verw-id-004` schon vorher). |
-| `verw-comp-004`, `verw-comp-005`, `verw-comp-006`, `verw-comp-007` | Pfad-Asymmetrie in die **Gegenrichtung**, festgehalten mit #1308: auf dem Rohvektor-Pfad gelöst, auf dem Pipeline-Pfad nicht — dort liegt nicht jedes erwartete Dokument im Fenster. So schon im Lauf vor #1341. |
+- Vier der elf bisherigen Ausnahmen sind gegenstandslos, weil ihr Fall jetzt auf beiden Pfaden gelöst ist: `verw-lit-008`, `verw-comp-009`, `verw-hop-002` und `verw-meta-001`.
+- Die sieben übrigen Ausnahmen aus #1049 begründeten ihre Abweichung damit, dass der Rohvektor-Pfad den Fall ohne Volltextpfad strukturell nicht lösen könne. Die CPU-Läufe widerlegen das für jeden einzelnen:
+  - Der Rohvektor-Pfad hat `verw-hop-005` zwischen #1156 und #1341 gelöst.
+  - Den Pipeline-Pfad hat `verw-lit-006`, `verw-comp-002`/`-003`/`-008` und `verw-hop-007`/`-009` seit #1156 verloren.
+- Für die übrigen Fälle mit gemessener Pfad-Asymmetrie hat die Ursachenmessung (unten) ebenfalls keinen **dauerhaften** Grund ergeben.
 
-> **Offene Frage an die Spezifikation.** Zehn dieser Ausnahmen entstehen daraus, dass ein Fall erst
-> als gelöst gilt, wenn ihn *beide* Messpfade lösen. Diese Definition stammt aus #1043, als beide
-> Pfade praktisch dasselbe Retrieval maßen. Seit #1049 misst der Rohvektor-Pfad bewusst eine
-> **nicht**-produktive Konfiguration; Fälle, die der lexikalische Pfad löst, kann er strukturell nie
-> lösen. Ob die Definition auf den Pipeline-Pfad — den produktiven — umgestellt werden sollte, ist
-> eine Entscheidung über den gemeinsamen Messvertrag beider Pfade und wurde in #1049 bewusst nicht
-> getroffen (siehe ADR-0012, Nachtrag Volltextpfad, Entscheidung 23).
+Die heutigen Abweichungen haben Rangfolge und Auswahl zur Ursache, also Eigenschaften, die ein Retrieval-Baustein ändern kann. Ein Fall mit einer solchen Abweichung trägt **keine** Ausnahme. Das Audit seines Pfads führt ihn als offenen Befund, und `expected_state_reason` nennt die gemessene Ursache.
+
+Offene Befunde im Lauf vom 2026-09-14:
+
+| Audit | Befund | Fälle | gemessene Ursache |
+|---|---|---|---|
+| Rohvektor | als `known_gap` geführt, aber gelöst | `verw-comp-002`, `-003`, `-004`, `-005`, `-006`, `-007`, `-008` | Der Pipeline-Pfad verfehlt ein erwartetes Dokument im Fenster: Seit #1156 füllen wenige Dokumente mit mehreren Abschnitts-Chunks die acht Chunk-Plätze der Produktionsauswahl (siehe unten). |
+| Pipeline | als `known_gap` geführt, aber gelöst | `verw-id-001`, `-002`, `-004`, `-005`, `verw-hop-003`, `-005` | Der Rohvektor-Pfad verliert Rang 1: `verw-id-004` seit #1156, die übrigen seit dem Kernfeld-Titel im Kontextpräfix (#1341). |
+
+> **Offene Frage an die Spezifikation.** Alle diese Befunde entstehen daraus, dass ein Fall erst als
+> gelöst gilt, wenn ihn *beide* Messpfade lösen. Diese Definition stammt aus #1043, als beide Pfade
+> praktisch dasselbe Retrieval maßen. Seit #1049 misst der Rohvektor-Pfad bewusst eine
+> **nicht**-produktive Konfiguration, und seit #1156 misst er ein Fenster aus zehn Dokumenten,
+> während der Pipeline-Pfad acht Chunks misst. Ob die Definition auf den Pipeline-Pfad (den
+> produktiven) umgestellt werden sollte, ist eine Entscheidung über den gemeinsamen Messvertrag
+> beider Pfade. #1049 hat sie bewusst nicht getroffen (siehe ADR-0012, Nachtrag Volltextpfad,
+> Entscheidung 23), und #1308 trifft sie ebenfalls nicht.
 
 Jede Zustandsänderung ist ein bewusster Vorgang mit Datum und Begründung im selben PR wie ihr
 Auslöser — nie eine Datenpflege nebenbei. Der Zustandsfelder-Abschnitt beider Reports **und** beider
@@ -171,7 +181,7 @@ Zustandswechsel eine menschliche ist.
 
 **29 von 49 Fällen**, Stand 2026-09-14 (#1308, siehe „Zustandspflege mit #1308" unten). Die Tabelle
 darunter gibt diesen Stand wieder; die Symptomtabellen je Klasse beschreiben weiterhin die Läufe
-vom 2026-09-01/-05, für die 14 mit #1308 gepflegten Fälle gilt der neue Abschnitt.
+vom 2026-09-01/-05, für die 21 mit #1308 gepflegten Fälle gilt der neue Abschnitt.
 
 **Stand vor #1308: 30 von 49 Fällen**, 2026-09-05. Mit Issue #1070 (Teil 2) sind neun Fälle der Klasse
 `metadata_filter` auf `solved` gewechselt — der erste Zustandswechsel dieser Klasse überhaupt, und
@@ -198,36 +208,45 @@ Mangel: „Ein Fall, den heute keine Variante löst, ist der wertvollste im Date
 
 ### Zustandspflege mit #1308 (2026-09-14)
 
-**Auslöser:** Seit #1341 steht im Kontextpräfix jedes Chunks der Kernfeld Titel (in diesem Korpus der
-Frontmatter-`titel`) statt des humanisierten Dateinamens — gewollt, Maintainer-Entscheidung vom
-14.09.2026. Ein Vergleich der formatierten Einbettungseingaben aller 998 Chunks zwischen `fa9dd079`
-(vor #1341) und `6165dc39` (#1341) zeigt: Chunk-Grenzen, Chunk-Text und Präfixregel sind gleich,
-alle 998 Eingaben unterscheiden sich allein im Titel zwischen den eckigen Klammern. Auf dem
-Pipeline-Pfad liefert der Präfix-Titel zusätzlich Lexeme, weil der Volltextindex seit #1341 dieselbe
-Form liest. Beide Baselines sind im selben CPU-Lauf neu gezogen; ein CPU-Lauf auf `fa9dd079`
-reproduziert die Vorgängerbaselines exakt und liefert die Spalte „vor #1341".
+**Auslöser:** Seit #1341 steht im Kontextpräfix jedes Chunks der Kernfeld Titel (in diesem Korpus der Frontmatter-`titel`) statt des humanisierten Dateinamens. Das ist gewollt, Maintainer-Entscheidung vom 14.09.2026.
 
-Nach der Pflege nennt keiner der beiden Audits eine unerklärte Abweichung. Gelöst heißt unverändert:
-auf beiden Pfaden alle erwarteten Dokumente im Fenster und ein erwartetes auf Rang 1.
+Ein Vergleich der formatierten Einbettungseingaben aller 998 Chunks zwischen `fa9dd079` (vor #1341) und `6165dc39` (#1341) zeigt: Chunk-Grenzen, Chunk-Text und Präfixregel sind gleich. Alle 998 Eingaben unterscheiden sich allein im Titel zwischen den eckigen Klammern. Auf dem Pipeline-Pfad liefert der Präfix-Titel zusätzlich Lexeme, weil der Volltextindex seit #1341 dieselbe Form liest. Beide Baselines sind im selben CPU-Lauf neu gezogen.
 
-| Fall | Zustand | Rohvektor / Pipeline vor #1341 | Rohvektor / Pipeline 2026-09-14 | Wirkung von #1341 |
-|---|---|---|---|---|
-| `verw-lit-008` | `known_gap` → `solved` | – / – | gelöst / gelöst | beide Pfade neu gelöst, Ausnahme entfällt |
-| `verw-hop-002` | `known_gap` → `solved` | – / – | gelöst / gelöst | beide Pfade neu gelöst, Ausnahme entfällt |
-| `verw-meta-001` | `known_gap` → `solved` | – / gelöst | gelöst / gelöst | Rohvektor-Pfad neu gelöst, Ausnahme entfällt |
-| `verw-lit-009` | `known_gap` → `solved` | gelöst / gelöst | gelöst / gelöst | keine — Zustand war nicht nachgezogen |
-| `verw-comp-009` | `known_gap` → `solved` | gelöst / gelöst | gelöst / gelöst | keine — Ausnahme war veraltet |
-| `verw-id-001` | `solved` → `known_gap` | gelöst / gelöst | Rang 2 / gelöst | Rohvektor-Pfad verliert Rang 1; neue Ausnahme |
-| `verw-hop-003` | `solved` → `known_gap` | gelöst / gelöst | Ränge 4 und 3 / gelöst | Rohvektor-Pfad verliert Rang 1; neue Ausnahme |
-| `verw-id-004` | `solved` → `known_gap` | Rang 2 / gelöst | Rang 2 / gelöst | keine — Rückschritt lag schon vor #1341; neue Ausnahme |
-| `verw-comp-006` | `solved` → `known_gap` | gelöst / Fenster verfehlt | gelöst / Fenster verfehlt | keine — Rückschritt lag schon vor #1341; neue Ausnahme (Gegenrichtung) |
-| `verw-id-002`, `verw-id-005` | bleibt `known_gap` | gelöst / gelöst | Rang 2 / gelöst | Rohvektor-Pfad verliert Rang 1; neue Ausnahme |
-| `verw-comp-004`, `verw-comp-005`, `verw-comp-007` | bleibt `known_gap` | gelöst / Fenster verfehlt | gelöst / Fenster verfehlt | keine; neue Ausnahme (Gegenrichtung) |
+**Ursachenmessung.** Die Einzelfälle sind in CPU-Läufen auf vier Ständen verglichen worden, jeweils über die Fallergebnisse (`allQueryResults`) und nicht über die Baseline-Validität, weil das Golden Dataset sich zwischen den Ständen geändert hat:
 
-Die beiden Rückschritte `verw-id-001` und `verw-hop-003` werden bewusst hingenommen: Sie sind die
-Messfolge des gewollten Titels. `verw-lit-009`, `verw-comp-009`, `verw-id-004`, `verw-comp-006` und
-`verw-comp-004`/`-005`/`-007` sind Altbestand, den das Audit schon vor #1341 meldete; sie sind hier
-mitgepflegt, damit die Fundliste wieder nur Neues zeigt.
+| Stand | Commit |
+|---|---|
+| vor #1156 | `b2dc2e2e` |
+| #1156, strukturbewusstes Markdown-Chunking | `6a4e6bae` |
+| vor #1341 | `fa9dd079` |
+| main | `5ca38424` |
+
+Der Lauf auf `fa9dd079` reproduziert die Vorgängerbaselines exakt.
+
+Zwei Änderungen erklären jede Abweichung:
+
+- **#1156** zerlegt jedes Markdown-Dokument in rund 15 Abschnitts-Chunks statt 3. Die Produktionsauswahl des Pipeline-Pfads hat acht Chunk-Plätze, und die füllen seither wenige Dokumente mit mehreren Abschnitten: im Mittel 5,3 → 3,7 unterschiedliche Dokumente je Anfrage, auf main 3,3. Ein drittes erwartetes Dokument und nahe Verwandte der beiden Fassungen einer Satzung fallen dabei aus der Auswahl. Dieselbe Änderung hat dem Rohvektor-Pfad (zehn Dokumente) vier Fälle neu gelöst und `verw-id-004` Rang 1 gekostet.
+- **#1341** kostet dem Rohvektor-Pfad bei vier Fällen Rang 1 (`verw-id-001`, `-002`, `-005`, `verw-hop-003`), `verw-hop-005` ein erwartetes Dokument auf Rang 1, und löst `verw-lit-008`, `verw-hop-002`, `verw-meta-001` und `verw-id-008` auf diesem Pfad neu.
+
+Gelöst heißt unverändert: auf beiden Pfaden alle erwarteten Dokumente im Fenster und ein erwartetes Dokument auf Rang 1. „R“ steht für den Rohvektor-Pfad, „P“ für den Pipeline-Pfad, „g“ für gelöst.
+
+| Fall | Zustand | vor #1156 R/P | #1156 R/P | main R/P | Ursache |
+|---|---|---|---|---|---|
+| `verw-lit-008` | `known_gap` → `solved` | –/– | –/– | g/g | #1341 löst beide Pfade |
+| `verw-hop-002` | `known_gap` → `solved` | –/– | –/– | g/g | #1341 löst beide Pfade |
+| `verw-meta-001` | `known_gap` → `solved` | n. gem. | n. gem. | g/g | #1341 löst den Rohvektor-Pfad (Fall stammt aus #1070) |
+| `verw-lit-009` | `known_gap` → `solved` | g/g | g/g | g/g | schon vor #1156 gelöst, Zustand war nicht nachgezogen |
+| `verw-comp-009` | `known_gap` → `solved` | g/g | g/g | g/g | schon vor #1156 gelöst, Ausnahme war veraltet |
+| `verw-id-001`, `verw-hop-003` | `solved` → `known_gap` | g/g | g/g | –/g | #1341: Rohvektor-Pfad verliert Rang 1 |
+| `verw-id-004` | `solved` → `known_gap` | g/g | –/g | –/g | #1156: Rohvektor-Pfad verliert Rang 1 an eine Nachbar-Dienstanweisung |
+| `verw-comp-006` | `solved` → `known_gap` | g/g | g/– | g/– | #1156: beide Fassungen der Kita-Beitragssatzung verdrängen die Gebührenordnung aus der Auswahl |
+| `verw-id-002`, `verw-id-005` | bleibt `known_gap` | g/– | g/g | –/g | #1156 löst den Pipeline-Pfad, #1341 kostet den Rohvektor-Pfad Rang 1 |
+| `verw-hop-005` | bleibt `known_gap`, Ausnahme entfällt | –/g | g/g | –/g | #1341: Rohvektor-Pfad verliert Rang 1 |
+| `verw-comp-002`, `-003`, `-008` | bleibt `known_gap`, Ausnahme entfällt | –/g | g/– | g/– | #1156: Rohvektor-Pfad neu gelöst, Pipeline-Pfad verliert ein erwartetes Dokument aus der Auswahl |
+| `verw-comp-004`, `-005`, `-007` | bleibt `known_gap` | –/– | g/– | g/– | #1156: Rohvektor-Pfad neu gelöst; Pipeline-Pfad in keinem Stand gelöst, seit #1156 enger |
+| `verw-lit-006`, `verw-hop-007`, `-009` | bleibt `known_gap`, Ausnahme entfällt | –/g | –/– | –/– | #1156: Pipeline-Pfad verliert Rang 1 bzw. ein Belegdokument; auf keinem Pfad gelöst, kein Befund |
+
+Die Rückschritte durch #1341 (vier Rang-1-Verluste auf dem Rohvektor-Pfad) werden bewusst hingenommen: Sie sind die Messfolge des gewollten Titels. Die Rückschritte durch #1156 waren seit #1306 als unerklärte Audit-Befunde bekannt und sind jetzt gemessen. Ob die Engführung der Produktionsauswahl hingenommen oder mit einem Baustein zur Dokumentvielfalt behoben wird, entscheidet diese Pflege nicht. Deshalb bleiben die Fälle als offene Befunde sichtbar und tragen keine Ausnahme.
 
 Der Befund der ersten Kuratierung (Stand vor #1049): `literal_term_weak_embedding` war
 **vollständig** ungelöst (0 von 9), obwohl der Anfragebegriff wörtlich im Zieldokument steht —

@@ -587,14 +587,22 @@ Drei Milderungen, keine Lösungen:
 > statt des humanisierten Dateinamens — gewollt (Maintainer-Entscheidung 14.09.2026). Die
 > Einbettungseingabe aller 998 Chunks der Verwaltungsdomäne unterscheidet sich gegenüber dem Stand
 > davor ausschließlich in diesem Titel; auf dem Pipeline-Pfad liefert er über den Volltextindex
-> zusätzlich Lexeme. Beide Baselines der Domäne sind neu gezogen, und **14 Fälle** haben ihre
-> Zustandsfelder nachgezogen bekommen, nach der unveränderten Regel „gelöst auf beiden Pfaden":
-> fünf wechseln auf `solved` (`verw-lit-008`, `verw-lit-009`, `verw-comp-009`, `verw-hop-002`,
-> `verw-meta-001`), vier auf `known_gap` (`verw-id-001`, `verw-id-004`, `verw-hop-003` verlieren Rang 1
-> auf dem Rohvektor-Pfad, `verw-comp-006` das Fenster auf dem Pipeline-Pfad), fünf behalten
-> `known_gap` und bekommen ihre Pfad-Asymmetrie als `expected_state_exception`. Erstmals gibt es
-> dabei Ausnahmen in der **Gegenrichtung** — auf dem Rohvektor-Pfad gelöst, auf dem Pipeline-Pfad
-> nicht (`verw-comp-004` bis `-007`). Einzelbegründungen: `eval/corpus/verwaltung/MAINTENANCE.md`.
+> zusätzlich Lexeme. Beide Baselines der Domäne sind neu gezogen, und **21 Fälle** haben ihre
+> Zustandsfelder nachgezogen bekommen, jeder mit einer in CPU-Läufen um #1156 und #1341 gemessenen
+> Ursache, nach der unveränderten Regel „gelöst auf beiden Pfaden": fünf wechseln auf `solved`
+> (`verw-lit-008`, `verw-lit-009`, `verw-comp-009`, `verw-hop-002`, `verw-meta-001`), vier auf
+> `known_gap` — `verw-id-001` und `verw-hop-003` verlieren mit #1341 Rang 1 auf dem Rohvektor-Pfad,
+> `verw-id-004` schon mit #1156, `verw-comp-006` mit #1156 ein Dokument aus der Auswahl des
+> Pipeline-Pfads. Die übrigen zwölf behalten `known_gap` mit neuer Begründung.
+>
+> **Keine Ausnahme mehr.** Vier Ausnahmen sind gegenstandslos, weil ihr Fall jetzt gelöst ist; die
+> sieben übrigen Pfad-Asymmetrie-Ausnahmen aus #1049 sind widerlegt: Der
+> Rohvektor-Pfad hat einen der Fälle zeitweise gelöst, den Pipeline-Pfad hat #1156 (strukturbewusstes
+> Markdown-Chunking) sechs davon gekostet — seine acht Chunk-Plätze füllen seither wenige Dokumente mit
+> mehreren Abschnitten (im Mittel 5,3 → 3,7 unterschiedliche Dokumente je Anfrage). Weil diese
+> Abweichungen aus Rangfolge und Auswahl entstehen, nicht aus einem strukturellen Grund eines
+> Messpfads, trägt kein Fall mehr eine `expected_state_exception`; 13 Fälle stehen als offene Befunde
+> im Audit. Einzelbegründungen: `eval/corpus/verwaltung/MAINTENANCE.md`.
 
 
 Fünf Kategorien kommen hinzu. Jede hat ein benanntes Fehlerbild, eine überprüfbare Ground Truth und
