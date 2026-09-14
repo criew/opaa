@@ -133,6 +133,48 @@ class ChunkContextPrefixTest {
   }
 
   @Test
+  void dropsTheStructureContextWhenTheChunkOpensWithSeveralMarkdownHeadingLinesSpellingIt() {
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Satzung",
+                List.of(),
+                "Abschn. Gebührenordnung › § 7 Gebühren",
+                "# Gebührenordnung\n\n## § 7 Gebühren\n\n37,00 EUR"))
+        .isEqualTo("Satzung");
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Gebührenordnung",
+                List.of(),
+                "Abschn. Gebührenordnung › § 7 Gebühren",
+                "# Gebührenordnung\n\n## § 7 Gebühren\n\n37,00 EUR"))
+        .isEqualTo("Gebührenordnung");
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Satzung",
+                List.of(),
+                "Abschn. Gebührenordnung › § 7 Gebühren",
+                "# Gebührenordnung\n\n## § 8 Fälligkeit\n\n37,00 EUR"))
+        .as("heading lines naming a different section keep the context")
+        .isEqualTo("Satzung › Gebührenordnung › § 7 Gebühren");
+  }
+
+  // The stamp decides which documents the Nachlauf re-embeds; changing its input spelling would
+  // select every document at once. The expected values are SHA-256 over NUL-joined segments.
+  @Test
+  void keepsTheStampOfTitleAndValuesStable() {
+    assertThat(ChunkContextPrefix.stampOf("Satzung", List.of("Fassung 2026", "Kommune")))
+        .isEqualTo("4b19fe3a56d3562766dc8c7527910c27");
+    assertThat(ChunkContextPrefix.stampOf(null, null))
+        .isEqualTo("e3b0c44298fc1c149afbf4c8996fb924");
+  }
+
+  @Test
   void formatsThePrefixInBracketsAheadOfTheUntouchedChunkText() {
     assertThat(ChunkContextPrefix.format("Satzung › Fassung 2026", "37,00 EUR"))
         .isEqualTo("[Satzung › Fassung 2026]\n\n37,00 EUR");
