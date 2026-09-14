@@ -122,9 +122,11 @@ Gespräche eines Arbeitsraums mit Titel und letztem Nutzungszeitpunkt, sortiert 
 von dort lassen sie sich umbenennen und löschen (mit Bestätigung). Die frühere globale Route `/chat`
 führt immer auf ein leeres, noch nicht angelegtes Gespräch im Standard-Arbeitsraum
 (`/spaces/:spaceId/chats/new`) — ebenso die Auswahl eines Arbeitsraums in der Seitenleiste und auf der
-Arbeitsraum-Übersicht. Ein bestehendes Gespräch wird nur fortgesetzt, wenn es bewusst in der Liste
-angeklickt wird; die Übersichtsseite eines Arbeitsraums bleibt über „Datenquellen dieses Space“ und
-„Space-Einstellungen“ erreichbar. Ein Neuladen der Seite stellt Verlauf und Liste wieder her. Es
+Arbeitsraum-Übersicht; ausgenommen sind archivierte Arbeitsräume, die keine neuen Gespräche mehr
+annehmen und deshalb weiterhin auf ihre Übersichtsseite (`/spaces/:spaceId`) führen. Ein bestehendes
+Gespräch wird nur fortgesetzt, wenn es bewusst in der Liste angeklickt wird; die Übersichtsseite
+eines Arbeitsraums bleibt über „Datenquellen dieses Space“ erreichbar, die Verwaltung über
+„Space-Einstellungen“ (`/spaces/:spaceId/manage`). Ein Neuladen der Seite stellt Verlauf und Liste wieder her. Es
 entsteht als Entwurf, sichtbar nur für den Autor, und wird für die Mitglieder des
 Arbeitsraums erst sichtbar, sobald der Autor es dort teilt (`SHARED`/`WITHDRAWN`, Zielbild — siehe
 [Chats](./spaces-and-assets.md#chats)). Ebenfalls Zielbild: das Löschen des eigenen Verlaufs im

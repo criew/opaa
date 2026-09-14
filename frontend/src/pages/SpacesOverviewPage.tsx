@@ -92,8 +92,9 @@ export default function SpacesOverviewPage() {
               key={space.id}
               component={RouterLink}
               // A card selects the space and opens an empty chat in it; its overview page stays
-              // reachable from the sidebar once the space is active.
-              to={`/spaces/${space.id}/chats/new`}
+              // reachable from the sidebar once the space is active. An archived space accepts no
+              // new chats (ChatService rejects the create), so it leads to its overview instead.
+              to={space.archived ? `/spaces/${space.id}` : `/spaces/${space.id}/chats/new`}
               // Mockup 1c's card: 16px radius, quiet border, lift on hover - motion stays on
               // transform only (guidelines 4.5).
               sx={{

@@ -32,11 +32,7 @@ export async function startFreshChat(page: Page): Promise<void> {
 /**
  * Starts a further empty chat in the space currently open, via the sidebar's "Neuer Chat" button -
  * the in-app path out of an existing chat, as opposed to {@link startFreshChat}'s entry via
- * `/chat`. Call only once the current chat has finished loading (its input is visible): the
- * sidebar renders independently of ChatPage's loading state, and a click landing while an
- * existing chat's loadChat() is still in flight can leave chatStore's `isLoadingChat` stuck true
- * (startNewChat does not reset it, the superseded loadChat skips its own `set()`), leaving
- * ChatPage on its spinner forever.
+ * `/chat`. Waits for the draft's URL and its ready input, same as startFreshChat.
  */
 export async function startAnotherChatViaSidebar(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Neuer Chat' }).click()

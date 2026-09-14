@@ -59,6 +59,9 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
     expect(personalCard).toHaveTextContent('3 Quellen · 12 Chats · nur Sie')
 
     const teamCard = screen.getByRole('link', { name: /Widerspruchsstelle/ })
+    // An archived space rejects new chats server-side (ChatService), so its card leads to the
+    // space overview rather than to a draft whose first message would fail.
+    expect(teamCard).toHaveAttribute('href', '/spaces/space-team')
     expect(teamCard).toHaveTextContent('Team')
     expect(teamCard).toHaveTextContent('1 Quelle · 1 Chat · 9 Mitglieder')
     expect(teamCard).toHaveTextContent('Archiviert')

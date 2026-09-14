@@ -30,7 +30,8 @@ function renderChatPageAt(initialRoute: string) {
 // A minimal stand-in for "Neuer Chat" (ChatList.tsx: navigate(`/spaces/${spaceId}/chats/new`)) -
 // a real <Link>, not a mocked navigate, so the route actually changes and useParams().chatId
 // genuinely flips to "new", the same way a click on the real button does. Also links back to
-// chat-personal-1 and chat-personal-2 (fixtures), to exercise switching away from "new" again.
+// chat-personal-1 and chat-personal-2 (fixtures), to exercise switching away from "new" again,
+// and to another space's new chat, which is where picking a space in the sidebar leads.
 function renderChatPageWithNavLinks(initialRoute: string) {
   const theme = createAppTheme('dark')
   return render(
@@ -45,6 +46,7 @@ function renderChatPageWithNavLinks(initialRoute: string) {
                 <Link to="/spaces/space-personal/chats/new">Neuer Chat</Link>
                 <Link to="/spaces/space-personal/chats/chat-personal-1">Chat 1</Link>
                 <Link to="/spaces/space-personal/chats/chat-personal-2">Chat 2</Link>
+                <Link to="/spaces/space-engineering/chats/new">Neuer Chat im anderen Space</Link>
                 <ChatPage />
               </>
             }
@@ -198,5 +200,24 @@ describe('ChatPage routing (real router)', () => {
     expect(useChatStore.getState().messages.length).toBeGreaterThan(0)
     expect(useChatStore.getState().scope).toBe('libraries')
     expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-referat-50'])
+  })
+
+  // Since #1647 picking a space leads to that space's ".../chats/new" - so one draft can follow
+  // another with only the :spaceId changing. The draft must then belong to the space just picked
+  // and start over: a sticky knowledge scope of the previous draft would otherwise silently carry
+  // into a space it does not belong to.
+  it('starts a fresh draft for the other space when switching from one new chat to another', async () => {
+    renderChatPageWithNavLinks('/spaces/space-personal/chats/new')
+
+    await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
+    useChatStore.setState({ scope: 'libraries', referencedLibraryIds: ['library-referat-50'] })
+
+    fireEvent.click(screen.getByRole('link', { name: 'Neuer Chat im anderen Space' }))
+
+    await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-engineering'))
+    expect(useChatStore.getState().chatId).toBeNull()
+    expect(useChatStore.getState().messages).toEqual([])
+    expect(useChatStore.getState().scope).toBe('all')
+    expect(useChatStore.getState().referencedLibraryIds).toEqual([])
   })
 })

@@ -75,10 +75,11 @@ const OWN_LIBRARY_NAME_REGULAR = `E2E Eigene Bibliothek Regular ${runId}`
 // `expectCitedSource`/`expectCitedExclusively` below assert page-wide, which is only correct on a
 // chat that holds exactly the one turn just asked; without this, a later scenario reusing the same
 // account (dev-user in scenarios 3 and 5, dev-outsider in scenarios 4 and 6) would see source
-// cards from an earlier scenario's turn still in the DOM alongside the new one. Every scenario below explicitly starts a fresh, not-yet-persisted chat
-// (`startFreshChat`, see fixtures/chat.ts) before asking its question instead, so "the page shows
-// exactly this one turn" is a fact, not an assumption that happened to hold by scenario order (CI
-// fix following PR #548's review).
+// cards from an earlier scenario's turn still in the DOM alongside the new one. Every scenario
+// below explicitly starts a fresh, not-yet-persisted chat (`startFreshChat`, see
+// fixtures/chat.ts) before asking its question instead, so "the page shows exactly this one turn"
+// is a fact, not an assumption that happened to hold by scenario order (CI fix following PR
+// #548's review).
 
 // Creates a fresh library named libraryName for the acting user (mirroring scenario 1's own
 // creation step) and uploads OWN_DOCUMENT_PATH into it. Since #522 removed the automatically

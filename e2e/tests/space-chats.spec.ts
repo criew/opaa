@@ -89,6 +89,26 @@ async function referenceLibrary(page: Page, libraryName: string) {
 }
 
 /**
+ * Creates a space named spaceName through the four-step wizard (name is the only required field,
+ * members and data sources are optional) and returns its id, read off the overview URL the wizard
+ * navigates to on success.
+ */
+async function createSpace(page: Page, spaceName: string): Promise<string> {
+  await page.goto('/spaces/new')
+  await page.getByLabel('Name', { exact: true }).fill(spaceName)
+  for (let step = 0; step < 3; step++) {
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+  }
+  // The lookahead keeps /spaces/new itself from matching while the wizard is still open.
+  await Promise.all([
+    page.waitForURL(/\/spaces\/(?!new$)[^/]+$/),
+    page.getByRole('button', { name: 'Space anlegen' }).click(),
+  ])
+  await expect(page.getByRole('heading', { name: spaceName })).toBeVisible()
+  return page.url().split('/spaces/')[1]
+}
+
+/**
  * Covers #529 (part of Epic #523): the persistent, space-owned chat and its `@`-reference / chip
  * bar search scope (#560), built on top of test(e2e) #424's upload/share/search chain and its
  * helpers (see fixtures/chat.ts). Every scenario starts its own fresh chat (`startFreshChat`)
@@ -291,13 +311,19 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(page.getByLabel(`Bibliotheksreferenz ${libraryName} entfernen`)).toHaveCount(0)
   })
 
-  test('6. Einstieg und Space-Wechsel landen auf einem leeren Gespräch, nicht im letzten Chat', async (
+  test('6. Einstieg und Space-Wechsel landen auf einem leeren Gespräch', async (
     { authenticatedPage: page },
     testInfo,
   ) => {
     const id = uniqueId(testInfo)
     const question = `Frage vor dem Neueinstieg (${id})`
+    const spaceName = `E2E-Chat-Zielspace-${id}`
     const main = page.getByTestId('message-list')
+
+    // A second space of this scenario's own, so the switch below really leaves the space it starts
+    // in: the account otherwise owns nothing but its automatic default space, and no other
+    // scenario of this suite creates one.
+    const targetSpaceId = await createSpace(page, spaceName)
 
     // This scenario's own persisted chat (it must not depend on what the scenarios above left
     // behind, see the describe's doc comment) - the state in which the entry point used to reopen
@@ -318,15 +344,16 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(page.getByRole('main').getByText(question)).toHaveCount(0)
 
     // Picking a space in the sidebar's space switcher lands on an empty chat in that space, not on
-    // its overview page. The switcher is named after the space it currently shows, hence the
-    // scope to the sidebar landmark plus its "Space" overline rather than a fixed name; the menu
-    // lists the spaces first, so its first entry is a space.
+    // its overview page. Deliberately the space created above and not the one currently open (the
+    // default space, which /chat just resolved to), so this really exercises a switch. The
+    // switcher itself is named after the space it shows, hence the scope to the sidebar landmark
+    // plus its "Space" overline instead of a fixed name.
     await page
       .getByRole('complementary', { name: 'Space-Bereich' })
       .getByRole('button', { name: /^Space/ })
       .click()
-    await page.getByRole('menuitem').first().click()
-    await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/new$/)
+    await page.getByRole('menuitem', { name: new RegExp(spaceName) }).click()
+    await expect(page).toHaveURL(new RegExp(`/spaces/${targetSpaceId}/chats/new$`))
     await expect(
       page.getByRole('heading', { name: 'Womit kann ich Ihnen heute helfen?' }),
     ).toBeVisible()
