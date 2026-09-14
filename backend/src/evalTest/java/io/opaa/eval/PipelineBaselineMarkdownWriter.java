@@ -39,7 +39,7 @@ public final class PipelineBaselineMarkdownWriter {
 
   /**
    * @param expectedStateAudit the run's declared-vs-measured case-state audit at this path's window
-   *     (issue #1043); {@code null} for a domain whose golden dataset declares no states.
+   *     against {@code expected_state.pipeline}; {@code null} if no case declares a state.
    * @param metadataFilterAudit the run's filter audit at this path's window (issue #1070); {@code
    *     null} for a domain without a filtered case.
    */

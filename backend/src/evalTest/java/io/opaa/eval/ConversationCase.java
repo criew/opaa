@@ -17,6 +17,8 @@ import java.util.List;
  *
  * <p>A case is solved when <b>every</b> one of its turns is solved under the existing criterion
  * ({@link ExpectedStateAudit#isSolved}); the state fields describe the case, never a single turn.
+ * They stay flat: this dataset is measured on the pipeline path only, so its one declared state is
+ * that path's state (docs/features/retrieval-benchmark.md §5, Einpfad-Regel).
  *
  * @param topicSwitchTurn the 1-based turn a {@code topic_switch} case changes its topic in, {@code
  *     null} for every other class - see {@link ConversationCaseCuration#TOPIC_SWITCH_TURN_RULE}.
@@ -30,8 +32,7 @@ public record ConversationCase(
     @JsonProperty("topic_switch_turn") Integer topicSwitchTurn,
     @JsonProperty("expected_state") GoldenCase.ExpectedState expectedState,
     @JsonProperty("expected_state_since") String expectedStateSince,
-    @JsonProperty("expected_state_reason") String expectedStateReason,
-    @JsonProperty("expected_state_exception") String expectedStateException) {
+    @JsonProperty("expected_state_reason") String expectedStateReason) {
 
   /**
    * One turn of a case.
@@ -84,10 +85,7 @@ public record ConversationCase(
         null,
         null,
         null,
-        expectedState,
-        expectedStateSince,
-        expectedStateReason,
-        expectedStateException,
+        null,
         null,
         null,
         turn.confusableDocument(),

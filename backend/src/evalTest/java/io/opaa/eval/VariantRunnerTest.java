@@ -54,16 +54,7 @@ class VariantRunnerTest {
     var goldenCases =
         List.of(
             new GoldenCase(
-                "a",
-                "test",
-                "frage a",
-                List.of("a.md"),
-                "cat",
-                "easy",
-                "de",
-                "t",
-                null,
-                null));
+                "a", "test", "frage a", List.of("a.md"), "cat", "easy", "de", "t", null, null));
     Map<String, List<String>> rankedFileNames =
         Map.of("frage a", hitRateForCaseA > 0 ? List.of("a.md") : List.of());
     return PipelineRetrievalEvaluator.report(

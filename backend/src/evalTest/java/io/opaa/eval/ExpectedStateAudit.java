@@ -1,54 +1,65 @@
 package io.opaa.eval;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Compares each case's committed {@code expected_state} against what the run just measured (issue
- * #1043, docs/features/retrieval-benchmark.md §5, "Zustandsfelder").
+ * Compares each case's committed state for one measurement path against what that path just
+ * measured (docs/features/retrieval-benchmark.md §5, "Zustandsfelder").
  *
- * <p><b>Why this exists rather than only a baseline diff.</b> The baseline diff answers "did the
- * numbers move". It cannot answer "is this red case the known gap or a regression", and — the case
- * the specification cares about most — it turns a {@code known_gap} case that a new building block
- * has just solved into an unremarked baseline improvement. §5 asks for the opposite: that
- * transition is supposed to be "ein sichtbarer, reviewbarer Vorgang mit Datum". This audit makes it
- * visible in both measurement paths' JSON reports <b>and</b> in their Markdown delta tables, which
- * the nightly job publishes to the job summary, the PR comment and the alert issue ({@link
- * BaselineMarkdownWriter}, {@link PipelineBaselineMarkdownWriter}) — the same reach the regression
- * verdict itself has. Acting on a finding (flipping the field, dating it, re-drawing the baseline)
- * stays a deliberate human step, which is why the audit reports and does not fail the run.
+ * <p>The baseline diff answers "did the numbers move"; it cannot tell a known gap from a regression
+ * and turns a {@code known_gap} case a new building block has solved into an unremarked
+ * improvement. This audit names both deviation directions in the JSON report, the log and the
+ * Markdown delta table. It reports and never fails the run: flipping a state stays a deliberate,
+ * dated human step.
  *
- * <p><b>One solved-criterion for both paths</b> ({@link #isSolved}): every expected document inside
- * that path's own window <b>and</b> an expected document at rank 1. Not "hit rate &gt; 0" — a
- * multi_hop case that finds one of its two documents has not been solved — and not a path-specific
- * definition, which would make the single {@code expected_state} field mean two different things at
- * once. The rank-1 half is what makes the criterion say anything about {@code metadata_filter}:
- * both Fassungen of a Satzung are near-identical in content and therefore rank next to each other,
- * so "the right Fassung is somewhere in the window" is satisfied even when the wrong one is on top
- * — which is exactly the missing capability that class exists to measure.
- *
- * <p><b>Accepted deviations</b> ({@link GoldenCase#expectedStateException()}): a case may carry a
- * committed, written reason why its measured state deviates from its declared one on purpose — a
- * {@code known_gap} case that today's ranking happens to solve without the mechanism it measures,
- * or one solved on one measurement path but not the other. Those cases are listed separately, and
- * only the <b>unexplained</b> deviations count for {@link Result#matchesDeclaredStates()}. Without
- * this split, a permanently expected deviation would sit in the finding list of every run and train
- * readers to ignore it — the failure mode the section exists to prevent.
+ * <p>Each path is audited only against its own declared state ({@link MeasurementPath}); a case
+ * measured exactly as declared on a path is no finding there, whatever the other path measures.
  */
 public final class ExpectedStateAudit {
 
+  /** The field the multi-turn dataset declares its single path's state in. */
+  public static final String CONVERSATION_STATE_FIELD = "expected_state";
+
   private ExpectedStateAudit() {}
+
+  /** The two single-question measurement paths and where each finds its declared state. */
+  public enum MeasurementPath {
+    RAW_VECTOR("expected_state.raw_vector"),
+    PIPELINE("expected_state.pipeline");
+
+    private final String stateField;
+
+    MeasurementPath(String stateField) {
+      this.stateField = stateField;
+    }
+
+    /** The dataset field a finding on this path asks to maintain. */
+    public String stateField() {
+      return stateField;
+    }
+
+    /** The case's declared state on this path, {@code null} if the case declares none. */
+    public GoldenCase.ExpectedState declaredState(GoldenCase goldenCase) {
+      GoldenCase.ExpectedStateByPath byPath = goldenCase.expectedState();
+      if (byPath == null) {
+        return null;
+      }
+      GoldenCase.PathState pathState = this == RAW_VECTOR ? byPath.rawVector() : byPath.pipeline();
+      return pathState == null ? null : pathState.state();
+    }
+  }
 
   /**
    * Whether a case counts as solved in this run: every expected document inside the path's window
    * ({@code allExpectedDocumentsHitAt10} on the raw-vector path, {@code allExpectedDocumentsHitAt8}
-   * on the pipeline path — both 1.0 or 0.0 per case, see {@code
-   * RetrievalMetrics#allExpectedDocumentsHitAtK}) <b>and</b> an expected document at rank 1.
-   *
-   * <p>See the class Javadoc for why rank 1 is part of the criterion rather than a nicety.
+   * on the pipeline path — both 1.0 or 0.0 per case) <b>and</b> an expected document at rank 1. The
+   * rank-1 half is what makes the criterion say anything about {@code metadata_filter}, whose two
+   * Fassungen rank next to each other.
    *
    * @param rankedFileNames the case's ranked documents, best first, at that path's window.
    */
@@ -61,21 +72,16 @@ public final class ExpectedStateAudit {
         && expectedDocuments.contains(rankedFileNames.getFirst());
   }
 
-  /**
-   * The audit for a raw-vector run, from that path's per-case results — the counterpart of what
-   * {@link PipelineRetrievalEvaluator#report} does for the pipeline path, so all three domain
-   * harnesses stay a one-line call instead of three copies of the same mapping.
-   */
+  /** The audit for a raw-vector run, from that path's per-case results. */
   public static Result fromRawVectorResults(List<RetrievalMetrics.QueryResult> results) {
     return evaluate(
+        MeasurementPath.RAW_VECTOR.stateField(),
         results.stream()
             .map(
                 r ->
-                    new CaseState(
-                        r.goldenCase().id(),
-                        r.goldenCase().category(),
-                        r.goldenCase().expectedState(),
-                        r.goldenCase().expectedStateException(),
+                    caseState(
+                        MeasurementPath.RAW_VECTOR,
+                        r.goldenCase(),
                         isSolved(
                             r.allExpectedDocumentsHitAt10(),
                             r.rankedFileNames(),
@@ -83,43 +89,36 @@ public final class ExpectedStateAudit {
             .toList());
   }
 
+  /** One case's declared state on {@code path} next to what that path measured for it. */
+  public static CaseState caseState(
+      MeasurementPath path, GoldenCase goldenCase, boolean solvedNow) {
+    return new CaseState(
+        goldenCase.id(), goldenCase.category(), path.declaredState(goldenCase), solvedNow);
+  }
+
   /** One case's declared state next to what this run measured for it. */
   public record CaseState(
-      String id,
-      String caseClass,
-      GoldenCase.ExpectedState declared,
-      String acceptedDeviationReason,
-      boolean solvedNow) {}
-
-  /** A deviation the dataset itself declares as expected, with the committed reason for it. */
-  public record AcceptedDeviation(String id, String reason) {}
+      String id, String caseClass, GoldenCase.ExpectedState declared, boolean solvedNow) {}
 
   /**
-   * The audit as it appears in a report. {@code null} in the report of a domain whose golden
-   * dataset declares no states at all (comic-characters, city-landmarks) — absent, not "everything
-   * fine".
+   * The audit of one path as it appears in a report. {@code null} in the report of a run whose
+   * cases declare no state at all — absent, not "everything fine".
    *
-   * @param unexpectedlySolved ids of {@code known_gap} cases this run solved without a committed
-   *     reason — the transition §5 wants reviewed and dated, not silently absorbed into a better
-   *     baseline.
-   * @param unexpectedlyUnsolved ids of {@code solved} cases this run did not solve. The baseline
-   *     diff judges whether that is a regression; this list says which cases carry it.
-   * @param acceptedDeviations deviations the dataset declares as expected (see the class Javadoc).
-   * @param exceptionsWithoutDeviation ids of cases that carry an exception although this path
-   *     measured no deviation at all — an exception that silences nothing today but would silence a
-   *     genuine finding tomorrow. Reported rather than treated as a finding: for a case whose
-   *     exception describes a path asymmetry, having no deviation on exactly one of the two paths
-   *     is the normal, expected state.
+   * @param stateField the dataset field the audited states come from, and the one a finding asks to
+   *     maintain.
+   * @param unexpectedlySolved ids of cases declared {@code known_gap} that this run solved — the
+   *     transition §5 wants reviewed and dated, not silently absorbed into a better baseline.
+   * @param unexpectedlyUnsolved ids of cases declared {@code solved} that this run did not solve.
+   *     The baseline diff judges whether that is a regression; this list says which cases carry it.
    */
   public record Result(
+      String stateField,
       int casesWithDeclaredState,
       int declaredSolved,
       int declaredKnownGap,
       int measuredSolved,
       List<String> unexpectedlySolved,
       List<String> unexpectedlyUnsolved,
-      List<AcceptedDeviation> acceptedDeviations,
-      List<String> exceptionsWithoutDeviation,
       Map<String, ClassResult> byCaseClass) {
 
     public boolean matchesDeclaredStates() {
@@ -132,19 +131,16 @@ public final class ExpectedStateAudit {
       int cases, int declaredSolved, int declaredKnownGap, int measuredSolved) {}
 
   /**
-   * Builds the audit. Cases without a declared state are ignored entirely (a dataset predating the
-   * fields is not "unaudited with zero findings"); if no case declares one, the result is {@code
-   * null} so the report carries an absent section instead of a misleadingly clean one.
+   * Builds the audit. Cases without a declared state are ignored entirely; if no case declares one,
+   * the result is {@code null} so the report carries an absent section instead of a clean one.
    */
-  public static Result evaluate(List<CaseState> caseStates) {
+  public static Result evaluate(String stateField, List<CaseState> caseStates) {
     List<CaseState> declared = caseStates.stream().filter(c -> c.declared() != null).toList();
     if (declared.isEmpty()) {
       return null;
     }
     List<String> unexpectedlySolved = new ArrayList<>();
     List<String> unexpectedlyUnsolved = new ArrayList<>();
-    List<AcceptedDeviation> acceptedDeviations = new ArrayList<>();
-    List<String> exceptionsWithoutDeviation = new ArrayList<>();
     Map<String, int[]> perClass = new TreeMap<>();
     int declaredSolved = 0;
     int declaredKnownGap = 0;
@@ -160,15 +156,10 @@ public final class ExpectedStateAudit {
       if (state.solvedNow()) {
         measuredSolved++;
       }
-      boolean deviates = declaredAsSolved != state.solvedNow();
-      if (deviates && state.acceptedDeviationReason() != null) {
-        acceptedDeviations.add(new AcceptedDeviation(state.id(), state.acceptedDeviationReason()));
-      } else if (deviates && !declaredAsSolved) {
-        unexpectedlySolved.add(state.id());
-      } else if (deviates) {
+      if (declaredAsSolved && !state.solvedNow()) {
         unexpectedlyUnsolved.add(state.id());
-      } else if (state.acceptedDeviationReason() != null) {
-        exceptionsWithoutDeviation.add(state.id());
+      } else if (!declaredAsSolved && state.solvedNow()) {
+        unexpectedlySolved.add(state.id());
       }
       // [cases, declaredSolved, declaredKnownGap, measuredSolved]
       int[] counts = perClass.computeIfAbsent(String.valueOf(state.caseClass()), k -> new int[4]);
@@ -183,35 +174,34 @@ public final class ExpectedStateAudit {
     perClass.forEach(
         (caseClass, c) -> byCaseClass.put(caseClass, new ClassResult(c[0], c[1], c[2], c[3])));
     return new Result(
+        stateField,
         declared.size(),
         declaredSolved,
         declaredKnownGap,
         measuredSolved,
         List.copyOf(unexpectedlySolved),
         List.copyOf(unexpectedlyUnsolved),
-        List.copyOf(acceptedDeviations),
-        List.copyOf(exceptionsWithoutDeviation),
-        // Unmodifiable *sorted* map, not Map.copyOf: the report is written to JSON and compared by
-        // eye across runs, so the class order must not depend on hashing.
-        java.util.Collections.unmodifiableMap(byCaseClass));
+        // Sorted, not Map.copyOf: the JSON report is compared by eye across runs.
+        Collections.unmodifiableMap(byCaseClass));
   }
 
   /**
-   * The audit as a block of report text, shared by both paths' writers so the two never describe
-   * the same finding differently. {@code null} renders as an explicit "this domain declares none"
-   * line rather than nothing at all — a silently missing section reads like a clean audit.
+   * The audit as a block of report text, shared by all writers so they never describe the same
+   * finding differently. {@code null} renders as an explicit "not declared" line — a silently
+   * missing section reads like a clean audit.
    */
   public static String renderSummary(Result result) {
     if (result == null) {
-      return "Zustandsfelder: im Golden Dataset dieser Domäne nicht deklariert "
+      return "Zustandsfelder: in diesem Golden Dataset nicht deklariert "
           + "(kein expected_state) — keine Aussage über gelöste oder bekannte Lücken\n\n";
     }
     StringBuilder sb = new StringBuilder();
     sb.append(
         String.format(
             Locale.ROOT,
-            "Zustandsfelder (expected_state): %d Fälle deklariert — %d solved, %d known_gap; "
+            "Zustandsfelder (%s): %d Fälle deklariert — %d solved, %d known_gap; "
                 + "in diesem Lauf tatsächlich gelöst: %d\n",
+            result.stateField(),
             result.casesWithDeclaredState(),
             result.declaredSolved(),
             result.declaredKnownGap(),
@@ -230,15 +220,15 @@ public final class ExpectedStateAudit {
                         c.declaredKnownGap(),
                         c.measuredSolved())));
     if (result.matchesDeclaredStates()) {
-      sb.append("  Keine unerwartete Abweichung.\n");
+      sb.append("  Keine Abweichung vom deklarierten Zustand.\n");
     } else {
       if (!result.unexpectedlySolved().isEmpty()) {
         sb.append(
             "  ALS known_gap GEFÜHRT, ABER GELÖST: "
                 + result.unexpectedlySolved()
-                + " — kein stillschweigender Baseline-Gewinn: expected_state, "
-                + "expected_state_since und expected_state_reason bewusst nachziehen "
-                + "(docs/features/retrieval-benchmark.md §5).\n");
+                + " — kein stillschweigender Baseline-Gewinn: "
+                + fieldsToMaintain(result.stateField(), "")
+                + " bewusst nachziehen (docs/features/retrieval-benchmark.md §5).\n");
       }
       if (!result.unexpectedlyUnsolved().isEmpty()) {
         sb.append(
@@ -247,39 +237,21 @@ public final class ExpectedStateAudit {
                 + " — begründungspflichtiger Rückschritt, kein Datenpflegevorgang.\n");
       }
     }
-    for (AcceptedDeviation deviation : result.acceptedDeviations()) {
-      sb.append(
-          String.format(
-              Locale.ROOT,
-              "  Erwartete Abweichung: %s — %s\n",
-              deviation.id(),
-              deviation.reason()));
-    }
-    if (!result.exceptionsWithoutDeviation().isEmpty()) {
-      sb.append(
-          "  Ausnahme deklariert, in diesem Pfad keine Abweichung gemessen: "
-              + result.exceptionsWithoutDeviation()
-              + " — prüfen, ob sie noch gilt; bei einer Pfad-Asymmetrie ist genau ein Pfad ohne "
-              + "Abweichung normal, sonst ist die Ausnahme veraltet und stellt den Fall dauerhaft "
-              + "stumm.\n");
-    }
     sb.append('\n');
     return sb.toString();
   }
 
   /**
-   * The same audit as a Markdown block, appended by both baseline-comparison writers so it reaches
-   * the job summary, the PR comment and the alert issue — the reach {@code
-   * docs/features/retrieval-benchmark.md} §5 means by "ein sichtbarer, reviewbarer Vorgang". Empty
-   * string for a domain without state fields: the delta table of comic-characters and
-   * city-landmarks stays byte-for-byte what it was.
+   * The same audit as a Markdown block, appended by the baseline-comparison writers so it reaches
+   * the job summary, the PR comment and the alert issue. Empty string for a run without declared
+   * states.
    */
   public static String renderMarkdown(Result result) {
     if (result == null) {
       return "";
     }
     StringBuilder sb = new StringBuilder();
-    sb.append("\n### Zustandsfelder (`expected_state`)\n\n");
+    sb.append("\n### Zustandsfelder (`").append(result.stateField()).append("`)\n\n");
     sb.append(
         String.format(
             Locale.ROOT,
@@ -305,15 +277,15 @@ public final class ExpectedStateAudit {
                         c.measuredSolved())));
     sb.append('\n');
     if (result.matchesDeclaredStates()) {
-      sb.append("**Keine unerwartete Abweichung vom deklarierten Zustand.**\n");
+      sb.append("**Keine Abweichung vom deklarierten Zustand.**\n");
     } else {
       if (!result.unexpectedlySolved().isEmpty()) {
         sb.append(
             "**Als `known_gap` geführt, aber gelöst:** "
                 + inlineCode(result.unexpectedlySolved())
-                + ". Kein stillschweigender Baseline-Gewinn — `expected_state`, "
-                + "`expected_state_since` und `expected_state_reason` bewusst nachziehen "
-                + "(`docs/features/retrieval-benchmark.md` §5).\n\n");
+                + ". Kein stillschweigender Baseline-Gewinn — "
+                + fieldsToMaintain(result.stateField(), "`")
+                + " bewusst nachziehen (`docs/features/retrieval-benchmark.md` §5).\n\n");
       }
       if (!result.unexpectedlyUnsolved().isEmpty()) {
         sb.append(
@@ -322,21 +294,39 @@ public final class ExpectedStateAudit {
                 + ". Begründungspflichtiger Rückschritt, kein Datenpflegevorgang.\n\n");
       }
     }
-    if (!result.acceptedDeviations().isEmpty()) {
-      sb.append("\n_Erwartete, im Datensatz begründete Abweichungen:_\n\n");
-      for (AcceptedDeviation deviation : result.acceptedDeviations()) {
-        sb.append(String.format(Locale.ROOT, "- `%s` — %s\n", deviation.id(), deviation.reason()));
-      }
-    }
-    if (!result.exceptionsWithoutDeviation().isEmpty()) {
-      sb.append(
-          "\n_Ausnahme deklariert, in diesem Pfad keine Abweichung gemessen:_ "
-              + inlineCode(result.exceptionsWithoutDeviation())
-              + ". Prüfen, ob die Ausnahme noch gilt: Bei einer Pfad-Asymmetrie ist genau ein Pfad "
-              + "ohne Abweichung normal, sonst ist sie veraltet und stellt den Fall dauerhaft "
-              + "stumm.\n");
-    }
     return sb.toString();
+  }
+
+  /** The fields a state change touches: nested per path, flat in the multi-turn dataset. */
+  private static String fieldsToMaintain(String stateField, String quote) {
+    if (CONVERSATION_STATE_FIELD.equals(stateField)) {
+      return quote
+          + "expected_state"
+          + quote
+          + ", "
+          + quote
+          + "expected_state_since"
+          + quote
+          + " und "
+          + quote
+          + "expected_state_reason"
+          + quote;
+    }
+    return quote
+        + "state"
+        + quote
+        + ", "
+        + quote
+        + "since"
+        + quote
+        + " und "
+        + quote
+        + "reason"
+        + quote
+        + " unter "
+        + quote
+        + stateField
+        + quote;
   }
 
   private static String inlineCode(List<String> ids) {

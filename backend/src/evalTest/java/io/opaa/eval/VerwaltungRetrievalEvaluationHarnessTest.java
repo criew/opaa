@@ -99,10 +99,10 @@ import org.testcontainers.utility.DockerImageName;
  * <p><b>What this domain adds beyond a third corpus</b> (docs/features/retrieval-benchmark.md §5):
  * its golden cases carry the five named case classes as their {@code category} — so both reports'
  * {@code byCategory} groups are the per-class evaluation the specification asks for — and the state
- * fields {@code expected_state}/{@code expected_state_since}/{@code expected_state_reason}, audited
- * per run by {@link ExpectedStateAudit}. The curation rules themselves are checked Docker-free by
- * {@code GoldenCaseCurationTest}, not here: a violated rule must not cost an hour of indexing to
- * discover.
+ * fields under {@code expected_state} (state, date and reason per measurement path), audited per
+ * run and per path by {@link ExpectedStateAudit}. The curation rules themselves are checked
+ * Docker-free by {@code GoldenCaseCurationTest}, not here: a violated rule must not cost an hour of
+ * indexing to discover.
  *
  * <p>Also carries out the domain's chunk-count invariant check ADR-0010 assigns to this harness
  * (see {@link ChunkCountExpectation}) — for {@code verwaltung} that is the Mehr-Chunk-Invariante
@@ -845,8 +845,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
             answerSpanOverall,
             documentWindowCoverage,
             answerSpanResolution,
-            // Issue #1043: declared vs. measured case state. Null for this domain, whose
-            // golden dataset carries no expected_state fields.
+            // Declared vs. measured case state on this path (expected_state.raw_vector).
             ExpectedStateAudit.fromRawVectorResults(results),
             MetadataFilterAudit.fromRawVectorResults(results),
             worstQueries,

@@ -77,8 +77,8 @@ class GoldenCaseCurationTest {
 
   /**
    * Every case of every domain declares state, date and reason on both measurement paths — the
-   * schema half of §5's requirement. The reason text is deliberately not pattern-checked: what makes
-   * it useful is that a human wrote it, and any pattern would only invite a formulation that
+   * schema half of §5's requirement. The reason text is deliberately not pattern-checked: what
+   * makes it useful is that a human wrote it, and any pattern would only invite a formulation that
    * satisfies the pattern.
    */
   @Test
@@ -106,7 +106,9 @@ class GoldenCaseCurationTest {
               .build()
               .readTree(
                   Files.readAllBytes(
-                      RepoPaths.evalDir().resolve("golden").resolve(domain.goldenDatasetFileName())));
+                      RepoPaths.evalDir()
+                          .resolve("golden")
+                          .resolve(domain.goldenDatasetFileName())));
       for (JsonNode goldenCase : root) {
         String id = domain.name() + "/" + goldenCase.get("id").asString();
         for (String retired :
@@ -276,7 +278,15 @@ class GoldenCaseCurationTest {
   void rejectsAMissingStateField() {
     GoldenCase withoutState =
         new GoldenCase(
-            "a", "test-domain", "frage", List.of("a.md"), "multi_hop", "medium", "de", "f", null,
+            "a",
+            "test-domain",
+            "frage",
+            List.of("a.md"),
+            "multi_hop",
+            "medium",
+            "de",
+            "f",
+            null,
             null);
 
     assertThat(GoldenCaseCuration.validate(List.of(withoutState), "test-domain", Set.of("a.md")))
@@ -349,7 +359,8 @@ class GoldenCaseCurationTest {
             new GoldenCase.ExpectedStateByPath(
                 new GoldenCase.PathState(
                     GoldenCase.ExpectedState.KNOWN_GAP, "irgendwann 2026", "Grund"),
-                new GoldenCase.PathState(GoldenCase.ExpectedState.KNOWN_GAP, "2026-09-14", "Grund")));
+                new GoldenCase.PathState(
+                    GoldenCase.ExpectedState.KNOWN_GAP, "2026-09-14", "Grund")));
 
     assertThat(GoldenCaseCuration.validate(List.of(badDate), "test-domain", Set.of("a.md")))
         .extracting(GoldenCaseCuration.Violation::rule)

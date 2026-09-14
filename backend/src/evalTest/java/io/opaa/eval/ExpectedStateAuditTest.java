@@ -88,8 +88,8 @@ class ExpectedStateAuditTest {
 
   /**
    * The asymmetric case measured exactly as declared: known gap on the raw-vector path, solved on
-   * the pipeline path. Both audits are clean — the regression guard for the 13 permanently asymmetric
-   * verwaltung cases that used to sit in the finding list of every run.
+   * the pipeline path. Both audits are clean — the regression guard for the 13 permanently
+   * asymmetric verwaltung cases that used to sit in the finding list of every run.
    */
   @Test
   void anAsymmetricCaseMeasuredAsDeclaredIsCleanOnBothPaths() {
@@ -156,7 +156,8 @@ class ExpectedStateAuditTest {
     var rawVectorAudit =
         ExpectedStateAudit.evaluate(
             MeasurementPath.RAW_VECTOR.stateField(),
-            List.of(ExpectedStateAudit.caseState(MeasurementPath.RAW_VECTOR, lostOnPipeline, true)));
+            List.of(
+                ExpectedStateAudit.caseState(MeasurementPath.RAW_VECTOR, lostOnPipeline, true)));
     var pipelineAudit =
         ExpectedStateAudit.evaluate(
             MeasurementPath.PIPELINE.stateField(),

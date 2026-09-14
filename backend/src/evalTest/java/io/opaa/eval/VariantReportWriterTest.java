@@ -24,17 +24,7 @@ class VariantReportWriterTest {
 
   private static PipelineEvaluationReport report() {
     var goldenCase =
-        new GoldenCase(
-            "a",
-            "test",
-            "frage",
-            List.of("a.md"),
-            "cat",
-            "easy",
-            "de",
-            "t",
-            null,
-            null);
+        new GoldenCase("a", "test", "frage", List.of("a.md"), "cat", "easy", "de", "t", null, null);
     return PipelineRetrievalEvaluator.report(
         PipelineRetrievalEvaluator.evaluateAll(
             List.of(goldenCase),
@@ -147,17 +137,7 @@ class VariantReportWriterTest {
   void rendersMultiRunMinMedianMaxAndTheDeviationLine() {
     var reference = VariantOutcome.executed(variant("reference"), report());
     var goldenCase =
-        new GoldenCase(
-            "a",
-            "test",
-            "frage",
-            List.of("a.md"),
-            "cat",
-            "easy",
-            "de",
-            "t",
-            null,
-            null);
+        new GoldenCase("a", "test", "frage", List.of("a.md"), "cat", "easy", "de", "t", null, null);
     List<List<String>> subQueriesPerRun =
         List.of(List.of("teilfrage 1"), List.of("teilfrage 1"), List.of("andere teilfrage"));
     List<PipelineEvaluationReport> runs =

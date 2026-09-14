@@ -44,8 +44,8 @@ public final class BaselineMarkdownWriter {
 
   /**
    * @param expectedStateAudit the run's declared-vs-measured case-state audit, appended below the
-   *     delta table (issue #1043); {@code null} for a domain whose golden dataset declares no
-   *     states, in which case the output is unchanged from before that issue.
+   *     delta table, against {@code expected_state.raw_vector}; {@code null} if no case declares a
+   *     state, in which case no audit block is appended.
    * @param metadataFilterAudit the run's filter audit in its two error directions (issue #1070),
    *     appended after the state audit; {@code null} for a domain without a filtered case.
    */

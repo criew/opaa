@@ -317,6 +317,7 @@ public final class ConversationRetrievalEvaluator {
         byTurn,
         caseOutcomeSummary(outcomes),
         ExpectedStateAudit.evaluate(
+            ExpectedStateAudit.CONVERSATION_STATE_FIELD,
             outcomes.stream()
                 .map(
                     c ->
@@ -324,7 +325,6 @@ public final class ConversationRetrievalEvaluator {
                             c.conversationCase().id(),
                             c.conversationCase().category(),
                             c.conversationCase().expectedState(),
-                            c.conversationCase().expectedStateException(),
                             c.solved()))
                 .toList()),
         topicBleed(outcomes),

@@ -25,9 +25,9 @@ import java.util.TreeMap;
  *   <li><b>At least {@link #MINIMUM_DISTINCT_EXPECTED_SETS_PER_CLASS} distinct expected-document
  *       sets per class</b> — the case count alone does not deliver what the rule above is for; see
  *       that constant.
- *   <li><b>Every case carries all three state fields</b>, with a parseable ISO date and a non-blank
- *       reason. The fields are worthless if they may be left empty: a missing reason is exactly the
- *       "reconstructed instead of recorded" state §5 warns about.
+ *   <li><b>Every case declares state, date and reason for both measurement paths</b> ({@link
+ *       #validateStates}), with a parseable ISO date and a non-blank reason. A missing reason is
+ *       exactly the "reconstructed instead of recorded" state §5 warns about.
  *   <li><b>Between one and {@link #MAXIMUM_EXPECTED_DOCUMENTS} expected documents</b> — the upper
  *       bound is the existing set-question window from docs/features/search-quality-evaluation.md,
  *       unchanged.
@@ -97,16 +97,6 @@ public final class GoldenCaseCuration {
    * matches what {@code city-landmarks} already does in practice (no {@code answer_span} on {@code
    * multi_city}/{@code multi_topic}); this class turns that practice into a checked rule.
    */
-  /**
-   * An {@code expected_state_exception} is only meaningful on a {@code known_gap} case: it explains
-   * why that case deviates from its declared state on purpose. On a {@code solved} case the only
-   * possible deviation is "no longer solved" — a regression — and an exception there would silence
-   * that finding before it ever occurs.
-   */
-  public static final String EXCEPTION_ONLY_ON_KNOWN_GAP_RULE =
-      "expected_state_exception is only allowed on a known_gap case — on a solved case it could "
-          + "only ever excuse a regression";
-
   public static final String SINGLE_DOCUMENT_ANSWER_SPAN_RULE =
       "answer_span is defined per case and only for cases with exactly one expected document "
           + "(issue #1043, ADR-0012 Nachtrag zu offenem Punkt 4)";
@@ -231,38 +221,55 @@ public final class GoldenCaseCuration {
     }
   }
 
+  /**
+   * The state rule alone, for datasets the class and filter rules do not apply to: every case
+   * declares state, ISO date and non-blank reason on each measurement path.
+   */
+  public static List<Violation> validateStates(List<GoldenCase> cases) {
+    List<Violation> violations = new ArrayList<>();
+    cases.forEach(goldenCase -> validateState(goldenCase, violations));
+    return List.copyOf(violations);
+  }
+
   private static void validateState(GoldenCase goldenCase, List<Violation> violations) {
-    if (goldenCase.expectedState() == null) {
+    GoldenCase.ExpectedStateByPath byPath = goldenCase.expectedState();
+    if (byPath == null) {
       violations.add(new Violation(goldenCase.id(), "expected_state is missing"));
+      return;
     }
-    // An exception is a written statement, so a blank one is worse than none at all: it silences
-    // the audit for this case without saying why.
-    if (goldenCase.expectedStateException() != null
-        && goldenCase.expectedStateException().isBlank()) {
-      violations.add(
-          new Violation(goldenCase.id(), "expected_state_exception is present but blank"));
+    validatePathState(
+        goldenCase.id(),
+        ExpectedStateAudit.MeasurementPath.RAW_VECTOR.stateField(),
+        byPath.rawVector(),
+        violations);
+    validatePathState(
+        goldenCase.id(),
+        ExpectedStateAudit.MeasurementPath.PIPELINE.stateField(),
+        byPath.pipeline(),
+        violations);
+  }
+
+  private static void validatePathState(
+      String id, String field, GoldenCase.PathState pathState, List<Violation> violations) {
+    if (pathState == null) {
+      violations.add(new Violation(id, field + " is missing"));
+      return;
     }
-    // An exception describes why a *known_gap* case deviates. On a solved case there is nothing it
-    // could excuse — a solved case that stops being solved is a regression, and an exception there
-    // would pre-silence exactly that finding.
-    if (goldenCase.expectedStateException() != null
-        && goldenCase.expectedState() == GoldenCase.ExpectedState.SOLVED) {
-      violations.add(new Violation(goldenCase.id(), EXCEPTION_ONLY_ON_KNOWN_GAP_RULE));
+    if (pathState.state() == null) {
+      violations.add(new Violation(id, field + ".state is missing"));
     }
-    if (goldenCase.expectedStateReason() == null || goldenCase.expectedStateReason().isBlank()) {
-      violations.add(new Violation(goldenCase.id(), "expected_state_reason is missing or blank"));
+    if (pathState.reason() == null || pathState.reason().isBlank()) {
+      violations.add(new Violation(id, field + ".reason is missing or blank"));
     }
-    String since = goldenCase.expectedStateSince();
+    String since = pathState.since();
     if (since == null || since.isBlank()) {
-      violations.add(new Violation(goldenCase.id(), "expected_state_since is missing"));
+      violations.add(new Violation(id, field + ".since is missing"));
       return;
     }
     try {
       LocalDate.parse(since);
     } catch (DateTimeParseException e) {
-      violations.add(
-          new Violation(
-              goldenCase.id(), "expected_state_since '" + since + "' is not an ISO date"));
+      violations.add(new Violation(id, field + ".since '" + since + "' is not an ISO date"));
     }
   }
 
