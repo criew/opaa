@@ -536,7 +536,10 @@ Drei Milderungen, keine Lösungen:
 > geprüften Mechanismus) trägt ihre Begründung im Datensatz (`expected_state_exception`) und wird
 > getrennt von den Befunden ausgewiesen, damit die Fundliste leer bleibt, solange nichts Neues
 > passiert ist. Das Audit meldet, es lässt den Lauf nicht fehlschlagen: Ein Zustandswechsel bleibt
-> eine bewusste, datierte Entscheidung.
+> eine bewusste, datierte Entscheidung. **Übergang bis #1658:** Die Ausnahme wirkt heute je Fall,
+> nicht je Pfad, und würde einen späteren Gewinn auf dem anderen Pfad mit verschlucken; bis der
+> erwartete Zustand je Pfad geführt wird (#1658, das Feld entfällt dann), werden deshalb keine
+> Ausnahmen gesetzt (Fortschreibung #1308 unten).
 >
 > **Nicht mit umgesetzt:** die Aufnahme der Klassen in die bestehenden Domänen (offener Punkt 5) —
 > unverändert offen, weil sie dort eine Baseline-Neuziehung kostet.
@@ -582,6 +585,28 @@ Drei Milderungen, keine Lösungen:
 > Transaktion wie seine Vektorzeile, zurückliegen kann nur noch die Fassung einer Zeile. Auch dies
 > eine reine Fixpunkt-Umbenennung ohne neuen Messlauf — auf dem frisch indizierten Korpus bleibt
 > der Wert `true`.
+>
+> **Fortschreibung (Issue #1308, 09/2026):** Seit #1341 steht im Kontextpräfix der Kernfeld Titel
+> statt des humanisierten Dateinamens — gewollt (Maintainer-Entscheidung 14.09.2026). Die
+> Einbettungseingabe aller 998 Chunks der Verwaltungsdomäne unterscheidet sich gegenüber dem Stand
+> davor ausschließlich in diesem Titel; auf dem Pipeline-Pfad liefert er über den Volltextindex
+> zusätzlich Lexeme. Beide Baselines der Domäne sind neu gezogen, und **21 Fälle** haben ihre
+> Zustandsfelder nachgezogen bekommen, jeder mit einer in CPU-Läufen um #1156 und #1341 gemessenen
+> Ursache, nach der unveränderten Regel „gelöst auf beiden Pfaden": fünf wechseln auf `solved`
+> (`verw-lit-008`, `verw-lit-009`, `verw-comp-009`, `verw-hop-002`, `verw-meta-001`), vier auf
+> `known_gap` — `verw-id-001` und `verw-hop-003` verlieren mit #1341 Rang 1 auf dem Rohvektor-Pfad,
+> `verw-id-004` schon mit #1156, `verw-comp-006` mit #1156 ein Dokument aus der Auswahl des
+> Pipeline-Pfads. Die übrigen zwölf behalten `known_gap` mit neuer Begründung.
+>
+> **Keine Ausnahme mehr, Übergang bis #1658.** Vier Ausnahmen sind gegenstandslos, weil ihr Fall
+> jetzt gelöst ist; die sieben übrigen Pfad-Asymmetrie-Ausnahmen aus #1049 sind widerlegt — der
+> Rohvektor-Pfad hat einen der Fälle zeitweise gelöst, den Pipeline-Pfad hat #1156 (strukturbewusstes
+> Markdown-Chunking) sechs davon gekostet. Seit #1156 unterscheiden sich die Pfade strukturell in der
+> Fensterform: zehn Dokumente gegen acht Chunk-Plätze, die im Mittel 5,3 → 3,3 unterschiedliche
+> Dokumente abdecken. Solche Asymmetrien trügen nach der Regel oben eine Ausnahme; weil sie heute je
+> Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde, setzt
+> #1308 keine. 13 Fälle stehen deshalb bis #1658 (erwarteter Zustand je Pfad) als offene Befunde im
+> Audit, jeder mit gemessener Ursache. Einzelbegründungen: `eval/corpus/verwaltung/MAINTENANCE.md`.
 
 
 Fünf Kategorien kommen hinzu. Jede hat ein benanntes Fehlerbild, eine überprüfbare Ground Truth und
