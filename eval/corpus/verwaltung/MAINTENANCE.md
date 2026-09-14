@@ -145,31 +145,30 @@ gemessene Lage dauerhaft von der deklarierten abweicht. Das Audit führt solche 
 den Befunden; nur unerklärte Abweichungen gelten als Befund. Ohne diese Trennung stünde in jedem
 Lauf dieselbe erwartete Meldung in der Fundliste — und niemand läse sie nach dem dritten Mal noch.
 
-**Derzeit keine** (Stand 2026-09-14, #1308). Mit #1308 sind alle Ausnahmen entfallen:
+**Derzeit keine** (Stand 2026-09-14, #1308), und bis #1658 werden keine gesetzt.
 
-- Vier der elf bisherigen Ausnahmen sind gegenstandslos, weil ihr Fall jetzt auf beiden Pfaden gelöst ist: `verw-lit-008`, `verw-comp-009`, `verw-hop-002` und `verw-meta-001`.
-- Die sieben übrigen Ausnahmen aus #1049 begründeten ihre Abweichung damit, dass der Rohvektor-Pfad den Fall ohne Volltextpfad strukturell nicht lösen könne. Die CPU-Läufe widerlegen das für jeden einzelnen:
-  - Der Rohvektor-Pfad hat `verw-hop-005` zwischen #1156 und #1341 gelöst.
-  - Den Pipeline-Pfad hat `verw-lit-006`, `verw-comp-002`/`-003`/`-008` und `verw-hop-007`/`-009` seit #1156 verloren.
-- Für die übrigen Fälle mit gemessener Pfad-Asymmetrie hat die Ursachenmessung (unten) ebenfalls keinen **dauerhaften** Grund ergeben.
+**Übergang bis #1658:** Eine `expected_state_exception` wirkt heute je **Fall**, nicht je **Pfad**. `ExpectedStateAudit` akzeptiert eine Abweichung, sobald der Fall eine Ausnahme trägt, gleich auf welchem Pfad sie auftritt. Eine Ausnahme für die Asymmetrie auf dem einen Pfad würde deshalb auch einen späteren Gewinn oder Verlust auf dem anderen Pfad unter „erwartete Abweichungen“ ablegen und stummschalten. Genau diesen Wechsel will §5 sichtbar machen. Mit #1658 wird der erwartete Zustand je Pfad geführt, und das Feld entfällt. Bis dahin bleiben die gemessenen Asymmetrien als offene Befunde im Audit stehen. Die gemessene Ursache steht im Feld `expected_state_reason`. Das Audit lässt keinen Lauf fehlschlagen.
 
-Die heutigen Abweichungen haben Rangfolge und Auswahl zur Ursache, also Eigenschaften, die ein Retrieval-Baustein ändern kann. Ein Fall mit einer solchen Abweichung trägt **keine** Ausnahme. Das Audit seines Pfads führt ihn als offenen Befund, und `expected_state_reason` nennt die gemessene Ursache.
+Mit #1308 sind die elf bisherigen Ausnahmen entfernt:
+
+- Vier sind gegenstandslos, weil ihr Fall jetzt auf beiden Pfaden gelöst ist: `verw-lit-008`, `verw-comp-009`, `verw-hop-002` und `verw-meta-001`.
+- Die sieben übrigen aus #1049 (`verw-lit-006`, `verw-comp-002`/`-003`/`-008`, `verw-hop-005`/`-007`/`-009`) nannten einen Grund, den die CPU-Läufe widerlegen: Der Rohvektor-Pfad könne den Fall ohne Volltextpfad strukturell nicht lösen.
+  - Den Pipeline-Pfad hat #1156 sechs dieser Fälle gekostet.
+  - `verw-hop-005` hat der Rohvektor-Pfad zwischen #1156 und #1341 gelöst.
+
+Die heute gemessenen Asymmetrien sind teils strukturell. Seit #1156 misst der Rohvektor-Pfad ein Fenster aus zehn Dokumenten, der Pipeline-Pfad acht Chunk-Plätze, die im Mittel 3,3 Dokumente abdecken. Diese unterschiedliche Fensterform bleibt bestehen, bis sich die Produktionsauswahl ändert. Die Rang-1-Verluste durch #1341 folgen dagegen aus dem gewollten Präfix-Titel. Mit #1658 bekommen beide Gruppen ihren Zustand je Pfad.
 
 Offene Befunde im Lauf vom 2026-09-14:
 
 | Audit | Befund | Fälle | gemessene Ursache |
 |---|---|---|---|
-| Rohvektor | als `known_gap` geführt, aber gelöst | `verw-comp-002`, `-003`, `-004`, `-005`, `-006`, `-007`, `-008` | Der Pipeline-Pfad verfehlt ein erwartetes Dokument im Fenster: Seit #1156 füllen wenige Dokumente mit mehreren Abschnitts-Chunks die acht Chunk-Plätze der Produktionsauswahl (siehe unten). |
+| Rohvektor | als `known_gap` geführt, aber gelöst | `verw-comp-002`, `-003`, `-004`, `-005`, `-006`, `-007`, `-008` | Fensterform seit #1156: Zehn Dokumente reichen, acht Chunk-Plätze des Pipeline-Pfads nicht, weil wenige Dokumente sie mit mehreren Abschnitten füllen. |
 | Pipeline | als `known_gap` geführt, aber gelöst | `verw-id-001`, `-002`, `-004`, `-005`, `verw-hop-003`, `-005` | Der Rohvektor-Pfad verliert Rang 1: `verw-id-004` seit #1156, die übrigen seit dem Kernfeld-Titel im Kontextpräfix (#1341). |
 
-> **Offene Frage an die Spezifikation.** Alle diese Befunde entstehen daraus, dass ein Fall erst als
+> **Offene Frage an die Spezifikation.** Diese Befunde entstehen daraus, dass ein Fall erst als
 > gelöst gilt, wenn ihn *beide* Messpfade lösen. Diese Definition stammt aus #1043, als beide Pfade
-> praktisch dasselbe Retrieval maßen. Seit #1049 misst der Rohvektor-Pfad bewusst eine
-> **nicht**-produktive Konfiguration, und seit #1156 misst er ein Fenster aus zehn Dokumenten,
-> während der Pipeline-Pfad acht Chunks misst. Ob die Definition auf den Pipeline-Pfad (den
-> produktiven) umgestellt werden sollte, ist eine Entscheidung über den gemeinsamen Messvertrag
-> beider Pfade. #1049 hat sie bewusst nicht getroffen (siehe ADR-0012, Nachtrag Volltextpfad,
-> Entscheidung 23), und #1308 trifft sie ebenfalls nicht.
+> praktisch dasselbe Retrieval maßen. #1658 beantwortet die Frage, indem der erwartete Zustand je
+> Pfad geführt wird. #1308 trifft dazu keine Entscheidung.
 
 Jede Zustandsänderung ist ein bewusster Vorgang mit Datum und Begründung im selben PR wie ihr
 Auslöser — nie eine Datenpflege nebenbei. Der Zustandsfelder-Abschnitt beider Reports **und** beider
@@ -208,45 +207,54 @@ Mangel: „Ein Fall, den heute keine Variante löst, ist der wertvollste im Date
 
 ### Zustandspflege mit #1308 (2026-09-14)
 
-**Auslöser:** Seit #1341 steht im Kontextpräfix jedes Chunks der Kernfeld Titel (in diesem Korpus der Frontmatter-`titel`) statt des humanisierten Dateinamens. Das ist gewollt, Maintainer-Entscheidung vom 14.09.2026.
+**Auslöser:** Seit #1341 steht im Kontextpräfix jedes Chunks der Kernfeld Titel statt des humanisierten Dateinamens. In diesem Korpus ist das der Frontmatter-`titel`. Die Änderung ist gewollt (Maintainer-Entscheidung vom 14.09.2026).
 
-Ein Vergleich der formatierten Einbettungseingaben aller 998 Chunks zwischen `fa9dd079` (vor #1341) und `6165dc39` (#1341) zeigt: Chunk-Grenzen, Chunk-Text und Präfixregel sind gleich. Alle 998 Eingaben unterscheiden sich allein im Titel zwischen den eckigen Klammern. Auf dem Pipeline-Pfad liefert der Präfix-Titel zusätzlich Lexeme, weil der Volltextindex seit #1341 dieselbe Form liest. Beide Baselines sind im selben CPU-Lauf neu gezogen.
+Ein Vergleich der formatierten Einbettungseingaben aller 998 Chunks zwischen `fa9dd079` (vor #1341) und `6165dc39` (#1341) zeigt:
 
-**Ursachenmessung.** Die Einzelfälle sind in CPU-Läufen auf vier Ständen verglichen worden, jeweils über die Fallergebnisse (`allQueryResults`) und nicht über die Baseline-Validität, weil das Golden Dataset sich zwischen den Ständen geändert hat:
+- Chunk-Grenzen, Chunk-Text und Präfixregel sind gleich.
+- Alle 998 Eingaben unterscheiden sich allein im Titel zwischen den eckigen Klammern.
+- Auf dem Pipeline-Pfad liefert der Präfix-Titel zusätzlich Lexeme, weil der Volltextindex seit #1341 dieselbe Form liest.
 
-| Stand | Commit |
-|---|---|
-| vor #1156 | `b2dc2e2e` |
-| #1156, strukturbewusstes Markdown-Chunking | `6a4e6bae` |
-| vor #1341 | `fa9dd079` |
-| main | `5ca38424` |
+Beide Baselines sind im selben CPU-Lauf neu gezogen.
 
-Der Lauf auf `fa9dd079` reproduziert die Vorgängerbaselines exakt.
+**Ursachenmessung.** Die Einzelfälle sind in CPU-Läufen auf vier Ständen verglichen worden. Maßstab waren die Fallergebnisse (`allQueryResults`), nicht die Baseline-Validität, weil das Golden Dataset sich zwischen den Ständen geändert hat.
+
+| Stand | Commit | Abgleich |
+|---|---|---|
+| vor #1156 | `b2dc2e2e` | stimmt in allen 46 Fallzuständen und allen Gruppenwerten mit dem nächtlichen Lauf 33601682064 (02.09.) überein |
+| #1156, strukturbewusstes Markdown-Chunking | `6a4e6bae` | – |
+| vor #1341 | `fa9dd079` | reproduziert die Vorgängerbaselines exakt |
+| main | `5ca38424` | – |
 
 Zwei Änderungen erklären jede Abweichung:
 
-- **#1156** zerlegt jedes Markdown-Dokument in rund 15 Abschnitts-Chunks statt 3. Die Produktionsauswahl des Pipeline-Pfads hat acht Chunk-Plätze, und die füllen seither wenige Dokumente mit mehreren Abschnitten: im Mittel 5,3 → 3,7 unterschiedliche Dokumente je Anfrage, auf main 3,3. Ein drittes erwartetes Dokument und nahe Verwandte der beiden Fassungen einer Satzung fallen dabei aus der Auswahl. Dieselbe Änderung hat dem Rohvektor-Pfad (zehn Dokumente) vier Fälle neu gelöst und `verw-id-004` Rang 1 gekostet.
-- **#1341** kostet dem Rohvektor-Pfad bei vier Fällen Rang 1 (`verw-id-001`, `-002`, `-005`, `verw-hop-003`), `verw-hop-005` ein erwartetes Dokument auf Rang 1, und löst `verw-lit-008`, `verw-hop-002`, `verw-meta-001` und `verw-id-008` auf diesem Pfad neu.
+- **#1156** zerlegt jedes Markdown-Dokument in rund 15 Abschnitts-Chunks statt 3. Die Produktionsauswahl des Pipeline-Pfads hat acht Chunk-Plätze, und die füllen seither wenige Dokumente mit mehreren Abschnitten: im Mittel 5,3 → 3,7 unterschiedliche Dokumente je Anfrage, auf main 3,3. Der Rohvektor-Pfad misst dagegen zehn verschiedene Dokumente. Seit #1156 unterscheiden sich die beiden Messpfade deshalb strukturell in ihrer Fensterform.
+  - **Rohvektor-Pfad:** #1156 löst `verw-lit-009`, `verw-id-002`, `verw-id-005`, `verw-comp-002` bis `-005`, `-007` bis `-009` und `verw-hop-005` neu. Er kostet `verw-id-004` und `verw-id-008` Rang 1.
+  - **Pipeline-Pfad:** #1156 löst `verw-lit-009`, `verw-id-002` und `verw-id-005` neu. Er verliert `verw-lit-006`, `-008`, `verw-comp-002`, `-003`, `-006`, `-008` und `verw-hop-002`, `-007`, `-009`.
+- **#1341** kostet den Rohvektor-Pfad bei `verw-id-001`, `-002`, `-005`, `verw-hop-003` und `-005` Rang 1. Auf demselben Pfad löst #1341 `verw-lit-008`, `verw-hop-002` und `verw-meta-001` neu und holt `verw-id-008` zurück. Den Pipeline-Pfad löst #1341 bei `verw-lit-008` und `verw-hop-002` wieder.
 
-Gelöst heißt unverändert: auf beiden Pfaden alle erwarteten Dokumente im Fenster und ein erwartetes Dokument auf Rang 1. „R“ steht für den Rohvektor-Pfad, „P“ für den Pipeline-Pfad, „g“ für gelöst.
+Gelöst heißt unverändert: auf beiden Pfaden alle erwarteten Dokumente im Fenster und ein erwartetes auf Rang 1. „R“ steht für den Rohvektor-Pfad, „P“ für den Pipeline-Pfad, „g“ für gelöst.
 
 | Fall | Zustand | vor #1156 R/P | #1156 R/P | main R/P | Ursache |
 |---|---|---|---|---|---|
-| `verw-lit-008` | `known_gap` → `solved` | –/– | –/– | g/g | #1341 löst beide Pfade |
-| `verw-hop-002` | `known_gap` → `solved` | –/– | –/– | g/g | #1341 löst beide Pfade |
-| `verw-meta-001` | `known_gap` → `solved` | n. gem. | n. gem. | g/g | #1341 löst den Rohvektor-Pfad (Fall stammt aus #1070) |
-| `verw-lit-009` | `known_gap` → `solved` | g/g | g/g | g/g | schon vor #1156 gelöst, Zustand war nicht nachgezogen |
-| `verw-comp-009` | `known_gap` → `solved` | g/g | g/g | g/g | schon vor #1156 gelöst, Ausnahme war veraltet |
+| `verw-lit-008`, `verw-hop-002` | `known_gap` → `solved` | –/g | –/– | g/g | #1156 kostet den Pipeline-Pfad, #1341 löst beide Pfade |
+| `verw-meta-001` | `known_gap` → `solved` | –/g | –/g | g/g | #1341 löst den Rohvektor-Pfad |
+| `verw-lit-009` | `known_gap` → `solved` | –/– | g/g | g/g | #1156 löst beide Pfade, Zustand war nicht nachgezogen |
+| `verw-comp-009` | `known_gap` → `solved` | –/g | g/g | g/g | #1156 löst den Rohvektor-Pfad, Ausnahme war seither veraltet |
 | `verw-id-001`, `verw-hop-003` | `solved` → `known_gap` | g/g | g/g | –/g | #1341: Rohvektor-Pfad verliert Rang 1 |
 | `verw-id-004` | `solved` → `known_gap` | g/g | –/g | –/g | #1156: Rohvektor-Pfad verliert Rang 1 an eine Nachbar-Dienstanweisung |
 | `verw-comp-006` | `solved` → `known_gap` | g/g | g/– | g/– | #1156: beide Fassungen der Kita-Beitragssatzung verdrängen die Gebührenordnung aus der Auswahl |
-| `verw-id-002`, `verw-id-005` | bleibt `known_gap` | g/– | g/g | –/g | #1156 löst den Pipeline-Pfad, #1341 kostet den Rohvektor-Pfad Rang 1 |
-| `verw-hop-005` | bleibt `known_gap`, Ausnahme entfällt | –/g | g/g | –/g | #1341: Rohvektor-Pfad verliert Rang 1 |
-| `verw-comp-002`, `-003`, `-008` | bleibt `known_gap`, Ausnahme entfällt | –/g | g/– | g/– | #1156: Rohvektor-Pfad neu gelöst, Pipeline-Pfad verliert ein erwartetes Dokument aus der Auswahl |
-| `verw-comp-004`, `-005`, `-007` | bleibt `known_gap` | –/– | g/– | g/– | #1156: Rohvektor-Pfad neu gelöst; Pipeline-Pfad in keinem Stand gelöst, seit #1156 enger |
+| `verw-id-002`, `verw-id-005` | bleibt `known_gap` | –/– | g/g | –/g | #1156 löst beide Pfade, #1341 kostet den Rohvektor-Pfad Rang 1 |
+| `verw-hop-005` | bleibt `known_gap`, Ausnahme entfällt | –/g | g/g | –/g | #1156 löst den Rohvektor-Pfad, #1341 kostet ihn Rang 1 |
+| `verw-comp-002`, `-003`, `-008` | bleibt `known_gap`, Ausnahme entfällt | –/g | g/– | g/– | #1156: Fensterform, Rohvektor-Pfad neu gelöst, Pipeline-Pfad verliert ein erwartetes Dokument aus der Auswahl |
+| `verw-comp-004`, `-005`, `-007` | bleibt `known_gap` | –/– | g/– | g/– | #1156: Fensterform, Rohvektor-Pfad neu gelöst; Pipeline-Pfad in keinem Stand gelöst |
 | `verw-lit-006`, `verw-hop-007`, `-009` | bleibt `known_gap`, Ausnahme entfällt | –/g | –/– | –/– | #1156: Pipeline-Pfad verliert Rang 1 bzw. ein Belegdokument; auf keinem Pfad gelöst, kein Befund |
 
-Die Rückschritte durch #1341 (vier Rang-1-Verluste auf dem Rohvektor-Pfad) werden bewusst hingenommen: Sie sind die Messfolge des gewollten Titels. Die Rückschritte durch #1156 waren seit #1306 als unerklärte Audit-Befunde bekannt und sind jetzt gemessen. Ob die Engführung der Produktionsauswahl hingenommen oder mit einem Baustein zur Dokumentvielfalt behoben wird, entscheidet diese Pflege nicht. Deshalb bleiben die Fälle als offene Befunde sichtbar und tragen keine Ausnahme.
+Die vier Rang-1-Verluste auf dem Rohvektor-Pfad durch #1341 (`verw-id-001`, `-002`, `-005`, `verw-hop-003`) und der von `verw-hop-005` werden bewusst hingenommen: Sie sind die Messfolge des gewollten Titels.
+
+Die Rückschritte durch #1156 waren seit #1306 als unerklärte Audit-Befunde bekannt und sind jetzt gemessen. Ob die Engführung der Produktionsauswahl hingenommen oder mit einem Baustein zur Dokumentvielfalt behoben wird, entscheidet diese Pflege nicht.
+
+Die Fälle mit Pfad-Asymmetrie tragen bis #1658 keine Ausnahme (Begründung unter „Erwartete Abweichungen“ oben).
 
 Der Befund der ersten Kuratierung (Stand vor #1049): `literal_term_weak_embedding` war
 **vollständig** ungelöst (0 von 9), obwohl der Anfragebegriff wörtlich im Zieldokument steht —
@@ -648,8 +656,9 @@ Zwei Gründe, warum die Zahl so klein bleibt:
 `known_gap`, wurde im Referenzlauf aber gelöst gemessen — ohne den geprüften Mechanismus, weil die
 Teilfrage der Zielrunde die Angabe nicht trug. Mit der Nachmessung ist er **auch gemessen offen**;
 die Ausnahme hat damit keinen Gegenstand mehr und ist am Fall entfernt. Ein `known_gap`-Fall, den
-die heutige Rangfolge zufällig löst, bekommt sie jederzeit wieder — nach derselben Regel wie
-`metadata_filter` vor #1070.
+die heutige Rangfolge zufällig löst, bekäme sie nach derselben Regel wie `metadata_filter` vor
+#1070 wieder; bis #1658 werden aber keine Ausnahmen gesetzt, weil eine Ausnahme heute je Fall statt
+je Pfad wirkt (siehe „Erwartete Abweichungen“ der Einzelfragen-Klassen oben).
 
 ## Overfitting-Risiko
 

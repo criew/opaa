@@ -536,7 +536,10 @@ Drei Milderungen, keine Lösungen:
 > geprüften Mechanismus) trägt ihre Begründung im Datensatz (`expected_state_exception`) und wird
 > getrennt von den Befunden ausgewiesen, damit die Fundliste leer bleibt, solange nichts Neues
 > passiert ist. Das Audit meldet, es lässt den Lauf nicht fehlschlagen: Ein Zustandswechsel bleibt
-> eine bewusste, datierte Entscheidung.
+> eine bewusste, datierte Entscheidung. **Übergang bis #1658:** Die Ausnahme wirkt heute je Fall,
+> nicht je Pfad, und würde einen späteren Gewinn auf dem anderen Pfad mit verschlucken; bis der
+> erwartete Zustand je Pfad geführt wird (#1658, das Feld entfällt dann), werden deshalb keine
+> Ausnahmen gesetzt (Fortschreibung #1308 unten).
 >
 > **Nicht mit umgesetzt:** die Aufnahme der Klassen in die bestehenden Domänen (offener Punkt 5) —
 > unverändert offen, weil sie dort eine Baseline-Neuziehung kostet.
@@ -595,14 +598,15 @@ Drei Milderungen, keine Lösungen:
 > `verw-id-004` schon mit #1156, `verw-comp-006` mit #1156 ein Dokument aus der Auswahl des
 > Pipeline-Pfads. Die übrigen zwölf behalten `known_gap` mit neuer Begründung.
 >
-> **Keine Ausnahme mehr.** Vier Ausnahmen sind gegenstandslos, weil ihr Fall jetzt gelöst ist; die
-> sieben übrigen Pfad-Asymmetrie-Ausnahmen aus #1049 sind widerlegt: Der
+> **Keine Ausnahme mehr, Übergang bis #1658.** Vier Ausnahmen sind gegenstandslos, weil ihr Fall
+> jetzt gelöst ist; die sieben übrigen Pfad-Asymmetrie-Ausnahmen aus #1049 sind widerlegt — der
 > Rohvektor-Pfad hat einen der Fälle zeitweise gelöst, den Pipeline-Pfad hat #1156 (strukturbewusstes
-> Markdown-Chunking) sechs davon gekostet — seine acht Chunk-Plätze füllen seither wenige Dokumente mit
-> mehreren Abschnitten (im Mittel 5,3 → 3,7 unterschiedliche Dokumente je Anfrage). Weil diese
-> Abweichungen aus Rangfolge und Auswahl entstehen, nicht aus einem strukturellen Grund eines
-> Messpfads, trägt kein Fall mehr eine `expected_state_exception`; 13 Fälle stehen als offene Befunde
-> im Audit. Einzelbegründungen: `eval/corpus/verwaltung/MAINTENANCE.md`.
+> Markdown-Chunking) sechs davon gekostet. Seit #1156 unterscheiden sich die Pfade strukturell in der
+> Fensterform: zehn Dokumente gegen acht Chunk-Plätze, die im Mittel 5,3 → 3,3 unterschiedliche
+> Dokumente abdecken. Solche Asymmetrien trügen nach der Regel oben eine Ausnahme; weil sie heute je
+> Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde, setzt
+> #1308 keine. 13 Fälle stehen deshalb bis #1658 (erwarteter Zustand je Pfad) als offene Befunde im
+> Audit, jeder mit gemessener Ursache. Einzelbegründungen: `eval/corpus/verwaltung/MAINTENANCE.md`.
 
 
 Fünf Kategorien kommen hinzu. Jede hat ein benanntes Fehlerbild, eine überprüfbare Ground Truth und

@@ -128,7 +128,7 @@
     "answer_span": "(3) Diese Ermäßigung ist unabhängig von der Gebührenbefreiung wegen Bedürftigkeit nach § 3 dieser Satzung zu beantragen; ein gleichzeitiger Anspruch aus § 3 und § 13 für dieselbe Amtshandlung besteht nicht, da § 3 natürliche Personen in einer persönlichen Notlage betrifft und § 13 juristische Personen in Vereinsform unabhängig von deren wirtschaftlicher Lage.",
     "expected_state": "solved",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Gelöst ohne eigenen Baustein, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; beide Pfade lösen ihn erst seit dem Kernfeld-Titel im Präfix (#1341), im Lauf vor #1341 (fa9dd079) löste ihn keiner; die Ausnahme entfällt"
+    "expected_state_reason": "Gelöst ohne eigenen Baustein, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; der Pipeline-Pfad löste ihn bis #1156, verlor ihn mit #1156 und löst ihn seit dem Kernfeld-Titel im Präfix (#1341) wieder, der Rohvektor-Pfad löst ihn erst seit #1341; die Ausnahme entfällt"
   },
   {
     "id": "verw-lit-009",
@@ -144,7 +144,7 @@
     "answer_span": "Hinweise der Kämmerei der Stadt Kalkstadt zum Ausfüllen von Formular KAE-07, das für den regulären Antrag auf eine Amtshandlung verwendet wird.",
     "expected_state": "solved",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Gelöst ohne eigenen Baustein, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; beide Pfade lösten ihn schon im Lauf vor #1341 (fa9dd079), der Zustand war nur nicht nachgezogen"
+    "expected_state_reason": "Gelöst ohne eigenen Baustein, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; beide Pfade lösen ihn seit #1156 (strukturbewusstes Markdown-Chunking), vorher keiner; der Zustand war nicht nachgezogen"
   },
   {
     "id": "verw-id-001",
@@ -160,7 +160,7 @@
     "answer_span": "Dienstanweisung des Sozialamts der Stadt Kalkstadt, Aktenzeichen SOZ-DA-1/2023, gültig ab dem 1.",
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Rückschritt durch den gewollten Kernfeld-Titel im Kontextpräfix (#1341, Maintainer-Entscheidung 2026-09-14): bis dahin auf beiden Pfaden gelöst, seither auf dem Rohvektor-Pfad Rang 2 hinter SOZ-DA-2/2024; die Kennung wird als bedeutungsarmes Token eingebettet (Roadmap 1a). Pipeline-Pfad gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Keine dauerhafte Abweichung: Ursache ist Rangfolge bzw. Auswahl, die ein Retrieval-Baustein ändern kann, kein struktureller Grund des Messpfads — deshalb ohne expected_state_exception; das Audit des Pipeline-Pfads führt den Fall als offenen Befund."
+    "expected_state_reason": "Rückschritt durch den gewollten Kernfeld-Titel im Kontextpräfix (#1341, Maintainer-Entscheidung 2026-09-14): bis dahin auf beiden Pfaden gelöst, seither auf dem Rohvektor-Pfad Rang 2 hinter SOZ-DA-2/2024; die Kennung wird als bedeutungsarmes Token eingebettet (Roadmap 1a). Pipeline-Pfad gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Pipeline-Pfads führt den Fall deshalb als offenen Befund."
   },
   {
     "id": "verw-id-002",
@@ -176,7 +176,7 @@
     "answer_span": "Dienstanweisung des Sozialamts der Stadt Kalkstadt, Aktenzeichen SOZ-DA-1/2024, gültig ab dem 1.",
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Kennungen werden als bedeutungsarme Tokens eingebettet (Roadmap 1a): vor #1156 auf dem Pipeline-Pfad Rang 2, von #1156 bis #1341 auf beiden Pfaden gelöst, seit #1341 (Kernfeld-Titel im Kontextpräfix) auf dem Rohvektor-Pfad Rang 2 hinter SOZ-DA-2/2024. Pipeline-Pfad gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Keine dauerhafte Abweichung: Ursache ist Rangfolge bzw. Auswahl, die ein Retrieval-Baustein ändern kann, kein struktureller Grund des Messpfads — deshalb ohne expected_state_exception; das Audit des Pipeline-Pfads führt den Fall als offenen Befund."
+    "expected_state_reason": "Kennungen werden als bedeutungsarme Tokens eingebettet (Roadmap 1a): vor #1156 auf beiden Pfaden Rang 2, von #1156 bis #1341 auf beiden Pfaden gelöst, seit #1341 (Kernfeld-Titel im Kontextpräfix) auf dem Rohvektor-Pfad Rang 2 hinter SOZ-DA-2/2024. Pipeline-Pfad gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Pipeline-Pfads führt den Fall deshalb als offenen Befund."
   },
   {
     "id": "verw-id-003",
@@ -208,7 +208,7 @@
     "answer_span": "Dienstanweisung des Bauamts der Stadt Kalkstadt, Aktenzeichen BAU-DA-1/2023, gültig ab dem 1.",
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Rückschritt durch #1156 auf dem Rohvektor-Pfad: bis dahin Rang 1, seither steht eine Nachbar-Dienstanweisung des Bauamts vorn (6a4e6bae: BAU-DA-1/2024, 5ca38424: BAU-DA-2/2024) — die Abschnitts-Chunks der Dienstanweisungen lauten nahezu gleich, und die Kennung wird als bedeutungsarmes Token eingebettet (Roadmap 1a). Pipeline-Pfad in allen gemessenen Ständen gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Keine dauerhafte Abweichung: Ursache ist Rangfolge bzw. Auswahl, die ein Retrieval-Baustein ändern kann, kein struktureller Grund des Messpfads — deshalb ohne expected_state_exception; das Audit des Pipeline-Pfads führt den Fall als offenen Befund."
+    "expected_state_reason": "Rückschritt durch #1156 auf dem Rohvektor-Pfad: bis dahin Rang 1, seither steht eine Nachbar-Dienstanweisung des Bauamts vorn (6a4e6bae: BAU-DA-1/2024, 5ca38424: BAU-DA-2/2024) — die Abschnitts-Chunks der Dienstanweisungen lauten nahezu gleich, und die Kennung wird als bedeutungsarmes Token eingebettet (Roadmap 1a). Pipeline-Pfad in allen gemessenen Ständen gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Pipeline-Pfads führt den Fall deshalb als offenen Befund."
   },
   {
     "id": "verw-id-005",
@@ -224,7 +224,7 @@
     "answer_span": "Dienstanweisung des Ordnungsamts der Stadt Kalkstadt, Aktenzeichen ORD-DA-1/2023, gültig ab dem 1.",
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Kennungen werden als bedeutungsarme Tokens eingebettet (Roadmap 1a): vor #1156 auf dem Pipeline-Pfad Rang 2, von #1156 bis #1341 auf beiden Pfaden gelöst, seit #1341 (Kernfeld-Titel im Kontextpräfix) auf dem Rohvektor-Pfad Rang 2 hinter ORD-DA-1/2024. Pipeline-Pfad gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Keine dauerhafte Abweichung: Ursache ist Rangfolge bzw. Auswahl, die ein Retrieval-Baustein ändern kann, kein struktureller Grund des Messpfads — deshalb ohne expected_state_exception; das Audit des Pipeline-Pfads führt den Fall als offenen Befund."
+    "expected_state_reason": "Kennungen werden als bedeutungsarme Tokens eingebettet (Roadmap 1a): vor #1156 auf beiden Pfaden Rang 2, von #1156 bis #1341 auf beiden Pfaden gelöst, seit #1341 (Kernfeld-Titel im Kontextpräfix) auf dem Rohvektor-Pfad Rang 2 hinter ORD-DA-1/2024. Pipeline-Pfad gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Pipeline-Pfads führt den Fall deshalb als offenen Befund."
   },
   {
     "id": "verw-id-006",
@@ -340,7 +340,7 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156. Pipeline-Pfad bis #1156 gelöst, seither nicht: #1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage); hier verdrängen die Formularhinweise des Ordnungsamts die Gebührenordnung Umweltamt. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Keine dauerhafte Abweichung: Ursache ist Rangfolge bzw. Auswahl, die ein Retrieval-Baustein ändern kann, kein struktureller Grund des Messpfads — deshalb ohne expected_state_exception; das Audit des Rohvektor-Pfads führt den Fall als offenen Befund."
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156. Pipeline-Pfad bis #1156 gelöst, seither nicht: #1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform; hier verdrängen die Formularhinweise des Ordnungsamts die Gebührenordnung Umweltamt. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Rohvektor-Pfads führt den Fall deshalb als offenen Befund."
   },
   {
     "id": "verw-comp-003",
@@ -357,7 +357,7 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156. Pipeline-Pfad bis #1156 gelöst, seither nicht: #1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage); hier verdrängen die beiden Fassungen der Sozialgebührenbefreiungssatzung und die Baugenehmigungsgebührensatzung die Gebührenordnung Kulturamt. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Keine dauerhafte Abweichung: Ursache ist Rangfolge bzw. Auswahl, die ein Retrieval-Baustein ändern kann, kein struktureller Grund des Messpfads — deshalb ohne expected_state_exception; das Audit des Rohvektor-Pfads führt den Fall als offenen Befund."
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156. Pipeline-Pfad bis #1156 gelöst, seither nicht: #1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform; hier verdrängen die beiden Fassungen der Sozialgebührenbefreiungssatzung und die Baugenehmigungsgebührensatzung die Gebührenordnung Kulturamt. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Rohvektor-Pfads führt den Fall deshalb als offenen Befund."
   },
   {
     "id": "verw-comp-004",
@@ -375,7 +375,7 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156 (vorher beide Satzungsfassungen außerhalb des Fensters). Pipeline-Pfad in keinem gemessenen Stand gelöst; seit #1156 füllen die beiden Fassungen der Gewerbeanmeldegebührensatzung die Auswahl, die Gebührenordnung Ordnungsamt fällt heraus (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage)). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Keine dauerhafte Abweichung: Ursache ist Rangfolge bzw. Auswahl, die ein Retrieval-Baustein ändern kann, kein struktureller Grund des Messpfads — deshalb ohne expected_state_exception; das Audit des Rohvektor-Pfads führt den Fall als offenen Befund."
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156 (vorher beide Satzungsfassungen außerhalb des Fensters). Pipeline-Pfad in keinem gemessenen Stand gelöst; seit #1156 füllen die beiden Fassungen der Gewerbeanmeldegebührensatzung die Auswahl, die Gebührenordnung Ordnungsamt fällt heraus (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Rohvektor-Pfads führt den Fall deshalb als offenen Befund."
   },
   {
     "id": "verw-comp-005",
@@ -393,7 +393,7 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156 (vorher beide Satzungsfassungen außerhalb des Fensters). Pipeline-Pfad in keinem gemessenen Stand gelöst: Gebührenordnung und Formularhinweise des Bauamts belegen die Auswahl, die Fassungen der Baugenehmigungsgebührensatzung fehlen; seit #1156 verschärft (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage)). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Keine dauerhafte Abweichung: Ursache ist Rangfolge bzw. Auswahl, die ein Retrieval-Baustein ändern kann, kein struktureller Grund des Messpfads — deshalb ohne expected_state_exception; das Audit des Rohvektor-Pfads führt den Fall als offenen Befund."
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156 (vorher beide Satzungsfassungen außerhalb des Fensters). Pipeline-Pfad in keinem gemessenen Stand gelöst: Gebührenordnung und Formularhinweise des Bauamts belegen die Auswahl, die Fassungen der Baugenehmigungsgebührensatzung fehlen; seit #1156 verschärft (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Rohvektor-Pfads führt den Fall deshalb als offenen Befund."
   },
   {
     "id": "verw-comp-006",
@@ -411,7 +411,7 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Rückschritt durch #1156: Mit #1049 auf beiden Pfaden gelöst, seit #1156 auf dem Pipeline-Pfad nicht mehr — die beiden Fassungen der Kindertagesstättenbeitragssatzung füllen die Auswahl, die Gebührenordnung Jugendamt fällt heraus (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage)). Rohvektor-Pfad weiterhin gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Keine dauerhafte Abweichung: Ursache ist Rangfolge bzw. Auswahl, die ein Retrieval-Baustein ändern kann, kein struktureller Grund des Messpfads — deshalb ohne expected_state_exception; das Audit des Rohvektor-Pfads führt den Fall als offenen Befund."
+    "expected_state_reason": "Rückschritt durch #1156: Mit #1049 auf beiden Pfaden gelöst, seit #1156 auf dem Pipeline-Pfad nicht mehr — die beiden Fassungen der Kindertagesstättenbeitragssatzung füllen die Auswahl, die Gebührenordnung Jugendamt fällt heraus (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform). Rohvektor-Pfad weiterhin gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Rohvektor-Pfads führt den Fall deshalb als offenen Befund."
   },
   {
     "id": "verw-comp-007",
@@ -428,7 +428,7 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156. Pipeline-Pfad in keinem gemessenen Stand gelöst: vor #1156 fehlte die Personenstandsurkundengebührensatzung, seither fehlt die Gebührenordnung Standesamt, weil Formularhinweise des Ordnungsamts die Auswahl belegen (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage)). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Keine dauerhafte Abweichung: Ursache ist Rangfolge bzw. Auswahl, die ein Retrieval-Baustein ändern kann, kein struktureller Grund des Messpfads — deshalb ohne expected_state_exception; das Audit des Rohvektor-Pfads führt den Fall als offenen Befund."
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156. Pipeline-Pfad in keinem gemessenen Stand gelöst: vor #1156 fehlte die Personenstandsurkundengebührensatzung, seither fehlt die Gebührenordnung Standesamt, weil Formularhinweise des Ordnungsamts die Auswahl belegen (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform). Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Rohvektor-Pfads führt den Fall deshalb als offenen Befund."
   },
   {
     "id": "verw-comp-008",
@@ -445,7 +445,7 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156. Pipeline-Pfad bis #1156 gelöst, seither nicht: #1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage); hier verdrängen Formularhinweise des Ordnungs- und des Personalamts die Gebührenordnung Personalamt. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Keine dauerhafte Abweichung: Ursache ist Rangfolge bzw. Auswahl, die ein Retrieval-Baustein ändern kann, kein struktureller Grund des Messpfads — deshalb ohne expected_state_exception; das Audit des Rohvektor-Pfads führt den Fall als offenen Befund."
+    "expected_state_reason": "Keine Komposita-Zerlegung (Roadmap 1a). Rohvektor-Pfad gelöst seit #1156. Pipeline-Pfad bis #1156 gelöst, seither nicht: #1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform; hier verdrängen Formularhinweise des Ordnungs- und des Personalamts die Gebührenordnung Personalamt. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Rohvektor-Pfads führt den Fall deshalb als offenen Befund."
   },
   {
     "id": "verw-comp-009",
@@ -463,7 +463,7 @@
     "answer_span": null,
     "expected_state": "solved",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Gelöst ohne Komposita-Zerlegung, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; beide Pfade lösten ihn schon im Lauf vor #1341 (fa9dd079), die Ausnahme 'Rohvektor-Pfad strukturell nicht lösbar' war veraltet"
+    "expected_state_reason": "Gelöst ohne Komposita-Zerlegung, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; der Pipeline-Pfad löste ihn schon vor #1156, der Rohvektor-Pfad seit #1156 — die Ausnahme 'Rohvektor-Pfad strukturell nicht lösbar' ist seither veraltet"
   },
   {
     "id": "verw-hop-001",
@@ -497,7 +497,7 @@
     "answer_span": null,
     "expected_state": "solved",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Beide Glieder der Kette gefunden, zusammengeführt von keinem Verfahren; gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; beide Pfade lösen ihn erst seit dem Kernfeld-Titel im Präfix (#1341), im Lauf vor #1341 (fa9dd079) löste ihn keiner"
+    "expected_state_reason": "Beide Glieder der Kette gefunden, zusammengeführt von keinem Verfahren; gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; der Pipeline-Pfad löste ihn bis #1156, verlor ihn mit #1156 und löst ihn seit dem Kernfeld-Titel im Präfix (#1341) wieder, der Rohvektor-Pfad löst ihn erst seit #1341"
   },
   {
     "id": "verw-hop-003",
@@ -514,7 +514,7 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Rückschritt durch den gewollten Kernfeld-Titel im Kontextpräfix (#1341, Maintainer-Entscheidung 2026-09-14): bis dahin auf beiden Pfaden gelöst, seither stehen auf dem Rohvektor-Pfad Personenstandsurkunden- und Abfallgebührensatzung vor beiden Belegdokumenten (Ränge 4 und 3). Pipeline-Pfad gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Keine dauerhafte Abweichung: Ursache ist Rangfolge bzw. Auswahl, die ein Retrieval-Baustein ändern kann, kein struktureller Grund des Messpfads — deshalb ohne expected_state_exception; das Audit des Pipeline-Pfads führt den Fall als offenen Befund."
+    "expected_state_reason": "Rückschritt durch den gewollten Kernfeld-Titel im Kontextpräfix (#1341, Maintainer-Entscheidung 2026-09-14): bis dahin auf beiden Pfaden gelöst, seither stehen auf dem Rohvektor-Pfad Personenstandsurkunden- und Abfallgebührensatzung vor beiden Belegdokumenten (Ränge 4 und 3). Pipeline-Pfad gelöst. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Pipeline-Pfads führt den Fall deshalb als offenen Befund."
   },
   {
     "id": "verw-hop-004",
@@ -548,7 +548,7 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c). Pipeline-Pfad in allen gemessenen Ständen gelöst. Rohvektor-Pfad gelöst von #1156 bis #1341, seit #1341 Ränge 4 und 2 hinter der Gebührenordnung Kulturamt — die bisherige Ausnahme, der Rohvektor-Pfad könne ihn strukturell nicht lösen, ist damit widerlegt. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Keine dauerhafte Abweichung: Ursache ist Rangfolge bzw. Auswahl, die ein Retrieval-Baustein ändern kann, kein struktureller Grund des Messpfads — deshalb ohne expected_state_exception; das Audit des Pipeline-Pfads führt den Fall als offenen Befund."
+    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c). Pipeline-Pfad in allen gemessenen Ständen gelöst. Rohvektor-Pfad gelöst von #1156 bis #1341, seit #1341 Ränge 4 und 2 hinter der Gebührenordnung Kulturamt — die bisherige Ausnahme, der Rohvektor-Pfad könne ihn strukturell nicht lösen, ist damit widerlegt. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424. Ohne expected_state_exception: Bis #1658 den erwarteten Zustand je Pfad führt, gibt es keine Ausnahmen, weil eine Ausnahme heute je Fall statt je Pfad wirkt und einen späteren Gewinn auf dem anderen Pfad verschlucken würde; das Audit des Pipeline-Pfads führt den Fall deshalb als offenen Befund."
   },
   {
     "id": "verw-hop-006",
@@ -616,7 +616,7 @@
     "answer_span": null,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-14",
-    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c). Der Pipeline-Pfad löste ihn bis #1156; seither belegen die beiden Kämmerei-Dienstanweisungen die ganze Auswahl und die Vertretungsregelung fällt heraus (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage)). Der Rohvektor-Pfad löste ihn in keinem gemessenen Stand. Auf keinem Pfad gelöst, deshalb kein Befund. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
+    "expected_state_reason": "Kein Verfahren, das eine zweigliedrige Kette über zwei Dokumente zusammenführt (Messgrundlage für Roadmap 3c). Der Pipeline-Pfad löste ihn bis #1156; seither belegen die beiden Kämmerei-Dienstanweisungen die ganze Auswahl und die Vertretungsregelung fällt heraus (#1156 (strukturbewusstes Markdown-Chunking) zerlegt jedes Dokument in rund 15 statt 3 Chunks; die acht Chunk-Plätze der Produktionsauswahl füllen seither wenige Dokumente mit mehreren Abschnitten (im Mittel 5,3 -> 3,7 unterschiedliche Dokumente je Anfrage), während der Rohvektor-Pfad zehn Dokumente misst — eine strukturelle Asymmetrie der Fensterform). Der Rohvektor-Pfad löste ihn in keinem gemessenen Stand. Auf keinem Pfad gelöst, deshalb kein Befund. Gemessen am 2026-09-14 in CPU-Läufen auf b2dc2e2e (vor #1156), 6a4e6bae (#1156), fa9dd079 (vor #1341) und 5ca38424."
   },
   {
     "id": "verw-meta-001",
