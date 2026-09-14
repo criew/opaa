@@ -10,38 +10,35 @@ import { expect } from '@playwright/test'
  */
 
 /**
- * Starts an empty, not-yet-persisted chat in the user's default space via the sidebar's "Neuer
- * Chat" button, and waits for the chat input to be ready.
+ * Starts an empty, not-yet-persisted chat in the user's default space via the global `/chat`
+ * entry point, which always lands on ".../chats/new", and waits for the chat input to be ready.
  *
- * Chats are persisted server-side and keyed per user (#525/#527), not per browser session: a
- * fresh Playwright context (a new browser context per fixture, see fixtures/auth.ts) still talks
- * to the same backend account, so `/chat` restores whatever chat that account last used - not
- * necessarily an empty one. Assertions that scope page-wide (e.g. "exactly one source card is
- * cited") are only correct on a chat that holds exactly the one turn just asked; every scenario
- * that needs that must start here first, rather than assume chat state left over from an earlier
- * scenario or run.
+ * Chats are persisted server-side and keyed per user, not per browser session: a fresh Playwright
+ * context (a new browser context per fixture, see fixtures/auth.ts) still talks to the same
+ * backend account and therefore sees every chat an earlier scenario left behind. Assertions that
+ * scope page-wide (e.g. "exactly one source card is cited") are only correct on a chat that holds
+ * exactly the one turn just asked; every scenario that needs that must start here first, rather
+ * than assume chat state left over from an earlier scenario or run.
  *
- * The route change to ".../chats/new" can briefly leave ChatPage showing its loading spinner
- * instead of the input - a stale loadChat for the previously active chat racing the reset to
- * "new", or simply the moment before the freshly emptied chat has rendered. Waiting here
- * explicitly, instead of trusting the URL alone, is what askQuestion below actually needs (CI fix
- * following PR #548's review, nit 3).
+ * Waits for the input, not just for the URL: ChatPage can still be showing its spinner in the
+ * moment the empty chat has not rendered yet, and the input is what askQuestion below needs.
  */
 export async function startFreshChat(page: Page): Promise<void> {
   await page.goto('/chat')
-  // Wait for whatever chat ChatRedirect just landed on (the account's most recently used one, or
-  // "new" if it has none yet) to finish its own load before clicking "Neuer Chat" - the sidebar
-  // (and its "Neuer Chat" button) renders independently of ChatPage's loading state, so clicking
-  // it while an existing chat's loadChat() is still in flight is possible well before that fetch
-  // resolves. chatStore's loadChat/startNewChat guard against a *stale* response overwriting the
-  // newer state via a sequence token, but startNewChat does not itself reset `isLoadingChat` back
-  // to false, and the superseded loadChat's own response handler skips its `set()` entirely once
-  // it detects it was superseded - so isLoadingChat can get stuck `true` forever, and ChatPage
-  // never renders anything but its spinner. Observed on CI once this suite started running last,
-  // against accounts that by then already had several persisted chats (PR #554) - reported as a
-  // product bug rather than fixed here. Settling on the landed chat's own input first (instead of
-  // firing the click immediately) avoids ever hitting that window in the first place.
+  await page.waitForURL(/\/spaces\/[^/]+\/chats\/new$/)
   await expect(page.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')).toBeVisible()
+}
+
+/**
+ * Starts a further empty chat in the space currently open, via the sidebar's "Neuer Chat" button -
+ * the in-app path out of an existing chat, as opposed to {@link startFreshChat}'s entry via
+ * `/chat`. Call only once the current chat has finished loading (its input is visible): the
+ * sidebar renders independently of ChatPage's loading state, and a click landing while an
+ * existing chat's loadChat() is still in flight can leave chatStore's `isLoadingChat` stuck true
+ * (startNewChat does not reset it, the superseded loadChat skips its own `set()`), leaving
+ * ChatPage on its spinner forever.
+ */
+export async function startAnotherChatViaSidebar(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Neuer Chat' }).click()
   await page.waitForURL(/\/spaces\/[^/]+\/chats\/new$/)
   await expect(page.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')).toBeVisible()

@@ -91,7 +91,9 @@ export default function SpacesOverviewPage() {
             <ButtonBase
               key={space.id}
               component={RouterLink}
-              to={`/spaces/${space.id}`}
+              // A card selects the space and opens an empty chat in it; its overview page stays
+              // reachable from the sidebar once the space is active.
+              to={`/spaces/${space.id}/chats/new`}
               // Mockup 1c's card: 16px radius, quiet border, lift on hover - motion stays on
               // transform only (guidelines 4.5).
               sx={{

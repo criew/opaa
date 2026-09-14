@@ -53,7 +53,7 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
     renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
 
     const personalCard = screen.getByRole('link', { name: /Mein Space/ })
-    expect(personalCard).toHaveAttribute('href', '/spaces/space-personal')
+    expect(personalCard).toHaveAttribute('href', '/spaces/space-personal/chats/new')
     expect(personalCard).toHaveTextContent('Persönlich')
     expect(personalCard).toHaveTextContent('Eigener Denkraum ohne Mitleser.')
     expect(personalCard).toHaveTextContent('3 Quellen · 12 Chats · nur Sie')

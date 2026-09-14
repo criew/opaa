@@ -10,6 +10,7 @@ import {
   expectCitedExclusively,
   expectTopSidebarChatToBeNamed,
   shareLibraryWithPerson,
+  startAnotherChatViaSidebar,
   startFreshChat,
 } from '../fixtures/chat'
 import type { Page, TestInfo } from '@playwright/test'
@@ -257,10 +258,10 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(main.getByText(questionChat1)).toBeVisible()
     const chat1Url = page.url()
 
-    // "Neuer Chat" in the sidebar (same as startFreshChat) starts a second, independent chat in
-    // the same space rather than reusing chat 1. Referencing a library replaces its default
-    // @Alles-Wissen chip outright (#560).
-    await startFreshChat(page)
+    // "Neuer Chat" in the sidebar starts a second, independent chat in the same space rather than
+    // reusing chat 1 - the in-app path, deliberately not another entry via `/chat`. Referencing a
+    // library replaces its default @Alles-Wissen chip outright (#560).
+    await startAnotherChatViaSidebar(page)
     await referenceLibrary(page, libraryName)
     await askQuestion(page, questionChat2)
     await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/)
@@ -288,5 +289,46 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(main.getByText(questionChat1)).toBeVisible()
     await expect(main.getByText(questionChat2)).toHaveCount(0)
     await expect(page.getByLabel(`Bibliotheksreferenz ${libraryName} entfernen`)).toHaveCount(0)
+  })
+
+  test('6. Einstieg und Space-Wechsel landen auf einem leeren Gespräch, nicht im letzten Chat', async (
+    { authenticatedPage: page },
+    testInfo,
+  ) => {
+    const id = uniqueId(testInfo)
+    const question = `Frage vor dem Neueinstieg (${id})`
+    const main = page.getByTestId('message-list')
+
+    // This scenario's own persisted chat (it must not depend on what the scenarios above left
+    // behind, see the describe's doc comment) - the state in which the entry point used to reopen
+    // the most recently used conversation instead of offering an empty one.
+    await startFreshChat(page)
+    await clearSearchScope(page)
+    await askQuestion(page, question)
+    await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/)
+    await expect(main.getByText(question)).toBeVisible()
+
+    await page.goto('/chat')
+    await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/new$/)
+    await expect(
+      page.getByRole('heading', { name: 'Womit kann ich Ihnen heute helfen?' }),
+    ).toBeVisible()
+    // Scoped to <main>: the sidebar lists the chat just created, and its fallback title is this
+    // very question until title generation replaces it.
+    await expect(page.getByRole('main').getByText(question)).toHaveCount(0)
+
+    // Picking a space in the sidebar's space switcher lands on an empty chat in that space, not on
+    // its overview page. The switcher is named after the space it currently shows, hence the
+    // scope to the sidebar landmark plus its "Space" overline rather than a fixed name; the menu
+    // lists the spaces first, so its first entry is a space.
+    await page
+      .getByRole('complementary', { name: 'Space-Bereich' })
+      .getByRole('button', { name: /^Space/ })
+      .click()
+    await page.getByRole('menuitem').first().click()
+    await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/new$/)
+    await expect(
+      page.getByRole('heading', { name: 'Womit kann ich Ihnen heute helfen?' }),
+    ).toBeVisible()
   })
 })

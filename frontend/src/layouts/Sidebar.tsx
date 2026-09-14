@@ -180,7 +180,9 @@ export default function Sidebar() {
                   selected={space.id === activeChatSpaceId}
                   onClick={() => {
                     closeSpaceMenu()
-                    navigate(`/spaces/${space.id}`)
+                    // Picking a space lands on an empty chat in it, not on its overview page -
+                    // the overview stays reachable via "Datenquellen dieses Space" below.
+                    navigate(`/spaces/${space.id}/chats/new`)
                   }}
                 >
                   <ListItemText

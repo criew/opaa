@@ -179,14 +179,14 @@ describe('Sidebar', () => {
     expect(screen.getByText('Persönlich · 1 Mitglied')).toBeInTheDocument()
   })
 
-  it('navigates to a space chosen in the switcher', async () => {
+  it('opens an empty chat in a space chosen in the switcher', async () => {
     const user = userEvent.setup()
     renderSidebarAtRoute('/chat')
 
     await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
     await user.click(screen.getByRole('menuitem', { name: /Engineering/ }))
 
-    expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-engineering')
+    expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-engineering/chats/new')
   })
 
   it('navigates to the spaces overview via the switcher', async () => {

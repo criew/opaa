@@ -7,15 +7,13 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
 import { useSpaceStore } from '../stores/spaceStore'
-import { useChatListStore } from '../stores/chatListStore'
 import { usePageTitle } from '../hooks/usePageTitle'
 
 /**
- * Resolves the legacy `/chat` entry point (#527): lands on the user's default space and, within
- * it, the most recently used chat - or a not-yet-created chat ("new") if the space has none yet,
- * so there is never a dead end. Surfaces a German error with a retry action instead of a
- * never-resolving spinner if either the space list or the default space's chat list fails to load
- * (#548 review, nit c).
+ * Resolves the global `/chat` entry point: it always lands on an empty, not-yet-persisted chat
+ * ("new") in the user's default space, never on an existing conversation - continuing one is
+ * always a deliberate click in the chat list. Instead of a never-resolving spinner, a failing or
+ * empty space list yields a German message with a retry action.
  */
 export default function ChatRedirect() {
   usePageTitle('Chat')
@@ -24,9 +22,6 @@ export default function ChatRedirect() {
   const isLoadingSpaces = useSpaceStore((s) => s.isLoadingList)
   const spacesError = useSpaceStore((s) => s.error)
   const loadSpaces = useSpaceStore((s) => s.loadSpaces)
-  const chatsBySpaceId = useChatListStore((s) => s.chatsBySpaceId)
-  const chatsError = useChatListStore((s) => s.error)
-  const loadChats = useChatListStore((s) => s.loadChats)
 
   useEffect(() => {
     if (spaces.length === 0) {
@@ -38,18 +33,8 @@ export default function ChatRedirect() {
 
   useEffect(() => {
     if (!defaultSpace) return
-    if (chatsBySpaceId[defaultSpace.id] === undefined) {
-      void loadChats(defaultSpace.id)
-    }
-  }, [defaultSpace, chatsBySpaceId, loadChats])
-
-  useEffect(() => {
-    if (!defaultSpace) return
-    const chats = chatsBySpaceId[defaultSpace.id]
-    if (chats === undefined) return
-    const target = chats[0]?.id ?? 'new'
-    navigate(`/spaces/${defaultSpace.id}/chats/${target}`, { replace: true })
-  }, [defaultSpace, chatsBySpaceId, navigate])
+    navigate(`/spaces/${defaultSpace.id}/chats/new`, { replace: true })
+  }, [defaultSpace, navigate])
 
   if (isLoadingSpaces && spaces.length === 0) {
     return (
@@ -72,27 +57,6 @@ export default function ChatRedirect() {
             Erneut versuchen
           </Button>
         </Stack>
-      </Box>
-    )
-  }
-
-  const chats = chatsBySpaceId[defaultSpace.id]
-  if (chats === undefined) {
-    if (chatsError) {
-      return (
-        <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Stack spacing={2} sx={{ alignItems: 'center', textAlign: 'center', maxWidth: 400 }}>
-            <Alert severity="error">{chatsError}</Alert>
-            <Button variant="outlined" onClick={() => void loadChats(defaultSpace.id)}>
-              Erneut versuchen
-            </Button>
-          </Stack>
-        </Box>
-      )
-    }
-    return (
-      <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress />
       </Box>
     )
   }

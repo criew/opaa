@@ -120,9 +120,12 @@ Arbeitsraum** liegt — dort erstellt (`POST /api/v1/spaces/{spaceId}/chats`), d
 [Chats](./spaces-and-assets.md#chats)). Die Arbeitsraum-Seite und die Seitenleiste zeigen die eigenen
 Gespräche eines Arbeitsraums mit Titel und letztem Nutzungszeitpunkt, sortiert nach letzter Nutzung;
 von dort lassen sie sich umbenennen und löschen (mit Bestätigung). Die frühere globale Route `/chat`
-führt auf den Standard-Arbeitsraum und dessen zuletzt genutztes Gespräch, oder auf ein neues Gespräch,
-falls dort noch keines existiert — nie auf eine Sackgasse. Ein Neuladen der Seite stellt Verlauf und
-Liste wieder her. Es entsteht als Entwurf, sichtbar nur für den Autor, und wird für die Mitglieder des
+führt immer auf ein leeres, noch nicht angelegtes Gespräch im Standard-Arbeitsraum
+(`/spaces/:spaceId/chats/new`) — ebenso die Auswahl eines Arbeitsraums in der Seitenleiste und auf der
+Arbeitsraum-Übersicht. Ein bestehendes Gespräch wird nur fortgesetzt, wenn es bewusst in der Liste
+angeklickt wird; die Übersichtsseite eines Arbeitsraums bleibt über „Datenquellen dieses Space“ und
+„Space-Einstellungen“ erreichbar. Ein Neuladen der Seite stellt Verlauf und Liste wieder her. Es
+entsteht als Entwurf, sichtbar nur für den Autor, und wird für die Mitglieder des
 Arbeitsraums erst sichtbar, sobald der Autor es dort teilt (`SHARED`/`WITHDRAWN`, Zielbild — siehe
 [Chats](./spaces-and-assets.md#chats)). Ebenfalls Zielbild: das Löschen des eigenen Verlaufs im
 Sinne einer Aufbewahrungsfrist und ein Export des Gesprächs samt Fundstellen, weil ein

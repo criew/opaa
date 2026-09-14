@@ -32,19 +32,34 @@ describe('ChatRedirect', () => {
     useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
   })
 
-  it('redirects to the default space and its most recently used chat', async () => {
+  // Regression guard for #1647: existing chats in the default space must not change the target -
+  // this entry point used to reopen the most recently used one, so typing straight away silently
+  // continued an old conversation.
+  it('redirects to an empty chat in the default space, even when that space already has chats', async () => {
     renderWithProviders(<ChatRedirect />, { withRouter: true })
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats/chat-personal-2', {
+      expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats/new', {
         replace: true,
       })
     })
   })
 
-  it('redirects to a not-yet-created chat when the default space has none', async () => {
+  it('picks the space flagged as default, not the first one listed', async () => {
     useSpaceStore.setState({
       spaces: [
+        {
+          id: 'space-engineering',
+          name: 'Engineering',
+          description: 'Dokumente der Entwicklung',
+          isDefault: false,
+          archived: false,
+          visibility: 'PRIVATE',
+          memberCount: 3,
+          userRole: 'ADMIN',
+          createdAt: '2026-03-01T10:00:00Z',
+          updatedAt: '2026-03-01T10:00:00Z',
+        },
         {
           id: 'space-phoenix',
           name: 'Phoenix',
@@ -67,6 +82,27 @@ describe('ChatRedirect', () => {
         replace: true,
       })
     })
+  })
+
+  // The target no longer depends on the chat list, so this entry point must not fetch it - the
+  // sidebar loads it on its own once the chat page renders.
+  it('does not load the chat list to decide where to go', async () => {
+    const chatListRequests = vi.fn()
+    server.use(
+      http.get('/api/v1/spaces/:spaceId/chats', () => {
+        chatListRequests()
+        return HttpResponse.json([])
+      }),
+    )
+
+    renderWithProviders(<ChatRedirect />, { withRouter: true })
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats/new', {
+        replace: true,
+      })
+    })
+    expect(chatListRequests).not.toHaveBeenCalled()
   })
 
   // #548 review, nit c: a failed space list load used to leave a spinner spinning forever, with no
@@ -94,35 +130,6 @@ describe('ChatRedirect', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Kein Arbeitsraum verfügbar.')).toBeInTheDocument()
-    })
-  })
-
-  // #548 review, nit c: same for a failed chat list load of the (successfully resolved) default
-  // space - it used to leave a blank box with neither spinner nor message.
-  it('shows a German error with a retry action when loading the default space chats fails', async () => {
-    server.use(
-      http.get('/api/v1/spaces/:spaceId/chats', () => {
-        return HttpResponse.json({ error: 'Chats konnten nicht geladen werden' }, { status: 500 })
-      }),
-    )
-
-    renderWithProviders(<ChatRedirect />, { withRouter: true })
-
-    expect(await screen.findByText('Chats konnten nicht geladen werden')).toBeInTheDocument()
-    expect(mockNavigate).not.toHaveBeenCalled()
-
-    server.use(
-      http.get('/api/v1/spaces/:spaceId/chats', () => {
-        return HttpResponse.json([])
-      }),
-    )
-    const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Erneut versuchen' }))
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats/new', {
-        replace: true,
-      })
     })
   })
 })

@@ -23,7 +23,7 @@ describe('App', () => {
     })
   })
 
-  it('redirects to the default space and its most recently used chat by default', async () => {
+  it('redirects to an empty chat in the default space by default', async () => {
     render(<App />)
     await waitFor(() => {
       expect(

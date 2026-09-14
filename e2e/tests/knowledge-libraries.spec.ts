@@ -69,14 +69,13 @@ const GROUP_NAME = `E2E Gruppe ${runId}`
 const OWN_LIBRARY_NAME_OUTSIDER = `E2E Eigene Bibliothek Outsider ${runId}`
 const OWN_LIBRARY_NAME_REGULAR = `E2E Eigene Bibliothek Regular ${runId}`
 
-// Chats are persisted server-side (#525/#527) and keyed per user, not per browser session: a
-// fresh Playwright context (a new browser context per fixture, see fixtures/auth.ts) still talks
-// to the same backend account, so `/chat` now restores whatever chat that account last used - not
-// necessarily an empty one. `expectCitedSource`/`expectCitedExclusively` below assert page-wide,
-// which is only correct on a chat that holds exactly the one turn just asked; without this, a
-// later scenario reusing the same account (dev-user in scenarios 3 and 5, dev-outsider in
-// scenarios 4 and 6) would see source cards from an earlier scenario's turn still in the DOM
-// alongside the new one. Every scenario below explicitly starts a fresh, not-yet-persisted chat
+// Chats are persisted server-side and keyed per user, not per browser session: a fresh Playwright
+// context (a new browser context per fixture, see fixtures/auth.ts) still talks to the same
+// backend account and therefore reaches every chat an earlier scenario of this suite left behind.
+// `expectCitedSource`/`expectCitedExclusively` below assert page-wide, which is only correct on a
+// chat that holds exactly the one turn just asked; without this, a later scenario reusing the same
+// account (dev-user in scenarios 3 and 5, dev-outsider in scenarios 4 and 6) would see source
+// cards from an earlier scenario's turn still in the DOM alongside the new one. Every scenario below explicitly starts a fresh, not-yet-persisted chat
 // (`startFreshChat`, see fixtures/chat.ts) before asking its question instead, so "the page shows
 // exactly this one turn" is a fact, not an assumption that happened to hold by scenario order (CI
 // fix following PR #548's review).
