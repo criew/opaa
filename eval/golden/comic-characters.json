@@ -1286,7 +1286,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+        "reason": "Ohne geprüften Mechanismus: Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
       }
     }
   },
@@ -1567,7 +1567,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+        "reason": "Ohne geprüften Mechanismus: Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
       }
     }
   },

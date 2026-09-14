@@ -539,17 +539,32 @@ Drei Milderungen, keine Lösungen:
 >
 > **Treffer ohne den geprüften Mechanismus** (Maintainer-Entscheidung 14.09.2026) bleiben auf ihrem
 > Pfad `solved`. Ihr `reason` beginnt mit dem festen Präfix `Ohne geprüften Mechanismus: `, gefolgt
-> von der eigentlichen Begründung, damit sie ohne Prosa-Lesen auffindbar sind. Gesetzt wird das
-> Präfix, wenn der Treffer auf diesem Pfad nicht dem Mechanismus zuzurechnen ist, den die Fallklasse
-> misst: weil der Mechanismus auf dem Pfad nicht existiert (Komposita-Zerlegung und Zusammenführung
-> von Ketten gibt es auf keinem Pfad, lexikalischen Pfad und unzerlegte Kennungs-Tokens nur auf dem
-> Pipeline-Pfad), weil der Fall dort nachweislich schon vor dem Mechanismus gelöst war (etwa
-> `verw-meta-007`/`-009` vor dem Kernfeld-Filter) oder weil der Grund selbst einen Treffer ohne
-> eigenen Baustein festhält. Nur ein `solved`-Zustand darf das Präfix tragen, und nur als exakten
-> Anfang des Grunds (`GoldenCaseCuration`). Verliert ein solcher Fall seinen Treffer, meldet das
+> von der eigentlichen Begründung, damit sie ohne Prosa-Lesen auffindbar sind. Das Kriterium ist
+> **strukturell**: Ein Fall bekommt das Präfix auf einem Pfad genau dann, wenn er dort heute gelöst
+> ist, obwohl der Mechanismus, den seine Fallklasse prüft, in diesem Pfad in dieser Messung nicht
+> vorhanden oder abgeschaltet ist (Tabelle unten). Wirkt der Mechanismus im Pfad, bleibt der Grund
+> ohne Präfix — ob der Mechanismus zu genau diesem Treffer beiträgt, wird nicht je Fall bewertet.
+> Nur ein `solved`-Zustand darf das Präfix tragen, und nur als exakten Anfang des Grunds
+> (`GoldenCaseCuration`). Verliert ein solcher Fall seinen Treffer, meldet das
 > Audit ihn als Rückschritt („als `solved` geführt, aber nicht gelöst“); der Zustand wird dann
 > bewusst und datiert auf `known_gap` nachgezogen — der Rückschritt ist dort erwartbar, weil nie ein
 > Mechanismus ihn trug.
+>
+> | Domäne | Fallklasse (`category`) | geprüfter Mechanismus | in der Messung vorhanden |
+> |---|---|---|---|
+> | `verwaltung` | `literal_term_weak_embedding` | lexikalischer Pfad in der Fusion (Roadmap 1a/1b, `fullTextSearchEnabled`) | nur Pipeline |
+> | `verwaltung` | `exact_identifier` | unzerlegte Kennungs-Lexeme des Volltextpfads (`FullTextIdentifiers`, Roadmap 1a) | nur Pipeline |
+> | `verwaltung` | `compound_word` | Komposita-Zerlegung (Roadmap 1a) | keiner (nicht gebaut) |
+> | `verwaltung` | `multi_hop` | Zusammenführung mehrgliedriger Ketten (Roadmap 3c); die Teilfragen-Zerlegung ist in beiden Baselines abgeschaltet (`queryDecompositionEnabled: false`) | keiner |
+> | `verwaltung` | `metadata_filter` | Kernfeld-Filter (`metadataFilterEnabled`) | beide, sofern der Fall einen `filter` trägt; ohne `filter` keiner |
+> | `comic-characters` | `multi_attribute_filter` | Attributfilter | keiner (die Domäne wendet keinen Filter an) |
+> | `comic-characters` | `numeric_range` | numerischer Bereichsfilter | keiner |
+> | `comic-characters` | `attribute_lookup`, `entity_description`, `crosslingual` | kein eigener Baustein: Einbettung und Chunking | beide |
+> | `city-landmarks` | alle sechs Kategorien | kein eigener Baustein: Chunking, Kontextpräfix, Fensterbreite | beide |
+>
+> Stand 2026-09-14: `verwaltung` Rohvektor 17 Gründe, Pipeline 4; `comic-characters` Pipeline 2
+> (`comic-filter-017`, `-089`); `city-landmarks` keine. Die Fallliste steht in
+> `eval/corpus/verwaltung/MAINTENANCE.md`.
 >
 > Eine Ausnahme (`expected_state_exception`) gibt es nicht mehr. Das Audit meldet, es lässt den Lauf
 > nicht fehlschlagen: Ein Zustandswechsel bleibt eine bewusste, datierte Entscheidung.
@@ -876,7 +891,7 @@ Deshalb trägt **jeder Fall** ein Pflichtfeld `expected_state` mit einem Eintrag
 |---|---|
 | `state` | `solved` oder `known_gap` — der zuletzt bewusst akzeptierte Zustand des Falls auf diesem Pfad |
 | `since` | Datum, an dem dieser Zustand zuletzt bewusst gesetzt wurde |
-| `reason` | Eine Zeile: warum. Bei `known_gap` der fehlende Baustein, bei `solved` die Änderung, die ihn gelöst hat |
+| `reason` | Eine Zeile: warum. Bei `known_gap` der fehlende Baustein, bei `solved` die Änderung, die ihn gelöst hat; fehlt der geprüfte Mechanismus in diesem Pfad, beginnt er mit `Ohne geprüften Mechanismus: ` (Abschnitt 5, Umsetzungsstand) |
 
 Festgeschrieben wird der gemessene Ist-Zustand jedes Pfads, wie eine Baseline je Pfad; das Audit
 eines Pfads meldet nur Abweichungen vom eigenen Eintrag. Ein Fall, der auf einem Pfad von `known_gap`

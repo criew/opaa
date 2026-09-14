@@ -166,17 +166,20 @@ dem Pfad, der ihn löst, als `solved` festgeschrieben.
 
 **Präfix `Ohne geprüften Mechanismus: `** (Maintainer-Entscheidung vom 14.09.2026). Der `reason`
 eines solchen Pfadzustands beginnt mit genau diesem Präfix, gefolgt von der Begründung, damit die
-Fälle ohne Prosa-Lesen auffindbar sind. Gesetzt wird es, wenn der Treffer auf diesem Pfad nicht dem
-Mechanismus der Fallklasse zuzurechnen ist:
+Fälle ohne Prosa-Lesen auffindbar sind. Das Kriterium ist strukturell: Ein Fall bekommt das Präfix
+auf einem Pfad genau dann, wenn er dort heute gelöst ist, obwohl der Mechanismus seiner Fallklasse
+in diesem Pfad in dieser Messung nicht vorhanden oder abgeschaltet ist. Wirkt der Mechanismus im
+Pfad, bleibt der Grund ohne Präfix; ob er zu genau diesem Treffer beiträgt, wird nicht je Fall
+bewertet. Die Zuordnung Fallklasse → Mechanismus → Pfade steht als Tabelle in
+`docs/features/retrieval-benchmark.md`, Abschnitt 5 (Umsetzungsstand). Für diese Domäne:
 
-- der Mechanismus existiert auf dem Pfad nicht — Komposita-Zerlegung (`compound_word`) und
-  Zusammenführung von Ketten (`multi_hop`) auf keinem Pfad; lexikalischer Pfad
-  (`literal_term_weak_embedding`) und unzerlegte Kennungs-Tokens (`exact_identifier`) nur auf dem
-  Pipeline-Pfad,
-- der Fall war auf dem Pfad nachweislich schon vor dem Mechanismus gelöst (`verw-meta-007`/`-009`
-  auf beiden Pfaden, `verw-meta-001` auf dem Pipeline-Pfad, jeweils vor dem Kernfeld-Filter aus
-  #1070),
-- oder der Grund selbst hält einen Treffer ohne eigenen Baustein fest (`verw-lit-008`/`-009`).
+| Fallklasse | Mechanismus | vorhanden |
+|---|---|---|
+| `literal_term_weak_embedding` | lexikalischer Pfad in der Fusion | nur Pipeline |
+| `exact_identifier` | unzerlegte Kennungs-Lexeme des Volltextpfads (`FullTextIdentifiers`) | nur Pipeline |
+| `compound_word` | Komposita-Zerlegung | keiner |
+| `multi_hop` | Zusammenführung von Ketten; Teilfragen-Zerlegung in den Baselines abgeschaltet | keiner |
+| `metadata_filter` | Kernfeld-Filter | beide, wenn der Fall einen `filter` trägt |
 
 `GoldenCaseCuration` lässt das Präfix nur auf einem `solved`-Zustand und nur als exakten Anfang des
 Grunds zu. Verliert ein solcher Fall seinen Treffer, meldet das Audit ihn als Rückschritt („als
@@ -186,11 +189,12 @@ eines Treffers, den nie ein Mechanismus trug.
 
 | Pfad | Fälle mit Präfix (Stand 2026-09-14) |
 |---|---|
-| Rohvektor | `verw-lit-008`, `-009`; `verw-id-003`, `-006` bis `-010`; `verw-comp-002` bis `-009`; `verw-hop-002`; `verw-meta-007`, `-009` (19) |
-| Pipeline | `verw-lit-008`, `-009`; `verw-comp-009`; `verw-hop-002`, `-003`, `-005`; `verw-meta-001`, `-007`, `-009` (9) |
+| Rohvektor | `verw-lit-008`, `-009`; `verw-id-003`, `-006` bis `-010`; `verw-comp-002` bis `-009`; `verw-hop-002` (17) |
+| Pipeline | `verw-comp-009`; `verw-hop-002`, `-003`, `-005` (4) |
 
-`comic-characters` und `city-landmarks` messen keine benannten Mechanismen und tragen das Präfix
-nicht; der Mehrrunden-Datensatz ebenfalls nicht.
+In `comic-characters` tragen es `comic-filter-017` und `-089` auf dem Pipeline-Pfad (die Domäne
+wendet keinen Filter an), in `city-landmarks` kein Fall; der Mehrrunden-Datensatz führt flache
+Zustandsfelder und ist nicht betroffen.
 
 **Überführung der 13 asymmetrischen Fälle aus #1308.** Die Zustände je Pfad sind aus den
 Fallergebnissen eines aktuellen CPU-Laufs übernommen (CI-Lauf 34840623079, Golden-Hash `4ff44ccc…`);
@@ -242,7 +246,7 @@ Feld `expected_state.<pfad>.reason`; die Tabellen unten führen zusätzlich das 
 | Klasse | Fälle | `known_gap` Rohvektor | `known_gap` Pipeline | fehlender Baustein |
 |---|---|---|---|---|
 | `literal_term_weak_embedding` | 9 | 7 | 7 | lexikalischer Pfad und Fusion (Roadmap 1a/1b) — die #938-Klasse |
-| `exact_identifier` | 10 | 4 | 0 | Schutz unzerlegter Kennungs-Tokens (Roadmap 1a) |
+| `exact_identifier` | 10 | 4 | 0 | Schutz unzerlegter Kennungs-Tokens (Roadmap 1a) — im Volltextpfad gebaut, fehlt dem Rohvektor-Pfad |
 | `compound_word` | 9 | 1 | 8 | Komposita-Zerlegung (Roadmap 1a) |
 | `multi_hop` | 9 | 8 | 6 | Zusammenführung mehrgliedriger Ketten (Messgrundlage für Roadmap 3c) |
 | `metadata_filter` | 12 | 2 | 2 | für `verw-meta-003`/`-005`: Bibliotheksfeld Gültigkeit (#1071) |

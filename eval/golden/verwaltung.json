@@ -198,7 +198,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-14",
-        "reason": "Ohne geprüften Mechanismus: Gelöst ohne eigenen Baustein, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; der Pipeline-Pfad löste ihn bis #1156, verlor ihn mit #1156 und löst ihn seit dem Kernfeld-Titel im Präfix (#1341) wieder, der Rohvektor-Pfad löst ihn erst seit #1341; die Ausnahme entfällt"
+        "reason": "Gelöst ohne eigenen Baustein, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; der Pipeline-Pfad löste ihn bis #1156, verlor ihn mit #1156 und löst ihn seit dem Kernfeld-Titel im Präfix (#1341) wieder, der Rohvektor-Pfad löst ihn erst seit #1341; die Ausnahme entfällt"
       }
     }
   },
@@ -223,7 +223,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-14",
-        "reason": "Ohne geprüften Mechanismus: Gelöst ohne eigenen Baustein, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; beide Pfade lösen ihn seit #1156 (strukturbewusstes Markdown-Chunking), vorher keiner; der Zustand war nicht nachgezogen"
+        "reason": "Gelöst ohne eigenen Baustein, gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; beide Pfade lösen ihn seit #1156 (strukturbewusstes Markdown-Chunking), vorher keiner; der Zustand war nicht nachgezogen"
       }
     }
   },
@@ -976,7 +976,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-14",
-        "reason": "Ohne geprüften Mechanismus: Gelöst mit dem Kernfeld-Filter (#1070), gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; die Einbettungsähnlichkeit stellt die erwartete Satzung seit dem Kernfeld-Titel im Präfix (#1341) auch auf dem Rohvektor-Pfad nach vorn"
+        "reason": "Gelöst mit dem Kernfeld-Filter (#1070), gemessen am 2026-09-14 (CPU/Testcontainer, Kernfeld-Titel im Kontextpräfix seit #1341): auf beiden Messpfaden alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1; die Einbettungsähnlichkeit stellt die erwartete Satzung seit dem Kernfeld-Titel im Präfix (#1341) auch auf dem Rohvektor-Pfad nach vorn"
       }
     }
   },
@@ -1146,12 +1146,12 @@
       "raw_vector": {
         "state": "solved",
         "since": "2026-09-05",
-        "reason": "Ohne geprüften Mechanismus: Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2023-01-01 bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0013_dienstanweisung-bauamt-1-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2023-01-01 bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0013_dienstanweisung-bauamt-1-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
       },
       "pipeline": {
         "state": "solved",
         "since": "2026-09-05",
-        "reason": "Ohne geprüften Mechanismus: Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2023-01-01 bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0013_dienstanweisung-bauamt-1-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2023-01-01 bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0013_dienstanweisung-bauamt-1-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
       }
     }
   },
@@ -1206,12 +1206,12 @@
       "raw_vector": {
         "state": "solved",
         "since": "2026-09-05",
-        "reason": "Ohne geprüften Mechanismus: Kernfeld-Filter in beiden Suchpfaden (#1070): Die Dokumentart DIENSTANWEISUNG schließt die Satzung aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Dienstanweisung auf Rang 1, Verwechslungspartner (verwaltung-0038_verwaltungsgebuehrensatzung.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Die Dokumentart DIENSTANWEISUNG schließt die Satzung aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Dienstanweisung auf Rang 1, Verwechslungspartner (verwaltung-0038_verwaltungsgebuehrensatzung.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
       },
       "pipeline": {
         "state": "solved",
         "since": "2026-09-05",
-        "reason": "Ohne geprüften Mechanismus: Kernfeld-Filter in beiden Suchpfaden (#1070): Die Dokumentart DIENSTANWEISUNG schließt die Satzung aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Dienstanweisung auf Rang 1, Verwechslungspartner (verwaltung-0038_verwaltungsgebuehrensatzung.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Die Dokumentart DIENSTANWEISUNG schließt die Satzung aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Dienstanweisung auf Rang 1, Verwechslungspartner (verwaltung-0038_verwaltungsgebuehrensatzung.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
       }
     }
   },
