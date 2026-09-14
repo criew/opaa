@@ -36,18 +36,19 @@ class ChunkContextPrefixTest {
 
   @Test
   void takesTheStructureContextOnlyFromASectionFundortTheChunkDoesNotAlreadyOpenWith() {
-    assertThat(ChunkContextPrefix.structureContextFrom("Abschn. § 7 Gebühren", "37,00 EUR"))
+    assertThat(
+            ChunkContextPrefix.structureContextFrom("Satzung", "Abschn. § 7 Gebühren", "37,00 EUR"))
         .isEqualTo("§ 7 Gebühren");
-    assertThat(ChunkContextPrefix.structureContextFrom("S. 2–4", "37,00 EUR"))
+    assertThat(ChunkContextPrefix.structureContextFrom("Satzung", "S. 2–4", "37,00 EUR"))
         .as("a page number names no content")
         .isNull();
     assertThat(
             ChunkContextPrefix.structureContextFrom(
-                "Abschn. § 7 Gebühren", "§ 7 Gebühren\n\n37,00 EUR"))
+                "Satzung", "Abschn. § 7 Gebühren", "§ 7 Gebühren\n\n37,00 EUR"))
         .as("a pipeline that cuts on headings keeps them in the text; repeating adds nothing")
         .isNull();
-    assertThat(ChunkContextPrefix.structureContextFrom(null, "37,00 EUR")).isNull();
-    assertThat(ChunkContextPrefix.structureContextFrom(42, "37,00 EUR")).isNull();
+    assertThat(ChunkContextPrefix.structureContextFrom("Satzung", null, "37,00 EUR")).isNull();
+    assertThat(ChunkContextPrefix.structureContextFrom("Satzung", 42, "37,00 EUR")).isNull();
   }
 
   // regression guard for #1308: a Markdown H1 equal to the title must not repeat it in the prefix
@@ -114,6 +115,20 @@ class ChunkContextPrefixTest {
                 List.of(),
                 "Abschn. Verwaltungsgebührensatzung › § 7 Gebühren",
                 "## § 7 Gebühren\n\n37,00 EUR"))
+        .isEqualTo("Verwaltungsgebührensatzung");
+  }
+
+  @Test
+  void keepsNoStructureContextWhenTheChunkOpensWithTheWholeHeadingPathIncludingTheTitle() {
+    assertThat(
+            ChunkContextPrefix.forChunk(
+                true,
+                true,
+                "Verwaltungsgebührensatzung",
+                List.of(),
+                "Abschn. Verwaltungsgebührensatzung › § 7 Gebühren",
+                "Verwaltungsgebührensatzung › § 7 Gebühren\n\n37,00 EUR"))
+        .as("the heading-section pipelines open every chunk with its full heading path")
         .isEqualTo("Verwaltungsgebührensatzung");
   }
 
