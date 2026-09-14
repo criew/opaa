@@ -1230,5 +1230,15 @@ Läufen wiedergeben, deren Metriken die committeten Baselines bestätigen:
 
 Für `verwaltung` sind die gemessenen Ursachen aus #1308 ohne Informationsverlust auf die Gründe je
 Pfad aufgeteilt. `comic-characters` und `city-landmarks` deklarieren erstmals Zustände; ihre Gründe
-nennen den Quelllauf und das gemessene Symptom. Den fehlenden Baustein je `known_gap`-Eintrag
-ergänzt #1657, unabhängig davon, ob die Neuvermessung dort die Baselines bewegt.
+nannten zunächst nur den Quelllauf und das gemessene Symptom. #1657 hat den fehlenden Baustein je
+`known_gap`-Eintrag nachgetragen (Zuordnung in `docs/features/retrieval-benchmark.md` §5) und beide
+Domänen auf dem Stand nach #1341 neu vermessen. Dabei steigt keine Messvertragsversion, weil sich
+weder eine Metrikdefinition noch ein Fixpunkt ändert:
+
+- **`comic-characters`:** Die Zahlen beider Pfade sind unverändert. #1341 wirkt hier nicht, weil ein
+  unzerteiltes Dokument keinen Kontextpräfix bekommt. Nachgezogen ist nur der Golden-Hash.
+- **`city-landmarks`, Rohvektor-Pfad:** Neu gezogen. `nDCG@10` sinkt in drei Gruppen um 0,001, alle
+  aus demselben gelösten Fall.
+- **`city-landmarks`, Pipeline-Pfad:** Die Zahlen sind unverändert.
+
+Kein Fallzustand wechselt.

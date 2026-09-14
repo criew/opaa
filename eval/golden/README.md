@@ -65,9 +65,11 @@ und Fallliste in [`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MA
 aus einem Messlauf wieder eintragen — die Generatoren kennen sie nicht.
 
 `comic-characters.json` und `city-landmarks.json` deklarieren Zustände erst seit #1658; übernommen
-ist der Ist-Zustand aus dem nächtlichen Lauf vom 14.09.2026. Ihre `known_gap`-Gründe nennen bis
-dahin nur Quelllauf und Symptom; den fehlenden Baustein je Eintrag ergänzt #1657, unabhängig davon,
-ob sich die Baselines bewegen.
+ist der Ist-Zustand aus dem nächtlichen Lauf vom 14.09.2026. Seit #1657 nennt jeder
+`known_gap`-Grund beider Datensätze zuerst den fehlenden Baustein und danach das Symptom aus einem
+CPU-Testcontainer-Lauf auf dem Stand nach #1341. Wiederholt sich ein Baustein, ist die Formulierung
+einheitlich. Die Zuordnung Baustein → Fälle je Pfad steht in
+[`docs/features/retrieval-benchmark.md`](../../docs/features/retrieval-benchmark.md) §5.
 
 **Wann ein Fall auf einem Pfad als `solved` gilt** (`io.opaa.eval.ExpectedStateAudit#isSolved`):
 alle erwarteten Dokumente im Fenster dieses Pfads **und** ein erwartetes Dokument auf Rang 1. Die

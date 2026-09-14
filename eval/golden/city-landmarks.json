@@ -1140,12 +1140,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt city-0024_birmingham.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Ortsbindung der Anfrage: Kein Baustein gewichtet die in der Frage genannte Stadt, deshalb belegt eine andere Stadt Rang 1: Birmingham mit einer eigenen „St Paul’s Church“. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt city-0024_birmingham.md, erwartet city-0003_london.md auf Rang 2."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt city-0106_cardiff.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Ortsbindung der Anfrage: Kein Baustein gewichtet die in der Frage genannte Stadt, deshalb belegt eine andere Stadt Rang 1: Cardiff mit einer eigenen „St Paul's Church“. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt city-0106_cardiff.md, erwartet city-0003_london.md auf Rang 3."
       }
     }
   },
@@ -2229,7 +2229,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt city-0088_kaliningrad.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Ortsbindung der Anfrage: Kein Baustein gewichtet die in der Frage genannten Städte, deshalb belegt eine andere Stadt Rang 1: Kaliningrad mit einem eigenen „Brandenburger Tor“. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt city-0088_kaliningrad.md, erwartet city-0005_berlin.md auf Rang 3, city-0006_madrid.md auf Rang 2."
       }
     }
   },
@@ -2328,12 +2328,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt city-0058_dusseldorf.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Ortsbindung der Anfrage: Kein Baustein gewichtet die in der Frage genannten Städte, deshalb belegt eine andere Stadt Rang 1: Düsseldorf, das keine der beiden erfragten Sehenswürdigkeiten führt (nächstliegend „Aquazoo – Löbbecke Museum“). Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt city-0058_dusseldorf.md, erwartet city-0063_dresden.md auf Rang 3, city-0044_amsterdam.md auf Rang 2."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt city-0058_dusseldorf.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Ortsbindung der Anfrage: Kein Baustein gewichtet die in der Frage genannten Städte, deshalb belegt eine andere Stadt Rang 1: Düsseldorf, das keine der beiden erfragten Sehenswürdigkeiten führt (nächstliegend „Aquazoo – Löbbecke Museum“). Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt city-0058_dusseldorf.md, erwartet city-0063_dresden.md auf Rang 3, city-0044_amsterdam.md auf Rang 2."
       }
     }
   },
@@ -2359,7 +2359,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt city-0088_kaliningrad.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Ortsbindung der Anfrage: Kein Baustein gewichtet die in der Frage genannten Städte, deshalb belegt eine andere Stadt Rang 1: Kaliningrad mit einem eigenen „Brandenburger Tor“. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt city-0088_kaliningrad.md, erwartet city-0005_berlin.md auf Rang 3, city-0050_athen.md auf Rang 2."
       }
     }
   },

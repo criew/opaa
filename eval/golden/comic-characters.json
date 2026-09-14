@@ -38,12 +38,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0021_agent-13-mcu.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-0022_agent-13.md und comic-0021_agent-13-mcu.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-0021_agent-13-mcu.md, comic-0022_agent-13.md steht auf Rang 2."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0021_agent-13-mcu.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-0022_agent-13.md und comic-0021_agent-13-mcu.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-0021_agent-13-mcu.md, comic-0022_agent-13.md steht auf Rang 2."
       }
     }
   },
@@ -230,12 +230,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0432_el-diablo-dceu.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-0433_el-diablo.md und comic-0432_el-diablo-dceu.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-0432_el-diablo-dceu.md, comic-0433_el-diablo.md steht auf Rang 2."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0432_el-diablo-dceu.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-0433_el-diablo.md und comic-0432_el-diablo-dceu.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-0432_el-diablo-dceu.md, comic-0433_el-diablo.md steht auf Rang 2."
       }
     }
   },
@@ -734,7 +734,7 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0452_evie-frye.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellt die Einbettung eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-0452_evie-frye.md, comic-0043_alta-r-ibn-la-ahad.md steht auf Rang 7; der Pipeline-Pfad (Volltextpfad in der Fusion) führt comic-0043_alta-r-ibn-la-ahad.md auf Rang 1."
       },
       "pipeline": {
         "state": "solved",
@@ -782,12 +782,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0113_bane-dark-knight.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellt die Einbettung eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: comic-0113_bane-dark-knight.md liegt außerhalb des Fensters (10 Dokumente), Rang 1 belegt comic-0467_faora-dceu.md; der Pipeline-Pfad (Volltextpfad in der Fusion) führt comic-0113_bane-dark-knight.md auf Rang 2."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0467_faora-dceu.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-0467_faora-dceu.md, comic-0113_bane-dark-knight.md steht auf Rang 2."
       }
     }
   },
@@ -806,12 +806,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0036_alex-mercer.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellt die Einbettung eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-0036_alex-mercer.md, comic-0274_castiel.md steht auf Rang 4; der Pipeline-Pfad (Volltextpfad in der Fusion) führt comic-0274_castiel.md auf Rang 7."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0396_doc-green.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-0396_doc-green.md, comic-0274_castiel.md steht auf Rang 7."
       }
     }
   },
@@ -830,7 +830,7 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0458_ezio-auditore-da-firenze.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellt die Einbettung eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-0458_ezio-auditore-da-firenze.md, comic-0428_edward-kenway.md steht auf Rang 7; der Pipeline-Pfad (Volltextpfad in der Fusion) führt comic-0428_edward-kenway.md auf Rang 1."
       },
       "pipeline": {
         "state": "solved",
@@ -854,12 +854,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0526_golden-ninja.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellt die Einbettung eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: comic-0526_golden-ninja.md liegt außerhalb des Fensters (10 Dokumente), Rang 1 belegt comic-0139_batman-lego.md; der Pipeline-Pfad (Volltextpfad in der Fusion) führt comic-0526_golden-ninja.md auf Rang 2."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0139_batman-lego.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-0139_batman-lego.md, comic-0526_golden-ninja.md steht auf Rang 2."
       }
     }
   },
@@ -902,7 +902,7 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-1038_purple-man.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellt die Einbettung eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-1038_purple-man.md, comic-0631_impossible-man.md steht auf Rang 3; der Pipeline-Pfad (Volltextpfad in der Fusion) führt comic-0631_impossible-man.md auf Rang 1."
       },
       "pipeline": {
         "state": "solved",
@@ -926,12 +926,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-1278_the-flash-cw.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-0483_flash-cw.md und comic-1278_the-flash-cw.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-1278_the-flash-cw.md, comic-0483_flash-cw.md steht auf Rang 3."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-1278_the-flash-cw.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-0483_flash-cw.md und comic-1278_the-flash-cw.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-1278_the-flash-cw.md, comic-0483_flash-cw.md steht auf Rang 2."
       }
     }
   },
@@ -998,12 +998,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0609_howard-the-duck.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellt die Einbettung eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: comic-0609_howard-the-duck.md liegt außerhalb des Fensters (10 Dokumente), Rang 1 belegt comic-1432_yellow-claw.md; der Pipeline-Pfad (Volltextpfad in der Fusion) führt comic-0609_howard-the-duck.md auf Rang 2."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-1432_yellow-claw.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-1432_yellow-claw.md, comic-0609_howard-the-duck.md steht auf Rang 2."
       }
     }
   },
@@ -1046,12 +1046,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0651_iron-man.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellt die Einbettung eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: comic-0651_iron-man.md liegt außerhalb des Fensters (10 Dokumente), Rang 1 belegt comic-0614_hulk-stark-gauntlet-mcu.md; der Pipeline-Pfad (Volltextpfad in der Fusion) führt comic-0651_iron-man.md auf Rang 2."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0614_hulk-stark-gauntlet-mcu.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-0614_hulk-stark-gauntlet-mcu.md, comic-0651_iron-man.md steht auf Rang 2."
       }
     }
   },
@@ -1070,12 +1070,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0693_johnny-quick.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellt die Einbettung eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: comic-0693_johnny-quick.md liegt außerhalb des Fensters (10 Dokumente), Rang 1 belegt comic-0295_chroma.md; der Pipeline-Pfad (Volltextpfad in der Fusion) führt comic-0693_johnny-quick.md auf Rang 5."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-1084_reverse-flash-cw.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-1084_reverse-flash-cw.md, comic-0693_johnny-quick.md steht auf Rang 5."
       }
     }
   },
@@ -1118,12 +1118,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-1013_poison-ivy-new-52.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-1014_poison-ivy.md und comic-1013_poison-ivy-new-52.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-1013_poison-ivy-new-52.md, comic-1014_poison-ivy.md steht auf Rang 4."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-1013_poison-ivy-new-52.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-1014_poison-ivy.md und comic-1013_poison-ivy-new-52.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-1013_poison-ivy-new-52.md, comic-1014_poison-ivy.md steht auf Rang 2."
       }
     }
   },
@@ -1166,7 +1166,7 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-1223_starfire-titans.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-1224_starfire.md und comic-1223_starfire-titans.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-1223_starfire-titans.md, comic-1224_starfire.md steht auf Rang 2."
       },
       "pipeline": {
         "state": "solved",
@@ -1195,7 +1195,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-1253_superman-post-crisis.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-1252_superman-2006.md und comic-1253_superman-post-crisis.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-1253_superman-post-crisis.md, comic-1252_superman-2006.md steht auf Rang 2."
       }
     }
   },
@@ -1220,12 +1220,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0053_ancient-one-mcu.md, comic-0301_clea.md, comic-0406_doctor-strange-classic.md, comic-0493_franklin-richards.md, comic-0786_legion.md, comic-1271_the-beyonder-earth-1298.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 1 von 7 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0982_one-above-all.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0053_ancient-one-mcu.md, comic-0493_franklin-richards.md, comic-0614_hulk-stark-gauntlet-mcu.md, comic-0786_legion.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 3 von 7 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0982_one-above-all.md."
       }
     }
   },
@@ -1255,12 +1255,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0132_batman-arkham.md, comic-0175_black-alice.md, comic-0400_doctor-occult.md, comic-0689_john-constantine-power-of-shazam.md, comic-0690_john-constantine.md, comic-0853_martian-manhunter.md, comic-0878_metamorpho.md, comic-0974_offspring.md, comic-1009_plastic-man.md, comic-1131_saturn-girl-cw.md, comic-1201_spectre-oversoul.md, comic-1254_superman-smallville.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 12 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-1155_shazam-dceu.md; mit 12 erwarteten Dokumenten ist der Fall in diesem Fenster (10 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0132_batman-arkham.md, comic-0400_doctor-occult.md, comic-0689_john-constantine-power-of-shazam.md, comic-0690_john-constantine.md, comic-0853_martian-manhunter.md, comic-0974_offspring.md, comic-1009_plastic-man.md, comic-1131_saturn-girl-cw.md, comic-1201_spectre-oversoul.md, comic-1254_superman-smallville.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 2 von 12 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0046_amanda-waller.md; mit 12 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -1281,7 +1281,7 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0983_one-punch-man.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: alle 3 erwarteten Dokumente im Fenster, Rang 1 belegt comic-0983_one-punch-man.md."
       },
       "pipeline": {
         "state": "solved",
@@ -1316,12 +1316,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0393_devilman.md, comic-0523_goku.md, comic-0738_killer-bee.md, comic-0885_minato-namikaze.md, comic-0938_naruto-uzumaki.md, comic-1119_sai.md, comic-1121_sakura-haruno.md, comic-1159_shikamaru.md, comic-1337_tsunade.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 3 von 12 erwarteten Dokumenten im Fenster (10 Dokumente); mit 12 erwarteten Dokumenten ist der Fall in diesem Fenster (10 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0393_devilman.md, comic-0523_goku.md, comic-0738_killer-bee.md, comic-0885_minato-namikaze.md, comic-0938_naruto-uzumaki.md, comic-1119_sai.md, comic-1121_sakura-haruno.md, comic-1337_tsunade.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 4 von 12 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen); mit 12 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -1343,12 +1343,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0393_devilman.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 3 von 4 erwarteten Dokumenten im Fenster (10 Dokumente)."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0393_devilman.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 3 von 4 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen)."
       }
     }
   },
@@ -1368,12 +1368,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0588_hellboy-injustice-2.md, comic-0589_hellboy.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-1255_swamp-thing-new-52.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0588_hellboy-injustice-2.md, comic-0589_hellboy.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0056_angel-of-death.md."
       }
     }
   },
@@ -1394,12 +1394,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0034_akita.md, comic-0096_ash.md, comic-0526_golden-ninja.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 3 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0921_morro.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0921_morro.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: alle 3 erwarteten Dokumente im Fenster, Rang 1 belegt comic-0921_morro.md."
       }
     }
   },
@@ -1431,12 +1431,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0009_abomination.md, comic-0122_baron-zemo.md, comic-0255_captain-america-venomized.md, comic-0323_cosmic-hulk.md, comic-0415_dormammu.md, comic-0453_evil-deadpool.md, comic-0534_graviton-mcu.md, comic-0636_infernal-hulk.md, comic-0702_juggernaut-fox.md, comic-0834_maestro-hulk.md, comic-0979_omega.md, comic-0984_onslaught.md, comic-1269_thanos.md, comic-1346_ultron-final-form.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 14 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0346_damage-control.md; mit 14 erwarteten Dokumenten ist der Fall in diesem Fenster (10 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0009_abomination.md, comic-0122_baron-zemo.md, comic-0255_captain-america-venomized.md, comic-0323_cosmic-hulk.md, comic-0415_dormammu.md, comic-0453_evil-deadpool.md, comic-0534_graviton-mcu.md, comic-0636_infernal-hulk.md, comic-0702_juggernaut-fox.md, comic-0834_maestro-hulk.md, comic-0984_onslaught.md, comic-1269_thanos.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 2 von 14 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-1289_the-one-below-all.md; mit 14 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -1464,12 +1464,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0067_anti-monitor.md, comic-0470_felix-faust.md, comic-0537_great-evil-beast.md, comic-0630_imperiex.md, comic-0898_mister-mxyzptlk.md, comic-0944_nekron.md, comic-0945_nergal.md, comic-0946_neron.md, comic-0973_ocean-master.md, comic-1333_trigon.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 10 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-1390_warp.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0067_anti-monitor.md, comic-0630_imperiex.md, comic-0898_mister-mxyzptlk.md, comic-0945_nergal.md, comic-0946_neron.md, comic-0973_ocean-master.md, comic-1333_trigon.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 3 von 10 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-1390_warp.md; mit 10 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -1499,12 +1499,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0172_black-adam-new-52.md, comic-0173_black-adam-pre-crisis.md, comic-0174_black-adam.md, comic-0194_black-manta-dceu.md, comic-0385_desaad.md, comic-0537_great-evil-beast.md, comic-0630_imperiex.md, comic-0973_ocean-master.md, comic-1299_the-rival-cw.md, comic-1446_zoom-new-52.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 2 von 12 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0436_electro.md; mit 12 erwarteten Dokumenten ist der Fall in diesem Fenster (10 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0172_black-adam-new-52.md, comic-0173_black-adam-pre-crisis.md, comic-0194_black-manta-dceu.md, comic-0385_desaad.md, comic-0630_imperiex.md, comic-0973_ocean-master.md, comic-1446_zoom-new-52.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 5 von 12 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen); mit 12 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -1537,12 +1537,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0104_atom-smasher-cw.md, comic-0172_black-adam-new-52.md, comic-0174_black-adam.md, comic-0356_dark-kahn.md, comic-0392_devastator.md, comic-0412_doomsday-hunter-prey.md, comic-0413_doomsday.md, comic-0536_grayven.md, comic-0716_kanto.md, comic-0831_mad-harriet.md, comic-0946_neron.md, comic-0972_ocean-master-dceu.md, comic-1239_stompa.md, comic-1333_trigon.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 1 von 15 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0584_heat-wave.md; mit 15 erwarteten Dokumenten ist der Fall in diesem Fenster (10 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0172_black-adam-new-52.md, comic-0356_dark-kahn.md, comic-0412_doomsday-hunter-prey.md, comic-0536_grayven.md, comic-0716_kanto.md, comic-0739_killer-croc-dceu.md, comic-0831_mad-harriet.md, comic-0946_neron.md, comic-0972_ocean-master-dceu.md, comic-1239_stompa.md, comic-1333_trigon.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 4 von 15 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0584_heat-wave.md; mit 15 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -1562,7 +1562,7 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0983_one-punch-man.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: alle 2 erwarteten Dokumente im Fenster, Rang 1 belegt comic-0983_one-punch-man.md."
       },
       "pipeline": {
         "state": "solved",
@@ -1590,12 +1590,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0709_kabuto-yakushi.md, comic-0711_kaguya-tsutsuki.md, comic-0986_orochimaru.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 2 von 5 erwarteten Dokumenten im Fenster (10 Dokumente)."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0709_kabuto-yakushi.md, comic-0711_kaguya-tsutsuki.md, comic-0986_orochimaru.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 2 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen)."
       }
     }
   },
@@ -1618,12 +1618,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0039_alien.md, comic-0044_alucard.md, comic-0056_angel-of-death.md, comic-1261_t-1000.md, comic-1264_t-x.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0235_bullseye-wild-west.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0039_alien.md, comic-0044_alucard.md, comic-1261_t-1000.md, comic-1264_t-x.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 1 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0235_bullseye-wild-west.md."
       }
     }
   },
@@ -1645,12 +1645,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0444_emma-frost.md, comic-0808_living-tribunal.md, comic-1321_toad.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 1 von 4 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0430_ego-mcu.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0444_emma-frost.md, comic-0808_living-tribunal.md, comic-1321_toad.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 1 von 4 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0430_ego-mcu.md."
       }
     }
   },
@@ -1675,12 +1675,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0222_bor-burison.md, comic-0239_buri.md, comic-0703_juggernaut.md, comic-0808_living-tribunal.md, comic-1052_ragnarok.md, comic-1068_red-hulk-ghost-rider-venom.md, comic-1336_true-form-oblivion.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 7 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0431_ego.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0222_bor-burison.md, comic-0239_buri.md, comic-0703_juggernaut.md, comic-0808_living-tribunal.md, comic-1052_ragnarok.md, comic-1068_red-hulk-ghost-rider-venom.md, comic-1336_true-form-oblivion.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 7 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0431_ego.md."
       }
     }
   },
@@ -1712,12 +1712,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0222_bor-burison.md, comic-0284_champion-of-the-universe.md, comic-0370_deadpool.md, comic-0377_death-seed-archangel.md, comic-0703_juggernaut.md, comic-0772_lady-deadpool.md, comic-0808_living-tribunal.md, comic-0940_nebula-mcu.md, comic-1126_sandman-sony.md, comic-1259_symbiote-wolverine.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 4 von 14 erwarteten Dokumenten im Fenster (10 Dokumente); mit 14 erwarteten Dokumenten ist der Fall in diesem Fenster (10 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0222_bor-burison.md, comic-0377_death-seed-archangel.md, comic-0703_juggernaut.md, comic-0772_lady-deadpool.md, comic-0808_living-tribunal.md, comic-0940_nebula-mcu.md, comic-1068_red-hulk-ghost-rider-venom.md, comic-1126_sandman-sony.md, comic-1259_symbiote-wolverine.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 5 von 14 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen); mit 14 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -1741,12 +1741,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0188_black-flash.md, comic-0247_calculator.md, comic-0376_death-of-the-endless.md, comic-0389_destruction-of-the-endless.md, comic-0821_lucifer-fox.md, comic-0881_michael-demiurgos.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 6 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0982_one-above-all.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0188_black-flash.md, comic-0247_calculator.md, comic-0821_lucifer-fox.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 3 von 6 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0154_beyonder.md."
       }
     }
   },
@@ -1766,12 +1766,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0376_death-of-the-endless.md, comic-0881_michael-demiurgos.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0346_damage-control.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0346_damage-control.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: alle 2 erwarteten Dokumente im Fenster, Rang 1 belegt comic-0346_damage-control.md."
       }
     }
   },
@@ -1792,12 +1792,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0376_death-of-the-endless.md, comic-0881_michael-demiurgos.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 1 von 3 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0741_killer-frost-cw.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0151_bekka.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 2 von 3 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0741_killer-frost-cw.md."
       }
     }
   },
@@ -1821,12 +1821,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0655_itachi-uchiha.md, comic-0934_nagato-uzumaki.md, comic-1161_shisui-uchiha.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 3 von 6 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0983_one-punch-man.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0655_itachi-uchiha.md, comic-1161_shisui-uchiha.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 4 von 6 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen)."
       }
     }
   },
@@ -1846,12 +1846,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0387_destroyer-mcu.md, comic-0966_nuckal.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0656_j-jonah-jameson.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0387_destroyer-mcu.md, comic-0966_nuckal.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md."
       }
     }
   },
@@ -1873,12 +1873,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0051_anacondrai-serpent.md, comic-0387_destroyer-mcu.md, comic-0659_jack-jack.md, comic-0966_nuckal.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 4 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0656_j-jonah-jameson.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0051_anacondrai-serpent.md, comic-0387_destroyer-mcu.md, comic-0659_jack-jack.md, comic-0966_nuckal.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 4 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md."
       }
     }
   },
@@ -1904,12 +1904,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0051_anacondrai-serpent.md, comic-0217_bolobo.md, comic-0262_captain-cold-cw.md, comic-0387_destroyer-mcu.md, comic-0507_general-kozu.md, comic-0516_giant-stone-warrior.md, comic-0659_jack-jack.md, comic-0966_nuckal.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 8 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0656_j-jonah-jameson.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0051_anacondrai-serpent.md, comic-0217_bolobo.md, comic-0262_captain-cold-cw.md, comic-0387_destroyer-mcu.md, comic-0507_general-kozu.md, comic-0516_giant-stone-warrior.md, comic-0659_jack-jack.md, comic-0966_nuckal.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 8 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md."
       }
     }
   },
@@ -1938,12 +1938,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0051_anacondrai-serpent.md, comic-0217_bolobo.md, comic-0262_captain-cold-cw.md, comic-0387_destroyer-mcu.md, comic-0414_doppelganger.md, comic-0507_general-kozu.md, comic-0516_giant-stone-warrior.md, comic-0659_jack-jack.md, comic-0966_nuckal.md, comic-0993_paul-blart.md, comic-1448_zzzax.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 11 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-1091_riddler.md; mit 11 erwarteten Dokumenten ist der Fall in diesem Fenster (10 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0051_anacondrai-serpent.md, comic-0217_bolobo.md, comic-0262_captain-cold-cw.md, comic-0387_destroyer-mcu.md, comic-0414_doppelganger.md, comic-0507_general-kozu.md, comic-0516_giant-stone-warrior.md, comic-0659_jack-jack.md, comic-0966_nuckal.md, comic-0993_paul-blart.md, comic-1448_zzzax.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 11 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-1091_riddler.md; mit 11 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -1970,12 +1970,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0219_bookworm.md, comic-0405_doctor-sivana.md, comic-0562_harley-keener.md, comic-0660_jack-kirby.md, comic-0727_kelex.md, comic-0890_misako.md, comic-1237_stewie.md, comic-1277_the-false-mandarin.md, comic-1300_the-rumor.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 9 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0656_j-jonah-jameson.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0219_bookworm.md, comic-0405_doctor-sivana.md, comic-0562_harley-keener.md, comic-0660_jack-kirby.md, comic-0727_kelex.md, comic-0890_misako.md, comic-1237_stewie.md, comic-1277_the-false-mandarin.md, comic-1300_the-rumor.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 9 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md; mit 9 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -1996,12 +1996,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0219_bookworm.md, comic-0494_franklin-storm.md, comic-1237_stewie.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 3 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0077_aracnido-jr.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0219_bookworm.md, comic-1237_stewie.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 1 von 3 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0077_aracnido-jr.md."
       }
     }
   },
@@ -2021,12 +2021,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0494_franklin-storm.md, comic-1426_wyatt-wingfoot.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0002_514a-gotham.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0494_franklin-storm.md, comic-1426_wyatt-wingfoot.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0002_514a-gotham.md."
       }
     }
   },
@@ -2049,12 +2049,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0023_agent-bob.md, comic-0219_bookworm.md, comic-0494_franklin-storm.md, comic-0562_harley-keener.md, comic-1426_wyatt-wingfoot.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0002_514a-gotham.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0023_agent-bob.md, comic-0219_bookworm.md, comic-0562_harley-keener.md, comic-1426_wyatt-wingfoot.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 1 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0002_514a-gotham.md."
       }
     }
   },
@@ -2077,12 +2077,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0219_bookworm.md, comic-0659_jack-jack.md, comic-0660_jack-kirby.md, comic-0993_paul-blart.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 1 von 5 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0077_aracnido-jr.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0219_bookworm.md, comic-0656_j-jonah-jameson.md, comic-0659_jack-jack.md, comic-0660_jack-kirby.md, comic-0993_paul-blart.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0077_aracnido-jr.md."
       }
     }
   },
@@ -2115,12 +2115,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0219_bookworm.md, comic-0351_daphne-powell.md, comic-0494_franklin-storm.md, comic-0504_gary-bell.md, comic-0508_general-vex.md, comic-0562_harley-keener.md, comic-0656_j-jonah-jameson.md, comic-0659_jack-jack.md, comic-0660_jack-kirby.md, comic-0686_jj-powell.md, comic-0993_paul-blart.md, comic-1038_purple-man.md, comic-1050_rachel-pirzad.md, comic-1233_stephanie-powell.md, comic-1370_vicki-vale.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 15 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0077_aracnido-jr.md; mit 15 erwarteten Dokumenten ist der Fall in diesem Fenster (10 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0219_bookworm.md, comic-0351_daphne-powell.md, comic-0494_franklin-storm.md, comic-0504_gary-bell.md, comic-0508_general-vex.md, comic-0562_harley-keener.md, comic-0656_j-jonah-jameson.md, comic-0659_jack-jack.md, comic-0660_jack-kirby.md, comic-0686_jj-powell.md, comic-0993_paul-blart.md, comic-1038_purple-man.md, comic-1050_rachel-pirzad.md, comic-1233_stephanie-powell.md, comic-1370_vicki-vale.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 15 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0077_aracnido-jr.md; mit 15 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -2140,12 +2140,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0130_bathound.md, comic-0993_paul-blart.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0656_j-jonah-jameson.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0130_bathound.md, comic-0993_paul-blart.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md."
       }
     }
   },
@@ -2176,12 +2176,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0023_agent-bob.md, comic-0071_aquababy.md, comic-0091_arnold-flass.md, comic-0130_bathound.md, comic-0260_captain-boomerang.md, comic-0262_captain-cold-cw.md, comic-0292_chope.md, comic-0664_jaime-lannister.md, comic-0670_jar-jar-binks.md, comic-0757_kool-aid-man.md, comic-0990_parademon.md, comic-0993_paul-blart.md, comic-1426_wyatt-wingfoot.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 13 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0656_j-jonah-jameson.md; mit 13 erwarteten Dokumenten ist der Fall in diesem Fenster (10 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0023_agent-bob.md, comic-0071_aquababy.md, comic-0091_arnold-flass.md, comic-0130_bathound.md, comic-0260_captain-boomerang.md, comic-0262_captain-cold-cw.md, comic-0292_chope.md, comic-0664_jaime-lannister.md, comic-0670_jar-jar-binks.md, comic-0757_kool-aid-man.md, comic-0990_parademon.md, comic-0993_paul-blart.md, comic-1426_wyatt-wingfoot.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 13 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md; mit 13 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -2214,12 +2214,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0111_aztar.md, comic-0357_dark-phoenix-venomized.md, comic-0393_devilman.md, comic-0415_dormammu.md, comic-0419_dr-manhattan.md, comic-0420_dracula.md, comic-0521_goblin-force.md, comic-0526_golden-ninja.md, comic-0537_great-evil-beast.md, comic-0915_monstrox.md, comic-0933_nadakhan.md, comic-0982_one-above-all.md, comic-1285_the-keeper.md, comic-1292_the-overlord.md, comic-1347_unicron.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 15 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0656_j-jonah-jameson.md; mit 15 erwarteten Dokumenten ist der Fall in diesem Fenster (10 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0111_aztar.md, comic-0357_dark-phoenix-venomized.md, comic-0393_devilman.md, comic-0415_dormammu.md, comic-0419_dr-manhattan.md, comic-0420_dracula.md, comic-0521_goblin-force.md, comic-0526_golden-ninja.md, comic-0537_great-evil-beast.md, comic-0915_monstrox.md, comic-0933_nadakhan.md, comic-1285_the-keeper.md, comic-1292_the-overlord.md, comic-1347_unicron.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 1 von 15 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md; mit 15 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -2246,12 +2246,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0111_aztar.md, comic-0393_devilman.md, comic-0420_dracula.md, comic-0521_goblin-force.md, comic-0526_golden-ninja.md, comic-0537_great-evil-beast.md, comic-0933_nadakhan.md, comic-1285_the-keeper.md, comic-1292_the-overlord.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 9 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0369_deacons-of-the-deep.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0111_aztar.md, comic-0393_devilman.md, comic-0420_dracula.md, comic-0521_goblin-force.md, comic-0526_golden-ninja.md, comic-0537_great-evil-beast.md, comic-0933_nadakhan.md, comic-1285_the-keeper.md, comic-1292_the-overlord.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 9 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0369_deacons-of-the-deep.md; mit 9 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -2274,12 +2274,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0111_aztar.md, comic-0393_devilman.md, comic-0420_dracula.md, comic-0526_golden-ninja.md, comic-0537_great-evil-beast.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0818_lord-of-cinder.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0111_aztar.md, comic-0393_devilman.md, comic-0420_dracula.md, comic-0526_golden-ninja.md, comic-0537_great-evil-beast.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0818_lord-of-cinder.md."
       }
     }
   },
@@ -2302,12 +2302,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0111_aztar.md, comic-0393_devilman.md, comic-0420_dracula.md, comic-0526_golden-ninja.md, comic-0537_great-evil-beast.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0656_j-jonah-jameson.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0111_aztar.md, comic-0393_devilman.md, comic-0420_dracula.md, comic-0526_golden-ninja.md, comic-0537_great-evil-beast.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md."
       }
     }
   },
@@ -2398,12 +2398,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0432_el-diablo-dceu.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-0433_el-diablo.md und comic-0432_el-diablo-dceu.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-0432_el-diablo-dceu.md, comic-0433_el-diablo.md steht auf Rang 2."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0432_el-diablo-dceu.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-0433_el-diablo.md und comic-0432_el-diablo-dceu.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-0432_el-diablo-dceu.md, comic-0433_el-diablo.md steht auf Rang 2."
       }
     }
   },
@@ -2494,7 +2494,7 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0335_cyborg-sonar-suit.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender lexikalischer Pfad bei sprachübergreifender Anfrage (nur im Pipeline-Pfad vorhanden): Die deutsche Frage auf englischem Korpus trägt den Eigennamen in der Einbettung allein nicht bis auf Rang 1. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-0335_cyborg-sonar-suit.md, comic-1009_plastic-man.md steht auf Rang 3; der Pipeline-Pfad (Volltextpfad in der Fusion) löst den Fall."
       },
       "pipeline": {
         "state": "solved",
@@ -2572,12 +2572,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0012_abraxas.md, comic-0357_dark-phoenix-venomized.md, comic-0415_dormammu.md, comic-0521_goblin-force.md, comic-0872_mephisto.md, comic-0984_onslaught.md, comic-1289_the-one-below-all.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 7 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0414_doppelganger.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0357_dark-phoenix-venomized.md, comic-0415_dormammu.md, comic-0521_goblin-force.md, comic-0872_mephisto.md, comic-0984_onslaught.md, comic-1289_the-one-below-all.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 1 von 7 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0414_doppelganger.md."
       }
     }
   },
@@ -2609,12 +2609,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0010_abra-kadabra-cw.md, comic-0011_abra-kadabra.md, comic-0532_granny-goodness.md, comic-0537_great-evil-beast.md, comic-0755_knockout.md, comic-0889_mirror-master-cw.md, comic-0898_mister-mxyzptlk.md, comic-0945_nergal.md, comic-0946_neron.md, comic-1120_saint-of-killers.md, comic-1305_the-thinker-cw.md, comic-1333_trigon.md, comic-1368_vibe-cw.md, comic-1424_wotan.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 14 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0139_batman-lego.md; mit 14 erwarteten Dokumenten ist der Fall in diesem Fenster (10 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0010_abra-kadabra-cw.md, comic-0011_abra-kadabra.md, comic-0532_granny-goodness.md, comic-0537_great-evil-beast.md, comic-0755_knockout.md, comic-0889_mirror-master-cw.md, comic-0898_mister-mxyzptlk.md, comic-0945_nergal.md, comic-0946_neron.md, comic-1120_saint-of-killers.md, comic-1305_the-thinker-cw.md, comic-1333_trigon.md, comic-1368_vibe-cw.md, comic-1424_wotan.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 14 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0139_batman-lego.md; mit 14 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -2647,12 +2647,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0104_atom-smasher-cw.md, comic-0172_black-adam-new-52.md, comic-0174_black-adam.md, comic-0356_dark-kahn.md, comic-0392_devastator.md, comic-0412_doomsday-hunter-prey.md, comic-0413_doomsday.md, comic-0536_grayven.md, comic-0716_kanto.md, comic-0739_killer-croc-dceu.md, comic-0831_mad-harriet.md, comic-0946_neron.md, comic-0972_ocean-master-dceu.md, comic-1239_stompa.md, comic-1333_trigon.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 15 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0584_heat-wave.md; mit 15 erwarteten Dokumenten ist der Fall in diesem Fenster (10 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0104_atom-smasher-cw.md, comic-0172_black-adam-new-52.md, comic-0174_black-adam.md, comic-0392_devastator.md, comic-0412_doomsday-hunter-prey.md, comic-0413_doomsday.md, comic-0536_grayven.md, comic-0716_kanto.md, comic-0739_killer-croc-dceu.md, comic-0831_mad-harriet.md, comic-0946_neron.md, comic-0972_ocean-master-dceu.md, comic-1239_stompa.md, comic-1333_trigon.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 1 von 15 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0584_heat-wave.md; mit 15 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -2672,12 +2672,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0711_kaguya-tsutsuki.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 1 von 2 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0728_kenshiro.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0393_devilman.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: alle 2 erwarteten Dokumente im Fenster, Rang 1 belegt comic-0393_devilman.md."
       }
     }
   },
@@ -2702,12 +2702,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0053_ancient-one-mcu.md, comic-0301_clea.md, comic-0406_doctor-strange-classic.md, comic-0493_franklin-richards.md, comic-0614_hulk-stark-gauntlet-mcu.md, comic-0786_legion.md, comic-1271_the-beyonder-earth-1298.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 7 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0414_doppelganger.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0301_clea.md, comic-0493_franklin-richards.md, comic-0614_hulk-stark-gauntlet-mcu.md, comic-0786_legion.md, comic-1271_the-beyonder-earth-1298.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 2 von 7 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0414_doppelganger.md."
       }
     }
   },
@@ -2732,12 +2732,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0523_goku.md, comic-0571_hashirama-senju.md, comic-0938_naruto-uzumaki.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 4 von 7 erwarteten Dokumenten im Fenster (10 Dokumente)."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0523_goku.md, comic-0571_hashirama-senju.md, comic-0938_naruto-uzumaki.md, comic-1121_sakura-haruno.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 3 von 7 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen)."
       }
     }
   },
@@ -2763,12 +2763,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0393_devilman.md, comic-0597_hinata-hy-ga.md, comic-0938_naruto-uzumaki.md, comic-1130_sasuke-uchiha.md, comic-1324_tobirama-senju.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 3 von 8 erwarteten Dokumenten im Fenster (10 Dokumente)."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0938_naruto-uzumaki.md, comic-1119_sai.md, comic-1130_sasuke-uchiha.md, comic-1324_tobirama-senju.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 4 von 8 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen)."
       }
     }
   },
@@ -2791,12 +2791,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0007_abe-sapien.md, comic-0059_angel.md, comic-0588_hellboy-injustice-2.md, comic-0589_hellboy.md, comic-1287_the-lobster.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0376_death-of-the-endless.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0059_angel.md, comic-0589_hellboy.md, comic-1287_the-lobster.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 2 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0056_angel-of-death.md."
       }
     }
   },
@@ -2818,7 +2818,7 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0154_beyonder.md, comic-0808_living-tribunal.md, comic-1336_true-form-oblivion.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 1 von 4 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0430_ego-mcu.md."
       },
       "pipeline": {
         "state": "solved",
@@ -2852,12 +2852,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0154_beyonder.md, comic-0320_copycat.md, comic-0444_emma-frost.md, comic-0629_immortal-hulk.md, comic-0631_impossible-man.md, comic-0808_living-tribunal.md, comic-0982_one-above-all.md, comic-1068_red-hulk-ghost-rider-venom.md, comic-1126_sandman-sony.md, comic-1259_symbiote-wolverine.md, comic-1336_true-form-oblivion.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 11 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0888_mirage.md; mit 11 erwarteten Dokumenten ist der Fall in diesem Fenster (10 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0631_impossible-man.md, comic-0808_living-tribunal.md, comic-0982_one-above-all.md, comic-1068_red-hulk-ghost-rider-venom.md, comic-1126_sandman-sony.md, comic-1259_symbiote-wolverine.md, comic-1336_true-form-oblivion.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 4 von 11 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0888_mirage.md; mit 11 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -2877,12 +2877,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0551_grifter.md, comic-0821_lucifer-fox.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0046_amanda-waller.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: alle erwarteten Dokumente im Fenster, aber Rang 1 belegt comic-0046_amanda-waller.md. Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: alle 2 erwarteten Dokumente im Fenster, Rang 1 belegt comic-0046_amanda-waller.md."
       }
     }
   },
@@ -2903,7 +2903,7 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0376_death-of-the-endless.md, comic-0881_michael-demiurgos.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 1 von 3 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0896_mister-freeze.md."
       },
       "pipeline": {
         "state": "solved",
@@ -2928,12 +2928,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0387_destroyer-mcu.md, comic-0966_nuckal.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0647_iron-man-model-45.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0387_destroyer-mcu.md, comic-0966_nuckal.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0647_iron-man-model-45.md."
       }
     }
   },
@@ -2959,12 +2959,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0051_anacondrai-serpent.md, comic-0217_bolobo.md, comic-0262_captain-cold-cw.md, comic-0387_destroyer-mcu.md, comic-0507_general-kozu.md, comic-0516_giant-stone-warrior.md, comic-0659_jack-jack.md, comic-0966_nuckal.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 8 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0647_iron-man-model-45.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0051_anacondrai-serpent.md, comic-0217_bolobo.md, comic-0262_captain-cold-cw.md, comic-0387_destroyer-mcu.md, comic-0507_general-kozu.md, comic-0516_giant-stone-warrior.md, comic-0659_jack-jack.md, comic-0966_nuckal.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 8 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0647_iron-man-model-45.md."
       }
     }
   },
@@ -2991,12 +2991,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0219_bookworm.md, comic-0405_doctor-sivana.md, comic-0562_harley-keener.md, comic-0660_jack-kirby.md, comic-0727_kelex.md, comic-0890_misako.md, comic-1237_stewie.md, comic-1277_the-false-mandarin.md, comic-1300_the-rumor.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 9 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-1272_the-boy.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0405_doctor-sivana.md, comic-0562_harley-keener.md, comic-0660_jack-kirby.md, comic-0727_kelex.md, comic-0890_misako.md, comic-1237_stewie.md, comic-1277_the-false-mandarin.md, comic-1300_the-rumor.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 1 von 9 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0226_brainiac-5.md; mit 9 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -3016,12 +3016,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0494_franklin-storm.md, comic-1426_wyatt-wingfoot.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0226_brainiac-5.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0494_franklin-storm.md, comic-1426_wyatt-wingfoot.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0226_brainiac-5.md."
       }
     }
   },
@@ -3044,12 +3044,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0219_bookworm.md, comic-0656_j-jonah-jameson.md, comic-0659_jack-jack.md, comic-0660_jack-kirby.md, comic-0993_paul-blart.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0152_ben-10.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0219_bookworm.md, comic-0656_j-jonah-jameson.md, comic-0659_jack-jack.md, comic-0660_jack-kirby.md, comic-0993_paul-blart.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0152_ben-10.md."
       }
     }
   },
@@ -3069,12 +3069,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0130_bathound.md, comic-0993_paul-blart.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-1386_war-machine-ii.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0130_bathound.md, comic-0993_paul-blart.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0588_hellboy-injustice-2.md."
       }
     }
   },
@@ -3107,12 +3107,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0111_aztar.md, comic-0357_dark-phoenix-venomized.md, comic-0393_devilman.md, comic-0415_dormammu.md, comic-0419_dr-manhattan.md, comic-0420_dracula.md, comic-0521_goblin-force.md, comic-0526_golden-ninja.md, comic-0537_great-evil-beast.md, comic-0915_monstrox.md, comic-0933_nadakhan.md, comic-0982_one-above-all.md, comic-1285_the-keeper.md, comic-1292_the-overlord.md, comic-1347_unicron.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 15 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0752_kisame.md; mit 15 erwarteten Dokumenten ist der Fall in diesem Fenster (10 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0111_aztar.md, comic-0357_dark-phoenix-venomized.md, comic-0393_devilman.md, comic-0415_dormammu.md, comic-0419_dr-manhattan.md, comic-0420_dracula.md, comic-0521_goblin-force.md, comic-0526_golden-ninja.md, comic-0537_great-evil-beast.md, comic-0915_monstrox.md, comic-0933_nadakhan.md, comic-0982_one-above-all.md, comic-1285_the-keeper.md, comic-1292_the-overlord.md, comic-1347_unicron.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 15 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0752_kisame.md; mit 15 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -3139,12 +3139,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0111_aztar.md, comic-0393_devilman.md, comic-0420_dracula.md, comic-0521_goblin-force.md, comic-0526_golden-ninja.md, comic-0537_great-evil-beast.md, comic-0933_nadakhan.md, comic-1285_the-keeper.md, comic-1292_the-overlord.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 9 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0752_kisame.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0111_aztar.md, comic-0393_devilman.md, comic-0420_dracula.md, comic-0521_goblin-force.md, comic-0526_golden-ninja.md, comic-0537_great-evil-beast.md, comic-0933_nadakhan.md, comic-1285_the-keeper.md, comic-1292_the-overlord.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 9 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0752_kisame.md; mit 9 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   },
@@ -3167,12 +3167,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0111_aztar.md, comic-0393_devilman.md, comic-0420_dracula.md, comic-0526_golden-ninja.md, comic-0537_great-evil-beast.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0647_iron-man-model-45.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0111_aztar.md, comic-0393_devilman.md, comic-0420_dracula.md, comic-0526_golden-ninja.md, comic-0537_great-evil-beast.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0647_iron-man-model-45.md."
       }
     }
   },
@@ -3195,12 +3195,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0111_aztar.md, comic-0393_devilman.md, comic-0420_dracula.md, comic-0526_golden-ninja.md, comic-0537_great-evil-beast.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0281_century.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0111_aztar.md, comic-0393_devilman.md, comic-0420_dracula.md, comic-0526_golden-ninja.md, comic-0537_great-evil-beast.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0281_century.md."
       }
     }
   },
@@ -3222,12 +3222,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0051_anacondrai-serpent.md, comic-0387_destroyer-mcu.md, comic-0659_jack-jack.md, comic-0966_nuckal.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 4 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0647_iron-man-model-45.md."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0051_anacondrai-serpent.md, comic-0387_destroyer-mcu.md, comic-0659_jack-jack.md, comic-0966_nuckal.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 4 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0647_iron-man-model-45.md."
       }
     }
   },
@@ -3256,12 +3256,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0051_anacondrai-serpent.md, comic-0217_bolobo.md, comic-0262_captain-cold-cw.md, comic-0387_destroyer-mcu.md, comic-0414_doppelganger.md, comic-0507_general-kozu.md, comic-0516_giant-stone-warrior.md, comic-0659_jack-jack.md, comic-0966_nuckal.md, comic-0993_paul-blart.md, comic-1448_zzzax.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Die Einbettung rankt nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 0 von 11 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0634_indiana-jones.md; mit 11 erwarteten Dokumenten ist der Fall in diesem Fenster (10 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad nicht gelöst: erwartetes Dokument außerhalb des Fensters (comic-0051_anacondrai-serpent.md, comic-0217_bolobo.md, comic-0262_captain-cold-cw.md, comic-0387_destroyer-mcu.md, comic-0414_doppelganger.md, comic-0507_general-kozu.md, comic-0516_giant-stone-warrior.md, comic-0659_jack-jack.md, comic-0966_nuckal.md, comic-0993_paul-blart.md, comic-1448_zzzax.md). Der fehlende Baustein ist je Fall nicht analysiert; Neuvermessung mit Einzelbegründung in #1657."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 11 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0634_indiana-jones.md; mit 11 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
       }
     }
   }
