@@ -223,8 +223,14 @@ Entscheidung über einen Zustandswechsel eine menschliche ist.
 
 **Je Pfad, Stand 2026-09-14 (#1658):** Rohvektor-Pfad 22 von 49, Pipeline-Pfad 23 von 49; auf
 beiden Pfaden `known_gap` sind 16. Die Tabelle darunter gibt diesen Stand wieder; die
-Symptomtabellen je Klasse beschreiben weiterhin die Läufe vom 2026-09-01/-05, für die 21 mit #1308
-gepflegten Fälle gilt der Abschnitt „Zustandspflege mit #1308".
+Symptomtabellen je Klasse sind historisch und beschreiben die Läufe vom 2026-09-01/-05, für die 21 mit
+#1308 gepflegten Fälle gilt der Abschnitt „Zustandspflege mit #1308".
+
+**Geltende Symptome (#1652, 2026-09-15):** Die Gründe aller 49 Fälle beschreiben je Pfad den Lauf mit
+fester CPU-Variante `haswell`. Sie nennen zuerst den fehlenden oder wirkenden Baustein, dann den
+Fensteranteil, Rang 1 und die Ränge der erwarteten Dokumente, bei Filterfällen auch den
+Verwechslungspartner. Jede dieser Angaben ist mechanisch gegen die Fallergebnisse geprüft. Die
+Zustände haben sich dabei nicht bewegt.
 
 **Stand vor #1658: 29 von 49 Fällen** unter der damaligen Regel „gelöst auf beiden Pfaden",
 2026-09-14 (#1308).

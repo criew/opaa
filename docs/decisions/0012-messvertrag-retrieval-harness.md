@@ -1371,11 +1371,20 @@ sind überall leer.
 | `city-landmarks.json` | unverändert | 7 (Lauf 34860257993) |
 | `pipeline-city-landmarks.json` | unverändert | 1 |
 
-Kein Fallzustand wechselt. Nachgezogen sind zwei Gründe, deren Symptom nicht mehr stimmte:
-`comic-filter-001` (Rohvektor) nennt deterministisch 2 von 7 Dokumenten im Fenster statt der
-Schwankung, und `verw-lit-005` beschreibt je Pfad diesen Lauf statt eines Symptoms vom 2026-09-01.
-Die übrigen Mengen-, Rang-1- und Rangangaben der Gründe aller drei Domänen sind mechanisch gegen die
-neuen Läufe geprüft.
+Kein Fallzustand und kein Präfix wechselt. Nachgezogen sind die Gründe, deren Symptom nicht aus
+diesem Lauf stammte:
+
+- In `comic-characters` nennt `comic-filter-001` (Rohvektor) deterministisch 2 von 7 Dokumenten im
+  Fenster statt der Schwankung.
+- In `verwaltung` beschreiben alle 98 Gründe (49 Fälle, je Pfad) jetzt den Lauf mit Pin, im Format
+  aus #1657: zuerst der fehlende oder wirkende Baustein, dann Fensteranteil, Rang 1 und die Ränge der
+  erwarteten Dokumente. 32 davon trugen noch Symptome vom 2026-09-01, oft aus dem Pipeline-Pfad in
+  beiden Einträgen; so standen bei `verw-lit-001`, `-003`, `-007` und `verw-hop-001` Fensterangaben,
+  die dem Pipeline-Lauf widersprachen.
+
+Ein Parser prüft jede Rang- und Fensterangabe aller Gründe gegen die Fallergebnisse beider Pfade der
+neuen Läufe. Querverweise auf den anderen Pfad prüft er gegen dessen Ergebnisse. Ergebnis:
+`verwaltung` 389 Angaben, `comic-characters` 492, `city-landmarks` 226, keine falsch.
 
 In den Delta-Tabellen von `comic-characters` bleiben, wie schon vor dem Pin, Rundungsreste von ±0,001: einer auf dem Rohvektor-Pfad, drei auf dem Pipeline-Pfad. Die exakten
 Werte dieser Gruppen enden auf einer Fünf in der vierten Nachkommastelle (etwa 1/16 = 0,0625), und
