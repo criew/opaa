@@ -1476,5 +1476,13 @@ Rohvektor-Messung bleibt: Sie hängt nicht an der Zerlegung, misst also dasselbe
 `evaluate`, und kostet neben der Indizierung kaum Zeit.
 Die Mehrrunden-Zahlen bewegen sich dadurch nicht. Schritt 6 schrieb nichts, was Schritt 8 liest, und
 schon bisher lieferten die drei Messungen eines Laufs identische Ergebnisse, obwohl nur die erste
-direkt auf Schritt 6 folgte. Den Beleg liefert der label-ausgelöste CI-Lauf dieses PRs (Delta 0 gegen
-die Baseline).
+direkt auf Schritt 6 folgte.
+
+**Beleg.** Der label-ausgelöste CI-Lauf 34996240329 zu PR #1664:
+
+- Der Job `conversations (verwaltung)` meldet „Keine Regression". Alle 45 Zeilen der Delta-Tabelle
+  zeigen ±0,000.
+- Das Zustands-Audit zeigt keine Abweichung, 5 von 27 Fällen sind gelöst, wie in der Baseline.
+- Über die drei Läufe gibt es 0 Fälle mit abweichender Zerlegung.
+- Das Log enthält kein Pipeline-Audit der Einzelfragen mehr.
+- Der Job brauchte 66 Minuten statt zuvor rund zwei Stunden.
