@@ -4,7 +4,6 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.chunk.ChunkContextPrefix;
-import io.opaa.indexing.chunk.ChunkContextTitle;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.format.ChunkFormatMetadata;
@@ -14,7 +13,6 @@ import io.opaa.indexing.format.DocumentFormatRegistry;
 import io.opaa.indexing.format.DocumentFormatResult;
 import io.opaa.indexing.format.DocumentFormatRunner;
 import io.opaa.indexing.format.DocumentFormatSource;
-import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.indexing.metadata.CoreMetadataChunkKeys;
 import io.opaa.indexing.metadata.DocumentChunkMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
@@ -252,7 +250,7 @@ public class DocumentIngestService {
       attachSourceContext(chunks, pipeline, ingest.context());
       DocumentChunkMetadata coreMetadata =
           extractCoreMetadata(
-              doc, fileName, parsed.withProperties(declaredProperties(parsed, ingest)));
+              doc, fileName, parsed.withProperties(ingest.declaredOver(parsed.properties())));
       String contextTitle = contextTitleFor(ingest);
       ModelExtractionOutcome modelOutcome = extractWithModel(doc, library, contextTitle, chunks);
       if (modelOutcome.chunkMetadata() != null) {
@@ -449,43 +447,10 @@ public class DocumentIngestService {
     chunks.forEach(chunk -> chunk.getMetadata().putAll(contextKeys));
   }
 
-  /** What the source declares about the document (ADR-0024), laid over what the format found. */
-  private static DocumentProperties declaredProperties(
-      DocumentFormatResult parsed, DocumentIngest ingest) {
-    DocumentProperties properties = parsed.properties();
-    if (ingest.syntheticName()) {
-      properties = properties.withSyntheticName(true);
-    }
-    if (ingest.title() != null) {
-      properties = properties.withTitle(ingest.title());
-    }
-    if (ingest.documentDate() != null) {
-      properties = properties.withDocumentDate(ingest.documentDate());
-    }
-    if (ingest.modifiedAt() != null) {
-      properties = properties.withModifiedAt(ingest.modifiedAt());
-    }
-    return properties;
-  }
-
-  /**
-   * The chunk-context prefix (ingestion-pipelines.md, Querschnittsregel (b)): a file name is
-   * humanized by {@link ChunkContextTitle}; a synthetic name is the declared title verbatim behind
-   * its hierarchy path, and {@code null} without a title - a URL fallback would share a prefix.
-   */
+  /** The ingest's own prefix title, see {@link ChunkContextPrefix#ingestTitle}. */
   private static String contextTitleFor(DocumentIngest ingest) {
-    if (!ingest.syntheticName()) {
-      return ChunkContextTitle.deriveTitle(ingest.fileName());
-    }
-    String title = ingest.title();
-    SourceDocumentContext context = ingest.context();
-    if (title == null) {
-      return null;
-    }
-    if (context == null || context.hierarchyPath() == null || context.hierarchyPath().isBlank()) {
-      return title;
-    }
-    return context.hierarchyPath() + SourceDocumentContext.HIERARCHY_SEPARATOR + title;
+    return ChunkContextPrefix.ingestTitle(
+        ingest.syntheticName(), ingest.fileName(), ingest.title(), ingest.context());
   }
 
   /**
@@ -696,12 +661,12 @@ public class DocumentIngestService {
       DocumentFormat pipeline,
       Optional<String> routingExtension,
       DocumentChunkMetadata chunkMetadata) {
-    boolean documentWasSplit = chunks.size() >= 2;
+    boolean documentWasSplit = ChunkContextPrefix.documentWasSplit(chunks.size());
     // The Kernfeld Titel replaces the file-name humanisation the prefix used before; the caller's
     // own candidate stays the fallback and still decides whether this document type gets a prefix
     // at all - an RSS entry without a headline never does. That decision is recorded below, so the
     // Nachlauf honours it instead of guessing it.
-    boolean prefixEligible = contextTitle != null;
+    boolean prefixEligible = ChunkContextPrefix.eligible(contextTitle);
     String prefixTitle =
         ChunkContextPrefix.titleAtRest(prefixEligible, chunkMetadata.contextTitle(), contextTitle);
     Set<String> passthroughKeys = pipelineRegistry.allPassthroughMetadataKeys();

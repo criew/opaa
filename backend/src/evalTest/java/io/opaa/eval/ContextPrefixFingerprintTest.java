@@ -52,4 +52,31 @@ class ContextPrefixFingerprintTest {
     // The file-name fallback sample must actually carry the derived title.
     assertThat(inputs).anyMatch(input -> input.startsWith("[prag altstadt rundgang]"));
   }
+
+  /** The samples only guard a decision whose outcome they actually reach. */
+  @Test
+  void theSamplesReachTheExtractionTheCoreFieldWirkstellenAndBothIngestTitleForms() {
+    List<String> inputs =
+        ContextPrefixFingerprint.SAMPLES.stream()
+            .map(ContextPrefixFingerprint::productionEmbeddingInput)
+            .toList();
+
+    assertThat(inputs.get(0))
+        .as("the frontmatter title outranks the first heading and is unquoted")
+        .startsWith("[Verwaltungsgebührensatzung › § 7 Gebühren]");
+    assertThat(inputs.get(1)).startsWith("[Satzung › Gebührenordnung › § 8 Fälligkeit]");
+    assertThat(inputs.get(4))
+        .as("a one-chunk document with prefix-effective core values")
+        .startsWith("[Merkblatt Wohnsitz › Merkblatt › 12.03.2026]");
+    assertThat(inputs.get(6))
+        .as("the factory defaults put no core value into the prefix")
+        .isEqualTo(ContextPrefixFingerprint.SAMPLES.get(6).chunkText());
+    assertThat(inputs.get(7))
+        .as("a text source's declared title becomes the Kernfeld Titel")
+        .startsWith("[Öffnungszeiten › Samstag]");
+    assertThat(inputs.get(8))
+        .as("without extracted fields the ingest title behind its hierarchy path remains")
+        .startsWith("[Bürgerservice / Rathaus / Öffnungszeiten › Sonntag]");
+    assertThat(inputs.get(9)).isEqualTo(ContextPrefixFingerprint.SAMPLES.get(9).chunkText());
+  }
 }

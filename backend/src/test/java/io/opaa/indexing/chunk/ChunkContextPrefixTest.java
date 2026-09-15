@@ -2,6 +2,7 @@ package io.opaa.indexing.chunk;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.indexing.document.SourceDocumentContext;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -196,6 +197,29 @@ class ChunkContextPrefixTest {
     assertThat(chunk.getFormattedContent(MetadataMode.EMBED))
         .isEqualTo("[Satzung › Fassung 2026 › § 7 Gebühren]\n\n37,00 EUR");
     assertThat(chunk.getText()).isEqualTo("37,00 EUR");
+  }
+
+  @Test
+  void derivesTheIngestTitleFromTheFileNameOrTheDeclaredTitleBehindItsHierarchyPath() {
+    assertThat(ChunkContextPrefix.ingestTitle(false, "001_personalausweis.md", "egal", null))
+        .isEqualTo("personalausweis");
+    assertThat(
+            ChunkContextPrefix.ingestTitle(
+                true, "x", "Öffnungszeiten", new SourceDocumentContext("K", "Bürgerservice")))
+        .isEqualTo("Bürgerservice / Öffnungszeiten");
+    assertThat(
+            ChunkContextPrefix.ingestTitle(
+                true, "x", "Öffnungszeiten", new SourceDocumentContext("K", " ")))
+        .isEqualTo("Öffnungszeiten");
+    assertThat(ChunkContextPrefix.ingestTitle(true, "https://example.org/a", null, null)).isNull();
+    assertThat(ChunkContextPrefix.eligible(null)).isFalse();
+    assertThat(ChunkContextPrefix.eligible("Öffnungszeiten")).isTrue();
+  }
+
+  @Test
+  void countsADocumentAsSplitFromTwoChunksOn() {
+    assertThat(ChunkContextPrefix.documentWasSplit(1)).isFalse();
+    assertThat(ChunkContextPrefix.documentWasSplit(2)).isTrue();
   }
 
   @Test

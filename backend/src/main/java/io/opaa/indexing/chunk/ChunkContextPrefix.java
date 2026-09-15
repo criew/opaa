@@ -1,5 +1,6 @@
 package io.opaa.indexing.chunk;
 
+import io.opaa.indexing.document.SourceDocumentContext;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -41,6 +42,35 @@ public final class ChunkContextPrefix {
   private static final int STAMP_LENGTH = 32;
 
   private ChunkContextPrefix() {}
+
+  /**
+   * The ingest's own prefix title (ingestion-pipelines.md, Querschnittsregel (b)): a file name is
+   * humanized by {@link ChunkContextTitle}; a synthetic name is the declared title verbatim behind
+   * its hierarchy path, and {@code null} without a title - a URL fallback would share a prefix.
+   */
+  public static String ingestTitle(
+      boolean syntheticName, String fileName, String declaredTitle, SourceDocumentContext context) {
+    if (!syntheticName) {
+      return ChunkContextTitle.deriveTitle(fileName);
+    }
+    if (declaredTitle == null) {
+      return null;
+    }
+    if (context == null || context.hierarchyPath() == null || context.hierarchyPath().isBlank()) {
+      return declaredTitle;
+    }
+    return context.hierarchyPath() + SourceDocumentContext.HIERARCHY_SEPARATOR + declaredTitle;
+  }
+
+  /** Whether a document gets a prefix at all: exactly when the ingest found a title for it. */
+  public static boolean eligible(String ingestTitle) {
+    return ingestTitle != null;
+  }
+
+  /** The single-chunk rule's input: a document counts as split from two chunks on. */
+  public static boolean documentWasSplit(int chunkCount) {
+    return chunkCount >= 2;
+  }
 
   /**
    * The prefix of one chunk, or {@code null} when this chunk gets none.

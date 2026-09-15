@@ -129,7 +129,7 @@ public class ContextPrefixRerunService {
       String title =
           ChunkContextPrefix.titleAtRest(
               eligible, chunkMetadata.contextTitle(), document.getContextPrefixTitle());
-      boolean documentWasSplit = stored.size() >= 2;
+      boolean documentWasSplit = ChunkContextPrefix.documentWasSplit(stored.size());
       List<org.springframework.ai.document.Document> rebuilt =
           stored.stream()
               .map(chunk -> chunk.rebuild(eligible, documentWasSplit, title, chunkMetadata))
