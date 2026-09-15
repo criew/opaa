@@ -5,8 +5,19 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-14T05:16:21Z</updated>
+  <updated>2026-09-15T05:07:50Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Montag, 14. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-14.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-14.html</id>
+    <updated>2026-09-15T05:07:50Z</updated>
+    <summary type="text">Sonstiges:
+— Renovate-Fehler bei pnpm-Update mit anderen npm-Paketen strukturell behoben
+— Expected State je Messpfad statt globale Ausnahmen eingeführt
+— Chat-Navigation: Beim Start und Space-Wechsel auf neues Gespräch landen
+— E2E-Warteschleife der Barrierefreiheitsprüfung gehärtet</summary>
+  </entry>
   <entry>
     <title>Tagesreport Sonntag, 13. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-13.html"/>
