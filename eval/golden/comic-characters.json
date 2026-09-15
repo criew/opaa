@@ -734,7 +734,7 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellt die Einbettung eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-0452_evie-frye.md, comic-0043_alta-r-ibn-la-ahad.md steht auf Rang 7; der Pipeline-Pfad (Volltextpfad in der Fusion) führt comic-0043_alta-r-ibn-la-ahad.md auf Rang 1."
+        "reason": "Fehlender lexikalischer Pfad (nur im Pipeline-Pfad vorhanden): Der Pipeline-Pfad löst den Fall mit dem Volltextpfad in der Fusion, die Einbettung allein stellt comic-0452_evie-frye.md vor das erwartete Dokument. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-0452_evie-frye.md, comic-0043_alta-r-ibn-la-ahad.md steht auf Rang 7."
       },
       "pipeline": {
         "state": "solved",
@@ -806,7 +806,7 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellt die Einbettung eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-0036_alex-mercer.md, comic-0274_castiel.md steht auf Rang 4; der Pipeline-Pfad (Volltextpfad in der Fusion) führt comic-0274_castiel.md auf Rang 7."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellt die Einbettung eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-0036_alex-mercer.md, comic-0274_castiel.md steht auf Rang 4."
       },
       "pipeline": {
         "state": "known_gap",
@@ -830,7 +830,7 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellt die Einbettung eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-0458_ezio-auditore-da-firenze.md, comic-0428_edward-kenway.md steht auf Rang 7; der Pipeline-Pfad (Volltextpfad in der Fusion) führt comic-0428_edward-kenway.md auf Rang 1."
+        "reason": "Fehlender lexikalischer Pfad (nur im Pipeline-Pfad vorhanden): Der Pipeline-Pfad löst den Fall mit dem Volltextpfad in der Fusion, die Einbettung allein stellt comic-0458_ezio-auditore-da-firenze.md vor das erwartete Dokument. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-0458_ezio-auditore-da-firenze.md, comic-0428_edward-kenway.md steht auf Rang 7."
       },
       "pipeline": {
         "state": "solved",
@@ -902,7 +902,7 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellt die Einbettung eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-1038_purple-man.md, comic-0631_impossible-man.md steht auf Rang 3; der Pipeline-Pfad (Volltextpfad in der Fusion) führt comic-0631_impossible-man.md auf Rang 1."
+        "reason": "Fehlender lexikalischer Pfad (nur im Pipeline-Pfad vorhanden): Der Pipeline-Pfad löst den Fall mit dem Volltextpfad in der Fusion, die Einbettung allein stellt comic-1038_purple-man.md vor das erwartete Dokument. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-1038_purple-man.md, comic-0631_impossible-man.md steht auf Rang 3."
       },
       "pipeline": {
         "state": "solved",
@@ -926,12 +926,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-0483_flash-cw.md und comic-1278_the-flash-cw.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-1278_the-flash-cw.md, comic-0483_flash-cw.md steht auf Rang 3."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellt die Einbettung eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-1278_the-flash-cw.md, comic-0483_flash-cw.md steht auf Rang 3."
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-0483_flash-cw.md und comic-1278_the-flash-cw.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-1278_the-flash-cw.md, comic-0483_flash-cw.md steht auf Rang 2."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-1278_the-flash-cw.md, comic-0483_flash-cw.md steht auf Rang 2."
       }
     }
   },
@@ -1166,7 +1166,7 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-1224_starfire.md und comic-1223_starfire-titans.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-1223_starfire-titans.md, comic-1224_starfire.md steht auf Rang 2."
+        "reason": "Fehlender lexikalischer Pfad (nur im Pipeline-Pfad vorhanden): Der Pipeline-Pfad löst den Fall mit dem Volltextpfad in der Fusion, die Einbettung allein stellt comic-1223_starfire-titans.md vor das erwartete Dokument. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-1223_starfire-titans.md, comic-1224_starfire.md steht auf Rang 2."
       },
       "pipeline": {
         "state": "solved",
@@ -1220,7 +1220,7 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 1 von 7 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0982_one-above-all.md."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 1 von 7 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0982_one-above-all.md; die Rangfolge am Fensterrand schwankt zwischen Läufen: comic-0053_ancient-one-mcu.md steht je nach Lauf auf Rang 10 oder außerhalb, also 2 bzw. 1 von 7 im Fenster."
       },
       "pipeline": {
         "state": "known_gap",
@@ -2494,7 +2494,7 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender lexikalischer Pfad bei sprachübergreifender Anfrage (nur im Pipeline-Pfad vorhanden): Die deutsche Frage auf englischem Korpus trägt den Eigennamen in der Einbettung allein nicht bis auf Rang 1. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-0335_cyborg-sonar-suit.md, comic-1009_plastic-man.md steht auf Rang 3; der Pipeline-Pfad (Volltextpfad in der Fusion) löst den Fall."
+        "reason": "Fehlender lexikalischer Pfad (nur im Pipeline-Pfad vorhanden): Der Pipeline-Pfad löst den Fall mit dem Volltextpfad in der Fusion, die Einbettung allein stellt comic-0335_cyborg-sonar-suit.md vor das erwartete Dokument. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt comic-0335_cyborg-sonar-suit.md, comic-1009_plastic-man.md steht auf Rang 3."
       },
       "pipeline": {
         "state": "solved",
@@ -2823,7 +2823,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+        "reason": "Ohne geprüften Mechanismus: Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
       }
     }
   },
@@ -2908,7 +2908,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+        "reason": "Ohne geprüften Mechanismus: Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
       }
     }
   },

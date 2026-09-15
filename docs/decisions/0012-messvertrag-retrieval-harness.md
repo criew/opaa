@@ -1200,7 +1200,8 @@ je Pfad.**
   Fallklasse in diesem Pfad der Messung fehlt oder abgeschaltet ist (Zuordnungstabelle in
   `docs/features/retrieval-benchmark.md` §5); „schon vor dem Mechanismus gelöst“ ist bewusst kein
   Kriterium, weil es ohne Nachweis je Fall nicht messbar ist. Es tragen `verwaltung` 17 Rohvektor-
-  und 4 Pipeline-Gründe, `comic-characters` 2 Pipeline-Gründe, `city-landmarks` keine (Golden-Hash
+  und 4 Pipeline-Gründe, `comic-characters` 2 Pipeline-Gründe (seit #1657: 4, auch die deutschen
+  Mengenfragen `comic-de-019` und `-022`), `city-landmarks` keine (Golden-Hash
   `verwaltung` `aba8a638…` → `9c5af619…`, `comic-characters` `e5054926…` → `05e8d0f9…`, ohne neuen
   Messlauf).
 - **Mehrrunden-Pfad.** Er misst konstruktionsbedingt einen Pfad (Entscheidung 43). Seine flachen
@@ -1236,9 +1237,12 @@ Domänen auf dem Stand nach #1341 neu vermessen. Dabei steigt keine Messvertrags
 weder eine Metrikdefinition noch ein Fixpunkt ändert:
 
 - **`comic-characters`:** Die Zahlen beider Pfade sind unverändert. #1341 wirkt hier nicht, weil ein
-  unzerteiltes Dokument keinen Kontextpräfix bekommt. Nachgezogen ist nur der Golden-Hash.
+  unzerteiltes Dokument keinen Kontextpräfix bekommt. Nachgezogen sind der Golden-Hash und in
+  `comic-characters.json` das nicht verglichene Feld `recallAt10Ceiling` (`language:en`, 0,973 → 0,972).
 - **`city-landmarks`, Rohvektor-Pfad:** Neu gezogen. `nDCG@10` sinkt in drei Gruppen um 0,001, alle
   aus demselben gelösten Fall.
 - **`city-landmarks`, Pipeline-Pfad:** Die Zahlen sind unverändert.
 
-Kein Fallzustand wechselt.
+Kein Fallzustand wechselt. Die `crosslingual`-Zeile der Mechanismus-Tabelle in §5 ist nach Frageform
+aufgeteilt: Deutsche Mengen- und Schwellenfragen prüfen wie ihre englischen Vorlagen einen Filter, den
+die Domäne nicht hat.

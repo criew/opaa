@@ -559,26 +559,31 @@ Drei Milderungen, keine Lösungen:
 > | `verwaltung` | `metadata_filter` | Kernfeld-Filter (`metadataFilterEnabled`) | beide, sofern der Fall einen `filter` trägt; ohne `filter` keiner |
 > | `comic-characters` | `multi_attribute_filter` | Attributfilter | keiner (die Domäne wendet keinen Filter an) |
 > | `comic-characters` | `numeric_range` | numerischer Bereichsfilter | keiner |
-> | `comic-characters` | `attribute_lookup`, `entity_description`, `crosslingual` | kein eigener Baustein: Einbettung und Chunking | beide |
+> | `comic-characters` | `crosslingual`, deutsche Mengenfragen nach Gesinnung, Schöpfer und Fähigkeit („Welche … Figuren von … verfügen über die Fähigkeit …?“) | Attributfilter | keiner |
+> | `comic-characters` | `crosslingual`, deutsche Schwellenfragen („… einen …wert unter/über n?“) | numerischer Bereichsfilter | keiner |
+> | `comic-characters` | `attribute_lookup`, `entity_description`, übrige `crosslingual`-Fragen | kein eigener Baustein: Einbettung und Chunking | beide |
 > | `city-landmarks` | alle sechs Kategorien | kein eigener Baustein: Chunking, Kontextpräfix, Fensterbreite | beide |
 >
-> Stand 2026-09-14: `verwaltung` Rohvektor 17 Gründe, Pipeline 4; `comic-characters` Pipeline 2
-> (`comic-filter-017`, `-089`); `city-landmarks` keine. Die Fallliste steht in
+> Stand 2026-09-15: `verwaltung` Rohvektor 17 Gründe, Pipeline 4; `comic-characters` Pipeline 4
+> (`comic-filter-017`, `-089`, `comic-de-019`, `-022`); `city-landmarks` keine. Die Fallliste steht in
 > `eval/corpus/verwaltung/MAINTENANCE.md`.
 >
 > **Fehlende Bausteine der `known_gap`-Einträge in `comic-characters` und `city-landmarks`** (Issue
 > #1657): Jeder Grund beginnt mit dem fehlenden Baustein und nennt danach das Symptom aus dem
 > CPU-Testcontainer-Lauf auf dem Stand nach #1341. Wiederholt sich ein Baustein, ist die Formulierung
 > einheitlich. Abgeleitet ist der Baustein aus den Fallergebnissen: aus der Frageform, dem Dokument
-> auf Rang 1 und der Lage der erwarteten Dokumente im Fenster.
+> auf Rang 1 und der Lage der erwarteten Dokumente im Fenster. Maßgeblich ist der Baustein, der auf
+> dem Pfad fehlt: Löst der Pipeline-Pfad eine Einzelfrage, die der Rohvektor-Pfad verfehlt, fehlt
+> diesem der lexikalische Pfad. Mengen- und Schwellenfragen behalten den Filter als fehlenden
+> Baustein; ihr Pipeline-Treffer trägt das Präfix.
 >
 > | Domäne | fehlender Baustein | Fälle | Rohvektor | Pipeline |
 > |---|---|---|---|---|
 > | `comic-characters` | Attributfilter über Gesinnung, Schöpfer und Fähigkeit | `multi_attribute_filter` und ihre deutschen Fassungen in `crosslingual` | 33 | 29 |
 > | `comic-characters` | numerischer Bereichsfilter über die Kennwerte | `numeric_range` und ihre deutschen Fassungen in `crosslingual` | 28 | 28 |
-> | `comic-characters` | Abgleich der Attributkombination: Die Beschreibung nennt Werte statt eines Namens | `entity_description` ohne die Fassungsfälle der nächsten Zeile | 9 | 6 |
-> | `comic-characters` | Unterscheidung gleichnamiger Figurenfassungen: Rang 1 belegt eine andere Fassung derselben Heldenidentität | `comic-attr-002`, `-061`, `comic-desc-021`, `-045`, `-056` (nur Rohvektor), `-058` (nur Pipeline), `comic-de-004` | 6 | 6 |
-> | `comic-characters` | lexikalischer Pfad bei sprachübergreifender Anfrage | `comic-de-008` | 1 | 0 |
+> | `comic-characters` | Abgleich der Attributkombination: Die Beschreibung nennt Werte statt eines Namens | `comic-desc-003`, `-004`, `-006`, `-021`, `-024`, `-026`, `-027` | 7 | 7 |
+> | `comic-characters` | Unterscheidung gleichnamiger Figurenfassungen: Rang 1 belegt eine andere Fassung derselben Heldenidentität | `comic-attr-002`, `-061`, `comic-desc-045`, `-058` (nur Pipeline), `comic-de-004` | 4 | 5 |
+> | `comic-characters` | lexikalischer Pfad: Der Pipeline-Pfad löst die Einzelfrage mit dem Volltextpfad in der Fusion | `comic-desc-001`, `-005`, `-008`, `-056`, `comic-de-008` | 5 | 0 |
 > | `city-landmarks` | Ortsbindung der Anfrage: Eine nicht genannte Stadt belegt Rang 1, in drei der vier Fälle mit einer gleichnamigen Sehenswürdigkeit (`St Paul’s Church`, `Brandenburger Tor`) | `city-landmark_detail-025`, `city-multi_topic-005` (beide Pfade), `city-multi_topic-001`, `-006` (nur Pipeline) | 2 | 4 |
 >
 > Summe: 146 Einträge in `comic-characters` (77 Rohvektor, 69 Pipeline) und 6 in `city-landmarks`.

@@ -140,8 +140,9 @@ Gruppennamen, Fallzahlen und Zahlenwerte unterscheiden sich zwischen den beiden 
 und `city-landmarks` hatten seit dem Lauf vom 2026-09-02 nur Fixpunkt-Nachzüge bekommen. Die
 CPU-Testcontainer-Läufe auf dem Stand nach #1341 ergeben:
 
-- **`comic-characters`, beide Pfade:** Jede Zahl ist unverändert, in zwei Läufen. Ein unzerteiltes
-  Dokument bekommt keinen Kontextpräfix.
+- **`comic-characters`, beide Pfade:** Jede verglichene Zahl ist unverändert, in zwei Läufen. Ein
+  unzerteiltes Dokument bekommt keinen Kontextpräfix. Korrigiert ist nur das nicht verglichene Feld
+  `recallAt10Ceiling` (`language:en`, 0,973 → 0,972), das seit der Ziehung vom 2026-09-02 abwich.
 - **`city-landmarks.json`:** Neu gezogen. `nDCG@10` sinkt in drei Gruppen um 0,001, alle aus
   `city-multi_topic-006`.
 - **`pipeline-city-landmarks.json`:** Die Zahlen sind unverändert.
