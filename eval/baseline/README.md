@@ -527,7 +527,7 @@ Ein abweichender Wert macht die Baseline unvergleichbar, ein fehlender lädt als
 `ollamaImage`).
 
 **Nicht abgedeckt** sind eigene Bibliotheksfelder und Schlagworte, die modellgestützte Extraktion,
-der Inhalt des Dokumentart-Vokabulars, die Rückübersetzung gespeicherter Kernfeld-Werte und jeder
+der Inhalt des Dokumentart-Vokabulars, die Rückübersetzung gespeicherter Kernfeld-Werte, Fundort und Schnittgrenzen der Chunks und jeder
 Zweig, den kein Beispiel trifft (ADR-0012, Entscheidung 57). Eine Änderung dort verlangt weiterhin
 eine bewusste Neuvermessung, ohne dass ein Festpunkt sie meldet.
 

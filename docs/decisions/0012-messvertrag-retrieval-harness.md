@@ -1467,6 +1467,10 @@ bemerkt:
   Vokabular) bildet der Abdruck nach, er ruft sie nicht auf.
 - **Modellgestützte Extraktion und Vokabular:** die Extraktion (in den Eval-Läufen abgeschaltet) und
   der Inhalt des Dokumentart-Vokabulars.
+- **Fundort und Schnittgrenzen:** Chunk-Anzahl, Chunk-Text und Fundort geben die Beispiele fest vor.
+  Den Fundort bauen in Produktion `ChunkLocationResolver` und `HeadingSectionSplitter` mit eigenen
+  `"Abschn. "`- und `" › "`-Literalen; ändern sich Marker, Trenner oder Schnittgrenzen, bewegt sich
+  der Strukturkontext im Präfix, nicht aber der Abdruck.
 - **Bestandsläufe:** Neubewertung und Nachlauf-Auswahl über `stampOf`.
 - **Neue Zweige:** Ein Zweig, den keines der Beispiele trifft, bewegt den Abdruck nicht. Wer einen
   einführt, ergänzt ein Beispiel.

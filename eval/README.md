@@ -210,7 +210,7 @@ Beispiele laufen durch dieselben Methoden wie Aufnahme und Nachlauf:
 - Segmente, Strukturkontext-Regel und Klammerformat (`ChunkContextPrefix#applyTo`)
 
 **Nicht abgedeckt** sind eigene Bibliotheksfelder, Schlagworte, die modellgestützte Extraktion, der
-Inhalt des Dokumentart-Vokabulars und jeder Zweig, den kein Beispiel trifft. Die vollständige Liste
+Inhalt des Dokumentart-Vokabulars, Fundort und Schnittgrenzen der Chunks und jeder Zweig, den kein Beispiel trifft. Die vollständige Liste
 steht in ADR-0012, Entscheidung 57. Der
 Wert muss nicht von Hand angehoben werden, er folgt dem Code. Weichen die committeten Baselines vom
 aktuellen Abdruck ab, schlägt schon `evalUnitTest` fehl (`PipelinePathIsolationTest`,
