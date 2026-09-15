@@ -609,6 +609,7 @@ class ConversationRetrievalEvaluatorTest {
             20,
             ConversationMemoryProfile.SEARCH_WINDOW_QUESTION_ONLY,
             ConversationMemoryProfile.NO_CONVERSATION_NOTE),
-        2);
+        2,
+        EvalOllamaCpuBackend.PINNED);
   }
 }

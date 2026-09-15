@@ -27,7 +27,7 @@ class ConversationPathIsolationTest {
    */
   @Test
   void theMultiTurnPathCountsItsOwnContractVersionSeparately() {
-    assertThat(ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION).isEqualTo(2);
+    assertThat(ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION).isEqualTo(3);
   }
 
   @Test
@@ -97,6 +97,8 @@ class ConversationPathIsolationTest {
     // baselines - a baseline may only name the Ollama it was actually measured with.
     assertThat(baseline.fixedPoints().pipeline().ollamaImage())
         .isEqualTo(EvalOllamaEndpoint.PINNED_IMAGE);
+    // Issue #1652: the same watchdog for the CPU backend the harness pins inside that image.
+    assertThat(baseline.fixedPoints().ollamaCpuBackend()).isEqualTo(EvalOllamaCpuBackend.PINNED);
   }
 
   /**
@@ -158,7 +160,7 @@ class ConversationPathIsolationTest {
   private static final String DECOMPOSITION_OFF_BASELINE_JSON =
       """
         {
-          "conversationMeasurementContractVersion": 2,
+          "conversationMeasurementContractVersion": 3,
           "fixedPoints": {
             "pipeline": {
               "embeddingModel": "nomic-embed-text:v1.5",
@@ -192,7 +194,8 @@ class ConversationPathIsolationTest {
             "conversationWindowMessages": 20,
             "searchWindowTurns": 0,
             "conversationNoteCap": 0,
-            "turnCount": 20
+            "turnCount": 20,
+            "ollamaCpuBackend": "haswell"
           },
           "groups": {},
           "measuredAt": "2026-09-11T00:00:00Z",
@@ -214,19 +217,52 @@ class ConversationPathIsolationTest {
                 20,
                 ConversationMemoryProfile.SEARCH_WINDOW_QUESTION_ONLY,
                 0,
-                20),
+                20,
+                EvalOllamaCpuBackend.PINNED),
             Map.of(),
             "2026-09-11T00:00:00Z",
             null,
             "");
 
     ConversationBaselineComparator.ComparisonResult result =
-        ConversationBaselineComparator.compare(baseline, reportWithSearchWindowTurns(2));
+        ConversationBaselineComparator.compare(
+            baseline, report(2, EvalOllamaCpuBackend.PINNED));
 
     assertThat(result.baselineValid()).isFalse();
     assertThat(result.fixedPointMismatches())
         .extracting(BaselineComparator.FixedPointMismatch::field)
         .contains("searchWindowTurns");
+  }
+
+  /**
+   * Issue #1652: the same model digest in the same image computes different greedy decompositions
+   * with another ggml CPU variant - a run under another backend measured something else.
+   */
+  @Test
+  void aChangedOllamaCpuBackendInvalidatesTheBaseline() {
+    ConversationBaseline baseline =
+        new ConversationBaseline(
+            ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION,
+            new ConversationBaseline.FixedPoints(
+                pipelineFixedPoints(),
+                20,
+                ConversationMemoryProfile.SEARCH_WINDOW_QUESTION_ONLY,
+                0,
+                20,
+                EvalOllamaCpuBackend.PINNED),
+            Map.of(),
+            "2026-09-15T00:00:00Z",
+            null,
+            "");
+
+    ConversationBaselineComparator.ComparisonResult result =
+        ConversationBaselineComparator.compare(
+            baseline, report(ConversationMemoryProfile.SEARCH_WINDOW_QUESTION_ONLY, "icelake"));
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .containsExactly(
+            new BaselineComparator.FixedPointMismatch("ollamaCpuBackend", "haswell", "icelake"));
   }
 
   private static PipelineBaseline.FixedPoints pipelineFixedPoints() {
@@ -260,7 +296,8 @@ class ConversationPathIsolationTest {
         false);
   }
 
-  private static ConversationEvaluationReport reportWithSearchWindowTurns(int searchWindowTurns) {
+  private static ConversationEvaluationReport report(
+      int searchWindowTurns, String ollamaCpuBackend) {
     return new ConversationEvaluationReport(
         ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION,
         PipelineMetricsAggregate.METRIC_WINDOW_NOTE,
@@ -303,7 +340,8 @@ class ConversationPathIsolationTest {
                 1.0,
                 false),
             new ConversationMemoryProfile(20, searchWindowTurns, 0),
-            20),
+            20,
+            ollamaCpuBackend),
         PipelineMetricsAggregate.of(List.of()),
         Map.of(),
         Map.of(),
