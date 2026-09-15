@@ -136,6 +136,20 @@ Toleranzen, kein gemeinsames `overall` mit `comic-characters` (Issue #234 Abnahm
 Rundungsregel, Aktualisierungsverfahren) gilt unverändert auch für diese Domäne — nur die
 Gruppennamen, Fallzahlen und Zahlenwerte unterscheiden sich zwischen den beiden Baseline-Dateien.
 
+**Neuvermessung nach #1341 (Issue #1657, 2026-09-14).** Die vier Baselines von `comic-characters`
+und `city-landmarks` hatten seit dem Lauf vom 2026-09-02 nur Fixpunkt-Nachzüge bekommen. Die
+CPU-Testcontainer-Läufe auf dem Stand nach #1341 ergeben:
+
+- **`comic-characters`, beide Pfade:** Jede verglichene Zahl ist unverändert, in zwei Läufen. Ein
+  unzerteiltes Dokument bekommt keinen Kontextpräfix. Korrigiert ist nur das nicht verglichene Feld
+  `recallAt10Ceiling` (`language:en`, 0,973 → 0,972), das seit der Ziehung vom 2026-09-02 abwich.
+- **`city-landmarks.json`:** Neu gezogen. `nDCG@10` sinkt in drei Gruppen um 0,001, alle aus
+  `city-multi_topic-006`.
+- **`pipeline-city-landmarks.json`:** Die Zahlen sind unverändert.
+
+Alle vier Dateien haben den Golden-Hash nachgezogen, weil die `known_gap`-Gründe jetzt den
+fehlenden Baustein nennen. Ursache und Beleg stehen je Datei in `notes`.
+
 ## Aufbau
 
 ```json

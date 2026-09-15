@@ -192,8 +192,9 @@ eines Treffers, den nie ein Mechanismus trug.
 | Rohvektor | `verw-lit-008`, `-009`; `verw-id-003`, `-006` bis `-010`; `verw-comp-002` bis `-009`; `verw-hop-002` (17) |
 | Pipeline | `verw-comp-009`; `verw-hop-002`, `-003`, `-005` (4) |
 
-In `comic-characters` tragen es `comic-filter-017` und `-089` auf dem Pipeline-Pfad (die Domäne
-wendet keinen Filter an), in `city-landmarks` kein Fall; der Mehrrunden-Datensatz führt flache
+In `comic-characters` tragen es `comic-filter-017`, `-089` und ihre deutschen Gegenstücke
+`comic-de-019`, `-022` auf dem Pipeline-Pfad (die Domäne wendet keinen Filter an; seit #1657 gilt
+das auch für deutsche Mengen- und Schwellenfragen der Klasse `crosslingual`), in `city-landmarks` kein Fall; der Mehrrunden-Datensatz führt flache
 Zustandsfelder und ist nicht betroffen.
 
 **Überführung der 13 asymmetrischen Fälle aus #1308.** Die Zustände je Pfad sind aus den
