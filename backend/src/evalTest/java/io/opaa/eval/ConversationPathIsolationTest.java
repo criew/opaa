@@ -225,8 +225,7 @@ class ConversationPathIsolationTest {
             "");
 
     ConversationBaselineComparator.ComparisonResult result =
-        ConversationBaselineComparator.compare(
-            baseline, report(2, EvalOllamaCpuBackend.PINNED));
+        ConversationBaselineComparator.compare(baseline, report(2, EvalOllamaCpuBackend.PINNED));
 
     assertThat(result.baselineValid()).isFalse();
     assertThat(result.fixedPointMismatches())

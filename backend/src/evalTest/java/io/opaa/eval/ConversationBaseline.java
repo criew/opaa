@@ -47,6 +47,10 @@ public record ConversationBaseline(
    * describe the multi-turn dataset here; {@code turnCount} is the second half of its size, since a
    * curation round that only lengthens cases would leave the case count untouched.
    *
+   * <p>{@code ollamaCpuBackend} is the ggml CPU variant inside the pinned image: the model digest
+   * describes the weights, the image the runtime, and only this field the kernels - which decide
+   * where the greedy decomposition of a turn goes (ADR-0012, Nachtrag CPU-Backend).
+   *
    * <p>{@code pipeline.chatModel} is a <b>checked</b> fixed point on this path rather than a merely
    * reported one: a multi-turn measurement without sub-question decomposition resolves no reference
    * at all, so a baseline drawn without a chat model would describe a run that could not measure
@@ -58,7 +62,8 @@ public record ConversationBaseline(
       int conversationWindowMessages,
       int searchWindowTurns,
       int conversationNoteCap,
-      int turnCount) {}
+      int turnCount,
+      String ollamaCpuBackend) {}
 
   public static ConversationBaseline load(Path file) throws IOException {
     ConversationBaseline baseline =

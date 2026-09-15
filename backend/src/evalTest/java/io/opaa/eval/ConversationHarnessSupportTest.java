@@ -55,18 +55,18 @@ class ConversationHarnessSupportTest {
 
     ConversationEvaluationReport report =
         ConversationHarnessSupport.measure(
-        EvalDomainConfig.VERWALTUNG,
-        identity(),
-        pipeline,
-        contextFactory,
-        chatMemory(),
-        ConversationRetrievalEvaluator.NoteExtraction.NONE,
-        new ConversationMemoryProfile(20, 0, 0),
-        new IndexingProperties(1000, 200, 50, null, null, null, null, 0),
-        UUID.randomUUID(),
-        List.of(twoTurnCase()),
-        EvalOllamaCpuBackend.PINNED,
-        Instant.now());
+            EvalDomainConfig.VERWALTUNG,
+            identity(),
+            pipeline,
+            contextFactory,
+            chatMemory(),
+            ConversationRetrievalEvaluator.NoteExtraction.NONE,
+            new ConversationMemoryProfile(20, 0, 0),
+            new IndexingProperties(1000, 200, 50, null, null, null, null, 0),
+            UUID.randomUUID(),
+            List.of(twoTurnCase()),
+            EvalOllamaCpuBackend.PINNED,
+            Instant.now());
 
     assertThat(contexts).hasSize(2);
     assertThat(contexts.get(0).conversationHistory())

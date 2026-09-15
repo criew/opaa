@@ -16,9 +16,9 @@ import java.util.TreeSet;
  * <p><b>Nothing about the error criterion is redefined here.</b> Every metric check is produced by
  * {@link BaselineComparator#metricCheck} and every pipeline fixed point by {@link
  * PipelineBaselineComparator#addPipelineFixedPointMismatches}; what this path adds is the three
- * conversation-memory fixed points and the two groupings it is judged by - per case class and
- * <b>per turn</b>. The per-turn groups are the point: a change that helps standalone first turns
- * and hurts follow-ups leaves the overall aggregate flat.
+ * conversation-memory fixed points, the Ollama CPU backend and the two groupings it is judged by -
+ * per case class and <b>per turn</b>. The per-turn groups are the point: a change that helps
+ * standalone first turns and hurts follow-ups leaves the overall aggregate flat.
  *
  * <p>The hard floors are the pipeline path's, unchanged: a multi-turn run measures at the identical
  * windows with the identical threshold applied, so "the vector store returned nothing" looks the
@@ -146,6 +146,12 @@ public final class ConversationBaselineComparator {
         "turnCount",
         String.valueOf(fixedPoints.turnCount()),
         String.valueOf(cfg.turnCount()));
+    // The same digest in the same image decomposes differently under another ggml kernel set.
+    addIfDiffers(
+        mismatches,
+        "ollamaCpuBackend",
+        String.valueOf(fixedPoints.ollamaCpuBackend()),
+        String.valueOf(cfg.ollamaCpuBackend()));
     return List.copyOf(mismatches);
   }
 

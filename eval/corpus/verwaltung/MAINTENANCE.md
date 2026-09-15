@@ -471,11 +471,11 @@ für jede künftige Ergänzung dieser Klassen.
 
 | Teil | Pflegeverantwortung | Heutiger Stand |
 |---|---|---|
-| `anaphora_resolution` (9 Fälle, 21 Runden) | QA Engineer. Die Fälle hängen an einzelnen Korpusdokumenten: Eine Generator-Änderung, die einen Formularhinweis oder eine Dienstanweisung umbenennt, macht die Rückfrage der Folgerunde unauflösbar. Regel 1 oben gilt für jede neue Runde. | 5 von 9 gelöst (#1490; vorher 4) |
-| `topic_switch` (9 Fälle, 30 Runden) | QA Engineer. Zusätzlich zu prüfen ist bei jeder Korpusänderung, dass die erwarteten Dokumente der Wechselrunde und die der Vorrunden **disjunkt** bleiben — sonst zählt die Bleed-Zahl das richtige Dokument mit. `topic_switch_turn` wird nie abgeleitet, sondern am Fall benannt. | 2 von 9 gelöst (#1490; vorher 2), Bleed 2 Dokumente in 2 von 9 Wechselrunden |
-| `constraint_carryover` (9 Fälle, 32 Runden) | QA Engineer. Der Verwechslungspartner ist das Empfindliche: Er muss inhaltsgleich zum Ziel bleiben und sich nur in der Rahmenangabe (Fassung/Jahr) unterscheiden. Verschwindet eine der beiden Fassungen aus dem Korpus, misst die Klasse nichts mehr. Regel 2 oben gilt für jede neue Runde-1-Antwort. | 1 von 9 gelöst (#1490; vorher 4) |
-| Mehrrunden-Datensatz (`eval/golden/verwaltung-conversations.json`) | QA Engineer, wie beim Einzelfragen-Datensatz. Von Hand kuratiert, kein Generator; die Regeln stehen in `io.opaa.eval.ConversationCaseCuration` und werden von `ConversationCaseCurationTest` Docker-frei auf die committete Datei angewandt. | 27 Fälle mit 83 Runden, 8 `solved` / 19 `known_gap` (#1490) |
-| Mehrrunden-Baseline (`eval/baseline/pipeline-verwaltung-conversations.json`) | QA Engineer, analog zu den beiden anderen Baselines dieser Domäne; Neuziehung nach demselben Verfahren wie oben. | Neu gezogen mit #1490 (Lauf vom 2026-09-12); verglichen von `VerwaltungConversationBaselineRegressionTest` über `checkVerwaltungConversationBaseline` (#1553) |
+| `anaphora_resolution` (9 Fälle, 21 Runden) | QA Engineer. Die Fälle hängen an einzelnen Korpusdokumenten: Eine Generator-Änderung, die einen Formularhinweis oder eine Dienstanweisung umbenennt, macht die Rückfrage der Folgerunde unauflösbar. Regel 1 oben gilt für jede neue Runde. | 4 von 9 gelöst (#1652, feste CPU-Variante; #1490 unter `icelake`: 5) |
+| `topic_switch` (9 Fälle, 30 Runden) | QA Engineer. Zusätzlich zu prüfen ist bei jeder Korpusänderung, dass die erwarteten Dokumente der Wechselrunde und die der Vorrunden **disjunkt** bleiben — sonst zählt die Bleed-Zahl das richtige Dokument mit. `topic_switch_turn` wird nie abgeleitet, sondern am Fall benannt. | 1 von 9 gelöst (#1652; #1490 unter `icelake`: 2), Bleed 0 Dokumente in 0 von 9 Wechselrunden |
+| `constraint_carryover` (9 Fälle, 32 Runden) | QA Engineer. Der Verwechslungspartner ist das Empfindliche: Er muss inhaltsgleich zum Ziel bleiben und sich nur in der Rahmenangabe (Fassung/Jahr) unterscheiden. Verschwindet eine der beiden Fassungen aus dem Korpus, misst die Klasse nichts mehr. Regel 2 oben gilt für jede neue Runde-1-Antwort. | 0 von 9 gelöst (#1652; #1490 unter `icelake`: 1) |
+| Mehrrunden-Datensatz (`eval/golden/verwaltung-conversations.json`) | QA Engineer, wie beim Einzelfragen-Datensatz. Von Hand kuratiert, kein Generator; die Regeln stehen in `io.opaa.eval.ConversationCaseCuration` und werden von `ConversationCaseCurationTest` Docker-frei auf die committete Datei angewandt. | 27 Fälle mit 83 Runden, 5 `solved` / 22 `known_gap` (#1652) |
+| Mehrrunden-Baseline (`eval/baseline/pipeline-verwaltung-conversations.json`) | QA Engineer, analog zu den beiden anderen Baselines dieser Domäne; Neuziehung nach demselben Verfahren wie oben. | Neu gezogen mit #1652 (Lauf vom 2026-09-15, feste CPU-Variante `haswell`); verglichen von `VerwaltungConversationBaselineRegressionTest` über `checkVerwaltungConversationBaseline` (#1553) |
 
 ### Referenzbefund vor Fenster und Notiz (2026-09-11, Issue #1485)
 
@@ -500,6 +500,12 @@ Abstand zwischen Runde 1 und Runde 2 belegt deshalb für sich genommen nichts �
 Referenzlauf und gilt unverändert für jede Nachmessung.
 
 ### Befund der Nachmessung (2026-09-12, Issue #1490)
+
+> **Seit #1652 nicht mehr der festgeschriebene Stand.** Dieser Lauf rechnete auf einer Maschine mit
+> AVX-512, also mit der ggml-CPU-Variante `icelake`. Der Vorher/Nachher-Vergleich unten bleibt
+> gültig, weil beide Seiten auf derselben Maschine gemessen wurden. Die absoluten Zahlen und
+> Fallurteile gelten aber nur für diese Variante. Den heutigen Stand beschreibt der Abschnitt
+> „Neuziehung mit fester CPU-Variante" unten.
 
 Derselbe Aufbau, jetzt mit dem verengten Suchfenster (**2 Runden**, #1486) und der Gesprächsnotiz
 (**Deckel 10**, #1487). Median aus drei Läufen; min = median = max in allen vier Metriken, 0 von 83
@@ -616,6 +622,65 @@ Dinge voraus. **Eine trifft zu, zwei nicht.**
   (0,829 → 0,790 bzw. 0,857 → 0,835), Hit Rate@5 und Recall@8 darüber. Das ist der eine
   Nachweis, den dieser Schritt schuldig bleibt.
 
+### Neuziehung mit fester CPU-Variante (2026-09-15, Issue #1652)
+
+**Anlass.** Der CI-Job `conversations (verwaltung)` wechselte zwischen zwei Zuständen, ohne dass sich
+Code, Datensatz oder Baseline änderten: nächtlich am 12.09. rot, am 13.09. grün, am 14.09. rot. Die
+Mehrrunden-Reports von elf Läufen zwischen dem 11. und 15.09. fallen in genau zwei Gruppen, in sich
+bis auf jede Teilfrage identisch. Schon die **ersten** Runden unterscheiden sich, die weder Fenster
+noch Notiz haben. So wird bei `ana-002#1` aus „Wofür wird Formular BUE-08 verwendet?" einmal
+„Was ist die Funktion von Formular BUE-08?" und einmal „Was ist die Bedeutung des Formulars
+BUE-08?". Datum, Reihenfolge oder Verlauf scheiden damit als Ursache aus.
+
+**Ursache.** `ollama/ollama:0.6.5` lädt die beste ggml-CPU-Variante, die der Host beherrscht. Ein
+Runner mit AVX-512 rechnet mit `icelake`, einer ohne mit `haswell`. Lokal auf einem Host mit
+AVX-512 nachgestellt, mit genau einer Variante im Container und den ersten Runden aller 27 Fälle:
+
+| Erzwungene Variante | stimmt überein mit dem roten CI-Zustand | stimmt überein mit dem grünen CI-Zustand |
+|---|---|---|
+| `haswell` | 27 von 27 | 11 von 27 |
+| `icelake` | 11 von 27 | 27 von 27 |
+
+Die Threadzahl (2 oder 10) änderte keine einzige Ausgabe. Temperatur 0 wählt ohnehin je Schritt das
+wahrscheinlichste Token, ein Seed spielt keine Rolle. Die Einbettungen weichen zwischen den Varianten
+erst in der fünften Nachkommastelle ab. Für die Einzelfragen-Pfade reicht das nicht: Der
+`verwaltung`-Rohvektor-Lauf mit Pin trifft die committete Baseline in allen 54 Metrikzeilen. Die
+Zerlegung dagegen kippt schon an dieser Stelle.
+
+**Behebung.** Alle drei Harnesse entfernen im Container vor `ollama serve` jede CPU-Variante außer
+`haswell` und prüfen am Container-Log, dass die Modell-Runner sie geladen haben (`eval/README.md`,
+„Feste CPU-Variante"). Die Mehrrunden-Baseline trägt die Variante als Festpunkt `ollamaCpuBackend`.
+
+**Messung.** `./gradlew evaluateVerwaltungConversations` am 2026-09-15 auf einem Host mit AVX-512
+(AMD Ryzen AI 9 365), mit Pin. Drei Messungen, min = median = max, 0 von 83 Runden mit abweichender
+Zerlegung. **Der Report stimmt in allen 83 Runden** (Teilfragen, Notizpunkte, Trefferlisten, Urteile)
+und in jeder Gruppe exakt mit dem des CI-Laufs 34930288873 überein. Der hatte ohne Pin auf einem
+Runner ohne AVX-512 gemessen. Die neue Baseline beschreibt also den Zustand, den jede Maschine mit
+Pin liefert.
+
+| Klasse | n | Hit Rate@5 | MRR@8 | nDCG@8 | Recall@8 | Fälle gelöst |
+|---|---|---|---|---|---|---|
+| `anaphora_resolution` | 21 | 0,810 | 0,738 | 0,746 | 0,794 | 4 von 9 |
+| `topic_switch` | 30 | 0,700 | 0,657 | 0,662 | 0,700 | 1 von 9 |
+| `constraint_carryover` | 32 | 0,969 | 0,814 | 0,853 | 0,969 | 0 von 9 |
+| gesamt | 83 | 0,831 | 0,738 | 0,757 | 0,827 | 5 von 27 |
+
+Je Runde nDCG@8: Runde 1 0,935 · Runde 2 0,737 · Runde 3 0,615 · Runde 4 0,537 · Runde 5 1,000.
+Themen-Bleed 0 Dokumente in 0 von 9 Wechselrunden. Alle 83 Notiz-Verdichtungen sind gelungen. 37
+Runden haben einen `RAHMEN`-Punkt bekommen, 9 Gespräche über alle Runden keinen (`ana-003`, `-004`,
+`-005`, `-009`, `ts-003`, `-004`, `-005`, `-007`, `-008`).
+
+**Das ist kein Rückschritt gegenüber dem 12.09.** Kein Baustein hat sich geändert, nur die
+Rechenkernel. Die Differenz zu den Zahlen dort ist die Spannweite, die allein die CPU-Variante über
+diesen Datensatz erzeugt: 3 von 27 Fallurteilen. Von `solved` auf `known_gap` gesetzt sind
+`verw-conv-ana-003`, `verw-conv-ts-006` und `verw-conv-cc-002`. Alle 27 Begründungen im Datensatz
+beschreiben jetzt die Symptome dieses Laufs.
+
+**Zielrunden, deren Teilfrage die Rahmenangabe trägt: 0 von 9** (unter `icelake` 1 von 9, nur
+`cc-002`). Die Notiz von `cc-002` trägt „2023" weiterhin, die Teilfrage der Zielrunde nimmt es unter
+`haswell` aber nicht auf. `cc-007` nennt 2023 nur in einem erfundenen Datum und verfehlt das Ziel.
+`cc-008` löst seine Zielrunde, ohne dass die Teilfrage die Fassung nennt.
+
 ### Themen-Bleed: warum die Zahl wenig taugt
 
 Die Bleed-Zahl zählt ausschließlich die **erwarteten Dokumente der Vorrunden dieses Falls**, die im
@@ -629,7 +694,8 @@ Verschmutzung durch Geschwisterdokumente des Altthemas ist per Definition unsich
 war als Kriterium schon in #1485 zurückgezogen. Die Nachmessung bestätigt das: Sie steigt von 0 auf
 2 Dokumente in 2 von 9 Wechselrunden (`ts-007#3`: die Dienstanweisung des Standesamts aus Runde 2;
 `ts-008#2`: die Personalaktenauskunftsgebührensatzung aus Runde 1, auf Rang 4, während das Ziel der
-Wechselrunde auf Rang 1 steht). **Beide Wechselrunden sind trotzdem gelöst** — das
+Wechselrunde auf Rang 1 steht). Mit fester CPU-Variante (#1652) liegt die Zahl wieder bei 0.
+**Beide Wechselrunden sind trotzdem gelöst** — das
 Altthemen-Dokument steht im Fenster, ohne das Ziel von Rang 1 zu verdrängen. `topic_switch` wird deshalb über den **Anteil gelöster
 Fälle** beurteilt, nicht über die Bleed-Zahl.
 
@@ -654,17 +720,19 @@ Zwei Gründe, warum die Zahl so klein bleibt:
 
 ### `known_gap`-Fälle
 
-**19 von 27 Fällen**, Stand 2026-09-12. Die Einzelbegründung steht je Fall im Feld
-`expected_state_reason`; die Tabellen führen zusätzlich das gemessene Symptom.
+**22 von 27 Fällen**, Stand 2026-09-15 (feste CPU-Variante `haswell`, #1652). Die Einzelbegründung
+steht je Fall im Feld `expected_state_reason`; die Tabellen führen zusätzlich das gemessene Symptom.
+„Neu" markiert die drei Fälle, die unter `icelake` am 2026-09-12 gelöst waren.
 
-#### anaphora_resolution (4 Fälle)
+#### anaphora_resolution (5 Fälle)
 
-| Fall | Symptom im Lauf vom 2026-09-12 (Pipeline-Pfad) |
+| Fall | Symptom im Lauf vom 2026-09-15 (Pipeline-Pfad) |
 |---|---|
-| `verw-conv-ana-004` | Runde 2 mit falschem Rang 1 (verwaltung-0039_gebuehrenordnung-kaemmerei.md, Ziel auf Rang 2); Runde 3 außerhalb des Fensters |
+| `verw-conv-ana-003` | **Neu:** Runde 1 macht aus BAU-DA-2/2024 ein „Bauteil"; die Baugenehmigungsgebührensatzung 2024 belegt Rang 1, das Ziel Rang 2. Runde 2 ist gelöst |
+| `verw-conv-ana-004` | Runde 2 mit falschem Rang 1 (verwaltung-geschaeftsverteilungsplan.md, Ziel auf Rang 2); Runde 3 außerhalb des Fensters |
 | `verw-conv-ana-005` | Runde 2 außerhalb des Fensters: verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md; Rang 1 belegt die Vertretungsregelung |
-| `verw-conv-ana-007` | Runde 2 außerhalb des Fensters: verwaltung-0029_formularhinweis-standesamt-7.md; Runde 3 hält es nur auf Rang 2 (im Referenzlauf war Runde 3 gelöst) |
-| `verw-conv-ana-009` | Runde 1 findet die Gebührenordnung Jugendamt nicht (zwei von drei erwarteten Dokumenten); Runde 3 außerhalb des Fensters: verwaltung-0054_dienstanweisung-jugendamt-2-2024.md |
+| `verw-conv-ana-007` | Runde 2 außerhalb des Fensters: verwaltung-0029_formularhinweis-standesamt-7.md; Runde 3 ist gelöst |
+| `verw-conv-ana-009` | Runde 1 findet die Gebührenordnung Jugendamt nicht (zwei von drei erwarteten Dokumenten); Runde 2 hält JUG-DA-2/2024 nur auf Rang 2, Runde 3 außerhalb des Fensters |
 
 > **Vermerk zu `verw-conv-ana-004#3`** („Gilt **sie** auch für eine Eilbearbeitung?" →
 > `verwaltung-0039_gebuehrenordnung-kaemmerei.md`): Diese Runde ist der Bauart nach kein
@@ -672,32 +740,34 @@ Zwei Gründe, warum die Zahl so klein bleibt:
 > der Schritt Verwaltungsgebührensatzung → Kämmerei → deren Gebührenordnung steht nur im
 > Geschäftsverteilungsplan. Der Fall bleibt im Datensatz — er ist `known_gap` und verzerrt keine
 > Zahl nach oben —, taugt aber nicht als Beleg für oder gegen einen Fenster-Baustein. Die
-> Nachmessung bestätigt das: Die Runde ist unverändert offen.
+> Nachmessungen bestätigen das: Die Runde ist unverändert offen.
 
-#### topic_switch (7 Fälle)
+#### topic_switch (8 Fälle)
 
-| Fall | Wechselrunde | Symptom im Lauf vom 2026-09-12 (Pipeline-Pfad) |
+| Fall | Wechselrunde | Symptom im Lauf vom 2026-09-15 (Pipeline-Pfad) |
 |---|---|---|
-| `verw-conv-ts-002` | 2 (gelöst) | Folgerunde 3 im neuen Thema offen: der Notizpunkt „SOZ-08" aus dem Altthema steht in der Teilfrage, verwaltung-0008_formularhinweis-sozialamt-8.md verdrängt die Abfallgebührensatzung |
+| `verw-conv-ts-002` | 2 (offen) | Die Wechselrunde verfehlt die Abfallgebührensatzung ganz; in der Folgerunde 3 steht der Notizpunkt „SOZ-08" aus dem Altthema in der Teilfrage, verwaltung-0008_formularhinweis-sozialamt-8.md belegt Rang 1 |
 | `verw-conv-ts-003` | 3 (gelöst) | Vorrunde 2 mit falschem Rang 1: verwaltung-0039_gebuehrenordnung-kaemmerei.md, Ziel auf Rang 2 |
-| `verw-conv-ts-004` | 2 (gelöst) | Folgerunde 3 außerhalb des Fensters: verwaltung-0048_formularhinweis-personalamt-7.md; die Rückkehr zum Altthema in Runde 4 verliert verwaltung-0060_dienstanweisung-umweltamt-2-2024.md |
+| `verw-conv-ts-004` | 2 (offen) | Wechselrunde und Folgerunde 3 verfehlen verwaltung-0048_formularhinweis-personalamt-7.md; die Rückkehr zum Altthema in Runde 4 verfehlt verwaltung-0060_dienstanweisung-umweltamt-2-2024.md |
 | `verw-conv-ts-005` | 2 (gelöst) | Folgerunde 3 außerhalb des Fensters: verwaltung-0035_dienstanweisung-buergeramt-2-2024.md |
-| `verw-conv-ts-007` | 3 (gelöst, mit Bleed) | Vorrunde 2 mit falschem Rang 1, Ziel auf Rang 3; in der Wechselrunde 3 steht dasselbe Altthemen-Dokument im Fenster |
-| `verw-conv-ts-008` | 2 (gelöst, mit Bleed) | Folgerunde 3 im neuen Thema außerhalb des Fensters: verwaltung-0006_dienstanweisung-sozialamt-2-2024.md |
-| `verw-conv-ts-009` | 2 (offen) | **Rückschritt:** Wechselrunden 2 und 3 nennen KAE-DA-1/2024 in der Teilfrage, ordnen sie aber dem Jugendamt des Altthemas zu; verwaltung-0053 bzw. verwaltung-0054 belegen Rang 1 |
+| `verw-conv-ts-006` | 3 (gelöst) | **Neu:** Vorrunde 2 erhält den Notizpunkt „Formular ORD-07", die Teilfrage nennt das Formular nicht; Ziel auf Rang 5 |
+| `verw-conv-ts-007` | 3 (gelöst) | Vorrunde 2 außerhalb des Fensters: verwaltung-0027_dienstanweisung-standesamt-1-2024.md |
+| `verw-conv-ts-008` | 2 (gelöst) | Folgerunde 3 im neuen Thema außerhalb des Fensters: verwaltung-0006_dienstanweisung-sozialamt-2-2024.md; Rang 1 belegt die Personalaktenauskunftsgebührensatzung des Altthemas |
+| `verw-conv-ts-009` | 2 (gelöst) | Wechselrunden 2 und 3 gelöst; die ausdrückliche Rückkehr in Runde 4 („Zurück zum Formular JUG-08") bleibt in der Teilfrage bei der Kämmerei, verwaltung-0056_formularhinweis-jugendamt-8.md außerhalb des Fensters |
 
-#### constraint_carryover (8 Fälle)
+#### constraint_carryover (9 Fälle)
 
-| Fall | Symptom im Lauf vom 2026-09-12 (Pipeline-Pfad) |
+| Fall | Symptom im Lauf vom 2026-09-15 (Pipeline-Pfad) |
 |---|---|
-| `verw-conv-cc-001` | **Rückschritt:** Zielrunde 3 stellt die Fassung 2024 auf Rang 1; Notizpunkt „Arzt" ohne Jahr |
-| `verw-conv-cc-003` | **Rückschritt:** Zielrunde 4 stellt SOZ-DA-2/2024 auf Rang 1, Ziel auf Rang 2; zusätzlich offen ist das Zwischenthema in Runde 2 |
-| `verw-conv-cc-004` | Zielrunde 3 nimmt den Notizpunkt mit „Zeitraum: 2023" nicht auf: Verwechslungspartner ORD-DA-1/2024 auf Rang 1, Ziel auf Rang 2. Das Zwischenthema in Runde 2 ist neu gelöst |
-| `verw-conv-cc-005` | **Rückschritt:** Zielrunde 4 stellt die Fassung 2023 auf Rang 1, Ziel auf Rang 4 |
-| `verw-conv-cc-006` | Runde 1 neu gelöst; Zielrunde 3 dafür offen — die Teilfrage behauptet die Fassung 2024, die damit Rang 1 belegt |
-| `verw-conv-cc-007` | Runde 1 neu gelöst; Zielrunde 3 offen, Ziel erst auf Rang 5 |
-| `verw-conv-cc-008` | Zwischenthema in Runde 3 neu gelöst; offen sind Runde 1 und die Zielrunde 5 (BAU-DA-1/2023 auf Rang 1, Ziel auf Rang 2) |
-| `verw-conv-cc-009` | **Rückschritt:** Zielrunde 4 nimmt den Notizpunkt mit „Fassung: 2024" nicht auf, Ziel auf Rang 3; Runde 1 ist ebenfalls weggefallen — sie hat weder Fenster noch Notiz und hängt an der Instruktionszeile aus #1487 |
+| `verw-conv-cc-001` | Zielrunde 3 stellt die Fassung 2024 auf Rang 1, Ziel auf Rang 2; Notizpunkt „Arzt" ohne Jahr |
+| `verw-conv-cc-002` | **Neu:** Notizpunkt „2023" vorhanden, die Teilfrage der Zielrunde 3 nimmt ihn nicht auf; die Gebührenordnung Bauamt belegt Rang 1, Ziel auf Rang 2 |
+| `verw-conv-cc-003` | Zielrunde 4 stellt die Sozialgebührenbefreiungssatzung 2024 auf Rang 1, Ziel auf Rang 2; offen ist zusätzlich das Zwischenthema in Runde 2 (UMW-07 hinter UMW-08) |
+| `verw-conv-cc-004` | Zielrunde 3 nimmt den Notizpunkt mit „Zeitraum: 2023" nicht auf: Verwechslungspartner ORD-DA-1/2024 auf Rang 1, Ziel auf Rang 2 |
+| `verw-conv-cc-005` | Zielrunde 4 stellt die Fassung 2023 auf Rang 1, Ziel auf Rang 3 |
+| `verw-conv-cc-006` | Runde 1 gelöst; Zielrunde 3 offen — die Teilfrage behauptet die Fassung 2024, die damit Rang 1 belegt |
+| `verw-conv-cc-007` | Runde 1 gelöst; Zielrunde 3 offen, Ziel erst auf Rang 5 |
+| `verw-conv-cc-008` | Nur Runde 1 offen: BAU-DA-1/2024 außerhalb des Fensters, Rang 1 belegt BUE-DA-1/2024. Die Zielrunde 5 ist gelöst, ohne dass ihre Teilfrage die Fassung nennt |
+| `verw-conv-cc-009` | Runde 1 gelöst; Zielrunde 4 stellt die Fassung 2023 auf Rang 1, Ziel auf Rang 2; Notiz „Person", „Formular STA-08" ohne Jahr |
 
 ### Keine Ausnahmen dieser Klassen (`expected_state_exception` entfällt, #1658)
 

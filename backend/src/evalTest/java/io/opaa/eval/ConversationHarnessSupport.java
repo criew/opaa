@@ -72,6 +72,8 @@ public final class ConversationHarnessSupport {
    *     by the multi-turn dataset's, since that is the dataset this run measured.
    * @param chatMemory the production conversation memory bean - the window every turn receives is
    *     built by it, not by the harness.
+   * @param ollamaCpuBackend the CPU backend the harness verified ({@link EvalOllamaCpuBackend}),
+   *     {@code null} for a run against an external endpoint.
    */
   public static void runAndWriteGuarded(
       EvalDomainConfig domain,
@@ -83,6 +85,7 @@ public final class ConversationHarnessSupport {
       ChatNoteProperties chatNoteProperties,
       IndexingProperties indexingProperties,
       UUID evalLibraryId,
+      String ollamaCpuBackend,
       Logger log) {
     try {
       QueryProperties queryProperties = contextFactory.queryProperties();
@@ -123,6 +126,7 @@ public final class ConversationHarnessSupport {
                       indexingProperties,
                       evalLibraryId,
                       cases,
+                      ollamaCpuBackend,
                       Instant.now()),
               ConversationHarnessSupport::runView);
       ConversationEvaluationReport report = measurement.report();
@@ -171,6 +175,7 @@ public final class ConversationHarnessSupport {
       IndexingProperties indexingProperties,
       UUID evalLibraryId,
       List<ConversationCase> cases,
+      String ollamaCpuBackend,
       Instant runStart)
       throws IOException {
     Set<UUID> searchScope = Set.of(evalLibraryId);
@@ -208,6 +213,7 @@ public final class ConversationHarnessSupport {
             memoryProfile,
             cases,
             searchScope.size(),
+            ollamaCpuBackend,
             runStart));
   }
 
@@ -227,6 +233,7 @@ public final class ConversationHarnessSupport {
       ConversationMemoryProfile memoryProfile,
       List<ConversationCase> cases,
       int searchScopeLibraryCount,
+      String ollamaCpuBackend,
       Instant runStart)
       throws IOException {
     Path datasetFile = ConversationDataset.file(domain);
@@ -257,7 +264,8 @@ public final class ConversationHarnessSupport {
             false,
             runStart),
         memoryProfile,
-        ConversationDataset.turnCount(cases));
+        ConversationDataset.turnCount(cases),
+        ollamaCpuBackend);
   }
 
   /**
@@ -293,6 +301,7 @@ public final class ConversationHarnessSupport {
       IndexingProperties indexingProperties,
       UUID evalLibraryId,
       List<ConversationCase> cases,
+      String ollamaCpuBackend,
       Instant runStart) {
     try {
       return measure(
@@ -306,6 +315,7 @@ public final class ConversationHarnessSupport {
           indexingProperties,
           evalLibraryId,
           cases,
+          ollamaCpuBackend,
           runStart);
     } catch (IOException e) {
       throw new UncheckedIOException(e);

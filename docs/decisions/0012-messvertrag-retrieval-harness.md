@@ -33,7 +33,11 @@ Fenster erreicht hat — bewusst nur im Report ausgewiesen, kein Fixpunkt, keine
 auf beiden Pfaden; Folgeentscheidung, ob/wie das ein Fehlerkriterium wird, in Issue #1210) und den
 [Nachtrag zum erwarteten Zustand je Messpfad](#nachtrag-erwarteter-zustand-je-messpfad-issue-1658)
 (Issue #1658: `expected_state` je Pfad, `expected_state_exception` entfällt; nur der Golden-Hash
-wird nachgezogen, keine Messvertragsversion steigt).
+wird nachgezogen, keine Messvertragsversion steigt) und den
+[Nachtrag zum CPU-Backend des Eval-Ollama](#nachtrag-cpu-backend-des-eval-ollama-issue-1652)
+(Issue #1652: feste ggml-CPU-Variante `haswell` in allen Harnessen, `ollamaCpuBackend` als
+Festpunkt des Mehrrunden-Pfads, Mehrrunden-Messvertrag-Version 3, neu gezogene
+Mehrrunden-Baseline).
 Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
 Review-Nacharbeit desselben PRs umgesetzt (`measurementContractVersion` im Report, `allQueryResults`
 im JSON-Report, `recallAt10Ceiling` je Gruppe).
@@ -1246,3 +1250,94 @@ weder eine Metrikdefinition noch ein Fixpunkt ändert:
 Kein Fallzustand wechselt. Die `crosslingual`-Zeile der Mechanismus-Tabelle in §5 ist nach Frageform
 aufgeteilt: Deutsche Mengen- und Schwellenfragen prüfen wie ihre englischen Vorlagen einen Filter, den
 die Domäne nicht hat.
+
+## Nachtrag: CPU-Backend des Eval-Ollama (Issue #1652)
+
+**Datum:** 2026-09-15 · **Betrifft:** die Laufzeit aller drei Harnesse, den Festpunktsatz und die
+Vertragsversion des Mehrrunden-Pfads, die Mehrrunden-Baseline und die Zustandsfelder ihres
+Datensatzes.
+
+Der CI-Job `conversations (verwaltung)` wechselte zwischen Grün und Rot, ohne dass sich Code,
+Datensatz oder Baseline änderten. Die Mehrrunden-Reports von elf Läufen zwischen dem 11. und
+15.09.2026 fallen in genau **zwei** Zustände. Jeder Zustand ist in sich bis auf jede Teilfrage
+identisch, über Tage und Commits hinweg. Innerhalb eines Laufs lieferten die drei Messungen stets
+dasselbe. Die Mehrfachlauf-Regel (Abschnitt 3 der Spezifikation) konnte die Streuung deshalb nicht
+sehen: Sie lag zwischen den Maschinen, nicht zwischen den Messungen.
+
+**Ursache.** `ollama/ollama:0.6.5` liefert die ggml-Rechenkernel als eine Bibliothek je
+Befehlssatzstufe (`sandybridge`, `haswell`, `skylakex`, `icelake`, `alderlake`) und lädt die beste,
+die der Host beherrscht. Die GitHub-Runner `ubuntu-latest` sind gemischt bestückt. Ein Runner mit
+AVX-512 rechnet mit `icelake`, einer ohne mit `haswell`. Die Kernel rechnen nicht bitgleich:
+Einbettungen weichen ab der fünften Nachkommastelle ab. Die Zerlegung bei Temperatur 0 wählt je
+Schritt das wahrscheinlichste Token, und dafür reicht diese Abweichung. Die Teilfragen unterscheiden
+sich schon in den ersten Runden, die weder Fenster noch Notiz haben.
+
+**Beleg.** Lokal auf einem Host mit AVX-512 nachgestellt, mit genau einer Variante im Container:
+`haswell` reproduziert die ersten Runden aller 27 Fälle des roten CI-Zustands, `icelake` die des
+grünen, jeweils 27 von 27. Verworfen sind die übrigen Hypothesen. Die Threadzahl (2 gegen 10) ändert
+keine Ausgabe. Ein Seed wirkt bei Temperatur 0 nicht. Ein Datum im Prompt scheidet aus, weil jeder
+Zustand über mehrere Tage identisch blieb. Reihenfolge und Verlauf scheiden aus, weil schon die
+ersten Runden abweichen. Den Modell-Digest prüft der Harness ohnehin. Die CPU-Typen der früheren
+Runner stehen in keinem Log; seit diesem Nachtrag schreibt jeder Lauf sie mit.
+
+### 54. Eine feste ggml-CPU-Variante für jeden Eval-Lauf: `haswell`
+
+Alle drei Harnesse starten den Container über `EvalOllamaCpuBackend`. Vor `ollama serve` entfernt
+eine Shell im Container jede CPU-Bibliothek außer `libggml-cpu-haswell.so`. Nach der Indizierung
+liest der Harness aus dem Container-Log, welche Variante die Modell-Runner geladen haben. Ist es
+nicht ausschließlich `haswell`, bricht er vor der ersten Messung ab. Die Log-Zeile nennt dazu die
+Host-CPU und ob sie AVX-512 beherrscht.
+
+**Warum `haswell`.** Es ist die höchste Stufe, die jeder x86-64-Runner und jede Entwicklermaschine
+ausführen kann (AVX2, FMA, F16C). `icelake` schiede die Runner ohne AVX-512 aus, eine niedrigere
+Stufe wäre nur langsamer. Die übrigen Bibliotheken zu entfernen legt die Auswahl fest, ohne ein
+eigenes Image zu bauen und zu pinnen.
+
+**Warum für alle drei Harnesse**, obwohl nur der Mehrrunden-Pfad sichtbar kippte: Alle drei Pfade
+beziehen ihre Vektoren aus demselben Container (Entscheidung 46). Eine Laufzeit je Pfad hieße, dass
+zwei Berichte desselben Laufs auf verschiedenen Kerneln beruhen könnten.
+
+**Grenze.** Auf einem ARM-Host fehlt die Bibliothek; der Container startet dann mit benannter
+Meldung nicht. Auswertungsläufe auf ARM waren nie mit der CI vergleichbar.
+
+### 55. `ollamaCpuBackend` wird Festpunkt des Mehrrunden-Pfads; Mehrrunden 2 → 3
+
+`ConversationBaseline.FixedPoints` und die Laufkonfiguration des Mehrrunden-Reports führen das neue
+Feld `ollamaCpuBackend`. Der Wert ist die Variante, die der Harness im Container-Log nachgewiesen
+hat, bei einem externen Endpunkt `null`. Er wird wie jeder andere Festpunkt verglichen: Weicht er
+ab, ist die Baseline unvergleichbar (Entscheidung 6). Ein fehlender Wert lädt als `null` und
+erscheint als unvergleichbarer Festpunkt, wie bei `ollamaImage` (Entscheidung 45).
+`ConversationPathIsolationTest` hält den committeten Wert Docker-frei gegen
+`EvalOllamaCpuBackend.PINNED`. `CONVERSATION_MEASUREMENT_CONTRACT_VERSION` steigt von 2 auf **3**.
+
+**Die Einzelfragen-Pfade bekommen den Festpunkt nicht.** Rohvektor 10 und Pipeline 13 bleiben
+unverändert. Ein Festpunkt benennt, was die Zahlen eines Pfads bewegt. Dort bewegt die Variante
+nachweislich keine: Der `verwaltung`-Rohvektor-Lauf mit Pin trifft die committete Baseline in allen
+54 Metrikzeilen. Vor einem Lauf unter einer anderen Variante schützt dort die
+Laufzeitprüfung aus Entscheidung 54. Der Festpunkt käme nur gegen eine bewusste Änderung der
+Konstante hinzu, und die zieht über die Mehrrunden-Baseline ohnehin eine Neuziehung nach sich.
+
+### 56. Neuziehung der Mehrrunden-Baseline
+
+Die Baseline aus #1490 beschrieb den `icelake`-Zustand und ist unter dem Pin nicht mehr erreichbar.
+Neu gezogen aus `./gradlew evaluateVerwaltungConversations` vom 2026-09-15, auf einem Host mit
+AVX-512 und mit Pin. Drei Messungen, min = median = max, 0 Runden mit abweichender Zerlegung. Der
+Report stimmt in allen 83 Runden (Teilfragen, Notizpunkte, Trefferlisten, Urteile) exakt mit dem
+des CI-Laufs 34930288873 überein, der ohne Pin auf einem Runner ohne AVX-512 gemessen hatte. Das ist
+der Nachweis, dass die Baseline den Zustand jeder Maschine mit Pin beschreibt, nicht den einer
+bestimmten.
+
+| | Baseline #1490 (`icelake`) | Baseline #1652 (`haswell`) |
+|---|---|---|
+| overall Hit Rate@5 / MRR@8 / nDCG@8 / Recall@8 | 0,880 / 0,772 / 0,796 / 0,876 | 0,831 / 0,738 / 0,757 / 0,827 |
+| gelöste Fälle (`anaphora` / `topic_switch` / `carryover`) | 8 (5 / 2 / 1) | 5 (4 / 1 / 0) |
+| Themen-Bleed | 2 Dokumente in 2 von 9 Wechselrunden | 0 |
+
+Die Differenz ist **kein Rückschritt**: Kein Baustein hat sich geändert, nur die Rechenkernel. Sie
+ist die Spannweite, die allein die CPU-Variante über diesen Datensatz erzeugt, und damit ein Maß
+dafür, wie empfindlich dieser Pfad auf eine Laufzeitänderung reagiert. Drei Fälle wechseln auf
+`known_gap` (`verw-conv-ana-003`, `verw-conv-ts-006`, `verw-conv-cc-002`). Alle 27 Begründungen
+beschreiben jetzt die Symptome dieses Laufs; der Golden-Hash ist nachgezogen, Anfragen, Antworten
+und erwartete Dokumente sind bytegleich. Toleranzen sind unverändert: Die Abweichung war kein
+Rauschen, das eine weitere Toleranz verdecken dürfte, sondern ein zweiter, reproduzierbarer
+Messzustand.

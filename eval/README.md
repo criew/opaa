@@ -169,6 +169,29 @@ auf anderen Maschinen vergleichbar. Für lokale Experimente mit GPU-Embeddings g
 `DeviceRequests`-Liste abgesichert, damit ein künftiges Testcontainers-Upgrade eine stillschweigend
 wieder aktivierte GPU-Anforderung nicht unbemerkt durchlässt.
 
+### Feste CPU-Variante (Issue #1652)
+
+Auch auf der CPU rechnet nicht jede Maschine gleich. `ollama/ollama:0.6.5` liefert die
+Rechenkernel als eine Bibliothek je Befehlssatzstufe (`libggml-cpu-sandybridge`, `-haswell`,
+`-skylakex`, `-icelake`, `-alderlake`) und lädt die beste, die der Host beherrscht. Ein Host mit
+AVX-512 rechnet also mit anderen Kerneln als einer ohne. Die Vektoren weichen dabei erst in der
+fünften Nachkommastelle ab. Die Zerlegung bei Temperatur 0 wählt aber je Schritt das
+wahrscheinlichste Token, und schon diese Abweichung kann die Wahl kippen. Die GitHub-Runner sind
+gemischt bestückt. Der Mehrrunden-Job wechselte deshalb ohne jede Änderung zwischen zwei
+Messzuständen.
+
+Alle drei Harnesse starten den Container deshalb über `EvalOllamaCpuBackend`: Vor `ollama serve`
+werden alle CPU-Varianten außer **`haswell`** (AVX2) entfernt. Diese Stufe beherrscht jeder
+x86-64-Runner und jede Entwicklermaschine. Nach der Indizierung liest der Harness aus dem
+Container-Log, welche Variante die Modell-Runner geladen haben, und bricht ab, wenn es eine andere
+war. Die Zeile `Ollama CPU backend: haswell (host: …, AVX-512: …)` im Lauf-Log nennt dazu die CPU
+des Hosts. So lässt sich an zwei Läufen ablesen, dass verschiedene Runner mit denselben Kerneln
+gemessen haben. Auf einem ARM-Host fehlt die Bibliothek, und der Container startet mit benannter
+Meldung nicht.
+
+Der Mehrrunden-Pfad führt die Variante als geprüften Festpunkt `ollamaCpuBackend` (ADR-0012,
+Nachtrag CPU-Backend).
+
 ### Externer Ollama-Endpunkt (Issue #1076)
 
 Alle drei Harnesse akzeptieren optional `-Dopaa.eval.ollamaBaseUrl=http://localhost:11434`: Statt den

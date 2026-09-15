@@ -280,7 +280,9 @@ class RetrievalEvaluationHarnessTest {
                   }
                   binds.add(new Bind(OLLAMA_MODEL_VOLUME, new Volume(OLLAMA_MODEL_VOLUME_PATH)));
                   cmd.getHostConfig().withBinds(binds.toArray(new Bind[0]));
-                });
+                })
+            // One ggml CPU kernel set on every host, see EvalOllamaCpuBackend.
+            .withCreateContainerCmdModifier(EvalOllamaCpuBackend::pin);
     ollama.start();
   }
 
@@ -523,6 +525,10 @@ class RetrievalEvaluationHarnessTest {
         .isZero();
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(manifest.fileNames().size());
     log.info("Indexed {} documents", completedJob.getDocumentsProcessed());
+    // The embedding runner has loaded by now; prove it computed with the pinned CPU backend.
+    if (!EvalOllamaEndpoint.isExternal()) {
+      EvalOllamaCpuBackend.verify(ollama, log);
+    }
 
     // 3. Chunk-count invariant (ADR-0010, Nachtrag #721): the real, production-configured
     //    TokenTextSplitter just ran. Verify every document satisfies the domain's declared

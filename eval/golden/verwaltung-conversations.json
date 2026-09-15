@@ -21,7 +21,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst „dafür“ zu „Formular KAE-07“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652) auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst „dafür“ zu „Formular KAE-07“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
   },
   {
     "id": "verw-conv-ana-002",
@@ -45,7 +45,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst „seine“ zu „Formular BUE-08“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652) auf dem Pipeline-Pfad (Einpfad-Regel): Die Teilfrage der Runde 2 nennt „Formular BUE-08“ statt „seine“; beide Runden führen das erwartete Dokument auf Rang 1."
   },
   {
     "id": "verw-conv-ana-003",
@@ -67,9 +67,9 @@
         ]
       }
     ],
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst „danach“ zu „Dienstanweisung BAU-DA-2/2024“ auf und hält das Dokument gegen die amtsübergreifende Aufbewahrungs-Dienstanweisung auf Rang 1."
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-15",
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die eine eigenständige Frage unverändert lässt; offen ist nur Runde 1. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Teilfragen machen aus der Dienstanweisung BAU-DA-2/2024 ein „Bauteil“, die Baugenehmigungsgebührensatzung 2024 belegt Rang 1, das Ziel Rang 2. Runde 2 löst „danach“ und führt das Ziel auf Rang 1. Unter der CPU-Variante icelake war der Fall gelöst (Baseline vom 2026-09-12)."
   },
   {
     "id": "verw-conv-ana-004",
@@ -100,7 +100,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht; Suchfenster (#1486) und Gesprächsnotiz (#1487) haben sie für diesen Fall nicht gebracht. Symptom im Lauf vom 2026-09-12: Runde 2 stellt verwaltung-0039_gebuehrenordnung-kaemmerei.md auf Rang 1 und das Ziel auf Rang 2; Runde 3 verlangt zusätzlich den Schritt Verwaltungsgebührensatzung → Kämmerei → deren Gebührenordnung, den kein Fenster-Baustein leistet (siehe MAINTENANCE.md, Vermerk zu dieser Runde)."
+    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht; Suchfenster (#1486) und Gesprächsnotiz (#1487) haben sie für diesen Fall nicht gebracht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 2 stellt verwaltung-geschaeftsverteilungsplan.md auf Rang 1 und das Ziel auf Rang 2; Runde 3 verlangt zusätzlich den Schritt Verwaltungsgebührensatzung → Kämmerei → deren Gebührenordnung, den kein Fenster-Baustein leistet (siehe MAINTENANCE.md, Vermerk zu dieser Runde), und verfehlt verwaltung-0039_gebuehrenordnung-kaemmerei.md ganz."
   },
   {
     "id": "verw-conv-ana-005",
@@ -124,7 +124,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-12: Runde 2 verfehlt ORD-DA-2/2024 ganz; Rang 1 belegt verwaltung-vertretungsregelung.md."
+    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 2 verfehlt ORD-DA-2/2024 ganz; Rang 1 belegt verwaltung-vertretungsregelung.md."
   },
   {
     "id": "verw-conv-ana-006",
@@ -148,7 +148,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Gelöst seit dem Umbau aus #1486/#1487, gemessen am 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 erhält den Notizpunkt „Formular JUG-07“, und beide Runden führen verwaltung-0055_formularhinweis-jugendamt-7.md auf Rang 1."
+    "expected_state_reason": "Gelöst seit dem Umbau aus #1486/#1487, zuletzt bestätigt im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652) auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 erhält den Notizpunkt „Formular JUG-07“, und beide Runden führen verwaltung-0055_formularhinweis-jugendamt-7.md auf Rang 1."
   },
   {
     "id": "verw-conv-ana-007",
@@ -180,7 +180,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-12: Runde 1 ist gelöst; Runde 2 verfehlt verwaltung-0029_formularhinweis-standesamt-7.md ganz, und Runde 3 hält es nur auf Rang 2 hinter dem Formularhinweis des Sozialamts."
+    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 2 verfehlt verwaltung-0029_formularhinweis-standesamt-7.md ganz, Rang 1 belegt die Personenstandsurkundengebührensatzung. Runde 3 ist gelöst: Ihre Teilfrage nennt STA-07."
   },
   {
     "id": "verw-conv-ana-008",
@@ -204,7 +204,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst die Rückfrage nach den typischen Ausfüllfehlern zu „Formular PER-08“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652) auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst die Rückfrage nach den typischen Ausfüllfehlern zu „Formular PER-08“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
   },
   {
     "id": "verw-conv-ana-009",
@@ -237,7 +237,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-12: Runde 1 führt die Beitragssatzung 2023 zwar auf Rang 1, verfehlt aber die Gebührenordnung Jugendamt aus ihrer dreiteiligen Treffermenge; Runde 3 verliert JUG-DA-2/2024 ganz."
+    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 1 führt die Beitragssatzung 2023 auf Rang 1, verfehlt aber die Gebührenordnung Jugendamt aus ihrer dreiteiligen Treffermenge; Runde 2 hält JUG-DA-2/2024 nur auf Rang 2 hinter der Beitragssatzung 2024, Runde 3 verliert es ganz."
   },
   {
     "id": "verw-conv-ts-001",
@@ -269,7 +269,7 @@
     "topic_switch_turn": 3,
     "expected_state": "solved",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Gelöst seit dem Umbau aus #1486/#1487, gemessen am 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 hält BAU-DA-1/2023 auf Rang 1 statt der amtsübergreifenden Aufbewahrungs-Dienstanweisung; alle drei Runden sind gelöst, die Wechselrunde 3 ohne Dokument des Vorthemas. Welcher der beiden Bausteine das bewirkt hat, ist nicht auflösbar — die Runden 2 und 3 haben zusätzlich den Notizpunkt „Bauanweisungen“ erhalten."
+    "expected_state_reason": "Gelöst seit dem Umbau aus #1486/#1487, zuletzt bestätigt im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652) auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 hält BAU-DA-1/2023 auf Rang 1; alle drei Runden sind gelöst, die Wechselrunde 3 ohne Dokument des Vorthemas. Welcher der beiden Bausteine das bewirkt, ist nicht auflösbar — die Runden 2 und 3 erhalten zusätzlich den Notizpunkt „Bauleitung“."
   },
   {
     "id": "verw-conv-ts-002",
@@ -301,7 +301,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-12: Die Wechselrunde 2 ist gelöst, die Folgerunde 3 im neuen Thema nicht — der Notizpunkt „SOZ-08“ aus dem Altthema steht in ihrer Teilfrage, und verwaltung-0008_formularhinweis-sozialamt-8.md verdrängt die Abfallgebührensatzung ganz."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Schon die Wechselrunde 2 ist offen — ihre Teilfrage ist ein allgemeiner Satz über Satzungsbestimmungen, die Abfallgebührensatzung liegt außerhalb des Fensters. In der Folgerunde 3 steht der Notizpunkt „SOZ-08“ aus dem Altthema in der Teilfrage, und verwaltung-0008_formularhinweis-sozialamt-8.md belegt Rang 1."
   },
   {
     "id": "verw-conv-ts-003",
@@ -333,7 +333,7 @@
     "topic_switch_turn": 3,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-12: Die Wechselrunde 3 ist gelöst; offen ist die Vorrunde 2, in der verwaltung-0039_gebuehrenordnung-kaemmerei.md die Verwaltungsgebührensatzung auf Rang 2 drückt."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Wechselrunde 3 ist gelöst; offen ist die Vorrunde 2, in der verwaltung-0039_gebuehrenordnung-kaemmerei.md die Verwaltungsgebührensatzung auf Rang 2 drückt."
   },
   {
     "id": "verw-conv-ts-004",
@@ -372,7 +372,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-12: Die Wechselrunde 2 ist gelöst; offen sind die Folgerunde 3 im neuen Thema (verwaltung-0048 außerhalb des Fensters) und die Rückkehr zum Altthema in Runde 4 (verwaltung-0060 außerhalb des Fensters)."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Wechselrunde 2 und die Folgerunde 3 im neuen Thema verfehlen verwaltung-0048 ganz, die Rückkehr zum Altthema in Runde 4 verfehlt verwaltung-0060."
   },
   {
     "id": "verw-conv-ts-005",
@@ -404,7 +404,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-12: Die Wechselrunde 2 ist gelöst; offen ist die Folgerunde 3, in der verwaltung-0035 außerhalb des Fensters liegt."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Wechselrunde 2 ist gelöst; offen ist die Folgerunde 3, in der verwaltung-0035 außerhalb des Fensters liegt."
   },
   {
     "id": "verw-conv-ts-006",
@@ -434,9 +434,9 @@
       }
     ],
     "topic_switch_turn": 3,
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Alle drei Runden führen ihr erwartetes Dokument auf Rang 1; die Wechselrunde 3 enthält kein Dokument des Vorthemas."
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-15",
+    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 2 vor dem Wechsel erhält den Notizpunkt „Formular ORD-07“, ihre Teilfrage nennt das Formular aber nicht; das Ziel steht auf Rang 5 hinter dem Formularhinweis des Sozialamts. Die Wechselrunde 3 ist gelöst. Unter der CPU-Variante icelake war der Fall gelöst (Baseline vom 2026-09-12)."
   },
   {
     "id": "verw-conv-ts-007",
@@ -476,7 +476,7 @@
     "topic_switch_turn": 3,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-12: Wechselrunde 3 und Folgerunde 4 sind gelöst; offen ist die Vorrunde 2, die verwaltung-0027_dienstanweisung-standesamt-1-2024.md nur auf Rang 3 hält. Dasselbe Dokument steht in der Wechselrunde 3 als Altthema im Fenster (Bleed)."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Wechselrunde 3 und Folgerunde 4 sind gelöst, ohne Dokument des Vorthemas; offen ist die Vorrunde 2, die verwaltung-0027_dienstanweisung-standesamt-1-2024.md ganz verfehlt."
   },
   {
     "id": "verw-conv-ts-008",
@@ -509,7 +509,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-12: Die Wechselrunde 2 ist gelöst, trägt aber verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md des Altthemas im Fenster (Bleed); offen ist die Folgerunde 3 im neuen Thema."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Wechselrunde 2 ist gelöst; offen ist die Folgerunde 3 im neuen Thema, in der verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md des Altthemas Rang 1 belegt und das Ziel außerhalb des Fensters liegt."
   },
   {
     "id": "verw-conv-ts-009",
@@ -548,7 +548,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Rückschritt gegenüber dem Referenzlauf vom 2026-09-11, in dem der Fall gelöst war. Symptom im Lauf vom 2026-09-12: Die Wechselrunden 2 und 3 nennen KAE-DA-1/2024 in ihrer Teilfrage, ordnen sie aber dem Jugendamt des Altthemas zu; verwaltung-0053 bzw. verwaltung-0054 belegen Rang 1, das Ziel jeweils Rang 2."
+    "expected_state_reason": "Fehlender Baustein: die ausdrückliche Rückkehr zum Altthema erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Wechselrunden 2 und 3 führen KAE-DA-1/2024 auf Rang 1; offen ist Runde 4 („Zurück zum Formular JUG-08“), deren Teilfrage bei der Kämmerei bleibt — verwaltung-0056_formularhinweis-jugendamt-8.md liegt außerhalb des Fensters."
   },
   {
     "id": "verw-conv-cc-001",
@@ -581,7 +581,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe aus Runde 1 erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-12: Der Notizpunkt lautet „Arzt“ und trägt die Fassung 2023 nicht; die Zielrunde 3 stellt die Fassung 2024 auf Rang 1, das Ziel auf Rang 2. Die bis 2026-09-11 geführte erwartete Abweichung ist damit gegenstandslos und entfernt — der Fall ist jetzt auch gemessen offen."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe aus Runde 1 erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Der Notizpunkt lautet „Arzt“ und trägt die Fassung 2023 nicht; die Zielrunde 3 stellt die Fassung 2024 auf Rang 1, das Ziel auf Rang 2."
   },
   {
     "id": "verw-conv-cc-002",
@@ -612,9 +612,9 @@
         "confusable_document": "verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md"
       }
     ],
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Gelöst mit der Gesprächsnotiz (#1487), gemessen am 2026-09-12 auf dem Pipeline-Pfad (Einpfad-Regel): Die Verdichtung der Runde 1 hinterlässt den RAHMEN-Punkt „2023“, die Teilfrage der Zielrunde 3 trägt ihn („galt es 2023“), und die Fassung 2023 steht auf Rang 1 vor der Fassung 2024. Der einzige Fall des Datensatzes, in dem die Übernahme über die Notiz nachweislich trägt."
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-15",
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Verdichtung der Runde 1 hinterlässt den RAHMEN-Punkt „2023“, die Teilfrage der Zielrunde 3 nimmt ihn aber nicht auf; die Gebührenordnung Bauamt belegt Rang 1, die Fassung 2023 Rang 2. Unter der CPU-Variante icelake trug die Teilfrage das Jahr, und der Fall war gelöst (Baseline vom 2026-09-12)."
   },
   {
     "id": "verw-conv-cc-003",
@@ -654,7 +654,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Rückschritt gegenüber dem Referenzlauf vom 2026-09-11, in dem die Angabe im ganzen Gesprächsfenster stand, das die Zerlegung damals sah. Symptom im Lauf vom 2026-09-12: Die Notiz trägt „Prüfer“ und „Bearbeiter“, kein Jahr; die Zielrunde 4 stellt SOZ-DA-2/2024 auf Rang 1, das Ziel auf Rang 2. Offen ist zusätzlich das Zwischenthema in Runde 2."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Notiz trägt nur „Prüfer“, kein Jahr; die Zielrunde 4 stellt die Sozialgebührenbefreiungssatzung 2024 auf Rang 1, das Ziel auf Rang 2. Offen ist zusätzlich das Zwischenthema in Runde 2 (UMW-07 auf Rang 2 hinter UMW-08)."
   },
   {
     "id": "verw-conv-cc-004",
@@ -687,7 +687,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-12: Der Notizpunkt trägt „Zeitraum: 2023“, die Teilfrage der Zielrunde 3 nimmt ihn nicht auf; der Verwechslungspartner ORD-DA-1/2024 belegt Rang 1, das Ziel Rang 2. Das Zwischenthema in Runde 2 ist seit diesem Lauf gelöst."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Der Notizpunkt trägt „Zeitraum: 2023“, die Teilfrage der Zielrunde 3 nimmt ihn nicht auf; der Verwechslungspartner ORD-DA-1/2024 belegt Rang 1, das Ziel Rang 2. Das Zwischenthema in Runde 2 ist gelöst."
   },
   {
     "id": "verw-conv-cc-005",
@@ -727,7 +727,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Rückschritt gegenüber dem Referenzlauf vom 2026-09-11, in dem die Angabe im ganzen Gesprächsfenster stand, das die Zerlegung damals sah. Symptom im Lauf vom 2026-09-12: Die Notiz trägt „Berater“ und einen aus dem Zwischenthema verdichteten Punkt, kein Jahr; die Zielrunde 4 stellt die Fassung 2023 auf Rang 1, das Ziel steht auf Rang 4."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Notiz trägt „Berater“ und einen aus dem Zwischenthema verdichteten Punkt, kein Jahr; die Zielrunde 4 stellt die Fassung 2023 auf Rang 1, das Ziel steht auf Rang 3."
   },
   {
     "id": "verw-conv-cc-006",
@@ -760,7 +760,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-12: Runde 1 ist seit diesem Lauf gelöst, die Zielrunde 3 dagegen nicht mehr — der Notizpunkt „Prüfer“ trägt die Fassung 2023 nicht, und die Teilfrage behauptet stattdessen die Fassung 2024, die damit Rang 1 belegt."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 1 ist gelöst, die Zielrunde 3 nicht — der Notizpunkt „Prüfer“ trägt die Fassung 2023 nicht, und die Teilfrage behauptet stattdessen die Fassung 2024, die damit Rang 1 belegt."
   },
   {
     "id": "verw-conv-cc-007",
@@ -793,7 +793,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-12: Runde 1 ist seit diesem Lauf gelöst; offen ist die Zielrunde 3, deren Notiz („Mitarbeiter“, „Formular UMW-08“) kein Jahr trägt — die Kindertagesstättenbeitragssatzung 2023 steht erst auf Rang 5."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 1 ist gelöst; offen ist die Zielrunde 3, deren Notiz („Mitarbeiter“) kein Jahr trägt — die Kindertagesstättenbeitragssatzung 2023 steht erst auf Rang 5."
   },
   {
     "id": "verw-conv-cc-008",
@@ -840,7 +840,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-12: Das Zwischenthema in Runde 3 ist seit diesem Lauf gelöst; offen sind Runde 1 und die Zielrunde 5, deren Notizpunkt „Bauamt“ die Fassung 2024 nicht trägt — BAU-DA-1/2023 belegt Rang 1, das Ziel Rang 2."
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die die Rahmenangabe schon in der eigenständigen Runde 1 hält; offen ist nur diese Runde. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 1 verfehlt BAU-DA-1/2024 ganz, Rang 1 belegt BUE-DA-1/2024. Die Zwischenthemen und die Zielrunde 5 sind gelöst — die Zielrunde führt das Ziel auf Rang 1, obwohl ihre Teilfrage die Fassung nicht nennt; die Notiz trägt „Stand 2024“."
   },
   {
     "id": "verw-conv-cc-009",
@@ -880,6 +880,6 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Rückschritt gegenüber dem Referenzlauf vom 2026-09-11, in dem der Fall gelöst war. Symptom im Lauf vom 2026-09-12: Der Notizpunkt trägt „Zeitraum: seit 2024, Fassung: 2024“, die Teilfrage der Zielrunde 4 nimmt ihn nicht auf; verwaltung-0003_gebuehrenordnung-sozialamt.md belegt Rang 1, das Ziel Rang 3. Offen ist zusätzlich Runde 1, die weder Fenster noch Notiz hat — sie hängt an der festen Notiz-Regel, die #1487 in die Zerlegungs-Instruktion aufgenommen hat."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 1 ist gelöst; die Notiz der Zielrunde 4 trägt „Person“ und „Formular STA-08“, kein Jahr, und die Fassung 2023 belegt Rang 1, das Ziel Rang 2."
   }
 ]

@@ -588,7 +588,7 @@ Dasselbe Verfahren wie unten, mit zwei Präzisierungen:
 (`docs/features/conversation-memory.md`, Abschnitt „Messung"). **Erstmals gezogen mit Issue #1485**
 aus einem CPU-Testcontainer-Lauf vom 2026-09-11 gegen die dort erstkuratierten 27 Fälle mit 83
 Runden; Typ (`ConversationBaseline`) und Vergleich (`ConversationBaselineComparator`) stammen aus
-#1484. Die heute committeten Zahlen stammen aus der Neuziehung in #1490 (siehe unten).
+#1484. Die heute committeten Zahlen stammen aus der Neuziehung in #1652 (siehe unten).
 
 **Verglichen wird sie seit Issue #1553** von `VerwaltungConversationBaselineRegressionTest` über
 `ConversationBaselineRegressionCheck` — dem Gegenstück zu `PipelineBaselineRegressionCheck`. Der
@@ -610,6 +610,16 @@ Festpunkte (ADR-0012, Entscheidung 50). **Dieser Ausgang ist mit der Neuziehung 
 `ConversationPathIsolationTest#theCommittedBaselineMeasuresTheProductionConversationMemory` sperrt
 den Rückweg auf die beiden Vor-#1486/#1487-Werte.
 
+**Neu gezogen mit Issue #1652** aus einem CPU-Testcontainer-Lauf vom 2026-09-15, erstmals mit fester
+ggml-CPU-Variante (`ollamaCpuBackend: haswell`, Mehrrunden-Messvertrag 3). Die Datei aus #1490
+beschrieb den Zustand eines Hosts mit AVX-512 (Variante `icelake`). Jeder CI-Runner ohne AVX-512
+maß einen anderen und lief rot, obwohl sich nichts geändert hatte. Die neuen Zahlen (overall
+Hit Rate@5 0,831, 5 von 27 Fällen gelöst) sind kein Rückschritt, sondern der Zustand, den jede
+Maschine mit Pin liefert. Belegt ist das durch einen Report, der in allen 83 Runden mit einem
+CI-Lauf auf einem Runner ohne AVX-512 übereinstimmt. Herleitung: `eval/corpus/verwaltung/MAINTENANCE.md`,
+„Neuziehung mit fester CPU-Variante"; ADR-0012, Nachtrag CPU-Backend.
+
+
 Aufbau wie die Pipeline-Baseline, mit vier Unterschieden:
 
 - **Gruppen:** `overall`, `category:<klasse>` und `turn:<n>` — die Rundennummer ist eine eigene
@@ -617,9 +627,13 @@ Aufbau wie die Pipeline-Baseline, mit vier Unterschieden:
   ersten Runden hilft und den Folgerunden schadet, lässt den Gesamtwert flach.
 - **Festpunkte:** der komplette Satz der Pipeline-Baseline (unverändert und wörtlich geteilt, siehe
   `PipelineBaselineComparator.addPipelineFixedPointMismatches`) plus `conversationWindowMessages`,
-  `searchWindowTurns`, `conversationNoteCap` und `turnCount`. Die drei Gedächtnismaße verschieben,
-  was die Zerlegung sieht; `turnCount` ist die zweite Hälfte der Datensatzgröße, weil eine
-  Kuratierungsrunde, die nur Fälle verlängert, `goldenCaseCount` unberührt ließe.
+  `searchWindowTurns`, `conversationNoteCap`, `turnCount` und `ollamaCpuBackend`. Die drei
+  Gedächtnismaße verschieben, was die Zerlegung sieht; `turnCount` ist die zweite Hälfte der
+  Datensatzgröße, weil eine Kuratierungsrunde, die nur Fälle verlängert, `goldenCaseCount` unberührt
+  ließe. `ollamaCpuBackend` (seit #1652) benennt die ggml-CPU-Variante im gepinnten Image. Unter
+  einer anderen Variante entstehen bei Temperatur 0 andere Teilfragen (`eval/README.md`, „Feste
+  CPU-Variante"). `ConversationPathIsolationTest` hält den committeten Wert gegen
+  `EvalOllamaCpuBackend.PINNED`.
 - **Das Chat-Modell ist ein geprüfter Festpunkt, nicht nur ein gemeldeter.** `ConversationBaseline.load`
   weist eine Datei zurück, deren Festpunkte `queryDecompositionEnabled: false` oder
   `chatModel: null` tragen: Ohne Zerlegung wird kein einziger Bezug aufgelöst, und die committeten
