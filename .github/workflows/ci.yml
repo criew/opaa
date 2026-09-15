@@ -113,7 +113,7 @@ jobs:
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: '21.0.12+101.0.LTS'
+          java-version: '25.0.4+101.0.LTS'
 
       # Verwaltet den Gradle-Cache selbst: PR-Laeufe restaurieren read-only,
       # nur Laeufe auf main schreiben - behebt das Einfrieren des alten
@@ -153,7 +153,7 @@ jobs:
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: '21.0.12+101.0.LTS'
+          java-version: '25.0.4+101.0.LTS'
 
       - uses: gradle/actions/setup-gradle@v6
 
@@ -203,7 +203,7 @@ jobs:
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: '21.0.12+101.0.LTS'
+          java-version: '25.0.4+101.0.LTS'
 
       # Cache-Verwaltung wie im backend-Job: read-only auf PRs, Schreiben nur auf main (#832).
       - uses: gradle/actions/setup-gradle@v6
