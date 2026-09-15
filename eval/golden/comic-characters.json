@@ -1220,7 +1220,7 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 1 von 7 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0982_one-above-all.md; die Rangfolge am Fensterrand schwankt zwischen Läufen: comic-0053_ancient-one-mcu.md steht je nach Lauf auf Rang 10 oder außerhalb, also 2 bzw. 1 von 7 im Fenster."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Rohvektor-Pfad: 2 von 7 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0982_one-above-all.md; comic-0614_hulk-stark-gauntlet-mcu.md steht auf Rang 6, comic-0053_ancient-one-mcu.md auf Rang 10. Die früher beobachtete Schwankung am Fensterrand war die CPU-Variante: Mit AVX-512-Kerneln fällt comic-0053_ancient-one-mcu.md aus dem Fenster."
       },
       "pipeline": {
         "state": "known_gap",

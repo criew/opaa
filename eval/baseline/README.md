@@ -479,6 +479,29 @@ die committeten Dateien das tatsächlich gepinnte Image nennen, prüfen zwei Doc
 ein Image-Wechsel ohne Baseline-Nachzug fällt damit im `check` auf statt erst im nächtlichen Lauf.
 Begründung: ADR-0012, Nachtrag Ollama-Herkunft.
 
+**`ollamaCpuBackend` (seit Issue #1652)** steht in allen drei Baseline-Typen direkt hinter
+`ollamaImage` und benennt die ggml-CPU-Variante, mit der der Container gerechnet hat (heute
+`haswell`). Die Harnesse erzwingen sie und prüfen sie am Container-Log (`eval/README.md`, „Feste
+CPU-Variante"). Eine andere Variante vertauscht nahe beieinanderliegende Rangplätze und kippt die
+Zerlegung; eine Baseline mit anderem Wert ist deshalb unvergleichbar. Ein fehlender Wert lädt als
+`null`, wie bei `ollamaImage`. `PipelinePathIsolationTest`/`ConversationPathIsolationTest` halten
+die sieben committeten Werte gegen `EvalOllamaCpuBackend.PINNED`.
+
+### Neuvermessung mit fester CPU-Variante (2026-09-15, Issue #1652)
+
+Alle sieben Baselines sind aus lokalen CPU-Testcontainer-Läufen mit Pin neu gezogen, auf einem Host
+mit AVX-512. Jeder Einzelfragen-Lauf deckt sich in jeder Rangfolge mit den beiden CI-Läufen mit Pin
+(34946388134 und 34946416054, darunter Hosts mit und ohne AVX-512). Das Feld `notes` jeder Baseline
+nennt Lauf und Abweichung datiert; Herleitung in ADR-0012, Nachtrag CPU-Backend.
+
+| Baseline | Zahlen | Grund |
+|---|---|---|
+| `comic-characters.json` | 8 Werte steigen um 0,001 bis 0,007 (overall nDCG@10 0,462 → 0,463) | Die Datei beschrieb AVX-512 ohne Pin; `comic-filter-001` hält unter `haswell` ein Dokument mehr im Fenster |
+| `pipeline-comic-characters.json` | unverändert | — |
+| `city-landmarks.json`, `pipeline-city-landmarks.json` | unverändert | — |
+| `verwaltung.json`, `pipeline-verwaltung.json` | unverändert | — |
+| `pipeline-verwaltung-conversations.json` | overall Hit Rate@5 0,880 → 0,831 | Die Datei beschrieb AVX-512 ohne Pin (siehe unten) |
+
 ## Besonderheiten der Pipeline-Baselines (Issue #1040)
 
 ### Aufbau
@@ -627,13 +650,9 @@ Aufbau wie die Pipeline-Baseline, mit vier Unterschieden:
   ersten Runden hilft und den Folgerunden schadet, lässt den Gesamtwert flach.
 - **Festpunkte:** der komplette Satz der Pipeline-Baseline (unverändert und wörtlich geteilt, siehe
   `PipelineBaselineComparator.addPipelineFixedPointMismatches`) plus `conversationWindowMessages`,
-  `searchWindowTurns`, `conversationNoteCap`, `turnCount` und `ollamaCpuBackend`. Die drei
-  Gedächtnismaße verschieben, was die Zerlegung sieht; `turnCount` ist die zweite Hälfte der
-  Datensatzgröße, weil eine Kuratierungsrunde, die nur Fälle verlängert, `goldenCaseCount` unberührt
-  ließe. `ollamaCpuBackend` (seit #1652) benennt die ggml-CPU-Variante im gepinnten Image. Unter
-  einer anderen Variante entstehen bei Temperatur 0 andere Teilfragen (`eval/README.md`, „Feste
-  CPU-Variante"). `ConversationPathIsolationTest` hält den committeten Wert gegen
-  `EvalOllamaCpuBackend.PINNED`.
+  `searchWindowTurns`, `conversationNoteCap` und `turnCount`. Die drei Gedächtnismaße verschieben,
+  was die Zerlegung sieht; `turnCount` ist die zweite Hälfte der Datensatzgröße, weil eine
+  Kuratierungsrunde, die nur Fälle verlängert, `goldenCaseCount` unberührt ließe.
 - **Das Chat-Modell ist ein geprüfter Festpunkt, nicht nur ein gemeldeter.** `ConversationBaseline.load`
   weist eine Datei zurück, deren Festpunkte `queryDecompositionEnabled: false` oder
   `chatModel: null` tragen: Ohne Zerlegung wird kein einziger Bezug aufgelöst, und die committeten

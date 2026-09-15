@@ -118,12 +118,12 @@
       "raw_vector": {
         "state": "known_gap",
         "since": "2026-08-31",
-        "reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-vertretungsregelung.md"
+        "reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-15 mit fester CPU-Variante haswell (#1652), Rohvektor-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt verwaltung-0038_verwaltungsgebuehrensatzung.md"
       },
       "pipeline": {
         "state": "known_gap",
         "since": "2026-08-31",
-        "reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-01 (Pipeline-Pfad): alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-vertretungsregelung.md"
+        "reason": "Fehlender lexikalischer Pfad (Roadmap 1a/1b): der Anfragebegriff steht wörtlich im Zieldokument, die reine Vektorsuche rankt thematisch nahe, sachlich falsche Amtsdokumente darüber; gemessen am 2026-09-15 mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 2 von 2 erwarteten Dokumenten im Fenster, aber Rang 1 belegt verwaltung-0038_verwaltungsgebuehrensatzung.md; die Dienstanweisungen der Kämmerei stehen auf Rang 2 und 4"
       }
     }
   },

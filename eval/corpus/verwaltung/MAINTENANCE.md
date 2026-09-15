@@ -646,12 +646,13 @@ AVX-512 nachgestellt, mit genau einer Variante im Container und den ersten Runde
 
 Die Threadzahl (2 oder 10) änderte keine einzige Ausgabe. Temperatur 0 wählt ohnehin je Schritt das
 wahrscheinlichste Token, ein Seed spielt keine Rolle. Die Einbettungen weichen zwischen den Varianten
-erst in der fünften Nachkommastelle ab. Für die Einzelfragen-Pfade reicht das nicht: Der
-`verwaltung`-Rohvektor-Lauf mit Pin trifft die committete Baseline in allen 54 Metrikzeilen. Die
-Zerlegung dagegen kippt schon an dieser Stelle.
+erst in der fünften Nachkommastelle ab. Die Zerlegung kippt schon an dieser Stelle. Auf den
+Einzelfragen-Pfaden vertauscht dieselbe Abweichung nahe beieinanderliegende Chunks; in dieser
+Domäne trifft das nur Positionen unterhalb der erwarteten Dokumente, bei `comic-characters` auch
+ein erwartetes (ADR-0012, Entscheidung 55).
 
 **Behebung.** Alle drei Harnesse entfernen im Container vor `ollama serve` jede CPU-Variante außer
-`haswell` und prüfen am Container-Log, dass die Modell-Runner sie geladen haben (`eval/README.md`,
+`haswell` und prüfen am Container-Log, dass Embedding- und Chat-Runner sie geladen haben (`eval/README.md`,
 „Feste CPU-Variante"). Die Mehrrunden-Baseline trägt die Variante als Festpunkt `ollamaCpuBackend`.
 
 **Messung.** `./gradlew evaluateVerwaltungConversations` am 2026-09-15 auf einem Host mit AVX-512
@@ -697,10 +698,10 @@ Verschmutzung durch Geschwisterdokumente des Altthemas ist per Definition unsich
 war als Kriterium schon in #1485 zurückgezogen. Die Nachmessung bestätigt das: Sie steigt von 0 auf
 2 Dokumente in 2 von 9 Wechselrunden (`ts-007#3`: die Dienstanweisung des Standesamts aus Runde 2;
 `ts-008#2`: die Personalaktenauskunftsgebührensatzung aus Runde 1, auf Rang 4, während das Ziel der
-Wechselrunde auf Rang 1 steht). Mit fester CPU-Variante (#1652) liegt die Zahl wieder bei 0.
-**Beide Wechselrunden sind trotzdem gelöst** — das
-Altthemen-Dokument steht im Fenster, ohne das Ziel von Rang 1 zu verdrängen. `topic_switch` wird deshalb über den **Anteil gelöster
-Fälle** beurteilt, nicht über die Bleed-Zahl.
+Wechselrunde auf Rang 1 steht). **Beide Wechselrunden waren trotzdem gelöst** — das
+Altthemen-Dokument stand im Fenster, ohne das Ziel von Rang 1 zu verdrängen. Mit fester
+CPU-Variante (#1652) liegt die Zahl wieder bei 0. `topic_switch` wird deshalb über den **Anteil
+gelöster Fälle** beurteilt, nicht über die Bleed-Zahl.
 
 Der Datensatz misst zudem eine Verschmutzung nicht, die die Nachmessung sichtbar gemacht hat: In
 `ts-002#3` — einer **Folgerunde** im neuen Thema, nicht der Wechselrunde — steht der Notizpunkt

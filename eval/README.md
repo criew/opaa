@@ -175,22 +175,26 @@ Auch auf der CPU rechnet nicht jede Maschine gleich. `ollama/ollama:0.6.5` liefe
 Rechenkernel als eine Bibliothek je Befehlssatzstufe (`libggml-cpu-sandybridge`, `-haswell`,
 `-skylakex`, `-icelake`, `-alderlake`) und lädt die beste, die der Host beherrscht. Ein Host mit
 AVX-512 rechnet also mit anderen Kerneln als einer ohne. Die Vektoren weichen dabei erst in der
-fünften Nachkommastelle ab. Die Zerlegung bei Temperatur 0 wählt aber je Schritt das
-wahrscheinlichste Token, und schon diese Abweichung kann die Wahl kippen. Die GitHub-Runner sind
-gemischt bestückt. Der Mehrrunden-Job wechselte deshalb ohne jede Änderung zwischen zwei
-Messzuständen.
+fünften Nachkommastelle ab. Das genügt, um nahe beieinanderliegende Chunks in der Rangfolge zu
+vertauschen, und die Zerlegung bei Temperatur 0 kippt schon daran. Die GitHub-Runner sind gemischt
+bestückt. Der Mehrrunden-Job wechselte deshalb ohne jede Änderung zwischen zwei Messzuständen, und
+ein `comic-characters`-Fall schwankte zwischen nächtlichen Läufen.
 
 Alle drei Harnesse starten den Container deshalb über `EvalOllamaCpuBackend`: Vor `ollama serve`
 werden alle CPU-Varianten außer **`haswell`** (AVX2) entfernt. Diese Stufe beherrscht jeder
-x86-64-Runner und jede Entwicklermaschine. Nach der Indizierung liest der Harness aus dem
-Container-Log, welche Variante die Modell-Runner geladen haben, und bricht ab, wenn es eine andere
-war. Die Zeile `Ollama CPU backend: haswell (host: …, AVX-512: …)` im Lauf-Log nennt dazu die CPU
-des Hosts. So lässt sich an zwei Läufen ablesen, dass verschiedene Runner mit denselben Kerneln
-gemessen haben. Auf einem ARM-Host fehlt die Bibliothek, und der Container startet mit benannter
-Meldung nicht.
+x86-64-Rechner. Nach der Indizierung prüft der Harness im Container-Log, dass der Embedding-Runner
+und bei aktiver Zerlegung auch der Chat-Runner `haswell` geladen haben, und bricht sonst ab. Die
+Zeile `Ollama CPU backend: haswell (host: …, AVX-512: …)` im Lauf-Log nennt dazu die CPU des Hosts.
+So lässt sich an zwei Läufen ablesen, dass verschiedene Runner mit denselben Kerneln gemessen haben.
+Auf einem ARM-Host fehlt die Bibliothek, und der Container startet mit benannter Meldung nicht.
 
-Der Mehrrunden-Pfad führt die Variante als geprüften Festpunkt `ollamaCpuBackend` (ADR-0012,
-Nachtrag CPU-Backend).
+Alle drei Messpfade führen die Variante als geprüften Festpunkt `ollamaCpuBackend` (ADR-0012,
+Nachtrag CPU-Backend). Zwei Fälle bleiben außerhalb des Pins, und beide sind nie baseline-tauglich:
+
+- Gegen einen externen Endpunkt (unten) startet kein Container; der Report trägt
+  `ollamaCpuBackend: null`.
+- Mit `-Dopaa.eval.allowGpu=true` rechnet womöglich die GPU. Der Harness prüft dann keine
+  CPU-Variante und trägt `unpinned: gpu allowed` ein.
 
 ### Externer Ollama-Endpunkt (Issue #1076)
 
