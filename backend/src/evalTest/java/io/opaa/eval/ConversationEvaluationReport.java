@@ -59,9 +59,9 @@ public record ConversationEvaluationReport(
    * pipeline block, so a committed baseline of this path states which Ollama produced its vectors
    * (ADR-0012, Nachtrag Ollama-Herkunft). No measured value moves.
    *
-   * <p>Version 3 (issue #1652): {@code ollamaCpuBackend} became a checked fixed point - the ggml
-   * CPU kernel set inside that image, which decides the greedy decomposition of every turn
-   * (ADR-0012, Nachtrag CPU-Backend).
+   * <p>Version 3 (issue #1652): {@code ollamaCpuBackend} became a checked fixed point of the shared
+   * pipeline block - the ggml CPU kernel set inside that image, which decides the greedy
+   * decomposition of every turn (ADR-0012, Nachtrag CPU-Backend).
    */
   public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 3;
 
@@ -89,21 +89,16 @@ public record ConversationEvaluationReport(
 
   /**
    * The fixed points of a multi-turn run: everything the pipeline path pins, plus the three
-   * conversation-memory dimensions, the dataset's own size and the CPU backend Ollama computed
-   * with.
+   * conversation-memory dimensions and the dataset's own size.
    *
    * <p>{@code pipeline.goldenDatasetFile}/{@code goldenDatasetSha256}/{@code goldenCaseCount}
    * describe the <b>multi-turn</b> dataset here, not the single-question one - the same three
    * fields in the same roles, for the dataset this run actually measured.
-   *
-   * @param ollamaCpuBackend the ggml CPU variant the run's model runners loaded ({@link
-   *     EvalOllamaCpuBackend}), {@code null} for a run against an external endpoint.
    */
   public record ConversationRunConfiguration(
       PipelineEvaluationReport.PipelineRunConfiguration pipeline,
       ConversationMemoryProfile memoryProfile,
-      int turnCount,
-      String ollamaCpuBackend) {}
+      int turnCount) {}
 
   /**
    * How the Gesprächsnotiz of this run actually came about (#1487): one condensation call per turn,

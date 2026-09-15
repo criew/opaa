@@ -520,10 +520,16 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
         .isZero();
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(manifest.fileNames().size());
     log.info("Indexed {} documents", completedJob.getDocumentsProcessed());
-    // The embedding runner has loaded by now; prove it computed with the pinned CPU backend.
-    if (!EvalOllamaEndpoint.isExternal()) {
-      EvalOllamaCpuBackend.verify(ollama, log);
-    }
+    // Every runner started so far - the embedding runner, and the chat runner of a decomposing run
+    // - must have computed with the pinned CPU backend.
+    String ollamaCpuBackend =
+        EvalOllamaEndpoint.isExternal()
+            ? null
+            : EvalOllamaCpuBackend.verify(
+                ollama,
+                Boolean.getBoolean(ALLOW_GPU_PROPERTY),
+                queryProperties.queryDecompositionEnabled() ? 2 : 1,
+                log);
 
     // 3. Chunk-count invariant (ADR-0010, Nachtrag #721): the real, production-configured
     //    TokenTextSplitter just ran. Verify every document satisfies the domain's declared
@@ -796,6 +802,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
             EMBEDDING_MODEL,
             actualEmbeddingModelDigest,
             EvalOllamaEndpoint.describeImageOrEndpoint(),
+            ollamaCpuBackend,
             EMBEDDING_DIMENSIONS,
             actualChunkSize,
             actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
@@ -869,6 +876,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
             EMBEDDING_MODEL,
             actualEmbeddingModelDigest,
             EvalOllamaEndpoint.describeImageOrEndpoint(),
+            ollamaCpuBackend,
             EMBEDDING_DIMENSIONS,
             actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
             PGVECTOR_INDEX_TYPE,
@@ -906,6 +914,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
               EMBEDDING_MODEL,
               actualEmbeddingModelDigest,
               EvalOllamaEndpoint.describeImageOrEndpoint(),
+              ollamaCpuBackend,
               EMBEDDING_DIMENSIONS,
               actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
               PGVECTOR_INDEX_TYPE,

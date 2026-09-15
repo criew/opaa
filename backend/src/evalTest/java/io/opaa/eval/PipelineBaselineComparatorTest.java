@@ -46,6 +46,7 @@ class PipelineBaselineComparatorTest {
         "nomic-embed-text:v1.5",
         "digest",
         ollamaImage,
+        "haswell",
         768,
         1000,
         true,
@@ -112,6 +113,7 @@ class PipelineBaselineComparatorTest {
         "nomic-embed-text:v1.5",
         "digest",
         "ollama/ollama:0.6.5",
+        "haswell",
         768,
         1000,
         true,
@@ -152,6 +154,7 @@ class PipelineBaselineComparatorTest {
         cfg.embeddingModel(),
         cfg.embeddingModelDigest(),
         cfg.ollamaImage(),
+        cfg.ollamaCpuBackend(),
         cfg.embeddingDimensions(),
         cfg.chunkSize(),
         cfg.chunkSizeMatchesApplicationDefault(),
@@ -270,6 +273,60 @@ class PipelineBaselineComparatorTest {
     }
   }
 
+  /** Issue #1652: another ggml CPU variant moves embedding rankings - a different measurement. */
+  @Test
+  void aChangedOllamaCpuBackendInvalidatesTheBaseline() {
+    PipelineEvaluationReport.PipelineRunConfiguration cfg = matchingRunConfiguration();
+    PipelineEvaluationReport.PipelineRunConfiguration withDifferentCpuBackend =
+        new PipelineEvaluationReport.PipelineRunConfiguration(
+            cfg.domain(),
+            cfg.embeddingProvider(),
+            cfg.embeddingModel(),
+            cfg.embeddingModelDigest(),
+            cfg.ollamaImage(),
+            "icelake",
+            cfg.embeddingDimensions(),
+            cfg.chunkSize(),
+            cfg.chunkSizeMatchesApplicationDefault(),
+            cfg.chunkOverlap(),
+            cfg.fetchK(),
+            cfg.topK(),
+            cfg.similarityThreshold(),
+            cfg.similarityThresholdNote(),
+            cfg.maxChunksPerDocument(),
+            cfg.mmrLambda(),
+            cfg.fullTextSearchEnabled(),
+            cfg.fullTextIndexUpToDate(),
+            cfg.queryDecompositionEnabled(),
+            cfg.maxSubQueries(),
+            cfg.chatModel(),
+            cfg.hitRateK(),
+            cfg.rankingK(),
+            cfg.pgvectorIndexType(),
+            cfg.corpusManifestSha256(),
+            cfg.corpusDocumentCount(),
+            cfg.goldenDatasetFile(),
+            cfg.goldenDatasetSha256(),
+            cfg.goldenCaseCount(),
+            cfg.ingestionPipelineFingerprint(),
+            cfg.metadataFilterEnabled(),
+            cfg.searchScopeLibraryCount(),
+            cfg.searchScopeNote(),
+            cfg.runStartedAt(),
+            cfg.runDurationSeconds(),
+            cfg.externalOllamaEndpoint());
+
+    PipelineBaselineComparator.ComparisonResult result =
+        PipelineBaselineComparator.compare(
+            baseline(0.5, 20), report(0.5, 20, withDifferentCpuBackend));
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly("ollamaCpuBackend");
+    assertThat(result.checks()).isEmpty();
+  }
+
   /**
    * Issue #1144: a pipeline change (routing, or a version bump on a pipeline the corpus uses) moves
    * the produced chunks without moving corpusManifestSha256, which describes the input files rather
@@ -285,6 +342,7 @@ class PipelineBaselineComparatorTest {
             cfg.embeddingModel(),
             cfg.embeddingModelDigest(),
             cfg.ollamaImage(),
+            cfg.ollamaCpuBackend(),
             cfg.embeddingDimensions(),
             cfg.chunkSize(),
             cfg.chunkSizeMatchesApplicationDefault(),
@@ -341,6 +399,7 @@ class PipelineBaselineComparatorTest {
             cfg.embeddingModel(),
             cfg.embeddingModelDigest(),
             cfg.ollamaImage(),
+            cfg.ollamaCpuBackend(),
             cfg.embeddingDimensions(),
             cfg.chunkSize(),
             cfg.chunkSizeMatchesApplicationDefault(),

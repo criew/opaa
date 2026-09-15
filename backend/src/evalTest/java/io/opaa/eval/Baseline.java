@@ -50,12 +50,15 @@ public record Baseline(
    * @param ollamaImage the pinned Ollama container image the vectors were produced with (issue
    *     #1522). A checked fixed point; a value naming an external endpoint is refused at load time
    *     — see {@link BaselineOllamaOrigin}.
+   * @param ollamaCpuBackend the ggml CPU variant the run's model runners computed with (issue
+   *     #1652, see {@link EvalOllamaCpuBackend}); a checked fixed point.
    */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record FixedPoints(
       String embeddingModel,
       String embeddingModelDigest,
       String ollamaImage,
+      String ollamaCpuBackend,
       int embeddingDimensions,
       int chunkSize,
       boolean chunkSizeMatchesApplicationDefault,

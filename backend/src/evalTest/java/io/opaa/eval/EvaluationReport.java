@@ -86,8 +86,12 @@ public record EvaluationReport(
    * committed baseline states which Ollama produced its vectors instead of leaving that to the
    * {@code notes}. No measured value moves - all six committed baselines record the pinned
    * container they were already measured with (ADR-0012, Nachtrag Ollama-Herkunft).
+   *
+   * <p><b>Bumped to 11 by issue #1652:</b> {@code ollamaCpuBackend} became a checked fixed point -
+   * the ggml CPU kernel set inside that image moves embedding rankings (ADR-0012, Nachtrag
+   * CPU-Backend).
    */
-  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 10;
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 11;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(
@@ -95,6 +99,9 @@ public record EvaluationReport(
       String embeddingModel,
       String embeddingModelDigest,
       String ollamaImage,
+      // Issue #1652: the ggml CPU variant verified by EvalOllamaCpuBackend, null for an external
+      // endpoint.
+      String ollamaCpuBackend,
       int embeddingDimensions,
       int chunkSize,
       boolean chunkSizeMatchesApplicationDefault,

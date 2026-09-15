@@ -54,7 +54,7 @@ class PipelinePathIsolationTest {
                 + "committed raw-vector baselines' measurementContractVersion or "
                 + "BaselineComparator's fixed-point list being updated to match — reconcile all "
                 + "four rather than adjusting only this assertion")
-        .isEqualTo(10);
+        .isEqualTo(11);
   }
 
   @Test
@@ -71,11 +71,11 @@ class PipelinePathIsolationTest {
     // #1357 (HtmlDocumentFormat#version() 2 -> 3 and ConfluenceStorageFormat#version() 1 ->
     // 2, list items with block content keep their marker), plus 1 from issue #1429
     // (fullTextIndexComplete renamed to fullTextIndexUpToDate and narrowed to the version
-    // backlog), plus 1 from issue #1522 (ollamaImage became a checked fixed point) — counted
-    // independently of the raw-vector path above, whose own count (2 plus the same
-    // #1144/#1164/#1183/#1070/#1242/#1315/#1357/#1522 bumps) moves for unrelated reasons at
-    // unrelated points in its history.
-    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(13);
+    // backlog), plus 1 from issue #1522 (ollamaImage became a checked fixed point), plus 1 from
+    // issue #1652 (ollamaCpuBackend) — counted independently of the raw-vector path above, whose
+    // own count (2 plus the same #1144/#1164/#1183/#1070/#1242/#1315/#1357/#1522/#1652 bumps)
+    // moves for unrelated reasons at unrelated points in its history.
+    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(14);
   }
 
   @Test
@@ -212,6 +212,14 @@ class PipelinePathIsolationTest {
                   + "match - a baseline may only name the Ollama it was actually measured with",
               domain.baselineFileName())
           .isEqualTo(EvalOllamaEndpoint.PINNED_IMAGE);
+      // Issue #1652: the same watchdog for the CPU backend the harness pins inside that image.
+      assertThat(
+              Baseline.load(
+                      RepoPaths.evalDir().resolve("baseline").resolve(domain.baselineFileName()))
+                  .fixedPoints()
+                  .ollamaCpuBackend())
+          .as("%s: ollamaCpuBackend", domain.baselineFileName())
+          .isEqualTo(EvalOllamaCpuBackend.PINNED);
 
       assertThat(
               PipelineBaseline.load(
@@ -225,6 +233,15 @@ class PipelinePathIsolationTest {
                   + "pipelineMeasurementContractVersion) being updated to match",
               domain.pipelineBaselineFileName())
           .isEqualTo(EvalOllamaEndpoint.PINNED_IMAGE);
+      assertThat(
+              PipelineBaseline.load(
+                      RepoPaths.evalDir()
+                          .resolve("baseline")
+                          .resolve(domain.pipelineBaselineFileName()))
+                  .fixedPoints()
+                  .ollamaCpuBackend())
+          .as("%s: ollamaCpuBackend", domain.pipelineBaselineFileName())
+          .isEqualTo(EvalOllamaCpuBackend.PINNED);
     }
   }
 

@@ -65,7 +65,6 @@ class ConversationHarnessSupportTest {
             new IndexingProperties(1000, 200, 50, null, null, null, null, 0),
             UUID.randomUUID(),
             List.of(twoTurnCase()),
-            EvalOllamaCpuBackend.PINNED,
             Instant.now());
 
     assertThat(contexts).hasSize(2);
@@ -78,7 +77,8 @@ class ConversationHarnessSupportTest {
         .containsExactly("Was kostet ein Anwohnerparkausweis?", "30,70 Euro pro Jahr.");
     assertThat(contexts.get(1).question()).isEqualTo("Und bei Bedürftigkeit?");
     // Issue #1652: the CPU backend the harness verified is a fixed point of the run it measured.
-    assertThat(report.runConfiguration().ollamaCpuBackend()).isEqualTo(EvalOllamaCpuBackend.PINNED);
+    assertThat(report.runConfiguration().pipeline().ollamaCpuBackend())
+        .isEqualTo(EvalOllamaCpuBackend.PINNED);
   }
 
   /**
@@ -117,7 +117,6 @@ class ConversationHarnessSupportTest {
         new IndexingProperties(1000, 200, 50, null, null, null, null, 0),
         UUID.randomUUID(),
         List.of(twoTurnCase()),
-        EvalOllamaCpuBackend.PINNED,
         Instant.now());
 
     assertThat(contexts).hasSize(2);
@@ -158,7 +157,6 @@ class ConversationHarnessSupportTest {
         new IndexingProperties(1000, 200, 50, null, null, null, null, 0),
         UUID.randomUUID(),
         List.of(twoTurnCase()),
-        EvalOllamaCpuBackend.PINNED,
         Instant.now());
 
     assertThat(contexts).hasSize(2);
@@ -200,6 +198,7 @@ class ConversationHarnessSupportTest {
         "nomic-embed-text:v1.5",
         "digest",
         "ollama/ollama:0.6.5",
+        "haswell",
         768,
         true,
         "hnsw",

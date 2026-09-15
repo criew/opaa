@@ -59,6 +59,8 @@ public record PipelineBaseline(
    * @param ollamaImage the pinned Ollama container image the vectors were produced with (issue
    *     #1522). A checked fixed point; a value naming an external endpoint is refused at load time
    *     — see {@link BaselineOllamaOrigin}.
+   * @param ollamaCpuBackend the ggml CPU variant the run's model runners computed with (issue
+   *     #1652, see {@link EvalOllamaCpuBackend}); a checked fixed point.
    * @param chatModel {@code null} while the harness measures the {@code decomposition-off} variant
    *     — a value here would claim a model took part in the run that did not.
    * @param hitRateK the two metric windows the report's field names state literally; a change makes
@@ -69,6 +71,7 @@ public record PipelineBaseline(
       String embeddingModel,
       String embeddingModelDigest,
       String ollamaImage,
+      String ollamaCpuBackend,
       int embeddingDimensions,
       int chunkSize,
       boolean chunkSizeMatchesApplicationDefault,

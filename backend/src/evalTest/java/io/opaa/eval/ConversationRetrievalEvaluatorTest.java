@@ -575,6 +575,7 @@ class ConversationRetrievalEvaluatorTest {
             "nomic-embed-text:v1.5",
             "digest",
             "ollama/ollama:0.6.5",
+            "haswell",
             768,
             1000,
             true,
@@ -609,7 +610,6 @@ class ConversationRetrievalEvaluatorTest {
             20,
             ConversationMemoryProfile.SEARCH_WINDOW_QUESTION_ONLY,
             ConversationMemoryProfile.NO_CONVERSATION_NOTE),
-        2,
-        EvalOllamaCpuBackend.PINNED);
+        2);
   }
 }

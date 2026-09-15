@@ -64,7 +64,7 @@ public final class ConversationReportWriter {
         format(
             "  query-decomposition-enabled=%s, max-sub-queries=%d, Chat-Modell=%s\n",
             pipeline.queryDecompositionEnabled(), pipeline.maxSubQueries(), pipeline.chatModel()));
-    sb.append(format("  Ollama-CPU-Backend: %s\n", cfg.ollamaCpuBackend()));
+    sb.append(format("  Ollama-CPU-Backend: %s\n", pipeline.ollamaCpuBackend()));
     sb.append(
         format(
             "  Datensatz: %s, %d Fälle, %d Runden, Hash %s\n",
@@ -155,7 +155,7 @@ public final class ConversationReportWriter {
             profile.searchWindowLabel(),
             profile.noteCap(),
             cfg.pipeline().chatModel(),
-            cfg.ollamaCpuBackend()));
+            cfg.pipeline().ollamaCpuBackend()));
     sb.append(format("_%s_\n\n", report.metricWindowNote()));
 
     sb.append("### Mehrfachlauf\n\n");

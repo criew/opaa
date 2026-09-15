@@ -474,6 +474,7 @@ class BaselineComparatorTest {
             cfg.embeddingModel(),
             cfg.embeddingModelDigest(),
             cfg.ollamaImage(),
+            cfg.ollamaCpuBackend(),
             cfg.embeddingDimensions(),
             cfg.chunkSize(),
             cfg.chunkSizeMatchesApplicationDefault(),
@@ -514,6 +515,7 @@ class BaselineComparatorTest {
             cfg.embeddingModel(),
             cfg.embeddingModelDigest(),
             cfg.ollamaImage(),
+            cfg.ollamaCpuBackend(),
             cfg.embeddingDimensions(),
             cfg.chunkSize(),
             cfg.chunkSizeMatchesApplicationDefault(),
@@ -560,6 +562,7 @@ class BaselineComparatorTest {
             cfg.embeddingModel(),
             cfg.embeddingModelDigest(),
             cfg.ollamaImage(),
+            cfg.ollamaCpuBackend(),
             cfg.embeddingDimensions(),
             cfg.chunkSize(),
             cfg.chunkSizeMatchesApplicationDefault(),
@@ -604,6 +607,7 @@ class BaselineComparatorTest {
             cfg.embeddingModel(),
             cfg.embeddingModelDigest(),
             cfg.ollamaImage(),
+            cfg.ollamaCpuBackend(),
             cfg.embeddingDimensions(),
             cfg.chunkSize(),
             cfg.chunkSizeMatchesApplicationDefault(),
@@ -904,6 +908,7 @@ class BaselineComparatorTest {
         model,
         digest,
         ollamaImage,
+        "haswell",
         768,
         1000,
         true,
@@ -929,6 +934,7 @@ class BaselineComparatorTest {
         model,
         digest,
         "ollama/ollama:0.6.5",
+        "haswell",
         768,
         1000,
         true,
@@ -996,6 +1002,48 @@ class BaselineComparatorTest {
 
   // --- issue #721 code review, Nit 6: fixed-point drift for the new #721 fixed points -----------
 
+  /** Issue #1652: another ggml CPU variant moves embedding rankings - a different measurement. */
+  @Test
+  void detectsOllamaCpuBackendDrift() {
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
+    RunConfiguration cfg = runConfiguration("m1", "d1", "corpus-a", "golden-a");
+    RunConfiguration withDifferentCpuBackend =
+        new RunConfiguration(
+            cfg.embeddingProvider(),
+            cfg.embeddingModel(),
+            cfg.embeddingModelDigest(),
+            cfg.ollamaImage(),
+            "icelake",
+            cfg.embeddingDimensions(),
+            cfg.chunkSize(),
+            cfg.chunkSizeMatchesApplicationDefault(),
+            cfg.chunkOverlap(),
+            cfg.documentTopK(),
+            cfg.chunkTopK(),
+            cfg.searchTopK(),
+            cfg.productionSimilarityThreshold(),
+            cfg.similarityThresholdNote(),
+            cfg.pgvectorIndexType(),
+            cfg.corpusManifestSha256(),
+            cfg.corpusDocumentCount(),
+            cfg.goldenDatasetFile(),
+            cfg.goldenDatasetSha256(),
+            cfg.goldenCaseCount(),
+            cfg.ingestionPipelineFingerprint(),
+            cfg.metadataFilterEnabled(),
+            cfg.runStartedAt(),
+            cfg.runDurationSeconds(),
+            cfg.externalOllamaEndpoint());
+    EvaluationReport report = reportWith(withDifferentCpuBackend);
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly("ollamaCpuBackend");
+  }
+
   @Test
   void detectsChunkOverlapDrift() {
     Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
@@ -1006,6 +1054,7 @@ class BaselineComparatorTest {
             cfg.embeddingModel(),
             cfg.embeddingModelDigest(),
             cfg.ollamaImage(),
+            cfg.ollamaCpuBackend(),
             cfg.embeddingDimensions(),
             cfg.chunkSize(),
             cfg.chunkSizeMatchesApplicationDefault(),
@@ -1046,6 +1095,7 @@ class BaselineComparatorTest {
             cfg.embeddingModel(),
             cfg.embeddingModelDigest(),
             cfg.ollamaImage(),
+            cfg.ollamaCpuBackend(),
             cfg.embeddingDimensions(),
             cfg.chunkSize(),
             cfg.chunkSizeMatchesApplicationDefault(),
@@ -1086,6 +1136,7 @@ class BaselineComparatorTest {
             cfg.embeddingModel(),
             cfg.embeddingModelDigest(),
             cfg.ollamaImage(),
+            cfg.ollamaCpuBackend(),
             cfg.embeddingDimensions(),
             cfg.chunkSize(),
             cfg.chunkSizeMatchesApplicationDefault(),

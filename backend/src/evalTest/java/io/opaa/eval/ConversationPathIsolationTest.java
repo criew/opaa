@@ -98,7 +98,8 @@ class ConversationPathIsolationTest {
     assertThat(baseline.fixedPoints().pipeline().ollamaImage())
         .isEqualTo(EvalOllamaEndpoint.PINNED_IMAGE);
     // Issue #1652: the same watchdog for the CPU backend the harness pins inside that image.
-    assertThat(baseline.fixedPoints().ollamaCpuBackend()).isEqualTo(EvalOllamaCpuBackend.PINNED);
+    assertThat(baseline.fixedPoints().pipeline().ollamaCpuBackend())
+        .isEqualTo(EvalOllamaCpuBackend.PINNED);
   }
 
   /**
@@ -166,6 +167,7 @@ class ConversationPathIsolationTest {
               "embeddingModel": "nomic-embed-text:v1.5",
               "embeddingModelDigest": "digest",
               "ollamaImage": "ollama/ollama:0.6.5",
+              "ollamaCpuBackend": "haswell",
               "embeddingDimensions": 768,
               "chunkSize": 1000,
               "chunkSizeMatchesApplicationDefault": true,
@@ -194,8 +196,7 @@ class ConversationPathIsolationTest {
             "conversationWindowMessages": 20,
             "searchWindowTurns": 0,
             "conversationNoteCap": 0,
-            "turnCount": 20,
-            "ollamaCpuBackend": "haswell"
+            "turnCount": 20
           },
           "groups": {},
           "measuredAt": "2026-09-11T00:00:00Z",
@@ -217,8 +218,7 @@ class ConversationPathIsolationTest {
                 20,
                 ConversationMemoryProfile.SEARCH_WINDOW_QUESTION_ONLY,
                 0,
-                20,
-                EvalOllamaCpuBackend.PINNED),
+                20),
             Map.of(),
             "2026-09-11T00:00:00Z",
             null,
@@ -247,8 +247,7 @@ class ConversationPathIsolationTest {
                 20,
                 ConversationMemoryProfile.SEARCH_WINDOW_QUESTION_ONLY,
                 0,
-                20,
-                EvalOllamaCpuBackend.PINNED),
+                20),
             Map.of(),
             "2026-09-15T00:00:00Z",
             null,
@@ -269,6 +268,7 @@ class ConversationPathIsolationTest {
         "nomic-embed-text:v1.5",
         "digest",
         "ollama/ollama:0.6.5",
+        "haswell",
         768,
         1000,
         true,
@@ -308,6 +308,7 @@ class ConversationPathIsolationTest {
                 "nomic-embed-text:v1.5",
                 "digest",
                 "ollama/ollama:0.6.5",
+                ollamaCpuBackend,
                 768,
                 1000,
                 true,
@@ -339,8 +340,7 @@ class ConversationPathIsolationTest {
                 1.0,
                 false),
             new ConversationMemoryProfile(20, searchWindowTurns, 0),
-            20,
-            ollamaCpuBackend),
+            20),
         PipelineMetricsAggregate.of(List.of()),
         Map.of(),
         Map.of(),
