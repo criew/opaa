@@ -90,8 +90,12 @@ public record EvaluationReport(
    * <p><b>Bumped to 11 by issue #1652:</b> {@code ollamaCpuBackend} became a checked fixed point -
    * the ggml CPU kernel set inside that image moves embedding rankings (ADR-0012, Nachtrag
    * CPU-Backend).
+   *
+   * <p><b>Bumped to 12 by issue #1650:</b> {@code contextPrefixFingerprint} became a checked fixed
+   * point - the form of the Kontextpräfix moves every multi-chunk embedding without moving a
+   * pipeline version (ADR-0012, Nachtrag Kontextpräfix-Form).
    */
-  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 11;
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 12;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(
@@ -139,6 +143,9 @@ public record EvaluationReport(
       // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
       // Javadoc for why corpusManifestSha256 alone does not answer that question.
       String ingestionPipelineFingerprint,
+      // The form of the Kontextpräfix the corpus was embedded with, see
+      // ContextPrefixFingerprint.
+      String contextPrefixFingerprint,
       // Issue #1070 (Teil 2): whether every golden case's filter was applied inside the search
       // (as a Filter.Expression on similaritySearch, built by MetadataFilterExpressions exactly as
       // the production vector path builds it). A fixed point: the metadata_filter class measures

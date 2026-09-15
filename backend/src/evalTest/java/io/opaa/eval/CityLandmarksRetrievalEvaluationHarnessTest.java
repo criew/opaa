@@ -795,6 +795,8 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     // Issue #1144: the pipeline registry DocumentIngestService actually routed through while
     // indexing this corpus, not a second, potentially drifting re-derivation.
     String ingestionPipelineFingerprint = IngestionPipelineFingerprint.of(pipelineRegistry);
+    // The prefix form the ingest above embedded every chunk with.
+    String contextPrefixFingerprint = ContextPrefixFingerprint.current();
 
     RunConfiguration runConfiguration =
         new RunConfiguration(
@@ -821,6 +823,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
             GoldenDataset.sha256(goldenFile),
             goldenCases.size(),
             ingestionPipelineFingerprint,
+            contextPrefixFingerprint,
             // Issue #1070: derived from the run above - true exactly when every filtered case
             // reached similaritySearch with its filter expression.
             appliedFilters == filteredCases,
@@ -887,6 +890,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
             // Whether the lexical index of this run sat at the current tsv version.
             fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isUpToDate(),
             ingestionPipelineFingerprint,
+            contextPrefixFingerprint,
             activeChatModel),
         retrievalPipeline,
         retrievalContextFactory,
@@ -924,6 +928,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
               GoldenDataset.sha256(goldenFile),
               fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isUpToDate(),
               ingestionPipelineFingerprint,
+              contextPrefixFingerprint,
               activeChatModel),
           queryProperties,
           indexingProperties,

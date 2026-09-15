@@ -510,7 +510,10 @@ jobs:
             # Mehrfachlauf-Regel verlangt drei Messungen (docs/features/retrieval-benchmark.md,
             # Abschnitt 3). Auf einer Entwicklermaschine (CPU/Testcontainer) dauert eine Messung
             # 14-29 Minuten, der ganze Task-Lauf einschließlich Indizierung und
-            # Einzelfragen-Teil rund 52 Minuten.
+            # Einzelfragen-Teil rund 52 Minuten. Der Einzelfragen-Teil ist hier nur die
+            # Rohvektor-Messung: Die Pipeline-Messung der Einzelfragen lässt der Harness aus, weil
+            # sie unter aktiver Zerlegung liefe, gegen die keine Baseline gezogen ist. Die 52 Minuten
+            # sind noch mit ihr gemessen.
             # Ein GitHub-Runner ist deutlich langsamer. Gemessene Anhaltspunkte: verwaltung
             # (Einzelfragen) lag im Lauf 34648243211 bei 16 min 28 s gegen rund 7 min lokal, also
             # Faktor ~2,4 einschließlich Modell-Zug; bei city-landmarks ist der Faktor deutlich

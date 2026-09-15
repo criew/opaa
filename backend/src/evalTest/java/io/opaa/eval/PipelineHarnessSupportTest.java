@@ -45,6 +45,7 @@ class PipelineHarnessSupportTest {
           "hash",
           true,
           "markdown:1",
+          "prefix",
           CHAT_MODEL);
 
   private static QueryProperties productionLikeProperties(
@@ -243,6 +244,7 @@ class PipelineHarnessSupportTest {
         "hash",
         true,
         "markdown:1",
+        "prefix",
         chatModel);
   }
 }

@@ -491,6 +491,7 @@ class BaselineComparatorTest {
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
             cfg.ingestionPipelineFingerprint(),
+            cfg.contextPrefixFingerprint(),
             cfg.metadataFilterEnabled(),
             cfg.runStartedAt(),
             cfg.runDurationSeconds(),
@@ -532,6 +533,7 @@ class BaselineComparatorTest {
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
             cfg.ingestionPipelineFingerprint(),
+            cfg.contextPrefixFingerprint(),
             cfg.metadataFilterEnabled(),
             cfg.runStartedAt(),
             cfg.runDurationSeconds(),
@@ -579,6 +581,7 @@ class BaselineComparatorTest {
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
             "markdown:2",
+            cfg.contextPrefixFingerprint(),
             cfg.metadataFilterEnabled(),
             cfg.runStartedAt(),
             cfg.runDurationSeconds(),
@@ -591,6 +594,52 @@ class BaselineComparatorTest {
     assertThat(result.fixedPointMismatches())
         .extracting(BaselineComparator.FixedPointMismatch::field)
         .containsExactly("ingestionPipelineFingerprint");
+  }
+
+  /**
+   * Issue #1650: a changed Kontextpräfix form moves every multi-chunk embedding without moving a
+   * pipeline version or the corpus hash - a run under another form measured something else.
+   */
+  @Test
+  void detectsContextPrefixFingerprintDrift() {
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
+    RunConfiguration cfg = runConfiguration("m1", "d1", "corpus-a", "golden-a");
+    RunConfiguration withDifferentPrefixForm =
+        new RunConfiguration(
+            cfg.embeddingProvider(),
+            cfg.embeddingModel(),
+            cfg.embeddingModelDigest(),
+            cfg.ollamaImage(),
+            cfg.ollamaCpuBackend(),
+            cfg.embeddingDimensions(),
+            cfg.chunkSize(),
+            cfg.chunkSizeMatchesApplicationDefault(),
+            cfg.chunkOverlap(),
+            cfg.documentTopK(),
+            cfg.chunkTopK(),
+            cfg.searchTopK(),
+            cfg.productionSimilarityThreshold(),
+            cfg.similarityThresholdNote(),
+            cfg.pgvectorIndexType(),
+            cfg.corpusManifestSha256(),
+            cfg.corpusDocumentCount(),
+            cfg.goldenDatasetFile(),
+            cfg.goldenDatasetSha256(),
+            cfg.goldenCaseCount(),
+            cfg.ingestionPipelineFingerprint(),
+            "other-prefix-form",
+            cfg.metadataFilterEnabled(),
+            cfg.runStartedAt(),
+            cfg.runDurationSeconds(),
+            cfg.externalOllamaEndpoint());
+    EvaluationReport report = reportWith(withDifferentPrefixForm);
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly("contextPrefixFingerprint");
   }
 
   /**
@@ -624,6 +673,7 @@ class BaselineComparatorTest {
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
             cfg.ingestionPipelineFingerprint(),
+            cfg.contextPrefixFingerprint(),
             false,
             cfg.runStartedAt(),
             cfg.runDurationSeconds(),
@@ -924,6 +974,7 @@ class BaselineComparatorTest {
         goldenSha,
         121,
         "markdown:1",
+        "prefix",
         true);
   }
 
@@ -951,6 +1002,7 @@ class BaselineComparatorTest {
         goldenSha,
         121,
         "markdown:1",
+        "prefix",
         true,
         "2026-08-03T00:00:00Z",
         1004.0,
@@ -1030,6 +1082,7 @@ class BaselineComparatorTest {
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
             cfg.ingestionPipelineFingerprint(),
+            cfg.contextPrefixFingerprint(),
             cfg.metadataFilterEnabled(),
             cfg.runStartedAt(),
             cfg.runDurationSeconds(),
@@ -1071,6 +1124,7 @@ class BaselineComparatorTest {
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
             cfg.ingestionPipelineFingerprint(),
+            cfg.contextPrefixFingerprint(),
             cfg.metadataFilterEnabled(),
             cfg.runStartedAt(),
             cfg.runDurationSeconds(),
@@ -1112,6 +1166,7 @@ class BaselineComparatorTest {
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
             cfg.ingestionPipelineFingerprint(),
+            cfg.contextPrefixFingerprint(),
             cfg.metadataFilterEnabled(),
             cfg.runStartedAt(),
             cfg.runDurationSeconds(),
@@ -1153,6 +1208,7 @@ class BaselineComparatorTest {
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
             cfg.ingestionPipelineFingerprint(),
+            cfg.contextPrefixFingerprint(),
             cfg.metadataFilterEnabled(),
             cfg.runStartedAt(),
             cfg.runDurationSeconds(),

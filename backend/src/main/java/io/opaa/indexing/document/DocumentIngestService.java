@@ -4,7 +4,6 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.chunk.ChunkContextPrefix;
-import io.opaa.indexing.chunk.ChunkContextTitle;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.format.ChunkFormatMetadata;
@@ -14,7 +13,6 @@ import io.opaa.indexing.format.DocumentFormatRegistry;
 import io.opaa.indexing.format.DocumentFormatResult;
 import io.opaa.indexing.format.DocumentFormatRunner;
 import io.opaa.indexing.format.DocumentFormatSource;
-import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.indexing.metadata.CoreMetadataChunkKeys;
 import io.opaa.indexing.metadata.DocumentChunkMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
@@ -43,7 +41,6 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.document.ContentFormatter;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.scheduling.annotation.Async;
 
@@ -59,24 +56,6 @@ public class DocumentIngestService {
 
   /** Text that never was a file has no detectable media type; every text source delivers XHTML. */
   private static final String TEXT_CONTENT_TYPE = "text/html";
-
-  /**
-   * Makes {@code getFormattedContent(EMBED)} byte-identical to {@code getText()}: no metadata ever
-   * reaches the embedding input. Applied to a document {@link #storeChunks} found to be one chunk.
-   */
-  private static final ContentFormatter CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX =
-      (document, mode) -> document.getText();
-
-  /**
-   * The {@code EMBED}-only formatter carrying one chunk's Kontextpraefix (ingestion-pipelines.md,
-   * Querschnittsregel (b); metadata-schema.md, Wirkstelle 2): the prefix in brackets, a blank line,
-   * then the chunk text. Ignores every metadata key rather than excluding a known list, so a key
-   * added later cannot re-enter the embedding input. Stored chunk text and citations are unaffected
-   * - the quoted excerpt in a Beleg stays the original wording.
-   */
-  private static ContentFormatter chunkEmbedFormatterWithPrefix(String prefix) {
-    return (document, mode) -> ChunkContextPrefix.format(prefix, document.getText());
-  }
 
   private final DocumentFormatRegistry pipelineRegistry;
   private final DocumentRepository documentRepository;
@@ -271,7 +250,7 @@ public class DocumentIngestService {
       attachSourceContext(chunks, pipeline, ingest.context());
       DocumentChunkMetadata coreMetadata =
           extractCoreMetadata(
-              doc, fileName, parsed.withProperties(declaredProperties(parsed, ingest)));
+              doc, fileName, parsed.withProperties(ingest.declaredOver(parsed.properties())));
       String contextTitle = contextTitleFor(ingest);
       ModelExtractionOutcome modelOutcome = extractWithModel(doc, library, contextTitle, chunks);
       if (modelOutcome.chunkMetadata() != null) {
@@ -468,43 +447,10 @@ public class DocumentIngestService {
     chunks.forEach(chunk -> chunk.getMetadata().putAll(contextKeys));
   }
 
-  /** What the source declares about the document (ADR-0024), laid over what the format found. */
-  private static DocumentProperties declaredProperties(
-      DocumentFormatResult parsed, DocumentIngest ingest) {
-    DocumentProperties properties = parsed.properties();
-    if (ingest.syntheticName()) {
-      properties = properties.withSyntheticName(true);
-    }
-    if (ingest.title() != null) {
-      properties = properties.withTitle(ingest.title());
-    }
-    if (ingest.documentDate() != null) {
-      properties = properties.withDocumentDate(ingest.documentDate());
-    }
-    if (ingest.modifiedAt() != null) {
-      properties = properties.withModifiedAt(ingest.modifiedAt());
-    }
-    return properties;
-  }
-
-  /**
-   * The chunk-context prefix (ingestion-pipelines.md, Querschnittsregel (b)): a file name is
-   * humanized by {@link ChunkContextTitle}; a synthetic name is the declared title verbatim behind
-   * its hierarchy path, and {@code null} without a title - a URL fallback would share a prefix.
-   */
+  /** The ingest's own prefix title, see {@link ChunkContextPrefix#ingestTitle}. */
   private static String contextTitleFor(DocumentIngest ingest) {
-    if (!ingest.syntheticName()) {
-      return ChunkContextTitle.deriveTitle(ingest.fileName());
-    }
-    String title = ingest.title();
-    SourceDocumentContext context = ingest.context();
-    if (title == null) {
-      return null;
-    }
-    if (context == null || context.hierarchyPath() == null || context.hierarchyPath().isBlank()) {
-      return title;
-    }
-    return context.hierarchyPath() + SourceDocumentContext.HIERARCHY_SEPARATOR + title;
+    return ChunkContextPrefix.ingestTitle(
+        ingest.syntheticName(), ingest.fileName(), ingest.title(), ingest.context());
   }
 
   /**
@@ -688,11 +634,10 @@ public class DocumentIngestService {
 
   /**
    * Enriches {@code chunks} with permission-filter and citation metadata and puts each chunk's
-   * Kontextpraefix onto the embedding input only - built by {@link ChunkContextPrefix#forChunk}
+   * Kontextpraefix onto the embedding input only - applied by {@link ChunkContextPrefix#applyTo}
    * from the Kernfeld Titel, the document's prefix-effective values and the chunk's Strukturkontext
-   * (metadata-schema.md, Wirkstelle 2). A chunk without a prefix gets {@link
-   * #CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX}. Records afterwards which prefix the chunks were
-   * written with, so the Nachlauf knows what is current.
+   * (metadata-schema.md, Wirkstelle 2). Records afterwards which prefix the chunks were written
+   * with, so the Nachlauf knows what is current.
    *
    * @param contextTitle the fallback title, or {@code null} if this document type never gets a
    *     prefix at all (see {@link #contextTitleFor}). The Kernfeld Titel takes precedence over it
@@ -716,12 +661,12 @@ public class DocumentIngestService {
       DocumentFormat pipeline,
       Optional<String> routingExtension,
       DocumentChunkMetadata chunkMetadata) {
-    boolean documentWasSplit = chunks.size() >= 2;
+    boolean documentWasSplit = ChunkContextPrefix.documentWasSplit(chunks.size());
     // The Kernfeld Titel replaces the file-name humanisation the prefix used before; the caller's
     // own candidate stays the fallback and still decides whether this document type gets a prefix
     // at all - an RSS entry without a headline never does. That decision is recorded below, so the
     // Nachlauf honours it instead of guessing it.
-    boolean prefixEligible = contextTitle != null;
+    boolean prefixEligible = ChunkContextPrefix.eligible(contextTitle);
     String prefixTitle =
         ChunkContextPrefix.titleAtRest(prefixEligible, chunkMetadata.contextTitle(), contextTitle);
     Set<String> passthroughKeys = pipelineRegistry.allPassthroughMetadataKeys();
@@ -767,18 +712,12 @@ public class DocumentIngestService {
                   }
                   org.springframework.ai.document.Document enrichedChunk =
                       new org.springframework.ai.document.Document(chunk.getText(), metadata);
-                  String prefix =
-                      ChunkContextPrefix.forChunk(
-                          prefixEligible,
-                          documentWasSplit,
-                          prefixTitle,
-                          chunkMetadata.contextPrefixValues(),
-                          metadata.get(ChunkingService.LOCATION_METADATA_KEY),
-                          chunk.getText());
-                  enrichedChunk.setContentFormatter(
-                      prefix == null
-                          ? CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX
-                          : chunkEmbedFormatterWithPrefix(prefix));
+                  ChunkContextPrefix.applyTo(
+                      enrichedChunk,
+                      prefixEligible,
+                      documentWasSplit,
+                      prefixTitle,
+                      chunkMetadata.contextPrefixValues());
                   return enrichedChunk;
                 })
             .toList();

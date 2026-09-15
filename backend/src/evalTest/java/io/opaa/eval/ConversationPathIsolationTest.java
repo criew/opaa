@@ -27,7 +27,7 @@ class ConversationPathIsolationTest {
    */
   @Test
   void theMultiTurnPathCountsItsOwnContractVersionSeparately() {
-    assertThat(ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION).isEqualTo(3);
+    assertThat(ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION).isEqualTo(4);
   }
 
   @Test
@@ -100,6 +100,9 @@ class ConversationPathIsolationTest {
     // Issue #1652: the same watchdog for the CPU backend the harness pins inside that image.
     assertThat(baseline.fixedPoints().pipeline().ollamaCpuBackend())
         .isEqualTo(EvalOllamaCpuBackend.PINNED);
+    // Issue #1650: the prefix form this build embeds with.
+    assertThat(baseline.fixedPoints().pipeline().contextPrefixFingerprint())
+        .isEqualTo(ContextPrefixFingerprint.current());
   }
 
   /**
@@ -161,7 +164,7 @@ class ConversationPathIsolationTest {
   private static final String DECOMPOSITION_OFF_BASELINE_JSON =
       """
         {
-          "conversationMeasurementContractVersion": 3,
+          "conversationMeasurementContractVersion": 4,
           "fixedPoints": {
             "pipeline": {
               "embeddingModel": "nomic-embed-text:v1.5",
@@ -191,6 +194,7 @@ class ConversationPathIsolationTest {
               "goldenDatasetSha256": "dataset",
               "goldenCaseCount": 8,
               "ingestionPipelineFingerprint": "markdown:3",
+              "contextPrefixFingerprint": "prefix",
               "metadataFilterEnabled": false
             },
             "conversationWindowMessages": 20,
@@ -292,6 +296,7 @@ class ConversationPathIsolationTest {
         "dataset",
         8,
         "markdown:3",
+        "prefix",
         false);
   }
 
@@ -333,6 +338,7 @@ class ConversationPathIsolationTest {
                 "dataset",
                 8,
                 "markdown:3",
+                "prefix",
                 false,
                 1,
                 "scope",

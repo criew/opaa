@@ -424,10 +424,9 @@ Ideen und bekannte Schwächen, keine Zusagen. Konsolidiert aus den verstreuten V
   Dokuments, das beim Chunking in **2 oder mehr Chunks zerfiel**, vor dem Einbetten einen aus dem
   Dateinamen abgeleiteten, bereinigten Titel voran (`ChunkContextTitle#deriveTitle`, z. B. `"[prag]"`
   statt des rohen `"city-0022_prag.md"`) - ausschließlich für die `EMBED`-Formatierung der
-  Einbettung, nicht für den gespeicherten Chunk-Text (siehe
-  `CHUNK_EMBED_CONTENT_FORMATTER_WITH_PREFIX` für die vollständige Begründung, inklusive der
-  Wechselwirkung mit `chunk-size`). Ein Dokument, das **ein einziger Chunk** blieb, bekommt bewusst
-  **keinen** Präfix (`CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX`, bit-identisch zum Stand vor #933) -
+  Einbettung, nicht für den gespeicherten Chunk-Text (heute `ChunkContextPrefix#applyTo`, über den
+  beide Schreibwege laufen). Ein Dokument, das **ein einziger Chunk** blieb, bekommt bewusst
+  **keinen** Präfix (Einbettungseingabe bit-identisch zum Chunk-Text, wie vor #933) -
   ein Detail-Chunk verliert Kontext durch das Zerteilen, ein ungesplittetes Dokument trägt seinen
   vollen Kontext bereits selbst. Diese Eingrenzung kam erst in einer zweiten Korrekturrunde: Ein
   Präfix aus dem rohen Dateinamen auf *jeden* Chunk (auch ungesplitteter Dokumente) verbesserte die

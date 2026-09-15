@@ -1,6 +1,8 @@
 package io.opaa.indexing.metadata;
 
 import io.opaa.library.KnowledgeLibrary;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Which core fields belong into a library's Kontextpraefix. {@code title} is always {@code true}:
@@ -13,5 +15,21 @@ public record CoreContextPrefixSettings(boolean title, boolean documentType, boo
   public static CoreContextPrefixSettings of(KnowledgeLibrary library) {
     return new CoreContextPrefixSettings(
         true, library.isCoreContextPrefixDocumentType(), library.isCoreContextPrefixDocumentDate());
+  }
+
+  /**
+   * The core-field segments these settings put into the prefix, in schema order: the Dokumentart
+   * label, then the date at its own precision. The title is not among them - it leads the prefix.
+   */
+  public List<String> coreValues(CoreMetadata core) {
+    List<String> values = new ArrayList<>();
+    if (documentType && core.documentTypeLabel() != null && !core.documentTypeLabel().isBlank()) {
+      values.add(core.documentTypeLabel());
+    }
+    if (documentDate && core.documentDate() != null) {
+      values.add(
+          MetadataValueDisplay.displayDate(core.documentDate(), core.documentDatePrecision()));
+    }
+    return values;
   }
 }

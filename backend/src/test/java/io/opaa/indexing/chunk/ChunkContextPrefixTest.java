@@ -2,9 +2,13 @@ package io.opaa.indexing.chunk;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.indexing.document.SourceDocumentContext;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.document.MetadataMode;
 
 /**
  * {@link ChunkContextPrefix} (#1072): the format of the Kontextpräfix, that an empty segment is
@@ -178,5 +182,54 @@ class ChunkContextPrefixTest {
   void formatsThePrefixInBracketsAheadOfTheUntouchedChunkText() {
     assertThat(ChunkContextPrefix.format("Satzung › Fassung 2026", "37,00 EUR"))
         .isEqualTo("[Satzung › Fassung 2026]\n\n37,00 EUR");
+  }
+
+  @Test
+  void appliesThePrefixToTheEmbeddingInputOnlyAndReadsTheStructureContextFromTheFundort() {
+    Document chunk =
+        new Document(
+            "37,00 EUR",
+            Map.of(
+                ChunkingService.LOCATION_METADATA_KEY, "Abschn. § 7 Gebühren", "file_name", "x"));
+
+    ChunkContextPrefix.applyTo(chunk, true, true, "Satzung", List.of("Fassung 2026"));
+
+    assertThat(chunk.getFormattedContent(MetadataMode.EMBED))
+        .isEqualTo("[Satzung › Fassung 2026 › § 7 Gebühren]\n\n37,00 EUR");
+    assertThat(chunk.getText()).isEqualTo("37,00 EUR");
+  }
+
+  @Test
+  void derivesTheIngestTitleFromTheFileNameOrTheDeclaredTitleBehindItsHierarchyPath() {
+    assertThat(ChunkContextPrefix.ingestTitle(false, "001_personalausweis.md", "egal", null))
+        .isEqualTo("personalausweis");
+    assertThat(
+            ChunkContextPrefix.ingestTitle(
+                true, "x", "Öffnungszeiten", new SourceDocumentContext("K", "Bürgerservice")))
+        .isEqualTo("Bürgerservice / Öffnungszeiten");
+    assertThat(
+            ChunkContextPrefix.ingestTitle(
+                true, "x", "Öffnungszeiten", new SourceDocumentContext("K", " ")))
+        .isEqualTo("Öffnungszeiten");
+    assertThat(ChunkContextPrefix.ingestTitle(true, "https://example.org/a", null, null)).isNull();
+    assertThat(ChunkContextPrefix.eligible(null)).isFalse();
+    assertThat(ChunkContextPrefix.eligible("Öffnungszeiten")).isTrue();
+  }
+
+  @Test
+  void countsADocumentAsSplitFromTwoChunksOn() {
+    assertThat(ChunkContextPrefix.documentWasSplit(1)).isFalse();
+    assertThat(ChunkContextPrefix.documentWasSplit(2)).isTrue();
+  }
+
+  @Test
+  void leavesTheEmbeddingInputByteIdenticalToTheTextWhenTheChunkGetsNoPrefix() {
+    Document unsplit = new Document("37,00 EUR", Map.of("file_name", "satzung.md"));
+    ChunkContextPrefix.applyTo(unsplit, true, false, "Satzung", List.of());
+    assertThat(unsplit.getFormattedContent(MetadataMode.EMBED)).isEqualTo("37,00 EUR");
+
+    Document ineligible = new Document("37,00 EUR", Map.of("file_name", "satzung.md"));
+    ChunkContextPrefix.applyTo(ineligible, false, true, "Satzung", List.of("Fassung 2026"));
+    assertThat(ineligible.getFormattedContent(MetadataMode.EMBED)).isEqualTo("37,00 EUR");
   }
 }

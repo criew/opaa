@@ -246,6 +246,7 @@ public final class ConversationHarnessSupport {
             ConversationDataset.sha256(datasetFile),
             identity.fullTextIndexUpToDate(),
             identity.ingestionPipelineFingerprint(),
+            identity.contextPrefixFingerprint(),
             identity.chatModel());
     return new ConversationRunConfiguration(
         PipelineHarnessSupport.buildRunConfiguration(

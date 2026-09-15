@@ -78,11 +78,13 @@ public final class PipelineReportWriter {
             cfg.pgvectorIndexType()));
     sb.append(
         format(
-            "  Korpus: %d Dokumente, Manifest %s, Ingestion-Pipelines %s, Metadatenfilter der "
+            "  Korpus: %d Dokumente, Manifest %s, Ingestion-Pipelines %s, Kontextpräfix %s, "
+                + "Metadatenfilter der "
                 + "Golden-Fälle angewandt: %s\n",
             cfg.corpusDocumentCount(),
             shortHash(cfg.corpusManifestSha256()),
             cfg.ingestionPipelineFingerprint(),
+            shortHash(cfg.contextPrefixFingerprint()),
             cfg.metadataFilterEnabled()));
     sb.append(
         format(

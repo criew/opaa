@@ -233,8 +233,9 @@ fun registerEvalDomain(
         conversationEvaluateTaskName,
         "Runs the same harness as evaluate${name}Retrieval but with the multi-turn step switched " +
             "on (issue #1484): three measurements of the domain's conversation dataset over the " +
-            "corpus the run has just indexed. Needs Docker; far longer than the single-question " +
-            "run, one chat call per turn. Not part of build/check.",
+            "corpus the run has just indexed; the single-question pipeline path is skipped. Needs " +
+            "Docker; far longer than the single-question run, one chat call per turn. Not part " +
+            "of build/check.",
         harnessTestClass,
         mapOf(
             "opaa.eval.runConversations" to "true",

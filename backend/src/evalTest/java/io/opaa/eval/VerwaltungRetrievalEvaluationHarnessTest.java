@@ -812,6 +812,8 @@ class VerwaltungRetrievalEvaluationHarnessTest {
     // Issue #1144: the pipeline registry DocumentIngestService actually routed through while
     // indexing this corpus, not a second, potentially drifting re-derivation.
     String ingestionPipelineFingerprint = IngestionPipelineFingerprint.of(pipelineRegistry);
+    // The prefix form the ingest above embedded every chunk with.
+    String contextPrefixFingerprint = ContextPrefixFingerprint.current();
 
     RunConfiguration runConfiguration =
         new RunConfiguration(
@@ -838,6 +840,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
             GoldenDataset.sha256(goldenFile),
             goldenCases.size(),
             ingestionPipelineFingerprint,
+            contextPrefixFingerprint,
             // Issue #1070: derived from the run above - true exactly when every filtered case
             // reached similaritySearch with its filter expression.
             appliedFilters == filteredCases,
@@ -884,37 +887,42 @@ class VerwaltungRetrievalEvaluationHarnessTest {
     //    of similaritySearch directly. Runs after — never instead of — the raw-vector path above,
     //    whose numbers, report file and baseline are untouched by this block, and guarded so a
     //    failure here cannot fail this test and thereby rob the nightly job of its raw-vector
-    //    verdict (see PipelineHarnessSupport).
-    Instant pipelineRunStart = Instant.now();
-    PipelineHarnessSupport.runAndWriteGuarded(
-        DOMAIN,
-        new PipelineHarnessSupport.RunIdentity(
-            "ollama",
-            EMBEDDING_MODEL,
-            actualEmbeddingModelDigest,
-            EvalOllamaEndpoint.describeImageOrEndpoint(),
-            ollamaCpuBackend,
-            EMBEDDING_DIMENSIONS,
-            actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
-            PGVECTOR_INDEX_TYPE,
-            CorpusManifest.sha256Hex(manifestFile),
-            manifest.fileNames().size(),
-            "eval/golden/" + DOMAIN.goldenDatasetFileName(),
-            GoldenDataset.sha256(goldenFile),
-            // Whether the lexical index of this run sat at the current tsv version.
-            fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isUpToDate(),
-            ingestionPipelineFingerprint,
-            activeChatModel),
-        retrievalPipeline,
-        retrievalContextFactory,
-        pipelineProperties,
-        rerankModelRole.usable(),
-        indexingProperties,
-        evalLibraryId,
-        goldenCases,
-        pipelineRunStart,
-        ExplanationDump.fromSystemProperty(() -> VectorStoreChunkKeys.fromStore(jdbcTemplate)),
-        log);
+    //    verdict (see PipelineHarnessSupport). Skipped when the multi-turn step below is
+    //    requested: that run decomposes every query, which no single-question baseline was
+    //    drawn with, so nothing would judge this measurement.
+    if (!ConversationHarnessSupport.isRequested()) {
+      Instant pipelineRunStart = Instant.now();
+      PipelineHarnessSupport.runAndWriteGuarded(
+          DOMAIN,
+          new PipelineHarnessSupport.RunIdentity(
+              "ollama",
+              EMBEDDING_MODEL,
+              actualEmbeddingModelDigest,
+              EvalOllamaEndpoint.describeImageOrEndpoint(),
+              ollamaCpuBackend,
+              EMBEDDING_DIMENSIONS,
+              actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
+              PGVECTOR_INDEX_TYPE,
+              CorpusManifest.sha256Hex(manifestFile),
+              manifest.fileNames().size(),
+              "eval/golden/" + DOMAIN.goldenDatasetFileName(),
+              GoldenDataset.sha256(goldenFile),
+              // Whether the lexical index of this run sat at the current tsv version.
+              fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isUpToDate(),
+              ingestionPipelineFingerprint,
+              contextPrefixFingerprint,
+              activeChatModel),
+          retrievalPipeline,
+          retrievalContextFactory,
+          pipelineProperties,
+          rerankModelRole.usable(),
+          indexingProperties,
+          evalLibraryId,
+          goldenCases,
+          pipelineRunStart,
+          ExplanationDump.fromSystemProperty(() -> VectorStoreChunkKeys.fromStore(jdbcTemplate)),
+          log);
+    }
 
     // 7. Variant comparison (#1041/#1049, docs/features/retrieval-benchmark.md §2): an opt-in step,
     //    off by default so a normal harness/baseline run is unaffected. Guarded like step 6 — a
@@ -941,6 +949,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
               GoldenDataset.sha256(goldenFile),
               fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isUpToDate(),
               ingestionPipelineFingerprint,
+              contextPrefixFingerprint,
               activeChatModel),
           queryProperties,
           indexingProperties,
@@ -971,6 +980,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
               GoldenDataset.sha256(goldenFile),
               fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isUpToDate(),
               ingestionPipelineFingerprint,
+              contextPrefixFingerprint,
               activeChatModel),
           retrievalPipeline,
           retrievalContextFactory,

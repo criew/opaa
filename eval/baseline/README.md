@@ -172,7 +172,9 @@ fehlenden Baustein nennen. Ursache und Beleg stehen je Datei in `notes`.
   messgrundlagenbestimmend) sowie `documentTopK`/`chunkTopK` (das jetzt ausdrücklich
   dokumentbezogene k-Fenster, siehe `io.opaa.eval.DocumentRanking`). Seit Issue #1522 zusätzlich
   `ollamaImage` — das gepinnte Testcontainer-Image, das die Vektoren erzeugt hat; siehe
-  [Ollama-Herkunft](#ollama-herkunft-issue-1522) unten. Weicht auch nur eines davon
+  [Ollama-Herkunft](#ollama-herkunft-issue-1522) unten. Seit Issue #1650 zusätzlich
+  `contextPrefixFingerprint`, siehe [Kontextpräfix-Form](#kontextpräfix-form-issue-1650) unten.
+  Weicht auch nur eines davon
   vom aktuellen Lauf ab, ist die Baseline **ungültig** für diesen Lauf — der Job meldet das
   ausdrücklich als "Baseline ungültig, Messgrundlage geändert" und vergleicht dann **keine** Metrik,
   weil ein Vergleich unter unterschiedlicher Messgrundlage keine Aussage über Retrieval-Qualität
@@ -433,7 +435,9 @@ einziges Ja/Nein zusammengefasst:
    `corpusManifestSha256`, `goldenDatasetSha256`, `embeddingModelDigest`, `embeddingDimensions`,
    `chunkSize`, `chunkSizeMatchesApplicationDefault`, `searchTopK`, `productionSimilarityThreshold`,
    `pgvectorIndexType` und (seit Issue #1144) `ingestionPipelineFingerprint` — ein Sammelabdruck über
-   alle registrierten Ingestion-Pipelines, siehe ADR-0012, Nachtrag Ingestion-Pipeline-Fixpunkt — mit
+   alle registrierten Ingestion-Pipelines, siehe ADR-0012, Nachtrag Ingestion-Pipeline-Fixpunkt —
+   sowie (seit Issue #1650) `contextPrefixFingerprint` — der Abdruck der Kontextpräfix-Form, siehe
+   [Kontextpräfix-Form](#kontextpräfix-form-issue-1650) — mit
    dem aktuellen Lauf überein? Wenn nicht, bricht der Job mit einer
    Meldung ab, die ausdrücklich **"Baseline ungültig, Messgrundlage geändert"** sagt, samt Tabelle
    der abweichenden Felder — nicht "Retrieval ist schlechter geworden". In diesem Fall wird **keine**
@@ -501,6 +505,42 @@ nennt Lauf und Abweichung datiert; Herleitung in ADR-0012, Nachtrag CPU-Backend.
 | `city-landmarks.json`, `pipeline-city-landmarks.json` | unverändert | — |
 | `verwaltung.json`, `pipeline-verwaltung.json` | unverändert | — |
 | `pipeline-verwaltung-conversations.json` | overall Hit Rate@5 0,880 → 0,831 | Die Datei beschrieb AVX-512 ohne Pin (siehe unten) |
+
+## Kontextpräfix-Form (Issue #1650)
+
+Ein Chunk wird nicht mit seinem Text eingebettet, sondern mit dem Text hinter seinem Kontextpräfix
+(`[Titel › Werte › Strukturkontext]`, Leerzeile, Text). Ändert sich die Form dieses Präfixes, bewegen
+sich die Rangfolgen, ohne dass sich Korpus, Datensatz oder eine Pipeline-Version ändern. Genau das
+geschah mit #1341 und lief über Tage als vermeintliche Regression (#1308).
+
+`contextPrefixFingerprint` steht deshalb in allen drei Baseline-Typen direkt hinter
+`ingestionPipelineFingerprint`. Der Wert ist kein von Hand gepflegter Versionszähler, sondern ein
+SHA-256 über die Einbettungseingaben, die der Produktionscode für feste Beispieldokumente berechnet
+(`io.opaa.eval.ContextPrefixFingerprint`). Die Beispiele laufen durch dieselben Methoden wie
+Aufnahme und Nachlauf. Deshalb verschiebt jede Änderung an den folgenden Stellen den Wert von selbst:
+- Kernfeld-Extraktion des Titels (`CoreMetadataExtractor`)
+- Titel und Präfix-Berechtigung der Aufnahme, Ein-Chunk-Regel
+- präfixwirksame Kernfelder der Bibliotheks-Werkseinstellung
+- Segmente, Strukturkontext-Regel und Klammerformat
+
+Ein abweichender Wert macht die Baseline unvergleichbar, ein fehlender lädt als `null` (wie bei
+`ollamaImage`).
+
+**Nicht abgedeckt** sind eigene Bibliotheksfelder und Schlagworte, die modellgestützte Extraktion,
+der Inhalt des Dokumentart-Vokabulars, die Rückübersetzung gespeicherter Kernfeld-Werte, Fundort und Schnittgrenzen der Chunks und jeder
+Zweig, den kein Beispiel trifft (ADR-0012, Entscheidung 57). Eine Änderung dort verlangt weiterhin
+eine bewusste Neuvermessung, ohne dass ein Festpunkt sie meldet.
+
+`PipelinePathIsolationTest`/`ConversationPathIsolationTest` halten die sieben committeten Werte
+Docker-frei gegen den aktuellen Abdruck. Ein PR, der die Präfixform ändert, wird damit schon im
+`check` rot und muss die Baselines neu vermessen. Den Wert übernimmt, wer eine Baseline zieht,
+wie jeden Festpunkt aus dem `runConfiguration`-Block des Reports.
+
+**Nachgetragen am 2026-09-15** in allen sieben Dateien, ohne neuen Messlauf (Rohvektor-Messvertrag
+12, Pipeline 15, Mehrrunden 4). Eingetragen ist `ff4022a9…`. Die Präfixform ist seit #1651
+(2026-09-14) unverändert, alle sieben Messläufe stammen vom 2026-09-15. Keine Zahl bewegt sich; der
+exakte Report-Vergleich der Läufe 34996240329 und 34991107251 belegt das Blatt für Blatt.
+Herleitung: ADR-0012, Nachtrag Kontextpräfix-Form.
 
 ## Besonderheiten der Pipeline-Baselines (Issue #1040)
 
@@ -600,7 +640,8 @@ Dasselbe Verfahren wie unten, mit zwei Präzisierungen:
   Sammelabdruck `id:version` über alle von `DocumentFormatRegistry` gemeldeten Pipelines
   (`IngestionPipelineFingerprint`). Ein Diff dieses Felds zeigt, welche Pipeline sich zwischen zwei
   Baselines bewegt hat, statt einen Pipelinewechsel unentdeckt gegen die Retrieval-Metriken laufen zu
-  lassen (ADR-0012, Nachtrag Ingestion-Pipeline-Fixpunkt).
+  lassen (ADR-0012, Nachtrag Ingestion-Pipeline-Fixpunkt). Seit Issue #1650 steht dahinter
+  `contextPrefixFingerprint` (siehe [Kontextpräfix-Form](#kontextpräfix-form-issue-1650)).
 - `hitCountAt5`/`hitCountAt8` stehen nicht in der Textausgabe; sie werden aus `allQueryResults` des
   Pipeline-Reports (`build/eval-reports/pipeline-metrics-<domäne>.json`) desselben Laufs gezählt
   (`hitRateAt5 > 0` bzw. `ndcgAt8 > 0`) — nicht aus den Mittelwerten zurückgerechnet.

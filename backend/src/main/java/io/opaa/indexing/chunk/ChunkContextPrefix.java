@@ -1,5 +1,6 @@
 package io.opaa.indexing.chunk;
 
+import io.opaa.indexing.document.SourceDocumentContext;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.springframework.ai.document.Document;
 
 /**
  * Builds the Kontextpräfix every chunk of a document carries into embedding and full-text index
@@ -18,7 +20,7 @@ import java.util.regex.Pattern;
  * is part of the chunk's presentation, never of its stored text - the quoted excerpt in a Beleg
  * stays the original wording.
  *
- * <p>{@link #forChunk} is the single gate both writing paths go through, so a document re-embedded
+ * <p>{@link #applyTo} is the single gate both writing paths go through, so a document re-embedded
  * by the Nachlauf carries the same indexed text as one freshly ingested; {@link #stampOf} is the
  * fingerprint of the document-level half of that decision, and what the Nachlauf selects by.
  */
@@ -40,6 +42,35 @@ public final class ChunkContextPrefix {
   private static final int STAMP_LENGTH = 32;
 
   private ChunkContextPrefix() {}
+
+  /**
+   * The ingest's own prefix title (ingestion-pipelines.md, Querschnittsregel (b)): a file name is
+   * humanized by {@link ChunkContextTitle}; a synthetic name is the declared title verbatim behind
+   * its hierarchy path, and {@code null} without a title - a URL fallback would share a prefix.
+   */
+  public static String ingestTitle(
+      boolean syntheticName, String fileName, String declaredTitle, SourceDocumentContext context) {
+    if (!syntheticName) {
+      return ChunkContextTitle.deriveTitle(fileName);
+    }
+    if (declaredTitle == null) {
+      return null;
+    }
+    if (context == null || context.hierarchyPath() == null || context.hierarchyPath().isBlank()) {
+      return declaredTitle;
+    }
+    return context.hierarchyPath() + SourceDocumentContext.HIERARCHY_SEPARATOR + declaredTitle;
+  }
+
+  /** Whether a document gets a prefix at all: exactly when the ingest found a title for it. */
+  public static boolean eligible(String ingestTitle) {
+    return ingestTitle != null;
+  }
+
+  /** The single-chunk rule's input: a document counts as split from two chunks on. */
+  public static boolean documentWasSplit(int chunkCount) {
+    return chunkCount >= 2;
+  }
 
   /**
    * The prefix of one chunk, or {@code null} when this chunk gets none.
@@ -112,6 +143,32 @@ public final class ChunkContextPrefix {
     } catch (NoSuchAlgorithmException e) {
       throw new IllegalStateException("SHA-256 is required by every Java platform", e);
     }
+  }
+
+  /**
+   * Puts the prefix {@link #forChunk} decides for {@code chunk} onto its embedding and full-text
+   * input ({@code getFormattedContent(EMBED)}), reading the Strukturkontext from the chunk's own
+   * Fundort. The stored text stays untouched, no metadata key ever reaches that input, and a chunk
+   * without a prefix gets its text byte-identically. Both writing paths go through here.
+   */
+  public static void applyTo(
+      Document chunk,
+      boolean eligible,
+      boolean documentWasSplit,
+      String title,
+      List<String> values) {
+    String prefix =
+        forChunk(
+            eligible,
+            documentWasSplit,
+            title,
+            values,
+            chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY),
+            chunk.getText());
+    chunk.setContentFormatter(
+        prefix == null
+            ? (document, mode) -> document.getText()
+            : (document, mode) -> format(prefix, document.getText()));
   }
 
   /**

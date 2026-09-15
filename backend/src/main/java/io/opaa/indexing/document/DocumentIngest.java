@@ -1,6 +1,7 @@
 package io.opaa.indexing.document;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.library.KnowledgeLibrary;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -71,6 +72,24 @@ public record DocumentIngest(
     if (reindex && !existingRow) {
       throw new IllegalArgumentException("A re-index runs over an existing row: " + filePath);
     }
+  }
+
+  /** What this ingest declares about the document (ADR-0024), laid over what the format found. */
+  public DocumentProperties declaredOver(DocumentProperties parsed) {
+    DocumentProperties properties = parsed;
+    if (syntheticName) {
+      properties = properties.withSyntheticName(true);
+    }
+    if (title != null) {
+      properties = properties.withTitle(title);
+    }
+    if (documentDate != null) {
+      properties = properties.withDocumentDate(documentDate);
+    }
+    if (modifiedAt != null) {
+      properties = properties.withModifiedAt(modifiedAt);
+    }
+    return properties;
   }
 
   /** The bytes to parse: exactly one of {@link File} and {@link Text}. */

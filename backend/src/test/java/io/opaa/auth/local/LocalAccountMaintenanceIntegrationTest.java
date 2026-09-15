@@ -245,9 +245,10 @@ class LocalAccountMaintenanceIntegrationTest {
     LocalAccount one = fixtures.activeUser("eins-" + UUID.randomUUID() + "@stadt.example");
     LocalAccount two = fixtures.activeUser("zwei-" + UUID.randomUUID() + "@stadt.example");
     LocalAccount limited = fixtures.activeUser("befristet-" + UUID.randomUUID() + "@stadt.example");
-    expiresAt(limited, Instant.now().plus(Duration.ofDays(30)));
     Instant quarterStart =
         LocalDate.of(2026, 10, 1).atTime(3, 20).atZone(ZoneId.systemDefault()).toInstant();
+    // anchored to the simulated runs, not the wall clock: never inside either run's 14-day window
+    expiresAt(limited, quarterStart.plus(Duration.ofDays(30)));
 
     adminReminder.run(quarterStart.plus(Duration.ofDays(1)));
     Thread.sleep(300);

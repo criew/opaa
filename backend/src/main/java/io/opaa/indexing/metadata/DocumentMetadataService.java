@@ -158,14 +158,8 @@ public class DocumentMetadataService {
     // and reaches the full-text index through the same formatter, never through a key a filter
     // could name.
     String keywordSegment = keywordSegmentOf(document.getId());
-    if (library != null && library.isCoreContextPrefixDocumentType()) {
-      addIfSet(prefixValues, core.documentTypeLabel());
-    }
-    if (library != null
-        && library.isCoreContextPrefixDocumentDate()
-        && core.documentDate() != null) {
-      prefixValues.add(
-          MetadataValueDisplay.displayDate(core.documentDate(), core.documentDatePrecision()));
+    if (library != null) {
+      prefixValues.addAll(CoreContextPrefixSettings.of(library).coreValues(core));
     }
     if (library == null) {
       addIfSet(prefixValues, keywordSegment);

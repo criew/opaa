@@ -208,6 +208,7 @@ class ConversationHarnessSupportTest {
         "hash",
         true,
         "markdown:3",
+        "prefix",
         "qwen2.5:1.5b-instruct");
   }
 }
