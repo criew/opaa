@@ -39,12 +39,13 @@ public final class ReportWriter {
     sb.append("Konfiguration:\n");
     sb.append(
         format(
-            "  Embedding: %s/%s (Digest %s, %d Dimensionen, Image %s)\n",
+            "  Embedding: %s/%s (Digest %s, %d Dimensionen, Image %s, CPU-Backend %s)\n",
             cfg.embeddingProvider(),
             cfg.embeddingModel(),
             shortHash(cfg.embeddingModelDigest()),
             cfg.embeddingDimensions(),
-            cfg.ollamaImage()));
+            cfg.ollamaImage(),
+            cfg.ollamaCpuBackend()));
     sb.append(
         format(
             "  chunkSize=%d (== Anwendungsdefault: %s), chunkOverlap=%d, documentTopK=%d, "

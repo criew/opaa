@@ -28,6 +28,7 @@ class PipelineRetrievalEvaluatorTest {
         "nomic-embed-text:v1.5",
         "digest",
         "ollama/ollama:0.6.5",
+        "haswell",
         768,
         1000,
         true,

@@ -415,6 +415,7 @@ public final class BaselineComparator {
     // Issue #1522: the same model digest served from a different Ollama - another container tag, or
     // an external (possibly GPU-backed) endpoint - is not guaranteed to embed bit-identically.
     addIfDiffers(mismatches, "ollamaImage", fp.ollamaImage(), cfg.ollamaImage());
+    addIfDiffers(mismatches, "ollamaCpuBackend", fp.ollamaCpuBackend(), cfg.ollamaCpuBackend());
     addIfDiffers(
         mismatches,
         "embeddingDimensions",

@@ -107,8 +107,11 @@ public record PipelineEvaluationReport(
    * so a committed baseline states which Ollama produced its vectors instead of leaving that to the
    * {@code notes}. No measured value moves - the committed baselines record the pinned container
    * they were already measured with (ADR-0012, Nachtrag Ollama-Herkunft).
+   *
+   * <p>Version 14 (issue #1652): {@code ollamaCpuBackend} became a checked fixed point on this path
+   * too (ADR-0012, Nachtrag CPU-Backend).
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 13;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 14;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be
@@ -141,6 +144,9 @@ public record PipelineEvaluationReport(
       String embeddingModel,
       String embeddingModelDigest,
       String ollamaImage,
+      // Issue #1652: the ggml CPU variant verified by EvalOllamaCpuBackend, null for an external
+      // endpoint.
+      String ollamaCpuBackend,
       int embeddingDimensions,
       int chunkSize,
       boolean chunkSizeMatchesApplicationDefault,

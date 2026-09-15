@@ -479,6 +479,29 @@ die committeten Dateien das tatsächlich gepinnte Image nennen, prüfen zwei Doc
 ein Image-Wechsel ohne Baseline-Nachzug fällt damit im `check` auf statt erst im nächtlichen Lauf.
 Begründung: ADR-0012, Nachtrag Ollama-Herkunft.
 
+**`ollamaCpuBackend` (seit Issue #1652)** steht in allen drei Baseline-Typen direkt hinter
+`ollamaImage` und benennt die ggml-CPU-Variante, mit der der Container gerechnet hat (heute
+`haswell`). Die Harnesse erzwingen sie und prüfen sie am Container-Log (`eval/README.md`, „Feste
+CPU-Variante"). Eine andere Variante vertauscht nahe beieinanderliegende Rangplätze und kippt die
+Zerlegung; eine Baseline mit anderem Wert ist deshalb unvergleichbar. Ein fehlender Wert lädt als
+`null`, wie bei `ollamaImage`. `PipelinePathIsolationTest`/`ConversationPathIsolationTest` halten
+die sieben committeten Werte gegen `EvalOllamaCpuBackend.PINNED`.
+
+### Neuvermessung mit fester CPU-Variante (2026-09-15, Issue #1652)
+
+Alle sieben Baselines sind aus lokalen CPU-Testcontainer-Läufen mit Pin neu gezogen, auf einem Host
+mit AVX-512. Jeder Einzelfragen-Lauf deckt sich in jeder Rangfolge mit den beiden CI-Läufen mit Pin
+(34946388134 und 34946416054, darunter Hosts mit und ohne AVX-512). Das Feld `notes` jeder Baseline
+nennt Lauf und Abweichung datiert; Herleitung in ADR-0012, Nachtrag CPU-Backend.
+
+| Baseline | Zahlen | Grund |
+|---|---|---|
+| `comic-characters.json` | 8 Werte steigen um 0,001 bis 0,007 (overall nDCG@10 0,462 → 0,463) | Die Datei beschrieb AVX-512 ohne Pin; `comic-filter-001` hält unter `haswell` ein Dokument mehr im Fenster |
+| `pipeline-comic-characters.json` | unverändert | — |
+| `city-landmarks.json`, `pipeline-city-landmarks.json` | unverändert | — |
+| `verwaltung.json`, `pipeline-verwaltung.json` | unverändert | — |
+| `pipeline-verwaltung-conversations.json` | overall Hit Rate@5 0,880 → 0,831 | Die Datei beschrieb AVX-512 ohne Pin (siehe unten) |
+
 ## Besonderheiten der Pipeline-Baselines (Issue #1040)
 
 ### Aufbau
@@ -588,7 +611,7 @@ Dasselbe Verfahren wie unten, mit zwei Präzisierungen:
 (`docs/features/conversation-memory.md`, Abschnitt „Messung"). **Erstmals gezogen mit Issue #1485**
 aus einem CPU-Testcontainer-Lauf vom 2026-09-11 gegen die dort erstkuratierten 27 Fälle mit 83
 Runden; Typ (`ConversationBaseline`) und Vergleich (`ConversationBaselineComparator`) stammen aus
-#1484. Die heute committeten Zahlen stammen aus der Neuziehung in #1490 (siehe unten).
+#1484. Die heute committeten Zahlen stammen aus der Neuziehung in #1652 (siehe unten).
 
 **Verglichen wird sie seit Issue #1553** von `VerwaltungConversationBaselineRegressionTest` über
 `ConversationBaselineRegressionCheck` — dem Gegenstück zu `PipelineBaselineRegressionCheck`. Der
@@ -609,6 +632,16 @@ Festpunkte (ADR-0012, Entscheidung 50). **Dieser Ausgang ist mit der Neuziehung 
 `ConversationBaselineVerdict` kennt wieder dieselben drei Ausgänge wie der Pipeline-Pfad, und
 `ConversationPathIsolationTest#theCommittedBaselineMeasuresTheProductionConversationMemory` sperrt
 den Rückweg auf die beiden Vor-#1486/#1487-Werte.
+
+**Neu gezogen mit Issue #1652** aus einem CPU-Testcontainer-Lauf vom 2026-09-15, erstmals mit fester
+ggml-CPU-Variante (`ollamaCpuBackend: haswell`, Mehrrunden-Messvertrag 3). Die Datei aus #1490
+beschrieb den Zustand eines Hosts mit AVX-512 (Variante `icelake`). Jeder CI-Runner ohne AVX-512
+maß einen anderen und lief rot, obwohl sich nichts geändert hatte. Die neuen Zahlen (overall
+Hit Rate@5 0,831, 5 von 27 Fällen gelöst) sind kein Rückschritt, sondern der Zustand, den jede
+Maschine mit Pin liefert. Belegt ist das durch einen Report, der in allen 83 Runden mit einem
+CI-Lauf auf einem Runner ohne AVX-512 übereinstimmt. Herleitung: `eval/corpus/verwaltung/MAINTENANCE.md`,
+„Neuziehung mit fester CPU-Variante"; ADR-0012, Nachtrag CPU-Backend.
+
 
 Aufbau wie die Pipeline-Baseline, mit vier Unterschieden:
 

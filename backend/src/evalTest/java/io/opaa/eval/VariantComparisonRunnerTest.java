@@ -26,6 +26,7 @@ class VariantComparisonRunnerTest {
         "model",
         "digest",
         "image",
+        "haswell",
         768,
         1000,
         true,

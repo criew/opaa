@@ -236,6 +236,7 @@ public final class ConversationHarnessSupport {
             identity.embeddingModel(),
             identity.embeddingModelDigest(),
             identity.ollamaImage(),
+            identity.ollamaCpuBackend(),
             identity.embeddingDimensions(),
             identity.chunkSizeMatchesApplicationDefault(),
             identity.pgvectorIndexType(),

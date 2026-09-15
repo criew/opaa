@@ -367,6 +367,12 @@ Variantenvergleich formulieren lässt. Genau das ist der Zweck des Aufbaus.
 > derselben Fragen gegen denselben Endpunkt unter hoher CPU-Last lieferte dagegen bei 2 von 8 Fragen
 > unterschiedliche Teilfragen — Temperatur 0 allein garantiert die Reproduzierbarkeit also nicht,
 > und genau dafür existieren die Mehrfachläufe und die Abweichungszahl des `MultiRunSummary`.
+>
+> **Zwischen Maschinen gilt das erst recht (Issue #1652).** Innerhalb eines Laufs waren die drei
+> Mehrrunden-Messungen stets identisch. Zwischen CI-Läufen gab es trotzdem zwei Zustände, je nachdem,
+> ob der Runner AVX-512 beherrscht: Ollama lädt die beste ggml-CPU-Variante des Hosts. Die
+> Mehrfachlauf-Regel kann das nicht sehen. Die Harnesse erzwingen deshalb eine feste Variante
+> (ADR-0012, Nachtrag CPU-Backend).
 
 ### Entscheidung
 
@@ -384,7 +390,10 @@ Stichproben aus einer größeren Grundgesamtheit. Der Retrieval-Harness von OPAA
 - Der Korpus ist eingefroren und über ein SHA-256-Manifest abgesichert.
 - Das Golden Dataset ist eingefroren und versioniert.
 - Das Einbettungsmodell ist auf Tag **und** Content-Digest gepinnt, mit hartem Abbruch bei Drift.
-- Der Lauf erzwingt CPU statt GPU, weil GPU-Kernel nicht bitgleich einbetten.
+- Der Lauf erzwingt CPU statt GPU, weil GPU-Kernel nicht bitgleich einbetten. Seit #1652 rechnet
+  er zudem auf jedem Host mit derselben CPU-Variante (`haswell`). Auch die Kernel verschiedener
+  Befehlssatzstufen rechnen nicht bitgleich, und bei Temperatur 0 kippt das die Zerlegung
+  (`eval/README.md`, „Feste CPU-Variante").
 - Die Belege liegen vor: vier Läufe auf drei Maschinen, alle bit-identisch, Delta ±0,000 über alle
   vierzig Metrik/Gruppen-Zeilen (ADR-0013, Nachtrag „zweite Review-Runde"), bestätigt auf
   GitHub-Actions-Hardware.

@@ -53,18 +53,19 @@ class ConversationHarnessSupportTest {
         new RetrievalContextFactory(
             new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, true, 0, 20, 2), rerankModelRole);
 
-    ConversationHarnessSupport.measure(
-        EvalDomainConfig.VERWALTUNG,
-        identity(),
-        pipeline,
-        contextFactory,
-        chatMemory(),
-        ConversationRetrievalEvaluator.NoteExtraction.NONE,
-        new ConversationMemoryProfile(20, 0, 0),
-        new IndexingProperties(1000, 200, 50, null, null, null, null, 0),
-        UUID.randomUUID(),
-        List.of(twoTurnCase()),
-        Instant.now());
+    ConversationEvaluationReport report =
+        ConversationHarnessSupport.measure(
+            EvalDomainConfig.VERWALTUNG,
+            identity(),
+            pipeline,
+            contextFactory,
+            chatMemory(),
+            ConversationRetrievalEvaluator.NoteExtraction.NONE,
+            new ConversationMemoryProfile(20, 0, 0),
+            new IndexingProperties(1000, 200, 50, null, null, null, null, 0),
+            UUID.randomUUID(),
+            List.of(twoTurnCase()),
+            Instant.now());
 
     assertThat(contexts).hasSize(2);
     assertThat(contexts.get(0).conversationHistory())
@@ -75,6 +76,9 @@ class ConversationHarnessSupportTest {
         .extracting(Message::getText)
         .containsExactly("Was kostet ein Anwohnerparkausweis?", "30,70 Euro pro Jahr.");
     assertThat(contexts.get(1).question()).isEqualTo("Und bei Bedürftigkeit?");
+    // Issue #1652: the CPU backend the harness verified is a fixed point of the run it measured.
+    assertThat(report.runConfiguration().pipeline().ollamaCpuBackend())
+        .isEqualTo(EvalOllamaCpuBackend.PINNED);
   }
 
   /**
@@ -194,6 +198,7 @@ class ConversationHarnessSupportTest {
         "nomic-embed-text:v1.5",
         "digest",
         "ollama/ollama:0.6.5",
+        "haswell",
         768,
         true,
         "hnsw",

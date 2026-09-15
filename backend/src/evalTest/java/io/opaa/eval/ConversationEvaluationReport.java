@@ -58,8 +58,12 @@ public record ConversationEvaluationReport(
    * <p>Version 2 (issue #1522): {@code ollamaImage} became a checked fixed point of the shared
    * pipeline block, so a committed baseline of this path states which Ollama produced its vectors
    * (ADR-0012, Nachtrag Ollama-Herkunft). No measured value moves.
+   *
+   * <p>Version 3 (issue #1652): {@code ollamaCpuBackend} became a checked fixed point of the shared
+   * pipeline block - the ggml CPU kernel set inside that image, which decides the greedy
+   * decomposition of every turn (ADR-0012, Nachtrag CPU-Backend).
    */
-  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 2;
+  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 3;
 
   /**
    * The Einpfad-Regel of docs/features/retrieval-benchmark.md §5, recorded <b>once per report</b>:

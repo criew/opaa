@@ -64,6 +64,7 @@ public final class ConversationReportWriter {
         format(
             "  query-decomposition-enabled=%s, max-sub-queries=%d, Chat-Modell=%s\n",
             pipeline.queryDecompositionEnabled(), pipeline.maxSubQueries(), pipeline.chatModel()));
+    sb.append(format("  Ollama-CPU-Backend: %s\n", pipeline.ollamaCpuBackend()));
     sb.append(
         format(
             "  Datensatz: %s, %d Fälle, %d Runden, Hash %s\n",
@@ -148,11 +149,13 @@ public final class ConversationReportWriter {
     sb.append(format("## Mehrrunden-Messpfad: %s\n\n", cfg.pipeline().domain()));
     sb.append(
         format(
-            "Gesprächsfenster %d Nachrichten, Suchfenster %s, Notizdeckel %d, Chat-Modell `%s`.\n\n",
+            "Gesprächsfenster %d Nachrichten, Suchfenster %s, Notizdeckel %d, Chat-Modell `%s`, "
+                + "Ollama-CPU-Backend `%s`.\n\n",
             profile.windowMessages(),
             profile.searchWindowLabel(),
             profile.noteCap(),
-            cfg.pipeline().chatModel()));
+            cfg.pipeline().chatModel(),
+            cfg.pipeline().ollamaCpuBackend()));
     sb.append(format("_%s_\n\n", report.metricWindowNote()));
 
     sb.append("### Mehrfachlauf\n\n");

@@ -280,7 +280,9 @@ class RetrievalEvaluationHarnessTest {
                   }
                   binds.add(new Bind(OLLAMA_MODEL_VOLUME, new Volume(OLLAMA_MODEL_VOLUME_PATH)));
                   cmd.getHostConfig().withBinds(binds.toArray(new Bind[0]));
-                });
+                })
+            // One ggml CPU kernel set on every host, see EvalOllamaCpuBackend.
+            .withCreateContainerCmdModifier(EvalOllamaCpuBackend::pin);
     ollama.start();
   }
 
@@ -523,6 +525,16 @@ class RetrievalEvaluationHarnessTest {
         .isZero();
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(manifest.fileNames().size());
     log.info("Indexed {} documents", completedJob.getDocumentsProcessed());
+    // Every runner started so far - the embedding runner, and the chat runner of a decomposing run
+    // - must have computed with the pinned CPU backend.
+    String ollamaCpuBackend =
+        EvalOllamaEndpoint.isExternal()
+            ? null
+            : EvalOllamaCpuBackend.verify(
+                ollama,
+                Boolean.getBoolean(ALLOW_GPU_PROPERTY),
+                queryProperties.queryDecompositionEnabled() ? 2 : 1,
+                log);
 
     // 3. Chunk-count invariant (ADR-0010, Nachtrag #721): the real, production-configured
     //    TokenTextSplitter just ran. Verify every document satisfies the domain's declared
@@ -795,6 +807,7 @@ class RetrievalEvaluationHarnessTest {
             EMBEDDING_MODEL,
             actualEmbeddingModelDigest,
             EvalOllamaEndpoint.describeImageOrEndpoint(),
+            ollamaCpuBackend,
             EMBEDDING_DIMENSIONS,
             actualChunkSize,
             actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
@@ -862,6 +875,7 @@ class RetrievalEvaluationHarnessTest {
             EMBEDDING_MODEL,
             actualEmbeddingModelDigest,
             EvalOllamaEndpoint.describeImageOrEndpoint(),
+            ollamaCpuBackend,
             EMBEDDING_DIMENSIONS,
             actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
             PGVECTOR_INDEX_TYPE,
