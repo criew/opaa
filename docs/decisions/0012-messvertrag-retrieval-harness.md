@@ -1377,7 +1377,7 @@ Schwankung, und `verw-lit-005` beschreibt je Pfad diesen Lauf statt eines Sympto
 Die übrigen Mengen-, Rang-1- und Rangangaben der Gründe aller drei Domänen sind mechanisch gegen die
 neuen Läufe geprüft.
 
-In der Delta-Tabelle von `comic-characters` bleiben vier Rundungsreste von ±0,001. Die exakten
+In den Delta-Tabellen von `comic-characters` bleiben, wie schon vor dem Pin, Rundungsreste von ±0,001: einer auf dem Rohvektor-Pfad, drei auf dem Pipeline-Pfad. Die exakten
 Werte dieser Gruppen enden auf einer Fünf in der vierten Nachkommastelle (etwa 1/16 = 0,0625), und
 drei Nachkommastellen können sie nicht treffen. Der Vergleich rechnet mit dem ungerundeten Ist-Wert;
 das Urteil berührt das nicht.
