@@ -1499,7 +1499,7 @@ des label-ausgelösten Laufs 34996240329 gegen den letzten gepinnten Lauf aus #1
 verglichen, einschließlich `allQueryResults`, aller 83 Mehrrunden-Runden und der Zerlegungen. Außer
 Vertragsversion, neuem Feld und Zeitstempeln ist alles identisch. Den zweiten Umbauschritt (Schwelle,
 Berechtigung, Titel der Aufnahme, erklärte Eigenschaften, Kernfeld-Werte) bestätigt der erneute
-label-ausgelöste Lauf dieses PRs mit Delta 0 und leeren Audits.
+label-ausgelöste Lauf 35011947490 mit Delta 0 und leeren Audits in allen vier Jobs.
 
 Eingetragen ist `ff4022a9…`. Zahlen, Zustände und die übrigen Festpunkte bleiben, die `notes` jeder
 Datei tragen den datierten Nachtrag.
