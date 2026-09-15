@@ -1274,7 +1274,10 @@ sich schon in den ersten Runden, die weder Fenster noch Notiz haben.
 
 **Beleg.** Lokal auf einem Host mit AVX-512 nachgestellt, mit genau einer Variante im Container:
 `haswell` reproduziert die ersten Runden aller 27 Fälle des roten CI-Zustands, `icelake` die des
-grünen, jeweils 27 von 27. Verworfen sind die übrigen Hypothesen. Die Threadzahl (2 gegen 10) ändert
+grünen, jeweils 27 von 27. Die übrigen Varianten ordnen sich nach Befehlssatz ein: `alderlake` (AVX2
+mit VNNI) liefert den roten Zustand, `skylakex` (AVX-512) den grünen, `sandybridge` (nur AVX) einen
+dritten. Die Grenze verläuft also zwischen AVX2- und AVX-512-Kerneln. Verworfen sind die übrigen
+Hypothesen. Die Threadzahl (2 gegen 10) ändert
 keine Ausgabe. Ein Seed wirkt bei Temperatur 0 nicht. Ein Datum im Prompt scheidet aus, weil jeder
 Zustand über mehrere Tage identisch blieb. Reihenfolge und Verlauf scheiden aus, weil schon die
 ersten Runden abweichen. Den Modell-Digest prüft der Harness ohnehin. Die CPU-Typen der früheren

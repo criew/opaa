@@ -638,8 +638,11 @@ AVX-512 nachgestellt, mit genau einer Variante im Container und den ersten Runde
 
 | Erzwungene Variante | stimmt überein mit dem roten CI-Zustand | stimmt überein mit dem grünen CI-Zustand |
 |---|---|---|
-| `haswell` | 27 von 27 | 11 von 27 |
-| `icelake` | 11 von 27 | 27 von 27 |
+| `haswell` (AVX2) | 27 von 27 | 11 von 27 |
+| `alderlake` (AVX2 mit VNNI) | 27 von 27 | 11 von 27 |
+| `skylakex` (AVX-512) | 11 von 27 | 27 von 27 |
+| `icelake` (AVX-512 mit VNNI) | 11 von 27 | 27 von 27 |
+| `sandybridge` (nur AVX) | 11 von 27 | 10 von 27 |
 
 Die Threadzahl (2 oder 10) änderte keine einzige Ausgabe. Temperatur 0 wählt ohnehin je Schritt das
 wahrscheinlichste Token, ein Seed spielt keine Rolle. Die Einbettungen weichen zwischen den Varianten
