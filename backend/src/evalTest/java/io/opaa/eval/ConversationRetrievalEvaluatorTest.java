@@ -600,6 +600,7 @@ class ConversationRetrievalEvaluatorTest {
             "dataset",
             1,
             "markdown:3",
+            "prefix",
             false,
             1,
             "scope",

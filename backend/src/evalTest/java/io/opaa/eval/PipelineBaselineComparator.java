@@ -279,6 +279,13 @@ public final class PipelineBaselineComparator {
         "ingestionPipelineFingerprint",
         fp.ingestionPipelineFingerprint(),
         cfg.ingestionPipelineFingerprint());
+    // The Kontextpräfix is part of every chunk's embedding and full-text input; a
+    // changed form moves rankings without moving any pipeline version.
+    addIfDiffers(
+        mismatches,
+        "contextPrefixFingerprint",
+        fp.contextPrefixFingerprint(),
+        cfg.contextPrefixFingerprint());
     // Issue #1070: the golden filters move the metadata_filter class's selection; a run that did
     // not carry them measures a different thing, not a worse one.
     addIfDiffers(

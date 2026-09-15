@@ -54,7 +54,7 @@ class PipelinePathIsolationTest {
                 + "committed raw-vector baselines' measurementContractVersion or "
                 + "BaselineComparator's fixed-point list being updated to match — reconcile all "
                 + "four rather than adjusting only this assertion")
-        .isEqualTo(11);
+        .isEqualTo(12);
   }
 
   @Test
@@ -72,10 +72,11 @@ class PipelinePathIsolationTest {
     // 2, list items with block content keep their marker), plus 1 from issue #1429
     // (fullTextIndexComplete renamed to fullTextIndexUpToDate and narrowed to the version
     // backlog), plus 1 from issue #1522 (ollamaImage became a checked fixed point), plus 1 from
-    // issue #1652 (ollamaCpuBackend) — counted independently of the raw-vector path above, whose
-    // own count (2 plus the same #1144/#1164/#1183/#1070/#1242/#1315/#1357/#1522/#1652 bumps)
-    // moves for unrelated reasons at unrelated points in its history.
-    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(14);
+    // issue #1652 (ollamaCpuBackend), plus 1 from issue #1650 (contextPrefixFingerprint) — counted
+    // independently of the raw-vector path above, whose own count (2 plus the same
+    // #1144/#1164/#1183/#1070/#1242/#1315/#1357/#1522/#1652/#1650 bumps) moves for unrelated
+    // reasons at unrelated points in its history.
+    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(15);
   }
 
   @Test
@@ -242,6 +243,46 @@ class PipelinePathIsolationTest {
                   .ollamaCpuBackend())
           .as("%s: ollamaCpuBackend", domain.pipelineBaselineFileName())
           .isEqualTo(EvalOllamaCpuBackend.PINNED);
+    }
+  }
+
+  /**
+   * Issue #1650's watchdog: the prefix form is computed from production code, the committed
+   * baselines are JSON files. A change to {@code ChunkContextPrefix} or {@code ChunkContextTitle}
+   * that does not re-draw the baselines fails here, in the Docker-free {@code check}, instead of as
+   * a supposed regression in the nightly run.
+   */
+  @Test
+  void committedBaselinesCarryTheCurrentContextPrefixFingerprint() throws java.io.IOException {
+    String actual = ContextPrefixFingerprint.current();
+
+    for (EvalDomainConfig domain :
+        List.of(
+            EvalDomainConfig.COMIC_CHARACTERS,
+            EvalDomainConfig.CITY_LANDMARKS,
+            EvalDomainConfig.VERWALTUNG)) {
+      assertThat(
+              Baseline.load(
+                      RepoPaths.evalDir().resolve("baseline").resolve(domain.baselineFileName()))
+                  .fixedPoints()
+                  .contextPrefixFingerprint())
+          .as(
+              "%s: the Kontextpräfix form moved without this baseline being re-measured - see "
+                  + "ADR-0012, Nachtrag Kontextpräfix-Form",
+              domain.baselineFileName())
+          .isEqualTo(actual);
+      assertThat(
+              PipelineBaseline.load(
+                      RepoPaths.evalDir()
+                          .resolve("baseline")
+                          .resolve(domain.pipelineBaselineFileName()))
+                  .fixedPoints()
+                  .contextPrefixFingerprint())
+          .as(
+              "%s: the Kontextpräfix form moved without this baseline being re-measured - see "
+                  + "ADR-0012, Nachtrag Kontextpräfix-Form",
+              domain.pipelineBaselineFileName())
+          .isEqualTo(actual);
     }
   }
 

@@ -5,16 +5,14 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * Derives the human-readable title {@link
- * io.opaa.indexing.document.DocumentIngestService#chunkEmbedFormatterWithPrefix} prepends to a
- * multi-chunk document's chunk embeddings ("Contextual Chunking"), from a filesystem-style {@code
- * file_name}. Contract: strip a trailing suffix that actually looks like an extension, strip a
- * leading run of purely structural tokens (a numbering scheme like {@code "001_"}, a short
- * tag-plus-number pair like {@code "city-0022_"}), turn the remaining {@code _}/{@code -}
- * separators into spaces, and cap at {@value #MAX_TITLE_TOKENS} tokens - so {@code
- * "001_personalausweis.md"} becomes {@code "personalausweis"} and {@code "report.pdf"} becomes
- * {@code "report"}. An RSS headline or URL takes a different route; see {@code
- * DocumentIngestService#deriveContextTitle}.
+ * Derives the human-readable title {@link ChunkContextPrefix#applyTo} prepends to a multi-chunk
+ * document's chunk embeddings ("Contextual Chunking"), from a filesystem-style {@code file_name}.
+ * Contract: strip a trailing suffix that actually looks like an extension, strip a leading run of
+ * purely structural tokens (a numbering scheme like {@code "001_"}, a short tag-plus-number pair
+ * like {@code "city-0022_"}), turn the remaining {@code _}/{@code -} separators into spaces, and
+ * cap at {@value #MAX_TITLE_TOKENS} tokens - so {@code "001_personalausweis.md"} becomes {@code
+ * "personalausweis"} and {@code "report.pdf"} becomes {@code "report"}. An RSS headline or URL
+ * takes a different route; see {@code DocumentIngestService#deriveContextTitle}.
  */
 public final class ChunkContextTitle {
 
@@ -30,9 +28,8 @@ public final class ChunkContextTitle {
   private static final Pattern SHORT_LETTERS_THEN_DIGITS = Pattern.compile("[A-Za-z]{1,6}\\d+");
   private static final Pattern SHORT_LETTERS_ONLY = Pattern.compile("[A-Za-z]{1,6}");
 
-  // Keeps the "well under ten tokens" per-chunk budget claim in
-  // DocumentIngestService#chunkEmbedFormatterWithPrefix's Javadoc true regardless of how many
-  // words a file name happens to contain.
+  // Keeps the title a short, bounded part of every chunk's embedding input, however many words a
+  // file name happens to contain.
   private static final int MAX_TITLE_TOKENS = 8;
 
   private ChunkContextTitle() {}

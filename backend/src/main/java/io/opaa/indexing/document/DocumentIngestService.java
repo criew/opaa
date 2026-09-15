@@ -43,7 +43,6 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.document.ContentFormatter;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.scheduling.annotation.Async;
 
@@ -59,24 +58,6 @@ public class DocumentIngestService {
 
   /** Text that never was a file has no detectable media type; every text source delivers XHTML. */
   private static final String TEXT_CONTENT_TYPE = "text/html";
-
-  /**
-   * Makes {@code getFormattedContent(EMBED)} byte-identical to {@code getText()}: no metadata ever
-   * reaches the embedding input. Applied to a document {@link #storeChunks} found to be one chunk.
-   */
-  private static final ContentFormatter CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX =
-      (document, mode) -> document.getText();
-
-  /**
-   * The {@code EMBED}-only formatter carrying one chunk's Kontextpraefix (ingestion-pipelines.md,
-   * Querschnittsregel (b); metadata-schema.md, Wirkstelle 2): the prefix in brackets, a blank line,
-   * then the chunk text. Ignores every metadata key rather than excluding a known list, so a key
-   * added later cannot re-enter the embedding input. Stored chunk text and citations are unaffected
-   * - the quoted excerpt in a Beleg stays the original wording.
-   */
-  private static ContentFormatter chunkEmbedFormatterWithPrefix(String prefix) {
-    return (document, mode) -> ChunkContextPrefix.format(prefix, document.getText());
-  }
 
   private final DocumentFormatRegistry pipelineRegistry;
   private final DocumentRepository documentRepository;
@@ -688,11 +669,10 @@ public class DocumentIngestService {
 
   /**
    * Enriches {@code chunks} with permission-filter and citation metadata and puts each chunk's
-   * Kontextpraefix onto the embedding input only - built by {@link ChunkContextPrefix#forChunk}
+   * Kontextpraefix onto the embedding input only - applied by {@link ChunkContextPrefix#applyTo}
    * from the Kernfeld Titel, the document's prefix-effective values and the chunk's Strukturkontext
-   * (metadata-schema.md, Wirkstelle 2). A chunk without a prefix gets {@link
-   * #CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX}. Records afterwards which prefix the chunks were
-   * written with, so the Nachlauf knows what is current.
+   * (metadata-schema.md, Wirkstelle 2). Records afterwards which prefix the chunks were written
+   * with, so the Nachlauf knows what is current.
    *
    * @param contextTitle the fallback title, or {@code null} if this document type never gets a
    *     prefix at all (see {@link #contextTitleFor}). The Kernfeld Titel takes precedence over it
@@ -767,18 +747,12 @@ public class DocumentIngestService {
                   }
                   org.springframework.ai.document.Document enrichedChunk =
                       new org.springframework.ai.document.Document(chunk.getText(), metadata);
-                  String prefix =
-                      ChunkContextPrefix.forChunk(
-                          prefixEligible,
-                          documentWasSplit,
-                          prefixTitle,
-                          chunkMetadata.contextPrefixValues(),
-                          metadata.get(ChunkingService.LOCATION_METADATA_KEY),
-                          chunk.getText());
-                  enrichedChunk.setContentFormatter(
-                      prefix == null
-                          ? CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX
-                          : chunkEmbedFormatterWithPrefix(prefix));
+                  ChunkContextPrefix.applyTo(
+                      enrichedChunk,
+                      prefixEligible,
+                      documentWasSplit,
+                      prefixTitle,
+                      chunkMetadata.contextPrefixValues());
                   return enrichedChunk;
                 })
             .toList();

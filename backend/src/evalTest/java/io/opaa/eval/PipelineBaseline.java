@@ -98,6 +98,9 @@ public record PipelineBaseline(
       // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
       // Javadoc for why corpusManifestSha256 alone does not answer that question.
       String ingestionPipelineFingerprint,
+      // The form of the Kontextpräfix the corpus was embedded with, see
+      // ContextPrefixFingerprint.
+      String contextPrefixFingerprint,
       // Issue #1070 (Teil 2): whether each golden case's filter was carried into the pipeline
       // run — see PipelineEvaluationReport.PipelineRunConfiguration#metadataFilterEnabled. Boxed
       // on purpose: a baseline file predating the field loads as null and is then reported as

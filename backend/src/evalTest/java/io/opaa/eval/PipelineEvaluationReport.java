@@ -110,8 +110,11 @@ public record PipelineEvaluationReport(
    *
    * <p>Version 14 (issue #1652): {@code ollamaCpuBackend} became a checked fixed point on this path
    * too (ADR-0012, Nachtrag CPU-Backend).
+   *
+   * <p>Version 15 (issue #1650): {@code contextPrefixFingerprint} became a checked fixed point on
+   * this path too (ADR-0012, Nachtrag Kontextpräfix-Form).
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 14;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 15;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be
@@ -174,6 +177,9 @@ public record PipelineEvaluationReport(
       // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
       // Javadoc for why corpusManifestSha256 alone does not answer that question.
       String ingestionPipelineFingerprint,
+      // The form of the Kontextpräfix the corpus was embedded with, see
+      // ContextPrefixFingerprint.
+      String contextPrefixFingerprint,
       // Issue #1070 (Teil 2): whether every golden case's filter was carried into the pipeline
       // run, so both search paths applied it inside their queries. A fixed point: the
       // metadata_filter class measures something else without it.

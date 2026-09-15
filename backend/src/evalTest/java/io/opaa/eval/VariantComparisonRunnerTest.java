@@ -51,6 +51,7 @@ class VariantComparisonRunnerTest {
         "golden",
         1,
         "markdown:1",
+        "prefix",
         true,
         1,
         PipelineHarnessSupport.SEARCH_SCOPE_NOTE,

@@ -88,6 +88,9 @@ public final class PipelineHarnessSupport {
       // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
       // Javadoc.
       String ingestionPipelineFingerprint,
+      // The form of the Kontextpräfix the corpus was embedded with, see
+      // ContextPrefixFingerprint.
+      String contextPrefixFingerprint,
       // Issue #1085: the systemwide active chat model of this run (EvalChatModel.MODEL), or null
       // if there is none. Reported as a fixed point only for a configuration that actually
       // decomposes — see buildRunConfiguration — but carried here for every run, because the
@@ -418,6 +421,7 @@ public final class PipelineHarnessSupport {
         identity.goldenDatasetSha256(),
         goldenCaseCount,
         identity.ingestionPipelineFingerprint(),
+        identity.contextPrefixFingerprint(),
         metadataFilterEnabled,
         searchScopeLibraryCount,
         SEARCH_SCOPE_NOTE,

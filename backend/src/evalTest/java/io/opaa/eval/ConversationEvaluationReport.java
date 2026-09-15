@@ -62,8 +62,11 @@ public record ConversationEvaluationReport(
    * <p>Version 3 (issue #1652): {@code ollamaCpuBackend} became a checked fixed point of the shared
    * pipeline block - the ggml CPU kernel set inside that image, which decides the greedy
    * decomposition of every turn (ADR-0012, Nachtrag CPU-Backend).
+   *
+   * <p>Version 4 (issue #1650): {@code contextPrefixFingerprint} became a checked fixed point of
+   * the shared pipeline block (ADR-0012, Nachtrag Kontextpräfix-Form).
    */
-  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 3;
+  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 4;
 
   /**
    * The Einpfad-Regel of docs/features/retrieval-benchmark.md §5, recorded <b>once per report</b>:

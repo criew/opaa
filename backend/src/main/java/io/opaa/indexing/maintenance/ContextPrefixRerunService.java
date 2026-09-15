@@ -3,7 +3,6 @@ package io.opaa.indexing.maintenance;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.chunk.ChunkContextPrefix;
-import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
@@ -166,18 +165,8 @@ public class ContextPrefixRerunService {
         DocumentChunkMetadata chunkMetadata) {
       org.springframework.ai.document.Document document =
           new org.springframework.ai.document.Document(id, text, metadata);
-      String prefix =
-          ChunkContextPrefix.forChunk(
-              eligible,
-              documentWasSplit,
-              title,
-              chunkMetadata.contextPrefixValues(),
-              metadata.get(ChunkingService.LOCATION_METADATA_KEY),
-              text);
-      document.setContentFormatter(
-          prefix == null
-              ? (candidate, mode) -> candidate.getText()
-              : (candidate, mode) -> ChunkContextPrefix.format(prefix, candidate.getText()));
+      ChunkContextPrefix.applyTo(
+          document, eligible, documentWasSplit, title, chunkMetadata.contextPrefixValues());
       return document;
     }
   }

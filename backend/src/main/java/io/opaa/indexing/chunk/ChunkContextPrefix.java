@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.springframework.ai.document.Document;
 
 /**
  * Builds the Kontextpräfix every chunk of a document carries into embedding and full-text index
@@ -18,7 +19,7 @@ import java.util.regex.Pattern;
  * is part of the chunk's presentation, never of its stored text - the quoted excerpt in a Beleg
  * stays the original wording.
  *
- * <p>{@link #forChunk} is the single gate both writing paths go through, so a document re-embedded
+ * <p>{@link #applyTo} is the single gate both writing paths go through, so a document re-embedded
  * by the Nachlauf carries the same indexed text as one freshly ingested; {@link #stampOf} is the
  * fingerprint of the document-level half of that decision, and what the Nachlauf selects by.
  */
@@ -112,6 +113,32 @@ public final class ChunkContextPrefix {
     } catch (NoSuchAlgorithmException e) {
       throw new IllegalStateException("SHA-256 is required by every Java platform", e);
     }
+  }
+
+  /**
+   * Puts the prefix {@link #forChunk} decides for {@code chunk} onto its embedding and full-text
+   * input ({@code getFormattedContent(EMBED)}), reading the Strukturkontext from the chunk's own
+   * Fundort. The stored text stays untouched, no metadata key ever reaches that input, and a chunk
+   * without a prefix gets its text byte-identically. Both writing paths go through here.
+   */
+  public static void applyTo(
+      Document chunk,
+      boolean eligible,
+      boolean documentWasSplit,
+      String title,
+      List<String> values) {
+    String prefix =
+        forChunk(
+            eligible,
+            documentWasSplit,
+            title,
+            values,
+            chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY),
+            chunk.getText());
+    chunk.setContentFormatter(
+        prefix == null
+            ? (document, mode) -> document.getText()
+            : (document, mode) -> format(prefix, document.getText()));
   }
 
   /**
