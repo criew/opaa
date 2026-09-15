@@ -37,7 +37,12 @@ wird nachgezogen, keine Messvertragsversion steigt) und den
 [Nachtrag zum CPU-Backend des Eval-Ollama](#nachtrag-cpu-backend-des-eval-ollama-issue-1652)
 (Issue #1652: feste ggml-CPU-Variante `haswell` in allen Harnessen, `ollamaCpuBackend` als
 Festpunkt aller drei Pfade, Messvertrag-Versionen Rohvektor 11, Pipeline 14, Mehrrunden 3, alle
-sieben Baselines mit Pin neu vermessen).
+sieben Baselines mit Pin neu vermessen) und den
+[Nachtrag zur Kontextpräfix-Form](#nachtrag-kontextpräfix-form-im-messvertrag-issue-1650)
+(Issue #1650: `contextPrefixFingerprint`, ein aus dem Produktionscode berechneter Abdruck der
+Präfixform, als Festpunkt aller drei Pfade, Messvertrag-Versionen Rohvektor 12, Pipeline 15,
+Mehrrunden 4, reine Fixpunkt-Ergänzung ohne neuen Messlauf; der Job `conversations` misst den
+Einzelfragen-Pipeline-Pfad nicht mehr).
 Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
 Review-Nacharbeit desselben PRs umgesetzt (`measurementContractVersion` im Report, `allQueryResults`
 im JSON-Report, `recallAt10Ceiling` je Gruppe).
@@ -1390,3 +1395,86 @@ In den Delta-Tabellen von `comic-characters` bleiben, wie schon vor dem Pin, Run
 Werte dieser Gruppen enden auf einer Fünf in der vierten Nachkommastelle (etwa 1/16 = 0,0625), und
 drei Nachkommastellen können sie nicht treffen. Der Vergleich rechnet mit dem ungerundeten Ist-Wert;
 das Urteil berührt das nicht.
+
+## Nachtrag: Kontextpräfix-Form im Messvertrag (Issue #1650)
+
+**Datum:** 2026-09-15 · **Betrifft:** Festpunktsatz und Vertragsversion aller drei Messpfade, alle
+sieben committeten Baselines, den CI-Job `conversations`.
+
+Die Einbettungseingabe eines Chunks ist nicht sein Text, sondern der Text hinter seinem
+Kontextpräfix (`[Titel › Werte › Strukturkontext]`, Leerzeile, Chunk-Text). #1341 hat die Form
+dieses Präfixes geändert: Metadatenwerte und Strukturkontext kamen hinzu, der Titel wurde zum
+Kernfeld Titel. Keine Pipeline-Version bewegte sich, `ingestionPipelineFingerprint` blieb gleich,
+Korpus und Datensatz ohnehin. Die nächtliche Retrieval-Regression meldete deshalb ab dem
+06.09.2026 täglich eine **Regression** statt „Baseline ungültig" (#1308). Nach Entscheidung 6 war
+es eine geänderte Messgrundlage, die kein Festpunkt benannte.
+
+### 57. `contextPrefixFingerprint` ist geprüfter Festpunkt aller drei Baseline-Typen — ein Abdruck, keine Version
+
+`Baseline.FixedPoints`, `PipelineBaseline.FixedPoints` und die Laufkonfigurationen beider Reports
+führen das neue Feld `contextPrefixFingerprint` direkt hinter `ingestionPipelineFingerprint`; der
+Mehrrunden-Pfad erbt es mit dem geteilten Pipeline-Block (Entscheidung 40). Der Wert ist der
+SHA-256 über die Einbettungseingaben, die der Produktionscode für sieben feste Beispiel-Chunks
+berechnet (`ContextPrefixFingerprint`). Er wird wie jeder andere Festpunkt verglichen; ein fehlender
+Wert lädt als `null` und erscheint als unvergleichbarer Festpunkt (Entscheidung 45).
+
+**Warum ein Abdruck statt einer Präfix-Version.** Eine Konstante `VERSION` hätte #1341 nicht
+aufgehalten: Sie hängt an genau der Sorgfalt, die dort fehlte, und ein Test, der einen Beispielpräfix
+gegen die Version festnagelt, wird im selben Commit mit angepasst. Der Abdruck braucht niemanden,
+der an ihn denkt. Jede Änderung, die die Eingabe eines der Beispiele verschiebt, verschiebt ihn.
+
+**Was er abdeckt.** Die Beispiele laufen durch `ChunkContextPrefix#applyTo` und
+`ChunkContextTitle#deriveTitle`, genau wie der Ingest und der Präfix-Nachlauf. `applyTo` ist dafür
+der eine Weg beider Schreibpfade geworden. Vorher bauten `DocumentIngestService` und
+`ContextPrefixRerunService` die Formatierung je selbst zusammen, und ein Abdruck über nur eine der
+beiden Stellen hätte eine Änderung an der anderen übersehen. Die sieben Beispiele decken je einen
+Zweig ab: Titel mit Werten, ein Überschriftenpfad, der mit dem Titel beginnt (ohne Rücksicht auf
+Groß- und Kleinschreibung), ein Chunk, der mit seinen Überschriften beginnt, der Rückfall auf den
+Dateinamen, ein Ein-Chunk-Dokument mit und ohne Werte, ein Dokumenttyp ohne Präfix. Damit bewegen
+Bestandteile, Reihenfolge, Trennzeichen, die Strukturkontext-Regel, die Titelwahl und das
+Klammerformat den Wert.
+
+**Was er nicht abdeckt.** Welche Werte ein Dokument tatsächlich trägt, entscheiden Metadatenschema
+und Extraktion, nicht die Präfixform. Das gehört zum Korpus beziehungsweise zur Pipeline. Ein neuer
+Zweig, den keines der Beispiele trifft, bewegt den Abdruck nicht. Wer einen solchen Zweig einführt,
+ergänzt ein Beispiel. `ContextPrefixFingerprintTest` prüft, dass jedes Beispiel in den Wert eingeht
+und beide Ausgänge (mit und ohne Präfix) erreicht werden.
+
+**Docker-freier Wächter.** `PipelinePathIsolationTest` hält die sechs Einzelfragen-Baselines und
+`ConversationPathIsolationTest` die Mehrrunden-Baseline gegen `ContextPrefixFingerprint.current()`.
+Eine Präfixänderung ohne Neuvermessung fällt damit im `check` des verursachenden PRs auf, nicht erst
+als vermeintliche Regression im nächtlichen Lauf.
+
+### 58. Alle drei Messverträge steigen: Rohvektor 11 → 12, Pipeline 14 → 15, Mehrrunden 3 → 4
+
+Der Präfix ist Teil jeder Einbettung eines mehrteiligen Dokuments und damit jeder Rangfolge. Deshalb
+steigen alle drei Pfade im selben Schritt, wie in den Entscheidungen 46 und 55, weiterhin unabhängig
+gezählt.
+
+### 59. Reine Fixpunkt-Ergänzung, kein neuer Messlauf
+
+Die sieben Baselines wurden ohne neuen Lauf nachgezogen. Die Präfixform hat sich seit ihren
+Messläufen nicht geändert: Die letzte Änderung an `ChunkContextPrefix` (und an den übrigen Klassen,
+die die Einbettungseingabe formen) ist #1651 vom 2026-09-14. Alle sieben Messläufe stammen vom
+2026-09-15 (Entscheidung 56). Das Zusammenlegen in `applyTo` ist verhaltensneutral:
+`ChunkContextPrefixTest`, `DocumentIngestServiceTest` und `ContextPrefixRerunIntegrationTest` laufen
+unverändert grün, und der Abdruck, den die Beispiele über `applyTo` liefern, ist der, den die
+Baselines tragen. Eingetragen ist `6f613be0…`; Zahlen, Zustände und die übrigen Festpunkte bleiben,
+die `notes` jeder Datei tragen den datierten Nachtrag.
+
+### 60. Der Job `conversations` misst den Einzelfragen-Pipeline-Pfad nicht mehr
+
+Der Mehrrunden-Lauf ist derselbe Harness-Lauf wie der Einzelfragen-Lauf der Domäne, nur mit
+`opaa.eval.runConversations` und aktiver Zerlegung (Entscheidung 48). Bisher lief darin auch die
+Pipeline-Messung der Einzelfragen (Schritt 6 von `VerwaltungRetrievalEvaluationHarnessTest`),
+unter aktiver Zerlegung. Keine Baseline beschreibt diese Konfiguration, kein Urteil las den Report,
+und ihr Zustands-Audit meldete in jedem Lauf dieselben 13 Scheinabweichungen gegen die ohne Zerlegung
+gezogenen Zustände. Solches Rauschen stumpft ab, eine echte Abweichung ginge darin unter.
+
+Der Harness überspringt Schritt 6 deshalb, sobald die Mehrrunden-Messung angefordert ist. Die
+Rohvektor-Messung bleibt: Sie hängt nicht an der Zerlegung, misst also dasselbe wie im Job
+`evaluate`, und kostet neben der Indizierung kaum Zeit.
+Die Mehrrunden-Zahlen bewegen sich dadurch nicht. Schritt 6 schrieb nichts, was Schritt 8 liest, und
+schon bisher lieferten die drei Messungen eines Laufs identische Ergebnisse, obwohl nur die erste
+direkt auf Schritt 6 folgte. Den Beleg liefert der label-ausgelöste CI-Lauf dieses PRs (Delta 0 gegen
+die Baseline).

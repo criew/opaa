@@ -196,6 +196,18 @@ Nachtrag CPU-Backend). Zwei Fälle bleiben außerhalb des Pins, und beide sind n
 - Mit `-Dopaa.eval.allowGpu=true` rechnet womöglich die GPU. Der Harness prüft dann keine
   CPU-Variante und trägt `unpinned: gpu allowed` ein.
 
+### Kontextpräfix-Form als Festpunkt (Issue #1650)
+
+Jeder Chunk eines mehrteiligen Dokuments wird mit seinem Kontextpräfix eingebettet. Dessen Form
+(Bestandteile, Reihenfolge, Strukturkontext-Regel, Titelwahl, Klammerformat) bewegt Rangfolgen,
+ohne dass sich eine Pipeline-Version ändert. Alle drei Messpfade führen sie deshalb als Festpunkt
+`contextPrefixFingerprint`: einen SHA-256 über die Einbettungseingaben, die
+`ChunkContextPrefix#applyTo` für feste Beispiel-Chunks berechnet (`ContextPrefixFingerprint`). Der
+Wert muss nicht von Hand angehoben werden, er folgt dem Code. Weichen die committeten Baselines vom
+aktuellen Abdruck ab, schlägt schon `evalUnitTest` fehl (`PipelinePathIsolationTest`,
+`ConversationPathIsolationTest`): Wer die Präfixform ändert, vermisst die Baselines im selben PR neu.
+Begründung: ADR-0012, Nachtrag Kontextpräfix-Form.
+
 ### Externer Ollama-Endpunkt (Issue #1076)
 
 Alle drei Harnesse akzeptieren optional `-Dopaa.eval.ollamaBaseUrl=http://localhost:11434`: Statt den
@@ -435,6 +447,12 @@ Abschnitt „Messung".
 wird; das leistet die Teilfragen-Zerlegung. Ohne sie — oder ohne systemweit aktives Chat-Modell —
 meldet sich der Lauf als **nicht ausgeführt** und schreibt nichts, statt still den Rückfallpfad zu
 messen. Ebenso bei einem leeren Datensatz.
+
+**Ein Mehrrunden-Lauf misst den Einzelfragen-Pipeline-Pfad nicht.** Mit `runConversations` überspringt
+der Harness die Pipeline-Messung der Einzelfragen (Schritt 6). Sie liefe unter aktiver Zerlegung, und
+gegen diese Konfiguration ist keine Baseline gezogen. Ihr Zustands-Audit meldete deshalb in jedem Lauf
+Scheinabweichungen, die niemand beurteilte. Die Rohvektor-Messung der Einzelfragen läuft weiter; sie
+hängt nicht an der Zerlegung.
 
 Was der Schritt tut, je Fall:
 
