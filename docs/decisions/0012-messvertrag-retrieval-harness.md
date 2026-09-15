@@ -40,7 +40,7 @@ Festpunkt aller drei Pfade, Messvertrag-Versionen Rohvektor 11, Pipeline 14, Meh
 sieben Baselines mit Pin neu vermessen) und den
 [Nachtrag zur Kontextpräfix-Form](#nachtrag-kontextpräfix-form-im-messvertrag-issue-1650)
 (Issue #1650: `contextPrefixFingerprint`, ein aus dem Produktionscode berechneter Abdruck der
-Präfixform, als Festpunkt aller drei Pfade, Messvertrag-Versionen Rohvektor 12, Pipeline 15,
+Präfixform über Ingest-Entscheidungen, Kernfeld-Extraktion und Präfixbildung, als Festpunkt aller drei Pfade, Messvertrag-Versionen Rohvektor 12, Pipeline 15,
 Mehrrunden 4, reine Fixpunkt-Ergänzung ohne neuen Messlauf; der Job `conversations` misst den
 Einzelfragen-Pipeline-Pfad nicht mehr).
 Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
@@ -1414,7 +1414,7 @@ es eine geänderte Messgrundlage, die kein Festpunkt benannte.
 `Baseline.FixedPoints`, `PipelineBaseline.FixedPoints` und die Laufkonfigurationen beider Reports
 führen das neue Feld `contextPrefixFingerprint` direkt hinter `ingestionPipelineFingerprint`; der
 Mehrrunden-Pfad erbt es mit dem geteilten Pipeline-Block (Entscheidung 40). Der Wert ist der
-SHA-256 über die Einbettungseingaben, die der Produktionscode für sieben feste Beispiel-Chunks
+SHA-256 über die Einbettungseingaben, die der Produktionscode für zehn feste Beispieldokumente
 berechnet (`ContextPrefixFingerprint`). Er wird wie jeder andere Festpunkt verglichen; ein fehlender
 Wert lädt als `null` und erscheint als unvergleichbarer Festpunkt (Entscheidung 45).
 
@@ -1423,22 +1423,56 @@ aufgehalten: Sie hängt an genau der Sorgfalt, die dort fehlte, und ein Test, de
 gegen die Version festnagelt, wird im selben Commit mit angepasst. Der Abdruck braucht niemanden,
 der an ihn denkt. Jede Änderung, die die Eingabe eines der Beispiele verschiebt, verschiebt ihn.
 
-**Was er abdeckt.** Die Beispiele laufen durch `ChunkContextPrefix#applyTo` und
-`ChunkContextTitle#deriveTitle`, genau wie der Ingest und der Präfix-Nachlauf. `applyTo` ist dafür
-der eine Weg beider Schreibpfade geworden. Vorher bauten `DocumentIngestService` und
-`ContextPrefixRerunService` die Formatierung je selbst zusammen, und ein Abdruck über nur eine der
-beiden Stellen hätte eine Änderung an der anderen übersehen. Die sieben Beispiele decken je einen
-Zweig ab: Titel mit Werten, ein Überschriftenpfad, der mit dem Titel beginnt (ohne Rücksicht auf
-Groß- und Kleinschreibung), ein Chunk, der mit seinen Überschriften beginnt, der Rückfall auf den
-Dateinamen, ein Ein-Chunk-Dokument mit und ohne Werte, ein Dokumenttyp ohne Präfix. Damit bewegen
-Bestandteile, Reihenfolge, Trennzeichen, die Strukturkontext-Regel, die Titelwahl und das
-Klammerformat den Wert.
+**Der Abdruck ruft die Entscheidungen auf, statt sie nachzubauen.** Jedes Beispiel ist ein
+`DocumentIngest` (eine Datei oder eine Textquelle mit erklärtem Titel und Hierarchiepfad) mit den
+Eigenschaften, die ein Format gelesen hat, einer Chunk-Anzahl, einem Fundort und einem Chunk-Text.
+Daraus rechnet der Abdruck mit denselben Methoden, die Aufnahme und Nachlauf aufrufen:
 
-**Was er nicht abdeckt.** Welche Werte ein Dokument tatsächlich trägt, entscheiden Metadatenschema
-und Extraktion, nicht die Präfixform. Das gehört zum Korpus beziehungsweise zur Pipeline. Ein neuer
-Zweig, den keines der Beispiele trifft, bewegt den Abdruck nicht. Wer einen solchen Zweig einführt,
-ergänzt ein Beispiel. `ContextPrefixFingerprintTest` prüft, dass jedes Beispiel in den Wert eingeht
-und beide Ausgänge (mit und ohne Präfix) erreicht werden.
+| Entscheidung | Methode | Aufrufer in Produktion |
+|---|---|---|
+| Vom Quellsystem erklärte Eigenschaften über die des Formats legen | `DocumentIngest#declaredOver` | Aufnahme |
+| Kernfeld Titel, Dokumentart, Datum (Frontmatter `titel`, erste Überschrift, Dateiname) | `CoreMetadataExtractor.extract` | Aufnahme, Bestandsläufe |
+| Titel der Aufnahme (humanisierter Dateiname, erklärter Titel hinter dem Hierarchiepfad) | `ChunkContextPrefix#ingestTitle` | Aufnahme |
+| Präfix-Berechtigung | `ChunkContextPrefix#eligible` | Aufnahme; der Nachlauf liest sie gespeichert zurück |
+| Ein-Chunk-Regel | `ChunkContextPrefix#documentWasSplit` | Aufnahme und Nachlauf |
+| Kernfeld-Titel vor dem Titel der Aufnahme | `ChunkContextPrefix#titleAtRest` | Aufnahme und Nachlauf |
+| Welche Kernfelder präfixwirksam sind, ausgehend von der Werkseinstellung einer Bibliothek aus `KnowledgeLibrary.ownedByUser` | `CoreContextPrefixSettings#coreValues` | `DocumentMetadataService` |
+| Segmente, Strukturkontext, Klammerformat | `ChunkContextPrefix#applyTo` | Aufnahme und Nachlauf |
+
+Schwelle, Berechtigung, Titel der Aufnahme, erklärte Eigenschaften und Kernfeld-Werte standen vorher
+verteilt in `DocumentIngestService`, `ContextPrefixRerunService` und `DocumentMetadataService`, die
+Ein-Chunk-Schwelle sogar doppelt. Sie sind in diese Methoden gezogen, ohne ihr Verhalten zu ändern.
+
+Die zehn Beispiele decken je einen Zweig ab:
+- ein gequoteter Frontmatter-Titel vor einer abweichenden ersten Überschrift, eine erste Überschrift
+  allein, keine Titelquelle (Rückfall auf den Dateinamen)
+- ein Überschriftenpfad, der mit dem Titel beginnt, und ein Chunk, der mit seinen Überschriften
+  beginnt
+- präfixwirksame Dokumentart und Datum auf einem Ein-Chunk-Dokument und auf einem geteilten
+  Dokument, dazu ein Ein-Chunk-Dokument mit Werkseinstellung ohne Werte
+- eine Textquelle mit erklärtem Titel, dieselbe bei gescheiterter Extraktion (Rückfall auf den
+  Hierarchiepfad) und eine Textquelle ohne Titel (keine Berechtigung)
+
+`ContextPrefixFingerprintTest` prüft, dass jedes Beispiel in den Wert eingeht und die genannten
+Ausgänge tatsächlich erreicht werden. Belegt ist, dass eine Änderung an Schwelle, Berechtigung,
+Titelextraktion oder Werkseinstellung den Wächter rot macht (Reproduktionsnachweise in PR #1664).
+
+**Was er nicht abdeckt.** Das Folgende bewegt die Einbettungseingabe, ohne dass ein Festpunkt es
+bemerkt:
+- **Bibliotheksfelder und Schlagworte:** die Wirkstelle eigener Bibliotheksfelder
+  (`LibraryMetadataField#isContextPrefixEnabled`), deren Anzeigewerte und das
+  Schlagwort-Segment, zusammengestellt in `DocumentMetadataService#chunkMetadataOf` aus
+  Datenbankzeilen. Die Eval-Bibliotheken tragen heute keine eigenen Felder und keine Schlagworte.
+- **Rückweg der gespeicherten Kernfeld-Werte:** Die Rückübersetzung in `CoreMetadata` (Label aus dem
+  Vokabular) bildet der Abdruck nach, er ruft sie nicht auf.
+- **Modellgestützte Extraktion und Vokabular:** die Extraktion (in den Eval-Läufen abgeschaltet) und
+  der Inhalt des Dokumentart-Vokabulars.
+- **Bestandsläufe:** Neubewertung und Nachlauf-Auswahl über `stampOf`.
+- **Neue Zweige:** Ein Zweig, den keines der Beispiele trifft, bewegt den Abdruck nicht. Wer einen
+  einführt, ergänzt ein Beispiel.
+
+Keine dieser Stellen ist durch Korpus-Hash oder `ingestionPipelineFingerprint` gedeckt. Eine Änderung
+dort verlangt weiterhin eine bewusste Neuvermessung.
 
 **Docker-freier Wächter.** `PipelinePathIsolationTest` hält die sechs Einzelfragen-Baselines und
 `ConversationPathIsolationTest` die Mehrrunden-Baseline gegen `ContextPrefixFingerprint.current()`.
@@ -1454,13 +1488,21 @@ gezählt.
 ### 59. Reine Fixpunkt-Ergänzung, kein neuer Messlauf
 
 Die sieben Baselines wurden ohne neuen Lauf nachgezogen. Die Präfixform hat sich seit ihren
-Messläufen nicht geändert: Die letzte Änderung an `ChunkContextPrefix` (und an den übrigen Klassen,
-die die Einbettungseingabe formen) ist #1651 vom 2026-09-14. Alle sieben Messläufe stammen vom
-2026-09-15 (Entscheidung 56). Das Zusammenlegen in `applyTo` ist verhaltensneutral:
-`ChunkContextPrefixTest`, `DocumentIngestServiceTest` und `ContextPrefixRerunIntegrationTest` laufen
-unverändert grün, und der Abdruck, den die Beispiele über `applyTo` liefern, ist der, den die
-Baselines tragen. Eingetragen ist `6f613be0…`; Zahlen, Zustände und die übrigen Festpunkte bleiben,
-die `notes` jeder Datei tragen den datierten Nachtrag.
+Messläufen nicht geändert. Die letzte Änderung an `ChunkContextPrefix`, `indexing/metadata/`,
+`ChunkLocationResolver`, `HeadingSectionSplitter` und `FullTextChunkStore` ist #1651 vom
+2026-09-14, alle sieben Messläufe stammen vom 2026-09-15 (Entscheidung 56).
+
+**Beleg der Verhaltensneutralität.** Die Methoden sind nur verschoben. Belegt ist das nicht durch den
+Abdruck selbst, der seinen Wert aus demselben neuen Code bekommt, sondern durch einen exakten
+Report-Vergleich. Der Review zu PR #1664 hat jedes Blatt aller sieben Reports und der drei Chunk-Maps
+des label-ausgelösten Laufs 34996240329 gegen den letzten gepinnten Lauf aus #1662 (34991107251)
+verglichen, einschließlich `allQueryResults`, aller 83 Mehrrunden-Runden und der Zerlegungen. Außer
+Vertragsversion, neuem Feld und Zeitstempeln ist alles identisch. Den zweiten Umbauschritt (Schwelle,
+Berechtigung, Titel der Aufnahme, erklärte Eigenschaften, Kernfeld-Werte) bestätigt der erneute
+label-ausgelöste Lauf dieses PRs mit Delta 0 und leeren Audits.
+
+Eingetragen ist `ff4022a9…`. Zahlen, Zustände und die übrigen Festpunkte bleiben, die `notes` jeder
+Datei tragen den datierten Nachtrag.
 
 ### 60. Der Job `conversations` misst den Einzelfragen-Pipeline-Pfad nicht mehr
 

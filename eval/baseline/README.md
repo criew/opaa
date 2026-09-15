@@ -515,11 +515,21 @@ geschah mit #1341 und lief über Tage als vermeintliche Regression (#1308).
 
 `contextPrefixFingerprint` steht deshalb in allen drei Baseline-Typen direkt hinter
 `ingestionPipelineFingerprint`. Der Wert ist kein von Hand gepflegter Versionszähler, sondern ein
-SHA-256 über die Einbettungseingaben, die der Produktionscode (`ChunkContextPrefix#applyTo`, über den
-Ingest und Präfix-Nachlauf gleichermaßen laufen) für feste Beispiel-Chunks berechnet
-(`io.opaa.eval.ContextPrefixFingerprint`). Jede Änderung an Bestandteilen, Reihenfolge,
-Strukturkontext-Regel, Titelwahl oder Klammerformat verschiebt ihn von selbst. Ein abweichender Wert
-macht die Baseline unvergleichbar, ein fehlender lädt als `null` (wie bei `ollamaImage`).
+SHA-256 über die Einbettungseingaben, die der Produktionscode für feste Beispieldokumente berechnet
+(`io.opaa.eval.ContextPrefixFingerprint`). Die Beispiele laufen durch dieselben Methoden wie
+Aufnahme und Nachlauf. Deshalb verschiebt jede Änderung an den folgenden Stellen den Wert von selbst:
+- Kernfeld-Extraktion des Titels (`CoreMetadataExtractor`)
+- Titel und Präfix-Berechtigung der Aufnahme, Ein-Chunk-Regel
+- präfixwirksame Kernfelder der Bibliotheks-Werkseinstellung
+- Segmente, Strukturkontext-Regel und Klammerformat
+
+Ein abweichender Wert macht die Baseline unvergleichbar, ein fehlender lädt als `null` (wie bei
+`ollamaImage`).
+
+**Nicht abgedeckt** sind eigene Bibliotheksfelder und Schlagworte, die modellgestützte Extraktion,
+der Inhalt des Dokumentart-Vokabulars, die Rückübersetzung gespeicherter Kernfeld-Werte und jeder
+Zweig, den kein Beispiel trifft (ADR-0012, Entscheidung 57). Eine Änderung dort verlangt weiterhin
+eine bewusste Neuvermessung, ohne dass ein Festpunkt sie meldet.
 
 `PipelinePathIsolationTest`/`ConversationPathIsolationTest` halten die sieben committeten Werte
 Docker-frei gegen den aktuellen Abdruck. Ein PR, der die Präfixform ändert, wird damit schon im
@@ -527,9 +537,10 @@ Docker-frei gegen den aktuellen Abdruck. Ein PR, der die Präfixform ändert, wi
 wie jeden Festpunkt aus dem `runConfiguration`-Block des Reports.
 
 **Nachgetragen am 2026-09-15** in allen sieben Dateien, ohne neuen Messlauf (Rohvektor-Messvertrag
-12, Pipeline 15, Mehrrunden 4). Die Präfixform ist seit #1651 (2026-09-14) unverändert, alle sieben
-Messläufe stammen vom 2026-09-15. Keine Zahl bewegt sich. Herleitung: ADR-0012, Nachtrag
-Kontextpräfix-Form.
+12, Pipeline 15, Mehrrunden 4). Eingetragen ist `ff4022a9…`. Die Präfixform ist seit #1651
+(2026-09-14) unverändert, alle sieben Messläufe stammen vom 2026-09-15. Keine Zahl bewegt sich; der
+exakte Report-Vergleich der Läufe 34996240329 und 34991107251 belegt das Blatt für Blatt.
+Herleitung: ADR-0012, Nachtrag Kontextpräfix-Form.
 
 ## Besonderheiten der Pipeline-Baselines (Issue #1040)
 

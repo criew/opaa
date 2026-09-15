@@ -199,10 +199,19 @@ Nachtrag CPU-Backend). Zwei Fälle bleiben außerhalb des Pins, und beide sind n
 ### Kontextpräfix-Form als Festpunkt (Issue #1650)
 
 Jeder Chunk eines mehrteiligen Dokuments wird mit seinem Kontextpräfix eingebettet. Dessen Form
-(Bestandteile, Reihenfolge, Strukturkontext-Regel, Titelwahl, Klammerformat) bewegt Rangfolgen,
-ohne dass sich eine Pipeline-Version ändert. Alle drei Messpfade führen sie deshalb als Festpunkt
-`contextPrefixFingerprint`: einen SHA-256 über die Einbettungseingaben, die
-`ChunkContextPrefix#applyTo` für feste Beispiel-Chunks berechnet (`ContextPrefixFingerprint`). Der
+bewegt Rangfolgen, ohne dass sich eine Pipeline-Version ändert. Alle drei Messpfade führen sie
+deshalb als Festpunkt `contextPrefixFingerprint`: einen SHA-256 über die Einbettungseingaben, die
+der Produktionscode für feste Beispieldokumente berechnet (`ContextPrefixFingerprint`). Die
+Beispiele laufen durch dieselben Methoden wie Aufnahme und Nachlauf:
+- die vom Quellsystem erklärten Eigenschaften und die Kernfeld-Extraktion (`CoreMetadataExtractor`:
+  Frontmatter-`titel`, erste Überschrift, Dateiname)
+- Titel und Präfix-Berechtigung der Aufnahme sowie die Ein-Chunk-Regel
+- die präfixwirksamen Kernfelder ausgehend von der Werkseinstellung einer Bibliothek
+- Segmente, Strukturkontext-Regel und Klammerformat (`ChunkContextPrefix#applyTo`)
+
+**Nicht abgedeckt** sind eigene Bibliotheksfelder, Schlagworte, die modellgestützte Extraktion, der
+Inhalt des Dokumentart-Vokabulars und jeder Zweig, den kein Beispiel trifft. Die vollständige Liste
+steht in ADR-0012, Entscheidung 57. Der
 Wert muss nicht von Hand angehoben werden, er folgt dem Code. Weichen die committeten Baselines vom
 aktuellen Abdruck ab, schlägt schon `evalUnitTest` fehl (`PipelinePathIsolationTest`,
 `ConversationPathIsolationTest`): Wer die Präfixform ändert, vermisst die Baselines im selben PR neu.

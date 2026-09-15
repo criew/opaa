@@ -441,8 +441,10 @@ trägt ihn seit #1553 der eigene Job `conversations` in
 `evaluation`, mit eigenem Zeitbudget. Der Preis ist der Grund für das eigene Budget: ein
 Zerlegungs- und ein Notiz-Aufruf je **Runde**, und nach der Mehrfachlauf-Regel dreimal — 498
 Modellaufrufe für 83 Runden. Gemessene Laufzeiten: rund 14 Minuten je Messung auf einer
-Entwicklermaschine (CPU-Testcontainer), 52 Minuten für den ganzen Task-Lauf einschließlich
-Indizierung und Einzelfragen-Teil; auf einem GitHub-Runner 118 Minuten (Lauf 34648243211).
+Entwicklermaschine (CPU-Testcontainer). Der ganze Task-Lauf misst seit #1650 neben den Mehrrunden-Fällen
+nur noch die Rohvektor-Messung der Einzelfragen, die Einzelfragen-Pipeline-Messung entfällt. Auf einem
+GitHub-Runner dauerte er damit 66 Minuten (Lauf 34996240329). Vorher, mit dieser Messung, waren es
+52 Minuten lokal und 118 Minuten auf einem Runner (Lauf 34648243211, kalter Modell-Cache).
 
 **Einpfad-Regel.** Für diese drei Klassen gilt „gelöst" auf dem **Pipeline-Pfad allein**, nicht wie
 sonst auf beiden: Der Rohvektor-Pfad misst `similaritySearch` direkt und kennt weder Gesprächsverlauf
