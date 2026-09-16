@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import ChatPage from './ChatPage'
+import { ANSWER_ARRIVED_ANNOUNCEMENT } from '../components/chat/MessageList'
 import { clearRemovedNoteItemCache, useChatStore } from '../stores/chatStore'
 import { useSpaceStore } from '../stores/spaceStore'
 
@@ -109,6 +110,27 @@ describe('ChatPage', () => {
       expect(screen.getByText('Wie ist das Projekt aufgebaut?')).toBeInTheDocument()
     })
     expect(useChatStore.getState().chatId).toBe('chat-personal-1')
+  })
+
+  // The loading state belongs to the chat waiting for an answer (#1574): leaving it for another
+  // chat ends the loading state of the view, which is no arriving answer to announce.
+  it('does not announce an arrived answer when leaving a chat that is still waiting for one', async () => {
+    currentChatId = 'chat-personal-1'
+    useChatStore.setState({
+      spaceId: 'space-personal',
+      chatId: 'chat-personal-1',
+      messages: [{ id: 'q', role: 'user', content: 'Offene Frage', timestamp: new Date() }],
+      isLoading: true,
+    })
+    renderWithProviders(<ChatPage />, { withRouter: true })
+    expect(screen.getByText('Denkt nach …')).toBeInTheDocument()
+
+    act(() => {
+      useChatStore.getState().startNewChat('space-personal')
+    })
+
+    expect(screen.getByText('Womit kann ich Ihnen heute helfen?')).toBeInTheDocument()
+    expect(screen.queryByText(ANSWER_ARRIVED_ANNOUNCEMENT)).not.toBeInTheDocument()
   })
 
   it('shows error alert when present', async () => {

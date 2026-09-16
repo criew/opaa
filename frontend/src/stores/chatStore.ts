@@ -46,6 +46,75 @@ function toChatMessage(message: ChatMessageResponse): ChatMessage {
 // never read by a component, only compared against itself across async gaps.
 let chatLoadSequence = 0
 
+/** A question whose answer is still outstanding. `chatId` is the chat it is answered in - null
+ * until its implicit creation finished; `loadSequence` identifies the not-yet-created chat view it
+ * was sent from until then. */
+interface InFlightSend {
+  chatId: string | null
+  loadSequence: number
+  userMessage: ChatMessage
+  /** The chat's user messages known to be persisted when the question was sent. */
+  persistedUserTurnsBefore: number
+  /** Set once an applied server read of the chat already contained this question's turn. */
+  persisted: boolean
+}
+
+// Every question still waiting for its answer, across chats - the source of each view's isLoading
+// and of the questions a (re)loaded chat shows before the server has persisted them. Module state
+// like chatLoadSequence; reset() clears it.
+const inFlightSends = new Set<InFlightSend>()
+
+// Per chat, the number of user messages the server is known to hold - the baseline a question
+// records when it is sent. Module state like inFlightSends; reset() clears it.
+const persistedUserTurnsByChatId = new Map<string, number>()
+
+/**
+ * Takes note of a server read of `chatId` that is about to be applied. An outstanding question
+ * counts as contained once a user message with its text follows the user messages persisted when
+ * it was sent - the position tells a repeated question from the earlier one. A contained question
+ * is neither appended again nor keeps the view loading; its answer then re-reads the chat.
+ */
+function recordPersistedTurns(chatId: string, serverMessages: ChatMessageResponse[]): void {
+  const userContents = serverMessages
+    .filter((message) => message.role === 'USER')
+    .map((message) => message.content)
+  for (const send of inFlightSends) {
+    if (send.chatId !== chatId || send.persisted) continue
+    send.persisted = userContents
+      .slice(send.persistedUserTurnsBefore)
+      .includes(send.userMessage.content)
+  }
+  persistedUserTurnsByChatId.set(chatId, userContents.length)
+}
+
+// Bumped whenever an answer arrives. loadChat compares it across its GET: an answer that arrived in
+// between may have been persisted after the GET read the chat, so the chat is read again.
+let completedTurnSequence = 0
+
+/** Whether the view showing `chatId` - or, for null, the current not-yet-created chat - waits for
+ * an answer. */
+function isViewAwaitingAnswer(chatId: string | null): boolean {
+  for (const send of inFlightSends) {
+    if (chatId !== null ? send.chatId === chatId && !send.persisted : isNewChatViewOf(send)) {
+      return true
+    }
+  }
+  return false
+}
+
+function isNewChatViewOf(send: InFlightSend): boolean {
+  return send.chatId === null && send.loadSequence === chatLoadSequence
+}
+
+/** The server's messages plus the questions still outstanding for this chat that the read did not
+ * contain yet - the server only persists a question together with its answer. */
+function withOutstandingQuestions(chatId: string, messages: ChatMessage[]): ChatMessage[] {
+  const outstanding = [...inFlightSends]
+    .filter((send) => send.chatId === chatId && !send.persisted)
+    .map((send) => send.userMessage)
+  return outstanding.length > 0 ? [...messages, ...outstanding] : messages
+}
+
 // Monotonically increasing token guarding applyScopeChange's PATCH failure handler (#565): a
 // settings PATCH for chat A that is still in flight when the user navigates to chat B must not
 // roll chat B's state back on failure. Same pattern as chatLoadSequence above - module-level,
@@ -154,6 +223,7 @@ export function dropChatSettingsCache(chatId: string): void {
   // #1488: a deleted chat is never loaded again, so its pending note removals would never be
   // confirmed - and nothing would ever filter against them either.
   removedNoteItemIdsByChatId.delete(chatId)
+  persistedUserTurnsByChatId.delete(chatId)
   if (pendingChain) {
     void pendingChain.finally(() => confirmedSettingsByChatId.delete(chatId))
     return
@@ -227,6 +297,33 @@ function scheduleTitleReload(
         // Best-effort refresh only - the fallback title already shown is left as is.
       })
   }, TITLE_RELOAD_DELAY_MS)
+}
+
+/**
+ * Re-reads the active chat's messages, title and note without a spinner - for a view that was
+ * (re)loaded while one of its answers was outstanding, whose snapshot may lack that turn. Applied
+ * only while the chat is still active and no newer loadChat/startNewChat superseded the read.
+ */
+function reloadChatTurns(
+  get: () => ChatState,
+  set: (partial: Partial<ChatState>) => void,
+  chatId: string,
+): void {
+  const loadSequence = chatLoadSequence
+  getChat(chatId)
+    .then((detail) => {
+      if (loadSequence !== chatLoadSequence || get().chatId !== chatId) return
+      recordPersistedTurns(chatId, detail.messages)
+      confirmNoteItemRemovals(chatId, detail.noteItems ?? [])
+      set({
+        title: detail.title ?? null,
+        messages: withOutstandingQuestions(chatId, detail.messages.map(toChatMessage)),
+        noteItems: visibleNoteItems(chatId, detail.noteItems ?? []),
+      })
+    })
+    .catch(() => {
+      // Best-effort: the view keeps what it shows; the next load of the chat catches up.
+    })
 }
 
 interface ChatState {
@@ -312,8 +409,9 @@ function applyChatDetail(detail: ChatDetail) {
     // 'none' keeps the chip bar an exact mirror of what the server applies (#560).
     referencedLibraryIds: scope === 'libraries' ? referencedLibraryIds : [],
     metadataFilter: normalizeMetadataFilter(detail.metadataFilter),
-    messages: detail.messages.map(toChatMessage),
+    messages: withOutstandingQuestions(detail.id, detail.messages.map(toChatMessage)),
     noteItems: visibleNoteItems(detail.id, detail.noteItems ?? []),
+    isLoading: isViewAwaitingAnswer(detail.id),
   }
 }
 
@@ -349,6 +447,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // again once the response arrives - see settingsChangeSequenceByChatId's declaration above for
     // why a per-chat counter, rather than settingsUpdateChains, is needed to catch this ordering.
     const settingsSequenceAtStart = settingsChangeSequenceByChatId.get(chatId) ?? 0
+    const completedTurnsAtStart = completedTurnSequence
     set({ isLoadingChat: true, error: null })
     try {
       const detail = await getChat(chatId)
@@ -356,6 +455,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // applying this response now would resurrect a chat the user already navigated away from
       // (#548 review, finding d).
       if (requestId !== chatLoadSequence) return
+      recordPersistedTurns(chatId, detail.messages)
       // #1488: loading the chat is what confirms a local removal - a point the server no longer
       // reports leaves the filter set, a point it still reports keeps being filtered out.
       confirmNoteItemRemovals(chatId, detail.noteItems ?? [])
@@ -382,6 +482,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
           metadataFilter: detailState.metadataFilter,
         })
       }
+      // An answer that arrived while this GET was in flight may be missing from its snapshot.
+      if (completedTurnSequence !== completedTurnsAtStart) reloadChatTurns(get, set, chatId)
     } catch (err) {
       if (requestId !== chatLoadSequence) return
       const message = err instanceof Error ? err.message : 'Chat konnte nicht geladen werden'
@@ -396,6 +498,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messages: [],
         title: null,
         noteItems: [],
+        isLoading: false,
       })
     }
   },
@@ -421,6 +524,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       metadataFilter: null,
       noteItems: [],
       isLoadingChat: false,
+      isLoading: false,
     })
   },
 
@@ -439,27 +543,43 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // schedules the delayed reload that picks it up.
     const isFirstTurn = get().messages.length === 0
 
-    const userMessage: ChatMessage = {
-      id: generateId(),
-      role: 'user',
-      content: question,
-      timestamp: new Date(),
+    // The chat this question is answered in, compared again after every await like
+    // removeNoteItem's rollback compares its chatId: the chat active when it was sent, or - for a
+    // not-yet-created chat - the one its implicit creation produced. Until that id exists, the
+    // not-yet-created chat view is identified by chatLoadSequence, which every loadChat/startNewChat
+    // bumps.
+    const sendingChatId = get().chatId
+    const send: InFlightSend = {
+      chatId: sendingChatId,
+      loadSequence: chatLoadSequence,
+      userMessage: { id: generateId(), role: 'user', content: question, timestamp: new Date() },
+      persistedUserTurnsBefore: sendingChatId
+        ? (persistedUserTurnsByChatId.get(sendingChatId) ?? 0)
+        : 0,
+      persisted: false,
     }
+    // The person looks at this question's chat, possibly reloaded since it was sent.
+    const isTargetChatShown = () =>
+      send.chatId !== null
+        ? get().chatId === send.chatId
+        : get().chatId === null && isNewChatViewOf(send)
+    // The person still looks at the very view the question was sent from.
+    const isSendingViewShown = () => isTargetChatShown() && chatLoadSequence === send.loadSequence
 
+    inFlightSends.add(send)
     set((state) => ({
-      messages: [...state.messages, userMessage],
+      messages: [...state.messages, send.userMessage],
       isLoading: true,
       error: null,
     }))
 
     try {
-      let { chatId } = get()
       const { spaceId, scope, referencedLibraryIds, metadataFilter } = get()
       const useKnowledge = scope === 'all'
       // Only 'libraries' actually names a scope - 'none' sends an empty array, matching what the
       // chip bar shows (#560).
       const libraryIds = scope === 'libraries' ? referencedLibraryIds : []
-      if (!chatId) {
+      if (!send.chatId) {
         if (!spaceId) {
           throw new Error('Kein Space für den neuen Chat ausgewählt')
         }
@@ -468,20 +588,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
           referencedLibraryIds: libraryIds,
           ...(metadataFilter ? { metadataFilter } : {}),
         })
-        chatId = created.id
         // #575: a logout in between (e.g. a 401 elsewhere triggering authStore.logout()) must not
         // let this chat's id resurrect into the now-emptied store.
         if (isStaleSessionEpoch(sessionEpoch)) return
-        set({ chatId })
+        // The question is sent to the created chat either way; only the view it was sent from
+        // becomes that chat.
+        const viewTakesChat = isSendingViewShown()
+        send.chatId = created.id
+        if (viewTakesChat) set({ chatId: created.id })
         // The settings this chat was just created with are the server's own record too (#565
         // review) - same reasoning as loadChat above.
-        confirmedSettingsByChatId.set(chatId, {
+        confirmedSettingsByChatId.set(created.id, {
           scope,
           referencedLibraryIds: libraryIds,
           metadataFilter,
         })
         // Makes the implicitly created chat show up in its space's chat list immediately,
-        // instead of only after a manual reload (#548 review, finding 4).
+        // instead of only after a manual reload.
         useChatListStore.getState().upsertChat(spaceId, {
           id: created.id,
           spaceId: created.spaceId,
@@ -494,6 +617,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           updatedAt: created.updatedAt,
         })
       }
+      const chatId = send.chatId
 
       // A PATCH from setScopeAll/addReferencedLibrary/removeReferencedLibrary may still be in
       // flight for *this* chat - awaiting it first avoids racing it against this query, which the
@@ -513,6 +637,31 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // #575: the query answer arriving after a logout must not resurrect messages/chatId into the
       // now-emptied store - this is the second of the two write-back paths the #618 review flagged.
       if (isStaleSessionEpoch(sessionEpoch)) return
+      inFlightSends.delete(send)
+      completedTurnSequence++
+      persistedUserTurnsByChatId.set(
+        chatId,
+        Math.max(persistedUserTurnsByChatId.get(chatId) ?? 0, send.persistedUserTurnsBefore + 1),
+      )
+      if (spaceId) {
+        // Moves the chat to the top of its space's list after every turn, mirroring the backend's
+        // own updatedAt bump. Keyed by chat, so it applies whichever chat is shown now.
+        useChatListStore.getState().touchChat(spaceId, response.chatId, new Date().toISOString())
+        if (response.chatTitle) {
+          useChatListStore.getState().updateChatTitle(spaceId, response.chatId, response.chatTitle)
+        }
+        if (isFirstTurn) {
+          scheduleTitleReload(get, set, response.chatId, spaceId)
+        }
+      }
+      if (!isSendingViewShown() || send.persisted) {
+        // Another chat shown now keeps its own state. The own chat, reloaded in the meantime, may
+        // lack this turn in its snapshot - or already show it - and is read again instead of
+        // appended to.
+        set({ isLoading: isViewAwaitingAnswer(get().chatId) })
+        if (isTargetChatShown()) reloadChatTurns(get, set, chatId)
+        return
+      }
       const assistantMessage: ChatMessage = {
         id: generateId(),
         role: 'assistant',
@@ -525,7 +674,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
       set((state) => ({
         messages: [...state.messages, assistantMessage],
-        isLoading: false,
+        isLoading: isViewAwaitingAnswer(state.chatId),
         chatId: response.chatId,
         // #557: the chat's current title right after this turn - still the mechanical prefix
         // fallback on a first turn, see scheduleTitleReload above for how the LLM-derived title
@@ -538,24 +687,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
           ? visibleNoteItems(response.chatId, response.noteItems)
           : state.noteItems,
       }))
-      if (spaceId) {
-        // Moves the chat to the top of its space's list after every turn, mirroring the backend's
-        // own updatedAt bump (#548 review, finding 4).
-        useChatListStore.getState().touchChat(spaceId, response.chatId, new Date().toISOString())
-        if (response.chatTitle) {
-          useChatListStore.getState().updateChatTitle(spaceId, response.chatId, response.chatTitle)
-        }
-        if (isFirstTurn) {
-          scheduleTitleReload(get, set, response.chatId, spaceId)
-        }
-      }
     } catch (err) {
       // #575: a failure arriving after a logout must not write isLoading/error into the
       // now-emptied store either - same reasoning as the two success write-backs above.
       if (isStaleSessionEpoch(sessionEpoch)) return
+      inFlightSends.delete(send)
+      const isLoading = isViewAwaitingAnswer(get().chatId)
+      // A failure is shown in its own chat only, not in one the person switched to.
+      if (!isTargetChatShown()) {
+        set({ isLoading })
+        return
+      }
       // TODO: Add retry UX (e.g. "Retry" button on failed messages)
       const message = err instanceof Error ? err.message : 'Ein unerwarteter Fehler ist aufgetreten'
-      set({ error: message, isLoading: false })
+      set({ error: message, isLoading })
+    } finally {
+      inFlightSends.delete(send)
     }
   },
 
@@ -647,6 +794,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // Invalidates any loadChat still in flight, matching startNewChat above - otherwise a
     // response arriving after reset() could resurrect the previous user's chat.
     chatLoadSequence++
+    inFlightSends.clear()
+    persistedUserTurnsByChatId.clear()
     // #1488: the pending removals belong to the chat the previous user had open - keeping them
     // would filter points out of the next user's chats until some load confirmed them.
     clearRemovedNoteItemCache()
