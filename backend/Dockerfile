@@ -30,12 +30,24 @@ RUN "$JAVA_HOME/bin/jlink" \
     --strip-debug --no-man-pages --no-header-files --compress=zip-6 \
     --output /javaruntime
 
+# The writable mount points of the runtime image, owned by the unprivileged uid below. Distroless
+# has no shell, so a directory can only enter the runtime stage through a COPY - and COPY --from
+# carries the ownership of the source stage. /app/uploads is the only directory the application
+# writes to (io.opaa.library.FilesystemUploadedOriginalStore); /app/documents is read-only in
+# practice but is created here so both mount points exist with the same owner. A *named volume*
+# mounted onto either of them inherits that ownership from the image, a bind mount does not - the
+# host directory's own owner governs there (docs/handbuch/deployment.md, "Nicht-root-Betrieb").
+FROM eclipse-temurin:21-jdk AS appdirs
+RUN mkdir -p /skel/app/documents /skel/app/uploads && chown -R 65532:65532 /skel/app
+
 # Distroless ships glibc without any of the packages the triage in #1459 named: no fontconfig (and
 # with it no libexpat), no coreutils, no p11-kit, no tar, wget, gnupg or perl, no pebble. The
 # runtime above is self-contained - cacerts, time-zone database and locale data come from the JDK,
 # not from OS packages - so the base has to provide no more than the C library. The -nossl variant
 # over plain base for the same reason: the JVM brings its own TLS stack and never links libssl.
-FROM gcr.io/distroless/base-nossl-debian13 AS runtime
+# The :nonroot tag (issue #1471) carries the account uid/gid 65532 in /etc/passwd and /etc/group,
+# which is what lets the USER below name a resolvable user rather than a bare number.
+FROM gcr.io/distroless/base-nossl-debian13:nonroot AS runtime
 # glibc reports the POSIX charset ANSI_X3.4-1968 without a compiled locale, which the JVM adopts as
 # sun.jnu.encoding - file *names* carrying umlauts (a document library's normal case) would then be
 # unreadable. Distroless strips /usr/lib/locale, so the one built-in locale is copied back in;
@@ -49,7 +61,13 @@ ENV LC_ALL=C.UTF-8
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 COPY --from=jlink /javaruntime ${JAVA_HOME}
+COPY --from=appdirs /skel/ /
 WORKDIR /app
 COPY --from=build /app/backend/build/libs/*.jar app.jar
+# The process needs no privilege of its own: it binds 8080 (above 1024), reads its own read-only
+# image content and writes only to /app/uploads and to /tmp (1777 in the base, used for
+# java.io.tmpdir - S3 downloads, mail attachments, heap dumps). Spelled out even though the
+# :nonroot base already defaults to it, so a base-image change cannot silently restore uid 0.
+USER 65532:65532
 EXPOSE 8080
 ENTRYPOINT ["/opt/java/openjdk/bin/java", "-Duser.language=en", "-Duser.country=US", "-jar", "/app/app.jar"]

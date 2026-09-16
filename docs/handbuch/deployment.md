@@ -106,6 +106,19 @@ startet das Backend nicht mehr.** Die Schritte einmalig **vor** dem `docker comp
    vergessen" und Selbstregistrierung nicht einschalten, und Einladungslinks werden zur Übergabe
    angezeigt statt versendet. Siehe [„E-Mail-Versand (SMTP)"](#e-mail-versand-smtp).
 
+5. **`uploads/` der Kennung `65532` übergeben — Pflicht, solange die Originale im Dateisystem
+   liegen** (`OPAA_UPLOAD_STORE` nicht auf `s3`). Das Backend läuft im Container nicht mehr als
+   `root`; ein Verzeichnis, das bisher `root` gehörte, ist für es dann nicht mehr beschreibbar, und
+   der erste Upload nach dem Update endet mit `500`. Der Schritt ändert nur Eigentümer, keine
+   Inhalte:
+
+   ```bash
+   sudo chown -R 65532:65532 uploads documents
+   ```
+
+   Einzelheiten, der Weg ohne `sudo` und die Fehlermeldung, an der man es erkennt, stehen unter
+   [„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
+
 Was sich **nicht** ändert: Bestehende Konten, Rollen, Rechte und der Index bleiben, wie sie sind. Wer
 bisher einen Identitätsanbieter betreibt, betreibt ihn unverändert weiter; die lokale
 Benutzerverwaltung bleibt ausgeschaltet, bis sie jemand einschaltet. Die eine inhaltliche Änderung am
@@ -469,7 +482,16 @@ Die Grenze wird dennoch in drei Schichten gehalten, damit eine spätere zweite O
 ```bash
 # 1. Umgebung konfigurieren
 cp .env.docker.example .env.docker
+
+# 2. Ablageverzeichnisse anlegen und dem Container-Konto übergeben
+mkdir -p documents uploads
+sudo chown -R 65532:65532 documents uploads
 ```
+
+Der zweite Schritt ist Pflicht und nicht nachholbar, ohne dass der erste Upload fehlschlägt: Das
+Backend läuft im Container unter der Kennung `65532`, ein Verzeichnis, das Docker selbst für einen
+fehlenden Bind-Mount anlegt, gehört dagegen `root`. Einzelheiten und der Weg ohne `sudo` unter
+[„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
 
 `.env.docker` bearbeiten. Voreingestellt sind lokal betriebene Modelle über die openai-kompatible
 Schicht (der einzige Anbindungsweg) — dafür ist keine weitere Angabe in `.env.docker`
@@ -549,6 +571,78 @@ keine Shell, keine Coreutils, kein `curl`/`wget`, keinen Paketmanager. Für den 
 - **Zusätzliche JVM-Optionen** (Heap-Grenzen, Debug-Agent, JFR) werden über `JAVA_TOOL_OPTIONS`
   gesetzt; ein `java`-Aufruf mit eigenen Argumenten ist nicht nötig und würde den Entrypoint
   überschreiben.
+- **Der Prozess läuft ohne Sonderrechte** unter der Kennung `65532` (siehe unten). Das betrifft die
+  Eigentümerverhältnisse der eingehängten Verzeichnisse.
+
+### Nicht-root-Betrieb des Backend-Containers
+
+Das Backend läuft im Container als Benutzer und Gruppe `65532` — nicht als `root`. Es lauscht auf
+Port 8080, also oberhalb des privilegierten Bereichs, liest sonst nur unveränderliche Bestandteile
+des Images und schreibt ausschließlich nach `/app/uploads` und nach `/tmp`.
+
+Daraus folgt genau eine Betriebsanforderung: **Das Host-Verzeichnis hinter `/app/uploads` muss der
+Kennung `65532` gehören.** Bei einem Bind-Mount gilt der Eigentümer des Host-Verzeichnisses, nicht
+der des Verzeichnisses im Image — Docker ändert daran beim Einhängen nichts. Legt Docker das
+Verzeichnis beim Start selbst an, weil es fehlt, gehört es `root`, und der erste Upload endet mit
+`500` und dieser Meldung im Protokoll:
+
+```text
+java.io.UncheckedIOException: Datei konnte nicht gespeichert werden
+Caused by: java.nio.file.AccessDeniedException: /app/uploads/<Organisations-ID>
+```
+
+Der Fehler tritt erst beim ersten Upload auf, nicht beim Start: Der Container läuft, die
+Zustandsübersicht meldet `UP`.
+
+**Neue Installation.** Vor dem ersten `docker compose up` (Schritt 2 im
+[Schnellstart](#schnellstart)):
+
+```bash
+mkdir -p documents uploads
+sudo chown -R 65532:65532 documents uploads
+```
+
+**Bestehende Installation.** Derselbe Schritt, ohne `mkdir`, im Verzeichnis mit der
+`docker-compose.yml` — er ändert nur die Eigentümerverhältnisse, keine Inhalte, und ist damit ohne
+Datenverlust ausführbar:
+
+```bash
+docker compose down
+sudo chown -R 65532:65532 uploads documents
+docker compose pull && docker compose up -d
+```
+
+`documents` wird nur gelesen; für ein Verzeichnis mit den üblichen Rechten `0755` genügt das auch
+ohne Eigentumswechsel. Es steht oben trotzdem mit dabei, weil ein Korpus mit strengeren Rechten
+sonst genauso still unlesbar bleibt.
+
+**Ohne `sudo`, mit eigener Kennung.** Wer die Verzeichnisse nicht abgeben kann oder darf — etwa auf
+einem Host mit einem Dienstkonto, dem die Daten gehören sollen —, lässt den Container stattdessen
+unter genau dieser Kennung laufen. In der `docker-compose.yml` steht die Zeile beim Backend-Service
+bereits auskommentiert:
+
+```yaml
+services:
+  backend:
+    user: "1000:1000" # die eigene uid:gid, `id -u`/`id -g`
+```
+
+Das ist die Ausweichmöglichkeit, nicht der empfohlene Weg: Die Kennung muss dann bei jedem
+Umzug und in jeder abgeleiteten Compose-Datei mitgepflegt werden, während `65532` eine feste
+Eigenschaft des Images ist. `root` (`user: "0:0"`) erfüllt denselben Zweck und gibt den
+Sicherheitsgewinn wieder auf.
+
+**Benannte Volumes brauchen nichts davon.** Wer statt eines Bind-Mounts ein benanntes Volume auf
+`/app/uploads` legt, muss nichts tun: Docker übernimmt beim ersten Einhängen eines leeren Volumes
+die Eigentümerverhältnisse des Verzeichnisses aus dem Image, und das gehört bereits `65532`.
+Dasselbe gilt für den Objektspeicher (`OPAA_UPLOAD_STORE=s3`, siehe
+[Originalablage](#originalablage)) — dort liegt gar kein Original mehr im Dateisystem.
+
+`docker cp` bleibt in beiden Richtungen nutzbar (siehe [„Diagnose ohne
+Shell"](#diagnose-ohne-shell)): Es läuft über den Docker-Daemon und nicht unter der Kennung des
+Containers. Ebenso unberührt sind Thread- und Heap-Dump nach `/tmp` — das Verzeichnis ist im Image
+für alle beschreibbar — und ein `docker exec` auf `jcmd`, das ohne `--user` unter derselben Kennung
+`65532` läuft wie der Prozess und sich deshalb an ihn anhängen darf.
 
 ### Eigene interne CA ergänzen
 
@@ -2478,6 +2572,13 @@ Betrifft die **Datenbank**, nicht ein Benutzerkonto von OPAA: Das PostgreSQL-Vol
 Das Backend-Laufzeitimage enthält keine Shell (siehe [Backend-Laufzeitimage](#backend-laufzeitimage)).
 Statt `docker exec … sh` die dort beschriebenen Wege nutzen: Logs, `/actuator`, `docker cp` oder einen
 Werkzeug-Container im selben Netzwerk-Namensraum.
+
+### Jeder Upload endet mit „Interner Serverfehler" und `AccessDeniedException: /app/uploads/…`
+
+Das Host-Verzeichnis hinter `/app/uploads` gehört nicht der Kennung `65532`, unter der das Backend
+im Container läuft — meist, weil Docker es beim ersten Start selbst angelegt hat. Behebung mit
+`chown` oder einem `user:`-Eintrag, beides unter [„Nicht-root-Betrieb des
+Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
 
 ### Das Backend startet nicht und nennt `OPAA_AUTH_JWT_SECRET`
 

@@ -36,7 +36,7 @@
 // creates.
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -335,7 +335,21 @@ async function waitUntilReady(timeoutMs) {
   return false
 }
 
+// The backend container runs as uid 65532 (backend/Dockerfile, #1471) and a bind mount keeps the
+// host directory's own owner. Left to Docker, a missing ./uploads would be created as root and
+// every upload would fail with AccessDeniedException - so this script creates both mount points
+// itself, writable for any uid. That is the CI counterpart of the one-time `chown` a deployment
+// does (docs/handbuch/deployment.md, "Nicht-root-Betrieb des Backend-Containers").
+function prepareBindMounts() {
+  for (const name of ['documents', 'uploads']) {
+    const directory = join(repoRoot, name)
+    mkdirSync(directory, { recursive: true })
+    chmodSync(directory, 0o777)
+  }
+}
+
 async function main() {
+  prepareBindMounts()
   console.log(`> Starting from a clean slate (docker compose -p ${composeProjectName} down -v)`)
   run('docker', [...composeArgs, 'down', '-v', '--remove-orphans'], { env: composeEnv })
 
