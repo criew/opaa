@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
@@ -97,6 +97,19 @@ export default function ChatPage() {
     }
   }, [isNewChat, storeChatId, storeSpaceId, navigate])
 
+  // The message list is remounted per chat view: leaving a chat that waits for an answer ends the
+  // view's loading state without an answer arriving, which the list must not announce as one. A
+  // new chat receiving its id from its first question stays the same view.
+  const [chatView, setChatView] = useState({ spaceId: storeSpaceId, chatId: storeChatId, key: 0 })
+  if (chatView.spaceId !== storeSpaceId || chatView.chatId !== storeChatId) {
+    const createdInView = chatView.spaceId === storeSpaceId && chatView.chatId === null
+    setChatView({
+      spaceId: storeSpaceId,
+      chatId: storeChatId,
+      key: createdInView ? chatView.key : chatView.key + 1,
+    })
+  }
+
   if (isLoadingChat) {
     return (
       <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -161,7 +174,7 @@ export default function ChatPage() {
           {error}
         </Alert>
       )}
-      <MessageList messages={messages} isLoading={isLoading} />
+      <MessageList key={chatView.key} messages={messages} isLoading={isLoading} />
       <ChatInput onSend={(message) => sendMessage(message)} disabled={isLoading} />
     </Box>
   )
