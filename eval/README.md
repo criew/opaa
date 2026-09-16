@@ -457,6 +457,19 @@ wird; das leistet die Teilfragen-Zerlegung. Ohne sie — oder ohne systemweit ak
 meldet sich der Lauf als **nicht ausgeführt** und schreibt nichts, statt still den Rückfallpfad zu
 messen. Ebenso bei einem leeren Datensatz.
 
+**Denselben Lauf ohne Gesprächsnotiz messen** (Ablation, Issue #1587):
+
+```bash
+./gradlew evaluateVerwaltungConversations -Dopaa.eval.conversationNoteCap=0
+```
+
+`opaa.eval.conversationNoteCap` überschreibt den am `ChatNoteProperties`-Bean gemessenen Deckel; `0`
+heißt, dass keine Verdichtung läuft und keine Notizpunkte in den Zerlegungskontext gelangen. Eine
+Property **des Messpfads** — die Anwendung behält ihre Untergrenze 1 und bekommt keinen
+Ein-/Ausschalter für die Notiz (ADR-0031). Der wirksame Wert erreicht den Report als Festpunkt
+`conversationNoteCap`, ein solcher Lauf gilt gegen die committete Baseline also korrekt als
+unvergleichbar und darf sie nicht ersetzen.
+
 **Ein Mehrrunden-Lauf misst den Einzelfragen-Pipeline-Pfad nicht.** Mit `runConversations` überspringt
 der Harness die Pipeline-Messung der Einzelfragen (Schritt 6). Sie liefe unter aktiver Zerlegung, und
 gegen diese Konfiguration ist keine Baseline gezogen. Ihr Zustands-Audit meldete deshalb in jedem Lauf
