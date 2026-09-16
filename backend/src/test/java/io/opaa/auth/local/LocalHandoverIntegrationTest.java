@@ -90,7 +90,6 @@ class LocalHandoverIntegrationTest {
     fixtures = fixturesFactory.create();
     fixtures.cleanUp();
     actionTokenRepository.deleteAll();
-    deleteLocalAuditRows();
     fixtures.localProvider(true);
     provider = fixtures.oidcProvider("Beschäftigte", ISSUER, CLIENT_ID);
     admin = fixtures.activeAdmin("verwaltung-" + UUID.randomUUID() + "@stadt.example");
@@ -102,7 +101,6 @@ class LocalHandoverIntegrationTest {
     foreignAccounts.forEach(fixtures::deleteAccount);
     foreignAccounts.clear();
     actionTokenRepository.deleteAll();
-    deleteLocalAuditRows();
     fixtures.cleanUp();
     fixtures.deleteProvider(provider.getId());
   }
@@ -625,12 +623,5 @@ class LocalHandoverIntegrationTest {
             + " FROM audit_log WHERE event_type = ? AND subject_ref = ? ORDER BY recorded_at",
         eventType,
         pseudonym);
-  }
-
-  private void deleteLocalAuditRows() {
-    jdbc.update(
-        "DELETE FROM audit_log WHERE event_type LIKE 'LOCAL_%'"
-            + " OR (event_type = 'SPACE_DELETED' AND organization_id = ?)",
-        Organization.DEFAULT_ID);
   }
 }

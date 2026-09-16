@@ -52,15 +52,11 @@ class LocalAccountLockoutIntegrationTest {
     fixtures.cleanUp();
     fixtures.localProvider(true);
     user = fixtures.activeUser("erika-" + UUID.randomUUID() + "@stadt.example");
-    jdbc.update(
-        "DELETE FROM audit_log WHERE event_type = 'LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS'");
   }
 
   @AfterEach
   void tearDown() {
     fixtures.cleanUp();
-    jdbc.update(
-        "DELETE FROM audit_log WHERE event_type = 'LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS'");
   }
 
   @Test
@@ -100,7 +96,9 @@ class LocalAccountLockoutIntegrationTest {
     List<Map<String, Object>> events =
         jdbc.queryForList(
             "SELECT event_type, actor_ref, object_label, subject_ref, before, after, reason"
-                + " FROM audit_log WHERE event_type = 'LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS'");
+                + " FROM audit_log WHERE event_type = 'LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS'"
+                + " AND "
+                + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT);
     assertThat(events).hasSize(1);
     assertThat(events.getFirst().get("actor_ref")).isEqualTo(LocalRefreshTokenService.SYSTEM_ACTOR);
     assertThat(String.valueOf(events.getFirst().values()))
@@ -127,7 +125,8 @@ class LocalAccountLockoutIntegrationTest {
     assertThat(
             jdbc.queryForObject(
                 "SELECT count(*) FROM audit_log"
-                    + " WHERE event_type = 'LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS'",
+                    + " WHERE event_type = 'LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS' AND "
+                    + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT,
                 Long.class))
         .as("the end of a lockout leaves no event")
         .isEqualTo(1L);
@@ -149,7 +148,8 @@ class LocalAccountLockoutIntegrationTest {
     assertThat(
             jdbc.queryForObject(
                 "SELECT count(*) FROM audit_log"
-                    + " WHERE event_type = 'LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS'",
+                    + " WHERE event_type = 'LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS' AND "
+                    + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT,
                 Long.class))
         .isZero();
   }

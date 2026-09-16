@@ -37,6 +37,27 @@ public final class LocalAccountFixtures {
   public static final String PASSWORD = "korrekt-batterie-pferd-klammer";
   public static final String DISPLAY_NAME = "Erika Muster";
 
+  private static final String LOCAL_ACCOUNT_PSEUDONYMS =
+      "SELECT CAST(p.pseudonym_id AS text) FROM audit_actor_pseudonyms p JOIN users u ON u.id ="
+          + " p.user_id WHERE u.issuer = '"
+          + LocalIssuer.URN
+          + "'";
+
+  /**
+   * An {@code audit_log} condition: the row names a local account as actor, object or subject.
+   * {@link #cleanUp()} removes every local account in both hooks, so these are the running class's
+   * own rows - as long as the account still exists; a test that deletes one itself scopes by the
+   * pseudonym it read beforehand.
+   */
+  public static final String NAMES_A_LOCAL_ACCOUNT =
+      "(actor_ref IN ("
+          + LOCAL_ACCOUNT_PSEUDONYMS
+          + ") OR object_id IN ("
+          + LOCAL_ACCOUNT_PSEUDONYMS
+          + ") OR subject_ref IN ("
+          + LOCAL_ACCOUNT_PSEUDONYMS
+          + "))";
+
   private final UserRepository users;
   private final LocalCredentialsRepository credentials;
   private final LocalRefreshTokenRepository refreshTokens;
@@ -117,6 +138,10 @@ public final class LocalAccountFixtures {
   public void deleteAccount(UUID userId) {
     transactions.executeWithoutResult(
         status -> {
+          jdbc.update(
+              "DELETE FROM audit_log a USING audit_actor_pseudonyms p WHERE p.user_id = ? AND"
+                  + " CAST(p.pseudonym_id AS text) IN (a.actor_ref, a.object_id, a.subject_ref)",
+              userId);
           jdbc.update("DELETE FROM local_action_tokens WHERE user_id = ?", userId);
           jdbc.update("DELETE FROM local_refresh_tokens WHERE user_id = ?", userId);
           jdbc.update("DELETE FROM local_revoked_tokens WHERE user_id = ?", userId);
@@ -124,6 +149,16 @@ public final class LocalAccountFixtures {
           credentials.deleteById(userId);
           users.findById(userId).ifPresent(users::delete);
         });
+  }
+
+  /**
+   * The audit rows naming one person as actor, object or subject - for an account the test deleted
+   * itself, whose pseudonym mapping went with it.
+   */
+  public void deleteAuditRowsNaming(UUID pseudonym) {
+    jdbc.update(
+        "DELETE FROM audit_log WHERE ? IN (actor_ref, object_id, subject_ref)",
+        pseudonym.toString());
   }
 
   /** Switches an existing provider row off and tells the registry. */
@@ -208,12 +243,14 @@ public final class LocalAccountFixtures {
   }
 
   /**
-   * Removes every local account (with the personal space its first request provisioned), every
-   * local token row and the LOCAL provider row.
+   * Removes every local account (with the personal space its first request provisioned and the
+   * audit rows naming it), every local token row and the LOCAL provider row.
    */
   public void cleanUp() {
     transactions.executeWithoutResult(
         status -> {
+          // Before the accounts: their pseudonyms cascade with them, and with them the only link.
+          jdbc.update("DELETE FROM audit_log WHERE " + NAMES_A_LOCAL_ACCOUNT);
           refreshTokens.deleteAll();
           revokedTokens.deleteAll();
           users.findAll().stream()

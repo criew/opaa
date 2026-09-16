@@ -41,8 +41,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  *
  * <p><b>One database for the whole suite.</b> A class wipes in its own {@code @BeforeEach} what it
  * touches, cleans up after itself in {@code @AfterEach}, and never asserts against an unfiltered
- * table - only against rows scoped to ids it created itself. {@link LeftoverGrantGuard} names the
- * offending class for the two tables no cleanup chain covers.
+ * table - only against rows scoped to ids it created itself. {@link LeftoverRowGuard} names the
+ * class that left rows behind; {@link SeededRowRestorer} puts the installation-wide settings rows
+ * back after every method.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
@@ -90,9 +91,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @MockitoSpyBean(
     types = {UserRepository.class, ChatMessageRepository.class, DirectorySyncStatusRecorder.class})
 // A derived signature must not declare @TestExecutionListeners of its own: like
-// @ContextConfiguration, it is resolved by nearest declaration, so both listeners below would
+// @ContextConfiguration, it is resolved by nearest declaration, so the listeners below would
 // silently disappear there.
 @TestExecutionListeners(
-    listeners = {OpaaTestBeanResetListener.class, LeftoverGrantGuard.class},
+    listeners = {OpaaTestBeanResetListener.class, LeftoverRowGuard.class, SeededRowRestorer.class},
     mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 public @interface OpaaIntegrationTest {}

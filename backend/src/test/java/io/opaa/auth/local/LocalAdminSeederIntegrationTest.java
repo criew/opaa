@@ -85,7 +85,7 @@ class LocalAdminSeederIntegrationTest {
     jdbc.update("DELETE FROM users WHERE issuer = 'https://idp.example/realms/bestand'");
     jdbc.update("DELETE FROM local_admin_seed_marker");
     jdbc.update("DELETE FROM oidc_provider_seed_marker");
-    jdbc.update("DELETE FROM audit_log");
+    removeAuditRows();
     logs = new ListAppender<>();
     logs.start();
     rootLogger().addAppender(logs);
@@ -95,6 +95,16 @@ class LocalAdminSeederIntegrationTest {
   void tearDown() {
     rootLogger().detachAppender(logs);
     fixtures.cleanUp();
+    removeAuditRows();
+  }
+
+  /**
+   * The protocol of the installation this class simulates: everything the seeder and the sign-ins
+   * record lands in the default organization. The seed markers need no cleanup here - {@code
+   * SeededRowRestorer} puts them back after every method.
+   */
+  private void removeAuditRows() {
+    jdbc.update("DELETE FROM audit_log WHERE organization_id = ?", Organization.DEFAULT_ID);
   }
 
   private static Logger rootLogger() {
@@ -141,7 +151,9 @@ class LocalAdminSeederIntegrationTest {
 
   private List<String> auditTypes() {
     return jdbc.queryForList(
-        "SELECT event_type FROM audit_log ORDER BY recorded_at, event_id", String.class);
+        "SELECT event_type FROM audit_log WHERE organization_id = ? ORDER BY recorded_at, event_id",
+        String.class,
+        Organization.DEFAULT_ID);
   }
 
   @Test
@@ -185,8 +197,9 @@ class LocalAdminSeederIntegrationTest {
     assertThat(auditTypes()).containsExactly("LOCAL_ADMIN_SEEDED", "LOCAL_BOOTSTRAP_ACCOUNT_LOGIN");
     Map<String, Object> loginEvent =
         jdbc.queryForMap(
-            "SELECT actor_kind, actor_ref FROM audit_log WHERE event_type = ?",
-            "LOCAL_BOOTSTRAP_ACCOUNT_LOGIN");
+            "SELECT actor_kind, actor_ref FROM audit_log WHERE event_type = ? AND organization_id = ?",
+            "LOCAL_BOOTSTRAP_ACCOUNT_LOGIN",
+            Organization.DEFAULT_ID);
     assertThat(loginEvent.get("actor_kind")).isEqualTo("SYSTEM_PROCESS");
     assertThat(loginEvent.get("actor_ref")).isEqualTo(LocalRefreshTokenService.SYSTEM_ACTOR);
   }
@@ -204,9 +217,10 @@ class LocalAdminSeederIntegrationTest {
     assertThat(eventsWithPassword).isEqualTo(1);
     Integer auditRowsWithPassword =
         jdbc.queryForObject(
-            "SELECT count(*) FROM audit_log WHERE before LIKE ? OR after LIKE ? OR reason LIKE ?"
-                + " OR object_label LIKE ?",
+            "SELECT count(*) FROM audit_log WHERE organization_id = ? AND (before LIKE ? OR after"
+                + " LIKE ? OR reason LIKE ? OR object_label LIKE ?)",
             Integer.class,
+            Organization.DEFAULT_ID,
             "%" + password + "%",
             "%" + password + "%",
             "%" + password + "%",

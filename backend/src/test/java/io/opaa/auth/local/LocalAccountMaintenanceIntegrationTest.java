@@ -74,8 +74,6 @@ class LocalAccountMaintenanceIntegrationTest {
   void setUp() throws IOException {
     fixtures = fixturesFactory.create();
     fixtures.cleanUp();
-    jdbc.update(
-        "DELETE FROM audit_log WHERE event_type IN ('LOCAL_USER_LOCKED', 'LOCAL_SESSION_REVOKED')");
     admin = fixtures.activeAdmin("verwaltung-" + UUID.randomUUID() + "@stadt.example");
     greenMail = new GreenMail(new ServerSetup(freePort(), "127.0.0.1", ServerSetup.PROTOCOL_SMTP));
     greenMail.setUser("opaa@intern.example", "kennung", "geheim");
@@ -102,10 +100,6 @@ class LocalAccountMaintenanceIntegrationTest {
         admin.id(),
         new MailSettingsUpdate(false, null, null, null, "", MailEncryption.STARTTLS, null, null));
     MailTestSupport.resetCaches(mailSettings);
-    jdbc.update(
-        "DELETE FROM audit_log WHERE event_type IN ('LOCAL_USER_LOCKED', 'LOCAL_SESSION_REVOKED')"
-            + " OR (event_type = 'MAIL_SETTINGS_CHANGED' AND organization_id = ?)",
-        Organization.DEFAULT_ID);
     fixtures.cleanUp();
   }
 
@@ -162,7 +156,9 @@ class LocalAccountMaintenanceIntegrationTest {
 
       List<String> lockedEvents =
           jdbc.queryForList(
-              "SELECT CAST(after AS text) FROM audit_log WHERE event_type = 'LOCAL_USER_LOCKED'",
+              "SELECT CAST(after AS text) FROM audit_log WHERE event_type = 'LOCAL_USER_LOCKED'"
+                  + " AND "
+                  + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT,
               String.class);
       assertThat(lockedEvents).hasSize(1);
       assertThat(lockedEvents.getFirst()).contains("INACTIVITY");
@@ -175,7 +171,8 @@ class LocalAccountMaintenanceIntegrationTest {
       inactivityLock.run(now.plus(Duration.ofDays(1)));
       assertThat(
               jdbc.queryForObject(
-                  "SELECT count(*) FROM audit_log WHERE event_type = 'LOCAL_USER_LOCKED'",
+                  "SELECT count(*) FROM audit_log WHERE event_type = 'LOCAL_USER_LOCKED' AND "
+                      + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT,
                   Long.class))
           .isEqualTo(1L);
     } finally {

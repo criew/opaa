@@ -158,7 +158,8 @@ class LocalAuthLogPrivacyIntegrationTest {
     List<Map<String, Object>> events =
         jdbc.queryForList(
             "SELECT event_type, actor_ref, object_label, subject_ref, before, after, reason"
-                + " FROM audit_log WHERE event_type LIKE 'LOCAL_%'");
+                + " FROM audit_log WHERE event_type LIKE 'LOCAL_%' AND "
+                + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT);
     assertThat(events)
         .extracting(row -> (String) row.get("event_type"))
         .contains(
@@ -218,56 +219,51 @@ class LocalAuthLogPrivacyIntegrationTest {
     LocalCredentials row = fixtures.credentialsOf(bootstrap);
     row.markBootstrap();
     fixtures.save(row);
-    try {
-      assertThat(seeder.restoreBootstrapAdmin()).isEqualTo(LocalAdminSeeder.Outcome.RESET);
-      List<ILoggingEvent> blocks =
-          snapshot().stream()
-              .filter(event -> event.getFormattedMessage().contains("EINMALIGE AUSGABE"))
-              .toList();
-      assertThat(blocks).hasSize(1);
-      Matcher matcher =
-          Pattern.compile("Passwort:\\s+(\\S+)").matcher(blocks.getFirst().getFormattedMessage());
-      assertThat(matcher.find()).isTrue();
-      String password = matcher.group(1);
-      MvcResult login = login(bootstrap.email(), password, 200);
-      String token = JsonPath.read(login.getResponse().getContentAsString(), "$.accessToken");
+    assertThat(seeder.restoreBootstrapAdmin()).isEqualTo(LocalAdminSeeder.Outcome.RESET);
+    List<ILoggingEvent> blocks =
+        snapshot().stream()
+            .filter(event -> event.getFormattedMessage().contains("EINMALIGE AUSGABE"))
+            .toList();
+    assertThat(blocks).hasSize(1);
+    Matcher matcher =
+        Pattern.compile("Passwort:\\s+(\\S+)").matcher(blocks.getFirst().getFormattedMessage());
+    assertThat(matcher.find()).isTrue();
+    String password = matcher.group(1);
+    MvcResult login = login(bootstrap.email(), password, 200);
+    String token = JsonPath.read(login.getResponse().getContentAsString(), "$.accessToken");
 
-      List<String> personal = List.of(bootstrap.email(), bootstrap.email().toUpperCase());
-      for (ILoggingEvent event : snapshot()) {
-        String line = event.getFormattedMessage() + " " + throwableText(event);
-        String where = "log line of " + event.getLoggerName() + " at " + event.getLevel();
-        if (event != blocks.getFirst()) {
-          assertThat(line).as(where).doesNotContain(password);
-        }
-        assertThat(line).as(where).doesNotContain(token);
-        boolean ours = event.getLoggerName().startsWith("io.opaa");
-        if (ours || event.getLevel().isGreaterOrEqual(Level.INFO)) {
-          for (String value : personal) {
-            assertThat(line).as(where).doesNotContain(value);
-          }
+    List<String> personal = List.of(bootstrap.email(), bootstrap.email().toUpperCase());
+    for (ILoggingEvent event : snapshot()) {
+      String line = event.getFormattedMessage() + " " + throwableText(event);
+      String where = "log line of " + event.getLoggerName() + " at " + event.getLevel();
+      if (event != blocks.getFirst()) {
+        assertThat(line).as(where).doesNotContain(password);
+      }
+      assertThat(line).as(where).doesNotContain(token);
+      boolean ours = event.getLoggerName().startsWith("io.opaa");
+      if (ours || event.getLevel().isGreaterOrEqual(Level.INFO)) {
+        for (String value : personal) {
+          assertThat(line).as(where).doesNotContain(value);
         }
       }
-      List<Map<String, Object>> events =
-          jdbc.queryForList(
-              "SELECT event_type, actor_ref, object_label, subject_ref, before, after, reason"
-                  + " FROM audit_log WHERE event_type IN"
-                  + " ('LOCAL_ADMIN_RESET', 'LOCAL_BOOTSTRAP_ACCOUNT_LOGIN')");
-      assertThat(events)
-          .extracting(r -> (String) r.get("event_type"))
-          .contains("LOCAL_ADMIN_RESET", "LOCAL_BOOTSTRAP_ACCOUNT_LOGIN");
-      for (Map<String, Object> r : events) {
-        String text = String.valueOf(r.values());
-        assertThat(text)
-            .as("audit row %s", r.get("event_type"))
-            .doesNotContain(bootstrap.email())
-            .doesNotContain(LocalAccountFixtures.DISPLAY_NAME)
-            .doesNotContain(bootstrap.id().toString())
-            .doesNotContain(password);
-      }
-    } finally {
-      jdbc.update(
-          "DELETE FROM audit_log WHERE event_type IN"
-              + " ('LOCAL_ADMIN_RESET', 'LOCAL_BOOTSTRAP_ACCOUNT_LOGIN')");
+    }
+    List<Map<String, Object>> events =
+        jdbc.queryForList(
+            "SELECT event_type, actor_ref, object_label, subject_ref, before, after, reason"
+                + " FROM audit_log WHERE event_type IN"
+                + " ('LOCAL_ADMIN_RESET', 'LOCAL_BOOTSTRAP_ACCOUNT_LOGIN') AND "
+                + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT);
+    assertThat(events)
+        .extracting(r -> (String) r.get("event_type"))
+        .contains("LOCAL_ADMIN_RESET", "LOCAL_BOOTSTRAP_ACCOUNT_LOGIN");
+    for (Map<String, Object> r : events) {
+      String text = String.valueOf(r.values());
+      assertThat(text)
+          .as("audit row %s", r.get("event_type"))
+          .doesNotContain(bootstrap.email())
+          .doesNotContain(LocalAccountFixtures.DISPLAY_NAME)
+          .doesNotContain(bootstrap.id().toString())
+          .doesNotContain(password);
     }
   }
 
@@ -363,7 +359,9 @@ class LocalAuthLogPrivacyIntegrationTest {
         jdbc.queryForList(
             "SELECT event_type, actor_ref, object_label, subject_ref, CAST(before AS text) AS before,"
                 + " CAST(after AS text) AS after, reason FROM audit_log"
-                + " WHERE event_type LIKE 'LOCAL_USER_%' OR event_type = 'LOCAL_SESSION_REVOKED'");
+                + " WHERE (event_type LIKE 'LOCAL_USER_%' OR event_type = 'LOCAL_SESSION_REVOKED')"
+                + " AND "
+                + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT);
     assertThat(events)
         .extracting(row -> (String) row.get("event_type"))
         .contains(
@@ -394,9 +392,6 @@ class LocalAuthLogPrivacyIntegrationTest {
         assertThat(text).as("audit row %s", row.get("event_type")).doesNotContain(secret);
       }
     }
-    jdbc.update(
-        "DELETE FROM audit_log WHERE event_type LIKE 'LOCAL_USER_%'"
-            + " OR event_type = 'LOCAL_SESSION_REVOKED'");
   }
 
   /**
@@ -457,7 +452,8 @@ class LocalAuthLogPrivacyIntegrationTest {
           jdbc.queryForList(
               "SELECT event_type, actor_ref, object_label, subject_ref,"
                   + " CAST(before AS text) AS before, CAST(after AS text) AS after, reason"
-                  + " FROM audit_log WHERE event_type = 'LOCAL_USER_HANDOVER_REQUESTED'");
+                  + " FROM audit_log WHERE event_type = 'LOCAL_USER_HANDOVER_REQUESTED' AND "
+                  + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT);
       assertThat(events).hasSize(1);
       String after = (String) events.getFirst().get("after");
       assertThat(after).contains("LINK_DISPLAYED").contains(provider.getId().toString());
@@ -469,7 +465,6 @@ class LocalAuthLogPrivacyIntegrationTest {
           .doesNotContain(code)
           .doesNotContain(user.id().toString());
     } finally {
-      jdbc.update("DELETE FROM audit_log WHERE event_type = 'LOCAL_USER_HANDOVER_REQUESTED'");
       fixtures.deleteProvider(provider.getId());
     }
   }
@@ -555,7 +550,8 @@ class LocalAuthLogPrivacyIntegrationTest {
         jdbc.queryForList(
             "SELECT event_type, actor_ref, object_label, subject_ref, CAST(before AS text) AS before,"
                 + " CAST(after AS text) AS after, reason FROM audit_log"
-                + " WHERE event_type = 'LOCAL_PASSWORD_SET'");
+                + " WHERE event_type = 'LOCAL_PASSWORD_SET' AND "
+                + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT);
     assertThat(events).hasSize(2);
     assertThat(events)
         .extracting(row -> (String) row.get("after"))
@@ -572,9 +568,6 @@ class LocalAuthLogPrivacyIntegrationTest {
         assertThat(text).doesNotContain(secret);
       }
     }
-    jdbc.update(
-        "DELETE FROM audit_log WHERE event_type LIKE 'LOCAL_USER_%'"
-            + " OR event_type IN ('LOCAL_SESSION_REVOKED', 'LOCAL_PASSWORD_SET')");
   }
 
   private static String tokenIn(String link) {

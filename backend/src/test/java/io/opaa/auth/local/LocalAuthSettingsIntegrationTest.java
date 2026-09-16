@@ -55,9 +55,6 @@ class LocalAuthSettingsIntegrationTest {
     fixtures.cleanUp();
     fixtures.localProvider(true);
     resetSettings();
-    jdbc.update(
-        "DELETE FROM audit_log WHERE event_type IN ('LOCAL_ACCOUNTS_SETTINGS_CHANGED',"
-            + " 'LOCAL_ACCOUNTS_ENABLED', 'LOCAL_ACCOUNTS_DISABLED', 'LOCAL_SESSION_REVOKED')");
     admin = fixtures.activeAdmin("verwaltung-" + UUID.randomUUID() + "@stadt.example");
     adminBearer = bearer(login(admin.email(), LocalAccountFixtures.PASSWORD));
   }
@@ -222,7 +219,8 @@ class LocalAuthSettingsIntegrationTest {
     login(idle.email(), LocalAccountFixtures.PASSWORD, 401);
     assertThat(
             jdbc.queryForObject(
-                "SELECT count(*) FROM audit_log WHERE event_type = 'LOCAL_ACCOUNTS_DISABLED'",
+                "SELECT count(*) FROM audit_log WHERE event_type = 'LOCAL_ACCOUNTS_DISABLED' AND "
+                    + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT,
                 Long.class))
         .isEqualTo(1L);
     // no settings event for a request that only flipped the switch
@@ -262,7 +260,9 @@ class LocalAuthSettingsIntegrationTest {
   private List<Map<String, Object>> settingsEvents() {
     return jdbc.queryForList(
         "SELECT CAST(before AS text) AS before, CAST(after AS text) AS after FROM audit_log"
-            + " WHERE event_type = 'LOCAL_ACCOUNTS_SETTINGS_CHANGED' ORDER BY recorded_at");
+            + " WHERE event_type = 'LOCAL_ACCOUNTS_SETTINGS_CHANGED' AND "
+            + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT
+            + " ORDER BY recorded_at");
   }
 
   private void resetSettings() {

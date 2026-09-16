@@ -21,6 +21,8 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnLibraryFixtures;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +46,7 @@ class LibraryMetadataExtractionServiceIntegrationTest {
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private LibraryAccessService accessService;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
 
   private KnowledgeLibrary library;
   private CurrentUser owner;
@@ -199,18 +202,20 @@ class LibraryMetadataExtractionServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    // Also afterwards: this class shares its database with every other class of this signature, and
-    // a leftover library blocks their libraryRepository.deleteAll() through documents.library_id.
     removeOwnRows();
   }
 
+  /**
+   * Everything under this class's own users, recognised by their class-specific e-mail prefix; in
+   * both hooks, the {@code @BeforeEach} call catching what an aborted method left.
+   */
   private void removeOwnRows() {
-    jdbcTemplate.update("DELETE FROM document_keywords WHERE model_id = 'test-model'");
-    jdbcTemplate.update("DELETE FROM documents WHERE file_name LIKE 'guete-%'");
-    jdbcTemplate.update(
-        "DELETE FROM asset_grants WHERE granted_by_user_id IN (SELECT id FROM"
-            + " users WHERE email LIKE 'metadata-quality-%')");
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE name LIKE 'Güte%'");
+    List<UUID> ownLibraryIds =
+        jdbcTemplate.queryForList(
+            "SELECT id FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users"
+                + " WHERE email LIKE 'metadata-quality-%')",
+            UUID.class);
+    ownLibraryFixtures.removeLibraries(ownLibraryIds.toArray(new UUID[0]));
     jdbcTemplate.update("DELETE FROM users WHERE email LIKE 'metadata-quality-%'");
   }
 

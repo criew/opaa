@@ -744,7 +744,10 @@ class LocalAuthFlowIntegrationTest {
   private long auditCount(String eventType) {
     Long count =
         jdbc.queryForObject(
-            "SELECT count(*) FROM audit_log WHERE event_type = ?", Long.class, eventType);
+            "SELECT count(*) FROM audit_log WHERE event_type = ? AND "
+                + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT,
+            Long.class,
+            eventType);
     return count == null ? 0 : count;
   }
 

@@ -203,9 +203,16 @@ pauschales `deleteAll()` über eine Tabelle, in die auch andere Klassen schreibe
 `knowledge_libraries`), ist ein Fehler, kein Aufräumen — es scheitert spätestens an einer
 RESTRICT-Fremdschlüsselbeziehung einer fremden, noch gebrauchten Zeile. Ebenso wenig räumt eine
 Klasse vorsorglich hinter einer namentlich genannten anderen her; stattdessen wird die verursachende
-Klasse repariert. `LeftoverGrantGuard` nennt nach jeder Testklasse die Verursacherin für die beiden
-RESTRICT-Kindtabellen, die keine Aufräumkette abdeckt (`diagnostic_impersonation_grants`,
-`audit_incident_scope_grants`).
+Klasse repariert. `LeftoverRowGuard` zählt `documents`, `knowledge_libraries`, `vector_store`,
+`diagnostic_impersonation_grants` und `audit_incident_scope_grants` zu Beginn und am Ende jeder
+Testklasse und nennt die Klasse, nach der eine Zählung gewachsen ist — nur sie, nicht jede folgende.
+
+**Installationsweite Einstellungszeilen** (`branding_settings`, `audit_retention_settings`,
+`diagnostic_context_retention_settings`, `local_auth_settings`, `mail_settings`, `mail_templates`,
+die Seed-Marker) haben keine eigene ID, auf die eine Klasse ihr Aufräumen eingrenzen könnte.
+`SeededRowRestorer` sichert sie zu Beginn jeder Klasse und stellt sie nach jeder Testmethode wieder
+her, nach deren `@AfterEach` — auch wenn dort eine Aufräumanweisung geworfen hat. Eine weitere
+solche Tabelle gehört in seine Liste.
 
 **`SpringContextSignatureTest` zieht die Grenze maschinell.** Er baut über
 `BootstrapUtils.resolveTestContextBootstrapper(...)` je Testklasse die `MergedContextConfiguration`,

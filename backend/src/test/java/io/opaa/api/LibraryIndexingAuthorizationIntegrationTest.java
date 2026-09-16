@@ -22,8 +22,11 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnLibraryFixtures;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
@@ -56,26 +59,26 @@ class LibraryIndexingAuthorizationIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private IndexingJobRepository indexingJobRepository;
 
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
+
   private User devAdmin;
 
   /**
-   * Mirrors the {@code setUp} cleanup below: the suite shares one database, so this class removes
-   * its own libraries and their grants again instead of leaving them for the next class's blanket
-   * {@code deleteAll()} to trip over.
+   * The libraries a test method created. Most are owned by the shared dev admin, so the teardown
+   * goes by these ids - never by owner or name.
    */
+  private final List<UUID> ownLibraryIds = new ArrayList<>();
+
+  /** Runs and grants go with their library (see {@link OwnLibraryFixtures}). */
   @AfterEach
   void removeCreatedRows() {
-    jdbcTemplate.update(
-        "DELETE FROM asset_grants WHERE library_id IN (SELECT id FROM knowledge_libraries WHERE"
-            + " name LIKE 'Test-Bibliothek%')");
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE name LIKE 'Test-Bibliothek%'");
+    ownLibraryFixtures.removeLibraries(ownLibraryIds.toArray(new UUID[0]));
+    ownLibraryIds.clear();
     jdbcTemplate.update("DELETE FROM users WHERE email = 'foreign-owner-478@example.com'");
   }
 
   @BeforeEach
   void setUp() throws Exception {
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE name LIKE 'Test-Bibliothek%'");
-    jdbcTemplate.update("DELETE FROM users WHERE email = 'foreign-owner-478@example.com'");
 
     // Provisions "dev-admin" as SYSTEM_ADMIN (opaa.auth.initial-admin-email matches its seeded
     // email, application.yml) via the real UserProvisioningFilter - triggered by any authenticated
@@ -129,6 +132,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
                 null,
                 null,
                 false));
+    ownLibraryIds.add(library.getId());
     return library;
   }
 
@@ -226,6 +230,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
                 devAdmin.getId(),
                 LibraryVisibility.PRIVATE,
                 false));
+    ownLibraryIds.add(library.getId());
     grantRepository.save(
         AssetGrant.forUser(
             library.getId(),
@@ -288,19 +293,22 @@ class LibraryIndexingAuthorizationIntegrationTest {
         "foreign-owner-478-" + foreignOwnerId,
         Organization.DEFAULT_ID);
 
-    return libraryRepository.save(
-        KnowledgeLibrary.ownedByUser(
-            Organization.DEFAULT_ID,
-            "Test-Bibliothek Fremd",
-            null,
-            foreignOwnerId,
-            LibraryVisibility.PRIVATE,
-            false,
-            DocumentSourceType.FILESYSTEM,
-            documentDir.toAbsolutePath().toString(),
-            null,
-            null,
-            null,
-            false));
+    KnowledgeLibrary library =
+        libraryRepository.save(
+            KnowledgeLibrary.ownedByUser(
+                Organization.DEFAULT_ID,
+                "Test-Bibliothek Fremd",
+                null,
+                foreignOwnerId,
+                LibraryVisibility.PRIVATE,
+                false,
+                DocumentSourceType.FILESYSTEM,
+                documentDir.toAbsolutePath().toString(),
+                null,
+                null,
+                null,
+                false));
+    ownLibraryIds.add(library.getId());
+    return library;
   }
 }

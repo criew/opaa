@@ -14,7 +14,6 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.chunk.ChunkingService;
-import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.document.DocumentService;
@@ -27,6 +26,7 @@ import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
 import io.opaa.test.OpaaMockedChatModelIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnLibraryFixtures;
 import io.opaa.test.OwnOrganizationFixtures;
 import java.io.IOException;
 import java.io.InputStream;
@@ -73,8 +73,8 @@ class DocumentIndexingIntegrationTest {
   @Autowired private DocumentIndexingService documentIndexingService;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private VectorStore vectorStore;
-  @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private IndexingJobService indexingJobService;
@@ -165,14 +165,7 @@ class DocumentIndexingIntegrationTest {
    * the whole suite shares one database.
    */
   private void removeOwnFixtures() {
-    List<UUID> ownLibraryIds = ownLibraryIds();
-    for (UUID libraryId : ownLibraryIds) {
-      removeContentOf(libraryId);
-      jdbcTemplate.update("DELETE FROM indexing_jobs WHERE library_id = ?", libraryId);
-    }
-    jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = 'indexing-it@example.com')");
+    ownLibraryFixtures.removeLibraries(ownLibraryIds().toArray(new UUID[0]));
     jdbcTemplate.update("DELETE FROM users WHERE email = 'indexing-it@example.com'");
     removeThrowawayOrganizations();
   }
@@ -206,20 +199,10 @@ class DocumentIndexingIntegrationTest {
               "SELECT id FROM knowledge_libraries WHERE organization_id = ?",
               UUID.class,
               organizationId);
-      libraryIds.forEach(this::removeContentOf);
+      libraryIds.forEach(ownLibraryFixtures::removeContentOf);
       jdbcTemplate.update("DELETE FROM indexing_jobs WHERE organization_id = ?", organizationId);
     }
     ownOrganizationFixtures.removeOrganizations(throwawayOrganizationIds.toArray(new UUID[0]));
-  }
-
-  /**
-   * Chunks and documents of one library - chunks first, they carry no foreign key to a document.
-   */
-  private void removeContentOf(UUID libraryId) {
-    vectorChunkStore.deleteByLibraryId(libraryId);
-    // One statement rather than deleteAll(): PostgreSQL checks fk_documents_parent only at its
-    // end, so a parent and its attachment go together (ADR-0022).
-    jdbcTemplate.update("DELETE FROM documents WHERE library_id = ?", libraryId);
   }
 
   private void grantOwner(UUID libraryId, UUID granteeId) {
