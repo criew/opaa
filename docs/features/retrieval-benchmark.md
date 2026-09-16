@@ -1063,8 +1063,13 @@ Sie steckt nicht in `MetricsAggregate`/`PipelineMetricsAggregate` und damit auch
 `measurementContractVersion`/`pipelineMeasurementContractVersion` bleiben unverändert. Eine neue
 Kennzahl braucht erst eine Beobachtungsperiode über mehrere Läufe, bevor sie ein Fehlerkriterium nach
 ADR-0013 werden kann — dieselbe Zurückhaltung, mit der `hitCountAt5`/`hitCountAt10` (#306) erst als
-reine Zählung eingeführt wurden, bevor sie Teil der Fallzahlprüfung wurden. Ob und wie die Rangreserve
-später zum Fehlerkriterium wird, klärt Issue #1210.
+reine Zählung eingeführt wurden, bevor sie Teil der Fallzahlprüfung wurden.
+
+**Entschieden am 2026-09-16 (Issue #1210): Es bleibt dabei.** Die Beobachtungsperiode ist ausgewertet,
+die Rangreserve wird **kein** Fehlerkriterium. Tragend ist der erste von drei Gründen: `marginAtK`
+betrachtet nur den **ersten** relevanten Treffer und würde damit Stabilität zusichern, die sie nicht
+prüft. Die vollständige Begründung und die Bedingung für eine Wiederaufnahme stehen in
+[ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md#nachtrag-rangreserve-grenzstabilität-issue-1151).
 
 ---
 
@@ -1181,8 +1186,11 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
    `queryDecompositionEnabled=true` messbar, und die Mehrfachlauf-Regel aus Abschnitt 3 ist real
    scharf geschaltet statt nur synthetisch geprüft.
 
-   **Gemessen wurde dabei zweierlei, und beides spricht gegen eine committete Baseline mit aktiver
-   Zerlegung** (Domäne Verwaltung, 46 Golden-Fälle, Testcontainer-Pfad, CPU):
+   **Gemessen wurde dabei zweierlei** (Domäne Verwaltung, 46 Golden-Fälle, Testcontainer-Pfad,
+   CPU) — beides sprach damals gegen eine committete Baseline mit aktiver Zerlegung. **Der erste
+   der beiden Befunde ist überholt:** Seine Ursache war der Beispielsatz im Systemprompt, den
+   #1254/PR #1281 entfernt hat; die Zahlen der Nachmessung weiter unten ersetzen ihn. Er steht hier,
+   weil die Entscheidung am Ende dieses Punkts sonst ohne ihre Vorgeschichte dasteht.
 
    - **Zerlegungsgüte.** Mit diesem Modell fällt der Pipeline-Pfad von nDCG@8 0,740 auf 0,402 und
      von Hit Rate@5 0,957 auf 0,587. Die Ursache ist kein graduell schwächeres Umformulieren: In
@@ -1252,11 +1260,35 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
    es bislang nur eine manuelle Stichprobe über fünf Fälle (PR #1281) und einen Unit-Test mit
    gestubbtem Modell — nichts davon ist eine Messung im Sinne dieses Dokuments.
 
-   **Nicht entschieden** ist, ob die committete Pipeline-Baseline auf
-   `queryDecompositionEnabled=true` umgestellt wird — dagegen spricht unverändert das
-   Laufzeitargument oben (drei Läufe je Domäne), und der Festpunktwechsel ist eine bewusste
-   Neuziehung. Der Punkt bleibt offen und wird zusammen mit der zweiten Domäne in einem
-   Folge-Issue geführt.
+   **Entschieden am 2026-09-16 (Issue #1288): Die committeten Einzelfragen-Baselines bleiben bei
+   `queryDecompositionEnabled=false`, und zwar dauerhaft.** Die zweite Domäne wird dafür nicht mehr
+   gemessen — die Entscheidung hängt nicht mehr an ihr:
+
+   - **Die Zerlegung hat seit #1553 einen eigenen Ort, an dem sie beurteilt wird.** Der
+     Mehrrunden-Pfad läuft ausschließlich zerlegend, hat eine eigene Baseline
+     (`pipeline-<domäne>-conversations.json`), einen eigenen Messvertrag und einen eigenen CI-Job.
+     Was eine zerlegende Einzelfragen-Baseline absichern würde — dass die Zerlegungsmechanik nicht
+     stillschweigend kaputtgeht —, sichert er bereits ab, und zwar auf den Fällen, für die die
+     Zerlegung überhaupt gebaut wurde.
+   - **Auf eigenständigen Fragen kauft sie messbar nichts.** Die Tabelle oben zeigt Parität im
+     Rahmen der Messstreuung; eine Baseline darauf verdreifachte die Laufzeit des Pipeline-Pfads
+     (Mehrfachlauf-Regel, ein Chat-Aufruf je Fall) für ein Signal, das es schon gibt.
+   - **Zwei Pfade mit unterschiedlicher Zerlegungseinstellung sind kein Mangel, sondern die
+     Aufgabenteilung**: Der Einzelfragen-Pfad misst Retrieval ohne Modellanteil und bleibt
+     deterministisch; der Mehrrunden-Pfad misst die Zerlegung und trägt dafür die Nichtdeterminismus-
+     Kosten. Seit #1650 überspringt ein Mehrrunden-Lauf die Einzelfragen-Pipeline-Messung
+     ausdrücklich, statt sie unbeurteilt mitlaufen zu lassen.
+
+   Der zerlegende Einzelfragen-Lauf bleibt als benanntes Opt-in erhalten
+   (`-Dopaa.eval.queryDecomposition=true`); `PipelineBaselineComparator` meldet ihn weiterhin als
+   unvergleichbar statt als Regression. **Wiederaufnahme, wenn** die Zerlegung auf eigenständigen
+   Fragen einen Gewinn zeigt, der über die Messstreuung hinausgeht — dann als bewusste Neuziehung
+   aller betroffenen Baselines samt Prüfung des nächtlichen Zeitbudgets.
+
+   **Der Text dieses Punkts oberhalb beschreibt den Weg dorthin**, einschließlich des
+   Beispielsatz-Defekts, den #1254/PR #1281 behoben hat. Die Zahlen des ursprünglichen Befunds
+   (nDCG@8 0,402) sind durch die Tabelle darunter überholt; sie bleiben stehen, weil die Entscheidung
+   sonst ohne ihre Vorgeschichte dasteht.
 4. **Umgang mit `answer_span` bei Fallklassen mit mehreren Zieldokumenten — entschieden mit Issue
    #1043 (08/2026).** Die Chunkebenen-Metrik wird **je Fall** gebildet, und ein `answer_span` ist
    nur bei Fällen mit **genau einem** erwarteten Dokument zulässig; mehrdokumentige Fälle

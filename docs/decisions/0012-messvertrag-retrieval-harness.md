@@ -744,6 +744,30 @@ Rangreserve später ein Fehlerkriterium nach ADR-0013 wird, klärt Issue #1210 �
 eigene Entscheidung dieses ADRs (Baseline-Schema) und/oder von ADR-0013 (Fehlerkriterium), nicht
 rückwirkend dieser Nachtrag.
 
+> **Entschieden am 2026-09-16 (Issue #1210): Die Rangreserve bleibt report-only.** Sie wandert nicht
+> in `MetricsAggregate`/`PipelineMetricsAggregate`, nicht in die Baselines und nicht in die
+> Comparators; `CURRENT_MEASUREMENT_CONTRACT_VERSION`/`PIPELINE_MEASUREMENT_CONTRACT_VERSION`
+> bleiben davon unberührt. Drei Gründe, die zusammen tragen:
+>
+> 1. **Die Kennzahl misst nicht, was ein Fehlerkriterium messen müsste.** `marginAtK` betrachtet nur
+>    den **ersten** relevanten Treffer. Bei mehreren erwarteten Dokumenten kann sie eine große,
+>    „sichere" Marge melden, während ein anderes erwartetes Dokument knapp im Fenster sitzt und
+>    `recallAt10` bei der nächsten Verschiebung kippt. Ein Kriterium auf dieser Grundlage würde
+>    Stabilität zusichern, die es nicht prüft — die Einschränkung stand von Anfang an im Javadoc und
+>    ist nicht ausgeräumt.
+> 2. **Der Bedarf hat sich nicht gezeigt.** Seit der Einführung im 09/2026 hat kein Lauf eine
+>    Regression gehabt, die die Rangreserve früher angezeigt hätte als die bestehenden Metriken. Die
+>    eine Instabilität, die in diesem Zeitraum wirklich auftrat, war die ggml-CPU-Variante (#1652) —
+>    sie schlug in Hit Rate und nDCG unmittelbar durch und brauchte keine Grenzstabilitätsgröße.
+> 3. **Ein weiteres Fehlerkriterium kostet mehr, als es hier einbringt.** Jede zusätzliche geprüfte
+>    Größe braucht eine Toleranz, eine Begründung dieser Toleranz und eine Neuziehung aller
+>    Baselines; die Rangreserve schwankt zudem stärker als die Metriken, aus denen sie abgeleitet
+>    ist.
+>
+> **Wiederaufnahme, wenn** eine Regression auftritt, die in den geprüften Metriken unsichtbar blieb
+> und in der Rangreserve sichtbar war — dann mit einer Marge, die das schwächste erwartete Dokument
+> betrachtet, nicht das erste.
+
 ### 31. Dritter Nachtrag des Fingerabdrucks: `email:2` → `email:3` (Issue #1164, PR #1201)
 
 Chronologisch nach dem Rangreserve-Nachtrag oben (dessen "bleiben bei 3/4" den Stand zum Zeitpunkt von PR #1206 festhält, unberührt von dieser Änderung - die Rangreserve selbst bleibt weiterhin kein Fixpunkt und bewegt keine Vertragsversion).
