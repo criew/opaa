@@ -700,9 +700,11 @@ Zerlegungs-Instruktion gemeinsam bewegt und war zudem auf einer ungepinnten CPU-
 Für die Notiz allein gab es damit nie eine Zahl. Seit dem Pin (#1652) ist der Pfad deterministisch,
 ein Vergleich also überhaupt erst aussagefähig.
 
-**Messanordnung.** Zwei Läufe desselben Produktionspfads am 2026-09-16, gleicher Korpus, gleicher
-Datensatz, gleiche Festpunkte (`haswell`, `qwen2.5:1.5b-instruct`, Zerlegung an, Suchfenster 2
-Runden), je drei Messungen mit min = median = max und 0 Runden mit abweichender Zerlegung.
+**Messanordnung.** Vier Läufe desselben Produktionspfads am 2026-09-16, gleicher Korpus, gleicher
+Datensatz, gleiche Festpunkte (`haswell`, `qwen2.5:1.5b-instruct`, Zerlegung an), je drei Messungen
+nach der Mehrfachlauf-Regel. **C und D sind bitstabil** (min = median = max, 0 abweichende
+Zerlegungen); A und B sind es nicht — Spannweiten und Abweichungszahlen je Lauf stehen in der Tabelle
+unter „Die ganze Kette".
 
 - **D** — Produktionsstand, Notizdeckel 10. **Ankerprobe:** reproduziert die committete Baseline in
   allen vier Metriken und allen 27 Fallurteilen exakt.
@@ -779,45 +781,63 @@ bei **0 von 9**. Die Notiz trägt die Angabe in D in 3 von 9 Zielrunden überhau
 zweimal nur eingebettet in einen 200 Zeichen langen Vorlagen-Abwurf (`cc-004`, `cc-008`); ein
 einziger Punkt trägt sie sauber (`cc-002`: „2023").
 
-#### Die ganze Kette: jeder Baustein des Epics kostet Fälle
+#### Die ganze Kette — und wie belastbar jeder Schritt ist
 
-Mit den Läufen A und B vom 2026-09-16 ist jeder Schritt einer Ursache zuzuordnen. Gelesen von unten
-nach oben ist das die Reihenfolge, in der Epic #1482 gebaut hat.
+Mit den Läufen A und B vom 2026-09-16 unterscheidet sich jedes Nachbarpaar um genau eine Sache.
+Gebaut hat Epic #1482 von A nach D.
 
-| Lauf | Suchfenster | Notiz | Notiz-Zeile | Hit Rate@5 | MRR@8 | nDCG@8 | Recall@8 | Fälle gelöst |
-|---|---|---|---|---|---|---|---|---|
-| **A** | 10 Runden | aus | aus | 0,855 | 0,780 | 0,796 | 0,851 | **12** |
-| **B** | 2 Runden | aus | aus | 0,831 | 0,750 | 0,768 | 0,827 | 10 |
-| **C** | 2 Runden | aus | an | 0,807 | 0,747 | 0,761 | 0,815 | 9 |
-| **D** | 2 Runden | an | an | 0,831 | 0,738 | 0,757 | 0,827 | 5 |
+| Lauf | Suchfenster | Notiz | Notiz-Zeile | nDCG@8 min / median / max | abw. Zerlegungen | Fälle gelöst |
+|---|---|---|---|---|---|---|
+| **A** | 10 Runden | aus | aus | 0,791 / **0,796** / 0,796 | 1 von 83 | **12** |
+| **B** | 2 Runden | aus | aus | 0,750 / **0,768** / 0,768 | **44 von 83** | 10 |
+| **C** | 2 Runden | aus | an | 0,761 / **0,761** / 0,761 | 0 | 9 |
+| **D** | 2 Runden | an | an | 0,757 / **0,757** / 0,757 | 0 | 5 |
 
-Je Schritt, jeweils genau eine Änderung:
+**Nur C und D sind stabil gemessen** (min = median = max, keine abweichende Zerlegung). A streut
+leicht, **B erheblich**: 44 der 83 Runden lieferten über die drei Messungen unterschiedliche
+Teilfragen. Warum ausgerechnet dieser Arm — gleiches Modell, gleicher CPU-Pin, Temperatur 0, und die
+Nachbarläufe sind bitstabil — ist **ungeklärt**. Er ist damit die schwächste Messung der Reihe, und
+das entscheidet, welche Schritte tragen:
 
-- **A → B, das Suchfenster von 10 auf 2 Runden verengt: −2 Fälle** (`verw-conv-cc-003`,
-  `verw-conv-cc-005`), alle vier Rundenmetriken fallen.
-- **B → C, die Notiz-Zeile in die feste Instruktion: −1 Fall.** Sie geht bei jedem Aufruf mit, auch
-  bei einer ersten Runde ohne Verlauf und ohne Notiz — der Vorwurf, mit dem #1587 angelegt wurde,
-  ist damit beziffert.
-- **C → D, die Gesprächsnotiz selbst: −4 Fälle.** Mechanismus und Einschränkung siehe oben.
+- **A → B, das Suchfenster von 10 auf 2 Runden verengt: trägt.** −2 Fälle (`verw-conv-cc-003`,
+  `verw-conv-cc-005`), und die Spannweiten überlappen nicht (A min 0,791 gegen B max 0,768; Hit
+  Rate@5 A min 0,843 gegen B max 0,831). Der Befund überlebt auch B's Instabilität.
+- **B → C, die Notiz-Zeile in der festen Instruktion: trägt nicht.** C liegt mit nDCG 0,761
+  **innerhalb** der Spannweite von B (0,750–0,768). Auf Fallebene ist der Schritt ohnehin kein
+  glatter Verlust: 3 Fälle fallen weg (`ana-003`, `ts-003`, `ts-009`), 2 kommen hinzu (`cc-007`,
+  `ts-001`), netto −1 quer über alle drei Klassen. **Der Vorwurf, mit dem #1587 angelegt wurde, ist
+  damit weder bestätigt noch widerlegt** — er bräuchte einen stabilen Vergleichsarm.
+- **C → D, die Gesprächsnotiz: trägt.** −4 Fälle, beide Läufe bitstabil, keine Gegenbewegung.
+  Einschränkung zum Modell siehe nächster Abschnitt.
 
-**Zielrunden, deren Teilfrage die Rahmenangabe trägt** — die designierte Kennzahl der Notiz:
-**A 5 von 9** (`cc-003`, `-005`, `-006`, `-008`, `-009`), B 2, C 1, D 1.
+Themen-Bleed ist in allen vier Läufen 0 Dokumente, auch mit ganzem Fenster.
+
+**Die Rahmen-Kennzahl taugt hier nicht als Vergleich über die Läufe.** Mechanisch gezählt (Jahreszahl
+der Runde 1 in einer Teilfrage der Zielrunde) steht sie bei A 5, B 2, C 1, D 1 — aber die Zählung
+misst in A überwiegend etwas anderes als die Rahmenübernahme: `cc-008` ist **ungelöst** und trägt das
+Jahr nur in der Dokumentenkennung `BAU-DA-1/2024`, `cc-006` nur in einem erfundenen Datum („bis zum
+31. Dezember 2023"), `cc-003` in der Kennung `SOZ-DA-1/2023`. Kuratiert bleiben in A **zwei** saubere
+Treffer (`cc-005`, `cc-009`). Ein Vergleich mit der Referenz von 4 aus #1485 scheitert zusätzlich
+daran, dass jene unter der CPU-Variante `icelake` gemessen wurde — die allein 3 von 27 Fallurteilen
+bewegt und diese Kennzahl von 1 auf 0 drückt (siehe „Neuziehung mit fester CPU-Variante").
 
 #### Was das für ADR-0031 bedeutet
 
-Der Referenzbefund vom 2026-09-11 hat festgehalten, dass 4 von 9 Zielrunden die Angabe trugen, und
-das ausdrücklich als Untergrenze benannt: „genau die Referenz, die das kurze Suchfenster plus Notiz
-nicht unterschreiten darf". **Sie wird unterschritten** — auf 2 mit dem verengten Fenster, auf 1 mit
-der Notiz. Das ganze Fenster ohne Notiz liegt mit 5 von 9 darüber.
+Tragfähig ist genau eine Aussage, und sie ist unbequem: **Das verengte Suchfenster kostet auf diesem
+Datensatz zwei Fälle**, und `topic_switch` gewinnt dabei nichts (3 gelöste Fälle in A wie in B).
+ADR-0031 hält unter „Konsequenzen" fest, dass Bauteil 1 — das kurze, wörtliche Gesprächsfenster —
+trägt; dafür gibt es hier keinen Beleg, wohl aber einen Gegenbeleg.
 
-Damit ist die tragende Entscheidung von ADR-0031 — Themenwechsel-Erkennung verworfen, weil „das
-kurze Suchfenster den Wechsel billig macht" — auf diesem Datensatz nicht gestützt: Die Verengung
-kostet Fälle, auch in `topic_switch` gewinnt sie nichts (3 gelöste Fälle in A wie in B). Eine
-Revision des ADR ist eine Maintainer-Entscheidung und nicht Gegenstand dieses Befunds.
+**Zwei Einschränkungen, die vor einer Revision des ADR zu klären sind:**
 
-**Anders als bei der Notiz trägt das gepinnte Modell diesen Befund.** Die Fensterbreite ist ein
-Retrieval-Parameter — genau die Art Größe, die ein kleines Stellvertretermodell messen kann. Die
-Notiz ist Modellausgabe; für sie gilt die Einschränkung im nächsten Abschnitt.
+1. **Gemessen auf dem gepinnten 1,5-B-Modell.** Die Fensterbreite ist zwar kein zweiter
+   Modellschritt wie die Notiz — sie schneidet nur den Kontext, der in die Zerlegung geht
+   (`SubQueryDecompositionStage`) —, aber sie erreicht das Retrieval durch dieselbe Modellausgabe.
+   Ein größeres Modell kann ein 10-Runden-Fenster anders verwerten. Der Befundpfad dafür steht seit
+   #1674.
+2. **Ein Datensatz, 27 Fälle, eine Domäne.**
+
+Eine Revision von ADR-0031 ist eine Maintainer-Entscheidung und nicht Gegenstand dieses Befunds.
 
 **Wegwerf-Patch der Läufe A und B.** Die Notiz-Zeile hat keinen produktiven Schalter und bekommt
 auch keinen; für die beiden Läufe wurden diese zwei Zeilen aus
