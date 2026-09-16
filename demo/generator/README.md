@@ -94,15 +94,20 @@ PR-Beschreibung von #711). Der Generator enthält dafür keine Zufalls- und kein
 ### Was das nicht heißt (Issue #1395)
 
 **Ein Lauf auf einer anderen Maschine reproduziert den committeten Korpus nicht zwangsläufig
-byteidentisch.** Beim Lauf für #1383 wichen in einem `python:3.11`-Container 47 der erzeugten
-Binärdateien vom committeten Stand ab — alle PDFs der Satzungen und alle DOCX/PDF/PPTX der internen
-Dienstanweisungen. Die Ursache liegt außerhalb dieses Generators:
+byteidentisch.** Beim Lauf für #1383 wichen in einem `python:3.11`-Container **45 Binärdateien** vom
+committeten Stand ab — die 19 PDFs der Satzungen und die 26 DOCX/PDF/PPTX der internen
+Dienstanweisungen. (#1395 nennt 47 Abweichungen und zählt eine `.md`-Datei mit; die hatte eine
+andere Ursache — die Handkorrektur aus #942, die der Generator zurücknahm — und ist mit #1550
+behoben.) Die Ursache der 45 liegt außerhalb dieses Generators:
 
 - `requirements.txt` pinnt die vier **direkten** Abhängigkeiten. Ihre transitiven (`lxml`, Pillow,
   …) sind **nicht** gepinnt, und ein `reportlab`/`python-docx`/`python-pptx` erzeugt mit einer
   anderen `lxml`- oder Pillow-Version andere Ausgabebytes.
 - Die Voraussetzung lautet „Python 3.11 oder neuer", nicht „genau 3.11". Auch die Python-Version
   wirkt auf die erzeugten Bytes.
+
+**Einen Teil-Lauf für eine einzelne Bibliothek gibt es nicht.** `generate_corpus.py` nimmt keine
+Argumente entgegen und schreibt immer alle sieben Bibliotheken neu.
 
 **Praktische Folge.** Wer den Korpus neu erzeugt, committet die vollständige Ausgabe seines Laufs
 und reviewt sie — Binärdateien eingeschlossen, auch solche, deren Inhalt sich nicht geändert hat.

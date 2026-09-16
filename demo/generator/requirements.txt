@@ -1,9 +1,14 @@
 # Pinned to the exact versions this generator was verified against (see
 # demo/generator/README.md, "Werkzeugwahl" and "Voraussetzungen"). Byte
-# identity across two runs is only guaranteed with these exact versions —
-# a newer reportlab/python-docx/python-pptx/openpyxl release could change its
-# default output bytes (e.g. font metrics, XML formatting) even with the same
-# input.
+# identity across two runs is only guaranteed with these exact versions and
+# on the same machine — a newer reportlab/python-docx/python-pptx/openpyxl
+# release could change its default output bytes (e.g. font metrics, XML
+# formatting) even with the same input.
+#
+# These are the DIRECT dependencies only. Their transitive ones (lxml,
+# Pillow, …) are not pinned, and neither is the Python version — a run in a
+# different environment therefore does not necessarily reproduce the
+# committed corpus byte for byte. See README.md, "Was das nicht heißt".
 reportlab==5.0.1
 python-docx==1.2.0
 python-pptx==1.0.2
