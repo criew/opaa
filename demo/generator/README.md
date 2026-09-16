@@ -23,7 +23,9 @@ hier **keinen Ground-Truth-Zwang**: Die Demo misst nichts, sie zeigt.
 pip install -r requirements.txt
 ```
 
-**Byte-Identität ist nur mit den in `requirements.txt` gepinnten Versionen zugesichert.** Ein
+**Byte-Identität zweier Läufe ist nur mit den in `requirements.txt` gepinnten Versionen
+zugesichert, und auch dann nur auf derselben Maschine** (siehe „Verifikation", „Was das nicht
+heißt"). Ein
 neueres `reportlab`/`python-docx`/`python-pptx`/`openpyxl` kann sein Standardausgabeformat ändern (z. B.
 Font-Metriken, XML-Formatierung, Zip-Kompressionsdetails) und würde dann andere Bytes erzeugen,
 selbst bei identischem Input und identischer Generator-Logik. Wer die Pakete absichtlich
@@ -84,8 +86,34 @@ cd demo/corpus
 sha256sum -c MANIFEST.sha256
 ```
 
-Zwei Läufe des Generators erzeugen byte-identische Ausgaben — geprüft über `diff -rq` zweier
-vollständiger Läufe mit mehreren Sekunden Abstand dazwischen (siehe PR-Beschreibung von #711).
+Zwei Läufe des Generators **auf derselben Maschine** erzeugen byte-identische Ausgaben — geprüft
+über `diff -rq` zweier vollständiger Läufe mit mehreren Sekunden Abstand dazwischen (siehe
+PR-Beschreibung von #711). Der Generator enthält dafür keine Zufalls- und keine Zeitquelle, und
+`zip_utils.py` entfernt die Zeitstempel aus den Zip-Containern von DOCX/PPTX/XLSX.
+
+### Was das nicht heißt (Issue #1395)
+
+**Ein Lauf auf einer anderen Maschine reproduziert den committeten Korpus nicht zwangsläufig
+byteidentisch.** Beim Lauf für #1383 wichen in einem `python:3.11`-Container 47 der erzeugten
+Binärdateien vom committeten Stand ab — alle PDFs der Satzungen und alle DOCX/PDF/PPTX der internen
+Dienstanweisungen. Die Ursache liegt außerhalb dieses Generators:
+
+- `requirements.txt` pinnt die vier **direkten** Abhängigkeiten. Ihre transitiven (`lxml`, Pillow,
+  …) sind **nicht** gepinnt, und ein `reportlab`/`python-docx`/`python-pptx` erzeugt mit einer
+  anderen `lxml`- oder Pillow-Version andere Ausgabebytes.
+- Die Voraussetzung lautet „Python 3.11 oder neuer", nicht „genau 3.11". Auch die Python-Version
+  wirkt auf die erzeugten Bytes.
+
+**Praktische Folge.** Wer den Korpus neu erzeugt, committet die vollständige Ausgabe seines Laufs
+und reviewt sie — Binärdateien eingeschlossen, auch solche, deren Inhalt sich nicht geändert hat.
+Ein `git diff` mit vielen geänderten PDFs ist nach einem Umgebungswechsel der Normalfall und kein
+Zeichen für einen Fehler. `MANIFEST.sha256` wird dabei aus den **committeten** Dateien neu berechnet.
+
+**Warum das hier vertretbar ist:** Die Demo misst nichts, sie zeigt (siehe oben, kein
+Ground-Truth-Zwang). Anders als bei `eval/` hängt an den Bytes kein Urteil. Der Aufwand, den ganzen
+Abhängigkeitsbaum und die Python-Version zu pinnen und einen Containerlauf zu dokumentieren, stünde
+in keinem Verhältnis zum Gewinn — er wäre die richtige Antwort, wenn der Korpus je Messgrundlage
+würde.
 
 ## Formate ohne Writer
 
