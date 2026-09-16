@@ -57,7 +57,7 @@ class ChatNoteIntegrationTest {
   private static final String DECOMPOSITION_MARKER = "Du zerlegst die aktuelle Nutzerfrage";
 
   /** A phrase only the answer prompt carries. */
-  private static final String ANSWER_MARKER = "CITATION RULES";
+  private static final String ANSWER_MARKER = "ZITIERREGELN";
 
   /**
    * A phrase only the <em>rendered</em> note block carries. Deliberately not the word
