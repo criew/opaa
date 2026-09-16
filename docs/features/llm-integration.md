@@ -616,7 +616,8 @@ Systemvorspann, Parametern und Kontextgrenze zusammen festgelegt wird.
 
 Der Aufruf wird aus fünf Teilen zusammengesetzt:
 
-1. **Systemvorspann** — Rolle, Ton, Umgang mit Nichtwissen und die verbindlichen Belegregeln. Nicht über
+1. **Systemvorspann** — Rolle, Ton, Umgang mit Nichtwissen und die verbindlichen Belegregeln; dazu
+   die Antwortsprache, fest Deutsch (**gebaut**, #1635). Nicht über
    den Chat änderbar (siehe [Absicherung des Modells](#absicherung-des-modells-gegen-missbrauch)).
 2. **Die Passagen, jede mit einem eigenen Kopf.** Der Kopf trägt die Angaben, die den späteren Beleg
    tragen: Dokument, Stelle im Dokument, Bezeichnung — und die **Zeichenfolge, mit der genau diese

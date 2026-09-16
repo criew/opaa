@@ -442,7 +442,9 @@ Die ausgewählten Chunks gehen mit einem Kopf je Chunk (Dateiname, Dokument-ID, 
 vorgegebene Zitierform) zusammen mit der **Gesprächsnotiz**, dem Gesprächsverlauf und der Frage an
 das **systemweit aktive Chat-Modell**. Die Notiz steht als eigener Block vor dem Verlauf und
 enthält hier **alle** Punkte, auch die Wünsche zur Antwortform, die die Suche nie sieht
-(Abschnitt 2); ohne Punkte entfällt der Block. Die Systemanweisung verpflichtet das Modell, jede genutzte Quelle mit einer Marke der
+(Abschnitt 2); ohne Punkte entfällt der Block. Die Systemanweisung ist deutsch und legt die
+Antwortsprache fest: Das Modell antwortet immer auf Deutsch, auch auf eine englische Frage und aus
+englischsprachigen Fundstücken. Sie verpflichtet das Modell außerdem, jede genutzte Quelle mit einer Marke der
 Form `【source: <Dokument-ID>#<Chunk-Nummer> | <Dateiname>】` am Satzende zu zitieren und keine
 Quellen zu erfinden. Das Modell wird bei jedem Aufruf neu aufgelöst; eine Aktivierung eines anderen
 Modells in der Verwaltung wirkt ohne Neustart. Ist kein Chat-Modell aktiv oder antwortet das
@@ -450,8 +452,9 @@ Embedding-Modell in Stufe 4 nicht, endet die Frage mit einer deutschen Fehlermel
 beim Reranking gibt es für diese beiden Rollen keinen Weiterlauf ohne sie.
 
 Die Systemanweisung ist **nicht konfigurierbar**: Sie ist im Code festgelegt und enthält nur die
-Rolle, die Anweisung, aus Verlauf und Kontextdokumenten zu antworten, und die Zitierregeln.
-Antwortsprache, Tonfall oder fachlicher Rahmen sind nicht Teil davon. Das Zitatformat ist ohnehin
+Rolle, die Antwortsprache Deutsch, die Anweisung, aus Verlauf und Kontextdokumenten zu antworten,
+und die Zitierregeln. Tonfall oder fachlicher Rahmen sind nicht Teil davon; eine Antwortsprache je
+Bibliothek oder je Person lässt sich nicht einstellen. Das Zitatformat ist ohnehin
 fest, weil Belegprüfung und Fundstellen darauf aufbauen. Dasselbe gilt für die Anweisung der
 Teilfragen-Zerlegung (Stufe 3). Konfigurierbar ist nur, welches Modell die Anweisung bekommt.
 

@@ -34,27 +34,33 @@ public class AnswerGenerationService {
 
   private static final String SYSTEM_PROMPT =
       """
-      You are a helpful project assistant. Use the conversation history and the provided \
-      context documents to answer the user's question. The conversation history gives you \
-      the context of the ongoing discussion. The context documents provide relevant \
-      project information retrieved for the current question.
+      Du bist ein hilfsbereiter Projektassistent.
 
-      CITATION RULES (mandatory):
-      - You MUST cite every source you use by placing the citation inline in your answer.
-      - Use exactly this format: 【source: <document_id>#<chunk_index> | <file_name>】
-      - Copy the values exactly from the [Source] header of each context chunk.
-      - Example: 【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6#0 | readme.md】
-      - Do NOT invent citations. Only cite documents listed below.
-      - Place citations at the end of the sentence or paragraph that uses the information.\
+      Antworte immer auf Deutsch, unabhängig von der Sprache der Frage, des Gesprächsverlaufs \
+      und der Kontextdokumente.
+
+      Beantworte die Frage der Person anhand des Gesprächsverlaufs und der bereitgestellten \
+      Kontextdokumente. Der Gesprächsverlauf gibt dir den Zusammenhang der laufenden \
+      Unterhaltung. Die Kontextdokumente enthalten die für die aktuelle Frage abgerufenen \
+      Projektinformationen.
+
+      ZITIERREGELN (verbindlich):
+      - Belege jede Quelle, die du verwendest, mit einer Zitiermarke direkt im Antworttext.
+      - Verwende genau dieses Format: 【source: <document_id>#<chunk_index> | <file_name>】
+      - Übernimm die Werte exakt aus dem [Quelle]-Kopf des jeweiligen Kontextabschnitts.
+      - Beispiel: 【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6#0 | readme.md】
+      - Erfinde keine Zitiermarken. Zitiere nur Dokumente, die unten aufgeführt sind.
+      - Setze die Zitiermarke an das Ende des Satzes oder Absatzes, der die Information \
+      verwendet.\
       """;
 
   /**
    * The heading the retrieved passages stand under, appended after the rules and after any
    * Gesprächsnotiz block - a note appended at the end would stand under this heading and under its
-   * "Only cite documents listed below" rule, and in a chat without a knowledge base it would be the
-   * only thing there.
+   * "Zitiere nur Dokumente, die unten aufgeführt sind" rule, and in a chat without a knowledge base
+   * it would be the only thing there.
    */
-  private static final String CONTEXT_SECTION = "\n\nContext documents:\n";
+  private static final String CONTEXT_SECTION = "\n\nKontextdokumente:\n";
 
   private final ActiveChatModelResolver activeChatModelResolver;
   private final ChatMemory chatMemory;
@@ -113,13 +119,13 @@ public class AnswerGenerationService {
               String documentId = chunk.getMetadata().getOrDefault("document_id", "").toString();
               String chunkIndex = chunk.getMetadata().getOrDefault("chunk_index", "0").toString();
               String header =
-                  "[Source: "
+                  "[Quelle: "
                       + fileName
                       + ", document_id: "
                       + documentId
                       + ", chunk_index: "
                       + chunkIndex
-                      + ", cite as: "
+                      + ", zitieren als: "
                       + String.format(CITATION_FORMAT, documentId, chunkIndex, fileName)
                       + "]\n";
               return header + chunk.getText();

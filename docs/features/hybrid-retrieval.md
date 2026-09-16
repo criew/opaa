@@ -180,8 +180,14 @@ Cross-Encoder-Reranking über ~50 Kandidaten (neu, nur wenn die Rerank-Rolle akt
   ↓
 Dokument-Vervollständigung, Auswahl auf top-k (gebaut)
   ↓
-Antwortgenerierung mit Belegen (gebaut)
+Antwortgenerierung mit Belegen, immer auf Deutsch (gebaut)
 ```
+
+Die Antwortsprache ist fest Deutsch, unabhängig von der Sprache der Frage und der Fundstücke: Die
+Systemanweisung der Antwortstufe ist deutsch und stellt diese Regel als eigenen Satz vor die
+Zitierregeln ([#1635](https://github.com/criew/opaa/issues/1635)). Ohne Vorgabe folgte ein kleines
+lokales Modell teils der Sprache der Anweisung, teils der der Fundstücke und mischte beide in einem
+Satz. Die Suchstufen davor berührt das nicht; die Suchqualitäts-Evaluierung misst die Antwort nicht.
 
 ---
 
