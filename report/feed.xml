@@ -5,8 +5,19 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-15T05:07:50Z</updated>
+  <updated>2026-09-16T05:03:21Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Dienstag, 15. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-15.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-15.html</id>
+    <updated>2026-09-16T05:03:21Z</updated>
+    <summary type="text">Sonstiges:
+— Baselines comic-characters und city-landmarks nach Kontextpräfix-Änderung neu vermessen
+— Kontextpräfix-Form als Festpunkt aller drei Baseline-Typen etabliert
+— Mehrrunden-Messung durch feste ggml-CPU-Variante stabilisiert
+— Baselines comic-characters und city-landmarks nach Änderung neu gezogen</summary>
+  </entry>
   <entry>
     <title>Tagesreport Montag, 14. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-14.html"/>
