@@ -710,13 +710,18 @@ Runden), je drei Messungen mit min = median = max und 0 Runden mit abweichender 
   über die Notiz bleibt in der Instruktion, das Suchfenster bleibt bei 2 Runden; **einziger
   Unterschied sind die Notizpunkte im Zerlegungskontext**.
 
-Die Läufe A (ganzes Fenster) und B (ohne die Instruktionszeile) stehen noch aus; sie trennen
-Fensterbreite und Instruktionszeile und sind in #1587 offen.
+- **B** — zusätzlich ohne die Notiz-Zeile in `QueryDecompositionService.SYSTEM_PROMPT_TEMPLATE`
+  (Wegwerf-Patch, siehe unten).
+- **A** — zusätzlich mit `-Dopaa.query.search-window-turns=10`, also dem ganzen Gesprächsfenster an
+  der Zerlegung.
 
-**Kontrollgruppe.** Alle **27 ersten Runden** liefern in beiden Läufen wortgleiche Teilfragen. Wo
-die Notiz nicht wirken kann, ändert sich nichts — die Unterschiede unten stammen also aus ihr und
-nicht aus Rauschen. Von den 83 Runden ändern 36 ihre Teilfrage; jede Runde mit geändertem Urteil
-hatte in D einen Notizpunkt.
+Jedes Nachbarpaar unterscheidet sich um **genau eine** Sache; der Abschnitt „Die ganze Kette" unten
+ordnet jeden Schritt einer Ursache zu.
+
+**Kontrollgruppe für D gegen C.** Alle **27 ersten Runden** liefern in beiden Läufen wortgleiche
+Teilfragen. Wo die Notiz nicht wirken kann, ändert sich nichts — die Unterschiede unten stammen also
+aus ihr und nicht aus Rauschen. Von den 83 Runden ändern 36 ihre Teilfrage; jede Runde mit
+geändertem Urteil hatte in D einen Notizpunkt.
 
 | Klasse | n | Hit Rate@5 | MRR@8 | nDCG@8 | Recall@8 | Fälle gelöst |
 |---|---|---|---|---|---|---|
@@ -774,10 +779,62 @@ bei **0 von 9**. Die Notiz trägt die Angabe in D in 3 von 9 Zielrunden überhau
 zweimal nur eingebettet in einen 200 Zeichen langen Vorlagen-Abwurf (`cc-004`, `cc-008`); ein
 einziger Punkt trägt sie sauber (`cc-002`: „2023").
 
+#### Die ganze Kette: jeder Baustein des Epics kostet Fälle
+
+Mit den Läufen A und B vom 2026-09-16 ist jeder Schritt einer Ursache zuzuordnen. Gelesen von unten
+nach oben ist das die Reihenfolge, in der Epic #1482 gebaut hat.
+
+| Lauf | Suchfenster | Notiz | Notiz-Zeile | Hit Rate@5 | MRR@8 | nDCG@8 | Recall@8 | Fälle gelöst |
+|---|---|---|---|---|---|---|---|---|
+| **A** | 10 Runden | aus | aus | 0,855 | 0,780 | 0,796 | 0,851 | **12** |
+| **B** | 2 Runden | aus | aus | 0,831 | 0,750 | 0,768 | 0,827 | 10 |
+| **C** | 2 Runden | aus | an | 0,807 | 0,747 | 0,761 | 0,815 | 9 |
+| **D** | 2 Runden | an | an | 0,831 | 0,738 | 0,757 | 0,827 | 5 |
+
+Je Schritt, jeweils genau eine Änderung:
+
+- **A → B, das Suchfenster von 10 auf 2 Runden verengt: −2 Fälle** (`verw-conv-cc-003`,
+  `verw-conv-cc-005`), alle vier Rundenmetriken fallen.
+- **B → C, die Notiz-Zeile in die feste Instruktion: −1 Fall.** Sie geht bei jedem Aufruf mit, auch
+  bei einer ersten Runde ohne Verlauf und ohne Notiz — der Vorwurf, mit dem #1587 angelegt wurde,
+  ist damit beziffert.
+- **C → D, die Gesprächsnotiz selbst: −4 Fälle.** Mechanismus und Einschränkung siehe oben.
+
+**Zielrunden, deren Teilfrage die Rahmenangabe trägt** — die designierte Kennzahl der Notiz:
+**A 5 von 9** (`cc-003`, `-005`, `-006`, `-008`, `-009`), B 2, C 1, D 1.
+
+#### Was das für ADR-0031 bedeutet
+
+Der Referenzbefund vom 2026-09-11 hat festgehalten, dass 4 von 9 Zielrunden die Angabe trugen, und
+das ausdrücklich als Untergrenze benannt: „genau die Referenz, die das kurze Suchfenster plus Notiz
+nicht unterschreiten darf". **Sie wird unterschritten** — auf 2 mit dem verengten Fenster, auf 1 mit
+der Notiz. Das ganze Fenster ohne Notiz liegt mit 5 von 9 darüber.
+
+Damit ist die tragende Entscheidung von ADR-0031 — Themenwechsel-Erkennung verworfen, weil „das
+kurze Suchfenster den Wechsel billig macht" — auf diesem Datensatz nicht gestützt: Die Verengung
+kostet Fälle, auch in `topic_switch` gewinnt sie nichts (3 gelöste Fälle in A wie in B). Eine
+Revision des ADR ist eine Maintainer-Entscheidung und nicht Gegenstand dieses Befunds.
+
+**Anders als bei der Notiz trägt das gepinnte Modell diesen Befund.** Die Fensterbreite ist ein
+Retrieval-Parameter — genau die Art Größe, die ein kleines Stellvertretermodell messen kann. Die
+Notiz ist Modellausgabe; für sie gilt die Einschränkung im nächsten Abschnitt.
+
+**Wegwerf-Patch der Läufe A und B.** Die Notiz-Zeile hat keinen produktiven Schalter und bekommt
+auch keinen; für die beiden Läufe wurden diese zwei Zeilen aus
+`QueryDecompositionService.SYSTEM_PROMPT_TEMPLATE` entfernt und danach wiederhergestellt (die Datei
+liegt bitgleich wieder vor):
+
+```
+- Enthält der Kontext eine Gesprächsnotiz, verwende sie ausschließlich, um rückverweisende \
+oder unterbestimmte Wörter aufzulösen. Eine bereits eigenständige Frage bleibt unverändert.
+```
+
 #### Einschränkung: gemessen wurde ein Modell, das in keiner Installation Chat-Modell ist
 
-Der Befund oben gilt für das gepinnte Eval-Modell `qwen2.5:1.5b-instruct`. **Für ein
-produktionsübliches Chat-Modell gilt er nicht — die Verdichtung arbeitet dort einwandfrei.**
+Der **Notiz**-Befund oben gilt für das gepinnte Eval-Modell `qwen2.5:1.5b-instruct`. **Für ein
+produktionsübliches Chat-Modell gilt er nicht — die Verdichtung arbeitet dort einwandfrei.** Der
+Fensterbefund (A gegen B) ist davon nicht betroffen: Die Fensterbreite ist ein Retrieval-Parameter,
+kein Modellerzeugnis.
 
 Handprobe vom 2026-09-16 (#1586): Der unveränderte Produktions-Prompt aus
 `ChatNoteExtraction.PROMPT_TEMPLATE` gegen `claude-haiku-4-5` — das Chat-Modell der
