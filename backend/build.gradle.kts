@@ -152,9 +152,14 @@ fun registerEvalHarnessTask(
         // shipped decomposition-on configuration instead of the baseline's decomposition-off one)
         // and opaa.eval.explanationDumpDir (ExplanationDump, the protocol dump of the pipeline
         // path) and opaa.eval.runConversations (issue #1484: the opt-in multi-turn step, which
-        // costs a decomposition call per turn and runs three times) share this list because all of
+        // costs a decomposition call per turn and runs three times) and
+        // opaa.eval.conversationNoteCap (issue #1587: the note cap one ablation arm measures under,
+        // 0 for a run without a Gesprächsnotiz) share this list because all of
         // them are optional, manually-invoked knobs rather than something every eval domain always
         // needs.
+        // opaa.query.search-window-turns is a Spring property of the same ablation - the width of
+        // the decomposition's search window, varied against the application default rather than
+        // switched on.
         // The opaa.rerank.*/opaa.query.rerank-candidate-count entries are Spring properties rather
         // than harness knobs: a reranking measurement run (issue #1050) has to configure the rerank
         // model role of the forked JVM's application context. opaa.rerank.api-key is deliberately
@@ -168,6 +173,8 @@ fun registerEvalHarnessTask(
             "opaa.eval.queryDecomposition",
             "opaa.eval.explanationDumpDir",
             "opaa.eval.runConversations",
+            "opaa.eval.conversationNoteCap",
+            "opaa.query.search-window-turns",
             "opaa.rerank.enabled",
             "opaa.rerank.base-url",
             "opaa.rerank.model",

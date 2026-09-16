@@ -43,11 +43,62 @@ public final class ConversationHarnessSupport {
 
   private static final String RUN_PROPERTY = "opaa.eval.runConversations";
 
+  /**
+   * Overrides the Gesprächsnotiz cap this run measures under, for an ablation that needs the same
+   * production pipeline once with and once without a note (#1587). A property of the measurement
+   * path, not of the application: {@link ChatNoteProperties} keeps its floor of 1 and the note
+   * keeps having no on/off switch (ADR-0031, "Verworfene Alternativen").
+   *
+   * <p>{@code 0} means the run keeps no note at all - the state {@link
+   * ConversationMemoryProfile#NO_CONVERSATION_NOTE} already describes for a baseline drawn before
+   * the note existed. The value reaches the report as the {@code conversationNoteCap} fixed point,
+   * so a baseline comparison reports such a run as incomparable, which is what it is.
+   */
+  private static final String NOTE_CAP_PROPERTY = "opaa.eval.conversationNoteCap";
+
   private ConversationHarnessSupport() {}
 
   /** Whether this run was asked for a multi-turn measurement at all. Off by default. */
   public static boolean isRequested() {
     return Boolean.getBoolean(RUN_PROPERTY);
+  }
+
+  /**
+   * The profile this run measures under: the one read off the production configuration, with the
+   * note cap replaced when {@value #NOTE_CAP_PROPERTY} asks for it. A value below zero, or one that
+   * is not a number, fails the run rather than silently measuring the production cap - an ablation
+   * that quietly measured the wrong arm would be worse than no ablation.
+   */
+  static ConversationMemoryProfile ablated(ConversationMemoryProfile measured) {
+    String requested = System.getProperty(NOTE_CAP_PROPERTY);
+    if (requested == null) {
+      return measured;
+    }
+    int cap;
+    try {
+      cap = Integer.parseInt(requested.strip());
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException(
+          NOTE_CAP_PROPERTY + " must be a whole number, got: " + requested, e);
+    }
+    if (cap < 0) {
+      throw new IllegalArgumentException(NOTE_CAP_PROPERTY + " must not be negative, got: " + cap);
+    }
+    return new ConversationMemoryProfile(
+        measured.windowMessages(), measured.searchWindowTurns(), cap);
+  }
+
+  /**
+   * The condensation a run with this profile uses: the production one, or none at all for a run
+   * measured without a note. {@link ConversationRetrievalEvaluator} would skip the call for a cap
+   * of zero anyway; stating it here keeps the run's own description honest rather than relying on
+   * that.
+   */
+  static ConversationRetrievalEvaluator.NoteExtraction noteExtractionFor(
+      ConversationMemoryProfile profile, ChatNoteExtractionService chatNoteExtractionService) {
+    return profile.noteCap() <= ConversationMemoryProfile.NO_CONVERSATION_NOTE
+        ? ConversationRetrievalEvaluator.NoteExtraction.NONE
+        : chatNoteExtractionService::condense;
   }
 
   /** Where a domain's multi-turn report is written. */
@@ -102,7 +153,11 @@ public final class ConversationHarnessSupport {
       }
 
       ConversationMemoryProfile memoryProfile =
-          ConversationMemoryProfile.measuredFrom(chatMemory, queryProperties, chatNoteProperties);
+          ablated(
+              ConversationMemoryProfile.measuredFrom(
+                  chatMemory, queryProperties, chatNoteProperties));
+      ConversationRetrievalEvaluator.NoteExtraction noteExtraction =
+          noteExtractionFor(memoryProfile, chatNoteExtractionService);
       // Mehrfachlauf-Regel (docs/features/retrieval-benchmark.md §3), through the shared rule: this
       // path always decomposes and is therefore never deterministic. It carries the highest LLM
       // share of the three paths - one decomposition call per *turn*, not per case - so the spread
@@ -118,7 +173,7 @@ public final class ConversationHarnessSupport {
                       pipeline,
                       contextFactory,
                       chatMemory,
-                      chatNoteExtractionService::condense,
+                      noteExtraction,
                       memoryProfile,
                       indexingProperties,
                       evalLibraryId,

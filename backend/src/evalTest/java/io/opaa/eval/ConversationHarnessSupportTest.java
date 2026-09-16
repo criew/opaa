@@ -1,6 +1,7 @@
 package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -8,6 +9,7 @@ import static org.mockito.Mockito.when;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.ChatNoteItemKind;
 import io.opaa.chat.ChatNoteCandidate;
+import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.llm.RerankRoleState;
@@ -161,6 +163,55 @@ class ConversationHarnessSupportTest {
 
     assertThat(contexts).hasSize(2);
     assertThat(contexts).allSatisfy(context -> assertThat(context.conversationNote()).isEmpty());
+  }
+
+  @Test
+  void theNoteCapPropertyReplacesTheMeasuredCapAndSilencesTheCondensation() {
+    ConversationMemoryProfile measured = new ConversationMemoryProfile(20, 2, 10);
+    ChatNoteExtractionService condensation = mock(ChatNoteExtractionService.class);
+
+    assertThat(ConversationHarnessSupport.ablated(measured)).isEqualTo(measured);
+    assertThat(ConversationHarnessSupport.noteExtractionFor(measured, condensation))
+        .isNotSameAs(ConversationRetrievalEvaluator.NoteExtraction.NONE);
+
+    withNoteCapProperty(
+        "0",
+        () -> {
+          ConversationMemoryProfile ablated = ConversationHarnessSupport.ablated(measured);
+          assertThat(ablated)
+              .isEqualTo(
+                  new ConversationMemoryProfile(
+                      20, 2, ConversationMemoryProfile.NO_CONVERSATION_NOTE));
+          assertThat(ConversationHarnessSupport.noteExtractionFor(ablated, condensation))
+              .isSameAs(ConversationRetrievalEvaluator.NoteExtraction.NONE);
+        });
+  }
+
+  @Test
+  void anUnusableNoteCapFailsTheRunRatherThanMeasuringTheProductionCap() {
+    ConversationMemoryProfile measured = new ConversationMemoryProfile(20, 2, 10);
+
+    withNoteCapProperty(
+        "-1",
+        () ->
+            assertThatThrownBy(() -> ConversationHarnessSupport.ablated(measured))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("negative"));
+    withNoteCapProperty(
+        "viele",
+        () ->
+            assertThatThrownBy(() -> ConversationHarnessSupport.ablated(measured))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("whole number"));
+  }
+
+  private static void withNoteCapProperty(String value, Runnable assertions) {
+    System.setProperty("opaa.eval.conversationNoteCap", value);
+    try {
+      assertions.run();
+    } finally {
+      System.clearProperty("opaa.eval.conversationNoteCap");
+    }
   }
 
   private static ChatMemory chatMemory() {
