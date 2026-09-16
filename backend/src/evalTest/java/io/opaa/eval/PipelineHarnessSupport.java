@@ -142,6 +142,7 @@ public final class PipelineHarnessSupport {
     QueryProperties queryProperties = contextFactory.queryProperties();
     requireMeasurableConfiguration(
         queryProperties, pipelineProperties, rerankRoleUsable, identity.chatModel());
+    StaleReportGuard.discard(reportFile(domain));
     try {
       // Mehrfachlauf-Regel (issue #1044/#1085): with decomposition active this path is
       // nondeterministic and is measured three times; the median run is what the report — and

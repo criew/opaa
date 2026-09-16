@@ -157,6 +157,7 @@ public final class ConversationHarnessSupport {
     // successful build, which for an unusable ablation value would leave the previous run's report
     // in place for the next baseline comparison to read as a fresh measurement.
     Optional<Integer> requestedNoteCap = requestedNoteCap();
+    StaleReportGuard.discard(reportFile(domain), markdownFile(domain));
     try {
       QueryProperties queryProperties = contextFactory.queryProperties();
       List<ConversationCase> cases = ConversationDataset.load(ConversationDataset.file(domain));
