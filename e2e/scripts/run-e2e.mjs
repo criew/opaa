@@ -338,13 +338,21 @@ async function waitUntilReady(timeoutMs) {
 // The backend container runs as uid 65532 (backend/Dockerfile, #1471) and a bind mount keeps the
 // host directory's own owner. Left to Docker, a missing ./uploads would be created as root and
 // every upload would fail with AccessDeniedException - so this script creates both mount points
-// itself, writable for any uid. That is the CI counterpart of the one-time `chown` a deployment
-// does (docs/handbuch/deployment.md, "Nicht-root-Betrieb des Backend-Containers").
+// itself and makes them writable for any uid. The chmod is best effort: whoever already arranged
+// the ownership (e2e.yml hands them to 65532, the documented state of a real installation) owns
+// them, and this script then cannot and must not change them.
 function prepareBindMounts() {
   for (const name of ['documents', 'uploads']) {
     const directory = join(repoRoot, name)
     mkdirSync(directory, { recursive: true })
-    chmodSync(directory, 0o777)
+    try {
+      chmodSync(directory, 0o777)
+    } catch (error) {
+      console.log(
+        `> ${directory} gehört einem anderen Konto (${error.code}) - Rechte bleiben, wie sie sind.` +
+          ' Schlägt ein Upload später mit AccessDeniedException fehl, ist das die Ursache.',
+      )
+    }
   }
 }
 

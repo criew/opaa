@@ -71,9 +71,11 @@ Neuindizierung nötig.
 
 ### Vorbereitungsschritte für Bestandsinstallationen
 
-**Ein Update auf einen Stand mit lokaler Benutzerverwaltung verlangt eine Vorbereitung. Ohne sie
-startet das Backend nicht mehr.** Die Schritte einmalig **vor** dem `docker compose up -d` in der
-`.env.docker` erledigen:
+**Ein Update auf einen Stand mit lokaler Benutzerverwaltung verlangt eine Vorbereitung.** Die
+Punkte 1 bis 4 werden einmalig in der `.env.docker` erledigt; ohne sie startet das Backend nicht
+mehr. Punkt 5 betrifft nicht die Konfiguration, sondern die Eigentumsverhältnisse auf dem Host —
+ohne ihn startet das Backend zwar, aber der erste Upload schlägt fehl. Alle Schritte gehören **vor**
+das `docker compose up -d`:
 
 1. **`OPAA_AUTH_JWT_SECRET` setzen — Pflicht.** Das Wurzelgeheimnis des anwendungseigenen
    Ausstellers. Im Betriebsmodus `oidc` bricht der Start ohne es ab, ebenso bei weniger als 32
@@ -113,10 +115,13 @@ startet das Backend nicht mehr.** Die Schritte einmalig **vor** dem `docker comp
    Inhalte:
 
    ```bash
-   sudo chown -R 65532:65532 uploads documents
+   sudo chown -R 65532:65532 uploads
    ```
 
-   Einzelheiten, der Weg ohne `sudo` und die Fehlermeldung, an der man es erkennt, stehen unter
+   **Ebenfalls prüfen, weil `root` bisher jede Leseberechtigung umging:** ob `documents/`, jedes
+   über `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` freigegebene Verzeichnis und ein eigenes
+   `OPAA_UPLOAD_S3_TEMP_DIRECTORY` für `65532` zugänglich sind. Einzelheiten, der Weg ohne `sudo`,
+   die Lage auf einem Netzlaufwerk und die Fehlermeldungen, an denen man es erkennt, stehen unter
    [„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
 
 Was sich **nicht** ändert: Bestehende Konten, Rollen, Rechte und der Index bleiben, wie sie sind. Wer
@@ -483,15 +488,17 @@ Die Grenze wird dennoch in drei Schichten gehalten, damit eine spätere zweite O
 # 1. Umgebung konfigurieren
 cp .env.docker.example .env.docker
 
-# 2. Ablageverzeichnisse anlegen und dem Container-Konto übergeben
+# 2. Ablageverzeichnisse anlegen und für das Container-Konto zugänglich machen
 mkdir -p documents uploads
-sudo chown -R 65532:65532 documents uploads
+sudo chown -R 65532:65532 uploads     # Schreibrecht: Eigentum abgeben
+chmod -R o+rX documents               # Leserecht: Eigentum bleibt, wo es ist
 ```
 
-Der zweite Schritt ist Pflicht und nicht nachholbar, ohne dass der erste Upload fehlschlägt: Das
-Backend läuft im Container unter der Kennung `65532`, ein Verzeichnis, das Docker selbst für einen
-fehlenden Bind-Mount anlegt, gehört dagegen `root`. Einzelheiten und der Weg ohne `sudo` unter
-[„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
+Der zweite Schritt ist Pflicht: Das Backend läuft im Container unter der Kennung `65532`, ein
+Verzeichnis, das Docker selbst für einen fehlenden Bind-Mount anlegt, gehört dagegen `root` — der
+erste Upload schlägt dann fehl. Warum der Korpus nur Leserecht bekommt und nicht das Eigentum, der
+Weg ohne `sudo` und die Lage auf einem Netzlaufwerk stehen unter [„Nicht-root-Betrieb des
+Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
 
 `.env.docker` bearbeiten. Voreingestellt sind lokal betriebene Modelle über die openai-kompatible
 Schicht (der einzige Anbindungsweg) — dafür ist keine weitere Angabe in `.env.docker`
@@ -580,11 +587,29 @@ Das Backend läuft im Container als Benutzer und Gruppe `65532` — nicht als `r
 Port 8080, also oberhalb des privilegierten Bereichs, liest sonst nur unveränderliche Bestandteile
 des Images und schreibt ausschließlich nach `/app/uploads` und nach `/tmp`.
 
-Daraus folgt genau eine Betriebsanforderung: **Das Host-Verzeichnis hinter `/app/uploads` muss der
-Kennung `65532` gehören.** Bei einem Bind-Mount gilt der Eigentümer des Host-Verzeichnisses, nicht
-der des Verzeichnisses im Image — Docker ändert daran beim Einhängen nichts. Legt Docker das
-Verzeichnis beim Start selbst an, weil es fehlt, gehört es `root`, und der erste Upload endet mit
-`500` und dieser Meldung im Protokoll:
+Bei einem Bind-Mount gilt der Eigentümer des **Host**-Verzeichnisses, nicht der des Verzeichnisses
+im Image — Docker ändert daran beim Einhängen nichts. Daraus folgen drei Betriebsanforderungen, eine
+für jede Art von eingehängtem Verzeichnis:
+
+1. **`/app/uploads` muss für `65532` beschreibbar sein** — am einfachsten, indem das
+   Host-Verzeichnis dieser Kennung gehört. Gilt, solange die Originale im Dateisystem liegen
+   (`OPAA_UPLOAD_STORE` nicht auf `s3`).
+2. **Ein konfiguriertes Temp-Verzeichnis muss für `65532` beschreibbar sein.** Betrifft
+   `OPAA_UPLOAD_S3_TEMP_DIRECTORY` und `OPAA_INDEXING_S3_TEMP_DIRECTORY`: Beide zeigen ohne Angabe
+   auf `/tmp` im Container, das im Image für alle beschreibbar ist — wer sie aber, wie in der
+   Variablentabelle empfohlen, auf ein großes eingehängtes Volume legt, muss dieses Volume
+   übergeben. Sonst scheitert jeder Upload beim Anlegen der Arbeitsdatei, auch mit
+   `OPAA_UPLOAD_STORE=s3`.
+3. **Jedes weitere eingehängte Verzeichnis muss für `65532` les- und betretbar sein.** Das ist die
+   Anforderung, die am leichtesten übersehen wird: Als `root` lief der Prozess an jeder
+   Leseberechtigung vorbei. Betroffen sind `/app/documents` und jedes über
+   `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` freigegebene Verzeichnis einer FILESYSTEM-Bibliothek. Eine
+   gehärtete Freigabe (`root:root 0700`, oder ein CIFS-Mount mit `uid=0,file_mode=0600`) war als
+   `root` lesbar und ist es jetzt nicht mehr — siehe [Konnektor
+   Dateisystem](konnektor-filesystem.md), Abschnitt 3.
+
+Der häufigste Fall ist der erste. Legt Docker das Verzeichnis beim Start selbst an, weil es fehlt,
+gehört es `root`, und der erste Upload endet mit `500` und dieser Meldung im Protokoll:
 
 ```text
 java.io.UncheckedIOException: Datei konnte nicht gespeichert werden
@@ -599,27 +624,34 @@ Zustandsübersicht meldet `UP`.
 
 ```bash
 mkdir -p documents uploads
-sudo chown -R 65532:65532 documents uploads
+sudo chown -R 65532:65532 uploads     # Schreibrecht: Eigentum abgeben
+chmod -R o+rX documents               # Leserecht: Eigentum bleibt, wo es ist
 ```
 
-**Bestehende Installation.** Derselbe Schritt, ohne `mkdir`, im Verzeichnis mit der
-`docker-compose.yml` — er ändert nur die Eigentümerverhältnisse, keine Inhalte, und ist damit ohne
+**Bestehende Installation.** Dieselben beiden Zeilen ohne `mkdir`, im Verzeichnis mit der
+`docker-compose.yml` — sie ändern Rechte und Eigentümer, keine Inhalte, und sind damit ohne
 Datenverlust ausführbar:
 
 ```bash
 docker compose down
-sudo chown -R 65532:65532 uploads documents
+sudo chown -R 65532:65532 uploads
+chmod -R o+rX documents
 docker compose pull && docker compose up -d
 ```
 
-`documents` wird nur gelesen; für ein Verzeichnis mit den üblichen Rechten `0755` genügt das auch
-ohne Eigentumswechsel. Es steht oben trotzdem mit dabei, weil ein Korpus mit strengeren Rechten
-sonst genauso still unlesbar bleibt.
+**Warum `documents` nicht mit übereignet wird.** Der Korpus wird von OPAA nur gelesen, aber
+typischerweise von jemand anderem befüllt — einem Fachverfahren, einem Sync-Dienst, einer Freigabe.
+Ein `chown` auf `65532` nähme genau diesem Schreiber die Rechte. Gebraucht wird Lese- und
+Betretungsrecht für „andere", und das ist bei den üblichen `0755` bereits da; `chmod -R o+rX` oben
+ist nur für einen enger gesetzten Korpus nötig und lässt das `x`-Bit dabei den Verzeichnissen
+vorbehalten. Wo auch das nicht in Frage kommt, ist eine gemeinsame Gruppe oder der `user:`-Ausweg
+unten der Weg. Dasselbe gilt für jedes über `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` freigegebene
+Verzeichnis.
 
 **Ohne `sudo`, mit eigener Kennung.** Wer die Verzeichnisse nicht abgeben kann oder darf — etwa auf
-einem Host mit einem Dienstkonto, dem die Daten gehören sollen —, lässt den Container stattdessen
-unter genau dieser Kennung laufen. In der `docker-compose.yml` steht die Zeile beim Backend-Service
-bereits auskommentiert:
+einem Host mit einem Dienstkonto, dem die Daten gehören sollen, oder auf einem Netzlaufwerk, auf dem
+`chown` nicht wirkt —, lässt den Container stattdessen unter genau dieser Kennung laufen. In der
+`docker-compose.yml` steht die Zeile beim Backend-Service bereits auskommentiert:
 
 ```yaml
 services:
@@ -630,13 +662,19 @@ services:
 Das ist die Ausweichmöglichkeit, nicht der empfohlene Weg: Die Kennung muss dann bei jedem
 Umzug und in jeder abgeleiteten Compose-Datei mitgepflegt werden, während `65532` eine feste
 Eigenschaft des Images ist. `root` (`user: "0:0"`) erfüllt denselben Zweck und gibt den
-Sicherheitsgewinn wieder auf.
+Sicherheitsgewinn wieder auf. Bei einem **CIFS/SMB-Mount** ist dieser Weg oder die Mount-Option
+`uid=65532,gid=65532` sogar der einzige: Die Rechte eines solchen Einhängepunkts stehen in den
+Mount-Optionen, ein `chown` darauf läuft ins Leere.
 
-**Benannte Volumes brauchen nichts davon.** Wer statt eines Bind-Mounts ein benanntes Volume auf
-`/app/uploads` legt, muss nichts tun: Docker übernimmt beim ersten Einhängen eines leeren Volumes
-die Eigentümerverhältnisse des Verzeichnisses aus dem Image, und das gehört bereits `65532`.
-Dasselbe gilt für den Objektspeicher (`OPAA_UPLOAD_STORE=s3`, siehe
-[Originalablage](#originalablage)) — dort liegt gar kein Original mehr im Dateisystem.
+**Benannte Volumes brauchen nichts davon — und vertragen sich nicht mit `user:`.** Wer statt eines
+Bind-Mounts ein benanntes Volume auf `/app/uploads` legt, muss nichts tun: Docker übernimmt beim
+ersten Einhängen eines leeren Volumes die Eigentümerverhältnisse des Verzeichnisses aus dem Image,
+und das gehört bereits `65532`. Genau deshalb schließen sich die beiden Wege aus: Ein so
+übernommenes Volume gehört `65532` und ist für einen Container mit `user: "1000:1000"` dann gerade
+**nicht** beschreibbar — wer `user:` setzt, bleibt beim Bind-Mount. Beim Objektspeicher
+(`OPAA_UPLOAD_STORE=s3`, siehe [Originalablage](#originalablage)) entfällt Anforderung 1 ganz; die
+Anforderungen 2 und 3 bleiben, sobald ein eigenes Temp-Verzeichnis oder eine FILESYSTEM-Bibliothek
+im Spiel ist.
 
 `docker cp` bleibt in beiden Richtungen nutzbar (siehe [„Diagnose ohne
 Shell"](#diagnose-ohne-shell)): Es läuft über den Docker-Daemon und nicht unter der Kennung des
@@ -937,7 +975,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_UPLOAD_S3_PATH_STYLE` | `true` | nicht gesetzt | Adressstil (`opaa.upload.s3.path-style`): `true` = `endpoint/bucket/schlüssel` (MinIO, Ceph), `false` = `bucket.endpoint/schlüssel` (AWS, Hetzner) |
 | `OPAA_UPLOAD_S3_ACCESS_KEY` | — (leer; Pflicht bei `OPAA_UPLOAD_STORE=s3`) | nicht gesetzt | Zugangsschlüssel (`opaa.upload.s3.access-key`). Der Schlüssel braucht `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` und für die Startprüfung `s3:ListBucket` auf dem Bucket. Anders als die Zugangsdaten einer S3-Bibliothek dürfen Zugangsschlüssel und Geheimnis hier Doppelpunkte enthalten; beide erscheinen in keiner Protokollzeile und keiner Meldung |
 | `OPAA_UPLOAD_S3_SECRET_KEY` | — (leer; Pflicht bei `OPAA_UPLOAD_STORE=s3`) | nicht gesetzt | Geheimer Schlüssel (`opaa.upload.s3.secret-key`) |
-| `OPAA_UPLOAD_S3_TEMP_DIRECTORY` | — (leer: das Temp-Verzeichnis der JVM, im Container `/tmp`) | nicht gesetzt | Verzeichnis für die Arbeitsdatei eines Uploads und die lokale Kopie, die Pipeline-Nachzug, Metadaten-Nachlauf und die Rückextraktion von Anhängen brauchen (`opaa.upload.s3.temp-directory`). **Platzbedarf einplanen, und zwar auf zwei Dateisystemen:** In *diesem* Verzeichnis liegen je Upload die Arbeitsdatei in Originalgröße, die bis zum Ende der asynchronen Verarbeitung lebt, und bei einem gleichzeitigen Nachzug derselben Bibliothek die Kopie des Originals; mit parallelen Uploads (`OPAA_UPLOAD_THREAD_POOL_MAX_SIZE` plus Warteschlange) vervielfacht sich das. Im *Temp-Verzeichnis der JVM* (im Container `/tmp`, unabhängig von dieser Variable) liegen daneben der Multipart-Zwischenspeicher von Spring — jede eingehende Datei wird dort in Originalgröße gespoolt, bevor die Arbeitsdatei entsteht — und die Zwischendateien, die das Öffnen eines Anhangs beim Nachextrahieren aus seinem Elterndokument schreibt. Wer nur dieses Verzeichnis auf ein großes Volume legt und `/tmp` in Overlay-Größe belässt, füllt bei parallelen Uploads das falsche Dateisystem. Dateien, die ein hart beendeter Prozess dort zurücklässt (Präfix `opaa-upload-`, älter als der laufende Prozess), räumt der nächste Start weg. Ein verwaistes Objekt im Bucket, das derselbe Abbruch hinterlassen kann, bleibt dagegen liegen, bis ein Betreiber es entfernt — siehe [„Verwaiste Originale aufräumen"](#verwaiste-originale-aufräumen); bis dahin kostet es Speicherplatz und stört den Betrieb sonst nicht |
+| `OPAA_UPLOAD_S3_TEMP_DIRECTORY` | — (leer: das Temp-Verzeichnis der JVM, im Container `/tmp`) | nicht gesetzt | Verzeichnis für die Arbeitsdatei eines Uploads und die lokale Kopie, die Pipeline-Nachzug, Metadaten-Nachlauf und die Rückextraktion von Anhängen brauchen (`opaa.upload.s3.temp-directory`). **Platzbedarf einplanen, und zwar auf zwei Dateisystemen:** In *diesem* Verzeichnis liegen je Upload die Arbeitsdatei in Originalgröße, die bis zum Ende der asynchronen Verarbeitung lebt, und bei einem gleichzeitigen Nachzug derselben Bibliothek die Kopie des Originals; mit parallelen Uploads (`OPAA_UPLOAD_THREAD_POOL_MAX_SIZE` plus Warteschlange) vervielfacht sich das. Im *Temp-Verzeichnis der JVM* (im Container `/tmp`, unabhängig von dieser Variable) liegen daneben der Multipart-Zwischenspeicher von Spring — jede eingehende Datei wird dort in Originalgröße gespoolt, bevor die Arbeitsdatei entsteht — und die Zwischendateien, die das Öffnen eines Anhangs beim Nachextrahieren aus seinem Elterndokument schreibt. Wer nur dieses Verzeichnis auf ein großes Volume legt und `/tmp` in Overlay-Größe belässt, füllt bei parallelen Uploads das falsche Dateisystem. **Ein so eingehängtes Volume muss für die Kennung 65532 beschreibbar sein** — sonst scheitert jeder Upload beim Anlegen der Arbeitsdatei, obwohl bei `OPAA_UPLOAD_STORE=s3` sonst kein Verzeichnis übergeben werden muss (siehe [„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betrieb-des-backend-containers)). Dateien, die ein hart beendeter Prozess dort zurücklässt (Präfix `opaa-upload-`, älter als der laufende Prozess), räumt der nächste Start weg. Ein verwaistes Objekt im Bucket, das derselbe Abbruch hinterlassen kann, bleibt dagegen liegen, bis ein Betreiber es entfernt — siehe [„Verwaiste Originale aufräumen"](#verwaiste-originale-aufräumen); bis dahin kostet es Speicherplatz und stört den Betrieb sonst nicht |
 | `OPAA_UPLOAD_S3_TARGET_VALIDATION_ENABLED` | `true` | nicht gesetzt | Zieladressprüfung jeder Anfrage an den Objektspeicher (`opaa.upload.s3.target-validation.enabled`) — eigener Namensraum, unabhängig von `OPAA_INDEXING_TARGET_VALIDATION_ENABLED`: das Abschalten der Konnektorprüfung schaltet diese nicht mit ab. Der konfigurierte Endpunkt passiert immer; die Prüfung fängt Anfragen, die woandershin gingen |
 | `OPAA_UPLOAD_S3_TARGET_VALIDATION_ALLOWLIST` | — (leer) | nicht gesetzt | Kommagetrennte Hosts, die die Zieladressprüfung der Originalablage zusätzlich passieren dürfen (`opaa.upload.s3.target-validation.allowlist`); für den konfigurierten Endpunkt selbst nicht nötig |
 | `OPAA_UPLOAD_MAX_FILE_SIZE` | `52428800` (50 MiB, Byte) | nicht gesetzt (Anwendungs-Default gilt) | Maximale Dateigröße beim Dokument-Upload (`spring.servlet.multipart.max-file-size`/`max-request-size` und `opaa.upload.max-file-size` in `application.yml`, dieselbe Variable für beide). **Bei Docker Compose zusätzlich zu beachten:** Der nginx-Reverse-Proxy im Frontend-Container (`frontend/nginx.conf`) setzt `client_max_body_size` unabhängig davon fest auf `52m` — etwas oberhalb dieses Limits, weil nginx die gesamte Multipart-Anfrage misst (inklusive Framing-Overhead), das Backend dagegen nur die Dateigröße. Diese Datei wird beim Image-Build fest eingebacken (kein `envsubst`), wird also **nicht** automatisch aus `OPAA_UPLOAD_MAX_FILE_SIZE` übernommen. Wer `OPAA_UPLOAD_MAX_FILE_SIZE` erhöht, muss `client_max_body_size` in `frontend/nginx.conf` entsprechend mit anheben, sonst weist nginx größere Uploads bereits mit einer eigenen HTML-413-Seite ab, bevor die Backend-Prüfung überhaupt greift. Ein weiterer Reverse-Proxy vor dem Frontend-Container braucht denselben Wert zusätzlich (nginx-Default dort: 1 MB) |
@@ -1028,11 +1066,11 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_INDEXING_S3_REQUEST_BUDGET_PER_RUN` | `20000` | `20000` | Anfragebudget je Lauf: Aufrufe einschließlich Wiederholungen und `HeadObject` für endungslose Schlüssel, bevor der Lauf **geordnet als „unvollständig, wird fortgesetzt“** endet; Verbindungstest und Bucket-Auflistung sind nicht betroffen. Rechnung: ein Aufruf je 1000 gelistete Objekte plus einer je geändertem Objekt — 20 000 decken eine Million unveränderter Objekte mit Endung und rund 18 000 Downloads. `0` schaltet das Budget ab. Der Vorgabewert ist ein Ausgangswert aus dem Entwurf, nicht gegen einen realen Objektspeicher kalibriert |
 | `OPAA_INDEXING_S3_MAX_OBJECTS_PER_RUN` | `1000000` | `1000000` | Gelistete Objekte je Lauf über alle Geltungsbereiche, bevor der Lauf **sichtbar als Fehler** endet („Geltungsbereiche enger fassen“) — eine Notbremse für Arbeitsspeicher und Laufzeit (jeder gelistete Pfad wird bis zur Bereinigung gehalten), keine Regelgrenze; nicht zu verwechseln mit dem Anfragebudget, das den Lauf geordnet als unvollständig beendet |
 | `OPAA_INDEXING_S3_DOWNLOAD_CONCURRENCY` | `2` | `2` | Gleichzeitige Objekt-Downloads je Lauf, während die Auflistung weiterläuft — eine Obergrenze für die Last auf dem Objektspeicher, kein Durchsatzziel; `1` lädt seriell. Die Dokumentstrecke selbst verarbeitet die geladenen Objekte weiterhin eines nach dem anderen in Auflistungsreihenfolge; nur ein ohne Download übersprungenes Objekt steht im Protokoll, sobald es angetroffen wird |
-| `OPAA_INDEXING_S3_TEMP_DIRECTORY` | Temp-Verzeichnis der JVM (`java.io.tmpdir`) | nicht gesetzt | Verzeichnis, in das ein Objekt vor der Übergabe an die Dokumentstrecke geladen wird (Datei wird nach der Verarbeitung gelöscht). Kein Eintrag in `application.yml`; die Variable bindet über Spring Boots Relaxed Binding an `opaa.indexing.s3.temp-directory` |
+| `OPAA_INDEXING_S3_TEMP_DIRECTORY` | Temp-Verzeichnis der JVM (`java.io.tmpdir`) | nicht gesetzt | Verzeichnis, in das ein Objekt vor der Übergabe an die Dokumentstrecke geladen wird (Datei wird nach der Verarbeitung gelöscht). Kein Eintrag in `application.yml`; die Variable bindet über Spring Boots Relaxed Binding an `opaa.indexing.s3.temp-directory`. Zeigt der Wert auf ein eingehängtes Volume, muss dieses für die Kennung 65532 beschreibbar sein (siehe [„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betrieb-des-backend-containers)) |
 | `OPAA_INDEXING_EVENTS_DEBOUNCE` | `5s` | `5s` | Sammelzeit des gemeinsamen Ereigniseingangs aller Push-Wege ([Confluence-Webhook](konnektor-confluence.md), [S3-Ereignisse](konnektor-s3.md)): Benachrichtigungen zu einer Bibliothek werden so lange gesammelt und dann in **einem** gezielten Lauf geprüft — fünf Speichervorgänge in einer Minute oder ein Skript, das fünfzig Objekte hochlädt, kosten einen Lauf. Löst `OPAA_INDEXING_CONFLUENCE_WEBHOOK_DEBOUNCE` und `OPAA_INDEXING_S3_EVENTS_DEBOUNCE` ab (siehe [Migrationen](#migrationen-aus-älteren-ständen)) |
 | `OPAA_INDEXING_EVENTS_MAX_PENDING_KEYS` | `500` | `500` | Höchstzahl verschiedener gemeldeter Schlüssel (Seitenkennungen, Objektschlüssel) je Stapel; darüber läuft statt gezielter Einzelprüfungen der gewöhnliche Lauf des Konnektors — bei Confluence in der Betriebsart, die der Zustand der Bibliothek vorgibt, bei S3 der Vollabgleich (ein Massenimport listet billiger, als er einzeln prüft). Löst `OPAA_INDEXING_CONFLUENCE_WEBHOOK_MAX_PENDING_PAGES` und `OPAA_INDEXING_S3_EVENTS_MAX_PENDING_KEYS` ab |
 | `OPAA_INDEXING_EVENTS_MAX_DEFERRALS` | `120` | `120` | Wie oft ein wartender Stapel um eine weitere Sammelzeit verschoben wird, weil für die Bibliothek gerade ein Lauf läuft, bevor er verworfen wird — der nächste Lauf deckt dieselben Schlüssel ab, ein Verwerfen kostet Aktualität, nie Richtigkeit (Standard: zehn Minuten). Löst `OPAA_INDEXING_CONFLUENCE_WEBHOOK_MAX_DEFERRALS` und `OPAA_INDEXING_S3_EVENTS_MAX_DEFERRALS` ab |
-| `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` | — (leer; Profil `dev`: `/data,/tmp`) | nicht gesetzt (auskommentiert; Beispielwert `/srv/opaa/documents`) | Absolute Basisverzeichnisse, unter denen der `sourcePath` einer FILESYSTEM-Bibliothek liegen muss (kommagetrennt, siehe [Konnektor Dateisystem](konnektor-filesystem.md)). Eine leere Allowlist deaktiviert den Quellentyp FILESYSTEM vollständig — sie ist die eigentliche Sicherung, nicht die Anlage-Berechtigung. Wird bei Anlage, Änderung **und** jedem Lauf geprüft, da die Allowlist nachträglich verengt werden kann. URL-basierte Quellentypen (HTTP_DIRECTORY, RSS_FEED) sind hiervon nicht erfasst — dafür siehe `OPAA_INDEXING_TARGET_VALIDATION_*` unten. **Betriebsbedingung Symlinks:** Symlinks auf Dateien innerhalb eines freigegebenen Verzeichnisses werden mitindiziert (`Files::isRegularFile` folgt Links) — freigegebene Verzeichnisse dürfen deshalb nicht durch Endnutzer beschreibbar sein. |
+| `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` | — (leer; Profil `dev`: `/data,/tmp`) | nicht gesetzt (auskommentiert; Beispielwert `/srv/opaa/documents`) | Absolute Basisverzeichnisse, unter denen der `sourcePath` einer FILESYSTEM-Bibliothek liegen muss (kommagetrennt, siehe [Konnektor Dateisystem](konnektor-filesystem.md)). Eine leere Allowlist deaktiviert den Quellentyp FILESYSTEM vollständig — sie ist die eigentliche Sicherung, nicht die Anlage-Berechtigung. Wird bei Anlage, Änderung **und** jedem Lauf geprüft, da die Allowlist nachträglich verengt werden kann. URL-basierte Quellentypen (HTTP_DIRECTORY, RSS_FEED) sind hiervon nicht erfasst — dafür siehe `OPAA_INDEXING_TARGET_VALIDATION_*` unten. **Betriebsbedingung Symlinks:** Symlinks auf Dateien innerhalb eines freigegebenen Verzeichnisses werden mitindiziert (`Files::isRegularFile` folgt Links) — freigegebene Verzeichnisse dürfen deshalb nicht durch Endnutzer beschreibbar sein. **Betriebsbedingung Leserechte:** Das freigegebene Verzeichnis muss für die Kennung 65532 betret- und lesbar sein, unter der das Backend im Container läuft — eine nur für `root` lesbare Freigabe meldet je Datei „Dateiformat wird nicht unterstützt", statt zu scheitern (siehe [„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betrieb-des-backend-containers)). |
 | `OPAA_INDEXING_TARGET_VALIDATION_ENABLED` | `true` | `true` | Ob `HTTP_DIRECTORY`/`RSS_FEED`/`CONFLUENCE`-Abrufe (Indizierungsläufe **und** der Verbindungstest) ein Ziel ablehnen, dessen aufgelöste Adresse Loopback, Link-Local, privat oder anderweitig nicht routbar ist (SSRF-Härtung). Vor dem ersten Abruf **und** nach jeder Weiterleitung geprüft. Standardmäßig aktiv — ein Betrieb mit legitimer interner Dokumentenquelle schaltet bewusst ab, kein stillschweigender Permissiv-Modus. |
 | `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | — (leer) | nicht gesetzt (auskommentiert; Beispielwert `intranet.example.org`) | Hostnamen (kommagetrennt, exakter Vergleich ohne Groß-/Kleinschreibung), die von der Zielprüfung oben ausgenommen sind, auch während sie aktiv ist — erlaubt konkrete interne Quellen zu benennen, ohne die Prüfung für jedes andere Ziel abzuschalten. Für einen `S3`-Objektspeicher im Haus (MinIO, Ceph) gehört der Endpoint-Host hinein, unter Virtual-Host-Adressierung zusätzlich jeder Bucket-Host `<bucket>.<endpoint-host>` ([Konnektor S3](konnektor-s3.md), Abschnitt 4.1); der Demo-Stack nennt so seinen `minio`-Service. Ein selbst betriebenes Confluence Data Center steht typischerweise in einem privaten Adressbereich und braucht diesen Eintrag; die Fehlermeldung der Confluence-Zugriffsschicht nennt ihn ([Konnektor Confluence](konnektor-confluence.md)). |
 | `OPAA_INDEXING_STALE_JOB_TIMEOUT` | `4h` (als `${OPAA_INDEXING_STALE_JOB_TIMEOUT:4h}`-Platzhalter in `application.yml`, deckungsgleich mit dem Java-Default `PT4H` in `IndexingProperties`) | nicht gesetzt (Anwendungs-Default gilt) | Wie lange ein Lauf `RUNNING` bleiben darf, ohne dass sein Fortschritts-Heartbeat sich bewegt, bevor er als verwaist gilt und automatisch auf `FAILED` gesetzt wird — schützt vor Läufen, die durch eine verworfene `@Async`-Aufgabe oder einen abgestürzten Prozess dauerhaft `RUNNING` bleiben und damit ihre Bibliothek auf Dauer sperren würden (jeder weitere Anstoß derselben Bibliothek antwortet 409, solange die Zeile `RUNNING` ist). Ein tatsächlich aktiver Lauf eines großen Bestands bleibt unangetastet, solange er weiter Fortschritt meldet, auch über diese Zeitspanne hinaus. Wird beim Anwendungsstart (alle `RUNNING`-Zeilen gelten dann als verwaist) und danach periodisch geprüft. **Setzt genau eine Backend-Instanz voraus:** Startup-Recovery und periodischer Sweep kennen nur die `indexing_jobs`-Zeilen der eigenen Datenbank, nicht welcher Prozess sie tatsächlich noch bearbeitet — bei einem Rolling-Deployment oder einer zweiten Replik würde eine Instanz die noch laufenden Jobs der anderen als verwaist erkennen und abbrechen. |
@@ -1856,7 +1894,7 @@ die auf nicht vorhandene Originale zeigt.
 | Weg | Wofür | Was der Betrieb tut | Grenzen |
 |---|---|---|---|
 | **Verzeichnis** | kleine Installationen, Erprobung, Betrieb ohne Netzanbindung | Ein Verzeichnis bereitstellen und einhängen (`OPAA_UPLOAD_STORAGE_PATH_HOST` auf `/app/uploads`) | Wächst mit dem Volume des Wirtsystems; ohne eingehängtes Verzeichnis ist der Bestand beim Neuaufsetzen des Containers weg |
-| **Netzlaufwerk** | Häuser, deren Bestände ohnehin auf einem Dateiserver liegen | Die Freigabe (SMB/NFS) auf genau dieses Verzeichnis einhängen; in OPAA nichts weiter zu konfigurieren | Rechte des Dienstkontos auf der Freigabe; ein Verbindungsabbruch erscheint als Ein-/Ausgabefehler, nicht als „Datei fehlt" |
+| **Netzlaufwerk** | Häuser, deren Bestände ohnehin auf einem Dateiserver liegen | Die Freigabe (SMB/NFS) auf genau dieses Verzeichnis einhängen; in OPAA nichts weiter zu konfigurieren | Rechte des Dienstkontos auf der Freigabe; ein Verbindungsabbruch erscheint als Ein-/Ausgabefehler, nicht als „Datei fehlt". **`chown` wirkt auf einem CIFS/SMB-Mount nicht** — das Schreibrecht der Kennung 65532 kommt dort aus den Mount-Optionen (`uid=65532,gid=65532`) oder über den `user:`-Eintrag, siehe [„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betrieb-des-backend-containers) |
 | **Objektspeicher** | Rechenzentrumsbetrieb, große Bestände, Verschlüsselung und Versionierung aus dem Speicher | `OPAA_UPLOAD_STORE=s3` und die `OPAA_UPLOAD_S3_*`-Variablen setzen; Bucket vorher anlegen | Keine Bereichsanfragen beim Download (kein Fortsetzen eines abgebrochenen Downloads); zusätzlicher Platzbedarf für Zwischendateien; ein zweites Sicherungsziel |
 
 Die ersten beiden Wege sind für die Anwendung **derselbe** Weg: Sie sieht ein Verzeichnis und weiß
@@ -2021,6 +2059,13 @@ es eine Zeile ohne Bytes, und die ist im Betrieb ein Fehlerbild.
 **Wiederherstellen dagegen umgekehrt: erst die Originale, dann die Datenbank.** Sonst zeigen die
 Zeilen auf Objekte, die es noch nicht gibt — jeder Abruf eines Originals scheitert, bis die Kopie
 durch ist, und das sieht für die Dauer der Wiederherstellung nach Datenverlust aus.
+
+**Bei der Dateisystem-Ablage danach das Eigentum zurückgeben.** Was von außen in `uploads/`
+eingespielt wird — ein als `root` entpacktes Archiv, ein `rsync` von einem Sicherungsserver, ein
+`docker cp` —, gehört anschließend dem einspielenden Konto und nicht mehr `65532`. Das Backend
+startet dann zwar und liefert jedes Original aus, aber der nächste Upload scheitert. Ein
+abschließendes `sudo chown -R 65532:65532 uploads` schließt das ab (siehe [„Nicht-root-Betrieb des
+Backend-Containers"](#nicht-root-betrieb-des-backend-containers)).
 
 Zu sichern ist außerdem die Konfiguration. Ein Verweis in der Datenbank nennt Bucket und Schlüssel,
 aber nicht, an welchem Endpunkt dieser Bucket liegt; ohne die `OPAA_UPLOAD_S3_*`-Werte ist nach
@@ -2382,9 +2427,18 @@ docker compose exec postgres psql -U opaa -d opaa -c \
   "UPDATE documents
       SET file_path = replace(file_path, 's3://<bucket>/', '/app/uploads/')
     WHERE source_type = 'UPLOAD' AND file_path LIKE 's3://<bucket>/%';"
+
+sudo chown -R 65532:65532 uploads
 ```
 
 Danach in `.env.docker` die Ablage zurück auf das Dateisystem stellen und das Backend starten.
+
+Die letzte Zeile ist keine Formsache: Der Kopierschritt läuft in einem Container ohne `user:`, also
+als `root`, und alle zurückgespielten Organisations- und Bibliotheksordner gehören danach `root`.
+Ohne sie sieht alles richtig aus — der Start ist grün, jedes Original lässt sich herunterladen (die
+Dateien sind `0644`) —, aber der erste Upload in eine **bestehende** Bibliothek und jedes Löschen
+eines Originals scheitern mit `AccessDeniedException` (siehe [„Nicht-root-Betrieb des
+Backend-Containers"](#nicht-root-betrieb-des-backend-containers)).
 
 Drei Unterschiede zum Hinweg:
 

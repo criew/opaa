@@ -47,12 +47,24 @@ enthalten.
 
 ## 3. Zugriff
 
-Der Konnektor liest ausschließlich lokal. Die Zugriffsrechte sind die des Prozesses im
-Container. Eine Datei, die der Prozess nicht lesen darf, erscheint im Protokoll als „Dateiformat
-wird nicht unterstützt", weil die Formaterkennung sie nicht öffnen kann.
+Der Konnektor liest ausschließlich lokal. Die Zugriffsrechte sind die des Prozesses im Container,
+und der läuft unter der Kennung **65532**, nicht als `root`. Eine Datei, die der Prozess nicht lesen
+darf, erscheint im Protokoll als „Dateiformat wird nicht unterstützt", weil die Formaterkennung sie
+nicht öffnen kann.
 
-Daraus folgt die wichtigste Betriebsregel: **Das Backend braucht nur Leserechte.** Ein
-Netzlaufwerk sollte schreibgeschützt eingebunden werden.
+**Diese Meldung ist die häufigste Rechteursache und nennt sie nicht.** Wer sie für jede oder fast
+jede Datei eines Verzeichnisses sieht, sucht zuerst bei den Zugriffsrechten und nicht beim Parser:
+Ein Verzeichnis oder eine Freigabe, die nur `root` lesen darf — `root:root 0700`, oder ein
+CIFS-Mount mit `uid=0,file_mode=0600` —, war für frühere Stände lesbar und ist es nicht mehr. Der
+Lauf endet dabei nicht mit einem Fehler; er läuft durch und meldet ein stilles Nichtergebnis.
+
+Daraus folgt die wichtigste Betriebsregel: **Das Backend braucht nur Leserechte — aber die
+tatsächlich.** Für jedes freigegebene Verzeichnis muss die Kennung 65532 es betreten (`x`) und seine
+Dateien lesen (`r`) dürfen: über die Rechte für „andere" (`chmod -R o+rX`), über eine gemeinsame
+Gruppe oder, auf einem Netzlaufwerk, über die Mount-Optionen (`uid=65532,gid=65532`). Ein `chown`
+auf den Korpus ist der falsche Weg, wenn ihn ein Fachverfahren befüllt — das nähme dem Schreiber die
+Rechte; Einzelheiten im [Deployment-Kapitel](deployment.md), Abschnitt „Nicht-root-Betrieb des
+Backend-Containers". Ein Netzlaufwerk sollte schreibgeschützt eingebunden werden.
 
 ## 4. Schutzmechanismen
 
