@@ -584,8 +584,8 @@ keine Shell, keine Coreutils, kein `curl`/`wget`, keinen Paketmanager. Für den 
 ### Nicht-root-Betrieb des Backend-Containers
 
 Das Backend läuft im Container als Benutzer und Gruppe `65532` — nicht als `root`. Es lauscht auf
-Port 8080, also oberhalb des privilegierten Bereichs, liest sonst nur unveränderliche Bestandteile
-des Images und schreibt ausschließlich nach `/app/uploads` und nach `/tmp`.
+Port 8080, also oberhalb des privilegierten Bereichs, und schreibt nach `/app/uploads`, nach `/tmp`
+und in ein etwaig konfiguriertes Temp-Verzeichnis; gelesen wird außerdem, was eingehängt ist.
 
 Bei einem Bind-Mount gilt der Eigentümer des **Host**-Verzeichnisses, nicht der des Verzeichnisses
 im Image — Docker ändert daran beim Einhängen nichts. Daraus folgen drei Betriebsanforderungen, eine
@@ -709,6 +709,11 @@ services:
     volumes:
       - ./cacerts:/opt/java/openjdk/lib/security/cacerts:ro
 ```
+
+Die Kopie muss für die Kennung `65532` **lesbar** sein, unter der das Backend läuft — bei einer
+restriktiven `umask` beim Erzeugen (etwa `077`) ist sie es nicht, und der Start bricht mit einer
+Meldung über den Truststore ab. Ein `chmod 644 ./cacerts` genügt; siehe [„Nicht-root-Betrieb des
+Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
 
 Der Schritt ist nach einem Image-Update zu wiederholen, sobald die Laufzeit neue öffentliche
 Wurzelzertifikate mitbringt: Die gemountete Kopie überdeckt den Stand des Images.
