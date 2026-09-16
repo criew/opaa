@@ -3,6 +3,7 @@ package io.opaa.eval;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -51,9 +52,9 @@ class EvalChatModelExternalTest {
    */
   @Test
   void aMissingApiKeyFailsAndNamesTheEnvironmentVariable() {
-    if (System.getenv("OPAA_EVAL_CHAT_API_KEY") != null) {
-      return;
-    }
+    Assumptions.assumeTrue(
+        System.getenv("OPAA_EVAL_CHAT_API_KEY") == null,
+        "Diese Maschine hat einen Schlüssel gesetzt - der Fehlerfall ist hier nicht herstellbar.");
     withProperties(
         "https://api.anthropic.com/v1",
         "claude-haiku-4-5",

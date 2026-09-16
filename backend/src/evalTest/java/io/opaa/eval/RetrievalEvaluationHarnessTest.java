@@ -463,7 +463,7 @@ class RetrievalEvaluationHarnessTest {
     if (queryProperties.queryDecompositionEnabled()) {
       // One real call before the expensive part: a decomposition that fails per query is
       // swallowed by QueryDecompositionService and would be measured as a run without it.
-      EvalChatModel.requireUsable(activeChatModelResolver);
+      EvalChatModel.requireUsable(activeChatModelResolver, log);
     }
 
     // Same reasoning for the variant-comparison opt-in (#1041 review, Befund 3): a broken

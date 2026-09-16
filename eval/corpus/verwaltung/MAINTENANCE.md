@@ -837,8 +837,8 @@ Gelesen als „mit Notiz → ohne Notiz".
 **Der Abstand zum gepinnten Modell ist die eigentliche Zahl.** Derselbe Produktionsstand löst mit
 `qwen2.5:1.5b-instruct` **5 von 27** Fällen und mit `claude-haiku-4-5` **19 von 27**;
 `topic_switch` geht von 1 auf 8, `constraint_carryover` von 0 auf 5, nDCG@8 von 0,757 auf 0,918.
-`topic_switch` erreicht Hit Rate@5 und MRR@8 von 1,000 — jede Wechselrunde gelöst, das Ziel stets auf
-Rang 1.
+`topic_switch` erreicht über alle 30 Runden der Klasse Hit Rate@5 und MRR@8 von 1,000; die eine
+ungelöste Runde der Klasse ist `ts-008#1`, eine erste Runde und keine Wechselrunde.
 
 **Die Notiz leistet, wofür sie gebaut wurde.** Alle **9 von 9** Notizen der Zielrunden tragen die
 Rahmenangabe (gegen 3 von 9), und **5 von 9** Zielrunden tragen sie in ihrer Teilfrage (gegen 1 von
@@ -870,17 +870,71 @@ Läufe sind **nicht** deterministisch:
 Der Abstand der Mediane (0,014) liegt **innerhalb** der Spannweite des Arms ohne Notiz. Auf
 Rundenebene ist der Vorteil der Notiz damit nicht von der Lauf-zu-Lauf-Schwankung zu trennen.
 
-Tragfähig sind die beiden anderen Beobachtungen:
+**Die beiden anderen Beobachtungen sind ebenfalls nicht abgesichert**, und zwar stärker als es
+zunächst aussieht:
 
-- **Auf Fallebene 19 gegen 16**, mit vier Fällen, die ohne Notiz wegfallen (`cc-002`, `cc-004`,
-  `cc-005`, `ts-002`), und einem, der hinzukommt (`cc-007`).
-- **Die Kennzahl der Notiz ist eine direkte Beobachtung, kein Mittelwert:** 5 gegen 2 Zielrunden,
-  deren Teilfrage die Rahmenangabe trägt. Dass ein Notizpunkt in einer Teilfrage landet, ist nicht
-  verrauschbar — man sieht ihn dort oder nicht.
+- **Die Fallebene (19 gegen 16) mittelt das Rundenrauschen nicht weg, sie verstärkt es.** Ein Fall
+  gilt nur als gelöst, wenn **jede** seiner Runden gelöst ist — eine einzige kippende Runde kippt den
+  Fall. Alle fünf Fälle des Deltas haben in mindestens einem Arm eine Runde auf der Liste der
+  abweichenden Zerlegungen: `cc-002#2/#3`, `cc-004#2`, `ts-002#3` im Notiz-Arm, `cc-005#2`,
+  `ts-002#2/#3`, `cc-007#1/#3` im Arm ohne. Die Fallzahl je Einzelmessung weist der Harness nicht
+  aus; ihre Stabilität ist damit ungemessen.
+- **„5 gegen 2 Zielrunden" ist je Lauf direkt ablesbar, über Läufe hinweg aber nicht abgesichert.**
+  Dass ein Notizpunkt in der Teilfrage landet, ist selbst Modellausgabe: `cc-002#3` steht im
+  Notiz-Arm auf der Abweichungsliste, `cc-007#3` im Arm ohne.
 
-Eine schärfere Aussage über den Rundenvorteil bräuchte mehr Wiederholungen. **Für die Entscheidung
-über Ausbau oder Erhalt der Notiz genügt das Gemessene**: Sie schadet nicht, sie erfüllt ihren Zweck,
-und sie kostet auf Fallebene nichts.
+**Was damit gemessen ist — und was nicht:**
+
+| Aussage | Stand |
+|---|---|
+| Das gepinnte Modell misst den Produktionsbetrieb nicht (5 gegen 19 gelöste Fälle, nDCG 0,757 gegen 0,918) | **belegt** — der Abstand ist um ein Vielfaches größer als jede beobachtete Spannweite |
+| Die Verdichtung hält das Format ein (9 von 9) | **belegt** — zusätzlich durch die unabhängige Handprobe in #1586 |
+| Die Notiz **schadet** der Suche | **widerlegt** für den Produktionsbetrieb: der Notiz-Arm liegt in keiner Metrik unter dem Vergleichsarm |
+| Die Notiz **nützt** der Suche | **offen** — jede Zahl, die dafür spricht, liegt innerhalb oder unterhalb der Streuung |
+
+**Für die Entscheidung über die Notiz genügt das:** Es gibt keinen gemessenen Grund, sie auszubauen —
+der Schadensbefund, der das nahelegte, gilt nur für das gepinnte Modell. Es gibt aber auch keinen
+gemessenen Grund, in sie zu investieren. Wer eine belastbare Aussage über ihren Nutzen will, braucht
+mehr Wiederholungen je Arm als die drei der Mehrfachlauf-Regel.
+
+#### Fenster und Instruktionszeile, auf demselben Modell nachgemessen
+
+Die Ablationsläufe A und B (#1587) liefen auf dem gepinnten Modell. Drei weitere Arme gegen
+`claude-haiku-4-5` schließen die Matrix — **alle fünf Haiku-Läufe im Vergleich**:
+
+| Lauf | Suchfenster | Notiz | Notiz-Zeile | nDCG@8 min / median / max | abw. Zerl. | Fälle gelöst |
+|---|---|---|---|---|---|---|
+| **hA** | 10 Runden | aus | aus | 0,919 / 0,925 / 0,931 | 12 | 17 |
+| **hB** | 2 Runden | aus | aus | 0,912 / **0,930** / 0,930 | 8 | 18 |
+| **hC** | 2 Runden | aus | an | 0,896 / 0,904 / 0,916 | 11 | 16 |
+| **hD** | 2 Runden | an | an | 0,914 / 0,918 / 0,918 | 10 | **19** |
+| **hE** | 10 Runden | an | an | 0,907 / 0,914 / 0,919 | 7 | 18 |
+
+**Der Fensterbefund aus #1587 reproduziert sich nicht.** Dort kostete die Verengung von 10 auf 2
+Runden zwei Fälle, mit nicht überlappenden Spannweiten. Hier ist es in **beiden** Paarungen
+umgekehrt oder gleich:
+
+- ohne Notiz: hA (Fenster 10) 17 Fälle gegen hB (Fenster 2) **18**;
+- mit Notiz: hE (Fenster 10) 18 gegen hD (Fenster 2) **19** — hD gewinnt `verw-conv-ts-002`, kein
+  Fall geht in die andere Richtung.
+
+In allen vier Paarungen überlappen die Spannweiten. **Das Suchfenster wieder aufzumachen kauft
+nichts.**
+
+Die Erklärung liegt nahe und ist die schon bekannte: Ein Modell, dessen Zerlegung wenig zustande
+bringt, profitiert von mehr wörtlichem Kontext, weil der Rückfallpfad davon lebt. Ein Modell, das
+ordentlich umformuliert, braucht die zehn Runden nicht.
+
+**Damit ist ADR-0031 in seiner tragenden Entscheidung bestätigt**, nicht widerlegt: Das kurze
+Suchfenster kostet auf einem produktionsüblichen Modell nichts. Der Gegenbeleg aus #1587 war eine
+Eigenschaft des gepinnten Stellvertreters. Für eine Revision des ADR gibt es keinen Anlass.
+
+**Die Notiz-Zeile in der festen Instruktion** zeigt hier dieselbe Richtung wie auf dem gepinnten
+Modell: hB (ohne Zeile) 0,930 und 18 Fälle gegen hC (mit Zeile) 0,904 und 16. Die Spannweiten
+überlappen am Rand (0,912 gegen 0,916), der Abstand der Mediane ist mit 0,026 größer als bei jeder
+anderen Paarung dieser Reihe. **Das ist der einzige Hinweis der ganzen Untersuchung, der auf beiden
+Modellen in dieselbe Richtung zeigt und auf keinem von beiden abgesichert ist** — ein Kandidat für
+eine gezielte Nachmessung, nicht für eine Änderung.
 
 #### Was das für den Mehrrunden-Messpfad heißt
 
@@ -889,12 +943,10 @@ ohne ihn wäre #1652 nicht auffindbar gewesen. Aber: **Seine Absolutzahlen besch
 Betriebszustand.** 5 von 27 gelösten Fällen ist die Leistung eines 1,5-B-Modells, nicht die von OPAA.
 Wer aus diesem Datensatz eine Produktaussage ableiten will, braucht einen Befundlauf wie diesen.
 
-Offen bleibt damit auch die Fensterfrage: Die Läufe A und B der Ablation (ganzes Fenster, ohne
-Instruktionszeile) liefen ebenfalls auf dem gepinnten Modell. Ob die Verengung des Suchfensters auch
-unter einem produktionsüblichen Modell Fälle kostet, ist **nicht** gemessen — und vor einer Revision
-von ADR-0031 zu messen.
+Die Fensterfrage ist mit den drei zusätzlichen Armen oben beantwortet: Der Gegenbeleg gegen ADR-0031
+aus #1587 reproduziert sich auf einem produktionsüblichen Modell nicht.
 
-**Laufzeit und Kosten.** 150,6 s je Messung mit Notiz, 110 s ohne (gegen 902,9 s bzw. 201,9 s im
+**Laufzeit und Kosten.** 150,6 s je Messung mit Notiz, 88,1 s ohne (gegen 902,9 s bzw. 201,9 s im
 CPU-Testcontainer). 498 Chat-Aufrufe je Lauf mit Notiz, 249 ohne.
 
 ### Themen-Bleed: warum die Zahl wenig taugt

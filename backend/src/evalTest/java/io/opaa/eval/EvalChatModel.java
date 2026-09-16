@@ -1,10 +1,12 @@
 package io.opaa.eval;
 
 import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.query.answer.ChatResponses;
 import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -117,7 +119,7 @@ final class EvalChatModel {
    * "with decomposition" while measuring without it — the exact silent degradation the
    * prerequisites exist to prevent, one layer deeper than "is a model configured at all".
    */
-  static void requireUsable(ActiveChatModelResolver resolver) {
+  static void requireUsable(ActiveChatModelResolver resolver, Logger log) {
     ChatResponse response =
         resolver
             .resolveChatClient()
@@ -129,6 +131,14 @@ final class EvalChatModel {
         response == null || response.getResult() == null || response.getResult().getOutput() == null
             ? null
             : response.getResult().getOutput().getText();
+    // The fixed point carries what was *ordered*; a provider alias can point at different
+    // snapshots over time, so the run also states what answered.
+    if (response != null) {
+      log.info(
+          "Eval-Chat-Modell: angefordert '{}', geantwortet hat '{}'",
+          activeModelIdentifier(),
+          ChatResponses.model(response));
+    }
     if (reply == null || reply.isBlank()) {
       throw new IllegalStateException(
           "The eval chat model '"

@@ -483,7 +483,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
     if (queryProperties.queryDecompositionEnabled()) {
       // One real call before the expensive part: a decomposition that fails per query is
       // swallowed by QueryDecompositionService and would be measured as a run without it.
-      EvalChatModel.requireUsable(activeChatModelResolver);
+      EvalChatModel.requireUsable(activeChatModelResolver, log);
     }
 
     // Same reasoning for the variant-comparison opt-in (#1041 review, Befund 3): a broken
@@ -540,8 +540,8 @@ class VerwaltungRetrievalEvaluationHarnessTest {
         .isZero();
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(manifest.fileNames().size());
     log.info("Indexed {} documents", completedJob.getDocumentsProcessed());
-    // Every runner started so far - the embedding runner, and the chat runner of a decomposing run
-    // - must have computed with the pinned CPU backend.
+    // Every runner started so far must have computed with the pinned CPU backend: the embedding
+    // runner always, the chat runner only when it lives in this container (see the count below).
     String ollamaCpuBackend =
         EvalOllamaEndpoint.isExternal()
             ? null
