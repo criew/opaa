@@ -475,6 +475,201 @@ describe('chatStore', () => {
       })
     })
 
+    // Regression guard for #1574: every write-back of sendMessage belongs to the chat view the
+    // question was sent from. Once the person switched to another chat, a late creation, answer or
+    // failure leaves that other chat's messages, title, note and error untouched - and never
+    // leaves it stuck in the loading state.
+    describe('does not write into a different chat after a chat switch (#1574)', () => {
+      const OTHER_CHAT_ID = 'chat-personal-2'
+      const LATE_POINT = {
+        id: NOTE_ITEM_ID,
+        text: 'Gehört zum alten Chat',
+        kind: 'RAHMEN' as const,
+        createdAt: '2026-03-08T09:00:10Z',
+      }
+
+      function viewOf() {
+        const { chatId, spaceId, title, messages, noteItems, error, isLoading } =
+          useChatStore.getState()
+        return { chatId, spaceId, title, messages, noteItems, error, isLoading }
+      }
+
+      /** Holds every query open until the gate opens; answers for whatever chat it was asked for. */
+      function gatedAnswer(gate: { promise: Promise<void> }, queriedChatIds: string[] = []) {
+        server.use(
+          http.post('/api/v1/query', async ({ request }) => {
+            const body = (await request.json()) as { chatId?: string }
+            queriedChatIds.push(String(body.chatId))
+            await gate.promise
+            return HttpResponse.json({
+              answer: 'Antwort aus dem alten Chat',
+              sources: [],
+              metadata: { model: 'gpt-4o', tokenCount: 10, durationMs: 5 },
+              chatId: body.chatId,
+              chatTitle: 'Titel aus dem alten Chat',
+              noteItems: [LATE_POINT],
+            })
+          }),
+        )
+      }
+
+      function gatedChatCreation(gate: { promise: Promise<void> }, createdIds: string[]) {
+        server.use(
+          http.post('/api/v1/spaces/:spaceId/chats', async ({ params }) => {
+            await gate.promise
+            const id = `chat-created-${createdIds.length + 1}`
+            createdIds.push(id)
+            return HttpResponse.json(
+              {
+                id,
+                spaceId: String(params.spaceId),
+                authorId: 'mock-user-id',
+                title: null,
+                useKnowledge: true,
+                referencedLibraryIds: [],
+                status: 'PRIVATE',
+                messages: [],
+                noteItems: [],
+                createdAt: '2026-01-01T00:00:00Z',
+                updatedAt: '2026-01-01T00:00:00Z',
+              },
+              { status: 201 },
+            )
+          }),
+        )
+      }
+
+      it('an answer arriving after switching to another chat leaves that chat untouched', async () => {
+        await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+        const gate = deferred<void>()
+        gatedAnswer(gate)
+
+        const sendPromise = useChatStore.getState().sendMessage('Frage im alten Chat')
+        await useChatStore.getState().loadChat(OTHER_CHAT_ID)
+        const otherChatView = viewOf()
+        gate.resolve()
+        await sendPromise
+
+        expect(viewOf()).toEqual({ ...otherChatView, isLoading: false })
+        expect(useChatStore.getState().chatId).toBe(OTHER_CHAT_ID)
+        expect(useChatStore.getState().title).toBe('Deployment-Fragen')
+        expect(useChatStore.getState().noteItems).toEqual([])
+      })
+
+      it('a failure arriving after switching to another chat shows no error there and ends the loading state', async () => {
+        await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+        const gate = deferred<void>()
+        server.use(
+          http.post('/api/v1/query', async () => {
+            await gate.promise
+            return HttpResponse.json(
+              { error: 'Fehler aus dem alten Chat', status: 500 },
+              { status: 500 },
+            )
+          }),
+        )
+
+        const sendPromise = useChatStore.getState().sendMessage('Frage im alten Chat')
+        await useChatStore.getState().loadChat(OTHER_CHAT_ID)
+        const otherChatView = viewOf()
+        gate.resolve()
+        await sendPromise
+
+        expect(viewOf()).toEqual({ ...otherChatView, isLoading: false })
+        expect(useChatStore.getState().error).toBeNull()
+      })
+
+      it('an answer for a just-created chat arriving after switching to another chat leaves that chat untouched', async () => {
+        useChatStore.getState().startNewChat(SPACE_ID)
+        const gate = deferred<void>()
+        gatedAnswer(gate)
+
+        const sendPromise = useChatStore.getState().sendMessage('Erste Frage')
+        await vi.waitFor(() => expect(useChatStore.getState().chatId).toBeTruthy())
+        await useChatStore.getState().loadChat(OTHER_CHAT_ID)
+        const otherChatView = viewOf()
+        gate.resolve()
+        await sendPromise
+
+        expect(viewOf()).toEqual({ ...otherChatView, isLoading: false })
+        expect(useChatStore.getState().chatId).toBe(OTHER_CHAT_ID)
+      })
+
+      it('a chat creation finishing after switching to another chat neither takes over that chat nor loses the question', async () => {
+        useChatStore.getState().startNewChat(SPACE_ID)
+        const creationGate = deferred<void>()
+        const createdIds: string[] = []
+        gatedChatCreation(creationGate, createdIds)
+        const queriedChatIds: string[] = []
+        const answerGate = deferred<void>()
+        answerGate.resolve()
+        gatedAnswer(answerGate, queriedChatIds)
+
+        const sendPromise = useChatStore.getState().sendMessage('Erste Frage')
+        await useChatStore.getState().loadChat(OTHER_CHAT_ID)
+        const otherChatView = viewOf()
+        creationGate.resolve()
+        await sendPromise
+
+        expect(viewOf()).toEqual({ ...otherChatView, isLoading: false })
+        // The question still reaches the chat it created, which shows up in its space's list.
+        expect(createdIds).toEqual(['chat-created-1'])
+        expect(queriedChatIds).toEqual(['chat-created-1'])
+        expect(
+          useChatListStore.getState().chatsBySpaceId[SPACE_ID]?.map((chat) => chat.id),
+        ).toEqual(['chat-created-1'])
+      })
+
+      it('a chat creation finishing after starting yet another new chat does not take over the new one', async () => {
+        useChatStore.getState().startNewChat(SPACE_ID)
+        const creationGate = deferred<void>()
+        gatedChatCreation(creationGate, [])
+        const answerGate = deferred<void>()
+        answerGate.resolve()
+        gatedAnswer(answerGate)
+
+        const sendPromise = useChatStore.getState().sendMessage('Erste Frage')
+        useChatStore.getState().startNewChat('space-engineering')
+        creationGate.resolve()
+        await sendPromise
+
+        const state = useChatStore.getState()
+        expect(state.chatId).toBeNull()
+        expect(state.spaceId).toBe('space-engineering')
+        expect(state.messages).toEqual([])
+        expect(state.title).toBeNull()
+        expect(state.noteItems).toEqual([])
+        expect(state.isLoading).toBe(false)
+      })
+
+      it('a new chat keeps the id the backend assigned and receives its own answer when nobody switched', async () => {
+        useChatStore.getState().startNewChat(SPACE_ID)
+        const createdIds: string[] = []
+        const creationGate = deferred<void>()
+        creationGate.resolve()
+        gatedChatCreation(creationGate, createdIds)
+        const answerGate = deferred<void>()
+        gatedAnswer(answerGate)
+
+        const sendPromise = useChatStore.getState().sendMessage('Erste Frage')
+        await vi.waitFor(() => expect(useChatStore.getState().chatId).toBe('chat-created-1'))
+        expect(useChatStore.getState().isLoading).toBe(true)
+        answerGate.resolve()
+        await sendPromise
+
+        const state = useChatStore.getState()
+        expect(state.chatId).toBe('chat-created-1')
+        expect(state.messages.map((message) => message.content)).toEqual([
+          'Erste Frage',
+          'Antwort aus dem alten Chat',
+        ])
+        expect(state.title).toBe('Titel aus dem alten Chat')
+        expect(state.noteItems.map((item) => item.id)).toEqual([NOTE_ITEM_ID])
+        expect(state.isLoading).toBe(false)
+        expect(state.error).toBeNull()
+      })
+    })
+
     // Payload mapping for all three chip-bar states (#560): @Alles-Wissen -> useKnowledge=true (no
     // libraryIds), concrete chips -> useKnowledge=false + libraryIds, empty bar -> useKnowledge=
     // false with an empty libraryIds array, mirroring exactly what the bar shows.
