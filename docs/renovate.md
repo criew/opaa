@@ -169,6 +169,15 @@ docker run --rm -v "$(pwd)":/usr/src/app -w /usr/src/app \
   — gemergt wird nur ein Branch, der aktuell hinter `main` steht und grün ist; das passiert
   folglich nur während eines Renovate-Laufs. Heilung, falls es doch passiert: `pnpm install`
   auf `main`-Stand, Lockfile-Diff committen.
+- **`packageManager` verliert den Corepack-Hash (#1660):** Aktualisiert ein Sammel-PR pnpm
+  zusammen mit mindestens einem weiteren npm-Paket, ruft Renovate `corepack use pnpm@<version>`
+  auf, bevor die Lockfile neu erzeugt ist; der Aufruf bricht mit `ERR_PNPM_OUTDATED_LOCKFILE` ab
+  und der zuvor eingetragene, hashlose Wert bleibt stehen. Sichtbar wird das am roten Status
+  `renovate/artifacts`. Ohne den `+sha512.`-Anteil lädt `pnpm/action-setup` die pnpm-Binary
+  ungeprüft. Der Guard `.github/scripts/check_package_manager_hash.sh` (Job `changes` in
+  `ci.yml`) lässt jeden solchen Stand rot werden. Heilung: `corepack use pnpm@<version>` im
+  betroffenen Verzeichnis ausführen, sobald die Lockfile aktuell ist, und `package.json`
+  committen.
 - **Docker-Hub-Rate-Limit im Dry-Run:** kurz warten und wiederholen; der Lauf cached nichts
   zwischen Containern.
 - **Major-Update eines Basisimages bricht einen Build, obwohl der Update-PR grün war:** Der

@@ -33,6 +33,9 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     permissions:
+      # contents: read is required for the checkout below - a job-level permissions
+      # block replaces the defaults instead of extending them.
+      contents: read
       pull-requests: read
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
@@ -94,6 +97,16 @@ jobs:
               - 'demo/seed/**'
               - 'keycloak/**'
               - '.github/workflows/ci.yml'
+
+      - uses: actions/checkout@v7
+
+      # Lives in this job because `changes` is the only required status check that
+      # runs unfiltered on every PR and every push to main - a guard in a filtered
+      # job would be skipped for exactly the PRs that touch only e2e/package.json,
+      # and a non-required job would go red without stopping a Renovate auto-merge
+      # (#1660). Runs before any install: it must also catch an unverified binary.
+      - name: Corepack-Hash im packageManager-Feld prüfen
+        run: .github/scripts/check_package_manager_hash.sh
 
   # The backend suite runs as three parallel package shards (see `testShards` in
   # backend/build.gradle.kts) plus one build job for everything `build` does besides the root
