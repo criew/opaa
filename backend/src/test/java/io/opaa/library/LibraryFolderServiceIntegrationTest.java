@@ -122,7 +122,6 @@ class LibraryFolderServiceIntegrationTest {
   void tearDown() {
     // Chunks, documents and runs of this class's own library, then the library itself - its
     // folders go with it (fk_library_folders_library is ON DELETE CASCADE).
-    jdbcTemplate.update("DELETE FROM library_visibility_history WHERE library_id = ?", libraryId);
     ownLibraryFixtures.removeLibraries(libraryId);
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId(), viewer.getId()));
     membershipHistoryRepository.deleteByUserIdIn(List.of(editor.getId(), viewer.getId()));

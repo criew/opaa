@@ -726,7 +726,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
     writePdf(file);
     assertThat(documentIngestService.ingest(DocumentIngest.localFile(library, file).build(), null))
         .isEqualTo(DocumentIngestResult.PROCESSED);
-    return documentRepository.findAll().stream()
+    return documentRepository.findByLibraryId(library.getId()).stream()
         .filter(document -> fileName.equals(document.getFileName()))
         .findFirst()
         .orElseThrow();

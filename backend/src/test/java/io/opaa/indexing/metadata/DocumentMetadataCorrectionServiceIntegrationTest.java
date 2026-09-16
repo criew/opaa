@@ -243,9 +243,6 @@ class DocumentMetadataCorrectionServiceIntegrationTest {
         MetadataValueInput.date(LocalDate.of(2024, 5, 17), DatePrecision.YEAR),
         editor);
     // The Altbestand shape: the run has to re-extract this document from its file.
-    // Scoped to this class's own library: on the shared database a blanket UPDATE is worse
-    // than a blanket DELETE - it leaves the neighbour's rows in place with changed content,
-    // so nothing fails, the next class just silently asserts against the wrong values.
     jdbcTemplate.update(
         "UPDATE documents SET metadata_extraction_version = NULL WHERE library_id = ?",
         library.getId());

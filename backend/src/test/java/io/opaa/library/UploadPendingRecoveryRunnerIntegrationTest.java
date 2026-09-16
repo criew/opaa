@@ -75,12 +75,10 @@ class UploadPendingRecoveryRunnerIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    ownLibraryFixtures.removeContentOf(libraryId);
-    jdbcTemplate.update("DELETE FROM library_visibility_history WHERE library_id = ?", libraryId);
+    ownLibraryFixtures.removeLibraries(libraryId);
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId()));
     membershipHistoryRepository.deleteByUserIdIn(List.of(editor.getId()));
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", libraryId);
     userRepository.deleteById(editor.getId());
     organizationRepository.deleteById(organizationId);
   }

@@ -136,7 +136,7 @@ class MetadataFilterOptionsServiceIntegrationTest {
   @Test
   void aFieldMarkedNotDeterminableCountsTowardsTheFillLevel() {
     UUID untyped =
-        documentRepository.findAll().stream()
+        documentRepository.findByLibraryId(libraryA.getId()).stream()
             .filter(document -> "Unterlage.pdf".equals(document.getFileName()))
             .findFirst()
             .orElseThrow()

@@ -305,7 +305,7 @@ class ContextPrefixRerunIntegrationTest {
         .isEqualTo(DocumentIngestResult.PROCESSED);
 
     Document document =
-        documentRepository.findAll().stream()
+        documentRepository.findByLibraryId(library.getId()).stream()
             .filter(candidate -> "Gebühren".equals(candidate.getFileName()))
             .findFirst()
             .orElseThrow();
@@ -530,7 +530,7 @@ class ContextPrefixRerunIntegrationTest {
                     .build(),
                 null))
         .isEqualTo(DocumentIngestResult.PROCESSED);
-    return documentRepository.findAll().stream()
+    return documentRepository.findByLibraryId(library.getId()).stream()
         .filter(document -> fileName.equals(document.getFileName()))
         .findFirst()
         .orElseThrow();

@@ -10,12 +10,18 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * without a {@code WHERE} clause would take a sibling class's still-needed rows with it.
  *
  * <p>What the library row itself carries away on {@code DELETE} (all ON DELETE CASCADE): its
- * grants, folders, metadata fields and values, keyword rows, model-extraction statistics, source
- * sync state and chat references. What it does not, and what this class therefore removes first:
- * the chunks (no foreign key at all - they are found through their {@code library_id} metadata),
- * the documents ({@code fk_documents_library_organization} is RESTRICT) and the indexing runs
- * ({@code fk_indexing_jobs_library_organization} is ON DELETE SET NULL, so a run would outlive its
- * library with a {@code NULL library_id} instead of failing).
+ * grants, folders, space associations, Confluence space selection, metadata fields and values,
+ * keyword rows, model-extraction statistics and rejections, source sync and RSS feed state and chat
+ * references. What it does not, and what this class therefore removes itself: the chunks (no
+ * foreign key at all - they are found through their {@code library_id} metadata), the documents
+ * ({@code fk_documents_library_organization} is RESTRICT), the indexing runs ({@code
+ * fk_indexing_jobs_library_organization} is ON DELETE SET NULL, so a run would outlive its library
+ * with a {@code NULL library_id} instead of failing) and the visibility history (no foreign key on
+ * the library, so a row would only accumulate).
+ *
+ * <p>Not covered: {@code asset_grant_history} - its rows are held by their subject user ({@code
+ * fk_asset_grant_history_subject_user_organization} is RESTRICT) and go with the caller's user
+ * teardown.
  */
 public final class OwnLibraryFixtures {
 
@@ -44,6 +50,7 @@ public final class OwnLibraryFixtures {
   public void removeLibraries(UUID... libraryIds) {
     for (UUID libraryId : libraryIds) {
       removeContentOf(libraryId);
+      jdbcTemplate.update("DELETE FROM library_visibility_history WHERE library_id = ?", libraryId);
       jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", libraryId);
     }
   }
