@@ -139,6 +139,7 @@ public final class PipelineHarnessSupport {
       Instant pipelineRunStart,
       ExplanationDump explanationDump,
       Logger log) {
+    StaleReportGuard.discard(reportFile(domain));
     QueryProperties queryProperties = contextFactory.queryProperties();
     requireMeasurableConfiguration(
         queryProperties, pipelineProperties, rerankRoleUsable, identity.chatModel());
@@ -263,7 +264,7 @@ public final class PipelineHarnessSupport {
 
   /** Where a domain's pipeline report is written — never the raw-vector path's report file. */
   public static Path reportFile(EvalDomainConfig domain) {
-    return Path.of("build", "eval-reports", "pipeline-metrics-" + domain.name() + ".json");
+    return EvalReportDirectory.resolve("pipeline-metrics-" + domain.name() + ".json");
   }
 
   /**

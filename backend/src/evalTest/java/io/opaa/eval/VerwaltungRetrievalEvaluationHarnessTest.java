@@ -890,6 +890,9 @@ class VerwaltungRetrievalEvaluationHarnessTest {
     //    verdict (see PipelineHarnessSupport). Skipped when the multi-turn step below is
     //    requested: that run decomposes every query, which no single-question baseline was
     //    drawn with, so nothing would judge this measurement.
+    // #1671: the skipped step writes no report either - and a previous run's must not stay behind
+    // for this run's pipeline baseline comparison to read as a fresh measurement.
+    StaleReportGuard.discard(PipelineHarnessSupport.reportFile(DOMAIN));
     if (!ConversationHarnessSupport.isRequested()) {
       Instant pipelineRunStart = Instant.now();
       PipelineHarnessSupport.runAndWriteGuarded(
