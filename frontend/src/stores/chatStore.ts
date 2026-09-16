@@ -439,6 +439,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // schedules the delayed reload that picks it up.
     const isFirstTurn = get().messages.length === 0
 
+    // The chat view this call writes into, compared again after every await like removeNoteItem's
+    // rollback does: the chat active when the question was sent, or - for a not-yet-created chat -
+    // the one its implicit creation produced. A not-yet-created chat has no id to compare yet, so
+    // until then a newer loadChat/startNewChat (chatLoadSequence) is what marks the view as left.
+    let viewChatId = get().chatId
+    const viewLoadSequence = chatLoadSequence
+    const isSameView = () =>
+      viewChatId !== null
+        ? get().chatId === viewChatId
+        : get().chatId === null && chatLoadSequence === viewLoadSequence
+
     const userMessage: ChatMessage = {
       id: generateId(),
       role: 'user',
@@ -472,7 +483,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
         // #575: a logout in between (e.g. a 401 elsewhere triggering authStore.logout()) must not
         // let this chat's id resurrect into the now-emptied store.
         if (isStaleSessionEpoch(sessionEpoch)) return
-        set({ chatId })
+        // The chat exists server-side either way: the question is still sent to it below, only a
+        // view the person has meanwhile left must not become this chat.
+        if (isSameView()) {
+          set({ chatId })
+          viewChatId = chatId
+        }
         // The settings this chat was just created with are the server's own record too (#565
         // review) - same reasoning as loadChat above.
         confirmedSettingsByChatId.set(chatId, {
@@ -513,6 +529,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // #575: the query answer arriving after a logout must not resurrect messages/chatId into the
       // now-emptied store - this is the second of the two write-back paths the #618 review flagged.
       if (isStaleSessionEpoch(sessionEpoch)) return
+      if (spaceId) {
+        // Moves the chat to the top of its space's list after every turn, mirroring the backend's
+        // own updatedAt bump (#548 review, finding 4). Keyed by chat, so it applies even when the
+        // person has meanwhile switched to another chat.
+        useChatListStore.getState().touchChat(spaceId, response.chatId, new Date().toISOString())
+        if (response.chatTitle) {
+          useChatListStore.getState().updateChatTitle(spaceId, response.chatId, response.chatTitle)
+        }
+      }
+      // Answer, title and note belong to the view the question was sent from; another chat shown
+      // now only leaves the loading state this call entered (the input is locked while it runs).
+      if (!isSameView()) {
+        set({ isLoading: false })
+        return
+      }
       const assistantMessage: ChatMessage = {
         id: generateId(),
         role: 'assistant',
@@ -538,21 +569,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
           ? visibleNoteItems(response.chatId, response.noteItems)
           : state.noteItems,
       }))
-      if (spaceId) {
-        // Moves the chat to the top of its space's list after every turn, mirroring the backend's
-        // own updatedAt bump (#548 review, finding 4).
-        useChatListStore.getState().touchChat(spaceId, response.chatId, new Date().toISOString())
-        if (response.chatTitle) {
-          useChatListStore.getState().updateChatTitle(spaceId, response.chatId, response.chatTitle)
-        }
-        if (isFirstTurn) {
-          scheduleTitleReload(get, set, response.chatId, spaceId)
-        }
+      if (spaceId && isFirstTurn) {
+        scheduleTitleReload(get, set, response.chatId, spaceId)
       }
     } catch (err) {
       // #575: a failure arriving after a logout must not write isLoading/error into the
       // now-emptied store either - same reasoning as the two success write-backs above.
       if (isStaleSessionEpoch(sessionEpoch)) return
+      // A failure of the chat the person has left is not shown in the one they switched to.
+      if (!isSameView()) {
+        set({ isLoading: false })
+        return
+      }
       // TODO: Add retry UX (e.g. "Retry" button on failed messages)
       const message = err instanceof Error ? err.message : 'Ein unerwarteter Fehler ist aufgetreten'
       set({ error: message, isLoading: false })
