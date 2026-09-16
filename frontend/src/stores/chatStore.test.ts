@@ -488,6 +488,68 @@ describe('chatStore', () => {
         createdAt: '2026-03-08T09:00:10Z',
       }
 
+      function chatSummary(id: string, title: string, updatedAt: string) {
+        return {
+          id,
+          spaceId: SPACE_ID,
+          authorId: 'mock-user-id',
+          title,
+          useKnowledge: true,
+          referencedLibraryIds: [],
+          status: 'PRIVATE' as const,
+          createdAt: updatedAt,
+          updatedAt,
+        }
+      }
+
+      function messageContents() {
+        return useChatStore.getState().messages.map((message) => message.content)
+      }
+
+      /** Serves `chatId` from a server that persists question and answer together, only once the
+       * answer is committed - like ChatMessageWriter at the end of a query. */
+      function chatPersistingTurnOnAnswer(chatId: string, baseMessages: unknown[]) {
+        const backend = { persisted: false }
+        server.use(
+          http.get('/api/v1/chats/:chatId', ({ params }) => {
+            if (String(params.chatId) !== chatId) return undefined
+            const turn = backend.persisted
+              ? [
+                  {
+                    id: `${chatId}-q`,
+                    chatId,
+                    role: 'USER',
+                    content: 'Frage vor dem Wechsel',
+                    createdAt: '2026-09-01T10:00:00Z',
+                  },
+                  {
+                    id: `${chatId}-a`,
+                    chatId,
+                    role: 'ASSISTANT',
+                    content: 'Antwort aus dem alten Chat',
+                    sources: [],
+                    createdAt: '2026-09-01T10:00:05Z',
+                  },
+                ]
+              : []
+            return HttpResponse.json({
+              id: chatId,
+              spaceId: SPACE_ID,
+              authorId: 'mock-user-id',
+              title: backend.persisted ? 'Titel aus dem alten Chat' : null,
+              useKnowledge: true,
+              referencedLibraryIds: [],
+              status: 'PRIVATE',
+              messages: [...baseMessages, ...turn],
+              noteItems: backend.persisted ? [LATE_POINT] : [],
+              createdAt: '2026-09-01T09:00:00Z',
+              updatedAt: '2026-09-01T09:00:00Z',
+            })
+          }),
+        )
+        return backend
+      }
+
       function viewOf() {
         const { chatId, spaceId, title, messages, noteItems, error, isLoading } =
           useChatStore.getState()
@@ -540,6 +602,14 @@ describe('chatStore', () => {
       }
 
       it('an answer arriving after switching to another chat leaves that chat untouched', async () => {
+        useChatListStore.setState({
+          chatsBySpaceId: {
+            [SPACE_ID]: [
+              chatSummary(OTHER_CHAT_ID, 'Deployment-Fragen', '2026-03-06T11:00:05Z'),
+              chatSummary(EXISTING_CHAT_ID, 'Architektur des Projekts', '2026-03-05T09:00:05Z'),
+            ],
+          },
+        })
         await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
         const gate = deferred<void>()
         gatedAnswer(gate)
@@ -554,6 +624,13 @@ describe('chatStore', () => {
         expect(useChatStore.getState().chatId).toBe(OTHER_CHAT_ID)
         expect(useChatStore.getState().title).toBe('Deployment-Fragen')
         expect(useChatStore.getState().noteItems).toEqual([])
+        // The chat list is keyed by chat: the answered chat still moves up and takes its title.
+        expect(
+          useChatListStore.getState().chatsBySpaceId[SPACE_ID].map((chat) => [chat.id, chat.title]),
+        ).toEqual([
+          [EXISTING_CHAT_ID, 'Titel aus dem alten Chat'],
+          [OTHER_CHAT_ID, 'Deployment-Fragen'],
+        ])
       })
 
       it('a failure arriving after switching to another chat shows no error there and ends the loading state', async () => {
@@ -665,6 +742,132 @@ describe('chatStore', () => {
         ])
         expect(state.title).toBe('Titel aus dem alten Chat')
         expect(state.noteItems.map((item) => item.id)).toEqual([NOTE_ITEM_ID])
+        expect(state.isLoading).toBe(false)
+        expect(state.error).toBeNull()
+      })
+
+      // Returning to the asking chat before its answer: the reloaded view shows the outstanding
+      // question and the loading state, and once the answer is in, exactly the persisted turn -
+      // neither an answer without its question nor a doubled answer.
+      it('returning to the asking chat before the answer shows the question and then exactly the persisted turn', async () => {
+        const baseMessages = [
+          {
+            id: 'message-base-1',
+            chatId: EXISTING_CHAT_ID,
+            role: 'USER',
+            content: 'Wie ist das Projekt aufgebaut?',
+            createdAt: '2026-03-05T09:00:00Z',
+          },
+        ]
+        const backend = chatPersistingTurnOnAnswer(EXISTING_CHAT_ID, baseMessages)
+        await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+        const gate = deferred<void>()
+        gatedAnswer(gate)
+
+        const sendPromise = useChatStore.getState().sendMessage('Frage vor dem Wechsel')
+        await useChatStore.getState().loadChat(OTHER_CHAT_ID)
+        expect(useChatStore.getState().isLoading).toBe(false)
+        await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+        expect(messageContents()).toEqual([
+          'Wie ist das Projekt aufgebaut?',
+          'Frage vor dem Wechsel',
+        ])
+        expect(useChatStore.getState().isLoading).toBe(true)
+
+        backend.persisted = true
+        gate.resolve()
+        await sendPromise
+
+        await vi.waitFor(() =>
+          expect(messageContents()).toEqual([
+            'Wie ist das Projekt aufgebaut?',
+            'Frage vor dem Wechsel',
+            'Antwort aus dem alten Chat',
+          ]),
+        )
+        const state = useChatStore.getState()
+        expect(state.chatId).toBe(EXISTING_CHAT_ID)
+        expect(state.title).toBe('Titel aus dem alten Chat')
+        expect(state.noteItems.map((item) => item.id)).toEqual([NOTE_ITEM_ID])
+        expect(state.isLoading).toBe(false)
+      })
+
+      it('returning to a chat created after leaving the new-chat view shows its question and then its turn', async () => {
+        useChatStore.getState().startNewChat(SPACE_ID)
+        const creationGate = deferred<void>()
+        const createdIds: string[] = []
+        gatedChatCreation(creationGate, createdIds)
+        const backend = chatPersistingTurnOnAnswer('chat-created-1', [])
+        const queriedChatIds: string[] = []
+        const answerGate = deferred<void>()
+        gatedAnswer(answerGate, queriedChatIds)
+
+        const sendPromise = useChatStore.getState().sendMessage('Frage vor dem Wechsel')
+        await useChatStore.getState().loadChat(OTHER_CHAT_ID)
+        creationGate.resolve()
+        await vi.waitFor(() => expect(queriedChatIds).toEqual(['chat-created-1']))
+        expect(useChatStore.getState().chatId).toBe(OTHER_CHAT_ID)
+
+        await useChatStore.getState().loadChat('chat-created-1')
+        expect(messageContents()).toEqual(['Frage vor dem Wechsel'])
+        expect(useChatStore.getState().isLoading).toBe(true)
+
+        backend.persisted = true
+        answerGate.resolve()
+        await sendPromise
+
+        await vi.waitFor(() =>
+          expect(messageContents()).toEqual([
+            'Frage vor dem Wechsel',
+            'Antwort aus dem alten Chat',
+          ]),
+        )
+        const state = useChatStore.getState()
+        expect(state.chatId).toBe('chat-created-1')
+        expect(state.title).toBe('Titel aus dem alten Chat')
+        expect(state.isLoading).toBe(false)
+      })
+
+      // The loading state belongs to the chat that waits for an answer: another chat can be used
+      // meanwhile, and both answers land in their own chat.
+      it('keeps the loading state per chat, so questions in two chats run side by side', async () => {
+        await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+        const gates: Record<string, { promise: Promise<void>; resolve: () => void }> = {
+          [EXISTING_CHAT_ID]: deferred<void>(),
+          [OTHER_CHAT_ID]: deferred<void>(),
+        }
+        server.use(
+          http.post('/api/v1/query', async ({ request }) => {
+            const body = (await request.json()) as { chatId: string }
+            await gates[body.chatId].promise
+            return HttpResponse.json({
+              answer: `Antwort für ${body.chatId}`,
+              sources: [],
+              metadata: { model: 'gpt-4o', tokenCount: 10, durationMs: 5 },
+              chatId: body.chatId,
+              chatTitle: null,
+              noteItems: [],
+            })
+          }),
+        )
+
+        const firstSend = useChatStore.getState().sendMessage('Frage in A')
+        expect(useChatStore.getState().isLoading).toBe(true)
+        await useChatStore.getState().loadChat(OTHER_CHAT_ID)
+        expect(useChatStore.getState().isLoading).toBe(false)
+
+        const secondSend = useChatStore.getState().sendMessage('Frage in B')
+        expect(useChatStore.getState().isLoading).toBe(true)
+        gates[EXISTING_CHAT_ID].resolve()
+        await firstSend
+        expect(useChatStore.getState().isLoading).toBe(true)
+        expect(messageContents().slice(-1)).toEqual(['Frage in B'])
+
+        gates[OTHER_CHAT_ID].resolve()
+        await secondSend
+        const state = useChatStore.getState()
+        expect(state.chatId).toBe(OTHER_CHAT_ID)
+        expect(messageContents().slice(-2)).toEqual(['Frage in B', `Antwort für ${OTHER_CHAT_ID}`])
         expect(state.isLoading).toBe(false)
         expect(state.error).toBeNull()
       })
