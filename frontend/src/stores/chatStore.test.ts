@@ -507,12 +507,18 @@ describe('chatStore', () => {
       }
 
       /** Serves `chatId` from a server that persists question and answer together, only once the
-       * answer is committed - like ChatMessageWriter at the end of a query. */
+       * answer is committed - like ChatMessageWriter at the end of a query. `heldRead` delays the
+       * response of the next read, which still reflects the state at the time it was made. */
       function chatPersistingTurnOnAnswer(chatId: string, baseMessages: unknown[]) {
-        const backend = { persisted: false }
+        const backend: { persisted: boolean; heldRead: Promise<void> | null } = {
+          persisted: false,
+          heldRead: null,
+        }
         server.use(
-          http.get('/api/v1/chats/:chatId', ({ params }) => {
+          http.get('/api/v1/chats/:chatId', async ({ params }) => {
             if (String(params.chatId) !== chatId) return undefined
+            const heldRead = backend.heldRead
+            backend.heldRead = null
             const turn = backend.persisted
               ? [
                   {
@@ -532,7 +538,7 @@ describe('chatStore', () => {
                   },
                 ]
               : []
-            return HttpResponse.json({
+            const detail = {
               id: chatId,
               spaceId: SPACE_ID,
               authorId: 'mock-user-id',
@@ -544,7 +550,9 @@ describe('chatStore', () => {
               noteItems: backend.persisted ? [LATE_POINT] : [],
               createdAt: '2026-09-01T09:00:00Z',
               updatedAt: '2026-09-01T09:00:00Z',
-            })
+            }
+            if (heldRead) await heldRead
+            return HttpResponse.json(detail)
           }),
         )
         return backend
@@ -626,7 +634,9 @@ describe('chatStore', () => {
         expect(useChatStore.getState().noteItems).toEqual([])
         // The chat list is keyed by chat: the answered chat still moves up and takes its title.
         expect(
-          useChatListStore.getState().chatsBySpaceId[SPACE_ID].map((chat) => [chat.id, chat.title]),
+          useChatListStore
+            .getState()
+            .chatsBySpaceId[SPACE_ID]?.map((chat) => [chat.id, chat.title]),
         ).toEqual([
           [EXISTING_CHAT_ID, 'Titel aus dem alten Chat'],
           [OTHER_CHAT_ID, 'Deployment-Fragen'],
@@ -790,6 +800,34 @@ describe('chatStore', () => {
         expect(state.title).toBe('Titel aus dem alten Chat')
         expect(state.noteItems.map((item) => item.id)).toEqual([NOTE_ITEM_ID])
         expect(state.isLoading).toBe(false)
+      })
+
+      it('reads the chat again when its answer arrived while returning to it was still loading an older state', async () => {
+        const backend = chatPersistingTurnOnAnswer(EXISTING_CHAT_ID, [])
+        await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+        const gate = deferred<void>()
+        gatedAnswer(gate)
+
+        const sendPromise = useChatStore.getState().sendMessage('Frage vor dem Wechsel')
+        await useChatStore.getState().loadChat(OTHER_CHAT_ID)
+        const readGate = deferred<void>()
+        backend.heldRead = readGate.promise
+        const returning = useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+        // The read has taken its snapshot before the answer is committed.
+        await vi.waitFor(() => expect(backend.heldRead).toBeNull())
+        backend.persisted = true
+        gate.resolve()
+        await sendPromise
+        readGate.resolve()
+        await returning
+
+        await vi.waitFor(() =>
+          expect(messageContents()).toEqual([
+            'Frage vor dem Wechsel',
+            'Antwort aus dem alten Chat',
+          ]),
+        )
+        expect(useChatStore.getState().isLoading).toBe(false)
       })
 
       it('returning to a chat created after leaving the new-chat view shows its question and then its turn', async () => {
