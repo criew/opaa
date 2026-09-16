@@ -116,12 +116,12 @@ public final class ConversationHarnessSupport {
 
   /** Where a domain's multi-turn report is written. */
   public static Path reportFile(EvalDomainConfig domain) {
-    return Path.of("build", "eval-reports", "pipeline-conversations-" + domain.name() + ".json");
+    return EvalReportDirectory.resolve("pipeline-conversations-" + domain.name() + ".json");
   }
 
   /** Where its Markdown rendering is written. */
   public static Path markdownFile(EvalDomainConfig domain) {
-    return Path.of("build", "eval-reports", "pipeline-conversations-" + domain.name() + ".md");
+    return EvalReportDirectory.resolve("pipeline-conversations-" + domain.name() + ".md");
   }
 
   /**
@@ -156,8 +156,8 @@ public final class ConversationHarnessSupport {
     // Outside the guard below on purpose: that guard turns every failure into a logged line and a
     // successful build, which for an unusable ablation value would leave the previous run's report
     // in place for the next baseline comparison to read as a fresh measurement.
-    Optional<Integer> requestedNoteCap = requestedNoteCap();
     StaleReportGuard.discard(reportFile(domain), markdownFile(domain));
+    Optional<Integer> requestedNoteCap = requestedNoteCap();
     try {
       QueryProperties queryProperties = contextFactory.queryProperties();
       List<ConversationCase> cases = ConversationDataset.load(ConversationDataset.file(domain));

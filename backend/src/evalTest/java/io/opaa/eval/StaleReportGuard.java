@@ -14,10 +14,6 @@ import java.nio.file.Path;
  * of the <em>previous</em> run stays in {@code build/eval-reports}, and the baseline check, which
  * only asks whether the file exists, compares it as if it were this run's measurement. The checks'
  * "no report is a failure" rule is the right one; this makes it reachable.
- *
- * <p>Deliberately deleting rather than checking a timestamp inside the report: the failure this
- * prevents also covers a step that was never invoked at all, which no field of a report can
- * describe.
  */
 final class StaleReportGuard {
 

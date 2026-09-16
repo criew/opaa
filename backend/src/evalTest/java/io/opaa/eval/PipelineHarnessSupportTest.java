@@ -13,11 +13,14 @@ import io.opaa.query.RetrievalContextFactory;
 import io.opaa.query.retrieval.RetrievalPipeline;
 import io.opaa.query.retrieval.RetrievalPipelineProperties;
 import io.opaa.query.retrieval.RetrievalStageName;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -65,8 +68,16 @@ class PipelineHarnessSupportTest {
    * not fail the harness run it rides along in — otherwise {@code BaselineRegressionTest} never
    * runs and the nightly job loses its verdict on the raw-vector path entirely.
    */
+  @AfterEach
+  void clearReportDirectory() {
+    System.clearProperty(EvalReportDirectory.PROPERTY);
+  }
+
   @Test
-  void aFailingPipelineDoesNotFailTheHarnessRun() {
+  void aFailingPipelineDoesNotFailTheHarnessRun(@TempDir Path reportDirectory) {
+    // #1671: this path discards its report file before measuring, and evalUnitTest is part of
+    // every build - without a directory of its own the test would delete a real measurement.
+    System.setProperty(EvalReportDirectory.PROPERTY, reportDirectory.toString());
     RetrievalPipeline failing = mock(RetrievalPipeline.class);
     when(failing.run(any())).thenThrow(new IllegalStateException("vector store exploded"));
     RerankModelRole disabledRole = mock(RerankModelRole.class);

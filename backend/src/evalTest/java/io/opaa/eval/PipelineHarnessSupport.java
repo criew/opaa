@@ -139,10 +139,10 @@ public final class PipelineHarnessSupport {
       Instant pipelineRunStart,
       ExplanationDump explanationDump,
       Logger log) {
+    StaleReportGuard.discard(reportFile(domain));
     QueryProperties queryProperties = contextFactory.queryProperties();
     requireMeasurableConfiguration(
         queryProperties, pipelineProperties, rerankRoleUsable, identity.chatModel());
-    StaleReportGuard.discard(reportFile(domain));
     try {
       // Mehrfachlauf-Regel (issue #1044/#1085): with decomposition active this path is
       // nondeterministic and is measured three times; the median run is what the report — and
@@ -264,7 +264,7 @@ public final class PipelineHarnessSupport {
 
   /** Where a domain's pipeline report is written — never the raw-vector path's report file. */
   public static Path reportFile(EvalDomainConfig domain) {
-    return Path.of("build", "eval-reports", "pipeline-metrics-" + domain.name() + ".json");
+    return EvalReportDirectory.resolve("pipeline-metrics-" + domain.name() + ".json");
   }
 
   /**
