@@ -64,15 +64,15 @@ public final class ConversationHarnessSupport {
   }
 
   /**
-   * The profile this run measures under: the one read off the production configuration, with the
-   * note cap replaced when {@value #NOTE_CAP_PROPERTY} asks for it. A value below zero, or one that
-   * is not a number, fails the run rather than silently measuring the production cap - an ablation
-   * that quietly measured the wrong arm would be worse than no ablation.
+   * The note cap {@value #NOTE_CAP_PROPERTY} asks this run to measure under, empty when it asks for
+   * nothing. A value below zero, or one that is not a number, throws - and the caller reads it
+   * <b>before</b> entering its guarded section, since that guard would otherwise turn the mistake
+   * into a successful build whose report is the previous run's.
    */
-  static ConversationMemoryProfile ablated(ConversationMemoryProfile measured) {
+  static Optional<Integer> requestedNoteCap() {
     String requested = System.getProperty(NOTE_CAP_PROPERTY);
     if (requested == null) {
-      return measured;
+      return Optional.empty();
     }
     int cap;
     try {
@@ -84,8 +84,21 @@ public final class ConversationHarnessSupport {
     if (cap < 0) {
       throw new IllegalArgumentException(NOTE_CAP_PROPERTY + " must not be negative, got: " + cap);
     }
-    return new ConversationMemoryProfile(
-        measured.windowMessages(), measured.searchWindowTurns(), cap);
+    return Optional.of(cap);
+  }
+
+  /**
+   * The profile this run measures under: the one read off the production configuration, with the
+   * note cap replaced by {@code requestedNoteCap} when the ablation asked for one.
+   */
+  static ConversationMemoryProfile ablated(
+      ConversationMemoryProfile measured, Optional<Integer> requestedNoteCap) {
+    return requestedNoteCap
+        .map(
+            cap ->
+                new ConversationMemoryProfile(
+                    measured.windowMessages(), measured.searchWindowTurns(), cap))
+        .orElse(measured);
   }
 
   /**
@@ -135,6 +148,10 @@ public final class ConversationHarnessSupport {
       IndexingProperties indexingProperties,
       UUID evalLibraryId,
       Logger log) {
+    // Outside the guard below on purpose: that guard turns every failure into a logged line and a
+    // successful build, which for an unusable ablation value would leave the previous run's report
+    // in place for the next baseline comparison to read as a fresh measurement.
+    Optional<Integer> requestedNoteCap = requestedNoteCap();
     try {
       QueryProperties queryProperties = contextFactory.queryProperties();
       List<ConversationCase> cases = ConversationDataset.load(ConversationDataset.file(domain));
@@ -155,7 +172,8 @@ public final class ConversationHarnessSupport {
       ConversationMemoryProfile memoryProfile =
           ablated(
               ConversationMemoryProfile.measuredFrom(
-                  chatMemory, queryProperties, chatNoteProperties));
+                  chatMemory, queryProperties, chatNoteProperties),
+              requestedNoteCap);
       ConversationRetrievalEvaluator.NoteExtraction noteExtraction =
           noteExtractionFor(memoryProfile, chatNoteExtractionService);
       // Mehrfachlauf-Regel (docs/features/retrieval-benchmark.md §3), through the shared rule: this

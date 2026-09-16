@@ -10,6 +10,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.ChatNoteItemKind;
 import io.opaa.chat.ChatNoteCandidate;
 import io.opaa.chat.ChatNoteExtractionService;
+import io.opaa.chat.ChatNoteProperties;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.llm.RerankRoleState;
@@ -24,8 +25,10 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.messages.Message;
@@ -170,14 +173,17 @@ class ConversationHarnessSupportTest {
     ConversationMemoryProfile measured = new ConversationMemoryProfile(20, 2, 10);
     ChatNoteExtractionService condensation = mock(ChatNoteExtractionService.class);
 
-    assertThat(ConversationHarnessSupport.ablated(measured)).isEqualTo(measured);
+    assertThat(ConversationHarnessSupport.requestedNoteCap()).isEmpty();
+    assertThat(ConversationHarnessSupport.ablated(measured, Optional.empty())).isEqualTo(measured);
     assertThat(ConversationHarnessSupport.noteExtractionFor(measured, condensation))
         .isNotSameAs(ConversationRetrievalEvaluator.NoteExtraction.NONE);
 
     withNoteCapProperty(
         "0",
         () -> {
-          ConversationMemoryProfile ablated = ConversationHarnessSupport.ablated(measured);
+          ConversationMemoryProfile ablated =
+              ConversationHarnessSupport.ablated(
+                  measured, ConversationHarnessSupport.requestedNoteCap());
           assertThat(ablated)
               .isEqualTo(
                   new ConversationMemoryProfile(
@@ -185,24 +191,59 @@ class ConversationHarnessSupportTest {
           assertThat(ConversationHarnessSupport.noteExtractionFor(ablated, condensation))
               .isSameAs(ConversationRetrievalEvaluator.NoteExtraction.NONE);
         });
+
+    withNoteCapProperty(
+        "3",
+        () -> {
+          ConversationMemoryProfile ablated =
+              ConversationHarnessSupport.ablated(
+                  measured, ConversationHarnessSupport.requestedNoteCap());
+          assertThat(ablated).isEqualTo(new ConversationMemoryProfile(20, 2, 3));
+          assertThat(ConversationHarnessSupport.noteExtractionFor(ablated, condensation))
+              .as("a lowered but non-zero cap still measures the production condensation")
+              .isNotSameAs(ConversationRetrievalEvaluator.NoteExtraction.NONE);
+        });
   }
 
+  /**
+   * The value is read before {@link ConversationHarnessSupport#runAndWriteGuarded} enters its
+   * guarded section, whose contract is to never fail the run. Were it read inside, an unusable
+   * value would end in a logged line and a successful build, leaving the <em>previous</em> run's
+   * report in place for the next baseline comparison to read as a fresh measurement.
+   */
   @Test
-  void anUnusableNoteCapFailsTheRunRatherThanMeasuringTheProductionCap() {
-    ConversationMemoryProfile measured = new ConversationMemoryProfile(20, 2, 10);
-
+  void anUnusableNoteCapThrowsOutsideTheGuardRatherThanMeasuringTheProductionCap() {
     withNoteCapProperty(
         "-1",
         () ->
-            assertThatThrownBy(() -> ConversationHarnessSupport.ablated(measured))
+            assertThatThrownBy(ConversationHarnessSupport::requestedNoteCap)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("negative"));
     withNoteCapProperty(
         "viele",
         () ->
-            assertThatThrownBy(() -> ConversationHarnessSupport.ablated(measured))
+            assertThatThrownBy(ConversationHarnessSupport::requestedNoteCap)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("whole number"));
+
+    withNoteCapProperty(
+        "viele",
+        () ->
+            assertThatThrownBy(
+                    () ->
+                        ConversationHarnessSupport.runAndWriteGuarded(
+                            EvalDomainConfig.VERWALTUNG,
+                            identity(),
+                            mock(RetrievalPipeline.class),
+                            mock(RetrievalContextFactory.class),
+                            chatMemory(),
+                            mock(ChatNoteExtractionService.class),
+                            new ChatNoteProperties(10),
+                            new IndexingProperties(1000, 200, 50, null, null, null, null, 0),
+                            UUID.randomUUID(),
+                            LoggerFactory.getLogger(ConversationHarnessSupportTest.class)))
+                .as("the guard must not swallow this one")
+                .isInstanceOf(IllegalArgumentException.class));
   }
 
   private static void withNoteCapProperty(String value, Runnable assertions) {

@@ -157,12 +157,11 @@ fun registerEvalHarnessTask(
         // 0 for a run without a Gesprächsnotiz) share this list because all of
         // them are optional, manually-invoked knobs rather than something every eval domain always
         // needs.
-        // opaa.query.search-window-turns is a Spring property of the same ablation - the width of
-        // the decomposition's search window, varied against the application default rather than
-        // switched on.
-        // The opaa.rerank.*/opaa.query.rerank-candidate-count entries are Spring properties rather
-        // than harness knobs: a reranking measurement run (issue #1050) has to configure the rerank
-        // model role of the forked JVM's application context. opaa.rerank.api-key is deliberately
+        // The opaa.rerank.*/opaa.query.search-window-turns/opaa.query.rerank-candidate-count
+        // entries are Spring properties rather than harness knobs: a reranking measurement run
+        // (issue #1050) has to configure the rerank model role of the forked JVM's application
+        // context, and the #1587 ablation varies the decomposition's search window against the
+        // application default. opaa.rerank.api-key is deliberately
         // absent - a -D value is visible in the process list, and a measurement run against a
         // key-protected endpoint is not a supported local setup.
         listOf(
@@ -174,12 +173,12 @@ fun registerEvalHarnessTask(
             "opaa.eval.explanationDumpDir",
             "opaa.eval.runConversations",
             "opaa.eval.conversationNoteCap",
-            "opaa.query.search-window-turns",
             "opaa.rerank.enabled",
             "opaa.rerank.base-url",
             "opaa.rerank.model",
             "opaa.rerank.timeout",
             "opaa.query.rerank-candidate-count",
+            "opaa.query.search-window-turns",
         ).forEach { key -> System.getProperty(key)?.let { systemProperty(key, it) } }
         forcedProperties.forEach { (key, value) -> systemProperty(key, value) }
         testLogging {

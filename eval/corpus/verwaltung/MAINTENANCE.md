@@ -729,9 +729,15 @@ Gelesen als „mit Notiz → ohne Notiz".
 
 **Auf Fallebene gewinnt der Lauf ohne Notiz, und kein Fall geht dabei verloren.** Hinzu kommen
 `verw-conv-cc-006`, `-007`, `-009` und `verw-conv-ts-006`. Auf Rundenebene stehen 6 gewonnene gegen
-4 verlorene Runden; die Verluste liegen in Fällen, die ohnehin an einer anderen Runde scheitern.
-Die Rundenmetriken sind uneinheitlich — `anaphora_resolution` verliert, `topic_switch` gewinnt —,
-das Fallkriterium ist eindeutig.
+4 verlorene Runden. **Keine der vier verlorenen Runden kostet einen Fall sein Urteil:** `ana-007`,
+`cc-004`, `cc-008` und `ts-009` sind in beiden Läufen ungelöst; bei `ts-009` verschiebt sich
+lediglich die scheiternde Runde von 4 auf 3. Die Rundenmetriken sind uneinheitlich —
+`anaphora_resolution` verliert, `topic_switch` gewinnt —, das Fallkriterium ist eindeutig.
+
+**Die vier gewonnenen Fälle gehören nicht in `expected_state`.** Das Zustands-Audit des C-Laufs
+meldet sie als `unexpectedlySolved`; der Datensatz beschreibt aber den Produktionspfad, und der ist
+Lauf D. Ein Ablationslauf darf weder eine Baseline noch ein Zustandsfeld setzen
+(`docs/features/retrieval-benchmark.md`, Abschnitt 5).
 
 **Der Mechanismus: der Notizpunkt entgleist die Teilfrage.** Die Notiz verfehlt die Rahmenangabe
 nicht nur, sie schadet aktiv. In den drei gewonnenen `constraint_carryover`-Fällen steht in der
@@ -753,10 +759,12 @@ nicht absicherbar bezeichnet hat: Die Art eines Punkts wird vom Modell vergeben,
 `RAHMEN` eingestufter Punkt erreicht die Suche. Gemessen ist nun, dass das der Regelfall ist und
 nicht der Ausnahmefall.
 
-**Was die Notiz kostet.** Die Mehrrunden-Messung dauert mit Notiz 51 Minuten, ohne 16 — die 249
-Verdichtungsaufrufe sind teurer als die 249 Zerlegungsaufrufe, weil das Modell die Artenaufzählung
-des Prompts als Vorlage ausfüllt und entsprechend lange Antworten erzeugt (#1586). In Produktion
-liegt dieser Aufruf nebenläufig hinter der Antwort, kostet also Modellzeit und nicht Latenz.
+**Was die Notiz kostet.** Eine Messung des Datensatzes dauert mit Notiz **902,9 Sekunden**, ohne
+**201,9** (`runDurationSeconds` der beiden Median-Läufe; je dreimal gemessen, die Gesamtlaufzeit
+inklusive Indizierung liegt bei 51 gegen 16 Minuten). Die 83 Verdichtungsaufrufe je Messung sind
+teurer als die 83 Zerlegungsaufrufe, weil das Modell die Artenaufzählung des Prompts als Vorlage
+ausfüllt und entsprechend lange Antworten erzeugt (#1586). In Produktion liegt dieser Aufruf
+nebenläufig hinter der Antwort, kostet also Modellzeit und nicht Latenz.
 
 **Zielrunden, deren Teilfrage die Rahmenangabe trägt: 1 von 9 in beiden Läufen** — mechanisch
 gezählt (Jahreszahl aus Runde 1 in einer Teilfrage der Zielrunde), in D `cc-007`, in C `cc-008`.
