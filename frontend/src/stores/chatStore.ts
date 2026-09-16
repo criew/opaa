@@ -53,12 +53,39 @@ interface InFlightSend {
   chatId: string | null
   loadSequence: number
   userMessage: ChatMessage
+  /** The chat's user messages known to be persisted when the question was sent. */
+  persistedUserTurnsBefore: number
+  /** Set once an applied server read of the chat already contained this question's turn. */
+  persisted: boolean
 }
 
 // Every question still waiting for its answer, across chats - the source of each view's isLoading
 // and of the questions a (re)loaded chat shows before the server has persisted them. Module state
 // like chatLoadSequence; reset() clears it.
 const inFlightSends = new Set<InFlightSend>()
+
+// Per chat, the number of user messages the server is known to hold - the baseline a question
+// records when it is sent. Module state like inFlightSends; reset() clears it.
+const persistedUserTurnsByChatId = new Map<string, number>()
+
+/**
+ * Takes note of a server read of `chatId` that is about to be applied. An outstanding question
+ * counts as contained once a user message with its text follows the user messages persisted when
+ * it was sent - the position tells a repeated question from the earlier one. A contained question
+ * is neither appended again nor keeps the view loading; its answer then re-reads the chat.
+ */
+function recordPersistedTurns(chatId: string, serverMessages: ChatMessageResponse[]): void {
+  const userContents = serverMessages
+    .filter((message) => message.role === 'USER')
+    .map((message) => message.content)
+  for (const send of inFlightSends) {
+    if (send.chatId !== chatId || send.persisted) continue
+    send.persisted = userContents
+      .slice(send.persistedUserTurnsBefore)
+      .includes(send.userMessage.content)
+  }
+  persistedUserTurnsByChatId.set(chatId, userContents.length)
+}
 
 // Bumped whenever an answer arrives. loadChat compares it across its GET: an answer that arrived in
 // between may have been persisted after the GET read the chat, so the chat is read again.
@@ -68,7 +95,9 @@ let completedTurnSequence = 0
  * an answer. */
 function isViewAwaitingAnswer(chatId: string | null): boolean {
   for (const send of inFlightSends) {
-    if (chatId !== null ? send.chatId === chatId : isNewChatViewOf(send)) return true
+    if (chatId !== null ? send.chatId === chatId && !send.persisted : isNewChatViewOf(send)) {
+      return true
+    }
   }
   return false
 }
@@ -77,11 +106,11 @@ function isNewChatViewOf(send: InFlightSend): boolean {
   return send.chatId === null && send.loadSequence === chatLoadSequence
 }
 
-/** The server's messages plus the questions still outstanding for this chat, which the server only
- * persists together with their answer. */
+/** The server's messages plus the questions still outstanding for this chat that the read did not
+ * contain yet - the server only persists a question together with its answer. */
 function withOutstandingQuestions(chatId: string, messages: ChatMessage[]): ChatMessage[] {
   const outstanding = [...inFlightSends]
-    .filter((send) => send.chatId === chatId)
+    .filter((send) => send.chatId === chatId && !send.persisted)
     .map((send) => send.userMessage)
   return outstanding.length > 0 ? [...messages, ...outstanding] : messages
 }
@@ -194,6 +223,7 @@ export function dropChatSettingsCache(chatId: string): void {
   // #1488: a deleted chat is never loaded again, so its pending note removals would never be
   // confirmed - and nothing would ever filter against them either.
   removedNoteItemIdsByChatId.delete(chatId)
+  persistedUserTurnsByChatId.delete(chatId)
   if (pendingChain) {
     void pendingChain.finally(() => confirmedSettingsByChatId.delete(chatId))
     return
@@ -283,6 +313,7 @@ function reloadChatTurns(
   getChat(chatId)
     .then((detail) => {
       if (loadSequence !== chatLoadSequence || get().chatId !== chatId) return
+      recordPersistedTurns(chatId, detail.messages)
       confirmNoteItemRemovals(chatId, detail.noteItems ?? [])
       set({
         title: detail.title ?? null,
@@ -424,6 +455,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // applying this response now would resurrect a chat the user already navigated away from
       // (#548 review, finding d).
       if (requestId !== chatLoadSequence) return
+      recordPersistedTurns(chatId, detail.messages)
       // #1488: loading the chat is what confirms a local removal - a point the server no longer
       // reports leaves the filter set, a point it still reports keeps being filtered out.
       confirmNoteItemRemovals(chatId, detail.noteItems ?? [])
@@ -516,10 +548,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // not-yet-created chat - the one its implicit creation produced. Until that id exists, the
     // not-yet-created chat view is identified by chatLoadSequence, which every loadChat/startNewChat
     // bumps.
+    const sendingChatId = get().chatId
     const send: InFlightSend = {
-      chatId: get().chatId,
+      chatId: sendingChatId,
       loadSequence: chatLoadSequence,
       userMessage: { id: generateId(), role: 'user', content: question, timestamp: new Date() },
+      persistedUserTurnsBefore: sendingChatId
+        ? (persistedUserTurnsByChatId.get(sendingChatId) ?? 0)
+        : 0,
+      persisted: false,
     }
     // The person looks at this question's chat, possibly reloaded since it was sent.
     const isTargetChatShown = () =>
@@ -602,6 +639,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (isStaleSessionEpoch(sessionEpoch)) return
       inFlightSends.delete(send)
       completedTurnSequence++
+      persistedUserTurnsByChatId.set(
+        chatId,
+        Math.max(persistedUserTurnsByChatId.get(chatId) ?? 0, send.persistedUserTurnsBefore + 1),
+      )
       if (spaceId) {
         // Moves the chat to the top of its space's list after every turn, mirroring the backend's
         // own updatedAt bump. Keyed by chat, so it applies whichever chat is shown now.
@@ -613,9 +654,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
           scheduleTitleReload(get, set, response.chatId, spaceId)
         }
       }
-      if (!isSendingViewShown()) {
+      if (!isSendingViewShown() || send.persisted) {
         // Another chat shown now keeps its own state. The own chat, reloaded in the meantime, may
-        // lack this turn in its snapshot and is read again instead of appended to.
+        // lack this turn in its snapshot - or already show it - and is read again instead of
+        // appended to.
         set({ isLoading: isViewAwaitingAnswer(get().chatId) })
         if (isTargetChatShown()) reloadChatTurns(get, set, chatId)
         return
@@ -753,6 +795,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // response arriving after reset() could resurrect the previous user's chat.
     chatLoadSequence++
     inFlightSends.clear()
+    persistedUserTurnsByChatId.clear()
     // #1488: the pending removals belong to the chat the previous user had open - keeping them
     // would filter points out of the next user's chats until some load confirmed them.
     clearRemovedNoteItemCache()
