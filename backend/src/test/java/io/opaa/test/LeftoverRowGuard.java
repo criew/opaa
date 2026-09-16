@@ -1,10 +1,15 @@
 package io.opaa.test;
 
+import static org.awaitility.Awaitility.await;
+
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.TestContext;
 import org.springframework.test.context.support.AbstractTestExecutionListener;
 
@@ -79,12 +84,41 @@ final class LeftoverRowGuard extends AbstractTestExecutionListener {
     testContext.setAttribute(STARTING_COUNTS, counts(testContext));
   }
 
+  /**
+   * Taken once every task executor of the context is idle, so rows a class's asynchronous work
+   * writes late still count for that class. A table that does not exist counts as empty - the
+   * pgvector signature starts without {@code vector_store} and drops and recreates it under test.
+   */
   private static Map<String, Long> counts(TestContext testContext) {
-    JdbcTemplate jdbcTemplate = testContext.getApplicationContext().getBean(JdbcTemplate.class);
-    Map<String, Long> counts = new LinkedHashMap<>();
+    ApplicationContext context = testContext.getApplicationContext();
+    awaitIdleExecutors(context);
+    JdbcTemplate jdbcTemplate = context.getBean(JdbcTemplate.class);
+    Map<String, Long> counts = new HashMap<>();
     for (String table : GUARDED_TABLES) {
-      counts.put(table, jdbcTemplate.queryForObject("SELECT count(*) FROM " + table, Long.class));
+      Boolean exists =
+          jdbcTemplate.queryForObject(
+              "SELECT to_regclass(?) IS NOT NULL", Boolean.class, "public." + table);
+      counts.put(
+          table,
+          Boolean.TRUE.equals(exists)
+              ? jdbcTemplate.queryForObject("SELECT count(*) FROM " + table, Long.class)
+              : 0L);
     }
     return counts;
+  }
+
+  private static void awaitIdleExecutors(ApplicationContext context) {
+    Map<String, ThreadPoolTaskExecutor> executors =
+        context.getBeansOfType(ThreadPoolTaskExecutor.class);
+    await()
+        .atMost(60, TimeUnit.SECONDS)
+        .alias("idle task executors " + executors.keySet())
+        .until(
+            () ->
+                executors.values().stream()
+                    .allMatch(
+                        executor ->
+                            executor.getActiveCount() == 0
+                                && executor.getThreadPoolExecutor().getQueue().isEmpty()));
   }
 }

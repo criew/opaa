@@ -158,10 +158,14 @@ class LibraryDocumentServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    // Chunks, documents and runs of this class's own library, then the library itself. #1184:
-    // fk_documents_parent is NO ACTION, checked at the end of the statement - one DELETE removes a
-    // parent and its attachments together, which per-entity deletes in arbitrary order cannot.
-    ownLibraryFixtures.removeLibraries(libraryId);
+    // Every library of this class's own organization - a method may have created more than the one
+    // from setUp.
+    List<UUID> ownLibraryIds =
+        jdbcTemplate.queryForList(
+            "SELECT id FROM knowledge_libraries WHERE organization_id = ?",
+            UUID.class,
+            organizationId);
+    ownLibraryFixtures.removeLibraries(ownLibraryIds.toArray(new UUID[0]));
     // #238 code review, finding 2+4: asset_grant_history.subject_user_id is ON DELETE RESTRICT
     // (see 018-permission-history.yaml's "Deletion survival" comment) - every library/grant
     // operation setUp performs now historises a row referencing editor/viewer, which must be
@@ -252,8 +256,10 @@ class LibraryDocumentServiceIntegrationTest {
   @Test
   void theSameFileTwiceInTheSameLibraryIsRejectedButADifferentLibraryIsAllowed() {
     String content = "identical content";
-    documentService.uploadDocument(
-        libraryId, textFile("first.txt", content), null, currentUserOf(editor, false));
+    LibraryDocumentEntry first =
+        documentService.uploadDocument(
+            libraryId, textFile("first.txt", content), null, currentUserOf(editor, false));
+    awaitDocumentStatus(first.document().getId(), DocumentStatus.INDEXED);
 
     assertThatThrownBy(
             () ->
@@ -275,10 +281,7 @@ class LibraryDocumentServiceIntegrationTest {
       awaitDocumentStatus(response.document().getId(), DocumentStatus.INDEXED);
       assertThat(documentRepository.findByLibraryId(secondLibrary.library().getId())).hasSize(1);
     } finally {
-      documentRepository
-          .findByLibraryId(secondLibrary.library().getId())
-          .forEach(documentRepository::delete);
-      libraryRepository.deleteById(secondLibrary.library().getId());
+      ownLibraryFixtures.removeLibraries(secondLibrary.library().getId());
     }
   }
 
@@ -742,8 +745,7 @@ class LibraryDocumentServiceIntegrationTest {
         content.stream().close();
       }
     } finally {
-      documentRepository.findByLibraryId(remoteLibrary.getId()).forEach(documentRepository::delete);
-      libraryRepository.deleteById(remoteLibrary.getId());
+      ownLibraryFixtures.removeLibraries(remoteLibrary.getId());
     }
   }
 
@@ -792,8 +794,7 @@ class LibraryDocumentServiceIntegrationTest {
         content.stream().close();
       }
     } finally {
-      documentRepository.findByLibraryId(remoteLibrary.getId()).forEach(documentRepository::delete);
-      libraryRepository.deleteById(remoteLibrary.getId());
+      ownLibraryFixtures.removeLibraries(remoteLibrary.getId());
     }
   }
 
@@ -821,8 +822,7 @@ class LibraryDocumentServiceIntegrationTest {
           .isInstanceOf(NotFoundException.class)
           .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
     } finally {
-      documentRepository.findByLibraryId(remoteLibrary.getId()).forEach(documentRepository::delete);
-      libraryRepository.deleteById(remoteLibrary.getId());
+      ownLibraryFixtures.removeLibraries(remoteLibrary.getId());
     }
     remoteServer = null;
   }
@@ -891,8 +891,7 @@ class LibraryDocumentServiceIntegrationTest {
           .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
       assertThat(requestsReceived.get()).isZero();
     } finally {
-      documentRepository.findByLibraryId(remoteLibrary.getId()).forEach(documentRepository::delete);
-      libraryRepository.deleteById(remoteLibrary.getId());
+      ownLibraryFixtures.removeLibraries(remoteLibrary.getId());
       blockedServer.stop(0);
     }
   }
@@ -1035,10 +1034,7 @@ class LibraryDocumentServiceIntegrationTest {
       assertThat(content.path()).isEqualTo(sourceFile.toRealPath());
       assertThat(content.fileName()).isEqualTo("dienstanweisung.txt");
     } finally {
-      documentRepository
-          .findByLibraryId(connectorLibrary.getId())
-          .forEach(documentRepository::delete);
-      libraryRepository.deleteById(connectorLibrary.getId());
+      ownLibraryFixtures.removeLibraries(connectorLibrary.getId());
     }
   }
 
@@ -1075,10 +1071,7 @@ class LibraryDocumentServiceIntegrationTest {
               () -> documentService.loadContent(documentId, currentUserOf(editor, false)))
           .isInstanceOf(NotFoundException.class);
     } finally {
-      documentRepository
-          .findByLibraryId(connectorLibrary.getId())
-          .forEach(documentRepository::delete);
-      libraryRepository.deleteById(connectorLibrary.getId());
+      ownLibraryFixtures.removeLibraries(connectorLibrary.getId());
     }
   }
 
@@ -1429,11 +1422,7 @@ class LibraryDocumentServiceIntegrationTest {
                     stableOrder(0, 20)))
         .isInstanceOf(NotFoundException.class);
 
-    documentRepository
-        .findByLibraryId(otherLibrary.library().getId())
-        .forEach(documentRepository::delete);
-    folderRepository.delete(foreignFolder);
-    libraryRepository.deleteById(otherLibrary.library().getId());
+    ownLibraryFixtures.removeLibraries(otherLibrary.library().getId());
   }
 
   // #1184 (ADR-0022, Entscheidung 5): attachments (parent_document_id set) are grouped under

@@ -74,11 +74,24 @@ class LibraryIndexingAuthorizationIntegrationTest {
   void removeCreatedRows() {
     ownLibraryFixtures.removeLibraries(ownLibraryIds.toArray(new UUID[0]));
     ownLibraryIds.clear();
+    removeForeignOwner();
+  }
+
+  /** The class's one fixed-address user with its libraries - in both hooks. */
+  private void removeForeignOwner() {
+    ownLibraryFixtures.removeLibraries(
+        jdbcTemplate
+            .queryForList(
+                "SELECT id FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users"
+                    + " WHERE email = 'foreign-owner-478@example.com')",
+                UUID.class)
+            .toArray(new UUID[0]));
     jdbcTemplate.update("DELETE FROM users WHERE email = 'foreign-owner-478@example.com'");
   }
 
   @BeforeEach
   void setUp() throws Exception {
+    removeForeignOwner();
 
     // Provisions "dev-admin" as SYSTEM_ADMIN (opaa.auth.initial-admin-email matches its seeded
     // email, application.yml) via the real UserProvisioningFilter - triggered by any authenticated

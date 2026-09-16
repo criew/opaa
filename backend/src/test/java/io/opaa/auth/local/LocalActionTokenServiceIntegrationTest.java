@@ -33,13 +33,12 @@ class LocalActionTokenServiceIntegrationTest {
   void setUp() {
     fixtures = fixturesFactory.create();
     fixtures.cleanUp();
-    repository.deleteAll();
     user = fixtures.activeUser("erika-" + UUID.randomUUID() + "@stadt.example");
   }
 
   @AfterEach
   void tearDown() {
-    repository.deleteAll();
+    // The action tokens go with the local accounts (fk_local_action_tokens_user is CASCADE).
     fixtures.cleanUp();
   }
 
@@ -54,6 +53,7 @@ class LocalActionTokenServiceIntegrationTest {
         .isAfter(Instant.now().plus(Duration.ofHours(71)))
         .isBefore(Instant.now().plus(Duration.ofHours(73)));
     assertThat(repository.findAll())
+        .filteredOn(row -> user.id().equals(row.getUserId()))
         .singleElement()
         .satisfies(
             row -> {

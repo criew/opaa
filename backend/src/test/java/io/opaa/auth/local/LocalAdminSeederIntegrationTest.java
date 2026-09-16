@@ -100,7 +100,8 @@ class LocalAdminSeederIntegrationTest {
 
   /**
    * The protocol of the installation this class simulates: everything the seeder and the sign-ins
-   * record lands in the default organization. The seed markers need no cleanup here - {@code
+   * record lands in the default organization. That is only this class's own protocol while it is
+   * the one class on {@code @OpaaLocalAuthSeedTest}. The seed markers need no cleanup here - {@code
    * SeededRowRestorer} puts them back after every method.
    */
   private void removeAuditRows() {

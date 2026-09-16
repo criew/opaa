@@ -11,7 +11,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.local.LocalAccountLinks;
-import io.opaa.auth.local.LocalActionTokenRepository;
 import io.opaa.auth.local.LocalCredentials;
 import io.opaa.auth.local.LocalCredentialsRepository;
 import io.opaa.organization.Organization;
@@ -45,22 +44,25 @@ class LocalUserAdminOrganizationBoundaryIntegrationTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private UserRepository users;
   @Autowired private LocalCredentialsRepository credentials;
-  @Autowired private LocalActionTokenRepository actionTokens;
   @Autowired private OrganizationRepository organizations;
   @Autowired private JdbcTemplate jdbc;
 
   private UUID otherOrganizationId;
   private final List<UUID> createdUsers = new java.util.ArrayList<>();
 
+  /** Action tokens go with their account ({@code fk_local_action_tokens_user} is CASCADE). */
   @AfterEach
   void tearDown() {
-    actionTokens.deleteAll();
     for (UUID id : createdUsers) {
+      // Before the account: the pseudonym mapping that links its audit rows cascades with it.
+      jdbc.update(
+          "DELETE FROM audit_log a USING audit_actor_pseudonyms p WHERE p.user_id = ? AND"
+              + " CAST(p.pseudonym_id AS text) IN (a.actor_ref, a.object_id, a.subject_ref)",
+          id);
       jdbc.update("DELETE FROM spaces WHERE owner_id = ?", id);
       credentials.deleteById(id);
       users.deleteById(id);
     }
-    jdbc.update("DELETE FROM audit_log WHERE event_type LIKE 'LOCAL_USER_%'");
     if (otherOrganizationId != null) {
       jdbc.update("DELETE FROM audit_log WHERE organization_id = ?", otherOrganizationId);
       organizations.deleteById(otherOrganizationId);

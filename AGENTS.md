@@ -205,7 +205,8 @@ RESTRICT-Fremdschlüsselbeziehung einer fremden, noch gebrauchten Zeile. Ebenso 
 Klasse vorsorglich hinter einer namentlich genannten anderen her; stattdessen wird die verursachende
 Klasse repariert. `LeftoverRowGuard` zählt `documents`, `knowledge_libraries`, `vector_store`,
 `diagnostic_impersonation_grants` und `audit_incident_scope_grants` zu Beginn und am Ende jeder
-Testklasse und nennt die Klasse, nach der eine Zählung gewachsen ist — nur sie, nicht jede folgende.
+Testklasse, jeweils erst wenn alle Task-Executor des Kontexts leer sind, und nennt die Klasse, nach
+der eine Zählung gewachsen ist — nur sie, nicht jede folgende.
 
 **Installationsweite Einstellungszeilen** (`branding_settings`, `audit_retention_settings`,
 `diagnostic_context_retention_settings`, `local_auth_settings`, `mail_settings`, `mail_templates`,
@@ -217,9 +218,11 @@ solche Tabelle gehört in seine Liste.
 **`SpringContextSignatureTest` zieht die Grenze maschinell.** Er baut über
 `BootstrapUtils.resolveTestContextBootstrapper(...)` je Testklasse die `MergedContextConfiguration`,
 ohne einen Kontext zu starten, gruppiert danach und schlägt fehl, sobald eine Klasse ihre Signatur
-verlässt oder eine fünfte Signatur entsteht. Eine neue kanonische Signatur wird dort bewusst
+verlässt oder eine zehnte Signatur entsteht. Eine neue kanonische Signatur wird dort bewusst
 eingetragen; ein Code-Kommentar als Begründung genügt nicht mehr (nach #843 hatte jede der
-gewachsenen 23 Kontext-Varianten einen formal regelkonformen Kommentar).
+gewachsenen 23 Kontext-Varianten einen formal regelkonformen Kommentar). Er prüft außerdem je
+Klasse, dass `LeftoverRowGuard` und `SeededRowRestorer` als Listener aufgelöst werden — eine neue
+Basis-Signatur muss beide registrieren.
 
 Ein neuer Postgres-Container wird nie manuell deklariert; `@ServiceConnection` kommt aus der
 Meta-Annotation. Ausnahme: `io.opaa.migration`-Tests booten bewusst einen eigenen Container mit

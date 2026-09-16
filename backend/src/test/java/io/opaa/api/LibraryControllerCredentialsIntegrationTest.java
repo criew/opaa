@@ -1,7 +1,6 @@
 package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -16,7 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -94,19 +92,6 @@ class LibraryControllerCredentialsIntegrationTest {
   void removeCreatedLibraries() {
     List<UUID> own = new ArrayList<>(libraryIds());
     own.removeAll(foreignLibraryIds);
-    // An upload is indexed on uploadTaskExecutor after the request returned; removing its library
-    // while that still runs would let the chunks arrive after the cleanup.
-    for (UUID libraryId : own) {
-      await()
-          .atMost(10, TimeUnit.SECONDS)
-          .until(
-              () ->
-                  jdbcTemplate.queryForObject(
-                          "SELECT count(*) FROM documents WHERE library_id = ? AND status = 'PENDING'",
-                          Long.class,
-                          libraryId)
-                      == 0L);
-    }
     ownLibraryFixtures.removeLibraries(own.toArray(new UUID[0]));
   }
 
