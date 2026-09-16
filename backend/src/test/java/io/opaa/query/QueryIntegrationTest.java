@@ -633,7 +633,7 @@ class QueryIntegrationTest {
     // is the Gesprächsnotiz condensation, which deliberately carries only the current question.
     boolean firstQuestionInPrompt =
         promptCaptor.getAllValues().stream()
-            .filter(prompt -> prompt.getContents().contains("CITATION RULES"))
+            .filter(prompt -> prompt.getContents().contains("ZITIERREGELN"))
             .flatMap(prompt -> prompt.getInstructions().stream())
             .anyMatch(m -> m.getText() != null && m.getText().contains("Ausgaben bei Apple"));
     assertThat(firstQuestionInPrompt)

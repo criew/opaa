@@ -70,11 +70,38 @@ class AnswerGenerationServiceTest {
         .contains("Gesprächsnotiz")
         .contains("- Bezugsjahr 2024")
         .contains("- Möchte knappe Antworten");
-    // Ahead of the passages: under "Context documents:" the note would stand inside the
-    // section the "Only cite documents listed below" rule governs - and in a chat without a
-    // knowledge base it would be the only thing there.
+    // Ahead of the passages: under "Kontextdokumente:" the note would stand inside the
+    // section the "Zitiere nur Dokumente, die unten aufgeführt sind" rule governs - and in a chat
+    // without a knowledge base it would be the only thing there.
     assertThat(systemText.indexOf("Gesprächsnotiz"))
-        .isLessThan(systemText.indexOf("Context documents:"));
+        .isLessThan(systemText.indexOf("Kontextdokumente:"));
+  }
+
+  /**
+   * Regression guard for #1635: the answer language is German, fixed by a sentence of its own ahead
+   * of the citation rules - independent of the language of the question and of the passages. The
+   * instruction itself is German as well.
+   */
+  @Test
+  void theAnswerPromptFixesGermanAsAnswerLanguageAheadOfTheCitationRules() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+    var englishChunk =
+        new Document(
+            "The tower was built in 1889.",
+            Map.of("file_name", "tower.md", "document_id", "id-en", "chunk_index", 0));
+
+    answerGenerationService.generateAnswer(
+        "When was the tower built?", List.of(englishChunk), "conv-language", List.of());
+
+    String systemText = systemTextOf(capturedPrompt());
+    String languageRule =
+        "Antworte immer auf Deutsch, unabhängig von der Sprache der Frage, des Gesprächsverlaufs"
+            + " und der Kontextdokumente.";
+    assertThat(systemText).contains(languageRule);
+    assertThat(systemText.indexOf(languageRule)).isLessThan(systemText.indexOf("ZITIERREGELN"));
+    assertThat(systemText.substring(0, systemText.indexOf("Kontextdokumente:\n")))
+        .doesNotContain("You are", "CITATION RULES", "MUST", "Context documents");
   }
 
   @Test
@@ -152,8 +179,8 @@ class AnswerGenerationServiceTest {
 
     String systemText = promptCaptor.getValue().getInstructions().get(0).getText();
     assertThat(systemText).contains("【source:");
-    assertThat(systemText).contains("CITATION RULES");
-    assertThat(systemText).contains("cite as: 【source: uuid-1#0 | readme.md】");
+    assertThat(systemText).contains("ZITIERREGELN");
+    assertThat(systemText).contains("zitieren als: 【source: uuid-1#0 | readme.md】");
   }
 
   @Test
