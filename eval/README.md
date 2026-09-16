@@ -470,6 +470,12 @@ Ein-/Ausschalter für die Notiz (ADR-0031). Der wirksame Wert erreicht den Repor
 `conversationNoteCap`, ein solcher Lauf gilt gegen die committete Baseline also korrekt als
 unvergleichbar und darf sie nicht ersetzen.
 
+Ein unbrauchbarer Wert (negativ oder keine Zahl) lässt den Lauf scheitern, statt still den
+Produktionsdeckel zu messen. Das ist die eine Ausnahme von der Regel, dass ein Fehler des
+Mehrrunden-Schritts den Harness-Lauf nie scheitern lässt: Ein Tippfehler würde sonst den Bericht
+des **vorherigen** Laufs liegen lassen, und der nächste Baseline-Vergleich läse ihn als frische
+Messung.
+
 **Ein Mehrrunden-Lauf misst den Einzelfragen-Pipeline-Pfad nicht.** Mit `runConversations` überspringt
 der Harness die Pipeline-Messung der Einzelfragen (Schritt 6). Sie liefe unter aktiver Zerlegung, und
 gegen diese Konfiguration ist keine Baseline gezogen. Ihr Zustands-Audit meldete deshalb in jedem Lauf

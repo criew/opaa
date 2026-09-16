@@ -132,6 +132,11 @@ public final class ConversationHarnessSupport {
    * and baseline verdicts are already complete at this point and must not be lost to a failure of
    * an observation that was added afterwards.
    *
+   * <p><b>One exception, and it is deliberate:</b> an unusable {@value #NOTE_CAP_PROPERTY} throws,
+   * because it is read before the guarded section. A measurement failure costs this run its report;
+   * a misspelled ablation value would instead leave the previous run's report in place and let it
+   * pass for a fresh one.
+   *
    * @param identity the calling harness's run identity; its golden-dataset fields are replaced here
    *     by the multi-turn dataset's, since that is the dataset this run measured.
    * @param chatMemory the production conversation memory bean - the window every turn receives is
