@@ -1270,8 +1270,10 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
      Was eine zerlegende Einzelfragen-Baseline absichern würde — dass die Zerlegungsmechanik nicht
      stillschweigend kaputtgeht —, sichert er bereits ab, und zwar auf den Fällen, für die die
      Zerlegung überhaupt gebaut wurde.
-   - **Auf eigenständigen Fragen kauft sie messbar nichts.** Die Tabelle oben zeigt Parität im
-     Rahmen der Messstreuung; eine Baseline darauf verdreifachte die Laufzeit des Pipeline-Pfads
+   - **Auf eigenständigen Fragen kauft sie nichts.** Mit `qwen2.5:1.5b-instruct` liegen drei der
+     vier Metriken unter der Konfiguration ohne Zerlegung (nDCG@8 −0,013, MRR@8 −0,009, Recall@8
+     −0,011), Hit Rate@5 ist gleich; mit `phi3:mini` liegen zwei darüber (+0,005, +0,006) und zwei
+     darunter (−0,022, −0,018). Eine Baseline darauf verdreifachte die Laufzeit des Pipeline-Pfads
      (Mehrfachlauf-Regel, ein Chat-Aufruf je Fall) für ein Signal, das es schon gibt.
    - **Zwei Pfade mit unterschiedlicher Zerlegungseinstellung sind kein Mangel, sondern die
      Aufgabenteilung**: Der Einzelfragen-Pfad misst Retrieval ohne Modellanteil und bleibt
@@ -1281,9 +1283,11 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
 
    Der zerlegende Einzelfragen-Lauf bleibt als benanntes Opt-in erhalten
    (`-Dopaa.eval.queryDecomposition=true`); `PipelineBaselineComparator` meldet ihn weiterhin als
-   unvergleichbar statt als Regression. **Wiederaufnahme, wenn** die Zerlegung auf eigenständigen
-   Fragen einen Gewinn zeigt, der über die Messstreuung hinausgeht — dann als bewusste Neuziehung
-   aller betroffenen Baselines samt Prüfung des nächtlichen Zeitbudgets.
+   unvergleichbar statt als Regression. **Wiederaufnahme, wenn** eine Messung nach Abschnitt 3
+   (Deltas gegen die zerlegungsfreie Konfiguration, kein Streuungsargument) auf **mindestens zwei**
+   Domänen in **allen vier** Metriken ein positives Delta zeigt — dann als bewusste Neuziehung aller
+   betroffenen Baselines samt Prüfung des nächtlichen Zeitbudgets. Die heutige Messung erfüllt das
+   auf keiner Domäne.
 
    **Der Text dieses Punkts oberhalb beschreibt den Weg dorthin**, einschließlich des
    Beispielsatz-Defekts, den #1254/PR #1281 behoben hat. Die Zahlen des ursprünglichen Befunds

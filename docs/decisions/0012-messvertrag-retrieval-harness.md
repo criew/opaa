@@ -744,10 +744,14 @@ Rangreserve später ein Fehlerkriterium nach ADR-0013 wird, klärt Issue #1210 �
 eigene Entscheidung dieses ADRs (Baseline-Schema) und/oder von ADR-0013 (Fehlerkriterium), nicht
 rückwirkend dieser Nachtrag.
 
-> **Entschieden am 2026-09-16 (Issue #1210): Die Rangreserve bleibt report-only.** Sie wandert nicht
-> in `MetricsAggregate`/`PipelineMetricsAggregate`, nicht in die Baselines und nicht in die
-> Comparators; `CURRENT_MEASUREMENT_CONTRACT_VERSION`/`PIPELINE_MEASUREMENT_CONTRACT_VERSION`
-> bleiben davon unberührt. Drei Gründe, die zusammen tragen:
+> **Entschieden am 2026-09-16 (Issue #1210): Die Rangreserve bleibt report-only, auf allen drei
+> Messpfaden.** Sie wandert nicht in `MetricsAggregate`/`PipelineMetricsAggregate`, nicht in die
+> Baselines und nicht in die Comparators;
+> `CURRENT_MEASUREMENT_CONTRACT_VERSION`/`PIPELINE_MEASUREMENT_CONTRACT_VERSION` bleiben davon
+> unberührt. Für den Mehrrunden-Pfad gilt dasselbe: Er führt je Runde `hitRateMargin` und
+> `rankingMargin` mit (`ConversationEvaluationReport`), hat seit #1553 eine eigene Baseline und mit
+> `CONVERSATION_MEASUREMENT_CONTRACT_VERSION` einen eigenen Vertrag — auch dort bleibt die
+> Rangreserve unverglichen. Drei Gründe, die zusammen tragen:
 >
 > 1. **Die Kennzahl misst nicht, was ein Fehlerkriterium messen müsste.** `marginAtK` betrachtet nur
 >    den **ersten** relevanten Treffer. Bei mehreren erwarteten Dokumenten kann sie eine große,
@@ -767,6 +771,12 @@ rückwirkend dieser Nachtrag.
 > **Wiederaufnahme, wenn** eine Regression auftritt, die in den geprüften Metriken unsichtbar blieb
 > und in der Rangreserve sichtbar war — dann mit einer Marge, die das schwächste erwartete Dokument
 > betrachtet, nicht das erste.
+>
+> **Damit diese Bedingung überhaupt eintreten kann**, gehört zu jeder Untersuchung einer gemeldeten
+> Qualitätsverschlechterung die Auswertung von `MarginAggregate` aus den Reports des fraglichen
+> Zeitraums. Eine Regression, die die geprüften Metriken nicht zeigen, lässt den Lauf grün durch —
+> niemand hätte sonst einen Anlass, in die Margentabelle zu sehen, und die Bedingung wäre eine, die
+> sich selbst nie auslöst.
 
 ### 31. Dritter Nachtrag des Fingerabdrucks: `email:2` → `email:3` (Issue #1164, PR #1201)
 
