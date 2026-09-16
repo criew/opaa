@@ -693,6 +693,87 @@ beschreiben jetzt die Symptome dieses Laufs.
 `haswell` aber nicht auf. `cc-007` nennt 2023 nur in einem erfundenen Datum und verfehlt das Ziel.
 `cc-008` löst seine Zielrunde, ohne dass die Teilfrage die Fassung nennt.
 
+### Ablation: was die Gesprächsnotiz tatsächlich bewirkt (2026-09-16, Issue #1587)
+
+**Anlass.** Die Nachmessung vom 12.09. hat Fenster, Notiz und eine Zeile in der festen
+Zerlegungs-Instruktion gemeinsam bewegt und war zudem auf einer ungepinnten CPU-Variante gemessen.
+Für die Notiz allein gab es damit nie eine Zahl. Seit dem Pin (#1652) ist der Pfad deterministisch,
+ein Vergleich also überhaupt erst aussagefähig.
+
+**Messanordnung.** Zwei Läufe desselben Produktionspfads am 2026-09-16, gleicher Korpus, gleicher
+Datensatz, gleiche Festpunkte (`haswell`, `qwen2.5:1.5b-instruct`, Zerlegung an, Suchfenster 2
+Runden), je drei Messungen mit min = median = max und 0 Runden mit abweichender Zerlegung.
+
+- **D** — Produktionsstand, Notizdeckel 10. **Ankerprobe:** reproduziert die committete Baseline in
+  allen vier Metriken und allen 27 Fallurteilen exakt.
+- **C** — derselbe Lauf mit `-Dopaa.eval.conversationNoteCap=0`, also ohne Gesprächsnotiz. Die Zeile
+  über die Notiz bleibt in der Instruktion, das Suchfenster bleibt bei 2 Runden; **einziger
+  Unterschied sind die Notizpunkte im Zerlegungskontext**.
+
+Die Läufe A (ganzes Fenster) und B (ohne die Instruktionszeile) stehen noch aus; sie trennen
+Fensterbreite und Instruktionszeile und sind in #1587 offen.
+
+**Kontrollgruppe.** Alle **27 ersten Runden** liefern in beiden Läufen wortgleiche Teilfragen. Wo
+die Notiz nicht wirken kann, ändert sich nichts — die Unterschiede unten stammen also aus ihr und
+nicht aus Rauschen. Von den 83 Runden ändern 36 ihre Teilfrage; jede Runde mit geändertem Urteil
+hatte in D einen Notizpunkt.
+
+| Klasse | n | Hit Rate@5 | MRR@8 | nDCG@8 | Recall@8 | Fälle gelöst |
+|---|---|---|---|---|---|---|
+| `anaphora_resolution` | 21 | 0,810 → 0,762 | 0,738 → 0,690 | 0,746 → 0,698 | 0,794 → 0,746 | 4 → 4 |
+| `topic_switch` | 30 | 0,700 → 0,767 | 0,657 → 0,717 | 0,662 → 0,725 | 0,700 → 0,767 | 1 → 2 |
+| `constraint_carryover` | 32 | 0,969 → 0,875 | 0,814 → 0,812 | 0,853 → 0,836 | 0,969 → 0,906 | 0 → **3** |
+| gesamt | 83 | 0,831 → 0,807 | 0,738 → 0,747 | 0,757 → 0,761 | 0,827 → 0,815 | 5 → **9** |
+
+Gelesen als „mit Notiz → ohne Notiz".
+
+**Auf Fallebene gewinnt der Lauf ohne Notiz, und kein Fall geht dabei verloren.** Hinzu kommen
+`verw-conv-cc-006`, `-007`, `-009` und `verw-conv-ts-006`. Auf Rundenebene stehen 6 gewonnene gegen
+4 verlorene Runden. **Keine der vier verlorenen Runden kostet einen Fall sein Urteil:** `ana-007`,
+`cc-004`, `cc-008` und `ts-009` sind in beiden Läufen ungelöst; bei `ts-009` verschiebt sich
+lediglich die scheiternde Runde von 4 auf 3. Die Rundenmetriken sind uneinheitlich —
+`anaphora_resolution` verliert, `topic_switch` gewinnt —, das Fallkriterium ist eindeutig.
+
+**Die vier gewonnenen Fälle gehören nicht in `expected_state`.** Das Zustands-Audit des C-Laufs
+meldet sie als `unexpectedlySolved`; der Datensatz beschreibt aber den Produktionspfad, und der ist
+Lauf D. Ein Ablationslauf darf weder eine Baseline noch ein Zustandsfeld setzen
+(`docs/features/retrieval-benchmark.md`, Abschnitt 5).
+
+**Der Mechanismus: der Notizpunkt entgleist die Teilfrage.** Die Notiz verfehlt die Rahmenangabe
+nicht nur, sie schadet aktiv. In den drei gewonnenen `constraint_carryover`-Fällen steht in der
+Zielrunde ein Rollenwort in der Notiz, und die Zerlegung erfindet daraufhin eine Aussage mit
+Angaben, die der Korpus nicht kennt:
+
+| Fall | Notizpunkt der Zielrunde | Teilfrage mit Notiz | ohne Notiz |
+|---|---|---|---|
+| `cc-006` | „Prüfer" | „… nach dem Inkrafttreten des Gesetzes von **2024** …" (nDCG 0,631) | „… bestimmt die Gebühren für die Erstellung eines neuen Personalausweises." (1,000) |
+| `cc-007` | „Mitarbeiter" | „… bis zum **31. Dezember 2023**." (0,387) | „… für die Verlängerung der Kindertagesstättenbeiträge." (1,000) |
+| `cc-009` | „Person", „Formular STA-08" | „… nach der Sozialgebührenbefreiungs**verordnung (SGV) 2018** … 5,93 Euro." (0,631) | „… betragen 5,00 €." (1,000) |
+| `ts-006` | „Formular ORD-07" | „Die Bearbeitungszeit hängt von der Art und Größe des Formulars ab. …" — ohne ORD-07 (0,387) | „… von Formularsatzungen wie **ORD-07** …" (1,000) |
+
+`ts-006` ist der bezeichnendste Fall: Die Notiz trug die Kennung des Formulars, und gerade ihre
+Anwesenheit hat die Teilfrage dazu gebracht, die Kennung fallen zu lassen.
+
+Das ist genau das Risiko, das ADR-0031 unter „Konsequenzen" benannt und ausdrücklich als maschinell
+nicht absicherbar bezeichnet hat: Die Art eines Punkts wird vom Modell vergeben, und ein falsch als
+`RAHMEN` eingestufter Punkt erreicht die Suche. Gemessen ist nun, dass das der Regelfall ist und
+nicht der Ausnahmefall.
+
+**Was die Notiz kostet.** Eine Messung des Datensatzes dauert mit Notiz **902,9 Sekunden**, ohne
+**201,9** (`runDurationSeconds` der beiden Median-Läufe; je dreimal gemessen, die Gesamtlaufzeit
+inklusive Indizierung liegt bei 51 gegen 16 Minuten). Die 83 Verdichtungsaufrufe je Messung sind
+teurer als die 83 Zerlegungsaufrufe, weil das Modell die Artenaufzählung des Prompts als Vorlage
+ausfüllt und entsprechend lange Antworten erzeugt (#1586). In Produktion liegt dieser Aufruf
+nebenläufig hinter der Antwort, kostet also Modellzeit und nicht Latenz.
+
+**Zielrunden, deren Teilfrage die Rahmenangabe trägt: 1 von 9 in beiden Läufen** — mechanisch
+gezählt (Jahreszahl aus Runde 1 in einer Teilfrage der Zielrunde), in D `cc-007`, in C `cc-008`.
+Beide Treffer sind wertlos: `cc-007` nennt das Jahr in einem erfundenen Datum, `cc-008` löst seine
+Zielrunde ohnehin nicht über die Fassung. Kuratiert gewertet steht die Kennzahl in beiden Läufen
+bei **0 von 9**. Die Notiz trägt die Angabe in D in 3 von 9 Zielrunden überhaupt bis dorthin, davon
+zweimal nur eingebettet in einen 200 Zeichen langen Vorlagen-Abwurf (`cc-004`, `cc-008`); ein
+einziger Punkt trägt sie sauber (`cc-002`: „2023").
+
 ### Themen-Bleed: warum die Zahl wenig taugt
 
 Die Bleed-Zahl zählt ausschließlich die **erwarteten Dokumente der Vorrunden dieses Falls**, die im

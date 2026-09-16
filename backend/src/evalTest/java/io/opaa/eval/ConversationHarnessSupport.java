@@ -43,11 +43,75 @@ public final class ConversationHarnessSupport {
 
   private static final String RUN_PROPERTY = "opaa.eval.runConversations";
 
+  /**
+   * Overrides the Gesprächsnotiz cap this run measures under, for an ablation that needs the same
+   * production pipeline once with and once without a note (#1587). A property of the measurement
+   * path, not of the application: {@link ChatNoteProperties} keeps its floor of 1 and the note
+   * keeps having no on/off switch (ADR-0031, "Verworfene Alternativen").
+   *
+   * <p>{@code 0} means the run keeps no note at all - the state {@link
+   * ConversationMemoryProfile#NO_CONVERSATION_NOTE} already describes for a baseline drawn before
+   * the note existed. The value reaches the report as the {@code conversationNoteCap} fixed point,
+   * so a baseline comparison reports such a run as incomparable, which is what it is.
+   */
+  private static final String NOTE_CAP_PROPERTY = "opaa.eval.conversationNoteCap";
+
   private ConversationHarnessSupport() {}
 
   /** Whether this run was asked for a multi-turn measurement at all. Off by default. */
   public static boolean isRequested() {
     return Boolean.getBoolean(RUN_PROPERTY);
+  }
+
+  /**
+   * The note cap {@value #NOTE_CAP_PROPERTY} asks this run to measure under, empty when it asks for
+   * nothing. A value below zero, or one that is not a number, throws - and the caller reads it
+   * <b>before</b> entering its guarded section, since that guard would otherwise turn the mistake
+   * into a successful build whose report is the previous run's.
+   */
+  static Optional<Integer> requestedNoteCap() {
+    String requested = System.getProperty(NOTE_CAP_PROPERTY);
+    if (requested == null) {
+      return Optional.empty();
+    }
+    int cap;
+    try {
+      cap = Integer.parseInt(requested.strip());
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException(
+          NOTE_CAP_PROPERTY + " must be a whole number, got: " + requested, e);
+    }
+    if (cap < 0) {
+      throw new IllegalArgumentException(NOTE_CAP_PROPERTY + " must not be negative, got: " + cap);
+    }
+    return Optional.of(cap);
+  }
+
+  /**
+   * The profile this run measures under: the one read off the production configuration, with the
+   * note cap replaced by {@code requestedNoteCap} when the ablation asked for one.
+   */
+  static ConversationMemoryProfile ablated(
+      ConversationMemoryProfile measured, Optional<Integer> requestedNoteCap) {
+    return requestedNoteCap
+        .map(
+            cap ->
+                new ConversationMemoryProfile(
+                    measured.windowMessages(), measured.searchWindowTurns(), cap))
+        .orElse(measured);
+  }
+
+  /**
+   * The condensation a run with this profile uses: the production one, or none at all for a run
+   * measured without a note. {@link ConversationRetrievalEvaluator} would skip the call for a cap
+   * of zero anyway; stating it here keeps the run's own description honest rather than relying on
+   * that.
+   */
+  static ConversationRetrievalEvaluator.NoteExtraction noteExtractionFor(
+      ConversationMemoryProfile profile, ChatNoteExtractionService chatNoteExtractionService) {
+    return profile.noteCap() <= ConversationMemoryProfile.NO_CONVERSATION_NOTE
+        ? ConversationRetrievalEvaluator.NoteExtraction.NONE
+        : chatNoteExtractionService::condense;
   }
 
   /** Where a domain's multi-turn report is written. */
@@ -68,6 +132,11 @@ public final class ConversationHarnessSupport {
    * and baseline verdicts are already complete at this point and must not be lost to a failure of
    * an observation that was added afterwards.
    *
+   * <p><b>One exception, and it is deliberate:</b> an unusable {@value #NOTE_CAP_PROPERTY} throws,
+   * because it is read before the guarded section. A measurement failure costs this run its report;
+   * a misspelled ablation value would instead leave the previous run's report in place and let it
+   * pass for a fresh one.
+   *
    * @param identity the calling harness's run identity; its golden-dataset fields are replaced here
    *     by the multi-turn dataset's, since that is the dataset this run measured.
    * @param chatMemory the production conversation memory bean - the window every turn receives is
@@ -84,6 +153,10 @@ public final class ConversationHarnessSupport {
       IndexingProperties indexingProperties,
       UUID evalLibraryId,
       Logger log) {
+    // Outside the guard below on purpose: that guard turns every failure into a logged line and a
+    // successful build, which for an unusable ablation value would leave the previous run's report
+    // in place for the next baseline comparison to read as a fresh measurement.
+    Optional<Integer> requestedNoteCap = requestedNoteCap();
     try {
       QueryProperties queryProperties = contextFactory.queryProperties();
       List<ConversationCase> cases = ConversationDataset.load(ConversationDataset.file(domain));
@@ -102,7 +175,12 @@ public final class ConversationHarnessSupport {
       }
 
       ConversationMemoryProfile memoryProfile =
-          ConversationMemoryProfile.measuredFrom(chatMemory, queryProperties, chatNoteProperties);
+          ablated(
+              ConversationMemoryProfile.measuredFrom(
+                  chatMemory, queryProperties, chatNoteProperties),
+              requestedNoteCap);
+      ConversationRetrievalEvaluator.NoteExtraction noteExtraction =
+          noteExtractionFor(memoryProfile, chatNoteExtractionService);
       // Mehrfachlauf-Regel (docs/features/retrieval-benchmark.md §3), through the shared rule: this
       // path always decomposes and is therefore never deterministic. It carries the highest LLM
       // share of the three paths - one decomposition call per *turn*, not per case - so the spread
@@ -118,7 +196,7 @@ public final class ConversationHarnessSupport {
                       pipeline,
                       contextFactory,
                       chatMemory,
-                      chatNoteExtractionService::condense,
+                      noteExtraction,
                       memoryProfile,
                       indexingProperties,
                       evalLibraryId,
