@@ -476,6 +476,30 @@ Mehrrunden-Schritts den Harness-Lauf nie scheitern lässt: Ein Tippfehler würde
 des **vorherigen** Laufs liegen lassen, und der nächste Baseline-Vergleich läse ihn als frische
 Messung.
 
+**Denselben Lauf gegen ein produktionsübliches Chat-Modell messen** (Befundlauf, Issue #1674):
+
+```bash
+export OPAA_EVAL_CHAT_API_KEY=...          # nur über die Umgebung, nie als -D
+./gradlew evaluateVerwaltungConversations   -Dopaa.eval.chatBaseUrl=https://api.anthropic.com/v1   -Dopaa.eval.chatModel=claude-haiku-4-5
+```
+
+Statt des gepinnten Ollama-Modells wird eine `llm_models`-Zeile mit diesem Anbieter installiert, mit
+dem `SettingsEncryptor` der laufenden Anwendung verschlüsselt — also genau das, was ein Betreiber
+konfiguriert hätte; `ActiveChatModelResolver` braucht keinen Sonderfall. Digest-Pin und Modellzug
+entfallen für ein Modell, das nicht im Container liegt; die CPU-Variantenprüfung verlangt dann nur
+noch den Embedding-Runner. Sind nur eine der beiden Properties oder kein Schlüssel gesetzt, bricht
+der Lauf ab, statt still das gepinnte Modell zu messen.
+
+**Der Schlüssel gehört ausschließlich in die Umgebungsvariable.** Ein `-D`-Wert steht in der
+Prozessliste — dieselbe Begründung, aus der `backend/build.gradle.kts` `opaa.rerank.api-key` bewusst
+aus seiner Weiterreichungsliste auslässt.
+
+**Ein solcher Lauf setzt keine Baseline.** Der Festpunkt `chatModel` trägt die externe Kennung, jede
+committete Baseline ist damit unvergleichbar; der Lauf ist nicht deterministisch (gemessen: 10 von
+83 Runden mit abweichender Zerlegung über drei Messungen) und darf weder eine Baseline noch ein
+`expected_state` setzen. Er beantwortet Fragen, die das gepinnte Modell nicht beantworten kann —
+alles, was selbst Modellausgabe ist, allen voran die Gesprächsnotiz.
+
 **Ein Mehrrunden-Lauf misst den Einzelfragen-Pipeline-Pfad nicht.** Mit `runConversations` überspringt
 der Harness die Pipeline-Messung der Einzelfragen (Schritt 6). Sie liefe unter aktiver Zerlegung, und
 gegen diese Konfiguration ist keine Baseline gezogen. Ihr Zustands-Audit meldete deshalb in jedem Lauf

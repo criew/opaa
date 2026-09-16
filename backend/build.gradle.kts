@@ -154,7 +154,11 @@ fun registerEvalHarnessTask(
         // path) and opaa.eval.runConversations (issue #1484: the opt-in multi-turn step, which
         // costs a decomposition call per turn and runs three times) and
         // opaa.eval.conversationNoteCap (issue #1587: the note cap one ablation arm measures under,
-        // 0 for a run without a Gesprächsnotiz) share this list because all of
+        // 0 for a run without a Gesprächsnotiz) and opaa.eval.chatBaseUrl/opaa.eval.chatModel
+        // (issue #1674: measure the multi-turn path against a production-grade chat model
+        // instead of the pinned one; its API key comes from the environment variable
+        // OPAA_EVAL_CHAT_API_KEY, never from a -D value, which would be visible in the
+        // process list) share this list because all of
         // them are optional, manually-invoked knobs rather than something every eval domain always
         // needs.
         // The opaa.rerank.*/opaa.query.search-window-turns/opaa.query.rerank-candidate-count
@@ -173,6 +177,8 @@ fun registerEvalHarnessTask(
             "opaa.eval.explanationDumpDir",
             "opaa.eval.runConversations",
             "opaa.eval.conversationNoteCap",
+            "opaa.eval.chatBaseUrl",
+            "opaa.eval.chatModel",
             "opaa.rerank.enabled",
             "opaa.rerank.base-url",
             "opaa.rerank.model",

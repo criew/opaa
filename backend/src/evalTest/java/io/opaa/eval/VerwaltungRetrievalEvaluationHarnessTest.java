@@ -38,6 +38,7 @@ import io.opaa.query.RetrievalContextFactory;
 import io.opaa.query.retrieval.RetrievalPipeline;
 import io.opaa.query.retrieval.RetrievalPipelineProperties;
 import io.opaa.query.retrieval.scope.MetadataFilterExpressions;
+import io.opaa.security.SettingsEncryptor;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -214,14 +215,18 @@ class VerwaltungRetrievalEvaluationHarnessTest {
     // Issue #1085: the chat model the Teilfragen-Zerlegung needs, pinned by tag and content digest
     // exactly like the embedding model. Pulled on every run rather than only on a decomposing one,
     // so a broken model pin surfaces in the nightly job instead of only in a rare manual run.
-    EvalOllamaModel.ensurePresent(
-        ollamaEndpoint(),
-        ollama,
-        EvalChatModel.MODEL,
-        EvalChatModel.EXPECTED_DIGEST,
-        log,
-        cacheHint);
-    activeChatModel = EvalChatModel.MODEL;
+    // Issue #1674: an external chat model is not served by this container, so there is nothing to
+    // pull and no digest to pin. The embedding model stays pinned either way.
+    if (EvalChatModel.external().isEmpty()) {
+      EvalOllamaModel.ensurePresent(
+          ollamaEndpoint(),
+          ollama,
+          EvalChatModel.MODEL,
+          EvalChatModel.EXPECTED_DIGEST,
+          log,
+          cacheHint);
+    }
+    activeChatModel = EvalChatModel.activeModelIdentifier();
   }
 
   /**
@@ -363,6 +368,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
   @Autowired private IndexingProperties indexingProperties;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private SettingsEncryptor settingsEncryptor;
   // Issue #721/#1103: reused, not reimplemented, to build the chunk map — the same
   // DocumentFormatRegistry routing DocumentIngestService drives (see its Javadoc), so the chunk
   // texts the map is built from are exactly what was actually indexed, not a second, potentially
@@ -421,7 +427,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
     // eval chat model, so QueryDecompositionService resolves it through the production path.
     // Safe here because nothing has resolved a chat client yet (ActiveChatModelResolver builds
     // lazily), so no client can have been cached from the seeded row.
-    EvalChatModel.installAsSystemwideActiveModel(jdbcTemplate, ollamaEndpoint());
+    EvalChatModel.installAsSystemwideActiveModel(jdbcTemplate, ollamaEndpoint(), settingsEncryptor);
     jdbcTemplate.update("DELETE FROM users WHERE email = 'eval-harness@example.com'");
     evalUserId = UUID.randomUUID();
     jdbcTemplate.update(
@@ -542,7 +548,9 @@ class VerwaltungRetrievalEvaluationHarnessTest {
             : EvalOllamaCpuBackend.verify(
                 ollama,
                 Boolean.getBoolean(ALLOW_GPU_PROPERTY),
-                queryProperties.queryDecompositionEnabled() ? 2 : 1,
+                queryProperties.queryDecompositionEnabled() && EvalChatModel.external().isEmpty()
+                    ? 2
+                    : 1,
                 log);
 
     // 3. Chunk-count invariant (ADR-0010, Nachtrag #721): the real, production-configured

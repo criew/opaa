@@ -811,6 +811,92 @@ oder Reparatur der Notiz darf auf diesem Datensatz nicht allein getroffen werden
 
 Rohantworten und Skript: PR zu #1586.
 
+### Befundlauf gegen ein produktionsübliches Chat-Modell (2026-09-16, Issue #1674)
+
+**Anlass.** Die Ablation oben misst mit `qwen2.5:1.5b-instruct`. Die Handprobe aus #1586 hatte
+gezeigt, dass die Verdichtung mit einem produktionsüblichen Modell einwandfrei arbeitet; offen blieb,
+ob die **Zerlegung** einen guten `RAHMEN`-Punkt aufnimmt. Beides zusammen ist nur mit demselben
+Chat-Modell messbar, das auch in Produktion läuft.
+
+**Messanordnung.** Zwei Läufe am 2026-09-16 mit `-Dopaa.eval.chatBaseUrl=https://api.anthropic.com/v1`
+und `-Dopaa.eval.chatModel=claude-haiku-4-5` — dem Chat-Modell der Demo-Installation —, Schlüssel aus
+`OPAA_EVAL_CHAT_API_KEY`. Korpus, Datensatz, Einbettungsmodell, Suchfenster (2 Runden) und
+Zerlegungsschalter unverändert; einziger Unterschied zwischen den Armen ist
+`-Dopaa.eval.conversationNoteCap=0`. **Kein Baseline-Lauf:** Der Festpunkt `chatModel` trägt die
+externe Kennung, jede committete Baseline ist damit unvergleichbar.
+
+| Klasse | n | Hit Rate@5 | MRR@8 | nDCG@8 | Recall@8 | Fälle gelöst |
+|---|---|---|---|---|---|---|
+| `anaphora_resolution` | 21 | 0,857 → 0,857 | 0,825 → 0,825 | 0,822 → 0,822 | 0,841 → 0,841 | 6 → 6 |
+| `topic_switch` | 30 | 1,000 → 1,000 | 1,000 → 0,983 | 0,987 → 0,975 | 0,983 → 0,983 | 8 → 7 |
+| `constraint_carryover` | 32 | 0,969 → 0,969 | 0,898 → 0,865 | 0,916 → 0,891 | 0,969 → 0,969 | 5 → 3 |
+| gesamt | 83 | 0,952 → 0,952 | 0,917 → 0,898 | 0,918 → 0,904 | 0,942 → 0,942 | **19 → 16** |
+
+Gelesen als „mit Notiz → ohne Notiz".
+
+**Der Abstand zum gepinnten Modell ist die eigentliche Zahl.** Derselbe Produktionsstand löst mit
+`qwen2.5:1.5b-instruct` **5 von 27** Fällen und mit `claude-haiku-4-5` **19 von 27**;
+`topic_switch` geht von 1 auf 8, `constraint_carryover` von 0 auf 5, nDCG@8 von 0,757 auf 0,918.
+`topic_switch` erreicht Hit Rate@5 und MRR@8 von 1,000 — jede Wechselrunde gelöst, das Ziel stets auf
+Rang 1.
+
+**Die Notiz leistet, wofür sie gebaut wurde.** Alle **9 von 9** Notizen der Zielrunden tragen die
+Rahmenangabe (gegen 3 von 9), und **5 von 9** Zielrunden tragen sie in ihrer Teilfrage (gegen 1 von
+9; ohne Notiz sind es 2 von 9). Die Teilfragen sind Suchanfragen statt erfundener Behauptungen:
+
+| Fall | Notizpunkt der Zielrunde | Teilfrage |
+|---|---|---|
+| `cc-001` | „Die Person bearbeitet einen Altfall aus dem Jahr 2023 und wendet die Fassung 2023 an." | „Ermäßigung für eingetragene Vereine nach der Sozialgebührenbefreiungssatzung **Fassung 2023**" |
+| `cc-009` | „Die Person bezieht sich auf die Fassung 2024 der Sozialgebührenbefreiungssatzung …" | „Zweitausfertigung nach der Sozialgebührenbefreiungssatzung **2024**" |
+
+Zum Vergleich dieselbe Zielrunde `cc-001` unter dem gepinnten Modell, Notizpunkt „Arzt": „Die
+Ermäßigung für eingetragene Vereine beträgt 50% des sozialen Gebührens, wobei das
+Gesetzsgeschäftsbereich von 1.000 bis 2.000 Euro gilt."
+
+**Damit ist der Schadensbefund der Ablation widerlegt — für den Produktionsbetrieb.** Er bleibt
+richtig für das gepinnte Modell und ist als dessen Eigenschaft zu lesen, nicht als Eigenschaft der
+Gesprächsnotiz.
+
+#### Wie belastbar der Vorteil der Notiz ist
+
+**Weniger belastbar als die Zahlen oben aussehen, und das ist der Preis des externen Modells.** Beide
+Läufe sind **nicht** deterministisch:
+
+| | mit Notiz | ohne Notiz |
+|---|---|---|
+| nDCG@8 min / median / max | 0,914 / 0,918 / 0,918 | 0,896 / 0,904 / 0,916 |
+| Runden mit abweichender Zerlegung | 10 von 83 | 11 von 83 |
+
+Der Abstand der Mediane (0,014) liegt **innerhalb** der Spannweite des Arms ohne Notiz. Auf
+Rundenebene ist der Vorteil der Notiz damit nicht von der Lauf-zu-Lauf-Schwankung zu trennen.
+
+Tragfähig sind die beiden anderen Beobachtungen:
+
+- **Auf Fallebene 19 gegen 16**, mit vier Fällen, die ohne Notiz wegfallen (`cc-002`, `cc-004`,
+  `cc-005`, `ts-002`), und einem, der hinzukommt (`cc-007`).
+- **Die Kennzahl der Notiz ist eine direkte Beobachtung, kein Mittelwert:** 5 gegen 2 Zielrunden,
+  deren Teilfrage die Rahmenangabe trägt. Dass ein Notizpunkt in einer Teilfrage landet, ist nicht
+  verrauschbar — man sieht ihn dort oder nicht.
+
+Eine schärfere Aussage über den Rundenvorteil bräuchte mehr Wiederholungen. **Für die Entscheidung
+über Ausbau oder Erhalt der Notiz genügt das Gemessene**: Sie schadet nicht, sie erfüllt ihren Zweck,
+und sie kostet auf Fallebene nichts.
+
+#### Was das für den Mehrrunden-Messpfad heißt
+
+Der nächtliche Lauf behält das gepinnte Modell — Regressionserkennung lebt vom Determinismus, und
+ohne ihn wäre #1652 nicht auffindbar gewesen. Aber: **Seine Absolutzahlen beschreiben keinen
+Betriebszustand.** 5 von 27 gelösten Fällen ist die Leistung eines 1,5-B-Modells, nicht die von OPAA.
+Wer aus diesem Datensatz eine Produktaussage ableiten will, braucht einen Befundlauf wie diesen.
+
+Offen bleibt damit auch die Fensterfrage: Die Läufe A und B der Ablation (ganzes Fenster, ohne
+Instruktionszeile) liefen ebenfalls auf dem gepinnten Modell. Ob die Verengung des Suchfensters auch
+unter einem produktionsüblichen Modell Fälle kostet, ist **nicht** gemessen — und vor einer Revision
+von ADR-0031 zu messen.
+
+**Laufzeit und Kosten.** 150,6 s je Messung mit Notiz, 110 s ohne (gegen 902,9 s bzw. 201,9 s im
+CPU-Testcontainer). 498 Chat-Aufrufe je Lauf mit Notiz, 249 ohne.
+
 ### Themen-Bleed: warum die Zahl wenig taugt
 
 Die Bleed-Zahl zählt ausschließlich die **erwarteten Dokumente der Vorrunden dieses Falls**, die im
