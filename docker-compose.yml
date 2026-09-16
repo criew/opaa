@@ -41,6 +41,13 @@ services:
     # The frontend container reaches the backend over the Compose network, never through this port.
     ports:
       - "127.0.0.1:${OPAA_BACKEND_PORT:-8081}:8080"
+    # The image runs as uid/gid 65532 (backend/Dockerfile, #1471). A bind mount keeps the owner of
+    # the *host* directory, so ./uploads must belong to that uid - a directory Docker creates for a
+    # missing mount path belongs to root, and the first upload then fails with an
+    # AccessDeniedException on /app/uploads. Setup and migration step for an existing installation:
+    # docs/handbuch/deployment.md, "Nicht-root-Betrieb des Backend-Containers". Whoever cannot give
+    # the directory away uncomments the line below instead and names the uid it already belongs to.
+    # user: "1000:1000"
     volumes:
       - ${OPAA_INDEXING_DOCUMENT_PATH_HOST:-./documents}:/app/documents
       - ${OPAA_UPLOAD_STORAGE_PATH_HOST:-./uploads}:/app/uploads

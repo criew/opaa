@@ -238,8 +238,12 @@ export async function createLibraryWithDocuments(
   // A fresh library (created moments ago, above) holds nothing but these uploads (plus, since
   // #1218, the indexed attachment rows of any uploaded mail), so an exact chip count is the whole
   // expectation - not just "at least one", which a single stuck upload amid several finished ones
-  // would still satisfy.
-  await expect(page.getByText('indiziert')).toHaveCount(expectedIndexedCount, { timeout: 30_000 })
+  // would still satisfy. exact: the Pflege-Anker (#1069) above the list says "... indizierte
+  // Dokumente dieser Bibliothek" and loads a moment later, so a substring match counts a chip that
+  // is none - and only sometimes.
+  await expect(page.getByText('indiziert', { exact: true })).toHaveCount(expectedIndexedCount, {
+    timeout: 30_000,
+  })
 }
 
 /**

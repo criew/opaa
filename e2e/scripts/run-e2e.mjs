@@ -36,7 +36,7 @@
 // creates.
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -335,7 +335,29 @@ async function waitUntilReady(timeoutMs) {
   return false
 }
 
+// The backend container runs as uid 65532 (backend/Dockerfile, #1471) and a bind mount keeps the
+// host directory's own owner. Left to Docker, a missing ./uploads would be created as root and
+// every upload would fail with AccessDeniedException - so this script creates both mount points
+// itself and makes them writable for any uid. The chmod is best effort: whoever already arranged
+// the ownership (e2e.yml hands them to 65532, the documented state of a real installation) owns
+// them, and this script then cannot and must not change them.
+function prepareBindMounts() {
+  for (const name of ['documents', 'uploads']) {
+    const directory = join(repoRoot, name)
+    mkdirSync(directory, { recursive: true })
+    try {
+      chmodSync(directory, 0o777)
+    } catch (error) {
+      console.log(
+        `> ${directory} gehört einem anderen Konto (${error.code}) - Rechte bleiben, wie sie sind.` +
+          ' Schlägt ein Upload später mit AccessDeniedException fehl, ist das die Ursache.',
+      )
+    }
+  }
+}
+
 async function main() {
+  prepareBindMounts()
   console.log(`> Starting from a clean slate (docker compose -p ${composeProjectName} down -v)`)
   run('docker', [...composeArgs, 'down', '-v', '--remove-orphans'], { env: composeEnv })
 
