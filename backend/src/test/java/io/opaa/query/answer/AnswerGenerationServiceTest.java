@@ -104,6 +104,38 @@ class AnswerGenerationServiceTest {
         .doesNotContain("You are", "CITATION RULES", "MUST", "Context documents");
   }
 
+  /**
+   * Regression guard for #1635: the language is repeated after the last passage, so an English
+   * passage is the last thing the model reads before the reminder, never before the question.
+   */
+  @Test
+  void theAnswerPromptRepeatsTheLanguageRuleAfterTheLastPassage() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+    var germanChunk =
+        new Document(
+            "Das Bürgerbüro besetzt eine Stelle.",
+            Map.of("file_name", "presse.html", "document_id", "id-de", "chunk_index", 0));
+    var englishChunk =
+        new Document(
+            "Required skills: sound knowledge of registration law.",
+            Map.of("file_name", "profile.md", "document_id", "id-en", "chunk_index", 0));
+
+    answerGenerationService.generateAnswer(
+        "Welche Fähigkeiten braucht die Stelle?",
+        List.of(germanChunk, englishChunk),
+        "conv-language-reminder",
+        List.of("Möchte knappe Antworten"));
+
+    String systemText = systemTextOf(capturedPrompt());
+    assertThat(systemText)
+        .endsWith(
+            "Antworte auf Deutsch; gib fremdsprachige Inhalte der Kontextdokumente auf Deutsch"
+                + " wieder.");
+    assertThat(systemText.indexOf("Antworte auf Deutsch;"))
+        .isGreaterThan(systemText.indexOf("Required skills: sound knowledge of registration law."));
+  }
+
   @Test
   void withoutANotePointTheAnswerPromptCarriesNoNoteBlock() {
     when(chatModel.call(any(Prompt.class)))

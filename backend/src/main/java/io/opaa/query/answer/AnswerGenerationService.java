@@ -62,6 +62,15 @@ public class AnswerGenerationService {
    */
   private static final String CONTEXT_SECTION = "\n\nKontextdokumente:\n";
 
+  /**
+   * Repeats the answer language after the passages. The leading rule alone does not keep a small
+   * model from copying an English passage into its answer; a reminder after what it read last does.
+   * It carries no citation marker, so standing under {@link #CONTEXT_SECTION} is harmless.
+   */
+  static final String LANGUAGE_REMINDER =
+      "\n\n---\n\nAntworte auf Deutsch; gib fremdsprachige Inhalte der Kontextdokumente auf Deutsch"
+          + " wieder.";
+
   private final ActiveChatModelResolver activeChatModelResolver;
   private final ChatMemory chatMemory;
 
@@ -89,7 +98,8 @@ public class AnswerGenerationService {
         SYSTEM_PROMPT
             + (noteBlock == null ? "" : "\n\n" + noteBlock.modelText())
             + CONTEXT_SECTION
-            + formatChunks(relevantChunks);
+            + formatChunks(relevantChunks)
+            + LANGUAGE_REMINDER;
 
     log.debug("Sending prompt to LLM with {} context chunks", relevantChunks.size());
 
