@@ -774,6 +774,43 @@ bei **0 von 9**. Die Notiz trägt die Angabe in D in 3 von 9 Zielrunden überhau
 zweimal nur eingebettet in einen 200 Zeichen langen Vorlagen-Abwurf (`cc-004`, `cc-008`); ein
 einziger Punkt trägt sie sauber (`cc-002`: „2023").
 
+#### Einschränkung: gemessen wurde ein Modell, das in keiner Installation Chat-Modell ist
+
+Der Befund oben gilt für das gepinnte Eval-Modell `qwen2.5:1.5b-instruct`. **Für ein
+produktionsübliches Chat-Modell gilt er nicht — die Verdichtung arbeitet dort einwandfrei.**
+
+Handprobe vom 2026-09-16 (#1586): Der unveränderte Produktions-Prompt aus
+`ChatNoteExtraction.PROMPT_TEMPLATE` gegen `claude-haiku-4-5` — das Chat-Modell der
+Demo-Installation —, dieselben neun Runde-1-Nachrichten der `constraint_carryover`-Fälle, ausgewertet
+mit einer wortgetreuen Portierung von `ChatNoteExtraction.parse`. Ergebnis: **9 von 9 `RAHMEN`-Punkte
+tragen die Rahmenangabe.** Kein Vorlagen-Abwurf, kein Rollenwort als ganzer Punkt, korrektes
+Artpräfix, dritte Person, jede Zeile unter 200 Zeichen, ein bis zwei Zeilen je Nachricht:
+
+```
+RAHMEN: Die Person bearbeitet einen Altfall aus dem Jahr 2023 und wendet die Fassung 2023 an.
+RAHMEN: Die Person prüft einen Gebührenbescheid von 2023 mit Bezug zur Fassung 2023 der
+        Personalausweisgebührensatzung.
+```
+
+Zum Vergleich die Punkte desselben Prompts aus dem Messlauf: „Arzt", „Prüfer", „Prüfer",
+„Mitarbeiter", „Person", „Berater" und zweimal ein abgeschnittener Abwurf der ganzen Artenaufzählung.
+
+**Was daraus folgt, und was nicht.** Beobachtung 1 aus #1586 — die Verdichtung verliert die Angabe im
+Antwortformat — ist damit eine Eigenschaft des 1,5B-Modells, nicht des Prompts. Der gemessene
+**Schaden** der Notiz (D gegen C) entsteht an Punkten, die ein produktionsübliches Modell so nicht
+erzeugt; **er ist damit keine Aussage über den Produktionsbetrieb.** Ungeklärt bleibt die andere
+Hälfte: ob die Zerlegung einen **guten** `RAHMEN`-Punkt aufnimmt. Auch sie lief im Messlauf auf dem
+1,5B-Modell, in Produktion läuft sie auf demselben Chat-Modell wie die Verdichtung.
+
+**Der Mehrrunden-Pfad misst damit eine Konfiguration, die niemand betreibt.** Das Chat-Modell ist
+Festpunkt jeder Baseline (ADR-0012), die Wahl also bewusst und aus guten Gründen getroffen —
+Determinismus, Kosten, Docker-Testcontainer ohne API-Schlüssel. Für Bausteine, die selbst aus
+Modellausgaben bestehen, trägt sie aber nicht: Die Notiz ist kein Retrieval-Parameter, den ein
+kleines Modell stellvertretend messen kann, sondern Modellausgabe. Eine Entscheidung über Ausbau
+oder Reparatur der Notiz darf auf diesem Datensatz nicht allein getroffen werden.
+
+Rohantworten und Skript: PR zu #1586.
+
 ### Themen-Bleed: warum die Zahl wenig taugt
 
 Die Bleed-Zahl zählt ausschließlich die **erwarteten Dokumente der Vorrunden dieses Falls**, die im
