@@ -188,7 +188,9 @@ class IndexingJobRecoveryIntegrationTest {
 
     int recovered = indexingJobService.recoverStaleJobs(staleJobTimeout);
 
-    assertThat(recovered).isEqualTo(1);
+    // The recovery runs over every RUNNING row of the shared database; which rows it hit is
+    // asserted per row below, not through this suite-wide count.
+    assertThat(recovered).isPositive();
     IndexingJob staleResult = indexingJobRepository.findById(staleJob.getId()).orElseThrow();
     assertThat(staleResult.getStatus()).isEqualTo(JobStatus.FAILED);
     assertThat(staleResult.getErrorMessage())

@@ -52,7 +52,6 @@ class MailGreenMailIntegrationTest {
   @Autowired private MailSettingsService mailSettingsService;
   @Autowired private MailTestService mailTestService;
   @Autowired private BrandingSettingsService brandingSettingsService;
-  @Autowired private MailTemplateRepository templateRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -89,7 +88,6 @@ class MailGreenMailIntegrationTest {
     // The process-local caches survive every write to the row and are shared with every other
     // class in this context - without this a provoked failure leaks into the next test.
     mailSettingsService.resetCaches();
-    templateRepository.deleteAll();
     brandingSettingsService.updateBranding(organizationId, userId, null, null, null, null);
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     userRepository.deleteById(userId);

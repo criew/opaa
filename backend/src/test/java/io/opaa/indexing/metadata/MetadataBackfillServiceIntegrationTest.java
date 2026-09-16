@@ -124,6 +124,7 @@ class MetadataBackfillServiceIntegrationTest {
       throws IOException {
     indexAltbestand();
     List<UUID> chunkIdsBefore = allChunkIds();
+    assertThat(chunkIdsBefore).isNotEmpty();
     MetadataBackfillProgress before = progress();
     assertThat(before.totalDocuments()).isEqualTo(3);
     assertThat(before.pendingDocuments()).isEqualTo(3);
@@ -519,6 +520,7 @@ class MetadataBackfillServiceIntegrationTest {
             mail.getId());
     seedChunk(attachment.getId(), "alter Anhang-Chunk");
     List<UUID> chunkIdsBefore = allChunkIds();
+    assertThat(chunkIdsBefore).isNotEmpty();
 
     MetadataBackfillResult result =
         backfillService.backfillBatch(Organization.DEFAULT_ID, library.getId(), 10);
@@ -732,9 +734,12 @@ class MetadataBackfillServiceIntegrationTest {
             });
   }
 
+  /** The chunk ids of this class's own library - the suite shares one vector_store. */
   private List<UUID> allChunkIds() {
     return jdbcTemplate.query(
-        "SELECT id FROM vector_store ORDER BY id", (rs, i) -> UUID.fromString(rs.getString("id")));
+        "SELECT id FROM vector_store WHERE metadata->>'library_id' = ? ORDER BY id",
+        (rs, i) -> UUID.fromString(rs.getString("id")),
+        library.getId().toString());
   }
 
   /** The chunk metadata of this class's own library - the suite shares one vector_store. */

@@ -56,7 +56,7 @@ class MailTemplateServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    templateRepository.deleteAll();
+    jdbcTemplate.update("DELETE FROM mail_templates WHERE updated_by = ?", userId);
     brandingSettingsService.updateBranding(organizationId, userId, null, null, null, null);
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     userRepository.deleteById(userId);
@@ -241,7 +241,7 @@ class MailTemplateServiceIntegrationTest {
             null);
 
     assertThat(preview.rendered().subject()).isEqualTo("Entwurf für OPAA");
-    assertThat(templateRepository.count()).isZero();
+    assertThat(ownOverrideCount()).isZero();
 
     assertThatThrownBy(
             () ->
@@ -280,7 +280,7 @@ class MailTemplateServiceIntegrationTest {
           .hasMessageContaining("bodyPlain")
           .hasMessageContaining("Nicht unterstützte Vorlagen-Syntax");
     }
-    assertThat(templateRepository.count()).isZero();
+    assertThat(ownOverrideCount()).isZero();
   }
 
   /**
@@ -303,7 +303,7 @@ class MailTemplateServiceIntegrationTest {
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("bodyPlain")
         .hasMessageContaining("konnte nicht verarbeitet werden");
-    assertThat(templateRepository.count()).isZero();
+    assertThat(ownOverrideCount()).isZero();
   }
 
   /**
@@ -374,6 +374,15 @@ class MailTemplateServiceIntegrationTest {
                     null))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Nicht unterstützte Vorlagen-Syntax");
+  }
+
+  /**
+   * The overrides this class's own user stored - {@code mail_templates} is installation-wide and
+   * shared with every other class of the context.
+   */
+  private long ownOverrideCount() {
+    return jdbcTemplate.queryForObject(
+        "SELECT count(*) FROM mail_templates WHERE updated_by = ?", Long.class, userId);
   }
 
   private List<String> auditEventTypes() {
