@@ -481,6 +481,13 @@ describe('chatStore', () => {
     // leaves it stuck in the loading state.
     describe('does not write into a different chat after a chat switch (#1574)', () => {
       const OTHER_CHAT_ID = 'chat-personal-2'
+
+      // A test failing before its answer gate opens leaves its question outstanding in the
+      // module-level register; reset() clears it so the next test starts without it.
+      afterEach(() => {
+        useChatStore.getState().reset()
+      })
+
       const LATE_POINT = {
         id: NOTE_ITEM_ID,
         text: 'Gehört zum alten Chat',
@@ -828,6 +835,93 @@ describe('chatStore', () => {
           ]),
         )
         expect(useChatStore.getState().isLoading).toBe(false)
+      })
+
+      // The turn is committed before the client has processed its answer: a return in between
+      // reads the question already persisted and shows it once, without the loading state - also
+      // when the re-read after the answer fails.
+      it('returning to the asking chat after its turn was persisted but before the answer was processed shows the turn once', async () => {
+        const baseMessages = [
+          {
+            id: 'message-base-1',
+            chatId: EXISTING_CHAT_ID,
+            role: 'USER',
+            content: 'Wie ist das Projekt aufgebaut?',
+            createdAt: '2026-03-05T09:00:00Z',
+          },
+        ]
+        const backend = chatPersistingTurnOnAnswer(EXISTING_CHAT_ID, baseMessages)
+        await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+        const gate = deferred<void>()
+        gatedAnswer(gate)
+
+        const sendPromise = useChatStore.getState().sendMessage('Frage vor dem Wechsel')
+        await useChatStore.getState().loadChat(OTHER_CHAT_ID)
+        backend.persisted = true
+        await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+
+        const persistedTurn = [
+          'Wie ist das Projekt aufgebaut?',
+          'Frage vor dem Wechsel',
+          'Antwort aus dem alten Chat',
+        ]
+        expect(messageContents()).toEqual(persistedTurn)
+        expect(useChatStore.getState().isLoading).toBe(false)
+
+        let failedReads = 0
+        server.use(
+          http.get(`/api/v1/chats/${EXISTING_CHAT_ID}`, () => {
+            failedReads++
+            return HttpResponse.json({ error: 'nicht erreichbar', status: 503 }, { status: 503 })
+          }),
+        )
+        gate.resolve()
+        await sendPromise
+        await vi.waitFor(() => expect(failedReads).toBe(1))
+        await new Promise((resolve) => setTimeout(resolve, 0))
+
+        expect(messageContents()).toEqual(persistedTurn)
+        expect(useChatStore.getState().isLoading).toBe(false)
+        expect(useChatStore.getState().error).toBeNull()
+      })
+
+      // The same question asked again is a new turn: an earlier persisted question with the same
+      // text does not count as the outstanding one.
+      it('returning to the asking chat before a repeated question is persisted still shows that question', async () => {
+        const baseMessages = [
+          {
+            id: 'message-base-1',
+            chatId: EXISTING_CHAT_ID,
+            role: 'USER',
+            content: 'Frage vor dem Wechsel',
+            createdAt: '2026-03-05T09:00:00Z',
+          },
+          {
+            id: 'message-base-2',
+            chatId: EXISTING_CHAT_ID,
+            role: 'ASSISTANT',
+            content: 'Frühere Antwort',
+            sources: [],
+            createdAt: '2026-03-05T09:00:05Z',
+          },
+        ]
+        chatPersistingTurnOnAnswer(EXISTING_CHAT_ID, baseMessages)
+        await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+        const gate = deferred<void>()
+        gatedAnswer(gate)
+
+        const sendPromise = useChatStore.getState().sendMessage('Frage vor dem Wechsel')
+        await useChatStore.getState().loadChat(OTHER_CHAT_ID)
+        await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+
+        expect(messageContents()).toEqual([
+          'Frage vor dem Wechsel',
+          'Frühere Antwort',
+          'Frage vor dem Wechsel',
+        ])
+        expect(useChatStore.getState().isLoading).toBe(true)
+        gate.resolve()
+        await sendPromise
       })
 
       it('returning to a chat created after leaving the new-chat view shows its question and then its turn', async () => {
