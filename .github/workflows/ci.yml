@@ -100,11 +100,14 @@ jobs:
 
       - uses: actions/checkout@v7
 
+      # Guards the Corepack integrity hash that frontend/Dockerfile relies on
+      # ("corepack enable", then "pnpm install --frozen-lockfile"): corepack verifies
+      # the pnpm binary against it. Note pnpm/action-setup strips the hash and only
+      # reads the version, so no CI job would ever notice its loss (#1660).
       # Lives in this job because `changes` is the only required status check that
       # runs unfiltered on every PR and every push to main - a guard in a filtered
       # job would be skipped for exactly the PRs that touch only e2e/package.json,
-      # and a non-required job would go red without stopping a Renovate auto-merge
-      # (#1660). Runs before any install: it must also catch an unverified binary.
+      # and a non-required job would go red without stopping a Renovate auto-merge.
       - name: Corepack-Hash im packageManager-Feld prüfen
         run: .github/scripts/check_package_manager_hash.sh
 
@@ -248,8 +251,10 @@ jobs:
         run: pip install pytest
 
       # Der Tagesreport läuft nur nachts; ein Fehler fiele sonst erst dann auf.
+      # Die Selbstprobe des Corepack-Guards liegt daneben, weil dessen CI-Lauf nur
+      # den grünen Zweig ausübt (#1660).
       - name: Test
-        run: pytest .github/scripts/test_daily_report.py
+        run: pytest .github/scripts
 
   seed-script:
     needs: changes
