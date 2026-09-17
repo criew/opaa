@@ -724,13 +724,13 @@ class DocumentIngestServiceTest {
                   ChunkingService.SOURCE_HIERARCHY_METADATA_KEY,
                   "Handbuch / Kapitel 2"),
               Set.of());
-      // The chunk update must commit before the row does: refreshConnectorTitleAndContext is
-      // itself @Transactional and commits on return, so if the row moved first and the chunk
-      // update then failed, the next run's contextChanged would already read false and strand
-      // the chunks at their old values forever.
+      // Regression guard: chunks, then row context, then the change marker last - a skip check
+      // reads only the marker, so committing it earlier could hide a later failure and strand
+      // the chunks or the row context at their old values forever, unretried.
       InOrder order = inOrder(vectorStoreWriter, documentRepository);
       order.verify(vectorStoreWriter).updateDocumentMetadata(any(), any(), any());
       order.verify(documentRepository).refreshConnectorTitleAndContext(any(), any(), any(), any());
+      order.verify(documentRepository).markIndexedFromSource(any(), anyInt(), any(), any(), any());
       // A pure metadata correction: no re-parse, no re-embedding.
       verify(documentService, never()).parseDocument(any());
       verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());

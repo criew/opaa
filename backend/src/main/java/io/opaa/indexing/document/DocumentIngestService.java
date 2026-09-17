@@ -408,11 +408,6 @@ public class DocumentIngestService {
    * or embedding.
    */
   private void refreshProvenance(Document existing, DocumentIngest ingest, String checksum) {
-    String marker = ingest.changeMarker();
-    if (marker != null && !marker.equals(existing.getLastModifiedRemote())) {
-      documentRepository.markIndexedFromSource(
-          existing.getId(), existing.getChunkCount(), existing.getIndexedAt(), checksum, marker);
-    }
     SourceDocumentContext context = ingest.context();
     String containerKey =
         context == null ? existing.getSourceContainerKey() : context.containerKey();
@@ -423,10 +418,8 @@ public class DocumentIngestService {
             || !Objects.equals(existing.getSourceHierarchyPath(), hierarchyPath);
     boolean fileNameChanged = !Objects.equals(existing.getFileName(), ingest.fileName());
     if (contextChanged || fileNameChanged) {
-      // Chunks first, row second: rewriteChunkProvenance is a plain UPDATE a retried run repeats
-      // harmlessly, but refreshConnectorTitleAndContext commits the row. Committing the row first
-      // and then failing the chunk update would make the next run's contextChanged false and
-      // strand the chunks at their old values forever - the very defect this method exists to fix.
+      // Chunks first, row second: both are plain UPDATEs a retried run repeats harmlessly, as
+      // long as the change marker below - the only step a skip check reads - commits last.
       rewriteChunkProvenance(
           existing.getId(),
           new SourceDocumentContext(containerKey, hierarchyPath),
@@ -436,26 +429,30 @@ public class DocumentIngestService {
     }
     if (ingest.folder() != null && !Objects.equals(existing.getFolderId(), ingest.folder().id())) {
       // No @DynamicUpdate on Document: a plain save writes every mapped column from this
-      // in-memory entity, so a file name or context move applied only at the row above must be
-      // mirrored here too, or this save would overwrite it back to its stale in-memory value.
+      // in-memory entity, so the move applied above must be mirrored here too, or this save
+      // would revert it to its stale in-memory value.
       existing.setFileName(ingest.fileName());
       existing.applySourceContext(new SourceDocumentContext(containerKey, hierarchyPath));
       existing.setFolderId(ingest.folder().id());
       documentRepository.save(existing);
     }
+    // Last and in its own transaction: a skip check reads only this marker (Document#
+    // isUnchangedAt), so committing it before the updates above could make a later failure
+    // invisible - the row would already look current and refreshProvenance would never run
+    // again. Committing it last means a failure anywhere above is retried on the next run.
+    String marker = ingest.changeMarker();
+    if (marker != null && !marker.equals(existing.getLastModifiedRemote())) {
+      documentRepository.markIndexedFromSource(
+          existing.getId(), existing.getChunkCount(), existing.getIndexedAt(), checksum, marker);
+    }
   }
 
   /**
-   * Rewrites {@code file_name} (when {@code changedFileName} is not {@code null}) and {@code
-   * source_container_key}/{@code source_hierarchy_path} on every chunk of {@code documentId} in
-   * place via {@link VectorChunkStore#updateDocumentMetadata} - the same metadata-only path {@code
-   * DocumentMetadataService} uses for a core-field correction. A context key whose value is {@code
-   * null} is cleared rather than written, matching {@link #sourceContextMetadata}. Touches neither
-   * text, embedding nor the chunk's own Strukturkontext ({@link
-   * ChunkingService#LOCATION_METADATA_KEY}); does <b>not</b> touch the Kontextpraefix, even though
-   * {@link ChunkContextPrefix#ingestTitle} can itself embed the hierarchy path - a moved document
-   * whose Kernfeld Titel extraction never filled in keeps that stale hierarchy path in its prefix
-   * until a manual correction or a re-index rewrites it.
+   * Rewrites {@code file_name} and the source context on every chunk via {@link
+   * VectorChunkStore#updateDocumentMetadata} - metadata only, no re-parse or re-embedding; a {@code
+   * null} argument skips or clears its own key. Deliberately never marks the Kontextpraefix stale:
+   * {@link ChunkContextPrefix#ingestTitle} can embed a moved or renamed document's hierarchy path
+   * and title, but queuing that here would silently inflate the Nachlauf's Folgekosten.
    */
   private void rewriteChunkProvenance(
       UUID documentId, SourceDocumentContext context, String changedFileName) {
