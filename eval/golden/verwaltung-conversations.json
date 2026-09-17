@@ -881,5 +881,305 @@
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-12",
     "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 1 ist gelöst; die Notiz der Zielrunde 4 trägt „Person“ und „Formular STA-08“, kein Jahr, und die Fassung 2023 belegt Rang 1, das Ziel Rang 2."
+  },
+  {
+    "id": "verw-conv-ac-001",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Welche Gebühren verlangt die Stadt für die Entsorgung von Haushaltsabfällen?",
+        "answer": "Für die Entsorgung von Haushaltsabfällen erhebt das Umweltamt der Stadt Kalkstadt Gebühren nach der Abfallgebührensatzung 【source: ee11f947-451d-56f7-9e35-3d7a149cc0b3#4 | verwaltung-0057_abfallgebuehrensatzung.md】. Die wichtigsten Sätze sind:\n\n- **Erteilung:** 28,00 Euro\n- **Verlängerung:** 33,00 Euro\n- **Änderung:** 38,00 Euro\n- **Zweitausfertigung:** 43,00 Euro\n\nDas vollständige Gebührenverzeichnis steht in der Gebührenordnung des Umweltamts 【source: 30dc5619-4c7c-5410-a25e-ae6e1664ef8b#0 | verwaltung-0058_gebuehrenordnung-umweltamt.md】. Die Gebühr wird mit Bekanntgabe des Bescheids fällig und ist innerhalb von vier Wochen an die Stadtkasse zu zahlen, per Überweisung, Lastschrift oder bar am Schalter.\n\nEingetragene, gemeinnützige Vereine mit Sitz in Kalkstadt können auf schriftlichen Antrag eine Ermäßigung von 50 Prozent erhalten 【source: ee11f947-451d-56f7-9e35-3d7a149cc0b3#9 | verwaltung-0057_abfallgebuehrensatzung.md】.\n\nFür Ihre konkrete Situation wenden Sie sich bitte an die Sachbearbeitung des Umweltamts.",
+        "expected_documents": [
+          "verwaltung-0057_abfallgebuehrensatzung.md",
+          "verwaltung-0058_gebuehrenordnung-umweltamt.md"
+        ]
+      },
+      {
+        "query": "und wenn es eilig ist?",
+        "answer": "Wenn es eilig ist, können Sie beim Umweltamt eine **Eilbearbeitung** beantragen. Dafür wird nach der Gebührenordnung des Umweltamts eine zusätzliche Gebühr von **58,00 Euro** erhoben 【source: 30dc5619-4c7c-5410-a25e-ae6e1664ef8b#3 | verwaltung-0058_gebuehrenordnung-umweltamt.md】.\n\nDie Eilbearbeitung verkürzt die Bearbeitungsdauer in der Regel auf drei bis fünf Werktage. Ohne Eilbearbeitung beträgt die reguläre Bearbeitungsdauer zwei bis vier Wochen ab vollständigem Eingang aller Nachweise 【source: a7ae2491-eb39-53b8-9c71-0e193a8bff73#2 | verwaltung-0061_formularhinweis-umweltamt-7.md】.\n\nBitte beachten Sie:\n- Die Gebühr für die Eilbearbeitung fällt zusätzlich zur Gebühr für die eigentliche Amtshandlung an.\n- Während gesetzlicher Feiertage und zwischen Weihnachten und Neujahr kann es trotzdem länger dauern.\n\nWenn Sie unsicher sind, ob sich die Eilbearbeitung für Sie lohnt, fragen Sie am besten direkt bei der Sachbearbeitung des Umweltamts nach.",
+        "expected_documents": [
+          "verwaltung-0058_gebuehrenordnung-umweltamt.md"
+        ]
+      },
+      {
+        "query": "Antworte bitte kürzer und nur in Stichpunkten.",
+        "answer": "Verstanden – ich antworte ab jetzt kurz und in Stichpunkten.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "brauch ich dafür ein bestimmtes Formular?",
+        "answer": "Ja. Für den Antrag beim Umweltamt verwenden Sie **Formular UMW-07** (Antragsformular) 【source: a7ae2491-eb39-53b8-9c71-0e193a8bff73#0 | verwaltung-0061_formularhinweis-umweltamt-7.md】.\n\n- **Angaben:** Name, Anschrift, Geburtsdatum, ggf. Aktenzeichen eines laufenden Vorgangs, Telefonnummer oder E-Mail-Adresse\n- **Nachweise:** Identitätsnachweis, bei Vereinen der Freistellungsbescheid des Finanzamts\n- **Einreichung:** persönlich, per Post (Aktenzeichen UMW-07 auf den Umschlag) oder über das Online-Formularportal der Stadt Kalkstadt 【source: a7ae2491-eb39-53b8-9c71-0e193a8bff73#1 | verwaltung-0061_formularhinweis-umweltamt-7.md】\n- **Unvollständig?** Das Formular kommt mit einer Rückfrage zurück, das kostet mehrere Wochen\n\nEine persönliche Ausfüllhilfe bietet das Umweltamt auf Anfrage an.",
+        "expected_documents": [
+          "verwaltung-0061_formularhinweis-umweltamt-7.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Neu mit #1684: Die Fallklasse misst, ob die Zerlegung unter einem Fenster aus langen, produktionsnahen Antworten Suchanfragen erzeugt statt das Gespräch fortzusetzen, und ob eine Nachricht ohne Suchbedarf ohne Suche bleibt. Zustand vorläufig, wird mit der Baseline-Neuziehung dieses Issues aus dem gemessenen Lauf festgeschrieben."
+  },
+  {
+    "id": "verw-conv-ac-002",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Wofür ist das Formular BUE-08 gedacht?",
+        "answer": "Formular BUE-08 ist das **Änderungs- und Ermäßigungsformular** des Bürgeramts der Stadt Kalkstadt 【source: 873cd963-c044-5328-9229-0b43897e0f82#0 | verwaltung-0037_formularhinweis-buergeramt-8.md】. Sie verwenden es in zwei Fällen:\n\n1. **Nachträgliche Änderung** Ihrer Antragsdaten, zum Beispiel wenn sich Ihre Anschrift geändert hat.\n2. **Antrag auf Gebührenermäßigung** nach § 13 der Personalausweisgebührensatzung.\n\nAnzugeben sind Name, Anschrift, Geburtsdatum und, falls vorhanden, das Aktenzeichen eines bereits laufenden Vorgangs. Bei einem Antrag auf Ermäßigung ist zusätzlich der Freistellungsbescheid des Finanzamts anzugeben 【source: 873cd963-c044-5328-9229-0b43897e0f82#1 | verwaltung-0037_formularhinweis-buergeramt-8.md】.\n\nSie können das Formular persönlich, per Post oder über das Online-Formularportal einreichen. Bei postalischer Einreichung vermerken Sie bitte das Aktenzeichen BUE-08 auf dem Umschlag.\n\nBei Fragen hilft Ihnen die Sachbearbeitung des Bürgeramts während der Öffnungszeiten weiter.",
+        "expected_documents": [
+          "verwaltung-0037_formularhinweis-buergeramt-8.md"
+        ]
+      },
+      {
+        "query": "Muss ich da was nachweisen, wenn ich Bürgergeld bekomme?",
+        "answer": "Ob und in welcher Höhe Sie bei Bürgergeldbezug zahlen müssen, ist genau die Frage, die beim Bürgeramt am häufigsten zu diesem Formular gestellt wird. Eine verbindliche Auskunft dazu erteilt die Sachbearbeitung des Bürgeramts im Rahmen des Auskunftsrechts nach § 3 【source: 873cd963-c044-5328-9229-0b43897e0f82#3 | verwaltung-0037_formularhinweis-buergeramt-8.md】.\n\nWenn Sie einen Leistungsbescheid als Nachweis einreichen, gilt Folgendes:\n\n- Der Bescheid darf zum Zeitpunkt der Antragstellung **nicht älter als drei Monate** sein.\n- Das Bürgeramt akzeptiert beglaubigte Kopien oder das Original zur Einsichtnahme vor Ort.\n- Fremdsprachige Nachweise brauchen eine amtlich beglaubigte Übersetzung ins Deutsche 【source: 873cd963-c044-5328-9229-0b43897e0f82#2 | verwaltung-0037_formularhinweis-buergeramt-8.md】.\n\nEin häufiger Fehler ist ein Bescheid, der die drei Monate bereits überschritten hat. Das führt zu einer Rückfrage und verlängert die Bearbeitung.\n\nMein Tipp: Rufen Sie vorher kurz beim Bürgeramt an und klären Sie, welche Unterlagen in Ihrem Fall nötig sind.",
+        "expected_documents": [
+          "verwaltung-0037_formularhinweis-buergeramt-8.md"
+        ]
+      },
+      {
+        "query": "Spannend, das hätte ich nicht gedacht.",
+        "answer": "Freut mich, dass die Information hilfreich war! Wenn Sie noch weitere Fragen haben, helfe ich gern weiter.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "und wie lange dauert das dann?",
+        "answer": "Die reguläre Bearbeitungsdauer beim Bürgeramt beträgt **zwei bis vier Wochen** ab dem vollständigen Eingang aller Nachweise 【source: 873cd963-c044-5328-9229-0b43897e0f82#4 | verwaltung-0037_formularhinweis-buergeramt-8.md】.\n\nWenn es schneller gehen muss, ist eine **Eilbearbeitung** gegen die entsprechende Gebühr aus der Gebührenordnung möglich. Sie verkürzt die Bearbeitung in der Regel auf drei bis fünf Werktage.\n\nBitte beachten Sie:\n- An gesetzlichen Feiertagen und zwischen Weihnachten und Neujahr kann es länger dauern.\n- Fehlen Unterlagen oder ist Ihr Leistungsbescheid älter als drei Monate, verzögert sich die Bearbeitung durch eine Rückfrage.\n\nReichen Sie das Formular über das Online-Formularportal ein, erhalten Sie automatisch eine Eingangsbestätigung mit Datum und Uhrzeit 【source: 873cd963-c044-5328-9229-0b43897e0f82#3 | verwaltung-0037_formularhinweis-buergeramt-8.md】.",
+        "expected_documents": [
+          "verwaltung-0037_formularhinweis-buergeramt-8.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Neu mit #1684: Die Fallklasse misst, ob die Zerlegung unter einem Fenster aus langen, produktionsnahen Antworten Suchanfragen erzeugt statt das Gespräch fortzusetzen, und ob eine Nachricht ohne Suchbedarf ohne Suche bleibt. Zustand vorläufig, wird mit der Baseline-Neuziehung dieses Issues aus dem gemessenen Lauf festgeschrieben."
+  },
+  {
+    "id": "verw-conv-ac-003",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Was kostet eine Personenstandsurkunde?",
+        "answer": "Die Gebühren für Personenstandsurkunden regelt die Personenstandsurkundengebührensatzung der Stadt Kalkstadt 【source: 337ff8e3-0c13-571a-8aaa-f932d98ebc4e#4 | verwaltung-0025_personenstandsurkundengebuehrensatzung.md】. Das Standesamt erhebt für die wichtigsten Amtshandlungen folgende Sätze:\n\n| Amtshandlung | Gebühr |\n|---|---|\n| Erteilung | 28,00 Euro |\n| Verlängerung | 33,00 Euro |\n| Änderung | 38,00 Euro |\n| Zweitausfertigung | 43,00 Euro |\n\nWeitere Positionen, etwa die Eilbearbeitung (58,00 Euro) oder die postalische Zustellung des Bescheids (63,00 Euro), stehen in der Gebührenordnung des Standesamts 【source: 722f3c5d-d2c5-52db-bf3c-f590f20490b0#3 | verwaltung-0026_gebuehrenordnung-standesamt.md】.\n\nDie Gebühr ist innerhalb von vier Wochen nach Bekanntgabe des Bescheids an die Stadtkasse zu zahlen. Wird sie nicht rechtzeitig gezahlt, folgt eine Mahnung mit zwei Wochen Nachfrist; danach wird ein Säumniszuschlag von einem Prozent je angefangenem Monat erhoben.",
+        "expected_documents": [
+          "verwaltung-0025_personenstandsurkundengebuehrensatzung.md",
+          "verwaltung-0026_gebuehrenordnung-standesamt.md"
+        ]
+      },
+      {
+        "query": "Ich bin übrigens Sachbearbeiterin im Standesamt.",
+        "answer": "Danke für den Hinweis! Dann kann ich meine Antworten stärker auf Ihre Arbeit in der Sachbearbeitung zuschneiden.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "wer entscheidet bei uns, wenn die zuständige Kollegin krank ist?",
+        "answer": "Ist die zuständige Sachbearbeitung im Standesamt krank, im Urlaub oder auf Fortbildung, entscheidet die nach der **Vertretungsregelung** der Stadtverwaltung zuständige Vertretung 【source: c7dc102c-7fc7-57be-a177-a1c3ce7f54e3#3 | verwaltung-0027_dienstanweisung-standesamt-1-2024.md】.\n\nIst auch die Vertretung nicht erreichbar, entscheidet die **Amtsleitung des Standesamts**. Dabei gilt:\n\n- Der Vertretungsfall ist stets im Vorgangsverzeichnis zu vermerken.\n- Im Vertretungsfall wird auch der Name der entscheidenden Vertretung dokumentiert 【source: 65d7f04e-7216-55d8-80ed-dfd78b573cbe#5 | verwaltung-0028_dienstanweisung-standesamt-2-2024.md】.\n- Die Amtsleitung darf bei Vorgängen von besonderer Bedeutung oder Schwierigkeit jederzeit selbst eintreten.\n\nWichtig für Sie als Vertretung aus einem anderen Amt: Dann gilt ausschließlich die Vertretungsregelung, nicht die Dienstanweisung des Standesamts.",
+        "expected_documents": [
+          "verwaltung-0027_dienstanweisung-standesamt-1-2024.md",
+          "verwaltung-0028_dienstanweisung-standesamt-2-2024.md"
+        ]
+      },
+      {
+        "query": "Danke, das hilft mir weiter.",
+        "answer": "Sehr gern! Melden Sie sich, wenn noch etwas unklar ist.",
+        "expected_documents": [],
+        "search_expected": false
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Neu mit #1684: Die Fallklasse misst, ob die Zerlegung unter einem Fenster aus langen, produktionsnahen Antworten Suchanfragen erzeugt statt das Gespräch fortzusetzen, und ob eine Nachricht ohne Suchbedarf ohne Suche bleibt. Zustand vorläufig, wird mit der Baseline-Neuziehung dieses Issues aus dem gemessenen Lauf festgeschrieben."
+  },
+  {
+    "id": "verw-conv-ac-004",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Welche Gebühren fallen für einen Bibliotheksausweis an?",
+        "answer": "Für die Benutzung der Stadtbibliothek erhebt das Kulturamt Gebühren nach der Bibliotheksbenutzungsgebührensatzung 【source: 146cbef0-4baf-5c88-82e2-00a9cb348e54#4 | verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md】:\n\n- **Erteilung des Bibliotheksausweises:** 32,00 Euro\n- **Verlängerung:** 37,00 Euro\n- **Änderung:** 42,00 Euro\n- **Zweitausfertigung** (zum Beispiel bei Verlust): 47,00 Euro\n\nDaneben kennt die Gebührenordnung des Kulturamts weitere Positionen, etwa 62,00 Euro für eine Eilbearbeitung und 57,00 Euro für die Bearbeitung eines Widerspruchs 【source: 62d31bd7-9ba0-582e-ad2e-7a53ee4b1ac4#3 | verwaltung-0064_gebuehrenordnung-kulturamt.md】.\n\nDie Gebühr wird mit dem Bescheid fällig und ist innerhalb von vier Wochen zu zahlen. Gegen den Gebührenbescheid können Sie innerhalb eines Monats schriftlich Widerspruch einlegen.\n\nOb für Schülerinnen und Schüler etwas anderes gilt, beantwortet Ihnen die Sachbearbeitung des Kulturamts.",
+        "expected_documents": [
+          "verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md",
+          "verwaltung-0064_gebuehrenordnung-kulturamt.md"
+        ]
+      },
+      {
+        "query": "gibt es für Vereine eine Ermäßigung?",
+        "answer": "Ja. Eingetragene, **gemeinnützige Vereine** mit Sitz in der Stadt Kalkstadt erhalten auf schriftlichen Antrag eine Ermäßigung von **50 Prozent** auf die Gebühren für die Benutzung der Stadtbibliothek 【source: 146cbef0-4baf-5c88-82e2-00a9cb348e54#9 | verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md】.\n\nVoraussetzungen:\n\n1. Der Verein ist eingetragen und gemeinnützig.\n2. Er hat seinen Sitz in Kalkstadt.\n3. Die Gemeinnützigkeit wird durch den **aktuellen Freistellungsbescheid des Finanzamts** nachgewiesen.\n\nDie Ermäßigung gilt nicht rückwirkend für Gebühren, die bereits bestandskräftig festgesetzt sind. Sie ist außerdem unabhängig vom Auskunftsrecht nach § 3 zu beantragen 【source: 146cbef0-4baf-5c88-82e2-00a9cb348e54#10 | verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md】.\n\nStellen Sie den Antrag deshalb am besten, bevor der Gebührenbescheid bestandskräftig wird.",
+        "expected_documents": [
+          "verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md"
+        ]
+      },
+      {
+        "query": "Bitte antworte ab jetzt kurz und präzise.",
+        "answer": "In Ordnung, ich halte mich ab jetzt kurz.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "welches Formular nehme ich dafür?",
+        "answer": "Für die Vereinsermäßigung nehmen Sie **Formular KUL-08**, das Änderungs- und Ermäßigungsformular des Kulturamts 【source: 83bb11f0-bd79-5c79-9847-3d3b9113495b#0 | verwaltung-0068_formularhinweis-kulturamt-8.md】.\n\n- Anzugeben: Name, Anschrift, Geburtsdatum, bei Ermäßigung nach § 13 der Freistellungsbescheid des Finanzamts\n- Nachweis: Gemeinnützigkeit, als beglaubigte Kopie oder im Original zur Einsichtnahme\n- Einreichung: persönlich, per Post mit Aktenzeichen KUL-08 auf dem Umschlag oder über das Formularportal 【source: 83bb11f0-bd79-5c79-9847-3d3b9113495b#1 | verwaltung-0068_formularhinweis-kulturamt-8.md】\n- Bearbeitungsdauer: zwei bis vier Wochen, mit Eilbearbeitung drei bis fünf Werktage\n\nKopie des Formulars und der Nachweise bitte aufbewahren, bis der Vorgang abgeschlossen ist.",
+        "expected_documents": [
+          "verwaltung-0068_formularhinweis-kulturamt-8.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Neu mit #1684: Die Fallklasse misst, ob die Zerlegung unter einem Fenster aus langen, produktionsnahen Antworten Suchanfragen erzeugt statt das Gespräch fortzusetzen, und ob eine Nachricht ohne Suchbedarf ohne Suche bleibt. Zustand vorläufig, wird mit der Baseline-Neuziehung dieses Issues aus dem gemessenen Lauf festgeschrieben."
+  },
+  {
+    "id": "verw-conv-ac-005",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Was kostet die Einsichtnahme in die Personalakte eines ehemaligen Beschäftigten?",
+        "answer": "Die Einsichtnahme in Personalakten ehemaliger Beschäftigter ist beim Personalamt gebührenpflichtig. Grundlage ist die Personalaktenauskunftsgebührensatzung der Stadt Kalkstadt 【source: d7ac33b6-c400-5ee1-ba33-c48908ab69e7#4 | verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md】.\n\nDie wichtigsten Sätze:\n\n- **Erteilung (Personalaktenauskunft):** 27,00 Euro\n- **Verlängerung:** 32,00 Euro\n- **Änderung:** 37,00 Euro\n- **Zweitausfertigung:** 42,00 Euro\n\nDas vollständige Gebührenverzeichnis mit allen weiteren Positionen steht in der Gebührenordnung des Personalamts 【source: efa79500-b54b-5414-a7f5-3638f02faba7#0 | verwaltung-0045_gebuehrenordnung-personalamt.md】.\n\nUnabhängig von der Gebühr haben Antragstellende ein Auskunftsrecht über den Bearbeitungsstand ihres Vorgangs; die Auskunft wird formlos innerhalb von drei Werktagen erteilt. Auf schriftlichen Antrag kann außerdem Einsicht in die eigene Vorgangsakte gewährt werden, soweit keine schutzwürdigen Interessen Dritter entgegenstehen.",
+        "expected_documents": [
+          "verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md",
+          "verwaltung-0045_gebuehrenordnung-personalamt.md"
+        ]
+      },
+      {
+        "query": "Kann ich dagegen Widerspruch einlegen?",
+        "answer": "Ja. Gegen einen **Gebührenbescheid des Personalamts** können Sie Widerspruch einlegen 【source: d7ac33b6-c400-5ee1-ba33-c48908ab69e7#8 | verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md】.\n\nSo läuft das Verfahren ab:\n\n1. **Frist:** innerhalb eines Monats nach Bekanntgabe des Bescheids\n2. **Form:** schriftlich, beim Personalamt\n3. **Entscheidung:** Zunächst prüft das Personalamt selbst. Hilft es dem Widerspruch nicht ab, geht der Vorgang an die Widerspruchsstelle der Stadt Kalkstadt, die abschließend entscheidet.\n\nBitte beachten Sie, dass der Widerspruch die Zahlungsfrist von vier Wochen nicht automatisch aufschiebt. Wird die Gebühr nicht fristgerecht gezahlt, folgen Mahnung und gegebenenfalls ein Säumniszuschlag 【source: d7ac33b6-c400-5ee1-ba33-c48908ab69e7#5 | verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md】.\n\nWenn Sie sich unsicher sind, ob ein Widerspruch Aussicht auf Erfolg hat, lassen Sie sich vorher von der Sachbearbeitung des Personalamts beraten.",
+        "expected_documents": [
+          "verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md"
+        ]
+      },
+      {
+        "query": "Okay, verstanden.",
+        "answer": "Prima! Sagen Sie Bescheid, wenn Sie noch etwas wissen möchten.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "und was kostet mich das?",
+        "answer": "Für die **Bearbeitung eines Widerspruchs** erhebt das Personalamt nach seiner Gebührenordnung eine Gebühr von **52,00 Euro** 【source: efa79500-b54b-5414-a7f5-3638f02faba7#3 | verwaltung-0045_gebuehrenordnung-personalamt.md】.\n\nZum Vergleich die übrigen Positionen der Gebührenordnung:\n\n- Rücknahme auf Antrag: 47,00 Euro\n- Eilbearbeitung: 57,00 Euro\n- postalische Zustellung des Bescheids: 62,00 Euro\n\nDie Gebühren werden jährlich von der Kämmerei auf ihre Kostendeckung überprüft. Bei mehrfacher Inanspruchnahme derselben Amtshandlung innerhalb eines Kalenderjahres wird die Gebühr jedes Mal erneut fällig; eine Sammelrechnung ist auf Antrag möglich 【source: efa79500-b54b-5414-a7f5-3638f02faba7#4 | verwaltung-0045_gebuehrenordnung-personalamt.md】.",
+        "expected_documents": [
+          "verwaltung-0045_gebuehrenordnung-personalamt.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Neu mit #1684: Die Fallklasse misst, ob die Zerlegung unter einem Fenster aus langen, produktionsnahen Antworten Suchanfragen erzeugt statt das Gespräch fortzusetzen, und ob eine Nachricht ohne Suchbedarf ohne Suche bleibt. Zustand vorläufig, wird mit der Baseline-Neuziehung dieses Issues aus dem gemessenen Lauf festgeschrieben."
+  },
+  {
+    "id": "verw-conv-ac-006",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Wofür wird Formular KAE-08 verwendet?",
+        "answer": "Formular KAE-08 ist das **Befreiungs- und Ermäßigungsformular** der Kämmerei der Stadt Kalkstadt 【source: 8115a019-f272-5225-b842-5c21c2aa56f9#0 | verwaltung-0043_formularhinweis-kaemmerei-8.md】. Es wird für Anträge auf Gebührenbefreiung oder Gebührenermäßigung bei allgemeinen Amtshandlungen der Stadtverwaltung verwendet.\n\nDas Formular dient der einheitlichen Erfassung aller Angaben, die die Kämmerei für die Bearbeitung braucht. Ohne vollständig ausgefülltes Formular kann der Vorgang nicht bearbeitet werden; ein unvollständiges Formular wird mit einer Rückfrage zurückgeschickt, was die Bearbeitung erfahrungsgemäß um mehrere Wochen verlängert.\n\nRechtsgrundlage ist die Verwaltungsgebührensatzung der Stadt Kalkstadt, insbesondere die Gebührenbefreiung nach § 3 und die Vereinsermäßigung nach § 13 【source: 8115a019-f272-5225-b842-5c21c2aa56f9#4 | verwaltung-0043_formularhinweis-kaemmerei-8.md】.\n\nDas Formular kann persönlich, per Post oder über das Online-Formularportal eingereicht werden.",
+        "expected_documents": [
+          "verwaltung-0043_formularhinweis-kaemmerei-8.md"
+        ]
+      },
+      {
+        "query": "Ich arbeite in der Kämmerei und berate gerade eine Bürgerin am Schalter.",
+        "answer": "Danke, gut zu wissen – dann gehe ich davon aus, dass Sie die Informationen für die Beratung am Schalter brauchen.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "welche Nachweise muss sie beilegen?",
+        "answer": "Welche Nachweise nötig sind, hängt vom Anliegen ab 【source: 8115a019-f272-5225-b842-5c21c2aa56f9#2 | verwaltung-0043_formularhinweis-kaemmerei-8.md】:\n\n- **Gebührenbefreiung wegen Bedürftigkeit:** ein aktueller Leistungsbescheid, zum Beispiel über Bürgergeld\n- **Ermäßigung für einen gemeinnützigen Verein:** der Freistellungsbescheid des Finanzamts\n- **Identität:** ein Identitätsnachweis\n\nDie Kämmerei akzeptiert beglaubigte Kopien ebenso wie das Original zur Einsichtnahme vor Ort. Fremdsprachige Nachweise müssen mit einer amtlich beglaubigten Übersetzung ins Deutsche eingereicht werden.\n\nZusätzlich sollte die Bürgerin eine Telefonnummer oder E-Mail-Adresse angeben. Fehlt diese, laufen Rückfragen nur per Post, und die Bearbeitung verzögert sich 【source: 8115a019-f272-5225-b842-5c21c2aa56f9#1 | verwaltung-0043_formularhinweis-kaemmerei-8.md】.\n\nTipp für die Beratung: Prüfen Sie gleich am Schalter, ob das Aktenzeichen eines laufenden Vorgangs eingetragen ist – das ist einer der häufigsten Fehler.",
+        "expected_documents": [
+          "verwaltung-0043_formularhinweis-kaemmerei-8.md"
+        ]
+      },
+      {
+        "query": "und wie alt darf der Bescheid höchstens sein?",
+        "answer": "Ein Leistungsbescheid darf zum Zeitpunkt der Antragstellung **nicht älter als drei Monate** sein 【source: 8115a019-f272-5225-b842-5c21c2aa56f9#3 | verwaltung-0043_formularhinweis-kaemmerei-8.md】.\n\nDas ist in der Praxis einer der häufigsten Gründe für Rückfragen:\n\n- Der beigefügte Bescheid liegt außerhalb der Gültigkeitsdauer von drei Monaten.\n- Das Feld für das Aktenzeichen eines bereits laufenden Vorgangs bleibt leer.\n\nBeide Fehler führen zu einer vermeidbaren Rückfrage und verlängern die Bearbeitungsdauer, die regulär zwei bis vier Wochen beträgt.\n\nFür Ihre Beratung heißt das: Lassen Sie sich das Datum des Bescheids zeigen, bevor die Bürgerin das Formular einreicht. Ist der Bescheid zu alt, sollte sie zuerst einen aktuellen Bescheid beim Leistungsträger anfordern.",
+        "expected_documents": [
+          "verwaltung-0043_formularhinweis-kaemmerei-8.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Neu mit #1684: Die Fallklasse misst, ob die Zerlegung unter einem Fenster aus langen, produktionsnahen Antworten Suchanfragen erzeugt statt das Gespräch fortzusetzen, und ob eine Nachricht ohne Suchbedarf ohne Suche bleibt. Zustand vorläufig, wird mit der Baseline-Neuziehung dieses Issues aus dem gemessenen Lauf festgeschrieben."
+  },
+  {
+    "id": "verw-conv-ac-007",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Was regelt die Dienstanweisung ORD-DA-2/2024?",
+        "answer": "Die Dienstanweisung ORD-DA-2/2024 regelt die **Aktenführung und die Fristenkontrolle** im Ordnungsamt der Stadt Kalkstadt. Sie gilt seit dem 1. Januar 2024 und ist ausschließlich für den internen Dienstgebrauch bestimmt 【source: 899325cb-d23d-5de2-80e5-6ed877b80e5b#0 | verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md】.\n\nIhre Kernpunkte:\n\n- **Eingang:** Jeder Vorgang wird am Eingangstag im Vorgangsverzeichnis erfasst und erhält ein Geschäftszeichen aus ORD, Kalenderjahr und laufender Nummer.\n- **Prüfung:** Fehlen Unterlagen, wird eine Nachfrist von zwei Wochen gesetzt; danach wird nach Aktenlage entschieden 【source: 899325cb-d23d-5de2-80e5-6ed877b80e5b#2 | verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md】.\n- **Entscheidung:** schriftlich begründet und in der Vorgangsakte dokumentiert.\n- **Vertretung:** Im Vertretungsfall entscheidet die zuständige Vertretung, notfalls die Amtsleitung.\n\nZiel ist, dass zwei Sachbearbeitungen bei identischer Ausgangslage zum selben Ergebnis kommen.",
+        "expected_documents": [
+          "verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md"
+        ]
+      },
+      {
+        "query": "wie lange muss ich die Unterlagen danach aufheben?",
+        "answer": "Nach der Dienstanweisung ORD-DA-2/2024 sind alle Entscheidungen **revisionssicher zu dokumentieren** und **mindestens zehn Jahre** aufzubewahren 【source: 899325cb-d23d-5de2-80e5-6ed877b80e5b#4 | verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md】.\n\nEine kürzere Frist gilt nur, wenn die Datenschutzregelung nach § 11 der einschlägigen Satzung sie vorsieht.\n\nZur Dokumentation gehören mindestens:\n\n1. der Antrag,\n2. die vorgelegten Nachweise,\n3. der Entscheidungstext,\n4. im Vertretungsfall der Name der entscheidenden Vertretung.\n\nBitte denken Sie daran, dass ein Vertretungsfall zusätzlich im Vorgangsverzeichnis zu vermerken ist, damit später nachvollziehbar bleibt, wer tatsächlich entschieden hat 【source: 899325cb-d23d-5de2-80e5-6ed877b80e5b#3 | verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md】.",
+        "expected_documents": [
+          "verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md"
+        ]
+      },
+      {
+        "query": "Danke dir!",
+        "answer": "Gern geschehen! Viel Erfolg bei der Aktenführung.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "und wer prüft das?",
+        "answer": "Die korrekte Anwendung der Dienstanweisung ORD-DA-2/2024 prüft die **Amtsleitung des Ordnungsamts** 【source: 899325cb-d23d-5de2-80e5-6ed877b80e5b#5 | verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md】.\n\n- Die Prüfung erfolgt **stichprobenartig, mindestens einmal je Quartal**, an abgeschlossenen Vorgängen.\n- Auffälligkeiten, besonders uneinheitliche Entscheidungen bei vergleichbarer Ausgangslage, werden dokumentiert.\n- Sie fließen in die nächste Überarbeitung der Dienstanweisung ein.\n\nBeschwerden, die sich auf die Dienstanweisung beziehen, nimmt ebenfalls die Amtsleitung entgegen und beantwortet sie innerhalb von zwei Wochen. Eine Beschwerde setzt die ursprüngliche Entscheidung nicht automatisch aus 【source: 899325cb-d23d-5de2-80e5-6ed877b80e5b#6 | verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md】.",
+        "expected_documents": [
+          "verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Neu mit #1684: Die Fallklasse misst, ob die Zerlegung unter einem Fenster aus langen, produktionsnahen Antworten Suchanfragen erzeugt statt das Gespräch fortzusetzen, und ob eine Nachricht ohne Suchbedarf ohne Suche bleibt. Zustand vorläufig, wird mit der Baseline-Neuziehung dieses Issues aus dem gemessenen Lauf festgeschrieben."
+  },
+  {
+    "id": "verw-conv-ac-008",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Wofür wird Formular JUG-08 verwendet?",
+        "answer": "Formular JUG-08 ist das **Änderungs- und Ermäßigungsformular** des Jugendamts der Stadt Kalkstadt 【source: 5926e2ea-a67a-5f50-ae63-81652084bcd9#0 | verwaltung-0056_formularhinweis-jugendamt-8.md】. Es wird verwendet für:\n\n- eine **nachträgliche Änderung** der Antragsdaten und\n- einen **Antrag auf Gebührenermäßigung** nach § 13 der Kindertagesstättenbeitragssatzung.\n\nAnzugeben sind Name, Anschrift, Geburtsdatum und gegebenenfalls das Aktenzeichen eines laufenden Vorgangs. Für eine Ermäßigung nach § 13 ist zusätzlich der Freistellungsbescheid des Finanzamts anzugeben 【source: 5926e2ea-a67a-5f50-ae63-81652084bcd9#1 | verwaltung-0056_formularhinweis-jugendamt-8.md】.\n\nEine häufige Frage zu diesem Formular lautet, ob der Kita-Beitrag bei Bürgergeldbezug gezahlt werden muss. Dazu gibt die Sachbearbeitung des Jugendamts im Rahmen des Auskunftsrechts nach § 3 Auskunft.\n\nDie reguläre Bearbeitungsdauer beträgt zwei bis vier Wochen.",
+        "expected_documents": [
+          "verwaltung-0056_formularhinweis-jugendamt-8.md"
+        ]
+      },
+      {
+        "query": "und wenn ich kaum Deutsch spreche, hilft mir da jemand?",
+        "answer": "Ja. Das Jugendamt bietet auf Anfrage eine **persönliche Ausfüllhilfe** für Formular JUG-08 an 【source: 5926e2ea-a67a-5f50-ae63-81652084bcd9#5 | verwaltung-0056_formularhinweis-jugendamt-8.md】. Sie richtet sich ausdrücklich auch an Personen mit **eingeschränkten Deutschkenntnissen**, außerdem an Menschen mit Seheinschränkung oder ohne eigenen Drucker.\n\nZusätzlich gibt es ein barrierefreies elektronisches Formular im Formularportal der Stadt Kalkstadt.\n\nWichtig, falls Sie Nachweise in einer anderen Sprache haben:\n\n- Fremdsprachige Nachweise brauchen eine **amtlich beglaubigte Übersetzung ins Deutsche** 【source: 5926e2ea-a67a-5f50-ae63-81652084bcd9#2 | verwaltung-0056_formularhinweis-jugendamt-8.md】.\n- Das gilt nicht, wenn der Nachweis ohnehin einem standardisierten Formular einer deutschen Behörde entspricht.\n\nAm besten vereinbaren Sie die Ausfüllhilfe vorab telefonisch mit der Sachbearbeitung des Jugendamts während der Öffnungszeiten.",
+        "expected_documents": [
+          "verwaltung-0056_formularhinweis-jugendamt-8.md"
+        ]
+      },
+      {
+        "query": "Antworte bitte in einfacher Sprache.",
+        "answer": "Gern. Ich schreibe ab jetzt in einfacher Sprache: kurze Sätze und wenig Fachwörter.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "kann ich den Antrag zurückziehen?",
+        "answer": "Ja, das geht 【source: 5926e2ea-a67a-5f50-ae63-81652084bcd9#6 | verwaltung-0056_formularhinweis-jugendamt-8.md】.\n\n- Sie können Ihren Antrag **zurückziehen**, solange das Jugendamt noch nicht entschieden hat.\n- Das geht **formlos**. Sie müssen aber **schriftlich** schreiben, zum Beispiel einen Brief oder eine E-Mail.\n- Sie können auch nur **einzelne Angaben ändern**, statt den ganzen Antrag zurückzuziehen.\n\nEine Auskunft, die Sie schon bekommen haben, bleibt gültig. Sie wird durch das Zurückziehen nicht aufgehoben.\n\nMein Tipp: Heben Sie eine Kopie von Ihrem Brief auf. Dann können Sie später zeigen, wann Sie den Antrag zurückgezogen haben.",
+        "expected_documents": [
+          "verwaltung-0056_formularhinweis-jugendamt-8.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Neu mit #1684: Die Fallklasse misst, ob die Zerlegung unter einem Fenster aus langen, produktionsnahen Antworten Suchanfragen erzeugt statt das Gespräch fortzusetzen, und ob eine Nachricht ohne Suchbedarf ohne Suche bleibt. Zustand vorläufig, wird mit der Baseline-Neuziehung dieses Issues aus dem gemessenen Lauf festgeschrieben."
   }
 ]
