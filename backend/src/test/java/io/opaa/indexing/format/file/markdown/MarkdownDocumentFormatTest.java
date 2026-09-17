@@ -235,6 +235,55 @@ class MarkdownDocumentFormatTest {
   }
 
   @Test
+  void aLeadingSetextHeadingStandsInForAMissingAtxHeading() throws IOException {
+    String text =
+        """
+        Aus dem Ausland eingeführtes Fahrzeug anmelden
+        ==============================================
+
+        Zustaendige Stelle: Buergerbuero Rheinfurt
+        """;
+
+    io.opaa.indexing.format.DocumentProperties properties =
+        pipeline.readProperties(sourceFor(text));
+
+    assertThat(properties.firstHeading())
+        .isEqualTo("Aus dem Ausland eingeführtes Fahrzeug anmelden");
+    // The cut stays bound to ATX headings: a Setext heading is a metadata source, not a section
+    // boundary, so no chunk of the Bestand changes.
+    assertThat(pipeline.run(sourceFor(text)).chunks()).hasSize(1);
+  }
+
+  @Test
+  void anAtxHeadingStillOutranksALaterRunOfEqualSigns() throws IOException {
+    String text =
+        """
+        # Gebührensatzung
+
+        Tabelle
+        =======
+        """;
+
+    assertThat(pipeline.readProperties(sourceFor(text)).firstHeading())
+        .isEqualTo("Gebührensatzung");
+  }
+
+  @Test
+  void theHeadTextCarriesTheOpeningOfTheDocument() throws IOException {
+    String text =
+        """
+        # Gebührensatzung
+
+        § 4 Inkrafttreten
+
+        Diese Satzung tritt am 1. Januar 2026 in Kraft.
+        """;
+
+    assertThat(pipeline.readProperties(sourceFor(text)).headText())
+        .contains("Diese Satzung tritt am 1. Januar 2026 in Kraft.");
+  }
+
+  @Test
   void readPropertiesOfAnUnreadableFileIsEmpty() {
     assertThat(
             pipeline.readProperties(

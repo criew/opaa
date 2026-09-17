@@ -90,8 +90,8 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
 
   /**
    * The Info dictionary's Title/CreationDate/ModDate, the first top-level outline entry as the
-   * first heading (ADR-0024) and the opening of the first page's text as the head text - the head
-   * area is the only place a title line is read from.
+   * first heading (ADR-0024) and the first page's text as both title line and head text - the head
+   * area is the only place a title line or an anchored date is read from.
    */
   @Override
   protected DocumentProperties properties(PdfContent content) {
@@ -105,7 +105,8 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
     return content
         .info()
         .withFirstHeading(firstHeading)
-        .withTitleLine(DocumentTitleLine.of(firstPageText));
+        .withTitleLine(DocumentTitleLine.of(firstPageText))
+        .withHeadText(firstPageText);
   }
 
   /**

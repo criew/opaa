@@ -85,6 +85,54 @@ class OdpDocumentFormatTest {
     assertThat(properties.title()).isEqualTo("Haushaltsplan 2026");
   }
 
+  // beispiel-praesentation.odp of the Handstichprobe: no dc:title, so the humanized file name
+  // became the Titel although the first slide names the presentation (#1360).
+  @Test
+  void theFirstSlideTitleIsTheFirstHeadingOnBothPaths() throws IOException {
+    Path file = tempDir.resolve("beispiel-praesentation.odp");
+    writeOdp(
+        file,
+        odpSlide(odpFrame("title", "OPAA Testpraesentation") + odpFrame(null, "Willkommen."))
+            + odpSlide(odpFrame("title", "Gebuehren")));
+
+    DocumentFormatSource source =
+        DocumentFormatSource.ofFile(file, "beispiel-praesentation.odp", ".odp");
+
+    assertThat(pipeline.run(source).properties().firstHeading())
+        .isEqualTo("OPAA Testpraesentation");
+    assertThat(pipeline.readProperties(source).firstHeading()).isEqualTo("OPAA Testpraesentation");
+  }
+
+  @Test
+  void aSlideWithoutATitleYieldsNoHeading() throws IOException {
+    Path file = tempDir.resolve("ohne-titel.odp");
+    writeOdp(file, odpSlide(odpFrame(null, "Willkommen zur Buergerversammlung.")));
+
+    assertThat(
+            pipeline
+                .run(DocumentFormatSource.ofFile(file, "ohne-titel.odp", ".odp"))
+                .properties()
+                .firstHeading())
+        .isNull();
+  }
+
+  // Strictly slide one, like PptxDocumentFormat: a later slide's title names its section, not the
+  // presentation.
+  @Test
+  void aTitleOnASlideBelowTheFirstIsNoHeading() throws IOException {
+    Path file = tempDir.resolve("titel-erst-auf-folie-zwei.odp");
+    writeOdp(
+        file,
+        odpSlide(odpFrame(null, "Willkommen zur Buergerversammlung."))
+            + odpSlide(odpFrame("title", "Gebuehren")));
+
+    DocumentFormatSource source =
+        DocumentFormatSource.ofFile(file, "titel-erst-auf-folie-zwei.odp", ".odp");
+
+    assertThat(pipeline.run(source).properties().firstHeading()).isNull();
+    assertThat(pipeline.readProperties(source).firstHeading()).isNull();
+  }
+
   @Test
   void claimsExactlyOdp() {
     assertThat(pipeline.handledFormats()).containsExactly(".odp");

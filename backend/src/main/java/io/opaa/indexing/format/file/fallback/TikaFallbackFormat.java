@@ -9,6 +9,7 @@ import io.opaa.indexing.format.DocumentFormatSource;
 import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.indexing.format.FormatAdmission;
 import io.opaa.indexing.format.shared.DocumentTitleLine;
+import io.opaa.indexing.format.shared.SetextHeading;
 import java.util.List;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -108,14 +109,13 @@ public class TikaFallbackFormat implements DocumentFormat {
       // so no caller can end up INDEXED with zero chunks.
       return DocumentFormatResult.noExtractableText();
     }
-    return DocumentFormatResult.chunked(chunks)
-        .withProperties(DocumentProperties.EMPTY.withTitleLine(titleLine(source, parsed)));
+    return DocumentFormatResult.chunked(chunks).withProperties(properties(source, parsed));
   }
 
   /**
    * The opening of the extracted text - the only metadata source this pipeline has, since Tika's
-   * own document properties are not read here. Parses the whole document for its first 300
-   * characters; Tika has no cheaper entry point, and the formats reaching this pipeline are small.
+   * own document properties are not read here. Parses the whole document for it; Tika has no
+   * cheaper entry point, and the formats reaching this pipeline are small.
    */
   @Override
   public DocumentProperties readProperties(DocumentFormatSource source) {
@@ -123,8 +123,7 @@ public class TikaFallbackFormat implements DocumentFormat {
       return DocumentProperties.EMPTY;
     }
     try {
-      return DocumentProperties.EMPTY.withTitleLine(
-          titleLine(source, documentService.parseDocument(source.file())));
+      return properties(source, documentService.parseDocument(source.file()));
     } catch (RuntimeException e) {
       log.warn("Could not read properties of {} via Tika", source.fileName(), e);
       return DocumentProperties.EMPTY;
@@ -132,20 +131,43 @@ public class TikaFallbackFormat implements DocumentFormat {
   }
 
   /**
-   * {@code null} for a source without a file: that is text extracted upstream. A title line only
-   * names a Dokumentart if the document names <em>itself</em> - a press release names the Satzung
-   * it reports about, and would inherit its Dokumentart.
+   * Title line, head text and - for the one heading notation a {@code .txt} has - a leading Setext
+   * heading. All three are a file's alone: text without a file was extracted upstream and is a feed
+   * entry, which names other documents than itself.
    */
-  private static String titleLine(DocumentFormatSource source, List<Document> parsed) {
+  private static DocumentProperties properties(DocumentFormatSource source, List<Document> parsed) {
     if (source.file() == null) {
-      return null;
+      return DocumentProperties.EMPTY;
     }
+    String headText = headText(parsed);
+    return DocumentProperties.EMPTY
+        .withTitleLine(DocumentTitleLine.of(headText))
+        .withFirstHeading(SetextHeading.leadingOf(headText))
+        .withHeadText(headText);
+  }
+
+  /**
+   * The opening of the parsed text, taken across the parsed documents in order and stopping at
+   * {@link DocumentProperties#MAX_HEAD_TEXT_LENGTH} characters - a single document of the parse can
+   * be megabytes, so only what fits is copied.
+   */
+  private static String headText(List<Document> parsed) {
+    StringBuilder head = new StringBuilder();
     for (Document document : parsed) {
-      String line = DocumentTitleLine.of(document.getText());
-      if (line != null) {
-        return line;
+      int remaining = DocumentProperties.MAX_HEAD_TEXT_LENGTH - head.length();
+      if (remaining <= 0) {
+        break;
       }
+      String text = document.getText();
+      if (text == null || text.isBlank()) {
+        continue;
+      }
+      if (head.length() > 0) {
+        head.append('\n');
+        remaining--;
+      }
+      head.append(text, 0, Math.min(text.length(), remaining));
     }
-    return null;
+    return head.length() == 0 ? null : head.toString();
   }
 }
