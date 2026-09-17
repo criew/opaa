@@ -1465,7 +1465,13 @@ Zwischenzustand durch.
 
 **Fortschritt und Bedienung.** Der Zustand ist je Bibliothek abfragbar (`GET …/metadata-fields`,
 Feld `pendingSchemaChanges`: verarbeitet, ausstehend, zuletzt fehlgeschlagen) und erscheint in der
-Zustandsübersicht der Seite „Suche & Indexierung" neben dem übrigen Indexzustand. Fortgesetzt wird
+Zustandsübersicht der Seite „Suche & Indexierung" neben dem übrigen Indexzustand. Laufen mehrere
+Änderungen in einer Bibliothek, beantwortet jede Anfrage **ihren eigenen Vorgang**: Eine Feldlöschung
+ist fertig, sobald ihr letztes Dokument geleert ist, auch wenn daneben noch eine Abbildung läuft; die
+Restmenge einer Abbildung zählt nur ihre eigenen Dokumente. Bibliotheksweit ist allein die Angabe,
+die den nächsten Chargen-Aufruf treibt — sie summiert über alle laufenden Änderungen. **Nicht als
+„fehlgeschlagen" gezählt wird ein Dokument, das gerade jemand anderes schreibt**: Es wird
+übersprungen und bleibt ausstehend, aber ein gehaltenes Dokument ist kein Fehler. Fortgesetzt wird
 der Lauf über `POST …/metadata-fields/schema-changes/run`, mit demselben Verwaltungsrecht, das die
 Bestätigung verlangt hat — anders als beim Kontextpräfix-Nachlauf, der ein Systemprozess über einen
 ganzen Bestand ist: Hier hat die Fachperson die Änderung veranlasst, und die Menge ist genau die

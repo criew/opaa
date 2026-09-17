@@ -15,10 +15,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -35,7 +37,10 @@ import org.springframework.transaction.support.TransactionTemplate;
  * filterable until the last document has left it, and it is what no new document may be given; the
  * list entry - respectively the field - is dropped only in the same transaction that finds no
  * document carrying it any more, under a row lock that a concurrent write would have to take too.
- * The {@code ON DELETE RESTRICT} of the document rows is the second guard beneath that.
+ * Only the <b>value</b> mapping has a second guard beneath that: the document rows reference a list
+ * entry with {@code ON DELETE RESTRICT}. They reference their <b>field</b> with {@code ON DELETE
+ * CASCADE}, so a field deletion rests on that row lock alone - dropping the field too early would
+ * not fail, it would take the document values with it.
  *
  * <p>Resumable and idempotent by construction: an advanced document leaves the selection, a
  * document that cannot be advanced keeps everything it had and stays pending, and pausing is not
@@ -175,7 +180,10 @@ public class LibraryMetadataSchemaChangeService {
         processed, skipped, pendingChanges(library.getId()), confirmedChangeId);
   }
 
-  /** What one Charge of a single change did. */
+  /**
+   * What one Charge of a single change did. A contended document is neither: it is scanned past
+   * like a skip, but nothing about it failed, so it is not reported as such.
+   */
   private record ChargeOutcome(long processed, long skipped, boolean completed) {}
 
   private ChargeOutcome advance(
@@ -183,10 +191,11 @@ public class LibraryMetadataSchemaChangeService {
       LibraryMetadataSchemaChange change,
       int budget,
       CurrentUser caller) {
-    // Both foreign keys cascade, so neither subject can be gone while the change row exists. A
-    // missing one is a broken invariant and is reported as such: quietly reporting the change as
-    // done - or, for a missing target, quietly emptying every document instead of mapping it -
-    // would destroy manual values on the strength of a state that must not occur.
+    // Neither subject can be gone while the change row exists: the field and value keys cascade
+    // onto this row, the target key refuses its deletion outright. A missing one is a broken
+    // invariant and is reported as such - quietly reporting the change as done, or quietly emptying
+    // every document instead of mapping it, would destroy manual values on the strength of a state
+    // that must not occur.
     LibraryMetadataField field =
         fieldRepository
             .findById(change.getFieldId())
@@ -212,6 +221,10 @@ public class LibraryMetadataSchemaChangeService {
                                 + " maps onto the absent value "
                                 + change.getTargetValueId()));
     DocumentTypeVocabulary vocabulary = vocabularyRepository.snapshot();
+    // Counted beside the loop's outcomes: the shared loop knows exactly one "did not advance", and
+    // a contended document has to be scanned past like a failed one while being reported as
+    // neither failed nor processed.
+    AtomicInteger contended = new AtomicInteger();
     Map<Advance, Integer> counts =
         DocumentBatchLoop.run(
             budget,
@@ -219,9 +232,11 @@ public class LibraryMetadataSchemaChangeService {
             Advance.SKIPPED,
             (limit, offset) -> selectDocuments(change, limit, offset),
             documentId ->
-                advanceDocument(library, change, ref, replacement, vocabulary, caller, documentId));
+                advanceDocument(
+                    library, change, ref, replacement, vocabulary, caller, documentId, contended));
     long processed = counts.get(Advance.REWRITTEN) + counts.get(Advance.ALREADY_DONE);
-    return new ChargeOutcome(processed, counts.get(Advance.SKIPPED), completeIfDrained(change));
+    long failed = counts.get(Advance.SKIPPED) - contended.get();
+    return new ChargeOutcome(processed, failed, completeIfDrained(change));
   }
 
   /**
@@ -247,7 +262,8 @@ public class LibraryMetadataSchemaChangeService {
       MetadataValueInput replacement,
       DocumentTypeVocabulary vocabulary,
       CurrentUser caller,
-      UUID documentId) {
+      UUID documentId,
+      AtomicInteger contended) {
     try {
       return transactionTemplate.execute(
           status -> {
@@ -279,6 +295,17 @@ public class LibraryMetadataSchemaChangeService {
                 .ifPresent(LibraryMetadataSchemaChange::countProcessedDocument);
             return Advance.REWRITTEN;
           });
+    } catch (CannotAcquireLockException e) {
+      // Somebody else holds this document right now - a parallel Charge, or a person saving a value
+      // on it. That is contention, not a fault: it is scanned past like any unadvanceable
+      // candidate, but it deserves neither a stack trace nor the "fehlgeschlagen" the index status
+      // page reads off the skipped count.
+      contended.incrementAndGet();
+      log.debug(
+          "Document {} of schema change {} is held by another transaction",
+          documentId,
+          change.getId());
+      return Advance.SKIPPED;
     } catch (RuntimeException e) {
       log.warn(
           "Skipping document {} of schema change {}: rewriting its value failed",
@@ -322,8 +349,9 @@ public class LibraryMetadataSchemaChangeService {
 
   /**
    * Claims one document for this Charge. {@code NOWAIT}: a document another Charge (or any other
-   * writer) holds is skipped rather than waited for - it stays pending and the next call finds it,
-   * while a request thread never blocks on a foreign transaction.
+   * writer) holds is scanned past rather than waited for - it stays pending and the next call finds
+   * it, and no Charge queues up document by document behind foreign transactions. The completing
+   * transaction below does wait, for its one subject row.
    */
   private boolean lockCarriedValue(LibraryMetadataSchemaChange change, UUID documentId) {
     String sql =

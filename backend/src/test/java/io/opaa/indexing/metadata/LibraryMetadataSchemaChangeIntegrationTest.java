@@ -305,12 +305,17 @@ class LibraryMetadataSchemaChangeIntegrationTest {
           fieldService.runSchemaChanges(library.getId(), 500, owner);
 
       assertThat(blockedCharge.processedDocuments()).isZero();
-      assertThat(blockedCharge.skippedDocuments()).isEqualTo(1);
       assertThat(blockedCharge.complete()).isFalse();
+      // Held, not broken: a document somebody else is writing right now is scanned past and stays
+      // pending, but it is no fault and must not reach the "fehlgeschlagen" the status page shows.
+      assertThat(blockedCharge.skippedDocuments()).isZero();
       assertThat(schemaChangeService.progressForLibraries(Set.of(library.getId())))
           .hasEntrySatisfying(
               library.getId(),
-              progress -> assertThat(progress.lastSkippedDocuments()).isEqualTo(1));
+              progress -> {
+                assertThat(progress.pendingDocuments()).isEqualTo(1);
+                assertThat(progress.lastSkippedDocuments()).isZero();
+              });
       lock.rollback();
     }
 
@@ -319,6 +324,58 @@ class LibraryMetadataSchemaChangeIntegrationTest {
         .get()
         .satisfies(row -> assertThat(row.getTextValue()).isEqualTo("B"));
     assertThat(fieldValueRepository.findByFieldIdAndCode(fieldId("fassung"), "A")).isEmpty();
+  }
+
+  /**
+   * Every answer is about the operation it was asked for, not about the library. A library may well
+   * have several changes running - and then "is my deletion done?", "how much of my mapping is
+   * left?" and "how much work does this library have?" are three different questions with three
+   * different answers.
+   */
+  @Test
+  void severalChangesOfOneLibraryDoNotAnswerForEachOther() throws IOException {
+    createSelectField("fassung");
+    createSelectField("stand");
+    createSelectField("gremium");
+    Document first = indexed("satzung.pdf");
+    Document second = indexed("gebuehren.pdf");
+    setValue(first, "fassung", "A");
+    setValue(second, "fassung", "A");
+    setValue(first, "stand", "A");
+    setValue(second, "stand", "A");
+    setValue(first, "gremium", "A");
+
+    fieldService.remapValue(library.getId(), "fassung", "A", "B", 1, owner);
+    LibraryFieldValueRemapResult secondRemap =
+        fieldService.remapValue(library.getId(), "stand", "A", "B", 1, owner);
+
+    // Two fields of one library may carry the same value code; the remaining work of the other
+    // mapping is none of this answer's business.
+    assertThat(secondRemap.complete()).isFalse();
+    assertThat(secondRemap.remainingDocuments()).isEqualTo(1);
+
+    LibraryMetadataSchemaRunResult deletion =
+        fieldService.deleteField(library.getId(), "gremium", 500, owner);
+
+    assertThat(deletion.confirmedChangeComplete())
+        .as(
+            "the deletion finished within its first Charge - the mappings beside it are not its"
+                + " business")
+        .isTrue();
+    assertThat(deletion.complete()).isFalse();
+    assertThat(fieldService.fieldsOf(library.getId(), owner))
+        .extracting(definition -> definition.field().getFieldKey())
+        .containsExactlyInAnyOrder("fassung", "stand");
+
+    assertThat(schemaChangeService.progressForLibraries(Set.of(library.getId())))
+        .hasEntrySatisfying(
+            library.getId(),
+            progress -> {
+              assertThat(progress.pendingChanges()).isEqualTo(2);
+              // Summed per change, exactly like the settings page shows it: the one document both
+              // mappings still have to rewrite is two pieces of work, not one.
+              assertThat(progress.pendingDocuments()).isEqualTo(2);
+            });
   }
 
   /** The running change is part of the library's index state, not only of its settings page. */
@@ -375,8 +432,16 @@ class LibraryMetadataSchemaChangeIntegrationTest {
   }
 
   private void setValue(Document document, String code) {
+    setValue(document, "fassung", code);
+  }
+
+  private void setValue(Document document, String fieldKey, String code) {
     correctionService.setValue(
-        library.getId(), document.getId(), "lib:fassung", MetadataValueInput.text(code), editor);
+        library.getId(),
+        document.getId(),
+        "lib:" + fieldKey,
+        MetadataValueInput.text(code),
+        editor);
   }
 
   private UUID fieldId(String fieldKey) {

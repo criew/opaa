@@ -3829,7 +3829,9 @@ paths:
         "202":
           description: >-
             Field retired, documents still being emptied. The run is resumable and the field is
-            gone once its last document was emptied.
+            gone once its last document was emptied. The body describes the whole library's pending
+            work, not only this deletion - it is what the continuation call works off; this
+            deletion's own remainder is its entry in pendingChanges.
           content:
             application/json:
               schema:
@@ -10321,11 +10323,19 @@ components:
         remainingDocuments:
           type: integer
           format: int64
-          description: Documents the pending changes still have to rewrite.
+          description: >-
+            Documents the pending changes of the whole library still have to rewrite, summed per
+            change - a document two changes have to touch counts twice, because it is two pieces of
+            work. Library-wide on purpose: it is what drives the next call, which works off every
+            pending change. Whether one particular operation is done is a different question - the
+            status code of the deletion answers it, and pendingChanges carries the per-change
+            figures.
         complete:
           type: boolean
           description: >-
-            Whether the library has no pending schema change left - the signal to stop calling.
+            Whether the library has no pending schema change left - the signal to stop calling. A
+            deletion that finished within its own first Charge answers 204 even when this is false,
+            because another change of the same library is still running.
         pendingChanges:
           type: array
           items:
