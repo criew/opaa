@@ -150,27 +150,34 @@ class AnswerGenerationServiceTest {
   }
 
   /**
-   * Regression guard for #1684: without a search the prompt says so instead of listing no passages.
-   * An empty passage list reads as a failed search, and the model answers a message that asked for
-   * nothing with "dazu habe ich nichts gefunden".
+   * Regression guard for #1684: a message the decomposition found nothing to search for is still
+   * answered from the passages the search returned, and the model is told not to claim it found
+   * nothing - the classification may be wrong, and a misjudged question keeps its sources.
    */
   @Test
-  void withoutANeededSearchThePromptSaysSoInsteadOfListingNoPassages() {
+  void aMessageWithoutSearchNeedKeepsItsPassagesAndIsNotAnsweredWithNothingFound() {
     when(chatModel.call(any(Prompt.class)))
         .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Gern.")))));
+    var chunk =
+        new Document(
+            "Ein Personalausweis kostet 37,00 Euro.",
+            Map.of("file_name", "ausweis.md", "document_id", "id-ausweis", "chunk_index", 0));
 
     answerGenerationService.generateAnswer(
-        "Ich möchte präzise Antworten.", List.of(), "conv-no-search", List.of(), false);
+        "wenn ich über 24 bin", List.of(chunk), "conv-no-search", List.of(), false);
 
     String systemText = systemTextOf(capturedPrompt());
     assertThat(systemText)
-        .contains(AnswerGenerationService.NO_SEARCH_SECTION)
-        .contains("weise nicht darauf hin, dass keine Dokumente vorliegen oder nichts gefunden")
-        .doesNotContain("Kontextdokumente:\n")
+        .contains("Kontextdokumente:\n")
+        .contains("Ein Personalausweis kostet 37,00 Euro.")
+        .contains("Behaupte nicht, nichts gefunden zu haben")
         .endsWith(AnswerGenerationService.LANGUAGE_REMINDER);
+    assertThat(systemText.indexOf("Behaupte nicht, nichts gefunden zu haben"))
+        .as("ahead of the passages, which the citation rules govern")
+        .isLessThan(systemText.indexOf("Kontextdokumente:\n"));
   }
 
-  /** A search that found nothing keeps the ordinary, empty passage section. */
+  /** A message with search need gets no such instruction, whether or not the search found hits. */
   @Test
   void aSearchWithoutHitsKeepsTheOrdinaryPassageSection() {
     when(chatModel.call(any(Prompt.class)))
@@ -181,7 +188,7 @@ class AnswerGenerationServiceTest {
 
     assertThat(systemTextOf(capturedPrompt()))
         .contains("Kontextdokumente:\n")
-        .doesNotContain(AnswerGenerationService.NO_SEARCH_SECTION);
+        .doesNotContain("Behaupte nicht, nichts gefunden zu haben");
   }
 
   private Prompt capturedPrompt() {

@@ -348,6 +348,44 @@ class ConversationCaseCurationTest {
                     && "expected_documents must not be empty".equals(v.rule()));
   }
 
+  /**
+   * Regression guard for #1684: a follow-up without a question mark - a condition, a noun phrase,
+   * "und für ..." - is the question a decomposition most readily takes for a remark. Without such
+   * turns that misjudgement cannot be measured.
+   */
+  @Test
+  void theAnswerContinuationClassNeedsFollowUpsWithoutAQuestionMark() {
+    ConversationCase onlyQuestionMarks =
+        continuationCase(
+            "verw-conv-ac-001",
+            List.of(
+                new ConversationCase.Turn("Frage 1?", LONG_ANSWER, List.of("a.md"), null),
+                new ConversationCase.Turn("Danke.", "Gern.", List.of(), null, false),
+                new ConversationCase.Turn(
+                    "und wenn ich über 60 bin?", LONG_ANSWER, List.of("a.md"), null)));
+    ConversationCase twoWithout =
+        continuationCase(
+            "verw-conv-ac-002",
+            List.of(
+                new ConversationCase.Turn("Frage ohne Zeichen", LONG_ANSWER, List.of("a.md"), null),
+                new ConversationCase.Turn(
+                    "wenn ich über 60 bin", LONG_ANSWER, List.of("a.md"), null),
+                new ConversationCase.Turn("Danke.", "Gern.", List.of(), null, false),
+                new ConversationCase.Turn("und für Rentner", LONG_ANSWER, List.of("a.md"), null)));
+
+    List<Violation> violations =
+        ConversationCaseCuration.validate(
+            List.of(onlyQuestionMarks, twoWithout), DOMAIN, Set.of("a.md"));
+
+    assertThat(violations)
+        .as("the first turn is no follow-up, so two remain - one short of the minimum")
+        .anyMatch(
+            v ->
+                v.caseId() == null
+                    && ConversationCaseCuration.FOLLOW_UP_WITHOUT_QUESTION_MARK_RULE.equals(
+                        v.rule()));
+  }
+
   @Test
   void everyClassNeedsItsMinimumOfCasesAndOfDistinctExpectedSets() {
     ConversationCase onlyCase =

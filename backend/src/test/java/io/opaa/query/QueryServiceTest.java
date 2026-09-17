@@ -1782,28 +1782,59 @@ class QueryServiceTest {
     }
 
     /**
-     * #1684: a message the decomposition found nothing to search for is answered without a search -
-     * not with the fallback - and the answer is told so. The turn names no searched library either,
-     * so the chat does not print "Durchsucht wurden" under a reply to "Danke".
+     * Regression guard for #1684: a message the decomposition found nothing to search for still
+     * runs the search stages, with the fallback query of the search window, and names what it
+     * searched. Only the answer learns of the classification - a follow-up question without a
+     * question mark, misjudged as a remark, keeps its sources.
      */
     @Test
-    void aMessageWithoutAnythingToSearchForIsAnsweredWithoutASearch() {
-      when(chatMemory.get(any())).thenReturn(List.of());
+    void aMessageWithoutSearchNeedIsSearchedWithTheFallbackQueryAndTheAnswerIsTold() {
+      UUID chatId = UUID.randomUUID();
+      when(chatMemory.get(currentUserId + ":" + chatId))
+          .thenReturn(
+              List.of(
+                  new UserMessage("Was kostet ein Personalausweis?"),
+                  new AssistantMessage("Ein Personalausweis kostet 37,00 Euro.")));
       when(queryDecompositionService.decompose(
-              argThat(context -> context != null && "Danke!".equals(context.question())), eq(3)))
+              argThat(
+                  context -> context != null && "wenn ich über 24 bin".equals(context.question())),
+              eq(3)))
           .thenReturn(Optional.of(List.of()));
+      var chunk =
+          Document.builder()
+              .text("Personalausweis ab 24 Jahren: 37,00 Euro")
+              .metadata(Map.of("file_name", "ausweis.md", "document_id", "doc-ausweis"))
+              .score(0.9)
+              .build();
+      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
       var chatResponse =
-          new ChatResponse(List.of(new Generation(new AssistantMessage("Gern geschehen."))));
+          new ChatResponse(List.of(new Generation(new AssistantMessage("37,00 Euro."))));
       when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
+      var library = mock(KnowledgeLibrary.class);
+      when(library.getId()).thenReturn(readableLibraryId);
+      when(library.getName()).thenReturn("Dienstanweisungen");
+      when(knowledgeLibraryRepository.findAllById(Set.of(readableLibraryId)))
+          .thenReturn(List.of(library));
 
-      QueryResult response = queryService.query("Danke!", null, caller, true, List.of());
+      QueryResult response =
+          queryService.query("wenn ich über 24 bin", chatId, caller, true, List.of());
 
-      verifyNoInteractions(vectorStore);
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(vectorStore).similaritySearch(captor.capture());
+      assertThat(captor.getValue().getQuery())
+          .isEqualTo("Was kostet ein Personalausweis? wenn ich über 24 bin");
       verify(answerGenerationService)
-          .generateAnswer(eq("Danke!"), eq(List.of()), any(), any(), eq(false));
-      assertThat(response.metadata().searchedLibraries()).isEmpty();
-      verify(knowledgeLibraryRepository, never()).findAllById(any());
+          .generateAnswer(
+              eq("wenn ich über 24 bin"),
+              argThat(chunks -> chunks != null && chunks.size() == 1),
+              any(),
+              any(),
+              eq(false));
+      assertThat(response.sources()).extracting(ChatSource::getFileName).contains("ausweis.md");
+      assertThat(response.metadata().searchedLibraries())
+          .extracting(SearchedLibraryRef::id)
+          .containsExactly(readableLibraryId);
     }
 
     /** A search that found nothing is still a search: the answer is not told otherwise. */

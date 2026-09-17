@@ -269,6 +269,54 @@ class QueryDecompositionServiceTest {
   }
 
   /**
+   * The rule for the sentinel names conditions and incomplete follow-ups as questions: a message
+   * without a question mark that continues a subject of the conversation asks for something.
+   */
+  @Test
+  void theSystemPromptTreatsConditionsAndIncompleteFollowUpsAsQuestions() {
+    stubChatModelResponse("KEINE_SUCHE");
+
+    service.decompose(DecompositionContext.of("Danke.", List.of()), 3);
+
+    assertThat(capturedSystemPrompt())
+        .contains("ohne Fragezeichen")
+        .contains("\"wenn ich ...\"")
+        .contains("\"falls ...\"")
+        .contains("\"und für ...\"");
+  }
+
+  /**
+   * The labels of the text block are OPAA's wording, not part of the question: a model that copies
+   * one in front of a search query searches for it.
+   */
+  @Test
+  void aLeadingPromptLabelIsCutFromASubQuery() {
+    stubChatModelResponse(
+        "Aktuelle Nutzerfrage: Was kostet ein Personalausweis?\nNutzer: Gebühren für einen Reisepass");
+
+    Optional<List<String>> subQueries =
+        service.decompose(
+            DecompositionContext.of(
+                "Was kostet ein Personalausweis oder ein Reisepass?", List.of()),
+            3);
+
+    assertThat(subQueries)
+        .contains(List.of("Was kostet ein Personalausweis?", "Gebühren für einen Reisepass"));
+  }
+
+  /** A line of nothing but label words is no search query and costs the others nothing. */
+  @Test
+  void aLineOfLabelWordsAloneIsDropped() {
+    stubChatModelResponse("Antwort auf die aktuelle Nutzerfrage:\nWas kostet ein Personalausweis?");
+
+    Optional<List<String>> subQueries =
+        service.decompose(DecompositionContext.of("Was kostet ein Personalausweis?", List.of()), 3);
+
+    assertThat(subQueries).contains(List.of("Was kostet ein Personalausweis?"));
+    verify(metrics, never()).recordPrunedDecomposition();
+  }
+
+  /**
    * Regression guard for #1254: an output that shares no word with the question replaced the
    * question instead of restating it. Searching for it discards the user's request; the run falls
    * back to the undecomposed question, loudly.

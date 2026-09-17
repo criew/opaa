@@ -8,6 +8,7 @@ import io.opaa.chat.ChatNoteCandidate;
 import io.opaa.chat.ChatNoteList;
 import io.opaa.eval.ConversationEvaluationReport.ConversationRunConfiguration;
 import io.opaa.query.answer.CaffeineChatMemoryRepository;
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -574,36 +575,41 @@ class ConversationRetrievalEvaluatorTest {
         "Grund");
   }
 
-  /** Answers every turn with {@code DOC_A}/{@code DOC_B}; the second turn searches or not. */
-  private static ConversationRetrievalEvaluator.TurnInvocation pipelineSearchingTheSecondTurn(
-      boolean searchSecondTurn) {
+  /**
+   * Answers every turn with {@code DOC_A}/{@code DOC_B}. The second turn is searched either way - a
+   * run always searches - and is judged to need a search or not.
+   */
+  private static ConversationRetrievalEvaluator.TurnInvocation pipelineJudgingTheSecondTurn(
+      boolean secondTurnNeedsSearch) {
     return (conversationCase, turnIndex, window, note) -> {
       if (turnIndex == 1) {
-        return searchSecondTurn
-            ? new ConversationRetrievalEvaluator.TurnInvocationResult(
-                List.of(DOC_C), List.of("Ich fasse mich gern kürzer."))
-            : new ConversationRetrievalEvaluator.TurnInvocationResult(List.of(), List.of());
+        return new ConversationRetrievalEvaluator.TurnInvocationResult(
+            List.of(DOC_C),
+            List.of("Was kostet ein Anwohnerparkausweis? Antworte bitte kürzer."),
+            secondTurnNeedsSearch);
       }
       return new ConversationRetrievalEvaluator.TurnInvocationResult(
-          List.of(turnIndex == 0 ? DOC_A : DOC_B), List.of("Teilfrage " + (turnIndex + 1)));
+          List.of(turnIndex == 0 ? DOC_A : DOC_B), List.of("Teilfrage " + (turnIndex + 1)), true);
     };
   }
 
   @Test
-  void aTurnWithoutSearchIsSolvedExactlyWhenNothingWasSearched() {
-    ConversationRetrievalEvaluator.CaseOutcome notSearched =
+  void aTurnWithoutSearchIsSolvedExactlyWhenTheRunJudgedItToNeedNone() {
+    ConversationRetrievalEvaluator.CaseOutcome judgedWithoutSearch =
         ConversationRetrievalEvaluator.evaluateCase(
-            caseWithAMessageWithoutSearch(), chatMemory(20), pipelineSearchingTheSecondTurn(false));
-    ConversationRetrievalEvaluator.CaseOutcome searched =
+            caseWithAMessageWithoutSearch(), chatMemory(20), pipelineJudgingTheSecondTurn(false));
+    ConversationRetrievalEvaluator.CaseOutcome judgedAsSearch =
         ConversationRetrievalEvaluator.evaluateCase(
-            caseWithAMessageWithoutSearch(), chatMemory(20), pipelineSearchingTheSecondTurn(true));
+            caseWithAMessageWithoutSearch(), chatMemory(20), pipelineJudgingTheSecondTurn(true));
 
-    assertThat(notSearched.turns().get(1).solved()).isTrue();
-    assertThat(notSearched.solved()).isTrue();
-    assertThat(searched.turns().get(1).solved())
-        .as("a message with nothing to look up that was turned into a search query")
+    assertThat(judgedWithoutSearch.turns().get(1).solved())
+        .as("searched with the fallback all the same, which is not what the turn is judged by")
+        .isTrue();
+    assertThat(judgedWithoutSearch.solved()).isTrue();
+    assertThat(judgedAsSearch.turns().get(1).solved())
+        .as("a message with nothing to look up that was judged to need a search")
         .isFalse();
-    assertThat(searched.solved()).isFalse();
+    assertThat(judgedAsSearch.solved()).isFalse();
   }
 
   @Test
@@ -614,7 +620,7 @@ class ConversationRetrievalEvaluatorTest {
                 ConversationRetrievalEvaluator.evaluateCase(
                     caseWithAMessageWithoutSearch(),
                     chatMemory(20),
-                    pipelineSearchingTheSecondTurn(true))),
+                    pipelineJudgingTheSecondTurn(true))),
             runConfiguration());
 
     assertThat(report.overall().n()).isEqualTo(2);
@@ -623,25 +629,84 @@ class ConversationRetrievalEvaluatorTest {
     assertThat(report.overall().hitRateAt5())
         .as("the searched message ranks no expected document, and counts for nothing here")
         .isEqualTo(1.0);
-    assertThat(report.noSearch().turns()).isEqualTo(1);
-    assertThat(report.noSearch().searchedTurnIds()).containsExactly("verw-conv-ac-001#2");
+    assertThat(report.noSearch().noSearchTurns()).isEqualTo(1);
+    assertThat(report.noSearch().noSearchTurnIdsJudgedAsSearch())
+        .containsExactly("verw-conv-ac-001#2");
+    assertThat(report.noSearch().searchTurnIdsJudgedAsNoSearch()).isEmpty();
     ConversationEvaluationReport.TurnResult messageTurn = report.cases().getFirst().turns().get(1);
     assertThat(messageTurn.searchExpected()).isFalse();
+    assertThat(messageTurn.searchNeeded()).isTrue();
     assertThat(messageTurn.hitRateAt5()).isNull();
-    assertThat(messageTurn.subQueries()).containsExactly("Ich fasse mich gern kürzer.");
   }
 
+  /**
+   * Regression guard for #1684: a question judged to need no search is still searched and may score
+   * like any other turn - so the misjudgement has to be counted on its own, or it is invisible. It
+   * is counted in a dataset without a single turn without search, too.
+   */
   @Test
-  void aDatasetWithoutATurnWithoutSearchHasNoSuchSection() {
-    List<ConversationRetrievalEvaluator.CaseOutcome> outcomes =
-        List.of(
-            ConversationRetrievalEvaluator.evaluateCase(
-                twoTurnCase("anaphora_resolution"),
-                chatMemory(20),
-                new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B)))));
+  void aQuestionJudgedToNeedNoSearchIsCountedAlthoughItsTurnScores() {
+    ConversationEvaluationReport report =
+        ConversationRetrievalEvaluator.report(
+            List.of(
+                ConversationRetrievalEvaluator.evaluateCase(
+                    twoTurnCase("anaphora_resolution"),
+                    chatMemory(20),
+                    (conversationCase, turnIndex, window, note) ->
+                        new ConversationRetrievalEvaluator.TurnInvocationResult(
+                            List.of(turnIndex == 0 ? DOC_A : DOC_B),
+                            List.of("Teilfrage " + (turnIndex + 1)),
+                            turnIndex == 0))),
+            runConfiguration());
 
-    assertThat(ConversationRetrievalEvaluator.report(outcomes, runConfiguration()).noSearch())
-        .isNull();
+    assertThat(report.cases().getFirst().solved())
+        .as("the fallback search found the document")
+        .isTrue();
+    assertThat(report.noSearch().noSearchTurns()).isZero();
+    assertThat(report.noSearch().searchTurnsJudgedAsNoSearch()).isEqualTo(1);
+    assertThat(report.noSearch().searchTurnIdsJudgedAsNoSearch())
+        .containsExactly("verw-conv-001#2");
+    assertThat(ConversationReportWriter.renderSummary(report))
+        .contains("Runden mit Suchbedarf, als „keine Suche“ eingestuft: 1 (verw-conv-001#2)");
+    assertThat(ConversationReportWriter.renderMarkdown(report, null))
+        .contains("Runden mit Suchbedarf, als „keine Suche“ eingestuft: 1 (verw-conv-001#2)");
+  }
+
+  /** Both directions stay visible when nothing was misjudged - a zero, not an absent section. */
+  @Test
+  void aRunWithoutMisjudgementReportsBothDirectionsAsZero() {
+    ConversationEvaluationReport report =
+        ConversationRetrievalEvaluator.report(
+            List.of(
+                ConversationRetrievalEvaluator.evaluateCase(
+                    caseWithAMessageWithoutSearch(),
+                    chatMemory(20),
+                    pipelineJudgingTheSecondTurn(false))),
+            runConfiguration());
+
+    String summary = ConversationReportWriter.renderSummary(report);
+    assertThat(summary)
+        .contains("Runden ohne Suchbedarf: 1, davon als Suche eingestuft: 0")
+        .contains("Runden mit Suchbedarf, als „keine Suche“ eingestuft: 0");
+  }
+
+  /** The chat model's temperature is reported with the run, as an observation next to the model. */
+  @Test
+  void theReportNamesTheTemperatureTheChatModelRanAt() {
+    ConversationEvaluationReport report =
+        ConversationRetrievalEvaluator.report(
+            List.of(
+                ConversationRetrievalEvaluator.evaluateCase(
+                    twoTurnCase("anaphora_resolution"),
+                    chatMemory(20),
+                    new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B))))),
+            runConfiguration());
+
+    assertThat(report.runConfiguration().chatTemperature()).isEqualByComparingTo("0.7");
+    assertThat(ConversationReportWriter.renderSummary(report))
+        .contains("Chat-Modell=qwen2.5:1.5b-instruct bei Temperatur 0.7");
+    assertThat(ConversationReportWriter.renderMarkdown(report, null))
+        .contains("Chat-Modell `qwen2.5:1.5b-instruct` bei Temperatur 0.7");
   }
 
   @Test
@@ -702,6 +767,7 @@ class ConversationRetrievalEvaluatorTest {
             20,
             ConversationMemoryProfile.SEARCH_WINDOW_QUESTION_ONLY,
             ConversationMemoryProfile.NO_CONVERSATION_NOTE),
-        2);
+        2,
+        new BigDecimal("0.7"));
   }
 }

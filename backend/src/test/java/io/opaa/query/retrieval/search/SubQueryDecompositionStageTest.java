@@ -96,19 +96,23 @@ class SubQueryDecompositionStageTest {
   }
 
   /**
-   * #1684: a message without anything to search for halts the run with no search query at all -
-   * neither sub-queries nor the fallback, which would search for a sentence that asked for nothing.
+   * Regression guard for #1684: a message the decomposition finds nothing to search for is still
+   * searched, with the fallback query and never with a sentence of the model - a follow-up question
+   * misjudged as a remark keeps its sources.
    */
   @Test
-  void aMessageWithoutAnythingToSearchForHaltsTheRunWithoutASearchQuery() {
+  void aMessageWithoutAnythingToSearchForIsStillSearchedWithTheFallbackQuery() {
     when(decomposition.decompose(any(), anyInt())).thenReturn(Optional.of(List.of()));
 
     StageOutcome outcome = stage.apply(contextWith(THREE_TURNS, 2), RetrievalState.initial());
 
-    assertThat(outcome.state().halted()).isTrue();
-    assertThat(outcome.state().searchQueries()).isEmpty();
+    String fallback = "Und wie lange ist er gültig? Gilt das auch für Zweitwagen?";
+    assertThat(outcome.state().halted()).isFalse();
+    assertThat(outcome.state().searchQueries()).containsExactly(fallback);
     assertThat(outcome.explanation().notes())
-        .containsExactly(RetrievalNote.DECOMPOSITION_NO_SEARCH.format());
+        .containsExactly(
+            RetrievalNote.DECOMPOSITION_NO_SEARCH.format(),
+            RetrievalNote.SEARCH_QUERY.format(fallback));
   }
 
   /** Without a preceding turn in the search window the fallback is the question alone. */
