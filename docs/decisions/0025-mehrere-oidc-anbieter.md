@@ -401,6 +401,15 @@ stille Erneuerung und die 401-Behandlung aus ADR-0005 (#737) arbeiten unverände
 „Mit anderem Konto anmelden" schickt `prompt=login` an den gewählten Anbieter (Plugwerk
 `PromptAwareOAuth2AuthorizationRequestResolver`, hier als `extraQueryParams` der SPA).
 
+**Nachtrag (#1631):** Es gibt einen zweiten `prompt`-Wert und damit einen vierten Ausgang des
+Callbacks. Beim Betreten der Anmeldeseite startet die SPA einmal je Browser-Tab einen Versuch mit
+`prompt=none` beim vorgeschlagenen Anbieter, damit eine laufende Anbieter-Sitzung ohne Klick
+übernommen wird. Der Anbieter des Flusses wird dabei abgelegt wie oben, ergänzt um einen Merker je
+Fluss, dass dieser eine der automatische ist. Lehnt der Anbieter ab (`login_required` und die
+verwandten Antworten aus OIDC Core 3.1.2.6), endet der Callback ohne Fehlermeldung auf der
+Anmeldeseite; ein Fehler eines geklickten Flusses behält seine Meldung unverändert. Am Fluss
+selbst, an der geteilten Redirect-URI und an der Abmeldung ändert das nichts.
+
 **Was der öffentliche Konfigurationsendpunkt preisgibt, ist bewusst und begrenzt:** Anzeigename,
 Issuer-URI und Client-ID jedes aktivierten Anbieters — genau das, was jeder sieht, der auf der
 Anmeldeseite einen Anbieter anklickt (der Browser ruft dessen Discovery und Autorisierungsendpunkt

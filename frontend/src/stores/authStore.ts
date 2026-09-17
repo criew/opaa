@@ -49,6 +49,7 @@ import {
   setPendingHandover,
 } from './handoverFlow'
 import {
+  authorizationErrorCode,
   clearSilentSignInFlow,
   isAuthorizationRefusal,
   isSilentSignInFlow,
@@ -561,10 +562,16 @@ export const useAuthStore = create<AuthState>((set, get) => {
         if (!silent) set({ error: PROVIDER_GONE_MESSAGE })
         return
       }
+      // Written for every flow, not merely set for the silent one: an attempt that never comes
+      // back - cancelled at the provider's mask, answered with a page of the provider's own, or
+      // returned into a callback that could not load its configuration - would otherwise leave the
+      // note standing, and the next flow, the clicked one, would be taken for it and lose its
+      // error message.
+      if (silent) markSilentSignInFlow()
+      else clearSilentSignInFlow()
       // The suggestion names the provider a person chose last; an attempt that may well be refused
       // is not a choice, and claiming that place would also mislabel a tile as "Zuletzt verwendet".
-      if (silent) markSilentSignInFlow()
-      else writeStorage(localStorage, LAST_PROVIDER_STORAGE_KEY, chosen)
+      if (!silent) writeStorage(localStorage, LAST_PROVIDER_STORAGE_KEY, chosen)
       set({ isSigningIn: true, sessionKind: 'oidc', error: null })
       try {
         await userManager.signinRedirect(signinRedirectArgs(options))
@@ -658,13 +665,19 @@ export const useAuthStore = create<AuthState>((set, get) => {
       // the flow's provider is pinned per tab; without it (or with a provider disabled in the
       // meantime, whose manager was never built) there is nothing to complete the callback with
       const flowProvider = readStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY)
-      // #1631: whether the redirect that is coming back was the automatic attempt belongs to this
-      // one trip. Read and dropped before any branch below returns, so the next flow - a click on a
-      // provider, say - is never mistaken for one nobody asked for and keeps its error message.
+      // #1631: whether the redirect coming back was the automatic attempt. Read and dropped before
+      // any branch below returns, so a callback that lands here twice is judged once; that the note
+      // belongs to this flow and no earlier one is settled where it is written (see loginOidc).
       const silentFlow = isSilentSignInFlow()
       clearSilentSignInFlow()
       if (!userManager || !flowProvider || flowProvider !== activeProviderId) {
         clearHandoverInFlight()
+        if (silentFlow) {
+          // The provider was disabled while an attempt nobody asked for was under way: still not
+          // this person's failure, and the sign-in page lists what is left.
+          set({ error: null, isLoading: false, isSigningIn: false })
+          return 'silent-refused'
+        }
         set({ error: PROVIDER_GONE_MESSAGE, isLoading: false })
         return 'failed'
       }
@@ -699,6 +712,11 @@ export const useAuthStore = create<AuthState>((set, get) => {
         if (silentFlow && isAuthorizationRefusal(err)) {
           // No session at the provider (or none it will hand over unasked): the person asked for
           // none of this, so the sign-in page comes back as it was, without an error of its own.
+          // Logged all the same - an installation whose prompt=none is refused for a reason other
+          // than a missing session (a client the provider does not know, a redirect URI it does not
+          // accept) would have nothing at all to go by otherwise. Never the error object itself:
+          // oidc-client-ts's ErrorResponse carries the failed token request in `form`.
+          console.warn('Silent sign-in refused by the provider', authorizationErrorCode(err))
           set({ error: null, isLoading: false, isSigningIn: false })
           return 'silent-refused'
         }
@@ -719,6 +737,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
         return false
       }
       writeStorage(localStorage, LAST_PROVIDER_STORAGE_KEY, providerId)
+      // #1631: this flow is not the automatic one - a note left behind by an attempt that never
+      // came back must not make the callback of this one swallow its error message.
+      clearSilentSignInFlow()
       set({ isSigningIn: true, error: null })
       markHandoverInFlight()
       try {

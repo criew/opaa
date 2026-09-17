@@ -28,6 +28,9 @@ describe('SystemLoginPage', () => {
   const { loginLocal } = useAuthStore.getState()
 
   beforeEach(() => {
+    // #1631: the note that this tab has spent its automatic sign-in attempt lives in
+    // sessionStorage - a test leaving it behind would silently disarm the next one.
+    sessionStorage.clear()
     useBrandingStore.setState({ branding: OPAA_BRANDING })
     useAuthStore.setState({
       mode: 'oidc',
@@ -113,6 +116,40 @@ describe('SystemLoginPage', () => {
     )
 
     expect(screen.getByText('Reguläre Anmeldung')).toBeInTheDocument()
+  })
+
+  /**
+   * #1631: with a running provider session the regular page signs in automatically, and its mask
+   * for accounts of this installation would be gone before anybody could use it. This page is the
+   * documented second door, so passing through it takes that attempt off the table - otherwise the
+   * only way to the mask would be a sign-out, and that ends the provider session as well.
+   */
+  it('takes the automatic sign-in off the table on its way to the regular page', () => {
+    useAuthStore.setState({
+      localAccounts: localEnabled,
+      providers: [
+        {
+          id: 'p-opaa',
+          displayName: 'Verzeichnisdienst',
+          issuerUri: 'https://idp.example.test/realms/opaa',
+          clientId: 'opaa-frontend',
+          isDefault: true,
+          sortOrder: 0,
+        },
+      ],
+    })
+    expect(useAuthStore.getState().isSilentSignInPending()).toBe(true)
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/login/system" element={<SystemLoginPage />} />
+        <Route path="/login" element={<div>Reguläre Anmeldung</div>} />
+      </Routes>,
+      { withRouter: true, initialRoute: '/login/system', withNotificationHost: false },
+    )
+
+    expect(screen.getByText('Reguläre Anmeldung')).toBeInTheDocument()
+    expect(useAuthStore.getState().isSilentSignInPending()).toBe(false)
   })
 
   it('leaves an established session alone', () => {

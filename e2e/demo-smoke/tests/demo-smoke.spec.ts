@@ -155,7 +155,10 @@ test.describe('Demo-Smoke (#232)', () => {
           response.url().endsWith('/api/v1/auth/me') &&
           response.status() === 200,
       ),
-      page.goto('/login'),
+      // 'commit' rather than the default 'load': the automatic attempt replaces this very document
+      // as soon as the sign-in page has judged, and a replace that wins the race against `load`
+      // would end this goto with net::ERR_ABORTED. What follows is asserted by waitForURL anyway.
+      page.goto('/login', { waitUntil: 'commit' }),
     ])
 
     // Not a single click in between - the sign-in page led through Keycloak and back on its own.

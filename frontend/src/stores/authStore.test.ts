@@ -1025,14 +1025,63 @@ describe('authStore', () => {
         expect(isSilentSignInFlow()).toBe(false)
       })
 
-      it('keeps the message of a sign-in somebody actually started', async () => {
-        const outcome = await callbackWith(
-          new ErrorResponse({ error: 'login_required', error_description: 'Anmeldung nötig' }),
-          { silent: false },
-        )
+      /**
+       * The note of an attempt that never came back - the person cancelled at the provider's mask,
+       * the provider answered with a page of its own - must not be read as belonging to the flow
+       * that follows. Without that, a click on a provider that is then refused (`access_denied` on
+       * a cancelled mask, `unauthorized_client` on a misconfigured one) would put the person back
+       * on the sign-in page with no explanation at all, as often as they try.
+       */
+      it('keeps the message of a sign-in somebody actually started, even after a stale note', async () => {
+        sessionStorage.setItem('opaa.oidc.flowProvider', 'p-opaa')
+        await initializeOidc()
+        markSilentSignInFlow()
+        const redirect = spyOnRedirect()
+        const callback = vi
+          .spyOn(UserManager.prototype, 'signinRedirectCallback')
+          .mockRejectedValue(
+            new ErrorResponse({
+              error: 'access_denied',
+              error_description: 'Abbruch an der Anbieter-Maske',
+            }),
+          )
+        try {
+          await useAuthStore.getState().loginOidc('p-opaa')
+          expect(isSilentSignInFlow()).toBe(false)
 
-        expect(outcome).toBe('failed')
-        expect(useAuthStore.getState().error).toBe('Anmeldung nötig')
+          await expect(useAuthStore.getState().handleOidcCallback()).resolves.toBe('failed')
+          expect(useAuthStore.getState().error).toBe('Abbruch an der Anbieter-Maske')
+        } finally {
+          redirect.mockRestore()
+          callback.mockRestore()
+        }
+      })
+
+      it('drops a stale note when a handover sign-in starts', async () => {
+        await initializeOidc()
+        markSilentSignInFlow()
+        const redirect = spyOnRedirect()
+        try {
+          await useAuthStore.getState().startHandoverSignIn('p-opaa', 'handover-code')
+
+          expect(redirect).toHaveBeenCalledTimes(1)
+          expect(isSilentSignInFlow()).toBe(false)
+        } finally {
+          redirect.mockRestore()
+        }
+      })
+
+      /**
+       * The provider was disabled while an attempt nobody asked for was under way. The person did
+       * not start it, so the sign-in page carries what is left instead of a hard refusal.
+       */
+      it('says nothing when the provider of the automatic attempt is gone on return', async () => {
+        sessionStorage.setItem('opaa.oidc.flowProvider', 'p-gone')
+        await initializeOidc()
+        markSilentSignInFlow()
+
+        await expect(useAuthStore.getState().handleOidcCallback()).resolves.toBe('silent-refused')
+        expect(useAuthStore.getState().error).toBeNull()
       })
 
       it('keeps the message when the attempt failed on the way rather than by refusal', async () => {

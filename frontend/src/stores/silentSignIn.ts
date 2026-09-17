@@ -16,29 +16,31 @@ const SPENT_KEY = 'opaa.oidc.silentSignInSpent'
 const FLOW_KEY = 'opaa.oidc.silentSignInFlow'
 
 /**
- * The same note in module scope, for the one case in which the written one cannot be: where
- * `sessionStorage` is unavailable (private mode) the single attempt this tab has would otherwise
- * start over on every render of the sign-in page. A redirect cannot even get under way there -
- * oidc-client-ts keeps its PKCE verifier in that same storage - but this guard must not rest on
- * that. Where the storage answers, it is the only source of truth.
+ * The stand-in for a note that could not be written. A storage that answers reads and refuses
+ * writes is a state of its own - a full quota, a browser set to block site data - and it is not
+ * the same as one that throws on every call: reading it back would say "not spent" forever. The
+ * sign-in page would then wait on a redirect that already failed, every tile disabled and no way
+ * on. Set only where the write really did not stick, so the written note stays the single source
+ * of truth everywhere else.
  */
-let spentInThisPageLoad = false
+let spentWithoutStorage = false
 
-/** Whether the note is set; `null` where the storage itself is unavailable. */
-function read(key: string): boolean | null {
+function read(key: string): boolean {
   try {
     return sessionStorage.getItem(key) !== null
   } catch {
-    return null
+    return false
   }
 }
 
-function write(key: string, set: boolean): void {
+/** Whether the note stuck; `false` where the storage refused it or is not there at all. */
+function write(key: string, set: boolean): boolean {
   try {
     if (set) sessionStorage.setItem(key, '1')
     else sessionStorage.removeItem(key)
+    return true
   } catch {
-    // storage may be unavailable (private mode); see the module comment above
+    return false
   }
 }
 
@@ -49,12 +51,11 @@ function write(key: string, set: boolean): void {
  * sending them off again.
  */
 export function spendSilentSignIn(): void {
-  spentInThisPageLoad = true
-  write(SPENT_KEY, true)
+  if (!write(SPENT_KEY, true)) spentWithoutStorage = true
 }
 
 export function isSilentSignInSpent(): boolean {
-  return read(SPENT_KEY) ?? spentInThisPageLoad
+  return spentWithoutStorage || read(SPENT_KEY)
 }
 
 export function markSilentSignInFlow(): void {
@@ -62,7 +63,7 @@ export function markSilentSignInFlow(): void {
 }
 
 export function isSilentSignInFlow(): boolean {
-  return read(FLOW_KEY) === true
+  return read(FLOW_KEY)
 }
 
 export function clearSilentSignInFlow(): void {
@@ -79,7 +80,12 @@ export function clearSilentSignInFlow(): void {
  * asked for, and a sign-in page that simply stands there.
  */
 export function isAuthorizationRefusal(err: unknown): boolean {
-  if (typeof err !== 'object' || err === null || !('error' in err)) return false
+  return authorizationErrorCode(err) !== null
+}
+
+/** The OAuth error code of a refusal, for the log line that keeps it from going unnoticed. */
+export function authorizationErrorCode(err: unknown): string | null {
+  if (typeof err !== 'object' || err === null || !('error' in err)) return null
   const code = (err as { error: unknown }).error
-  return typeof code === 'string' && code.length > 0
+  return typeof code === 'string' && code.length > 0 ? code : null
 }
