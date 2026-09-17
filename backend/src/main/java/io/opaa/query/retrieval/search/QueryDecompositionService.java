@@ -126,12 +126,13 @@ public class QueryDecompositionService {
       - Korrigiere offensichtliche Tippfehler in der Frage.
       - Ist die Frage bereits eigenständig und einthemig, gib genau eine Suchanfrage zurück - bei \
       Bedarf wortgleich zur Eingabe.
-      - Besteht die aktuelle Nachricht nur aus einem Wunsch zur Form der Antwort, einer Angabe zur \
-      eigenen Person, einem Dank oder einer Zustimmung und will sie nichts wissen, gib genau das \
-      Wort %s zurück und nichts sonst. Führt die Nachricht einen Gegenstand des Verlaufs fort - \
-      auch als unvollständiger Satz, als Bedingung, die mit wenn ich oder falls beginnt, als \
-      Anschluss, der mit und für beginnt, oder ohne Fragezeichen -, ist sie eine Frage, und du \
-      gibst Suchanfragen zurück.
+      - Besteht die aktuelle Nachricht nur aus einem Wunsch zur Form der Antwort, einem Dank, einer \
+      Zustimmung oder einer Angabe zur eigenen Person, die am Gegenstand des Verlaufs nichts ändert, \
+      gib genau das Wort %s zurück und nichts sonst. Führt die Nachricht einen Gegenstand des \
+      Verlaufs fort - auch als unvollständiger Satz, als Bedingung, die mit wenn ich oder falls \
+      beginnt, als Anschluss, der mit und für beginnt, als Angabe zu Alter, Lage oder Umständen, die \
+      für diesen Gegenstand zählen, oder ohne Fragezeichen -, ist sie eine Frage: Gib den Gegenstand \
+      des Verlaufs zusammen mit dieser Angabe als Suchanfrage zurück.
       - Beantworte die Frage nicht, bewerte sie nicht und setze das Gespräch nicht fort. Gib nur \
       Suchanfragen zurück, je Zeile genau eine, ohne Nummerierung, ohne Aufzählungszeichen, ohne \
       Anführungszeichen, ohne Einleitung und ohne Erklärung.
