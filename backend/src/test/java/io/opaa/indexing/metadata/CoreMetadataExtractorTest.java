@@ -689,6 +689,9 @@ class CoreMetadataExtractorTest {
     // and names its subject itself a few lines below - under "Betreff:".
     @Test
     void aLetterheadAboveASubjectLabelIsNoTitle() {
+      // The opening of 2024-05-14-hauptausschuss-vorlage-buergerkoffer.txt, line for line: the
+      // label stands on the last line the rule still reads, and a further Kopfzeile would push it
+      // out of the window.
       String head =
           """
           STADT RHEINFURT
@@ -697,9 +700,10 @@ class CoreMetadataExtractorTest {
           Gremium:        Hauptausschuss der Stadt Rheinfurt
           Sitzung am:     14. Mai 2024
           Federführung:   Bürgerbüro Rheinfurt
+          Beteiligt:      Amt für Organisation und IT, Datenschutzbeauftragte
           Status:         öffentlich
 
-          Betreff: Anschaffung eines Bürgerkoffers für die mobile Beratung
+          Betreff: Anschaffung eines Bürgerkoffers für die mobile Beratung in Pflegeeinrichtungen
           """;
       DocumentProperties properties =
           DocumentProperties.EMPTY.withTitleLine(head).withHeadText(head);
@@ -707,6 +711,23 @@ class CoreMetadataExtractorTest {
       assertThat(properties.titleLine()).isEqualTo("STADT RHEINFURT");
       assertThat(extract("2024-05-14-hauptausschuss-vorlage-buergerkoffer.txt", properties).title())
           .contains("hauptausschuss vorlage buergerkoffer");
+    }
+
+    @Test
+    void theAbbreviatedSubjectLabelCountsLikeTheSpelledOutOne() {
+      String head =
+          """
+          STADT RHEINFURT
+
+          Betr.: Anschaffung eines Bürgerkoffers
+          """;
+
+      assertThat(
+              extract(
+                      "2024-05-14-vorlage.txt",
+                      DocumentProperties.EMPTY.withTitleLine(head).withHeadText(head))
+                  .title())
+          .contains("vorlage");
     }
 
     // Only both marks together are a letterhead: a heading above a field block is an ordinary

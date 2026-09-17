@@ -763,12 +763,13 @@ bisher blieb davon nur der Monat übrig.
 - Eine **Titel-Eigenschaft, die das Werkzeug oder die Datei benennt**, wird verworfen (`ToolTitle`):
   eine Werkzeugsignatur vor einem Gedankenstrich („Microsoft Office Outlook - Memo Style" — die
   Druckstilvorlage eines Treibers, „Microsoft Word - vermerk.doc"), ein Titel, der auf eine
-  Dokumentendung endet und aus nichts sonst besteht. Beide Regeln sind eng gefasst, weil jeder
-  Fehlgriff einen richtigen Titel kostet: Ein Werkzeugname zählt nur mit einem Dateinamen oder einem
-  Druckstil dahinter („Microsoft 365 - Leitfaden für Beschäftigte“ ist ein Dokument), und ein
-  Dateiname nur als **ganzer** Titel ohne weiteres Wort („WG: haushaltsplan-2026.pdf“ ist ein
-  Mail-Betreff). Ein Titel, der dem Dateinamen entspricht, bleibt **erhalten** — er ist dessen bessere
-  Schreibung. Für einen **synthetischen Namen** gilt die Prüfung ohnehin nicht: Dort *ist* der Titel
+  Dokumentendung endet. Beide Regeln sind eng gefasst, weil jeder Fehlgriff einen richtigen Titel
+  kostet: Ein Werkzeugname zählt nur mit einem Dateinamen oder einem Druckstil dahinter
+  („Microsoft 365 - Leitfaden für Beschäftigte" ist ein Dokument). Die Endungsregel gilt für jeden
+  Titel eines Exports („Bekanntmachung Satzung 2024.pdf"), **bei einer Mail** dagegen nur für einen
+  Titel, der aus **nichts als** einem Dateinamen besteht: Ein Betreff schreibt ein Mensch, und er
+  benennt regelmäßig einen Anhang („WG: haushaltsplan-2026.pdf"). Ein Titel, der dem Dateinamen
+  entspricht, bleibt **erhalten** — er ist dessen bessere Schreibung. Für einen **synthetischen Namen** gilt die Prüfung ohnehin nicht: Dort *ist* der Titel
   die vom Zufluss gemeldete Überschrift.
 - Eine **Setext-Überschrift** (`Titel` über einer `===`-Zeile) am Anfang einer TXT- oder
   Markdown-Datei wird als erste Überschrift gelesen (`SetextHeading`) — die einzige
@@ -781,9 +782,15 @@ bisher blieb davon nur der Monat übrig.
   (`PRAESENTATION`); trägt die erste Folie einen Vokabularbegriff, gewinnt jetzt dieser, weil jede
   Textquelle vor der Formatkennung steht.
 - Eine **überschriftartige Titelzeile** tritt zwischen erste Überschrift und Dateinamen: kurz
-  (höchstens 120 Zeichen) und ohne Satz- oder Beschriftungszeichen am Ende. Ein Dokument, das mit
-  Fließtext beginnt („Anlage zwei: Berechnungsgrundlage … nach Richtlinie 7."), hat keine
-  Überschrift — dort bleibt der von Menschen vergebene Dateiname der bessere Titel.
+  (höchstens 120 Zeichen), ohne Satz- oder Beschriftungszeichen am Ende und kein **Briefkopf**. Ein
+  Dokument, das mit Fließtext beginnt („Anlage zwei: Berechnungsgrundlage … nach Richtlinie 7."),
+  hat keine Überschrift — dort bleibt der von Menschen vergebene Dateiname der bessere Titel.
+  Briefkopf ist eine Zeile nur, wenn **beide** Merkmale zusammenkommen: Versalien **und** ein
+  betrefführendes Etikett („Betreff:", „Betr.:", „Gegenstand:", „Thema:") in den nächsten zehn
+  Zeilen — dann sagt das Dokument selbst, wo sein Gegenstand steht, und es ist nicht diese Zeile.
+  Einzeln taugt keines der beiden Merkmale: Eine Satzung setzt ihre Überschrift regelmäßig in
+  Versalien, und die Überschrift eines Vordrucks steht regelmäßig über einem Feldblock
+  („Antrag auf Erteilung eines Führungszeugnisses" über „Name:"/„Vorname:").
 
 Damit gilt für den Titel: Titel-Eigenschaft (sofern sie das Dokument benennt) → Frontmatter `titel`
 → erste Überschrift → überschriftartige Titelzeile → humanisierter Dateiname.

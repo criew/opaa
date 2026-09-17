@@ -220,13 +220,17 @@ Dokumentart und liefern nichts.
   davon ausgenommen und wird nur gegen das Mindestjahr geprüft.
 - **Titel des Formats nur, wenn er das Dokument benennt.** Verworfen wird ein Titel, der ein
   Werkzeug nennt und einen Dateinamen oder einen Druckstil dahinter trägt („Microsoft Office
-  Outlook - Memo Style", „Microsoft Word - vermerk.doc"), oder der aus nichts als einem Dateinamen
-  besteht („vermerk.docx"). Ein Betreff wie „WG: haushaltsplan-2026.pdf" und ein Titel, der dem
-  Dateinamen entspricht, bleiben erhalten — Letzterer ist dessen bessere Schreibung. Dann gilt die
-  Überschrift, ersatzweise eine überschriftartige Titelzeile (kurz, ohne Satzzeichen am Ende, keine
-  Versalienzeile und kein Kopf eines Etikettenblocks wie „Gremium:"/„Status:"), zuletzt der
-  Dateiname. Für Feed-Einträge und Confluence-Seiten gilt diese Prüfung nicht: Dort ist der Titel
-  die vom Zufluss gemeldete Überschrift.
+  Outlook - Memo Style", „Microsoft Word - vermerk.doc"), oder der auf eine Dokumentendung endet
+  („Bekanntmachung Satzung 2024.pdf"). Bei einer **Mail** gilt die Endungsregel nur für einen
+  Titel, der aus **nichts als** einem Dateinamen besteht — der Betreff „WG: haushaltsplan-2026.pdf"
+  bleibt erhalten, weil ihn ein Mensch geschrieben hat. Ein Titel, der dem Dateinamen entspricht,
+  bleibt ebenfalls erhalten; er ist dessen bessere Schreibung. Dann gilt die Überschrift,
+  ersatzweise eine überschriftartige Titelzeile (kurz, ohne Satzzeichen am Ende und **kein
+  Briefkopf**: Das ist sie nur, wenn sie in Versalien steht **und** innerhalb der nächsten zehn
+  Zeilen ein betrefführendes Etikett folgt — „Betreff:", „Betr.:", „Gegenstand:", „Thema:". Eine
+  Versalien-Überschrift allein und eine Überschrift über einem Feldblock wie „Gremium:"/„Name:"
+  bleiben Titel), zuletzt der Dateiname. Für Feed-Einträge und Confluence-Seiten gilt diese Prüfung
+  nicht: Dort ist der Titel die vom Zufluss gemeldete Überschrift.
 - **Extraktionsversion.** Die Regeln tragen eine Versionsnummer (heute 5), die an jedem Dokument
   gespeichert wird. Ändert sich eine Regel, steigt die Version, und der Bestand wird damit als
   nachzuziehen erkennbar (Abschnitt 6).

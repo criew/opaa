@@ -14,8 +14,8 @@ import java.util.regex.Pattern;
  *
  * <p>Both rules are deliberately narrow, because every false positive costs a correct title: a tool
  * name only counts with a file name or a print style behind it ("Microsoft 365 - Leitfaden für
- * Beschäftigte" is a document), and a file name only counts as a whole title without any further
- * word ("WG: haushaltsplan-2026.pdf" is a mail subject).
+ * Beschäftigte" is a document), and the file-name rule is narrowed to a title that is nothing but a
+ * file name where the title is a person's subject line - see {@link #matches(String, String)}.
  */
 final class ToolTitle {
 

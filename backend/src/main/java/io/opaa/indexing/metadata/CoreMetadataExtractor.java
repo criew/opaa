@@ -71,7 +71,7 @@ public final class CoreMetadataExtractor {
 
   /** The caption under which a Vordruck states what it is about. */
   private static final Pattern SUBJECT_LABEL =
-      Pattern.compile("(?i)^(betreff|gegenstand|thema)\\s*:(\\s|$)");
+      Pattern.compile("(?i)^(betreff|betr\\.?|gegenstand|thema)\\s*:(\\s|$)");
 
   /** How far below a line such a caption still belongs to it. */
   private static final int LABEL_BLOCK_LINES = 10;
@@ -175,8 +175,8 @@ public final class CoreMetadataExtractor {
   /**
    * Whether a title line may stand in for a missing heading: a short line that is neither a
    * sentence nor a label, and not the letterhead of a form. A document that opens with running text
-   * or with a letterhead has no heading at all, and its file name - chosen by a person - names it
-   * better than its first line does.
+   * has no heading at all, and its file name - chosen by a person - names it better than its first
+   * line does.
    */
   private static boolean isHeadingLike(DocumentProperties props) {
     String titleLine = props.titleLine();
