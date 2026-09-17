@@ -31,7 +31,7 @@ import org.springframework.stereotype.Service;
  * and the send follows their commit.
  */
 @Service
-public class LocalSelfServiceService {
+public class LocalSelfServiceService implements LocalSelfServiceAvailability {
 
   /**
    * The least time either of the two address-taking flows takes to answer, whatever the outcome:
@@ -99,11 +99,13 @@ public class LocalSelfServiceService {
   }
 
   /** What {@code GET /api/v1/auth/config} reports as {@code passwordResetEnabled}. */
+  @Override
   public boolean isPasswordResetAvailable() {
     return linksPossible() && policyValues().passwordResetEnabled();
   }
 
   /** What {@code GET /api/v1/auth/config} reports as {@code selfRegistrationEnabled}. */
+  @Override
   public boolean isSelfRegistrationAvailable() {
     Values values = policyValues();
     return linksPossible()

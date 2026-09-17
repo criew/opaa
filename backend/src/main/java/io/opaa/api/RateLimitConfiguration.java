@@ -5,10 +5,14 @@ import io.opaa.api.RateLimitFilter.Rule;
 import io.opaa.api.RateLimitProperties.EndpointLimit;
 import io.opaa.api.RateLimitProperties.LocalAuthLimit;
 import io.opaa.api.RateLimitProperties.LocalAuthLimits;
+import io.opaa.auth.local.LocalSelfServiceAvailability;
 import io.opaa.observability.RateLimitMetrics;
 import io.opaa.security.TrustedProxyClientIpResolver;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -22,6 +26,11 @@ import tools.jackson.databind.json.JsonMapper;
  * whether or not limiting is switched on - the resolution also serves the network restriction of
  * local system administrators (ADR-0033, Entscheidung 9); only the filter itself honours {@code
  * opaa.rate-limit.enabled}.
+ *
+ * <p>The two switchable self-service rules ask the auth side whether their endpoint is served at
+ * all (#1592, {@link LocalSelfServiceAvailability}) - the one place where the rate-limit wiring
+ * looks that way round. Moving the two rules into {@code io.opaa.auth.local} instead would split a
+ * list ADR-0033 Entscheidung 9 documents as one, without removing the knowledge.
  */
 @Configuration
 @EnableConfigurationProperties(RateLimitProperties.class)
@@ -67,7 +76,8 @@ public class RateLimitConfiguration {
       RateLimitProperties properties,
       TrustedProxyClientIpResolver clientIpResolver,
       RateLimitMetrics metrics,
-      JsonMapper jsonMapper) {
+      JsonMapper jsonMapper,
+      ObjectProvider<LocalSelfServiceAvailability> selfServiceFlows) {
     // #478: the per-library indexing trigger (POST /api/v1/libraries/{libraryId}/indexing) carries
     // a variable path segment, so its rule is a regex rather than a plain prefix - see
     // RateLimitFilter.Rule's Javadoc. The trailing $ deliberately excludes the sibling status
@@ -104,12 +114,21 @@ public class RateLimitConfiguration {
     LocalAuthLimits localAuth = properties.localAuth();
     rules.add(rule("local-auth-login", LOCAL_LOGIN_PATTERN, localAuth.login()));
     rules.add(rule("local-auth-refresh", LOCAL_REFRESH_PATTERN, localAuth.refresh()));
-    rules.add(rule("local-auth-register", LOCAL_REGISTER_PATTERN, localAuth.register()));
+    // #1592: a switched-off flow is answered exactly like an unknown route, which has no budget -
+    // counting these two while they are off would answer 429 where the unknown route answers 401.
+    // Resolved per request, never at wiring time: the flows read their switches from the database.
+    rules.add(
+        rule(
+            "local-auth-register",
+            LOCAL_REGISTER_PATTERN,
+            localAuth.register(),
+            served(selfServiceFlows, LocalSelfServiceAvailability::isSelfRegistrationAvailable)));
     rules.add(
         rule(
             "local-auth-forgot-password",
             LOCAL_FORGOT_PASSWORD_PATTERN,
-            localAuth.forgotPassword()));
+            localAuth.forgotPassword(),
+            served(selfServiceFlows, LocalSelfServiceAvailability::isPasswordResetAvailable)));
     rules.add(rule("local-auth-set-password", LOCAL_SET_PASSWORD_PATTERN, localAuth.setPassword()));
     rules.add(rule("local-auth-verify-email", LOCAL_VERIFY_EMAIL_PATTERN, localAuth.verifyEmail()));
     rules.add(rule("local-auth-handover", LOCAL_HANDOVER_PATTERN, localAuth.handover()));
@@ -131,12 +150,29 @@ public class RateLimitConfiguration {
   }
 
   private static Rule rule(String name, String pattern, LocalAuthLimit limit) {
+    return rule(name, pattern, limit, RateLimitFilter.ALWAYS_SERVED);
+  }
+
+  private static Rule rule(
+      String name, String pattern, LocalAuthLimit limit, BooleanSupplier served) {
     return new Rule(
         name,
         pattern,
         new RateLimitService(limit.maxRequests(), limit.windowSeconds()),
         limit.hasGlobalLimit()
             ? new RateLimitService(limit.globalMaxRequests(), limit.windowSeconds())
-            : null);
+            : null,
+        served);
+  }
+
+  /**
+   * Resolved through the provider on every request, not once at wiring time: forcing the bean here
+   * would pull the whole local account management into the creation of this filter. Where it is
+   * absent - a {@code @WebMvcTest} slice - no flow counts as served.
+   */
+  private static BooleanSupplier served(
+      ObjectProvider<LocalSelfServiceAvailability> flows,
+      Predicate<LocalSelfServiceAvailability> flow) {
+    return () -> flow.test(flows.getIfAvailable(() -> LocalSelfServiceAvailability.NONE));
   }
 }

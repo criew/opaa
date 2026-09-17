@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -45,6 +46,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
   private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
   static final String RATE_LIMIT_MESSAGE = TooManyRequestsException.MESSAGE;
 
+  /** The answer of every endpoint that cannot be switched off. */
+  public static final BooleanSupplier ALWAYS_SERVED = () -> true;
+
   /**
    * One rule. {@code pathPattern} is a regular expression matched against the decoded path within
    * the application with {@link Matcher#find()} - callers anchor with {@code ^} (and, where the
@@ -54,13 +58,33 @@ public class RateLimitFilter extends OncePerRequestFilter {
    * always uses one fixed key. {@code global} may be {@code null} for a rule without a global
    * ceiling.
    *
+   * <p>{@code served} answers, per request, whether the endpoint behind the rule exists at all
+   * right now; it is {@link #ALWAYS_SERVED} for every rule whose endpoint cannot be switched off. A
+   * rule that reports its endpoint as unserved is matched but <b>not counted</b>: such a request is
+   * answered exactly like an unknown route (#1592), and an unknown route has no budget - a 429 here
+   * against a 401 there would be the one difference a probe would find.
+   *
    * @param name the stable label of the rule in logs and metrics
    */
   public record Rule(
-      String name, String pathPattern, RateLimitService perClient, RateLimitService global) {}
+      String name,
+      String pathPattern,
+      RateLimitService perClient,
+      RateLimitService global,
+      BooleanSupplier served) {
+
+    public Rule(
+        String name, String pathPattern, RateLimitService perClient, RateLimitService global) {
+      this(name, pathPattern, perClient, global, ALWAYS_SERVED);
+    }
+  }
 
   private record CompiledRule(
-      String name, Pattern path, RateLimitService perClient, RateLimitService global) {}
+      String name,
+      Pattern path,
+      RateLimitService perClient,
+      RateLimitService global,
+      BooleanSupplier served) {}
 
   private final List<CompiledRule> rules;
   private final ClientIpResolver clientIpResolver;
@@ -80,7 +104,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
                         rule.name(),
                         Pattern.compile(rule.pathPattern()),
                         rule.perClient(),
-                        rule.global()))
+                        rule.global(),
+                        rule.served()))
             .toList();
     this.clientIpResolver = clientIpResolver;
     this.metrics = metrics;
@@ -96,6 +121,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
       Matcher matcher = rule.path().matcher(path);
       if (!matcher.find()) {
         continue;
+      }
+      if (!rule.served().getAsBoolean()) {
+        break;
       }
       String client = bucketKey(clientIpResolver.resolve(request));
       String key = matcher.groupCount() >= 1 ? client + ":" + matcher.group(1) : client;

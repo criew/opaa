@@ -434,10 +434,13 @@ unbestätigte Selbstregistrierung bleibt auf ihren Bestätigungslink angewiesen)
 übrigen offenen Passwortlinks des Kontos und beendet jede Sitzung (`password_invalidated_before`,
 Familien `PASSWORD_CHANGED`); Ereignis `LOCAL_PASSWORD_SET` mit dem Zweck des Links. **Passwort
 vergessen** existiert nur, solange die Verwaltung eingeschaltet, die Einstellung an und
-`OPAA_PUBLIC_BASE_URL` gesetzt ist — sonst antwortet der Endpunkt mit der Standard-404. Der Zustand
-der Flüsse ist über `/auth/config` ohnehin öffentlich; eine tatsächlich unbekannte Route unter
-`/api` antwortet ohne Sitzung mit 401, die 404 verbirgt den Endpunkt also nur vor einem flüchtigen
-Blick (vollständige Ununterscheidbarkeit: #1592). Wo er existiert, antwortet er immer 204 nach
+`OPAA_PUBLIC_BASE_URL` gesetzt ist — sonst ist der Pfad **von einer unbekannten Route nicht zu
+unterscheiden**: Ohne Sitzung antwortet er wie jede unbekannte Route unter `/api` mit 401, mit
+identischem Rumpf und identischen Kopfzeilen, für gültigen Rumpf, kaputten Rumpf und andere Methode
+gleichermaßen; die Ratenbegrenzung zählt ihn währenddessen gar nicht, sonst fiele die Verkleidung
+genau unter Last. Mit Token bleibt es bei der Standard-404, die eine unbekannte Route dort ebenfalls
+liefert. Der Zustand der Flüsse steht allein in `/auth/config` (#1592). Wo er existiert,
+antwortet er immer 204 nach
 **genau derselben Zeit** (250 ms; nach der Prüfung der Adresse läuft die gesamte Arbeit — Suche,
 Link, Versand — auf dem Mail-Thread `MailDispatchExecutor`, die Anfrage wartet nur die feste Frist
 ab; scheitert eine Aufgabe dort, bleibt eine `ERROR`-Zeile mit Ausnahmeklasse und maskierter
@@ -447,7 +450,7 @@ neuer Link entwertet ältere), Konten mit Verwalter- oder Inaktivitätssperre, a
 eingeladene Konten sowie unbekannte Adressen erhalten nichts und antworten gleich. Die Anfrage
 ändert keinen Zustand und wird nicht protokolliert — Sitzungen enden erst beim Einlösen.
 **Selbstregistrierung** existiert nur mit Verwaltung an, `self_registration_enabled`, **nichtleerer
-Domänenliste** und Basis-URL (sonst 404 wie oben). Adresse, Anzeigename und Passwort werden zuerst
+Domänenliste** und Basis-URL (sonst ununterscheidbar von einer unbekannten Route, wie oben). Adresse, Anzeigename und Passwort werden zuerst
 geprüft (Feldfehler `email`, `displayName`, `password` — sie verraten nichts über Konten); danach
 wird der **Hash in jedem Ausgang auf dem Anfrage-Thread** berechnet (das Klartext-Passwort wartet
 nie in einer Warteschlange), und alles Weitere läuft auf dem Mail-Thread — die Antwort ist in
@@ -471,7 +474,8 @@ administratives Zurücksetzen macht eine unbestätigte Selbstregistrierung **nic
 der Rücksetzlink bestätigt nichts; ist die Selbstregistrierung inzwischen abgeschaltet, ist der Weg
 für den Verwalter das Löschen des unbestätigten Kontos und eine Einladung. Die Rate-Limits
 aus #1535 greifen je Client-Adresse über die Pfadregeln (auch für `verify-email`, 10/900 s) und je
-E-Mail-Adresse vor jeder Verarbeitung — bei abgeschaltetem Fluss aber erst nach der 404. Der
+E-Mail-Adresse vor jeder Verarbeitung — für einen abgeschalteten Fluss greift **keines von beiden**:
+Sein Pfad wird weder gezählt noch erreicht er die Adressprüfung. Der
 Mail-Thread hat eine begrenzte Warteschlange (1000); ein Versand, der keinen Platz findet, wird mit
 einer Warnung verworfen. Kein Roh-Token steht in Log, Datenbank oder Protokoll; der
 Protokollmitschnitt des SMTP-Transports (`org.eclipse.angus.mail`) ist in `application.yml` auf

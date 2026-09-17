@@ -2,8 +2,10 @@ package io.opaa.auth;
 
 import io.opaa.auth.local.CsrfCookieFilter;
 import io.opaa.auth.local.LocalAuthAccessDeniedHandler;
+import io.opaa.auth.local.LocalSelfServiceAvailability;
 import io.opaa.auth.local.PasswordChangeRequiredFilter;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.function.Predicate;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -54,22 +56,42 @@ public class OidcSecurityConfig {
   private final UserService userService;
   private final AuthenticationManagerResolver<HttpServletRequest> oidcAuthenticationManagerResolver;
   private final ObjectProvider<PasswordChangeRequiredFilter> passwordChangeRequiredFilter;
+  private final ObjectProvider<LocalSelfServiceAvailability> selfServiceFlows;
   private final JsonMapper jsonMapper;
 
   /**
-   * The {@code pcr} filter is resolved lazily: the {@code oidc} profile always provides it ({@code
-   * LocalAuthIssuerConfiguration}), and the {@code @WebMvcTest} slices that import this class to
-   * assert the chain's public paths do not - they never carry a local token either.
+   * The {@code pcr} filter and the self-service availability are resolved lazily: the {@code oidc}
+   * profile always provides both ({@code LocalAuthIssuerConfiguration}, {@code
+   * LocalSelfServiceService}), and the {@code @WebMvcTest} slices that import this class to assert
+   * the chain's public paths do not - they never carry a local token either, and without the
+   * availability no self-service flow is served.
    */
   public OidcSecurityConfig(
       UserService userService,
       AuthenticationManagerResolver<HttpServletRequest> oidcAuthenticationManagerResolver,
       ObjectProvider<PasswordChangeRequiredFilter> passwordChangeRequiredFilter,
+      ObjectProvider<LocalSelfServiceAvailability> selfServiceFlows,
       JsonMapper jsonMapper) {
     this.userService = userService;
     this.oidcAuthenticationManagerResolver = oidcAuthenticationManagerResolver;
     this.passwordChangeRequiredFilter = passwordChangeRequiredFilter;
+    this.selfServiceFlows = selfServiceFlows;
     this.jsonMapper = jsonMapper;
+  }
+
+  /**
+   * ADR-0033, Entscheidung 11: a switched-off self-service flow is not permitted here, so it falls
+   * through to the {@code /api/**} rule below - the very rule an unknown route falls under. Its
+   * answer is therefore not merely <em>like</em> the one an unknown route gets, it is produced by
+   * the same authorization decision and the same entry point, headers included (#1592). Whether a
+   * flow is served stays readable through {@code GET /api/v1/auth/config} alone; the path check
+   * comes first, so no other request pays for the switch lookup.
+   */
+  private RequestMatcher servedFlow(String path, Predicate<LocalSelfServiceAvailability> flow) {
+    RequestMatcher route = PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, path);
+    return request ->
+        route.matches(request)
+            && flow.test(selfServiceFlows.getIfAvailable(() -> LocalSelfServiceAvailability.NONE));
   }
 
   @Bean
@@ -100,8 +122,8 @@ public class OidcSecurityConfig {
                     .requestMatchers("/api/v1/auth/config")
                     .permitAll()
                     // ADR-0033: the local sign-in, the two cookie-bearing session endpoints and
-                    // the self-service of #1538 (link redemption, forgot password, registration)
-                    // have no bearer token yet (or no longer); change-password stays bearer-only.
+                    // the self-service of #1538 (link redemption, e-mail confirmation) have no
+                    // bearer token yet (or no longer); change-password stays bearer-only.
                     // ADR-0033, Entscheidung 12: the two handover endpoints of #1563 must stay
                     // bearer-free - a provider token in the header would be provisioned into a new
                     // account by UserProvisioningFilter before the controller runs, which is the
@@ -113,11 +135,19 @@ public class OidcSecurityConfig {
                         LOCAL_REFRESH,
                         LOCAL_LOGOUT,
                         LOCAL_SET_PASSWORD,
-                        LOCAL_FORGOT_PASSWORD,
-                        LOCAL_REGISTER,
                         LOCAL_VERIFY_EMAIL,
                         LOCAL_HANDOVER_PREVIEW,
                         LOCAL_HANDOVER_REDEEM)
+                    .permitAll()
+                    // #1592: the two switchable flows are public only while they are switched on;
+                    // switched off they fall through to /api/** below - see servedFlow above.
+                    .requestMatchers(
+                        servedFlow(
+                            LOCAL_FORGOT_PASSWORD,
+                            LocalSelfServiceAvailability::isPasswordResetAvailable),
+                        servedFlow(
+                            LOCAL_REGISTER,
+                            LocalSelfServiceAvailability::isSelfRegistrationAvailable))
                     .permitAll()
                     // #582/#583: branding is readable without authentication. The sign-in
                     // page is the first thing a user sees and has to carry the operator's own
