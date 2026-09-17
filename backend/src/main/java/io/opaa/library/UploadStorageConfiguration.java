@@ -1,5 +1,7 @@
 package io.opaa.library;
 
+import io.opaa.observability.SeparateHealthGroup;
+import java.util.Set;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.health.actuate.endpoint.HealthEndpointGroupsPostProcessor;
 import org.springframework.boot.health.contributor.HealthIndicator;
@@ -17,6 +19,9 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 public class UploadStorageConfiguration {
+
+  static final String HEALTH_CONTRIBUTOR = "uploadStore";
+  static final String HEALTH_GROUP = "upload-store";
 
   @Bean
   UploadedOriginalStore uploadedOriginalStore(
@@ -56,6 +61,6 @@ public class UploadStorageConfiguration {
       name = "opaa.upload.store",
       havingValue = S3UploadedOriginalStore.STORE_NAME)
   HealthEndpointGroupsPostProcessor uploadStoreHealthGroup() {
-    return new UploadStoreHealthGroup();
+    return new SeparateHealthGroup(HEALTH_GROUP, Set.of(HEALTH_CONTRIBUTOR));
   }
 }

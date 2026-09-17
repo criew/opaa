@@ -241,13 +241,16 @@ class S3UploadStorageIntegrationTest {
   @Test
   void theStoreContributesToItsOwnHealthGroupAndNotToTheOverallStatus() {
     SystemHealthDescriptor overall = (SystemHealthDescriptor) healthEndpoint.health();
-    assertThat(overall.getComponents()).doesNotContainKey(UploadStoreHealthGroup.CONTRIBUTOR);
-    assertThat(overall.getGroups()).contains(UploadStoreHealthGroup.GROUP);
+    assertThat(overall.getComponents())
+        .doesNotContainKey(UploadStorageConfiguration.HEALTH_CONTRIBUTOR);
+    assertThat(overall.getGroups()).contains(UploadStorageConfiguration.HEALTH_GROUP);
 
     CompositeHealthDescriptor group =
-        (CompositeHealthDescriptor) healthEndpoint.healthForPath(UploadStoreHealthGroup.GROUP);
+        (CompositeHealthDescriptor)
+            healthEndpoint.healthForPath(UploadStorageConfiguration.HEALTH_GROUP);
     assertThat(group.getStatus()).isEqualTo(Status.UP);
-    assertThat(group.getComponents()).containsOnlyKeys(UploadStoreHealthGroup.CONTRIBUTOR);
+    assertThat(group.getComponents())
+        .containsOnlyKeys(UploadStorageConfiguration.HEALTH_CONTRIBUTOR);
   }
 
   private CurrentUser currentUserOf(User user) {

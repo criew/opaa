@@ -567,8 +567,9 @@ keine Shell, keine Coreutils, kein `curl`/`wget`, keinen Paketmanager. Für den 
 - **`docker exec … sh` funktioniert nicht.** Es gibt keine ausführbare Shell im Container.
 - **Ein `healthcheck:` in der `docker-compose.yml` darf für den Backend-Service kein `CMD-SHELL`
   und kein `curl`/`wget` verwenden.** Der mitgelieferte Stack definiert für das Backend keinen
-  Healthcheck; wer einen braucht, prüft `GET /actuator/health` von außen (siehe unten) statt aus dem
-  Container heraus.
+  Healthcheck; wer einen braucht, prüft `GET /actuator/health/readiness` von außen (siehe
+  [„Bereitschaft und Lebendigkeit"](#bereitschaft-und-lebendigkeit)) statt aus dem Container
+  heraus.
 - **Zeitzone:** Der Container läuft in UTC, solange `TZ` nicht gesetzt ist. `TZ=Europe/Berlin` wirkt
   wie gewohnt — die Zeitzonendatenbank steckt in der Java-Laufzeit, nicht in einem OS-Paket.
 - **Zertifikate:** Der Truststore der Anwendung ist der `cacerts` der Java-Laufzeit mit den
@@ -723,6 +724,8 @@ Wurzelzertifikate mitbringt: Die gemountete Kopie überdeckt den Stand des Image
 ```bash
 docker compose logs -f backend                       # Logs
 curl -s http://localhost:8081/actuator/health        # Zustandsübersicht
+curl -s http://localhost:8081/actuator/health/readiness   # Bereitschaft (Lastverteiler-Probe)
+curl -s http://localhost:8081/actuator/health/liveness    # Lebendigkeit des Prozesses
 curl -s http://localhost:8081/actuator/metrics       # Metriken
 curl -s http://localhost:8081/actuator/prometheus    # Prometheus-Format
 docker cp <container>:/app/uploads ./uploads-kopie   # Dateien aus dem Container holen
@@ -746,19 +749,10 @@ die des eigenen Rechners, fehlt die Proxy-Adresse in `OPAA_RATE_LIMIT_TRUSTED_PR
 > [Originalablage](#originalablage).
 
 Wie viel `/actuator/health` zeigt, hängt von der Authentifizierung ab: Der Endpunkt ist ohne Anmeldung
-erreichbar, Einzelheiten zu Datenbank sowie Chat- und Embedding-Anbieter zeigt er aber nur einem
+erreichbar, Einzelheiten zu Datenbank und Prozesszustand zeigt er aber nur einem
 angemeldeten Aufrufer. Im Entwicklungsmodus (`dev`) gilt jede Anfrage als angemeldet, ein anonymes
 `curl` sieht dort also die volle Aufschlüsselung; in einem OIDC-Deployment antwortet dasselbe `curl`
 nur mit `{"status":"UP"}` bzw. `DOWN`, und die Aufschlüsselung braucht ein gültiges Zugangstoken.
-
-Mit `OPAA_UPLOAD_STORE=s3` liegt der Zustand des Objektspeichers der Originalablage bewusst **nicht** im
-Gesamtstatus, sondern in einer eigenen Gruppe: `GET /actuator/health/upload-store` antwortet `UP` mit
-Endpunkt und Bucket oder `DOWN` mit dem Grund (siehe `OPAA_UPLOAD_STORE` in der Tabelle unten).
-
-Aus demselben Grund steht auch der E-Mail-Versand in einer eigenen Gruppe: `GET
-/actuator/health/mail` antwortet `UP`, `DOWN` oder `UNKNOWN` — ohne Einzelheiten, die Ursache steht
-auf der Einstellungsseite und im Protokoll (siehe [„E-Mail-Versand
-(SMTP)"](#e-mail-versand-smtp)).
 
 Thread- und Heap-Dump ohne Shell:
 
@@ -776,6 +770,63 @@ Ein `docker compose logs backend` beantwortet die überwiegende Mehrheit der Fä
 eine Shell benutzt wurde. Für alles Weitere lässt sich ein Werkzeug-Container in denselben Netzwerk-
 oder PID-Namensraum hängen (`--network container:…`, `--pid container:…`), ohne dass das
 Laufzeitimage selbst Werkzeuge mitbringen muss.
+
+## Bereitschaft und Lebendigkeit
+
+Für einen Container-Healthcheck oder die Probe eines Lastverteilers ist nicht der Gesamtstatus der
+richtige Pfad, sondern:
+
+| Pfad | Antwortet auf Basis von | Gedacht für |
+| --- | --- | --- |
+| `GET /actuator/health/readiness` | Prozesszustand und Datenbank | Lastverteiler-Probe, Container-Healthcheck: Darf diese Instanz Anfragen bekommen? |
+| `GET /actuator/health/liveness` | Prozesszustand | Neustart-Entscheidung: Lebt der Prozess noch? |
+| `GET /actuator/health` | alles, was nicht in einer eigenen Gruppe steht (siehe unten) | Überblick bei der Diagnose |
+
+Beide Proben sind ohne Anmeldung erreichbar und antworten dann nur mit dem Status, ohne
+Aufschlüsselung.
+
+**Was bewusst nicht in der Bereitschaft steht:** Chat-Modell, Embedding-Modell und Vektorspeicher.
+Jeder dieser drei Zustände hängt an einem fremden Dienst, und ein hängendes Ollama darf eine Instanz
+nicht aus der Rotation nehmen, während Anmeldung, Bibliotheksverwaltung und Dokumentenzugriff
+weiterarbeiten. Ohne Datenbank dagegen kann die Instanz gar nichts beantworten — sie gehört deshalb
+dazu.
+
+Dieselben drei stehen aus demselben Grund auch nicht im Gesamtstatus, sondern in je einer eigenen
+Gruppe. Ein Abruf des Gesamtstatus löst damit auch keinen Modellaufruf mehr aus — nur der Abruf der
+betreffenden Gruppe tut das:
+
+| Gruppe | Prüft |
+| --- | --- |
+| `GET /actuator/health/chat-model` | Welches Chat-Modell aktiv ist (ohne Aufruf des Modells) |
+| `GET /actuator/health/embedding-model` | Einen echten Embedding-Aufruf |
+| `GET /actuator/health/vector-store` | Eine echte Ähnlichkeitssuche |
+| `GET /actuator/health/upload-store` | Den Objektspeicher der Originalablage (nur mit `OPAA_UPLOAD_STORE=s3`) |
+| `GET /actuator/health/mail` | Den letzten SMTP-Versand |
+
+Mit `OPAA_UPLOAD_STORE=s3` antwortet `GET /actuator/health/upload-store` `UP` mit
+Endpunkt und Bucket oder `DOWN` mit dem Grund (siehe `OPAA_UPLOAD_STORE` in der Tabelle unten).
+`GET /actuator/health/mail` antwortet `UP`, `DOWN` oder `UNKNOWN` — ohne Einzelheiten, die Ursache
+steht auf der Einstellungsseite und im Protokoll (siehe [„E-Mail-Versand
+(SMTP)"](#e-mail-versand-smtp)).
+
+## Sanftes Herunterfahren
+
+Ein Stopp des Containers bricht laufende HTTP-Anfragen nicht mehr ab: Das Backend nimmt keine neuen
+Verbindungen mehr an und lässt die bereits angenommenen Anfragen zu Ende laufen — höchstens so
+lange, wie `OPAA_SHUTDOWN_TIMEOUT` erlaubt (siehe Variablenliste unten). Erst danach werden sie
+abgebrochen. Zusammen mit den beiden Proben oben ist das die Voraussetzung dafür, eine
+Instanz hinter einem Lastverteiler ohne Ausfall zu erneuern: aus der Rotation nehmen, laufende
+Anfragen auslaufen lassen, stoppen.
+
+Hintergrundläufe teilen dieses Zeitfenster **nicht**. Ein laufender Indizierungs- oder
+Upload-Vorgang wird beim Stopp sofort abgebrochen und verzögert ihn um nichts; sein Auftrag wird
+beim nächsten Start als abgebrochen erkannt und kann wiederholt werden. Ein großer Indizierungslauf
+kann einen Neustart also nicht hinhalten.
+
+> **Wer das Zeitfenster anhebt, hebt auch `stop_grace_period` an.** Docker beendet einen Container
+> nach Ablauf dieser Frist hart (`SIGKILL`); die mitgelieferte `docker-compose.yml` setzt sie für
+> das Backend etwas über das Zeitfenster hinaus. Ist sie kürzer als `OPAA_SHUTDOWN_TIMEOUT`, endet
+> der Prozess doch abrupt und das sanfte Herunterfahren läuft ins Leere.
 
 ## Konfiguration
 
@@ -968,6 +1019,7 @@ Sinn; das ist jeweils vermerkt.
 | **Allgemein** | | | |
 | `OPAA_SERVER_ADDRESS` | `localhost` | `0.0.0.0` | Bind-Adresse (`0.0.0.0` für Netzwerkzugang). Docker Compose überschreibt den Anwendungs-Default bewusst — siehe Hinweis unter [Netzwerkzugang](#netzwerkzugang) |
 | `OPAA_HTTP_FORCE_HTTP1` | `false` | `false` | HTTP/1.1 für vLLM-Kompatibilität erzwingen |
+| `OPAA_SHUTDOWN_TIMEOUT` | `60s` | nicht gesetzt (Anwendungs-Default gilt) | Wie lange ein Stopp den bereits angenommenen HTTP-Anfragen gibt, zu Ende zu laufen, bevor sie abgebrochen werden (siehe [„Sanftes Herunterfahren"](#sanftes-herunterfahren)). Der Startwert deckt eine lange Chat-Antwort ab und hält ein Update trotzdem kurz. Laufende Indizierungs- und Upload-Vorgänge teilen dieses Zeitfenster nicht — sie werden beim Stopp sofort abgebrochen. Wer den Wert anhebt, hebt `stop_grace_period` des Backend-Dienstes in der `docker-compose.yml` mit an, sonst beendet Docker den Container vorher hart |
 | `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | `http://localhost:3000` | Erlaubte CORS-Origins (kommagetrennt). Der Anwendungs-Default passt nur außerhalb von Docker Compose (lokaler Vite-Dev-Server auf `:5173`) — die Compose-Belegung trägt deshalb bewusst den Frontend-Host-Port, standardmäßig `http://localhost:3000` (siehe [„Docker-spezifische Variablen"](#docker-spezifische-variablen) oben und [„POST-Anfragen geben 403 Forbidden zurück"](#post-anfragen-geben-403-forbidden-zurück) unten) — sonst schlägt jede POST-Anfrage aus dem Compose-Frontend am CORS-Preflight fehl |
 | `OPAA_INDEXING_DOCUMENT_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `./documents`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.docker.example` lässt die Variable deshalb bewusst auskommentiert; ohne Shell-Export gilt der Compose-Default `./documents` | Host-Pfad für Dokumente (in Container gemountet) |
 | `OPAA_UPLOAD_STORAGE_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `./uploads`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `./uploads` | Host-Pfad für hochgeladene Dokumente (in Container gemountet) |

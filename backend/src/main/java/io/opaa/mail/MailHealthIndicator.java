@@ -12,9 +12,9 @@ import org.springframework.stereotype.Component;
  *
  * <p>State without details: a monitoring system needs to know that mail is failing, the cause
  * belongs on the settings page behind {@code SYSTEM_ADMIN}. Shown by the {@code mail} group only -
- * see {@link MailHealthGroup} for why not by the overall status.
+ * see {@link MailHealthConfiguration} for why not by the overall status.
  */
-@Component(MailHealthGroup.CONTRIBUTOR)
+@Component(MailHealthConfiguration.CONTRIBUTOR)
 @ConditionalOnProperty(name = "management.health.mail.enabled", matchIfMissing = true)
 public class MailHealthIndicator implements HealthIndicator {
 

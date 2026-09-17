@@ -7,7 +7,7 @@ import org.springframework.boot.health.contributor.HealthIndicator;
 /**
  * Whether the S3 upload store answers (ADR-0030, Entscheidung 9): {@code UP} with endpoint and
  * bucket, {@code DOWN} with the German, credential-free reason. Shown by the {@code upload-store}
- * health group only - see {@link UploadStoreHealthGroup} for why not by the overall status.
+ * health group only - see {@link UploadStorageConfiguration} for why not by the overall status.
  */
 final class UploadStoreHealthIndicator implements HealthIndicator {
 

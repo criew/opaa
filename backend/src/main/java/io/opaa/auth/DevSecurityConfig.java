@@ -69,6 +69,10 @@ public class DevSecurityConfig {
                     .permitAll()
                     .requestMatchers(
                         "/actuator/health",
+                        // the two probes a load balancer or a container health check reads; they
+                        // answer a status, never details (#1710)
+                        "/actuator/health/readiness",
+                        "/actuator/health/liveness",
                         "/actuator/info",
                         "/actuator/metrics",
                         "/actuator/prometheus")

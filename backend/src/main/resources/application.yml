@@ -5,10 +5,19 @@ server:
   # X-Forwarded-Proto authoritatively (overwriting any client-supplied value) - see
   # docs/handbuch/deployment.md; a spoofed header would otherwise let a request bypass the CORS check.
   forward-headers-strategy: framework
+  # A stop lets requests already being handled finish instead of cutting them off; new connections
+  # are refused from the first moment of the shutdown. The window below bounds the wait.
+  shutdown: graceful
 
 spring:
   application:
     name: opaa
+  lifecycle:
+    # How long a shutdown phase may take. It is meant for the HTTP requests in flight - a chat
+    # answer is the longest ordinary one - not for background runs: ShutdownLifecycleConfiguration
+    # pins the task executors' own phase to zero, so an indexing run is interrupted at once and
+    # recovered on the next start, exactly as before.
+    timeout-per-shutdown-phase: ${OPAA_SHUTDOWN_TIMEOUT:60s}
   profiles:
     default: local
   # Feste deutsche Locale, damit Bean-Validation-Meldungen in API-Antworten
@@ -501,6 +510,17 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+      # /actuator/health/readiness and /actuator/health/liveness, the two paths a load balancer or
+      # a container health check probes.
+      probes:
+        enabled: true
+      group:
+        # What an instance needs in order to answer at all: the process itself and its database.
+        # The chat, embedding and vector-store contributors deliberately stay out - each of them
+        # calls a foreign service, and an unreachable model must not take an instance out of
+        # rotation while sign-in, library management and document access keep working.
+        readiness:
+          include: readinessState,db
 
 logging:
   level:
