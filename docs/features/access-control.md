@@ -194,8 +194,10 @@ Widerrufsprüfungen gelesen (nur `malformed_token` liegt davor): Das Abschalten 
 Sitzungen regulärer lokaler Konten zwar zusätzlich sofort, abgewiesen wird aber mit
 `local_accounts_disabled`, dem Marker aus ADR-0033, Entscheidung 4 — ein lokaler `SYSTEM_ADMIN`
 passiert den Schalter und erhält weiterhin den Anlass seines Widerrufs. Die beiden
-Verwaltungsanlässe sind getrennt: `admin_reset` nennt das Zurücksetzen eines Passworts,
-`admin_action` jeden anderen Verwaltungsakt, der Sitzungen beendet (#1595). Nur ein
+Verwaltungsanlässe sind getrennt: `admin_reset` nennt das Zurücksetzen eines Passworts (über die
+Admin-API und über den Wiederanlauf des Notanker-Kontos, der ebenfalls eines setzt),
+`admin_action` den Verwaltungsakt ohne Passwortwechsel — heute das Abschalten der lokalen
+Verwaltung (#1595). Nur ein
 anmeldefähiges (`ACTIVE`) Konto passiert den Validator; der Anlass von `session_revoked` ist der letzte Verwaltungsakt an den Refresh-Familien
 des Kontos. Der lokale Issuer legt nie ein Konto an (unbekanntes `sub` → `401`) und
 schreibt E-Mail und Anzeigename nicht aus dem Token zurück. `GET /api/v1/auth/config` führt die

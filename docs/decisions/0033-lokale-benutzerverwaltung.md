@@ -489,15 +489,18 @@ unterscheidet damit den Fall vom abgelaufenen Token, startet **keinen** Erneueru
 den Grund — das ist die technische Form von „Wer neu anmelden muss, erfährt beim nächsten Aufruf, dass
 und warum".
 
-`admin_reset` und `admin_action` sind seit #1595 zwei Anlässe, nicht einer. Der Widerrufsgrund
-`ADMIN_RESET` bezeichnet das Zurücksetzen eines Passworts durch die Verwaltung, `ADMIN` jeden
-anderen Verwaltungsakt, der Sitzungen beendet — das Abschalten der lokalen Verwaltung
-(Entscheidung 4) und den Wiederanlauf des Notanker-Kontos (Entscheidung 5). Solange beide auf
-`admin_reset` abbildeten, las eine Person „Ihr Passwort wurde zurückgesetzt", ohne dass eines
-zurückgesetzt worden war, und suchte nach einem Passwort, das niemand ausgestellt hatte.
-`admin_action` sagt stattdessen, dass die Systemverwaltung die Sitzung beendet hat. Ein eigener
-Enum-Wert entsteht dadurch nicht: Die Unterscheidung liegt in der Abbildung auf den Anlass, nicht in
-`revocation_reason` (dessen `CHECK` in der Datenbank bleibt unverändert).
+`admin_reset` und `admin_action` sind seit #1595 zwei Anlässe, nicht einer. `ADMIN_RESET`
+bezeichnet das Zurücksetzen eines Passworts durch die Verwaltung — über die Admin-API
+(Entscheidung 11) und über den Wiederanlauf des Notanker-Kontos (Entscheidung 5), der ebenfalls
+eines setzt. `ADMIN` bezeichnet den Verwaltungsakt, der Sitzungen beendet, **ohne** ein Passwort
+anzufassen; sein einziger Verwender ist das Abschalten der lokalen Verwaltung (Entscheidung 4).
+Solange beide auf `admin_reset` abbildeten, las eine Person „Ihr Passwort wurde zurückgesetzt",
+ohne dass eines zurückgesetzt worden war, und suchte nach einem Passwort, das niemand ausgestellt
+hatte. Die Zuordnung gilt seither in beide Richtungen: `admin_action` sagt, dass die
+Systemverwaltung die Sitzung beendet hat, und `admin_reset` steht genau dort, wo tatsächlich ein
+Passwort zurückgesetzt wurde. Ein eigener Enum-Wert entsteht dadurch nicht: Die Unterscheidung
+liegt in der Abbildung auf den Anlass, nicht in `revocation_reason` (dessen `CHECK` in der
+Datenbank bleibt unverändert).
 
 `UserService#provisionFromToken` behandelt den lokalen Issuer als **Finder, nie als Anleger**: Ein
 Token mit unbekanntem `sub` führt zu 401, nicht zu einem neuen Konto; `email` und `display_name`
