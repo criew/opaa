@@ -84,6 +84,23 @@ Dienstvereinbarungsthema (ADR-0031, „Verworfene Alternativen").
 | Rückfall ohne Zerlegung | älteste Nutzerfrage im Fenster vorangestellt | **letzte** Nutzerfrage (Vorrunde) vorangestellt; ohne Vorrunde die Frage allein |
 | Zitiermarken im Fenster | werden mitgeschleppt | an beiden Eingängen entfernt |
 | Nachladen bei Cache-Miss | ganze Historie laden, auf 20 kappen | nur die letzten *n* Nachrichten laden, identisch normalisiert |
+| Form des Suchfensters in der Zerlegung | Chat-Nachrichten, die Frage als letzte Nutzernachricht | **ein beschrifteter Textblock** in einer Nutzernachricht (#1684) |
+| Nachricht ohne Suchbedarf | Rückfall auf die Frage | **keine Suche**: Signalwort der Zerlegung, der Lauf endet vor den Suchstufen (#1684) |
+
+**Warum das Suchfenster ein Textblock ist (#1684):** Als Folge von Nutzer- und Assistentennachrichten
+liest ein Chat-Modell lange Antworten im Verlauf als Gespräch, an dem es teilnimmt, und setzt es
+fort — statt einer Suchanfrage kommt ein Antwortsatz („Wenn Sie über 24 Jahre alt sind, kostet ein
+Personalausweis 44,20 Euro.") oder eine Rückfrage zurück, und der Sicherheitsgurt lässt beides
+durch, weil es Wörter des Verlaufs teilt. Die Beschriftungen („Bisheriger Gesprächsverlauf",
+„Nutzer", „Assistent", „Aktuelle Nutzerfrage") gehören wie die Überschrift des Notizblocks **nicht**
+zum Ankerraum.
+
+**Warum eine Nachricht ohne Suchbedarf nicht zurückfällt (#1684):** Ein Wunsch zur Antwortform, eine
+Angabe zur Person oder ein Dank enthält nichts, wonach zu suchen wäre; der Rückfall suchte mit dem
+Satz selbst und brachte der Antwort beliebige Treffer. Die Zerlegung antwortet stattdessen mit einem
+Signalwort, die Pipeline endet vor den Suchstufen, und die Antwort bekommt statt leerer
+Kontextdokumente die Anweisung, direkt auf die Nachricht einzugehen, ohne „nichts gefunden" zu
+melden. Steht das Signalwort neben einer Suchanfrage, gewinnt die Suchanfrage.
 
 **Warum der Sicherheitsgurt nicht nur gegen die Frage ankert:** „Wie lange dauert das?" wird zu
 „Bearbeitungsdauer für den Anwohnerparkausweis" — die Teilfrage teilt mit der Frage kein Ankerwort
@@ -432,8 +449,9 @@ sie sprengte (ADR-0012, Entscheidung 49).
 | `anaphora_resolution` | 2–3 | Rückfrage mit Bezugswort auf die Vorrunde(n); Zieldokument ist nur mit aufgelöstem Bezug findbar | Suchfenster, Zerlegung |
 | `topic_switch` | 3–4 | Wechsel in Runde 2 oder 3; erwartete Dokumente der Wechselrunde sind ausschließlich das neue Thema — ein Altthemen-Dokument im Fenster ist Bleed. Ein bis zwei Fälle mit Rückkehr zum alten Thema durch Neubenennung | kurzes Suchfenster, Rückfall-Reparatur |
 | `constraint_carryover` | 3–5 | Angabe in Runde 1 („Ich arbeite in der Nebenstelle 3", „Es geht um die Fassung 2024"), die in Runde 3 oder später das richtige Dokument vom Verwechslungspartner trennt; Runde 2 ist ein Zwischenthema, damit die Angabe aus dem Suchfenster gefallen ist | Gesprächsnotiz |
+| `answer_continuation` | 3–5 | Verlauf aus langen, produktionsnahen Antworten samt Zitiermarken, kurze Folgefragen und mindestens eine Nachricht ohne Suchbedarf (`search_expected: false`) nach der ersten Runde; eine solche Runde hat keine erwarteten Dokumente und gilt als gelöst, wenn nicht gesucht wurde (#1684) | Form des Suchfensters, Signalwort der Zerlegung |
 
-Mindestens acht Fälle je Klasse (bestehende Regel). Alle drei Klassen werden in der
+Mindestens acht Fälle je Klasse (bestehende Regel). Alle vier Klassen werden in der
 Verwaltungsdomäne kuratiert; der Verwechslungspartner (`confusable_document`) ist bei
 `constraint_carryover` Pflicht, sonst misst die Klasse nichts. Fehlerbild, Ground Truth und
 Adressat je Klasse stehen in [retrieval-benchmark.md, Abschnitt 5](./retrieval-benchmark.md#5-neue-golden-fall-klassen).

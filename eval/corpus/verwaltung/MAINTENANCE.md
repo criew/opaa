@@ -917,6 +917,13 @@ Gelesen als „mit Notiz → ohne Notiz".
 `topic_switch` erreicht über alle 30 Runden der Klasse Hit Rate@5 und MRR@8 von 1,000; die eine
 ungelöste Runde der Klasse ist `ts-008#1`, eine erste Runde und keine Wechselrunde.
 
+> **Einschränkung (2026-09-17, #1684): Die 19 von 27 überschätzen den Betrieb.** Die Fälle dieser
+> drei Klassen tragen kurze, handgeschriebene Antworten („30,70 Euro pro Jahr.") und keine
+> Nachrichten ohne Suchbedarf. Genau diese Form provoziert nicht, was im Demo-Chat geschah: Unter
+> einem Verlauf aus langen Antworten setzt dasselbe Modell das Gespräch fort und gibt Antwortsätze
+> und Rückfragen als Suchanfragen zurück. Die Klasse `answer_continuation` misst das seither; der
+> Befund steht unten unter „Befundlauf: Die Zerlegung setzt das Gespräch fort".
+
 **Die Notiz leistet, wofür sie gebaut wurde.** Alle **9 von 9** Notizen der Zielrunden tragen die
 Rahmenangabe (gegen 3 von 9), und **5 von 9** Zielrunden tragen sie in ihrer Teilfrage (gegen 1 von
 9; ohne Notiz sind es 2 von 9). Die Teilfragen sind Suchanfragen statt erfundener Behauptungen:
@@ -1025,6 +1032,91 @@ aus #1587 reproduziert sich auf einem produktionsüblichen Modell nicht.
 
 **Laufzeit und Kosten.** 150,6 s je Messung mit Notiz, 88,1 s ohne (gegen 902,9 s bzw. 201,9 s im
 CPU-Testcontainer). 498 Chat-Aufrufe je Lauf mit Notiz, 249 ohne.
+
+### Befundlauf: Die Zerlegung setzt das Gespräch fort (2026-09-17, Issue #1684)
+
+**Anlass.** Im Demo-Chat vom 17.09. tragen vier Antworten mit Sachaussagen keine Zitiermarke. Die
+wortgetreue Rekonstruktion des Zerlegungsaufrufs ergab: Mit einem Suchfenster aus langen Antworten
+davor antwortet `claude-haiku-4-5`, statt umzuformulieren („Wenn Sie über 24 Jahre alt sind, kostet
+ein Personalausweis 44,20 Euro.", „Ich verstehe Ihre Frage nicht ganz …"), und der Sicherheitsgurt
+lässt das durch. Auslöser ist die Form des Aufrufs — Verlauf als Chat-Nachrichten —, nicht die
+Temperatur. Nachrichten ohne Frage („Ich möchte präzise Antworten") erzeugen in jeder Form
+Antwortsätze, weil die Zerlegung kein Ergebnis „nichts zu suchen" kannte.
+
+**Neue Fälle.** Acht Fälle der Klasse `answer_continuation` (35 Fälle, 115 Runden im Datensatz):
+jede Runde mit Suche trägt eine Antwort in Länge und Form einer OPAA-Antwort samt Zitiermarken
+(500 bis 2000 Zeichen, von `ConversationCaseCuration` geprüft), die Folgefragen sind kurz und nur
+mit dem Verlauf auflösbar, dazwischen stehen neun Nachrichten ohne Suchbedarf (Wunsch zur
+Antwortform, Angabe zur Person, Dank, Zustimmung). Eine solche Runde hat keine erwarteten Dokumente,
+geht in kein Metrik-Aggregat ein und gilt als gelöst, wenn der Lauf weder gesucht noch einen Chunk
+geliefert hat (Bericht: Abschnitt `noSearch`, Mehrrunden-Messvertrag 5).
+
+**Messanordnung.** Zwei Läufe gegen `claude-haiku-4-5` bei Temperatur **0,70** — die der
+Demo-Installation, gesetzt über `-Dopaa.eval.chatTemperature=0.70`, das nur mit einem externen
+Chat-Modell gilt —, sonst wie der Befundlauf aus #1674 (Suchfenster 2 Runden, Notiz an). Der erste
+Lauf auf dem Stand mit den neuen Fällen, **vor** der Codeänderung; der zweite **nach** ihr (Verlauf
+als beschrifteter Textblock in einer Nutzernachricht, Signalwort `KEINE_SUCHE`). Beide Male drei
+Messungen, berichtet ist der Median-Lauf. Kein Baseline-Lauf.
+
+| | vorher | nachher |
+|---|---|---|
+| Runden, deren Teilfragen Antwortsätze oder Rückfragen sind | **11** (7 der 9 Nachrichten ohne Suchbedarf, 3 Folgefragen in `answer_continuation`, `ts-004#4`) | **0** |
+| Nachrichten ohne Suchbedarf, für die gesucht wurde | **9 von 9** | **0 von 9** |
+| Fragen, für die nicht gesucht wurde | 0 von 106 | **2 von 106** (`cc-008#2`, `ac-003#3`) |
+| Fälle gelöst, gesamt | 19 von 35 | 20 von 35 |
+| davon `answer_continuation` | 0 von 8 | 1 von 8 |
+| nDCG@8 über alle Runden mit Suche (n = 106), min / median / max | 0,852 / 0,885 / 0,889 | 0,880 / 0,881 / 0,901 |
+| nDCG@8 `answer_continuation` (n = 23) | 0,727 | 0,691 |
+| Runden mit abweichender Zerlegung über drei Messungen | 72 von 115 | 76 von 115 |
+
+Beispiele aus dem Median-Lauf, „vorher → nachher":
+
+| Runde | Nachricht | vorher | nachher |
+|---|---|---|---|
+| `ac-004#3` | „Bitte antworte ab jetzt kurz und präzise." | „Verstanden. Ich antworte ab sofort kurz und präzise." | keine Suche |
+| `ac-003#2` | „Ich bin übrigens Sachbearbeiterin im Standesamt." | „Danke für diese Information. Das ist hilfreich zu wissen für unser Gespräch. …" | keine Suche |
+| `ac-005#2` | „Kann ich dagegen Widerspruch einlegen?" | „Gebühren für die Einsichtnahme in Personalakten können Sie anfechten. Die genauen Möglichkeiten …" | „Widerspruch gegen Gebührenbescheid für Personalaktenauskunft" |
+| `ac-005#4` | „und was kostet mich das?" | „Ich benötige mehr Informationen, um Ihre Frage zu beantworten. …" | „Was kostet ein Widerspruch gegen einen Gebührenbescheid des Personalamts?" |
+| `ac-001#4` | „brauch ich dafür ein bestimmtes Formular?" | „Ich benötige mehr Kontext. Worauf bezieht sich Ihre Frage …" | „Formular Eilbearbeitung Umweltamt" |
+| `ts-004#4` | „Noch einmal zurück zur Dienstanweisung UMW-DA-2/2024: Wie oft prüft die Amtsleitung …?" | „… geht aus unserem bisherigen Gesprächsverlauf nicht hervor. Ich kann daher keine Suchanfrage formulieren." | „Wie oft prüft die Amtsleitung abgeschlossene Vorgänge gemäß Dienstanweisung UMW-DA-2/2024?" |
+
+„Antwortsatz oder Rückfrage" ist von Hand über alle Teilfragen beider Median-Läufe ausgezählt, gestützt
+durch ein Suchmuster auf Anrede, Ich-Form und Rückfragewendungen.
+
+**Das Fehlerbild ist behoben, die Rangzahlen bewegen sich nicht.** Die Gesamtzahlen liegen innerhalb
+der Spannweiten beider Läufe. Dass `answer_continuation` in nDCG@8 leicht sinkt, liegt an den
+Folgefragen nach einer Nachricht ohne Suchbedarf: Das Suchfenster von zwei Runden enthält dann nur
+noch eine Sachrunde, und in `ac-002#4` („und wie lange dauert das dann?") steht die Kennung des
+Formulars nicht mehr darin. Das ist die bekannte Grenze des kurzen Suchfensters, nicht die Form des
+Aufrufs; die Notiz hält Sachgegenstände bewusst nicht fest.
+
+**Offen: zwei Fragen ohne Suche.** In `ac-003#3` („wer entscheidet bei uns, wenn die zuständige
+Kollegin krank ist?", nach „Ich bin übrigens Sachbearbeiterin im Standesamt.") und in `cc-008#2`
+(„Zwischenfrage: Wer vertritt die Sachbearbeitung des Sozialamts?", mit zwei Notizpunkten zur Person)
+gab das Modell das Signalwort zurück. Beide Runden waren schon vorher nicht gelöst, die Fallzahl
+bewegt sich dadurch nicht; im Betrieb bleibt so eine Antwort aber ohne Beleg. Eine Nachstichprobe
+der Klasse `answer_continuation` (fünf Aufrufe je Runde, ohne Notiz) traf `ac-003#3` zweimal von
+fünf. Eine schärfere Regel („weder eine Frage noch eine Bitte um Auskunft") beseitigte das in
+fünf von fünf Aufrufen, stufte aber am Demo-Chat die elliptische Folgefrage „wenn ich über 24 bin"
+fünfmal von fünf als Nachricht ohne Suchbedarf ein. Eine dritte Fassung, die elliptische Folgefragen
+ausdrücklich als Fragen benennt, war nicht mehr messbar: Das Guthaben des Befund-Schlüssels war
+erschöpft. Ausgeliefert ist deshalb die im Harness gemessene Fassung. Eine als Nachricht ohne
+Suchbedarf fehleingestufte Frage zeigt sich im Betrieb auf `opaa.query.decomposition.no-search` und
+als Antwort ohne Fundstelle ohne „Durchsucht wurden"-Zeile.
+
+**Antwort ohne Suche.** Stichprobe am Demo-Chat, je drei Antworten mit leerem Kontextabschnitt (vorher)
+und mit der Anweisung für eine Nachricht ohne Suchbedarf (nachher), Muster „nichts gefunden / keine
+Dokumente / kann leider":
+
+| Nachricht | vorher | nachher |
+|---|---|---|
+| „Ich möchte präzise antworten" | 1 von 3 („Mir stehen keine Dokumente mit Informationen speziell ab 2025 zur Verfügung.") | 0 von 3 („Verstanden. Ich werde künftig kurz und präzise antworten.") |
+| „Ich bin Sachbearbeiter und kein Noob." | 0 von 3 | 0 von 3 |
+| „Spannend, dann werde ich wohl mit dem zur KFZ Stelle gehen …" | 0 von 3 | 0 von 3 |
+| „Antworte bitte kurz und präzise und nur mit Informationen ab 2025" | 3 von 3 („… da mir keine Kontextdokumente … vorliegen") | 2 von 3 („Ich habe keinen Zugriff auf Informationen ab 2025.") |
+
+Die letzte Nachricht verlangt eine Einschränkung auf 2025, die der Verlauf nicht hergibt; der Hinweis
+darauf ist dort inhaltlich richtig, nur nicht mehr als „keine Dokumente" formuliert.
 
 ### Themen-Bleed: warum die Zahl wenig taugt
 

@@ -386,6 +386,14 @@ Fehler für den Nutzer, höchstens die alte Suchqualität. Seit #1486 ist das di
 des Suchfensters statt der ersten des Chats; siehe
 [conversation-memory.md](./conversation-memory.md), Bauteil 1.
 
+**Nachricht ohne Suchbedarf (#1684):** Ein Wunsch zur Antwortform, eine Angabe zur Person oder ein
+Dank ist kein Fehlschlag, sondern hat nichts zu suchen. Das Modell antwortet dann mit einem
+Signalwort, die Suche entfällt ganz — kein Rückfall —, und die Antwort wird angewiesen, direkt auf
+die Nachricht einzugehen, statt „nichts gefunden" zu melden. Frage und Suchfenster erreichen das
+Modell seit demselben Issue als beschrifteter Textblock in einer Nutzernachricht: Als
+Chat-Nachrichten gelesen setzte das Modell den Verlauf fort und gab Antwortsätze als Suchanfragen
+zurück.
+
 **Degenerierte Zerlegung (#1254):** Ein Fehlschlag ist nicht der einzige schlechte Ausgang. Ein
 kleines Chat-Modell kann formal „erfolgreich" zerlegen und dabei etwas zurückgeben, das mit der
 Nutzerfrage nichts zu tun hat — im gemessenen Fall den Beispielsatz, den der Systemprompt selbst im

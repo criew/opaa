@@ -232,6 +232,21 @@ mehrere eigenständige Suchanfragen** um, bis zu einer konfigurierten Obergrenze
   Frage, in der das Bezugswort durch den Gegenstand aus dem Verlauf ersetzt ist.
 - Offensichtliche Tippfehler werden korrigiert. Eine bereits einthemige, eigenständige Frage
   bleibt eine Suchanfrage, bei Bedarf wortgleich.
+- Eine Nachricht, in der nichts zu suchen ist — nur ein Wunsch zur Antwortform („Antworte bitte
+  kürzer"), eine Angabe zur eigenen Person, ein Dank oder eine Zustimmung —, ergibt **keine**
+  Suchanfrage.
+
+Das Suchfenster erreicht das Modell als **beschrifteter Textblock** in einer einzigen Nachricht
+(„Bisheriger Gesprächsverlauf", darunter die Beiträge von Nutzer und Assistent, zuletzt die
+„Aktuelle Nutzerfrage"), nicht als Folge von Chat-Nachrichten. Als Chat-Nachrichten liest ein
+Chat-Modell lange Antworten im Verlauf als Gespräch, an dem es teilnimmt, und setzt es fort: Statt
+einer Suchanfrage kommt ein Antwortsatz zurück, und gesucht wird mit diesem Satz.
+
+Findet das Modell in der Nachricht nichts zu suchen, antwortet es mit einem festen Signalwort. Die
+Stufe beendet den Lauf dann **ohne Suche und ohne Rückfall**: Die übrigen Stufen stehen im Protokoll
+als „nicht erreicht", die Antwort entsteht ohne Chunks (Abschnitt 6), und die Metrik
+`opaa.query.decomposition.no-search` zählt den Fall. Steht das Signalwort neben einer Suchanfrage,
+wird mit der Suchanfrage gesucht — eine unnötige Suche kostet weniger als eine ausgelassene.
 
 Dieser Schritt hat einen **Sicherheitsgurt**: Antwortet das Modell nicht, unparsebar oder mit
 Suchanfragen, von denen auch nur eine kein Wort mit dem Kontext gemeinsam hat, den die Zerlegung
@@ -466,6 +481,13 @@ gesucht hat, aber keinen Beleg zitiert, trägt die Zeile **„Durchsucht wurden:
 der durchsuchten Bibliotheken, damit die Person sieht, worin nichts gefunden oder nichts verwendet
 wurde.
 
+Hat die Teilfragen-Zerlegung in der Nachricht nichts zu suchen gefunden (Stufe 3), steht an der
+Stelle der Kontextdokumente die Anweisung, direkt auf die Nachricht einzugehen und nicht darauf
+hinzuweisen, dass nichts gefunden wurde: Auf „Antworte bitte kürzer" soll keine Antwort „dazu habe
+ich nichts gefunden" folgen. Diese Antwort trägt keine „Durchsucht wurden"-Zeile, weil nichts
+durchsucht wurde. Die Unterscheidung hängt allein an der Nachricht, nie an den Leserechten; ein
+leerer Suchbereich bleibt davon ununterscheidbar wie bisher.
+
 Nach der Antwort wird die Nutzernachricht dieser Runde nebenläufig zur Gesprächsnotiz verdichtet
 (Abschnitt 2); ein daraus entstehender Punkt wirkt ab der nächsten Frage.
 
@@ -615,6 +637,7 @@ Gesamtprotokoll. Die Aufbewahrungsfrist ist einstellbar; abschalten lässt sich 
 | Reranking „nicht verfügbar" | Modellrollen, Stufe „Reranking" | Endpunkt nicht erreichbar oder Zeitbudget überschritten; die Suche lief ohne Reranking weiter |
 | Bibliotheken mit Volltext-Rückstand | Indexstatus („Nachzug ausstehend"), Suchpfade | Nachzug nach einem Update noch nicht gelaufen (Kapitel [Indexierung](indexierung.md), Abschnitt 9) |
 | Rückfall der Zerlegung | Log-Warnung, Metrik `opaa.query.decomposition.fallback` | das Chat-Modell folgt dem Zerlegungsformat nicht; die Frage wurde wörtlich gesucht |
+| Sachfrage ohne Suche beantwortet | Stufe „Teilfragen" („nichts zu suchen"), Metrik `opaa.query.decomposition.no-search` | das Chat-Modell hat die Nachricht als Nachricht ohne Suchbedarf eingestuft; die Antwort hat keine Fundstelle |
 | „Beleg nicht bestätigt" | Fundstelle | Modell hat eine Marke erfunden oder einen Wert abweichend wiedergegeben |
 | viele „ohne Angabe" unter Filter | Fundstellen, Notiz der Suchstufen | Feld im Bestand schwach gefüllt; Bestandslauf oder Pflege (Kapitel [Metadaten](metadaten.md)) |
 
@@ -647,6 +670,7 @@ Darüber antwortet das Backend mit HTTP 429. Die Werte stehen unter `opaa.rate-l
 | `opaa.query.count` | Fragen, nach Erfolg und Fehler unterschieden |
 | `opaa.query.tokens` | verbrauchte Tokens des Chat-Modells |
 | `opaa.query.decomposition.fallback` | Rückfälle der Zerlegung, nach Ursache unterschieden |
+| `opaa.query.decomposition.no-search` | Nachrichten, in denen die Zerlegung nichts zu suchen fand und die ohne Suche beantwortet wurden |
 | `opaa.chat.note.extraction` | Verdichtungen der Gesprächsnotiz, nach Ausgang unterschieden: `applied`, `empty`, `failed` (Modell nicht erreichbar, Zeitüberschreitung, unparsebar), `discarded` (Space zwischenzeitlich archiviert) und `rejected` (Verdichtungs-Pool erschöpft, die Runde wurde gar nicht erst verdichtet) |
 
 Als Warnung gehen der Rückfall der Zerlegung und die fehlgeschlagene Verdichtung der

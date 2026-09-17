@@ -823,9 +823,9 @@ Korpusdokumente einen Fall der Klasse `literal_term_weak_embedding` aus dem Top-
 ### Mehrrunden-Klassen (Epic #1482, Gesprächsgedächtnis)
 
 > **Stand (09/2026):** gebaut (#1484/#1485), verglichen und in der CI (#1553), nachgemessen nach
-> Suchfenster und Gesprächsnotiz (#1490). Die drei Klassen unterscheiden sich von den
+> Suchfenster und Gesprächsnotiz (#1490), um `answer_continuation` ergänzt (#1684). Die vier Klassen unterscheiden sich von den
 > fünf obigen in der Form: Ein Fall ist eine **Folge von Runden**, jede mit eigener Frage, eigener
-> handgeschriebener Kurzantwort und eigenen erwarteten Dokumenten; gemessen wird je Runde, ein Fall
+> handgeschriebener Antwort und eigenen erwarteten Dokumenten; gemessen wird je Runde, ein Fall
 > gilt als gelöst, wenn jede Runde gelöst ist. Sie liegen in einem eigenen Datensatz
 > (`eval/golden/verwaltung-conversations.json`) mit eigener Baseline und laufen nur zerlegend —
 > gepinntes Eval-Chat-Modell, Mehrfachlauf-Regel. Sie laufen nächtlich, per `workflow_dispatch`
@@ -903,6 +903,24 @@ von zwei Runden, sodass sie die Suche nur über die Gesprächsnotiz erreichen ka
 *Adressat:* Gesprächsnotiz (Bauteil 2). Die Klasse muss nach dem Fenster-Umbau **vorübergehend
 fallen dürfen** und mit der Notiz mindestens den heutigen Stand wieder erreichen — das ist der
 Nachweis, dass die Notiz gebraucht wird.
+
+#### (i) `answer_continuation` — Verlauf aus echten Antworten, Nachrichten ohne Suchbedarf
+
+Zwei Runden mit Antworten in Länge und Form einer OPAA-Antwort (Aufzählungen, Zitiermarken,
+Schlussempfehlung), dann „Antworte bitte kürzer und nur in Stichpunkten.", dann „brauch ich dafür
+ein bestimmtes Formular?". Die kurzen Antworten der anderen drei Klassen provozieren nicht, was im
+Betrieb geschah: Ein Chat-Modell setzt das Gespräch fort und gibt Antwortsätze als Suchanfragen
+zurück (#1684).
+
+*Konstruktion:* drei bis fünf Runden; jede Runde mit Suche trägt eine Antwort von 500 bis 2000
+Zeichen mit mindestens einer Zitiermarke; mindestens eine Runde ohne Suchbedarf
+(`search_expected: false`, keine erwarteten Dokumente) nach der ersten und mindestens zwei Runden
+mit Suche; die Folgefragen sind nur mit dem Verlauf auflösbar.
+*Ground Truth:* für Runden mit Suche wie bei `anaphora_resolution`; eine Runde ohne Suchbedarf ist
+gelöst, wenn der Lauf keine Suchanfrage und keinen Chunk hat. Sie geht in kein Metrik-Aggregat ein;
+der Bericht führt sie im Abschnitt `noSearch`.
+*Adressat:* Form des Suchfensters in der Zerlegung und ihr Signalwort für Nachrichten ohne
+Suchbedarf.
 
 #### Verworfen: `long_horizon`
 
