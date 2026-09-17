@@ -141,17 +141,20 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
   }
 
   /**
-   * The title of the first slide that declares one, read from the slide's own location ({@code
-   * "Folie 1: <Titel>"}) - the body text of a title-less slide is no heading and yields nothing.
+   * The title of the <b>first</b> slide, read from its own location ({@code "Folie 1: <Titel>"}) -
+   * strictly slide one or nothing, like {@link PptxDocumentFormat}: a later slide's title names its
+   * section, not the presentation, and the two sister formats must answer the same question alike.
    */
   private static String firstSlideTitle(OdpContent content) {
-    for (Document slide : content.slideChunks()) {
-      Object location = slide.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY);
-      if (location instanceof String text) {
-        int separator = text.indexOf(": ");
-        if (separator >= 0) {
-          return text.substring(separator + 2);
-        }
+    if (content.slideChunks().isEmpty()) {
+      return null;
+    }
+    Object location =
+        content.slideChunks().getFirst().getMetadata().get(ChunkingService.LOCATION_METADATA_KEY);
+    if (location instanceof String text) {
+      int separator = text.indexOf(": ");
+      if (separator >= 0) {
+        return text.substring(separator + 2);
       }
     }
     return null;
@@ -160,7 +163,8 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
   /**
    * Reads {@code content.xml} for the first slide's title on top of {@code meta.xml}, falling back
    * to {@code meta.xml} alone when {@code content.xml} is unreadable: the title and dates of a
-   * presentation with a broken body must not be lost.
+   * presentation with a broken body must not be lost. Both paths must name the same first heading,
+   * which is why this one parses the slides rather than reading {@code meta.xml} alone.
    */
   @Override
   protected DocumentProperties declaredProperties(DocumentFormatSource source) throws IOException {

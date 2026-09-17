@@ -70,8 +70,9 @@ public record DocumentProperties(
   public static final int MAX_TITLE_LINE_LENGTH = 300;
 
   /**
-   * Upper bound of {@link #headText}, in characters - the same excerpt size the model extraction
-   * reads, so both steps look at the same opening of a document and neither pays for its rest.
+   * Upper bound of {@link #headText}, in characters: enough for the opening and the closing
+   * provisions of an ordinary administrative document, and small enough that no pipeline pays for
+   * the rest of a long one.
    */
   public static final int MAX_HEAD_TEXT_LENGTH = 4_000;
 

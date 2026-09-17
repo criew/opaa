@@ -32,7 +32,7 @@ Fest eingebaut, für jedes Dokument jeder Bibliothek, Anhänge eingeschlossen:
 
 | Feld | Typ | Filterbar | Woher der Wert kommt (in dieser Reihenfolge) |
 |---|---|---|---|
-| **Titel** | Text, höchstens 1000 Zeichen | nein | Titel-Eigenschaft des Formats (sofern sie nicht das Werkzeug oder die Datei benennt), Frontmatter `titel`, erste Überschrift erster Ebene, überschriftartige Titelzeile, humanisierter Dateiname; deshalb praktisch immer befüllt |
+| **Titel** | Text, höchstens 1000 Zeichen | nein | Titel-Eigenschaft des Formats (sofern sie nicht nur das Werkzeug oder die Datei benennt), Frontmatter `titel`, erste Überschrift erster Ebene, überschriftartige Titelzeile, humanisierter Dateiname; deshalb praktisch immer befüllt |
 | **Dokumentart** | ein Wert aus dem Vokabular (Abschnitt 3) | ja | Frontmatter `dokumentart`, Dateiname, Titelzeile des Dokuments, Dateiformat |
 | **Datum/Stand** | Datum mit Genauigkeit Tag, Monat oder Jahr | ja | Frontmatter `stand_datum` / `fassung`, formateigenes Dokumentdatum (Mail-Datum, Feed-Veröffentlichung), erste Überschrift, verankerte Datumsangabe im Dokumentkopf, Dateiname, Änderungs-, dann Erstelldatum der Dokumenteigenschaften (nur wenn plausibel) |
 
@@ -168,7 +168,7 @@ Jede Format-Pipeline gibt nur weiter, was ihr Format selbst erklärt; interpreti
 |---|---|---|---|---|---|---|
 | PDF | Info-Dictionary | Erstellung, Änderung | erster Lesezeichen-Eintrag der obersten Ebene | erste Textzeile der ersten Seite | Text der ersten Seite | |
 | DOCX, PPTX | Dokumenteigenschaften | Erstellung, Änderung | DOCX: erste Überschrift 1; PPTX: Titel der ersten Folie | DOCX: erster Absatz | DOCX: Textanfang | |
-| ODT, ODP | `meta.xml` | Erstellung, Änderung | ODT: erste Überschrift 1; ODP: Titel der ersten Folie | ODT: erster Absatz | ODT: Textanfang | |
+| ODT, ODP | `meta.xml` | Erstellung, Änderung | ODT: erste Überschrift 1; ODP: Titel der ersten Folie (nur dieser, wie PPTX) | ODT: erster Absatz | ODT: Textanfang | |
 | Markdown | Frontmatter `titel` | Frontmatter `stand_datum`, `fassung` | erste `#`-Überschrift, ersatzweise eine mit `===` unterstrichene erste Zeile | erste Zeile nach dem Frontmatter | Textanfang | Frontmatter `dokumentart` |
 | HTML | `<title>` | | erste `<h1>` | erster Textblock des Hauptinhalts | Textanfang des Hauptinhalts | |
 | E-Mail | Betreff | `Date`-Kopf als Dokumentdatum | | | | Absender, An und Betreff als Formatfelder (Abschnitt 2a) |
@@ -204,22 +204,27 @@ Dokumentart und liefern nichts.
   unverankerte Zahl dort ein Betrag oder ein Paragraf ist.
 - **Verankerte Datumsangaben im Dokument.** Aus dem Text wird ein Datum nur gelesen, wenn es an
   einer Formulierung hängt, die das Dokument über sich selbst macht: „Stand:", „Fassung vom",
-  „Ausgabe", „gültig ab" in den ersten 600 Zeichen, sowie eine Inkrafttretensklausel mit
-  Selbstbezug („Diese Satzung tritt am 1. Januar 2026 in Kraft"), die in den ersten 4.000 Zeichen
-  auch weiter unten stehen darf — dort stehen die Schlussbestimmungen. Ein Datum im Fließtext
-  („die zum 23.5.2021 in Kraft getretenen Änderungen", „bis 31.12.2020 ausgestellt") ist kein
-  Stand.
+  „Ausgabe", „gültig ab" in den ersten 600 Zeichen — mit der Angabe unmittelbar dahinter, ein
+  nacktes Jahr nur direkt hinter dem Anker —, sowie eine Inkrafttretensklausel mit Selbstbezug
+  („Diese Satzung tritt am 1. Januar 2026 in Kraft"), die in den ersten 4.000 Zeichen auch weiter
+  unten stehen darf — dort stehen die Schlussbestimmungen; bei einem PDF heißt das: auf Seite 1.
+  Ein Datum im Fließtext („die zum 23.5.2021 in Kraft getretenen Änderungen", „bis 31.12.2020
+  ausgestellt") ist kein Stand. Bei einem Namen, der kein Dateiname ist (Feed-Eintrag,
+  Confluence-Seite), wird der Dokumenttext gar nicht erst nach einem Datum durchsucht.
 - **Dokumenteigenschaften nur, wenn plausibel.** Erzeugende Werkzeuge stempeln ihr Vorlagendatum in
   die Datei (`python-docx` 2013-12-23, `python-pptx` 2013-01-27, ReportLab 2000-01-01) oder ein
   Epochendatum (1601-01-01, 1970-01-01, 1980-01-01). Solche Daten und alles vor 1990 gelten als
   „keine Angabe". Das formateigene Dokumentdatum (Mail-Datum, Veröffentlichung eines Eintrags) ist
   davon ausgenommen und wird nur gegen das Mindestjahr geprüft.
 - **Titel des Formats nur, wenn er das Dokument benennt.** Verworfen wird ein Titel, der ein
-  Werkzeug nennt („Microsoft Office Outlook - Memo Style", „Microsoft Word - vermerk.doc"), auf
-  eine Dateiendung endet oder den Dateinamen wiederholt. Dann gilt die Überschrift, ersatzweise
-  eine überschriftartige Titelzeile (kurz, ohne Satzzeichen am Ende), zuletzt der Dateiname. Für
-  Feed-Einträge und Confluence-Seiten gilt diese Prüfung nicht: Dort ist der Titel die vom Zufluss
-  gemeldete Überschrift.
+  Werkzeug nennt und einen Dateinamen oder einen Druckstil dahinter trägt („Microsoft Office
+  Outlook - Memo Style", „Microsoft Word - vermerk.doc"), oder der aus nichts als einem Dateinamen
+  besteht („vermerk.docx"). Ein Betreff wie „WG: haushaltsplan-2026.pdf" und ein Titel, der dem
+  Dateinamen entspricht, bleiben erhalten — Letzterer ist dessen bessere Schreibung. Dann gilt die
+  Überschrift, ersatzweise eine überschriftartige Titelzeile (kurz, ohne Satzzeichen am Ende, keine
+  Versalienzeile und kein Kopf eines Etikettenblocks wie „Gremium:"/„Status:"), zuletzt der
+  Dateiname. Für Feed-Einträge und Confluence-Seiten gilt diese Prüfung nicht: Dort ist der Titel
+  die vom Zufluss gemeldete Überschrift.
 - **Extraktionsversion.** Die Regeln tragen eine Versionsnummer (heute 5), die an jedem Dokument
   gespeichert wird. Ändert sich eine Regel, steigt die Version, und der Bestand wird damit als
   nachzuziehen erkennbar (Abschnitt 6).

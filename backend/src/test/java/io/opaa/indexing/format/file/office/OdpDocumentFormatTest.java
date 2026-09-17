@@ -116,6 +116,23 @@ class OdpDocumentFormatTest {
         .isNull();
   }
 
+  // Strictly slide one, like PptxDocumentFormat: a later slide's title names its section, not the
+  // presentation.
+  @Test
+  void aTitleOnASlideBelowTheFirstIsNoHeading() throws IOException {
+    Path file = tempDir.resolve("titel-erst-auf-folie-zwei.odp");
+    writeOdp(
+        file,
+        odpSlide(odpFrame(null, "Willkommen zur Buergerversammlung."))
+            + odpSlide(odpFrame("title", "Gebuehren")));
+
+    DocumentFormatSource source =
+        DocumentFormatSource.ofFile(file, "titel-erst-auf-folie-zwei.odp", ".odp");
+
+    assertThat(pipeline.run(source).properties().firstHeading()).isNull();
+    assertThat(pipeline.readProperties(source).firstHeading()).isNull();
+  }
+
   @Test
   void claimsExactlyOdp() {
     assertThat(pipeline.handledFormats()).containsExactly(".odp");

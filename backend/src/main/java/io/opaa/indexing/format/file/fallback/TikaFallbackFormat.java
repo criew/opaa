@@ -146,11 +146,16 @@ public class TikaFallbackFormat implements DocumentFormat {
         .withHeadText(headText);
   }
 
-  /** The opening of the parsed text, across documents until the head-text limit is together. */
+  /**
+   * The opening of the parsed text, taken across the parsed documents in order and stopping at
+   * {@link DocumentProperties#MAX_HEAD_TEXT_LENGTH} characters - a single document of the parse can
+   * be megabytes, so only what fits is copied.
+   */
   private static String headText(List<Document> parsed) {
     StringBuilder head = new StringBuilder();
     for (Document document : parsed) {
-      if (head.length() >= DocumentProperties.MAX_HEAD_TEXT_LENGTH) {
+      int remaining = DocumentProperties.MAX_HEAD_TEXT_LENGTH - head.length();
+      if (remaining <= 0) {
         break;
       }
       String text = document.getText();
@@ -159,8 +164,9 @@ public class TikaFallbackFormat implements DocumentFormat {
       }
       if (head.length() > 0) {
         head.append('\n');
+        remaining--;
       }
-      head.append(text);
+      head.append(text, 0, Math.min(text.length(), remaining));
     }
     return head.length() == 0 ? null : head.toString();
   }

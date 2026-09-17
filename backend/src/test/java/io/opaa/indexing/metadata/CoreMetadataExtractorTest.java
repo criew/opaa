@@ -573,15 +573,35 @@ class CoreMetadataExtractorTest {
       }
     }
 
+    // A title equal to the file name is the better spelling of it - the humanized fallback caps at
+    // eight tokens and drops the rest of a long Satzungstitel.
     @Test
-    void aTitlePropertyRepeatingTheFileNameIsDiscarded() {
-      DocumentProperties properties =
-          DocumentProperties.EMPTY
-              .withTitle("beispiel_praesentation")
-              .withFirstHeading("OPAA Testpraesentation");
+    void aTitlePropertyRepeatingTheFileNameIsKept() {
+      String title = "Satzung über die Erhebung von Gebühren für Amtshandlungen des Standesamts";
+      DocumentProperties properties = DocumentProperties.EMPTY.withTitle(title);
 
-      assertThat(extract("beispiel-praesentation.odp", properties).title())
-          .contains("OPAA Testpraesentation");
+      assertThat(
+              extract(
+                      "Satzung über die Erhebung von Gebühren für Amtshandlungen des"
+                          + " Standesamts.pdf",
+                      properties)
+                  .title())
+          .contains(title);
+    }
+
+    // A mail's subject is the document's own title and regularly names an attached file; the
+    // pipeline sets it without marking a synthetic name.
+    @Test
+    void aMailSubjectNamingAFileIsNoFileNameTitle() {
+      for (String subject :
+          List.of(
+              "WG: haushaltsplan-2026.pdf",
+              "Anbei: Vermerk.docx",
+              "Weiterleitung: Antrag Wohngeld.pdf")) {
+        assertThat(extract("nachricht.eml", DocumentProperties.EMPTY.withTitle(subject)).title())
+            .as(subject)
+            .contains(subject);
+      }
     }
 
     @Test
@@ -590,7 +610,10 @@ class CoreMetadataExtractorTest {
           List.of(
               "Verwaltungsgebührensatzung der Stadt Rheinfurt",
               "Interne FAQ: Häufige Rückfragen zur Ummeldung",
-              "Microsoft-Lizenzen im Rathaus")) {
+              "Microsoft-Lizenzen im Rathaus",
+              // A tool name is only a tool title with a file or a print style behind it.
+              "Microsoft 365 - Leitfaden für Beschäftigte",
+              "Adobe Acrobat - Schulungsunterlagen der IT")) {
         assertThat(
                 extract(
                         "01_verwaltungsgebuehrensatzung.pdf",
@@ -634,6 +657,65 @@ class CoreMetadataExtractorTest {
 
       assertThat(extract("030_umtausch-in-kartenfuehrerschein.txt", properties).title())
           .contains("umtausch in kartenfuehrerschein");
+    }
+
+    // demo/corpus/ratsinformationen/**: a Beschlussvorlage opens with the letterhead of the city
+    // and a block of labelled fields - neither is the subject of the document.
+    @Test
+    void aLetterheadAboveALabelBlockIsNoTitle() {
+      String head =
+          """
+          STADT RHEINFURT
+          Beschlussvorlage Nr. 2024/019
+
+          Gremium:        Hauptausschuss der Stadt Rheinfurt
+          Sitzung am:     14. Mai 2024
+          Federführung:   Bürgerbüro Rheinfurt
+          Status:         öffentlich
+
+          Betreff: Anschaffung eines Bürgerkoffers für die mobile Beratung
+          """;
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withTitleLine(head).withHeadText(head);
+
+      assertThat(properties.titleLine()).isEqualTo("STADT RHEINFURT");
+      assertThat(extract("2024-05-14-hauptausschuss-vorlage-buergerkoffer.txt", properties).title())
+          .contains("hauptausschuss vorlage buergerkoffer");
+    }
+
+    @Test
+    void aHeadingAboveALabelBlockIsNoTitleEither() {
+      String head =
+          """
+          Beschlussvorlage Nr. 2024/019
+
+          Gremium:        Hauptausschuss
+          Status:         öffentlich
+          """;
+
+      assertThat(
+              extract(
+                      "2024-05-14-vorlage.txt",
+                      DocumentProperties.EMPTY.withTitleLine(head).withHeadText(head))
+                  .title())
+          .contains("vorlage");
+    }
+
+    @Test
+    void anOrdinaryHeadingAboveRunningTextStaysTheTitle() {
+      String head =
+          """
+          Wunschkennzeichen reservieren
+
+          Sie können sich ein Wunschkennzeichen vorab reservieren lassen.
+          """;
+
+      assertThat(
+              extract(
+                      "008_wunschkennzeichen.txt",
+                      DocumentProperties.EMPTY.withTitleLine(head).withHeadText(head))
+                  .title())
+          .contains("Wunschkennzeichen reservieren");
     }
   }
 
@@ -952,6 +1034,37 @@ class CoreMetadataExtractorTest {
             .as(text)
             .isEmpty();
       }
+    }
+
+    // Inside the anchor's window a bare year counts only right behind the anchor; further along it
+    // belongs to a phrase.
+    @Test
+    void aBareYearCountsOnlyImmediatelyBehindTheAnchor() {
+      assertThat(
+              extract(
+                      "merkblatt.pdf",
+                      DocumentProperties.EMPTY.withHeadText(
+                          "Merkblatt\nStand der Technik 2019 in der Kfz-Zulassung"))
+                  .date())
+          .isEmpty();
+      assertThat(
+              extract(
+                      "merkblatt.pdf",
+                      DocumentProperties.EMPTY.withHeadText("Merkblatt\nStand 2019"))
+                  .date())
+          .contains(ExtractedDate.year(2019));
+    }
+
+    // A headline an upstream source declared names other documents than itself - its text is no
+    // self-designation, just as its name is no naming convention.
+    @Test
+    void aSyntheticNameNeverReadsADateOutOfTheHeadText() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withSyntheticName(true)
+              .withHeadText("Diese Satzung tritt am 1. Januar 2026 in Kraft.");
+
+      assertThat(extract("Rat beschließt neue Hundesteuersatzung", properties).date()).isEmpty();
     }
 
     @Test

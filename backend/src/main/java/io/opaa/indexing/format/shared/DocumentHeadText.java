@@ -13,11 +13,15 @@ public final class DocumentHeadText {
 
   private DocumentHeadText() {}
 
-  /** The opening of a {@link HeadingSectionSplitter} event stream, headings included. */
+  /**
+   * The opening of a {@link HeadingSectionSplitter} event stream, headings included; only as many
+   * characters as the limit allows are copied, however long a single block is.
+   */
   public static String ofEvents(List<HeadingSectionSplitter.Event> events) {
     StringBuilder head = new StringBuilder();
     for (HeadingSectionSplitter.Event event : events) {
-      if (head.length() >= DocumentProperties.MAX_HEAD_TEXT_LENGTH) {
+      int remaining = DocumentProperties.MAX_HEAD_TEXT_LENGTH - head.length();
+      if (remaining <= 0) {
         break;
       }
       String text =
@@ -29,8 +33,9 @@ public final class DocumentHeadText {
       }
       if (head.length() > 0) {
         head.append('\n');
+        remaining--;
       }
-      head.append(text);
+      head.append(text, 0, Math.min(text.length(), remaining));
     }
     return head.length() == 0 ? null : head.toString();
   }

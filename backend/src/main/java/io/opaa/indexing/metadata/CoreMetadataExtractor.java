@@ -69,6 +69,15 @@ public final class CoreMetadataExtractor {
    */
   private static final int MAX_HEADING_LIKE_LENGTH = 120;
 
+  /** A short caption at the start of a line ("Gremium:", "Sitzung am:") - one field of a form. */
+  private static final Pattern LABEL_LINE = Pattern.compile("^\\p{L}[\\p{L} .()/-]{0,30}:(\\s|$)");
+
+  /** How far below a line a label block still belongs to it. */
+  private static final int LABEL_BLOCK_LINES = 10;
+
+  /** How many label lines make a block - one caption alone is an ordinary sentence opening. */
+  private static final int MIN_LABEL_LINES = 2;
+
   /** The head block's own version statement, immediately followed by its date. */
   private static final Pattern STAND_ANCHOR =
       Pattern.compile(
@@ -86,12 +95,17 @@ public final class CoreMetadataExtractor {
           "(?i)\\bdies(?:e|er|es)\\s+\\p{L}+\\s+tritt\\s+(?:\\p{L}+\\s+)?(?:am|zum)\\s+"
               + "([\\s\\S]{4,40}?)\\s+in\\s+Kraft");
 
+  /** A year standing right behind an anchor word - the date of that statement. */
+  private static final Pattern LEADING_YEAR = Pattern.compile("((?:19|20)\\d{2})(?![\\d.\\-])");
+
   /** Whether a bare four-digit year is a credible date in the text being scanned. */
   private enum BareYearRule {
     /** A file name or a frontmatter value: a standalone year is a naming convention. */
     ALLOWED,
     /** Free heading text: a year needs an anchor word, an unanchored number is not a date. */
-    ANCHORED_ONLY
+    ANCHORED_ONLY,
+    /** The window behind an anchor: the anchor is already given, only its notation is read. */
+    FORBIDDEN
   }
 
   private static final Pattern FILE_NAME_TOKEN_SEPARATOR = Pattern.compile("[\\s_\\-.,;()\\[\\]]+");
@@ -139,8 +153,7 @@ public final class CoreMetadataExtractor {
   private static Optional<String> extractTitle(String fileName, DocumentProperties props) {
     // A synthetic name is the headline an upstream source declared, and the format's title is that
     // same headline - there is no tool in between, and no file name it could be repeating.
-    if (props.title() != null
-        && (props.syntheticName() || !ToolTitle.matches(props.title(), fileName))) {
+    if (props.title() != null && (props.syntheticName() || !ToolTitle.matches(props.title()))) {
       return Optional.of(props.title());
     }
     String frontmatterTitle = props.frontmatter().get(FRONTMATTER_TITLE);
@@ -150,7 +163,7 @@ public final class CoreMetadataExtractor {
     if (props.firstHeading() != null) {
       return Optional.of(props.firstHeading());
     }
-    if (isHeadingLike(props.titleLine())) {
+    if (isHeadingLike(props)) {
       return Optional.of(props.titleLine());
     }
     if (fileName.isBlank()) {
@@ -161,16 +174,66 @@ public final class CoreMetadataExtractor {
   }
 
   /**
-   * Whether a title line may stand in for a missing heading: a short line that is no sentence and
-   * no label. A document that opens with running text has no heading at all, and its file name -
-   * chosen by a person - names it better than its first sentence does.
+   * Whether a title line may stand in for a missing heading: a short line that is neither a
+   * sentence nor a label, and not the letterhead of a form. A document that opens with running text
+   * or with a letterhead has no heading at all, and its file name - chosen by a person - names it
+   * better than its first line does.
    */
-  private static boolean isHeadingLike(String titleLine) {
+  private static boolean isHeadingLike(DocumentProperties props) {
+    String titleLine = props.titleLine();
     if (titleLine == null || titleLine.length() > MAX_HEADING_LIKE_LENGTH) {
       return false;
     }
     char last = titleLine.charAt(titleLine.length() - 1);
-    return last != '.' && last != '!' && last != '?' && last != ':' && last != ';' && last != ',';
+    if (last == '.' || last == '!' || last == '?' || last == ':' || last == ';' || last == ',') {
+      return false;
+    }
+    return !isLetterhead(titleLine) && !labelBlockFollows(props.headText(), titleLine);
+  }
+
+  /**
+   * A line in capitals only ("STADT RHEINFURT") is the letterhead of the issuing body, not the
+   * subject of the document - the form's own heading follows further down.
+   */
+  private static boolean isLetterhead(String line) {
+    boolean hasLetter = false;
+    for (int i = 0; i < line.length(); i++) {
+      char c = line.charAt(i);
+      if (Character.isLetter(c)) {
+        hasLetter = true;
+        if (Character.isLowerCase(c)) {
+          return false;
+        }
+      }
+    }
+    return hasLetter;
+  }
+
+  /**
+   * Whether a block of label lines ("Gremium:", "Sitzung am:", "Status:") follows {@code titleLine}
+   * within the next {@link #LABEL_BLOCK_LINES} lines of the head text: then the line opens a form's
+   * Kopfblock, and what the document is about stands in a labelled field of that block, not in the
+   * line itself.
+   */
+  private static boolean labelBlockFollows(String headText, String titleLine) {
+    if (headText == null) {
+      return false;
+    }
+    int start = headText.indexOf(titleLine);
+    if (start < 0) {
+      return false;
+    }
+    String[] lines = headText.substring(start + titleLine.length()).split("\\R");
+    int labels = 0;
+    for (int i = 0; i < Math.min(lines.length, LABEL_BLOCK_LINES); i++) {
+      if (LABEL_LINE.matcher(lines[i].strip()).find()) {
+        labels++;
+        if (labels >= MIN_LABEL_LINES) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   private static Optional<String> extractDocumentType(
@@ -256,11 +319,13 @@ public final class CoreMetadataExtractor {
     if (heading.isPresent()) {
       return heading;
     }
-    Optional<ExtractedDate> fromHead = headTextDate(props.headText());
-    if (fromHead.isPresent()) {
-      return fromHead;
-    }
     if (!props.syntheticName()) {
+      // Text an upstream source declared is no self-designation either: a press release names the
+      // Satzung it reports about, and would inherit its Inkrafttretensdatum.
+      Optional<ExtractedDate> fromHead = headTextDate(props.headText());
+      if (fromHead.isPresent()) {
+        return fromHead;
+      }
       Optional<ExtractedDate> fromName = parseDate(stripExtension(fileName), BareYearRule.ALLOWED);
       if (fromName.isPresent()) {
         return fromName;
@@ -290,9 +355,15 @@ public final class CoreMetadataExtractor {
     while (anchor.find()) {
       String after =
           head.substring(anchor.end(), Math.min(anchor.end() + ANCHOR_DATE_WINDOW, head.length()));
-      Optional<ExtractedDate> date = parseDate(after, BareYearRule.ALLOWED);
+      Optional<ExtractedDate> date = parseDate(after, BareYearRule.FORBIDDEN);
       if (date.isPresent()) {
         return date;
+      }
+      // A bare year counts only immediately behind the anchor ("Stand: 2024"); further into the
+      // window it is part of a phrase ("Stand der Technik 2019"), not the statement's date.
+      Matcher year = LEADING_YEAR.matcher(after);
+      if (year.lookingAt()) {
+        return Optional.of(ExtractedDate.year(Integer.parseInt(year.group(1))));
       }
     }
     Matcher entryIntoForce = ENTRY_INTO_FORCE.matcher(headText);
@@ -350,6 +421,9 @@ public final class CoreMetadataExtractor {
       return Optional.of(
           ExtractedDate.month(
               Integer.parseInt(monthName.group(2)), monthNumber(monthName.group(1))));
+    }
+    if (bareYearRule == BareYearRule.FORBIDDEN) {
+      return Optional.empty();
     }
     Matcher year = (bareYearRule == BareYearRule.ALLOWED ? BARE_YEAR : ANCHORED_YEAR).matcher(text);
     if (year.find()) {
