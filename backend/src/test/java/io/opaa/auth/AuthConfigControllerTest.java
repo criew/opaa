@@ -1,6 +1,5 @@
 package io.opaa.auth;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -12,6 +11,7 @@ import io.opaa.auth.local.LocalAuthSettingsRepository;
 import io.opaa.auth.local.LocalSelfServiceAvailability;
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
+import io.opaa.auth.oidc.OidcProviderRegistry;
 import io.opaa.auth.oidc.OidcProviderRepository;
 import java.util.List;
 import java.util.Optional;
@@ -29,11 +29,11 @@ import org.springframework.test.web.servlet.MockMvc;
  * {@code GET /api/v1/auth/config} (#1332, ADR-0025 Entscheidung 5; #1533, ADR-0033 Entscheidung 4):
  * the mode, in the {@code oidc} mode every enabled provider in sign-in page order - whether or not
  * the backend's decoder for it is ready yet - with exactly the fields the sign-in page shows, and
- * the local account management as {@code localAccounts}: the switch of the LOCAL row (never listed
- * among the providers), and the self-service flows exactly as {@link LocalSelfServiceAvailability}
- * reports them - the same answer the authorization rule and the rate limiter act on, not a second
- * computation of the conjunction here (#1592; the conjunction itself is {@code
- * LocalSelfServiceServiceTest}'s subject). The mode stays this endpoint's own condition.
+ * the local account management as {@code localAccounts}: the LOCAL row is never listed among the
+ * providers, and both the switch and the two flows come from where the request paths read them -
+ * {@link OidcProviderRegistry} and {@link LocalSelfServiceAvailability} - rather than from a second
+ * computation over the rows (#1592; the conjunction itself is {@code LocalSelfServiceServiceTest}'s
+ * subject). The mode stays this endpoint's own condition.
  */
 @WebMvcTest(AuthConfigController.class)
 @Import({TestSecurityConfig.class, AuthConfigControllerTest.FlowsStub.class})
@@ -64,6 +64,7 @@ class AuthConfigControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private AuthProperties authProperties;
   @MockitoBean private OidcProviderRepository providerRepository;
+  @MockitoBean private OidcProviderRegistry providerRegistry;
   @MockitoBean private LocalAuthSettingsRepository settingsRepository;
 
   // TestSecurityConfig's UserProvisioningFilter needs a UserService bean even though this
@@ -79,13 +80,13 @@ class AuthConfigControllerTest {
     settings = mock(LocalAuthSettings.class);
     when(settings.values()).thenReturn(LocalAuthSettings.Values.defaults());
     when(settingsRepository.findSingleton()).thenReturn(Optional.of(settings));
-    when(providerRepository.findByNormalizedIssuerUri(any())).thenReturn(Optional.empty());
   }
 
   @Test
   void inTheDevModeThereAreNoProvidersAndLocalAccountsAreOff() throws Exception {
     when(authProperties.mode()).thenReturn("dev");
-    // even if the flows reported themselves available: outside oidc there is no chain to serve them
+    // even if switch and flows reported themselves on: outside oidc there is no chain to serve them
+    when(providerRegistry.localAccountsEnabled()).thenReturn(true);
     FlowsStub.passwordReset = true;
     FlowsStub.selfRegistration = true;
 
@@ -147,7 +148,8 @@ class AuthConfigControllerTest {
   }
 
   @Test
-  void theLocalRowIsNeverAProviderAndTheFlowsAreTheOneAvailabilityAnswer() throws Exception {
+  void theLocalRowIsNeverAProviderAndSwitchAndFlowsComeFromWhereThePathsReadThem()
+      throws Exception {
     when(authProperties.mode()).thenReturn("oidc");
     OidcProvider standard =
         new OidcProvider(
@@ -160,27 +162,31 @@ class AuthConfigControllerTest {
     local.enable();
     when(providerRepository.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc())
         .thenReturn(List.of(standard, local));
+    // deliberately contradicting: the row says on and the settings allow both flows - neither is
+    // where this endpoint reads the state, so neither may show up in the answer
     when(providerRepository.findByNormalizedIssuerUri(LocalIssuer.URN))
         .thenReturn(Optional.of(local));
     when(settings.values())
         .thenReturn(
             new LocalAuthSettings.Values(true, List.of("stadt.example"), true, 14, 72, 30, 90, 90));
 
-    // the settings alone offer no flow - what is reported is what the availability answers
     mockMvc
         .perform(get("/api/v1/auth/config"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.providers.length()").value(1))
         .andExpect(jsonPath("$.providers[0].displayName").value("Beschäftigte"))
-        .andExpect(jsonPath("$.localAccounts.enabled").value(true))
+        .andExpect(jsonPath("$.localAccounts.enabled").value(false))
         .andExpect(jsonPath("$.localAccounts.selfRegistrationEnabled").value(false))
         .andExpect(jsonPath("$.localAccounts.passwordResetEnabled").value(false))
+        // the settings are read here, and only for this field
         .andExpect(jsonPath("$.localAccounts.passwordMinLength").value(14));
 
+    when(providerRegistry.localAccountsEnabled()).thenReturn(true);
     FlowsStub.passwordReset = true;
     FlowsStub.selfRegistration = true;
     mockMvc
         .perform(get("/api/v1/auth/config"))
+        .andExpect(jsonPath("$.localAccounts.enabled").value(true))
         .andExpect(jsonPath("$.localAccounts.selfRegistrationEnabled").value(true))
         .andExpect(jsonPath("$.localAccounts.passwordResetEnabled").value(true));
 
@@ -190,11 +196,5 @@ class AuthConfigControllerTest {
         .perform(get("/api/v1/auth/config"))
         .andExpect(jsonPath("$.localAccounts.selfRegistrationEnabled").value(false))
         .andExpect(jsonPath("$.localAccounts.passwordResetEnabled").value(true));
-
-    // the LOCAL row is what this endpoint reads itself, for the management flag
-    local.disable();
-    mockMvc
-        .perform(get("/api/v1/auth/config"))
-        .andExpect(jsonPath("$.localAccounts.enabled").value(false));
   }
 }
