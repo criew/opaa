@@ -99,9 +99,16 @@ im Allgemeinen.
 
 **Fehlende Serialisierung konkurrierender Läufe:**
 
+`DirectorySyncService` stand hier ursprünglich als erste Fundstelle und ist mit #1711 erledigt:
+`DirectorySyncRunLock` hält ein `pg_try_advisory_xact_lock` auf der `organizationId` über den
+gesamten Lauf, den Verzeichnisabruf eingeschlossen, und weist einen zweiten Lauf derselben
+Organisation mit einer `ConflictException` (409) ab, statt ihn warten zu lassen. Der Lauf ist damit
+schon im Einprozessbetrieb serialisiert — zwei Administratoren oder ein Doppelklick genügten vorher
+für eine Überlappung. Weil die Sperre in der Datenbank liegt und nicht im Prozess, trägt sie auch
+über mehrere Instanzen.
+
 | Fundstelle | Zustand |
 | --- | --- |
-| `DirectorySyncService.run` | Zwei gleichzeitige Synchronisationsläufe derselben Organisation überlappen unkontrolliert — im Javadoc bereits als "Known gap" benannt, mit zwei genannten Lösungsrichtungen (Serialisierung per Advisory-Lock, oder Last-Writer-Wins als dokumentierte Betriebsvoraussetzung) |
 | `MetadataBackfillService`, `ContextPrefixRerunService`, `PipelineReindexService` | Die drei ausdrücklich angestoßenen Wartungsläufe haben keine Entsprechung zu `uk_indexing_jobs_library_running`. Sie sind idempotent und wiederaufnehmbar, die Korrektheit hängt also nicht daran — wohl aber die Kosten: zwei gleichzeitige Läufe über derselben Bibliothek bedeuten doppelte Einbettungs- und Modellaufrufe auf demselben Endpunkt. Heute braucht es dafür zwei Administratoren im selben Moment; bei mehreren Instanzen genügt ein Doppelklick, den der Lastverteiler auf zwei Instanzen legt |
 
 **Prozesslokale Task-Executor-Warteschlangen** (Grund, warum eine `RUNNING`-Zeile implizit "läuft auf
@@ -254,8 +261,6 @@ Diese Skizze ist keine Umsetzungsplanung, nur eine Einordnung der Größenordnun
   die Datenbankuhr als Anker plus eine Sicherung, die die Ordnung über Verbindungen hinweg erzwingt
   (Bauart offen, siehe #1517). Eine zweite prozesslokale Variable je Instanz genügt hier ausdrücklich
   nicht (ADR-0032).
-- **`DirectorySyncService`**: Ein Postgres Advisory-Lock, keyed auf `organizationId`, gehalten für die
-  Dauer eines Laufs — im Javadoc bereits als eine der beiden möglichen Lösungsrichtungen benannt.
 - **Task-Executor-Warteschlangen** (`IndexingConfiguration`): Folgt aus dem `LibraryDocumentService`-
   bzw. `recoverJobsOrphanedByRestart`-Umbau, kein eigenständiges Problem - sobald eine `RUNNING`-Zeile
   eine Instanz-Kennung trägt, kann jede Instanz an ihrer eigenen Warteschlange festhalten und muss nur

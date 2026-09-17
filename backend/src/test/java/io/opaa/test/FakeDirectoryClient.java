@@ -7,6 +7,7 @@ import io.opaa.group.sync.DirectoryUnavailableException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 /**
  * The one seam between {@code DirectorySyncService} and an actual directory (see {@link
@@ -21,6 +22,7 @@ public final class FakeDirectoryClient implements DirectoryClient {
 
   private DirectorySnapshot snapshot = new DirectorySnapshot(Instant.now(), List.of());
   private DirectoryUnavailableException failure;
+  private volatile Consumer<UUID> fetchGate = organizationId -> {};
 
   public void respondWith(DirectoryGroup... groups) {
     this.failure = null;
@@ -31,14 +33,25 @@ public final class FakeDirectoryClient implements DirectoryClient {
     this.failure = new DirectoryUnavailableException(message);
   }
 
-  /** Restores the empty-response, no-failure default the reset listener relies on. */
+  /**
+   * Stands in for the one slow step of a real run: {@code gate} is invoked inside {@link
+   * #fetchGroups}, so a test can hold a run open at exactly the point a production fetch would take
+   * its time and observe what a second, concurrent caller sees.
+   */
+  public void gateFetchWith(Consumer<UUID> gate) {
+    this.fetchGate = gate;
+  }
+
+  /** Restores the empty-response, no-failure, ungated default the reset listener relies on. */
   public void reset() {
     this.failure = null;
     this.snapshot = new DirectorySnapshot(Instant.now(), List.of());
+    this.fetchGate = organizationId -> {};
   }
 
   @Override
   public DirectorySnapshot fetchGroups(UUID organizationId) throws DirectoryUnavailableException {
+    fetchGate.accept(organizationId);
     if (failure != null) {
       throw failure;
     }
