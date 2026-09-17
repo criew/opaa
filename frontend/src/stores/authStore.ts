@@ -334,8 +334,14 @@ export const useAuthStore = create<AuthState>((set, get) => {
    * automatic attempt (#1631), cleared for every other. Written either way and in one place, so an
    * attempt that never came back cannot be read as belonging to the flow that follows and rob it
    * of its error message. Every `signinRedirect()` of this store starts here.
+   *
+   * Answers `null` for a provider this sign-in cannot go to - and writes nothing at all then. Both
+   * conditions are checked before the first note: a manager whose provider row is gone (disabled
+   * while the page stood open) is not a flow that starts, and a note written for a flow that never
+   * starts is exactly what the callback of the *next* one would read as its own.
    */
   function beginSignInFlow(providerId: string, options?: { silent?: boolean }): UserManager | null {
+    if (!get().providers.some((p) => p.id === providerId)) return null
     const userManager = activate(providerId, true)
     if (!userManager) return null
     if (options?.silent) markSilentSignInFlow()

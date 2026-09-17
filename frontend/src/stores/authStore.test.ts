@@ -1099,6 +1099,27 @@ describe('authStore', () => {
       }
     })
 
+    /**
+     * A manager built at start-up whose provider row is gone since - disabled while this page stood
+     * open. No flow can start there, so nothing may be written for one: a flow note without a
+     * redirect is what the callback of the next flow would read as its own, and a pinned provider
+     * without a flow is a callback waiting to be let through.
+     */
+    it('writes no note for a flow that cannot start', async () => {
+      await initializeOidc()
+      useAuthStore.setState({ providers: [] })
+      const redirect = spyOnRedirect()
+      try {
+        await useAuthStore.getState().loginOidc('p-opaa', { silent: true })
+
+        expect(redirect).not.toHaveBeenCalled()
+        expect(isSilentSignInFlow()).toBe(false)
+        expect(sessionStorage.getItem('opaa.oidc.flowProvider')).toBeNull()
+      } finally {
+        redirect.mockRestore()
+      }
+    })
+
     describe('die Absage des Anbieters', () => {
       async function callbackWith(err: unknown, options: { silent: boolean }) {
         sessionStorage.setItem('opaa.oidc.flowProvider', 'p-opaa')
