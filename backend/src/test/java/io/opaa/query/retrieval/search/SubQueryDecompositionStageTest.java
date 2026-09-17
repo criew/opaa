@@ -12,9 +12,11 @@ import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.retrieval.RerankAvailability;
 import io.opaa.query.retrieval.RetrievalContext;
+import io.opaa.query.retrieval.RetrievalNote;
 import io.opaa.query.retrieval.RetrievalState;
 import io.opaa.query.retrieval.StageOutcome;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -43,7 +45,7 @@ class SubQueryDecompositionStageTest {
 
   @Test
   void theDecompositionReceivesOnlyTheLastTurnsOfTheConversationWindow() {
-    when(decomposition.decompose(any(), anyInt())).thenReturn(List.of("Teilfrage"));
+    when(decomposition.decompose(any(), anyInt())).thenReturn(Optional.of(List.of("Teilfrage")));
 
     stage.apply(contextWith(THREE_TURNS, 2), RetrievalState.initial());
 
@@ -59,7 +61,7 @@ class SubQueryDecompositionStageTest {
   /** {@code searchWindowTurns = 0} is the documented "question only" setting. */
   @Test
   void aSearchWindowOfZeroTurnsLeavesTheDecompositionWithTheQuestionAlone() {
-    when(decomposition.decompose(any(), anyInt())).thenReturn(List.of("Teilfrage"));
+    when(decomposition.decompose(any(), anyInt())).thenReturn(Optional.of(List.of("Teilfrage")));
 
     stage.apply(contextWith(THREE_TURNS, 0), RetrievalState.initial());
 
@@ -70,7 +72,7 @@ class SubQueryDecompositionStageTest {
   /** A conversation shorter than the search window is handed over whole, not padded. */
   @Test
   void aConversationShorterThanTheSearchWindowIsHandedOverWhole() {
-    when(decomposition.decompose(any(), anyInt())).thenReturn(List.of("Teilfrage"));
+    when(decomposition.decompose(any(), anyInt())).thenReturn(Optional.of(List.of("Teilfrage")));
     List<Message> oneTurn = THREE_TURNS.subList(0, 2);
 
     stage.apply(contextWith(oneTurn, 2), RetrievalState.initial());
@@ -85,7 +87,7 @@ class SubQueryDecompositionStageTest {
    */
   @Test
   void theFallbackPrependsTheLastUserQuestionOfTheSearchWindow() {
-    when(decomposition.decompose(any(), anyInt())).thenReturn(List.of());
+    when(decomposition.decompose(any(), anyInt())).thenReturn(Optional.empty());
 
     StageOutcome outcome = stage.apply(contextWith(THREE_TURNS, 2), RetrievalState.initial());
 
@@ -93,10 +95,26 @@ class SubQueryDecompositionStageTest {
         .containsExactly("Und wie lange ist er gültig? Gilt das auch für Zweitwagen?");
   }
 
+  /**
+   * #1684: a message without anything to search for halts the run with no search query at all -
+   * neither sub-queries nor the fallback, which would search for a sentence that asked for nothing.
+   */
+  @Test
+  void aMessageWithoutAnythingToSearchForHaltsTheRunWithoutASearchQuery() {
+    when(decomposition.decompose(any(), anyInt())).thenReturn(Optional.of(List.of()));
+
+    StageOutcome outcome = stage.apply(contextWith(THREE_TURNS, 2), RetrievalState.initial());
+
+    assertThat(outcome.state().halted()).isTrue();
+    assertThat(outcome.state().searchQueries()).isEmpty();
+    assertThat(outcome.explanation().notes())
+        .containsExactly(RetrievalNote.DECOMPOSITION_NO_SEARCH.format());
+  }
+
   /** Without a preceding turn in the search window the fallback is the question alone. */
   @Test
   void withoutAPrecedingTurnTheFallbackIsTheQuestionAlone() {
-    when(decomposition.decompose(any(), anyInt())).thenReturn(List.of());
+    when(decomposition.decompose(any(), anyInt())).thenReturn(Optional.empty());
 
     StageOutcome outcome = stage.apply(contextWith(List.of(), 2), RetrievalState.initial());
 
@@ -109,7 +127,7 @@ class SubQueryDecompositionStageTest {
    */
   @Test
   void aQuestionOutsideTheSearchWindowNeverReachesTheFallbackQuery() {
-    when(decomposition.decompose(any(), anyInt())).thenReturn(List.of());
+    when(decomposition.decompose(any(), anyInt())).thenReturn(Optional.empty());
 
     StageOutcome outcome = stage.apply(contextWith(THREE_TURNS, 1), RetrievalState.initial());
 
@@ -144,7 +162,7 @@ class SubQueryDecompositionStageTest {
    */
   @Test
   void theRahmenPointsOfTheNoteArriveAsAnAnchoredContextBlock() {
-    when(decomposition.decompose(any(), anyInt())).thenReturn(List.of("Teilfrage"));
+    when(decomposition.decompose(any(), anyInt())).thenReturn(Optional.of(List.of("Teilfrage")));
 
     stage.apply(contextWith(List.of(), 2, List.of("Bezugsjahr 2024")), RetrievalState.initial());
 
@@ -171,7 +189,7 @@ class SubQueryDecompositionStageTest {
    */
   @Test
   void aNoteWithoutAnyRahmenPointAddsNoContextBlock() {
-    when(decomposition.decompose(any(), anyInt())).thenReturn(List.of("Teilfrage"));
+    when(decomposition.decompose(any(), anyInt())).thenReturn(Optional.of(List.of("Teilfrage")));
 
     stage.apply(contextWith(List.of(), 2, List.of()), RetrievalState.initial());
 
@@ -181,7 +199,7 @@ class SubQueryDecompositionStageTest {
   /** Without a RAHMEN point there is no block - an empty heading would still be an instruction. */
   @Test
   void anEmptyNoteAddsNoContextBlock() {
-    when(decomposition.decompose(any(), anyInt())).thenReturn(List.of("Teilfrage"));
+    when(decomposition.decompose(any(), anyInt())).thenReturn(Optional.of(List.of("Teilfrage")));
 
     stage.apply(contextWith(THREE_TURNS, 2), RetrievalState.initial());
 

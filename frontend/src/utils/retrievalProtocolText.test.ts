@@ -24,6 +24,7 @@ const BACKEND_NOTES = [
   'decomposition produced 1 sub-query',
   'decomposition returned nothing (failed or unparsable): single-query fallback',
   'decomposition switched off by configuration: single-query fallback',
+  'decomposition found nothing to search for: retrieval halted',
   'search query: Gebührenbefreiung wegen Bedürftigkeit',
   'vector search, 3 list(s)',
   'fetch-k 25 per list',

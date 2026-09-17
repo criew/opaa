@@ -9,6 +9,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.messages.UserMessage;
 
 /**
@@ -56,9 +57,11 @@ class DecompositionContextTest {
     assertThat(context.contextTexts())
         .as("no material the model was given stays out of the anchor space")
         .containsExactlyInAnyOrderElementsOf(
-            Stream.concat(
-                    context.promptMessages().stream().map(Message::getText),
+            Stream.of(
+                    WINDOW.stream().map(Message::getText),
+                    Stream.of(context.question()),
                     context.contextBlocks().stream().flatMap(block -> block.anchorTexts().stream()))
+                .flatMap(texts -> texts)
                 .toList());
   }
 
@@ -113,17 +116,60 @@ class DecompositionContextTest {
             "Frage?");
   }
 
-  /** The question is the last message of the call, after the window it resolves against. */
+  /**
+   * Regression guard for #1684: the search window reaches the model as one labelled text block in a
+   * single user message, the question last. As alternating user and assistant messages, a chat
+   * model read long answers as a conversation to continue and returned answer sentences instead of
+   * search queries.
+   */
   @Test
-  void thePromptMessagesEndWithTheQuestion() {
+  void theSearchWindowReachesTheModelAsOneLabelledTextBlock() {
     DecompositionContext context = DecompositionContext.of("Frage?", WINDOW);
 
     assertThat(context.promptMessages())
+        .singleElement()
+        .satisfies(
+            message -> {
+              assertThat(message.getMessageType()).isEqualTo(MessageType.USER);
+              assertThat(message.getText())
+                  .isEqualTo(
+                      """
+                      Bisheriger Gesprächsverlauf:
+                      Nutzer: Was kostet ein Anwohnerparkausweis?
+
+                      Assistent: Ein Anwohnerparkausweis kostet 30,70 Euro pro Jahr.
+
+                      Aktuelle Nutzerfrage: Frage?""");
+            });
+  }
+
+  @Test
+  void withoutASearchWindowThePromptIsTheLabelledQuestionAlone() {
+    DecompositionContext context = DecompositionContext.of("Frage?", List.of());
+
+    assertThat(context.promptMessages())
+        .singleElement()
         .extracting(Message::getText)
+        .isEqualTo("Aktuelle Nutzerfrage: Frage?");
+  }
+
+  /**
+   * The labels are OPAA's own wording, like a block's heading: "Nutzerfrage" contains "Nutzer", and
+   * an anchored label would relate a sub-query to any conversation merely because it was labelled.
+   */
+  @Test
+  void theLabelsOfTheTextBlockStayOutOfTheAnchorSpace() {
+    DecompositionContext context = DecompositionContext.of("Wie lange dauert das?", WINDOW);
+
+    assertThat(context.promptMessages().getFirst().getText())
+        .contains("Gesprächsverlauf", "Nutzer:", "Assistent:", "Nutzerfrage");
+    assertThat(context.contextTexts())
         .containsExactly(
             "Was kostet ein Anwohnerparkausweis?",
             "Ein Anwohnerparkausweis kostet 30,70 Euro pro Jahr.",
-            "Frage?");
+            "Wie lange dauert das?")
+        .noneSatisfy(
+            text -> assertThat(text).containsAnyOf("Gesprächsverlauf", "Nutzer", "Assistent"));
   }
 
   @Test

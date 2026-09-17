@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -15,6 +16,7 @@ import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.query.ConversationNoteBlock;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -67,60 +69,64 @@ class QueryDecompositionServiceTest {
   void oneLinePerSubQueryIsParsedIntoSeparateEntries() {
     stubChatModelResponse("Was kostet ein Personalausweis?\nWas kostet ein Führerschein?");
 
-    List<String> subQueries =
+    Optional<List<String>> subQueries =
         service.decompose(
             DecompositionContext.of(
                 "Was kostet ein Personalausweis und ein Führerschein?", List.of()),
             3);
 
     assertThat(subQueries)
-        .containsExactly("Was kostet ein Personalausweis?", "Was kostet ein Führerschein?");
+        .contains(List.of("Was kostet ein Personalausweis?", "Was kostet ein Führerschein?"));
   }
 
   @Test
   void aSingleTopicQuestionDecomposesToExactlyOneSubQuery() {
     stubChatModelResponse("Was kostet ein Personalausweis?");
 
-    List<String> subQueries =
+    Optional<List<String>> subQueries =
         service.decompose(DecompositionContext.of("Was kostet ein Personalausweis?", List.of()), 3);
 
-    assertThat(subQueries).containsExactly("Was kostet ein Personalausweis?");
+    assertThat(subQueries).contains(List.of("Was kostet ein Personalausweis?"));
   }
 
   @Test
   void leadingBulletsAndNumberingAreStripped() {
     stubChatModelResponse("- Erste Frage\n2) Zweite Frage\n3. Dritte Frage");
 
-    List<String> subQueries = service.decompose(DecompositionContext.of("Frage", List.of()), 3);
+    Optional<List<String>> subQueries =
+        service.decompose(DecompositionContext.of("Frage", List.of()), 3);
 
-    assertThat(subQueries).containsExactly("Erste Frage", "Zweite Frage", "Dritte Frage");
+    assertThat(subQueries).contains(List.of("Erste Frage", "Zweite Frage", "Dritte Frage"));
   }
 
   @Test
   void blankLinesAreDropped() {
     stubChatModelResponse("Erste Frage\n\n   \nZweite Frage");
 
-    List<String> subQueries = service.decompose(DecompositionContext.of("Frage", List.of()), 3);
+    Optional<List<String>> subQueries =
+        service.decompose(DecompositionContext.of("Frage", List.of()), 3);
 
-    assertThat(subQueries).containsExactly("Erste Frage", "Zweite Frage");
+    assertThat(subQueries).contains(List.of("Erste Frage", "Zweite Frage"));
   }
 
   @Test
   void moreLinesThanMaxSubQueriesAreTruncated() {
     stubChatModelResponse("Frage eins\nFrage zwei\nFrage drei\nFrage vier\nFrage fünf");
 
-    List<String> subQueries = service.decompose(DecompositionContext.of("Frage", List.of()), 3);
+    Optional<List<String>> subQueries =
+        service.decompose(DecompositionContext.of("Frage", List.of()), 3);
 
-    assertThat(subQueries).containsExactly("Frage eins", "Frage zwei", "Frage drei");
+    assertThat(subQueries).contains(List.of("Frage eins", "Frage zwei", "Frage drei"));
   }
 
   @Test
   void duplicateLinesAreDeduplicated() {
     stubChatModelResponse("Frage A\nFrage A\nFrage B");
 
-    List<String> subQueries = service.decompose(DecompositionContext.of("Frage", List.of()), 3);
+    Optional<List<String>> subQueries =
+        service.decompose(DecompositionContext.of("Frage", List.of()), 3);
 
-    assertThat(subQueries).containsExactly("Frage A", "Frage B");
+    assertThat(subQueries).contains(List.of("Frage A", "Frage B"));
   }
 
   /** Unparsable output (blank/whitespace-only) is a decomposition failure - #923: no exception. */
@@ -128,7 +134,8 @@ class QueryDecompositionServiceTest {
   void blankResponseFallsBackToAnEmptyList() {
     stubChatModelResponse("   \n  \n");
 
-    List<String> subQueries = service.decompose(DecompositionContext.of("Frage", List.of()), 3);
+    Optional<List<String>> subQueries =
+        service.decompose(DecompositionContext.of("Frage", List.of()), 3);
 
     assertThat(subQueries).isEmpty();
     verify(metrics).recordFailedDecomposition();
@@ -139,7 +146,8 @@ class QueryDecompositionServiceTest {
     when(activeChatModelResolver.resolveChatClient())
         .thenThrow(new RuntimeException("kein aktives Chat-Modell konfiguriert"));
 
-    List<String> subQueries = service.decompose(DecompositionContext.of("Frage", List.of()), 3);
+    Optional<List<String>> subQueries =
+        service.decompose(DecompositionContext.of("Frage", List.of()), 3);
 
     assertThat(subQueries).isEmpty();
     verify(metrics).recordFailedDecomposition();
@@ -152,7 +160,8 @@ class QueryDecompositionServiceTest {
     when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
     doThrow(new RuntimeException("LLM nicht erreichbar")).when(chatModel).call(any(Prompt.class));
 
-    List<String> subQueries = service.decompose(DecompositionContext.of("Frage", List.of()), 3);
+    Optional<List<String>> subQueries =
+        service.decompose(DecompositionContext.of("Frage", List.of()), 3);
 
     assertThat(subQueries).isEmpty();
     verify(metrics).recordFailedDecomposition();
@@ -181,21 +190,82 @@ class QueryDecompositionServiceTest {
 
   /**
    * Regression guard for #923/#1254: the rule that resolves a conversation-relative question
-   * survived the removal of its example, and the conversation history still reaches the model.
+   * survived the removal of its example, and the conversation history still reaches the model -
+   * since #1684 inside the one user message, before the question.
    */
   @Test
   void theSystemPromptKeepsTheFollowUpRuleAndTheHistoryReachesTheModel() {
     stubChatModelResponse("Was kostet ein Personalausweis?");
     List<Message> history = List.of(new UserMessage("Wo beantrage ich einen Personalausweis?"));
 
-    List<String> subQueries =
+    Optional<List<String>> subQueries =
         service.decompose(DecompositionContext.of("Und was kostet das dann?", history), 3);
 
     assertThat(capturedSystemPrompt()).contains("rückverweisende").contains("Gesprächsverlauf");
     assertThat(capturedPrompt().getInstructions())
+        .filteredOn(message -> message.getMessageType() == MessageType.USER)
+        .singleElement()
         .extracting(Message::getText)
-        .contains("Wo beantrage ich einen Personalausweis?", "Und was kostet das dann?");
-    assertThat(subQueries).containsExactly("Was kostet ein Personalausweis?");
+        .asString()
+        .containsSubsequence("Wo beantrage ich einen Personalausweis?", "Und was kostet das dann?");
+    assertThat(subQueries).contains(List.of("Was kostet ein Personalausweis?"));
+  }
+
+  /**
+   * #1684: a message without anything to search for is its own result, not a failure - an empty
+   * list rather than the fallback, counted apart from every fallback reason.
+   */
+  @Test
+  void theNoSearchSentinelYieldsNoSubQueriesAndNoFallback() {
+    stubChatModelResponse("KEINE_SUCHE");
+
+    Optional<List<String>> subQueries =
+        service.decompose(DecompositionContext.of("Ich möchte präzise Antworten.", List.of()), 3);
+
+    assertThat(subQueries).contains(List.of());
+    verify(metrics).recordNoSearchDecomposition();
+    verify(metrics, never()).recordFailedDecomposition();
+    verify(metrics, never()).recordDegenerateDecomposition();
+    verify(metrics, never()).recordPrunedDecomposition();
+  }
+
+  /** A model rarely echoes a sentinel exactly; case, spacing and punctuation do not matter. */
+  @Test
+  void theNoSearchSentinelIsRecognizedDespiteCaseSpacingAndPunctuation() {
+    stubChatModelResponse("- Keine Suche.");
+
+    Optional<List<String>> subQueries =
+        service.decompose(DecompositionContext.of("Danke dir!", List.of()), 3);
+
+    assertThat(subQueries).contains(List.of());
+  }
+
+  /**
+   * Next to a search query the sentinel loses: an unneeded search costs less than a skipped one.
+   */
+  @Test
+  void aSearchQueryNextToTheSentinelIsKept() {
+    stubChatModelResponse("KEINE_SUCHE\nKosten eines Personalausweises");
+
+    Optional<List<String>> subQueries =
+        service.decompose(
+            DecompositionContext.of("Ich bin Rentner, was kostet ein Personalausweis?", List.of()),
+            3);
+
+    assertThat(subQueries).contains(List.of("Kosten eines Personalausweises"));
+    verify(metrics, never()).recordNoSearchDecomposition();
+  }
+
+  /** The instruction names the sentinel and forbids continuing the conversation. */
+  @Test
+  void theSystemPromptNamesTheSentinelAndForbidsContinuingTheConversation() {
+    stubChatModelResponse("KEINE_SUCHE");
+
+    service.decompose(DecompositionContext.of("Danke.", List.of()), 3);
+
+    assertThat(capturedSystemPrompt())
+        .contains(QueryDecompositionService.NO_SEARCH_SENTINEL)
+        .contains("setze das Gespräch nicht fort");
   }
 
   /**
@@ -207,7 +277,7 @@ class QueryDecompositionServiceTest {
   void anOutputUnrelatedToTheQuestionIsDiscarded() {
     stubChatModelResponse("und was kostet das?");
 
-    List<String> subQueries =
+    Optional<List<String>> subQueries =
         service.decompose(
             DecompositionContext.of(
                 "Wer wird von der Gebühr befreit, wenn er bedürftig ist?", List.of()),
@@ -227,7 +297,7 @@ class QueryDecompositionServiceTest {
   void oneUnrelatedSubQueryDiscardsTheWholeDecomposition() {
     stubChatModelResponse("Ausleihfrist für Bücher\nMahngebühr Bibliothek\nAusleihfrist Buch");
 
-    List<String> subQueries =
+    Optional<List<String>> subQueries =
         service.decompose(
             DecompositionContext.of(
                 "Wie lange darf ich Bücher ausleihen und was kostet eine Mahnung?", List.of()),
@@ -272,11 +342,11 @@ class QueryDecompositionServiceTest {
     stubChatModelResponse("Was kostet ein Personalausweis?");
     List<Message> history = List.of(new UserMessage("Wo beantrage ich einen Personalausweis?"));
 
-    List<String> subQueries =
+    Optional<List<String>> subQueries =
         service.decompose(
             DecompositionContext.of("Und was kostet das dann insgesamt?", history), 3);
 
-    assertThat(subQueries).containsExactly("Was kostet ein Personalausweis?");
+    assertThat(subQueries).contains(List.of("Was kostet ein Personalausweis?"));
   }
 
   /**
@@ -292,7 +362,7 @@ class QueryDecompositionServiceTest {
             new UserMessage("Wo beantrage ich einen Personalausweis?"),
             new AssistantMessage("Der Personalausweis wird im Bürgeramt beantragt."));
 
-    List<String> subQueries =
+    Optional<List<String>> subQueries =
         service.decompose(DecompositionContext.of("Und was kostet das?", history), 3);
 
     assertThat(subQueries).isEmpty();
@@ -304,10 +374,10 @@ class QueryDecompositionServiceTest {
   void aQuestionWithoutAnchorWordsSkipsTheRelatednessCheck() {
     stubChatModelResponse("Zuständige Stelle für die Anmeldung");
 
-    List<String> subQueries =
+    Optional<List<String>> subQueries =
         service.decompose(DecompositionContext.of("Wer tut das?", List.of()), 3);
 
-    assertThat(subQueries).containsExactly("Zuständige Stelle für die Anmeldung");
+    assertThat(subQueries).contains(List.of("Zuständige Stelle für die Anmeldung"));
     verifyNoInteractions(metrics);
   }
 
@@ -319,10 +389,10 @@ class QueryDecompositionServiceTest {
   void aQuestionInAScriptWithoutWordBoundariesSkipsTheRelatednessCheck() {
     stubChatModelResponse("护照申请材料\n护照办理地点");
 
-    List<String> subQueries =
+    Optional<List<String>> subQueries =
         service.decompose(DecompositionContext.of("我想知道办理护照需要哪些材料", List.of()), 3);
 
-    assertThat(subQueries).containsExactly("护照申请材料", "护照办理地点");
+    assertThat(subQueries).contains(List.of("护照申请材料", "护照办理地点"));
     verifyNoInteractions(metrics);
   }
 
@@ -355,10 +425,10 @@ class QueryDecompositionServiceTest {
             new UserMessage("Was kostet ein Anwohnerparkausweis?"),
             new AssistantMessage("Ein Anwohnerparkausweis kostet 30,70 Euro pro Jahr."));
 
-    List<String> subQueries =
+    Optional<List<String>> subQueries =
         service.decompose(DecompositionContext.of("Wie lange dauert das?", searchWindow), 3);
 
-    assertThat(subQueries).containsExactly("Bearbeitungsdauer für den Anwohnerparkausweis");
+    assertThat(subQueries).contains(List.of("Bearbeitungsdauer für den Anwohnerparkausweis"));
     verifyNoInteractions(metrics);
   }
 
@@ -375,7 +445,7 @@ class QueryDecompositionServiceTest {
             new UserMessage("Wo finde ich das Formular für die Hundesteuer?"),
             new AssistantMessage("Das Formular liegt im Bürgerbüro aus."));
 
-    List<String> subQueries =
+    Optional<List<String>> subQueries =
         service.decompose(DecompositionContext.of("Wie lange dauert das?", searchWindow), 3);
 
     assertThat(subQueries).isEmpty();
@@ -392,13 +462,13 @@ class QueryDecompositionServiceTest {
   void aRenderedContextBlockWidensTheAnchorSpace() {
     stubChatModelResponse("Gebührenordnung Bezugsjahr 2024");
 
-    List<String> subQueries =
+    Optional<List<String>> subQueries =
         service.decompose(
             DecompositionContext.of("Was kostet der Ausweis?", List.of())
                 .withContextBlock("Notiz:\n- Bezugsjahr 2024", List.of("Bezugsjahr 2024")),
             3);
 
-    assertThat(subQueries).containsExactly("Gebührenordnung Bezugsjahr 2024");
+    assertThat(subQueries).contains(List.of("Gebührenordnung Bezugsjahr 2024"));
     assertThat(capturedSystemPrompt()).contains("Bezugsjahr 2024");
     verifyNoInteractions(metrics);
   }
@@ -415,13 +485,13 @@ class QueryDecompositionServiceTest {
     stubChatModelResponse("Anwohnerparkausweis Gebühren 2024");
     ConversationNoteBlock noteBlock = ConversationNoteBlock.render(List.of("Bezugsjahr 2024"));
 
-    List<String> withNote =
+    Optional<List<String>> withNote =
         service.decompose(
             DecompositionContext.of("Wie hoch sind dafür die Kosten?", List.of())
                 .withContextBlock(noteBlock.modelText(), noteBlock.anchorTexts()),
             3);
 
-    assertThat(withNote).containsExactly("Anwohnerparkausweis Gebühren 2024");
+    assertThat(withNote).contains(List.of("Anwohnerparkausweis Gebühren 2024"));
     verifyNoInteractions(metrics);
   }
 
@@ -436,7 +506,7 @@ class QueryDecompositionServiceTest {
     stubChatModelResponse("Personalausweis beantragen");
     ConversationNoteBlock noteBlock = ConversationNoteBlock.render(List.of("Bezugsjahr 2024"));
 
-    List<String> subQueries =
+    Optional<List<String>> subQueries =
         service.decompose(
             DecompositionContext.of("Wie hoch sind dafür die Kosten?", List.of())
                 .withContextBlock(noteBlock.modelText(), noteBlock.anchorTexts()),
@@ -456,7 +526,7 @@ class QueryDecompositionServiceTest {
   void withoutTheRenderedNoteTheSameSubQueryFallsBack() {
     stubChatModelResponse("Anwohnerparkausweis Gebühren 2024");
 
-    List<String> subQueries =
+    Optional<List<String>> subQueries =
         service.decompose(DecompositionContext.of("Wie hoch sind dafür die Kosten?", List.of()), 3);
 
     assertThat(subQueries).isEmpty();
@@ -468,7 +538,7 @@ class QueryDecompositionServiceTest {
   void withoutTheContextBlockTheSameSubQueryFallsBack() {
     stubChatModelResponse("Gebührenordnung Bezugsjahr 2024");
 
-    List<String> subQueries =
+    Optional<List<String>> subQueries =
         service.decompose(DecompositionContext.of("Was kostet der Ausweis?", List.of()), 3);
 
     assertThat(subQueries).isEmpty();

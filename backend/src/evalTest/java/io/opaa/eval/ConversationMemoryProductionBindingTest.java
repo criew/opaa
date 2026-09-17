@@ -24,6 +24,7 @@ import io.opaa.query.retrieval.search.DecompositionContext;
 import io.opaa.query.retrieval.search.QueryDecompositionService;
 import io.opaa.query.retrieval.search.SubQueryDecompositionStage;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -64,7 +65,7 @@ class ConversationMemoryProductionBindingTest {
   void theDecompositionSeesExactlyTheConfiguredSearchWindow() {
     QueryDecompositionService decomposition = mock(QueryDecompositionService.class);
     when(decomposition.decompose(any(DecompositionContext.class), anyInt()))
-        .thenReturn(List.of("Teilfrage"));
+        .thenReturn(Optional.of(List.of("Teilfrage")));
     List<Message> window =
         List.of(
             new UserMessage("Frage 1?"),
@@ -119,7 +120,7 @@ class ConversationMemoryProductionBindingTest {
     ChatResponse response =
         new AnswerGenerationService(resolver, chatMemory)
             .generateAnswer(
-                "Was kostet ein Anwohnerparkausweis?", List.of(), conversationId, List.of());
+                "Was kostet ein Anwohnerparkausweis?", List.of(), conversationId, List.of(), true);
 
     assertThat(response.getResult().getOutput().getText())
         .as("the persisted answer keeps its markers - only the window's copy loses them")
@@ -153,7 +154,7 @@ class ConversationMemoryProductionBindingTest {
     String conversationId = "binding-test-" + UUID.randomUUID();
     new AnswerGenerationService(resolver, liveMemory)
         .generateAnswer(
-            "Was kostet ein Anwohnerparkausweis?", List.of(), conversationId, List.of());
+            "Was kostet ein Anwohnerparkausweis?", List.of(), conversationId, List.of(), true);
 
     // What QueryService#seedConversationMemoryFromPersistedHistory rebuilds from the persisted
     // rows, which carry the markers: the same texts, or the same chat sends a different prompt
