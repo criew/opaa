@@ -69,14 +69,12 @@ public final class CoreMetadataExtractor {
    */
   private static final int MAX_HEADING_LIKE_LENGTH = 120;
 
-  /** A short caption at the start of a line ("Gremium:", "Sitzung am:") - one field of a form. */
-  private static final Pattern LABEL_LINE = Pattern.compile("^\\p{L}[\\p{L} .()/-]{0,30}:(\\s|$)");
+  /** The caption under which a Vordruck states what it is about. */
+  private static final Pattern SUBJECT_LABEL =
+      Pattern.compile("(?i)^(betreff|gegenstand|thema)\\s*:(\\s|$)");
 
-  /** How far below a line a label block still belongs to it. */
+  /** How far below a line such a caption still belongs to it. */
   private static final int LABEL_BLOCK_LINES = 10;
-
-  /** How many label lines make a block - one caption alone is an ordinary sentence opening. */
-  private static final int MIN_LABEL_LINES = 2;
 
   /** The head block's own version statement, immediately followed by its date. */
   private static final Pattern STAND_ANCHOR =
@@ -153,7 +151,8 @@ public final class CoreMetadataExtractor {
   private static Optional<String> extractTitle(String fileName, DocumentProperties props) {
     // A synthetic name is the headline an upstream source declared, and the format's title is that
     // same headline - there is no tool in between, and no file name it could be repeating.
-    if (props.title() != null && (props.syntheticName() || !ToolTitle.matches(props.title()))) {
+    if (props.title() != null
+        && (props.syntheticName() || !ToolTitle.matches(props.title(), props.formatExtension()))) {
       return Optional.of(props.title());
     }
     String frontmatterTitle = props.frontmatter().get(FRONTMATTER_TITLE);
@@ -188,12 +187,15 @@ public final class CoreMetadataExtractor {
     if (last == '.' || last == '!' || last == '?' || last == ':' || last == ';' || last == ',') {
       return false;
     }
-    return !isLetterhead(titleLine) && !labelBlockFollows(props.headText(), titleLine);
+    // Both marks together, never one alone: a Satzung's heading is regularly set in capitals, and
+    // a form's own heading regularly stands above a field block. Only their combination is the
+    // letterhead of a Vordruck, whose subject stands in a labelled field further down.
+    return !(isLetterhead(titleLine) && subjectLabelFollows(props.headText(), titleLine));
   }
 
   /**
-   * A line in capitals only ("STADT RHEINFURT") is the letterhead of the issuing body, not the
-   * subject of the document - the form's own heading follows further down.
+   * A line in capitals only ("STADT RHEINFURT") - the notation of a letterhead. {@code ß} counts as
+   * a lower-case letter, so a heading containing it is never read as one.
    */
   private static boolean isLetterhead(String line) {
     boolean hasLetter = false;
@@ -210,12 +212,12 @@ public final class CoreMetadataExtractor {
   }
 
   /**
-   * Whether a block of label lines ("Gremium:", "Sitzung am:", "Status:") follows {@code titleLine}
-   * within the next {@link #LABEL_BLOCK_LINES} lines of the head text: then the line opens a form's
-   * Kopfblock, and what the document is about stands in a labelled field of that block, not in the
-   * line itself.
+   * Whether a label naming the document's subject ("Betreff:", "Gegenstand:", "Thema:") follows
+   * {@code titleLine} within the next {@link #LABEL_BLOCK_LINES} lines: then the document says
+   * itself where its subject stands, and it is not this line. An ordinary field block ("Name:",
+   * "Gremium:") says nothing of the kind - a form's heading regularly stands above one.
    */
-  private static boolean labelBlockFollows(String headText, String titleLine) {
+  private static boolean subjectLabelFollows(String headText, String titleLine) {
     if (headText == null) {
       return false;
     }
@@ -224,13 +226,9 @@ public final class CoreMetadataExtractor {
       return false;
     }
     String[] lines = headText.substring(start + titleLine.length()).split("\\R");
-    int labels = 0;
     for (int i = 0; i < Math.min(lines.length, LABEL_BLOCK_LINES); i++) {
-      if (LABEL_LINE.matcher(lines[i].strip()).find()) {
-        labels++;
-        if (labels >= MIN_LABEL_LINES) {
-          return true;
-        }
+      if (SUBJECT_LABEL.matcher(lines[i].strip()).find()) {
+        return true;
       }
     }
     return false;

@@ -1,5 +1,6 @@
 package io.opaa.indexing.metadata;
 
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,14 +33,26 @@ final class ToolTitle {
               + "|(?:dokument|document|pr(?:ä|ae)sentation|presentation|mappe|book|tabelle)\\d*)"
               + "]?$");
 
-  /** A title that is nothing but a document file name, one token and no further word. */
+  /** A title ending on a document file name - what an export writes instead of a title. */
   private static final Pattern FILE_NAME_TITLE =
+      Pattern.compile("(?i)\\.(doc|docx|odt|odp|ods|pdf|rtf|txt|ppt|pptx|xls|xlsx|md|html?)$");
+
+  /** The same, narrowed to a title that is <em>nothing but</em> a file name. */
+  private static final Pattern BARE_FILE_NAME_TITLE =
       Pattern.compile("(?i)^\\S+\\.(doc|docx|odt|odp|ods|pdf|rtf|txt|ppt|pptx|xls|xlsx|md|html?)$");
+
+  /** The formats whose title is a person's subject line rather than a tool's output. */
+  private static final Set<String> MAIL_EXTENSIONS = Set.of(".eml", ".msg");
 
   private ToolTitle() {}
 
-  /** Whether {@code title} names the tool or the file rather than the document. */
-  static boolean matches(String title) {
+  /**
+   * Whether {@code title} names the tool or the file rather than the document. A mail's title is
+   * its subject, written by a person and regularly naming an attached file ("WG:
+   * haushaltsplan-2026.pdf"); there only a title that is <em>nothing but</em> a file name counts.
+   * Every other format's title comes from an export, where a file name anywhere in it is one.
+   */
+  static boolean matches(String title, String formatExtension) {
     if (title == null) {
       return false;
     }
@@ -48,6 +61,10 @@ final class ToolTitle {
     if (toolPrefix.matches() && TOOL_SUBJECT.matcher(toolPrefix.group(1).strip()).matches()) {
       return true;
     }
-    return FILE_NAME_TITLE.matcher(stripped).matches();
+    Pattern fileNameRule =
+        formatExtension != null && MAIL_EXTENSIONS.contains(formatExtension)
+            ? BARE_FILE_NAME_TITLE
+            : FILE_NAME_TITLE;
+    return fileNameRule.matcher(stripped).find();
   }
 }

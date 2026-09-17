@@ -573,20 +573,22 @@ class CoreMetadataExtractorTest {
       }
     }
 
-    // A title equal to the file name is the better spelling of it - the humanized fallback caps at
-    // eight tokens and drops the rest of a long Satzungstitel.
+    // A title equal to the file name is the better spelling of it: the humanized fallback splits on
+    // "-"/"_" and keeps at most eight tokens, so a long name loses its tail.
     @Test
     void aTitlePropertyRepeatingTheFileNameIsKept() {
-      String title = "Satzung über die Erhebung von Gebühren für Amtshandlungen des Standesamts";
-      DocumentProperties properties = DocumentProperties.EMPTY.withTitle(title);
+      String title =
+          "Vermerk zur Langzeitarchivierung von elektronischen Dokumenten im Buergerbuero"
+              + " Rheinfurt";
+      String fileName =
+          "Vermerk-zur-Langzeitarchivierung-von-elektronischen-Dokumenten-im-Buergerbuero-"
+              + "Rheinfurt.pdf";
 
-      assertThat(
-              extract(
-                      "Satzung über die Erhebung von Gebühren für Amtshandlungen des"
-                          + " Standesamts.pdf",
-                      properties)
-                  .title())
+      assertThat(extract(fileName, DocumentProperties.EMPTY.withTitle(title)).title())
           .contains(title);
+      assertThat(extract(fileName, DocumentProperties.EMPTY).title())
+          .as("the fallback would drop the tail of the name")
+          .hasValueSatisfying(fallback -> assertThat(fallback).doesNotContain("Rheinfurt"));
     }
 
     // A mail's subject is the document's own title and regularly names an attached file; the
@@ -598,10 +600,34 @@ class CoreMetadataExtractorTest {
               "WG: haushaltsplan-2026.pdf",
               "Anbei: Vermerk.docx",
               "Weiterleitung: Antrag Wohngeld.pdf")) {
-        assertThat(extract("nachricht.eml", DocumentProperties.EMPTY.withTitle(subject)).title())
+        assertThat(
+                extract(
+                        "nachricht.eml",
+                        DocumentProperties.EMPTY.withTitle(subject).withFormatExtension(".eml"))
+                    .title())
             .as(subject)
             .contains(subject);
       }
+      // The bare file name stays a file name, mail or not.
+      assertThat(
+              extract(
+                      "nachricht.eml",
+                      DocumentProperties.EMPTY
+                          .withTitle("haushaltsplan-2026.pdf")
+                          .withFormatExtension(".eml"))
+                  .title())
+          .contains("nachricht");
+    }
+
+    // Outside a mail the title comes from an export, where a file name anywhere in it is one.
+    @Test
+    void anExportTitleEndingOnAFileNameIsDiscarded() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withTitle("Bekanntmachung Satzung 2024.pdf")
+              .withFormatExtension(".pdf");
+
+      assertThat(extract("2024-bekanntmachung.pdf", properties).title()).contains("bekanntmachung");
     }
 
     @Test
@@ -659,10 +685,10 @@ class CoreMetadataExtractorTest {
           .contains("umtausch in kartenfuehrerschein");
     }
 
-    // demo/corpus/ratsinformationen/**: a Beschlussvorlage opens with the letterhead of the city
-    // and a block of labelled fields - neither is the subject of the document.
+    // demo/corpus/ratsinformationen/**: a Beschlussvorlage opens with the letterhead of the city,
+    // and names its subject itself a few lines below - under "Betreff:".
     @Test
-    void aLetterheadAboveALabelBlockIsNoTitle() {
+    void aLetterheadAboveASubjectLabelIsNoTitle() {
       String head =
           """
           STADT RHEINFURT
@@ -683,22 +709,57 @@ class CoreMetadataExtractorTest {
           .contains("hauptausschuss vorlage buergerkoffer");
     }
 
+    // Only both marks together are a letterhead: a heading above a field block is an ordinary
+    // heading, and so is a heading in capitals above running text.
     @Test
-    void aHeadingAboveALabelBlockIsNoTitleEither() {
-      String head =
+    void aHeadingAboveAFieldBlockStaysTheTitle() {
+      String antrag =
           """
-          Beschlussvorlage Nr. 2024/019
+          Antrag auf Erteilung eines Führungszeugnisses
 
-          Gremium:        Hauptausschuss
-          Status:         öffentlich
+          Name:           Mustermann
+          Vorname:        Erika
+          Geburtsdatum:   01.01.1990
+          """;
+      assertThat(
+              extract(
+                      "antrag-fuehrungszeugnis.pdf",
+                      DocumentProperties.EMPTY.withTitleLine(antrag).withHeadText(antrag))
+                  .title())
+          .contains("Antrag auf Erteilung eines Führungszeugnisses");
+
+      String niederschrift =
+          """
+          Niederschrift der 12. Sitzung des Stadtrats
+
+          Gremium:        Stadtrat
+          Sitzung am:     14. Mai 2024
+          """;
+      assertThat(
+              extract(
+                      "niederschrift-12.pdf",
+                      DocumentProperties.EMPTY
+                          .withTitleLine(niederschrift)
+                          .withHeadText(niederschrift))
+                  .title())
+          .contains("Niederschrift der 12. Sitzung des Stadtrats");
+    }
+
+    @Test
+    void aHeadingInCapitalsAboveRunningTextStaysTheTitle() {
+      String satzung =
+          """
+          SATZUNG ÜBER DIE HUNDESTEUER
+
+          Aufgrund von Art. 23 der Gemeindeordnung erlässt die Stadt Rheinfurt folgende Satzung.
           """;
 
       assertThat(
               extract(
-                      "2024-05-14-vorlage.txt",
-                      DocumentProperties.EMPTY.withTitleLine(head).withHeadText(head))
+                      "06_hundesteuersatzung.pdf",
+                      DocumentProperties.EMPTY.withTitleLine(satzung).withHeadText(satzung))
                   .title())
-          .contains("vorlage");
+          .contains("SATZUNG ÜBER DIE HUNDESTEUER");
     }
 
     @Test
@@ -990,6 +1051,22 @@ class CoreMetadataExtractorTest {
               Diese Satzung tritt am 1. Januar 2020 in Kraft.
               Erste Änderungssatzung
               Diese Änderungssatzung tritt am 1. Januar 2026 in Kraft.
+              """);
+
+      assertThat(extract("06_hundesteuersatzung.pdf", properties).date())
+          .contains(ExtractedDate.day(LocalDate.of(2026, 1, 1)));
+    }
+
+    // The latest date wins, not the last match: a Lesefassung may put its amending clause first.
+    @Test
+    void theLatestDateWinsWhateverOrderTheClausesStandIn() {
+      DocumentProperties properties =
+          satzung(
+              """
+              Hundesteuersatzung - Lesefassung
+              Diese Änderungssatzung tritt am 1. Januar 2026 in Kraft.
+              § 7 Inkrafttreten
+              Diese Satzung tritt am 1. Januar 2020 in Kraft.
               """);
 
       assertThat(extract("06_hundesteuersatzung.pdf", properties).date())
