@@ -428,9 +428,10 @@ public class DocumentIngestService {
 
   /**
    * The chunk metadata for {@code context}: a document's source container and hierarchy path are a
-   * property of the document, not of the format that chunked it, so both keys are written whenever
-   * a context is present - independent of {@link DocumentFormat#passthroughMetadataKeys()}. Both
-   * keys always travel together, present only when the corresponding value is set.
+   * property of the document, not of the format that chunked it, so each key is written whenever
+   * its own value is set - independent of {@link DocumentFormat#passthroughMetadataKeys()}. The two
+   * are not coupled: a Confluence space root page or an S3 object directly under its scope's prefix
+   * carries a container key without a hierarchy path.
    */
   private static Map<String, Object> sourceContextMetadata(SourceDocumentContext context) {
     if (context == null) {
