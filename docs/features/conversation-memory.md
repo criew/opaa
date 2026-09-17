@@ -290,7 +290,7 @@ verworfen, weil sie `constraint_carryover` die frühen Angaben kostet.
 
 - **Zugeklappt** als Standard; die Zahl ist das Signal, dass sich etwas geändert hat. Aufklappen
   ist Sitzungszustand, kein persistierter — nach einem Neuladen ist die Notiz wieder zugeklappt.
-- **Punkt entfernen** ([×], `aria-label` „Notizpunkt entfernen"): sofort, ohne Rückfrage. Der Punkt
+- **Punkt entfernen** ([×], `aria-label` „Notizpunkt entfernen: <Punkttext>"): sofort, ohne Rückfrage. Der Punkt
   ist weg und fließt ab der nächsten Frage nicht mehr ein. Er wird **nicht** für die Zukunft
   gesperrt: Sagt die Person dasselbe später erneut, entsteht er erneut. Eine Sperrliste bräuchte eine
   Antwort auf „wann ist eine Formulierung dieselbe Angabe", die es deterministisch nicht gibt; die
@@ -304,12 +304,24 @@ verworfen, weil sie `constraint_carryover` die frühen Angaben kostet.
   Antwort ist das der Stand *vor* dem Entfernen. Die Oberfläche filtert deshalb jeden lokal
   entfernten Punkt aus jedem mitgelieferten Notizstand heraus, bis das Laden des Chats die
   Entfernung bestätigt; ein gelöschter Punkt taucht nie kurz wieder auf.
-- **Barrierefreiheit:** Schaltfläche mit `aria-expanded`, Panel als benannte Region; Entfernen ist
-  eine echte Schaltfläche; Fokus bleibt nach dem Entfernen auf dem nächsten Punkt (sonst auf dem
-  vorherigen). **Wird die Liste leer, geht der Fokus auf die Kopfzeile** — die Schaltfläche ist in
-  diesem Moment selbst verschwunden, weil eine leere Notiz keine Oberfläche hat; die Kopfzeile ist
-  benannt (`role="group"`, `aria-label`) und genau die Stelle, an der die Schaltfläche saß. Eine
-  Live-Region meldet die Entfernung mit der Restanzahl (#1488).
+- **Barrierefreiheit:** Schaltfläche mit `aria-expanded`, Panel als benannte Region; die Punkte sind
+  eine Liste mit ausdrücklichem `role="list"` — WebKit legt eine Aufzählung ohne sichtbare
+  Listenzeichen sonst als bloße Gruppe offen, und VoiceOver sagt weder „Liste" noch die Anzahl an.
+  Entfernen ist eine echte Schaltfläche, deren Name den Punkt nennt: Beim Tabben durch das Panel und
+  nach dem Entfernen wird nur der Name der fokussierten Schaltfläche angesagt, ein für alle Punkte
+  gleicher Name ließe offen, welcher Punkt gemeint ist. Fokus bleibt nach dem Entfernen auf dem
+  nächsten Punkt (sonst auf dem vorherigen). **Wird die Liste leer, geht der Fokus auf die
+  Kopfzeile** — die Schaltfläche ist in diesem Moment selbst verschwunden, weil eine leere Notiz
+  keine Oberfläche hat; die Kopfzeile ist benannt (`role="group"`, `aria-label`) und genau die
+  Stelle, an der die Schaltfläche saß. Eine Live-Region meldet die Entfernung mit der Restanzahl
+  (#1488) — **erst nach dem Fokuswechsel, mit einer halben Sekunde Abstand**, nie im selben
+  Durchlauf: Ändern sich Fokus und Live-Region gleichzeitig, ist die Reihenfolge der beiden Ansagen
+  nicht festgelegt, und die Fokus-Ansage kann die Meldung verschlucken; eine höfliche Meldung, die
+  danach entsteht, reiht sich hinter der Fokus-Ansage ein. Beim Klick wird die Region geleert, so
+  dass jede Entfernung eine Änderung ist. Schlägt das Entfernen fehl, verschwindet die
+  Erfolgsmeldung (oder entsteht gar nicht erst), und die Fehlermeldung erscheint als `role="alert"`;
+  jeder neue Versuch räumt die vorige Fehlermeldung ab, damit ein wiederholter Fehler erneut
+  angesagt wird. Die Live-Prüfung mit VoiceOver und NVDA steht aus (#1575).
 
 ### Anzeigeverzögerung
 
