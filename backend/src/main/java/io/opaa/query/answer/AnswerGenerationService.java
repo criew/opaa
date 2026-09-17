@@ -63,6 +63,16 @@ public class AnswerGenerationService {
   private static final String CONTEXT_SECTION = "\n\nKontextdokumente:\n";
 
   /**
+   * Stands in for {@link #CONTEXT_SECTION} when the decomposition found nothing to search for. An
+   * empty passage list alone reads as a failed search, and the model says it found nothing - to a
+   * message that asked for nothing.
+   */
+  static final String NO_SEARCH_SECTION =
+      "\n\nKontextdokumente: keine. Die aktuelle Nachricht enthält nichts, wonach zu suchen war,"
+          + " deshalb wurde nicht gesucht. Gehe direkt auf die Nachricht ein und weise nicht darauf"
+          + " hin, dass keine Dokumente vorliegen oder nichts gefunden wurde.";
+
+  /**
    * Repeats the answer language after the passages. The leading rule alone does not keep a small
    * model from copying an English passage into its answer; a reminder after what it read last does.
    * It carries no citation marker, so standing under {@link #CONTEXT_SECTION} is harmless.
@@ -87,18 +97,21 @@ public class AnswerGenerationService {
    * the citation rules and the passages, the fifth part of the call
    * (docs/features/llm-integration.md, "Übergabe der Passagen"); without a point there is no block.
    * See {@link #CONTEXT_SECTION} for why it must not follow the passages.
+   *
+   * @param searchNeeded {@code false} when the decomposition found nothing to search for in {@code
+   *     question}; the passages are then replaced by {@link #NO_SEARCH_SECTION}.
    */
   public ChatResponse generateAnswer(
       String question,
       List<Document> relevantChunks,
       String conversationId,
-      List<String> conversationNote) {
+      List<String> conversationNote,
+      boolean searchNeeded) {
     ConversationNoteBlock noteBlock = ConversationNoteBlock.render(conversationNote);
     String systemText =
         SYSTEM_PROMPT
             + (noteBlock == null ? "" : "\n\n" + noteBlock.modelText())
-            + CONTEXT_SECTION
-            + formatChunks(relevantChunks)
+            + (searchNeeded ? CONTEXT_SECTION + formatChunks(relevantChunks) : NO_SEARCH_SECTION)
             + LANGUAGE_REMINDER;
 
     log.debug("Sending prompt to LLM with {} context chunks", relevantChunks.size());

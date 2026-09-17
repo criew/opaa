@@ -2,7 +2,9 @@ package io.opaa.query.retrieval.search;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.messages.UserMessage;
 
 /**
@@ -25,6 +27,12 @@ import org.springframework.ai.chat.messages.UserMessage;
  * out of the anchor space narrows the belt in the overwhelming majority of cases and can never
  * widen it through text OPAA wrote itself; it is not, however, strictly monotone, because {@code
  * countUnrelated} skips its check entirely below two anchor tokens.
+ *
+ * <p><b>The search window reaches the model as material, not as a conversation.</b> {@link
+ * #promptMessages()} renders window and question into one labelled user message. Handed over as
+ * alternating user and assistant messages, a chat model reads long assistant answers as a
+ * conversation it is part of and continues it - answering the question instead of reformulating it.
+ * The labels are OPAA's own wording and stay out of the anchor space, like a block's heading.
  */
 public record DecompositionContext(
     String question, List<Message> searchWindow, List<ContextBlock> contextBlocks) {
@@ -52,6 +60,14 @@ public record DecompositionContext(
     }
   }
 
+  static final String WINDOW_LABEL = "Bisheriger Gesprächsverlauf:";
+
+  static final String USER_LABEL = "Nutzer: ";
+
+  static final String ASSISTANT_LABEL = "Assistent: ";
+
+  static final String QUESTION_LABEL = "Aktuelle Nutzerfrage: ";
+
   public DecompositionContext {
     searchWindow = List.copyOf(searchWindow);
     contextBlocks = List.copyOf(contextBlocks);
@@ -76,12 +92,25 @@ public record DecompositionContext(
     return new DecompositionContext(question, searchWindow, blocks);
   }
 
-  /** The chat messages of the call: the search window, then the question. */
+  /**
+   * The chat messages of the call: exactly one user message carrying the labelled search window, if
+   * any, followed by the labelled question - see this record's Javadoc on why not one message per
+   * turn.
+   */
   public List<Message> promptMessages() {
-    List<Message> messages = new ArrayList<>(searchWindow.size() + 1);
-    messages.addAll(searchWindow);
-    messages.add(new UserMessage(question));
-    return List.copyOf(messages);
+    String labelledQuestion = QUESTION_LABEL + question;
+    if (searchWindow.isEmpty()) {
+      return List.of(new UserMessage(labelledQuestion));
+    }
+    String window =
+        searchWindow.stream()
+            .map(message -> labelOf(message) + message.getText())
+            .collect(Collectors.joining("\n\n"));
+    return List.of(new UserMessage(WINDOW_LABEL + "\n" + window + "\n\n" + labelledQuestion));
+  }
+
+  private static String labelOf(Message message) {
+    return message.getMessageType() == MessageType.ASSISTANT ? ASSISTANT_LABEL : USER_LABEL;
   }
 
   /** {@code instruction} followed by the rendered context blocks, if any. */
@@ -95,10 +124,11 @@ public record DecompositionContext(
   }
 
   /**
-   * The anchor space of the safety belt, in rendering order: the texts of {@link #promptMessages()}
-   * and the material of the blocks {@link #systemText(String)} appends - and nothing else. Neither
-   * the instruction nor a block's own heading is context; anchoring a sub-query against the
-   * prompt's own German wording would relate every output to it.
+   * The anchor space of the safety belt, in rendering order: the texts of the search window, the
+   * question, and the material of the blocks {@link #systemText(String)} appends - and nothing
+   * else. Neither the instruction, nor the labels of {@link #promptMessages()}, nor a block's own
+   * heading is context; anchoring a sub-query against the prompt's own German wording would relate
+   * every output to it.
    */
   public List<String> contextTexts() {
     List<String> texts = new ArrayList<>(searchWindow.size() + contextBlocks.size() + 1);

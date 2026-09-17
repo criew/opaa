@@ -11,6 +11,7 @@ import io.opaa.query.retrieval.StageExplanation;
 import io.opaa.query.retrieval.StageOutcome;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.Message;
@@ -22,10 +23,15 @@ import org.springframework.stereotype.Component;
  * search stages run, one search call each.
  *
  * <p>{@link QueryDecompositionService#decompose} returns 1 to {@link QueryProperties#maxSubQueries}
- * self-contained queries, or an empty list on any failure, which falls back to the single query
- * {@link #buildSearchQuery} builds. {@link QueryProperties#queryDecompositionEnabled} {@code =
- * false} skips the LLM round trip and takes that same fallback. Touches no candidates: at this
- * point in the run there are none.
+ * self-contained queries, or nothing on any failure, which falls back to the single query {@link
+ * #buildSearchQuery} builds. {@link QueryProperties#queryDecompositionEnabled} {@code = false}
+ * skips the LLM round trip and takes that same fallback. Touches no candidates: at this point in
+ * the run there are none.
+ *
+ * <p><b>A message without anything to search for halts the run.</b> When the decomposition returns
+ * no queries at all, no search stage runs and the remaining stages are recorded as not reached -
+ * the answer is generated without a single chunk, and the run's {@code searchQueries} stay empty,
+ * which is how a caller tells this apart from a search that found nothing.
  *
  * <p>The chat's Gesprächsnotiz reaches the model here too, as a rendered context block of the
  * {@link DecompositionContext} - see {@link #decompositionContext}.
@@ -60,14 +66,20 @@ public class SubQueryDecompositionStage implements RetrievalStage {
     QueryProperties properties = context.queryProperties();
     List<Message> searchWindow =
         searchWindow(context.conversationHistory(), properties.searchWindowTurns());
-    List<String> subQueries =
+    Optional<List<String>> decomposition =
         properties.queryDecompositionEnabled()
             ? queryDecompositionService.decompose(
                 decompositionContext(context, searchWindow), properties.maxSubQueries())
-            : List.of();
-    boolean decomposed = !subQueries.isEmpty();
+            : Optional.empty();
+    if (decomposition.filter(List::isEmpty).isPresent()) {
+      return new StageOutcome(
+          state.withSearchQueries(List.of()).haltRun(),
+          StageExplanation.executed(
+              name(), 0, 0, List.of(), List.of(RetrievalNote.DECOMPOSITION_NO_SEARCH.format())));
+    }
+    boolean decomposed = decomposition.isPresent();
     List<String> searchQueries =
-        decomposed ? subQueries : List.of(buildSearchQuery(context.question(), searchWindow));
+        decomposition.orElseGet(() -> List.of(buildSearchQuery(context.question(), searchWindow)));
 
     List<String> notes = new ArrayList<>();
     if (decomposed) {

@@ -6,6 +6,7 @@ import io.opaa.query.answer.ChatResponses;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -22,12 +23,14 @@ import org.springframework.stereotype.Service;
  * question in the process.
  *
  * <p>{@link #decompose} never throws: any LLM failure, unparsable or empty response, or output
- * unrelated to the question (see {@link #countUnrelated}) yields an empty list, which {@link
- * SubQueryDecompositionStage} takes as "run the single-query fallback". Every such fallback is
- * logged at WARN with counts only - never with the question or the sub-queries - and counted on
- * {@code opaa.query.decomposition.fallback}, so no path out of here is silent. The {@link
- * ChatClient} is resolved fresh per call, from the same systemwide active chat model the answer
- * uses.
+ * unrelated to the question (see {@link #countUnrelated}) yields {@link Optional#empty()}, which
+ * {@link SubQueryDecompositionStage} takes as "run the single-query fallback". Every such fallback
+ * is logged at WARN with counts only - never with the question or the sub-queries - and counted on
+ * {@code opaa.query.decomposition.fallback}, so no path out of here is silent. A message without
+ * anything to search for is <b>not</b> a fallback: the model answers {@link #NO_SEARCH_SENTINEL},
+ * which yields an empty list and is counted on {@code opaa.query.decomposition.no-search}. The
+ * {@link ChatClient} is resolved fresh per call, from the same systemwide active chat model the
+ * answer uses.
  */
 @Service
 public class QueryDecompositionService {
@@ -52,6 +55,12 @@ public class QueryDecompositionService {
    */
   private static final int ANCHOR_MIN_LENGTH = 4;
 
+  /** What the model answers for a message without anything to search for. */
+  static final String NO_SEARCH_SENTINEL = "KEINE_SUCHE";
+
+  /** Compares a line to the sentinel regardless of case, spacing and punctuation. */
+  private static final Pattern NON_LETTERS = Pattern.compile("[^\\p{L}]+");
+
   /**
    * Deliberately carries <b>no</b> example sentence: a small instruct model regularly mistakes an
    * example inside a rule for the task itself and returns it verbatim, discarding the user's
@@ -67,7 +76,8 @@ public class QueryDecompositionService {
       """
       Du zerlegst die aktuelle Nutzerfrage unter Berücksichtigung des bisherigen Gesprächsverlaufs \
       in 1 bis %d eigenständige, vollständige Suchanfragen für eine Vektorsuche in einer \
-      Wissensdatenbank.
+      Wissensdatenbank. Du bist nicht Teil des Gesprächs: Der Verlauf ist nur Material, um Bezüge \
+      aufzulösen.
 
       Regeln:
       - Verwende ausschließlich den Inhalt der aktuellen Nutzerfrage und des bisherigen \
@@ -82,9 +92,12 @@ public class QueryDecompositionService {
       - Korrigiere offensichtliche Tippfehler in der Frage.
       - Ist die Frage bereits eigenständig und einthemig, gib genau eine Suchanfrage zurück - bei \
       Bedarf wortgleich zur Eingabe.
-      - Beantworte die Frage nicht und bewerte sie nicht. Gib nur Suchanfragen zurück, je Zeile \
-      genau eine, ohne Nummerierung, ohne Aufzählungszeichen, ohne Anführungszeichen, ohne \
-      Einleitung und ohne Erklärung.
+      - Enthält die aktuelle Nachricht nichts, wonach in der Wissensdatenbank zu suchen ist - etwa \
+      nur einen Wunsch zur Form der Antwort, eine Angabe zur eigenen Person, einen Dank oder eine \
+      Zustimmung -, gib genau das Wort %s zurück und nichts sonst.
+      - Beantworte die Frage nicht, bewerte sie nicht und setze das Gespräch nicht fort. Gib nur \
+      Suchanfragen zurück, je Zeile genau eine, ohne Nummerierung, ohne Aufzählungszeichen, ohne \
+      Anführungszeichen, ohne Einleitung und ohne Erklärung.
       """;
 
   private final ActiveChatModelResolver activeChatModelResolver;
@@ -96,21 +109,28 @@ public class QueryDecompositionService {
   }
 
   /**
-   * Returns 1 to {@code maxSubQueries} self-contained search queries derived from {@code context},
-   * or an empty list on any failure - see this class's Javadoc. {@code context} carries both the
-   * material the model is given and, by the anchor-space invariant of {@link DecompositionContext},
-   * the material {@link #countUnrelated} judges the output against.
+   * The search queries {@code context} needs: 1 to {@code maxSubQueries} self-contained ones, an
+   * empty list for a message without anything to search for, or {@link Optional#empty()} on any
+   * failure - see this class's Javadoc. {@code context} carries both the material the model is
+   * given and, by the anchor-space invariant of {@link DecompositionContext}, the material {@link
+   * #countUnrelated} judges the output against.
    */
-  public List<String> decompose(DecompositionContext context, int maxSubQueries) {
+  public Optional<List<String>> decompose(DecompositionContext context, int maxSubQueries) {
     try {
       String rawResponse = requestDecomposition(context, maxSubQueries);
-      List<String> parsed = parse(rawResponse);
+      List<String> lines = parse(rawResponse);
+      List<String> parsed = lines.stream().filter(line -> !isNoSearchSentinel(line)).toList();
+      if (parsed.isEmpty() && !lines.isEmpty()) {
+        metrics.recordNoSearchDecomposition();
+        log.debug("Query decomposition found nothing to search for - retrieval skipped");
+        return Optional.of(List.of());
+      }
       if (parsed.isEmpty()) {
         metrics.recordFailedDecomposition();
         log.warn(
             "Query decomposition returned no usable line - falling back to single-query"
                 + " retrieval");
-        return List.of();
+        return Optional.empty();
       }
       long unrelated = countUnrelated(parsed, context);
       if (unrelated > 0) {
@@ -129,18 +149,32 @@ public class QueryDecompositionService {
             unrelated,
             parsed.size());
         log.debug("Discarded sub-query lengths: {}", parsed.stream().map(String::length).toList());
-        return List.of();
+        return Optional.empty();
       }
-      return parsed.size() <= maxSubQueries ? parsed : parsed.subList(0, maxSubQueries);
+      return Optional.of(
+          parsed.size() <= maxSubQueries ? parsed : parsed.subList(0, maxSubQueries));
     } catch (RuntimeException e) {
       metrics.recordFailedDecomposition();
       log.warn("Query decomposition failed - falling back to single-query retrieval", e);
-      return List.of();
+      return Optional.empty();
     }
   }
 
+  /**
+   * Whether {@code line} is {@link #NO_SEARCH_SENTINEL}. Next to a search query the sentinel is
+   * ignored rather than honoured: a search that was not needed costs less than one that was
+   * skipped.
+   */
+  private static boolean isNoSearchSentinel(String line) {
+    return NON_LETTERS
+        .matcher(line)
+        .replaceAll("")
+        .equalsIgnoreCase(NON_LETTERS.matcher(NO_SEARCH_SENTINEL).replaceAll(""));
+  }
+
   private String requestDecomposition(DecompositionContext context, int maxSubQueries) {
-    String systemText = context.systemText(SYSTEM_PROMPT_TEMPLATE.formatted(maxSubQueries));
+    String systemText =
+        context.systemText(SYSTEM_PROMPT_TEMPLATE.formatted(maxSubQueries, NO_SEARCH_SENTINEL));
     List<Message> messages = context.promptMessages();
 
     ChatClient chatClient = activeChatModelResolver.resolveChatClient();
