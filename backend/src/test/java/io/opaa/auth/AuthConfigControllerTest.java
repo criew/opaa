@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.opaa.auth.local.LocalAuthSettings;
 import io.opaa.auth.local.LocalAuthSettingsRepository;
-import io.opaa.auth.local.PublicBaseUrlAvailability;
+import io.opaa.auth.local.LocalSelfServiceAvailability;
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderRepository;
@@ -30,20 +30,34 @@ import org.springframework.test.web.servlet.MockMvc;
  * the mode, in the {@code oidc} mode every enabled provider in sign-in page order - whether or not
  * the backend's decoder for it is ready yet - with exactly the fields the sign-in page shows, and
  * the local account management as {@code localAccounts}: the switch of the LOCAL row (never listed
- * among the providers), and the self-service flows only while the switch, the setting and the
- * public base URL all allow them.
+ * among the providers), and the self-service flows exactly as {@link LocalSelfServiceAvailability}
+ * reports them - the same answer the authorization rule and the rate limiter act on, not a second
+ * computation of the conjunction here (#1592; the conjunction itself is {@code
+ * LocalSelfServiceServiceTest}'s subject). The mode stays this endpoint's own condition.
  */
 @WebMvcTest(AuthConfigController.class)
-@Import({TestSecurityConfig.class, AuthConfigControllerTest.BaseUrlStub.class})
+@Import({TestSecurityConfig.class, AuthConfigControllerTest.FlowsStub.class})
 class AuthConfigControllerTest {
 
   @TestConfiguration
-  static class BaseUrlStub {
-    static boolean configured;
+  static class FlowsStub {
+    static boolean passwordReset;
+    static boolean selfRegistration;
 
     @Bean
-    PublicBaseUrlAvailability publicBaseUrlAvailability() {
-      return () -> configured;
+    LocalSelfServiceAvailability localSelfServiceAvailability() {
+      return new LocalSelfServiceAvailability() {
+
+        @Override
+        public boolean isPasswordResetAvailable() {
+          return passwordReset;
+        }
+
+        @Override
+        public boolean isSelfRegistrationAvailable() {
+          return selfRegistration;
+        }
+      };
     }
   }
 
@@ -60,7 +74,8 @@ class AuthConfigControllerTest {
 
   @BeforeEach
   void setUp() {
-    BaseUrlStub.configured = false;
+    FlowsStub.passwordReset = false;
+    FlowsStub.selfRegistration = false;
     settings = mock(LocalAuthSettings.class);
     when(settings.values()).thenReturn(LocalAuthSettings.Values.defaults());
     when(settingsRepository.findSingleton()).thenReturn(Optional.of(settings));
@@ -70,6 +85,9 @@ class AuthConfigControllerTest {
   @Test
   void inTheDevModeThereAreNoProvidersAndLocalAccountsAreOff() throws Exception {
     when(authProperties.mode()).thenReturn("dev");
+    // even if the flows reported themselves available: outside oidc there is no chain to serve them
+    FlowsStub.passwordReset = true;
+    FlowsStub.selfRegistration = true;
 
     mockMvc
         .perform(get("/api/v1/auth/config"))
@@ -129,7 +147,7 @@ class AuthConfigControllerTest {
   }
 
   @Test
-  void theLocalRowIsNeverAProviderButTheSwitchAndTheFlowsOfLocalAccounts() throws Exception {
+  void theLocalRowIsNeverAProviderAndTheFlowsAreTheOneAvailabilityAnswer() throws Exception {
     when(authProperties.mode()).thenReturn("oidc");
     OidcProvider standard =
         new OidcProvider(
@@ -148,7 +166,7 @@ class AuthConfigControllerTest {
         .thenReturn(
             new LocalAuthSettings.Values(true, List.of("stadt.example"), true, 14, 72, 30, 90, 90));
 
-    // without a public base URL no flow that depends on a link is offered
+    // the settings alone offer no flow - what is reported is what the availability answers
     mockMvc
         .perform(get("/api/v1/auth/config"))
         .andExpect(status().isOk())
@@ -159,25 +177,24 @@ class AuthConfigControllerTest {
         .andExpect(jsonPath("$.localAccounts.passwordResetEnabled").value(false))
         .andExpect(jsonPath("$.localAccounts.passwordMinLength").value(14));
 
-    BaseUrlStub.configured = true;
+    FlowsStub.passwordReset = true;
+    FlowsStub.selfRegistration = true;
     mockMvc
         .perform(get("/api/v1/auth/config"))
         .andExpect(jsonPath("$.localAccounts.selfRegistrationEnabled").value(true))
         .andExpect(jsonPath("$.localAccounts.passwordResetEnabled").value(true));
 
-    // self-registration needs a non-empty domain list even when everything else allows it
-    when(settings.values())
-        .thenReturn(new LocalAuthSettings.Values(true, List.of(), true, 14, 72, 30, 90, 90));
+    // each flow is reported on its own
+    FlowsStub.selfRegistration = false;
     mockMvc
         .perform(get("/api/v1/auth/config"))
         .andExpect(jsonPath("$.localAccounts.selfRegistrationEnabled").value(false))
         .andExpect(jsonPath("$.localAccounts.passwordResetEnabled").value(true));
 
-    // and the management switch gates both flows
+    // the LOCAL row is what this endpoint reads itself, for the management flag
     local.disable();
     mockMvc
         .perform(get("/api/v1/auth/config"))
-        .andExpect(jsonPath("$.localAccounts.enabled").value(false))
-        .andExpect(jsonPath("$.localAccounts.passwordResetEnabled").value(false));
+        .andExpect(jsonPath("$.localAccounts.enabled").value(false));
   }
 }

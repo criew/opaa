@@ -167,8 +167,8 @@ public class RateLimitConfiguration {
 
   /**
    * Resolved through the provider on every request, not once at wiring time: forcing the bean here
-   * would pull the whole local account management into the creation of this filter. Where it is
-   * absent - a {@code @WebMvcTest} slice - no flow counts as served.
+   * would pull the whole local account management into the creation of this filter. No context
+   * without the bean is known today; the fallback is there to fail closed rather than to serve one.
    */
   private static BooleanSupplier served(
       ObjectProvider<LocalSelfServiceAvailability> flows,

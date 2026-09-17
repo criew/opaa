@@ -38,7 +38,12 @@ class LocalSelfServiceUnavailableIntegrationTest {
   private static final String FORGOT_PASSWORD = "/api/v1/auth/local/forgot-password";
   private static final String REGISTER = "/api/v1/auth/local/register";
 
-  /** A served path answers 405 here, an unknown route does not - so it is one of the shapes. */
+  /**
+   * A method other than the one the endpoint declares. A served path answers 401 here as well -
+   * only {@code POST} is ever permitted, every other method falls through to {@code /api/**} and
+   * reaches no handler. The shape guards the mistake that would change that: permitting the path
+   * for <em>every</em> method would let a {@code GET} reach the dispatcher, which answers 405.
+   */
   private static final Function<String, MockHttpServletRequestBuilder> OTHER_METHOD =
       path -> get(path);
 

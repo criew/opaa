@@ -5,7 +5,7 @@ import io.opaa.api.dto.LocalAccountsConfig;
 import io.opaa.api.dto.OidcSignInProvider;
 import io.opaa.auth.local.LocalAuthSettings;
 import io.opaa.auth.local.LocalAuthSettingsRepository;
-import io.opaa.auth.local.PublicBaseUrlAvailability;
+import io.opaa.auth.local.LocalSelfServiceAvailability;
 import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderRepository;
 import java.util.List;
@@ -25,7 +25,10 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>The {@code LOCAL} row (ADR-0033, Entscheidung 4) is never a provider here; it is {@code
  * localAccounts}: the switch, and the self-service flows only while the switch, the setting and -
- * for anything that hands out a link - the public base URL allow them (Entscheidung 10).
+ * for anything that hands out a link - the public base URL allow them (Entscheidung 10). That last
+ * conjunction is not repeated here: it is read from {@link LocalSelfServiceAvailability}, the same
+ * answer the authorization rule and the rate limiter act on, so this endpoint cannot advertise a
+ * flow whose path would refuse the call (#1592).
  */
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -36,17 +39,17 @@ public class AuthConfigController {
   private final AuthProperties authProperties;
   private final OidcProviderRepository providerRepository;
   private final LocalAuthSettingsRepository settingsRepository;
-  private final ObjectProvider<PublicBaseUrlAvailability> publicBaseUrl;
+  private final ObjectProvider<LocalSelfServiceAvailability> selfServiceFlows;
 
   public AuthConfigController(
       AuthProperties authProperties,
       OidcProviderRepository providerRepository,
       LocalAuthSettingsRepository settingsRepository,
-      ObjectProvider<PublicBaseUrlAvailability> publicBaseUrl) {
+      ObjectProvider<LocalSelfServiceAvailability> selfServiceFlows) {
     this.authProperties = authProperties;
     this.providerRepository = providerRepository;
     this.settingsRepository = settingsRepository;
-    this.publicBaseUrl = publicBaseUrl;
+    this.selfServiceFlows = selfServiceFlows;
   }
 
   @GetMapping("/config")
@@ -63,8 +66,9 @@ public class AuthConfigController {
   }
 
   private LocalAccountsConfig localAccounts(String mode) {
+    boolean oidc = OIDC_MODE.equals(mode);
     boolean enabled =
-        OIDC_MODE.equals(mode)
+        oidc
             && providerRepository
                 .findByNormalizedIssuerUri(LocalIssuer.URN)
                 .map(OidcProvider::isEnabled)
@@ -74,15 +78,14 @@ public class AuthConfigController {
             .findSingleton()
             .map(LocalAuthSettings::values)
             .orElseGet(LocalAuthSettings.Values::defaults);
-    boolean linksPossible =
-        publicBaseUrl.getIfAvailable(() -> PublicBaseUrlAvailability.NONE).isConfigured();
+    // The mode is this endpoint's own condition - the flows know the switch, the settings and the
+    // base URL, but not that the whole oidc chain is absent outside that profile.
+    LocalSelfServiceAvailability flows =
+        selfServiceFlows.getIfAvailable(() -> LocalSelfServiceAvailability.NONE);
     return new LocalAccountsConfig(
         enabled,
-        enabled
-            && linksPossible
-            && settings.selfRegistrationEnabled()
-            && !settings.selfRegistrationAllowedDomains().isEmpty(),
-        enabled && linksPossible && settings.passwordResetEnabled(),
+        oidc && flows.isSelfRegistrationAvailable(),
+        oidc && flows.isPasswordResetAvailable(),
         settings.passwordMinLength());
   }
 

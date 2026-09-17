@@ -9,6 +9,7 @@ import io.opaa.mail.MailDispatchExecutor;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.concurrent.Executor;
+import java.util.function.BooleanSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -98,19 +99,41 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
     this.executor = executor;
   }
 
-  /** What {@code GET /api/v1/auth/config} reports as {@code passwordResetEnabled}. */
+  /**
+   * What {@code GET /api/v1/auth/config} reports as {@code passwordResetEnabled}. Fails closed: the
+   * authorization rule and the rate limiter ask this before any handler runs (#1592), and an
+   * exception escaping there would answer 500 where an unknown route answers 401 - the disguise
+   * would fall exactly while the database is unreachable.
+   */
   @Override
   public boolean isPasswordResetAvailable() {
-    return linksPossible() && policyValues().passwordResetEnabled();
+    return unavailableOnFailure(() -> linksPossible() && policyValues().passwordResetEnabled());
   }
 
   /** What {@code GET /api/v1/auth/config} reports as {@code selfRegistrationEnabled}. */
   @Override
   public boolean isSelfRegistrationAvailable() {
-    Values values = policyValues();
-    return linksPossible()
-        && values.selfRegistrationEnabled()
-        && !values.selfRegistrationAllowedDomains().isEmpty();
+    return unavailableOnFailure(
+        () -> {
+          Values values = policyValues();
+          return linksPossible()
+              && values.selfRegistrationEnabled()
+              && !values.selfRegistrationAllowedDomains().isEmpty();
+        });
+  }
+
+  /**
+   * A flow whose switches cannot be read is not served; see {@link #isPasswordResetAvailable()}.
+   */
+  private static boolean unavailableOnFailure(BooleanSupplier switches) {
+    try {
+      return switches.getAsBoolean();
+    } catch (RuntimeException unreadable) {
+      log.warn(
+          "Could not read the local self-service switches; the flows count as switched off",
+          unreadable);
+      return false;
+    }
   }
 
   public void setPassword(String rawToken, String newPassword) {
