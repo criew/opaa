@@ -636,7 +636,7 @@ class MetadataFilterSearchIntegrationTest {
             + "Content-Type: text/plain; charset=UTF-8\n\n"
             + "Diese Unterlage regelt die Nutzung der IT.\n");
     documentIngestService.ingest(DocumentIngest.localFile(target, file).build(), null);
-    return documentRepository.findAll().stream()
+    return documentRepository.findByLibraryId(target.getId()).stream()
         .filter(document -> fileName.equals(document.getFileName()))
         .findFirst()
         .orElseThrow();

@@ -124,6 +124,7 @@ class MetadataBackfillServiceIntegrationTest {
       throws IOException {
     indexAltbestand();
     List<UUID> chunkIdsBefore = allChunkIds();
+    assertThat(chunkIdsBefore).isNotEmpty();
     MetadataBackfillProgress before = progress();
     assertThat(before.totalDocuments()).isEqualTo(3);
     assertThat(before.pendingDocuments()).isEqualTo(3);
@@ -209,9 +210,6 @@ class MetadataBackfillServiceIntegrationTest {
     backfillService.backfillBatch(Organization.DEFAULT_ID, library.getId(), 10);
     assertThat(progress().isComplete()).isTrue();
 
-    // Scoped to this class's own library: on the shared database a blanket UPDATE is worse
-    // than a blanket DELETE - it leaves the neighbour's rows in place with changed content,
-    // so nothing fails, the next class just silently asserts against the wrong values.
     jdbcTemplate.update(
         "UPDATE documents SET metadata_extraction_version = ? WHERE library_id = ?",
         CoreMetadataExtractor.EXTRACTION_VERSION - 1,
@@ -278,9 +276,6 @@ class MetadataBackfillServiceIntegrationTest {
         DocumentMetadataValue.manual(faqDocument.getId(), CoreMetadataField.DOCUMENT_TYPE, null)
             .assignVocabularyCode("VERMERK"));
     valueRepository.flush();
-    // Scoped to this class's own library: on the shared database a blanket UPDATE is worse
-    // than a blanket DELETE - it leaves the neighbour's rows in place with changed content,
-    // so nothing fails, the next class just silently asserts against the wrong values.
     jdbcTemplate.update(
         "UPDATE documents SET metadata_extraction_version = ? WHERE library_id = ?",
         CoreMetadataExtractor.EXTRACTION_VERSION - 1,
@@ -525,6 +520,7 @@ class MetadataBackfillServiceIntegrationTest {
             mail.getId());
     seedChunk(attachment.getId(), "alter Anhang-Chunk");
     List<UUID> chunkIdsBefore = allChunkIds();
+    assertThat(chunkIdsBefore).isNotEmpty();
 
     MetadataBackfillResult result =
         backfillService.backfillBatch(Organization.DEFAULT_ID, library.getId(), 10);
@@ -713,7 +709,7 @@ class MetadataBackfillServiceIntegrationTest {
   }
 
   private Document documentNamed(String fileName) {
-    return documentRepository.findAll().stream()
+    return documentRepository.findByLibraryId(library.getId()).stream()
         .filter(document -> fileName.equals(document.getFileName()))
         .findFirst()
         .orElseThrow();
@@ -738,9 +734,12 @@ class MetadataBackfillServiceIntegrationTest {
             });
   }
 
+  /** The chunk ids of this class's own library - the suite shares one vector_store. */
   private List<UUID> allChunkIds() {
     return jdbcTemplate.query(
-        "SELECT id FROM vector_store ORDER BY id", (rs, i) -> UUID.fromString(rs.getString("id")));
+        "SELECT id FROM vector_store WHERE metadata->>'library_id' = ? ORDER BY id",
+        (rs, i) -> UUID.fromString(rs.getString("id")),
+        library.getId().toString());
   }
 
   /** The chunk metadata of this class's own library - the suite shares one vector_store. */

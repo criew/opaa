@@ -106,7 +106,7 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
     // Three documents; the file names carry a Dokumentart for exactly one of them.
     Document withType = indexed("2026-03-12_Dienstanweisung_IT-Nutzung.pdf");
     Document undeterminable = indexed("Notiz_ohne_Art.pdf");
-    indexed("Zweite_Notiz.pdf");
+    Document secondUntyped = indexed("Zweite_Notiz.pdf");
     assertThat(documentMetadataService.coreMetadataFor(withType.getId()).documentTypeCode())
         .isEqualTo("DIENSTANWEISUNG");
 
@@ -139,7 +139,7 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
         editor);
     correctionService.setValue(
         library.getId(),
-        lastDocument("Zweite_Notiz.pdf").getId(),
+        secondUntyped.getId(),
         "document_type",
         MetadataValueInput.vocabulary("VERMERK"),
         editor);
@@ -261,9 +261,6 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
     documentMetadataService.reextractFromFile(
         documentRepository.findById(document.getId()).orElseThrow(),
         Path.of(library.getSourcePath()).resolve(document.getFileName()));
-    // Scoped to this class's own library: on the shared database a blanket UPDATE is worse
-    // than a blanket DELETE - it leaves the neighbour's rows in place with changed content,
-    // so nothing fails, the next class just silently asserts against the wrong values.
     jdbcTemplate.update(
         "UPDATE documents SET metadata_extraction_version = NULL WHERE library_id = ?",
         library.getId());
@@ -426,13 +423,6 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
     attachment.setParentDocumentId(parent.getId());
     attachment.setStatus(DocumentStatus.INDEXED);
     return documentRepository.save(attachment);
-  }
-
-  private Document lastDocument(String fileName) {
-    return documentRepository.findAll().stream()
-        .filter(document -> fileName.equals(document.getFileName()))
-        .findFirst()
-        .orElseThrow();
   }
 
   private Document indexedIn(KnowledgeLibrary target, String fileName) throws IOException {

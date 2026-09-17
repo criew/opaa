@@ -1199,7 +1199,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, currentUserOf(member)))
         .isInstanceOf(ValidationException.class);
-    assertThat(libraryRepository.findAll())
+    assertThat(libraryRepository.findByOrganizationId(organizationA))
         .noneMatch(l -> "Aufgeloeste Gruppe".equals(l.getName()));
   }
 

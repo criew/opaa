@@ -19,11 +19,15 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnLibraryFixtures;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,8 +57,15 @@ class IndexingJobRecoveryIntegrationTest {
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private IndexingJobRecoveryScheduler recoveryScheduler;
   @Autowired private IndexingJobService indexingJobService;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
 
   private User devAdmin;
+
+  /**
+   * The libraries a test method created. The shared dev admin owns other classes' libraries too, so
+   * the teardown goes by these ids, never by owner.
+   */
+  private final List<UUID> ownLibraryIds = new ArrayList<>();
 
   @BeforeEach
   void setUp() throws Exception {
@@ -65,6 +76,13 @@ class IndexingJobRecoveryIntegrationTest {
             .findFirst()
             .orElseThrow();
     assertThat(devAdmin.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
+  }
+
+  /** Runs and grants go with their library (see {@link OwnLibraryFixtures}). */
+  @AfterEach
+  void tearDown() {
+    ownLibraryFixtures.removeLibraries(ownLibraryIds.toArray(new UUID[0]));
+    ownLibraryIds.clear();
   }
 
   private KnowledgeLibrary createFilesystemLibraryWithEditorGrant() {
@@ -83,6 +101,7 @@ class IndexingJobRecoveryIntegrationTest {
                 null,
                 null,
                 false));
+    ownLibraryIds.add(library.getId());
     grantRepository.save(
         AssetGrant.forUser(
             library.getId(),
@@ -169,7 +188,9 @@ class IndexingJobRecoveryIntegrationTest {
 
     int recovered = indexingJobService.recoverStaleJobs(staleJobTimeout);
 
-    assertThat(recovered).isEqualTo(1);
+    // The recovery runs over every RUNNING row of the shared database; which rows it hit is
+    // asserted per row below, not through this suite-wide count.
+    assertThat(recovered).isPositive();
     IndexingJob staleResult = indexingJobRepository.findById(staleJob.getId()).orElseThrow();
     assertThat(staleResult.getStatus()).isEqualTo(JobStatus.FAILED);
     assertThat(staleResult.getErrorMessage())

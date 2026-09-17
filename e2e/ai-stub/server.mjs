@@ -40,7 +40,7 @@ const DIMENSIONS = process.env.EMBEDDING_DIMENSIONS
 const CITATION_PATTERN = /【source:\s*([a-zA-Z0-9-]+)#(\d+)\s*\|\s*(.+?)】/g
 
 // io.opaa.query.AnswerGenerationService's SYSTEM_PROMPT includes one fixed, hardcoded citation as
-// a worked example of the required format ("Example: 【source: 3fa85f64-... | readme.md】") -
+// a worked example of the required format ("Beispiel: 【source: 3fa85f64-... | readme.md】") -
 // present verbatim in every prompt regardless of whether any real context chunk was retrieved.
 // Without excluding it by its fixed document id, a query with zero readable chunks (the exact
 // case scenarios 4 and 5 in test(e2e) #424 rely on) would still look "cited" from this example

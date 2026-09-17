@@ -233,6 +233,20 @@ class DocumentIndexingIntegrationTest {
         granteeId);
   }
 
+  /**
+   * Every chunk of {@link #targetLibraryId}, ranked for {@code query} - never the whole shared
+   * {@code vector_store}, so an assertion over the hits speaks only about this class's own chunks.
+   */
+  private List<org.springframework.ai.document.Document> ownChunks(String query) {
+    return vectorStore.similaritySearch(
+        SearchRequest.builder()
+            .query(query)
+            .topK(100)
+            .similarityThreshold(0.0)
+            .filterExpression("library_id == '" + targetLibraryId + "'")
+            .build());
+  }
+
   private IndexingJob triggerIndexing() {
     return documentIndexingService.triggerIndexing(targetLibraryId, asCaller());
   }
@@ -267,14 +281,12 @@ class DocumentIndexingIntegrationTest {
     assertThat(documents).allMatch(d -> Organization.DEFAULT_ID.equals(d.getOrganizationId()));
 
     // Verify chunks with embeddings were stored in vector_store
-    List<org.springframework.ai.document.Document> results =
-        vectorStore.similaritySearch(
-            SearchRequest.builder().query("test").topK(100).similarityThreshold(0.0).build());
+    List<org.springframework.ai.document.Document> results = ownChunks("test");
     assertThat(results).isNotEmpty();
     assertThat(results).allMatch(r -> r.getText() != null && !r.getText().isBlank());
     assertThat(results).allMatch(r -> r.getMetadata().containsKey("document_id"));
-    assertThat(results)
-        .allMatch(r -> targetLibraryId.toString().equals(r.getMetadata().get("library_id")));
+    // The search is scoped by library_id, so this count proves every recorded chunk carries it.
+    assertThat(results).hasSize(documents.stream().mapToInt(Document::getChunkCount).sum());
     assertThat(results)
         .allMatch(
             r -> Organization.DEFAULT_ID.toString().equals(r.getMetadata().get("organization_id")));
@@ -404,9 +416,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
 
     // Verify chunks were stored in vector_store
-    List<org.springframework.ai.document.Document> results =
-        vectorStore.similaritySearch(
-            SearchRequest.builder().query("OPAA").topK(100).similarityThreshold(0.0).build());
+    List<org.springframework.ai.document.Document> results = ownChunks("OPAA");
     assertThat(results).isNotEmpty();
     assertThat(results).allMatch(r -> r.getText() != null && !r.getText().isBlank());
 
@@ -416,17 +426,19 @@ class DocumentIndexingIntegrationTest {
     assertThat(
             jdbcTemplate.queryForList(
                 "SELECT metadata->>'pipeline_id' FROM vector_store WHERE metadata->>'file_name' ="
-                    + " ?",
+                    + " ? AND metadata->>'library_id' = ?",
                 String.class,
-                "report.pdf"))
+                "report.pdf",
+                targetLibraryId.toString()))
         .isNotEmpty()
         .allMatch("pdf"::equals);
     assertThat(
             jdbcTemplate.queryForList(
                 "SELECT metadata->>'pipeline_id' FROM vector_store WHERE metadata->>'file_name' ="
-                    + " ?",
+                    + " ? AND metadata->>'library_id' = ?",
                 String.class,
-                "notes.docx"))
+                "notes.docx",
+                targetLibraryId.toString()))
         .isNotEmpty()
         .allMatch("docx"::equals);
   }
@@ -490,9 +502,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
 
-    List<org.springframework.ai.document.Document> results =
-        vectorStore.similaritySearch(
-            SearchRequest.builder().query("Gebühren").topK(100).similarityThreshold(0.0).build());
+    List<org.springframework.ai.document.Document> results = ownChunks("Gebühren");
     assertThat(results).isNotEmpty();
     assertThat(results)
         .allMatch(
@@ -527,13 +537,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
 
-    List<org.springframework.ai.document.Document> results =
-        vectorStore.similaritySearch(
-            SearchRequest.builder()
-                .query("Personalausweis")
-                .topK(100)
-                .similarityThreshold(0.0)
-                .build());
+    List<org.springframework.ai.document.Document> results = ownChunks("Personalausweis");
     assertThat(results).isNotEmpty();
     assertThat(results)
         .allMatch(
@@ -573,13 +577,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(documents.getFirst().getChunkCount()).isPositive();
 
-    List<org.springframework.ai.document.Document> results =
-        vectorStore.similaritySearch(
-            SearchRequest.builder()
-                .query("Personalausweis")
-                .topK(100)
-                .similarityThreshold(0.0)
-                .build());
+    List<org.springframework.ai.document.Document> results = ownChunks("Personalausweis");
     assertThat(results).isNotEmpty();
     // The pipeline_id proves the slide-per-chunk PptxDocumentFormat actually ran, not the Tika
     // fallback, which would also happily produce a non-empty, non-blank chunk.
@@ -647,14 +645,9 @@ class DocumentIndexingIntegrationTest {
     assertThat(attachmentDocument.getFileName()).isEqualTo("anlage.txt");
 
     List<org.springframework.ai.document.Document> bodyResults =
-        vectorStore.similaritySearch(
-            SearchRequest.builder()
-                .query("Bitte pruefen Sie den Antrag")
-                .topK(100)
-                .similarityThreshold(0.0)
-                .build());
+        ownChunks("Bitte pruefen Sie den Antrag");
     assertThat(bodyResults).isNotEmpty();
-    // similarityThreshold(0.0) returns every chunk in the store, not only the query's true match
+    // similarityThreshold(0.0) returns every chunk of the library, not only the query's true match
     // (the attachment's own chunk is a second, unrelated result now that it is its own document) -
     // anyMatch, not allMatch, is the meaningful assertion here.
     assertThat(bodyResults)
@@ -662,12 +655,7 @@ class DocumentIndexingIntegrationTest {
             r -> "email".equals(r.getMetadata().get(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY)));
 
     List<org.springframework.ai.document.Document> attachmentResults =
-        vectorStore.similaritySearch(
-            SearchRequest.builder()
-                .query("Anhangsinhalt fuer den Bauantrag")
-                .topK(100)
-                .similarityThreshold(0.0)
-                .build());
+        ownChunks("Anhangsinhalt fuer den Bauantrag");
     assertThat(attachmentResults).isNotEmpty();
     // The attachment's own chunk carries its own pipeline's id
     // (the Tika fallback for a plain-text file), never the outer mail pipeline's.
@@ -737,9 +725,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedFirstJob.getDocumentsSkipped()).isZero();
 
     // Remember initial state
-    List<org.springframework.ai.document.Document> initialResults =
-        vectorStore.similaritySearch(
-            SearchRequest.builder().query("content").topK(100).similarityThreshold(0.0).build());
+    List<org.springframework.ai.document.Document> initialResults = ownChunks("content");
     assertThat(initialResults).isNotEmpty();
     Document initialDoc = ownDocuments().getFirst();
     assertThat(initialDoc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
@@ -765,9 +751,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(reindexedDoc.getLibraryId()).isEqualTo(targetLibraryId);
 
     // Verify chunk text was updated via similarity search
-    List<org.springframework.ai.document.Document> newResults =
-        vectorStore.similaritySearch(
-            SearchRequest.builder().query("Updated").topK(100).similarityThreshold(0.0).build());
+    List<org.springframework.ai.document.Document> newResults = ownChunks("Updated");
     assertThat(newResults).isNotEmpty();
     String allChunkText =
         newResults.stream()

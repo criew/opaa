@@ -161,9 +161,6 @@ class LibraryDocumentServiceIntegrationTest {
     // Chunks, documents and runs of this class's own library, then the library itself. #1184:
     // fk_documents_parent is NO ACTION, checked at the end of the statement - one DELETE removes a
     // parent and its attachments together, which per-entity deletes in arbitrary order cannot.
-    // Written by PermissionHistoryListener when libraryService.createLibrary ran; the table has no
-    // foreign key at all, so a row left here would never fail loudly, only accumulate.
-    jdbcTemplate.update("DELETE FROM library_visibility_history WHERE library_id = ?", libraryId);
     ownLibraryFixtures.removeLibraries(libraryId);
     // #238 code review, finding 2+4: asset_grant_history.subject_user_id is ON DELETE RESTRICT
     // (see 018-permission-history.yaml's "Deletion survival" comment) - every library/grant
@@ -208,13 +205,11 @@ class LibraryDocumentServiceIntegrationTest {
                 .query("Publikumsverkehr")
                 .topK(100)
                 .similarityThreshold(0.0)
+                .filterExpression("document_id == '" + response.document().getId() + "'")
                 .build());
     assertThat(results).isNotEmpty();
     assertThat(results)
-        .anyMatch(r -> libraryId.toString().equals(r.getMetadata().get("library_id")));
-    assertThat(results)
-        .anyMatch(
-            r -> response.document().getId().toString().equals(r.getMetadata().get("document_id")));
+        .allMatch(r -> libraryId.toString().equals(r.getMetadata().get("library_id")));
   }
 
   @Test
