@@ -240,8 +240,8 @@ class Migration031LibraryMetadataSchemaChangesTest extends AbstractMigrationTest
     try (PreparedStatement statement =
         connection.prepareStatement(
             "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type,"
-                + " owner_user_id, visibility, source_type)"
-                + " VALUES (?, ?, ?, 'USER', ?, 'PRIVATE', 'FILESYSTEM')")) {
+                + " owner_user_id, visibility, source_type, source_path)"
+                + " VALUES (?, ?, ?, 'USER', ?, 'PRIVATE', 'FILESYSTEM', '/tmp/schema-change')")) {
       statement.setObject(1, id);
       statement.setObject(2, organizationId);
       statement.setString(3, "Bibliothek " + id);

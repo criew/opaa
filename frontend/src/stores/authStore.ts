@@ -546,7 +546,11 @@ export const useAuthStore = create<AuthState>((set, get) => {
       // of an earlier local session nothing is restored and no request is made, so a regular OIDC
       // sign-in never sees a failed call it did not ask for.
       if (!handoverCallback && (await restoreLocalSession()) !== 'none') return
-      if (providers.length === 0 && !get().localAccounts.enabled) {
+      // Die eben geladene Konfiguration entscheidet, nicht der Speicherstand nach dem Await: Ein
+      // Sitzungsende während des Wiederherstellungsversuchs setzt den Block auf „abgeschaltet"
+      // zurück, und dieser Aufruf meldete dann „kein Identitätsanbieter", obwohl die lokale
+      // Anmeldung eingeschaltet ist.
+      if (providers.length === 0 && !config.localAccounts.enabled) {
         set({
           userManager: null,
           activeProviderId: null,
