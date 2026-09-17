@@ -5,8 +5,19 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-16T05:03:21Z</updated>
+  <updated>2026-09-17T05:06:45Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Mittwoch, 16. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-16.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-16.html</id>
+    <updated>2026-09-17T05:06:45Z</updated>
+    <summary type="text">Sonstiges:
+— Antwort nach Chatwechsel an den eigenen Chat gebunden
+— Ungefilterte Assertions über geteilte Tabellen eingegrenzt
+— Antwortstufe antwortet konsistent auf Deutsch
+— Backend-Image läuft als Nicht-root-Nutzer 65532</summary>
+  </entry>
   <entry>
     <title>Tagesreport Dienstag, 15. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-15.html"/>
