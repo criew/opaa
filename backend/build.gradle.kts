@@ -156,7 +156,8 @@ fun registerEvalHarnessTask(
         // opaa.eval.conversationNoteCap (issue #1587: the note cap one ablation arm measures under,
         // 0 for a run without a Gesprächsnotiz) and opaa.eval.chatBaseUrl/opaa.eval.chatModel
         // (issue #1674: measure the multi-turn path against a production-grade chat model
-        // instead of the pinned one; its API key comes from the environment variable
+        // instead of the pinned one, optionally at an installation's opaa.eval.chatTemperature;
+        // its API key comes from the environment variable
         // OPAA_EVAL_CHAT_API_KEY, never from a -D value, which would be visible in the
         // process list) share this list because all of
         // them are optional, manually-invoked knobs rather than something every eval domain always
@@ -179,6 +180,7 @@ fun registerEvalHarnessTask(
             "opaa.eval.conversationNoteCap",
             "opaa.eval.chatBaseUrl",
             "opaa.eval.chatModel",
+            "opaa.eval.chatTemperature",
             "opaa.rerank.enabled",
             "opaa.rerank.base-url",
             "opaa.rerank.model",

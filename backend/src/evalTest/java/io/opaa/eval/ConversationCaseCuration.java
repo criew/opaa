@@ -1,6 +1,7 @@
 package io.opaa.eval;
 
 import io.opaa.eval.GoldenCaseCuration.Violation;
+import io.opaa.query.citation.CitationMarkers;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -21,6 +22,8 @@ import java.util.TreeMap;
  *   <li><b>Every turn carries {@code query}, {@code answer} and {@code expected_documents}.</b> A
  *       turn without an answer has no assistant half and would hand the next turn a window
  *       production never produces; a turn without expected documents is not measured by anything.
+ *       The one exception is a turn without search ({@link #NO_SEARCH_TURN_RULE}), which must carry
+ *       none.
  *   <li><b>The class is one of {@link #CASE_CLASSES}</b>, and its turn count lies in the range that
  *       class is defined over ({@link #TURN_RANGE_BY_CLASS}) - a two-turn {@code
  *       constraint_carryover} case cannot contain the intermediate turn that pushes the constraint
@@ -32,7 +35,8 @@ import java.util.TreeMap;
  *       report ({@link ConversationEvaluationReport#SINGLE_PATH_NOTE}).
  *   <li><b>A {@code constraint_carryover} case names a {@link #CONFUSABLE_DOCUMENT_RULE confusable
  *       document}</b> in at least one turn; a {@code topic_switch} case names its {@link
- *       #TOPIC_SWITCH_TURN_RULE change turn}.
+ *       #TOPIC_SWITCH_TURN_RULE change turn}; an {@code answer_continuation} case carries {@link
+ *       #LONG_ANSWER_RULE long answers} and {@link #NO_SEARCH_TURN_RULE a turn without search}.
  *   <li><b>Class sizes</b>: at least {@link #MINIMUM_CASES_PER_CLASS} cases and, across their
  *       turns, at least {@link GoldenCaseCuration#MINIMUM_DISTINCT_EXPECTED_SETS_PER_CLASS}
  *       distinct expected-document sets - the tolerance of ADR-0013 is computed from the latter,
@@ -43,13 +47,19 @@ public final class ConversationCaseCuration {
 
   /** docs/features/conversation-memory.md, "Fallklassen". */
   public static final List<String> CASE_CLASSES =
-      List.of("anaphora_resolution", "topic_switch", "constraint_carryover");
+      List.of("anaphora_resolution", "topic_switch", "constraint_carryover", "answer_continuation");
 
   /** The class whose cases measure a constraint carried across an intermediate turn. */
   public static final String CONSTRAINT_CARRYOVER_CLASS = "constraint_carryover";
 
   /** The class whose cases measure that a topic change stops colouring the search. */
   public static final String TOPIC_SWITCH_CLASS = "topic_switch";
+
+  /**
+   * The class whose cases measure that the decomposition produces search queries rather than
+   * continuing the conversation, under a window of production-shaped answers.
+   */
+  public static final String ANSWER_CONTINUATION_CLASS = "answer_continuation";
 
   /** Unchanged from {@link GoldenCaseCuration#MINIMUM_CASES_PER_CLASS} - the same rule. */
   public static final int MINIMUM_CASES_PER_CLASS = GoldenCaseCuration.MINIMUM_CASES_PER_CLASS;
@@ -59,7 +69,8 @@ public final class ConversationCaseCuration {
       Map.of(
           "anaphora_resolution", new int[] {2, 3},
           "topic_switch", new int[] {3, 4},
-          "constraint_carryover", new int[] {3, 5});
+          "constraint_carryover", new int[] {3, 5},
+          "answer_continuation", new int[] {3, 5});
 
   /**
    * Upper bound of a hand-written short answer. "One to three sentences" is the curation
@@ -68,6 +79,35 @@ public final class ConversationCaseCuration {
    * becoming the largest part of the conversation window.
    */
   public static final int MAXIMUM_ANSWER_LENGTH = 400;
+
+  /** Lower bound of an answer that has to look like a production answer. */
+  public static final int LONG_ANSWER_MINIMUM_LENGTH = 500;
+
+  /** Upper bound of such an answer - long enough for a structured reply, short of a pasted text. */
+  public static final int LONG_ANSWER_MAXIMUM_LENGTH = 2000;
+
+  /**
+   * What makes a window provoke a continuation: answers of the length and form a production answer
+   * has, citation markers included, which the production memory strips on the way in.
+   */
+  public static final String LONG_ANSWER_RULE =
+      "in an answer_continuation case every turn with search has an answer of "
+          + LONG_ANSWER_MINIMUM_LENGTH
+          + " to "
+          + LONG_ANSWER_MAXIMUM_LENGTH
+          + " characters carrying at least one citation marker - the form a production answer "
+          + "enters the conversation window in";
+
+  /**
+   * A turn without search ({@code search_expected: false}) is a message with nothing to look up. It
+   * exists only in {@code answer_continuation}, where every case carries one after its first turn -
+   * with a window in front of it, which is when a chat model starts answering instead - and at
+   * least two turns with search around it.
+   */
+  public static final String NO_SEARCH_TURN_RULE =
+      "search_expected: false only in answer_continuation, never on the first turn, without "
+          + "expected_documents or confusable_document; every answer_continuation case has at least "
+          + "one such turn and at least two turns with search";
 
   public static final String CONFUSABLE_DOCUMENT_RULE =
       "a constraint_carryover case names a confusable_document in at least one turn - without the "
@@ -155,8 +195,10 @@ public final class ConversationCaseCuration {
       violations.add(new Violation(id, "turns must not be empty"));
       return;
     }
+    boolean continuationCase = ANSWER_CONTINUATION_CLASS.equals(conversationCase.category());
     Set<String> seenQueries = new LinkedHashSet<>();
     boolean anyConfusable = false;
+    int noSearchTurns = 0;
     for (int i = 0; i < turns.size(); i++) {
       ConversationCase.Turn turn = turns.get(i);
       String turnId = conversationCase.turnId(i);
@@ -165,26 +207,73 @@ public final class ConversationCaseCuration {
       } else if (!seenQueries.add(turn.query())) {
         violations.add(new Violation(turnId, "duplicate query within the same case"));
       }
-      if (turn.answer() == null || turn.answer().isBlank()) {
-        violations.add(
-            new Violation(
-                turnId,
-                "answer is missing or blank - without it the next turn receives a conversation "
-                    + "window production never produces"));
-      } else if (turn.answer().length() > MAXIMUM_ANSWER_LENGTH) {
-        violations.add(
-            new Violation(
-                turnId,
-                "answer is "
-                    + turn.answer().length()
-                    + " characters, more than the short-answer bound of "
-                    + MAXIMUM_ANSWER_LENGTH));
+      validateAnswer(turn, turnId, continuationCase, violations);
+      if (turn.expectsSearch()) {
+        validateExpectedDocuments(turn, turnId, corpusFileNames, violations);
+        anyConfusable |= validateConfusable(turn, turnId, corpusFileNames, violations);
+      } else {
+        noSearchTurns++;
+        validateNoSearchTurn(turn, turnId, i, continuationCase, violations);
       }
-      validateExpectedDocuments(turn, turnId, corpusFileNames, violations);
-      anyConfusable |= validateConfusable(turn, turnId, corpusFileNames, violations);
     }
     if (CONSTRAINT_CARRYOVER_CLASS.equals(conversationCase.category()) && !anyConfusable) {
       violations.add(new Violation(id, CONFUSABLE_DOCUMENT_RULE));
+    }
+    if (continuationCase && (noSearchTurns == 0 || turns.size() - noSearchTurns < 2)) {
+      violations.add(new Violation(id, NO_SEARCH_TURN_RULE));
+    }
+  }
+
+  /**
+   * The short-answer bound everywhere except on the turns with search of an {@code
+   * answer_continuation} case, which follow {@link #LONG_ANSWER_RULE} instead.
+   */
+  private static void validateAnswer(
+      ConversationCase.Turn turn,
+      String turnId,
+      boolean continuationCase,
+      List<Violation> violations) {
+    String answer = turn.answer();
+    if (answer == null || answer.isBlank()) {
+      violations.add(
+          new Violation(
+              turnId,
+              "answer is missing or blank - without it the next turn receives a conversation "
+                  + "window production never produces"));
+      return;
+    }
+    if (continuationCase && turn.expectsSearch()) {
+      boolean inRange =
+          answer.length() >= LONG_ANSWER_MINIMUM_LENGTH
+              && answer.length() <= LONG_ANSWER_MAXIMUM_LENGTH;
+      if (!inRange || CitationMarkers.strip(answer).equals(answer)) {
+        violations.add(new Violation(turnId, LONG_ANSWER_RULE));
+      }
+      return;
+    }
+    if (answer.length() > MAXIMUM_ANSWER_LENGTH) {
+      violations.add(
+          new Violation(
+              turnId,
+              "answer is "
+                  + answer.length()
+                  + " characters, more than the short-answer bound of "
+                  + MAXIMUM_ANSWER_LENGTH));
+    }
+  }
+
+  /** See {@link #NO_SEARCH_TURN_RULE}. */
+  private static void validateNoSearchTurn(
+      ConversationCase.Turn turn,
+      String turnId,
+      int turnIndex,
+      boolean continuationCase,
+      List<Violation> violations) {
+    boolean carriesDocuments =
+        (turn.expectedDocuments() != null && !turn.expectedDocuments().isEmpty())
+            || turn.confusableDocument() != null;
+    if (!continuationCase || turnIndex == 0 || carriesDocuments) {
+      violations.add(new Violation(turnId, NO_SEARCH_TURN_RULE));
     }
   }
 
@@ -304,7 +393,7 @@ public final class ConversationCaseCuration {
         continue;
       }
       for (ConversationCase.Turn turn : conversationCase.turns()) {
-        if (turn.expectedDocuments() != null) {
+        if (turn.expectsSearch() && turn.expectedDocuments() != null) {
           expectedSetsByClass
               .computeIfAbsent(category, k -> new LinkedHashSet<>())
               // Sorted copy: two turns expecting the same documents in a different order are the

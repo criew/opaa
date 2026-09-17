@@ -101,6 +101,7 @@ public final class ConversationReportWriter {
                         caseClass, outcome.solvedCases(), outcome.cases())));
     sb.append('\n');
     sb.append(renderNoteCondensation(report.noteCondensation()));
+    sb.append(renderNoSearch(report.noSearch()));
     sb.append(renderBleed(report.topicBleed()));
     sb.append(ExpectedStateAudit.renderSummary(report.expectedStateAudit()));
     sb.append(
@@ -187,6 +188,7 @@ public final class ConversationReportWriter {
             report.caseOutcomes().cases(), report.caseOutcomes().solvedCases()));
 
     sb.append('\n').append(renderNoteCondensation(report.noteCondensation()));
+    sb.append(renderNoSearch(report.noSearch()));
     sb.append('\n').append(renderBleed(report.topicBleed())).append('\n');
     sb.append(ExpectedStateAudit.renderMarkdown(report.expectedStateAudit()));
     sb.append("\n### Gesprächsnotiz und Teilfragen je Runde\n\n");
@@ -195,15 +197,33 @@ public final class ConversationReportWriter {
       for (TurnResult turn : caseResult.turns()) {
         sb.append(
             format(
-                "  - `%s` %s — Fenster %d Nachrichten, Notiz %s, Teilfragen %s\n",
+                "  - `%s` %s%s — Fenster %d Nachrichten, Notiz %s, Teilfragen %s\n",
                 turn.turnId(),
                 turn.solved() ? "gelöst" : "nicht gelöst",
+                turn.searchExpected() ? "" : " (ohne Suche erwartet)",
                 turn.conversationWindowMessages(),
                 turn.conversationNote(),
                 turn.subQueries()));
       }
     }
     return sb.toString();
+  }
+
+  /**
+   * The turns that expect no search, and how many of them were searched anyway - the failure {@code
+   * answer_continuation} exists for, which no metric aggregate shows because such a turn has
+   * nothing to rank.
+   */
+  private static String renderNoSearch(ConversationEvaluationReport.NoSearchAudit audit) {
+    if (audit == null) {
+      return "";
+    }
+    if (audit.searchedTurns() == 0) {
+      return format("Runden ohne Suchbedarf: %d, keine davon gesucht.\n\n", audit.turns());
+    }
+    return format(
+        "Runden ohne Suchbedarf: %d, davon %d TROTZDEM GESUCHT (%s).\n\n",
+        audit.turns(), audit.searchedTurns(), String.join(", ", audit.searchedTurnIds()));
   }
 
   private static String renderBleed(TopicBleedAudit bleed) {

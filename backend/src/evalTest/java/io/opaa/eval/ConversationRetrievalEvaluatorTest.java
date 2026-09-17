@@ -553,6 +553,97 @@ class ConversationRetrievalEvaluatorTest {
     assertThat(pipeline.notes.get("verw-conv-005#1")).isEmpty();
   }
 
+  private static ConversationCase caseWithAMessageWithoutSearch() {
+    return new ConversationCase(
+        "verw-conv-ac-001",
+        "verwaltung",
+        "answer_continuation",
+        List.of(
+            new ConversationCase.Turn(
+                "Was kostet ein Anwohnerparkausweis?",
+                "Ein Anwohnerparkausweis kostet 30,70 Euro pro Jahr.",
+                List.of(DOC_A),
+                null),
+            new ConversationCase.Turn(
+                "Antworte bitte kürzer.", "Gern, ich fasse mich kürzer.", List.of(), null, false),
+            new ConversationCase.Turn(
+                "Und bei Bedürftigkeit?", "Dann entfällt die Gebühr.", List.of(DOC_B), null)),
+        null,
+        GoldenCase.ExpectedState.KNOWN_GAP,
+        "2026-09-17",
+        "Grund");
+  }
+
+  /** Answers every turn with {@code DOC_A}/{@code DOC_B}; the second turn searches or not. */
+  private static ConversationRetrievalEvaluator.TurnInvocation pipelineSearchingTheSecondTurn(
+      boolean searchSecondTurn) {
+    return (conversationCase, turnIndex, window, note) -> {
+      if (turnIndex == 1) {
+        return searchSecondTurn
+            ? new ConversationRetrievalEvaluator.TurnInvocationResult(
+                List.of(DOC_C), List.of("Ich fasse mich gern kürzer."))
+            : new ConversationRetrievalEvaluator.TurnInvocationResult(List.of(), List.of());
+      }
+      return new ConversationRetrievalEvaluator.TurnInvocationResult(
+          List.of(turnIndex == 0 ? DOC_A : DOC_B), List.of("Teilfrage " + (turnIndex + 1)));
+    };
+  }
+
+  @Test
+  void aTurnWithoutSearchIsSolvedExactlyWhenNothingWasSearched() {
+    ConversationRetrievalEvaluator.CaseOutcome notSearched =
+        ConversationRetrievalEvaluator.evaluateCase(
+            caseWithAMessageWithoutSearch(), chatMemory(20), pipelineSearchingTheSecondTurn(false));
+    ConversationRetrievalEvaluator.CaseOutcome searched =
+        ConversationRetrievalEvaluator.evaluateCase(
+            caseWithAMessageWithoutSearch(), chatMemory(20), pipelineSearchingTheSecondTurn(true));
+
+    assertThat(notSearched.turns().get(1).solved()).isTrue();
+    assertThat(notSearched.solved()).isTrue();
+    assertThat(searched.turns().get(1).solved())
+        .as("a message with nothing to look up that was turned into a search query")
+        .isFalse();
+    assertThat(searched.solved()).isFalse();
+  }
+
+  @Test
+  void aTurnWithoutSearchEntersNoMetricAggregateAndIsReportedOnItsOwn() {
+    ConversationEvaluationReport report =
+        ConversationRetrievalEvaluator.report(
+            List.of(
+                ConversationRetrievalEvaluator.evaluateCase(
+                    caseWithAMessageWithoutSearch(),
+                    chatMemory(20),
+                    pipelineSearchingTheSecondTurn(true))),
+            runConfiguration());
+
+    assertThat(report.overall().n()).isEqualTo(2);
+    assertThat(report.byCategory().get("answer_continuation").n()).isEqualTo(2);
+    assertThat(report.byTurn()).containsOnlyKeys("1", "3");
+    assertThat(report.overall().hitRateAt5())
+        .as("the searched message ranks no expected document, and counts for nothing here")
+        .isEqualTo(1.0);
+    assertThat(report.noSearch().turns()).isEqualTo(1);
+    assertThat(report.noSearch().searchedTurnIds()).containsExactly("verw-conv-ac-001#2");
+    ConversationEvaluationReport.TurnResult messageTurn = report.cases().getFirst().turns().get(1);
+    assertThat(messageTurn.searchExpected()).isFalse();
+    assertThat(messageTurn.hitRateAt5()).isNull();
+    assertThat(messageTurn.subQueries()).containsExactly("Ich fasse mich gern kürzer.");
+  }
+
+  @Test
+  void aDatasetWithoutATurnWithoutSearchHasNoSuchSection() {
+    List<ConversationRetrievalEvaluator.CaseOutcome> outcomes =
+        List.of(
+            ConversationRetrievalEvaluator.evaluateCase(
+                twoTurnCase("anaphora_resolution"),
+                chatMemory(20),
+                new RecordingPipeline(List.of(List.of(DOC_A), List.of(DOC_B)))));
+
+    assertThat(ConversationRetrievalEvaluator.report(outcomes, runConfiguration()).noSearch())
+        .isNull();
+  }
+
   @Test
   void withoutATopicSwitchCaseTheBleedSectionIsAbsentRatherThanClean() {
     List<ConversationRetrievalEvaluator.CaseOutcome> outcomes =

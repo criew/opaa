@@ -15,6 +15,7 @@ class EvalChatModelExternalTest {
 
   private static final String BASE_URL = "opaa.eval.chatBaseUrl";
   private static final String MODEL = "opaa.eval.chatModel";
+  private static final String TEMPERATURE = "opaa.eval.chatTemperature";
 
   @Test
   void withoutThePropertiesTheRunMeasuresThePinnedModel() {
@@ -63,6 +64,37 @@ class EvalChatModelExternalTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("OPAA_EVAL_CHAT_API_KEY")
                 .hasMessageContaining("process list"));
+  }
+
+  /** A Befundlauf reproduces an installation's temperature; the pinned model never leaves 0. */
+  @Test
+  void aTemperatureIsReadForAnExternalModelAndRefusedForThePinnedOne() {
+    String previous = System.getProperty(TEMPERATURE);
+    try {
+      System.clearProperty(TEMPERATURE);
+      assertThat(EvalChatModel.requestedTemperature()).isEqualByComparingTo("0.00");
+
+      System.setProperty(TEMPERATURE, "0.70");
+      assertThat(EvalChatModel.requestedTemperature()).isEqualByComparingTo("0.70");
+      withProperties(
+          null,
+          null,
+          () ->
+              assertThatThrownBy(EvalChatModel::refuseTemperatureWithoutExternalModel)
+                  .isInstanceOf(IllegalArgumentException.class)
+                  .hasMessageContaining("external chat model only"));
+
+      System.setProperty(TEMPERATURE, "warm");
+      assertThatThrownBy(EvalChatModel::requestedTemperature)
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("decimal number");
+      System.setProperty(TEMPERATURE, "2.5");
+      assertThatThrownBy(EvalChatModel::requestedTemperature)
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("between 0 and 2");
+    } finally {
+      set(TEMPERATURE, previous);
+    }
   }
 
   private static void withProperties(String baseUrl, String model, Runnable assertions) {

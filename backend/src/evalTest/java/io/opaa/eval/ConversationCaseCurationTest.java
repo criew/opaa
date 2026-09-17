@@ -250,6 +250,104 @@ class ConversationCaseCurationTest {
         .contains(ConversationCaseCuration.CONFUSABLE_DOCUMENT_RULE);
   }
 
+  private static final String LONG_ANSWER =
+      "Die Gebühr beträgt 33,00 Euro. 【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6#0 | a.md】 "
+          + "x".repeat(ConversationCaseCuration.LONG_ANSWER_MINIMUM_LENGTH);
+
+  private static ConversationCase continuationCase(String id, List<ConversationCase.Turn> turns) {
+    return new ConversationCase(
+        id,
+        DOMAIN,
+        "answer_continuation",
+        turns,
+        null,
+        GoldenCase.ExpectedState.KNOWN_GAP,
+        "2026-09-17",
+        "Grund");
+  }
+
+  @Test
+  void anAnswerContinuationCaseCarriesLongAnswersWithCitationMarkers() {
+    ConversationCase shortAnswers =
+        continuationCase(
+            "verw-conv-ac-001",
+            List.of(
+                new ConversationCase.Turn("Frage 1?", "Antwort 1.", List.of("a.md"), null),
+                new ConversationCase.Turn("Antworte kurz.", "Gern.", List.of(), null, false),
+                new ConversationCase.Turn("Frage 3?", "x".repeat(600), List.of("a.md"), null)));
+    ConversationCase longAnswers =
+        continuationCase(
+            "verw-conv-ac-002",
+            List.of(
+                new ConversationCase.Turn("Frage 1?", LONG_ANSWER, List.of("a.md"), null),
+                new ConversationCase.Turn("Antworte kurz.", "Gern.", List.of(), null, false),
+                new ConversationCase.Turn("Frage 3?", LONG_ANSWER, List.of("a.md"), null)));
+
+    List<Violation> violations =
+        ConversationCaseCuration.validate(
+            List.of(shortAnswers, longAnswers), DOMAIN, Set.of("a.md"));
+
+    assertThat(violations)
+        .filteredOn(v -> ConversationCaseCuration.LONG_ANSWER_RULE.equals(v.rule()))
+        .extracting(Violation::caseId)
+        .as("too short, and long enough but without a citation marker")
+        .containsExactly("verw-conv-ac-001#1", "verw-conv-ac-001#3");
+  }
+
+  @Test
+  void aTurnWithoutSearchBelongsToAnAnswerContinuationCaseAndFollowsAWindow() {
+    ConversationCase inOtherClass =
+        new ConversationCase(
+            "verw-conv-001",
+            DOMAIN,
+            "anaphora_resolution",
+            List.of(
+                new ConversationCase.Turn("Frage 1?", "Antwort 1.", List.of("a.md"), null),
+                new ConversationCase.Turn("Danke.", "Gern.", List.of(), null, false)),
+            null,
+            GoldenCase.ExpectedState.KNOWN_GAP,
+            "2026-09-11",
+            "Grund");
+    ConversationCase firstTurn =
+        continuationCase(
+            "verw-conv-ac-001",
+            List.of(
+                new ConversationCase.Turn(
+                    "Ich bin Sachbearbeiterin.", "Gern.", List.of(), null, false),
+                new ConversationCase.Turn("Frage 2?", LONG_ANSWER, List.of("a.md"), null),
+                new ConversationCase.Turn("Frage 3?", LONG_ANSWER, List.of("a.md"), null)));
+    ConversationCase withDocuments =
+        continuationCase(
+            "verw-conv-ac-002",
+            List.of(
+                new ConversationCase.Turn("Frage 1?", LONG_ANSWER, List.of("a.md"), null),
+                new ConversationCase.Turn("Danke.", "Gern.", List.of("a.md"), null, false),
+                new ConversationCase.Turn("Frage 3?", LONG_ANSWER, List.of("a.md"), null)));
+    ConversationCase withoutAny =
+        continuationCase(
+            "verw-conv-ac-003",
+            List.of(
+                new ConversationCase.Turn("Frage 1?", LONG_ANSWER, List.of("a.md"), null),
+                new ConversationCase.Turn("Frage 2?", LONG_ANSWER, List.of("a.md"), null),
+                new ConversationCase.Turn("Frage 3?", LONG_ANSWER, List.of("a.md"), null)));
+
+    List<Violation> violations =
+        ConversationCaseCuration.validate(
+            List.of(inOtherClass, firstTurn, withDocuments, withoutAny), DOMAIN, Set.of("a.md"));
+
+    assertThat(violations)
+        .filteredOn(v -> ConversationCaseCuration.NO_SEARCH_TURN_RULE.equals(v.rule()))
+        .extracting(Violation::caseId)
+        .containsExactlyInAnyOrder(
+            "verw-conv-001#2", "verw-conv-ac-001#1", "verw-conv-ac-002#2", "verw-conv-ac-003");
+    assertThat(violations)
+        .as("a turn without search needs no expected documents")
+        .noneMatch(
+            v ->
+                "verw-conv-001#2".equals(v.caseId())
+                    && "expected_documents must not be empty".equals(v.rule()));
+  }
+
   @Test
   void everyClassNeedsItsMinimumOfCasesAndOfDistinctExpectedSets() {
     ConversationCase onlyCase =

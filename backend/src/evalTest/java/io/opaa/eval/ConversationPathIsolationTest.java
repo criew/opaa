@@ -27,7 +27,7 @@ class ConversationPathIsolationTest {
    */
   @Test
   void theMultiTurnPathCountsItsOwnContractVersionSeparately() {
-    assertThat(ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION).isEqualTo(4);
+    assertThat(ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION).isEqualTo(5);
   }
 
   @Test
@@ -351,6 +351,7 @@ class ConversationPathIsolationTest {
         Map.of(),
         Map.of(),
         new ConversationEvaluationReport.CaseOutcomeSummary(0, 0, Map.of()),
+        null,
         null,
         null,
         null,

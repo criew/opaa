@@ -18,7 +18,8 @@ import java.util.Map;
  *
  * @param singlePathNote records once per report that this measurement runs on the pipeline path
  *     alone - see {@link #SINGLE_PATH_NOTE}.
- * @param overall every turn of every case, in one aggregate.
+ * @param overall every turn with search of every case, in one aggregate - a turn without search has
+ *     no expected documents to rank and is judged in {@code noSearch} instead.
  * @param byCategory turn-level aggregate per case class ({@link
  *     ConversationCaseCuration#CASE_CLASSES}).
  * @param byTurn turn-level aggregate per turn number, keyed {@code "1"}, {@code "2"}, … ({@link
@@ -32,6 +33,8 @@ import java.util.Map;
  *     {@code null} for a dataset without a {@code topic_switch} case.
  * @param noteCondensation how many of the run's Gespraechsnotiz condensations failed, {@code null}
  *     for a run measured without a note - see {@link NoteCondensationAudit}.
+ * @param noSearch the turns without search and those of them the run searched for anyway, {@code
+ *     null} for a dataset without such a turn - see {@link NoSearchAudit}.
  */
 public record ConversationEvaluationReport(
     int conversationMeasurementContractVersion,
@@ -45,6 +48,7 @@ public record ConversationEvaluationReport(
     ExpectedStateAudit.Result expectedStateAudit,
     TopicBleedAudit topicBleed,
     NoteCondensationAudit noteCondensation,
+    NoSearchAudit noSearch,
     List<ConversationCaseResult> cases) {
 
   /**
@@ -65,8 +69,12 @@ public record ConversationEvaluationReport(
    *
    * <p>Version 4 (issue #1650): {@code contextPrefixFingerprint} became a checked fixed point of
    * the shared pipeline block (ADR-0012, Nachtrag Kontextpräfix-Form).
+   *
+   * <p>Version 5 (issue #1684): a turn can expect no search. Such a turn enters no metric aggregate
+   * - {@code overall}, {@code byCategory} and {@code byTurn} count turns with search only - and is
+   * judged in {@code noSearch}; its {@link TurnResult} carries no metric values.
    */
-  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 4;
+  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 5;
 
   /**
    * The Einpfad-Regel of docs/features/retrieval-benchmark.md §5, recorded <b>once per report</b>:
@@ -119,6 +127,17 @@ public record ConversationEvaluationReport(
   public record NoteCondensationAudit(
       int attemptedCondensations, int failedCondensations, List<String> failedTurnIds) {}
 
+  /**
+   * The turns of this run that expect no search ({@code search_expected: false}), and those of them
+   * the run searched for anyway - a message with nothing to look up that the decomposition turned
+   * into a search query or into the fallback. An observation, never a fixed point: the dataset hash
+   * already pins which turns these are. {@code null} for a dataset without such a turn.
+   *
+   * @param searchedTurnIds the turns that were searched although nothing was to be searched, in run
+   *     order
+   */
+  public record NoSearchAudit(int turns, int searchedTurns, List<String> searchedTurnIds) {}
+
   /** How many cases were solved in full, overall and per case class. */
   public record CaseOutcomeSummary(
       int cases, int solvedCases, Map<String, ClassOutcome> byCategory) {}
@@ -150,18 +169,21 @@ public record ConversationEvaluationReport(
    *     before it shows up in the metrics.
    * @param bledDocuments documents of an earlier turn's topic that stood in this turn's window,
    *     recorded only for the change turn of a {@code topic_switch} case (empty otherwise).
+   * @param searchExpected {@code false} for a turn without search, whose metric values are {@code
+   *     null}: it has no expected documents, and a zero would read as a missed one.
    */
   public record TurnResult(
       String turnId,
       int turnIndex,
+      boolean searchExpected,
       String query,
       List<String> expectedDocuments,
       List<String> rankedFileNames,
-      double hitRateAt5,
-      double reciprocalRankAt8,
-      double ndcgAt8,
-      double recallAt8,
-      double allExpectedDocumentsHitAt8,
+      Double hitRateAt5,
+      Double reciprocalRankAt8,
+      Double ndcgAt8,
+      Double recallAt8,
+      Double allExpectedDocumentsHitAt8,
       Integer hitRateMargin,
       Integer rankingMargin,
       boolean solved,
