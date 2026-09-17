@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { screen } from '@testing-library/react'
-import { Route, Routes } from 'react-router'
+import type { UserManager } from 'oidc-client-ts'
+import { act, screen } from '@testing-library/react'
+import { Route, Routes, useLocation } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import ProtectedRoute from './ProtectedRoute'
@@ -18,6 +19,7 @@ describe('ProtectedRoute', () => {
       sessionKind: null,
       passwordChangeRequired: false,
       passwordChangeReason: null,
+      signedOut: false,
     })
   })
 
@@ -74,6 +76,85 @@ describe('ProtectedRoute', () => {
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument()
     expect(screen.getByText('Login Screen')).toBeInTheDocument()
   })
+  /** Shows the return target the login page would receive. */
+  function LoginShowingTarget() {
+    const location = useLocation()
+    const from = (location.state as { from?: string } | null)?.from
+    return <div>Ziel: {from ?? 'keins'}</div>
+  }
+
+  function renderDenied(route: string) {
+    renderWithProviders(
+      <Routes>
+        <Route
+          path="/libraries"
+          element={
+            <ProtectedRoute>
+              <div>Protected Content</div>
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/login" element={<LoginShowingTarget />} />
+      </Routes>,
+      { withRouter: true, initialRoute: route },
+    )
+  }
+
+  // #1685: the page a denied route was on becomes the return target of the next sign-in ...
+  it('hands the denied route on as the return target when the session is simply missing', () => {
+    useAuthStore.setState({ mode: 'oidc', isAuthenticated: false, isLoading: false })
+    renderDenied('/libraries?tab=2')
+    expect(screen.getByText('Ziel: /libraries?tab=2')).toBeInTheDocument()
+  })
+
+  // ... but not after a deliberate sign-out: the next person in this tab may be somebody else.
+  it('hands on no return target after a deliberate sign-out', () => {
+    useAuthStore.setState({
+      mode: 'oidc',
+      isAuthenticated: false,
+      isLoading: false,
+      signedOut: true,
+    })
+    renderDenied('/libraries')
+    expect(screen.getByText('Ziel: keins')).toBeInTheDocument()
+  })
+
+  // The race behind the demo smoke failure: signoutRedirect() removes the user before it finds
+  // out the provider has no end_session_endpoint, so the session ends while logout() still waits -
+  // the page left behind must not become the return target in the render that follows.
+  it('hands on no return target when the session ends inside logout() itself', async () => {
+    const userManager = {
+      // what oidc-client-ts does: the user is removed first (UserUnloaded ends the session), the
+      // missing end_session_endpoint only shows afterwards
+      signoutRedirect: async () => {
+        useAuthStore.setState({ token: null, isAuthenticated: false })
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        throw new Error('no end_session_endpoint')
+      },
+      removeUser: () => Promise.resolve(),
+    } as unknown as UserManager
+    useAuthStore.setState({
+      mode: 'oidc',
+      isAuthenticated: true,
+      isLoading: false,
+      sessionKind: 'oidc',
+      userManager,
+    })
+    renderDenied('/libraries')
+    expect(screen.getByText('Protected Content')).toBeInTheDocument()
+
+    const loggingOut = useAuthStore.getState().logout()
+    expect(await screen.findByText(/^Ziel: /)).toHaveTextContent('Ziel: keins')
+    await act(() => loggingOut)
+    expect(screen.getByText('Ziel: keins')).toBeInTheDocument()
+  })
+
+  it('forgets the sign-out mark as soon as the next session begins', () => {
+    useAuthStore.setState({ isAuthenticated: false, signedOut: true })
+    useAuthStore.setState({ isAuthenticated: true })
+    expect(useAuthStore.getState().signedOut).toBe(false)
+  })
+
   // ADR-0033, Entscheidung 8: while the account owes a new password, the backend answers every
   // other route with 403 - the shell would be a frame around nothing but errors.
   it('sends an account that owes a new password to the password page', () => {
