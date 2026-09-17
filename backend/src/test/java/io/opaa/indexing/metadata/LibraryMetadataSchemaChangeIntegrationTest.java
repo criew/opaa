@@ -2,6 +2,8 @@ package io.opaa.indexing.metadata;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentSourceType;
@@ -10,6 +12,7 @@ import io.opaa.api.types.LibraryMetadataSchemaChangeKind;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.DevAuthFilter;
 import io.opaa.common.ConflictException;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentIngest;
@@ -46,6 +49,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * The two-phase value mapping and field deletion (#1361, metadata-schema.md "Nachlauf im Betrieb"):
@@ -78,6 +82,7 @@ class LibraryMetadataSchemaChangeIntegrationTest {
   @Autowired private LibraryAccessService accessService;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private DataSource dataSource;
+  @Autowired private MockMvc mockMvc;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
 
   private KnowledgeLibrary library;
@@ -376,6 +381,33 @@ class LibraryMetadataSchemaChangeIntegrationTest {
               // mappings still have to rewrite is two pieces of work, not one.
               assertThat(progress.pendingDocuments()).isEqualTo(2);
             });
+  }
+
+  /**
+   * The status code is the answer to "is my deletion done?", and it must stay one: a mapping
+   * running at another field of the same library is not this deletion's business, and 202 would
+   * send the client into a run it neither asked for nor has to wait for.
+   */
+  @Test
+  void theDeletionAnswers204WhenItIsDoneEvenWithAnotherChangeRunning() throws Exception {
+    createSelectField("fassung");
+    createSelectField("gremium");
+    Document first = indexed("satzung.pdf");
+    Document second = indexed("gebuehren.pdf");
+    setValue(first, "fassung", "A");
+    setValue(second, "fassung", "A");
+    setValue(first, "gremium", "A");
+    fieldService.remapValue(library.getId(), "fassung", "A", "B", 1, owner);
+
+    mockMvc
+        .perform(
+            delete("/api/v1/libraries/" + library.getId() + "/metadata-fields/gremium")
+                .header(DevAuthFilter.DEV_USER_HEADER, "dev-admin"))
+        .andExpect(status().isNoContent());
+
+    assertThat(fieldService.fieldsOf(library.getId(), owner))
+        .extracting(definition -> definition.field().getFieldKey())
+        .containsExactly("fassung");
   }
 
   /** The running change is part of the library's index state, not only of its settings page. */
