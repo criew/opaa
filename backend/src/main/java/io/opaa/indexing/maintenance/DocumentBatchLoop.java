@@ -8,9 +8,10 @@ import java.util.function.Function;
 
 /**
  * The chargen loop the resumable document runs share: pipeline re-index ({@link
- * PipelineReindexService}), the deterministic Bestandslauf ({@code MetadataBackfillService}) and
- * the value remapping of a library field ({@code LibraryMetadataFieldService}). Selection and
- * processing unit are the caller's; the loop owns only the mechanics all three need.
+ * PipelineReindexService}), the deterministic Bestandslauf ({@code MetadataBackfillService}), the
+ * Kontextpräfix rerun ({@link ContextPrefixRerunService}) and the schema changes of a library field
+ * ({@code LibraryMetadataSchemaChangeService}). Selection and processing unit are the caller's; the
+ * loop owns only the mechanics they all need.
  *
  * <p><b>Every call terminates and every call makes progress.</b> A candidate the unit cannot
  * advance right now stays in the candidate set on purpose - nothing about it is falsified in the
@@ -19,8 +20,8 @@ import java.util.function.Function;
  * call starts over and reaches further only if earlier candidates became advanceable meanwhile.
  *
  * <p>The loop holds no transaction: whether one unit, one batch or the whole run commits together
- * is the caller's decision and differs between the three (the re-index and the Bestandslauf commit
- * per document, the remapping is one transaction by specification).
+ * is the caller's decision. Every caller today commits per document, which is what makes an
+ * interrupted run keep what it has done.
  */
 public final class DocumentBatchLoop {
 

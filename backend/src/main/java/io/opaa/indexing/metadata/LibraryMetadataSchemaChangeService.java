@@ -125,7 +125,7 @@ public class LibraryMetadataSchemaChangeService {
    */
   public LibraryMetadataSchemaRunResult runBatch(
       KnowledgeLibrary library, int batchSize, CurrentUser caller) {
-    return run(library, changeRepository.findByLibraryId(library.getId()), batchSize, caller);
+    return run(library, changeRepository.findByLibraryId(library.getId()), batchSize, caller, null);
   }
 
   /** One Charge over exactly {@code change} - the first one, run by the confirming call itself. */
@@ -134,14 +134,15 @@ public class LibraryMetadataSchemaChangeService {
       LibraryMetadataSchemaChange change,
       int batchSize,
       CurrentUser caller) {
-    return run(library, List.of(change), batchSize, caller);
+    return run(library, List.of(change), batchSize, caller, change.getId());
   }
 
   private LibraryMetadataSchemaRunResult run(
       KnowledgeLibrary library,
       List<LibraryMetadataSchemaChange> changes,
       int batchSize,
-      CurrentUser caller) {
+      CurrentUser caller,
+      UUID confirmedChangeId) {
     if (changes.isEmpty()) {
       lastSkippedByLibrary.remove(library.getId());
       return LibraryMetadataSchemaRunResult.nothingToDo();
@@ -170,7 +171,8 @@ public class LibraryMetadataSchemaChangeService {
       // changes them - and a completed change removed a value the cache would still offer.
       eventPublisher.publishEvent(new LibraryMetadataSchemaChanged(library.getId()));
     }
-    return new LibraryMetadataSchemaRunResult(processed, skipped, pendingChanges(library.getId()));
+    return new LibraryMetadataSchemaRunResult(
+        processed, skipped, pendingChanges(library.getId()), confirmedChangeId);
   }
 
   /** What one Charge of a single change did. */
@@ -181,12 +183,20 @@ public class LibraryMetadataSchemaChangeService {
       LibraryMetadataSchemaChange change,
       int budget,
       CurrentUser caller) {
-    LibraryMetadataField field = fieldRepository.findById(change.getFieldId()).orElse(null);
-    if (field == null) {
-      // The field was taken by its library's deletion; the change has lost its subject.
-      transactionTemplate.executeWithoutResult(status -> changeRepository.delete(change));
-      return new ChargeOutcome(0, 0, true);
-    }
+    // Both foreign keys cascade, so neither subject can be gone while the change row exists. A
+    // missing one is a broken invariant and is reported as such: quietly reporting the change as
+    // done - or, for a missing target, quietly emptying every document instead of mapping it -
+    // would destroy manual values on the strength of a state that must not occur.
+    LibraryMetadataField field =
+        fieldRepository
+            .findById(change.getFieldId())
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Schema change "
+                            + change.getId()
+                            + " has no field "
+                            + change.getFieldId()));
     MetadataFieldRef ref = MetadataFieldRef.of(field);
     MetadataValueInput replacement =
         change.getTargetValueId() == null
@@ -194,7 +204,13 @@ public class LibraryMetadataSchemaChangeService {
             : valueRepository
                 .findById(change.getTargetValueId())
                 .map(target -> MetadataValueInput.libraryValue(target.getCode(), target.getId()))
-                .orElse(null);
+                .orElseThrow(
+                    () ->
+                        new IllegalStateException(
+                            "Schema change "
+                                + change.getId()
+                                + " maps onto the absent value "
+                                + change.getTargetValueId()));
     DocumentTypeVocabulary vocabulary = vocabularyRepository.snapshot();
     Map<Advance, Integer> counts =
         DocumentBatchLoop.run(
@@ -240,7 +256,9 @@ public class LibraryMetadataSchemaChangeService {
             }
             Document document = documentRepository.findById(documentId).orElse(null);
             if (document == null) {
-              return Advance.ALREADY_DONE;
+              // Its value row is still there (the lock above found it), so the candidate has not
+              // left the selection: scanning past it is right, counting it as progress is not.
+              return Advance.SKIPPED;
             }
             ManualValueChange valueChange =
                 replacement == null
@@ -302,13 +320,18 @@ public class LibraryMetadataSchemaChangeService {
             }));
   }
 
+  /**
+   * Claims one document for this Charge. {@code NOWAIT}: a document another Charge (or any other
+   * writer) holds is skipped rather than waited for - it stays pending and the next call finds it,
+   * while a request thread never blocks on a foreign transaction.
+   */
   private boolean lockCarriedValue(LibraryMetadataSchemaChange change, UUID documentId) {
     String sql =
         change.getKind() == LibraryMetadataSchemaChangeKind.VALUE_REMAP
             ? "SELECT id FROM document_metadata_values WHERE document_id = ?"
-                + " AND library_value_id = ? FOR UPDATE"
+                + " AND library_value_id = ? FOR UPDATE NOWAIT"
             : "SELECT id FROM document_metadata_values WHERE document_id = ?"
-                + " AND library_field_id = ? FOR UPDATE";
+                + " AND library_field_id = ? FOR UPDATE NOWAIT";
     UUID subject =
         change.getKind() == LibraryMetadataSchemaChangeKind.VALUE_REMAP
             ? change.getValueId()
@@ -379,6 +402,7 @@ public class LibraryMetadataSchemaChangeService {
     for (LibraryMetadataSchemaChange change : changes) {
       views.add(
           new LibraryMetadataSchemaChangeView(
+              change.getId(),
               change.getKind(),
               keysByFieldId.get(change.getFieldId()),
               codesByValueId.get(change.getValueId()),
@@ -432,14 +456,20 @@ public class LibraryMetadataSchemaChangeService {
     }
     List<Object> parameters = new ArrayList<>(libraryIds);
     Map<UUID, LibraryMetadataSchemaChangeProgress> byLibrary = new HashMap<>();
+    // Summed per change, exactly like the settings page reads it - a document that two changes
+    // of one library have to rewrite is two pieces of remaining work, and the two displays must
+    // not disagree about it. Each branch counts over its own index rather than one OR over both
+    // columns, which no index serves.
     jdbcTemplate.query(
-        "SELECT f.library_id AS library_id, count(DISTINCT c.id) AS pending_changes,"
-            + " count(DISTINCT d.document_id) AS pending_documents"
+        "SELECT f.library_id AS library_id, count(*) AS pending_changes,"
+            + " coalesce(sum(r.remaining), 0) AS pending_documents"
             + " FROM library_metadata_schema_changes c"
             + " JOIN library_metadata_fields f ON f.id = c.field_id"
-            + " LEFT JOIN document_metadata_values d"
-            + "   ON (c.value_id IS NOT NULL AND d.library_value_id = c.value_id)"
-            + "   OR (c.value_id IS NULL AND d.library_field_id = c.field_id)"
+            + " CROSS JOIN LATERAL (SELECT CASE WHEN c.value_id IS NOT NULL"
+            + "   THEN (SELECT count(*) FROM document_metadata_values d"
+            + "         WHERE d.library_value_id = c.value_id)"
+            + "   ELSE (SELECT count(*) FROM document_metadata_values d"
+            + "         WHERE d.library_field_id = c.field_id) END AS remaining) r"
             + " WHERE f.library_id IN ("
             + libraryIds.stream().map(id -> "?").collect(Collectors.joining(", "))
             + ") GROUP BY f.library_id",

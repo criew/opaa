@@ -455,18 +455,17 @@ public class LibraryMetadataFieldService {
         schemaChangeService.runBatch(library, change, batchSize, caller);
     schemaChanged(library);
     boolean toLeer = change.getTargetValueId() == null;
+    // Über die Änderung selbst, nicht über den Wertecode: Zwei Felder derselben Bibliothek dürfen
+    // denselben Code führen, und die Restmenge einer fremden Abbildung gehört nicht in diese
+    // Antwort.
     long remaining =
-        run.pendingChanges().stream()
-            .filter(pending -> code.equals(pending.valueCode()))
-            .mapToLong(LibraryMetadataSchemaChangeView::remainingDocuments)
-            .sum();
-    boolean complete = run.pendingChanges().stream().noneMatch(p -> code.equals(p.valueCode()));
+        run.confirmedChange().map(LibraryMetadataSchemaChangeView::remainingDocuments).orElse(0L);
     return new LibraryFieldValueRemapResult(
         toLeer ? 0 : run.processedDocuments(),
         toLeer ? run.processedDocuments() : 0,
         change.getCorrelationRef(),
         remaining,
-        complete);
+        run.confirmedChangeComplete());
   }
 
   /**

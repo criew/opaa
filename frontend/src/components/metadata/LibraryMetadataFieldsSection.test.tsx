@@ -363,7 +363,9 @@ describe('LibraryMetadataFieldsSection, laufende Schemaänderung (#1361)', () =>
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
 
     expect(
-      await screen.findByText(/Wert „F2026“ wird auf „F2027“ abgebildet: 2 Dokument\(e\) offen/),
+      await screen.findByText(
+        /Wert „F2026“ des Feldes „Fassung“ wird auf „F2027“ abgebildet: 2 Dokumente offen/,
+      ),
     ).toBeInTheDocument()
     expect(screen.getByText(/bleibt der alte Wert in der Werteliste/)).toBeInTheDocument()
     expect(screen.getByText(/Fassung 2026 \(F2026\) — wird abgebildet/)).toBeInTheDocument()
@@ -401,7 +403,7 @@ describe('LibraryMetadataFieldsSection, laufende Schemaänderung (#1361)', () =>
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
 
     expect(
-      await screen.findByText(/Feld „fassung“ wird gelöscht: 4 Dokument\(e\) offen/),
+      await screen.findByText(/Feld „Fassung“ wird gelöscht: 4 Dokumente offen/),
     ).toBeInTheDocument()
     expect(screen.getByText('wird gelöscht')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Feld Fassung löschen' })).not.toBeInTheDocument()

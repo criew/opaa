@@ -59,14 +59,23 @@ function effectChips(field: LibraryMetadataFieldResponse) {
   return chips
 }
 
-/** Eine laufende Schemaänderung in einem Satz: was stillgelegt ist und wie weit der Lauf ist. */
-function describeChange(change: LibraryMetadataSchemaChangeResponse): string {
-  const progress = `${change.remainingDocuments} Dokument(e) offen, ${change.processedDocuments} umgeschrieben.`
+/**
+ * Eine laufende Schemaänderung in einem Satz: was stillgelegt ist und wie weit der Lauf ist. Das
+ * Feld wird mit seinem konfigurierten Namen genannt, nicht mit seinem Schlüssel — der Schlüssel ist
+ * eine technische Kennung, die in der Oberfläche nichts zu suchen hat.
+ */
+function describeChange(
+  change: LibraryMetadataSchemaChangeResponse,
+  fields: LibraryMetadataFieldResponse[],
+): string {
+  const fieldLabel =
+    fields.find((field) => field.fieldKey === change.fieldKey)?.label ?? change.fieldKey
+  const progress = `${plural(change.remainingDocuments, 'Dokument offen', 'Dokumente offen')}, ${change.processedDocuments} umgeschrieben.`
   if (change.kind === 'FIELD_DELETION') {
-    return `Feld „${change.fieldKey}“ wird gelöscht: ${progress}`
+    return `Feld „${fieldLabel}“ wird gelöscht: ${progress}`
   }
   const target = change.targetCode == null ? 'leer' : `„${change.targetCode}“`
-  return `Wert „${change.valueCode}“ wird auf ${target} abgebildet: ${progress}`
+  return `Wert „${change.valueCode}“ des Feldes „${fieldLabel}“ wird auf ${target} abgebildet: ${progress}`
 }
 
 /** "rund 40 Minuten" - a runtime a decision can be made on, never a raw number of seconds. */
@@ -179,8 +188,11 @@ export default function LibraryMetadataFieldsSection({
   const [awaitingRerun, setAwaitingRerun] = useState(0)
   const [pendingChanges, setPendingChanges] = useState<LibraryMetadataSchemaChangeResponse[]>([])
   const [running, setRunning] = useState(false)
-  // Kein State: der Lauf liest die Marke zwischen zwei Chargen, ein Re-Render braucht es nicht.
+  // Kein State: der Lauf liest die Marken zwischen zwei Chargen, ein Re-Render braucht es nicht.
+  // Der Lauf überlebt das Verlassen der Seite (die laufende Charge wird zu Ende gefahren), schreibt
+  // danach aber in keine verschwundene Komponente mehr.
   const paused = useRef(false)
+  const unmounted = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [remapField, setRemapField] = useState<LibraryMetadataFieldResponse | null>(null)
@@ -206,6 +218,13 @@ export default function LibraryMetadataFieldsSection({
       )
     }
   }, [libraryId])
+
+  useEffect(() => {
+    unmounted.current = false
+    return () => {
+      unmounted.current = true
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -287,15 +306,19 @@ export default function LibraryMetadataFieldsSection({
     try {
       for (;;) {
         const result = await runLibraryMetadataSchemaChanges(libraryId)
+        if (unmounted.current) return
         setPendingChanges(result.pendingChanges)
         if (result.complete || result.processedDocuments === 0 || paused.current) break
       }
     } catch (err) {
+      if (unmounted.current) return
       setError(err instanceof Error ? err.message : 'Der Nachlauf ist fehlgeschlagen')
     } finally {
-      setRunning(false)
-      await reload()
-      onFieldsChanged?.()
+      if (!unmounted.current) {
+        setRunning(false)
+        await reload()
+        onFieldsChanged?.()
+      }
     }
   }
 
@@ -393,7 +416,7 @@ export default function LibraryMetadataFieldsSection({
         >
           {pendingChanges.map((change) => (
             <Typography key={`${change.fieldKey}|${change.valueCode ?? ''}`} variant="body2">
-              {describeChange(change)}
+              {describeChange(change, fields)}
             </Typography>
           ))}
           <Typography variant="body2" sx={{ mt: 1 }}>

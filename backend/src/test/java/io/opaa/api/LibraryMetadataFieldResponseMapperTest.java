@@ -19,6 +19,7 @@ import io.opaa.indexing.metadata.LibraryMetadataSchemaChangeView;
 import io.opaa.indexing.metadata.LibraryMetadataSchemaRunResult;
 import io.opaa.indexing.metadata.MetadataChangeImpact;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -87,6 +88,7 @@ class LibraryMetadataFieldResponseMapperTest {
                 .values(),
             List.of(
                 new LibraryMetadataSchemaChangeView(
+                    UUID.randomUUID(),
                     LibraryMetadataSchemaChangeKind.VALUE_REMAP,
                     "fassung",
                     "A",
@@ -114,13 +116,15 @@ class LibraryMetadataFieldResponseMapperTest {
                 1,
                 List.of(
                     new LibraryMetadataSchemaChangeView(
+                        UUID.randomUUID(),
                         LibraryMetadataSchemaChangeKind.FIELD_DELETION,
                         "fassung",
                         null,
                         null,
                         5,
                         7,
-                        "metadata-field-delete-1"))));
+                        "metadata-field-delete-1")),
+                null));
 
     assertThat(response.getProcessedDocuments()).isEqualTo(5);
     assertThat(response.getSkippedDocuments()).isEqualTo(1);
@@ -218,6 +222,7 @@ class LibraryMetadataFieldResponseMapperTest {
                 12,
                 List.of(
                     new LibraryMetadataSchemaChangeView(
+                        UUID.randomUUID(),
                         LibraryMetadataSchemaChangeKind.VALUE_REMAP,
                         "fassung",
                         "A",

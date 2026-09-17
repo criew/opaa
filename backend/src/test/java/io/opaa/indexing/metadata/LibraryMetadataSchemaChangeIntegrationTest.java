@@ -28,10 +28,13 @@ import io.opaa.test.OwnLibraryFixtures;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import javax.sql.DataSource;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -74,6 +77,7 @@ class LibraryMetadataSchemaChangeIntegrationTest {
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private LibraryAccessService accessService;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private DataSource dataSource;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
 
   private KnowledgeLibrary library;
@@ -264,6 +268,59 @@ class LibraryMetadataSchemaChangeIntegrationTest {
     assertThat(auditedValues(correlationRefOf(firstCharge))).containsExactlyInAnyOrder("A", "B");
   }
 
+  /**
+   * The failure path, and with it the transaction bracket the whole feature stands on: one document
+   * cannot be advanced - here because another transaction holds its value row, which is what a
+   * second Charge running in parallel does - and the other one is rewritten and <b>committed</b>
+   * all the same. Were the confirming call transactional again, the failed unit would take the
+   * finished one down with it and this test would fail; that is the regression it guards.
+   */
+  @Test
+  void aDocumentThatCannotBeAdvancedIsSkippedWhileTheOtherStaysCommitted() throws Exception {
+    createSelectField("fassung");
+    Document rewritten = indexed("satzung.pdf");
+    Document blocked = indexed("gebuehren.pdf");
+    setValue(rewritten, "A");
+    setValue(blocked, "A");
+
+    try (Connection lock = dataSource.getConnection()) {
+      lock.setAutoCommit(false);
+      lockValueRowOf(lock, blocked);
+
+      LibraryFieldValueRemapResult confirmation =
+          fieldService.remapValue(library.getId(), "fassung", "A", "B", 500, owner);
+
+      assertThat(confirmation.remappedDocuments()).isEqualTo(1);
+      assertThat(confirmation.complete()).isFalse();
+      assertThat(confirmation.remainingDocuments()).isEqualTo(1);
+      assertThat(valueRepository.findByDocumentIdAndFieldKey(rewritten.getId(), "lib:fassung"))
+          .as("committed on its own, although its sibling failed in the same Charge")
+          .get()
+          .satisfies(row -> assertThat(row.getTextValue()).isEqualTo("B"));
+      assertThat(valueRepository.findByDocumentIdAndFieldKey(blocked.getId(), "lib:fassung"))
+          .get()
+          .satisfies(row -> assertThat(row.getTextValue()).isEqualTo("A"));
+
+      LibraryMetadataSchemaRunResult blockedCharge =
+          fieldService.runSchemaChanges(library.getId(), 500, owner);
+
+      assertThat(blockedCharge.processedDocuments()).isZero();
+      assertThat(blockedCharge.skippedDocuments()).isEqualTo(1);
+      assertThat(blockedCharge.complete()).isFalse();
+      assertThat(schemaChangeService.progressForLibraries(Set.of(library.getId())))
+          .hasEntrySatisfying(
+              library.getId(),
+              progress -> assertThat(progress.lastSkippedDocuments()).isEqualTo(1));
+      lock.rollback();
+    }
+
+    assertThat(fieldService.runSchemaChanges(library.getId(), 500, owner).complete()).isTrue();
+    assertThat(valueRepository.findByDocumentIdAndFieldKey(blocked.getId(), "lib:fassung"))
+        .get()
+        .satisfies(row -> assertThat(row.getTextValue()).isEqualTo("B"));
+    assertThat(fieldValueRepository.findByFieldIdAndCode(fieldId("fassung"), "A")).isEmpty();
+  }
+
   /** The running change is part of the library's index state, not only of its settings page. */
   @Test
   void theRunningChangeAppearsInTheIndexStatusOfItsLibrary() throws IOException {
@@ -287,6 +344,17 @@ class LibraryMetadataSchemaChangeIntegrationTest {
     fieldService.runSchemaChanges(library.getId(), 500, owner);
 
     assertThat(schemaChangeService.progressForLibraries(Set.of(library.getId()))).isEmpty();
+  }
+
+  /** Holds the document's value row in another transaction - what a parallel Charge would do. */
+  private void lockValueRowOf(Connection connection, Document document) throws Exception {
+    try (PreparedStatement statement =
+        connection.prepareStatement(
+            "SELECT id FROM document_metadata_values WHERE document_id = ?"
+                + " AND field_key = 'lib:fassung' FOR UPDATE")) {
+      statement.setObject(1, document.getId());
+      statement.executeQuery().close();
+    }
   }
 
   private void createSelectField(String key) {

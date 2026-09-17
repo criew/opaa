@@ -14,7 +14,12 @@ databaseChangeLog:
         (field_id, value_id) states both rules at once: one running mapping per list value, one
         running deletion per field. The value keys cascade because the change is meaningless without
         its subject; the target key restricts, which is what keeps a value that a running mapping
-        writes onto from being retired itself.
+        writes onto from being retired itself. Note the asymmetry of the two existing document keys
+        the run relies on: document_metadata_values -> library_metadata_field_values is ON DELETE
+        RESTRICT, so removing a list entry too early fails in the database as well, while
+        document_metadata_values -> library_metadata_fields is ON DELETE CASCADE - for a field
+        deletion the row lock of the completing transaction is the only guard, and that is why it
+        takes one.
       changes:
         - sql:
             splitStatements: false

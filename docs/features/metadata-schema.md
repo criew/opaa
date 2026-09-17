@@ -1448,8 +1448,12 @@ beide denselben zweiphasigen Weg und erfüllen die vier Zusagen oben:
    gerade nicht umgeschrieben werden kann, behält alles, was es hatte, und bleibt ausstehend.
 3. **Löschen.** Der Listeneintrag — beziehungsweise das Feld mit seiner Werteliste — verschwindet in
    derselben Transaktion, die feststellt, dass ihn kein Dokument mehr trägt, unter einer Zeilensperre,
-   die eine gleichzeitige Setzung ebenfalls nehmen müsste. Das `ON DELETE RESTRICT` der Dokumentzeilen
-   ist die zweite Sicherung darunter.
+   die eine gleichzeitige Setzung ebenfalls nehmen müsste. **Nur bei der Wertabbildung gibt es eine
+   zweite Sicherung darunter:** Der Fremdschlüssel der Dokumentzeilen auf den Listeneintrag ist
+   `ON DELETE RESTRICT`, ein verfrühtes Löschen scheitert also auch dann, wenn die Sperre versagte.
+   Beim **Feldlöschen** ist derselbe Fremdschlüssel `ON DELETE CASCADE` — dort trägt die Zeilensperre
+   allein, und ein verfrühtes Löschen nähme die Werte kommentarlos mit. Das ist der Grund, aus dem der
+   Abschluss dort dieselbe Sperre nimmt und nicht auf die Datenbank baut.
 
 **Die Festlegung zur Unerzeugbarkeit lautet damit: der alte Wert bleibt bis zur Abbildung gültig
 gelistet.** Von den beiden Möglichkeiten, die die Zusage offenlässt — Liste erst am Ende ändern oder
