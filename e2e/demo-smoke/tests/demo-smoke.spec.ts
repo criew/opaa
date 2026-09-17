@@ -13,7 +13,8 @@ import { askQuestion, expectAnyCitedSource, gotoLibraries, startFreshChat } from
  * docs/market/demo-drehbuch.md's manually verified drehbuch, not to a test that runs in CI against a
  * corpus that is explicitly allowed to keep evolving (docs/features/demo-instance.md, "Grund ist
  * Kopplung"). The later scenarios each cover one more piece of the stack the same way (a second
- * identity provider, the S3-fed library) without pinning corpus wording either.
+ * identity provider, the S3-fed library, a direct link to a chat surviving the provider sign-in)
+ * without pinning corpus wording either.
  */
 
 const DEMO_USERNAME = 'maria.weber'
@@ -54,9 +55,21 @@ interface KeycloakLogin {
  */
 async function loginViaKeycloak(
   page: Page,
-  { providerName, realm, username }: KeycloakLogin,
+  login: KeycloakLogin,
 ): Promise<{ id: string; email: string | null; displayName: string | null }> {
   await page.goto('/login')
+  return signInAtKeycloak(page, login, /\/chat/)
+}
+
+/**
+ * The provider part of {@link loginViaKeycloak}, started from the sign-in page the browser is on
+ * right now; resolves once the app has taken the person to `landing`.
+ */
+async function signInAtKeycloak(
+  page: Page,
+  { providerName, realm, username }: KeycloakLogin,
+  landing: Parameters<Page['waitForURL']>[0],
+): Promise<{ id: string; email: string | null; displayName: string | null }> {
   await page.getByRole('button', { name: `Anmelden bei ${providerName}` }).click()
   // Keycloak's own hosted login page, a different origin from the frontend - the ids below
   // ("username"/"password"/"kc-login") are Keycloak's default theme, stable across locales and
@@ -75,9 +88,9 @@ async function loginViaKeycloak(
     ),
     page.locator('#kc-login').click(),
   ])
-  // Back on the frontend's own origin, past /auth/callback (AuthCallbackPage), landed on the
-  // chat page ProtectedRoute redirects an authenticated session to.
-  await page.waitForURL(/\/chat/, { timeout: 30_000 })
+  // Back on the frontend's own origin, past /auth/callback (AuthCallbackPage), landed on the route
+  // the sign-in was started for - the chat page when there was none.
+  await page.waitForURL(landing, { timeout: 30_000 })
   return (await meResponse.json()) as { id: string; email: string | null; displayName: string | null }
 }
 
@@ -200,6 +213,32 @@ test.describe('Demo-Smoke (#232)', () => {
     expect(mariaAtVerzeichnisdienst.id).not.toBe(mariaAtPartner.id)
     await gotoLibraries(page)
     await expect(page.getByText('Leistungen Meldewesen & Ausweise', { exact: true })).toBeVisible()
+  })
+
+  /**
+   * #1685: a direct link survives the provider sign-in. The route ProtectedRoute denied travels in
+   * the sign-in state of the authorization-code flow, so after Keycloak the person stands in the
+   * linked chat, not on the chat start page.
+   */
+  test('Direktlink auf einen Chat führt nach der Keycloak-Anmeldung in diesen Chat', async ({
+    page,
+  }) => {
+    test.setTimeout(120_000)
+    const login = { providerName: 'Verzeichnisdienst', realm: 'opaa', username: DEMO_USERNAME }
+    await loginViaKeycloak(page, login)
+    await startFreshChat(page)
+    const question = 'Was kostet ein Personalausweis für eine 22-Jährige?'
+    await askQuestion(page, question)
+    // sending creates the chat and replaces ".../chats/new" with its own address
+    await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/)
+    const chatPath = new URL(page.url()).pathname
+    await logout(page)
+
+    await page.goto(chatPath)
+    await page.waitForURL(/\/login(?:$|[/?#])/, { timeout: 30_000 })
+    await signInAtKeycloak(page, login, (url) => url.pathname === chatPath)
+
+    await expect(page.getByTestId('message-list').getByText(question)).toBeVisible()
   })
 
   /**

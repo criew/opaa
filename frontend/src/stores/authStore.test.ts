@@ -381,6 +381,30 @@ describe('authStore', () => {
       return userManager
     }
 
+    // #1685: a 401 while logout() still waits on the provider ends the session through
+    // expireSession() - the mark of the deliberate sign-out must survive it.
+    it('keeps the sign-out mark when the session expires while logout() is running', async () => {
+      const userManager = await initializeOidcMode()
+      let finishSignout: () => void = () => {}
+      vi.spyOn(userManager, 'signoutRedirect').mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            finishSignout = resolve
+          }),
+      )
+      vi.spyOn(userManager, 'removeUser').mockResolvedValue(undefined)
+      useAuthStore.setState({ isAuthenticated: true, signedOut: false })
+
+      const loggingOut = useAuthStore.getState().logout()
+      useAuthStore.getState().expireSession()
+      expect(useAuthStore.getState().isAuthenticated).toBe(false)
+      expect(useAuthStore.getState().signedOut).toBe(true)
+
+      finishSignout()
+      await loggingOut
+      expect(useAuthStore.getState().signedOut).toBe(true)
+    })
+
     it('never calls signoutRedirect - only a deliberate logout() tears down the IdP session', async () => {
       const userManager = await initializeOidcMode()
       const signoutRedirect = vi.spyOn(userManager, 'signoutRedirect').mockResolvedValue(undefined)
@@ -592,6 +616,87 @@ describe('authStore', () => {
       } finally {
         redirect.mockRestore()
       }
+    })
+
+    // regression guard for #1685: router state does not survive the trip to the provider, so the
+    // denied route has to travel in the flow's own sign-in state
+    it('carries the route to return to through the provider redirect', async () => {
+      await initializeWithTwoProviders()
+      const redirect = vi
+        .spyOn(UserManager.prototype, 'signinRedirect')
+        .mockResolvedValue(undefined)
+      try {
+        await useAuthStore.getState().loginOidc('p-partner', { returnTo: '/spaces/s-1/chats/c-1' })
+        expect(redirect).toHaveBeenLastCalledWith({ state: { returnTo: '/spaces/s-1/chats/c-1' } })
+
+        await useAuthStore
+          .getState()
+          .loginOidc('p-opaa', { switchAccount: true, returnTo: '/spaces/s-1/chats/c-1?q=1#m' })
+        expect(redirect).toHaveBeenLastCalledWith({
+          prompt: 'login',
+          state: { returnTo: '/spaces/s-1/chats/c-1?q=1#m' },
+        })
+      } finally {
+        redirect.mockRestore()
+      }
+    })
+
+    describe('route to return to after the callback (#1685)', () => {
+      function callbackUserWithState(state: unknown) {
+        return new User({
+          access_token: 'partner-token',
+          token_type: 'Bearer',
+          profile: {
+            sub: 'user-9',
+            iss: 'https://partner.example.test/realms/extern',
+            aud: 'opaa-partner',
+            exp: Math.floor(Date.now() / 1000) + 900,
+            iat: Math.floor(Date.now() / 1000),
+          },
+          expires_at: Math.floor(Date.now() / 1000) + 900,
+          userState: state,
+        })
+      }
+
+      async function completeCallbackWithState(state: unknown) {
+        sessionStorage.setItem('opaa.oidc.flowProvider', 'p-partner')
+        await initializeWithTwoProviders()
+        const callback = vi
+          .spyOn(UserManager.prototype, 'signinRedirectCallback')
+          .mockResolvedValue(callbackUserWithState(state))
+        try {
+          return await useAuthStore.getState().handleOidcCallback()
+        } finally {
+          callback.mockRestore()
+        }
+      }
+
+      it('answers the route the flow was started for, query and fragment included', async () => {
+        const outcome = await completeCallbackWithState({
+          returnTo: '/spaces/s-1/chats/c-1?q=1#m-2',
+        })
+        expect(outcome).toEqual({ kind: 'session', returnTo: '/spaces/s-1/chats/c-1?q=1#m-2' })
+      })
+
+      it('answers the chat page when the flow carried no route', async () => {
+        expect(await completeCallbackWithState(undefined)).toEqual({
+          kind: 'session',
+          returnTo: '/chat',
+        })
+      })
+
+      it.each([
+        '//evil.example',
+        '/%2F%2Fevil.example',
+        'https://evil.example/spaces',
+        '/\\evil.example',
+        42,
+      ])('never answers a route off this origin (%s)', async (returnTo) => {
+        expect(await completeCallbackWithState({ returnTo })).toEqual({
+          kind: 'session',
+          returnTo: '/chat',
+        })
+      })
     })
 
     it('completes the callback with the manager of the provider that started the flow', async () => {

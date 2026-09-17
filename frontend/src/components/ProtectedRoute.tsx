@@ -8,6 +8,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const isLoading = useAuthStore((s) => s.isLoading)
   const passwordChangeRequired = useAuthStore((s) => s.passwordChangeRequired)
+  const signedOut = useAuthStore((s) => s.signedOut)
   const location = useLocation()
 
   if (isLoading) {
@@ -28,7 +29,8 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   const from = `${location.pathname}${location.search}${location.hash}`
 
   if (!isAuthenticated) {
-    return <Navigate to={LOGIN_ROUTE} replace state={{ from }} />
+    // After a deliberate sign-out the page left behind is no return target - see signedOut.
+    return <Navigate to={LOGIN_ROUTE} replace state={signedOut ? undefined : { from }} />
   }
 
   // ADR-0033, Entscheidung 8: while the account owes a new password, the backend answers every
