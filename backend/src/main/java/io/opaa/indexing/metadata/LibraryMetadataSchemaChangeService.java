@@ -489,13 +489,15 @@ public class LibraryMetadataSchemaChangeService {
     // not disagree about it. Each branch counts over its own index rather than one OR over both
     // columns, which no index serves.
     jdbcTemplate.query(
-        "SELECT f.library_id AS library_id, count(DISTINCT c.id) AS pending_changes,"
-            + " count(DISTINCT d.document_id) AS pending_documents"
+        "SELECT f.library_id AS library_id, count(*) AS pending_changes,"
+            + " coalesce(sum(r.remaining), 0) AS pending_documents"
             + " FROM library_metadata_schema_changes c"
             + " JOIN library_metadata_fields f ON f.id = c.field_id"
-            + " LEFT JOIN document_metadata_values d"
-            + "   ON (c.value_id IS NOT NULL AND d.library_value_id = c.value_id)"
-            + "   OR (c.value_id IS NULL AND d.library_field_id = c.field_id)"
+            + " CROSS JOIN LATERAL (SELECT CASE WHEN c.value_id IS NOT NULL"
+            + "   THEN (SELECT count(*) FROM document_metadata_values d"
+            + "         WHERE d.library_value_id = c.value_id)"
+            + "   ELSE (SELECT count(*) FROM document_metadata_values d"
+            + "         WHERE d.library_field_id = c.field_id) END AS remaining) r"
             + " WHERE f.library_id IN ("
             + libraryIds.stream().map(id -> "?").collect(Collectors.joining(", "))
             + ") GROUP BY f.library_id",
