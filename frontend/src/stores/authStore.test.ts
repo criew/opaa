@@ -381,22 +381,28 @@ describe('authStore', () => {
       return userManager
     }
 
-    // #1685: a deliberate sign-out leaves no return target, a session ending on its own does.
-    it('marks a deliberate sign-out and lets a session ending on its own clear the mark', async () => {
+    // #1685: a 401 while logout() still waits on the provider ends the session through
+    // expireSession() - the mark of the deliberate sign-out must survive it.
+    it('keeps the sign-out mark when the session expires while logout() is running', async () => {
       const userManager = await initializeOidcMode()
-      // a provider without end_session_endpoint: the tab stays on its page after logout()
-      vi.spyOn(userManager, 'signoutRedirect').mockRejectedValue(
-        new Error('no end_session_endpoint'),
+      let finishSignout: () => void = () => {}
+      vi.spyOn(userManager, 'signoutRedirect').mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            finishSignout = resolve
+          }),
       )
       vi.spyOn(userManager, 'removeUser').mockResolvedValue(undefined)
       useAuthStore.setState({ isAuthenticated: true, signedOut: false })
 
-      await useAuthStore.getState().logout()
+      const loggingOut = useAuthStore.getState().logout()
+      useAuthStore.getState().expireSession()
+      expect(useAuthStore.getState().isAuthenticated).toBe(false)
       expect(useAuthStore.getState().signedOut).toBe(true)
 
-      useAuthStore.setState({ isAuthenticated: true })
-      useAuthStore.getState().expireSession()
-      expect(useAuthStore.getState().signedOut).toBe(false)
+      finishSignout()
+      await loggingOut
+      expect(useAuthStore.getState().signedOut).toBe(true)
     })
 
     it('never calls signoutRedirect - only a deliberate logout() tears down the IdP session', async () => {

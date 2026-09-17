@@ -709,9 +709,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
     logout: async () => {
       const { userManager, mode, sessionKind, token } = get()
-      // First, before anything below can end the session: removeUser() fires UserUnloaded
-      // synchronously, and ProtectedRoute would otherwise record the page left behind as a return
-      // target in that very render.
+      // First, before anything below can end the session - signoutRedirect() removes the user
+      // before it even looks for an end_session_endpoint, and a 401 while this waits on the server
+      // ends it through expireSession(). ProtectedRoute would otherwise record the page left behind
+      // as a return target in that very render.
       set({ signedOut: true })
       // Resets every store that caches data scoped to the signed-in user's session (#440) - see
       // resettableStores.ts for which stores that covers and why. Must run before
@@ -853,7 +854,6 @@ export const useAuthStore = create<AuthState>((set, get) => {
         // ADR-0025/ADR-0033: every marker of the challenge has its own sentence - a disabled
         // provider, a locked account, a revoked session are not an expired token.
         error: sessionEndMessage(reason),
-        signedOut: false,
       })
       if (reason === 'unknown_issuer') {
         // the provider list is stale by definition now: reload it, so the sign-in page neither

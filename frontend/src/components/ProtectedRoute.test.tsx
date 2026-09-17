@@ -119,18 +119,19 @@ describe('ProtectedRoute', () => {
     expect(screen.getByText('Ziel: keins')).toBeInTheDocument()
   })
 
-  // The race behind the demo smoke failure: at a provider without end_session_endpoint, logout()
-  // falls back to removeUser(), which ends the session synchronously (UserUnloaded) - the page
-  // left behind must not become the return target in that very render.
+  // The race behind the demo smoke failure: signoutRedirect() removes the user before it finds
+  // out the provider has no end_session_endpoint, so the session ends while logout() still waits -
+  // the page left behind must not become the return target in the render that follows.
   it('hands on no return target when the session ends inside logout() itself', async () => {
     const userManager = {
-      signoutRedirect: () => Promise.reject(new Error('no end_session_endpoint')),
-      // the session ends at once, the removal itself completes later - the render in between is
-      // the one that used to record the return target
-      removeUser: () => {
+      // what oidc-client-ts does: the user is removed first (UserUnloaded ends the session), the
+      // missing end_session_endpoint only shows afterwards
+      signoutRedirect: async () => {
         useAuthStore.setState({ token: null, isAuthenticated: false })
-        return new Promise<void>((resolve) => setTimeout(resolve, 20))
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        throw new Error('no end_session_endpoint')
       },
+      removeUser: () => Promise.resolve(),
     } as unknown as UserManager
     useAuthStore.setState({
       mode: 'oidc',
