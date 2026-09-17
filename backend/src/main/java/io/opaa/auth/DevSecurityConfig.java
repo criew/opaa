@@ -81,7 +81,10 @@ public class DevSecurityConfig {
                     // contributors before it decides what to show, so an anonymous call to
                     // embedding-model or vector-store would trigger a real embedding call and a
                     // real similarity search - outside the rate limit, which only covers /api.
-                    .requestMatchers("/actuator/health/*")
+                    // Two stars, not one: the health endpoint selector matches all remaining path
+                    // segments, so a single star would leave /actuator/health/<group>/<component>
+                    // on anyRequest().permitAll().
+                    .requestMatchers("/actuator/health/**")
                     .authenticated()
                     .requestMatchers("/api/v1/auth/config")
                     .permitAll()

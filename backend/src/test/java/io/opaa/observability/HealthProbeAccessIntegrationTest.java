@@ -36,6 +36,16 @@ class HealthProbeAccessIntegrationTest {
         .andExpect(jsonPath("$.status").value("UP"));
   }
 
+  @Test
+  void anAnonymousProbeShowsNoComponents() throws Exception {
+    // What the handbook promises an operator, and the reason a deeper path answers 404 rather
+    // than computing a contributor: without a session the probe carries its status and nothing
+    // else.
+    mockMvc
+        .perform(get("/actuator/health/readiness"))
+        .andExpect(jsonPath("$.components").doesNotExist());
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {"chat-model", "embedding-model", "vector-store", "mail", "upload-store"})
   void everyOtherGroupNeedsASession(String group) throws Exception {
