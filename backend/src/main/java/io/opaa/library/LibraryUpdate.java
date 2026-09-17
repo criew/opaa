@@ -9,8 +9,8 @@ import java.util.List;
 
 /**
  * Parameters for {@link KnowledgeLibraryService#updateLibrary} - replaces the generated {@code
- * LibraryUpdateRequest} at the service boundary (#860), see AGENTS.md "API & DTO-Konvention". Tests
- * that need a fluent call site use {@code LibraryUpdateBuilder} (src/test).
+ * LibraryUpdateRequest} at the service boundary (#860), see AGENTS.md "API &amp; DTO-Konvention".
+ * Tests that need a fluent call site use {@code LibraryUpdateBuilder} (src/test).
  *
  * @param sourceType accepted purely so a caller resending the library's current value is not
  *     rejected for that alone - any value differing from the library's own is rejected. {@code

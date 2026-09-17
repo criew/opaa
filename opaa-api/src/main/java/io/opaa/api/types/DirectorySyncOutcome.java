@@ -1,6 +1,9 @@
 package io.opaa.api.types;
 
-/** What a directory synchronisation run did or did not do. See {@link DirectorySyncService}. */
+/**
+ * What a directory synchronisation run did or did not do. See {@code DirectorySyncService} (backend
+ * module).
+ */
 public enum DirectorySyncOutcome {
 
   /** Changes were computed and written. Only possible for {@code run}, never for {@code dryRun}. */
@@ -11,8 +14,8 @@ public enum DirectorySyncOutcome {
 
   /**
    * The run would have removed more than the configured fraction of a group's memberships (see
-   * {@link DirectorySyncProperties#changeThresholdFraction}). Nothing was written; the report shows
-   * what was rejected.
+   * {@code DirectorySyncProperties#changeThresholdFraction} in the backend module). Nothing was
+   * written; the report shows what was rejected.
    */
   ABORTED_THRESHOLD,
 

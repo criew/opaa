@@ -41,7 +41,8 @@ erzeugte und gelöschte Objekte meldet (Abschnitt 8).
 Jedes Dokument trägt als Pfad `s3://<bucket>/<schlüssel>` — Bucket und Schlüssel sind die Identität,
 der Endpoint nur der Weg; ein Umzug des Speichers auf einen anderen Endpoint mit denselben Buckets
 baut den Bestand nicht neu. Der Bucket steht als Container, die Präfixsegmente unterhalb des
-Geltungsbereichs als Gliederungspfad am Dokument. **Einen Beleg-Link gibt es nicht** — Beleg und
+Geltungsbereichs als Gliederungspfad — am Dokument und an jedem seiner Chunks, ein Objekt direkt
+unter dem Geltungsbereich trägt nur den Bucket. **Einen Beleg-Link gibt es nicht** — Beleg und
 Dokumentliste zeigen Bucket und Schlüsselordner als Text, denn eine `s3://`-Adresse öffnet kein
 Browser —, **wohl aber einen Beleg-Abruf:** „Original öffnen" am Beleg und in der Dokumentliste
 lädt das Objekt durch OPAA aus dem Speicher der Bibliothek (Abschnitt 3.1).

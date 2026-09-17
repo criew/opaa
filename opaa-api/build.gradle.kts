@@ -238,3 +238,11 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
 tasks.named("compileJava") {
     dependsOn("openApiGenerate")
 }
+
+// The generator turns each OpenAPI schema description into a Javadoc comment verbatim; those are
+// free-form spec text (Markdown-ish, occasional bare "&"/"<...>"), not Javadoc, so they trip
+// doclint on generated io.opaa.api.dto classes with no source to fix. The checked-in io.opaa.api.types
+// enums stay covered.
+tasks.named<Javadoc>("javadoc") {
+    exclude("io/opaa/api/dto/**")
+}

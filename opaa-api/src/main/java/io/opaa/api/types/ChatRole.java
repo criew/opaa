@@ -1,6 +1,6 @@
 package io.opaa.api.types;
 
-/** Who authored a {@link ChatMessage} turn. */
+/** Who authored a {@code ChatMessage} turn (backend module). */
 public enum ChatRole {
   USER,
   ASSISTANT

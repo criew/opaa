@@ -141,6 +141,11 @@ jobs:
       - name: Build (ohne Testsuite)
         run: ./gradlew build -x :test
 
+      # `javadoc` is not part of `build`'s dependency graph. This step catches unresolvable
+      # {@link}/@see references.
+      - name: Javadoc (unauflösbare Referenzen)
+        run: ./gradlew javadoc
+
       - name: Upload build reports
         if: always()
         uses: actions/upload-artifact@v7

@@ -1,8 +1,8 @@
 package io.opaa.api.types;
 
 /**
- * The derived state of a local account (ADR-0033, Entscheidung 3) - see {@link
- * LocalCredentials#state}. Only {@link #ACTIVE} can sign in.
+ * The derived state of a local account (ADR-0033, Entscheidung 3) - see {@code
+ * LocalCredentials#state} (backend module). Only {@link #ACTIVE} can sign in.
  */
 public enum LocalAccountState {
   /** No password yet, or the address is not confirmed - the invitation is not complete. */
