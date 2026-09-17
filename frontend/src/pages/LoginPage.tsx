@@ -147,9 +147,11 @@ export default function LoginPage() {
   // one primary button of this surface (guidelines 5.1); the others are secondary
   const suggested = suggestedProvider()
   const lastUsedId = lastUsedProviderId()
+  // The provider sign-in leaves this page, so the route travels with the flow itself.
+  const returnTo = redirectTargetOf(location.state, location.search)
 
   if (isAuthenticated) {
-    return <Navigate to={redirectTargetOf(location.state, location.search)} replace />
+    return <Navigate to={returnTo} replace />
   }
 
   const hasChoice = mode === 'oidc' && providers.length > 0
@@ -195,7 +197,7 @@ export default function LoginPage() {
                 showsLastUsed={providers.length > 1 && provider.id === lastUsedId}
                 isSigningIn={isSigningIn}
                 disabled={isBusy}
-                onChoose={() => void loginOidc(provider.id)}
+                onChoose={() => void loginOidc(provider.id, { returnTo })}
               />
             ))}
           </Stack>
@@ -204,7 +206,7 @@ export default function LoginPage() {
               variant="text"
               size="small"
               startIcon={<SwitchAccountOutlinedIcon />}
-              onClick={() => void loginOidc(suggested.id, { switchAccount: true })}
+              onClick={() => void loginOidc(suggested.id, { switchAccount: true, returnTo })}
               disabled={isBusy}
               sx={{ display: 'flex', mx: 'auto', mt: 1.5 }}
             >
