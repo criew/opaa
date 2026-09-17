@@ -850,6 +850,45 @@ class LocalUserAdminIntegrationTest {
     }
   }
 
+  /**
+   * Regression guard for #1641: "länger als 90 Tage nicht genutzt" shows candidates for a lock or a
+   * deletion - on the local list and on the account list alike. The bootstrap account is exempt
+   * from the inactivity lock and therefore no candidate, however long it has been resting; a
+   * regular account in exactly that state is one.
+   */
+  @Test
+  void bothReviewFiltersForInactivityLeaveTheBootstrapAccountOut() throws Exception {
+    String suffix = UUID.randomUUID().toString();
+    Instant longAgo = Instant.now().minus(Duration.ofDays(200));
+    LocalAccount notanker = fixtures.activeAdmin("notanker-" + suffix + "@stadt.example");
+    LocalCredentials notankerRow = fixtures.credentialsOf(notanker);
+    notankerRow.markBootstrap();
+    fixtures.save(notankerRow);
+    resting(notanker, longAgo);
+    LocalAccount regular = fixtures.activeAdmin("ruhend-" + suffix + "@stadt.example");
+    resting(regular, longAgo);
+
+    for (String list : List.of(LOCAL_USERS, ACCOUNTS)) {
+      String body =
+          asAdmin(get(list).param("inactive", "true"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+      // the account of the setup signed in a moment ago and is active
+      assertThat(JsonPath.<List<String>>read(body, "$.items[*].email"))
+          .as(list)
+          .containsExactly(regular.email());
+    }
+
+    // the class itself stays what it is - the row of the bootstrap account still says so
+    String all = asAdmin(get(LOCAL_USERS)).andReturn().getResponse().getContentAsString();
+    assertThat(
+            JsonPath.<List<String>>read(
+                all, "$.items[?(@.email == '" + notanker.email() + "')].activity"))
+        .containsExactly("INACTIVE_90_DAYS");
+  }
+
   @Test
   void aRegularAccountIsRefusedOnEveryOperation() throws Exception {
     LocalAccount user = fixtures.activeUser("erika-" + UUID.randomUUID() + "@stadt.example");
@@ -933,6 +972,13 @@ class LocalUserAdminIntegrationTest {
   }
 
   // ---- helpers
+
+  /** Moves the throttled activity timestamp of an account back, so its activity class changes. */
+  private void resting(LocalAccount account, Instant lastActivity) {
+    User user = users.findById(account.id()).orElseThrow();
+    user.setLastLoginAt(lastActivity);
+    fixtures.save(user);
+  }
 
   private User localAdmin(UUID organizationId) {
     User user = User.localAccount("race-" + UUID.randomUUID() + "@stadt.example", "Admin");

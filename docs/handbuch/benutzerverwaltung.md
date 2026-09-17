@@ -199,6 +199,11 @@ Zahl und die Liste dahinter meinen dieselben Konten: Das Notanker-Konto der Syst
 erscheint in keiner von beiden. Es soll unbefristet bleiben — es ist der Weg zurück in eine
 ausgesperrte Installation und deshalb kein Fall für die Auflagenprüfung.
 
+Aus demselben Grund fehlt es auch im Filter **länger nicht genutzt**: Dieser Filter zeigt Konten, an
+denen eine Sperre oder eine Löschung der nächste Schritt wäre — beides ist am Notanker-Konto nicht
+vorgesehen, es soll gerade unbenutzt bleiben, und die automatische Sperre nach Inaktivität lässt es
+ebenfalls aus. Wie lange es ruht, steht weiterhin in seiner eigenen Zeile.
+
 Dazu kommen zwei Automatiken, die die Prüfung am Laufen halten: Vor einem Ablauf erhalten die Person
 und die Systemverwaltung eine Nachricht, und einmal im Quartal geht eine Wiedervorlage an die
 Systemverwaltung — mit der Zahl der Konten ohne Ablaufdatum und einem Link auf die Liste, ohne Namen.

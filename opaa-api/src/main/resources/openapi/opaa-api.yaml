@@ -676,7 +676,10 @@ paths:
           schema:
             type: boolean
             default: false
-          description: Only accounts with activity class NEVER or INACTIVE_90_DAYS.
+          description: >
+            Only accounts with activity class NEVER or INACTIVE_90_DAYS - the bootstrap account
+            excepted, which is exempt from the inactivity lock and is therefore no candidate for
+            a lock or a deletion (ADR-0033, Entscheidung 11).
         - name: sort
           in: query
           required: false
@@ -1106,7 +1109,9 @@ paths:
           schema:
             type: boolean
             default: false
-          description: Only local accounts with activity class NEVER or INACTIVE_90_DAYS; implies providerType=LOCAL.
+          description: >
+            Only local accounts with activity class NEVER or INACTIVE_90_DAYS, the bootstrap
+            account excepted - the same set the local list shows; implies providerType=LOCAL.
         - name: sort
           in: query
           required: false

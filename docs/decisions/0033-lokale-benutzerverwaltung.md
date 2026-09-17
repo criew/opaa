@@ -744,7 +744,16 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
   nach Entscheidung 5 unbefristet bleiben (die Durchsetzung im Code beschränkt sich heute auf die
   Löschsperre und die Ausnahme von der Inaktivitätssperre — siehe #1640). Es in einer Prüfliste zu führen, die zum Befristen auffordert, wäre eine Einladung,
   den Notweg zu schließen. Das gilt nur für dieses eine Konto — jedes andere Systemverwalterkonto
-  bleibt Teil der Auflage.
+  bleibt Teil der Auflage. **Ergänzung vom 17.09.2026 (#1641):** Der Filter „länger als 90 Tage
+  nicht genutzt" sucht **Handlungskandidaten** — Konten, an denen eine Sperre oder eine Löschung der
+  nächste Schritt wäre —, er beschreibt keinen Zustand. Deshalb nimmt auch er das **Notanker-Konto**
+  aus: Nach Entscheidung 5 ist es von der Inaktivitätssperre ausgenommen, sein Zweck ist, unbenutzt
+  zu bleiben; ein Konto, an dem weder Sperren noch Löschen der vorgesehene Weg ist, ist kein
+  Kandidat. Ein ständiger Posten, den niemand abarbeiten kann, erzöge dazu, die Liste zu überfliegen
+  — das beschädigte die Prüfung stärker, als der Informationsverlust wiegt; wie lange das Konto
+  ruht, steht weiterhin als Klasse in seiner eigenen Zeile. Die Regel steht einmal, als
+  `LocalUserOverview#countsAsInactive()`, und beide Kontenlisten lesen sie dort. Einen Zähler hat
+  dieser Filter nicht, also kann hier auch keine Zahl von der Liste abweichen.
 - **Die Kontenliste ist kein Auswertungspfad:** Sie zeigt Aktivität nur als Klasse („nie", „länger
   als 90 Tage nicht", „aktiv") ohne exakten Zeitstempel und ohne Sortierung danach, und kennt
   **keinen Export und keinen Massenabruf** (keine CSV-Ausgabe, Seitengröße höchstens 50). Das ist

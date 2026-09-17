@@ -163,7 +163,7 @@ public class LocalUserAdminService {
     if (query.withoutExpiry() && !overview.credentials().countsAsWithoutExpiry()) {
       return false;
     }
-    if (query.inactive() && !overview.isInactive()) {
+    if (query.inactive() && !overview.countsAsInactive()) {
       return false;
     }
     if (query.query() != null) {

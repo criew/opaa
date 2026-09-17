@@ -131,7 +131,7 @@ class AccountAdminServiceTest {
     AccountOverview erikaRow = find(page, erika);
     assertThat(erikaRow.providerType()).isEqualTo(ProviderType.LOCAL);
     assertThat(erikaRow.local().state()).isEqualTo(LocalAccountState.ACTIVE);
-    assertThat(erikaRow.local().isInactive()).isFalse();
+    assertThat(erikaRow.local().countsAsInactive()).isFalse();
     assertThat(find(page, klaus).local().state()).isEqualTo(LocalAccountState.LOCKED);
   }
 
@@ -190,6 +190,23 @@ class AccountAdminServiceTest {
     klausRow.markBootstrap();
 
     assertThat(service.list(ORGANIZATION, query().withoutExpiry(true).build()).total()).isZero();
+  }
+
+  /**
+   * Regression guard for #1641: "länger als 90 Tage nicht genutzt" shows candidates for a lock or a
+   * deletion, and the bootstrap account is neither - it is exempt from the inactivity lock and must
+   * never appear there, however long it has been resting.
+   */
+  @Test
+  void theBootstrapAccountIsNeverAMatchOfTheInactiveFilter() {
+    // Klaus never signed in and is the filter's only match as long as he is a regular account
+    assertThat(service.list(ORGANIZATION, query().inactive(true).build()).items())
+        .extracting(a -> a.user().getDisplayName())
+        .containsExactly("Klaus Weber");
+
+    klausRow.markBootstrap();
+
+    assertThat(service.list(ORGANIZATION, query().inactive(true).build()).total()).isZero();
   }
 
   @Test
