@@ -99,6 +99,31 @@ describe('AuthCallbackPage', () => {
     expect(await screen.findByText('Übergabe')).toBeInTheDocument()
   })
 
+  it('keeps a failed handover callback on its error, even with a session in this tab', async () => {
+    markHandoverInFlight()
+    useAuthStore.setState({
+      mode: 'oidc',
+      isLoading: false,
+      // the session a restore at start-up would have produced
+      isAuthenticated: true,
+      error: null,
+      // the store's catch branch clears the handover flag before it reports the failure
+      handleOidcCallback: vi.fn(async () => {
+        await Promise.resolve()
+        clearHandoverInFlight()
+        useAuthStore.setState({ error: 'Die Übergabe ist fehlgeschlagen.' })
+        return { kind: 'failed' as const }
+      }),
+    })
+
+    renderCallback()
+
+    expect(await screen.findByText('Die Übergabe ist fehlgeschlagen.')).toBeInTheDocument()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.queryByText('Chat')).toBeNull()
+    expect(screen.getByText('Die Übergabe ist fehlgeschlagen.')).toBeInTheDocument()
+  })
+
   it('takes an ordinary session into the application', async () => {
     useAuthStore.setState({
       mode: 'oidc',

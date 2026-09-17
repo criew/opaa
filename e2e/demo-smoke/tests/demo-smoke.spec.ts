@@ -13,7 +13,8 @@ import { askQuestion, expectAnyCitedSource, gotoLibraries, startFreshChat } from
  * docs/market/demo-drehbuch.md's manually verified drehbuch, not to a test that runs in CI against a
  * corpus that is explicitly allowed to keep evolving (docs/features/demo-instance.md, "Grund ist
  * Kopplung"). The later scenarios each cover one more piece of the stack the same way (a second
- * identity provider, the S3-fed library) without pinning corpus wording either.
+ * identity provider, the S3-fed library, a direct link to a chat surviving the provider sign-in)
+ * without pinning corpus wording either.
  */
 
 const DEMO_USERNAME = 'maria.weber'

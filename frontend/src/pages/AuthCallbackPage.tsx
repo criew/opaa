@@ -18,6 +18,9 @@ export default function AuthCallbackPage() {
   const error = useAuthStore((s) => s.error)
   const navigate = useNavigate()
   const [callbackFailed, setCallbackFailed] = useState(false)
+  // Read once at mount: a failing callback clears the in-flight flag before it reports, and a
+  // handover that failed must keep its error here instead of falling back to the chat page.
+  const [handoverCallback] = useState(isHandoverInFlight)
 
   // initialize() already activated the manager of the provider this tab started the flow at
   // (ADR-0025); handleOidcCallback reports it when that provider is gone in the meantime. A
@@ -43,10 +46,10 @@ export default function AuthCallbackPage() {
     // before - waits for the callback: a handover owns it until its page has run (#1563), and a
     // successful callback decides the route itself. Only a failed one falls back to the chat page.
     const callbackSettled = mode !== 'oidc' || callbackFailed
-    if (isAuthenticated && callbackSettled && !isHandoverInFlight()) {
+    if (isAuthenticated && callbackSettled && !handoverCallback && !isHandoverInFlight()) {
       navigate(AFTER_SIGN_IN_ROUTE, { replace: true })
     }
-  }, [isAuthenticated, mode, callbackFailed, navigate])
+  }, [isAuthenticated, mode, callbackFailed, handoverCallback, navigate])
 
   return (
     <Box
