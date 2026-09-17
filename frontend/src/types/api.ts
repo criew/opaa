@@ -143,6 +143,10 @@ export type LibraryMetadataFieldValueRequest =
 export type MetadataFieldUsageResponse = components['schemas']['MetadataFieldUsageResponse']
 export type RemapLibraryMetadataFieldValueResponse =
   components['schemas']['RemapLibraryMetadataFieldValueResponse']
+export type LibraryMetadataSchemaChangeResponse =
+  components['schemas']['LibraryMetadataSchemaChangeResponse']
+export type LibraryMetadataSchemaRunResponse =
+  components['schemas']['LibraryMetadataSchemaRunResponse']
 export type MetadataFilterFormatFieldCondition =
   components['schemas']['MetadataFilterFormatFieldCondition']
 export type MetadataFilterFormatFieldOption =

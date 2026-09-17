@@ -1,0 +1,60 @@
+databaseChangeLog:
+  - changeSet:
+      id: 031-library-metadata-schema-changes
+      author: opaa
+      comment: >-
+        Stillgelegte Listenwerte und stillgelegte Felder (#1361, docs/features/metadata-schema.md,
+        "Nachlauf im Betrieb"): one row per running schema change, which is what makes a value
+        mapping and a field deletion resumable instead of one long write transaction. A row exists
+        exactly while the change is running - it retires its subject (no value of it can be set any
+        more) while every stored value stays valid and filterable, and it disappears together with
+        the list entry respectively the field once the last document was rewritten. The correlation
+        reference lives here rather than being re-drawn per call, so every audit event of the change
+        reads back as one operation across all of its Chargen. UNIQUE NULLS NOT DISTINCT
+        (field_id, value_id) states both rules at once: one running mapping per list value, one
+        running deletion per field. The value keys cascade because the change is meaningless without
+        its subject; the target key restricts, which is what keeps a value that a running mapping
+        writes onto from being retired itself. Note the asymmetry of the two existing document keys
+        the run relies on: document_metadata_values -> library_metadata_field_values is ON DELETE
+        RESTRICT, so removing a list entry too early fails in the database as well, while
+        document_metadata_values -> library_metadata_fields is ON DELETE CASCADE - for a field
+        deletion the row lock of the completing transaction is the only guard, and that is why it
+        takes one.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE public.library_metadata_schema_changes (
+                  id uuid NOT NULL,
+                  field_id uuid NOT NULL,
+                  value_id uuid,
+                  target_value_id uuid,
+                  change_kind character varying(20) NOT NULL,
+                  correlation_ref character varying(100) NOT NULL,
+                  requested_at timestamp with time zone DEFAULT now() NOT NULL,
+                  processed_documents bigint DEFAULT 0 NOT NULL,
+                  CONSTRAINT chk_library_metadata_schema_changes_kind CHECK ((change_kind IN ('VALUE_REMAP', 'FIELD_DELETION'))),
+                  CONSTRAINT chk_library_metadata_schema_changes_subject CHECK ((((change_kind)::text = 'VALUE_REMAP'::text) = (value_id IS NOT NULL))),
+                  CONSTRAINT chk_library_metadata_schema_changes_target CHECK (((target_value_id IS NULL) OR (((change_kind)::text = 'VALUE_REMAP'::text) AND (target_value_id <> value_id)))),
+                  CONSTRAINT chk_library_metadata_schema_changes_processed CHECK ((processed_documents >= 0))
+              );
+
+              ALTER TABLE ONLY public.library_metadata_schema_changes
+                  ADD CONSTRAINT library_metadata_schema_changes_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY public.library_metadata_schema_changes
+                  ADD CONSTRAINT uk_library_metadata_schema_changes_subject UNIQUE NULLS NOT DISTINCT (field_id, value_id);
+
+              ALTER TABLE ONLY public.library_metadata_schema_changes
+                  ADD CONSTRAINT fk_library_metadata_schema_changes_field FOREIGN KEY (field_id) REFERENCES public.library_metadata_fields(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY public.library_metadata_schema_changes
+                  ADD CONSTRAINT fk_library_metadata_schema_changes_value FOREIGN KEY (value_id, field_id) REFERENCES public.library_metadata_field_values(id, field_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY public.library_metadata_schema_changes
+                  ADD CONSTRAINT fk_library_metadata_schema_changes_target FOREIGN KEY (target_value_id, field_id) REFERENCES public.library_metadata_field_values(id, field_id) ON DELETE RESTRICT;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE IF EXISTS public.library_metadata_schema_changes;

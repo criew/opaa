@@ -86,6 +86,7 @@ import type {
   LibraryMetadataFieldsResponse,
   MetadataFieldUsageResponse,
   RemapLibraryMetadataFieldValueResponse,
+  LibraryMetadataSchemaRunResponse,
   UpdateLibraryMetadataFieldRequest,
   MetadataFilter,
   MetadataFilterOptionsResponse,
@@ -1206,12 +1207,40 @@ export async function updateLibraryMetadataField(
   }
 }
 
+/**
+ * Retires the field and works its documents off in Chargen. 204 means the field is already gone,
+ * 202 carries the remaining work - the caller then continues with
+ * {@link runLibraryMetadataSchemaChanges}.
+ */
 export async function deleteLibraryMetadataField(
   libraryId: string,
   fieldKey: string,
-): Promise<void> {
+): Promise<LibraryMetadataSchemaRunResponse | null> {
   try {
-    await client.delete(`/v1/libraries/${libraryId}/metadata-fields/${fieldKey}`)
+    const { data, status } = await client.delete<LibraryMetadataSchemaRunResponse | ''>(
+      `/v1/libraries/${libraryId}/metadata-fields/${fieldKey}`,
+    )
+    return status === 202 && data ? data : null
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * One Charge of the library's pending value mappings and field deletions, repeated until
+ * `complete` exactly like the Nachlauf batches: stopping the repetition is the pause, the next
+ * call the resumption, and a Charge over documents already rewritten does nothing.
+ */
+export async function runLibraryMetadataSchemaChanges(
+  libraryId: string,
+  batchSize?: number,
+): Promise<LibraryMetadataSchemaRunResponse> {
+  try {
+    const { data } = await client.post<LibraryMetadataSchemaRunResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields/schema-changes/run`,
+      batchSize == null ? {} : { batchSize },
+    )
+    return data
   } catch (err) {
     normalizeError(err)
   }

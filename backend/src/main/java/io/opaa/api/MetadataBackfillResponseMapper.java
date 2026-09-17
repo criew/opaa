@@ -5,10 +5,12 @@ import io.opaa.api.dto.ContextPrefixRerunStatusResponse;
 import io.opaa.api.dto.CoreMetadataFieldFillResponse;
 import io.opaa.api.dto.MetadataBackfillResponse;
 import io.opaa.api.dto.MetadataBackfillStatusResponse;
+import io.opaa.api.dto.MetadataSchemaChangeStatusResponse;
 import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
 import io.opaa.indexing.maintenance.ContextPrefixRerunResult;
 import io.opaa.indexing.metadata.CoreMetadataExtractor;
 import io.opaa.indexing.metadata.CoreMetadataField;
+import io.opaa.indexing.metadata.LibraryMetadataSchemaChangeProgress;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import io.opaa.indexing.metadata.MetadataBackfillResult;
 import java.util.ArrayList;
@@ -44,6 +46,12 @@ final class MetadataBackfillResponseMapper {
         progress.pendingDocuments(),
         progress.lastSkippedDocuments(),
         progress.isComplete());
+  }
+
+  static MetadataSchemaChangeStatusResponse toSchemaChangeStatusResponse(
+      LibraryMetadataSchemaChangeProgress progress) {
+    return new MetadataSchemaChangeStatusResponse(
+        progress.pendingChanges(), progress.pendingDocuments(), progress.lastSkippedDocuments());
   }
 
   static MetadataBackfillStatusResponse toStatusResponse(MetadataBackfillProgress progress) {

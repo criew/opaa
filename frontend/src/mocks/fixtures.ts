@@ -863,6 +863,11 @@ export const mockSearchStatus: SearchStatusResponse = {
         keywordsAssigned: 20,
         lastCallAt: '2026-09-01T06:05:00Z',
       },
+      metadataSchemaChanges: {
+        pendingChanges: 0,
+        pendingDocuments: 0,
+        lastSkippedDocuments: 0,
+      },
       contextPrefixRerun: {
         totalDocuments: 11,
         currentDocuments: 8,
@@ -934,6 +939,11 @@ export const mockSearchStatus: SearchStatusResponse = {
         keywordsAssigned: 21,
         lastCallAt: '2026-09-01T06:05:00Z',
       },
+      metadataSchemaChanges: {
+        pendingChanges: 0,
+        pendingDocuments: 0,
+        lastSkippedDocuments: 0,
+      },
       contextPrefixRerun: {
         totalDocuments: 3,
         currentDocuments: 3,
@@ -1004,6 +1014,11 @@ export const mockSearchStatus: SearchStatusResponse = {
         rejectedPoolFull: 0,
         keywordsAssigned: 22,
         lastCallAt: '2026-09-01T06:05:00Z',
+      },
+      metadataSchemaChanges: {
+        pendingChanges: 0,
+        pendingDocuments: 0,
+        lastSkippedDocuments: 0,
       },
       contextPrefixRerun: {
         totalDocuments: 0,

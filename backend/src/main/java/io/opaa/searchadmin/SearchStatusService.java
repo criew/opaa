@@ -5,6 +5,8 @@ import io.opaa.indexing.maintenance.ContextPrefixRerunService;
 import io.opaa.indexing.maintenance.FullTextIndexFillState;
 import io.opaa.indexing.maintenance.FullTextIndexFillStateService;
 import io.opaa.indexing.maintenance.MetadataBackfillService;
+import io.opaa.indexing.metadata.LibraryMetadataSchemaChangeProgress;
+import io.opaa.indexing.metadata.LibraryMetadataSchemaChangeService;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import io.opaa.indexing.metadata.ModelExtractionCounters;
 import io.opaa.indexing.metadata.ModelExtractionStats;
@@ -90,6 +92,7 @@ public class SearchStatusService {
   private final MetadataBackfillService metadataBackfillService;
   private final ModelExtractionCounters modelExtractionCounters;
   private final ContextPrefixRerunService contextPrefixRerunService;
+  private final LibraryMetadataSchemaChangeService schemaChangeService;
   private final QueryProperties queryProperties;
   private final RetrievalPipelineProperties pipelineProperties;
   private final Clock clock;
@@ -136,6 +139,7 @@ public class SearchStatusService {
       MetadataBackfillService metadataBackfillService,
       ModelExtractionCounters modelExtractionCounters,
       ContextPrefixRerunService contextPrefixRerunService,
+      LibraryMetadataSchemaChangeService schemaChangeService,
       QueryProperties queryProperties,
       RetrievalPipelineProperties pipelineProperties,
       Clock clock) {
@@ -150,6 +154,7 @@ public class SearchStatusService {
     this.metadataBackfillService = metadataBackfillService;
     this.modelExtractionCounters = modelExtractionCounters;
     this.contextPrefixRerunService = contextPrefixRerunService;
+    this.schemaChangeService = schemaChangeService;
     this.queryProperties = queryProperties;
     this.pipelineProperties = pipelineProperties;
     this.clock = clock;
@@ -416,6 +421,8 @@ public class SearchStatusService {
         modelExtractionCounters.statsFor(libraryIds);
     Map<UUID, ContextPrefixRerunProgress> contextPrefixByLibrary =
         contextPrefixRerunService.progressForLibraries(libraryIds);
+    Map<UUID, LibraryMetadataSchemaChangeProgress> schemaChangesByLibrary =
+        schemaChangeService.progressForLibraries(libraryIds);
 
     List<LibrarySearchStatus> result = new ArrayList<>();
     for (KnowledgeLibrary library : libraries) {
@@ -445,7 +452,9 @@ public class SearchStatusService {
               modelExtractionByLibrary.getOrDefault(
                   library.getId(), ModelExtractionStats.empty(library.getId())),
               contextPrefixByLibrary.getOrDefault(
-                  library.getId(), ContextPrefixRerunProgress.empty(library.getId()))));
+                  library.getId(), ContextPrefixRerunProgress.empty(library.getId())),
+              schemaChangesByLibrary.getOrDefault(
+                  library.getId(), LibraryMetadataSchemaChangeProgress.empty(library.getId()))));
     }
     result.sort(
         Comparator.comparing(LibrarySearchStatus::libraryName, String.CASE_INSENSITIVE_ORDER));

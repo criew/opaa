@@ -133,8 +133,6 @@ keinen Chunk-Schlüssel.
 - **Schwieriger:** Der Abdruck ist ein Hash über Titel und präfixwirksame Werte; jede Änderung an
   der Präfixbildung selbst ändert ihn für den ganzen Bestand. Wer die Formel anfasst, beauftragt
   damit implizit einen vollständigen Nachlauf und muss das ausweisen.
-- **Offen und außerhalb dieses ADR:** Die Umschlüsselung einer Werteliste läuft als eine
-  Transaktion und erfüllt die Nachlauf-Zusagen deshalb nicht (Issue #1361, mit Begründung in der
-  Spezifikation). Die Nachkalibrierung der modellgestützten Extraktion nach der Handstichprobe —
-  Schwelle 0,90, erweitertes Vokabular, Negativbeispiele im Prompt — ist Issue #1359; bis dahin ist
-  die Fähigkeit gebaut, aber **nicht abgenommen**.
+- **Offen und außerhalb dieses ADR:** Die Nachkalibrierung der modellgestützten Extraktion nach
+  der Handstichprobe — Schwelle 0,90, erweitertes Vokabular, Negativbeispiele im Prompt — ist
+  Issue #1359; bis dahin ist die Fähigkeit gebaut, aber **nicht abgenommen**.

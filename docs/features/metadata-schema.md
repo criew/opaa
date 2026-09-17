@@ -320,10 +320,12 @@ sechsten); die Zitierposition ist 1 oder 2 und je Bibliothek einmal vergeben
 
 **Die Abbildungsregel steht ebenfalls in der Datenbank.** Es gibt **keine** Operation, die einen
 Listenwert ohne Abbildung entfernt: `POST …/values/{code}/remap` nimmt `targetCode` (ein anderer Wert
-der Liste) oder `null` („leer") entgegen, schreibt in **einer** Transaktion jedes betroffene Dokument
-um, zieht die Chunk-Schlüssel per JSON-Update nach, schreibt je Dokument ein
-`DOCUMENT_METADATA_CHANGED`-Ereignis mit Altwert und gemeinsamer `correlationRef` und löscht erst
-danach den Listeneintrag. Ein Löschversuch ohne diesen Weg scheitert am `ON DELETE RESTRICT` des
+der Liste) oder `null` („leer") entgegen. Der Vorgang läuft seit #1361 **zweiphasig** (siehe
+[Nachlauf im Betrieb](#nachlauf-im-betrieb)): Er legt den Listeneintrag zuerst **still**, schreibt
+die betroffenen Dokumente dann chargenweise um — jedes in seiner eigenen Transaktion, mit Nachzug der
+Chunk-Schlüssel per JSON-Update und einem `DOCUMENT_METADATA_CHANGED`-Ereignis mit Altwert unter der
+gemeinsamen `correlationRef` des Vorgangs — und löscht den Listeneintrag erst, wenn ihn kein Dokument
+mehr trägt. Ein Löschversuch ohne diesen Weg scheitert am `ON DELETE RESTRICT` des
 Fremdschlüssels. Die Zahl der betroffenen Dokumente steht vorher fest
 (`GET …/values/{code}/usage`), ebenso die Folgekosten einer Feldlöschung
 (`GET …/metadata-fields/{fieldKey}/usage`). Ein Wert **hinzufügen** ist jederzeit möglich und ohne
@@ -1522,16 +1524,53 @@ Extraktionsversion entsteht:
   [Ingestion-Pipelines, Regel (d)](./ingestion-pipelines.md#d-jeder-chunk-trägt-die-version-des-verfahrens-das-ihn-erzeugt-hat));
   es wird kein zweiter gebaut.
 
-**Eine benannte Ausnahme: die Umschlüsselung einer Werteliste und das Löschen eines Feldes.** Beide
-laufen heute als **eine Transaktion** — der Listeneintrag beziehungsweise das Feld wird erst gelöscht,
-wenn jedes Dokument umgeschrieben ist — und sind damit weder dokumentgranular wiederaufnehmbar noch je
-Bibliothek im Fortschritt abfragbar. Das ist
-bewusst so: Sie ist die einzige Stelle, an der ein Zwischenzustand den Zustand „Dokument trägt einen
-Wert, den es im Schema nicht mehr gibt" erzeugen könnte, und die Regel „nicht einmal kurz" wiegt hier
-schwerer als die Wiederaufnahme; für die Feldlöschung gilt dieselbe Abwägung. Der Preis ist eine
-lange Schreibtransaktion, sobald zehntausende Dokumente denselben Code tragen; die zweiphasige
-Ablösung (Listeneintrag zuerst stilllegen, dann chargenweise umschlüsseln, dann löschen) ist als
-**Issue #1361** außerhalb dieses Epics erfasst und deckt beide Wege ab.
+### Umschlüsselung und Feldlöschung: stilllegen, umschreiben, löschen (#1361)
+
+Die Umschlüsselung einer Werteliste und das Löschen eines Feldes liefen zunächst als **eine
+Transaktion** und waren damit weder wiederaufnehmbar noch im Fortschritt abfragbar. Seit #1361 gehen
+beide denselben zweiphasigen Weg und erfüllen die vier Zusagen oben:
+
+1. **Stilllegen.** Die Bestätigung legt den Listeneintrag beziehungsweise das ganze Feld still. Ein
+   stillgelegter Eintrag **bleibt in der Werteliste**, bleibt filterbar und bleibt an jedem Dokument
+   gültig, das ihn schon trägt — er kann nur **nicht mehr neu gesetzt** werden: weder von Hand, noch
+   per Sammelzuweisung, noch von der modellgestützten Ermittlung, der er gar nicht mehr angeboten
+   wird. Dasselbe gilt für jedes Feld, dessen Löschung läuft.
+2. **Chargenweise umschreiben.** Die betroffenen Dokumente werden über dieselbe Chargen-Schleife wie
+   Bestandslauf und Kontextpräfix-Nachlauf umgeschrieben, **ein Dokument je Transaktion**, jedes mit
+   seinem eigenen Audit-Ereignis unter der einen `correlationRef` des Vorgangs. Ein Dokument, das
+   gerade nicht umgeschrieben werden kann, behält alles, was es hatte, und bleibt ausstehend.
+3. **Löschen.** Der Listeneintrag — beziehungsweise das Feld mit seiner Werteliste — verschwindet in
+   derselben Transaktion, die feststellt, dass ihn kein Dokument mehr trägt, unter einer Zeilensperre,
+   die eine gleichzeitige Setzung ebenfalls nehmen müsste. **Nur bei der Wertabbildung gibt es eine
+   zweite Sicherung darunter:** Der Fremdschlüssel der Dokumentzeilen auf den Listeneintrag ist
+   `ON DELETE RESTRICT`, ein verfrühtes Löschen scheitert also auch dann, wenn die Sperre versagte.
+   Beim **Feldlöschen** ist derselbe Fremdschlüssel `ON DELETE CASCADE` — dort trägt die Zeilensperre
+   allein, und ein verfrühtes Löschen nähme die Werte kommentarlos mit. Das ist der Grund, aus dem der
+   Abschluss dort dieselbe Sperre nimmt und nicht auf die Datenbank baut.
+
+**Die Festlegung zur Unerzeugbarkeit lautet damit: der alte Wert bleibt bis zur Abbildung gültig
+gelistet.** Von den beiden Möglichkeiten, die die Zusage offenlässt — Liste erst am Ende ändern oder
+alten Wert weiter listen — ist dies die einzige, die mit einem chargenweisen Lauf zusammengeht: Die
+Liste erst am Ende zu ändern hieße, sie während des Laufs zu verschweigen, und ein Dokument trüge
+einen Wert, den die angezeigte Liste nicht kennt. Der Zustand „Dokument trägt einen Wert, den es im
+Schema nicht mehr gibt" ist damit zu keinem Zeitpunkt erreichbar, und ein Test spielt genau diesen
+Zwischenzustand durch.
+
+**Fortschritt und Bedienung.** Der Zustand ist je Bibliothek abfragbar (`GET …/metadata-fields`,
+Feld `pendingSchemaChanges`: verarbeitet, ausstehend, zuletzt fehlgeschlagen) und erscheint in der
+Zustandsübersicht der Seite „Suche & Indexierung" neben dem übrigen Indexzustand. Laufen mehrere
+Änderungen in einer Bibliothek, beantwortet jede Anfrage **ihren eigenen Vorgang**: Eine Feldlöschung
+ist fertig, sobald ihr letztes Dokument geleert ist, auch wenn daneben noch eine Abbildung läuft; die
+Restmenge einer Abbildung zählt nur ihre eigenen Dokumente. Bibliotheksweit ist allein die Angabe,
+die den nächsten Chargen-Aufruf treibt — sie summiert über alle laufenden Änderungen. **Nicht als
+„fehlgeschlagen" gezählt wird ein Dokument, das gerade jemand anderes schreibt**: Es wird
+übersprungen und bleibt ausstehend, aber ein gehaltenes Dokument ist kein Fehler. Fortgesetzt wird
+der Lauf über `POST …/metadata-fields/schema-changes/run`, mit demselben Verwaltungsrecht, das die
+Bestätigung verlangt hat — anders als beim Kontextpräfix-Nachlauf, der ein Systemprozess über einen
+ganzen Bestand ist: Hier hat die Fachperson die Änderung veranlasst, und die Menge ist genau die
+Dokumentmenge ihres eigenen Werts. Anhalten ist das Ausbleiben des nächsten Aufrufs; ein zweiter Lauf
+über bereits umgeschriebene Dokumente ändert nichts. Ein Bestand, der in die erste Charge passt, ist
+mit der Bestätigung fertig — der kleine Fall verhält sich unverändert.
 
 ### Umgesetzt (#1072)
 

@@ -1,10 +1,18 @@
 package io.opaa.indexing.metadata;
 
 /**
- * What a confirmed value mapping did (metadata-schema.md "Kontrolliertes Vokabular statt
- * Freitext"): how many documents were rewritten onto the target value, how many were emptied
- * (mapped to "leer") and the correlation reference every audit event of the call carries, so the
- * whole mapping reads back from the audit log as one operation.
+ * What the confirming call of a value mapping did (metadata-schema.md "Kontrolliertes Vokabular
+ * statt Freitext"): how many documents this Charge rewrote onto the target value, how many it
+ * emptied (mapped to "leer"), how many still carry the retired value and the correlation reference
+ * every audit event of the whole mapping carries, so it reads back from the audit log as one
+ * operation across all of its Chargen.
+ *
+ * @param complete whether the list entry is gone - false means the run continues and {@code
+ *     remainingDocuments} is what is left of it
  */
 public record LibraryFieldValueRemapResult(
-    long remappedDocuments, long clearedDocuments, String correlationRef) {}
+    long remappedDocuments,
+    long clearedDocuments,
+    String correlationRef,
+    long remainingDocuments,
+    boolean complete) {}

@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw'
+import type { LibraryMetadataSchemaChangeResponse } from '../types/api'
 import { assetRoleLabel } from '../utils/labels'
 import { mailHandlers } from './mailHandlers'
 import { localUserHandlers } from './localUserHandlers'
@@ -8,6 +9,12 @@ import { localAuthHandlers } from './localAuthHandlers'
 /** Per-library countdown of the mock metadata backfill; see the handler below. */
 const mockMetadataBackfillRemaining = new Map<string, number>()
 const mockContextPrefixRerunRemaining = new Map<string, number>()
+/**
+ * Die laufenden Schemaaenderungen je Bibliothek (#1361) - im Mock genau wie im Backend: die
+ * Bestaetigung legt sie an, jede Charge schreibt ein Dokument um, und erst die letzte entfernt den
+ * Listenwert beziehungsweise das Feld.
+ */
+const mockSchemaChanges: Record<string, LibraryMetadataSchemaChangeResponse[]> = {}
 const mockCoreContextPrefix: Record<
   string,
   { title: boolean; documentType: boolean; documentDate: boolean }
@@ -511,6 +518,21 @@ function otherOidcProviders(providerId: string) {
 /** `acknowledgeLastProvider=true` aus der Anfrage (ADR-0033, Entscheidung 4). */
 function acknowledgesLastProvider(request: Request): boolean {
   return new URL(request.url).searchParams.get('acknowledgeLastProvider') === 'true'
+}
+
+/** Was eine fertig gelaufene Schemaaenderung mitnimmt: ihren Listenwert oder ihr ganzes Feld. */
+function applyFinishedChange(libraryId: string, change: LibraryMetadataSchemaChangeResponse) {
+  const fields = mockLibraryMetadataFields[libraryId] ?? []
+  if (change.kind === 'FIELD_DELETION') {
+    mockLibraryMetadataFields[libraryId] = fields.filter(
+      (field) => field.fieldKey !== change.fieldKey,
+    )
+    return
+  }
+  const field = fields.find((candidate) => candidate.fieldKey === change.fieldKey)
+  if (field) {
+    field.values = field.values.filter((value) => value.code !== change.valueCode)
+  }
 }
 
 export const handlers = [
@@ -2403,6 +2425,41 @@ export const handlers = [
         documentDate: false,
       },
       documentsAwaitingContextPrefixRerun: 0,
+      pendingSchemaChanges: mockSchemaChanges[libraryId] ?? [],
+    })
+  }),
+
+  // Eine Charge des Nachlaufs: ein Dokument je Aufruf, damit der Fortschritt im Dev-Modus
+  // sichtbar wird; die fertige Aenderung nimmt ihren Listenwert oder ihr Feld mit.
+  http.post('/api/v1/libraries/:libraryId/metadata-fields/schema-changes/run', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    const changes = mockSchemaChanges[libraryId] ?? []
+    const change = changes[0]
+    if (!change) {
+      return HttpResponse.json({
+        processedDocuments: 0,
+        skippedDocuments: 0,
+        remainingDocuments: 0,
+        complete: true,
+        pendingChanges: [],
+      })
+    }
+    change.remainingDocuments = Math.max(change.remainingDocuments - 1, 0)
+    change.processedDocuments += 1
+    if (change.remainingDocuments === 0) {
+      mockSchemaChanges[libraryId] = changes.slice(1)
+      applyFinishedChange(libraryId, change)
+    }
+    const pendingChanges = mockSchemaChanges[libraryId] ?? []
+    return HttpResponse.json({
+      processedDocuments: 1,
+      skippedDocuments: 0,
+      remainingDocuments: pendingChanges.reduce(
+        (sum, pending) => sum + pending.remainingDocuments,
+        0,
+      ),
+      complete: pendingChanges.length === 0,
+      pendingChanges,
     })
   }),
 
@@ -2478,7 +2535,12 @@ export const handlers = [
       contextPrefix: body.contextPrefix ?? false,
       citationPosition: body.citationPosition ?? null,
       sortOrder: (fields.length + 1) * 10,
-      values: (body.values ?? []).map((value) => ({ code: value.code, label: value.label })),
+      deletionPending: false,
+      values: (body.values ?? []).map((value) => ({
+        code: value.code,
+        label: value.label,
+        retiring: false,
+      })),
     }
     fields.push(field)
     return HttpResponse.json(field, { status: 201 })
@@ -2532,11 +2594,34 @@ export const handlers = [
 
   http.delete('/api/v1/libraries/:libraryId/metadata-fields/:fieldKey', ({ params }) => {
     const libraryId = String(params.libraryId)
-    const fields = mockLibraryMetadataFields[libraryId] ?? []
-    mockLibraryMetadataFields[libraryId] = fields.filter(
-      (field) => field.fieldKey !== String(params.fieldKey),
+    const fieldKey = String(params.fieldKey)
+    const field = (mockLibraryMetadataFields[libraryId] ?? []).find(
+      (candidate) => candidate.fieldKey === fieldKey,
     )
-    return new HttpResponse(null, { status: 204 })
+    if (!field) {
+      return new HttpResponse(null, { status: 204 })
+    }
+    field.deletionPending = true
+    const change: LibraryMetadataSchemaChangeResponse = {
+      kind: 'FIELD_DELETION',
+      fieldKey,
+      valueCode: null,
+      targetCode: null,
+      processedDocuments: 0,
+      remainingDocuments: 2,
+      correlationRef: 'metadata-field-delete-mock',
+    }
+    mockSchemaChanges[libraryId] = [...(mockSchemaChanges[libraryId] ?? []), change]
+    return HttpResponse.json(
+      {
+        processedDocuments: 0,
+        skippedDocuments: 0,
+        remainingDocuments: change.remainingDocuments,
+        complete: false,
+        pendingChanges: mockSchemaChanges[libraryId],
+      },
+      { status: 202 },
+    )
   }),
 
   http.get('/api/v1/libraries/:libraryId/metadata-fields/:fieldKey/usage', () =>
@@ -2553,7 +2638,7 @@ export const handlers = [
       if (!field) {
         return HttpResponse.json({ error: 'Metadatenfeld nicht gefunden' }, { status: 404 })
       }
-      field.values = [...field.values, { code: body.code, label: body.label }]
+      field.values = [...field.values, { code: body.code, label: body.label, retiring: false }]
       return HttpResponse.json(field)
     },
   ),
@@ -2566,16 +2651,35 @@ export const handlers = [
     '/api/v1/libraries/:libraryId/metadata-fields/:fieldKey/values/:code/remap',
     async ({ params, request }) => {
       const body = (await request.json()) as { targetCode: string | null }
-      const field = (mockLibraryMetadataFields[String(params.libraryId)] ?? []).find(
+      const libraryId = String(params.libraryId)
+      const code = String(params.code)
+      const field = (mockLibraryMetadataFields[libraryId] ?? []).find(
         (candidate) => candidate.fieldKey === String(params.fieldKey),
       )
       if (field) {
-        field.values = field.values.filter((value) => value.code !== String(params.code))
+        // Stillgelegt, nicht entfernt: der Wert bleibt gelistet, bis die letzte Charge durch ist.
+        field.values = field.values.map((value) =>
+          value.code === code
+            ? { ...value, retiring: true, remapTargetCode: body.targetCode }
+            : value,
+        )
       }
-      return HttpResponse.json({
-        remappedDocuments: body.targetCode == null ? 0 : 3,
-        clearedDocuments: body.targetCode == null ? 3 : 0,
+      const change: LibraryMetadataSchemaChangeResponse = {
+        kind: 'VALUE_REMAP',
+        fieldKey: String(params.fieldKey),
+        valueCode: code,
+        targetCode: body.targetCode,
+        processedDocuments: 1,
+        remainingDocuments: 2,
         correlationRef: 'metadata-remap-mock',
+      }
+      mockSchemaChanges[libraryId] = [...(mockSchemaChanges[libraryId] ?? []), change]
+      return HttpResponse.json({
+        remappedDocuments: body.targetCode == null ? 0 : 1,
+        clearedDocuments: body.targetCode == null ? 1 : 0,
+        remainingDocuments: change.remainingDocuments,
+        complete: false,
+        correlationRef: change.correlationRef,
       })
     },
   ),

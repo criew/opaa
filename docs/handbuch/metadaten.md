@@ -89,12 +89,35 @@ Vier Regeln, die die Konfiguration eng führen:
   Bestätigung**. Umgeschriebene Werte tragen danach die Herkunft „manuell" und den auslösenden
   Akteur; jedes Dokument bekommt sein eigenes Audit-Ereignis. Denselben Weg geht das Löschen eines
   ganzen Feldes: Es entfernt die Werte aller Dokumente und protokolliert je Dokument den Altwert.
+  Beides läuft zweiphasig (Abschnitt 2c).
 - **Ein Wert außerhalb der Liste ist nicht speicherbar** — weder von Hand noch modellgestützt, und
   auch nicht als Rest einer gelöschten Liste. Die Datenbank hält diese Zusage selbst.
 
 Ein Bibliotheksfeld wird von Hand gepflegt wie ein Kernfeld (Abschnitt 7); ein Auswahlfeld füllt
 zusätzlich die modellgestützte Ermittlung, wenn sie eingeschaltet ist. Pflege-Anker,
 Sammelzuweisung, „kein Wert ermittelbar" und das Audit-Ereignis gelten unverändert.
+
+### 2c. Umschlüsselung und Feldlöschung laufen in Chargen
+
+Eine bestätigte Abbildung und eine Feldlöschung schreiben den Bestand nicht in einem Zug um, sondern
+in drei Schritten:
+
+1. **Stillgelegt.** Der Wert bleibt in der Werteliste stehen — als „wird abgebildet" gekennzeichnet —
+   und bleibt an jedem Dokument gültig, das ihn schon trägt; jede Suche findet diese Dokumente
+   weiterhin. **Neu gesetzt** werden kann er nicht mehr: nicht von Hand, nicht per Sammelzuweisung
+   und nicht durch die modellgestützte Ermittlung. Für ein Feld, dessen Löschung läuft, gilt
+   dasselbe; es ist als „wird gelöscht" gekennzeichnet und nimmt keine Änderung mehr an.
+2. **Umgeschrieben.** Die betroffenen Dokumente werden paketweise umgeschrieben, jedes für sich und
+   mit seinem eigenen Audit-Eintrag. Der Fortschritt steht in den Bibliothekseinstellungen („N
+   Dokumente offen, M umgeschrieben") und in der Zustandsübersicht der Seite **„Suche &
+   Indexierung"**. **Anhalten** hält nach dem laufenden Paket an, **Fortsetzen** macht dort weiter,
+   wo der Lauf stand; bereits Umgeschriebenes wird nie ein zweites Mal angefasst.
+3. **Gelöscht.** Erst wenn kein Dokument den Wert mehr trägt, verschwindet er aus der Werteliste —
+   beim Feld: das Feld mit seiner ganzen Werteliste. Ein kleiner Bestand ist mit der Bestätigung
+   fertig, ohne dass jemand etwas fortsetzen müsste.
+
+So kann zu keinem Zeitpunkt ein Dokument einen Wert tragen, den das Schema nicht mehr kennt — auch
+nicht kurz, und auch nicht, wenn der Lauf unterbrochen wird.
 
 ## 3. Das Vokabular der Dokumentart
 
@@ -527,7 +550,8 @@ Dokumente ohne Wert" verriete den Umfang eines fremden Bestands.
 | `GET`/`POST /api/v1/libraries/{libraryId}/metadata-fields` | Bibliotheksfelder lesen und anlegen |
 | `PUT`/`DELETE …/metadata-fields/{fieldKey}` | Feld ändern oder löschen |
 | `POST`/`PATCH …/metadata-fields/{fieldKey}/values[/{code}]` | Werteliste erweitern, Bezeichnung ändern |
-| `POST …/metadata-fields/{fieldKey}/values/{code}/remap` | bestätigte Abbildung eines Listenwerts |
+| `POST …/metadata-fields/{fieldKey}/values/{code}/remap` | bestätigte Abbildung eines Listenwerts (legt den Wert still und startet den Lauf) |
+| `POST …/metadata-fields/schema-changes/run` | ein Paket der laufenden Abbildungen und Feldlöschungen |
 | `GET …/metadata-fields/change-impact?fieldKey=&change=` | Folgekosten einer geplanten Änderung |
 | `PUT …/metadata-fields/core-context-prefix` | Kontextpräfix-Wirkstelle von Dokumentart und Datum/Stand |
 | `POST /api/v1/admin/indexing/context-prefix-rerun` | ein Paket des Kontextpräfix-Nachlaufs |

@@ -197,6 +197,47 @@ function ContextPrefixCell({
   )
 }
 
+/**
+ * Die laufenden Umschluesselungen und Feldloeschungen einer Bibliothek (#1361). Nur Anzeige: den
+ * Lauf treibt, wer das Verwaltungsrecht an der Bibliothek hat, aus deren Einstellungen - diese
+ * Seite macht den Mischzustand sichtbar, in dem eine Bibliothek gerade steht.
+ */
+function MetadataSchemaChangeCell({ library }: { library: LibrarySearchStatusResponse }) {
+  const changes = library.metadataSchemaChanges
+  if (changes.pendingChanges === 0) {
+    return (
+      <TableCell>
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+          keine
+        </Typography>
+      </TableCell>
+    )
+  }
+  return (
+    <TableCell>
+      <Typography variant="body2" component="div">
+        {plural(changes.pendingChanges, 'Änderung läuft', 'Änderungen laufen')}
+      </Typography>
+      <Typography variant="caption" sx={{ color: 'warning.main' }} component="div">
+        {plural(
+          changes.pendingDocuments,
+          'Dokument wird noch umgeschrieben',
+          'Dokumente werden noch umgeschrieben',
+        )}
+      </Typography>
+      {changes.lastSkippedDocuments > 0 && (
+        <Typography variant="caption" sx={{ color: 'warning.main' }} component="div">
+          {plural(
+            changes.lastSkippedDocuments,
+            'Dokument zuletzt fehlgeschlagen',
+            'Dokumente zuletzt fehlgeschlagen',
+          )}
+        </Typography>
+      )}
+    </TableCell>
+  )
+}
+
 /** The index state of every library, with the two chargen controls per row. */
 export default function LibraryStatusTable({
   libraries,
@@ -223,7 +264,7 @@ export default function LibraryStatusTable({
     )
   }
   return (
-    // Ten columns overflow narrower viewports into a horizontal scroll; a scrollable region must
+    // Eleven columns overflow narrower viewports into a horizontal scroll; a scrollable region must
     // be reachable and scrollable by keyboard (axe scrollable-region-focusable), hence the tab stop.
     <TableContainer
       component={Paper}
@@ -245,6 +286,7 @@ export default function LibraryStatusTable({
             <TableCell>Volltextindex</TableCell>
             <TableCell>Kernfelder</TableCell>
             <TableCell>Kontextpräfix</TableCell>
+            <TableCell>Schemaänderungen</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -304,6 +346,7 @@ export default function LibraryStatusTable({
                 onStart={onStartContextPrefixRerun}
                 onPause={onPauseContextPrefixRerun}
               />
+              <MetadataSchemaChangeCell library={library} />
             </TableRow>
           ))}
         </TableBody>
