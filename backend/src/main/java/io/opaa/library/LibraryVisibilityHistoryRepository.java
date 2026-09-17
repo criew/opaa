@@ -17,7 +17,7 @@ public interface LibraryVisibilityHistoryRepository
    * Every organization-wide library at {@code asOf} - the interval's {@code validFrom <= asOf} and
    * ({@code validTo IS NULL OR validTo > asOf}), with {@code visibility = ORGANIZATION}. The
    * organization-wide counterpart of {@link
-   * KnowledgeLibraryRepository#findByOrganizationIdAndVisibility} for a past instant, mirroring
+   * KnowledgeLibraryRepository#findIdsByOrganizationIdAndVisibility} for a past instant, mirroring
    * {@link LibraryAccessService#readableLibraryIds}'s third source.
    */
   @Query(

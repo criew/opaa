@@ -514,3 +514,13 @@ tasks.named<Test>("test") {
 // The OpenAPI spec, the generator config (typeMappings/importMappings/doLast cleanup) and the
 // generated io.opaa.api.dto classes all live in :opaa-api now (issue #896) - this module only
 // consumes that project's main sourceSet output via `implementation(project(":opaa-api"))` above.
+
+// The default `javadoc` task only covers sourceSets.main; this covers `test` the same way, so an
+// unresolvable {@link}/@see in test Javadoc fails the build too.
+tasks.register<Javadoc>("testJavadoc") {
+    source = sourceSets.test.get().allJava
+    classpath = sourceSets.test.get().compileClasspath
+}
+tasks.named("javadoc") {
+    dependsOn("testJavadoc")
+}

@@ -1,7 +1,7 @@
 package io.opaa.api.types;
 
 /**
- * Who owns a {@link KnowledgeLibrary}.
+ * Who owns a {@code KnowledgeLibrary} (backend module).
  *
  * <ul>
  *   <li>{@link #USER} - owned by a single person; {@code ownerId} references {@code users.id}.

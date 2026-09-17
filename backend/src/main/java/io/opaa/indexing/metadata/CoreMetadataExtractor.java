@@ -17,9 +17,9 @@ import java.util.regex.Pattern;
 /**
  * The deterministic core-field extraction (metadata-schema.md, Teil III, step 1; ADR-0024): pure
  * rules over a file name and the {@link DocumentProperties} a pipeline declared, no model, no
- * similarity. Per field the sources are tried in a fixed order and the first hit wins - see {@link
- * #TITLE_SOURCES}, {@link #documentTypeFrom} and {@link #documentDateFrom} for the order each one
- * uses, and the vocabulary and notation each source is matched against.
+ * similarity. Per field the sources are tried in a fixed order and the first hit wins - title first
+ * from frontmatter, then a title line, then the file name; document type and date follow the
+ * analogous order in their own private extraction methods below.
  *
  * <p>Three rules hold across all fields: a title is always found, falling back to the humanized
  * file name; an ambiguous source yields nothing from that source but does not stop the next one
