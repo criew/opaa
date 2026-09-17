@@ -242,7 +242,8 @@ class LocalRefreshTokenServiceIntegrationTest {
   private long auditedSessionRevocations() {
     Long count =
         jdbc.queryForObject(
-            "SELECT count(*) FROM audit_log WHERE event_type = 'LOCAL_SESSION_REVOKED'",
+            "SELECT count(*) FROM audit_log WHERE event_type = 'LOCAL_SESSION_REVOKED' AND "
+                + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT,
             Long.class);
     return count == null ? 0 : count;
   }

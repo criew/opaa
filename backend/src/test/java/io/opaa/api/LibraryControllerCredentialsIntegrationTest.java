@@ -10,9 +10,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnLibraryFixtures;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -72,6 +72,7 @@ class LibraryControllerCredentialsIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
 
   /**
    * The libraries this class created over HTTP, derived as the difference to a snapshot taken
@@ -91,22 +92,7 @@ class LibraryControllerCredentialsIntegrationTest {
   void removeCreatedLibraries() {
     List<UUID> own = new ArrayList<>(libraryIds());
     own.removeAll(foreignLibraryIds);
-    if (own.isEmpty()) {
-      return;
-    }
-    String placeholders = String.join(",", Collections.nCopies(own.size(), "?"));
-    Object[] ids = own.toArray();
-    // Attachments before their parent: fk_documents_parent carries no ON DELETE clause, so a
-    // single bulk DELETE would have to rely on the check happening at statement end. The separate
-    // statement makes the order explicit instead.
-    jdbcTemplate.update(
-        "DELETE FROM documents WHERE parent_document_id IS NOT NULL AND library_id IN ("
-            + placeholders
-            + ")",
-        ids);
-    jdbcTemplate.update("DELETE FROM documents WHERE library_id IN (" + placeholders + ")", ids);
-    jdbcTemplate.update("DELETE FROM asset_grants WHERE library_id IN (" + placeholders + ")", ids);
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id IN (" + placeholders + ")", ids);
+    ownLibraryFixtures.removeLibraries(own.toArray(new UUID[0]));
   }
 
   private List<UUID> libraryIds() {

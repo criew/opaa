@@ -1,8 +1,12 @@
 package io.opaa.test;
 
+import static org.awaitility.Awaitility.await;
+
 import io.opaa.indexing.chunk.VectorChunkStore;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
  * Removes the libraries a test class created, with everything indexed into them - the whole suite
@@ -27,17 +31,29 @@ public final class OwnLibraryFixtures {
 
   private final JdbcTemplate jdbcTemplate;
   private final VectorChunkStore vectorChunkStore;
+  private final ThreadPoolTaskExecutor uploadTaskExecutor;
 
-  OwnLibraryFixtures(JdbcTemplate jdbcTemplate, VectorChunkStore vectorChunkStore) {
+  OwnLibraryFixtures(
+      JdbcTemplate jdbcTemplate,
+      VectorChunkStore vectorChunkStore,
+      ThreadPoolTaskExecutor uploadTaskExecutor) {
     this.jdbcTemplate = jdbcTemplate;
     this.vectorChunkStore = vectorChunkStore;
+    this.uploadTaskExecutor = uploadTaskExecutor;
   }
 
   /**
    * Everything indexed into one library, leaving the library itself in place - for a class that
-   * keeps its library across test methods.
+   * keeps its library across test methods. Waits for the upload pool first: an upload is indexed
+   * after its request returned, and chunks written after this cleanup would stay behind.
    */
   public void removeContentOf(UUID libraryId) {
+    await()
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () ->
+                uploadTaskExecutor.getActiveCount() == 0
+                    && uploadTaskExecutor.getThreadPoolExecutor().getQueue().isEmpty());
     vectorChunkStore.deleteByLibraryId(libraryId);
     // One statement rather than per-row deletes: PostgreSQL checks fk_documents_parent at the end
     // of the statement (NO ACTION), so a parent and its attachment go together (ADR-0022).

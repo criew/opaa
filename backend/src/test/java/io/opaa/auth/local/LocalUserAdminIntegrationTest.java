@@ -112,7 +112,6 @@ class LocalUserAdminIntegrationTest {
     fixtures = fixturesFactory.create();
     fixtures.cleanUp();
     actionTokenRepository.deleteAll();
-    deleteLocalAuditRows();
     fixtures.localProvider(true);
     admin = fixtures.activeAdmin("verwaltung-" + UUID.randomUUID() + "@stadt.example");
     adminBearer = bearer(login(admin.email(), LocalAccountFixtures.PASSWORD, 200));
@@ -128,7 +127,6 @@ class LocalUserAdminIntegrationTest {
     configureSmtp(false);
     MailTestSupport.resetCaches(mailSettings);
     actionTokenRepository.deleteAll();
-    deleteLocalAuditRows();
     fixtures.cleanUp();
   }
 
@@ -652,7 +650,8 @@ class LocalUserAdminIntegrationTest {
     assertThat(
             jdbc.queryForObject(
                 "SELECT count(*) FROM audit_log WHERE event_type = 'SPACE_DELETED'"
-                    + " AND object_type = 'SPACE' AND organization_id = ?",
+                    + " AND object_type = 'SPACE' AND organization_id = ? AND "
+                    + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT,
                 Long.class,
                 Organization.DEFAULT_ID))
         .isEqualTo(1L);
@@ -670,6 +669,7 @@ class LocalUserAdminIntegrationTest {
                 user.id()))
         .isZero();
     asAdmin(get(LOCAL_USERS + "/" + user.id())).andExpect(status().isNotFound());
+    fixtures.deleteAuditRowsNaming(pseudonym);
 
     // an owner of a library is locked, not deleted
     LocalAccount owner = fixtures.activeUser("owner-" + UUID.randomUUID() + "@stadt.example");
@@ -980,15 +980,6 @@ class LocalUserAdminIntegrationTest {
             + " FROM audit_log WHERE event_type LIKE ? AND subject_ref = ? ORDER BY recorded_at",
         eventTypePattern,
         pseudonym);
-  }
-
-  private void deleteLocalAuditRows() {
-    jdbc.update(
-        "DELETE FROM audit_log WHERE event_type LIKE 'LOCAL_USER_%' OR event_type IN"
-            + " ('LOCAL_SESSION_REVOKED', 'SYSTEM_ADMIN_ROLE_REVOKED', 'SYSTEM_ADMIN_ROLE_GRANTED')"
-            + " OR (event_type IN ('MAIL_SETTINGS_CHANGED', 'SPACE_DELETED')"
-            + " AND organization_id = ?)",
-        Organization.DEFAULT_ID);
   }
 
   private void configureSmtp(boolean enabled) {

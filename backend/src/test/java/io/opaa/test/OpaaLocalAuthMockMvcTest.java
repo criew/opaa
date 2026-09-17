@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestExecutionListeners;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
@@ -64,6 +65,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles("oidc")
 @Testcontainers(disabledWithoutDocker = true)
+// The same guards as OpaaIntegrationTest (without its bean reset, these contexts carry no
+// OpaaTestBeans); the derived signatures inherit them as long as they declare none of their own.
+@TestExecutionListeners(
+    listeners = {LeftoverRowGuard.class, SeededRowRestorer.class},
+    mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 public @interface OpaaLocalAuthMockMvcTest {
 
   /** A public, deliberately non-production secret that passes {@code @ValidSecret}. */

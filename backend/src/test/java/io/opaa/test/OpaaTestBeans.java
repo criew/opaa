@@ -10,10 +10,13 @@ import io.opaa.space.SpaceRepository;
 import org.mockito.Mockito;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
  * The three production collaborators no test of this suite may reach for real: the embedding
@@ -62,8 +65,11 @@ class OpaaTestBeans {
 
   @Bean
   OwnLibraryFixtures ownLibraryFixtures(
-      JdbcTemplate jdbcTemplate, VectorChunkStore vectorChunkStore) {
-    return new OwnLibraryFixtures(jdbcTemplate, vectorChunkStore);
+      JdbcTemplate jdbcTemplate,
+      VectorChunkStore vectorChunkStore,
+      @Qualifier("uploadTaskExecutor") TaskExecutor uploadTaskExecutor) {
+    return new OwnLibraryFixtures(
+        jdbcTemplate, vectorChunkStore, (ThreadPoolTaskExecutor) uploadTaskExecutor);
   }
 
   @Bean

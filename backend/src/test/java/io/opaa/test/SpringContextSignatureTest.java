@@ -115,6 +115,36 @@ class SpringContextSignatureTest {
         .hasSize(CANONICAL_SIGNATURES.size());
   }
 
+  /**
+   * The shared database is only safe while every class runs both guards: a further base signature,
+   * or a class-local {@code @TestExecutionListeners} (resolved by nearest declaration), would
+   * switch them off without anything failing.
+   */
+  @Test
+  void everySpringBackedTestRunsTheLeftoverGuardAndTheSettingsRestorer() {
+    List<String> offenders =
+        springBootTestClasses().stream()
+            .filter(
+                type -> {
+                  Set<Class<?>> listeners =
+                      BootstrapUtils.resolveTestContextBootstrapper(type)
+                          .getTestExecutionListeners()
+                          .stream()
+                          .map(Object::getClass)
+                          .collect(Collectors.toSet());
+                  return !listeners.contains(LeftoverRowGuard.class)
+                      || !listeners.contains(SeededRowRestorer.class);
+                })
+            .map(Class::getName)
+            .toList();
+
+    assertThat(offenders)
+        .as(
+            "these classes do not run LeftoverRowGuard and SeededRowRestorer - register both on"
+                + " the base signature, never replace them per class")
+        .isEmpty();
+  }
+
   /** The exact object Spring's context cache is keyed by - built without starting the context. */
   private MergedContextConfiguration contextCacheKeyOf(Class<?> testClass) {
     return BootstrapUtils.resolveTestContextBootstrapper(testClass)

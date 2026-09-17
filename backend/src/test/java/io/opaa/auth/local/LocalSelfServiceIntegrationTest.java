@@ -95,7 +95,6 @@ class LocalSelfServiceIntegrationTest {
     fixtures = fixturesFactory.create();
     fixtures.cleanUp();
     actionTokenRepository.deleteAll();
-    deleteLocalAuditRows();
     fixtures.localProvider(true);
     admin = fixtures.activeAdmin("verwaltung-" + UUID.randomUUID() + "@" + DOMAIN);
     adminBearer = bearer(login(admin.email(), LocalAccountFixtures.PASSWORD, 200));
@@ -109,7 +108,6 @@ class LocalSelfServiceIntegrationTest {
     mailbox.stop();
     replaceSettings(Values.defaults());
     actionTokenRepository.deleteAll();
-    deleteLocalAuditRows();
     fixtures.cleanUp();
   }
 
@@ -799,12 +797,9 @@ class LocalSelfServiceIntegrationTest {
   private List<Map<String, Object>> auditRows(String typePattern) {
     return jdbc.queryForList(
         "SELECT event_type, actor_ref, object_label, subject_ref, CAST(before AS text) AS before,"
-            + " CAST(after AS text) AS after, reason FROM audit_log WHERE event_type LIKE ?",
+            + " CAST(after AS text) AS after, reason FROM audit_log WHERE event_type LIKE ? AND "
+            + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT,
         typePattern);
-  }
-
-  private void deleteLocalAuditRows() {
-    jdbc.update("DELETE FROM audit_log WHERE event_type LIKE 'LOCAL_%'");
   }
 
   private static String body(MvcResult result) throws Exception {

@@ -37,13 +37,12 @@ class LocalTokenCleanupServiceIntegrationTest {
   void setUp() {
     fixtures = fixturesFactory.create();
     fixtures.cleanUp();
-    actionTokens.deleteAll();
     user = fixtures.activeUser("konto-" + UUID.randomUUID() + "@stadt.example");
   }
 
   @AfterEach
   void tearDown() {
-    actionTokens.deleteAll();
+    // The action tokens go with the local accounts (fk_local_action_tokens_user is CASCADE).
     fixtures.cleanUp();
   }
 
@@ -91,11 +90,13 @@ class LocalTokenCleanupServiceIntegrationTest {
     assertThat(result.revokedTokens()).isEqualTo(1);
     assertThat(result.actionTokens()).isEqualTo(1);
     assertThat(refreshTokens.findAll())
+        .filteredOn(row -> user.id().equals(row.getUserId()))
         .extracting(LocalRefreshToken::getTokenLookupHash)
         .containsExactlyInAnyOrder("revoked-new", "active");
     assertThat(revokedTokens.existsById(LocalAuthKeyService.jtiHash("new"))).isTrue();
     assertThat(revokedTokens.existsById(LocalAuthKeyService.jtiHash("old"))).isFalse();
     assertThat(actionTokens.findAll())
+        .filteredOn(row -> user.id().equals(row.getUserId()))
         .extracting(LocalActionToken::getTokenHash)
         .containsExactly("open");
   }
