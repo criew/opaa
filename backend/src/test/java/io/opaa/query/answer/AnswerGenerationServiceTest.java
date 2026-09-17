@@ -407,4 +407,17 @@ class AnswerGenerationServiceTest {
         .extracting(Message::getText)
         .containsExactly("Frage?");
   }
+
+  /**
+   * A message classified as needing no search may still be a question. For it, the ban on saying
+   * that nothing was found must not hold - otherwise an answer without matching passages would
+   * come from the model's own knowledge, uncited.
+   */
+  @Test
+  void theNoSearchHintLiftsItsBanOnSayingNothingWasFoundForAQuestion() {
+    assertThat(AnswerGenerationService.NO_SEARCH_HINT)
+        .contains("Enthält die Nachricht doch eine Frage, gilt diese Anweisung nicht")
+        .contains("nur anhand der Kontextdokumente")
+        .contains("sage, wenn diese keine Antwort enthalten");
+  }
 }

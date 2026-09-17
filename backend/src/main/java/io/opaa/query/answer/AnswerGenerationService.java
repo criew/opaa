@@ -73,7 +73,8 @@ public class AnswerGenerationService {
           + " Wunsch zur Form der Antwort, eine Angabe zur eigenen Person oder einen Dank. Gehe"
           + " direkt auf die Nachricht ein. Behaupte nicht, nichts gefunden zu haben, und weise"
           + " nicht darauf hin, dass keine passenden Dokumente vorliegen. Enthält die Nachricht doch"
-          + " eine Frage, beantworte sie wie jede andere anhand der Kontextdokumente.";
+          + " eine Frage, gilt diese Anweisung nicht: Beantworte sie wie jede andere nur anhand der"
+          + " Kontextdokumente, und sage, wenn diese keine Antwort enthalten.";
 
   /**
    * Repeats the answer language after the passages. The leading rule alone does not keep a small
