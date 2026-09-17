@@ -1,5 +1,11 @@
 import axios from 'axios'
-import type { AuthConfig, AuthUser, FieldError, LocalTokenResponse } from '../types/auth'
+import type {
+  AuthConfig,
+  AuthUser,
+  FieldError,
+  LocalTokenResponse,
+  ResolvedAuthConfig,
+} from '../types/auth'
 import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
 import { DEV_USER_HEADER, getDevUser } from './devAuth'
 import { CSRF_TOKEN_MISSING, sessionEndingReason, UNKNOWN_ISSUER } from './apiInterceptors'
@@ -28,7 +34,7 @@ const AUTH_REQUEST_TIMEOUT_MS = 15_000
  */
 export const authClient = axios.create({ baseURL: '/api', timeout: AUTH_REQUEST_TIMEOUT_MS })
 
-export async function getAuthConfig(): Promise<AuthConfig> {
+export async function getAuthConfig(): Promise<ResolvedAuthConfig> {
   const { data } = await authClient.get<AuthConfig>('/v1/auth/config')
   // A backend without local accounts omits the block entirely; "absent" means "switched off",
   // never "unknown", so every caller can read the flags without a null check.

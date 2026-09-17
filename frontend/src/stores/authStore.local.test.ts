@@ -641,6 +641,27 @@ describe('authStore - local session', () => {
     expect(useAuthStore.getState().localAccounts.enabled).toBe(true)
   })
 
+  // Regression guard: the restore attempt awaits a refresh call, and whatever the store holds by
+  // the time that await returns must not decide "no identity provider" - only the configuration
+  // this very call just loaded may. The refresh handler below stands in for anything that could
+  // change the store while this call is still in flight (e.g. a session ending in another tab).
+  it('reports no missing provider even when the store changes while the refresh is in flight', async () => {
+    withLocalConfig()
+    rememberLastLocalSession()
+    server.use(
+      http.post('/api/v1/auth/local/refresh', () => {
+        useAuthStore.setState({ localAccounts: LOCAL_ACCOUNTS_DISABLED })
+        return new HttpResponse(null, { status: 500 })
+      }),
+    )
+
+    await useAuthStore.getState().initialize()
+
+    const state = useAuthStore.getState()
+    expect(state.isLoading).toBe(false)
+    expect(state.error).toBeNull()
+  })
+
   // The whole 401 path of a local session in one go: one shared refresh, one repeat of the
   // original request, no second attempt.
   it('answers a 401 in a local session with exactly one refresh and one repeat', async () => {
