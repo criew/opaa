@@ -31,7 +31,8 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
    * fixed and documented so a future, unrelated advisory lock elsewhere in the codebase can pick a
    * different one instead of colliding. Namespaces in use: 202 (this), 203 ({@code
    * UserRepository#TOKEN_ROLE_CHANGE_LOCK_NAMESPACE}), 204 ({@code
-   * GroupRepository#IDENTITY_PROVIDER_GROUP_LOCK_NAMESPACE}).
+   * GroupRepository#IDENTITY_PROVIDER_GROUP_LOCK_NAMESPACE}), 205 ({@code
+   * io.opaa.group.sync.DirectorySyncRunLock#DIRECTORY_SYNC_RUN_LOCK_NAMESPACE}).
    */
   int ASSET_GRANT_MUTATION_LOCK_NAMESPACE = 202;
 

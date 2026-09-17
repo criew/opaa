@@ -2408,6 +2408,7 @@ paths:
       description: >
         Fetches the current directory state and computes what would change, but never writes
         anything - not even when the run would otherwise be applicable. See #237.
+        Returns 409 while another run or dry run of the same organization is still in flight.
       responses:
         "200":
           description: Dry-run report
@@ -2417,6 +2418,8 @@ paths:
                 $ref: "#/components/schemas/DirectorySyncReportResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/admin/directory-sync/run:
     post:
@@ -2428,6 +2431,7 @@ paths:
         while ORG_UNIT groups already exist, and the fraction of memberships that would be
         removed does not exceed the configured threshold. Otherwise the run is aborted without
         writing anything, and the report explains why. See #237.
+        Returns 409 while another run or dry run of the same organization is still in flight.
       responses:
         "200":
           description: Synchronisation report
@@ -2437,6 +2441,8 @@ paths:
                 $ref: "#/components/schemas/DirectorySyncReportResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/admin/directory-sync/status:
     get:

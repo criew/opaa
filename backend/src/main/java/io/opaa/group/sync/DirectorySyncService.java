@@ -18,25 +18,26 @@ import org.springframework.stereotype.Service;
 /**
  * Directory synchronisation as a rights event (#237): the public entry point and the boundary to an
  * actual directory. Deliberately holds no {@code @Transactional} annotation anywhere in this class
- * - {@link DirectoryClient#fetchGroups} runs here, before any database transaction is opened, so a
- * slow or failing real directory connector never holds a database connection or transaction open
- * for the duration of a network call (review of PR #297). The transactional plan computation and,
- * if applicable, application live in {@link DirectorySyncPlanExecutor}, a separate bean called from
- * here through Spring's proxy.
+ * - {@link DirectoryClient#fetchGroups} runs here, outside any transaction of the application's
+ * transaction manager, so a slow or failing real directory connector never holds a work transaction
+ * open for the duration of a network call (review of PR #297). The transactional plan computation
+ * and, if applicable, application live in {@link DirectorySyncPlanExecutor}, a separate bean called
+ * from here through Spring's proxy.
  *
- * <p><b>Known gap: concurrent runs are not serialised, and the fetch-to-apply window is real.</b>
- * Moving the directory fetch outside any transaction (above) widens the time between reading the
- * directory and applying the diff; a change made through the admin UI in that window - e.g. an
- * operator adding someone to an {@code AD_HOC} group, or (once #208 exists) a curator action on an
- * {@code ORG_UNIT} group - is not part of the snapshot this run diffs against and can be reverted
- * by it. Likewise, nothing here stops two calls to {@link #run} for the same organization from
- * overlapping. Neither is new to this change - the previous, single-transaction version had a
- * narrower but non-zero version of the same window - but the window is now large enough to be worth
- * naming rather than assuming away. Out of scope for #237: closing it needs either serialising runs
- * per organization (e.g. a Postgres advisory lock keyed on {@code organizationId}, held for the
- * whole {@link #execute}) or accepting last-writer-wins and documenting it as a deployment
- * constraint (run synchronisation on a schedule, never concurrently, never overlapping an admin
- * bulk-edit window).
+ * <p><b>One run per organization at a time.</b> Every entry point runs under {@link
+ * DirectorySyncRunLock}, which holds an advisory lock keyed on {@code organizationId} for the whole
+ * of {@link #execute} - the directory fetch included, so a second caller cannot slip past while the
+ * first is still reading the directory. A second run of the same organization is rejected with a
+ * {@link io.opaa.common.ConflictException} rather than queued behind the first; runs of different
+ * organizations never wait for each other. {@link #dryRun} takes the same lock as {@link #run}: it
+ * writes the same status row, and a plan computed while another run is applying describes a state
+ * that no longer holds.
+ *
+ * <p><b>Remaining window: an admin edit between fetch and apply.</b> The lock covers concurrent
+ * synchronisation runs, not concurrent admin activity. A change made through the admin UI while a
+ * run is in flight - e.g. an operator adding someone to an {@code AD_HOC} group, or (once #208
+ * exists) a curator action on an {@code ORG_UNIT} group - is not part of the snapshot this run
+ * diffs against and can be reverted by it.
  */
 @Service
 public class DirectorySyncService {
@@ -52,6 +53,7 @@ public class DirectorySyncService {
   private final DirectorySyncStatusRepository statusRepository;
   private final DirectorySyncProperties properties;
   private final AuditEventRecorder auditEventRecorder;
+  private final DirectorySyncRunLock runLock;
 
   public DirectorySyncService(
       DirectoryClient directoryClient,
@@ -59,20 +61,22 @@ public class DirectorySyncService {
       DirectorySyncStatusRecorder statusRecorder,
       DirectorySyncStatusRepository statusRepository,
       DirectorySyncProperties properties,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      DirectorySyncRunLock runLock) {
     this.directoryClient = directoryClient;
     this.planExecutor = planExecutor;
     this.statusRecorder = statusRecorder;
     this.statusRepository = statusRepository;
     this.properties = properties;
     this.auditEventRecorder = auditEventRecorder;
+    this.runLock = runLock;
   }
 
   /**
    * Computes the diff against the directory's current state. Never writes group/membership data.
    */
   public SyncReport dryRun(UUID organizationId) {
-    return execute(organizationId, false);
+    return runLock.runExclusively(organizationId, () -> execute(organizationId, false));
   }
 
   /**
@@ -82,7 +86,7 @@ public class DirectorySyncService {
    * reports why nothing was written.
    */
   public SyncReport run(UUID organizationId) {
-    return execute(organizationId, true);
+    return runLock.runExclusively(organizationId, () -> execute(organizationId, true));
   }
 
   /** The organization's most recent run, empty if it has never run one. */
