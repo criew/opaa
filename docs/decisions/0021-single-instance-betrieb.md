@@ -46,7 +46,9 @@ potenziell veraltete Kopie):
 | `RateLimitService.requestLog` | Zeitfenster-Anfragehistorie pro Client-IP | `expireAfterAccess`, kein aktives Invalidieren |
 | `ActiveChatModelResolver.cache` | Der eine `ChatClient` des systemweit aktiven LLM-Modells (Single-Slot, kein Map-Cache) | Ereignisgesteuert via `ActiveChatModelChangedEvent` nach Commit (`TransactionalEventListener`) |
 | `OidcProviderRegistry` (ADR-0025, #1329) | Ein `JwtDecoder` samt `AuthenticationManager` je aktiviertem Identitätsanbieter, geschlüsselt nach Issuer; dazu der Fehlzustand nicht aufbaubarer Anbieter | Ereignisgesteuert via `OidcProvidersChangedEvent` nach Commit (`TransactionalEventListener`); fehlerhafte Anbieter werden beim nächsten Token ihres Issuers nach kurzer Wartezeit erneut versucht |
-| `CaffeineChatMemoryRepository` | Chatverlauf, LRU auf 50 gleichzeitige Konversationen begrenzt | TTL nach letztem Zugriff |
+| `CaffeineChatMemoryRepository` | Chatverlauf, LRU auf 50 gleichzeitige Konversationen begrenzt | TTL nach letztem Zugriff. Seit #525 nicht mehr die Wahrheit, sondern eine Leseoptimierung vor `chat_messages`: `QueryService` lädt den Eintrag bei einem Fehlgriff aus dem persistierten Verlauf nach. Ein Instanzwechsel mitten im Gespräch kostet damit einen Fehlgriff, keinen Gesprächskontext — anders als bei den übrigen Zeilen dieser Tabelle |
+| `MetadataFilterOptionsCache` | Die Filteroptionen je Person **und** dem Suchraum, auf den ihre Rechte aufgelöst haben (max. 10.000 Einträge) | `expireAfterWrite` aus `opaa.query.metadata-filter.options-cache-ttl`, gezielt bei jeder Rechteänderung, die die Person berührt — dieselben Ereignisse und Haken wie bei `GroupMembershipResolver`/`LibraryAccessService`, und damit dieselbe Rechtelücke bei mehreren Instanzen |
+| `RerankClient.dialect` | Welche Sprechweise der konfigurierte Rerank-Endpunkt spricht, aus dem ersten erfolgreichen Aufruf gelernt | Kein Verfall; bei mehreren Instanzen handelt jede einmal selbst aus. Einzige Zeile dieser Tabelle ohne Konsistenzfolge |
 | `OidcProviderRegistry`, Eintrag des lokalen Issuers ([ADR-0033](0033-lokale-benutzerverwaltung.md), #1533) | Der HS256-Decoder des lokalen Ausstellers samt Widerrufs-Validator, unabhängig vom `enabled` der `LOCAL`-Anbieterzeile registriert | Wie die übrigen Einträge ereignisgesteuert nach Commit; der Schlüssel selbst ist aus `OPAA_AUTH_JWT_SECRET` abgeleitet und ändert sich nur mit einem Neustart |
 | `LocalTokenRevocationService`-Denylist (ADR-0033, #1533) | Widerrufene `jti`-Hashes lokaler Access-Tokens (Caffeine, `expireAfterWrite = access-token-ttl`) vor der Tabelle `local_revoked_tokens` | Additiv (ein Widerruf wird eingetragen, nie zurückgenommen); Verfall mit der Token-Lebensdauer. Bei mehreren Instanzen sähe Instanz B einen auf A widerrufenen `jti` erst nach dem Cache-Miss — die Tabelle bleibt die Wahrheit, der Cache nur ein Negativ-Cache für „nicht widerrufen" und müsste dann entfallen |
 | Rate-Limit-Buckets der lokalen Anmeldung (ADR-0033, #1535) | Zähler je Adresse, je Konto und je Subject für Login, Refresh, Passwortwechsel, Registrierung und Passwort-vergessen; die Fehlversuch-Sperre selbst liegt in `local_credentials` | `expireAfterAccess` wie `RateLimitService.requestLog`; die Sperre nach Fehlversuchen ist bewusst **in der Datenbank**, damit sie einen Neustart überlebt |
@@ -58,6 +60,14 @@ zum TTL-Ablauf den alten Stand. Für `personalSpaceProvisioned` ist das harmlos 
 fälschlich fehlen, nie fälschlich vorhanden sein), für die anderen wäre es eine echte
 Rechte-/Konsistenzlücke.
 
+**Die rein ereignisgesteuerten Einträge sind der härtere Fall, nicht der mildere.** `ActiveChatModelResolver`,
+beide `OidcProviderRegistry`-Zeilen, `MailSenderProvider` und die Einstellungs-Snapshots werden
+**ausschließlich** über `TransactionalEventListener` invalidiert, also über einen rein prozessinternen
+Bus, und haben keinen Zeitverfall, der die Lücke irgendwann von selbst schließt. Bei mehreren
+Instanzen bliebe eine Änderung auf jeder Instanz, die sie nicht selbst entgegengenommen hat, **bis zu
+deren Neustart** wirkungslos — ein Modellwechsel, geänderte Mail-Einstellungen und, sicherheitsrelevant,
+ein deaktivierter Identitätsanbieter. Ein TTL-Verfall begrenzt eine Lücke, hier gibt es keinen.
+
 **`@Scheduled` ohne Leader-Election, und eine vergleichbare Start-Aktion** (bei mehreren Instanzen
 feuert jede ihre eigene Kopie, unkoordiniert):
 
@@ -67,7 +77,10 @@ feuert jede ihre eigene Kopie, unkoordiniert):
 | `LibraryIndexingScheduler.triggerDueLibraries` | jede Minute | Doppelte Trigger derselben fälligen Bibliothek werden durch `uk_indexing_jobs_library_running` (Migration 028) auf Datenbankebene abgefangen — die Instanz, die den Unique-Constraint verletzt, bucht das als Skip. `lastTickAt` (Rückschaufenster gegen Jitter zwischen zwei Ticks) ist zusätzlich rein prozesslokaler Zustand, der bei mehreren Instanzen pro Prozess getrennt geführt wird |
 | `IndexingJobRecoveryScheduler.recoverStaleRunningJobs` | alle 15 Minuten | Fails jeden Job, dessen `lastProgressAt`-Heartbeat zu alt ist |
 | `LocalTokenCleanupScheduler` ([ADR-0033](0033-lokale-benutzerverwaltung.md), #1533) | täglich | Löscht Zeilen aus `local_refresh_tokens`, `local_revoked_tokens` und `local_action_tokens` spätestens sieben Tage nach Ablauf **oder** Widerruf, sperrt lokale Konten nach der konfigurierten Inaktivitätsfrist und verschickt Ablauf-Erinnerungen. Doppelte Läufe sind idempotent (Löschung nach Zeitstempel, Sperre als bedingter `UPDATE`); bei mehreren Instanzen liefe er mehrfach, ohne Schaden, aber mit doppelten Erinnerungsmails |
+| `DiagnosticContextRetentionScheduler.deleteExpiredPartitions` (ADR-0015) | monatlich | Wie `AuditRetentionScheduler` über denselben DB-seitigen Forward-only-Cap (`last_cutoff`/`last_run_month` in `opaa_diagnostic_context_delete_expired_partitions`) abgesichert; ein doppelter Lauf löscht nichts zusätzlich |
+| `RerankModelRole.probePeriodically` | alle `PROBE_INTERVAL_MILLIS` | Reine Sondierung ohne Schreibwirkung. Bei N Instanzen die N-fache Sondierungslast gegen den Rerank-Endpunkt, und jede Instanz kennt nur ihr eigenes Ergebnis (siehe „Prozesslokale Zähler" unten) |
 | `IndexingJobRecoveryScheduler.recoverOnStartup` | Prozessstart (`ApplicationReadyEvent`, kein `@Scheduled`) | Ruft `IndexingJobService.recoverJobsOrphanedByRestart` auf — siehe Widerspruch unten |
+| `UploadPendingRecoveryRunner` (#614, ADR-0030 Entscheidung 7) | Prozessstart (`ApplicationRunner`, kein `@Scheduled`) | Dieselbe Prämisse wie `recoverJobsOrphanedByRestart`, nur für den Upload-Pfad: setzt jede `PENDING`-Zeile auf `FAILED`, die älter ist als `opaa.upload.pending-recovery-threshold-minutes`. Die Schwelle mildert den Multi-Instanz-Fall, beseitigt ihn nicht — ein groß geratenes, langsam geparstes Dokument einer anderen Instanz überschreitet sie. Anschließend `UploadedOriginalStore.recoverAfterRestart()`, in der S3-Ausprägung ein `sweepTempDirectory()`: auf einem geteilten Temp-Volume löschte der Start der einen Instanz die Arbeitsdateien laufender Uploads der anderen |
 
 **Widerspruch zwischen Scheduler-Javadoc und Recovery-Verhalten:**
 `LibraryIndexingScheduler`s Javadoc beschreibt explizit ein Szenario mit mehreren Instanzen ("Multiple
@@ -89,6 +102,7 @@ im Allgemeinen.
 | Fundstelle | Zustand |
 | --- | --- |
 | `DirectorySyncService.run` | Zwei gleichzeitige Synchronisationsläufe derselben Organisation überlappen unkontrolliert — im Javadoc bereits als "Known gap" benannt, mit zwei genannten Lösungsrichtungen (Serialisierung per Advisory-Lock, oder Last-Writer-Wins als dokumentierte Betriebsvoraussetzung) |
+| `MetadataBackfillService`, `ContextPrefixRerunService`, `PipelineReindexService` | Die drei ausdrücklich angestoßenen Wartungsläufe haben keine Entsprechung zu `uk_indexing_jobs_library_running`. Sie sind idempotent und wiederaufnehmbar, die Korrektheit hängt also nicht daran — wohl aber die Kosten: zwei gleichzeitige Läufe über derselben Bibliothek bedeuten doppelte Einbettungs- und Modellaufrufe auf demselben Endpunkt. Heute braucht es dafür zwei Administratoren im selben Moment; bei mehreren Instanzen genügt ein Doppelklick, den der Lastverteiler auf zwei Instanzen legt |
 
 **Prozesslokale Task-Executor-Warteschlangen** (Grund, warum eine `RUNNING`-Zeile implizit "läuft auf
 mir" statt "läuft auf irgendeiner Instanz" bedeutet - der `@Async`-Task, der sie abarbeitet, ist immer
@@ -98,12 +112,37 @@ an den JVM-Prozess gebunden, der ihn eingereiht hat):
 | --- | --- |
 | `IndexingConfiguration.indexingTaskExecutor`, `.embeddingTaskExecutor`, `.uploadTaskExecutor` | Drei `ThreadPoolTaskExecutor`-Bohnen mit eigener, rein prozessinterner Warteschlange - eine Zeile, die auf Instanz A als `RUNNING` eingereiht wurde, hat auf Instanz B keinen wartenden Task, den ein Neustart von B jemals hätte abbrechen können |
 
+**Prozesslokale Warteschlange mit eigener Entprellung** (kein `@Scheduled` und kein Task-Executor,
+sondern eine dritte Bauart — eine Map im Prozess plus ein eigener `TaskScheduler`):
+
+| Fundstelle | Zustand |
+| --- | --- |
+| `SourceEventIntake.pending` | Der gesamte Push-Pfad (Confluence-Webhooks, S3-Ereignisbenachrichtigungen) sammelt die gemeldeten Schlüssel je Bibliothek in einer prozesslokalen `HashMap` und stößt `debounce` später einen gezielten Lauf an. Bei mehreren Instanzen verteilt der Lastverteiler die Benachrichtigungen, es entstehen also mehrere Entprellfenster je Bibliothek. Schwerer wiegt, dass die Zusage der Klasse bricht: „ein verworfener Stapel kostet Aktualität, nie Korrektheit, weil der nächste Lauf dieselben Schlüssel abdeckt" gilt nur, solange der laufende Lauf der eigene ist — ist es ein gezielter Lauf einer anderen Instanz über deren Schlüsselmenge, gehen die Schlüssel des verworfenen Stapels bis zum nächsten Vollabgleich verloren |
+
+**Prozesslokale Parallelitätsbudgets** (eine Obergrenze, die als Semaphore im Prozess geführt wird,
+gilt bei N Instanzen N-fach):
+
+| Fundstelle | Zustand |
+| --- | --- |
+| `AttachmentExtractionLimiter` | `Semaphore` für die installationsweit gleichzeitigen Anhangsextraktionen, dazu eine Sperre je Elterndokument (`parentLocks`). Beide wirken nur im eigenen Prozess: das Budget wird vervielfacht, und zwei Instanzen können denselben Elternteil gleichzeitig extrahieren |
+
+**Prozesslokale Zähler und Schätzwerte mit nutzersichtbarer Wirkung** (kein Konsistenzproblem der
+Daten, aber eine Zahl, die je nach getroffener Instanz anders lautet):
+
+| Fundstelle | Zustand |
+| --- | --- |
+| `EmbeddingRateEstimator` | Der gemessene Einbettungsdurchsatz dieses Prozesses, Grundlage der Folgekosten-Vorschau („rund 40 Minuten"). Bei mehreren Instanzen misst jede nur ihre eigenen Aufrufe — und die Schätzung wird zusätzlich inhaltlich zu optimistisch, sobald sich zwei Instanzen denselben Einbettungsendpunkt teilen und gegenseitig ausbremsen |
+| `MetadataBackfillService.lastSkippedByLibrary`, `ContextPrefixRerunService.lastSkippedByLibrary` | Was der jeweils letzte Lauf einer Bibliothek nicht voranbringen konnte — veröffentlicht als `lastSkippedDocuments` in `MetadataBackfillProgress` bzw. `ContextPrefixRerunProgress`. Zwei Instanzen geben für dieselbe Bibliothek verschiedene Werte aus, je nachdem, wo der Lauf lief und wo die Abfrage landet |
+| `RerankModelRole.lastKnown`, `.degradedCalls` | Zuletzt sondierter Zustand der Rerank-Rolle und die Zahl der Aufrufe ohne verwertbare Rangfolge seit Prozessstart. Der Zähler ist ausdrücklich als „zwei Lesungen vergleichen" gedacht; über mehrere Instanzen vergliche man zwei verschiedene Zähler |
+| Die Micrometer-Zähler und -Gauges allgemein, z. B. `opaa.conversations.active` | Je Prozess geführt. Ein Prometheus muss jede Instanz abgreifen, und jede Oberfläche, die einen solchen Wert direkt zeigt, zeigt einen Teilwert |
+
 **Prozesslokaler Zeitgeber** (eine Zusage, die aus einer prozessweit geführten Variable folgt — bei
 mehreren Instanzen führt jede ihre eigene):
 
 | Fundstelle | Zustand |
 | --- | --- |
 | `PermissionHistoryClock` ([ADR-0032](0032-zeitquelle-rechtehistorie.md), #1497) | Zuletzt vergebene Intervallgrenze der Rechtehistorie. Garantiert streng aufsteigende Grenzen für aufeinanderfolgende Zustandsänderungen desselben Objekts — je Prozess. Bei mehreren Instanzen könnten zwei Änderungen am selben Objekt aus verschiedenen Prozessen wieder dieselbe Grenze bekommen, und die Wanduhren zweier Hosts können gegeneinander driften; das Ergebnis wäre erneut ein leeres Intervall, das die Stichtags-Rekonstruktion nie meldet |
+| Die Heartbeat-Fristen von `IndexingJobRecoveryScheduler.recoverStaleRunningJobs` | Kein eigener Zustand, aber dieselbe Abhängigkeit von der Wanduhr des eigenen Hosts: der Vergleich von `lastProgressAt` gegen `IndexingProperties#staleJobTimeout` ist heute ein Vergleich innerhalb eines Prozesses und deshalb driftfrei. Sobald zwei Instanzen die Läufe der jeweils anderen anhand dieses Heartbeats beurteilen sollen — die im Abschnitt „Skizze" genannte Lösungsrichtung —, entscheidet die Uhrendrift zwischen den Hosts mit, und eine vorgehende Uhr failt einen fremden, gesunden Lauf vorzeitig. Beide Seiten müssen dann aus derselben Quelle kommen, naheliegend der Datenbankuhr — dieselbe Umstellung, die `PermissionHistoryClock` ohnehin braucht (#1517) |
 
 **Prozesslokale/knotenlokale Dateiablage:**
 
@@ -111,6 +150,69 @@ mehreren Instanzen führt jede ihre eigene):
 | --- | --- |
 | `LibraryDocumentService` (Upload-Pfad, `opaa.upload.storage-path`, Default `./uploads`) | Speichert hochgeladene Dokumente unter `<storagePath>/<organizationId>/<libraryId>/<random-uuid><extension>` auf dem lokalen Dateisystem des Prozesses. Bei zwei Instanzen ohne geteiltes Volume: ein Upload, der auf Instanz A ankommt, ist über Instanz B nicht lesbar - 404/`FileNotFoundException`, sobald eine spätere Anfrage (Download, Re-Indizierung) zufällig auf B landet. Härteste Annahme dieser Liste: kein Cache-Verfall oder Retry hilft hier, die Datei existiert auf B schlicht nicht |
 | `FilesystemPathAllowlist` (`FILESYSTEM`-Quellentyp, #484, ADR-0018) | Vom Betreiber gemounteter Nachbarfall, keine eigene Annahme dieser Anwendung: das Backend liest von per `opaa.indexing.filesystem.allowlist` konfigurierten Basisverzeichnissen. Ob mehrere Instanzen dasselbe Verzeichnis sehen, hängt vollständig davon ab, ob der Betreiber es auf jeder Instanz gleich mountet - anders als beim Upload-Pfad gibt es hier keinen anwendungsseitigen Schreibpfad, der bei fehlendem geteiltem Mount silently divergieren könnte |
+
+### Annahmen außerhalb des Anwendungscodes
+
+Drei Stellen sind keine Fundstelle im obigen Sinne — sie stehen in keiner Klasse, würden aber beim
+Umbau gleichermaßen gebraucht und sind deshalb hier notiert, damit der spätere Scan sie nicht
+übersieht.
+
+**Betrieb: kein sanftes Herunterfahren, keine eigene Readiness.** `server.shutdown` ist nicht auf
+`graceful` gesetzt (der Boot-Vorgabewert stoppt sofort, laufende Anfragen brechen ab), und
+`management` gibt `health,info,prometheus,metrics` ohne aktivierte Liveness-/Readiness-Gruppen frei.
+Es gibt damit keine Readiness, die sich von der Liveness unterscheidet, und der aggregierte
+`/actuator/health` hängt über `ChatHealthIndicator`, `EmbeddingsHealthIndicator` und
+`VectorStoreHealthIndicator` an der Erreichbarkeit von LLM und Vektorspeicher. Ein Lastverteiler, der
+darauf prüft, nähme bei einem hängenden LLM alle Instanzen gleichzeitig aus dem Verkehr. Für den
+Single-Instance-Betrieb ist beides folgenlos; für ein Update einer Instanz nach der anderen ohne
+Ausfall ist es Voraussetzung.
+
+**Gleichzeitiger Kaltstart zweier Prozesse gegen dieselbe Datenbank.**
+`spring.ai.vectorstore.pgvector.initialize-schema: true` lässt jede startende Instanz
+`CREATE TABLE/INDEX IF NOT EXISTS` gegen `vector_store` absetzen; Postgres serialisiert DDL dieser
+Form nicht verlässlich. Liquibase ist über seinen eigenen Lock sicher, verschiebt die Frage aber auf
+die Zeitachse: die wartende Instanz kann das Start- und Healthcheck-Zeitfenster ihrer Umgebung
+reißen. Ein Multi-Instanz-Deployment braucht deshalb entweder einen gestaffelten Start oder einen
+eigenen Migrationsschritt vor den Anwendungsinstanzen.
+
+**Keine Erkennung widersprüchlicher Konfiguration zwischen Instanzen.** `AuthProfileGuard`,
+`PgVectorDimensionsGuard`, `OpenAiBaseUrlGuard`, `RerankRoleStartupCheck`, `LocalAuthSecretGuard` und
+`TrustedProxyStartupGuard` prüfen jede Instanz für sich gegen ihre Umgebung und die Datenbank. Keiner
+von ihnen bemerkt, dass eine **zweite** Instanz mit unvereinbarer Konfiguration gegen dieselbe
+Datenbank läuft. Praktisch relevant für die Einbettungsdimension, den Einbettungs- und
+Chat-Endpunkt, das Auth-Profil, die Proxy-Vertrauensliste und `OPAA_AUTH_JWT_SECRET`: ein
+abweichendes Secret macht die lokalen Tokens der einen Instanz auf der anderen ungültig, ohne dass
+irgendwo mehr auffiele als sporadische 401. Eine Instanztabelle mit Heartbeat und einem Abdruck der
+harten Konfigurationswerte schlösse diese Lücke und lieferte zugleich die Instanzkennung, die der
+Recovery-Umbau ohnehin braucht.
+
+### Geprüft und ausdrücklich unproblematisch
+
+Damit ein späterer Umbau diese Fragen nicht erneut aufwirft — der Stand zum Zeitpunkt des
+Nachtrags, jeweils mit dem Grund:
+
+- **Keine Sitzungsaffinität.** Alle Sicherheitskonfigurationen sind `STATELESS`; der CSRF-Schutz der
+  lokalen Anmeldung liegt in einem Cookie (`CookieCsrfTokenRepository`), nicht in serverseitigem
+  Sitzungszustand. Sticky Sessions wären nicht nötig.
+- **Keine an eine Instanz gebundene Verbindung.** Es gibt keinen SSE-, Streaming- oder
+  WebSocket-Endpunkt.
+- **Audit-Partitionen entstehen nicht zur Laufzeit,** sondern mit festem Horizont in der Baseline —
+  im Betrieb gibt es hier kein DDL-Rennen zwischen Instanzen.
+- **Mehrere Stellen koordinieren bereits über die Datenbank und tragen deshalb schon heute:** die
+  Advisory-Locks in `UserRepository.lockRoleChanges`, `GroupRepository` und `AssetGrantRepository`
+  (und damit `LocalAdminAvailabilityGuard`), der Forward-only-Cap beider Aufbewahrungsläufe, die
+  Sequenzvergabe in `ChatService.appendTurn` gegen `uk_chat_messages_chat_sequence`, die
+  Prüfsummen-Deduplizierung gegen `uk_documents_library_checksum`, die adressbasierte
+  Erstadministrator-Regel (`InitialAdminPolicy`, kein „erster Nutzer"-Zähler) sowie alle drei
+  Seed-Läufe (`OidcProviderSeedRunner`, `LlmModelSeedRunner`, `LocalAdminSeeder`), die ihren
+  Marker über eine Datenbankzusage schützen und eine `DataIntegrityViolationException` ausdrücklich
+  als „eine andere Instanz war schneller" behandeln. Diese Stellen sind zugleich das Vorbild, an dem
+  sich ein Umbau orientieren kann; Postgres reicht dafür.
+- **Check-then-act ohne Datenbankzusage bleibt unscharf, aber nicht anders als heute:**
+  `LibraryStorageQuotaService.wouldExceedQuota` (im Javadoc bereits so beschrieben) und die
+  Sortiernummer in `LibraryMetadataFieldService` (`max(sortOrder) + 10`) sind schon bei zwei
+  nebenläufigen Anfragen einer Instanz unscharf. Mehrere Instanzen machen das häufiger, nicht
+  qualitativ anders.
 
 ### Regel für neue Stellen
 
@@ -163,6 +265,21 @@ Diese Skizze ist keine Umsetzungsplanung, nur eine Einordnung der Größenordnun
   des lokalen Dateisystems. `FilesystemPathAllowlist`s Nachbarfall braucht keinen Anwendungs-Umbau,
   nur eine Betriebsvoraussetzung: dieselben Basisverzeichnisse müssen auf jeder Instanz identisch
   gemountet sein.
+- **`UploadPendingRecoveryRunner`**: Derselbe Umbau wie bei `recoverJobsOrphanedByRestart` — nur eigene
+  Zeilen failen, sobald eine Instanzkennung existiert. Der angeschlossene `sweepTempDirectory()`-Teil
+  braucht zusätzlich ein je Instanz eigenes Arbeitsverzeichnis, sonst räumt ein Start fremde,
+  laufende Uploads weg.
+- **`SourceEventIntake`**: Die Entprellung müsste ihren Stapel in der Datenbank halten statt im
+  Prozess, oder der Push-Pfad koordiniert sich über denselben Sperrmechanismus wie der Zeitplan.
+  Nicht mit den `@Scheduled`-Jobs zusammenfassen: der Verlust liegt hier nicht im doppelten Anlaufen,
+  sondern im Verwerfen eines Stapels gegen einen fremden Lauf.
+- **Ereignisgesteuerte Konfigurations-Caches**: Ein Invalidierungssignal über Prozessgrenzen hinweg,
+  naheliegend Postgres `LISTEN`/`NOTIFY`, weil Postgres ohnehin vorhanden ist. Ohne TTL gibt es hier
+  keine Rückfallebene, die die Lücke von selbst schlösse — dieser Punkt ist damit nach der
+  Dateiablage der zweitwichtigste.
+- **Prozesslokale Zähler und Schätzwerte**: Entweder aus der Datenbank speisen (die beiden
+  `lastSkipped`-Werte gehören ohnehin zum Lauf, nicht zum Prozess) oder bewusst als „Wert dieser
+  Instanz" ausweisen. Kein Korrektheitsproblem, aber eine Entscheidung, die pro Wert fallen muss.
 
 ## Konsequenzen
 
