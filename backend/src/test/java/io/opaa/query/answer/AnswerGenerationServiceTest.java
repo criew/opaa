@@ -410,8 +410,8 @@ class AnswerGenerationServiceTest {
 
   /**
    * A message classified as needing no search may still be a question. For it, the ban on saying
-   * that nothing was found must not hold - otherwise an answer without matching passages would
-   * come from the model's own knowledge, uncited.
+   * that nothing was found must not hold - otherwise an answer without matching passages would come
+   * from the model's own knowledge, uncited.
    */
   @Test
   void theNoSearchHintLiftsItsBanOnSayingNothingWasFoundForAQuestion() {
