@@ -135,7 +135,7 @@ public class LibraryMetadataFieldController {
     LibraryMetadataSchemaRunResult result = fieldService.deleteField(libraryId, fieldKey, caller);
     // Die eigene Löschung entscheidet, nicht der Zustand der Bibliothek: Läuft daneben noch eine
     // Abbildung an einem anderen Feld, ist diese Löschung trotzdem fertig.
-    if (result.confirmedChangeComplete()) {
+    if (result.complete()) {
       return ResponseEntity.noContent().build();
     }
     return ResponseEntity.accepted().body(LibraryMetadataFieldResponseMapper.toRunResponse(result));

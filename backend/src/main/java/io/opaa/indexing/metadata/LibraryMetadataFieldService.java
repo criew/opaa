@@ -459,13 +459,16 @@ public class LibraryMetadataFieldService {
     // denselben Code führen, und die Restmenge einer fremden Abbildung gehört nicht in diese
     // Antwort.
     long remaining =
-        run.confirmedChange().map(LibraryMetadataSchemaChangeView::remainingDocuments).orElse(0L);
+        run.pendingChanges().stream()
+            .filter(pending -> code.equals(pending.valueCode()))
+            .mapToLong(LibraryMetadataSchemaChangeView::remainingDocuments)
+            .sum();
     return new LibraryFieldValueRemapResult(
         toLeer ? 0 : run.processedDocuments(),
         toLeer ? run.processedDocuments() : 0,
         change.getCorrelationRef(),
         remaining,
-        run.confirmedChangeComplete());
+        run.pendingChanges().stream().noneMatch(pending -> code.equals(pending.valueCode())));
   }
 
   /**
