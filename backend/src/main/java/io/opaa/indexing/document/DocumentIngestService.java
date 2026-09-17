@@ -403,8 +403,9 @@ public class DocumentIngestService {
   /**
    * Same content under a new marker, title, place or folder: the chunks stay, but the provenance
    * moves with the row, so the next run's pre-fetch check skips the document again - and, when the
-   * source container or hierarchy path itself moved, {@link #rewriteSourceContext} keeps every
-   * chunk's copy in step with the row's, without touching text or embedding.
+   * file name or the source container or hierarchy path itself moved, {@link
+   * #rewriteChunkProvenance} keeps every chunk's copy in step with the row's, without touching text
+   * or embedding.
    */
   private void refreshProvenance(Document existing, DocumentIngest ingest, String checksum) {
     String marker = ingest.changeMarker();
@@ -420,30 +421,48 @@ public class DocumentIngestService {
     boolean contextChanged =
         !Objects.equals(existing.getSourceContainerKey(), containerKey)
             || !Objects.equals(existing.getSourceHierarchyPath(), hierarchyPath);
-    if (!Objects.equals(existing.getFileName(), ingest.fileName()) || contextChanged) {
+    boolean fileNameChanged = !Objects.equals(existing.getFileName(), ingest.fileName());
+    if (contextChanged || fileNameChanged) {
+      // Chunks first, row second: rewriteChunkProvenance is a plain UPDATE a retried run repeats
+      // harmlessly, but refreshConnectorTitleAndContext commits the row. Committing the row first
+      // and then failing the chunk update would make the next run's contextChanged false and
+      // strand the chunks at their old values forever - the very defect this method exists to fix.
+      rewriteChunkProvenance(
+          existing.getId(),
+          new SourceDocumentContext(containerKey, hierarchyPath),
+          fileNameChanged ? ingest.fileName() : null);
       documentRepository.refreshConnectorTitleAndContext(
           existing.getId(), ingest.fileName(), containerKey, hierarchyPath);
     }
-    if (contextChanged) {
-      rewriteSourceContext(
-          existing.getId(), new SourceDocumentContext(containerKey, hierarchyPath));
-    }
     if (ingest.folder() != null && !Objects.equals(existing.getFolderId(), ingest.folder().id())) {
+      // No @DynamicUpdate on Document: a plain save writes every mapped column from this
+      // in-memory entity, so a file name or context move applied only at the row above must be
+      // mirrored here too, or this save would overwrite it back to its stale in-memory value.
+      existing.setFileName(ingest.fileName());
+      existing.applySourceContext(new SourceDocumentContext(containerKey, hierarchyPath));
       existing.setFolderId(ingest.folder().id());
       documentRepository.save(existing);
     }
   }
 
   /**
-   * Rewrites {@code source_container_key} and {@code source_hierarchy_path} on every chunk of
-   * {@code documentId} in place via {@link VectorChunkStore#updateDocumentMetadata} - the same
-   * metadata-only path {@code DocumentMetadataService} uses for a core-field correction. A key
-   * whose value is {@code null} is cleared rather than written, matching {@link
-   * #sourceContextMetadata}; text, embedding and the Kontextpraefix are untouched, since neither
-   * key feeds it (only {@link ChunkingService#LOCATION_METADATA_KEY}, the chunk's own structural
-   * position, does).
+   * Rewrites {@code file_name} (when {@code changedFileName} is not {@code null}) and {@code
+   * source_container_key}/{@code source_hierarchy_path} on every chunk of {@code documentId} in
+   * place via {@link VectorChunkStore#updateDocumentMetadata} - the same metadata-only path {@code
+   * DocumentMetadataService} uses for a core-field correction. A context key whose value is {@code
+   * null} is cleared rather than written, matching {@link #sourceContextMetadata}. Touches neither
+   * text, embedding nor the chunk's own Strukturkontext ({@link
+   * ChunkingService#LOCATION_METADATA_KEY}); does <b>not</b> touch the Kontextpraefix, even though
+   * {@link ChunkContextPrefix#ingestTitle} can itself embed the hierarchy path - a moved document
+   * whose Kernfeld Titel extraction never filled in keeps that stale hierarchy path in its prefix
+   * until a manual correction or a re-index rewrites it.
    */
-  private void rewriteSourceContext(UUID documentId, SourceDocumentContext context) {
+  private void rewriteChunkProvenance(
+      UUID documentId, SourceDocumentContext context, String changedFileName) {
+    Map<String, Object> values = new HashMap<>(sourceContextMetadata(context));
+    if (changedFileName != null) {
+      values.put("file_name", changedFileName);
+    }
     Set<String> keysToClear = new HashSet<>();
     if (context.containerKey() == null) {
       keysToClear.add(ChunkingService.SOURCE_CONTAINER_METADATA_KEY);
@@ -451,8 +470,7 @@ public class DocumentIngestService {
     if (context.hierarchyPath() == null) {
       keysToClear.add(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY);
     }
-    vectorChunkStore.updateDocumentMetadata(
-        documentId, sourceContextMetadata(context), keysToClear);
+    vectorChunkStore.updateDocumentMetadata(documentId, values, keysToClear);
   }
 
   /**

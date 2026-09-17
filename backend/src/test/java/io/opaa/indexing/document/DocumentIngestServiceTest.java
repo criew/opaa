@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.longThat;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -35,6 +36,7 @@ import io.opaa.indexing.format.DocumentFormatResult;
 import io.opaa.indexing.format.DocumentFormatSource;
 import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.indexing.format.file.fallback.TikaFallbackFormat;
+import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.attachment.AttachmentLimits;
@@ -61,6 +63,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -552,7 +555,8 @@ class DocumentIngestServiceTest {
     void anUnchangedDocumentUnderANewMarkerTitleOrPlaceOnlyMovesThose() throws IOException {
       // A title-only or label-only edit bumps the version without changing the body: the chunks
       // stay, only last_modified_remote advances so the next run's pre-fetch check skips the
-      // document again, and the new title and place become visible without a chunk changing.
+      // document again, and the new title and place reach both the row and its chunks - a Beleg
+      // must not go on citing the old title or place forever.
       Document existing =
           new Document("Abschnitt 1.1", PAGE_URL, "text/html", 40L, DocumentSourceType.CONFLUENCE);
       existing.setStatus(DocumentStatus.INDEXED);
@@ -583,8 +587,98 @@ class DocumentIngestServiceTest {
       verify(documentRepository)
           .refreshConnectorTitleAndContext(
               existing.getId(), "Abschnitt 1.1 (umbenannt)", "ENG", null);
+      verify(vectorStoreWriter)
+          .updateDocumentMetadata(
+              existing.getId(),
+              Map.of(
+                  ChunkingService.SOURCE_CONTAINER_METADATA_KEY,
+                  "ENG",
+                  "file_name",
+                  "Abschnitt 1.1 (umbenannt)"),
+              Set.of(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY));
       verify(documentRepository, never()).save(any(Document.class));
       verify(documentRepository, never()).delete(any(Document.class));
+    }
+
+    @Test
+    void aRenameAloneWithoutAContextChangeStillMovesTheFileNameOntoTheChunks() throws IOException {
+      // file_name is read back for citation (ChatSourceAssembler, AnswerGenerationService,
+      // CitationValidator, ChunkGroupingKey): a renamed page without a place change must not
+      // leave its chunks citing the old title forever, even though the context keys stay put.
+      Document existing =
+          new Document("Abschnitt 1.1", PAGE_URL, "text/html", 40L, DocumentSourceType.CONFLUENCE);
+      existing.setStatus(DocumentStatus.INDEXED);
+      existing.setChecksum("sha256-of-page");
+      existing.setChunkCount(2);
+      existing.setIndexedAt(Instant.parse("2026-09-01T08:00:00Z"));
+      existing.setLastModifiedRemote("7");
+      existing.applySourceContext(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1"));
+      when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-page");
+      when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), PAGE_URL))
+          .thenReturn(Optional.of(existing));
+
+      DocumentIngestResult result =
+          service.ingest(
+              DocumentIngests.confluencePage(
+                  targetLibrary,
+                  "unveränderter Text",
+                  "Abschnitt 1.1 (umbenannt)",
+                  PAGE_URL,
+                  "8",
+                  Instant.parse("2026-02-01T08:00:00Z"),
+                  new SourceDocumentContext("ENG", "Handbuch / Kapitel 1")),
+              null);
+
+      assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
+      verify(vectorStoreWriter)
+          .updateDocumentMetadata(
+              existing.getId(),
+              Map.of(
+                  ChunkingService.SOURCE_CONTAINER_METADATA_KEY,
+                  "ENG",
+                  ChunkingService.SOURCE_HIERARCHY_METADATA_KEY,
+                  "Handbuch / Kapitel 1",
+                  "file_name",
+                  "Abschnitt 1.1 (umbenannt)"),
+              Set.of());
+    }
+
+    @Test
+    void aPageMovedToItsSpaceRootClearsTheHierarchyPathOnTheChunksInsteadOfWritingNull()
+        throws IOException {
+      // The deletion branch (hierarchyPath becomes null) is its own path through
+      // rewriteChunkProvenance/sourceContextMetadata, untested until now: an inverted null-check
+      // there would still leave this suite green without a case that hits it.
+      Document existing =
+          new Document("Abschnitt 1.1", PAGE_URL, "text/html", 40L, DocumentSourceType.CONFLUENCE);
+      existing.setStatus(DocumentStatus.INDEXED);
+      existing.setChecksum("sha256-of-page");
+      existing.setChunkCount(2);
+      existing.setIndexedAt(Instant.parse("2026-09-01T08:00:00Z"));
+      existing.setLastModifiedRemote("7");
+      existing.applySourceContext(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1"));
+      when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-page");
+      when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), PAGE_URL))
+          .thenReturn(Optional.of(existing));
+
+      DocumentIngestResult result =
+          service.ingest(
+              DocumentIngests.confluencePage(
+                  targetLibrary,
+                  "unveränderter Text",
+                  "Abschnitt 1.1",
+                  PAGE_URL,
+                  "8",
+                  Instant.parse("2026-02-01T08:00:00Z"),
+                  new SourceDocumentContext("ENG", null)),
+              null);
+
+      assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
+      verify(vectorStoreWriter)
+          .updateDocumentMetadata(
+              existing.getId(),
+              Map.of(ChunkingService.SOURCE_CONTAINER_METADATA_KEY, "ENG"),
+              Set.of(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY));
     }
 
     @Test
@@ -630,9 +724,58 @@ class DocumentIngestServiceTest {
                   ChunkingService.SOURCE_HIERARCHY_METADATA_KEY,
                   "Handbuch / Kapitel 2"),
               Set.of());
+      // The chunk update must commit before the row does: refreshConnectorTitleAndContext is
+      // itself @Transactional and commits on return, so if the row moved first and the chunk
+      // update then failed, the next run's contextChanged would already read false and strand
+      // the chunks at their old values forever.
+      InOrder order = inOrder(vectorStoreWriter, documentRepository);
+      order.verify(vectorStoreWriter).updateDocumentMetadata(any(), any(), any());
+      order.verify(documentRepository).refreshConnectorTitleAndContext(any(), any(), any(), any());
       // A pure metadata correction: no re-parse, no re-embedding.
       verify(documentService, never()).parseDocument(any());
       verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
+    }
+
+    @Test
+    void aFolderMoveAlongsideAContextChangeSavesTheRowWithBothNewValues() throws IOException {
+      // Document has no @DynamicUpdate: the folder-move save() at the end of refreshProvenance
+      // writes every mapped column from the in-memory entity. Without spreading the new file
+      // name and context onto it first, that save would silently revert the row update the same
+      // call just made above it - even though the chunks already carry the new values.
+      Document existing =
+          new Document("Abschnitt 1.1", PAGE_URL, "text/html", 40L, DocumentSourceType.CONFLUENCE);
+      existing.setStatus(DocumentStatus.INDEXED);
+      existing.setChecksum("sha256-of-page");
+      existing.setChunkCount(2);
+      existing.setIndexedAt(Instant.parse("2026-09-01T08:00:00Z"));
+      existing.setLastModifiedRemote("7");
+      existing.applySourceContext(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1"));
+      when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-page");
+      when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), PAGE_URL))
+          .thenReturn(Optional.of(existing));
+      UUID folderId = UUID.randomUUID();
+
+      DocumentIngestResult result =
+          service.ingest(
+              DocumentIngest.text(targetLibrary, PAGE_URL, "unveränderter Text")
+                  .sourceType(DocumentSourceType.CONFLUENCE)
+                  .title("Abschnitt 1.1 (umbenannt)")
+                  .context(new SourceDocumentContext("ENG", "Handbuch / Kapitel 2"))
+                  .changeMarker("8")
+                  .modifiedAt(
+                      DocumentProperties.instantToLocalDate(Instant.parse("2026-02-01T08:00:00Z")))
+                  .pipelineId(ConfluenceStorageFormat.ID)
+                  .folder(folderId)
+                  .build(),
+              null);
+
+      assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
+      ArgumentCaptor<Document> saved = ArgumentCaptor.forClass(Document.class);
+      verify(documentRepository).save(saved.capture());
+      assertThat(saved.getValue().getFileName()).isEqualTo("Abschnitt 1.1 (umbenannt)");
+      assertThat(saved.getValue().getSourceContainerKey()).isEqualTo("ENG");
+      assertThat(saved.getValue().getSourceHierarchyPath()).isEqualTo("Handbuch / Kapitel 2");
+      assertThat(saved.getValue().getFolderId()).isEqualTo(folderId);
     }
 
     @Test
