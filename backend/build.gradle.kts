@@ -142,33 +142,12 @@ fun registerEvalHarnessTask(
         outputs.upToDateWhen { false }
         jvmArgs("-XX:+EnableDynamicAgentLoading")
         systemProperty("file.encoding", "UTF-8")
-        // Gradle does not forward -D command-line system properties into a forked Test JVM on its
-        // own (they stay properties of the Gradle daemon process that evaluates this build script) —
-        // every property a harness class reads via System.getProperty/Boolean.getBoolean at runtime
-        // needs an explicit systemProperty() call here, read from this daemon-process property at
-        // configuration time. opaa.eval.allowGpu (RetrievalEvaluationHarnessTest, local GPU opt-out),
-        // opaa.eval.ollamaBaseUrl (issue #1076, external Ollama endpoint) and the issue #1041
-        // variant-comparison opt-in, opaa.eval.queryDecomposition (issue #1085: measure the
-        // shipped decomposition-on configuration instead of the baseline's decomposition-off one)
-        // and opaa.eval.explanationDumpDir (ExplanationDump, the protocol dump of the pipeline
-        // path) and opaa.eval.runConversations (issue #1484: the opt-in multi-turn step, which
-        // costs a decomposition call per turn and runs three times) and
-        // opaa.eval.conversationNoteCap (issue #1587: the note cap one ablation arm measures under,
-        // 0 for a run without a Gesprächsnotiz) and opaa.eval.chatBaseUrl/opaa.eval.chatModel
-        // (issue #1674: measure the multi-turn path against a production-grade chat model
-        // instead of the pinned one, optionally at an installation's opaa.eval.chatTemperature;
-        // its API key comes from the environment variable
-        // OPAA_EVAL_CHAT_API_KEY, never from a -D value, which would be visible in the
-        // process list) share this list because all of
-        // them are optional, manually-invoked knobs rather than something every eval domain always
-        // needs.
-        // The opaa.rerank.*/opaa.query.search-window-turns/opaa.query.rerank-candidate-count
-        // entries are Spring properties rather than harness knobs: a reranking measurement run
-        // (issue #1050) has to configure the rerank model role of the forked JVM's application
-        // context, and the #1587 ablation varies the decomposition's search window against the
-        // application default. opaa.rerank.api-key is deliberately
-        // absent - a -D value is visible in the process list, and a measurement run against a
-        // key-protected endpoint is not a supported local setup.
+        // Gradle does not forward -D properties into the forked test JVM: every property a harness
+        // reads at runtime is copied here from the daemon's system properties. All of them are
+        // optional, manually invoked knobs. The opaa.rerank.* and opaa.query.* entries are Spring
+        // properties of the forked application context. API keys are never on this list - a -D
+        // value is visible in the process list; the chat model's key comes from
+        // OPAA_EVAL_CHAT_API_KEY.
         listOf(
             "opaa.eval.allowGpu",
             "opaa.eval.ollamaBaseUrl",

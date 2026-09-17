@@ -7237,8 +7237,7 @@ components:
             effective search scope after permissions and the chat's own settings were applied,
             sorted by name. Lets a client print mockup 1a's "Durchsucht wurden: …" line under an
             answer that could not be substantiated, naming exactly what was looked at. Empty when no
-            search ran (answeredWithoutKnowledge / noKnowledgeAvailableInSpace, or a message the
-            sub-query decomposition found nothing to search for).
+            search ran (answeredWithoutKnowledge / noKnowledgeAvailableInSpace).
 
     SearchedLibrary:
       type: object

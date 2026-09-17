@@ -1,5 +1,6 @@
 package io.opaa.eval;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -33,8 +34,8 @@ import java.util.Map;
  *     {@code null} for a dataset without a {@code topic_switch} case.
  * @param noteCondensation how many of the run's Gespraechsnotiz condensations failed, {@code null}
  *     for a run measured without a note - see {@link NoteCondensationAudit}.
- * @param noSearch the turns without search and those of them the run searched for anyway, {@code
- *     null} for a dataset without such a turn - see {@link NoSearchAudit}.
+ * @param noSearch how the run judged the search need, in both wrong directions - see {@link
+ *     NoSearchAudit}.
  */
 public record ConversationEvaluationReport(
     int conversationMeasurementContractVersion,
@@ -105,11 +106,16 @@ public record ConversationEvaluationReport(
    * <p>{@code pipeline.goldenDatasetFile}/{@code goldenDatasetSha256}/{@code goldenCaseCount}
    * describe the <b>multi-turn</b> dataset here, not the single-question one - the same three
    * fields in the same roles, for the dataset this run actually measured.
+   *
+   * @param chatTemperature the sampling temperature the chat model ran at - an observation next to
+   *     {@code pipeline.chatModel}, never a fixed point: the pinned model always runs at the same
+   *     one, and an external model's run is no baseline run.
    */
   public record ConversationRunConfiguration(
       PipelineEvaluationReport.PipelineRunConfiguration pipeline,
       ConversationMemoryProfile memoryProfile,
-      int turnCount) {}
+      int turnCount,
+      BigDecimal chatTemperature) {}
 
   /**
    * How the Gesprächsnotiz of this run actually came about (#1487): one condensation call per turn,
@@ -128,15 +134,21 @@ public record ConversationEvaluationReport(
       int attemptedCondensations, int failedCondensations, List<String> failedTurnIds) {}
 
   /**
-   * The turns of this run that expect no search ({@code search_expected: false}), and those of them
-   * the run searched for anyway - a message with nothing to look up that the decomposition turned
-   * into a search query or into the fallback. An observation, never a fixed point: the dataset hash
-   * already pins which turns these are. {@code null} for a dataset without such a turn.
+   * How the run judged the search need of its turns, in both wrong directions. Every turn is
+   * searched; the judgement only reaches the answer. An observation, never a fixed point.
    *
-   * @param searchedTurnIds the turns that were searched although nothing was to be searched, in run
-   *     order
+   * @param noSearchTurns the turns that expect no search ({@code search_expected: false})
+   * @param noSearchTurnIdsJudgedAsSearch those of them judged to need a search, in run order
+   * @param searchTurnIdsJudgedAsNoSearch the turns with search judged to need none, in run order -
+   *     the costlier direction: in production such an answer is told there was nothing to search
+   *     for
    */
-  public record NoSearchAudit(int turns, int searchedTurns, List<String> searchedTurnIds) {}
+  public record NoSearchAudit(
+      int noSearchTurns,
+      int noSearchTurnsJudgedAsSearch,
+      List<String> noSearchTurnIdsJudgedAsSearch,
+      int searchTurnsJudgedAsNoSearch,
+      List<String> searchTurnIdsJudgedAsNoSearch) {}
 
   /** How many cases were solved in full, overall and per case class. */
   public record CaseOutcomeSummary(
@@ -171,11 +183,13 @@ public record ConversationEvaluationReport(
    *     recorded only for the change turn of a {@code topic_switch} case (empty otherwise).
    * @param searchExpected {@code false} for a turn without search, whose metric values are {@code
    *     null}: it has no expected documents, and a zero would read as a missed one.
+   * @param searchNeeded whether the run judged the turn to need a search; it searched either way.
    */
   public record TurnResult(
       String turnId,
       int turnIndex,
       boolean searchExpected,
+      boolean searchNeeded,
       String query,
       List<String> expectedDocuments,
       List<String> rankedFileNames,

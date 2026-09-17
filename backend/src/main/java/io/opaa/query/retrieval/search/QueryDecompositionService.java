@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -62,10 +63,43 @@ public class QueryDecompositionService {
   private static final Pattern NON_LETTERS = Pattern.compile("[^\\p{L}]+");
 
   /**
+   * The labels of {@link DecompositionContext#promptMessages()}, as a model copies them in front.
+   */
+  private static final Pattern LEADING_LABELS =
+      Pattern.compile(
+          "^(?:(?:"
+              + Stream.of(
+                      DecompositionContext.WINDOW_LABEL,
+                      DecompositionContext.QUESTION_LABEL,
+                      DecompositionContext.USER_LABEL,
+                      DecompositionContext.ASSISTANT_LABEL)
+                  .map(label -> Pattern.quote(label.replace(":", "").strip()))
+                  .collect(Collectors.joining("|"))
+              + ")\\s*:\\s*)+",
+          Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+
+  /**
+   * A line made of these words alone is a label, not a search query: the words of the labels plus
+   * the few a model wraps them in ("Antwort auf die aktuelle Nutzerfrage:").
+   */
+  private static final Set<String> LABEL_LINE_WORDS =
+      Stream.concat(
+              Stream.of(
+                      DecompositionContext.WINDOW_LABEL,
+                      DecompositionContext.QUESTION_LABEL,
+                      DecompositionContext.USER_LABEL,
+                      DecompositionContext.ASSISTANT_LABEL)
+                  .flatMap(label -> Stream.of(NON_LETTERS.split(label))),
+              Stream.of("antwort", "auf", "die", "zur", "frage", "suchanfrage", "suchanfragen"))
+          .filter(word -> !word.isEmpty())
+          .map(word -> word.toLowerCase(Locale.ROOT))
+          .collect(Collectors.toUnmodifiableSet());
+
+  /**
    * Deliberately carries <b>no</b> example sentence: a small instruct model regularly mistakes an
    * example inside a rule for the task itself and returns it verbatim, discarding the user's
    * question while still looking like a successful decomposition. The output format is therefore
-   * described, never demonstrated.
+   * described, never demonstrated; the sentinel rule names sentence beginnings, not sentences.
    *
    * <p>Equally deliberately a <b>fixed</b> text, the Gesprächsnotiz rule included: the rule is an
    * instruction, not context, and stating it unconditionally keeps this template free of anything
@@ -92,9 +126,12 @@ public class QueryDecompositionService {
       - Korrigiere offensichtliche Tippfehler in der Frage.
       - Ist die Frage bereits eigenständig und einthemig, gib genau eine Suchanfrage zurück - bei \
       Bedarf wortgleich zur Eingabe.
-      - Enthält die aktuelle Nachricht nichts, wonach in der Wissensdatenbank zu suchen ist - etwa \
-      nur einen Wunsch zur Form der Antwort, eine Angabe zur eigenen Person, einen Dank oder eine \
-      Zustimmung -, gib genau das Wort %s zurück und nichts sonst.
+      - Besteht die aktuelle Nachricht nur aus einem Wunsch zur Form der Antwort, einer Angabe zur \
+      eigenen Person, einem Dank oder einer Zustimmung und will sie nichts wissen, gib genau das \
+      Wort %s zurück und nichts sonst. Führt die Nachricht einen Gegenstand des Verlaufs fort - \
+      auch als unvollständiger Satz, als Bedingung, die mit wenn ich oder falls beginnt, als \
+      Anschluss, der mit und für beginnt, oder ohne Fragezeichen -, ist sie eine Frage, und du \
+      gibst Suchanfragen zurück.
       - Beantworte die Frage nicht, bewerte sie nicht und setze das Gespräch nicht fort. Gib nur \
       Suchanfragen zurück, je Zeile genau eine, ohne Nummerierung, ohne Aufzählungszeichen, ohne \
       Anführungszeichen, ohne Einleitung und ohne Erklärung.
@@ -122,7 +159,7 @@ public class QueryDecompositionService {
       List<String> parsed = lines.stream().filter(line -> !isNoSearchSentinel(line)).toList();
       if (parsed.isEmpty() && !lines.isEmpty()) {
         metrics.recordNoSearchDecomposition();
-        log.debug("Query decomposition found nothing to search for - retrieval skipped");
+        log.debug("Query decomposition found nothing to search for - single-query fallback");
         return Optional.of(List.of());
       }
       if (parsed.isEmpty()) {
@@ -172,6 +209,12 @@ public class QueryDecompositionService {
         .equalsIgnoreCase(NON_LETTERS.matcher(NO_SEARCH_SENTINEL).replaceAll(""));
   }
 
+  private static boolean isLabelLine(String line) {
+    return Stream.of(NON_LETTERS.split(line))
+        .filter(word -> !word.isEmpty())
+        .allMatch(word -> LABEL_LINE_WORDS.contains(word.toLowerCase(Locale.ROOT)));
+  }
+
   private String requestDecomposition(DecompositionContext context, int maxSubQueries) {
     String systemText =
         context.systemText(SYSTEM_PROMPT_TEMPLATE.formatted(maxSubQueries, NO_SEARCH_SENTINEL));
@@ -186,10 +229,11 @@ public class QueryDecompositionService {
   }
 
   /**
-   * Splits {@code rawText} into non-blank, deduplicated, bullet-stripped lines. Not capped here:
-   * {@link #decompose} judges relatedness over the model's whole output before truncating, so a
-   * degenerate trailing line cannot displace a usable one out of the judged window. Returns an
-   * empty list for {@code null}, blank, or otherwise unusable input.
+   * Splits {@code rawText} into non-blank, deduplicated lines without a leading bullet or prompt
+   * label, dropping a line of label words alone. Not capped here: {@link #decompose} judges
+   * relatedness over the model's whole output before truncating, so a degenerate trailing line
+   * cannot displace a usable one out of the judged window. Returns an empty list for {@code null},
+   * blank, or otherwise unusable input.
    */
   private List<String> parse(String rawText) {
     if (rawText == null || rawText.isBlank()) {
@@ -200,8 +244,9 @@ public class QueryDecompositionService {
         .lines()
         .map(String::strip)
         .map(line -> LEADING_BULLET_OR_NUMBER.matcher(line).replaceFirst(""))
+        .map(line -> LEADING_LABELS.matcher(line.strip()).replaceFirst(""))
         .map(String::strip)
-        .filter(line -> !line.isEmpty())
+        .filter(line -> !line.isEmpty() && !isLabelLine(line))
         .distinct()
         .toList();
   }

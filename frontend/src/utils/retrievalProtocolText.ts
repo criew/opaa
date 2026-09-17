@@ -102,9 +102,9 @@ const NOTE_RULES: NoteRule[] = [
   },
   {
     name: 'DECOMPOSITION_NO_SEARCH',
-    pattern: /^decomposition found nothing to search for: retrieval halted$/,
+    pattern: /^decomposition found nothing to search for: single-query fallback, answer told so$/,
     german: () =>
-      'Zerlegung: Die Nachricht enthält nichts, wonach zu suchen ist; die Suche wurde nicht ausgeführt.',
+      'Zerlegung: Die Nachricht enthält nichts, wonach zu suchen ist. Gesucht wird trotzdem mit einer einzelnen Suchanfrage; die Antwort erfährt die Einstufung.',
   },
   {
     name: 'DECOMPOSITION_DISABLED',

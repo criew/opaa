@@ -280,9 +280,8 @@ class QueryDecompositionServiceTest {
 
     assertThat(capturedSystemPrompt())
         .contains("ohne Fragezeichen")
-        .contains("\"wenn ich ...\"")
-        .contains("\"falls ...\"")
-        .contains("\"und für ...\"");
+        .contains("Bedingung, die mit wenn ich oder falls beginnt")
+        .contains("Anschluss, der mit und für beginnt");
   }
 
   /**

@@ -63,14 +63,17 @@ public class AnswerGenerationService {
   private static final String CONTEXT_SECTION = "\n\nKontextdokumente:\n";
 
   /**
-   * Stands in for {@link #CONTEXT_SECTION} when the decomposition found nothing to search for. An
-   * empty passage list alone reads as a failed search, and the model says it found nothing - to a
-   * message that asked for nothing.
+   * Precedes {@link #CONTEXT_SECTION} when the decomposition found nothing to search for. Passages
+   * that do not fit a remark read as a failed search, and the model says it found nothing - to a
+   * message that asked for nothing. The classification can be wrong, so the passages stay and a
+   * question is still answered from them.
    */
-  static final String NO_SEARCH_SECTION =
-      "\n\nKontextdokumente: keine. Die aktuelle Nachricht enthält nichts, wonach zu suchen war,"
-          + " deshalb wurde nicht gesucht. Gehe direkt auf die Nachricht ein und weise nicht darauf"
-          + " hin, dass keine Dokumente vorliegen oder nichts gefunden wurde.";
+  static final String NO_SEARCH_HINT =
+      "\n\nDie aktuelle Nachricht enthält voraussichtlich nichts, wonach zu suchen war, etwa einen"
+          + " Wunsch zur Form der Antwort, eine Angabe zur eigenen Person oder einen Dank. Gehe"
+          + " direkt auf die Nachricht ein. Behaupte nicht, nichts gefunden zu haben, und weise"
+          + " nicht darauf hin, dass keine passenden Dokumente vorliegen. Enthält die Nachricht doch"
+          + " eine Frage, beantworte sie wie jede andere anhand der Kontextdokumente.";
 
   /**
    * Repeats the answer language after the passages. The leading rule alone does not keep a small
@@ -99,7 +102,7 @@ public class AnswerGenerationService {
    * See {@link #CONTEXT_SECTION} for why it must not follow the passages.
    *
    * @param searchNeeded {@code false} when the decomposition found nothing to search for in {@code
-   *     question}; the passages are then replaced by {@link #NO_SEARCH_SECTION}.
+   *     question}; {@link #NO_SEARCH_HINT} then precedes the passages.
    */
   public ChatResponse generateAnswer(
       String question,
@@ -111,7 +114,9 @@ public class AnswerGenerationService {
     String systemText =
         SYSTEM_PROMPT
             + (noteBlock == null ? "" : "\n\n" + noteBlock.modelText())
-            + (searchNeeded ? CONTEXT_SECTION + formatChunks(relevantChunks) : NO_SEARCH_SECTION)
+            + (searchNeeded ? "" : NO_SEARCH_HINT)
+            + CONTEXT_SECTION
+            + formatChunks(relevantChunks)
             + LANGUAGE_REMINDER;
 
     log.debug("Sending prompt to LLM with {} context chunks", relevantChunks.size());

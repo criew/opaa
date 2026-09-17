@@ -107,6 +107,7 @@ class ConversationRunPrerequisitesTest {
                         "verw-conv-001#1",
                         0,
                         true,
+                        true,
                         "Frage?",
                         List.of("a.md"),
                         List.of("a.md"),

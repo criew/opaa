@@ -143,6 +143,11 @@ final class EvalChatModel {
     }
   }
 
+  /** The temperature this run's chat model runs at - {@link #TEMPERATURE} for the pinned model. */
+  static BigDecimal activeTemperature() {
+    return external().map(External::temperature).orElse(TEMPERATURE);
+  }
+
   /** The model identifier this run measures with - the run's {@code chatModel} fixed point. */
   static String activeModelIdentifier() {
     return external().map(External::model).orElse(MODEL);

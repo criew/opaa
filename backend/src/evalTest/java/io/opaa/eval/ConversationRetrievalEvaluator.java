@@ -56,8 +56,20 @@ public final class ConversationRetrievalEvaluator {
 
   private ConversationRetrievalEvaluator() {}
 
-  /** What one call into the pipeline produced for a turn. */
-  public record TurnInvocationResult(List<String> rankedChunkFileNames, List<String> subQueries) {}
+  /**
+   * What one call into the pipeline produced for a turn.
+   *
+   * @param searchNeeded {@code false} when the decomposition found nothing to search for - the run
+   *     searched all the same, with the fallback query.
+   */
+  public record TurnInvocationResult(
+      List<String> rankedChunkFileNames, List<String> subQueries, boolean searchNeeded) {
+
+    /** A run that judged the turn to need a search. */
+    public TurnInvocationResult(List<String> rankedChunkFileNames, List<String> subQueries) {
+      this(rankedChunkFileNames, subQueries, true);
+    }
+  }
 
   /**
    * One turn's retrieval run. {@code conversationWindow} is the production window built from the
@@ -93,11 +105,14 @@ public final class ConversationRetrievalEvaluator {
    *
    * @param metrics {@code null} for a turn without search, which has no expected documents to rank
    *     and therefore enters no metric aggregate.
+   * @param searchNeeded whether the run judged the turn to need a search - see {@link
+   *     TurnInvocationResult#searchNeeded()}.
    */
   public record TurnOutcome(
       RetrievalMetrics.WindowedQueryResult metrics,
       int turnIndex,
       boolean searchExpected,
+      boolean searchNeeded,
       int conversationWindowMessages,
       List<String> conversationNote,
       int chunksReturned,
@@ -106,11 +121,12 @@ public final class ConversationRetrievalEvaluator {
 
     /**
      * The existing solved criterion ({@link ExpectedStateAudit#isSolved}) at this path's window; a
-     * turn without search is solved when the run neither searched nor returned a chunk.
+     * turn without search is solved when the run judged it to need none. It is searched either way,
+     * so its chunks say nothing about the judgement.
      */
     public boolean solved() {
       if (!searchExpected) {
-        return subQueries.isEmpty() && chunksReturned == 0;
+        return !searchNeeded;
       }
       return ExpectedStateAudit.isSolved(
           metrics.allExpectedDocumentsHit(),
@@ -205,7 +221,8 @@ public final class ConversationRetrievalEvaluator {
                 window.size(),
                 rahmenPoints,
                 invocation.rankedChunkFileNames(),
-                invocation.subQueries()));
+                invocation.subQueries(),
+                invocation.searchNeeded()));
         chatMemory.add(conversationId, new UserMessage(turn.query()));
         ConversationWindowMessages.answer(turn.answer())
             .ifPresent(message -> chatMemory.add(conversationId, message));
@@ -287,12 +304,14 @@ public final class ConversationRetrievalEvaluator {
       int conversationWindowMessages,
       List<String> conversationNote,
       List<String> rankedChunkFileNames,
-      List<String> subQueries) {
+      List<String> subQueries,
+      boolean searchNeeded) {
     if (!conversationCase.turns().get(turnIndex).expectsSearch()) {
       return new TurnOutcome(
           null,
           turnIndex,
           false,
+          searchNeeded,
           conversationWindowMessages,
           List.copyOf(conversationNote),
           rankedChunkFileNames.size(),
@@ -306,6 +325,7 @@ public final class ConversationRetrievalEvaluator {
         turn.metrics(),
         turnIndex,
         true,
+        searchNeeded,
         conversationWindowMessages,
         List.copyOf(conversationNote),
         turn.chunksReturned(),
@@ -386,26 +406,35 @@ public final class ConversationRetrievalEvaluator {
   }
 
   /**
-   * The turns without search and those of them the run searched for anyway, {@code null} for a
-   * dataset without such a turn - an absent section, not a clean one. A searched turn here is the
-   * failure {@code answer_continuation} exists for: a message with nothing to look up, turned into
-   * a search query.
+   * How the run judged the search need, in both wrong directions. A question judged to need no
+   * search is still searched and may score, so without this count the misjudgement would not show
+   * anywhere; it is counted in every dataset, not only in one with turns without search.
    */
   private static NoSearchAudit noSearch(List<CaseOutcome> outcomes) {
-    int turns = 0;
-    List<String> searchedTurnIds = new ArrayList<>();
+    int noSearchTurns = 0;
+    List<String> judgedAsSearch = new ArrayList<>();
+    List<String> judgedAsNoSearch = new ArrayList<>();
     for (CaseOutcome outcome : outcomes) {
       for (TurnOutcome turn : outcome.turns()) {
+        String turnId = outcome.conversationCase().turnId(turn.turnIndex());
         if (turn.searchExpected()) {
+          if (!turn.searchNeeded()) {
+            judgedAsNoSearch.add(turnId);
+          }
           continue;
         }
-        turns++;
-        if (!turn.solved()) {
-          searchedTurnIds.add(outcome.conversationCase().turnId(turn.turnIndex()));
+        noSearchTurns++;
+        if (turn.searchNeeded()) {
+          judgedAsSearch.add(turnId);
         }
       }
     }
-    return turns == 0 ? null : new NoSearchAudit(turns, searchedTurnIds.size(), searchedTurnIds);
+    return new NoSearchAudit(
+        noSearchTurns,
+        judgedAsSearch.size(),
+        judgedAsSearch,
+        judgedAsNoSearch.size(),
+        judgedAsNoSearch);
   }
 
   private static CaseOutcomeSummary caseOutcomeSummary(List<CaseOutcome> outcomes) {
@@ -534,6 +563,7 @@ public final class ConversationRetrievalEvaluator {
           conversationCase.turnId(turn.turnIndex()),
           turn.turnIndex(),
           false,
+          turn.searchNeeded(),
           conversationCase.turns().get(turn.turnIndex()).query(),
           List.of(),
           List.of(),
@@ -556,6 +586,7 @@ public final class ConversationRetrievalEvaluator {
         conversationCase.turnId(turn.turnIndex()),
         turn.turnIndex(),
         true,
+        turn.searchNeeded(),
         m.goldenCase().query(),
         m.goldenCase().expectedDocuments(),
         m.rankedFileNames(),

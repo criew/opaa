@@ -28,10 +28,11 @@ import org.springframework.stereotype.Component;
  * skips the LLM round trip and takes that same fallback. Touches no candidates: at this point in
  * the run there are none.
  *
- * <p><b>A message without anything to search for halts the run.</b> When the decomposition returns
- * no queries at all, no search stage runs and the remaining stages are recorded as not reached -
- * the answer is generated without a single chunk, and the run's {@code searchQueries} stay empty,
- * which is how a caller tells this apart from a search that found nothing.
+ * <p><b>A message without anything to search for is searched all the same</b>, with that same
+ * fallback query, and the state records {@link RetrievalState#searchNeeded()} {@code = false} for
+ * the answer. The classification misjudges follow-up questions without a question mark often enough
+ * that skipping the search would leave questions without sources; a searched remark costs a few
+ * uncited passages.
  *
  * <p>The chat's Gesprächsnotiz reaches the model here too, as a rendered context block of the
  * {@link DecompositionContext} - see {@link #decompositionContext}.
@@ -71,18 +72,17 @@ public class SubQueryDecompositionStage implements RetrievalStage {
             ? queryDecompositionService.decompose(
                 decompositionContext(context, searchWindow), properties.maxSubQueries())
             : Optional.empty();
-    if (decomposition.filter(List::isEmpty).isPresent()) {
-      return new StageOutcome(
-          state.withSearchQueries(List.of()).haltRun(),
-          StageExplanation.executed(
-              name(), 0, 0, List.of(), List.of(RetrievalNote.DECOMPOSITION_NO_SEARCH.format())));
-    }
-    boolean decomposed = decomposition.isPresent();
+    boolean searchNeeded = decomposition.map(queries -> !queries.isEmpty()).orElse(true);
+    boolean decomposed = decomposition.isPresent() && searchNeeded;
     List<String> searchQueries =
-        decomposition.orElseGet(() -> List.of(buildSearchQuery(context.question(), searchWindow)));
+        decomposed
+            ? decomposition.get()
+            : List.of(buildSearchQuery(context.question(), searchWindow));
 
     List<String> notes = new ArrayList<>();
-    if (decomposed) {
+    if (!searchNeeded) {
+      notes.add(RetrievalNote.DECOMPOSITION_NO_SEARCH.format());
+    } else if (decomposed) {
       notes.add(
           RetrievalNote.DECOMPOSITION_PRODUCED.format(
               searchQueries.size(), searchQueries.size() == 1 ? "sub-query" : "sub-queries"));
@@ -93,8 +93,9 @@ public class SubQueryDecompositionStage implements RetrievalStage {
     }
     searchQueries.forEach(query -> notes.add(RetrievalNote.SEARCH_QUERY.format(query)));
 
+    RetrievalState next = state.withSearchQueries(searchQueries);
     return new StageOutcome(
-        state.withSearchQueries(searchQueries),
+        searchNeeded ? next : next.withoutSearchNeed(),
         StageExplanation.executed(name(), 0, 0, List.of(), notes));
   }
 

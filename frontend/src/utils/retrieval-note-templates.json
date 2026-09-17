@@ -14,7 +14,7 @@
     },
     {
       "name": "DECOMPOSITION_NO_SEARCH",
-      "template": "decomposition found nothing to search for: retrieval halted"
+      "template": "decomposition found nothing to search for: single-query fallback, answer told so"
     },
     {
       "name": "DECOMPOSITION_PRODUCED",

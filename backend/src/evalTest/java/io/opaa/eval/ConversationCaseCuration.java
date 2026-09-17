@@ -36,7 +36,9 @@ import java.util.TreeMap;
  *   <li><b>A {@code constraint_carryover} case names a {@link #CONFUSABLE_DOCUMENT_RULE confusable
  *       document}</b> in at least one turn; a {@code topic_switch} case names its {@link
  *       #TOPIC_SWITCH_TURN_RULE change turn}; an {@code answer_continuation} case carries {@link
- *       #LONG_ANSWER_RULE long answers} and {@link #NO_SEARCH_TURN_RULE a turn without search}.
+ *       #LONG_ANSWER_RULE long answers} and {@link #NO_SEARCH_TURN_RULE a turn without search}; the
+ *       class as a whole carries {@link #FOLLOW_UP_WITHOUT_QUESTION_MARK_RULE follow-ups without a
+ *       question mark}.
  *   <li><b>Class sizes</b>: at least {@link #MINIMUM_CASES_PER_CLASS} cases and, across their
  *       turns, at least {@link GoldenCaseCuration#MINIMUM_DISTINCT_EXPECTED_SETS_PER_CLASS}
  *       distinct expected-document sets - the tolerance of ADR-0013 is computed from the latter,
@@ -108,6 +110,22 @@ public final class ConversationCaseCuration {
       "search_expected: false only in answer_continuation, never on the first turn, without "
           + "expected_documents or confusable_document; every answer_continuation case has at least "
           + "one such turn and at least two turns with search";
+
+  /**
+   * The fewest follow-ups without a question mark {@link #FOLLOW_UP_WITHOUT_QUESTION_MARK_RULE}
+   * asks for.
+   */
+  public static final int MINIMUM_FOLLOW_UPS_WITHOUT_QUESTION_MARK = 3;
+
+  /**
+   * A follow-up without a question mark - a condition, a noun phrase, "und für ..." - is the
+   * question a decomposition most readily judges to need no search. The class has to carry such
+   * turns, or that misjudgement cannot be measured.
+   */
+  public static final String FOLLOW_UP_WITHOUT_QUESTION_MARK_RULE =
+      "the answer_continuation class carries at least "
+          + MINIMUM_FOLLOW_UPS_WITHOUT_QUESTION_MARK
+          + " follow-up turns with search whose query has no question mark";
 
   public static final String CONFUSABLE_DOCUMENT_RULE =
       "a constraint_carryover case names a confusable_document in at least one turn - without the "
@@ -386,11 +404,21 @@ public final class ConversationCaseCuration {
   private static void validateClassSizes(List<ConversationCase> cases, List<Violation> violations) {
     Map<String, Integer> countsByClass = new TreeMap<>();
     Map<String, Set<List<String>>> expectedSetsByClass = new TreeMap<>();
+    int followUpsWithoutQuestionMark = 0;
     for (ConversationCase conversationCase : cases) {
       String category = String.valueOf(conversationCase.category());
       countsByClass.merge(category, 1, Integer::sum);
       if (conversationCase.turns() == null) {
         continue;
+      }
+      if (ANSWER_CONTINUATION_CLASS.equals(category)) {
+        followUpsWithoutQuestionMark +=
+            (int)
+                conversationCase.turns().stream()
+                    .skip(1)
+                    .filter(ConversationCase.Turn::expectsSearch)
+                    .filter(turn -> turn.query() != null && !turn.query().contains("?"))
+                    .count();
       }
       for (ConversationCase.Turn turn : conversationCase.turns()) {
         if (turn.expectsSearch() && turn.expectedDocuments() != null) {
@@ -429,6 +457,9 @@ public final class ConversationCaseCuration {
                     + GoldenCaseCuration.MINIMUM_DISTINCT_EXPECTED_SETS_PER_CLASS
                     + " (see GoldenCaseCuration.MINIMUM_DISTINCT_EXPECTED_SETS_PER_CLASS)"));
       }
+    }
+    if (followUpsWithoutQuestionMark < MINIMUM_FOLLOW_UPS_WITHOUT_QUESTION_MARK) {
+      violations.add(new Violation(null, FOLLOW_UP_WITHOUT_QUESTION_MARK_RULE));
     }
   }
 }

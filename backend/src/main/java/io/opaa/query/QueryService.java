@@ -21,7 +21,6 @@ import io.opaa.query.citation.CitationValidator;
 import io.opaa.query.retrieval.RetrievalPipeline;
 import io.opaa.query.retrieval.RetrievalPipelineResult;
 import io.opaa.query.retrieval.search.SubQueryDecompositionStage;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -47,9 +46,9 @@ import org.springframework.stereotype.Service;
  * answer generation with zero chunks, the same path a genuinely empty result takes, so the answer
  * cannot distinguish "no permission on anything" from "nothing matched".
  *
- * <p>A message the decomposition found nothing to search for is the one zero-chunk turn that is
- * told apart: the answer is told that no search was needed, and the turn names no searched
- * libraries. That distinction depends on the message alone, never on what the caller may read.
+ * <p>A message the decomposition found nothing to search for is searched like any other; only the
+ * answer is told, so that it does not claim to have found nothing. That signal depends on the
+ * message alone, never on what the caller may read.
  */
 @Service
 public class QueryService {
@@ -226,9 +225,7 @@ public class QueryService {
                           searchScope,
                           metadataFilter);
                   relevantChunks = retrieval.chunks();
-                  // A pipeline run over a non-empty scope records no search query only when the
-                  // decomposition found nothing to search for.
-                  searchNeeded = !retrieval.searchQueries().isEmpty();
+                  searchNeeded = retrieval.searchNeeded();
                 }
 
                 // --- LLM call: the slowest step, and the reason no phase of this method
@@ -284,9 +281,7 @@ public class QueryService {
                         durationMs,
                         answeredWithoutKnowledge,
                         noKnowledgeAvailableInSpace,
-                        searchNeeded
-                            ? chatSourceAssembler.searchedLibraries(searchScope)
-                            : new ArrayList<>());
+                        chatSourceAssembler.searchedLibraries(searchScope));
                 return new QueryResult(
                     answer, sources, metadata, effectiveChatId, chatTitle, notePoints);
               } catch (RuntimeException e) {
@@ -367,7 +362,7 @@ public class QueryService {
             retrievalContextFactory.contextFor(
                 question, conversationHistory, conversationNote, searchScope, metadataFilter));
     // Only for a run that actually searched: a "0 chunks across 0 search queries" line would
-    // read like a failed retrieval rather than a run that had nothing to search for.
+    // read like a failed retrieval rather than a run halted before any search.
     if (!result.searchQueries().isEmpty()) {
       log.debug(
           "Retrieved {} relevant chunks across {} search quer{} for query",

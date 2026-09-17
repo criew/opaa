@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import tools.jackson.databind.json.JsonMapper;
@@ -62,8 +63,12 @@ public final class ConversationReportWriter {
             profile.windowMessages(), profile.searchWindowLabel(), profile.noteCap()));
     sb.append(
         format(
-            "  query-decomposition-enabled=%s, max-sub-queries=%d, Chat-Modell=%s\n",
-            pipeline.queryDecompositionEnabled(), pipeline.maxSubQueries(), pipeline.chatModel()));
+            "  query-decomposition-enabled=%s, max-sub-queries=%d, Chat-Modell=%s bei Temperatur"
+                + " %s\n",
+            pipeline.queryDecompositionEnabled(),
+            pipeline.maxSubQueries(),
+            pipeline.chatModel(),
+            temperature(cfg)));
     sb.append(format("  Ollama-CPU-Backend: %s\n", pipeline.ollamaCpuBackend()));
     sb.append(
         format(
@@ -150,12 +155,13 @@ public final class ConversationReportWriter {
     sb.append(format("## Mehrrunden-Messpfad: %s\n\n", cfg.pipeline().domain()));
     sb.append(
         format(
-            "Gesprächsfenster %d Nachrichten, Suchfenster %s, Notizdeckel %d, Chat-Modell `%s`, "
-                + "Ollama-CPU-Backend `%s`.\n\n",
+            "Gesprächsfenster %d Nachrichten, Suchfenster %s, Notizdeckel %d, Chat-Modell `%s` "
+                + "bei Temperatur %s, Ollama-CPU-Backend `%s`.\n\n",
             profile.windowMessages(),
             profile.searchWindowLabel(),
             profile.noteCap(),
             cfg.pipeline().chatModel(),
+            temperature(cfg),
             cfg.pipeline().ollamaCpuBackend()));
     sb.append(format("_%s_\n\n", report.metricWindowNote()));
 
@@ -197,10 +203,11 @@ public final class ConversationReportWriter {
       for (TurnResult turn : caseResult.turns()) {
         sb.append(
             format(
-                "  - `%s` %s%s — Fenster %d Nachrichten, Notiz %s, Teilfragen %s\n",
+                "  - `%s` %s%s%s — Fenster %d Nachrichten, Notiz %s, Teilfragen %s\n",
                 turn.turnId(),
                 turn.solved() ? "gelöst" : "nicht gelöst",
                 turn.searchExpected() ? "" : " (ohne Suche erwartet)",
+                turn.searchNeeded() ? "" : ", als „keine Suche“ eingestuft",
                 turn.conversationWindowMessages(),
                 turn.conversationNote(),
                 turn.subQueries()));
@@ -210,20 +217,34 @@ public final class ConversationReportWriter {
   }
 
   /**
-   * The turns that expect no search, and how many of them were searched anyway - the failure {@code
-   * answer_continuation} exists for, which no metric aggregate shows because such a turn has
-   * nothing to rank.
+   * How the run judged the search need, in both wrong directions. Neither shows in a metric
+   * aggregate: a turn without search has nothing to rank, and a question judged to need no search
+   * is searched all the same.
    */
   private static String renderNoSearch(ConversationEvaluationReport.NoSearchAudit audit) {
     if (audit == null) {
       return "";
     }
-    if (audit.searchedTurns() == 0) {
-      return format("Runden ohne Suchbedarf: %d, keine davon gesucht.\n\n", audit.turns());
-    }
     return format(
-        "Runden ohne Suchbedarf: %d, davon %d TROTZDEM GESUCHT (%s).\n\n",
-        audit.turns(), audit.searchedTurns(), String.join(", ", audit.searchedTurnIds()));
+        "Runden ohne Suchbedarf: %d, davon als Suche eingestuft: %d%s.\n"
+            + "Runden mit Suchbedarf, als „keine Suche“ eingestuft: %d%s — gesucht wird trotzdem, "
+            + "nur die Antwortanweisung ändert sich.\n\n",
+        audit.noSearchTurns(),
+        audit.noSearchTurnsJudgedAsSearch(),
+        turnIds(audit.noSearchTurnIdsJudgedAsSearch()),
+        audit.searchTurnsJudgedAsNoSearch(),
+        turnIds(audit.searchTurnIdsJudgedAsNoSearch()));
+  }
+
+  private static String turnIds(List<String> turnIds) {
+    return turnIds.isEmpty() ? "" : " (" + String.join(", ", turnIds) + ")";
+  }
+
+  /** The chat model's temperature as configured, {@code unbekannt} for a report without one. */
+  private static String temperature(ConversationEvaluationReport.ConversationRunConfiguration cfg) {
+    return cfg.chatTemperature() == null
+        ? "unbekannt"
+        : cfg.chatTemperature().stripTrailingZeros().toPlainString();
   }
 
   private static String renderBleed(TopicBleedAudit bleed) {

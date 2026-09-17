@@ -102,9 +102,9 @@ public class QueryMetrics {
 
   /**
    * The model found nothing to search for in the message - an instruction on the answer form, a
-   * statement about the asking person, thanks. Not a fallback: the turn is answered without a
-   * search, so it has its own counter rather than a reason on {@code
-   * opaa.query.decomposition.fallback}.
+   * statement about the asking person, thanks. The turn is still searched with the single-query
+   * fallback, but only the answer is told why, so this has its own counter rather than a reason on
+   * {@code opaa.query.decomposition.fallback}.
    */
   public void recordNoSearchDecomposition() {
     noSearchDecompositionCounter.increment();

@@ -18,6 +18,11 @@ import org.springframework.ai.document.Document;
  *     is off, disabled or failed, up to {@link QueryProperties#maxSubQueries} when it succeeded.
  *     Empty when the run halted before any search.
  * @param explanation one entry per registered stage, in execution order.
+ * @param searchNeeded {@code false} when the decomposition found nothing to search for in the
+ *     message; the run has searched all the same, with the fallback query.
  */
 public record RetrievalPipelineResult(
-    List<Document> chunks, List<String> searchQueries, RetrievalExplanation explanation) {}
+    List<Document> chunks,
+    List<String> searchQueries,
+    RetrievalExplanation explanation,
+    boolean searchNeeded) {}
