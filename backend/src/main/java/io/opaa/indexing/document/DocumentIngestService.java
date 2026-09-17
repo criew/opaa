@@ -247,7 +247,6 @@ public class DocumentIngestService {
         case CHUNKED -> log.debug("{} chunked via pipeline {}", filePath, pipeline.id());
       }
       List<org.springframework.ai.document.Document> chunks = parsed.chunks();
-      attachSourceContext(chunks, pipeline, ingest.context());
       DocumentChunkMetadata coreMetadata =
           extractCoreMetadata(
               doc, fileName, parsed.withProperties(ingest.declaredOver(parsed.properties())));
@@ -262,7 +261,14 @@ public class DocumentIngestService {
         vectorChunkStore.deleteByDocumentId(documentId);
         preservingPreviousChunks = false;
       }
-      storeChunks(doc, chunks, contextTitle, pipeline, selection.routingExtension(), coreMetadata);
+      storeChunks(
+          doc,
+          chunks,
+          contextTitle,
+          pipeline,
+          selection.routingExtension(),
+          coreMetadata,
+          ingest.context());
 
       DocumentIngestResult result =
           markConnectorIndexed(documentId, chunks.size(), checksum, ingest.changeMarker());
@@ -421,30 +427,23 @@ public class DocumentIngestService {
   }
 
   /**
-   * Puts the source context onto every chunk of a pipeline that declares the context keys as
-   * passthrough - they are not in the body, so the pipeline cannot set them itself.
+   * The chunk metadata for {@code context}: a document's source container and hierarchy path are a
+   * property of the document, not of the format that chunked it, so both keys are written whenever
+   * a context is present - independent of {@link DocumentFormat#passthroughMetadataKeys()}. Both
+   * keys always travel together, present only when the corresponding value is set.
    */
-  private static void attachSourceContext(
-      List<org.springframework.ai.document.Document> chunks,
-      DocumentFormat pipeline,
-      SourceDocumentContext context) {
-    // Open question #1421: only the Confluence storage format declares these keys, so a PDF
-    // attachment of a Confluence page carries container and hierarchy on its document row but not
-    // on its chunks. Behaviour left unchanged until that is decided.
-    if (context == null
-        || !pipeline
-            .passthroughMetadataKeys()
-            .contains(ChunkingService.SOURCE_CONTAINER_METADATA_KEY)) {
-      return;
+  private static Map<String, Object> sourceContextMetadata(SourceDocumentContext context) {
+    if (context == null) {
+      return Map.of();
     }
-    Map<String, Object> contextKeys = new HashMap<>();
+    Map<String, Object> values = new HashMap<>();
     if (context.containerKey() != null) {
-      contextKeys.put(ChunkingService.SOURCE_CONTAINER_METADATA_KEY, context.containerKey());
+      values.put(ChunkingService.SOURCE_CONTAINER_METADATA_KEY, context.containerKey());
     }
     if (context.hierarchyPath() != null) {
-      contextKeys.put(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY, context.hierarchyPath());
+      values.put(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY, context.hierarchyPath());
     }
-    chunks.forEach(chunk -> chunk.getMetadata().putAll(contextKeys));
+    return values;
   }
 
   /** The ingest's own prefix title, see {@link ChunkContextPrefix#ingestTitle}. */
@@ -653,6 +652,9 @@ public class DocumentIngestService {
    * @param chunkMetadata the document's filterable schema values (ADR-0024, {@link
    *     CoreMetadataChunkKeys} and its library's own filterable fields), written before any
    *     pipeline passthrough - they hang on the document, so no pipeline may set them
+   * @param sourceContext the document's source container and hierarchy path, or {@code null};
+   *     written like {@code chunkMetadata} - a document property, not conditioned on {@code
+   *     pipeline}'s own passthrough declaration
    */
   private void storeChunks(
       Document document,
@@ -660,7 +662,8 @@ public class DocumentIngestService {
       String contextTitle,
       DocumentFormat pipeline,
       Optional<String> routingExtension,
-      DocumentChunkMetadata chunkMetadata) {
+      DocumentChunkMetadata chunkMetadata,
+      SourceDocumentContext sourceContext) {
     boolean documentWasSplit = ChunkContextPrefix.documentWasSplit(chunks.size());
     // The Kernfeld Titel replaces the file-name humanisation the prefix used before; the caller's
     // own candidate stays the fallback and still decides whether this document type gets a prefix
@@ -670,6 +673,7 @@ public class DocumentIngestService {
     String prefixTitle =
         ChunkContextPrefix.titleAtRest(prefixEligible, chunkMetadata.contextTitle(), contextTitle);
     Set<String> passthroughKeys = pipelineRegistry.allPassthroughMetadataKeys();
+    Map<String, Object> sourceContextValues = sourceContextMetadata(sourceContext);
 
     List<org.springframework.ai.document.Document> enriched =
         chunks.stream()
@@ -700,6 +704,9 @@ public class DocumentIngestService {
                   // The document's filterable core fields (ADR-0024): inherited by every chunk,
                   // written here so both search paths can carry the same condition.
                   metadata.putAll(chunkMetadata.values());
+                  // The document's own source container and hierarchy path (a document property,
+                  // not a format one) - present on every chunk whenever the source declared one.
+                  metadata.putAll(sourceContextValues);
                   // The registry-wide declared passthrough keys - e.g. the chunk's Fundort, or a
                   // message's Kopfdaten (ingestion-pipelines.md, Teil 3, Punkt 5) - copied only
                   // when this chunk actually carries them, and never for a key already written

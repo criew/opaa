@@ -20,9 +20,9 @@ public class ChunkingService {
 
   /**
    * Chunk metadata key carrying the container a document came from - the same value as the
-   * document's own {@code source_container_key} column. Source-neutral by name and by value; only
-   * the Confluence storage format declares it as passthrough today, and only {@code
-   * DocumentIngestService#attachSourceContext} sets it, because it is not in the body.
+   * document's own {@code source_container_key} column. Source-neutral by name and by value; {@code
+   * DocumentIngestService#storeChunks} writes it directly onto every chunk of a document whose
+   * source declared one, independent of the pipeline that chunked it.
    */
   public static final String SOURCE_CONTAINER_METADATA_KEY = "source_container_key";
 

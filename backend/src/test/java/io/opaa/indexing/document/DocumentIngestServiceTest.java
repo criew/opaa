@@ -1005,6 +1005,12 @@ class DocumentIngestServiceTest {
       assertThat(saved.getSourceHierarchyPath()).isEqualTo("Handbuch / Abschnitt 1.1");
       verify(documentRepository)
           .markIndexedFromSource(eq(saved.getId()), eq(1), any(), eq("sha256-notizen"), eq("3"));
+      // The attachment is chunked by the fallback (file) pipeline, not by ConfluenceStorageFormat -
+      // its source context must still land on the chunk (issue #1421: it is a document property,
+      // not a format-conditioned one).
+      assertThat(storedChunks().getFirst().getMetadata())
+          .containsEntry(ChunkingService.SOURCE_CONTAINER_METADATA_KEY, "ENG")
+          .containsEntry(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY, "Handbuch / Abschnitt 1.1");
     }
 
     @Test

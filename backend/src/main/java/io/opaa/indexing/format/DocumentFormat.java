@@ -78,11 +78,17 @@ public interface DocumentFormat {
   }
 
   /**
-   * Chunk metadata keys {@code DocumentIngestService#storeChunks} carries onto the persisted chunk
-   * - a ceiling, not a promise, and never able to override its own bookkeeping keys. It filters
-   * against the union of every registered pipeline's declaration ({@link
+   * Chunk metadata keys this format itself set on a chunk that {@code
+   * DocumentIngestService#storeChunks} carries onto the persisted chunk - a ceiling, not a promise,
+   * and never able to override its own bookkeeping keys. It filters against the union of every
+   * registered pipeline's declaration ({@link
    * DocumentFormatRegistry#allPassthroughMetadataKeys()}), so a key only a nested pipeline declares
    * still passes through. Never {@code null}.
+   *
+   * <p>Covers only keys a format's own {@link #run} puts on a chunk - a document-level property
+   * such as its source container or hierarchy path is written directly by {@code
+   * DocumentIngestService} for every document whose source declares one, regardless of which format
+   * chunked it, and has no place in this declaration.
    */
   default Set<String> passthroughMetadataKeys() {
     return Set.of(ChunkingService.LOCATION_METADATA_KEY);
