@@ -21,7 +21,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652) auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst „dafür“ zu „Formular KAE-07“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): beide Runden führen ein erwartetes Dokument auf Rang 1; Teilfrage der Runde 2: „Welche Dokumente müssen Sie bei Formular KAE-07 mitbringen?“."
   },
   {
     "id": "verw-conv-ana-002",
@@ -45,7 +45,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652) auf dem Pipeline-Pfad (Einpfad-Regel): Die Teilfrage der Runde 2 nennt „Formular BUE-08“ statt „seine“; beide Runden führen das erwartete Dokument auf Rang 1."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): beide Runden führen ein erwartetes Dokument auf Rang 1; Teilfrage der Runde 2: „Wie lang dauert die Bearbeitungszeit für Formular BUE-08?“."
   },
   {
     "id": "verw-conv-ana-003",
@@ -67,9 +67,9 @@
         ]
       }
     ],
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-15",
-    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die eine eigenständige Frage unverändert lässt; offen ist nur Runde 1. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Teilfragen machen aus der Dienstanweisung BAU-DA-2/2024 ein „Bauteil“, die Baugenehmigungsgebührensatzung 2024 belegt Rang 1, das Ziel Rang 2. Runde 2 löst „danach“ und führt das Ziel auf Rang 1. Unter der CPU-Variante icelake war der Fall gelöst (Baseline vom 2026-09-12)."
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Gelöst seit #1684, bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): beide Runden führen ein erwartetes Dokument auf Rang 1; Teilfrage der Runde 2: „Entschließungsdatum für Entscheidungen nach BAU-DA-2/2024.“."
   },
   {
     "id": "verw-conv-ana-004",
@@ -100,7 +100,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht; Suchfenster (#1486) und Gesprächsnotiz (#1487) haben sie für diesen Fall nicht gebracht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 2 stellt verwaltung-geschaeftsverteilungsplan.md auf Rang 1 und das Ziel auf Rang 2; Runde 3 verlangt zusätzlich den Schritt Verwaltungsgebührensatzung → Kämmerei → deren Gebührenordnung, den kein Fenster-Baustein leistet (siehe MAINTENANCE.md, Vermerk zu dieser Runde), und verfehlt verwaltung-0039_gebuehrenordnung-kaemmerei.md ganz."
+    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht; Suchfenster (#1486) und Gesprächsnotiz (#1487) haben sie für diesen Fall nicht gebracht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 3 verfehlt verwaltung-0039_gebuehrenordnung-kaemmerei.md ganz, Rang 1 belegt verwaltung-0038_verwaltungsgebuehrensatzung.md."
   },
   {
     "id": "verw-conv-ana-005",
@@ -124,7 +124,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 2 verfehlt ORD-DA-2/2024 ganz; Rang 1 belegt verwaltung-vertretungsregelung.md."
+    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 2 verfehlt verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md ganz, Rang 1 belegt verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md."
   },
   {
     "id": "verw-conv-ana-006",
@@ -148,7 +148,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Gelöst seit dem Umbau aus #1486/#1487, zuletzt bestätigt im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652) auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 erhält den Notizpunkt „Formular JUG-07“, und beide Runden führen verwaltung-0055_formularhinweis-jugendamt-7.md auf Rang 1."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): beide Runden führen ein erwartetes Dokument auf Rang 1; Teilfrage der Runde 2: „Welche Informationen sind notwendig, wenn Formular JUG-07 ausgefürt wird?“."
   },
   {
     "id": "verw-conv-ana-007",
@@ -180,7 +180,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 2 verfehlt verwaltung-0029_formularhinweis-standesamt-7.md ganz, Rang 1 belegt die Personenstandsurkundengebührensatzung. Runde 3 ist gelöst: Ihre Teilfrage nennt STA-07."
+    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 1 findet verwaltung-0026_gebuehrenordnung-standesamt.md nicht; Runde 2 verfehlt verwaltung-0029_formularhinweis-standesamt-7.md ganz, Rang 1 belegt verwaltung-0025_personenstandsurkundengebuehrensatzung.md; Runde 3 verfehlt verwaltung-0029_formularhinweis-standesamt-7.md ganz, Rang 1 belegt verwaltung-0025_personenstandsurkundengebuehrensatzung.md."
   },
   {
     "id": "verw-conv-ana-008",
@@ -204,7 +204,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652) auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst die Rückfrage nach den typischen Ausfüllfehlern zu „Formular PER-08“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): beide Runden führen ein erwartetes Dokument auf Rang 1; Teilfrage der Runde 2: „Welche typischen Fehler treten beim Ausfüllen des Formulars PER-08 auf?“."
   },
   {
     "id": "verw-conv-ana-009",
@@ -237,7 +237,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 1 führt die Beitragssatzung 2023 auf Rang 1, verfehlt aber die Gebührenordnung Jugendamt aus ihrer dreiteiligen Treffermenge; Runde 2 hält JUG-DA-2/2024 nur auf Rang 2 hinter der Beitragssatzung 2024, Runde 3 verliert es ganz."
+    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 1 findet verwaltung-0052_gebuehrenordnung-jugendamt.md nicht; Runde 2 verfehlt verwaltung-0054_dienstanweisung-jugendamt-2-2024.md ganz, Rang 1 belegt verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md; Runde 3 führt das Ziel auf Rang 3, Rang 1 belegt verwaltung-0053_dienstanweisung-jugendamt-1-2024.md."
   },
   {
     "id": "verw-conv-ts-001",
@@ -269,7 +269,7 @@
     "topic_switch_turn": 3,
     "expected_state": "solved",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Gelöst seit dem Umbau aus #1486/#1487, zuletzt bestätigt im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652) auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 hält BAU-DA-1/2023 auf Rang 1; alle drei Runden sind gelöst, die Wechselrunde 3 ohne Dokument des Vorthemas. Welcher der beiden Bausteine das bewirkt, ist nicht auflösbar — die Runden 2 und 3 erhalten zusätzlich den Notizpunkt „Bauleitung“."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): alle 3 Runden führen ein erwartetes Dokument auf Rang 1; Teilfrage der Runde 2: „Welcher Nachfrist gilt für den Antrag auf Änderungsbauordnung in der BAU-DA-1/2023?“."
   },
   {
     "id": "verw-conv-ts-002",
@@ -301,7 +301,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Schon die Wechselrunde 2 ist offen — ihre Teilfrage ist ein allgemeiner Satz über Satzungsbestimmungen, die Abfallgebührensatzung liegt außerhalb des Fensters. In der Folgerunde 3 steht der Notizpunkt „SOZ-08“ aus dem Altthema in der Teilfrage, und verwaltung-0008_formularhinweis-sozialamt-8.md belegt Rang 1."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 2 verfehlt verwaltung-0057_abfallgebuehrensatzung.md ganz, Rang 1 belegt verwaltung-0008_formularhinweis-sozialamt-8.md."
   },
   {
     "id": "verw-conv-ts-003",
@@ -333,7 +333,7 @@
     "topic_switch_turn": 3,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Wechselrunde 3 ist gelöst; offen ist die Vorrunde 2, in der verwaltung-0039_gebuehrenordnung-kaemmerei.md die Verwaltungsgebührensatzung auf Rang 2 drückt."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 2 führt das Ziel auf Rang 3, Rang 1 belegt verwaltung-0043_formularhinweis-kaemmerei-8.md."
   },
   {
     "id": "verw-conv-ts-004",
@@ -372,7 +372,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Wechselrunde 2 und die Folgerunde 3 im neuen Thema verfehlen verwaltung-0048 ganz, die Rückkehr zum Altthema in Runde 4 verfehlt verwaltung-0060."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 3 verfehlt verwaltung-0048_formularhinweis-personalamt-7.md ganz, Rang 1 belegt verwaltung-0060_dienstanweisung-umweltamt-2-2024.md; Runde 4 bleibt ohne Suche, weil die Zerlegung nichts zu suchen meldet."
   },
   {
     "id": "verw-conv-ts-005",
@@ -404,7 +404,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Wechselrunde 2 ist gelöst; offen ist die Folgerunde 3, in der verwaltung-0035 außerhalb des Fensters liegt."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 3 verfehlt verwaltung-0035_dienstanweisung-buergeramt-2-2024.md ganz, Rang 1 belegt verwaltung-vertretungsregelung.md."
   },
   {
     "id": "verw-conv-ts-006",
@@ -434,9 +434,9 @@
       }
     ],
     "topic_switch_turn": 3,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-15",
-    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 2 vor dem Wechsel erhält den Notizpunkt „Formular ORD-07“, ihre Teilfrage nennt das Formular aber nicht; das Ziel steht auf Rang 5 hinter dem Formularhinweis des Sozialamts. Die Wechselrunde 3 ist gelöst. Unter der CPU-Variante icelake war der Fall gelöst (Baseline vom 2026-09-12)."
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Gelöst seit #1684, bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): alle 3 Runden führen ein erwartetes Dokument auf Rang 1; Teilfrage der Runde 2: „Wie lang dauert die Bearbeitung von Formular ORD-07?“."
   },
   {
     "id": "verw-conv-ts-007",
@@ -476,7 +476,7 @@
     "topic_switch_turn": 3,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Wechselrunde 3 und Folgerunde 4 sind gelöst, ohne Dokument des Vorthemas; offen ist die Vorrunde 2, die verwaltung-0027_dienstanweisung-standesamt-1-2024.md ganz verfehlt."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 1 findet verwaltung-0026_gebuehrenordnung-standesamt.md nicht; Runde 2 verfehlt verwaltung-0027_dienstanweisung-standesamt-1-2024.md ganz, Rang 1 belegt verwaltung-0013_dienstanweisung-bauamt-1-2024.md."
   },
   {
     "id": "verw-conv-ts-008",
@@ -509,7 +509,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Wechselrunde 2 ist gelöst; offen ist die Folgerunde 3 im neuen Thema, in der verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md des Altthemas Rang 1 belegt und das Ziel außerhalb des Fensters liegt."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 1 findet verwaltung-0045_gebuehrenordnung-personalamt.md nicht; Runde 3 führt das Ziel auf Rang 4, Rang 1 belegt verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md."
   },
   {
     "id": "verw-conv-ts-009",
@@ -548,7 +548,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Fehlender Baustein: die ausdrückliche Rückkehr zum Altthema erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Wechselrunden 2 und 3 führen KAE-DA-1/2024 auf Rang 1; offen ist Runde 4 („Zurück zum Formular JUG-08“), deren Teilfrage bei der Kämmerei bleibt — verwaltung-0056_formularhinweis-jugendamt-8.md liegt außerhalb des Fensters."
+    "expected_state_reason": "Fehlender Baustein: die ausdrückliche Rückkehr zum Altthema erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 3 verfehlt verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md ganz, Rang 1 belegt verwaltung-0052_gebuehrenordnung-jugendamt.md; Runde 4 bleibt ohne Suche, weil die Zerlegung nichts zu suchen meldet."
   },
   {
     "id": "verw-conv-cc-001",
@@ -581,7 +581,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe aus Runde 1 erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Der Notizpunkt lautet „Arzt“ und trägt die Fassung 2023 nicht; die Zielrunde 3 stellt die Fassung 2024 auf Rang 1, das Ziel auf Rang 2."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe aus Runde 1 erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 3 verfehlt verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md ganz, Rang 1 belegt verwaltung-geschaeftsverteilungsplan.md."
   },
   {
     "id": "verw-conv-cc-002",
@@ -614,7 +614,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-15",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Verdichtung der Runde 1 hinterlässt den RAHMEN-Punkt „2023“, die Teilfrage der Zielrunde 3 nimmt ihn aber nicht auf; die Gebührenordnung Bauamt belegt Rang 1, die Fassung 2023 Rang 2. Unter der CPU-Variante icelake trug die Teilfrage das Jahr, und der Fall war gelöst (Baseline vom 2026-09-12)."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 3 führt das Ziel auf Rang 3, Rang 1 belegt verwaltung-0011_gebuehrenordnung-bauamt.md."
   },
   {
     "id": "verw-conv-cc-003",
@@ -654,7 +654,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Notiz trägt nur „Prüfer“, kein Jahr; die Zielrunde 4 stellt die Sozialgebührenbefreiungssatzung 2024 auf Rang 1, das Ziel auf Rang 2. Offen ist zusätzlich das Zwischenthema in Runde 2 (UMW-07 auf Rang 2 hinter UMW-08)."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 4 verfehlt verwaltung-0004_dienstanweisung-sozialamt-1-2023.md ganz, Rang 1 belegt verwaltung-0007_formularhinweis-sozialamt-7.md."
   },
   {
     "id": "verw-conv-cc-004",
@@ -687,7 +687,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Der Notizpunkt trägt „Zeitraum: 2023“, die Teilfrage der Zielrunde 3 nimmt ihn nicht auf; der Verwechslungspartner ORD-DA-1/2024 belegt Rang 1, das Ziel Rang 2. Das Zwischenthema in Runde 2 ist gelöst."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 3 verfehlt verwaltung-0020_dienstanweisung-ordnungsamt-1-2023.md ganz, Rang 1 belegt verwaltung-geschaeftsverteilungsplan.md."
   },
   {
     "id": "verw-conv-cc-005",
@@ -725,9 +725,9 @@
         "confusable_document": "verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md"
       }
     ],
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Notiz trägt „Berater“ und einen aus dem Zwischenthema verdichteten Punkt, kein Jahr; die Zielrunde 4 stellt die Fassung 2023 auf Rang 1, das Ziel steht auf Rang 3."
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Gelöst seit #1684, bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): alle 4 Runden führen ein erwartetes Dokument auf Rang 1; Teilfrage der Runde 2: „Was ist die Regelungen der Dienstanweisung PER-DA-2/2024?“."
   },
   {
     "id": "verw-conv-cc-006",
@@ -760,7 +760,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 1 ist gelöst, die Zielrunde 3 nicht — der Notizpunkt „Prüfer“ trägt die Fassung 2023 nicht, und die Teilfrage behauptet stattdessen die Fassung 2024, die damit Rang 1 belegt."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 1 bleibt ohne Suche, weil die Zerlegung nichts zu suchen meldet; Runde 2 verfehlt verwaltung-dienstanweisung-aktenaufbewahrung.md ganz, Rang 1 belegt verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md; Runde 3 bleibt ohne Suche, weil die Zerlegung nichts zu suchen meldet."
   },
   {
     "id": "verw-conv-cc-007",
@@ -791,9 +791,9 @@
         "confusable_document": "verwaltung-0051_kindertagesstaettenbeitragssatzung-fassung-2024.md"
       }
     ],
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 1 ist gelöst; offen ist die Zielrunde 3, deren Notiz („Mitarbeiter“) kein Jahr trägt — die Kindertagesstättenbeitragssatzung 2023 steht erst auf Rang 5."
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Gelöst seit #1684, bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): alle 3 Runden führen ein erwartetes Dokument auf Rang 1; Teilfrage der Runde 2: „Suchanfrage: \"Formular UMW-08\" und \"Verwendung für\"“."
   },
   {
     "id": "verw-conv-cc-008",
@@ -840,7 +840,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die die Rahmenangabe schon in der eigenständigen Runde 1 hält; offen ist nur diese Runde. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 1 verfehlt BAU-DA-1/2024 ganz, Rang 1 belegt BUE-DA-1/2024. Die Zwischenthemen und die Zielrunde 5 sind gelöst — die Zielrunde führt das Ziel auf Rang 1, obwohl ihre Teilfrage die Fassung nicht nennt; die Notiz trägt „Stand 2024“."
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die die Rahmenangabe schon in der eigenständigen Runde 1 hält. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 1 führt das Ziel auf Rang 3, Rang 1 belegt verwaltung-vertretungsregelung.md; Runde 2 verfehlt verwaltung-vertretungsregelung.md ganz, Rang 1 belegt verwaltung-0006_dienstanweisung-sozialamt-2-2024.md."
   },
   {
     "id": "verw-conv-cc-009",
@@ -878,9 +878,9 @@
         "confusable_document": "verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md"
       }
     ],
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 1 ist gelöst; die Notiz der Zielrunde 4 trägt „Person“ und „Formular STA-08“, kein Jahr, und die Fassung 2023 belegt Rang 1, das Ziel Rang 2."
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Gelöst seit #1684, bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): alle 4 Runden führen ein erwartetes Dokument auf Rang 1; Teilfrage der Runde 2: „Welche Dienstanweisung bestimmt die Aktenführung im Standesamt?“."
   },
   {
     "id": "verw-conv-ac-001",
@@ -918,7 +918,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-17",
-    "expected_state_reason": "Neu mit #1684: Die Fallklasse misst, ob die Zerlegung unter einem Fenster aus langen, produktionsnahen Antworten Suchanfragen erzeugt statt das Gespräch fortzusetzen, und ob eine Nachricht ohne Suchbedarf ohne Suche bleibt. Zustand vorläufig, wird mit der Baseline-Neuziehung dieses Issues aus dem gemessenen Lauf festgeschrieben."
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und für eine Nachricht ohne Suchbedarf das Signalwort zurückgibt; das gepinnte Modell gibt das Signalwort für keine Nachricht ohne Suchbedarf zurück. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 3 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Gebühr für Entsorgung von Haushaltsabfälle:“); Runde 4 verfehlt verwaltung-0061_formularhinweis-umweltamt-7.md ganz, Rang 1 belegt verwaltung-0058_gebuehrenordnung-umweltamt.md."
   },
   {
     "id": "verw-conv-ac-002",
@@ -955,7 +955,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-17",
-    "expected_state_reason": "Neu mit #1684: Die Fallklasse misst, ob die Zerlegung unter einem Fenster aus langen, produktionsnahen Antworten Suchanfragen erzeugt statt das Gespräch fortzusetzen, und ob eine Nachricht ohne Suchbedarf ohne Suche bleibt. Zustand vorläufig, wird mit der Baseline-Neuziehung dieses Issues aus dem gemessenen Lauf festgeschrieben."
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und für eine Nachricht ohne Suchbedarf das Signalwort zurückgibt; das gepinnte Modell gibt das Signalwort für keine Nachricht ohne Suchbedarf zurück. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 2 führt das Ziel auf Rang 3, Rang 1 belegt verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md; Runde 3 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Formular BUE-08 ist das **Änderungs- und Ermäßigungsformular** des Bürgeramts der Stadt …“); Runde 4 verfehlt verwaltung-0037_formularhinweis-buergeramt-8.md ganz, Rang 1 belegt verwaltung-0033_gebuehrenordnung-buergeramt.md."
   },
   {
     "id": "verw-conv-ac-003",
@@ -993,7 +993,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-17",
-    "expected_state_reason": "Neu mit #1684: Die Fallklasse misst, ob die Zerlegung unter einem Fenster aus langen, produktionsnahen Antworten Suchanfragen erzeugt statt das Gespräch fortzusetzen, und ob eine Nachricht ohne Suchbedarf ohne Suche bleibt. Zustand vorläufig, wird mit der Baseline-Neuziehung dieses Issues aus dem gemessenen Lauf festgeschrieben."
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und für eine Nachricht ohne Suchbedarf das Signalwort zurückgibt; das gepinnte Modell gibt das Signalwort für keine Nachricht ohne Suchbedarf zurück. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 2 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Was sind die Gebühren für eine Erteilung eines Personenstandsurkunds?“); Runde 3 verfehlt verwaltung-0027_dienstanweisung-standesamt-1-2024.md, verwaltung-0028_dienstanweisung-standesamt-2-2024.md ganz, Rang 1 belegt verwaltung-vertretungsregelung.md; Runde 4 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Danke für den Hinweis! Dann kann ich meine Antworten stärker auf Ihre Arbeit in der **S …“)."
   },
   {
     "id": "verw-conv-ac-004",
@@ -1031,7 +1031,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-17",
-    "expected_state_reason": "Neu mit #1684: Die Fallklasse misst, ob die Zerlegung unter einem Fenster aus langen, produktionsnahen Antworten Suchanfragen erzeugt statt das Gespräch fortzusetzen, und ob eine Nachricht ohne Suchbedarf ohne Suche bleibt. Zustand vorläufig, wird mit der Baseline-Neuziehung dieses Issues aus dem gemessenen Lauf festgeschrieben."
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und für eine Nachricht ohne Suchbedarf das Signalwort zurückgibt; das gepinnte Modell gibt das Signalwort für keine Nachricht ohne Suchbedarf zurück. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 1 findet verwaltung-0064_gebuehrenordnung-kulturamt.md nicht; Runde 2 verfehlt verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md ganz, Rang 1 belegt verwaltung-0033_gebuehrenordnung-buergeramt.md; Runde 3 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Gebühr für Vereine in Kalkstadt: 50% auf die Gebühren für die Benutzung der Stadtbiblio …“); Runde 4 führt das Ziel auf Rang 3, Rang 1 belegt verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md."
   },
   {
     "id": "verw-conv-ac-005",
@@ -1069,7 +1069,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-17",
-    "expected_state_reason": "Neu mit #1684: Die Fallklasse misst, ob die Zerlegung unter einem Fenster aus langen, produktionsnahen Antworten Suchanfragen erzeugt statt das Gespräch fortzusetzen, und ob eine Nachricht ohne Suchbedarf ohne Suche bleibt. Zustand vorläufig, wird mit der Baseline-Neuziehung dieses Issues aus dem gemessenen Lauf festgeschrieben."
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und für eine Nachricht ohne Suchbedarf das Signalwort zurückgibt; das gepinnte Modell gibt das Signalwort für keine Nachricht ohne Suchbedarf zurück. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 1 findet verwaltung-0045_gebuehrenordnung-personalamt.md nicht; Runde 2 führt das Ziel auf Rang 2, Rang 1 belegt verwaltung-0045_gebuehrenordnung-personalamt.md; Runde 3 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Wie viel kostet die Einsichtnahme in eine Personalakte eines ehemaligen Beschäftigten?“); Runde 4 bleibt ohne Suche, weil die Zerlegung nichts zu suchen meldet."
   },
   {
     "id": "verw-conv-ac-006",
@@ -1106,7 +1106,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-17",
-    "expected_state_reason": "Neu mit #1684: Die Fallklasse misst, ob die Zerlegung unter einem Fenster aus langen, produktionsnahen Antworten Suchanfragen erzeugt statt das Gespräch fortzusetzen, und ob eine Nachricht ohne Suchbedarf ohne Suche bleibt. Zustand vorläufig, wird mit der Baseline-Neuziehung dieses Issues aus dem gemessenen Lauf festgeschrieben."
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und für eine Nachricht ohne Suchbedarf das Signalwort zurückgibt; das gepinnte Modell gibt das Signalwort für keine Nachricht ohne Suchbedarf zurück. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 2 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Wofür wird Formular KAE-08 verwendet? Ich arbeite in der Kämmerei und berate gerade ein …“); Runde 4 verfehlt verwaltung-0043_formularhinweis-kaemmerei-8.md ganz, Rang 1 belegt verwaltung-0026_gebuehrenordnung-standesamt.md."
   },
   {
     "id": "verw-conv-ac-007",
@@ -1143,7 +1143,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-17",
-    "expected_state_reason": "Neu mit #1684: Die Fallklasse misst, ob die Zerlegung unter einem Fenster aus langen, produktionsnahen Antworten Suchanfragen erzeugt statt das Gespräch fortzusetzen, und ob eine Nachricht ohne Suchbedarf ohne Suche bleibt. Zustand vorläufig, wird mit der Baseline-Neuziehung dieses Issues aus dem gemessenen Lauf festgeschrieben."
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und für eine Nachricht ohne Suchbedarf das Signalwort zurückgibt; das gepinnte Modell gibt das Signalwort für keine Nachricht ohne Suchbedarf zurück. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 2 führt das Ziel auf Rang 6, Rang 1 belegt verwaltung-0004_dienstanweisung-sozialamt-1-2023.md; Runde 3 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Danke für die Information. Wie lange muss ich die Unterlagen danach aufheben?“)."
   },
   {
     "id": "verw-conv-ac-008",
@@ -1180,6 +1180,6 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-17",
-    "expected_state_reason": "Neu mit #1684: Die Fallklasse misst, ob die Zerlegung unter einem Fenster aus langen, produktionsnahen Antworten Suchanfragen erzeugt statt das Gespräch fortzusetzen, und ob eine Nachricht ohne Suchbedarf ohne Suche bleibt. Zustand vorläufig, wird mit der Baseline-Neuziehung dieses Issues aus dem gemessenen Lauf festgeschrieben."
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und für eine Nachricht ohne Suchbedarf das Signalwort zurückgibt; das gepinnte Modell gibt das Signalwort für keine Nachricht ohne Suchbedarf zurück. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 3 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Antwort auf die aktuelle Nutzerfrage:“); Runde 4 bleibt ohne Suche, weil die Zerlegung nichts zu suchen meldet."
   }
 ]

@@ -683,6 +683,15 @@ Maschine mit Pin liefert. Belegt ist das durch einen Report, der in allen 83 Run
 CI-Lauf auf einem Runner ohne AVX-512 übereinstimmt. Herleitung: `eval/corpus/verwaltung/MAINTENANCE.md`,
 „Neuziehung mit fester CPU-Variante"; ADR-0012, Nachtrag CPU-Backend.
 
+**Neu gezogen mit Issue #1684** aus einem CPU-Testcontainer-Lauf vom 2026-09-17 (Mehrrunden-Messvertrag
+5). Die Zerlegung erhält das Suchfenster seither als beschrifteten Textblock und kennt das Signalwort für
+Nachrichten ohne Suchbedarf; der Datensatz hat acht Fälle der Klasse `answer_continuation` (35 Fälle,
+115 Runden). Deren neun Runden ohne Suchbedarf gehen in keine Gruppe ein, `n` jeder Gruppe zählt nur
+Runden mit Suche (ADR-0012, Nachtrag Runden ohne Suchbedarf). Die Zahlen (overall nDCG@8 0,688, 10 von
+35 Fällen gelöst) sind der Zustand des gepinnten Modells unter der neuen Aufrufform, kein Vorher/Nachher
+der Produktqualität. Herleitung: `eval/corpus/verwaltung/MAINTENANCE.md`, „Neuziehung mit Textblock und
+`answer_continuation`".
+
 
 Aufbau wie die Pipeline-Baseline, mit vier Unterschieden:
 

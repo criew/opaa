@@ -423,9 +423,9 @@ wer die beiden Dokumente entfernte, verlöre dafür die Messbarkeit der Leerwert
 
 ## Mehrrunden-Fallklassen (Issues #1485/#1490)
 
-Drei weitere Klassen messen seit #1485 Gespräche statt Einzelfragen: `anaphora_resolution`,
-`topic_switch` und `constraint_carryover` (`docs/features/conversation-memory.md`, Abschnitt
-„Messung"). Sie liegen in einem **eigenen** Datensatz mit **eigener** Baseline und laufen nicht im
+Vier weitere Klassen messen Gespräche statt Einzelfragen: seit #1485 `anaphora_resolution`,
+`topic_switch` und `constraint_carryover`, seit #1684 `answer_continuation`
+(`docs/features/conversation-memory.md`, Abschnitt „Messung"). Sie liegen in einem **eigenen** Datensatz mit **eigener** Baseline und laufen nicht im
 `checkVerwaltungRetrievalBaseline` der Domäne mit, sondern in einem eigenen Task-Paar:
 
 ```bash
@@ -439,14 +439,15 @@ Beide Tasks setzen `-Dopaa.eval.runConversations` und `-Dopaa.eval.queryDecompos
 trägt ihn seit #1553 der eigene Job `conversations` in
 `.github/workflows/retrieval-regression.yml` — nächtlich, per `workflow_dispatch` und beim Label
 `evaluation`, mit eigenem Zeitbudget. Der Preis ist der Grund für das eigene Budget: ein
-Zerlegungs- und ein Notiz-Aufruf je **Runde**, und nach der Mehrfachlauf-Regel dreimal — 498
-Modellaufrufe für 83 Runden. Gemessene Laufzeiten: rund 14 Minuten je Messung auf einer
-Entwicklermaschine (CPU-Testcontainer). Der ganze Task-Lauf misst seit #1650 neben den Mehrrunden-Fällen
+Zerlegungs- und ein Notiz-Aufruf je **Runde**, und nach der Mehrfachlauf-Regel dreimal — seit #1684
+690 Modellaufrufe für 115 Runden (vorher 498 für 83). Gemessene Laufzeiten: rund 22 Minuten je
+Messung auf einer Entwicklermaschine (CPU-Testcontainer), der ganze Task-Lauf 73 Minuten (#1684;
+vorher rund 14 Minuten je Messung). Der ganze Task-Lauf misst seit #1650 neben den Mehrrunden-Fällen
 nur noch die Rohvektor-Messung der Einzelfragen, die Einzelfragen-Pipeline-Messung entfällt. Auf einem
 GitHub-Runner dauerte er damit 66 Minuten (Lauf 34996240329). Vorher, mit dieser Messung, waren es
 52 Minuten lokal und 118 Minuten auf einem Runner (Lauf 34648243211, kalter Modell-Cache).
 
-**Einpfad-Regel.** Für diese drei Klassen gilt „gelöst" auf dem **Pipeline-Pfad allein**, nicht wie
+**Einpfad-Regel.** Für diese vier Klassen gilt „gelöst" auf dem **Pipeline-Pfad allein**, nicht wie
 sonst auf beiden: Der Rohvektor-Pfad misst `similaritySearch` direkt und kennt weder Gesprächsverlauf
 noch Zerlegung, ein Mehrrunden-Fall kann dort konstruktionsbedingt nicht laufen
 (`docs/features/retrieval-benchmark.md`, Abschnitt 5). Die Einpfadigkeit ist eine Eigenschaft des
@@ -479,11 +480,12 @@ für jede künftige Ergänzung dieser Klassen.
 
 | Teil | Pflegeverantwortung | Heutiger Stand |
 |---|---|---|
-| `anaphora_resolution` (9 Fälle, 21 Runden) | QA Engineer. Die Fälle hängen an einzelnen Korpusdokumenten: Eine Generator-Änderung, die einen Formularhinweis oder eine Dienstanweisung umbenennt, macht die Rückfrage der Folgerunde unauflösbar. Regel 1 oben gilt für jede neue Runde. | 4 von 9 gelöst (#1652, feste CPU-Variante; #1490 unter `icelake`: 5) |
-| `topic_switch` (9 Fälle, 30 Runden) | QA Engineer. Zusätzlich zu prüfen ist bei jeder Korpusänderung, dass die erwarteten Dokumente der Wechselrunde und die der Vorrunden **disjunkt** bleiben — sonst zählt die Bleed-Zahl das richtige Dokument mit. `topic_switch_turn` wird nie abgeleitet, sondern am Fall benannt. | 1 von 9 gelöst (#1652; #1490 unter `icelake`: 2), Bleed 0 Dokumente in 0 von 9 Wechselrunden |
-| `constraint_carryover` (9 Fälle, 32 Runden) | QA Engineer. Der Verwechslungspartner ist das Empfindliche: Er muss inhaltsgleich zum Ziel bleiben und sich nur in der Rahmenangabe (Fassung/Jahr) unterscheiden. Verschwindet eine der beiden Fassungen aus dem Korpus, misst die Klasse nichts mehr. Regel 2 oben gilt für jede neue Runde-1-Antwort. | 0 von 9 gelöst (#1652; #1490 unter `icelake`: 1) |
-| Mehrrunden-Datensatz (`eval/golden/verwaltung-conversations.json`) | QA Engineer, wie beim Einzelfragen-Datensatz. Von Hand kuratiert, kein Generator; die Regeln stehen in `io.opaa.eval.ConversationCaseCuration` und werden von `ConversationCaseCurationTest` Docker-frei auf die committete Datei angewandt. | 27 Fälle mit 83 Runden, 5 `solved` / 22 `known_gap` (#1652) |
-| Mehrrunden-Baseline (`eval/baseline/pipeline-verwaltung-conversations.json`) | QA Engineer, analog zu den beiden anderen Baselines dieser Domäne; Neuziehung nach demselben Verfahren wie oben. | Neu gezogen mit #1652 (Lauf vom 2026-09-15, feste CPU-Variante `haswell`); verglichen von `VerwaltungConversationBaselineRegressionTest` über `checkVerwaltungConversationBaseline` (#1553) |
+| `anaphora_resolution` (9 Fälle, 21 Runden) | QA Engineer. Die Fälle hängen an einzelnen Korpusdokumenten: Eine Generator-Änderung, die einen Formularhinweis oder eine Dienstanweisung umbenennt, macht die Rückfrage der Folgerunde unauflösbar. Regel 1 oben gilt für jede neue Runde. | 5 von 9 gelöst (#1684; #1652: 4; #1490 unter `icelake`: 5) |
+| `topic_switch` (9 Fälle, 30 Runden) | QA Engineer. Zusätzlich zu prüfen ist bei jeder Korpusänderung, dass die erwarteten Dokumente der Wechselrunde und die der Vorrunden **disjunkt** bleiben — sonst zählt die Bleed-Zahl das richtige Dokument mit. `topic_switch_turn` wird nie abgeleitet, sondern am Fall benannt. | 2 von 9 gelöst (#1684; #1652: 1; #1490 unter `icelake`: 2), Bleed 3 Dokumente in 3 von 9 Wechselrunden |
+| `constraint_carryover` (9 Fälle, 32 Runden) | QA Engineer. Der Verwechslungspartner ist das Empfindliche: Er muss inhaltsgleich zum Ziel bleiben und sich nur in der Rahmenangabe (Fassung/Jahr) unterscheiden. Verschwindet eine der beiden Fassungen aus dem Korpus, misst die Klasse nichts mehr. Regel 2 oben gilt für jede neue Runde-1-Antwort. | 3 von 9 gelöst (#1684; #1652: 0; #1490 unter `icelake`: 1) |
+| `answer_continuation` (8 Fälle, 32 Runden, davon 9 ohne Suchbedarf) | QA Engineer. Jede Runde mit Suche trägt eine Antwort in Länge und Form einer OPAA-Antwort samt Zitiermarken; eine neue Antwort wird aus den Zieldokumenten geschrieben, nie aus einem Modelllauf übernommen. Die Folgefragen müssen kurz und nur mit dem Verlauf auflösbar bleiben, Regel 1 oben gilt auch hier. Eine Runde ohne Suchbedarf (`search_expected: false`) enthält keine Frage. | 0 von 8 gelöst (#1684); Runden ohne Suchbedarf 9 von 9 trotzdem gesucht |
+| Mehrrunden-Datensatz (`eval/golden/verwaltung-conversations.json`) | QA Engineer, wie beim Einzelfragen-Datensatz. Von Hand kuratiert, kein Generator; die Regeln stehen in `io.opaa.eval.ConversationCaseCuration` und werden von `ConversationCaseCurationTest` Docker-frei auf die committete Datei angewandt. | 35 Fälle mit 115 Runden, 10 `solved` / 25 `known_gap` (#1684) |
+| Mehrrunden-Baseline (`eval/baseline/pipeline-verwaltung-conversations.json`) | QA Engineer, analog zu den beiden anderen Baselines dieser Domäne; Neuziehung nach demselben Verfahren wie oben. | Neu gezogen mit #1684 (Lauf vom 2026-09-17, feste CPU-Variante `haswell`, Mehrrunden-Messvertrag 5); verglichen von `VerwaltungConversationBaselineRegressionTest` über `checkVerwaltungConversationBaseline` (#1553) |
 
 ### Referenzbefund vor Fenster und Notiz (2026-09-11, Issue #1485)
 
@@ -692,6 +694,48 @@ beschreiben jetzt die Symptome dieses Laufs.
 `cc-002`). Die Notiz von `cc-002` trägt „2023" weiterhin, die Teilfrage der Zielrunde nimmt es unter
 `haswell` aber nicht auf. `cc-007` nennt 2023 nur in einem erfundenen Datum und verfehlt das Ziel.
 `cc-008` löst seine Zielrunde, ohne dass die Teilfrage die Fassung nennt.
+
+### Neuziehung mit Textblock und `answer_continuation` (2026-09-17, Issue #1684)
+
+**Anlass.** Zwei Festpunktwechsel in einem Schritt: Die Zerlegung erhält das Suchfenster als
+beschrifteten Textblock und kennt das Signalwort für Nachrichten ohne Suchbedarf, und der Datensatz
+hat acht Fälle der Klasse `answer_continuation`. Der Befund gegen `claude-haiku-4-5` steht unten
+unter „Befundlauf: Die Zerlegung setzt das Gespräch fort"; hier geht es um die Baseline des
+gepinnten Modells.
+
+**Messung.** `./gradlew evaluateVerwaltungConversations` am 2026-09-17 auf demselben Host wie #1652,
+feste CPU-Variante `haswell`, Temperatur 0. Drei Messungen, min = median = max, 0 von 115 Runden
+mit abweichender Zerlegung; 1331,5 s je Messung.
+
+| Klasse | n | Hit Rate@5 | MRR@8 | nDCG@8 | Recall@8 | Fälle gelöst |
+|---|---|---|---|---|---|---|
+| `anaphora_resolution` | 21 | 0,762 | 0,730 | 0,709 | 0,722 | 5 von 9 |
+| `answer_continuation` | 23 | 0,652 | 0,547 | 0,559 | 0,652 | 0 von 8 |
+| `constraint_carryover` | 32 | 0,781 | 0,740 | 0,750 | 0,781 | 3 von 9 |
+| `topic_switch` | 30 | 0,767 | 0,719 | 0,705 | 0,733 | 2 von 9 |
+| gesamt | 106 | 0,745 | 0,690 | 0,688 | 0,728 | 10 von 35 |
+
+Je Runde nDCG@8: Runde 1 0,885 · Runde 2 0,697 · Runde 3 0,540 · Runde 4 0,393 · Runde 5 1,000.
+Themen-Bleed 3 Dokumente in 3 von 9 Wechselrunden (`ts-002#2`, `ts-005#2`, `ts-009#2`).
+Alle 115 Notiz-Verdichtungen sind gelungen.
+
+**Auf den drei bisherigen Klassen** (dieselben 83 Runden): `anaphora_resolution` nDCG@8
+0,746 → 0,709, `topic_switch` 0,662 → 0,705, `constraint_carryover`
+0,853 → 0,750; gelöste Fälle 5 → 10. Neu gelöst sind `ana-003`, `ts-006`,
+`cc-005`, `cc-007` und `cc-009`; kein zuvor gelöster Fall ist offen. Das ist **kein** Beleg für oder
+gegen die Änderung: Für ein 1,5-B-Modell ist ein beschrifteter Textblock eine andere Aufgabe als
+eine Chat-Folge, und seine Zahlen beschreiben keinen Betriebszustand (siehe die Befundläufe unten).
+
+**Was das gepinnte Modell mit der neuen Form macht.** Es gibt das Signalwort für **keine** der neun
+Nachrichten ohne Suchbedarf zurück (`noSearch`: 9 von 9 gesucht), wohl aber für sechs Fragen
+(`ts-004#4`, `ts-009#4`, `cc-006#1`, `cc-006#3`, `ac-005#4`, `ac-008#4`), die damit ohne Suche
+bleiben. Vereinzelt übernimmt es die Beschriftungen in die Teilfragen („Nutzer: Die Dienstanweisung
+PER-DA-2/2024 setzt fest …", „Aktuelle Nutzerfrage: wie lange muss ich …"). Beides ist eine
+Eigenschaft dieses Modells: `claude-haiku-4-5` übernimmt keine Beschriftung und gibt das Signalwort
+für alle neun Nachrichten ohne Suchbedarf zurück, allerdings auch für zwei Fragen (siehe unten).
+
+**Zustandsfelder.** Von `known_gap` auf `solved` gesetzt sind die fünf neu gelösten Fälle; alle 35
+Begründungen nennen die Symptome dieses Laufs.
 
 ### Ablation: was die Gesprächsnotiz tatsächlich bewirkt (2026-09-16, Issue #1587)
 
@@ -1133,7 +1177,8 @@ war als Kriterium schon in #1485 zurückgezogen. Die Nachmessung bestätigt das:
 `ts-008#2`: die Personalaktenauskunftsgebührensatzung aus Runde 1, auf Rang 4, während das Ziel der
 Wechselrunde auf Rang 1 steht). **Beide Wechselrunden waren trotzdem gelöst** — das
 Altthemen-Dokument stand im Fenster, ohne das Ziel von Rang 1 zu verdrängen. Mit fester
-CPU-Variante (#1652) liegt die Zahl wieder bei 0. `topic_switch` wird deshalb über den **Anteil
+CPU-Variante (#1652) lag die Zahl wieder bei 0, mit dem Textblock (#1684) bei 3 Dokumenten in 3 von
+9 Wechselrunden. `topic_switch` wird deshalb über den **Anteil
 gelöster Fälle** beurteilt, nicht über die Bleed-Zahl.
 
 Der Datensatz misst zudem eine Verschmutzung nicht, die die Nachmessung sichtbar gemacht hat: In
@@ -1157,19 +1202,18 @@ Zwei Gründe, warum die Zahl so klein bleibt:
 
 ### `known_gap`-Fälle
 
-**22 von 27 Fällen**, Stand 2026-09-15 (feste CPU-Variante `haswell`, #1652). Die Einzelbegründung
-steht je Fall im Feld `expected_state_reason`; die Tabellen führen zusätzlich das gemessene Symptom.
-„Neu" markiert die drei Fälle, die unter `icelake` am 2026-09-12 gelöst waren.
+**25 von 35 Fällen**, Stand 2026-09-17 (feste CPU-Variante `haswell`, Suchfenster als
+Textblock, #1684). Die Einzelbegründung steht je Fall im Feld `expected_state_reason`; die Tabellen
+führen das gemessene Symptom.
 
-#### anaphora_resolution (5 Fälle)
+#### anaphora_resolution (4 Fälle)
 
-| Fall | Symptom im Lauf vom 2026-09-15 (Pipeline-Pfad) |
+| Fall | Symptom im Lauf vom 2026-09-17 (Pipeline-Pfad) |
 |---|---|
-| `verw-conv-ana-003` | **Neu:** Runde 1 macht aus BAU-DA-2/2024 ein „Bauteil"; die Baugenehmigungsgebührensatzung 2024 belegt Rang 1, das Ziel Rang 2. Runde 2 ist gelöst |
-| `verw-conv-ana-004` | Runde 2 mit falschem Rang 1 (verwaltung-geschaeftsverteilungsplan.md, Ziel auf Rang 2); Runde 3 außerhalb des Fensters |
-| `verw-conv-ana-005` | Runde 2 außerhalb des Fensters: verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md; Rang 1 belegt die Vertretungsregelung |
-| `verw-conv-ana-007` | Runde 2 außerhalb des Fensters: verwaltung-0029_formularhinweis-standesamt-7.md; Runde 3 ist gelöst |
-| `verw-conv-ana-009` | Runde 1 findet die Gebührenordnung Jugendamt nicht (zwei von drei erwarteten Dokumenten); Runde 2 hält JUG-DA-2/2024 nur auf Rang 2, Runde 3 außerhalb des Fensters |
+| `verw-conv-ana-004` | Runde 3 verfehlt verwaltung-0039_gebuehrenordnung-kaemmerei.md ganz, Rang 1 belegt verwaltung-0038_verwaltungsgebuehrensatzung.md |
+| `verw-conv-ana-005` | Runde 2 verfehlt verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md ganz, Rang 1 belegt verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md |
+| `verw-conv-ana-007` | Runde 1 findet verwaltung-0026_gebuehrenordnung-standesamt.md nicht; Runde 2 verfehlt verwaltung-0029_formularhinweis-standesamt-7.md ganz, Rang 1 belegt verwaltung-0025_personenstandsurkundengebuehrensatzung.md; Runde 3 verfehlt verwaltung-0029_formularhinweis-standesamt-7.md ganz, Rang 1 belegt verwaltung-0025_personenstandsurkundengebuehrensatzung.md |
+| `verw-conv-ana-009` | Runde 1 findet verwaltung-0052_gebuehrenordnung-jugendamt.md nicht; Runde 2 verfehlt verwaltung-0054_dienstanweisung-jugendamt-2-2024.md ganz, Rang 1 belegt verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md; Runde 3 führt das Ziel auf Rang 3, Rang 1 belegt verwaltung-0053_dienstanweisung-jugendamt-1-2024.md |
 
 > **Vermerk zu `verw-conv-ana-004#3`** („Gilt **sie** auch für eine Eilbearbeitung?" →
 > `verwaltung-0039_gebuehrenordnung-kaemmerei.md`): Diese Runde ist der Bauart nach kein
@@ -1179,32 +1223,41 @@ steht je Fall im Feld `expected_state_reason`; die Tabellen führen zusätzlich 
 > Zahl nach oben —, taugt aber nicht als Beleg für oder gegen einen Fenster-Baustein. Die
 > Nachmessungen bestätigen das: Die Runde ist unverändert offen.
 
-#### topic_switch (8 Fälle)
+#### topic_switch (7 Fälle)
 
-| Fall | Wechselrunde | Symptom im Lauf vom 2026-09-15 (Pipeline-Pfad) |
+| Fall | Wechselrunde | Symptom im Lauf vom 2026-09-17 (Pipeline-Pfad) |
 |---|---|---|
-| `verw-conv-ts-002` | 2 (offen) | Die Wechselrunde verfehlt die Abfallgebührensatzung ganz; in der Folgerunde 3 steht der Notizpunkt „SOZ-08" aus dem Altthema in der Teilfrage, verwaltung-0008_formularhinweis-sozialamt-8.md belegt Rang 1 |
-| `verw-conv-ts-003` | 3 (gelöst) | Vorrunde 2 mit falschem Rang 1: verwaltung-0039_gebuehrenordnung-kaemmerei.md, Ziel auf Rang 2 |
-| `verw-conv-ts-004` | 2 (offen) | Wechselrunde und Folgerunde 3 verfehlen verwaltung-0048_formularhinweis-personalamt-7.md; die Rückkehr zum Altthema in Runde 4 verfehlt verwaltung-0060_dienstanweisung-umweltamt-2-2024.md |
-| `verw-conv-ts-005` | 2 (gelöst) | Folgerunde 3 außerhalb des Fensters: verwaltung-0035_dienstanweisung-buergeramt-2-2024.md |
-| `verw-conv-ts-006` | 3 (gelöst) | **Neu:** Vorrunde 2 erhält den Notizpunkt „Formular ORD-07", die Teilfrage nennt das Formular nicht; Ziel auf Rang 5 |
-| `verw-conv-ts-007` | 3 (gelöst) | Vorrunde 2 außerhalb des Fensters: verwaltung-0027_dienstanweisung-standesamt-1-2024.md |
-| `verw-conv-ts-008` | 2 (gelöst) | Folgerunde 3 im neuen Thema außerhalb des Fensters: verwaltung-0006_dienstanweisung-sozialamt-2-2024.md; Rang 1 belegt die Personalaktenauskunftsgebührensatzung des Altthemas |
-| `verw-conv-ts-009` | 2 (gelöst) | Wechselrunden 2 und 3 gelöst; die ausdrückliche Rückkehr in Runde 4 („Zurück zum Formular JUG-08") bleibt in der Teilfrage bei der Kämmerei, verwaltung-0056_formularhinweis-jugendamt-8.md außerhalb des Fensters |
+| `verw-conv-ts-002` | 2 (offen) | Runde 2 verfehlt verwaltung-0057_abfallgebuehrensatzung.md ganz, Rang 1 belegt verwaltung-0008_formularhinweis-sozialamt-8.md |
+| `verw-conv-ts-003` | 3 (gelöst) | Runde 2 führt das Ziel auf Rang 3, Rang 1 belegt verwaltung-0043_formularhinweis-kaemmerei-8.md |
+| `verw-conv-ts-004` | 2 (gelöst) | Runde 3 verfehlt verwaltung-0048_formularhinweis-personalamt-7.md ganz, Rang 1 belegt verwaltung-0060_dienstanweisung-umweltamt-2-2024.md; Runde 4 bleibt ohne Suche, weil die Zerlegung nichts zu suchen meldet |
+| `verw-conv-ts-005` | 2 (gelöst) | Runde 3 verfehlt verwaltung-0035_dienstanweisung-buergeramt-2-2024.md ganz, Rang 1 belegt verwaltung-vertretungsregelung.md |
+| `verw-conv-ts-007` | 3 (gelöst) | Runde 1 findet verwaltung-0026_gebuehrenordnung-standesamt.md nicht; Runde 2 verfehlt verwaltung-0027_dienstanweisung-standesamt-1-2024.md ganz, Rang 1 belegt verwaltung-0013_dienstanweisung-bauamt-1-2024.md |
+| `verw-conv-ts-008` | 2 (gelöst) | Runde 1 findet verwaltung-0045_gebuehrenordnung-personalamt.md nicht; Runde 3 führt das Ziel auf Rang 4, Rang 1 belegt verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md |
+| `verw-conv-ts-009` | 2 (gelöst) | Runde 3 verfehlt verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md ganz, Rang 1 belegt verwaltung-0052_gebuehrenordnung-jugendamt.md; Runde 4 bleibt ohne Suche, weil die Zerlegung nichts zu suchen meldet |
 
-#### constraint_carryover (9 Fälle)
+#### constraint_carryover (6 Fälle)
 
-| Fall | Symptom im Lauf vom 2026-09-15 (Pipeline-Pfad) |
+| Fall | Symptom im Lauf vom 2026-09-17 (Pipeline-Pfad) |
 |---|---|
-| `verw-conv-cc-001` | Zielrunde 3 stellt die Fassung 2024 auf Rang 1, Ziel auf Rang 2; Notizpunkt „Arzt" ohne Jahr |
-| `verw-conv-cc-002` | **Neu:** Notizpunkt „2023" vorhanden, die Teilfrage der Zielrunde 3 nimmt ihn nicht auf; die Gebührenordnung Bauamt belegt Rang 1, Ziel auf Rang 2 |
-| `verw-conv-cc-003` | Zielrunde 4 stellt die Sozialgebührenbefreiungssatzung 2024 auf Rang 1, Ziel auf Rang 2; offen ist zusätzlich das Zwischenthema in Runde 2 (UMW-07 hinter UMW-08) |
-| `verw-conv-cc-004` | Zielrunde 3 nimmt den Notizpunkt mit „Zeitraum: 2023" nicht auf: Verwechslungspartner ORD-DA-1/2024 auf Rang 1, Ziel auf Rang 2 |
-| `verw-conv-cc-005` | Zielrunde 4 stellt die Fassung 2023 auf Rang 1, Ziel auf Rang 3 |
-| `verw-conv-cc-006` | Runde 1 gelöst; Zielrunde 3 offen — die Teilfrage behauptet die Fassung 2024, die damit Rang 1 belegt |
-| `verw-conv-cc-007` | Runde 1 gelöst; Zielrunde 3 offen, Ziel erst auf Rang 5 |
-| `verw-conv-cc-008` | Nur Runde 1 offen: BAU-DA-1/2024 außerhalb des Fensters, Rang 1 belegt BUE-DA-1/2024. Die Zielrunde 5 ist gelöst, ohne dass ihre Teilfrage die Fassung nennt |
-| `verw-conv-cc-009` | Runde 1 gelöst; Zielrunde 4 stellt die Fassung 2023 auf Rang 1, Ziel auf Rang 2; Notiz „Person", „Formular STA-08" ohne Jahr |
+| `verw-conv-cc-001` | Runde 3 verfehlt verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md ganz, Rang 1 belegt verwaltung-geschaeftsverteilungsplan.md |
+| `verw-conv-cc-002` | Runde 3 führt das Ziel auf Rang 3, Rang 1 belegt verwaltung-0011_gebuehrenordnung-bauamt.md |
+| `verw-conv-cc-003` | Runde 4 verfehlt verwaltung-0004_dienstanweisung-sozialamt-1-2023.md ganz, Rang 1 belegt verwaltung-0007_formularhinweis-sozialamt-7.md |
+| `verw-conv-cc-004` | Runde 3 verfehlt verwaltung-0020_dienstanweisung-ordnungsamt-1-2023.md ganz, Rang 1 belegt verwaltung-geschaeftsverteilungsplan.md |
+| `verw-conv-cc-006` | Runde 1 bleibt ohne Suche, weil die Zerlegung nichts zu suchen meldet; Runde 2 verfehlt verwaltung-dienstanweisung-aktenaufbewahrung.md ganz, Rang 1 belegt verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md; Runde 3 bleibt ohne Suche, weil die Zerlegung nichts zu suchen meldet |
+| `verw-conv-cc-008` | Runde 1 führt das Ziel auf Rang 3, Rang 1 belegt verwaltung-vertretungsregelung.md; Runde 2 verfehlt verwaltung-vertretungsregelung.md ganz, Rang 1 belegt verwaltung-0006_dienstanweisung-sozialamt-2-2024.md |
+
+#### answer_continuation (8 Fälle)
+
+| Fall | Symptom im Lauf vom 2026-09-17 (Pipeline-Pfad) |
+|---|---|
+| `verw-conv-ac-001` | Runde 3 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Gebühr für Entsorgung von Haushaltsabfälle:“); Runde 4 verfehlt verwaltung-0061_formularhinweis-umweltamt-7.md ganz, Rang 1 belegt verwaltung-0058_gebuehrenordnung-umweltamt.md |
+| `verw-conv-ac-002` | Runde 2 führt das Ziel auf Rang 3, Rang 1 belegt verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md; Runde 3 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Formular BUE-08 ist das **Änderungs- und Ermäßigungsformular** des Bürgeramts der Stadt …“); Runde 4 verfehlt verwaltung-0037_formularhinweis-buergeramt-8.md ganz, Rang 1 belegt verwaltung-0033_gebuehrenordnung-buergeramt.md |
+| `verw-conv-ac-003` | Runde 2 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Was sind die Gebühren für eine Erteilung eines Personenstandsurkunds?“); Runde 3 verfehlt verwaltung-0027_dienstanweisung-standesamt-1-2024.md, verwaltung-0028_dienstanweisung-standesamt-2-2024.md ganz, Rang 1 belegt verwaltung-vertretungsregelung.md; Runde 4 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Danke für den Hinweis! Dann kann ich meine Antworten stärker auf Ihre Arbeit in der **S …“) |
+| `verw-conv-ac-004` | Runde 1 findet verwaltung-0064_gebuehrenordnung-kulturamt.md nicht; Runde 2 verfehlt verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md ganz, Rang 1 belegt verwaltung-0033_gebuehrenordnung-buergeramt.md; Runde 3 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Gebühr für Vereine in Kalkstadt: 50% auf die Gebühren für die Benutzung der Stadtbiblio …“); Runde 4 führt das Ziel auf Rang 3, Rang 1 belegt verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md |
+| `verw-conv-ac-005` | Runde 1 findet verwaltung-0045_gebuehrenordnung-personalamt.md nicht; Runde 2 führt das Ziel auf Rang 2, Rang 1 belegt verwaltung-0045_gebuehrenordnung-personalamt.md; Runde 3 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Wie viel kostet die Einsichtnahme in eine Personalakte eines ehemaligen Beschäftigten?“); Runde 4 bleibt ohne Suche, weil die Zerlegung nichts zu suchen meldet |
+| `verw-conv-ac-006` | Runde 2 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Wofür wird Formular KAE-08 verwendet? Ich arbeite in der Kämmerei und berate gerade ein …“); Runde 4 verfehlt verwaltung-0043_formularhinweis-kaemmerei-8.md ganz, Rang 1 belegt verwaltung-0026_gebuehrenordnung-standesamt.md |
+| `verw-conv-ac-007` | Runde 2 führt das Ziel auf Rang 6, Rang 1 belegt verwaltung-0004_dienstanweisung-sozialamt-1-2023.md; Runde 3 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Danke für die Information. Wie lange muss ich die Unterlagen danach aufheben?“) |
+| `verw-conv-ac-008` | Runde 3 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Antwort auf die aktuelle Nutzerfrage:“); Runde 4 bleibt ohne Suche, weil die Zerlegung nichts zu suchen meldet |
 
 ### Keine Ausnahmen dieser Klassen (`expected_state_exception` entfällt, #1658)
 
