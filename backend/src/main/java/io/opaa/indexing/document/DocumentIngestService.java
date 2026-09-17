@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -247,7 +248,6 @@ public class DocumentIngestService {
         case CHUNKED -> log.debug("{} chunked via pipeline {}", filePath, pipeline.id());
       }
       List<org.springframework.ai.document.Document> chunks = parsed.chunks();
-      attachSourceContext(chunks, pipeline, ingest.context());
       DocumentChunkMetadata coreMetadata =
           extractCoreMetadata(
               doc, fileName, parsed.withProperties(ingest.declaredOver(parsed.properties())));
@@ -262,7 +262,14 @@ public class DocumentIngestService {
         vectorChunkStore.deleteByDocumentId(documentId);
         preservingPreviousChunks = false;
       }
-      storeChunks(doc, chunks, contextTitle, pipeline, selection.routingExtension(), coreMetadata);
+      storeChunks(
+          doc,
+          chunks,
+          contextTitle,
+          pipeline,
+          selection.routingExtension(),
+          coreMetadata,
+          ingest.context());
 
       DocumentIngestResult result =
           markConnectorIndexed(documentId, chunks.size(), checksum, ingest.changeMarker());
@@ -395,56 +402,93 @@ public class DocumentIngestService {
 
   /**
    * Same content under a new marker, title, place or folder: the chunks stay, but the provenance
-   * moves with the row, so the next run's pre-fetch check skips the document again.
+   * moves with the row, so the next run's pre-fetch check skips the document again - and, when the
+   * file name or the source container or hierarchy path itself moved, {@link
+   * #rewriteChunkProvenance} keeps every chunk's copy in step with the row's, without touching text
+   * or embedding.
    */
   private void refreshProvenance(Document existing, DocumentIngest ingest, String checksum) {
-    String marker = ingest.changeMarker();
-    if (marker != null && !marker.equals(existing.getLastModifiedRemote())) {
-      documentRepository.markIndexedFromSource(
-          existing.getId(), existing.getChunkCount(), existing.getIndexedAt(), checksum, marker);
-    }
     SourceDocumentContext context = ingest.context();
     String containerKey =
         context == null ? existing.getSourceContainerKey() : context.containerKey();
     String hierarchyPath =
         context == null ? existing.getSourceHierarchyPath() : context.hierarchyPath();
-    if (!Objects.equals(existing.getFileName(), ingest.fileName())
-        || !Objects.equals(existing.getSourceContainerKey(), containerKey)
-        || !Objects.equals(existing.getSourceHierarchyPath(), hierarchyPath)) {
+    boolean contextChanged =
+        !Objects.equals(existing.getSourceContainerKey(), containerKey)
+            || !Objects.equals(existing.getSourceHierarchyPath(), hierarchyPath);
+    boolean fileNameChanged = !Objects.equals(existing.getFileName(), ingest.fileName());
+    if (contextChanged || fileNameChanged) {
+      // Chunks first, row second: both are plain UPDATEs a retried run repeats harmlessly, as
+      // long as the change marker below - the only step a skip check reads - commits last.
+      rewriteChunkProvenance(
+          existing.getId(),
+          new SourceDocumentContext(containerKey, hierarchyPath),
+          fileNameChanged ? ingest.fileName() : null);
       documentRepository.refreshConnectorTitleAndContext(
           existing.getId(), ingest.fileName(), containerKey, hierarchyPath);
     }
     if (ingest.folder() != null && !Objects.equals(existing.getFolderId(), ingest.folder().id())) {
+      // No @DynamicUpdate on Document: a plain save writes every mapped column from this
+      // in-memory entity, so the move applied above must be mirrored here too, or this save
+      // would revert it to its stale in-memory value.
+      existing.setFileName(ingest.fileName());
+      existing.applySourceContext(new SourceDocumentContext(containerKey, hierarchyPath));
       existing.setFolderId(ingest.folder().id());
       documentRepository.save(existing);
+    }
+    // Last and in its own transaction: a skip check reads only this marker (Document#
+    // isUnchangedAt), so committing it before the updates above could make a later failure
+    // invisible - the row would already look current and refreshProvenance would never run
+    // again. Committing it last means a failure anywhere above is retried on the next run.
+    String marker = ingest.changeMarker();
+    if (marker != null && !marker.equals(existing.getLastModifiedRemote())) {
+      documentRepository.markIndexedFromSource(
+          existing.getId(), existing.getChunkCount(), existing.getIndexedAt(), checksum, marker);
     }
   }
 
   /**
-   * Puts the source context onto every chunk of a pipeline that declares the context keys as
-   * passthrough - they are not in the body, so the pipeline cannot set them itself.
+   * Rewrites {@code file_name} and the source context on every chunk via {@link
+   * VectorChunkStore#updateDocumentMetadata} - metadata only, no re-parse or re-embedding; a {@code
+   * null} argument skips or clears its own key. Deliberately never marks the Kontextpraefix stale:
+   * {@link ChunkContextPrefix#ingestTitle} can embed a moved or renamed document's hierarchy path
+   * and title, but queuing that here would silently inflate the Nachlauf's Folgekosten.
    */
-  private static void attachSourceContext(
-      List<org.springframework.ai.document.Document> chunks,
-      DocumentFormat pipeline,
-      SourceDocumentContext context) {
-    // Open question #1421: only the Confluence storage format declares these keys, so a PDF
-    // attachment of a Confluence page carries container and hierarchy on its document row but not
-    // on its chunks. Behaviour left unchanged until that is decided.
-    if (context == null
-        || !pipeline
-            .passthroughMetadataKeys()
-            .contains(ChunkingService.SOURCE_CONTAINER_METADATA_KEY)) {
-      return;
+  private void rewriteChunkProvenance(
+      UUID documentId, SourceDocumentContext context, String changedFileName) {
+    Map<String, Object> values = new HashMap<>(sourceContextMetadata(context));
+    if (changedFileName != null) {
+      values.put("file_name", changedFileName);
     }
-    Map<String, Object> contextKeys = new HashMap<>();
+    Set<String> keysToClear = new HashSet<>();
+    if (context.containerKey() == null) {
+      keysToClear.add(ChunkingService.SOURCE_CONTAINER_METADATA_KEY);
+    }
+    if (context.hierarchyPath() == null) {
+      keysToClear.add(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY);
+    }
+    vectorChunkStore.updateDocumentMetadata(documentId, values, keysToClear);
+  }
+
+  /**
+   * The chunk metadata for {@code context}: a document's source container and hierarchy path are a
+   * property of the document, not of the format that chunked it, so each key is written whenever
+   * its own value is set - independent of {@link DocumentFormat#passthroughMetadataKeys()}. The two
+   * are not coupled: a Confluence space root page or an S3 object directly under its scope's prefix
+   * carries a container key without a hierarchy path.
+   */
+  private static Map<String, Object> sourceContextMetadata(SourceDocumentContext context) {
+    if (context == null) {
+      return Map.of();
+    }
+    Map<String, Object> values = new HashMap<>();
     if (context.containerKey() != null) {
-      contextKeys.put(ChunkingService.SOURCE_CONTAINER_METADATA_KEY, context.containerKey());
+      values.put(ChunkingService.SOURCE_CONTAINER_METADATA_KEY, context.containerKey());
     }
     if (context.hierarchyPath() != null) {
-      contextKeys.put(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY, context.hierarchyPath());
+      values.put(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY, context.hierarchyPath());
     }
-    chunks.forEach(chunk -> chunk.getMetadata().putAll(contextKeys));
+    return values;
   }
 
   /** The ingest's own prefix title, see {@link ChunkContextPrefix#ingestTitle}. */
@@ -653,6 +697,9 @@ public class DocumentIngestService {
    * @param chunkMetadata the document's filterable schema values (ADR-0024, {@link
    *     CoreMetadataChunkKeys} and its library's own filterable fields), written before any
    *     pipeline passthrough - they hang on the document, so no pipeline may set them
+   * @param sourceContext the document's source container and hierarchy path, or {@code null};
+   *     written like {@code chunkMetadata} - a document property, not conditioned on {@code
+   *     pipeline}'s own passthrough declaration
    */
   private void storeChunks(
       Document document,
@@ -660,7 +707,8 @@ public class DocumentIngestService {
       String contextTitle,
       DocumentFormat pipeline,
       Optional<String> routingExtension,
-      DocumentChunkMetadata chunkMetadata) {
+      DocumentChunkMetadata chunkMetadata,
+      SourceDocumentContext sourceContext) {
     boolean documentWasSplit = ChunkContextPrefix.documentWasSplit(chunks.size());
     // The Kernfeld Titel replaces the file-name humanisation the prefix used before; the caller's
     // own candidate stays the fallback and still decides whether this document type gets a prefix
@@ -670,6 +718,7 @@ public class DocumentIngestService {
     String prefixTitle =
         ChunkContextPrefix.titleAtRest(prefixEligible, chunkMetadata.contextTitle(), contextTitle);
     Set<String> passthroughKeys = pipelineRegistry.allPassthroughMetadataKeys();
+    Map<String, Object> sourceContextValues = sourceContextMetadata(sourceContext);
 
     List<org.springframework.ai.document.Document> enriched =
         chunks.stream()
@@ -700,6 +749,9 @@ public class DocumentIngestService {
                   // The document's filterable core fields (ADR-0024): inherited by every chunk,
                   // written here so both search paths can carry the same condition.
                   metadata.putAll(chunkMetadata.values());
+                  // The document's own source container and hierarchy path (a document property,
+                  // not a format one) - present on every chunk whenever the source declared one.
+                  metadata.putAll(sourceContextValues);
                   // The registry-wide declared passthrough keys - e.g. the chunk's Fundort, or a
                   // message's Kopfdaten (ingestion-pipelines.md, Teil 3, Punkt 5) - copied only
                   // when this chunk actually carries them, and never for a key already written

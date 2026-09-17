@@ -40,6 +40,16 @@ export interface AuthConfig {
   localAccounts?: LocalAccountsConfig
 }
 
+/**
+ * {@link AuthConfig} as {@link getAuthConfig} returns it: `localAccounts` is never absent, because
+ * that function always substitutes {@link LOCAL_ACCOUNTS_DISABLED} for a missing block. Every
+ * caller of `getAuthConfig` reads through this type instead, so the absent-block case cannot be
+ * read from a store state that changed since - only from the configuration a call just loaded.
+ */
+export interface ResolvedAuthConfig extends Omit<AuthConfig, 'localAccounts'> {
+  localAccounts: LocalAccountsConfig
+}
+
 export type SystemRole = components['schemas']['SystemRole']
 
 export interface AuthUser {
