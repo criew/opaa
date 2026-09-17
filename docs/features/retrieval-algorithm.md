@@ -121,10 +121,14 @@ erreichen das Modell seit #1684 als **ein beschrifteter Textblock** in einer Nut
 als Folge von Nutzer- und Assistentennachrichten; als Gespräch gelesen setzte ein Chat-Modell den
 Verlauf fort und lieferte Antwortsätze statt Suchanfragen. Findet das Modell in der Nachricht nichts
 zu suchen (Wunsch zur Antwortform, Angabe zur Person, Dank), antwortet es mit dem Signalwort
-`KEINE_SUCHE`: `decompose` liefert dann eine **leere Liste**, die Stufe hält den Lauf ohne Suche und
-ohne Rückfall an (Notiz „decomposition found nothing to search for", Zähler
-`opaa.query.decomposition.no-search`), und die Antwort entsteht ohne Chunks. Steht das Signalwort
-neben einer Suchanfrage, wird gesucht. Scheitert der Aufruf
+`KEINE_SUCHE`: `decompose` liefert dann eine **leere Liste**, die Stufe sucht trotzdem mit der
+Rückfall-Suchanfrage aus `buildSearchQuery` und setzt `searchNeeded = false` im Zustand (Notiz
+„decomposition found nothing to search for: single-query fallback, answer told so", Zähler
+`opaa.query.decomposition.no-search`). `QueryService` reicht das Flag an die Antwortgenerierung
+weiter, die vor den Kontextdokumenten die Anweisung für Nachrichten ohne Suchbedarf einfügt; Chunks,
+Quellen und durchsuchte Bibliotheken bleiben wie bei jeder Suche. Führende Beschriftungen des
+Textblocks („Aktuelle Nutzerfrage:") werden aus Teilfragen geschnitten, reine Beschriftungszeilen
+verworfen. Steht das Signalwort neben einer Suchanfrage, wird mit der Suchanfrage gesucht. Scheitert der Aufruf
 (Zeitüberschreitung, kein aktives Modell, unparsebare oder leere Antwort), liefert `decompose`
 **kein** Ergebnis (`Optional.empty()`), und `SubQueryDecompositionStage#buildSearchQuery` übernimmt
 als Rückfallebene: die reine

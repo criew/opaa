@@ -85,7 +85,7 @@ Dienstvereinbarungsthema (ADR-0031, „Verworfene Alternativen").
 | Zitiermarken im Fenster | werden mitgeschleppt | an beiden Eingängen entfernt |
 | Nachladen bei Cache-Miss | ganze Historie laden, auf 20 kappen | nur die letzten *n* Nachrichten laden, identisch normalisiert |
 | Form des Suchfensters in der Zerlegung | Chat-Nachrichten, die Frage als letzte Nutzernachricht | **ein beschrifteter Textblock** in einer Nutzernachricht (#1684) |
-| Nachricht ohne Suchbedarf | Rückfall auf die Frage | **keine Suche**: Signalwort der Zerlegung, der Lauf endet vor den Suchstufen (#1684) |
+| Nachricht ohne Suchbedarf | Rückfall auf die Frage | Signalwort der Zerlegung: **gesucht wird trotzdem** mit dem Rückfall-Suchtext, nur die Antwortanweisung ändert sich (#1684) |
 
 **Warum das Suchfenster ein Textblock ist (#1684):** Als Folge von Nutzer- und Assistentennachrichten
 liest ein Chat-Modell lange Antworten im Verlauf als Gespräch, an dem es teilnimmt, und setzt es
@@ -95,12 +95,25 @@ durch, weil es Wörter des Verlaufs teilt. Die Beschriftungen („Bisheriger Ges
 „Nutzer", „Assistent", „Aktuelle Nutzerfrage") gehören wie die Überschrift des Notizblocks **nicht**
 zum Ankerraum.
 
-**Warum eine Nachricht ohne Suchbedarf nicht zurückfällt (#1684):** Ein Wunsch zur Antwortform, eine
-Angabe zur Person oder ein Dank enthält nichts, wonach zu suchen wäre; der Rückfall suchte mit dem
-Satz selbst und brachte der Antwort beliebige Treffer. Die Zerlegung antwortet stattdessen mit einem
-Signalwort, die Pipeline endet vor den Suchstufen, und die Antwort bekommt statt leerer
-Kontextdokumente die Anweisung, direkt auf die Nachricht einzugehen, ohne „nichts gefunden" zu
-melden. Steht das Signalwort neben einer Suchanfrage, gewinnt die Suchanfrage.
+**Warum eine Nachricht ohne Suchbedarf trotzdem gesucht wird (#1684):** Ein Wunsch zur Antwortform,
+eine Angabe zur Person oder ein Dank enthält nichts, wonach zu suchen wäre. Die Zerlegung antwortet
+dafür mit einem Signalwort, statt einen Antwortsatz als Suchanfrage zu liefern. Das Signalwort
+schaltet die Suche aber **nicht** ab: Die Stufe sucht mit dem Rückfall-Suchtext (letzte Nutzerfrage
+des Suchfensters plus Nachricht), und nur die Antwort erfährt die Einstufung — sie bekommt vor den
+Kontextdokumenten die Anweisung, direkt auf die Nachricht einzugehen und nicht zu behaupten, nichts
+gefunden zu haben. Steht das Signalwort neben einer Suchanfrage, gewinnt die Suchanfrage.
+
+Die Abwägung (Maintainer-Entscheidung vom 17.09.2026): Gemessen mit `claude-haiku-4-5` bei Temperatur
+0,70 erkennt die Zerlegung Meta-Aussagen zuverlässig, stuft aber **Folgefragen ohne Fragezeichen**
+(„wenn ich über 24 bin", „ich bin über 60", „falls ich Rentner bin") immer wieder als Nachricht ohne
+Suchbedarf ein — mit der ersten Regelfassung 19 von 160 Stichproben, mit einer Fassung, die
+Bedingungen ausdrücklich als Fragen benennt, 15 von 160. Die Formulierung allein löst das nicht. Die
+beiden Fehler sind ungleich teuer: Eine gesuchte Meta-Aussage kostet ein paar unzitierte Quellen und
+eine „Durchsucht wurden"-Zeile, eine nicht gesuchte Frage wird ohne Quelle beantwortet. Die
+ausgelieferte Regel nennt zusätzlich Angaben zu Alter, Lage und Umständen als Bedingung einer
+Folgefrage; in derselben Probe (58 Runden, je fünf Stichproben) stufte sie 7 von 190 Fragen als
+„keine Suche" ein und keine der 100 Meta-Stichproben als Suche. Die verbleibenden Fehleinstufungen
+kosten unter dieser Semantik nur die Antwortanweisung, nicht die Quellen.
 
 **Warum der Sicherheitsgurt nicht nur gegen die Frage ankert:** „Wie lange dauert das?" wird zu
 „Bearbeitungsdauer für den Anwohnerparkausweis" — die Teilfrage teilt mit der Frage kein Ankerwort
@@ -461,7 +474,7 @@ sie sprengte (ADR-0012, Entscheidung 49).
 | `anaphora_resolution` | 2–3 | Rückfrage mit Bezugswort auf die Vorrunde(n); Zieldokument ist nur mit aufgelöstem Bezug findbar | Suchfenster, Zerlegung |
 | `topic_switch` | 3–4 | Wechsel in Runde 2 oder 3; erwartete Dokumente der Wechselrunde sind ausschließlich das neue Thema — ein Altthemen-Dokument im Fenster ist Bleed. Ein bis zwei Fälle mit Rückkehr zum alten Thema durch Neubenennung | kurzes Suchfenster, Rückfall-Reparatur |
 | `constraint_carryover` | 3–5 | Angabe in Runde 1 („Ich arbeite in der Nebenstelle 3", „Es geht um die Fassung 2024"), die in Runde 3 oder später das richtige Dokument vom Verwechslungspartner trennt; Runde 2 ist ein Zwischenthema, damit die Angabe aus dem Suchfenster gefallen ist | Gesprächsnotiz |
-| `answer_continuation` | 3–5 | Verlauf aus langen, produktionsnahen Antworten samt Zitiermarken, kurze Folgefragen und mindestens eine Nachricht ohne Suchbedarf (`search_expected: false`) nach der ersten Runde; eine solche Runde hat keine erwarteten Dokumente und gilt als gelöst, wenn nicht gesucht wurde (#1684) | Form des Suchfensters, Signalwort der Zerlegung |
+| `answer_continuation` | 3–5 | Verlauf aus langen, produktionsnahen Antworten samt Zitiermarken, kurze Folgefragen und mindestens eine Nachricht ohne Suchbedarf (`search_expected: false`) nach der ersten Runde; eine solche Runde hat keine erwarteten Dokumente und gilt als gelöst, wenn die Zerlegung sie als Nachricht ohne Suchbedarf eingestuft hat; mindestens drei Folgefragen der Klasse tragen kein Fragezeichen (#1684) | Form des Suchfensters, Signalwort der Zerlegung, Einstufung beider Richtungen |
 
 Mindestens acht Fälle je Klasse (bestehende Regel). Alle vier Klassen werden in der
 Verwaltungsdomäne kuratiert; der Verwechslungspartner (`confusable_document`) ist bei

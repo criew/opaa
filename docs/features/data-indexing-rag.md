@@ -387,9 +387,12 @@ des Suchfensters statt der ersten des Chats; siehe
 [conversation-memory.md](./conversation-memory.md), Bauteil 1.
 
 **Nachricht ohne Suchbedarf (#1684):** Ein Wunsch zur Antwortform, eine Angabe zur Person oder ein
-Dank ist kein Fehlschlag, sondern hat nichts zu suchen. Das Modell antwortet dann mit einem
-Signalwort, die Suche entfällt ganz — kein Rückfall —, und die Antwort wird angewiesen, direkt auf
-die Nachricht einzugehen, statt „nichts gefunden" zu melden. Frage und Suchfenster erreichen das
+Dank hat nichts zu suchen. Das Modell antwortet dann mit einem Signalwort. Gesucht wird trotzdem, mit
+der `buildSearchQuery`-Suchanfrage des Rückfalls, und die Antwort wird angewiesen, direkt auf die
+Nachricht einzugehen, statt „nichts gefunden" zu melden. Das Signalwort schaltet die Suche bewusst
+nicht ab: Folgefragen ohne Fragezeichen werden oft genug für Nachrichten ohne Suchbedarf gehalten,
+dass eine ausgelassene Suche Fragen ohne Beleg ließe (Abwägung in
+[conversation-memory.md](./conversation-memory.md)). Frage und Suchfenster erreichen das
 Modell seit demselben Issue als beschrifteter Textblock in einer Nutzernachricht: Als
 Chat-Nachrichten gelesen setzte das Modell den Verlauf fort und gab Antwortsätze als Suchanfragen
 zurück.

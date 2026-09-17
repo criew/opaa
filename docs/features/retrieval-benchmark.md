@@ -915,10 +915,14 @@ zurück (#1684).
 *Konstruktion:* drei bis fünf Runden; jede Runde mit Suche trägt eine Antwort von 500 bis 2000
 Zeichen mit mindestens einer Zitiermarke; mindestens eine Runde ohne Suchbedarf
 (`search_expected: false`, keine erwarteten Dokumente) nach der ersten und mindestens zwei Runden
-mit Suche; die Folgefragen sind nur mit dem Verlauf auflösbar.
+mit Suche; die Folgefragen sind nur mit dem Verlauf auflösbar; über die Klasse hinweg tragen
+mindestens drei Folgefragen mit Suche kein Fragezeichen (Bedingung, Nominalphrase, „und für …").
 *Ground Truth:* für Runden mit Suche wie bei `anaphora_resolution`; eine Runde ohne Suchbedarf ist
-gelöst, wenn der Lauf keine Suchanfrage und keinen Chunk hat. Sie geht in kein Metrik-Aggregat ein;
-der Bericht führt sie im Abschnitt `noSearch`.
+gelöst, wenn die Zerlegung sie als Nachricht ohne Suchbedarf eingestuft hat — gesucht wird auch
+dann, ihre Chunks sagen über die Einstufung nichts. Sie geht in kein Metrik-Aggregat ein. Der
+Abschnitt `noSearch` zählt beide Fehlrichtungen: Runden ohne Suchbedarf, die als Suche eingestuft
+wurden, und Runden mit Suchbedarf, die als „keine Suche" eingestuft wurden. Die zweite Richtung
+zeigt sich in keiner Rangmetrik, weil die Runde trotzdem sucht.
 *Adressat:* Form des Suchfensters in der Zerlegung und ihr Signalwort für Nachrichten ohne
 Suchbedarf.
 
