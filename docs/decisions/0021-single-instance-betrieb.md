@@ -164,15 +164,19 @@ Drei Stellen sind keine Fundstelle im obigen Sinne — sie stehen in keiner Klas
 Umbau gleichermaßen gebraucht und sind deshalb hier notiert, damit der spätere Scan sie nicht
 übersieht.
 
-**Betrieb: kein sanftes Herunterfahren, keine eigene Readiness.** `server.shutdown` ist nicht auf
-`graceful` gesetzt (der Boot-Vorgabewert stoppt sofort, laufende Anfragen brechen ab), und
-`management` gibt `health,info,prometheus,metrics` ohne aktivierte Liveness-/Readiness-Gruppen frei.
-Es gibt damit keine Readiness, die sich von der Liveness unterscheidet, und der aggregierte
-`/actuator/health` hängt über `ChatHealthIndicator`, `EmbeddingsHealthIndicator` und
-`VectorStoreHealthIndicator` an der Erreichbarkeit von LLM und Vektorspeicher. Ein Lastverteiler, der
-darauf prüft, nähme bei einem hängenden LLM alle Instanzen gleichzeitig aus dem Verkehr. Für den
-Single-Instance-Betrieb ist beides folgenlos; für ein Update einer Instanz nach der anderen ohne
-Ausfall ist es Voraussetzung.
+**Betrieb: sanftes Herunterfahren und eine Readiness ohne fremde Dienste — inzwischen gebaut
+(#1710).** Ursprünglich stand hier, dass `server.shutdown` nicht auf `graceful` steht und der
+aggregierte `/actuator/health` über `ChatHealthIndicator`, `EmbeddingsHealthIndicator` und
+`VectorStoreHealthIndicator` an der Erreichbarkeit von LLM und Vektorspeicher hängt. Beides ist
+erledigt: Der Stopp lässt laufende HTTP-Anfragen innerhalb von
+`spring.lifecycle.timeout-per-shutdown-phase` auslaufen — das Zeitfenster der Phase, in der die
+Task-Executor stoppen, ist über `ShutdownLifecycleConfiguration` bewusst auf null gesetzt, damit ein
+Indexierungslauf den Stopp nicht verzögert und wie bisher beim nächsten Start wiederanläuft —, und
+`readiness` entscheidet aus Prozesszustand und Datenbank, während die drei genannten Indikatoren in
+eigenen Gruppen stehen. (Die Probenpfade selbst gab es schon vorher: Spring Boot aktiviert
+`management.endpoint.health.probes` in einer Webanwendung ohnehin; neu ist, was in `readiness`
+steht.) Diese beiden Punkte sind damit erledigt; die übrigen Voraussetzungen dieses Abschnitts und
+die knotenlokale Upload-Ablage aus dem Abschnitt darüber bleiben offen.
 
 **Gleichzeitiger Kaltstart zweier Prozesse gegen dieselbe Datenbank.**
 `spring.ai.vectorstore.pgvector.initialize-schema: true` lässt jede startende Instanz

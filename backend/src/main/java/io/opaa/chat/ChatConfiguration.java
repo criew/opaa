@@ -1,6 +1,7 @@
 package io.opaa.chat;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opaa.config.ShutdownLifecycleConfiguration;
 import io.opaa.observability.ChatMetrics;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -51,6 +52,9 @@ public class ChatConfiguration {
     executor.setMaxPoolSize(4);
     executor.setQueueCapacity(0);
     executor.setThreadNamePrefix("chat-title-");
+    // A title that is interrupted on shutdown is never generated again - the chat keeps its
+    // default name. The phase buys a running call a short window (ShutdownLifecycleConfiguration).
+    executor.setPhase(ShutdownLifecycleConfiguration.UNRECOVERABLE_BACKGROUND_PHASE);
     executor.setRejectedExecutionHandler(rejectionHandler("chat title generation", () -> {}));
     executor.initialize();
     return executor;
@@ -76,6 +80,9 @@ public class ChatConfiguration {
     executor.setMaxPoolSize(4);
     executor.setQueueCapacity(0);
     executor.setThreadNamePrefix("chat-note-");
+    // Like the title pool above: a condensation that is interrupted is lost, the note stays at its
+    // previous state.
+    executor.setPhase(ShutdownLifecycleConfiguration.UNRECOVERABLE_BACKGROUND_PHASE);
     executor.setRejectedExecutionHandler(
         rejectionHandler("chat note condensation", chatMetrics::recordRejectedNoteExtraction));
     executor.initialize();

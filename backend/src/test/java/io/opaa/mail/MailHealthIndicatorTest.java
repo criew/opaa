@@ -18,7 +18,7 @@ import org.springframework.boot.health.contributor.Status;
  *
  * <p>The distinction that matters operationally: a deployment without a mail server is {@code
  * UNKNOWN}, a deployment whose last attempt failed is {@code DOWN}. Which group that status lands
- * in is {@link MailHealthGroupTest}'s subject.
+ * in is {@code io.opaa.observability.SeparateHealthGroupTest}'s subject.
  */
 @ExtendWith(MockitoExtension.class)
 class MailHealthIndicatorTest {
