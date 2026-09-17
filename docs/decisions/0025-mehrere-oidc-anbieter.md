@@ -405,10 +405,19 @@ stille Erneuerung und die 401-Behandlung aus ADR-0005 (#737) arbeiten unverände
 Callbacks. Beim Betreten der Anmeldeseite startet die SPA einmal je Browser-Tab einen Versuch mit
 `prompt=none` beim vorgeschlagenen Anbieter, damit eine laufende Anbieter-Sitzung ohne Klick
 übernommen wird. Der Anbieter des Flusses wird dabei abgelegt wie oben, ergänzt um einen Merker je
-Fluss, dass dieser eine der automatische ist. Lehnt der Anbieter ab (`login_required` und die
-verwandten Antworten aus OIDC Core 3.1.2.6), endet der Callback ohne Fehlermeldung auf der
-Anmeldeseite; ein Fehler eines geklickten Flusses behält seine Meldung unverändert. Am Fluss
-selbst, an der geteilten Redirect-URI und an der Abmeldung ändert das nichts.
+Fluss, dass dieser eine der automatische ist. Lehnt der Anbieter ab, endet der Callback ohne
+Fehlermeldung auf der Anmeldeseite; ein Fehler eines geklickten Flusses behält seine Meldung
+unverändert. Am Fluss selbst, an der geteilten Redirect-URI und an der Abmeldung ändert das nichts.
+
+Als Absage gilt dabei **jede** Antwort des Anbieters, die einen OAuth-Fehlercode trägt — nicht nur
+die vier erwarteten aus OIDC Core 3.1.2.6 (`login_required`, `interaction_required`,
+`consent_required`, `account_selection_required`). Begründung: Für die Person ist ein
+`unauthorized_client` aus einer vertippten Client-ID dasselbe wie eine fehlende Sitzung — ein
+Versuch, den sie nie ausgelöst hat, und eine Anmeldeseite, die einfach dasteht; eine rohe
+OAuth-Meldung für einen fremden Vorgang hülfe ihr nicht. Damit die Fehlkonfiguration trotzdem
+auffindbar bleibt, schreibt die SPA den Code in die Browser-Konsole (nie das Fehlerobjekt selbst:
+`ErrorResponse.form` trägt die gescheiterte Token-Anfrage). Die Rücksprungadresse des Flusses
+(#1685) wird auch aus der Absage zurückgelesen, damit ein Direktlink den Versuch überlebt.
 
 **Was der öffentliche Konfigurationsendpunkt preisgibt, ist bewusst und begrenzt:** Anzeigename,
 Issuer-URI und Client-ID jedes aktivierten Anbieters — genau das, was jeder sieht, der auf der

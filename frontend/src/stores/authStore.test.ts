@@ -1131,6 +1131,39 @@ describe('authStore', () => {
       })
 
       /**
+       * #1685: the route of a direct link rides in the sign-in state of the attempt, and
+       * oidc-client-ts hands that state out with the refusal as well. Without reading it back, the
+       * sign-in the person is then asked for by hand would end on the chat page - the automatic
+       * attempt would break the direct link in exactly the case where it can do nothing for them.
+       */
+      it('brings the route of a direct link back from the refusal', async () => {
+        const outcome = await callbackWith(
+          new ErrorResponse({
+            error: 'login_required',
+            userState: { returnTo: '/spaces/s-1/chats/c-1?q=1#m-2' },
+          }),
+          { silent: true },
+        )
+
+        expect(outcome).toEqual({
+          kind: 'silent-refused',
+          returnTo: '/spaces/s-1/chats/c-1?q=1#m-2',
+        })
+      })
+
+      it('never brings a foreign origin back from the refusal', async () => {
+        const outcome = await callbackWith(
+          new ErrorResponse({
+            error: 'login_required',
+            userState: { returnTo: 'https://fremde.example/abgriff' },
+          }),
+          { silent: true },
+        )
+
+        expect(outcome).toEqual({ kind: 'silent-refused', returnTo: '/chat' })
+      })
+
+      /**
        * The note of an attempt that never came back - the person cancelled at the provider's mask,
        * the provider answered with a page of its own - must not be read as belonging to the flow
        * that follows. Without that, a click on a provider that is then refused (`access_denied` on
@@ -1189,6 +1222,8 @@ describe('authStore', () => {
 
         await expect(useAuthStore.getState().handleOidcCallback()).resolves.toEqual({
           kind: 'silent-refused',
+          // no sign-in state to read a route from without a manager - back to the start page
+          returnTo: '/chat',
         })
         expect(useAuthStore.getState().error).toBeNull()
       })
@@ -1209,7 +1244,7 @@ describe('authStore', () => {
         try {
           await useAuthStore.getState().attemptSilentSignIn()
           expect(redirect).toHaveBeenCalledTimes(1)
-          await expect(useAuthStore.getState().handleOidcCallback()).resolves.toEqual({
+          await expect(useAuthStore.getState().handleOidcCallback()).resolves.toMatchObject({
             kind: 'silent-refused',
           })
 

@@ -264,6 +264,12 @@ test.describe('Demo-Smoke (#232)', () => {
    * #1685: a direct link survives the provider sign-in. The route ProtectedRoute denied travels in
    * the sign-in state of the authorization-code flow, so after Keycloak the person stands in the
    * linked chat, not on the chat start page.
+   *
+   * #1631: and it survives a refused automatic attempt on the way. Discarding this tab's storage
+   * after the sign-out arms that attempt again (the sign-out itself spends it) while Keycloak's
+   * own session stays ended - so opening the link runs the full chain: attempt with the route,
+   * `login_required`, back to the sign-in page, and only then the sign-in by hand. Without the
+   * route coming back from the refusal, the click below would end on the chat start page.
    */
   test('Direktlink auf einen Chat führt nach der Keycloak-Anmeldung in diesen Chat', async ({
     page,
@@ -278,8 +284,13 @@ test.describe('Demo-Smoke (#232)', () => {
     await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/)
     const chatPath = new URL(page.url()).pathname
     await logout(page)
+    // A string script, because this suite compiles without DOM typings (see e2e/tsconfig.json).
+    await page.evaluate('window.sessionStorage.clear()')
 
-    await page.goto(chatPath)
+    // 'commit' rather than the default 'load': the automatic attempt replaces this document as
+    // soon as the sign-in page has judged, and a replace that wins the race against `load` would
+    // end this goto with net::ERR_ABORTED.
+    await page.goto(chatPath, { waitUntil: 'commit' })
     await page.waitForURL(/\/login(?:$|[/?#])/, { timeout: 30_000 })
     await signInAtKeycloak(page, login, (url) => url.pathname === chatPath)
 

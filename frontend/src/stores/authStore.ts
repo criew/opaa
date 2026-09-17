@@ -101,14 +101,15 @@ interface SignInState {
 }
 
 /**
- * What a completed provider callback was. `returnTo` of a session is always a same-origin path -
- * the route the sign-in was started for, or the chat page.
+ * What a completed provider callback was. `returnTo` is always a same-origin path - the route the
+ * sign-in was started for, or the chat page. A refusal carries it too: the sign-in the person is
+ * now asked for by hand has to lead to the same place the link named (#1685).
  */
 export type OidcCallbackOutcome =
   | { kind: 'session'; returnTo: string }
   | { kind: 'handover' }
   /** The provider turned the automatic attempt down (#1631) - no failure of anybody's. */
-  | { kind: 'silent-refused' }
+  | { kind: 'silent-refused'; returnTo: string }
   | { kind: 'failed' }
 
 /**
@@ -324,6 +325,21 @@ export const useAuthStore = create<AuthState>((set, get) => {
     if (!userManager) return null
     if (remember) writeStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY, providerId)
     set({ userManager, activeProviderId: providerId })
+    return userManager
+  }
+
+  /**
+   * Opens a sign-in flow at `providerId`: its manager becomes the active one, the provider is
+   * pinned for this tab, and the note of what kind of flow this is gets written - set for the
+   * automatic attempt (#1631), cleared for every other. Written either way and in one place, so an
+   * attempt that never came back cannot be read as belonging to the flow that follows and rob it
+   * of its error message. Every `signinRedirect()` of this store starts here.
+   */
+  function beginSignInFlow(providerId: string, options?: { silent?: boolean }): UserManager | null {
+    const userManager = activate(providerId, true)
+    if (!userManager) return null
+    if (options?.silent) markSilentSignInFlow()
+    else clearSilentSignInFlow()
     return userManager
   }
 
@@ -574,18 +590,13 @@ export const useAuthStore = create<AuthState>((set, get) => {
       spendSilentSignIn()
       const chosen = providerId ?? get().suggestedProvider()?.id
       const provider = get().providers.find((p) => p.id === chosen)
-      const userManager = chosen ? activate(chosen, true) : null
+      const userManager = chosen ? beginSignInFlow(chosen, { silent }) : null
       if (!chosen || !provider || !userManager) {
-        if (!silent) set({ error: PROVIDER_GONE_MESSAGE })
+        // No flow got under way, but the attempt above is spent - say so, or the sign-in page
+        // keeps showing itself as busy for a redirect that is not coming.
+        set({ isSigningIn: false, ...(silent ? {} : { error: PROVIDER_GONE_MESSAGE }) })
         return
       }
-      // Written for every flow, not merely set for the silent one: an attempt that never comes
-      // back - cancelled at the provider's mask, answered with a page of the provider's own, or
-      // returned into a callback that could not load its configuration - would otherwise leave the
-      // note standing, and the next flow, the clicked one, would be taken for it and lose its
-      // error message.
-      if (silent) markSilentSignInFlow()
-      else clearSilentSignInFlow()
       // The suggestion names the provider a person chose last; an attempt that may well be refused
       // is not a choice, and claiming that place would also mislabel a tile as "Zuletzt verwendet".
       if (!silent) writeStorage(localStorage, LAST_PROVIDER_STORAGE_KEY, chosen)
@@ -700,9 +711,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
         clearHandoverInFlight()
         if (silentFlow) {
           // The provider was disabled while an attempt nobody asked for was under way: still not
-          // this person's failure, and the sign-in page lists what is left.
+          // this person's failure, and the sign-in page lists what is left. Without a manager there
+          // is no sign-in state to read a route from, so the sign-in page starts over at its own.
           set({ error: null, isLoading: false, isSigningIn: false })
-          return { kind: 'silent-refused' }
+          return { kind: 'silent-refused', returnTo: safeRedirectPath(null) }
         }
         set({ error: PROVIDER_GONE_MESSAGE, isLoading: false })
         return { kind: 'failed' }
@@ -747,7 +759,15 @@ export const useAuthStore = create<AuthState>((set, get) => {
           // oidc-client-ts's ErrorResponse carries the failed token request in `form`.
           console.warn('Silent sign-in refused by the provider', authorizationErrorCode(err))
           set({ error: null, isLoading: false, isSigningIn: false })
-          return { kind: 'silent-refused' }
+          // #1685: the route the link named is in the sign-in state of this very flow, and
+          // oidc-client-ts hands that state out with the refusal too (ErrorResponse.state). Without
+          // it the sign-in the person is now asked for by hand would end on the chat page, and the
+          // automatic attempt would have broken the direct link exactly where it could not help.
+          // Still read as untrusted input, like the state of a completed callback above.
+          const refusedState = (err as { state?: unknown }).state as SignInState | undefined
+          const refusedReturnTo =
+            typeof refusedState?.returnTo === 'string' ? refusedState.returnTo : null
+          return { kind: 'silent-refused', returnTo: safeRedirectPath(refusedReturnTo) }
         }
         set({
           error: err instanceof Error ? err.message : 'OIDC-Rückmeldung fehlgeschlagen',
@@ -760,15 +780,12 @@ export const useAuthStore = create<AuthState>((set, get) => {
     startHandoverSignIn: async (providerId, code) => {
       spendSilentSignIn()
       const provider = get().providers.find((p) => p.id === providerId)
-      const userManager = activate(providerId, true)
+      const userManager = beginSignInFlow(providerId)
       if (!provider || !userManager) {
         set({ error: PROVIDER_GONE_MESSAGE })
         return false
       }
       writeStorage(localStorage, LAST_PROVIDER_STORAGE_KEY, providerId)
-      // #1631: this flow is not the automatic one - a note left behind by an attempt that never
-      // came back must not make the callback of this one swallow its error message.
-      clearSilentSignInFlow()
       set({ isSigningIn: true, error: null })
       markHandoverInFlight()
       try {

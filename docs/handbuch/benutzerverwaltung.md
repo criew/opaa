@@ -27,6 +27,15 @@ Einschalten, Abschalten und die Regeln darunter liegen unter **Administration �
 Einstellungen** in der Karte „Lokale Anmeldung"; die Konten selbst stehen im Bereich **Konten**
 daneben. Jede dieser Änderungen steht im Nachweisprotokoll.
 
+**Wer neben einem Identitätsanbieter mit einem lokalen Konto hereinkommen will**, ruft
+**`/login/system`** auf. Grund: Läuft im Browser noch eine Sitzung beim Identitätsanbieter, meldet
+die reguläre Anmeldeseite automatisch damit an und ist fort, bevor ihre Maske für lokale Konten
+benutzbar wird. `/login/system` schaltet diese Automatik für den Browser-Tab ab und führt dann zur
+regulären Anmeldeseite, die damit stehen bleibt. Abmelden ist dafür nicht nötig und auch kein guter
+Weg — es beendet die Sitzung beim Identitätsanbieter mit. Die Adresse gehört in die Anleitung für
+die Personen, die beide Anmeldewege haben: Auf der Anmeldeseite verlinkt ist sie nur, solange die
+lokale Verwaltung abgeschaltet ist.
+
 ```mermaid
 flowchart LR
     A[Verwaltung legt Konto an] -->|Einladung| B[Konto eingeladen]
