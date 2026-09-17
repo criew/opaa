@@ -588,6 +588,54 @@ class DocumentIngestServiceTest {
     }
 
     @Test
+    void aDocumentMovedWithoutContentChangeCarriesItsNewSourceContextOnBothRowAndChunks()
+        throws IOException {
+      // A moved Confluence page or S3 object keeps its content but changes container or
+      // hierarchy path - regression guard: without the fix, source_container_key/
+      // source_hierarchy_path drifted apart between the row and its chunks, permanently.
+      Document existing =
+          new Document("Abschnitt 1.1", PAGE_URL, "text/html", 40L, DocumentSourceType.CONFLUENCE);
+      existing.setStatus(DocumentStatus.INDEXED);
+      existing.setChecksum("sha256-of-page");
+      existing.setChunkCount(2);
+      existing.setIndexedAt(Instant.parse("2026-09-01T08:00:00Z"));
+      existing.setLastModifiedRemote("7");
+      existing.applySourceContext(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1"));
+      when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-page");
+      when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), PAGE_URL))
+          .thenReturn(Optional.of(existing));
+
+      DocumentIngestResult result =
+          service.ingest(
+              DocumentIngests.confluencePage(
+                  targetLibrary,
+                  "unveränderter Text",
+                  "Abschnitt 1.1",
+                  PAGE_URL,
+                  "8",
+                  Instant.parse("2026-02-01T08:00:00Z"),
+                  new SourceDocumentContext("ENG", "Handbuch / Kapitel 2")),
+              null);
+
+      assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
+      verify(documentRepository)
+          .refreshConnectorTitleAndContext(
+              existing.getId(), "Abschnitt 1.1", "ENG", "Handbuch / Kapitel 2");
+      verify(vectorStoreWriter)
+          .updateDocumentMetadata(
+              existing.getId(),
+              Map.of(
+                  ChunkingService.SOURCE_CONTAINER_METADATA_KEY,
+                  "ENG",
+                  ChunkingService.SOURCE_HIERARCHY_METADATA_KEY,
+                  "Handbuch / Kapitel 2"),
+              Set.of());
+      // A pure metadata correction: no re-parse, no re-embedding.
+      verify(documentService, never()).parseDocument(any());
+      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
+    }
+
+    @Test
     void anUnchangedDocumentWhoseProvenanceDidNotChangeWritesNothing() throws IOException {
       // The refresh is conditional: an entry re-seen under the same marker, title and place
       // costs no UPDATE at all.

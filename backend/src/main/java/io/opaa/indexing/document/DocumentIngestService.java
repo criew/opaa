@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -401,7 +402,9 @@ public class DocumentIngestService {
 
   /**
    * Same content under a new marker, title, place or folder: the chunks stay, but the provenance
-   * moves with the row, so the next run's pre-fetch check skips the document again.
+   * moves with the row, so the next run's pre-fetch check skips the document again - and, when the
+   * source container or hierarchy path itself moved, {@link #rewriteSourceContext} keeps every
+   * chunk's copy in step with the row's, without touching text or embedding.
    */
   private void refreshProvenance(Document existing, DocumentIngest ingest, String checksum) {
     String marker = ingest.changeMarker();
@@ -414,16 +417,42 @@ public class DocumentIngestService {
         context == null ? existing.getSourceContainerKey() : context.containerKey();
     String hierarchyPath =
         context == null ? existing.getSourceHierarchyPath() : context.hierarchyPath();
-    if (!Objects.equals(existing.getFileName(), ingest.fileName())
-        || !Objects.equals(existing.getSourceContainerKey(), containerKey)
-        || !Objects.equals(existing.getSourceHierarchyPath(), hierarchyPath)) {
+    boolean contextChanged =
+        !Objects.equals(existing.getSourceContainerKey(), containerKey)
+            || !Objects.equals(existing.getSourceHierarchyPath(), hierarchyPath);
+    if (!Objects.equals(existing.getFileName(), ingest.fileName()) || contextChanged) {
       documentRepository.refreshConnectorTitleAndContext(
           existing.getId(), ingest.fileName(), containerKey, hierarchyPath);
+    }
+    if (contextChanged) {
+      rewriteSourceContext(
+          existing.getId(), new SourceDocumentContext(containerKey, hierarchyPath));
     }
     if (ingest.folder() != null && !Objects.equals(existing.getFolderId(), ingest.folder().id())) {
       existing.setFolderId(ingest.folder().id());
       documentRepository.save(existing);
     }
+  }
+
+  /**
+   * Rewrites {@code source_container_key} and {@code source_hierarchy_path} on every chunk of
+   * {@code documentId} in place via {@link VectorChunkStore#updateDocumentMetadata} - the same
+   * metadata-only path {@code DocumentMetadataService} uses for a core-field correction. A key
+   * whose value is {@code null} is cleared rather than written, matching {@link
+   * #sourceContextMetadata}; text, embedding and the Kontextpraefix are untouched, since neither
+   * key feeds it (only {@link ChunkingService#LOCATION_METADATA_KEY}, the chunk's own structural
+   * position, does).
+   */
+  private void rewriteSourceContext(UUID documentId, SourceDocumentContext context) {
+    Set<String> keysToClear = new HashSet<>();
+    if (context.containerKey() == null) {
+      keysToClear.add(ChunkingService.SOURCE_CONTAINER_METADATA_KEY);
+    }
+    if (context.hierarchyPath() == null) {
+      keysToClear.add(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY);
+    }
+    vectorChunkStore.updateDocumentMetadata(
+        documentId, sourceContextMetadata(context), keysToClear);
   }
 
   /**
