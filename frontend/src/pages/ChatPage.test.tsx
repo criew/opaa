@@ -164,7 +164,9 @@ describe('ChatPage', () => {
       expect(screen.getByRole('region', { name: 'Gesprächsnotiz' })).toBeInTheDocument()
       expect(screen.getByText('Bezugsjahr 2024')).toBeVisible()
 
-      await user.click(screen.getAllByRole('button', { name: 'Notizpunkt entfernen' })[1])
+      await user.click(
+        screen.getByRole('button', { name: 'Notizpunkt entfernen: Bezugsjahr 2024' }),
+      )
 
       await waitFor(() => expect(useChatStore.getState().noteItems).toHaveLength(1))
       expect(screen.queryByText('Bezugsjahr 2024')).not.toBeInTheDocument()
@@ -229,7 +231,9 @@ describe('ChatPage', () => {
       await user.click(await screen.findByRole('button', { name: 'Gesprächsnotiz · 2' }))
 
       expect(screen.getByText('Arbeitet im Bürgerbüro Nebenstelle 3')).toBeVisible()
-      expect(screen.queryByRole('button', { name: 'Notizpunkt entfernen' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /^Notizpunkt entfernen/ }),
+      ).not.toBeInTheDocument()
     })
   })
 })

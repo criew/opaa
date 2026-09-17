@@ -2475,6 +2475,35 @@ describe('chatStore', () => {
       expect(useChatStore.getState().error).toBe('Notizpunkt konnte nicht entfernt werden')
     })
 
+    // The page shows the error as role="alert", which is announced when it appears. A second
+    // failure with the same text would leave the alert standing unchanged - and silent - unless
+    // the new attempt clears the previous error first.
+    it('clears the previous error when a removal is retried, so a repeated failure is new', async () => {
+      const gate = deferred<void>()
+      let attempts = 0
+      server.use(
+        http.delete('/api/v1/chats/:chatId/note-items/:itemId', async () => {
+          attempts++
+          if (attempts > 1) await gate.promise
+          return HttpResponse.json(
+            { error: 'Notizpunkt konnte nicht entfernt werden', status: 500 },
+            { status: 500 },
+          )
+        }),
+      )
+      await useChatStore.getState().loadChat(NOTE_CHAT_ID)
+      await useChatStore.getState().removeNoteItem(NOTE_ITEM_ID)
+      expect(useChatStore.getState().error).toBe('Notizpunkt konnte nicht entfernt werden')
+
+      const retry = useChatStore.getState().removeNoteItem(NOTE_ITEM_ID)
+      expect(useChatStore.getState().error).toBeNull()
+      gate.resolve()
+      await retry
+
+      expect(useChatStore.getState().error).toBe('Notizpunkt konnte nicht entfernt werden')
+      expect(noteIds()).toEqual([NOTE_ITEM_ID, OTHER_NOTE_ITEM_ID])
+    })
+
     // The core of the "no resurrection" acceptance criterion: an answer carries the note state that
     // went into *it*, so one that was already in flight when the point was removed still contains
     // it. Applying it unfiltered would put the removed point back in front of the person.

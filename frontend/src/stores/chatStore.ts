@@ -764,7 +764,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const pending = removedNoteItemIdsByChatId.get(chatId) ?? new Set<string>()
     pending.add(itemId)
     removedNoteItemIdsByChatId.set(chatId, pending)
-    set({ noteItems: noteItems.filter((item) => item.id !== itemId) })
+    // The error is cleared with every attempt: a repeated failure must render as a new alert, not
+    // leave an unchanged one standing that assistive technology does not announce again.
+    set({ noteItems: noteItems.filter((item) => item.id !== itemId), error: null })
 
     try {
       await deleteChatNoteItem(chatId, itemId)

@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../test/test-utils'
 import type { ChatNoteItem } from '../../types/api'
-import ConversationNote from './ConversationNote'
+import ConversationNote, { REMOVAL_ANNOUNCEMENT_DELAY_MS } from './ConversationNote'
 import { NOTE_MIN_COMPLETED_ROUNDS } from './conversationNoteVisibility'
 
 const FRAME_POINT: ChatNoteItem = {
@@ -34,6 +34,8 @@ const NEW_POINT: ChatNoteItem = {
 }
 
 const TOGGLE = 'Gesprächsnotiz · 2'
+/** Every remove button, whichever point it belongs to. */
+const REMOVE = /^Notizpunkt entfernen: /
 
 /** Removal is optimistic in the store; this harness mirrors that locally, so the focus handling
  * after a removal can be observed the way it behaves in the page. */
@@ -42,6 +44,7 @@ function Harness({
   completedRounds = 3,
   canRemove = true,
   rollback = false,
+  rollbackAfterMs = 300,
   addable = false,
   onRemove,
 }: {
@@ -50,6 +53,7 @@ function Harness({
   canRemove?: boolean
   /** Mirrors a failed DELETE: the point comes back at its own position shortly after. */
   rollback?: boolean
+  rollbackAfterMs?: number
   /** Offers a way to let a later round's condensation add a point, the way an answer does. */
   addable?: boolean
   onRemove?: (itemId: string) => void
@@ -73,7 +77,7 @@ function Harness({
               restored.splice(Math.min(index, restored.length), 0, initialItems[index])
               return restored
             })
-          }, 300)
+          }, rollbackAfterMs)
         }}
         emptyFocusRef={headerRef}
       />
@@ -155,11 +159,11 @@ describe('ConversationNote (#1488)', () => {
     )
 
     await user.click(screen.getByRole('button', { name: TOGGLE }))
-    await user.click(screen.getAllByRole('button', { name: 'Notizpunkt entfernen' })[0])
+    await user.click(screen.getAllByRole('button', { name: REMOVE })[0])
 
     expect(onRemove).toHaveBeenCalledWith('note-1')
     expect(screen.queryByText('Arbeitet im Bürgerbüro Nebenstelle 3')).not.toBeInTheDocument()
-    const remaining = screen.getAllByRole('button', { name: 'Notizpunkt entfernen' })
+    const remaining = screen.getAllByRole('button', { name: REMOVE })
     expect(remaining).toHaveLength(1)
     expect(remaining[0]).toHaveFocus()
     expect(screen.getByRole('button', { name: 'Gesprächsnotiz · 1' })).toBeInTheDocument()
@@ -170,14 +174,88 @@ describe('ConversationNote (#1488)', () => {
     renderWithProviders(<Harness initialItems={[FRAME_POINT]} completedRounds={5} />)
 
     await user.click(screen.getByRole('button', { name: 'Gesprächsnotiz · 1' }))
-    await user.click(screen.getByRole('button', { name: 'Notizpunkt entfernen' }))
+    await user.click(screen.getByRole('button', { name: REMOVE }))
 
     expect(screen.queryByRole('button', { name: /Gesprächsnotiz/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Gesprächsnotiz' })).not.toBeInTheDocument()
     expect(screen.getByTestId('header')).toHaveFocus()
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Notizpunkt entfernt. Die Gesprächsnotiz ist jetzt leer.',
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Notizpunkt entfernt. Die Gesprächsnotiz ist jetzt leer.',
+      ),
     )
+  })
+
+  // Moving focus and changing a live region in the same task leaves the order of the two
+  // announcements to browser and screen reader, and the focus announcement can swallow the
+  // message. The message must therefore land only after focus has moved, in a later task.
+  it.each([
+    ['the last point', [FRAME_POINT], 'Notizpunkt entfernt. Die Gesprächsnotiz ist jetzt leer.'],
+    ['a point with others left', [FRAME_POINT, YEAR_POINT], 'Notizpunkt entfernt. Noch 1 Punkt.'],
+  ])(
+    'announces the removal of %s only after focus has moved on',
+    async (_case, initialItems, message) => {
+      const user = userEvent.setup()
+      renderWithProviders(<Harness initialItems={initialItems} completedRounds={3} />)
+      await user.click(screen.getByRole('button', { name: /^Gesprächsnotiz · / }))
+      const status = screen.getByRole('status')
+      const focusWhenAnnounced: Array<Element | null> = []
+      const observer = new MutationObserver(() => {
+        if (status.textContent) focusWhenAnnounced.push(document.activeElement)
+      })
+      observer.observe(status, { childList: true, characterData: true, subtree: true })
+
+      await user.click(screen.getAllByRole('button', { name: REMOVE })[0])
+      const focusTarget = document.activeElement
+      expect(focusTarget).not.toBe(document.body)
+      // Same tick as the focus change: nothing has been said yet.
+      expect(status).toBeEmptyDOMElement()
+
+      await waitFor(() => expect(status).toHaveTextContent(message))
+      observer.disconnect()
+      expect(focusWhenAnnounced[0]).toBe(focusTarget)
+    },
+  )
+
+  // Several remove buttons in a row must not all read "Notizpunkt entfernen": tabbing through the
+  // panel, or landing on the next button after a removal, only reads the focused button's name.
+  it('names the point in each remove button', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Harness initialItems={[FRAME_POINT, YEAR_POINT]} completedRounds={3} />)
+
+    await user.click(screen.getByRole('button', { name: TOGGLE }))
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Notizpunkt entfernen: Arbeitet im Bürgerbüro Nebenstelle 3',
+      }),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Notizpunkt entfernen: Arbeitet im Bürgerbüro Nebenstelle 3',
+      }),
+    )
+    expect(
+      screen.getByRole('button', { name: 'Notizpunkt entfernen: Bezugsjahr 2024' }),
+    ).toHaveFocus()
+  })
+
+  // WebKit exposes a <ul> without visible list markers as a plain group, so Safari with VoiceOver
+  // announces neither "list" nor the number of points. The flex list items render no markers; an
+  // explicit role="list" is what keeps the list semantics there. jsdom does not apply that
+  // heuristic, so the attribute itself is asserted.
+  it('keeps list semantics for the points without visible list markers', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Harness initialItems={[FRAME_POINT, YEAR_POINT]} completedRounds={3} />)
+
+    await user.click(screen.getByRole('button', { name: TOGGLE }))
+
+    const panel = screen.getByRole('region', { name: 'Gesprächsnotiz' })
+    const list = within(panel).getByRole('list')
+    expect(list).toHaveAttribute('role', 'list')
+    const listItems = within(list).getAllByRole('listitem')
+    expect(listItems).toHaveLength(2)
+    listItems.forEach((listItem) => expect(listItem).toHaveAttribute('role', 'listitem'))
   })
 
   // "Zugeklappt als Standard; die Zahl ist das Signal, dass sich etwas geändert hat" - a panel that
@@ -187,7 +265,7 @@ describe('ConversationNote (#1488)', () => {
     renderWithProviders(<Harness initialItems={[FRAME_POINT]} completedRounds={5} addable />)
 
     await user.click(screen.getByRole('button', { name: 'Gesprächsnotiz · 1' }))
-    await user.click(screen.getByRole('button', { name: 'Notizpunkt entfernen' }))
+    await user.click(screen.getByRole('button', { name: REMOVE }))
     expect(screen.queryByRole('button', { name: /Gesprächsnotiz/ })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Punkt verdichten' }))
@@ -206,7 +284,7 @@ describe('ConversationNote (#1488)', () => {
     await user.click(screen.getByRole('button', { name: TOGGLE }))
 
     expect(screen.getByText('Bezugsjahr 2024')).toBeVisible()
-    expect(screen.queryByRole('button', { name: 'Notizpunkt entfernen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: REMOVE })).not.toBeInTheDocument()
   })
 
   // Straight after opening, focus is still on the button - Escape has to work from there, not only
@@ -233,7 +311,7 @@ describe('ConversationNote (#1488)', () => {
     renderWithProviders(<Harness initialItems={[FRAME_POINT, YEAR_POINT]} completedRounds={3} />)
 
     await user.click(screen.getByRole('button', { name: TOGGLE }))
-    await user.click(screen.getAllByRole('button', { name: 'Notizpunkt entfernen' })[1])
+    await user.click(screen.getAllByRole('button', { name: REMOVE })[1])
     await user.keyboard('{Escape}')
 
     await waitFor(() =>
@@ -251,29 +329,69 @@ describe('ConversationNote (#1488)', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Gesprächsnotiz · 3' }))
-    await user.click(screen.getAllByRole('button', { name: 'Notizpunkt entfernen' })[0])
-    expect(screen.getByRole('status')).toHaveTextContent('Notizpunkt entfernt. Noch 2 Punkte.')
+    await user.click(screen.getAllByRole('button', { name: REMOVE })[0])
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Notizpunkt entfernt. Noch 2 Punkte.'),
+    )
 
-    await user.click(screen.getAllByRole('button', { name: 'Notizpunkt entfernen' })[0])
-    expect(screen.getByRole('status')).toHaveTextContent('Notizpunkt entfernt. Noch 1 Punkt.')
+    await user.click(screen.getAllByRole('button', { name: REMOVE })[0])
+    // Emptied at the click, so the next message is a change even if its text were the same.
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Notizpunkt entfernt. Noch 1 Punkt.'),
+    )
   })
 
   // A failed removal puts the point back; the success announcement must not stand next to the
   // error message, and the panel must be the way it was.
   it('takes the announcement back and keeps the panel open when a removal is rolled back', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<Harness initialItems={[FRAME_POINT]} completedRounds={5} rollback />)
+    renderWithProviders(
+      <Harness
+        initialItems={[FRAME_POINT]}
+        completedRounds={5}
+        rollback
+        rollbackAfterMs={REMOVAL_ANNOUNCEMENT_DELAY_MS + 300}
+      />,
+    )
 
     await user.click(screen.getByRole('button', { name: 'Gesprächsnotiz · 1' }))
-    await user.click(screen.getByRole('button', { name: 'Notizpunkt entfernen' }))
-    expect(screen.getByRole('status')).toHaveTextContent('Die Gesprächsnotiz ist jetzt leer.')
+    await user.click(screen.getByRole('button', { name: REMOVE }))
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Die Gesprächsnotiz ist jetzt leer.'),
+    )
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Gesprächsnotiz · 1' })).toBeInTheDocument(),
     )
-    expect(screen.getByRole('status')).toHaveTextContent('')
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
     expect(screen.getByRole('region', { name: 'Gesprächsnotiz' })).toBeInTheDocument()
     expect(screen.getByText('Arbeitet im Bürgerbüro Nebenstelle 3')).toBeVisible()
+  })
+
+  it('never announces a removal that is rolled back before its announcement is due', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <Harness initialItems={[FRAME_POINT]} completedRounds={5} rollback rollbackAfterMs={50} />,
+    )
+    const status = screen.getByRole('status')
+    const announced: string[] = []
+    const observer = new MutationObserver(() => {
+      if (status.textContent) announced.push(status.textContent)
+    })
+    observer.observe(status, { childList: true, characterData: true, subtree: true })
+
+    await user.click(screen.getByRole('button', { name: 'Gesprächsnotiz · 1' }))
+    await user.click(screen.getByRole('button', { name: REMOVE }))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Gesprächsnotiz · 1' })).toBeInTheDocument(),
+    )
+    await act(
+      () => new Promise((resolve) => setTimeout(resolve, REMOVAL_ANNOUNCEMENT_DELAY_MS + 200)),
+    )
+    observer.disconnect()
+
+    expect(announced).toEqual([])
   })
 
   it('is reachable and operable with the keyboard alone', async () => {
@@ -285,7 +403,7 @@ describe('ConversationNote (#1488)', () => {
     await user.keyboard('{Enter}')
     expect(screen.getByRole('region', { name: 'Gesprächsnotiz' })).toBeInTheDocument()
     await user.tab()
-    expect(screen.getAllByRole('button', { name: 'Notizpunkt entfernen' })[0]).toHaveFocus()
+    expect(screen.getAllByRole('button', { name: REMOVE })[0]).toHaveFocus()
     await user.keyboard(' ')
 
     expect(screen.queryByText('Arbeitet im Bürgerbüro Nebenstelle 3')).not.toBeInTheDocument()
