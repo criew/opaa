@@ -95,6 +95,7 @@ class ConversationRunPrerequisitesTest {
         null,
         null,
         null,
+        null,
         List.of(
             new ConversationEvaluationReport.ConversationCaseResult(
                 "verw-conv-001",
@@ -105,6 +106,8 @@ class ConversationRunPrerequisitesTest {
                     new ConversationEvaluationReport.TurnResult(
                         "verw-conv-001#1",
                         0,
+                        true,
+                        true,
                         "Frage?",
                         List.of("a.md"),
                         List.of("a.md"),

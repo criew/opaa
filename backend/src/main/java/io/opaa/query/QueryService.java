@@ -45,6 +45,10 @@ import org.springframework.stereotype.Service;
  * so an unauthorized chunk is never loaded or ranked. An empty search scope short-circuits to
  * answer generation with zero chunks, the same path a genuinely empty result takes, so the answer
  * cannot distinguish "no permission on anything" from "nothing matched".
+ *
+ * <p>A message the decomposition found nothing to search for is searched like any other; only the
+ * answer is told, so that it does not claim to have found nothing. That signal depends on the
+ * message alone, never on what the caller may read.
  */
 @Service
 public class QueryService {
@@ -209,23 +213,30 @@ public class QueryService {
                 // The decomposition LLM call only runs once there is actually something to
                 // search - an empty scope would otherwise pay for it and discard the result.
                 List<Document> relevantChunks;
+                boolean searchNeeded = true;
                 if (searchScope.isEmpty()) {
                   relevantChunks = List.of();
                 } else {
-                  relevantChunks =
+                  RetrievalPipelineResult retrieval =
                       retrieve(
                           question,
                           chatMemory.get(conversationKey),
                           noteTexts(notePoints, ChatNoteItemKind.RAHMEN),
                           searchScope,
                           metadataFilter);
+                  relevantChunks = retrieval.chunks();
+                  searchNeeded = retrieval.searchNeeded();
                 }
 
                 // --- LLM call: the slowest step, and the reason no phase of this method
                 // carries a transaction.
                 ChatResponse chatResponse =
                     answerGenerationService.generateAnswer(
-                        question, relevantChunks, conversationKey, noteTexts(notePoints, null));
+                        question,
+                        relevantChunks,
+                        conversationKey,
+                        noteTexts(notePoints, null),
+                        searchNeeded);
 
                 String answer = ChatResponses.text(chatResponse);
                 List<CitationValidator.ValidatedCitation> validatedCitations =
@@ -336,11 +347,11 @@ public class QueryService {
 
   /**
    * The retrieval half of {@link #query}: runs the whole {@link RetrievalPipeline} over the given
-   * scope and returns the chunks in the order and count the answer prompt is built from. The
-   * explanation protocol is dropped here; the administration's diagnosis and the evaluation harness
-   * run the pipeline themselves and keep the whole {@link RetrievalPipelineResult}.
+   * scope; its chunks come in the order and count the answer prompt is built from. The explanation
+   * protocol is not read here; the administration's diagnosis and the evaluation harness run the
+   * pipeline themselves and keep it.
    */
-  private List<Document> retrieve(
+  private RetrievalPipelineResult retrieve(
       String question,
       List<Message> conversationHistory,
       List<String> conversationNote,
@@ -351,7 +362,7 @@ public class QueryService {
             retrievalContextFactory.contextFor(
                 question, conversationHistory, conversationNote, searchScope, metadataFilter));
     // Only for a run that actually searched: a "0 chunks across 0 search queries" line would
-    // read like a failed retrieval rather than the deliberate empty-scope short-circuit.
+    // read like a failed retrieval rather than a run halted before any search.
     if (!result.searchQueries().isEmpty()) {
       log.debug(
           "Retrieved {} relevant chunks across {} search quer{} for query",
@@ -359,6 +370,6 @@ public class QueryService {
           result.searchQueries().size(),
           result.searchQueries().size() == 1 ? "y" : "ies");
     }
-    return result.chunks();
+    return result;
   }
 }

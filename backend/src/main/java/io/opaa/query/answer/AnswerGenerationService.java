@@ -63,6 +63,20 @@ public class AnswerGenerationService {
   private static final String CONTEXT_SECTION = "\n\nKontextdokumente:\n";
 
   /**
+   * Precedes {@link #CONTEXT_SECTION} when the decomposition found nothing to search for. Passages
+   * that do not fit a remark read as a failed search, and the model says it found nothing - to a
+   * message that asked for nothing. The classification can be wrong, so the passages stay and a
+   * question is still answered from them.
+   */
+  static final String NO_SEARCH_HINT =
+      "\n\nDie aktuelle Nachricht enthält voraussichtlich nichts, wonach zu suchen war, etwa einen"
+          + " Wunsch zur Form der Antwort, eine Angabe zur eigenen Person oder einen Dank. Gehe"
+          + " direkt auf die Nachricht ein. Behaupte nicht, nichts gefunden zu haben, und weise"
+          + " nicht darauf hin, dass keine passenden Dokumente vorliegen. Enthält die Nachricht doch"
+          + " eine Frage, gilt diese Anweisung nicht: Beantworte sie wie jede andere nur anhand der"
+          + " Kontextdokumente, und sage, wenn diese keine Antwort enthalten.";
+
+  /**
    * Repeats the answer language after the passages. The leading rule alone does not keep a small
    * model from copying an English passage into its answer; a reminder after what it read last does.
    * It carries no citation marker, so standing under {@link #CONTEXT_SECTION} is harmless.
@@ -87,16 +101,21 @@ public class AnswerGenerationService {
    * the citation rules and the passages, the fifth part of the call
    * (docs/features/llm-integration.md, "Übergabe der Passagen"); without a point there is no block.
    * See {@link #CONTEXT_SECTION} for why it must not follow the passages.
+   *
+   * @param searchNeeded {@code false} when the decomposition found nothing to search for in {@code
+   *     question}; {@link #NO_SEARCH_HINT} then precedes the passages.
    */
   public ChatResponse generateAnswer(
       String question,
       List<Document> relevantChunks,
       String conversationId,
-      List<String> conversationNote) {
+      List<String> conversationNote,
+      boolean searchNeeded) {
     ConversationNoteBlock noteBlock = ConversationNoteBlock.render(conversationNote);
     String systemText =
         SYSTEM_PROMPT
             + (noteBlock == null ? "" : "\n\n" + noteBlock.modelText())
+            + (searchNeeded ? "" : NO_SEARCH_HINT)
             + CONTEXT_SECTION
             + formatChunks(relevantChunks)
             + LANGUAGE_REMINDER;

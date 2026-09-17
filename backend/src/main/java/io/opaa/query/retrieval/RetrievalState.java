@@ -39,6 +39,9 @@ import org.springframework.ai.vectorstore.filter.Filter;
  *     searches produced them.
  * @param halted {@code true} once a stage determined there is nothing left to do (an empty search
  *     scope); the remaining stages are then recorded as not run rather than executed.
+ * @param searchNeeded {@code false} once {@link RetrievalStageName#SUB_QUERY_DECOMPOSITION} found
+ *     nothing to search for in the message. The run searches all the same; the flag only tells the
+ *     answer.
  */
 public record RetrievalState(
     List<String> searchQueries,
@@ -48,7 +51,8 @@ public record RetrievalState(
     List<String> metadataFilterVocabularyCodes,
     List<CandidateList> candidateLists,
     List<Document> candidatePool,
-    boolean halted) {
+    boolean halted,
+    boolean searchNeeded) {
 
   public RetrievalState {
     searchQueries = List.copyOf(searchQueries);
@@ -64,7 +68,7 @@ public record RetrievalState(
   /** The state a run starts in: no queries, no filter, no candidates. */
   public static RetrievalState initial() {
     return new RetrievalState(
-        List.of(), null, MetadataFilter.NONE, null, List.of(), List.of(), List.of(), false);
+        List.of(), null, MetadataFilter.NONE, null, List.of(), List.of(), List.of(), false, true);
   }
 
   public RetrievalState withSearchQueries(List<String> queries) {
@@ -76,7 +80,8 @@ public record RetrievalState(
         metadataFilterVocabularyCodes,
         candidateLists,
         candidatePool,
-        halted);
+        halted,
+        searchNeeded);
   }
 
   public RetrievalState withLibraryFilter(Filter.Expression filter) {
@@ -88,7 +93,8 @@ public record RetrievalState(
         metadataFilterVocabularyCodes,
         candidateLists,
         candidatePool,
-        halted);
+        halted,
+        searchNeeded);
   }
 
   /**
@@ -106,7 +112,8 @@ public record RetrievalState(
         vocabularyCodes,
         candidateLists,
         candidatePool,
-        halted);
+        halted,
+        searchNeeded);
   }
 
   /**
@@ -122,7 +129,8 @@ public record RetrievalState(
         metadataFilterVocabularyCodes,
         lists,
         candidatePool,
-        halted);
+        halted,
+        searchNeeded);
   }
 
   /**
@@ -143,7 +151,8 @@ public record RetrievalState(
         metadataFilterVocabularyCodes,
         mergedLists,
         extendedPool,
-        halted);
+        halted,
+        searchNeeded);
   }
 
   /**
@@ -179,7 +188,25 @@ public record RetrievalState(
         metadataFilterVocabularyCodes,
         candidateLists,
         candidatePool,
-        true);
+        true,
+        searchNeeded);
+  }
+
+  /**
+   * Records that the message has nothing to search for. Neither halts the run nor touches a query:
+   * the classification can be wrong, and a misjudged question must keep its search.
+   */
+  public RetrievalState withoutSearchNeed() {
+    return new RetrievalState(
+        searchQueries,
+        libraryFilter,
+        metadataFilter,
+        metadataFilterExpression,
+        metadataFilterVocabularyCodes,
+        candidateLists,
+        candidatePool,
+        halted,
+        false);
   }
 
   /**

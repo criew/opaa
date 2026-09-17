@@ -21,7 +21,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652) auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst „dafür“ zu „Formular KAE-07“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): beide Runden gelöst; Teilfrage der Runde 2: „Wofür wird Formular KAE-07 verwendet? Welche Nachweise muss ich dafür beilegen?“."
   },
   {
     "id": "verw-conv-ana-002",
@@ -45,7 +45,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652) auf dem Pipeline-Pfad (Einpfad-Regel): Die Teilfrage der Runde 2 nennt „Formular BUE-08“ statt „seine“; beide Runden führen das erwartete Dokument auf Rang 1."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): beide Runden gelöst; Teilfrage der Runde 2: „Wie lang dauert die Bearbeitungszeit für Formular BUE-08?“."
   },
   {
     "id": "verw-conv-ana-003",
@@ -67,9 +67,9 @@
         ]
       }
     ],
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-15",
-    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die eine eigenständige Frage unverändert lässt; offen ist nur Runde 1. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Teilfragen machen aus der Dienstanweisung BAU-DA-2/2024 ein „Bauteil“, die Baugenehmigungsgebührensatzung 2024 belegt Rang 1, das Ziel Rang 2. Runde 2 löst „danach“ und führt das Ziel auf Rang 1. Unter der CPU-Variante icelake war der Fall gelöst (Baseline vom 2026-09-12)."
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): beide Runden gelöst; Teilfrage der Runde 2: „Entschließungszeit nach BAU-DA-2/2024“."
   },
   {
     "id": "verw-conv-ana-004",
@@ -100,7 +100,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht; Suchfenster (#1486) und Gesprächsnotiz (#1487) haben sie für diesen Fall nicht gebracht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 2 stellt verwaltung-geschaeftsverteilungsplan.md auf Rang 1 und das Ziel auf Rang 2; Runde 3 verlangt zusätzlich den Schritt Verwaltungsgebührensatzung → Kämmerei → deren Gebührenordnung, den kein Fenster-Baustein leistet (siehe MAINTENANCE.md, Vermerk zu dieser Runde), und verfehlt verwaltung-0039_gebuehrenordnung-kaemmerei.md ganz."
+    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht; Suchfenster (#1486) und Gesprächsnotiz (#1487) haben sie für diesen Fall nicht gebracht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 2 verfehlt verwaltung-0038_verwaltungsgebuehrensatzung.md ganz, Rang 1 belegt verwaltung-vertretungsregelung.md; Runde 3 verfehlt verwaltung-0039_gebuehrenordnung-kaemmerei.md ganz, Rang 1 belegt verwaltung-0038_verwaltungsgebuehrensatzung.md."
   },
   {
     "id": "verw-conv-ana-005",
@@ -124,7 +124,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 2 verfehlt ORD-DA-2/2024 ganz; Rang 1 belegt verwaltung-vertretungsregelung.md."
+    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 2 verfehlt verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md ganz, Rang 1 belegt verwaltung-0057_abfallgebuehrensatzung.md."
   },
   {
     "id": "verw-conv-ana-006",
@@ -148,7 +148,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Gelöst seit dem Umbau aus #1486/#1487, zuletzt bestätigt im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652) auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 erhält den Notizpunkt „Formular JUG-07“, und beide Runden führen verwaltung-0055_formularhinweis-jugendamt-7.md auf Rang 1."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): beide Runden gelöst; Teilfrage der Runde 2: „Welche Informationen oder Daten werden von Formular JUG-07 erwartet, und welche sind no …“."
   },
   {
     "id": "verw-conv-ana-007",
@@ -180,7 +180,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 2 verfehlt verwaltung-0029_formularhinweis-standesamt-7.md ganz, Rang 1 belegt die Personenstandsurkundengebührensatzung. Runde 3 ist gelöst: Ihre Teilfrage nennt STA-07."
+    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 1 findet verwaltung-0026_gebuehrenordnung-standesamt.md nicht; Runde 2 verfehlt verwaltung-0029_formularhinweis-standesamt-7.md ganz, Rang 1 belegt verwaltung-0025_personenstandsurkundengebuehrensatzung.md; Runde 3 verfehlt verwaltung-0029_formularhinweis-standesamt-7.md ganz, Rang 1 belegt verwaltung-0025_personenstandsurkundengebuehrensatzung.md."
   },
   {
     "id": "verw-conv-ana-008",
@@ -204,7 +204,7 @@
     ],
     "expected_state": "solved",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652) auf dem Pipeline-Pfad (Einpfad-Regel): Die Zerlegung löst die Rückfrage nach den typischen Ausfüllfehlern zu „Formular PER-08“ auf; beide Runden führen das erwartete Dokument auf Rang 1."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): beide Runden gelöst; Teilfrage der Runde 2: „Welche typischen Fehler treten beim Ausfüllen des Formulars PER-08 auf?“."
   },
   {
     "id": "verw-conv-ana-009",
@@ -237,7 +237,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 1 führt die Beitragssatzung 2023 auf Rang 1, verfehlt aber die Gebührenordnung Jugendamt aus ihrer dreiteiligen Treffermenge; Runde 2 hält JUG-DA-2/2024 nur auf Rang 2 hinter der Beitragssatzung 2024, Runde 3 verliert es ganz."
+    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 1 findet verwaltung-0052_gebuehrenordnung-jugendamt.md nicht; Runde 2 führt das Ziel auf Rang 4, Rang 1 belegt verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md; Runde 3 verfehlt verwaltung-0054_dienstanweisung-jugendamt-2-2024.md ganz, Rang 1 belegt verwaltung-0051_kindertagesstaettenbeitragssatzung-fassung-2024.md."
   },
   {
     "id": "verw-conv-ts-001",
@@ -269,7 +269,7 @@
     "topic_switch_turn": 3,
     "expected_state": "solved",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Gelöst seit dem Umbau aus #1486/#1487, zuletzt bestätigt im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652) auf dem Pipeline-Pfad (Einpfad-Regel): Runde 2 hält BAU-DA-1/2023 auf Rang 1; alle drei Runden sind gelöst, die Wechselrunde 3 ohne Dokument des Vorthemas. Welcher der beiden Bausteine das bewirkt, ist nicht auflösbar — die Runden 2 und 3 erhalten zusätzlich den Notizpunkt „Bauleitung“."
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): alle 3 Runden gelöst; Teilfrage der Runde 2: „Welcher Nachfrist gilt für BAU-DA-1/2023, wenn die Unterlagen fehlen?“."
   },
   {
     "id": "verw-conv-ts-002",
@@ -301,7 +301,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Schon die Wechselrunde 2 ist offen — ihre Teilfrage ist ein allgemeiner Satz über Satzungsbestimmungen, die Abfallgebührensatzung liegt außerhalb des Fensters. In der Folgerunde 3 steht der Notizpunkt „SOZ-08“ aus dem Altthema in der Teilfrage, und verwaltung-0008_formularhinweis-sozialamt-8.md belegt Rang 1."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 3 verfehlt verwaltung-0057_abfallgebuehrensatzung.md ganz, Rang 1 belegt verwaltung-0008_formularhinweis-sozialamt-8.md."
   },
   {
     "id": "verw-conv-ts-003",
@@ -331,9 +331,9 @@
       }
     ],
     "topic_switch_turn": 3,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Wechselrunde 3 ist gelöst; offen ist die Vorrunde 2, in der verwaltung-0039_gebuehrenordnung-kaemmerei.md die Verwaltungsgebührensatzung auf Rang 2 drückt."
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Gelöst seit #1684, bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): alle 3 Runden gelöst; Teilfrage der Runde 2: „Welche Voraussetzungen müssen für den Nachweis der Bedürfnislosigkeit in § 3 der Verwal …“."
   },
   {
     "id": "verw-conv-ts-004",
@@ -372,7 +372,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Wechselrunde 2 und die Folgerunde 3 im neuen Thema verfehlen verwaltung-0048 ganz, die Rückkehr zum Altthema in Runde 4 verfehlt verwaltung-0060."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 3 verfehlt verwaltung-0048_formularhinweis-personalamt-7.md ganz, Rang 1 belegt verwaltung-0060_dienstanweisung-umweltamt-2-2024.md."
   },
   {
     "id": "verw-conv-ts-005",
@@ -402,9 +402,9 @@
       }
     ],
     "topic_switch_turn": 2,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Wechselrunde 2 ist gelöst; offen ist die Folgerunde 3, in der verwaltung-0035 außerhalb des Fensters liegt."
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Gelöst seit #1684, bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): alle 3 Runden gelöst; Teilfrage der Runde 2: „Was sind die Anforderungen und Regeln, die in der Dienstanweisung BUE-DA-2/2024 festgel …“."
   },
   {
     "id": "verw-conv-ts-006",
@@ -435,8 +435,8 @@
     ],
     "topic_switch_turn": 3,
     "expected_state": "known_gap",
-    "expected_state_since": "2026-09-15",
-    "expected_state_reason": "Fehlender Baustein: die Auflösung des Bezugs erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 2 vor dem Wechsel erhält den Notizpunkt „Formular ORD-07“, ihre Teilfrage nennt das Formular aber nicht; das Ziel steht auf Rang 5 hinter dem Formularhinweis des Sozialamts. Die Wechselrunde 3 ist gelöst. Unter der CPU-Variante icelake war der Fall gelöst (Baseline vom 2026-09-12)."
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Offen seit der geänderten Signalwort-Regel (#1684): Die neue Regelzeile verändert die gierige Zerlegung des gepinnten Modells in der Wechselrunde, die jetzt das Formular der Vorrunde mitnimmt; kein Baustein ist weggefallen. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 3 verfehlt verwaltung-dienstanweisung-aktenaufbewahrung.md ganz, Rang 1 belegt verwaltung-0023_formularhinweis-ordnungsamt-7.md."
   },
   {
     "id": "verw-conv-ts-007",
@@ -476,7 +476,7 @@
     "topic_switch_turn": 3,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Wechselrunde 3 und Folgerunde 4 sind gelöst, ohne Dokument des Vorthemas; offen ist die Vorrunde 2, die verwaltung-0027_dienstanweisung-standesamt-1-2024.md ganz verfehlt."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 1 findet verwaltung-0026_gebuehrenordnung-standesamt.md nicht; Runde 2 verfehlt verwaltung-0027_dienstanweisung-standesamt-1-2024.md ganz, Rang 1 belegt verwaltung-0034_dienstanweisung-buergeramt-1-2024.md."
   },
   {
     "id": "verw-conv-ts-008",
@@ -509,7 +509,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Wechselrunde 2 ist gelöst; offen ist die Folgerunde 3 im neuen Thema, in der verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md des Altthemas Rang 1 belegt und das Ziel außerhalb des Fensters liegt."
+    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 1 findet verwaltung-0045_gebuehrenordnung-personalamt.md nicht; Runde 2 führt das Ziel auf Rang 2, Rang 1 belegt verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md; Runde 3 verfehlt verwaltung-0006_dienstanweisung-sozialamt-2-2024.md ganz, Rang 1 belegt verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md."
   },
   {
     "id": "verw-conv-ts-009",
@@ -548,7 +548,7 @@
     "topic_switch_turn": 2,
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Fehlender Baustein: die ausdrückliche Rückkehr zum Altthema erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Wechselrunden 2 und 3 führen KAE-DA-1/2024 auf Rang 1; offen ist Runde 4 („Zurück zum Formular JUG-08“), deren Teilfrage bei der Kämmerei bleibt — verwaltung-0056_formularhinweis-jugendamt-8.md liegt außerhalb des Fensters."
+    "expected_state_reason": "Fehlender Baustein: die ausdrückliche Rückkehr zum Altthema erreicht die Teilfrage nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 3 verfehlt verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md ganz, Rang 1 belegt verwaltung-0056_formularhinweis-jugendamt-8.md."
   },
   {
     "id": "verw-conv-cc-001",
@@ -581,7 +581,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe aus Runde 1 erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Der Notizpunkt lautet „Arzt“ und trägt die Fassung 2023 nicht; die Zielrunde 3 stellt die Fassung 2024 auf Rang 1, das Ziel auf Rang 2."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe aus Runde 1 erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 3 wird als „keine Suche“ eingestuft und mit dem Rückfall-Suchtext gesucht, führt das Ziel auf Rang 2, Rang 1 belegt verwaltung-leitfaden-barrierefreiheit.md."
   },
   {
     "id": "verw-conv-cc-002",
@@ -614,7 +614,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-15",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Verdichtung der Runde 1 hinterlässt den RAHMEN-Punkt „2023“, die Teilfrage der Zielrunde 3 nimmt ihn aber nicht auf; die Gebührenordnung Bauamt belegt Rang 1, die Fassung 2023 Rang 2. Unter der CPU-Variante icelake trug die Teilfrage das Jahr, und der Fall war gelöst (Baseline vom 2026-09-12)."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 3 führt das Ziel auf Rang 3, Rang 1 belegt verwaltung-0011_gebuehrenordnung-bauamt.md."
   },
   {
     "id": "verw-conv-cc-003",
@@ -654,7 +654,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Notiz trägt nur „Prüfer“, kein Jahr; die Zielrunde 4 stellt die Sozialgebührenbefreiungssatzung 2024 auf Rang 1, das Ziel auf Rang 2. Offen ist zusätzlich das Zwischenthema in Runde 2 (UMW-07 auf Rang 2 hinter UMW-08)."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 2 führt das Ziel auf Rang 3, Rang 1 belegt verwaltung-0004_dienstanweisung-sozialamt-1-2023.md; Runde 3 führt das Ziel auf Rang 3, Rang 1 belegt verwaltung-0005_dienstanweisung-sozialamt-1-2024.md; Runde 4 verfehlt verwaltung-0004_dienstanweisung-sozialamt-1-2023.md ganz, Rang 1 belegt verwaltung-0007_formularhinweis-sozialamt-7.md."
   },
   {
     "id": "verw-conv-cc-004",
@@ -687,7 +687,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Der Notizpunkt trägt „Zeitraum: 2023“, die Teilfrage der Zielrunde 3 nimmt ihn nicht auf; der Verwechslungspartner ORD-DA-1/2024 belegt Rang 1, das Ziel Rang 2. Das Zwischenthema in Runde 2 ist gelöst."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 2 führt das Ziel auf Rang 4, Rang 1 belegt verwaltung-0064_gebuehrenordnung-kulturamt.md; Runde 3 verfehlt verwaltung-0020_dienstanweisung-ordnungsamt-1-2023.md ganz, Rang 1 belegt verwaltung-geschaeftsverteilungsplan.md."
   },
   {
     "id": "verw-conv-cc-005",
@@ -725,9 +725,9 @@
         "confusable_document": "verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md"
       }
     ],
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Die Notiz trägt „Berater“ und einen aus dem Zwischenthema verdichteten Punkt, kein Jahr; die Zielrunde 4 stellt die Fassung 2023 auf Rang 1, das Ziel steht auf Rang 3."
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): alle 4 Runden gelöst; Teilfrage der Runde 2: „Was ist die Regelungen der Dienstanweisung PER-DA-2/2024?“."
   },
   {
     "id": "verw-conv-cc-006",
@@ -760,7 +760,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 1 ist gelöst, die Zielrunde 3 nicht — der Notizpunkt „Prüfer“ trägt die Fassung 2023 nicht, und die Teilfrage behauptet stattdessen die Fassung 2024, die damit Rang 1 belegt."
+    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 2 führt das Ziel auf Rang 2, Rang 1 belegt verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md."
   },
   {
     "id": "verw-conv-cc-007",
@@ -792,8 +792,8 @@
       }
     ],
     "expected_state": "known_gap",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 1 ist gelöst; offen ist die Zielrunde 3, deren Notiz („Mitarbeiter“) kein Jahr trägt — die Kindertagesstättenbeitragssatzung 2023 steht erst auf Rang 5."
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Offen seit der geänderten Signalwort-Regel (#1684): Die neue Regelzeile verändert die gierige Zerlegung des gepinnten Modells in Runde 3, deren Teilfrage die Kindertagesstättenbeitragssatzung verliert; kein Baustein ist weggefallen. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 3 verfehlt verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md ganz, Rang 1 belegt verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md."
   },
   {
     "id": "verw-conv-cc-008",
@@ -840,7 +840,7 @@
     ],
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die die Rahmenangabe schon in der eigenständigen Runde 1 hält; offen ist nur diese Runde. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 1 verfehlt BAU-DA-1/2024 ganz, Rang 1 belegt BUE-DA-1/2024. Die Zwischenthemen und die Zielrunde 5 sind gelöst — die Zielrunde führt das Ziel auf Rang 1, obwohl ihre Teilfrage die Fassung nicht nennt; die Notiz trägt „Stand 2024“."
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die die Rahmenangabe schon in der eigenständigen Runde 1 hält. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 1 verfehlt verwaltung-0013_dienstanweisung-bauamt-1-2024.md ganz, Rang 1 belegt verwaltung-leitfaden-barrierefreiheit.md; Runde 2 wird als „keine Suche“ eingestuft und mit dem Rückfall-Suchtext gesucht, verfehlt verwaltung-vertretungsregelung.md ganz, Rang 1 belegt verwaltung-0005_dienstanweisung-sozialamt-1-2024.md; Runde 5 verfehlt verwaltung-0013_dienstanweisung-bauamt-1-2024.md ganz, Rang 1 belegt verwaltung-0046_dienstanweisung-personalamt-1-2024.md."
   },
   {
     "id": "verw-conv-cc-009",
@@ -878,8 +878,419 @@
         "confusable_document": "verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md"
       }
     ],
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): alle 4 Runden gelöst; Teilfrage der Runde 2: „Welche Dienstanweisung regelt die Aktenführung im Standesamt?“."
+  },
+  {
+    "id": "verw-conv-ac-001",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Welche Gebühren verlangt die Stadt für die Entsorgung von Haushaltsabfällen?",
+        "answer": "Für die Entsorgung von Haushaltsabfällen erhebt das Umweltamt der Stadt Kalkstadt Gebühren nach der Abfallgebührensatzung 【source: ee11f947-451d-56f7-9e35-3d7a149cc0b3#4 | verwaltung-0057_abfallgebuehrensatzung.md】. Die wichtigsten Sätze sind:\n\n- **Erteilung:** 28,00 Euro\n- **Verlängerung:** 33,00 Euro\n- **Änderung:** 38,00 Euro\n- **Zweitausfertigung:** 43,00 Euro\n\nDas vollständige Gebührenverzeichnis steht in der Gebührenordnung des Umweltamts 【source: 30dc5619-4c7c-5410-a25e-ae6e1664ef8b#0 | verwaltung-0058_gebuehrenordnung-umweltamt.md】. Die Gebühr wird mit Bekanntgabe des Bescheids fällig und ist innerhalb von vier Wochen an die Stadtkasse zu zahlen, per Überweisung, Lastschrift oder bar am Schalter.\n\nEingetragene, gemeinnützige Vereine mit Sitz in Kalkstadt können auf schriftlichen Antrag eine Ermäßigung von 50 Prozent erhalten 【source: ee11f947-451d-56f7-9e35-3d7a149cc0b3#9 | verwaltung-0057_abfallgebuehrensatzung.md】.\n\nFür Ihre konkrete Situation wenden Sie sich bitte an die Sachbearbeitung des Umweltamts.",
+        "expected_documents": [
+          "verwaltung-0057_abfallgebuehrensatzung.md",
+          "verwaltung-0058_gebuehrenordnung-umweltamt.md"
+        ]
+      },
+      {
+        "query": "und wenn es eilig ist?",
+        "answer": "Wenn es eilig ist, können Sie beim Umweltamt eine **Eilbearbeitung** beantragen. Dafür wird nach der Gebührenordnung des Umweltamts eine zusätzliche Gebühr von **58,00 Euro** erhoben 【source: 30dc5619-4c7c-5410-a25e-ae6e1664ef8b#3 | verwaltung-0058_gebuehrenordnung-umweltamt.md】.\n\nDie Eilbearbeitung verkürzt die Bearbeitungsdauer in der Regel auf drei bis fünf Werktage. Ohne Eilbearbeitung beträgt die reguläre Bearbeitungsdauer zwei bis vier Wochen ab vollständigem Eingang aller Nachweise 【source: a7ae2491-eb39-53b8-9c71-0e193a8bff73#2 | verwaltung-0061_formularhinweis-umweltamt-7.md】.\n\nBitte beachten Sie:\n- Die Gebühr für die Eilbearbeitung fällt zusätzlich zur Gebühr für die eigentliche Amtshandlung an.\n- Während gesetzlicher Feiertage und zwischen Weihnachten und Neujahr kann es trotzdem länger dauern.\n\nWenn Sie unsicher sind, ob sich die Eilbearbeitung für Sie lohnt, fragen Sie am besten direkt bei der Sachbearbeitung des Umweltamts nach.",
+        "expected_documents": [
+          "verwaltung-0058_gebuehrenordnung-umweltamt.md"
+        ]
+      },
+      {
+        "query": "Antworte bitte kürzer und nur in Stichpunkten.",
+        "answer": "Verstanden – ich antworte ab jetzt kurz und in Stichpunkten.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "brauch ich dafür ein bestimmtes Formular?",
+        "answer": "Ja. Für den Antrag beim Umweltamt verwenden Sie **Formular UMW-07** (Antragsformular) 【source: a7ae2491-eb39-53b8-9c71-0e193a8bff73#0 | verwaltung-0061_formularhinweis-umweltamt-7.md】.\n\n- **Angaben:** Name, Anschrift, Geburtsdatum, ggf. Aktenzeichen eines laufenden Vorgangs, Telefonnummer oder E-Mail-Adresse\n- **Nachweise:** Identitätsnachweis, bei Vereinen der Freistellungsbescheid des Finanzamts\n- **Einreichung:** persönlich, per Post (Aktenzeichen UMW-07 auf den Umschlag) oder über das Online-Formularportal der Stadt Kalkstadt 【source: a7ae2491-eb39-53b8-9c71-0e193a8bff73#1 | verwaltung-0061_formularhinweis-umweltamt-7.md】\n- **Unvollständig?** Das Formular kommt mit einer Rückfrage zurück, das kostet mehrere Wochen\n\nEine persönliche Ausfüllhilfe bietet das Umweltamt auf Anfrage an.",
+        "expected_documents": [
+          "verwaltung-0061_formularhinweis-umweltamt-7.md"
+        ]
+      }
+    ],
     "expected_state": "known_gap",
-    "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-15 (feste CPU-Variante haswell, #1652): Runde 1 ist gelöst; die Notiz der Zielrunde 4 trägt „Person“ und „Formular STA-08“, kein Jahr, und die Fassung 2023 belegt Rang 1, das Ziel Rang 2."
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und Nachrichten ohne Suchbedarf von Folgefragen ohne Fragezeichen unterscheidet; das gepinnte Modell stuft beides unzuverlässig ein. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 3 ist eine Nachricht ohne Suchbedarf und wird als Suche eingestuft („Gebühren für Haushaltsabfälle:“); Runde 4 führt das Ziel auf Rang 2, Rang 1 belegt verwaltung-0058_gebuehrenordnung-umweltamt.md."
+  },
+  {
+    "id": "verw-conv-ac-002",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Wofür ist das Formular BUE-08 gedacht?",
+        "answer": "Formular BUE-08 ist das **Änderungs- und Ermäßigungsformular** des Bürgeramts der Stadt Kalkstadt 【source: 873cd963-c044-5328-9229-0b43897e0f82#0 | verwaltung-0037_formularhinweis-buergeramt-8.md】. Sie verwenden es in zwei Fällen:\n\n1. **Nachträgliche Änderung** Ihrer Antragsdaten, zum Beispiel wenn sich Ihre Anschrift geändert hat.\n2. **Antrag auf Gebührenermäßigung** nach § 13 der Personalausweisgebührensatzung.\n\nAnzugeben sind Name, Anschrift, Geburtsdatum und, falls vorhanden, das Aktenzeichen eines bereits laufenden Vorgangs. Bei einem Antrag auf Ermäßigung ist zusätzlich der Freistellungsbescheid des Finanzamts anzugeben 【source: 873cd963-c044-5328-9229-0b43897e0f82#1 | verwaltung-0037_formularhinweis-buergeramt-8.md】.\n\nSie können das Formular persönlich, per Post oder über das Online-Formularportal einreichen. Bei postalischer Einreichung vermerken Sie bitte das Aktenzeichen BUE-08 auf dem Umschlag.\n\nBei Fragen hilft Ihnen die Sachbearbeitung des Bürgeramts während der Öffnungszeiten weiter.",
+        "expected_documents": [
+          "verwaltung-0037_formularhinweis-buergeramt-8.md"
+        ]
+      },
+      {
+        "query": "Muss ich da was nachweisen, wenn ich Bürgergeld bekomme?",
+        "answer": "Ob und in welcher Höhe Sie bei Bürgergeldbezug zahlen müssen, ist genau die Frage, die beim Bürgeramt am häufigsten zu diesem Formular gestellt wird. Eine verbindliche Auskunft dazu erteilt die Sachbearbeitung des Bürgeramts im Rahmen des Auskunftsrechts nach § 3 【source: 873cd963-c044-5328-9229-0b43897e0f82#3 | verwaltung-0037_formularhinweis-buergeramt-8.md】.\n\nWenn Sie einen Leistungsbescheid als Nachweis einreichen, gilt Folgendes:\n\n- Der Bescheid darf zum Zeitpunkt der Antragstellung **nicht älter als drei Monate** sein.\n- Das Bürgeramt akzeptiert beglaubigte Kopien oder das Original zur Einsichtnahme vor Ort.\n- Fremdsprachige Nachweise brauchen eine amtlich beglaubigte Übersetzung ins Deutsche 【source: 873cd963-c044-5328-9229-0b43897e0f82#2 | verwaltung-0037_formularhinweis-buergeramt-8.md】.\n\nEin häufiger Fehler ist ein Bescheid, der die drei Monate bereits überschritten hat. Das führt zu einer Rückfrage und verlängert die Bearbeitung.\n\nMein Tipp: Rufen Sie vorher kurz beim Bürgeramt an und klären Sie, welche Unterlagen in Ihrem Fall nötig sind.",
+        "expected_documents": [
+          "verwaltung-0037_formularhinweis-buergeramt-8.md"
+        ]
+      },
+      {
+        "query": "Spannend, das hätte ich nicht gedacht.",
+        "answer": "Freut mich, dass die Information hilfreich war! Wenn Sie noch weitere Fragen haben, helfe ich gern weiter.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "und wie lange dauert das dann?",
+        "answer": "Die reguläre Bearbeitungsdauer beim Bürgeramt beträgt **zwei bis vier Wochen** ab dem vollständigen Eingang aller Nachweise 【source: 873cd963-c044-5328-9229-0b43897e0f82#4 | verwaltung-0037_formularhinweis-buergeramt-8.md】.\n\nWenn es schneller gehen muss, ist eine **Eilbearbeitung** gegen die entsprechende Gebühr aus der Gebührenordnung möglich. Sie verkürzt die Bearbeitung in der Regel auf drei bis fünf Werktage.\n\nBitte beachten Sie:\n- An gesetzlichen Feiertagen und zwischen Weihnachten und Neujahr kann es länger dauern.\n- Fehlen Unterlagen oder ist Ihr Leistungsbescheid älter als drei Monate, verzögert sich die Bearbeitung durch eine Rückfrage.\n\nReichen Sie das Formular über das Online-Formularportal ein, erhalten Sie automatisch eine Eingangsbestätigung mit Datum und Uhrzeit 【source: 873cd963-c044-5328-9229-0b43897e0f82#3 | verwaltung-0037_formularhinweis-buergeramt-8.md】.",
+        "expected_documents": [
+          "verwaltung-0037_formularhinweis-buergeramt-8.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und Nachrichten ohne Suchbedarf von Folgefragen ohne Fragezeichen unterscheidet; das gepinnte Modell stuft beides unzuverlässig ein. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 2 verfehlt verwaltung-0037_formularhinweis-buergeramt-8.md ganz, Rang 1 belegt verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md; Runde 3 ist eine Nachricht ohne Suchbedarf und wird als Suche eingestuft („**Formular BUE-08** ist das **Änderungs- und Ermäßigungsformular** des Bürgeramts der S …“); Runde 4 verfehlt verwaltung-0037_formularhinweis-buergeramt-8.md ganz, Rang 1 belegt verwaltung-0033_gebuehrenordnung-buergeramt.md."
+  },
+  {
+    "id": "verw-conv-ac-003",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Was kostet eine Personenstandsurkunde?",
+        "answer": "Die Gebühren für Personenstandsurkunden regelt die Personenstandsurkundengebührensatzung der Stadt Kalkstadt 【source: 337ff8e3-0c13-571a-8aaa-f932d98ebc4e#4 | verwaltung-0025_personenstandsurkundengebuehrensatzung.md】. Das Standesamt erhebt für die wichtigsten Amtshandlungen folgende Sätze:\n\n| Amtshandlung | Gebühr |\n|---|---|\n| Erteilung | 28,00 Euro |\n| Verlängerung | 33,00 Euro |\n| Änderung | 38,00 Euro |\n| Zweitausfertigung | 43,00 Euro |\n\nWeitere Positionen, etwa die Eilbearbeitung (58,00 Euro) oder die postalische Zustellung des Bescheids (63,00 Euro), stehen in der Gebührenordnung des Standesamts 【source: 722f3c5d-d2c5-52db-bf3c-f590f20490b0#3 | verwaltung-0026_gebuehrenordnung-standesamt.md】.\n\nDie Gebühr ist innerhalb von vier Wochen nach Bekanntgabe des Bescheids an die Stadtkasse zu zahlen. Wird sie nicht rechtzeitig gezahlt, folgt eine Mahnung mit zwei Wochen Nachfrist; danach wird ein Säumniszuschlag von einem Prozent je angefangenem Monat erhoben.",
+        "expected_documents": [
+          "verwaltung-0025_personenstandsurkundengebuehrensatzung.md",
+          "verwaltung-0026_gebuehrenordnung-standesamt.md"
+        ]
+      },
+      {
+        "query": "Ich bin übrigens Sachbearbeiterin im Standesamt.",
+        "answer": "Danke für den Hinweis! Dann kann ich meine Antworten stärker auf Ihre Arbeit in der Sachbearbeitung zuschneiden.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "wer entscheidet bei uns, wenn die zuständige Kollegin krank ist?",
+        "answer": "Ist die zuständige Sachbearbeitung im Standesamt krank, im Urlaub oder auf Fortbildung, entscheidet die nach der **Vertretungsregelung** der Stadtverwaltung zuständige Vertretung 【source: c7dc102c-7fc7-57be-a177-a1c3ce7f54e3#3 | verwaltung-0027_dienstanweisung-standesamt-1-2024.md】.\n\nIst auch die Vertretung nicht erreichbar, entscheidet die **Amtsleitung des Standesamts**. Dabei gilt:\n\n- Der Vertretungsfall ist stets im Vorgangsverzeichnis zu vermerken.\n- Im Vertretungsfall wird auch der Name der entscheidenden Vertretung dokumentiert 【source: 65d7f04e-7216-55d8-80ed-dfd78b573cbe#5 | verwaltung-0028_dienstanweisung-standesamt-2-2024.md】.\n- Die Amtsleitung darf bei Vorgängen von besonderer Bedeutung oder Schwierigkeit jederzeit selbst eintreten.\n\nWichtig für Sie als Vertretung aus einem anderen Amt: Dann gilt ausschließlich die Vertretungsregelung, nicht die Dienstanweisung des Standesamts.",
+        "expected_documents": [
+          "verwaltung-0027_dienstanweisung-standesamt-1-2024.md",
+          "verwaltung-0028_dienstanweisung-standesamt-2-2024.md"
+        ]
+      },
+      {
+        "query": "Danke, das hilft mir weiter.",
+        "answer": "Sehr gern! Melden Sie sich, wenn noch etwas unklar ist.",
+        "expected_documents": [],
+        "search_expected": false
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und Nachrichten ohne Suchbedarf von Folgefragen ohne Fragezeichen unterscheidet; das gepinnte Modell stuft beides unzuverlässig ein. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 1 findet verwaltung-0026_gebuehrenordnung-standesamt.md nicht; Runde 3 verfehlt verwaltung-0027_dienstanweisung-standesamt-1-2024.md, verwaltung-0028_dienstanweisung-standesamt-2-2024.md ganz, Rang 1 belegt verwaltung-vertretungsregelung.md; Runde 4 ist eine Nachricht ohne Suchbedarf und wird als Suche eingestuft („Danke für den Hinweis! Dann kann ich meine Antworten stärker auf Ihre Arbeit in der **S …“)."
+  },
+  {
+    "id": "verw-conv-ac-004",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Welche Gebühren fallen für einen Bibliotheksausweis an?",
+        "answer": "Für die Benutzung der Stadtbibliothek erhebt das Kulturamt Gebühren nach der Bibliotheksbenutzungsgebührensatzung 【source: 146cbef0-4baf-5c88-82e2-00a9cb348e54#4 | verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md】:\n\n- **Erteilung des Bibliotheksausweises:** 32,00 Euro\n- **Verlängerung:** 37,00 Euro\n- **Änderung:** 42,00 Euro\n- **Zweitausfertigung** (zum Beispiel bei Verlust): 47,00 Euro\n\nDaneben kennt die Gebührenordnung des Kulturamts weitere Positionen, etwa 62,00 Euro für eine Eilbearbeitung und 57,00 Euro für die Bearbeitung eines Widerspruchs 【source: 62d31bd7-9ba0-582e-ad2e-7a53ee4b1ac4#3 | verwaltung-0064_gebuehrenordnung-kulturamt.md】.\n\nDie Gebühr wird mit dem Bescheid fällig und ist innerhalb von vier Wochen zu zahlen. Gegen den Gebührenbescheid können Sie innerhalb eines Monats schriftlich Widerspruch einlegen.\n\nOb für Schülerinnen und Schüler etwas anderes gilt, beantwortet Ihnen die Sachbearbeitung des Kulturamts.",
+        "expected_documents": [
+          "verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md",
+          "verwaltung-0064_gebuehrenordnung-kulturamt.md"
+        ]
+      },
+      {
+        "query": "gibt es für Vereine eine Ermäßigung?",
+        "answer": "Ja. Eingetragene, **gemeinnützige Vereine** mit Sitz in der Stadt Kalkstadt erhalten auf schriftlichen Antrag eine Ermäßigung von **50 Prozent** auf die Gebühren für die Benutzung der Stadtbibliothek 【source: 146cbef0-4baf-5c88-82e2-00a9cb348e54#9 | verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md】.\n\nVoraussetzungen:\n\n1. Der Verein ist eingetragen und gemeinnützig.\n2. Er hat seinen Sitz in Kalkstadt.\n3. Die Gemeinnützigkeit wird durch den **aktuellen Freistellungsbescheid des Finanzamts** nachgewiesen.\n\nDie Ermäßigung gilt nicht rückwirkend für Gebühren, die bereits bestandskräftig festgesetzt sind. Sie ist außerdem unabhängig vom Auskunftsrecht nach § 3 zu beantragen 【source: 146cbef0-4baf-5c88-82e2-00a9cb348e54#10 | verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md】.\n\nStellen Sie den Antrag deshalb am besten, bevor der Gebührenbescheid bestandskräftig wird.",
+        "expected_documents": [
+          "verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md"
+        ]
+      },
+      {
+        "query": "Bitte antworte ab jetzt kurz und präzise.",
+        "answer": "In Ordnung, ich halte mich ab jetzt kurz.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "welches Formular nehme ich dafür?",
+        "answer": "Für die Vereinsermäßigung nehmen Sie **Formular KUL-08**, das Änderungs- und Ermäßigungsformular des Kulturamts 【source: 83bb11f0-bd79-5c79-9847-3d3b9113495b#0 | verwaltung-0068_formularhinweis-kulturamt-8.md】.\n\n- Anzugeben: Name, Anschrift, Geburtsdatum, bei Ermäßigung nach § 13 der Freistellungsbescheid des Finanzamts\n- Nachweis: Gemeinnützigkeit, als beglaubigte Kopie oder im Original zur Einsichtnahme\n- Einreichung: persönlich, per Post mit Aktenzeichen KUL-08 auf dem Umschlag oder über das Formularportal 【source: 83bb11f0-bd79-5c79-9847-3d3b9113495b#1 | verwaltung-0068_formularhinweis-kulturamt-8.md】\n- Bearbeitungsdauer: zwei bis vier Wochen, mit Eilbearbeitung drei bis fünf Werktage\n\nKopie des Formulars und der Nachweise bitte aufbewahren, bis der Vorgang abgeschlossen ist.",
+        "expected_documents": [
+          "verwaltung-0068_formularhinweis-kulturamt-8.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und Nachrichten ohne Suchbedarf von Folgefragen ohne Fragezeichen unterscheidet; das gepinnte Modell stuft beides unzuverlässig ein. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 1 findet verwaltung-0064_gebuehrenordnung-kulturamt.md nicht; Runde 3 ist eine Nachricht ohne Suchbedarf und wird als Suche eingestuft („Gebühr für Bibliotheksausweis für Vereine in Kalkstadt“); Runde 4 verfehlt verwaltung-0068_formularhinweis-kulturamt-8.md ganz, Rang 1 belegt verwaltung-0025_personenstandsurkundengebuehrensatzung.md."
+  },
+  {
+    "id": "verw-conv-ac-005",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Was kostet die Einsichtnahme in die Personalakte eines ehemaligen Beschäftigten?",
+        "answer": "Die Einsichtnahme in Personalakten ehemaliger Beschäftigter ist beim Personalamt gebührenpflichtig. Grundlage ist die Personalaktenauskunftsgebührensatzung der Stadt Kalkstadt 【source: d7ac33b6-c400-5ee1-ba33-c48908ab69e7#4 | verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md】.\n\nDie wichtigsten Sätze:\n\n- **Erteilung (Personalaktenauskunft):** 27,00 Euro\n- **Verlängerung:** 32,00 Euro\n- **Änderung:** 37,00 Euro\n- **Zweitausfertigung:** 42,00 Euro\n\nDas vollständige Gebührenverzeichnis mit allen weiteren Positionen steht in der Gebührenordnung des Personalamts 【source: efa79500-b54b-5414-a7f5-3638f02faba7#0 | verwaltung-0045_gebuehrenordnung-personalamt.md】.\n\nUnabhängig von der Gebühr haben Antragstellende ein Auskunftsrecht über den Bearbeitungsstand ihres Vorgangs; die Auskunft wird formlos innerhalb von drei Werktagen erteilt. Auf schriftlichen Antrag kann außerdem Einsicht in die eigene Vorgangsakte gewährt werden, soweit keine schutzwürdigen Interessen Dritter entgegenstehen.",
+        "expected_documents": [
+          "verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md",
+          "verwaltung-0045_gebuehrenordnung-personalamt.md"
+        ]
+      },
+      {
+        "query": "Kann ich dagegen Widerspruch einlegen?",
+        "answer": "Ja. Gegen einen **Gebührenbescheid des Personalamts** können Sie Widerspruch einlegen 【source: d7ac33b6-c400-5ee1-ba33-c48908ab69e7#8 | verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md】.\n\nSo läuft das Verfahren ab:\n\n1. **Frist:** innerhalb eines Monats nach Bekanntgabe des Bescheids\n2. **Form:** schriftlich, beim Personalamt\n3. **Entscheidung:** Zunächst prüft das Personalamt selbst. Hilft es dem Widerspruch nicht ab, geht der Vorgang an die Widerspruchsstelle der Stadt Kalkstadt, die abschließend entscheidet.\n\nBitte beachten Sie, dass der Widerspruch die Zahlungsfrist von vier Wochen nicht automatisch aufschiebt. Wird die Gebühr nicht fristgerecht gezahlt, folgen Mahnung und gegebenenfalls ein Säumniszuschlag 【source: d7ac33b6-c400-5ee1-ba33-c48908ab69e7#5 | verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md】.\n\nWenn Sie sich unsicher sind, ob ein Widerspruch Aussicht auf Erfolg hat, lassen Sie sich vorher von der Sachbearbeitung des Personalamts beraten.",
+        "expected_documents": [
+          "verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md"
+        ]
+      },
+      {
+        "query": "Okay, verstanden.",
+        "answer": "Prima! Sagen Sie Bescheid, wenn Sie noch etwas wissen möchten.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "und was kostet mich das?",
+        "answer": "Für die **Bearbeitung eines Widerspruchs** erhebt das Personalamt nach seiner Gebührenordnung eine Gebühr von **52,00 Euro** 【source: efa79500-b54b-5414-a7f5-3638f02faba7#3 | verwaltung-0045_gebuehrenordnung-personalamt.md】.\n\nZum Vergleich die übrigen Positionen der Gebührenordnung:\n\n- Rücknahme auf Antrag: 47,00 Euro\n- Eilbearbeitung: 57,00 Euro\n- postalische Zustellung des Bescheids: 62,00 Euro\n\nDie Gebühren werden jährlich von der Kämmerei auf ihre Kostendeckung überprüft. Bei mehrfacher Inanspruchnahme derselben Amtshandlung innerhalb eines Kalenderjahres wird die Gebühr jedes Mal erneut fällig; eine Sammelrechnung ist auf Antrag möglich 【source: efa79500-b54b-5414-a7f5-3638f02faba7#4 | verwaltung-0045_gebuehrenordnung-personalamt.md】.",
+        "expected_documents": [
+          "verwaltung-0045_gebuehrenordnung-personalamt.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und Nachrichten ohne Suchbedarf von Folgefragen ohne Fragezeichen unterscheidet; das gepinnte Modell stuft beides unzuverlässig ein. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 2 führt das Ziel auf Rang 2, Rang 1 belegt verwaltung-0047_dienstanweisung-personalamt-2-2024.md; Runde 4 führt das Ziel auf Rang 2, Rang 1 belegt verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md."
+  },
+  {
+    "id": "verw-conv-ac-006",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Wofür wird Formular KAE-08 verwendet?",
+        "answer": "Formular KAE-08 ist das **Befreiungs- und Ermäßigungsformular** der Kämmerei der Stadt Kalkstadt 【source: 8115a019-f272-5225-b842-5c21c2aa56f9#0 | verwaltung-0043_formularhinweis-kaemmerei-8.md】. Es wird für Anträge auf Gebührenbefreiung oder Gebührenermäßigung bei allgemeinen Amtshandlungen der Stadtverwaltung verwendet.\n\nDas Formular dient der einheitlichen Erfassung aller Angaben, die die Kämmerei für die Bearbeitung braucht. Ohne vollständig ausgefülltes Formular kann der Vorgang nicht bearbeitet werden; ein unvollständiges Formular wird mit einer Rückfrage zurückgeschickt, was die Bearbeitung erfahrungsgemäß um mehrere Wochen verlängert.\n\nRechtsgrundlage ist die Verwaltungsgebührensatzung der Stadt Kalkstadt, insbesondere die Gebührenbefreiung nach § 3 und die Vereinsermäßigung nach § 13 【source: 8115a019-f272-5225-b842-5c21c2aa56f9#4 | verwaltung-0043_formularhinweis-kaemmerei-8.md】.\n\nDas Formular kann persönlich, per Post oder über das Online-Formularportal eingereicht werden.",
+        "expected_documents": [
+          "verwaltung-0043_formularhinweis-kaemmerei-8.md"
+        ]
+      },
+      {
+        "query": "Ich arbeite in der Kämmerei und berate gerade eine Bürgerin am Schalter.",
+        "answer": "Danke, gut zu wissen – dann gehe ich davon aus, dass Sie die Informationen für die Beratung am Schalter brauchen.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "welche Nachweise muss sie beilegen?",
+        "answer": "Welche Nachweise nötig sind, hängt vom Anliegen ab 【source: 8115a019-f272-5225-b842-5c21c2aa56f9#2 | verwaltung-0043_formularhinweis-kaemmerei-8.md】:\n\n- **Gebührenbefreiung wegen Bedürftigkeit:** ein aktueller Leistungsbescheid, zum Beispiel über Bürgergeld\n- **Ermäßigung für einen gemeinnützigen Verein:** der Freistellungsbescheid des Finanzamts\n- **Identität:** ein Identitätsnachweis\n\nDie Kämmerei akzeptiert beglaubigte Kopien ebenso wie das Original zur Einsichtnahme vor Ort. Fremdsprachige Nachweise müssen mit einer amtlich beglaubigten Übersetzung ins Deutsche eingereicht werden.\n\nZusätzlich sollte die Bürgerin eine Telefonnummer oder E-Mail-Adresse angeben. Fehlt diese, laufen Rückfragen nur per Post, und die Bearbeitung verzögert sich 【source: 8115a019-f272-5225-b842-5c21c2aa56f9#1 | verwaltung-0043_formularhinweis-kaemmerei-8.md】.\n\nTipp für die Beratung: Prüfen Sie gleich am Schalter, ob das Aktenzeichen eines laufenden Vorgangs eingetragen ist – das ist einer der häufigsten Fehler.",
+        "expected_documents": [
+          "verwaltung-0043_formularhinweis-kaemmerei-8.md"
+        ]
+      },
+      {
+        "query": "und wie alt darf der Bescheid höchstens sein?",
+        "answer": "Ein Leistungsbescheid darf zum Zeitpunkt der Antragstellung **nicht älter als drei Monate** sein 【source: 8115a019-f272-5225-b842-5c21c2aa56f9#3 | verwaltung-0043_formularhinweis-kaemmerei-8.md】.\n\nDas ist in der Praxis einer der häufigsten Gründe für Rückfragen:\n\n- Der beigefügte Bescheid liegt außerhalb der Gültigkeitsdauer von drei Monaten.\n- Das Feld für das Aktenzeichen eines bereits laufenden Vorgangs bleibt leer.\n\nBeide Fehler führen zu einer vermeidbaren Rückfrage und verlängern die Bearbeitungsdauer, die regulär zwei bis vier Wochen beträgt.\n\nFür Ihre Beratung heißt das: Lassen Sie sich das Datum des Bescheids zeigen, bevor die Bürgerin das Formular einreicht. Ist der Bescheid zu alt, sollte sie zuerst einen aktuellen Bescheid beim Leistungsträger anfordern.",
+        "expected_documents": [
+          "verwaltung-0043_formularhinweis-kaemmerei-8.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und Nachrichten ohne Suchbedarf von Folgefragen ohne Fragezeichen unterscheidet; das gepinnte Modell stuft beides unzuverlässig ein. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 2 ist eine Nachricht ohne Suchbedarf und wird als Suche eingestuft („Ich möchte wissen, **worauf Formular KAE-08 verwendet wird**?“); Runde 4 verfehlt verwaltung-0043_formularhinweis-kaemmerei-8.md ganz, Rang 1 belegt verwaltung-0033_gebuehrenordnung-buergeramt.md."
+  },
+  {
+    "id": "verw-conv-ac-007",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Was regelt die Dienstanweisung ORD-DA-2/2024?",
+        "answer": "Die Dienstanweisung ORD-DA-2/2024 regelt die **Aktenführung und die Fristenkontrolle** im Ordnungsamt der Stadt Kalkstadt. Sie gilt seit dem 1. Januar 2024 und ist ausschließlich für den internen Dienstgebrauch bestimmt 【source: 899325cb-d23d-5de2-80e5-6ed877b80e5b#0 | verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md】.\n\nIhre Kernpunkte:\n\n- **Eingang:** Jeder Vorgang wird am Eingangstag im Vorgangsverzeichnis erfasst und erhält ein Geschäftszeichen aus ORD, Kalenderjahr und laufender Nummer.\n- **Prüfung:** Fehlen Unterlagen, wird eine Nachfrist von zwei Wochen gesetzt; danach wird nach Aktenlage entschieden 【source: 899325cb-d23d-5de2-80e5-6ed877b80e5b#2 | verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md】.\n- **Entscheidung:** schriftlich begründet und in der Vorgangsakte dokumentiert.\n- **Vertretung:** Im Vertretungsfall entscheidet die zuständige Vertretung, notfalls die Amtsleitung.\n\nZiel ist, dass zwei Sachbearbeitungen bei identischer Ausgangslage zum selben Ergebnis kommen.",
+        "expected_documents": [
+          "verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md"
+        ]
+      },
+      {
+        "query": "wie lange muss ich die Unterlagen danach aufheben?",
+        "answer": "Nach der Dienstanweisung ORD-DA-2/2024 sind alle Entscheidungen **revisionssicher zu dokumentieren** und **mindestens zehn Jahre** aufzubewahren 【source: 899325cb-d23d-5de2-80e5-6ed877b80e5b#4 | verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md】.\n\nEine kürzere Frist gilt nur, wenn die Datenschutzregelung nach § 11 der einschlägigen Satzung sie vorsieht.\n\nZur Dokumentation gehören mindestens:\n\n1. der Antrag,\n2. die vorgelegten Nachweise,\n3. der Entscheidungstext,\n4. im Vertretungsfall der Name der entscheidenden Vertretung.\n\nBitte denken Sie daran, dass ein Vertretungsfall zusätzlich im Vorgangsverzeichnis zu vermerken ist, damit später nachvollziehbar bleibt, wer tatsächlich entschieden hat 【source: 899325cb-d23d-5de2-80e5-6ed877b80e5b#3 | verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md】.",
+        "expected_documents": [
+          "verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md"
+        ]
+      },
+      {
+        "query": "Danke dir!",
+        "answer": "Gern geschehen! Viel Erfolg bei der Aktenführung.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "und wer prüft das?",
+        "answer": "Die korrekte Anwendung der Dienstanweisung ORD-DA-2/2024 prüft die **Amtsleitung des Ordnungsamts** 【source: 899325cb-d23d-5de2-80e5-6ed877b80e5b#5 | verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md】.\n\n- Die Prüfung erfolgt **stichprobenartig, mindestens einmal je Quartal**, an abgeschlossenen Vorgängen.\n- Auffälligkeiten, besonders uneinheitliche Entscheidungen bei vergleichbarer Ausgangslage, werden dokumentiert.\n- Sie fließen in die nächste Überarbeitung der Dienstanweisung ein.\n\nBeschwerden, die sich auf die Dienstanweisung beziehen, nimmt ebenfalls die Amtsleitung entgegen und beantwortet sie innerhalb von zwei Wochen. Eine Beschwerde setzt die ursprüngliche Entscheidung nicht automatisch aus 【source: 899325cb-d23d-5de2-80e5-6ed877b80e5b#6 | verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md】.",
+        "expected_documents": [
+          "verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md"
+        ]
+      }
+    ],
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Gelöst seit #1684, bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): alle 4 Runden gelöst; Teilfrage der Runde 2: „Entschuldigung für die Verwirrung. Wie lange muss man nach der Rückgabe der Unterlagen …“."
+  },
+  {
+    "id": "verw-conv-ac-008",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Wofür wird Formular JUG-08 verwendet?",
+        "answer": "Formular JUG-08 ist das **Änderungs- und Ermäßigungsformular** des Jugendamts der Stadt Kalkstadt 【source: 5926e2ea-a67a-5f50-ae63-81652084bcd9#0 | verwaltung-0056_formularhinweis-jugendamt-8.md】. Es wird verwendet für:\n\n- eine **nachträgliche Änderung** der Antragsdaten und\n- einen **Antrag auf Gebührenermäßigung** nach § 13 der Kindertagesstättenbeitragssatzung.\n\nAnzugeben sind Name, Anschrift, Geburtsdatum und gegebenenfalls das Aktenzeichen eines laufenden Vorgangs. Für eine Ermäßigung nach § 13 ist zusätzlich der Freistellungsbescheid des Finanzamts anzugeben 【source: 5926e2ea-a67a-5f50-ae63-81652084bcd9#1 | verwaltung-0056_formularhinweis-jugendamt-8.md】.\n\nEine häufige Frage zu diesem Formular lautet, ob der Kita-Beitrag bei Bürgergeldbezug gezahlt werden muss. Dazu gibt die Sachbearbeitung des Jugendamts im Rahmen des Auskunftsrechts nach § 3 Auskunft.\n\nDie reguläre Bearbeitungsdauer beträgt zwei bis vier Wochen.",
+        "expected_documents": [
+          "verwaltung-0056_formularhinweis-jugendamt-8.md"
+        ]
+      },
+      {
+        "query": "und wenn ich kaum Deutsch spreche, hilft mir da jemand?",
+        "answer": "Ja. Das Jugendamt bietet auf Anfrage eine **persönliche Ausfüllhilfe** für Formular JUG-08 an 【source: 5926e2ea-a67a-5f50-ae63-81652084bcd9#5 | verwaltung-0056_formularhinweis-jugendamt-8.md】. Sie richtet sich ausdrücklich auch an Personen mit **eingeschränkten Deutschkenntnissen**, außerdem an Menschen mit Seheinschränkung oder ohne eigenen Drucker.\n\nZusätzlich gibt es ein barrierefreies elektronisches Formular im Formularportal der Stadt Kalkstadt.\n\nWichtig, falls Sie Nachweise in einer anderen Sprache haben:\n\n- Fremdsprachige Nachweise brauchen eine **amtlich beglaubigte Übersetzung ins Deutsche** 【source: 5926e2ea-a67a-5f50-ae63-81652084bcd9#2 | verwaltung-0056_formularhinweis-jugendamt-8.md】.\n- Das gilt nicht, wenn der Nachweis ohnehin einem standardisierten Formular einer deutschen Behörde entspricht.\n\nAm besten vereinbaren Sie die Ausfüllhilfe vorab telefonisch mit der Sachbearbeitung des Jugendamts während der Öffnungszeiten.",
+        "expected_documents": [
+          "verwaltung-0056_formularhinweis-jugendamt-8.md"
+        ]
+      },
+      {
+        "query": "Antworte bitte in einfacher Sprache.",
+        "answer": "Gern. Ich schreibe ab jetzt in einfacher Sprache: kurze Sätze und wenig Fachwörter.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "kann ich den Antrag zurückziehen?",
+        "answer": "Ja, das geht 【source: 5926e2ea-a67a-5f50-ae63-81652084bcd9#6 | verwaltung-0056_formularhinweis-jugendamt-8.md】.\n\n- Sie können Ihren Antrag **zurückziehen**, solange das Jugendamt noch nicht entschieden hat.\n- Das geht **formlos**. Sie müssen aber **schriftlich** schreiben, zum Beispiel einen Brief oder eine E-Mail.\n- Sie können auch nur **einzelne Angaben ändern**, statt den ganzen Antrag zurückzuziehen.\n\nEine Auskunft, die Sie schon bekommen haben, bleibt gültig. Sie wird durch das Zurückziehen nicht aufgehoben.\n\nMein Tipp: Heben Sie eine Kopie von Ihrem Brief auf. Dann können Sie später zeigen, wann Sie den Antrag zurückgezogen haben.",
+        "expected_documents": [
+          "verwaltung-0056_formularhinweis-jugendamt-8.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und Nachrichten ohne Suchbedarf von Folgefragen ohne Fragezeichen unterscheidet; das gepinnte Modell stuft beides unzuverlässig ein. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 3 ist eine Nachricht ohne Suchbedarf und wird als Suche eingestuft („Formular JUG-08 wird verwendet, um nachträgliche Änderungen an Antragsdaten und Gebühre …“)."
+  },
+  {
+    "id": "verw-conv-ac-009",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Wofür brauche ich das Formular BAU-07?",
+        "answer": "Formular BAU-07 ist das **Antragsformular** des Bauamts der Stadt Kalkstadt 【source: fe64313a-328b-5c44-9e83-600800feaa93#0 | verwaltung-0015_formularhinweis-bauamt-7.md】. Sie brauchen es für den regulären Antrag auf eine Amtshandlung, insbesondere für die **Erteilung einer Baugenehmigung**.\n\nOhne vollständig ausgefülltes Formular kann das Bauamt Ihren Vorgang nicht bearbeiten. Fehlt etwas, schickt das Amt das Formular mit einer Rückfrage zurück, und die Bearbeitung verlängert sich erfahrungsgemäß um mehrere Wochen.\n\nAnzugeben sind:\n\n- Name, Anschrift und Geburtsdatum,\n- das Aktenzeichen eines bereits laufenden Vorgangs, falls es einen gibt,\n- eine Telefonnummer oder E-Mail-Adresse für Rückfragen 【source: fe64313a-328b-5c44-9e83-600800feaa93#1 | verwaltung-0015_formularhinweis-bauamt-7.md】.\n\nBeantragen Sie eine Gebührenermäßigung nach § 13 der Baugenehmigungsgebührensatzung, geben Sie zusätzlich den Freistellungsbescheid des Finanzamts an.\n\nDie reguläre Bearbeitungsdauer beträgt zwei bis vier Wochen ab vollständigem Eingang aller Nachweise.",
+        "expected_documents": [
+          "verwaltung-0015_formularhinweis-bauamt-7.md"
+        ]
+      },
+      {
+        "query": "falls ich keinen eigenen Drucker habe",
+        "answer": "Das ist kein Hindernis. Das Bauamt bietet auf Anfrage eine **persönliche Ausfüllhilfe** für Formular BAU-07 an 【source: fe64313a-328b-5c44-9e83-600800feaa93#5 | verwaltung-0015_formularhinweis-bauamt-7.md】. Sie richtet sich ausdrücklich auch an Personen **ohne Zugang zu einem eigenen Drucker**, außerdem an Menschen mit Seheinschränkung oder eingeschränkten Deutschkenntnissen.\n\nSie haben zwei Möglichkeiten:\n\n1. **Online einreichen:** Über das Formularportal der Stadt Kalkstadt steht ein barrierefreies elektronisches Formular bereit. Der Eingang wird dort automatisch mit Datum und Uhrzeit bestätigt, ausdrucken müssen Sie nichts 【source: fe64313a-328b-5c44-9e83-600800feaa93#3 | verwaltung-0015_formularhinweis-bauamt-7.md】.\n2. **Vor Ort ausfüllen:** Mit der Ausfüllhilfe im Bauamt füllen Sie das Formular gemeinsam mit der Sachbearbeitung aus.\n\nNachweise können Sie als beglaubigte Kopie oder im Original zur Einsichtnahme vor Ort vorlegen.\n\nMein Tipp: Vereinbaren Sie die Ausfüllhilfe vorab telefonisch während der Öffnungszeiten.",
+        "expected_documents": [
+          "verwaltung-0015_formularhinweis-bauamt-7.md"
+        ]
+      },
+      {
+        "query": "Ich bin übrigens Architektin.",
+        "answer": "Danke für den Hinweis! Dann gehe ich davon aus, dass Sie Anträge auch für Ihre Bauherrschaft vorbereiten.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "und bei postalischer Einreichung",
+        "answer": "Auch per Post können Sie Formular BAU-07 einreichen 【source: fe64313a-328b-5c44-9e83-600800feaa93#3 | verwaltung-0015_formularhinweis-bauamt-7.md】. Dabei gilt:\n\n- Vermerken Sie das **Aktenzeichen BAU-07 auf dem Umschlag**, damit das Bauamt Ihre Sendung eindeutig zuordnen kann.\n- Legen Sie alle Nachweise bei, als beglaubigte Kopie. Originale reichen Sie besser nur zur Einsichtnahme vor Ort ein.\n- Eine automatische Eingangsbestätigung wie beim Formularportal gibt es auf dem Postweg nicht.\n\nDas Bauamt scannt die postalisch eingereichte Fassung ein und ergänzt damit die elektronische Akte. Dieselbe Sachbearbeitung sieht dann den vollständigen Vorgang, egal auf welchem Weg Sie eingereicht haben 【source: fe64313a-328b-5c44-9e83-600800feaa93#9 | verwaltung-0015_formularhinweis-bauamt-7.md】.\n\nRechnen Sie mit der regulären Bearbeitungsdauer von zwei bis vier Wochen ab vollständigem Eingang. Heben Sie eine Kopie des Formulars und aller Nachweise auf, bis der Vorgang beschieden ist.",
+        "expected_documents": [
+          "verwaltung-0015_formularhinweis-bauamt-7.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und Nachrichten ohne Suchbedarf von Folgefragen ohne Fragezeichen unterscheidet; das gepinnte Modell stuft beides unzuverlässig ein. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 3 ist eine Nachricht ohne Suchbedarf und wird als Suche eingestuft („Ich brauche das Formular BAU-07 für den Bau eines Gebäudes und möchte es online einreic …“)."
+  },
+  {
+    "id": "verw-conv-ac-010",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Was kostet die Anmeldung eines Gewerbes beim Ordnungsamt?",
+        "answer": "Für die Anmeldung eines Gewerbes erhebt das Ordnungsamt der Stadt Kalkstadt Gebühren nach seiner Gebührenordnung 【source: 0a286668-c1d6-5456-8486-3e977d62cc9d#0 | verwaltung-0019_gebuehrenordnung-ordnungsamt.md】. Die wichtigsten Sätze:\n\n| Amtshandlung | Gebühr |\n|---|---|\n| Erteilung (Gewerbeanmeldung) | 25,00 Euro |\n| Verlängerung | 30,00 Euro |\n| Änderung | 35,00 Euro |\n| Zweitausfertigung | 40,00 Euro |\n\nGrundlage ist der durchschnittliche Bearbeitungsaufwand des Ordnungsamts, den die Kämmerei über eine Zeit- und Kostenerfassung ermittelt 【source: 0a286668-c1d6-5456-8486-3e977d62cc9d#1 | verwaltung-0019_gebuehrenordnung-ordnungsamt.md】.\n\nAusnahmen regelt die Gewerbeanmeldegebührensatzung: das Auskunftsrecht nach § 3 und die Ermäßigung für eingetragene, gemeinnützige Vereine nach § 13.\n\nDie Gebühr wird mit dem Gebührenbescheid fällig und ist innerhalb von vier Wochen an die Stadtkasse zu zahlen.",
+        "expected_documents": [
+          "verwaltung-0019_gebuehrenordnung-ordnungsamt.md"
+        ]
+      },
+      {
+        "query": "und für die Eilbearbeitung",
+        "answer": "Für die **Eilbearbeitung** einer Gewerbeanmeldung berechnet das Ordnungsamt **55,00 Euro** (Gebührenposition 7) 【source: 0a286668-c1d6-5456-8486-3e977d62cc9d#7 | verwaltung-0019_gebuehrenordnung-ordnungsamt.md】.\n\nDiese Gebühr kommt zu der Gebühr für die eigentliche Amtshandlung hinzu, bei einer Erteilung also zu den 25,00 Euro.\n\nWeitere Positionen der Gebührenordnung, die in diesem Zusammenhang anfallen können:\n\n- postalische Zustellung des Bescheids: 60,00 Euro,\n- Rücknahme auf Antrag: 45,00 Euro,\n- Bearbeitung eines Widerspruchs: 50,00 Euro 【source: 0a286668-c1d6-5456-8486-3e977d62cc9d#5 | verwaltung-0019_gebuehrenordnung-ordnungsamt.md】.\n\nAuch die Eilbearbeitung unterliegt den Ausnahmen nach § 3 und § 13 der Gewerbeanmeldegebührensatzung. Ein eingetragener, gemeinnütziger Verein kann also auch hier eine Ermäßigung beantragen.",
+        "expected_documents": [
+          "verwaltung-0019_gebuehrenordnung-ordnungsamt.md"
+        ]
+      },
+      {
+        "query": "Okay, notiert.",
+        "answer": "Prima! Sagen Sie Bescheid, wenn Sie noch etwas zur Gewerbeanmeldung wissen möchten.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "wenn ich im selben Jahr noch einmal ummelde",
+        "answer": "Dann fällt die Gebühr **erneut** an 【source: 0a286668-c1d6-5456-8486-3e977d62cc9d#3 | verwaltung-0019_gebuehrenordnung-ordnungsamt.md】. Die Gebührenordnung des Ordnungsamts sieht vor, dass bei mehrfacher Inanspruchnahme derselben Amtshandlung innerhalb eines Kalenderjahres die Gebühr für jede einzelne Amtshandlung wieder fällig wird.\n\nFür eine Ummeldung, also eine **Änderung** der Gewerbeanmeldung, sind das jeweils **35,00 Euro** (Gebührenposition 3).\n\nZwei Hinweise dazu:\n\n- Auf Antrag stellt das Ordnungsamt eine **Sammelrechnung** aus, statt jede Änderung einzeln abzurechnen.\n- Die Ausnahmen nach § 3 und § 13 der Gewerbeanmeldegebührensatzung gelten auch für wiederholte Änderungen 【source: 0a286668-c1d6-5456-8486-3e977d62cc9d#2 | verwaltung-0019_gebuehrenordnung-ordnungsamt.md】.\n\nÄndert sich die Gebührenordnung zwischenzeitlich, gilt die neue Fassung frühestens zwei Monate nach dem Beschluss des Stadtrats; sie wird im Amtsblatt veröffentlicht.",
+        "expected_documents": [
+          "verwaltung-0019_gebuehrenordnung-ordnungsamt.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und Nachrichten ohne Suchbedarf von Folgefragen ohne Fragezeichen unterscheidet; das gepinnte Modell stuft beides unzuverlässig ein. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 1 führt das Ziel auf Rang 3, Rang 1 belegt verwaltung-geschaeftsverteilungsplan.md; Runde 4 wird als „keine Suche“ eingestuft und mit dem Rückfall-Suchtext gesucht, verfehlt verwaltung-0019_gebuehrenordnung-ordnungsamt.md ganz, Rang 1 belegt verwaltung-0020_dienstanweisung-ordnungsamt-1-2023.md."
+  },
+  {
+    "id": "verw-conv-ac-011",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Wofür ist Formular SOZ-08 gedacht?",
+        "answer": "Formular SOZ-08 ist das **Änderungs- und Ermäßigungsformular** des Sozialamts der Stadt Kalkstadt 【source: 65f4d3f6-56eb-528e-be5d-e9a6097a7515#0 | verwaltung-0008_formularhinweis-sozialamt-8.md】. Sie verwenden es für:\n\n1. eine **nachträgliche Änderung** Ihrer Antragsdaten und\n2. einen **Antrag auf Gebührenermäßigung** nach § 13 der Sozialgebührenbefreiungssatzung.\n\nAnzugeben sind Name, Anschrift, Geburtsdatum und, falls vorhanden, das Aktenzeichen eines laufenden Vorgangs, außerdem eine Telefonnummer oder E-Mail-Adresse für Rückfragen. Für eine Ermäßigung nach § 13 kommt der Freistellungsbescheid des Finanzamts hinzu 【source: 65f4d3f6-56eb-528e-be5d-e9a6097a7515#1 | verwaltung-0008_formularhinweis-sozialamt-8.md】.\n\nEinreichen können Sie das Formular persönlich, per Post oder über das Online-Formularportal der Stadt Kalkstadt.\n\nDie reguläre Bearbeitungsdauer beträgt zwei bis vier Wochen ab vollständigem Eingang aller Nachweise; gegen Gebühr ist eine Eilbearbeitung in drei bis fünf Werktagen möglich.",
+        "expected_documents": [
+          "verwaltung-0008_formularhinweis-sozialamt-8.md"
+        ]
+      },
+      {
+        "query": "Danke. Ich bin selbst Sachbearbeiter im Sozialamt.",
+        "answer": "Gern geschehen! Dann formuliere ich die Hinweise künftig aus Sicht der Sachbearbeitung.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "wenn der Leistungsbescheid schon älter als drei Monate ist",
+        "answer": "Dann ist der Nachweis **nicht mehr gültig**. Ein Leistungsbescheid darf zum Zeitpunkt der Antragstellung **nicht älter als drei Monate** sein 【source: 65f4d3f6-56eb-528e-be5d-e9a6097a7515#5 | verwaltung-0008_formularhinweis-sozialamt-8.md】.\n\nDas ist einer der beiden häufigsten Fehler bei Formular SOZ-08:\n\n- Der beigefügte Leistungsbescheid liegt außerhalb der Gültigkeitsdauer von drei Monaten.\n- Das Feld für das Aktenzeichen bleibt leer, obwohl bereits ein Vorgang existiert 【source: 65f4d3f6-56eb-528e-be5d-e9a6097a7515#12 | verwaltung-0008_formularhinweis-sozialamt-8.md】.\n\nBeide Fehler führen zu einer vermeidbaren Rückfrage und verlängern die Bearbeitung. Fordern Sie deshalb in solchen Fällen einen aktuellen Bescheid an, bevor das Formular bearbeitet wird.\n\nFür die Beratung am Schalter hilft der Hinweis, dass eine verbindliche Auskunft zur Zahlungspflicht die Sachbearbeitung im Rahmen des Auskunftsrechts nach § 3 erteilt.",
+        "expected_documents": [
+          "verwaltung-0008_formularhinweis-sozialamt-8.md"
+        ]
+      },
+      {
+        "query": "und bei fremdsprachigen Nachweisen",
+        "answer": "Fremdsprachige Nachweise zu Formular SOZ-08 sind mit einer **amtlich beglaubigten Übersetzung ins Deutsche** einzureichen 【source: 65f4d3f6-56eb-528e-be5d-e9a6097a7515#2 | verwaltung-0008_formularhinweis-sozialamt-8.md】.\n\nEine Ausnahme gilt, wenn der Inhalt ohnehin einem **standardisierten Formular einer deutschen Behörde** entspricht. Dann ist keine Übersetzung nötig.\n\nWeitere Punkte zu Nachweisen:\n\n- Das Sozialamt akzeptiert beglaubigte Kopien oder das Original zur Einsichtnahme vor Ort.\n- Je nach Anliegen ist ein Identitätsnachweis oder ein Nachweis der Gemeinnützigkeit beizufügen.\n\nFür Antragstellende mit eingeschränkten Deutschkenntnissen bietet das Sozialamt auf Anfrage eine **persönliche Ausfüllhilfe** an; ergänzend steht ein barrierefreies elektronisches Formular im Formularportal bereit 【source: 65f4d3f6-56eb-528e-be5d-e9a6097a7515#9 | verwaltung-0008_formularhinweis-sozialamt-8.md】.",
+        "expected_documents": [
+          "verwaltung-0008_formularhinweis-sozialamt-8.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und Nachrichten ohne Suchbedarf von Folgefragen ohne Fragezeichen unterscheidet; das gepinnte Modell stuft beides unzuverlässig ein. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 4 führt das Ziel auf Rang 6, Rang 1 belegt verwaltung-leitfaden-barrierefreiheit.md."
   }
 ]

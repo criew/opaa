@@ -272,7 +272,7 @@ public final class ConversationHarnessSupport {
                       .map(value -> value == null ? null : value.toString())
                       .toList();
               return new ConversationRetrievalEvaluator.TurnInvocationResult(
-                  rankedFileNames, result.searchQueries());
+                  rankedFileNames, result.searchQueries(), result.searchNeeded());
             },
             noteExtraction,
             memoryProfile.noteCap());
@@ -338,7 +338,8 @@ public final class ConversationHarnessSupport {
             false,
             runStart),
         memoryProfile,
-        ConversationDataset.turnCount(cases));
+        ConversationDataset.turnCount(cases),
+        EvalChatModel.activeTemperature());
   }
 
   /**

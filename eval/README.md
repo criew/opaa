@@ -490,6 +490,17 @@ entfallen für ein Modell, das nicht im Container liegt; die CPU-Variantenprüfu
 noch den Embedding-Runner. Sind nur eine der beiden Properties oder kein Schlüssel gesetzt, bricht
 der Lauf ab, statt still das gepinnte Modell zu messen.
 
+Die Temperatur des externen Modells ist 0, solange `-Dopaa.eval.chatTemperature` (0 bis 2) sie nicht
+auf die einer Installation setzt — #1684 maß mit den 0,70 der Demo. Für das gepinnte Modell weist
+der Harness die Eigenschaft ab; dessen Baselines beruhen auf Temperatur 0. Der Mehrrunden-Bericht
+nennt die Temperatur als Beobachtung neben dem Chat-Modell (`runConfiguration.chatTemperature`), nicht
+als Festpunkt.
+
+Der Abschnitt `noSearch` des Mehrrunden-Berichts zählt, wie der Lauf den Suchbedarf eingestuft hat,
+in beiden Fehlrichtungen: Runden ohne Suchbedarf, die als Suche eingestuft wurden, und Runden mit
+Suchbedarf, die als „keine Suche" eingestuft wurden. Gesucht wird in beiden Fällen; die zweite
+Richtung ist deshalb in keiner Rangmetrik sichtbar.
+
 **Der Schlüssel gehört ausschließlich in die Umgebungsvariable.** Ein `-D`-Wert steht in der
 Prozessliste — dieselbe Begründung, aus der `backend/build.gradle.kts` `opaa.rerank.api-key` bewusst
 aus seiner Weiterreichungsliste auslässt.

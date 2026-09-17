@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -106,7 +107,8 @@ class QueryServiceTest {
   @Mock private KnowledgeLibraryRepository knowledgeLibraryRepository;
   @Mock private DocumentMetadataService documentMetadataService;
   @Mock private ChunkEmbeddingLookup chunkEmbeddingLookup;
-  // Unstubbed by default: Mockito returns an empty List for #decompose, which QueryService treats
+  // Unstubbed by default: Mockito returns Optional.empty() for #decompose, which QueryService
+  // treats
   // as a decomposition failure and falls back to the pre-#923 single-query path (see
   // SubQueryDecompositionStage) - every test in this class relies on that unless it
   // explicitly stubs this mock (see the "Query decomposition (#923)" nested class below).
@@ -207,7 +209,7 @@ class QueryServiceTest {
     when(chatMemory.get(any())).thenReturn(List.of());
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     queryService.query("Question", null, caller, true, List.of());
@@ -231,7 +233,7 @@ class QueryServiceTest {
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
     when(chunkEmbeddingLookup.findByIds(any())).thenReturn(Map.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     serviceWithMmrEnabled.query("Question", null, caller, true, List.of());
@@ -262,7 +264,7 @@ class QueryServiceTest {
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -309,7 +311,7 @@ class QueryServiceTest {
         .thenReturn(List.of(located, unlocated));
     when(documentRepository.findById(documentId)).thenReturn(Optional.empty());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -382,7 +384,7 @@ class QueryServiceTest {
                     DatePrecision.DAY,
                     MetadataOrigin.DETERMINISTIC)));
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -436,7 +438,7 @@ class QueryServiceTest {
     when(chatMemory.get(any())).thenReturn(List.of());
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Nichts"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
     var library = mock(KnowledgeLibrary.class);
     when(library.getId()).thenReturn(readableLibraryId);
@@ -455,7 +457,7 @@ class QueryServiceTest {
   @Test
   void queryListsNoSearchedLibrariesWhenNoSearchRan() {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, false, List.of());
@@ -485,7 +487,7 @@ class QueryServiceTest {
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -520,7 +522,7 @@ class QueryServiceTest {
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -559,7 +561,7 @@ class QueryServiceTest {
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -612,7 +614,7 @@ class QueryServiceTest {
     when(documentRepository.findById(secondDocumentId)).thenReturn(Optional.of(secondDocument));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -659,7 +661,7 @@ class QueryServiceTest {
         .thenReturn(List.of(firstChunkOfA, secondChunkOfA, chunkOfB));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -687,7 +689,7 @@ class QueryServiceTest {
     var answer = "The answer is 42 【source: doc-123#0 | readme.md】";
     var chatResponse =
         new ChatResponse(List.of(new Generation(new AssistantMessage(answer))), metadata);
-    when(answerGenerationService.generateAnswer(eq("What?"), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(eq("What?"), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("What?", null, caller, true, List.of());
@@ -710,7 +712,7 @@ class QueryServiceTest {
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -731,7 +733,8 @@ class QueryServiceTest {
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), eq(conversationKey), any()))
+    when(answerGenerationService.generateAnswer(
+            any(), any(), eq(conversationKey), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", chatId, caller, true, List.of());
@@ -758,7 +761,8 @@ class QueryServiceTest {
         .thenReturn(Set.of(readableLibraryId));
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), eq(conversationKey), any()))
+    when(answerGenerationService.generateAnswer(
+            any(), any(), eq(conversationKey), any(), anyBoolean()))
         .thenReturn(chatResponse);
     when(chatService.appendTurn(eq(chat), any(), any(), any())).thenReturn("Frage zur Frist");
 
@@ -772,7 +776,7 @@ class QueryServiceTest {
     when(chatMemory.get(any())).thenReturn(List.of());
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -805,7 +809,7 @@ class QueryServiceTest {
         .thenReturn(Set.of(readableLibraryId));
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     queryService.query("Question", chatId, caller, true, List.of());
@@ -831,7 +835,7 @@ class QueryServiceTest {
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId))).thenReturn(Set.of());
     when(chatService.spaceHasLibraryAssociations(chat.getSpaceId())).thenReturn(true);
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", chatId, caller, true, List.of());
@@ -855,7 +859,7 @@ class QueryServiceTest {
     lenient().when(chatService.spaceHasLibraryAssociations(chat.getSpaceId())).thenReturn(false);
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", chatId, caller, true, List.of());
@@ -868,7 +872,7 @@ class QueryServiceTest {
   @Test
   void queryNeverMarksNoKnowledgeAvailableInSpaceForAnEphemeralQuery() {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, false, List.of());
@@ -887,7 +891,7 @@ class QueryServiceTest {
     when(chatMemory.get(any())).thenReturn(List.of());
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", foreignChatId, caller, true, List.of());
@@ -966,7 +970,7 @@ class QueryServiceTest {
     UUID sharedChatId = UUID.randomUUID();
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     List<String> usedConversationKeys = new ArrayList<>();
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenAnswer(
             invocation -> {
               String conversationKey = invocation.getArgument(2);
@@ -1025,7 +1029,7 @@ class QueryServiceTest {
         .thenReturn(Set.of(readableLibraryId));
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Tabelle"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     queryService.query(
@@ -1054,7 +1058,7 @@ class QueryServiceTest {
         .thenReturn(Set.of(readableLibraryId));
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
     QueryService serviceWithSmallWindow =
         newQueryService(
@@ -1087,7 +1091,7 @@ class QueryServiceTest {
         .thenReturn(Set.of(readableLibraryId));
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     queryService.query("Und bei Bedürftigkeit?", chatId, caller, true, List.of());
@@ -1121,7 +1125,7 @@ class QueryServiceTest {
 
     var answer = "Info from readme 【source: doc-1#0 | readme.md】.";
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -1148,7 +1152,7 @@ class QueryServiceTest {
 
     var answer = "The answer is 42 【source: doc-123#0 | wrong-name.pdf】";
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("What?", null, caller, true, List.of());
@@ -1174,7 +1178,7 @@ class QueryServiceTest {
 
     var answer = "The answer is 42 【source: doc-123#9 | readme.md】";
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("What?", null, caller, true, List.of());
@@ -1197,7 +1201,7 @@ class QueryServiceTest {
 
     var answer = "The answer is 42 【source: doc-123#0 | readme.md】";
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("What?", null, caller, true, List.of());
@@ -1231,7 +1235,7 @@ class QueryServiceTest {
         .thenReturn(List.of(chunk1, chunk2, chunk3));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -1257,7 +1261,7 @@ class QueryServiceTest {
 
     var answer = "The answer 【source: doc-1#0 | readme.md】 is here.";
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -1285,7 +1289,7 @@ class QueryServiceTest {
         .thenReturn(List.of(chunk1, chunk2));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -1306,7 +1310,7 @@ class QueryServiceTest {
 
     var chatResponse =
         new ChatResponse(List.of(new Generation(new AssistantMessage("No results"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     queryService.query("Test query", null, caller, true, List.of());
@@ -1329,7 +1333,7 @@ class QueryServiceTest {
     when(chatMemory.get(any())).thenReturn(List.of());
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     queryService.query("Test query", null, caller, true, List.of());
@@ -1346,7 +1350,7 @@ class QueryServiceTest {
     when(libraryAccessService.readableLibraryIds(currentUserId, organizationId))
         .thenReturn(Set.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -1363,7 +1367,7 @@ class QueryServiceTest {
     when(chatMemory.get(any())).thenReturn(List.of());
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     queryService.query("Question", null, caller, false, List.of(readableLibraryId));
@@ -1379,7 +1383,7 @@ class QueryServiceTest {
   void queryWithUseKnowledgeFalseAndUnreadableLibrarySkipsVectorStoreAndReturnsEmptySources() {
     UUID unreadableLibraryId = UUID.randomUUID();
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response =
@@ -1393,7 +1397,7 @@ class QueryServiceTest {
   @Test
   void queryWithUseKnowledgeFalseAndNoReferencesSkipsVectorStoreAndMarksAnsweredWithoutKnowledge() {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, false, List.of());
@@ -1410,7 +1414,7 @@ class QueryServiceTest {
     when(chatMemory.get(any())).thenReturn(List.of());
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -1426,7 +1430,7 @@ class QueryServiceTest {
     when(chatMemory.get(any())).thenReturn(List.of());
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     // useKnowledge = true with a non-empty libraryIds: the list must be ignored, and the search
@@ -1444,7 +1448,7 @@ class QueryServiceTest {
   void
       queryWithUseKnowledgeFalseAndNullLibraryIdsSkipsVectorStoreAndMarksAnsweredWithoutKnowledge() {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     // null requestedLibraryIds must behave exactly like an empty list, not throw or search
@@ -1479,7 +1483,7 @@ class QueryServiceTest {
 
     var answer = "Info 【source: doc-1#0 | report.pdf】.";
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -1516,7 +1520,7 @@ class QueryServiceTest {
 
     var answer = "Info 【source: doc-1#0 | report.pdf】.";
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
@@ -1538,7 +1542,7 @@ class QueryServiceTest {
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Tabelle"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     queryService.query(
@@ -1568,7 +1572,7 @@ class QueryServiceTest {
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Sortiert"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     queryService.query("Sortiere nach Datum", chatId, caller, true, List.of());
@@ -1599,7 +1603,7 @@ class QueryServiceTest {
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Sortiert"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     queryService.query("Sortiere nach Datum", chatId, caller, true, List.of());
@@ -1617,7 +1621,7 @@ class QueryServiceTest {
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     queryService.query("First question", null, caller, true, List.of());
@@ -1648,7 +1652,7 @@ class QueryServiceTest {
 
   /**
    * Query decomposition and multi-search retrieval fusion (#923). {@link
-   * #queryDecompositionService} is unstubbed (empty list) by every other test in this class - see
+   * #queryDecompositionService} is unstubbed (the fallback) by every other test in this class - see
    * that field's Javadoc - so these are the only tests here exercising the multi-sub-query path.
    */
   @Nested
@@ -1659,7 +1663,7 @@ class QueryServiceTest {
       when(chatMemory.get(any())).thenReturn(List.of());
       when(queryDecompositionService.decompose(
               argThat(context -> context != null && "Question".equals(context.question())), eq(3)))
-          .thenReturn(List.of("Umformulierte Frage"));
+          .thenReturn(Optional.of(List.of("Umformulierte Frage")));
       var chunk =
           Document.builder()
               .text("Relevant content")
@@ -1668,7 +1672,7 @@ class QueryServiceTest {
               .build();
       when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-      when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+      when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
 
       queryService.query("Question", null, caller, true, List.of());
@@ -1693,7 +1697,7 @@ class QueryServiceTest {
       when(queryDecompositionService.decompose(
               argThat(context -> context != null && "Kombifrage".equals(context.question())),
               eq(3)))
-          .thenReturn(List.of("Teilfrage A", "Teilfrage B"));
+          .thenReturn(Optional.of(List.of("Teilfrage A", "Teilfrage B")));
       var chunkA =
           Document.builder()
               .id("chunk-a")
@@ -1721,7 +1725,7 @@ class QueryServiceTest {
                       request != null && "Teilfrage B".equals(request.getQuery()))))
           .thenReturn(List.of(chunkB));
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-      when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+      when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
 
       QueryResult response = queryService.query("Kombifrage", null, caller, true, List.of());
@@ -1739,10 +1743,10 @@ class QueryServiceTest {
       when(queryDecompositionService.decompose(
               argThat(context -> context != null && "Kombifrage".equals(context.question())),
               eq(3)))
-          .thenReturn(List.of("Teilfrage A", "Teilfrage B"));
+          .thenReturn(Optional.of(List.of("Teilfrage A", "Teilfrage B")));
       when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-      when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+      when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
 
       queryService.query("Kombifrage", null, caller, true, List.of());
@@ -1755,7 +1759,7 @@ class QueryServiceTest {
     }
 
     /**
-     * An empty decomposition result (LLM failure or unparsable output, {@code
+     * An absent decomposition result (LLM failure or unparsable output, {@code
      * QueryDecompositionService#decompose}'s documented failure signal) falls back to {@link
      * SubQueryDecompositionStage#buildSearchQuery}'s pre-#923 single-query behaviour unchanged.
      */
@@ -1764,10 +1768,10 @@ class QueryServiceTest {
       when(chatMemory.get(any())).thenReturn(List.of());
       when(queryDecompositionService.decompose(
               argThat(context -> context != null && "Question".equals(context.question())), eq(3)))
-          .thenReturn(List.of());
+          .thenReturn(Optional.empty());
       when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-      when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+      when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
 
       queryService.query("Question", null, caller, true, List.of());
@@ -1775,6 +1779,80 @@ class QueryServiceTest {
       ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
       verify(vectorStore, times(1)).similaritySearch(captor.capture());
       assertThat(captor.getValue().getQuery()).isEqualTo("Question");
+    }
+
+    /**
+     * Regression guard for #1684: a message the decomposition found nothing to search for still
+     * runs the search stages, with the fallback query of the search window, and names what it
+     * searched. Only the answer learns of the classification - a follow-up question without a
+     * question mark, misjudged as a remark, keeps its sources.
+     */
+    @Test
+    void aMessageWithoutSearchNeedIsSearchedWithTheFallbackQueryAndTheAnswerIsTold() {
+      UUID chatId = UUID.randomUUID();
+      when(chatMemory.get(currentUserId + ":" + chatId))
+          .thenReturn(
+              List.of(
+                  new UserMessage("Was kostet ein Personalausweis?"),
+                  new AssistantMessage("Ein Personalausweis kostet 37,00 Euro.")));
+      when(queryDecompositionService.decompose(
+              argThat(
+                  context -> context != null && "wenn ich über 24 bin".equals(context.question())),
+              eq(3)))
+          .thenReturn(Optional.of(List.of()));
+      var chunk =
+          Document.builder()
+              .text("Personalausweis ab 24 Jahren: 37,00 Euro")
+              .metadata(Map.of("file_name", "ausweis.md", "document_id", "doc-ausweis"))
+              .score(0.9)
+              .build();
+      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+      var chatResponse =
+          new ChatResponse(List.of(new Generation(new AssistantMessage("37,00 Euro."))));
+      when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
+          .thenReturn(chatResponse);
+      var library = mock(KnowledgeLibrary.class);
+      when(library.getId()).thenReturn(readableLibraryId);
+      when(library.getName()).thenReturn("Dienstanweisungen");
+      when(knowledgeLibraryRepository.findAllById(Set.of(readableLibraryId)))
+          .thenReturn(List.of(library));
+
+      QueryResult response =
+          queryService.query("wenn ich über 24 bin", chatId, caller, true, List.of());
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(vectorStore).similaritySearch(captor.capture());
+      assertThat(captor.getValue().getQuery())
+          .isEqualTo("Was kostet ein Personalausweis? wenn ich über 24 bin");
+      verify(answerGenerationService)
+          .generateAnswer(
+              eq("wenn ich über 24 bin"),
+              argThat(chunks -> chunks != null && chunks.size() == 1),
+              any(),
+              any(),
+              eq(false));
+      assertThat(response.sources()).extracting(ChatSource::getFileName).contains("ausweis.md");
+      assertThat(response.metadata().searchedLibraries())
+          .extracting(SearchedLibraryRef::id)
+          .containsExactly(readableLibraryId);
+    }
+
+    /** A search that found nothing is still a search: the answer is not told otherwise. */
+    @Test
+    void aSearchThatFoundNothingIsStillAnsweredAsASearch() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(queryDecompositionService.decompose(
+              argThat(context -> context != null && "Question".equals(context.question())), eq(3)))
+          .thenReturn(Optional.of(List.of("Umformulierte Frage")));
+      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+      var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+      when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
+          .thenReturn(chatResponse);
+
+      queryService.query("Question", null, caller, true, List.of());
+
+      verify(answerGenerationService)
+          .generateAnswer(eq("Question"), eq(List.of()), any(), any(), eq(true));
     }
 
     /** {@code queryDecompositionEnabled = false} skips the decomposition call entirely. */
@@ -1786,7 +1864,7 @@ class QueryServiceTest {
       when(chatMemory.get(any())).thenReturn(List.of());
       when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-      when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+      when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
 
       serviceWithDecompositionDisabled.query("Question", null, caller, true, List.of());
@@ -1806,7 +1884,7 @@ class QueryServiceTest {
       when(queryDecompositionService.decompose(
               argThat(context -> context != null && "Kombifrage".equals(context.question())),
               eq(3)))
-          .thenReturn(List.of("Teilfrage A", "Teilfrage B"));
+          .thenReturn(Optional.of(List.of("Teilfrage A", "Teilfrage B")));
       List<Document> eightChunks =
           IntStream.range(0, 8)
               .mapToObj(
@@ -1821,7 +1899,7 @@ class QueryServiceTest {
       // Both sub-queries return the identical, fully overlapping candidate set.
       when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(eightChunks);
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-      when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+      when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
 
       QueryResult response = queryService.query("Kombifrage", null, caller, true, List.of());
@@ -1876,7 +1954,7 @@ class QueryServiceTest {
       candidates.add(chunk("a-fee", "doc-a", "a.md", 0.55));
       when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(candidates);
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
-      when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+      when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
 
       QueryResult response = queryService.query("Frage", null, caller, true, List.of());
@@ -1904,7 +1982,7 @@ class QueryServiceTest {
       when(queryDecompositionService.decompose(
               argThat(context -> context != null && "Kombifrage".equals(context.question())),
               eq(3)))
-          .thenReturn(List.of("Teilfrage A", "Teilfrage B"));
+          .thenReturn(Optional.of(List.of("Teilfrage A", "Teilfrage B")));
       List<Document> candidates =
           new ArrayList<>(
               List.of(
@@ -1919,7 +1997,7 @@ class QueryServiceTest {
       candidates.add(chunk("a-fee", "doc-a", "a.md", 0.55));
       when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(candidates);
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
-      when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+      when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
 
       QueryResult response = queryService.query("Kombifrage", null, caller, true, List.of());
@@ -1957,7 +2035,7 @@ class QueryServiceTest {
       when(queryDecompositionService.decompose(
               argThat(context -> context != null && "Kombifrage".equals(context.question())),
               eq(3)))
-          .thenReturn(List.of("Teilfrage A", "Teilfrage B"));
+          .thenReturn(Optional.of(List.of("Teilfrage A", "Teilfrage B")));
       List<Document> candidatesA =
           new ArrayList<>(
               List.of(
@@ -1992,7 +2070,7 @@ class QueryServiceTest {
                       request != null && "Teilfrage B".equals(request.getQuery()))))
           .thenReturn(candidatesB);
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
-      when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+      when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
 
       QueryResult response = queryService.query("Kombifrage", null, caller, true, List.of());
@@ -2041,7 +2119,7 @@ class QueryServiceTest {
       candidates.add(chunk("d3-1", "doc-3", "d3.md", 0.10));
       when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(candidates);
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
-      when(answerGenerationService.generateAnswer(any(), any(), any(), any()))
+      when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
 
       QueryResult response = queryService.query("Frage", null, caller, true, List.of());

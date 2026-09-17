@@ -7,6 +7,7 @@ import io.opaa.eval.ConversationEvaluationReport.CaseOutcomeSummary;
 import io.opaa.eval.ConversationEvaluationReport.ClassOutcome;
 import io.opaa.eval.ConversationEvaluationReport.ConversationCaseResult;
 import io.opaa.eval.ConversationEvaluationReport.ConversationRunConfiguration;
+import io.opaa.eval.ConversationEvaluationReport.NoSearchAudit;
 import io.opaa.eval.ConversationEvaluationReport.SwitchTurnBleed;
 import io.opaa.eval.ConversationEvaluationReport.TopicBleedAudit;
 import io.opaa.eval.ConversationEvaluationReport.TurnResult;
@@ -15,6 +16,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -54,8 +56,20 @@ public final class ConversationRetrievalEvaluator {
 
   private ConversationRetrievalEvaluator() {}
 
-  /** What one call into the pipeline produced for a turn. */
-  public record TurnInvocationResult(List<String> rankedChunkFileNames, List<String> subQueries) {}
+  /**
+   * What one call into the pipeline produced for a turn.
+   *
+   * @param searchNeeded {@code false} when the decomposition found nothing to search for - the run
+   *     searched all the same, with the fallback query.
+   */
+  public record TurnInvocationResult(
+      List<String> rankedChunkFileNames, List<String> subQueries, boolean searchNeeded) {
+
+    /** A run that judged the turn to need a search. */
+    public TurnInvocationResult(List<String> rankedChunkFileNames, List<String> subQueries) {
+      this(rankedChunkFileNames, subQueries, true);
+    }
+  }
 
   /**
    * One turn's retrieval run. {@code conversationWindow} is the production window built from the
@@ -86,10 +100,19 @@ public final class ConversationRetrievalEvaluator {
     List<ChatNoteCandidate> condense(String userMessage);
   }
 
-  /** One turn's outcome: its windowed metrics plus what the pipeline actually returned. */
+  /**
+   * One turn's outcome: its windowed metrics plus what the pipeline actually returned.
+   *
+   * @param metrics {@code null} for a turn without search, which has no expected documents to rank
+   *     and therefore enters no metric aggregate.
+   * @param searchNeeded whether the run judged the turn to need a search - see {@link
+   *     TurnInvocationResult#searchNeeded()}.
+   */
   public record TurnOutcome(
       RetrievalMetrics.WindowedQueryResult metrics,
       int turnIndex,
+      boolean searchExpected,
+      boolean searchNeeded,
       int conversationWindowMessages,
       List<String> conversationNote,
       int chunksReturned,
@@ -97,9 +120,14 @@ public final class ConversationRetrievalEvaluator {
       List<String> subQueries) {
 
     /**
-     * The existing solved criterion ({@link ExpectedStateAudit#isSolved}) at this path's window.
+     * The existing solved criterion ({@link ExpectedStateAudit#isSolved}) at this path's window; a
+     * turn without search is solved when the run judged it to need none. It is searched either way,
+     * so its chunks say nothing about the judgement.
      */
     public boolean solved() {
+      if (!searchExpected) {
+        return !searchNeeded;
+      }
       return ExpectedStateAudit.isSolved(
           metrics.allExpectedDocumentsHit(),
           metrics.rankedFileNames(),
@@ -193,7 +221,8 @@ public final class ConversationRetrievalEvaluator {
                 window.size(),
                 rahmenPoints,
                 invocation.rankedChunkFileNames(),
-                invocation.subQueries()));
+                invocation.subQueries(),
+                invocation.searchNeeded()));
         chatMemory.add(conversationId, new UserMessage(turn.query()));
         ConversationWindowMessages.answer(turn.answer())
             .ifPresent(message -> chatMemory.add(conversationId, message));
@@ -275,13 +304,28 @@ public final class ConversationRetrievalEvaluator {
       int conversationWindowMessages,
       List<String> conversationNote,
       List<String> rankedChunkFileNames,
-      List<String> subQueries) {
+      List<String> subQueries,
+      boolean searchNeeded) {
+    if (!conversationCase.turns().get(turnIndex).expectsSearch()) {
+      return new TurnOutcome(
+          null,
+          turnIndex,
+          false,
+          searchNeeded,
+          conversationWindowMessages,
+          List.copyOf(conversationNote),
+          rankedChunkFileNames.size(),
+          (int) rankedChunkFileNames.stream().distinct().count(),
+          List.copyOf(subQueries));
+    }
     PipelineRetrievalEvaluator.CaseOutcome turn =
         PipelineRetrievalEvaluator.evaluateCase(
             conversationCase.turnAsGoldenCase(turnIndex), rankedChunkFileNames, subQueries);
     return new TurnOutcome(
         turn.metrics(),
         turnIndex,
+        true,
+        searchNeeded,
         conversationWindowMessages,
         List.copyOf(conversationNote),
         turn.chunksReturned(),
@@ -293,11 +337,18 @@ public final class ConversationRetrievalEvaluator {
   public static ConversationEvaluationReport report(
       List<CaseOutcome> outcomes, ConversationRunConfiguration runConfiguration) {
     List<RetrievalMetrics.WindowedQueryResult> allTurns =
-        outcomes.stream().flatMap(c -> c.turns().stream()).map(TurnOutcome::metrics).toList();
+        outcomes.stream()
+            .flatMap(c -> c.turns().stream())
+            .map(TurnOutcome::metrics)
+            .filter(Objects::nonNull)
+            .toList();
 
     Map<String, List<RetrievalMetrics.WindowedQueryResult>> byTurnIndex = new TreeMap<>();
     for (CaseOutcome caseOutcome : outcomes) {
       for (TurnOutcome turn : caseOutcome.turns()) {
+        if (turn.metrics() == null) {
+          continue;
+        }
         byTurnIndex
             .computeIfAbsent(
                 ConversationEvaluationReport.turnGroupKey(turn.turnIndex()), k -> new ArrayList<>())
@@ -329,6 +380,7 @@ public final class ConversationRetrievalEvaluator {
                 .toList()),
         topicBleed(outcomes),
         noteCondensation(outcomes),
+        noSearch(outcomes),
         outcomes.stream().map(ConversationRetrievalEvaluator::toCaseResult).toList());
   }
 
@@ -351,6 +403,38 @@ public final class ConversationRetrievalEvaluator {
         outcomes.stream().flatMap(o -> o.failedCondensationTurnIds().stream()).toList();
     return new ConversationEvaluationReport.NoteCondensationAudit(
         attempted, failedTurnIds.size(), failedTurnIds);
+  }
+
+  /**
+   * How the run judged the search need, in both wrong directions. A question judged to need no
+   * search is still searched and may score, so without this count the misjudgement would not show
+   * anywhere; it is counted in every dataset, not only in one with turns without search.
+   */
+  private static NoSearchAudit noSearch(List<CaseOutcome> outcomes) {
+    int noSearchTurns = 0;
+    List<String> judgedAsSearch = new ArrayList<>();
+    List<String> judgedAsNoSearch = new ArrayList<>();
+    for (CaseOutcome outcome : outcomes) {
+      for (TurnOutcome turn : outcome.turns()) {
+        String turnId = outcome.conversationCase().turnId(turn.turnIndex());
+        if (turn.searchExpected()) {
+          if (!turn.searchNeeded()) {
+            judgedAsNoSearch.add(turnId);
+          }
+          continue;
+        }
+        noSearchTurns++;
+        if (turn.searchNeeded()) {
+          judgedAsSearch.add(turnId);
+        }
+      }
+    }
+    return new NoSearchAudit(
+        noSearchTurns,
+        judgedAsSearch.size(),
+        judgedAsSearch,
+        judgedAsNoSearch.size(),
+        judgedAsNoSearch);
   }
 
   private static CaseOutcomeSummary caseOutcomeSummary(List<CaseOutcome> outcomes) {
@@ -395,7 +479,7 @@ public final class ConversationRetrievalEvaluator {
       }
       anySwitchCase = true;
       TurnOutcome changeTurn = changeTurnOf(outcome);
-      if (changeTurn == null) {
+      if (changeTurn == null || changeTurn.metrics() == null) {
         continue;
       }
       switchTurns++;
@@ -434,6 +518,9 @@ public final class ConversationRetrievalEvaluator {
       if (turn.turnIndex() >= changeTurn.turnIndex()) {
         break;
       }
+      if (turn.metrics() == null) {
+        continue;
+      }
       previousTopic.addAll(turn.metrics().goldenCase().expectedDocuments());
     }
     previousTopic.removeAll(changeTurn.metrics().goldenCase().expectedDocuments());
@@ -447,7 +534,8 @@ public final class ConversationRetrievalEvaluator {
     Map<Integer, List<String>> bledByTurnIndex = new TreeMap<>();
     TurnOutcome changeTurn = changeTurnOf(outcome);
     if (ConversationCaseCuration.TOPIC_SWITCH_CLASS.equals(outcome.conversationCase().category())
-        && changeTurn != null) {
+        && changeTurn != null
+        && changeTurn.metrics() != null) {
       bledByTurnIndex.put(changeTurn.turnIndex(), bledDocuments(outcome, changeTurn));
     }
     List<TurnResult> turns =
@@ -470,9 +558,35 @@ public final class ConversationRetrievalEvaluator {
   private static TurnResult toTurnResult(
       ConversationCase conversationCase, TurnOutcome turn, List<String> bledDocuments) {
     RetrievalMetrics.WindowedQueryResult m = turn.metrics();
+    if (m == null) {
+      return new TurnResult(
+          conversationCase.turnId(turn.turnIndex()),
+          turn.turnIndex(),
+          false,
+          turn.searchNeeded(),
+          conversationCase.turns().get(turn.turnIndex()).query(),
+          List.of(),
+          List.of(),
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          turn.solved(),
+          turn.conversationWindowMessages(),
+          turn.conversationNote(),
+          turn.chunksReturned(),
+          turn.distinctDocumentsReturned(),
+          turn.subQueries(),
+          bledDocuments);
+    }
     return new TurnResult(
         conversationCase.turnId(turn.turnIndex()),
         turn.turnIndex(),
+        true,
+        turn.searchNeeded(),
         m.goldenCase().query(),
         m.goldenCase().expectedDocuments(),
         m.rankedFileNames(),

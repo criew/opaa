@@ -13,6 +13,10 @@
       "template": "decomposition returned nothing (failed or unparsable): single-query fallback"
     },
     {
+      "name": "DECOMPOSITION_NO_SEARCH",
+      "template": "decomposition found nothing to search for: single-query fallback, answer told so"
+    },
+    {
       "name": "DECOMPOSITION_PRODUCED",
       "template": "decomposition produced %d %s"
     },

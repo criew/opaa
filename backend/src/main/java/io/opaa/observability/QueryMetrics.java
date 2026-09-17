@@ -21,6 +21,7 @@ public class QueryMetrics {
   private final Counter degenerateDecompositionCounter;
   private final Counter prunedDecompositionCounter;
   private final Counter failedDecompositionCounter;
+  private final Counter noSearchDecompositionCounter;
 
   public QueryMetrics(MeterRegistry meterRegistry) {
     this.queryTimer =
@@ -53,6 +54,10 @@ public class QueryMetrics {
         Counter.builder(DECOMPOSITION_FALLBACK)
             .tag("reason", "failed")
             .description("Query decompositions that produced no usable output at all")
+            .register(meterRegistry);
+    this.noSearchDecompositionCounter =
+        Counter.builder("opaa.query.decomposition.no-search")
+            .description("Query decompositions that found nothing to search for")
             .register(meterRegistry);
   }
 
@@ -93,5 +98,15 @@ public class QueryMetrics {
    */
   public void recordFailedDecomposition() {
     failedDecompositionCounter.increment();
+  }
+
+  /**
+   * The model found nothing to search for in the message - an instruction on the answer form, a
+   * statement about the asking person, thanks. The turn is still searched with the single-query
+   * fallback, but only the answer is told why, so this has its own counter rather than a reason on
+   * {@code opaa.query.decomposition.fallback}.
+   */
+  public void recordNoSearchDecomposition() {
+    noSearchDecompositionCounter.increment();
   }
 }

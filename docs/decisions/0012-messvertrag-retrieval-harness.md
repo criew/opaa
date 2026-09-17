@@ -42,7 +42,11 @@ sieben Baselines mit Pin neu vermessen) und den
 (Issue #1650: `contextPrefixFingerprint`, ein aus dem Produktionscode berechneter Abdruck der
 Präfixform über Ingest-Entscheidungen, Kernfeld-Extraktion und Präfixbildung, als Festpunkt aller drei Pfade, Messvertrag-Versionen Rohvektor 12, Pipeline 15,
 Mehrrunden 4, reine Fixpunkt-Ergänzung ohne neuen Messlauf; der Job `conversations` misst den
-Einzelfragen-Pipeline-Pfad nicht mehr).
+Einzelfragen-Pipeline-Pfad nicht mehr) und den
+[Nachtrag zu Runden ohne Suchbedarf](#nachtrag-runden-ohne-suchbedarf-issue-1684)
+(Issue #1684: eine Mehrrunden-Runde kann keine Suche erwarten und steht dann außerhalb aller
+Metrik-Aggregate, Mehrrunden-Messvertrag 5, neue Klasse `answer_continuation`, Temperatur eines
+externen Befundlaufs einstellbar).
 Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
 Review-Nacharbeit desselben PRs umgesetzt (`measurementContractVersion` im Report, `allQueryResults`
 im JSON-Report, `recallAt10Ceiling` je Gruppe).
@@ -1571,3 +1575,50 @@ direkt auf Schritt 6 folgte.
 - Über die drei Läufe gibt es 0 Fälle mit abweichender Zerlegung.
 - Das Log enthält kein Pipeline-Audit der Einzelfragen mehr.
 - Der Job brauchte 66 Minuten statt zuvor rund zwei Stunden.
+
+## Nachtrag: Runden ohne Suchbedarf (Issue #1684)
+
+**Datum:** 2026-09-17 · **Betrifft:** Mehrrunden-Messpfad (Bericht, Datensatzschema, Vertragsversion,
+Baseline), Befundläufe gegen ein externes Chat-Modell.
+
+Die Teilfragen-Zerlegung kennt seit #1684 das Ergebnis „nichts zu suchen": Für einen Wunsch zur
+Antwortform, eine Angabe zur Person oder einen Dank gibt sie ein Signalwort zurück. Gesucht wird
+trotzdem, mit der Rückfall-Suchanfrage; die Einstufung erreicht nur die Antwortanweisung
+(Maintainer-Entscheidung vom 17.09.2026, Abwägung in `docs/features/conversation-memory.md`). Die
+Klasse `answer_continuation` misst, ob die Einstufung für solche Nachrichten gelingt und für Fragen
+ausbleibt. Eine Runde ohne Suchbedarf hat keine erwarteten Dokumente; Rangmetriken sind für sie
+nicht definiert.
+
+### 61. Eine Runde ohne Suchbedarf steht außerhalb jedes Metrik-Aggregats; Mehrrunden 4 → 5
+
+Eine Runde trägt `search_expected: false` und keine erwarteten Dokumente. Sie ist gelöst, wenn der
+Lauf sie als Nachricht ohne Suchbedarf eingestuft hat (`searchNeeded = false` im Ergebnis der
+Pipeline) — dieselbe Beobachtung, mit der die Produktion die Antwortanweisung wählt. Ihre Chunks
+zählen dafür nicht, denn gesucht wird in beiden Fällen. Sie geht in **kein** Aggregat ein
+(`overall`, `byCategory`, `byTurn` zählen nur Runden mit Suche), trägt im Bericht keine Metrikwerte
+(`null` statt `0`, weil eine Null wie ein verfehltes Dokument läse) und erscheint im eigenen
+Abschnitt `noSearch`. Dieser zählt **beide Fehlrichtungen** mit Anzahl und Runden: Runden ohne
+Suchbedarf, die als Suche eingestuft wurden, und Runden mit Suchbedarf, die als „keine Suche"
+eingestuft wurden. Die zweite Richtung ist in keiner Rangmetrik sichtbar, weil eine solche Runde
+trotzdem sucht und treffen kann; ohne eigene Zählung bliebe sie unsichtbar. Jede Runde trägt ihre
+Einstufung im Bericht (`searchNeeded`). Ein Fall bleibt nur gelöst, wenn jede Runde gelöst ist, auch
+die ohne Suchbedarf.
+
+**Warum kein eigener Metrikwert.** Ein Anteil „richtig nicht gesucht" hätte bei neun Runden je
+Datensatz keinen Toleranzbegriff im Sinne von ADR-0013 und würde als geprüfte Gruppe mehr
+Scheinregressionen als Befunde liefern. Die Fallzahl und der Zustands-Audit tragen die Aussage; der
+Abschnitt `noSearch` ist eine Beobachtung wie `noteCondensation`, kein Festpunkt.
+
+**Warum die Vertragsversion steigt.** `n` und jeder Mittelwert einer Gruppe bedeuten jetzt „Runden
+mit Suche", und der Bericht hat ein neues Feld. Ein Vergleich über die Grenze hinweg liefe gegen
+eine andere Grundmenge; der Datensatz-Hash würde das hier zwar ohnehin melden, die Version benennt
+den Grund.
+
+### 62. Die Temperatur eines externen Befundlaufs ist einstellbar, die des gepinnten Modells nicht
+
+`-Dopaa.eval.chatTemperature` setzt die Temperatur des externen Chat-Modells eines Befundlaufs
+(Entscheidung aus #1674), damit er die Optionen einer Installation nachstellen kann — #1684 maß mit
+den 0,70 der Demo. Ohne `opaa.eval.chatBaseUrl` weist der Harness die Eigenschaft ab: Die Baselines
+des gepinnten Modells beruhen auf Temperatur 0. Die Temperatur ist kein Festpunkt; ein externer Lauf
+ist über `chatModel` ohnehin mit keiner Baseline vergleichbar. Sie steht im Log des Laufs und als
+Beobachtungsfeld `chatTemperature` in der Run-Konfiguration des Mehrrunden-Berichts.

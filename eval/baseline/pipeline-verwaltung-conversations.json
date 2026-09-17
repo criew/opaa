@@ -1,5 +1,5 @@
 {
-  "conversationMeasurementContractVersion": 4,
+  "conversationMeasurementContractVersion": 5,
   "fixedPoints": {
     "pipeline": {
       "embeddingModel": "nomic-embed-text:v1.5",
@@ -26,8 +26,8 @@
       "corpusManifestSha256": "e129bb86365f08bb553dab2401b91d82233e5efd84516b0b151c25b6e1590480",
       "corpusDocumentCount": 72,
       "goldenDatasetFile": "eval/golden/verwaltung-conversations.json",
-      "goldenDatasetSha256": "d0b8984c76302aecfd24ca2f4d24da16f1f14d7b4b363878b3aa646aec8adb5e",
-      "goldenCaseCount": 27,
+      "goldenDatasetSha256": "e20fdaa8750c8538e14ecdf2b53e2eb64aa53bdf886b0099aa49a603061f1eb2",
+      "goldenCaseCount": 38,
       "ingestionPipelineFingerprint": "confluence:2,docx:3,email:5,html:3,markdown:1,odp:2,odt:2,pdf:1,pptx:1,tabular:1,tika-fallback:1",
       "contextPrefixFingerprint": "ff4022a9229ede226ff1b8878e55e7ddf8d7703e2f0a4a34624c269195f2a204",
       "metadataFilterEnabled": false
@@ -35,122 +35,134 @@
     "conversationWindowMessages": 20,
     "searchWindowTurns": 2,
     "conversationNoteCap": 10,
-    "turnCount": 83
+    "turnCount": 127
   },
   "groups": {
     "overall": {
-      "n": 83,
-      "hitRateAt5": 0.831,
-      "mrrAt8": 0.738,
-      "ndcgAt8": 0.757,
-      "recallAt8": 0.827,
+      "n": 115,
+      "hitRateAt5": 0.783,
+      "mrrAt8": 0.722,
+      "ndcgAt8": 0.718,
+      "recallAt8": 0.767,
       "recallAt8Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 46,
-      "hitCountAt5": 69,
-      "hitCountAt8": 69,
-      "allExpectedDocumentsHitAt8": 0.819
+      "distinctExpectedDocumentSets": 55,
+      "hitCountAt5": 90,
+      "hitCountAt8": 91,
+      "allExpectedDocumentsHitAt8": 0.739
     },
     "category:anaphora_resolution": {
       "n": 21,
-      "hitRateAt5": 0.81,
-      "mrrAt8": 0.738,
-      "ndcgAt8": 0.746,
-      "recallAt8": 0.794,
+      "hitRateAt5": 0.714,
+      "mrrAt8": 0.679,
+      "ndcgAt8": 0.658,
+      "recallAt8": 0.675,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 12,
-      "hitCountAt5": 17,
-      "hitCountAt8": 17,
-      "allExpectedDocumentsHitAt8": 0.762
+      "hitCountAt5": 15,
+      "hitCountAt8": 15,
+      "allExpectedDocumentsHitAt8": 0.619
+    },
+    "category:answer_continuation": {
+      "n": 32,
+      "hitRateAt5": 0.781,
+      "mrrAt8": 0.719,
+      "ndcgAt8": 0.709,
+      "recallAt8": 0.781,
+      "recallAt8Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 18,
+      "hitCountAt5": 25,
+      "hitCountAt8": 26,
+      "allExpectedDocumentsHitAt8": 0.75
     },
     "category:constraint_carryover": {
       "n": 32,
-      "hitRateAt5": 0.969,
-      "mrrAt8": 0.814,
-      "ndcgAt8": 0.853,
-      "recallAt8": 0.969,
+      "hitRateAt5": 0.812,
+      "mrrAt8": 0.695,
+      "ndcgAt8": 0.725,
+      "recallAt8": 0.812,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 22,
-      "hitCountAt5": 31,
-      "hitCountAt8": 31,
-      "allExpectedDocumentsHitAt8": 0.969
+      "hitCountAt5": 26,
+      "hitCountAt8": 26,
+      "allExpectedDocumentsHitAt8": 0.812
     },
     "category:topic_switch": {
       "n": 30,
-      "hitRateAt5": 0.7,
-      "mrrAt8": 0.657,
-      "ndcgAt8": 0.662,
-      "recallAt8": 0.7,
+      "hitRateAt5": 0.8,
+      "mrrAt8": 0.783,
+      "ndcgAt8": 0.762,
+      "recallAt8": 0.767,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 19,
-      "hitCountAt5": 21,
-      "hitCountAt8": 21,
-      "allExpectedDocumentsHitAt8": 0.7
+      "hitCountAt5": 24,
+      "hitCountAt8": 24,
+      "allExpectedDocumentsHitAt8": 0.733
     },
     "turn:1": {
-      "n": 27,
-      "hitRateAt5": 0.963,
-      "mrrAt8": 0.944,
-      "ndcgAt8": 0.935,
-      "recallAt8": 0.951,
+      "n": 38,
+      "hitRateAt5": 0.974,
+      "mrrAt8": 0.956,
+      "ndcgAt8": 0.896,
+      "recallAt8": 0.899,
       "recallAt8Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 25,
-      "hitCountAt5": 26,
-      "hitCountAt8": 26,
-      "allExpectedDocumentsHitAt8": 0.926
+      "distinctExpectedDocumentSets": 30,
+      "hitCountAt5": 37,
+      "hitCountAt8": 37,
+      "allExpectedDocumentsHitAt8": 0.816
     },
     "turn:2": {
-      "n": 27,
-      "hitRateAt5": 0.815,
-      "mrrAt8": 0.711,
-      "ndcgAt8": 0.737,
-      "recallAt8": 0.815,
+      "n": 35,
+      "hitRateAt5": 0.829,
+      "mrrAt8": 0.724,
+      "ndcgAt8": 0.75,
+      "recallAt8": 0.829,
       "recallAt8Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 25,
-      "hitCountAt5": 22,
-      "hitCountAt8": 22,
-      "allExpectedDocumentsHitAt8": 0.815
+      "distinctExpectedDocumentSets": 31,
+      "hitCountAt5": 29,
+      "hitCountAt8": 29,
+      "allExpectedDocumentsHitAt8": 0.829
     },
     "turn:3": {
-      "n": 21,
-      "hitRateAt5": 0.714,
-      "mrrAt8": 0.581,
-      "ndcgAt8": 0.615,
-      "recallAt8": 0.714,
+      "n": 24,
+      "hitRateAt5": 0.542,
+      "mrrAt8": 0.465,
+      "ndcgAt8": 0.485,
+      "recallAt8": 0.542,
       "recallAt8Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 19,
-      "hitCountAt5": 15,
-      "hitCountAt8": 15,
-      "allExpectedDocumentsHitAt8": 0.714
+      "distinctExpectedDocumentSets": 22,
+      "hitCountAt5": 13,
+      "hitCountAt8": 13,
+      "allExpectedDocumentsHitAt8": 0.542
     },
     "turn:4": {
-      "n": 7,
-      "hitRateAt5": 0.714,
-      "mrrAt8": 0.476,
-      "ndcgAt8": 0.537,
-      "recallAt8": 0.714,
+      "n": 17,
+      "hitRateAt5": 0.647,
+      "mrrAt8": 0.598,
+      "ndcgAt8": 0.625,
+      "recallAt8": 0.706,
       "recallAt8Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 7,
-      "hitCountAt5": 5,
-      "hitCountAt8": 5,
-      "allExpectedDocumentsHitAt8": 0.714
+      "distinctExpectedDocumentSets": 15,
+      "hitCountAt5": 11,
+      "hitCountAt8": 12,
+      "allExpectedDocumentsHitAt8": 0.706
     },
     "turn:5": {
       "n": 1,
-      "hitRateAt5": 1.0,
-      "mrrAt8": 1.0,
-      "ndcgAt8": 1.0,
-      "recallAt8": 1.0,
+      "hitRateAt5": 0.0,
+      "mrrAt8": 0.0,
+      "ndcgAt8": 0.0,
+      "recallAt8": 0.0,
       "recallAt8Ceiling": 1.0,
       "distinctExpectedDocumentSets": 1,
-      "hitCountAt5": 1,
-      "hitCountAt8": 1,
-      "allExpectedDocumentsHitAt8": 1.0
+      "hitCountAt5": 0,
+      "hitCountAt8": 0,
+      "allExpectedDocumentsHitAt8": 0.0
     }
   },
-  "measuredAt": "2026-09-15",
+  "measuredAt": "2026-09-17",
   "provenance": {
-    "sourceReportRunStartedAt": "2026-09-15T07:39:28.682420200Z",
-    "sourcePullRequest": "Issue #1652 (Neuziehung mit fester CPU-Variante haswell)"
+    "sourceReportRunStartedAt": "2026-09-17T09:36:06.191163600Z",
+    "sourcePullRequest": "Issue #1684 (Suchfenster als Textblock, Signalwort ohne Suchabschaltung, Klasse answer_continuation)"
   },
-  "notes": "Neuziehung mit fester CPU-Variante, Issue #1652, Mehrrunden-Messvertrag Version 3 (ADR-0012, Nachtrag CPU-Backend). Anlass: Der CI-Job \"conversations (verwaltung)\" wechselte zwischen zwei Messzuständen, ohne dass sich Code, Datensatz oder Baseline aenderten. Ursache: ollama/ollama:0.6.5 laedt die beste ggml-CPU-Variante des Hosts; Runner mit AVX-512 rechneten mit libggml-cpu-icelake, Runner ohne mit libggml-cpu-haswell. Bei Temperatur 0 kippt schon diese Kernel-Abweichung die Zerlegung ab der ersten Runde. Die Vorgaengerdatei vom 2026-09-12 beschrieb den icelake-Zustand (overall HitRate@5 0,880 / MRR@8 0,772 / nDCG@8 0,796 / Recall@8 0,876, 8 geloeste Faelle); jeder Runner ohne AVX-512 mass dagegen 0,831 / 0,738 / 0,757 / 0,827 und lief rot. Seit #1652 entfernen alle drei Harnesse vor dem Serverstart jede CPU-Variante ausser haswell und pruefen am Container-Log, dass die Modell-Runner sie geladen haben; der Festpunkt ollamaCpuBackend traegt diese Variante. Gemessen im CPU-Testcontainer-Lauf \"./gradlew evaluateVerwaltungConversations\" am 2026-09-15 auf einem Host mit AVX-512 (AMD Ryzen AI 9 365), Lauf begonnen 07:39 UTC. Mehrfachlauf-Regel angewandt: drei Messungen, berichtet ist der Median-Lauf; min = median = max in allen vier Metriken, 0 von 83 Runden mit abweichender Zerlegung. Gegenprobe auf fremder Hardware: Der Report dieses Laufs stimmt in allen 83 Runden (Teilfragen, Notizpunkte, Trefferlisten, Urteile) und in jeder Gruppe exakt mit dem Mehrrunden-Report des CI-Laufs 34930288873 ueberein, der ohne Pin auf einem Runner ohne AVX-512 gemessen hatte. Damit ist der hier festgeschriebene Zustand derjenige, den jede Maschine mit Pin liefert. Nicht mit dem Stand vom 2026-09-12 als Vorher/Nachher zu lesen: Kein Baustein hat sich geaendert, nur die Rechenkernel. Geloest sind 5 von 27 Faellen (anaphora_resolution 4, constraint_carryover 0, topic_switch 1), Themen-Bleed 0 Dokumente in 0 von 9 Wechselrunden, alle 83 Notiz-Verdichtungen gelungen. Zustandsfelder nach dieser Messung: 5 solved, 22 known_gap. Von solved auf known_gap gesetzt sind verw-conv-ana-003, verw-conv-ts-006 und verw-conv-cc-002; alle 27 Begruendungen beschreiben jetzt die Symptome dieses Laufs (Einzelfaelle in eval/corpus/verwaltung/MAINTENANCE.md). Die Zustandsfelder gehen in keine Messung ein; der Golden-Hash oben beschreibt den Datensatz nach dieser Pflege, query, answer, expected_documents, confusable_document und topic_switch_turn sind gegenueber dem gemessenen Stand in allen 27 Faellen bytegleich. Verglichen wird diese Baseline von VerwaltungConversationBaselineRegressionTest ueber checkVerwaltungConversationBaseline, in der CI vom Job \"conversations\" in .github/workflows/retrieval-regression.yml. Nicht mit eval/baseline/pipeline-verwaltung.json vergleichbar: Dort ist jede Zeile eine Einzelfrage ohne Verlauf, hier eine Runde eines Gespraechs. Die Gruppe turn:5 hat n=1 (nur verw-conv-cc-008) und ist als Regressionssignal entsprechend schwach. Toleranzformel und Fehlerkriterium: ADR-0013, unveraendert und woertlich mit dem Pipeline-Pfad geteilt. Der Fixpunkt ollamaImage traegt das gepinnte Testcontainer-Image; eine Baseline aus einem Lauf gegen einen externen Endpunkt wird beim Laden abgewiesen (ADR-0012, Nachtrag Ollama-Herkunft). Nachtrag 2026-09-15 (Issue #1650, ADR-0012, Nachtrag Kontextpräfix-Form): reine Fixpunkt-Ergänzung ohne neuen Messlauf. Neuer Festpunkt contextPrefixFingerprint (ff4022a9…, SHA-256 über die Einbettungseingaben fester Beispieldokumente, berechnet über Kernfeld-Extraktion, Präfix-Berechtigung, Ein-Chunk-Regel, Kernfeld-Wirkstellen der Bibliotheks-Werkseinstellung und Präfixbildung), Mehrrunden-Messvertrag 3 -> 4. Die Präfixform hat sich seit dem Messlauf dieser Datei nicht geändert: Die letzte Änderung an ChunkContextPrefix war #1651 (2026-09-14), der Messlauf stammt vom 2026-09-15 (#1652); keine Zahl, kein Zustand und kein anderer Festpunkt bewegt sich."
+  "notes": "Neuziehung mit Issue #1684 (Nacharbeit nach Review), Mehrrunden-Messvertrag Version 5 (ADR-0012, Nachtrag Runden ohne Suchbedarf). Anlass: Das Signalwort KEINE_SUCHE der Teilfragen-Zerlegung schaltet die Suche nicht mehr ab - gesucht wird mit der Rueckfall-Suchanfrage, nur die Antwortanweisung aendert sich -, die Signalwort-Regel nennt Bedingungen, Anschluesse und Angaben zu Alter, Lage und Umstaenden als Fragen, fuehrende Beschriftungen des Textblocks werden aus Teilfragen geschnitten, und der Datensatz hat drei weitere answer_continuation-Faelle mit Folgefragen ohne Fragezeichen (38 Faelle, 127 Runden, davon 12 ohne Suchbedarf, die in keine Gruppe eingehen). Gemessen im CPU-Testcontainer-Lauf \"./gradlew evaluateVerwaltungConversations\" am 2026-09-17 auf einem Host mit AVX-512 (AMD Ryzen AI 9 365) mit fester CPU-Variante haswell, Lauf begonnen 09:36 UTC. Mehrfachlauf-Regel angewandt: drei Messungen, berichtet ist der Median-Lauf; min = median = max in allen vier Metriken, 0 von 127 Runden mit abweichender Zerlegung. Geloest sind 11 von 38 Faellen (anaphora_resolution 5, answer_continuation 1, constraint_carryover 2, topic_switch 3). Einstufung des Suchbedarfs (Abschnitt noSearch): 7 von 12 Runden ohne Suchbedarf als Suche eingestuft, 10 Runden mit Suchbedarf als keine Suche eingestuft (gesucht wurde in beiden Faellen). Themen-Bleed 3 Dokumente in 3 von 9 Wechselrunden, alle 127 Notiz-Verdichtungen gelungen. Vorgaenger (erste Neuziehung mit #1684, 35 Faelle, 106 Runden mit Suche): overall HitRate@5 0.745 / MRR@8 0.690 / nDCG@8 0.688 / Recall@8 0.728, 10 geloeste Faelle; auf den drei aelteren Klassen jetzt anaphora_resolution nDCG@8 0.709 -> 0.658, constraint_carryover 0.750 -> 0.725, topic_switch 0.705 -> 0.762. Kein Vorher/Nachher der Produktqualitaet: Die geaenderte Regelzeile ist fuer ein 1,5-B-Modell bei Temperatur 0 eine andere gierige Zerlegung, und seine Zahlen beschreiben keinen Betriebszustand (MAINTENANCE.md, Befundlaeufe gegen claude-haiku-4-5). Zustandsfelder nach dieser Messung: 11 solved, 27 known_gap; von known_gap auf solved gesetzt sind verw-conv-ts-003, verw-conv-ts-005 und verw-conv-ac-007; von solved auf known_gap verw-conv-ts-006 und verw-conv-cc-007, deren dritte Runde das gepinnte Modell unter der neuen Regelzeile anders zerlegt (Begruendung je Fall in expected_state_reason, MAINTENANCE.md). Die drei neuen Faelle sind known_gap. Der Golden-Hash oben beschreibt den Datensatz nach dieser Pflege; query, answer, expected_documents, confusable_document, topic_switch_turn und search_expected sind gegenueber dem gemessenen Stand in allen 38 Faellen bytegleich. Verglichen wird diese Baseline von VerwaltungConversationBaselineRegressionTest ueber checkVerwaltungConversationBaseline, in der CI vom Job \"conversations\" in .github/workflows/retrieval-regression.yml. Nicht mit eval/baseline/pipeline-verwaltung.json vergleichbar: Dort ist jede Zeile eine Einzelfrage ohne Verlauf, hier eine Runde eines Gespraechs. Die Gruppe turn:5 hat n=1 (nur verw-conv-cc-008) und ist als Regressionssignal entsprechend schwach. Toleranzformel und Fehlerkriterium: ADR-0013, unveraendert und woertlich mit dem Pipeline-Pfad geteilt. Der Fixpunkt ollamaImage traegt das gepinnte Testcontainer-Image; eine Baseline aus einem Lauf gegen einen externen Endpunkt wird beim Laden abgewiesen (ADR-0012, Nachtrag Ollama-Herkunft)."
 }

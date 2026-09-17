@@ -42,7 +42,8 @@ public enum RetrievalStageName {
   /**
    * Produces the search queries the search stages run, one each: 1 to {@link
    * QueryProperties#maxSubQueries} sub-queries from {@link QueryDecompositionService#decompose}, or
-   * the single-query fallback whenever decomposition is off, fails, or returns nothing.
+   * the single-query fallback whenever decomposition is off, fails, or finds nothing to search for
+   * in the message - the last case also tells the answer so.
    *
    * <p>Note the two distinct "off" notions: {@link QueryProperties#queryDecompositionEnabled}
    * {@code = false} keeps this stage in the chain and yields the fallback query, while switching

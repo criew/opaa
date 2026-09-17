@@ -18,6 +18,7 @@ import io.opaa.query.retrieval.search.FullTextChunkSearch;
 import io.opaa.query.retrieval.search.QueryDecompositionService;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -130,7 +131,7 @@ class RetrievalPipelineTest {
     Document firstOnly = chunk("first", "doc-first", 0.8);
     Document secondOnly = chunk("second", "doc-second", 0.7);
     when(queryDecompositionService.decompose(any(), any(Integer.class)))
-        .thenReturn(List.of("q1", "q2"));
+        .thenReturn(Optional.of(List.of("q1", "q2")));
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenAnswer(
             invocation -> {

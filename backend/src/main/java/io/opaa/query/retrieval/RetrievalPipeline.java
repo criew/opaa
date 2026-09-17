@@ -88,6 +88,9 @@ public class RetrievalPipeline {
     }
 
     return new RetrievalPipelineResult(
-        state.selection(), state.searchQueries(), new RetrievalExplanation(explanations));
+        state.selection(),
+        state.searchQueries(),
+        new RetrievalExplanation(explanations),
+        state.searchNeeded());
   }
 }

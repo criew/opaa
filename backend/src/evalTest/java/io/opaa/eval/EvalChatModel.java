@@ -65,6 +65,13 @@ final class EvalChatModel {
   private static final String MODEL_PROPERTY = "opaa.eval.chatModel";
 
   /**
+   * The sampling temperature of an external chat model, for a Befundlauf that has to reproduce the
+   * options of an installation (#1684). Refused without {@link #BASE_URL_PROPERTY}: the pinned
+   * model stays at {@link #TEMPERATURE}, which is what its baseline's determinism rests on.
+   */
+  private static final String TEMPERATURE_PROPERTY = "opaa.eval.chatTemperature";
+
+  /**
    * The API key of that endpoint, <b>from the environment only</b>: a {@code -D} value is visible
    * in the process list, which is why {@code backend/build.gradle.kts} deliberately omits {@code
    * opaa.rerank.api-key} from its passthrough list as well.
@@ -96,7 +103,49 @@ final class EvalChatModel {
               + ". It is deliberately not a -D property: that would put the key in the process "
               + "list.");
     }
-    return Optional.of(new External(baseUrl.strip(), model.strip(), apiKey.strip()));
+    return Optional.of(
+        new External(baseUrl.strip(), model.strip(), apiKey.strip(), requestedTemperature()));
+  }
+
+  /** {@value #TEMPERATURE_PROPERTY}, or {@link #TEMPERATURE} when unset. */
+  static BigDecimal requestedTemperature() {
+    String requested = System.getProperty(TEMPERATURE_PROPERTY);
+    if (requested == null) {
+      return TEMPERATURE;
+    }
+    BigDecimal temperature;
+    try {
+      temperature = new BigDecimal(requested.strip());
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException(
+          TEMPERATURE_PROPERTY + " must be a decimal number, got: " + requested, e);
+    }
+    if (temperature.signum() < 0 || temperature.compareTo(BigDecimal.TWO) > 0) {
+      throw new IllegalArgumentException(
+          TEMPERATURE_PROPERTY + " must lie between 0 and 2, got: " + requested);
+    }
+    return temperature;
+  }
+
+  /**
+   * Refuses {@value #TEMPERATURE_PROPERTY} for a run with the pinned model, which measures at
+   * {@link #TEMPERATURE} only.
+   */
+  static void refuseTemperatureWithoutExternalModel() {
+    if (System.getProperty(TEMPERATURE_PROPERTY) != null) {
+      throw new IllegalArgumentException(
+          TEMPERATURE_PROPERTY
+              + " applies to an external chat model only ("
+              + BASE_URL_PROPERTY
+              + "). The pinned model measures at temperature "
+              + TEMPERATURE
+              + ", which its committed baselines depend on.");
+    }
+  }
+
+  /** The temperature this run's chat model runs at - {@link #TEMPERATURE} for the pinned model. */
+  static BigDecimal activeTemperature() {
+    return external().map(External::temperature).orElse(TEMPERATURE);
   }
 
   /** The model identifier this run measures with - the run's {@code chatModel} fixed point. */
@@ -108,7 +157,7 @@ final class EvalChatModel {
    * An external chat model of a Befundlauf. {@code apiKey} is never logged and never reaches a
    * report; only {@code model} does, as the run's fixed point.
    */
-  record External(String baseUrl, String model, String apiKey) {}
+  record External(String baseUrl, String model, String apiKey, BigDecimal temperature) {}
 
   /**
    * Proves the installed model actually answers before a decomposing run measures anything.
@@ -135,8 +184,9 @@ final class EvalChatModel {
     // snapshots over time, so the run also states what answered.
     if (response != null) {
       log.info(
-          "Eval-Chat-Modell: angefordert '{}', geantwortet hat '{}'",
+          "Eval-Chat-Modell: angefordert '{}' bei Temperatur {}, geantwortet hat '{}'",
           activeModelIdentifier(),
+          external().map(External::temperature).orElse(TEMPERATURE),
           ChatResponses.model(response));
     }
     if (reply == null || reply.isBlank()) {
@@ -157,6 +207,7 @@ final class EvalChatModel {
    *     endpoint (docs/features/llm-integration.md, "Ein Anbindungsweg, nicht zwei").
    */
   static void installAsSystemwideActiveModel(JdbcTemplate jdbcTemplate, String ollamaEndpoint) {
+    refuseTemperatureWithoutExternalModel();
     if (external().isPresent()) {
       throw new IllegalStateException(
           "This harness has no multi-turn path and therefore no use for an external chat model, "
@@ -165,7 +216,7 @@ final class EvalChatModel {
               + " is set. It would measure a model nothing here reports - remove the property or "
               + "run the verwaltung harness.");
     }
-    install(jdbcTemplate, ollamaEndpoint + "/v1", MODEL, null);
+    install(jdbcTemplate, ollamaEndpoint + "/v1", MODEL, null, TEMPERATURE);
   }
 
   /**
@@ -178,7 +229,8 @@ final class EvalChatModel {
       JdbcTemplate jdbcTemplate, String ollamaEndpoint, SettingsEncryptor settingsEncryptor) {
     Optional<External> external = external();
     if (external.isEmpty()) {
-      install(jdbcTemplate, ollamaEndpoint + "/v1", MODEL, null);
+      refuseTemperatureWithoutExternalModel();
+      install(jdbcTemplate, ollamaEndpoint + "/v1", MODEL, null, TEMPERATURE);
       return;
     }
     External chatModel = external.get();
@@ -186,11 +238,16 @@ final class EvalChatModel {
         jdbcTemplate,
         chatModel.baseUrl(),
         chatModel.model(),
-        settingsEncryptor.encrypt(chatModel.apiKey()));
+        settingsEncryptor.encrypt(chatModel.apiKey()),
+        chatModel.temperature());
   }
 
   private static void install(
-      JdbcTemplate jdbcTemplate, String baseUrl, String model, String apiKeyCiphertext) {
+      JdbcTemplate jdbcTemplate,
+      String baseUrl,
+      String model,
+      String apiKeyCiphertext,
+      BigDecimal temperature) {
     jdbcTemplate.update("DELETE FROM llm_models");
     jdbcTemplate.update(
         "INSERT INTO llm_models (id, display_name, base_url, model_identifier, temperature,"
@@ -200,7 +257,7 @@ final class EvalChatModel {
         "Eval-Chat-Modell",
         baseUrl,
         model,
-        TEMPERATURE,
+        temperature,
         MAX_TOKENS,
         apiKeyCiphertext);
   }

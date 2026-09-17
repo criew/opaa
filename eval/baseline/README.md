@@ -683,6 +683,24 @@ Maschine mit Pin liefert. Belegt ist das durch einen Report, der in allen 83 Run
 CI-Lauf auf einem Runner ohne AVX-512 übereinstimmt. Herleitung: `eval/corpus/verwaltung/MAINTENANCE.md`,
 „Neuziehung mit fester CPU-Variante"; ADR-0012, Nachtrag CPU-Backend.
 
+**Neu gezogen mit Issue #1684** aus einem CPU-Testcontainer-Lauf vom 2026-09-17 (Mehrrunden-Messvertrag
+5). Die Zerlegung erhält das Suchfenster seither als beschrifteten Textblock und kennt das Signalwort für
+Nachrichten ohne Suchbedarf; der Datensatz hat acht Fälle der Klasse `answer_continuation` (35 Fälle,
+115 Runden). Deren neun Runden ohne Suchbedarf gehen in keine Gruppe ein, `n` jeder Gruppe zählt nur
+Runden mit Suche (ADR-0012, Nachtrag Runden ohne Suchbedarf). Die Zahlen (overall nDCG@8 0,688, 10 von
+35 Fällen gelöst) sind der Zustand des gepinnten Modells unter der neuen Aufrufform, kein Vorher/Nachher
+der Produktqualität. Herleitung: `eval/corpus/verwaltung/MAINTENANCE.md`, „Neuziehung mit Textblock und
+`answer_continuation`".
+
+**Noch einmal neu gezogen mit Issue #1684** nach dem Review, aus einem Lauf vom selben Tag
+(Mehrrunden-Messvertrag bleibt 5). Das Signalwort schaltet die Suche seither nicht mehr ab, die
+Signalwort-Regel ist neu formuliert, und der Datensatz hat drei weitere `answer_continuation`-Fälle mit
+Folgefragen ohne Fragezeichen (38 Fälle, 127 Runden, davon 12 ohne Suchbedarf). Die Zahlen (overall
+nDCG@8 0,718, 11 von 38 Fällen gelöst) beschreiben das gepinnte Modell unter der geänderten
+Instruktion; `ts-006` und `cc-007` sind dabei von `solved` auf `known_gap` gewechselt, weil das Modell
+ihre dritte Runde anders zerlegt. Herleitung: `eval/corpus/verwaltung/MAINTENANCE.md`, „Neuziehung
+nach „keine Suche" ohne Suchabschaltung".
+
 
 Aufbau wie die Pipeline-Baseline, mit vier Unterschieden:
 

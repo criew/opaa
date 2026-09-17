@@ -34,6 +34,8 @@ public enum RetrievalNote {
   DECOMPOSITION_FAILED(
       "decomposition returned nothing (failed or unparsable): single-query fallback"),
   DECOMPOSITION_DISABLED("decomposition switched off by configuration: single-query fallback"),
+  DECOMPOSITION_NO_SEARCH(
+      "decomposition found nothing to search for: single-query fallback, answer told so"),
   SEARCH_QUERY("search query: %s"),
 
   VECTOR_SEARCH_LISTS("vector search, %d list(s)"),

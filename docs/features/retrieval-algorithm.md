@@ -116,9 +116,22 @@ aktiv, ruft die Stufe `QueryDecompositionService#decompose` auf: Frage und Suchf
 `DecompositionContext` an das systemweit aktive Chat-Modell (`ActiveChatModelResolver`, dieselbe
 Anbindung wie die Antwortgenerierung), das 1 bis `opaa.query.max-sub-queries`
 (`OPAA_QUERY_MAX_SUB_QUERIES`, Default `3`) eigenständige, vollständige Suchanfragen zurückgibt und
-dabei Folgefragen kontextuell auflöst sowie Tippfehler normalisiert. Scheitert der Aufruf
-(Zeitüberschreitung, kein aktives Modell, unparsebare oder leere Antwort), liefert `decompose` eine
-leere Liste, und `SubQueryDecompositionStage#buildSearchQuery` übernimmt als Rückfallebene: die reine
+dabei Folgefragen kontextuell auflöst sowie Tippfehler normalisiert. Frage und Suchfenster
+erreichen das Modell seit #1684 als **ein beschrifteter Textblock** in einer Nutzernachricht, nicht
+als Folge von Nutzer- und Assistentennachrichten; als Gespräch gelesen setzte ein Chat-Modell den
+Verlauf fort und lieferte Antwortsätze statt Suchanfragen. Findet das Modell in der Nachricht nichts
+zu suchen (Wunsch zur Antwortform, Angabe zur Person, Dank), antwortet es mit dem Signalwort
+`KEINE_SUCHE`: `decompose` liefert dann eine **leere Liste**, die Stufe sucht trotzdem mit der
+Rückfall-Suchanfrage aus `buildSearchQuery` und setzt `searchNeeded = false` im Zustand (Notiz
+„decomposition found nothing to search for: single-query fallback, answer told so", Zähler
+`opaa.query.decomposition.no-search`). `QueryService` reicht das Flag an die Antwortgenerierung
+weiter, die vor den Kontextdokumenten die Anweisung für Nachrichten ohne Suchbedarf einfügt; Chunks,
+Quellen und durchsuchte Bibliotheken bleiben wie bei jeder Suche. Führende Beschriftungen des
+Textblocks („Aktuelle Nutzerfrage:") werden aus Teilfragen geschnitten, reine Beschriftungszeilen
+verworfen. Steht das Signalwort neben einer Suchanfrage, wird mit der Suchanfrage gesucht. Scheitert der Aufruf
+(Zeitüberschreitung, kein aktives Modell, unparsebare oder leere Antwort), liefert `decompose`
+**kein** Ergebnis (`Optional.empty()`), und `SubQueryDecompositionStage#buildSearchQuery` übernimmt
+als Rückfallebene: die reine
 Frage, oder — wenn das Suchfenster eine Vorrunde enthält — die **letzte** Nutzernachricht dieses
 Fensters, vorangestellt. Dasselbe gilt seit #1254 für eine **degenerierte** Ausgabe: Eine Teilfrage
 ohne Wortbezug zum Zerlegungskontext hat die Nutzerfrage ersetzt statt sie umzuformulieren. Ist auch

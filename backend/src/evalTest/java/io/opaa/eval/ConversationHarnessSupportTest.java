@@ -49,7 +49,7 @@ class ConversationHarnessSupportTest {
         .thenAnswer(
             invocation -> {
               contexts.add(invocation.getArgument(0));
-              return new RetrievalPipelineResult(List.of(), List.of("Teilfrage"), null);
+              return new RetrievalPipelineResult(List.of(), List.of("Teilfrage"), null, true);
             });
     RerankModelRole rerankModelRole = mock(RerankModelRole.class);
     when(rerankModelRole.currentStatus())
@@ -99,7 +99,7 @@ class ConversationHarnessSupportTest {
         .thenAnswer(
             invocation -> {
               contexts.add(invocation.getArgument(0));
-              return new RetrievalPipelineResult(List.of(), List.of("Teilfrage"), null);
+              return new RetrievalPipelineResult(List.of(), List.of("Teilfrage"), null, true);
             });
     RerankModelRole rerankModelRole = mock(RerankModelRole.class);
     when(rerankModelRole.currentStatus())
@@ -142,7 +142,7 @@ class ConversationHarnessSupportTest {
         .thenAnswer(
             invocation -> {
               contexts.add(invocation.getArgument(0));
-              return new RetrievalPipelineResult(List.of(), List.of("Teilfrage"), null);
+              return new RetrievalPipelineResult(List.of(), List.of("Teilfrage"), null, true);
             });
     RerankModelRole rerankModelRole = mock(RerankModelRole.class);
     when(rerankModelRole.currentStatus())
