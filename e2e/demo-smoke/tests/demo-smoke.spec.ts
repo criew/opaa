@@ -70,7 +70,13 @@ async function signInAtKeycloak(
   { providerName, realm, username }: KeycloakLogin,
   landing: Parameters<Page['waitForURL']>[0],
 ): Promise<{ id: string; email: string | null; displayName: string | null }> {
-  await page.getByRole('button', { name: `Anmelden bei ${providerName}` }).click()
+  // #1631: entering the sign-in page starts one automatic attempt with prompt=none, and the page
+  // keeps its tiles disabled until that attempt has had its turn. In a fresh browser context
+  // Keycloak has no session to hand over and answers login_required, which brings the page back
+  // here - waiting for the tile keeps the click below off a page that is about to navigate away.
+  const providerButton = page.getByRole('button', { name: `Anmelden bei ${providerName}` })
+  await expect(providerButton).toBeEnabled({ timeout: 30_000 })
+  await providerButton.click()
   // Keycloak's own hosted login page, a different origin from the frontend - the ids below
   // ("username"/"password"/"kc-login") are Keycloak's default theme, stable across locales and
   // Keycloak versions (see keycloak/realm-export.json for the realms this points at).
@@ -133,6 +139,45 @@ test.describe('Demo-Smoke (#232)', () => {
     // Per the issue's own acceptance criteria: behaviour and presence of a citation, never the
     // LLM's exact wording and never a document count that would drift with the next corpus run.
     await expectAnyCitedSource(page)
+  })
+
+  /**
+   * #1631: the automatic sign-in, against a provider that really runs one. The scenario needs a
+   * Keycloak session without an OPAA one, which is why it discards this tab's storage instead of
+   * signing out - the RP-initiated logout (ADR-0025) would end the Keycloak session too, and there
+   * would be nothing left to take up. What remains is exactly the state of a new tab of a browser
+   * whose provider session is still running.
+   */
+  test('Laufende Keycloak-Sitzung: die Anmeldeseite führt ohne Klick in die Anwendung', async ({
+    page,
+  }) => {
+    const signedIn = await loginViaKeycloak(page, {
+      providerName: 'Verzeichnisdienst',
+      realm: 'opaa',
+      username: DEMO_USERNAME,
+    })
+
+    // The OIDC session of this tab lives in sessionStorage, Keycloak's own in a cookie. A string
+    // script, because this suite compiles without DOM typings (see e2e/tsconfig.json).
+    await page.evaluate('window.sessionStorage.clear()')
+
+    const [meResponse] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          response.url().endsWith('/api/v1/auth/me') &&
+          response.status() === 200,
+      ),
+      // 'commit' rather than the default 'load': the automatic attempt replaces this very document
+      // as soon as the sign-in page has judged, and a replace that wins the race against `load`
+      // would end this goto with net::ERR_ABORTED. What follows is asserted by waitForURL anyway.
+      page.goto('/login', { waitUntil: 'commit' }),
+    ])
+
+    // Not a single click in between - the sign-in page led through Keycloak and back on its own.
+    await page.waitForURL(/\/chat/, { timeout: 30_000 })
+    await expect(page.getByRole('button', { name: 'Profil und Einstellungen' })).toBeVisible()
+    expect(((await meResponse.json()) as { id: string }).id).toBe(signedIn.id)
   })
 
   /**
@@ -219,6 +264,12 @@ test.describe('Demo-Smoke (#232)', () => {
    * #1685: a direct link survives the provider sign-in. The route ProtectedRoute denied travels in
    * the sign-in state of the authorization-code flow, so after Keycloak the person stands in the
    * linked chat, not on the chat start page.
+   *
+   * #1631: and it survives a refused automatic attempt on the way. Discarding this tab's storage
+   * after the sign-out arms that attempt again (the sign-out itself spends it) while Keycloak's
+   * own session stays ended - so opening the link runs the full chain: attempt with the route,
+   * `login_required`, back to the sign-in page, and only then the sign-in by hand. Without the
+   * route coming back from the refusal, the click below would end on the chat start page.
    */
   test('Direktlink auf einen Chat führt nach der Keycloak-Anmeldung in diesen Chat', async ({
     page,
@@ -233,8 +284,13 @@ test.describe('Demo-Smoke (#232)', () => {
     await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/)
     const chatPath = new URL(page.url()).pathname
     await logout(page)
+    // A string script, because this suite compiles without DOM typings (see e2e/tsconfig.json).
+    await page.evaluate('window.sessionStorage.clear()')
 
-    await page.goto(chatPath)
+    // 'commit' rather than the default 'load': the automatic attempt replaces this document as
+    // soon as the sign-in page has judged, and a replace that wins the race against `load` would
+    // end this goto with net::ERR_ABORTED.
+    await page.goto(chatPath, { waitUntil: 'commit' })
     await page.waitForURL(/\/login(?:$|[/?#])/, { timeout: 30_000 })
     await signInAtKeycloak(page, login, (url) => url.pathname === chatPath)
 

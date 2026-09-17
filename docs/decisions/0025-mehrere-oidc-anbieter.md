@@ -401,6 +401,38 @@ stille Erneuerung und die 401-Behandlung aus ADR-0005 (#737) arbeiten unverände
 „Mit anderem Konto anmelden" schickt `prompt=login` an den gewählten Anbieter (Plugwerk
 `PromptAwareOAuth2AuthorizationRequestResolver`, hier als `extraQueryParams` der SPA).
 
+**Nachtrag (#1631):** Es gibt einen zweiten `prompt`-Wert und damit einen vierten Ausgang des
+Callbacks. Beim Betreten der Anmeldeseite startet die SPA einmal je Browser-Tab einen Versuch mit
+`prompt=none` beim vorgeschlagenen Anbieter, damit eine laufende Anbieter-Sitzung ohne Klick
+übernommen wird. Der Anbieter des Flusses wird dabei abgelegt wie oben, ergänzt um einen Merker je
+Fluss, dass dieser eine der automatische ist. Lehnt der Anbieter ab, endet der Callback ohne
+Fehlermeldung auf der Anmeldeseite; ein Fehler eines geklickten Flusses behält seine Meldung
+unverändert. Am Fluss selbst, an der geteilten Redirect-URI und an der Abmeldung ändert das nichts.
+
+Als Absage gilt dabei **jede** Antwort des Anbieters, die einen OAuth-Fehlercode trägt — nicht nur
+die vier erwarteten aus OIDC Core 3.1.2.6 (`login_required`, `interaction_required`,
+`consent_required`, `account_selection_required`). Begründung: Für die Person ist ein
+`unauthorized_client` aus einer vertippten Client-ID dasselbe wie eine fehlende Sitzung — ein
+Versuch, den sie nie ausgelöst hat, und eine Anmeldeseite, die einfach dasteht; eine rohe
+OAuth-Meldung für einen fremden Vorgang hülfe ihr nicht. Damit die Fehlkonfiguration trotzdem
+auffindbar bleibt, schreibt die SPA den Code in die Browser-Konsole (nie das Fehlerobjekt selbst:
+`ErrorResponse.form` trägt die gescheiterte Token-Anfrage). Die Rücksprungadresse des Flusses
+(#1685) wird auch aus der Absage zurückgelesen, damit ein Direktlink den Versuch überlebt.
+
+**Nachtrag (#1629, #1630): „Mit anderem Konto anmelden" entfällt.** Der Link schickte
+`prompt=login` und wirkte damit nur, wenn beim Anbieter noch eine Sitzung lief. Genau dann ist die
+Anmeldeseite seit #1631 aber fort, bevor jemand ihn benutzen kann — erreichbar blieb er nur über
+`/login/system`. Dort löste er außerdem nicht ein, was er ankündigte: Keycloak beantwortet
+`prompt=login` mit einer erneuten Anmeldung **desselben** Kontos (Benutzername fest eingetragen,
+nur ein Passwortfeld); ein anderes Konto wird erst über den Knopf „Anmeldung neu starten" in der
+Maske des Anbieters wählbar. `prompt=select_account` löst das nicht, weil Keycloak bei nur einer
+Sitzung auch damit ohne Rückfrage durchreicht. Zudem tauschte der Wechsel die Anbieter-Sitzung des
+ganzen Browsers aus, nicht nur die von OPAA. Den Kontowechsel übernimmt deshalb der Anbieter: Das
+Abmelden in OPAA beendet die Anbieter-Sitzung mit (RP-initiierter Logout, oben), danach fragt der
+Anbieter beim nächsten Klick nach Anmeldedaten. Die SPA schickt seither nur noch einen
+`prompt`-Wert, `none` für den automatischen Versuch; eine geklickte Anmeldung überlässt die
+Rückfrage dem Anbieter.
+
 **Was der öffentliche Konfigurationsendpunkt preisgibt, ist bewusst und begrenzt:** Anzeigename,
 Issuer-URI und Client-ID jedes aktivierten Anbieters — genau das, was jeder sieht, der auf der
 Anmeldeseite einen Anbieter anklickt (der Browser ruft dessen Discovery und Autorisierungsendpunkt

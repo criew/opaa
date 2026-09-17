@@ -12,6 +12,7 @@ import PageHeading from '../components/a11y/PageHeading'
 import AuthLayout from '../components/auth/AuthLayout'
 import LocalSignInForm from '../components/auth/LocalSignInForm'
 import { useAuthStore } from '../stores/authStore'
+import { spendSilentSignIn } from '../stores/silentSignIn'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { LOGIN_ROUTE } from '../routes'
 import { redirectTargetOf } from '../utils/safeRedirectPath'
@@ -45,6 +46,12 @@ export default function SystemLoginPage() {
     )
   }
   if (localAccounts.enabled) {
+    // #1631: this is the documented second door, and it has to stay one. With a running provider
+    // session the regular page would otherwise be carried away automatically before its mask
+    // renders, and whoever wants an account of this installation would have no way left that does
+    // not end the provider session too. Spending the attempt here settles that before the page it
+    // redirects to renders; the call is idempotent, and nothing rendered depends on it.
+    spendSilentSignIn()
     return <Navigate to={LOGIN_ROUTE} replace />
   }
 

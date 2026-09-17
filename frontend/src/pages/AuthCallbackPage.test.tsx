@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { User, UserManager } from 'oidc-client-ts'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
@@ -7,7 +8,9 @@ import { server } from '../mocks/server'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { clearHandoverInFlight, markHandoverInFlight } from '../stores/handoverFlow'
+import { spendSilentSignIn } from '../stores/silentSignIn'
 import AuthCallbackPage from './AuthCallbackPage'
+import LoginPage from './LoginPage'
 
 function ChatAt() {
   const location = useLocation()
@@ -31,6 +34,7 @@ describe('AuthCallbackPage', () => {
           <Route path="/chat" element={<div>Chat</div>} />
           <Route path="/spaces/:spaceId/chats/:chatId" element={<ChatAt />} />
           <Route path="/handover" element={<div>Übergabe</div>} />
+          <Route path="/login" element={<div>Anmelden</div>} />
         </Routes>
       </MemoryRouter>,
       { withNotificationHost: false },
@@ -136,6 +140,73 @@ describe('AuthCallbackPage', () => {
     renderCallback()
 
     expect(await screen.findByText('Chat')).toBeInTheDocument()
+  })
+
+  /**
+   * #1631: the provider refused an attempt nobody asked for. What follows is the sign-in page as it
+   * would have stood without the attempt - no error, no explanation of a failure that is none.
+   */
+  it('shows the sign-in page again when the silent attempt was refused', async () => {
+    useAuthStore.setState({
+      mode: 'oidc',
+      isLoading: false,
+      isAuthenticated: false,
+      error: null,
+      handleOidcCallback: vi.fn().mockResolvedValue({ kind: 'silent-refused' }),
+    })
+
+    renderCallback()
+
+    expect(await screen.findByText('Anmelden')).toBeInTheDocument()
+  })
+
+  /**
+   * #1685 through #1631: the link from a mail, opened in a fresh tab without a provider session.
+   * ProtectedRoute hands the route to the sign-in page, the automatic attempt takes it along, and
+   * the provider refuses. The page the person then signs in on by hand has to know the route
+   * still - otherwise the one attempt that could not help them is what loses the link.
+   */
+  it('hands the route of a refused attempt back to the sign-in page', async () => {
+    // the refused attempt spent this tab's automatic sign-in, which is what makes the sign-in
+    // page's tiles clickable again
+    spendSilentSignIn()
+    const loginOidc = vi.fn().mockResolvedValue(undefined)
+    useAuthStore.setState({
+      mode: 'oidc',
+      isLoading: false,
+      isAuthenticated: false,
+      error: null,
+      providers: [
+        {
+          id: 'p-opaa',
+          displayName: 'Verzeichnisdienst',
+          issuerUri: 'https://idp.example.test/realms/opaa',
+          clientId: 'opaa-frontend',
+          isDefault: true,
+          sortOrder: 0,
+        },
+      ],
+      loginOidc,
+      handleOidcCallback: vi.fn().mockResolvedValue({
+        kind: 'silent-refused',
+        returnTo: '/spaces/s-1/chats/c-1',
+      }),
+    })
+
+    renderWithProviders(
+      <MemoryRouter initialEntries={['/auth/callback']}>
+        <Routes>
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route path="/login" element={<LoginPage />} />
+        </Routes>
+      </MemoryRouter>,
+      { withNotificationHost: false },
+    )
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Anmelden bei Verzeichnisdienst' }),
+    )
+    expect(loginOidc).toHaveBeenCalledWith('p-opaa', { returnTo: '/spaces/s-1/chats/c-1' })
   })
 
   it('takes an ordinary session into the application', async () => {

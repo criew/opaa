@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
+import { spendSilentSignIn } from '../stores/silentSignIn'
 import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
 import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
 import LoginPage from './LoginPage'
@@ -11,9 +12,14 @@ import LoginPage from './LoginPage'
 describe('LoginPage', () => {
   // The store actions are real again for every test; a spy from the previous one would silently
   // make the next assertion about nothing.
-  const { loginLocal, loginOidc } = useAuthStore.getState()
+  const { attemptSilentSignIn, loginLocal, loginOidc } = useAuthStore.getState()
 
   beforeEach(() => {
+    // #1631: the page every test below describes is the one whose automatic sign-in attempt has
+    // had its turn - until then it shows itself as busy and its tiles are not there to click. The
+    // block on the attempt itself starts before that point and clears the note again.
+    sessionStorage.clear()
+    spendSilentSignIn()
     useBrandingStore.setState({ branding: OPAA_BRANDING })
     useAuthStore.setState({
       mode: null,
@@ -29,6 +35,7 @@ describe('LoginPage', () => {
       sessionKind: null,
       passwordChangeRequired: false,
       passwordChangeReason: null,
+      attemptSilentSignIn,
       loginLocal,
       loginOidc,
     })
@@ -149,18 +156,144 @@ describe('LoginPage', () => {
     expect(screen.queryByRole('button', { name: /mit sso anmelden/i })).not.toBeInTheDocument()
   })
 
+  /**
+   * #1631: entering this page is what starts the automatic sign-in of a running provider session.
+   * The store decides whether the moment is right (see authStore.test.ts); what this page owes is
+   * to ask exactly once, and not before it knows what the installation offers.
+   */
+  describe('automatische Anmeldung (#1631)', () => {
+    beforeEach(() => {
+      // back to before the attempt: this block is about the moment it is still to come
+      sessionStorage.clear()
+    })
+
+    it('starts the attempt on entering the page', async () => {
+      const loginOidc = vi.fn().mockResolvedValue(undefined)
+      useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst, partner], loginOidc })
+
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
+
+      await vi.waitFor(() =>
+        expect(loginOidc).toHaveBeenCalledWith('p-opaa', { silent: true, returnTo: '/chat' }),
+      )
+    })
+
+    // #1685: the route ProtectedRoute denied travels with the automatic sign-in just as it does
+    // with a clicked one - otherwise the deep link would survive every sign-in but this one.
+    it('carries the denied route through the automatic attempt', async () => {
+      const loginOidc = vi.fn().mockResolvedValue(undefined)
+      useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst], loginOidc })
+
+      renderWithProviders(
+        <MemoryRouter
+          initialEntries={[
+            { pathname: '/login', state: { from: '/spaces/s-1/chats/c-1?q=1#m-2' } },
+          ]}
+        >
+          <LoginPage />
+        </MemoryRouter>,
+        { withNotificationHost: false },
+      )
+
+      await vi.waitFor(() =>
+        expect(loginOidc).toHaveBeenCalledWith('p-opaa', {
+          silent: true,
+          returnTo: '/spaces/s-1/chats/c-1?q=1#m-2',
+        }),
+      )
+    })
+
+    /**
+     * The one instant in which the page is already rendered and the redirect has not left yet: a
+     * tile offered there would start a second, competing flow with one click.
+     */
+    it('offers nothing to click while the attempt is still to come', () => {
+      const loginOidc = vi.fn().mockResolvedValue(undefined)
+      useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst], loginOidc })
+
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
+
+      expect(screen.getByRole('button', { name: /anmelden bei verzeichnisdienst/i })).toBeDisabled()
+    })
+
+    it('waits for the sign-in configuration before judging', () => {
+      const loginOidc = vi.fn().mockResolvedValue(undefined)
+      useAuthStore.setState({
+        mode: 'oidc',
+        isLoading: true,
+        providers: [verzeichnisdienst],
+        loginOidc,
+      })
+
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
+
+      expect(loginOidc).not.toHaveBeenCalled()
+    })
+
+    it('leaves a message on the page standing instead of redirecting past it', () => {
+      const loginOidc = vi.fn().mockResolvedValue(undefined)
+      useAuthStore.setState({
+        mode: 'oidc',
+        providers: [verzeichnisdienst],
+        error: 'Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.',
+        loginOidc,
+      })
+
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
+
+      expect(loginOidc).not.toHaveBeenCalled()
+      expect(screen.getByRole('alert')).toHaveTextContent('Ihre Sitzung ist abgelaufen')
+    })
+
+    // The way back from a refused attempt ends on this page; entering it again - through the back
+    // button, through a link - must not start the same redirect over.
+    it('does not start a second attempt when the page is entered again', () => {
+      // the real action, only counted: it is the one that spends this tab's single attempt
+      const loginOidc = vi.fn(useAuthStore.getState().loginOidc)
+      useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst], loginOidc })
+
+      const first = renderWithProviders(<LoginPage />, {
+        withRouter: true,
+        withNotificationHost: false,
+      })
+      first.unmount()
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
+
+      expect(loginOidc).toHaveBeenCalledTimes(1)
+    })
+  })
+
   // ADR-0025, Entscheidung 5 / #1332: one button per enabled provider in the configured order;
   // the proposed one (last used, else the default) is the single primary action of the page.
   describe('several providers (#1332)', () => {
     it('with exactly one provider the page behaves as before', () => {
       useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst] })
       renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
-      expect(screen.getAllByRole('button')).toHaveLength(2)
+      expect(screen.getAllByRole('button')).toHaveLength(1)
       expect(
         screen.getByRole('button', { name: /anmelden bei verzeichnisdienst/i }),
       ).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Mit anderem Konto anmelden' })).toBeInTheDocument()
       expect(screen.queryByText('Zuletzt verwendet')).not.toBeInTheDocument()
+    })
+
+    /**
+     * Regression guard: „Mit anderem Konto anmelden" sent `prompt=login`, and Keycloak answers that
+     * with the running account's name fixed and a password field - a re-authentication, not a
+     * switch. Since the automatic sign-in (#1631) the page is gone whenever a provider session runs,
+     * so the link was reachable only through `/login/system`, and there it said something it did
+     * not do (#1629, #1630). Changing accounts is the provider's business: signing out ends its
+     * session.
+     */
+    it.each([
+      ['one provider', [verzeichnisdienst], null],
+      ['two providers', [verzeichnisdienst, partner], null],
+      ['a provider used last', [verzeichnisdienst, partner], 'p-partner'],
+    ])('offers no account switch next to the providers with %s', (_fall, providers, lastUsed) => {
+      if (lastUsed) localStorage.setItem('opaa.oidc.lastProvider', lastUsed)
+      useAuthStore.setState({ mode: 'oidc', providers })
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
+
+      expect(screen.queryByRole('button', { name: /anderem konto/i })).toBeNull()
     })
 
     it('shows both providers in order and starts the flow at the chosen one', async () => {
@@ -195,19 +328,11 @@ describe('LoginPage', () => {
       expect(
         screen.getByRole('button', { name: /anmelden bei verzeichnisdienst/i }).className,
       ).toMatch(/MuiButton-outlined/)
-
-      await userEvent.click(
-        screen.getByRole('button', { name: 'Mit anderem Konto bei Partnerportal anmelden' }),
-      )
-      expect(loginOidc).toHaveBeenCalledWith('p-partner', {
-        switchAccount: true,
-        returnTo: '/chat',
-      })
     })
 
     // #1685: the provider sign-in leaves the page, so the route to come back to has to be handed
     // to the flow itself - the router state the local sign-in reads is gone by the callback
-    it('hands the denied route to the provider sign-in and to the account switch', async () => {
+    it('hands the denied route to the provider sign-in', async () => {
       const loginOidc = vi.fn().mockResolvedValue(undefined)
       useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst], loginOidc })
       renderWithProviders(
@@ -223,11 +348,6 @@ describe('LoginPage', () => {
 
       await userEvent.click(screen.getByRole('button', { name: 'Anmelden bei Verzeichnisdienst' }))
       expect(loginOidc).toHaveBeenLastCalledWith('p-opaa', {
-        returnTo: '/spaces/s-1/chats/c-1?q=1#m-2',
-      })
-      await userEvent.click(screen.getByRole('button', { name: 'Mit anderem Konto anmelden' }))
-      expect(loginOidc).toHaveBeenLastCalledWith('p-opaa', {
-        switchAccount: true,
         returnTo: '/spaces/s-1/chats/c-1?q=1#m-2',
       })
     })
