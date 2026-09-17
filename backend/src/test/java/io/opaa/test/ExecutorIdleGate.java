@@ -10,9 +10,10 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 /**
  * Waits until every task executor of one application context is idle.
  *
- * <p>Once a wait has timed out, the gate stays closed: every later call fails at once instead of
- * waiting again, because a task that hung for the whole timeout will not finish for the next class
- * either. The failure names the busy executors and the stacks of their threads.
+ * <p>Once a wait has timed out, the gate is closed: a later call checks once without waiting and
+ * fails at once while an executor is still busy, so a hung task costs the timeout only once per
+ * context. If the executors have become idle meanwhile, the gate opens again and the call passes. A
+ * failure names the busy executors and the stacks of their threads.
  */
 final class ExecutorIdleGate {
 
@@ -30,6 +31,10 @@ final class ExecutorIdleGate {
 
   void awaitIdle() {
     if (timedOut.get()) {
+      if (allIdle()) {
+        timedOut.set(false);
+        return;
+      }
       throw new IllegalStateException(
           "Task executors of this context already failed to become idle within "
               + timeout

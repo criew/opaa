@@ -39,9 +39,9 @@ class ExecutorIdleGateTest {
   void passesAtOnceWhenEveryExecutorIsIdle() {
     ExecutorIdleGate gate = new ExecutorIdleGate(Map.of("idleExecutor", executor), TIMEOUT);
 
-    long started = System.nanoTime();
+    long waitStarted = System.nanoTime();
     assertThatCode(gate::awaitIdle).doesNotThrowAnyException();
-    assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(TIMEOUT);
+    assertThat(Duration.ofNanos(System.nanoTime() - waitStarted)).isLessThan(TIMEOUT);
   }
 
   @Test
@@ -65,6 +65,26 @@ class ExecutorIdleGateTest {
         .hasMessageContaining("not waiting again")
         .hasMessageContaining("stuckExecutor (active=1");
     assertThat(Duration.ofNanos(System.nanoTime() - secondStarted)).isLessThan(TIMEOUT);
+  }
+
+  @Test
+  void aClosedGateOpensAgainOnceTheSlowTaskHasFinished() throws InterruptedException {
+    executor.execute(this::blockUntilReleased);
+    assertThat(started.await(5, TimeUnit.SECONDS)).isTrue();
+    ExecutorIdleGate gate = new ExecutorIdleGate(Map.of("slowExecutor", executor), TIMEOUT);
+    assertThatThrownBy(gate::awaitIdle).hasMessageContaining("did not become idle within");
+
+    release.countDown();
+    long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
+    while (executor.getActiveCount() > 0 && System.nanoTime() < deadline) {
+      Thread.sleep(10);
+    }
+    assertThat(executor.getActiveCount()).isZero();
+
+    long waitStarted = System.nanoTime();
+    assertThatCode(gate::awaitIdle).doesNotThrowAnyException();
+    assertThatCode(gate::awaitIdle).doesNotThrowAnyException();
+    assertThat(Duration.ofNanos(System.nanoTime() - waitStarted)).isLessThan(TIMEOUT);
   }
 
   private void blockUntilReleased() {
