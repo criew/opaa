@@ -74,7 +74,6 @@ class LocalAuthJourneyIntegrationTest {
   @Autowired private LocalAccountFixturesFactory fixturesFactory;
   @Autowired private LocalAdminSeeder seeder;
   @Autowired private LocalAdminSeedMarkerRepository seedMarker;
-  @Autowired private LocalActionTokenRepository actionTokens;
   @Autowired private LocalCredentialsRepository credentials;
   @Autowired private LocalRefreshTokenRepository refreshTokens;
   @Autowired private UserRepository users;
@@ -87,14 +86,12 @@ class LocalAuthJourneyIntegrationTest {
   void setUp() throws Exception {
     fixtures = fixturesFactory.create();
     fixtures.cleanUp();
-    actionTokens.deleteAll();
     fixtures.localProvider(true);
     bootstrapAdmin = seededBootstrapAdmin();
   }
 
   @AfterEach
   void tearDown() {
-    actionTokens.deleteAll();
     fixtures.cleanUp();
   }
 
