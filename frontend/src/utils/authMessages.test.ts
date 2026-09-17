@@ -134,7 +134,7 @@ describe('sessionEndMessage', () => {
 
   // An unknown cause falls back to its marker's sentence rather than to the bare "expired".
   it('falls back to the marker sentence for a cause it does not know', () => {
-    expect(sessionEndMessage('session_revoked:etwas_neues' as never)).toBe(
+    expect(sessionEndMessage('session_revoked:etwas_neues')).toBe(
       'Ihre Sitzung wurde beendet. Bitte melden Sie sich erneut an.',
     )
   })

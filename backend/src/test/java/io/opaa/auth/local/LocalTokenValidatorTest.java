@@ -230,6 +230,37 @@ class LocalTokenValidatorTest {
         .contains(new LocalTokenRejection(LocalTokenMarkers.SESSION_REVOKED, "admin_action"));
   }
 
+  /**
+   * regression guard for #1595: a handed-over account (ADR-0033, Entscheidung 12) carries the
+   * provider's issuer and has no credentials row; the switch of the *local* management does not
+   * govern it. It must keep the refusal that names the handover with the switch off too - that is
+   * the recommended operating order (provider, hand over, switch the local management off), and
+   * local_accounts_disabled would hide the one way in the person still has.
+   */
+  @Test
+  void aHandedOverAccountKeepsItsCauseWhileTheManagementIsOff() {
+    user.handOverTo("https://idp.example/realms/stadt", "sub-42");
+    when(credentials.findById(user.getId())).thenReturn(Optional.empty());
+    LocalRefreshToken revoked =
+        new LocalRefreshToken(UUID.randomUUID(), user.getId(), "h", NOW.minusSeconds(40), NOW, NOW);
+    revoked.revoke(RevocationReason.HANDED_OVER, NOW);
+    when(refreshTokens.findFirstByUserIdAndRevocationReasonInOrderByRevokedAtDesc(
+            user.getId(), LocalTokenValidator.ACTS))
+        .thenReturn(Optional.of(revoked));
+    Jwt jwt = token(user.getId(), NOW.minusSeconds(60));
+
+    assertThat(validator.rejectionFor(jwt))
+        .contains(
+            new LocalTokenRejection(
+                LocalTokenMarkers.SESSION_REVOKED, LocalTokenRejection.HANDED_OVER_CAUSE));
+
+    when(registry.localAccountsEnabled()).thenReturn(false);
+    assertThat(validator.rejectionFor(jwt))
+        .contains(
+            new LocalTokenRejection(
+                LocalTokenMarkers.SESSION_REVOKED, LocalTokenRejection.HANDED_OVER_CAUSE));
+  }
+
   @Test
   void refusesATokenOfAnUnknownAccountWithoutCreatingAnything() {
     UUID unknown = UUID.randomUUID();

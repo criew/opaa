@@ -235,6 +235,17 @@ class LocalAuthSettingsIntegrationTest {
         .andExpect(jsonPath("$.enabled").value(true))
         .andExpect(jsonPath("$.revokedSessions").doesNotExist());
     login(idle.email(), LocalAccountFixtures.PASSWORD, 200);
+    // regression guard for #1595: the only path on which admin_action is ever read. While the
+    // switch is off it outranks the revocation; after switching back on, a token from before the
+    // switch-off reads the act that ended it - and that act was no password reset.
+    mockMvc
+        .perform(get(ME).header(HttpHeaders.AUTHORIZATION, userBearer))
+        .andExpect(status().isUnauthorized())
+        .andExpect(
+            header()
+                .string(
+                    "WWW-Authenticate",
+                    Matchers.containsString("error_description=\"session_revoked:admin_action\"")));
     mockMvc
         .perform(get("/api/v1/auth/config"))
         .andExpect(jsonPath("$.localAccounts.enabled").value(true));

@@ -1,6 +1,7 @@
 package io.opaa.auth.local;
 
 import io.opaa.api.types.LockReason;
+import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.oidc.OidcProviderRegistry;
 import java.time.Clock;
@@ -24,7 +25,9 @@ import org.springframework.stereotype.Component;
  *
  * <p>The switch is read first because while it is off it is the effective reason a regular local
  * token is refused (ADR-0033, Entscheidung 4): the switch-off also revokes the running sessions, so
- * any later check would answer with that revocation instead of the marker the switch promises.
+ * any later check would answer with that revocation instead of the marker the switch promises. It
+ * governs local accounts only - a handed-over one passes it and keeps the refusal that names the
+ * handover, because its way in is the provider, not this switch.
  */
 @Component
 public class LocalTokenValidator {
@@ -96,10 +99,19 @@ public class LocalTokenValidator {
     return Optional.empty();
   }
 
+  /**
+   * Whether the switch of the local management leaves this token's way open: a local {@code
+   * SYSTEM_ADMIN} passes (ADR-0033, Entscheidung 4), and so does an account that is no longer local
+   * - a handed-over one (Entscheidung 12) carries the provider's issuer, and the switch of the
+   * local management does not govern it. It falls through to the refusal that names the handover.
+   */
   private boolean passesManagementSwitch(UUID userId) {
     return users
         .findById(userId)
-        .map(user -> LocalAccountAccess.passesManagementSwitch(registry, user))
+        .map(
+            user ->
+                !LocalIssuer.URN.equals(user.getIssuer())
+                    || LocalAccountAccess.passesManagementSwitch(registry, user))
         .orElse(false);
   }
 
