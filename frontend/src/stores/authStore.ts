@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { UserManager, WebStorageStateStore } from 'oidc-client-ts'
+import type { SigninRedirectArgs } from 'oidc-client-ts'
 import type {
   AuthMode,
   AuthUser,
@@ -48,6 +49,7 @@ import {
   markHandoverInFlight,
   setPendingHandover,
 } from './handoverFlow'
+import { safeRedirectPath } from '../utils/safeRedirectPath'
 import {
   authorizationErrorCode,
   clearSilentSignInFlow,
@@ -89,6 +91,27 @@ export {
 }
 
 /**
+ * What a sign-in carries through the provider redirect. oidc-client-ts keeps it with the sign-in
+ * state of exactly this flow (this tab's sessionStorage) and hands it back from
+ * `signinRedirectCallback()`; it is still read as untrusted input.
+ */
+interface SignInState {
+  handoverCode?: unknown
+  returnTo?: unknown
+}
+
+/**
+ * What a completed provider callback was. `returnTo` of a session is always a same-origin path -
+ * the route the sign-in was started for, or the chat page.
+ */
+export type OidcCallbackOutcome =
+  | { kind: 'session'; returnTo: string }
+  | { kind: 'handover' }
+  /** The provider turned the automatic attempt down (#1631) - no failure of anybody's. */
+  | { kind: 'silent-refused' }
+  | { kind: 'failed' }
+
+/**
  * Why a session that looked established could not be taken up: the backend names the cause in the
  * challenge of its refusal (ADR-0033, Entscheidung 8) - a locked account or a revoked session is
  * not the same as a token that merely expired, and the person is told which it was.
@@ -122,6 +145,11 @@ interface AuthState {
   passwordChangeRequired: boolean
   /** Why the change is demanded - the sentence the password page shows. */
   passwordChangeReason: PasswordChangeReason | null
+  /**
+   * The person signed out on purpose. The route left behind is then no return target: the next
+   * sign-in in this tab may be somebody else. A session that ended on its own clears it again.
+   */
+  signedOut: boolean
 
   initialize: () => Promise<void>
   /**
@@ -133,21 +161,22 @@ interface AuthState {
   /**
    * Starts the sign-in at `providerId` (default: the suggested provider). `switchAccount` sends
    * `prompt=login`, so the provider asks for credentials even with a running SSO session; `silent`
-   * sends `prompt=none` and belongs to {@link AuthState.attemptSilentSignIn} alone.
+   * sends `prompt=none` and belongs to {@link AuthState.attemptSilentSignIn} alone. `returnTo`
+   * travels with the flow and comes back from {@link handleOidcCallback}.
    */
   loginOidc: (
     providerId?: string,
-    options?: { switchAccount?: boolean; silent?: boolean },
+    options?: { switchAccount?: boolean; silent?: boolean; returnTo?: string },
   ) => Promise<void>
   /**
    * Takes up a running provider session without a click (#1631): one authorization redirect with
    * `prompt=none` to the suggested provider, answered either with a session or with a refusal that
-   * brings the person back to the sign-in page. Answers whether the attempt was made - it is not,
-   * whenever the sign-in page is what the person is owed: no provider to try, a session already, an
-   * attempt already spent in this tab, or a message on the page that the redirect would carry away
-   * unread.
+   * brings the person back to the sign-in page. `returnTo` travels with it like it does with a
+   * clicked sign-in. Answers whether the attempt was made - it is not, whenever the sign-in page is
+   * what the person is owed: no provider to try, a session already, an attempt already spent in
+   * this tab, or a message on the page that the redirect would carry away unread.
    */
-  attemptSilentSignIn: () => Promise<boolean>
+  attemptSilentSignIn: (returnTo?: string) => Promise<boolean>
   /**
    * Whether that attempt is still to come in this very moment (#1631). Read while rendering, like
    * {@link AuthState.suggestedProvider}: the sign-in page shows itself as busy until the question
@@ -158,11 +187,10 @@ interface AuthState {
   /**
    * Completes the provider redirect. Answers what the callback was: an ordinary session, a handover
    * whose provider token is now waiting in {@link ./handoverFlow} - deliberately **without** any
-   * authenticated call, `/auth/me` included (ADR-0033, Entscheidung 12) - a refusal of the silent
-   * attempt, which carries no message because nobody asked for it, or a failure whose reason is in
-   * {@link AuthState.error}.
+   * authenticated call, `/auth/me` included (ADR-0033, Entscheidung 12) - or a failure whose reason
+   * is in {@link AuthState.error}.
    */
-  handleOidcCallback: () => Promise<'session' | 'handover' | 'silent-refused' | 'failed'>
+  handleOidcCallback: () => Promise<OidcCallbackOutcome>
   /**
    * Starts the provider sign-in of a handover (#1563): the code rides through the redirect in
    * oidc-client-ts's own sign-in state, so the page that comes back has it without any storage of
@@ -228,18 +256,6 @@ function writeStorage(storage: Storage, key: string, value: string | null) {
   } catch {
     // storage may be unavailable (private mode); the flow then simply starts at the default
   }
-}
-
-/**
- * What the authorization request asks of the provider. `prompt=none` (#1631) forbids any screen:
- * the provider either answers from a running session or refuses. `redirectMethod: 'replace'` keeps
- * that attempt out of the history - "back" from the sign-in page it returns to must not land on the
- * authorization URL the person never navigated to.
- */
-function signinRedirectArgs(options?: { switchAccount?: boolean; silent?: boolean }) {
-  if (options?.silent) return { prompt: 'none', redirectMethod: 'replace' as const }
-  if (options?.switchAccount) return { prompt: 'login' }
-  return undefined
 }
 
 export const useAuthStore = create<AuthState>((set, get) => {
@@ -408,6 +424,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     sessionKind: null,
     passwordChangeRequired: false,
     passwordChangeReason: null,
+    signedOut: false,
 
     initialize: async () => {
       let config
@@ -574,7 +591,16 @@ export const useAuthStore = create<AuthState>((set, get) => {
       if (!silent) writeStorage(localStorage, LAST_PROVIDER_STORAGE_KEY, chosen)
       set({ isSigningIn: true, sessionKind: 'oidc', error: null })
       try {
-        await userManager.signinRedirect(signinRedirectArgs(options))
+        const args: SigninRedirectArgs = {}
+        if (silent) {
+          // #1631: `prompt=none` forbids the provider a screen of its own - it answers from a
+          // running session or not at all. `replace` keeps the authorization URL out of the
+          // history, so "back" from the sign-in page it returns to cannot land on it.
+          args.prompt = 'none'
+          args.redirectMethod = 'replace'
+        } else if (options?.switchAccount) args.prompt = 'login'
+        if (options?.returnTo) args.state = { returnTo: options.returnTo } satisfies SignInState
+        await userManager.signinRedirect(args)
       } catch (err) {
         // discovery unreachable (CSP not yet widened, DNS, provider down): say so instead of a
         // click that visibly does nothing - unless nobody clicked, see silentSignIn.ts
@@ -601,13 +627,13 @@ export const useAuthStore = create<AuthState>((set, get) => {
       return !isSilentSignInSpent()
     },
 
-    attemptSilentSignIn: async () => {
+    attemptSilentSignIn: async (returnTo) => {
       // One predicate for both, so what the page shows as busy and what actually happens can never
       // drift apart. The load itself is only this one's business: the page is busy while it runs.
       if (get().isLoading || !get().isSilentSignInPending()) return false
       const suggested = get().suggestedProvider()
       if (!suggested) return false
-      await get().loginOidc(suggested.id, { silent: true })
+      await get().loginOidc(suggested.id, { silent: true, returnTo })
       return true
     },
 
@@ -676,14 +702,16 @@ export const useAuthStore = create<AuthState>((set, get) => {
           // The provider was disabled while an attempt nobody asked for was under way: still not
           // this person's failure, and the sign-in page lists what is left.
           set({ error: null, isLoading: false, isSigningIn: false })
-          return 'silent-refused'
+          return { kind: 'silent-refused' }
         }
         set({ error: PROVIDER_GONE_MESSAGE, isLoading: false })
-        return 'failed'
+        return { kind: 'failed' }
       }
       try {
         const oidcUser = await userManager.signinRedirectCallback()
-        const handoverCode = (oidcUser.state as { handoverCode?: string } | undefined)?.handoverCode
+        const signInState = oidcUser.state as SignInState | undefined
+        const handoverCode =
+          typeof signInState?.handoverCode === 'string' ? signInState.handoverCode : null
         if (!handoverCode) clearHandoverInFlight()
         if (handoverCode) {
           // ADR-0033, Entscheidung 12: not one authenticated request between the callback and the
@@ -691,7 +719,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
           // create it.
           setPendingHandover({ code: handoverCode, providerToken: oidcUser.access_token })
           set({ isLoading: false })
-          return 'handover'
+          return { kind: 'handover' }
         }
         const me = await getMe(oidcUser.access_token)
         set({
@@ -701,13 +729,14 @@ export const useAuthStore = create<AuthState>((set, get) => {
           isLoading: false,
           sessionKind: 'oidc',
         })
-        return 'session'
+        const returnTo = typeof signInState?.returnTo === 'string' ? signInState.returnTo : null
+        return { kind: 'session', returnTo: safeRedirectPath(returnTo) }
       } catch (err) {
         clearHandoverInFlight()
         if (err instanceof UnknownIssuerError) {
           dropLocalSession()
           set({ error: UNKNOWN_ISSUER_MESSAGE, isLoading: false })
-          return 'failed'
+          return { kind: 'failed' }
         }
         if (silentFlow && isAuthorizationRefusal(err)) {
           // No session at the provider (or none it will hand over unasked): the person asked for
@@ -718,13 +747,13 @@ export const useAuthStore = create<AuthState>((set, get) => {
           // oidc-client-ts's ErrorResponse carries the failed token request in `form`.
           console.warn('Silent sign-in refused by the provider', authorizationErrorCode(err))
           set({ error: null, isLoading: false, isSigningIn: false })
-          return 'silent-refused'
+          return { kind: 'silent-refused' }
         }
         set({
           error: err instanceof Error ? err.message : 'OIDC-Rückmeldung fehlgeschlagen',
           isLoading: false,
         })
-        return 'failed'
+        return { kind: 'failed' }
       }
     },
 
@@ -743,7 +772,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
       set({ isSigningIn: true, error: null })
       markHandoverInFlight()
       try {
-        await userManager.signinRedirect({ state: { handoverCode: code } })
+        await userManager.signinRedirect({ state: { handoverCode: code } satisfies SignInState })
         return true
       } catch (err) {
         clearHandoverInFlight()
@@ -778,6 +807,11 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
     logout: async () => {
       const { userManager, mode, sessionKind, token } = get()
+      // First, before anything below can end the session - signoutRedirect() removes the user
+      // before it even looks for an end_session_endpoint, and a 401 while this waits on the server
+      // ends it through expireSession(). ProtectedRoute would otherwise record the page left behind
+      // as a return target in that very render.
+      set({ signedOut: true })
       // Resets every store that caches data scoped to the signed-in user's session (#440) - see
       // resettableStores.ts for which stores that covers and why. Must run before
       // signoutRedirect below: that call navigates the browser away in OIDC mode, so anything
@@ -806,6 +840,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
           passwordChangeRequired: false,
           passwordChangeReason: null,
           error: null,
+          signedOut: true,
         })
         await get().refreshPublicAuthConfig()
         return
@@ -833,6 +868,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         passwordChangeRequired: false,
         passwordChangeReason: null,
         error: null,
+        signedOut: true,
       })
       // Nach einem signoutRedirect() ist die Seite ohnehin fort; erreicht wird das hier auf dem
       // Weg, auf dem der Anbieter keinen end_session_endpoint hat und die Anwendung stehen bleibt.
@@ -944,5 +980,12 @@ export const useAuthStore = create<AuthState>((set, get) => {
     requirePasswordChange: (reason) => {
       set({ passwordChangeRequired: true, passwordChangeReason: reason })
     },
+  }
+})
+
+// The mark of a deliberate sign-out lasts until the next session begins, whichever path starts it.
+useAuthStore.subscribe((state, previous) => {
+  if (state.isAuthenticated && !previous.isAuthenticated && state.signedOut) {
+    useAuthStore.setState({ signedOut: false })
   }
 })

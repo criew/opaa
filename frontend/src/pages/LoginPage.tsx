@@ -150,18 +150,21 @@ export default function LoginPage() {
   // one primary button of this surface (guidelines 5.1); the others are secondary
   const suggested = suggestedProvider()
   const lastUsedId = lastUsedProviderId()
+  // The provider sign-in leaves this page, so the route travels with the flow itself.
+  const returnTo = redirectTargetOf(location.state, location.search)
 
   // #1631: entering this page is where the automatic sign-in of a running provider session starts.
   // Only once the configuration is loaded - before that the store knows neither the providers nor
-  // whether a session was restored, and the attempt would judge on an empty state. The action
+  // whether a session was restored, and the attempt would judge on an empty state. The route the
+  // sign-in was started for travels with it just as it does with a clicked one (#1685). The action
   // itself decides whether this is a moment for it at all; see attemptSilentSignIn.
   useEffect(() => {
     if (isLoading) return
-    void attemptSilentSignIn()
-  }, [isLoading, attemptSilentSignIn])
+    void attemptSilentSignIn(returnTo)
+  }, [isLoading, attemptSilentSignIn, returnTo])
 
   if (isAuthenticated) {
-    return <Navigate to={redirectTargetOf(location.state, location.search)} replace />
+    return <Navigate to={returnTo} replace />
   }
 
   const hasChoice = mode === 'oidc' && providers.length > 0
@@ -209,7 +212,7 @@ export default function LoginPage() {
                 showsLastUsed={providers.length > 1 && provider.id === lastUsedId}
                 isSigningIn={isSigningIn}
                 disabled={isBusy}
-                onChoose={() => void loginOidc(provider.id)}
+                onChoose={() => void loginOidc(provider.id, { returnTo })}
               />
             ))}
           </Stack>
@@ -218,7 +221,7 @@ export default function LoginPage() {
               variant="text"
               size="small"
               startIcon={<SwitchAccountOutlinedIcon />}
-              onClick={() => void loginOidc(suggested.id, { switchAccount: true })}
+              onClick={() => void loginOidc(suggested.id, { switchAccount: true, returnTo })}
               disabled={isBusy}
               sx={{ display: 'flex', mx: 'auto', mt: 1.5 }}
             >

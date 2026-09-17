@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { spendSilentSignIn } from '../stores/silentSignIn'
@@ -172,7 +173,34 @@ describe('LoginPage', () => {
 
       renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
 
-      await vi.waitFor(() => expect(loginOidc).toHaveBeenCalledWith('p-opaa', { silent: true }))
+      await vi.waitFor(() =>
+        expect(loginOidc).toHaveBeenCalledWith('p-opaa', { silent: true, returnTo: '/chat' }),
+      )
+    })
+
+    // #1685: the route ProtectedRoute denied travels with the automatic sign-in just as it does
+    // with a clicked one - otherwise the deep link would survive every sign-in but this one.
+    it('carries the denied route through the automatic attempt', async () => {
+      const loginOidc = vi.fn().mockResolvedValue(undefined)
+      useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst], loginOidc })
+
+      renderWithProviders(
+        <MemoryRouter
+          initialEntries={[
+            { pathname: '/login', state: { from: '/spaces/s-1/chats/c-1?q=1#m-2' } },
+          ]}
+        >
+          <LoginPage />
+        </MemoryRouter>,
+        { withNotificationHost: false },
+      )
+
+      await vi.waitFor(() =>
+        expect(loginOidc).toHaveBeenCalledWith('p-opaa', {
+          silent: true,
+          returnTo: '/spaces/s-1/chats/c-1?q=1#m-2',
+        }),
+      )
     })
 
     /**
@@ -266,7 +294,7 @@ describe('LoginPage', () => {
       expect(buttons[1].className).toMatch(/MuiButton-outlined/)
 
       await userEvent.click(buttons[1])
-      expect(loginOidc).toHaveBeenCalledWith('p-partner')
+      expect(loginOidc).toHaveBeenCalledWith('p-partner', { returnTo: '/chat' })
     })
 
     it('proposes the provider used last and marks it', async () => {
@@ -285,7 +313,58 @@ describe('LoginPage', () => {
       await userEvent.click(
         screen.getByRole('button', { name: 'Mit anderem Konto bei Partnerportal anmelden' }),
       )
-      expect(loginOidc).toHaveBeenCalledWith('p-partner', { switchAccount: true })
+      expect(loginOidc).toHaveBeenCalledWith('p-partner', {
+        switchAccount: true,
+        returnTo: '/chat',
+      })
+    })
+
+    // #1685: the provider sign-in leaves the page, so the route to come back to has to be handed
+    // to the flow itself - the router state the local sign-in reads is gone by the callback
+    it('hands the denied route to the provider sign-in and to the account switch', async () => {
+      const loginOidc = vi.fn().mockResolvedValue(undefined)
+      useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst], loginOidc })
+      renderWithProviders(
+        <MemoryRouter
+          initialEntries={[
+            { pathname: '/login', state: { from: '/spaces/s-1/chats/c-1?q=1#m-2' } },
+          ]}
+        >
+          <LoginPage />
+        </MemoryRouter>,
+        { withNotificationHost: false },
+      )
+
+      await userEvent.click(screen.getByRole('button', { name: 'Anmelden bei Verzeichnisdienst' }))
+      expect(loginOidc).toHaveBeenLastCalledWith('p-opaa', {
+        returnTo: '/spaces/s-1/chats/c-1?q=1#m-2',
+      })
+      await userEvent.click(screen.getByRole('button', { name: 'Mit anderem Konto anmelden' }))
+      expect(loginOidc).toHaveBeenLastCalledWith('p-opaa', {
+        switchAccount: true,
+        returnTo: '/spaces/s-1/chats/c-1?q=1#m-2',
+      })
+    })
+
+    it('hands a ?from= link on to the provider sign-in, never a foreign origin', async () => {
+      const loginOidc = vi.fn().mockResolvedValue(undefined)
+      useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst], loginOidc })
+      const { unmount } = renderWithProviders(<LoginPage />, {
+        withRouter: true,
+        initialRoute: '/login?from=%2Fspaces%2Fs-1%2Fchats%2Fc-1',
+        withNotificationHost: false,
+      })
+      await userEvent.click(screen.getByRole('button', { name: 'Anmelden bei Verzeichnisdienst' }))
+      expect(loginOidc).toHaveBeenLastCalledWith('p-opaa', { returnTo: '/spaces/s-1/chats/c-1' })
+      unmount()
+
+      renderWithProviders(<LoginPage />, {
+        withRouter: true,
+        initialRoute: '/login?from=%2F%2Fevil.example',
+        withNotificationHost: false,
+      })
+      await userEvent.click(screen.getByRole('button', { name: 'Anmelden bei Verzeichnisdienst' }))
+      expect(loginOidc).toHaveBeenLastCalledWith('p-opaa', { returnTo: '/chat' })
     })
 
     it('shows no sign-in button while no provider is available', () => {

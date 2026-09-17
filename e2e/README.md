@@ -529,6 +529,12 @@ Konto keine der Demo-Bibliotheken, meldet sich ab und meldet sich über den Verz
 eine andere Konto-ID (`/api/v1/auth/me`), die Demo-Bibliotheken sichtbar. Die Abmeldung ist der
 RP-initiierte Logout beim Anbieter der jeweiligen Sitzung.
 
+**Szenario 3 — Direktlink über die Anbieter-Anmeldung** (#1685, dieselbe Spec): `maria.weber` legt
+einen Chat an, meldet sich ab und öffnet dessen Adresse ohne Sitzung. Nach der Keycloak-Anmeldung
+steht sie in genau diesem Chat, nicht auf der Chat-Startseite — das Ziel reist im Anmeldezustand des
+Autorisierungscode-Flows mit, weil der Router-Zustand der Anmeldeseite den Umweg über den Anbieter
+nicht überlebt.
+
 **Isolation:** Die Keycloak-Realm des `demo`-Profils (`keycloak/realm-export.json`) trägt feste
 `redirectUris`/`webOrigins` für `http://localhost:3000` — anders als die `e2e`-Suite oben lässt
 sich der Frontend-Port dieses Laufs also nicht frei über `OPAA_FRONTEND_PORT` verlegen, ohne auch

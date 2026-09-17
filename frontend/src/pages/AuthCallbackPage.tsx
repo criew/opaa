@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -17,35 +17,44 @@ export default function AuthCallbackPage() {
   const mode = useAuthStore((s) => s.mode)
   const error = useAuthStore((s) => s.error)
   const navigate = useNavigate()
+  const [callbackFailed, setCallbackFailed] = useState(false)
+  // Read once at mount: a failing callback clears the in-flight flag before it reports, and a
+  // handover that failed must keep its error here instead of falling back to the chat page.
+  const [handoverCallback] = useState(isHandoverInFlight)
 
   // initialize() already activated the manager of the provider this tab started the flow at
   // (ADR-0025); handleOidcCallback reports it when that provider is gone in the meantime. A
   // callback that carries a handover (#1563) goes back to the page that started it, which holds
-  // the provider token for the one redemption call - there is no session yet, on purpose.
+  // the provider token for the one redemption call - there is no session yet, on purpose. A new
+  // session goes to the route the sign-in was started for, already checked to stay on this origin.
   useEffect(() => {
     if (!isLoading && mode === 'oidc') {
       void handleOidcCallback().then((outcome) => {
-        if (outcome === 'handover') {
+        if (outcome.kind === 'handover') {
           navigate(HANDOVER_ROUTE, { replace: true })
-        }
-        // #1631: the provider turned the automatic attempt down - what follows is the sign-in page
-        // as it would have stood without it. `replace` drops this callback from the history, so
-        // "back" cannot run into the redirect a second time.
-        if (outcome === 'silent-refused') {
+        } else if (outcome.kind === 'session') {
+          navigate(outcome.returnTo, { replace: true })
+        } else if (outcome.kind === 'silent-refused') {
+          // #1631: the provider turned the automatic attempt down - what follows is the sign-in
+          // page as it would have stood without it. `replace` drops this callback from the
+          // history, so "back" cannot run into the redirect a second time.
           navigate(LOGIN_ROUTE, { replace: true })
+        } else {
+          setCallbackFailed(true)
         }
       })
     }
   }, [isLoading, mode, handleOidcCallback, navigate])
 
   useEffect(() => {
-    // A handover owns this callback until its page has run (#1563): a session this tab happens to
-    // hold - a local one restored at start-up, an OIDC one from before - must not carry the person
-    // into the application and leave the redemption unfinished.
-    if (isAuthenticated && !isHandoverInFlight()) {
+    // A session this tab already holds - a local one restored at start-up, an OIDC one from
+    // before - waits for the callback: a handover owns it until its page has run (#1563), and a
+    // successful callback decides the route itself. Only a failed one falls back to the chat page.
+    const callbackSettled = mode !== 'oidc' || callbackFailed
+    if (isAuthenticated && callbackSettled && !handoverCallback && !isHandoverInFlight()) {
       navigate(AFTER_SIGN_IN_ROUTE, { replace: true })
     }
-  }, [isAuthenticated, navigate])
+  }, [isAuthenticated, mode, callbackFailed, handoverCallback, navigate])
 
   return (
     <Box

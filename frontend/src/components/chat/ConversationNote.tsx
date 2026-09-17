@@ -25,6 +25,14 @@ interface ConversationNoteProps {
   emptyFocusRef?: RefObject<HTMLElement | null>
 }
 
+/**
+ * How long after focus has moved on a removal is announced. Moving focus and changing a live region
+ * in the same task leaves the order of the two announcements unspecified, and the focus
+ * announcement can swallow the message; a polite message raised once focus has settled is queued
+ * behind it instead.
+ */
+export const REMOVAL_ANNOUNCEMENT_DELAY_MS = 500
+
 /** Names the number of remaining points, so two removals in a row never produce the same text - an
  * aria-live region with unchanged content is not announced a second time. */
 function removalAnnouncement(remaining: number): string {
@@ -54,20 +62,28 @@ export default function ConversationNote({
   const [open, setOpen] = useState(false)
   // The point removed last and the number that remained - the count is captured at the click, not
   // derived from the current list, so a point condensed later does not re-trigger the announcement.
-  const [lastRemoval, setLastRemoval] = useState<{ id: string; remaining: number } | null>(null)
+  // `due` turns true only once focus has moved on, see REMOVAL_ANNOUNCEMENT_DELAY_MS.
+  const [lastRemoval, setLastRemoval] = useState<{
+    id: string
+    remaining: number
+    due: boolean
+  } | null>(null)
   const panelId = useId()
   const toggleRef = useRef<HTMLButtonElement>(null)
   const removeButtonRefs = useRef(new Map<string, HTMLButtonElement | null>())
   // Index of the point just removed - read once the shortened list has rendered, to put focus on
   // whatever now sits at that position.
   const pendingFocusIndexRef = useRef<number | null>(null)
+  const announcementTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const visible = isConversationNoteVisible(items, completedRounds)
   // The store puts a point back when its DELETE fails; the announcement of its removal must not
   // stand next to the error message. Derived, not stored, so no state has to be reset for it.
   const rolledBack = lastRemoval !== null && items.some((item) => item.id === lastRemoval.id)
   const announcement =
-    lastRemoval === null || rolledBack ? '' : removalAnnouncement(lastRemoval.remaining)
+    lastRemoval === null || !lastRemoval.due || rolledBack
+      ? ''
+      : removalAnnouncement(lastRemoval.remaining)
 
   // A note returning after it was empty starts collapsed - "zugeklappt als Standard; die Zahl ist
   // das Signal, dass sich etwas geändert hat". A rollback is not a return: it restores what a
@@ -84,11 +100,17 @@ export default function ConversationNote({
     pendingFocusIndexRef.current = null
     if (items.length === 0) {
       emptyFocusRef?.current?.focus()
-      return
+    } else {
+      const next = items[Math.min(index, items.length - 1)]
+      removeButtonRefs.current.get(next.id)?.focus()
     }
-    const next = items[Math.min(index, items.length - 1)]
-    removeButtonRefs.current.get(next.id)?.focus()
+    announcementTimerRef.current = setTimeout(
+      () => setLastRemoval((removal) => (removal === null ? null : { ...removal, due: true })),
+      REMOVAL_ANNOUNCEMENT_DELAY_MS,
+    )
   }, [items, emptyFocusRef])
+
+  useEffect(() => () => clearTimeout(announcementTimerRef.current), [])
 
   // Escape closes the panel from anywhere in the note. The handler sits on both the button and the
   // panel because the two are siblings in the chat header's flex row, not nested.
@@ -141,10 +163,13 @@ export default function ConversationNote({
                 Diese Angaben hat OPAA aus Ihren Nachrichten in diesem Chat festgehalten. Sie
                 fließen in die nächsten Antworten ein.
               </Typography>
-              <Box component="ul" sx={{ m: 0, mt: 1.5, pl: 3 }}>
+              {/* Explicit roles: WebKit exposes a list without visible markers as a plain group,
+                  and the flex items below render none. */}
+              <Box component="ul" role="list" sx={{ m: 0, mt: 1.5, pl: 3 }}>
                 {items.map((item, index) => (
                   <Box
                     component="li"
+                    role="listitem"
                     key={item.id}
                     sx={{
                       display: 'flex',
@@ -165,13 +190,16 @@ export default function ConversationNote({
                     {canRemove && (
                       <IconButton
                         size="small"
-                        aria-label="Notizpunkt entfernen"
+                        // Names the point: tabbing through the panel, or landing on the next
+                        // button after a removal, reads only the focused button's name.
+                        aria-label={`Notizpunkt entfernen: ${item.text}`}
                         ref={(element) => {
                           removeButtonRefs.current.set(item.id, element)
                         }}
                         onClick={() => {
                           pendingFocusIndexRef.current = index
-                          setLastRemoval({ id: item.id, remaining: items.length - 1 })
+                          clearTimeout(announcementTimerRef.current)
+                          setLastRemoval({ id: item.id, remaining: items.length - 1, due: false })
                           onRemove(item.id)
                         }}
                         sx={{ flexShrink: 0 }}
