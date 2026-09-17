@@ -544,7 +544,7 @@ Daraus folgt für den Betrieb:
 
 - Ableitung eines Filters aus der Frage (Ticket #1363); ein geführter Assistent zum Anlegen eines
   Bibliotheksschemas (Ticket #1362)
-- Filter auf den Titel; Freitextfelder als Feldtyp; eine Oberfläche zur Pflege des Vokabulars; ein
-  amtliches Metadatenmodell für die Aktenführung
+- Filter auf den Titel; Freitextfelder als Feldtyp; eine Oberfläche zur Pflege des Vokabulars
+  (Ticket #1702); ein amtliches Metadatenmodell für die Aktenführung
 - Vererbung eines Feldschemas über Bibliotheken hinweg; die Beförderung häufiger Schlagworte zu
   Bibliotheksfeldern
