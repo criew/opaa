@@ -20,16 +20,17 @@ public class ChunkingService {
 
   /**
    * Chunk metadata key carrying the container a document came from - the same value as the
-   * document's own {@code source_container_key} column. Source-neutral by name and by value; only
-   * the Confluence storage format declares it as passthrough today, and only {@code
-   * DocumentIngestService#attachSourceContext} sets it, because it is not in the body.
+   * document's own {@code source_container_key} column. Source-neutral by name and by value; {@code
+   * DocumentIngestService#storeChunks} writes it directly onto every chunk of a document whose
+   * source declared one, independent of the pipeline that chunked it.
    */
   public static final String SOURCE_CONTAINER_METADATA_KEY = "source_container_key";
 
   /**
    * Chunk metadata key carrying the document's ancestors root first, joined with " / " - the same
    * value as the document's own column of that name. See {@link #SOURCE_CONTAINER_METADATA_KEY};
-   * both keys always travel together.
+   * written independently of it, so a document at the root of its container (a Confluence space's
+   * root page, an S3 object directly under its scope's prefix) carries the container key alone.
    */
   public static final String SOURCE_HIERARCHY_METADATA_KEY = "source_hierarchy_path";
 

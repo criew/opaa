@@ -1374,12 +1374,17 @@ Evaluierungskorpus enthält keine Confluence-Seiten, Baseline unberührt).
 
 **Gliederungspfad der Seite** (Querschnittsregel (b)): Space-Schlüssel und Vorfahrentitel liegen
 nicht im Körper; der Aufruf schreibt sie an das Dokument (`source_container_key`,
-`source_hierarchy_path`, #1136) **und** an jeden Chunk als Durchreiche-Metadaten
-(`source_container_key`, `source_hierarchy_path` — derselbe Vorfahrenpfad wie an der Spalte des
-Dokuments; der Seitentitel steht am Chunk als `file_name`), die die Pipeline als
-`passthroughMetadataKeys` deklariert. Der Chunk-Kontext-Präfix (Embedding und Volltext, nie im
-zitierten Rohtext) ist der Ort der Seite im Space — `[Handbuch / Kapitel 1 / Abschnitt 1.1]` —, nicht
-nur ihr Titel. Die Zitatanzeige liest diese Metadaten noch nicht (siehe Offene Punkte).
+`source_hierarchy_path`, #1136) **und** an jeden Chunk (`source_container_key`,
+`source_hierarchy_path` — derselbe Vorfahrenpfad wie an der Spalte des Dokuments; der Seitentitel
+steht am Chunk als `file_name`). Seit #1421 schreibt `DocumentIngestService#storeChunks` beide
+Schlüssel als Dokumenteigenschaft direkt auf jeden Chunk, sobald ein Quellenkontext vorliegt -
+unabhängig davon, welches Format den Chunk erzeugt hat; das gilt also auch für einen Anhang dieser
+Seite, der über eine Datei-Pipeline (PDF, DOCX, …) statt über `ConfluenceStorageFormat` läuft.
+`passthroughMetadataKeys()` deklariert dafür nichts mehr, sondern bleibt der Mechanismus für
+format-eigene Struktur-Metadaten wie die Ortsangabe. Der Chunk-Kontext-Präfix (Embedding und
+Volltext, nie im zitierten Rohtext) ist der Ort der Seite im Space —
+`[Handbuch / Kapitel 1 / Abschnitt 1.1]` —, nicht nur ihr Titel. Die Zitatanzeige liest diese
+Metadaten noch nicht (siehe Offene Punkte).
 
 **Anhänge** laufen weiter über den bestehenden Anhangsweg (`DocumentIngestService#ingest`, Routing nach Inhalt):
 ein `.html`-Anhang trifft `HtmlDocumentFormat`, ein PDF den PDF-Weg; ein nicht unterstützter Typ
@@ -1767,10 +1772,13 @@ Hier wird nur der **Übergabepunkt** definiert:
    dagegen mit **#1242** die Seite gewechselt: Absender, Empfänger und Betreff sind keine eigenen
    Chunk-Schlüssel dieser Pipeline mehr, sondern Formatfelder des Metadatenschemas am Dokument
    (`metadata-schema.md`, „Formatfelder der Aufnahmestrecke"), das Datum ist Kernfeld. Damit bleibt
-   `passthroughMetadataKeys()` der offene Mechanismus für echten *Chunk*-Kontext — heute die
-   Ortsangabe und der Confluence-Space —, und eine Angabe, die für das ganze Dokument gilt, nimmt
-   den Schemaweg. Ein Metadatenfeld ohne Leser ist wirkungslos; genau daran ist die frühere
-   Doppelung gescheitert.
+   `passthroughMetadataKeys()` der offene Mechanismus für Chunk-Kontext, den eine Pipeline
+   selbst aus dem Dokument ableitet — heute die Ortsangabe —, und eine Angabe, die für das
+   ganze Dokument gilt, nimmt den Schemaweg. Der Confluence-Space und der Gliederungspfad einer
+   Seite zählen seit #1421 zu Letzterem: eine Dokumenteigenschaft, die
+   `DocumentIngestService#storeChunks` direkt auf jeden Chunk schreibt, unabhängig von der
+   Pipeline, die ihn erzeugt hat — kein `passthroughMetadataKeys()`-Eintrag mehr. Ein
+   Metadatenfeld ohne Leser ist wirkungslos; genau daran ist die frühere Doppelung gescheitert.
 2. Struktur-Metadaten sind **abgeleitet, nicht geraten**. Sie stammen aus dem Dokument selbst
    (Gliederung, Folienzähler, Blattname, Mail-Header). Inhaltlich interpretierende Felder — Dokumentart,
    Fassung, Thema — entstehen hier ausdrücklich nicht; sie gehören in die Metadaten-Spezifikation, mit
