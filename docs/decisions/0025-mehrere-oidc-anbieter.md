@@ -419,6 +419,20 @@ auffindbar bleibt, schreibt die SPA den Code in die Browser-Konsole (nie das Feh
 `ErrorResponse.form` trägt die gescheiterte Token-Anfrage). Die Rücksprungadresse des Flusses
 (#1685) wird auch aus der Absage zurückgelesen, damit ein Direktlink den Versuch überlebt.
 
+**Nachtrag (#1629, #1630): „Mit anderem Konto anmelden" entfällt.** Der Link schickte
+`prompt=login` und wirkte damit nur, wenn beim Anbieter noch eine Sitzung lief. Genau dann ist die
+Anmeldeseite seit #1631 aber fort, bevor jemand ihn benutzen kann — erreichbar blieb er nur über
+`/login/system`. Dort löste er außerdem nicht ein, was er ankündigte: Keycloak beantwortet
+`prompt=login` mit einer erneuten Anmeldung **desselben** Kontos (Benutzername fest eingetragen,
+nur ein Passwortfeld); ein anderes Konto wird erst über den Knopf „Anmeldung neu starten" in der
+Maske des Anbieters wählbar. `prompt=select_account` löst das nicht, weil Keycloak bei nur einer
+Sitzung auch damit ohne Rückfrage durchreicht. Zudem tauschte der Wechsel die Anbieter-Sitzung des
+ganzen Browsers aus, nicht nur die von OPAA. Den Kontowechsel übernimmt deshalb der Anbieter: Das
+Abmelden in OPAA beendet die Anbieter-Sitzung mit (RP-initiierter Logout, oben), danach fragt der
+Anbieter beim nächsten Klick nach Anmeldedaten. Die SPA schickt seither nur noch einen
+`prompt`-Wert, `none` für den automatischen Versuch; eine geklickte Anmeldung überlässt die
+Rückfrage dem Anbieter.
+
 **Was der öffentliche Konfigurationsendpunkt preisgibt, ist bewusst und begrenzt:** Anzeigename,
 Issuer-URI und Client-ID jedes aktivierten Anbieters — genau das, was jeder sieht, der auf der
 Anmeldeseite einen Anbieter anklickt (der Browser ruft dessen Discovery und Autorisierungsendpunkt

@@ -8,7 +8,6 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import SwitchAccountOutlinedIcon from '@mui/icons-material/SwitchAccountOutlined'
 import { useEffect } from 'react'
 import { Navigate, Link as RouterLink, useLocation } from 'react-router'
 import type { SignInProvider } from '../types/auth'
@@ -216,20 +215,6 @@ export default function LoginPage() {
               />
             ))}
           </Stack>
-          {suggested && (
-            <Button
-              variant="text"
-              size="small"
-              startIcon={<SwitchAccountOutlinedIcon />}
-              onClick={() => void loginOidc(suggested.id, { switchAccount: true, returnTo })}
-              disabled={isBusy}
-              sx={{ display: 'flex', mx: 'auto', mt: 1.5 }}
-            >
-              {providers.length > 1
-                ? `Mit anderem Konto bei ${suggested.displayName} anmelden`
-                : 'Mit anderem Konto anmelden'}
-            </Button>
-          )}
         </Box>
       )}
 

@@ -160,14 +160,14 @@ interface AuthState {
    */
   refreshPublicAuthConfig: () => Promise<void>
   /**
-   * Starts the sign-in at `providerId` (default: the suggested provider). `switchAccount` sends
-   * `prompt=login`, so the provider asks for credentials even with a running SSO session; `silent`
-   * sends `prompt=none` and belongs to {@link AuthState.attemptSilentSignIn} alone. `returnTo`
-   * travels with the flow and comes back from {@link handleOidcCallback}.
+   * Starts the sign-in at `providerId` (default: the suggested provider). `silent` sends
+   * `prompt=none` and belongs to {@link AuthState.attemptSilentSignIn} alone; every other sign-in
+   * leaves the prompt to the provider, which asks for credentials only where it has no session.
+   * `returnTo` travels with the flow and comes back from {@link handleOidcCallback}.
    */
   loginOidc: (
     providerId?: string,
-    options?: { switchAccount?: boolean; silent?: boolean; returnTo?: string },
+    options?: { silent?: boolean; returnTo?: string },
   ) => Promise<void>
   /**
    * Takes up a running provider session without a click (#1631): one authorization redirect with
@@ -615,7 +615,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
           // history, so "back" from the sign-in page it returns to cannot land on it.
           args.prompt = 'none'
           args.redirectMethod = 'replace'
-        } else if (options?.switchAccount) args.prompt = 'login'
+        }
         if (options?.returnTo) args.state = { returnTo: options.returnTo } satisfies SignInState
         await userManager.signinRedirect(args)
       } catch (err) {

@@ -743,8 +743,9 @@ Issuer-URI (zugleich die Authority des Anmeldeflusses), Client-ID, Standard-Kenn
 Reihenfolge, nichts über Claim-Zuordnung oder Konten. Die Anmeldeseite zeigt je Anbieter eine
 Schaltfläche in der konfigurierten Reihenfolge; vorgeschlagen (die eine primäre Schaltfläche)
 wird der zuletzt im Browser benutzte Anbieter, sonst der Standardanbieter, sonst der erste. Mit
-genau einem Anbieter bleibt es beim direkten Einstieg. „Mit anderem Konto anmelden" schickt
-`prompt=login` an den vorgeschlagenen Anbieter. Die SPA hält je Anbieter einen eigenen
+genau einem Anbieter bleibt es beim direkten Einstieg. Einen eigenen Weg „Mit anderem Konto
+anmelden" gibt es nicht mehr (#1629, #1630): Den Kontowechsel übernimmt der Anbieter, dessen Sitzung
+das Abmelden in OPAA mitbeendet. Die SPA hält je Anbieter einen eigenen
 OIDC-Client; der Anbieter des laufenden Flusses und der aktiven Sitzung ist je Tab gemerkt
 (`sessionStorage`), der zuletzt benutzte nur als Vorschlag (`localStorage`). Der Callback
 `<Origin>/auth/callback` ist für alle Anbieter derselbe; wurde der Anbieter während des Flusses

@@ -606,14 +606,16 @@ describe('authStore', () => {
       }
     })
 
-    it('sends prompt=login when signing in with another account', async () => {
+    // A clicked sign-in leaves the prompt to the provider: it asks for credentials where it has no
+    // session and takes up the running one where it has. Only the automatic attempt sets a prompt.
+    it('sends no prompt when a person signs in by clicking a provider', async () => {
       await initializeWithTwoProviders()
       const redirect = vi
         .spyOn(UserManager.prototype, 'signinRedirect')
         .mockResolvedValue(undefined)
       try {
-        await useAuthStore.getState().loginOidc('p-opaa', { switchAccount: true })
-        expect(redirect).toHaveBeenCalledWith({ prompt: 'login' })
+        await useAuthStore.getState().loginOidc('p-opaa')
+        expect(redirect).toHaveBeenCalledWith({})
       } finally {
         redirect.mockRestore()
       }
@@ -632,9 +634,8 @@ describe('authStore', () => {
 
         await useAuthStore
           .getState()
-          .loginOidc('p-opaa', { switchAccount: true, returnTo: '/spaces/s-1/chats/c-1?q=1#m' })
+          .loginOidc('p-opaa', { returnTo: '/spaces/s-1/chats/c-1?q=1#m' })
         expect(redirect).toHaveBeenLastCalledWith({
-          prompt: 'login',
           state: { returnTo: '/spaces/s-1/chats/c-1?q=1#m' },
         })
       } finally {
@@ -1063,17 +1064,16 @@ describe('authStore', () => {
     })
 
     /**
-     * "Mit anderem Konto anmelden" is today's one way of entering the sign-in flow with an
-     * intention of its own (LoginPage.tsx). Whoever comes back to that page afterwards - the
-     * provider refused, the browser went back - must find the page, not another automatic redirect
-     * into the very account they were trying to leave.
+     * A click on a provider is a sign-in with an intention of its own. Whoever comes back to the
+     * sign-in page afterwards - the provider refused, the browser went back - must find the page,
+     * with its other providers and the local mask, not another automatic redirect.
      */
-    it('stays undone after a deliberate account switch', async () => {
+    it('stays undone after a sign-in the person started', async () => {
       await initializeOidc()
       const redirect = spyOnRedirect()
       try {
-        await useAuthStore.getState().loginOidc('p-opaa', { switchAccount: true })
-        expect(redirect).toHaveBeenCalledWith({ prompt: 'login' })
+        await useAuthStore.getState().loginOidc('p-opaa')
+        expect(redirect).toHaveBeenCalledWith({})
 
         await expect(useAuthStore.getState().attemptSilentSignIn()).resolves.toBe(false)
         expect(redirect).toHaveBeenCalledTimes(1)

@@ -269,12 +269,31 @@ describe('LoginPage', () => {
     it('with exactly one provider the page behaves as before', () => {
       useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst] })
       renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
-      expect(screen.getAllByRole('button')).toHaveLength(2)
+      expect(screen.getAllByRole('button')).toHaveLength(1)
       expect(
         screen.getByRole('button', { name: /anmelden bei verzeichnisdienst/i }),
       ).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Mit anderem Konto anmelden' })).toBeInTheDocument()
       expect(screen.queryByText('Zuletzt verwendet')).not.toBeInTheDocument()
+    })
+
+    /**
+     * Regression guard: „Mit anderem Konto anmelden" sent `prompt=login`, and Keycloak answers that
+     * with the running account's name fixed and a password field - a re-authentication, not a
+     * switch. Since the automatic sign-in (#1631) the page is gone whenever a provider session runs,
+     * so the link was reachable only through `/login/system`, and there it said something it did
+     * not do (#1629, #1630). Changing accounts is the provider's business: signing out ends its
+     * session.
+     */
+    it.each([
+      ['one provider', [verzeichnisdienst], null],
+      ['two providers', [verzeichnisdienst, partner], null],
+      ['a provider used last', [verzeichnisdienst, partner], 'p-partner'],
+    ])('offers no account switch next to the providers with %s', (_fall, providers, lastUsed) => {
+      if (lastUsed) localStorage.setItem('opaa.oidc.lastProvider', lastUsed)
+      useAuthStore.setState({ mode: 'oidc', providers })
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
+
+      expect(screen.queryByRole('button', { name: /anderem konto/i })).toBeNull()
     })
 
     it('shows both providers in order and starts the flow at the chosen one', async () => {
@@ -309,19 +328,11 @@ describe('LoginPage', () => {
       expect(
         screen.getByRole('button', { name: /anmelden bei verzeichnisdienst/i }).className,
       ).toMatch(/MuiButton-outlined/)
-
-      await userEvent.click(
-        screen.getByRole('button', { name: 'Mit anderem Konto bei Partnerportal anmelden' }),
-      )
-      expect(loginOidc).toHaveBeenCalledWith('p-partner', {
-        switchAccount: true,
-        returnTo: '/chat',
-      })
     })
 
     // #1685: the provider sign-in leaves the page, so the route to come back to has to be handed
     // to the flow itself - the router state the local sign-in reads is gone by the callback
-    it('hands the denied route to the provider sign-in and to the account switch', async () => {
+    it('hands the denied route to the provider sign-in', async () => {
       const loginOidc = vi.fn().mockResolvedValue(undefined)
       useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst], loginOidc })
       renderWithProviders(
@@ -337,11 +348,6 @@ describe('LoginPage', () => {
 
       await userEvent.click(screen.getByRole('button', { name: 'Anmelden bei Verzeichnisdienst' }))
       expect(loginOidc).toHaveBeenLastCalledWith('p-opaa', {
-        returnTo: '/spaces/s-1/chats/c-1?q=1#m-2',
-      })
-      await userEvent.click(screen.getByRole('button', { name: 'Mit anderem Konto anmelden' }))
-      expect(loginOidc).toHaveBeenLastCalledWith('p-opaa', {
-        switchAccount: true,
         returnTo: '/spaces/s-1/chats/c-1?q=1#m-2',
       })
     })
