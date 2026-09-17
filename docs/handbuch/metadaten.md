@@ -208,6 +208,8 @@ Dokumentart und liefern nichts.
   nacktes Jahr nur direkt hinter dem Anker —, sowie eine Inkrafttretensklausel mit Selbstbezug
   („Diese Satzung tritt am 1. Januar 2026 in Kraft"), die in den ersten 4.000 Zeichen auch weiter
   unten stehen darf — dort stehen die Schlussbestimmungen; bei einem PDF heißt das: auf Seite 1.
+  Tragen mehrere solcher Klauseln ein Datum, gilt die späteste: Eine Lesefassung führt die Klausel
+  der Ursprungssatzung und je eine pro Änderungssatzung, und die jüngste ist der geltende Stand.
   Ein Datum im Fließtext („die zum 23.5.2021 in Kraft getretenen Änderungen", „bis 31.12.2020
   ausgestellt") ist kein Stand. Bei einem Namen, der kein Dateiname ist (Feed-Eintrag,
   Confluence-Seite), wird der Dokumenttext gar nicht erst nach einem Datum durchsucht.
@@ -570,7 +572,7 @@ Daraus folgt für den Betrieb:
 
 - Ableitung eines Filters aus der Frage (Ticket #1363); ein geführter Assistent zum Anlegen eines
   Bibliotheksschemas (Ticket #1362)
-- Filter auf den Titel; Freitextfelder als Feldtyp; eine Oberfläche zur Pflege des Vokabulars; ein
-  amtliches Metadatenmodell für die Aktenführung
+- Filter auf den Titel; Freitextfelder als Feldtyp; eine Oberfläche zur Pflege des Vokabulars
+  (Ticket #1702); ein amtliches Metadatenmodell für die Aktenführung
 - Vererbung eines Feldschemas über Bibliotheken hinweg; die Beförderung häufiger Schlagworte zu
   Bibliotheksfeldern

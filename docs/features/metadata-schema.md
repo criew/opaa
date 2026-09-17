@@ -714,9 +714,11 @@ Dateiname-Fallback vor der eigenen Überschrift des Dokuments griff. Die Extrakt
 auf **5**. **Die Korrektur wirkt nur vorwärts:** Ein Bestandslauf wird nicht angestoßen
 (Maintainer-Beschluss vom 04.09.2026: keine Bestandssysteme), und `MetadataBackfillService` hat
 keinen automatischen Einstieg — vorhandene Dokumente behalten ihre falschen Werte, bis der
-Charge-Endpunkt für ihre Bibliothek von Hand aufgerufen wird. Die Version steigt trotzdem: Sie
-benennt die Regelfassung, unter der ein Wert entstanden ist, und macht den Altbestand als
-nachzuziehen erkennbar.
+Charge-Endpunkt für ihre Bibliothek von Hand aufgerufen wird. **Der Bestand erscheint ab dem Merge
+als ausstehend und bleibt bis zu einem manuellen Lauf unverändert** — das ist der gewollte Zustand,
+kein offener Rest: Ein ungefragter Lauf über den ganzen Bestand wäre bei den Kosten der Aufnahme
+falsch. Die Version steigt trotzdem: Sie benennt die Regelfassung, unter der ein Wert entstanden
+ist, und macht den Altbestand als nachzuziehen erkennbar.
 
 **Ein Dateieigenschaften-Datum nur, wenn es plausibel ist.** Ein erzeugtes Dokument trägt das
 Vorlagendatum seines Werkzeugs: `python-docx` stempelt 2013-12-23, `python-pptx` 2013-01-27,
@@ -741,7 +743,11 @@ daraus ausschließlich Verankertes, in zwei Stufen:
   **Schlussbestimmungen**, nicht im Kopf; die elf Satzungen der Stichprobe tragen sie 900 bis 2.000
   Zeichen tief. Das Demonstrativpronomen ist die Verankerung: Es macht den Satz zur Aussage über
   *dieses* Dokument. „Die zum 23.5.2021 in Kraft getretenen Änderungen" ist eine Referenz und wird
-  nicht gelesen. Das ist die eine bewusste Abweichung von der Vorgabe des Issues („erste ~600
+  nicht gelesen. **Tragen mehrere Klauseln ein Datum, gewinnt die späteste** (Maintainer-Entscheidung
+  vom 17.09.2026): Eine Lesefassung führt die Klausel der Ursprungssatzung und je eine pro
+  Änderungssatzung, und die jüngste davon ist der geltende Stand. Dass damit ein eingebettetes Zitat
+  mit jüngerem Datum den Wert übernehmen kann, ist bewusst in Kauf genommen — ein Regelwerk für
+  Zitatmarker wäre mehr Angriffsfläche als Nutzen. Das ist die eine bewusste Abweichung von der Vorgabe des Issues („erste ~600
   Zeichen"): Mit einem 600-Zeichen-Fenster bliebe für elf der 27 Fälle nur ein leeres Feld statt des
   im Dokument stehenden Werts.
 
@@ -1045,9 +1051,9 @@ erlaubt), Vokabular um Verwaltungswerte erweitern, Prompt um Negativbeispiele. D
 **voreingestellt aus**, und auf der Demo ist er abgeschaltet. Zwei Befunde derselben Stichprobe
 betreffen die deterministische Extraktion (Generator-Voreinstellungen als Datum, zu früher
 Titel-Fallback) sind mit **#1360** korrigiert (siehe [Umgesetzt (#1360)](#umgesetzt-1360)) — für
-**neu aufgenommene Dokumente**. Der gemessene Bestand der Demo trägt die Werte der Stichprobe
-unverändert weiter, bis der Bestandslauf von Hand angestoßen wird; einen automatischen Einstieg hat
-er nicht.
+**neu aufgenommene Dokumente**. Der gemessene Bestand erscheint seither als ausstehend und bleibt
+bis zu einem manuellen Lauf unverändert; einen automatischen Einstieg hat der Bestandslauf bewusst
+nicht.
 
 **Abweichung.** Der Textdeckel (4.000 Zeichen), die Speicherform der Schlagworte (eigene Tabelle),
 der Deckel des Verwerfungsprotokolls (1.000 Zeilen je Bibliothek, rotierend alle 100 Aufrufe) und die

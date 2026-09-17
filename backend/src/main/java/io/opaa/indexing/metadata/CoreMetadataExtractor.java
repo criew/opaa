@@ -342,9 +342,10 @@ public final class CoreMetadataExtractor {
 
   /**
    * The document's own date from its text, and only from an anchored statement: a "Stand"/"Fassung"
-   * line within the head block ({@link #HEAD_ANCHOR_WINDOW} characters), else a self-designating
-   * Inkrafttretensklausel, which by drafting convention sits in the closing provisions. Everything
-   * else in the running text - a deadline, an amount, a year in a sentence - is no Datum/Stand.
+   * line within the head block ({@link #HEAD_ANCHOR_WINDOW} characters), else the <b>latest</b>
+   * self-designating Inkrafttretensklausel, which by drafting convention sits in the closing
+   * provisions. Everything else in the running text - a deadline, an amount, a year in a sentence -
+   * is no Datum/Stand.
    */
   private static Optional<ExtractedDate> headTextDate(String headText) {
     if (headText == null) {
@@ -366,14 +367,18 @@ public final class CoreMetadataExtractor {
         return Optional.of(ExtractedDate.year(Integer.parseInt(year.group(1))));
       }
     }
+    // The latest clause wins: a Lesefassung carries the original statute's clause and the one of
+    // every amending statute, and the youngest of them is the version in force.
+    Optional<ExtractedDate> latest = Optional.empty();
     Matcher entryIntoForce = ENTRY_INTO_FORCE.matcher(headText);
     while (entryIntoForce.find()) {
       Optional<ExtractedDate> date = parseDate(entryIntoForce.group(1), BareYearRule.ALLOWED);
-      if (date.isPresent()) {
-        return date;
+      if (date.isPresent()
+          && (latest.isEmpty() || date.get().date().isAfter(latest.get().date()))) {
+        latest = date;
       }
     }
-    return Optional.empty();
+    return latest;
   }
 
   /**

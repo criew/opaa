@@ -978,6 +978,35 @@ class CoreMetadataExtractorTest {
       }
     }
 
+    // A Lesefassung carries the clause of the original statute and one per amending statute; the
+    // youngest of them is the version in force.
+    @Test
+    void theLatestInkrafttretensklauselWins() {
+      DocumentProperties properties =
+          satzung(
+              """
+              Hundesteuersatzung - Lesefassung
+              § 7 Inkrafttreten
+              Diese Satzung tritt am 1. Januar 2020 in Kraft.
+              Erste Änderungssatzung
+              Diese Änderungssatzung tritt am 1. Januar 2026 in Kraft.
+              """);
+
+      assertThat(extract("06_hundesteuersatzung.pdf", properties).date())
+          .contains(ExtractedDate.day(LocalDate.of(2026, 1, 1)));
+    }
+
+    @Test
+    void aClauseWithoutASelfReferenceOrWithoutADateStaysUnread() {
+      for (String clause :
+          List.of(
+              "Die Verordnung tritt am 1. Januar 2026 in Kraft.",
+              "Diese Satzung tritt am Tage nach ihrer öffentlichen Bekanntmachung in Kraft.",
+              "Inhaltsverzeichnis\n§ 6 Inkrafttreten (1. Januar 2026)")) {
+        assertThat(extract("satzung.pdf", satzung(clause)).date()).as(clause).isEmpty();
+      }
+    }
+
     @Test
     void aStandStatementInTheHeadBlockIsRead() {
       assertThat(
