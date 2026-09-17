@@ -124,6 +124,20 @@ describe('AuthCallbackPage', () => {
     expect(screen.getByText('Die Übergabe ist fehlgeschlagen.')).toBeInTheDocument()
   })
 
+  it('falls back to the chat page when an ordinary callback fails with a session in this tab', async () => {
+    useAuthStore.setState({
+      mode: 'oidc',
+      isLoading: false,
+      isAuthenticated: true,
+      error: null,
+      handleOidcCallback: vi.fn().mockResolvedValue({ kind: 'failed' }),
+    })
+
+    renderCallback()
+
+    expect(await screen.findByText('Chat')).toBeInTheDocument()
+  })
+
   it('takes an ordinary session into the application', async () => {
     useAuthStore.setState({
       mode: 'oidc',

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { screen } from '@testing-library/react'
-import { Route, Routes } from 'react-router'
+import { Route, Routes, useLocation } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import ProtectedRoute from './ProtectedRoute'
@@ -18,6 +18,7 @@ describe('ProtectedRoute', () => {
       sessionKind: null,
       passwordChangeRequired: false,
       passwordChangeReason: null,
+      signedOut: false,
     })
   })
 
@@ -74,6 +75,49 @@ describe('ProtectedRoute', () => {
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument()
     expect(screen.getByText('Login Screen')).toBeInTheDocument()
   })
+  /** Shows the return target the login page would receive. */
+  function LoginShowingTarget() {
+    const location = useLocation()
+    const from = (location.state as { from?: string } | null)?.from
+    return <div>Ziel: {from ?? 'keins'}</div>
+  }
+
+  function renderDenied(route: string) {
+    renderWithProviders(
+      <Routes>
+        <Route
+          path="/libraries"
+          element={
+            <ProtectedRoute>
+              <div>Protected Content</div>
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/login" element={<LoginShowingTarget />} />
+      </Routes>,
+      { withRouter: true, initialRoute: route },
+    )
+  }
+
+  // #1685: the page a denied route was on becomes the return target of the next sign-in ...
+  it('hands the denied route on as the return target when the session is simply missing', () => {
+    useAuthStore.setState({ mode: 'oidc', isAuthenticated: false, isLoading: false })
+    renderDenied('/libraries?tab=2')
+    expect(screen.getByText('Ziel: /libraries?tab=2')).toBeInTheDocument()
+  })
+
+  // ... but not after a deliberate sign-out: the next person in this tab may be somebody else.
+  it('hands on no return target after a deliberate sign-out', () => {
+    useAuthStore.setState({
+      mode: 'oidc',
+      isAuthenticated: false,
+      isLoading: false,
+      signedOut: true,
+    })
+    renderDenied('/libraries')
+    expect(screen.getByText('Ziel: keins')).toBeInTheDocument()
+  })
+
   // ADR-0033, Entscheidung 8: while the account owes a new password, the backend answers every
   // other route with 403 - the shell would be a frame around nothing but errors.
   it('sends an account that owes a new password to the password page', () => {

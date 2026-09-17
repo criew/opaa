@@ -381,6 +381,24 @@ describe('authStore', () => {
       return userManager
     }
 
+    // #1685: a deliberate sign-out leaves no return target, a session ending on its own does.
+    it('marks a deliberate sign-out and lets a session ending on its own clear the mark', async () => {
+      const userManager = await initializeOidcMode()
+      // a provider without end_session_endpoint: the tab stays on its page after logout()
+      vi.spyOn(userManager, 'signoutRedirect').mockRejectedValue(
+        new Error('no end_session_endpoint'),
+      )
+      vi.spyOn(userManager, 'removeUser').mockResolvedValue(undefined)
+      useAuthStore.setState({ isAuthenticated: true, signedOut: false })
+
+      await useAuthStore.getState().logout()
+      expect(useAuthStore.getState().signedOut).toBe(true)
+
+      useAuthStore.setState({ isAuthenticated: true })
+      useAuthStore.getState().expireSession()
+      expect(useAuthStore.getState().signedOut).toBe(false)
+    })
+
     it('never calls signoutRedirect - only a deliberate logout() tears down the IdP session', async () => {
       const userManager = await initializeOidcMode()
       const signoutRedirect = vi.spyOn(userManager, 'signoutRedirect').mockResolvedValue(undefined)

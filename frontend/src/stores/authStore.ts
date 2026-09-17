@@ -132,6 +132,11 @@ interface AuthState {
   passwordChangeRequired: boolean
   /** Why the change is demanded - the sentence the password page shows. */
   passwordChangeReason: PasswordChangeReason | null
+  /**
+   * The person signed out on purpose. The route left behind is then no return target: the next
+   * sign-in in this tab may be somebody else. A session that ended on its own clears it again.
+   */
+  signedOut: boolean
 
   initialize: () => Promise<void>
   /**
@@ -263,7 +268,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     })
     userManager.events.addUserUnloaded(() => {
       if (get().userManager !== userManager) return
-      set({ token: null, isAuthenticated: false })
+      set({ token: null, isAuthenticated: false, signedOut: false })
     })
     userManager.events.addSilentRenewError((err) => {
       // #737 review: never log the error object itself - oidc-client-ts's ErrorResponse
@@ -389,6 +394,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     sessionKind: null,
     passwordChangeRequired: false,
     passwordChangeReason: null,
+    signedOut: false,
 
     initialize: async () => {
       let config
@@ -728,6 +734,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
           passwordChangeRequired: false,
           passwordChangeReason: null,
           error: null,
+          signedOut: true,
         })
         await get().refreshPublicAuthConfig()
         return
@@ -755,6 +762,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         passwordChangeRequired: false,
         passwordChangeReason: null,
         error: null,
+        signedOut: true,
       })
       // Nach einem signoutRedirect() ist die Seite ohnehin fort; erreicht wird das hier auf dem
       // Weg, auf dem der Anbieter keinen end_session_endpoint hat und die Anwendung stehen bleibt.
@@ -841,6 +849,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         // ADR-0025/ADR-0033: every marker of the challenge has its own sentence - a disabled
         // provider, a locked account, a revoked session are not an expired token.
         error: sessionEndMessage(reason),
+        signedOut: false,
       })
       if (reason === 'unknown_issuer') {
         // the provider list is stale by definition now: reload it, so the sign-in page neither
