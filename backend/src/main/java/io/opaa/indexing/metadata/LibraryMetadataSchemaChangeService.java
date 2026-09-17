@@ -6,6 +6,7 @@ import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.maintenance.DocumentBatchLoop;
 import io.opaa.library.KnowledgeLibrary;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -51,6 +52,9 @@ public class LibraryMetadataSchemaChangeService {
 
   /** Documents one Charge rewrites at most; also the default of the continuation endpoint. */
   public static final int DEFAULT_BATCH_SIZE = 500;
+
+  /** PostgreSQL's {@code lock_not_available} - what {@code FOR UPDATE NOWAIT} raises. */
+  private static final String LOCK_NOT_AVAILABLE = "55P03";
 
   static final String REMAP_CORRELATION_PREFIX = "metadata-remap-";
   static final String DELETE_CORRELATION_PREFIX = "metadata-field-delete-";
@@ -295,18 +299,19 @@ public class LibraryMetadataSchemaChangeService {
                 .ifPresent(LibraryMetadataSchemaChange::countProcessedDocument);
             return Advance.REWRITTEN;
           });
-    } catch (CannotAcquireLockException e) {
-      // Somebody else holds this document right now - a parallel Charge, or a person saving a value
-      // on it. That is contention, not a fault: it is scanned past like any unadvanceable
-      // candidate, but it deserves neither a stack trace nor the "fehlgeschlagen" the index status
-      // page reads off the skipped count.
-      contended.incrementAndGet();
-      log.debug(
-          "Document {} of schema change {} is held by another transaction",
-          documentId,
-          change.getId());
-      return Advance.SKIPPED;
     } catch (RuntimeException e) {
+      if (isLockConflict(e)) {
+        // Somebody else holds this document right now - a parallel Charge, or a person saving a
+        // value on it. That is contention, not a fault: it is scanned past like any unadvanceable
+        // candidate, but it deserves neither a stack trace nor the "fehlgeschlagen" the index
+        // status page reads off the skipped count.
+        contended.incrementAndGet();
+        log.debug(
+            "Document {} of schema change {} is held by another transaction",
+            documentId,
+            change.getId());
+        return Advance.SKIPPED;
+      }
       log.warn(
           "Skipping document {} of schema change {}: rewriting its value failed",
           documentId,
@@ -314,6 +319,29 @@ public class LibraryMetadataSchemaChangeService {
           e);
       return Advance.SKIPPED;
     }
+  }
+
+  /**
+   * Whether {@code failure} is the {@code NOWAIT} of {@link #lockCarriedValue} refusing to wait
+   * ({@code 55P03 lock_not_available}). Read off the SQLState rather than off the exception type:
+   * Spring maps this state to {@link CannotAcquireLockException} only on some paths and leaves an
+   * uncategorized wrapper on others, and the difference decides whether the display calls a held
+   * document "fehlgeschlagen".
+   */
+  private static boolean isLockConflict(RuntimeException failure) {
+    if (failure instanceof CannotAcquireLockException) {
+      return true;
+    }
+    for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+      if (cause instanceof SQLException sqlException
+          && LOCK_NOT_AVAILABLE.equals(sqlException.getSQLState())) {
+        return true;
+      }
+      if (cause.getCause() == cause) {
+        break;
+      }
+    }
+    return false;
   }
 
   /**
