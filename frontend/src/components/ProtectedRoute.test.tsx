@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { screen } from '@testing-library/react'
+import type { UserManager } from 'oidc-client-ts'
+import { act, screen } from '@testing-library/react'
 import { Route, Routes, useLocation } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
@@ -116,6 +117,41 @@ describe('ProtectedRoute', () => {
     })
     renderDenied('/libraries')
     expect(screen.getByText('Ziel: keins')).toBeInTheDocument()
+  })
+
+  // The race behind the demo smoke failure: at a provider without end_session_endpoint, logout()
+  // falls back to removeUser(), which ends the session synchronously (UserUnloaded) - the page
+  // left behind must not become the return target in that very render.
+  it('hands on no return target when the session ends inside logout() itself', async () => {
+    const userManager = {
+      signoutRedirect: () => Promise.reject(new Error('no end_session_endpoint')),
+      // the session ends at once, the removal itself completes later - the render in between is
+      // the one that used to record the return target
+      removeUser: () => {
+        useAuthStore.setState({ token: null, isAuthenticated: false })
+        return new Promise<void>((resolve) => setTimeout(resolve, 20))
+      },
+    } as unknown as UserManager
+    useAuthStore.setState({
+      mode: 'oidc',
+      isAuthenticated: true,
+      isLoading: false,
+      sessionKind: 'oidc',
+      userManager,
+    })
+    renderDenied('/libraries')
+    expect(screen.getByText('Protected Content')).toBeInTheDocument()
+
+    const loggingOut = useAuthStore.getState().logout()
+    expect(await screen.findByText(/^Ziel: /)).toHaveTextContent('Ziel: keins')
+    await act(() => loggingOut)
+    expect(screen.getByText('Ziel: keins')).toBeInTheDocument()
+  })
+
+  it('forgets the sign-out mark as soon as the next session begins', () => {
+    useAuthStore.setState({ isAuthenticated: false, signedOut: true })
+    useAuthStore.setState({ isAuthenticated: true })
+    expect(useAuthStore.getState().signedOut).toBe(false)
   })
 
   // ADR-0033, Entscheidung 8: while the account owes a new password, the backend answers every

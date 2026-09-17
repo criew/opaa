@@ -268,7 +268,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     })
     userManager.events.addUserUnloaded(() => {
       if (get().userManager !== userManager) return
-      set({ token: null, isAuthenticated: false, signedOut: false })
+      set({ token: null, isAuthenticated: false })
     })
     userManager.events.addSilentRenewError((err) => {
       // #737 review: never log the error object itself - oidc-client-ts's ErrorResponse
@@ -709,6 +709,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
     logout: async () => {
       const { userManager, mode, sessionKind, token } = get()
+      // First, before anything below can end the session: removeUser() fires UserUnloaded
+      // synchronously, and ProtectedRoute would otherwise record the page left behind as a return
+      // target in that very render.
+      set({ signedOut: true })
       // Resets every store that caches data scoped to the signed-in user's session (#440) - see
       // resettableStores.ts for which stores that covers and why. Must run before
       // signoutRedirect below: that call navigates the browser away in OIDC mode, so anything
@@ -872,5 +876,12 @@ export const useAuthStore = create<AuthState>((set, get) => {
     requirePasswordChange: (reason) => {
       set({ passwordChangeRequired: true, passwordChangeReason: reason })
     },
+  }
+})
+
+// The mark of a deliberate sign-out lasts until the next session begins, whichever path starts it.
+useAuthStore.subscribe((state, previous) => {
+  if (state.isAuthenticated && !previous.isAuthenticated && state.signedOut) {
+    useAuthStore.setState({ signedOut: false })
   }
 })
