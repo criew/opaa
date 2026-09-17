@@ -6,8 +6,10 @@ import io.opaa.indexing.format.DocumentFormatResult;
 import io.opaa.indexing.format.DocumentFormatSource;
 import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.indexing.format.FormatAdmission;
+import io.opaa.indexing.format.shared.DocumentHeadText;
 import io.opaa.indexing.format.shared.DocumentTitleLine;
 import io.opaa.indexing.format.shared.HeadingSectionSplitter;
+import io.opaa.indexing.format.shared.SetextHeading;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -101,11 +103,18 @@ public class MarkdownDocumentFormat implements DocumentFormat {
     return properties(raw, toEvents(stripLeadingFrontmatter(raw)));
   }
 
+  /**
+   * A leading Setext heading stands in for a missing ATX one: {@code Titel\n====} is a level-1
+   * heading of the same standing, and the cut along ATX headings is deliberately unchanged by it.
+   */
   private static DocumentProperties properties(
       String raw, List<HeadingSectionSplitter.Event> events) {
+    String headText = DocumentHeadText.ofEvents(events);
+    String atxHeading = HeadingSectionSplitter.firstTopLevelHeading(events);
     return DocumentProperties.builder()
-        .firstHeading(HeadingSectionSplitter.firstTopLevelHeading(events))
+        .firstHeading(atxHeading != null ? atxHeading : SetextHeading.leadingOf(headText))
         .titleLine(DocumentTitleLine.ofEvents(events))
+        .headText(headText)
         .frontmatter(frontmatterEntries(raw))
         .build();
   }

@@ -271,6 +271,34 @@ class PdfDocumentFormatTest {
     assertThat(pipeline.run(source).properties()).isEqualTo(properties);
   }
 
+  /**
+   * The closing provisions of a Satzung sit on its first page but far below its head block, and the
+   * whole first page is therefore the head text both paths hand over (#1360).
+   */
+  @Test
+  void theFirstPageIsTheHeadTextOnBothPaths() throws IOException {
+    Path file = tempDir.resolve("01_verwaltungsgebuehrensatzung.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      addPageWithLines(
+          doc,
+          List.of(
+              "Verwaltungsgebuehrensatzung der Stadt Rheinfurt",
+              "§ 1 Geltungsbereich",
+              "Diese Satzung regelt die Erhebung von Verwaltungsgebuehren.",
+              "§ 6 Inkrafttreten",
+              "Diese Satzung tritt am 1. Januar 2026 in Kraft."));
+      addPage(doc, "Anlage: Gebuehrenverzeichnis");
+      doc.save(file.toFile());
+    }
+    DocumentFormatSource source =
+        DocumentFormatSource.ofFile(file, "01_verwaltungsgebuehrensatzung.pdf", ".pdf");
+
+    assertThat(pipeline.readProperties(source).headText())
+        .contains("Diese Satzung tritt am 1. Januar 2026 in Kraft.")
+        .doesNotContain("Gebuehrenverzeichnis");
+    assertThat(pipeline.run(source).properties()).isEqualTo(pipeline.readProperties(source));
+  }
+
   @Test
   void aFileThatIsNotAValidPdfHasNoProperties() throws IOException {
     Path file = tempDir.resolve("kaputt-eigenschaften.pdf");

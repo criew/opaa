@@ -281,6 +281,6 @@ final class ContextPrefixFingerprint {
 
   private static DocumentProperties markdown(Map<String, String> frontmatter, String firstHeading) {
     return new DocumentProperties(
-        null, null, null, null, firstHeading, null, ".md", false, frontmatter, Map.of());
+        null, null, null, null, firstHeading, null, null, ".md", false, frontmatter, Map.of());
   }
 }

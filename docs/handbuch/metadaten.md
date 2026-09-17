@@ -32,9 +32,9 @@ Fest eingebaut, für jedes Dokument jeder Bibliothek, Anhänge eingeschlossen:
 
 | Feld | Typ | Filterbar | Woher der Wert kommt (in dieser Reihenfolge) |
 |---|---|---|---|
-| **Titel** | Text, höchstens 1000 Zeichen | nein | Titel-Eigenschaft des Formats, Frontmatter `titel`, erste Überschrift erster Ebene, humanisierter Dateiname; deshalb praktisch immer befüllt |
+| **Titel** | Text, höchstens 1000 Zeichen | nein | Titel-Eigenschaft des Formats (sofern sie nicht nur das Werkzeug oder die Datei benennt), Frontmatter `titel`, erste Überschrift erster Ebene, überschriftartige Titelzeile, humanisierter Dateiname; deshalb praktisch immer befüllt |
 | **Dokumentart** | ein Wert aus dem Vokabular (Abschnitt 3) | ja | Frontmatter `dokumentart`, Dateiname, Titelzeile des Dokuments, Dateiformat |
-| **Datum/Stand** | Datum mit Genauigkeit Tag, Monat oder Jahr | ja | Frontmatter `stand_datum` / `fassung`, formateigenes Dokumentdatum (Mail-Datum, Feed-Veröffentlichung), erste Überschrift, Dateiname, Änderungs-, dann Erstelldatum der Dokumenteigenschaften |
+| **Datum/Stand** | Datum mit Genauigkeit Tag, Monat oder Jahr | ja | Frontmatter `stand_datum` / `fassung`, formateigenes Dokumentdatum (Mail-Datum, Feed-Veröffentlichung), erste Überschrift, verankerte Datumsangabe im Dokumentkopf, Dateiname, Änderungs-, dann Erstelldatum der Dokumenteigenschaften (nur wenn plausibel) |
 
 „Datum/Stand" ist bewusst **ein** Feld: Die Frage lautet „welcher Stand gilt", nicht „wann wurde
 die Datei zuletzt geöffnet". Ein Dateisystem-Änderungsdatum ist deshalb keine Quelle. „Fassung 2024"
@@ -187,17 +187,17 @@ niemandem Inhalte. Kein Sprachmodell ist beteiligt.
 
 Jede Format-Pipeline gibt nur weiter, was ihr Format selbst erklärt; interpretiert wird zentral.
 
-| Format | Titel-Eigenschaft | Datumseigenschaften | Erste Überschrift | Titelzeile | Weitere Quellen |
-|---|---|---|---|---|---|
-| PDF | Info-Dictionary | Erstellung, Änderung | erster Lesezeichen-Eintrag der obersten Ebene | erste Textzeile der ersten Seite | |
-| DOCX, PPTX | Dokumenteigenschaften | Erstellung, Änderung | DOCX: erste Überschrift 1; PPTX: Titel der ersten Folie | DOCX: erster Absatz | |
-| ODT, ODP | `meta.xml` | Erstellung, Änderung | ODT: erste Überschrift 1 | ODT: erster Absatz | |
-| Markdown | Frontmatter `titel` | Frontmatter `stand_datum`, `fassung` | erste `#`-Überschrift | erste Zeile nach dem Frontmatter | Frontmatter `dokumentart` |
-| HTML | `<title>` | | erste `<h1>` | erster Textblock des Hauptinhalts | |
-| E-Mail | Betreff | `Date`-Kopf als Dokumentdatum | | | Absender, An und Betreff als Formatfelder (Abschnitt 2a) |
-| Feed-Eintrag | Überschrift des Eintrags | Veröffentlichungsdatum als Dokumentdatum | | | Name gilt nicht als Dateiname |
-| Confluence-Seite | Seitentitel | Zeitpunkt der aktuellen Seitenversion als Änderungsdatum | | | Name gilt nicht als Dateiname |
-| Tabellen, TXT, DOC | | | | TXT, DOC: erste Textzeile | |
+| Format | Titel-Eigenschaft | Datumseigenschaften | Erste Überschrift | Titelzeile | Kopftext | Weitere Quellen |
+|---|---|---|---|---|---|---|
+| PDF | Info-Dictionary | Erstellung, Änderung | erster Lesezeichen-Eintrag der obersten Ebene | erste Textzeile der ersten Seite | Text der ersten Seite | |
+| DOCX, PPTX | Dokumenteigenschaften | Erstellung, Änderung | DOCX: erste Überschrift 1; PPTX: Titel der ersten Folie | DOCX: erster Absatz | DOCX: Textanfang | |
+| ODT, ODP | `meta.xml` | Erstellung, Änderung | ODT: erste Überschrift 1; ODP: Titel der ersten Folie (nur dieser, wie PPTX) | ODT: erster Absatz | ODT: Textanfang | |
+| Markdown | Frontmatter `titel` | Frontmatter `stand_datum`, `fassung` | erste `#`-Überschrift, ersatzweise eine mit `===` unterstrichene erste Zeile | erste Zeile nach dem Frontmatter | Textanfang | Frontmatter `dokumentart` |
+| HTML | `<title>` | | erste `<h1>` | erster Textblock des Hauptinhalts | Textanfang des Hauptinhalts | |
+| E-Mail | Betreff | `Date`-Kopf als Dokumentdatum | | | | Absender, An und Betreff als Formatfelder (Abschnitt 2a) |
+| Feed-Eintrag | Überschrift des Eintrags | Veröffentlichungsdatum als Dokumentdatum | | | | Name gilt nicht als Dateiname |
+| Confluence-Seite | Seitentitel | Zeitpunkt der aktuellen Seitenversion als Änderungsdatum | | | | Name gilt nicht als Dateiname |
+| Tabellen, TXT, DOC | | | TXT, DOC: mit `===` unterstrichene erste Zeile | TXT, DOC: erste Textzeile | TXT, DOC: Textanfang | |
 
 Bei allen Formaten kommt der **Dateiname** hinzu, und die geroutete **Formatkennung** entscheidet
 als letzte Quelle der Dokumentart: PPTX und ODP sind Präsentationen; PDF und DOCX tragen jede
@@ -225,7 +225,36 @@ Dokumentart und liefern nichts.
   `12.34.5678`) wird übersprungen. Ein nacktes Jahr zählt nur im Dateinamen und im Frontmatter; in
   einer Überschrift braucht es einen Anker wie „Stand 2026" oder „Fassung 2024", weil eine
   unverankerte Zahl dort ein Betrag oder ein Paragraf ist.
-- **Extraktionsversion.** Die Regeln tragen eine Versionsnummer (heute 4), die an jedem Dokument
+- **Verankerte Datumsangaben im Dokument.** Aus dem Text wird ein Datum nur gelesen, wenn es an
+  einer Formulierung hängt, die das Dokument über sich selbst macht: „Stand:", „Fassung vom",
+  „Ausgabe", „gültig ab" in den ersten 600 Zeichen — mit der Angabe unmittelbar dahinter, ein
+  nacktes Jahr nur direkt hinter dem Anker —, sowie eine Inkrafttretensklausel mit Selbstbezug
+  („Diese Satzung tritt am 1. Januar 2026 in Kraft"), die in den ersten 4.000 Zeichen auch weiter
+  unten stehen darf — dort stehen die Schlussbestimmungen; bei einem PDF heißt das: auf Seite 1.
+  Tragen mehrere solcher Klauseln ein Datum, gilt die späteste: Eine Lesefassung führt die Klausel
+  der Ursprungssatzung und je eine pro Änderungssatzung, und die jüngste ist der geltende Stand.
+  Ein Datum im Fließtext („die zum 23.5.2021 in Kraft getretenen Änderungen", „bis 31.12.2020
+  ausgestellt") ist kein Stand. Bei einem Namen, der kein Dateiname ist (Feed-Eintrag,
+  Confluence-Seite), wird der Dokumenttext gar nicht erst nach einem Datum durchsucht.
+- **Dokumenteigenschaften nur, wenn plausibel.** Erzeugende Werkzeuge stempeln ihr Vorlagendatum in
+  die Datei (`python-docx` 2013-12-23, `python-pptx` 2013-01-27, ReportLab 2000-01-01) oder ein
+  Epochendatum (1601-01-01, 1970-01-01, 1980-01-01). Solche Daten und alles vor 1990 gelten als
+  „keine Angabe". Das formateigene Dokumentdatum (Mail-Datum, Veröffentlichung eines Eintrags) ist
+  davon ausgenommen und wird nur gegen das Mindestjahr geprüft.
+- **Titel des Formats nur, wenn er das Dokument benennt.** Verworfen wird ein Titel, der ein
+  Werkzeug nennt und einen Dateinamen oder einen Druckstil dahinter trägt („Microsoft Office
+  Outlook - Memo Style", „Microsoft Word - vermerk.doc"), oder der auf eine Dokumentendung endet
+  („Bekanntmachung Satzung 2024.pdf"). Bei einer **Mail** gilt die Endungsregel nur für einen
+  Titel, der aus **nichts als** einem Dateinamen besteht — der Betreff „WG: haushaltsplan-2026.pdf"
+  bleibt erhalten, weil ihn ein Mensch geschrieben hat. Ein Titel, der dem Dateinamen entspricht,
+  bleibt ebenfalls erhalten; er ist dessen bessere Schreibung. Dann gilt die Überschrift,
+  ersatzweise eine überschriftartige Titelzeile (kurz, ohne Satzzeichen am Ende und **kein
+  Briefkopf**: Das ist sie nur, wenn sie in Versalien steht **und** innerhalb der nächsten zehn
+  Zeilen ein betrefführendes Etikett folgt — „Betreff:", „Betr.:", „Gegenstand:", „Thema:". Eine
+  Versalien-Überschrift allein und eine Überschrift über einem Feldblock wie „Gremium:"/„Name:"
+  bleiben Titel), zuletzt der Dateiname. Für Feed-Einträge und Confluence-Seiten gilt diese Prüfung
+  nicht: Dort ist der Titel die vom Zufluss gemeldete Überschrift.
+- **Extraktionsversion.** Die Regeln tragen eine Versionsnummer (heute 5), die an jedem Dokument
   gespeichert wird. Ändert sich eine Regel, steigt die Version, und der Bestand wird damit als
   nachzuziehen erkennbar (Abschnitt 6).
 
@@ -571,7 +600,7 @@ Daraus folgt für den Betrieb:
 
 - Ableitung eines Filters aus der Frage (Ticket #1363); ein geführter Assistent zum Anlegen eines
   Bibliotheksschemas (Ticket #1362)
-- Filter auf den Titel; Freitextfelder als Feldtyp; eine Oberfläche zur Pflege des Vokabulars; ein
-  amtliches Metadatenmodell für die Aktenführung
+- Filter auf den Titel; Freitextfelder als Feldtyp; eine Oberfläche zur Pflege des Vokabulars
+  (Ticket #1702); ein amtliches Metadatenmodell für die Aktenführung
 - Vererbung eines Feldschemas über Bibliotheken hinweg; die Beförderung häufiger Schlagworte zu
   Bibliotheksfeldern

@@ -9,6 +9,7 @@ import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.document.DocumentService;
 import io.opaa.indexing.format.DocumentFormatResult;
 import io.opaa.indexing.format.DocumentFormatSource;
+import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.indexing.format.PassthroughMetadataKeysTestSupport;
 import java.io.IOException;
 import java.io.InputStream;
@@ -142,6 +143,64 @@ class TikaFallbackFormatTest {
 
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.NO_EXTRACTABLE_TEXT);
     assertThat(result.chunks()).isEmpty();
+  }
+
+  // --- the metadata sources of a plain text file (#1360) ---------------------------------------
+
+  @Test
+  void aLeadingSetextHeadingIsTheFirstHeadingOfATextFile() throws IOException {
+    // 002_aus-dem-ausland-eingefuehrtes-fahrzeug-anmelden.txt of the Handstichprobe: the file's
+    // own heading, which the humanized file name replaced with "aus dem ausland eingefuehrtes ...".
+    Path file = tempDir.resolve("002_aus-dem-ausland-eingefuehrtes-fahrzeug-anmelden.txt");
+    Files.writeString(
+        file,
+        """
+        Aus dem Ausland eingeführtes Fahrzeug anmelden
+        ==============================================
+
+        Zustaendige Stelle: Buergerbuero Rheinfurt - Sachgebiet Kfz-Zulassung
+        Formular: RF-KFZ-002
+        """);
+
+    for (DocumentProperties properties :
+        List.of(
+            pipeline
+                .run(DocumentFormatSource.ofFile(file, file.getFileName().toString()))
+                .properties(),
+            pipeline.readProperties(
+                DocumentFormatSource.ofFile(file, file.getFileName().toString())))) {
+      assertThat(properties.firstHeading())
+          .isEqualTo("Aus dem Ausland eingeführtes Fahrzeug anmelden");
+      assertThat(properties.headText()).contains("Formular: RF-KFZ-002");
+    }
+  }
+
+  @Test
+  void aTextFileWithoutAnUnderlinedOpeningHasNoHeading() throws IOException {
+    Path file = tempDir.resolve("foerderbescheid-anlage-zwei.txt");
+    Files.writeString(
+        file, "Anlage zwei: Berechnungsgrundlage der Foerdersumme nach Richtlinie 7.\n");
+
+    DocumentProperties properties =
+        pipeline.readProperties(DocumentFormatSource.ofFile(file, file.getFileName().toString()));
+
+    assertThat(properties.firstHeading()).isNull();
+    assertThat(properties.titleLine())
+        .isEqualTo("Anlage zwei: Berechnungsgrundlage der Foerdersumme nach Richtlinie 7.");
+  }
+
+  @Test
+  void textWithoutAFileDeclaresNothingAboutItself() {
+    DocumentProperties properties =
+        pipeline
+            .run(
+                DocumentFormatSource.ofExtractedText(
+                    "Rat beschließt Hundesteuersatzung\n=================================\n"
+                        + "Diese Satzung tritt am 1. Januar 2026 in Kraft.",
+                    "Rat beschließt Hundesteuersatzung"))
+            .properties();
+
+    assertThat(properties).isEqualTo(DocumentProperties.EMPTY);
   }
 
   private Path copyTestResource(String resourceName, String targetFileName) throws IOException {

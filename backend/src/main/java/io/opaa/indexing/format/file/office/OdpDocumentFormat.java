@@ -130,21 +130,61 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
     return DocumentFormatResult.chunked(chunks);
   }
 
-  /** {@code meta.xml}'s title/dates (ADR-0024); ODP slides carry no heading hierarchy to read. */
+  /**
+   * {@code meta.xml}'s title/dates (ADR-0024) plus the first slide's title as the first heading -
+   * the same source {@code PptxDocumentFormat} reads, and the only self-designation a presentation
+   * without a declared {@code dc:title} has. ODP slides carry no heading hierarchy beyond it.
+   */
   @Override
   protected DocumentProperties properties(OdpContent content) {
-    return content.meta();
+    return content.meta().withFirstHeading(firstSlideTitle(content));
   }
 
   /**
-   * Reads {@code meta.xml} alone: an ODP declares nothing about itself in {@code content.xml}, so
-   * the Bestandslauf neither builds a chunk per slide nor loses the title and dates of a
-   * presentation whose {@code content.xml} is unreadable.
+   * The title of the <b>first</b> slide, read from its own location ({@code "Folie 1: <Titel>"}) -
+   * strictly slide one or nothing, like {@link PptxDocumentFormat}: a later slide's title names its
+   * section, not the presentation, and the two sister formats must answer the same question alike.
+   */
+  private static String firstSlideTitle(OdpContent content) {
+    if (content.slideChunks().isEmpty()) {
+      return null;
+    }
+    Object location =
+        content.slideChunks().getFirst().getMetadata().get(ChunkingService.LOCATION_METADATA_KEY);
+    if (location instanceof String text) {
+      int separator = text.indexOf(": ");
+      if (separator >= 0) {
+        return text.substring(separator + 2);
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Reads {@code content.xml} for the first slide's title on top of {@code meta.xml}, falling back
+   * to {@code meta.xml} alone when {@code content.xml} is unreadable: the title and dates of a
+   * presentation with a broken body must not be lost. Both paths must name the same first heading,
+   * which is why this one parses the slides rather than reading {@code meta.xml} alone.
    */
   @Override
   protected DocumentProperties declaredProperties(DocumentFormatSource source) throws IOException {
     try (OdfPackage odf = opener.open(source.file())) {
-      return readMeta(odf, source.fileName());
+      DocumentProperties meta = readMeta(odf, source.fileName());
+      OdpContentHandler handler =
+          new OdpContentHandler(
+              odfProperties.maxOdpSlides(),
+              odfProperties.maxSpaceRepeat(),
+              odfProperties.maxTextCharacters());
+      try {
+        if (!odf.parse("content.xml", odfProperties.maxContentXmlBytes(), handler)) {
+          return meta;
+        }
+      } catch (IOException | RuntimeException e) {
+        log.warn("Could not read slides of ODP document {}", source.fileName(), e);
+        return meta;
+      }
+      return meta.withFirstHeading(
+          firstSlideTitle(new OdpContent(handler.chunks(), handler.anySlideHasText(), meta, "")));
     }
   }
 

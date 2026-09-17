@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
  */
 public final class CoreMetadataExtractor {
 
-  public static final int EXTRACTION_VERSION = 4;
+  public static final int EXTRACTION_VERSION = 5;
 
   static final String FRONTMATTER_TITLE = "titel";
   static final String FRONTMATTER_DOCUMENT_TYPE = "dokumentart";
@@ -50,13 +50,60 @@ public final class CoreMetadataExtractor {
   private static final Pattern ANCHORED_YEAR =
       Pattern.compile(
           "(?i)\\b(?:stand|fassung|ausgabe|vom|version)\\s*:?\\s*((?:19|20)\\d{2})(?![\\d.\\-])");
+  private static final Pattern GERMAN_LONG_DATE =
+      Pattern.compile(
+          "(?i)(?<![\\d.])(\\d{1,2})\\.\\s*(januar|februar|märz|maerz|april|mai|juni|juli|august"
+              + "|september|oktober|november|dezember)\\s+((?:19|20)\\d{2})\\b");
+
+  /**
+   * How far into the head text a "Stand"/"Fassung" statement is still the document's own: such a
+   * line belongs to the head block, below it the same word introduces another document's version.
+   */
+  private static final int HEAD_ANCHOR_WINDOW = 600;
+
+  /** How much text after an anchor is searched for its date - one statement, not the next one. */
+  private static final int ANCHOR_DATE_WINDOW = 40;
+
+  /**
+   * Upper length of a title line that may stand in for a heading - beyond it, it is a paragraph.
+   */
+  private static final int MAX_HEADING_LIKE_LENGTH = 120;
+
+  /** The caption under which a Vordruck states what it is about. */
+  private static final Pattern SUBJECT_LABEL =
+      Pattern.compile("(?i)^(betreff|betr\\.?|gegenstand|thema)\\s*:(\\s|$)");
+
+  /** How far below a line such a caption still belongs to it. */
+  private static final int LABEL_BLOCK_LINES = 10;
+
+  /** The head block's own version statement, immediately followed by its date. */
+  private static final Pattern STAND_ANCHOR =
+      Pattern.compile(
+          "(?i)\\b(?:stand|fassung|ausgabe|gültig\\s+ab|gueltig\\s+ab)\\b"
+              + "\\s*(?:vom|am|ab)?\\s*:?\\s*");
+
+  /**
+   * The self-designating Inkrafttretensklausel ("Diese Satzung tritt am 1. Januar 2026 in Kraft").
+   * The demonstrative is what makes it a statement about <em>this</em> document; a clause about a
+   * law that came into force ("die zum 23.5.2021 in Kraft getreten sind") is a reference and is not
+   * matched. It sits wherever the document's closing provisions sit, not in the first lines.
+   */
+  private static final Pattern ENTRY_INTO_FORCE =
+      Pattern.compile(
+          "(?i)\\bdies(?:e|er|es)\\s+\\p{L}+\\s+tritt\\s+(?:\\p{L}+\\s+)?(?:am|zum)\\s+"
+              + "([\\s\\S]{4,40}?)\\s+in\\s+Kraft");
+
+  /** A year standing right behind an anchor word - the date of that statement. */
+  private static final Pattern LEADING_YEAR = Pattern.compile("((?:19|20)\\d{2})(?![\\d.\\-])");
 
   /** Whether a bare four-digit year is a credible date in the text being scanned. */
   private enum BareYearRule {
     /** A file name or a frontmatter value: a standalone year is a naming convention. */
     ALLOWED,
     /** Free heading text: a year needs an anchor word, an unanchored number is not a date. */
-    ANCHORED_ONLY
+    ANCHORED_ONLY,
+    /** The window behind an anchor: the anchor is already given, only its notation is read. */
+    FORBIDDEN
   }
 
   private static final Pattern FILE_NAME_TOKEN_SEPARATOR = Pattern.compile("[\\s_\\-.,;()\\[\\]]+");
@@ -102,7 +149,10 @@ public final class CoreMetadataExtractor {
   }
 
   private static Optional<String> extractTitle(String fileName, DocumentProperties props) {
-    if (props.title() != null) {
+    // A synthetic name is the headline an upstream source declared, and the format's title is that
+    // same headline - there is no tool in between, and no file name it could be repeating.
+    if (props.title() != null
+        && (props.syntheticName() || !ToolTitle.matches(props.title(), props.formatExtension()))) {
       return Optional.of(props.title());
     }
     String frontmatterTitle = props.frontmatter().get(FRONTMATTER_TITLE);
@@ -112,11 +162,76 @@ public final class CoreMetadataExtractor {
     if (props.firstHeading() != null) {
       return Optional.of(props.firstHeading());
     }
+    if (isHeadingLike(props)) {
+      return Optional.of(props.titleLine());
+    }
     if (fileName.isBlank()) {
       return Optional.empty();
     }
     String humanized = ChunkContextTitle.deriveTitle(fileName);
     return humanized.isBlank() ? Optional.empty() : Optional.of(humanized);
+  }
+
+  /**
+   * Whether a title line may stand in for a missing heading: a short line that is neither a
+   * sentence nor a label, and not the letterhead of a form. A document that opens with running text
+   * has no heading at all, and its file name - chosen by a person - names it better than its first
+   * line does.
+   */
+  private static boolean isHeadingLike(DocumentProperties props) {
+    String titleLine = props.titleLine();
+    if (titleLine == null || titleLine.length() > MAX_HEADING_LIKE_LENGTH) {
+      return false;
+    }
+    char last = titleLine.charAt(titleLine.length() - 1);
+    if (last == '.' || last == '!' || last == '?' || last == ':' || last == ';' || last == ',') {
+      return false;
+    }
+    // Both marks together, never one alone: a Satzung's heading is regularly set in capitals, and
+    // a form's own heading regularly stands above a field block. Only their combination is the
+    // letterhead of a Vordruck, whose subject stands in a labelled field further down.
+    return !(isLetterhead(titleLine) && subjectLabelFollows(props.headText(), titleLine));
+  }
+
+  /**
+   * A line in capitals only ("STADT RHEINFURT") - the notation of a letterhead. {@code ß} counts as
+   * a lower-case letter, so a heading containing it is never read as one.
+   */
+  private static boolean isLetterhead(String line) {
+    boolean hasLetter = false;
+    for (int i = 0; i < line.length(); i++) {
+      char c = line.charAt(i);
+      if (Character.isLetter(c)) {
+        hasLetter = true;
+        if (Character.isLowerCase(c)) {
+          return false;
+        }
+      }
+    }
+    return hasLetter;
+  }
+
+  /**
+   * Whether a label naming the document's subject ("Betreff:", "Gegenstand:", "Thema:") follows
+   * {@code titleLine} within the next {@link #LABEL_BLOCK_LINES} lines: then the document says
+   * itself where its subject stands, and it is not this line. An ordinary field block ("Name:",
+   * "Gremium:") says nothing of the kind - a form's heading regularly stands above one.
+   */
+  private static boolean subjectLabelFollows(String headText, String titleLine) {
+    if (headText == null) {
+      return false;
+    }
+    int start = headText.indexOf(titleLine);
+    if (start < 0) {
+      return false;
+    }
+    String[] lines = headText.substring(start + titleLine.length()).split("\\R");
+    for (int i = 0; i < Math.min(lines.length, LABEL_BLOCK_LINES); i++) {
+      if (SUBJECT_LABEL.matcher(lines[i].strip()).find()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static Optional<String> extractDocumentType(
@@ -195,7 +310,7 @@ public final class CoreMetadataExtractor {
     if (version.isPresent()) {
       return version;
     }
-    if (props.documentDate() != null) {
+    if (GeneratorDefaultDate.isWithinPlausibleRange(props.documentDate())) {
       return Optional.of(ExtractedDate.day(props.documentDate()));
     }
     Optional<ExtractedDate> heading = parseDate(props.firstHeading(), BareYearRule.ANCHORED_ONLY);
@@ -203,18 +318,65 @@ public final class CoreMetadataExtractor {
       return heading;
     }
     if (!props.syntheticName()) {
+      // Text an upstream source declared is no self-designation either: a press release names the
+      // Satzung it reports about, and would inherit its Inkrafttretensdatum.
+      Optional<ExtractedDate> fromHead = headTextDate(props.headText());
+      if (fromHead.isPresent()) {
+        return fromHead;
+      }
       Optional<ExtractedDate> fromName = parseDate(stripExtension(fileName), BareYearRule.ALLOWED);
       if (fromName.isPresent()) {
         return fromName;
       }
     }
-    if (props.modifiedAt() != null) {
+    if (GeneratorDefaultDate.isPlausible(props.modifiedAt())) {
       return Optional.of(ExtractedDate.day(props.modifiedAt()));
     }
-    if (props.createdAt() != null) {
+    if (GeneratorDefaultDate.isPlausible(props.createdAt())) {
       return Optional.of(ExtractedDate.day(props.createdAt()));
     }
     return Optional.empty();
+  }
+
+  /**
+   * The document's own date from its text, and only from an anchored statement: a "Stand"/"Fassung"
+   * line within the head block ({@link #HEAD_ANCHOR_WINDOW} characters), else the <b>latest</b>
+   * self-designating Inkrafttretensklausel, which by drafting convention sits in the closing
+   * provisions. Everything else in the running text - a deadline, an amount, a year in a sentence -
+   * is no Datum/Stand.
+   */
+  private static Optional<ExtractedDate> headTextDate(String headText) {
+    if (headText == null) {
+      return Optional.empty();
+    }
+    String head = headText.substring(0, Math.min(HEAD_ANCHOR_WINDOW, headText.length()));
+    Matcher anchor = STAND_ANCHOR.matcher(head);
+    while (anchor.find()) {
+      String after =
+          head.substring(anchor.end(), Math.min(anchor.end() + ANCHOR_DATE_WINDOW, head.length()));
+      Optional<ExtractedDate> date = parseDate(after, BareYearRule.FORBIDDEN);
+      if (date.isPresent()) {
+        return date;
+      }
+      // A bare year counts only immediately behind the anchor ("Stand: 2024"); further into the
+      // window it is part of a phrase ("Stand der Technik 2019"), not the statement's date.
+      Matcher year = LEADING_YEAR.matcher(after);
+      if (year.lookingAt()) {
+        return Optional.of(ExtractedDate.year(Integer.parseInt(year.group(1))));
+      }
+    }
+    // The latest clause wins: a Lesefassung carries the original statute's clause and the one of
+    // every amending statute, and the youngest of them is the version in force.
+    Optional<ExtractedDate> latest = Optional.empty();
+    Matcher entryIntoForce = ENTRY_INTO_FORCE.matcher(headText);
+    while (entryIntoForce.find()) {
+      Optional<ExtractedDate> date = parseDate(entryIntoForce.group(1), BareYearRule.ALLOWED);
+      if (date.isPresent()
+          && (latest.isEmpty() || date.get().date().isAfter(latest.get().date()))) {
+        latest = date;
+      }
+    }
+    return latest;
   }
 
   /**
@@ -241,6 +403,15 @@ public final class CoreMetadataExtractor {
         return day;
       }
     }
+    Matcher longDate = GERMAN_LONG_DATE.matcher(text);
+    while (longDate.find()) {
+      Optional<ExtractedDate> day =
+          validDay(
+              longDate.group(3), String.valueOf(monthNumber(longDate.group(2))), longDate.group(1));
+      if (day.isPresent()) {
+        return day;
+      }
+    }
     Matcher isoMonth = ISO_MONTH.matcher(text);
     while (isoMonth.find()) {
       int month = Integer.parseInt(isoMonth.group(2));
@@ -250,15 +421,24 @@ public final class CoreMetadataExtractor {
     }
     Matcher monthName = GERMAN_MONTH_NAME.matcher(text);
     if (monthName.find()) {
-      String monthWord = monthName.group(1).toLowerCase(Locale.GERMAN).replace("maerz", "märz");
-      int month = MONTH_NAMES.indexOf(monthWord) + 1;
-      return Optional.of(ExtractedDate.month(Integer.parseInt(monthName.group(2)), month));
+      return Optional.of(
+          ExtractedDate.month(
+              Integer.parseInt(monthName.group(2)), monthNumber(monthName.group(1))));
+    }
+    if (bareYearRule == BareYearRule.FORBIDDEN) {
+      return Optional.empty();
     }
     Matcher year = (bareYearRule == BareYearRule.ALLOWED ? BARE_YEAR : ANCHORED_YEAR).matcher(text);
     if (year.find()) {
       return Optional.of(ExtractedDate.year(Integer.parseInt(year.group(1))));
     }
     return Optional.empty();
+  }
+
+  /** The 1-based number of a German month name, both spellings of "März" included. */
+  private static int monthNumber(String monthName) {
+    String word = monthName.toLowerCase(Locale.GERMAN).replace("maerz", "märz");
+    return MONTH_NAMES.indexOf(word) + 1;
   }
 
   private static Optional<ExtractedDate> validDay(String year, String month, String day) {
