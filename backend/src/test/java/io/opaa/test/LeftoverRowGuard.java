@@ -1,13 +1,13 @@
 package io.opaa.test;
 
-import static org.awaitility.Awaitility.await;
-
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.TestContext;
@@ -37,6 +37,8 @@ final class LeftoverRowGuard extends AbstractTestExecutionListener {
           "vector_store");
 
   private static final String STARTING_COUNTS = LeftoverRowGuard.class.getName() + ".counts";
+  private static final String IDLE_GATE = LeftoverRowGuard.class.getName() + ".idleGate";
+  private static final Duration EXECUTOR_IDLE_TIMEOUT = Duration.ofSeconds(60);
 
   /** Covers a {@code @BeforeAll} of every class whose context an earlier class already started. */
   @Override
@@ -107,18 +109,24 @@ final class LeftoverRowGuard extends AbstractTestExecutionListener {
     return counts;
   }
 
+  /**
+   * The gate is kept as a singleton of the context itself, so a timeout closes it for every later
+   * class of that context and for no other context.
+   */
   private static void awaitIdleExecutors(ApplicationContext context) {
-    Map<String, ThreadPoolTaskExecutor> executors =
-        context.getBeansOfType(ThreadPoolTaskExecutor.class);
-    await()
-        .atMost(60, TimeUnit.SECONDS)
-        .alias("idle task executors " + executors.keySet())
-        .until(
-            () ->
-                executors.values().stream()
-                    .allMatch(
-                        executor ->
-                            executor.getActiveCount() == 0
-                                && executor.getThreadPoolExecutor().getQueue().isEmpty()));
+    ConfigurableListableBeanFactory beanFactory =
+        ((ConfigurableApplicationContext) context).getBeanFactory();
+    ExecutorIdleGate gate;
+    synchronized (beanFactory) {
+      if (beanFactory.containsSingleton(IDLE_GATE)) {
+        gate = (ExecutorIdleGate) beanFactory.getSingleton(IDLE_GATE);
+      } else {
+        gate =
+            new ExecutorIdleGate(
+                context.getBeansOfType(ThreadPoolTaskExecutor.class), EXECUTOR_IDLE_TIMEOUT);
+        beanFactory.registerSingleton(IDLE_GATE, gate);
+      }
+    }
+    gate.awaitIdle();
   }
 }

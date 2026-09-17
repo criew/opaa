@@ -89,7 +89,6 @@ class LocalHandoverIntegrationTest {
   void setUp() throws Exception {
     fixtures = fixturesFactory.create();
     fixtures.cleanUp();
-    actionTokenRepository.deleteAll();
     fixtures.localProvider(true);
     provider = fixtures.oidcProvider("Beschäftigte", ISSUER, CLIENT_ID);
     admin = fixtures.activeAdmin("verwaltung-" + UUID.randomUUID() + "@stadt.example");
@@ -100,7 +99,6 @@ class LocalHandoverIntegrationTest {
   void tearDown() {
     foreignAccounts.forEach(fixtures::deleteAccount);
     foreignAccounts.clear();
-    actionTokenRepository.deleteAll();
     fixtures.cleanUp();
     fixtures.deleteProvider(provider.getId());
   }
@@ -519,7 +517,7 @@ class LocalHandoverIntegrationTest {
       startHandover(person.id(), localRow, REASON, 400);
       // and the reason is mandatory
       startHandover(person.id(), provider.getId(), "   ", 400);
-      assertThat(actionTokenRepository.findAll()).isEmpty();
+      assertThat(actionTokenRepository.findAll()).noneMatch(t -> t.getUserId().equals(person.id()));
     } finally {
       fixtures.deleteProvider(disabled.getId());
     }
@@ -536,7 +534,7 @@ class LocalHandoverIntegrationTest {
                     handoverBody(provider.getId(), REASON))
                 .header(HttpHeaders.AUTHORIZATION, personBearer))
         .andExpect(status().isForbidden());
-    assertThat(actionTokenRepository.findAll()).isEmpty();
+    assertThat(actionTokenRepository.findAll()).noneMatch(t -> t.getUserId().equals(person.id()));
   }
 
   // ---- helpers

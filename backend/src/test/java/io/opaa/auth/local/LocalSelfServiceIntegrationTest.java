@@ -79,7 +79,6 @@ class LocalSelfServiceIntegrationTest {
   @Autowired private LocalAccountFixturesFactory fixturesFactory;
   @Autowired private LocalCredentialsRepository credentials;
   @Autowired private LocalActionTokenService actionTokens;
-  @Autowired private LocalActionTokenRepository actionTokenRepository;
   @Autowired private LocalAuthSettingsRepository settings;
   @Autowired private UserRepository users;
   @Autowired private MailSettingsService mailSettings;
@@ -94,7 +93,6 @@ class LocalSelfServiceIntegrationTest {
   void setUp() throws Exception {
     fixtures = fixturesFactory.create();
     fixtures.cleanUp();
-    actionTokenRepository.deleteAll();
     fixtures.localProvider(true);
     admin = fixtures.activeAdmin("verwaltung-" + UUID.randomUUID() + "@" + DOMAIN);
     adminBearer = bearer(login(admin.email(), LocalAccountFixtures.PASSWORD, 200));
@@ -107,7 +105,6 @@ class LocalSelfServiceIntegrationTest {
   void tearDown() {
     mailbox.stop();
     replaceSettings(Values.defaults());
-    actionTokenRepository.deleteAll();
     fixtures.cleanUp();
   }
 

@@ -91,7 +91,6 @@ class LocalUserAdminIntegrationTest {
   @Autowired private LocalAccountFixturesFactory fixturesFactory;
   @Autowired private LocalCredentialsRepository credentials;
   @Autowired private LocalActionTokenService actionTokens;
-  @Autowired private LocalActionTokenRepository actionTokenRepository;
   @Autowired private LocalUserAdminService adminService;
   @Autowired private UserRepository users;
   @Autowired private KnowledgeLibraryRepository libraries;
@@ -111,7 +110,6 @@ class LocalUserAdminIntegrationTest {
   void setUp() throws Exception {
     fixtures = fixturesFactory.create();
     fixtures.cleanUp();
-    actionTokenRepository.deleteAll();
     fixtures.localProvider(true);
     admin = fixtures.activeAdmin("verwaltung-" + UUID.randomUUID() + "@stadt.example");
     adminBearer = bearer(login(admin.email(), LocalAccountFixtures.PASSWORD, 200));
@@ -126,7 +124,6 @@ class LocalUserAdminIntegrationTest {
     greenMail.stop();
     configureSmtp(false);
     MailTestSupport.resetCaches(mailSettings);
-    actionTokenRepository.deleteAll();
     fixtures.cleanUp();
   }
 
