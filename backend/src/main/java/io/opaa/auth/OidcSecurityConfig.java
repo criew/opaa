@@ -101,6 +101,12 @@ public class OidcSecurityConfig {
                         "/actuator/metrics",
                         "/actuator/prometheus")
                     .permitAll()
+                    // Every other health group needs a token (#1710): the endpoint computes its
+                    // contributors before it decides what to show, so an anonymous call to
+                    // embedding-model or vector-store would trigger a real embedding call and a
+                    // real similarity search - outside the rate limit, which only covers /api.
+                    .requestMatchers("/actuator/health/*")
+                    .authenticated()
                     .requestMatchers("/api/v1/auth/config")
                     .permitAll()
                     // ADR-0033: the local sign-in, the two cookie-bearing session endpoints and

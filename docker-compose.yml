@@ -57,9 +57,9 @@ services:
       postgres:
         condition: service_healthy
     # Docker kills a container that has not stopped within this period. Kept above
-    # OPAA_SHUTDOWN_TIMEOUT, the window the backend gives the requests in flight, so the graceful
-    # shutdown can actually run its course instead of being cut short by SIGKILL.
-    stop_grace_period: 75s
+    # OPAA_SHUTDOWN_TIMEOUT - which is a window per shutdown phase, not a budget for the whole stop
+    # - so the graceful shutdown runs its course instead of being cut short by SIGKILL.
+    stop_grace_period: ${OPAA_STOP_GRACE_PERIOD:-75s}
 
   frontend:
     build:

@@ -77,6 +77,12 @@ public class DevSecurityConfig {
                         "/actuator/metrics",
                         "/actuator/prometheus")
                     .permitAll()
+                    // Every other health group needs a token (#1710): the endpoint computes its
+                    // contributors before it decides what to show, so an anonymous call to
+                    // embedding-model or vector-store would trigger a real embedding call and a
+                    // real similarity search - outside the rate limit, which only covers /api.
+                    .requestMatchers("/actuator/health/*")
+                    .authenticated()
                     .requestMatchers("/api/v1/auth/config")
                     .permitAll()
                     // #582/#583: branding is readable without authentication. The sign-in

@@ -41,7 +41,11 @@ class HealthGroupsIntegrationTest {
         .contains(
             ModelHealthGroupsConfiguration.CHAT_GROUP,
             ModelHealthGroupsConfiguration.EMBEDDINGS_GROUP,
-            ModelHealthGroupsConfiguration.VECTOR_STORE_GROUP);
+            ModelHealthGroupsConfiguration.VECTOR_STORE_GROUP,
+            // the group the three new post-processors must not swallow while they wrap each other
+            "mail",
+            "readiness",
+            "liveness");
 
     assertGroupHoldsOnly(
         ModelHealthGroupsConfiguration.CHAT_GROUP, ModelHealthGroupsConfiguration.CHAT_CONTRIBUTOR);

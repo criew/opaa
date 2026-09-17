@@ -15,47 +15,65 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.context.support.DefaultLifecycleProcessor;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
  * The shutdown window is for the HTTP requests in flight, not for background runs (#1710): a
  * running indexing task must be interrupted at once - {@code IndexingJobRecoveryScheduler} recovers
- * its row on the next start - instead of holding the stop up until the window expires.
+ * its row on the next start - instead of holding the stop up until the window expires. A pool whose
+ * task has no recovery at all gets a short window of its own instead.
  *
- * <p>The window used here is two seconds; the production default is a minute, which would make the
- * same wait a minute long.
+ * <p>The request window used here is six seconds; in production it is a minute, which is how long
+ * the wait in the control case below would be.
  */
 class IndexingExecutorShutdownTest {
 
-  private static final Duration WINDOW = Duration.ofSeconds(2);
+  private static final Duration REQUEST_WINDOW = Duration.ofSeconds(6);
 
   @Test
   void aRunningIndexingTaskDoesNotHoldUpTheStop() throws Exception {
     try (AnnotationConfigApplicationContext context =
-        contextWith(ShutdownLifecycleConfiguration.class)) {
+        contextWith(IndexingExecutor.class, ShutdownLifecycleConfiguration.class)) {
       BlockingTask task = startTaskOn(context);
 
       long elapsedMillis = closeAndMeasure(context);
 
-      assertThat(elapsedMillis).isLessThan(WINDOW.toMillis() / 2);
+      assertThat(elapsedMillis).isLessThan(1000);
       assertThat(task.interrupted()).isTrue();
     }
   }
 
   @Test
   void withoutThePinnedPhaseTheSameTaskHoldsTheStopUpToTheWindow() throws Exception {
-    try (AnnotationConfigApplicationContext context = contextWith(StockLifecycleProcessor.class)) {
+    try (AnnotationConfigApplicationContext context =
+        contextWith(IndexingExecutor.class, StockLifecycleProcessor.class)) {
       BlockingTask task = startTaskOn(context);
 
       long elapsedMillis = closeAndMeasure(context);
 
-      assertThat(elapsedMillis).isGreaterThanOrEqualTo(WINDOW.toMillis() * 3 / 4);
+      assertThat(elapsedMillis).isGreaterThanOrEqualTo(REQUEST_WINDOW.toMillis() * 3 / 4);
       assertThat(task.interrupted()).isTrue();
     }
   }
 
-  private static AnnotationConfigApplicationContext contextWith(Class<?> lifecycleConfiguration) {
+  @Test
+  void aPoolWithoutRecoveryGetsItsOwnShortWindow() throws Exception {
+    try (AnnotationConfigApplicationContext context =
+        contextWith(UnrecoverableExecutor.class, ShutdownLifecycleConfiguration.class)) {
+      BlockingTask task = startTaskOn(context);
+
+      long elapsedMillis = closeAndMeasure(context);
+
+      assertThat(elapsedMillis).isGreaterThanOrEqualTo(1000);
+      assertThat(elapsedMillis).isLessThan(REQUEST_WINDOW.toMillis() / 2);
+      assertThat(task.interrupted()).isTrue();
+    }
+  }
+
+  private static AnnotationConfigApplicationContext contextWith(
+      Class<?> executorConfiguration, Class<?> lifecycleConfiguration) {
     AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-    context.register(IndexingExecutor.class, lifecycleConfiguration);
+    context.register(executorConfiguration, RequestWindow.class, lifecycleConfiguration);
     context.refresh();
     return context;
   }
@@ -85,11 +103,30 @@ class IndexingExecutorShutdownTest {
               new IndexingProperties(
                   0, 0, 0, new IndexingProperties.ThreadPool(1, 1, 10), null, null, null, 0));
     }
+  }
+
+  /** A pool in the phase the two chat background pools declare. */
+  @Configuration
+  static class UnrecoverableExecutor {
+
+    @Bean
+    TaskExecutor unrecoverableTaskExecutor() {
+      ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+      executor.setCorePoolSize(1);
+      executor.setMaxPoolSize(1);
+      executor.setPhase(ShutdownLifecycleConfiguration.UNRECOVERABLE_BACKGROUND_PHASE);
+      executor.initialize();
+      return executor;
+    }
+  }
+
+  @Configuration
+  static class RequestWindow {
 
     @Bean
     LifecycleProperties lifecycleProperties() {
       LifecycleProperties properties = new LifecycleProperties();
-      properties.setTimeoutPerShutdownPhase(WINDOW);
+      properties.setTimeoutPerShutdownPhase(REQUEST_WINDOW);
       return properties;
     }
   }

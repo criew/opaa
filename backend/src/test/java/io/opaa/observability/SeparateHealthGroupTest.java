@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.actuate.endpoint.SecurityContext;
 import org.springframework.boot.health.actuate.endpoint.AdditionalHealthEndpointPath;
 import org.springframework.boot.health.actuate.endpoint.HealthEndpointGroup;
@@ -128,14 +130,20 @@ class SeparateHealthGroupTest {
     assertThat(own.isMember("db")).isFalse();
   }
 
-  @Test
-  void stackedPostProcessorsKeepEachOthersGroupsAndExclusions() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void stackedPostProcessorsKeepEachOthersGroupsAndExclusions(boolean chatFirst) {
+    SeparateHealthGroup chat = new SeparateHealthGroup("chat-model", Set.of("chat"));
+    SeparateHealthGroup embeddings =
+        new SeparateHealthGroup("embedding-model", Set.of("embeddings"));
+    SeparateHealthGroup first = chatFirst ? chat : embeddings;
+    SeparateHealthGroup second = chatFirst ? embeddings : chat;
+
+    // The order the beans run in is Spring's to decide, so neither order may lose a group.
     HealthEndpointGroups groups =
-        new SeparateHealthGroup("embedding-model", Set.of("embeddings"))
-            .postProcessHealthEndpointGroups(
-                new SeparateHealthGroup("chat-model", Set.of("chat"))
-                    .postProcessHealthEndpointGroups(
-                        HealthEndpointGroups.of(EVERYTHING, Map.of("readiness", READINESS))));
+        second.postProcessHealthEndpointGroups(
+            first.postProcessHealthEndpointGroups(
+                HealthEndpointGroups.of(EVERYTHING, Map.of("readiness", READINESS))));
 
     HealthEndpointGroup primary = groups.getPrimary();
     assertThat(primary.isMember("chat")).isFalse();

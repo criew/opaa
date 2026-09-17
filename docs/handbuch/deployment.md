@@ -783,7 +783,16 @@ richtige Pfad, sondern:
 | `GET /actuator/health` | alles, was nicht in einer eigenen Gruppe steht (siehe unten) | Überblick bei der Diagnose |
 
 Beide Proben sind ohne Anmeldung erreichbar und antworten dann nur mit dem Status, ohne
-Aufschlüsselung.
+Aufschlüsselung — ebenso der Gesamtstatus. Jede **andere** Gruppe (Tabelle weiter unten) verlangt
+dagegen ein gültiges Zugangstoken: Zwei von ihnen lösen bei jedem Abruf einen echten Modellaufruf
+bzw. eine echte Ähnlichkeitssuche aus, und das darf niemand ohne Anmeldung auslösen können.
+
+> **Die Bereitschaft zieht eine Datenbankverbindung.** Das ist beabsichtigt, hat aber einen
+> Grenzfall: Nicht nur ein Ausfall der Datenbank lässt die Probe `DOWN` melden, sondern auch ein
+> erschöpfter Verbindungspool. Eine Instanz, die unter Last alle Verbindungen in langen
+> Chat-Anfragen hält, kann sich so selbst aus der Rotation nehmen, obwohl sie arbeitet. Wer sehr
+> knapp dimensionierte Pools fährt, sollte die Probe deshalb mit einer nachsichtigen Anzahl
+> Fehlversuche konfigurieren, statt beim ersten `DOWN` umzuschalten.
 
 **Was bewusst nicht in der Bereitschaft steht:** Chat-Modell, Embedding-Modell und Vektorspeicher.
 Jeder dieser drei Zustände hängt an einem fremden Dienst, und ein hängendes Ollama darf eine Instanz
@@ -823,10 +832,18 @@ Upload-Vorgang wird beim Stopp sofort abgebrochen und verzögert ihn um nichts; 
 beim nächsten Start als abgebrochen erkannt und kann wiederholt werden. Ein großer Indizierungslauf
 kann einen Neustart also nicht hinhalten.
 
+Zwei Hintergrundarbeiten bekommen dagegen ein eigenes, kurzes und fest eingebautes Zeitfenster: die
+Erzeugung des Chat-Titels und die Verdichtung der Gesprächsnotiz. Beide werden nie nachgeholt — ein
+abgebrochener Titel bleibt der Vorgabetext —, deshalb bekommt ein bereits laufender Aufruf noch
+einen Moment. Ein langsamer Aufruf wird trotzdem abgebrochen; das Fenster ist eine Kulanz, keine
+Zusage. Es kommt zum Zeitfenster der Anfragen hinzu: `OPAA_SHUTDOWN_TIMEOUT` gilt je Stopp-Phase,
+nicht als Gesamtbudget des Stopps.
+
 > **Wer das Zeitfenster anhebt, hebt auch `stop_grace_period` an.** Docker beendet einen Container
 > nach Ablauf dieser Frist hart (`SIGKILL`); die mitgelieferte `docker-compose.yml` setzt sie für
-> das Backend etwas über das Zeitfenster hinaus. Ist sie kürzer als `OPAA_SHUTDOWN_TIMEOUT`, endet
-> der Prozess doch abrupt und das sanfte Herunterfahren läuft ins Leere.
+> das Backend über `OPAA_STOP_GRACE_PERIOD` etwas über das Zeitfenster hinaus. Ist sie kürzer als
+> `OPAA_SHUTDOWN_TIMEOUT`, endet der Prozess doch abrupt und das sanfte Herunterfahren läuft ins
+> Leere.
 
 ## Konfiguration
 
@@ -1019,7 +1036,8 @@ Sinn; das ist jeweils vermerkt.
 | **Allgemein** | | | |
 | `OPAA_SERVER_ADDRESS` | `localhost` | `0.0.0.0` | Bind-Adresse (`0.0.0.0` für Netzwerkzugang). Docker Compose überschreibt den Anwendungs-Default bewusst — siehe Hinweis unter [Netzwerkzugang](#netzwerkzugang) |
 | `OPAA_HTTP_FORCE_HTTP1` | `false` | `false` | HTTP/1.1 für vLLM-Kompatibilität erzwingen |
-| `OPAA_SHUTDOWN_TIMEOUT` | `60s` | nicht gesetzt (Anwendungs-Default gilt) | Wie lange ein Stopp den bereits angenommenen HTTP-Anfragen gibt, zu Ende zu laufen, bevor sie abgebrochen werden (siehe [„Sanftes Herunterfahren"](#sanftes-herunterfahren)). Der Startwert deckt eine lange Chat-Antwort ab und hält ein Update trotzdem kurz. Laufende Indizierungs- und Upload-Vorgänge teilen dieses Zeitfenster nicht — sie werden beim Stopp sofort abgebrochen. Wer den Wert anhebt, hebt `stop_grace_period` des Backend-Dienstes in der `docker-compose.yml` mit an, sonst beendet Docker den Container vorher hart |
+| `OPAA_SHUTDOWN_TIMEOUT` | `60s` | nicht gesetzt (Anwendungs-Default gilt) | Wie lange ein Stopp den bereits angenommenen HTTP-Anfragen gibt, zu Ende zu laufen, bevor sie abgebrochen werden (siehe [„Sanftes Herunterfahren"](#sanftes-herunterfahren)). Der Startwert deckt eine lange Chat-Antwort ab und hält ein Update trotzdem kurz. Der Wert gilt **je Stopp-Phase**, nicht als Gesamtbudget: Zum Fenster der Anfragen kommt das kurze, fest eingebaute Fenster für Chat-Titel und Gesprächsnotiz hinzu. Laufende Indizierungs- und Upload-Vorgänge teilen kein Fenster — sie werden beim Stopp sofort abgebrochen |
+| `OPAA_STOP_GRACE_PERIOD` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `75s`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default | Frist, nach der Docker den Backend-Container hart beendet (`SIGKILL`). Muss über `OPAA_SHUTDOWN_TIMEOUT` liegen, sonst wird das sanfte Herunterfahren abgeschnitten |
 | `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | `http://localhost:3000` | Erlaubte CORS-Origins (kommagetrennt). Der Anwendungs-Default passt nur außerhalb von Docker Compose (lokaler Vite-Dev-Server auf `:5173`) — die Compose-Belegung trägt deshalb bewusst den Frontend-Host-Port, standardmäßig `http://localhost:3000` (siehe [„Docker-spezifische Variablen"](#docker-spezifische-variablen) oben und [„POST-Anfragen geben 403 Forbidden zurück"](#post-anfragen-geben-403-forbidden-zurück) unten) — sonst schlägt jede POST-Anfrage aus dem Compose-Frontend am CORS-Preflight fehl |
 | `OPAA_INDEXING_DOCUMENT_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `./documents`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.docker.example` lässt die Variable deshalb bewusst auskommentiert; ohne Shell-Export gilt der Compose-Default `./documents` | Host-Pfad für Dokumente (in Container gemountet) |
 | `OPAA_UPLOAD_STORAGE_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `./uploads`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `./uploads` | Host-Pfad für hochgeladene Dokumente (in Container gemountet) |

@@ -13,10 +13,11 @@ spring:
   application:
     name: opaa
   lifecycle:
-    # How long a shutdown phase may take. It is meant for the HTTP requests in flight - a chat
-    # answer is the longest ordinary one - not for background runs: ShutdownLifecycleConfiguration
-    # pins the task executors' own phase to zero, so an indexing run is interrupted at once and
-    # recovered on the next start, exactly as before.
+    # How long a shutdown phase may take - a window per phase, not a budget for the whole stop. It
+    # is meant for the HTTP requests in flight - a chat answer is the longest ordinary one - not
+    # for background runs: ShutdownLifecycleConfiguration pins the task executors' phase to zero,
+    # so an indexing run is interrupted at once and recovered on the next start, exactly as
+    # before, and gives the two pools without any recovery a short window of their own.
     timeout-per-shutdown-phase: ${OPAA_SHUTDOWN_TIMEOUT:60s}
   profiles:
     default: local
@@ -510,8 +511,8 @@ management:
   endpoint:
     health:
       show-details: when-authorized
-      # /actuator/health/readiness and /actuator/health/liveness, the two paths a load balancer or
-      # a container health check probes.
+      # Spring Boot enables the two probes in a web application anyway; set here so the paths a
+      # load balancer and a container health check rely on stay a deliberate choice.
       probes:
         enabled: true
       group:
