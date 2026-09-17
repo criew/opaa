@@ -446,12 +446,14 @@ public class LocalUserService {
    * Deletes an account that nothing references (ADR-0033, Entscheidung 11): no knowledge library,
    * no space besides the personal one, no chat - and no row of the rights and evidence tables that
    * point at a user with {@code ON DELETE RESTRICT} (group membership history, grant history,
-   * grants, space associations, incident scopes, impersonation grants). In practice that is an
-   * account that was never used; every other one is locked, not deleted. The personal space goes
-   * first, audited as {@code SPACE_DELETED} like any space deletion ({@code
-   * fk_spaces_owner_organization} is RESTRICT and leaves no choice); credentials, tokens,
-   * memberships and the pseudonym mapping follow by the schema's cascades. The refusal names the
-   * blocking tables in the log only - the response says "referenced", nothing more.
+   * grants, space associations, incident scopes) - nor a diagnostic impersonation grant, which
+   * cascades since #1509 and is refused all the same, because that cascade would take away still
+   * valid grants of other holders. In practice that is an account that was never used; every other
+   * one is locked, not deleted. The personal space goes first, audited as {@code SPACE_DELETED}
+   * like any space deletion ({@code fk_spaces_owner_organization} is RESTRICT and leaves no
+   * choice); credentials, tokens, memberships and the pseudonym mapping follow by the schema's
+   * cascades. The refusal names the blocking tables in the log only - the response says
+   * "referenced", nothing more.
    */
   @Transactional
   public void delete(CurrentUser actor, UUID userId) {
