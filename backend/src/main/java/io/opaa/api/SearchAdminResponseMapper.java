@@ -220,7 +220,9 @@ final class SearchAdminResponseMapper {
             status.fullTextOutdatedChunks(),
             MetadataBackfillResponseMapper.toStatusResponse(status.metadataBackfill()),
             MetadataExtractionResponseMapper.toStatsResponse(status.modelExtraction()),
-            MetadataBackfillResponseMapper.toRerunStatusResponse(status.contextPrefixRerun()))
+            MetadataBackfillResponseMapper.toRerunStatusResponse(status.contextPrefixRerun()),
+            MetadataBackfillResponseMapper.toSchemaChangeStatusResponse(
+                status.metadataSchemaChanges()))
         .lastIndexedAt(status.lastIndexedAt());
   }
 

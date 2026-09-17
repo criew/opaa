@@ -23,6 +23,7 @@ import io.opaa.api.dto.TrackedDocumentOutcome;
 import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
 import io.opaa.indexing.metadata.CoreMetadataExtractor;
 import io.opaa.indexing.metadata.CoreMetadataField;
+import io.opaa.indexing.metadata.LibraryMetadataSchemaChangeProgress;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import io.opaa.indexing.metadata.MetadataFieldFill;
 import io.opaa.indexing.metadata.ModelExtractionStats;
@@ -163,7 +164,8 @@ class SearchAdminResponseMapperTest {
                     CoreMetadataField.DOCUMENT_DATE,
                     new MetadataFieldFill(10, 6, 0))),
             new ModelExtractionStats(LIBRARY_ID, 7, 4, 2, 1, 0, 0, 9, Instant.EPOCH),
-            new ContextPrefixRerunProgress(LIBRARY_ID, 10, 7, 3, 1));
+            new ContextPrefixRerunProgress(LIBRARY_ID, 10, 7, 3, 1),
+            new LibraryMetadataSchemaChangeProgress(LIBRARY_ID, 1, 4, 0));
 
     var response =
         SearchAdminResponseMapper.toStatusResponse(
@@ -244,7 +246,8 @@ class SearchAdminResponseMapperTest {
                             0,
                             MetadataBackfillProgress.empty(LIBRARY_ID),
                             ModelExtractionStats.empty(LIBRARY_ID),
-                            ContextPrefixRerunProgress.empty(LIBRARY_ID)))))
+                            ContextPrefixRerunProgress.empty(LIBRARY_ID),
+                            LibraryMetadataSchemaChangeProgress.empty(LIBRARY_ID)))))
             .getLibraries()
             .get(0);
 

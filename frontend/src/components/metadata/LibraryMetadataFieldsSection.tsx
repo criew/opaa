@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -31,12 +31,14 @@ import {
   listLibraryMetadataFields,
   relabelLibraryMetadataFieldValue,
   remapLibraryMetadataFieldValue,
+  runLibraryMetadataSchemaChanges,
   updateCoreContextPrefix,
   updateLibraryMetadataField,
 } from '../../services/api'
 import type {
   CoreContextPrefixResponse,
   LibraryMetadataFieldResponse,
+  LibraryMetadataSchemaChangeResponse,
   LibraryMetadataFieldType,
   MetadataChangeImpactResponse,
   MetadataChangeKind,
@@ -55,6 +57,16 @@ function effectChips(field: LibraryMetadataFieldResponse) {
   if (field.contextPrefix) chips.push('Kontextpräfix')
   if (field.citationPosition != null) chips.push(`Beleg ${field.citationPosition}`)
   return chips
+}
+
+/** Eine laufende Schemaänderung in einem Satz: was stillgelegt ist und wie weit der Lauf ist. */
+function describeChange(change: LibraryMetadataSchemaChangeResponse): string {
+  const progress = `${change.remainingDocuments} Dokument(e) offen, ${change.processedDocuments} umgeschrieben.`
+  if (change.kind === 'FIELD_DELETION') {
+    return `Feld „${change.fieldKey}“ wird gelöscht: ${progress}`
+  }
+  const target = change.targetCode == null ? 'leer' : `„${change.targetCode}“`
+  return `Wert „${change.valueCode}“ wird auf ${target} abgebildet: ${progress}`
 }
 
 /** "rund 40 Minuten" - a runtime a decision can be made on, never a raw number of seconds. */
@@ -165,6 +177,10 @@ export default function LibraryMetadataFieldsSection({
   const [fields, setFields] = useState<LibraryMetadataFieldResponse[]>([])
   const [coreContextPrefix, setCoreContextPrefix] = useState<CoreContextPrefixResponse | null>(null)
   const [awaitingRerun, setAwaitingRerun] = useState(0)
+  const [pendingChanges, setPendingChanges] = useState<LibraryMetadataSchemaChangeResponse[]>([])
+  const [running, setRunning] = useState(false)
+  // Kein State: der Lauf liest die Marke zwischen zwei Chargen, ein Re-Render braucht es nicht.
+  const paused = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [remapField, setRemapField] = useState<LibraryMetadataFieldResponse | null>(null)
@@ -182,6 +198,7 @@ export default function LibraryMetadataFieldsSection({
       setFields(response.items)
       setCoreContextPrefix(response.coreContextPrefix)
       setAwaitingRerun(response.documentsAwaitingContextPrefixRerun)
+      setPendingChanges(response.pendingSchemaChanges)
       setError(null)
     } catch (err) {
       setError(
@@ -198,6 +215,7 @@ export default function LibraryMetadataFieldsSection({
         setFields(response.items)
         setCoreContextPrefix(response.coreContextPrefix)
         setAwaitingRerun(response.documentsAwaitingContextPrefixRerun)
+        setPendingChanges(response.pendingSchemaChanges)
         setError(null)
       })
       .catch((err: unknown) => {
@@ -240,7 +258,7 @@ export default function LibraryMetadataFieldsSection({
   async function confirmRemap() {
     if (!remapField || !remapCode) return
     try {
-      await remapLibraryMetadataFieldValue(
+      const result = await remapLibraryMetadataFieldValue(
         libraryId,
         remapField.fieldKey,
         remapCode,
@@ -250,8 +268,34 @@ export default function LibraryMetadataFieldsSection({
       setRemapCode(null)
       await reload()
       onFieldsChanged?.()
+      if (!result.complete) void runPendingChanges()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Die Abbildung ist fehlgeschlagen')
+    }
+  }
+
+  /**
+   * Der Nachlauf einer bestaetigten Abbildung oder Feldloeschung: eine Charge je Aufruf, bis nichts
+   * mehr offen ist. Anhalten heisst, die naechste Charge nicht mehr anzufordern; der bereits
+   * umgeschriebene Teil bleibt. Eine Charge ohne Fortschritt beendet den Lauf ebenfalls, sonst
+   * liefe er ueber Dokumente, die gerade niemand umschreiben kann, endlos weiter.
+   */
+  async function runPendingChanges() {
+    if (running) return
+    paused.current = false
+    setRunning(true)
+    try {
+      for (;;) {
+        const result = await runLibraryMetadataSchemaChanges(libraryId)
+        setPendingChanges(result.pendingChanges)
+        if (result.complete || result.processedDocuments === 0 || paused.current) break
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Der Nachlauf ist fehlgeschlagen')
+    } finally {
+      setRunning(false)
+      await reload()
+      onFieldsChanged?.()
     }
   }
 
@@ -284,10 +328,11 @@ export default function LibraryMetadataFieldsSection({
   async function confirmDelete() {
     if (!deleteField) return
     try {
-      await deleteLibraryMetadataField(libraryId, deleteField.fieldKey)
+      const pending = await deleteLibraryMetadataField(libraryId, deleteField.fieldKey)
       setDeleteField(null)
       await reload()
       onFieldsChanged?.()
+      if (pending) void runPendingChanges()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Das Feld konnte nicht gelöscht werden')
     }
@@ -327,6 +372,34 @@ export default function LibraryMetadataFieldsSection({
             Suche &amp; Indexierung
           </Link>{' '}
           gestartet; bis dahin bleibt die Suche über den alten Stand verfügbar.
+        </Alert>
+      )}
+      {pendingChanges.length > 0 && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2 }}
+          action={
+            canManageSchema &&
+            (running ? (
+              <Button size="small" onClick={() => (paused.current = true)}>
+                Anhalten
+              </Button>
+            ) : (
+              <Button size="small" onClick={() => void runPendingChanges()}>
+                Fortsetzen
+              </Button>
+            ))
+          }
+        >
+          {pendingChanges.map((change) => (
+            <Typography key={`${change.fieldKey}|${change.valueCode ?? ''}`} variant="body2">
+              {describeChange(change)}
+            </Typography>
+          ))}
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Bis der Lauf durch ist, bleibt der alte Wert in der Werteliste und die betroffenen
+            Dokumente werden weiterhin gefunden. Neu gesetzt werden kann er nicht mehr.
+          </Typography>
         </Alert>
       )}
       {coreContextPrefix && (
@@ -371,7 +444,10 @@ export default function LibraryMetadataFieldsSection({
                 {effectChips(field).map((chip) => (
                   <Chip key={chip} size="small" label={chip} />
                 ))}
-                {canManageSchema && (
+                {field.deletionPending && (
+                  <Chip size="small" color="warning" label="wird gelöscht" />
+                )}
+                {canManageSchema && !field.deletionPending && (
                   <Button
                     size="small"
                     onClick={() => setEditField(field)}
@@ -380,7 +456,7 @@ export default function LibraryMetadataFieldsSection({
                     Bearbeiten
                   </Button>
                 )}
-                {canManageSchema && (
+                {canManageSchema && !field.deletionPending && (
                   <Button
                     size="small"
                     color="error"
@@ -403,15 +479,22 @@ export default function LibraryMetadataFieldsSection({
                       key={value.code}
                       size="small"
                       variant="outlined"
-                      label={`${value.label} (${value.code})`}
-                      clickable={canManageSchema}
+                      color={value.retiring ? 'warning' : 'default'}
+                      label={
+                        value.retiring
+                          ? `${value.label} (${value.code}) — wird abgebildet`
+                          : `${value.label} (${value.code})`
+                      }
+                      clickable={canManageSchema && !value.retiring && !field.deletionPending}
                       onClick={
-                        canManageSchema ? () => void openRemap(field, value.code) : undefined
+                        canManageSchema && !value.retiring && !field.deletionPending
+                          ? () => void openRemap(field, value.code)
+                          : undefined
                       }
                       aria-label={canManageSchema ? `Wert ${value.label} bearbeiten` : undefined}
                     />
                   ))}
-                  {canManageSchema && (
+                  {canManageSchema && !field.deletionPending && (
                     <AddValueButton
                       libraryId={libraryId}
                       fieldKey={field.fieldKey}

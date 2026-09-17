@@ -7,6 +7,8 @@ import io.opaa.api.dto.LibraryMetadataFieldResponse;
 import io.opaa.api.dto.LibraryMetadataFieldValueRequest;
 import io.opaa.api.dto.LibraryMetadataFieldValueResponse;
 import io.opaa.api.dto.LibraryMetadataFieldsResponse;
+import io.opaa.api.dto.LibraryMetadataSchemaChangeResponse;
+import io.opaa.api.dto.LibraryMetadataSchemaRunResponse;
 import io.opaa.api.dto.MetadataChangeImpactResponse;
 import io.opaa.api.dto.MetadataFieldUsageResponse;
 import io.opaa.api.dto.RemapLibraryMetadataFieldValueResponse;
@@ -18,6 +20,8 @@ import io.opaa.indexing.metadata.LibraryMetadataFieldDefinition;
 import io.opaa.indexing.metadata.LibraryMetadataFieldInput;
 import io.opaa.indexing.metadata.LibraryMetadataFieldOverview;
 import io.opaa.indexing.metadata.LibraryMetadataFieldValue;
+import io.opaa.indexing.metadata.LibraryMetadataSchemaChangeView;
+import io.opaa.indexing.metadata.LibraryMetadataSchemaRunResult;
 import io.opaa.indexing.metadata.MetadataChangeImpact;
 import java.util.List;
 
@@ -35,7 +39,10 @@ final class LibraryMetadataFieldResponseMapper {
             .map(LibraryMetadataFieldResponseMapper::toFieldResponse)
             .toList(),
         toCoreContextPrefixResponse(overview.coreContextPrefix()),
-        overview.documentsAwaitingContextPrefixRerun());
+        overview.documentsAwaitingContextPrefixRerun(),
+        overview.pendingSchemaChanges().stream()
+            .map(LibraryMetadataFieldResponseMapper::toSchemaChangeResponse)
+            .toList());
   }
 
   static CoreContextPrefixResponse toCoreContextPrefixResponse(CoreContextPrefixSettings settings) {
@@ -65,15 +72,45 @@ final class LibraryMetadataFieldResponseMapper {
             field.isFilterEnabled(),
             field.isContextPrefixEnabled(),
             field.getSortOrder(),
-            definition.values().stream()
-                .map(LibraryMetadataFieldResponseMapper::toValueResponse)
-                .toList())
+            definition.values().stream().map(value -> toValueResponse(definition, value)).toList(),
+            definition.deletionPending())
         .valuePattern(field.getValuePattern())
         .citationPosition(field.getCitationPosition());
   }
 
-  static LibraryMetadataFieldValueResponse toValueResponse(LibraryMetadataFieldValue value) {
-    return new LibraryMetadataFieldValueResponse(value.getCode(), value.getLabel());
+  /**
+   * One list entry, with the running mapping it is retired for: a retiring value stays listed and
+   * filterable until its last document has left it, and the Oberfläche must say so rather than
+   * offer it for new documents.
+   */
+  static LibraryMetadataFieldValueResponse toValueResponse(
+      LibraryMetadataFieldDefinition definition, LibraryMetadataFieldValue value) {
+    LibraryMetadataSchemaChangeView remap = definition.pendingRemapOf(value.getCode()).orElse(null);
+    return new LibraryMetadataFieldValueResponse(value.getCode(), value.getLabel(), remap != null)
+        .remapTargetCode(remap == null ? null : remap.targetCode());
+  }
+
+  static LibraryMetadataSchemaChangeResponse toSchemaChangeResponse(
+      LibraryMetadataSchemaChangeView change) {
+    return new LibraryMetadataSchemaChangeResponse(
+            change.kind(),
+            change.fieldKey(),
+            change.processedDocuments(),
+            change.remainingDocuments(),
+            change.correlationRef())
+        .valueCode(change.valueCode())
+        .targetCode(change.targetCode());
+  }
+
+  static LibraryMetadataSchemaRunResponse toRunResponse(LibraryMetadataSchemaRunResult result) {
+    return new LibraryMetadataSchemaRunResponse(
+        result.processedDocuments(),
+        result.skippedDocuments(),
+        result.remainingDocuments(),
+        result.complete(),
+        result.pendingChanges().stream()
+            .map(LibraryMetadataFieldResponseMapper::toSchemaChangeResponse)
+            .toList());
   }
 
   static MetadataFieldUsageResponse toUsageResponse(long documentCount) {
@@ -83,7 +120,11 @@ final class LibraryMetadataFieldResponseMapper {
   static RemapLibraryMetadataFieldValueResponse toRemapResponse(
       LibraryFieldValueRemapResult result) {
     return new RemapLibraryMetadataFieldValueResponse(
-        result.remappedDocuments(), result.clearedDocuments(), result.correlationRef());
+        result.remappedDocuments(),
+        result.clearedDocuments(),
+        result.remainingDocuments(),
+        result.complete(),
+        result.correlationRef());
   }
 
   static LibraryMetadataFieldInput toInput(CreateLibraryMetadataFieldRequest request) {

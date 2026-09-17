@@ -9,6 +9,7 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.document.Document;
@@ -52,6 +53,7 @@ public class DocumentMetadataCorrectionService {
   private final DocumentTypeVocabularyRepository vocabularyRepository;
   private final LibraryMetadataFieldRepository libraryFieldRepository;
   private final LibraryMetadataFieldValueRepository libraryValueRepository;
+  private final LibraryMetadataSchemaChangeRepository schemaChangeRepository;
   private final UserRepository userRepository;
   private final AuditEventRecorder auditEventRecorder;
 
@@ -63,6 +65,7 @@ public class DocumentMetadataCorrectionService {
       DocumentTypeVocabularyRepository vocabularyRepository,
       LibraryMetadataFieldRepository libraryFieldRepository,
       LibraryMetadataFieldValueRepository libraryValueRepository,
+      LibraryMetadataSchemaChangeRepository schemaChangeRepository,
       UserRepository userRepository,
       AuditEventRecorder auditEventRecorder) {
     this.libraryRepository = libraryRepository;
@@ -72,6 +75,7 @@ public class DocumentMetadataCorrectionService {
     this.vocabularyRepository = vocabularyRepository;
     this.libraryFieldRepository = libraryFieldRepository;
     this.libraryValueRepository = libraryValueRepository;
+    this.schemaChangeRepository = schemaChangeRepository;
     this.userRepository = userRepository;
     this.auditEventRecorder = auditEventRecorder;
   }
@@ -136,6 +140,7 @@ public class DocumentMetadataCorrectionService {
     ResolvedField field = requireField(library, fieldKey);
     DocumentTypeVocabulary vocabulary = vocabularyRepository.snapshot();
     MetadataValueInput validated = field.validate(input, vocabulary);
+    field.requireWritable(validated);
 
     ManualValueChange change =
         metadataService.setManualValue(document.getId(), field.ref(), validated, caller.id());
@@ -184,6 +189,7 @@ public class DocumentMetadataCorrectionService {
     }
     DocumentTypeVocabulary vocabulary = vocabularyRepository.snapshot();
     MetadataValueInput validated = field.validate(input, vocabulary);
+    field.requireWritable(validated);
 
     Map<UUID, Document> ownDocuments = new LinkedHashMap<>();
     for (Document document : documentRepository.findAllById(requested)) {
@@ -330,12 +336,13 @@ public class DocumentMetadataCorrectionService {
           libraryFieldRepository
               .findByLibraryIdAndFieldKey(library.getId(), key)
               .orElseThrow(() -> new ValidationException("Unbekanntes Metadatenfeld: " + fieldKey));
-      return new ResolvedField(null, field, valuesByCode(field));
+      return new ResolvedField(
+          null, field, valuesByCode(field), schemaChangeRepository.findByFieldId(field.getId()));
     }
     CoreMetadataField core =
         CoreMetadataField.fromKey(fieldKey)
             .orElseThrow(() -> new ValidationException("Unbekanntes Metadatenfeld: " + fieldKey));
-    return new ResolvedField(core, null, Map.of());
+    return new ResolvedField(core, null, Map.of(), List.of());
   }
 
   private Map<String, LibraryMetadataFieldValue> valuesByCode(LibraryMetadataField field) {
@@ -365,7 +372,29 @@ public class DocumentMetadataCorrectionService {
   private record ResolvedField(
       CoreMetadataField core,
       LibraryMetadataField libraryField,
-      Map<String, LibraryMetadataFieldValue> valuesByCode) {
+      Map<String, LibraryMetadataFieldValue> valuesByCode,
+      List<LibraryMetadataSchemaChange> pendingChanges) {
+
+    /**
+     * A retired field takes no value any more, and a retired list value none either: both are on
+     * their way out of the schema, and letting one in would extend a running Nachlauf by exactly
+     * the document it just finished (#1361). Removing a value stays possible - that is what the run
+     * itself does.
+     */
+    void requireWritable(MetadataValueInput validated) {
+      for (LibraryMetadataSchemaChange change : pendingChanges) {
+        if (change.getValueId() == null) {
+          throw new ConflictException(
+              "Das Feld „" + libraryField.getLabel() + "“ wird gerade gelöscht");
+        }
+        if (change.getValueId().equals(validated.libraryValueId())) {
+          throw new ConflictException(
+              "Der Wert „"
+                  + validated.textValue()
+                  + "“ wird gerade abgebildet und kann nicht mehr gesetzt werden");
+        }
+      }
+    }
 
     MetadataFieldRef ref() {
       return core != null ? MetadataFieldRef.of(core) : MetadataFieldRef.of(libraryField);

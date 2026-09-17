@@ -86,6 +86,7 @@ class SpecEnumParityTest {
         Arguments.of("ConfluenceEdition", ConfluenceEdition.values()),
         Arguments.of("IndexingRunMode", IndexingRunMode.values()),
         Arguments.of("LibraryMetadataFieldType", LibraryMetadataFieldType.values()),
+        Arguments.of("LibraryMetadataSchemaChangeKind", LibraryMetadataSchemaChangeKind.values()),
         Arguments.of("OrphanedOriginalSkipReason", OrphanedOriginalSkipReason.values()),
         Arguments.of("ProviderType", ProviderType.values()),
         Arguments.of("PasswordChangeReason", PasswordChangeReason.values()),

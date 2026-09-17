@@ -416,6 +416,42 @@ describe('SearchIndexingAdminPage', () => {
     expect(batchCalls).toEqual([50, 50])
   })
 
+  /**
+   * Die zweite Mischzustandsart einer Bibliothek (#1361): Diese Seite zeigt sie, getrieben wird
+   * der Lauf aber aus den Bibliothekseinstellungen - deshalb steht hier kein Knopf.
+   */
+  it('shows a running Umschlüsselung in the same table as the rest of the index state', async () => {
+    signInAs('SYSTEM_ADMIN')
+    server.use(
+      http.get('/api/v1/admin/search/status', () => {
+        const [satzungen, ...rest] = mockSearchStatus.libraries
+        return HttpResponse.json({
+          ...mockSearchStatus,
+          libraries: [
+            {
+              ...satzungen,
+              metadataSchemaChanges: {
+                pendingChanges: 1,
+                pendingDocuments: 4,
+                lastSkippedDocuments: 0,
+              },
+            },
+            ...rest,
+          ],
+        })
+      }),
+    )
+
+    renderIndex()
+    const table = await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+    const row = within(table).getByText('Satzungen & Gebuehrenordnungen').closest('tr')
+
+    expect(within(row as HTMLElement).getByText('1 Änderung läuft')).toBeInTheDocument()
+    expect(
+      within(row as HTMLElement).getByText('4 Dokumente werden noch umgeschrieben'),
+    ).toBeInTheDocument()
+  })
+
   it('pausing a run stops after the batch in flight and offers to continue', async () => {
     signInAs('SYSTEM_ADMIN')
     let batchCalls = 0

@@ -15,6 +15,7 @@ const {
   mockRelabel,
   mockImpact,
   mockUpdateCorePrefix,
+  mockRun,
 } = vi.hoisted(() => ({
   mockList: vi.fn(),
   mockCreate: vi.fn(),
@@ -26,6 +27,7 @@ const {
   mockRelabel: vi.fn(),
   mockImpact: vi.fn(),
   mockUpdateCorePrefix: vi.fn(),
+  mockRun: vi.fn(),
 }))
 
 vi.mock('../../services/api', async () => {
@@ -42,6 +44,7 @@ vi.mock('../../services/api', async () => {
     relabelLibraryMetadataFieldValue: mockRelabel,
     getMetadataChangeImpact: mockImpact,
     updateCoreContextPrefix: mockUpdateCorePrefix,
+    runLibraryMetadataSchemaChanges: mockRun,
   }
 })
 
@@ -55,10 +58,30 @@ const fassung = {
   contextPrefix: false,
   citationPosition: 1,
   sortOrder: 10,
+  deletionPending: false,
   values: [
-    { code: 'F2026', label: 'Fassung 2026' },
-    { code: 'F2027', label: 'Fassung 2027' },
+    { code: 'F2026', label: 'Fassung 2026', retiring: false },
+    { code: 'F2027', label: 'Fassung 2027', retiring: false },
   ],
+}
+
+/** Dieselbe Bibliothek mitten im Nachlauf: F2026 ist stillgelegt, nicht entfernt. */
+const fassungRetiring = {
+  ...fassung,
+  values: [
+    { code: 'F2026', label: 'Fassung 2026', retiring: true, remapTargetCode: 'F2027' },
+    { code: 'F2027', label: 'Fassung 2027', retiring: false },
+  ],
+}
+
+const runningRemap = {
+  kind: 'VALUE_REMAP' as const,
+  fieldKey: 'fassung',
+  valueCode: 'F2026',
+  targetCode: 'F2027',
+  processedDocuments: 1,
+  remainingDocuments: 2,
+  correlationRef: 'metadata-remap-1',
 }
 
 describe('LibraryMetadataFieldsSection', () => {
@@ -68,6 +91,7 @@ describe('LibraryMetadataFieldsSection', () => {
       items: [fassung],
       coreContextPrefix: { title: true, documentType: false, documentDate: false },
       documentsAwaitingContextPrefixRerun: 0,
+      pendingSchemaChanges: [],
     })
     mockImpact.mockResolvedValue({
       affectedDocuments: 12,
@@ -87,7 +111,17 @@ describe('LibraryMetadataFieldsSection', () => {
     mockRemap.mockResolvedValue({
       remappedDocuments: 3,
       clearedDocuments: 0,
+      remainingDocuments: 0,
+      complete: true,
       correlationRef: 'metadata-remap-1',
+    })
+    mockDelete.mockResolvedValue(null)
+    mockRun.mockResolvedValue({
+      processedDocuments: 2,
+      skippedDocuments: 0,
+      remainingDocuments: 0,
+      complete: true,
+      pendingChanges: [],
     })
   })
 
@@ -225,6 +259,7 @@ describe('LibraryMetadataFieldsSection', () => {
       items: [fassung],
       coreContextPrefix: { title: true, documentType: true, documentDate: false },
       documentsAwaitingContextPrefixRerun: 7,
+      pendingSchemaChanges: [],
     })
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />, {
       withRouter: true,
@@ -290,5 +325,86 @@ describe('LibraryMetadataFieldsSection', () => {
       'Fassung 2026 (neu)',
     )
     expect(mockRemap).not.toHaveBeenCalled()
+  })
+})
+
+describe('LibraryMetadataFieldsSection, laufende Schemaänderung (#1361)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockImpact.mockResolvedValue({
+      affectedDocuments: 0,
+      affectedChunks: 0,
+      embeddingCalls: 0,
+      estimatedSeconds: 0,
+      reembeddingRequired: false,
+      rateSource: 'CONFIGURED',
+    })
+    mockList.mockResolvedValue({
+      items: [fassungRetiring],
+      coreContextPrefix: { title: true, documentType: false, documentDate: false },
+      documentsAwaitingContextPrefixRerun: 0,
+      pendingSchemaChanges: [runningRemap],
+    })
+    mockRun.mockResolvedValue({
+      processedDocuments: 2,
+      skippedDocuments: 0,
+      remainingDocuments: 0,
+      complete: true,
+      pendingChanges: [],
+    })
+  })
+
+  /**
+   * Der Mischzustand muss sichtbar sein - samt der Zusage, dass die betroffenen Dokumente bis zum
+   * Ende des Laufs gefunden werden. Ein stillgelegter Wert ist deshalb weiterhin gelistet, aber
+   * nicht mehr bearbeitbar.
+   */
+  it('zeigt die laufende Abbildung mit ihrem Fortschritt und legt den Wert still', async () => {
+    renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
+
+    expect(
+      await screen.findByText(/Wert „F2026“ wird auf „F2027“ abgebildet: 2 Dokument\(e\) offen/),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/bleibt der alte Wert in der Werteliste/)).toBeInTheDocument()
+    expect(screen.getByText(/Fassung 2026 \(F2026\) — wird abgebildet/)).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Wert Fassung 2026 bearbeiten' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('setzt den Lauf auf Anforderung fort, bis nichts mehr offen ist', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
+
+    await user.click(await screen.findByRole('button', { name: 'Fortsetzen' }))
+
+    expect(mockRun).toHaveBeenCalledWith('library-team')
+  })
+
+  it('bietet an einem Feld, das gerade gelöscht wird, keine Schemaänderung mehr an', async () => {
+    mockList.mockResolvedValue({
+      items: [{ ...fassung, deletionPending: true }],
+      coreContextPrefix: { title: true, documentType: false, documentDate: false },
+      documentsAwaitingContextPrefixRerun: 0,
+      pendingSchemaChanges: [
+        {
+          kind: 'FIELD_DELETION' as const,
+          fieldKey: 'fassung',
+          valueCode: null,
+          targetCode: null,
+          processedDocuments: 0,
+          remainingDocuments: 4,
+          correlationRef: 'metadata-field-delete-1',
+        },
+      ],
+    })
+    renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
+
+    expect(
+      await screen.findByText(/Feld „fassung“ wird gelöscht: 4 Dokument\(e\) offen/),
+    ).toBeInTheDocument()
+    expect(screen.getByText('wird gelöscht')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Feld Fassung löschen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Wert ergänzen' })).not.toBeInTheDocument()
   })
 })

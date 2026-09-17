@@ -79,6 +79,7 @@ class ModelMetadataExtractionIntegrationTest {
   @Autowired private DocumentTypeVocabularyRepository vocabularyRepository;
   @Autowired private LibraryMetadataFieldRepository libraryFieldRepository;
   @Autowired private LibraryMetadataFieldValueRepository libraryFieldValueRepository;
+  @Autowired private LibraryMetadataSchemaChangeRepository schemaChangeRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private VectorChunkStore vectorChunkStore;
 
@@ -534,6 +535,7 @@ class ModelMetadataExtractionIntegrationTest {
         vocabularyRepository,
         libraryFieldRepository,
         libraryFieldValueRepository,
+        schemaChangeRepository,
         keywordRepository,
         counters,
         documentRepository,

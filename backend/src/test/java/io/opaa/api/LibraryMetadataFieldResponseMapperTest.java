@@ -7,6 +7,7 @@ import io.opaa.api.dto.EmbeddingRateSource;
 import io.opaa.api.dto.LibraryMetadataFieldResponse;
 import io.opaa.api.dto.LibraryMetadataFieldValueRequest;
 import io.opaa.api.types.LibraryMetadataFieldType;
+import io.opaa.api.types.LibraryMetadataSchemaChangeKind;
 import io.opaa.indexing.chunk.EmbeddingRateEstimator;
 import io.opaa.indexing.metadata.CoreContextPrefixSettings;
 import io.opaa.indexing.metadata.LibraryFieldValueRemapResult;
@@ -14,6 +15,8 @@ import io.opaa.indexing.metadata.LibraryMetadataFieldDefinition;
 import io.opaa.indexing.metadata.LibraryMetadataFieldInput;
 import io.opaa.indexing.metadata.LibraryMetadataFieldOverview;
 import io.opaa.indexing.metadata.LibraryMetadataFieldTestFixtures;
+import io.opaa.indexing.metadata.LibraryMetadataSchemaChangeView;
+import io.opaa.indexing.metadata.LibraryMetadataSchemaRunResult;
 import io.opaa.indexing.metadata.MetadataChangeImpact;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -53,6 +56,89 @@ class LibraryMetadataFieldResponseMapperTest {
     assertThat(response.getValues())
         .extracting(value -> value.getCode() + "=" + value.getLabel())
         .containsExactly("A=Wert A", "B=Wert B");
+    assertThat(response.getDeletionPending()).isFalse();
+    assertThat(response.getValues()).allSatisfy(value -> assertThat(value.getRetiring()).isFalse());
+  }
+
+  /** A retired list entry must be recognizable as such, with the target it is mapped onto. */
+  @Test
+  void aRetiredValueAndARetiredFieldReachTheResponse() {
+    LibraryMetadataFieldDefinition definition =
+        new LibraryMetadataFieldDefinition(
+            LibraryMetadataFieldTestFixtures.definition(
+                    "fassung",
+                    "Fassung",
+                    LibraryMetadataFieldType.SELECT,
+                    null,
+                    true,
+                    false,
+                    null,
+                    List.of("A", "B"))
+                .field(),
+            LibraryMetadataFieldTestFixtures.definition(
+                    "fassung",
+                    "Fassung",
+                    LibraryMetadataFieldType.SELECT,
+                    null,
+                    true,
+                    false,
+                    null,
+                    List.of("A", "B"))
+                .values(),
+            List.of(
+                new LibraryMetadataSchemaChangeView(
+                    LibraryMetadataSchemaChangeKind.VALUE_REMAP,
+                    "fassung",
+                    "A",
+                    "B",
+                    3,
+                    4,
+                    "metadata-remap-1")));
+
+    LibraryMetadataFieldResponse response =
+        LibraryMetadataFieldResponseMapper.toFieldResponse(definition);
+
+    assertThat(response.getDeletionPending()).isFalse();
+    assertThat(response.getValues())
+        .extracting(
+            value -> value.getCode() + "/" + value.getRetiring() + "/" + value.getRemapTargetCode())
+        .containsExactly("A/true/B", "B/false/null");
+  }
+
+  @Test
+  void everyFigureOfARunReachesItsResponse() {
+    var response =
+        LibraryMetadataFieldResponseMapper.toRunResponse(
+            new LibraryMetadataSchemaRunResult(
+                5,
+                1,
+                List.of(
+                    new LibraryMetadataSchemaChangeView(
+                        LibraryMetadataSchemaChangeKind.FIELD_DELETION,
+                        "fassung",
+                        null,
+                        null,
+                        5,
+                        7,
+                        "metadata-field-delete-1"))));
+
+    assertThat(response.getProcessedDocuments()).isEqualTo(5);
+    assertThat(response.getSkippedDocuments()).isEqualTo(1);
+    assertThat(response.getRemainingDocuments()).isEqualTo(7);
+    assertThat(response.getComplete()).isFalse();
+    assertThat(response.getPendingChanges())
+        .singleElement()
+        .satisfies(
+            change -> {
+              assertThat(change.getKind())
+                  .isEqualTo(LibraryMetadataSchemaChangeKind.FIELD_DELETION);
+              assertThat(change.getFieldKey()).isEqualTo("fassung");
+              assertThat(change.getValueCode()).isNull();
+              assertThat(change.getTargetCode()).isNull();
+              assertThat(change.getProcessedDocuments()).isEqualTo(5);
+              assertThat(change.getRemainingDocuments()).isEqualTo(7);
+              assertThat(change.getCorrelationRef()).isEqualTo("metadata-field-delete-1");
+            });
   }
 
   @Test
@@ -100,12 +186,14 @@ class LibraryMetadataFieldResponseMapperTest {
   void theRemapResultAndTheUsageCountReachTheirResponses() {
     assertThat(
             LibraryMetadataFieldResponseMapper.toRemapResponse(
-                new LibraryFieldValueRemapResult(3, 2, "metadata-remap-1")))
+                new LibraryFieldValueRemapResult(3, 2, "metadata-remap-1", 4, false)))
         .satisfies(
             response -> {
               assertThat(response.getRemappedDocuments()).isEqualTo(3);
               assertThat(response.getClearedDocuments()).isEqualTo(2);
               assertThat(response.getCorrelationRef()).isEqualTo("metadata-remap-1");
+              assertThat(response.getRemainingDocuments()).isEqualTo(4);
+              assertThat(response.getComplete()).isFalse();
             });
     assertThat(LibraryMetadataFieldResponseMapper.toUsageResponse(7).getDocumentCount())
         .isEqualTo(7);
@@ -127,13 +215,30 @@ class LibraryMetadataFieldResponseMapperTest {
                         null,
                         List.of("A"))),
                 new CoreContextPrefixSettings(true, false, true),
-                12));
+                12,
+                List.of(
+                    new LibraryMetadataSchemaChangeView(
+                        LibraryMetadataSchemaChangeKind.VALUE_REMAP,
+                        "fassung",
+                        "A",
+                        null,
+                        0,
+                        9,
+                        "metadata-remap-2"))));
 
     assertThat(response.getItems()).hasSize(1);
     assertThat(response.getCoreContextPrefix().getTitle()).isTrue();
     assertThat(response.getCoreContextPrefix().getDocumentType()).isFalse();
     assertThat(response.getCoreContextPrefix().getDocumentDate()).isTrue();
     assertThat(response.getDocumentsAwaitingContextPrefixRerun()).isEqualTo(12);
+    assertThat(response.getPendingSchemaChanges())
+        .singleElement()
+        .satisfies(
+            change -> {
+              assertThat(change.getValueCode()).isEqualTo("A");
+              assertThat(change.getTargetCode()).isNull();
+              assertThat(change.getRemainingDocuments()).isEqualTo(9);
+            });
   }
 
   @Test

@@ -48,3 +48,7 @@ databaseChangeLog:
       file: db/changelog/changes/014-local-action-token-handover.yaml
   - include:
       file: db/changelog/changes/030-chat-note-items.yaml
+  # Zweiphasige Umschlüsselung einer Werteliste und Feldlöschung (#1361, metadata-schema.md,
+  # "Nachlauf im Betrieb").
+  - include:
+      file: db/changelog/changes/031-library-metadata-schema-changes.yaml

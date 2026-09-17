@@ -7,6 +7,8 @@ import io.opaa.api.dto.LibraryMetadataFieldResponse;
 import io.opaa.api.dto.LibraryMetadataFieldValueLabelRequest;
 import io.opaa.api.dto.LibraryMetadataFieldValueRequest;
 import io.opaa.api.dto.LibraryMetadataFieldsResponse;
+import io.opaa.api.dto.LibraryMetadataSchemaRunRequest;
+import io.opaa.api.dto.LibraryMetadataSchemaRunResponse;
 import io.opaa.api.dto.MetadataChangeImpactResponse;
 import io.opaa.api.dto.MetadataFieldUsageResponse;
 import io.opaa.api.dto.RemapLibraryMetadataFieldValueRequest;
@@ -16,6 +18,7 @@ import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.metadata.LibraryMetadataFieldService;
+import io.opaa.indexing.metadata.LibraryMetadataSchemaRunResult;
 import io.opaa.indexing.metadata.MetadataChangeKind;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -121,11 +124,30 @@ public class LibraryMetadataFieldController {
             caller));
   }
 
+  /**
+   * Retires the field and works its documents off in Chargen (#1361). 204 when the bestand fit into
+   * the first Charge and the field is already gone, 202 with the remaining work otherwise - the run
+   * is then continued over {@link #runLibraryMetadataSchemaChanges}.
+   */
   @DeleteMapping("/{fieldKey}")
-  public ResponseEntity<Void> deleteLibraryMetadataField(
+  public ResponseEntity<LibraryMetadataSchemaRunResponse> deleteLibraryMetadataField(
       @PathVariable UUID libraryId, @PathVariable String fieldKey, @Caller CurrentUser caller) {
-    fieldService.deleteField(libraryId, fieldKey, caller);
-    return ResponseEntity.noContent().build();
+    LibraryMetadataSchemaRunResult result = fieldService.deleteField(libraryId, fieldKey, caller);
+    if (result.complete()) {
+      return ResponseEntity.noContent().build();
+    }
+    return ResponseEntity.accepted().body(LibraryMetadataFieldResponseMapper.toRunResponse(result));
+  }
+
+  /** One Charge of the library's pending value mappings and field deletions (#1361). */
+  @PostMapping("/schema-changes/run")
+  public LibraryMetadataSchemaRunResponse runLibraryMetadataSchemaChanges(
+      @PathVariable UUID libraryId,
+      @RequestBody(required = false) @Valid LibraryMetadataSchemaRunRequest request,
+      @Caller CurrentUser caller) {
+    return LibraryMetadataFieldResponseMapper.toRunResponse(
+        fieldService.runSchemaChanges(
+            libraryId, request == null ? null : request.getBatchSize(), caller));
   }
 
   @GetMapping("/{fieldKey}/usage")

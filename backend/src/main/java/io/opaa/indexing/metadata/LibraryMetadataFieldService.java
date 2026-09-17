@@ -3,15 +3,14 @@ package io.opaa.indexing.metadata;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.LibraryMetadataFieldType;
+import io.opaa.api.types.LibraryMetadataSchemaChangeKind;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.chunk.EmbeddingRateEstimator;
-import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.maintenance.ContextPrefixRerunService;
-import io.opaa.indexing.maintenance.DocumentBatchLoop;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
@@ -67,15 +66,18 @@ public class LibraryMetadataFieldService {
   public static final int MAX_FIELDS = 5;
 
   private static final int MAX_VALUES = 100;
-  private static final int REMAP_BATCH_SIZE = 500;
-  private static final String CORRELATION_PREFIX = "metadata-remap-";
+  private static final int REMAP_BATCH_SIZE = LibraryMetadataSchemaChangeService.DEFAULT_BATCH_SIZE;
+
+  /** Upper bound of one continuation Charge; the same limit the API schema declares. */
+  private static final int MAX_RUN_BATCH_SIZE = 1000;
 
   /**
    * The correlationRef prefix of the audit events a field deletion writes - one per document, so
    * the manual values of a library stay reconstructible from the audit bestand even after the field
    * that carried them is gone (metadata-schema.md, "Manuelle Setzungen sind protokollpflichtig").
    */
-  static final String DELETE_CORRELATION_PREFIX = "metadata-field-delete-";
+  static final String DELETE_CORRELATION_PREFIX =
+      LibraryMetadataSchemaChangeService.DELETE_CORRELATION_PREFIX;
 
   private static final Pattern FIELD_KEY = Pattern.compile("^[a-z][a-z0-9_]*$");
   private static final Pattern VALUE_CODE = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9_.-]*$");
@@ -84,13 +86,13 @@ public class LibraryMetadataFieldService {
   private final LibraryAccessService accessService;
   private final LibraryMetadataFieldRepository fieldRepository;
   private final LibraryMetadataFieldValueRepository valueRepository;
+  private final LibraryMetadataSchemaChangeRepository schemaChangeRepository;
   private final DocumentMetadataValueRepository documentValueRepository;
   private final DocumentRepository documentRepository;
   private final DocumentMetadataService metadataService;
-  private final DocumentMetadataCorrectionService correctionService;
-  private final DocumentTypeVocabularyRepository vocabularyRepository;
   private final EmbeddingRateEstimator embeddingRateEstimator;
   private final ContextPrefixRerunService contextPrefixRerunService;
+  private final LibraryMetadataSchemaChangeService schemaChangeService;
   private final ApplicationEventPublisher eventPublisher;
 
   public LibraryMetadataFieldService(
@@ -98,25 +100,25 @@ public class LibraryMetadataFieldService {
       LibraryAccessService accessService,
       LibraryMetadataFieldRepository fieldRepository,
       LibraryMetadataFieldValueRepository valueRepository,
+      LibraryMetadataSchemaChangeRepository schemaChangeRepository,
       DocumentMetadataValueRepository documentValueRepository,
       DocumentRepository documentRepository,
       DocumentMetadataService metadataService,
-      DocumentMetadataCorrectionService correctionService,
-      DocumentTypeVocabularyRepository vocabularyRepository,
       EmbeddingRateEstimator embeddingRateEstimator,
       ContextPrefixRerunService contextPrefixRerunService,
+      LibraryMetadataSchemaChangeService schemaChangeService,
       ApplicationEventPublisher eventPublisher) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
     this.fieldRepository = fieldRepository;
     this.valueRepository = valueRepository;
+    this.schemaChangeRepository = schemaChangeRepository;
     this.documentValueRepository = documentValueRepository;
     this.documentRepository = documentRepository;
     this.metadataService = metadataService;
-    this.correctionService = correctionService;
-    this.vocabularyRepository = vocabularyRepository;
     this.embeddingRateEstimator = embeddingRateEstimator;
     this.contextPrefixRerunService = contextPrefixRerunService;
+    this.schemaChangeService = schemaChangeService;
     this.eventPublisher = eventPublisher;
   }
 
@@ -138,7 +140,8 @@ public class LibraryMetadataFieldService {
     return new LibraryMetadataFieldOverview(
         definitionsOf(library.getId()),
         CoreContextPrefixSettings.of(library),
-        contextPrefixRerunService.pendingDocuments(library.getId()));
+        contextPrefixRerunService.pendingDocuments(library.getId()),
+        schemaChangeService.pendingChanges(library.getId()));
   }
 
   /** The fields of several libraries at once - the filter interface's own read. */
@@ -239,6 +242,7 @@ public class LibraryMetadataFieldService {
       CurrentUser caller) {
     KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.MANAGER);
     LibraryMetadataField field = requireField(library, fieldKey);
+    requireNoFieldDeletion(field);
     requireRetrievalEffect(filter, contextPrefix);
     boolean wasFilterable = field.isFilterEnabled();
     boolean wasPrefixEffective = field.isContextPrefixEnabled();
@@ -270,35 +274,69 @@ public class LibraryMetadataFieldService {
   }
 
   /**
-   * Removes a field with everything that hangs on it: its stored document values, its chunk keys
-   * and its value list. The values are removed explicitly before the field, so the {@code ON DELETE
-   * RESTRICT} of the value list never has to decide the order.
+   * Retires a field and starts emptying every document that carries a value of it; field, value
+   * list and stored values are gone once the last document was emptied (#1361). Not
+   * {@code @Transactional} for the same reason the value mapping is not: the retirement commits on
+   * its own and every document is emptied in its own transaction. While the field is retired it
+   * still exists, so its chunk keys remain part of what a rewrite owns and are stripped along the
+   * way; no value of it can be set any more.
    *
    * <p>Every removed value is audited per document with its old value, all under one
    * correlationRef, exactly like the value mapping: a deletion is a loss of manual work, and only
    * the audit event makes it reconstructible and attributable afterwards.
    */
-  @Transactional
-  public void deleteField(UUID libraryId, String fieldKey, CurrentUser caller) {
+  public LibraryMetadataSchemaRunResult deleteField(
+      UUID libraryId, String fieldKey, CurrentUser caller) {
+    return deleteField(libraryId, fieldKey, REMAP_BATCH_SIZE, caller);
+  }
+
+  /**
+   * The Charge size is a parameter only so a test can prove the resumption without 500 fixtures.
+   */
+  LibraryMetadataSchemaRunResult deleteField(
+      UUID libraryId, String fieldKey, int batchSize, CurrentUser caller) {
     KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.MANAGER);
-    LibraryMetadataField field = requireField(library, fieldKey);
-    MetadataFieldRef ref = MetadataFieldRef.of(field);
-    String correlationRef = DELETE_CORRELATION_PREFIX + UUID.randomUUID();
-    DocumentTypeVocabulary vocabulary = vocabularyRepository.snapshot();
-    // While the field still exists, its chunk keys are part of what a rewrite owns - so deleting
-    // the value of every document that carries one strips those keys along the way. Paged like the
-    // value mapping rather than loaded at once.
-    forEachDocumentWithAValue(
-        field,
-        false,
-        documentId ->
-            remapOrClearDocument(
-                library, documentId, ref, null, caller, correlationRef, vocabulary));
-    valueRepository.deleteByFieldId(field.getId());
-    fieldRepository.delete(field);
-    // The documents that carried a value were already handed to the Nachlauf by the loop above,
-    // which marks whatever it empties on a prefix-effective field - no second marking here.
+    LibraryMetadataSchemaChange change = retireForDeletion(library, fieldKey);
+    LibraryMetadataSchemaRunResult run =
+        schemaChangeService.runBatch(library, change, batchSize, caller);
     schemaChanged(library);
+    return run;
+  }
+
+  private LibraryMetadataSchemaChange retireForDeletion(KnowledgeLibrary library, String fieldKey) {
+    LibraryMetadataField field = requireField(library, fieldKey);
+    List<LibraryMetadataSchemaChange> running = schemaChangeRepository.findByFieldId(field.getId());
+    for (LibraryMetadataSchemaChange change : running) {
+      if (change.getKind() == LibraryMetadataSchemaChangeKind.FIELD_DELETION) {
+        return change;
+      }
+    }
+    if (!running.isEmpty()) {
+      throw new ConflictException(
+          "Für das Feld „"
+              + field.getLabel()
+              + "“ läuft noch eine Wertabbildung; sie wird erst abgeschlossen");
+    }
+    return schemaChangeService.retireField(field);
+  }
+
+  /**
+   * One Charge of the library's pending schema changes (#1361) - the continuation of a mapping or
+   * deletion whose bestand did not fit into the confirming call. Same management right as the
+   * confirmation; pausing is not calling again.
+   */
+  public LibraryMetadataSchemaRunResult runSchemaChanges(
+      UUID libraryId, Integer batchSize, CurrentUser caller) {
+    KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.MANAGER);
+    int size =
+        batchSize == null
+            ? LibraryMetadataSchemaChangeService.DEFAULT_BATCH_SIZE
+            : Math.min(Math.max(batchSize, 1), MAX_RUN_BATCH_SIZE);
+    LibraryMetadataSchemaRunResult run = schemaChangeService.runBatch(library, size, caller);
+    if (run.processedDocuments() > 0) {
+      schemaChanged(library);
+    }
+    return run;
   }
 
   /**
@@ -335,6 +373,7 @@ public class LibraryMetadataFieldService {
       UUID libraryId, String fieldKey, String code, String label, CurrentUser caller) {
     KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.MANAGER);
     LibraryMetadataField field = requireSelectField(library, fieldKey);
+    requireNoFieldDeletion(field);
     String validCode = requireValueCode(code);
     if (valueRepository.findByFieldIdAndCode(field.getId(), validCode).isPresent()) {
       throw new ConflictException("Der Wert „" + validCode + "“ steht bereits in der Werteliste");
@@ -384,16 +423,59 @@ public class LibraryMetadataFieldService {
   }
 
   /**
-   * Removes {@code code} from the list, mapping every document that carries it onto {@code
-   * targetCode} or - when that is {@code null} - onto "leer". One transaction: the list entry is
-   * gone exactly when every document has been rewritten, so "Dokument trägt einen Wert, den es im
-   * Schema nicht mehr gibt" never exists, not even briefly. Every document gets its own audit event
-   * with its old value, all sharing one correlationRef, exactly like a Sammelzuweisung.
+   * Retires {@code code} and starts mapping every document that carries it onto {@code targetCode}
+   * or - when that is {@code null} - onto "leer"; the list entry is removed once the last document
+   * has left it (#1361). Deliberately <b>not</b> {@code @Transactional}: the retirement commits on
+   * its own and every document is rewritten in its own transaction, which is what makes the run
+   * resumable. A bestand that fits into the first Charge is finished when this returns - the small
+   * case behaves as it always did.
+   *
+   * <p>Repeating the call while the same mapping runs resumes it; a different target is a conflict,
+   * because the documents already rewritten cannot be taken back. Every document gets its own audit
+   * event with its old value, all sharing the one correlationRef of the change.
    */
-  @Transactional
   public LibraryFieldValueRemapResult remapValue(
       UUID libraryId, String fieldKey, String code, String targetCode, CurrentUser caller) {
+    return remapValue(libraryId, fieldKey, code, targetCode, REMAP_BATCH_SIZE, caller);
+  }
+
+  /**
+   * The Charge size is a parameter only so a test can prove the resumption without 500 fixtures.
+   */
+  LibraryFieldValueRemapResult remapValue(
+      UUID libraryId,
+      String fieldKey,
+      String code,
+      String targetCode,
+      int batchSize,
+      CurrentUser caller) {
     KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.MANAGER);
+    LibraryMetadataSchemaChange change = retireForRemap(library, fieldKey, code, targetCode);
+    LibraryMetadataSchemaRunResult run =
+        schemaChangeService.runBatch(library, change, batchSize, caller);
+    schemaChanged(library);
+    boolean toLeer = change.getTargetValueId() == null;
+    long remaining =
+        run.pendingChanges().stream()
+            .filter(pending -> code.equals(pending.valueCode()))
+            .mapToLong(LibraryMetadataSchemaChangeView::remainingDocuments)
+            .sum();
+    boolean complete = run.pendingChanges().stream().noneMatch(p -> code.equals(p.valueCode()));
+    return new LibraryFieldValueRemapResult(
+        toLeer ? 0 : run.processedDocuments(),
+        toLeer ? run.processedDocuments() : 0,
+        change.getCorrelationRef(),
+        remaining,
+        complete);
+  }
+
+  /**
+   * Validates the mapping and retires the list entry. A value that is already retired for the same
+   * target is returned unchanged - that is what makes a repeated confirmation a resumption instead
+   * of a second run; the unique key of the change table decides a race between two confirmations.
+   */
+  private LibraryMetadataSchemaChange retireForRemap(
+      KnowledgeLibrary library, String fieldKey, String code, String targetCode) {
     LibraryMetadataField field = requireSelectField(library, fieldKey);
     LibraryMetadataFieldValue removed = requireValue(field, code);
     LibraryMetadataFieldValue target = null;
@@ -403,45 +485,29 @@ public class LibraryMetadataFieldService {
       }
       target = requireValue(field, targetCode);
     }
-    MetadataFieldRef ref = MetadataFieldRef.of(field);
-    MetadataValueInput replacement =
-        target == null ? null : MetadataValueInput.libraryValue(target.getCode(), target.getId());
-    String correlationRef = CORRELATION_PREFIX + UUID.randomUUID();
-    DocumentTypeVocabulary vocabulary = vocabularyRepository.snapshot();
-    UUID removedId = removed.getId();
-
-    // The same chargen loop the Bestandslauf and the pipeline re-index run on, driven until
-    // no document carries the value any more: every advanced document loses the reference and
-    // leaves the selection, so the offset stays 0 and the outer loop terminates by construction.
-    // The list entry is deleted only afterwards and in the same transaction - that ordering is what
-    // makes "Dokument trägt einen Wert, den es im Schema nicht mehr gibt" unreachable.
-    long remapped = 0;
-    long cleared = 0;
-    for (long remaining = documentValueRepository.countByLibraryValueId(removedId);
-        remaining > 0;
-        remaining = documentValueRepository.countByLibraryValueId(removedId)) {
-      Map<Advance, Integer> counts =
-          DocumentBatchLoop.run(
-              (int) Math.min(remaining, REMAP_BATCH_SIZE),
-              Advance.class,
-              Advance.SKIPPED,
-              (limit, offset) ->
-                  documentValueRepository.findDocumentIdsByLibraryValueId(
-                      removedId, PageRequest.of(0, limit)),
-              documentId ->
-                  remapOrClearDocument(
-                      library, documentId, ref, replacement, caller, correlationRef, vocabulary));
-      remapped += counts.get(Advance.REMAPPED);
-      cleared += counts.get(Advance.CLEARED);
-      if (counts.get(Advance.REMAPPED) + counts.get(Advance.CLEARED) == 0) {
-        throw new IllegalStateException(
-            "Value remapping made no progress for library metadata field value " + removedId);
+    requireNoFieldDeletion(field);
+    LibraryMetadataSchemaChange running =
+        schemaChangeRepository.findByValueId(removed.getId()).orElse(null);
+    if (running != null) {
+      UUID targetId = target == null ? null : target.getId();
+      if (!java.util.Objects.equals(running.getTargetValueId(), targetId)) {
+        throw new ConflictException(
+            "Für den Wert „"
+                + code
+                + "“ läuft bereits eine Abbildung auf ein anderes Ziel; sie wird erst"
+                + " abgeschlossen");
       }
+      return running;
     }
-
-    valueRepository.delete(removed);
-    schemaChanged(library);
-    return new LibraryFieldValueRemapResult(remapped, cleared, correlationRef);
+    if (target != null && schemaChangeRepository.findByValueId(target.getId()).isPresent()) {
+      throw new ConflictException(
+          "Der Zielwert „" + targetCode + "“ wird gerade selbst abgebildet");
+    }
+    if (schemaChangeRepository.existsByTargetValueId(removed.getId())) {
+      throw new ConflictException(
+          "Auf den Wert „" + code + "“ läuft gerade eine Abbildung; sie wird erst abgeschlossen");
+    }
+    return schemaChangeService.retireValue(removed, target);
   }
 
   /**
@@ -561,38 +627,13 @@ public class LibraryMetadataFieldService {
     eventPublisher.publishEvent(new LibraryMetadataSchemaChanged(library.getId()));
   }
 
-  /**
-   * The outcomes of one remapped document. {@code SKIPPED} exists only because the shared loop
-   * needs a name for "did not advance"; inside one transaction every value row still has its
-   * document (foreign key), so it is never returned.
-   */
-  private enum Advance {
-    REMAPPED,
-    CLEARED,
-    SKIPPED
-  }
-
-  private Advance remapOrClearDocument(
-      KnowledgeLibrary library,
-      UUID documentId,
-      MetadataFieldRef ref,
-      MetadataValueInput replacement,
-      CurrentUser caller,
-      String correlationRef,
-      DocumentTypeVocabulary vocabulary) {
-    Document document =
-        documentRepository
-            .findById(documentId)
-            .orElseThrow(() -> new NotFoundException("Dokument nicht gefunden"));
-    ManualValueChange change =
-        replacement == null
-            ? metadataService.deleteValue(documentId, ref)
-            : metadataService.setManualValue(documentId, ref, replacement, caller.id());
-    if (change.changed()) {
-      correctionService.recordChange(
-          library, document, ref, change, caller, correlationRef, vocabulary);
+  /** A retired field takes no further schema operation - its deletion runs to its end first. */
+  private void requireNoFieldDeletion(LibraryMetadataField field) {
+    for (LibraryMetadataSchemaChange change : schemaChangeRepository.findByFieldId(field.getId())) {
+      if (change.getKind() == LibraryMetadataSchemaChangeKind.FIELD_DELETION) {
+        throw new ConflictException("Das Feld „" + field.getLabel() + "“ wird gerade gelöscht");
+      }
     }
-    return replacement == null ? Advance.CLEARED : Advance.REMAPPED;
   }
 
   private void rewriteChunksOf(LibraryMetadataField field) {
@@ -605,15 +646,26 @@ public class LibraryMetadataFieldService {
                 .ifPresent(metadataService::rewriteChunkMetadata));
   }
 
+  /**
+   * The library's fields with their value lists and the schema changes running on each of them - a
+   * retired value and a retired field are part of what a reader must see, or the Oberfläche offers
+   * an entry that is on its way out.
+   */
   private List<LibraryMetadataFieldDefinition> definitionsOf(UUID libraryId) {
     List<LibraryMetadataField> fields =
         fieldRepository.findByLibraryIdOrderBySortOrderAscFieldKeyAsc(libraryId);
     Map<UUID, List<LibraryMetadataFieldValue>> valuesByField = valuesOf(fields);
+    Map<String, List<LibraryMetadataSchemaChangeView>> changesByFieldKey = new LinkedHashMap<>();
+    for (LibraryMetadataSchemaChangeView change : schemaChangeService.pendingChanges(libraryId)) {
+      changesByFieldKey.computeIfAbsent(change.fieldKey(), key -> new ArrayList<>()).add(change);
+    }
     List<LibraryMetadataFieldDefinition> definitions = new ArrayList<>();
     for (LibraryMetadataField field : fields) {
       definitions.add(
           new LibraryMetadataFieldDefinition(
-              field, valuesByField.getOrDefault(field.getId(), List.of())));
+              field,
+              valuesByField.getOrDefault(field.getId(), List.of()),
+              changesByFieldKey.getOrDefault(field.getFieldKey(), List.of())));
     }
     return definitions;
   }

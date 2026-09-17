@@ -3,6 +3,7 @@ package io.opaa.searchadmin;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
+import io.opaa.indexing.metadata.LibraryMetadataSchemaChangeProgress;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import io.opaa.indexing.metadata.ModelExtractionStats;
 import io.opaa.searchadmin.LibrarySearchStatus.IndexCondition;
@@ -34,7 +35,8 @@ class LibrarySearchStatusTest {
         outdated,
         MetadataBackfillProgress.empty(LIBRARY_ID),
         ModelExtractionStats.empty(LIBRARY_ID),
-        ContextPrefixRerunProgress.empty(LIBRARY_ID));
+        ContextPrefixRerunProgress.empty(LIBRARY_ID),
+        LibraryMetadataSchemaChangeProgress.empty(LIBRARY_ID));
   }
 
   @Test

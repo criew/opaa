@@ -67,6 +67,7 @@ public class ModelMetadataExtractor {
   private final DocumentTypeVocabularyRepository vocabularyRepository;
   private final LibraryMetadataFieldRepository fieldRepository;
   private final LibraryMetadataFieldValueRepository fieldValueRepository;
+  private final LibraryMetadataSchemaChangeRepository schemaChangeRepository;
   private final DocumentKeywordRepository keywordRepository;
   private final ModelExtractionCounters counters;
   private final DocumentRepository documentRepository;
@@ -81,6 +82,7 @@ public class ModelMetadataExtractor {
       DocumentTypeVocabularyRepository vocabularyRepository,
       LibraryMetadataFieldRepository fieldRepository,
       LibraryMetadataFieldValueRepository fieldValueRepository,
+      LibraryMetadataSchemaChangeRepository schemaChangeRepository,
       DocumentKeywordRepository keywordRepository,
       ModelExtractionCounters counters,
       DocumentRepository documentRepository,
@@ -92,6 +94,7 @@ public class ModelMetadataExtractor {
         vocabularyRepository,
         fieldRepository,
         fieldValueRepository,
+        schemaChangeRepository,
         keywordRepository,
         counters,
         documentRepository,
@@ -107,6 +110,7 @@ public class ModelMetadataExtractor {
       DocumentTypeVocabularyRepository vocabularyRepository,
       LibraryMetadataFieldRepository fieldRepository,
       LibraryMetadataFieldValueRepository fieldValueRepository,
+      LibraryMetadataSchemaChangeRepository schemaChangeRepository,
       DocumentKeywordRepository keywordRepository,
       ModelExtractionCounters counters,
       DocumentRepository documentRepository,
@@ -118,6 +122,7 @@ public class ModelMetadataExtractor {
     this.vocabularyRepository = vocabularyRepository;
     this.fieldRepository = fieldRepository;
     this.fieldValueRepository = fieldValueRepository;
+    this.schemaChangeRepository = schemaChangeRepository;
     this.keywordRepository = keywordRepository;
     this.counters = counters;
     this.documentRepository = documentRepository;
@@ -372,10 +377,31 @@ public class ModelMetadataExtractor {
     if (libraryFields.isEmpty()) {
       return List.copyOf(fields);
     }
+    // A retired field takes no new value at all, and a retired list value is on its way out of the
+    // schema: neither is offered to the model (#1361).
+    Set<UUID> retiredFieldIds = new LinkedHashSet<>();
+    Set<UUID> retiredValueIds = new LinkedHashSet<>();
+    for (LibraryMetadataSchemaChange change :
+        schemaChangeRepository.findByFieldIdIn(
+            libraryFields.stream().map(LibraryMetadataField::getId).toList())) {
+      if (change.getValueId() == null) {
+        retiredFieldIds.add(change.getFieldId());
+      } else {
+        retiredValueIds.add(change.getValueId());
+      }
+    }
+    libraryFields =
+        libraryFields.stream().filter(field -> !retiredFieldIds.contains(field.getId())).toList();
+    if (libraryFields.isEmpty()) {
+      return List.copyOf(fields);
+    }
     Map<UUID, List<ModelExtractionField.Option>> optionsByField = new LinkedHashMap<>();
     for (LibraryMetadataFieldValue value :
         fieldValueRepository.findByFieldIdInOrderBySortOrderAscCodeAsc(
             libraryFields.stream().map(LibraryMetadataField::getId).toList())) {
+      if (retiredValueIds.contains(value.getId())) {
+        continue;
+      }
       optionsByField
           .computeIfAbsent(value.getFieldId(), id -> new ArrayList<>())
           .add(new ModelExtractionField.Option(value.getCode(), value.getLabel(), value.getId()));

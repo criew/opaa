@@ -3811,18 +3811,35 @@ paths:
       operationId: deleteLibraryMetadataField
       tags: [library]
       summary: >
-        Removes a field with everything that hangs on it (#1071): every stored document value, the
-        field's chunk keys and its value list, in one transaction. The number of affected documents
-        is available beforehand through GET
-        /api/v1/libraries/{libraryId}/metadata-fields/{fieldKey}/usage, so a client can confirm the
-        Folgekosten. Requires the management right at the library.
+        Removes a field with everything that hangs on it (#1071, #1361): every stored document
+        value, the field's chunk keys and its value list. Two phases: the call retires the field -
+        no value of it can be set any more, while every value already stored stays valid and
+        filterable - and then empties documents in Chargen, each in its own transaction with its
+        own audit event. The field row itself is dropped only after the last document was emptied.
+        A bestand small enough to finish within the first Charge answers 204; otherwise the answer
+        is 202 with the remaining work, and the run is continued with POST
+        /api/v1/libraries/{libraryId}/metadata-fields/schema-changes/run. Pausing is not calling
+        again; a repeated call resumes at the next document and costs nothing for those already
+        done. The number of affected documents is available beforehand through GET
+        /api/v1/libraries/{libraryId}/metadata-fields/{fieldKey}/usage. Requires the management
+        right at the library.
       responses:
         "204":
-          description: Field and its values removed
+          description: Field and its values removed - the run finished within this call
+        "202":
+          description: >-
+            Field retired, documents still being emptied. The run is resumable and the field is
+            gone once its last document was emptied.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataSchemaRunResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/libraries/{libraryId}/metadata-fields/{fieldKey}/usage:
     parameters:
@@ -4008,15 +4025,22 @@ paths:
       tags: [library]
       summary: >
         Removes a value from the list together with the confirmed mapping of every document that
-        carries it (#1071, metadata-schema.md "Kontrolliertes Vokabular statt Freitext"): onto
-        another value of the same list, or - with targetCode null - onto "leer". There is no way to
-        remove a value without a mapping, which is what makes the state "Dokument trägt einen Wert,
-        den es im Schema nicht mehr gibt" unreachable; the database enforces the same rule from
-        below. One transaction: values, chunk keys and the removal of the list entry commit
-        together. Every affected document gets its own DOCUMENT_METADATA_CHANGED audit event with
-        its old value, all sharing the returned correlationRef. A document mapped onto "leer" is
-        found again by every filter through the Leerwert rule and reappears in the Pflege-Anker.
-        Requires the management right at the library.
+        carries it (#1071, #1361, metadata-schema.md "Kontrolliertes Vokabular statt Freitext"):
+        onto another value of the same list, or - with targetCode null - onto "leer". There is no
+        way to remove a value without a mapping, which is what makes the state "Dokument trägt
+        einen Wert, den es im Schema nicht mehr gibt" unreachable; the database enforces the same
+        rule from below. Two phases: the call first retires the value - it can no longer be set on
+        any document, while every document already carrying it keeps a value the schema still lists
+        and still filters by - then rewrites documents in Chargen, each in its own transaction, and
+        removes the list entry only after the last one. A bestand small enough to finish within the
+        first Charge is done when this call answers; otherwise complete is false and the run is
+        continued with POST
+        /api/v1/libraries/{libraryId}/metadata-fields/schema-changes/run. Repeating the call with
+        the same targetCode resumes the run, a different one is 409. Every affected document gets
+        its own DOCUMENT_METADATA_CHANGED audit event with its old value, all sharing the returned
+        correlationRef. A document mapped onto "leer" is found again by every filter through the
+        Leerwert rule and reappears in the Pflege-Anker. Requires the management right at the
+        library.
       requestBody:
         required: true
         content:
@@ -4030,6 +4054,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RemapLibraryMetadataFieldValueResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/schema-changes/run:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: runLibraryMetadataSchemaChanges
+      tags: [library]
+      summary: >
+        One Charge of the library's pending schema changes (#1361, metadata-schema.md "Nachlauf im
+        Betrieb"): the documents that still carry a retired list value or a value of a retired
+        field are rewritten, each in its own transaction with its own audit event, and a change
+        whose last document is done removes its list entry or its field. Resumable and idempotent
+        per document - a Charge over documents already rewritten does nothing - and pausing is not
+        calling again. A library without pending changes answers with an empty list. Requires the
+        management right at the library.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryMetadataSchemaRunRequest"
+      responses:
+        "200":
+          description: What this Charge did and what is left
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataSchemaRunResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
@@ -10085,7 +10151,7 @@ components:
 
     LibraryMetadataFieldValueResponse:
       type: object
-      required: [code, label]
+      required: [code, label, retiring]
       description: One entry of a SELECT field's controlled value list.
       properties:
         code:
@@ -10097,6 +10163,19 @@ components:
         label:
           type: string
           example: Fassung 2026
+        retiring:
+          type: boolean
+          description: >-
+            Whether a confirmed mapping is running for this entry (#1361). A retiring value can no
+            longer be set on a document, while every document that already carries it keeps a value
+            the schema still lists and every filter still finds - which is what keeps "Dokument
+            trägt einen Wert, den es im Schema nicht mehr gibt" unreachable during the run. The
+            entry disappears when the last document has been rewritten.
+        remapTargetCode:
+          type: string
+          nullable: true
+          description: >-
+            The value a running mapping rewrites onto; null while retiring means "leer".
 
     LibraryMetadataFieldResponse:
       type: object
@@ -10110,6 +10189,7 @@ components:
           contextPrefix,
           sortOrder,
           values,
+          deletionPending,
         ]
       description: >-
         One library metadata field with its Wirkstellen and its configured value list (#1071).
@@ -10165,10 +10245,109 @@ components:
           description: The configured value list; empty for a DATE or PATTERN field.
           items:
             $ref: "#/components/schemas/LibraryMetadataFieldValueResponse"
+        deletionPending:
+          type: boolean
+          description: >-
+            Whether this field is being deleted (#1361): no value of it can be set any more, every
+            stored value stays valid and filterable until the run empties its document, and the
+            field disappears with its last one.
+
+    LibraryMetadataSchemaChangeResponse:
+      type: object
+      required:
+        [kind, fieldKey, processedDocuments, remainingDocuments, correlationRef]
+      description: >-
+        One running schema change of a library (#1361) - a retired list value being mapped, or a
+        retired field being emptied.
+      properties:
+        kind:
+          $ref: "#/components/schemas/LibraryMetadataSchemaChangeKind"
+        fieldKey:
+          type: string
+          example: fassung
+        valueCode:
+          type: string
+          nullable: true
+          description: The retired list value; null for a field deletion.
+          example: FASSUNG_2026
+        targetCode:
+          type: string
+          nullable: true
+          description: >-
+            The value the mapping rewrites onto; null means "leer" and is the only possibility for
+            a field deletion.
+        processedDocuments:
+          type: integer
+          format: int64
+          description: Documents this change has already rewritten - it never touches them again.
+        remainingDocuments:
+          type: integer
+          format: int64
+          description: Documents still carrying the retired value or field.
+        correlationRef:
+          type: string
+          description: >-
+            The correlationRef every audit event of this change carries, the whole run over, so it
+            reads back from the audit log as one operation even across many calls.
+
+    LibraryMetadataSchemaRunRequest:
+      type: object
+      description: One Charge of the pending schema changes of a library (#1361).
+      properties:
+        batchSize:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          description: Documents to rewrite at most in this call; the default is 500.
+
+    LibraryMetadataSchemaRunResponse:
+      type: object
+      required:
+        [processedDocuments, skippedDocuments, remainingDocuments, complete, pendingChanges]
+      description: >-
+        What one Charge did and what is left (#1361) - verarbeitet, ausstehend, fehlgeschlagen, per
+        library.
+      properties:
+        processedDocuments:
+          type: integer
+          format: int64
+          description: Documents rewritten by this call.
+        skippedDocuments:
+          type: integer
+          format: int64
+          description: >-
+            Documents this call could not advance. Nothing about them changed; they keep their
+            value and stay pending for the next call.
+        remainingDocuments:
+          type: integer
+          format: int64
+          description: Documents the pending changes still have to rewrite.
+        complete:
+          type: boolean
+          description: >-
+            Whether the library has no pending schema change left - the signal to stop calling.
+        pendingChanges:
+          type: array
+          items:
+            $ref: "#/components/schemas/LibraryMetadataSchemaChangeResponse"
+
+    LibraryMetadataSchemaChangeKind:
+      type: string
+      description: >-
+        What a running schema change does: rewrite every document carrying one retired list value
+        (VALUE_REMAP) or empty every document carrying any value of a retired field
+        (FIELD_DELETION).
+      enum: [VALUE_REMAP, FIELD_DELETION]
 
     LibraryMetadataFieldsResponse:
       type: object
-      required: [items, coreContextPrefix, documentsAwaitingContextPrefixRerun]
+      required:
+        [
+          items,
+          coreContextPrefix,
+          documentsAwaitingContextPrefixRerun,
+          pendingSchemaChanges,
+        ]
       properties:
         items:
           type: array
@@ -10184,6 +10363,14 @@ components:
             context-prefix configuration (#1072) - the "N Dokumente warten auf Neu-Einbetten" hint
             in the library settings. Saving a schema change never starts the Nachlauf; it runs from
             the administration page "Suche & Indexierung", started by a system administrator.
+        pendingSchemaChanges:
+          type: array
+          description: >-
+            The library's running value mappings and field deletions (#1361), empty in the normal
+            case. Continued with POST
+            /api/v1/libraries/{libraryId}/metadata-fields/schema-changes/run.
+          items:
+            $ref: "#/components/schemas/LibraryMetadataSchemaChangeResponse"
 
     CoreContextPrefixRequest:
       type: object
@@ -10722,16 +10909,29 @@ components:
 
     RemapLibraryMetadataFieldValueResponse:
       type: object
-      required: [remappedDocuments, clearedDocuments, correlationRef]
+      required:
+        [remappedDocuments, clearedDocuments, correlationRef, remainingDocuments, complete]
       properties:
         remappedDocuments:
           type: integer
           format: int64
-          description: Documents rewritten onto targetCode.
+          description: Documents rewritten onto targetCode by this call.
         clearedDocuments:
           type: integer
           format: int64
-          description: Documents whose value was removed because the mapping was "leer".
+          description: >-
+            Documents whose value this call removed because the mapping was "leer".
+        remainingDocuments:
+          type: integer
+          format: int64
+          description: >-
+            Documents still carrying the retired value after this call - zero exactly when the
+            mapping finished and the list entry is gone.
+        complete:
+          type: boolean
+          description: >-
+            Whether the list entry was removed by this call. False means the run continues over
+            POST /api/v1/libraries/{libraryId}/metadata-fields/schema-changes/run.
         correlationRef:
           type: string
           description: >-
@@ -12752,6 +12952,7 @@ components:
           metadataBackfill,
           modelExtraction,
           contextPrefixRerun,
+          metadataSchemaChanges,
         ]
       properties:
         libraryId:
@@ -12820,6 +13021,32 @@ components:
           $ref: "#/components/schemas/MetadataModelExtractionStatsResponse"
         contextPrefixRerun:
           $ref: "#/components/schemas/ContextPrefixRerunStatusResponse"
+        metadataSchemaChanges:
+          $ref: "#/components/schemas/MetadataSchemaChangeStatusResponse"
+
+    MetadataSchemaChangeStatusResponse:
+      type: object
+      required: [pendingChanges, pendingDocuments, lastSkippedDocuments]
+      description: >
+        The running value mappings and field deletions of one library (#1361, metadata-schema.md
+        "Nachlauf im Betrieb"). A library in this state carries a defined Mischzustand: every
+        document keeps a value the schema still lists until its turn comes. The run is driven from
+        the library's own settings by whoever holds the management right, not from this page.
+      properties:
+        pendingChanges:
+          type: integer
+          format: int64
+          description: Retired list values and retired fields waiting to be worked off.
+        pendingDocuments:
+          type: integer
+          format: int64
+          description: Documents those changes still have to rewrite.
+        lastSkippedDocuments:
+          type: integer
+          format: int64
+          description: >-
+            Documents the most recent Charge could not advance - a process-lifetime figure
+            (ADR-0021), 0 before the first call.
 
     SearchStatusResponse:
       type: object
