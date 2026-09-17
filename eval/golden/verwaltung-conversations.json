@@ -1181,5 +1181,116 @@
     "expected_state": "known_gap",
     "expected_state_since": "2026-09-17",
     "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die unter einem Verlauf aus langen Antworten Suchanfragen statt Antwortsätzen erzeugt und für eine Nachricht ohne Suchbedarf das Signalwort zurückgibt; das gepinnte Modell gibt das Signalwort für keine Nachricht ohne Suchbedarf zurück. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Suchfenster als Textblock, #1684): Runde 3 ist eine Nachricht ohne Suchbedarf und wird trotzdem gesucht („Antwort auf die aktuelle Nutzerfrage:“); Runde 4 bleibt ohne Suche, weil die Zerlegung nichts zu suchen meldet."
+  },
+  {
+    "id": "verw-conv-ac-009",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Wofür brauche ich das Formular BAU-07?",
+        "answer": "Formular BAU-07 ist das **Antragsformular** des Bauamts der Stadt Kalkstadt 【source: fe64313a-328b-5c44-9e83-600800feaa93#0 | verwaltung-0015_formularhinweis-bauamt-7.md】. Sie brauchen es für den regulären Antrag auf eine Amtshandlung, insbesondere für die **Erteilung einer Baugenehmigung**.\n\nOhne vollständig ausgefülltes Formular kann das Bauamt Ihren Vorgang nicht bearbeiten. Fehlt etwas, schickt das Amt das Formular mit einer Rückfrage zurück, und die Bearbeitung verlängert sich erfahrungsgemäß um mehrere Wochen.\n\nAnzugeben sind:\n\n- Name, Anschrift und Geburtsdatum,\n- das Aktenzeichen eines bereits laufenden Vorgangs, falls es einen gibt,\n- eine Telefonnummer oder E-Mail-Adresse für Rückfragen 【source: fe64313a-328b-5c44-9e83-600800feaa93#1 | verwaltung-0015_formularhinweis-bauamt-7.md】.\n\nBeantragen Sie eine Gebührenermäßigung nach § 13 der Baugenehmigungsgebührensatzung, geben Sie zusätzlich den Freistellungsbescheid des Finanzamts an.\n\nDie reguläre Bearbeitungsdauer beträgt zwei bis vier Wochen ab vollständigem Eingang aller Nachweise.",
+        "expected_documents": [
+          "verwaltung-0015_formularhinweis-bauamt-7.md"
+        ]
+      },
+      {
+        "query": "falls ich keinen eigenen Drucker habe",
+        "answer": "Das ist kein Hindernis. Das Bauamt bietet auf Anfrage eine **persönliche Ausfüllhilfe** für Formular BAU-07 an 【source: fe64313a-328b-5c44-9e83-600800feaa93#5 | verwaltung-0015_formularhinweis-bauamt-7.md】. Sie richtet sich ausdrücklich auch an Personen **ohne Zugang zu einem eigenen Drucker**, außerdem an Menschen mit Seheinschränkung oder eingeschränkten Deutschkenntnissen.\n\nSie haben zwei Möglichkeiten:\n\n1. **Online einreichen:** Über das Formularportal der Stadt Kalkstadt steht ein barrierefreies elektronisches Formular bereit. Der Eingang wird dort automatisch mit Datum und Uhrzeit bestätigt, ausdrucken müssen Sie nichts 【source: fe64313a-328b-5c44-9e83-600800feaa93#3 | verwaltung-0015_formularhinweis-bauamt-7.md】.\n2. **Vor Ort ausfüllen:** Mit der Ausfüllhilfe im Bauamt füllen Sie das Formular gemeinsam mit der Sachbearbeitung aus.\n\nNachweise können Sie als beglaubigte Kopie oder im Original zur Einsichtnahme vor Ort vorlegen.\n\nMein Tipp: Vereinbaren Sie die Ausfüllhilfe vorab telefonisch während der Öffnungszeiten.",
+        "expected_documents": [
+          "verwaltung-0015_formularhinweis-bauamt-7.md"
+        ]
+      },
+      {
+        "query": "Ich bin übrigens Architektin.",
+        "answer": "Danke für den Hinweis! Dann gehe ich davon aus, dass Sie Anträge auch für Ihre Bauherrschaft vorbereiten.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "und bei postalischer Einreichung",
+        "answer": "Auch per Post können Sie Formular BAU-07 einreichen 【source: fe64313a-328b-5c44-9e83-600800feaa93#3 | verwaltung-0015_formularhinweis-bauamt-7.md】. Dabei gilt:\n\n- Vermerken Sie das **Aktenzeichen BAU-07 auf dem Umschlag**, damit das Bauamt Ihre Sendung eindeutig zuordnen kann.\n- Legen Sie alle Nachweise bei, als beglaubigte Kopie. Originale reichen Sie besser nur zur Einsichtnahme vor Ort ein.\n- Eine automatische Eingangsbestätigung wie beim Formularportal gibt es auf dem Postweg nicht.\n\nDas Bauamt scannt die postalisch eingereichte Fassung ein und ergänzt damit die elektronische Akte. Dieselbe Sachbearbeitung sieht dann den vollständigen Vorgang, egal auf welchem Weg Sie eingereicht haben 【source: fe64313a-328b-5c44-9e83-600800feaa93#9 | verwaltung-0015_formularhinweis-bauamt-7.md】.\n\nRechnen Sie mit der regulären Bearbeitungsdauer von zwei bis vier Wochen ab vollständigem Eingang. Heben Sie eine Kopie des Formulars und aller Nachweise auf, bis der Vorgang beschieden ist.",
+        "expected_documents": [
+          "verwaltung-0015_formularhinweis-bauamt-7.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die eine Folgefrage ohne Fragezeichen als Frage erkennt und ihren Bezug aus einem Verlauf langer Antworten auflöst. Noch nicht gemessen."
+  },
+  {
+    "id": "verw-conv-ac-010",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Was kostet die Anmeldung eines Gewerbes beim Ordnungsamt?",
+        "answer": "Für die Anmeldung eines Gewerbes erhebt das Ordnungsamt der Stadt Kalkstadt Gebühren nach seiner Gebührenordnung 【source: 0a286668-c1d6-5456-8486-3e977d62cc9d#0 | verwaltung-0019_gebuehrenordnung-ordnungsamt.md】. Die wichtigsten Sätze:\n\n| Amtshandlung | Gebühr |\n|---|---|\n| Erteilung (Gewerbeanmeldung) | 25,00 Euro |\n| Verlängerung | 30,00 Euro |\n| Änderung | 35,00 Euro |\n| Zweitausfertigung | 40,00 Euro |\n\nGrundlage ist der durchschnittliche Bearbeitungsaufwand des Ordnungsamts, den die Kämmerei über eine Zeit- und Kostenerfassung ermittelt 【source: 0a286668-c1d6-5456-8486-3e977d62cc9d#1 | verwaltung-0019_gebuehrenordnung-ordnungsamt.md】.\n\nAusnahmen regelt die Gewerbeanmeldegebührensatzung: das Auskunftsrecht nach § 3 und die Ermäßigung für eingetragene, gemeinnützige Vereine nach § 13.\n\nDie Gebühr wird mit dem Gebührenbescheid fällig und ist innerhalb von vier Wochen an die Stadtkasse zu zahlen.",
+        "expected_documents": [
+          "verwaltung-0019_gebuehrenordnung-ordnungsamt.md"
+        ]
+      },
+      {
+        "query": "und für die Eilbearbeitung",
+        "answer": "Für die **Eilbearbeitung** einer Gewerbeanmeldung berechnet das Ordnungsamt **55,00 Euro** (Gebührenposition 7) 【source: 0a286668-c1d6-5456-8486-3e977d62cc9d#7 | verwaltung-0019_gebuehrenordnung-ordnungsamt.md】.\n\nDiese Gebühr kommt zu der Gebühr für die eigentliche Amtshandlung hinzu, bei einer Erteilung also zu den 25,00 Euro.\n\nWeitere Positionen der Gebührenordnung, die in diesem Zusammenhang anfallen können:\n\n- postalische Zustellung des Bescheids: 60,00 Euro,\n- Rücknahme auf Antrag: 45,00 Euro,\n- Bearbeitung eines Widerspruchs: 50,00 Euro 【source: 0a286668-c1d6-5456-8486-3e977d62cc9d#5 | verwaltung-0019_gebuehrenordnung-ordnungsamt.md】.\n\nAuch die Eilbearbeitung unterliegt den Ausnahmen nach § 3 und § 13 der Gewerbeanmeldegebührensatzung. Ein eingetragener, gemeinnütziger Verein kann also auch hier eine Ermäßigung beantragen.",
+        "expected_documents": [
+          "verwaltung-0019_gebuehrenordnung-ordnungsamt.md"
+        ]
+      },
+      {
+        "query": "Okay, notiert.",
+        "answer": "Prima! Sagen Sie Bescheid, wenn Sie noch etwas zur Gewerbeanmeldung wissen möchten.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "wenn ich im selben Jahr noch einmal ummelde",
+        "answer": "Dann fällt die Gebühr **erneut** an 【source: 0a286668-c1d6-5456-8486-3e977d62cc9d#3 | verwaltung-0019_gebuehrenordnung-ordnungsamt.md】. Die Gebührenordnung des Ordnungsamts sieht vor, dass bei mehrfacher Inanspruchnahme derselben Amtshandlung innerhalb eines Kalenderjahres die Gebühr für jede einzelne Amtshandlung wieder fällig wird.\n\nFür eine Ummeldung, also eine **Änderung** der Gewerbeanmeldung, sind das jeweils **35,00 Euro** (Gebührenposition 3).\n\nZwei Hinweise dazu:\n\n- Auf Antrag stellt das Ordnungsamt eine **Sammelrechnung** aus, statt jede Änderung einzeln abzurechnen.\n- Die Ausnahmen nach § 3 und § 13 der Gewerbeanmeldegebührensatzung gelten auch für wiederholte Änderungen 【source: 0a286668-c1d6-5456-8486-3e977d62cc9d#2 | verwaltung-0019_gebuehrenordnung-ordnungsamt.md】.\n\nÄndert sich die Gebührenordnung zwischenzeitlich, gilt die neue Fassung frühestens zwei Monate nach dem Beschluss des Stadtrats; sie wird im Amtsblatt veröffentlicht.",
+        "expected_documents": [
+          "verwaltung-0019_gebuehrenordnung-ordnungsamt.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die eine Folgefrage ohne Fragezeichen als Frage erkennt und ihren Bezug aus einem Verlauf langer Antworten auflöst. Noch nicht gemessen."
+  },
+  {
+    "id": "verw-conv-ac-011",
+    "domain": "verwaltung",
+    "category": "answer_continuation",
+    "turns": [
+      {
+        "query": "Wofür ist Formular SOZ-08 gedacht?",
+        "answer": "Formular SOZ-08 ist das **Änderungs- und Ermäßigungsformular** des Sozialamts der Stadt Kalkstadt 【source: 65f4d3f6-56eb-528e-be5d-e9a6097a7515#0 | verwaltung-0008_formularhinweis-sozialamt-8.md】. Sie verwenden es für:\n\n1. eine **nachträgliche Änderung** Ihrer Antragsdaten und\n2. einen **Antrag auf Gebührenermäßigung** nach § 13 der Sozialgebührenbefreiungssatzung.\n\nAnzugeben sind Name, Anschrift, Geburtsdatum und, falls vorhanden, das Aktenzeichen eines laufenden Vorgangs, außerdem eine Telefonnummer oder E-Mail-Adresse für Rückfragen. Für eine Ermäßigung nach § 13 kommt der Freistellungsbescheid des Finanzamts hinzu 【source: 65f4d3f6-56eb-528e-be5d-e9a6097a7515#1 | verwaltung-0008_formularhinweis-sozialamt-8.md】.\n\nEinreichen können Sie das Formular persönlich, per Post oder über das Online-Formularportal der Stadt Kalkstadt.\n\nDie reguläre Bearbeitungsdauer beträgt zwei bis vier Wochen ab vollständigem Eingang aller Nachweise; gegen Gebühr ist eine Eilbearbeitung in drei bis fünf Werktagen möglich.",
+        "expected_documents": [
+          "verwaltung-0008_formularhinweis-sozialamt-8.md"
+        ]
+      },
+      {
+        "query": "Danke. Ich bin selbst Sachbearbeiter im Sozialamt.",
+        "answer": "Gern geschehen! Dann formuliere ich die Hinweise künftig aus Sicht der Sachbearbeitung.",
+        "expected_documents": [],
+        "search_expected": false
+      },
+      {
+        "query": "wenn der Leistungsbescheid schon älter als drei Monate ist",
+        "answer": "Dann ist der Nachweis **nicht mehr gültig**. Ein Leistungsbescheid darf zum Zeitpunkt der Antragstellung **nicht älter als drei Monate** sein 【source: 65f4d3f6-56eb-528e-be5d-e9a6097a7515#5 | verwaltung-0008_formularhinweis-sozialamt-8.md】.\n\nDas ist einer der beiden häufigsten Fehler bei Formular SOZ-08:\n\n- Der beigefügte Leistungsbescheid liegt außerhalb der Gültigkeitsdauer von drei Monaten.\n- Das Feld für das Aktenzeichen bleibt leer, obwohl bereits ein Vorgang existiert 【source: 65f4d3f6-56eb-528e-be5d-e9a6097a7515#12 | verwaltung-0008_formularhinweis-sozialamt-8.md】.\n\nBeide Fehler führen zu einer vermeidbaren Rückfrage und verlängern die Bearbeitung. Fordern Sie deshalb in solchen Fällen einen aktuellen Bescheid an, bevor das Formular bearbeitet wird.\n\nFür die Beratung am Schalter hilft der Hinweis, dass eine verbindliche Auskunft zur Zahlungspflicht die Sachbearbeitung im Rahmen des Auskunftsrechts nach § 3 erteilt.",
+        "expected_documents": [
+          "verwaltung-0008_formularhinweis-sozialamt-8.md"
+        ]
+      },
+      {
+        "query": "und bei fremdsprachigen Nachweisen",
+        "answer": "Fremdsprachige Nachweise zu Formular SOZ-08 sind mit einer **amtlich beglaubigten Übersetzung ins Deutsche** einzureichen 【source: 65f4d3f6-56eb-528e-be5d-e9a6097a7515#2 | verwaltung-0008_formularhinweis-sozialamt-8.md】.\n\nEine Ausnahme gilt, wenn der Inhalt ohnehin einem **standardisierten Formular einer deutschen Behörde** entspricht. Dann ist keine Übersetzung nötig.\n\nWeitere Punkte zu Nachweisen:\n\n- Das Sozialamt akzeptiert beglaubigte Kopien oder das Original zur Einsichtnahme vor Ort.\n- Je nach Anliegen ist ein Identitätsnachweis oder ein Nachweis der Gemeinnützigkeit beizufügen.\n\nFür Antragstellende mit eingeschränkten Deutschkenntnissen bietet das Sozialamt auf Anfrage eine **persönliche Ausfüllhilfe** an; ergänzend steht ein barrierefreies elektronisches Formular im Formularportal bereit 【source: 65f4d3f6-56eb-528e-be5d-e9a6097a7515#9 | verwaltung-0008_formularhinweis-sozialamt-8.md】.",
+        "expected_documents": [
+          "verwaltung-0008_formularhinweis-sozialamt-8.md"
+        ]
+      }
+    ],
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-09-17",
+    "expected_state_reason": "Fehlender Baustein: eine Zerlegung, die eine Folgefrage ohne Fragezeichen als Frage erkennt und ihren Bezug aus einem Verlauf langer Antworten auflöst. Noch nicht gemessen."
   }
 ]
