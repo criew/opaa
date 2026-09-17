@@ -10,9 +10,9 @@ import java.util.Base64;
  * (HTTP Basic with the e-mail as user name - exactly what Cloud is), Data Center as the bare
  * personal access token (sent as {@code Bearer}).
  *
- * <p>{@link #toString()} never reveals the secret and no implementation exposes the raw token
- * beyond {@link #authorizationHeader()} - the single place the header value is built - so a
- * credential can appear in no log line, exception message or API response by accident.
+ * <p>{@code toString()} never reveals the secret and no implementation exposes the raw token beyond
+ * {@link #authorizationHeader()} - the single place the header value is built - so a credential can
+ * appear in no log line, exception message or API response by accident.
  */
 public sealed interface ConfluenceCredentials {
 

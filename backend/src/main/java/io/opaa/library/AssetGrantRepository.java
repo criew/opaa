@@ -50,7 +50,7 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
    * deadlock. Automatically released at transaction end ({@code _xact_}, commit or rollback), so it
    * cannot be leaked like a {@code pg_advisory_lock}/{@code pg_advisory_unlock} pair would risk.
    * This is a real database lock, not an in-process one - see {@link
-   * io.opaa.auth.UserService#provisioningLockFor} for why that distinction matters here (multiple
+   * io.opaa.auth.UserRepository#lockRoleChanges} for why that distinction matters here (multiple
    * application instances).
    */
   @Query(

@@ -161,7 +161,7 @@ public class SourceConnectionTestService {
 
   /**
    * Convenience overload for a standalone test carrying no {@code libraryId} (#514's original
-   * shape, before #544) - equivalent to {@link #test(SourceConnectionTest, UUID, boolean)} with a
+   * shape, before #544) - equivalent to {@link #test(SourceConnectionTest, CurrentUser)} with a
    * {@code null} caller, which that overload only ever consults once {@code request.libraryId()} is
    * set.
    */

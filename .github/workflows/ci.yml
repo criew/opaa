@@ -141,6 +141,13 @@ jobs:
       - name: Build (ohne Testsuite)
         run: ./gradlew build -x :test
 
+      # `javadoc` is not part of `build`'s dependency graph (no withJavadocJar()), so an
+      # unresolvable {@link}/@see - a renamed or deleted target - would otherwise go unnoticed
+      # until someone runs the task by hand (#1420). ~30s added on a cold cache (measured
+      # locally), negligible next to the rest of this job.
+      - name: Javadoc (unauflösbare Referenzen)
+        run: ./gradlew javadoc
+
       - name: Upload build reports
         if: always()
         uses: actions/upload-artifact@v7

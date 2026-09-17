@@ -4,9 +4,9 @@ package io.opaa.api.types;
  * The closed list of events the first protocol stage records
  * (docs/features/security-and-compliance.md#die-ereignisse-der-ersten-stufe). "Was hier nicht
  * steht, wird in der ersten Stufe nicht geschrieben" - the list is deliberately closed, not a
- * category with a free-text detail: {@link AuditLogEntry#getEventType()} is this enum, not a {@code
- * String}. This enum is the sole write guard; there is no longer a matching database check
- * constraint, so adding a value here does not require a migration.
+ * category with a free-text detail: {@code AuditLogEntry#getEventType()} (backend module) is this
+ * enum, not a {@code String}. This enum is the sole write guard; there is no longer a matching
+ * database check constraint, so adding a value here does not require a migration.
  */
 public enum AuditEventType {
 
