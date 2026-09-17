@@ -1348,6 +1348,11 @@ pinnen.
 - Mit `-Dopaa.eval.allowGpu=true` rechnet womöglich die GPU. Der Harness prüft dann keine
   CPU-Variante und trägt `unpinned: gpu allowed` ein; der Lauf ist gegen keine Baseline
   vergleichbar.
+- Mit einem externen Chat-Modell (`-Dopaa.eval.chatBaseUrl`/`-Dopaa.eval.chatModel`, Issue #1674)
+  liegt der Chat-Runner nicht mehr im Container: Die Variantenprüfung verlangt dann nur noch den
+  Embedding-Runner, und der Digest-Pin des Chat-Modells (ADR-0011, Entscheidung 4) entfällt. Der
+  Embedding-Pfad bleibt unverändert gepinnt — Variante **und** Digest. Ein solcher Lauf ist über den
+  abweichenden Festpunkt `chatModel` ohnehin gegen keine Baseline vergleichbar.
 
 ### 55. `ollamaCpuBackend` wird Festpunkt aller drei Messpfade; Rohvektor 10 → 11, Pipeline 13 → 14, Mehrrunden 2 → 3
 
