@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { fieldErrorMessages, passwordPolicyText, tooManyRequestsMessage } from './authMessages'
+import {
+  fieldErrorMessages,
+  passwordPolicyText,
+  sessionEndMessage,
+  tooManyRequestsMessage,
+} from './authMessages'
 import { PASSWORD_MAX_BYTES, PASSWORD_MAX_LENGTH } from './passwordStrength'
 
 describe('fieldErrorMessages', () => {
@@ -100,5 +105,37 @@ describe('tooManyRequestsMessage', () => {
       `Es wurden zu viele Anfragen gestellt. Bitte versuchen Sie es ${phrase} erneut.`,
     )
     expect(message).not.toContain('Versuche')
+  })
+})
+
+describe('sessionEndMessage', () => {
+  it('names a reset password only for the cause that is one', () => {
+    expect(sessionEndMessage('session_revoked:admin_reset')).toContain('Ihr Passwort zurückgesetzt')
+  })
+
+  // regression guard for #1595: the general administrative act is not a password reset, and a
+  // sentence that claims one sends the person after a password nobody issued.
+  it('says nothing about a password for the general administrative act', () => {
+    const message = sessionEndMessage('session_revoked:admin_action')
+
+    expect(message).toBe(
+      'Ihre Sitzung wurde von der Systemverwaltung beendet. Bitte melden Sie sich erneut an.',
+    )
+    expect(message).not.toContain('Passwort')
+  })
+
+  // The switch-off is what a regular local account reads once the management is closed; it names
+  // no way back that does not exist.
+  it('sends the person to the administration when the local management is off', () => {
+    expect(sessionEndMessage('local_accounts_disabled')).toBe(
+      'Die Anmeldung mit Konten dieser Installation wurde abgeschaltet. Bitte wenden Sie sich an die Systemverwaltung.',
+    )
+  })
+
+  // An unknown cause falls back to its marker's sentence rather than to the bare "expired".
+  it('falls back to the marker sentence for a cause it does not know', () => {
+    expect(sessionEndMessage('session_revoked:etwas_neues' as never)).toBe(
+      'Ihre Sitzung wurde beendet. Bitte melden Sie sich erneut an.',
+    )
   })
 })

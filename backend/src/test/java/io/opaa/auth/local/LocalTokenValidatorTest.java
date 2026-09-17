@@ -155,7 +155,11 @@ class LocalTokenValidatorTest {
     assertThat(LocalTokenRejection.causeOf(RevocationReason.PASSWORD_CHANGED))
         .isEqualTo("password_changed");
     assertThat(LocalTokenRejection.causeOf(RevocationReason.ADMIN_RESET)).isEqualTo("admin_reset");
-    assertThat(LocalTokenRejection.causeOf(RevocationReason.ADMIN)).isEqualTo("admin_reset");
+    // regression guard for #1595: the general administrative act is not a password reset, so it
+    // must not inherit the cause whose sentence says one happened
+    assertThat(LocalTokenRejection.causeOf(RevocationReason.ADMIN)).isEqualTo("admin_action");
+    assertThat(LocalTokenRejection.causeOf(RevocationReason.ADMIN))
+        .isNotEqualTo(LocalTokenRejection.causeOf(RevocationReason.ADMIN_RESET));
     assertThat(LocalTokenRejection.causeOf(RevocationReason.REUSE_DETECTED))
         .isEqualTo("reuse_detected");
     assertThat(LocalTokenRejection.causeOf(RevocationReason.HANDED_OVER)).isEqualTo("handed_over");
@@ -196,6 +200,34 @@ class LocalTokenValidatorTest {
 
     user.setSystemRole(SystemRole.SYSTEM_ADMIN);
     assertThat(validator.rejectionFor(token(user.getId(), NOW.minusSeconds(60)))).isEmpty();
+  }
+
+  /**
+   * regression guard for #1595: switching the management off revokes the running sessions of
+   * regular accounts on the way, so the switch has to outrank those revocations - otherwise the
+   * marker of ADR-0033, Entscheidung 4 is unreachable and the person reads the revocation's cause
+   * instead.
+   */
+  @Test
+  void theSwitchOutranksARevocationThatTheSwitchingOffItselfCaused() {
+    when(registry.localAccountsEnabled()).thenReturn(false);
+    Jwt jwt = token(user.getId(), NOW.minusSeconds(60));
+    when(revocation.isDenylisted(jwt.getId())).thenReturn(true);
+    row.invalidateSessionsIssuedBefore(NOW, NOW);
+    LocalRefreshToken revoked =
+        new LocalRefreshToken(UUID.randomUUID(), user.getId(), "h", NOW.minusSeconds(40), NOW, NOW);
+    revoked.revoke(RevocationReason.ADMIN, NOW);
+    when(refreshTokens.findFirstByUserIdAndRevocationReasonInOrderByRevokedAtDesc(
+            user.getId(), LocalTokenValidator.ACTS))
+        .thenReturn(Optional.of(revoked));
+
+    assertThat(validator.rejectionFor(jwt))
+        .contains(new LocalTokenRejection(LocalTokenMarkers.LOCAL_ACCOUNTS_DISABLED, null));
+
+    // the administrator passes the switch and therefore still reads the act that ended the session
+    user.setSystemRole(SystemRole.SYSTEM_ADMIN);
+    assertThat(validator.rejectionFor(jwt))
+        .contains(new LocalTokenRejection(LocalTokenMarkers.SESSION_REVOKED, "admin_action"));
   }
 
   @Test

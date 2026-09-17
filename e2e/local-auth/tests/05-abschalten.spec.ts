@@ -72,13 +72,12 @@ test.describe("Verwaltung abschalten: Nutzer-Sitzung endet, Verwalter bleibt", (
     await admin.goto("/spaces");
     await expect(admin.getByText("Meine Dokumente").first()).toBeVisible();
 
-    // The regular account's next call is refused and the person is sent back to the sign-in page.
-    // The marker asserted here is the built one, not the one ADR-0033 Entscheidung 4 names
-    // (local_accounts_disabled): switching the management off revokes the sessions eagerly with
-    // reason ADMIN_RESET, so the person is told their password was reset, which is not true. That
-    // mismatch is #1595 - this assertion pins today's behaviour so the fix has to touch it.
-    await expectSessionEndedWith(user, "session_revoked:admin_reset", {
-      sentence: "Ihre Sitzung wurde beendet, weil die Systemverwaltung Ihr Passwort zurückgesetzt hat.",
+    // The regular account's next call is refused and the person is sent back to the sign-in page,
+    // with the marker ADR-0033 Entscheidung 4 names: the switch outranks the revocation the
+    // switching off performs on the way, so nobody is told a password was reset that was not.
+    await expectSessionEndedWith(user, "local_accounts_disabled", {
+      sentence:
+        "Die Anmeldung mit Konten dieser Installation wurde abgeschaltet. Bitte wenden Sie sich an die Systemverwaltung.",
     });
 
     // And it cannot sign in again: the password form is gone, /login offers no provider either.

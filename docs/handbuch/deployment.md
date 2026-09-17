@@ -1669,10 +1669,11 @@ befristen, Selbstregistrierung — steht im Kapitel [Benutzerverwaltung](benutze
 den Betrieb sind vier Dinge wichtig:
 
 - **Abgeschaltet heißt: nur Systemverwalter.** Ist der Schalter aus, können sich reguläre lokale
-  Konten nicht anmelden, und laufende Sitzungen enden beim nächsten Aufruf. Lokale
-  Systemverwalterkonten passieren weiter. Ihre eigene Anmeldeseite ist `/login/system`; die reguläre
-  Anmeldeseite verlinkt sie unauffällig, damit die Verwaltung hereinkommt, ohne dass die Maske allen
-  angeboten wird.
+  Konten nicht anmelden, und laufende Sitzungen enden beim nächsten Aufruf — die Person liest dabei
+  „Die Anmeldung mit Konten dieser Installation wurde abgeschaltet" und wird an die
+  Systemverwaltung verwiesen. Lokale Systemverwalterkonten passieren weiter. Ihre eigene
+  Anmeldeseite ist `/login/system`; die reguläre Anmeldeseite verlinkt sie unauffällig, damit die
+  Verwaltung hereinkommt, ohne dass die Maske allen angeboten wird.
 - **Die Empfehlung lautet: im Regelbetrieb aus.** Wer einen Identitätsanbieter betreibt, lässt die
   Verwaltung regulärer lokaler Konten ausgeschaltet und befristet die Systemverwalterkonten. Lokale
   Konten laufen am Verzeichnis und damit am Austrittsprozess vorbei; die Gegenmittel (Pflicht-Anlass,

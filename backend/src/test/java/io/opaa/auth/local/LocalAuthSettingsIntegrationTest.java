@@ -204,15 +204,14 @@ class LocalAuthSettingsIntegrationTest {
     mockMvc
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, userBearer))
         .andExpect(status().isUnauthorized())
-        // the switch-off also revoked the family (#1534), which the validator names first; a
-        // session without a family would be refused as local_accounts_disabled
+        // regression guard for #1595: the switch-off also revokes the family (#1534), and the
+        // switch has to outrank that revocation - the person reads why the management is closed,
+        // not that a password was reset
         .andExpect(
             header()
                 .string(
                     "WWW-Authenticate",
-                    Matchers.anyOf(
-                        Matchers.containsString("local_accounts_disabled"),
-                        Matchers.containsString("session_revoked"))));
+                    Matchers.containsString("error_description=\"local_accounts_disabled\"")));
     mockMvc
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, adminBearer))
         .andExpect(status().isOk());

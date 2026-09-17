@@ -89,6 +89,8 @@ const SESSION_END_MESSAGES: Record<string, string> = {
     'Ihre Sitzung wurde beendet, weil Ihr Passwort geändert wurde. Bitte melden Sie sich mit dem neuen Passwort an.',
   'session_revoked:admin_reset':
     'Ihre Sitzung wurde beendet, weil die Systemverwaltung Ihr Passwort zurückgesetzt hat.',
+  'session_revoked:admin_action':
+    'Ihre Sitzung wurde von der Systemverwaltung beendet. Bitte melden Sie sich erneut an.',
   'session_revoked:reuse_detected':
     'Ihre Sitzung wurde aus Sicherheitsgründen beendet. Bitte melden Sie sich erneut an.',
   'session_revoked:handed_over':

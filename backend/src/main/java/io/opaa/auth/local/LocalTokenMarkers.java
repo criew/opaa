@@ -21,7 +21,8 @@ public final class LocalTokenMarkers {
 
   /**
    * Cause, when one is known: {@code admin_lock}, {@code password_changed}, {@code admin_reset},
-   * {@code reuse_detected}, {@code handed_over}; none after the person's own sign-out.
+   * {@code admin_action}, {@code reuse_detected}, {@code handed_over}; none after the person's own
+   * sign-out.
    */
   public static final String SESSION_REVOKED = "session_revoked";
 

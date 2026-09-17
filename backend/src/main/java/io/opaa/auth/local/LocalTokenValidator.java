@@ -14,13 +14,17 @@ import org.springframework.stereotype.Component;
 
 /**
  * The revocation validator of the local issuer (ADR-0033, Entscheidung 8), run for every request
- * after signature, issuer and expiry have been verified: the {@code jti} denylist (cache), the
- * account's {@code local_credentials} row (one primary-key lookup - the derived state, {@code
- * password_invalidated_before}) and the management switch (the registry's flag; the {@code users}
- * row is loaded only when the switch is off, to let a {@code SYSTEM_ADMIN} through). Fail closed:
+ * after signature, issuer and expiry have been verified: the management switch (the registry's
+ * flag; the {@code users} row is loaded only when the switch is off, to let a {@code SYSTEM_ADMIN}
+ * through), then the {@code jti} denylist (cache) and the account's {@code local_credentials} row
+ * (one primary-key lookup - the derived state, {@code password_invalidated_before}). Fail closed:
  * only an account {@link LocalAccountAccess#isLoginCapable login-capable} right now passes. Every
  * refusal is a {@link LocalTokenRejection} naming its reason; a token whose subject has no local
  * account is refused rather than provisioned.
+ *
+ * <p>The switch is read first because while it is off it is the effective reason a regular local
+ * token is refused (ADR-0033, Entscheidung 4): the switch-off also revokes the running sessions, so
+ * any later check would answer with that revocation instead of the marker the switch promises.
  */
 @Component
 public class LocalTokenValidator {
@@ -54,6 +58,9 @@ public class LocalTokenValidator {
     if (jti == null || issuedAt == null || userId == null) {
       return Optional.of(new LocalTokenRejection(LocalTokenMarkers.MALFORMED_TOKEN, null));
     }
+    if (!registry.localAccountsEnabled() && !passesManagementSwitch(userId)) {
+      return Optional.of(new LocalTokenRejection(LocalTokenMarkers.LOCAL_ACCOUNTS_DISABLED, null));
+    }
     if (revocation.isDenylisted(jti)) {
       return Optional.of(
           new LocalTokenRejection(
@@ -85,9 +92,6 @@ public class LocalTokenValidator {
       return Optional.of(
           new LocalTokenRejection(
               LocalTokenMarkers.SESSION_REVOKED, latestRevocationCause(userId)));
-    }
-    if (!registry.localAccountsEnabled() && !passesManagementSwitch(userId)) {
-      return Optional.of(new LocalTokenRejection(LocalTokenMarkers.LOCAL_ACCOUNTS_DISABLED, null));
     }
     return Optional.empty();
   }
