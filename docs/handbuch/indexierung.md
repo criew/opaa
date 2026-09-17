@@ -371,9 +371,12 @@ Was alle Pipelines gemeinsam haben:
 
 Vor dem Speichern bekommt jeder Chunk seinen Rahmen: Dokument, Bibliothek, Organisation,
 laufende Nummer im Dokument, Dateiname, Pipeline-Kennung und -Version, sowie die
-Struktur-Metadaten aus der Pipeline (Ortsangabe, bei Mails die Kopfdaten, bei Confluence-Seiten
-Space und Gliederungspfad). Diese Metadaten sind das, worüber die Suche später filtert, etwa auf die
-Bibliotheken, die eine Person sehen darf.
+Struktur-Metadaten aus der Pipeline (Ortsangabe, bei Mails die Kopfdaten). Der Container und der
+Gliederungspfad der Quelle (bei Confluence Space und Seitenhierarchie, bei S3 Bucket und
+Präfixpfad) kommen dagegen vom Dokument selbst, nicht von der Pipeline: Sie stehen auf jedem Chunk
+eines Dokuments mit diesen Angaben, auch wenn ein Confluence-Anhang über eine andere Pipeline läuft
+als die Confluence-Seite selbst. Diese Metadaten sind das, worüber die Suche später filtert, etwa
+auf die Bibliotheken, die eine Person sehen darf.
 
 An derselben Stelle werden die **Kernfelder** des Dokuments ermittelt (Titel, Dokumentart,
 Datum/Stand) und die filterbaren davon an jeden Chunk geschrieben. Woher sie kommen und was sie

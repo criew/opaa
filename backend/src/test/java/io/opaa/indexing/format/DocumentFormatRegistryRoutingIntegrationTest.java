@@ -182,12 +182,7 @@ class DocumentFormatRegistryRoutingIntegrationTest {
             Map.entry("odt", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
             Map.entry("odp", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
             Map.entry("markdown", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
-            Map.entry(
-                "confluence",
-                Set.of(
-                    ChunkingService.LOCATION_METADATA_KEY,
-                    ChunkingService.SOURCE_CONTAINER_METADATA_KEY,
-                    ChunkingService.SOURCE_HIERARCHY_METADATA_KEY)),
+            Map.entry("confluence", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
             Map.entry("email", Set.of(ChunkingService.LOCATION_METADATA_KEY)));
 
     assertThat(registry.pipelines())

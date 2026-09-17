@@ -1,6 +1,5 @@
 package io.opaa.indexing.format.stream.confluencestorage;
 
-import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.format.DocumentFormat;
 import io.opaa.indexing.format.DocumentFormatResult;
 import io.opaa.indexing.format.DocumentFormatSource;
@@ -12,7 +11,6 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
-import java.util.Set;
 import org.jsoup.Jsoup;
 import org.jsoup.parser.Parser;
 import org.springframework.ai.document.Document;
@@ -28,8 +26,9 @@ import org.springframework.ai.document.Document;
  * ConfluenceElementRule} adds the macro elements on top, with {@link ConfluenceMacroRules} deciding
  * which macros stay: statically embedded content does, view-time content does not. h1-h3 cut a
  * chunk ({@link #MAX_CUTTING_LEVEL}), and the heading path becomes the chunk's first line and its
- * {@code location}. Space key and hierarchy path come from the caller, declared here as passthrough
- * keys.
+ * {@code location}. Space key and hierarchy path come from the caller as the source context -
+ * {@code DocumentIngestService} writes both onto every chunk itself, independent of this or any
+ * other format's declared passthrough keys.
  */
 public class ConfluenceStorageFormat implements DocumentFormat {
 
@@ -47,14 +46,6 @@ public class ConfluenceStorageFormat implements DocumentFormat {
   @Override
   public short version() {
     return VERSION;
-  }
-
-  @Override
-  public Set<String> passthroughMetadataKeys() {
-    return Set.of(
-        ChunkingService.LOCATION_METADATA_KEY,
-        ChunkingService.SOURCE_CONTAINER_METADATA_KEY,
-        ChunkingService.SOURCE_HIERARCHY_METADATA_KEY);
   }
 
   @Override
