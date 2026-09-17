@@ -1,10 +1,10 @@
 package io.opaa.api.types;
 
 /**
- * The closed vocabulary of {@link Notification#getType()}. This enum is the sole write guard since
- * migration 066 (#862) dropped the database check constraint {@code chk_notifications_type} that
- * used to enforce the same closed set independently - adding a value here no longer requires a
- * migration.
+ * The closed vocabulary of {@code Notification#getType()} (backend module). This enum is the sole
+ * write guard since migration 066 (#862) dropped the database check constraint {@code
+ * chk_notifications_type} that used to enforce the same closed set independently - adding a value
+ * here no longer requires a migration.
  */
 public enum NotificationType {
   /**

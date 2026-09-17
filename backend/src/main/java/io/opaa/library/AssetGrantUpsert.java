@@ -8,8 +8,9 @@ import java.util.UUID;
 /**
  * Parameters for {@link AssetGrantService#upsertGrant} - replaces the generated {@code
  * AssetGrantRequest} at the service boundary (#860): domain services do not know {@code
- * io.opaa.api.dto} types, see AGENTS.md "API & DTO-Konvention". Immutable, fluent {@code expiresAt}
- * setter mirrors {@code AssetGrantRequest}'s generated builder for a low-friction test call site.
+ * io.opaa.api.dto} types, see AGENTS.md "API &amp; DTO-Konvention". Immutable, fluent {@code
+ * expiresAt} setter mirrors {@code AssetGrantRequest}'s generated builder for a low-friction test
+ * call site.
  */
 public record AssetGrantUpsert(
     PermissionSubjectType subjectType, UUID subjectId, AssetRole role, Instant expiresAt) {

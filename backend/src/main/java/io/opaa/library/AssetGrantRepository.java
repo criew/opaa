@@ -48,10 +48,9 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
    * since Postgres executes the {@code Sort} before the {@code LockRows} step for that query shape.
    * A single advisory lock per library has only one lock to acquire, removing the whole class of
    * deadlock. Automatically released at transaction end ({@code _xact_}, commit or rollback), so it
-   * cannot be leaked like a {@code pg_advisory_lock}/{@code pg_advisory_unlock} pair would risk.
-   * This is a real database lock, not an in-process one - see {@link
-   * io.opaa.auth.UserService#provisioningLockFor} for why that distinction matters here (multiple
-   * application instances).
+   * cannot be leaked like a {@code pg_advisory_lock}/{@code pg_advisory_unlock} pair would risk. A
+   * database lock, not an in-process one: with more than one application instance an in-process
+   * lock would not serialize concurrent mutations at all.
    */
   @Query(
       value =
