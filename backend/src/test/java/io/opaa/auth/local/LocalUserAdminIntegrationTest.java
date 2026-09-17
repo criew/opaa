@@ -879,14 +879,21 @@ class LocalUserAdminIntegrationTest {
       assertThat(JsonPath.<List<String>>read(body, "$.items[*].email"))
           .as(list)
           .containsExactly(regular.email());
-    }
 
-    // the class itself stays what it is - the row of the bootstrap account still says so
-    String all = asAdmin(get(LOCAL_USERS)).andReturn().getResponse().getContentAsString();
-    assertThat(
-            JsonPath.<List<String>>read(
-                all, "$.items[?(@.email == '" + notanker.email() + "')].activity"))
-        .containsExactly("INACTIVE_90_DAYS");
+      // the class itself stays what it is - the unfiltered row of the bootstrap account says so
+      String unfiltered =
+          asAdmin(get(list))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+      String activity = list.equals(ACCOUNTS) ? ".local.activity" : ".activity";
+      assertThat(
+              JsonPath.<List<String>>read(
+                  unfiltered, "$.items[?(@.email == '" + notanker.email() + "')]" + activity))
+          .as(list)
+          .containsExactly("INACTIVE_90_DAYS");
+    }
   }
 
   @Test
