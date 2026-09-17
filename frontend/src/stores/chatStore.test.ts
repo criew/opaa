@@ -2504,6 +2504,25 @@ describe('chatStore', () => {
       expect(noteIds()).toEqual([NOTE_ITEM_ID, OTHER_NOTE_ITEM_ID])
     })
 
+    // ... but only its own: an error from another action is the one explanation the person has for
+    // what that action rolled back, and removing a note point must not make it disappear.
+    it('leaves an unrelated error standing when a note point is removed', async () => {
+      server.use(
+        http.delete(
+          '/api/v1/chats/:chatId/note-items/:itemId',
+          () => new HttpResponse(null, { status: 204 }),
+        ),
+      )
+      await useChatStore.getState().loadChat(NOTE_CHAT_ID)
+      useChatStore.setState({ error: 'Die Einstellungen konnten nicht gespeichert werden.' })
+
+      await useChatStore.getState().removeNoteItem(NOTE_ITEM_ID)
+
+      expect(useChatStore.getState().error).toBe(
+        'Die Einstellungen konnten nicht gespeichert werden.',
+      )
+    })
+
     // The core of the "no resurrection" acceptance criterion: an answer carries the note state that
     // went into *it*, so one that was already in flight when the point was removed still contains
     // it. Applying it unfiltered would put the removed point back in front of the person.

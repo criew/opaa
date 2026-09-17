@@ -187,7 +187,13 @@ function visibleNoteItems(chatId: string, serverItems: ChatNoteItem[]): ChatNote
  * test cases unless cleared explicitly. */
 export function clearRemovedNoteItemCache(): void {
   removedNoteItemIdsByChatId.clear()
+  noteRemovalError = null
 }
+
+// The message the last failed note removal showed. A new removal attempt clears the store's error
+// only while it is still this one - an error from another action (sending, saving the chat's
+// settings) stays until that action deals with it.
+let noteRemovalError: string | null = null
 
 /**
  * Clears both module-level settings-persistence maps (#573 review of #570). Used by the store's
@@ -764,9 +770,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const pending = removedNoteItemIdsByChatId.get(chatId) ?? new Set<string>()
     pending.add(itemId)
     removedNoteItemIdsByChatId.set(chatId, pending)
-    // The error is cleared with every attempt: a repeated failure must render as a new alert, not
-    // leave an unchanged one standing that assistive technology does not announce again.
-    set({ noteItems: noteItems.filter((item) => item.id !== itemId), error: null })
+    // A previous removal failure is cleared with the new attempt: a repeated failure must render as
+    // a new alert, not leave an unchanged one standing that assistive technology does not announce
+    // again. Any other error is not this action's to clear.
+    const { error } = get()
+    set({
+      noteItems: noteItems.filter((item) => item.id !== itemId),
+      error: error !== null && error === noteRemovalError ? null : error,
+    })
 
     try {
       await deleteChatNoteItem(chatId, itemId)
@@ -782,6 +793,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const current = get().noteItems
       // A note state that arrived in the meantime may already carry the point again now that the
       // filter is gone; only put it back when it is actually missing, at the position it had.
+      noteRemovalError = message
       if (current.some((item) => item.id === itemId)) {
         set({ error: message })
         return

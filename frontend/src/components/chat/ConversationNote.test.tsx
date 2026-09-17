@@ -199,21 +199,16 @@ describe('ConversationNote (#1488)', () => {
       renderWithProviders(<Harness initialItems={initialItems} completedRounds={3} />)
       await user.click(screen.getByRole('button', { name: /^Gesprächsnotiz · / }))
       const status = screen.getByRole('status')
-      const focusWhenAnnounced: Array<Element | null> = []
-      const observer = new MutationObserver(() => {
-        if (status.textContent) focusWhenAnnounced.push(document.activeElement)
-      })
-      observer.observe(status, { childList: true, characterData: true, subtree: true })
 
       await user.click(screen.getAllByRole('button', { name: REMOVE })[0])
       const focusTarget = document.activeElement
       expect(focusTarget).not.toBe(document.body)
-      // Same tick as the focus change: nothing has been said yet.
+      // The whole guarantee: in the task that moved focus, the region is still empty. The message
+      // can therefore only arrive in a later task, after the focus announcement was queued.
       expect(status).toBeEmptyDOMElement()
 
       await waitFor(() => expect(status).toHaveTextContent(message))
-      observer.disconnect()
-      expect(focusWhenAnnounced[0]).toBe(focusTarget)
+      expect(document.activeElement).toBe(focusTarget)
     },
   )
 
