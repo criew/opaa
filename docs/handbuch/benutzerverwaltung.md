@@ -231,10 +231,17 @@ gedacht ist und welche Auflagen dafür gelten, steht im Kapitel [Deployment](dep
 **Löschen ist die Ausnahme.** Für das Ausscheiden einer Person ist die Sperre der vorgesehene Weg:
 Sie entzieht den Zugang sofort und lässt nachvollziehbar, dass es dieses Konto gab.
 
-Gelöscht werden kann ein lokales Konto nur, wenn es **nichts besitzt** — keine Dokumente und keinen
-Raum außer seinem persönlichen. Sonst lehnt OPAA die Löschung ab und verweist auf die Sperre. In der
-Praxis heißt das: Löschen ist der Weg für ein Konto, das nie benutzt wurde — eine falsch getippte
-Adresse, eine Einladung an die falsche Person, ein Testkonto. Für alles andere gilt die Sperre.
+Gelöscht werden kann ein lokales Konto nur, wenn **nichts mehr darauf verweist**. Das ist mehr als
+Besitz: Neben einer eigenen Bibliothek, einem Raum außer dem persönlichen und einem Chat sperren
+auch Rechtevergaben, Raumzuordnungen, Geltungsbereiche einer anlassbezogenen Klärung, erteilte oder
+widerrufene Diagnose-Vollmachten sowie **Nachweiseinträge** über Gruppenmitgliedschaften und
+Rechteänderungen. Sonst lehnt OPAA die Löschung ab und verweist auf die Sperre.
+
+Praktisch heißt das: Löschen ist der Weg für ein Konto, das nie benutzt wurde — eine falsch getippte
+Adresse, eine Einladung an die falsche Person, ein Testkonto. Wer dagegen je Mitglied einer Gruppe
+war, hinterlässt einen Nachweiseintrag, der bleibt; ein solches Konto ist dauerhaft nicht mehr
+löschbar. Das ist beabsichtigt — der Nachweis, wer wann welche Rechte hatte, überlebt das Konto. Für
+alle diese Fälle ist die Sperre der vorgesehene Weg.
 
 Das Notanker-Konto der Systemverwaltung lässt sich **nicht löschen**. Sperren, Befristen und
 Herabsetzen sind daran nicht grundsätzlich gesperrt — sie werden abgelehnt, solange es der letzte
