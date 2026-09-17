@@ -13,6 +13,12 @@ import java.time.Instant;
  * ACTIVE} by {@link LocalCredentials#isLoginCapable} - never by {@code locked_at} alone, which
  * outlives an expired lockout - and while the management is switched off only a local {@code
  * SYSTEM_ADMIN} passes.
+ *
+ * <p>Every rule here is about a <em>local</em> account; the caller must already have established
+ * that much. Login and rotation do so through the {@code local_credentials} row they require
+ * beforehand, the token validator through an issuer check of its own - a handed-over account
+ * (Entscheidung 12) carries the provider's issuer and is not governed by the switch of the local
+ * management.
  */
 final class LocalAccountAccess {
 
@@ -45,6 +51,11 @@ final class LocalAccountAccess {
         || credentials.getLockedReason() == LockReason.FAILED_LOGINS;
   }
 
+  /**
+   * Whether the switch of the local management (Entscheidung 4) lets this account through. Only
+   * meaningful for a local account - the caller must have established that beforehand, because a
+   * handed-over one would be refused here for a switch that does not govern it.
+   */
   static boolean passesManagementSwitch(OidcProviderRegistry registry, User user) {
     return registry.localAccountsEnabled() || user.getSystemRole() == SystemRole.SYSTEM_ADMIN;
   }

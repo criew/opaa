@@ -104,6 +104,13 @@ public class LocalTokenValidator {
    * SYSTEM_ADMIN} passes (ADR-0033, Entscheidung 4), and so does an account that is no longer local
    * - a handed-over one (Entscheidung 12) carries the provider's issuer, and the switch of the
    * local management does not govern it. It falls through to the refusal that names the handover.
+   *
+   * <p>That fall-through rests on a contract of the handover: {@code
+   * LocalHandoverAccountService#redeem} rewrites {@code users.issuer} and deletes the {@code
+   * local_credentials} row in one transaction, and it is the only place that rewrites {@code
+   * users.issuer} after creation. A foreign issuer therefore never has a living credentials row,
+   * and passing the switch here can only lead to the branch that names the handover - never past
+   * it.
    */
   private boolean passesManagementSwitch(UUID userId) {
     return users
