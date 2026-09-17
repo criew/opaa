@@ -468,9 +468,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         return
       }
       const providers = config.providers ?? []
-      // getAuthConfig() already substitutes the switched-off default for a missing block; the
-      // fallback here only satisfies the type, which still allows the field to be absent.
-      const localAccounts = config.localAccounts ?? LOCAL_ACCOUNTS_DISABLED
+      const { localAccounts } = config
       set({ mode: config.mode, providers, localAccounts })
 
       if (config.mode === 'dev') {
