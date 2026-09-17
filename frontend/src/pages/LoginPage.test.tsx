@@ -3,6 +3,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
+import { spendSilentSignIn } from '../stores/silentSignIn'
 import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
 import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
 import LoginPage from './LoginPage'
@@ -10,9 +11,14 @@ import LoginPage from './LoginPage'
 describe('LoginPage', () => {
   // The store actions are real again for every test; a spy from the previous one would silently
   // make the next assertion about nothing.
-  const { loginLocal, loginOidc } = useAuthStore.getState()
+  const { attemptSilentSignIn, loginLocal, loginOidc } = useAuthStore.getState()
 
   beforeEach(() => {
+    // #1631: the page every test below describes is the one whose automatic sign-in attempt has
+    // had its turn - until then it shows itself as busy and its tiles are not there to click. The
+    // block on the attempt itself starts before that point and clears the note again.
+    sessionStorage.clear()
+    spendSilentSignIn()
     useBrandingStore.setState({ branding: OPAA_BRANDING })
     useAuthStore.setState({
       mode: null,
@@ -28,6 +34,7 @@ describe('LoginPage', () => {
       sessionKind: null,
       passwordChangeRequired: false,
       passwordChangeReason: null,
+      attemptSilentSignIn,
       loginLocal,
       loginOidc,
     })
@@ -146,6 +153,86 @@ describe('LoginPage', () => {
       withNotificationHost: false,
     })
     expect(screen.queryByRole('button', { name: /mit sso anmelden/i })).not.toBeInTheDocument()
+  })
+
+  /**
+   * #1631: entering this page is what starts the automatic sign-in of a running provider session.
+   * The store decides whether the moment is right (see authStore.test.ts); what this page owes is
+   * to ask exactly once, and not before it knows what the installation offers.
+   */
+  describe('automatische Anmeldung (#1631)', () => {
+    beforeEach(() => {
+      // back to before the attempt: this block is about the moment it is still to come
+      sessionStorage.clear()
+    })
+
+    it('starts the attempt on entering the page', async () => {
+      const loginOidc = vi.fn().mockResolvedValue(undefined)
+      useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst, partner], loginOidc })
+
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
+
+      await vi.waitFor(() => expect(loginOidc).toHaveBeenCalledWith('p-opaa', { silent: true }))
+    })
+
+    /**
+     * The one instant in which the page is already rendered and the redirect has not left yet: a
+     * tile offered there would start a second, competing flow with one click.
+     */
+    it('offers nothing to click while the attempt is still to come', () => {
+      const loginOidc = vi.fn().mockResolvedValue(undefined)
+      useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst], loginOidc })
+
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
+
+      expect(screen.getByRole('button', { name: /anmelden bei verzeichnisdienst/i })).toBeDisabled()
+    })
+
+    it('waits for the sign-in configuration before judging', () => {
+      const loginOidc = vi.fn().mockResolvedValue(undefined)
+      useAuthStore.setState({
+        mode: 'oidc',
+        isLoading: true,
+        providers: [verzeichnisdienst],
+        loginOidc,
+      })
+
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
+
+      expect(loginOidc).not.toHaveBeenCalled()
+    })
+
+    it('leaves a message on the page standing instead of redirecting past it', () => {
+      const loginOidc = vi.fn().mockResolvedValue(undefined)
+      useAuthStore.setState({
+        mode: 'oidc',
+        providers: [verzeichnisdienst],
+        error: 'Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.',
+        loginOidc,
+      })
+
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
+
+      expect(loginOidc).not.toHaveBeenCalled()
+      expect(screen.getByRole('alert')).toHaveTextContent('Ihre Sitzung ist abgelaufen')
+    })
+
+    // The way back from a refused attempt ends on this page; entering it again - through the back
+    // button, through a link - must not start the same redirect over.
+    it('does not start a second attempt when the page is entered again', () => {
+      // the real action, only counted: it is the one that spends this tab's single attempt
+      const loginOidc = vi.fn(useAuthStore.getState().loginOidc)
+      useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst], loginOidc })
+
+      const first = renderWithProviders(<LoginPage />, {
+        withRouter: true,
+        withNotificationHost: false,
+      })
+      first.unmount()
+      renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
+
+      expect(loginOidc).toHaveBeenCalledTimes(1)
+    })
   })
 
   // ADR-0025, Entscheidung 5 / #1332: one button per enabled provider in the configured order;

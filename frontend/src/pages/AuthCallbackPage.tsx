@@ -28,6 +28,12 @@ export default function AuthCallbackPage() {
         if (outcome === 'handover') {
           navigate(HANDOVER_ROUTE, { replace: true })
         }
+        // #1631: the provider turned the automatic attempt down - what follows is the sign-in page
+        // as it would have stood without it. `replace` drops this callback from the history, so
+        // "back" cannot run into the redirect a second time.
+        if (outcome === 'silent-refused') {
+          navigate(LOGIN_ROUTE, { replace: true })
+        }
       })
     }
   }, [isLoading, mode, handleOidcCallback, navigate])

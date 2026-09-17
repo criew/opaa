@@ -20,6 +20,7 @@ describe('AuthCallbackPage', () => {
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/chat" element={<div>Chat</div>} />
           <Route path="/handover" element={<div>Übergabe</div>} />
+          <Route path="/login" element={<div>Anmelden</div>} />
         </Routes>
       </MemoryRouter>,
       { withNotificationHost: false },
@@ -71,6 +72,24 @@ describe('AuthCallbackPage', () => {
     expect(screen.queryByText('Chat')).toBeNull()
     resolveCallback('handover')
     expect(await screen.findByText('Übergabe')).toBeInTheDocument()
+  })
+
+  /**
+   * #1631: the provider refused an attempt nobody asked for. What follows is the sign-in page as it
+   * would have stood without the attempt - no error, no explanation of a failure that is none.
+   */
+  it('shows the sign-in page again when the silent attempt was refused', async () => {
+    useAuthStore.setState({
+      mode: 'oidc',
+      isLoading: false,
+      isAuthenticated: false,
+      error: null,
+      handleOidcCallback: vi.fn().mockResolvedValue('silent-refused'),
+    })
+
+    renderCallback()
+
+    expect(await screen.findByText('Anmelden')).toBeInTheDocument()
   })
 
   it('takes an ordinary session into the application', async () => {

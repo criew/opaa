@@ -9,6 +9,7 @@ import Typography from '@mui/material/Typography'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import SwitchAccountOutlinedIcon from '@mui/icons-material/SwitchAccountOutlined'
+import { useEffect } from 'react'
 import { Navigate, Link as RouterLink, useLocation } from 'react-router'
 import type { SignInProvider } from '../types/auth'
 import ProviderMonogram from '../components/ProviderMonogram'
@@ -143,10 +144,21 @@ export default function LoginPage() {
   const providers = useAuthStore((s) => s.providers)
   const localAccounts = useAuthStore((s) => s.localAccounts)
   const suggestedProvider = useAuthStore((s) => s.suggestedProvider)
+  const attemptSilentSignIn = useAuthStore((s) => s.attemptSilentSignIn)
+  const isSilentSignInPending = useAuthStore((s) => s.isSilentSignInPending)
   // ADR-0025: the provider used last is proposed, else the default, else the first - it gets the
   // one primary button of this surface (guidelines 5.1); the others are secondary
   const suggested = suggestedProvider()
   const lastUsedId = lastUsedProviderId()
+
+  // #1631: entering this page is where the automatic sign-in of a running provider session starts.
+  // Only once the configuration is loaded - before that the store knows neither the providers nor
+  // whether a session was restored, and the attempt would judge on an empty state. The action
+  // itself decides whether this is a moment for it at all; see attemptSilentSignIn.
+  useEffect(() => {
+    if (isLoading) return
+    void attemptSilentSignIn()
+  }, [isLoading, attemptSilentSignIn])
 
   if (isAuthenticated) {
     return <Navigate to={redirectTargetOf(location.state, location.search)} replace />
@@ -156,7 +168,9 @@ export default function LoginPage() {
   // ADR-0033, Entscheidung 4: the mask appears only while the management is switched on. Local
   // system administrators keep their own page, which is reachable at all times.
   const hasLocalForm = mode === 'oidc' && localAccounts.enabled
-  const isBusy = isLoading || isSigningIn
+  // #1631: a tile the automatic redirect is about to take away is not one to click - the choice
+  // becomes real once that attempt has had its turn.
+  const isBusy = isLoading || isSigningIn || isSilentSignInPending()
 
   return (
     <AuthLayout>

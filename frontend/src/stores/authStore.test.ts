@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { User, UserManager } from 'oidc-client-ts'
+import { ErrorResponse, User, UserManager } from 'oidc-client-ts'
 import { server } from '../mocks/server'
 import { useAuthStore } from './authStore'
+import { isSilentSignInFlow, markSilentSignInFlow, spendSilentSignIn } from './silentSignIn'
 import { useSpaceStore } from './spaceStore'
 import { useGroupStore } from './groupStore'
 import { useLibraryStore } from './libraryStore'
@@ -784,6 +785,281 @@ describe('authStore', () => {
       useAuthStore.getState().expireSession('unknown_issuer')
 
       expect(useAuthStore.getState().error).toMatch(/nicht mehr zugelassen/)
+    })
+  })
+
+  /**
+   * #1631: someone whose session at the identity provider is still running reaches the application
+   * without a click - one authorization redirect with `prompt=none`, answered either with a session
+   * or with a refusal that leaves the sign-in page exactly as it was. The guards below are what
+   * keeps that redirect from taking away a page somebody has to read or use.
+   */
+  describe('automatische Anmeldung bei laufender Anbieter-Sitzung (#1631)', () => {
+    const bothProviders = [
+      {
+        id: 'p-opaa',
+        displayName: 'Verzeichnisdienst',
+        issuerUri: 'https://idp.example.test/realms/opaa',
+        clientId: 'opaa-frontend',
+        isDefault: true,
+        sortOrder: 0,
+      },
+      {
+        id: 'p-partner',
+        displayName: 'Partnerportal',
+        issuerUri: 'https://partner.example.test/realms/extern',
+        clientId: 'opaa-partner',
+        isDefault: false,
+        sortOrder: 1,
+      },
+    ]
+    const localEnabled = {
+      enabled: true,
+      selfRegistrationEnabled: false,
+      passwordResetEnabled: false,
+      passwordMinLength: 12,
+    }
+
+    async function initializeOidc(config: Record<string, unknown> = {}) {
+      server.use(
+        http.get('/api/v1/auth/config', () =>
+          HttpResponse.json({ mode: 'oidc', providers: bothProviders, ...config }),
+        ),
+      )
+      await useAuthStore.getState().initialize()
+    }
+
+    function spyOnRedirect() {
+      return vi.spyOn(UserManager.prototype, 'signinRedirect').mockResolvedValue(undefined)
+    }
+
+    it('takes up the running provider session without a click', async () => {
+      await initializeOidc()
+      const redirect = spyOnRedirect()
+      try {
+        await expect(useAuthStore.getState().attemptSilentSignIn()).resolves.toBe(true)
+
+        // prompt=none forbids the provider any screen of its own; `replace` keeps the
+        // authorization URL out of the history, so "back" cannot land on it
+        expect(redirect).toHaveBeenCalledWith({ prompt: 'none', redirectMethod: 'replace' })
+        const manager = redirect.mock.instances[0] as UserManager
+        expect(manager.settings.authority).toBe('https://idp.example.test/realms/opaa')
+        expect(sessionStorage.getItem('opaa.oidc.flowProvider')).toBe('p-opaa')
+        expect(isSilentSignInFlow()).toBe(true)
+      } finally {
+        redirect.mockRestore()
+      }
+    })
+
+    it('goes to the provider the sign-in page proposes', async () => {
+      await initializeOidc()
+      localStorage.setItem('opaa.oidc.lastProvider', 'p-partner')
+      const redirect = spyOnRedirect()
+      try {
+        await useAuthStore.getState().attemptSilentSignIn()
+
+        const manager = redirect.mock.instances[0] as UserManager
+        expect(manager.settings.authority).toBe('https://partner.example.test/realms/extern')
+      } finally {
+        redirect.mockRestore()
+      }
+    })
+
+    /**
+     * The suggestion means "the provider this person chose last" - the sign-in page marks its tile
+     * "Zuletzt verwendet" and hangs the account-switch link on it. An attempt the provider may well
+     * refuse is nobody's choice and must not claim that place.
+     */
+    it('does not pass itself off as the provider used last', async () => {
+      await initializeOidc()
+      const redirect = spyOnRedirect()
+      try {
+        await useAuthStore.getState().attemptSilentSignIn()
+
+        expect(localStorage.getItem('opaa.oidc.lastProvider')).toBeNull()
+      } finally {
+        redirect.mockRestore()
+      }
+    })
+
+    it('stays undone without an enabled identity provider', async () => {
+      // local accounts on, so the sign-in page has a mask and carries no message of its own
+      await initializeOidc({ providers: [], localAccounts: localEnabled })
+      const redirect = spyOnRedirect()
+      try {
+        expect(useAuthStore.getState().error).toBeNull()
+
+        await expect(useAuthStore.getState().attemptSilentSignIn()).resolves.toBe(false)
+        expect(redirect).not.toHaveBeenCalled()
+      } finally {
+        redirect.mockRestore()
+      }
+    })
+
+    it('stays undone while a session already stands', async () => {
+      await initializeOidc()
+      useAuthStore.setState({ isAuthenticated: true, token: 't' })
+      const redirect = spyOnRedirect()
+      try {
+        await expect(useAuthStore.getState().attemptSilentSignIn()).resolves.toBe(false)
+        expect(redirect).not.toHaveBeenCalled()
+      } finally {
+        redirect.mockRestore()
+      }
+    })
+
+    it('stays undone once this browser session has spent its attempt', async () => {
+      await initializeOidc()
+      spendSilentSignIn()
+      const redirect = spyOnRedirect()
+      try {
+        await expect(useAuthStore.getState().attemptSilentSignIn()).resolves.toBe(false)
+        expect(redirect).not.toHaveBeenCalled()
+      } finally {
+        redirect.mockRestore()
+      }
+    })
+
+    it('stays undone after a deliberate sign-out', async () => {
+      sessionStorage.setItem('opaa.oidc.flowProvider', 'p-opaa')
+      await initializeOidc()
+      useAuthStore.setState({ isAuthenticated: true, token: 't', sessionKind: 'oidc' })
+      const signout = vi
+        .spyOn(UserManager.prototype, 'signoutRedirect')
+        .mockResolvedValue(undefined)
+      const redirect = spyOnRedirect()
+      try {
+        await useAuthStore.getState().logout()
+        expect(useAuthStore.getState().error).toBeNull()
+
+        await expect(useAuthStore.getState().attemptSilentSignIn()).resolves.toBe(false)
+        expect(redirect).not.toHaveBeenCalled()
+      } finally {
+        signout.mockRestore()
+        redirect.mockRestore()
+      }
+    })
+
+    it('stays undone after a session that ended with a reason, and leaves the reason readable', async () => {
+      await initializeOidc()
+      useAuthStore.setState({ isAuthenticated: true, token: 't' })
+      const redirect = spyOnRedirect()
+      try {
+        useAuthStore.getState().expireSession('session_revoked:admin_lock')
+
+        await expect(useAuthStore.getState().attemptSilentSignIn()).resolves.toBe(false)
+        expect(redirect).not.toHaveBeenCalled()
+        expect(useAuthStore.getState().error).toBe(
+          'Ihre Sitzung wurde beendet, weil Ihr Konto gesperrt wurde. Bitte wenden Sie sich an die Systemverwaltung.',
+        )
+      } finally {
+        redirect.mockRestore()
+      }
+    })
+
+    /**
+     * "Mit anderem Konto anmelden" is today's one way of entering the sign-in flow with an
+     * intention of its own (LoginPage.tsx). Whoever comes back to that page afterwards - the
+     * provider refused, the browser went back - must find the page, not another automatic redirect
+     * into the very account they were trying to leave.
+     */
+    it('stays undone after a deliberate account switch', async () => {
+      await initializeOidc()
+      const redirect = spyOnRedirect()
+      try {
+        await useAuthStore.getState().loginOidc('p-opaa', { switchAccount: true })
+        expect(redirect).toHaveBeenCalledWith({ prompt: 'login' })
+
+        await expect(useAuthStore.getState().attemptSilentSignIn()).resolves.toBe(false)
+        expect(redirect).toHaveBeenCalledTimes(1)
+      } finally {
+        redirect.mockRestore()
+      }
+    })
+
+    it('says nothing when the attempt cannot even be started', async () => {
+      await initializeOidc()
+      const redirect = vi
+        .spyOn(UserManager.prototype, 'signinRedirect')
+        .mockRejectedValue(new Error('Failed to fetch'))
+      try {
+        await useAuthStore.getState().attemptSilentSignIn()
+
+        const state = useAuthStore.getState()
+        expect(state.isSigningIn).toBe(false)
+        expect(state.error).toBeNull()
+        expect(isSilentSignInFlow()).toBe(false)
+      } finally {
+        redirect.mockRestore()
+      }
+    })
+
+    describe('die Absage des Anbieters', () => {
+      async function callbackWith(err: unknown, options: { silent: boolean }) {
+        sessionStorage.setItem('opaa.oidc.flowProvider', 'p-opaa')
+        await initializeOidc()
+        if (options.silent) markSilentSignInFlow()
+        const callback = vi
+          .spyOn(UserManager.prototype, 'signinRedirectCallback')
+          .mockRejectedValue(err)
+        try {
+          return await useAuthStore.getState().handleOidcCallback()
+        } finally {
+          callback.mockRestore()
+        }
+      }
+
+      // OIDC Core 3.1.2.6: the four answers a provider may give to a prompt=none request it will
+      // not serve from a running session. None of them is a failure of this person's.
+      it.each([
+        'login_required',
+        'interaction_required',
+        'consent_required',
+        'account_selection_required',
+      ])('returns to the sign-in page without a message on %s', async (code) => {
+        const outcome = await callbackWith(new ErrorResponse({ error: code }), { silent: true })
+
+        expect(outcome).toBe('silent-refused')
+        expect(useAuthStore.getState().error).toBeNull()
+        expect(useAuthStore.getState().isAuthenticated).toBe(false)
+        expect(isSilentSignInFlow()).toBe(false)
+      })
+
+      it('keeps the message of a sign-in somebody actually started', async () => {
+        const outcome = await callbackWith(
+          new ErrorResponse({ error: 'login_required', error_description: 'Anmeldung nötig' }),
+          { silent: false },
+        )
+
+        expect(outcome).toBe('failed')
+        expect(useAuthStore.getState().error).toBe('Anmeldung nötig')
+      })
+
+      it('keeps the message when the attempt failed on the way rather than by refusal', async () => {
+        const outcome = await callbackWith(new Error('Failed to fetch'), { silent: true })
+
+        expect(outcome).toBe('failed')
+        expect(useAuthStore.getState().error).toBe('Failed to fetch')
+      })
+
+      it('does not try a second time after a refusal', async () => {
+        await initializeOidc()
+        const redirect = spyOnRedirect()
+        const callback = vi
+          .spyOn(UserManager.prototype, 'signinRedirectCallback')
+          .mockRejectedValue(new ErrorResponse({ error: 'login_required' }))
+        try {
+          await useAuthStore.getState().attemptSilentSignIn()
+          expect(redirect).toHaveBeenCalledTimes(1)
+          await expect(useAuthStore.getState().handleOidcCallback()).resolves.toBe('silent-refused')
+
+          await expect(useAuthStore.getState().attemptSilentSignIn()).resolves.toBe(false)
+          expect(redirect).toHaveBeenCalledTimes(1)
+        } finally {
+          redirect.mockRestore()
+          callback.mockRestore()
+        }
+      })
     })
   })
 })

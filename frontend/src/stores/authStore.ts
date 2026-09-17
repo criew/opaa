@@ -48,6 +48,14 @@ import {
   markHandoverInFlight,
   setPendingHandover,
 } from './handoverFlow'
+import {
+  clearSilentSignInFlow,
+  isAuthorizationRefusal,
+  isSilentSignInFlow,
+  isSilentSignInSpent,
+  markSilentSignInFlow,
+  spendSilentSignIn,
+} from './silentSignIn'
 import { notify } from './notificationStore'
 import { resetAllStores } from './resettableStores'
 
@@ -123,16 +131,37 @@ interface AuthState {
   refreshPublicAuthConfig: () => Promise<void>
   /**
    * Starts the sign-in at `providerId` (default: the suggested provider). `switchAccount` sends
-   * `prompt=login`, so the provider asks for credentials even with a running SSO session.
+   * `prompt=login`, so the provider asks for credentials even with a running SSO session; `silent`
+   * sends `prompt=none` and belongs to {@link AuthState.attemptSilentSignIn} alone.
    */
-  loginOidc: (providerId?: string, options?: { switchAccount?: boolean }) => Promise<void>
+  loginOidc: (
+    providerId?: string,
+    options?: { switchAccount?: boolean; silent?: boolean },
+  ) => Promise<void>
+  /**
+   * Takes up a running provider session without a click (#1631): one authorization redirect with
+   * `prompt=none` to the suggested provider, answered either with a session or with a refusal that
+   * brings the person back to the sign-in page. Answers whether the attempt was made - it is not,
+   * whenever the sign-in page is what the person is owed: no provider to try, a session already, an
+   * attempt already spent in this tab, or a message on the page that the redirect would carry away
+   * unread.
+   */
+  attemptSilentSignIn: () => Promise<boolean>
+  /**
+   * Whether that attempt is still to come in this very moment (#1631). Read while rendering, like
+   * {@link AuthState.suggestedProvider}: the sign-in page shows itself as busy until the question
+   * is settled, because its tiles would otherwise be there to click for the instant between the
+   * configuration arriving and the redirect leaving.
+   */
+  isSilentSignInPending: () => boolean
   /**
    * Completes the provider redirect. Answers what the callback was: an ordinary session, a handover
    * whose provider token is now waiting in {@link ./handoverFlow} - deliberately **without** any
-   * authenticated call, `/auth/me` included (ADR-0033, Entscheidung 12) - or a failure whose reason
-   * is in {@link AuthState.error}.
+   * authenticated call, `/auth/me` included (ADR-0033, Entscheidung 12) - a refusal of the silent
+   * attempt, which carries no message because nobody asked for it, or a failure whose reason is in
+   * {@link AuthState.error}.
    */
-  handleOidcCallback: () => Promise<'session' | 'handover' | 'failed'>
+  handleOidcCallback: () => Promise<'session' | 'handover' | 'silent-refused' | 'failed'>
   /**
    * Starts the provider sign-in of a handover (#1563): the code rides through the redirect in
    * oidc-client-ts's own sign-in state, so the page that comes back has it without any storage of
@@ -198,6 +227,18 @@ function writeStorage(storage: Storage, key: string, value: string | null) {
   } catch {
     // storage may be unavailable (private mode); the flow then simply starts at the default
   }
+}
+
+/**
+ * What the authorization request asks of the provider. `prompt=none` (#1631) forbids any screen:
+ * the provider either answers from a running session or refuses. `redirectMethod: 'replace'` keeps
+ * that attempt out of the history - "back" from the sign-in page it returns to must not land on the
+ * authorization URL the person never navigated to.
+ */
+function signinRedirectArgs(options?: { switchAccount?: boolean; silent?: boolean }) {
+  if (options?.silent) return { prompt: 'none', redirectMethod: 'replace' as const }
+  if (options?.switchAccount) return { prompt: 'login' }
+  return undefined
 }
 
 export const useAuthStore = create<AuthState>((set, get) => {
@@ -509,32 +550,62 @@ export const useAuthStore = create<AuthState>((set, get) => {
       }
     },
     loginOidc: async (providerId, options) => {
+      const silent = options?.silent === true
+      // #1631: a sign-in is under way in this tab, so the one automatic attempt is spent - see
+      // spendSilentSignIn() for why that holds for a click just as much as for the attempt itself.
+      spendSilentSignIn()
       const chosen = providerId ?? get().suggestedProvider()?.id
       const provider = get().providers.find((p) => p.id === chosen)
       const userManager = chosen ? activate(chosen, true) : null
       if (!chosen || !provider || !userManager) {
-        set({ error: PROVIDER_GONE_MESSAGE })
+        if (!silent) set({ error: PROVIDER_GONE_MESSAGE })
         return
       }
-      writeStorage(localStorage, LAST_PROVIDER_STORAGE_KEY, chosen)
+      // The suggestion names the provider a person chose last; an attempt that may well be refused
+      // is not a choice, and claiming that place would also mislabel a tile as "Zuletzt verwendet".
+      if (silent) markSilentSignInFlow()
+      else writeStorage(localStorage, LAST_PROVIDER_STORAGE_KEY, chosen)
       set({ isSigningIn: true, sessionKind: 'oidc', error: null })
       try {
-        await userManager.signinRedirect(options?.switchAccount ? { prompt: 'login' } : undefined)
+        await userManager.signinRedirect(signinRedirectArgs(options))
       } catch (err) {
         // discovery unreachable (CSP not yet widened, DNS, provider down): say so instead of a
-        // click that visibly does nothing
+        // click that visibly does nothing - unless nobody clicked, see silentSignIn.ts
         writeStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY, null)
+        clearSilentSignInFlow()
         set({
           isSigningIn: false,
-          error: signInFailedMessage(
-            provider.displayName,
-            err instanceof Error ? err.message : String(err),
-          ),
+          error: silent
+            ? null
+            : signInFailedMessage(
+                provider.displayName,
+                err instanceof Error ? err.message : String(err),
+              ),
         })
       }
     },
 
+    isSilentSignInPending: () => {
+      const { mode, providers, isAuthenticated, error } = get()
+      if (mode !== 'oidc' || isAuthenticated) return false
+      // Nothing to try, or a sentence on the page that the redirect would carry away before anybody
+      // read it - a session that ended with a reason (expireSession) is exactly that case.
+      if (providers.length === 0 || error !== null) return false
+      return !isSilentSignInSpent()
+    },
+
+    attemptSilentSignIn: async () => {
+      // One predicate for both, so what the page shows as busy and what actually happens can never
+      // drift apart. The load itself is only this one's business: the page is busy while it runs.
+      if (get().isLoading || !get().isSilentSignInPending()) return false
+      const suggested = get().suggestedProvider()
+      if (!suggested) return false
+      await get().loginOidc(suggested.id, { silent: true })
+      return true
+    },
+
     loginLocal: async (email, password) => {
+      spendSilentSignIn()
       set({ isSigningIn: true, error: null })
       let tokens
       try {
@@ -587,6 +658,11 @@ export const useAuthStore = create<AuthState>((set, get) => {
       // the flow's provider is pinned per tab; without it (or with a provider disabled in the
       // meantime, whose manager was never built) there is nothing to complete the callback with
       const flowProvider = readStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY)
+      // #1631: whether the redirect that is coming back was the automatic attempt belongs to this
+      // one trip. Read and dropped before any branch below returns, so the next flow - a click on a
+      // provider, say - is never mistaken for one nobody asked for and keeps its error message.
+      const silentFlow = isSilentSignInFlow()
+      clearSilentSignInFlow()
       if (!userManager || !flowProvider || flowProvider !== activeProviderId) {
         clearHandoverInFlight()
         set({ error: PROVIDER_GONE_MESSAGE, isLoading: false })
@@ -620,6 +696,12 @@ export const useAuthStore = create<AuthState>((set, get) => {
           set({ error: UNKNOWN_ISSUER_MESSAGE, isLoading: false })
           return 'failed'
         }
+        if (silentFlow && isAuthorizationRefusal(err)) {
+          // No session at the provider (or none it will hand over unasked): the person asked for
+          // none of this, so the sign-in page comes back as it was, without an error of its own.
+          set({ error: null, isLoading: false, isSigningIn: false })
+          return 'silent-refused'
+        }
         set({
           error: err instanceof Error ? err.message : 'OIDC-Rückmeldung fehlgeschlagen',
           isLoading: false,
@@ -629,6 +711,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     },
 
     startHandoverSignIn: async (providerId, code) => {
+      spendSilentSignIn()
       const provider = get().providers.find((p) => p.id === providerId)
       const userManager = activate(providerId, true)
       if (!provider || !userManager) {
@@ -680,6 +763,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
       // after it would practically never run.
       resetAllStores()
       writeStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY, null)
+      // #1631: somebody who has just signed out wants the sign-in page, not the next session. The
+      // provider session of an OIDC sign-out is over anyway; a local one says nothing about it.
+      spendSilentSignIn()
       if (sessionKind === 'local') {
         const stillValid = localTokenExpiresAt !== null && Date.now() < localTokenExpiresAt
         endLocalSession()
@@ -789,6 +875,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
       // user to re-enter credentials for what was just an access-token hiccup.
       resetAllStores()
       clearDevUser()
+      // #1631: the session ended for a reason, and that sentence is on the sign-in page next. An
+      // automatic redirect would carry it away before anybody read it.
+      spendSilentSignIn()
       // #737 review: also drop the local OIDC session - removeUser() fires UserUnloaded (redundant
       // with the reset below, harmless) and stops oidc-client-ts's automatic-silent-renew timer, so
       // a background renewal already scheduled cannot resurrect the session this just tore down.
