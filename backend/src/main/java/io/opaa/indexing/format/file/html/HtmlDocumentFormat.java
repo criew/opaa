@@ -5,6 +5,7 @@ import io.opaa.indexing.format.DocumentFormatResult;
 import io.opaa.indexing.format.DocumentFormatSource;
 import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.indexing.format.FormatAdmission;
+import io.opaa.indexing.format.shared.DocumentHeadText;
 import io.opaa.indexing.format.shared.DocumentTitleLine;
 import io.opaa.indexing.format.shared.HeadingSectionSplitter;
 import io.opaa.indexing.format.shared.HeadingSectionSplitter.Event;
@@ -77,12 +78,14 @@ public class HtmlDocumentFormat implements DocumentFormat {
     }
     List<Document> chunks = new ArrayList<>();
     String titleLine = null;
+    String headText = null;
     for (Element root : contentRoots) {
       // Each root is cut on its own outline; a heading path never carries across roots.
       List<Event> events = new XhtmlEventBuilder().build(root);
       chunks.addAll(HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL));
       if (titleLine == null) {
         titleLine = DocumentTitleLine.ofEvents(events);
+        headText = DocumentHeadText.ofEvents(events);
       }
     }
     if (chunks.isEmpty()) {
@@ -91,7 +94,7 @@ public class HtmlDocumentFormat implements DocumentFormat {
       return DocumentFormatResult.noExtractableText();
     }
     return DocumentFormatResult.chunked(chunks)
-        .withProperties(properties(source, htmlDoc, titleLine));
+        .withProperties(properties(source, htmlDoc, titleLine, headText));
   }
 
   /**
@@ -104,13 +107,16 @@ public class HtmlDocumentFormat implements DocumentFormat {
     try {
       org.jsoup.nodes.Document htmlDoc = parse(source);
       String titleLine = null;
+      String headText = null;
       for (Element root : contentRoots(source, htmlDoc)) {
-        titleLine = DocumentTitleLine.ofEvents(new XhtmlEventBuilder().build(root));
+        List<Event> events = new XhtmlEventBuilder().build(root);
+        titleLine = DocumentTitleLine.ofEvents(events);
+        headText = DocumentHeadText.ofEvents(events);
         if (titleLine != null) {
           break;
         }
       }
-      return properties(source, htmlDoc, titleLine);
+      return properties(source, htmlDoc, titleLine, headText);
     } catch (UncheckedIOException e) {
       return DocumentProperties.EMPTY;
     }
@@ -134,17 +140,21 @@ public class HtmlDocumentFormat implements DocumentFormat {
   }
 
   /**
-   * The title line is a file's alone: text that never was a file is a feed entry, which names other
-   * documents than itself - a press release names the Satzung it reports about, and would inherit
-   * its Dokumentart.
+   * Title line and head text are a file's alone: text that never was a file is a feed entry, which
+   * names other documents than itself - a press release names the Satzung it reports about, and
+   * would inherit its Dokumentart and its Inkrafttretensdatum.
    */
   private static DocumentProperties properties(
-      DocumentFormatSource source, org.jsoup.nodes.Document htmlDoc, String titleLine) {
+      DocumentFormatSource source,
+      org.jsoup.nodes.Document htmlDoc,
+      String titleLine,
+      String headText) {
     Element h1 = htmlDoc.selectFirst("h1");
     return DocumentProperties.EMPTY
         .withTitle(htmlDoc.title())
         .withFirstHeading(h1 == null ? null : h1.text())
-        .withTitleLine(source.file() == null ? null : titleLine);
+        .withTitleLine(source.file() == null ? null : titleLine)
+        .withHeadText(source.file() == null ? null : headText);
   }
 
   private static org.jsoup.nodes.Document parse(DocumentFormatSource source) {

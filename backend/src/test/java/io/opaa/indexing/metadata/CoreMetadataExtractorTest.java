@@ -531,6 +531,112 @@ class CoreMetadataExtractorTest {
     }
   }
 
+  /**
+   * the title findings of the Handstichprobe from 05.09.2026
+   * (eval/reports/metadata-extraction-sample-2026-09-05.md, 14 of 100 documents wrong): a tool's
+   * own title was taken over unchecked, and the file-name fallback ran before the document's own
+   * heading and title line.
+   */
+  @Nested
+  class ToolAndFileNameTitles {
+
+    // smbprn.00009008.KdcPjl.pdf of the sample: the PDF Title is the printer driver's print style,
+    // the document's own name is the first line of the printout.
+    @Test
+    void aPrinterDriverTitleIsDiscardedInFavourOfTheTitleLine() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withTitle("Microsoft Office Outlook - Memo Style")
+              .withTitleLine("Test Attachment");
+
+      assertThat(extract("smbprn.00009008.KdcPjl.pdf", properties).title())
+          .contains("Test Attachment");
+    }
+
+    @Test
+    void aConversionTitleNamingTheSourceFileIsDiscarded() {
+      for (String toolTitle :
+          List.of(
+              "Microsoft Word - vermerk-terminvergabe.doc",
+              "Microsoft PowerPoint - onboarding.pptx",
+              "LibreOffice Writer - satzung.odt",
+              "vermerk-terminvergabe.docx")) {
+        assertThat(
+                extract(
+                        "vermerk-terminvergabe.pdf",
+                        DocumentProperties.EMPTY
+                            .withTitle(toolTitle)
+                            .withFirstHeading("Vermerk zur Terminvergabe"))
+                    .title())
+            .as(toolTitle)
+            .contains("Vermerk zur Terminvergabe");
+      }
+    }
+
+    @Test
+    void aTitlePropertyRepeatingTheFileNameIsDiscarded() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withTitle("beispiel_praesentation")
+              .withFirstHeading("OPAA Testpraesentation");
+
+      assertThat(extract("beispiel-praesentation.odp", properties).title())
+          .contains("OPAA Testpraesentation");
+    }
+
+    @Test
+    void anOrdinaryTitlePropertyStillWins() {
+      for (String title :
+          List.of(
+              "Verwaltungsgebührensatzung der Stadt Rheinfurt",
+              "Interne FAQ: Häufige Rückfragen zur Ummeldung",
+              "Microsoft-Lizenzen im Rathaus")) {
+        assertThat(
+                extract(
+                        "01_verwaltungsgebuehrensatzung.pdf",
+                        DocumentProperties.EMPTY.withTitle(title))
+                    .title())
+            .as(title)
+            .contains(title);
+      }
+    }
+
+    // The 12 .txt Leistungsbeschreibungen of the sample: the Setext heading reaches the extractor
+    // as the first heading and now outranks the humanized file name.
+    @Test
+    void aHeadingOutranksTheHumanizedFileName() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withFirstHeading("Aus dem Ausland eingeführtes Fahrzeug anmelden")
+              .withTitleLine("Aus dem Ausland eingeführtes Fahrzeug anmelden");
+
+      assertThat(
+              extract("002_aus-dem-ausland-eingefuehrtes-fahrzeug-anmelden.txt", properties)
+                  .title())
+          .contains("Aus dem Ausland eingeführtes Fahrzeug anmelden");
+    }
+
+    @Test
+    void aTitleLineThatIsRunningTextLeavesTheFileNameTheTitle() {
+      // foerderbescheid-anlage-zwei.txt of the sample: one sentence, no heading. Its file name is
+      // the better title, and the sample counts it as correct.
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withTitleLine(
+              "Anlage zwei: Berechnungsgrundlage der Foerdersumme nach Richtlinie 7.");
+
+      assertThat(extract("foerderbescheid-anlage-zwei.txt", properties).title())
+          .contains("foerderbescheid anlage zwei");
+    }
+
+    @Test
+    void aLabelLineIsNoTitleEither() {
+      DocumentProperties properties = DocumentProperties.EMPTY.withTitleLine("Zustaendige Stelle:");
+
+      assertThat(extract("030_umtausch-in-kartenfuehrerschein.txt", properties).title())
+          .contains("umtausch in kartenfuehrerschein");
+    }
+  }
+
   @Nested
   class Frontmatter {
 
@@ -658,6 +764,227 @@ class CoreMetadataExtractorTest {
                   .date())
           .contains(ExtractedDate.year(2023));
     }
+  }
+
+  /**
+   * the date findings of the Handstichprobe from 05.09.2026
+   * (eval/reports/metadata-extraction-sample-2026-09-05.md, 27 of 100 documents wrong): every one
+   * of them was a generator's template date out of the file properties. Grouped by generator, as
+   * the report's own table is - the 27 documents differ only in the date their generator stamps.
+   */
+  @Nested
+  class GeneratorDefaultsInFileProperties {
+
+    @Test
+    void aGeneratorTemplateDateIsNoDate() {
+      // python-docx (10 documents), python-pptx (3) and ReportLab in its reproducible mode (14).
+      for (LocalDate templateDate :
+          List.of(
+              LocalDate.of(2013, 12, 23),
+              LocalDate.of(2013, 1, 27),
+              LocalDate.of(2000, 1, 1),
+              LocalDate.of(1980, 1, 1),
+              LocalDate.of(1970, 1, 1),
+              LocalDate.of(1601, 1, 1))) {
+        DocumentProperties properties =
+            DocumentProperties.EMPTY.withCreatedAt(templateDate).withModifiedAt(templateDate);
+
+        assertThat(extract("01_identitaetszweifel-ausweisantrag.docx", properties).date())
+            .as(templateDate.toString())
+            .isEmpty();
+      }
+    }
+
+    @Test
+    void aFilePropertyDateBeforeTheMinimumYearIsNoDate() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withModifiedAt(LocalDate.of(1989, 6, 4));
+
+      assertThat(extract("vermerk.docx", properties).date()).isEmpty();
+    }
+
+    @Test
+    void anOrdinaryFilePropertyDateIsStillADate() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withModifiedAt(LocalDate.of(2026, 3, 12))
+              .withCreatedAt(LocalDate.of(2025, 1, 2));
+
+      assertThat(extract("vermerk.docx", properties).date())
+          .contains(ExtractedDate.day(LocalDate.of(2026, 3, 12)));
+    }
+
+    @Test
+    void anImplausibleModifiedDateDoesNotStopThePlausibleCreatedDate() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withModifiedAt(LocalDate.of(2000, 1, 1))
+              .withCreatedAt(LocalDate.of(2026, 3, 12));
+
+      assertThat(extract("vermerk.docx", properties).date())
+          .contains(ExtractedDate.day(LocalDate.of(2026, 3, 12)));
+    }
+
+    // A date the format declares as the document's own (a mail's Date header, a feed entry's
+    // publication date) is no template date: a mail genuinely sent on 2000-01-01 counts.
+    @Test
+    void theDocumentsOwnDateIsOnlyCheckedAgainstTheMinimumYear() {
+      assertThat(
+              extract(
+                      "nachricht.eml",
+                      DocumentProperties.EMPTY.withDocumentDate(LocalDate.of(2000, 1, 1)))
+                  .date())
+          .contains(ExtractedDate.day(LocalDate.of(2000, 1, 1)));
+      assertThat(
+              extract(
+                      "nachricht.eml",
+                      DocumentProperties.EMPTY.withDocumentDate(LocalDate.of(1601, 1, 1)))
+                  .date())
+          .isEmpty();
+    }
+  }
+
+  /**
+   * the anchored date statements of the head text - the source that rescues the eleven Satzungen of
+   * the sample, whose Inkrafttretensklausel stood in the document while the file properties carried
+   * ReportLab's 2000-01-01.
+   */
+  @Nested
+  class HeadTextDates {
+
+    private DocumentProperties satzung(String text) {
+      return DocumentProperties.EMPTY
+          .withCreatedAt(LocalDate.of(2000, 1, 1))
+          .withModifiedAt(LocalDate.of(2000, 1, 1))
+          .withHeadText(text);
+    }
+
+    @Test
+    void theInkrafttretensklauselBeatsTheGeneratorDefault() {
+      // 01_verwaltungsgebuehrensatzung.pdf of the sample, abridged: the clause sits in the closing
+      // provisions, roughly 2.000 characters into the document.
+      String satzung =
+          """
+          Verwaltungsgebührensatzung der Stadt Rheinfurt
+          Aktenzeichen (Muster): AZ 20.1-2026-0001
+          § 1 Geltungsbereich
+          Diese Satzung regelt die Erhebung von Verwaltungsgebühren.
+          """
+              + "Gebührenpflichtig ist, wer die Amtshandlung veranlasst hat. ".repeat(30)
+              + """
+              § 6 Inkrafttreten
+              Diese Satzung tritt am 1. Januar 2026 in Kraft.
+              Anlage: Gebührenverzeichnis
+              """;
+
+      assertThat(extract("01_verwaltungsgebuehrensatzung.pdf", satzung(satzung)).date())
+          .contains(ExtractedDate.day(LocalDate.of(2026, 1, 1)));
+    }
+
+    @Test
+    void everySelfDesignatingWordingIsRead() {
+      for (String clause :
+          List.of(
+              "Diese Satzung tritt am 1. Januar 2026 in Kraft.",
+              "Diese Verordnung tritt am 01.01.2026 in Kraft.",
+              "Diese Dienstanweisung tritt am 1. Januar 2026 in Kraft und ersetzt die Regelung"
+                  + " vom 3. Mai 2019.",
+              "Diese Ordnung tritt rückwirkend zum 1. Januar 2026 in Kraft.")) {
+        assertThat(extract("satzung.pdf", satzung(clause)).date())
+            .as(clause)
+            .contains(ExtractedDate.day(LocalDate.of(2026, 1, 1)));
+      }
+    }
+
+    @Test
+    void aStandStatementInTheHeadBlockIsRead() {
+      assertThat(
+              extract(
+                      "beispiel-word.docx",
+                      DocumentProperties.EMPTY
+                          .withCreatedAt(LocalDate.of(2013, 12, 23))
+                          .withHeadText(
+                              "Muster eines Verwaltungsdokuments\n"
+                                  + "Dateiformat dieses Musters: Word (.docx) · Stand:"
+                                  + " 2. März 2026\n"))
+                  .date())
+          .contains(ExtractedDate.day(LocalDate.of(2026, 3, 2)));
+      assertThat(
+              extract(
+                      "satzung.pdf",
+                      DocumentProperties.EMPTY.withHeadText(
+                          "Gebührensatzung\nFassung vom" + " 12.03.2026\n"))
+                  .date())
+          .contains(ExtractedDate.day(LocalDate.of(2026, 3, 12)));
+      assertThat(
+              extract("satzung.pdf", DocumentProperties.EMPTY.withHeadText("Satzung\nStand: 2024"))
+                  .date())
+          .contains(ExtractedDate.year(2024));
+    }
+
+    @Test
+    void aStandStatementBelowTheHeadBlockIsAnotherDocumentsVersion() {
+      String text =
+          "Merkblatt zur Kfz-Zulassung\n"
+              + "Bitte bringen Sie alle Unterlagen vollständig mit. ".repeat(20)
+              + "\nStand: 12.03.2020 der beigefügten Gebührenordnung\n";
+
+      assertThat(extract("merkblatt.pdf", DocumentProperties.EMPTY.withHeadText(text)).date())
+          .isEmpty();
+    }
+
+    /** the Gegenbeispiele: no date out of running text beyond an anchored statement. */
+    @Test
+    void noDateIsReadOutOfRunningText() {
+      for (String text :
+          List.of(
+              // 035_verlaengerung-befristeter-fuehrerschein-klassen.md of the demo corpus: a
+              // reference to a law, not a statement about this document.
+              "Aufgrund von Änderungen des Berufskraftfahrerqualifikationsgesetzes, die zum"
+                  + " 23.5.2021 in Kraft getreten sind, wird die Schlüsselzahl 95 nicht mehr"
+                  + " eingetragen.",
+              "Das neue Gesetz tritt am 1. Januar 2024 in Kraft.",
+              "Führerscheine, die bis 31.12.2020 ausgestellt wurden, sind umzutauschen.",
+              "Die Gebühr beträgt 2026 Euro.",
+              "Wir verweisen auf die Satzung vom 12.03.2020.",
+              "Anlage 3 zu § 2000")) {
+        assertThat(extract("merkblatt.md", DocumentProperties.EMPTY.withHeadText(text)).date())
+            .as(text)
+            .isEmpty();
+      }
+    }
+
+    @Test
+    void anAnchoredHeadTextDateOutranksTheFileNameAndTheFileProperties() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withHeadText("Gebührensatzung\nStand: 12.03.2026")
+              .withModifiedAt(LocalDate.of(2025, 1, 1));
+
+      assertThat(extract("2019-01-01_satzung.pdf", properties).date())
+          .contains(ExtractedDate.day(LocalDate.of(2026, 3, 12)));
+    }
+
+    @Test
+    void theHeadingStillOutranksTheHeadText() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withFirstHeading("Gebührensatzung, Fassung 2024")
+              .withHeadText("Gebührensatzung\nStand: 12.03.2026");
+
+      assertThat(extract("satzung.pdf", properties).date()).contains(ExtractedDate.year(2024));
+    }
+  }
+
+  @Test
+  void aGermanLongDateCarriesDayPrecision() {
+    assertThat(
+            extract(
+                    "satzung.pdf",
+                    DocumentProperties.EMPTY.withFirstHeading(
+                        "Gebührensatzung, Stand 1. Januar" + " 2026"))
+                .date())
+        .contains(ExtractedDate.day(LocalDate.of(2026, 1, 1)));
   }
 
   @Test

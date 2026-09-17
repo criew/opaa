@@ -6,6 +6,7 @@ import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.indexing.format.FileDocumentFormat;
 import io.opaa.indexing.format.FormatAdmission;
 import io.opaa.indexing.format.shared.DeduplicatedLines;
+import io.opaa.indexing.format.shared.DocumentHeadText;
 import io.opaa.indexing.format.shared.DocumentTitleLine;
 import io.opaa.indexing.format.shared.HeadingSectionSplitter;
 import io.opaa.indexing.format.shared.RepeatingHeaderChunk;
@@ -159,7 +160,8 @@ public class OdtDocumentFormat extends FileDocumentFormat<OdtDocumentFormat.OdtC
     return content
         .meta()
         .withFirstHeading(HeadingSectionSplitter.firstTopLevelHeading(content.events()))
-        .withTitleLine(DocumentTitleLine.ofEvents(content.events()));
+        .withTitleLine(DocumentTitleLine.ofEvents(content.events()))
+        .withHeadText(DocumentHeadText.ofEvents(content.events()));
   }
 
   /**

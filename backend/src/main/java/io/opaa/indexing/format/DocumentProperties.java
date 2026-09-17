@@ -31,6 +31,10 @@ import java.util.TreeMap;
  *     {@link #MAX_TITLE_LINE_LENGTH} characters here rather than by the pipeline - the only line of
  *     the text a Dokumentart may be read from, and the reason a label line or a quotation below it
  *     can never become one
+ * @param headText the opening of the body text, truncated to {@link #MAX_HEAD_TEXT_LENGTH}
+ *     characters here rather than by the pipeline - the only text an anchored Datum/Stand pattern
+ *     ("Stand: …", "Diese Satzung tritt am … in Kraft") is ever read from, and never a source of
+ *     the Dokumentart, which stays bound to the title line
  * @param formatExtension the routed format extension of the document ({@code ".pptx"}), lower-cased
  *     - attached centrally by {@code DocumentFormatRunner} and {@code
  *     DocumentMetadataService#reextractFromFile} from {@link
@@ -53,6 +57,7 @@ public record DocumentProperties(
     LocalDate documentDate,
     String firstHeading,
     String titleLine,
+    String headText,
     String formatExtension,
     boolean syntheticName,
     Map<String, String> frontmatter,
@@ -64,13 +69,21 @@ public record DocumentProperties(
    */
   public static final int MAX_TITLE_LINE_LENGTH = 300;
 
+  /**
+   * Upper bound of {@link #headText}, in characters - the same excerpt size the model extraction
+   * reads, so both steps look at the same opening of a document and neither pays for its rest.
+   */
+  public static final int MAX_HEAD_TEXT_LENGTH = 4_000;
+
   public static final DocumentProperties EMPTY =
-      new DocumentProperties(null, null, null, null, null, null, null, false, Map.of(), Map.of());
+      new DocumentProperties(
+          null, null, null, null, null, null, null, null, false, Map.of(), Map.of());
 
   public DocumentProperties {
     title = blankToNull(title);
     firstHeading = blankToNull(firstHeading);
     titleLine = truncate(DocumentTitleLine.of(titleLine));
+    headText = truncateHeadText(blankToNull(headText));
     formatExtension = lowerCase(blankToNull(formatExtension));
     Map<String, String> normalized = new TreeMap<>();
     if (frontmatter != null) {
@@ -109,6 +122,10 @@ public record DocumentProperties(
     return toBuilder().titleLine(titleLine).build();
   }
 
+  public DocumentProperties withHeadText(String headText) {
+    return toBuilder().headText(headText).build();
+  }
+
   /** Marks the document's name as free text rather than a file name. */
   public DocumentProperties withSyntheticName(boolean syntheticName) {
     return toBuilder().syntheticName(syntheticName).build();
@@ -141,6 +158,7 @@ public record DocumentProperties(
         .documentDate(documentDate)
         .firstHeading(firstHeading)
         .titleLine(titleLine)
+        .headText(headText)
         .formatExtension(formatExtension)
         .syntheticName(syntheticName)
         .frontmatter(frontmatter)
@@ -160,6 +178,7 @@ public record DocumentProperties(
     private LocalDate documentDate;
     private String firstHeading;
     private String titleLine;
+    private String headText;
     private String formatExtension;
     private boolean syntheticName;
     private Map<String, String> frontmatter = Map.of();
@@ -197,6 +216,11 @@ public record DocumentProperties(
       return this;
     }
 
+    public Builder headText(String headText) {
+      this.headText = headText;
+      return this;
+    }
+
     public Builder formatExtension(String formatExtension) {
       this.formatExtension = formatExtension;
       return this;
@@ -225,6 +249,7 @@ public record DocumentProperties(
           documentDate,
           firstHeading,
           titleLine,
+          headText,
           formatExtension,
           syntheticName,
           frontmatter,
@@ -292,6 +317,17 @@ public record DocumentProperties(
     }
     String cut = value.substring(0, end).stripTrailing();
     return cut.isEmpty() ? null : cut;
+  }
+
+  /**
+   * A hard cut at {@link #MAX_HEAD_TEXT_LENGTH}: the head text is scanned for anchored patterns,
+   * never matched as a whole, so a word split by the cut costs at most the pattern that straddles
+   * it - a value is never fabricated from a fragment.
+   */
+  private static String truncateHeadText(String value) {
+    return value == null || value.length() <= MAX_HEAD_TEXT_LENGTH
+        ? value
+        : value.substring(0, MAX_HEAD_TEXT_LENGTH);
   }
 
   private static String lowerCase(String value) {

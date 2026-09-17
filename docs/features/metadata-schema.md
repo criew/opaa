@@ -208,9 +208,9 @@ Drei Felder, fest eingebaut, für jedes Dokument in jeder Bibliothek:
 
 | Feld | Typ | Zweck | Herkunft |
 |---|---|---|---|
-| **Titel** | Text | Beleg-Anzeige, Kontextpräfix | Dokumenteigenschaften, Überschrift erster Ebene, Dateiname — in dieser Reihenfolge |
+| **Titel** | Text | Beleg-Anzeige, Kontextpräfix | Dokumenteigenschaften (sofern sie das Dokument benennen), Überschrift erster Ebene, überschriftartige Titelzeile, Dateiname — in dieser Reihenfolge |
 | **Dokumentart** | kontrolliertes Vokabular | Filter („nur Dienstanweisungen"), Beleg-Einordnung | Dateinamenskonvention, Titelzeile des Dokuments, Dateiformat; sonst — sofern für die Bibliothek eingeschaltet — Sprachmodell mit Konfidenz |
-| **Datum/Stand** | Datum oder Jahr | Filter („nach dem Stand 2024"), Beleg-Anzeige, Aktualitätsfragen | Datumsangaben im Kopfbereich, Dateiname, Dokumenteigenschaften |
+| **Datum/Stand** | Datum oder Jahr | Filter („nach dem Stand 2024"), Beleg-Anzeige, Aktualitätsfragen | verankerte Datumsangaben im Dokument, Dateiname, Dokumenteigenschaften (nur plausible) |
 
 Drei Festlegungen dazu:
 
@@ -705,6 +705,68 @@ Dokumentart. Die geroutete Formatkennung hängt zentral an den Rohquellen
 (`DocumentFormatRunner` im Ingest, `DocumentMetadataService#reextractFromFile` im Bestandslauf),
 nicht in den einzelnen Pipelines — sie ist ein Befund des Routings, nicht des Formats.
 
+### Umgesetzt (#1360)
+
+Die beiden deterministischen Befunde der Handstichprobe vom 05.09.2026
+(`eval/reports/metadata-extraction-sample-2026-09-05.md`): **Datum/Stand 27 % falsch**, alle aus
+Dateieigenschaften mit Generator-Voreinstellungen, und **Titel 14 % falsch**, weil der
+Dateiname-Fallback vor der eigenen Überschrift des Dokuments griff. Die Extraktionsversion steigt
+auf **5**. Ein Bestandslauf zieht die vorhandenen Dokumente **nicht** nach (Maintainer-Beschluss vom
+04.09.2026: keine Bestandssysteme); die Version steigt trotzdem, weil sie die Regelfassung benennt,
+unter der ein Wert entstanden ist.
+
+**Ein Dateieigenschaften-Datum nur, wenn es plausibel ist.** Ein erzeugtes Dokument trägt das
+Vorlagendatum seines Werkzeugs: `python-docx` stempelt 2013-12-23, `python-pptx` 2013-01-27,
+ReportLab in seinem reproduzierbaren Modus 2000-01-01; dazu kommen die Epochendaten, die ein Format
+oder ein ZIP-Container für einen fehlenden Zeitstempel einsetzt (1601-01-01, 1970-01-01,
+1980-01-01). Diese Daten und alles vor dem Mindestjahr **1990** gelten als „keine Angabe"
+(`GeneratorDefaultDate`). Betroffen sind Erstell- und Änderungseigenschaft; das **formateigene
+Dokumentdatum** (Mail-`Date`, Veröffentlichungsdatum eines Feed-Eintrags) wird nur gegen das
+Mindestjahr geprüft — eine Mail vom 01.01.2000 ist kein Vorlagendatum.
+
+**Verankerte Datumsangaben aus dem Dokumentkopf, vor den Dateieigenschaften.** `DocumentProperties`
+trägt dafür eine neue Rohquelle `headText`: den Textanfang, den das Record selbst auf **4.000
+Zeichen** begrenzt (dieselbe Ausschnittsgröße, die auch die Modell-Extraktion liest). Gelesen wird
+daraus ausschließlich Verankertes, in zwei Stufen:
+
+- **Stands-/Fassungsangabe im Kopfblock** — „Stand:", „Fassung vom", „Ausgabe", „gültig ab" — in den
+  ersten **600 Zeichen**. Weiter unten führt dasselbe Wort die Fassung eines *anderen* Dokuments ein.
+- **Inkrafttretensklausel mit Selbstbezug** — „Diese Satzung/Verordnung/Dienstanweisung tritt am
+  <Datum> in Kraft" — im ganzen Kopftext. Die Klausel steht nach deutscher Normsetzungspraxis in den
+  **Schlussbestimmungen**, nicht im Kopf; die elf Satzungen der Stichprobe tragen sie 900 bis 2.000
+  Zeichen tief. Das Demonstrativpronomen ist die Verankerung: Es macht den Satz zur Aussage über
+  *dieses* Dokument. „Die zum 23.5.2021 in Kraft getretenen Änderungen" ist eine Referenz und wird
+  nicht gelesen. Das ist die eine bewusste Abweichung von der Vorgabe des Issues („erste ~600
+  Zeichen"): Mit einem 600-Zeichen-Fenster bliebe für elf der 27 Fälle nur ein leeres Feld statt des
+  im Dokument stehenden Werts.
+
+Damit gilt für Datum/Stand die Reihenfolge: Frontmatter → formateigenes Dokumentdatum → erste
+Überschrift → verankerte Angabe im Kopftext → Dateiname → Änderungs- → Erstelleigenschaft. Neu
+gelesen wird außerdem das **ausgeschriebene deutsche Datum** („1. Januar 2026") mit Tagesgenauigkeit;
+bisher blieb davon nur der Monat übrig.
+
+**Titel.** Drei Änderungen, die den Dateinamen-Fallback später greifen lassen:
+
+- Eine **Titel-Eigenschaft, die das Werkzeug oder die Datei benennt**, wird verworfen (`ToolTitle`):
+  eine Werkzeugsignatur vor einem Gedankenstrich („Microsoft Office Outlook - Memo Style" — die
+  Druckstilvorlage eines Treibers, „Microsoft Word - vermerk.doc"), ein Titel, der auf eine
+  Dokumentendung endet, und ein Titel, der (ohne Endung, Schreibweise und Trennzeichen) dem
+  Dateinamen entspricht. Für einen **synthetischen Namen** gilt die Prüfung nicht: Dort *ist* der
+  Titel die vom Zufluss gemeldete Überschrift, und sie ist erklärtermaßen gleich dem `file_name`.
+- Eine **Setext-Überschrift** (`Titel` über einer `===`-Zeile) am Anfang einer TXT- oder
+  Markdown-Datei wird als erste Überschrift gelesen (`SetextHeading`) — die einzige
+  Überschriften-Schreibweise, die eine Textdatei hat. Sie ist eine **Metadatenquelle, kein
+  Schnittpunkt**: Der Markdown-Schnitt folgt unverändert den ATX-Überschriften, kein Chunk des
+  Bestands ändert sich, keine Pipeline-Version steigt. ODP liefert jetzt wie PPTX den **Titel der
+  ersten Folie** als erste Überschrift.
+- Eine **überschriftartige Titelzeile** tritt zwischen erste Überschrift und Dateinamen: kurz
+  (höchstens 120 Zeichen) und ohne Satz- oder Beschriftungszeichen am Ende. Ein Dokument, das mit
+  Fließtext beginnt („Anlage zwei: Berechnungsgrundlage … nach Richtlinie 7."), hat keine
+  Überschrift — dort bleibt der von Menschen vergebene Dateiname der bessere Titel.
+
+Damit gilt für den Titel: Titel-Eigenschaft (sofern sie das Dokument benennt) → Frontmatter `titel`
+→ erste Überschrift → überschriftartige Titelzeile → humanisierter Dateiname.
+
 ## Deterministischer Bestandslauf über den Altbestand
 
 Metadaten entstehen beim Aufnehmen — aber jede Installation, die diese Fähigkeit bekommt, hat ihren
@@ -967,7 +1029,7 @@ zum nächstbesten. Folgen, alle in **#1359**: Schwelle auf 0,90 (nur Anheben ist
 erlaubt), Vokabular um Verwaltungswerte erweitern, Prompt um Negativbeispiele. Der Schalter bleibt
 **voreingestellt aus**, und auf der Demo ist er abgeschaltet. Zwei Befunde derselben Stichprobe
 betreffen die deterministische Extraktion (Generator-Voreinstellungen als Datum, zu früher
-Titel-Fallback) und liegen als **#1360** außerhalb dieses Epics.
+Titel-Fallback) und sind als **#1360** behoben (siehe [Umgesetzt (#1360)](#umgesetzt-1360)).
 
 **Abweichung.** Der Textdeckel (4.000 Zeichen), die Speicherform der Schlagworte (eigene Tabelle),
 der Deckel des Verwerfungsprotokolls (1.000 Zeilen je Bibliothek, rotierend alle 100 Aufrufe) und die
