@@ -3,6 +3,7 @@ package io.opaa.group.sync;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.opaa.common.ConflictException;
 import io.opaa.test.FakeDirectoryClient;
@@ -31,7 +32,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * where a production run spends its time and where the lock has to be held already.
  *
  * <p>Works on two throwaway organizations rather than {@code Organization.DEFAULT_ID}, so nothing
- * here collides with a sibling class running against the shared database in a parallel test JVM.
+ * here collides with a sibling class sharing this context's one database.
  */
 @OpaaIntegrationTest
 class DirectorySyncConcurrencyIntegrationTest {
@@ -54,9 +55,15 @@ class DirectorySyncConcurrencyIntegrationTest {
     executor = Executors.newFixedThreadPool(2);
   }
 
+  // Waits for the background runs before deleting: a method that failed before releasing its run
+  // leaves one in flight, and a status row written between the two deletes below would make the
+  // organization's own delete fail on its foreign key and leave the throwaway row behind.
   @AfterEach
-  void tearDown() {
+  void tearDown() throws InterruptedException {
     executor.shutdownNow();
+    assertThat(executor.awaitTermination(TIMEOUT_SECONDS, TimeUnit.SECONDS))
+        .as("the background runs finished before the cleanup")
+        .isTrue();
     directoryClient.reset();
     removeOrganization(firstOrganizationId);
     removeOrganization(secondOrganizationId);
@@ -80,9 +87,11 @@ class DirectorySyncConcurrencyIntegrationTest {
         .as("the first run reached the directory fetch")
         .isTrue();
 
-    assertThatThrownBy(() -> directorySyncService.run(firstOrganizationId))
+    Throwable thrown = catchThrowable(() -> directorySyncService.run(firstOrganizationId));
+    assertThat(thrown)
         .isInstanceOf(ConflictException.class)
         .hasMessage("Für diese Organisation läuft bereits ein Abgleich.");
+    assertThat(((ConflictException) thrown).getCode()).isEqualTo("DIRECTORY_SYNC_ALREADY_RUNNING");
 
     releaseFirst.countDown();
     assertThat(first.get(TIMEOUT_SECONDS, TimeUnit.SECONDS).outcome()).isNotNull();

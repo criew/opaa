@@ -8,31 +8,27 @@ import java.sql.SQLException;
 import java.util.UUID;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.stereotype.Component;
 
 /**
  * Serializes {@link DirectorySyncService}'s runs per organization: at most one run of one
- * organization is ever in flight, while runs of different organizations never wait for each other.
+ * organization is in flight at a time, a second caller is rejected with a {@link ConflictException}
+ * rather than queued behind the first, and runs of different organizations never wait for each
+ * other. The lock sits on a connection of its own so that it can cover the directory fetch, which
+ * the caller deliberately performs outside any transaction.
  *
- * <p><b>Rejects instead of queueing.</b> {@code pg_try_advisory_xact_lock}, not {@code
- * pg_advisory_xact_lock}: a run reads a whole directory and can take minutes, so a waiting second
- * caller would hold an HTTP request open for that long with no way to tell it apart from a hang.
- * The second caller gets a {@link ConflictException} instead - the same answer a second indexing
- * run of one library gets from {@code uk_indexing_jobs_library_running}.
- *
- * <p><b>Its own connection, not the caller's transaction.</b> The lock must cover the directory
- * fetch, and {@link DirectorySyncService} deliberately runs that fetch outside any transaction (see
- * its Javadoc). The lock therefore lives on a connection checked out here for the duration of the
- * run, untouched by - and invisible to - the transactions {@link DirectorySyncPlanExecutor} opens
- * inside the body. The transaction-scoped variant is what makes that safe: the lock is released by
- * the {@code rollback} below, and by the backend dying if the process does, so it cannot be leaked
- * the way a {@code pg_advisory_lock}/{@code pg_advisory_unlock} pair on a pooled connection could.
- * The price is one pooled connection per in-flight run, held across the fetch; the try-lock bounds
- * that to one per organization.
+ * <p><b>Operating precondition:</b> that connection sits idle in transaction for the whole run.
+ * Anything that ends the session early - {@code idle_in_transaction_session_timeout}, a transaction
+ * pooler between application and database, an operator terminating idle backends - drops the lock
+ * silently, and a second run gets through.
  */
 @Component
 class DirectorySyncRunLock {
+
+  private static final Logger log = LoggerFactory.getLogger(DirectorySyncRunLock.class);
 
   /**
    * Namespace of this class's advisory locks - see {@code
@@ -42,6 +38,9 @@ class DirectorySyncRunLock {
   static final int DIRECTORY_SYNC_RUN_LOCK_NAMESPACE = 205;
 
   static final String ALREADY_RUNNING_CODE = "DIRECTORY_SYNC_ALREADY_RUNNING";
+
+  static final String ALREADY_RUNNING_MESSAGE =
+      "Für diese Organisation läuft bereits ein Abgleich.";
 
   private static final String TRY_LOCK_SQL =
       "SELECT pg_try_advisory_xact_lock("
@@ -66,17 +65,34 @@ class DirectorySyncRunLock {
       connection.setAutoCommit(false);
       try {
         if (!tryLock(connection, organizationId)) {
-          throw new ConflictException(
-              "Für diese Organisation läuft bereits ein Abgleich.", ALREADY_RUNNING_CODE);
+          throw new ConflictException(ALREADY_RUNNING_MESSAGE, ALREADY_RUNNING_CODE);
         }
         return body.get();
       } finally {
-        connection.rollback();
-        connection.setAutoCommit(autoCommit);
+        releaseQuietly(connection, autoCommit, organizationId);
       }
     } catch (SQLException e) {
       throw new DataAccessResourceFailureException(
-          "Failed to acquire the directory sync run lock for organization " + organizationId, e);
+          "Directory sync run lock failed for organization " + organizationId, e);
+    }
+  }
+
+  /**
+   * Releasing the lock must neither turn an already completed run into an error response nor
+   * replace the cause of a failed one: by this point the run's changes are committed on other
+   * connections, and the lock is gone either way once try-with-resources hands this connection back
+   * and the pool rolls it back.
+   */
+  private void releaseQuietly(Connection connection, boolean autoCommit, UUID organizationId) {
+    try {
+      connection.rollback();
+      connection.setAutoCommit(autoCommit);
+    } catch (SQLException e) {
+      log.warn(
+          "Directory sync: failed to release the run lock for organization {} - the run's own"
+              + " outcome is unaffected, and the lock goes with the connection",
+          organizationId,
+          e);
     }
   }
 
