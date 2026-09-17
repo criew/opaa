@@ -26,8 +26,8 @@ public class ChecksumService {
 
   /**
    * Computes the SHA-256 checksum of already in-memory content - used for {@link
-   * IndexingSourceType#RSS_FEED} runs, whose text comes from an extracted detail page rather than a
-   * file on disk.
+   * io.opaa.indexing.source.IndexingSourceType#RSS_FEED} runs, whose text comes from an extracted
+   * detail page rather than a file on disk.
    */
   public String computeSha256(byte[] content) {
     try {

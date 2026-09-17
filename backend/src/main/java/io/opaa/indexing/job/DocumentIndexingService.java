@@ -29,8 +29,8 @@ import org.springframework.core.task.TaskRejectedException;
  * from. The endpoint only needs {@code EDITOR} on the library being indexed (see {@link
  * #requireEditableLibrary}), no additional {@code SYSTEM_ADMIN} requirement.
  *
- * <p>Concurrency is per library, not global: {@link IndexingJobService#isJobRunning(UUID)} only
- * ever asks about the one library this call targets, so runs of different libraries execute in
+ * <p>Concurrency is per library, not global: {@link IndexingJobService#isJobRunning(UUID, UUID)}
+ * only ever asks about the one library this call targets, so runs of different libraries execute in
  * parallel instead of queuing behind a single global lock.
  */
 public class DocumentIndexingService {

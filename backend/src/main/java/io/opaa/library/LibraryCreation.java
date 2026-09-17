@@ -12,8 +12,8 @@ import java.util.UUID;
 /**
  * Parameters for {@link KnowledgeLibraryService#createLibrary} - replaces the generated {@code
  * LibraryRequest} at the service boundary (#860): domain services do not know {@code
- * io.opaa.api.dto} types, see AGENTS.md "API & DTO-Konvention". Tests that need a fluent call site
- * use {@code LibraryCreationBuilder} (src/test).
+ * io.opaa.api.dto} types, see AGENTS.md "API &amp; DTO-Konvention". Tests that need a fluent call
+ * site use {@code LibraryCreationBuilder} (src/test).
  *
  * @param ownerType {@code null} means {@code USER} (the creator) - the same default the service
  *     applied to a {@code null} {@code LibraryRequest.ownerType}.

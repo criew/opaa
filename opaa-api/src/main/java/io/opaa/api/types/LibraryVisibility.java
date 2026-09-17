@@ -1,8 +1,8 @@
 package io.opaa.api.types;
 
 /**
- * How far a {@link KnowledgeLibrary}'s access reaches, independent of individual or group grants.
- * See docs/features/spaces-and-assets.md#freigabestufen-und-auffindbarkeit.
+ * How far a {@code KnowledgeLibrary} (backend module)'s access reaches, independent of individual
+ * or group grants. See docs/features/spaces-and-assets.md#freigabestufen-und-auffindbarkeit.
  *
  * <ul>
  *   <li>{@link #PRIVATE} - no reach beyond the owner (and, for a group owner, its members).
