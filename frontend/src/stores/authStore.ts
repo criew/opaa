@@ -468,8 +468,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
         return
       }
       const providers = config.providers ?? []
-      // getAuthConfig() already substitutes the switched-off default for a missing block.
-      set({ mode: config.mode, providers, localAccounts: config.localAccounts })
+      const { localAccounts } = config
+      set({ mode: config.mode, providers, localAccounts })
 
       if (config.mode === 'dev') {
         // No login and no token: the backend authenticates every request as the selected dev
@@ -546,7 +546,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
       // of an earlier local session nothing is restored and no request is made, so a regular OIDC
       // sign-in never sees a failed call it did not ask for.
       if (!handoverCallback && (await restoreLocalSession()) !== 'none') return
-      if (providers.length === 0 && !get().localAccounts.enabled) {
+      // The configuration this call just loaded decides, not the store state after the await: the
+      // restore attempt above can end a session (in this tab or another) and reset the store's
+      // block to switched-off in the meantime, which must not overrule a config that says enabled.
+      if (providers.length === 0 && !localAccounts.enabled) {
         set({
           userManager: null,
           activeProviderId: null,
