@@ -29,9 +29,21 @@ Eine Auskunft in der Verwaltung ist keine Meinung. Jemand steht mit seinem Namen
 später muss nachvollziehbar sein, worauf sie sich stützte.
 
 OPAA bindet deshalb jede Aussage an ihre Quelle: Fundstelle, Sprung zur Textstelle, Konfidenz und ein
-Chunking, dessen Ergebnis man sich ansehen kann. Für haftungskritische Zusammenhänge lässt sich das System
-in den **Zitierzwang** schalten — **keine belegte Quelle, keine Antwort**. Ein Assistent, der in dieser
-Lage „nicht feststellbar" sagt, ist mehr wert als einer, der plausibel klingt.
+Chunking, dessen Ergebnis man sich ansehen kann. Der Kern ist die **Belegvalidierung**: Jeder Beleg wird
+gegen die Fundstellen geprüft, die für diese Antwort tatsächlich abgerufen wurden — deterministisch, ohne
+zweiten Modellaufruf, gleiche Eingabe und gleiches Urteil. Ein Beleg, der auf nichts zeigt, wird
+**gekennzeichnet**; er wird weder stillschweigend entfernt noch stillschweigend als gültig behandelt.
+
+Das ist eine Zusicherung und keine Wahrscheinlichkeit: Ein erfundener Beleg ist ausgeschlossen. Was sie
+nicht leistet, steht ebenso ausdrücklich da — geprüft wird die **Echtheit** eines Belegs, nicht seine
+inhaltliche Deckung mit dem Satz, an dem er steht.
+
+Ein Modus, der bei fehlendem Beleg gar nicht erst antwortet, ist **bewusst nicht gebaut**
+([ADR-0014](./decisions/0014-produktausrichtung-oeffentliche-verwaltung.md), Nachtrag vom 21.08.2026). Das
+Modell sagt selbst, wenn es nichts gefunden hat, und fehlende Belege sind im Belegfenster unmittelbar
+sichtbar. Ein Zwangs- und Verweigerungsapparat darüber hätte einen zweiten, selbst fehlbaren Prüfweg
+gebraucht, dessen Fehlurteile — die Verweigerung einer ansonsten belegten Antwort — teurer sind als der
+Schaden, den er verhindert.
 
 ### Verteilbarkeit — kommt die KI-Fähigkeit in der ganzen Organisation an?
 
@@ -54,6 +66,32 @@ OPAA ist damit nicht nur eine Chat-Oberfläche, sondern das Verteilungssystem f�
 
 ---
 
+## Was OPAA unterscheidet
+
+Die drei Säulen beschreiben, **was** OPAA tut. Als Unterscheidungsmerkmal trägt das allein nicht: Wissen
+befragbar machen, Agenten bauen, Fähigkeiten verteilen — daran arbeiten viele, und Katalog, Freigabe,
+Eigentümerschaft und Versionierung sind dabei, allgemeiner Standard zu werden.
+
+Trennscharf ist das **Wie**. Vier Eigenschaften, jede für sich nachprüfbar:
+
+1. **Rechte, Protokoll und Mandantengrenze liegen im Kern.** Sie sind quelloffen und an keine Bezahlstufe
+   gebunden. Wo diese drei Dinge kostenpflichtige Zusätze sind, entscheidet eine Preisliste darüber, ob
+   eine Behörde sie hat — und ohne sie ist eine Installation in der Verwaltung gar nicht einsetzbar.
+2. **Betrieb im eigenen Haus, ohne Mindestgröße.** Ein Amt mit vierzig Beschäftigten betreibt dieselbe
+   Software wie eines mit viertausend, bis hin zum Betrieb ohne Netzanbindung. Souveränität, die erst ab
+   einer Bestellmenge beginnt, ist eine Vertragsbedingung und keine Eigenschaft.
+3. **Auswertung ausschließlich aggregiert.** Es gibt keinen personenbezogenen Auswertungspfad und keine
+   Ranglisten — nicht als Einstellung, sondern als Eigenschaft des Systems. Das ist die Voraussetzung
+   dafür, dass eine Dienstvereinbarung überhaupt zustande kommt, und der Punkt, an dem sich ein
+   Arbeitsmittel von einem Kontrollinstrument unterscheidet.
+4. **Belege werden geprüft, nicht nur verlinkt.** Ein Quellenlink belegt, dass ein Dokument existiert. Die
+   Belegvalidierung belegt, dass die Antwort aus diesem Dokument stammt.
+
+Keine der vier lässt sich nachträglich anbauen. Sie entscheiden, wie Suche, Speicher und Protokoll
+geschnitten sind — deshalb stehen sie hier und nicht in einer Feature-Liste.
+
+---
+
 ## Für wen
 
 **Primärer Nutzerkreis ist die interne Verwaltung**: Sachbearbeitung, Fachreferate, Querschnittsbereiche,
@@ -69,7 +107,7 @@ an Barrierefreiheit und Missbrauchsschutz.
 
 | | Bereich | Worum es geht | Spezifikation |
 |---|---|---|---|
-| **A** | Wissensschicht & Retrieval | Zitierzwang, Konfidenz, hybride Suche mit Reranking, erklärbares Chunking, Deep Research | [data-indexing-rag.md](./features/data-indexing-rag.md) · [search-quality-evaluation.md](./features/search-quality-evaluation.md) |
+| **A** | Wissensschicht & Retrieval | Belegvalidierung, Konfidenz, hybride Suche mit Reranking, erklärbares Chunking, Deep Research | [data-indexing-rag.md](./features/data-indexing-rag.md) · [search-quality-evaluation.md](./features/search-quality-evaluation.md) |
 | **B** | Wissensquellen & Konnektoren | Uploads und Konnektoren, selbst aktualisierende Wissensblöcke, Spiegelung der Rechte aus dem Quellsystem | [knowledge-sources.md](./features/knowledge-sources.md) |
 | **C** | Spaces, Assets & Verteilung | Arbeitsräume, Assets mit eigenen Rechten, Verteilungsstufen, Freigabe, Versionierung, Katalog | [spaces-and-assets.md](./features/spaces-and-assets.md) |
 | **D** | Agenten, Prompts & Werkzeuge | Agenten als teilbare Pakete, geführtes Onboarding, Prüfstand, Prüfagenten, Sandbox, Werkzeuge, MCP | [agents-and-tools.md](./features/agents-and-tools.md) |
@@ -77,7 +115,7 @@ an Barrierefreiheit und Missbrauchsschutz.
 | **F** | Identität, Rechte & Mandanten | Anmeldung über den Verzeichnisdienst, Lebenszyklus der Konten, rechtebewusste Suche zur Abfragezeit | [access-control.md](./features/access-control.md) |
 | **G** | Sicherheit, Nachweis & Prüfbarkeit | Revisionssicheres Protokoll, Vollständigkeit nach DSGVO, sichere Voreinstellungen, C5-Fähigkeit, Mitbestimmungsfähigkeit | [security-and-compliance.md](./features/security-and-compliance.md) |
 | **H** | Monitoring, Kosten & Governance | Grenzen je Nutzer, Kostentransparenz, Auswertung des KI-Rollouts — aggregiert, ohne Personenbezug | [monitoring-and-governance.md](./features/monitoring-and-governance.md) |
-| **I** | Kanäle & Oberflächen | Web-Oberfläche, REST-API, Anbindung an self-hosted Team-Chats | [user-frontends.md](./features/user-frontends.md) |
+| **I** | Kanäle & Oberflächen | Web-Oberfläche, REST-API, Anbindung an self-hosted Team-Chats, OPAA als belegte Wissensschicht für fremde KI-Werkzeuge | [user-frontends.md](./features/user-frontends.md) |
 | **J** | Betrieb & Deployment | Docker Compose, Kubernetes mit Hochverfügbarkeit, air-gapped, mandantenfähiger Betrieb durch Rechenzentren | [deployment-infrastructure.md](./features/deployment-infrastructure.md) |
 | **K** | Verwaltungs-Spezifika | Leichte Sprache und Amtssprache, Barrierefreiheit, Revisionssicherheit, Anbindung an die elektronische Akte | [public-sector.md](./features/public-sector.md) |
 
@@ -92,7 +130,7 @@ gehört in die erste Phase — ohne sie ergibt ein Start in einer Behörde keine
 
 *Eine Behörde kann ihr Wissen befragbar, belegt und nachweisbar nutzen.*
 
-Retrieval mit Zitierzwang, Konfidenz und Quellenbindung · hybride Suche mit Reranking · erklärbares
+Retrieval mit geprüften Belegen, Konfidenz und Quellenbindung · hybride Suche mit Reranking · erklärbares
 Chunking · Messbarkeit der Suchqualität · Uploads und lesende Konnektoren · Spaces, persönlicher Space und
 Wissensbibliotheken als eigene Objekte · Gruppen aus dem Verzeichnisdienst als Rechtesubjekt ·
 Organisation als harte Mandantengrenze · Textwerkzeuge einschließlich Leichter Sprache · eigene Modelle
@@ -106,7 +144,8 @@ Protokoll und Vollständigkeit nach DSGVO · Web-Oberfläche und REST-API · Bet
 Agenten und Skills als teilbare Pakete · geführtes Agenten-Onboarding · Prüfstand vor der Freigabe ·
 Prüfagenten für kritische Vorgänge · isolierte Ausführungsumgebung für Dateiverarbeitung, Auswertungen,
 Texterkennung, Transkription und Diagramme · Deep Research · schreibende Integrationen mit menschlicher
-Freigabe · MCP · Asset-Katalog mit Export und Import · Auswertung von Nutzung und Kosten.
+Freigabe · MCP · Asset-Katalog mit Export und Import · OPAA als Wissensschicht für fremde KI-Werkzeuge,
+erreichbar über persönliche Zugangstokens und einen MCP-Server · Auswertung von Nutzung und Kosten.
 
 ### Phase 3 — Kollaboration und organisationsweiter Rollout
 
@@ -153,6 +192,61 @@ zunächst noch nicht angegangen.
 
 **Arbeitsteilung:** bugpuritz übernimmt UI-Design und -Anpassungen, criew übernimmt Wissensbibliotheken,
 Konnektoren und die Verlinkung zu Spaces.
+
+---
+
+## Ideen in Prüfung
+
+Aufgenommene Richtungen, die **noch nicht entschieden** sind. Sie stehen hier, damit sie nicht verloren
+gehen und damit erkennbar ist, was geprüft wird — eine Zusage ist keine davon. Jede braucht vor einer
+Umsetzung einen eigenen Schnitt, und wo sie eine bestehende Festlegung berührt, einen ADR.
+
+### Abgeleitete Wissensformen · Bereich A
+
+Heute liefert ein Bestand Fundstellen. Die Idee ist, aus demselben Bestand zusätzlich abgeleitete
+Darstellungen zu erzeugen: eine Übersicht dessen, was überhaupt darin steht, ein Netz der vorkommenden
+Begriffe und ihrer Beziehungen, eine Gliederung vom Groben ins Feine. Die Fragen „was ist hier eigentlich
+drin" und „wie hängt das zusammen" beantwortet kein einzelner Treffer, sondern erst eine solche Ableitung —
+und es sind die Fragen, mit denen jemand an einen fremden Bestand herangeht.
+
+Der **Wissensgraph** aus Phase 3 ist der Teil dieser Idee, der bereits verortet ist; neu wären die
+übrigen Ableitungen und der Gedanke, sie gemeinsam aus einem Bestand zu erzeugen statt einzeln.
+
+Der Preis ist offen und nicht klein: Ableitungen altern mit dem Bestand. Wer sie nicht nachführt, hat ein
+zweites, stilles Gedächtnis, das irgendwann etwas anderes sagt als die Quelle — genau die Art von Fehler,
+gegen die die Belegvalidierung gebaut ist.
+
+### Mehrstufiges Nachfassen im Retrieval · Bereich A
+
+Eine zusammengesetzte Frage wird in Teilfragen zerlegt, jede einzeln belegt und erst am Ende
+zusammengeführt; wo eine Runde nichts Tragfähiges liefert, wird gezielt nachgefasst, statt einmal zu suchen
+und das Beste zu nehmen. Das ist die Verallgemeinerung dessen, was Deep Research für den Einzelfall tut.
+
+Abzuwägen gegen Antwortzeit und Modellkosten — und gegen die Nachvollziehbarkeit: Mehr Runden heißen mehr
+Fundstellen je Antwort und einen längeren Weg, den das Protokoll und das Belegfenster abbilden müssen,
+ohne dass der Mensch davor die Übersicht verliert.
+
+### Fähigkeiten aus dem Bestand ableiten · Bereiche C und D
+
+Aus wiederkehrenden Arbeitsweisen, die in einem Bestand oder in der Nutzung sichtbar werden, schlägt das
+System ein teilbares Asset vor — einen Prompt, eine Skill, den Entwurf eines Agenten. Das setzt genau dort
+an, wo Verteilbarkeit heute scheitert: nicht am Teilen selbst, sondern daran, dass niemand die Zeit hat,
+Wiederverwendbares als solches aufzuschreiben.
+
+Der Vorschlag bleibt ein Vorschlag; Freigabeweg, Prüfung und Eigentümerschaft ändern sich nicht. Die
+eigentliche Hürde ist eine andere: Der Weg zu einem solchen Vorschlag darf keinen personenbezogenen
+Auswertungspfad erzeugen. An dieser Stelle ist die Idee mit einer bestehenden Zusage am ehesten
+unvereinbar, und daran entscheidet sie sich.
+
+### Besprechungsnotiz als Quelle · Bereiche A und B
+
+Transkription ist bereits vorgesehen. Die Idee geht einen Schritt weiter: Aus der Mitschrift entsteht eine
+strukturierte Notiz mit Ergebnissen, Aufträgen und Zuständigen, die selbst in eine Wissensbibliothek
+wandert und damit belegfähig wird.
+
+Das ist der Punkt, an dem eine Quelle nicht mehr aus einem Aktenbestand kommt, sondern aus einer Sitzung —
+mit allem, was das für Mitbestimmung, Aufbewahrungsfristen und die Richtigkeit des Festgehaltenen
+bedeutet. Ohne eine Antwort darauf ist es kein Verwaltungsfeature.
 
 ---
 
@@ -209,7 +303,7 @@ Jede Auslassung hat einen Sachgrund. Keine davon ist eine Reaktion auf ein ander
 │  hybride Suche          │   │  eigene Modelle zuerst         │
 │  Reranking              │   │  zentrale Vorgaben je Aufgabe  │
 │  Quellenbindung         │   │  Cloud nur nach Freigabe       │
-│  Konfidenz, Zitierzwang │   └────────────────────────────────┘
+│  Konfidenz, Belegprüfung│   └────────────────────────────────┘
 └──────┬──────────────────┘
        │
 ┌──────▼───────────────────────────────────────────────────────┐
