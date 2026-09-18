@@ -28,10 +28,11 @@ import PushPinIcon from '@mui/icons-material/PushPin'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import { ThemeProvider } from '@mui/material/styles'
-import type { Theme } from '@mui/material/styles'
+import type { SxProps, Theme } from '@mui/material/styles'
 import { useLocation, useNavigate } from 'react-router'
 import { blue } from '../../theme/tokens'
 import type { ChatSummary } from '../../types/api'
+import type { ChatSearchHandover } from '../../hooks/useChatSearch'
 import { useChatListStore } from '../../stores/chatListStore'
 import { confirmAction } from '../../stores/confirmStore'
 import { notify } from '../../stores/notificationStore'
@@ -182,6 +183,34 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
     else allChatsLinkRef.current?.focus()
   }
 
+  // The term goes along as router state only: in the address it would land in the browser
+  // history and in the access log of a reverse proxy.
+  function openChatSearch(event: React.MouseEvent) {
+    event.preventDefault()
+    const handover: ChatSearchHandover = { chatSearchTerm: titleFilter.trim() }
+    navigate(`/spaces/${spaceId}/chats`, { state: handover })
+  }
+
+  function chatSearchLink(sx?: SxProps<Theme>) {
+    return (
+      <Link
+        href={`/spaces/${spaceId}/chats`}
+        onClick={openChatSearch}
+        underline="hover"
+        sx={[
+          {
+            display: 'inline-block',
+            fontSize: 12.5,
+            color: (theme) => (theme.palette.mode === 'dark' ? blue[300] : blue[700]),
+          },
+          ...(Array.isArray(sx) ? sx : [sx]),
+        ]}
+      >
+        In Inhalten suchen <span aria-hidden="true">→</span>
+      </Link>
+    )
+  }
+
   async function handleDelete(chat: ChatSummary) {
     const confirmed = await confirmAction({
       question: `„${chatTitle(chat)}“ wirklich löschen?`,
@@ -307,9 +336,13 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
           {filterStatusText(titleFilter, matching.length)}
         </Box>
         {matching.length === 0 && (
-          <Typography sx={{ color: 'text.secondary', mt: 1 }} variant="body2">
-            Kein Chat mit diesem Titel
-          </Typography>
+          <Box sx={{ mt: 1 }}>
+            <Typography sx={{ color: 'text.secondary' }} variant="body2">
+              Kein Chat mit diesem Titel
+            </Typography>
+            {/* The chat search also finds titles in the chat archive and words in the messages. */}
+            {chatSearchLink({ mt: 0.5 })}
+          </Box>
         )}
         {groups.map((group) => {
           const headingId = `${groupIdPrefix}-${group.key}`
@@ -416,24 +449,27 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
         renderChats(chats)
       )}
 
-      <Link
-        ref={allChatsLinkRef}
-        href={`/spaces/${spaceId}/chats`}
-        onClick={(event) => {
-          event.preventDefault()
-          navigate(`/spaces/${spaceId}/chats`)
-        }}
-        underline="hover"
-        sx={{
-          display: 'inline-block',
-          mt: 1.5,
-          px: 1,
-          fontSize: 12.5,
-          color: (theme) => (theme.palette.mode === 'dark' ? blue[300] : blue[700]),
-        }}
-      >
-        Alle Chats <span aria-hidden="true">→</span>
-      </Link>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mt: 1.5 }}>
+        {chatSearchLink({ px: 1 })}
+        <Link
+          ref={allChatsLinkRef}
+          href={`/spaces/${spaceId}/chats`}
+          onClick={(event) => {
+            event.preventDefault()
+            navigate(`/spaces/${spaceId}/chats`)
+          }}
+          underline="hover"
+          sx={{
+            display: 'inline-block',
+            mt: 0.5,
+            px: 1,
+            fontSize: 12.5,
+            color: (theme) => (theme.palette.mode === 'dark' ? blue[300] : blue[700]),
+          }}
+        >
+          Alle Chats <span aria-hidden="true">→</span>
+        </Link>
+      </Box>
 
       {(() => {
         const menuChat = chats?.find((chat) => chat.id === menuAnchor?.chatId)

@@ -507,4 +507,69 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(page.getByText('1 Chat aus dem Archiv zurückgeholt')).toBeVisible()
     await expect(actionsOf(titleB)).toHaveCount(1)
   })
+
+  test('9. Chatsuche: Begriff aus der Seitenleiste suchen, archivierten Treffer an der Stelle öffnen', async (
+    { authenticatedPage: page },
+    testInfo,
+  ) => {
+    // One word of letters only, unique per attempt: the full-text parser splits digits and hyphens
+    // into separate tokens, which would make the term match other runs' chats.
+    const letters = uniqueId(testInfo)
+      .replace(/-/g, '')
+      .replace(/\d/g, (digit) => 'abcdefghij'[Number(digit)])
+    const term = `Quarzlampe${letters}`
+    const question = `Wo steht die ${term} im Lager?`
+    const chatList = page.getByRole('navigation', { name: 'Chats' })
+    const main = page.getByTestId('message-list')
+
+    await startFreshChat(page)
+    await clearSearchScope(page)
+    await askQuestion(page, question)
+    await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/)
+    await expect(main.getByText(question)).toBeVisible()
+    const chatUrl = page.url()
+    const chatsPageUrl = chatUrl.replace(/\/chats\/[^/]+$/, '/chats')
+
+    // Into the chat archive: the search includes it, and the hit must open there as well.
+    await chatList
+      .getByRole('list', { name: 'Heute' })
+      .getByRole('button', { name: /^Aktionen für Chat/ })
+      .first()
+      .click()
+    await page.getByRole('menuitem', { name: /archivieren$/ }).click()
+    await expect(page.getByText(/^Chat „.*“ archiviert$/)).toBeVisible()
+
+    // The title filter finds nothing and hands the term over to the chat search.
+    await chatList.getByRole('searchbox', { name: 'Chats filtern' }).fill(term)
+    await chatList.getByRole('link', { name: 'In Inhalten suchen' }).first().click()
+    // The term is never part of the address.
+    await expect(page).toHaveURL(chatsPageUrl)
+    await expect(page.getByRole('searchbox', { name: 'In Chats suchen' })).toHaveValue(term)
+
+    const hits = page.getByRole('list', { name: 'Suchtreffer' })
+    const hit = hits.getByRole('listitem')
+    await expect(hit).toHaveCount(1)
+    await expect(hit).toContainText('Frage')
+    await expect(hit).toContainText('Archiviert')
+    await expect(hit.locator('mark')).toHaveText(term)
+    await expectNoSeriousA11yViolations(page, 'Seite „Chats“ mit Trefferliste der Chatsuche')
+
+    await hit.getByRole('link').click()
+    await expect(page).toHaveURL(new RegExp(`^${chatUrl}\\?message=[^&]+$`))
+    const found = page.getByRole('article', { name: 'Gefundene Nachricht: Frage' })
+    await expect(found).toBeVisible()
+    await expect(found).toBeFocused()
+    await expect(found).toContainText(question)
+
+    // The link stays valid after a reload; the page "Chats" has forgotten the term by then.
+    await page.reload()
+    await expect(page.getByRole('article', { name: 'Gefundene Nachricht: Frage' })).toBeFocused()
+    await page.goBack()
+    await expect(page.getByRole('searchbox', { name: 'In Chats suchen' })).toHaveValue('')
+
+    // Leaves nothing archived behind for later runs.
+    await page.goto(chatUrl)
+    await page.getByRole('button', { name: 'Chat aus dem Archiv zurückholen' }).click()
+    await expect(page.getByRole('main').getByText('Archiviert', { exact: true })).toHaveCount(0)
+  })
 })

@@ -4,6 +4,10 @@ import type {
   BrandingResponse,
   ChatDetail,
   ChatSummary,
+  ChatSearchHighlight,
+  ChatSearchHit,
+  ChatSearchRequest,
+  ChatSearchResponse,
   EmbeddingInfoResponse,
   HealthResponse,
   IndexingRunListResponse,
@@ -1977,6 +1981,89 @@ export function mockArchivedChatsForSpace(spaceId: string): ChatSummary[] {
     .filter((chat) => chat.spaceId === spaceId && mockChatArchive[chat.id])
     .map(toChatSummary)
     .sort((a, b) => (b.archivedAt ?? '').localeCompare(a.archivedAt ?? ''))
+}
+
+const MOCK_EXCERPT_RADIUS = 60
+
+/** The excerpt around the first match of `words` in `text`, with every match in it highlighted. */
+function mockExcerpt(text: string, words: string[]): Pick<ChatSearchHit, 'excerpt' | 'highlights'> {
+  const lower = text.toLocaleLowerCase('de')
+  const first = lower.indexOf(words[0])
+  const from = Math.max(0, first - MOCK_EXCERPT_RADIUS)
+  const to = Math.min(text.length, first + words[0].length + MOCK_EXCERPT_RADIUS)
+  const excerpt = text.slice(from, to)
+  const excerptLower = lower.slice(from, to)
+  const ranges: ChatSearchHighlight[] = []
+  for (const word of words) {
+    let index = excerptLower.indexOf(word)
+    while (index >= 0) {
+      ranges.push({ start: index, end: index + word.length })
+      index = excerptLower.indexOf(word, index + word.length)
+    }
+  }
+  ranges.sort((a, b) => a.start - b.start)
+  const highlights = ranges.filter((range, i) => i === 0 || range.start >= ranges[i - 1].end)
+  return { excerpt, highlights }
+}
+
+/**
+ * Mirrors ChatService#searchChats on the mock data: all words of the term in one message (or the
+ * title), one hit per chat at its best message, archived chats included. Ordered like the backend
+ * by relevance - here the number of matched words - and on a tie by the time of the hit, newest
+ * first; a chat matching by its title alone counts with its last activity.
+ */
+export function mockSearchChats(spaceId: string, request: ChatSearchRequest): ChatSearchResponse {
+  const words = request.query.trim().toLocaleLowerCase('de').split(/\s+/).filter(Boolean)
+  const rankOf = (text: string | null | undefined): number => {
+    if (text == null) return 0
+    const lower = text.toLocaleLowerCase('de')
+    if (!words.every((word) => lower.includes(word))) return 0
+    return words.reduce((sum, word) => sum + lower.split(word).length - 1, 0)
+  }
+  const ranked: Array<{ hit: ChatSearchHit; rank: number; hitAt: string }> = []
+  for (const chat of Object.values(mockChatDetails)) {
+    if (chat.spaceId !== spaceId) continue
+    const archivedAt = mockChatArchive[chat.id] ?? null
+    // Best message by rank, the later one on a tie - as the backend's DISTINCT ON per chat.
+    let best: { message: (typeof chat.messages)[number]; rank: number } | null = null
+    for (const message of chat.messages) {
+      const rank = rankOf(message.content)
+      if (rank > 0 && (best === null || rank >= best.rank)) best = { message, rank }
+    }
+    const titleRank = rankOf(chat.title)
+    if (best) {
+      ranked.push({
+        hit: {
+          chatId: chat.id,
+          title: chat.title,
+          archivedAt,
+          messageId: best.message.id,
+          role: best.message.role,
+          messageCreatedAt: best.message.createdAt,
+          ...mockExcerpt(best.message.content, words),
+        },
+        rank: Math.max(best.rank, titleRank),
+        hitAt: best.message.createdAt,
+      })
+    } else if (titleRank > 0) {
+      ranked.push({
+        hit: { chatId: chat.id, title: chat.title, archivedAt, ...mockExcerpt(chat.title!, words) },
+        rank: titleRank,
+        hitAt: chat.updatedAt,
+      })
+    }
+  }
+  ranked.sort(
+    (a, b) =>
+      b.rank - a.rank || b.hitAt.localeCompare(a.hitAt) || a.hit.chatId.localeCompare(b.hit.chatId),
+  )
+  const hits = ranked.map((entry) => entry.hit)
+  const page = request.page ?? 0
+  const size = Math.min(request.pageSize ?? 20, 50)
+  return {
+    hits: hits.slice(page * size, (page + 1) * size),
+    hasMore: hits.length > (page + 1) * size,
+  }
 }
 
 export function resetMockChats() {

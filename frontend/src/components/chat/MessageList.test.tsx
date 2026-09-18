@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import MessageList, { ANSWER_ARRIVED_ANNOUNCEMENT } from './MessageList'
 import type { ChatMessage } from '../../types/chat'
 
@@ -76,5 +76,89 @@ describe('MessageList', () => {
     render(<MessageList messages={messages} isLoading={false} />)
     const list = screen.getByTestId('message-list')
     expect(getComputedStyle(list).position).toBe('relative')
+  })
+
+  describe('jump to a search hit', () => {
+    const history: ChatMessage[] = [
+      { id: 'm1', role: 'user', content: 'Welche Frist gilt?', timestamp: new Date() },
+      {
+        id: 'm2',
+        role: 'assistant',
+        content: 'Die Frist beträgt einen Monat.',
+        timestamp: new Date(),
+      },
+      { id: 'm3', role: 'user', content: 'Danke', timestamp: new Date() },
+    ]
+
+    function stubReducedMotion(reduce: boolean) {
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn((query: string) => ({
+          matches: reduce && query.includes('prefers-reduced-motion: reduce'),
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        })),
+      )
+    }
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+      delete (Element.prototype as Partial<Element>).scrollIntoView
+    })
+
+    it('scrolls to the hit message, marks it and puts the focus on it', () => {
+      const scrolled: Array<{ id: string | null; options: unknown }> = []
+      Element.prototype.scrollIntoView = function (this: Element, options?: unknown) {
+        scrolled.push({ id: this.getAttribute('data-message-id'), options })
+      }
+      stubReducedMotion(false)
+
+      render(<MessageList messages={history} isLoading={false} targetMessageId="m2" />)
+
+      const target = screen.getByRole('article', { name: 'Gefundene Nachricht: Antwort' })
+      expect(target).toHaveTextContent('Die Frist beträgt einen Monat.')
+      expect(target).toHaveFocus()
+      expect(target).toHaveAttribute('data-highlighted', 'true')
+      // The hit message is the last thing scrolled to - not the end of the list.
+      expect(scrolled.at(-1)).toEqual({
+        id: 'm2',
+        options: { behavior: 'smooth', block: 'center' },
+      })
+    })
+
+    it('jumps without a scroll animation when reduced motion is requested', () => {
+      const scrolled: unknown[] = []
+      Element.prototype.scrollIntoView = function (options?: unknown) {
+        scrolled.push(options)
+      }
+      stubReducedMotion(true)
+
+      render(<MessageList messages={history} isLoading={false} targetMessageId="m2" />)
+
+      expect(scrolled.at(-1)).toEqual({ behavior: 'auto', block: 'center' })
+    })
+
+    it('ends the highlight once the focus leaves the message', () => {
+      render(<MessageList messages={history} isLoading={false} targetMessageId="m1" />)
+      const target = screen.getByRole('article', { name: 'Gefundene Nachricht: Frage' })
+      expect(target).toHaveAttribute('data-highlighted', 'true')
+
+      act(() => target.blur())
+
+      expect(target).toHaveAttribute('data-highlighted', 'false')
+    })
+
+    it('opens the chat normally for an unknown message id', () => {
+      render(<MessageList messages={history} isLoading={false} targetMessageId="does-not-exist" />)
+
+      expect(screen.getByText('Danke')).toBeInTheDocument()
+      expect(screen.queryByRole('article')).not.toBeInTheDocument()
+      expect(document.body).toHaveFocus()
+    })
   })
 })

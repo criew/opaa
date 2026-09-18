@@ -456,4 +456,40 @@ describe('ChatList ordering', () => {
     await user.click(link)
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats')
   })
+
+  it('offers the chat search when the filter finds nothing and hands the term over by router state', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+    await screen.findByText('Erlass vom März')
+
+    await user.type(screen.getByRole('searchbox', { name: 'Chats filtern' }), 'Haushalt')
+    const links = screen.getAllByRole('link', { name: 'In Inhalten suchen' })
+    // One in the empty state of the filter, one permanently below the list.
+    expect(links).toHaveLength(2)
+    for (const link of links) {
+      // Never in the address: it would end up in the browser history and the proxy's access log.
+      expect(link).toHaveAttribute('href', '/spaces/space-personal/chats')
+    }
+
+    await user.click(links[0])
+
+    expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats', {
+      state: { chatSearchTerm: 'Haushalt' },
+    })
+  })
+
+  it('keeps the chat search link below the list without a filter', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+    await screen.findByText('Erlass vom März')
+
+    const links = screen.getAllByRole('link', { name: 'In Inhalten suchen' })
+    expect(links).toHaveLength(1)
+
+    await user.click(links[0])
+
+    expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats', {
+      state: { chatSearchTerm: '' },
+    })
+  })
 })
