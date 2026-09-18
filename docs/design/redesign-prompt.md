@@ -91,24 +91,45 @@ Quelle **aus dem Space** ein („nur im Erlass nachsehen"). **Der Space bleibt i
 Rechte vergeben. Wer OPAA öffnet, landet in einem Gespräch, nicht in einer Verwaltungsmaske.
 
 ```
-┌────────────┬────────────────────────────────────┐
-│ SPACE ▾    │                                    │
-│ Widerspr.  │        Antwort mit Belegen         │
-├────────────┤                                    │
-│ CHATS      │                                    │
-│ · Fristen  │                                    │
-│ · Az. 12/4 │                                    │
-│ · Erlasse  │                                    │
-│ + Neu      │   ┌────────────────────────────┐   │
-├────────────┤   │ Frage stellen …         @  │   │
-│ Einrichten │   └────────────────────────────┘   │
-│ Katalog    │   Durchsucht: 4 Bestände           │
-│ Verwaltung │                                    │
-└────────────┴────────────────────────────────────┘
+┌──────────────┬──────────────────────────────────┐
+│ SPACE ▾      │                                  │
+│ Widerspr.    │       Antwort mit Belegen        │
+├──────────────┤                                  │
+│ CHATS  + Neu │                                  │
+│ [filtern …]  │                                  │
+│ ANGEHEFTET   │                                  │
+│ ▪ Fristen    │                                  │
+│ HEUTE        │                                  │
+│ · Az. 12/4   │                                  │
+│ LETZTE 7 T.  │  ┌────────────────────────────┐  │
+│ · Erlasse    │  │ Frage stellen …         @  │  │
+│ Alle Chats → │  └────────────────────────────┘  │
+├──────────────┤  Durchsucht: 4 Bestände          │
+│ Einrichten   │                                  │
+│ Katalog      │                                  │
+│ Verwaltung   │                                  │
+└──────────────┴──────────────────────────────────┘
 ```
 
 Die Seitenleiste hat damit **zwei Ebenen statt vier gleichrangiger Listen**: oben der aktive Space
 mit seinen Chats, unten die selteneren Wege. Der Space-Wechsel gehört an die prominenteste Stelle.
+
+**Die Chatliste bleibt auch mit Hunderten Chats beherrschbar**
+([chat-list.md](../features/chat-list.md)):
+
+- **In der Seitenleiste** — ein Feld filtert beim Tippen nach Titel; die Liste ist in Zeitgruppen
+  gegliedert (Angeheftet, Heute, Gestern, Letzte 7 Tage, Letzte 30 Tage, Älter); angeheftete Chats
+  stehen als einklappbare Gruppe oben. Findet der Filter nichts, führt er weiter zu „In Inhalten suchen" — die
+  Chatsuche findet auch Titel und archivierte Chats.
+- **Auf der Seite „Chats" des Space** — erreichbar über „Alle Chats →": Reiter „Aktiv" und „Archiv",
+  Mehrfachauswahl zum Archivieren, Zurückholen und Löschen, und die **Chatsuche** über Titel, Fragen und
+  Antworten mit Trefferauszug. Ein Treffer öffnet den Chat an der Trefferstelle. Die Seitenleiste ist
+  für Auszüge und Auswahlkästchen zu schmal; deshalb liegt das Verwalten hier.
+- **Archivieren ist eine persönliche Ablage**, kein Zustand des Chats: Der Chat bleibt lesbar und
+  fortsetzbar, und wer darin selbst weiterschreibt, holt ihn automatisch zurück. Das **Chat-Archiv** ist
+  etwas anderes als ein **archivierter Space** und wird in der Oberfläche nie mit demselben Wort ohne
+  Zusatz benannt.
+- **Keine Ordner und keine Schlagworte** — der Space ist bereits der Projektordner.
 
 Auf Tablet und Telefon klappt die Seitenleiste weg; der Chat bleibt vollständig bedienbar.
 

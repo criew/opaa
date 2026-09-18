@@ -2,7 +2,10 @@
 
 ## Status
 
-**Vorgeschlagen (18.09.2026)** — Issue #1716, Epic #1715. Setzt den Maintainer-Beschluss vom
+**Akzeptiert (18.09.2026)** — mit dem Abschluss von Epic #1715 ist jede Entscheidung dieses ADR
+umgesetzt und auf der Demo-Installation abgenommen; Nachträge #1765 (Reverse-Proxy) und #1766
+(Auszüge, `fetch` per Dokumentkennung) folgten am selben Tag. Vorgeschlagen am 18.09.2026 (Issue
+#1716, Epic #1715). Setzt den Maintainer-Beschluss vom
 18.09.2026 („Fundament zuerst") und die dort getroffenen vierzehn Entscheidungen nach den fünf
 Stakeholder-Bewertungen um. Nachtrag zu [ADR-0005](0005-authentication-strategy.md) (ein zusätzlicher
 Prüfweg, kein zusätzlicher Betriebsmodus), zu [ADR-0033](0033-lokale-benutzerverwaltung.md)

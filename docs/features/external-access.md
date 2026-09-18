@@ -1,6 +1,6 @@
 # Fremdzugänge: Zugangstokens und MCP-Server
 
-> **Status: Entwurf.** Beschlossen am 18.09.2026 auf Grundlage der Recherche „OPAA als Wissensschicht
+> **Status: Umgesetzt und abgenommen (18.09.2026).** Beschlossen am 18.09.2026 auf Grundlage der Recherche „OPAA als Wissensschicht
 > für andere KI-Tools", überarbeitet am 18.09.2026 nach fünf Stakeholder-Bewertungen (Betrieb,
 > Personalrat, Referatsleitung, Skeptiker, KI-Champion). Umgesetzt wird sie in Epic
 > [#1715](https://github.com/criew/opaa/issues/1715). **Gebaut sind Schalter und Kanaleinstellungen
@@ -8,8 +8,8 @@
 > Such- und Abrufweg mit Kontingent und Abflussalarm (#1720) sowie der MCP-Server (#1721);** die
 > Abschnitte „Umsetzungsstand" nennen die Einzelheiten. Das Betriebs- und Anwendungswissen dazu steht
 > im Handbuchkapitel „Fremdzugänge" (`docs/handbuch/fremdzugaenge.md`), einschließlich der
-> Einrichtungsanleitungen je Client und der Störungssuche. Der Entwurfshinweis entfällt, wenn der
-> Maintainer die Spezifikation nach der Umsetzung abnimmt.
+> Einrichtungsanleitungen je Client und der Störungssuche. Abgenommen vom Maintainer am 18.09.2026 auf der
+> Demo-Installation; Nachträge #1765 und #1766 sind enthalten.
 
 ## Motivation
 
@@ -504,7 +504,7 @@ Gefundene ganz lesen.
 |---|---|
 | **Bibliotheken auflisten** | Gibt die effektive Sicht des Tokens zurück: Kennung, Name, Beschreibung. Das ist die Antwort auf „worin kann ich hier suchen?" und zugleich die einzige Stelle, an der ein fremdes Werkzeug den Umfang seines Zugangs erfährt |
 | **Suchen** | Nimmt eine Frage entgegen und gibt **Treffer** zurück — Fundstellen mit Auszug, Herkunft, Metadaten und Relevanz. **Keine erzeugte Antwort**, kein Modellaufruf für eine Generierung. Optional auf einzelne der erteilten Bibliotheken eingegrenzt |
-| **Abrufen** | Holt zu einer Trefferkennung den Abschnitt samt angrenzendem Kontext — auf Wunsch das ganze Dokument, beschränkt auf das, was die effektive Sicht enthält |
+| **Abrufen** | Holt zu einer Trefferkennung — oder zur Dokumentkennung desselben Treffers — den Abschnitt samt angrenzendem Kontext; auf Wunsch das ganze Dokument, beschränkt auf das, was die effektive Sicht enthält |
 
 **Der Abruf liefert standardmäßig den Abschnitt, nicht das Dokument.** Die Vorgabe ist die Fundstelle
 mit ihrem angrenzenden Kontext; das vollständige Dokument gibt es über einen ausdrücklichen Parameter
@@ -559,8 +559,8 @@ Kernaussage dieser Spezifikation: **Es gibt genau einen Weg zu den Daten, und er
 
 | Werkzeug | Zweck |
 |---|---|
-| `search` | Frage → Trefferliste mit Kennungen, Titeln, Auszügen, Herkunft |
-| `fetch` | Trefferkennung → Abschnitt mit Kontext, auf Wunsch das ganze Dokument |
+| `search` | Frage → Trefferliste mit Kennungen, Titeln, Auszügen, Herkunft; ein Eintrag je Dokument, der Auszug ein Fenster um die Fundstelle |
+| `fetch` | Trefferkennung **oder** Dokumentkennung → Abschnitt mit Kontext, auf Wunsch das ganze Dokument |
 | `list_libraries` | effektive Sicht des Tokens |
 
 `search` und `fetch` tragen bewusst diese Namen und diesen Zuschnitt: Sie sind die Signatur, die
