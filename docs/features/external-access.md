@@ -88,6 +88,17 @@ freigegeben sein, und die Person muss ihn für ein benanntes Werkzeug bewusst er
 
 Der Fremdzugang ist eine Einstellung der Systemverwaltung, installationsweit, **Standard aus**.
 
+> **Gebaut (#1717).** Die Einstellungszeile, ihre Oberfläche unter *Administration →
+> Fremdzugänge* und das Protokollereignis `EXTERNAL_ACCESS_SETTINGS_CHANGED` existieren. Die
+> ausgelieferten Werte sind: Kanal **aus**, Ablauf-Obergrenze 90 Tage, Kontingent 60 Anfragen je
+> Token und Stunde, Netzbereiche `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8`,
+> `::1/128`, `fc00::/7` („Hausnetz"), Abflussalarm ab 600 Abrufen je Stunde und der Vorgabetext
+> unten. Die Netzprüfung selbst liegt in einer Komponente mit `isAllowed(remoteAddress)`, die
+> geschlossen versagt (leere Liste, fehlende Adresse und alles, was DNS auflösen könnte, werden
+> abgewiesen). **Noch nicht gebaut** sind die Auswertungen dieser Werte: die Durchsetzung an
+> Suchweg und `/mcp` (#1720, #1721), das Kontingent und der Abflussalarm (#1720) sowie die
+> Verwendung des Einleitungstextes im MCP-Handschlag (#1721).
+
 ```
 Systemkonfiguration → Fremdzugänge
   [ ] Fremdzugänge erlauben                          (aus)
