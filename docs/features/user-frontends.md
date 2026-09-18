@@ -172,8 +172,9 @@ erweitern sie nie.
 Das Leitprinzip der Belegbarkeit steht und fällt mit der Darstellung. Eine Fundstelle, die man nicht
 öffnen kann, ist kein Beleg. Die Oberfläche zeigt deshalb zu jeder Antwort, worauf sie beruht, macht
 den Sprung in das Quelldokument möglich und benennt sichtbar, wenn eine Aussage nicht belegt werden
-konnte. Im Zitierzwang verweigert das System die Antwort, statt sie plausibel zu formulieren — auch
-das ist ein Zustand, der dargestellt werden muss und nicht als Fehler aussehen darf.
+konnte. Ein Beleg, der die Belegvalidierung nicht besteht, wird als **nicht bestätigt** ausgewiesen,
+statt stillschweigend zu verschwinden oder als gültig durchzugehen — auch das ist ein Zustand, der
+dargestellt werden muss und nicht als Fehler aussehen darf.
 
 ### Barrierefreiheit
 

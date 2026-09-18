@@ -117,7 +117,7 @@ OPAA beantwortet das über die Kopplung zweier Mechanismen, die einzeln nicht au
 | Mechanismus | Beantwortet | Alleine unzureichend, weil |
 |---|---|---|
 | **Revisionssicheres Protokoll** | Wer hat wann was getan? Welcher Agent, welche Fassung, welche Aktion? | Es sagt nichts darüber, ob das Ergebnis in den Quellen gedeckt war |
-| **Belegpflicht** (Zitierzwang, Fundstellen, Konfidenz) | Worauf beruhte eine Aussage? | Ein Beleg ohne Protokoll lässt sich nachträglich nicht mehr einer Handlung zuordnen |
+| **Belegpflicht** (Belegvalidierung, Fundstellen, Konfidenz) | Worauf beruhte eine Aussage? | Ein Beleg ohne Protokoll lässt sich nachträglich nicht mehr einer Handlung zuordnen |
 
 Erst zusammen ergeben sie die geschuldete Nachvollziehbarkeit: Zu einer protokollierten Handlung
 gehören die Fundstellen, auf denen sie beruhte, und zu einer Fundstelle gehört die Handlung, in der

@@ -54,11 +54,13 @@ vollständig kennt. Erfahrene Kollegen werden gefragt; wer sie nicht hat, sucht 
    nach.
 3. Die Antwort nennt **jede Aussage mit Fundstelle** — Dokument, Randnummer, Sprung zur Textstelle — dazu
    die Konfidenz.
-4. Ist die Lage nicht belegbar, verweigert OPAA im **Zitierzwang-Modus** die Antwort, statt zu raten. Für
-   eine Auskunft, die jemand mit seinem Namen trägt, ist „nicht feststellbar" das brauchbarere Ergebnis.
+4. Ist die Lage nicht belegbar, sagt OPAA das, statt zu raten — für eine Auskunft, die jemand mit seinem
+   Namen trägt, ist „nicht feststellbar" das brauchbarere Ergebnis. Jeder Beleg, den die Antwort führt,
+   ist gegen die tatsächlich abgerufenen Fundstellen geprüft; ein Beleg, der auf nichts zeigt, steht im
+   Belegfenster als **nicht bestätigt**.
 5. Die Sachbearbeiterin prüft die Fundstelle selbst und übernimmt sie in den Vermerk.
 
-**Themenbereiche:** A (Zitierzwang, Konfidenz, hybride Suche, erklärbares Chunking) · B (Konnektoren zu
+**Themenbereiche:** A (Belegvalidierung, Konfidenz, hybride Suche, erklärbares Chunking) · B (Konnektoren zu
 Dateiablagen und Intranet, selbst aktualisierende Bestände) · F (rechtebewusste Suche — sie sieht nur, was
 ihre Rolle sehen darf).
 
@@ -144,14 +146,15 @@ Checkliste hat 60 Punkte, die Akte 200 Seiten in gemischten Formaten.
 1. Akte in den Space „Rechnungsprüfung" — mit eigenen Rechten, denn die Prüfung muss unabhängig bleiben.
 2. Ein Agent „Vergabeakte prüfen" arbeitet die Checkliste Punkt für Punkt ab und gibt zu jedem Punkt:
    erfüllt / nicht erfüllt / nicht feststellbar — **mit Seitenverweis**.
-3. Wo etwas fehlt, sagt OPAA „nicht feststellbar", statt zu interpretieren (Zitierzwang).
+3. Wo etwas fehlt, sagt OPAA „nicht feststellbar", statt zu interpretieren — und jeder angegebene
+   Seitenverweis ist gegen die abgerufenen Fundstellen geprüft (Belegvalidierung).
 4. Der Prüfer arbeitet die Liste ab, korrigiert Fehleinschätzungen und lässt daraus den
    **Prüfvermerk-Entwurf** erzeugen.
 5. Das Feedback des Prüfers fließt in die Qualitätsschleife: Der Agent wird gegen Referenzfälle
    nachgemessen, bevor eine neue Version freigegeben wird
    (siehe [features/search-quality-evaluation.md](./features/search-quality-evaluation.md)).
 
-**Themenbereiche:** A (Multi-Format, Zitierzwang, Rückmeldung und Messbarkeit der Antwortqualität) · D
+**Themenbereiche:** A (Multi-Format, Belegvalidierung, Rückmeldung und Messbarkeit der Antwortqualität) · D
 (Agent, Grenzen, Prüfstand vor der Freigabe) · G (revisionssicheres Protokoll — bei Prüfungshandlungen
 zwingend).
 

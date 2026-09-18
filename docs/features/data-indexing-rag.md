@@ -3,7 +3,7 @@
 > **Status: Entwurf — wesentliche offene Fragen verbleiben.**
 
 **Themenbereich A** der [Produktvision](../VISION.md). **Phasenlage:** Der Kern — Quellenbindung,
-Zitierzwang, Konfidenz, hybride Suche mit Reranking, Formaterkennung und erklärbares Chunking — gehört
+Belegvalidierung, Konfidenz, hybride Suche mit Reranking, Formaterkennung und erklärbares Chunking — gehört
 in **Phase 1**. Deep Research und die Bilderkennung folgen in **Phase 2**, der Wissensgraph in
 **Phase 3**.
 
@@ -37,7 +37,7 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
    Kennung, Abschnittsnummer und Dokumentbezeichnung müssen zu den für diese Antwort tatsächlich
    abgerufenen Fundstellen passen. Geprüft wird die **Form** des Belegs, nicht seine inhaltliche Deckung;
    ein Zwangs- und Verweigerungsapparat darüber ist bewusst nicht gebaut (siehe
-   [Zitierzwang](#zitierzwang)).
+   [Belegvalidierung](#belegvalidierung)).
 3. **Konfidenz wird ausgewiesen**, getrennt nach Trefferqualität und Belegdeckung — zwei verschiedene
    Aussagen, die nicht zu einer Zahl verschmolzen werden.
 4. **Gesucht wird hybrid**: Vektorsuche und Volltextsuche laufen nebeneinander, ihre Ergebnisse werden
@@ -82,7 +82,7 @@ wie viele Treffer in die Antwort eingegangen sind. Bei fehlendem Zugriff bleibt 
 unspezifisch — „in diesem Space ist für dich derzeit kein Wissen verfügbar" statt einer Angabe, wie viele
 Bestände gesperrt sind.
 
-### Zitierzwang
+### Belegvalidierung
 
 **Gebaut ist die deterministische Belegvalidierung** (#386): Jeder Beleg, den das Modell in seiner Antwort
 erzeugt, wird gegen die Menge der für **diese** Antwort tatsächlich abgerufenen Fundstellen geprüft — kein
@@ -175,7 +175,7 @@ das nicht. OPAA weist deshalb **zwei getrennte Größen** aus:
 | Größe | Frage | Grundlage |
 |---|---|---|
 | **Trefferqualität** | Wie gut passen die gefundenen Stellen zur Frage? | Bewertung nach dem Reranking, je Fundstelle |
-| **Belegdeckung** | Wie viel der Antwort ist belegt? | Anteil der Quellenangaben mit einem gültigen Beleg (`cited = true` und `citationValid = true`, siehe [Zitierzwang](#zitierzwang)) |
+| **Belegdeckung** | Wie viel der Antwort ist belegt? | Anteil der Quellenangaben mit einem gültigen Beleg (`cited = true` und `citationValid = true`, siehe [Belegvalidierung](#belegvalidierung)) |
 
 Beide werden in Stufen dargestellt — hoch, mittel, gering — und nicht als Nachkommastelle, die eine
 Genauigkeit vortäuscht, die das Verfahren nicht hat. Der Zahlenwert bleibt in der Detailansicht und im
@@ -241,7 +241,7 @@ Das Reranking ist der Punkt, an dem sich Aufwand und Qualität abwägen lassen, 
 konfigurierbar:
 Größe der Kandidatenmenge, Zahl der an die Antwort übergebenen Passagen und die Schwelle, unterhalb derer
 eine Passage nicht mehr als Beleg taugt. Diese Schwelle entscheidet damit auch, welche Passagen überhaupt
-für die Belegvalidierung (siehe [Zitierzwang](#zitierzwang)) infrage kommen.
+für die Belegvalidierung (siehe [Belegvalidierung](#belegvalidierung)) infrage kommen.
 
 Zusätzliche Signale — Aktualität eines Dokuments, Vielfalt der Quellen, damit nicht fünf Passagen aus
 derselben Datei die Antwort tragen — wirken **nach** dem Reranking und sind einzeln abschaltbar. Ein
@@ -305,7 +305,7 @@ Drei Zusammenhänge sind dabei wesentlich:
 2. **Die Ähnlichkeitsschwelle bestimmt, welche Passagen als Beleg infrage kommen.** Sie zu senken, um
    mehr Fragen mit einer Antwort statt mit einer Fundstellenlücke zu beantworten, verschiebt das
    Problem: Die Antworten werden dann auf schwächere Belege gestützt. Die Belegvalidierung (siehe
-   [Zitierzwang](#zitierzwang)) stellt nur sicher, dass ein zitierter Beleg echt ist — nicht, dass er
+   [Belegvalidierung](#belegvalidierung)) stellt nur sicher, dass ein zitierter Beleg echt ist — nicht, dass er
    inhaltlich trägt.
 3. **Die Überlappung entscheidet, ob ein Beleg seinen Bezug behält.** Ohne sie kann eine Definition
    von ihrer Überschrift getrennt werden, und der Beleg zeigt eine Passage, der ihr Bezug fehlt.
@@ -713,7 +713,7 @@ Bestände durchsucht und welche Stellen verworfen wurden.
 Merkmale:
 
 - **Derselbe Rechtekontext** wie jede andere Suche; Deep Research eröffnet keinen zusätzlichen Zugriff.
-- **Die Belegvalidierung gilt auch hier** (siehe [Zitierzwang](#zitierzwang)): Jeder Beleg im Bericht wird
+- **Die Belegvalidierung gilt auch hier** (siehe [Belegvalidierung](#belegvalidierung)): Jeder Beleg im Bericht wird
   gegen die für den jeweiligen Teilbericht abgerufenen Fundstellen geprüft, ein ungültiger Beleg wird
   gekennzeichnet statt entfernt. Die je Kapitel zerlegte Ausweisung unbelegter Abschnitte war Teil des
   am 21.08.2026 verworfenen Verweigerungsapparats und ist nicht gebaut.
@@ -941,7 +941,7 @@ Idee wieder aufgemacht werden.
   [Wissensquellen und Konnektoren](./knowledge-sources.md#geklärte-fragen) mit **Issue #119** erfasst.
 - **Nur die deterministische Belegprüfung wird gebaut, kein Zwangs- und Verweigerungsapparat darüber —
   ja.** Verweigerung, Schalter am Space und die inhaltliche Deckungsprüfung (vormals „Stufe 2") wurden am
-  21.08.2026 verworfen, nicht aufgeschoben (siehe [Zitierzwang](#zitierzwang), Schnitt entschieden in
+  21.08.2026 verworfen, nicht aufgeschoben (siehe [Belegvalidierung](#belegvalidierung), Schnitt entschieden in
   [#354](https://github.com/criew/opaa/issues/354)).
 - **Ein Vektorspeicher, und zwar PostgreSQL mit pgvector — ja.** Austauschbare Vektorspeicher werden
   nicht zugesagt. Der Zugriff läuft zwar über eine portable Schnittstelle des Rahmenwerks, ein Wechsel
@@ -1000,7 +1000,7 @@ Idee wieder aufgemacht werden.
 - **Belegdeckung** — Anteil der Antworten mit mindestens einer gültigen Quellenangabe
   (`SourceReference.cited = true` und `citationValid = true`). Bewusst nicht „Anteil der tragenden
   Aussagen mit Fundstelle": Die dafür nötige Abschnittszerlegung mit Negativliste wurde am 21.08.2026
-  verworfen (siehe [Zitierzwang](#zitierzwang)) und ist ohne sie nicht messbar.
+  verworfen (siehe [Belegvalidierung](#belegvalidierung)) und ist ohne sie nicht messbar.
 - **Anteil ungültiger Belege** — Anteil der Antworten mit mindestens einem Beleg, der die deterministische
   Validierung nicht besteht (#386, heute als Log-Information erfasst). Ein durchgängig hoher Anteil
   deutet auf ein Modell hin, das die Belegform nachahmt, statt echte Fundstellen zu zitieren.

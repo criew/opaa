@@ -29,7 +29,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 1. [VISION.md](./VISION.md) — Nordstern und die beiden Leitprinzipien
 2. [USE-CASES.md](./USE-CASES.md) — die Abläufe, um die es geht
 3. [CONCEPTS.md](./CONCEPTS.md) — nur die Abschnitte **Belegbarkeit**, **Verteilbarkeit**, **Fundstelle und
-   Quellenbindung**, **Zitierzwang**, **Konfidenz**
+   Quellenbindung**, **Belegvalidierung**, **Konfidenz**
 4. [`features/spaces-and-assets.md`](./features/spaces-and-assets.md) — wie eine gute Arbeitsweise vom
    Einzelfall zum geprüften Standard wird
 5. [`features/public-sector.md`](./features/public-sector.md) — Leichte Sprache, Amtssprache,
@@ -39,7 +39,8 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 **Worauf es dabei ankommt:**
 
 - Eine Antwort nennt ihre Fundstelle, und Sie springen mit einem Klick dorthin
-- Wo nichts belegbar ist, wird nichts behauptet — im Zitierzwang ergeht gar keine Antwort
+- Jeder Beleg ist gegen die abgerufenen Fundstellen geprüft; einer, der auf nichts zeigt, wird als nicht
+  bestätigt gekennzeichnet statt stillschweigend mitgeliefert
 - Was Ihr Bereich an Arbeitsweise entwickelt, wird ein benanntes, freigegebenes, nachvollziehbares Asset
 - Nachvollziehbar bleibt auch, wer wann welche Fassung freigegeben hat
 

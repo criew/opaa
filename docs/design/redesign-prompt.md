@@ -145,17 +145,22 @@ freiwilliger freier Hinweis. Zurückhaltend gestaltet — es ist ein Angebot, ke
 
 **Der Chatname** ist an Ort und Stelle änderbar, ohne Dialog.
 
-### 4.2 Die Verweigerung im Zitierzwang
+### 4.2 Der nicht bestätigte Beleg
 
-Für haftungskritische Zusammenhänge lässt sich ein Space in den **Zitierzwang** schalten: Findet sich
-kein Beleg, verweigert das System die Antwort und sagt „nicht feststellbar", statt plausibel zu
-formulieren. Das ist das Stück, das OPAA von einem Chatbot unterscheidet.
+Jeder Beleg wird gegen die Fundstellen geprüft, die für diese Antwort abgerufen wurden. Besteht er die
+Prüfung nicht, bleibt er im Antworttext stehen und die zugehörige Fundstelle wird als **nicht
+bestätigt** ausgewiesen — sie verschwindet nicht stillschweigend und geht nicht als gültig durch. Das
+ist das Stück, das OPAA von einem Chatbot unterscheidet.
 
-**Es sieht aus wie jede andere Antwort.** Gleiche Form, gleicher Ort, gleiche Ruhe. Kein Warnton,
-keine Signalfarbe, kein Fehlerbanner. Die Auskunft „dazu lässt sich nichts belegen" ist ein
-vollwertiges Ergebnis, kein Zwischenfall — sie zeigt, wo gesucht wurde, und ist damit fertig.
+**Es sieht aus wie jede andere Fundstelle.** Gleiche Form, gleicher Ort, gleiche Ruhe. Kein Warnton,
+keine Signalfarbe, kein Fehlerbanner — ein dezenter Hinweis an der Fundstelle genügt. Auch die Aussage
+„dazu lässt sich nichts belegen" ist ein vollwertiges Ergebnis und kein Zwischenfall.
 
 Ein Design, das hier ein rotes Ausrufezeichen setzt, hat das Produkt nicht verstanden.
+
+> Eine frühere Fassung dieses Abschnitts gestaltete die **Verweigerung im Zitierzwang** — einen Modus,
+> der bei fehlendem Beleg gar nicht erst antwortet. Er ist am 21.08.2026 entschieden nicht gebaut
+> worden; die Gestaltungsregel darüber gilt unverändert für den Zustand, den es tatsächlich gibt.
 
 ### 4.3 Space einrichten
 
@@ -165,7 +170,7 @@ fernen Verwaltungsbereich.
 - **Datenquellen zuordnen** — aus den Wissensbibliotheken wählen, die man selbst lesen darf
 - **Agenten zuordnen** — welche Werkzeuge hier zur Verfügung stehen
 - **Mitglieder und Rollen** — aufnehmen, Rolle ändern, Eigentum übergeben
-- **Name, Beschreibung, Zitierzwang**
+- **Name, Beschreibung, Strikt-Modus**
 
 Das Zuordnen ist die häufigste Handlung hier und muss leichtfallen: suchen, auswählen, fertig.
 

@@ -67,7 +67,7 @@ bestehen und ist nicht gestrichen.
    zurück, nicht als Liste am Ende. Nur so lässt sich die Belegprüfung überhaupt ansetzen.
 10. **Die Ausgabe läuft im Fluss.** Ein Modus, der stattdessen erst nach vollständiger Belegprüfung
     ausgibt, war Teil des am 21.08.2026 verworfenen Zitierzwang-Verweigerungsapparats (siehe
-    [Zitierzwang](./data-indexing-rag.md#zitierzwang)) und ist nicht gebaut.
+    [Belegvalidierung](./data-indexing-rag.md#belegvalidierung)) und ist nicht gebaut.
 11. **Die Absicherung gegen Missbrauch liegt nicht im Modell**, sondern in der Rechteprüfung davor, dem
     unveränderlichen Systemvorspann und der Belegprüfung danach.
 
@@ -402,7 +402,7 @@ erlaubte Modelle = Systemvorgabe
 Dieselbe Regel gilt für die übrigen an Modelle gebundenen Vorgaben — zulässige Werkzeuge, Weitergabe nach
 außen. Es gibt genau eine Richtung: **Jede Ebene kann verschärfen, keine kann lockern.** Ein
 Zitierzwang-Schalter auf einer dieser Ebenen war Teil des am 21.08.2026 verworfenen Verweigerungsapparats
-(siehe [Zitierzwang](./data-indexing-rag.md#zitierzwang)) und ist nicht gebaut; die deterministische
+(siehe [Belegvalidierung](./data-indexing-rag.md#belegvalidierung)) und ist nicht gebaut; die deterministische
 Belegvalidierung, die stattdessen gebaut ist, greift unabhängig von Space, Bibliothek oder Agent.
 
 Der Vorteil ist, dass sich die Frage „warum wurde hier dieses Modell verwendet?" immer beantworten lässt,
@@ -594,7 +594,7 @@ Erst wenn feststeht, aus welchen Beständen geantwortet wird, steht fest, welche
 Eine Installation, die das Modell vorher festlegt, kann die datengebundene Beschränkung nicht einhalten.
 
 Die **Belegprüfung nach der Erzeugung** ist in
-[Wissensschicht und Retrieval](./data-indexing-rag.md#zitierzwang) beschrieben. Für dieses Dokument ist
+[Wissensschicht und Retrieval](./data-indexing-rag.md#belegvalidierung) beschrieben. Für dieses Dokument ist
 nur festzuhalten: Sie ist kein Bestandteil des Systemvorspanns und verlässt sich nicht darauf, dass das
 Modell die Anweisung befolgt.
 
@@ -607,7 +607,7 @@ Formulierung fehlt.
 
 Wie die abgerufenen Passagen an das Modell übergeben werden, ist keine Feinheit der Umsetzung, sondern
 die **Nahtstelle zwischen Retrieval und Belegprüfung**: Woran die Prüfung ansetzt, entsteht genau hier.
-Ohne eine beschriebene Übergabe ist der Zitierzwang nicht beschreibbar.
+Ohne eine beschriebene Übergabe ist die Belegvalidierung nicht beschreibbar.
 
 Die Zuständigkeit ist deshalb so geschnitten: **[Wissensschicht und Retrieval](./data-indexing-rag.md)
 bestimmt, welche Passagen übergeben werden** — Suche, Zusammenführung, Reranking, Schwelle. **Dieses
@@ -662,7 +662,7 @@ die empfundene Antwortzeit ist das der wirksamste Einzelfaktor.
 
 **Mit der gebauten Belegvalidierung entsteht hier keine Spannung.** Sie hält keine Antwort zurück — ein
 ungültiger Beleg wird gekennzeichnet, nicht die Ausgabe verweigert (siehe
-[Zitierzwang](./data-indexing-rag.md#zitierzwang)) —, also gibt es nichts, dessen Sichtbarkeit ein
+[Belegvalidierung](./data-indexing-rag.md#belegvalidierung)) —, also gibt es nichts, dessen Sichtbarkeit ein
 laufender Strom vorwegnehmen könnte. Die Ausgabe im Fluss kann deshalb, sobald sie gebaut ist, ohne
 weitere Abwägung überall greifen.
 
@@ -705,7 +705,7 @@ und keine davon ist eine Bitte an das Modell:
   und der Grund, warum ein gelungener Umgehungsversuch bei OPAA vergleichsweise wenig einbringt.
 - **Die Belegvalidierung begrenzt den Schaden.** Ein von einer Umgehung erschlichener, unbelegter Satz
   trägt keinen gültigen Beleg und wird als solcher gekennzeichnet — er kommt nicht als scheinbar
-  belegte Aussage durch (siehe [Zitierzwang](./data-indexing-rag.md#zitierzwang)).
+  belegte Aussage durch (siehe [Belegvalidierung](./data-indexing-rag.md#belegvalidierung)).
 
 ### Untergeschobene Anweisungen aus Dokumenten
 
@@ -822,7 +822,7 @@ dort beschrieben.
 - Ab welcher Größe lohnt eine **getrennte Betriebsumgebung für Modelle** gegenüber dem gemeinsamen
   Betrieb mit der Anwendung?
 - Falls ein Verweigerungsapparat über die Belegvalidierung hinaus wieder aufgemacht wird (siehe
-  [Zitierzwang](./data-indexing-rag.md#zitierzwang)): Bleibt es dann bei der **vollständigen Prüfung vor
+  [Belegvalidierung](./data-indexing-rag.md#belegvalidierung)): Bleibt es dann bei der **vollständigen Prüfung vor
   der Ausgabe**, oder lohnt die abschnittsweise Prüfung während der Ausgabe? Letztere hält den
   Zeitvorteil, verlangt aber eine verlässliche Zerlegung der Antwort in prüfbare Abschnitte.
 - Soll die **Filterung von Inhalten** im Zielbild bleiben? Sie war im früheren Bestand als Erweiterung
