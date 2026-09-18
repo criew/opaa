@@ -6,6 +6,7 @@ import type {
   LocalUserUpdateRequest,
 } from '../types/api'
 import {
+  countsAsInactive,
   countsAsWithoutExpiry,
   LAST_ADMIN_USER_ID,
   MAIL_FAILING_ADDRESS_SUFFIX,
@@ -175,7 +176,7 @@ export const localUserHandlers = [
           (!status || user.status === status) &&
           (!role || user.systemRole === role) &&
           (!withoutExpiry || countsAsWithoutExpiry(user)) &&
-          (!inactive || user.activity === 'NEVER' || user.activity === 'INACTIVE_90_DAYS'),
+          (!inactive || countsAsInactive(user)),
       )
       .sort((a, b) => compare(a, b, sort) * direction)
 

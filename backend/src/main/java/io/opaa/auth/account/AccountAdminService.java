@@ -130,7 +130,7 @@ public class AccountAdminService {
       if (query.withoutExpiry() && !local.credentials().countsAsWithoutExpiry()) {
         return false;
       }
-      if (query.inactive() && !local.isInactive()) {
+      if (query.inactive() && !local.countsAsInactive()) {
         return false;
       }
     }

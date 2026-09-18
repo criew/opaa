@@ -12,7 +12,8 @@ import io.opaa.common.ValidationException;
  * @param query case-insensitive substring of address or display name, or {@code null}
  * @param withoutExpiry only accounts counting as without an expiry date ({@link
  *     LocalCredentials#countsAsWithoutExpiry()})
- * @param inactive only accounts whose activity class is {@code NEVER} or {@code INACTIVE_90_DAYS}
+ * @param inactive only accounts counting as unused for too long ({@link
+ *     LocalUserOverview#countsAsInactive()})
  */
 public record LocalUserQuery(
     String query,

@@ -6,6 +6,7 @@ import {
   MAIL_FAILING_ADDRESS_SUFFIX,
   OWNS_CONTENT_USER_ID,
   mockLocalUsers,
+  setMockLocalUsers,
 } from '../mocks/localUserFixtures'
 import {
   PARTNER_PROVIDER,
@@ -52,6 +53,23 @@ describe('userAdminStore', () => {
 
     await state().setFilters({ review: 'ALL', status: 'INVITED' })
     expect(state().accounts.map((account) => account.displayName)).toEqual(['T. Klein'])
+  })
+
+  /**
+   * Das Notanker-Konto ist kein Handlungskandidat (#1641) – der Filter „länger nicht genutzt" zeigt
+   * es auch dann nicht, wenn es lange ruht; jedes reguläre Konto im selben Zustand dagegen schon.
+   */
+  it('leaves the bootstrap account out of the inactive filter and keeps every regular one', async () => {
+    setMockLocalUsers(
+      mockLocalUsers.map((account) => ({ ...account, activity: 'INACTIVE_90_DAYS' as const })),
+    )
+
+    await state().setFilters({ review: 'INACTIVE' })
+
+    expect(state().accounts.every((account) => account.local && !account.local.bootstrap)).toBe(
+      true,
+    )
+    expect(state().accounts).toHaveLength(mockLocalUsers.length - 1)
   })
 
   it('ranks origin, role and state instead of ordering their words alphabetically', async () => {

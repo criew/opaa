@@ -42,7 +42,13 @@ public record LocalUserOverview(
         : LocalAccountActivity.ACTIVE;
   }
 
-  public boolean isInactive() {
-    return activity != LocalAccountActivity.ACTIVE;
+  /**
+   * Whether this account belongs to the review obligation's "länger als 90 Tage nicht genutzt"
+   * (ADR-0033, Entscheidung 11): an activity class other than {@code ACTIVE}, and not the bootstrap
+   * account - that one is exempt from the inactivity lock (Entscheidung 5) and is therefore no
+   * candidate for a lock or a deletion. The single rule behind both account lists' filter.
+   */
+  public boolean countsAsInactive() {
+    return activity != LocalAccountActivity.ACTIVE && !credentials.isBootstrap();
   }
 }

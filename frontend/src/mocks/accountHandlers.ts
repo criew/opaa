@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import type { AccountResponse, SystemRole } from '../types/api'
 import { mockProviderAccounts, setMockProviderAccounts, toLocalAccount } from './accountFixtures'
 import {
+  countsAsInactive,
   countsAsWithoutExpiry,
   LAST_ADMIN_USER_ID,
   mockLocalUsers,
@@ -137,7 +138,7 @@ export const accountHandlers = [
         if (!local) return false
         if (status && local.status !== status) return false
         if (withoutExpiry && !countsAsWithoutExpiry(local)) return false
-        if (inactive && local.activity === 'ACTIVE') return false
+        if (inactive && !countsAsInactive(local)) return false
         return true
       })
       .filter(

@@ -35,6 +35,15 @@ export function countsAsWithoutExpiry(user: LocalUserResponse): boolean {
   return !user.expiresAt && !user.bootstrap
 }
 
+/**
+ * Die eine Regel hinter „länger nicht genutzt" – wie im Backend (`LocalUserOverview`): eine
+ * Aktivitätsklasse außer „aktiv" und nicht das Notanker-Konto, das unbenutzt bleiben soll und
+ * deshalb kein Kandidat für Sperre oder Löschung ist. Beide Listenfilter lesen sie hier.
+ */
+export function countsAsInactive(user: LocalUserResponse): boolean {
+  return user.activity !== 'ACTIVE' && !user.bootstrap
+}
+
 function initialLocalUsers(): LocalUserResponse[] {
   return [
     {
