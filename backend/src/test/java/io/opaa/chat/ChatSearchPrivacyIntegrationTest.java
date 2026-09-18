@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.read.ListAppender;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -23,9 +24,7 @@ import io.opaa.space.Space;
 import io.opaa.space.SpaceMembership;
 import io.opaa.space.SpaceRepository;
 import io.opaa.test.OpaaIntegrationTest;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -41,13 +40,11 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 /**
  * The chat search term leaves no trace (docs/features/chat-list.md, "Datenschutz und
  * Personalvertretung"): a unique term goes through the whole HTTP path - a hit, a refusal for a
- * non-member and a validation error - with the application and JDBC loggers at TRACE, and appears
- * afterwards in no log line, no audit row and no metric.
+ * non-member and a validation error - with every logger that is not pinned in application.yml at
+ * TRACE, and appears afterwards in no log line, no audit row and no metric.
  */
 @OpaaIntegrationTest
 class ChatSearchPrivacyIntegrationTest {
-
-  private static final List<String> TRACED_LOGGERS = List.of("io.opaa", "org.springframework.jdbc");
 
   @Autowired private MockMvc mockMvc;
   @Autowired private UserRepository users;
@@ -99,12 +96,8 @@ class ChatSearchPrivacyIntegrationTest {
     Logger root = (Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
     ListAppender<ILoggingEvent> appender = new ListAppender<>();
     appender.start();
-    List<Level> previousLevels = new ArrayList<>();
-    for (String name : TRACED_LOGGERS) {
-      Logger logger = (Logger) LoggerFactory.getLogger(name);
-      previousLevels.add(logger.getLevel());
-      logger.setLevel(Level.TRACE);
-    }
+    Level previousRootLevel = root.getLevel();
+    root.setLevel(Level.TRACE);
     root.addAppender(appender);
     try {
       mockMvc
@@ -119,9 +112,7 @@ class ChatSearchPrivacyIntegrationTest {
           .andExpect(status().isBadRequest());
     } finally {
       root.detachAppender(appender);
-      for (int i = 0; i < TRACED_LOGGERS.size(); i++) {
-        ((Logger) LoggerFactory.getLogger(TRACED_LOGGERS.get(i))).setLevel(previousLevels.get(i));
-      }
+      root.setLevel(previousRootLevel);
     }
 
     assertThat(appender.list).as("the capture must have seen the requests").isNotEmpty();
@@ -129,6 +120,11 @@ class ChatSearchPrivacyIntegrationTest {
       assertThat(event.getFormattedMessage()).doesNotContainIgnoringCase(term);
       if (event.getArgumentArray() != null) {
         assertThat(Arrays.toString(event.getArgumentArray())).doesNotContainIgnoringCase(term);
+      }
+      for (IThrowableProxy cause = event.getThrowableProxy();
+          cause != null;
+          cause = cause.getCause()) {
+        assertThat(String.valueOf(cause.getMessage())).doesNotContainIgnoringCase(term);
       }
     }
     assertThat(

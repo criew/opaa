@@ -224,9 +224,19 @@ public class ChatService {
                     spaceId, userId, normalizedTerm, effectivePage, boundedPageSize));
   }
 
-  /** The stripped term, or a 400 if it is shorter or longer than the search accepts. */
+  /**
+   * The stripped term with every control character read as a blank - PostgreSQL text holds no NUL -
+   * or a 400 if it is shorter or longer than the search accepts.
+   */
   private static String requireSearchTerm(String term) {
-    String stripped = term == null ? "" : term.strip();
+    String stripped =
+        term == null
+            ? ""
+            : term.codePoints()
+                .map(c -> Character.isISOControl(c) ? ' ' : c)
+                .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+                .toString()
+                .strip();
     int length = stripped.codePointCount(0, stripped.length());
     if (length < SEARCH_MIN_TERM_LENGTH) {
       throw new ValidationException(

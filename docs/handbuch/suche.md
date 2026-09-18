@@ -632,7 +632,10 @@ Zugangstoken erhält `403`, und der MCP-Server bietet sie nicht an.
 **Keine Protokollierung.** Der Suchbegriff steht im Anfragekörper, nie in der Adresse, und
 erscheint deshalb in keinem Zugriffslog eines vorgeschalteten Proxys. Er wird weder ins
 Nachweisprotokoll noch ins Anwendungslog (auf keiner Ebene) noch in eine Metrik übernommen. Gezählt
-wird nur die Dauer je Suche, ohne Begriff und ohne Person (Abschnitt 10.2).
+wird nur die Dauer je Suche, ohne Begriff und ohne Person (Abschnitt 10.2). Das gilt auch, wenn
+Logger von Spring, Hibernate Validator oder des PostgreSQL-Treibers zur Diagnose auf `DEBUG` oder
+`TRACE` gestellt werden: Die Logger, die Anfragekörper, Handler-Argumente oder Bindewerte ausgeben,
+stehen fest auf `INFO`.
 
 ## 8. Diagnose: warum sieht eine Person ein Dokument nicht?
 

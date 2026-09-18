@@ -592,6 +592,14 @@ logging:
     # account management included. Pinned so raising org.eclipse.angus.mail to DEBUG/TRACE for
     # diagnosis never prints a link token; guarded by LocalSelfServiceIntegrationTest.
     org.eclipse.angus.mail: INFO
+    # Request bodies are user content (the chat search term, a sign-in password). Spring MVC prints
+    # read and written bodies at DEBUG and handler arguments at TRACE, Hibernate Validator the
+    # validated object and the PostgreSQL driver every bind value at TRACE. Pinned so raising
+    # their parents for diagnosis never prints one; guarded by ChatSearchPrivacyIntegrationTest.
+    org.springframework.web.servlet.mvc.method.annotation.RequestResponseBodyMethodProcessor: INFO
+    org.springframework.web.method.HandlerMethod: INFO
+    org.hibernate.validator.internal.engine.resolver.JPATraversableResolver: INFO
+    org.postgresql.core.v3.QueryExecutorImpl: INFO
 
 ---
 spring:

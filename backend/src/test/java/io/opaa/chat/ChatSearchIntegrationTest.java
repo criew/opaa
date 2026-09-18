@@ -306,6 +306,21 @@ class ChatSearchIntegrationTest {
     assertThat(search(spaceId, author, "!&|:*()'").matches()).isEmpty();
   }
 
+  /** PostgreSQL text holds no NUL; a control character in the term is a blank, not a 409. */
+  @Test
+  void aControlCharacterInTheTermIsReadAsABlank() {
+    UUID author = createUser();
+    UUID spaceId = createSpace(author);
+    UUID chatId = createChat(spaceId, author, "Steuerzeichen");
+    addMessage(chatId, 0, ChatRole.USER, "Frist zum Widerspruch");
+
+    assertThat(single(search(spaceId, author, "Frist\u0000Widerspruch")).chatId())
+        .isEqualTo(chatId);
+    assertThat(single(search(spaceId, author, "\u0000Frist\n")).chatId()).isEqualTo(chatId);
+    assertThatThrownBy(() -> chatService.searchChats(spaceId, author, "ab\u0000", 0, 20))
+        .isInstanceOf(ValidationException.class);
+  }
+
   // -----------------------------------------------------------------------------------------
   // Fixture
   // -----------------------------------------------------------------------------------------
