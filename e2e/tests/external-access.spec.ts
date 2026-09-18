@@ -36,7 +36,14 @@ import {
  * der Reihe nach jeden dieser vier weg und prüfen, dass die Treffer verschwinden, ohne dass etwas
  * anderes angefasst wurde. Genau dafür braucht es diese Suite: Jede Schicht für sich ist im Backend
  * geprüft (io.opaa.mcp.McpServerIntegrationTest), aber erst hier laufen Oberfläche, echte
- * Filterkette, nginx-Auslieferung und der MCP-Server eines laufenden Stacks zusammen.
+ * Filterkette und der MCP-Server eines laufenden Stacks zusammen.
+ *
+ * **Zwei Adressen.** Was eine Person tut, läuft durch die nginx-Auslieferung des Frontends wie in
+ * jedem anderen Szenario dieser Suite. Was ein Zugangstoken tut - `/mcp` und die drei REST-Lesewege
+ * - geht dagegen **am Frontend vorbei an den Host-Port des Backends** (`E2E_BACKEND_BASE_URL`,
+ * siehe fixtures/externalAccess.ts): `frontend/nginx.conf` leitet allein `/api/` weiter, `/mcp`
+ * erreicht ein Client dort nicht. Beide Tokenwege gehen deshalb über dieselbe Adresse, damit ein
+ * Unterschied zwischen ihnen nie vom Weg dorthin kommt.
  *
  * `test.describe.serial`, und zwar zwingend: Die Szenarien bauen eine Installation nacheinander
  * weiter (Kanal an, Bibliotheken, Freigaben, Tokens), und drei von ihnen sind irreversibel - eine
@@ -52,6 +59,14 @@ import {
  * wieder im Ausgangszustand, und die drei angelegten Bibliotheken samt ihren Dokumenten sind fort -
  * anders als sonst in dieser Suite, weil die Fixture-Dokumente hier keinen Zweck mehr haben und der
  * Rechtefilter späterer Szenarien nichts von ihnen wissen muss.
+ *
+ * **Die Tokenwerte stehen im Klartext im Trace.** Playwright hält bei einem Fehlschlag Trace und
+ * Anfrageköpfe fest, und dort steht `Authorization: Bearer opaa_pat_…` so, wie es über die Leitung
+ * ging - verdecken ließe sich das nur, indem der Test seinen eigenen Prüfgegenstand verbirgt. Zwei
+ * Dinge entschärfen das: Jedes Token dieses Laufs wird in `test.afterAll` widerrufen und wirkt
+ * danach nicht mehr, und `scripts/run-e2e.mjs` fährt den Stack samt Datenbank mit `down -v` ab -
+ * das Token existiert nicht einmal mehr als Zeile. Ein hochgeladenes Trace-Artefakt trägt also
+ * einen Wert, der gegen nichts mehr gilt.
  */
 
 const documentPath = (fileName: string) =>
@@ -93,16 +108,32 @@ test.describe.serial('Fremdzugänge', () => {
     const adminApi = await apiAs('dev-admin')
     try {
       await revokeOwnTokens(personApi)
-      await withdrawRelease(personApi, libraryAId)
-      await withdrawRelease(personApi, libraryBId)
-      await withdrawRelease(adminApi, libraryCId)
-      await deleteLibrary(personApi, libraryAId)
-      await deleteLibrary(personApi, libraryBId)
-      await deleteLibrary(adminApi, libraryCId)
+
+      // Die Kennungen kommen aus den Listen, nicht aus den Modulvariablen: Bricht ein Lauf vor
+      // oder in Szenario 2 ab, sind die Variablen leer, die Bibliotheken aber angelegt - das
+      // Aufräumen muss gerade dann greifen. Die Namen tragen die Kennung des Laufs und treffen
+      // deshalb nie eine Bibliothek eines anderen.
+      const ids = {
+        [LIBRARY_A]: await findLibraryId(personApi, LIBRARY_A),
+        [LIBRARY_B]: await findLibraryId(personApi, LIBRARY_B),
+        [LIBRARY_C]: await findLibraryId(adminApi, LIBRARY_C),
+      }
+      const apiOf = (name: string) => (name === LIBRARY_C ? adminApi : personApi)
+      for (const [name, id] of Object.entries(ids)) {
+        await withdrawRelease(apiOf(name), id)
+      }
+      // Vor dem Löschen, nicht danach: Eine gelöschte Bibliothek steht auf keiner Freigabeliste,
+      // egal ob die Rücknahme je gelaufen ist - die Prüfung „nichts bleibt freigegeben" wäre sonst
+      // von selbst wahr.
+      await expectReleasesWithdrawn(adminApi, ids)
+
+      for (const [name, id] of Object.entries(ids)) {
+        await deleteLibrary(apiOf(name), id)
+      }
       if (originalChannelSettings) {
         await restoreChannelSettings(adminApi, originalChannelSettings)
       }
-      await expectNothingLeftBehind(personApi, adminApi)
+      await expectNothingLeftBehind(personApi, adminApi, ids)
     } finally {
       await personApi.dispose()
       await adminApi.dispose()
@@ -295,6 +326,12 @@ test.describe.serial('Fremdzugänge', () => {
     authenticatedPage: adminPage,
     formatPipelinesPage: personPage,
   }) => {
+    // „Sitzung" heißt hier: derselbe Client, derselbe Handschlag, dieselbe Verbindung, dasselbe
+    // Token. Eine Sitzung im Sinne eines serverseitigen Zustands gibt es nicht - der Server läuft
+    // zustandsfrei (ADR-0035, Entscheidung 1), und genau deshalb kann sie den Notaus nicht
+    // überdauern. Belegt wird damit die Auswertung je Aufruf: Derselbe Client, der eben noch
+    // durchkam, wird im nächsten Aufruf abgewiesen und danach wieder bedient, ohne je ein Token
+    // getauscht oder neu initialisiert zu haben.
     const mcp = await apiWithToken(wideToken)
     await mcpInitialize(mcp)
     expect(await mcpLibraryNames(mcp)).toHaveLength(2)
@@ -531,6 +568,7 @@ async function shareWithPerson(adminPage: Page, libraryName: string) {
 async function expectNothingLeftBehind(
   personApi: APIRequestContext,
   adminApi: APIRequestContext,
+  ids: Record<string, string>,
 ): Promise<void> {
   if (originalChannelSettings) {
     expect((await readChannelSettings(adminApi)).enabled).toBe(originalChannelSettings.enabled)
@@ -542,15 +580,51 @@ async function expectNothingLeftBehind(
     tokens.tokens.filter((token) => token.status === 'ACTIVE').map((token) => token.name),
   ).toEqual([])
 
-  const released = (await (
-    await adminApi.get('/api/v1/admin/external-access/libraries')
-  ).json()) as Array<{ libraryName: string }>
-  expect(released.map((entry) => entry.libraryName)).not.toContain(LIBRARY_A)
-
   const libraries = (await (await personApi.get('/api/v1/libraries')).json()) as Array<{
     name: string
   }>
-  expect(libraries.map((library) => library.name)).not.toContain(LIBRARY_A)
+  const names = libraries.map((library) => library.name)
+  for (const name of Object.keys(ids)) {
+    expect(names, `Bibliothek „${name}“ ist nach dem Lauf noch da`).not.toContain(name)
+  }
+}
+
+/**
+ * Die Rücknahme der drei Freigaben, belegt **bevor** gelöscht wird: für jede Bibliothek der Zustand
+ * ihres Reichweitenfelds (alles außer `ACTIVE` - je nachdem, wie weit ein abgebrochener Lauf kam,
+ * `WITHDRAWN` oder `NEVER_SET`) und zusätzlich, dass keine von ihnen mehr auf der Freigabeliste der
+ * Systemverwaltung steht.
+ */
+async function expectReleasesWithdrawn(
+  adminApi: APIRequestContext,
+  ids: Record<string, string>,
+): Promise<void> {
+  for (const [name, id] of Object.entries(ids)) {
+    if (!id) continue
+    const library = (await (await adminApi.get(`/api/v1/libraries/${id}`)).json()) as {
+      externalAccess?: { state: string }
+    }
+    expect(
+      library.externalAccess?.state,
+      `Die Freigabe von „${name}“ wurde nicht zurückgenommen`,
+    ).not.toBe('ACTIVE')
+  }
+
+  const released = (await (
+    await adminApi.get('/api/v1/admin/external-access/libraries')
+  ).json()) as Array<{ libraryName: string }>
+  const releasedNames = released.map((entry) => entry.libraryName)
+  for (const name of Object.keys(ids)) {
+    expect(releasedNames, `„${name}“ steht noch auf der Freigabeliste`).not.toContain(name)
+  }
+}
+
+/** Die Kennung einer Bibliothek über ihren Namen, oder `''`, wenn es sie (nicht mehr) gibt. */
+async function findLibraryId(api: APIRequestContext, name: string): Promise<string> {
+  const response = await api.get('/api/v1/libraries')
+  if (response.status() !== 200) return ''
+  const libraries = (await response.json()) as Array<{ id: string; name: string }>
+  return libraries.find((library) => library.name === name)?.id ?? ''
 }
 
 async function revokeOwnTokens(personApi: APIRequestContext): Promise<void> {
