@@ -4,7 +4,6 @@ import io.opaa.search.SearchHit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 
@@ -52,9 +51,15 @@ class McpHitDigest {
    */
   record Entry(SearchHit best, String excerpt, List<SearchHit> further) {}
 
-  /** How many passages the retrieval must deliver for {@code maxDocuments} summarised entries. */
+  /**
+   * How many passages the retrieval must deliver for {@code maxDocuments} summarised entries. The
+   * wanted number is clamped <b>before</b> the multiplication: an overflowing product would turn
+   * negative, and the search reads every value below one as "not requested" - a caller asking for a
+   * huge number would then receive fewer passages than one asking for fifty.
+   */
   int passagesFor(int maxDocuments) {
-    return maxDocuments * PASSAGES_PER_DOCUMENT;
+    return Math.max(1, Math.min(maxDocuments, Integer.MAX_VALUE / PASSAGES_PER_DOCUMENT))
+        * PASSAGES_PER_DOCUMENT;
   }
 
   /** The number of documents a request without its own {@code maxHits} receives. */
@@ -86,11 +91,11 @@ class McpHitDigest {
   }
 
   /**
-   * A window of {@link McpProperties#excerptCharacters()} around the first significant term of the
-   * question, cut on word boundaries and marked with an ellipsis on every side that was cut. The
-   * window starts a third before the match, so the sentence the term stands in is visible with what
-   * follows it. A passage in which no term of the question appears - the ordinary case for a purely
-   * vectorial hit - yields its beginning.
+   * A window of {@link McpProperties#excerptCharacters()} around the <b>longest</b> term of the
+   * question found in the passage, cut on word boundaries and marked with an ellipsis on every side
+   * that was cut. The window starts a third before the match, so the sentence the term stands in is
+   * visible with what follows it. A passage in which no term of the question appears - the ordinary
+   * case for a purely vectorial hit - yields its beginning.
    */
   private String excerpt(String text, String query) {
     if (text == null || text.isBlank()) {
@@ -100,7 +105,7 @@ class McpHitDigest {
     if (text.length() <= limit) {
       return text;
     }
-    int match = firstMatch(text, query);
+    int match = foundPlace(text, query);
     int rawStart = Math.max(0, Math.min(match - limit / 3, text.length() - limit));
     int rawEnd = Math.min(text.length(), rawStart + limit);
     int start = rawStart == 0 ? 0 : wordStart(text, rawStart);
@@ -110,28 +115,66 @@ class McpHitDigest {
       start = rawStart;
       end = rawEnd;
     }
+    start = wholeCharacter(text, start);
+    end = wholeCharacter(text, end);
     return (start > 0 ? "…" : "")
         + text.substring(start, end).strip()
         + (end < text.length() ? "…" : "");
   }
 
-  /** The first position at which a significant term of the question occurs, or 0 for none. */
-  private static int firstMatch(String text, String query) {
+  /**
+   * Where the passage answers the question: the position of the <b>longest</b> term of the question
+   * that occurs in it, or 0 when none does. The longest term carries the question - a German
+   * question opens with a Fragewort of four letters or more ("welche", "gilt"), and picking the
+   * earliest occurrence over all terms would put the window at the first such filler word instead
+   * of at the subject term.
+   *
+   * <p>Compared case-insensitively <b>in the passage itself</b>, never in a lower-cased copy: the
+   * lower case of some characters is longer than the original ({@code İ}), which would shift every
+   * position after it.
+   */
+  private static int foundPlace(String text, String query) {
     if (query == null || query.isBlank()) {
       return 0;
     }
-    String haystack = text.toLowerCase(Locale.ROOT);
-    int earliest = -1;
-    for (String term : query.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+")) {
+    String longest = null;
+    for (String term : query.split("[^\\p{L}\\p{N}]+")) {
       if (term.length() < SIGNIFICANT_TERM_LENGTH) {
         continue;
       }
-      int found = haystack.indexOf(term);
-      if (found >= 0 && (earliest < 0 || found < earliest)) {
-        earliest = found;
+      if (longest == null || term.length() > longest.length()) {
+        int found = indexOfIgnoringCase(text, term);
+        if (found >= 0) {
+          longest = term;
+        }
       }
     }
-    return Math.max(earliest, 0);
+    return longest == null ? 0 : indexOfIgnoringCase(text, longest);
+  }
+
+  private static int indexOfIgnoringCase(String text, String term) {
+    for (int index = 0; index <= text.length() - term.length(); index++) {
+      if (text.regionMatches(true, index, term, 0, term.length())) {
+        return index;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * {@code position} moved off the second half of a surrogate pair. The word-boundary cuts land on
+   * spaces, but the fallback for an unbroken token cuts by index - and half a pair in the answer is
+   * a lone surrogate the JSON writer refuses, which would turn the tool call into a transport
+   * error.
+   */
+  private static int wholeCharacter(String text, int position) {
+    if (position > 0
+        && position < text.length()
+        && Character.isLowSurrogate(text.charAt(position))
+        && Character.isHighSurrogate(text.charAt(position - 1))) {
+      return position - 1;
+    }
+    return position;
   }
 
   /** The next word boundary at or after {@code position}, so an excerpt never starts mid-word. */

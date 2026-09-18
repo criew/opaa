@@ -40,6 +40,71 @@ class McpHitDigestTest {
     assertThat(excerpt.length()).isLessThanOrEqualTo(EXCERPT + 2);
   }
 
+  /**
+   * A German question opens with a Fragewort of the same length class as its subject term. The
+   * window must follow the subject term, not the first filler word that happens to stand early in
+   * the passage - otherwise the excerpt starts at the beginning, exactly as if nothing was found.
+   */
+  @Test
+  void theWindowFollowsTheLongestTermOfTheQuestionAndNotTheFirstFillerWord() {
+    String text =
+        "Welche Stelle gilt als zuständig, ist in der Hausordnung geregelt. ".repeat(12)
+            + "Die Widerspruchsfrist beträgt einen Monat. "
+            + "Weitere Hinweise zum Verfahren. ".repeat(12);
+
+    String excerpt =
+        digest
+            .condense(
+                List.of(hit(UUID.randomUUID(), text)), "Welche Frist gilt für den Widerspruch?", 5)
+            .get(0)
+            .excerpt();
+
+    assertThat(excerpt).contains("Die Widerspruchsfrist beträgt einen Monat.");
+    assertThat(excerpt).startsWith("…");
+  }
+
+  /**
+   * The raw cut of the fallback branch must not split a surrogate pair: a lone surrogate is what
+   * the JSON writer refuses, which would turn the tool call into a transport error.
+   */
+  @Test
+  void anUnbrokenTokenOfSupplementaryCharactersIsNeverCutInHalf() {
+    // The leading letter makes every pair straddle an odd index, so the raw cut falls inside one.
+    String token = "A" + "🙂".repeat(600);
+
+    String excerpt =
+        digest.condense(List.of(hit(UUID.randomUUID(), token)), "", 5).get(0).excerpt();
+
+    // A whole pair reads as one supplementary code point; a lone half stays in the surrogate range.
+    assertThat(
+            excerpt.codePoints().anyMatch(codePoint -> codePoint >= 0xD800 && codePoint <= 0xDFFF))
+        .as("no half of a surrogate pair survived the cut")
+        .isFalse();
+    assertThat(excerpt).endsWith("…");
+  }
+
+  /** The position is read in the passage itself, so a longer lower case shifts no window. */
+  @Test
+  void theWindowIsNotShiftedByCharactersWhoseLowerCaseIsLonger() {
+    String text =
+        "İ".repeat(300) + "Die Widerspruchsfrist beträgt einen Monat. " + "x y ".repeat(60);
+
+    String excerpt =
+        digest
+            .condense(List.of(hit(UUID.randomUUID(), text)), "Widerspruchsfrist", 5)
+            .get(0)
+            .excerpt();
+
+    assertThat(excerpt).contains("Widerspruchsfrist beträgt einen Monat.");
+  }
+
+  @Test
+  void aVeryLargeMaxHitsAsksForMorePassagesThanASmallOneAndNeverANegativeNumber() {
+    assertThat(digest.passagesFor(Integer.MAX_VALUE)).isPositive();
+    assertThat(digest.passagesFor(Integer.MAX_VALUE))
+        .isGreaterThanOrEqualTo(digest.passagesFor(50));
+  }
+
   @Test
   void aPassageWithoutATermOfTheQuestionYieldsItsBeginning() {
     String text = "Zuständig ist das Bauamt. ".repeat(40);
