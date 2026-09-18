@@ -5,7 +5,7 @@ import Chip from '@mui/material/Chip'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
-import { useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 import MessageList from '../components/chat/MessageList'
 import ChatInput from '../components/chat/ChatInput'
 import ConversationNote from '../components/chat/ConversationNote'
@@ -19,6 +19,8 @@ import PageHeading from '../components/a11y/PageHeading'
 export default function ChatPage() {
   const { spaceId, chatId: routeChatId } = useParams<{ spaceId: string; chatId: string }>()
   const navigate = useNavigate()
+  // `?message=` opens the chat at a chat search hit; it survives a reload like the chat id itself.
+  const [searchParams] = useSearchParams()
 
   const messages = useChatStore((s) => s.messages)
   const isLoading = useChatStore((s) => s.isLoading)
@@ -214,7 +216,12 @@ export default function ChatPage() {
           {error}
         </Alert>
       )}
-      <MessageList key={chatView.key} messages={messages} isLoading={isLoading} />
+      <MessageList
+        key={chatView.key}
+        messages={messages}
+        isLoading={isLoading}
+        targetMessageId={isNewChat ? null : searchParams.get('message')}
+      />
       <ChatInput onSend={(message) => sendMessage(message)} disabled={isLoading} />
     </Box>
   )

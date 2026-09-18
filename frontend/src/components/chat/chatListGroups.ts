@@ -19,7 +19,7 @@ const GROUP_LABELS: Record<ChatGroupKey, string> = {
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-export function chatTitle(chat: ChatSummary): string {
+export function chatTitle(chat: Pick<ChatSummary, 'title'>): string {
   return chat.title?.trim() || 'Unbenannter Chat'
 }
 

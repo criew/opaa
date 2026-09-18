@@ -10,6 +10,8 @@ import type {
   ChatDetail,
   ChatSummary,
   ChatSummaryPage,
+  ChatSearchRequest,
+  ChatSearchResponse,
   ChatUpdateRequest,
   EmbeddingInfoResponse,
   ContextPrefixRerunRequest,
@@ -344,6 +346,48 @@ export async function listArchivedSpaceChats(
     return data
   } catch (err) {
     normalizeError(err)
+  }
+}
+
+/** The chat search refused a request for its rate limit; the wait comes from `Retry-After`. */
+export class ChatSearchRateLimitedError extends Error {
+  readonly retryAfterSeconds: number | null
+
+  constructor(retryAfterSeconds: number | null) {
+    super('TOO_MANY_REQUESTS')
+    this.name = 'ChatSearchRateLimitedError'
+    this.retryAfterSeconds = retryAfterSeconds
+  }
+}
+
+const CHAT_SEARCH_FAILED = 'Die Chatsuche ist fehlgeschlagen. Bitte später erneut versuchen.'
+
+/**
+ * Full-text search over the person's own chats of a space, archive included. The term travels in
+ * the body only, never in the URL. A refusal arrives as the backend's German message, a rate
+ * limit as {@link ChatSearchRateLimitedError}, anything else as one generic German message.
+ */
+export async function searchSpaceChats(
+  spaceId: string,
+  request: ChatSearchRequest,
+  signal?: AbortSignal,
+): Promise<ChatSearchResponse> {
+  try {
+    const { data } = await client.post<ChatSearchResponse>(
+      `/v1/spaces/${spaceId}/chats/search`,
+      request,
+      { signal },
+    )
+    return data
+  } catch (err) {
+    if (axios.isCancel(err)) throw err
+    if (axios.isAxiosError(err) && err.response?.status === 429) {
+      const header = err.response.headers['retry-after']
+      const seconds = typeof header === 'string' ? Number.parseInt(header, 10) : Number.NaN
+      throw new ChatSearchRateLimitedError(Number.isFinite(seconds) ? seconds : null)
+    }
+    const data = axios.isAxiosError(err) ? err.response?.data : undefined
+    throw new Error(isErrorResponse(data) ? data.error : CHAT_SEARCH_FAILED, { cause: err })
   }
 }
 

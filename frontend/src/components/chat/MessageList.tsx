@@ -3,6 +3,7 @@ import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
+import { alpha } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
 import type { ChatMessage } from '../../types/chat'
@@ -13,6 +14,11 @@ import DateSeparator from './DateSeparator'
 interface MessageListProps {
   messages: ChatMessage[]
   isLoading: boolean
+  /**
+   * A message to open the chat at (a chat search hit): scrolled into view, marked until it loses
+   * focus, and focused. An id that is not among `messages` leaves the list as it would be without.
+   */
+  targetMessageId?: string | null
 }
 
 function shouldShowDate(messages: ChatMessage[], index: number): boolean {
@@ -24,17 +30,39 @@ function shouldShowDate(messages: ChatMessage[], index: number): boolean {
 
 export const ANSWER_ARRIVED_ANNOUNCEMENT = 'Antwort eingetroffen'
 
-export default function MessageList({ messages, isLoading }: MessageListProps) {
+export default function MessageList({ messages, isLoading, targetMessageId }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
+  const targetRef = useRef<HTMLDivElement>(null)
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const wasLoading = useRef(isLoading)
   const [announcement, setAnnouncement] = useState('')
+  // The jump happens once per target; afterwards only a new message scrolls to the end again.
+  const jumpedRef = useRef<{ id: string; length: number } | null>(null)
+  const [highlightEndedFor, setHighlightEndedFor] = useState<string | null>(null)
+  const target = messages.find((message) => message.id === targetMessageId) ?? null
 
   useEffect(() => {
+    if (target) {
+      const jumped = jumpedRef.current
+      if (jumped?.id !== target.id || messages.length <= jumped.length) return
+    }
     if (typeof bottomRef.current?.scrollIntoView === 'function') {
       bottomRef.current.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth' })
     }
-  }, [messages.length, prefersReducedMotion])
+  }, [messages.length, prefersReducedMotion, target])
+
+  useEffect(() => {
+    const element = targetRef.current
+    if (!target || !element || jumpedRef.current?.id === target.id) return
+    jumpedRef.current = { id: target.id, length: messages.length }
+    if (typeof element.scrollIntoView === 'function') {
+      element.scrollIntoView({
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        block: 'center',
+      })
+    }
+    element.focus({ preventScroll: true })
+  }, [target, messages.length, prefersReducedMotion])
 
   // Answers arrive in one piece, so the only cue for screen reader users is this live region:
   // announce the loading -> done transition, then clear it so the next answer is read out again.
@@ -92,12 +120,41 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
       sx={{ flexGrow: 1, overflowY: 'auto', py: 2, position: 'relative' }}
     >
       <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto', pb: 2 }}>
-        {messages.map((msg, i) => (
-          <Box key={msg.id}>
-            {shouldShowDate(messages, i) && <DateSeparator date={msg.timestamp} />}
-            <MessageBubble message={msg} />
-          </Box>
-        ))}
+        {messages.map((msg, i) => {
+          const isTarget = msg.id === target?.id
+          const highlighted = isTarget && highlightEndedFor !== msg.id
+          return (
+            <Box key={msg.id}>
+              {shouldShowDate(messages, i) && <DateSeparator date={msg.timestamp} />}
+              {isTarget ? (
+                <Box
+                  ref={targetRef}
+                  role="article"
+                  aria-label={`Gefundene Nachricht: ${msg.role === 'user' ? 'Frage' : 'Antwort'}`}
+                  tabIndex={-1}
+                  data-message-id={msg.id}
+                  data-highlighted={String(highlighted)}
+                  onBlur={() => setHighlightEndedFor(msg.id)}
+                  sx={(theme) => ({
+                    borderRadius: '10px',
+                    pt: 2,
+                    mb: 2,
+                    outline: highlighted ? `3px solid ${theme.palette.primary.main}` : 'none',
+                    outlineOffset: '2px',
+                    bgcolor: highlighted ? alpha(theme.palette.primary.main, 0.08) : 'transparent',
+                    transition: prefersReducedMotion ? 'none' : 'background-color 600ms',
+                  })}
+                >
+                  <MessageBubble message={msg} />
+                </Box>
+              ) : (
+                <Box data-message-id={msg.id}>
+                  <MessageBubble message={msg} />
+                </Box>
+              )}
+            </Box>
+          )
+        })}
 
         {isLoading && (
           <Box

@@ -35,7 +35,7 @@ describe('HighlightedExcerpt', () => {
   it('renders markup in the excerpt as literal text, never as HTML', () => {
     const text = '<img src=x onerror="alert(1)"><b>fett</b> Widerspruch'
     const { container } = render(
-      <HighlightedExcerpt text={text} highlights={[{ start: 40, end: 51 }]} />,
+      <HighlightedExcerpt text={text} highlights={[{ start: 42, end: 53 }]} />,
     )
 
     expect(container.querySelector('img')).toBeNull()
