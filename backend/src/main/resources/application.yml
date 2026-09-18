@@ -204,6 +204,15 @@ opaa:
       document-date-offer-threshold: ${OPAA_QUERY_METADATA_FILTER_DOCUMENT_DATE_THRESHOLD:0.75}
       library-field-offer-threshold: ${OPAA_QUERY_METADATA_FILTER_LIBRARY_FIELD_THRESHOLD:0.75}
       options-cache-ttl: ${OPAA_QUERY_METADATA_FILTER_OPTIONS_CACHE_TTL:5m}
+  # #1720: the reading path without generation. The hit count is cut out of the retrieval's own
+  # selection (opaa.query.top-k), it never searches further. The fetch cap is the one place a
+  # single call can return a whole document, and it is deliberately finite.
+  search:
+    default-max-hits: ${OPAA_SEARCH_DEFAULT_MAX_HITS:10}
+    max-hits: ${OPAA_SEARCH_MAX_HITS:50}
+    excerpt-max-characters: ${OPAA_SEARCH_EXCERPT_MAX_CHARACTERS:1500}
+    fetch-max-characters: ${OPAA_SEARCH_FETCH_MAX_CHARACTERS:200000}
+    context-passages: ${OPAA_SEARCH_CONTEXT_PASSAGES:1}
   # #1050: the rerank model role - on the same level as the chat and embedding roles. The switch
   # is deliberately separate from the endpoint fields: reranking being off must be an operator's
   # statement, not an indistinguishable consequence of a missing configuration line

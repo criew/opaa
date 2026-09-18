@@ -144,9 +144,11 @@ class QueryServiceTest {
                 new RerankStage(disabledRerankRole()),
                 new DocumentCompletionStage(),
                 RetrievalPipelineProperties.allStagesEnabled());
+    RetrievalContextFactory contextFactory =
+        new RetrievalContextFactory(queryProperties, disabledRerankRole());
     return new QueryService(
-        pipeline,
-        new RetrievalContextFactory(queryProperties, disabledRerankRole()),
+        new KnowledgeRetrieval(pipeline, contextFactory),
+        contextFactory,
         new SearchScopeResolver(chatService),
         new ChatSourceAssembler(
             documentRepository,

@@ -369,9 +369,15 @@ Sichtbar sind je Asset:
 - Zahl der Abkömmlinge und deren Versionsabstand zum Original
 - Alter der aktiven Fassung und Datum des letzten Freigabestempels
 
-**Die Auswertung ist ausschließlich aggregiert je Organisationseinheit, unterhalb der Mindestgruppengröße wird unterdrückt, und es gibt keine Ranglisten.** Das ist keine Einstellung, sondern eine Eigenschaft: Ein personenbezogener Auswertungspfad existiert nicht (siehe [Kein personenbezogener Auswertungspfad](#kein-personenbezogener-auswertungspfad)). Auch der Eigentümer eines Assets sieht, **wie oft** und **in welcher Einheit** es genutzt wird — nicht, von wem.
+**Die Auswertung ist ausschließlich aggregiert, und es gibt keine Ranglisten.** Das ist keine Einstellung, sondern eine Eigenschaft: Ein personenbezogener Auswertungspfad existiert nicht (siehe [Kein personenbezogener Auswertungspfad](#kein-personenbezogener-auswertungspfad)). Auch der Eigentümer eines Assets sieht, **wie oft** und **in welcher Einheit** es genutzt wird — nicht, von wem.
 
-Die Nutzungsstatistik ist vollständig abschaltbar, ohne dass die Fachfunktion leidet.
+Drei Bedingungen schärfen das an der Stelle, an der es bei Assets sonst nicht trägt:
+
+1. **Die Erhebung ist in der Voreinstellung aus, und der Schalter hängt an der Erhebung, nicht an der Anzeige.** Abschaltbar heißt sonst, die Daten fallen trotzdem an — und was gespeichert ist, kann später ausgewertet werden, durch ein Update, einen neuen Bericht oder eine neue Leitung. Eine Behörde, die kuratieren will, schaltet die Erhebung bewusst ein; das ist dann eine Entscheidung mit einem Beteiligungsvorgang.
+2. **Die Mindestgruppengröße bemisst sich an der Zahl der tatsächlich nutzenden Personen, nicht an der Größe der Organisationseinheit.** Ein Skill, den in einem Referat von vierundzwanzig nur die drei Beschäftigten eines Sachgebiets benutzen, wäre sonst eine Auswertung über drei Personen unter der Überschrift einer großen Einheit. Die Einheit ist groß genug, die Nutzergruppe ist es nicht.
+3. **Unterhalb der Schwelle wird die Zahl nicht erhoben**, nicht bloß bei der Anzeige unterdrückt.
+
+Die Verschärfung gegenüber der allgemeinen Regel in [monitoring-and-governance.md](./monitoring-and-governance.md) ist beabsichtigt und hat einen Grund im Gegenstand: Ein Asset hat oft nur eine Handvoll Nutzende, und eine Schwelle, die an der Einheit hängt, greift dort nie. Gebaut ist von dieser Schicht noch nichts — die Bedingungen gelten mit ihrem Bau.
 
 *Phasenlage: Phase 2, gemeinsam mit dem Katalog.*
 
@@ -987,9 +993,9 @@ Zwei Wege bleiben notwendigerweise offen, und beide sind kein Auswertungspfad:
 
 | Stellschraube | Ausprägung |
 |---|---|
-| **Aggregation statt Personenbezug** | Nutzungsstatistiken nur je Organisationseinheit, mit Mindestgruppengröße; unterhalb der Schwelle wird der Wert **unterdrückt**, nicht angezeigt |
+| **Aggregation statt Personenbezug** | Nutzungsstatistiken nur aggregiert, mit Mindestgruppengröße; je Asset bemisst sie sich an der Zahl der nutzenden Personen, und unterhalb der Schwelle wird der Wert **nicht erhoben** (siehe [Nutzungstransparenz](#nutzungstransparenz)) |
 | **Keine Ranglisten** | Kein Vergleich einzelner Beschäftigter, keine Bestenlisten, keine Aktivitätsbewertung — auch nicht als spielerisches Element |
-| **Abschaltbarkeit** | Nutzungsstatistiken je Asset und Organisationseinheit vollständig deaktivierbar, ohne dass die Fachfunktion leidet |
+| **Abschaltbarkeit** | Nutzungsstatistiken je Asset und Organisationseinheit vollständig deaktivierbar, ohne dass die Fachfunktion leidet; der Schalter hängt an der **Erhebung**, und je Asset ist die Voreinstellung **aus** |
 | **Aufbewahrung mit Ober- und Untergrenze** | Für Chats, Artefakte, Herkunftsdaten **und das Audit-Log**: konfigurierbare Frist mit einer **Höchstdauer**, nicht nur einer Mindestdauer, und automatischer Löschung nach Ablauf |
 | **Datensparsamkeit im Protokollsatz** | Die Netzadresse ist **nicht Teil des Standardsatzes**. Sie ist ein Anwesenheitsmerkmal, weil sie Dienststelle von Homeoffice unterscheidet. Wird sie für Sicherheitszwecke benötigt, wird sie ausdrücklich eingeschaltet, begründet und aus Berichten und Exporten ausgeschlossen |
 | **Zweckbindung** | Für jede erhobene Angabe ist dokumentiert, wofür sie da ist — **auch für das Audit-Log und die Herkunftsverfolgung**, nicht nur für Kennzahlen |

@@ -13,5 +13,13 @@ public enum NotificationType {
    * statt Zustimmung"). Sent to the library's owner - every member of the owning group, if
    * group-owned.
    */
-  LIBRARY_ASSOCIATED_TO_MIXED_SPACE
+  LIBRARY_ASSOCIATED_TO_MIXED_SPACE,
+
+  /**
+   * The external-access channel exceeded the mass-retrieval threshold (#1720,
+   * docs/features/external-access.md - "Kontingente und der Abflussalarm"). Sent to every system
+   * administrator of the organization, exactly once per cooldown, and never written to the audit
+   * trail: the alert is a security event, only the suspension that may follow it is a state change.
+   */
+  EXTERNAL_ACCESS_MASS_RETRIEVAL
 }

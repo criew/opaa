@@ -104,9 +104,11 @@ final class ChatResponseMapper {
         .metadataFilterMatch(source.getMetadataFilterMatch());
   }
 
-  /** An absent or empty list maps to null - the Beleg has nothing to render either way. */
-  private static List<SourceMetadataEntry> toMetadataEntries(
-      List<ChatSourceMetadataEntry> entries) {
+  /**
+   * An absent or empty list maps to null - the Beleg has nothing to render either way.
+   * Package-private (not private): reused by {@code SearchResponseMapper}.
+   */
+  static List<SourceMetadataEntry> toMetadataEntries(List<ChatSourceMetadataEntry> entries) {
     if (entries == null || entries.isEmpty()) {
       return null;
     }
