@@ -117,7 +117,10 @@ Benutzer authentifizieren sich über:
 - **Single Sign-On (SSO)** — OIDC (empfohlen für den Regelbetrieb; SAML nur über eine Föderation)
 - **Lokale Konten** — E-Mail-Adresse und Passwort, von OPAA selbst geführt (optional, Standard aus;
   das Konto der Systemverwaltung ist immer ein lokales Konto)
-- **API-Tokens** — für programmatischen Zugang (noch nicht gebaut)
+- **API-Tokens** — persönliche Zugangstokens für programmatischen Zugang und für fremde KI-Werkzeuge
+  über den MCP-Server; entschieden am 18.09.2026, noch nicht gebaut. Nur lesend, mit Pflicht-Ablauf,
+  installationsweit abschaltbar und nur für Bibliotheken, die dafür ausdrücklich freigegeben sind —
+  siehe [external-access.md](./external-access.md)
 
 **Empfohlen ist die SSO-Anbindung an das im Haus vorhandene Identitätsmanagement.** Sie ist nicht nur
 bequemer, sondern die Voraussetzung dafür, dass der Kontenlebenszyklus überhaupt an einer Stelle geführt
@@ -945,6 +948,16 @@ Mail aus, weil sie sonst ein Belästigungskanal für jeden wäre, der eine Adres
 
 ## API-Tokens und Service-Accounts
 
+> **Erste Stufe entschieden (18.09.2026):** Gebaut wird zunächst nur das **persönliche Zugangstoken**
+> für lesende Fremdzugänge — fest auf Suchen und Abrufen begrenzt (kein Umfangsmenü), mit
+> Pflicht-Ablaufdatum unter einer systemweiten Obergrenze, mit einer konkreten Bibliotheksauswahl und
+> einem Kontingent je Token, hinter einem installationsweiten Schalter (Standard aus) und einer
+> Freigabe je Bibliothek (Standard aus). **Service-Accounts als eigene Identität ohne Person bleiben
+> Zielbild** und sind in dieser Stufe nicht enthalten. Einzelheiten:
+> [external-access.md](./external-access.md).
+
+Das Zielbild, auf das die erste Stufe zuläuft:
+
 ```
 API-Token erstellen:
   Name:        "Fachverfahren-Anbindung"
@@ -1039,6 +1052,8 @@ automatisch greift.
 - **Daten-Indizierung:** Zuordnung von Quellen zu Wissensbibliotheken →
   [data-indexing-rag.md](./data-indexing-rag.md)
 - **RAG-Engine:** Filter über die lesbaren Bibliotheken des Nutzers, als Teil der Vektorsuche
+- **Fremdzugänge:** Zugangstokens und MCP-Server als Ausschnitt bestehender Leserechte, mit eigener
+  Freigabe je Bibliothek → [external-access.md](./external-access.md)
 - **Modelle:** zentrale Vorgaben gelten je Organisation → [llm-integration.md](./llm-integration.md)
 - **Sicherheit und Nachweis:** jede Rechte- und Kontenänderung erzeugt einen Protokolleintrag →
   [security-and-compliance.md](./security-and-compliance.md)
