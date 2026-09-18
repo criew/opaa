@@ -4,8 +4,9 @@
 
 **Themenbereich B** der [Produktvision](../VISION.md). **Phasenlage:** Uploads und **lesende**
 Konnektoren zu Dateiablagen, Wikis, Postfächern und Vorgangssystemen gehören in **Phase 1**;
-**schreibende** Integrationen mit Freigabeschritt und die Spiegelung der Rechte aus dem Quellsystem
-folgen in **Phase 2**.
+**schreibende** Integrationen mit Freigabeschritt folgen in **Phase 2**, ebenso die Spiegelung der
+Rechte aus dem Quellsystem — dort, wo ein Quellsystem sie belastbar liefert, und nur einschränkend
+(siehe [Spiegelung der Rechte aus dem Quellsystem](#spiegelung-der-rechte-aus-dem-quellsystem)).
 
 ## Motivation
 
