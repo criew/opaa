@@ -70,7 +70,10 @@ final class ExternalAccessTokenResponseMapper {
   private static List<ExternalAccessTokenLibraryResponse> toLibraries(
       List<SelectedLibrary> libraries) {
     return libraries.stream()
-        .map(library -> new ExternalAccessTokenLibraryResponse(library.id(), library.name()))
+        .map(
+            library ->
+                new ExternalAccessTokenLibraryResponse(
+                    library.id(), library.name(), library.suspended()))
         .toList();
   }
 }

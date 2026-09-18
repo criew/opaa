@@ -403,6 +403,34 @@ Zwei Dinge stehen noch aus und sind bewusst als Naht angelegt, nicht als Proviso
   auf der Liste: Er antwortet mit allem, was die Person lesen darf, nicht mit der effektiven Sicht
   des Tokens.
 
+### Die Oberfläche (#1719)
+
+Gebaut ist beides: der Reiter *Ihre Einstellungen → Zugangstokens* (eigene Liste mit Name, Präfix,
+Bibliotheken, Erstellung, Ablauf, „zuletzt benutzt" und Zustand; Anlegedialog mit Aufklärung,
+Bibliotheksauswahl und Ablaufdatum; Einmalanzeige des Werts; Widerruf mit Rückfrage) und der Reiter
+*Administration → Fremdzugänge → Zugangstokens* (Bestandsliste ohne Nutzungsdatum, Filter allein
+über Zustand und Ablauf, Einzelsperre und Sperre je Person, je mit Rückfrage).
+
+Vier Festlegungen weichen vom Entwurf oben ab oder ergänzen ihn:
+
+1. **Ein eigener Selbstsicht-Endpunkt der Kanalwerte.** `GET /api/v1/external-access/settings`
+   liefert jeder angemeldeten Person `enabled` und `tokenMaxLifetimeDays` — mehr nicht. Ohne ihn
+   könnte die Tokenverwaltung weder die Vorgabe und Obergrenze des Ablaufdatums setzen noch den
+   Hinweis „Kanal ist derzeit zu" zeigen; die Einstellungen der Systemverwaltung dafür zu öffnen,
+   gäbe ihr zugleich Kontingent, Netzbereiche und Einleitungstext.
+2. **Die ausgesetzte Auswahl trägt ein Feld.** `ExternalAccessTokenLibraryResponse.suspended` macht
+   den erloschenen Eintrag in der Antwort sichtbar; die Oberfläche zeigt ihn samt dem Hinweis, dass
+   er auch bei erneuter Freigabe nicht wieder auflebt.
+3. **Der Einrichtungshinweis steht im Einmal-Dialog**, als Schnipsel für Claude Code und für
+   Cursor/VS Code. Er trägt den Wert und wäre an jeder anderen Stelle nutzlos; die ausführliche
+   Anleitung bleibt beim Handbuch ([#1722](https://github.com/criew/opaa/issues/1722)).
+4. **Die Bibliotheksauswahl ist heute die Liste der lesbaren Bibliotheken.** Ein Endpunkt „lesbar
+   **und** freigegeben" existiert noch nicht, und das Backend behandelt bis
+   [#1731](https://github.com/criew/opaa/issues/1731) jede lesbare Bibliothek als freigegeben —
+   Auswahl und serverseitige Prüfung decken sich also. Mit #1731 muss die Liste über das
+   Freigabemerkmal eingegrenzt werden, sonst bietet der Dialog Bibliotheken an, die die Ausstellung
+   anschließend abweist.
+
 ---
 
 ## Die effektive Sicht

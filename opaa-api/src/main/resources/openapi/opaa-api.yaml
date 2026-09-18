@@ -5918,6 +5918,25 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/external-access/settings:
+    get:
+      operationId: getOwnExternalAccessChannelInfo
+      tags: [external-access]
+      summary: >
+        The two channel values a person needs to manage their own tokens: whether the channel is
+        open at all and how long a token may live. Deliberately a self view next to the tokens and
+        not a widening of the SYSTEM_ADMIN settings - the quota, the networks of the channel, the
+        instructions text and who changed them last stay with the administration.
+      responses:
+        "200":
+          description: The two values
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExternalAccessChannelInfoResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /api/v1/external-access/tokens:
     get:
       operationId: listOwnExternalAccessTokens
@@ -14080,9 +14099,24 @@ components:
       enum: [ACTIVE, EXPIRED, REVOKED, BLOCKED]
       example: ACTIVE
 
+    ExternalAccessChannelInfoResponse:
+      type: object
+      required: [enabled, tokenMaxLifetimeDays]
+      description: >
+        What a person needs to manage their own tokens - nothing else of the channel settings.
+      properties:
+        enabled:
+          type: boolean
+          description: >
+            Whether the channel is open right now. While it is closed, tokens may still be issued
+            and revoked; they simply do not act.
+        tokenMaxLifetimeDays:
+          type: integer
+          description: The ceiling an expiry may not exceed, in days from now.
+
     ExternalAccessTokenLibraryResponse:
       type: object
-      required: [id, name]
+      required: [id, name, suspended]
       description: One library of a token's selection, as it was selected - not as it acts today.
       properties:
         id:
@@ -14090,6 +14124,12 @@ components:
           format: uuid
         name:
           type: string
+        suspended:
+          type: boolean
+          description: >
+            True once the entry was extinguished because the library's release was withdrawn or ran
+            out. It is shown, never silently dropped, and it does not come back to life if the
+            library is released again - that needs a new token (ADR-0035, Entscheidung 4).
 
     CreateExternalAccessTokenRequest:
       type: object

@@ -268,6 +268,18 @@ export type AccountProviderResponse = components['schemas']['AccountProviderResp
 export type ExternalAccessSettingsResponse = components['schemas']['ExternalAccessSettingsResponse']
 export type ExternalAccessSettingsUpdateRequest =
   components['schemas']['ExternalAccessSettingsUpdateRequest']
+export type ExternalAccessChannelInfoResponse =
+  components['schemas']['ExternalAccessChannelInfoResponse']
+export type ExternalAccessTokenStatus = components['schemas']['ExternalAccessTokenStatus']
+export type ExternalAccessTokenLibraryResponse =
+  components['schemas']['ExternalAccessTokenLibraryResponse']
+export type CreateExternalAccessTokenRequest =
+  components['schemas']['CreateExternalAccessTokenRequest']
+export type CreatedExternalAccessTokenResponse =
+  components['schemas']['CreatedExternalAccessTokenResponse']
+export type OwnExternalAccessTokenResponse = components['schemas']['OwnExternalAccessTokenResponse']
+export type AdminExternalAccessTokenResponse =
+  components['schemas']['AdminExternalAccessTokenResponse']
 
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (

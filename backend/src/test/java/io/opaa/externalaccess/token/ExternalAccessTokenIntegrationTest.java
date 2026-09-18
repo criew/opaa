@@ -522,6 +522,45 @@ class ExternalAccessTokenIntegrationTest {
         .isEmpty();
     assertThat(tokens.findById(tokenId).orElseThrow().getSelectedLibraryIds())
         .containsExactly(libraryId);
+
+    // The self view shows the entry as suspended rather than dropping it (#1719): the person is
+    // meant to see what a new token would have to contain again.
+    mockMvc
+        .perform(get("/api/v1/external-access/tokens").with(devUser("dev-user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.tokens[0].libraries[0].id").value(libraryId.toString()))
+        .andExpect(jsonPath("$.tokens[0].libraries[0].suspended").value(true));
+  }
+
+  @Test
+  void aLiveSelectionIsNotMarkedAsSuspended() throws Exception {
+    issue();
+
+    mockMvc
+        .perform(get("/api/v1/external-access/tokens").with(devUser("dev-user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.tokens[0].libraries[0].suspended").value(false));
+  }
+
+  @Test
+  void theSelfViewOfTheChannelCarriesTheSwitchAndTheCeilingAndNothingElse() throws Exception {
+    setChannelEnabled(false);
+
+    mockMvc
+        .perform(get("/api/v1/external-access/settings").with(devUser("dev-user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.enabled").value(false))
+        .andExpect(jsonPath("$.tokenMaxLifetimeDays").value(90))
+        // Quota, networks, instructions text and the last change stay with the Systemverwaltung.
+        .andExpect(jsonPath("$.tokenRateLimitPerHour").doesNotExist())
+        .andExpect(jsonPath("$.allowedCidrs").doesNotExist())
+        .andExpect(jsonPath("$.serverInstructions").doesNotExist())
+        .andExpect(jsonPath("$.updatedBy").doesNotExist());
+
+    setChannelEnabled(true);
+    mockMvc
+        .perform(get("/api/v1/external-access/settings").with(devUser("dev-user")))
+        .andExpect(jsonPath("$.enabled").value(true));
   }
 
   @Test

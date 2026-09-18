@@ -1,4 +1,4 @@
-import { notify } from '../../../stores/notificationStore'
+import { notify } from '../stores/notificationStore'
 
 /**
  * Kopiert einen Wert, der nur einmal angezeigt wird, und sagt in beiden Fällen, was geschehen ist:

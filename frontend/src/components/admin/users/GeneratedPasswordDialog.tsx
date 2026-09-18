@@ -10,7 +10,7 @@ import Typography from '@mui/material/Typography'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import { fontFamily, radius } from '../../../theme/tokens'
 import { SHOWN_ONCE_HINT } from './localUserLabels'
-import { copyOnce } from './copyOnce'
+import { copyOnce } from '../../../utils/copyOnce'
 
 export interface GeneratedPassword {
   displayName: string
