@@ -164,9 +164,16 @@ describe('OwnExternalAccessTokensSection', () => {
       'opaa_pat_new1_geheimer_wert_nur_dieses_eine_mal',
     )
     expect(within(valueDialog).getByText(/wird nur jetzt angezeigt/)).toBeInTheDocument()
-    // Der Einrichtungshinweis trägt den Wert - deshalb steht er hier und nirgends sonst.
+    // Der Einrichtungshinweis trägt den Wert - deshalb steht er hier und nirgends sonst, und
+    // zwar nur im Claude-Code-Befehl: Die beiden JSON-Schnipsel verweisen auf Eingabe bzw.
+    // Umgebungsvariable, damit der Wert nicht in einer eingecheckten Datei landet.
     expect(
-      within(valueDialog).getByText(/claude mcp add --transport http opaa/),
+      within(valueDialog).getByText(/claude mcp add --scope user --transport http opaa/),
+    ).toBeInTheDocument()
+    expect(within(valueDialog).getByText(/\$\{input:opaa-token\}/)).toBeInTheDocument()
+    expect(within(valueDialog).getByText(/\$\{env:OPAA_TOKEN\}/)).toBeInTheDocument()
+    expect(
+      within(valueDialog).getByText(/Ausführliche Anleitung im Handbuch, Kapitel Fremdzugänge/),
     ).toBeInTheDocument()
 
     await user.click(within(valueDialog).getByRole('button', { name: 'Kopieren' }))
