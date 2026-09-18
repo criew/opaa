@@ -289,8 +289,8 @@ Person und Chat:
   protokolliert, nicht exportiert außer in der Selbstauskunft der Person und nicht ausgewertet. Es gibt
   keine Zahl „archivierte Chats je Person", auch nicht aggregiert.
 - Die Zeitpunkte der Merkmale sind Verhaltensdaten im engeren Sinn (wann hat jemand aufgeräumt). Sie
-  werden nur gespeichert, weil die eigene Anzeige sie braucht, und gehören in den Auszug für die
-  Personalvertretung ([spaces-and-assets.md, Stellschrauben](./spaces-and-assets.md#stellschrauben-die-das-produkt-anbietet)).
+  werden nur gespeichert, weil die eigene Anzeige sie braucht, sind über keine Oberfläche und keinen
+  Endpunkt für Dritte abrufbar und werden in keine Auswertung übernommen.
 - Die Chatsuche ändert nichts am Grundsatz „private Inhalte sind unbeobachtet": Sie ist ein Werkzeug der
   Person über ihren eigenen Bestand, kein Zugang zu fremdem.
 
@@ -301,7 +301,7 @@ Person und Chat:
 | Perspektive | Einschätzung |
 |---|---|
 | **Sachbearbeitung** | Zeitgruppen und Anheften helfen sofort und kosten nichts. Der eigentliche Gewinn ist die Inhaltssuche mit Sprung an die Stelle — „der Chat mit dem Aktenzeichen 12/4" ist in Sekunden wieder da. Das Archiv entspricht der Gewohnheit der Ablage. |
-| **Personalvertretung** | Kein neuer Auswertungspfad: Suchbegriffe ungespeichert, Ordnungsmerkmale nur für die Person, kein Admin-Durchgriff. Neu im Auszug: die beiden Zeitpunkte je Person und Chat. |
+| **Personalvertretung** | Kein neuer Auswertungspfad: Suchbegriffe ungespeichert, Ordnungsmerkmale nur für die Person, kein Admin-Durchgriff. Die beiden neuen Zeitpunkte je Person und Chat bleiben ausschließlich der Person selbst sichtbar. |
 | **Skeptiker (Pflegeaufwand)** | Nichts davon verlangt Pflege: Zeitgruppen entstehen von selbst, Anheften ist ein Klick, Archivieren optional. Ordner und Schlagworte, die gepflegt werden müssten, werden bewusst nicht gebaut. |
 | **Betrieb** | Ein Volltextindex über Chatnachrichten wächst mit dem Chatbestand; er entfällt mit dem Chat. Keine neue Infrastruktur, keine Einbettungen. |
 
@@ -389,8 +389,6 @@ Handbuch und E2E-Abdeckung gehören in jede Phase, nicht gesammelt ans Ende.
 Ohne Personenbezug, nach denselben Bedingungen wie in
 [Nutzungstransparenz](./spaces-and-assets.md#nutzungstransparenz):
 
-- **Anteil der Chatsuchen, nach denen ein Treffer geöffnet wird** — ohne Suchbegriff erhoben. Niedrig
-  heißt: Die Suche findet nicht, was gemeint ist.
 - **Keine Rückmeldung „ich finde meinen Chat nicht wieder"** im Betrieb der Pilotbehörden — die
   eigentliche Probe, weil es bewusst keine feinere Messung gibt.
 - **Gemeldeter Bedarf an Ordnern oder Schlagworten** — die Schwelle für Phase 5.
