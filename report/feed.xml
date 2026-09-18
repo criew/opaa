@@ -5,8 +5,28 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-17T05:06:45Z</updated>
+  <updated>2026-09-18T04:58:49Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Donnerstag, 17. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-17.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-17.html</id>
+    <updated>2026-09-18T04:58:49Z</updated>
+    <summary type="text">feat: Multiinstanzbetrieb des Backends:
+— Gleichzeitige Verzeichnisabgleiche serialisiert
+— Sanftes Herunterfahren und Readiness ohne Modellabhängigkeit
+— DirectorySyncRunLock mit Advisory-Lock implementiert
+feat(indexing): Metadatenschema nachkalibrieren — Extraktionsgüte, Konfidenzschwelle, Umschlüsselung:
+— Umschlüsselung zweiphasig und wiederaufnehmbar
+— Generator-Voreinstellungen verworfen, Titel-Fallback später
+feat: Metadaten-Nacharbeiten — geparkt bis das Produkt weiter ist:
+— Vokabular der Dokumentart über Oberfläche pflegen
+Sonstiges:
+— Anmeldung: Identitätsanbieter-Sitzung, Direktlinks, Kontowechsel
+— Zerlegung erzeugt Suchanfragen statt Gesprächsfortsetzung
+— Test-Isolation: Liegengebliebene Zeilen, Einstellungszeilen wiederhergestellt
+— Javadoc-Verweise behoben, Lauf in CI-Prüfung aufgenommen</summary>
+  </entry>
   <entry>
     <title>Tagesreport Mittwoch, 16. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-16.html"/>
