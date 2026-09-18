@@ -91,6 +91,13 @@ public enum AuditEventType {
   ACCOUNT_REAUTHENTICATION_FORCED,
   API_TOKEN_ISSUED,
   API_TOKEN_REVOKED,
+  /**
+   * A personal access token stopped working without anyone revoking it - it reached its expiry, or
+   * the lifecycle of its owner's account ended it (ADR-0035, Entscheidung 2). With a mandatory
+   * expiry the silent end is the common case, and an access that ends without an entry is the same
+   * gap in the trail as one that begins without one; {@code after.reason} names which of the two.
+   */
+  API_TOKEN_EXPIRED,
   /** One entry per effected change from a directory sync run, linked via {@code correlationRef}. */
   DIRECTORY_SYNC_CHANGE_APPLIED,
   /** The header entry of a directory sync run, with its outcome. */

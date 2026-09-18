@@ -121,6 +121,7 @@ val typeMappingsConfig = mapOf(
     "LockReason" to "LockReason",
     "LocalAccountActivity" to "LocalAccountActivity",
     "MailDeliveryPath" to "MailDeliveryPath",
+    "ExternalAccessTokenStatus" to "ExternalAccessTokenStatus",
 )
 
 tasks.withType<Test> {
@@ -206,6 +207,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "LockReason" to "io.opaa.api.types.LockReason",
         "LocalAccountActivity" to "io.opaa.api.types.LocalAccountActivity",
         "MailDeliveryPath" to "io.opaa.api.types.MailDeliveryPath",
+        "ExternalAccessTokenStatus" to "io.opaa.api.types.ExternalAccessTokenStatus",
     ))
 }
 

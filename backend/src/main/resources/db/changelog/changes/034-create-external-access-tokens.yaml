@@ -1,0 +1,76 @@
+databaseChangeLog:
+  - changeSet:
+      id: 034-create-external-access-tokens
+      author: opaa
+      comment: >-
+        Persoenliche Zugangstokens des Fremdzugangskanals (#1718, ADR-0035 Entscheidung 2) in einer
+        eigenen Ablage - dieselbe Pruefkette und derselbe Sofortwiderruf wie die lokalen Tokens aus
+        ADR-0033, aber andere Felder, Fristen und Lebenszyklus. Gespeichert wird nur der HMAC-
+        Suchwert des Rohwerts (Schluessel aus OPAA_AUTH_JWT_SECRET, Zweck
+        opaa:jwt:external-access-token-lookup) neben dem kurzen Praefix zur Wiedererkennung; der
+        Rohwert selbst existiert nach der Ausstellung nirgends mehr. Zwei bewusste Abwesenheiten:
+        keine CIDR-Spalte, weil die Netzbeschraenkung dem Kanal gehoert und je Token ein
+        Anwesenheitsmerkmal waere, und keine organization_id - wie local_action_tokens haengt die
+        Zeile an ihrer Person, die die Organisation traegt, womit die Verbundschluessel-Regel des
+        Schemas hier nicht greift. last_used_on ist ein Datum, kein Zeitstempel, wird hoechstens
+        einmal am Tag geschrieben und beim Widerruf wie beim Ablauf geloescht; lapse_recorded_at
+        markiert den geschriebenen API_TOKEN_EXPIRED-Eintrag und ist zugleich der Beginn der an die
+        Protokollfrist gekoppelten Loeschfrist. Die Bibliotheksauswahl ist nach der Ausstellung
+        unveraenderlich - einzige noch schreibbare Tatsache eines Eintrags ist extinguished_at: die
+        weggefallene Freigabe, die auch durch eine spaetere Wiederfreigabe nicht zurueckkommt.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE external_access_tokens (
+                  id uuid NOT NULL,
+                  user_id uuid NOT NULL,
+                  name character varying(120) NOT NULL,
+                  token_prefix character varying(32) NOT NULL,
+                  token_lookup_hash character varying(64) NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  expires_at timestamp with time zone NOT NULL,
+                  last_used_on date,
+                  revoked_at timestamp with time zone,
+                  revocation_reason character varying(32),
+                  lapse_recorded_at timestamp with time zone,
+                  CONSTRAINT chk_external_access_tokens_name CHECK ((btrim((name)::text) <> '')),
+                  CONSTRAINT chk_external_access_tokens_revocation CHECK (((revoked_at IS NULL) = (revocation_reason IS NULL))),
+                  CONSTRAINT chk_external_access_tokens_revocation_reason CHECK (((revocation_reason IS NULL) OR (revocation_reason IN ('OWNER', 'ADMIN', 'ACCOUNT_LIFECYCLE', 'EXPIRED'))))
+              );
+
+              ALTER TABLE ONLY external_access_tokens
+                  ADD CONSTRAINT external_access_tokens_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY external_access_tokens
+                  ADD CONSTRAINT ux_external_access_tokens_hash UNIQUE (token_lookup_hash);
+
+              ALTER TABLE ONLY external_access_tokens
+                  ADD CONSTRAINT fk_external_access_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+              CREATE INDEX idx_external_access_tokens_user ON external_access_tokens (user_id);
+
+              CREATE INDEX idx_external_access_tokens_expires_at ON external_access_tokens (expires_at);
+
+              CREATE TABLE external_access_token_libraries (
+                  token_id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  extinguished_at timestamp with time zone
+              );
+
+              ALTER TABLE ONLY external_access_token_libraries
+                  ADD CONSTRAINT external_access_token_libraries_pkey PRIMARY KEY (token_id, library_id);
+
+              ALTER TABLE ONLY external_access_token_libraries
+                  ADD CONSTRAINT fk_external_access_token_libraries_token FOREIGN KEY (token_id) REFERENCES external_access_tokens(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY external_access_token_libraries
+                  ADD CONSTRAINT fk_external_access_token_libraries_library FOREIGN KEY (library_id) REFERENCES knowledge_libraries(id) ON DELETE CASCADE;
+
+              CREATE INDEX idx_external_access_token_libraries_library ON external_access_token_libraries (library_id);
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE IF EXISTS external_access_token_libraries;
+              DROP TABLE IF EXISTS external_access_tokens;

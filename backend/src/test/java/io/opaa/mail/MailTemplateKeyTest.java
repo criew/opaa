@@ -18,7 +18,7 @@ import org.junit.jupiter.params.provider.EnumSource;
  * the same strict compiler {@code MailTemplateService} uses, and carries a sample value for every
  * placeholder.
  *
- * <p>This is the test that makes the registry safe to extend: a thirteenth key with a typo in a
+ * <p>This is the test that makes the registry safe to extend: a further key with a typo in a
  * placeholder, a missing sample value or an undeclared variable fails here rather than at the
  * moment somebody's invitation is sent.
  */
@@ -37,13 +37,14 @@ class MailTemplateKeyTest {
           "ACCOUNT_HANDED_OVER",
           "BOOTSTRAP_ACCOUNT_USED",
           "ADMIN_REVIEW_REMINDER",
+          "EXTERNAL_ACCESS_TOKEN_EXPIRING",
           "TEST_MAIL");
 
   private final Mustache.Compiler plain = Mustache.compiler().escapeHTML(false);
   private final Mustache.Compiler html = Mustache.compiler().escapeHTML(true);
 
   @Test
-  void theRegistryCarriesExactlyTheTwelveKeysTheAdrNames() {
+  void theRegistryCarriesExactlyTheKeysTheProductKnows() {
     assertThat(Arrays.stream(MailTemplateKey.values()).map(MailTemplateKey::key))
         .containsExactlyElementsOf(EXPECTED_KEYS);
   }

@@ -377,6 +377,32 @@ Verfügung — es gilt dieselbe Zweckbindung wie für den übrigen Nachweisbesta
   als Punkt, den die Proxy-Konfiguration der einführenden Stelle mit abdecken muss. Dass die Regel
   gilt, sichert eine Regressionsprüfung.
 
+### Umsetzungsstand (#1718)
+
+Gebaut sind Modell und Schema (`external_access_tokens` samt der unveränderlichen Auswahl in
+`external_access_token_libraries`), die Ausstellung mit Einmalanzeige, die Selbstsicht mit „zuletzt
+benutzt", der Widerruf durch die Person, die Verwaltungsliste ohne Nutzungsdatum und ohne
+Personenfilter, die beiden Sperren der Systemverwaltung, der Authentifizierungsfilter samt eigener
+Filterkette, die Erinnerungsmail 14 und 3 Tage vor dem Ablauf, das Außerkrafttreten mit
+Protokolleintrag und die an die Protokollfrist gekoppelte Löschfrist.
+
+Schalter, Netzbereich und Höchstlaufzeit kommen aus den Kanaleinstellungen
+([#1717](https://github.com/criew/opaa/issues/1717)) und werden **je Aufruf** gelesen: Ist der
+Schalter zu, wird jedes Token abgewiesen, und die Tokenzeilen bleiben unverändert erhalten.
+
+Zwei Dinge stehen noch aus und sind bewusst als Naht angelegt, nicht als Provisorium:
+
+- **Die Bibliotheksfreigabe** ist eine Frage an `ExternalAccessLibraryRelease`, die heute jede
+  lesbare Bibliothek als freigegeben behandelt; [#1731](https://github.com/criew/opaa/issues/1731)
+  liefert das Reichweitenfeld und löst den Platzhalter ab.
+- **Die Freigabeliste der erreichbaren Pfade ist leer.** Ein Zugangstoken authentifiziert sich
+  erfolgreich und erreicht anschließend nichts — jeder Pfad wird mit `403` abgewiesen. Such- und
+  Abrufendpunkte ([#1720](https://github.com/criew/opaa/issues/1720)) und der MCP-Server
+  ([#1721](https://github.com/criew/opaa/issues/1721)) tragen ihre Pfade dort ein, sobald es sie
+  gibt. Der bestehende Endpunkt „Bibliotheken auflisten" der Weboberfläche steht bewusst **nicht**
+  auf der Liste: Er antwortet mit allem, was die Person lesen darf, nicht mit der effektiven Sicht
+  des Tokens.
+
 ---
 
 ## Die effektive Sicht

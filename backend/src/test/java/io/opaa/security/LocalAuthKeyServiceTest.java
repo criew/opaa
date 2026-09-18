@@ -35,9 +35,11 @@ class LocalAuthKeyServiceTest {
     byte[] access = service.key(Purpose.ACCESS_TOKEN).getEncoded();
     byte[] refresh = service.key(Purpose.REFRESH_TOKEN_LOOKUP).getEncoded();
     byte[] action = service.key(Purpose.ACTION_TOKEN_LOOKUP).getEncoded();
+    byte[] externalAccess = service.key(Purpose.EXTERNAL_ACCESS_TOKEN_LOOKUP).getEncoded();
 
-    assertThat(access).isNotEqualTo(refresh).isNotEqualTo(action);
-    assertThat(refresh).isNotEqualTo(action);
+    assertThat(access).isNotEqualTo(refresh).isNotEqualTo(action).isNotEqualTo(externalAccess);
+    assertThat(refresh).isNotEqualTo(action).isNotEqualTo(externalAccess);
+    assertThat(action).isNotEqualTo(externalAccess);
   }
 
   @Test
@@ -63,6 +65,8 @@ class LocalAuthKeyServiceTest {
     assertThat(Purpose.ACCESS_TOKEN.info()).isEqualTo("opaa:jwt:access-token");
     assertThat(Purpose.REFRESH_TOKEN_LOOKUP.info()).isEqualTo("opaa:jwt:refresh-token-lookup");
     assertThat(Purpose.ACTION_TOKEN_LOOKUP.info()).isEqualTo("opaa:jwt:action-token-lookup");
+    assertThat(Purpose.EXTERNAL_ACCESS_TOKEN_LOOKUP.info())
+        .isEqualTo("opaa:jwt:external-access-token-lookup");
   }
 
   @Test

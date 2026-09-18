@@ -9,9 +9,10 @@ import org.springframework.context.annotation.Profile;
  *
  * <p>Every authentication mode contributes its own {@code SecurityFilterChain} ({@link
  * OidcSecurityConfig}, {@link DevSecurityConfig}). Without one of them no chain guards {@code
- * /api/**} at all: the unconditional chain of the S3 event intake ({@link S3EventSecurityConfig})
- * already backs Spring Boot's generic security auto-configuration off, so the application would
- * start open instead of behind a generated password. Failing loudly at startup beats either.
+ * /api/**} at all: the unconditional chains of the S3 event intake ({@link S3EventSecurityConfig})
+ * and of the external-access channel ({@link ExternalAccessSecurityConfig}) already back Spring
+ * Boot's generic security auto-configuration off, so the application would start open instead of
+ * behind a generated password. Failing loudly at startup beats either.
  */
 @Configuration
 @Profile("!oidc & !dev")

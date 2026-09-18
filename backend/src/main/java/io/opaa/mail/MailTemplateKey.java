@@ -20,7 +20,7 @@ import java.util.Optional;
  * from the branding and is therefore declared by every key.
  *
  * <p>{@link #defaultBodyHtmlContent()} is the inner fragment only; {@link EmailLayoutBuilder} wraps
- * it in the branded frame, so a change to the frame reaches all twelve mails at once.
+ * it in the branded frame, so a change to the frame reaches every mail at once.
  */
 public enum MailTemplateKey {
   LOCAL_ACCOUNT_INVITATION(
@@ -281,6 +281,29 @@ public enum MailTemplateKey {
       "count",
       "actionUrl"),
 
+  EXTERNAL_ACCESS_TOKEN_EXPIRING(
+      "Zugangstoken läuft ab",
+      "Ihr Zugangstoken für {{productName}} läuft ab",
+      """
+      Guten Tag {{displayName}},
+
+      Ihr Zugangstoken „{{tokenName}}“ für {{productName}} läuft {{expiresAtHuman}} ab. Danach kann das damit eingerichtete Werkzeug nicht mehr auf Ihre freigegebenen Bibliotheken zugreifen.
+
+      Wird der Zugang weiterhin gebraucht, erzeugen Sie rechtzeitig ein neues Token in Ihren Einstellungen. Ein abgelaufenes Token lässt sich nicht verlängern.
+      """,
+      """
+      <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;line-height:1.3;">Ihr Zugangstoken läuft ab</h1>
+      <p style="margin:0 0 14px;">Guten Tag {{displayName}},</p>
+      <p style="margin:0 0 14px;">Ihr Zugangstoken <strong>{{tokenName}}</strong> für <strong>{{productName}}</strong> läuft {{expiresAtHuman}} ab. Danach kann das damit eingerichtete Werkzeug nicht mehr auf Ihre freigegebenen Bibliotheken zugreifen.</p>
+      <p style="margin:0;font-size:13px;">Wird der Zugang weiterhin gebraucht, erzeugen Sie rechtzeitig ein neues Token in Ihren Einstellungen. Ein abgelaufenes Token lässt sich nicht verlängern.</p>
+      """,
+      null,
+      "Ihr Zugangstoken {{tokenName}} läuft {{expiresAtHuman}} ab.",
+      "productName",
+      "displayName",
+      "tokenName",
+      "expiresAtHuman"),
+
   TEST_MAIL(
       "Testnachricht",
       "Testnachricht von {{productName}}",
@@ -316,7 +339,8 @@ public enum MailTemplateKey {
           Map.entry("expiresAtHuman", "noch 24 Stunden"),
           Map.entry("reason", "Zu viele fehlgeschlagene Anmeldeversuche"),
           Map.entry("count", "7"),
-          Map.entry("occurredAtHuman", "am 11.09.2026 um 08:14 Uhr"));
+          Map.entry("occurredAtHuman", "am 11.09.2026 um 08:14 Uhr"),
+          Map.entry("tokenName", "Claude Code auf dem Dienstrechner"));
 
   private final String label;
   private final String defaultSubject;
