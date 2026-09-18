@@ -57,6 +57,9 @@ public class RateLimitConfiguration {
    */
   static final String LOCAL_HANDOVER_PATTERN = "^/api/v1/auth/local/handover/(?:preview|redeem)$";
 
+  /** Keyed by the client alone: one bucket for all spaces, so switching spaces buys no budget. */
+  static final String CHAT_SEARCH_PATTERN = "^/api/v1/spaces/[^/]+/chats/search$";
+
   @Bean
   TrustedProxyClientIpResolver clientIpResolver(RateLimitProperties properties) {
     return new TrustedProxyClientIpResolver(properties.trustedProxyCidrs());
@@ -111,6 +114,7 @@ public class RateLimitConfiguration {
     rules.add(rule("source-test", sourceTestPattern, properties.sourceTest()));
     rules.add(rule("document-content", documentContentPattern, properties.documentContent()));
     rules.add(rule("webhook", webhookPattern, properties.webhook()));
+    rules.add(rule("chat-search", CHAT_SEARCH_PATTERN, properties.chatSearch()));
     LocalAuthLimits localAuth = properties.localAuth();
     rules.add(rule("local-auth-login", LOCAL_LOGIN_PATTERN, localAuth.login()));
     rules.add(rule("local-auth-refresh", LOCAL_REFRESH_PATTERN, localAuth.refresh()));
