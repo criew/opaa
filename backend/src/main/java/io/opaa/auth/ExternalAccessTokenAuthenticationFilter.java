@@ -36,7 +36,9 @@ import tools.jackson.databind.json.JsonMapper;
  *
  * <p>A refusal answers {@code 401} with the reason in {@code WWW-Authenticate}, the way the local
  * issuer does (ADR-0033, Entscheidung 8) - a tool that gets {@code channel_closed} waits, one that
- * gets {@code token_revoked} needs a new token, and neither has to guess.
+ * gets {@code token_revoked} needs a new token, and neither has to guess. A path whose
+ * specification demands another answer registers an {@link ExternalAccessRefusalStyle}; the MCP
+ * endpoint is the one that does (#1721).
  *
  * <p><b>The caller a token call carries is never the person's full identity.</b> Neither the
  * authority ({@link #AUTHORITY}, never the system role) nor the {@link CurrentUser} of the request
@@ -64,6 +66,7 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
   private final ExternalAccessTokenAuthenticator authenticator;
   private final ExternalAccessTokenService tokenService;
   private final ExternalAccessNetworkPolicy networkPolicy;
+  private final List<ExternalAccessRefusalStyle> refusalStyles;
   private final JsonMapper jsonMapper;
   private final Clock clock;
   private final ZoneId zone;
@@ -72,11 +75,13 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
       ExternalAccessTokenAuthenticator authenticator,
       ExternalAccessTokenService tokenService,
       ExternalAccessNetworkPolicy networkPolicy,
+      List<ExternalAccessRefusalStyle> refusalStyles,
       JsonMapper jsonMapper,
       Clock clock) {
     this.authenticator = authenticator;
     this.tokenService = tokenService;
     this.networkPolicy = networkPolicy;
+    this.refusalStyles = List.copyOf(refusalStyles);
     this.jsonMapper = jsonMapper;
     this.clock = clock;
     this.zone = ZoneId.systemDefault();
@@ -100,20 +105,24 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
   protected void doFilterInternal(
       HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
+    ExternalAccessRefusalStyle style = styleFor(request);
     String value = bearerValue(request);
     if (value == null) {
-      refuse(response, ExternalAccessTokenRejection.INVALID_TOKEN);
+      refuse(response, style, ExternalAccessTokenRejection.INVALID_TOKEN);
       return;
     }
     if (!networkPolicy.isAllowed(request)) {
       // The network restriction belongs to the channel, not to the token (ADR-0035); it is checked
       // before the lookup, so an address outside it learns nothing about which values exist.
-      refuse(response, ExternalAccessTokenRejection.NETWORK_NOT_ALLOWED);
+      refuse(response, style, ExternalAccessTokenRejection.NETWORK_NOT_ALLOWED);
       return;
     }
-    Result result = authenticator.authenticate(value);
+    Result result =
+        style != null && style.distinguishesClosedChannel()
+            ? authenticator.authenticateWithSwitchLast(value)
+            : authenticator.authenticate(value);
     if (result instanceof Result.Refused refused) {
-      refuse(response, refused.rejection());
+      refuse(response, style, refused.rejection());
       return;
     }
     Result.Authenticated authenticated = (Result.Authenticated) result;
@@ -144,9 +153,24 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
     tokenService.recordUse(authenticated.tokenId());
   }
 
-  private void refuse(HttpServletResponse response, ExternalAccessTokenRejection rejection)
+  /** The style of the one path that claims this request, or {@code null} for the default. */
+  private ExternalAccessRefusalStyle styleFor(HttpServletRequest request) {
+    return refusalStyles.stream()
+        .filter(style -> style.appliesTo(request))
+        .findFirst()
+        .orElse(null);
+  }
+
+  private void refuse(
+      HttpServletResponse response,
+      ExternalAccessRefusalStyle style,
+      ExternalAccessTokenRejection rejection)
       throws IOException {
     SecurityContextHolder.clearContext();
+    if (style != null) {
+      style.refuse(response, rejection);
+      return;
+    }
     response.setStatus(HttpStatus.UNAUTHORIZED.value());
     response.setHeader(
         HttpHeaders.WWW_AUTHENTICATE,

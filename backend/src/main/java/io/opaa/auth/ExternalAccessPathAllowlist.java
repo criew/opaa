@@ -1,6 +1,8 @@
 package io.opaa.auth;
 
+import io.opaa.mcp.McpEndpoint;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
@@ -21,26 +23,54 @@ import org.springframework.stereotype.Component;
  * the first leak past exactly the intersection this channel promises. {@code GET
  * /api/v1/documents/&#123;id&#125;/content} hands out the original file; the channel hands out
  * passages, which is why a token call is never offered a download link in the first place ({@code
- * SearchHitAssembler}, {@code PassageFetchService}). The MCP server of #1721 adds {@code /mcp}.
+ * SearchHitAssembler}, {@code PassageFetchService}).
+ *
+ * <p>{@code /mcp} (#1721) is on the list twice over: authorised like the reading paths, and
+ * <b>owned</b> by this channel - see {@link #ownedMatchers()}. Both entries are the <b>one</b>
+ * matcher of {@link McpEndpoint}, which the endpoint itself listens on: a path interpreted twice
+ * could be authorised in one place and not in the other, and a method restriction here would only
+ * duplicate the {@code 405} the transport already answers.
  */
 @Component
 public class ExternalAccessPathAllowlist {
 
   private final List<RequestMatcher> allowed;
+  private final List<RequestMatcher> owned;
 
-  public ExternalAccessPathAllowlist() {
+  // Explicit: with more than one declared constructor Spring would look for a no-arg one.
+  @Autowired
+  public ExternalAccessPathAllowlist(McpEndpoint mcpEndpoint) {
     this(
         List.of(
-            post("/api/v1/search"), get("/api/v1/search/libraries"), get("/api/v1/search/hits/*")));
+            post("/api/v1/search"),
+            get("/api/v1/search/libraries"),
+            get("/api/v1/search/hits/*"),
+            mcpEndpoint.matcher()),
+        List.of(mcpEndpoint.matcher()));
   }
 
   ExternalAccessPathAllowlist(List<RequestMatcher> allowed) {
+    this(allowed, List.of());
+  }
+
+  ExternalAccessPathAllowlist(List<RequestMatcher> allowed, List<RequestMatcher> owned) {
     this.allowed = List.copyOf(allowed);
+    this.owned = List.copyOf(owned);
   }
 
   /** The matchers the filter chain authorises; everything else is refused. */
   public List<RequestMatcher> matchers() {
     return allowed;
+  }
+
+  /**
+   * The paths this channel owns outright: they are routed into its filter chain <b>even without a
+   * bearer value</b>, so no other chain can serve them anonymously. Only the MCP endpoint is one -
+   * the Spring AI starter registers it unauthenticated, and under {@code local,dev} the development
+   * filter would otherwise authenticate an anonymous call to it as the development user.
+   */
+  public List<RequestMatcher> ownedMatchers() {
+    return owned;
   }
 
   private static RequestMatcher get(String pattern) {

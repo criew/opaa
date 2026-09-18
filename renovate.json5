@@ -247,6 +247,20 @@
       matchUpdateTypes: ['major'],
       enabled: false,
     },
+    // Der MCP-Starter kommt als eigener PR und mergt nie automatisch (#1721, ADR-0035): Er bringt
+    // mcp-core mit, und mcp-core entscheidet, welche MCP-Protokollfassungen diese Installation
+    // spricht. Ein Wechsel ist damit keine Abhängigkeitsaktualisierung, sondern eine
+    // Protokolländerung — und weil es genau einen Server gibt, fallen bei einem Bruch alle
+    // Fremdzugänge des Hauses zugleich aus. Die angekündigte Fassungsliste
+    // (opaa.mcp.protocol-versions) ist bei jedem Vorschlag gegen die Fassungen zu prüfen, die die
+    // neue Bibliothek tatsächlich bedient. Der eigene groupName hebt ihn aus dem Sammel-PR der
+    // Spring-Plattform heraus; mcp-core selbst steht in keinem Katalog und ist für Renovate
+    // unsichtbar — der Starter ist der einzige Hebel.
+    {
+      matchPackageNames: ['org.springframework.ai:spring-ai-starter-mcp-server-webmvc'],
+      groupName: 'MCP-Server',
+      automerge: false,
+    },
     // TypeScript-7-Major bleibt aus, bis typescript-eslint nachzieht (#1007): 8.68.0 bricht
     // mit "typescript-eslint does not support TS 7.0" ab (Upstream-Tracking:
     // typescript-eslint/typescript-eslint#10940, Support ab TS >= 7.1). 6.x-Updates laufen

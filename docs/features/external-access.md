@@ -126,14 +126,16 @@ Vorhandene Tokens bleiben dabei **bestehen**. Das ist Absicht: Der Schalter ist 
 Störungsfall, und ein Notaus, der die Einrichtung aller Beschäftigten vernichtet, wird im Zweifel
 nicht benutzt.
 
-**Der Notaus wirkt je Werkzeugaufruf, nicht je Sitzung.** Streamable HTTP kennt langlebige
-Sitzungen; eine Schalterprüfung nur beim Verbindungsaufbau ließe offene Sitzungen den Notaus
-überdauern und machte die Meldung „Kanal ist zu" falsch. Schalterzustand, Tokengültigkeit und
-effektive Sicht werden deshalb bei **jedem** Werkzeug- und Endpunktaufruf geprüft; bestehende
-Sitzungen enden beim Ausschalten. Das ist dieselbe Regel, die
+**Der Notaus wirkt je Werkzeugaufruf — und es gibt keine Sitzung, die ihn überdauern könnte.**
+Der MCP-Server läuft in der **zustandsfreien** Betriebsart von Streamable HTTP
+([ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md), Entscheidung 1): Jede
+Anfrage trägt ihr eigenes Zugangsmerkmal, und Schalterzustand, Tokengültigkeit und effektive Sicht
+werden bei **jedem** Werkzeug- und Endpunktaufruf neu geprüft. Damit ist „eine offene Sitzung
+überdauert den Notaus nicht" keine Zusage, die eingehalten werden muss, sondern ein Zustand, den es
+nicht gibt. Die Regel dahinter ist dieselbe, die
 [access-control.md](./access-control.md#sitzungen-netzbereiche-und-erzwungene-neuanmeldung) für
-Sitzungen bereits kennt: Was mit einer beendeten Sitzung weiterläuft, trägt Rechte weiter, die es
-nicht mehr gibt.
+Sitzungen kennt: Was mit einer beendeten Sitzung weiterläuft, trägt Rechte weiter, die es nicht
+mehr gibt.
 
 **Der Netzbereich gehört dem Kanal, nicht dem Token.** Die Einschränkung auf Netzbereiche gilt
 installationsweit für den gesamten Fremdzugangskanal, Vorgabe **nur Hausnetz**. Der realistische Weg,
@@ -420,10 +422,11 @@ Weboberfläche (er antwortet mit allem, was die Person lesen darf, nicht mit der
 und der Inhaltsabruf eines Dokuments: Der Kanal gibt Fundstellen heraus, keine Originaldateien,
 weshalb einem Token-Aufruf gar kein Download-Link angeboten wird.
 
-Eines steht noch aus:
-
-- **Der MCP-Server** ([#1721](https://github.com/criew/opaa/issues/1721)) trägt `/mcp` in dieselbe
-  Freigabeliste ein, sobald es ihn gibt.
+Seit [#1721](https://github.com/criew/opaa/issues/1721) steht `/mcp` daneben auf derselben Liste —
+und zwar zweifach: für `POST` freigegeben wie die Lesewege, und dem Kanal **zugeordnet** für jede
+Methode. Das Zweite ist nötig, weil der MCP-Endpunkt der Bibliothek ohne Zugangsprüfung entsteht:
+Ohne die Zuordnung bediente ihn im Entwicklungsbetrieb die reguläre Kette, und ein Aufruf ohne
+Merkmal käme als Entwicklungsnutzer durch.
 
 ### Die Oberfläche (#1719)
 
@@ -529,9 +532,12 @@ baut deshalb **keine eigene Erweiterung je Werkzeug**, sondern einen MCP-Server,
 gleichermaßen benutzen: Claude Code, Cursor, OpenCode, VS Code mit Copilot, Automatisierungswerkzeuge
 und jedes eigene Skript mit einer MCP-Bibliothek.
 
-**Transport ist Streamable HTTP** (Spezifikationsstand 2026-07-28), nicht stdio. Ein stdio-Server
-müsste auf jedem Arbeitsplatz installiert werden und hätte dort ein eigenes Zugangsmerkmal zu
-verwahren; ein HTTP-Server liegt beim Backend, wird einmal betrieben und einmal aktualisiert.
+**Transport ist Streamable HTTP in der zustandsfreien Betriebsart**, unter dem Pfad `/mcp` und
+nicht über stdio. Ein stdio-Server müsste auf jedem Arbeitsplatz installiert werden und hätte dort
+ein eigenes Zugangsmerkmal zu verwahren; ein HTTP-Server liegt beim Backend, wird einmal betrieben
+und einmal aktualisiert. Bezugsfassung der Entscheidung ist der Spezifikationsstand **2026-07-28**;
+ausgeliefert wird die handshake-basierte Bindung, weil die eingesetzte Bibliothek nur die Revisionen
+bis `2025-11-25` spricht (siehe [Protokollfassungen](#protokollfassungen-und-ihr-wechsel)).
 
 **Authentifizierung ist das Zugangstoken**, als Bearer-Merkmal. OAuth 2.1 mit
 Autorisierungsserver und dynamischer Client-Registrierung — das, was die Spezifikation für fremd
@@ -559,18 +565,20 @@ eine Sonderlocke. **Daraus folgt keine Zusage, dass OPAA an einen fremd betriebe
 angeschlossen wird**; dafür wäre die öffentliche Erreichbarkeit nötig, die dieses Dokument
 ausschließt.
 
-### Die Beschreibungen entstehen je Verbindung neu
+### Die Beschreibungen entstehen je Anfrage neu
 
 Ein fremdes Modell entscheidet allein anhand der Werkzeugbeschreibung, ob eine Frage hierher gehört.
 „Sucht in Wissensbibliotheken" beantwortet diese Frage nicht; „Sucht in den Beständen *Baugenehmigungen
 2024* und *Vergaberecht* dieser Behörde" beantwortet sie. Die Beschreibungen von `search`, `fetch` und
-`list_libraries` werden deshalb **zur Verbindungszeit aus Namen und Beschreibungen der Bibliotheken
-der effektiven Sicht des Tokens erzeugt** — also je Person verschieden, nicht nur je Installation.
+`list_libraries` werden deshalb **bei jeder Werkzeugauflistung aus Namen und Beschreibungen der
+Bibliotheken der effektiven Sicht des Tokens erzeugt** — also je Person verschieden, nicht nur je
+Installation. Eine Bibliotheksbeschreibung ist Freitext und geht deshalb nur gedeckelt und einzeilig
+ein, als Satzteil der vorgegebenen Struktur.
 
 Das ist keine zusätzliche Auskunft: Die Namen stehen ohnehin in `list_libraries`, das dasselbe Token
 jederzeit aufrufen kann. Es ist dieselbe Information, nur an der Stelle, an der das fremde Modell
 sie tatsächlich liest. Ändert sich die effektive Sicht, gilt die neue Beschreibung mit der nächsten
-Verbindung; der Rechtefilter in der Suche hängt davon nicht ab und wirkt bei jedem Aufruf.
+Auflistung; der Rechtefilter in der Suche hängt davon nicht ab und wirkt bei jedem Aufruf.
 
 Der **Einleitungstext** des Servers (`instructions` der Initialisierung) kommt aus der
 Systemkonfiguration und ist für die ganze Installation gleich — er sagt dem fremden Modell, wann es
@@ -585,6 +593,21 @@ wird dasselbe Schicksal haben. Daraus folgen drei Festlegungen, die
 Fassungen der Server aushandelt und ankündigt, wie er sich gegenüber einem Client mit älterer oder
 neuerer Fassung verhält, und wie lange eine abgekündigte Fassung weiter bedient wird. Dazu gehört, dass die Pflege
 der Fassungsfolge und der vier Client-Anleitungen im Handbuch eine benannte Zuständigkeit hat.
+
+**Bedient werden heute die Revisionen `2025-03-26`, `2025-06-18` und `2025-11-25`** — die
+handshake-basierten Fassungen, die die eingesetzte Bibliothek tatsächlich ausliefert. Die Liste
+steht in der Systemkonfiguration (`opaa.mcp.protocol-versions`) und nicht in einer
+Abhängigkeitsliste, damit „welche Fassung spricht diese Installation?" ohne Blick in den Build zu
+beantworten ist.
+
+**Ein Client mit einer nicht bedienten Fassung wird abgewiesen, nie still unter einer anderen
+bedient** — und zwar auf dem Weg, den seine Fassung lesen kann: Nennt er sie im `initialize`, ist die
+Antwort ein Fehler, der die bedienten Fassungen aufzählt; nennt er sie im Kopf
+`MCP-Protocol-Version` (so verhandelt die Fassung 2026-07-28, ganz ohne `initialize`), ist die
+Antwort `400` **ohne** modernen Fehlerkörper. Letzteres ist Absicht: Ein Client, der beide Ären
+spricht, erkennt daran, dass er auf den Handschlag zurückfallen soll, statt eine moderne
+Aushandlung zu wiederholen, die es hier nicht gibt. Jede erfolgreiche Initialisierung trägt die
+Fassungsliste zusätzlich im `_meta`-Feld.
 
 Das Störungsbild ist eigen: Weil es genau einen Server gibt, fallen bei einem Fassungsbruch **alle
 Fremdzugänge des Hauses zugleich** aus, und die Meldung sieht die Person in ihrem Client („MCP server
@@ -621,6 +644,13 @@ Obergrenze — sechsstellig viele Abrufe. Was in einer
 Nacht nicht geht, geht in neunzig Tagen. Der Kanal verhindert Massenabfluss nicht — er macht ihn
 langsam, und er macht die Entscheidung, welcher Bestand überhaupt erreichbar ist, zu einer
 zurechenbaren Handlung. Mehr ist es nicht, und mehr soll hier auch nicht behauptet werden.
+
+**Auf dem MCP-Weg ist das Kontingent die einzige Bremse**, denn die allgemeine Anfragegrenze der
+Installation greift nur für `/api/*` und damit nicht für `/mcp`. Deshalb zählt dort **jede**
+authentifizierte Anfrage mit — auch das Abrufen des Werkzeugverzeichnisses, aus dem die
+Werkzeugbeschreibungen je Token entstehen. Der Abflussalarm zählt es nicht mit: Er beobachtet
+Bestände, die das Haus verlassen, und eine Liste von Namen, die das Token ohnehin sehen darf, ist
+kein Abruf.
 
 Der Vorgabewert ist bewusst konservativ; die Systemverwaltung kann ihn anheben. Ein überschrittenes
 Kontingent führt zu einer klaren Ablehnung, nicht zu einer langsamen Antwort. Ein Kontingent ist

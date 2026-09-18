@@ -27,6 +27,17 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
 
   static final String REQUEST_ATTRIBUTE = CurrentUserArgumentResolver.class.getName() + ".value";
 
+  /**
+   * The caller the filter chain attached to {@code request}, or {@code null} when it carries none.
+   * The one way to read this attribute from outside this package, for code that is not a controller
+   * method: the MCP endpoint (#1721) is a {@code RouterFunction} and has no {@code @Caller}
+   * parameter to resolve.
+   */
+  public static CurrentUser callerOf(HttpServletRequest request) {
+    Object attribute = request == null ? null : request.getAttribute(REQUEST_ATTRIBUTE);
+    return attribute instanceof CurrentUser currentUser ? currentUser : null;
+  }
+
   @Override
   public boolean supportsParameter(MethodParameter parameter) {
     return parameter.hasParameterAnnotation(Caller.class)
