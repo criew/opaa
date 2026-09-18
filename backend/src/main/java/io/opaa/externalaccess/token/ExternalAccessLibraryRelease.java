@@ -1,8 +1,11 @@
 package io.opaa.externalaccess.token;
 
+import io.opaa.library.KnowledgeLibrary;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * The release of a knowledge library for external access (ADR-0035, Entscheidung 4), as this
@@ -16,9 +19,19 @@ import java.util.UUID;
 public interface ExternalAccessLibraryRelease {
 
   /**
-   * The subset of {@code libraryIds} whose release is in force at this moment. Asked per call, like
-   * every other factor of the effective view - a release that was withdrawn takes its library out
-   * of every token's view without any token being touched.
+   * The libraries among {@code libraryIds} whose release is in force at this moment. Asked per
+   * call, like every other factor of the effective view - a release that was withdrawn takes its
+   * library out of every token's view without any token being touched.
+   *
+   * <p>Returns the rows, not only their ids, so a caller that needs name and expiry - the selection
+   * dialogue - does not read them a second time.
    */
-  Set<UUID> releasedAmong(Collection<UUID> libraryIds);
+  List<KnowledgeLibrary> releasedLibrariesAmong(Collection<UUID> libraryIds);
+
+  /** The ids of {@link #releasedLibrariesAmong} - what the intersection of a scope needs. */
+  default Set<UUID> releasedAmong(Collection<UUID> libraryIds) {
+    return releasedLibrariesAmong(libraryIds).stream()
+        .map(KnowledgeLibrary::getId)
+        .collect(Collectors.toUnmodifiableSet());
+  }
 }

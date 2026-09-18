@@ -167,8 +167,7 @@ public class ExternalAccessTokenService {
     if (readable.isEmpty()) {
       return List.of();
     }
-    Set<UUID> released = release.releasedAmong(readable);
-    return libraries.findAllById(released).stream()
+    return release.releasedLibrariesAmong(readable).stream()
         .map(
             library ->
                 new EligibleLibrary(
