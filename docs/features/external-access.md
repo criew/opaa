@@ -645,6 +645,13 @@ Nacht nicht geht, geht in neunzig Tagen. Der Kanal verhindert Massenabfluss nich
 langsam, und er macht die Entscheidung, welcher Bestand überhaupt erreichbar ist, zu einer
 zurechenbaren Handlung. Mehr ist es nicht, und mehr soll hier auch nicht behauptet werden.
 
+**Auf dem MCP-Weg ist das Kontingent die einzige Bremse**, denn die allgemeine Anfragegrenze der
+Installation greift nur für `/api/*` und damit nicht für `/mcp`. Deshalb zählt dort **jede**
+authentifizierte Anfrage mit — auch das Abrufen des Werkzeugverzeichnisses, aus dem die
+Werkzeugbeschreibungen je Token entstehen. Der Abflussalarm zählt es nicht mit: Er beobachtet
+Bestände, die das Haus verlassen, und eine Liste von Namen, die das Token ohnehin sehen darf, ist
+kein Abruf.
+
 Der Vorgabewert ist bewusst konservativ; die Systemverwaltung kann ihn anheben. Ein überschrittenes
 Kontingent führt zu einer klaren Ablehnung, nicht zu einer langsamen Antwort. Ein Kontingent ist
 **keine Nutzungsstatistik**: Es zählt in einem gleitenden Fenster und wird nicht historisiert, nicht

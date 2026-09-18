@@ -12,9 +12,13 @@ import org.springframework.web.servlet.function.ServerRequest;
  * What one MCP request carries from the HTTP layer into the tools: the caller the channel's filter
  * chain authenticated, and the protocol version the client named per request.
  *
- * <p>Through the transport context rather than through {@code RequestContextHolder}: the context is
- * the mechanism the library provides for exactly this, and it does not depend on the tool running
- * on the request's own thread.
+ * <p>The caller travels in the transport context, the mechanism the library provides for exactly
+ * this. The <b>token id does not</b>: {@code ExternalAccessSearchScopeSource} reads it from {@code
+ * RequestContextHolder}, and without it the effective view falls back to everything the person may
+ * read. The tool call must therefore run on the request's own thread - which it does because the
+ * stateless autoconfiguration switches on immediate execution in a servlet environment. Moving the
+ * tools off that thread would widen the view silently; the scope tests of {@code
+ * McpServerIntegrationTest} are what would go red.
  */
 final class McpRequestContext {
 

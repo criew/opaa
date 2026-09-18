@@ -25,10 +25,11 @@ import org.springframework.stereotype.Component;
  * passages, which is why a token call is never offered a download link in the first place ({@code
  * SearchHitAssembler}, {@code PassageFetchService}).
  *
- * <p>{@code /mcp} (#1721) is on the list twice over: authorised for {@code POST} like the reading
- * paths, and <b>owned</b> by this channel for every method - see {@link #ownedMatchers()}. Its path
- * comes from {@link McpEndpoint}, the same bean the endpoint itself listens on, so a changed path
- * cannot leave the endpoint unprotected behind a rule pointing elsewhere.
+ * <p>{@code /mcp} (#1721) is on the list twice over: authorised like the reading paths, and
+ * <b>owned</b> by this channel - see {@link #ownedMatchers()}. Both entries are the <b>one</b>
+ * matcher of {@link McpEndpoint}, which the endpoint itself listens on: a path interpreted twice
+ * could be authorised in one place and not in the other, and a method restriction here would only
+ * duplicate the {@code 405} the transport already answers.
  */
 @Component
 public class ExternalAccessPathAllowlist {
@@ -44,8 +45,8 @@ public class ExternalAccessPathAllowlist {
             post("/api/v1/search"),
             get("/api/v1/search/libraries"),
             get("/api/v1/search/hits/*"),
-            post(mcpEndpoint.path())),
-        List.of(PathPatternRequestMatcher.withDefaults().matcher(mcpEndpoint.path())));
+            mcpEndpoint.matcher()),
+        List.of(mcpEndpoint.matcher()));
   }
 
   ExternalAccessPathAllowlist(List<RequestMatcher> allowed) {

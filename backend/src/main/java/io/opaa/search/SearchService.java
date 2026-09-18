@@ -84,14 +84,18 @@ public class SearchService {
   }
 
   /**
-   * The same effective view, resolved through the same {@link SearchScopeSource}, but counting
-   * against neither quota nor alert: the MCP server builds its tool descriptions from it on every
-   * {@code tools/list} (#1721), and a description that fails at the quota would take the whole
-   * channel down instead of one call. It is no retrieval - it names holdings the caller may reach,
-   * which {@link #libraries} returns to the same caller anyway.
+   * The same effective view, resolved through the same {@link SearchScopeSource}: the MCP server
+   * builds its tool descriptions from it on every {@code tools/list} (#1721).
+   *
+   * <p><b>Counts against the quota like any other call</b> - {@code /mcp} lies outside the request
+   * rate limit of {@code /api/*}, so the quota is the only brake this channel has, and an uncounted
+   * path would be an unbounded one. It does <b>not</b> feed the mass-retrieval alert: that watches
+   * holdings leaving the house, and a listing of names a token may see is not a retrieval.
    */
   public List<SearchableLibrary> librariesForDescription(CurrentUser caller) {
-    return librariesOf(searchScopeSource.scopeFor(caller));
+    SearchRequestScope scope = searchScopeSource.scopeFor(caller);
+    quota.requireWithinQuota(scope.accessTokenId());
+    return librariesOf(scope);
   }
 
   private List<SearchableLibrary> librariesOf(SearchRequestScope scope) {

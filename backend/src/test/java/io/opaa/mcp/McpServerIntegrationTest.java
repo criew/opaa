@@ -11,6 +11,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.externalaccess.ExternalAccessMassRetrievalAlarm;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.externalaccess.token.ExternalAccessTokenService;
@@ -39,9 +40,11 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.web.context.support.StandardServletEnvironment;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -81,6 +84,8 @@ class McpServerIntegrationTest {
   @Autowired private ExternalAccessSettingsService settings;
   @Autowired private ExternalAccessTokenService tokenService;
   @Autowired private LibraryExternalAccessService libraryRelease;
+  @Autowired private ExternalAccessMassRetrievalAlarm alarm;
+  @Autowired private Environment environment;
   @Autowired private Clock clock;
 
   private final HttpClient http = HttpClient.newHttpClient();
@@ -100,6 +105,8 @@ class McpServerIntegrationTest {
     ownerId = userIdOf("dev-user");
     administratorId = userIdOf("dev-admin");
     removeOwnRows();
+    // The alert window is one shared singleton; this class both drives and asserts on it.
+    alarm.reset();
 
     setChannelEnabled(true);
     servedLibraryId = insertLibrary(SERVED_LIBRARY, ownerId);
@@ -133,6 +140,7 @@ class McpServerIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    alarm.reset();
     removeOwnRows();
     vectorChunkStore.deleteByLibraryId(servedLibraryId);
     vectorChunkStore.deleteByLibraryId(unselectedLibraryId);
@@ -317,6 +325,89 @@ class McpServerIntegrationTest {
         .isEqualTo(200);
   }
 
+  /**
+   * The path is decided by the same parser everywhere. {@code /%6Dcp} reaches the endpoint - the
+   * chain and the library's route match the decoded path - while a raw comparison of {@code
+   * getRequestURI()} would call it a different path: the endpoint would answer while the version
+   * check and this channel's refusal form stood down.
+   */
+  @Test
+  void anEncodedFormOfThePathIsTheSameEndpoint() {
+    HttpResponse<String> modernOnAVariant =
+        send(
+            request(narrowToken, call("tools/list", Map.of()), "/%6Dcp")
+                .header(McpRequestContext.PROTOCOL_VERSION_HEADER, MODERN_VERSION)
+                .build());
+    assertThat(modernOnAVariant.statusCode())
+        .as("the version check must not be skipped by a percent escape")
+        .isEqualTo(400);
+
+    setChannelEnabled(false);
+    assertThat(send(request(null, call("tools/list", Map.of()), "/%6Dcp").build()).statusCode())
+        .as("a closed channel owes the same 404 on every form of its path")
+        .isEqualTo(404);
+  }
+
+  /** A matrix variable never reaches any of this: the strict firewall refuses the request. */
+  @Test
+  void aPathWithAMatrixVariableIsRefusedBeforeTheEndpoint() {
+    assertThat(
+            send(request(narrowToken, call("tools/list", Map.of()), "/mcp;x=1").build())
+                .statusCode())
+        .isEqualTo(403);
+  }
+
+  /**
+   * The effective view hangs on the tool call running on the request's thread: the token id comes
+   * from {@code RequestContextHolder}, and without it the scope would widen to everything the
+   * person may read. Two things hold that here - the servlet environment, which is what makes the
+   * stateless autoconfiguration execute tools immediately, and the quota, which is keyed by the
+   * token and could not apply at all if the id were invisible.
+   */
+  @Test
+  void theToolsRunOnTheThreadOfTheRequestSoTheTokenDecides() {
+    assertThat(environment).isInstanceOf(StandardServletEnvironment.class);
+    setChannelEnabled(true, 1);
+
+    rpc(narrowToken, toolCall("search", Map.of("query", QUESTION)));
+    JsonNode refused =
+        rpc(narrowToken, toolCall("search", Map.of("query", QUESTION))).get("result");
+
+    assertThat(refused.get("isError").asBoolean()).isTrue();
+    assertThat(refused.get("content").get(0).get("text").asString()).contains("Kontingent");
+  }
+
+  /** {@code tools/list} is no free path either - it counts, and says so when the quota is out. */
+  @Test
+  void theToolListingCountsAgainstTheQuotaOfTheToken() {
+    setChannelEnabled(true, 1);
+
+    rpc(narrowToken, call("tools/list", Map.of()));
+    JsonNode refused = rpc(narrowToken, call("tools/list", Map.of()));
+
+    assertThat(refused.has("result")).isFalse();
+    assertThat(refused.get("error").get("message").asString()).contains("Kontingent");
+  }
+
+  /** The channel alert counts MCP retrievals too, and names the token rather than a person. */
+  @Test
+  void aRetrievalOverMcpCountsTowardsTheChannelAlert() {
+    setChannelEnabled(true, 60, 1);
+
+    rpc(narrowToken, toolCall("search", Map.of("query", QUESTION)));
+    rpc(narrowToken, toolCall("search", Map.of("query", QUESTION)));
+
+    assertThat(alertsForTheAdministrator()).isPositive();
+  }
+
+  private long alertsForTheAdministrator() {
+    return jdbc.queryForObject(
+        "SELECT count(*) FROM notifications WHERE recipient_user_id = ?"
+            + " AND type = 'EXTERNAL_ACCESS_MASS_RETRIEVAL'",
+        Long.class,
+        administratorId);
+  }
+
   /** The promise of security-and-compliance.md: the single query leaves no trail. */
   @Test
   void noToolCallWritesAnAuditEntry() {
@@ -396,8 +487,12 @@ class McpServerIntegrationTest {
   }
 
   private HttpRequest.Builder request(String token, Map<String, Object> body) {
+    return request(token, body, "/mcp");
+  }
+
+  private HttpRequest.Builder request(String token, Map<String, Object> body, String path) {
     HttpRequest.Builder builder =
-        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/mcp"))
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
             .header("Content-Type", "application/json")
             // Both media types: the Streamable HTTP transport refuses anything else with 400.
             .header("Accept", "application/json, text/event-stream")
@@ -437,20 +532,40 @@ class McpServerIntegrationTest {
    */
   private void setChannelEnabled(boolean enabled) {
     ExternalAccessSettings.Values values = settings.current().values();
+    setChannelEnabled(
+        enabled, values.tokenRateLimitPerHour(), values.massRetrievalAlertThreshold());
+  }
+
+  private void setChannelEnabled(boolean enabled, int quotaPerHour) {
+    setChannelEnabled(
+        enabled, quotaPerHour, settings.current().values().massRetrievalAlertThreshold());
+  }
+
+  private void setChannelEnabled(boolean enabled, int quotaPerHour, int alertThreshold) {
+    ExternalAccessSettings.Values values = settings.current().values();
     settings.update(
         CurrentUser.of(administratorId, DEFAULT_ORGANIZATION_ID, SystemRole.SYSTEM_ADMIN, "Admin"),
         new ExternalAccessSettingsService.Update(
             enabled,
             values.tokenMaxLifetimeDays(),
-            values.tokenRateLimitPerHour(),
+            quotaPerHour,
             values.allowedCidrs(),
-            values.massRetrievalAlertThreshold(),
+            alertThreshold,
             values.serverInstructions()));
   }
 
   private void removeOwnRows() {
     jdbc.update("DELETE FROM external_access_tokens WHERE user_id = ?", ownerId);
     jdbc.update("DELETE FROM audit_log WHERE actor_ref = ?", ownerId.toString());
+    // The switch is flipped as dev-admin, an actor many classes share - so only this class's own
+    // event type is removed, never everything that actor ever wrote.
+    jdbc.update(
+        "DELETE FROM audit_log WHERE actor_ref = ? AND event_type = 'EXTERNAL_ACCESS_SETTINGS_CHANGED'",
+        administratorId.toString());
+    jdbc.update(
+        "DELETE FROM notifications WHERE recipient_user_id = ?"
+            + " AND type = 'EXTERNAL_ACCESS_MASS_RETRIEVAL'",
+        administratorId);
   }
 
   private CurrentUser owner() {
