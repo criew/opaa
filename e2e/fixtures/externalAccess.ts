@@ -283,6 +283,9 @@ export async function gotoOwnTokens(page: Page): Promise<void> {
 /**
  * Erzeugt ein Zugangstoken über die Oberfläche und gibt seinen Wert zurück - den einzigen Moment,
  * in dem es ihn gibt.
+ *
+ * Der Wert steht danach im Klartext in Trace und Anfrageköpfen eines fehlgeschlagenen Laufs; warum
+ * das hinnehmbar ist und was es entschärft, steht im Kopfkommentar von tests/external-access.spec.ts.
  */
 export async function createToken(
   page: Page,
