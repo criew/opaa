@@ -12,15 +12,16 @@ import org.springframework.stereotype.Component;
  * be silently incomplete the moment someone adds an endpoint and forgets it; a positive list is
  * silently too strict, which is a bug report, not a breach.
  *
- * <p><b>It is empty today, and that is the built state, not an oversight.</b> The search and fetch
- * endpoints (#1720) and the MCP server (#1721) are what this channel is for, and neither exists
- * yet. Each registers its own paths here when it lands; until then every access token authenticates
- * successfully and reaches nothing - {@code 403}, distinguishable from the {@code 401} of a refused
- * token.
+ * <p>The three reading paths of #1720 and nothing else: searching, the text behind one hit, and the
+ * list of libraries the token may search. Everything else - administration, indexing, upload,
+ * rights, and the whole web interface - is refused with {@code 403}.
  *
- * <p>The existing {@code GET /api/v1/libraries} was deliberately <em>not</em> put on it: it answers
- * with everything the person may read, not with the effective view of the token, so allowing it
- * would be the first leak past exactly the intersection this channel promises.
+ * <p>Two endpoints are deliberately <b>not</b> on it. {@code GET /api/v1/libraries} answers with
+ * everything the person may read rather than with the effective view of the token, so it would be
+ * the first leak past exactly the intersection this channel promises. {@code GET
+ * /api/v1/documents/&#123;id&#125;/content} hands out the original file; the channel hands out
+ * passages, which is why a token call is never offered a download link in the first place ({@code
+ * SearchHitAssembler}, {@code PassageFetchService}). The MCP server of #1721 adds {@code /mcp}.
  */
 @Component
 public class ExternalAccessPathAllowlist {
@@ -28,7 +29,9 @@ public class ExternalAccessPathAllowlist {
   private final List<RequestMatcher> allowed;
 
   public ExternalAccessPathAllowlist() {
-    this(List.of());
+    this(
+        List.of(
+            post("/api/v1/search"), get("/api/v1/search/libraries"), get("/api/v1/search/hits/*")));
   }
 
   ExternalAccessPathAllowlist(List<RequestMatcher> allowed) {
@@ -40,8 +43,11 @@ public class ExternalAccessPathAllowlist {
     return allowed;
   }
 
-  /** Convenience for a future registration and for the tests of this mechanism. */
-  static RequestMatcher get(String pattern) {
+  private static RequestMatcher get(String pattern) {
     return PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, pattern);
+  }
+
+  private static RequestMatcher post(String pattern) {
+    return PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, pattern);
   }
 }

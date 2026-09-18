@@ -51,8 +51,15 @@ class SearchHitAssembler {
     this.properties = properties;
   }
 
+  /**
+   * @param downloadsOffered whether this request may be offered a download link at all - false for
+   *     an access-token call, which never reaches the document content endpoint (ADR-0035: the
+   *     channel hands out passages, not originals)
+   */
   List<SearchHit> assemble(
-      List<org.springframework.ai.document.Document> chunks, Set<UUID> effectiveView) {
+      List<org.springframework.ai.document.Document> chunks,
+      Set<UUID> effectiveView,
+      boolean downloadsOffered) {
     if (chunks.isEmpty()) {
       return List.of();
     }
@@ -91,7 +98,7 @@ class SearchHitAssembler {
               // The reciprocal of the 1-based position, exactly as a Beleg carries it: a raw
               // score is not comparable between the lexical and the vector path, a rank is.
               1.0 / (position + 1),
-              libraryId != null && effectiveView.contains(libraryId)));
+              downloadsOffered && libraryId != null && effectiveView.contains(libraryId)));
     }
     return hits;
   }

@@ -409,15 +409,19 @@ annimmt — lesbar **und** freigegeben, mit dem Ablauf der Freigabe je Eintrag; 
 wird beim Anlegen mit `400` abgewiesen. Bei geschlossenem Kanal ist sie leer, weil dann auch keine
 Ausstellung angenommen würde.
 
+Die Freigabeliste der erreichbaren Pfade führt seit
+[#1720](https://github.com/criew/opaa/issues/1720) genau die drei Lesewege: `POST /api/v1/search`,
+`GET /api/v1/search/hits/{hitId}` und `GET /api/v1/search/libraries`. Die effektive Sicht dieser
+Aufrufe bildet dieselbe Stelle wie überall sonst; die Token-Kennung ist zugleich der Schlüssel des
+Kontingents. Alles andere wird mit `403` abgewiesen — auch der Endpunkt „Bibliotheken auflisten" der
+Weboberfläche (er antwortet mit allem, was die Person lesen darf, nicht mit der Sicht des Tokens)
+und der Inhaltsabruf eines Dokuments: Der Kanal gibt Fundstellen heraus, keine Originaldateien,
+weshalb einem Token-Aufruf gar kein Download-Link angeboten wird.
+
 Eines steht noch aus:
 
-- **Die Freigabeliste der erreichbaren Pfade ist leer.** Ein Zugangstoken authentifiziert sich
-  erfolgreich und erreicht anschließend nichts — jeder Pfad wird mit `403` abgewiesen. Such- und
-  Abrufendpunkte ([#1720](https://github.com/criew/opaa/issues/1720)) und der MCP-Server
-  ([#1721](https://github.com/criew/opaa/issues/1721)) tragen ihre Pfade dort ein, sobald es sie
-  gibt. Der bestehende Endpunkt „Bibliotheken auflisten" der Weboberfläche steht bewusst **nicht**
-  auf der Liste: Er antwortet mit allem, was die Person lesen darf, nicht mit der effektiven Sicht
-  des Tokens.
+- **Der MCP-Server** ([#1721](https://github.com/criew/opaa/issues/1721)) trägt `/mcp` in dieselbe
+  Freigabeliste ein, sobald es ihn gibt.
 
 ---
 

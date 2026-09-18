@@ -117,9 +117,9 @@ public class PassageFetchService {
         properties.fetchMaxCharacters(),
         facts.metadata().isEmpty() ? null : facts.metadata(),
         // Through the scope, not past it: the download path is only offered for a library the
-        // request may actually see. #1718 decides whether a token reaches the content endpoint
-        // at all - the answer belongs here, in one place, not in the mapper.
-        effectiveView.contains(document.getLibraryId()));
+        // request may actually see - and never at all for an access-token call, which does not
+        // reach the document content endpoint (ADR-0035). One place, not the mapper.
+        scope.accessTokenId() == null && effectiveView.contains(document.getLibraryId()));
   }
 
   /**
