@@ -477,10 +477,12 @@ lassen.
 
   **Der MCP-Teil läuft ohne Browser**, über Playwrights `request`-Kontext gegen `/mcp` — und gegen
   den **Host-Port des Backends** (`E2E_BACKEND_BASE_URL`, von `scripts/run-e2e.mjs` gesetzt), nicht
-  gegen die Frontend-Adresse der übrigen Szenarien: `frontend/nginx.conf` leitet ausschließlich
-  `/api/` weiter, `/mcp` erreicht ein Client dort also nicht. Ein fremdes Werkzeug spricht denselben
-  Endpunkt, den auch `io.opaa.mcp.McpServerIntegrationTest` fährt, hier aber im zusammengesetzten
-  Stack und mit einem Token, das über die Oberfläche entstanden ist.
+  gegen die Frontend-Adresse der übrigen Szenarien: So gehen der MCP-Weg und die drei REST-Lesewege
+  eines Tokens über dieselbe Adresse, und ein Unterschied zwischen ihnen kommt nie vom Weg dorthin.
+  Dass ein Client `/mcp` auch über die nginx-Auslieferung des Frontends erreicht, ist Gegenstand von
+  `tests/mcp-endpoint-routing.spec.ts` unten. Ein fremdes Werkzeug spricht denselben Endpunkt, den
+  auch `io.opaa.mcp.McpServerIntegrationTest` fährt, hier aber im zusammengesetzten Stack und mit
+  einem Token, das über die Oberfläche entstanden ist.
 
   `test.describe.serial`, und zwar zwingend: Die Szenarien bauen eine Installation nacheinander
   weiter, und drei Schritte sind unumkehrbar (eine erloschene Auswahl im Token lebt nicht wieder
@@ -490,6 +492,14 @@ lassen.
   Szenarien räumt dieses hinter sich auf: Schalter, Freigaben und Tokens stehen am Ende wieder im
   Ausgangszustand, und die drei angelegten Bibliotheken samt Dokumenten werden über die API wieder
   entfernt.
+
+- `tests/mcp-endpoint-routing.spec.ts` (#1721, Teil von Epic #1715) — die eine Zusicherung, die
+  `external-access.spec.ts` bewusst nicht trifft: dass `/mcp` durch die **nginx-Auslieferung des
+  Frontends** am Backend landet und nicht im SPA-Fallback (`frontend/nginx.conf`). Ein `POST /mcp`
+  ohne Token muss mit einer Absage des Kanals antworten — `401`, `404` oder `503` als JSON, je
+  nachdem, wie der Schalter der Installation gerade steht —, nie mit der Auslieferung der
+  Anwendung. Ohne Browser, ohne Anmeldung und ohne eigenen Bestand; verändert nichts und ist
+  deshalb gegenüber den übrigen Szenarien reihenfolgeunabhängig.
 
 ## Demo-Smoke (#232)
 

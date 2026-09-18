@@ -41,9 +41,9 @@ import {
  * **Zwei Adressen.** Was eine Person tut, läuft durch die nginx-Auslieferung des Frontends wie in
  * jedem anderen Szenario dieser Suite. Was ein Zugangstoken tut - `/mcp` und die drei REST-Lesewege
  * - geht dagegen **am Frontend vorbei an den Host-Port des Backends** (`E2E_BACKEND_BASE_URL`,
- * siehe fixtures/externalAccess.ts): `frontend/nginx.conf` leitet allein `/api/` weiter, `/mcp`
- * erreicht ein Client dort nicht. Beide Tokenwege gehen deshalb über dieselbe Adresse, damit ein
- * Unterschied zwischen ihnen nie vom Weg dorthin kommt.
+ * siehe fixtures/externalAccess.ts), damit beide Tokenwege über dieselbe Adresse gehen und ein
+ * Unterschied zwischen ihnen nie vom Weg dorthin kommt. Dass die nginx-Auslieferung `/mcp`
+ * ebenfalls an das Backend weiterreicht (#1721), prüft mcp-endpoint-routing.spec.ts.
  *
  * `test.describe.serial`, und zwar zwingend: Die Szenarien bauen eine Installation nacheinander
  * weiter (Kanal an, Bibliotheken, Freigaben, Tokens), und drei von ihnen sind irreversibel - eine

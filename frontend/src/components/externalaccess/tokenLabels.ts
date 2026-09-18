@@ -162,19 +162,45 @@ export function releaseEndsBeforeExpiry(
  * Die Einrichtungsschnipsel für die verbreiteten Clients. Sie stehen nur im Einmal-Dialog: Der
  * Wert steht dort schon, und ein Schnipsel ohne ihn wäre an jeder anderen Stelle nutzlos. Die
  * ausführliche Anleitung ist Sache des Handbuchs.
+ *
+ * Den Wert im Klartext trägt allein der Claude-Code-Befehl. `--scope user` legt den Eintrag dabei
+ * projektübergreifend in der Benutzerkonfiguration ab statt projektbezogen; die geteilte Ablage,
+ * die den Wert in die Versionsverwaltung trüge, wäre `--scope project`. Die beiden JSON-Schnipsel
+ * gehören ohnehin in eine Datei, die geteilt oder eingecheckt werden kann, und verweisen deshalb
+ * auf eine Eingabe (VS Code) beziehungsweise eine Umgebungsvariable (Cursor).
  */
 export function clientSetupSnippets(baseUrl: string, token: string) {
   const url = `${baseUrl.replace(/\/+$/, '')}/mcp`
   return {
     url,
-    claudeCode: `claude mcp add --transport http opaa ${url} --header "Authorization: Bearer ${token}"`,
-    json: JSON.stringify(
+    claudeCode: `claude mcp add --scope user --transport http opaa ${url} --header "Authorization: Bearer ${token}"`,
+    vsCode: JSON.stringify(
       {
-        mcpServers: {
+        servers: {
           opaa: {
             type: 'http',
             url,
-            headers: { Authorization: `Bearer ${token}` },
+            headers: { Authorization: 'Bearer ${input:opaa-token}' },
+          },
+        },
+        inputs: [
+          {
+            id: 'opaa-token',
+            type: 'promptString',
+            description: 'OPAA-Token',
+            password: true,
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+    cursor: JSON.stringify(
+      {
+        mcpServers: {
+          opaa: {
+            url,
+            headers: { Authorization: 'Bearer ${env:OPAA_TOKEN}' },
           },
         },
       },

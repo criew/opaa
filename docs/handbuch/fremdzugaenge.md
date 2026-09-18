@@ -299,6 +299,14 @@ Proxy, der so etwas anhängt, muss es lassen.
 Die Einrichtung braucht zwei Angaben: die Adresse `https://<host>/mcp` und den Tokenwert. Sie ist so
 knapp gehalten, dass sie ohne Betriebsunterstützung gelingt.
 
+Der Dialog, der den Tokenwert einmalig zeigt (Abschnitt 5), stellt dafür **drei fertige Ausschnitte**
+bereit, jeweils schon mit der Adresse Ihrer Installation: den Claude-Code-Befehl mit `--scope user`,
+das JSON für VS Code mit einer Eingabeaufforderung für den Wert und das JSON für Cursor mit dem
+Verweis auf eine Umgebungsvariable. Nur der Claude-Code-Befehl trägt den Wert im Klartext; die
+beiden JSON-Ausschnitte enthalten ihn bewusst nicht. Dieser Abschnitt erklärt sie und ergänzt, was
+im Dialog keinen Platz hat: wo die jeweilige Datei liegt, wie sich der Eintrag prüfen und wieder
+entfernen lässt, und welche Clients sonst noch in Frage kommen.
+
 Voraussetzungen, ohne die kein Client verbindet:
 
 1. Die Systemverwaltung hat den Kanal **eingeschaltet**.
@@ -323,8 +331,7 @@ claude mcp add --transport http --scope user opaa https://<host>/mcp \
 `--scope user` legt den Eintrag in der Benutzerkonfiguration ab und macht ihn in allen Projekten
 verfügbar. **Ohne diese Angabe** landet er im aktuellen Projekt; mit `--scope project` sogar in einer
 `.mcp.json` im Projektwurzelverzeichnis, die in die Versionsverwaltung wandert — mit dem Tokenwert
-darin (Abschnitt 7). Zeigt der Kurzausschnitt nach dem Erzeugen des Tokens den Befehl ohne diese
-Angabe, ist er um `--scope user` zu ergänzen.
+darin (Abschnitt 7).
 
 Prüfen und wieder entfernen:
 
@@ -582,6 +589,7 @@ beantworten sich gleich, damit der Kanal nie bestätigt, dass ein Token existier
 | `429` mit Wartehinweis (REST) — oder am MCP-Endpunkt eine Fehlerantwort mit dem Code `-32000` bzw. ein Werkzeugergebnis mit dem Wort „Kontingent" | Kontingent des Tokens erschöpft — meist ein Skript in einer Schleife. **Am MCP-Endpunkt ist das keine `429`**: Die Ablehnung kommt als Protokollfehler bzw. als Fehlerergebnis des Werkzeugs zurück, damit das fremde Modell damit umgehen kann. Schon das Verbinden zählt (Abschnitt 10) — ein Client, der sich in Schleife neu verbindet, kann das Kontingent allein damit ausschöpfen | Werkzeug drosseln; notfalls das Kontingent der Installation anheben (Abschnitt 15) |
 | `403` bei einem Aufruf, der bis gestern lief | Ein Proxy hängt der Adresse etwas an (`/mcp;x=1`); solche Pfade weist die Anwendung ab, bevor sie den Endpunkt erreichen | Proxy-Regel bereinigen. Eine prozentkodierte Schreibweise (`/%6Dcp`) ist dagegen unschädlich — sie wird wie `/mcp` behandelt |
 | Der Client meldet „MCP server failed" o. ä., **alle** Fremdzugänge des Hauses zugleich | **Fassungsbruch** nach einem Client- oder Server-Update — siehe unten |
+| Die Antwort ist **HTML** statt JSON — etwa eine Seite der Anwendung oder `405` mit HTML-Rumpf | Ein vorgelagerter Reverse-Proxy reicht `/mcp` nicht an OPAA durch, sondern beantwortet den Pfad mit der Auslieferung der Oberfläche. Der Endpunkt selbst antwortet immer als JSON | Die Proxy-Regel um `/mcp` ergänzen — sie muss den Pfad genauso weiterreichen wie `/` ([Deployment](deployment.md#netzwerkzugang)) |
 | Der Client startet einen Anmelde- oder OAuth-Ablauf statt die Ursache zu zeigen | Der Client hat auf `401` mit einer OAuth-Erkennung reagiert | Im Client OAuth abschalten (bei OpenCode `"oauth": false`, Abschnitt 9) und die eigentliche Ursache aus der `reason`-Angabe lesen |
 | Es lässt sich kein neues Token anlegen, keine Bibliothek ist wählbar | Kanal geschlossen, oder es ist keine der lesbaren Bibliotheken freigegeben | Abschnitt 3 bzw. 4 |
 

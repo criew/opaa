@@ -22,10 +22,12 @@ import { gotoLibraries, gotoLibraryDetail } from './chat'
 const FRONTEND_BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
 
 /**
- * Der MCP-Endpunkt liegt am Backend und **nicht** hinter der nginx-Auslieferung des Frontends:
- * deren einzige Weiterleitung ist `/api/` (frontend/nginx.conf). Die Szenarien sprechen ihn deshalb
- * unter dem eigenen Host-Port des Stacks an, den scripts/run-e2e.mjs als E2E_BACKEND_BASE_URL
- * durchreicht - dieselbe Art Adresse wie E2E_AI_STUB_BASE_URL. Der Vorgabewert entspricht dem
+ * Die Szenarien sprechen den MCP-Endpunkt und die REST-Lesewege eines Tokens unter dem eigenen
+ * Host-Port des Backends an, den scripts/run-e2e.mjs als E2E_BACKEND_BASE_URL durchreicht -
+ * dieselbe Art Adresse wie E2E_AI_STUB_BASE_URL. Damit gehen beide Tokenwege über **eine** Adresse,
+ * und ein Unterschied zwischen ihnen kann nie vom Weg dorthin kommen. Die nginx-Auslieferung des
+ * Frontends reicht `/mcp` seit #1721 ebenfalls weiter; dass sie das tut, ist Gegenstand von
+ * tests/mcp-endpoint-routing.spec.ts und nicht dieser Szenarien. Der Vorgabewert entspricht dem
  * Standard-Backend-Port dieses Ziels, damit `pnpm run test:playwright` gegen einen bereits
  * laufenden Stack ohne weitere Umgebung funktioniert.
  */
@@ -53,8 +55,8 @@ export async function apiAs(devUser: string): Promise<APIRequestContext> {
 }
 
 /**
- * Ein API-Kontext im Namen eines Zugangstokens - gegen das Backend, nicht gegen nginx: dieselbe
- * Adresse, unter der auch `/mcp` liegt, damit Lesewege und MCP im selben Kanal geprüft werden.
+ * Ein API-Kontext im Namen eines Zugangstokens - unter der Backend-Adresse, unter der diese
+ * Szenarien auch `/mcp` ansprechen, damit Lesewege und MCP im selben Kanal geprüft werden.
  * `token === null` ist der Aufruf ganz ohne Merkmal.
  */
 export async function apiWithToken(token: string | null): Promise<APIRequestContext> {

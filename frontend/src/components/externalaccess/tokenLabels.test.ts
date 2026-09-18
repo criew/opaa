@@ -56,10 +56,28 @@ describe('tokenLabels', () => {
     const snippets = clientSetupSnippets('https://opaa.example/', 'opaa_pat_wert')
 
     expect(snippets.url).toBe('https://opaa.example/mcp')
-    expect(snippets.claudeCode).toContain('claude mcp add --transport http opaa')
+    // --scope user: der Eintrag gilt projektübergreifend statt nur im aktuellen Projekt, und
+    // die teilbare Ablage (--scope project, .mcp.json im Projekt) kommt so nie in Betracht.
+    expect(snippets.claudeCode).toContain('claude mcp add --scope user --transport http opaa')
     expect(snippets.claudeCode).toContain('Authorization: Bearer opaa_pat_wert')
-    expect(JSON.parse(snippets.json).mcpServers.opaa.headers.Authorization).toBe(
-      'Bearer opaa_pat_wert',
-    )
+  })
+
+  it('hält den Wert aus den beiden JSON-Schnipseln heraus', () => {
+    const snippets = clientSetupSnippets('https://opaa.example/', 'opaa_pat_wert')
+
+    const vsCode = JSON.parse(snippets.vsCode)
+    expect(vsCode.servers.opaa.type).toBe('http')
+    expect(vsCode.servers.opaa.url).toBe('https://opaa.example/mcp')
+    expect(vsCode.servers.opaa.headers.Authorization).toBe('Bearer ${input:opaa-token}')
+    expect(vsCode.inputs[0]).toMatchObject({ id: 'opaa-token', password: true })
+
+    const cursor = JSON.parse(snippets.cursor)
+    expect(cursor.mcpServers.opaa.url).toBe('https://opaa.example/mcp')
+    expect(cursor.mcpServers.opaa.headers.Authorization).toBe('Bearer ${env:OPAA_TOKEN}')
+
+    // Der Klartext steht allein im Claude-Code-Befehl: beide Dateien landen erfahrungsgemäß in
+    // einem Repository oder einem synchronisierten Profil.
+    expect(snippets.vsCode).not.toContain('opaa_pat_wert')
+    expect(snippets.cursor).not.toContain('opaa_pat_wert')
   })
 })

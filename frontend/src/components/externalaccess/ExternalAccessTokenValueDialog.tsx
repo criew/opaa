@@ -111,12 +111,16 @@ export default function ExternalAccessTokenValueDialog({
         </Typography>
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 1.5 }}>
           Die Adresse ist {snippets.url}; der Wert geht als Kopfzeile „Authorization: Bearer …“ mit.
-          Weicht die Adresse Ihrer Installation von dieser ab, tragen Sie dort die richtige ein. Der
-          Zugang über diese Adresse steht bereit, sobald Ihre Installation den MCP-Server enthält.
+          Weicht die Adresse Ihrer Installation von dieser ab, tragen Sie dort die richtige ein. Den
+          Wert im Klartext trägt nur der Claude-Code-Befehl, der ihn in Ihre benutzereigene
+          Konfiguration schreibt; die beiden JSON-Schnipsel fragen ihn ab (VS Code) oder lesen ihn
+          aus der Umgebungsvariablen OPAA_TOKEN (Cursor), damit er nicht in einer eingecheckten
+          Datei landet. Ausführliche Anleitung im Handbuch, Kapitel Fremdzugänge.
         </Typography>
         <Stack spacing={2}>
           <Snippet label="Claude Code" value={snippets.claudeCode} />
-          <Snippet label="Cursor oder VS Code" value={snippets.json} />
+          <Snippet label="VS Code" value={snippets.vsCode} />
+          <Snippet label="Cursor" value={snippets.cursor} />
         </Stack>
       </DialogContent>
       <DialogActions>
