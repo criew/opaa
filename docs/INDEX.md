@@ -66,8 +66,8 @@ Defaults) steht separat in `retrieval-algorithm.md`.
 **[`features/knowledge-sources.md`](./features/knowledge-sources.md)**
 
 Uploads und Konnektoren · selbst aktualisierende Wissensblöcke · Zeitpläne und ereignisbasierte
-Aktualisierung · Spiegelung der Rechte aus dem Quellsystem · Zuordnung einer Quelle zu genau einer
-Wissensbibliothek.
+Aktualisierung · Zielbibliothek als Rechteanker, Quellrechte nur einschränkend und nur wo ein
+Quellsystem sie belastbar liefert · Zuordnung einer Quelle zu genau einer Wissensbibliothek.
 
 ### C · Spaces, Assets & Verteilung
 

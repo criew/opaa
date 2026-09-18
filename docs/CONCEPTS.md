@@ -607,7 +607,8 @@ wo die Quelle es hergibt — deren Leserechte mitführt.
 Jede Konnektorquelle indiziert in **genau eine** Wissensbibliothek. Damit bleibt der Rechteanker eindeutig.
 
 - **Beispiel:** Ein Konnektor auf das Netzlaufwerk des Bauamts liest die Ablage „Bauleitplanung" in die
-  gleichnamige Wissensbibliothek und übernimmt die Verzeichnisrechte aus dem Quellsystem.
+  gleichnamige Wissensbibliothek. Liest er die Verzeichnisrechte belastbar aus, verengen sie den
+  Leserkreis dieser Bibliothek zusätzlich; liest er sie nicht, gilt der Leserkreis der Bibliothek.
 
 ---
 
@@ -779,10 +780,16 @@ Damit wird die Dienstvereinbarung zu einer Konfigurationsaufgabe statt zu einem 
 
 ### Berechtigungs-Vererbung
 
-Dokumente führen die Rechte ihres Quellsystems mit.
+Der Rechteanker ist die **Wissensbibliothek**, in die ein Bestand indiziert wird — nicht das
+Quellsystem. Wo ein Quellsystem seine Rechte belastbar herausgibt, können sie den Leserkreis dieser
+Bibliothek zusätzlich **einschränken**; erweitern können sie ihn nie. Wo es sie nicht belastbar liefert,
+weist die Bibliothek aus, dass ihre Rechte eigenständig gesetzt sind — unterstellt wird nichts.
 
-- **Beispiel:** Ein Ordner auf dem Netzlaufwerk ist nur für das Personalreferat lesbar. Nach der Indizierung
-  gilt dieselbe Beschränkung in OPAA — die Inhalte erscheinen für niemanden sonst in der Suche.
+- **Beispiel:** Ein Ordner auf dem Netzlaufwerk ist nur für das Personalreferat lesbar. Ob diese
+  Beschränkung nach der Indizierung fortgilt, hängt daran, ob der Konnektor die Verzeichnisrechte
+  belastbar auslesen kann. Kann er es nicht, ist allein maßgeblich, wer die Zielbibliothek lesen darf.
+  Deshalb wird beim Anlegen einer solchen Bibliothek gefragt, ob der Zuschnitt der Quelle zu ihrem
+  Leserkreis passt.
 
 Die Grundlage dafür ist die Anbindung an den Verzeichnisdienst des Hauses, aus dem Personen und Gruppen
 stammen (siehe [SCIM](#scim)).
