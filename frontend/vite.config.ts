@@ -20,6 +20,12 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      // The MCP endpoint of the external-access channel, reachable through the dev server on the
+      // same origin as in the container (frontend/nginx.conf).
+      '/mcp': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
   test: {
