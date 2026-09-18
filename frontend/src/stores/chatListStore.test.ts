@@ -266,3 +266,88 @@ describe('chatListStore', () => {
     expect(state.isLoading).toBe(false)
   })
 })
+
+describe('chatListStore pinning', () => {
+  beforeEach(() => {
+    useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
+  })
+
+  it('pins through the server and keeps the pin across a reload', async () => {
+    await useChatListStore.getState().loadChats(SPACE_ID)
+
+    await useChatListStore.getState().setChatPinned(SPACE_ID, 'chat-personal-1', true)
+    useChatListStore.setState({ chatsBySpaceId: {} })
+    await useChatListStore.getState().loadChats(SPACE_ID)
+
+    const chat = useChatListStore
+      .getState()
+      .chatsBySpaceId[SPACE_ID]?.find((c) => c.id === 'chat-personal-1')
+    expect(chat?.pinnedAt).toBeTruthy()
+
+    await useChatListStore.getState().setChatPinned(SPACE_ID, 'chat-personal-1', false)
+    await useChatListStore.getState().loadChats(SPACE_ID)
+    expect(
+      useChatListStore.getState().chatsBySpaceId[SPACE_ID]?.find((c) => c.id === 'chat-personal-1')
+        ?.pinnedAt,
+    ).toBeNull()
+  })
+
+  it('restores the previous pin and sets an error when unpinning fails', async () => {
+    server.use(
+      http.delete('/api/v1/chats/:chatId/pin', () =>
+        HttpResponse.json({ error: 'Lösen fehlgeschlagen' }, { status: 500 }),
+      ),
+    )
+    await useChatListStore.getState().loadChats(SPACE_ID)
+    useChatListStore.setState((state) => ({
+      chatsBySpaceId: {
+        [SPACE_ID]: state.chatsBySpaceId[SPACE_ID]?.map((c) =>
+          c.id === 'chat-personal-1' ? { ...c, pinnedAt: '2026-09-01T08:00:00Z' } : c,
+        ),
+      },
+    }))
+
+    await useChatListStore.getState().setChatPinned(SPACE_ID, 'chat-personal-1', false)
+
+    const state = useChatListStore.getState()
+    expect(state.error).toBe('Lösen fehlgeschlagen')
+    expect(state.chatsBySpaceId[SPACE_ID]?.find((c) => c.id === 'chat-personal-1')?.pinnedAt).toBe(
+      '2026-09-01T08:00:00Z',
+    )
+  })
+
+  it('upsertChat keeps the pin of an existing entry when the new summary carries none', () => {
+    useChatListStore.setState({
+      chatsBySpaceId: {
+        [SPACE_ID]: [
+          {
+            id: 'chat-a',
+            spaceId: SPACE_ID,
+            authorId: 'me',
+            title: 'Alt',
+            useKnowledge: true,
+            status: 'PRIVATE',
+            createdAt: '2026-09-01T08:00:00Z',
+            updatedAt: '2026-09-01T08:00:00Z',
+            pinnedAt: '2026-09-02T08:00:00Z',
+          },
+        ],
+      },
+    })
+
+    useChatListStore.getState().upsertChat(SPACE_ID, {
+      id: 'chat-a',
+      spaceId: SPACE_ID,
+      authorId: 'me',
+      title: 'Neu',
+      useKnowledge: true,
+      status: 'PRIVATE',
+      createdAt: '2026-09-01T08:00:00Z',
+      updatedAt: '2026-09-03T08:00:00Z',
+    })
+
+    const chat = useChatListStore.getState().chatsBySpaceId[SPACE_ID]?.[0]
+    expect(chat?.title).toBe('Neu')
+    expect(chat?.pinnedAt).toBe('2026-09-02T08:00:00Z')
+  })
+})

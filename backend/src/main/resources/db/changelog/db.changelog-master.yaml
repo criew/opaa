@@ -63,3 +63,6 @@ databaseChangeLog:
   # Persönliche Zugangstokens des Fremdzugangskanals (#1718, ADR-0035 Entscheidung 2).
   - include:
       file: db/changelog/changes/034-create-external-access-tokens.yaml
+  # Persönliche Ordnungsmerkmale der Chatliste je Person und Chat (#1768, chat-list.md).
+  - include:
+      file: db/changelog/changes/035-create-chat-personal-marks.yaml

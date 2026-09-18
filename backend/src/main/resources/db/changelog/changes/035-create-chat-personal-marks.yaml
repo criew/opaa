@@ -1,0 +1,56 @@
+databaseChangeLog:
+  - changeSet:
+      id: 035-create-chat-personal-marks
+      author: opaa
+      comment: >-
+        Persoenliche Ordnungsmerkmale der Chatliste (#1768, docs/features/chat-list.md,
+        "Persoenliche Ordnungsmerkmale im Datenmodell"): eine Zeile je Person und Chat, keine
+        Spalte an chats - die Merkmale gehoeren der Person, damit ein spaeter geteilter Chat
+        niemandem die eigene Ordnung umraeumt. pinned_at ist der Zeitpunkt des Anheftens, leer
+        heisst nicht angeheftet; weitere Merkmale (archived_at) kommen als eigene Changesets hinzu.
+        Organisationsgrenze (#390) nach dem Muster von chat_note_items: organization_id setzt ein
+        BEFORE-INSERT-Trigger aus dem Chat, und die beiden Verbundschluessel auf chats und users
+        machen eine Zeile ueber Organisationsgrenzen hinweg unmoeglich. ON DELETE CASCADE auf
+        beiden Seiten: die Zeile entfaellt mit dem Chat und mit dem Konto.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE chat_personal_marks (
+                  chat_id uuid NOT NULL,
+                  user_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  pinned_at timestamp with time zone
+              );
+
+              ALTER TABLE ONLY chat_personal_marks
+                  ADD CONSTRAINT chat_personal_marks_pkey PRIMARY KEY (chat_id, user_id);
+
+              CREATE INDEX idx_chat_personal_marks_user_id ON chat_personal_marks USING btree (user_id);
+
+              CREATE FUNCTION chat_personal_marks_set_organization() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$ BEGIN
+                SELECT organization_id INTO STRICT NEW.organization_id
+                FROM chats
+                WHERE id = NEW.chat_id;
+                RETURN NEW;
+              END; $$;
+
+              CREATE TRIGGER trg_chat_personal_marks_set_organization BEFORE INSERT ON chat_personal_marks FOR EACH ROW EXECUTE FUNCTION chat_personal_marks_set_organization();
+
+              ALTER TABLE ONLY chat_personal_marks
+                  ADD CONSTRAINT fk_chat_personal_marks_chat_organization FOREIGN KEY (chat_id, organization_id) REFERENCES chats(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY chat_personal_marks
+                  ADD CONSTRAINT fk_chat_personal_marks_user_organization FOREIGN KEY (user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE CASCADE;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER IF EXISTS trg_chat_personal_marks_set_organization ON chat_personal_marks;
+
+              DROP TABLE IF EXISTS chat_personal_marks;
+
+              DROP FUNCTION IF EXISTS chat_personal_marks_set_organization();

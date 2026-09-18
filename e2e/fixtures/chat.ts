@@ -81,16 +81,21 @@ export function chatSidebarEntries(page: Page): Locator {
 }
 
 /**
- * Asserts the sidebar's most recently used chat (topmost, see chatListStore's sortByLastUse) has
- * a real title - present and not the "Unbenannter Chat" fallback ChatList.tsx renders for a still-
- * empty one. Used in place of asserting the exact (LLM-generated, and per chatSidebarEntries'
+ * Asserts the sidebar's most recently used chat (topmost in the "Heute" group - pinned chats sit
+ * above it in their own group, see ChatList.tsx) has a real title - present and not the
+ * "Unbenannter Chat" fallback ChatList.tsx renders for a still-empty one. Used in place of asserting the exact (LLM-generated, and per chatSidebarEntries'
  * Javadoc not reliably unique across chats) title text: this only proves *some* title reached the
  * sidebar for whichever chat was most recently interacted with, which - directly after that
  * interaction, with nothing else touching any other chat in between (this suite runs with a single
  * Playwright worker, see playwright.config.ts) - is unambiguously the chat under test.
  */
 export async function expectTopSidebarChatToBeNamed(page: Page): Promise<void> {
-  const ariaLabel = await chatSidebarEntries(page).first().getAttribute('aria-label')
+  const ariaLabel = await page
+    .getByRole('navigation', { name: 'Chats' })
+    .getByRole('list', { name: 'Heute' })
+    .getByRole('button', { name: /^Aktionen für Chat/ })
+    .first()
+    .getAttribute('aria-label')
   expect(ariaLabel).toBeTruthy()
   expect(ariaLabel).not.toContain('Unbenannter Chat')
 }

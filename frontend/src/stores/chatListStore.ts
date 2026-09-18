@@ -1,6 +1,13 @@
 import { create } from 'zustand'
 import type { ChatSummary } from '../types/api'
-import { createChat, deleteChat, listSpaceChats, updateChat } from '../services/api'
+import {
+  createChat,
+  deleteChat,
+  listSpaceChats,
+  pinChat,
+  unpinChat,
+  updateChat,
+} from '../services/api'
 import { dropChatSettingsCache } from './chatStore'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
@@ -16,6 +23,9 @@ interface ChatListState {
   createChatInSpace: (spaceId: string) => Promise<ChatSummary | null>
   renameChat: (spaceId: string, chatId: string, title: string) => Promise<void>
   deleteChatFromList: (spaceId: string, chatId: string) => Promise<void>
+  /** Pins or unpins a chat for the current person. Applied optimistically and rolled back (with
+   * `error` set) if the server rejects it. */
+  setChatPinned: (spaceId: string, chatId: string, pinned: boolean) => Promise<void>
   /** Inserts a chat into its space's list (or replaces an existing entry with the same id) and
    * re-sorts by last use - used by chatStore to make an implicitly created chat show up in the
    * list without a full reload (#548 review, finding 4). */
@@ -30,8 +40,18 @@ interface ChatListState {
   reset: () => void
 }
 
+// Compared as instants, not strings: the server omits trailing zero fractions, so ISO strings of
+// the same second do not sort lexicographically.
 function sortByLastUse(chats: ChatSummary[]): ChatSummary[] {
-  return [...chats].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  return [...chats].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
+}
+
+function withPinnedAt(
+  chats: ChatSummary[] | undefined,
+  chatId: string,
+  pinnedAt: string | null,
+): ChatSummary[] | undefined {
+  return chats?.map((chat) => (chat.id === chatId ? { ...chat, pinnedAt } : chat))
 }
 
 function toChatSummary(detail: {
@@ -58,7 +78,7 @@ function toChatSummary(detail: {
   }
 }
 
-export const useChatListStore = create<ChatListState>((set) => ({
+export const useChatListStore = create<ChatListState>((set, get) => ({
   chatsBySpaceId: {},
   isLoading: false,
   error: null,
@@ -155,11 +175,51 @@ export const useChatListStore = create<ChatListState>((set) => ({
     }
   },
 
+  setChatPinned: async (spaceId: string, chatId: string, pinned: boolean) => {
+    const sessionEpoch = currentSessionEpoch()
+    const previous =
+      get().chatsBySpaceId[spaceId]?.find((chat) => chat.id === chatId)?.pinnedAt ?? null
+    const optimistic = pinned ? new Date().toISOString() : null
+    set((state) => ({
+      error: null,
+      chatsBySpaceId: {
+        ...state.chatsBySpaceId,
+        [spaceId]: withPinnedAt(state.chatsBySpaceId[spaceId], chatId, optimistic),
+      },
+    }))
+    try {
+      const confirmed = pinned ? ((await pinChat(chatId)).pinnedAt ?? optimistic) : null
+      if (!pinned) await unpinChat(chatId)
+      if (isStaleSessionEpoch(sessionEpoch)) return
+      set((state) => ({
+        chatsBySpaceId: {
+          ...state.chatsBySpaceId,
+          [spaceId]: withPinnedAt(state.chatsBySpaceId[spaceId], chatId, confirmed),
+        },
+      }))
+    } catch (err) {
+      if (isStaleSessionEpoch(sessionEpoch)) return
+      const fallback = pinned
+        ? 'Chat konnte nicht angeheftet werden'
+        : 'Chat konnte nicht gelöst werden'
+      set((state) => ({
+        error: err instanceof Error ? err.message : fallback,
+        chatsBySpaceId: {
+          ...state.chatsBySpaceId,
+          [spaceId]: withPinnedAt(state.chatsBySpaceId[spaceId], chatId, previous),
+        },
+      }))
+    }
+  },
+
   upsertChat: (spaceId: string, chat: ChatSummary) =>
     set((state) => {
       const existing = state.chatsBySpaceId[spaceId] ?? []
+      // A summary built from a ChatDetail carries no pinnedAt; the person's pin must survive it.
       const next = existing.some((c) => c.id === chat.id)
-        ? existing.map((c) => (c.id === chat.id ? chat : c))
+        ? existing.map((c) =>
+            c.id === chat.id ? { ...chat, pinnedAt: chat.pinnedAt ?? c.pinnedAt } : c,
+          )
         : [...existing, chat]
       return { chatsBySpaceId: { ...state.chatsBySpaceId, [spaceId]: sortByLastUse(next) } }
     }),

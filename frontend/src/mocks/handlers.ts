@@ -61,7 +61,9 @@ import {
   mockLibraryGrants,
   mockMyGroups,
   mockChatDetails,
+  mockChatPins,
   mockChatsForSpace,
+  toChatSummary,
   resetMockLibraryDocuments,
   resetMockLibraryFolders,
   resetMockLibraryGrants,
@@ -808,6 +810,27 @@ export const handlers = [
     }
     chat.updatedAt = new Date().toISOString()
     return HttpResponse.json(chat)
+  }),
+
+  // Mirrors ChatController#pinChat/#unpinChat: a personal mark that leaves the chat, including its
+  // updatedAt, untouched; pinning twice keeps the first pinnedAt.
+  http.put('/api/v1/chats/:chatId/pin', ({ params }) => {
+    const chatId = String(params.chatId)
+    const chat = mockChatDetails[chatId]
+    if (!chat) {
+      return HttpResponse.json({ error: 'Chat nicht gefunden' }, { status: 404 })
+    }
+    mockChatPins[chatId] ??= new Date().toISOString()
+    return HttpResponse.json(toChatSummary(chat))
+  }),
+
+  http.delete('/api/v1/chats/:chatId/pin', ({ params }) => {
+    const chatId = String(params.chatId)
+    if (!mockChatDetails[chatId]) {
+      return HttpResponse.json({ error: 'Chat nicht gefunden' }, { status: 404 })
+    }
+    delete mockChatPins[chatId]
+    return new HttpResponse(null, { status: 204 })
   }),
 
   // Mirrors ChatController#deleteChatNoteItem (#1487): removing one point of the Gesprächsnotiz,

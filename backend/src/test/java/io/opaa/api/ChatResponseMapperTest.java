@@ -15,6 +15,7 @@ import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatConversation;
+import io.opaa.chat.ChatListEntry;
 import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
@@ -51,7 +52,13 @@ class ChatResponseMapperTest {
             false,
             Set.of(libraryId));
 
-    ChatSummary response = ChatResponseMapper.toSummaryResponse(chat);
+    Instant createdAt = Instant.parse("2026-09-01T07:00:00Z");
+    Instant updatedAt = Instant.parse("2026-09-17T16:30:00Z");
+    ReflectionTestUtils.setField(chat, "createdAt", createdAt);
+    ReflectionTestUtils.setField(chat, "updatedAt", updatedAt);
+    Instant pinnedAt = Instant.parse("2026-09-18T08:15:00Z");
+
+    ChatSummary response = ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, pinnedAt));
 
     assertThat(response.getId()).isEqualTo(chat.getId());
     assertThat(response.getSpaceId()).isEqualTo(chat.getSpaceId());
@@ -60,6 +67,18 @@ class ChatResponseMapperTest {
     assertThat(response.getUseKnowledge()).isFalse();
     assertThat(response.getStatus()).isEqualTo(chat.getStatus());
     assertThat(response.getReferencedLibraryIds()).containsExactly(libraryId);
+    assertThat(response.getCreatedAt()).isEqualTo(createdAt);
+    assertThat(response.getUpdatedAt()).isEqualTo(updatedAt);
+    assertThat(response.getPinnedAt()).isEqualTo(pinnedAt);
+  }
+
+  @Test
+  void anUnpinnedChatMapsToANullPinnedAt() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
+
+    assertThat(ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, null)).getPinnedAt())
+        .isNull();
   }
 
   @Test
@@ -232,7 +251,7 @@ class ChatResponseMapperTest {
         new MetadataFilter(
             Set.of("VERMERK"), LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31)));
 
-    ChatSummary summary = ChatResponseMapper.toSummaryResponse(chat);
+    ChatSummary summary = ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, null));
     ChatDetail detail =
         ChatResponseMapper.toDetailResponse(new ChatConversation(chat, List.of(), List.of()));
 
@@ -242,7 +261,9 @@ class ChatResponseMapperTest {
     assertThat(detail.getMetadataFilter().getDocumentTypes()).containsExactly("VERMERK");
 
     chat.applyMetadataFilter(MetadataFilter.NONE);
-    assertThat(ChatResponseMapper.toSummaryResponse(chat).getMetadataFilter()).isNull();
+    assertThat(
+            ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, null)).getMetadataFilter())
+        .isNull();
   }
 
   /**

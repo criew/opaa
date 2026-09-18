@@ -268,7 +268,8 @@ class ChatServiceIntegrationTest {
     chatService.createChat(spaceId, author, new ChatCreation().title("Meine Frage"));
     chatService.createChat(spaceId, otherMember, new ChatCreation().title("Fremde Frage"));
 
-    List<Chat> authorsChats = chatService.listChats(spaceId, author);
+    List<Chat> authorsChats =
+        chatService.listChats(spaceId, author).stream().map(ChatListEntry::chat).toList();
 
     assertThat(authorsChats).hasSize(1);
     assertThat(authorsChats.getFirst().getTitle()).isEqualTo("Meine Frage");

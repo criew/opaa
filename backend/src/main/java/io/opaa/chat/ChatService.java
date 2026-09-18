@@ -12,8 +12,11 @@ import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationRepository;
 import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
+import java.time.Instant;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -88,6 +91,7 @@ public class ChatService {
   private final ChatTitleGenerationService chatTitleGenerationService;
   private final MetadataFilterValidator metadataFilterValidator;
   private final ChatNoteService chatNoteService;
+  private final ChatPersonalMarkRepository chatPersonalMarkRepository;
 
   public ChatService(
       ChatRepository chatRepository,
@@ -100,7 +104,9 @@ public class ChatService {
       ChatMessageWriter chatMessageWriter,
       ChatTitleGenerationService chatTitleGenerationService,
       MetadataFilterValidator metadataFilterValidator,
-      ChatNoteService chatNoteService) {
+      ChatNoteService chatNoteService,
+      ChatPersonalMarkRepository chatPersonalMarkRepository) {
+    this.chatPersonalMarkRepository = chatPersonalMarkRepository;
     this.metadataFilterValidator = metadataFilterValidator;
     this.chatNoteService = chatNoteService;
     this.chatRepository = chatRepository;
@@ -158,10 +164,43 @@ public class ChatService {
         filter, libraryAccessService.readableLibraryIds(authorId, organizationId));
   }
 
+  /** The caller's chats in the space, most recently active first, each with the caller's marks. */
   @Transactional(readOnly = true)
-  public List<Chat> listChats(UUID spaceId, UUID authorId) {
+  public List<ChatListEntry> listChats(UUID spaceId, UUID authorId) {
     requireMembership(spaceId, authorId);
-    return chatRepository.findBySpaceIdAndAuthorIdOrderByUpdatedAtDesc(spaceId, authorId);
+    Map<UUID, Instant> pinnedAtByChat = new HashMap<>();
+    for (ChatPersonalMark mark :
+        chatPersonalMarkRepository.findOwnMarksInSpace(spaceId, authorId)) {
+      if (mark.getPinnedAt() != null) {
+        pinnedAtByChat.put(mark.getChatId(), mark.getPinnedAt());
+      }
+    }
+    return chatRepository.findBySpaceIdAndAuthorIdOrderByUpdatedAtDesc(spaceId, authorId).stream()
+        .map(chat -> new ChatListEntry(chat, pinnedAtByChat.get(chat.getId())))
+        .toList();
+  }
+
+  /**
+   * Pins the chat for the caller - a personal mark, not a change to the chat, so it leaves {@code
+   * updatedAt} untouched and is allowed in an archived space. A chat the caller cannot see is
+   * reported as not found.
+   */
+  @Transactional
+  public ChatListEntry pinChat(UUID chatId, UUID userId) {
+    Chat chat = getOwnedChat(chatId, userId);
+    chatPersonalMarkRepository.pin(chatId, userId, Instant.now());
+    return new ChatListEntry(
+        chat, chatPersonalMarkRepository.findPinnedAt(chatId, userId).orElseThrow());
+  }
+
+  /**
+   * Counterpart of {@link #pinChat}, under the same rules; unpinning an unpinned chat is a no-op.
+   */
+  @Transactional
+  public void unpinChat(UUID chatId, UUID userId) {
+    getOwnedChat(chatId, userId);
+    chatPersonalMarkRepository.clearPin(chatId, userId);
+    chatPersonalMarkRepository.deleteIfUnmarked(chatId, userId);
   }
 
   @Transactional(readOnly = true)
