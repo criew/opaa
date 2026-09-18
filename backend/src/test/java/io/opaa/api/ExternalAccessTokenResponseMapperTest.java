@@ -4,10 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.AdminExternalAccessTokenResponse;
 import io.opaa.api.dto.CreatedExternalAccessTokenResponse;
+import io.opaa.api.dto.EligibleExternalAccessLibraryResponse;
 import io.opaa.api.dto.OwnExternalAccessTokenResponse;
 import io.opaa.api.types.ExternalAccessTokenStatus;
 import io.opaa.externalaccess.token.ExternalAccessToken;
 import io.opaa.externalaccess.token.ExternalAccessTokenAdminService.ExternalAccessTokenAdminView;
+import io.opaa.externalaccess.token.ExternalAccessTokenService.EligibleLibrary;
 import io.opaa.externalaccess.token.ExternalAccessTokenService.ExternalAccessTokenView;
 import io.opaa.externalaccess.token.ExternalAccessTokenService.IssuedExternalAccessToken;
 import io.opaa.externalaccess.token.ExternalAccessTokenService.SelectedLibrary;
@@ -151,6 +153,27 @@ class ExternalAccessTokenResponseMapperTest {
         CREATED.plus(Duration.ofDays(1)));
     assertThat(ExternalAccessTokenResponseMapper.toOwn(view(blocked), NOW).getStatus())
         .isEqualTo(ExternalAccessTokenStatus.BLOCKED);
+  }
+
+  @Test
+  void fillsEveryFieldOfASelectableLibrary() {
+    EligibleExternalAccessLibraryResponse response =
+        ExternalAccessTokenResponseMapper.toEligible(
+            new EligibleLibrary(libraryId, "Vergaberecht", "Rundschreiben und Muster", EXPIRES));
+
+    assertThat(response.getId()).isEqualTo(libraryId);
+    assertThat(response.getName()).isEqualTo("Vergaberecht");
+    assertThat(response.getDescription()).isEqualTo("Rundschreiben und Muster");
+    assertThat(response.getReleaseExpiresAt()).isEqualTo(EXPIRES);
+  }
+
+  @Test
+  void leavesTheDescriptionOfASelectableLibraryUnsetWhenThereIsNone() {
+    assertThat(
+            ExternalAccessTokenResponseMapper.toEligible(
+                    new EligibleLibrary(libraryId, "Ohne Beschreibung", null, EXPIRES))
+                .getDescription())
+        .isNull();
   }
 
   private static List<String> fieldNames(Class<?> type) {

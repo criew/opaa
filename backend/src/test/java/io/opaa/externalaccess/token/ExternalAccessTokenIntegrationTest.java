@@ -314,6 +314,55 @@ class ExternalAccessTokenIntegrationTest {
   }
 
   @Test
+  void offersExactlyTheLibrariesAnIssuanceAccepts() throws Exception {
+    String offered = eligibleLibraries();
+    assertThat(offered).contains(libraryId.toString()).doesNotContain(foreignLibraryId.toString());
+
+    // The foreign library is neither readable nor offered - and an issuance naming it is refused.
+    mockMvc
+        .perform(
+            post("/api/v1/external-access/tokens")
+                .with(devUser("dev-user"))
+                .content(createBody(foreignLibraryId, clock.instant().plus(Duration.ofDays(5)))))
+        .andExpect(status().isBadRequest());
+
+    // Withdrawing the release takes it out of the offer, and the issuance stops accepting it.
+    setLibraryReleased(libraryId, false);
+    assertThat(eligibleLibraries()).doesNotContain(libraryId.toString());
+    mockMvc
+        .perform(
+            post("/api/v1/external-access/tokens")
+                .with(devUser("dev-user"))
+                .content(createBody(libraryId, clock.instant().plus(Duration.ofDays(5)))))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void offersNothingWhileTheChannelIsClosed() throws Exception {
+    setChannelEnabled(false);
+
+    assertThat(eligibleLibraries()).doesNotContain(libraryId.toString());
+  }
+
+  @Test
+  void theOfferCarriesTheEndOfTheRelease() throws Exception {
+    String offered = eligibleLibraries();
+
+    assertThat(JsonPath.<List<String>>read(offered, "$.libraries[*].releaseExpiresAt"))
+        .isNotEmpty()
+        .allSatisfy(value -> assertThat(value).isNotBlank());
+  }
+
+  private String eligibleLibraries() throws Exception {
+    return mockMvc
+        .perform(get("/api/v1/external-access/eligible-libraries").with(devUser("dev-user")))
+        .andExpect(status().isOk())
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+  }
+
+  @Test
   void refusesALibraryThePersonMayNotRead() throws Exception {
     mockMvc
         .perform(

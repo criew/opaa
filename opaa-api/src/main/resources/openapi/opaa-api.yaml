@@ -6023,6 +6023,26 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/external-access/eligible-libraries:
+    get:
+      operationId: listEligibleExternalAccessLibraries
+      tags: [external-access]
+      summary: >
+        The libraries the caller may put into a new access token - exactly the set POST
+        /api/v1/external-access/tokens accepts, so anything offered here is issuable and anything
+        outside it is answered 400. That is: readable by this person AND released for external
+        access with a release that is still in force. Empty while the installation switch is off,
+        because no issuance would be accepted then either.
+      responses:
+        "200":
+          description: The selectable libraries, by name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibleExternalAccessLibraryListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /api/v1/external-access/tokens/{tokenId}:
     delete:
       operationId: revokeOwnExternalAccessToken
@@ -14240,6 +14260,33 @@ components:
         or BLOCKED (by the Systemverwaltung).
       enum: [ACTIVE, EXPIRED, REVOKED, BLOCKED]
       example: ACTIVE
+
+    EligibleExternalAccessLibraryResponse:
+      type: object
+      required: [id, name, releaseExpiresAt]
+      description: >
+        One library a new access token may name. Carries the end of its release, so a person can
+        see that a token outliving it would lose the library before its own expiry.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        releaseExpiresAt:
+          type: string
+          format: date-time
+
+    EligibleExternalAccessLibraryListResponse:
+      type: object
+      required: [libraries]
+      properties:
+        libraries:
+          type: array
+          items:
+            $ref: "#/components/schemas/EligibleExternalAccessLibraryResponse"
 
     ExternalAccessTokenLibraryResponse:
       type: object

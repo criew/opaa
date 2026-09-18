@@ -404,6 +404,11 @@ effektive Sicht liest das Reichweitenfeld je Aufruf über `KnowledgeLibrary#isEx
 und die Freigabeansicht der Verantwortlichen zeigt in `tokenCount` die Zahl der Tokens, in denen
 die Bibliothek gerade wirkt — eine Zahl, ohne Personenauflösung.
 
+`GET /api/v1/external-access/eligible-libraries` gibt genau die Menge zurück, die eine Ausstellung
+annimmt — lesbar **und** freigegeben, mit dem Ablauf der Freigabe je Eintrag; was dort nicht steht,
+wird beim Anlegen mit `400` abgewiesen. Bei geschlossenem Kanal ist sie leer, weil dann auch keine
+Ausstellung angenommen würde.
+
 Eines steht noch aus:
 
 - **Die Freigabeliste der erreichbaren Pfade ist leer.** Ein Zugangstoken authentifiziert sich
