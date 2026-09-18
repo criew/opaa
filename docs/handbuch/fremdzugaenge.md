@@ -119,10 +119,14 @@ eine, nichts erzeugt je eine Rücknahme. Die Befristung darf die installationswe
 überschreiten (Abschnitt 15). Läuft sie ab, **erlischt** die Freigabe von selbst; erneuern kann nur,
 wer den Bestand verantwortet.
 
-- Ein täglicher Lauf verschickt die **Wiedervorlage per Mail** an die Verantwortlichen und lässt
-  danach die fälligen Freigaben erlöschen. Der Vorlauf steht in Abschnitt 15; ohne eingerichteten
-  Mailversand ([Deployment](deployment.md#e-mail-versand-smtp)) erlischt die Freigabe trotzdem, nur
-  unangekündigt.
+- Ein täglicher Lauf verschickt die **Wiedervorlage per Mail** und lässt danach die fälligen
+  Freigaben erlöschen. Der Vorlauf steht in Abschnitt 15; ohne eingerichteten Mailversand
+  ([Deployment](deployment.md#e-mail-versand-smtp)) erlischt die Freigabe trotzdem, nur
+  unangekündigt. **Empfänger ist genau eine Person: wer die Freigabe zuletzt gesetzt hat.** Ist
+  dieses Konto entfallen, tritt die Eigentümerin der Bibliothek an ihre Stelle — gehört die
+  Bibliothek jedoch einer Gruppe, unterbleibt die Wiedervorlage und wird nur im Anwendungslog
+  vermerkt. Die Freigabe erlischt in diesem Fall unangekündigt, obwohl der Mailversand eingerichtet
+  ist; bei gruppeneigenen Bibliotheken gehört das Ablaufdatum deshalb in die eigene Wiedervorlage.
 - Setzen, Zurücknehmen und Erlöschen erzeugen je einen Protokolleintrag. Zusätzlich ist das Merkmal
   **historisiert** wie die übrigen Reichweitenfelder: Zu einem beliebigen vergangenen Stichtag ist
   belegbar, ob eine Bibliothek über Fremdzugänge erreichbar war — auch nachdem der Protokollzeitraum
@@ -160,9 +164,10 @@ Ist keine Bibliothek wählbar, liegt es entweder am fehlenden Lesezugriff oder a
 Freigabe. Beides entscheidet, wer die Bibliothek verwaltet; einen Antragsweg in der Anwendung gibt
 es bewusst nicht.
 
-**Der Wert wird genau einmal angezeigt**, unmittelbar nach dem Erzeugen, zusammen mit den
-Einrichtungsbefehlen aus Abschnitt 9. Danach steht nur noch ein Präfix zur Wiedererkennung in der
-Liste. **Niemand kann ihn nachträglich anzeigen, auch die Systemverwaltung nicht** — ist er verloren,
+**Der Wert wird genau einmal angezeigt**, unmittelbar nach dem Erzeugen, zusammen mit einem
+Kurzausschnitt für die Einrichtung. Die vollständigen Wege je Client — und zwar die, die den Wert aus
+eingecheckten Dateien heraushalten — stehen in Abschnitt 9; im Zweifel gilt dieser Abschnitt.
+Danach steht nur noch ein Präfix zur Wiedererkennung in der Liste. **Niemand kann ihn nachträglich anzeigen, auch die Systemverwaltung nicht** — ist er verloren,
 wird ein neues Token erzeugt und das alte widerrufen.
 
 **Die eigene Liste** zeigt Name, Bibliotheken, Zustand (gültig, abgelaufen, widerrufen, gesperrt),
@@ -263,8 +268,9 @@ baut deshalb keine eigene Erweiterung je Werkzeug, sondern **einen** Server, den
 benutzen.
 
 - **Adresse:** `https://<host>/mcp` — derselbe Host wie die Weboberfläche, hinter demselben Proxy.
-  Der Endpunkt nimmt **`POST`** entgegen; ein `GET` auf dieselbe Adresse beantwortet er mit `405`.
-  Ein Aufruf im Browser ist deshalb kein Funktionstest.
+  Der Endpunkt nimmt **`POST`** entgegen; ein `GET` **mit gültigem Token** beantwortet er mit `405`.
+  Ein Aufruf im Browser trägt kein Token und bekommt deshalb `404` bzw. `401` — er ist kein
+  Funktionstest und sagt insbesondere nichts über die Richtigkeit der Adresse aus.
 - **Transport:** Streamable HTTP, zustandsfrei. Kein stdio, keine Installation am Arbeitsplatz.
 - **Anmeldung:** das Zugangstoken als `Authorization: Bearer opaa_pat_…`. Kein OAuth — Clients, die
   von sich aus einen OAuth-Ablauf starten, sind dort abzuschalten (Abschnitt 9).
@@ -317,7 +323,8 @@ claude mcp add --transport http --scope user opaa https://<host>/mcp \
 `--scope user` legt den Eintrag in der Benutzerkonfiguration ab und macht ihn in allen Projekten
 verfügbar. **Ohne diese Angabe** landet er im aktuellen Projekt; mit `--scope project` sogar in einer
 `.mcp.json` im Projektwurzelverzeichnis, die in die Versionsverwaltung wandert — mit dem Tokenwert
-darin (Abschnitt 7).
+darin (Abschnitt 7). Zeigt der Kurzausschnitt nach dem Erzeugen des Tokens den Befehl ohne diese
+Angabe, ist er um `--scope user` zu ergänzen.
 
 Prüfen und wieder entfernen:
 
@@ -378,8 +385,8 @@ Team gedacht und wird mit eingecheckt.
 ```
 
 VS Code fragt den Wert beim ersten Start des Servers ab und legt ihn anschließend in seinem sicheren
-Speicher ab; in der Datei steht nur der Verweis. Ohne `"type": "http"` wird der Eintrag als lokal
-gestarteter Server gelesen und schlägt fehl.
+Speicher ab; in der Datei steht nur der Verweis. `"type": "http"` gehört dazu, damit der Eintrag
+eindeutig als entfernter Server gelesen wird.
 
 ### OpenCode
 
@@ -421,16 +428,22 @@ curl -s https://<host>/api/v1/search/libraries \
 curl -s https://<host>/api/v1/search \
   -H "Authorization: Bearer opaa_pat_…" \
   -H "Content-Type: application/json" \
-  -d '{"query":"Fristen bei der Anhörung"}'
+  -d '{"question":"Fristen bei der Anhörung"}'
 
 curl -s "https://<host>/api/v1/search/hits/<hitId>" \
   -H "Authorization: Bearer opaa_pat_…"
 ```
 
-Anfrage- und Antwortfelder stehen in der OpenAPI-Beschreibung der Installation. Wer eine
-MCP-Bibliothek verwenden will, richtet sie wie oben auf `https://<host>/mcp` mit dem
+Das Anfragefeld der Suche heißt `question` — **nicht** `query`: So heißt das Argument des
+gleichnamigen MCP-Werkzeugs, und die Verwechslung endet in einem `400`, das wie ein Tokenproblem
+aussieht. Alle weiteren Anfrage- und Antwortfelder stehen in der OpenAPI-Beschreibung der
+Installation.
+
+Wer eine MCP-Bibliothek verwenden will, richtet sie wie oben auf `https://<host>/mcp` mit dem
 `Authorization`-Kopf ein; besondere Fähigkeiten muss der Client nicht mitbringen — der Server bietet
-Werkzeuge an, keine Ressourcen, Prompts oder Vervollständigungen.
+Werkzeuge an, keine Ressourcen, Prompts oder Vervollständigungen. Ein selbst gebauter Aufruf muss
+allerdings `Accept: application/json, text/event-stream` mitsenden; ohne beide Medientypen weist der
+Transport ihn ab, und die Abweisung sieht nach einem Tokenproblem aus.
 
 ## 10. Kontingent und Abflussalarm
 
@@ -535,16 +548,16 @@ auftauchen:
 
 Die einzelne Abfrage wird bewusst nicht protokolliert — es gibt also **kein Log, in dem der Betrieb
 nachsehen könnte**, wer wann was gesucht hat. Die Zuordnung erfolgt deshalb aus dem beobachtbaren
-Verhalten. Drei Antwortarten unterscheiden die Fälle:
+Verhalten. Diese Antworten unterscheiden die Fälle:
 
 | Antwort | Bedeutung |
 |---|---|
-| `404` am MCP-Endpunkt | Der Kanal ist **aus** *und* der Aufrufer hat kein brauchbares Token. Die Installation verrät nicht einmal, dass es den Dienst gibt. Dasselbe Bild erzeugt ein **falscher Pfad** — deshalb steht die Adresse als Erstes auf der Prüfliste |
+| `404` am MCP-Endpunkt | Der Kanal ist **aus** *und* der Aufrufer hat kein brauchbares Token. Die Installation verrät nicht einmal, dass es den Dienst gibt. Dasselbe Bild erzeugt ein **falscher Pfad** — und ein Aufruf ohne `Authorization`-Kopf, etwa im Browser. Die drei sind von außen nicht zu unterscheiden; deshalb erst den Aufruf mit gültigem Token wiederholen, dann die Adresse prüfen |
 | `503` am MCP-Endpunkt | Der Kanal ist **aus**, das vorgelegte Token wäre sonst gültig. Diese Antwort trennt „Kanal zu" von „falscher Pfad" und von „Proxy kaputt"; sie nennt die Ursache im Feld `reason` |
 | `401` | Das Token selbst wird abgewiesen. Der Grund steht im Kopf `WWW-Authenticate` als `error_description`; am MCP-Endpunkt zusätzlich im Feld `reason` der Antwort |
 | `403` | Token gültig, aber der angesprochene Pfad gehört nicht zu den drei Lesewegen (Abschnitt 8) |
 | `429` | Das Kontingent des Tokens ist erschöpft (Abschnitt 10) — an den REST-Lesewegen |
-| `405` | Ein `GET` auf `/mcp`. Der Endpunkt nimmt `POST` entgegen; der Aufruf im Browser ist kein Funktionstest |
+| `405` | Ein `GET` auf `/mcp` **mit gültigem Token bei offenem Kanal**. Der Endpunkt nimmt `POST` entgegen. Ein Browseraufruf trägt kein Token und sieht diese Antwort nie — er endet bei `404` bzw. `401` und ist deshalb kein Funktionstest |
 
 Bei geschlossenem Kanal antworten die REST-Lesewege mit `401` und der Ursache `channel_closed`;
 `404`/`503` sind das Sonderverhalten des MCP-Endpunkts, weil dort eine Person ihren Client einrichtet
@@ -563,7 +576,7 @@ beantworten sich gleich, damit der Kanal nie bestätigt, dass ein Token existier
 | `401`, `reason: invalid_token` | Wert unbekannt, verstümmelt oder unvollständig kopiert | Neu einrichten. Der Wert ist nach der Einmalanzeige nirgends abrufbar; im Zweifel neues Token |
 | `401`, `reason: network_not_allowed` | Der Aufruf kam von außerhalb der zugelassenen Netzbereiche — Heimarbeit ohne Hausnetzverbindung, ein anderes Netzsegment, oder ein Reverse Proxy ohne Eintrag in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` (Abschnitt 3) | Verbindung ins Hausnetz herstellen, oder die Netzbereiche der Installation prüfen. **Trifft der Fehler alle Beschäftigten gleichzeitig, ist es die Proxy-Auflösung, nicht das Netz** |
 | `401`/`503`, `reason: channel_closed` | Der Schalter der Installation steht auf aus — Notaus, geplante Abschaltung oder ein Restore (Abschnitt 14) | *Administration → Fremdzugänge → Kanaleinstellungen*. Tokens sind dabei nicht verloren |
-| `404` am MCP-Endpunkt | Kanal aus **und** kein brauchbares Token — oder schlicht die falsche Adresse | Adresse gegen `https://<host>/mcp` prüfen; dann den Schalter |
+| `404` am MCP-Endpunkt | Kanal aus **und** kein brauchbares Token — oder die falsche Adresse — oder ein Aufruf ganz ohne `Authorization`-Kopf | Zuerst mit einem gültigen Token wiederholen: Kommt dann `503`, ist der Schalter zu; kommt `401`, liegt es am Token; bleibt es bei `404`, ist die Adresse falsch |
 | Ein bestimmter Bestand fehlt in `list_libraries` und in den Treffern, alles andere geht | Einer der vier Faktoren der effektiven Sicht fehlt: Lesezugriff entzogen, **Freigabe zurückgenommen**, **Freigabe erloschen** (Fristablauf) oder Freigabe ausgesetzt. Eine fehlende Bibliothek erzeugt bewusst **keine** Fehlermeldung | Erst Lesezugriff der Person prüfen, dann *Administration → Fremdzugangsfreigaben*. Nach einer erneuten Freigabe lebt die Auswahl in bestehenden Tokens **nicht** wieder auf — es braucht ein neues Token |
 | Die Bibliothek ist im Token als **ausgesetzt** markiert | Die Freigabe wurde zurückgenommen oder ist erloschen | Freigabe erneuern lassen, dann ein **neues** Token erzeugen |
 | `429` mit Wartehinweis (REST) — oder am MCP-Endpunkt eine Fehlerantwort mit dem Code `-32000` bzw. ein Werkzeugergebnis mit dem Wort „Kontingent" | Kontingent des Tokens erschöpft — meist ein Skript in einer Schleife. **Am MCP-Endpunkt ist das keine `429`**: Die Ablehnung kommt als Protokollfehler bzw. als Fehlerergebnis des Werkzeugs zurück, damit das fremde Modell damit umgehen kann. Schon das Verbinden zählt (Abschnitt 10) — ein Client, der sich in Schleife neu verbindet, kann das Kontingent allein damit ausschöpfen | Werkzeug drosseln; notfalls das Kontingent der Installation anheben (Abschnitt 15) |
@@ -646,7 +659,7 @@ Namensauflösung findet dabei nicht statt.
 | Variable | Standard | Wirkung |
 |---|---|---|
 | `OPAA_EXTERNAL_ACCESS_MAX_RELEASE_DAYS` | `365` | Längste zulässige Befristung einer Bibliotheksfreigabe in Tagen. Muss positiv sein — eine Freigabe ohne Obergrenze ist genau die Ratsche, die die Befristung verhindert |
-| `OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS` | `14` | Vorlauf der Wiedervorlage an den Bibliotheksverantwortlichen. `0` schaltet die Erinnerung ab; die Freigabe erlischt trotzdem, nur unangekündigt |
+| `OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS` | `14` | Vorlauf der Wiedervorlage an die Person, die die Freigabe zuletzt gesetzt hat (Abschnitt 4). `0` schaltet die Erinnerung ab; die Freigabe erlischt trotzdem, nur unangekündigt |
 | `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` | leer | Nicht auf diesen Kanal beschränkt, für ihn aber ausschlaggebend: Ohne Eintrag prüft die Netzbeschränkung hinter einem Reverse Proxy dessen Adresse (Abschnitt 3) |
 
 Die Grenzwerte des Such- und Abrufwegs (`OPAA_SEARCH_*`) stehen in [Suche](suche.md),

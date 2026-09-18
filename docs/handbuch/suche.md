@@ -558,7 +558,9 @@ Werkzeuge, die die Antwort selbst formulieren; wie diese angebunden werden, steh
 
 Ein Treffer ist eine **einzelne Fundstelle**, nicht ein Dokument: Trefferkennung, Titel, Auszug der
 Passage, Herkunft (Bibliothek, Dokument, Ortsangabe), die Metadaten des Dokuments, der Rangwert und
-der Pfad, unter dem das Original heruntergeladen wird. Die Trefferkennung ist stabil und nicht
+der Pfad, unter dem das Original heruntergeladen wird. Diesen Pfad bekommt nur eine angemeldete
+Person: Ein Aufruf mit Zugangstoken erhält keinen Download-Link, weil der Fremdzugangskanal
+Fundstellen herausgibt und keine Originaldateien. Die Trefferkennung ist stabil und nicht
 durchzählbar; eine ratbare Kennung machte den Abruf zu einem Auflistungsweg über fremde Bestände,
 auch wenn jeder einzelne Abruf richtig geprüft wird. Der Rechtefilter bleibt trotzdem die erste
 Schranke.
