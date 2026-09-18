@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -67,6 +68,17 @@ public class ChatController {
   @DeleteMapping("/chats/{chatId}")
   public ResponseEntity<Void> deleteChat(@PathVariable UUID chatId, @Caller CurrentUser caller) {
     chatService.deleteChat(chatId, caller.id());
+    return ResponseEntity.noContent().build();
+  }
+
+  @PutMapping("/chats/{chatId}/pin")
+  public ChatSummary pinChat(@PathVariable UUID chatId, @Caller CurrentUser caller) {
+    return ChatResponseMapper.toSummaryResponse(chatService.pinChat(chatId, caller.id()));
+  }
+
+  @DeleteMapping("/chats/{chatId}/pin")
+  public ResponseEntity<Void> unpinChat(@PathVariable UUID chatId, @Caller CurrentUser caller) {
+    chatService.unpinChat(chatId, caller.id());
     return ResponseEntity.noContent().build();
   }
 

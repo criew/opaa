@@ -3,6 +3,7 @@ package io.opaa.api;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -11,6 +12,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -22,11 +24,13 @@ import io.opaa.auth.UserService;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatConversation;
 import io.opaa.chat.ChatCreation;
+import io.opaa.chat.ChatListEntry;
 import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.ChatPatch;
 import io.opaa.chat.ChatService;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -163,15 +167,67 @@ class ChatControllerTest {
     UUID spaceId = UUID.randomUUID();
     Chat chat =
         new Chat(spaceId, currentUser.getId(), UUID.randomUUID(), "Meine Frage", true, Set.of());
-    when(chatService.listChats(eq(spaceId), any())).thenReturn(List.of(chat));
+    when(chatService.listChats(eq(spaceId), any()))
+        .thenReturn(List.of(new ChatListEntry(chat, Instant.parse("2026-09-18T08:15:00Z"))));
 
     mockMvc
         .perform(get("/api/v1/spaces/{spaceId}/chats", spaceId).with(asTestUser()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].id").value(chat.getId().toString()))
-        .andExpect(jsonPath("$[0].title").value("Meine Frage"));
+        .andExpect(jsonPath("$[0].title").value("Meine Frage"))
+        .andExpect(jsonPath("$[0].pinnedAt").value("2026-09-18T08:15:00Z"));
 
     verify(chatService).listChats(eq(spaceId), any());
+  }
+
+  @Test
+  void pinChatReturnsTheChatWithItsPinnedAt() throws Exception {
+    UUID chatId = UUID.randomUUID();
+    Chat chat =
+        new Chat(
+            UUID.randomUUID(), currentUser.getId(), UUID.randomUUID(), "Frist", true, Set.of());
+    when(chatService.pinChat(eq(chatId), eq(currentUser.getId())))
+        .thenReturn(new ChatListEntry(chat, Instant.parse("2026-09-18T08:15:00Z")));
+
+    mockMvc
+        .perform(put("/api/v1/chats/{chatId}/pin", chatId).with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(chat.getId().toString()))
+        .andExpect(jsonPath("$.pinnedAt").value("2026-09-18T08:15:00Z"));
+  }
+
+  @Test
+  void pinChatReturns404ForAChatTheCallerCannotSee() throws Exception {
+    UUID chatId = UUID.randomUUID();
+    when(chatService.pinChat(eq(chatId), any()))
+        .thenThrow(new NotFoundException("Chat nicht gefunden"));
+
+    mockMvc
+        .perform(put("/api/v1/chats/{chatId}/pin", chatId).with(asTestUser()))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void unpinChatReturns204() throws Exception {
+    UUID chatId = UUID.randomUUID();
+
+    mockMvc
+        .perform(delete("/api/v1/chats/{chatId}/pin", chatId).with(asTestUser()))
+        .andExpect(status().isNoContent());
+
+    verify(chatService).unpinChat(chatId, currentUser.getId());
+  }
+
+  @Test
+  void unpinChatReturns404ForAChatTheCallerCannotSee() throws Exception {
+    UUID chatId = UUID.randomUUID();
+    doThrow(new NotFoundException("Chat nicht gefunden"))
+        .when(chatService)
+        .unpinChat(eq(chatId), any());
+
+    mockMvc
+        .perform(delete("/api/v1/chats/{chatId}/pin", chatId).with(asTestUser()))
+        .andExpect(status().isNotFound());
   }
 
   @Test

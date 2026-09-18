@@ -82,7 +82,8 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
             "knowledge_libraries",
             "audit_log",
             "diagnostic_context_log",
-            "chat_note_items");
+            "chat_note_items",
+            "chat_personal_marks");
   }
 
   @Test
@@ -100,6 +101,7 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
                 + SCHEMA
                 + ", pg_temp",
             "chat_note_items_set_organization search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "chat_personal_marks_set_organization search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "opaa_audit_delete_expired_partitions search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "opaa_diagnostic_context_delete_expired_partitions search_path=pg_catalog, "
                 + SCHEMA

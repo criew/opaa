@@ -3015,6 +3015,47 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/chats/{chatId}/pin:
+    parameters:
+      - name: chatId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: pinChat
+      tags: [chat]
+      summary: Pin a chat for the calling person (docs/features/chat-list.md, "Anheften")
+      description: >
+        A personal mark of the caller, not a change to the chat: updatedAt and every other field
+        of the chat stay as they are, and pinning is allowed in an archived space too. Idempotent -
+        pinning an already pinned chat keeps its original pinnedAt. A chat the caller cannot see
+        answers 404, exactly like one that does not exist.
+      responses:
+        "200":
+          description: The chat as the caller lists it, with pinnedAt set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSummary"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: unpinChat
+      tags: [chat]
+      summary: Unpin a chat for the calling person
+      description: >
+        Idempotent; like pinning, it leaves the chat itself untouched and is allowed in an
+        archived space. A chat the caller cannot see answers 404.
+      responses:
+        "204":
+          description: Chat unpinned (or was not pinned)
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/chats/{chatId}/note-items/{itemId}:
     parameters:
       - name: chatId
@@ -8524,6 +8565,13 @@ components:
         updatedAt:
           type: string
           format: date-time
+        pinnedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When the requesting person pinned this chat; null if they have not. A personal mark,
+            never another person's.
 
     ChatDetail:
       type: object

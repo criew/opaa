@@ -9,6 +9,7 @@ import io.opaa.api.dto.SourceMetadataEntry;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatConversation;
+import io.opaa.chat.ChatListEntry;
 import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
@@ -25,7 +26,9 @@ final class ChatResponseMapper {
 
   private ChatResponseMapper() {}
 
-  static ChatSummary toSummaryResponse(Chat chat) {
+  /** The chat as the requesting person lists it, including only that person's own marks. */
+  static ChatSummary toSummaryResponse(ChatListEntry entry) {
+    Chat chat = entry.chat();
     return new ChatSummary(
             chat.getId(),
             chat.getSpaceId(),
@@ -36,10 +39,11 @@ final class ChatResponseMapper {
             chat.getUpdatedAt())
         .title(chat.getTitle())
         .referencedLibraryIds(List.copyOf(chat.getReferencedLibraryIds()))
-        .metadataFilter(MetadataFilterMapper.toResponse(chat.getMetadataFilter()));
+        .metadataFilter(MetadataFilterMapper.toResponse(chat.getMetadataFilter()))
+        .pinnedAt(entry.pinnedAt());
   }
 
-  static List<ChatSummary> toSummaryResponses(List<Chat> chats) {
+  static List<ChatSummary> toSummaryResponses(List<ChatListEntry> chats) {
     return chats.stream().map(ChatResponseMapper::toSummaryResponse).toList();
   }
 
