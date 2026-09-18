@@ -52,7 +52,11 @@ databaseChangeLog:
   # "Nachlauf im Betrieb").
   - include:
       file: db/changelog/changes/031-library-metadata-schema-changes.yaml
+  # Kanaleinstellungen der Fremdzugänge (#1717, ADR-0035, external-access.md) - der Schalter der
+  # Installation samt Grenzwerten, Netzbereichen und Einleitungstext.
+  - include:
+      file: db/changelog/changes/032-create-external-access-settings.yaml
   # Freigabe einer Bibliothek für Fremdzugänge als drittes, historisiertes Reichweitenfeld (#1731,
-  # external-access.md). Nummer 032 bleibt dem parallel entstehenden Kanalschalter (#1717).
+  # external-access.md).
   - include:
       file: db/changelog/changes/033-library-external-access.yaml

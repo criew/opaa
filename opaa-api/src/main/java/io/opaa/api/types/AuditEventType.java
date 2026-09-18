@@ -328,5 +328,16 @@ public enum AuditEventType {
    * after} carries the provider id and the counts of what moved - never the provider subject
    * (ADR-0033, Entscheidung 13).
    */
-  LOCAL_USER_HANDED_OVER
+  LOCAL_USER_HANDED_OVER,
+
+  // Fremdzugaenge (#1717, ADR-0035, docs/features/external-access.md)
+  /**
+   * The channel settings of the external access changed - the installation-wide switch, the token
+   * lifetime ceiling, the per-token quota, the networks of the channel or the threshold of the mass
+   * retrieval alert; before/after of the changed keys only. The instructions text for foreign tools
+   * is deliberately <em>not</em> part of this event: it changes no reach, only the wording of a
+   * request to a foreign model, and the closed list of docs/features/security-and-compliance.md
+   * does not name it.
+   */
+  EXTERNAL_ACCESS_SETTINGS_CHANGED
 }

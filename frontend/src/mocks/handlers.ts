@@ -5,6 +5,7 @@ import { mailHandlers } from './mailHandlers'
 import { localUserHandlers } from './localUserHandlers'
 import { accountHandlers } from './accountHandlers'
 import { localAuthHandlers } from './localAuthHandlers'
+import { externalAccessHandlers } from './externalAccessHandlers'
 
 /** Per-library countdown of the mock metadata backfill; see the handler below. */
 const mockMetadataBackfillRemaining = new Map<string, number>()
@@ -3329,4 +3330,6 @@ export const handlers = [
   ...localUserHandlers,
   ...accountHandlers,
   ...localAuthHandlers,
+  // Dito für die Kanaleinstellungen der Fremdzugänge (#1717).
+  ...externalAccessHandlers,
 ]

@@ -1,0 +1,60 @@
+databaseChangeLog:
+  - changeSet:
+      id: 032-create-external-access-settings
+      author: opaa
+      comment: >-
+        Kanaleinstellungen der Fremdzugänge (#1717, ADR-0035,
+        docs/features/external-access.md, "Der Schalter der Installation") as a singleton row,
+        pattern local_auth_settings. enabled ships off: a fresh installation behaves as if the
+        channel did not exist, and the same flag is the emergency stop. allowed_cidrs is a
+        comma-separated list whose seeded value is the private address space plus loopback
+        ("Hausnetz"); an empty list means "no address reaches the channel", never "every address".
+        The bounds of every value are CHECKs as well as service validation, so no write path can
+        weaken them. updated_by outlives a deleted administrator (SET NULL) because the row itself
+        is never deleted.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE external_access_settings (
+                  id integer NOT NULL,
+                  enabled boolean DEFAULT false NOT NULL,
+                  token_max_lifetime_days integer DEFAULT 90 NOT NULL,
+                  token_rate_limit_per_hour integer DEFAULT 60 NOT NULL,
+                  allowed_cidrs text DEFAULT '10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8,::1/128,fc00::/7' NOT NULL,
+                  mass_retrieval_alert_threshold integer DEFAULT 600 NOT NULL,
+                  server_instructions text DEFAULT 'Bei Fragen zu Verwaltungsvorgängen dieser Behörde zuerst „search“ aufrufen. Antworten mit Fundstellen belegen und die Herkunft angeben (Bibliothek, Dokument, Fundstelle). Nichts erfinden, was die Treffer nicht hergeben.' NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_by uuid,
+                  version bigint DEFAULT 0 NOT NULL,
+                  CONSTRAINT chk_external_access_settings_singleton CHECK ((id = 1)),
+                  CONSTRAINT chk_external_access_settings_token_lifetime CHECK ((token_max_lifetime_days BETWEEN 1 AND 365)),
+                  CONSTRAINT chk_external_access_settings_rate_limit CHECK ((token_rate_limit_per_hour BETWEEN 1 AND 10000)),
+                  CONSTRAINT chk_external_access_settings_alert_threshold CHECK ((mass_retrieval_alert_threshold BETWEEN 1 AND 1000000))
+              );
+
+              ALTER TABLE ONLY external_access_settings
+                  ADD CONSTRAINT external_access_settings_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY external_access_settings
+                  ADD CONSTRAINT fk_external_access_settings_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE IF EXISTS external_access_settings;
+
+  - changeSet:
+      id: 032-seed-external-access-settings
+      author: opaa
+      comment: "The one external_access_settings row, carrying the column defaults - channel off (#1717)"
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              INSERT INTO external_access_settings (id) VALUES (1);
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DELETE FROM external_access_settings WHERE id = 1;

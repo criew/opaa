@@ -269,6 +269,9 @@ export type LocalAuthSettingsUpdateRequest = components['schemas']['LocalAuthSet
 export type AccountResponse = components['schemas']['AccountResponse']
 export type AccountPageResponse = components['schemas']['AccountPageResponse']
 export type AccountProviderResponse = components['schemas']['AccountProviderResponse']
+export type ExternalAccessSettingsResponse = components['schemas']['ExternalAccessSettingsResponse']
+export type ExternalAccessSettingsUpdateRequest =
+  components['schemas']['ExternalAccessSettingsUpdateRequest']
 
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (
