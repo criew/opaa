@@ -7,7 +7,8 @@
 Stakeholder-Bewertungen um. Nachtrag zu [ADR-0005](0005-authentication-strategy.md) (ein zusätzlicher
 Prüfweg, kein zusätzlicher Betriebsmodus), zu [ADR-0033](0033-lokale-benutzerverwaltung.md)
 (dieselbe Prüfkette und derselbe Sofortwiderruf, eigene Ablage) und zu
-[ADR-0021](0021-single-instance-betrieb.md) (zwei weitere Stellen prozesslokalen Zustands).
+[ADR-0021](0021-single-instance-betrieb.md) (ein weiterer Eintrag prozesslokalen Zustands: das
+Zählfenster des Abflussalarms).
 
 Das **Verhalten** dieses Kanals steht in
 [`docs/features/external-access.md`](../features/external-access.md) — Schalter, Freigabe,
@@ -42,6 +43,7 @@ Vier Randbedingungen binden die Entscheidungen unten:
   | Abgekündigt | Der **HTTP+SSE-Transport** (seit `2025-03-26`, Migrationspfad Streamable HTTP) und — seit `2026-07-28` — die **dynamische Client-Registrierung** (Migrationspfad „Client ID Metadata Documents"), außerdem Roots, Sampling und Logging. Nach der Lebenszyklus-Richtlinie (SEP-2596) bleibt ein abgekündigtes Merkmal mindestens zwölf Monate in der Spezifikation, im beschleunigten Fall mindestens neunzig Tage |
   | Unsere Bibliothek | Spring AI **2.0.1** (`backend/gradle/libs.versions.toml`). Der Starter `org.springframework.ai:spring-ai-starter-mcp-server-webmvc:2.0.1` zieht `spring-boot-starter-web:4.1.1` — genau unsere Spring-Boot-Fassung — sowie `mcp-spring-webmvc:2.0.1` und darüber `io.modelcontextprotocol.sdk:mcp-core:2.0.x` |
   | Fassungen, die diese Bibliothek kennt | `2024-11-05`, `2025-03-26`, `2025-06-18`, `2025-11-25` (`ProtocolVersions` in `mcp-core`) — **ausschließlich legacy**. Die Aushandlung je Anfrage, `server/discover` und `UnsupportedProtocolVersionError` aus `2026-07-28` sind dort noch nicht umgesetzt |
+  | Werkzeugliste | `tools/list` wird in **beiden** Betriebsarten (`McpStatelessAsyncServer` wie `McpAsyncServer`, `mcp-core` 2.0.1) aus der serverweit registrierten Liste beantwortet; der Anfragekontext geht nicht ein. Eine Liste je Token ist ein eigener Handler, keine Konfiguration |
   | Was der Starter **nicht** liefert | Authentifizierung. Die Spring-AI-Dokumentation sagt es ausdrücklich: Der HTTP-Transport legt einen **unauthentifizierten** JSON-RPC-Endpunkt an; jeder, der ihn erreicht, kann ohne Merkmal alle registrierten Werkzeuge auflisten und aufrufen. Die Absicherung ist Sache einer eigenen Schicht davor |
 
 Die letzte Zeile ist die wichtigste dieses ADR: Der Transport bringt den Prüfweg **nicht** mit. Er
@@ -50,22 +52,23 @@ verantwortbar ist.
 
 ## Entscheidung
 
-### 1. Ein MCP-Server im Backend, Transport Streamable HTTP, Pfad `/mcp`
+### 1. Ein MCP-Server im Backend, Transport Streamable HTTP in der zustandsfreien Betriebsart, Pfad `/mcp`
 
 OPAA baut **keine Erweiterung je Werkzeug**, sondern genau einen MCP-Server, den alle einschlägigen
-Clients gleichermaßen ansprechen. Der Transport ist **Streamable HTTP**; der Server läuft im
-Backendprozess unter dem Pfad `/mcp` und wird mit dem Spring-AI-Starter gebaut:
+Clients gleichermaßen ansprechen. Der Transport ist **Streamable HTTP, und zwar in der zustandsfreien
+Betriebsart** (`STATELESS`); der Server läuft im Backendprozess unter dem Pfad `/mcp` und wird mit dem
+Spring-AI-Starter gebaut:
 
 ```
 implementation(libs.spring.ai.starter.mcp.server.webmvc)   // Eintrag in libs.versions.toml
 
-spring.ai.mcp.server.protocol                    = STREAMABLE
-spring.ai.mcp.server.type                        = SYNC
-spring.ai.mcp.server.streamable-http.mcp-endpoint = /mcp        (Vorgabe der Bibliothek)
-spring.ai.mcp.server.instructions                = aus der Systemkonfiguration
-spring.ai.mcp.server.capabilities.resource       = false
-spring.ai.mcp.server.capabilities.prompt         = false
-spring.ai.mcp.server.capabilities.completion     = false
+spring.ai.mcp.server.protocol                 = STATELESS
+spring.ai.mcp.server.type                     = SYNC
+spring.ai.mcp.server.stateless.mcp-endpoint   = /mcp        (Vorgabe der Bibliothek)
+spring.ai.mcp.server.instructions             = aus der Systemkonfiguration
+spring.ai.mcp.server.capabilities.resource    = false
+spring.ai.mcp.server.capabilities.prompt      = false
+spring.ai.mcp.server.capabilities.completion  = false
 ```
 
 WebMVC, nicht WebFlux — das Backend ist eine MVC-Anwendung. `SYNC`, weil die Werkzeuge synchrone
@@ -74,8 +77,24 @@ Completions sind eigene Ausspielflächen mit eigener Rechtefrage, und der Grunds
 Spring-AI-Dokumentation gilt — *die Registrierung eines Werkzeugs ist die Entscheidung, es
 offenzulegen*.
 
-Die Bibliotheksversion ist **nicht Teil dieser Entscheidung**. Festgelegt ist der Transport und der
-Ort (ein Server, im Backend, unter `/mcp`); wechselt der Starter, gilt die Festlegung unverändert.
+**Warum zustandsfrei.** Jede Anfrage trägt ihr Bearer-Merkmal; eine Sitzung fügt diesem Kanal nichts
+hinzu, was er braucht, aber vier Dinge, die er nicht will: prozesslokalen Zustand
+([ADR-0021](0021-single-instance-betrieb.md)), eine Stelle, an der eine Prüfung „je Verbindung"
+plausibel aussieht und damit die Prüfung je Aufruf (Entscheidung 5) unterlaufen kann, eine
+Sitzungstabelle, die einen Neustart oder einen Notaus überdauern will, und einen Lebenszyklus, den
+niemand beobachten kann, weil dieser Kanal bewusst keine Nutzungsdaten führt. Ohne Sitzungen ist
+„eine offene Sitzung überdauert den Notaus nicht" keine Zusage, die eingehalten werden muss, sondern
+ein Zustand, den es nicht gibt. Die Spezifikation `2026-07-28` geht mit ihrer Aushandlung je Anfrage
+in dieselbe Richtung.
+
+**Nachzug in der Spezifikation.** `external-access.md` formuliert an zwei Stellen sitzungsnah — die
+Werkzeugbeschreibungen entstünden „zur Verbindungszeit", und „bestehende Sitzungen enden beim
+Ausschalten". Beides ist mit dieser Entscheidung stärker erfüllt, als es dort steht: Es gibt keine
+Sitzung, die enden müsste, und die Beschreibung entsteht je Anfrage. Die Formulierungen sind
+entsprechend nachzuziehen (#1721); eine Verhaltensänderung ist damit nicht verbunden.
+
+Die Bibliotheksversion ist **nicht Teil dieser Entscheidung**. Festgelegt sind Transport, Betriebsart
+und Ort (ein Server, im Backend, unter `/mcp`); wechselt der Starter, gilt die Festlegung unverändert.
 
 **Betrachtete Alternativen.** Eine *eigene Erweiterung je Werkzeug* (Claude Code, Cursor, OpenCode, VS
 Code) — vier Artefakte mit vier Veröffentlichungswegen und vier Lebenszyklen für denselben Zuschnitt;
@@ -83,20 +102,36 @@ der Standard, den alle vier bereits sprechen, macht sie überflüssig. Ein *stdi
 — müsste auf jedem Gerät installiert, aktualisiert und mit einem eigenen Zugangsmerkmal versehen
 werden, und ein Sicherheitsfehler wäre auf tausend Geräten zu beheben statt an einer Stelle. Der
 *SSE-Transport* — in Spring AI seit 2.0.0 als überholt geführt und in der MCP-Spezifikation seit
-`2025-03-26` abgekündigt; ein neuer Kanal beginnt nicht auf einem Migrationspfad, der schon läuft. Der
-*STATELESS*-Betrieb des Starters — er spart Sitzungszustand, aber die Werkzeugbeschreibungen entstehen
-je Verbindung aus der effektiven Sicht des Tokens, und die Prüfung je Aufruf (Entscheidung 5) leistet
-ohnehin das, wofür man sonst Zustandsfreiheit bräuchte.
+`2025-03-26` abgekündigt; ein neuer Kanal beginnt nicht auf einem Migrationspfad, der schon läuft. Die
+*sitzungsbehaftete Betriebsart* `STREAMABLE` — sie kann Benachrichtigungen an den Client (etwa über
+geänderte Werkzeuglisten) und Rückfragen an ihn; beides braucht dieser Kanal nicht, und der Preis
+wären die vier Punkte oben. Der scheinbare Vorteil, Werkzeugbeschreibungen je Verbindung zu bilden,
+ist keiner: Die Bibliothek beantwortet `tools/list` in **beiden** Betriebsarten aus derselben
+serverweiten Liste (siehe Umsetzungsrisiko unten).
+
+**Umsetzungsrisiko für #1721 — die Werkzeugliste je Token.** Geprüft an `mcp-core` 2.0.1: Sowohl
+`McpStatelessAsyncServer` als auch `McpAsyncServer` beantworten `tools/list` aus der beim Aufbau
+registrierten, **serverweiten** Liste; der Anfragekontext (`McpTransportContext`, über einen
+`McpTransportContextExtractor` mit dem `Authorization`-Kopf befüllbar) wird dabei nicht ausgewertet.
+Eine Beschreibung je Token ist also in keiner Betriebsart eine Voreinstellung, sondern verlangt einen
+eigenen Handler für `tools/list` — das ist der Umsetzungspunkt, nicht die Wahl der Betriebsart. Kommt
+#1721 damit nicht durch, ist der **Ausweg** festgelegt: eine feste Werkzeugliste, deren Beschreibungen
+die Bestände nicht aufzählen, dazu die Aufzählung der effektiven Sicht **im Antworttext** jedes
+Aufrufs und in `list_libraries`. Das fremde Modell erfährt den Umfang dann beim ersten Aufruf statt
+bei der Auflistung; die Rechteprüfung hängt davon in keinem Fall ab. Was dabei **nicht** zulässig ist:
+die Bestände aller Bibliotheken der Installation in eine allen Tokens gemeinsame Beschreibung zu
+schreiben — das wäre eine Auskunft über Bestände, die das Token nicht sehen darf.
 
 **Folgen.** Ein Betriebsartefakt, ein Update, eine Adresse im Handbuch. Zugleich **ein einziger
-Ausfallpunkt für alle Fremdzugänge des Hauses** — davon handelt Entscheidung 6. Streamable HTTP führt
-Sitzungen im Arbeitsspeicher des Prozesses; zusammen mit dem Zählfenster des Abflussalarms sind das
-zwei weitere Einträge in der Liste prozesslokalen Zustands aus
-[ADR-0021](0021-single-instance-betrieb.md) — bei mehreren Instanzen zerfielen Sitzungen und Alarm
-schweigend. Und: Weil der Starter den Endpunkt unauthentifiziert anlegt, ist eine fehlende
-Filterkettenregel kein Konfigurationsfehler, sondern eine offene Tür. Die Wegeliste des
-Sicherheits-Wächters muss `/mcp` deshalb **ausdrücklich** führen, und ein Test muss belegen, dass ein
-Aufruf ohne Merkmal nicht durchkommt.
+Ausfallpunkt für alle Fremdzugänge des Hauses** — davon handelt Entscheidung 6. Prozesslokaler Zustand
+entsteht durch den Server selbst **nicht**; der einzige Eintrag, den dieser Kanal in die Liste aus
+[ADR-0021](0021-single-instance-betrieb.md) trägt, ist das Zählfenster des Abflussalarms, das
+ausdrücklich im Arbeitsspeicher lebt. Die zustandsfreie Betriebsart kennt keine Rückfragen an den
+Client (Elicitation, Sampling, Ping) und keine Änderungsbenachrichtigungen — beides ist hier
+verzichtbar und in den Grenzen des Kanals ohnehin nicht vorgesehen. Und: Weil der Starter den
+Endpunkt unauthentifiziert anlegt, ist eine fehlende Filterkettenregel kein Konfigurationsfehler,
+sondern eine offene Tür. Die Wegeliste des Sicherheits-Wächters muss `/mcp` deshalb **ausdrücklich**
+führen, und ein Test muss belegen, dass ein Aufruf ohne Merkmal nicht durchkommt.
 
 ### 2. Authentifizierung ist ein persönliches Zugangstoken: undurchsichtig, mit Präfix, nur gehasht gespeichert
 
@@ -239,10 +274,11 @@ den Dienst auf.
 
 Die **effektive Sicht** ist die Schnittmenge aus Rechten der Person, gültiger Bibliotheksfreigabe,
 Auswahl im Token und Installationsschalter — ausgewertet **zur Anfragezeit, bei jedem einzelnen
-Werkzeugaufruf**, nie bei Sitzungsbeginn eingefroren. Streamable HTTP kennt langlebige Sitzungen; eine
-Prüfung nur beim Verbindungsaufbau ließe eine offene Sitzung den Notaus überdauern und machte die
-Meldung „Kanal ist zu" zu einer Unwahrheit. Der Rechtefilter sitzt dabei **in der Suche**, nicht davor
-— eine zweite Filterstelle wäre eine zweite Wahrheit.
+Werkzeugaufruf**, nie eingefroren. Die zustandsfreie Betriebsart aus Entscheidung 1 macht das zur
+einzigen möglichen Bauweise statt zu einer Regel, an die man sich halten muss: Es gibt keine
+Verbindung, bei deren Aufbau man prüfen könnte, und damit auch keine offene Sitzung, die einen Notaus
+überdauern und die Meldung „Kanal ist zu" zu einer Unwahrheit machen könnte. Der Rechtefilter sitzt
+dabei **in der Suche**, nicht davor — eine zweite Filterstelle wäre eine zweite Wahrheit.
 
 Abgesichert wird die Invariante nicht durch Disziplin, sondern durch zwei Prüfungen: ein Strukturtest,
 der die Abhängigkeiten der Werkzeug- und Endpunktklassen auf die Domain-Dienste begrenzt (kein
@@ -328,8 +364,9 @@ spricht.
 - **Nachweisbarkeit ohne Verhaltensdaten.** Die Frage „wer konnte wann worauf zugreifen?" beantworten
   Rechtehistorie und Ereignisliste. Dafür ist **keine** Abfrageprotokollierung nötig — die Zusage aus
   `security-and-compliance.md` bleibt unangetastet, und der Kanal wird dadurch mitbestimmungsfähig.
-- **Ein Notaus, der wirkt.** Weil je Aufruf geprüft wird, beendet das Ausschalten den Kanal sofort,
-  auch für offene Sitzungen — und vernichtet dabei kein Token.
+- **Ein Notaus, der wirkt.** Weil je Aufruf geprüft wird und der Server keine Sitzungen führt, wirkt
+  das Ausschalten mit der nächsten Anfrage — es gibt nichts, was ihn überdauern könnte, und es wird
+  dabei kein Token vernichtet.
 - **Zwei Endpunkte, die ohnehin fehlten.** Such- und Abrufweg schließen die Lücken, die
   `user-frontends.md` heute ausdrücklich als fehlend führt, und stehen auch angemeldeten Personen
   offen.
@@ -343,8 +380,12 @@ spricht.
 - **Ein unauthentifizierter Endpunkt in der Voreinstellung der Bibliothek.** Die Absicherung liegt
   vollständig bei uns; eine Lücke in der Filterkette ist hier keine Unbequemlichkeit, sondern eine
   offene Tür in den Bestand.
-- **Zwei weitere Stellen prozesslokalen Zustands** (Sitzungen, Alarmfenster) und damit zwei weitere
-  Einträge in der Single-Instance-Liste aus ADR-0021.
+- **Ein weiterer Eintrag in der Single-Instance-Liste aus ADR-0021** — das Zählfenster des
+  Abflussalarms, das bewusst im Arbeitsspeicher lebt. Der Server selbst trägt nichts bei; das ist der
+  Gewinn der zustandsfreien Betriebsart.
+- **Werkzeugbeschreibungen je Token sind keine Voreinstellung der Bibliothek.** `tools/list` kommt aus
+  einer serverweiten Liste; die Beschreibung aus der effektiven Sicht verlangt einen eigenen Handler.
+  Umsetzungsrisiko und Ausweg stehen in Entscheidung 1 und sind in #1721 zu entscheiden.
 - **Eine wiederkehrende organisatorische Pflicht**: Jede Bibliotheksfreigabe läuft nach spätestens
   einem Jahr aus und will erneuert werden. Das ist beabsichtigt und trotzdem Arbeit.
 - **Eine Freigabeentscheidung, die faktisch unumkehrbar ist.** Was einmal in ein fremdes Werkzeug
@@ -402,5 +443,6 @@ Zuschnitt als Ganzes betreffen:
 - Epic #1715 mit den dreizehn Entscheidungen vom 18.09.2026; dieses ADR ist Issue #1716
 - MCP-Spezifikation `2026-07-28`: „Versioning and Compatibility", „Deprecated Features" (Registry),
   Feature-Lifecycle-Richtlinie SEP-2596
-- Spring AI 2.0.1: „MCP Server Boot Starter" und „Streamable-HTTP MCP Servers";
+- Spring AI 2.0.1: „MCP Server Boot Starter", „Streamable-HTTP MCP Servers" und „Stateless
+  Streamable-HTTP MCP Servers";
   `io.modelcontextprotocol.sdk:mcp-core` 2.0.x, `ProtocolVersions`
