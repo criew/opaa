@@ -13,12 +13,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 /**
- * #1536, ADR-0033 Entscheidung 10: the twelve delivered templates are internally consistent - each
+ * #1536, ADR-0033 Entscheidung 10: every delivered template is internally consistent - each
  * declares exactly the placeholders its own text references, renders with its sample values under
  * the same strict compiler {@code MailTemplateService} uses, and carries a sample value for every
  * placeholder.
  *
- * <p>This is the test that makes the registry safe to extend: a thirteenth key with a typo in a
+ * <p>This is the test that makes the registry safe to extend: a further key with a typo in a
  * placeholder, a missing sample value or an undeclared variable fails here rather than at the
  * moment somebody's invitation is sent.
  */
@@ -38,6 +38,7 @@ class MailTemplateKeyTest {
           "BOOTSTRAP_ACCOUNT_USED",
           "ADMIN_REVIEW_REMINDER",
           "EXTERNAL_ACCESS_RELEASE_EXPIRING",
+          "EXTERNAL_ACCESS_TOKEN_EXPIRING",
           "TEST_MAIL");
 
   private final Mustache.Compiler plain = Mustache.compiler().escapeHTML(false);

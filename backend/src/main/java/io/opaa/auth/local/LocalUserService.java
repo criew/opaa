@@ -350,6 +350,12 @@ public class LocalUserService {
         recordSystemAct(systemActor, user, AuditEventType.LOCAL_SESSION_REVOKED, revocation);
       }
     }
+    // In this transaction, so the lock and the end of every other merkmal of the account commit
+    // together - see LocalAccountAccessEndedEvent.
+    events.publishEvent(
+        actor != null
+            ? LocalAccountAccessEndedEvent.by(user, actor.id())
+            : LocalAccountAccessEndedEvent.bySystem(user, systemActor));
   }
 
   @Transactional

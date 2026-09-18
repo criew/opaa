@@ -60,3 +60,6 @@ databaseChangeLog:
   # external-access.md).
   - include:
       file: db/changelog/changes/033-library-external-access.yaml
+  # Persönliche Zugangstokens des Fremdzugangskanals (#1718, ADR-0035 Entscheidung 2).
+  - include:
+      file: db/changelog/changes/034-create-external-access-tokens.yaml

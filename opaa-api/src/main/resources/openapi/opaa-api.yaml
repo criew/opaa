@@ -6070,6 +6070,180 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/external-access/tokens:
+    get:
+      operationId: listOwnExternalAccessTokens
+      tags: [external-access]
+      summary: >
+        The caller's own personal access tokens (ADR-0035, Entscheidung 2). "Zuletzt benutzt" is a
+        date without a time and exists only in this self view - the administration's list never
+        carries it. There is no usage count anywhere.
+      responses:
+        "200":
+          description: The caller's tokens, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnExternalAccessTokenListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createExternalAccessToken
+      tags: [external-access]
+      summary: >
+        Issues a personal access token for a named tool. The plain value is in this response and in
+        no other, ever - the server keeps only its HMAC lookup hash and the prefix. Name, at least
+        one library and an expiry are mandatory; the expiry must not exceed the installation-wide
+        ceiling, and every named library must be readable by the caller and released for external
+        access. The selection is immutable afterwards - a change is a new token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExternalAccessTokenRequest"
+      responses:
+        "201":
+          description: The token, with its plain value shown exactly once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedExternalAccessTokenResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/external-access/eligible-libraries:
+    get:
+      operationId: listEligibleExternalAccessLibraries
+      tags: [external-access]
+      summary: >
+        The libraries the caller may put into a new access token - exactly the set POST
+        /api/v1/external-access/tokens accepts, so anything offered here is issuable and anything
+        outside it is answered 400. That is: readable by this person AND released for external
+        access with a release that is still in force. Empty while the installation switch is off,
+        because no issuance would be accepted then either.
+      responses:
+        "200":
+          description: The selectable libraries, by name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibleExternalAccessLibraryListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/external-access/tokens/{tokenId}:
+    delete:
+      operationId: revokeOwnExternalAccessToken
+      tags: [external-access]
+      summary: >
+        Revokes one of the caller's own tokens; it stops working with the next call. "Zuletzt
+        benutzt" is cleared with the revocation - it answered "may I revoke this?" and has no
+        purpose afterwards. A token of someone else answers 404, the same way an unknown one does.
+      parameters:
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/external-access/tokens:
+    get:
+      operationId: listAllExternalAccessTokens
+      tags: [external-access]
+      summary: >
+        The Bestandsliste of every access token for SYSTEM_ADMIN - owner, name, expiry, libraries
+        and state. It carries no token value, no usage count and deliberately no usage date, and it
+        offers no filter, no sorting and no output by person; the only filters are over state and
+        expiry (security-and-compliance.md, "Mitbestimmungsfaehigkeit" no. 2). The order is fixed:
+        soonest expiry first.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Restrict to one state; omitted means every token.
+          schema:
+            $ref: "#/components/schemas/ExternalAccessTokenStatus"
+        - name: expiringWithinDays
+          in: query
+          required: false
+          description: Only tokens still valid and expiring within this many days.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+      responses:
+        "200":
+          description: Every token of the installation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminExternalAccessTokenListResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/external-access/tokens/{tokenId}/block:
+    post:
+      operationId: blockExternalAccessToken
+      tags: [external-access]
+      summary: Blocks one token; it stops working with the next call.
+      parameters:
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Blocked
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/external-access/tokens/block-by-owner:
+    post:
+      operationId: blockExternalAccessTokensOfOwner
+      tags: [external-access]
+      summary: >
+        Blocks every still-active token of one person at once - the lever for an incident or an
+        account lifecycle. Deliberately a write, not a filter over the list: the list stays without
+        an output by person.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BlockExternalAccessTokensRequest"
+      responses:
+        "200":
+          description: How many tokens were blocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlockedExternalAccessTokensResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   schemas:
     HealthResponse:
@@ -12496,6 +12670,7 @@ components:
           ACCOUNT_REAUTHENTICATION_FORCED,
           API_TOKEN_ISSUED,
           API_TOKEN_REVOKED,
+          API_TOKEN_EXPIRED,
           DIRECTORY_SYNC_CHANGE_APPLIED,
           DIRECTORY_SYNC_RUN_COMPLETED,
           GOVERNANCE_SETTINGS_CHANGED,
@@ -14398,6 +14573,199 @@ components:
           additionalProperties:
             type: string
           description: The sample values the preview was rendered with.
+
+    ExternalAccessTokenStatus:
+      type: string
+      description: >
+        Mirrors io.opaa.api.types.ExternalAccessTokenStatus (ADR-0035, Entscheidung 2): the state
+        of a personal access token, derived from its row - ACTIVE, EXPIRED, REVOKED (by the person)
+        or BLOCKED (by the Systemverwaltung).
+      enum: [ACTIVE, EXPIRED, REVOKED, BLOCKED]
+      example: ACTIVE
+
+    EligibleExternalAccessLibraryResponse:
+      type: object
+      required: [id, name, releaseExpiresAt]
+      description: >
+        One library a new access token may name. Carries the end of its release, so a person can
+        see that a token outliving it would lose the library before its own expiry.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        releaseExpiresAt:
+          type: string
+          format: date-time
+
+    EligibleExternalAccessLibraryListResponse:
+      type: object
+      required: [libraries]
+      properties:
+        libraries:
+          type: array
+          items:
+            $ref: "#/components/schemas/EligibleExternalAccessLibraryResponse"
+
+    ExternalAccessTokenLibraryResponse:
+      type: object
+      required: [id, name]
+      description: One library of a token's selection, as it was selected - not as it acts today.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    CreateExternalAccessTokenRequest:
+      type: object
+      required: [name, libraryIds, expiresAt]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: What the token is for, in the person's own words - shown to them and to the
+            Systemverwaltung, and deliberately never written to the audit trail.
+          example: Claude Code auf dem Dienstrechner
+        libraryIds:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: string
+            format: uuid
+        expiresAt:
+          type: string
+          format: date-time
+          description: Mandatory, in the future, and at most the installation-wide ceiling away.
+
+    CreatedExternalAccessTokenResponse:
+      type: object
+      required: [id, name, prefix, token, createdAt, expiresAt, status, libraries]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        prefix:
+          type: string
+          description: The recognisable head of the value, kept for display; never logged.
+        token:
+          type: string
+          description: The plain value, in this response and in no other - it is not recoverable.
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/ExternalAccessTokenStatus"
+        libraries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExternalAccessTokenLibraryResponse"
+
+    OwnExternalAccessTokenResponse:
+      type: object
+      required: [id, name, prefix, createdAt, expiresAt, status, libraries]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        prefix:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        lastUsedOn:
+          type: string
+          example: "2026-09-18"
+          description: >
+            The day of the last use, written at most once a day and cleared on revocation and on
+            expiry. Absent means "not used yet" or "no longer relevant" - the two are deliberately
+            indistinguishable. Exists only here, never in the administration's list.
+        status:
+          $ref: "#/components/schemas/ExternalAccessTokenStatus"
+        libraries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExternalAccessTokenLibraryResponse"
+
+    OwnExternalAccessTokenListResponse:
+      type: object
+      required: [tokens]
+      properties:
+        tokens:
+          type: array
+          items:
+            $ref: "#/components/schemas/OwnExternalAccessTokenResponse"
+
+    AdminExternalAccessTokenResponse:
+      type: object
+      required: [id, ownerUserId, ownerDisplayName, name, createdAt, expiresAt, status, libraries]
+      description: >
+        Deliberately without a usage date and without a usage count - see the operation's summary.
+      properties:
+        id:
+          type: string
+          format: uuid
+        ownerUserId:
+          type: string
+          format: uuid
+          description: The owner, so a Sperre je Person can be issued from this row.
+        ownerDisplayName:
+          type: string
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/ExternalAccessTokenStatus"
+        libraries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExternalAccessTokenLibraryResponse"
+
+    AdminExternalAccessTokenListResponse:
+      type: object
+      required: [tokens]
+      properties:
+        tokens:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminExternalAccessTokenResponse"
+
+    BlockExternalAccessTokensRequest:
+      type: object
+      required: [ownerUserId]
+      properties:
+        ownerUserId:
+          type: string
+          format: uuid
+
+    BlockedExternalAccessTokensResponse:
+      type: object
+      required: [blocked]
+      properties:
+        blocked:
+          type: integer
+          description: How many still-active tokens were blocked by this call.
 
   parameters:
     LocalRefreshCookie:

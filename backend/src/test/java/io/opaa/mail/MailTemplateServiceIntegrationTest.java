@@ -64,10 +64,11 @@ class MailTemplateServiceIntegrationTest {
   }
 
   @Test
-  void listsEveryTemplateAsDeliveredDefaultWhileNothingIsOverridden() {
+  void listsEveryTemplateAsADeliveredDefaultWhileNothingIsOverridden() {
     List<MailTemplateView> views = templateService.list(MailTemplateService.DEFAULT_LOCALE);
 
-    assertThat(views).hasSize(MailTemplateKey.values().length).hasSize(13);
+    // The registry itself is the count; MailTemplateKeyTest holds which keys it contains.
+    assertThat(views).hasSize(MailTemplateKey.values().length);
     assertThat(views).allMatch(view -> view.source() == MailTemplateView.Source.DEFAULT);
     assertThat(views.getFirst().defaultBodyHtml()).contains("<!DOCTYPE html>");
   }

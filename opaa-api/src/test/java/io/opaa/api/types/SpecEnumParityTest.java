@@ -95,7 +95,8 @@ class SpecEnumParityTest {
         Arguments.of("LocalAccountState", LocalAccountState.values()),
         Arguments.of("LockReason", LockReason.values()),
         Arguments.of("LocalAccountActivity", LocalAccountActivity.values()),
-        Arguments.of("MailDeliveryPath", MailDeliveryPath.values()));
+        Arguments.of("MailDeliveryPath", MailDeliveryPath.values()),
+        Arguments.of("ExternalAccessTokenStatus", ExternalAccessTokenStatus.values()));
   }
 
   @ParameterizedTest(name = "{0}")

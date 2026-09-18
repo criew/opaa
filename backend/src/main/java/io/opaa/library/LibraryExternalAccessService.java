@@ -46,6 +46,7 @@ public class LibraryExternalAccessService {
   private final UserRepository userRepository;
   private final ApplicationEventPublisher eventPublisher;
   private final ExternalAccessProperties properties;
+  private final LibraryExternalAccessTokenCounter tokenCounter;
   private final InstantSource clock;
 
   @Autowired
@@ -54,13 +55,15 @@ public class LibraryExternalAccessService {
       LibraryAccessService accessService,
       UserRepository userRepository,
       ApplicationEventPublisher eventPublisher,
-      ExternalAccessProperties properties) {
+      ExternalAccessProperties properties,
+      LibraryExternalAccessTokenCounter tokenCounter) {
     this(
         libraryRepository,
         accessService,
         userRepository,
         eventPublisher,
         properties,
+        tokenCounter,
         InstantSource.system());
   }
 
@@ -70,12 +73,14 @@ public class LibraryExternalAccessService {
       UserRepository userRepository,
       ApplicationEventPublisher eventPublisher,
       ExternalAccessProperties properties,
+      LibraryExternalAccessTokenCounter tokenCounter,
       InstantSource clock) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
     this.userRepository = userRepository;
     this.eventPublisher = eventPublisher;
     this.properties = properties;
+    this.tokenCounter = tokenCounter;
     this.clock = clock;
   }
 
@@ -162,12 +167,11 @@ public class LibraryExternalAccessService {
   }
 
   /**
-   * How many Zugangstokens contain this library. Always {@code 0} until the tokens themselves exist
-   * (#1718) - a placeholder in the value, not in the shape: the release view of the responsible
-   * person keeps the field it needs for the annual renewal decision from the start.
+   * How many Zugangstokens currently carry this library - the number the responsible person needs
+   * for the annual renewal decision, and never more than a number.
    */
   private long tokenCount(UUID libraryId) {
-    return 0L;
+    return tokenCounter.countActiveTokensFor(libraryId);
   }
 
   private Instant validateExpiry(Instant expiresAt, Instant now) {

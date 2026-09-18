@@ -384,6 +384,45 @@ Verfügung — es gilt dieselbe Zweckbindung wie für den übrigen Nachweisbesta
   als Punkt, den die Proxy-Konfiguration der einführenden Stelle mit abdecken muss. Dass die Regel
   gilt, sichert eine Regressionsprüfung.
 
+### Umsetzungsstand (#1718)
+
+Gebaut sind Modell und Schema (`external_access_tokens` samt der unveränderlichen Auswahl in
+`external_access_token_libraries`), die Ausstellung mit Einmalanzeige, die Selbstsicht mit „zuletzt
+benutzt", der Widerruf durch die Person, die Verwaltungsliste ohne Nutzungsdatum und ohne
+Personenfilter, die beiden Sperren der Systemverwaltung, der Authentifizierungsfilter samt eigener
+Filterkette, die Erinnerungsmail 14 und 3 Tage vor dem Ablauf, das Außerkrafttreten mit
+Protokolleintrag — sowohl beim Ablauf als auch beim Kontenlebenszyklus: Sperre eines Kontos und
+abgeschlossene Übergabe an eine Anbieteridentität setzen die Tokens der Person in derselben
+Transaktion außer Kraft — und die an die Protokollfrist gekoppelte Löschfrist.
+
+Schalter, Netzbereich und Höchstlaufzeit kommen aus den Kanaleinstellungen
+([#1717](https://github.com/criew/opaa/issues/1717)) und werden **je Aufruf** gelesen: Ist der
+Schalter zu, wird jedes Token abgewiesen, und die Tokenzeilen bleiben unverändert erhalten.
+
+Die Bibliotheksfreigabe aus [#1731](https://github.com/criew/opaa/issues/1731) wirkt: Die
+effektive Sicht liest das Reichweitenfeld je Aufruf über `KnowledgeLibrary#isExternalAccessActive`,
+und die Freigabeansicht der Verantwortlichen zeigt in `tokenCount` die Zahl der Tokens, in denen
+die Bibliothek gerade wirkt — eine Zahl, ohne Personenauflösung.
+
+`GET /api/v1/external-access/eligible-libraries` gibt genau die Menge zurück, die eine Ausstellung
+annimmt — lesbar **und** freigegeben, mit dem Ablauf der Freigabe je Eintrag; was dort nicht steht,
+wird beim Anlegen mit `400` abgewiesen. Bei geschlossenem Kanal ist sie leer, weil dann auch keine
+Ausstellung angenommen würde.
+
+Die Freigabeliste der erreichbaren Pfade führt seit
+[#1720](https://github.com/criew/opaa/issues/1720) genau die drei Lesewege: `POST /api/v1/search`,
+`GET /api/v1/search/hits/{hitId}` und `GET /api/v1/search/libraries`. Die effektive Sicht dieser
+Aufrufe bildet dieselbe Stelle wie überall sonst; die Token-Kennung ist zugleich der Schlüssel des
+Kontingents. Alles andere wird mit `403` abgewiesen — auch der Endpunkt „Bibliotheken auflisten" der
+Weboberfläche (er antwortet mit allem, was die Person lesen darf, nicht mit der Sicht des Tokens)
+und der Inhaltsabruf eines Dokuments: Der Kanal gibt Fundstellen heraus, keine Originaldateien,
+weshalb einem Token-Aufruf gar kein Download-Link angeboten wird.
+
+Eines steht noch aus:
+
+- **Der MCP-Server** ([#1721](https://github.com/criew/opaa/issues/1721)) trägt `/mcp` in dieselbe
+  Freigabeliste ein, sobald es ihn gibt.
+
 ---
 
 ## Die effektive Sicht

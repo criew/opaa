@@ -14,19 +14,26 @@ import javax.crypto.spec.SecretKeySpec;
 /**
  * The keys of the local token issuer (ADR-0033, Entscheidung 6), all derived from {@code
  * OPAA_AUTH_JWT_SECRET} with HKDF-SHA256 and one purpose label each, so the access-token signature,
- * the refresh-token lookup and the action-token lookup never share a key - and a rotation of the
- * one secret changes all three at once, ending every local session and every open link. Constructed
- * by {@code io.opaa.auth.local.LocalAuthConfiguration}; without a secret (only possible in the
- * {@code dev} profile, where the startup guard is inert) every derivation fails with the same
- * message the guard would have given.
+ * the refresh-token lookup, the action-token lookup and the external-access token lookup never
+ * share a key - and a rotation of the one secret changes all four at once, ending every local
+ * session, every open link and every personal access token. Constructed by {@code
+ * io.opaa.auth.local.LocalAuthConfiguration}; without a secret (only possible in the {@code dev}
+ * profile, where the startup guard is inert) every derivation fails with the same message the guard
+ * would have given.
  */
 public final class LocalAuthKeyService {
 
-  /** The three purposes, each with the HKDF {@code info} label ADR-0033 names. */
+  /** The four purposes, each with the HKDF {@code info} label its ADR names. */
   public enum Purpose {
     ACCESS_TOKEN("opaa:jwt:access-token"),
     REFRESH_TOKEN_LOOKUP("opaa:jwt:refresh-token-lookup"),
-    ACTION_TOKEN_LOOKUP("opaa:jwt:action-token-lookup");
+    ACTION_TOKEN_LOOKUP("opaa:jwt:action-token-lookup"),
+    /**
+     * The personal access tokens of the external-access channel (ADR-0035, Entscheidung 2) - a
+     * fourth purpose under the same mechanism, not a second Bauart. A rotation of the one secret
+     * therefore invalidates every access token at once, as it already ends every local session.
+     */
+    EXTERNAL_ACCESS_TOKEN_LOOKUP("opaa:jwt:external-access-token-lookup");
 
     private final String info;
 

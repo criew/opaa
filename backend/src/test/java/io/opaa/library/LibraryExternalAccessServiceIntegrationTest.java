@@ -53,6 +53,7 @@ class LibraryExternalAccessServiceIntegrationTest {
   @Autowired private AuditEventRecorder auditEventRecorder;
   @Autowired private LibraryAccessService accessService;
   @Autowired private ExternalAccessProperties externalAccessProperties;
+  @Autowired private LibraryExternalAccessTokenCounter tokenCounter;
   @Autowired private org.springframework.context.ApplicationEventPublisher eventPublisher;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
@@ -335,6 +336,7 @@ class LibraryExternalAccessServiceIntegrationTest {
         userRepository,
         eventPublisher,
         externalAccessProperties,
+        tokenCounter,
         () -> now);
   }
 

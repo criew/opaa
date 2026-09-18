@@ -131,7 +131,8 @@ public class SearchService {
             .chunks();
     int limit = Math.min(properties.effectiveMaxHits(requestedMaxHits), chunks.size());
     return new SearchOutcome(
-        hitAssembler.assemble(chunks.subList(0, limit), searchScope), searchedLibraries);
+        hitAssembler.assemble(chunks.subList(0, limit), searchScope, scope.accessTokenId() == null),
+        searchedLibraries);
   }
 
   /**
