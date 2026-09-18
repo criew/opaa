@@ -23,7 +23,17 @@ class DatabaseSchemaGuardTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"", "Opaa", "1opaa", "opaa,public", "opaa; DROP TABLE users", "\"opaa\""})
+  @ValueSource(
+      strings = {
+        "",
+        "Opaa",
+        "1opaa",
+        "opaa,public",
+        "opaa; DROP TABLE users",
+        "\"opaa\"",
+        "user",
+        "order"
+      })
   void refusesAnythingThatIsNotAPlainLowerCaseIdentifier(String schema) {
     contextRunner
         .withPropertyValues("opaa.database.schema=" + schema)

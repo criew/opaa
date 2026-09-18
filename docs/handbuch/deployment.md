@@ -2076,7 +2076,9 @@ unterhalb des Upload-Verzeichnisses.
 > In allen `psql`-Aufrufen dieses Kapitels steht `opaa` für den konfigurierten Datenbankbenutzer
 > (`OPAA_DB_USERNAME`, Voreinstellung `opaa`) und für die Datenbank. Wer ein eigenes Konto
 > eingerichtet hat, setzt es ein — sonst antwortet `psql` mit `FATAL: role "opaa" does not exist`,
-> und zwar auch mitten in der Umstellung.
+> und zwar auch mitten in der Umstellung. Bei einem eigenen Schema (`OPAA_DB_SCHEMA`) gehört
+> `PGOPTIONS='-c search_path=<schema>'` vor den Aufruf, sonst antwortet `psql` mit
+> `relation "documents" does not exist`.
 
 **Anhänge sind die Ausnahme.** Eine E-Mail mit Anhängen wird zu mehreren Dokumentzeilen: die Mail
 selbst und je ein Dokument pro Anhang. Nur die Mail liegt als Objekt im Speicher; der Verweis der
@@ -2587,20 +2589,32 @@ installierte Erweiterung `vector` auffindbar bleibt.
 
 Voraussetzungen:
 
-- Das Schema **muss vor dem ersten Start existieren** und dem Datenbankkonto von OPAA gehören.
-  Fehlt es, bricht die Migration beim Start ab, statt stillschweigend in `public` anzulegen:
+- Das Schema **muss vor dem ersten Start existieren**. Fehlt es, bricht die Migration beim Start
+  ab, statt stillschweigend in `public` anzulegen.
+- Empfohlen: Das Schema gehört einer Verwaltungsrolle, und das Konto von OPAA erhält nur `USAGE`
+  und `CREATE`, und zwar mit Weitergaberecht. Die Migration braucht dieses Recht, um es an die
+  Eigentümerrolle der Protokolltabellen (`opaa_audit_owner`) weiterzugeben:
 
   ```sql
-  CREATE SCHEMA opaa AUTHORIZATION opaa;
+  CREATE SCHEMA opaa AUTHORIZATION dba;
+  GRANT USAGE, CREATE ON SCHEMA opaa TO opaa WITH GRANT OPTION;
   ```
+
+  Gehört das Schema stattdessen dem Konto von OPAA (`CREATE SCHEMA opaa AUTHORIZATION opaa`),
+  läuft die Anwendung ebenso. Das Konto darf dann aber als Schema-Eigentümer auch die Tabellen von
+  `opaa_audit_owner` löschen, und der Löschschutz des Protokolls entfällt. Dasselbe gilt in `public`,
+  wenn das Konto Eigentümer der Datenbank ist.
 
 - Das Schema wird **vor der Erstinstallation** festgelegt. Ein späterer Wechsel verschiebt keine
   Daten; die Installation im neuen Schema beginnt leer.
-- Die Rolle `opaa_audit_owner` (Protokolltabellen, siehe ADR-0015) ist clusterweit. Zwei
-  OPAA-Installationen in verschiedenen Schemas derselben PostgreSQL-Instanz teilen sich diese Rolle.
-
-Die Entscheidung und ihre Begründung stehen in
-[ADR-0034](../decisions/0034-liquibase-changeset-stil-und-schema.md).
+- Die Rolle `opaa_audit_owner` (Eigentümerin der Protokolltabellen) gilt für die ganze
+  PostgreSQL-Instanz. Eine zweite OPAA-Installation in derselben Instanz, aber mit anderem Konto,
+  startet nicht: Ihre Migration darf die bestehende Rolle nicht vergeben
+  (`permission denied to grant role`). Mit demselben Konto startet sie, kann dann aber das
+  Protokoll der anderen Installation verändern. Getrennte Installationen gehören deshalb in
+  getrennte PostgreSQL-Instanzen.
+- Die `psql`-Beispiele dieses Handbuchs lösen Tabellen über den Standard-Suchpfad auf. Bei einem
+  eigenen Schema wird es vorangestellt, etwa `PGOPTIONS='-c search_path=opaa' psql …`.
 
 ## Volltextsuche (lexikalischer Suchpfad)
 

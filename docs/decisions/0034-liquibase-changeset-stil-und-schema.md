@@ -88,8 +88,13 @@ Changeset liest sich als SQL genau so, wie PostgreSQL es ausführt.
   aufgesetzt — ein bewusster Einmalvorgang vor Produktionsbetrieb, wie bei den Baselines #904 und
   #1492.
 - Ein Wechsel des Schemas nach der Installation verschiebt keine Daten.
-- Die Rolle `opaa_audit_owner` ist clusterweit; mehrere Installationen in verschiedenen Schemas
-  derselben PostgreSQL-Instanz teilen sie.
+- Die Rolle `opaa_audit_owner` ist clusterweit. Eine zweite Installation mit anderem Konto in
+  derselben Instanz scheitert an der Rollenvergabe; mit demselben Konto könnte sie das Protokoll der
+  ersten verändern. Getrennte Installationen brauchen getrennte Instanzen.
+- Gehört das Zielschema dem Anwendungskonto, darf es als Schema-Eigentümer auch Tabellen von
+  `opaa_audit_owner` löschen — die Eigentümertrennung nach ADR-0015 greift dann nicht. Das Handbuch
+  empfiehlt deshalb ein Schema im Besitz einer Verwaltungsrolle mit `USAGE, CREATE … WITH GRANT
+  OPTION` für das Konto. Für `public` gilt dasselbe, wenn das Konto Eigentümer der Datenbank ist.
 - Tests fragen Kataloge über `current_schema()` statt über das Literal `'public'` ab.
   `SchemaPortabilityMigrationTest` wendet den vollständigen Master-Changelog in ein anderes Schema an
   und prüft, dass nichts in `public` landet und die Funktionen das Zielschema pinnen.

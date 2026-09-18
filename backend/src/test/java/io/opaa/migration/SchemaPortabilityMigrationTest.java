@@ -2,6 +2,7 @@ package io.opaa.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.config.DatabaseSchemaGuard;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -130,6 +131,12 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
                     + SCHEMA
                     + "' AND tablename = 'vector_store' AND indexname LIKE 'idx_%'"))
         .containsExactlyInAnyOrder("idx_vector_store_library_id", "idx_vector_store_document_id");
+  }
+
+  @Test
+  void guardRejectsExactlyTheKeywordsPostgresRefusesAsSchemaName() throws SQLException {
+    assertThat(strings("SELECT word FROM pg_get_keywords() WHERE catcode IN ('R', 'T')"))
+        .containsExactlyInAnyOrderElementsOf(DatabaseSchemaGuard.NON_SCHEMA_KEYWORDS);
   }
 
   private void applyMasterChangelog() throws Exception {
