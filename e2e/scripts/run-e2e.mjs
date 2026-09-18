@@ -316,7 +316,9 @@ function runSeed() {
       }
     }
   }
-  return run(venvPython, seedArgs)
+  // The seed prints non-ASCII progress lines; a Windows console codepage (cp1252) cannot encode
+  // them and would abort the run.
+  return run(venvPython, seedArgs, { env: { ...process.env, PYTHONIOENCODING: 'utf-8' } })
 }
 
 async function waitUntilReady(timeoutMs) {
