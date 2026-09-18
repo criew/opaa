@@ -3110,8 +3110,8 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  # Chat-Archiv (#1769, docs/features/chat-list.md, "Archivieren"): a personal filing of the calling
-  # person - not the archived space of #543.
+  # Chat-Archiv (docs/features/chat-list.md, "Archivieren"): a personal filing of the calling
+  # person - not an archived space.
   /api/v1/chats/{chatId}/archive:
     parameters:
       - name: chatId

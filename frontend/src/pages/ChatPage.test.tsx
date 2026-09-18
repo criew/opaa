@@ -1,5 +1,6 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import ChatPage from './ChatPage'
@@ -8,6 +9,7 @@ import { clearRemovedNoteItemCache, useChatStore } from '../stores/chatStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useChatListStore } from '../stores/chatListStore'
 import { mockChatArchive } from '../mocks/fixtures'
+import { server } from '../mocks/server'
 
 let currentSpaceId: string | undefined = 'space-personal'
 let currentChatId: string | undefined = 'new'
@@ -286,6 +288,55 @@ describe('ChatPage', () => {
         ).toBe(true),
       )
     }, 15000)
+
+    // The server brings the chat back with the turn it writes after the answer - an archive placed
+    // while that answer was still being generated does not survive it.
+    it('brings back a chat archived while its answer was still coming in', async () => {
+      delete mockChatArchive['chat-personal-1']
+      let releaseAnswer = () => {}
+      const answerGate = new Promise<void>((resolve) => {
+        releaseAnswer = resolve
+      })
+      server.use(
+        http.post('/api/v1/query', async () => {
+          await answerGate
+          delete mockChatArchive['chat-personal-1']
+          return HttpResponse.json({
+            answer: 'Es geht so weiter.',
+            sources: [],
+            metadata: { model: 'gpt-4o', tokenCount: 1, durationMs: 1 },
+            chatId: 'chat-personal-1',
+            chatTitle: null,
+            noteItems: [],
+          })
+        }),
+      )
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      expect(await screen.findByText('Wie ist das Projekt aufgebaut?')).toBeInTheDocument()
+      await act(() => useChatListStore.getState().loadChats('space-personal'))
+
+      fireEvent.change(
+        screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen'),
+        { target: { value: 'Und wie geht es weiter?' } },
+      )
+      fireEvent.click(screen.getByLabelText('Nachricht senden'))
+      await act(() =>
+        useChatListStore.getState().setChatArchived('space-personal', 'chat-personal-1', true),
+      )
+      expect(screen.getByText('Archiviert')).toBeInTheDocument()
+
+      releaseAnswer()
+
+      expect(await screen.findByText('Chat aus dem Archiv zurückgeholt')).toBeInTheDocument()
+      expect(screen.queryByText('Archiviert')).not.toBeInTheDocument()
+      await waitFor(() =>
+        expect(
+          useChatListStore
+            .getState()
+            .chatsBySpaceId['space-personal']?.some((chat) => chat.id === 'chat-personal-1'),
+        ).toBe(true),
+      )
+    })
 
     it('shows no archive hint for an active chat', async () => {
       delete mockChatArchive['chat-personal-1']

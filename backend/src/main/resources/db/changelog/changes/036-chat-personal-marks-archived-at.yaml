@@ -3,9 +3,9 @@ databaseChangeLog:
       id: 036-chat-personal-marks-archived-at
       author: opaa
       comment: >-
-        Chat-Archiv als persoenliches Ordnungsmerkmal (#1769, docs/features/chat-list.md,
+        Chat-Archiv als persoenliches Ordnungsmerkmal (docs/features/chat-list.md,
         "Archivieren"): archived_at ist der Zeitpunkt, zu dem die Person den Chat in ihr Archiv
-        gelegt hat, leer heisst aktiv. Nicht zu verwechseln mit dem archivierten Space (#543).
+        gelegt hat, leer heisst aktiv. Nicht zu verwechseln mit dem archivierten Space.
         Ein Chat ist nie zugleich angeheftet und archiviert - die Pruefbedingung sichert das in der
         Datenbank. Der Teilindex traegt die seitenweise Archivliste je Person, juengst archiviert
         zuerst.

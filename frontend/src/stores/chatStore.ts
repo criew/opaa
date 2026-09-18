@@ -564,8 +564,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // not-yet-created chat view is identified by chatLoadSequence, which every loadChat/startNewChat
     // bumps.
     const sendingChatId = get().chatId
-    // The person's own message brings an archived chat back from the chat archive server-side.
-    const returnsFromArchive = sendingChatId !== null && get().archivedAt !== null
+    const archivedWhenSent = sendingChatId !== null && get().archivedAt !== null
     const send: InFlightSend = {
       chatId: sendingChatId,
       loadSequence: chatLoadSequence,
@@ -670,7 +669,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
         if (isFirstTurn) {
           scheduleTitleReload(get, set, response.chatId, spaceId)
         }
-        if (returnsFromArchive) {
+        // The server brings a chat back from the person's archive with every own turn - also one
+        // archived while this answer was still being generated.
+        const listed = useChatListStore.getState().chatsBySpaceId[spaceId]
+        const archivedMeanwhile =
+          (isTargetChatShown() && get().archivedAt !== null) ||
+          (listed !== undefined && !listed.some((chat) => chat.id === response.chatId))
+        if (archivedWhenSent || archivedMeanwhile) {
           get().applyArchivedAt(chatId, null)
           notify('Chat aus dem Archiv zurückgeholt', 'info')
           void useChatListStore.getState().chatReturnedFromArchive(spaceId)
