@@ -596,6 +596,19 @@ Fachverfahren, Vorgangsbearbeitung und elektronische Akte sind die Systeme, in d
 - **Umgang mit Zeitüberschreitungen und Abbrüchen in der Ausführungsumgebung** bei sehr großen Beständen — Teilergebnis oder Fehlschlag.
 - **Ob ein Agent einen anderen Agenten aufrufen darf.** Naheliegend, aber ungeklärt sind Rechtekontext, Protokollierung und die Frage, wessen Prüfbericht dann gilt.
 
+### Offene Fragen zur Oberfläche
+
+Gesetzt ist: Der Chat bleibt der Ort der Arbeit, Agenten werden dort mit `@` aufgerufen, verwaltet werden sie wie Wissensbibliotheken, gefunden im Katalog (siehe [Zielbild der Weboberfläche](../design/redesign-prompt.md)). Eine eigene Arbeitsfläche „Agenten" gibt es nicht. Nicht entschieden ist:
+
+- **Wie ein Skill im Chat gewählt wird.** Das Zielbild kennt `@` für Bestände und Agenten, aber noch keine Skills. Mit `@` in derselben Vorschlagsliste, über eine eigene Auswahl am Eingabefeld oder über ein anderes Zeichen — die Liste muss drei Arten sofort unterscheidbar halten: Ein Bestand verengt die Suche, ein Skill und ein Agent verändern die Arbeitsweise.
+- **Wie lange eine Wahl wirkt.** Für einen Bestand ist entschieden: eine einzelne Frage. Eine Arbeitsweise trägt dagegen meist mehrere Nachrichten. Richtung: Skill und Agent gelten für den Chat, stehen sichtbar am Eingabefeld neben der Angabe des Durchsuchten und sind dort abwählbar — eine Wirkung, die man nicht sieht, ist eine Fehlerquelle.
+- **Wo ein Lauf wiedergefunden wird, der länger dauert als die Aufmerksamkeit.** Richtung: Das Ergebnis landet in dem Chat, aus dem der Lauf gestartet wurde, und der Chat trägt in der Seitenleiste eine Ungelesen-Markierung; der Space-Wechsler trägt sie mit, sonst bleibt sie in einem anderen Space unsichtbar. Das Postfach des Benachrichtigungssystems ist die Ebene darüber — spaceübergreifend und für alles, was eine Handlung mit Frist verlangt, voran die wartende Bestätigung eines schreibenden Aufrufs, die sonst unbemerkt verfällt. Das Postfach verweist auf den Chat und dupliziert keinen Inhalt.
+- **Was die Ungelesen-Markierung speichern darf.** Sie braucht je Person und Chat einen Lesestand. In einem geteilten Chat ist das ein Datum darüber, wer wann was gelesen hat. Richtung: nur der eigene Lesestand, nur für die eigene Anzeige, keine Lesebestätigung für andere, keine Auswertung, Löschung mit dem Chat — und ein Eintrag im Auszug für die Personalvertretung.
+- **Ob ein Chat mit neuer Aktivität in der Liste nach oben rückt.** Sortierung nach letzter Aktivität ist das vertraute Muster; in einem geteilten Space bewegen dann aber fremde Läufe die eigene Liste.
+- **Wo Artefakte erscheinen.** Das [Artefakt](./spaces-and-assets.md#artefakte) ist als space-eigenes Objekt spezifiziert — zunächst privat, mit Ursprungs-Chat, ersetzbar, in eine Wissensbibliothek übernehmbar —, das Zielbild der Oberfläche hat dafür aber noch keinen Ort. Richtung: Das Artefakt erscheint an der Nachricht, die es erzeugt hat, und zusätzlich in einer Artefaktliste des Space. Erzeugt wird es serverseitig aus Vorlagen, nicht durch frei ausgeführten Code (siehe [Reihenfolge](#empfohlene-reihenfolge)).
+- **Welches Sichtbarkeitsmodell für Läufe und Artefakte gilt.** [spaces-and-assets.md](./spaces-and-assets.md#space-eigene-inhalte-chats-und-artefakte) lässt Chats und Artefakte privat entstehen und erst durch Teilen space-sichtbar werden; das Zielbild der Oberfläche weicht davon bewusst ab und zeigt jeden Chat allen Mitgliedern. Für Ungelesen-Markierung, Artefaktliste und das Ergebnis eines Agentenlaufs muss eine der beiden Fassungen gelten — ein Prüfbericht zu einem Vorgang ist kein Inhalt, dessen Sichtbarkeit aus einem Versehen folgen darf.
+- **Ob ein Agent ohne vorheriges Gespräch gestartet werden kann** — aus dem Katalog oder von seiner Detailseite, „Dokument hinein, Bericht heraus". Nach dem Grundmodell entsteht dabei ein neuer Chat im aktiven Space; festgehalten ist das nirgends.
+
 ---
 
 ## Erfolgs-Metriken
