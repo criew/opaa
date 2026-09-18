@@ -16,7 +16,7 @@
 
 ## 1. Ist-Stand: Was OPAA heute hat und was fehlt
 
-OPAA ist heute ein **Single-Turn-RAG-Chat**: Frage → Retrieval-Pipeline → genau ein LLM-Call → Antwort mit deterministisch validierten Zitaten. Es gibt drei `ChatClient`-Aufrufstellen (`AnswerGenerationService`, `QueryDecompositionService`, `ChatTitleGenerationService`), alle einschüssig per `.call()` — **kein Tool-Calling, kein Streaming, kein MCP, keine Advisors** im gesamten Backend.
+OPAA ist heute ein **Single-Turn-RAG-Chat**: Frage → Retrieval-Pipeline → genau ein LLM-Call → Antwort mit deterministisch validierten Zitaten. Es gibt fünf `ChatClient`-Aufrufstellen (`AnswerGenerationService`, `QueryDecompositionService`, `ChatTitleGenerationService`, `ChatNoteExtractionService`, `ModelMetadataExtractor`), alle einschüssig per `.call()` — **kein Tool-Calling, kein Streaming, kein MCP, keine Advisors** im gesamten Backend.
 
 Die Andockpunkte sind aber ungewöhnlich gut:
 
