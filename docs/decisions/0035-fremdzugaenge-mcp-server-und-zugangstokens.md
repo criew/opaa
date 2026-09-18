@@ -3,12 +3,12 @@
 ## Status
 
 **Vorgeschlagen (18.09.2026)** — Issue #1716, Epic #1715. Setzt den Maintainer-Beschluss vom
-18.09.2026 („Fundament zuerst") und die dort getroffenen dreizehn Entscheidungen nach den fünf
+18.09.2026 („Fundament zuerst") und die dort getroffenen vierzehn Entscheidungen nach den fünf
 Stakeholder-Bewertungen um. Nachtrag zu [ADR-0005](0005-authentication-strategy.md) (ein zusätzlicher
 Prüfweg, kein zusätzlicher Betriebsmodus), zu [ADR-0033](0033-lokale-benutzerverwaltung.md)
 (dieselbe Prüfkette und derselbe Sofortwiderruf, eigene Ablage) und zu
-[ADR-0021](0021-single-instance-betrieb.md) (ein weiterer Eintrag prozesslokalen Zustands: das
-Zählfenster des Abflussalarms).
+[ADR-0021](0021-single-instance-betrieb.md) (zwei weitere Einträge prozesslokalen Zustands: das
+Kontingentfenster je Token und das Zählfenster des Abflussalarms).
 
 Das **Verhalten** dieses Kanals steht in
 [`docs/features/external-access.md`](../features/external-access.md) — Schalter, Freigabe,
@@ -41,9 +41,9 @@ Vier Randbedingungen binden die Entscheidungen unten:
   |---|---|
   | Aktuelle MCP-Spezifikation | `2026-07-28`. Sie handelt die Fassung **je Anfrage** aus (`MCP-Protocol-Version`-Header bzw. `_meta`), verlangt vom Server die RPC `server/discover` und antwortet bei einer nicht unterstützten Fassung mit `UnsupportedProtocolVersionError` (JSON-RPC-Code `-32022`) samt Liste der unterstützten Fassungen. Die Spezifikation nennt Revisionen bis `2025-11-25` „legacy" (Aushandlung über den `initialize`-Handshake) |
   | Abgekündigt | Der **HTTP+SSE-Transport** (seit `2025-03-26`, Migrationspfad Streamable HTTP) und — seit `2026-07-28` — die **dynamische Client-Registrierung** (Migrationspfad „Client ID Metadata Documents"), außerdem Roots, Sampling und Logging. Nach der Lebenszyklus-Richtlinie (SEP-2596) bleibt ein abgekündigtes Merkmal mindestens zwölf Monate in der Spezifikation, im beschleunigten Fall mindestens neunzig Tage |
-  | Unsere Bibliothek | Spring AI **2.0.1** (`backend/gradle/libs.versions.toml`). Der Starter `org.springframework.ai:spring-ai-starter-mcp-server-webmvc:2.0.1` zieht `spring-boot-starter-web:4.1.1` — genau unsere Spring-Boot-Fassung — sowie `mcp-spring-webmvc:2.0.1` und darüber `io.modelcontextprotocol.sdk:mcp-core:2.0.x` |
-  | Fassungen, die diese Bibliothek kennt | `2024-11-05`, `2025-03-26`, `2025-06-18`, `2025-11-25` (`ProtocolVersions` in `mcp-core`) — **ausschließlich legacy**. Die Aushandlung je Anfrage, `server/discover` und `UnsupportedProtocolVersionError` aus `2026-07-28` sind dort noch nicht umgesetzt |
-  | Werkzeugliste | `tools/list` wird in **beiden** Betriebsarten (`McpStatelessAsyncServer` wie `McpAsyncServer`, `mcp-core` 2.0.1) aus der serverweit registrierten Liste beantwortet; der Anfragekontext geht nicht ein. Eine Liste je Token ist ein eigener Handler, keine Konfiguration |
+  | Unsere Bibliothek | Spring AI **2.0.1** (`backend/gradle/libs.versions.toml`). Der Starter `org.springframework.ai:spring-ai-starter-mcp-server-webmvc:2.0.1` zieht `spring-boot-starter-web:4.1.1` — genau unsere Spring-Boot-Fassung — sowie `mcp-spring-webmvc:2.0.1` und darüber `io.modelcontextprotocol.sdk:mcp-core:2.0.0` (die aufgelöste Fassung; `spring-ai-bom` verwaltet `mcp-core` nicht) |
+  | Fassungen, die diese Bibliothek kennt | `2024-11-05`, `2025-03-26`, `2025-06-18`, `2025-11-25` (`ProtocolVersions` in `mcp-core` 2.0.0 wie 2.0.1) — **ausschließlich legacy**. Die Aushandlung je Anfrage, `server/discover` und `UnsupportedProtocolVersionError` aus `2026-07-28` sind dort noch nicht umgesetzt |
+  | Werkzeugliste | `tools/list` wird in **beiden** Betriebsarten (`McpStatelessAsyncServer` wie `McpAsyncServer`, `mcp-core` 2.0.0 wie 2.0.1) aus der serverweit registrierten Liste beantwortet; der Anfragekontext geht nicht ein. Eine Liste je Token ist ein eigener Handler, keine Konfiguration |
   | Was der Starter **nicht** liefert | Authentifizierung. Die Spring-AI-Dokumentation sagt es ausdrücklich: Der HTTP-Transport legt einen **unauthentifizierten** JSON-RPC-Endpunkt an; jeder, der ihn erreicht, kann ohne Merkmal alle registrierten Werkzeuge auflisten und aufrufen. Die Absicherung ist Sache einer eigenen Schicht davor |
 
 Die letzte Zeile ist die wichtigste dieses ADR: Der Transport bringt den Prüfweg **nicht** mit. Er
@@ -62,14 +62,26 @@ Spring-AI-Starter gebaut:
 ```
 implementation(libs.spring.ai.starter.mcp.server.webmvc)   // Eintrag in libs.versions.toml
 
-spring.ai.mcp.server.protocol                 = STATELESS
-spring.ai.mcp.server.type                     = SYNC
-spring.ai.mcp.server.stateless.mcp-endpoint   = /mcp        (Vorgabe der Bibliothek)
-spring.ai.mcp.server.instructions             = aus der Systemkonfiguration
-spring.ai.mcp.server.capabilities.resource    = false
-spring.ai.mcp.server.capabilities.prompt      = false
-spring.ai.mcp.server.capabilities.completion  = false
+spring.ai.mcp.server.protocol                     = STATELESS
+spring.ai.mcp.server.type                         = SYNC
+spring.ai.mcp.server.streamable-http.mcp-endpoint = /mcp    (Vorgabe der Bibliothek)
+spring.ai.mcp.server.instructions                 = aus der Systemkonfiguration
+spring.ai.mcp.server.capabilities.resource        = false
+spring.ai.mcp.server.capabilities.prompt          = false
+spring.ai.mcp.server.capabilities.completion      = false
 ```
+
+**Der Pfad kommt aus der `streamable-http`-Gruppe, auch im zustandsfreien Betrieb.** Die
+Referenzdokumentation von Spring AI führt für die zustandsfreie Betriebsart eine eigene Gruppe
+`spring.ai.mcp.server.stateless` mit einem `mcp-endpoint` auf — **die gibt es nicht**. In
+`spring-ai-autoconfigure-mcp-server-common:2.0.1` existiert keine solche Eigenschaftsklasse, und die
+`spring-configuration-metadata.json` kennt nur die Gruppen `spring.ai.mcp.server`,
+`…annotation-scanner`, `…capabilities` und `…streamable-http`;
+`McpServerStatelessWebMvcAutoConfiguration` liest den Pfad aus
+`McpServerStreamableHttpProperties#getMcpEndpoint()`. Ein Schlüssel unter `…stateless.` würde
+stillschweigend ignoriert — auffallen würde das erst, wenn jemand den Pfad ändert und die
+Filterkettenregel dann auf einen anderen Pfad zeigt als der Endpunkt. Diese Falle gehört in die
+Betriebsdokumentation von #1721.
 
 WebMVC, nicht WebFlux — das Backend ist eine MVC-Anwendung. `SYNC`, weil die Werkzeuge synchrone
 Domain-Dienste aufrufen. Nur die Fähigkeit **Tools** wird angeboten: Ressourcen, Prompts und
@@ -87,11 +99,16 @@ niemand beobachten kann, weil dieser Kanal bewusst keine Nutzungsdaten führt. O
 ein Zustand, den es nicht gibt. Die Spezifikation `2026-07-28` geht mit ihrer Aushandlung je Anfrage
 in dieselbe Richtung.
 
-**Nachzug in der Spezifikation.** `external-access.md` formuliert an zwei Stellen sitzungsnah — die
-Werkzeugbeschreibungen entstünden „zur Verbindungszeit", und „bestehende Sitzungen enden beim
-Ausschalten". Beides ist mit dieser Entscheidung stärker erfüllt, als es dort steht: Es gibt keine
-Sitzung, die enden müsste, und die Beschreibung entsteht je Anfrage. Die Formulierungen sind
-entsprechend nachzuziehen (#1721); eine Verhaltensänderung ist damit nicht verbunden.
+**Nachzug in der Spezifikation.** `docs/features/external-access.md` formuliert an drei Stellen
+enger, als dieser ADR es festlegt, und ist in #1721 nachzuziehen; eine Verhaltensänderung ist mit
+keiner der drei verbunden:
+
+1. Die Werkzeugbeschreibungen entstünden „zur Verbindungszeit" — es gibt keine Verbindung, die
+   Beschreibung entsteht je Anfrage.
+2. „Bestehende Sitzungen enden beim Ausschalten" — es gibt keine Sitzung, die enden müsste.
+3. „Transport ist Streamable HTTP (**Spezifikationsstand 2026-07-28**)" — die Bezugsfassung ist der
+   Stand, gegen den entschieden wird; ausgeliefert wird die Legacy-Bindung von Streamable HTTP, weil
+   die Bibliothek nur Revisionen bis `2025-11-25` spricht (siehe Randbedingungen und Entscheidung 6).
 
 Die Bibliotheksversion ist **nicht Teil dieser Entscheidung**. Festgelegt sind Transport, Betriebsart
 und Ort (ein Server, im Backend, unter `/mcp`); wechselt der Starter, gilt die Festlegung unverändert.
@@ -109,7 +126,8 @@ wären die vier Punkte oben. Der scheinbare Vorteil, Werkzeugbeschreibungen je V
 ist keiner: Die Bibliothek beantwortet `tools/list` in **beiden** Betriebsarten aus derselben
 serverweiten Liste (siehe Umsetzungsrisiko unten).
 
-**Umsetzungsrisiko für #1721 — die Werkzeugliste je Token.** Geprüft an `mcp-core` 2.0.1: Sowohl
+**Umsetzungsrisiko 1 für #1721 — die Werkzeugliste je Token.** Geprüft an `mcp-core` 2.0.0 (die vom
+Starter aufgelöste Fassung) und 2.0.1, in beiden identisch: Sowohl
 `McpStatelessAsyncServer` als auch `McpAsyncServer` beantworten `tools/list` aus der beim Aufbau
 registrierten, **serverweiten** Liste; der Anfragekontext (`McpTransportContext`, über einen
 `McpTransportContextExtractor` mit dem `Authorization`-Kopf befüllbar) wird dabei nicht ausgewertet.
@@ -122,11 +140,30 @@ bei der Auflistung; die Rechteprüfung hängt davon in keinem Fall ab. Was dabei
 die Bestände aller Bibliotheken der Installation in eine allen Tokens gemeinsame Beschreibung zu
 schreiben — das wäre eine Auskunft über Bestände, die das Token nicht sehen darf.
 
+**Umsetzungsrisiko 2 für #1721 — die Ablehnung einer fremden Protokollfassung.** Die Zusage aus
+Entscheidung 6b ist mit der Bibliothek allein **nicht** erfüllt, sondern verletzt:
+`McpStatelessAsyncServer#asyncInitializeRequestHandler` (inhaltlich gleich in `McpAsyncServer`)
+antwortet auf eine unbekannte Fassung **erfolgreich** mit der höchsten Fassung des Servers und
+schreibt lediglich eine WARN-Zeile; eine Fehlerantwort und eine Fassungsliste gibt es nicht, und
+`setProtocolVersions(…)` ist paketprivat. Das ist genau das stille Weiterlaufen unter einer anderen
+Fassung, das 6b ausschließt. Hinzu kommt die andere Richtung: Ein Client der Bezugsfassung
+`2026-07-28` sendet gar kein `initialize` mehr, erreicht diesen Weg also ohnehin nicht — die
+Kompatibilitätsdarstellung der Spezifikation führt „moderner Client gegen Legacy-Server" als
+Fehlschlag, bei dem der Server ablehnen, schweigen oder eine mehrdeutige Methode unter
+Legacy-Bedeutung ausführen kann. **Die Zusage verlangt deshalb einen eigenen Prüfschritt je Anfrage**
+— einen dekorierenden `McpStatelessServerHandler` (`McpStatelessServerTransport#setMcpHandler` ist
+öffentlich) oder einen Filter vor `/mcp` —, der `MCP-Protocol-Version` bzw. `_meta` auswertet und mit
+`UnsupportedProtocolVersionError` (`-32022`) samt `supported`-Liste ablehnt, und der die
+`initialize`-Antwort der Bibliothek für Legacy-Clients um dieselbe Aufzählung ergänzt. Ohne diesen
+Schritt darf #1721 nicht als erledigt gelten.
+
 **Folgen.** Ein Betriebsartefakt, ein Update, eine Adresse im Handbuch. Zugleich **ein einziger
 Ausfallpunkt für alle Fremdzugänge des Hauses** — davon handelt Entscheidung 6. Prozesslokaler Zustand
-entsteht durch den Server selbst **nicht**; der einzige Eintrag, den dieser Kanal in die Liste aus
-[ADR-0021](0021-single-instance-betrieb.md) trägt, ist das Zählfenster des Abflussalarms, das
-ausdrücklich im Arbeitsspeicher lebt. Die zustandsfreie Betriebsart kennt keine Rückfragen an den
+entsteht durch den Server selbst **nicht**; in die Liste aus
+[ADR-0021](0021-single-instance-betrieb.md) trägt dieser Kanal zwei gleitende Zählfenster im
+Arbeitsspeicher, das **Kontingent je Token** und das **Fenster des Abflussalarms** — dort je eine
+eigene Zeile, wie sie ADR-0021 für `RateLimitService.requestLog` und die Rate-Limit-Buckets der
+lokalen Anmeldung bereits führt. Die zustandsfreie Betriebsart kennt keine Rückfragen an den
 Client (Elicitation, Sampling, Ping) und keine Änderungsbenachrichtigungen — beides ist hier
 verzichtbar und in den Grenzen des Kanals ohnehin nicht vorgesehen. Und: Weil der Starter den
 Endpunkt unauthentifiziert anlegt, ist eine fehlende Filterkettenregel kein Konfigurationsfehler,
@@ -143,12 +180,23 @@ Authorization: Bearer opaa_pat_<Zufall>
 
 - **Undurchsichtiges Zufallsmerkmal**, mindestens 256 Bit aus einem kryptografisch sicheren
   Zufallsgenerator, Base64url kodiert, mit dem festen Präfix `opaa_pat_`.
-- **Serverseitig nur als Hash.** Ein schneller kryptografischer Hash (SHA-256) genügt und ist hier
-  richtig: Das Merkmal ist zufällig und hochentropisch, ein Wörterbuchangriff darauf existiert nicht,
-  und ein Passwort-KDF mit Arbeitsfaktor läge auf dem heißen Pfad jedes einzelnen Werkzeugaufrufs.
-  Das ist die bewusste Abweichung von der Passwortablage aus ADR-0033, Entscheidung 9 — und der
-  Grund, warum sie zulässig ist. Der Hash ist deterministisch und damit indizierbar; der Vergleich
-  läuft in konstanter Zeit.
+- **Serverseitig nur als Suchwert, nach der vorhandenen Hausmechanik.** Gespeichert wird
+  **HMAC-SHA256 unter einem HKDF-abgeleiteten Zweckschlüssel**, hex kodiert — dasselbe Verfahren, das
+  `LocalAuthKeyService#lookupHash` für die opaken Refresh- und Aktionstoken aus
+  [ADR-0033](0033-lokale-benutzerverwaltung.md), Entscheidung 6, bereits verwendet. Der Kanal bekommt
+  dort einen **vierten Zweck** (`Purpose`), keine zweite Bauart: Eine eigene Ablage ist richtig
+  (Entscheidung unten), ein eigenes Hashverfahren daneben wäre es nicht. Das Verfahren ist
+  deterministisch und damit indizierbar, kostet einen MAC je Aufruf und passt zum Merkmal: Es ist
+  zufällig und hochentropisch, ein Wörterbuchangriff darauf existiert nicht. Ein Passwort-KDF mit
+  Arbeitsfaktor (ADR-0033, Entscheidung 9) gehört hier nicht hin — er läge auf dem heißen Pfad jedes
+  Werkzeugaufrufs und schützt gegen einen Angriff, den ein Zufallsmerkmal nicht hat. Ein
+  **schlüsselloser** SHA-256 ist umgekehrt das, was ADR-0033 ausdrücklich nur für Werte ohne
+  Geheimnischarakter vorsieht (`jtiHash`, weil die Sperrliste eine Secret-Rotation überleben soll);
+  ein Zugangstoken ist ein Bearer-Geheimnis und gehört deshalb unter den Schlüssel.
+  **Folge, die benannt sein muss:** Eine Rotation von `OPAA_AUTH_JWT_SECRET` entwertet damit alle
+  Zugangstokens auf einmal — wie sie heute schon jede lokale Sitzung und jeden offenen Link beendet.
+  Das ist für ein Bearer-Geheimnis die richtige Wirkung, gehört aber in die Betriebsdokumentation
+  neben die übrigen Folgen der Rotation.
 - **Der Klartext ist genau einmal sichtbar**, unmittelbar nach dem Erzeugen. Danach existiert er
   nirgends mehr, auch nicht für die Systemverwaltung.
 - **Das Präfix dient der Wiedererkennung** — in der Oberfläche, im Client und für Geheimnis-Scanner,
@@ -241,16 +289,22 @@ Bibliothek. Daraus folgt unmittelbar und ohne neue Mechanik:
   Frist monatsweise vollständig gelöscht — die Frage „war dieser Bestand 2026 aus dem Haus
   erreichbar?" wäre 2030 sonst nicht mehr zu beantworten, bei einem Feld, das über Hausgrenzen
   entscheidet.
-- **Es steht unter der Freigabe-Obergrenze** konnektor-gespeister Bibliotheken — sonst wäre der
-  Fremdzugang der Weg an der einzigen technischen Sicherung zwischen „Fachverfahrensdaten
-  eingespeist" und „breit lesbar" vorbei.
 - **Es ist pflichtbefristet auf höchstens ein Jahr.** Eine unbefristete Freigabe ist eine Ratsche:
   Jede Anfrage erzeugt eine, und nichts erzeugt je eine Rücknahme. Die Befristung ist die einzige
   Maßnahme, die das Ziel „der Anteil freigegebener Bibliotheken bleibt klein" durchsetzt, statt es zu
-  erhoffen.
-- **Es ist gesperrt bei „Nachfolge offen".** `spaces-and-assets.md` friert die Reichweite verwaister
-  Assets ein; dieses Merkmal ist eine Erhöhung der Reichweite. Ein Bestand ohne fachlich
-  Verantwortlichen verlässt das Haus nicht.
+  erhoffen — und die einzige der hier genannten Bedingungen, die **in dieser Stufe** gebaut wird.
+
+Zwei weitere Bedingungen folgen aus derselben Einordnung, sind aber **nicht Teil dieser Stufe**
+(Maintainer-Beschluss vom 18.09.2026, Epic #1715, Entscheidung 3 — insbesondere **keine Abhängigkeit
+zu #797**). Sie sind hier als künftige Sperrbedingungen festgehalten, damit die Einordnung des
+Merkmals vollständig ist:
+
+- **Die Freigabe-Obergrenze konnektor-gespeister Bibliotheken deckelt auch dieses Merkmal, sobald
+  #797 sie liefert** — sonst wäre der Fremdzugang der Weg an der Sicherung zwischen
+  „Fachverfahrensdaten eingespeist" und „breit lesbar" vorbei.
+- **Eine Bibliothek im Zustand „Nachfolge offen" ist künftig von der Freigabe gesperrt.**
+  `spaces-and-assets.md` friert die Reichweite verwaister Assets ein, und dieses Merkmal ist eine
+  Erhöhung der Reichweite; ein Bestand ohne fachlich Verantwortlichen verlässt das Haus nicht.
 
 Das **Freigaberecht** bleibt bei der Verwalter-Rolle der Bibliothek plus Systemverwaltung. Eine
 zusätzliche Genehmigungsstufe (etwa die Referatsleitung) verschöbe die Verantwortung, statt sie zu
@@ -259,7 +313,9 @@ enthalten, sind die Antwort auf das dahinterliegende Anliegen.
 
 **Folgen.** Kein neues Historisierungsverfahren, kein neues Rechtekonzept — aber ein weiteres Feld im
 Schreibpfadschutz der Rechtehistorie und eine wiederkehrende Frist, die jemand bedienen muss; die
-Wiedervorlage läuft über den Mailweg aus ADR-0033. Eine zurückgenommene oder erloschene Freigabe
+Wiedervorlage läuft über den Mailweg aus ADR-0033. Die beiden künftigen Sperrbedingungen sind in
+#1731 **nicht** zu bauen; wer sie später nachrüstet, setzt eine gesetzte Freigabe aus, statt sie
+stillschweigend zu entziehen. Eine zurückgenommene oder erloschene Freigabe
 entzieht die Bibliothek **allen** Tokens sofort, ohne dass ein Token angefasst wird. Sie lebt in
 bestehenden Tokens **nicht wieder auf**: Ein Token, dessen Umfang ohne Zutun der Person wieder wächst,
 ist aus derselben Richtung falsch wie eine Auswahl „alle, auch künftige".
@@ -293,8 +349,11 @@ Rechteprüfungen ist nach zwei Jahren eine falsch.
 **Folgen.** Was die Web-Oberfläche nicht findet, findet auch der Fremdzugang nicht — und umgekehrt;
 jede Verbesserung des Suchwegs wirkt in beiden Kanälen. Der Kanal erbt aber auch die Last des vollen
 Suchwegs je Aufruf; deshalb das Kontingent je Token. Und: Die Antwortzeit eines Werkzeugaufrufs ist
-die des Suchwegs — der `request-timeout` des MCP-Servers (Vorgabe 20 Sekunden) ist gegen sie zu
-stellen.
+die des Suchwegs, und einen Deckel dagegen liefert der MCP-Server **nicht**.
+`spring.ai.mcp.server.request-timeout` (Vorgabe 20 Sekunden) wirkt nur in der sitzungsbehafteten
+Betriebsart; `McpStatelessAsyncServer` nimmt den Wert im Konstruktor entgegen und legt ihn nirgends
+ab. Der Deckel gehört deshalb auf die HTTP-/Servlet-Ebene oder in den Domain-Dienst — wer ihn über
+die MCP-Eigenschaft zu setzen glaubt, hat keinen.
 
 ### 6. Der Fassungswechsel der MCP-Spezifikation ist geplant, nicht abgewartet
 
@@ -303,7 +362,7 @@ Fassung, die dieser Kanal spricht, wird dasselbe Schicksal haben. Weil es genau 
 fallen bei einem Bruch **alle Fremdzugänge des Hauses zugleich** aus. Vier Festlegungen:
 
 **a) Was der Server aushandelt und ankündigt.** OPAA handelt genau die Fassungen aus, die die
-eingesetzte Bibliothek trägt — heute (`mcp-core` 2.0.x) `2024-11-05`, `2025-03-26`, `2025-06-18` und
+eingesetzte Bibliothek trägt — heute (`mcp-core` 2.0.0) `2024-11-05`, `2025-03-26`, `2025-06-18` und
 `2025-11-25`, also ausschließlich handshake-basierte Revisionen. Die Bezugsfassung `2026-07-28` mit
 ihrer Aushandlung je Anfrage ist dort noch nicht umgesetzt; sie ist der Stand, gegen den entschieden
 wird, nicht der Stand, der ausgeliefert wird. **Die unterstützten Fassungen werden an einer Stelle
@@ -314,12 +373,19 @@ beantworten ist.
 **b) Verhalten bei einer Fassungsabweichung: klare Ablehnung mit benanntem Grund.** Ein Client mit
 einer nicht unterstützten Fassung — älter oder neuer — bekommt eine Ablehnung, die die unterstützten
 Fassungen **aufzählt**; nie ein stilles Weiterlaufen unter einer anderen Fassung und nie eine
-Ablehnung ohne Grund. Solange die Bibliothek legacy spricht, ist das die Fehlerantwort auf
-`initialize` mit der genannten Fassungsliste — genau das, was die Spezifikation `2026-07-28` einem
-Server empfiehlt, der legacy Clients begegnet: Diese Meldung ist oft die einzige Diagnose, die der
-Client anzeigen kann. Sobald die Bibliothek die moderne Aushandlung trägt, ist es
-`UnsupportedProtocolVersionError` mit derselben Liste. **Die Zusage ist die Aufzählung, nicht ihr
-Transportformat.**
+Ablehnung ohne Grund. Für einen Client der Bezugsfassung ist das
+`UnsupportedProtocolVersionError` (`-32022`) mit der `supported`-Liste, ausgelöst an der je Anfrage
+mitgeführten Fassung; für einen Legacy-Client die Antwort auf `initialize`, die dieselbe Liste nennt.
+Die Spezifikation `2026-07-28` empfiehlt das Aufzählen ausdrücklich für den umgekehrten Fall — ein
+Server, der **nur** moderne Fassungen spricht, soll sie in jeder Antwort auf ein `initialize` nennen,
+weil ein Legacy-Client keinen Weg nach vorn hat und diese Meldung oft seine einzige Diagnose ist.
+OPAA übernimmt diese Haltung sinngemäß in beide Richtungen. **Die Zusage ist die Aufzählung, nicht
+ihr Transportformat.**
+
+**Diese Zusage ist mit der Bibliothek allein nicht erfüllt, sondern verletzt** — sie antwortet auf
+eine unbekannte Fassung erfolgreich mit ihrer höchsten und schreibt nur eine WARN-Zeile. Was dafür zu
+bauen ist, steht als **Umsetzungsrisiko 2** in Entscheidung 1; ohne diesen Schritt ist 6b nicht
+eingelöst.
 
 **c) Abkündigungsfrist: mindestens zwölf Monate.** OPAA bedient eine von ihm abgekündigte
 Protokollfassung noch mindestens **zwölf Monate**, gerechnet ab dem Tag, an dem eine OPAA-Fassung die
@@ -334,7 +400,7 @@ den Versionshinweisen, nicht stillschweigend.
 zugewiesen (Maintainer oder von ihm benannt) und prüft vierteljährlich drei Dinge:
 
 1. den Revisionsstand und die Abkündigungsliste der **MCP-Spezifikation**,
-2. die Fassungsliste der eingesetzten **Bibliothek** (`ProtocolVersions` in `mcp-core`),
+2. die Fassungsliste der eingesetzten **Bibliothek** (`ProtocolVersions` in `mcp-core` 2.0.0 wie 2.0.1),
 3. das **Konfigurationsformat der vier Client-Anleitungen** im Handbuch (Claude Code, Cursor,
    OpenCode, VS Code) — das sich ändert, ohne dass irgendeine Version in diesem Repository steigt.
 
@@ -380,12 +446,16 @@ spricht.
 - **Ein unauthentifizierter Endpunkt in der Voreinstellung der Bibliothek.** Die Absicherung liegt
   vollständig bei uns; eine Lücke in der Filterkette ist hier keine Unbequemlichkeit, sondern eine
   offene Tür in den Bestand.
-- **Ein weiterer Eintrag in der Single-Instance-Liste aus ADR-0021** — das Zählfenster des
-  Abflussalarms, das bewusst im Arbeitsspeicher lebt. Der Server selbst trägt nichts bei; das ist der
-  Gewinn der zustandsfreien Betriebsart.
+- **Zwei weitere Einträge in der Single-Instance-Liste aus ADR-0021** — das Kontingentfenster je Token
+  und das Zählfenster des Abflussalarms, beide bewusst im Arbeitsspeicher. Der Server selbst trägt
+  nichts bei; das ist der Gewinn der zustandsfreien Betriebsart.
+- **Zwei Zusagen dieses ADR liefert die Bibliothek nicht mit**, sie sind in #1721 zu bauen: die
+  Werkzeugliste je Token und die Ablehnung einer fremden Protokollfassung (Umsetzungsrisiken 1 und 2
+  in Entscheidung 1). Beide sind kein Nebenweg, sondern Bedingung dafür, dass die Entscheidungen 1
+  und 6b eingelöst sind.
 - **Werkzeugbeschreibungen je Token sind keine Voreinstellung der Bibliothek.** `tools/list` kommt aus
   einer serverweiten Liste; die Beschreibung aus der effektiven Sicht verlangt einen eigenen Handler.
-  Umsetzungsrisiko und Ausweg stehen in Entscheidung 1 und sind in #1721 zu entscheiden.
+  Umsetzungsrisiko 1 und der Ausweg stehen in Entscheidung 1 und sind in #1721 zu entscheiden.
 - **Eine wiederkehrende organisatorische Pflicht**: Jede Bibliotheksfreigabe läuft nach spätestens
   einem Jahr aus und will erneuert werden. Das ist beabsichtigt und trotzdem Arbeit.
 - **Eine Freigabeentscheidung, die faktisch unumkehrbar ist.** Was einmal in ein fremdes Werkzeug
@@ -440,9 +510,11 @@ Zuschnitt als Ganzes betreffen:
   [`docs/features/security-and-compliance.md`](../features/security-and-compliance.md) ·
   [`docs/features/spaces-and-assets.md`](../features/spaces-and-assets.md) ·
   [`docs/features/user-frontends.md`](../features/user-frontends.md)
-- Epic #1715 mit den dreizehn Entscheidungen vom 18.09.2026; dieses ADR ist Issue #1716
+- Epic #1715 mit den vierzehn Entscheidungen vom 18.09.2026; dieses ADR ist Issue #1716
 - MCP-Spezifikation `2026-07-28`: „Versioning and Compatibility", „Deprecated Features" (Registry),
   Feature-Lifecycle-Richtlinie SEP-2596
 - Spring AI 2.0.1: „MCP Server Boot Starter", „Streamable-HTTP MCP Servers" und „Stateless
   Streamable-HTTP MCP Servers";
-  `io.modelcontextprotocol.sdk:mcp-core` 2.0.x, `ProtocolVersions`
+  `io.modelcontextprotocol.sdk:mcp-core` 2.0.0 (aufgelöst) und 2.0.1: `ProtocolVersions`,
+  `McpStatelessAsyncServer`, `McpAsyncServer`; `spring-ai-autoconfigure-mcp-server-*` 2.0.1:
+  `McpServerStatelessWebMvcAutoConfiguration`, `McpServerStreamableHttpProperties`
