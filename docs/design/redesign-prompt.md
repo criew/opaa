@@ -69,9 +69,10 @@ Innerhalb eines Space liegen beliebig viele **Chats** — in sich geschlossene U
 einem Thema. Man wechselt zwischen ihnen, **benennt und benennt sie um**. Ein Chat gehört dauerhaft
 zu seinem Space und wandert nicht.
 
-**Alle Chats eines Space sind für alle Mitglieder sichtbar.** Wer im Team-Space arbeitet, arbeitet
-sichtbar. Wer für sich denken will, tut das in seinem persönlichen Space — der dieselben Datenquellen
-tragen kann, wenn man sie dort zuordnet.
+**Ein Chat entsteht privat und wird erst durch bewusstes Teilen für die Mitglieder des Space
+sichtbar** — so wie es `docs/features/spaces-and-assets.md` festlegt. Die Chatliste muss deshalb auf
+einen Blick zeigen, was nur man selbst sieht und was geteilt ist. Der persönliche Space bleibt der
+Ort für Vorhaben, die gar keinen Team-Bezug haben.
 
 ### Was daraus für den Suchbereich folgt
 
@@ -292,20 +293,23 @@ gestalterischen Entscheidung. **Es besteht keine Bindung daran.**
 
 ---
 
-## 8 · Bewusste Abweichungen von der Spezifikation
+## 8 · Verhältnis zur Spezifikation: Sichtbarkeit von Chats
 
-Zwei Festlegungen dieses Zielbilds weichen von `docs/features/spaces-and-assets.md` ab. Sie sind
-so gewollt; wer die Spezifikation kennt, soll die Abweichung nicht für ein Versehen halten.
+Eine frühere Fassung dieses Zielbilds wich an einer Stelle bewusst von
+`docs/features/spaces-and-assets.md` ab: Sie zeigte jeden Chat allen Mitgliedern des Space und
+verlegte den Denkraum für unfertige Überlegungen in den persönlichen Space. **Diese Abweichung ist
+zurückgenommen** (Richtung des Maintainers vom 18.09.2026): Es gilt die Spezifikation — ein Chat und
+ein Artefakt entstehen privat und werden erst durch Teilen space-sichtbar. Der Grund wiegt mit den
+agentischen Funktionen schwerer als zuvor: Das Ergebnis eines Agentenlaufs, ein erzeugtes Artefakt
+oder ein Prüfbericht zu einem Vorgang darf nicht allein deshalb für ein ganzes Team sichtbar sein,
+weil es in einem Team-Space entstanden ist.
 
-**Chats sind im Space für alle Mitglieder sichtbar.** Die Spezifikation lässt einen Chat privat
-entstehen und erst durch bewusstes Teilen sichtbar werden — begründet mit dem Denkraum für unfertige
-Überlegungen und gegenüber der Personalvertretung. Dieses Zielbild wählt die klarere Ansage: Wer im
-Team-Space arbeitet, arbeitet sichtbar.
+Für die Gestaltung folgt daraus: Die Chatliste unterscheidet sichtbar zwischen privaten und geteilten
+Chats, das Teilen ist eine bewusste, erklärte Handlung am Chat, und Ordnungsmerkmale wie Anheften
+oder Archivieren sind bei einem geteilten Chat eine Eigenschaft der Person, nicht des Chats.
 
-**Der Denkraum wandert in den persönlichen Space**, der dafür frei wählbare eigene Datenquellen
-bekommt. Damit bleibt die heikle Frage im richtigen Datenkontext möglich, ohne dass jemand mitliest.
-Der Preis ist, dass dieselben Bestände zweimal zugeordnet werden — das Zuordnen muss deshalb leicht
-sein, und ein Weg, die Ausstattung eines Space zu übernehmen, ist es wert, mitgedacht zu werden.
+Der persönliche Space mit frei wählbaren eigenen Datenquellen bleibt, wie in Abschnitt 2 beschrieben;
+er ist nur nicht mehr der einzige Ort, an dem man ungesehen denken kann.
 
 ---
 
