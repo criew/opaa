@@ -2,6 +2,8 @@ package io.opaa.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.everyItem;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -34,7 +36,9 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -92,6 +96,8 @@ class SearchIntegrationTest {
   private UUID callerId;
   private UUID libraryId;
   private UUID documentId;
+  private UUID relatedDocumentId;
+  private UUID distantDocumentId;
   private UUID strangerId;
   private UUID foreignLibraryId;
   private UUID foreignDocumentId;
@@ -129,6 +135,21 @@ class SearchIntegrationTest {
     libraryId = insertLibrary("Such-IT-Bibliothek", callerId);
     foreignLibraryId = insertLibrary("Fremde Such-IT-Bibliothek", strangerId);
 
+    relatedDocumentId =
+        insertDocument(
+            libraryId,
+            "fristen.md",
+            List.of(
+                passage(
+                    0,
+                    "Eine Frist im Verfahren wird nach Kalendertagen berechnet.",
+                    "Abschn. Fristen › Berechnung")));
+    distantDocumentId =
+        insertDocument(
+            libraryId,
+            "kantine.md",
+            List.of(
+                passage(0, "Die Kantine öffnet montags um elf Uhr.", "Abschn. Haus › Kantine")));
     documentId =
         insertDocument(
             libraryId,
@@ -177,17 +198,42 @@ class SearchIntegrationTest {
    * test is no barrier at all - but to find the divergence it is reporting.
    */
   @Test
-  void theHitsNameTheSameDocumentsInTheSameOrderAsTheFundstellenOfTheQuery() {
+  void theHitsAreTheSameSelectionInTheSameOrderAsTheFundstellenOfTheQuery() {
     QueryResult answered =
         queryService.query(
             QUESTION, null, caller(), false, List.of(libraryId), MetadataFilter.NONE);
     SearchOutcome searched =
         searchService.search(caller(), QUESTION, List.of(libraryId), MetadataFilter.NONE, 50);
 
-    List<UUID> fundstellen = answered.sources().stream().map(ChatSource::getDocumentId).toList();
-    List<UUID> hits = searched.hits().stream().map(SearchHit::documentId).distinct().toList();
+    // The document sequence: one Beleg per document, in first-appearance order of the selection.
+    // With three readable documents of different closeness to the question this is a real
+    // sequence, so a changed order on either side breaks the comparison.
+    List<UUID> fundstellenOrder =
+        answered.sources().stream().map(ChatSource::getDocumentId).toList();
+    List<UUID> hitOrder = searched.hits().stream().map(SearchHit::documentId).distinct().toList();
+    assertThat(hitOrder).hasSizeGreaterThan(1).isEqualTo(fundstellenOrder);
 
-    assertThat(hits).isNotEmpty().isEqualTo(fundstellen);
+    // The passage level, which is where KnowledgeRetrieval actually selects: every retrieved chunk
+    // behind a Beleg is one hit and vice versa. POST /api/v1/query exposes its chunks only per
+    // Beleg and ordered by chunk index (ChatSource#chunkLocations), never in selection order - a
+    // set is therefore everything the two public paths can be compared on here, and it already
+    // catches a selection differing by a single passage.
+    Set<String> fundstellenPassages =
+        answered.sources().stream()
+            .filter(source -> source.getDocumentId() != null)
+            .flatMap(
+                source ->
+                    source.getChunkLocations().stream()
+                        .map(location -> source.getDocumentId() + "#" + location.getChunkIndex()))
+            .collect(Collectors.toSet());
+    Set<String> hitPassages =
+        searched.hits().stream()
+            .map(hit -> hit.documentId() + "#" + hit.chunkIndex())
+            .collect(Collectors.toSet());
+    assertThat(hitPassages).isNotEmpty().isEqualTo(fundstellenPassages);
+
+    // The unreadable document appears in neither: the permission filter is part of the one search.
+    assertThat(hitOrder).doesNotContain(foreignDocumentId);
   }
 
   @Test
@@ -196,6 +242,10 @@ class SearchIntegrationTest {
         searchService.search(caller(), QUESTION, List.of(libraryId), MetadataFilter.NONE, null);
 
     assertThat(searched.hits()).isNotEmpty();
+    // Without this, the assertion below would also pass on an empty list - that is, if the
+    // recording path stopped running at all. The load-bearing guard is
+    // SearchDependencyStructureTest; this one only adds that no generation prompt went out.
+    assertThat(promptTexts).as("the search reached the model at all").isNotEmpty();
     assertThat(promptTexts)
         .as("no prompt of a search carries the answer generation's system text")
         .noneMatch(text -> text.contains(GENERATION_PROMPT_MARKER));
@@ -209,15 +259,20 @@ class SearchIntegrationTest {
     assertThat(searched.searchedLibraries())
         .singleElement()
         .satisfies(library -> assertThat(library.name()).isEqualTo("Such-IT-Bibliothek"));
-    SearchHit hit = searched.hits().get(0);
+    SearchHit hit =
+        searched.hits().stream()
+            .filter(candidate -> documentId.equals(candidate.documentId()))
+            .findFirst()
+            .orElseThrow();
     assertThat(hit.hitId()).isNotBlank();
-    assertThat(hit.documentId()).isEqualTo(documentId);
     assertThat(hit.libraryId()).isEqualTo(libraryId);
     assertThat(hit.libraryName()).isEqualTo("Such-IT-Bibliothek");
     assertThat(hit.fileName()).isEqualTo("widerspruch.md");
     assertThat(hit.excerpt()).contains("Widerspruch");
     assertThat(hit.location()).startsWith("Abschn. Verfahren");
-    assertThat(hit.relevanceScore()).isEqualTo(1.0);
+    // The rank-derived value of the best hit, whichever document it belongs to.
+    assertThat(searched.hits().get(0).relevanceScore()).isEqualTo(1.0);
+    assertThat(hit.relevanceScore()).isBetween(0.0, 1.0);
   }
 
   @Test
@@ -274,6 +329,18 @@ class SearchIntegrationTest {
         .hasMessage(PassageFetchService.NOT_FOUND_MESSAGE);
   }
 
+  @Test
+  void theListingNamesTheLibrariesOfTheEffectiveViewAndNoOther() {
+    List<SearchableLibrary> listed = searchService.libraries(caller());
+
+    assertThat(listed).extracting(SearchableLibrary::id).contains(libraryId);
+    assertThat(listed).extracting(SearchableLibrary::id).doesNotContain(foreignLibraryId);
+    assertThat(listed)
+        .filteredOn(library -> library.id().equals(libraryId))
+        .singleElement()
+        .satisfies(library -> assertThat(library.name()).isEqualTo("Such-IT-Bibliothek"));
+  }
+
   /** The promise of security-and-compliance.md: the single query leaves no trail. */
   @Test
   void neitherSearchNorFetchWritesAnAuditEntry() {
@@ -286,30 +353,36 @@ class SearchIntegrationTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
   void theEndpointAnswersOverHttpAndDoesNotHangOnTheExternalAccessSwitch() throws Exception {
     assertThat(channelEnabled()).as("the delivered default is a closed channel").isFalse();
 
     String body =
         "{\"question\":\"" + QUESTION + "\",\"libraryIds\":[\"" + libraryId + "\"],\"maxHits\":5}";
+    String response =
+        mockMvc
+            .perform(
+                post("/api/v1/search")
+                    .with(devUser("dev-user"))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(body))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.hits[0].relevanceScore").value(1.0))
+            .andExpect(jsonPath("$.hits[0].hitId").isNotEmpty())
+            .andExpect(jsonPath("$.searchedLibraries[0].name").value("Such-IT-Bibliothek"))
+            // The hit of the document this class asserts on, wherever it ranks - the fixture has
+            // three readable documents precisely so the order is not a foregone conclusion.
+            .andExpect(
+                jsonPath("$.hits[?(@.documentId == '" + documentId + "')].downloadUrl")
+                    .value(everyItem(equalTo("/api/v1/documents/" + documentId + "/content"))))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
     String hitId =
-        com.jayway.jsonpath.JsonPath.read(
-            mockMvc
-                .perform(
-                    post("/api/v1/search")
-                        .with(devUser("dev-user"))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.hits[0].documentId").value(documentId.toString()))
-                .andExpect(jsonPath("$.hits[0].relevanceScore").value(1.0))
-                .andExpect(
-                    jsonPath("$.hits[0].downloadUrl")
-                        .value("/api/v1/documents/" + documentId + "/content"))
-                .andExpect(jsonPath("$.searchedLibraries[0].name").value("Such-IT-Bibliothek"))
-                .andReturn()
-                .getResponse()
-                .getContentAsString(),
-            "$.hits[0].hitId");
+        ((List<String>)
+                com.jayway.jsonpath.JsonPath.read(
+                    response, "$.hits[?(@.documentId == '" + documentId + "')].hitId"))
+            .get(0);
 
     mockMvc
         .perform(get("/api/v1/search/hits/" + hitId).with(devUser("dev-user")))
@@ -319,6 +392,11 @@ class SearchIntegrationTest {
     mockMvc
         .perform(get("/api/v1/search/hits/" + UUID.randomUUID()).with(devUser("dev-user")))
         .andExpect(status().isNotFound());
+    mockMvc
+        .perform(get("/api/v1/search/libraries").with(devUser("dev-user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[?(@.id == '" + libraryId + "')].name").exists())
+        .andExpect(jsonPath("$[?(@.id == '" + foreignLibraryId + "')]").isEmpty());
   }
 
   private boolean channelEnabled() {
@@ -328,8 +406,18 @@ class SearchIntegrationTest {
         .orElse(false);
   }
 
+  /**
+   * Only rows about this class's own objects and actor - a count over the whole table would be open
+   * to an entry some other path wrote between the two measurements.
+   */
   private long auditEntries() {
-    return jdbc.queryForObject("SELECT count(*) FROM audit_log", Long.class);
+    return jdbc.queryForObject(
+        "SELECT count(*) FROM audit_log WHERE object_id IN (?, ?, ?, ?)",
+        Long.class,
+        documentId.toString(),
+        relatedDocumentId.toString(),
+        distantDocumentId.toString(),
+        libraryId.toString());
   }
 
   private CurrentUser caller() {

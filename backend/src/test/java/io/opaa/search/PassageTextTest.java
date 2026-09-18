@@ -8,12 +8,15 @@ import org.junit.jupiter.api.Test;
 
 class PassageTextTest {
 
+  /** A cap far above every fixture of this class - the join itself is under test, not the cap. */
+  private static final int NO_CAP = 100_000;
+
   @Test
   void joinWritesTheSharedOverlapOfTwoPassagesOnlyOnce() {
     String first = "Die Frist beträgt einen Monat. Sie beginnt mit der Bekanntgabe.";
     String second = "Sie beginnt mit der Bekanntgabe. Der Widerspruch ist schriftlich zu erheben.";
 
-    String joined = PassageText.join(List.of(first, second));
+    String joined = PassageText.join(List.of(first, second), NO_CAP).text();
 
     assertThat(joined)
         .isEqualTo(
@@ -24,14 +27,15 @@ class PassageTextTest {
 
   @Test
   void joinSeparatesPassagesThatShareNothing() {
-    assertThat(PassageText.join(List.of("Erster Absatz.", "Zweiter Absatz.")))
+    assertThat(PassageText.join(List.of("Erster Absatz.", "Zweiter Absatz."), NO_CAP).text())
         .isEqualTo("Erster Absatz.\n\nZweiter Absatz.");
   }
 
   @Test
   void joinSkipsEmptyAndNullPassages() {
-    assertThat(PassageText.join(Arrays.asList(null, "", "Text.", null))).isEqualTo("Text.");
-    assertThat(PassageText.join(List.of())).isEmpty();
+    assertThat(PassageText.join(Arrays.asList(null, "", "Text.", null), NO_CAP).text())
+        .isEqualTo("Text.");
+    assertThat(PassageText.join(List.of(), NO_CAP).text()).isEmpty();
   }
 
   @Test
@@ -48,10 +52,37 @@ class PassageTextTest {
   }
 
   @Test
-  void truncateCutsAtTheLimitAndSaysSo() {
-    assertThat(PassageText.truncate("abcdef", 10))
-        .isEqualTo(new PassageText.Truncation("abcdef", false));
-    assertThat(PassageText.truncate("abcdef", 3))
-        .isEqualTo(new PassageText.Truncation("abc", true));
+  void theCapCutsAndSaysSo() {
+    assertThat(PassageText.join(List.of("abcdef"), 10))
+        .isEqualTo(new PassageText.Joined("abcdef", false));
+    assertThat(PassageText.join(List.of("abcdef"), 3))
+        .isEqualTo(new PassageText.Joined("abc", true));
+  }
+
+  /**
+   * A cut that would split a surrogate pair drops the pair instead: a lone high surrogate is an
+   * invalid character in the JSON response.
+   */
+  @Test
+  void theCapNeverSplitsASurrogatePair() {
+    String withEmoji = "ab" + new String(Character.toChars(0x1F642)) + "cd";
+
+    PassageText.Joined cut = PassageText.join(List.of(withEmoji), 3);
+
+    assertThat(cut.text()).isEqualTo("ab");
+    assertThat(cut.truncated()).isTrue();
+    assertThat(cut.text().chars().anyMatch(c -> Character.isHighSurrogate((char) c))).isFalse();
+  }
+
+  /** Once the cap is reached, a further passage cannot change the result. */
+  @Test
+  void aFullJoinerIgnoresFurtherPassages() {
+    PassageText.Joiner joiner = new PassageText.Joiner(5);
+    joiner.append("abcdef");
+
+    assertThat(joiner.isFull()).isTrue();
+    joiner.append("ghijkl");
+
+    assertThat(joiner.finish().text()).isEqualTo("abcde");
   }
 }

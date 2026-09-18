@@ -79,7 +79,12 @@ class ExternalAccessMassRetrievalAlarmTest {
             anyString(),
             body.capture());
     // The token id is what makes the alert actionable; it is the only identifier in the message.
-    assertThat(body.getValue()).contains(token.toString()).contains("3").contains("4");
+    // The measured value is deliberately absent - a sequence of kept messages carrying it would be
+    // a usage curve per token, which is what external-access.md rules out.
+    assertThat(body.getValue())
+        .contains(token.toString())
+        .contains(String.valueOf(ExternalAccessAlertRetention.RETENTION.toDays()))
+        .doesNotContain("4 Abrufe");
   }
 
   @Test
@@ -114,8 +119,23 @@ class ExternalAccessMassRetrievalAlarmTest {
         .notify(any(), any(), any(), any(), any(), anyString(), anyString());
   }
 
+  /**
+   * The threshold is the channel's, not a token's: four retrievals from four different tokens
+   * exceed a threshold of three. Fails the moment the counter is keyed per token - where each of
+   * the four would count one.
+   */
   @Test
-  void theCountIsChannelWideAndSlidesOutOfTheWindow() {
+  void theCountIsChannelWideAcrossDifferentTokens() {
+    for (int i = 0; i < 4; i++) {
+      alarm.record(ORGANIZATION_ID, UUID.randomUUID());
+    }
+
+    verify(notifications, times(1))
+        .notify(any(), any(), any(), any(), any(), anyString(), anyString());
+  }
+
+  @Test
+  void retrievalsSlideOutOfTheWindow() {
     for (int i = 0; i < 3; i++) {
       alarm.record(ORGANIZATION_ID, UUID.randomUUID());
     }

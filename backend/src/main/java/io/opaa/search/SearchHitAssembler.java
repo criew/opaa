@@ -51,7 +51,8 @@ class SearchHitAssembler {
     this.properties = properties;
   }
 
-  List<SearchHit> assemble(List<org.springframework.ai.document.Document> chunks) {
+  List<SearchHit> assemble(
+      List<org.springframework.ai.document.Document> chunks, Set<UUID> effectiveView) {
     if (chunks.isEmpty()) {
       return List.of();
     }
@@ -89,7 +90,8 @@ class SearchHitAssembler {
               metadata.isEmpty() ? null : metadata,
               // The reciprocal of the 1-based position, exactly as a Beleg carries it: a raw
               // score is not comparable between the lexical and the vector path, a rank is.
-              1.0 / (position + 1)));
+              1.0 / (position + 1),
+              libraryId != null && effectiveView.contains(libraryId)));
     }
     return hits;
   }

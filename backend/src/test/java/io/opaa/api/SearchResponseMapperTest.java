@@ -41,7 +41,8 @@ class SearchResponseMapperTest {
                             "03/2024",
                             MetadataOrigin.DETERMINISTIC,
                             DatePrecision.MONTH)),
-                    1.0)),
+                    1.0,
+                    true)),
             List.of(new SearchedLibraryRef(LIBRARY_ID, "Dienstanweisungen")));
 
     var response = SearchResponseMapper.toResponse(outcome);
@@ -83,7 +84,8 @@ class SearchResponseMapperTest {
                     null,
                     null,
                     null,
-                    0.5)),
+                    0.5,
+                    false)),
             List.of());
 
     var hit = SearchResponseMapper.toResponse(outcome).getHits().get(0);
@@ -91,6 +93,52 @@ class SearchResponseMapperTest {
     assertThat(hit.getDownloadUrl()).isNull();
     assertThat(hit.getMetadata()).isNull();
     assertThat(hit.getDocumentId()).isNull();
+  }
+
+  /**
+   * The download path comes from the domain's scope decision, never from the mere presence of a
+   * document id - otherwise it could be handed out past the effective view of the request.
+   */
+  @Test
+  void aHitOutsideTheDownloadScopeCarriesNoDownloadPathDespiteItsDocumentId() {
+    var outcome =
+        new SearchOutcome(
+            List.of(
+                new SearchHit(
+                    "chunk-3",
+                    "Titel",
+                    "Text",
+                    LIBRARY_ID,
+                    "Bibliothek",
+                    DOCUMENT_ID,
+                    "datei.pdf",
+                    0,
+                    null,
+                    null,
+                    1.0,
+                    false)),
+            List.of());
+
+    var hit = SearchResponseMapper.toResponse(outcome).getHits().get(0);
+
+    assertThat(hit.getDocumentId()).isEqualTo(DOCUMENT_ID);
+    assertThat(hit.getDownloadUrl()).isNull();
+  }
+
+  @Test
+  void theListingCarriesIdNameAndDescription() {
+    var mapped =
+        SearchResponseMapper.toLibraries(
+            List.of(
+                new io.opaa.search.SearchableLibrary(
+                    LIBRARY_ID, "Dienstanweisungen", "Alles seit 2019"),
+                new io.opaa.search.SearchableLibrary(DOCUMENT_ID, "Ohne Beschreibung", null)));
+
+    assertThat(mapped).hasSize(2);
+    assertThat(mapped.get(0).getId()).isEqualTo(LIBRARY_ID);
+    assertThat(mapped.get(0).getName()).isEqualTo("Dienstanweisungen");
+    assertThat(mapped.get(0).getDescription()).isEqualTo("Alles seit 2019");
+    assertThat(mapped.get(1).getDescription()).isNull();
   }
 
   @Test
@@ -117,7 +165,8 @@ class SearchResponseMapperTest {
                     "Dienstanweisung Widerspruch",
                     "Dienstanweisung Widerspruch",
                     MetadataOrigin.DETERMINISTIC,
-                    null)));
+                    null)),
+            true);
 
     var response = SearchResponseMapper.toResponse(passage);
 

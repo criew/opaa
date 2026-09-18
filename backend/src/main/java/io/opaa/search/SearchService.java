@@ -5,11 +5,11 @@ import io.opaa.externalaccess.ExternalAccessMassRetrievalAlarm;
 import io.opaa.externalaccess.ExternalAccessQuota;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.metadata.MetadataFilterValidator;
+import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.query.KnowledgeRetrieval;
 import io.opaa.query.SearchScopeResolver;
 import io.opaa.query.SearchedLibraryRef;
-import io.opaa.query.citation.ChatSourceAssembler;
-import io.opaa.query.retrieval.RetrievalPipelineResult;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -40,10 +40,10 @@ public class SearchService {
   private final SearchScopeResolver searchScopeResolver;
   private final MetadataFilterValidator metadataFilterValidator;
   private final SearchHitAssembler hitAssembler;
-  private final ChatSourceAssembler chatSourceAssembler;
   private final SearchProperties properties;
   private final ExternalAccessQuota quota;
   private final ExternalAccessMassRetrievalAlarm alarm;
+  private final KnowledgeLibraryRepository libraries;
 
   public SearchService(
       KnowledgeRetrieval knowledgeRetrieval,
@@ -51,19 +51,44 @@ public class SearchService {
       SearchScopeResolver searchScopeResolver,
       MetadataFilterValidator metadataFilterValidator,
       SearchHitAssembler hitAssembler,
-      ChatSourceAssembler chatSourceAssembler,
       SearchProperties properties,
       ExternalAccessQuota quota,
-      ExternalAccessMassRetrievalAlarm alarm) {
+      ExternalAccessMassRetrievalAlarm alarm,
+      KnowledgeLibraryRepository libraries) {
     this.knowledgeRetrieval = knowledgeRetrieval;
     this.searchScopeSource = searchScopeSource;
     this.searchScopeResolver = searchScopeResolver;
     this.metadataFilterValidator = metadataFilterValidator;
     this.hitAssembler = hitAssembler;
-    this.chatSourceAssembler = chatSourceAssembler;
     this.properties = properties;
     this.quota = quota;
     this.alarm = alarm;
+    this.libraries = libraries;
+  }
+
+  /**
+   * The libraries of {@code caller}'s effective view - identifier, name and description, sorted by
+   * name. For a signed-in person that is every library she may read; for an access token it is the
+   * intersection of rights, release and token selection, because it comes from the same {@link
+   * SearchScopeSource} the search itself uses. It is the only place a foreign tool learns the
+   * extent of its access, and {@code list_libraries} of the MCP server (#1721) is built on it.
+   *
+   * <p>Counts against the token quota and the channel alert like any other retrieval: it is a read
+   * of the holdings' structure, not a free call.
+   */
+  public List<SearchableLibrary> libraries(CurrentUser caller) {
+    SearchRequestScope scope = searchScopeSource.scopeFor(caller);
+    quota.requireWithinQuota(scope.accessTokenId());
+    alarm.record(caller.organizationId(), scope.accessTokenId());
+    if (scope.libraryIds().isEmpty()) {
+      return List.of();
+    }
+    return libraries.findAllById(scope.libraryIds()).stream()
+        .map(
+            library ->
+                new SearchableLibrary(library.getId(), library.getName(), library.getDescription()))
+        .sorted(Comparator.comparing(SearchableLibrary::name, String.CASE_INSENSITIVE_ORDER))
+        .toList();
   }
 
   /**
@@ -93,18 +118,34 @@ public class SearchService {
             Optional.empty(), everything, requestedLibraryIds, effectiveView);
     MetadataFilter metadataFilter = validated(effectiveView, requestedMetadataFilter);
 
-    List<SearchedLibraryRef> searchedLibraries = chatSourceAssembler.searchedLibraries(searchScope);
+    List<SearchedLibraryRef> searchedLibraries = namesOf(searchScope);
     if (searchScope.isEmpty()) {
       // No search at all rather than a search over nothing - the same short circuit the query
       // takes, and the reason an empty view is indistinguishable from an empty result.
       return new SearchOutcome(List.of(), searchedLibraries);
     }
 
-    RetrievalPipelineResult retrieval =
-        knowledgeRetrieval.retrieve(question, List.of(), List.of(), searchScope, metadataFilter);
-    List<Document> chunks = retrieval.chunks();
+    List<Document> chunks =
+        knowledgeRetrieval
+            .retrieve(question, List.of(), List.of(), searchScope, metadataFilter)
+            .chunks();
     int limit = Math.min(properties.effectiveMaxHits(requestedMaxHits), chunks.size());
-    return new SearchOutcome(hitAssembler.assemble(chunks.subList(0, limit)), searchedLibraries);
+    return new SearchOutcome(
+        hitAssembler.assemble(chunks.subList(0, limit), searchScope), searchedLibraries);
+  }
+
+  /**
+   * The libraries the search actually ran against, by name and sorted - resolved from the effective
+   * scope, never from the request, so the line reflects permissions exactly as the search did.
+   */
+  private List<SearchedLibraryRef> namesOf(Set<UUID> searchScope) {
+    if (searchScope.isEmpty()) {
+      return List.of();
+    }
+    return libraries.findAllById(searchScope).stream()
+        .map(library -> new SearchedLibraryRef(library.getId(), library.getName()))
+        .sorted(Comparator.comparing(SearchedLibraryRef::name, String.CASE_INSENSITIVE_ORDER))
+        .toList();
   }
 
   private MetadataFilter validated(Set<UUID> effectiveView, MetadataFilter filter) {

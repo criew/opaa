@@ -14,6 +14,9 @@ import java.util.UUID;
  * @param relevanceScore the reciprocal of the hit's 1-based position, the same rank-derived value a
  *     Beleg of {@code POST /api/v1/query} carries - a raw score is not comparable between the
  *     lexical and the vector path.
+ * @param downloadable whether the original behind this hit may be offered for download - the
+ *     library is in the effective view of the request. Decided in {@link SearchService}, never in
+ *     the response mapper, so the download path cannot be handed out past the scope.
  */
 public record SearchHit(
     String hitId,
@@ -26,4 +29,5 @@ public record SearchHit(
     Integer chunkIndex,
     String location,
     List<ChatSourceMetadataEntry> metadata,
-    double relevanceScore) {}
+    double relevanceScore,
+    boolean downloadable) {}

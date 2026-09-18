@@ -121,6 +121,30 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/search/libraries:
+    get:
+      operationId: listSearchableLibraries
+      tags: [query]
+      summary: >
+        The libraries POST /api/v1/search may search for this caller (#1720) - identifier, name and
+        description, sorted by name. The answer to "worin kann ich hier suchen?", and the only place
+        a foreign tool learns the extent of its access. For a signed-in person these are the
+        libraries she may read; for an access token the intersection of rights, external-access
+        release and token selection, resolved per call.
+      responses:
+        "200":
+          description: The libraries of the effective view
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SearchableLibrary"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/search/hits/{hitId}:
     get:
       operationId: fetchSearchHit
@@ -7507,6 +7531,25 @@ components:
           type: string
           example: Dienstanweisungen
 
+    SearchableLibrary:
+      type: object
+      required: [id, name]
+      description: >-
+        One library of the caller's effective view (#1720). Deliberately three fields: a foreign
+        model needs name and description to decide whether a question belongs here, and nothing
+        else.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Dienstanweisungen
+        description:
+          type: string
+          nullable: true
+          example: Dienstanweisungen des Hauses seit 2019
+
     SearchRequest:
       type: object
       required: [question]
@@ -7639,7 +7682,9 @@ components:
           nullable: true
           description: >-
             Path of the original behind this hit (GET /api/v1/documents/{documentId}/content),
-            relative to this API. Null when documentId is null.
+            relative to this API. Offered only for a library inside the effective view of this very
+            request, never merely because a document id is known; null otherwise. A caller treats
+            it as an offer, not as a guarantee - the content endpoint checks rights again.
           example: /api/v1/documents/3f9a6b2e-1c4d-4e8a-9f0b-2d6c8e1a5b7d/content
 
     SearchHitContentResponse:
@@ -7695,8 +7740,10 @@ components:
         truncated:
           type: boolean
           description: >-
-            True when text was cut at characterLimit. Only ever true for whole=true - a passage
-            with its neighbours is bounded by the chunk size and never reaches the limit.
+            True when text was cut at characterLimit - possible on both paths. With the delivered
+            values a passage and its neighbours stay far below the cap, but the number of adjoining
+            passages and the chunk size are configurable upwards and the cap downwards, so a client
+            must read this field rather than infer it from full.
         characterLimit:
           type: integer
           description: The server-side character cap of this endpoint.
@@ -7709,6 +7756,9 @@ components:
         downloadUrl:
           type: string
           nullable: true
+          description: >-
+            Path of the original, under the same rule as SearchHit.downloadUrl: offered only for a
+            library inside the effective view of this very request.
 
     ErrorResponse:
       type: object

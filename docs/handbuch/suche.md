@@ -573,8 +573,19 @@ Abschnitte wird einmal geschrieben, nicht zweimal. Eine Trefferkennung außerhal
 beantwortet der Abruf **genau wie eine unbekannte**; über die Existenz fremder Bestände gibt er
 keine Auskunft.
 
-Weder die Suche noch der Abruf erzeugt einen Eintrag im Nachweisprotokoll — dieselbe Zusage, die
-für die einzelne Abfrage gilt.
+`GET /api/v1/search/libraries` nennt die Bibliotheken, in denen dieser Aufrufer suchen kann —
+Kennung, Name, Beschreibung. Für eine angemeldete Person sind das ihre lesbaren Bibliotheken; für
+ein Zugangstoken später die Schnittmenge aus Rechten, Freigabe und Tokenauswahl, weil dieselbe
+Stelle den Suchbereich bestimmt. Es ist die einzige Stelle, an der ein fremdes Werkzeug den Umfang
+seines Zugangs erfährt.
+
+Abgeschnitten wird gemeldet: Das Feld `truncated` gilt für **beide** Abrufarten. Mit den
+Vorgabewerten bleibt ein Abschnitt samt Nachbarn weit unter dem Deckel — die Zahl der Nachbarn und
+die Chunk-Größe lassen sich aber heraufsetzen und der Deckel herabsetzen, deshalb liest ein Client
+das Feld, statt es aus `full` zu schließen.
+
+Weder die Suche noch der Abruf noch die Auflistung erzeugt einen Eintrag im Nachweisprotokoll —
+dieselbe Zusage, die für die einzelne Abfrage gilt.
 
 ## 8. Diagnose: warum sieht eine Person ein Dokument nicht?
 

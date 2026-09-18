@@ -38,7 +38,7 @@ final class SearchResponseMapper {
         .chunkIndex(hit.chunkIndex())
         .location(hit.location())
         .metadata(ChatResponseMapper.toMetadataEntries(hit.metadata()))
-        .downloadUrl(downloadUrl(hit.documentId()));
+        .downloadUrl(downloadUrl(hit.documentId(), hit.downloadable()));
   }
 
   static SearchHitContentResponse toResponse(FetchedPassage passage) {
@@ -57,11 +57,26 @@ final class SearchResponseMapper {
         .location(passage.location())
         .headingPath(passage.headingPath())
         .metadata(ChatResponseMapper.toMetadataEntries(passage.metadata()))
-        .downloadUrl(downloadUrl(passage.documentId()));
+        .downloadUrl(downloadUrl(passage.documentId(), passage.downloadable()));
   }
 
-  private static String downloadUrl(UUID documentId) {
-    return documentId == null ? null : DOCUMENT_CONTENT_PATH.formatted(documentId);
+  /**
+   * The download path, or null. {@code downloadable} is decided in the domain against the effective
+   * view of the request; the mapper never derives it from the mere presence of a document id, so
+   * the path cannot be handed out past the scope.
+   */
+  private static String downloadUrl(UUID documentId, boolean downloadable) {
+    return documentId == null || !downloadable ? null : DOCUMENT_CONTENT_PATH.formatted(documentId);
+  }
+
+  static List<io.opaa.api.dto.SearchableLibrary> toLibraries(
+      List<io.opaa.search.SearchableLibrary> libraries) {
+    return libraries.stream()
+        .map(
+            library ->
+                new io.opaa.api.dto.SearchableLibrary(library.id(), library.name())
+                    .description(library.description()))
+        .toList();
   }
 
   private static List<SearchedLibrary> toSearchedLibraries(List<SearchedLibraryRef> refs) {

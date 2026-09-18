@@ -3,11 +3,13 @@ package io.opaa.api;
 import io.opaa.api.dto.SearchHitContentResponse;
 import io.opaa.api.dto.SearchRequest;
 import io.opaa.api.dto.SearchResponse;
+import io.opaa.api.dto.SearchableLibrary;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.search.PassageFetchService;
 import io.opaa.search.SearchService;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,6 +49,15 @@ public class SearchController {
             request.getLibraryIds(),
             MetadataFilterMapper.toDomain(request.getMetadataFilter()),
             request.getMaxHits()));
+  }
+
+  /**
+   * The libraries this caller may search - the only place a foreign tool learns the extent of its
+   * access, and the basis of {@code list_libraries} of the MCP server (#1721).
+   */
+  @GetMapping("/libraries")
+  public List<SearchableLibrary> libraries(@Caller CurrentUser caller) {
+    return SearchResponseMapper.toLibraries(searchService.libraries(caller));
   }
 
   @GetMapping("/hits/{hitId}")

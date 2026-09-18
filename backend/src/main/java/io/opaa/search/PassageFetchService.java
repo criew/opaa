@@ -4,14 +4,12 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.externalaccess.ExternalAccessMassRetrievalAlarm;
 import io.opaa.externalaccess.ExternalAccessQuota;
+import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.searchadmin.ChunkInspection;
 import io.opaa.searchadmin.ChunkInspectionService;
-import io.opaa.searchadmin.DocumentChunks;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -27,6 +25,11 @@ import org.springframework.stereotype.Service;
  * multiple; and whoever wants the holdings has to ask for them, instead of receiving them in
  * passing.
  *
+ * <p><b>The cap bounds the work, not only the answer.</b> The default path reads exactly the index
+ * window it returns, and the whole-document path reads page by page and stops as soon as the cap is
+ * reached - a document with tens of thousands of chunks is therefore never materialized for a
+ * request that keeps 200 000 characters of it.
+ *
  * <p><b>A hit outside the caller's effective view answers exactly like an unknown one</b> - one
  * {@link NotFoundException} with one message for both, so the endpoint never confirms that a
  * foreign id exists.
@@ -36,6 +39,12 @@ public class PassageFetchService {
 
   /** The one answer for "no such hit" and for "not yours" alike. */
   static final String NOT_FOUND_MESSAGE = "Die Fundstelle wurde nicht gefunden.";
+
+  /**
+   * Chunks read per round trip while walking a whole document. Large enough that an ordinary
+   * document is one query, small enough that the cap can stop the walk early.
+   */
+  static final int PAGE_SIZE = 64;
 
   private final ChunkInspectionService chunks;
   private final DocumentRepository documents;
@@ -87,10 +96,10 @@ public class PassageFetchService {
     SearchHitAssembler.DocumentFacts facts = hitAssembler.factsFor(document);
     String location = locationOf(chunk);
 
-    DocumentChunks all = chunks.listDocumentChunks(caller.organizationId(), chunk.documentId());
-    String text =
-        PassageText.join(whole ? everyPassage(all) : passageWithContext(all, chunk.chunkIndex()));
-    PassageText.Truncation capped = PassageText.truncate(text, properties.fetchMaxCharacters());
+    PassageText.Joined text =
+        whole
+            ? wholeDocument(caller.organizationId(), chunk)
+            : passageWithContext(caller.organizationId(), chunk);
 
     return new FetchedPassage(
         chunk.chunkId(),
@@ -102,44 +111,62 @@ public class PassageFetchService {
         chunk.chunkIndex(),
         location,
         PassageText.headingPath(location),
-        capped.text(),
+        text.text(),
         whole,
-        capped.truncated(),
+        text.truncated(),
         properties.fetchMaxCharacters(),
-        facts.metadata().isEmpty() ? null : facts.metadata());
-  }
-
-  private static List<String> everyPassage(DocumentChunks all) {
-    return all.chunks().stream().map(ChunkInspection::content).toList();
+        facts.metadata().isEmpty() ? null : facts.metadata(),
+        // Through the scope, not past it: the download path is only offered for a library the
+        // request may actually see. #1718 decides whether a token reaches the content endpoint
+        // at all - the answer belongs here, in one place, not in the mapper.
+        effectiveView.contains(document.getLibraryId()));
   }
 
   /**
-   * The passage and {@link SearchProperties#contextPassages()} on each side, by {@code chunk_index}
-   * rather than by list position: a document whose chunks are not gap-free must still yield the
-   * neighbours the reader expects, and a passage without an index yields itself alone.
+   * The whole document, read page by page and stopped as soon as the cap is reached. Pages are
+   * keyed by {@code chunk_index}, so a document whose indices are not gap-free still advances.
    */
-  private List<String> passageWithContext(DocumentChunks all, Integer chunkIndex) {
-    if (chunkIndex == null) {
-      return all.chunks().stream()
-          .filter(candidate -> candidate.chunkIndex() == null)
-          .map(ChunkInspection::content)
-          .toList();
-    }
-    int radius = properties.contextPassages();
-    List<String> selected = new ArrayList<>();
-    for (ChunkInspection candidate : all.chunks()) {
-      Integer index = candidate.chunkIndex();
-      if (index != null && Math.abs(index - chunkIndex) <= radius) {
-        selected.add(candidate.content());
+  private PassageText.Joined wholeDocument(UUID organizationId, ChunkInspection hit) {
+    PassageText.Joiner joiner = new PassageText.Joiner(properties.fetchMaxCharacters());
+    Integer after = null;
+    while (!joiner.isFull()) {
+      List<ChunkInspection> page =
+          chunks.listChunkPage(organizationId, hit.documentId(), after, PAGE_SIZE);
+      if (page.isEmpty()) {
+        break;
+      }
+      for (ChunkInspection passage : page) {
+        joiner.append(passage.content());
+        if (joiner.isFull()) {
+          break;
+        }
+      }
+      after = page.get(page.size() - 1).chunkIndex();
+      if (after == null) {
+        break;
       }
     }
-    return selected;
+    return joiner.finish();
+  }
+
+  /**
+   * The passage and {@link SearchProperties#contextPassages()} on each side, read as one indexed
+   * window. A passage without a {@code chunk_index} is in no window and yields itself alone.
+   */
+  private PassageText.Joined passageWithContext(UUID organizationId, ChunkInspection hit) {
+    if (hit.chunkIndex() == null) {
+      return PassageText.join(List.of(hit.content()), properties.fetchMaxCharacters());
+    }
+    int radius = properties.contextPassages();
+    List<ChunkInspection> window =
+        chunks.listChunkWindow(
+            organizationId, hit.documentId(), hit.chunkIndex() - radius, hit.chunkIndex() + radius);
+    return PassageText.join(
+        window.stream().map(ChunkInspection::content).toList(), properties.fetchMaxCharacters());
   }
 
   private static String locationOf(ChunkInspection chunk) {
-    return Optional.ofNullable(
-            chunk.metadata().get(io.opaa.indexing.chunk.ChunkingService.LOCATION_METADATA_KEY))
-        .map(Object::toString)
-        .orElse(null);
+    Object location = chunk.metadata().get(ChunkingService.LOCATION_METADATA_KEY);
+    return location == null ? null : location.toString();
   }
 }

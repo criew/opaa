@@ -5,12 +5,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Joins stored passages back into continuous text and reads the heading path out of a Fundort.
+ * Joins stored passages back into continuous text under a character cap, and reads the heading path
+ * out of a Fundort.
  *
  * <p>The join is overlap-aware because chunking is: two adjoining chunks deliberately share their
  * boundary sentences ({@code opaa.indexing.chunk-overlap}), and concatenating them verbatim would
  * hand a foreign model the same sentences twice - which reads like a repetition in the original.
  * The shared part is therefore written once.
+ *
+ * <p>The cap is enforced <b>while</b> joining, not afterwards: {@link Joiner#isFull()} lets the
+ * caller stop reading further passages, so the cap bounds the work and the memory, not only the
+ * length of the answer.
  */
 final class PassageText {
 
@@ -22,29 +27,73 @@ final class PassageText {
 
   private PassageText() {}
 
-  /**
-   * {@code passages} in order, each appended once: where the tail of what is already written is
-   * also the head of the next passage, that shared text is not repeated.
-   */
-  static String join(List<String> passages) {
-    StringBuilder joined = new StringBuilder();
+  /** {@code passages} joined without a cap - the whole selection is known to be small. */
+  static Joined join(List<String> passages, int limit) {
+    Joiner joiner = new Joiner(limit);
     for (String passage : passages) {
-      if (passage == null || passage.isEmpty()) {
-        continue;
-      }
-      if (joined.isEmpty()) {
-        joined.append(passage);
-        continue;
-      }
-      int overlap = overlapLength(joined, passage);
-      if (overlap > 0) {
-        joined.append(passage, overlap, passage.length());
-      } else {
-        joined.append(SEPARATOR).append(passage);
+      joiner.append(passage);
+      if (joiner.isFull()) {
+        break;
       }
     }
-    return joined.toString();
+    return joiner.finish();
   }
+
+  /**
+   * Accumulates passages up to a character cap. Once {@link #isFull()} answers {@code true}, no
+   * further passage changes the result, which is what lets a caller stop loading them.
+   */
+  static final class Joiner {
+
+    private final StringBuilder text = new StringBuilder();
+    private final int limit;
+    private boolean truncated;
+
+    Joiner(int limit) {
+      this.limit = limit;
+    }
+
+    boolean isFull() {
+      return text.length() >= limit;
+    }
+
+    void append(String passage) {
+      if (passage == null || passage.isEmpty() || isFull()) {
+        return;
+      }
+      if (text.isEmpty()) {
+        text.append(passage);
+      } else {
+        int overlap = overlapLength(text, passage);
+        if (overlap > 0) {
+          text.append(passage, overlap, passage.length());
+        } else {
+          text.append(SEPARATOR).append(passage);
+        }
+      }
+      if (text.length() > limit) {
+        truncated = true;
+      }
+    }
+
+    /**
+     * The accumulated text, cut to the cap. The cut never splits a surrogate pair: a lone high
+     * surrogate at the end would be an invalid character in the JSON response.
+     */
+    Joined finish() {
+      if (text.length() <= limit) {
+        return new Joined(text.toString(), truncated);
+      }
+      int end = limit;
+      if (end > 0 && Character.isHighSurrogate(text.charAt(end - 1))) {
+        end--;
+      }
+      return new Joined(text.substring(0, end), true);
+    }
+  }
+
+  /** The joined text and whether the cap cut anything off. */
+  record Joined(String text, boolean truncated) {}
 
   /**
    * The length of the longest suffix of {@code written} that is a prefix of {@code next}, or 0.
@@ -94,14 +143,4 @@ final class PassageText {
     }
     return List.copyOf(headings);
   }
-
-  /** {@code text} cut to {@code limit} characters; the boolean says whether anything was cut. */
-  static Truncation truncate(String text, int limit) {
-    if (text.length() <= limit) {
-      return new Truncation(text, false);
-    }
-    return new Truncation(text.substring(0, limit), true);
-  }
-
-  record Truncation(String text, boolean truncated) {}
 }

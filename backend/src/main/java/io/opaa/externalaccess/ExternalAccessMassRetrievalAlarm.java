@@ -33,6 +33,14 @@ import org.springframework.stereotype.Component;
  *
  * <p>A cooldown follows every alert. Without it a sustained event would decay into a series of
  * messages, and a series of messages is a history by another name.
+ *
+ * <p><b>The message is kept, but only briefly.</b> An alert nobody can read is no alert, so it is a
+ * persisted notification - and a notification that stays forever would be exactly the per-token
+ * history the specification rules out. {@link ExternalAccessAlertRetention} therefore deletes it
+ * after {@link ExternalAccessAlertRetention#RETENTION} regardless of whether it was read. For the
+ * same reason the message carries the token id and the time window and <b>not the measured
+ * value</b>: the number is what would turn a series of messages into a usage curve, and the
+ * technical application log holds it for the incident itself.
  */
 @Component
 public class ExternalAccessMassRetrievalAlarm {
@@ -103,16 +111,18 @@ public class ExternalAccessMassRetrievalAlarm {
         WINDOW.toMinutes(),
         threshold,
         accessTokenId);
+    // Token id and time window, deliberately without the measured value: the number is what would
+    // turn a sequence of kept messages into a usage curve per token. It stands in the application
+    // log, which is where the incident is investigated.
     String body =
-        "Der Fremdzugangskanal hat die Schwelle von "
-            + threshold
-            + " Abrufen je Stunde überschritten: "
-            + measured
-            + " Abrufe bis "
+        "Der Fremdzugangskanal hat die Schwelle für Massenabrufe in der Stunde bis "
             + at
-            + ". Betroffenes Zugangstoken: "
+            + " überschritten. Betroffenes Zugangstoken: "
             + accessTokenId
-            + ". Bitte prüfen Sie den Vorfall und sperren Sie den Zugang, falls nötig.";
+            + ". Bitte prüfen Sie den Vorfall und sperren Sie den Zugang, falls nötig. Diese"
+            + " Meldung wird nach "
+            + ExternalAccessAlertRetention.RETENTION.toDays()
+            + " Tagen automatisch gelöscht.";
     List<User> administrators =
         users.findByOrganizationIdAndSystemRole(organizationId, SystemRole.SYSTEM_ADMIN);
     for (User administrator : administrators) {

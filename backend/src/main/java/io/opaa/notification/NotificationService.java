@@ -3,6 +3,7 @@ package io.opaa.notification;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.NotificationType;
 import io.opaa.common.NotFoundException;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -40,6 +41,16 @@ public class NotificationService {
   public List<Notification> listForRecipient(UUID currentUserId, int limit) {
     return notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(
         currentUserId, PageRequest.of(0, limit));
+  }
+
+  /**
+   * Deletes the notifications of {@code type} created before {@code cutoff} and returns how many -
+   * for a type that carries its own retention period (today only the external-access mass-retrieval
+   * alert, #1720). Everything else in this table is kept until a postbox decides otherwise.
+   */
+  @Transactional
+  public int deleteOlderThan(NotificationType type, Instant cutoff) {
+    return notificationRepository.deleteByTypeAndCreatedAtBefore(type, cutoff);
   }
 
   @Transactional
