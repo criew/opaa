@@ -1,7 +1,5 @@
 # Fremdzugänge: Zugangstokens und MCP-Server
 
-> **Entwurf.** Geschrieben und gegen den Code geprüft, noch nicht vom Maintainer abgenommen.
-
 Fremdzugänge machen freigegebene Wissensbibliotheken für KI-Werkzeuge erreichbar, die außerhalb von
 OPAA laufen — einen Entwicklungsassistenten, ein Automatisierungswerkzeug, ein eigenes Skript. Das
 fremde Werkzeug bleibt, wo es ist, und holt sich Fundstellen aus dem Bestand des Hauses: mit den
