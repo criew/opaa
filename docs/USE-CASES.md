@@ -309,7 +309,8 @@ Abweichung erfordert Fachurteil — Automatisierung ohne Kontrolle wäre riskant
 **Ablauf mit OPAA:**
 
 1. Der Konnektor liest die Vorgänge **nur lesend** aus dem Fachverfahren beziehungsweise dem
-   Vorgangssystem; die Berechtigungen werden aus dem Quellsystem gespiegelt.
+   Vorgangssystem. Maßgeblich ist der Leserkreis der Zielbibliothek; gibt das Fachverfahren seine
+   Berechtigungen belastbar heraus, verengen sie ihn zusätzlich.
 2. Ein Agent gruppiert die Fälle, erkennt Auffälligkeiten (Teilzahlung, laufende Stundung, offener
    Einspruch) und legt sie dem Sachbearbeiter mit Begründung und Fundstelle vor.
 3. Für die unstrittigen Fälle bereitet OPAA die Schreiben vor und schlägt **schreibende Aktionen** vor:
@@ -318,7 +319,7 @@ Abweichung erfordert Fachurteil — Automatisierung ohne Kontrolle wäre riskant
    ausgeführte Aktion landet revisionssicher im Protokoll.
 5. Ausgeschlossene Fälle bleiben ausdrücklich beim Menschen, statt „irgendwie" mitbehandelt zu werden.
 
-**Themenbereiche:** B (Konnektoren lesend und schreibend, Spiegelung der Rechte aus dem Quellsystem) · D
+**Themenbereiche:** B (Konnektoren lesend und schreibend, Quellrechte als Einschränkung der Zielbibliothek) · D
 (Agent, menschliche Freigabe, Grenzen) · G (Protokoll jeder Aktion) · F (Rechte).
 
 **Verteilungs-Effekt:** Die abgestufte Autonomie ist selbst ein verteilbares Muster: nur lesend wird breit
