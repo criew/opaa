@@ -204,15 +204,14 @@ class LocalAuthSettingsIntegrationTest {
     mockMvc
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, userBearer))
         .andExpect(status().isUnauthorized())
-        // the switch-off also revoked the family (#1534), which the validator names first; a
-        // session without a family would be refused as local_accounts_disabled
+        // regression guard for #1595: the switch-off also revokes the family (#1534), and the
+        // switch has to outrank that revocation - the person reads why the management is closed,
+        // not that a password was reset
         .andExpect(
             header()
                 .string(
                     "WWW-Authenticate",
-                    Matchers.anyOf(
-                        Matchers.containsString("local_accounts_disabled"),
-                        Matchers.containsString("session_revoked"))));
+                    Matchers.containsString("error_description=\"local_accounts_disabled\"")));
     mockMvc
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, adminBearer))
         .andExpect(status().isOk());
@@ -236,6 +235,17 @@ class LocalAuthSettingsIntegrationTest {
         .andExpect(jsonPath("$.enabled").value(true))
         .andExpect(jsonPath("$.revokedSessions").doesNotExist());
     login(idle.email(), LocalAccountFixtures.PASSWORD, 200);
+    // regression guard for #1595: the only path on which admin_action is ever read. While the
+    // switch is off it outranks the revocation; after switching back on, a token from before the
+    // switch-off reads the act that ended it - and that act was no password reset.
+    mockMvc
+        .perform(get(ME).header(HttpHeaders.AUTHORIZATION, userBearer))
+        .andExpect(status().isUnauthorized())
+        .andExpect(
+            header()
+                .string(
+                    "WWW-Authenticate",
+                    Matchers.containsString("error_description=\"session_revoked:admin_action\"")));
     mockMvc
         .perform(get("/api/v1/auth/config"))
         .andExpect(jsonPath("$.localAccounts.enabled").value(true));

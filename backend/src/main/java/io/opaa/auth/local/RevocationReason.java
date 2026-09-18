@@ -14,12 +14,18 @@ public enum RevocationReason {
   LOGOUT,
   /** The person changed the password; other sessions end. */
   PASSWORD_CHANGED,
-  /** An administrator reset the password. */
+  /**
+   * An administrator reset the password - through the admin API or through the restart of the
+   * bootstrap account ({@code OPAA_LOCAL_ADMIN_RESET}), which sets a new one as well.
+   */
   ADMIN_RESET,
   /** The account was locked (by an administrator, after failed sign-ins or for inactivity). */
   ACCOUNT_LOCKED,
   /** The account was handed over to a provider identity. */
   HANDED_OVER,
-  /** Any other administrative act, e.g. the bootstrap reset via {@code OPAA_LOCAL_ADMIN_RESET}. */
+  /**
+   * An administrative act that ends sessions without touching a password, e.g. switching the local
+   * account management off.
+   */
   ADMIN
 }

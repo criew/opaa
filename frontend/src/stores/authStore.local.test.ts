@@ -618,6 +618,8 @@ describe('authStore - local session', () => {
     ['account_locked:admin', /von der Systemverwaltung gesperrt/],
     ['account_expired', /abgelaufen/],
     ['session_revoked:password_changed', /Passwort geändert/],
+    ['session_revoked:admin_reset', /Passwort zurückgesetzt/],
+    ['session_revoked:admin_action', /von der Systemverwaltung beendet/],
     ['account_not_active', /nicht anmeldefähig/],
   ])('ends the session with the named cause for %s', (reason, expected) => {
     useAuthStore.setState({ sessionKind: 'local', isAuthenticated: true, token: 't' })

@@ -13,6 +13,13 @@ public record LocalTokenRejection(String marker, String cause) {
   /** The cause of {@link RevocationReason#HANDED_OVER} (ADR-0033, Entscheidung 12). */
   public static final String HANDED_OVER_CAUSE = "handed_over";
 
+  /**
+   * The cause of {@link RevocationReason#ADMIN}, the administrative act that is not a password
+   * reset - kept apart from {@code admin_reset} so no sentence claims a password was reset when
+   * none was.
+   */
+  private static final String ADMIN_ACTION_CAUSE = "admin_action";
+
   public LocalTokenRejection {
     Objects.requireNonNull(marker, "marker");
   }
@@ -38,7 +45,8 @@ public record LocalTokenRejection(String marker, String cause) {
     return switch (reason) {
       case ACCOUNT_LOCKED -> "admin_lock";
       case PASSWORD_CHANGED -> "password_changed";
-      case ADMIN_RESET, ADMIN -> "admin_reset";
+      case ADMIN_RESET -> "admin_reset";
+      case ADMIN -> ADMIN_ACTION_CAUSE;
       case REUSE_DETECTED -> "reuse_detected";
       case HANDED_OVER -> HANDED_OVER_CAUSE;
       case ROTATED, LOGOUT -> null;

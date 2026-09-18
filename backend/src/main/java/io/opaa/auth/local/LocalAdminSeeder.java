@@ -255,7 +255,7 @@ public class LocalAdminSeeder {
     String generated = applyPassword(row, now);
     row.invalidateSessionsIssuedBefore(LocalTokenRevocationService.cutoffFor(now), now);
     credentials.save(row);
-    refreshTokens.revokeAllForUser(admin.getId(), RevocationReason.ADMIN, now);
+    refreshTokens.revokeAllForUser(admin.getId(), RevocationReason.ADMIN_RESET, now);
     if (!marker.seedAlreadyAttempted()) {
       marker.save(new LocalAdminSeedMarker(now));
     }

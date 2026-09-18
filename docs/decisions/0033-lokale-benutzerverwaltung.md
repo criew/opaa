@@ -241,7 +241,20 @@ Token regulärer lokaler Konten abgewiesen, lokale `SYSTEM_ADMIN`-Konten passier
 Aufrufer besitzt bereits ein gültiges Token); der Login antwortet in diesem Fall mit derselben
 Einheitsantwort wie bei falschem Passwort (Entscheidung 9) — sonst verriete er ohne Passwort, dass ein
 Konto existiert. Das Abschalten wirkt damit sofort auf laufende Sitzungen, ohne dass Sitzungen
-serverseitig aufgezählt werden müssten. Die Anbieter-Registry bleibt eine prozesslokale
+serverseitig aufgezählt werden müssten.
+
+**Der Schalter wird im Validator vor den Widerrufsprüfungen gelesen** (seit #1595). Grund: Der
+Abschaltweg widerruft die Sitzungen regulärer Konten zusätzlich eifrig (`ADMIN`, je Konto ein
+Audit-Ereignis, und die Zahl `revokedSessions`, die die Oberfläche quittiert). Läge die Prüfung des
+Schalters hinter Sperrliste und `password_invalidated_before`, griffe immer eine dieser beiden
+zuerst, und die abgewiesene Person läse den Anlass eines Widerrufs statt des Markers, den dieser
+Absatz verspricht — `local_accounts_disabled` wäre für ein bestehendes Token unerreichbar. Solange
+die Verwaltung abgeschaltet ist, ist sie der wirksame Grund der Abweisung, unabhängig davon, was
+vorher an Widerrufen geschah. Vor der Schalterprüfung steht nur `malformed_token`: Ohne `sub` ist
+nicht feststellbar, ob es sich um ein `SYSTEM_ADMIN`-Konto handelt. Ein lokaler `SYSTEM_ADMIN`
+passiert den Schalter weiterhin und erhält deshalb auch weiterhin seinen echten Anlass.
+
+Die Anbieter-Registry bleibt eine prozesslokale
 Fundstelle nach ADR-0021; dieser ADR trägt die neuen Fundstellen dort ein.
 
 ### 5. Erstadministrator: lokales Notanker-Konto beim ersten Start, Einmalpasswort ins Log, Wiederanlauf per Variable
@@ -470,10 +483,24 @@ Datenbankzustand, mit dem Caffeine-Cache nur für die Denylist (der Kontozustand
 gibt keine `client_id`). Abgewiesene Tokens tragen wie `unknown_issuer` einen `BearerTokenError`, dessen
 `error_description` **den Grund nennt**: `local_accounts_disabled`, `account_locked` (mit Anlass
 `admin` \| `failed_logins` \| `inactivity`), `account_expired`, `session_revoked` (mit Anlass
-`admin_lock` \| `password_changed` \| `admin_reset` \| `reuse_detected` \| `handed_over`). Die SPA
+`admin_lock` \| `password_changed` \| `admin_reset` \| `admin_action` \| `reuse_detected` \|
+`handed_over`). Die SPA
 unterscheidet damit den Fall vom abgelaufenen Token, startet **keinen** Erneuerungsversuch und zeigt
 den Grund — das ist die technische Form von „Wer neu anmelden muss, erfährt beim nächsten Aufruf, dass
 und warum".
+
+`admin_reset` und `admin_action` sind seit #1595 zwei Anlässe, nicht einer. `ADMIN_RESET`
+bezeichnet das Zurücksetzen eines Passworts durch die Verwaltung — über die Admin-API
+(Entscheidung 11) und über den Wiederanlauf des Notanker-Kontos (Entscheidung 5), der ebenfalls
+eines setzt. `ADMIN` bezeichnet den Verwaltungsakt, der Sitzungen beendet, **ohne** ein Passwort
+anzufassen; sein einziger Verwender ist das Abschalten der lokalen Verwaltung (Entscheidung 4).
+Solange beide auf `admin_reset` abbildeten, las eine Person „Ihr Passwort wurde zurückgesetzt",
+ohne dass eines zurückgesetzt worden war, und suchte nach einem Passwort, das niemand ausgestellt
+hatte. Die Zuordnung gilt seither in beide Richtungen: `admin_action` sagt, dass die
+Systemverwaltung die Sitzung beendet hat, und `admin_reset` steht genau dort, wo tatsächlich ein
+Passwort zurückgesetzt wurde. Ein eigener Enum-Wert entsteht dadurch nicht: Die Unterscheidung
+liegt in der Abbildung auf den Anlass, nicht in `revocation_reason` (dessen `CHECK` in der
+Datenbank bleibt unverändert).
 
 `UserService#provisionFromToken` behandelt den lokalen Issuer als **Finder, nie als Anleger**: Ein
 Token mit unbekanntem `sub` führt zu 401, nicht zu einem neuen Konto; `email` und `display_name`
