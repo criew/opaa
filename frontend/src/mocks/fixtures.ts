@@ -2008,37 +2008,56 @@ function mockExcerpt(text: string, words: string[]): Pick<ChatSearchHit, 'excerp
 
 /**
  * Mirrors ChatService#searchChats on the mock data: all words of the term in one message (or the
- * title), one hit per chat, archived chats included, newest message first.
+ * title), one hit per chat at its best message, archived chats included. Ordered like the backend
+ * by relevance - here the number of matched words - and on a tie by the time of the hit, newest
+ * first; a chat matching by its title alone counts with its last activity.
  */
 export function mockSearchChats(spaceId: string, request: ChatSearchRequest): ChatSearchResponse {
   const words = request.query.trim().toLocaleLowerCase('de').split(/\s+/).filter(Boolean)
-  const matches = (text: string | null | undefined) =>
-    text != null && words.every((word) => text.toLocaleLowerCase('de').includes(word))
-  const hits: ChatSearchHit[] = []
+  const rankOf = (text: string | null | undefined): number => {
+    if (text == null) return 0
+    const lower = text.toLocaleLowerCase('de')
+    if (!words.every((word) => lower.includes(word))) return 0
+    return words.reduce((sum, word) => sum + lower.split(word).length - 1, 0)
+  }
+  const ranked: Array<{ hit: ChatSearchHit; rank: number; hitAt: string }> = []
   for (const chat of Object.values(mockChatDetails)) {
     if (chat.spaceId !== spaceId) continue
     const archivedAt = mockChatArchive[chat.id] ?? null
-    const message = [...chat.messages].reverse().find((candidate) => matches(candidate.content))
-    if (message) {
-      hits.push({
-        chatId: chat.id,
-        title: chat.title,
-        archivedAt,
-        messageId: message.id,
-        role: message.role,
-        messageCreatedAt: message.createdAt,
-        ...mockExcerpt(message.content, words),
+    // Best message by rank, the later one on a tie - as the backend's DISTINCT ON per chat.
+    let best: { message: (typeof chat.messages)[number]; rank: number } | null = null
+    for (const message of chat.messages) {
+      const rank = rankOf(message.content)
+      if (rank > 0 && (best === null || rank >= best.rank)) best = { message, rank }
+    }
+    const titleRank = rankOf(chat.title)
+    if (best) {
+      ranked.push({
+        hit: {
+          chatId: chat.id,
+          title: chat.title,
+          archivedAt,
+          messageId: best.message.id,
+          role: best.message.role,
+          messageCreatedAt: best.message.createdAt,
+          ...mockExcerpt(best.message.content, words),
+        },
+        rank: Math.max(best.rank, titleRank),
+        hitAt: best.message.createdAt,
       })
-    } else if (matches(chat.title)) {
-      hits.push({
-        chatId: chat.id,
-        title: chat.title,
-        archivedAt,
-        ...mockExcerpt(chat.title!, words),
+    } else if (titleRank > 0) {
+      ranked.push({
+        hit: { chatId: chat.id, title: chat.title, archivedAt, ...mockExcerpt(chat.title!, words) },
+        rank: titleRank,
+        hitAt: chat.updatedAt,
       })
     }
   }
-  hits.sort((a, b) => (b.messageCreatedAt ?? '').localeCompare(a.messageCreatedAt ?? ''))
+  ranked.sort(
+    (a, b) =>
+      b.rank - a.rank || b.hitAt.localeCompare(a.hitAt) || a.hit.chatId.localeCompare(b.hit.chatId),
+  )
+  const hits = ranked.map((entry) => entry.hit)
   const page = request.page ?? 0
   const size = Math.min(request.pageSize ?? 20, 50)
   return {
