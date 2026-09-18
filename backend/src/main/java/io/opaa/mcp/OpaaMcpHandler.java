@@ -8,6 +8,7 @@ import io.modelcontextprotocol.spec.McpSchema.JSONRPCRequest;
 import io.modelcontextprotocol.spec.McpSchema.JSONRPCResponse;
 import io.modelcontextprotocol.spec.McpSchema.JSONRPCResponse.JSONRPCError;
 import io.modelcontextprotocol.spec.McpSchema.ListToolsResult;
+import io.opaa.common.TooManyRequestsException;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.search.SearchService;
 import java.util.LinkedHashMap;
@@ -45,6 +46,12 @@ class OpaaMcpHandler implements McpStatelessServerHandler {
   /** Where a legacy client finds the revisions this installation speaks. */
   static final String SUPPORTED_VERSIONS_KEY = "io.opaa/supportedProtocolVersions";
 
+  /**
+   * JSON-RPC leaves {@code -32000}..{@code -32099} to the server. The exhausted quota gets one of
+   * them rather than {@code INTERNAL_ERROR}: it is a refusal the caller can act on by waiting.
+   */
+  static final int QUOTA_EXCEEDED = -32000;
+
   private final McpStatelessServerHandler delegate;
   private final McpToolCatalog catalog;
   private final SearchService searchService;
@@ -69,7 +76,16 @@ class OpaaMcpHandler implements McpStatelessServerHandler {
       McpTransportContext transportContext, JSONRPCRequest request) {
     if (McpSchema.METHOD_TOOLS_LIST.equals(request.method())) {
       return Mono.fromCallable(
-          () -> JSONRPCResponse.result(request.id(), toolsFor(transportContext)));
+          () -> {
+            try {
+              return JSONRPCResponse.result(request.id(), toolsFor(transportContext));
+            } catch (TooManyRequestsException e) {
+              // The listing counts against the quota like every other call; an exhausted quota is
+              // a named refusal here, not the 500 an escaping exception would become.
+              return JSONRPCResponse.error(
+                  request.id(), new JSONRPCError(QUOTA_EXCEEDED, e.getMessage()));
+            }
+          });
     }
     if (McpSchema.METHOD_INITIALIZE.equals(request.method())) {
       String requested = requestedVersion(request.params());
