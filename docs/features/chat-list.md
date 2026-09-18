@@ -1,8 +1,8 @@
 # Chatliste eines Space: finden, ordnen, wegräumen
 
-> **Status: Konzept entschieden (Epic #1762, Phase 1, 18.09.2026) — Umsetzung in drei Phasen offen.**
-> Die Leitfragen des Epics sind beantwortet; die Maintainer-Entscheidungen stehen im Abschnitt
-> [Entscheidungen](#entscheidungen). Das Handbuch beschreibt erst den gebauten Stand.
+> **Status: umgesetzt (Epic #1762, Phasen 2–4, 09/2026); Phase 5 nur bei gemeldetem Bedarf.**
+> Die Maintainer-Entscheidungen stehen im Abschnitt [Entscheidungen](#entscheidungen); den gebauten
+> Stand der Chatsuche beschreibt das Handbuch ([Suche](../handbuch/suche.md)).
 
 ## Motivation
 
@@ -90,7 +90,8 @@ missverständlich, weil der ganze Assistent „sucht".
 - Der Filter durchsucht die **aktiven** Chats der Seitenleiste. Findet er nichts, sagt er das und bietet
   „In Inhalten suchen" an — die [Chatsuche](#chatsuche) auf der Seite „Chats", mit dem eingegebenen
   Begriff vorbelegt. Sie durchsucht auch Titel und Archiv; ein eigener Weg „Im Archiv suchen" ist
-  deshalb nicht nötig. Bis zur Chatsuche bleibt es beim Hinweis und „Alle Chats →".
+  deshalb nicht nötig. Der Begriff geht als Navigationszustand mit, nicht in der Adresse; die Seite
+  übernimmt ihn und verwirft ihn sofort, nach einem Neuladen ist das Feld leer.
 - Escape leert das Feld; das Feld ist beschriftet und für Screenreader angekündigt, die Zahl der
   gefilterten Einträge wird als Statusmeldung ausgegeben.
 
@@ -154,10 +155,9 @@ Chats eines Space, keine zweite Chatoberfläche: Ein Klick auf einen Eintrag öf
   Bestätigung wie beim Einzellöschen, die die Zahl der betroffenen Chats nennt). Vollständig per Tastatur
   bedienbar.
 - **Zahlen an den Reitern** zählen ausschließlich die eigenen, für die Person sichtbaren Chats.
-- Das **Suchfeld** der Seite ist die Chatsuche (siehe [Chatsuche](#chatsuche)). Solange sie nicht gebaut
-  ist, filtert es im Reiter „Aktiv" die Titel; der seitenweise geladene Reiter „Archiv" bekommt bis
-  dahin kein Suchfeld, weil ein Filter über die gerade geladenen Seiten stillschweigend unvollständig
-  wäre.
+- Das **Suchfeld** der Seite ist die Chatsuche (siehe [Chatsuche](#chatsuche)) und steht über beiden
+  Reitern. Solange ein Begriff eingegeben ist, ersetzt die Trefferliste die Reiteransicht; Leeren des
+  Feldes stellt die Reiter wieder her.
 
 ---
 
