@@ -16,16 +16,23 @@ import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import type { CreatedExternalAccessTokenResponse, LibraryListResponse } from '../../types/api'
-import { getLibraries } from '../../services/api'
-import { createExternalAccessToken } from '../../services/externalAccessApi'
+import type {
+  CreatedExternalAccessTokenResponse,
+  EligibleExternalAccessLibraryResponse,
+} from '../../types/api'
+import {
+  createExternalAccessToken,
+  listEligibleExternalAccessLibraries,
+} from '../../services/externalAccessApi'
 import { radius } from '../../theme/tokens'
 import {
   DISCLOSURE_HINT,
   NO_LIBRARIES_HINT,
   SELECTION_IS_FINAL_HINT,
   expiryInstantOf,
+  formatDate,
   maxExpiryDate,
+  releaseEndsBeforeExpiry,
   toDateInputValue,
 } from './tokenLabels'
 
@@ -49,16 +56,16 @@ interface FieldErrors {
  * aus dem dieser Dialog eine bewusste Handlung ist und kein Knopf - was hier erteilt wird, läuft
  * anschließend durch ein Werkzeug, über dessen Protokollierung OPAA nichts zusagen kann.
  *
- * Wählbar sind die lesbaren Bibliotheken der Person. Das zusätzliche Freigabemerkmal der
- * Bibliothek liefert #1731; bis dahin behandelt auch das Backend jede lesbare Bibliothek als
- * freigegeben, die Liste hier ist also genau die Schnittmenge, die der Server durchsetzt.
+ * Die Auswahl kommt aus `eligible-libraries` und ist damit genau die Menge, die die Ausstellung
+ * annimmt - lesbar und freigegeben. Alles, was der Dialog anbietet, ist ausstellbar; eine
+ * Bibliothek mehr anzubieten hieße, die Person in eine Abweisung laufen zu lassen.
  */
 export default function CreateExternalAccessTokenDialog({
   tokenMaxLifetimeDays,
   onClose,
   onCreated,
 }: CreateExternalAccessTokenDialogProps) {
-  const [libraries, setLibraries] = useState<LibraryListResponse[] | null>(null)
+  const [libraries, setLibraries] = useState<EligibleExternalAccessLibraryResponse[] | null>(null)
   const [name, setName] = useState('')
   const [selected, setSelected] = useState<string[]>([])
   // Der Entwurf lebt nur, solange der Dialog montiert ist - der Aufrufer montiert ihn je Vorgang
@@ -76,7 +83,7 @@ export default function CreateExternalAccessTokenDialog({
 
   useEffect(() => {
     let active = true
-    getLibraries()
+    listEligibleExternalAccessLibraries()
       .then((loaded) => {
         if (active) setLibraries(loaded)
       })
@@ -140,6 +147,10 @@ export default function CreateExternalAccessTokenDialog({
   }
 
   const hasLibraries = libraries !== null && libraries.length > 0
+  const endingReleases =
+    expiresOn === ''
+      ? []
+      : releaseEndsBeforeExpiry(libraries ?? [], selected, expiryInstantOf(expiresOn, latest))
 
   return (
     <Dialog open fullWidth maxWidth="sm" onClose={onClose} aria-labelledby="create-token-title">
@@ -182,7 +193,19 @@ export default function CreateExternalAccessTokenDialog({
                           onChange={() => toggle(library.id)}
                         />
                       }
-                      label={library.name}
+                      label={
+                        <>
+                          {library.name}
+                          {/* Die Freigabe der Bibliothek endet unabhängig vom Token; läuft sie
+                              früher aus, verliert das Token sie vorher. */}
+                          <Typography
+                            component="span"
+                            sx={{ fontSize: 12, color: 'text.secondary', ml: 1 }}
+                          >
+                            Freigabe bis {formatDate(library.releaseExpiresAt)}
+                          </Typography>
+                        </>
+                      }
                     />
                   ))}
                 </FormGroup>
@@ -211,6 +234,14 @@ export default function CreateExternalAccessTokenDialog({
             }}
             fullWidth
           />
+
+          {endingReleases.length > 0 && (
+            <Alert severity="info">
+              Die Freigabe von {endingReleases.join(', ')} endet vor diesem Ablaufdatum. Ab dann
+              wirkt die Bibliothek in diesem Token nicht mehr und lebt auch bei einer erneuten
+              Freigabe nicht wieder auf - dafür wäre ein neues Token nötig.
+            </Alert>
+          )}
 
           <Box>
             <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>Rechte</Typography>

@@ -275,6 +275,8 @@ export type ExternalAccessSettingsUpdateRequest =
 export type ExternalAccessChannelInfoResponse =
   components['schemas']['ExternalAccessChannelInfoResponse']
 export type ExternalAccessTokenStatus = components['schemas']['ExternalAccessTokenStatus']
+export type EligibleExternalAccessLibraryResponse =
+  components['schemas']['EligibleExternalAccessLibraryResponse']
 export type ExternalAccessTokenLibraryResponse =
   components['schemas']['ExternalAccessTokenLibraryResponse']
 export type CreateExternalAccessTokenRequest =

@@ -27,7 +27,8 @@ export const SHOWN_ONCE_HINT =
 
 export const CHANNEL_OFF_HINT =
   'Fremdzugänge sind für diese Installation abgeschaltet. Vorhandene Tokens wirken nicht, bleiben ' +
-  'aber erhalten; anlegen und widerrufen können Sie sie weiterhin.'
+  'aber erhalten und lassen sich weiterhin widerrufen. Ein neues Token kann erst angelegt werden, ' +
+  'wenn Ihre Systemverwaltung den Kanal wieder öffnet.'
 
 export const SUSPENDED_LIBRARY_HINT =
   'Die Freigabe wurde zurückgenommen oder ist abgelaufen. Die Bibliothek wirkt in diesem Token ' +
@@ -118,6 +119,26 @@ export function expiryInstantOf(dateInputValue: string, latestAllowed: Date): st
   const [year, month, day] = dateInputValue.split('-').map(Number)
   const endOfDay = new Date(year, month - 1, day, 23, 59, 59)
   return new Date(Math.min(endOfDay.getTime(), latestAllowed.getTime())).toISOString()
+}
+
+/**
+ * Die gewählten Bibliotheken, deren Freigabe vor dem Ablauf des Tokens endet - nach Namen.
+ *
+ * Die beiden Fristen laufen unabhängig: Eine Freigabe, die früher endet, nimmt die Bibliothek aus
+ * dem Token, und sie lebt dort auch bei einer erneuten Freigabe nicht wieder auf. Das ist vor dem
+ * Erzeugen zu sehen, nicht erst hinterher an der ausgesetzten Zeile.
+ */
+export function releaseEndsBeforeExpiry(
+  libraries: ReadonlyArray<{ id: string; name: string; releaseExpiresAt: string }>,
+  selectedIds: ReadonlyArray<string>,
+  expiresAtIso: string,
+): string[] {
+  const expiry = new Date(expiresAtIso).getTime()
+  if (Number.isNaN(expiry)) return []
+  return libraries
+    .filter((library) => selectedIds.includes(library.id))
+    .filter((library) => new Date(library.releaseExpiresAt).getTime() < expiry)
+    .map((library) => library.name)
 }
 
 /**

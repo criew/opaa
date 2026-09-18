@@ -1,5 +1,6 @@
 import type {
   AdminExternalAccessTokenResponse,
+  EligibleExternalAccessLibraryResponse,
   CreateExternalAccessTokenRequest,
   CreatedExternalAccessTokenResponse,
   ExternalAccessChannelInfoResponse,
@@ -46,6 +47,23 @@ export async function getExternalAccessChannelInfo(): Promise<ExternalAccessChan
       '/v1/external-access/settings',
     )
     return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Genau die Bibliotheken, die eine Ausstellung annimmt - lesbar und freigegeben. Bei geschlossenem
+ * Kanal leer, weil dann auch keine Ausstellung angenommen würde.
+ */
+export async function listEligibleExternalAccessLibraries(): Promise<
+  EligibleExternalAccessLibraryResponse[]
+> {
+  try {
+    const { data } = await apiClient.get<{
+      libraries: EligibleExternalAccessLibraryResponse[]
+    }>('/v1/external-access/eligible-libraries')
+    return data.libraries
   } catch (err) {
     normalizeError(err)
   }

@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import type {
   AdminExternalAccessTokenResponse,
+  EligibleExternalAccessLibraryResponse,
   CreateExternalAccessTokenRequest,
   CreatedExternalAccessTokenResponse,
   OwnExternalAccessTokenResponse,
@@ -106,7 +107,22 @@ export function resetMockExternalAccessTokens() {
   mockAdminExternalAccessTokens = initialAdminTokens()
 }
 
+/** Genau die Menge, die das Anlegen annimmt - bei geschlossenem Kanal leer, wie im Backend. */
+function eligibleLibraries(): EligibleExternalAccessLibraryResponse[] {
+  if (!mockExternalAccessSettings.enabled) return []
+  return mockLibraries.slice(0, 3).map((library) => ({
+    id: library.id,
+    name: library.name,
+    description: library.description ?? undefined,
+    releaseExpiresAt: inDays(300),
+  }))
+}
+
 export const externalAccessTokenHandlers = [
+  http.get('*/api/v1/external-access/eligible-libraries', () =>
+    HttpResponse.json({ libraries: eligibleLibraries() }),
+  ),
+
   http.get('*/api/v1/external-access/settings', () =>
     HttpResponse.json({
       enabled: mockExternalAccessSettings.enabled,
@@ -123,8 +139,21 @@ export const externalAccessTokenHandlers = [
     if (!body.name || body.name.trim() === '') {
       return fieldError('name', 'Bitte geben Sie einen Namen an.')
     }
+    if (!mockExternalAccessSettings.enabled) {
+      return HttpResponse.json(
+        { error: 'Fremdzugänge sind für diese Installation abgeschaltet' },
+        { status: 403 },
+      )
+    }
     if (!body.libraryIds || body.libraryIds.length === 0) {
       return fieldError('libraryIds', 'Bitte wählen Sie mindestens eine Bibliothek aus.')
+    }
+    const selectable = eligibleLibraries().map((library) => library.id)
+    if (body.libraryIds.some((id) => !selectable.includes(id))) {
+      return fieldError(
+        'libraryIds',
+        'Mindestens eine Bibliothek ist nicht auswählbar - sie ist Ihnen nicht zugänglich oder nicht für Fremdzugänge freigegeben.',
+      )
     }
     const latest = Date.now() + mockExternalAccessSettings.tokenMaxLifetimeDays * DAY
     if (!body.expiresAt || new Date(body.expiresAt).getTime() > latest) {
@@ -143,7 +172,7 @@ export const externalAccessTokenHandlers = [
       status: 'ACTIVE',
       libraries: body.libraryIds.map((id) => ({
         id,
-        name: mockLibraries.find((library) => library.id === id)?.name ?? id,
+        name: eligibleLibraries().find((library) => library.id === id)?.name ?? id,
         suspended: false,
       })),
     }

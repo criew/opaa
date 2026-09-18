@@ -140,14 +140,20 @@ export default function OwnExternalAccessTokensSection() {
         title="Zugangstokens"
         description="Mit einem Zugangstoken durchsucht ein fremdes KI-Werkzeug - etwa Claude Code oder Cursor - die Bibliotheken, die Sie ihm erteilen. Es kann nie mehr als Sie selbst, und nur lesen und suchen."
         action={
-          <Button
-            variant="contained"
-            size="small"
-            onClick={() => setIsCreating(true)}
-            disabled={maxLifetimeDays === null}
-          >
-            Token erzeugen
-          </Button>
+          /* Bei geschlossenem Kanal weist die Ausstellung jede Anfrage ab und die Auswahlmenge ist
+             leer - die Schaltfläche führte in eine Absage, statt zu einem Token. */
+          <Tooltip title={channelEnabled === false ? CHANNEL_OFF_HINT : ''}>
+            <Box component="span">
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => setIsCreating(true)}
+                disabled={maxLifetimeDays === null || channelEnabled !== true}
+              >
+                Token erzeugen
+              </Button>
+            </Box>
+          </Tooltip>
         }
       >
         {error && (
@@ -230,7 +236,7 @@ export default function OwnExternalAccessTokensSection() {
 
       {/* Je Vorgang neu montiert: Das Zurücksetzen des Entwurfs ist damit das Auswerfen der
           Komponente und kein Effekt, der denselben Zustand einen Durchlauf später herstellt. */}
-      {isCreating && maxLifetimeDays !== null && (
+      {isCreating && maxLifetimeDays !== null && channelEnabled === true && (
         <CreateExternalAccessTokenDialog
           tokenMaxLifetimeDays={maxLifetimeDays}
           onClose={() => setIsCreating(false)}

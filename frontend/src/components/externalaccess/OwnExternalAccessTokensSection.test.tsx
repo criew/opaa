@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { UserEvent } from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { server } from '../../mocks/server'
 import {
   mockExternalAccessSettings,
@@ -32,6 +32,12 @@ async function openCreateDialog(user: UserEvent) {
  * Widerruf. Geprüft wird über die Schnittstelle, die auch das Backend anbietet (MSW).
  */
 describe('OwnExternalAccessTokensSection', () => {
+  // Die ausgelieferte Voreinstellung der Installation ist „aus"; für alles außer dem eigenen Fall
+  // dazu ist der Kanal offen, sonst nimmt die Ausstellung nichts an.
+  beforeEach(() => {
+    setMockExternalAccessSettings({ ...mockExternalAccessSettings, enabled: true })
+  })
+
   it('zeigt die eigenen Tokens mit Präfix, Bibliotheken und dem Tag der letzten Nutzung', async () => {
     render()
 
@@ -55,7 +61,7 @@ describe('OwnExternalAccessTokensSection', () => {
     expect(await screen.findByText(/Läuft in \d+ Tagen ab/)).toBeInTheDocument()
   })
 
-  it('sagt bei geschlossenem Kanal, dass die Tokens nicht wirken, bleibt aber bedienbar', async () => {
+  it('sagt bei geschlossenem Kanal, dass die Tokens nicht wirken, und sperrt das Anlegen', async () => {
     setMockExternalAccessSettings({ ...mockExternalAccessSettings, enabled: false })
     render()
 
@@ -63,7 +69,12 @@ describe('OwnExternalAccessTokensSection', () => {
       await screen.findByText(/Fremdzugänge sind für diese Installation abgeschaltet/),
     ).toBeInTheDocument()
     expect(screen.getAllByText('wirkt derzeit nicht').length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: 'Token erzeugen' })).toBeEnabled()
+    // Die Ausstellung weist bei geschlossenem Kanal jede Anfrage ab (#1744) - die Schaltfläche
+    // führte also in eine Absage. Widerrufen bleibt möglich.
+    expect(screen.getByRole('button', { name: 'Token erzeugen' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'Token „Claude Code (Dienst-PC)“ widerrufen' }),
+    ).toBeEnabled()
   })
 
   it('zeigt im Anlegedialog die Aufklärung und die Unveränderlichkeit der Auswahl', async () => {
@@ -95,7 +106,7 @@ describe('OwnExternalAccessTokensSection', () => {
     render()
 
     const dialog = await openCreateDialog(user)
-    await within(dialog).findByLabelText('Meine Dokumente')
+    await within(dialog).findByLabelText(/Meine Dokumente/)
 
     await user.click(within(dialog).getByRole('button', { name: 'Erzeugen' }))
 
@@ -108,7 +119,11 @@ describe('OwnExternalAccessTokensSection', () => {
   })
 
   it('erklärt im Leerzustand, warum keine Bibliothek wählbar ist, und nennt die Ansprechstelle', async () => {
-    server.use(http.get('*/api/v1/libraries', () => HttpResponse.json([])))
+    server.use(
+      http.get('*/api/v1/external-access/eligible-libraries', () =>
+        HttpResponse.json({ libraries: [] }),
+      ),
+    )
     const user = userEvent.setup()
     render()
 
@@ -126,7 +141,7 @@ describe('OwnExternalAccessTokensSection', () => {
 
     const dialog = await openCreateDialog(user)
     await user.type(within(dialog).getByLabelText('Name / Zweck'), 'Claude Code (Notebook)')
-    await user.click(await within(dialog).findByLabelText('Meine Dokumente'))
+    await user.click(await within(dialog).findByLabelText(/Meine Dokumente/))
     await user.click(within(dialog).getByRole('button', { name: 'Erzeugen' }))
 
     const valueDialog = await screen.findByRole('dialog', { name: 'Token erzeugt' })
