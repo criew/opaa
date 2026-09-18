@@ -33,6 +33,12 @@ import org.springframework.test.context.TestPropertySource;
       // #1563: small enough to exhaust in a test; the production default is wide on purpose
       // (a handover is what a whole migration runs through), which no test could drive.
       "opaa.rate-limit.local-auth.handover.max-requests=3",
-      "opaa.rate-limit.local-auth.handover.window-seconds=900"
+      "opaa.rate-limit.local-auth.handover.window-seconds=900",
+      // #1592: small enough to exhaust, so that "a switched-off flow has no budget" is a claim a
+      // test can fail. This family has no public base URL, so both flows are off here.
+      "opaa.rate-limit.local-auth.forgot-password.max-requests=3",
+      "opaa.rate-limit.local-auth.forgot-password.window-seconds=900",
+      "opaa.rate-limit.local-auth.register.max-requests=3",
+      "opaa.rate-limit.local-auth.register.window-seconds=900"
     })
 public @interface OpaaLocalAuthRateLimitTest {}

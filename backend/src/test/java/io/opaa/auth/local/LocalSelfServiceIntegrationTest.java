@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 /**
  * The self-service of local accounts through the production {@code oidc} chain (ADR-0033,
@@ -53,10 +55,11 @@ import org.springframework.test.web.servlet.MvcResult;
  * ends every session, a link is redeemable once and a newer one voids the older, self-registration
  * creates an account that signs in only after the address is confirmed, a taken address and a
  * foreign domain answer exactly like a free one, a still unconfirmed self-registration gets its
- * link again, the password policy answers with field errors, switched-off flows answer with the
- * standard 404, and no token, password or person reaches a log line or an audit row. Mail goes to
- * an in-JVM GreenMail; every link is proved by the message - which is also the point of
- * synchronisation, since the two address-taking flows do their work off the request thread.
+ * link again, the password policy answers with field errors, a switched-off flow is
+ * indistinguishable from an unknown route, and no token, password or person reaches a log line or
+ * an audit row. Mail goes to an in-JVM GreenMail; every link is proved by the message - which is
+ * also the point of synchronisation, since the two address-taking flows do their work off the
+ * request thread.
  */
 @OpaaLocalAuthLinkTest
 class LocalSelfServiceIntegrationTest {
@@ -575,38 +578,32 @@ class LocalSelfServiceIntegrationTest {
 
   // ---- switched-off flows
 
+  /**
+   * ADR-0033, Entscheidung 11 (#1592): whichever of the three switches turns a flow off, its path
+   * answers a caller without a session exactly like a route nobody serves - same status, same body,
+   * same headers. Whether a flow exists stays readable through {@code /auth/config} alone.
+   */
   @Test
-  void aSwitchedOffFlowAnswersWithTheStandard404() throws Exception {
-    // the honest baseline: an unknown route under /api answers 401 without a session, so the 404
-    // only hides the endpoint from a caller who does not look closely (#1592)
-    mockMvc
-        .perform(
-            post("/api/v1/auth/local/unbekannt-" + UUID.randomUUID())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{}"))
-        .andExpect(status().isUnauthorized());
-    String standard404 = LocalSelfServiceUnavailableIntegrationTest.STANDARD_404;
+  void aSwitchedOffFlowIsIndistinguishableFromAnUnknownRoute() throws Exception {
+    String unknown = "/api/v1/auth/local/unbekannt-" + UUID.randomUUID();
     String email = "wer-" + UUID.randomUUID() + "@" + DOMAIN;
 
     // registration: off by default; on without a domain list; management off
-    assertThat(withoutTimestamp(body(register(email, "Name", NEW_PASSWORD).andReturn())))
-        .isEqualTo(standard404);
+    assertLikeUnknownRoute(REGISTER, unknown, registration(email));
     replaceSettings(withRegistration(true, List.of()));
-    assertThat(withoutTimestamp(body(register(email, "Name", NEW_PASSWORD).andReturn())))
-        .isEqualTo(standard404);
+    assertLikeUnknownRoute(REGISTER, unknown, registration(email));
     replaceSettings(withRegistration(true, List.of(DOMAIN)));
     register(email, "Name", NEW_PASSWORD).andExpect(status().isAccepted());
     assertThat(mailbox.waitFor(1, 10_000)).isTrue();
     fixtures.localProvider(false);
-    assertThat(withoutTimestamp(body(register(email, "Name", NEW_PASSWORD).andReturn())))
-        .isEqualTo(standard404);
-    assertThat(withoutTimestamp(body(forgot(email).andReturn()))).isEqualTo(standard404);
+    assertLikeUnknownRoute(REGISTER, unknown, registration(email));
+    assertLikeUnknownRoute(FORGOT_PASSWORD, unknown, forgotten(email));
     fixtures.localProvider(true);
 
     // forgot password: on by default, off by the setting
     forgot(email).andExpect(status().isNoContent());
     replaceSettings(withPasswordReset(false));
-    assertThat(withoutTimestamp(body(forgot(email).andReturn()))).isEqualTo(standard404);
+    assertLikeUnknownRoute(FORGOT_PASSWORD, unknown, forgotten(email));
     // the link endpoints stay reachable whatever the switches say
     setPassword("kein-token", NEW_PASSWORD)
         .andExpect(status().isBadRequest())
@@ -614,6 +611,27 @@ class LocalSelfServiceIntegrationTest {
     verify("kein-token")
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("TOKEN_INVALID"));
+  }
+
+  /**
+   * A caller with a token learns nothing new from the answer: the endpoint belongs to the
+   * documented API, and an unknown route is a 404 for them as well. What matters there is the
+   * controller's own gate - without it the authorization rule would let a signed-in caller run a
+   * switched-off flow (#1592).
+   */
+  @Test
+  void aSwitchedOffFlowAnswersASignedInCallerLikeAnUnknownRouteAndRunsNothing() throws Exception {
+    replaceSettings(withPasswordReset(false));
+    LocalAccount user = fixtures.activeUser("erika-" + UUID.randomUUID() + "@" + DOMAIN);
+    String bearer = bearer(login(user.email(), LocalAccountFixtures.PASSWORD, 200));
+    String unknown = "/api/v1/auth/local/unbekannt-" + UUID.randomUUID();
+
+    HttpAnswer switchedOff = signedIn(FORGOT_PASSWORD, user.email(), bearer);
+    HttpAnswer route = signedIn(unknown, user.email(), bearer);
+
+    assertThat(switchedOff.status()).isEqualTo(404);
+    assertThat(switchedOff).isEqualTo(route);
+    assertThat(mailbox.waitFor(1, 1_000)).isFalse();
   }
 
   // ---- log and audit privacy
@@ -752,6 +770,31 @@ class LocalSelfServiceIntegrationTest {
                 .content(json(Map.of("email", email, "password", password))))
         .andExpect(status().is(expectedStatus))
         .andReturn();
+  }
+
+  private void assertLikeUnknownRoute(
+      String switchedOff, String unknown, Function<String, MockHttpServletRequestBuilder> shape)
+      throws Exception {
+    assertThat(HttpAnswer.of(mockMvc, shape.apply(switchedOff)))
+        .as("%s has to answer exactly like %s", switchedOff, unknown)
+        .isEqualTo(HttpAnswer.of(mockMvc, shape.apply(unknown)));
+  }
+
+  private HttpAnswer signedIn(String path, String email, String bearer) throws Exception {
+    return HttpAnswer.of(
+        mockMvc, forgotten(email).apply(path).header(HttpHeaders.AUTHORIZATION, bearer));
+  }
+
+  private static Function<String, MockHttpServletRequestBuilder> forgotten(String email) {
+    return path ->
+        post(path).contentType(MediaType.APPLICATION_JSON).content(json(Map.of("email", email)));
+  }
+
+  private static Function<String, MockHttpServletRequestBuilder> registration(String email) {
+    return path ->
+        post(path)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(json(Map.of("email", email, "displayName", "Name", "password", NEW_PASSWORD)));
   }
 
   private void replaceSettings(Values values) {

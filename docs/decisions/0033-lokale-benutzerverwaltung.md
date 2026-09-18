@@ -788,10 +788,20 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
 - **Passwort vergessen** nur bei `password_reset_enabled` und gesetzter Basis-URL: immer 204 nach
   konstanter Zeitklasse, unabhängig davon, ob ein aktives Konto existiert; Konten mit
   Verwalter- oder Inaktivitätssperre, abgelaufene und eingeladene Konten erhalten keine Mail — ein
-  Konto in Fehlversuch-Sperre schon (Entscheidung 9). **Abgeschaltete Flüsse antworten 404** — als
-  schlichte „Route nicht aktiv"-Antwort, nicht als Tarnung: Ob ein Fluss aktiv ist, steht ohnehin im
-  öffentlichen `/auth/config` (Entscheidung 4), weil die SPA es wissen muss. Ein 404 verrät also
-  nichts, was nicht schon bekannt ist, und hält nur die Fehlerbehandlung der Clients einfach.
+  Konto in Fehlversuch-Sperre schon (Entscheidung 9). **Ergänzung vom 17.09.2026 (#1592):** Ein
+  **abgeschalteter Fluss ist für einen Aufrufer ohne Sitzung von einer unbekannten Route nicht zu
+  unterscheiden** — gleicher Status, gleicher Rumpf, gleiche Kopfzeilen, für gültigen Rumpf,
+  syntaktisch kaputten Rumpf und andere Methode gleichermaßen. Hergestellt wird das nicht durch
+  Nachbauen der Antwort, sondern dadurch, dass der abgeschaltete Pfad **gar nicht erst freigegeben
+  ist**: Die Autorisierungsregel lässt ihn auf `/api/**` durchfallen, also auf genau die Regel, unter
+  die auch eine unbekannte Route fällt, und die Ratenbegrenzung zählt einen Pfad nicht, den niemand
+  bedient (sonst antwortete er unter Last 429, die unbekannte Route aber 401 — der eine Unterschied,
+  den ein Sondierer fände). Mit Token bleibt es bei der 404, die auch eine unbekannte Route dort
+  liefert; sie hält zugleich den abgeschalteten Fluss davon ab, für einen Angemeldeten zu laufen.
+  **Der Gewinn ist bewusst begrenzt:** Ob ein Fluss aktiv ist, steht im öffentlichen `/auth/config`
+  (Entscheidung 4), weil die SPA es wissen muss — dieser Endpunkt bleibt die **einzige** Quelle
+  dafür. Die vorherige Fassung („404 als schlichte Route-nicht-aktiv-Antwort, nicht als Tarnung")
+  ist damit abgelöst.
 - **Passwort ändern** (mit aktuellem Passwort) steht jedem lokalen Konto in den
   Benutzereinstellungen offen und widerruft die übrigen Sitzungen.
 
