@@ -32,8 +32,17 @@ public final class ChatConversation {
   private final List<ChatNotePoint> noteItems;
   private final Instant createdAt;
   private final Instant updatedAt;
+  private final Instant archivedAt;
 
   public ChatConversation(Chat chat, List<ChatTurn> messages, List<ChatNotePoint> noteItems) {
+    this(chat, messages, noteItems, null);
+  }
+
+  /**
+   * @param archivedAt when the requesting person archived the chat, {@code null} if it is active
+   */
+  public ChatConversation(
+      Chat chat, List<ChatTurn> messages, List<ChatNotePoint> noteItems, Instant archivedAt) {
     this.id = chat.getId();
     this.spaceId = chat.getSpaceId();
     this.authorId = chat.getAuthorId();
@@ -46,6 +55,7 @@ public final class ChatConversation {
     this.noteItems = List.copyOf(noteItems);
     this.createdAt = chat.getCreatedAt();
     this.updatedAt = chat.getUpdatedAt();
+    this.archivedAt = archivedAt;
   }
 
   public UUID getId() {
@@ -96,5 +106,9 @@ public final class ChatConversation {
 
   public Instant getUpdatedAt() {
     return updatedAt;
+  }
+
+  public Instant getArchivedAt() {
+    return archivedAt;
   }
 }

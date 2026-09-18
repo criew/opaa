@@ -4,6 +4,7 @@ import io.opaa.api.dto.ChatDetail;
 import io.opaa.api.dto.ChatMessageResponse;
 import io.opaa.api.dto.ChatNoteItem;
 import io.opaa.api.dto.ChatSummary;
+import io.opaa.api.dto.ChatSummaryPage;
 import io.opaa.api.dto.ChunkLocation;
 import io.opaa.api.dto.SourceMetadataEntry;
 import io.opaa.api.dto.SourceReference;
@@ -16,6 +17,7 @@ import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.chat.ChatTurn;
 import java.util.List;
+import org.springframework.data.domain.Page;
 
 /**
  * Maps {@link Chat}, {@link ChatConversation}, {@link ChatTurn} and {@link ChatSource} onto their
@@ -40,7 +42,16 @@ final class ChatResponseMapper {
         .title(chat.getTitle())
         .referencedLibraryIds(List.copyOf(chat.getReferencedLibraryIds()))
         .metadataFilter(MetadataFilterMapper.toResponse(chat.getMetadataFilter()))
-        .pinnedAt(entry.pinnedAt());
+        .pinnedAt(entry.pinnedAt())
+        .archivedAt(entry.archivedAt());
+  }
+
+  static ChatSummaryPage toSummaryPage(Page<ChatListEntry> page) {
+    return new ChatSummaryPage(
+        toSummaryResponses(page.getContent()),
+        page.getNumber(),
+        page.getSize(),
+        page.getTotalElements());
   }
 
   static List<ChatSummary> toSummaryResponses(List<ChatListEntry> chats) {
@@ -62,7 +73,8 @@ final class ChatResponseMapper {
         .noteItems(toNoteItems(conversation.getNoteItems()))
         .title(conversation.getTitle())
         .referencedLibraryIds(conversation.getReferencedLibraryIds())
-        .metadataFilter(MetadataFilterMapper.toResponse(conversation.getMetadataFilter()));
+        .metadataFilter(MetadataFilterMapper.toResponse(conversation.getMetadataFilter()))
+        .archivedAt(conversation.getArchivedAt());
   }
 
   /**
