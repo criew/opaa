@@ -460,6 +460,36 @@ describe('chatListStore chat archive', () => {
     expect(useChatListStore.getState().archiveBySpaceId[SPACE_ID]?.totalElements).toBe(0)
   })
 
+  // Pinning brings a chat back from the archive on the server; an archive request that overtook a
+  // slow pin would leave the chat pinned and active while the list shows it archived.
+  it('sends an archive request only after a pin request still under way for the chat', async () => {
+    const pinGate = deferred<void>()
+    const serverOrder: string[] = []
+    server.use(
+      http.put('/api/v1/chats/:chatId/pin', async () => {
+        serverOrder.push('pin')
+        await pinGate.promise
+        return HttpResponse.json({ id: 'chat-personal-1', pinnedAt: '2026-09-18T09:00:00Z' })
+      }),
+      http.put('/api/v1/chats/:chatId/archive', () => {
+        serverOrder.push('archive')
+        return HttpResponse.json({ id: 'chat-personal-1', archivedAt: '2026-09-18T09:01:00Z' })
+      }),
+    )
+    await useChatListStore.getState().loadChats(SPACE_ID)
+
+    const pin = useChatListStore.getState().setChatPinned(SPACE_ID, 'chat-personal-1', true)
+    const archive = useChatListStore.getState().setChatArchived(SPACE_ID, 'chat-personal-1', true)
+    await waitForRequests(serverOrder, 1)
+    expect(serverOrder).toEqual(['pin'])
+
+    pinGate.resolve()
+    await Promise.all([pin, archive])
+
+    expect(serverOrder).toEqual(['pin', 'archive'])
+    expect(activeIds()).toEqual(['chat-personal-2'])
+  })
+
   it('keeps the chat and sets an error when archiving fails', async () => {
     server.use(
       http.put('/api/v1/chats/:chatId/archive', () =>

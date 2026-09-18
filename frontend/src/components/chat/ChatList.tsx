@@ -410,7 +410,7 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
         </Box>
       ) : !chats || chats.length === 0 ? (
         <Typography sx={{ color: 'text.secondary' }} variant="body2">
-          Noch keine Chats in diesem Space.
+          Keine aktiven Chats in diesem Space.
         </Typography>
       ) : (
         renderChats(chats)

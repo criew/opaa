@@ -326,6 +326,9 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
     const sessionEpoch = currentSessionEpoch()
     set({ error: null })
     try {
+      // Pinning takes a chat out of the archive on the server, so a pin request still under way
+      // for this chat must reach the server before the archive request does.
+      await pinRequestChains.get(chatId)?.catch(() => undefined)
       const summary = archived ? await archiveChat(chatId) : await unarchiveChat(chatId)
       if (isStaleSessionEpoch(sessionEpoch)) return false
       set((state) => {
