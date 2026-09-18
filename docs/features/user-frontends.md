@@ -250,6 +250,12 @@ bräuchte, würde eine zweite Rechteprüfung und eine zweite Fehlerbehandlung er
   erscheinen davon die **Zugriffsänderungen** — nicht die einzelne Abfrage: Frage, Suchbegriffe,
   Suchbereich und Trefferzahl bleiben bewusst draußen (siehe
   [security-and-compliance.md](./security-and-compliance.md#was-ausdrücklich-nicht-protokolliert-wird)).
+  Das gilt unverändert für den Such- und Abrufweg (`POST /api/v1/search`,
+  `GET /api/v1/search/hits/{hitId}`): Er schreibt **keinen** Protokolleintrag — weder für die
+  Suche noch für den Abruf und auch nicht für eine Kontingentablehnung —, und eine Regressionsprüfung
+  hält das fest. Ein Abruf ist damit nicht weniger protokolliert als die Abfrage, aus der er
+  hervorgeht; ein Nachweis der tatsächlich abgerufenen Fundstellen wird bewusst nicht geführt (siehe
+  [external-access.md](./external-access.md)).
 - **Grenzen.** Anfragekontingente schützen den Betrieb und begrenzen den Modellverbrauch.
 
 ### Was die Schnittstelle anbietet
@@ -264,6 +270,8 @@ Zweck, nicht nach Pfad.
 | Zweck | Endpunkt | Heute gebaut |
 |---|---|---|
 | Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; der Suchbereich wird über die Chip-Leiste des Gesprächs gesteuert, nicht per Space-Auswahl je Anfrage | `POST /api/v1/query` | ja — Frage, Antwort, Fundstellen und die Chip-Leiste (@Alles-Wissen, @-Referenzen, leere Leiste) sind gebaut; die Space↔Bibliothek-Assoziation (#203/#706) ist umgesetzt |
+| Treffer ohne erzeugte Antwort erhalten — Fundstellen mit Auszug, Herkunft (Bibliothek, Dokument, Fundstelle), Metadaten, Relevanz und dem Downloadpfad des Originals; derselbe Retrieval-Pfad wie `POST /api/v1/query` (Teilfragen, Vektor- und Volltextsuche, Fusion, Reranking, Rechtefilter in der Suche), nur ohne Generierung. Hängt bewusst **nicht** am Fremdzugangsschalter — der ist der Notaus des Fremdzugangskanals, nicht der dieses Endpunkts | `POST /api/v1/search` | ja (#1720) |
+| Text zu einer Trefferkennung abrufen — Vorgabe ist der Abschnitt mit angrenzendem Kontext und Überschriftenpfad, das ganze Dokument nur über `full=true` und nur bis zu einem serverseitigen Zeichen-Deckel. Eine Kennung außerhalb der eigenen Sicht ist von einer unbekannten nicht unterscheidbar | `GET /api/v1/search/hits/{hitId}` | ja (#1720) |
 | Antwort auf eine Antwort geben (Bewertung, Fehltreffer melden) | — | nein — Zielbild, siehe [Rückmeldung](#rückmeldung-zur-antwortqualität) |
 
 **Wissensbestände verwalten**
@@ -298,14 +306,14 @@ Zweck, nicht nach Pfad.
 | Eigene Identität, Rollen und Zugehörigkeiten erfragen | `GET /api/v1/auth/me` | ja |
 | Betriebsbereitschaft prüfen — für Lastverteiler und Betriebsüberwachung | `GET /api/health` | ja |
 
-**Was der frühere Stand dieses Dokuments nannte und heute nicht existiert:** ein Endpunkt zum
-Hochladen von Dokumenten, ein eigener Such-Endpunkt neben der Abfrage, das Abrufen eines einzelnen
-Dokuments, das Auflisten der eigenen Uploads, ein Endpunkt für Rückmeldungen sowie
-Sammelverarbeitung mehrerer Fragen in einem Aufruf. Zwei davon — der **eigene Such-Endpunkt** neben
-der Abfrage (Treffer ohne erzeugte Antwort) und das **Abrufen eines einzelnen Dokuments** — sind
-inzwischen entschieden und kommen mit dem Fremdzugangs-Kanal
-([external-access.md](./external-access.md)); sie stehen dann jeder angemeldeten Person offen, nicht
-nur einem Zugangstoken. Ersatzlos entfallen sind die Endpunkte zum
+**Was der frühere Stand dieses Dokuments nannte und heute nicht existiert:** das Auflisten der
+eigenen Uploads, ein Endpunkt für Rückmeldungen sowie Sammelverarbeitung mehrerer Fragen in einem
+Aufruf. Drei der damals genannten Lücken sind inzwischen geschlossen: das **Hochladen von
+Dokumenten** (`POST /api/v1/libraries/{libraryId}/documents`) sowie — mit dem Fremdzugangs-Kanal
+([external-access.md](./external-access.md), #1720) — der **eigene Such-Endpunkt** neben der Abfrage
+(`POST /api/v1/search`, Treffer ohne erzeugte Antwort) und das **Abrufen eines einzelnen Dokuments**
+(`GET /api/v1/search/hits/{hitId}`); beide stehen jeder angemeldeten Person offen, nicht nur einem
+Zugangstoken. Ersatzlos entfallen sind die Endpunkte zum
 **Teilen und Entteilen einzelner Dokumente über Workspace-Grenzen**: Zugriff wird an der
 Wissensbibliothek erteilt, nicht am einzelnen Dokument — das Modell dahinter ist abgelöst (siehe
 [spaces-and-assets.md](./spaces-and-assets.md)).

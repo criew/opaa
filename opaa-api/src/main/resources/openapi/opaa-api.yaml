@@ -89,6 +89,75 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/search:
+    post:
+      operationId: searchKnowledge
+      tags: [query]
+      summary: >
+        Hits without a generated answer (#1720, docs/features/external-access.md, "Was ein
+        Fremdzugang erreicht"). Runs the same retrieval the answer of POST /api/v1/query is built
+        from - sub-questions, vector and full-text search, fusion, reranking and the permission
+        filter inside the search itself - and returns its passages instead of an answer. No chat
+        model is asked to generate anything, and nothing is persisted. Open to every signed-in
+        person; it does not hang on the external-access switch, which is the emergency stop of the
+        external-access channel, not of this endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchRequest"
+      responses:
+        "200":
+          description: The hits for this question, best first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/search/hits/{hitId}:
+    get:
+      operationId: fetchSearchHit
+      tags: [query]
+      summary: >
+        The text behind one hit of POST /api/v1/search (#1720). By default the hit's own passage
+        with its adjoining passages and its heading path - not the whole document: an assistant
+        works with a bounded context window, and whoever wants the holdings themselves has to ask
+        for them explicitly. full=true returns the document's whole extracted text, capped at a
+        server-side character limit. A hitId outside the caller's effective view answers exactly
+        like an unknown one, so the endpoint never confirms a foreign id.
+      parameters:
+        - name: hitId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: full
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: The passage or the whole document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchHitContentResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/auth/config:
     get:
       operationId: getAuthConfig
@@ -7437,6 +7506,209 @@ components:
         name:
           type: string
           example: Dienstanweisungen
+
+    SearchRequest:
+      type: object
+      required: [question]
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          pattern: ".*\\S.*"
+          example: Welche Frist gilt für den Widerspruch?
+        libraryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: >
+            Narrows the search to these libraries, always intersected with the caller's effective
+            view and never widened beyond it - a referenced but unreadable library simply yields no
+            hits. Absent or empty: every library of the effective view.
+        metadataFilter:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataFilter"
+          description: >
+            The same core-field filter POST /api/v1/query takes, applied inside both search paths
+            and always subordinate to the permission filter. Absent or empty: no filter.
+        maxHits:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: >
+            Upper bound on the returned hits. Capped server-side; a larger value is silently
+            reduced to the cap rather than rejected. Absent: the configured default.
+          example: 10
+
+    SearchResponse:
+      type: object
+      required: [hits, searchedLibraries]
+      properties:
+        hits:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchHit"
+          description: >
+            The retrieved passages, best first - the same selection and the same order the answer
+            of POST /api/v1/query is built from for this question and this rights context.
+        searchedLibraries:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchedLibrary"
+          description: >
+            The libraries the search actually ran against, sorted by name - the effective scope
+            after permissions and the request's own narrowing, never the request itself. Empty when
+            the caller may read nothing.
+
+    SearchHit:
+      type: object
+      required: [hitId, title, excerpt, relevanceScore]
+      description: >-
+        One retrieved passage with its origin (#1720). Deliberately per passage, not per document:
+        the hit is what a foreign tool quotes and what GET /api/v1/search/hits/{hitId} fetches.
+      properties:
+        hitId:
+          type: string
+          description: >-
+            The stable, unguessable identifier of this passage, and the only key
+            GET /api/v1/search/hits/{hitId} accepts. Not a countable number by design: an
+            enumerable id would turn the fetch path into a listing over foreign holdings even
+            though every single fetch checks rights. The permission filter stays the barrier -
+            unguessability is the second layer, not the first.
+          example: 9f3d0a72-5f64-4c06-9d2c-2a1f7b0e1c33
+        title:
+          type: string
+          description: The document's Titel from its metadata, or its file name where it has none.
+          example: Dienstanweisung Widerspruchsverfahren
+        excerpt:
+          type: string
+          description: >-
+            The passage's own wording, capped at a server-side length - the stored chunk text, not
+            a rendering of it, so a table reads as the Markdown the chat path is given.
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+        libraryName:
+          type: string
+          nullable: true
+        documentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >-
+            The document the passage belongs to. Null only for a passage whose document row no
+            longer resolves.
+        fileName:
+          type: string
+          nullable: true
+        chunkIndex:
+          type: integer
+          nullable: true
+          description: The passage's position in the document, as the citation markers count it.
+        location:
+          type: string
+          nullable: true
+          description: >-
+            Where the passage sits in the original - "Abschn. 4.2 › Fristsetzung", "S. 2-4" - or
+            null where the indexing pipeline could determine none (plain text without headings, a
+            format without page breaks).
+          example: Abschn. 4.2 › Fristsetzung
+        metadata:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/SourceMetadataEntry"
+          description: >-
+            The document's schema metadata, read from the document and therefore identical for
+            every passage of it. Null for a document without any value.
+        relevanceScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: >-
+            Reciprocal of this hit's 1-based position (1.0 for the first, 0.5 for the second) - a
+            rank, not a similarity: a lexical hit carries a ts_rank and a vector hit a cosine
+            similarity, which are not comparable, while the rank is.
+          example: 1.0
+        downloadUrl:
+          type: string
+          nullable: true
+          description: >-
+            Path of the original behind this hit (GET /api/v1/documents/{documentId}/content),
+            relative to this API. Null when documentId is null.
+          example: /api/v1/documents/3f9a6b2e-1c4d-4e8a-9f0b-2d6c8e1a5b7d/content
+
+    SearchHitContentResponse:
+      type: object
+      required: [hitId, text, whole, truncated, characterLimit]
+      description: >-
+        The text behind one hit (#1720): the passage with its neighbours by default, the whole
+        extracted text of the document with full=true.
+      properties:
+        hitId:
+          type: string
+        documentId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+        libraryName:
+          type: string
+          nullable: true
+        chunkIndex:
+          type: integer
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        headingPath:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: >-
+            The headings above the passage, outermost first - the structural context an assistant
+            needs to place a quotation. Empty for a passage whose Fundort names a page, a slide or
+            a row rather than a section.
+          example: [Verfahren, Fristsetzung]
+        text:
+          type: string
+          description: >-
+            The passage with its adjoining passages, or - with full=true - the whole extracted
+            text of the document, in both cases as the chat path receives it (tables as Markdown).
+            The overlap two adjoining passages share is joined once, not twice.
+        whole:
+          type: boolean
+          description: True when full=true was honoured and the whole document is behind text.
+        truncated:
+          type: boolean
+          description: >-
+            True when text was cut at characterLimit. Only ever true for whole=true - a passage
+            with its neighbours is bounded by the chunk size and never reaches the limit.
+        characterLimit:
+          type: integer
+          description: The server-side character cap of this endpoint.
+          example: 200000
+        metadata:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/SourceMetadataEntry"
+        downloadUrl:
+          type: string
+          nullable: true
 
     ErrorResponse:
       type: object
