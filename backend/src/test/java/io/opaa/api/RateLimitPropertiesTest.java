@@ -19,7 +19,7 @@ class RateLimitPropertiesTest {
       new RateLimitProperties.EndpointLimit(1, 1, 1);
 
   private static RateLimitProperties properties(List<String> cidrs, LocalAuthLimits localAuth) {
-    return new RateLimitProperties(true, cidrs, ANY, ANY, ANY, ANY, ANY, localAuth);
+    return new RateLimitProperties(true, cidrs, ANY, ANY, ANY, ANY, ANY, ANY, localAuth);
   }
 
   @Test

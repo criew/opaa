@@ -211,6 +211,22 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
     }
   }
 
+  /**
+   * The chat search is reachable in a signed-in session only (docs/features/chat-list.md): a token
+   * reaches no one's chats, not even its owner's. Refused by the positive list, before the space or
+   * the term is looked at.
+   */
+  @Test
+  void aValidTokenDoesNotReachTheChatSearch() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/spaces/{spaceId}/chats/search", UUID.randomUUID())
+                .with(bearer(rawValue))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"query\":\"Widerspruch\"}"))
+        .andExpect(status().isForbidden());
+  }
+
   @Test
   void aValidTokenIsRefusedWithoutBeingAuthenticatedAsTheDevelopmentUser() throws Exception {
     // Under local,dev every request without this chain would be the development user - a 403

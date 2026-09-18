@@ -2,6 +2,8 @@ package io.opaa.api;
 
 import io.opaa.api.dto.ChatCreateRequest;
 import io.opaa.api.dto.ChatDetail;
+import io.opaa.api.dto.ChatSearchRequest;
+import io.opaa.api.dto.ChatSearchResponse;
 import io.opaa.api.dto.ChatSummary;
 import io.opaa.api.dto.ChatUpdateRequest;
 import io.opaa.auth.Caller;
@@ -49,6 +51,17 @@ public class ChatController {
   @GetMapping("/spaces/{spaceId}/chats")
   public List<ChatSummary> listSpaceChats(@PathVariable UUID spaceId, @Caller CurrentUser caller) {
     return ChatResponseMapper.toSummaryResponses(chatService.listChats(spaceId, caller.id()));
+  }
+
+  /** The term travels in the body, never in the URL, so no access log records it. */
+  @PostMapping("/spaces/{spaceId}/chats/search")
+  public ChatSearchResponse searchSpaceChats(
+      @PathVariable UUID spaceId,
+      @Valid @RequestBody ChatSearchRequest request,
+      @Caller CurrentUser caller) {
+    return ChatSearchResponseMapper.toResponse(
+        chatService.searchChats(
+            spaceId, caller.id(), request.getQuery(), request.getPage(), request.getPageSize()));
   }
 
   @GetMapping("/chats/{chatId}")
