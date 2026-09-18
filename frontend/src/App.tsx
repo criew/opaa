@@ -43,6 +43,7 @@ import LlmModelManagementPage from './pages/LlmModelManagementPage'
 import OidcProviderManagementPage from './pages/OidcProviderManagementPage'
 import SearchIndexingAdminPage from './pages/SearchIndexingAdminPage'
 import MailSettingsPage from './pages/MailSettingsPage'
+import ExternalAccessLibrariesPage from './pages/ExternalAccessLibrariesPage'
 import ExternalAccessSettingsPage from './pages/ExternalAccessSettingsPage'
 
 const ADMIN_SECTIONS = [
@@ -56,6 +57,7 @@ const ADMIN_SECTIONS = [
   { label: 'Identitätsanbieter', to: '/admin/identity-providers' },
   { label: 'E-Mail', to: '/admin/mail' },
   { label: 'Fremdzugänge', to: '/admin/external-access' },
+  { label: 'Fremdzugangsfreigaben', to: '/admin/library-releases' },
   { label: 'Suche & Indexierung', to: '/admin/search' },
 ]
 
@@ -168,6 +170,7 @@ export default function App() {
                 <Route path="admin/models" element={<Navigate to="/admin/models/chat" replace />} />
                 <Route path="admin/models/:tab" element={<LlmModelManagementPage />} />
                 <Route path="admin/identity-providers" element={<OidcProviderManagementPage />} />
+                <Route path="admin/library-releases" element={<ExternalAccessLibrariesPage />} />
                 {/* Die beiden Bereiche der E-Mail-Seite sind Routen, damit ein Verweis auf die
                     Vorlagenverwaltung dort landet (#1542). */}
                 <Route path="admin/mail" element={<Navigate to="/admin/mail/server" replace />} />

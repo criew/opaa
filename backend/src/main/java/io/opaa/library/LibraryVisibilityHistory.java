@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import io.opaa.api.types.ExternalAccessState;
 import io.opaa.api.types.LibraryVisibility;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,7 +14,7 @@ import java.util.UUID;
 
 /**
  * A half-open interval {@code [validFrom, validTo)} recording one {@link LibraryVisibility}/{@code
- * listed} state a {@link KnowledgeLibrary} was in (#238, see
+ * listed}/Fremdzugangsfreigabe state a {@link KnowledgeLibrary} was in (#238, see
  * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten) - the third
  * source the readable-library formula depends on besides direct and group grants ({@link
  * AssetGrantHistory}). {@code validTo == null} means the interval is still open, i.e. this is the
@@ -38,6 +39,18 @@ public class LibraryVisibilityHistory {
   @Column(name = "listed", nullable = false)
   private boolean listed;
 
+  /**
+   * The third reach field the interval records (#1731) - the release for Fremdzugaenge, with the
+   * expiry it ran to. {@code NEVER_SET}/{@code null} for every interval of a library nobody ever
+   * released, which is what makes the Stichtag answer "not released" rather than "unknown".
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "external_access_state", nullable = false, length = 20)
+  private ExternalAccessState externalAccessState;
+
+  @Column(name = "external_access_expires_at")
+  private Instant externalAccessExpiresAt;
+
   @Enumerated(EnumType.STRING)
   @Column(name = "cause", nullable = false, length = 30)
   private LibraryVisibilityHistoryCause cause;
@@ -61,6 +74,8 @@ public class LibraryVisibilityHistory {
       UUID organizationId,
       LibraryVisibility visibility,
       boolean listed,
+      ExternalAccessState externalAccessState,
+      Instant externalAccessExpiresAt,
       LibraryVisibilityHistoryCause cause,
       UUID actorUserId,
       Instant validFrom) {
@@ -69,6 +84,8 @@ public class LibraryVisibilityHistory {
     this.organizationId = organizationId;
     this.visibility = visibility;
     this.listed = listed;
+    this.externalAccessState = externalAccessState;
+    this.externalAccessExpiresAt = externalAccessExpiresAt;
     this.cause = cause;
     this.actorUserId = actorUserId;
     this.validFrom = validFrom;
@@ -90,6 +107,8 @@ public class LibraryVisibilityHistory {
             library.getOrganizationId(),
             library.getVisibility(),
             library.isListed(),
+            library.getExternalAccessState(),
+            library.getExternalAccessExpiresAt(),
             cause,
             actorUserId,
             at);
@@ -124,6 +143,14 @@ public class LibraryVisibilityHistory {
 
   public boolean isListed() {
     return listed;
+  }
+
+  public ExternalAccessState getExternalAccessState() {
+    return externalAccessState;
+  }
+
+  public Instant getExternalAccessExpiresAt() {
+    return externalAccessExpiresAt;
   }
 
   public LibraryVisibilityHistoryCause getCause() {

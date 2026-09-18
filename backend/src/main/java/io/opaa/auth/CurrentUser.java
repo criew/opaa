@@ -83,6 +83,21 @@ public final class CurrentUser {
     return systemRole == SystemRole.SYSTEM_ADMIN;
   }
 
+  /**
+   * The caller of an external-access token call (ADR-0035): the person's identity, but never their
+   * system role. A token reaches the paths of {@code ExternalAccessPathAllowlist} and nothing else,
+   * whatever the person may do in the web interface - and an endpoint that authorises out of this
+   * snapshot rather than out of {@code @PreAuthorize} must not be able to undo that.
+   */
+  static CurrentUser forExternalAccess(User user) {
+    return new CurrentUser(
+        user.getId(),
+        user.getOrganizationId(),
+        SystemRole.USER,
+        user.getDisplayName(),
+        user.getEmail());
+  }
+
   static CurrentUser from(User user) {
     return new CurrentUser(
         user.getId(),

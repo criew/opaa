@@ -12,7 +12,10 @@ public enum ExternalAccessTokenRevocationReason {
   OWNER(ExternalAccessTokenStatus.REVOKED),
   /** The Systemverwaltung blocked it - an incident, or a Sperre je Person. */
   ADMIN(ExternalAccessTokenStatus.BLOCKED),
-  /** The account behind it was locked, deactivated or handed over. */
+  /**
+   * The access of the person behind it ended - the account was locked, or it was handed over to a
+   * provider identity. Set by {@code ExternalAccessTokenAccountLifecycleListener}.
+   */
   ACCOUNT_LIFECYCLE(ExternalAccessTokenStatus.BLOCKED),
   /** Its expiry passed - the common case, not the exception. */
   EXPIRED(ExternalAccessTokenStatus.EXPIRED);

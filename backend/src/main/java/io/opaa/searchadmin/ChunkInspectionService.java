@@ -16,8 +16,10 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Reads stored chunks straight out of the pgvector table for the administration page (#1230) - text
- * and metadata only, the embedding column is never selected.
+ * Reads stored chunks straight out of the pgvector table - text and metadata only, the embedding
+ * column is never selected. Two callers: the administration page (#1230), which lists a whole
+ * document at once, and the reading path {@code io.opaa.search} (#1720), which reads a bounded
+ * window or one page at a time and never materializes a whole document.
  *
  * <p>The organization boundary is checked against the {@code documents} table, never against the
  * chunk's own {@code organization_id} metadatum: older chunks may lack it, and a chunk whose
@@ -82,11 +84,7 @@ public class ChunkInspectionService {
    * organization - the same answer for both, so the endpoint never confirms a foreign id.
    */
   public DocumentChunks listDocumentChunks(UUID organizationId, UUID documentId) {
-    Document document =
-        documentRepository
-            .findById(documentId)
-            .filter(candidate -> organizationId.equals(candidate.getOrganizationId()))
-            .orElseThrow(() -> new NotFoundException("Das Dokument wurde nicht gefunden."));
+    Document document = requireDocument(organizationId, documentId);
     String libraryName = libraryName(document);
     List<ChunkInspection> chunks =
         jdbcTemplate
@@ -109,6 +107,72 @@ public class ChunkInspectionService {
         libraryName,
         document.getChunkCount(),
         chunks);
+  }
+
+  /**
+   * The chunks of {@code documentId} whose {@code chunk_index} lies within {@code [fromIndex,
+   * toIndex]}, in index order. Bounded at the source: the caller that only needs a passage and its
+   * neighbours must not pay for a document with tens of thousands of chunks (#1720). A chunk
+   * without a {@code chunk_index} is not in any window.
+   */
+  public List<ChunkInspection> listChunkWindow(
+      UUID organizationId, UUID documentId, int fromIndex, int toIndex) {
+    Document document = requireDocument(organizationId, documentId);
+    String libraryName = libraryName(document);
+    return jdbcTemplate
+        .query(
+            selectSql
+                + " WHERE metadata->>'"
+                + DOCUMENT_ID_KEY
+                + "' = ? AND (metadata->>'"
+                + CHUNK_INDEX_KEY
+                + "')::integer BETWEEN ? AND ? ORDER BY (metadata->>'"
+                + CHUNK_INDEX_KEY
+                + "')::integer",
+            this::toStoredChunk,
+            documentId.toString(),
+            fromIndex,
+            toIndex)
+        .stream()
+        .map(chunk -> describe(chunk, document, libraryName))
+        .toList();
+  }
+
+  /**
+   * At most {@code limit} chunks of {@code documentId} with a {@code chunk_index} greater than
+   * {@code afterIndex}, in index order - the page a caller reading a whole document walks with, so
+   * a character cap can stop the walk instead of trimming an already materialized text (#1720).
+   * {@code afterIndex} of {@code null} starts at the first chunk.
+   */
+  public List<ChunkInspection> listChunkPage(
+      UUID organizationId, UUID documentId, Integer afterIndex, int limit) {
+    Document document = requireDocument(organizationId, documentId);
+    String libraryName = libraryName(document);
+    return jdbcTemplate
+        .query(
+            selectSql
+                + " WHERE metadata->>'"
+                + DOCUMENT_ID_KEY
+                + "' = ? AND (metadata->>'"
+                + CHUNK_INDEX_KEY
+                + "')::integer > ? ORDER BY (metadata->>'"
+                + CHUNK_INDEX_KEY
+                + "')::integer LIMIT ?",
+            this::toStoredChunk,
+            documentId.toString(),
+            afterIndex == null ? Integer.MIN_VALUE : afterIndex,
+            limit)
+        .stream()
+        .map(chunk -> describe(chunk, document, libraryName))
+        .toList();
+  }
+
+  /** The document, or {@link NotFoundException} for an unknown id and a foreign one alike. */
+  private Document requireDocument(UUID organizationId, UUID documentId) {
+    return documentRepository
+        .findById(documentId)
+        .filter(candidate -> organizationId.equals(candidate.getOrganizationId()))
+        .orElseThrow(() -> new NotFoundException("Das Dokument wurde nicht gefunden."));
   }
 
   private String libraryName(Document document) {

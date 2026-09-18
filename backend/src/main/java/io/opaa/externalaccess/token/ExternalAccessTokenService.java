@@ -151,6 +151,39 @@ public class ExternalAccessTokenService {
     return new IssuedExternalAccessToken(saved, rawValue, namesOf(selected));
   }
 
+  /**
+   * Exactly the libraries {@link #issue} accepts from {@code ownerId}: readable by that person and
+   * released for external access right now, by name. The offering dialogue and the check are the
+   * same set on purpose - anything shown here is issuable, anything else is refused.
+   *
+   * <p>Empty while the channel is closed, because no issuance would be accepted then either.
+   */
+  @Transactional(readOnly = true)
+  public List<EligibleLibrary> eligibleLibraries(UUID ownerId, UUID organizationId) {
+    if (!settings.isEnabled()) {
+      return List.of();
+    }
+    Set<UUID> readable = libraryAccess.readableLibraryIds(ownerId, organizationId);
+    if (readable.isEmpty()) {
+      return List.of();
+    }
+    Set<UUID> released = release.releasedAmong(readable);
+    return libraries.findAllById(released).stream()
+        .map(
+            library ->
+                new EligibleLibrary(
+                    library.getId(),
+                    library.getName(),
+                    library.getDescription(),
+                    library.getExternalAccessExpiresAt()))
+        .sorted(Comparator.comparing(EligibleLibrary::name).thenComparing(EligibleLibrary::id))
+        .toList();
+  }
+
+  /** A library a new token may name, with the end of the release that makes it selectable. */
+  public record EligibleLibrary(
+      UUID id, String name, String description, Instant releaseExpiresAt) {}
+
   /** The caller's own tokens, newest first, each with the names of its selected libraries. */
   @Transactional(readOnly = true)
   public List<ExternalAccessTokenView> listOwn(UUID ownerId) {

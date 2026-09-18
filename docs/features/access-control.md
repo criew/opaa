@@ -88,7 +88,9 @@ und „organisationsweit lesbar" und deshalb genau zu bestimmen:**
 
 - Gedeckelt werden `visibility`, `listed`, die **Freigabe für Fremdzugänge**
   ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)) und Grants an Gruppen
-  oberhalb einer festgelegten Größe.
+  oberhalb einer festgelegten Größe. Das Feld der Fremdzugangsfreigabe existiert seit #1731
+  (`knowledge_libraries.external_access_state`, Zustand `SUSPENDED` ist im Modell vorgesehen und
+  wird von nichts gesetzt); die Deckelung selbst gehört zu diesem Abschnitt und kommt mit #797.
 - Wird die Obergrenze **nachträglich gesenkt**, werden bereits erteilte weitergehende Grants
   **ausgesetzt, nicht stillschweigend entzogen**: Sie stehen auf einer Liste des Bibliotheks-Eigentümers
   und wirken nicht mehr, bis er sie anpasst. Für eine Prüfung ist das der Unterschied zwischen „behoben"

@@ -144,7 +144,13 @@ Drei Festlegungen dazu:
   des Cockpits, der ohne mitbestimmungsrechtliche Fragen auskommt.
 - **Nutzungsstatistiken sind vollständig abschaltbar**, ohne dass Suche, Chat oder Assets darunter leiden.
   Das ist eine Zusage an die Dienstvereinbarung: Ein Haus, das gar keine Nutzungsauswertung will, bekommt
-  ein voll funktionsfähiges Produkt.
+  ein voll funktionsfähiges Produkt. **Der Schalter hängt an der Erhebung, nicht an der Anzeige** — was
+  nicht erhoben wird, kann später nicht ausgewertet werden, auch nicht durch einen neuen Bericht. Für die
+  Auswertung je Asset gilt zusätzlich eine **Voreinstellung „aus"** und eine Schwelle, die an der Zahl der
+  tatsächlich nutzenden Personen statt an der Größe der Einheit bemessen wird; ein Asset hat oft nur eine
+  Handvoll Nutzende, und eine an der Einheit bemessene Schwelle greift dort nie (siehe
+  [spaces-and-assets.md](./spaces-and-assets.md#nutzungstransparenz)). Gebaut ist von dieser Schicht noch
+  nichts.
 
 Die Ansicht für die Leitung enthält keine Angabe, die die Ansicht für die Revision nicht enthalten dürfte,
 und umgekehrt — die Trennung der Zugriffswege aus

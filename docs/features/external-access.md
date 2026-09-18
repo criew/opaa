@@ -203,6 +203,13 @@ Jede Bibliothek trägt ein Merkmal **„darf über Fremdzugänge genutzt werden"
 Gesetzt wird es von dem, der die Bibliothek verwaltet — mindestens Verwalter-Rolle an ihr — sowie von
 der Systemverwaltung.
 
+> **Gebaut (#1731).** Das Merkmal, seine Pflichtbefristung, die Historisierung, der Ablauflauf, die
+> Wiedervorlage per Mail, die beiden Protokollereignisse, der Schalter im Zugriffsbereich der
+> Bibliothek und die Liste der Systemverwaltung stehen. Nicht gebaut und hier ausdrücklich nicht
+> vorweggenommen: die Deckelung durch die Freigabe-Obergrenze (#797, Punkt 2 unten), die Sperre bei
+> „Nachfolge offen" (Punkt 4 unten) und die Tokenzählung, die bis zu den Zugangstokens (#1718) als
+> `0` ausgewiesen wird.
+
 ### Die Freigabe ist ein Reichweitenfeld und wird wie eines behandelt
 
 Das Merkmal ist fachlich dasselbe wie `visibility` und `listed`: eine Stufe der Reichweite, an der
@@ -384,24 +391,37 @@ Gebaut sind Modell und Schema (`external_access_tokens` samt der unveränderlich
 benutzt", der Widerruf durch die Person, die Verwaltungsliste ohne Nutzungsdatum und ohne
 Personenfilter, die beiden Sperren der Systemverwaltung, der Authentifizierungsfilter samt eigener
 Filterkette, die Erinnerungsmail 14 und 3 Tage vor dem Ablauf, das Außerkrafttreten mit
-Protokolleintrag und die an die Protokollfrist gekoppelte Löschfrist.
+Protokolleintrag — sowohl beim Ablauf als auch beim Kontenlebenszyklus: Sperre eines Kontos und
+abgeschlossene Übergabe an eine Anbieteridentität setzen die Tokens der Person in derselben
+Transaktion außer Kraft — und die an die Protokollfrist gekoppelte Löschfrist.
 
 Schalter, Netzbereich und Höchstlaufzeit kommen aus den Kanaleinstellungen
 ([#1717](https://github.com/criew/opaa/issues/1717)) und werden **je Aufruf** gelesen: Ist der
 Schalter zu, wird jedes Token abgewiesen, und die Tokenzeilen bleiben unverändert erhalten.
 
-Zwei Dinge stehen noch aus und sind bewusst als Naht angelegt, nicht als Provisorium:
+Die Bibliotheksfreigabe aus [#1731](https://github.com/criew/opaa/issues/1731) wirkt: Die
+effektive Sicht liest das Reichweitenfeld je Aufruf über `KnowledgeLibrary#isExternalAccessActive`,
+und die Freigabeansicht der Verantwortlichen zeigt in `tokenCount` die Zahl der Tokens, in denen
+die Bibliothek gerade wirkt — eine Zahl, ohne Personenauflösung.
 
-- **Die Bibliotheksfreigabe** ist eine Frage an `ExternalAccessLibraryRelease`, die heute jede
-  lesbare Bibliothek als freigegeben behandelt; [#1731](https://github.com/criew/opaa/issues/1731)
-  liefert das Reichweitenfeld und löst den Platzhalter ab.
-- **Die Freigabeliste der erreichbaren Pfade ist leer.** Ein Zugangstoken authentifiziert sich
-  erfolgreich und erreicht anschließend nichts — jeder Pfad wird mit `403` abgewiesen. Such- und
-  Abrufendpunkte ([#1720](https://github.com/criew/opaa/issues/1720)) und der MCP-Server
-  ([#1721](https://github.com/criew/opaa/issues/1721)) tragen ihre Pfade dort ein, sobald es sie
-  gibt. Der bestehende Endpunkt „Bibliotheken auflisten" der Weboberfläche steht bewusst **nicht**
-  auf der Liste: Er antwortet mit allem, was die Person lesen darf, nicht mit der effektiven Sicht
-  des Tokens.
+`GET /api/v1/external-access/eligible-libraries` gibt genau die Menge zurück, die eine Ausstellung
+annimmt — lesbar **und** freigegeben, mit dem Ablauf der Freigabe je Eintrag; was dort nicht steht,
+wird beim Anlegen mit `400` abgewiesen. Bei geschlossenem Kanal ist sie leer, weil dann auch keine
+Ausstellung angenommen würde.
+
+Die Freigabeliste der erreichbaren Pfade führt seit
+[#1720](https://github.com/criew/opaa/issues/1720) genau die drei Lesewege: `POST /api/v1/search`,
+`GET /api/v1/search/hits/{hitId}` und `GET /api/v1/search/libraries`. Die effektive Sicht dieser
+Aufrufe bildet dieselbe Stelle wie überall sonst; die Token-Kennung ist zugleich der Schlüssel des
+Kontingents. Alles andere wird mit `403` abgewiesen — auch der Endpunkt „Bibliotheken auflisten" der
+Weboberfläche (er antwortet mit allem, was die Person lesen darf, nicht mit der Sicht des Tokens)
+und der Inhaltsabruf eines Dokuments: Der Kanal gibt Fundstellen heraus, keine Originaldateien,
+weshalb einem Token-Aufruf gar kein Download-Link angeboten wird.
+
+Eines steht noch aus:
+
+- **Der MCP-Server** ([#1721](https://github.com/criew/opaa/issues/1721)) trägt `/mcp` in dieselbe
+  Freigabeliste ein, sobald es ihn gibt.
 
 ### Die Oberfläche (#1719)
 
@@ -610,16 +630,24 @@ gehört in das Sicherheitsmonitoring, nicht in die geschlossene Ereignisliste; i
 gelangt allein die **daraus folgende Sperre** des Tokens als Zustandsänderung. Was dabei entsteht und
 was nicht:
 
-- **Eine Meldung an die Systemverwaltung bei Überschreitung**, mit Zeitpunkt, Schwelle, gemessenem
-  Wert und der Token-Kennung — dazu ein Eintrag im technischen Anwendungslog mit kurzer Frist und
-  ohne Auswertungsoberfläche. Kein Verlauf, keine Zeitreihe, keine Kurve, kein Bericht — die Zählung
-  selbst lebt im Speicher und ist nach dem Fenster weg. Eine Beruhigungsfrist verhindert, dass ein
-  anhaltender Vorgang in eine Ereignisreihe zerfällt, die faktisch ein Verlauf wäre.
+- **Eine Meldung an die Systemverwaltung bei Überschreitung**, mit dem Zeitfenster und der
+  Token-Kennung — dazu ein Eintrag im technischen Anwendungslog mit kurzer Frist und ohne
+  Auswertungsoberfläche, der zusätzlich Schwelle und gemessenen Wert trägt. Kein Verlauf, keine
+  Zeitreihe, keine Kurve, kein Bericht — die Zählung selbst lebt im Speicher und ist nach dem
+  Fenster weg. Eine Beruhigungsfrist verhindert, dass ein anhaltender Vorgang in eine Ereignisreihe
+  zerfällt, die faktisch ein Verlauf wäre.
+- **Die Meldung wird höchstens 14 Tage aufbewahrt**, gelesen oder nicht, und dann gelöscht. Eine
+  Meldung, die niemand lesen kann, ist keine; eine Meldung, die stehen bleibt, ist nach
+  Zeitpunkt sortiert genau der Verlauf je Token, den dieses Kapitel ausschließt. Die Frist ist
+  deshalb eine Konstante und keine Einstellung — sie ist kein Betriebsparameter, sondern die
+  Grenze, die den Alarm mit „kein Verlauf" vereinbar macht. Aus demselben Grund steht der
+  **gemessene Wert nicht in der Meldung**: Die Zahl wäre es, die eine Folge aufbewahrter Meldungen
+  zu einer Nutzungskurve machte.
 - **Die Token-Kennung führt zur Person, und das gehört gesagt.** Wer die Meldung erhält, kann sie in
   der Tokentabelle nachschlagen; ein Alarm, nach dem niemand handeln kann, ist keiner. Die Meldung
   steht deshalb unter derselben Zweckbindung wie der übrige Nachweisbestand: Vorfall und Sperre, nicht
   arbeitsrechtliche, disziplinarische oder leistungsbezogene Fragen. Sie wird nicht zu einer Auswertung
-  je Person zusammengeführt, und sie wird nicht aufbewahrt.
+  je Person zusammengeführt, und sie wird nicht dauerhaft aufbewahrt, sondern höchstens 14 Tage.
 - **Kein zweiter Zweck.** Der Alarm dient dem Vorfall, nicht dem Einstieg in eine Nutzungsbeobachtung.
   Er löst aus, wenn ein Mehrfaches des üblichen Kanalaufkommens erreicht ist, nicht bei fleißiger
   Arbeit.

@@ -18,6 +18,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +41,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ExternalAccessTokenAdminService {
 
+  /** The cap of the unpaged Bestandsliste; see {@link #list}. */
+  static final int MAX_ROWS = 2_000;
+
   private final ExternalAccessTokenRepository tokens;
   private final UserRepository users;
   private final ExternalAccessTokenService selfService;
@@ -59,23 +64,27 @@ public class ExternalAccessTokenAdminService {
   }
 
   /**
-   * Every token of the installation, soonest expiry first, optionally narrowed by state and by "is
-   * still valid and runs out within N days".
+   * The Bestandsliste, soonest expiry first, optionally narrowed by state or by "is still valid and
+   * runs out within N days". Both filters are database predicates, not a pass over every row of the
+   * installation, and the result is capped at {@link #MAX_ROWS} - the endpoint has no paging, so a
+   * deployment that outgrew the cap is a visible, bounded gap rather than a growing query.
    */
   @Transactional(readOnly = true)
   public List<ExternalAccessTokenAdminView> list(
       ExternalAccessTokenStatus status, Integer expiringWithinDays) {
     Instant now = clock.instant();
-    Instant horizon =
-        expiringWithinDays == null ? null : now.plus(Duration.ofDays(expiringWithinDays));
-    List<ExternalAccessToken> rows =
-        tokens.findAllByOrderByExpiresAtAsc().stream()
-            .filter(token -> status == null || token.status(now) == status)
-            .filter(
-                token ->
-                    horizon == null
-                        || (token.isActive(now) && !token.getExpiresAt().isAfter(horizon)))
-            .toList();
+    Pageable page = PageRequest.of(0, MAX_ROWS);
+    List<ExternalAccessToken> rows;
+    if (expiringWithinDays != null) {
+      rows =
+          tokens.findExpiringWithinForAdminList(
+              now, now.plus(Duration.ofDays(expiringWithinDays)), page);
+      if (status != null) {
+        rows = rows.stream().filter(token -> token.status(now) == status).toList();
+      }
+    } else {
+      rows = byStatus(status, now, page);
+    }
     Map<UUID, String> libraryNames = selfService.namesOf(selfService.allSelected(rows));
     Map<UUID, User> owners =
         users
@@ -91,6 +100,26 @@ public class ExternalAccessTokenAdminService {
                     new ExternalAccessTokenService.ExternalAccessTokenView(token, libraryNames)
                         .libraries()))
         .toList();
+  }
+
+  private List<ExternalAccessToken> byStatus(
+      ExternalAccessTokenStatus status, Instant now, Pageable page) {
+    if (status == null) {
+      return tokens.findForAdminList(page);
+    }
+    return switch (status) {
+      case ACTIVE -> tokens.findActiveForAdminList(now, page);
+      case EXPIRED -> tokens.findExpiredForAdminList(now, page);
+      case REVOKED ->
+          tokens.findByRevocationReasonsForAdminList(
+              List.of(ExternalAccessTokenRevocationReason.OWNER), page);
+      case BLOCKED ->
+          tokens.findByRevocationReasonsForAdminList(
+              List.of(
+                  ExternalAccessTokenRevocationReason.ADMIN,
+                  ExternalAccessTokenRevocationReason.ACCOUNT_LIFECYCLE),
+              page);
+    };
   }
 
   /** Blocks one token; already dead tokens keep the reason that ended them. */

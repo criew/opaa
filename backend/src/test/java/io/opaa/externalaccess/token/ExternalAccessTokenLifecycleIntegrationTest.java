@@ -8,6 +8,7 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditRetentionSettingsService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
@@ -37,6 +38,8 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The three daily steps of the access tokens (#1718): the reminder before an expiry, the
@@ -57,6 +60,7 @@ class ExternalAccessTokenLifecycleIntegrationTest {
   @Autowired private ExternalAccessTokenRepository tokens;
   @Autowired private ExternalAccessTokenLapseStep lapseStep;
   @Autowired private ExternalAccessTokenRetentionStep retentionStep;
+  @Autowired private AuditEventRecorder audit;
   @Autowired private AuditRetentionSettingsService retention;
   @Autowired private ExternalAccessSettingsService settings;
   @Autowired private Clock clock;
@@ -180,6 +184,47 @@ class ExternalAccessTokenLifecycleIntegrationTest {
   }
 
   @Test
+  void aFailedEntryLeavesTheTokenPendingForTheNextRun() {
+    ExternalAccessToken stubborn = store("Scheitert", clock.instant().minus(Duration.ofMinutes(1)));
+    ExternalAccessToken neighbour = store("Daneben", clock.instant().minus(Duration.ofMinutes(1)));
+    ExternalAccessTokenLapseStep failingStep =
+        new ExternalAccessTokenLapseStep(
+            tokens,
+            new ExternalAccessTokenLapseService(tokens, users, audit, clock) {
+              @Override
+              public boolean recordLapse(UUID tokenId, Instant now) {
+                if (tokenId.equals(stubborn.getId())) {
+                  throw new IllegalStateException("the audit write failed");
+                }
+                return super.recordLapse(tokenId, now);
+              }
+            });
+
+    failingStep.run(clock.instant());
+
+    // No marker, so findLapsed offers it again - a lost entry must never become unreachable.
+    assertThat(tokens.findById(stubborn.getId()).orElseThrow().getLapseRecordedAt()).isNull();
+    assertThat(tokens.findLapsed(clock.instant()))
+        .extracting(ExternalAccessToken::getId)
+        .contains(stubborn.getId());
+    // ... and one failing token does not stop the run.
+    assertThat(tokens.findById(neighbour.getId()).orElseThrow().getLapseRecordedAt()).isNotNull();
+  }
+
+  @Test
+  void theMarkerAndTheEntryShareOneTransaction() throws Exception {
+    Transactional annotation =
+        ExternalAccessTokenLapseService.class
+            .getMethod("recordLapse", UUID.class, Instant.class)
+            .getAnnotation(Transactional.class);
+
+    // The marker is what keeps the entry to exactly one per token - and therefore also what would
+    // hide a lost entry forever. Both writes must commit together, per token.
+    assertThat(annotation).isNotNull();
+    assertThat(annotation.propagation()).isEqualTo(Propagation.REQUIRES_NEW);
+  }
+
+  @Test
   void aRevokedTokenGetsItsMarkerWithoutASecondEvent() {
     ExternalAccessToken token = store("Widerrufen", clock.instant().plus(Duration.ofDays(30)));
     token.revoke(ExternalAccessTokenRevocationReason.OWNER, clock.instant());
@@ -233,13 +278,26 @@ class ExternalAccessTokenLifecycleIntegrationTest {
     ExternalAccessToken inSeven = store("In sieben Tagen", noonOn(now, 7, zone));
     RecordingMailer recording = new RecordingMailer();
     ExternalAccessTokenExpiryReminderStep step =
-        new ExternalAccessTokenExpiryReminderStep(tokens, users, recording, zone);
+        new ExternalAccessTokenExpiryReminderStep(tokens, users, recording, settings, zone);
 
     step.run(now);
 
     assertThat(recording.reminded)
         .containsExactlyInAnyOrder(inFourteen.getName(), inThree.getName())
         .doesNotContain(inSeven.getName());
+  }
+
+  @Test
+  void aClosedChannelSendsNoReminderAtAll() {
+    ZoneId zone = ZoneId.systemDefault();
+    Instant now = clock.instant();
+    store("In drei Tagen", noonOn(now, 3, zone));
+    setChannelEnabled(false);
+    RecordingMailer recording = new RecordingMailer();
+
+    new ExternalAccessTokenExpiryReminderStep(tokens, users, recording, settings, zone).run(now);
+
+    assertThat(recording.reminded).isEmpty();
   }
 
   /** Records which tokens a reminder went out for, without an SMTP server in the way. */

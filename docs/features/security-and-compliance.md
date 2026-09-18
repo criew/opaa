@@ -256,7 +256,9 @@ Schalter, Ablauf-Obergrenze, Kontingent, Netzbereiche, Alarmschwelle — der Ein
 fremde Werkzeuge erzeugt bewusst keinen Eintrag) und — seit #1718 — die persönlichen Zugangstokens
 desselben Kanals (`API_TOKEN_ISSUED` mit Bibliotheksauswahl und Ablauf, `API_TOKEN_REVOKED` mit
 Anlass und der Angabe, ob die Person selbst oder die Systemverwaltung widerrufen hat, und
-`API_TOKEN_EXPIRED` beim Außerkrafttreten durch den täglichen Lauf — alle drei mit der
+`API_TOKEN_EXPIRED` beim Außerkrafttreten, mit dem Anlass `EXPIRED` aus dem täglichen Lauf oder
+`ACCOUNT_LIFECYCLE` beim Sperren eines Kontos und bei der abgeschlossenen Übergabe an eine
+Anbieteridentität — alle drei mit der
 Token-Kennung statt des frei formulierten Tokennamens, und die **Nutzung** eines Tokens erzeugt
 keinen Eintrag). Die Anfrage
 „Passwort vergessen" ändert keinen Zustand; die Bestätigung der eigenen Adresse ist eine Handlung
@@ -607,6 +609,21 @@ Recht falsch, nicht bloß lückenhaft. Die Historie überlebt die Löschung eine
 (siehe [ADR-0016](../decisions/0016-loeschschicksal-rechtehistorie.md)): Die Fachobjekt-Spalten tragen
 bewusst keinen Fremdschlüssel, damit eine reguläre Lösch-Operation die Beweislage nicht mit sich reißt.
 
+**Umsetzungsstand der Fremdzugangsfreigabe (#1731):** Das dritte Reichweitenfeld — die Freigabe einer
+Wissensbibliothek für Fremdzugänge — ist gebaut und liegt im selben Intervall wie `visibility` und
+`listed`, mit demselben Schreibpfadschutz (`KnowledgeLibrary#updateExternalAccess` ist
+paketprivat). Setzen, Zurücknehmen und Erlöschen erzeugen je einen Protokolleintrag
+(`ASSET_EXTERNAL_ACCESS_CHANGED`, `ASSET_EXTERNAL_ACCESS_EXPIRED`) und öffnen je ein neues Intervall;
+der Ablauflauf schreibt ohne handelnde Person, unter einem Systemakteur. Die
+Befristung **wirkt im Augenblick ihres Ablaufs**, nicht erst mit dem nächtlichen Lauf: Der Lauf
+trägt Protokoll und Historie nach, er ist nicht die Bedingung der Wirkung — bei einer Instanz
+(ADR-0021) wäre er das sonst tagelang. Der Stichtag „war diese
+Bibliothek freigegeben?" wird aus der Historie allein beantwortet
+(`PermissionHistoryService#externalAccessActiveAsOf`), also auch nach der monatsweisen Löschung des
+Protokollzeitraums. **Aussetzen** ist im Modell vorgesehen (Zustand `SUSPENDED`), wird heute aber von
+nichts gesetzt — es gehört zur Freigabe-Obergrenze und kommt mit
+[#797](https://github.com/criew/opaa/issues/797).
+
 **Auflösung der Intervallgrenzen (#1497, [ADR-0032](../decisions/0032-zeitquelle-rechtehistorie.md)):**
 Aufeinanderfolgende Zustandsintervalle desselben Objekts haben streng aufsteigende Grenzen — auch dann,
 wenn beide Änderungen in denselben Tick der Systemuhr fallen. Die Zusage gilt **für Zeilen, die ab
@@ -919,7 +936,11 @@ Auswertung nur geselliger.
 Statistiken sind **aggregiert** je Organisationseinheit. Unterhalb einer Mindestgruppengröße wird der Wert
 **unterdrückt statt angezeigt** — nicht gerundet, nicht anonymisiert dargestellt, sondern nicht
 ausgegeben. Das Produkt setzt eine Voreinstellung und erzwingt eine Untergrenze; die angemessene Zahl
-folgt aus dem tatsächlichen Zuschnitt der Einheiten und gehört in die Dienstvereinbarung.
+folgt aus dem tatsächlichen Zuschnitt der Einheiten und gehört in die Dienstvereinbarung. Für die
+Auswertung **je Asset** gilt eine strengere Fassung, weil ein Asset oft nur eine Handvoll Nutzende hat:
+Voreinstellung „aus", Schalter an der **Erhebung** statt an der Anzeige, und die Schwelle bemisst sich an
+der Zahl der nutzenden Personen — unterhalb davon wird nicht erhoben (siehe
+[spaces-and-assets.md](./spaces-and-assets.md#nutzungstransparenz)).
 
 ### 4. Aufbewahrung mit Ober- und Untergrenze
 

@@ -26,4 +26,16 @@ public interface LibraryVisibilityHistoryRepository
           + "and h.validFrom <= :asOf and (h.validTo is null or h.validTo > :asOf)")
   Set<UUID> findOrganizationWideLibraryIdsAsOf(
       @Param("organizationId") UUID organizationId, @Param("asOf") Instant asOf);
+
+  /**
+   * The one state interval of {@code libraryId} covering {@code asOf}. Zero-length event markers
+   * ({@code validFrom = validTo}) never satisfy {@code validTo > asOf} together with {@code
+   * validFrom <= asOf}, so they are excluded by the condition itself rather than by a filter - the
+   * same reason {@link #findOrganizationWideLibraryIdsAsOf} needs none.
+   */
+  @Query(
+      "select h from LibraryVisibilityHistory h where h.libraryId = :libraryId "
+          + "and h.validFrom <= :asOf and (h.validTo is null or h.validTo > :asOf)")
+  Optional<LibraryVisibilityHistory> findStateAsOf(
+      @Param("libraryId") UUID libraryId, @Param("asOf") Instant asOf);
 }

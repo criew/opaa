@@ -10,17 +10,25 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.api.types.LockReason;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.auth.local.LocalCredentials;
+import io.opaa.auth.local.LocalUserService;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryCreation;
+import io.opaa.library.LibraryExternalAccessService;
+import io.opaa.test.LocalAccountFixtures;
+import io.opaa.test.LocalAccountFixtures.LocalAccount;
+import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
 import java.time.Clock;
@@ -69,7 +77,13 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private ExternalAccessTokenRepository tokens;
   @Autowired private ExternalAccessSettingsService settings;
+  @Autowired private LibraryExternalAccessService libraryRelease;
+  @Autowired private ExternalAccessTokenService tokenService;
+  @Autowired private LocalUserService localUsers;
+  @Autowired private LocalAccountFixturesFactory localAccountFixtures;
   @Autowired private Clock clock;
+
+  private LocalAccountFixtures fixtures;
 
   private User owner;
   private User administrator;
@@ -79,6 +93,9 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
 
   @BeforeEach
   void setUp() throws Exception {
+    fixtures = localAccountFixtures.create();
+    fixtures.cleanUp();
+    fixtures.localProvider(true);
     mockMvc.perform(get("/api/v1/auth/me").with(devUser())).andExpect(status().isOk());
     owner = users.findBySubjectAndIssuer("dev-user", "opaa-dev").orElseThrow();
     mockMvc.perform(get("/api/v1/auth/me").with(devUser("dev-admin"))).andExpect(status().isOk());
@@ -92,7 +109,7 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
                     null,
                     LibraryOwnerType.USER,
                     owner.getId(),
-                    LibraryVisibility.PRIVATE,
+                    LibraryVisibility.ORGANIZATION,
                     false,
                     DocumentSourceType.UPLOAD,
                     null,
@@ -109,6 +126,12 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
             .library()
             .getId();
     removeOwnTokens();
+    libraryRelease.setExternalAccess(
+        CurrentUser.of(
+            owner.getId(), owner.getOrganizationId(), owner.getSystemRole(), "Verantwortliche"),
+        libraryId,
+        true,
+        clock.instant().plus(Duration.ofDays(60)));
     String body =
         mockMvc
             .perform(
@@ -152,6 +175,9 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
   @AfterEach
   void tearDown() {
     removeOwnTokens();
+    // Takes the local accounts of this method with their tokens (ON DELETE CASCADE) and with the
+    // audit rows naming them.
+    fixtures.cleanUp();
     ownLibraryFixtures.removeLibraries(libraryId);
   }
 
@@ -227,11 +253,132 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
   }
 
   @Test
-  void aTokenOfADeletedAccountNoLongerExists() {
-    jdbcTemplate.update("DELETE FROM external_access_tokens WHERE id = ?", tokenId);
+  void aTokenGoesWithTheAccountItBelongsTo() {
+    // The account, not the token row: what is under test is
+    // fk_external_access_tokens_user ... ON DELETE CASCADE.
+    LocalAccount stranger = fixtures.activeUser("kaskade-" + UUID.randomUUID() + "@intern.example");
+    UUID strangerToken = issueFor(stranger);
 
-    assertThat(tokens.findByTokenLookupHash("whatever")).isEmpty();
-    assertThat(tokens.findById(tokenId)).isEmpty();
+    fixtures.deleteAccount(stranger.id());
+
+    assertThat(tokens.findById(strangerToken)).isEmpty();
+  }
+
+  @Test
+  void aClosedChannelRefusesEveryTokenAndTheSameOneWorksAgainAfterwards() throws Exception {
+    setChannelEnabled(false);
+
+    assertRefusedWith(rawValue, "channel_closed");
+    ExternalAccessToken untouched = tokens.findById(tokenId).orElseThrow();
+    assertThat(untouched.getRevokedAt()).isNull();
+    assertThat(untouched.getRevocationReason()).isNull();
+
+    // Per call, not per connection: the next request of the same client is decided anew.
+    setChannelEnabled(true);
+    mockMvc
+        .perform(get("/api/v1/libraries").with(bearer(rawValue)))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void aCallFromOutsideTheChannelsNetworksIsRefused() throws Exception {
+    setAllowedCidrs(List.of("10.11.12.0/24"));
+
+    assertRefusedWith(rawValue, "network_not_allowed");
+  }
+
+  @Test
+  void aTokenOfALockedAccountIsRefused() throws Exception {
+    LocalAccount person = fixtures.activeUser("gesperrt-" + UUID.randomUUID() + "@intern.example");
+    String value = issueRawFor(person);
+    LocalCredentials row = fixtures.credentialsOf(person);
+    row.lock(LockReason.ADMIN, clock.instant(), null);
+    fixtures.save(row);
+
+    assertRefusedWith(value, "account_not_active");
+  }
+
+  @Test
+  void aTokenOfAnExpiredAccountIsRefused() throws Exception {
+    LocalAccount person =
+        fixtures.activeUser("abgelaufen-" + UUID.randomUUID() + "@intern.example");
+    String value = issueRawFor(person);
+    LocalCredentials row = fixtures.credentialsOf(person);
+    row.setExpiresAt(clock.instant().minus(Duration.ofDays(1)), clock.instant());
+    fixtures.save(row);
+
+    assertRefusedWith(value, "account_not_active");
+  }
+
+  @Test
+  void lockingAnAccountEndsItsTokensWithAnEntryOfItsOwn() {
+    LocalAccount person =
+        fixtures.activeUser("lebenszyklus-" + UUID.randomUUID() + "@intern.example");
+    UUID personsToken = issueFor(person);
+
+    localUsers.lock(
+        CurrentUser.of(
+            administrator.getId(),
+            administrator.getOrganizationId(),
+            administrator.getSystemRole(),
+            "Systemverwaltung"),
+        person.id());
+
+    ExternalAccessToken ended = tokens.findById(personsToken).orElseThrow();
+    assertThat(ended.getRevocationReason())
+        .isEqualTo(ExternalAccessTokenRevocationReason.ACCOUNT_LIFECYCLE);
+    assertThat(ended.getLapseRecordedAt()).isNotNull();
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT coalesce(CAST(after AS text), '') FROM audit_log"
+                    + " WHERE event_type = ? AND object_id = ?",
+                String.class,
+                AuditEventType.API_TOKEN_EXPIRED.name(),
+                personsToken.toString()))
+        .singleElement()
+        .asString()
+        .contains(ExternalAccessTokenRevocationReason.ACCOUNT_LIFECYCLE.name());
+  }
+
+  /** Issues a token for a local account against the shared library, and returns its id. */
+  private UUID issueFor(LocalAccount person) {
+    return tokenService
+        .issue(
+            person.id(),
+            person.user().getOrganizationId(),
+            "Für " + person.id(),
+            List.of(libraryId),
+            clock.instant().plus(Duration.ofDays(10)))
+        .token()
+        .getId();
+  }
+
+  private String issueRawFor(LocalAccount person) {
+    return tokenService
+        .issue(
+            person.id(),
+            person.user().getOrganizationId(),
+            "Für " + person.id(),
+            List.of(libraryId),
+            clock.instant().plus(Duration.ofDays(10)))
+        .rawValue();
+  }
+
+  private void setAllowedCidrs(List<String> cidrs) {
+    ExternalAccessSettings.Values values = settings.current().values();
+    settings.update(
+        CurrentUser.of(
+            administrator.getId(),
+            administrator.getOrganizationId(),
+            administrator.getSystemRole(),
+            "Systemverwaltung"),
+        new ExternalAccessSettingsService.Update(
+            values.enabled(),
+            values.tokenMaxLifetimeDays(),
+            values.tokenRateLimitPerHour(),
+            cidrs,
+            values.massRetrievalAlertThreshold(),
+            values.serverInstructions()));
   }
 
   private void assertRefusedWith(String value, String marker) throws Exception {

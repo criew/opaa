@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -85,6 +86,7 @@ public class LocalHandoverAccountService {
   private final SpaceMembershipRepository spaceMemberships;
   private final GroupMembershipRepository groupMemberships;
   private final AuditEventRecorder audit;
+  private final ApplicationEventPublisher events;
   private final Clock clock;
 
   public LocalHandoverAccountService(
@@ -100,6 +102,7 @@ public class LocalHandoverAccountService {
       SpaceMembershipRepository spaceMemberships,
       GroupMembershipRepository groupMemberships,
       AuditEventRecorder audit,
+      ApplicationEventPublisher events,
       Clock clock) {
     this.users = users;
     this.credentials = credentials;
@@ -113,6 +116,7 @@ public class LocalHandoverAccountService {
     this.spaceMemberships = spaceMemberships;
     this.groupMemberships = groupMemberships;
     this.audit = audit;
+    this.events = events;
     this.clock = clock;
   }
 
@@ -249,6 +253,9 @@ public class LocalHandoverAccountService {
           AuditEventType.LOCAL_SESSION_REVOKED,
           Map.of("reason", RevocationReason.HANDED_OVER.name()));
     }
+    // The local access of this account is over: the person signs in through the provider from now
+    // on, and every merkmal that was bound to the local account ends with it.
+    events.publishEvent(LocalAccountAccessEndedEvent.by(user, user.getId()));
     return new HandedOver(user, provider, scope);
   }
 

@@ -37,6 +37,7 @@ class MailTemplateKeyTest {
           "ACCOUNT_HANDED_OVER",
           "BOOTSTRAP_ACCOUNT_USED",
           "ADMIN_REVIEW_REMINDER",
+          "EXTERNAL_ACCESS_RELEASE_EXPIRING",
           "EXTERNAL_ACCESS_TOKEN_EXPIRING",
           "TEST_MAIL");
 

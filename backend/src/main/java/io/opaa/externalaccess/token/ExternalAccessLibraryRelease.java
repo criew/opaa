@@ -8,9 +8,10 @@ import java.util.UUID;
  * The release of a knowledge library for external access (ADR-0035, Entscheidung 4), as this
  * package needs it: which of a set of libraries carry a release that is valid right now.
  *
- * <p>The release itself - a historicised, time-limited Reichweitenfeld - belongs to #1731. This
- * seam exists so the token machinery can be built without it and so plugging it in is one bean
- * rather than a change to the intersection in {@link ExternalAccessTokenScopeService}.
+ * <p>The release itself - a historicised, time-limited Reichweitenfeld - belongs to {@code
+ * io.opaa.library}; {@link ReleasedExternalAccessLibraries} reads it. The seam keeps the
+ * intersection in {@link ExternalAccessTokenScopeService} independent of how the release is stored
+ * and lets it be driven in both directions in a test.
  */
 public interface ExternalAccessLibraryRelease {
 

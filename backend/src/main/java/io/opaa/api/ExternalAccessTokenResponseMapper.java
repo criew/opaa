@@ -2,10 +2,12 @@ package io.opaa.api;
 
 import io.opaa.api.dto.AdminExternalAccessTokenResponse;
 import io.opaa.api.dto.CreatedExternalAccessTokenResponse;
+import io.opaa.api.dto.EligibleExternalAccessLibraryResponse;
 import io.opaa.api.dto.ExternalAccessTokenLibraryResponse;
 import io.opaa.api.dto.OwnExternalAccessTokenResponse;
 import io.opaa.externalaccess.token.ExternalAccessToken;
 import io.opaa.externalaccess.token.ExternalAccessTokenAdminService.ExternalAccessTokenAdminView;
+import io.opaa.externalaccess.token.ExternalAccessTokenService.EligibleLibrary;
 import io.opaa.externalaccess.token.ExternalAccessTokenService.ExternalAccessTokenView;
 import io.opaa.externalaccess.token.ExternalAccessTokenService.IssuedExternalAccessToken;
 import io.opaa.externalaccess.token.ExternalAccessTokenService.SelectedLibrary;
@@ -65,6 +67,14 @@ final class ExternalAccessTokenResponseMapper {
         token.getExpiresAt(),
         token.status(now),
         toLibraries(view.libraries()));
+  }
+
+  static EligibleExternalAccessLibraryResponse toEligible(EligibleLibrary library) {
+    EligibleExternalAccessLibraryResponse response =
+        new EligibleExternalAccessLibraryResponse(
+            library.id(), library.name(), library.releaseExpiresAt());
+    response.setDescription(library.description());
+    return response;
   }
 
   private static List<ExternalAccessTokenLibraryResponse> toLibraries(
