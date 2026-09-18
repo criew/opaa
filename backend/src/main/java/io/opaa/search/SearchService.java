@@ -80,6 +80,21 @@ public class SearchService {
     SearchRequestScope scope = searchScopeSource.scopeFor(caller);
     quota.requireWithinQuota(scope.accessTokenId());
     alarm.record(caller.organizationId(), scope.accessTokenId());
+    return librariesOf(scope);
+  }
+
+  /**
+   * The same effective view, resolved through the same {@link SearchScopeSource}, but counting
+   * against neither quota nor alert: the MCP server builds its tool descriptions from it on every
+   * {@code tools/list} (#1721), and a description that fails at the quota would take the whole
+   * channel down instead of one call. It is no retrieval - it names holdings the caller may reach,
+   * which {@link #libraries} returns to the same caller anyway.
+   */
+  public List<SearchableLibrary> librariesForDescription(CurrentUser caller) {
+    return librariesOf(searchScopeSource.scopeFor(caller));
+  }
+
+  private List<SearchableLibrary> librariesOf(SearchRequestScope scope) {
     if (scope.libraryIds().isEmpty()) {
       return List.of();
     }
