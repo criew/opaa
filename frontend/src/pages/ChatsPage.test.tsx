@@ -313,6 +313,71 @@ describe('ChatsPage', () => {
       expect(within(hitList()).getAllByRole('listitem')[1]).toHaveTextContent('Frage')
     })
 
+    it('keeps the status region in place across searches so every result is announced', async () => {
+      putTermIntoAnswer()
+      renderWithProviders(<ChatsPage />)
+      await screen.findByRole('tab', { name: 'Aktiv (2)' })
+
+      fireEvent.change(searchField(), { target: { value: ANSWER_TERM } })
+      const region = screen.getByRole('region', { name: 'Suchtreffer der Chatsuche' })
+      const status = within(region).getByRole('status')
+      expect(status).toHaveTextContent('')
+      fireEvent.keyDown(searchField(), { key: 'Enter' })
+
+      await waitFor(() => expect(status).toHaveTextContent('1 Chat gefunden'))
+      fireEvent.change(searchField(), { target: { value: 'Haushaltsplan' } })
+      fireEvent.keyDown(searchField(), { key: 'Enter' })
+      await waitFor(() => expect(status).toHaveTextContent('Keine Treffer'))
+      expect(within(region).getByRole('status')).toBe(status)
+    })
+
+    it('loads further hits again after a failed page and lists a chat only once', async () => {
+      const hit = (chatId: string, title: string) => ({
+        chatId,
+        title,
+        archivedAt: null,
+        messageId: `${chatId}-m`,
+        role: 'USER' as const,
+        messageCreatedAt: '2026-09-01T10:00:00Z',
+        excerpt: `Frist in ${title}`,
+        highlights: [{ start: 0, end: 5 }],
+      })
+      let failNextPage = true
+      server.use(
+        http.post(SEARCH_URL, async ({ request }) => {
+          const body = (await request.json()) as ChatSearchRequest
+          if (body.page === 0) {
+            return HttpResponse.json({ hits: [hit('chat-a', 'Erster Chat')], hasMore: true })
+          }
+          if (failNextPage) {
+            failNextPage = false
+            return new HttpResponse('boom', { status: 500 })
+          }
+          return HttpResponse.json({
+            hits: [hit('chat-a', 'Erster Chat'), hit('chat-b', 'Zweiter Chat')],
+            hasMore: false,
+          })
+        }),
+      )
+      const user = userEvent.setup()
+      renderWithProviders(<ChatsPage />)
+      await screen.findByRole('tab', { name: 'Aktiv (2)' })
+
+      await user.type(searchField(), 'Frist{Enter}')
+      await screen.findByRole('link', { name: 'Erster Chat' })
+      await user.click(screen.getByRole('button', { name: 'Weitere laden' }))
+      expect(
+        await screen.findByText('Die Chatsuche ist fehlgeschlagen. Bitte später erneut versuchen.'),
+      ).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Weitere laden' }))
+
+      expect(await screen.findByRole('link', { name: 'Zweiter Chat' })).toBeInTheDocument()
+      expect(within(hitList()).getAllByRole('listitem')).toHaveLength(2)
+      expect(
+        screen.queryByText('Die Chatsuche ist fehlgeschlagen. Bitte später erneut versuchen.'),
+      ).not.toBeInTheDocument()
+    })
+
     it('explains the rate limit with the waiting time', async () => {
       server.use(
         http.post(SEARCH_URL, () =>

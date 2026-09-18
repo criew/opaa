@@ -57,20 +57,28 @@ export default function ChatSearchResults({ spaceId, search, onOpen }: ChatSearc
     document.getElementById(`${idPrefix}-hit-${index}`)?.focus()
   }, [hitCount, idPrefix])
 
+  // Stays mounted across searches: a live region inserted together with its text is not announced.
+  const status = (
+    <Box role="status" sx={visuallyHidden}>
+      {!isLoading && result && !result.error ? statusText(hitCount, result.hasMore) : ''}
+    </Box>
+  )
+
   if (isLoading) {
     return (
-      <Box sx={{ py: 3, display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress size={24} aria-label="Suche läuft" />
+      <Box>
+        {status}
+        <Box sx={{ py: 3, display: 'flex', justifyContent: 'center' }}>
+          <CircularProgress size={24} aria-label="Suche läuft" />
+        </Box>
       </Box>
     )
   }
-  if (!result) return null
+  if (!result) return <Box>{status}</Box>
 
   return (
     <Box>
-      <Box role="status" sx={visuallyHidden}>
-        {result.error ? '' : statusText(hitCount, result.hasMore)}
-      </Box>
+      {status}
       {hitCount === 0 && !result.error && (
         <Box sx={{ py: 1 }}>
           <Typography>Kein Chat enthält „{result.term}“.</Typography>

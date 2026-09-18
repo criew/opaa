@@ -126,7 +126,7 @@ export function useChatSearch(spaceId: string): ChatSearch {
   )
 
   function loadMore() {
-    if (!result || result.error || !result.hasMore || result.seq !== request?.seq) return
+    if (!result || !result.hasMore || result.seq !== request?.seq) return
     const current = result
     const controller = new AbortController()
     moreRef.current?.abort()
@@ -144,9 +144,16 @@ export function useChatSearch(spaceId: string): ChatSearch {
           latest?.seq === current.seq
             ? {
                 ...latest,
-                hits: [...latest.hits, ...response.hits],
+                // A chat that moved to a later page between two requests is listed only once.
+                hits: [
+                  ...latest.hits,
+                  ...response.hits.filter(
+                    (hit) => !latest.hits.some((known) => known.chatId === hit.chatId),
+                  ),
+                ],
                 page: current.page + 1,
                 hasMore: response.hasMore,
+                error: null,
               }
             : latest,
         )
