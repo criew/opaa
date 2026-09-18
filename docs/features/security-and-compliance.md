@@ -929,7 +929,11 @@ Auswertung nur geselliger.
 Statistiken sind **aggregiert** je Organisationseinheit. Unterhalb einer Mindestgruppengröße wird der Wert
 **unterdrückt statt angezeigt** — nicht gerundet, nicht anonymisiert dargestellt, sondern nicht
 ausgegeben. Das Produkt setzt eine Voreinstellung und erzwingt eine Untergrenze; die angemessene Zahl
-folgt aus dem tatsächlichen Zuschnitt der Einheiten und gehört in die Dienstvereinbarung.
+folgt aus dem tatsächlichen Zuschnitt der Einheiten und gehört in die Dienstvereinbarung. Für die
+Auswertung **je Asset** gilt eine strengere Fassung, weil ein Asset oft nur eine Handvoll Nutzende hat:
+Voreinstellung „aus", Schalter an der **Erhebung** statt an der Anzeige, und die Schwelle bemisst sich an
+der Zahl der nutzenden Personen — unterhalb davon wird nicht erhoben (siehe
+[spaces-and-assets.md](./spaces-and-assets.md#nutzungstransparenz)).
 
 ### 4. Aufbewahrung mit Ober- und Untergrenze
 
