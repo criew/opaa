@@ -419,4 +419,92 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await page.reload()
     await expect(inGroup('Heute')).toHaveCount(1)
   })
+
+  test('8. Chat-Archiv: archivieren, im Archiv öffnen, zurückholen, Mehrfachauswahl, Weiterschreiben', async (
+    { authenticatedPage: page },
+    testInfo,
+  ) => {
+    const id = uniqueId(testInfo)
+    const titleA = `E2E-Archiv-A-${id}`
+    const titleB = `E2E-Archiv-B-${id}`
+    const questionA = `Frage fürs Archiv A (${id})`
+    const chatList = page.getByRole('navigation', { name: 'Chats' })
+    const main = page.getByTestId('message-list')
+    const actionsOf = (title: string) =>
+      chatList.getByRole('button', { name: `Aktionen für Chat „${title}“` })
+    const archivedHint = page.getByRole('main').getByText('Archiviert', { exact: true })
+    const archiveTable = page.getByRole('table', { name: 'Chat-Archiv' })
+
+    // Two chats of this scenario's own, each with a unique title (see scenario 7 for why).
+    async function createTitledChat(title: string, question: string): Promise<string> {
+      await startFreshChat(page)
+      await clearSearchScope(page)
+      await askQuestion(page, question)
+      await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/)
+      await expect(main.getByText(question)).toBeVisible()
+      await chatList
+        .getByRole('list', { name: 'Heute' })
+        .getByRole('button', { name: /^Aktionen für Chat/ })
+        .first()
+        .click()
+      await page.getByRole('menuitem', { name: /umbenennen$/ }).click()
+      const titleField = chatList.getByLabel('Chat-Titel')
+      await titleField.fill(title)
+      await titleField.press('Enter')
+      await expect(actionsOf(title)).toHaveCount(1)
+      return page.url()
+    }
+    const chatAUrl = await createTitledChat(titleA, questionA)
+    await createTitledChat(titleB, `Frage fürs Archiv B (${id})`)
+    const chatsPageUrl = chatAUrl.replace(/\/chats\/[^/]+$/, '/chats')
+
+    // Archive A from the sidebar: it leaves the list.
+    await actionsOf(titleA).click()
+    await page.getByRole('menuitem', { name: `Chat „${titleA}“ archivieren` }).click()
+    await expect(actionsOf(titleA)).toHaveCount(0)
+    await expect(page.getByText(`Chat „${titleA}“ archiviert`)).toBeVisible()
+
+    // The page "Chats" lists it in the archive; opening it shows the chat with the hint.
+    await chatList.getByRole('link', { name: 'Alle Chats' }).click()
+    await expect(page).toHaveURL(chatsPageUrl)
+    await page.getByRole('tab', { name: /^Archiv \(/ }).click()
+    await archiveTable.getByRole('link', { name: titleA }).click()
+    await expect(page).toHaveURL(chatAUrl)
+    await expect(main.getByText(questionA)).toBeVisible()
+    await expect(archivedHint).toBeVisible()
+
+    // "Zurückholen" puts it back into the list.
+    await page.getByRole('button', { name: 'Chat aus dem Archiv zurückholen' }).click()
+    await expect(archivedHint).toHaveCount(0)
+    await expect(actionsOf(titleA)).toHaveCount(1)
+
+    // Multi-selection on the page "Chats": archive both chats at once.
+    await page.goto(chatsPageUrl)
+    const activeTable = page.getByRole('table', { name: 'Aktive Chats' })
+    await activeTable.getByRole('checkbox', { name: `„${titleA}“ auswählen` }).check()
+    await activeTable.getByRole('checkbox', { name: `„${titleB}“ auswählen` }).check()
+    await page.getByRole('button', { name: 'Archivieren', exact: true }).click()
+    await expect(page.getByText('2 Chats archiviert')).toBeVisible()
+    await expect(actionsOf(titleA)).toHaveCount(0)
+    await expect(actionsOf(titleB)).toHaveCount(0)
+    await page.getByRole('tab', { name: /^Archiv \(/ }).click()
+    await expect(archiveTable.getByRole('link', { name: titleB })).toBeVisible()
+    await expectNoSeriousA11yViolations(page, 'Seite „Chats“, Reiter Archiv')
+
+    // Writing in an archived chat brings it back, with a notice.
+    await archiveTable.getByRole('link', { name: titleA }).click()
+    await expect(archivedHint).toBeVisible()
+    await askQuestion(page, `Weiter im archivierten Chat (${id})`)
+    await expect(page.getByText('Chat aus dem Archiv zurückgeholt')).toBeVisible()
+    await expect(archivedHint).toHaveCount(0)
+    await expect(actionsOf(titleA)).toHaveCount(1)
+
+    // Bring B back as a bulk action from the archive tab - leaves nothing archived behind.
+    await page.goto(chatsPageUrl)
+    await page.getByRole('tab', { name: /^Archiv \(/ }).click()
+    await archiveTable.getByRole('checkbox', { name: `„${titleB}“ auswählen` }).check()
+    await page.getByRole('button', { name: 'Zurückholen', exact: true }).click()
+    await expect(page.getByText('1 Chat aus dem Archiv zurückgeholt')).toBeVisible()
+    await expect(actionsOf(titleB)).toHaveCount(1)
+  })
 })
