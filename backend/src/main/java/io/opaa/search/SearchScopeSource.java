@@ -6,11 +6,17 @@ import io.opaa.auth.CurrentUser;
  * The effective view of one request - the libraries it may search and, where the request came in on
  * an access token, that token's id (#1720, ADR-0035).
  *
- * <p>This interface is the seam the external-access channel hangs into. Today exactly one
- * implementation exists, {@link PersonSearchScopeSource}: a signed-in person sees every library she
- * may read, and no quota key applies. #1718 adds the token-aware implementation, which intersects
- * the person's rights with the library's external-access release and the token's own selection and
- * names the token as the quota key - evaluated per call, never per session.
+ * <p>Exactly one implementation exists, and deliberately so: {@code
+ * io.opaa.externalaccess.token.ExternalAccessSearchScopeSource} answers for both callers. A
+ * signed-in person sees every library she may read and has no quota key; a request that arrived on
+ * an access token gets the person's rights intersected with the library's external-access release,
+ * the token's own selection and the installation switch, and the token as the quota key - evaluated
+ * per call, never per session.
+ *
+ * <p>There is no fallback implementation on purpose. A second one, switched in by a condition,
+ * would leave it to bean-registration order which of the two lives - and the quiet outcome of
+ * losing that race is a token call served with the person's full readable set, past the very
+ * intersection this channel promises.
  */
 public interface SearchScopeSource {
 

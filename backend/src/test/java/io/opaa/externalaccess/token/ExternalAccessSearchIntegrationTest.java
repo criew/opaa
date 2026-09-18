@@ -18,6 +18,7 @@ import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.library.LibraryExternalAccessService;
+import io.opaa.search.SearchScopeSource;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Clock;
 import java.time.Duration;
@@ -65,6 +66,7 @@ class ExternalAccessSearchIntegrationTest {
   @Autowired private ExternalAccessSettingsService settings;
   @Autowired private LibraryExternalAccessService libraryRelease;
   @Autowired private Clock clock;
+  @Autowired private SearchScopeSource searchScopeSource;
 
   private User owner;
   private User administrator;
@@ -111,6 +113,14 @@ class ExternalAccessSearchIntegrationTest {
       jdbc.update("DELETE FROM library_visibility_history WHERE library_id = ?", library);
       jdbc.update("DELETE FROM knowledge_libraries WHERE id = ?", library);
     }
+  }
+
+  @Test
+  void theTokenAwareScopeSourceIsTheOnlyOneInTheContext() {
+    // Named, not inferred: a second SearchScopeSource switched in by a condition would decide by
+    // bean-registration order, and losing that race serves a token call the person's full readable
+    // set - past the very intersection this channel promises.
+    assertThat(searchScopeSource).isExactlyInstanceOf(ExternalAccessSearchScopeSource.class);
   }
 
   @Test

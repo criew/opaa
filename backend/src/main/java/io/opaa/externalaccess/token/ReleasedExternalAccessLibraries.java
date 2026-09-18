@@ -5,9 +5,8 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Collection;
-import java.util.Set;
+import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 /**
@@ -30,14 +29,13 @@ class ReleasedExternalAccessLibraries implements ExternalAccessLibraryRelease {
   }
 
   @Override
-  public Set<UUID> releasedAmong(Collection<UUID> libraryIds) {
+  public List<KnowledgeLibrary> releasedLibrariesAmong(Collection<UUID> libraryIds) {
     if (libraryIds.isEmpty()) {
-      return Set.of();
+      return List.of();
     }
     Instant now = clock.instant();
     return libraries.findAllById(libraryIds).stream()
         .filter(library -> library.isExternalAccessActive(now))
-        .map(KnowledgeLibrary::getId)
-        .collect(Collectors.toUnmodifiableSet());
+        .toList();
   }
 }

@@ -88,11 +88,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   List<User> findByIssuer(String issuer);
 
   /**
-   * Per-table counts of the rows that reference the user through an {@code ON DELETE RESTRICT}
-   * foreign key - what deleting a local account has to be clear of (#1537). One statement, so the
-   * refusal can name the reason in the log without a query per table. <b>Every new {@code ON DELETE
-   * RESTRICT} reference to {@code users} needs a sub-query here</b>; a reference this list misses
-   * is caught only by the constraint itself, without its name in the log.
+   * Per-table counts of the rows that deleting a local account has to be clear of (#1537), in one
+   * statement so the refusal can name the reason in the log. <b>Every new {@code ON DELETE
+   * RESTRICT} reference to {@code users} needs a sub-query here</b>; one this list misses is caught
+   * only by the constraint itself, without its name in the log - {@code
+   * io.opaa.auth.UserDeletionBlockerCoverageIntegrationTest} compares the list against the schema's
+   * delete rules. The diagnostic impersonation grants cascade since #1509 and are counted all the
+   * same: an open deviation, see #1697.
    */
   @Query(
       value =

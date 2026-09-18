@@ -18,6 +18,7 @@ import io.opaa.observability.RateLimitMetrics;
 import io.opaa.security.TrustedProxyClientIpResolver;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
@@ -393,6 +394,50 @@ class RateLimitFilterTest {
     assertThat(rejected("local-auth-login", "global")).isEqualTo(1.0);
     assertThat(rejected("local-auth-login", "client")).isZero();
     verify(loginLimiter).tryAcquire(anyString());
+  }
+
+  /**
+   * #1592: a rule whose endpoint is switched off is matched but not counted. A switched-off
+   * self-service flow is answered exactly like an unknown route, and an unknown route has no budget
+   * - counting it would answer 429 where the unknown route answers 401.
+   */
+  @Test
+  void aRuleWhoseEndpointIsNotServedIsMatchedButNotCounted() throws Exception {
+    var registerLimiter = mock(RateLimitService.class);
+    when(registerLimiter.tryAcquire(anyString())).thenReturn(REJECTED);
+    var served = new AtomicBoolean(false);
+    var switchable =
+        filter(
+            List.of(),
+            List.of(
+                new Rule(
+                    "local-auth-register",
+                    "^/api/v1/auth/local/register$",
+                    registerLimiter,
+                    null,
+                    served::get)));
+
+    var whileOff = new MockHttpServletResponse();
+    var offChain = new MockFilterChain();
+    switchable.doFilter(register(), whileOff, offChain);
+
+    assertThat(whileOff.getStatus()).isEqualTo(200);
+    assertThat(offChain.getRequest()).isNotNull();
+    verify(registerLimiter, never()).tryAcquire(anyString());
+
+    served.set(true);
+    var whileOn = new MockHttpServletResponse();
+    var onChain = new MockFilterChain();
+    switchable.doFilter(register(), whileOn, onChain);
+
+    assertThat(whileOn.getStatus()).isEqualTo(429);
+    assertThat(onChain.getRequest()).isNull();
+  }
+
+  private static MockHttpServletRequest register() {
+    var request = new MockHttpServletRequest("POST", "/api/v1/auth/local/register");
+    request.setRemoteAddr("203.0.113.90");
+    return request;
   }
 
   @Test
