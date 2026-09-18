@@ -89,6 +89,43 @@ public class PassageFetchService {
             .filter(found -> found.libraryId() != null)
             .filter(found -> effectiveView.contains(found.libraryId()))
             .orElseThrow(() -> new NotFoundException(NOT_FOUND_MESSAGE));
+    return passage(caller, scope, chunk, whole);
+  }
+
+  /**
+   * The same text by the document rather than by one of its passages (#1766): a hit names both, and
+   * a caller that reaches for the document id must not be refused for it. Without {@code whole} it
+   * yields the document's <b>first</b> passage with its context - the entry into a document one
+   * reads from the top, not a second search.
+   *
+   * <p>Right, quota and alert are exactly those of {@link #fetch}: the same scope decides, and an
+   * unknown document answers like a foreign one.
+   *
+   * @throws NotFoundException when the document is unknown, belongs to another organization, lies
+   *     outside {@code caller}'s effective view or has no indexed passage.
+   */
+  public FetchedPassage fetchDocument(CurrentUser caller, UUID documentId, boolean whole) {
+    SearchRequestScope scope = searchScopeSource.scopeFor(caller);
+    quota.requireWithinQuota(scope.accessTokenId());
+    alarm.record(caller.organizationId(), scope.accessTokenId());
+    Document document =
+        documents
+            .findById(documentId)
+            .filter(found -> caller.organizationId().equals(found.getOrganizationId()))
+            .filter(found -> found.getLibraryId() != null)
+            .filter(found -> scope.libraryIds().contains(found.getLibraryId()))
+            .orElseThrow(() -> new NotFoundException(NOT_FOUND_MESSAGE));
+    ChunkInspection first =
+        chunks.listChunkPage(caller.organizationId(), document.getId(), null, 1).stream()
+            .findFirst()
+            .orElseThrow(() -> new NotFoundException(NOT_FOUND_MESSAGE));
+    return passage(caller, scope, first, whole);
+  }
+
+  /** The one shaping of a resolved passage, reached from the hit id and from the document id. */
+  private FetchedPassage passage(
+      CurrentUser caller, SearchRequestScope scope, ChunkInspection chunk, boolean whole) {
+    Set<UUID> effectiveView = scope.libraryIds();
     Document document =
         documents
             .findById(chunk.documentId())

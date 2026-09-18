@@ -6,6 +6,7 @@ import io.modelcontextprotocol.spec.McpSchema.Tool;
 import io.opaa.search.SearchableLibrary;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +26,21 @@ class McpToolCatalogTest {
     assertThat(tools).extracting(Tool::name).containsExactly("search", "fetch", "list_libraries");
     // The signature gängige Assistenzwerkzeuge recognise as a knowledge source.
     assertThat(tools.get(0).inputSchema()).extractingByKey("required").isEqualTo(List.of("query"));
-    assertThat(tools.get(1).inputSchema()).extractingByKey("required").isEqualTo(List.of("id"));
+  }
+
+  /**
+   * A hit names both ids, so fetch takes either and the schema demands neither - the choice is the
+   * handler's, with a German message when both are missing (#1766).
+   */
+  @Test
+  void fetchTakesTheHitIdOrTheDocumentIdAndDemandsNeitherInTheSchema() {
+    Tool fetch = catalog.toolsFor(List.of()).get(1);
+
+    assertThat(fetch.inputSchema()).extractingByKey("required").isNull();
+    @SuppressWarnings("unchecked")
+    Map<String, Object> properties = (Map<String, Object>) fetch.inputSchema().get("properties");
+    assertThat(properties).containsKeys("id", "documentId", "whole");
+    assertThat(fetch.description()).contains("id").contains("documentId");
   }
 
   @Test

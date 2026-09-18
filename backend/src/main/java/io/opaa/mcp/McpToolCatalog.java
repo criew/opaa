@@ -62,10 +62,15 @@ public class McpToolCatalog {
                   "type",
                   "integer",
                   "description",
-                  "Höchstzahl der Treffer; serverseitig gedeckelt.")),
+                  "Höchstzahl der Dokumente in der Trefferliste; serverseitig gedeckelt.")),
           "required",
           List.of("query"));
 
+  /**
+   * Without a {@code required} list: a caller names either the hit id or the document id, and the
+   * handler says in German which of the two it missed. A schema that demanded {@code id} would
+   * refuse the choice a hit itself offers, before the handler ever saw the call (#1766).
+   */
   private static final Map<String, Object> FETCH_SCHEMA =
       Map.of(
           "type",
@@ -73,15 +78,25 @@ public class McpToolCatalog {
           "properties",
           Map.of(
               "id",
-              Map.of("type", "string", "description", "Die Trefferkennung aus search."),
+              Map.of(
+                  "type",
+                  "string",
+                  "description",
+                  "Das Feld „id“ eines Treffers aus search (die Trefferkennung eines einzelnen"
+                      + " Abschnitts)."),
+              "documentId",
+              Map.of(
+                  "type",
+                  "string",
+                  "description",
+                  "Alternativ zu „id“: das Feld „documentId“ eines Treffers. Ohne „whole“ liefert"
+                      + " es den ersten Abschnitt des Dokuments samt Kontext."),
               "whole",
               Map.of(
                   "type",
                   "boolean",
                   "description",
-                  "Statt des Abschnitts das ganze Dokument, gedeckelt auf eine Höchstlänge.")),
-          "required",
-          List.of("id"));
+                  "Statt des Abschnitts das ganze Dokument, gedeckelt auf eine Höchstlänge.")));
 
   private static final Map<String, Object> NO_ARGUMENTS =
       Map.of("type", "object", "properties", Map.of());
@@ -95,14 +110,16 @@ public class McpToolCatalog {
             .description(
                 "Sucht Fundstellen in den Wissensbeständen dieser Behörde. "
                     + holdings
-                    + " Liefert Textauszüge mit Herkunft und einer Trefferkennung, keine erzeugte"
-                    + " Antwort.")
+                    + " Liefert je Dokument einen kurzen Auszug um die Fundstelle, mit Herkunft und"
+                    + " einer Trefferkennung, keine erzeugte Antwort. Den vollen Text eines"
+                    + " Abschnitts holt fetch.")
             .build(),
         Tool.builder(FETCH, FETCH_SCHEMA)
             .title("Fundstelle lesen")
             .description(
-                "Holt den Text zu einer Trefferkennung aus search - standardmäßig den Abschnitt"
-                    + " samt angrenzendem Kontext, auf Wunsch das ganze Dokument. "
+                "Holt den Text zu einem Treffer aus search - wahlweise über dessen Feld „id“ oder"
+                    + " dessen Feld „documentId“. Standardmäßig den Abschnitt samt angrenzendem"
+                    + " Kontext, auf Wunsch das ganze Dokument. "
                     + holdings)
             .build(),
         Tool.builder(LIST_LIBRARIES, NO_ARGUMENTS)

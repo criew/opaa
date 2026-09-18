@@ -30,6 +30,10 @@ import tools.jackson.databind.json.JsonMapper;
  * of its own - the effective view is resolved inside those services, per call, and the quota and
  * the channel alert are counted there as well.
  *
+ * <p>The one shaping beyond that is {@link McpHitDigest}, the display layer of {@code search}: one
+ * entry per document with an excerpt, over the very hits {@code POST /api/v1/search} returns per
+ * passage and in full.
+ *
  * <p>Every result is delivered twice: as {@code structuredContent} for a client that reads it, and
  * as one JSON text block for the many that only read text.
  *
@@ -44,16 +48,19 @@ class McpTools {
   private final PassageFetchService passageFetchService;
   private final JsonMapper jsonMapper;
   private final McpToolCatalog catalog;
+  private final McpHitDigest digest;
 
   McpTools(
       SearchService searchService,
       PassageFetchService passageFetchService,
       JsonMapper jsonMapper,
-      McpToolCatalog catalog) {
+      McpToolCatalog catalog,
+      McpHitDigest digest) {
     this.searchService = searchService;
     this.passageFetchService = passageFetchService;
     this.jsonMapper = jsonMapper;
     this.catalog = catalog;
+    this.digest = digest;
   }
 
   /**
@@ -94,11 +101,20 @@ class McpTools {
     } catch (IllegalArgumentException e) {
       return error("„libraryIds“ enthält eine ungültige Kennung.");
     }
-    Integer maxHits = integer(arguments.get("maxHits"));
+    Integer requestedMaxHits = integer(arguments.get("maxHits"));
+    int maxHits =
+        requestedMaxHits == null || requestedMaxHits <= 0
+            ? digest.defaultMaxHits()
+            : requestedMaxHits;
     try {
-      SearchOutcome outcome = searchService.search(caller, query, libraryIds, null, maxHits);
+      // Passages are asked for per wanted document: the summary can only fold what it was given,
+      // and the server-side cap of the search still bounds the number.
+      SearchOutcome outcome =
+          searchService.search(caller, query, libraryIds, null, digest.passagesFor(maxHits));
       Map<String, Object> result = new LinkedHashMap<>();
-      result.put("results", outcome.hits().stream().map(McpTools::asMap).toList());
+      result.put(
+          "results",
+          digest.condense(outcome.hits(), query, maxHits).stream().map(McpTools::asMap).toList());
       result.put(
           "searchedLibraries",
           outcome.searchedLibraries().stream()
@@ -120,12 +136,25 @@ class McpTools {
     CurrentUser caller = McpRequestContext.callerOf(context);
     Map<String, Object> arguments = request.arguments() == null ? Map.of() : request.arguments();
     String id = text(arguments.get("id"));
-    if (id == null || id.isBlank()) {
-      return error("Die Trefferkennung fehlt: „id“ ist erforderlich.");
-    }
+    String documentId = text(arguments.get("documentId"));
     boolean whole = Boolean.TRUE.equals(arguments.get("whole"));
     try {
-      FetchedPassage passage = passageFetchService.fetch(caller, id, whole);
+      FetchedPassage passage;
+      if (id != null && !id.isBlank()) {
+        passage = passageFetchService.fetch(caller, id.strip(), whole);
+      } else if (documentId != null && !documentId.isBlank()) {
+        UUID parsed;
+        try {
+          parsed = UUID.fromString(documentId.strip());
+        } catch (IllegalArgumentException e) {
+          return error("„documentId“ ist keine gültige Dokumentkennung.");
+        }
+        passage = passageFetchService.fetchDocument(caller, parsed, whole);
+      } else {
+        return error(
+            "Es fehlt die Angabe, was gelesen werden soll: entweder „id“ — das Feld „id“ eines"
+                + " Treffers aus search — oder „documentId“, die Dokumentkennung eines Treffers.");
+      }
       return result(asMap(passage));
     } catch (NotFoundException | TooManyRequestsException e) {
       return error(e.getMessage());
@@ -142,17 +171,34 @@ class McpTools {
     }
   }
 
-  private static Map<String, Object> asMap(SearchHit hit) {
+  /**
+   * One document, shown with its best passage: {@code id} and {@code text} belong to that passage,
+   * {@code moreHits} names the document's further passages with their own ids, so a second
+   * occurrence can be fetched without being paid for in the hit list.
+   */
+  private static Map<String, Object> asMap(McpHitDigest.Entry condensed) {
+    SearchHit hit = condensed.best();
     Map<String, Object> entry = new LinkedHashMap<>();
     entry.put("id", hit.hitId());
     entry.put("title", hit.title());
-    entry.put("text", hit.excerpt());
+    entry.put("text", condensed.excerpt());
     entry.put("libraryId", hit.libraryId() == null ? null : hit.libraryId().toString());
     entry.put("library", hit.libraryName());
     entry.put("documentId", hit.documentId() == null ? null : hit.documentId().toString());
     entry.put("document", hit.fileName());
     entry.put("location", hit.location());
     entry.put("score", hit.relevanceScore());
+    entry.put(
+        "moreHits",
+        condensed.further().stream()
+            .map(
+                further -> {
+                  Map<String, Object> mapped = new LinkedHashMap<>();
+                  mapped.put("id", further.hitId());
+                  mapped.put("location", further.location());
+                  return mapped;
+                })
+            .toList());
     entry.put("metadata", metadata(hit.metadata()));
     return entry;
   }

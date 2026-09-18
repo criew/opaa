@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SystemRole;
@@ -36,6 +39,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,6 +76,11 @@ class McpServerIntegrationTest {
   private static final String UNSELECTED_LIBRARY = "MCP-Kantinenbibliothek";
   private static final String MODERN_VERSION = "2026-07-28";
 
+  /** The delivered {@code opaa.mcp.excerpt-characters}; this class runs the shipped signature. */
+  private static final int EXCERPT_CHARACTERS = 500;
+
+  private static final String FILLER_SENTENCE = "Allgemeine Vorbemerkung zum Verfahren. ";
+
   @LocalServerPort private int port;
 
   @Autowired private MockMvc mockMvc;
@@ -95,6 +104,8 @@ class McpServerIntegrationTest {
   private UUID servedLibraryId;
   private UUID unselectedLibraryId;
   private UUID servedDocumentId;
+  private UUID longDocumentId;
+  private UUID unselectedDocumentId;
   private String narrowToken;
   private String wideToken;
 
@@ -125,10 +136,24 @@ class McpServerIntegrationTest {
                     1,
                     "Die Behörde entscheidet über den Widerspruch innerhalb von drei Monaten.",
                     "Abschn. Verfahren › Entscheidung")));
-    insertDocument(
-        unselectedLibraryId,
-        "kantine.md",
-        List.of(passage(0, "Die Widerspruchsfrist der Kantinenordnung ist eine Woche.", null)));
+    // One passage far above the excerpt length, with the found place in its middle: only such a
+    // passage can show that the excerpt is a window and not the passage itself.
+    longDocumentId =
+        insertDocument(
+            servedLibraryId,
+            "langtext.md",
+            List.of(
+                passage(
+                    0,
+                    FILLER_SENTENCE.repeat(30)
+                        + "Die Widerspruchsfrist im Langtext beträgt vier Wochen. "
+                        + FILLER_SENTENCE.repeat(30),
+                    "Abschn. Langtext")));
+    unselectedDocumentId =
+        insertDocument(
+            unselectedLibraryId,
+            "kantine.md",
+            List.of(passage(0, "Die Widerspruchsfrist der Kantinenordnung ist eine Woche.", null)));
 
     Instant releaseUntil = clock.instant().plus(Duration.ofDays(60));
     libraryRelease.setExternalAccess(owner(), servedLibraryId, true, releaseUntil);
@@ -262,6 +287,150 @@ class McpServerIntegrationTest {
                         "libraryIds",
                         List.of(unselectedLibraryId.toString())))));
     assertThat(narrowed.get("results")).isEmpty();
+  }
+
+  /**
+   * A hit names {@code id} and {@code documentId}; reaching for either must work (#1766). The
+   * document path without {@code whole} enters the document at its first passage.
+   */
+  @Test
+  void fetchAcceptsTheDocumentIdOfAHitJustAsWellAsItsHitId() {
+    JsonNode passage =
+        structured(
+            rpc(narrowToken, toolCall("fetch", Map.of("documentId", servedDocumentId.toString()))));
+
+    assertThat(passage.get("whole").asBoolean()).isFalse();
+    assertThat(passage.get("documentId").asString()).isEqualTo(servedDocumentId.toString());
+    assertThat(passage.get("text").asString()).contains("Widerspruchsfrist beträgt einen Monat");
+
+    JsonNode whole =
+        structured(
+            rpc(
+                narrowToken,
+                toolCall(
+                    "fetch", Map.of("documentId", servedDocumentId.toString(), "whole", true))));
+    assertThat(whole.get("whole").asBoolean()).isTrue();
+    assertThat(whole.get("text").asString()).contains("innerhalb von drei Monaten");
+  }
+
+  /**
+   * The document of a library outside this token's selection answers exactly like an unknown one,
+   * and a call naming neither field says in German which two it offers.
+   */
+  @Test
+  void fetchByDocumentIdStaysInsideTheScopeAndNamesBothFieldsWhenNeitherWasGiven() {
+    JsonNode foreign =
+        rpc(narrowToken, toolCall("fetch", Map.of("documentId", unselectedDocumentId.toString())))
+            .get("result");
+    JsonNode unknown =
+        rpc(narrowToken, toolCall("fetch", Map.of("documentId", UUID.randomUUID().toString())))
+            .get("result");
+    assertThat(foreign.get("isError").asBoolean()).isTrue();
+    assertThat(foreign.get("content").get(0).get("text").asString())
+        .isEqualTo(unknown.get("content").get(0).get("text").asString());
+
+    JsonNode neither = rpc(narrowToken, toolCall("fetch", Map.of())).get("result");
+    assertThat(neither.get("isError").asBoolean()).isTrue();
+    assertThat(neither.get("content").get(0).get("text").asString())
+        .contains("id")
+        .contains("documentId");
+  }
+
+  /**
+   * What a foreign model pays for out of its context window (#1766): one entry per document, each
+   * with a bounded excerpt instead of the whole passage, and the further passages of that document
+   * only as fetchable ids.
+   */
+  @Test
+  void searchSummarisesPerDocumentAndAnswersWithBoundedExcerpts() {
+    JsonNode results =
+        structured(rpc(narrowToken, toolCall("search", Map.of("query", QUESTION)))).get("results");
+
+    List<String> documentIds = new ArrayList<>();
+    results.forEach(hit -> documentIds.add(hit.get("documentId").asString()));
+    assertThat(documentIds).doesNotHaveDuplicates();
+    assertThat(documentIds).contains(longDocumentId.toString());
+    for (JsonNode hit : results) {
+      assertThat(hit.get("text").asString().length())
+          .as("the excerpt is bounded, the passage behind it is one fetch away")
+          .isLessThanOrEqualTo(EXCERPT_CHARACTERS + 2);
+      assertThat(hit.has("moreHits")).isTrue();
+    }
+
+    JsonNode longHit = hitOf(results, longDocumentId);
+    // The window sits around the found place, not at the beginning of a long passage.
+    assertThat(longHit.get("text").asString()).contains("Widerspruchsfrist im Langtext");
+    // The found place sits in the middle of the passage, so the window begins cut off.
+    assertThat(longHit.get("text").asString()).startsWith("…").endsWith("…");
+    // The passage itself is still whole behind the hit id.
+    assertThat(
+            structured(
+                    rpc(narrowToken, toolCall("fetch", Map.of("id", longHit.get("id").asString()))))
+                .get("text")
+                .asString()
+                .length())
+        .isGreaterThan(EXCERPT_CHARACTERS);
+  }
+
+  /** The second passage of the same document is a location of the one entry, not an entry. */
+  @Test
+  void furtherPassagesOfADocumentAreListedAsLocationsOfItsEntry() {
+    JsonNode results =
+        structured(rpc(narrowToken, toolCall("search", Map.of("query", QUESTION)))).get("results");
+
+    JsonNode entry = hitOf(results, servedDocumentId);
+    List<String> ids = new ArrayList<>();
+    ids.add(entry.get("id").asString());
+    entry.get("moreHits").forEach(further -> ids.add(further.get("id").asString()));
+    assertThat(ids).doesNotHaveDuplicates();
+    // Every id of the entry is a fetchable hit of this document.
+    for (String id : ids) {
+      assertThat(
+              structured(rpc(narrowToken, toolCall("fetch", Map.of("id", id))))
+                  .get("documentId")
+                  .asString())
+          .isEqualTo(servedDocumentId.toString());
+    }
+  }
+
+  /**
+   * Every client sends it right after the handshake. It is accepted, and it produces no WARN - a
+   * line per connecting client would be noise in the log of the installation (#1766).
+   */
+  @Test
+  void theInitializedNotificationIsAcceptedWithoutAWarning() {
+    Logger handlerLogger =
+        (Logger)
+            LoggerFactory.getLogger(
+                "io.modelcontextprotocol.server.DefaultMcpStatelessServerHandler");
+    ListAppender<ILoggingEvent> recorded = new ListAppender<>();
+    recorded.start();
+    handlerLogger.addAppender(recorded);
+    try {
+      Map<String, Object> notification = new LinkedHashMap<>();
+      notification.put("jsonrpc", "2.0");
+      notification.put("method", "notifications/initialized");
+      notification.put("params", Map.of());
+
+      HttpResponse<String> response = send(request(narrowToken, notification).build());
+
+      assertThat(response.statusCode()).isBetween(200, 204);
+      assertThat(response.body()).doesNotContain("error");
+      assertThat(recorded.list)
+          .as("the library's 'Missing handler for notification type' line")
+          .isEmpty();
+    } finally {
+      handlerLogger.detachAppender(recorded);
+    }
+  }
+
+  private static JsonNode hitOf(JsonNode results, UUID documentId) {
+    for (JsonNode hit : results) {
+      if (documentId.toString().equals(hit.get("documentId").asString())) {
+        return hit;
+      }
+    }
+    throw new IllegalStateException("no hit for document " + documentId);
   }
 
   @Test

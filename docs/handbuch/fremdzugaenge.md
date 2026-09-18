@@ -243,7 +243,8 @@ Gefundene ganz lesen.
 |---|---|
 | **Bibliotheken auflisten** | Die effektive Sicht des Tokens: Kennung, Name, Beschreibung. Die einzige Stelle, an der ein fremdes Werkzeug den Umfang seines Zugangs erfährt |
 | **Suchen** | Frage hinein, **Treffer** heraus: Fundstellen mit Auszug, Herkunft, Metadaten und Rangwert. Keine erzeugte Antwort, kein Modellaufruf für eine Generierung. Optional auf einzelne der erteilten Bibliotheken eingegrenzt |
-| **Abrufen** | Zu einer Trefferkennung den Abschnitt samt angrenzendem Kontext — auf ausdrückliches Verlangen das ganze Dokument, unter einem Zeichen-Deckel |
+| **Suchen über MCP** | Dasselbe, nur knapper dargestellt: **ein Eintrag je Dokument** (weitere Fundstellen desselben Dokuments stehen als Liste von Kennungen daneben) und je Eintrag ein **Auszug um die Fundstelle** statt des ganzen Abschnitts. Wie viele Dokumente und wie lang der Auszug, sagen `OPAA_MCP_DEFAULT_MAX_HITS` und `OPAA_MCP_EXCERPT_CHARACTERS` (Abschnitt 15). Den vollen Text holt das Werkzeug anschließend mit *Abrufen* — und nur für den Treffer, für den es sich entschieden hat |
+| **Abrufen** | Zu einer **Trefferkennung** den Abschnitt samt angrenzendem Kontext — auf ausdrückliches Verlangen das ganze Dokument, unter einem Zeichen-Deckel. Statt der Trefferkennung genügt auch die **Dokumentkennung** desselben Treffers; ohne ausdrückliches Verlangen liefert sie den ersten Abschnitt des Dokuments mit Kontext. Beide Angaben gehen durch dieselbe Rechteprüfung, und ein Dokument außerhalb der erteilten Sicht antwortet wie ein unbekanntes |
 
 Der Suchweg ist **derselbe** wie der der Web-Oberfläche: Teilfragen, Vektor- und Volltextsuche,
 Fusion, Reranking, Rechtefilter in der Suche selbst (siehe [Suche](suche.md), Abschnitt 7.1). Was
@@ -275,6 +276,10 @@ benutzen.
 - **Anmeldung:** das Zugangstoken als `Authorization: Bearer opaa_pat_…`. Kein OAuth — Clients, die
   von sich aus einen OAuth-Ablauf starten, sind dort abzuschalten (Abschnitt 9).
 - **Werkzeuge:** `search`, `fetch` und `list_libraries` — die drei Zugriffe der Tabelle oben.
+  `search` nimmt `query`, wahlweise `libraryIds` und `maxHits` (Höchstzahl der **Dokumente**);
+  `fetch` nimmt **entweder** `id` — das Feld `id` eines Treffers — **oder** `documentId`, dazu
+  wahlweise `whole` für das ganze Dokument. Fehlen beide, sagt die Fehlermeldung, welche zwei
+  Angaben zur Wahl stehen.
 - **Werkzeugbeschreibungen je Anfrage.** Sie werden aus Namen und Beschreibungen der Bibliotheken
   der **effektiven Sicht dieses Tokens** erzeugt, damit das fremde Modell von allein erkennt, welche
   Fragen hierher gehören. Das ist keine zusätzliche Auskunft — dieselben Namen liefert
@@ -668,6 +673,8 @@ Namensauflösung findet dabei nicht statt.
 |---|---|---|
 | `OPAA_EXTERNAL_ACCESS_MAX_RELEASE_DAYS` | `365` | Längste zulässige Befristung einer Bibliotheksfreigabe in Tagen. Muss positiv sein — eine Freigabe ohne Obergrenze ist genau die Ratsche, die die Befristung verhindert |
 | `OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS` | `14` | Vorlauf der Wiedervorlage an die Person, die die Freigabe zuletzt gesetzt hat (Abschnitt 4). `0` schaltet die Erinnerung ab; die Freigabe erlischt trotzdem, nur unangekündigt |
+| `OPAA_MCP_DEFAULT_MAX_HITS` | `5` | Dokumente, die eine `search` über MCP ohne eigenes `maxHits` liefert. Bewusst niedriger als die Vorgabe des REST-Suchwegs: Hier ist ein Treffer eine Station auf dem Weg zum Abruf, nicht die Antwort |
+| `OPAA_MCP_EXCERPT_CHARACTERS` | `500` | Länge des Auszugs um die Fundstelle je MCP-Treffer. Der vollständige Abschnitt ist einen Abruf entfernt |
 | `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` | leer | Nicht auf diesen Kanal beschränkt, für ihn aber ausschlaggebend: Ohne Eintrag prüft die Netzbeschränkung hinter einem Reverse Proxy dessen Adresse (Abschnitt 3) |
 
 Die Grenzwerte des Such- und Abrufwegs (`OPAA_SEARCH_*`) stehen in [Suche](suche.md),
