@@ -21,16 +21,21 @@ import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.retry.NonTransientAiException;
 import org.springframework.ai.retry.TransientAiException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -268,6 +273,69 @@ public class GlobalExceptionHandler {
                 "Die angeforderte Ressource wurde nicht gefunden",
                 HttpStatus.NOT_FOUND.value(),
                 Instant.now()));
+  }
+
+  /**
+   * #1707: both exceptions arise before or instead of a controller method - the method mismatch in
+   * handler mapping, the media type while reading the body - and Spring's own {@code
+   * DefaultHandlerExceptionResolver} renders them as 405 and 415 on its own. It never sees them,
+   * because {@code ExceptionHandlerExceptionResolver} is consulted first and {@link
+   * #handleGenericException} claims every {@link Exception}, so both arrived as {@code 500} with an
+   * {@code ERROR} stacktrace. Logged at {@code DEBUG} without a stacktrace like {@link
+   * #handleNoResourceFoundException}: a caller without a session can raise either at will.
+   *
+   * <p>The {@code Allow} header is part of the contract, not a nicety - RFC 9110, section 15.5.6
+   * requires a 405 to name the methods the resource does support, and taking the response away from
+   * {@code DefaultHandlerExceptionResolver} means taking that header with it.
+   */
+  @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+  public ResponseEntity<ErrorResponse> handleHttpRequestMethodNotSupportedException(
+      HttpRequestMethodNotSupportedException ex) {
+    log.debug("Unsupported request method: {}", errorSanitizer.sanitize(ex.getMessage()));
+    ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED);
+    Set<HttpMethod> supportedMethods = ex.getSupportedHttpMethods();
+    if (supportedMethods != null && !supportedMethods.isEmpty()) {
+      response.allow(supportedMethods.toArray(new HttpMethod[0]));
+    }
+    return response.body(
+        new ErrorResponse(
+            "Die HTTP-Methode wird für diese Ressource nicht unterstützt",
+            HttpStatus.METHOD_NOT_ALLOWED.value(),
+            Instant.now()));
+  }
+
+  /** The media-type half of {@link #handleHttpRequestMethodNotSupportedException} (#1707). */
+  @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+  public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotSupportedException(
+      HttpMediaTypeNotSupportedException ex) {
+    log.debug("Unsupported media type: {}", errorSanitizer.sanitize(ex.getMessage()));
+    return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+        .body(
+            new ErrorResponse(
+                "Der Inhaltstyp der Anfrage wird nicht unterstützt",
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(),
+                Instant.now()));
+  }
+
+  /**
+   * The {@code Accept} sibling of the two above (#1707). Its status code is <em>not</em> what was
+   * wrong: a caller who accepts nothing this API writes cannot be sent a body at all, so the answer
+   * is a bodyless 406 either way - what {@link #handleGenericException} added was a stacktrace per
+   * request, raisable without a session by anyone sending {@code Accept: application/xml}.
+   *
+   * <p><b>The answer carries no body, and that is load-bearing rather than a simplification.</b>
+   * Returning an {@link ErrorResponse} here would be unwritable for the very reason the exception
+   * was raised; {@code AbstractMessageConverterMethodProcessor} would throw a second {@code
+   * HttpMediaTypeNotAcceptableException}, and {@code ExceptionHandlerExceptionResolver} logs any
+   * exception other than the original one via {@code logger.warn(msg, throwable)} - so the
+   * stacktrace this branch exists to remove would come back from a Spring logger instead. {@code
+   * GlobalExceptionHandlerNotAcceptableTest} therefore taps the ROOT logger, not this class's.
+   */
+  @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
+  public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotAcceptableException(
+      HttpMediaTypeNotAcceptableException ex) {
+    log.debug("Unacceptable response format: {}", errorSanitizer.sanitize(ex.getMessage()));
+    return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).build();
   }
 
   @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
