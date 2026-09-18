@@ -94,6 +94,8 @@ class PermissionHistoryServiceIntegrationTest {
   // than the boundaries, so an "after the change" stamp could land before the change it follows.
   @Autowired private PermissionHistoryClock historyClock;
   @Autowired private LibraryAccessService accessService;
+  @Autowired private LibraryExternalAccessService externalAccessService;
+  @Autowired private io.opaa.audit.AuditEventRecorder auditEventRecorder;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private DirectorySyncService directorySyncService;
@@ -564,6 +566,173 @@ class PermissionHistoryServiceIntegrationTest {
   }
 
   /**
+   * What an external-access write path must have achieved: once it has run, {@code libraryId} is
+   * released for Fremdzugaenge exactly if {@code releasedAfterwards}.
+   */
+  private record ExternalAccessChange(UUID libraryId, boolean releasedAfterwards) {}
+
+  /**
+   * The release for Fremdzugaenge (#1731) is the third reach field at the library and shares one
+   * history interval with visibility/listed - so every operation that changes it is held against
+   * both the live entity and the Stichtag reconstruction, exactly as {@link
+   * #everyWritePathChangingReadabilityKeepsLiveAndHistoryInAgreement} does for the readable set. It
+   * deliberately does not go through {@code readabilityWritePaths}: the release changes no read
+   * right today, its enforcement follows with the Zugangstokens.
+   */
+  @TestFactory
+  Stream<DynamicTest> everyWritePathChangingTheExternalAccessReleaseIsHistorised() {
+    return externalAccessWritePaths().entrySet().stream()
+        .map(
+            path ->
+                DynamicTest.dynamicTest(
+                    path.getKey(), () -> assertReleaseLiveAndHistoryAgree(path.getValue().get())));
+  }
+
+  private Map<String, Supplier<ExternalAccessChange>> externalAccessWritePaths() {
+    Map<String, Supplier<ExternalAccessChange>> paths = new LinkedHashMap<>();
+    paths.put(
+        "LibraryExternalAccessService#setExternalAccess (released)", this::externalAccessReleased);
+    paths.put(
+        "LibraryExternalAccessService#setExternalAccess (withdrawn)",
+        this::externalAccessWithdrawn);
+    paths.put("LibraryExternalAccessExpiryService#runOnce", this::externalAccessExpired);
+    return paths;
+  }
+
+  private void assertReleaseLiveAndHistoryAgree(ExternalAccessChange change) {
+    Instant afterTheChange = historyClock.nextBoundary();
+    boolean live =
+        libraryRepository
+            .findById(change.libraryId())
+            .orElseThrow()
+            .isExternalAccessActive(Instant.now());
+    assertThat(live)
+        .as("the operation must have left the release in the expected state")
+        .isEqualTo(change.releasedAfterwards());
+    assertThat(
+            permissionHistoryService.externalAccessActiveAsOf(change.libraryId(), afterTheChange))
+        .as("the history must describe the same release state as the library itself")
+        .isEqualTo(live);
+  }
+
+  private ExternalAccessChange externalAccessReleased() {
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    externalAccessService.setExternalAccess(
+        currentUserOf(owner), libraryId, true, Instant.now().plus(30, ChronoUnit.DAYS));
+    return new ExternalAccessChange(libraryId, true);
+  }
+
+  private ExternalAccessChange externalAccessWithdrawn() {
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    externalAccessService.setExternalAccess(
+        currentUserOf(owner), libraryId, true, Instant.now().plus(30, ChronoUnit.DAYS));
+    externalAccessService.setExternalAccess(currentUserOf(owner), libraryId, false, null);
+    return new ExternalAccessChange(libraryId, false);
+  }
+
+  private ExternalAccessChange externalAccessExpired() {
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    externalAccessService.setExternalAccess(
+        currentUserOf(owner), libraryId, true, Instant.now().plus(30, ChronoUnit.DAYS));
+    expiryServiceAt(Instant.now().plus(31, ChronoUnit.DAYS)).runOnce();
+    return new ExternalAccessChange(libraryId, false);
+  }
+
+  /**
+   * The expiry run with its clock moved past the Befristung. A second instance rather than the
+   * context's bean: the production bean reads the wall clock, and a class-local replacement would
+   * split the Spring context (AGENTS.md, "Spring-Testkontexte").
+   */
+  private LibraryExternalAccessExpiryService expiryServiceAt(Instant now) {
+    return new LibraryExternalAccessExpiryService(
+        libraryRepository, permissionHistoryService, auditEventRecorder, () -> now);
+  }
+
+  /**
+   * #1731 review, Befund 7: the release must not leak into the read rights. The comment classifying
+   * {@code LibraryExternalAccessService} as unable to change readability asserts exactly that -
+   * here it is measured, for a user who holds no grant on the library and for its own owner.
+   */
+  @Test
+  void releasingALibraryForExternalAccessLeavesTheReadableSetUntouched() {
+    UUID owner = createUser();
+    UUID outsider = createUser();
+    UUID libraryId = createLibrary(owner);
+    Set<UUID> outsiderBefore = accessService.readableLibraryIds(outsider, organizationId);
+    Set<UUID> ownerBefore = accessService.readableLibraryIds(owner, organizationId);
+    Instant beforeTheRelease = historyClock.nextBoundary();
+
+    externalAccessService.setExternalAccess(
+        currentUserOf(owner), libraryId, true, Instant.now().plus(30, ChronoUnit.DAYS));
+    Instant afterTheRelease = historyClock.nextBoundary();
+
+    assertThat(accessService.readableLibraryIds(outsider, organizationId))
+        .isEqualTo(outsiderBefore)
+        .doesNotContain(libraryId);
+    assertThat(accessService.readableLibraryIds(owner, organizationId)).isEqualTo(ownerBefore);
+    assertThat(
+            permissionHistoryService.readableLibraryIdsAsOf(
+                outsider, organizationId, afterTheRelease))
+        .isEqualTo(
+            permissionHistoryService.readableLibraryIdsAsOf(
+                outsider, organizationId, beforeTheRelease));
+  }
+
+  /**
+   * #1731 review, Befund 1: an interval that still reads ACTIVE because the run had not come round
+   * yet was, at an instant past its own expiry, not in effect - and the Stichtag answer is the
+   * proof purpose of the whole field.
+   */
+  @Test
+  void theStichtagAnswerFollowsTheBefristungNotTheRun() {
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    Instant expiresAt = Instant.now().plus(30, ChronoUnit.DAYS);
+    externalAccessService.setExternalAccess(currentUserOf(owner), libraryId, true, expiresAt);
+
+    assertThat(
+            permissionHistoryService.externalAccessActiveAsOf(
+                libraryId, historyClock.nextBoundary()))
+        .isTrue();
+    assertThat(
+            permissionHistoryService.externalAccessActiveAsOf(
+                libraryId, expiresAt.plus(1, ChronoUnit.HOURS)))
+        .isFalse();
+  }
+
+  /**
+   * #1731's acceptance criterion in its own right: the Stichtag question "was this Bestand
+   * reachable from outside the house at the time" is answered by the history alone, which is why
+   * the field is historised and not merely logged - the log is deleted monthwise after its
+   * retention, the interval is not.
+   */
+  @Test
+  void theHistoryAnswersWhetherALibraryWasReleasedAtAPastStichtagAfterTheLogIsGone() {
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    Instant beforeTheRelease = historyClock.nextBoundary();
+
+    externalAccessService.setExternalAccess(
+        currentUserOf(owner), libraryId, true, Instant.now().plus(30, ChronoUnit.DAYS));
+    Instant whileReleased = historyClock.nextBoundary();
+
+    expiryServiceAt(Instant.now().plus(31, ChronoUnit.DAYS)).runOnce();
+    Instant afterItExpired = historyClock.nextBoundary();
+
+    jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
+
+    assertThat(permissionHistoryService.externalAccessActiveAsOf(libraryId, beforeTheRelease))
+        .isFalse();
+    assertThat(permissionHistoryService.externalAccessActiveAsOf(libraryId, whileReleased))
+        .isTrue();
+    assertThat(permissionHistoryService.externalAccessActiveAsOf(libraryId, afterItExpired))
+        .isFalse();
+  }
+
+  /**
    * The operations that can move a library into or out of {@link
    * LibraryAccessService#readableLibraryIds}. That formula has exactly three inputs - direct asset
    * grants, group grants together with the caller's group memberships, and a library's own
@@ -640,7 +809,9 @@ class PermissionHistoryServiceIntegrationTest {
   @Test
   void everyPublicMethodOfTheRightsServicesIsEitherCoveredOrClassifiedAsIrrelevant() {
     Set<String> covered =
-        readabilityWritePaths().keySet().stream()
+        Stream.concat(
+                readabilityWritePaths().keySet().stream(),
+                externalAccessWritePaths().keySet().stream())
             .map(key -> key.split(" ", 2)[0])
             .collect(Collectors.toSet());
     Set<String> declared =
@@ -648,6 +819,8 @@ class PermissionHistoryServiceIntegrationTest {
                 AssetGrantService.class,
                 GroupService.class,
                 KnowledgeLibraryService.class,
+                LibraryExternalAccessService.class,
+                LibraryExternalAccessExpiryService.class,
                 DirectorySyncService.class,
                 TokenGroupSynchronizer.class)
             .flatMap(
@@ -767,6 +940,10 @@ class PermissionHistoryServiceIntegrationTest {
           "KnowledgeLibraryService#removeConfluenceWebhookSecret",
           "KnowledgeLibraryService#generateS3EventsToken",
           "KnowledgeLibraryService#removeS3EventsToken",
+          // #1731: the release decides whether a Fremdzugang may reach the library, never whether
+          // a person may read it - the readable set is the same before and after.
+          "LibraryExternalAccessService#describe",
+          "LibraryExternalAccessService#listReleasedLibraries",
           "DirectorySyncService#dryRun",
           "DirectorySyncService#getStatus",
           "TokenGroupSynchronizer#namespaceOf");

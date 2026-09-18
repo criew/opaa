@@ -21,7 +21,6 @@ import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
-import io.opaa.common.ValidationException;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.library.AssetGrant;
@@ -30,6 +29,8 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.LibraryCreation;
+import io.opaa.library.LibraryExternalAccessService;
+import io.opaa.library.LibraryExternalAccessTokenCounter;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
@@ -38,7 +39,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
@@ -75,9 +75,12 @@ class ExternalAccessTokenIntegrationTest {
   @Autowired private AssetGrantRepository grants;
   @Autowired private ExternalAccessTokenRepository tokens;
   @Autowired private ExternalAccessTokenService tokenService;
+  @Autowired private ExternalAccessTokenScopeService scope;
+  @Autowired private LibraryExternalAccessTokenCounter tokenCounter;
   @Autowired private LocalAuthKeyService keys;
   @Autowired private AuditEventRecorder audit;
   @Autowired private ExternalAccessSettingsService settings;
+  @Autowired private LibraryExternalAccessService libraryRelease;
   @Autowired private Clock clock;
 
   private UUID libraryId;
@@ -96,6 +99,19 @@ class ExternalAccessTokenIntegrationTest {
     foreignLibraryId = createLibrary(administrator, "Fremde Bibliothek");
     removeOwnTokens();
     setChannelEnabled(true);
+    setLibraryReleased(libraryId, true);
+    setLibraryReleased(foreignLibraryId, true);
+  }
+
+  /** The release of #1731 - the second of the four factors of the effective view. */
+  private void setLibraryReleased(UUID library, boolean released) {
+    User actor = library.equals(libraryId) ? owner : administrator;
+    libraryRelease.setExternalAccess(
+        CurrentUser.of(
+            actor.getId(), actor.getOrganizationId(), actor.getSystemRole(), "Verantwortliche"),
+        library,
+        released,
+        released ? clock.instant().plus(Duration.ofDays(60)) : null);
   }
 
   /**
@@ -188,20 +204,6 @@ class ExternalAccessTokenIntegrationTest {
   private UUID issueTokenId() throws Exception {
     return UUID.fromString(JsonPath.read(issue(), "$.id"));
   }
-
-  /** The production service with the release seam of #1731 replaced; everything else is real. */
-  private ExternalAccessTokenService serviceWith(ExternalAccessLibraryRelease release) {
-    return new ExternalAccessTokenService(
-        tokens, libraries, libraryAccess, release, settings, keys, audit, clock);
-  }
-
-  private ExternalAccessTokenScopeService scopeWith(ExternalAccessLibraryRelease release) {
-    return new ExternalAccessTokenScopeService(
-        tokens, users, libraryAccess, settings, release, clock);
-  }
-
-  private static final ExternalAccessLibraryRelease ALL_RELEASED = Set::copyOf;
-  private static final ExternalAccessLibraryRelease NONE_RELEASED = ids -> Set.of();
 
   @Test
   void issuesATokenWhoseValueIsShownOnceAndStoredNowhereInClear() throws Exception {
@@ -322,17 +324,15 @@ class ExternalAccessTokenIntegrationTest {
   }
 
   @Test
-  void refusesALibraryThatIsReadableButNotReleased() {
-    assertThatThrownBy(
-            () ->
-                serviceWith(NONE_RELEASED)
-                    .issue(
-                        owner.getId(),
-                        owner.getOrganizationId(),
-                        "Nicht freigegeben",
-                        List.of(libraryId),
-                        clock.instant().plus(Duration.ofDays(5))))
-        .isInstanceOf(ValidationException.class);
+  void refusesALibraryThatIsReadableButNotReleased() throws Exception {
+    setLibraryReleased(libraryId, false);
+
+    mockMvc
+        .perform(
+            post("/api/v1/external-access/tokens")
+                .with(devUser("dev-user"))
+                .content(createBody(libraryId, clock.instant().plus(Duration.ofDays(5)))))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
@@ -341,13 +341,12 @@ class ExternalAccessTokenIntegrationTest {
 
     assertThatThrownBy(
             () ->
-                serviceWith(ALL_RELEASED)
-                    .issue(
-                        owner.getId(),
-                        owner.getOrganizationId(),
-                        "Kanal zu",
-                        List.of(libraryId),
-                        clock.instant().plus(Duration.ofDays(5))))
+                tokenService.issue(
+                    owner.getId(),
+                    owner.getOrganizationId(),
+                    "Kanal zu",
+                    List.of(libraryId),
+                    clock.instant().plus(Duration.ofDays(5))))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -499,7 +498,6 @@ class ExternalAccessTokenIntegrationTest {
   @Test
   void theEffectiveViewLosesALibraryWhenTheReadingRightGoes() throws Exception {
     UUID tokenId = issueTokenId();
-    ExternalAccessTokenScopeService scope = scopeWith(ALL_RELEASED);
     assertThat(scope.effectiveLibraryIds(tokenId)).containsExactly(libraryId);
 
     grants.deleteAll(grants.findByLibraryId(libraryId));
@@ -509,16 +507,55 @@ class ExternalAccessTokenIntegrationTest {
   }
 
   @Test
-  void aWithdrawnReleaseDoesNotComeBackToLifeInAnIssuedToken() throws Exception {
+  void aWithdrawnReleaseTakesEffectOnTheNextCallAndDoesNotComeBackToLife() throws Exception {
     UUID tokenId = issueTokenId();
+    assertThat(scope.effectiveLibraryIds(tokenId)).containsExactly(libraryId);
 
-    assertThat(scopeWith(ALL_RELEASED).effectiveLibraryIds(tokenId)).containsExactly(libraryId);
-    assertThat(scopeWith(NONE_RELEASED).effectiveLibraryIds(tokenId)).isEmpty();
+    // Per call: nothing about the token is touched, only the release of the library.
+    setLibraryReleased(libraryId, false);
+    assertThat(scope.effectiveLibraryIds(tokenId)).isEmpty();
 
     // The release is back; the extinguished entry of the token is not.
-    assertThat(scopeWith(ALL_RELEASED).effectiveLibraryIds(tokenId)).isEmpty();
+    setLibraryReleased(libraryId, true);
+    assertThat(scope.effectiveLibraryIds(tokenId)).isEmpty();
     assertThat(tokens.findById(tokenId).orElseThrow().getSelectedLibraryIds())
         .containsExactly(libraryId);
+  }
+
+  @Test
+  void aTokenNeverSeesALibraryWhoseReleaseWasNeverSet() throws Exception {
+    UUID tokenId = issueTokenId();
+    // Granted, readable and not released: it is not part of the effective view.
+    grants.save(
+        AssetGrant.forUser(
+            foreignLibraryId,
+            administrator.getOrganizationId(),
+            owner.getId(),
+            AssetRole.VIEWER,
+            null,
+            administrator.getId()));
+    libraryAccess.invalidateLibrary(foreignLibraryId);
+    setLibraryReleased(foreignLibraryId, false);
+
+    assertThat(scope.effectiveLibraryIds(tokenId)).containsExactly(libraryId);
+  }
+
+  @Test
+  void countsOnlyTheTokensALibraryCurrentlyActsIn() throws Exception {
+    assertThat(tokenCounter.countActiveTokensFor(libraryId)).isZero();
+
+    UUID first = issueTokenId();
+    UUID second = issueTokenId();
+    assertThat(tokenCounter.countActiveTokensFor(libraryId)).isEqualTo(2);
+
+    // A revoked token is out ...
+    tokenService.revokeOwn(owner.getId(), owner.getOrganizationId(), first);
+    assertThat(tokenCounter.countActiveTokensFor(libraryId)).isEqualTo(1);
+
+    // ... and so is an entry the withdrawn release extinguished.
+    setLibraryReleased(libraryId, false);
+    scope.effectiveLibraryIds(second);
+    assertThat(tokenCounter.countActiveTokensFor(libraryId)).isZero();
   }
 
   @Test
@@ -526,7 +563,7 @@ class ExternalAccessTokenIntegrationTest {
     UUID tokenId = issueTokenId();
     setChannelEnabled(false);
 
-    assertThat(scopeWith(ALL_RELEASED).effectiveLibraryIds(tokenId)).isEmpty();
+    assertThat(scope.effectiveLibraryIds(tokenId)).isEmpty();
 
     ExternalAccessToken untouched = tokens.findById(tokenId).orElseThrow();
     assertThat(untouched.getRevokedAt()).isNull();

@@ -14,6 +14,7 @@ import io.opaa.indexing.source.filesystem.FilesystemProperties;
 import io.opaa.indexing.source.s3.S3Properties;
 import io.opaa.indexing.source.web.CrawlProperties;
 import io.opaa.library.AttachmentExtractionProperties;
+import io.opaa.library.ExternalAccessProperties;
 import io.opaa.library.LibraryProperties;
 import io.opaa.library.RemoteContentProperties;
 import io.opaa.library.UploadProperties;
@@ -35,6 +36,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   UploadProperties.class,
   UploadS3Properties.class,
   LibraryProperties.class,
+  ExternalAccessProperties.class,
   CredentialsEncryptionProperties.class,
   RemoteContentProperties.class,
   AttachmentExtractionProperties.class,

@@ -56,6 +56,10 @@ databaseChangeLog:
   # Installation samt Grenzwerten, Netzbereichen und Einleitungstext.
   - include:
       file: db/changelog/changes/032-create-external-access-settings.yaml
+  # Freigabe einer Bibliothek für Fremdzugänge als drittes, historisiertes Reichweitenfeld (#1731,
+  # external-access.md).
+  - include:
+      file: db/changelog/changes/033-library-external-access.yaml
   # Persönliche Zugangstokens des Fremdzugangskanals (#1718, ADR-0035 Entscheidung 2).
   - include:
       file: db/changelog/changes/034-create-external-access-tokens.yaml

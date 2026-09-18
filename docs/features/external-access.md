@@ -203,6 +203,13 @@ Jede Bibliothek trägt ein Merkmal **„darf über Fremdzugänge genutzt werden"
 Gesetzt wird es von dem, der die Bibliothek verwaltet — mindestens Verwalter-Rolle an ihr — sowie von
 der Systemverwaltung.
 
+> **Gebaut (#1731).** Das Merkmal, seine Pflichtbefristung, die Historisierung, der Ablauflauf, die
+> Wiedervorlage per Mail, die beiden Protokollereignisse, der Schalter im Zugriffsbereich der
+> Bibliothek und die Liste der Systemverwaltung stehen. Nicht gebaut und hier ausdrücklich nicht
+> vorweggenommen: die Deckelung durch die Freigabe-Obergrenze (#797, Punkt 2 unten), die Sperre bei
+> „Nachfolge offen" (Punkt 4 unten) und die Tokenzählung, die bis zu den Zugangstokens (#1718) als
+> `0` ausgewiesen wird.
+
 ### Die Freigabe ist ein Reichweitenfeld und wird wie eines behandelt
 
 Das Merkmal ist fachlich dasselbe wie `visibility` und `listed`: eine Stufe der Reichweite, an der
@@ -392,11 +399,13 @@ Schalter, Netzbereich und Höchstlaufzeit kommen aus den Kanaleinstellungen
 ([#1717](https://github.com/criew/opaa/issues/1717)) und werden **je Aufruf** gelesen: Ist der
 Schalter zu, wird jedes Token abgewiesen, und die Tokenzeilen bleiben unverändert erhalten.
 
-Zwei Dinge stehen noch aus und sind bewusst als Naht angelegt, nicht als Provisorium:
+Die Bibliotheksfreigabe aus [#1731](https://github.com/criew/opaa/issues/1731) wirkt: Die
+effektive Sicht liest das Reichweitenfeld je Aufruf über `KnowledgeLibrary#isExternalAccessActive`,
+und die Freigabeansicht der Verantwortlichen zeigt in `tokenCount` die Zahl der Tokens, in denen
+die Bibliothek gerade wirkt — eine Zahl, ohne Personenauflösung.
 
-- **Die Bibliotheksfreigabe** ist eine Frage an `ExternalAccessLibraryRelease`, die heute jede
-  lesbare Bibliothek als freigegeben behandelt; [#1731](https://github.com/criew/opaa/issues/1731)
-  liefert das Reichweitenfeld und löst den Platzhalter ab.
+Eines steht noch aus:
+
 - **Die Freigabeliste der erreichbaren Pfade ist leer.** Ein Zugangstoken authentifiziert sich
   erfolgreich und erreicht anschließend nichts — jeder Pfad wird mit `403` abgewiesen. Such- und
   Abrufendpunkte ([#1720](https://github.com/criew/opaa/issues/1720)) und der MCP-Server

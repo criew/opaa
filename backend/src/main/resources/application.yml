@@ -383,6 +383,12 @@ opaa:
     # FILESYSTEM/HTTP_DIRECTORY/RSS_FEED connectors), not only the upload endpoint. Default 10 GiB.
     # 0 or negative disables the quota entirely - see LibraryProperties#quotaBytes.
     quota-bytes: ${OPAA_LIBRARY_QUOTA_BYTES:10737418240}
+  external-access:
+    # #1731: longest admissible Befristung of a library's release for Fremdzugaenge, and how many
+    # days before it ends the responsible person is reminded by mail. 0 reminder days switches the
+    # reminder off; the release still expires on its own.
+    max-release-days: ${OPAA_EXTERNAL_ACCESS_MAX_RELEASE_DAYS:365}
+    reminder-lead-days: ${OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS:14}
   documents:
     # #748 review, finding 1: the synchronous remote-content proxy path (GET
     # /api/v1/documents/{documentId}/content for a HTTP_DIRECTORY/RSS_FEED document, #747) gets its

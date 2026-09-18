@@ -214,7 +214,12 @@ final class LibraryResponseMapper {
         .confluenceFullSyncIntervalDefaultDays(
             managementDetail.confluenceFullSyncIntervalDefaultDays())
         .storageQuotaBytes(managementDetail.storageQuotaBytes())
-        .storageUsedBytes(managementDetail.storageUsedBytes());
+        .storageUsedBytes(managementDetail.storageUsedBytes())
+        .externalAccess(
+            managementDetail.externalAccess() == null
+                ? null
+                : LibraryExternalAccessResponseMapper.toResponse(
+                    managementDetail.externalAccess()));
     LibraryScheduleDetail schedule = managementDetail.schedule();
     if (schedule != null) {
       response

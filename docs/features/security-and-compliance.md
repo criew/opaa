@@ -609,6 +609,21 @@ Recht falsch, nicht bloß lückenhaft. Die Historie überlebt die Löschung eine
 (siehe [ADR-0016](../decisions/0016-loeschschicksal-rechtehistorie.md)): Die Fachobjekt-Spalten tragen
 bewusst keinen Fremdschlüssel, damit eine reguläre Lösch-Operation die Beweislage nicht mit sich reißt.
 
+**Umsetzungsstand der Fremdzugangsfreigabe (#1731):** Das dritte Reichweitenfeld — die Freigabe einer
+Wissensbibliothek für Fremdzugänge — ist gebaut und liegt im selben Intervall wie `visibility` und
+`listed`, mit demselben Schreibpfadschutz (`KnowledgeLibrary#updateExternalAccess` ist
+paketprivat). Setzen, Zurücknehmen und Erlöschen erzeugen je einen Protokolleintrag
+(`ASSET_EXTERNAL_ACCESS_CHANGED`, `ASSET_EXTERNAL_ACCESS_EXPIRED`) und öffnen je ein neues Intervall;
+der Ablauflauf schreibt ohne handelnde Person, unter einem Systemakteur. Die
+Befristung **wirkt im Augenblick ihres Ablaufs**, nicht erst mit dem nächtlichen Lauf: Der Lauf
+trägt Protokoll und Historie nach, er ist nicht die Bedingung der Wirkung — bei einer Instanz
+(ADR-0021) wäre er das sonst tagelang. Der Stichtag „war diese
+Bibliothek freigegeben?" wird aus der Historie allein beantwortet
+(`PermissionHistoryService#externalAccessActiveAsOf`), also auch nach der monatsweisen Löschung des
+Protokollzeitraums. **Aussetzen** ist im Modell vorgesehen (Zustand `SUSPENDED`), wird heute aber von
+nichts gesetzt — es gehört zur Freigabe-Obergrenze und kommt mit
+[#797](https://github.com/criew/opaa/issues/797).
+
 **Auflösung der Intervallgrenzen (#1497, [ADR-0032](../decisions/0032-zeitquelle-rechtehistorie.md)):**
 Aufeinanderfolgende Zustandsintervalle desselben Objekts haben streng aufsteigende Grenzen — auch dann,
 wenn beide Änderungen in denselben Tick der Systemuhr fallen. Die Zusage gilt **für Zeilen, die ab

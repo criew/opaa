@@ -25,6 +25,7 @@ import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryCreation;
+import io.opaa.library.LibraryExternalAccessService;
 import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
@@ -76,6 +77,7 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private ExternalAccessTokenRepository tokens;
   @Autowired private ExternalAccessSettingsService settings;
+  @Autowired private LibraryExternalAccessService libraryRelease;
   @Autowired private ExternalAccessTokenService tokenService;
   @Autowired private LocalUserService localUsers;
   @Autowired private LocalAccountFixturesFactory localAccountFixtures;
@@ -124,6 +126,12 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
             .library()
             .getId();
     removeOwnTokens();
+    libraryRelease.setExternalAccess(
+        CurrentUser.of(
+            owner.getId(), owner.getOrganizationId(), owner.getSystemRole(), "Verantwortliche"),
+        libraryId,
+        true,
+        clock.instant().plus(Duration.ofDays(60)));
     String body =
         mockMvc
             .perform(
