@@ -40,6 +40,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
@@ -63,10 +66,39 @@ public class GlobalExceptionHandler {
   // forcing every @WebMvcTest to import the bean.
   private final ErrorSanitizer errorSanitizer = new ErrorSanitizer();
 
+  // Kept out of the Spring context for the same reason as errorSanitizer above.
+  private final ErrorBodyNegotiator errorBodyNegotiator = new ErrorBodyNegotiator();
+
   private final UploadProperties uploadProperties;
 
   public GlobalExceptionHandler(UploadProperties uploadProperties) {
     this.uploadProperties = uploadProperties;
+  }
+
+  /**
+   * The single decision every branch routes through: the envelope is attached only when the
+   * caller's {@code Accept} lets it be written (#1780). Attaching an unwritable one makes {@code
+   * ExceptionHandlerExceptionResolver} log a stacktrace and discard this response altogether, so
+   * the caller gets the container's 500 instead of the status meant for them. A branch with a
+   * builder of its own ({@code Allow}, {@code Retry-After}) hands it here instead of calling {@code
+   * builder.body(...)}.
+   */
+  private ResponseEntity<ErrorResponse> respond(
+      ResponseEntity.BodyBuilder builder, ErrorResponse body) {
+    return acceptsErrorBody() ? builder.body(body) : builder.build();
+  }
+
+  private ResponseEntity<ErrorResponse> respond(HttpStatusCode status, ErrorResponse body) {
+    return respond(ResponseEntity.status(status), body);
+  }
+
+  /** Without a bound request - a unit test invoking a branch directly - a body is written. */
+  private boolean acceptsErrorBody() {
+    RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
+    if (attributes instanceof ServletRequestAttributes servletAttributes) {
+      return errorBodyNegotiator.acceptsErrorBody(servletAttributes.getRequest());
+    }
+    return true;
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -77,25 +109,27 @@ public class GlobalExceptionHandler {
             .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
             .findFirst()
             .orElse("Validierung fehlgeschlagen");
-    return ResponseEntity.badRequest()
-        .body(new ErrorResponse(message, HttpStatus.BAD_REQUEST.value(), Instant.now()));
+    return respond(
+        HttpStatus.BAD_REQUEST,
+        new ErrorResponse(message, HttpStatus.BAD_REQUEST.value(), Instant.now()));
   }
 
   @ExceptionHandler(HttpMessageNotReadableException.class)
   public ResponseEntity<ErrorResponse> handleMessageNotReadableException(
       HttpMessageNotReadableException ex) {
-    return ResponseEntity.badRequest()
-        .body(
-            new ErrorResponse(
-                "Der Anfragetext fehlt oder ist fehlerhaft",
-                HttpStatus.BAD_REQUEST.value(),
-                Instant.now()));
+    return respond(
+        HttpStatus.BAD_REQUEST,
+        new ErrorResponse(
+            "Der Anfragetext fehlt oder ist fehlerhaft",
+            HttpStatus.BAD_REQUEST.value(),
+            Instant.now()));
   }
 
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
-    return ResponseEntity.badRequest()
-        .body(new ErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST.value(), Instant.now()));
+    return respond(
+        HttpStatus.BAD_REQUEST,
+        new ErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST.value(), Instant.now()));
   }
 
   /**
@@ -110,12 +144,12 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(MissingServletRequestParameterException.class)
   public ResponseEntity<ErrorResponse> handleMissingServletRequestParameterException(
       MissingServletRequestParameterException ex) {
-    return ResponseEntity.badRequest()
-        .body(
-            new ErrorResponse(
-                "Pflichtparameter fehlt: " + ex.getParameterName(),
-                HttpStatus.BAD_REQUEST.value(),
-                Instant.now()));
+    return respond(
+        HttpStatus.BAD_REQUEST,
+        new ErrorResponse(
+            "Pflichtparameter fehlt: " + ex.getParameterName(),
+            HttpStatus.BAD_REQUEST.value(),
+            Instant.now()));
   }
 
   /**
@@ -127,32 +161,31 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)
   public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
       MethodArgumentTypeMismatchException ex) {
-    return ResponseEntity.badRequest()
-        .body(
-            new ErrorResponse(
-                "Ungültiger Wert für Parameter: " + ex.getName(),
-                HttpStatus.BAD_REQUEST.value(),
-                Instant.now()));
+    return respond(
+        HttpStatus.BAD_REQUEST,
+        new ErrorResponse(
+            "Ungültiger Wert für Parameter: " + ex.getName(),
+            HttpStatus.BAD_REQUEST.value(),
+            Instant.now()));
   }
 
   @ExceptionHandler(TransientAiException.class)
   public ResponseEntity<ErrorResponse> handleTransientAiException(TransientAiException ex) {
     log.warn("Transient AI service error: {}", errorSanitizer.sanitize(ex.getMessage()));
-    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-        .body(
-            new ErrorResponse(
-                "KI-Dienst vorübergehend nicht verfügbar",
-                HttpStatus.SERVICE_UNAVAILABLE.value(),
-                Instant.now()));
+    return respond(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        new ErrorResponse(
+            "KI-Dienst vorübergehend nicht verfügbar",
+            HttpStatus.SERVICE_UNAVAILABLE.value(),
+            Instant.now()));
   }
 
   @ExceptionHandler(NonTransientAiException.class)
   public ResponseEntity<ErrorResponse> handleNonTransientAiException(NonTransientAiException ex) {
     log.error("Non-transient AI service error: {}", errorSanitizer.sanitize(ex.getMessage()));
-    return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-        .body(
-            new ErrorResponse(
-                "Fehler im KI-Dienst", HttpStatus.BAD_GATEWAY.value(), Instant.now()));
+    return respond(
+        HttpStatus.BAD_GATEWAY,
+        new ErrorResponse("Fehler im KI-Dienst", HttpStatus.BAD_GATEWAY.value(), Instant.now()));
   }
 
   /**
@@ -171,12 +204,12 @@ public class GlobalExceptionHandler {
   @ExceptionHandler({OpenAIIoException.class, OpenAIRetryableException.class})
   public ResponseEntity<ErrorResponse> handleOpenAiTransientException(RuntimeException ex) {
     log.warn("Transient AI service error: {}", errorSanitizer.sanitize(ex.getMessage()));
-    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-        .body(
-            new ErrorResponse(
-                "KI-Dienst vorübergehend nicht verfügbar",
-                HttpStatus.SERVICE_UNAVAILABLE.value(),
-                Instant.now()));
+    return respond(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        new ErrorResponse(
+            "KI-Dienst vorübergehend nicht verfügbar",
+            HttpStatus.SERVICE_UNAVAILABLE.value(),
+            Instant.now()));
   }
 
   /**
@@ -214,7 +247,8 @@ public class GlobalExceptionHandler {
               responseBuilder.header(HttpHeaders.RETRY_AFTER, retryAfter.toArray(new String[0]));
         }
       }
-      return responseBuilder.body(
+      return respond(
+          responseBuilder,
           new ErrorResponse(
               "KI-Dienst vorübergehend nicht verfügbar",
               HttpStatus.SERVICE_UNAVAILABLE.value(),
@@ -224,10 +258,9 @@ public class GlobalExceptionHandler {
         "Non-transient AI service error ({}): {}",
         statusCode,
         errorSanitizer.sanitize(ex.getMessage()));
-    return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-        .body(
-            new ErrorResponse(
-                "Fehler im KI-Dienst", HttpStatus.BAD_GATEWAY.value(), Instant.now()));
+    return respond(
+        HttpStatus.BAD_GATEWAY,
+        new ErrorResponse("Fehler im KI-Dienst", HttpStatus.BAD_GATEWAY.value(), Instant.now()));
   }
 
   /**
@@ -248,10 +281,9 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(OpenAIException.class)
   public ResponseEntity<ErrorResponse> handleOpenAiException(OpenAIException ex) {
     log.error("Unexpected AI service error: {}", errorSanitizer.sanitize(ex.getMessage()));
-    return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-        .body(
-            new ErrorResponse(
-                "Fehler im KI-Dienst", HttpStatus.BAD_GATEWAY.value(), Instant.now()));
+    return respond(
+        HttpStatus.BAD_GATEWAY,
+        new ErrorResponse("Fehler im KI-Dienst", HttpStatus.BAD_GATEWAY.value(), Instant.now()));
   }
 
   /**
@@ -267,12 +299,12 @@ public class GlobalExceptionHandler {
   @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
   public ResponseEntity<ErrorResponse> handleNoResourceFoundException(Exception ex) {
     log.debug("No handler found for request: {}", errorSanitizer.sanitize(ex.getMessage()));
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(
-            new ErrorResponse(
-                "Die angeforderte Ressource wurde nicht gefunden",
-                HttpStatus.NOT_FOUND.value(),
-                Instant.now()));
+    return respond(
+        HttpStatus.NOT_FOUND,
+        new ErrorResponse(
+            "Die angeforderte Ressource wurde nicht gefunden",
+            HttpStatus.NOT_FOUND.value(),
+            Instant.now()));
   }
 
   /**
@@ -297,7 +329,8 @@ public class GlobalExceptionHandler {
     if (supportedMethods != null && !supportedMethods.isEmpty()) {
       response.allow(supportedMethods.toArray(new HttpMethod[0]));
     }
-    return response.body(
+    return respond(
+        response,
         new ErrorResponse(
             "Die HTTP-Methode wird für diese Ressource nicht unterstützt",
             HttpStatus.METHOD_NOT_ALLOWED.value(),
@@ -309,12 +342,12 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotSupportedException(
       HttpMediaTypeNotSupportedException ex) {
     log.debug("Unsupported media type: {}", errorSanitizer.sanitize(ex.getMessage()));
-    return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
-        .body(
-            new ErrorResponse(
-                "Der Inhaltstyp der Anfrage wird nicht unterstützt",
-                HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(),
-                Instant.now()));
+    return respond(
+        HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+        new ErrorResponse(
+            "Der Inhaltstyp der Anfrage wird nicht unterstützt",
+            HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(),
+            Instant.now()));
   }
 
   /**
@@ -341,8 +374,9 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
   public ResponseEntity<ErrorResponse> handleAccessDeniedException(
       org.springframework.security.access.AccessDeniedException ex) {
-    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-        .body(new ErrorResponse("Zugriff verweigert", HttpStatus.FORBIDDEN.value(), Instant.now()));
+    return respond(
+        HttpStatus.FORBIDDEN,
+        new ErrorResponse("Zugriff verweigert", HttpStatus.FORBIDDEN.value(), Instant.now()));
   }
 
   /**
@@ -352,14 +386,16 @@ public class GlobalExceptionHandler {
    */
   @ExceptionHandler(NotFoundException.class)
   public ResponseEntity<ErrorResponse> handleNotFoundException(NotFoundException ex) {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(new ErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND.value(), Instant.now()));
+    return respond(
+        HttpStatus.NOT_FOUND,
+        new ErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND.value(), Instant.now()));
   }
 
   @ExceptionHandler(AccessDeniedException.class)
   public ResponseEntity<ErrorResponse> handleDomainAccessDeniedException(AccessDeniedException ex) {
-    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-        .body(new ErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN.value(), Instant.now()));
+    return respond(
+        HttpStatus.FORBIDDEN,
+        new ErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN.value(), Instant.now()));
   }
 
   /** A conflict may carry a stable {@code code} the client acts on (ADR-0033, Entscheidung 4). */
@@ -370,7 +406,7 @@ public class GlobalExceptionHandler {
     if (ex.getCode() != null) {
       body.setCode(ex.getCode());
     }
-    return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    return respond(HttpStatus.CONFLICT, body);
   }
 
   /** A refusal may carry a stable {@code code} the client acts on (e.g. {@code TOKEN_INVALID}). */
@@ -381,7 +417,7 @@ public class GlobalExceptionHandler {
     if (ex.getCode() != null) {
       body.setCode(ex.getCode());
     }
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    return respond(HttpStatus.BAD_REQUEST, body);
   }
 
   /**
@@ -397,21 +433,21 @@ public class GlobalExceptionHandler {
         ex.fieldErrors().stream()
             .map(error -> new FieldError(error.field(), error.code(), error.message()))
             .toList());
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    return respond(HttpStatus.BAD_REQUEST, body);
   }
 
   @ExceptionHandler(UnauthorizedException.class)
   public ResponseEntity<ErrorResponse> handleUnauthorizedException(UnauthorizedException ex) {
-    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-        .body(new ErrorResponse(ex.getMessage(), HttpStatus.UNAUTHORIZED.value(), Instant.now()));
+    return respond(
+        HttpStatus.UNAUTHORIZED,
+        new ErrorResponse(ex.getMessage(), HttpStatus.UNAUTHORIZED.value(), Instant.now()));
   }
 
   @ExceptionHandler(PayloadTooLargeException.class)
   public ResponseEntity<ErrorResponse> handlePayloadTooLargeException(PayloadTooLargeException ex) {
-    return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-        .body(
-            new ErrorResponse(
-                ex.getMessage(), HttpStatus.PAYLOAD_TOO_LARGE.value(), Instant.now()));
+    return respond(
+        HttpStatus.PAYLOAD_TOO_LARGE,
+        new ErrorResponse(ex.getMessage(), HttpStatus.PAYLOAD_TOO_LARGE.value(), Instant.now()));
   }
 
   @ExceptionHandler(TooManyRequestsException.class)
@@ -420,7 +456,8 @@ public class GlobalExceptionHandler {
     if (ex.retryAfterSeconds() > 0) {
       response.header(HttpHeaders.RETRY_AFTER, Long.toString(ex.retryAfterSeconds()));
     }
-    return response.body(
+    return respond(
+        response,
         new ErrorResponse(ex.getMessage(), HttpStatus.TOO_MANY_REQUESTS.value(), Instant.now()));
   }
 
@@ -428,10 +465,9 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleServiceUnavailableException(
       ServiceUnavailableException ex) {
     log.error("Server error raised by application", ex);
-    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-        .body(
-            new ErrorResponse(
-                ex.getMessage(), HttpStatus.SERVICE_UNAVAILABLE.value(), Instant.now()));
+    return respond(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        new ErrorResponse(ex.getMessage(), HttpStatus.SERVICE_UNAVAILABLE.value(), Instant.now()));
   }
 
   @ExceptionHandler(ResponseStatusException.class)
@@ -441,8 +477,7 @@ public class GlobalExceptionHandler {
       log.error("Server error raised by application", ex);
     }
     String message = ex.getReason() != null ? ex.getReason() : defaultMessageFor(status);
-    return ResponseEntity.status(status)
-        .body(new ErrorResponse(message, status.value(), Instant.now()));
+    return respond(status, new ErrorResponse(message, status.value(), Instant.now()));
   }
 
   /**
@@ -473,8 +508,9 @@ public class GlobalExceptionHandler {
         "Die Datei ist zu groß. Erlaubt sind höchstens "
             + (uploadProperties.maxFileSize() / (1024 * 1024))
             + " MB.";
-    return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-        .body(new ErrorResponse(message, HttpStatus.PAYLOAD_TOO_LARGE.value(), Instant.now()));
+    return respond(
+        HttpStatus.PAYLOAD_TOO_LARGE,
+        new ErrorResponse(message, HttpStatus.PAYLOAD_TOO_LARGE.value(), Instant.now()));
   }
 
   /**
@@ -487,8 +523,9 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleMissingServletRequestPartException(
       MissingServletRequestPartException ex) {
     String message = "Der Anfrageteil '" + ex.getRequestPartName() + "' fehlt";
-    return ResponseEntity.badRequest()
-        .body(new ErrorResponse(message, HttpStatus.BAD_REQUEST.value(), Instant.now()));
+    return respond(
+        HttpStatus.BAD_REQUEST,
+        new ErrorResponse(message, HttpStatus.BAD_REQUEST.value(), Instant.now()));
   }
 
   /**
@@ -503,12 +540,12 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(MultipartException.class)
   public ResponseEntity<ErrorResponse> handleMultipartException(MultipartException ex) {
     log.warn("Multipart request could not be processed", ex);
-    return ResponseEntity.badRequest()
-        .body(
-            new ErrorResponse(
-                "Die hochgeladene Datei konnte nicht verarbeitet werden",
-                HttpStatus.BAD_REQUEST.value(),
-                Instant.now()));
+    return respond(
+        HttpStatus.BAD_REQUEST,
+        new ErrorResponse(
+            "Die hochgeladene Datei konnte nicht verarbeitet werden",
+            HttpStatus.BAD_REQUEST.value(),
+            Instant.now()));
   }
 
   /**
@@ -526,10 +563,9 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleCredentialsEncryptionKeyMissingException(
       CredentialsEncryptionKeyMissingException ex) {
     log.error("Credentials encryption key missing or invalid", ex);
-    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-        .body(
-            new ErrorResponse(
-                ex.getMessage(), HttpStatus.SERVICE_UNAVAILABLE.value(), Instant.now()));
+    return respond(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        new ErrorResponse(ex.getMessage(), HttpStatus.SERVICE_UNAVAILABLE.value(), Instant.now()));
   }
 
   @ExceptionHandler(DataIntegrityViolationException.class)
@@ -553,8 +589,7 @@ public class GlobalExceptionHandler {
       }
       default -> message = "Die Aktion widerspricht bestehenden Daten und wurde nicht ausgeführt";
     }
-    return ResponseEntity.status(status)
-        .body(new ErrorResponse(message, status.value(), Instant.now()));
+    return respond(status, new ErrorResponse(message, status.value(), Instant.now()));
   }
 
   private String defaultMessageFor(HttpStatusCode status) {
@@ -599,10 +634,10 @@ public class GlobalExceptionHandler {
       return handleOpenAiException(openAiCause);
     }
     log.error("Unexpected error", ex);
-    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .body(
-            new ErrorResponse(
-                "Interner Serverfehler", HttpStatus.INTERNAL_SERVER_ERROR.value(), Instant.now()));
+    return respond(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        new ErrorResponse(
+            "Interner Serverfehler", HttpStatus.INTERNAL_SERVER_ERROR.value(), Instant.now()));
   }
 
   private <T extends Throwable> T findCause(Throwable ex, Class<T> type) {
