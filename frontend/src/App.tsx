@@ -7,6 +7,7 @@ import { createAppTheme } from './theme/theme'
 import GlobalAreaLayout from './layouts/GlobalAreaLayout'
 import AppShell from './layouts/AppShell'
 import ChatPage from './pages/ChatPage'
+import ChatsPage from './pages/ChatsPage'
 import ChatRedirect from './pages/ChatRedirect'
 import SettingsPage from './pages/SettingsPage'
 import LoginPage from './pages/LoginPage'
@@ -138,6 +139,7 @@ export default function App() {
               <Route index element={<Navigate to="/chat" replace />} />
               <Route path="chat" element={<ChatRedirect />} />
 
+              <Route path="spaces/:spaceId/chats" element={<ChatsPage />} />
               <Route path="spaces/:spaceId/chats/:chatId" element={<ChatPage />} />
               <Route path="spaces/:spaceId" element={<SpacePage />} />
               <Route path="spaces/:spaceId/manage" element={<SpaceManagementPage />} />

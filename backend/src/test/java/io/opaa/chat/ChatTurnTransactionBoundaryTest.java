@@ -60,7 +60,13 @@ class ChatTurnTransactionBoundaryTest {
   void writeTurnOnceRequiresANewTransactionPerAttempt() throws NoSuchMethodException {
     Method writeTurnOnce =
         ChatMessageWriter.class.getDeclaredMethod(
-            "writeTurnOnce", UUID.class, String.class, String.class, String.class, String.class);
+            "writeTurnOnce",
+            UUID.class,
+            UUID.class,
+            String.class,
+            String.class,
+            String.class,
+            String.class);
 
     Transactional annotation = writeTurnOnce.getAnnotation(Transactional.class);
     assertThat(annotation).isNotNull();

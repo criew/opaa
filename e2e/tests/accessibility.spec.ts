@@ -111,6 +111,33 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Space-Seite");
   });
 
+  test("Seite „Chats“ in beiden Farbschemata und beiden Reitern", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/chat");
+    await page.waitForURL(/\/spaces\/([^/]+)\/chats\//);
+    const spaceId = /\/spaces\/([^/]+)\/chats\//.exec(page.url())?.[1];
+    expect(spaceId, "Space-ID aus der Chat-URL").toBeTruthy();
+
+    await page.goto(`/spaces/${spaceId}/chats`);
+    await expect(page.getByRole("heading", { level: 1, name: /^Chats/ })).toBeVisible();
+    await expect(page.getByRole("tab", { name: /^Aktiv \(/ })).toBeVisible();
+
+    await page.emulateMedia({ colorScheme: "light" });
+    await expectNoSeriousA11yViolations(page, "Seite Chats, Reiter Aktiv (helles Farbschema)");
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expectNoSeriousA11yViolations(page, "Seite Chats, Reiter Aktiv (dunkles Farbschema)");
+
+    await page.getByRole("tab", { name: /^Archiv \(/ }).click();
+    await expect(page.getByRole("tab", { name: /^Archiv \(/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expectNoSeriousA11yViolations(page, "Seite Chats, Reiter Archiv (dunkles Farbschema)");
+    await page.emulateMedia({ colorScheme: "light" });
+    await expectNoSeriousA11yViolations(page, "Seite Chats, Reiter Archiv (helles Farbschema)");
+  });
+
   // #957: Die Rollen-Chips („Administrator", „Eigentümer") fielen im Abschluss-Audit (#598) nur
   // im Dunkelschema durch color-contrast — beide Seiten deshalb in beiden Schemata, nach dem
   // Muster des Chat-Szenarios oben.

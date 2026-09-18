@@ -14,6 +14,7 @@ import io.opaa.space.SpaceAssetAssociationRepository;
 import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -28,6 +29,8 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Limit;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -176,7 +179,10 @@ public class ChatService {
         filter, libraryAccessService.readableLibraryIds(authorId, organizationId));
   }
 
-  /** The caller's chats in the space, most recently active first, each with the caller's marks. */
+  /**
+   * The caller's active chats in the space - those not in their chat archive - most recently active
+   * first, each with the caller's marks.
+   */
   @Transactional(readOnly = true)
   public List<ChatListEntry> listChats(UUID spaceId, UUID authorId) {
     requireMembership(spaceId, authorId);
@@ -187,9 +193,16 @@ public class ChatService {
         pinnedAtByChat.put(mark.getChatId(), mark.getPinnedAt());
       }
     }
-    return chatRepository.findBySpaceIdAndAuthorIdOrderByUpdatedAtDesc(spaceId, authorId).stream()
-        .map(chat -> new ChatListEntry(chat, pinnedAtByChat.get(chat.getId())))
+    return chatRepository.findActiveInSpace(spaceId, authorId).stream()
+        .map(chat -> new ChatListEntry(chat, pinnedAtByChat.get(chat.getId()), null))
         .toList();
+  }
+
+  /** The caller's chat archive of one space, most recently archived first. */
+  @Transactional(readOnly = true)
+  public Page<ChatListEntry> listArchivedChats(UUID spaceId, UUID userId, Pageable pageable) {
+    requireMembership(spaceId, userId);
+    return chatPersonalMarkRepository.findArchivedInSpace(spaceId, userId, pageable);
   }
 
   /**
@@ -259,7 +272,7 @@ public class ChatService {
     Chat chat = getOwnedChat(chatId, userId);
     chatPersonalMarkRepository.pin(chatId, userId, Instant.now());
     return new ChatListEntry(
-        chat, chatPersonalMarkRepository.findPinnedAt(chatId, userId).orElseThrow());
+        chat, chatPersonalMarkRepository.findPinnedAt(chatId, userId).orElseThrow(), null);
   }
 
   /**
@@ -272,9 +285,68 @@ public class ChatService {
     chatPersonalMarkRepository.deleteIfUnmarked(chatId, userId);
   }
 
+  /**
+   * Moves the chat into the caller's chat archive (docs/features/chat-list.md, "Archivieren") and
+   * unpins it. Like pinning a personal mark under the same rules: the chat itself stays untouched,
+   * an archived space allows it, and a chat the caller cannot see is reported as not found.
+   */
+  @Transactional
+  public ChatListEntry archiveChat(UUID chatId, UUID userId) {
+    Chat chat = getOwnedChat(chatId, userId);
+    chatPersonalMarkRepository.archive(chatId, userId, Instant.now());
+    return new ChatListEntry(
+        chat, null, chatPersonalMarkRepository.findArchivedAt(chatId, userId).orElseThrow());
+  }
+
+  /** Counterpart of {@link #archiveChat}; the chat comes back unpinned. Idempotent. */
+  @Transactional
+  public ChatListEntry unarchiveChat(UUID chatId, UUID userId) {
+    Chat chat = getOwnedChat(chatId, userId);
+    clearArchive(chatId, userId);
+    return new ChatListEntry(chat, null, null);
+  }
+
+  /**
+   * {@link #archiveChat} for the caller's own chats of one space among {@code chatIds}; every other
+   * id is skipped without distinction.
+   *
+   * @return the ids the action was applied to
+   */
+  @Transactional
+  public List<UUID> archiveChats(UUID spaceId, UUID userId, Collection<UUID> chatIds) {
+    requireMembership(spaceId, userId);
+    Instant now = Instant.now();
+    List<Chat> chats = chatRepository.findByIdInAndSpaceIdAndAuthorId(chatIds, spaceId, userId);
+    chats.forEach(chat -> chatPersonalMarkRepository.archive(chat.getId(), userId, now));
+    return chats.stream().map(Chat::getId).toList();
+  }
+
+  /** {@link #unarchiveChat} under the rules of {@link #archiveChats}. */
+  @Transactional
+  public List<UUID> unarchiveChats(UUID spaceId, UUID userId, Collection<UUID> chatIds) {
+    requireMembership(spaceId, userId);
+    List<Chat> chats = chatRepository.findByIdInAndSpaceIdAndAuthorId(chatIds, spaceId, userId);
+    chats.forEach(chat -> clearArchive(chat.getId(), userId));
+    return chats.stream().map(Chat::getId).toList();
+  }
+
+  /** {@link #deleteChat} under the rules of {@link #archiveChats}. */
+  @Transactional
+  public List<UUID> deleteChats(UUID spaceId, UUID userId, Collection<UUID> chatIds) {
+    requireMembership(spaceId, userId);
+    List<Chat> chats = chatRepository.findByIdInAndSpaceIdAndAuthorId(chatIds, spaceId, userId);
+    chatRepository.deleteAll(chats);
+    return chats.stream().map(Chat::getId).toList();
+  }
+
+  private void clearArchive(UUID chatId, UUID userId) {
+    chatPersonalMarkRepository.clearArchive(chatId, userId);
+    chatPersonalMarkRepository.deleteIfUnmarked(chatId, userId);
+  }
+
   @Transactional(readOnly = true)
   public ChatConversation getChat(UUID chatId, UUID authorId) {
-    return toConversation(getOwnedChat(chatId, authorId));
+    return toConversation(getOwnedChat(chatId, authorId), authorId);
   }
 
   @Transactional
@@ -299,7 +371,7 @@ public class ChatService {
                 patch.getMetadataFilter(), authorId, chat.getOrganizationId());
     chat.applyUpdate(
         patch.getTitle(), patch.getUseKnowledge(), referencedLibraryIds, metadataFilter);
-    return toConversation(chatRepository.save(chat));
+    return toConversation(chatRepository.save(chat), authorId);
   }
 
   @Transactional
@@ -470,9 +542,16 @@ public class ChatService {
     boolean firstTurn = false;
     for (int attempt = 1; attempt <= APPEND_TURN_MAX_ATTEMPTS; attempt++) {
       try {
+        // Only the author can ask in a chat (QueryService goes through findOwnedChat), so the
+        // author is the sender whose chat archive this turn empties.
         firstTurn =
             chatMessageWriter.writeTurnOnce(
-                chat.getId(), question, answer, serializedSources, derivedTitle);
+                chat.getId(),
+                chat.getAuthorId(),
+                question,
+                answer,
+                serializedSources,
+                derivedTitle);
         break;
       } catch (DataIntegrityViolationException e) {
         if (attempt == APPEND_TURN_MAX_ATTEMPTS) {
@@ -514,6 +593,15 @@ public class ChatService {
             .map(this::toTurn)
             .toList();
     return new ChatConversation(chat, messages, chatNoteService.points(chat.getId()));
+  }
+
+  /** {@link #toConversation(Chat)} carrying the requesting person's own archive mark. */
+  private ChatConversation toConversation(Chat chat, UUID userId) {
+    ChatConversation conversation = toConversation(chat);
+    Instant archivedAt =
+        chatPersonalMarkRepository.findArchivedAt(chat.getId(), userId).orElse(null);
+    return new ChatConversation(
+        chat, conversation.getMessages(), conversation.getNoteItems(), archivedAt);
   }
 
   private ChatTurn toTurn(ChatMessage message) {

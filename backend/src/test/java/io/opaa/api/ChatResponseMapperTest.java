@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.api.dto.ChatDetail;
 import io.opaa.api.dto.ChatMessageResponse;
 import io.opaa.api.dto.ChatSummary;
+import io.opaa.api.dto.ChatSummaryPage;
 import io.opaa.api.dto.SourceMetadataEntry;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.api.types.ChatNoteItemKind;
@@ -29,6 +30,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
@@ -58,7 +61,8 @@ class ChatResponseMapperTest {
     ReflectionTestUtils.setField(chat, "updatedAt", updatedAt);
     Instant pinnedAt = Instant.parse("2026-09-18T08:15:00Z");
 
-    ChatSummary response = ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, pinnedAt));
+    ChatSummary response =
+        ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, pinnedAt, null));
 
     assertThat(response.getId()).isEqualTo(chat.getId());
     assertThat(response.getSpaceId()).isEqualTo(chat.getSpaceId());
@@ -73,11 +77,59 @@ class ChatResponseMapperTest {
   }
 
   @Test
+  void toSummaryResponseCopiesTheArchivedAt() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
+    Instant archivedAt = Instant.parse("2026-09-18T09:30:00Z");
+
+    ChatSummary response =
+        ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, null, archivedAt));
+
+    assertThat(response.getArchivedAt()).isEqualTo(archivedAt);
+    assertThat(response.getPinnedAt()).isNull();
+  }
+
+  @Test
+  void toSummaryPageCopiesItemsAndPaging() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Eins", true, Set.of());
+    Instant archivedAt = Instant.parse("2026-09-18T09:30:00Z");
+
+    ChatSummaryPage page =
+        ChatResponseMapper.toSummaryPage(
+            new PageImpl<>(
+                List.of(new ChatListEntry(chat, null, archivedAt)), PageRequest.of(2, 1), 7));
+
+    assertThat(page.getItems()).extracting(ChatSummary::getId).containsExactly(chat.getId());
+    assertThat(page.getItems().getFirst().getArchivedAt()).isEqualTo(archivedAt);
+    assertThat(page.getPage()).isEqualTo(2);
+    assertThat(page.getSize()).isEqualTo(1);
+    assertThat(page.getTotalElements()).isEqualTo(7);
+  }
+
+  @Test
+  void toDetailResponseCopiesTheArchivedAt() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
+    Instant archivedAt = Instant.parse("2026-09-18T09:30:00Z");
+
+    ChatDetail archived =
+        ChatResponseMapper.toDetailResponse(
+            new ChatConversation(chat, List.of(), List.of(), archivedAt));
+    ChatDetail active =
+        ChatResponseMapper.toDetailResponse(new ChatConversation(chat, List.of(), List.of()));
+
+    assertThat(archived.getArchivedAt()).isEqualTo(archivedAt);
+    assertThat(active.getArchivedAt()).isNull();
+  }
+
+  @Test
   void anUnpinnedChatMapsToANullPinnedAt() {
     Chat chat =
         new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
 
-    assertThat(ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, null)).getPinnedAt())
+    assertThat(
+            ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, null, null)).getPinnedAt())
         .isNull();
   }
 
@@ -251,7 +303,7 @@ class ChatResponseMapperTest {
         new MetadataFilter(
             Set.of("VERMERK"), LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31)));
 
-    ChatSummary summary = ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, null));
+    ChatSummary summary = ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, null, null));
     ChatDetail detail =
         ChatResponseMapper.toDetailResponse(new ChatConversation(chat, List.of(), List.of()));
 
@@ -262,7 +314,8 @@ class ChatResponseMapperTest {
 
     chat.applyMetadataFilter(MetadataFilter.NONE);
     assertThat(
-            ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, null)).getMetadataFilter())
+            ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, null, null))
+                .getMetadataFilter())
         .isNull();
   }
 

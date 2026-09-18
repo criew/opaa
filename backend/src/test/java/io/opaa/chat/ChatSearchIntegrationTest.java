@@ -321,9 +321,57 @@ class ChatSearchIntegrationTest {
         .isInstanceOf(ValidationException.class);
   }
 
+  @Test
+  void anArchivedChatIsFoundAndMarkedAsArchived() {
+    UUID author = createUser();
+    UUID spaceId = createSpace(author);
+    UUID archived = createChat(spaceId, author, "Abgelegt");
+    addMessage(archived, 0, ChatRole.USER, "Wann endet die Widerspruchsfrist?");
+    UUID active = createChat(spaceId, author, "Aktiv");
+    addMessage(active, 0, ChatRole.USER, "Gilt die Widerspruchsfrist auch hier?");
+    Instant archivedAt = chatService.archiveChat(archived, author).archivedAt();
+
+    List<ChatSearchMatch> matches = search(spaceId, author, "Widerspruchsfrist").matches();
+
+    assertThat(matches)
+        .extracting(ChatSearchMatch::chatId)
+        .containsExactlyInAnyOrder(archived, active);
+    assertThat(matchOf(matches, archived).archivedAt()).isEqualTo(archivedAt);
+    assertThat(matchOf(matches, active).archivedAt()).isNull();
+  }
+
+  /**
+   * Only the searching person's own mark counts: a mark another person holds on the chat - the
+   * shape a shared chat will have - neither marks the match nor duplicates it.
+   */
+  @Test
+  void anotherPersonsArchiveMarkDoesNotReachTheMatch() {
+    UUID author = createUser();
+    UUID otherMember = createUser();
+    UUID spaceId = createSpace(author, otherMember);
+    UUID chatId = createChat(spaceId, author, "Fristen");
+    addMessage(chatId, 0, ChatRole.USER, "Wann endet die Widerspruchsfrist?");
+    jdbcTemplate.update(
+        "INSERT INTO chat_personal_marks (chat_id, user_id, archived_at) VALUES (?, ?, now())",
+        chatId,
+        otherMember);
+
+    ChatSearchMatch match = single(search(spaceId, author, "Widerspruchsfrist"));
+
+    assertThat(match.chatId()).isEqualTo(chatId);
+    assertThat(match.archivedAt()).isNull();
+  }
+
   // -----------------------------------------------------------------------------------------
   // Fixture
   // -----------------------------------------------------------------------------------------
+
+  private static ChatSearchMatch matchOf(List<ChatSearchMatch> matches, UUID chatId) {
+    return matches.stream()
+        .filter(match -> match.chatId().equals(chatId))
+        .findFirst()
+        .orElseThrow();
+  }
 
   private ChatSearchPage search(UUID spaceId, UUID userId, String term) {
     return chatService.searchChats(spaceId, userId, term, null, null);

@@ -33,6 +33,9 @@ public class ChatPersonalMark {
   @Column(name = "pinned_at")
   private Instant pinnedAt;
 
+  @Column(name = "archived_at")
+  private Instant archivedAt;
+
   protected ChatPersonalMark() {}
 
   public UUID getChatId() {
@@ -45,6 +48,11 @@ public class ChatPersonalMark {
 
   public Instant getPinnedAt() {
     return pinnedAt;
+  }
+
+  /** When the person moved the chat into their chat archive; never set together with a pin. */
+  public Instant getArchivedAt() {
+    return archivedAt;
   }
 
   /** Composite primary key: one row per chat and person. */

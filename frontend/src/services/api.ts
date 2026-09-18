@@ -5,8 +5,11 @@ import type {
   BrandingResponse,
   BrandingUpdateRequest,
   ChatCreateRequest,
+  ChatBulkAction,
+  ChatBulkActionResult,
   ChatDetail,
   ChatSummary,
+  ChatSummaryPage,
   ChatUpdateRequest,
   EmbeddingInfoResponse,
   ContextPrefixRerunRequest,
@@ -300,6 +303,65 @@ export async function pinChat(chatId: string): Promise<ChatSummary> {
 export async function unpinChat(chatId: string): Promise<void> {
   try {
     await client.delete(`/v1/chats/${chatId}/pin`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Moves the chat into the current person's chat archive - a personal filing that unpins it and
+ * leaves the chat itself unchanged. Not to be confused with an archived space.
+ */
+export async function archiveChat(chatId: string): Promise<ChatSummary> {
+  try {
+    const { data } = await client.put<ChatSummary>(`/v1/chats/${chatId}/archive`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Brings the chat back from the current person's chat archive, unpinned. */
+export async function unarchiveChat(chatId: string): Promise<ChatSummary> {
+  try {
+    const { data } = await client.delete<ChatSummary>(`/v1/chats/${chatId}/archive`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** One page of the current person's chat archive in a space, most recently archived first. */
+export async function listArchivedSpaceChats(
+  spaceId: string,
+  page: number,
+  size: number,
+): Promise<ChatSummaryPage> {
+  try {
+    const { data } = await client.get<ChatSummaryPage>(`/v1/spaces/${spaceId}/chats/archived`, {
+      params: { page, size },
+    })
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Applies one action to several of the person's own chats of a space. Ids the server does not
+ * count as the person's own are skipped silently; the result names the chats actually affected.
+ */
+export async function applyChatBulkAction(
+  spaceId: string,
+  action: ChatBulkAction,
+  chatIds: string[],
+): Promise<ChatBulkActionResult> {
+  try {
+    const { data } = await client.post<ChatBulkActionResult>(
+      `/v1/spaces/${spaceId}/chats/bulk-actions`,
+      { action, chatIds },
+    )
+    return data
   } catch (err) {
     normalizeError(err)
   }

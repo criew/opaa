@@ -1,11 +1,15 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import ChatPage from './ChatPage'
 import { ANSWER_ARRIVED_ANNOUNCEMENT } from '../components/chat/MessageList'
 import { clearRemovedNoteItemCache, useChatStore } from '../stores/chatStore'
 import { useSpaceStore } from '../stores/spaceStore'
+import { useChatListStore } from '../stores/chatListStore'
+import { mockChatArchive } from '../mocks/fixtures'
+import { server } from '../mocks/server'
 
 let currentSpaceId: string | undefined = 'space-personal'
 let currentChatId: string | undefined = 'new'
@@ -35,6 +39,7 @@ function resetChatStore() {
     scope: 'all',
     referencedLibraryIds: [],
     noteItems: [],
+    archivedAt: null,
     pendingSettingsUpdate: null,
   })
 }
@@ -234,6 +239,112 @@ describe('ChatPage', () => {
       expect(
         screen.queryByRole('button', { name: /^Notizpunkt entfernen/ }),
       ).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Chat-Archiv', () => {
+    beforeEach(() => {
+      currentSpaceId = 'space-personal'
+      currentChatId = 'chat-personal-1'
+      mockChatArchive['chat-personal-1'] = '2026-09-18T09:00:00Z'
+      useChatListStore.setState({
+        chatsBySpaceId: {},
+        archiveBySpaceId: {},
+        isLoading: false,
+        isLoadingArchive: false,
+        error: null,
+      })
+    })
+
+    it('marks a chat opened by link as archived and brings it back on request', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      expect(await screen.findByText('Archiviert')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Chat aus dem Archiv zurückholen' }))
+
+      expect(await screen.findByText('Chat aus dem Archiv zurückgeholt')).toBeInTheDocument()
+      expect(screen.queryByText('Archiviert')).not.toBeInTheDocument()
+      expect(mockChatArchive['chat-personal-1']).toBeUndefined()
+    })
+
+    it('brings the chat back with a notice when the person writes in it', async () => {
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      expect(await screen.findByText('Archiviert')).toBeInTheDocument()
+
+      const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+      fireEvent.change(input, { target: { value: 'Und wie geht es weiter?' } })
+      fireEvent.click(screen.getByLabelText('Nachricht senden'))
+
+      expect(
+        await screen.findByText('Chat aus dem Archiv zurückgeholt', {}, { timeout: 10000 }),
+      ).toBeInTheDocument()
+      expect(screen.queryByText('Archiviert')).not.toBeInTheDocument()
+      await waitFor(() =>
+        expect(
+          useChatListStore
+            .getState()
+            .chatsBySpaceId['space-personal']?.some((chat) => chat.id === 'chat-personal-1'),
+        ).toBe(true),
+      )
+    }, 15000)
+
+    // The server brings the chat back with the turn it writes after the answer - an archive placed
+    // while that answer was still being generated does not survive it.
+    it('brings back a chat archived while its answer was still coming in', async () => {
+      delete mockChatArchive['chat-personal-1']
+      let releaseAnswer = () => {}
+      const answerGate = new Promise<void>((resolve) => {
+        releaseAnswer = resolve
+      })
+      server.use(
+        http.post('/api/v1/query', async () => {
+          await answerGate
+          delete mockChatArchive['chat-personal-1']
+          return HttpResponse.json({
+            answer: 'Es geht so weiter.',
+            sources: [],
+            metadata: { model: 'gpt-4o', tokenCount: 1, durationMs: 1 },
+            chatId: 'chat-personal-1',
+            chatTitle: null,
+            noteItems: [],
+          })
+        }),
+      )
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      expect(await screen.findByText('Wie ist das Projekt aufgebaut?')).toBeInTheDocument()
+      await act(() => useChatListStore.getState().loadChats('space-personal'))
+
+      fireEvent.change(
+        screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen'),
+        { target: { value: 'Und wie geht es weiter?' } },
+      )
+      fireEvent.click(screen.getByLabelText('Nachricht senden'))
+      await act(() =>
+        useChatListStore.getState().setChatArchived('space-personal', 'chat-personal-1', true),
+      )
+      expect(screen.getByText('Archiviert')).toBeInTheDocument()
+
+      releaseAnswer()
+
+      expect(await screen.findByText('Chat aus dem Archiv zurückgeholt')).toBeInTheDocument()
+      expect(screen.queryByText('Archiviert')).not.toBeInTheDocument()
+      await waitFor(() =>
+        expect(
+          useChatListStore
+            .getState()
+            .chatsBySpaceId['space-personal']?.some((chat) => chat.id === 'chat-personal-1'),
+        ).toBe(true),
+      )
+    })
+
+    it('shows no archive hint for an active chat', async () => {
+      delete mockChatArchive['chat-personal-1']
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      expect(await screen.findByText('Wie ist das Projekt aufgebaut?')).toBeInTheDocument()
+      expect(screen.queryByText('Archiviert')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /zurückholen/ })).not.toBeInTheDocument()
     })
   })
 })

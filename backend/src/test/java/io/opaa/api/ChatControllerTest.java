@@ -173,7 +173,7 @@ class ChatControllerTest {
     Chat chat =
         new Chat(spaceId, currentUser.getId(), UUID.randomUUID(), "Meine Frage", true, Set.of());
     when(chatService.listChats(eq(spaceId), any()))
-        .thenReturn(List.of(new ChatListEntry(chat, Instant.parse("2026-09-18T08:15:00Z"))));
+        .thenReturn(List.of(new ChatListEntry(chat, Instant.parse("2026-09-18T08:15:00Z"), null)));
 
     mockMvc
         .perform(get("/api/v1/spaces/{spaceId}/chats", spaceId).with(asTestUser()))
@@ -259,7 +259,7 @@ class ChatControllerTest {
         new Chat(
             UUID.randomUUID(), currentUser.getId(), UUID.randomUUID(), "Frist", true, Set.of());
     when(chatService.pinChat(eq(chatId), eq(currentUser.getId())))
-        .thenReturn(new ChatListEntry(chat, Instant.parse("2026-09-18T08:15:00Z")));
+        .thenReturn(new ChatListEntry(chat, Instant.parse("2026-09-18T08:15:00Z"), null));
 
     mockMvc
         .perform(put("/api/v1/chats/{chatId}/pin", chatId).with(asTestUser()))
@@ -502,5 +502,141 @@ class ChatControllerTest {
         .andExpect(jsonPath("$.noteItems[0].id").value(itemId.toString()))
         .andExpect(jsonPath("$.noteItems[0].text").value("Bezugsjahr 2024"))
         .andExpect(jsonPath("$.noteItems[0].kind").value("RAHMEN"));
+  }
+
+  @Test
+  void archiveChatReturnsTheChatWithItsArchivedAt() throws Exception {
+    UUID chatId = UUID.randomUUID();
+    Chat chat =
+        new Chat(
+            UUID.randomUUID(), currentUser.getId(), UUID.randomUUID(), "Frist", true, Set.of());
+    when(chatService.archiveChat(eq(chatId), eq(currentUser.getId())))
+        .thenReturn(new ChatListEntry(chat, null, Instant.parse("2026-09-18T09:30:00Z")));
+
+    mockMvc
+        .perform(put("/api/v1/chats/{chatId}/archive", chatId).with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(chat.getId().toString()))
+        .andExpect(jsonPath("$.archivedAt").value("2026-09-18T09:30:00Z"))
+        .andExpect(jsonPath("$.pinnedAt").doesNotExist());
+  }
+
+  @Test
+  void unarchiveChatReturnsTheChatWithoutArchivedAt() throws Exception {
+    UUID chatId = UUID.randomUUID();
+    Chat chat =
+        new Chat(
+            UUID.randomUUID(), currentUser.getId(), UUID.randomUUID(), "Frist", true, Set.of());
+    when(chatService.unarchiveChat(eq(chatId), eq(currentUser.getId())))
+        .thenReturn(new ChatListEntry(chat, null, null));
+
+    mockMvc
+        .perform(delete("/api/v1/chats/{chatId}/archive", chatId).with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(chat.getId().toString()))
+        .andExpect(jsonPath("$.archivedAt").doesNotExist());
+  }
+
+  @Test
+  void archiveChatReturns404ForAChatTheCallerCannotSee() throws Exception {
+    UUID chatId = UUID.randomUUID();
+    when(chatService.archiveChat(eq(chatId), any()))
+        .thenThrow(new NotFoundException("Chat nicht gefunden"));
+    when(chatService.unarchiveChat(eq(chatId), any()))
+        .thenThrow(new NotFoundException("Chat nicht gefunden"));
+
+    mockMvc
+        .perform(put("/api/v1/chats/{chatId}/archive", chatId).with(asTestUser()))
+        .andExpect(status().isNotFound());
+    mockMvc
+        .perform(delete("/api/v1/chats/{chatId}/archive", chatId).with(asTestUser()))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void listArchivedSpaceChatsReturnsOnePageWithTheTotal() throws Exception {
+    UUID spaceId = UUID.randomUUID();
+    Chat chat = new Chat(spaceId, currentUser.getId(), UUID.randomUUID(), "Alt", true, Set.of());
+    when(chatService.listArchivedChats(eq(spaceId), eq(currentUser.getId()), any()))
+        .thenAnswer(
+            invocation ->
+                new org.springframework.data.domain.PageImpl<>(
+                    List.of(new ChatListEntry(chat, null, Instant.parse("2026-09-18T09:30:00Z"))),
+                    invocation.getArgument(2),
+                    11));
+
+    mockMvc
+        .perform(
+            get("/api/v1/spaces/{spaceId}/chats/archived", spaceId)
+                .param("page", "1")
+                .param("size", "10")
+                .with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].id").value(chat.getId().toString()))
+        .andExpect(jsonPath("$.items[0].archivedAt").value("2026-09-18T09:30:00Z"))
+        .andExpect(jsonPath("$.page").value(1))
+        .andExpect(jsonPath("$.size").value(10))
+        .andExpect(jsonPath("$.totalElements").value(11));
+  }
+
+  @Test
+  void listArchivedSpaceChatsRejectsAnOversizedPage() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/spaces/{spaceId}/chats/archived", UUID.randomUUID())
+                .param("size", "101")
+                .with(asTestUser()))
+        .andExpect(status().isBadRequest());
+
+    verify(chatService, never()).listArchivedChats(any(), any(), any());
+  }
+
+  @Test
+  void bulkActionsDispatchByActionAndReturnTheAppliedIds() throws Exception {
+    UUID spaceId = UUID.randomUUID();
+    UUID own = UUID.randomUUID();
+    UUID other = UUID.randomUUID();
+    List<UUID> requested = List.of(own, other);
+    when(chatService.archiveChats(spaceId, currentUser.getId(), requested))
+        .thenReturn(List.of(own));
+    when(chatService.unarchiveChats(spaceId, currentUser.getId(), requested))
+        .thenReturn(List.of(own));
+    when(chatService.deleteChats(spaceId, currentUser.getId(), requested)).thenReturn(List.of(own));
+
+    for (String action : List.of("ARCHIVE", "UNARCHIVE", "DELETE")) {
+      mockMvc
+          .perform(
+              post("/api/v1/spaces/{spaceId}/chats/bulk-actions", spaceId)
+                  .with(asTestUser())
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(
+                      "{\"action\": \""
+                          + action
+                          + "\", \"chatIds\": [\""
+                          + own
+                          + "\", \""
+                          + other
+                          + "\"]}"))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.chatIds.length()").value(1))
+          .andExpect(jsonPath("$.chatIds[0]").value(own.toString()));
+    }
+
+    verify(chatService).archiveChats(spaceId, currentUser.getId(), requested);
+    verify(chatService).unarchiveChats(spaceId, currentUser.getId(), requested);
+    verify(chatService).deleteChats(spaceId, currentUser.getId(), requested);
+  }
+
+  @Test
+  void bulkActionsRejectAnEmptySelection() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/spaces/{spaceId}/chats/bulk-actions", UUID.randomUUID())
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"action\": \"ARCHIVE\", \"chatIds\": []}"))
+        .andExpect(status().isBadRequest());
+
+    verify(chatService, never()).archiveChats(any(), any(), any());
   }
 }

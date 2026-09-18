@@ -20,23 +20,35 @@ class ChatMessageWriter {
 
   private final ChatMessageRepository chatMessageRepository;
   private final ChatRepository chatRepository;
+  private final ChatPersonalMarkRepository chatPersonalMarkRepository;
 
-  ChatMessageWriter(ChatMessageRepository chatMessageRepository, ChatRepository chatRepository) {
+  ChatMessageWriter(
+      ChatMessageRepository chatMessageRepository,
+      ChatRepository chatRepository,
+      ChatPersonalMarkRepository chatPersonalMarkRepository) {
     this.chatMessageRepository = chatMessageRepository;
     this.chatRepository = chatRepository;
+    this.chatPersonalMarkRepository = chatPersonalMarkRepository;
   }
 
   /**
    * Inserts the question/answer pair at the next free sequence and applies the two atomic, targeted
    * {@code UPDATE}s {@link ChatRepository}'s Javadoc documents (title-from-first-question fallback,
    * {@code updated_at} touch) - see {@link ChatService#appendTurn} for the retry loop and
-   * rollback-isolation reasoning around this call.
+   * rollback-isolation reasoning around this call. The sender's own message brings the chat back
+   * from the sender's chat archive, in the same transaction as the turn; nobody else's archive
+   * changes.
    *
    * @return true if this turn was the chat's very first ({@code nextSequence == 0})
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   boolean writeTurnOnce(
-      UUID chatId, String question, String answer, String serializedSources, String derivedTitle) {
+      UUID chatId,
+      UUID senderId,
+      String question,
+      String answer,
+      String serializedSources,
+      String derivedTitle) {
     int nextSequence = nextSequenceFor(chatId);
     chatMessageRepository.save(
         new ChatMessage(chatId, nextSequence, ChatRole.USER, question, null));
@@ -44,6 +56,9 @@ class ChatMessageWriter {
         new ChatMessage(chatId, nextSequence + 1, ChatRole.ASSISTANT, answer, serializedSources));
     chatRepository.deriveTitleFromFirstQuestionIfAbsent(chatId, derivedTitle);
     chatRepository.touch(chatId, Instant.now());
+    if (chatPersonalMarkRepository.clearArchive(chatId, senderId) > 0) {
+      chatPersonalMarkRepository.deleteIfUnmarked(chatId, senderId);
+    }
     return nextSequence == 0;
   }
 

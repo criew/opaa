@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
+import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -9,6 +11,8 @@ import ChatInput from '../components/chat/ChatInput'
 import ConversationNote from '../components/chat/ConversationNote'
 import { isConversationNoteVisible } from '../components/chat/conversationNoteVisibility'
 import { useChatStore } from '../stores/chatStore'
+import { useChatListStore } from '../stores/chatListStore'
+import { notify } from '../stores/notificationStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import PageHeading from '../components/a11y/PageHeading'
 
@@ -28,6 +32,9 @@ export default function ChatPage() {
   const chatTitle = useChatStore((s) => s.title)
   const noteItems = useChatStore((s) => s.noteItems)
   const removeNoteItem = useChatStore((s) => s.removeNoteItem)
+  const archivedAt = useChatStore((s) => s.archivedAt)
+  const setChatArchived = useChatListStore((s) => s.setChatArchived)
+  const [isUnarchiving, setIsUnarchiving] = useState(false)
   // #543: an archived space accepts no change to an existing chat - the points stay visible, the
   // remove buttons do not. Same lookup as ChatList's "Neuer Chat" guard.
   const isArchivedSpace = useSpaceStore(
@@ -110,6 +117,24 @@ export default function ChatPage() {
     })
   }
 
+  async function handleUnarchive() {
+    if (!storeSpaceId || !storeChatId) return
+    setIsUnarchiving(true)
+    const done = await setChatArchived(storeSpaceId, storeChatId, false)
+    setIsUnarchiving(false)
+    if (done) {
+      notify('Chat aus dem Archiv zurückgeholt', 'success')
+      headerRef.current?.focus()
+    } else {
+      notify(
+        useChatListStore.getState().error ?? 'Chat konnte nicht aus dem Archiv zurückgeholt werden',
+        'error',
+      )
+    }
+  }
+
+  const isArchivedChat = !isNewChat && archivedAt !== null
+
   if (isLoadingChat) {
     return (
       <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -127,7 +152,7 @@ export default function ChatPage() {
         documentTitle={chatTitle ?? undefined}
         visuallyHidden
       />
-      {(chatTitle || noteVisible) && (
+      {(chatTitle || noteVisible || isArchivedChat) && (
         // Mockup 1a's header bar (#658), and the Gesprächsnotiz's place (#1488). Wrapping flex
         // row: title and button share the first line, the note panel takes the next one.
         <Box
@@ -158,6 +183,21 @@ export default function ChatPage() {
           >
             {chatTitle}
           </Typography>
+          {isArchivedChat && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {/* The chat archive of the person, not an archived space. */}
+              <Chip size="small" variant="outlined" label="Archiviert" />
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => void handleUnarchive()}
+                disabled={isUnarchiving}
+                aria-label="Chat aus dem Archiv zurückholen"
+              >
+                Zurückholen
+              </Button>
+            </Box>
+          )}
           <ConversationNote
             // Expanding is per chat and per session: switching chats starts collapsed again.
             key={storeChatId ?? 'new'}

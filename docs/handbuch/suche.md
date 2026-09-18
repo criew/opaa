@@ -108,6 +108,15 @@ Zwei Punkte sind betrieblich wichtig:
   Grund (Abschnitt 10.2). Ist der Space beim Schreiben des Ergebnisses inzwischen archiviert, wird
   das Ergebnis verworfen — ein archivierter Space nimmt keine Änderung an einem Chat an.
 
+Das **Chat-Archiv** ist eine persönliche Ablage: Wer einen Chat archiviert, nimmt ihn nur aus der
+eigenen Chatliste und findet ihn auf der Seite „Chats" des Raums im Reiter „Archiv" wieder. Der Chat
+selbst ändert sich dabei nicht — Titel, letzte Aktivität, Verlauf, Suchbereich und Filter bleiben,
+und niemand sonst sieht, ob eine Person einen Chat archiviert hat. Ein archivierter Chat bleibt
+lesbar und fortsetzbar; eine eigene neue Frage darin holt ihn automatisch zurück. Archivieren löst
+eine Anheftung. Ein **archivierter Chat** ist etwas anderes als ein **archivierter Space**: Der
+Space nimmt für alle keine neuen Inhalte mehr an, auch keine Frage in einem archivierten Chat; das
+Archivieren eines Chats ist dort trotzdem möglich und ändert an der Sichtbarkeit des Space nichts.
+
 Der **Suchbereich** ist die Menge der Bibliotheken, in denen diese Frage sucht. Er steht in der
 Chip-Leiste am Eingabefeld und gilt für den ganzen Chat: „Durchsucht wird, was in der Leiste
 steht."

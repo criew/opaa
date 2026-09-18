@@ -21,7 +21,17 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
    */
   Optional<Chat> findByIdAndAuthorId(UUID id, UUID authorId);
 
-  List<Chat> findBySpaceIdAndAuthorIdOrderByUpdatedAtDesc(UUID spaceId, UUID authorId);
+  /**
+   * The author's chats of one space that are not in their chat archive, most recently active first.
+   */
+  @Query(
+      "select c from Chat c where c.spaceId = :spaceId and c.authorId = :authorId and not exists"
+          + " (select m from ChatPersonalMark m where m.chatId = c.id and m.userId = :authorId"
+          + " and m.archivedAt is not null) order by c.updatedAt desc")
+  List<Chat> findActiveInSpace(@Param("spaceId") UUID spaceId, @Param("authorId") UUID authorId);
+
+  /** The author's own chats of one space among {@code ids}; every other id yields nothing. */
+  List<Chat> findByIdInAndSpaceIdAndAuthorId(Collection<UUID> ids, UUID spaceId, UUID authorId);
 
   /**
    * Used by {@code SpaceService#deleteSpace} to reject the delete with a clear 409 before it ever
@@ -38,7 +48,8 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
    * SpaceService#listSpaces} with one grouped query for the whole list instead of a lookup per
    * space. Counts only the author's own chats: chats are private to their author, so no figure over
    * another member's chats exists. Spaces without a chat of the author's have no row here - the
-   * caller defaults those to zero.
+   * caller defaults those to zero. Chats in the author's chat archive count too: archiving must
+   * never cost the author access to an archived space.
    */
   @Query(
       "select c.spaceId as spaceId, count(c) as chatCount from Chat c"

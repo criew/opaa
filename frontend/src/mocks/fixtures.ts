@@ -1940,6 +1940,9 @@ const INITIAL_CHAT_DETAILS: Record<string, ChatDetail> = {
 /** The mock person's pins, by chat id - a personal mark, kept apart from the chat itself. */
 export let mockChatPins: Record<string, string> = {}
 
+/** The mock person's chat archive, by chat id - a personal mark like the pins. */
+export let mockChatArchive: Record<string, string> = {}
+
 export function toChatSummary(detail: ChatDetail): ChatSummary {
   return {
     id: detail.id,
@@ -1952,6 +1955,7 @@ export function toChatSummary(detail: ChatDetail): ChatSummary {
     createdAt: detail.createdAt,
     updatedAt: detail.updatedAt,
     pinnedAt: mockChatPins[detail.id] ?? null,
+    archivedAt: mockChatArchive[detail.id] ?? null,
   }
 }
 
@@ -1959,16 +1963,26 @@ export function toChatSummary(detail: ChatDetail): ChatSummary {
 // these on GET/POST/PATCH/DELETE, reset between tests via resetMockChats().
 export let mockChatDetails: Record<string, ChatDetail> = structuredClone(INITIAL_CHAT_DETAILS)
 
+/** The space's active chats - those not in the mock person's chat archive. */
 export function mockChatsForSpace(spaceId: string): ChatSummary[] {
   return Object.values(mockChatDetails)
-    .filter((chat) => chat.spaceId === spaceId)
+    .filter((chat) => chat.spaceId === spaceId && !mockChatArchive[chat.id])
     .map(toChatSummary)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+}
+
+/** The space's archived chats, most recently archived first. */
+export function mockArchivedChatsForSpace(spaceId: string): ChatSummary[] {
+  return Object.values(mockChatDetails)
+    .filter((chat) => chat.spaceId === spaceId && mockChatArchive[chat.id])
+    .map(toChatSummary)
+    .sort((a, b) => (b.archivedAt ?? '').localeCompare(a.archivedAt ?? ''))
 }
 
 export function resetMockChats() {
   mockChatDetails = structuredClone(INITIAL_CHAT_DETAILS)
   mockChatPins = {}
+  mockChatArchive = {}
 }
 
 export const mockUsers: UserInfo[] = [

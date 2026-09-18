@@ -351,3 +351,198 @@ describe('chatListStore pinning', () => {
     expect(chat?.pinnedAt).toBe('2026-09-02T08:00:00Z')
   })
 })
+
+describe('chatListStore pin request order', () => {
+  beforeEach(() => {
+    useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
+  })
+
+  function pinnedAtOf(chatId: string) {
+    return useChatListStore.getState().chatsBySpaceId[SPACE_ID]?.find((c) => c.id === chatId)
+      ?.pinnedAt
+  }
+
+  // Pinning and at once unpinning again: the slow pin answer must neither overtake the unpin on
+  // the server nor overwrite what the list shows once it finally arrives.
+  it('sends quick pin and unpin requests in order and keeps the last one', async () => {
+    const pinGate = deferred<void>()
+    const serverOrder: string[] = []
+    server.use(
+      http.put('/api/v1/chats/:chatId/pin', async () => {
+        serverOrder.push('pin')
+        await pinGate.promise
+        return HttpResponse.json({ id: 'chat-personal-1', pinnedAt: '2026-09-18T09:00:00Z' })
+      }),
+      http.delete('/api/v1/chats/:chatId/pin', () => {
+        serverOrder.push('unpin')
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    await useChatListStore.getState().loadChats(SPACE_ID)
+
+    const pin = useChatListStore.getState().setChatPinned(SPACE_ID, 'chat-personal-1', true)
+    const unpin = useChatListStore.getState().setChatPinned(SPACE_ID, 'chat-personal-1', false)
+    expect(pinnedAtOf('chat-personal-1')).toBeNull()
+    await waitForRequests(serverOrder, 1)
+    expect(serverOrder).toEqual(['pin'])
+
+    pinGate.resolve()
+    await Promise.all([pin, unpin])
+
+    expect(serverOrder).toEqual(['pin', 'unpin'])
+    expect(pinnedAtOf('chat-personal-1')).toBeNull()
+    expect(useChatListStore.getState().error).toBeNull()
+  })
+
+  it('rolls a failed latest request back to what the server last confirmed', async () => {
+    server.use(
+      http.delete('/api/v1/chats/:chatId/pin', () =>
+        HttpResponse.json({ error: 'Lösen fehlgeschlagen' }, { status: 500 }),
+      ),
+      http.put('/api/v1/chats/:chatId/pin', () =>
+        HttpResponse.json({ id: 'chat-personal-1', pinnedAt: '2026-09-18T09:00:00Z' }),
+      ),
+    )
+    await useChatListStore.getState().loadChats(SPACE_ID)
+
+    const pin = useChatListStore.getState().setChatPinned(SPACE_ID, 'chat-personal-1', true)
+    const unpin = useChatListStore.getState().setChatPinned(SPACE_ID, 'chat-personal-1', false)
+    const [pinned, unpinned] = await Promise.all([pin, unpin])
+
+    expect(pinnedAtOf('chat-personal-1')).toBe('2026-09-18T09:00:00Z')
+    expect(useChatListStore.getState().error).toBe('Lösen fehlgeschlagen')
+    expect(pinned).toBe(true)
+    expect(unpinned).toBe(false)
+  })
+})
+
+/** Waits (bounded) until the handlers have seen `count` requests. */
+async function waitForRequests(seen: string[], count: number) {
+  for (let attempt = 0; attempt < 50 && seen.length < count; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 5))
+  }
+  // Give a request that must not be sent yet the chance to show up.
+  await new Promise((resolve) => setTimeout(resolve, 20))
+}
+
+describe('chatListStore chat archive', () => {
+  beforeEach(() => {
+    useChatListStore.setState({
+      chatsBySpaceId: {},
+      archiveBySpaceId: {},
+      isLoading: false,
+      isLoadingArchive: false,
+      error: null,
+    })
+  })
+
+  function activeIds() {
+    return useChatListStore.getState().chatsBySpaceId[SPACE_ID]?.map((c) => c.id)
+  }
+
+  it('moves a chat into the archive and back', async () => {
+    await useChatListStore.getState().loadChats(SPACE_ID)
+    await useChatListStore.getState().loadArchivedChats(SPACE_ID)
+
+    expect(
+      await useChatListStore.getState().setChatArchived(SPACE_ID, 'chat-personal-1', true),
+    ).toBe(true)
+
+    expect(activeIds()).toEqual(['chat-personal-2'])
+    const archive = useChatListStore.getState().archiveBySpaceId[SPACE_ID]
+    expect(archive?.totalElements).toBe(1)
+    expect(archive?.items[0].id).toBe('chat-personal-1')
+    expect(archive?.items[0].archivedAt).toBeTruthy()
+
+    await useChatListStore.getState().setChatArchived(SPACE_ID, 'chat-personal-1', false)
+
+    expect(activeIds()).toEqual(['chat-personal-2', 'chat-personal-1'])
+    expect(useChatListStore.getState().archiveBySpaceId[SPACE_ID]?.totalElements).toBe(0)
+  })
+
+  // Pinning brings a chat back from the archive on the server; an archive request that overtook a
+  // slow pin would leave the chat pinned and active while the list shows it archived.
+  it('sends an archive request only after a pin request still under way for the chat', async () => {
+    const pinGate = deferred<void>()
+    const serverOrder: string[] = []
+    server.use(
+      http.put('/api/v1/chats/:chatId/pin', async () => {
+        serverOrder.push('pin')
+        await pinGate.promise
+        return HttpResponse.json({ id: 'chat-personal-1', pinnedAt: '2026-09-18T09:00:00Z' })
+      }),
+      http.put('/api/v1/chats/:chatId/archive', () => {
+        serverOrder.push('archive')
+        return HttpResponse.json({ id: 'chat-personal-1', archivedAt: '2026-09-18T09:01:00Z' })
+      }),
+    )
+    await useChatListStore.getState().loadChats(SPACE_ID)
+
+    const pin = useChatListStore.getState().setChatPinned(SPACE_ID, 'chat-personal-1', true)
+    const archive = useChatListStore.getState().setChatArchived(SPACE_ID, 'chat-personal-1', true)
+    await waitForRequests(serverOrder, 1)
+    expect(serverOrder).toEqual(['pin'])
+
+    pinGate.resolve()
+    await Promise.all([pin, archive])
+
+    expect(serverOrder).toEqual(['pin', 'archive'])
+    expect(activeIds()).toEqual(['chat-personal-2'])
+  })
+
+  it('keeps the chat and sets an error when archiving fails', async () => {
+    server.use(
+      http.put('/api/v1/chats/:chatId/archive', () =>
+        HttpResponse.json({ error: 'Chat nicht gefunden' }, { status: 404 }),
+      ),
+    )
+    await useChatListStore.getState().loadChats(SPACE_ID)
+
+    expect(
+      await useChatListStore.getState().setChatArchived(SPACE_ID, 'chat-personal-1', true),
+    ).toBe(false)
+
+    expect(activeIds()).toEqual(['chat-personal-2', 'chat-personal-1'])
+    expect(useChatListStore.getState().error).toBe('Chat nicht gefunden')
+  })
+
+  it('applies a bulk action and reloads both lists', async () => {
+    let body: unknown = null
+    server.use(
+      http.post('/api/v1/spaces/:spaceId/chats/bulk-actions', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ chatIds: ['chat-personal-1'] })
+      }),
+    )
+
+    const applied = await useChatListStore
+      .getState()
+      .applyBulkAction(SPACE_ID, 'ARCHIVE', ['chat-personal-1', 'fremd'])
+
+    expect(body).toEqual({ action: 'ARCHIVE', chatIds: ['chat-personal-1', 'fremd'] })
+    expect(applied).toEqual(['chat-personal-1'])
+    expect(useChatListStore.getState().chatsBySpaceId[SPACE_ID]).toBeDefined()
+    expect(useChatListStore.getState().archiveBySpaceId[SPACE_ID]).toBeDefined()
+  })
+
+  it('falls back to the last page when the shown archive page has emptied out', async () => {
+    const requestedPages: number[] = []
+    server.use(
+      http.get('/api/v1/spaces/:spaceId/chats/archived', ({ request }) => {
+        const page = Number(new URL(request.url).searchParams.get('page'))
+        requestedPages.push(page)
+        return HttpResponse.json({
+          items: page === 0 ? [{ id: 'chat-personal-1' }] : [],
+          page,
+          size: 50,
+          totalElements: 1,
+        })
+      }),
+    )
+
+    await useChatListStore.getState().loadArchivedChats(SPACE_ID, 1)
+
+    expect(requestedPages).toEqual([1, 0])
+    expect(useChatListStore.getState().archiveBySpaceId[SPACE_ID]?.page).toBe(0)
+  })
+})

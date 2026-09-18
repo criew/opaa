@@ -37,7 +37,7 @@ describe('ChatList', () => {
   it('shows a placeholder when the space has no chats', async () => {
     renderWithProviders(<ChatList spaceId="space-phoenix" />)
 
-    expect(await screen.findByText('Noch keine Chats in diesem Space.')).toBeInTheDocument()
+    expect(await screen.findByText('Keine aktiven Chats in diesem Space.')).toBeInTheDocument()
   })
 
   // #548 review, nit a: "Neuer Chat" must not eagerly persist an empty chat - it only navigates to
@@ -377,5 +377,83 @@ describe('ChatList ordering', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Chat nicht gefunden')
     expect(groupTitles('Heute')).toEqual(['Erlass vom März'])
     expect(groupTitles('Angeheftet')).toEqual(['Fristen Übersicht'])
+  })
+
+  // The rollback moves the row back into its time group; focus must go with it instead of
+  // falling to the page body.
+  it('keeps focus on the row when a pin is rolled back', async () => {
+    server.use(
+      http.put('/api/v1/chats/:chatId/pin', async () => {
+        await new Promise((resolve) => setTimeout(resolve, 30))
+        return HttpResponse.json({ error: 'Chat nicht gefunden' }, { status: 404 })
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+
+    await user.click(screen.getByLabelText('Aktionen für Chat „Erlass vom März“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Chat „Erlass vom März“ anheften' }))
+    await waitFor(() =>
+      expect(screen.getByLabelText('Aktionen für Chat „Erlass vom März“')).toHaveFocus(),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Chat nicht gefunden')
+    expect(groupTitles('Heute')).toEqual(['Erlass vom März'])
+    await waitFor(() =>
+      expect(screen.getByLabelText('Aktionen für Chat „Erlass vom März“')).toHaveFocus(),
+    )
+  })
+
+  it('archives a chat via the context menu and moves focus to the next row', async () => {
+    let archived: string | null = null
+    server.use(
+      http.put('/api/v1/chats/:chatId/archive', ({ params }) => {
+        archived = String(params.chatId)
+        return HttpResponse.json({
+          ...summary('chat-1', 'Erlass vom März', 60 * 1000),
+          archivedAt: '2026-09-18T09:00:00Z',
+        })
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+
+    await user.click(screen.getByLabelText('Aktionen für Chat „Erlass vom März“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Chat „Erlass vom März“ archivieren' }))
+
+    await waitFor(() => expect(screen.queryByText('Erlass vom März')).not.toBeInTheDocument())
+    expect(archived).toBe('chat-1')
+    expect(await screen.findByText('Chat „Erlass vom März“ archiviert')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByLabelText('Aktionen für Chat „Rückfrage Kämmerei“')).toHaveFocus(),
+    )
+  })
+
+  it('keeps the chat and shows the error when archiving fails', async () => {
+    server.use(
+      http.put('/api/v1/chats/:chatId/archive', () =>
+        HttpResponse.json({ error: 'Chat nicht gefunden' }, { status: 404 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+
+    await user.click(screen.getByLabelText('Aktionen für Chat „Erlass vom März“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Chat „Erlass vom März“ archivieren' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Chat nicht gefunden')
+    expect(groupTitles('Heute')).toEqual(['Erlass vom März'])
+  })
+
+  it('links to the page "Chats" below the list, also when the filter finds nothing', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+
+    await user.type(screen.getByRole('searchbox', { name: 'Chats filtern' }), 'Haushalt')
+    const link = screen.getByRole('link', { name: 'Alle Chats' })
+    expect(link).toHaveAttribute('href', '/spaces/space-personal/chats')
+
+    await user.click(link)
+    expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats')
   })
 })

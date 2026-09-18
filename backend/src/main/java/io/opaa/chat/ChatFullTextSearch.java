@@ -19,7 +19,8 @@ import org.springframework.stereotype.Component;
  *
  * <p>The permission filter is the {@code visible} CTE and nothing else - every other part of the
  * query only ever reads from it, so a chat outside it is never loaded, ranked or counted. Shared
- * chats will widen exactly that CTE.
+ * chats will widen exactly that CTE. The archive mark joined to each match is the searching
+ * person's own; nobody else's mark can reach a result.
  *
  * <p>The term reaches the database only as bind values set on the statement directly, never through
  * {@code JdbcTemplate}'s argument binding, which traces parameter values.
@@ -108,7 +109,8 @@ class ChatFullTextSearch {
             + "  ORDER BY rank DESC, hit_at DESC, v.id"
             + "  LIMIT ? OFFSET ?"
             + ") "
-            + "SELECT r.chat_id, r.title, r.message_id, r.role, r.message_created_at,"
+            + "SELECT r.chat_id, r.title, pm.archived_at, r.message_id, r.role,"
+            + "  r.message_created_at,"
             + "  CASE WHEN r.message_id IS NULL"
             + "    THEN ts_headline('"
             + CONFIGURATION
@@ -118,6 +120,7 @@ class ChatFullTextSearch {
             + "', translate(r.content, ?, ?), q.tsq, ?)"
             + "  END AS excerpt "
             + "FROM ranked r CROSS JOIN q "
+            + "LEFT JOIN chat_personal_marks pm ON pm.chat_id = r.chat_id AND pm.user_id = ? "
             + "ORDER BY r.rank DESC, r.hit_at DESC, r.chat_id";
 
     List<ChatSearchMatch> rows =
@@ -138,7 +141,8 @@ class ChatFullTextSearch {
               statement.setString(index++, TITLE_HEADLINE_OPTIONS);
               statement.setString(index++, TRANSLATE_FROM);
               statement.setString(index++, TRANSLATE_TO);
-              statement.setString(index, MESSAGE_HEADLINE_OPTIONS);
+              statement.setString(index++, MESSAGE_HEADLINE_OPTIONS);
+              statement.setObject(index, userId);
               return statement;
             },
             (rs, rowNum) -> toMatch(rs));
@@ -178,11 +182,12 @@ class ChatFullTextSearch {
     UUID messageId = rs.getObject("message_id", UUID.class);
     String role = rs.getString("role");
     Timestamp messageCreatedAt = rs.getTimestamp("message_created_at");
+    Timestamp archivedAt = rs.getTimestamp("archived_at");
     MatchText text = toMatchText(rs.getString("excerpt"));
     return new ChatSearchMatch(
         rs.getObject("chat_id", UUID.class),
         rs.getString("title"),
-        null,
+        archivedAt == null ? null : archivedAt.toInstant(),
         messageId,
         role == null ? null : ChatRole.valueOf(role),
         messageCreatedAt == null ? null : messageCreatedAt.toInstant(),

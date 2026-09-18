@@ -2917,10 +2917,13 @@ paths:
     get:
       operationId: listSpaceChats
       tags: [chat]
-      summary: List the current user's own chats in this space (#525 - a chat is visible only to its author)
+      summary: List the current user's own active chats in this space (#525 - a chat is visible only to its author)
+      description: >
+        Only the chats the caller has not archived (docs/features/chat-list.md, "Archivieren");
+        the archived ones come page by page from GET /api/v1/spaces/{spaceId}/chats/archived.
       responses:
         "200":
-          description: List of the caller's chats in this space
+          description: List of the caller's active chats in this space
           content:
             application/json:
               schema:
@@ -3081,8 +3084,9 @@ paths:
       description: >
         A personal mark of the caller, not a change to the chat: updatedAt and every other field
         of the chat stay as they are, and pinning is allowed in an archived space too. Idempotent -
-        pinning an already pinned chat keeps its original pinnedAt. A chat the caller cannot see
-        answers 404, exactly like one that does not exist.
+        pinning an already pinned chat keeps its original pinnedAt. Pinning an archived chat brings
+        it back from the caller's chat archive - a chat is never pinned and archived at once. A
+        chat the caller cannot see answers 404, exactly like one that does not exist.
       responses:
         "200":
           description: The chat as the caller lists it, with pinnedAt set
@@ -3103,6 +3107,141 @@ paths:
       responses:
         "204":
           description: Chat unpinned (or was not pinned)
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # Chat-Archiv (docs/features/chat-list.md, "Archivieren"): a personal filing of the calling
+  # person - not an archived space.
+  /api/v1/chats/{chatId}/archive:
+    parameters:
+      - name: chatId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: archiveChat
+      tags: [chat]
+      summary: Move a chat into the calling person's chat archive
+      description: >
+        A personal mark of the caller, not a change to the chat: updatedAt, title and status stay
+        as they are, and archiving is allowed in an archived space too. Archiving unpins the chat.
+        Idempotent - archiving an archived chat keeps its original archivedAt. A chat the caller
+        cannot see answers 404, exactly like one that does not exist.
+      responses:
+        "200":
+          description: The chat as the caller lists it, with archivedAt set and pinnedAt cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSummary"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: unarchiveChat
+      tags: [chat]
+      summary: Bring a chat back from the calling person's chat archive
+      description: >
+        Idempotent and, like archiving, leaves the chat itself untouched; the chat comes back
+        unpinned. A chat the caller cannot see answers 404.
+      responses:
+        "200":
+          description: The chat as the caller lists it, with archivedAt cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSummary"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/spaces/{spaceId}/chats/archived:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listArchivedSpaceChats
+      tags: [chat]
+      summary: The caller's archived chats in this space, most recently archived first
+      description: >
+        Only the caller's own chats they archived themselves; totalElements counts exactly these.
+        Requires space membership, like listSpaceChats.
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Rejected with 400 if negative.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          description: Rejected with 400 outside 1..100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        "200":
+          description: One page of archived chats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSummaryPage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/spaces/{spaceId}/chats/bulk-actions:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: applyChatBulkAction
+      tags: [chat]
+      summary: Archive, bring back or delete several of the caller's chats of this space at once
+      description: >
+        Acts only on the caller's own chats of this space among chatIds. Every other id - one that
+        does not exist, belongs to another person or lies in another space - is skipped without
+        distinction and without an error, so the response never tells whether it exists. Archiving
+        and bringing back follow the rules of the single-chat endpoints (allowed in an archived
+        space, chat itself untouched); DELETE removes the chats like deleteChat. Requires space
+        membership.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatBulkActionRequest"
+      responses:
+        "200":
+          description: The chats the action was applied to
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatBulkActionResult"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -8622,6 +8761,64 @@ components:
           description: >
             When the requesting person pinned this chat; null if they have not. A personal mark,
             never another person's.
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When the requesting person moved this chat into their chat archive; null if it is not
+            archived for them. A personal mark, never another person's - unrelated to an archived
+            space.
+
+    ChatSummaryPage:
+      type: object
+      required: [items, page, size, totalElements]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatSummary"
+        page:
+          type: integer
+          description: Zero-based index of the returned page.
+        size:
+          type: integer
+          description: The requested page size (not necessarily items.length for the last page).
+        totalElements:
+          type: integer
+          format: int64
+          description: Total number of matching chats across all pages.
+
+    ChatBulkAction:
+      type: string
+      enum: [ARCHIVE, UNARCHIVE, DELETE]
+
+    ChatBulkActionRequest:
+      type: object
+      required: [action, chatIds]
+      properties:
+        action:
+          $ref: "#/components/schemas/ChatBulkAction"
+        chatIds:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            type: string
+            format: uuid
+
+    ChatBulkActionResult:
+      type: object
+      required: [chatIds]
+      properties:
+        chatIds:
+          type: array
+          description: >
+            The caller's own chats of this space among the requested ids - the ones the action was
+            applied to. Every other requested id is absent, whether it exists or not.
+          items:
+            type: string
+            format: uuid
 
     ChatDetail:
       type: object
@@ -8675,6 +8872,13 @@ components:
         updatedAt:
           type: string
           format: date-time
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When the requesting person moved this chat into their chat archive; null if it is not
+            archived for them. Lets a chat opened by link show that it is archived.
 
     ChatSearchRequest:
       type: object

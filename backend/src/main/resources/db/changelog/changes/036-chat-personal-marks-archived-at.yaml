@@ -1,0 +1,34 @@
+databaseChangeLog:
+  - changeSet:
+      id: 036-chat-personal-marks-archived-at
+      author: opaa
+      comment: >-
+        Chat-Archiv als persoenliches Ordnungsmerkmal (docs/features/chat-list.md,
+        "Archivieren"): archived_at ist der Zeitpunkt, zu dem die Person den Chat in ihr Archiv
+        gelegt hat, leer heisst aktiv. Nicht zu verwechseln mit dem archivierten Space.
+        Ein Chat ist nie zugleich angeheftet und archiviert - die Pruefbedingung sichert das in der
+        Datenbank. Der Teilindex traegt die seitenweise Archivliste je Person, juengst archiviert
+        zuerst.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE chat_personal_marks ADD COLUMN archived_at timestamp with time zone;
+
+              ALTER TABLE chat_personal_marks
+                  ADD CONSTRAINT chk_chat_personal_marks_not_pinned_and_archived
+                  CHECK (pinned_at IS NULL OR archived_at IS NULL);
+
+              CREATE INDEX idx_chat_personal_marks_user_archived_at
+                  ON chat_personal_marks USING btree (user_id, archived_at DESC)
+                  WHERE archived_at IS NOT NULL;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP INDEX IF EXISTS idx_chat_personal_marks_user_archived_at;
+
+              ALTER TABLE chat_personal_marks
+                  DROP CONSTRAINT IF EXISTS chk_chat_personal_marks_not_pinned_and_archived;
+
+              ALTER TABLE chat_personal_marks DROP COLUMN IF EXISTS archived_at;
