@@ -65,6 +65,7 @@ import {
   mockChatArchive,
   mockChatsForSpace,
   mockArchivedChatsForSpace,
+  mockSearchChats,
   toChatSummary,
   resetMockLibraryDocuments,
   resetMockLibraryFolders,
@@ -87,6 +88,7 @@ import type {
   MetadataValueRequest,
   AssetRole,
   ChatCreateRequest,
+  ChatSearchRequest,
   ChatUpdateRequest,
   DocumentSourceType,
   DocumentStatus,
@@ -877,6 +879,28 @@ export const handlers = [
       size,
       totalElements: archived.length,
     })
+  }),
+
+  // Mirrors ChatController#searchSpaceChats: the term travels in the body, 3 to 200 characters.
+  http.post('/api/v1/spaces/:spaceId/chats/search', async ({ params, request }) => {
+    const spaceId = String(params.spaceId)
+    if (!mockSpaceDetails[spaceId]) {
+      return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
+    }
+    const body = (await request.json()) as ChatSearchRequest
+    const length = [...(body.query ?? '').trim()].length
+    if (length < 3 || length > 200) {
+      return HttpResponse.json(
+        {
+          error:
+            length < 3
+              ? 'Der Suchbegriff muss mindestens 3 Zeichen lang sein'
+              : 'Der Suchbegriff darf höchstens 200 Zeichen lang sein',
+        },
+        { status: 400 },
+      )
+    }
+    return HttpResponse.json(mockSearchChats(spaceId, body))
   }),
 
   // Mirrors ChatController#applyChatBulkAction: only the space's chats are affected, every other

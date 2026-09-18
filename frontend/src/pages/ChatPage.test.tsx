@@ -347,4 +347,39 @@ describe('ChatPage', () => {
       expect(screen.queryByRole('button', { name: /zurückholen/ })).not.toBeInTheDocument()
     })
   })
+  describe('jump to a search hit', () => {
+    const hitLink = '/spaces/space-personal/chats/chat-personal-1?message=message-personal-1-2'
+
+    beforeEach(() => {
+      currentSpaceId = 'space-personal'
+      currentChatId = 'chat-personal-1'
+    })
+
+    it('opens the chat at the message named in the link and focuses it', async () => {
+      renderWithProviders(<ChatPage />, { withRouter: true, initialRoute: hitLink })
+
+      const target = await screen.findByRole('article', { name: 'Gefundene Nachricht: Antwort' })
+      await waitFor(() => expect(target).toHaveFocus())
+      expect(screen.getByText('Wie ist das Projekt aufgebaut?')).toBeInTheDocument()
+    })
+
+    it('opens an archived chat at the hit message as well', async () => {
+      mockChatArchive['chat-personal-1'] = '2026-09-18T09:00:00Z'
+      renderWithProviders(<ChatPage />, { withRouter: true, initialRoute: hitLink })
+
+      const target = await screen.findByRole('article', { name: 'Gefundene Nachricht: Antwort' })
+      await waitFor(() => expect(target).toHaveFocus())
+      expect(screen.getByText('Archiviert')).toBeInTheDocument()
+    })
+
+    it('opens the chat normally when the message is unknown', async () => {
+      renderWithProviders(<ChatPage />, {
+        withRouter: true,
+        initialRoute: '/spaces/space-personal/chats/chat-personal-1?message=gone',
+      })
+
+      expect(await screen.findByText('Wie ist das Projekt aufgebaut?')).toBeInTheDocument()
+      expect(screen.queryByRole('article')).not.toBeInTheDocument()
+    })
+  })
 })

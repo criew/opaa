@@ -1,13 +1,21 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { http, HttpResponse } from 'msw'
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import ChatsPage from './ChatsPage'
 import { useChatListStore } from '../stores/chatListStore'
 import { useSpaceStore } from '../stores/spaceStore'
-import { mockChatArchive, mockChatDetails } from '../mocks/fixtures'
+import { mockChatArchive, mockChatDetails, mockSearchChats } from '../mocks/fixtures'
+import { server } from '../mocks/server'
+import type { ChatSearchRequest, ChatSearchResponse } from '../types/api'
 
 const mockNavigate = vi.fn()
+let currentLocation: { pathname: string; state: unknown; key: string } = {
+  pathname: '/spaces/space-personal/chats',
+  state: null,
+  key: 'initial',
+}
 
 vi.mock('react-router', async () => {
   const actual = await vi.importActual<typeof import('react-router')>('react-router')
@@ -15,8 +23,50 @@ vi.mock('react-router', async () => {
     ...actual,
     useParams: () => ({ spaceId: 'space-personal' }),
     useNavigate: () => mockNavigate,
+    useLocation: () => currentLocation,
   }
 })
+
+const SEARCH_URL = '/api/v1/spaces/space-personal/chats/search'
+
+interface CapturedSearch {
+  url: string
+  body: ChatSearchRequest
+}
+
+/** Answers the search from the mock data and records every request as it went over the wire. */
+function captureSearches(
+  answer: (body: ChatSearchRequest) => ChatSearchResponse = (body) =>
+    mockSearchChats('space-personal', body),
+): CapturedSearch[] {
+  const captured: CapturedSearch[] = []
+  server.use(
+    http.post(SEARCH_URL, async ({ request }) => {
+      const body = (await request.json()) as ChatSearchRequest
+      captured.push({ url: request.url, body })
+      return HttpResponse.json(answer(body))
+    }),
+  )
+  return captured
+}
+
+function searchField(): HTMLElement {
+  return screen.getByRole('searchbox', { name: 'In Chats suchen' })
+}
+
+function hitList(): HTMLElement {
+  return screen.getByRole('list', { name: 'Suchtreffer' })
+}
+
+/** A term found only in the answer of "Deployment-Fragen". */
+const ANSWER_TERM = 'Compose'
+
+function putTermIntoAnswer() {
+  mockChatDetails['chat-personal-2'].messages[1].content =
+    'Das Deployment läuft über Docker Compose; <b>Neustart</b> nach jeder Änderung.'
+}
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 function rowTitles(): string[] {
   const table = screen.getByRole('table')
@@ -28,6 +78,7 @@ function rowTitles(): string[] {
 describe('ChatsPage', () => {
   beforeEach(() => {
     mockNavigate.mockReset()
+    currentLocation = { pathname: '/spaces/space-personal/chats', state: null, key: 'initial' }
     useChatListStore.setState({
       chatsBySpaceId: {},
       archiveBySpaceId: {},
@@ -99,7 +150,6 @@ describe('ChatsPage', () => {
     await waitFor(() =>
       expect(rowTitles()).toEqual(['Deployment-Fragen', 'Architektur des Projekts']),
     )
-    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Archiviert am' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('checkbox', { name: '„Deployment-Fragen“ auswählen' }))
@@ -127,14 +177,264 @@ describe('ChatsPage', () => {
     expect(mockChatDetails['chat-personal-2']).toBeUndefined()
   })
 
-  it('filters the active chats by title', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<ChatsPage />)
-    await screen.findByRole('tab', { name: 'Aktiv (2)' })
+  describe('chat search', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
 
-    await user.type(screen.getByRole('searchbox', { name: 'Chats nach Titel filtern' }), 'deploy')
+    it('finds a term of an answer and shows the chat with its highlighted excerpt', async () => {
+      putTermIntoAnswer()
+      const captured = captureSearches()
+      const user = userEvent.setup()
+      renderWithProviders(<ChatsPage />)
+      await screen.findByRole('tab', { name: 'Aktiv (2)' })
 
-    expect(rowTitles()).toEqual(['Deployment-Fragen'])
+      await user.type(searchField(), ANSWER_TERM)
+
+      const hit = await screen.findByRole('link', { name: 'Deployment-Fragen' })
+      expect(hit).toHaveAttribute(
+        'href',
+        '/spaces/space-personal/chats/chat-personal-2?message=message-personal-2-2',
+      )
+      const item = within(hitList()).getByRole('listitem')
+      expect(item).toHaveTextContent('Antwort')
+      expect(item).toHaveTextContent('06.03.2026')
+      // Markup in a message is literal text of the excerpt, never an element.
+      expect(item).toHaveTextContent('<b>Neustart</b>')
+      expect(item.querySelector('b')).toBeNull()
+      expect([...item.querySelectorAll('mark')].map((mark) => mark.textContent)).toEqual([
+        'Compose',
+      ])
+      // The result list replaces the tabs while a term is entered.
+      expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+      // The term travels in the body only - one request after the typing pause, not per keystroke.
+      expect(captured).toHaveLength(1)
+      expect(captured[0].body).toEqual({ query: ANSWER_TERM, page: 0, pageSize: 20 })
+      expect(captured[0].url).not.toContain(ANSWER_TERM)
+      expect(captured[0].url).not.toContain('?')
+    })
+
+    it('searches at once on Enter, without waiting for the typing pause', async () => {
+      putTermIntoAnswer()
+      renderWithProviders(<ChatsPage />)
+      await screen.findByRole('tab', { name: 'Aktiv (2)' })
+
+      fireEvent.change(searchField(), { target: { value: ANSWER_TERM } })
+      expect(screen.queryByRole('progressbar', { name: 'Suche läuft' })).not.toBeInTheDocument()
+      fireEvent.keyDown(searchField(), { key: 'Enter' })
+
+      expect(screen.getByRole('progressbar', { name: 'Suche läuft' })).toBeInTheDocument()
+      expect(await screen.findByRole('link', { name: 'Deployment-Fragen' })).toBeInTheDocument()
+    })
+
+    it('restores the tabs once the field is cleared', async () => {
+      putTermIntoAnswer()
+      captureSearches()
+      const user = userEvent.setup()
+      renderWithProviders(<ChatsPage />)
+      await screen.findByRole('tab', { name: 'Aktiv (2)' })
+
+      await user.type(searchField(), ANSWER_TERM)
+      await screen.findByRole('list', { name: 'Suchtreffer' })
+      await user.clear(searchField())
+
+      expect(await screen.findByRole('tab', { name: 'Aktiv (2)' })).toBeInTheDocument()
+      expect(screen.queryByRole('list', { name: 'Suchtreffer' })).not.toBeInTheDocument()
+    })
+
+    it('asks for a longer term below the minimum length and does not search', async () => {
+      const captured = captureSearches()
+      const user = userEvent.setup()
+      renderWithProviders(<ChatsPage />)
+      await screen.findByRole('tab', { name: 'Aktiv (2)' })
+
+      await user.type(searchField(), 'ab{Enter}')
+      await wait(500)
+
+      expect(screen.getByText('Bitte mindestens 3 Zeichen eingeben.')).toBeInTheDocument()
+      expect(captured).toHaveLength(0)
+    })
+
+    it('marks a hit in an archived chat', async () => {
+      putTermIntoAnswer()
+      mockChatArchive['chat-personal-2'] = '2026-09-18T09:00:00Z'
+      const user = userEvent.setup()
+      renderWithProviders(<ChatsPage />)
+      await screen.findByRole('tab', { name: 'Archiv (1)' })
+
+      await user.type(searchField(), ANSWER_TERM)
+
+      await screen.findByRole('link', { name: 'Deployment-Fragen' })
+      expect(within(hitList()).getByRole('listitem')).toHaveTextContent('Archiviert')
+    })
+
+    it('says that no chat contains the term and which chats were searched', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<ChatsPage />)
+      await screen.findByRole('tab', { name: 'Aktiv (2)' })
+
+      await user.type(searchField(), 'Haushaltsplan')
+
+      expect(await screen.findByText('Kein Chat enthält „Haushaltsplan“.')).toBeInTheDocument()
+      expect(
+        screen.getByText(/Durchsucht werden nur Ihre eigenen Chats in diesem Space/),
+      ).toBeInTheDocument()
+    })
+
+    it('loads further hits on request and moves the focus to the first new one', async () => {
+      const hit = (chatId: string, title: string) => ({
+        chatId,
+        title,
+        archivedAt: null,
+        messageId: `${chatId}-m`,
+        role: 'USER' as const,
+        messageCreatedAt: '2026-09-01T10:00:00Z',
+        excerpt: `Frist in ${title}`,
+        highlights: [{ start: 0, end: 5 }],
+      })
+      const captured = captureSearches((body) =>
+        body.page === 0
+          ? { hits: [hit('chat-a', 'Erster Chat')], hasMore: true }
+          : { hits: [hit('chat-b', 'Zweiter Chat')], hasMore: false },
+      )
+      const user = userEvent.setup()
+      renderWithProviders(<ChatsPage />)
+      await screen.findByRole('tab', { name: 'Aktiv (2)' })
+
+      await user.type(searchField(), 'Frist{Enter}')
+      await screen.findByRole('link', { name: 'Erster Chat' })
+      await user.click(screen.getByRole('button', { name: 'Weitere laden' }))
+
+      const second = await screen.findByRole('link', { name: 'Zweiter Chat' })
+      expect(second).toHaveFocus()
+      expect(screen.getByRole('link', { name: 'Erster Chat' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Weitere laden' })).not.toBeInTheDocument()
+      expect(captured.map((request) => request.body.page)).toEqual([0, 1])
+      expect(within(hitList()).getAllByRole('listitem')[1]).toHaveTextContent('Frage')
+    })
+
+    it('explains the rate limit with the waiting time', async () => {
+      server.use(
+        http.post(SEARCH_URL, () =>
+          HttpResponse.json(
+            { error: 'Zu viele Anfragen', status: 429 },
+            { status: 429, headers: { 'Retry-After': '30' } },
+          ),
+        ),
+      )
+      const user = userEvent.setup()
+      renderWithProviders(<ChatsPage />)
+      await screen.findByRole('tab', { name: 'Aktiv (2)' })
+
+      await user.type(searchField(), 'Frist{Enter}')
+
+      expect(
+        await screen.findByText(
+          'Zu viele Suchanfragen in kurzer Zeit. Bitte in 30 Sekunden erneut versuchen.',
+        ),
+      ).toBeInTheDocument()
+    })
+
+    it('reports a failed search as a German message', async () => {
+      server.use(http.post(SEARCH_URL, () => new HttpResponse('boom', { status: 500 })))
+      const user = userEvent.setup()
+      renderWithProviders(<ChatsPage />)
+      await screen.findByRole('tab', { name: 'Aktiv (2)' })
+
+      await user.type(searchField(), 'Frist{Enter}')
+
+      expect(
+        await screen.findByText('Die Chatsuche ist fehlgeschlagen. Bitte später erneut versuchen.'),
+      ).toBeInTheDocument()
+    })
+
+    it('shows only the answer to the latest term when an older search answers late', async () => {
+      putTermIntoAnswer()
+      let releaseSlow: () => void = () => {}
+      server.use(
+        http.post(SEARCH_URL, async ({ request }) => {
+          const body = (await request.json()) as ChatSearchRequest
+          if (body.query === 'Projekt') {
+            await new Promise<void>((resolve) => {
+              releaseSlow = resolve
+            })
+          }
+          return HttpResponse.json(mockSearchChats('space-personal', body))
+        }),
+      )
+      renderWithProviders(<ChatsPage />)
+      await screen.findByRole('tab', { name: 'Aktiv (2)' })
+
+      fireEvent.change(searchField(), { target: { value: 'Projekt' } })
+      fireEvent.keyDown(searchField(), { key: 'Enter' })
+      fireEvent.change(searchField(), { target: { value: ANSWER_TERM } })
+      fireEvent.keyDown(searchField(), { key: 'Enter' })
+      await screen.findByRole('link', { name: 'Deployment-Fragen' })
+      releaseSlow()
+      await wait(50)
+
+      expect(
+        screen.queryByRole('link', { name: 'Architektur des Projekts' }),
+      ).not.toBeInTheDocument()
+      expect(within(hitList()).getAllByRole('listitem')).toHaveLength(1)
+    })
+
+    it('opens a hit at its message', async () => {
+      putTermIntoAnswer()
+      const user = userEvent.setup()
+      renderWithProviders(<ChatsPage />)
+      await screen.findByRole('tab', { name: 'Aktiv (2)' })
+
+      await user.type(searchField(), ANSWER_TERM)
+      await user.click(await screen.findByRole('link', { name: 'Deployment-Fragen' }))
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/spaces/space-personal/chats/chat-personal-2?message=message-personal-2-2',
+      )
+    })
+
+    it('takes over the term from the sidebar, searches it and drops it from the history entry', async () => {
+      putTermIntoAnswer()
+      currentLocation = {
+        pathname: '/spaces/space-personal/chats',
+        state: { chatSearchTerm: ANSWER_TERM },
+        key: 'from-sidebar',
+      }
+      renderWithProviders(<ChatsPage />)
+
+      expect(await screen.findByRole('link', { name: 'Deployment-Fragen' })).toBeInTheDocument()
+      expect(searchField()).toHaveValue(ANSWER_TERM)
+      expect(searchField()).toHaveFocus()
+      // A reload must not bring the term back: the history entry loses its state right away.
+      expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats', {
+        replace: true,
+        state: null,
+      })
+    })
+
+    it('never writes the term into the browser storage', async () => {
+      putTermIntoAnswer()
+      const setItem = vi.spyOn(Storage.prototype, 'setItem')
+      const user = userEvent.setup()
+      renderWithProviders(<ChatsPage />)
+      await screen.findByRole('tab', { name: 'Aktiv (2)' })
+
+      await user.type(searchField(), `${ANSWER_TERM}{Enter}`)
+      await screen.findByRole('link', { name: 'Deployment-Fragen' })
+
+      const written = setItem.mock.calls.map(([key, value]) => `${key}=${value}`)
+      expect(written.filter((entry) => entry.includes(ANSWER_TERM))).toEqual([])
+      expect(JSON.stringify({ ...localStorage })).not.toContain(ANSWER_TERM)
+      expect(JSON.stringify({ ...sessionStorage })).not.toContain(ANSWER_TERM)
+    })
+
+    it('offers the search on the archive tab as well', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<ChatsPage />)
+      await user.click(await screen.findByRole('tab', { name: /^Archiv/ }))
+
+      expect(searchField()).toBeInTheDocument()
+    })
   })
 
   it('opens a chat from its title', async () => {
