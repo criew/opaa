@@ -8097,7 +8097,7 @@ components:
         The closed vocabulary of a notification's type - see
         io.opaa.api.types.NotificationType, kept in lockstep with the database check
         constraint chk_notifications_type (migration 052).
-      enum: [LIBRARY_ASSOCIATED_TO_MIXED_SPACE]
+      enum: [LIBRARY_ASSOCIATED_TO_MIXED_SPACE, EXTERNAL_ACCESS_MASS_RETRIEVAL]
       example: LIBRARY_ASSOCIATED_TO_MIXED_SPACE
 
     NotificationResponse:
