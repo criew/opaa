@@ -150,7 +150,7 @@ class Migration014LocalActionTokenHandoverTest extends AbstractMigrationTest {
   private boolean columnExists(String column) throws SQLException {
     try (PreparedStatement statement =
         connection.prepareStatement(
-            "SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'"
+            "SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema()"
                 + " AND table_name = 'local_action_tokens' AND column_name = ?")) {
       statement.setString(1, column);
       try (ResultSet rows = statement.executeQuery()) {

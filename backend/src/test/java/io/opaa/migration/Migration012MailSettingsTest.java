@@ -125,8 +125,7 @@ class Migration012MailSettingsTest extends AbstractMigrationTest {
   private boolean tableExists() throws SQLException {
     try (Statement statement = connection.createStatement();
         ResultSet rs =
-            statement.executeQuery(
-                "SELECT to_regclass('public.mail_settings') IS NOT NULL AS present")) {
+            statement.executeQuery("SELECT to_regclass('mail_settings') IS NOT NULL AS present")) {
       return rs.next() && rs.getBoolean("present");
     }
   }
@@ -137,7 +136,7 @@ class Migration012MailSettingsTest extends AbstractMigrationTest {
         ResultSet rs =
             statement.executeQuery(
                 "SELECT column_name FROM information_schema.columns"
-                    + " WHERE table_schema = 'public' AND table_name = 'mail_settings'")) {
+                    + " WHERE table_schema = current_schema() AND table_name = 'mail_settings'")) {
       while (rs.next()) {
         names.add(rs.getString("column_name"));
       }

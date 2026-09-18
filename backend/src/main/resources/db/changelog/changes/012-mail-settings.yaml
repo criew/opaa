@@ -17,7 +17,7 @@ databaseChangeLog:
         - sql:
             splitStatements: false
             sql: |
-              CREATE TABLE public.mail_settings (
+              CREATE TABLE mail_settings (
                   id integer NOT NULL,
                   enabled boolean DEFAULT false NOT NULL,
                   host character varying(255),
@@ -38,9 +38,9 @@ databaseChangeLog:
                   CONSTRAINT chk_mail_settings_port CHECK (((port IS NULL) OR ((port >= 1) AND (port <= 65535))))
               );
 
-              INSERT INTO public.mail_settings (id, updated_at)
+              INSERT INTO mail_settings (id, updated_at)
                   VALUES (1, now());
       rollback:
         - sql:
             sql: |
-              DROP TABLE IF EXISTS public.mail_settings;
+              DROP TABLE IF EXISTS mail_settings;

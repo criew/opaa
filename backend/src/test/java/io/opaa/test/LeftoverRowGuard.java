@@ -98,8 +98,7 @@ final class LeftoverRowGuard extends AbstractTestExecutionListener {
     Map<String, Long> counts = new HashMap<>();
     for (String table : GUARDED_TABLES) {
       Boolean exists =
-          jdbcTemplate.queryForObject(
-              "SELECT to_regclass(?) IS NOT NULL", Boolean.class, "public." + table);
+          jdbcTemplate.queryForObject("SELECT to_regclass(?) IS NOT NULL", Boolean.class, table);
       counts.put(
           table,
           Boolean.TRUE.equals(exists)

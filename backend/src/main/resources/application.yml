@@ -74,6 +74,15 @@ spring:
       # at this pool size). Raising this number was considered and rejected as treating the symptom,
       # not the cause - PR #305 already rejected it once for the same reason.
       maximum-pool-size: 10
+      # Every unqualified name - Liquibase DDL, JPA entities, native queries - resolves through this
+      # search_path (ADR-0034). public stays behind the application schema only so an extension
+      # installed there beforehand (vector) remains resolvable; nothing of OPAA's own lands in it.
+      data-source-properties:
+        currentSchema: ${opaa.database.schema},public
+  liquibase:
+    # Explicit so that a missing schema fails the migration instead of letting current_schema()
+    # fall through to public.
+    default-schema: ${opaa.database.schema}
   ai:
     # #762: a single connection path for both functions - the OpenAI-compatible protocol. Ollama
     # speaks it too (under its own /v1 endpoint), which is why there is no separate "ollama"
@@ -108,11 +117,17 @@ spring:
     vectorstore:
       pgvector:
         initialize-schema: true
+        # Must equal opaa.database.schema (io.opaa.config.DatabaseSchemaGuard).
+        schema-name: ${opaa.database.schema}
         index-type: hnsw
         distance-type: ${OPAA_PGVECTOR_DISTANCE_TYPE:cosine_distance}
         dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1536}
 
 opaa:
+  database:
+    # PostgreSQL schema that holds every table of OPAA (ADR-0034). It must exist and belong to the
+    # database account before the first start; validated by io.opaa.config.DatabaseSchemaGuard.
+    schema: ${OPAA_DB_SCHEMA:public}
   auth:
     # No default mode on purpose: the active Spring profile ("oidc" or "dev")
     # sets it. Starting without one of those profiles fails fast, see

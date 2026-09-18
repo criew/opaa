@@ -23,46 +23,46 @@ databaseChangeLog:
         - sql:
             splitStatements: false
             sql: |
-              ALTER TABLE public.diagnostic_impersonation_grants
+              ALTER TABLE diagnostic_impersonation_grants
                   DROP CONSTRAINT fk_diagnostic_impersonation_grants_granter_organization;
 
-              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+              ALTER TABLE ONLY diagnostic_impersonation_grants
                   ADD CONSTRAINT fk_diagnostic_impersonation_grants_granter_organization
-                  FOREIGN KEY (granted_by_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE CASCADE;
+                  FOREIGN KEY (granted_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE CASCADE;
 
-              ALTER TABLE public.diagnostic_impersonation_grants
+              ALTER TABLE diagnostic_impersonation_grants
                   DROP CONSTRAINT fk_diagnostic_impersonation_grants_revoker_organization;
 
-              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+              ALTER TABLE ONLY diagnostic_impersonation_grants
                   ADD CONSTRAINT fk_diagnostic_impersonation_grants_revoker_organization
-                  FOREIGN KEY (revoked_by_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE CASCADE;
+                  FOREIGN KEY (revoked_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE CASCADE;
 
-              ALTER TABLE public.diagnostic_impersonation_grants
+              ALTER TABLE diagnostic_impersonation_grants
                   DROP CONSTRAINT fk_diagnostic_impersonation_grants_scope_organization;
 
-              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+              ALTER TABLE ONLY diagnostic_impersonation_grants
                   ADD CONSTRAINT fk_diagnostic_impersonation_grants_scope_organization
-                  FOREIGN KEY (scope_group_id, organization_id) REFERENCES public.groups(id, organization_id) ON DELETE CASCADE;
+                  FOREIGN KEY (scope_group_id, organization_id) REFERENCES groups(id, organization_id) ON DELETE CASCADE;
       rollback:
         - sql:
             sql: |
-              ALTER TABLE public.diagnostic_impersonation_grants
+              ALTER TABLE diagnostic_impersonation_grants
                   DROP CONSTRAINT fk_diagnostic_impersonation_grants_granter_organization;
 
-              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+              ALTER TABLE ONLY diagnostic_impersonation_grants
                   ADD CONSTRAINT fk_diagnostic_impersonation_grants_granter_organization
-                  FOREIGN KEY (granted_by_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
+                  FOREIGN KEY (granted_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
 
-              ALTER TABLE public.diagnostic_impersonation_grants
+              ALTER TABLE diagnostic_impersonation_grants
                   DROP CONSTRAINT fk_diagnostic_impersonation_grants_revoker_organization;
 
-              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+              ALTER TABLE ONLY diagnostic_impersonation_grants
                   ADD CONSTRAINT fk_diagnostic_impersonation_grants_revoker_organization
-                  FOREIGN KEY (revoked_by_user_id, organization_id) REFERENCES public.users(id, organization_id) ON DELETE RESTRICT;
+                  FOREIGN KEY (revoked_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
 
-              ALTER TABLE public.diagnostic_impersonation_grants
+              ALTER TABLE diagnostic_impersonation_grants
                   DROP CONSTRAINT fk_diagnostic_impersonation_grants_scope_organization;
 
-              ALTER TABLE ONLY public.diagnostic_impersonation_grants
+              ALTER TABLE ONLY diagnostic_impersonation_grants
                   ADD CONSTRAINT fk_diagnostic_impersonation_grants_scope_organization
-                  FOREIGN KEY (scope_group_id, organization_id) REFERENCES public.groups(id, organization_id) ON DELETE RESTRICT;
+                  FOREIGN KEY (scope_group_id, organization_id) REFERENCES groups(id, organization_id) ON DELETE RESTRICT;

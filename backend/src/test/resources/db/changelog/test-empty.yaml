@@ -1,0 +1,3 @@
+# Empty fixture for io.opaa.migration tests that apply the full master changelog themselves, e.g.
+# into a schema they create first (SchemaPortabilityMigrationTest).
+databaseChangeLog: []

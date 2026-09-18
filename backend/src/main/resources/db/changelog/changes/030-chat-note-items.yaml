@@ -17,7 +17,7 @@ databaseChangeLog:
         - sql:
             splitStatements: false
             sql: |
-              CREATE TABLE public.chat_note_items (
+              CREATE TABLE chat_note_items (
                   id uuid NOT NULL,
                   chat_id uuid NOT NULL,
                   organization_id uuid NOT NULL,
@@ -29,17 +29,17 @@ databaseChangeLog:
                   CONSTRAINT chk_chat_note_items_position CHECK ((position >= 0))
               );
 
-              ALTER TABLE ONLY public.chat_note_items
+              ALTER TABLE ONLY chat_note_items
                   ADD CONSTRAINT chat_note_items_pkey PRIMARY KEY (id);
 
-              ALTER TABLE ONLY public.chat_note_items
+              ALTER TABLE ONLY chat_note_items
                   ADD CONSTRAINT uk_chat_note_items_chat_position UNIQUE (chat_id, position);
 
-              CREATE INDEX idx_chat_note_items_chat_id ON public.chat_note_items USING btree (chat_id);
+              CREATE INDEX idx_chat_note_items_chat_id ON chat_note_items USING btree (chat_id);
 
-              CREATE FUNCTION public.chat_note_items_set_organization() RETURNS trigger
+              CREATE FUNCTION chat_note_items_set_organization() RETURNS trigger
                   LANGUAGE plpgsql
-                  SET search_path TO 'pg_catalog', 'public', 'pg_temp'
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
                   AS $$ BEGIN
                 SELECT organization_id INTO STRICT NEW.organization_id
                 FROM chats
@@ -47,16 +47,16 @@ databaseChangeLog:
                 RETURN NEW;
               END; $$;
 
-              CREATE TRIGGER trg_chat_note_items_set_organization BEFORE INSERT ON public.chat_note_items FOR EACH ROW EXECUTE FUNCTION public.chat_note_items_set_organization();
+              CREATE TRIGGER trg_chat_note_items_set_organization BEFORE INSERT ON chat_note_items FOR EACH ROW EXECUTE FUNCTION chat_note_items_set_organization();
 
-              ALTER TABLE ONLY public.chat_note_items
-                  ADD CONSTRAINT fk_chat_note_items_chat_organization FOREIGN KEY (chat_id, organization_id) REFERENCES public.chats(id, organization_id) ON DELETE CASCADE;
+              ALTER TABLE ONLY chat_note_items
+                  ADD CONSTRAINT fk_chat_note_items_chat_organization FOREIGN KEY (chat_id, organization_id) REFERENCES chats(id, organization_id) ON DELETE CASCADE;
       rollback:
         - sql:
             splitStatements: false
             sql: |
-              DROP TRIGGER IF EXISTS trg_chat_note_items_set_organization ON public.chat_note_items;
+              DROP TRIGGER IF EXISTS trg_chat_note_items_set_organization ON chat_note_items;
 
-              DROP TABLE IF EXISTS public.chat_note_items;
+              DROP TABLE IF EXISTS chat_note_items;
 
-              DROP FUNCTION IF EXISTS public.chat_note_items_set_organization();
+              DROP FUNCTION IF EXISTS chat_note_items_set_organization();

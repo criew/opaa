@@ -263,7 +263,7 @@ public class IndexingConfiguration {
       DocumentIngestService documentIngestService,
       VectorChunkStore vectorChunkStore,
       StoredDocumentSourceAccess storedDocumentSourceAccess,
-      @Value("${spring.ai.vectorstore.pgvector.schema-name:public}") String schemaName,
+      @Value("${opaa.database.schema}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
     return new PipelineReindexService(
         jdbcTemplate,

@@ -14,7 +14,7 @@ databaseChangeLog:
         - sql:
             splitStatements: false
             sql: |
-              CREATE TABLE public.mail_templates (
+              CREATE TABLE mail_templates (
                   id uuid NOT NULL,
                   template_key character varying(60) NOT NULL,
                   locale character varying(10) NOT NULL,
@@ -29,4 +29,4 @@ databaseChangeLog:
       rollback:
         - sql:
             sql: |
-              DROP TABLE IF EXISTS public.mail_templates;
+              DROP TABLE IF EXISTS mail_templates;

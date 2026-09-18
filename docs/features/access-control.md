@@ -86,7 +86,9 @@ wird; der Bibliotheks-Eigentümer entscheidet, **wer es sieht**.
 **Die Freigabe-Obergrenze ist die einzige technische Sicherung zwischen „Fachverfahrensdaten eingespeist"
 und „organisationsweit lesbar" und deshalb genau zu bestimmen:**
 
-- Gedeckelt werden `visibility`, `listed` und Grants an Gruppen oberhalb einer festgelegten Größe.
+- Gedeckelt werden `visibility`, `listed`, die **Freigabe für Fremdzugänge**
+  ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)) und Grants an Gruppen
+  oberhalb einer festgelegten Größe.
 - Wird die Obergrenze **nachträglich gesenkt**, werden bereits erteilte weitergehende Grants
   **ausgesetzt, nicht stillschweigend entzogen**: Sie stehen auf einer Liste des Bibliotheks-Eigentümers
   und wirken nicht mehr, bis er sie anpasst. Für eine Prüfung ist das der Unterschied zwischen „behoben"
@@ -117,7 +119,10 @@ Benutzer authentifizieren sich über:
 - **Single Sign-On (SSO)** — OIDC (empfohlen für den Regelbetrieb; SAML nur über eine Föderation)
 - **Lokale Konten** — E-Mail-Adresse und Passwort, von OPAA selbst geführt (optional, Standard aus;
   das Konto der Systemverwaltung ist immer ein lokales Konto)
-- **API-Tokens** — für programmatischen Zugang (noch nicht gebaut)
+- **API-Tokens** — persönliche Zugangstokens für programmatischen Zugang und für fremde KI-Werkzeuge
+  über den MCP-Server; entschieden am 18.09.2026, noch nicht gebaut. Nur lesend, mit Pflicht-Ablauf,
+  installationsweit abschaltbar und nur für Bibliotheken, die dafür ausdrücklich freigegeben sind —
+  siehe [external-access.md](./external-access.md)
 
 **Empfohlen ist die SSO-Anbindung an das im Haus vorhandene Identitätsmanagement.** Sie ist nicht nur
 bequemer, sondern die Voraussetzung dafür, dass der Kontenlebenszyklus überhaupt an einer Stelle geführt
@@ -886,10 +891,17 @@ Anmeldung und für API-Identitäten:
 
 ```
 Netzbereiche (organisationsweite Vorgabe):
-  interaktiv:   Hausnetz + VPN-Bereich der Dienststelle
-  API-Tokens:   je Token eng gesetzt, Voreinstellung: nur Hausnetz
-  Ausnahmen:    benannt, befristet, begründet
+  interaktiv:    Hausnetz + VPN-Bereich der Dienststelle
+  Fremdzugänge:  für den ganzen Kanal gesetzt, Voreinstellung: nur Hausnetz
+  Ausnahmen:     benannt, befristet, begründet
 ```
+
+**Die Einschränkung für maschinelle Zugänge gilt dem Kanal, nicht dem einzelnen Token**
+(Entscheidung vom 18.09.2026, siehe [external-access.md](./external-access.md#der-schalter-der-installation)).
+Eine CIDR je Token ist für einen Arbeitsplatzclient hinter wechselnden Adressen unbrauchbar und wäre
+zugleich ein Anwesenheitsmerkmal: Gesetzt, scheitert jeder Aufruf aus der Heimarbeit, und die
+Abweisung entsteht als Ereignis irgendwo im Betrieb. Mit den **Service-Accounts** kommt sie je
+Identität wieder — dort ist die Adresse fest und die Identität keine Person.
 
 Die Einschränkung ist eine **Zugangs-, keine Auswertungsfunktion**. Sie prüft, ob eine Verbindung
 zulässig ist; sie erzeugt keinen Aufenthaltsnachweis. Die Netzadresse ist deshalb auch **nicht Teil des
@@ -944,6 +956,19 @@ Mail aus, weil sie sonst ein Belästigungskanal für jeden wäre, der eine Adres
 ---
 
 ## API-Tokens und Service-Accounts
+
+> **Erste Stufe entschieden (18.09.2026):** Gebaut wird zunächst nur das **persönliche Zugangstoken**
+> für lesende Fremdzugänge — fest auf Suchen und Abrufen begrenzt (kein Umfangsmenü), mit
+> Pflicht-Ablaufdatum unter einer systemweiten Obergrenze, mit einer konkreten und danach
+> unveränderlichen Bibliotheksauswahl und einem Kontingent je Token, hinter einem installationsweiten
+> Schalter (Standard aus), einer kanalweiten Netzbeschränkung (Vorgabe Hausnetz) und einer
+> **pflichtbefristeten** Freigabe je Bibliothek (Standard aus, höchstens ein Jahr). Diese Freigabe ist
+> ein Reichweitenfeld: Sie wird wie `visibility` und `listed` historisiert und fällt unter die
+> [Freigabe-Obergrenze](#dokumentenfluss-konnektoren-gegen-benutzer-uploads) konnektor-gespeister
+> Bibliotheken, sobald #797 sie definiert — die erste Stufe baut die Deckelung nicht mit. **Service-Accounts als eigene Identität ohne Person bleiben Zielbild** und sind in
+> dieser Stufe nicht enthalten. Einzelheiten: [external-access.md](./external-access.md).
+
+Das Zielbild, auf das die erste Stufe zuläuft:
 
 ```
 API-Token erstellen:
@@ -1039,6 +1064,8 @@ automatisch greift.
 - **Daten-Indizierung:** Zuordnung von Quellen zu Wissensbibliotheken →
   [data-indexing-rag.md](./data-indexing-rag.md)
 - **RAG-Engine:** Filter über die lesbaren Bibliotheken des Nutzers, als Teil der Vektorsuche
+- **Fremdzugänge:** Zugangstokens und MCP-Server als Ausschnitt bestehender Leserechte, mit eigener
+  Freigabe je Bibliothek → [external-access.md](./external-access.md)
 - **Modelle:** zentrale Vorgaben gelten je Organisation → [llm-integration.md](./llm-integration.md)
 - **Sicherheit und Nachweis:** jede Rechte- und Kontenänderung erzeugt einen Protokolleintrag →
   [security-and-compliance.md](./security-and-compliance.md)
