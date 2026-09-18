@@ -55,7 +55,7 @@ public class QueryService {
 
   private static final Logger log = LoggerFactory.getLogger(QueryService.class);
 
-  private final RetrievalPipeline retrievalPipeline;
+  private final KnowledgeRetrieval knowledgeRetrieval;
   private final RetrievalContextFactory retrievalContextFactory;
   private final SearchScopeResolver searchScopeResolver;
   private final ChatSourceAssembler chatSourceAssembler;
@@ -71,7 +71,7 @@ public class QueryService {
   private final MetadataFilterValidator metadataFilterValidator;
 
   public QueryService(
-      RetrievalPipeline retrievalPipeline,
+      KnowledgeRetrieval knowledgeRetrieval,
       RetrievalContextFactory retrievalContextFactory,
       SearchScopeResolver searchScopeResolver,
       ChatSourceAssembler chatSourceAssembler,
@@ -85,7 +85,7 @@ public class QueryService {
       ChatNoteExtractionService chatNoteExtractionService,
       QueryMetrics metrics,
       MetadataFilterValidator metadataFilterValidator) {
-    this.retrievalPipeline = retrievalPipeline;
+    this.knowledgeRetrieval = knowledgeRetrieval;
     this.retrievalContextFactory = retrievalContextFactory;
     this.searchScopeResolver = searchScopeResolver;
     this.chatSourceAssembler = chatSourceAssembler;
@@ -346,10 +346,9 @@ public class QueryService {
   }
 
   /**
-   * The retrieval half of {@link #query}: runs the whole {@link RetrievalPipeline} over the given
-   * scope; its chunks come in the order and count the answer prompt is built from. The explanation
-   * protocol is not read here; the administration's diagnosis and the evaluation harness run the
-   * pipeline themselves and keep it.
+   * The retrieval half of {@link #query}, run through the {@link KnowledgeRetrieval} every
+   * caller-facing retrieval goes through - the same pipeline, the same parameters and the same
+   * permission filter {@code POST /api/v1/search} uses.
    */
   private RetrievalPipelineResult retrieve(
       String question,
@@ -357,19 +356,7 @@ public class QueryService {
       List<String> conversationNote,
       Set<UUID> searchScope,
       MetadataFilter metadataFilter) {
-    RetrievalPipelineResult result =
-        retrievalPipeline.run(
-            retrievalContextFactory.contextFor(
-                question, conversationHistory, conversationNote, searchScope, metadataFilter));
-    // Only for a run that actually searched: a "0 chunks across 0 search queries" line would
-    // read like a failed retrieval rather than a run halted before any search.
-    if (!result.searchQueries().isEmpty()) {
-      log.debug(
-          "Retrieved {} relevant chunks across {} search quer{} for query",
-          result.chunks().size(),
-          result.searchQueries().size(),
-          result.searchQueries().size() == 1 ? "y" : "ies");
-    }
-    return result;
+    return knowledgeRetrieval.retrieve(
+        question, conversationHistory, conversationNote, searchScope, metadataFilter);
   }
 }

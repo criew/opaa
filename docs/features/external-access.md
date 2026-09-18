@@ -563,16 +563,24 @@ gehört in das Sicherheitsmonitoring, nicht in die geschlossene Ereignisliste; i
 gelangt allein die **daraus folgende Sperre** des Tokens als Zustandsänderung. Was dabei entsteht und
 was nicht:
 
-- **Eine Meldung an die Systemverwaltung bei Überschreitung**, mit Zeitpunkt, Schwelle, gemessenem
-  Wert und der Token-Kennung — dazu ein Eintrag im technischen Anwendungslog mit kurzer Frist und
-  ohne Auswertungsoberfläche. Kein Verlauf, keine Zeitreihe, keine Kurve, kein Bericht — die Zählung
-  selbst lebt im Speicher und ist nach dem Fenster weg. Eine Beruhigungsfrist verhindert, dass ein
-  anhaltender Vorgang in eine Ereignisreihe zerfällt, die faktisch ein Verlauf wäre.
+- **Eine Meldung an die Systemverwaltung bei Überschreitung**, mit dem Zeitfenster und der
+  Token-Kennung — dazu ein Eintrag im technischen Anwendungslog mit kurzer Frist und ohne
+  Auswertungsoberfläche, der zusätzlich Schwelle und gemessenen Wert trägt. Kein Verlauf, keine
+  Zeitreihe, keine Kurve, kein Bericht — die Zählung selbst lebt im Speicher und ist nach dem
+  Fenster weg. Eine Beruhigungsfrist verhindert, dass ein anhaltender Vorgang in eine Ereignisreihe
+  zerfällt, die faktisch ein Verlauf wäre.
+- **Die Meldung wird höchstens 14 Tage aufbewahrt**, gelesen oder nicht, und dann gelöscht. Eine
+  Meldung, die niemand lesen kann, ist keine; eine Meldung, die stehen bleibt, ist nach
+  Zeitpunkt sortiert genau der Verlauf je Token, den dieses Kapitel ausschließt. Die Frist ist
+  deshalb eine Konstante und keine Einstellung — sie ist kein Betriebsparameter, sondern die
+  Grenze, die den Alarm mit „kein Verlauf" vereinbar macht. Aus demselben Grund steht der
+  **gemessene Wert nicht in der Meldung**: Die Zahl wäre es, die eine Folge aufbewahrter Meldungen
+  zu einer Nutzungskurve machte.
 - **Die Token-Kennung führt zur Person, und das gehört gesagt.** Wer die Meldung erhält, kann sie in
   der Tokentabelle nachschlagen; ein Alarm, nach dem niemand handeln kann, ist keiner. Die Meldung
   steht deshalb unter derselben Zweckbindung wie der übrige Nachweisbestand: Vorfall und Sperre, nicht
   arbeitsrechtliche, disziplinarische oder leistungsbezogene Fragen. Sie wird nicht zu einer Auswertung
-  je Person zusammengeführt, und sie wird nicht aufbewahrt.
+  je Person zusammengeführt, und sie wird nicht dauerhaft aufbewahrt, sondern höchstens 14 Tage.
 - **Kein zweiter Zweck.** Der Alarm dient dem Vorfall, nicht dem Einstieg in eine Nutzungsbeobachtung.
   Er löst aus, wenn ein Mehrfaches des üblichen Kanalaufkommens erreicht ist, nicht bei fleißiger
   Arbeit.
