@@ -320,21 +320,22 @@ public class GlobalExceptionHandler {
   /**
    * The {@code Accept} sibling of the two above (#1707). Its status code is <em>not</em> what was
    * wrong: a caller who accepts nothing this API writes cannot be sent a body at all, so the answer
-   * ends up a bodyless 406 either way - what {@link #handleGenericException} added was an {@code
-   * ERROR} stacktrace per request, raisable without a session by anyone sending {@code Accept:
-   * application/xml}. That noise, not the status, is what this branch removes; {@code
-   * GlobalExceptionHandlerNotAcceptableTest} therefore asserts on the log.
+   * is a bodyless 406 either way - what {@link #handleGenericException} added was a stacktrace per
+   * request, raisable without a session by anyone sending {@code Accept: application/xml}.
+   *
+   * <p><b>The answer carries no body, and that is load-bearing rather than a simplification.</b>
+   * Returning an {@link ErrorResponse} here would be unwritable for the very reason the exception
+   * was raised; {@code AbstractMessageConverterMethodProcessor} would throw a second {@code
+   * HttpMediaTypeNotAcceptableException}, and {@code ExceptionHandlerExceptionResolver} logs any
+   * exception other than the original one via {@code logger.warn(msg, throwable)} - so the
+   * stacktrace this branch exists to remove would come back from a Spring logger instead. {@code
+   * GlobalExceptionHandlerNotAcceptableTest} therefore taps the ROOT logger, not this class's.
    */
   @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
   public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotAcceptableException(
       HttpMediaTypeNotAcceptableException ex) {
     log.debug("Unacceptable response format: {}", errorSanitizer.sanitize(ex.getMessage()));
-    return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE)
-        .body(
-            new ErrorResponse(
-                "Das angeforderte Antwortformat wird nicht unterstützt",
-                HttpStatus.NOT_ACCEPTABLE.value(),
-                Instant.now()));
+    return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).build();
   }
 
   @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
