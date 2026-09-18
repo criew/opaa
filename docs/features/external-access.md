@@ -56,8 +56,8 @@ freigegeben sein, und die Person muss ihn für ein benanntes Werkzeug bewusst er
    [security-and-compliance.md](./security-and-compliance.md#was-ausdrücklich-nicht-protokolliert-wird)
    bleibt unverändert; auch eine Nutzungszählung je Token gibt es nicht.
 7. **Die Freigabe einer Bibliothek ist ein Reichweitenfeld.** Sie wird wie `visibility` und `listed`
-   historisiert, unterliegt der Freigabe-Obergrenze konnektor-gespeister Bibliotheken und ist
-   **pflichtbefristet**.
+   historisiert und ist **pflichtbefristet**; unter die Freigabe-Obergrenze konnektor-gespeister
+   Bibliotheken fällt sie, sobald diese definiert ist (#797).
 8. **OPAA wird dafür nicht öffentlich erreichbar.** Der ganze Kanal liegt zusätzlich hinter einer
    installationsweiten Netzbeschränkung, Vorgabe Hausnetz. Zielclients sind Werkzeuge, die auf dem
    Arbeitsplatz oder im Hausnetz laufen. Ein Betrieb als OAuth-Autorisierungsserver für fremde
@@ -145,9 +145,9 @@ niemand nachweisen kann, seit wann der Kanal offen stand, hat den Kanal nicht im
 protokollpflichtig ist die Änderung des Einleitungstextes: Sie ändert keine Reichweite, sondern die
 Formulierung einer Aufforderung an ein fremdes Modell. Die geschlossene Liste aus
 [security-and-compliance.md](./security-and-compliance.md#die-ereignisse-der-ersten-stufe) zählt
-Systemeinstellungen einzeln auf, statt „alle Einstellungen" zu sagen; der Einleitungstext gehört
-nicht dazu, und der Schalter samt Grenzwerten füllt den vorhandenen Punkt zu den
-Governance-Einstellungen aus.
+Systemeinstellungen einzeln auf, statt „alle Einstellungen" zu sagen; der Schalter samt Grenzwerten
+ist dort als eigener Punkt **ergänzt** — neben der Freigabe-Obergrenze, die aus demselben Grund einen
+eigenen hat —, der Einleitungstext ausdrücklich nicht.
 
 **Das Einschalten ist ein Verwaltungsakt, kein Konfigurationsschritt.** Der Fremdzugang ist eine
 technische Einrichtung, die zur Überwachung von Verhalten und Leistung geeignet sein kann — ob und in
@@ -185,8 +185,10 @@ der Systemverwaltung.
 ### Die Freigabe ist ein Reichweitenfeld und wird wie eines behandelt
 
 Das Merkmal ist fachlich dasselbe wie `visibility` und `listed`: eine Stufe der Reichweite, an der
-Bibliothek. Daraus folgen vier Festlegungen, die keine neue Mechanik brauchen — alle vier existieren
-im Produkt bereits:
+Bibliothek. Daraus folgen vier Festlegungen. Zwei davon brauchen keine neue Mechanik — die
+Intervall-Historisierung samt Schreibpfadschutz und das Ablaufereignis befristeter Grants existieren
+im Produkt bereits. Die anderen beiden hängen an Mechaniken, die heute **noch nicht gebaut** sind;
+sie sind deshalb als Bedingung formuliert und nicht als Abnahmekriterium dieser Stufe:
 
 1. **Historisiert, nicht nur protokolliert.** Das Merkmal wandert in dieselbe Intervall-Historisierung
    wie `visibility` und `listed` (siehe
@@ -196,14 +198,18 @@ im Produkt bereits:
    wird nach Frist monatsweise vollständig gelöscht — die Frage „war die Bibliothek ‚Vergabeakten
    2026' im Jahr 2026 aus dem Haus erreichbar?" wäre 2030 sonst mit „ich weiß es nicht" zu
    beantworten, bei einem Feld, das über Hausgrenzen entscheidet.
-2. **Unter der Freigabe-Obergrenze.** Eine Bibliothek, die aus einem Konnektor gespeist wird, trägt
-   die Obergrenze aus
+2. **Unter der Freigabe-Obergrenze — sobald es sie gibt.** Eine Bibliothek, die aus einem Konnektor
+   gespeist wird, trägt die Obergrenze aus
    [access-control.md](./access-control.md#dokumentenfluss-konnektoren-gegen-benutzer-uploads) — die
    dort als „einzige technische Sicherung zwischen ‚Fachverfahrensdaten eingespeist' und
    ‚organisationsweit lesbar'" bezeichnet wird. Sie deckelt deshalb auch dieses Merkmal; andernfalls
    wäre der Fremdzugang der Weg an ihr vorbei. Wird die Obergrenze nachträglich gesenkt, wird eine
    bereits gesetzte Freigabe **ausgesetzt, nicht stillschweigend entzogen**: Sie steht auf der Liste
-   des Bibliotheks-Eigentümers und wirkt nicht mehr, bis er sie anpasst.
+   des Bibliotheks-Eigentümers und wirkt nicht mehr, bis er sie anpasst. **Die Obergrenze ist heute
+   weder definiert noch gebaut** — ihre genaue Wirkung entscheidet
+   [#797](https://github.com/criew/opaa/issues/797). Das Merkmal fällt unter sie, **sobald #797 sie
+   liefert**; diese Stufe nimmt die Entscheidung nicht vorweg und baut die Deckelung nicht mit. Wer
+   #797 umsetzt, findet das Merkmal in der Aufzählung der gedeckelten Felder.
 3. **Pflichtbefristet, höchstens ein Jahr.** Eine Freigabe ohne Ablauf ist eine Ratsche: Jede Anfrage
    „ich brauche X in meinem Werkzeug" erzeugt eine, und nichts erzeugt je eine Rücknahme. Nach
    spätestens einem Jahr **erlischt** sie; erneuern kann nur, wer den Bestand verantwortet. Der
@@ -212,12 +218,13 @@ im Produkt bereits:
    über denselben Mailweg wie die Tokenerinnerung. Das ist die einzige Maßnahme, die das
    Erfolgskriterium „der Anteil bleibt klein" durchsetzt, statt ihn zu erhoffen — und sie erzwingt
    einmal im Jahr das fachliche Gespräch, das den Kanal trägt.
-4. **Keine Freigabe ohne fachliche Zuständigkeit.** Eine Bibliothek im Zustand **„Nachfolge offen"**
-   kann nicht freigegeben und eine bestehende Freigabe nicht erneuert werden.
+4. **Keine Freigabe ohne fachliche Zuständigkeit — als künftige Sperrbedingung.**
    [spaces-and-assets.md](./spaces-and-assets.md#eigentümerschaft-und-verwaisung) friert die
-   Reichweite solcher Assets ein — „keine neuen Grants, keine Erhöhung der Freigabestufe" —, und
-   dieses Merkmal ist eine Erhöhung der Reichweite. Ein Bestand ohne fachlich Verantwortlichen
-   verlässt das Haus nicht.
+   Reichweite von Assets im Zustand **„Nachfolge offen"** ein — „keine neuen Grants, keine Erhöhung
+   der Freigabestufe" —, und dieses Merkmal ist eine Erhöhung der Reichweite. Sobald dieser Zustand
+   im Produkt existiert (heute ist er Konzept, kein Feld), gehört das Merkmal in dieselbe Sperre:
+   keine neue Freigabe, keine Erneuerung einer bestehenden. Wer den Zustand baut, findet diese
+   Bedingung hier; diese Stufe baut sie nicht vor.
 
 Die Änderung des Merkmals ist eine **Zugriffsänderung** und wird protokolliert, in beide Richtungen,
 mit der handelnden Person, der betroffenen Bibliothek und dem Ablaufdatum der Freigabe.
@@ -318,8 +325,8 @@ wirken ihre Tokens nicht mehr. Ein Token, das die Deaktivierung überdauert, wä
 den Kontenlebenszyklus zu umgehen — dieselbe Regel gilt in
 [access-control.md](./access-control.md#offboarding) bereits für alles andere.
 
-**Der Regelfall ist der Ablauf, nicht der Widerruf.** Bei einer Pflichtlaufzeit von 90 Tagen endet
-die überwiegende Mehrheit aller Tokens still. Ein Zugang, der ohne Eintrag endet, ist im Nachweis
+**Der Regelfall ist der Ablauf, nicht der Widerruf.** Bei einer Höchstlaufzeit von 90 Tagen
+(Vorgabewert der Obergrenze) endet die überwiegende Mehrheit aller Tokens still. Ein Zugang, der ohne Eintrag endet, ist im Nachweis
 dieselbe Lücke wie einer, der ohne Eintrag beginnt — deshalb erzeugt auch das Außerkrafttreten einen
 Protokolleintrag, mit Anlass: abgelaufen oder Kontenlebenszyklus.
 
@@ -470,10 +477,10 @@ hat.
 ### Protokollfassungen und ihr Wechsel
 
 Der SSE-Transport der Vorgängerfassung ist bereits abgekündigt; die Fassung, die dieser Kanal spricht,
-wird dasselbe Schicksal haben. Daraus folgen drei Festlegungen, die der ADR zu diesem Kanal
-([#1716](https://github.com/criew/opaa/issues/1716)) ausformuliert: welche Fassungen der Server
-aushandelt und ankündigt, wie er sich gegenüber einem Client mit älterer oder neuerer Fassung
-verhält, und wie lange eine abgekündigte Fassung weiter bedient wird. Dazu gehört, dass die Pflege
+wird dasselbe Schicksal haben. Daraus folgen drei Festlegungen, die
+[ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md) ausformuliert: welche
+Fassungen der Server aushandelt und ankündigt, wie er sich gegenüber einem Client mit älterer oder
+neuerer Fassung verhält, und wie lange eine abgekündigte Fassung weiter bedient wird. Dazu gehört, dass die Pflege
 der Fassungsfolge und der vier Client-Anleitungen im Handbuch eine benannte Zuständigkeit hat.
 
 Das Störungsbild ist eigen: Weil es genau einen Server gibt, fallen bei einem Fassungsbruch **alle
@@ -506,7 +513,8 @@ Adresse trifft dann die Falschen.
 
 **Das Kontingent ist eine Lastbremse, kein Schutz vor Massenabfluss.** Diese Ehrlichkeit gehört
 hierher, weil die Gegenrechnung jeder anstellen kann: Ein konservativer Wert von 60 Anfragen je
-Stunde ergibt über die Pflichtlaufzeit eines einzigen Tokens sechsstellig viele Abrufe. Was in einer
+Stunde ergibt über die Höchstlaufzeit eines einzigen Tokens — 90 Tage nach dem Vorgabewert der
+Obergrenze — sechsstellig viele Abrufe. Was in einer
 Nacht nicht geht, geht in neunzig Tagen. Der Kanal verhindert Massenabfluss nicht — er macht ihn
 langsam, und er macht die Entscheidung, welcher Bestand überhaupt erreichbar ist, zu einer
 zurechenbaren Handlung. Mehr ist es nicht, und mehr soll hier auch nicht behauptet werden.
@@ -517,38 +525,52 @@ Kontingent führt zu einer klaren Ablehnung, nicht zu einer langsamen Antwort. E
 je Person ausgewertet und nicht angezeigt. Eine Kontingentablehnung wird **nicht je Token
 festgehalten** — sie wäre dort ein Verhaltensdatum je Person.
 
-**Der Abflussalarm ist personenunabhängig.** Weil Verhinderung ausscheidet und Entdeckung nicht
-ausscheiden darf, zählt die Installation die Abrufe des ganzen Kanals in einem Fenster **im
-Arbeitsspeicher** und meldet der Systemverwaltung genau dann etwas, wenn eine Schwelle überschritten
-ist. Was dabei entsteht und was nicht:
+**Der Abflussalarm ist ein Sicherheitsereignis — und liegt deshalb außerhalb des
+Nachweisprotokolls.** Weil Verhinderung ausscheidet und Entdeckung nicht ausscheiden darf, zählt die
+Installation die Abrufe des ganzen Kanals in einem Fenster **im Arbeitsspeicher** und meldet der
+Systemverwaltung genau dann etwas, wenn eine Schwelle überschritten ist. Das ist derselbe Zuschnitt,
+den [security-and-compliance.md](./security-and-compliance.md#was-ausdrücklich-nicht-protokolliert-wird)
+für fehlgeschlagene Anmeldungen bereits gewählt hat: Der Alarm selbst ist ein Sicherheitsereignis und
+gehört in das Sicherheitsmonitoring, nicht in die geschlossene Ereignisliste; in das Nachweisprotokoll
+gelangt allein die **daraus folgende Sperre** des Tokens als Zustandsänderung. Was dabei entsteht und
+was nicht:
 
-- **Ein einziges Protokollereignis bei Überschreitung**, mit Zeitpunkt, Schwelle und gemessenem Wert.
-  Kein Verlauf, keine Zeitreihe, keine Kurve, kein Bericht — die Zählung selbst lebt im Speicher und
-  ist nach dem Fenster weg.
-- **Keine Personenzuordnung im Ereignis.** Enthalten ist die Token-Kennung, die die Systemverwaltung
-  braucht, um den Zugang zu sperren; sie ist kein Personenname, und das Ereignis wird nicht zu einer
-  Auswertung je Person zusammengeführt. Dass es hier überhaupt eine Kennung gibt, ist der Preis
-  dafür, dass ein Vorfall auch abstellbar ist — ein Alarm, nach dem niemand handeln kann, ist keiner.
-- **Kein zweiter Zweck.** Der Alarm ist ein Sicherheitsereignis für den Vorfall, nicht der Einstieg
-  in eine Nutzungsbeobachtung. Er löst aus, wenn ein Mehrfaches des üblichen Kanalaufkommens
-  erreicht ist, nicht bei fleißiger Arbeit.
+- **Eine Meldung an die Systemverwaltung bei Überschreitung**, mit Zeitpunkt, Schwelle, gemessenem
+  Wert und der Token-Kennung — dazu ein Eintrag im technischen Anwendungslog mit kurzer Frist und
+  ohne Auswertungsoberfläche. Kein Verlauf, keine Zeitreihe, keine Kurve, kein Bericht — die Zählung
+  selbst lebt im Speicher und ist nach dem Fenster weg. Eine Beruhigungsfrist verhindert, dass ein
+  anhaltender Vorgang in eine Ereignisreihe zerfällt, die faktisch ein Verlauf wäre.
+- **Die Token-Kennung führt zur Person, und das gehört gesagt.** Wer die Meldung erhält, kann sie in
+  der Tokentabelle nachschlagen; ein Alarm, nach dem niemand handeln kann, ist keiner. Die Meldung
+  steht deshalb unter derselben Zweckbindung wie der übrige Nachweisbestand: Vorfall und Sperre, nicht
+  arbeitsrechtliche, disziplinarische oder leistungsbezogene Fragen. Sie wird nicht zu einer Auswertung
+  je Person zusammengeführt, und sie wird nicht aufbewahrt.
+- **Kein zweiter Zweck.** Der Alarm dient dem Vorfall, nicht dem Einstieg in eine Nutzungsbeobachtung.
+  Er löst aus, wenn ein Mehrfaches des üblichen Kanalaufkommens erreicht ist, nicht bei fleißiger
+  Arbeit.
 
 Ohne ihn lautet die Antwort auf die Frage einer Aufsichtsbehörde „welche Daten sind abgeflossen?"
 im Ernstfall: „Wir wissen, dass ein Token an einem Tag benutzt wurde." Das ist als Meldung nicht
 ausreichend. Mit ihm lautet sie: „Am 14.11. um 02:40 überschritt der Kanal die Schwelle; der Zugang
-wurde um 08:05 gesperrt." Das ist wenig, aber es ist ein Anfang, und es kostet keine Zeile über eine
-Person.
+wurde um 08:05 gesperrt." Das ist wenig, aber es ist ein Anfang, und es kostet keine Zeile im
+Nachweisprotokoll.
 
 ---
 
 ## Protokollierung und Mitbestimmung
 
-Protokollpflichtig ist genau das, was die Reichweite eines Zugriffs ändert. Alle Ereignisse passen in
-die **geschlossene Liste** aus
-[security-and-compliance.md](./security-and-compliance.md#die-ereignisse-der-ersten-stufe) — die Liste
-wird dadurch nicht erweitert, sondern an den Stellen „Ausstellung und Widerruf von API-Tokens",
-„Ablauf einer Befristung, sobald sie wirkt", „Änderung von Freigabestufe oder Auffindbarkeit eines
-Assets" und „Governance-Einstellungen" ausgefüllt:
+Protokollpflichtig ist genau das, was die Reichweite eines Zugriffs ändert. Die **geschlossene Liste**
+aus [security-and-compliance.md](./security-and-compliance.md#die-ereignisse-der-ersten-stufe) wird
+dafür an drei Stellen **erweitert** — die Liste zählt einzeln auf, und was dort nicht steht, wird
+nicht geschrieben; eine Behauptung, man fülle nur vorhandene Punkte aus, wäre an dieser Stelle
+unehrlich. Die drei Ergänzungen sind im selben Zug dort eingetragen:
+
+- die **Fremdzugangsfreigabe einer Wissensbibliothek** — sie steht neben `visibility` und `listed`,
+  weil sie dieselbe Art Reichweitenfeld ist;
+- das **Außerkrafttreten eines Zugangstokens** — es steht neben Ausstellung und Widerruf, die der
+  Punkt zu den API-Tokens bereits nennt;
+- die **Kanaleinstellungen des Fremdzugangs** — sie stehen neben der Freigabe-Obergrenze, die
+  ebenfalls einen eigenen Punkt hat, weil beide über die Reichweite eines Bestands entscheiden.
 
 | Ereignis | Eintrag |
 |---|---|
@@ -556,9 +578,14 @@ Assets" und „Governance-Einstellungen" ausgefüllt:
 | Zugangstoken widerrufen oder gesperrt | dazu, ob durch die Person selbst oder durch die Systemverwaltung |
 | Zugangstoken außer Kraft getreten | Anlass: abgelaufen oder Kontenlebenszyklus (Konto gesperrt, deaktiviert, gelöscht) |
 | Bibliotheksfreigabe gesetzt oder zurückgenommen | handelnde Person, Bibliothek, Richtung, Ablaufdatum der Freigabe |
-| Bibliotheksfreigabe erloschen oder ausgesetzt | Bibliothek, Anlass: Fristablauf oder gesenkte Freigabe-Obergrenze |
-| Schalter oder Grenzwerte der Installation geändert | handelnde Person, Richtung bzw. Vorher/Nachher |
-| Schwelle des Abflussalarms überschritten | Zeitpunkt, Schwelle, gemessener Wert, Token-Kennung |
+| Bibliotheksfreigabe erloschen oder ausgesetzt | Bibliothek, Anlass: Fristablauf — oder gesenkte Freigabe-Obergrenze, sobald #797 sie liefert |
+| Schalter oder Grenzwerte des Kanals geändert | handelnde Person, Richtung bzw. Vorher/Nachher |
+
+**Der Abflussalarm steht bewusst nicht in dieser Tabelle.** Er ist ein Sicherheitsereignis und gehört
+in das Sicherheitsmonitoring, nicht in das Nachweisprotokoll — dieselbe Zuordnung, die
+`security-and-compliance.md` für fehlgeschlagene Anmeldungen und abgewiesene Verbindungsversuche
+bereits trifft. In das Nachweisprotokoll gelangt allein die **daraus folgende Sperre** des Tokens, und
+die steht oben.
 
 **Kein Freitext im Protokoll.** Der Tokenname ist Pflicht und von der Person frei formuliert; in
 solche Felder geraten Vorgangsnummern, Projektkürzel, Gerätenamen und gelegentlich Personennamen.
@@ -680,6 +707,9 @@ dasselbe ohne Beobachtung: Ein ungenutztes Token verschwindet spätestens nach 9
 - **[hybrid-retrieval.md](./hybrid-retrieval.md)** und
   **[retrieval-algorithm.md](./retrieval-algorithm.md)** — der Suchweg, den die Werkzeuge benutzen,
   unverändert
+- **[ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md)** — Transport,
+  Authentifizierungsverfahren, Freigabemodell, der eine Zugriffsweg und der Umgang mit dem
+  Fassungswechsel der MCP-Spezifikation
 - **[ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md)** — Ausstellung, Widerruf und die
   Mailwege, auf denen die Erinnerungen laufen
 - **[ADR-0005](../decisions/0005-authentication-strategy.md)** — Betriebsmodi der Authentifizierung;
@@ -709,7 +739,9 @@ dasselbe ohne Beobachtung: Ein ungenutztes Token verschwindet spätestens nach 9
 - **Ausleitung an ein zentrales Sicherheitsmonitoring** — folgt der allgemeinen SIEM-Anbindung, nicht
   diesem Kanal. Ausdrücklich festgehalten: Eine Ausleitung der Ereignisse **dieses** Kanals ist damit
   nicht mitentschieden. Sie bedarf einer eigenen Vereinbarung, sonst wird an dieser Stelle später
-  ausgehöhlt, was hier zugesagt ist.
+  ausgehöhlt, was hier zugesagt ist. Das gilt auch für den Abflussalarm: Er ist ein
+  Sicherheitsereignis und gehört seiner Art nach dorthin, wird bis zur SIEM-Anbindung aber nur als
+  Meldung an die Systemverwaltung und als Eintrag im technischen Anwendungslog zugestellt.
 
 ---
 

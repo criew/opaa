@@ -86,7 +86,9 @@ wird; der Bibliotheks-Eigentümer entscheidet, **wer es sieht**.
 **Die Freigabe-Obergrenze ist die einzige technische Sicherung zwischen „Fachverfahrensdaten eingespeist"
 und „organisationsweit lesbar" und deshalb genau zu bestimmen:**
 
-- Gedeckelt werden `visibility`, `listed` und Grants an Gruppen oberhalb einer festgelegten Größe.
+- Gedeckelt werden `visibility`, `listed`, die **Freigabe für Fremdzugänge**
+  ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)) und Grants an Gruppen
+  oberhalb einer festgelegten Größe.
 - Wird die Obergrenze **nachträglich gesenkt**, werden bereits erteilte weitergehende Grants
   **ausgesetzt, nicht stillschweigend entzogen**: Sie stehen auf einer Liste des Bibliotheks-Eigentümers
   und wirken nicht mehr, bis er sie anpasst. Für eine Prüfung ist das der Unterschied zwischen „behoben"
@@ -961,9 +963,9 @@ Mail aus, weil sie sonst ein Belästigungskanal für jeden wäre, der eine Adres
 > unveränderlichen Bibliotheksauswahl und einem Kontingent je Token, hinter einem installationsweiten
 > Schalter (Standard aus), einer kanalweiten Netzbeschränkung (Vorgabe Hausnetz) und einer
 > **pflichtbefristeten** Freigabe je Bibliothek (Standard aus, höchstens ein Jahr). Diese Freigabe ist
-> ein Reichweitenfeld: Sie wird wie `visibility` und `listed` historisiert und unterliegt der
+> ein Reichweitenfeld: Sie wird wie `visibility` und `listed` historisiert und fällt unter die
 > [Freigabe-Obergrenze](#dokumentenfluss-konnektoren-gegen-benutzer-uploads) konnektor-gespeister
-> Bibliotheken. **Service-Accounts als eigene Identität ohne Person bleiben Zielbild** und sind in
+> Bibliotheken, sobald #797 sie definiert — die erste Stufe baut die Deckelung nicht mit. **Service-Accounts als eigene Identität ohne Person bleiben Zielbild** und sind in
 > dieser Stufe nicht enthalten. Einzelheiten: [external-access.md](./external-access.md).
 
 Das Zielbild, auf das die erste Stufe zuläuft:

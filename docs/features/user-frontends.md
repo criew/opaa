@@ -369,7 +369,12 @@ Nicht jede Plattform ist als Kanal geeignet. Verbindliche Bedingungen:
 2. **Darstellbare Belege.** Fundstellen mit Sprungziel müssen im Nachrichtenformat unterzubringen sein.
 3. **Betrieb im Verantwortungsbereich des Hauses.** Der Weg einer Frage darf die Grenze nicht
    überschreiten, die für die zugrunde liegenden Daten gilt.
-4. **Protokollierbarkeit.** Anfrage und Antwort müssen zurechenbar im Protokoll landen.
+4. **Protokollierbarkeit.** Jede Nachricht muss einer Identität zurechenbar sein. Protokolliert
+   werden davon die **Zugriffsänderungen**, nicht die einzelne Abfrage — Frage, Suchbegriffe,
+   Suchbereich und Trefferzahl bleiben bewusst draußen (siehe
+   [security-and-compliance.md](./security-and-compliance.md#was-ausdrücklich-nicht-protokolliert-wird)).
+   Ein Kanal, der die Zuordnung nicht herstellen kann, scheidet trotzdem aus: Ohne sie greift keine
+   Rechteprüfung.
 
 ### Die Kanäle im Zielbild
 

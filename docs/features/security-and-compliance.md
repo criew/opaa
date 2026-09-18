@@ -157,6 +157,10 @@ ersten Stufe nicht geschrieben.
 - Ablauf einer Befristung, sobald sie wirkt — ein Recht, das ohne Eintrag endet, ist im Nachweis eine
   Lücke wie eines, das ohne Eintrag beginnt
 - Änderung von Freigabestufe oder Auffindbarkeit eines Assets (`visibility`, `listed`)
+- Setzen, Zurücknehmen, Erlöschen und Aussetzen der **Freigabe einer Wissensbibliothek für
+  Fremdzugänge** ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)) — sie ist
+  dieselbe Art Reichweitenfeld wie die beiden oben und entscheidet zusätzlich über die Hausgrenze;
+  beim Erlöschen mit dem Anlass (Fristablauf, gesenkte Freigabe-Obergrenze)
 - Aussetzen von Grants durch eine nachträglich gesenkte Freigabe-Obergrenze
 
 **Spaces, Bibliotheken und Gruppen**
@@ -171,7 +175,9 @@ ersten Stufe nicht geschrieben.
 **Konten, Rollen und Verzeichnisabgleich**
 
 - Erteilung und Entzug der System-Admin-Rolle
-- Deaktivierung eines Kontos, erzwungene Neuanmeldung, Ausstellung und Widerruf von API-Tokens
+- Deaktivierung eines Kontos, erzwungene Neuanmeldung, Ausstellung, Widerruf und
+  **Außerkrafttreten** von API-Tokens (mit Anlass: abgelaufen, Kontenlebenszyklus) — ein Zugang, der
+  ohne Eintrag endet, ist dieselbe Lücke wie einer, der ohne Eintrag beginnt
 - **Lokale Konten** ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md), Epic #1529): Anlage
   und Einladung (mit Zustellweg: Mail zugestellt, Mail gescheitert, Link angezeigt),
   Selbstregistrierung, Änderung von
@@ -201,6 +207,12 @@ ersten Stufe nicht geschrieben.
   zusätzlich angezeigt
 - Modellvorgaben und die Freigabe externer Modelle
 - Die Freigabe-Obergrenze konnektor-gespeister Bibliotheken
+- **Die Kanaleinstellungen der Fremdzugänge** ([external-access.md](./external-access.md#der-schalter-der-installation)):
+  Ein- und Ausschalten des Kanals, Ablauf-Obergrenze für Zugangstokens, Kontingent je Token,
+  Netzbereiche des Kanals und die Schwelle des Abflussalarms. Sie stehen aus demselben Grund hier
+  wie die Freigabe-Obergrenze: Sie entscheiden über die Reichweite eines Bestands, nicht über
+  Darstellung. **Nicht** dabei: der Einleitungstext für fremde Werkzeuge — er ändert keine
+  Reichweite, sondern die Formulierung einer Aufforderung an ein fremdes Modell
 - **Mail-Einstellungen** ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md)): Änderung der
   SMTP-Einstellungen (ohne den Passwortwert), Änderung und Zurücksetzen einer Mail-Vorlage, ein
   ausgelöster Testversand
@@ -258,6 +270,7 @@ die zugehörige Funktion existiert — die Liste selbst bleibt geschlossen und �
 | **Antwortinhalte, Zitate, Modellaufrufe** | dasselbe, zusätzlich mit Inhalten aus dem Fachverfahren |
 | **Erfolgreiche Anmeldungen und Sitzungsverläufe** | reines Anwesenheitsmerkmal, ohne Aussage über Rechte |
 | **Fehlgeschlagene Anmeldungen und abgewiesene Verbindungsversuche** | Sicherheitsereignisse, die in das zentrale Sicherheitsmonitoring gehören und nicht in das Nachweisprotokoll. Sie kommen mit der [SIEM-Anbindung](#anbindung-an-ein-zentrales-sicherheitsmonitoring), nicht mit dieser Stufe. Das gilt unverändert für die lokale Anmeldung ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md)): Der einzelne Fehlversuch steht nur im technischen Anwendungslog (kurze Frist, keine Auswertungsoberfläche, Konto-Kennung statt Adresse); in das Nachweisprotokoll gelangt allein die daraus folgende **Kontosperre** als Zustandsänderung. Der Fehlversuchszähler eines Kontos wird weder ausgegeben noch historisiert und geht bei jeder erfolgreichen Anmeldung, jedem Zurücksetzen und jeder Entsperrung auf null |
+| **Der Schwellenwertalarm des Fremdzugangskanals** | Dasselbe Muster wie eine Zeile höher: Er ist ein Sicherheitsereignis, keine Zugriffsänderung. Die Überschreitung erzeugt eine Meldung an die Systemverwaltung und einen Eintrag im technischen Anwendungslog (kurze Frist, keine Auswertungsoberfläche); der Zähler lebt nur im Arbeitsspeicher und wird nicht historisiert. In das Nachweisprotokoll gelangt allein die daraus folgende **Sperre des Tokens** als Zustandsänderung. Einzelheiten: [external-access.md](./external-access.md#kontingente-und-der-abflussalarm) |
 | **Lesezugriffe auf Dokumente und Chats** | Verhalten; wer worauf zugreifen **durfte**, belegt die Rechtehistorie |
 
 **Spätere Stufen** — nicht verworfen, nur nicht hier: das Teilen und Zurückziehen von Chats und
@@ -525,7 +538,7 @@ Die dritte Quelle mitzunehmen ist nicht optional: Eine Bibliothek, die vom 1. bi
 organisationsweit freigegeben war, verschaffte in dieser Zeit Zugriff, ohne dass je ein Grant existierte.
 Wäre nur protokolliert statt historisiert, ruhte ein Drittel der Rekonstruktion auf genau der
 lückenanfälligen Quelle, die dieses Kapitel verwirft — und die Antwort auf die Prüferfrage fiele falsch
-aus, und zwar in die gefährliche Richtung. Es sind zwei Felder an wenigen hundert Objekten.
+aus, und zwar in die gefährliche Richtung. Es sind drei Felder an wenigen hundert Objekten.
 
 **Aufbewahrung und Löschschicksal der Historie** folgen derselben Logik wie das Protokoll: Sie unterliegt
 einer Höchstdauer, und der Personenbezug ist ab dem Schreibzeitpunkt pseudonymisiert. Beim Löschen eines
@@ -548,12 +561,14 @@ stattdessen ein Integrationstest gegen eine echte Datenbank ab — für jede Ope
 Menge verändert: Berechtigung erteilen, ändern und entziehen, Gruppenmitglied hinzufügen und entfernen,
 Gruppe löschen, Verzeichnisabgleich (Mitgliedschaft hinzugefügt, entfernt, Gruppe samt Mitglied neu
 angelegt), Gruppenmitgliedschaft aus dem Anmeldetoken (hinzugefügt und entfernt), Bibliothek anlegen, in
-der Sichtbarkeit ändern und löschen. Ein Schreibpfad, der Leserechte ändert, ohne seine Historienzeile zu
+der Sichtbarkeit ändern und löschen sowie die **Fremdzugangsfreigabe einer Bibliothek setzen,
+zurücknehmen und erlöschen lassen**. Ein Schreibpfad, der Leserechte ändert, ohne seine Historienzeile zu
 schreiben, fällt dort auf, bevor er in Betrieb geht. Welche Klassen dabei überhaupt in Frage kommen, hält
 derselbe Test gegen den Anwendungskontext, damit eine neue Klasse an den Rechtetabellen nicht unbemerkt
 hinzukommt.
 
-Für die **Reichweitenfelder** (`visibility`, `listed`) trägt diese Einschränkung zusätzlich der Compiler:
+Für die **Reichweitenfelder** (`visibility`, `listed` und die Fremdzugangsfreigabe) trägt diese
+Einschränkung zusätzlich der Compiler:
 Über die Bibliothek selbst sind sie nur aus dem Paket heraus veränderbar, das die Historienzeile schreibt
 — ein Schreibpfad außerhalb dieses Pakets lässt sich gar nicht erst übersetzen. Am Compiler vorbei ginge
 es weiterhin über direktes SQL, eine Datenbankmigration oder Reflection; diese Wege sieht keine der
