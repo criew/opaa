@@ -24,13 +24,12 @@ import tools.jackson.databind.json.JsonMapper;
  * The security chain of the external-access channel (ADR-0035), in every profile.
  *
  * <p>It matches on the <b>bearer value</b> and on the paths the channel owns: every request
- * presenting a value with
- * the access-token prefix lands here, wherever it is aimed. That is what makes "a token reaches the
- * allowed paths and nothing else" a property of the chain instead of a rule someone has to remember
- * - an access token aimed at an administration, indexing, upload or rights endpoint is refused here
- * with {@code 403} and never reaches the {@code oidc} or {@code dev} chain at all. Under {@code
- * local,dev} that also keeps {@code DevAuthFilter} from authenticating the call as the development
- * user.
+ * presenting a value with the access-token prefix lands here, wherever it is aimed. That is what
+ * makes "a token reaches the allowed paths and nothing else" a property of the chain instead of a
+ * rule someone has to remember - an access token aimed at an administration, indexing, upload or
+ * rights endpoint is refused here with {@code 403} and never reaches the {@code oidc} or {@code
+ * dev} chain at all. Under {@code local,dev} that also keeps {@code DevAuthFilter} from
+ * authenticating the call as the development user.
  *
  * <p>No resource server, no session, no CSRF: the value is opaque, the bearer filter of the {@code
  * oidc} chain would reject it as a malformed JWT, and a bearer-only call carries no cookie a

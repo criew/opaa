@@ -155,7 +155,10 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
 
   /** The style of the one path that claims this request, or {@code null} for the default. */
   private ExternalAccessRefusalStyle styleFor(HttpServletRequest request) {
-    return refusalStyles.stream().filter(style -> style.appliesTo(request)).findFirst().orElse(null);
+    return refusalStyles.stream()
+        .filter(style -> style.appliesTo(request))
+        .findFirst()
+        .orElse(null);
   }
 
   private void refuse(

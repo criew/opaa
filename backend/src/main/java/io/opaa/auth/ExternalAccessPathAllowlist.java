@@ -2,6 +2,7 @@ package io.opaa.auth;
 
 import io.opaa.mcp.McpEndpoint;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
@@ -35,6 +36,8 @@ public class ExternalAccessPathAllowlist {
   private final List<RequestMatcher> allowed;
   private final List<RequestMatcher> owned;
 
+  // Explicit: with more than one declared constructor Spring would look for a no-arg one.
+  @Autowired
   public ExternalAccessPathAllowlist(McpEndpoint mcpEndpoint) {
     this(
         List.of(
