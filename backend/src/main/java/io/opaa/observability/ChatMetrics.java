@@ -2,13 +2,15 @@ package io.opaa.observability;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 
 /**
- * Micrometer metrics of the chat package. Currently one counter: every outcome of the
- * Gesprächsnotiz condensation (#1487), separated by {@code reason} rather than spread over several
- * metric names, mirroring {@code opaa.query.decomposition.fallback}.
+ * Micrometer metrics of the chat package: every outcome of the Gesprächsnotiz condensation (#1487),
+ * separated by {@code reason} rather than spread over several metric names, mirroring {@code
+ * opaa.query.decomposition.fallback}; and the duration of the chat search, which carries no tag at
+ * all - neither the term nor the person may reach a metric (docs/features/chat-list.md).
  *
- * <p>The condensation is never retried, so this counter is the only trace a lost turn leaves - the
+ * <p>The condensation is never retried, so its counter is the only trace a lost turn leaves - the
  * note itself looks exactly like a turn that genuinely carried no Angabe.
  */
 public class ChatMetrics {
@@ -20,8 +22,13 @@ public class ChatMetrics {
   private final Counter failedNoteExtractionCounter;
   private final Counter discardedNoteExtractionCounter;
   private final Counter rejectedNoteExtractionCounter;
+  private final Timer searchTimer;
 
   public ChatMetrics(MeterRegistry meterRegistry) {
+    this.searchTimer =
+        Timer.builder("opaa.chat.search.duration")
+            .description("Chat search latency")
+            .register(meterRegistry);
     this.appliedNoteExtractionCounter =
         Counter.builder(NOTE_EXTRACTION)
             .tag("reason", "applied")
@@ -85,5 +92,10 @@ public class ChatMetrics {
    */
   public void recordRejectedNoteExtraction() {
     rejectedNoteExtractionCounter.increment();
+  }
+
+  /** Times one chat search; its count is the number of searches. */
+  public Timer searchTimer() {
+    return searchTimer;
   }
 }
