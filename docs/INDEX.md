@@ -56,7 +56,7 @@ Spezifikation — oder zwei, wo der Bereich zwei Fragen beantwortet.
 **[`features/retrieval-algorithm.md`](./features/retrieval-algorithm.md)** ·
 **[`features/search-quality-evaluation.md`](./features/search-quality-evaluation.md)**
 
-Zitierzwang, Konfidenz und Quellenbindung · hybride Suche mit Reranking · erklärbares Chunking ·
+Belegvalidierung, Konfidenz und Quellenbindung · hybride Suche mit Reranking · erklärbares Chunking ·
 Dokumentenverarbeitung von der Extraktion bis zur Vektorablage · Messbarkeit der Suchqualität gegen ein
 Golden Dataset · Deep Research. Der Ist-Stand-Ablauf des heute gebauten Retrievals (Klassen, Parameter,
 Defaults) steht separat in `retrieval-algorithm.md`.
@@ -255,7 +255,7 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 **Wo fange ich an?**
 → [GETTING-STARTED.md](./GETTING-STARTED.md), Lesepfad nach Publikum
 
-**Was heißt Belegbarkeit, Verteilbarkeit, Zitierzwang?**
+**Was heißt Belegbarkeit, Verteilbarkeit, Belegvalidierung?**
 → [CONCEPTS.md](./CONCEPTS.md), Abschnitt „Die beiden Leitbegriffe"
 
 **Was ist heute wirklich gebaut?**

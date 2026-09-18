@@ -20,7 +20,8 @@ Eine Auskunft in der Verwaltung ist keine Meinung. Jemand steht mit seinem Namen
 ist deshalb kein Komfortmerkmal, sondern die Voraussetzung dafür, dass eine Antwort überhaupt verwendet
 werden darf. Sie setzt sich aus mehreren Bausteinen zusammen: [Fundstelle und
 Quellenbindung](#fundstelle-und-quellenbindung), [Konfidenz](#konfidenz), [erklärbares
-Chunking](#erklärbares-chunking) und im schärfsten Fall dem [Zitierzwang](#zitierzwang).
+Chunking](#erklärbares-chunking) und die [Belegvalidierung](#belegvalidierung), die jeden Beleg gegen
+die für diese Antwort abgerufenen Fundstellen prüft.
 
 - **Beispiel:** Eine Sachbearbeiterin fragt nach der Frist für einen Widerspruch. Die Antwort nennt den
   Paragrafen, die Dienstanweisung in ihrer geltenden Fassung und die Textstelle, an der es steht. Sie
@@ -417,18 +418,27 @@ die tragende Stelle benannt ist und ein Sprung dorthin möglich ist.
 
 ---
 
-### Zitierzwang
+### Belegvalidierung
 
-Ein Betriebsmodus, in dem das System **keine Antwort ohne belegte Quelle** ausgibt. Findet das Retrieval
-keine tragfähige Fundstelle, lautet die Antwort „nicht feststellbar" statt einer plausiblen Formulierung.
+Die Prüfung jedes Belegs gegen die Fundstellen, die für **diese** Antwort tatsächlich abgerufen wurden.
+Sie läuft ohne zweiten Modellaufruf und ist deterministisch: gleiche Eingabe, gleiches Urteil. Ein Beleg,
+der auf nichts zeigt, wird als **nicht bestätigt** gekennzeichnet — er wird weder stillschweigend entfernt
+noch stillschweigend als gültig behandelt. Sie ist keine Einstellung, sondern immer wirksam.
 
-Der Modus ist für haftungskritische Zusammenhänge gedacht und wird je Wissensbibliothek, Agent oder Space
-gesetzt. Er kostet bewusst Trefferquote: Lieber eine ausbleibende Auskunft als eine, die niemand
-verantworten kann.
+**Was sie nicht leistet:** Geprüft wird die **Echtheit** eines Belegs, nicht seine inhaltliche Deckung mit
+dem Satz, an dem er steht. Ein Modell kann eine echte Fundstelle an eine Aussage hängen, mit der sie
+inhaltlich nichts zu tun hat, und die Prüfung lässt das durch.
 
-- **Beispiel:** Ein Agent für Bescheidentwürfe läuft unter Zitierzwang. Zur Frage nach einer Härtefallregel,
-  die im indizierten Bestand nicht vorkommt, antwortet er, dass sich dazu nichts feststellen lässt — und
-  nennt, in welchen Beständen er gesucht hat.
+**Es gibt keinen Verweigerungsmodus.** Ein Betriebsmodus, der bei fehlendem Beleg gar nicht erst
+antwortet — früher unter dem Namen Zitierzwang geführt —, war vorgesehen und ist am 21.08.2026
+entschieden nicht gebaut worden; siehe
+[ADR-0014](./decisions/0014-produktausrichtung-oeffentliche-verwaltung.md) und
+[data-indexing-rag.md](./features/data-indexing-rag.md#belegvalidierung).
+
+- **Beispiel:** Ein Agent für Bescheidentwürfe antwortet zur Frage nach einer Härtefallregel, die im
+  indizierten Bestand nicht vorkommt, dass sich dazu nichts feststellen lässt — das tut das Modell von
+  sich aus. Gibt er stattdessen einen Beleg auf eine Dienstanweisung an, die für diese Antwort gar nicht
+  abgerufen wurde, so steht dieser Beleg im Belegfenster als nicht bestätigt.
 
 ---
 
@@ -445,7 +455,7 @@ ausgewiesen, damit sichtbar ist, ob die Auskunft belastbar ist oder nachgeprüft
 
 Konfidenz ist mehr als der Ähnlichkeitswert der Vektorsuche: In sie gehen auch ein, wie einig sich mehrere
 Fundstellen sind und ob die Frage überhaupt vollständig abgedeckt ist. Ein niedriger Wert kann den
-[Zitierzwang](#zitierzwang) auslösen.
+[Belegvalidierung](#belegvalidierung) auslösen.
 
 - **Beispiel:** Eine Auskunft zur Zuständigkeit erscheint mit niedriger Konfidenz, weil zwei
   Dienstanweisungen einander widersprechen. Die Sachbearbeitung sieht das an der Antwort und klärt vor der
@@ -484,7 +494,7 @@ Wenn ein Sprachmodell falsche Angaben erzeugt oder Sachverhalte erfindet.
 **Wie OPAA gegensteuert:**
 - RAG bindet die Antwort an abgerufene Textstellen
 - Die [Quellenbindung](#fundstelle-und-quellenbindung) macht jede Aussage nachprüfbar
-- Der [Zitierzwang](#zitierzwang) unterbindet die Antwort, wo der Beleg fehlt
+- Die [Belegvalidierung](#belegvalidierung) entlarvt einen Beleg, der auf nichts zeigt
 - Die [Konfidenz](#konfidenz) zeigt an, wenn die Grundlage dünn ist
 
 ---
@@ -919,8 +929,8 @@ Die Zeit von der Frage bis zur Antwort.
 - Antwortgenerierung: 1–3 Sekunden
 - Insgesamt: unter 4 Sekunden
 
-**Einflussgrößen:** Größe des Bestands, gewähltes Modell, verfügbare Hardware. Reranking und Zitierzwang
-kosten Zeit — und sind sie wert.
+**Einflussgrößen:** Größe des Bestands, gewähltes Modell, verfügbare Hardware. Reranking und
+Belegvalidierung kosten Zeit — und sind sie wert.
 
 ---
 
@@ -981,7 +991,7 @@ Recherchegrundlage steht in [discussion-retrieval-strategien.md, Abschnitt 9](./
 | **Reranking** | Zweite, genauere Bewertung der Treffer | 50 grobe Treffer → 5 einschlägige |
 | **Fundstelle** | Der Nachweis in der Antwort | „Dienstanweisung 12/2024, Abschnitt 4.2" |
 | **Quellenbindung** | Jede Aussage an ihre Textstelle gebunden | Sprung in den Absatz, nicht auf die Datei |
-| **Zitierzwang** | Ohne Beleg keine Antwort | „Dazu lässt sich nichts feststellen" |
+| **Belegvalidierung** | Jeder Beleg wird gegen die abgerufenen Fundstellen geprüft | Ein Beleg, der auf nichts zeigt, erscheint als nicht bestätigt |
 | **Konfidenz** | Wie belastbar die Grundlage ist | 0,4 — Auskunft vor Verwendung prüfen |
 | **Space** | Thematischer Arbeitsraum, flach; trägt Chats und Artefakte | „Bauleitplanung" |
 | **Suchbereich eines Chats** | Gesteuert am Chat über die Chip-Leiste (@Alles-Wissen, konkrete @-Referenzen, leere Leiste), nicht per Anfrage | `@Rechtsquellen-Denkmalschutz` ersetzt @Alles-Wissen und schränkt auf eine Bibliothek ein |

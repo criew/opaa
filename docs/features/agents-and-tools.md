@@ -136,7 +136,7 @@ Zwischen Entwurf und Freigabe steht ein **automatisierter Prüflauf** — die te
 
 **2 · Fachliche Richtigkeit.** Antworten auf **Referenzfälle mit bekannter richtiger Lösung**. Das ist derselbe Gedanke wie bei der Messung der Retrieval-Qualität, nur eine Ebene höher — nicht „findet die Suche die richtige Stelle", sondern „zieht der Agent daraus den richtigen Schluss". Der Messrahmen ist in [search-quality-evaluation.md](./search-quality-evaluation.md) beschrieben.
 
-**3 · Belegtreue.** Hält er den Zitierzwang durch? Sagt er **„nicht feststellbar"**, wo nichts belegt ist, statt eine plausible Antwort zu formulieren? Geprüft wird beides: das unbelegte Ausweichen und das falsche Zitat — eine Fundstelle, die die Aussage nicht trägt.
+**3 · Belegtreue.** Führt jede tragende Aussage einen Beleg, der die Belegvalidierung besteht? Sagt er **„nicht feststellbar"**, wo nichts belegt ist, statt eine plausible Antwort zu formulieren? Geprüft wird beides: das unbelegte Ausweichen und das falsche Zitat — eine Fundstelle, die die Aussage nicht trägt.
 
 **4 · Grenz- und Befugnistreue.** Bleibt er innerhalb der Grenzen, die seine Aufgabenbeschreibung setzt? Gibt er ab, wo er abgeben soll? Löst er keine schreibende Aktion ohne Freigabe aus? Diese Kategorie ist der Grund, warum die Abschnitte **Befugnisse** und **Grenzen** verbindlich sind: Sie sind nicht Beiwerk, sondern die Prüfvorschrift.
 
@@ -157,7 +157,7 @@ Zwischen Entwurf und Freigabe steht ein **automatisierter Prüflauf** — die te
 
 ## Prüfagenten für kritische Vorgänge
 
-*Der Zitierzwang schützt davor, dass Fakten erfunden werden. Er schützt nicht davor, dass aus richtigen Fundstellen ein falscher Schluss gezogen wird.*
+*Die Belegvalidierung schützt davor, dass Belege erfunden werden. Sie schützt nicht davor, dass aus richtigen Fundstellen ein falscher Schluss gezogen wird.*
 
 Für kritische Vorgänge tritt deshalb eine unabhängige Prüfinstanz zwischen Ergebnis und Ausgabe — die **maschinelle Entsprechung zu Mitzeichnung und Schlusszeichnung**.
 
@@ -328,7 +328,7 @@ Fachverfahren, Vorgangsbearbeitung und elektronische Akte sind die Systeme, in d
 | [spaces-and-assets.md](./spaces-and-assets.md) | Rechte an Agenten, Freigabekette für das Wissen, Verteilungsstufen, Katalog, Versionierung, Freigabeweg, Export und Import — **das Leitdokument** |
 | [access-control.md](./access-control.md) | Identität, Gruppen, Systemverwaltung, Protokollierung |
 | [external-access.md](./external-access.md) | Die **Gegenrichtung**: OPAA als MCP-Server für fremde KI-Werkzeuge, mit Zugangstokens, Bibliotheksfreigabe und Installationsschalter. Nicht Gegenstand dieses Dokuments |
-| [data-indexing-rag.md](./data-indexing-rag.md) | Abfrageablauf, Quellenbindung und Zitierzwang, auf denen Belegtreue und Prüfagenten aufsetzen |
+| [data-indexing-rag.md](./data-indexing-rag.md) | Abfrageablauf, Quellenbindung und Belegvalidierung, auf denen Belegtreue und Prüfagenten aufsetzen |
 | [search-quality-evaluation.md](./search-quality-evaluation.md) | Messrahmen für Referenzfälle, den der Prüfstand auf Agentenebene weiterverwendet |
 | [llm-integration.md](./llm-integration.md) | Modellwahl und zentrale Vorgaben als Obergrenze für die Modellwahl eines Agenten |
 | [VISION.md](../VISION.md) · [USE-CASES.md](../USE-CASES.md) | Einordnung in die Themenbereiche und Anwendungsfälle im Alltag |

@@ -631,7 +631,7 @@ Für Assets gilt: Der Zugang wird nie durch die Eigentumsfrage aufgehalten, das 
 
 #### Speicherbedarf ohne Auswertungspfad
 
-Private Inhalte treiben das Speicherwachstum, und wegen des Zitierzwangs enthalten sie wörtliche Passagen aus den Quelldokumenten. Der Betrieb muss die Kapazität planen können, ohne dass jemand in fremde Daten sieht. Ein Speicherbericht je Nutzer wäre wörtlich eine Gruppierung von Chatdaten nach Person und ist damit ausgeschlossen. Stattdessen:
+Private Inhalte treiben das Speicherwachstum, und weil Antworten ihre Belege mitführen, enthalten sie wörtliche Passagen aus den Quelldokumenten. Der Betrieb muss die Kapazität planen können, ohne dass jemand in fremde Daten sieht. Ein Speicherbericht je Nutzer wäre wörtlich eine Gruppierung von Chatdaten nach Person und ist damit ausgeschlossen. Stattdessen:
 
 - **Belegung nur aggregiert je Organisationseinheit**, mit derselben Mindestgruppengröße wie die Nutzungsstatistik.
 - **Eine technisch durchgesetzte Obergrenze je Konto statt eines Berichts.** Eine Quote braucht keinen Auswertungspfad: Das System setzt sie durch und meldet sie **dem Betroffenen selbst**. Damit ist auch der Ausreißerfall beherrschbar — ein Konto, das durch eine fehlgeschlagene Automatisierung Millionen private Chats erzeugt.
@@ -728,9 +728,9 @@ In allen Fällen ist der Rechtekontext derselbe — der des aufrufenden Nutzers.
 
 **Im Strikt-Modus ist @Alles-Wissen aus der Chip-Leiste nicht entfernbar, und die Leiste lässt nur die dem Space assoziierten Bibliotheken als konkrete Chips zu.** Das ist fail-closed, analog zur bestehenden Aufrufverweigerung für Agenten im Strikt-Space (siehe [Der Strikt-Modus](#der-strikt-modus)): Ein Nutzer kann in einem solchen Raum die Dokumentensuche weder durch eine leere Leiste abschalten noch über einen beliebigen Chip auf unkuratiertes Wissen außerhalb der Space-Kuratierung ausweiten.
 
-**Zum Zitierzwang als eigenem Space-Modus, wie in diesem Abschnitt an einigen Stellen noch mitgedacht:** Ein
+**Zu einem Verweigerungsmodus als eigenem Space-Schalter, wie in diesem Abschnitt an einigen Stellen noch mitgedacht:** Ein
 Schalter am Space, der bei fehlendem Beleg die Antwort verweigert, wurde am 21.08.2026 verworfen — siehe
-[Zitierzwang](./data-indexing-rag.md#zitierzwang) für die Begründung. Gebaut ist stattdessen die
+[Belegvalidierung](./data-indexing-rag.md#belegvalidierung) für die Begründung. Gebaut ist stattdessen die
 deterministische Belegvalidierung, die unabhängig vom Space greift und ungültige Belege kennzeichnet, statt
 die Antwort zurückzuhalten. Nur der Strikt-Modus oben ist ein tatsächlicher Space-Schalter.
 
@@ -799,7 +799,7 @@ Der Ausschluss einzelner Konnektor-Dokumente ist noch nicht gebaut (**Zielbild**
 
 ## Das Ableitungsleck
 
-Wissen fließt aus einer Bibliothek mit **engem** Leserkreis in ein space-eigenes Objekt mit **weiterem** Leserkreis. Dabei wechselt der Rechteanker: von der Asset-Rechteliste zur Space-Mitgliedschaft. Der Zitierzwang verschärft das, weil wörtliche Passagen dauerhaft im Verlauf stehen.
+Wissen fließt aus einer Bibliothek mit **engem** Leserkreis in ein space-eigenes Objekt mit **weiterem** Leserkreis. Dabei wechselt der Rechteanker: von der Asset-Rechteliste zur Space-Mitgliedschaft. Die Belegbindung verschärft das, weil wörtliche Passagen dauerhaft im Verlauf stehen.
 
 ### Warum das Problem klein geworden ist
 
