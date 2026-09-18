@@ -18,8 +18,8 @@ import reactor.core.publisher.Mono;
 
 /**
  * The three per-request answers the library gives per server (#1721, ADR-0035, Umsetzungsrisiken 1
- * and 2). Everything else - {@code tools/call}, {@code ping}, notifications - passes straight
- * through.
+ * and 2), plus the one notification every client sends. Everything else - {@code tools/call},
+ * {@code ping}, the remaining notifications - passes straight through.
  *
  * <ul>
  *   <li><b>{@code tools/list}</b> is answered here, because {@code McpStatelessAsyncServer} answers
@@ -34,6 +34,9 @@ import reactor.core.publisher.Mono;
  *       server's highest, which is what the library does (a WARN line and a successful answer). The
  *       refusal names the supported revisions, and every successful {@code initialize} carries them
  *       too - a legacy client's only way to learn them.
+ *   <li><b>{@code notifications/initialized} is accepted silently</b> instead of producing the
+ *       library's "Missing handler" WARN on every connection: a stateless server has no session to
+ *       mark initialized, and a line per connecting client is noise, not a finding.
  * </ul>
  *
  * <p>The refusal is deliberately {@code INVALID_PARAMS} and deliberately <b>not</b> {@code
@@ -100,6 +103,12 @@ class OpaaMcpHandler implements McpStatelessServerHandler {
   @Override
   public Mono<Void> handleNotification(
       McpTransportContext transportContext, McpSchema.JSONRPCNotification notification) {
+    if (McpSchema.METHOD_NOTIFICATION_INITIALIZED.equals(notification.method())) {
+      // Every client sends it after the handshake, and a stateless server has nothing to do with
+      // it - but the library's default handler finds no handler and logs a WARN per connection
+      // (#1766). Accepted here, silently, which is exactly what the protocol asks for.
+      return Mono.empty();
+    }
     return delegate.handleNotification(transportContext, notification);
   }
 
