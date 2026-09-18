@@ -72,7 +72,7 @@ Die drei Säulen beschreiben, **was** OPAA tut. Als Unterscheidungsmerkmal träg
 befragbar machen, Agenten bauen, Fähigkeiten verteilen — daran arbeiten viele, und Katalog, Freigabe,
 Eigentümerschaft und Versionierung sind dabei, allgemeiner Standard zu werden.
 
-Trennscharf ist das **Wie**. Vier Eigenschaften, jede für sich nachprüfbar:
+Trennscharf ist das **Wie**. Fünf Eigenschaften, jede für sich nachprüfbar:
 
 1. **Rechte, Protokoll und Mandantengrenze liegen im Kern.** Sie sind quelloffen und an keine Bezahlstufe
    gebunden. Wo diese drei Dinge kostenpflichtige Zusätze sind, entscheidet eine Preisliste darüber, ob
@@ -86,9 +86,14 @@ Trennscharf ist das **Wie**. Vier Eigenschaften, jede für sich nachprüfbar:
    Arbeitsmittel von einem Kontrollinstrument unterscheidet.
 4. **Belege werden geprüft, nicht nur verlinkt.** Ein Quellenlink belegt, dass ein Dokument existiert. Die
    Belegvalidierung belegt, dass die Antwort aus diesem Dokument stammt.
+5. **Barrierefreiheit ist nachgewiesen, nicht in Aussicht gestellt.** Für eine öffentliche Stelle ist sie
+   Rechtspflicht und keine Ausstattung. OPAA ist nach BITV gebaut, automatisiert geprüft und mit einem
+   manuellen Abschluss-Audit abgenommen. Ein Produkt, das diesen Nachweis nicht führen kann, ist für eine
+   Behörde nicht beschaffbar — unabhängig davon, was es sonst leistet.
 
-Keine der vier lässt sich nachträglich anbauen. Sie entscheiden, wie Suche, Speicher und Protokoll
-geschnitten sind — deshalb stehen sie hier und nicht in einer Feature-Liste.
+Keine der fünf lässt sich nachträglich anbauen. Die ersten vier entscheiden, wie Suche, Speicher und
+Protokoll geschnitten sind, die fünfte, wie jede einzelne Oberfläche entsteht — deshalb stehen sie hier
+und nicht in einer Feature-Liste.
 
 ---
 
@@ -108,7 +113,7 @@ an Barrierefreiheit und Missbrauchsschutz.
 | | Bereich | Worum es geht | Spezifikation |
 |---|---|---|---|
 | **A** | Wissensschicht & Retrieval | Belegvalidierung, Konfidenz, hybride Suche mit Reranking, erklärbares Chunking, Deep Research | [data-indexing-rag.md](./features/data-indexing-rag.md) · [search-quality-evaluation.md](./features/search-quality-evaluation.md) |
-| **B** | Wissensquellen & Konnektoren | Uploads und Konnektoren, selbst aktualisierende Wissensblöcke, Spiegelung der Rechte aus dem Quellsystem | [knowledge-sources.md](./features/knowledge-sources.md) |
+| **B** | Wissensquellen & Konnektoren | Uploads und Konnektoren, selbst aktualisierende Wissensblöcke, Zielbibliothek als Rechteanker — Quellrechte schränken sie ein, wo ein Quellsystem sie belastbar liefert | [knowledge-sources.md](./features/knowledge-sources.md) |
 | **C** | Spaces, Assets & Verteilung | Arbeitsräume, Assets mit eigenen Rechten, Verteilungsstufen, Freigabe, Versionierung, Katalog | [spaces-and-assets.md](./features/spaces-and-assets.md) |
 | **D** | Agenten, Prompts & Werkzeuge | Agenten als teilbare Pakete, geführtes Onboarding, Prüfstand, Prüfagenten, Sandbox, Werkzeuge, MCP | [agents-and-tools.md](./features/agents-and-tools.md) |
 | **E** | Modelle & zentrale Steuerung | Modellverwaltung, eigene Modelle zuerst, zentrale Vorgaben als Obergrenze, Schutz vor Weitergabe personenbezogener Daten | [llm-integration.md](./features/llm-integration.md) |

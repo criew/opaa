@@ -351,7 +351,7 @@ Stützungsprüfung (Stufe 2) ist als möglicher Folgeausbau denkbar, aber nicht 
 Ungültige Zitate werden im Antworttext belassen, aber in der zugehörigen `ChatSource` als
 `citationValid = false` markiert
 (`QueryService#mapSources`). Details zur Belegvalidierung stehen unter
-[Zitierzwang](./data-indexing-rag.md#zitierzwang).
+[Belegvalidierung](./data-indexing-rag.md#belegvalidierung).
 
 **Was `relevanceScore` bedeutet (#1102).** Der Relevanzwert einer Quellenangabe ist der **Kehrwert
 ihrer Position in der Quellenliste der Antwort** — 1,0 für die erste Quelle, 0,5 für die zweite,

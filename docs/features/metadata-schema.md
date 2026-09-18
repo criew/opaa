@@ -1691,7 +1691,7 @@ Drei Regeln:
   Fassungsangabe, die aus einem Modellaufruf stammt, darf nicht wie eine gelesene aussehen.
 - **`location` bleibt die Fundstellenangabe.** Metadaten ergänzen den Beleg, sie ersetzen seine
   Fundstelle nicht (siehe [Ingestion-Pipelines, Teil 5](./ingestion-pipelines.md#teil-5--übergabepunkt-an-das-metadatenschema)).
-  Der [Zitierzwang](./data-indexing-rag.md#zitierzwang) gilt unverändert.
+  Die [Belegvalidierung](./data-indexing-rag.md#belegvalidierung) gilt unverändert.
 
 ---
 
@@ -1974,7 +1974,7 @@ werden, deren Verhalten bei sauberen Werten bereits gemessen ist.
 - **[Wissensschicht und Retrieval](./data-indexing-rag.md)** — Zielbild der
   [Metadaten-Extraktion](./data-indexing-rag.md#extraktion-von-dokumentmetadaten--phase-2), die
   [Filterachse](./data-indexing-rag.md#speicherung-und-filterachse) und der
-  [Zitierzwang](./data-indexing-rag.md#zitierzwang), an dem die Beleg-Anzeige hängt.
+  [Belegvalidierung](./data-indexing-rag.md#belegvalidierung), an dem die Beleg-Anzeige hängt.
 - **[Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md)** — der Rechtekontext, in dem
   Extraktion, Schemavorschlag und **jedes aus dem Bestand abgeleitete Aggregat** laufen; das
   Bearbeitungsrecht am Dokument trägt die Metadatenkorrektur, das Verwaltungsrecht an der Bibliothek

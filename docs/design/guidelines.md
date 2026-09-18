@@ -155,7 +155,7 @@ braucht einen dunkleren Ton oder eine andere Rolle.
 - **Akzent ist austauschbar.** Die Branding-Konfiguration (Issues #582/#583) darf `accent`
   ersetzen. Deshalb darf keine Komponente sich auf „Blau" verlassen (z. B. Blau hart mit einem
   Icon mischen) — sie verlässt sich auf die Rolle.
-- **Semantikfarben tragen Bedeutung, keine Stimmung.** Eine Verweigerungs-Antwort im Zitierzwang
+- **Semantikfarben tragen Bedeutung, keine Stimmung.** Ein als nicht bestätigt gekennzeichneter Beleg
   ist keine Warnung und erhält keine Signalfarbe (siehe redesign-prompt.md §4).
 
 ### 2.4 Kontrast
@@ -353,8 +353,9 @@ Vollständige Tastaturbedienung (Pfeile, Enter, Escape) ist Teil der Komponente,
 Belege erscheinen als hochgestellte Ziffern in `accent` im Antworttext (auch Bereiche „1–3");
 unter der Antwort folgt der Fundstellen-Block: Eyebrow „Fundstellen", Zeile „n Stellen in
 m Dokumenten", je Dokument Ziffern + Titel (Gewicht 500) + Fundort und Stand in `fg-3`.
-Die Verweigerung im Zitierzwang ist eine vollwertige Auskunft in normaler Antwort-Typografie —
-kein Banner, keine Signalfarbe (Ausgestaltung: Issues #590/#592, Mockups 1a/1i).
+Ein Beleg, den die Belegvalidierung nicht bestätigt, trägt einen dezenten Hinweis in normaler
+Fundstellen-Typografie — kein Banner, keine Signalfarbe (Ausgestaltung: Issues #590/#592,
+Mockups 1a/1i).
 
 ### 5.9 Popup-Benachrichtigungen
 

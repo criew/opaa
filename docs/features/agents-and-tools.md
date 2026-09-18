@@ -136,7 +136,7 @@ Zwischen Entwurf und Freigabe steht ein **automatisierter Prüflauf** — die te
 
 **2 · Fachliche Richtigkeit.** Antworten auf **Referenzfälle mit bekannter richtiger Lösung**. Das ist derselbe Gedanke wie bei der Messung der Retrieval-Qualität, nur eine Ebene höher — nicht „findet die Suche die richtige Stelle", sondern „zieht der Agent daraus den richtigen Schluss". Der Messrahmen ist in [search-quality-evaluation.md](./search-quality-evaluation.md) beschrieben.
 
-**3 · Belegtreue.** Hält er den Zitierzwang durch? Sagt er **„nicht feststellbar"**, wo nichts belegt ist, statt eine plausible Antwort zu formulieren? Geprüft wird beides: das unbelegte Ausweichen und das falsche Zitat — eine Fundstelle, die die Aussage nicht trägt.
+**3 · Belegtreue.** Führt jede tragende Aussage einen Beleg, der die Belegvalidierung besteht? Sagt er **„nicht feststellbar"**, wo nichts belegt ist, statt eine plausible Antwort zu formulieren? Geprüft wird beides: das unbelegte Ausweichen und das falsche Zitat — eine Fundstelle, die die Aussage nicht trägt.
 
 **4 · Grenz- und Befugnistreue.** Bleibt er innerhalb der Grenzen, die seine Aufgabenbeschreibung setzt? Gibt er ab, wo er abgeben soll? Löst er keine schreibende Aktion ohne Freigabe aus? Diese Kategorie ist der Grund, warum die Abschnitte **Befugnisse** und **Grenzen** verbindlich sind: Sie sind nicht Beiwerk, sondern die Prüfvorschrift.
 
@@ -157,7 +157,7 @@ Zwischen Entwurf und Freigabe steht ein **automatisierter Prüflauf** — die te
 
 ## Prüfagenten für kritische Vorgänge
 
-*Der Zitierzwang schützt davor, dass Fakten erfunden werden. Er schützt nicht davor, dass aus richtigen Fundstellen ein falscher Schluss gezogen wird.*
+*Die Belegvalidierung schützt davor, dass Belege erfunden werden. Sie schützt nicht davor, dass aus richtigen Fundstellen ein falscher Schluss gezogen wird.*
 
 Für kritische Vorgänge tritt deshalb eine unabhängige Prüfinstanz zwischen Ergebnis und Ausgabe — die **maschinelle Entsprechung zu Mitzeichnung und Schlusszeichnung**.
 
@@ -244,6 +244,8 @@ Alles, was gerechnet, konvertiert oder erkannt werden muss, läuft in einer **is
 
 **Die Isolation ist der Punkt, nicht die Fähigkeit.** Kein Ausbruch aus der Umgebung, kein Zugriff auf fremde Vorgänge, keine Netzverbindung außer den ausdrücklich erlaubten — und keine Abhängigkeit von einem Interpreter in einer fremden Cloud. Ein Amt, das eine Anhörung transkribiert, gibt sie nicht aus dem Haus.
 
+Wo „ausdrücklich erlaubt" entschieden und durchgesetzt wird, steht unter [Der Ausgang als Kontrollpunkt](#der-ausgang-als-kontrollpunkt).
+
 *Phasenlage: Phase 2.*
 
 ### Schreibende Aktionen mit menschlicher Freigabe
@@ -255,7 +257,33 @@ Lesen ist harmlos, Schreiben nicht. Schreibende Aktionen — einen Vorgang anleg
 - Jede Aktion ist protokolliert, freigegebene wie abgelehnte.
 - Welche Aktionen ein Agent überhaupt auslösen darf, steht in seinem Abschnitt **Befugnisse** und wird vom [Prüfstand](#agenten-prüfstand-vor-der-freigabe) gegengeprüft.
 
+Damit das eine Schranke ist und keine Vereinbarung, darf die Freigabe nicht davon abhängen, dass der Agent von sich aus fragt. Sie hängt stattdessen am Weg nach draußen: [Der Ausgang als Kontrollpunkt](#der-ausgang-als-kontrollpunkt).
+
 *Phasenlage: Phase 2.*
+
+### Der Ausgang als Kontrollpunkt
+
+Die beiden vorigen Kapitel lassen dieselbe Frage offen: **Wo sitzt die Durchsetzung?** Solange ein Agent selbst entscheidet, wann er um Freigabe bittet, ist die Freigabe eine Vereinbarung. Und solange ein Werkzeug sein Zugangsgeheimnis in der Ausführungsumgebung braucht, liegt dieses Geheimnis genau dort, wo modellgesteuerter Code läuft — ein einziger erfolgreicher Prompt-Injection-Treffer genügt, um es auszuleiten.
+
+Die Antwort ist, den Kontrollpunkt aus dem Code herauszunehmen und an den **Ausgang** zu legen. Drei Anforderungen:
+
+1. **Das Tor ist der einzige Weg nach draußen.** Jede ausgehende Verbindung der Ausführungsumgebung läuft zwingend darüber. Dort — und nur dort — wird entschieden: durchlassen, verweigern, oder einer Person zur Freigabe vorlegen. Der Agent kann das Tor nicht umgehen, weil es keinen zweiten Weg gibt.
+2. **Die Ausführungsumgebung sieht nie echte Zugangsdaten.** Sie arbeitet mit Platzhaltern; das echte Geheimnis setzt das Tor erst beim Verlassen der Umgebung ein. Damit ist „darf diesen Aufruf auslösen" von „kennt das Geheimnis" entkoppelt — das ist die eigentliche Pointe. Was der Agent nie hatte, kann er nicht ausleiten.
+3. **Eine wartende Freigabe hat Bestand.** Der Zustand einer geparkten Entscheidung liegt in der Datenbank, nicht im Prozess. Ein Aufruf, der auf eine Freigabe wartet, überlebt einen Neustart und ist ein Vorgang, kein hängender Thread.
+
+Das Tor ist zugleich der natürliche Ort der bereits zugesagten vollständigen Protokollierung: eine Stelle statt jedes einzelne Werkzeug. Und es trägt die Anbindung von Fremdsystemen mit — auch ein MCP-Aufruf ist eine ausgehende Verbindung.
+
+> Das Muster ist an einem fremden System nachgewiesen, das es ausgearbeitet betreibt. Die Nennung dort steht als nachprüfbarer Sachbeleg für eine technische Aussage, nicht zur Positionierung von OPAA — die Grenze dieser Ausnahme regelt [MESSAGING.md](../market/MESSAGING.md#was-wir-nicht-sagen). Das untersuchte System ist **Onyx**, dessen Dokumentation Egress-Gate, Platzhalter-Zugangsdaten und die Datenbank als Wahrheitsquelle für Freigaben ausdrücklich beschreibt.
+
+**Drei Punkte sind hier offen und werden nicht stillschweigend übergangen:**
+
+- **TLS-Aufbruch.** Ein Tor, das Zugangsdaten einsetzt und Ziele prüft, muss die Verbindung aufbrechen. In einer Behörde ist das begründungs- und dokumentationspflichtig, und es entscheidet mit darüber, was dabei protokolliert wird und was ausdrücklich nicht.
+- **Gilt das Tor auch für lesende Aufrufe?** Für die Zugangsdaten ja; für den Freigabeschritt wäre es lästig und würde die Schranke abstumpfen. Die Grenze gehört gezogen, nicht offengelassen.
+- **Verhältnis zur bestehenden Zielprüfung.** Für die URL-basierten Quellentypen sichert bereits eine Prüfung gegen private, lokale und nicht routbare Adressbereiche ab (siehe [knowledge-sources.md](./knowledge-sources.md)). Ob das Tor diese Prüfung übernimmt oder neben ihr steht, ist ungeklärt.
+
+Die Architekturentscheidung dazu gehört zur Umsetzung, nicht in dieses Dokument.
+
+*Phasenlage: Phase 2, gemeinsam mit der Ausführungsumgebung.*
 
 ### MCP als standardisierte Anbindung
 
@@ -300,7 +328,7 @@ Fachverfahren, Vorgangsbearbeitung und elektronische Akte sind die Systeme, in d
 | [spaces-and-assets.md](./spaces-and-assets.md) | Rechte an Agenten, Freigabekette für das Wissen, Verteilungsstufen, Katalog, Versionierung, Freigabeweg, Export und Import — **das Leitdokument** |
 | [access-control.md](./access-control.md) | Identität, Gruppen, Systemverwaltung, Protokollierung |
 | [external-access.md](./external-access.md) | Die **Gegenrichtung**: OPAA als MCP-Server für fremde KI-Werkzeuge, mit Zugangstokens, Bibliotheksfreigabe und Installationsschalter. Nicht Gegenstand dieses Dokuments |
-| [data-indexing-rag.md](./data-indexing-rag.md) | Abfrageablauf, Quellenbindung und Zitierzwang, auf denen Belegtreue und Prüfagenten aufsetzen |
+| [data-indexing-rag.md](./data-indexing-rag.md) | Abfrageablauf, Quellenbindung und Belegvalidierung, auf denen Belegtreue und Prüfagenten aufsetzen |
 | [search-quality-evaluation.md](./search-quality-evaluation.md) | Messrahmen für Referenzfälle, den der Prüfstand auf Agentenebene weiterverwendet |
 | [llm-integration.md](./llm-integration.md) | Modellwahl und zentrale Vorgaben als Obergrenze für die Modellwahl eines Agenten |
 | [VISION.md](../VISION.md) · [USE-CASES.md](../USE-CASES.md) | Einordnung in die Themenbereiche und Anwendungsfälle im Alltag |
@@ -310,6 +338,7 @@ Fachverfahren, Vorgangsbearbeitung und elektronische Akte sind die Systeme, in d
 ## Offene Fragen / Zukünftige Erweiterungen
 
 - **Verhältnis von MCP und Plugin-Architektur** — offen, siehe #349. Dieses Dokument entscheidet es nicht.
+- **Zuschnitt des Ausgangs-Tors** — TLS-Aufbruch, Geltung für lesende Aufrufe und das Verhältnis zur bestehenden Zielprüfung, siehe [Der Ausgang als Kontrollpunkt](#der-ausgang-als-kontrollpunkt).
 - **Skills als eigene Objektart** oder als benannter Abschnitt innerhalb einer Aufgabenbeschreibung? Der Unterschied entscheidet, ob sie eigene Rechte und eine eigene Versionierung brauchen.
 - **Wie streng die Struktur der Aufgabenbeschreibung erzwungen wird.** Ein Freitextfeld „Sonstiges" ist bequem und höhlt die Prüfbarkeit aus; ganz ohne Ausweichfeld wird die Struktur mancher Aufgabe nicht gerecht.
 - **Wie ein Prüffallkatalog zu einem Agenten kommt, den niemand geprüft hat.** Ohne Mindestbestand ist ein grüner Prüfbericht wertlos; ob es eine erzwungene Mindestzahl gibt und wie sie bemessen wird, ist offen.

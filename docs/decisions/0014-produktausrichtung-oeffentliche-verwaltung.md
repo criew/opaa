@@ -312,7 +312,7 @@ Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
   organisatorische Pflicht des Betriebs, haftungskritische Bestände nicht in Spaces ohne Zitierzwang
   bereitzustellen. Die Verankerung an der Wissensbibliothek bleibt als Alternative benannt.
 - **Verweis:** [#354](https://github.com/criew/opaa/issues/354) ·
-  [features/data-indexing-rag.md](../features/data-indexing-rag.md#zitierzwang)
+  [features/data-indexing-rag.md](../features/data-indexing-rag.md#belegvalidierung)
 
 ### 14.08.2026 — Nachweis der Organisationsgrenze
 
@@ -370,4 +370,4 @@ Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
   Apparat, den sie hätte absichern sollen, und damit ihre Grundlage.
 - **Verweis:** [#354](https://github.com/criew/opaa/issues/354) ·
   [#386](https://github.com/criew/opaa/issues/386) ·
-  [features/data-indexing-rag.md](../features/data-indexing-rag.md#zitierzwang)
+  [features/data-indexing-rag.md](../features/data-indexing-rag.md#belegvalidierung)
