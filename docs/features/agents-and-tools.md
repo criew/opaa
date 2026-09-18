@@ -261,6 +261,14 @@ Lesen ist harmlos, Schreiben nicht. Schreibende Aktionen — einen Vorgang anleg
 
 Werkzeuge und Fremdsysteme werden über das **Model Context Protocol (MCP)** angebunden — ein offener, selbst betreibbarer Standard. Das ist die Antwort auf die Alternative, Integrationen über fremde Automatisierungsdienste zu beziehen: Die widerspricht dem Betrieb im eigenen Haus, weil sie Vorgangsdaten über einen Dritten führt.
 
+**Abgrenzung der Richtung.** Dieses Kapitel beschreibt OPAA als MCP-**Client**: Ein Agent von OPAA
+ruft ein fremdes Werkzeug auf. Das bleibt Phase 2. Die **Gegenrichtung** — OPAA als MCP-**Server**,
+den ein fremdes KI-Werkzeug als Wissensquelle anspricht — ist am 18.09.2026 entschieden und in
+[external-access.md](./external-access.md) beschrieben. Die beiden Richtungen teilen nur den
+Protokollnamen: Die Client-Richtung führt Daten aus OPAA heraus in ein Werkzeug, das handelt; die
+Server-Richtung liefert Fundstellen an ein Werkzeug, das fragt. Entscheidungen der einen Richtung
+gelten nicht automatisch für die andere.
+
 > **Offen und ausdrücklich hier nicht entschieden:** Wie sich MCP zur bestehenden Plugin-Architektur für Konnektoren verhält — ob es konkurrierende Wege sind oder ob sie sich ergänzen (Plugins für interne Konnektoren mit tiefem Zugriff auf die Indizierungspipeline, MCP für Werkzeuge und Fremdsysteme). Die Klärung läuft in **#349**; bis dahin trifft dieses Dokument dazu keine Festlegung.
 
 *Phasenlage: Phase 2.*
@@ -291,6 +299,7 @@ Fachverfahren, Vorgangsbearbeitung und elektronische Akte sind die Systeme, in d
 |---|---|
 | [spaces-and-assets.md](./spaces-and-assets.md) | Rechte an Agenten, Freigabekette für das Wissen, Verteilungsstufen, Katalog, Versionierung, Freigabeweg, Export und Import — **das Leitdokument** |
 | [access-control.md](./access-control.md) | Identität, Gruppen, Systemverwaltung, Protokollierung |
+| [external-access.md](./external-access.md) | Die **Gegenrichtung**: OPAA als MCP-Server für fremde KI-Werkzeuge, mit Zugangstokens, Bibliotheksfreigabe und Installationsschalter. Nicht Gegenstand dieses Dokuments |
 | [data-indexing-rag.md](./data-indexing-rag.md) | Abfrageablauf, Quellenbindung und Zitierzwang, auf denen Belegtreue und Prüfagenten aufsetzen |
 | [search-quality-evaluation.md](./search-quality-evaluation.md) | Messrahmen für Referenzfälle, den der Prüfstand auf Agentenebene weiterverwendet |
 | [llm-integration.md](./llm-integration.md) | Modellwahl und zentrale Vorgaben als Obergrenze für die Modellwahl eines Agenten |

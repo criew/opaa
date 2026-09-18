@@ -37,6 +37,9 @@ Reihenfolge sie entstehen.
    Verbraucherdienste sind kein Kanal — wer einen weiteren braucht, baut ihn gegen die REST-API.
 6. **Erweiterungen für Office und Browser bleiben eine spätere Option** mit hohem Aufwand je
    Erweiterung und entsprechend hoher Begründungslast.
+7. **Fremde KI-Werkzeuge erreichen OPAA über einen eigenen, dreifach freigegebenen Kanal** —
+   Zugangstokens und ein MCP-Server, beides standardmäßig aus. Er ist kein zusätzliches Recht,
+   sondern ein Ausschnitt bestehender Rechte; siehe [external-access.md](./external-access.md).
 
 ---
 
@@ -242,7 +245,10 @@ bräuchte, würde eine zweite Rechteprüfung und eine zweite Fehlerbehandlung er
   aufrufenden Identität freigegeben sind. Die Prüfung sitzt in der Suche, nicht davor.
 - **Belege im Antwortformat.** Fundstellen, Konfidenz und der durchsuchte Bereich sind Teil der
   Antwort, nicht eine gesonderte Abfrage.
-- **Protokollierung.** Jeder Aufruf ist zurechenbar und erscheint im revisionssicheren Protokoll.
+- **Protokollierung.** Jeder Aufruf ist einer Identität zurechenbar. Im revisionssicheren Protokoll
+  erscheinen davon die **Zugriffsänderungen** — nicht die einzelne Abfrage: Frage, Suchbegriffe,
+  Suchbereich und Trefferzahl bleiben bewusst draußen (siehe
+  [security-and-compliance.md](./security-and-compliance.md#was-ausdrücklich-nicht-protokolliert-wird)).
 - **Grenzen.** Anfragekontingente schützen den Betrieb und begrenzen den Modellverbrauch.
 
 ### Was die Schnittstelle anbietet
@@ -294,7 +300,11 @@ Zweck, nicht nach Pfad.
 **Was der frühere Stand dieses Dokuments nannte und heute nicht existiert:** ein Endpunkt zum
 Hochladen von Dokumenten, ein eigener Such-Endpunkt neben der Abfrage, das Abrufen eines einzelnen
 Dokuments, das Auflisten der eigenen Uploads, ein Endpunkt für Rückmeldungen sowie
-Sammelverarbeitung mehrerer Fragen in einem Aufruf. Ersatzlos entfallen sind die Endpunkte zum
+Sammelverarbeitung mehrerer Fragen in einem Aufruf. Zwei davon — der **eigene Such-Endpunkt** neben
+der Abfrage (Treffer ohne erzeugte Antwort) und das **Abrufen eines einzelnen Dokuments** — sind
+inzwischen entschieden und kommen mit dem Fremdzugangs-Kanal
+([external-access.md](./external-access.md)); sie stehen dann jeder angemeldeten Person offen, nicht
+nur einem Zugangstoken. Ersatzlos entfallen sind die Endpunkte zum
 **Teilen und Entteilen einzelner Dokumente über Workspace-Grenzen**: Zugriff wird an der
 Wissensbibliothek erteilt, nicht am einzelnen Dokument — das Modell dahinter ist abgelöst (siehe
 [spaces-and-assets.md](./spaces-and-assets.md)).
@@ -322,6 +332,11 @@ Wissensbibliothek erteilt, nicht am einzelnen Dokument — das Modell dahinter i
   Werte sind über Umgebungsvariablen einstellbar; die ausgelieferten Voreinstellungen und ihre Bedeutung
   stehen in [deployment.md](../handbuch/deployment.md). Ein überschrittenes Kontingent führt zu einer klaren
   Ablehnung, nicht zu einer langsamen Antwort.
+
+**Entschieden und in Arbeit** (18.09.2026, [external-access.md](./external-access.md)): persönliche
+**Zugangstokens** für fremde KI-Werkzeuge, installationsweit abschaltbar, je Bibliothek freizugeben,
+mit Pflicht-Ablauf und Kontingent je Token. Sie lösen die ersten beiden Zielbildpunkte für den
+Personen-Fall ein; **Service-Accounts als eigene Identität ohne Person bleiben Zielbild.**
 
 **Zielbild:**
 
@@ -354,7 +369,12 @@ Nicht jede Plattform ist als Kanal geeignet. Verbindliche Bedingungen:
 2. **Darstellbare Belege.** Fundstellen mit Sprungziel müssen im Nachrichtenformat unterzubringen sein.
 3. **Betrieb im Verantwortungsbereich des Hauses.** Der Weg einer Frage darf die Grenze nicht
    überschreiten, die für die zugrunde liegenden Daten gilt.
-4. **Protokollierbarkeit.** Anfrage und Antwort müssen zurechenbar im Protokoll landen.
+4. **Protokollierbarkeit.** Jede Nachricht muss einer Identität zurechenbar sein. Protokolliert
+   werden davon die **Zugriffsänderungen**, nicht die einzelne Abfrage — Frage, Suchbegriffe,
+   Suchbereich und Trefferzahl bleiben bewusst draußen (siehe
+   [security-and-compliance.md](./security-and-compliance.md#was-ausdrücklich-nicht-protokolliert-wird)).
+   Ein Kanal, der die Zuordnung nicht herstellen kann, scheidet trotzdem aus: Ohne sie greift keine
+   Rechteprüfung.
 
 ### Die Kanäle im Zielbild
 
@@ -435,7 +455,7 @@ Sicherheitsgrenze des Systems.
 | **Rechte** | Gefiltert wird über die lesbaren Wissensbibliotheken, bereits in der Suche; ein Agent liest immer mit den Rechten der aufrufenden Person |
 | **Belege** | Fundstellen, Konfidenz und durchsuchter Bereich gehören zur Antwort |
 | **Vorgaben** | Modell- und Werkzeugvorgaben der Systemverwaltung wirken in jedem Kanal; kein Kanal kann sie erweitern |
-| **Protokoll** | Jede Anfrage und jede schreibende Aktion ist zurechenbar protokolliert |
+| **Protokoll** | Jede Anfrage ist zurechenbar; protokolliert werden die Zugriffsänderungen, nicht die einzelne Abfrage — die geschlossene Ereignisliste gilt in jedem Kanal gleich |
 | **Sichtbarkeit** | Was als Entwurf entsteht, bleibt beim Autor, bis er es ablegt — auch bei Nutzung über einen Chat-Kanal |
 
 ---
@@ -446,6 +466,8 @@ Sicherheitsgrenze des Systems.
   Entwurf und Ablage, die jeder Kanal abbilden muss
 - **[access-control.md](./access-control.md)** — Identität, Rollen und rechtebewusste Suche, an die
   jeder Kanal gebunden ist
+- **[external-access.md](./external-access.md)** — Zugangstokens und MCP-Server: der Kanal für
+  fremde KI-Werkzeuge, mit eigener Freigabe je Bibliothek und eigenem Installationsschalter
 - **[data-indexing-rag.md](./data-indexing-rag.md)** — Herkunft der Antworten und ihrer Fundstellen
 - **[llm-integration.md](./llm-integration.md)** — Modellvorgaben, die in jedem Kanal gelten
 - **[public-sector.md](./public-sector.md)** — Barrierefreiheit, Leichte Sprache und Amtssprache als
