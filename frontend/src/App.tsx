@@ -43,6 +43,7 @@ import LlmModelManagementPage from './pages/LlmModelManagementPage'
 import OidcProviderManagementPage from './pages/OidcProviderManagementPage'
 import SearchIndexingAdminPage from './pages/SearchIndexingAdminPage'
 import MailSettingsPage from './pages/MailSettingsPage'
+import ExternalAccessSettingsPage from './pages/ExternalAccessSettingsPage'
 
 const ADMIN_SECTIONS = [
   { label: 'Allgemein & Branding', to: '/admin/branding' },
@@ -54,6 +55,7 @@ const ADMIN_SECTIONS = [
   { label: 'Modelle', to: '/admin/models' },
   { label: 'Identitätsanbieter', to: '/admin/identity-providers' },
   { label: 'E-Mail', to: '/admin/mail' },
+  { label: 'Fremdzugänge', to: '/admin/external-access' },
   { label: 'Suche & Indexierung', to: '/admin/search' },
 ]
 
@@ -170,6 +172,7 @@ export default function App() {
                     Vorlagenverwaltung dort landet (#1542). */}
                 <Route path="admin/mail" element={<Navigate to="/admin/mail/server" replace />} />
                 <Route path="admin/mail/:tab" element={<MailSettingsPage />} />
+                <Route path="admin/external-access" element={<ExternalAccessSettingsPage />} />
                 <Route
                   path="admin/search"
                   element={<Navigate to="/admin/search/overview" replace />}

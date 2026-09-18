@@ -88,6 +88,18 @@ freigegeben sein, und die Person muss ihn für ein benanntes Werkzeug bewusst er
 
 Der Fremdzugang ist eine Einstellung der Systemverwaltung, installationsweit, **Standard aus**.
 
+> **Gebaut (#1717).** Die Einstellungszeile, ihre Oberfläche unter *Administration →
+> Fremdzugänge* und das Protokollereignis `EXTERNAL_ACCESS_SETTINGS_CHANGED` existieren. Die
+> ausgelieferten Werte sind: Kanal **aus**, Ablauf-Obergrenze 90 Tage, Kontingent 60 Anfragen je
+> Token und Stunde, Netzbereiche `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8`,
+> `::1/128`, `fc00::/7` („Hausnetz"), Abflussalarm ab 600 Abrufen je Stunde und der Vorgabetext
+> unten. Die Netzprüfung selbst liegt in einer Komponente mit `isAllowed(remoteAddress)`, die
+> geschlossen versagt (leere Liste, fehlende Adresse und alles, was DNS auflösen könnte, werden
+> abgewiesen); die Adresse stammt dabei aus der Trusted-Proxy-Auflösung, siehe „Welche Adresse
+> geprüft wird" unten. **Noch nicht gebaut** sind die Auswertungen dieser Werte: die Durchsetzung an
+> Suchweg und `/mcp` (#1720, #1721), das Kontingent und der Abflussalarm (#1720) sowie die
+> Verwendung des Einleitungstextes im MCP-Handschlag (#1721).
+
 ```
 Systemkonfiguration → Fremdzugänge
   [ ] Fremdzugänge erlauben                          (aus)
@@ -129,6 +141,15 @@ auf dem ein Token nach außen gerät, ist kein Angriff, sondern eine MCP-Konfigu
 Klartext in einem Repository oder einem synchronisierten Profil landet; mit der Vorgabe wirkt es
 dort nicht. Eine Einschränkung **je Token** wird bewusst nicht gebaut — siehe
 [Abwägungen](#abwägungen-und-verworfene-alternativen).
+
+**Welche Adresse geprüft wird.** Die Prüfung nimmt die Adresse aus der Trusted-Proxy-Auflösung
+(`ClientIpResolver`, ADR-0033, Entscheidung 9): `X-Forwarded-For` zählt nur, wenn die Verbindung
+selbst aus einem in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` eingetragenen Netz kommt; ohne
+eingetragenen Proxy wird der Kopf ignoriert. Die Adresse der Verbindung selbst (`getRemoteAddr()`)
+ist keine zulässige Quelle — hinter einem Reverse Proxy wäre sie entweder die Adresse des Proxys,
+die selbst im Hausnetz liegt, oder der vom Aufrufer geschriebene linkeste Eintrag des Kopfes. Wer
+OPAA hinter einem Proxy betreibt, **muss die Proxy-Netze dort eintragen**, sonst prüft die
+Netzbeschränkung die Adresse des Proxys statt die des Arbeitsplatzes.
 
 **Der Einleitungstext des Servers** (das `instructions`-Feld der MCP-Initialisierung) wird auf
 derselben Seite gepflegt. Ein Vorgabetext ist gesetzt und für die meisten Häuser ausreichend:

@@ -250,16 +250,20 @@ Mail-Einstellungen (`MAIL_SETTINGS_CHANGED` ohne den Passwortwert, `MAIL_TEMPLAT
 eines lokalen Kontos an eine Anbieteridentität (`LOCAL_USER_HANDOVER_REQUESTED` mit
 Anbieter-Kennung und Zustellweg, `LOCAL_USER_HANDED_OVER` mit Anbieter-Kennung und den Zahlen
 dessen, was mitgegangen ist — nie mit dem Subject der Anbieteridentität; das Widerrufsereignis der
-Sitzungen trägt den Grund `HANDED_OVER`). Die Anfrage
+Sitzungen trägt den Grund `HANDED_OVER`) und — seit #1717 — die Kanaleinstellungen der
+Fremdzugänge (`EXTERNAL_ACCESS_SETTINGS_CHANGED` mit Vorher/Nachher nur der geänderten Schlüssel:
+Schalter, Ablauf-Obergrenze, Kontingent, Netzbereiche, Alarmschwelle — der Einleitungstext für
+fremde Werkzeuge erzeugt bewusst keinen Eintrag). Die Anfrage
 „Passwort vergessen" ändert keinen Zustand; die Bestätigung der eigenen Adresse ist eine Handlung
 der Person am eigenen Konto und nach ADR-0033, Entscheidung 13, kein Verwaltungsakt — beide
 erzeugen kein Ereignis. Noch **nicht** verdrahtet — weil
 die jeweilige Funktion selbst noch fehlt, nicht weil sie ausgenommen wäre: Ablauf einer Befristung
 (kein Scheduler), Aussetzen von Grants durch eine gesenkte Freigabe-Obergrenze, Bereitstellung einer
 Bibliothek in einem Space, Eigentümerübernahme ohne Zuständigkeit und der Übergang in „Nachfolge
-offen", Deaktivierung eines Kontos, erzwungene Neuanmeldung, API-Tokens, sämtliche
-Systemeinstellungen (Governance, Protokollkonfiguration, Modellvorgaben, Freigabe-Obergrenze
-konnektor-gespeister Bibliotheken). Jede dieser Lücken schließt das jeweilige Folge-Issue, sobald
+offen", Deaktivierung eines Kontos, erzwungene Neuanmeldung, API-Tokens, die
+übrigen Systemeinstellungen (Governance, Protokollkonfiguration, Modellvorgaben,
+Freigabe-Obergrenze konnektor-gespeister Bibliotheken), die Fremdzugangsfreigabe einer
+Wissensbibliothek und das Außerkrafttreten eines Zugangstokens. Jede dieser Lücken schließt das jeweilige Folge-Issue, sobald
 die zugehörige Funktion existiert — die Liste selbst bleibt geschlossen und ändert sich nicht.
 
 ### Was ausdrücklich nicht protokolliert wird

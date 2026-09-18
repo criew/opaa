@@ -1212,6 +1212,57 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
+  /api/v1/system/external-access:
+    get:
+      operationId: getExternalAccessSettings
+      tags: [admin]
+      summary: The channel settings of the external access (system admin only)
+      responses:
+        "200":
+          description: The settings, the delivered default instructions text and who changed them last
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExternalAccessSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    put:
+      operationId: updateExternalAccessSettings
+      tags: [admin]
+      summary: Replace the channel settings of the external access (system admin only)
+      description: >
+        ADR-0035 and docs/features/external-access.md, "Der Schalter der Installation". enabled is
+        the installation-wide switch of the whole external access channel, default off and at the
+        same time its emergency stop; the paths that evaluate it do so per call, so switching off
+        takes effect immediately and destroys no token. Bounds: tokenMaxLifetimeDays 1-365,
+        tokenRateLimitPerHour 1-10000, massRetrievalAlertThreshold 1-1000000, at most 50
+        allowedCidrs, each a syntactically valid IPv4/IPv6 CIDR, serverInstructions at most 4000
+        characters. Every bound is checked in the domain service, never by bean validation on the
+        request, so a violation answers 400 with German fieldErrors naming the field instead of an
+        English Jakarta message without them. An empty allowedCidrs list means "no address may use
+        the channel", never "every address". Every change
+        except serverInstructions is audited as EXTERNAL_ACCESS_SETTINGS_CHANGED with before/after
+        of the changed keys - the instructions text changes no reach, only the wording of a request
+        to a foreign model, and is deliberately outside the closed event list.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExternalAccessSettingsUpdateRequest"
+      responses:
+        "200":
+          description: The stored settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExternalAccessSettingsResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/admin/groups:
     get:
       operationId: listGroups
@@ -6603,6 +6654,67 @@ components:
         inactiveDays:
           type: integer
 
+    ExternalAccessSettingsResponse:
+      type: object
+      description: >
+        The channel settings of the external access (docs/features/external-access.md). updatedAt
+        and updatedBy are shown prominently in the administration on purpose: a restore from a
+        backup rolls switch, shares and tokens back together with the trail that would prove it,
+        and a visible change date makes such a rollback noticeable.
+      required:
+        [enabled, tokenMaxLifetimeDays, tokenRateLimitPerHour, allowedCidrs,
+        massRetrievalAlertThreshold, serverInstructions, defaultServerInstructions, updatedAt]
+      properties:
+        enabled:
+          type: boolean
+          description: The installation-wide switch of the channel; default off, at the same time the emergency stop.
+        tokenMaxLifetimeDays:
+          type: integer
+        tokenRateLimitPerHour:
+          type: integer
+        allowedCidrs:
+          type: array
+          items:
+            type: string
+          description: The networks the whole channel may be reached from; empty means nobody.
+        massRetrievalAlertThreshold:
+          type: integer
+          description: Retrievals per hour across the whole channel above which the mass-retrieval alert fires.
+        serverInstructions:
+          type: string
+          description: The text delivered as the instructions field of the MCP initialisation.
+        defaultServerInstructions:
+          type: string
+          description: The delivered default text, so the administration can reset to it without knowing it.
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          nullable: true
+          description: Display name of the person who changed the settings last; absent for a change by the installation itself.
+
+    ExternalAccessSettingsUpdateRequest:
+      type: object
+      required:
+        [enabled, tokenMaxLifetimeDays, tokenRateLimitPerHour, allowedCidrs,
+        massRetrievalAlertThreshold, serverInstructions]
+      properties:
+        enabled:
+          type: boolean
+        tokenMaxLifetimeDays:
+          type: integer
+        tokenRateLimitPerHour:
+          type: integer
+        allowedCidrs:
+          type: array
+          items:
+            type: string
+        massRetrievalAlertThreshold:
+          type: integer
+        serverInstructions:
+          type: string
+
     OidcSignInProvider:
       type: object
       required: [id, displayName, issuerUri, clientId, isDefault, sortOrder]
@@ -11953,6 +12065,7 @@ components:
           LOCAL_USER_REGISTERED,
           LOCAL_USER_HANDOVER_REQUESTED,
           LOCAL_USER_HANDED_OVER,
+          EXTERNAL_ACCESS_SETTINGS_CHANGED,
         ]
       example: ASSET_GRANT_REVOKED
 

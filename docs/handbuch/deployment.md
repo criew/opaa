@@ -1564,6 +1564,12 @@ den Zugangsschlüssel für das betroffene Modell über die Verwaltungsoberfläch
 
 ## Authentifizierung
 
+> **Fremdzugänge sind davon unberührt und stehen auf „aus".** Der Zugang für fremde KI-Werkzeuge
+> (persönliche Zugangstokens, MCP-Server) ist ein eigener Schalter unter *Administration →
+> Fremdzugänge*, unabhängig vom hier eingestellten Anmeldeverfahren. Eine frische Installation
+> liefert ihn ausgeschaltet aus, zusammen mit einer Netzbeschränkung auf das Hausnetz; das eigene
+> Handbuchkapitel dazu kommt mit dem gebauten Kanal.
+
 OPAA kennt genau zwei Auth-Modi. Der Modus
 wird über das aktive Spring-Profil gewählt; ist weder `oidc` noch `dev` gesetzt, **bricht das
 Backend den Start mit einer Fehlermeldung ab**.
