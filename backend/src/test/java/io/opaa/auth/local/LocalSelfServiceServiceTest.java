@@ -29,6 +29,7 @@ import java.util.Optional;
 import java.util.concurrent.Executor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -40,7 +41,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
  * or its domain allowed, so the clear-text password never waits in the queue; the task treats a
  * taken address (found or lost in a race) as silently no account and sends mail only for a link
  * that was issued; the availability of the two flows is the conjunction of switch, setting, domain
- * list and public base URL.
+ * list and public base URL, and a switch that cannot be read at all means "not served".
  */
 class LocalSelfServiceServiceTest {
 
@@ -98,6 +99,19 @@ class LocalSelfServiceServiceTest {
     assertThat(service.isSelfRegistrationAvailable()).isFalse();
     when(publicBaseUrl.isConfigured()).thenReturn(true);
     when(registry.localAccountsEnabled()).thenReturn(false);
+    assertThat(service.isPasswordResetAvailable()).isFalse();
+    assertThat(service.isSelfRegistrationAvailable()).isFalse();
+  }
+
+  /**
+   * #1592: the authorization rule and the rate limiter ask these two before any handler runs. An
+   * exception escaping there would answer 500 where an unknown route answers 401 - so an unreadable
+   * switch means "not served", not "blew up".
+   */
+  @Test
+  void aSwitchThatCannotBeReadMeansTheFlowIsNotServed() {
+    when(settings.findSingleton()).thenThrow(new DataAccessResourceFailureException("no database"));
+
     assertThat(service.isPasswordResetAvailable()).isFalse();
     assertThat(service.isSelfRegistrationAvailable()).isFalse();
   }

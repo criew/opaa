@@ -18,14 +18,19 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 /**
  * The self-service endpoints of local accounts under {@code /api/v1/auth/local} (ADR-0033,
  * Entscheidungen 9 and 11): redeeming an invitation or reset link, asking for a reset link,
- * registering, confirming the address. A switched-off flow answers with the standard 404 ({@link
- * NoResourceFoundException}, rendered like a path nobody serves) before the address is counted or
- * touched; the state of the flows is public through {@code GET /api/v1/auth/config} anyway, and an
- * unknown route under {@code /api} answers 401 without a session, so the 404 hides the endpoint's
- * existence only from a caller who does not look closely (#1592). An available flow spends the
- * address's budget ({@link LocalAuthRateLimiter}) before anything happens with the address. The two
- * address-taking bodies are bound without {@code @Valid} on purpose: their field rules are checked
- * behind the availability gate. Exists in the {@code oidc} profile only.
+ * registering, confirming the address. An available flow spends the address's budget ({@link
+ * LocalAuthRateLimiter}) before anything happens with the address. The two address-taking bodies
+ * are bound without {@code @Valid} on purpose: their field rules are checked behind the
+ * availability gate. Exists in the {@code oidc} profile only.
+ *
+ * <p><b>A switched-off flow never reaches these methods without a session</b> (#1592): {@code
+ * OidcSecurityConfig} permits the two paths only while their flow is served, so a switched-off one
+ * falls through to the {@code /api/**} rule and is answered by the same decision, entry point and
+ * headers as any unknown route. The check repeated here is what a caller <em>with</em> a token
+ * meets - for whom an unknown route under {@code /api} is a 404 as well ({@link
+ * NoResourceFoundException}, rendered like a path nobody serves), and without which a switched-off
+ * flow would actually run for them. The state of the flows stays readable through {@code GET
+ * /api/v1/auth/config} alone.
  */
 @RestController
 @RequestMapping("/api/v1/auth/local")

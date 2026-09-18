@@ -33,8 +33,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * 9): the eleventh sign-in from one address within a minute is {@code 429} with {@code
  * Retry-After}; a forged {@code X-Forwarded-For} from an untrusted connection does not change the
  * bucket, behind a trusted proxy the header names the client; the refresh and the password change
- * have their own budgets; and the diagnostics endpoint shows the address exactly as it was resolved
- * for that request.
+ * have their own budgets; a switched-off self-service flow has none at all (#1592); and the
+ * diagnostics endpoint shows the address exactly as it was resolved for that request.
  */
 // Own context (AGENTS.md, "Spring-Testkontexte"): the shared oidc context widens the local-auth
 // limits so its many sign-ins from one address pass; this class needs the production defaults
@@ -48,6 +48,9 @@ class LocalAuthRateLimitIntegrationTest {
   private static final String DIAGNOSTICS = "/api/v1/admin/diagnostics/client-address";
   private static final String HANDOVER_PREVIEW = "/api/v1/auth/local/handover/preview";
   private static final String HANDOVER_REDEEM = "/api/v1/auth/local/handover/redeem";
+  private static final String FORGOT_PASSWORD = "/api/v1/auth/local/forgot-password";
+  private static final String REGISTER = "/api/v1/auth/local/register";
+  private static final String UNKNOWN_ROUTE = "/api/v1/auth/local/unbekannt-1592";
 
   /** Throttled attempts name no account: a known one would be locked after five (#1535). */
   private static final String UNKNOWN = "niemand@stadt.example";
@@ -191,6 +194,32 @@ class LocalAuthRateLimitIntegrationTest {
         .andExpect(status().isBadRequest());
   }
 
+  /**
+   * #1592: a switched-off self-service flow has no budget. It is answered exactly like an unknown
+   * route, and an unknown route is not counted either - a 429 on one and a 401 on the other would
+   * be the one difference a probe would find. This family has no public base URL, so both flows are
+   * off (ADR-0033, Entscheidung 10); the budget here is three per fifteen minutes.
+   */
+  @Test
+  void aSwitchedOffSelfServiceFlowIsNeverCountedAndStaysA401() throws Exception {
+    for (int i = 0; i < 6; i++) {
+      mockMvc
+          .perform(selfService(FORGOT_PASSWORD, "203.0.113.81"))
+          .andExpect(status().isUnauthorized());
+      mockMvc.perform(selfService(REGISTER, "203.0.113.81")).andExpect(status().isUnauthorized());
+      mockMvc
+          .perform(selfService(UNKNOWN_ROUTE, "203.0.113.81"))
+          .andExpect(status().isUnauthorized());
+    }
+    // the neighbouring sign-in keeps its own budget, so nothing here widened the limits
+    for (int i = 0; i < 10; i++) {
+      login(UNKNOWN, "falsches-passwort", from("203.0.113.82"))
+          .andExpect(status().isUnauthorized());
+    }
+    login(UNKNOWN, "falsches-passwort", from("203.0.113.82"))
+        .andExpect(status().isTooManyRequests());
+  }
+
   @Test
   void theSixthPasswordChangeAttemptOfOneAccountIs429AndAnotherAccountIsNotAffected()
       throws Exception {
@@ -274,6 +303,14 @@ class LocalAuthRateLimitIntegrationTest {
                         "newPassword",
                         "neues-sicheres-passwort-2026")));
     return mockMvc.perform(request);
+  }
+
+  /** One shape for all three paths: the body of a switched-off flow is never read. */
+  private static MockHttpServletRequestBuilder selfService(String path, String remoteAddr) {
+    return post(path)
+        .with(from(remoteAddr))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"email\":\"" + UNKNOWN + "\"}");
   }
 
   private static MockHttpServletRequestBuilder handover(
