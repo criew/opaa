@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { afterEach, describe, it, expect, beforeEach, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { ErrorResponse, User, UserManager } from 'oidc-client-ts'
 import { server } from '../mocks/server'
@@ -14,7 +14,23 @@ import { useGrantStore } from './grantStore'
 import { useIndexingStore } from './indexingStore'
 import { useNotificationStore } from './notificationStore'
 
+// expireSession() refreshes the sign-in configuration without awaiting it. A refresh still in
+// flight when a test ends would land in the next test and overwrite its providers and mode.
+let authConfigRequestsInFlight = 0
+server.events.on('request:start', ({ request }) => {
+  if (new URL(request.url).pathname === '/api/v1/auth/config') authConfigRequestsInFlight += 1
+})
+server.events.on('request:end', ({ request }) => {
+  if (new URL(request.url).pathname === '/api/v1/auth/config') authConfigRequestsInFlight -= 1
+})
+
 describe('authStore', () => {
+  afterEach(async () => {
+    await vi.waitFor(() => expect(authConfigRequestsInFlight).toBe(0))
+    // The response is applied to the store a few microtasks after the request ends.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+
   beforeEach(() => {
     sessionStorage.clear()
     useAuthStore.setState({

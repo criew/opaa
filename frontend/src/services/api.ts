@@ -287,6 +287,24 @@ export async function deleteChat(chatId: string): Promise<void> {
   }
 }
 
+/** Pins the chat for the current person only; the chat itself (and its updatedAt) is unchanged. */
+export async function pinChat(chatId: string): Promise<ChatSummary> {
+  try {
+    const { data } = await client.put<ChatSummary>(`/v1/chats/${chatId}/pin`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function unpinChat(chatId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/chats/${chatId}/pin`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
 /**
  * Removes one point of a chat's Gesprächsnotiz (#1488). Immediate and without a confirmation step;
  * the point is not blocked for the future - the condensation may create it again if the person

@@ -1937,7 +1937,10 @@ const INITIAL_CHAT_DETAILS: Record<string, ChatDetail> = {
   },
 }
 
-function toChatSummary(detail: ChatDetail): ChatSummary {
+/** The mock person's pins, by chat id - a personal mark, kept apart from the chat itself. */
+export let mockChatPins: Record<string, string> = {}
+
+export function toChatSummary(detail: ChatDetail): ChatSummary {
   return {
     id: detail.id,
     spaceId: detail.spaceId,
@@ -1948,6 +1951,7 @@ function toChatSummary(detail: ChatDetail): ChatSummary {
     status: detail.status,
     createdAt: detail.createdAt,
     updatedAt: detail.updatedAt,
+    pinnedAt: mockChatPins[detail.id] ?? null,
   }
 }
 
@@ -1964,6 +1968,7 @@ export function mockChatsForSpace(spaceId: string): ChatSummary[] {
 
 export function resetMockChats() {
   mockChatDetails = structuredClone(INITIAL_CHAT_DETAILS)
+  mockChatPins = {}
 }
 
 export const mockUsers: UserInfo[] = [

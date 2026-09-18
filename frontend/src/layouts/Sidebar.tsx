@@ -241,7 +241,11 @@ export default function Sidebar() {
                 spaceId={activeChatSpaceId}
                 menuTheme={appTheme}
                 header={
-                  <Typography variant="overline" sx={{ color: 'rgba(255, 255, 255, 0.55)' }}>
+                  <Typography
+                    component="h2"
+                    variant="overline"
+                    sx={{ color: 'rgba(255, 255, 255, 0.55)' }}
+                  >
                     Chats
                   </Typography>
                 }
@@ -249,7 +253,11 @@ export default function Sidebar() {
             </Box>
           ) : (
             <>
-              <Typography variant="overline" sx={{ color: 'rgba(255, 255, 255, 0.55)' }}>
+              <Typography
+                component="h2"
+                variant="overline"
+                sx={{ color: 'rgba(255, 255, 255, 0.55)' }}
+              >
                 Chats
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
