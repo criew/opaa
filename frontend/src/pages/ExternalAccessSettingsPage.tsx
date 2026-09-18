@@ -72,12 +72,18 @@ function requestOf(draft: Draft): ExternalAccessSettingsUpdateRequest {
   }
 }
 
-function formatChangedAt(settings: ExternalAccessSettingsResponse): string {
+/**
+ * Der gespeicherte Zustand steht bewusst hier und nicht in der Schalterbeschriftung: Solange eine
+ * Änderung noch nicht gespeichert ist, meldete ein Name „derzeit aus“ neben `aria-checked="true"`
+ * genau am Bedienelement, das den Kanal öffnet, zwei verschiedene Zustände.
+ */
+function formatStoredState(settings: ExternalAccessSettingsResponse): string {
   const date = new Date(settings.updatedAt)
   const when = Number.isNaN(date.getTime())
     ? settings.updatedAt
     : date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  return `zuletzt geändert am ${when} durch ${settings.updatedBy ?? 'die Installation selbst'}`
+  const state = settings.enabled ? 'ein' : 'aus'
+  return `Gespeichert: ${state} — zuletzt geändert am ${when} durch ${settings.updatedBy ?? 'die Installation selbst'}`
 }
 
 /**
@@ -186,10 +192,10 @@ export default function ExternalAccessSettingsPage() {
                       onChange={(e) => update({ enabled: e.target.checked })}
                     />
                   }
-                  label={`Fremdzugänge erlauben — derzeit ${settings.enabled ? 'ein' : 'aus'}`}
+                  label="Fremdzugänge erlauben"
                 />
                 <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-                  {formatChangedAt(settings)}
+                  {formatStoredState(settings)}
                 </Typography>
                 <Typography sx={{ fontSize: 13 }}>{SWITCH_CONSEQUENCE}</Typography>
                 <Alert severity="info">{CODETERMINATION_HINT}</Alert>
@@ -198,7 +204,7 @@ export default function ExternalAccessSettingsPage() {
 
             <PageSection
               title="Grenzwerte des Kanals"
-              description="Sie gelten für jedes Zugangstoken dieser Installation."
+              description="Sie gelten für den ganzen Kanal dieser Installation — die Netzbereiche und die Alarmschwelle kanalweit, die beiden übrigen Werte für jedes Zugangstoken."
             >
               <Stack spacing={3}>
                 <TextField
@@ -244,7 +250,7 @@ export default function ExternalAccessSettingsPage() {
                   error={Boolean(fieldMessages.allowedCidrs)}
                   helperText={
                     fieldMessages.allowedCidrs ??
-                    'Eine Netzangabe je Zeile (z. B. 10.0.0.0/8). Voreinstellung ist das Hausnetz. Eine leere Liste schließt den Kanal für jede Adresse.'
+                    'Eine Netzangabe je Zeile (z. B. 10.0.0.0/8). Voreinstellung ist das Hausnetz. Eine leere Liste schließt den Kanal für jede Adresse. Geprüft wird die über die Trusted-Proxy-Auflösung ermittelte Adresse (OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS).'
                   }
                   multiline
                   minRows={3}

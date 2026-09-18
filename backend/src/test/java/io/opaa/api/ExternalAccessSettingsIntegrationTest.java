@@ -13,6 +13,7 @@ import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsRepository;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.test.OpaaIntegrationTest;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
@@ -108,8 +110,10 @@ class ExternalAccessSettingsIntegrationTest {
         .andExpect(jsonPath("$.updatedBy").exists());
 
     assertThat(settingsService.isEnabled()).isTrue();
-    assertThat(networkPolicy.isAllowed("192.168.4.4")).isTrue();
-    assertThat(networkPolicy.isAllowed("127.0.0.1")).as("loopback is no longer listed").isFalse();
+    assertThat(networkPolicy.isAllowed(from("192.168.4.4"))).isTrue();
+    assertThat(networkPolicy.isAllowed(from("127.0.0.1")))
+        .as("loopback is no longer listed")
+        .isFalse();
 
     List<Map<String, Object>> events = settingsEvents();
     assertThat(events).hasSize(1);
@@ -211,6 +215,50 @@ class ExternalAccessSettingsIntegrationTest {
     assertThat(settingsEvents()).isEmpty();
   }
 
+  /**
+   * The emergency stop, and the only key that changed: the entry names it alone - an implementation
+   * that always wrote all five keys would be indistinguishable in a test that changes all five
+   * (#1717, "in beide Richtungen").
+   */
+  @Test
+  void switchingTheChannelOffIsAuditedWithThatOneKeyOnly() throws Exception {
+    mockMvc.perform(
+        put(SETTINGS)
+            .with(devUser("dev-admin"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+                body(
+                    true,
+                    90,
+                    60,
+                    ExternalAccessDefaults.ALLOWED_CIDRS,
+                    600,
+                    ExternalAccessDefaults.SERVER_INSTRUCTIONS)));
+    jdbc.update("DELETE FROM audit_log WHERE event_type = 'EXTERNAL_ACCESS_SETTINGS_CHANGED'");
+
+    mockMvc
+        .perform(
+            put(SETTINGS)
+                .with(devUser("dev-admin"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    body(
+                        false,
+                        90,
+                        60,
+                        ExternalAccessDefaults.ALLOWED_CIDRS,
+                        600,
+                        ExternalAccessDefaults.SERVER_INSTRUCTIONS)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.enabled").value(false));
+
+    List<Map<String, Object>> events = settingsEvents();
+    assertThat(events).hasSize(1);
+    assertThat(String.valueOf(events.getFirst().get("before"))).isEqualTo("{\"enabled\":true}");
+    assertThat(String.valueOf(events.getFirst().get("after"))).isEqualTo("{\"enabled\":false}");
+    assertThat(settingsService.isEnabled()).isFalse();
+  }
+
   private List<Map<String, Object>> settingsEvents() {
     return jdbc.queryForList(
         "SELECT actor_ref, CAST(before AS text) AS before, CAST(after AS text) AS after FROM"
@@ -243,6 +291,12 @@ class ExternalAccessSettingsIntegrationTest {
         + ",\"serverInstructions\":\""
         + serverInstructions.replace("\"", "\\\"")
         + "\"}";
+  }
+
+  private static HttpServletRequest from(String remoteAddress) {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.setRemoteAddr(remoteAddress);
+    return request;
   }
 
   private RequestPostProcessor devUser(String subject) {

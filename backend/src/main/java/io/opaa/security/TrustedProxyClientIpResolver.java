@@ -3,13 +3,10 @@ package io.opaa.security;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletRequestWrapper;
 import jakarta.servlet.http.HttpServletRequest;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.regex.Pattern;
 import org.springframework.security.web.util.matcher.IpAddressMatcher;
 
 /**
@@ -31,11 +28,6 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
 public class TrustedProxyClientIpResolver implements ClientIpResolver {
 
   public static final String X_FORWARDED_FOR = "X-Forwarded-For";
-
-  private static final String IPV4_OCTET = "(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)";
-  private static final Pattern IPV4 =
-      Pattern.compile("^" + IPV4_OCTET + "(\\." + IPV4_OCTET + "){3}$");
-  private static final Pattern IPV6_CHARACTERS = Pattern.compile("^[0-9a-fA-F:.]+$");
 
   private final List<IpAddressMatcher> trustedProxies;
 
@@ -113,26 +105,7 @@ public class TrustedProxyClientIpResolver implements ClientIpResolver {
     return current instanceof HttpServletRequest http ? http : request;
   }
 
-  /**
-   * An IPv4 dotted quad or an IPv6 literal (hex groups and at least two colons, no zone, no port).
-   * The IPv6 check parses the literal; a string with a colon never reaches DNS.
-   */
   static boolean isNumericAddress(String address) {
-    if (address == null) {
-      return false;
-    }
-    if (IPV4.matcher(address).matches()) {
-      return true;
-    }
-    if (!IPV6_CHARACTERS.matcher(address).matches()
-        || address.indexOf(':') == address.lastIndexOf(':')) {
-      return false;
-    }
-    try {
-      InetAddress.getByName(address);
-      return true;
-    } catch (UnknownHostException | IllegalArgumentException notALiteral) {
-      return false;
-    }
+    return NumericAddress.isNumeric(address);
   }
 }

@@ -1,7 +1,7 @@
 package io.opaa.auth.local;
 
+import io.opaa.security.NumericAddress;
 import java.util.List;
-import java.util.regex.Pattern;
 import org.springframework.security.web.util.matcher.IpAddressMatcher;
 import org.springframework.stereotype.Component;
 
@@ -17,11 +17,6 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class LocalAdminNetworkPolicy {
-
-  private static final String OCTET = "(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)";
-  private static final Pattern IPV4 = Pattern.compile("^" + OCTET + "(\\." + OCTET + "){3}$");
-  private static final Pattern IPV6 =
-      Pattern.compile("^[0-9A-Fa-f:.]*:[0-9A-Fa-f:.]*(%[A-Za-z0-9]+)?$");
 
   private final List<IpAddressMatcher> allowed;
 
@@ -48,8 +43,16 @@ public class LocalAdminNetworkPolicy {
     }
   }
 
-  /** A dotted-quad IPv4 or a colon-separated IPv6 literal - never anything DNS could resolve. */
+  /**
+   * A dotted-quad IPv4 or a colon-separated IPv6 literal - never anything DNS could resolve. A zone
+   * id stays permitted here because the matcher parses a scoped literal; it is cut off before the
+   * shared check, which rejects zones for header-derived addresses.
+   */
   static boolean isNumericAddress(String address) {
-    return IPV4.matcher(address).matches() || IPV6.matcher(address).matches();
+    if (address == null) {
+      return false;
+    }
+    int zone = address.indexOf('%');
+    return NumericAddress.isNumeric(zone < 0 ? address : address.substring(0, zone));
   }
 }

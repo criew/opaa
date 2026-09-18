@@ -21,7 +21,7 @@ databaseChangeLog:
                   enabled boolean DEFAULT false NOT NULL,
                   token_max_lifetime_days integer DEFAULT 90 NOT NULL,
                   token_rate_limit_per_hour integer DEFAULT 60 NOT NULL,
-                  allowed_cidrs character varying(2000) DEFAULT '10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8,::1/128,fc00::/7' NOT NULL,
+                  allowed_cidrs text DEFAULT '10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8,::1/128,fc00::/7' NOT NULL,
                   mass_retrieval_alert_threshold integer DEFAULT 600 NOT NULL,
                   server_instructions text DEFAULT 'Bei Fragen zu Verwaltungsvorgängen dieser Behörde zuerst „search“ aufrufen. Antworten mit Fundstellen belegen und die Herkunft angeben (Bibliothek, Dokument, Fundstelle). Nichts erfinden, was die Treffer nicht hergeben.' NOT NULL,
                   updated_at timestamp with time zone DEFAULT now() NOT NULL,

@@ -1237,8 +1237,11 @@ paths:
         same time its emergency stop; the paths that evaluate it do so per call, so switching off
         takes effect immediately and destroys no token. Bounds: tokenMaxLifetimeDays 1-365,
         tokenRateLimitPerHour 1-10000, massRetrievalAlertThreshold 1-1000000, at most 50
-        allowedCidrs, each a syntactically valid IPv4/IPv6 CIDR (400 with fieldErrors otherwise);
-        an empty list means "no address may use the channel", never "every address". Every change
+        allowedCidrs, each a syntactically valid IPv4/IPv6 CIDR, serverInstructions at most 4000
+        characters. Every bound is checked in the domain service, never by bean validation on the
+        request, so a violation answers 400 with German fieldErrors naming the field instead of an
+        English Jakarta message without them. An empty allowedCidrs list means "no address may use
+        the channel", never "every address". Every change
         except serverInstructions is audited as EXTERNAL_ACCESS_SETTINGS_CHANGED with before/after
         of the changed keys - the instructions text changes no reach, only the wording of a request
         to a foreign model, and is deliberately outside the closed event list.
@@ -6707,13 +6710,10 @@ components:
           type: array
           items:
             type: string
-            maxLength: 49
-          maxItems: 50
         massRetrievalAlertThreshold:
           type: integer
         serverInstructions:
           type: string
-          maxLength: 4000
 
     OidcSignInProvider:
       type: object

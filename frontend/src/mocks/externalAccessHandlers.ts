@@ -22,11 +22,18 @@ function initialSettings(): ExternalAccessSettingsResponse {
     enabled: false,
     tokenMaxLifetimeDays: 90,
     tokenRateLimitPerHour: 60,
-    allowedCidrs: ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '127.0.0.0/8', '::1/128'],
+    allowedCidrs: [
+      '10.0.0.0/8',
+      '172.16.0.0/12',
+      '192.168.0.0/16',
+      '127.0.0.0/8',
+      '::1/128',
+      'fc00::/7',
+    ],
     massRetrievalAlertThreshold: 600,
     serverInstructions: DEFAULT_SERVER_INSTRUCTIONS,
     defaultServerInstructions: DEFAULT_SERVER_INSTRUCTIONS,
-    updatedAt: '2026-09-18T06:15:00Z',
+    updatedAt: '2026-09-18T12:00:00Z',
     updatedBy: null,
   }
 }
@@ -75,7 +82,7 @@ export const externalAccessHandlers = [
       allowedCidrs: body.allowedCidrs,
       massRetrievalAlertThreshold: body.massRetrievalAlertThreshold,
       serverInstructions: body.serverInstructions,
-      updatedAt: '2026-09-18T09:40:00Z',
+      updatedAt: '2026-09-18T12:30:00Z',
       updatedBy: 'Dev Admin',
     }
     return HttpResponse.json(mockExternalAccessSettings)

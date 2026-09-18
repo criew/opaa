@@ -10,6 +10,13 @@ import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import ExternalAccessSettingsPage from './ExternalAccessSettingsPage'
 
+/** Der Zeitpunkt der Fixture in der Zeitzone des Laufs - sonst hinge der Test an einer Zone. */
+const FIXTURE_DATE = new Date('2026-09-18T12:00:00Z').toLocaleDateString('de-DE', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+})
+
 function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
   useAuthStore.setState({
     mode: 'oidc',
@@ -46,14 +53,14 @@ describe('ExternalAccessSettingsPage', () => {
     signInAs('SYSTEM_ADMIN')
     renderWithProviders(<ExternalAccessSettingsPage />)
 
-    const switchControl = await screen.findByRole('switch', {
-      name: /Fremdzugänge erlauben — derzeit aus/,
-    })
+    const switchControl = await screen.findByRole('switch', { name: 'Fremdzugänge erlauben' })
     expect(switchControl).not.toBeChecked()
-    expect(screen.getByText(/zuletzt geändert am 18\.09\.2026/)).toBeInTheDocument()
+    expect(
+      screen.getByText(new RegExp(`Gespeichert: aus — zuletzt geändert am ${FIXTURE_DATE}`)),
+    ).toBeInTheDocument()
     expect(screen.getByLabelText(/Ablauf-Obergrenze/)).toHaveValue(90)
     expect(screen.getByLabelText('Netzbereiche des Kanals')).toHaveValue(
-      '10.0.0.0/8\n172.16.0.0/12\n192.168.0.0/16\n127.0.0.0/8\n::1/128',
+      '10.0.0.0/8\n172.16.0.0/12\n192.168.0.0/16\n127.0.0.0/8\n::1/128\nfc00::/7',
     )
     expect(screen.getByLabelText('Einleitungstext')).toHaveValue(DEFAULT_SERVER_INSTRUCTIONS)
   })
@@ -71,8 +78,10 @@ describe('ExternalAccessSettingsPage', () => {
     signInAs('SYSTEM_ADMIN')
     renderWithProviders(<ExternalAccessSettingsPage />)
 
-    const switchControl = await screen.findByRole('switch', { name: /Fremdzugänge erlauben/ })
+    const switchControl = await screen.findByRole('switch', { name: 'Fremdzugänge erlauben' })
     await user.click(switchControl)
+    expect(switchControl).toBeChecked()
+    expect(screen.getByText(/Gespeichert: aus/)).toBeInTheDocument()
     const lifetime = screen.getByLabelText(/Ablauf-Obergrenze/)
     await user.clear(lifetime)
     await user.type(lifetime, '30')

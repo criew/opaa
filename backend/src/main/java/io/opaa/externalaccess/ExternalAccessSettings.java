@@ -86,7 +86,7 @@ public class ExternalAccessSettings {
   private int tokenRateLimitPerHour;
 
   @Convert(converter = CidrListConverter.class)
-  @Column(name = "allowed_cidrs", nullable = false, length = 2000)
+  @Column(name = "allowed_cidrs", nullable = false, columnDefinition = "text")
   private List<String> allowedCidrs = List.of();
 
   @Column(name = "mass_retrieval_alert_threshold", nullable = false)
