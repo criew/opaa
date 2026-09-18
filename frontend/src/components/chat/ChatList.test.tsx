@@ -318,6 +318,31 @@ describe('ChatList ordering', () => {
     )
   })
 
+  it('expands a collapsed pinned group when a chat is pinned into it', async () => {
+    server.use(
+      http.put('/api/v1/chats/:chatId/pin', () =>
+        HttpResponse.json({
+          ...summary('chat-1', 'Erlass vom März', 60 * 1000),
+          pinnedAt: '2026-09-18T09:00:00Z',
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+    const toggle = screen.getByRole('button', { name: 'Angeheftet' })
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(screen.getByLabelText('Aktionen für Chat „Erlass vom März“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Chat „Erlass vom März“ anheften' }))
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(groupTitles('Angeheftet')).toEqual(['Erlass vom März', 'Fristen Übersicht'])
+    await waitFor(() =>
+      expect(screen.getByLabelText('Aktionen für Chat „Erlass vom März“')).toHaveFocus(),
+    )
+  })
+
   it('unpins a chat back into its time group', async () => {
     let unpinned: string | null = null
     server.use(
@@ -349,7 +374,7 @@ describe('ChatList ordering', () => {
     await user.click(screen.getByLabelText('Aktionen für Chat „Erlass vom März“'))
     await user.click(screen.getByRole('menuitem', { name: 'Chat „Erlass vom März“ anheften' }))
 
-    expect(await screen.findByText('Chat nicht gefunden')).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent('Chat nicht gefunden')
     expect(groupTitles('Heute')).toEqual(['Erlass vom März'])
     expect(groupTitles('Angeheftet')).toEqual(['Fristen Übersicht'])
   })

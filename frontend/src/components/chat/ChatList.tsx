@@ -349,7 +349,7 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
       </Box>
 
       {error && (
-        <Typography variant="body2" sx={{ color: 'error.main', mb: 1 }}>
+        <Typography role="alert" variant="body2" sx={{ color: 'error.main', mb: 1 }}>
           {error}
         </Typography>
       )}
@@ -397,6 +397,8 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
               onClick={() => {
                 setMenuAnchor(null)
                 if (!menuChat) return
+                // A freshly pinned chat must stay visible - and focusable - in its new group.
+                if (!pinned) setPinnedCollapsed(false)
                 refocusMovedChatIdRef.current = menuChat.id
                 void setChatPinned(spaceId, menuChat.id, !pinned)
               }}

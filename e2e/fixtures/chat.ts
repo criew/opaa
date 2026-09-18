@@ -82,8 +82,8 @@ export function chatSidebarEntries(page: Page): Locator {
 
 /**
  * Asserts the sidebar's most recently used chat (topmost in the "Heute" group - pinned chats sit
- * above it in their own group, see ChatList.tsx) has a real title - present and not the "Unbenannter Chat" fallback ChatList.tsx renders for a still-
- * empty one. Used in place of asserting the exact (LLM-generated, and per chatSidebarEntries'
+ * above it in their own group, see ChatList.tsx) has a real title - present and not the
+ * "Unbenannter Chat" fallback ChatList.tsx renders for a still-empty one. Used in place of asserting the exact (LLM-generated, and per chatSidebarEntries'
  * Javadoc not reliably unique across chats) title text: this only proves *some* title reached the
  * sidebar for whichever chat was most recently interacted with, which - directly after that
  * interaction, with nothing else touching any other chat in between (this suite runs with a single
