@@ -5,6 +5,7 @@ import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
+import Link from '@mui/material/Link'
 import Divider from '@mui/material/Divider'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import Menu from '@mui/material/Menu'
@@ -17,6 +18,7 @@ import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
+import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
@@ -32,6 +34,7 @@ import { blue } from '../../theme/tokens'
 import type { ChatSummary } from '../../types/api'
 import { useChatListStore } from '../../stores/chatListStore'
 import { confirmAction } from '../../stores/confirmStore'
+import { notify } from '../../stores/notificationStore'
 import { useSpaceStore } from '../../stores/spaceStore'
 import { chatTitle, groupChats, matchesTitle } from './chatListGroups'
 
@@ -66,6 +69,7 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
   const renameChat = useChatListStore((s) => s.renameChat)
   const deleteChatFromList = useChatListStore((s) => s.deleteChatFromList)
   const setChatPinned = useChatListStore((s) => s.setChatPinned)
+  const setChatArchived = useChatListStore((s) => s.setChatArchived)
   // #543/#613 review, nit c: an archived space accepts no new chats - the "Neuer Chat" button is
   // disabled rather than hidden, so it stays a stable click target and the reason is explained via
   // its tooltip instead of the button silently vanishing.
@@ -80,6 +84,9 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
   const groupIdPrefix = useId()
   // Pinning moves a row into another group, which remounts it; focus follows it there.
   const refocusMovedChatIdRef = useRef<string | null>(null)
+  // While its pin request is in flight, a row the rollback moves back takes lost focus along.
+  const pinFocusChatIdRef = useRef<string | null>(null)
+  const allChatsLinkRef = useRef<HTMLAnchorElement>(null)
   // A row's actions button is unmounted while the row is in rename mode, so focus can only
   // return to it after the re-render that brings it back - hence the pending id is stashed in
   // a ref and consumed once rename mode ends. Blur commits deliberately don't refocus: the
@@ -102,9 +109,14 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
 
   useEffect(() => {
     const chatId = refocusMovedChatIdRef.current
-    if (chatId === null) return
-    refocusMovedChatIdRef.current = null
-    actionButtonRefs.current?.get(chatId)?.focus()
+    if (chatId !== null) {
+      refocusMovedChatIdRef.current = null
+      actionButtonRefs.current?.get(chatId)?.focus()
+      return
+    }
+    const pinChatId = pinFocusChatIdRef.current
+    const focusLost = document.activeElement === null || document.activeElement === document.body
+    if (pinChatId !== null && focusLost) actionButtonRefs.current?.get(pinChatId)?.focus()
   }, [chats])
 
   useEffect(() => {
@@ -130,6 +142,44 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
     setRenamingChatId(null)
     if (!title) return
     await renameChat(spaceId, chatId, title)
+  }
+
+  function handlePin(chat: ChatSummary, pinned: boolean) {
+    // A freshly pinned chat must stay visible - and focusable - in its new group.
+    if (pinned) setPinnedCollapsed(false)
+    refocusMovedChatIdRef.current = chat.id
+    pinFocusChatIdRef.current = chat.id
+    void setChatPinned(spaceId, chat.id, pinned).finally(() => {
+      // Deferred past the render of a rollback, whose effect still needs the id.
+      setTimeout(() => {
+        if (pinFocusChatIdRef.current === chat.id) pinFocusChatIdRef.current = null
+      }, 0)
+    })
+  }
+
+  /** The chat shown next to `chatId` in the list, where focus goes once that row is gone. */
+  function neighbourOf(chatId: string): string | null {
+    const shown = groupChats(
+      (chats ?? []).filter((chat) => matchesTitle(chat, titleFilter)),
+      new Date(),
+    )
+      .filter((group) => !(group.key === 'pinned' && pinnedCollapsed))
+      .flatMap((group) => group.chats)
+    const index = shown.findIndex((chat) => chat.id === chatId)
+    return (shown[index + 1] ?? shown[index - 1])?.id ?? null
+  }
+
+  async function handleArchive(chat: ChatSummary) {
+    const neighbour = neighbourOf(chat.id)
+    const archived = await setChatArchived(spaceId, chat.id, true)
+    if (!archived) {
+      actionButtonRefs.current?.get(chat.id)?.focus()
+      return
+    }
+    notify(`Chat „${chatTitle(chat)}“ archiviert`, 'success')
+    const next = neighbour ? actionButtonRefs.current?.get(neighbour) : undefined
+    if (next) next.focus()
+    else allChatsLinkRef.current?.focus()
   }
 
   async function handleDelete(chat: ChatSummary) {
@@ -366,6 +416,25 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
         renderChats(chats)
       )}
 
+      <Link
+        ref={allChatsLinkRef}
+        href={`/spaces/${spaceId}/chats`}
+        onClick={(event) => {
+          event.preventDefault()
+          navigate(`/spaces/${spaceId}/chats`)
+        }}
+        underline="hover"
+        sx={{
+          display: 'inline-block',
+          mt: 1.5,
+          px: 1,
+          fontSize: 12.5,
+          color: (theme) => (theme.palette.mode === 'dark' ? blue[300] : blue[700]),
+        }}
+      >
+        Alle Chats <span aria-hidden="true">→</span>
+      </Link>
+
       {(() => {
         const menuChat = chats?.find((chat) => chat.id === menuAnchor?.chatId)
         const pinned = Boolean(menuChat?.pinnedAt)
@@ -396,11 +465,7 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
               }
               onClick={() => {
                 setMenuAnchor(null)
-                if (!menuChat) return
-                // A freshly pinned chat must stay visible - and focusable - in its new group.
-                if (!pinned) setPinnedCollapsed(false)
-                refocusMovedChatIdRef.current = menuChat.id
-                void setChatPinned(spaceId, menuChat.id, !pinned)
+                if (menuChat) handlePin(menuChat, !pinned)
               }}
             >
               <ListItemIcon>
@@ -411,6 +476,18 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
                 )}
               </ListItemIcon>
               {pinned ? 'Lösen' : 'Anheften'}
+            </MenuItem>
+            <MenuItem
+              aria-label={menuChat ? `Chat „${chatTitle(menuChat)}“ archivieren` : undefined}
+              onClick={() => {
+                setMenuAnchor(null)
+                if (menuChat) void handleArchive(menuChat)
+              }}
+            >
+              <ListItemIcon>
+                <ArchiveOutlinedIcon sx={{ fontSize: 15 }} />
+              </ListItemIcon>
+              Archivieren
             </MenuItem>
             <Divider sx={{ my: 0.5 }} />
             <MenuItem

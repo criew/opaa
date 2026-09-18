@@ -62,7 +62,9 @@ import {
   mockMyGroups,
   mockChatDetails,
   mockChatPins,
+  mockChatArchive,
   mockChatsForSpace,
+  mockArchivedChatsForSpace,
   toChatSummary,
   resetMockLibraryDocuments,
   resetMockLibraryFolders,
@@ -712,6 +714,9 @@ export const handlers = [
     // one already present, whether that is a CUSTOM title the user set or a title a previous turn
     // already derived.
     const chatTitle = applyMockChatTitle(chatId, body.question)
+    // Mirrors ChatService#appendTurn: the person's own message brings the chat back from their
+    // chat archive.
+    delete mockChatArchive[chatId]
     // Mirrors QueryService: useKnowledge=false with no (or only unreadable) libraryIds
     // performs no retrieval - without this branch, mock/dev mode could never show the "answered
     // without knowledge" hint that  added to the chat UI.
@@ -782,7 +787,7 @@ export const handlers = [
     if (!chat) {
       return HttpResponse.json({ error: 'Chat nicht gefunden' }, { status: 404 })
     }
-    return HttpResponse.json(chat)
+    return HttpResponse.json({ ...chat, archivedAt: mockChatArchive[chatId] ?? null })
   }),
 
   http.patch('/api/v1/chats/:chatId', async ({ params, request }) => {
@@ -821,6 +826,7 @@ export const handlers = [
       return HttpResponse.json({ error: 'Chat nicht gefunden' }, { status: 404 })
     }
     mockChatPins[chatId] ??= new Date().toISOString()
+    delete mockChatArchive[chatId]
     return HttpResponse.json(toChatSummary(chat))
   }),
 
@@ -831,6 +837,71 @@ export const handlers = [
     }
     delete mockChatPins[chatId]
     return new HttpResponse(null, { status: 204 })
+  }),
+
+  // Mirrors ChatController#archiveChat/#unarchiveChat: the chat archive is a personal filing that
+  // unpins the chat and leaves the chat itself - including its updatedAt - untouched.
+  http.put('/api/v1/chats/:chatId/archive', ({ params }) => {
+    const chatId = String(params.chatId)
+    const chat = mockChatDetails[chatId]
+    if (!chat) {
+      return HttpResponse.json({ error: 'Chat nicht gefunden' }, { status: 404 })
+    }
+    mockChatArchive[chatId] ??= new Date().toISOString()
+    delete mockChatPins[chatId]
+    return HttpResponse.json(toChatSummary(chat))
+  }),
+
+  http.delete('/api/v1/chats/:chatId/archive', ({ params }) => {
+    const chatId = String(params.chatId)
+    const chat = mockChatDetails[chatId]
+    if (!chat) {
+      return HttpResponse.json({ error: 'Chat nicht gefunden' }, { status: 404 })
+    }
+    delete mockChatArchive[chatId]
+    return HttpResponse.json(toChatSummary(chat))
+  }),
+
+  http.get('/api/v1/spaces/:spaceId/chats/archived', ({ params, request }) => {
+    const spaceId = String(params.spaceId)
+    if (!mockSpaceDetails[spaceId]) {
+      return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
+    }
+    const url = new URL(request.url)
+    const page = Number(url.searchParams.get('page') ?? 0)
+    const size = Number(url.searchParams.get('size') ?? 25)
+    const archived = mockArchivedChatsForSpace(spaceId)
+    return HttpResponse.json({
+      items: archived.slice(page * size, (page + 1) * size),
+      page,
+      size,
+      totalElements: archived.length,
+    })
+  }),
+
+  // Mirrors ChatController#applyChatBulkAction: only the space's chats are affected, every other
+  // id is skipped without an error.
+  http.post('/api/v1/spaces/:spaceId/chats/bulk-actions', async ({ params, request }) => {
+    const spaceId = String(params.spaceId)
+    if (!mockSpaceDetails[spaceId]) {
+      return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
+    }
+    const body = (await request.json()) as { action: string; chatIds: string[] }
+    const applied = body.chatIds.filter((id) => mockChatDetails[id]?.spaceId === spaceId)
+    const now = new Date().toISOString()
+    for (const id of applied) {
+      if (body.action === 'ARCHIVE') {
+        mockChatArchive[id] ??= now
+        delete mockChatPins[id]
+      } else if (body.action === 'UNARCHIVE') {
+        delete mockChatArchive[id]
+      } else {
+        delete mockChatDetails[id]
+        delete mockChatArchive[id]
+        delete mockChatPins[id]
+      }
+    }
+    return HttpResponse.json({ chatIds: applied })
   }),
 
   // Mirrors ChatController#deleteChatNoteItem (#1487): removing one point of the Gesprächsnotiz,

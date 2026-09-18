@@ -17,6 +17,7 @@ import {
   updateChat,
 } from '../services/api'
 import { useChatListStore } from './chatListStore'
+import { notify } from './notificationStore'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 function generateId(): string {
@@ -360,6 +361,8 @@ interface ChatState {
   /** The chat's Gesprächsnotiz (#1488), oldest point first, already filtered by the removals the
    * server has not confirmed yet - empty for a chat without one. */
   noteItems: ChatNoteItem[]
+  /** When the person moved the active chat into their chat archive; null while it is active. */
+  archivedAt: string | null
   /** The in-flight PATCH (if any) from the most recently *started* setScopeAll/
    * addReferencedLibrary/removeReferencedLibrary call across all chats - never rejects (failures
    * are caught and turned into `error` + a local rollback). Exposed for tests/UI only; sendMessage
@@ -386,6 +389,8 @@ interface ChatState {
   /** Removes one point of the chat's Gesprächsnotiz (#1488) - immediately and without a
    * confirmation step, optimistically with a rollback (and `error`) if the DELETE fails. */
   removeNoteItem: (itemId: string) => Promise<void>
+  /** Records a changed archive mark of a chat - a no-op unless that chat is the active one. */
+  applyArchivedAt: (chatId: string, archivedAt: string | null) => void
   /** Drops the active chat back to its initial, empty state (#440) - used on logout so a
    * subsequent sign-in by a different user never briefly sees the previous user's conversation. */
   reset: () => void
@@ -417,6 +422,7 @@ function applyChatDetail(detail: ChatDetail) {
     metadataFilter: normalizeMetadataFilter(detail.metadataFilter),
     messages: withOutstandingQuestions(detail.id, detail.messages.map(toChatMessage)),
     noteItems: visibleNoteItems(detail.id, detail.noteItems ?? []),
+    archivedAt: detail.archivedAt ?? null,
     isLoading: isViewAwaitingAnswer(detail.id),
   }
 }
@@ -445,6 +451,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   referencedLibraryIds: [],
   metadataFilter: null,
   noteItems: [],
+  archivedAt: null,
   pendingSettingsUpdate: null,
 
   loadChat: async (chatId: string) => {
@@ -504,6 +511,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messages: [],
         title: null,
         noteItems: [],
+        archivedAt: null,
         isLoading: false,
       })
     }
@@ -529,6 +537,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       referencedLibraryIds: [],
       metadataFilter: null,
       noteItems: [],
+      archivedAt: null,
       isLoadingChat: false,
       isLoading: false,
     })
@@ -555,6 +564,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // not-yet-created chat view is identified by chatLoadSequence, which every loadChat/startNewChat
     // bumps.
     const sendingChatId = get().chatId
+    // The person's own message brings an archived chat back from the chat archive server-side.
+    const returnsFromArchive = sendingChatId !== null && get().archivedAt !== null
     const send: InFlightSend = {
       chatId: sendingChatId,
       loadSequence: chatLoadSequence,
@@ -658,6 +669,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
         if (isFirstTurn) {
           scheduleTitleReload(get, set, response.chatId, spaceId)
+        }
+        if (returnsFromArchive) {
+          get().applyArchivedAt(chatId, null)
+          notify('Chat aus dem Archiv zurückgeholt', 'info')
+          void useChatListStore.getState().chatReturnedFromArchive(spaceId)
         }
       }
       if (!isSendingViewShown() || send.persisted) {
@@ -830,8 +846,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       referencedLibraryIds: [],
       metadataFilter: null,
       noteItems: [],
+      archivedAt: null,
       pendingSettingsUpdate: null,
     })
+  },
+
+  applyArchivedAt: (chatId: string, archivedAt: string | null) => {
+    if (get().chatId === chatId) set({ archivedAt })
   },
 }))
 
