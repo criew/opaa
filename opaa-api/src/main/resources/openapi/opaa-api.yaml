@@ -14611,8 +14611,9 @@ components:
         enabled:
           type: boolean
           description: >
-            Whether the channel is open right now. While it is closed, tokens may still be issued
-            and revoked; they simply do not act.
+            Whether the channel is open right now. While it is closed, no token can be issued -
+            the issuance refuses it, and the set of selectable libraries is empty. Existing tokens
+            remain and can be revoked; they simply do not act.
         tokenMaxLifetimeDays:
           type: integer
           description: The ceiling an expiry may not exceed, in days from now.

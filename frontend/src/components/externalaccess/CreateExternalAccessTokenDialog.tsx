@@ -29,6 +29,7 @@ import {
   DISCLOSURE_HINT,
   NO_LIBRARIES_HINT,
   SELECTION_IS_FINAL_HINT,
+  earliestExpiryDate,
   expiryInstantOf,
   formatDate,
   maxExpiryDate,
@@ -79,7 +80,9 @@ export default function CreateExternalAccessTokenDialog({
 
   const latest = maxExpiryDate(tokenMaxLifetimeDays)
   const latestValue = toDateInputValue(latest)
-  const earliestValue = toDateInputValue(new Date())
+  // Frühestens morgen - dasselbe, was die Prüfung unten verlangt. Ein im Feld wählbarer Tag, den
+  // die Prüfung daneben ablehnt, wäre eine Falle.
+  const earliestValue = toDateInputValue(earliestExpiryDate())
 
   useEffect(() => {
     let active = true
@@ -120,8 +123,8 @@ export default function CreateExternalAccessTokenDialog({
       errors.expiresAt = 'Bitte geben Sie ein Ablaufdatum an - ein Token ohne Ablauf gibt es nicht.'
     } else if (expiresOn > latestValue) {
       errors.expiresAt = `Das Ablaufdatum liegt höchstens ${tokenMaxLifetimeDays} Tage in der Zukunft, also spätestens am ${latest.toLocaleDateString('de-DE')}.`
-    } else if (expiresOn <= earliestValue) {
-      errors.expiresAt = 'Das Ablaufdatum muss in der Zukunft liegen.'
+    } else if (expiresOn < earliestValue) {
+      errors.expiresAt = 'Das Ablaufdatum muss in der Zukunft liegen, frühestens morgen.'
     }
     return errors
   }

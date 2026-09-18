@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   clientSetupSnippets,
+  earliestExpiryDate,
   expiryInstantOf,
   expiryWarning,
   maxExpiryDate,
@@ -17,10 +18,20 @@ describe('tokenLabels', () => {
     expect(maxExpiryDate(90, now).getTime() - now.getTime()).toBe(90 * 86_400_000)
   })
 
-  it('kürzt den letzten wählbaren Tag auf die Höchstlaufzeit', () => {
+  it('kürzt den letzten wählbaren Tag mit Abstand unter die Höchstlaufzeit', () => {
     const latest = new Date('2026-12-17T10:00:00Z')
 
-    expect(expiryInstantOf(toDateInputValue(latest), latest)).toBe(latest.toISOString())
+    // Die Marge fängt eine vorlaufende Geräteuhr ab: Die Schnittstelle prüft gegen ihre eigene,
+    // und exakt getroffen wäre die Obergrenze dort schon überschritten.
+    expect(expiryInstantOf(toDateInputValue(latest), latest)).toBe(
+      new Date('2026-12-17T09:00:00Z').toISOString(),
+    )
+  })
+
+  it('setzt den frühesten Ablauftag auf morgen', () => {
+    const now = new Date('2026-09-18T10:00:00Z')
+
+    expect(earliestExpiryDate(now).getTime() - now.getTime()).toBe(86_400_000)
   })
 
   it('nimmt für jeden früheren Tag dessen Ende', () => {

@@ -89,12 +89,24 @@ export function expiryWarning(
   return `Läuft in ${days} Tagen ab`
 }
 
+/** Abstand zur Obergrenze beim Kappen - siehe {@link expiryInstantOf}. */
+const CLOCK_SKEW_MARGIN_MS = 3_600_000
+
 /** Ein Datum als `YYYY-MM-DD` in der Zeitzone des Geräts - das Format des Datumsfeldes. */
 export function toDateInputValue(date: Date): string {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+/**
+ * Der früheste wählbare Ablauftag: morgen. Heute ist zwar bis zum Tagesende gültig, aber ein
+ * Zugang, der noch am Ausstellungstag endet, ist kein Zugang - und das Feld bietet nur an, was die
+ * Prüfung daneben auch annimmt.
+ */
+export function earliestExpiryDate(now: Date = new Date()): Date {
+  return new Date(now.getTime() + 86_400_000)
 }
 
 /**
@@ -114,11 +126,16 @@ export function maxExpiryDate(tokenMaxLifetimeDays: number, now: Date = new Date
  *
  * Am letzten wählbaren Tag wird auf die Höchstlaufzeit gekürzt: Die Schnittstelle rechnet in
  * Stunden ab jetzt, und dessen Tagesende läge um die bereits vergangene Tageszeit darüber.
+ *
+ * Gekürzt wird auf die Obergrenze **minus einer Stunde**. Die Schnittstelle prüft gegen ihre
+ * eigene Uhr; geht die des Geräts vor, wäre die exakt getroffene Obergrenze dort bereits
+ * überschritten - ausgerechnet an dem Tag, den der Dialog selbst vorgibt.
  */
 export function expiryInstantOf(dateInputValue: string, latestAllowed: Date): string {
   const [year, month, day] = dateInputValue.split('-').map(Number)
   const endOfDay = new Date(year, month - 1, day, 23, 59, 59)
-  return new Date(Math.min(endOfDay.getTime(), latestAllowed.getTime())).toISOString()
+  const ceiling = latestAllowed.getTime() - CLOCK_SKEW_MARGIN_MS
+  return new Date(Math.min(endOfDay.getTime(), ceiling)).toISOString()
 }
 
 /**

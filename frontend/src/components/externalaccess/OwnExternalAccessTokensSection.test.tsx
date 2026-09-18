@@ -118,6 +118,21 @@ describe('OwnExternalAccessTokensSection', () => {
     expect(screen.getByRole('dialog', { name: 'Token erzeugen' })).toBeInTheDocument()
   })
 
+  it('lässt das Formular ohne Ablaufdatum nicht absenden', async () => {
+    const user = userEvent.setup()
+    render()
+
+    const dialog = await openCreateDialog(user)
+    await user.type(within(dialog).getByLabelText('Name / Zweck'), 'Claude Code (Notebook)')
+    await user.click(await within(dialog).findByLabelText(/Meine Dokumente/))
+    await user.clear(within(dialog).getByLabelText('Läuft ab'))
+
+    await user.click(within(dialog).getByRole('button', { name: 'Erzeugen' }))
+
+    expect(within(dialog).getByText(/Bitte geben Sie ein Ablaufdatum an/)).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Token erzeugt' })).not.toBeInTheDocument()
+  })
+
   it('erklärt im Leerzustand, warum keine Bibliothek wählbar ist, und nennt die Ansprechstelle', async () => {
     server.use(
       http.get('*/api/v1/external-access/eligible-libraries', () =>
