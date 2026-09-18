@@ -88,8 +88,9 @@ missverständlich, weil der ganze Assistent „sucht".
 - Ein Feld über der Liste filtert beim Tippen sofort nach Titel — ohne Unterscheidung von Groß- und
   Kleinschreibung, über die Liste, die der Client ohnehin hält. Kein Serveraufruf.
 - Der Filter durchsucht die **aktiven** Chats der Seitenleiste. Findet er nichts, sagt er das und bietet
-  zwei Wege an: „In Inhalten suchen" und „Im Archiv suchen" — beide führen auf die Seite „Chats" mit
-  dem eingegebenen Begriff.
+  „In Inhalten suchen" an — die [Chatsuche](#chatsuche) auf der Seite „Chats", mit dem eingegebenen
+  Begriff vorbelegt. Sie durchsucht auch Titel und Archiv; ein eigener Weg „Im Archiv suchen" ist
+  deshalb nicht nötig. Bis zur Chatsuche bleibt es beim Hinweis und „Alle Chats →".
 - Escape leert das Feld; das Feld ist beschriftet und für Screenreader angekündigt, die Zahl der
   gefilterten Einträge wird als Statusmeldung ausgegeben.
 
@@ -124,8 +125,8 @@ missverständlich, weil der ganze Assistent „sucht".
 
 ## Die Seite „Chats" je Space
 
-Erreichbar über „Alle Chats" am Ende der Chatliste in der Seitenleiste, über „In Inhalten suchen" und
-über den Link aus dem Hinweis eines leeren Filterergebnisses. Sie ist die Verwaltungsfläche der eigenen
+Erreichbar über „Alle Chats" am Ende der Chatliste in der Seitenleiste und über „In Inhalten suchen"
+(dauerhaft unter der Liste und im Hinweis eines leeren Filterergebnisses). Sie ist die Verwaltungsfläche der eigenen
 Chats eines Space, keine zweite Chatoberfläche: Ein Klick auf einen Eintrag öffnet den Chat.
 
 ```
@@ -154,7 +155,9 @@ Chats eines Space, keine zweite Chatoberfläche: Ein Klick auf einen Eintrag öf
   bedienbar.
 - **Zahlen an den Reitern** zählen ausschließlich die eigenen, für die Person sichtbaren Chats.
 - Das **Suchfeld** der Seite ist die Chatsuche (siehe [Chatsuche](#chatsuche)). Solange sie nicht gebaut
-  ist, filtert es die Titel der geladenen Einträge.
+  ist, filtert es im Reiter „Aktiv" die Titel; der seitenweise geladene Reiter „Archiv" bekommt bis
+  dahin kein Suchfeld, weil ein Filter über die gerade geladenen Seiten stillschweigend unvollständig
+  wäre.
 
 ---
 
@@ -170,7 +173,9 @@ Archivieren ist **eine persönliche Ablage**, keine Zustandsänderung am Chat:
 - Er bleibt **fortsetzbar**. Wer in einem archivierten Chat selbst eine Nachricht sendet, holt ihn damit
   automatisch zurück; eine kurze Meldung sagt das („Chat aus dem Archiv zurückgeholt"). Grund: Ein
   Gespräch, an dem man weiterarbeitet, ist nicht erledigt — und ein Chat, der archiviert bleibt, obwohl
-  man gerade darin schreibt, wäre beim nächsten Öffnen der Liste wieder verschwunden.
+  man gerade darin schreibt, wäre beim nächsten Öffnen der Liste wieder verschwunden. In einem
+  **archivierten Space** ist kein Chat fortsetzbar, archiviert oder nicht — dort gilt die Sperre des
+  Space.
 - Nur die **eigene** Nachricht holt zurück. Aktivität anderer in einem später geteilten Chat verändert
   die Ablage einer Person nicht.
 - Archivieren **löst die Anheftung**. Beides zugleich ergibt keinen Sinn; beim Zurückholen bleibt der
@@ -178,7 +183,10 @@ Archivieren ist **eine persönliche Ablage**, keine Zustandsänderung am Chat:
 - Archivieren **ändert den Chat nicht**: weder Titel noch letzte Aktivität noch Sichtbarkeit noch
   Teilen-Status.
 - Archivieren ist auch in einem **archivierten Space** möglich, aus demselben Grund wie das Anheften —
-  dort ist es gerade das Mittel, die eigene Liste leerlaufen zu lassen.
+  dort ist es gerade das Mittel, die eigene Liste leerlaufen zu lassen. Den **Space** leert es nicht:
+  Ein archivierter Chat liegt weiter im Space, hält ihn für seinen Autor sichtbar und hält die
+  Löschsperre des Space ([#543](https://github.com/criew/opaa/issues/543)) aufrecht — dafür bleibt das
+  Löschen.
 
 ### Verhältnis zu Aufbewahrung und Löschen
 
@@ -273,6 +281,10 @@ Person und Chat:
   Anwendungslog, nicht in Metriken. Sie sind Abfragen im Sinne von
   [security-and-compliance.md](./security-and-compliance.md#was-ausdrücklich-nicht-protokolliert-wird).
   Zulässig sind nur Betriebsmetriken ohne Begriff und ohne Person (Anzahl, Dauer).
+- **Der Suchbegriff steht in keiner URL.** Der Such-Endpunkt nimmt ihn im Request-Body entgegen wie die
+  Wissenssuche (`POST /api/v1/search`) — als Query-Parameter landete er im Zugriffslog des
+  Reverse-Proxys. Ebenso trägt die Seite „Chats" den vorbelegten Begriff nicht in ihrer Adresse, sonst
+  stünde er im Browserverlauf; und er wird nicht im Browser-Speicher abgelegt.
 - **Ordnungsmerkmale** (angeheftet, archiviert) sind für niemanden sonst sichtbar, werden nicht
   protokolliert, nicht exportiert außer in der Selbstauskunft der Person und nicht ausgewertet. Es gibt
   keine Zahl „archivierte Chats je Person", auch nicht aggregiert.

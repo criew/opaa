@@ -119,8 +119,8 @@ mit seinen Chats, unten die selteneren Wege. Der Space-Wechsel gehört an die pr
 
 - **In der Seitenleiste** — ein Feld filtert beim Tippen nach Titel; die Liste ist in Zeitgruppen
   gegliedert (Angeheftet, Heute, Gestern, Letzte 7 Tage, Letzte 30 Tage, Älter); angeheftete Chats
-  stehen als einklappbare Gruppe oben. Findet der Filter nichts, führt er weiter: „In Inhalten suchen",
-  „Im Archiv suchen".
+  stehen als einklappbare Gruppe oben. Findet der Filter nichts, führt er weiter zu „In Inhalten suchen" — die
+  Chatsuche findet auch Titel und archivierte Chats.
 - **Auf der Seite „Chats" des Space** — erreichbar über „Alle Chats →": Reiter „Aktiv" und „Archiv",
   Mehrfachauswahl zum Archivieren, Zurückholen und Löschen, und die **Chatsuche** über Titel, Fragen und
   Antworten mit Trefferauszug. Ein Treffer öffnet den Chat an der Trefferstelle. Die Seitenleiste ist
