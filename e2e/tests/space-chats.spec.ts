@@ -1,6 +1,7 @@
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, test } from '../fixtures/auth'
+import { expectNoSeriousA11yViolations } from '../fixtures/a11y'
 import {
   askQuestion,
   chatSidebarEntries,
@@ -357,5 +358,65 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(
       page.getByRole('heading', { name: 'Womit kann ich Ihnen heute helfen?' }),
     ).toBeVisible()
+  })
+
+  test('7. Chatliste ordnen: Titelfilter, Anheften und Gruppe „Angeheftet“ nach Neuladen', async (
+    { authenticatedPage: page },
+    testInfo,
+  ) => {
+    const id = uniqueId(testInfo)
+    const title = `E2E-Anheften-${id}`
+    const question = `Frage zum Anheften (${id})`
+    const chatList = page.getByRole('navigation', { name: 'Chats' })
+    const filter = chatList.getByRole('searchbox', { name: 'Chats filtern' })
+    const actionsName = `Aktionen für Chat „${title}“`
+    const actionsOfChat = chatList.getByRole('button', { name: actionsName })
+    const inGroup = (group: string) =>
+      chatList.getByRole('list', { name: group }).getByRole('button', { name: actionsName })
+
+    await startFreshChat(page)
+    await clearSearchScope(page)
+    await askQuestion(page, question)
+    await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/)
+    await expect(page.getByTestId('message-list').getByText(question)).toBeVisible()
+
+    // Every chat of this suite ends up with the KI stub's one fixed title (see the module doc
+    // comment), so this chat gets a unique one first: the newest chat is the top entry of "Heute".
+    await chatList
+      .getByRole('list', { name: 'Heute' })
+      .getByRole('button', { name: /^Aktionen für Chat/ })
+      .first()
+      .click()
+    await page.getByRole('menuitem', { name: /umbenennen$/ }).click()
+    const titleField = chatList.getByLabel('Chat-Titel')
+    await titleField.fill(title)
+    await titleField.press('Enter')
+    await expect(actionsOfChat).toHaveCount(1)
+
+    // Filter: narrows the list to the matching title while typing, Escape restores it.
+    const entriesBefore = await chatSidebarEntries(page).count()
+    await filter.fill(title.toLowerCase())
+    await expect(chatSidebarEntries(page)).toHaveCount(1)
+    await expect(actionsOfChat).toHaveCount(1)
+    await expect(chatList.getByRole('status')).toHaveText('1 Chat gefunden')
+    await filter.press('Escape')
+    await expect(filter).toHaveValue('')
+    await expect(chatSidebarEntries(page)).toHaveCount(entriesBefore)
+
+    // Pin via the context menu; the chat moves into "Angeheftet" and stays there after a reload.
+    await actionsOfChat.click()
+    await page.getByRole('menuitem', { name: `Chat „${title}“ anheften` }).click()
+    await expect(inGroup('Angeheftet')).toHaveCount(1)
+
+    await page.reload()
+    await expect(inGroup('Angeheftet')).toHaveCount(1)
+    await expectNoSeriousA11yViolations(page, 'Seitenleiste mit angeheftetem Chat')
+
+    // Unpinning puts it back into its time group - and leaves no pin behind for later runs.
+    await actionsOfChat.click()
+    await page.getByRole('menuitem', { name: `Chat „${title}“ lösen` }).click()
+    await expect(inGroup('Heute')).toHaveCount(1)
+    await page.reload()
+    await expect(inGroup('Heute')).toHaveCount(1)
   })
 })
