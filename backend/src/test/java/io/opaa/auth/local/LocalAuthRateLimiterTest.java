@@ -39,7 +39,7 @@ class LocalAuthRateLimiterTest {
             null,
             null);
     return new LocalAuthRateLimiter(
-        new RateLimitProperties(enabled, null, ANY, ANY, ANY, ANY, ANY, limits),
+        new RateLimitProperties(enabled, null, ANY, ANY, ANY, ANY, ANY, ANY, limits),
         new RateLimitMetrics(meterRegistry));
   }
 

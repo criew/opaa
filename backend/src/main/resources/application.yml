@@ -474,6 +474,13 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS:120}
       window-seconds: ${OPAA_RATE_LIMIT_WEBHOOK_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_WEBHOOK_GLOBAL_MAX_REQUESTS:600}
+    # The chat search runs while the person types (one request per typing pause, Enter searches at
+    # once), so it has its own budget instead of the query rule's: one request per second on
+    # average per client, which brisk typing with pauses stays below.
+    chat-search:
+      max-requests: ${OPAA_RATE_LIMIT_CHAT_SEARCH_MAX_REQUESTS:60}
+      window-seconds: ${OPAA_RATE_LIMIT_CHAT_SEARCH_WINDOW_SECONDS:60}
+      global-max-requests: ${OPAA_RATE_LIMIT_CHAT_SEARCH_GLOBAL_MAX_REQUESTS:1200}
     # ADR-0033, Entscheidung 9: the local sign-in and its self-service endpoints. login, refresh,
     # register, forgot-password, set-password and verify-email are keyed by client address in
     # RateLimitFilter; change-password by the authenticated account, register and forgot-password
@@ -585,6 +592,14 @@ logging:
     # account management included. Pinned so raising org.eclipse.angus.mail to DEBUG/TRACE for
     # diagnosis never prints a link token; guarded by LocalSelfServiceIntegrationTest.
     org.eclipse.angus.mail: INFO
+    # Request bodies are user content (the chat search term, a sign-in password). Spring MVC prints
+    # read and written bodies at DEBUG and handler arguments at TRACE, Hibernate Validator the
+    # validated object and the PostgreSQL driver every bind value at TRACE. Pinned so raising
+    # their parents for diagnosis never prints one; guarded by ChatSearchPrivacyIntegrationTest.
+    org.springframework.web.servlet.mvc.method.annotation.RequestResponseBodyMethodProcessor: INFO
+    org.springframework.web.method.HandlerMethod: INFO
+    org.hibernate.validator.internal.engine.resolver.JPATraversableResolver: INFO
+    org.postgresql.core.v3.QueryExecutorImpl: INFO
 
 ---
 spring:

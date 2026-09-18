@@ -4,6 +4,8 @@ import io.opaa.api.dto.ChatBulkActionRequest;
 import io.opaa.api.dto.ChatBulkActionResult;
 import io.opaa.api.dto.ChatCreateRequest;
 import io.opaa.api.dto.ChatDetail;
+import io.opaa.api.dto.ChatSearchRequest;
+import io.opaa.api.dto.ChatSearchResponse;
 import io.opaa.api.dto.ChatSummary;
 import io.opaa.api.dto.ChatSummaryPage;
 import io.opaa.api.dto.ChatUpdateRequest;
@@ -85,6 +87,17 @@ public class ChatController {
           case DELETE -> chatService.deleteChats(spaceId, caller.id(), request.getChatIds());
         };
     return new ChatBulkActionResult(applied);
+  }
+
+  /** The term travels in the body, never in the URL, so no access log records it. */
+  @PostMapping("/spaces/{spaceId}/chats/search")
+  public ChatSearchResponse searchSpaceChats(
+      @PathVariable UUID spaceId,
+      @Valid @RequestBody ChatSearchRequest request,
+      @Caller CurrentUser caller) {
+    return ChatSearchResponseMapper.toResponse(
+        chatService.searchChats(
+            spaceId, caller.id(), request.getQuery(), request.getPage(), request.getPageSize()));
   }
 
   @GetMapping("/chats/{chatId}")

@@ -598,6 +598,54 @@ das Feld, statt es aus `full` zu schließen.
 Weder die Suche noch der Abruf noch die Auflistung erzeugt einen Eintrag im Nachweisprotokoll —
 dieselbe Zusage, die für die einzelne Abfrage gilt.
 
+### 7.2 Suche in eigenen Chats
+
+Die **Chatsuche** findet eigene Gespräche wieder, die Wissenssuche findet Dokumente. Beide teilen
+nichts außer der deutschen Sprachkonfiguration: Die Chatsuche ist eine reine Volltextsuche ohne
+Teilfragen, Vektoren, Fusion oder Reranking, und sie berührt keinen Chunk einer Bibliothek.
+
+`POST /api/v1/spaces/{spaceId}/chats/search` durchsucht **Titel, Fragen und Antworten** der Chats
+im angegebenen Space, archivierte Chats eingeschlossen. Nicht durchsucht werden die Gesprächsnotiz,
+der Text der Fundstellen und die Titel zitierter Dokumente — sonst würde die Chatsuche zu einer
+Suche über Dokumente an deren Rechten vorbei.
+
+| Eigenschaft | Verhalten |
+|---|---|
+| Sprache | Konfiguration `german` wie der Volltextpfad der Wissenssuche: Stammformen („Widerspruch" findet „Widersprüche"), Stoppwörter fallen weg; ein Aktenzeichen wie „12/4-2026" bleibt ein Wort |
+| Verknüpfung | Alle Wörter des Suchbegriffs müssen in derselben Nachricht oder im Titel stehen; das letzte Wort trifft auch als Wortanfang, damit ein halb getippter Begriff schon findet |
+| Treffer | Einer je Chat, die beste Stelle nach Rang; trifft eine Nachricht, wird sie genannt, auch wenn der Titel ebenfalls trifft. Ein reiner Titeltreffer nennt keine Nachricht |
+| Reihenfolge | Nach Rang, bei Gleichstand der jüngere Treffer zuerst; Titel und Nachrichten werden mit derselben Funktion gerankt |
+| Auszug | Klartext um die Trefferstelle mit den Trefferwörtern als Zeichenbereiche (Anfang, Ende); nie HTML. Markup in einer Nachricht kommt als gewöhnliche Zeichen zurück |
+| Seiten | Seitenweise mit „weitere vorhanden", **ohne Gesamtzahl** |
+| Suchbegriff | mindestens 3, höchstens 200 Zeichen; sonst `400` mit deutscher Meldung. Feste Werte, nicht einstellbar |
+
+**Index und Speicherbedarf.** Jede Chatnachricht trägt eine generierte Volltextspalte mit
+GIN-Index. Sie wird beim Schreiben der Nachricht berechnet — Nachrichten ändern sich danach nicht
+mehr — und entfällt mit der Nachricht, also mit dem Chat. Nach dem Löschen eines Chats findet die
+Suche nichts mehr aus ihm. Der Bedarf wächst linear mit dem Chatbestand: Spalte und Index
+zusammen belegen grob das Doppelte des Nachrichtentexts (gemessen an deutschem Verwaltungstext).
+Es gibt keine Einbettungen und keinen eigenen Suchdienst. Titel werden nicht indexiert, sondern je Suche über die eigenen Chats des Space
+ausgewertet.
+
+**Rechtefilter in der Abfrage.** Durchsucht werden nur die Chats, die die Person sehen darf — heute
+ausschließlich die eigenen. Der Filter ist Teil der Datenbankabfrage: Ein fremder Chat wird nicht
+geladen, nicht gerankt, nicht gezählt und verschiebt keine Seitengrenze. Ohne Mitgliedschaft im
+Space antwortet der Endpunkt wie die Chatliste des Space (`403`, bei unbekanntem Space `404`).
+
+**Kein Durchgriff.** Weder Space- noch Systemadministratoren durchsuchen fremde Chats; es gibt
+dafür keinen Parameter und keine Rolle.
+
+**Nicht über Fremdzugänge.** Die Chatsuche ist nur in der angemeldeten Sitzung erreichbar. Ein
+Zugangstoken erhält `403`, und der MCP-Server bietet sie nicht an.
+
+**Keine Protokollierung.** Der Suchbegriff steht im Anfragekörper, nie in der Adresse, und
+erscheint deshalb in keinem Zugriffslog eines vorgeschalteten Proxys. Er wird weder ins
+Nachweisprotokoll noch ins Anwendungslog (auf keiner Ebene) noch in eine Metrik übernommen. Gezählt
+wird nur die Dauer je Suche, ohne Begriff und ohne Person (Abschnitt 10.2). Das gilt auch, wenn
+Logger von Spring, Hibernate Validator oder des PostgreSQL-Treibers zur Diagnose auf `DEBUG` oder
+`TRACE` gestellt werden: Die Logger, die Anfragekörper, Handler-Argumente oder Bindewerte ausgeben,
+stehen fest auf `INFO`.
+
 ## 8. Diagnose: warum sieht eine Person ein Dokument nicht?
 
 Das ist die Frage, die im Betrieb tatsächlich gestellt wird, und sie hat zwei völlig verschiedene
@@ -726,6 +774,12 @@ Zwei bekannte, offene Schwächen gehören hierher, weil sie wie Fehler aussehen:
 Fragen sind je IP-Adresse und über alle Adressen zusammen auf eine Anzahl je Zeitfenster begrenzt.
 Darüber antwortet das Backend mit HTTP 429. Die Werte stehen unter `opaa.rate-limit.query.*`.
 
+Die Chatsuche (Abschnitt 7.2) hat eine **eigene** Grenze unter `opaa.rate-limit.chat-search.*`,
+ebenfalls je IP-Adresse und über alle Adressen. Sie läuft beim Tippen — eine Anfrage je
+Tipp-Pause, Enter sucht sofort —, und die Grenze der Fragen wäre dafür nach wenigen Sekunden
+erschöpft. Gezählt wird je Adresse über alle Spaces zusammen; ein Wechsel des Space schafft kein
+neues Kontingent.
+
 ### 10.2 Metriken und Log
 
 | Metrik | Bedeutung |
@@ -735,6 +789,7 @@ Darüber antwortet das Backend mit HTTP 429. Die Werte stehen unter `opaa.rate-l
 | `opaa.query.tokens` | verbrauchte Tokens des Chat-Modells |
 | `opaa.query.decomposition.fallback` | Rückfälle der Zerlegung, nach Ursache unterschieden |
 | `opaa.query.decomposition.no-search` | Nachrichten, in denen die Zerlegung nichts zu suchen fand; gesucht wurde mit der Rückfall-Suchanfrage, die Antwort bekam die Anweisung für Nachrichten ohne Suchbedarf |
+| `opaa.chat.search.duration` | Dauer und Anzahl der Chatsuchen (Abschnitt 7.2), ohne Merkmale — weder Suchbegriff noch Person |
 | `opaa.chat.note.extraction` | Verdichtungen der Gesprächsnotiz, nach Ausgang unterschieden: `applied`, `empty`, `failed` (Modell nicht erreichbar, Zeitüberschreitung, unparsebar), `discarded` (Space zwischenzeitlich archiviert) und `rejected` (Verdichtungs-Pool erschöpft, die Runde wurde gar nicht erst verdichtet) |
 
 Als Warnung gehen der Rückfall der Zerlegung und die fehlgeschlagene Verdichtung der
@@ -773,6 +828,15 @@ Der Such- und Abrufweg ohne Antwort (Abschnitt 7.1) hat eigene Schlüssel unter 
 | `excerpt-max-characters` | 1500 | Länge des Auszugs je Treffer |
 | `fetch-max-characters` | 200000 | Zeichen-Deckel des Abrufs mit `full=true`; darüber wird abgeschnitten und die Antwort sagt es |
 | `context-passages` | 1 | angrenzende Abschnitte je Seite beim Abruf ohne `full` (0 bis 10) |
+
+Die Ratenbegrenzung der Chatsuche (Abschnitt 10.1) steht unter `opaa.rate-limit.chat-search.*`,
+mit Umgebungsvariable im Kapitel [Deployment](deployment.md#alle-umgebungsvariablen):
+
+| Schlüssel | Standard | Wirkung |
+|---|---|---|
+| `max-requests` | 60 | Chatsuchen je IP-Adresse und Fenster, über alle Spaces zusammen (`OPAA_RATE_LIMIT_CHAT_SEARCH_MAX_REQUESTS`) |
+| `window-seconds` | 60 | Länge des Fensters in Sekunden (`OPAA_RATE_LIMIT_CHAT_SEARCH_WINDOW_SECONDS`) |
+| `global-max-requests` | 1200 | Chatsuchen über alle Adressen je Fenster (`OPAA_RATE_LIMIT_CHAT_SEARCH_GLOBAL_MAX_REQUESTS`) |
 
 Ein einziger Wert der Gesprächsnotiz ist einstellbar, und er steht unter einem eigenen Präfix, weil
 die Notiz Chatinhalt ist und kein Suchparameter:

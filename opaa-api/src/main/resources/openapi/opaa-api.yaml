@@ -2963,6 +2963,51 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
+  /api/v1/spaces/{spaceId}/chats/search:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: searchSpaceChats
+      tags: [chat]
+      summary: >
+        Full-text search over the titles, questions and answers of the caller's own chats in this
+        space, archived chats included (docs/features/chat-list.md, "Chatsuche").
+      description: >
+        The search term travels in the request body, never in the URL, so it reaches no access log
+        of a reverse proxy; it is not written to the audit trail, the application log or a metric
+        either. Only chats the caller may see are searched - today exactly the caller's own; there
+        is no parameter and no role that widens this, not even for a space or system admin. One hit
+        per chat, best first; pages are reported with hasMore only, never with a total. Reachable
+        in a signed-in session only - not with a personal access token and not through the MCP
+        server. Space membership is required exactly as for listing the space's chats.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatSearchRequest"
+      responses:
+        "200":
+          description: One page of hits, best first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSearchResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /api/v1/chats/{chatId}:
     parameters:
       - name: chatId
@@ -8834,6 +8879,106 @@ components:
           description: >
             When the requesting person moved this chat into their chat archive; null if it is not
             archived for them. Lets a chat opened by link show that it is archived.
+
+    ChatSearchRequest:
+      type: object
+      description: >
+        The chat search term and the page wanted. Length limits are checked server-side with a
+        German message - at least 3 and at most 200 characters after trimming.
+      required: [query]
+      properties:
+        query:
+          type: string
+          description: >
+            The search term. German full-text semantics: stemmed words, all of which must occur in
+            the same message or in the title; the last word also matches as a prefix, so a term
+            typed halfway already finds something.
+          example: Widerspruch Frist
+        page:
+          type: integer
+          nullable: true
+          description: Zero-based page number. Absent means the first page; negative is rejected.
+          example: 0
+        pageSize:
+          type: integer
+          nullable: true
+          description: >
+            Hits per page. Absent means 20; a value above 50 is reduced to 50, a value below 1 is
+            rejected.
+          example: 20
+
+    ChatSearchResponse:
+      type: object
+      required: [hits, hasMore]
+      properties:
+        hits:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatSearchHit"
+          description: At most one hit per chat, by relevance, ties by the time of the hit.
+        hasMore:
+          type: boolean
+          description: >
+            Whether a further page exists. Deliberately no total - it would be a count over the
+            caller's chats that serves no one.
+
+    ChatSearchHit:
+      type: object
+      description: >
+        The best spot of one chat. A hit in a message names that message; a chat that matches only
+        by its title has no messageId, role or messageCreatedAt, and its excerpt is the title.
+      required: [chatId, excerpt, highlights]
+      properties:
+        chatId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          nullable: true
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When the caller archived this chat; null for an active chat. The search includes
+            archived chats.
+        messageId:
+          type: string
+          format: uuid
+          nullable: true
+        role:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ChatRole"
+          description: USER for a question, ASSISTANT for an answer.
+        messageCreatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        excerpt:
+          type: string
+          description: >
+            Plain text around the best spot - never HTML; markup in the message is returned as
+            literal characters and must be rendered as text.
+        highlights:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatSearchHighlight"
+          description: The matched words within excerpt, in ascending order, non-overlapping.
+
+    ChatSearchHighlight:
+      type: object
+      description: >
+        One highlighted range of an excerpt, as UTF-16 code unit offsets (JavaScript string
+        indices): start inclusive, end exclusive.
+      required: [start, end]
+      properties:
+        start:
+          type: integer
+          minimum: 0
+        end:
+          type: integer
+          minimum: 0
 
     ChatMessageResponse:
       type: object

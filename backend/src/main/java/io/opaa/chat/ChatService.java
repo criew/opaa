@@ -8,6 +8,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.metadata.MetadataFilterValidator;
 import io.opaa.library.LibraryAccessService;
+import io.opaa.observability.ChatMetrics;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationRepository;
 import io.opaa.space.SpaceMembershipRepository;
@@ -76,6 +77,11 @@ public class ChatService {
   private static final Logger log = LoggerFactory.getLogger(ChatService.class);
   private static final int DERIVED_TITLE_MAX_LENGTH = 80;
 
+  static final int SEARCH_MIN_TERM_LENGTH = 3;
+  static final int SEARCH_MAX_TERM_LENGTH = 200;
+  static final int SEARCH_DEFAULT_PAGE_SIZE = 20;
+  static final int SEARCH_MAX_PAGE_SIZE = 50;
+
   /**
    * Upper bound on {@link #appendTurn}'s retry loop - see that method's Javadoc (#525 review round
    * 2, finding/nit 2). Three is generous for a two-row insert colliding on a per-chat sequence: the
@@ -95,6 +101,8 @@ public class ChatService {
   private final MetadataFilterValidator metadataFilterValidator;
   private final ChatNoteService chatNoteService;
   private final ChatPersonalMarkRepository chatPersonalMarkRepository;
+  private final ChatFullTextSearch chatFullTextSearch;
+  private final ChatMetrics chatMetrics;
 
   public ChatService(
       ChatRepository chatRepository,
@@ -108,8 +116,12 @@ public class ChatService {
       ChatTitleGenerationService chatTitleGenerationService,
       MetadataFilterValidator metadataFilterValidator,
       ChatNoteService chatNoteService,
-      ChatPersonalMarkRepository chatPersonalMarkRepository) {
+      ChatPersonalMarkRepository chatPersonalMarkRepository,
+      ChatFullTextSearch chatFullTextSearch,
+      ChatMetrics chatMetrics) {
     this.chatPersonalMarkRepository = chatPersonalMarkRepository;
+    this.chatFullTextSearch = chatFullTextSearch;
+    this.chatMetrics = chatMetrics;
     this.metadataFilterValidator = metadataFilterValidator;
     this.chatNoteService = chatNoteService;
     this.chatRepository = chatRepository;
@@ -191,6 +203,63 @@ public class ChatService {
   public Page<ChatListEntry> listArchivedChats(UUID spaceId, UUID userId, Pageable pageable) {
     requireMembership(spaceId, userId);
     return chatPersonalMarkRepository.findArchivedInSpace(spaceId, userId, pageable);
+  }
+
+  /**
+   * Searches the titles, questions and answers of the chats the caller may see in the space,
+   * archived ones included (docs/features/chat-list.md, "Chatsuche"). Membership is required as for
+   * {@link #listChats}; no role widens the search beyond the caller's own chats. The term goes into
+   * the query and nowhere else - no log line, no audit entry, no metric tag.
+   *
+   * @param page zero-based; {@code null} is the first page
+   * @param pageSize {@code null} is {@link #SEARCH_DEFAULT_PAGE_SIZE}; above {@link
+   *     #SEARCH_MAX_PAGE_SIZE} it is reduced to it
+   */
+  @Transactional(readOnly = true)
+  public ChatSearchPage searchChats(
+      UUID spaceId, UUID userId, String term, Integer page, Integer pageSize) {
+    requireMembership(spaceId, userId);
+    String normalizedTerm = requireSearchTerm(term);
+    int effectivePage = page == null ? 0 : page;
+    if (effectivePage < 0) {
+      throw new ValidationException("Die Seitennummer darf nicht negativ sein");
+    }
+    int effectivePageSize = pageSize == null ? SEARCH_DEFAULT_PAGE_SIZE : pageSize;
+    if (effectivePageSize < 1) {
+      throw new ValidationException("Die Seitengröße muss mindestens 1 betragen");
+    }
+    int boundedPageSize = Math.min(effectivePageSize, SEARCH_MAX_PAGE_SIZE);
+    return chatMetrics
+        .searchTimer()
+        .record(
+            () ->
+                chatFullTextSearch.search(
+                    spaceId, userId, normalizedTerm, effectivePage, boundedPageSize));
+  }
+
+  /**
+   * The stripped term with every control character read as a blank - PostgreSQL text holds no NUL -
+   * or a 400 if it is shorter or longer than the search accepts.
+   */
+  private static String requireSearchTerm(String term) {
+    String stripped =
+        term == null
+            ? ""
+            : term.codePoints()
+                .map(c -> Character.isISOControl(c) ? ' ' : c)
+                .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+                .toString()
+                .strip();
+    int length = stripped.codePointCount(0, stripped.length());
+    if (length < SEARCH_MIN_TERM_LENGTH) {
+      throw new ValidationException(
+          "Der Suchbegriff muss mindestens " + SEARCH_MIN_TERM_LENGTH + " Zeichen lang sein");
+    }
+    if (length > SEARCH_MAX_TERM_LENGTH) {
+      throw new ValidationException(
+          "Der Suchbegriff darf höchstens " + SEARCH_MAX_TERM_LENGTH + " Zeichen lang sein");
+    }
+    return stripped;
   }
 
   /**

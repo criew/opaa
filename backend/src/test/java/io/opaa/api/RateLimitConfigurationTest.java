@@ -12,6 +12,7 @@ import io.opaa.observability.RateLimitMetrics;
 import io.opaa.security.TrustedProxyClientIpResolver;
 import jakarta.servlet.Filter;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.mock.web.MockFilterChain;
@@ -20,11 +21,10 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The wiring of the two switchable self-service rules (#1592), which {@code RateLimitFilterTest}
- * cannot see: that each of them asks its <em>own</em> flow, and that a served flow is still counted
- * - the rules became conditional, so "still counted" is no longer a given. No Spring context; the
- * production {@code @Bean} method is called directly with the shipped defaults (five requests per
- * client and hour for either endpoint).
+ * The wiring of the rules, which {@code RateLimitFilterTest} cannot see: that each switchable
+ * self-service rule (#1592) asks its <em>own</em> flow and a served flow is still counted, and that
+ * the chat search has a budget of its own. No Spring context; the production {@code @Bean} method
+ * is called directly, with the shipped self-service defaults (five requests per client and hour).
  */
 class RateLimitConfigurationTest {
 
@@ -52,6 +52,27 @@ class RateLimitConfigurationTest {
     assertThat(statusAfter(filter, FORGOT_PASSWORD, 1)).isEqualTo(429);
   }
 
+  @Test
+  void theChatSearchCountsItsOwnBudgetApartFromTheQueryAndTheChatList() throws Exception {
+    EndpointLimit wide = new EndpointLimit(1000, 60, 1000);
+    EndpointLimit chatSearch = new EndpointLimit(3, 60, 1000);
+    Filter filter =
+        filter(
+            new RateLimitProperties(
+                true, List.of(), wide, wide, wide, wide, wide, chatSearch, null));
+
+    assertThat(statusAfter(filter, chatSearchIn(UUID.randomUUID()), 3)).isEqualTo(200);
+    // one bucket per client across spaces: another space buys no fresh budget
+    assertThat(statusAfter(filter, chatSearchIn(UUID.randomUUID()), 1)).isEqualTo(429);
+    assertThat(statusAfter(filter, "/api/v1/query", 1)).isEqualTo(200);
+    assertThat(statusAfter(filter, "/api/v1/spaces/" + UUID.randomUUID() + "/chats", 1))
+        .isEqualTo(200);
+  }
+
+  private static String chatSearchIn(UUID spaceId) {
+    return "/api/v1/spaces/" + spaceId + "/chats/search";
+  }
+
   /** The status of the last of {@code count} requests from one client; earlier ones are ignored. */
   private static int statusAfter(Filter filter, String path, int count) throws Exception {
     MockHttpServletResponse response = new MockHttpServletResponse();
@@ -66,8 +87,11 @@ class RateLimitConfigurationTest {
 
   private Filter filter() {
     EndpointLimit wide = new EndpointLimit(1000, 60, 1000);
-    RateLimitProperties properties =
-        new RateLimitProperties(true, List.of(), wide, wide, wide, wide, wide, null);
+    return filter(
+        new RateLimitProperties(true, List.of(), wide, wide, wide, wide, wide, wide, null));
+  }
+
+  private Filter filter(RateLimitProperties properties) {
     return new RateLimitConfiguration()
         .rateLimitFilterRegistration(
             properties,

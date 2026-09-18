@@ -69,3 +69,6 @@ databaseChangeLog:
   # Chat-Archiv als weiteres persönliches Ordnungsmerkmal (#1769, chat-list.md, "Archivieren").
   - include:
       file: db/changelog/changes/036-chat-personal-marks-archived-at.yaml
+  # Volltextindex der Chatsuche über die Chatnachrichten (#1770, chat-list.md, "Chatsuche").
+  - include:
+      file: db/changelog/changes/037-chat-messages-full-text.yaml

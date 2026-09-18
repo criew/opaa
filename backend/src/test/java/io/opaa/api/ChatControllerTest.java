@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.api.types.ChatNoteItemKind;
+import io.opaa.api.types.ChatRole;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
@@ -27,9 +28,13 @@ import io.opaa.chat.ChatCreation;
 import io.opaa.chat.ChatListEntry;
 import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.ChatPatch;
+import io.opaa.chat.ChatSearchMatch;
+import io.opaa.chat.ChatSearchMatch.Highlight;
+import io.opaa.chat.ChatSearchPage;
 import io.opaa.chat.ChatService;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -178,6 +183,73 @@ class ChatControllerTest {
         .andExpect(jsonPath("$[0].pinnedAt").value("2026-09-18T08:15:00Z"));
 
     verify(chatService).listChats(eq(spaceId), any());
+  }
+
+  @Test
+  void searchSpaceChatsTakesTheTermFromTheBodyAndMapsTheHits() throws Exception {
+    UUID spaceId = UUID.randomUUID();
+    UUID chatId = UUID.randomUUID();
+    UUID messageId = UUID.randomUUID();
+    when(chatService.searchChats(
+            eq(spaceId), eq(currentUser.getId()), eq("Widerspruch"), eq(2), eq(10)))
+        .thenReturn(
+            new ChatSearchPage(
+                List.of(
+                    new ChatSearchMatch(
+                        chatId,
+                        "Fristen",
+                        null,
+                        messageId,
+                        ChatRole.USER,
+                        Instant.parse("2026-09-01T09:30:00Z"),
+                        "Der Widerspruch",
+                        List.of(new Highlight(4, 15)))),
+                true));
+
+    mockMvc
+        .perform(
+            post("/api/v1/spaces/{spaceId}/chats/search", spaceId)
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"query\": \"Widerspruch\", \"page\": 2, \"pageSize\": 10}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.hasMore").value(true))
+        .andExpect(jsonPath("$.total").doesNotExist())
+        .andExpect(jsonPath("$.hits[0].chatId").value(chatId.toString()))
+        .andExpect(jsonPath("$.hits[0].messageId").value(messageId.toString()))
+        .andExpect(jsonPath("$.hits[0].role").value("USER"))
+        .andExpect(jsonPath("$.hits[0].excerpt").value("Der Widerspruch"))
+        .andExpect(jsonPath("$.hits[0].highlights[0].start").value(4))
+        .andExpect(jsonPath("$.hits[0].highlights[0].end").value(15));
+  }
+
+  @Test
+  void searchSpaceChatsWithoutATermIsRejectedBeforeTheService() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/spaces/{spaceId}/chats/search", UUID.randomUUID())
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isBadRequest());
+
+    verify(chatService, never()).searchChats(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void searchSpaceChatsPassesATooShortTermsRefusalThroughAs400() throws Exception {
+    when(chatService.searchChats(any(), any(), any(), any(), any()))
+        .thenThrow(new ValidationException("Der Suchbegriff muss mindestens 3 Zeichen lang sein"));
+
+    mockMvc
+        .perform(
+            post("/api/v1/spaces/{spaceId}/chats/search", UUID.randomUUID())
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"query\": \"ab\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.error").value("Der Suchbegriff muss mindestens 3 Zeichen lang sein"));
   }
 
   @Test

@@ -28,6 +28,9 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  *     /api/v1/libraries/{libraryId}/confluence-webhook} is reachable without a session, so the
  *     limiter is the bound on how much signature checking an unauthenticated caller can cause;
  *     keyed per library so a chatty instance does not starve another library's notifications.
+ * @param chatSearch per-endpoint limits for the chat search ({@code POST
+ *     /api/v1/spaces/{spaceId}/chats/search}) - its own budget, because the search runs while the
+ *     person types and would exhaust the query budget within seconds
  * @param localAuth the limits of the local sign-in and its self-service endpoints (ADR-0033,
  *     Entscheidung 9); every absent value is the ADR's default
  */
@@ -40,6 +43,7 @@ public record RateLimitProperties(
     EndpointLimit sourceTest,
     EndpointLimit documentContent,
     EndpointLimit webhook,
+    EndpointLimit chatSearch,
     LocalAuthLimits localAuth) {
 
   public static final String TRUSTED_PROXY_CIDRS_VARIABLE = "OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS";
