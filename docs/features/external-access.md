@@ -3,8 +3,13 @@
 > **Status: Entwurf.** Beschlossen am 18.09.2026 auf Grundlage der Recherche „OPAA als Wissensschicht
 > für andere KI-Tools", überarbeitet am 18.09.2026 nach fünf Stakeholder-Bewertungen (Betrieb,
 > Personalrat, Referatsleitung, Skeptiker, KI-Champion). Umgesetzt wird sie in Epic
-> [#1715](https://github.com/criew/opaa/issues/1715); gebaut ist davon noch nichts. Der
-> Entwurfshinweis entfällt, wenn der Maintainer die Spezifikation nach der Umsetzung abnimmt.
+> [#1715](https://github.com/criew/opaa/issues/1715). **Gebaut sind Schalter und Kanaleinstellungen
+> (#1717), die Bibliotheksfreigabe (#1731), die Zugangstokens samt Oberfläche (#1718, #1719), der
+> Such- und Abrufweg mit Kontingent und Abflussalarm (#1720) sowie der MCP-Server (#1721);** die
+> Abschnitte „Umsetzungsstand" nennen die Einzelheiten. Das Betriebs- und Anwendungswissen dazu steht
+> im Handbuchkapitel „Fremdzugänge" (`docs/handbuch/fremdzugaenge.md`), einschließlich der
+> Einrichtungsanleitungen je Client und der Störungssuche. Der Entwurfshinweis entfällt, wenn der
+> Maintainer die Spezifikation nach der Umsetzung abnimmt.
 
 ## Motivation
 
@@ -187,9 +192,12 @@ Zeitpunkt der letzten Änderung prominent an, und das Handbuchkapitel trägt ein
 Wiederherstellung": Schalterzustand, freigegebene Bibliotheken und Tokenbestand gegen den Stand vor
 dem Restore prüfen.
 
-Ob Tokens auch bei ausgeschaltetem Kanal **angelegt** werden können, entscheidet die Umsetzung zu
-Gunsten der Verständlichkeit: Die Oberfläche zeigt die Verwaltung dann mit einem deutlichen Hinweis,
-dass der Kanal derzeit geschlossen ist (Annahme, siehe [Offene Fragen](#offene-fragen--zukünftige-erweiterungen)).
+**Bei ausgeschaltetem Kanal lassen sich Tokens ansehen und widerrufen, aber keine neuen anlegen**
+(entschieden in #1718/#1719). Die Oberfläche sagt es an der Stelle der Handlung, statt die Verwaltung
+zu verbergen: Die Liste bleibt sichtbar, der Widerruf bleibt möglich — er ist die Handlung, die bei
+geschlossenem Kanal am ehesten gebraucht wird —, und der Anlegedialog nennt den geschlossenen Kanal
+als Grund. Technisch fällt das zusammen: `eligible-libraries` ist bei geschlossenem Kanal leer, und
+eine Ausstellung ohne wählbare Bibliothek gibt es nicht.
 
 ---
 
@@ -794,8 +802,6 @@ dasselbe ohne Beobachtung: Ein ungenutztes Token verschwindet spätestens nach 9
 
 ## Offene Fragen / Zukünftige Erweiterungen
 
-- **Tokens anlegen bei geschlossenem Kanal** — erlaubt mit Hinweis (Annahme) oder gesperrt? Die
-  Antwort hängt daran, ob eine Behörde den Kanal typischerweise vor oder nach der Einrichtung öffnet.
 - **Der Vorgabewert des Kontingents** ist geraten, solange er nicht einmal gemessen wurde: Wie oft ein
   Assistenzwerkzeug je Arbeitsschritt `search` und `fetch` aufruft, weiß man erst im Betrieb — und
   weil nicht gezählt wird, auch dann nicht von allein. Eine einmalige Messung in einer

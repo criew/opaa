@@ -553,8 +553,8 @@ gefunden, und in derselben Reihenfolge. Eine Regressionsprüfung hält diese Gle
 
 Der Endpunkt steht **jeder angemeldeten Person** offen und hängt nicht am Schalter der Fremdzugänge
 — der ist der Notaus des Fremdzugangskanals, nicht der dieses Endpunkts. Gedacht ist er für fremde
-Werkzeuge, die die Antwort selbst formulieren (siehe
-[external-access.md](../features/external-access.md)).
+Werkzeuge, die die Antwort selbst formulieren; wie diese angebunden werden, steht im Kapitel
+[Fremdzugänge](fremdzugaenge.md).
 
 Ein Treffer ist eine **einzelne Fundstelle**, nicht ein Dokument: Trefferkennung, Titel, Auszug der
 Passage, Herkunft (Bibliothek, Dokument, Ortsangabe), die Metadaten des Dokuments, der Rangwert und
@@ -575,7 +575,7 @@ keine Auskunft.
 
 `GET /api/v1/search/libraries` nennt die Bibliotheken, in denen dieser Aufrufer suchen kann —
 Kennung, Name, Beschreibung. Für eine angemeldete Person sind das ihre lesbaren Bibliotheken; für
-ein Zugangstoken später die Schnittmenge aus Rechten, Freigabe und Tokenauswahl, weil dieselbe
+ein Zugangstoken die Schnittmenge aus Rechten, Freigabe und Tokenauswahl, weil dieselbe
 Stelle den Suchbereich bestimmt. Es ist die einzige Stelle, an der ein fremdes Werkzeug den Umfang
 seines Zugangs erfährt.
 
@@ -798,3 +798,4 @@ entsprechen.
 - Kernfelder, Filter, Kontextpräfix und Beleg-Anzeige: [Metadaten](metadaten.md)
 - Umgebungsvariablen, Reranking einschalten, Grenze des Volltextpfads:
   [Deployment](deployment.md)
+- Wie fremde KI-Werkzeuge diesen Such- und Abrufweg benutzen: [Fremdzugänge](fremdzugaenge.md)
