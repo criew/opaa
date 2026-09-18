@@ -1,6 +1,6 @@
 # Fremdzugänge: Zugangstokens und MCP-Server
 
-> **Status: Entwurf.** Beschlossen am 18.09.2026 auf Grundlage der Recherche „OPAA als Wissensschicht
+> **Status: Umgesetzt und abgenommen (18.09.2026).** Beschlossen am 18.09.2026 auf Grundlage der Recherche „OPAA als Wissensschicht
 > für andere KI-Tools", überarbeitet am 18.09.2026 nach fünf Stakeholder-Bewertungen (Betrieb,
 > Personalrat, Referatsleitung, Skeptiker, KI-Champion). Umgesetzt wird sie in Epic
 > [#1715](https://github.com/criew/opaa/issues/1715). **Gebaut sind Schalter und Kanaleinstellungen
@@ -8,8 +8,8 @@
 > Such- und Abrufweg mit Kontingent und Abflussalarm (#1720) sowie der MCP-Server (#1721);** die
 > Abschnitte „Umsetzungsstand" nennen die Einzelheiten. Das Betriebs- und Anwendungswissen dazu steht
 > im Handbuchkapitel „Fremdzugänge" (`docs/handbuch/fremdzugaenge.md`), einschließlich der
-> Einrichtungsanleitungen je Client und der Störungssuche. Der Entwurfshinweis entfällt, wenn der
-> Maintainer die Spezifikation nach der Umsetzung abnimmt.
+> Einrichtungsanleitungen je Client und der Störungssuche. Abgenommen vom Maintainer am 18.09.2026 auf der
+> Demo-Installation; Nachträge #1765 und #1766 sind enthalten.
 
 ## Motivation
 
