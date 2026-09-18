@@ -156,6 +156,71 @@ class PassageFetchServiceTest {
     assertThat(fetched.text()).hasSizeLessThanOrEqualTo(12);
   }
 
+  /**
+   * A document whose passages carry no {@code chunk_index} is in no index page - the whole-document
+   * path would otherwise answer with an empty text instead of the passage it does have.
+   */
+  @Test
+  void aHitWithoutAChunkIndexStillYieldsItsOwnText() {
+    ChunkInspection unindexed =
+        new ChunkInspection(
+            HIT_ID,
+            DOCUMENT_ID,
+            "akte.pdf",
+            LIBRARY_ID,
+            "Akten",
+            null,
+            "Der ganze Text.",
+            Map.of());
+    when(chunks.findChunk(ORGANIZATION_ID, HIT_ID)).thenReturn(Optional.of(unindexed));
+
+    FetchedPassage whole = service(properties(1, 200_000)).fetch(caller(), HIT_ID, true);
+
+    assertThat(whole.text()).isEqualTo("Der ganze Text.");
+    verify(chunks, never()).listChunkPage(any(), any(), any(), anyInt());
+  }
+
+  /**
+   * A document that resolves no indexed passage at all falls back to the hit's own text rather than
+   * to an empty one.
+   */
+  @Test
+  void anEmptyWalkFallsBackToTheHitsOwnText() {
+    when(chunks.listChunkPage(eq(ORGANIZATION_ID), eq(DOCUMENT_ID), any(), anyInt()))
+        .thenReturn(List.of());
+
+    FetchedPassage whole = service(properties(1, 200_000)).fetch(caller(), HIT_ID, true);
+
+    assertThat(whole.text()).isEqualTo(chunk(40).content());
+  }
+
+  /**
+   * The walk stops at the exact cap width, so nothing was cut - but a further page exists. That is
+   * a truncation, and the probe read is what makes the flag say so.
+   */
+  @Test
+  void aWalkEndingExactlyAtTheCapReportsTruncationWhenMoreRemains() {
+    List<ChunkInspection> firstPage = new ArrayList<>();
+    for (int index = 0; index < PassageFetchService.PAGE_SIZE; index++) {
+      firstPage.add(chunk(index));
+    }
+    int exactWidth = PassageText.join(contentsOf(firstPage), 1_000_000).text().length();
+    when(chunks.listChunkPage(
+            eq(ORGANIZATION_ID), eq(DOCUMENT_ID), any(), eq(PassageFetchService.PAGE_SIZE)))
+        .thenReturn(firstPage);
+    when(chunks.listChunkPage(eq(ORGANIZATION_ID), eq(DOCUMENT_ID), any(), eq(1)))
+        .thenReturn(List.of(chunk(PassageFetchService.PAGE_SIZE)));
+
+    FetchedPassage whole = service(properties(1, exactWidth)).fetch(caller(), HIT_ID, true);
+
+    assertThat(whole.text()).hasSize(exactWidth);
+    assertThat(whole.truncated()).isTrue();
+  }
+
+  private static List<String> contentsOf(List<ChunkInspection> page) {
+    return page.stream().map(ChunkInspection::content).toList();
+  }
+
   @Test
   void quotaAndAlertSeeTheTokenOfTheRequest() {
     UUID tokenId = UUID.randomUUID();

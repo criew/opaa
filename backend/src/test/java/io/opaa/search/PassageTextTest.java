@@ -74,7 +74,7 @@ class PassageTextTest {
     assertThat(cut.text().chars().anyMatch(c -> Character.isHighSurrogate((char) c))).isFalse();
   }
 
-  /** Once the cap is reached, a further passage cannot change the result. */
+  /** Once the cap is reached, a further passage cannot change the text - only the flag. */
   @Test
   void aFullJoinerIgnoresFurtherPassages() {
     PassageText.Joiner joiner = new PassageText.Joiner(5);
@@ -84,5 +84,27 @@ class PassageTextTest {
     joiner.append("ghijkl");
 
     assertThat(joiner.finish().text()).isEqualTo("abcde");
+  }
+
+  /**
+   * The exact cap width: the text fits to the character, so nothing is cut - but a further passage
+   * no longer fits and is dropped. That is a truncation, and the flag has to say so, or a client
+   * treats an incomplete text as complete.
+   */
+  @Test
+  void aPassageDroppedAtTheExactCapWidthCountsAsTruncation() {
+    PassageText.Joined joined = PassageText.join(List.of("abcde", "fghij"), 5);
+
+    assertThat(joined.text()).isEqualTo("abcde");
+    assertThat(joined.truncated()).isTrue();
+  }
+
+  /** The same width without anything left over is not a truncation. */
+  @Test
+  void textThatFillsTheCapExactlyAndEndsThereIsNotTruncated() {
+    PassageText.Joined joined = PassageText.join(List.of("abcde"), 5);
+
+    assertThat(joined.text()).isEqualTo("abcde");
+    assertThat(joined.truncated()).isFalse();
   }
 }

@@ -27,21 +27,24 @@ final class PassageText {
 
   private PassageText() {}
 
-  /** {@code passages} joined without a cap - the whole selection is known to be small. */
+  /**
+   * {@code passages} joined under {@code limit}. Every passage is offered, so a passage that no
+   * longer fits marks the result as truncated instead of disappearing silently - this list is the
+   * bounded one (a passage and its neighbours), where offering all of them costs nothing.
+   */
   static Joined join(List<String> passages, int limit) {
     Joiner joiner = new Joiner(limit);
     for (String passage : passages) {
       joiner.append(passage);
-      if (joiner.isFull()) {
-        break;
-      }
     }
     return joiner.finish();
   }
 
   /**
    * Accumulates passages up to a character cap. Once {@link #isFull()} answers {@code true}, no
-   * further passage changes the result, which is what lets a caller stop loading them.
+   * further passage can be written, which is what lets a caller stop loading them - and a passage
+   * offered from then on marks the result as {@code truncated}, so "stopped reading" and "cut
+   * something off" cannot drift apart at the exact cap width.
    */
   static final class Joiner {
 
@@ -57,8 +60,27 @@ final class PassageText {
       return text.length() >= limit;
     }
 
+    /** Marks the result truncated without writing anything - for content left unread. */
+    void markTruncated() {
+      truncated = true;
+    }
+
+    boolean truncated() {
+      return truncated;
+    }
+
+    /** Whether nothing was written yet - the caller's signal to fall back to its own text. */
+    boolean isEmpty() {
+      return text.isEmpty();
+    }
+
     void append(String passage) {
-      if (passage == null || passage.isEmpty() || isFull()) {
+      if (passage == null || passage.isEmpty()) {
+        return;
+      }
+      if (isFull()) {
+        // Offered but not written: the text ends exactly at the cap and there was more.
+        truncated = true;
         return;
       }
       if (text.isEmpty()) {

@@ -124,27 +124,42 @@ public class PassageFetchService {
 
   /**
    * The whole document, read page by page and stopped as soon as the cap is reached. Pages are
-   * keyed by {@code chunk_index}, so a document whose indices are not gap-free still advances.
+   * keyed by {@code chunk_index}, so a document whose indices are not gap-free still advances - and
+   * a passage without an index is in no page at all, which is why a hit without one falls back to
+   * its own text rather than to nothing.
    */
   private PassageText.Joined wholeDocument(UUID organizationId, ChunkInspection hit) {
+    if (hit.chunkIndex() == null) {
+      return PassageText.join(List.of(hit.content()), properties.fetchMaxCharacters());
+    }
     PassageText.Joiner joiner = new PassageText.Joiner(properties.fetchMaxCharacters());
     Integer after = null;
+    boolean exhausted = false;
     while (!joiner.isFull()) {
       List<ChunkInspection> page =
           chunks.listChunkPage(organizationId, hit.documentId(), after, PAGE_SIZE);
       if (page.isEmpty()) {
+        exhausted = true;
         break;
       }
-      for (ChunkInspection passage : page) {
-        joiner.append(passage.content());
-        if (joiner.isFull()) {
-          break;
-        }
-      }
+      // Every passage of the page is offered even after the cap is reached: an offered passage
+      // marks the result truncated, which is what a caller reads.
+      page.forEach(passage -> joiner.append(passage.content()));
       after = page.get(page.size() - 1).chunkIndex();
-      if (after == null) {
+      if (after == null || page.size() < PAGE_SIZE) {
+        exhausted = true;
         break;
       }
+    }
+    // The cap was hit exactly at a page boundary: one probe says whether anything was left.
+    if (!exhausted
+        && !joiner.truncated()
+        && !chunks.listChunkPage(organizationId, hit.documentId(), after, 1).isEmpty()) {
+      joiner.markTruncated();
+    }
+    if (joiner.isEmpty()) {
+      // No indexed passage resolved at all - the hit's own text is still better than nothing.
+      return PassageText.join(List.of(hit.content()), properties.fetchMaxCharacters());
     }
     return joiner.finish();
   }
