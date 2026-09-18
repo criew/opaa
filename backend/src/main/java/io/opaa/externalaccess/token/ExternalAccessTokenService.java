@@ -272,17 +272,23 @@ public class ExternalAccessTokenService {
 
     /** The selection in a stable order, with the name of every library that still exists. */
     public List<SelectedLibrary> libraries() {
+      Set<UUID> live = token.getLiveLibraryIds();
       List<SelectedLibrary> result = new ArrayList<>();
       for (UUID libraryId : token.getSelectedLibraryIds()) {
-        result.add(new SelectedLibrary(libraryId, libraryNames.getOrDefault(libraryId, "")));
+        result.add(
+            new SelectedLibrary(
+                libraryId, libraryNames.getOrDefault(libraryId, ""), !live.contains(libraryId)));
       }
       result.sort(Comparator.comparing(SelectedLibrary::name).thenComparing(SelectedLibrary::id));
       return result;
     }
   }
 
-  /** One entry of a token's selection, as both lists show it. */
-  public record SelectedLibrary(UUID id, String name) {}
+  /**
+   * One entry of a token's selection, as both lists show it. {@code suspended} marks an entry whose
+   * release is gone: it is shown, never dropped, and a later release does not revive it.
+   */
+  public record SelectedLibrary(UUID id, String name, boolean suspended) {}
 
   /** A freshly issued token; {@code rawValue} exists here and in the one response, nowhere else. */
   public record IssuedExternalAccessToken(

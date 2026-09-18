@@ -32,6 +32,9 @@ function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
 }
 
 /**
+ * Die Seite rendert seit #1719 zwei Reiter; ohne Bereichsangabe steht der Kanalreiter - der
+ * Einstieg der Bereichsnavigation.
+ *
  * Die Kanaleinstellungen der Fremdzugänge (#1717): Rollenschranke, Voreinstellung „aus“ samt
  * Hausnetz, der Hinweis auf die Personalvertretung, das sichtbare Änderungsdatum, das Speichern
  * einer Änderung, das Zurücksetzen des Einleitungstextes und die abgewiesene Netzangabe.
@@ -43,7 +46,10 @@ describe('ExternalAccessSettingsPage', () => {
 
   it('zeigt einem Konto ohne Systemverwaltung nur den Hinweis', () => {
     signInAs('USER')
-    renderWithProviders(<ExternalAccessSettingsPage />)
+    renderWithProviders(<ExternalAccessSettingsPage />, {
+      withRouter: true,
+      initialRoute: '/admin/external-access',
+    })
 
     expect(screen.getByText(/nicht freigegeben/i)).toBeInTheDocument()
     expect(screen.queryByRole('switch', { name: /Fremdzugänge erlauben/ })).not.toBeInTheDocument()
@@ -51,7 +57,10 @@ describe('ExternalAccessSettingsPage', () => {
 
   it('zeigt eine frische Installation als ausgeschaltet, mit Hausnetz und Änderungsdatum', async () => {
     signInAs('SYSTEM_ADMIN')
-    renderWithProviders(<ExternalAccessSettingsPage />)
+    renderWithProviders(<ExternalAccessSettingsPage />, {
+      withRouter: true,
+      initialRoute: '/admin/external-access',
+    })
 
     const switchControl = await screen.findByRole('switch', { name: 'Fremdzugänge erlauben' })
     expect(switchControl).not.toBeChecked()
@@ -67,7 +76,10 @@ describe('ExternalAccessSettingsPage', () => {
 
   it('nennt die Beteiligung der Personalvertretung und die Folgen des Ausschaltens', async () => {
     signInAs('SYSTEM_ADMIN')
-    renderWithProviders(<ExternalAccessSettingsPage />)
+    renderWithProviders(<ExternalAccessSettingsPage />, {
+      withRouter: true,
+      initialRoute: '/admin/external-access',
+    })
 
     expect(await screen.findByText(/Beteiligung der Personalvertretung/)).toBeInTheDocument()
     expect(screen.getByText(/Die Tokens bleiben erhalten/)).toBeInTheDocument()
@@ -76,7 +88,10 @@ describe('ExternalAccessSettingsPage', () => {
   it('schaltet den Kanal ein und speichert die geänderten Werte', async () => {
     const user = userEvent.setup()
     signInAs('SYSTEM_ADMIN')
-    renderWithProviders(<ExternalAccessSettingsPage />)
+    renderWithProviders(<ExternalAccessSettingsPage />, {
+      withRouter: true,
+      initialRoute: '/admin/external-access',
+    })
 
     const switchControl = await screen.findByRole('switch', { name: 'Fremdzugänge erlauben' })
     await user.click(switchControl)
@@ -96,7 +111,10 @@ describe('ExternalAccessSettingsPage', () => {
   it('setzt den Einleitungstext auf den Vorgabetext zurück', async () => {
     const user = userEvent.setup()
     signInAs('SYSTEM_ADMIN')
-    renderWithProviders(<ExternalAccessSettingsPage />)
+    renderWithProviders(<ExternalAccessSettingsPage />, {
+      withRouter: true,
+      initialRoute: '/admin/external-access',
+    })
 
     const instructions = await screen.findByLabelText('Einleitungstext')
     await user.clear(instructions)
@@ -111,7 +129,10 @@ describe('ExternalAccessSettingsPage', () => {
   it('zeigt eine ungültige Netzangabe am Feld statt sie zu speichern', async () => {
     const user = userEvent.setup()
     signInAs('SYSTEM_ADMIN')
-    renderWithProviders(<ExternalAccessSettingsPage />)
+    renderWithProviders(<ExternalAccessSettingsPage />, {
+      withRouter: true,
+      initialRoute: '/admin/external-access',
+    })
 
     const cidrs = await screen.findByLabelText('Netzbereiche des Kanals')
     await user.clear(cidrs)

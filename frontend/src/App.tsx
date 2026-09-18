@@ -176,6 +176,7 @@ export default function App() {
                 <Route path="admin/mail" element={<Navigate to="/admin/mail/server" replace />} />
                 <Route path="admin/mail/:tab" element={<MailSettingsPage />} />
                 <Route path="admin/external-access" element={<ExternalAccessSettingsPage />} />
+                <Route path="admin/external-access/:tab" element={<ExternalAccessSettingsPage />} />
                 <Route
                   path="admin/search"
                   element={<Navigate to="/admin/search/overview" replace />}
@@ -186,6 +187,7 @@ export default function App() {
                   no space column, no secondary column. */}
               <Route element={<GlobalAreaLayout />}>
                 <Route path="settings" element={<SettingsPage />} />
+                <Route path="settings/:tab" element={<SettingsPage />} />
               </Route>
               <Route path="*" element={<Navigate to="/chat" replace />} />
             </Route>

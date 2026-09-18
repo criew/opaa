@@ -11,7 +11,7 @@ import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import type { LocalUserResponse, MailDeliveryPath } from '../../../types/api'
 import { fontFamily, radius } from '../../../theme/tokens'
 import { MAIL_DELIVERY_PATH_TEXT, SHOWN_ONCE_HINT } from './localUserLabels'
-import { copyOnce } from './copyOnce'
+import { copyOnce } from '../../../utils/copyOnce'
 
 export interface SetupLinkHandover {
   user: LocalUserResponse
