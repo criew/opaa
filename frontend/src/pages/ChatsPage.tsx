@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -76,6 +76,10 @@ export default function ChatsPage() {
   const [statusMessage, setStatusMessage] = useState('')
   const [isBusy, setIsBusy] = useState(false)
   const idPrefix = useId()
+  const selectAllRef = useRef<HTMLInputElement>(null)
+  // The action buttons are disabled while a bulk action runs and once the selection is gone, which
+  // drops their focus; it is placed back into the toolbar (or onto the tab) once the list settled.
+  const restoreFocusRef = useRef(false)
 
   useEffect(() => {
     if (spaces.length === 0) void loadSpaces()
@@ -111,6 +115,13 @@ export default function ChatsPage() {
   const selectedIds = rows.filter((chat) => selection.has(chat.id)).map((chat) => chat.id)
   const allSelected = rows.length > 0 && selectedIds.length === rows.length
 
+  useEffect(() => {
+    if (!restoreFocusRef.current || isBusy) return
+    restoreFocusRef.current = false
+    if (rows.length > 0) selectAllRef.current?.focus()
+    else document.getElementById(`${idPrefix}-tab-${tab}`)?.focus()
+  }, [isBusy, rows.length, tab, idPrefix])
+
   function changeTab(next: ChatsTab) {
     setTab(next)
     setSelection(EMPTY_SELECTION)
@@ -144,6 +155,7 @@ export default function ChatsPage() {
     setIsBusy(true)
     setStatusMessage('')
     const applied = await applyBulkAction(spaceId, action, ids)
+    restoreFocusRef.current = true
     setIsBusy(false)
     if (applied === null) return
     setSelection(EMPTY_SELECTION)
@@ -225,6 +237,7 @@ export default function ChatsPage() {
               control={
                 <Checkbox
                   size="small"
+                  slotProps={{ input: { ref: selectAllRef } }}
                   checked={allSelected}
                   indeterminate={!allSelected && selectedIds.length > 0}
                   onChange={toggleAll}

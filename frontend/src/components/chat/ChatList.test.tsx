@@ -37,7 +37,7 @@ describe('ChatList', () => {
   it('shows a placeholder when the space has no chats', async () => {
     renderWithProviders(<ChatList spaceId="space-phoenix" />)
 
-    expect(await screen.findByText('Noch keine Chats in diesem Space.')).toBeInTheDocument()
+    expect(await screen.findByText('Keine aktiven Chats in diesem Space.')).toBeInTheDocument()
   })
 
   // #548 review, nit a: "Neuer Chat" must not eagerly persist an empty chat - it only navigates to
