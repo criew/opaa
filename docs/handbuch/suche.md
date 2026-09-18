@@ -542,6 +542,51 @@ des ersten Auftretens in der Endauswahl:
 Die Fundstellenzeile unter der Antwort und das Belegfenster zeigen dieselben Fundstellen; das
 Belegfenster stellt zitierte vor nicht zitierte und zeigt den Auszug jedes Chunks.
 
+### 7.1 Suchen ohne Antwort
+
+Neben der Abfrage gibt es einen Weg, der **bei Stufe 9 aufhört**: `POST /api/v1/search` liefert die
+Endauswahl als Trefferliste und ruft kein Chat-Modell zur Antworterzeugung auf. Die Stufen 1 bis 9
+laufen unverändert — Suchbereich, Metadatenfilter, Teilfragen, Vektor- und Volltextsuche, Auswahl je
+Liste, Fusion, Reranking und Dokument-Vervollständigung, mit dem Rechtefilter in der Suche selbst.
+Es gibt keinen zweiten Suchweg: Was hier gefunden wird, hätte dieselbe Person auch über die Abfrage
+gefunden, und in derselben Reihenfolge. Eine Regressionsprüfung hält diese Gleichheit fest.
+
+Der Endpunkt steht **jeder angemeldeten Person** offen und hängt nicht am Schalter der Fremdzugänge
+— der ist der Notaus des Fremdzugangskanals, nicht der dieses Endpunkts. Gedacht ist er für fremde
+Werkzeuge, die die Antwort selbst formulieren (siehe
+[external-access.md](../features/external-access.md)).
+
+Ein Treffer ist eine **einzelne Fundstelle**, nicht ein Dokument: Trefferkennung, Titel, Auszug der
+Passage, Herkunft (Bibliothek, Dokument, Ortsangabe), die Metadaten des Dokuments, der Rangwert und
+der Pfad, unter dem das Original heruntergeladen wird. Die Trefferkennung ist stabil und nicht
+durchzählbar; eine ratbare Kennung machte den Abruf zu einem Auflistungsweg über fremde Bestände,
+auch wenn jeder einzelne Abruf richtig geprüft wird. Der Rechtefilter bleibt trotzdem die erste
+Schranke.
+
+`GET /api/v1/search/hits/{hitId}` holt den Text hinter einem Treffer. **Vorgabe ist der Abschnitt
+mit seinen angrenzenden Abschnitten** samt Überschriftenpfad, nicht das ganze Dokument: Ein
+Assistenzwerkzeug arbeitet mit begrenztem Kontextfenster, und wer den Bestand abziehen will, soll es
+ausdrücklich verlangen müssen. Das ganze Dokument gibt es mit `full=true`, bis zu einem
+serverseitigen Zeichen-Deckel (Abschnitt 10.3). Der Text ist der gespeicherte Chunk-Text — Tabellen
+also als Markdown, genau wie ihn der Antwortweg bekommt —, und die Überlappung zweier angrenzender
+Abschnitte wird einmal geschrieben, nicht zweimal. Eine Trefferkennung außerhalb der eigenen Sicht
+beantwortet der Abruf **genau wie eine unbekannte**; über die Existenz fremder Bestände gibt er
+keine Auskunft.
+
+`GET /api/v1/search/libraries` nennt die Bibliotheken, in denen dieser Aufrufer suchen kann —
+Kennung, Name, Beschreibung. Für eine angemeldete Person sind das ihre lesbaren Bibliotheken; für
+ein Zugangstoken später die Schnittmenge aus Rechten, Freigabe und Tokenauswahl, weil dieselbe
+Stelle den Suchbereich bestimmt. Es ist die einzige Stelle, an der ein fremdes Werkzeug den Umfang
+seines Zugangs erfährt.
+
+Abgeschnitten wird gemeldet: Das Feld `truncated` gilt für **beide** Abrufarten. Mit den
+Vorgabewerten bleibt ein Abschnitt samt Nachbarn weit unter dem Deckel — die Zahl der Nachbarn und
+die Chunk-Größe lassen sich aber heraufsetzen und der Deckel herabsetzen, deshalb liest ein Client
+das Feld, statt es aus `full` zu schließen.
+
+Weder die Suche noch der Abruf noch die Auflistung erzeugt einen Eintrag im Nachweisprotokoll —
+dieselbe Zusage, die für die einzelne Abfrage gilt.
+
 ## 8. Diagnose: warum sieht eine Person ein Dokument nicht?
 
 Das ist die Frage, die im Betrieb tatsächlich gestellt wird, und sie hat zwei völlig verschiedene
@@ -707,6 +752,16 @@ Umgebungsvariable im Kapitel [Deployment](deployment.md#alle-umgebungsvariablen)
 | `search-window-turns` | 2 | Runden des Gesprächsfensters, die die Teilfragen-Zerlegung sieht (0 bis `conversation-window-messages` ÷ 2); 0 heißt „nur die Frage" |
 | `metadata-filter.*` | 0,90 / 0,75 / 0,75 / 5m | Füllstandsschwellen für Dokumentart, Datum und Bibliotheksfelder, Cache der Filteroptionen |
 | `pipeline.disabled-stages` | leer | ganze Stufen aus der Kette nehmen; nur für Entwicklung und Messung, der Suchbereich ist nicht abschaltbar |
+
+Der Such- und Abrufweg ohne Antwort (Abschnitt 7.1) hat eigene Schlüssel unter `opaa.search.*`:
+
+| Schlüssel | Standard | Wirkung |
+|---|---|---|
+| `default-max-hits` | 10 | Treffer, wenn die Anfrage keine Zahl nennt; mehr als die Endauswahl (`opaa.query.top-k`) gibt es nie |
+| `max-hits` | 50 | serverseitige Obergrenze; eine größere Anfrage wird darauf gekürzt, nicht abgelehnt |
+| `excerpt-max-characters` | 1500 | Länge des Auszugs je Treffer |
+| `fetch-max-characters` | 200000 | Zeichen-Deckel des Abrufs mit `full=true`; darüber wird abgeschnitten und die Antwort sagt es |
+| `context-passages` | 1 | angrenzende Abschnitte je Seite beim Abruf ohne `full` (0 bis 10) |
 
 Ein einziger Wert der Gesprächsnotiz ist einstellbar, und er steht unter einem eigenen Präfix, weil
 die Notiz Chatinhalt ist und kein Suchparameter:
