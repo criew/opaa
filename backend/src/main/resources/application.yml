@@ -114,6 +114,24 @@ spring:
         api-key: ${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}
         base-url: ${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}
         model: ${OPAA_OPENAI_EMBEDDING_MODEL:nomic-embed-text}
+    mcp:
+      server:
+        # The MCP server of the external-access channel (#1721, ADR-0035): stateless Streamable
+        # HTTP, synchronous because the tools call synchronous domain services. The path belongs to
+        # the streamable-http group even in the stateless mode - a key under "stateless." would be
+        # ignored without a word, and the filter chain rule would then guard another path than the
+        # endpoint listens on (io.opaa.mcp.McpEndpoint derives both from this value).
+        protocol: STATELESS
+        type: SYNC
+        name: opaa
+        streamable-http:
+          mcp-endpoint: /mcp
+        # Tools are the only surface offered; resources, prompts and completions each carry their
+        # own permission question, and registering one is the decision to expose it.
+        capabilities:
+          resource: false
+          prompt: false
+          completion: false
     vectorstore:
       pgvector:
         initialize-schema: true

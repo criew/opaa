@@ -56,13 +56,38 @@ public class ExternalAccessTokenAuthenticator {
   /** The per-call check; see the class Javadoc for its order and its cost. */
   @Transactional(readOnly = true)
   public Result authenticate(String rawValue) {
-    if (!ExternalAccessTokenValues.looksLikeAccessToken(rawValue)) {
-      return new Result.Refused(ExternalAccessTokenRejection.INVALID_TOKEN);
-    }
     if (!settings.isEnabled()) {
       // Checked before the lookup: a closed channel answers the same way for every value, so a
       // Notaus does not turn into an oracle for which values exist.
       return new Result.Refused(ExternalAccessTokenRejection.CHANNEL_CLOSED);
+    }
+    return check(rawValue);
+  }
+
+  /**
+   * The same chain with the installation switch evaluated <b>last</b>: a refusal of {@link
+   * ExternalAccessTokenRejection#CHANNEL_CLOSED} then means "this value would work if the channel
+   * were open".
+   *
+   * <p>Exactly one path may ask this, and it pays for it: it becomes an oracle for which values
+   * exist while the channel is closed. The MCP endpoint owes a closed channel two different answers
+   * - {@code 503} for a usable token, {@code 404} for anything else (#1721, ADR-0035) - and cannot
+   * tell them apart without checking the value first.
+   */
+  @Transactional(readOnly = true)
+  public Result authenticateWithSwitchLast(String rawValue) {
+    Result result = check(rawValue);
+    if (!settings.isEnabled()) {
+      return result instanceof Result.Authenticated
+          ? new Result.Refused(ExternalAccessTokenRejection.CHANNEL_CLOSED)
+          : result;
+    }
+    return result;
+  }
+
+  private Result check(String rawValue) {
+    if (!ExternalAccessTokenValues.looksLikeAccessToken(rawValue)) {
+      return new Result.Refused(ExternalAccessTokenRejection.INVALID_TOKEN);
     }
     Optional<ExternalAccessToken> found =
         tokens.findByTokenLookupHash(

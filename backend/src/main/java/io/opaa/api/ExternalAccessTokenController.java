@@ -3,9 +3,12 @@ package io.opaa.api;
 import io.opaa.api.dto.CreateExternalAccessTokenRequest;
 import io.opaa.api.dto.CreatedExternalAccessTokenResponse;
 import io.opaa.api.dto.EligibleExternalAccessLibraryListResponse;
+import io.opaa.api.dto.ExternalAccessChannelInfoResponse;
 import io.opaa.api.dto.OwnExternalAccessTokenListResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.externalaccess.ExternalAccessSettings.Values;
+import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.externalaccess.token.ExternalAccessTokenService;
 import io.opaa.externalaccess.token.ExternalAccessTokenService.IssuedExternalAccessToken;
 import jakarta.validation.Valid;
@@ -23,8 +26,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The person's own access tokens (ADR-0035, Entscheidung 2): issue, list, revoke - and the set of
- * libraries an issuance accepts.
+ * The person's own access tokens (ADR-0035, Entscheidung 2): issue, list, revoke - the set of
+ * libraries an issuance accepts, and the two channel values managing them needs.
  *
  * <p>There is deliberately <b>no update path</b>. The library selection of an issued token cannot
  * be changed - a change is a new token - so an attempt reaches no handler and is answered 405/404
@@ -35,11 +38,27 @@ import org.springframework.web.bind.annotation.RestController;
 public class ExternalAccessTokenController {
 
   private final ExternalAccessTokenService tokenService;
+  private final ExternalAccessSettingsService settingsService;
   private final Clock clock;
 
-  public ExternalAccessTokenController(ExternalAccessTokenService tokenService, Clock clock) {
+  public ExternalAccessTokenController(
+      ExternalAccessTokenService tokenService,
+      ExternalAccessSettingsService settingsService,
+      Clock clock) {
     this.tokenService = tokenService;
+    this.settingsService = settingsService;
     this.clock = clock;
+  }
+
+  /**
+   * Whether the channel is open and how long a token may live - and nothing else of the channel
+   * settings. Quota, networks, instructions text and the last change stay with the Systemverwaltung
+   * (#1719); a person managing their own tokens has no use for them.
+   */
+  @GetMapping("/settings")
+  public ExternalAccessChannelInfoResponse getOwnExternalAccessChannelInfo() {
+    Values values = settingsService.current().values();
+    return new ExternalAccessChannelInfoResponse(values.enabled(), values.tokenMaxLifetimeDays());
   }
 
   @GetMapping("/tokens")

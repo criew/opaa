@@ -137,8 +137,12 @@ public class ExternalAccessMassRetrievalAlarm {
     }
   }
 
-  /** Forgets the window and the cooldown - for a test, and for nothing else. */
-  void reset() {
+  /**
+   * Forgets the window and the cooldown - for a test, and for nothing else. Public because the
+   * window is one shared singleton: a class that drives the alert has to leave it as it found it,
+   * and one that asserts on it has to start from a known state, whichever package it sits in.
+   */
+  public void reset() {
     synchronized (retrievals) {
       retrievals.clear();
       quietUntil = 0;

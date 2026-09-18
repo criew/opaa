@@ -11,7 +11,7 @@ import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import type { LocalUserResponse } from '../../../types/api'
 import { fontFamily, radius } from '../../../theme/tokens'
 import { SHOWN_ONCE_HINT } from './localUserLabels'
-import { copyOnce } from './copyOnce'
+import { copyOnce } from '../../../utils/copyOnce'
 
 /**
  * Die einmalige Anzeige eines Übergabe-Links (#1563, ADR-0033 Entscheidung 12) - wie beim
