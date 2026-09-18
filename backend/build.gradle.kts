@@ -520,6 +520,9 @@ tasks.named<Test>("test") {
 tasks.register<Javadoc>("testJavadoc") {
     source = sourceSets.test.get().allJava
     classpath = sourceSets.test.get().compileClasspath
+    // Own output directory: sharing `build/docs/javadoc` with the built-in `javadoc` task would
+    // make both tasks' up-to-date checks unreliable and let the later run overwrite the other.
+    setDestinationDir(layout.buildDirectory.dir("docs/test-javadoc").get().asFile)
 }
 tasks.named("javadoc") {
     dependsOn("testJavadoc")
