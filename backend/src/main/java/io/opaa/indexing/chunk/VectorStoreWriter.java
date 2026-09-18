@@ -41,7 +41,7 @@ public class VectorStoreWriter {
       JdbcTemplate jdbcTemplate,
       FullTextChunkStore fullTextChunkStore,
       ObjectMapper objectMapper,
-      @Value("${spring.ai.vectorstore.pgvector.schema-name:public}") String schemaName,
+      @Value("${opaa.database.schema}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
     this.jdbcTemplate = jdbcTemplate;
     this.fullTextChunkStore = fullTextChunkStore;

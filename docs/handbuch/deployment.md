@@ -1062,6 +1062,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_DB_URL` | `jdbc:postgresql://localhost:5432/opaa?prepareThreshold=0`; im Spring-Profil `docker` (ohne gesetzte Variable) stattdessen `jdbc:postgresql://postgres:5432/opaa?prepareThreshold=0` | nicht gesetzt (auskommentiert) — der `docker`-Profil-Default mit dem Hostnamen `postgres` gilt | JDBC-Verbindungs-URL. Der `bootRun`-Beispielwert (`localhost`) passt nur außerhalb von Docker Compose, deshalb lässt `.env.docker.example` die Variable bewusst auskommentiert — ein gesetzter Wert würde den `docker`-Profil-Default mit dem korrekten Hostnamen `postgres` überschreiben |
 | `OPAA_DB_USERNAME` | `opaa` | `opaa` | PostgreSQL-Benutzername |
 | `OPAA_DB_PASSWORD` | `opaa` | `opaa` | PostgreSQL-Passwort |
+| `OPAA_DB_SCHEMA` | `public` | nicht gesetzt (Anwendungs-Default gilt) | PostgreSQL-Schema, in dem OPAA alle Tabellen, Funktionen und die Liquibase-Verwaltungstabellen anlegt (siehe [„Eigenes Datenbankschema“](#eigenes-datenbankschema)). Nur Kleinbuchstaben, Ziffern und Unterstrich, nicht mit einer Ziffer beginnend — sonst verweigert das Backend den Start |
 | `OPAA_DB_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `5432`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `5432` | Host-Port, auf den `docker-compose.yml` den PostgreSQL-Container bindet (nur `127.0.0.1`) |
 | **LLM / Embedding** (ein einziger, openai-kompatibler Anbindungsweg — siehe [„LLM-Anbieter"](#llm-anbieter) unten) | | | |
 | `OPAA_OPENAI_API_KEY` | `sk-placeholder` (Platzhalter, kein gültiger Schlüssel — greift nur, falls kein spezifischerer Schlüssel gesetzt ist; ein lokal betriebener Ollama-Server braucht keinen echten) | nicht gesetzt (auskommentiert) — der Anwendungs-Default (Platzhalter) gilt | Zugangsschlüssel der openai-kompatiblen Schnittstelle |
@@ -2574,6 +2575,32 @@ docker compose down -v
 > Einsatz sind: das Signaturgeheimnis rotieren und die Sperren der Zwischenzeit erneut setzen. Warum
 > und in welcher Reihenfolge, steht unter
 > [„Nacharbeit nach einer Rücksicherung der Datenbank"](#nacharbeit-nach-einer-rücksicherung-der-datenbank).
+
+### Eigenes Datenbankschema
+
+Ohne weitere Angabe legt OPAA alles im Schema `public` an. Mit `OPAA_DB_SCHEMA` lässt sich ein
+anderes Schema wählen, etwa um OPAA neben anderen Anwendungen in einer gemeinsam genutzten Datenbank
+zu betreiben. Das Backend setzt dann den `search_path` jeder Verbindung auf `<schema>, public`;
+Migrationen, Tabellen der Anwendung, die Vektortabelle und die Liquibase-Verwaltungstabellen landen
+im gewählten Schema. `public` bleibt nur als Rückfall im Suchpfad, damit eine dort bereits
+installierte Erweiterung `vector` auffindbar bleibt.
+
+Voraussetzungen:
+
+- Das Schema **muss vor dem ersten Start existieren** und dem Datenbankkonto von OPAA gehören.
+  Fehlt es, bricht die Migration beim Start ab, statt stillschweigend in `public` anzulegen:
+
+  ```sql
+  CREATE SCHEMA opaa AUTHORIZATION opaa;
+  ```
+
+- Das Schema wird **vor der Erstinstallation** festgelegt. Ein späterer Wechsel verschiebt keine
+  Daten; die Installation im neuen Schema beginnt leer.
+- Die Rolle `opaa_audit_owner` (Protokolltabellen, siehe ADR-0015) ist clusterweit. Zwei
+  OPAA-Installationen in verschiedenen Schemas derselben PostgreSQL-Instanz teilen sich diese Rolle.
+
+Die Entscheidung und ihre Begründung stehen in
+[ADR-0034](../decisions/0034-liquibase-changeset-stil-und-schema.md).
 
 ## Volltextsuche (lexikalischer Suchpfad)
 

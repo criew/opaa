@@ -88,10 +88,10 @@ class VectorStoreExpressionIndexTest extends AbstractMigrationTest {
     createVectorStoreTable();
     try (Statement statement = connection.createStatement()) {
       statement.execute(
-          "CREATE INDEX idx_vector_store_library_id ON public.vector_store"
+          "CREATE INDEX idx_vector_store_library_id ON vector_store"
               + " ((metadata->>'library_id'))");
       statement.execute(
-          "CREATE INDEX idx_vector_store_document_id ON public.vector_store"
+          "CREATE INDEX idx_vector_store_document_id ON vector_store"
               + " ((metadata->>'document_id'))");
     }
 
@@ -104,7 +104,7 @@ class VectorStoreExpressionIndexTest extends AbstractMigrationTest {
   private void createVectorStoreTable() throws SQLException {
     try (Statement statement = connection.createStatement()) {
       statement.execute(
-          "CREATE TABLE public.vector_store (id uuid PRIMARY KEY, content text, metadata jsonb,"
+          "CREATE TABLE vector_store (id uuid PRIMARY KEY, content text, metadata jsonb,"
               + " embedding vector(3))");
     }
   }
@@ -115,7 +115,7 @@ class VectorStoreExpressionIndexTest extends AbstractMigrationTest {
       try (Statement statement = connection.createStatement();
           ResultSet rs =
               statement.executeQuery(
-                  "SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' AND indexname = '"
+                  "SELECT indexdef FROM pg_indexes WHERE schemaname = current_schema() AND indexname = '"
                       + indexName
                       + "'")) {
         assertThat(rs.next()).as("%s must exist", indexName).isTrue();
@@ -137,7 +137,7 @@ class VectorStoreExpressionIndexTest extends AbstractMigrationTest {
   private boolean tableExists(String tableName) throws SQLException {
     try (PreparedStatement statement =
         statementFor(
-            "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name"
+            "SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name"
                 + " = ?",
             tableName)) {
       try (ResultSet rs = statement.executeQuery()) {
@@ -149,7 +149,8 @@ class VectorStoreExpressionIndexTest extends AbstractMigrationTest {
   private boolean indexExists(String indexName) throws SQLException {
     try (PreparedStatement statement =
         statementFor(
-            "SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = ?", indexName)) {
+            "SELECT 1 FROM pg_indexes WHERE schemaname = current_schema() AND indexname = ?",
+            indexName)) {
       try (ResultSet rs = statement.executeQuery()) {
         return rs.next();
       }

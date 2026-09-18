@@ -24,7 +24,7 @@ databaseChangeLog:
         - sql:
             splitStatements: false
             sql: |
-              CREATE TABLE public.library_metadata_schema_changes (
+              CREATE TABLE library_metadata_schema_changes (
                   id uuid NOT NULL,
                   field_id uuid NOT NULL,
                   value_id uuid,
@@ -39,22 +39,22 @@ databaseChangeLog:
                   CONSTRAINT chk_library_metadata_schema_changes_processed CHECK ((processed_documents >= 0))
               );
 
-              ALTER TABLE ONLY public.library_metadata_schema_changes
+              ALTER TABLE ONLY library_metadata_schema_changes
                   ADD CONSTRAINT library_metadata_schema_changes_pkey PRIMARY KEY (id);
 
-              ALTER TABLE ONLY public.library_metadata_schema_changes
+              ALTER TABLE ONLY library_metadata_schema_changes
                   ADD CONSTRAINT uk_library_metadata_schema_changes_subject UNIQUE NULLS NOT DISTINCT (field_id, value_id);
 
-              ALTER TABLE ONLY public.library_metadata_schema_changes
-                  ADD CONSTRAINT fk_library_metadata_schema_changes_field FOREIGN KEY (field_id) REFERENCES public.library_metadata_fields(id) ON DELETE CASCADE;
+              ALTER TABLE ONLY library_metadata_schema_changes
+                  ADD CONSTRAINT fk_library_metadata_schema_changes_field FOREIGN KEY (field_id) REFERENCES library_metadata_fields(id) ON DELETE CASCADE;
 
-              ALTER TABLE ONLY public.library_metadata_schema_changes
-                  ADD CONSTRAINT fk_library_metadata_schema_changes_value FOREIGN KEY (value_id, field_id) REFERENCES public.library_metadata_field_values(id, field_id) ON DELETE CASCADE;
+              ALTER TABLE ONLY library_metadata_schema_changes
+                  ADD CONSTRAINT fk_library_metadata_schema_changes_value FOREIGN KEY (value_id, field_id) REFERENCES library_metadata_field_values(id, field_id) ON DELETE CASCADE;
 
-              ALTER TABLE ONLY public.library_metadata_schema_changes
-                  ADD CONSTRAINT fk_library_metadata_schema_changes_target FOREIGN KEY (target_value_id, field_id) REFERENCES public.library_metadata_field_values(id, field_id) ON DELETE RESTRICT;
+              ALTER TABLE ONLY library_metadata_schema_changes
+                  ADD CONSTRAINT fk_library_metadata_schema_changes_target FOREIGN KEY (target_value_id, field_id) REFERENCES library_metadata_field_values(id, field_id) ON DELETE RESTRICT;
       rollback:
         - sql:
             splitStatements: false
             sql: |
-              DROP TABLE IF EXISTS public.library_metadata_schema_changes;
+              DROP TABLE IF EXISTS library_metadata_schema_changes;

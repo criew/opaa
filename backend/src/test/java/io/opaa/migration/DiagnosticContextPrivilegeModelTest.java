@@ -417,7 +417,7 @@ class DiagnosticContextPrivilegeModelTest extends AbstractMigrationTest {
     try (PreparedStatement statement =
         connection.prepareStatement(
             "SELECT DISTINCT privilege_type FROM information_schema.table_privileges WHERE"
-                + " table_schema = 'public' AND table_name = ? AND grantee = ?")) {
+                + " table_schema = current_schema() AND table_name = ? AND grantee = ?")) {
       statement.setString(1, tableName);
       statement.setString(2, grantee);
       List<String> privileges = new ArrayList<>();
@@ -434,7 +434,7 @@ class DiagnosticContextPrivilegeModelTest extends AbstractMigrationTest {
     try (PreparedStatement statement =
         connection.prepareStatement(
             "SELECT DISTINCT column_name FROM information_schema.column_privileges WHERE"
-                + " table_schema = 'public' AND table_name = ? AND grantee = ? AND privilege_type"
+                + " table_schema = current_schema() AND table_name = ? AND grantee = ? AND privilege_type"
                 + " = 'UPDATE'")) {
       statement.setString(1, tableName);
       statement.setString(2, grantee);
@@ -512,7 +512,7 @@ class DiagnosticContextPrivilegeModelTest extends AbstractMigrationTest {
   private String ownerOf(String tableName) throws SQLException {
     try (PreparedStatement statement =
         connection.prepareStatement(
-            "SELECT tableowner FROM pg_tables WHERE schemaname = 'public' AND tablename = ?")) {
+            "SELECT tableowner FROM pg_tables WHERE schemaname = current_schema() AND tablename = ?")) {
       statement.setString(1, tableName);
       try (ResultSet rs = statement.executeQuery()) {
         assertThat(rs.next()).isTrue();
@@ -536,7 +536,7 @@ class DiagnosticContextPrivilegeModelTest extends AbstractMigrationTest {
         ResultSet rs =
             statement.executeQuery(
                 "SELECT count(*) FROM pg_inherits WHERE inhparent ="
-                    + " 'public.diagnostic_context_log'::regclass")) {
+                    + " 'diagnostic_context_log'::regclass")) {
       assertThat(rs.next()).isTrue();
       return rs.getInt(1);
     }
@@ -545,7 +545,7 @@ class DiagnosticContextPrivilegeModelTest extends AbstractMigrationTest {
   private String columnType(String columnName) throws SQLException {
     try (PreparedStatement statement =
         connection.prepareStatement(
-            "SELECT data_type FROM information_schema.columns WHERE table_schema = 'public'"
+            "SELECT data_type FROM information_schema.columns WHERE table_schema = current_schema()"
                 + " AND table_name = 'diagnostic_context_log' AND column_name = ?")) {
       statement.setString(1, columnName);
       try (ResultSet rs = statement.executeQuery()) {

@@ -30,7 +30,7 @@ public class ChunkEmbeddingLookup {
 
   ChunkEmbeddingLookup(
       JdbcTemplate jdbcTemplate,
-      @Value("${spring.ai.vectorstore.pgvector.schema-name:public}") String schemaName,
+      @Value("${opaa.database.schema}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
     this.jdbcTemplate = jdbcTemplate;
     this.schemaName = schemaName;

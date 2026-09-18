@@ -47,7 +47,7 @@ final class LocalAccountSchemaSupport {
   static String indexDefinition(Connection connection, String indexName) throws SQLException {
     try (PreparedStatement statement =
         connection.prepareStatement(
-            "SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' AND indexname = ?")) {
+            "SELECT indexdef FROM pg_indexes WHERE schemaname = current_schema() AND indexname = ?")) {
       statement.setString(1, indexName);
       try (ResultSet rows = statement.executeQuery()) {
         return rows.next() ? rows.getString(1) : null;
@@ -59,7 +59,7 @@ final class LocalAccountSchemaSupport {
       throws SQLException {
     try (PreparedStatement statement =
         connection.prepareStatement(
-            "SELECT is_nullable FROM information_schema.columns WHERE table_schema = 'public'"
+            "SELECT is_nullable FROM information_schema.columns WHERE table_schema = current_schema()"
                 + " AND table_name = ? AND column_name = ?")) {
       statement.setString(1, table);
       statement.setString(2, column);

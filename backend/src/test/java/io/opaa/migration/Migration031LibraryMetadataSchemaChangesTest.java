@@ -299,7 +299,7 @@ class Migration031LibraryMetadataSchemaChangesTest extends AbstractMigrationTest
 
   private boolean tableExists(String table) throws SQLException {
     return scalarExists(
-        "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?",
+        "SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = ?",
         table);
   }
 
