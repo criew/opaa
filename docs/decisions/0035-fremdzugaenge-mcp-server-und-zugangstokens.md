@@ -152,10 +152,18 @@ Kompatibilitätsdarstellung der Spezifikation führt „moderner Client gegen Le
 Fehlschlag, bei dem der Server ablehnen, schweigen oder eine mehrdeutige Methode unter
 Legacy-Bedeutung ausführen kann. **Die Zusage verlangt deshalb einen eigenen Prüfschritt je Anfrage**
 — einen dekorierenden `McpStatelessServerHandler` (`McpStatelessServerTransport#setMcpHandler` ist
-öffentlich) oder einen Filter vor `/mcp` —, der `MCP-Protocol-Version` bzw. `_meta` auswertet und mit
-`UnsupportedProtocolVersionError` (`-32022`) samt `supported`-Liste ablehnt, und der die
-`initialize`-Antwort der Bibliothek für Legacy-Clients um dieselbe Aufzählung ergänzt. Ohne diesen
-Schritt darf #1721 nicht als erledigt gelten.
+öffentlich) oder einen Filter vor `/mcp` —, der `MCP-Protocol-Version` bzw. `_meta` auswertet und die
+`initialize`-Antwort der Bibliothek für Legacy-Clients um die Fassungsliste ergänzt.
+
+**Die Fehlerform ist dabei an die eigene Ära gekoppelt, nicht an die des Clients.** Solange OPAA nur
+Legacy-Fassungen spricht, lehnt der Prüfschritt mit `400` und **ohne** modernen Fehlerkörper ab —
+ausdrücklich **nicht** mit `UnsupportedProtocolVersionError`/`-32022`. Grund: Ein Dual-Era-Client
+erkennt die Ära des Servers genau daran. Die Spezifikation beschreibt es für Streamable HTTP so, dass
+er bei `400` den Körper prüft und bei einem erkannten modernen Fehler die Fassungen aus `supported`
+erneut versucht, **statt auf `initialize` zurückzufallen**; ein leerer oder nicht erkannter Körper
+führt ihn dagegen zum Rückfall. Ein `-32022` aus einem Server, der modern gar nicht kann, nähme dem
+Client also genau den Weg, auf dem er funktioniert hätte. Der moderne Fehlerkörper kommt erst mit der
+modernen Aushandlung. Ohne diesen Schritt darf #1721 nicht als erledigt gelten.
 
 **Folgen.** Ein Betriebsartefakt, ein Update, eine Adresse im Handbuch. Zugleich **ein einziger
 Ausfallpunkt für alle Fremdzugänge des Hauses** — davon handelt Entscheidung 6. Prozesslokaler Zustand
@@ -373,14 +381,18 @@ beantworten ist.
 **b) Verhalten bei einer Fassungsabweichung: klare Ablehnung mit benanntem Grund.** Ein Client mit
 einer nicht unterstützten Fassung — älter oder neuer — bekommt eine Ablehnung, die die unterstützten
 Fassungen **aufzählt**; nie ein stilles Weiterlaufen unter einer anderen Fassung und nie eine
-Ablehnung ohne Grund. Für einen Client der Bezugsfassung ist das
-`UnsupportedProtocolVersionError` (`-32022`) mit der `supported`-Liste, ausgelöst an der je Anfrage
-mitgeführten Fassung; für einen Legacy-Client die Antwort auf `initialize`, die dieselbe Liste nennt.
+Ablehnung ohne Grund. **Die Form der Ablehnung richtet sich nach der Ära, die OPAA selbst spricht**:
+Solange das die Legacy-Fassungen sind, nennt die Antwort auf `initialize` die Fassungsliste, und eine
+moderne Anfrage wird mit `400` ohne modernen Fehlerkörper abgewiesen — ein `-32022` würde einem
+Dual-Era-Client fälschlich einen modernen Server anzeigen und ihm den Rückfall auf `initialize`
+nehmen, mit dem er funktioniert hätte. `UnsupportedProtocolVersionError` (`-32022`) samt
+`supported`-Liste kommt erst, wenn OPAA die Aushandlung je Anfrage tatsächlich beherrscht.
 Die Spezifikation `2026-07-28` empfiehlt das Aufzählen ausdrücklich für den umgekehrten Fall — ein
 Server, der **nur** moderne Fassungen spricht, soll sie in jeder Antwort auf ein `initialize` nennen,
 weil ein Legacy-Client keinen Weg nach vorn hat und diese Meldung oft seine einzige Diagnose ist.
-OPAA übernimmt diese Haltung sinngemäß in beide Richtungen. **Die Zusage ist die Aufzählung, nicht
-ihr Transportformat.**
+OPAA übernimmt diese Haltung sinngemäß in beide Richtungen. **Die Zusage ist, dass kein Client still
+unter einer anderen Fassung weiterläuft und dass jeder die Fassungsliste auf dem Weg erhält, den
+seine Ära lesen kann** — nicht ein bestimmtes Fehlerformat.
 
 **Diese Zusage ist mit der Bibliothek allein nicht erfüllt, sondern verletzt** — sie antwortet auf
 eine unbekannte Fassung erfolgreich mit ihrer höchsten und schreibt nur eine WARN-Zeile. Was dafür zu
