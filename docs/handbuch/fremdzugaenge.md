@@ -263,6 +263,8 @@ baut deshalb keine eigene Erweiterung je Werkzeug, sondern **einen** Server, den
 benutzen.
 
 - **Adresse:** `https://<host>/mcp` — derselbe Host wie die Weboberfläche, hinter demselben Proxy.
+  Der Endpunkt nimmt **`POST`** entgegen; ein `GET` auf dieselbe Adresse beantwortet er mit `405`.
+  Ein Aufruf im Browser ist deshalb kein Funktionstest.
 - **Transport:** Streamable HTTP, zustandsfrei. Kein stdio, keine Installation am Arbeitsplatz.
 - **Anmeldung:** das Zugangstoken als `Authorization: Bearer opaa_pat_…`. Kein OAuth — Clients, die
   von sich aus einen OAuth-Ablauf starten, sind dort abzuschalten (Abschnitt 9).
@@ -275,7 +277,16 @@ benutzen.
 
 **Protokollfassungen.** Der Server bedient eine feste Liste von Fassungen (Abschnitt 15). Ein Client,
 der eine nicht bediente Fassung verlangt, wird **abgewiesen** und nie stillschweigend unter einer
-anderen bedient. Was daraus im Störungsfall folgt, steht in Abschnitt 13.
+anderen bedient — je nachdem, wie er fragt, auf zwei Wegen: Nennt er sie im Handschlag, antwortet der
+Server mit einem Fehler, der die bedienten Fassungen aufzählt; nennt er sie im Kopf
+`MCP-Protocol-Version`, mit `400` und derselben Aufzählung im Klartext. Jeder erfolgreiche Handschlag
+trägt die Liste zusätzlich mit — die einzige Stelle, an der ein älterer Client sie erfährt. Was
+daraus im Störungsfall folgt, steht in Abschnitt 13.
+
+**Der Pfad wird überall gleich gelesen.** Eine prozentkodierte Schreibweise wie `/%6Dcp` ist
+derselbe Endpunkt und wird genauso geprüft und genauso abgewiesen. Eine Adresse mit angehängter
+Matrixangabe (`/mcp;x=1`) weist die Anwendung dagegen schon vor dem Endpunkt mit `403` ab — ein
+Proxy, der so etwas anhängt, muss es lassen.
 
 ## 9. Einrichtung im Client
 
@@ -428,6 +439,13 @@ ein **Kontingent je Token** — zusätzlich zu den Grenzen je Netzadresse, nicht
 einem gemeinsamen Ausgangspunkt im Behördennetz teilen sich alle dieselbe Adresse, und eine Grenze je
 Adresse träfe die Falschen.
 
+**Am MCP-Endpunkt ist das Kontingent die einzige Bremse.** Die Anfragegrenze je Netzadresse gilt für
+die Pfade unter `/api/`; `/mcp` liegt außerhalb davon. Deshalb zählt dort **jeder** Aufruf gegen das
+Kontingent des Tokens — auch das Abrufen der Werkzeugliste, mit der sich ein Client verbindet. Sonst
+gäbe es am MCP-Endpunkt einen ungezählten und damit unbegrenzten Weg. In den **Abflussalarm** geht
+die Werkzeugliste dagegen **nicht** ein: Der Alarm beobachtet Bestände, die das Haus verlassen, und
+eine Liste von Namen, die ein Token ohnehin sehen darf, ist kein Abruf.
+
 **Das Kontingent ist eine Lastbremse, kein Schutz vor Massenabfluss.** Diese Rechnung kann jeder
 anstellen: Ein konservativer Stundenwert ergibt über die Höchstlaufzeit eines einzigen Tokens
 sechsstellig viele Abrufe. Was in einer Nacht nicht geht, geht in Monaten. Ein überschrittenes
@@ -525,7 +543,8 @@ Verhalten. Drei Antwortarten unterscheiden die Fälle:
 | `503` am MCP-Endpunkt | Der Kanal ist **aus**, das vorgelegte Token wäre sonst gültig. Diese Antwort trennt „Kanal zu" von „falscher Pfad" und von „Proxy kaputt"; sie nennt die Ursache im Feld `reason` |
 | `401` | Das Token selbst wird abgewiesen. Der Grund steht im Kopf `WWW-Authenticate` als `error_description`; am MCP-Endpunkt zusätzlich im Feld `reason` der Antwort |
 | `403` | Token gültig, aber der angesprochene Pfad gehört nicht zu den drei Lesewegen (Abschnitt 8) |
-| `429` | Das Kontingent des Tokens ist erschöpft (Abschnitt 10) |
+| `429` | Das Kontingent des Tokens ist erschöpft (Abschnitt 10) — an den REST-Lesewegen |
+| `405` | Ein `GET` auf `/mcp`. Der Endpunkt nimmt `POST` entgegen; der Aufruf im Browser ist kein Funktionstest |
 
 Bei geschlossenem Kanal antworten die REST-Lesewege mit `401` und der Ursache `channel_closed`;
 `404`/`503` sind das Sonderverhalten des MCP-Endpunkts, weil dort eine Person ihren Client einrichtet
@@ -547,7 +566,8 @@ beantworten sich gleich, damit der Kanal nie bestätigt, dass ein Token existier
 | `404` am MCP-Endpunkt | Kanal aus **und** kein brauchbares Token — oder schlicht die falsche Adresse | Adresse gegen `https://<host>/mcp` prüfen; dann den Schalter |
 | Ein bestimmter Bestand fehlt in `list_libraries` und in den Treffern, alles andere geht | Einer der vier Faktoren der effektiven Sicht fehlt: Lesezugriff entzogen, **Freigabe zurückgenommen**, **Freigabe erloschen** (Fristablauf) oder Freigabe ausgesetzt. Eine fehlende Bibliothek erzeugt bewusst **keine** Fehlermeldung | Erst Lesezugriff der Person prüfen, dann *Administration → Fremdzugangsfreigaben*. Nach einer erneuten Freigabe lebt die Auswahl in bestehenden Tokens **nicht** wieder auf — es braucht ein neues Token |
 | Die Bibliothek ist im Token als **ausgesetzt** markiert | Die Freigabe wurde zurückgenommen oder ist erloschen | Freigabe erneuern lassen, dann ein **neues** Token erzeugen |
-| `429` mit Wartehinweis | Kontingent des Tokens erschöpft — meist ein Skript in einer Schleife | Werkzeug drosseln; notfalls das Kontingent der Installation anheben (Abschnitt 15) |
+| `429` mit Wartehinweis (REST) — oder am MCP-Endpunkt eine Fehlerantwort mit dem Code `-32000` bzw. ein Werkzeugergebnis mit dem Wort „Kontingent" | Kontingent des Tokens erschöpft — meist ein Skript in einer Schleife. **Am MCP-Endpunkt ist das keine `429`**: Die Ablehnung kommt als Protokollfehler bzw. als Fehlerergebnis des Werkzeugs zurück, damit das fremde Modell damit umgehen kann. Schon das Verbinden zählt (Abschnitt 10) — ein Client, der sich in Schleife neu verbindet, kann das Kontingent allein damit ausschöpfen | Werkzeug drosseln; notfalls das Kontingent der Installation anheben (Abschnitt 15) |
+| `403` bei einem Aufruf, der bis gestern lief | Ein Proxy hängt der Adresse etwas an (`/mcp;x=1`); solche Pfade weist die Anwendung ab, bevor sie den Endpunkt erreichen | Proxy-Regel bereinigen. Eine prozentkodierte Schreibweise (`/%6Dcp`) ist dagegen unschädlich — sie wird wie `/mcp` behandelt |
 | Der Client meldet „MCP server failed" o. ä., **alle** Fremdzugänge des Hauses zugleich | **Fassungsbruch** nach einem Client- oder Server-Update — siehe unten |
 | Der Client startet einen Anmelde- oder OAuth-Ablauf statt die Ursache zu zeigen | Der Client hat auf `401` mit einer OAuth-Erkennung reagiert | Im Client OAuth abschalten (bei OpenCode `"oauth": false`, Abschnitt 9) und die eigentliche Ursache aus der `reason`-Angabe lesen |
 | Es lässt sich kein neues Token anlegen, keine Bibliothek ist wählbar | Kanal geschlossen, oder es ist keine der lesbaren Bibliotheken freigegeben | Abschnitt 3 bzw. 4 |
