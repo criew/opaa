@@ -25,6 +25,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
@@ -556,6 +559,43 @@ class GlobalExceptionHandlerTest {
     ErrorResponse body = response.getBody();
     assertNotNull(body);
     assertEquals("OPAA_CREDENTIALS_ENCRYPTION_KEY ist nicht gesetzt", body.getError());
+  }
+
+  /** RFC 9110, section 15.5.6: a 405 names the methods the resource does support (#1707). */
+  @Test
+  void handleHttpRequestMethodNotSupportedExceptionNamesTheSupportedMethods() {
+    var response =
+        handler.handleHttpRequestMethodNotSupportedException(
+            new HttpRequestMethodNotSupportedException("GET", List.of("POST", "PUT")));
+    assertEquals(405, response.getStatusCode().value());
+    assertEquals(List.of("POST,PUT"), response.getHeaders().getOrEmpty(HttpHeaders.ALLOW));
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(405, body.getStatus());
+    assertEquals("Die HTTP-Methode wird für diese Ressource nicht unterstützt", body.getError());
+  }
+
+  /** Without a known set of supported methods the header is omitted rather than sent empty. */
+  @Test
+  void handleHttpRequestMethodNotSupportedExceptionOmitsAnEmptyAllowHeader() {
+    var response =
+        handler.handleHttpRequestMethodNotSupportedException(
+            new HttpRequestMethodNotSupportedException("GET"));
+    assertEquals(405, response.getStatusCode().value());
+    assertEquals(List.of(), response.getHeaders().getOrEmpty(HttpHeaders.ALLOW));
+  }
+
+  @Test
+  void handleHttpMediaTypeNotSupportedExceptionReturnsUnsupportedMediaType() {
+    var response =
+        handler.handleHttpMediaTypeNotSupportedException(
+            new HttpMediaTypeNotSupportedException(
+                MediaType.TEXT_PLAIN, List.of(MediaType.APPLICATION_JSON)));
+    assertEquals(415, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(415, body.getStatus());
+    assertEquals("Der Inhaltstyp der Anfrage wird nicht unterstützt", body.getError());
   }
 
   private DataIntegrityViolationException dataIntegrityViolation(String sqlState, String message) {
