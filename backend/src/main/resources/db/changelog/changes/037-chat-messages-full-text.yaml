@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: 037-chat-messages-full-text
+      author: opaa
+      comment: >-
+        Volltextindex der Chatsuche (#1770, docs/features/chat-list.md, "Chatsuche"): eine
+        generierte tsvector-Spalte ueber den Nachrichteninhalt mit der Konfiguration german, wie
+        im Volltextpfad der Wissenssuche, und ein GIN-Index darauf. Nachrichten sind unveraenderlich,
+        die Spalte wird beim Einfuegen berechnet und entfaellt mit der Zeile, also mit dem Chat
+        (fk_chat_messages_chat ON DELETE CASCADE). Die Konfiguration steht als Literal im Ausdruck,
+        weil eine generierte Spalte einen unveraenderlichen Ausdruck verlangt.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE chat_messages
+                  ADD COLUMN content_tsv tsvector GENERATED ALWAYS AS (to_tsvector('german'::regconfig, content)) STORED;
+
+              CREATE INDEX idx_chat_messages_content_tsv ON chat_messages USING gin (content_tsv);
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP INDEX IF EXISTS idx_chat_messages_content_tsv;
+
+              ALTER TABLE chat_messages DROP COLUMN IF EXISTS content_tsv;

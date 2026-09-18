@@ -66,3 +66,6 @@ databaseChangeLog:
   # Persönliche Ordnungsmerkmale der Chatliste je Person und Chat (#1768, chat-list.md).
   - include:
       file: db/changelog/changes/035-create-chat-personal-marks.yaml
+  # Volltextindex der Chatsuche über die Chatnachrichten (#1770, chat-list.md, "Chatsuche").
+  - include:
+      file: db/changelog/changes/037-chat-messages-full-text.yaml
