@@ -39,6 +39,11 @@ class PermissionHistoryListener {
           permissionHistoryService.recordLibraryCreated(event.library(), event.actorUserId());
       case VISIBILITY_CHANGED ->
           permissionHistoryService.recordVisibilityChanged(event.library(), event.actorUserId());
+      case EXTERNAL_ACCESS_CHANGED ->
+          permissionHistoryService.recordExternalAccessChanged(
+              event.library(),
+              LibraryVisibilityHistoryCause.EXTERNAL_ACCESS_CHANGED,
+              event.actorUserId());
     }
   }
 }

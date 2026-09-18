@@ -110,6 +110,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
             org.mockito.Mockito.mock(io.opaa.indexing.source.SourceSyncStateRepository.class),
             Clock.systemDefaultZone(),
             storageQuotaService,
+            mock(LibraryExternalAccessService.class),
             folderRepository,
             eventPublisher,
             org.mockito.Mockito.mock(ConfluenceConnectionService.class),

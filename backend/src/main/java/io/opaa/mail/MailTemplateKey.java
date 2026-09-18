@@ -20,7 +20,7 @@ import java.util.Optional;
  * from the branding and is therefore declared by every key.
  *
  * <p>{@link #defaultBodyHtmlContent()} is the inner fragment only; {@link EmailLayoutBuilder} wraps
- * it in the branded frame, so a change to the frame reaches all twelve mails at once.
+ * it in the branded frame, so a change to the frame reaches every mail at once.
  */
 public enum MailTemplateKey {
   LOCAL_ACCOUNT_INVITATION(
@@ -281,6 +281,32 @@ public enum MailTemplateKey {
       "count",
       "actionUrl"),
 
+  EXTERNAL_ACCESS_RELEASE_EXPIRING(
+      "Ablauf einer Fremdzugangsfreigabe",
+      "Freigabe von „{{libraryName}}“ für Fremdzugänge läuft ab",
+      """
+      Guten Tag {{displayName}},
+
+      die Freigabe der Bibliothek „{{libraryName}}“ für Fremdzugänge endet {{expiresAtDate}}. Danach erlischt sie; die Bibliothek verschwindet aus allen Zugangstokens, die sie enthalten.
+
+      Ob die Freigabe erneuert wird, entscheiden Sie:
+
+      {{actionUrl}}
+      """,
+      """
+      <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;line-height:1.3;">Eine Freigabe für Fremdzugänge läuft ab</h1>
+      <p style="margin:0 0 14px;">Guten Tag {{displayName}},</p>
+      <p style="margin:0 0 14px;">die Freigabe der Bibliothek <strong>{{libraryName}}</strong> für Fremdzugänge endet {{expiresAtDate}}. Danach erlischt sie; die Bibliothek verschwindet aus allen Zugangstokens, die sie enthalten.</p>
+      <p style="margin:0;font-size:13px;">Ob die Freigabe erneuert wird, entscheiden Sie.</p>
+      """,
+      "Freigabe prüfen",
+      "Die Freigabe von „{{libraryName}}“ für Fremdzugänge endet {{expiresAtDate}}.",
+      "productName",
+      "displayName",
+      "libraryName",
+      "expiresAtDate",
+      "actionUrl"),
+
   TEST_MAIL(
       "Testnachricht",
       "Testnachricht von {{productName}}",
@@ -316,7 +342,9 @@ public enum MailTemplateKey {
           Map.entry("expiresAtHuman", "noch 24 Stunden"),
           Map.entry("reason", "Zu viele fehlgeschlagene Anmeldeversuche"),
           Map.entry("count", "7"),
-          Map.entry("occurredAtHuman", "am 11.09.2026 um 08:14 Uhr"));
+          Map.entry("occurredAtHuman", "am 11.09.2026 um 08:14 Uhr"),
+          Map.entry("libraryName", "Baugenehmigungen 2024"),
+          Map.entry("expiresAtDate", "am 17.09.2027"));
 
   private final String label;
   private final String defaultSubject;

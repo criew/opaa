@@ -142,6 +142,7 @@ public class KnowledgeLibraryService {
   private final ConfluenceProperties confluenceProperties;
   private final Clock schedulingClock;
   private final LibraryStorageQuotaService storageQuotaService;
+  private final LibraryExternalAccessService externalAccessService;
   private final LibraryFolderRepository folderRepository;
   private final ApplicationEventPublisher eventPublisher;
   private final ConfluenceConnectionService confluenceConnectionService;
@@ -166,6 +167,7 @@ public class KnowledgeLibraryService {
       SourceSyncStateRepository sourceSyncStateRepository,
       Clock schedulingClock,
       LibraryStorageQuotaService storageQuotaService,
+      LibraryExternalAccessService externalAccessService,
       LibraryFolderRepository folderRepository,
       ApplicationEventPublisher eventPublisher,
       ConfluenceConnectionService confluenceConnectionService,
@@ -189,6 +191,7 @@ public class KnowledgeLibraryService {
     this.sourceSyncStateRepository = sourceSyncStateRepository;
     this.schedulingClock = schedulingClock;
     this.storageQuotaService = storageQuotaService;
+    this.externalAccessService = externalAccessService;
     this.folderRepository = folderRepository;
     this.eventPublisher = eventPublisher;
     this.confluenceConnectionService = confluenceConnectionService;
@@ -1848,7 +1851,8 @@ public class KnowledgeLibraryService {
         schedule,
         lastScheduledRunsFailed,
         storageQuotaService.quotaBytes(),
-        storageQuotaService.usedBytes(library.getId()));
+        storageQuotaService.usedBytes(library.getId()),
+        externalAccessService.describe(library));
   }
 
   private LibraryDocumentEntry toLibraryDocumentEntry(

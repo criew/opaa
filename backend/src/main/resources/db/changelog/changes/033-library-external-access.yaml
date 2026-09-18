@@ -1,0 +1,109 @@
+databaseChangeLog:
+  - changeSet:
+      id: 033-library-external-access
+      author: opaa
+      comment: >-
+        Die Freigabe einer Bibliothek fuer Fremdzugaenge (#1731,
+        docs/features/external-access.md, "Die Freigabe der Bibliothek") als drittes Reichweitenfeld
+        neben visibility und listed - am Fachobjekt und in derselben Intervall-Historisierung, nicht
+        in einer eigenen Tabelle: Die Frage "war diese Bibliothek an einem Stichtag aus dem Haus
+        erreichbar" ist dieselbe Art Frage wie "war sie organisationsweit lesbar", und das Protokoll
+        wird nach Frist vollstaendig geloescht. Die Freigabe ist pflichtbefristet; chk_..._external_
+        access haelt fest, dass ACTIVE ohne Ablaufdatum nicht darstellbar ist und NEVER_SET keinen
+        Setzenden traegt. Der Zustand SUSPENDED existiert im Modell, wird heute aber von nichts
+        gesetzt - er gehoert zur Freigabe-Obergrenze (#797). Die Spalte external_access_set_by_user_id
+        traegt bewusst keinen Fremdschluessel: Sie dient nur der Anzeige, und eine Kontoloeschung
+        darf weder scheitern noch die Zeile mitnehmen (ADR-0016 fuer die Historie, hier aus dem
+        gleichen Grund). Der Teilindex bedient den taeglichen Ablauflauf, der ausschliesslich nach
+        abgelaufenen ACTIVE-Zeilen sucht; external_access_reminder_sent_at haelt fest, dass die
+        Wiedervorlage je Freigabe einmal geht und nicht taeglich erneut.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE knowledge_libraries
+                  ADD COLUMN external_access_state character varying(20) DEFAULT 'NEVER_SET' NOT NULL,
+                  ADD COLUMN external_access_expires_at timestamp with time zone,
+                  ADD COLUMN external_access_set_at timestamp with time zone,
+                  ADD COLUMN external_access_set_by_user_id uuid,
+                  ADD COLUMN external_access_reminder_sent_at timestamp with time zone;
+
+              ALTER TABLE knowledge_libraries
+                  ADD CONSTRAINT chk_knowledge_libraries_external_access_state
+                  CHECK ((external_access_state IN ('NEVER_SET', 'ACTIVE', 'WITHDRAWN', 'EXPIRED', 'SUSPENDED')));
+
+              ALTER TABLE knowledge_libraries
+                  ADD CONSTRAINT chk_knowledge_libraries_external_access
+                  CHECK (
+                      CASE external_access_state
+                          WHEN 'NEVER_SET' THEN external_access_expires_at IS NULL
+                              AND external_access_set_at IS NULL
+                              AND external_access_set_by_user_id IS NULL
+                              AND external_access_reminder_sent_at IS NULL
+                          WHEN 'ACTIVE' THEN external_access_expires_at IS NOT NULL
+                              AND external_access_set_at IS NOT NULL
+                          ELSE external_access_set_at IS NOT NULL
+                      END
+                  );
+
+              CREATE INDEX idx_knowledge_libraries_external_access_expiry
+                  ON knowledge_libraries (external_access_expires_at)
+                  WHERE external_access_state = 'ACTIVE';
+
+              ALTER TABLE library_visibility_history
+                  ADD COLUMN external_access_state character varying(20) DEFAULT 'NEVER_SET' NOT NULL,
+                  ADD COLUMN external_access_expires_at timestamp with time zone;
+
+              ALTER TABLE library_visibility_history
+                  ADD CONSTRAINT chk_library_visibility_history_external_access_state
+                  CHECK ((external_access_state IN ('NEVER_SET', 'ACTIVE', 'WITHDRAWN', 'EXPIRED', 'SUSPENDED')));
+
+              ALTER TABLE library_visibility_history
+                  DROP CONSTRAINT chk_library_visibility_history_cause;
+
+              ALTER TABLE library_visibility_history
+                  ADD CONSTRAINT chk_library_visibility_history_cause
+                  CHECK ((cause IN ('CREATED', 'VISIBILITY_CHANGED', 'BACKFILL', 'LIBRARY_DELETED', 'EXTERNAL_ACCESS_CHANGED', 'EXTERNAL_ACCESS_EXPIRED')));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE library_visibility_history
+                  DROP CONSTRAINT chk_library_visibility_history_cause;
+
+              -- Die beiden neuen Ursachen werden auf die Bestandsursache zurueckgeschrieben, nicht
+              -- geloescht: Die engere Bedingung liesse sich sonst nicht wieder anlegen, aber eine
+              -- geloeschte Zeile nimmt das Intervall mit, in dem sie stand - eine Bibliothek ohne
+              -- offenes Intervall antwortet der Stichtagsrekonstruktion still "nicht
+              -- organisationsweit lesbar", also falsch in die gefaehrliche Richtung (ADR-0016).
+              -- Was die Zeile ueber visibility/listed festhaelt, bleibt richtig; nur ihr Anlass
+              -- ist nach der Ruecknahme des Merkmals nicht mehr darstellbar.
+              UPDATE library_visibility_history
+                  SET cause = 'VISIBILITY_CHANGED'
+                  WHERE cause IN ('EXTERNAL_ACCESS_CHANGED', 'EXTERNAL_ACCESS_EXPIRED');
+
+              ALTER TABLE library_visibility_history
+                  ADD CONSTRAINT chk_library_visibility_history_cause
+                  CHECK ((cause IN ('CREATED', 'VISIBILITY_CHANGED', 'BACKFILL', 'LIBRARY_DELETED')));
+
+              ALTER TABLE library_visibility_history
+                  DROP CONSTRAINT chk_library_visibility_history_external_access_state;
+
+              ALTER TABLE library_visibility_history
+                  DROP COLUMN external_access_expires_at,
+                  DROP COLUMN external_access_state;
+
+              DROP INDEX IF EXISTS idx_knowledge_libraries_external_access_expiry;
+
+              ALTER TABLE knowledge_libraries
+                  DROP CONSTRAINT chk_knowledge_libraries_external_access;
+
+              ALTER TABLE knowledge_libraries
+                  DROP CONSTRAINT chk_knowledge_libraries_external_access_state;
+
+              ALTER TABLE knowledge_libraries
+                  DROP COLUMN external_access_reminder_sent_at,
+                  DROP COLUMN external_access_set_by_user_id,
+                  DROP COLUMN external_access_set_at,
+                  DROP COLUMN external_access_expires_at,
+                  DROP COLUMN external_access_state;

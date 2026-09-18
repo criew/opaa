@@ -21,6 +21,20 @@ public enum AuditEventType {
   ASSET_VISIBILITY_CHANGED,
   /** Grants suspended by a subsequently lowered connector share ceiling. */
   ASSET_GRANT_SUSPENDED,
+  /**
+   * A library's Fremdzugangsfreigabe was set or taken back (docs/features/external-access.md#die-
+   * freigabe-der-bibliothek) - the same kind of reach field as {@link #ASSET_VISIBILITY_CHANGED},
+   * but one that additionally decides about the Hausgrenze, which is why it is its own event rather
+   * than a payload variant of that one. Carries the direction and the expiry date, never a name of
+   * anyone holding a token.
+   */
+  ASSET_EXTERNAL_ACCESS_CHANGED,
+  /**
+   * A library's Fremdzugangsfreigabe stopped taking effect without anyone acting - carrying the
+   * Anlass, today always the expiry of its mandatory Befristung ("gesenkte Freigabe-Obergrenze"
+   * follows with #797). Written under a system actor, like every other expiry event.
+   */
+  ASSET_EXTERNAL_ACCESS_EXPIRED,
 
   // Spaces, Bibliotheken und Gruppen
   SPACE_CREATED,

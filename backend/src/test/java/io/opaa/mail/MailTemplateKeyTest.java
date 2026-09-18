@@ -37,13 +37,14 @@ class MailTemplateKeyTest {
           "ACCOUNT_HANDED_OVER",
           "BOOTSTRAP_ACCOUNT_USED",
           "ADMIN_REVIEW_REMINDER",
+          "EXTERNAL_ACCESS_RELEASE_EXPIRING",
           "TEST_MAIL");
 
   private final Mustache.Compiler plain = Mustache.compiler().escapeHTML(false);
   private final Mustache.Compiler html = Mustache.compiler().escapeHTML(true);
 
   @Test
-  void theRegistryCarriesExactlyTheTwelveKeysTheAdrNames() {
+  void theRegistryCarriesExactlyTheKeysTheProductKnows() {
     assertThat(Arrays.stream(MailTemplateKey.values()).map(MailTemplateKey::key))
         .containsExactlyElementsOf(EXPECTED_KEYS);
   }
