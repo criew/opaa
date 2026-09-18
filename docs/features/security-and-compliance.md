@@ -517,8 +517,9 @@ und belegen Sie, dass die Bibliothek `Personalvorgänge` nicht dazugehörte."* D
 schwierigere, und ein Ereignisprotokoll kann sie nicht beantworten, solange es Lücken haben kann.
 
 Deshalb werden **alle drei Quellen historisiert**: Grants, Gruppenmitgliedschaften **und die
-Reichweitenfelder am Asset** (`visibility`, `listed`). Zu jedem Zeitpunkt ist rekonstruierbar, wer welche
-Rechte hatte, seit wann und aufgrund welchen Vorgangs.
+Reichweitenfelder am Asset** (`visibility`, `listed` sowie die Freigabe einer Wissensbibliothek für
+Fremdzugänge, siehe [external-access.md](./external-access.md#die-freigabe-der-bibliothek)). Zu jedem
+Zeitpunkt ist rekonstruierbar, wer welche Rechte hatte, seit wann und aufgrund welchen Vorgangs.
 
 Die dritte Quelle mitzunehmen ist nicht optional: Eine Bibliothek, die vom 1. bis zum 10. März
 organisationsweit freigegeben war, verschaffte in dieser Zeit Zugriff, ohne dass je ein Grant existierte.
