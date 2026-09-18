@@ -196,7 +196,8 @@ class ExternalAccessTokenIntegrationTest {
   }
 
   private ExternalAccessTokenScopeService scopeWith(ExternalAccessLibraryRelease release) {
-    return new ExternalAccessTokenScopeService(tokens, libraryAccess, settings, release, clock);
+    return new ExternalAccessTokenScopeService(
+        tokens, users, libraryAccess, settings, release, clock);
   }
 
   private static final ExternalAccessLibraryRelease ALL_RELEASED = Set::copyOf;
@@ -499,27 +500,23 @@ class ExternalAccessTokenIntegrationTest {
   void theEffectiveViewLosesALibraryWhenTheReadingRightGoes() throws Exception {
     UUID tokenId = issueTokenId();
     ExternalAccessTokenScopeService scope = scopeWith(ALL_RELEASED);
-    assertThat(scope.effectiveLibraryIds(tokenId, owner.getOrganizationId()))
-        .containsExactly(libraryId);
+    assertThat(scope.effectiveLibraryIds(tokenId)).containsExactly(libraryId);
 
     grants.deleteAll(grants.findByLibraryId(libraryId));
     libraryAccess.invalidateLibrary(libraryId);
 
-    assertThat(scope.effectiveLibraryIds(tokenId, owner.getOrganizationId())).isEmpty();
+    assertThat(scope.effectiveLibraryIds(tokenId)).isEmpty();
   }
 
   @Test
   void aWithdrawnReleaseDoesNotComeBackToLifeInAnIssuedToken() throws Exception {
     UUID tokenId = issueTokenId();
 
-    assertThat(scopeWith(ALL_RELEASED).effectiveLibraryIds(tokenId, owner.getOrganizationId()))
-        .containsExactly(libraryId);
-    assertThat(scopeWith(NONE_RELEASED).effectiveLibraryIds(tokenId, owner.getOrganizationId()))
-        .isEmpty();
+    assertThat(scopeWith(ALL_RELEASED).effectiveLibraryIds(tokenId)).containsExactly(libraryId);
+    assertThat(scopeWith(NONE_RELEASED).effectiveLibraryIds(tokenId)).isEmpty();
 
     // The release is back; the extinguished entry of the token is not.
-    assertThat(scopeWith(ALL_RELEASED).effectiveLibraryIds(tokenId, owner.getOrganizationId()))
-        .isEmpty();
+    assertThat(scopeWith(ALL_RELEASED).effectiveLibraryIds(tokenId)).isEmpty();
     assertThat(tokens.findById(tokenId).orElseThrow().getSelectedLibraryIds())
         .containsExactly(libraryId);
   }
@@ -529,8 +526,7 @@ class ExternalAccessTokenIntegrationTest {
     UUID tokenId = issueTokenId();
     setChannelEnabled(false);
 
-    assertThat(scopeWith(ALL_RELEASED).effectiveLibraryIds(tokenId, owner.getOrganizationId()))
-        .isEmpty();
+    assertThat(scopeWith(ALL_RELEASED).effectiveLibraryIds(tokenId)).isEmpty();
 
     ExternalAccessToken untouched = tokens.findById(tokenId).orElseThrow();
     assertThat(untouched.getRevokedAt()).isNull();

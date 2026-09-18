@@ -1,55 +1,38 @@
 package io.opaa.externalaccess.token;
 
-import io.opaa.api.types.AuditEventType;
-import io.opaa.api.types.AuditObjectType;
-import io.opaa.api.types.AuditOutcome;
-import io.opaa.api.types.AuditSubjectKind;
-import io.opaa.audit.AuditEvent;
-import io.opaa.audit.AuditEventRecorder;
-import io.opaa.auth.User;
-import io.opaa.auth.UserRepository;
 import io.opaa.auth.local.LocalAccountMaintenanceStep;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
- * Writes the {@code API_TOKEN_EXPIRED} entry of every token that has stopped working and clears its
- * "zuletzt benutzt" (ADR-0035; docs/features/external-access.md, "Lebenszyklus").
+ * The daily pass that lets {@link ExternalAccessTokenLapseService} record every token which has
+ * stopped working (ADR-0035; docs/features/external-access.md, "Lebenszyklus").
  *
  * <p>Why this exists at all: with a mandatory expiry of at most 90 days, <b>the ordinary end of a
  * token is the expiry, not the revocation</b>. An access that ends without an entry is the same gap
- * in the trail as one that begins without one, and the entry fills the "Ablauf einer Befristung,
- * sobald sie wirkt" point of {@code security-and-compliance.md}.
+ * in the trail as one that begins without one.
  *
- * <p>Exactly one entry per token: {@code lapseRecordedAt} is the marker, and it doubles as the
- * start of the Loeschfrist {@link ExternalAccessTokenRetentionStep} measures. A token the person or
- * the administration revoked already has its own {@code API_TOKEN_REVOKED} entry - it gets the
- * marker here without a second event. The entry names the token by id, never by name, and the
- * person only as a pseudonym.
+ * <p>Each token is handled in its own transaction, so a failing one leaves its row without the
+ * marker and is picked up again by the next run instead of losing its entry for good.
  */
 @Component
 @Order(40)
 public class ExternalAccessTokenLapseStep implements LocalAccountMaintenanceStep {
 
-  /** The audit actor of the channel's own acts, next to {@code local-auth}. */
-  public static final String SYSTEM_ACTOR = "external-access";
-
   private static final Logger log = LoggerFactory.getLogger(ExternalAccessTokenLapseStep.class);
 
   private final ExternalAccessTokenRepository tokens;
-  private final UserRepository users;
-  private final AuditEventRecorder audit;
+  private final ExternalAccessTokenLapseService lapses;
 
   public ExternalAccessTokenLapseStep(
-      ExternalAccessTokenRepository tokens, UserRepository users, AuditEventRecorder audit) {
+      ExternalAccessTokenRepository tokens, ExternalAccessTokenLapseService lapses) {
     this.tokens = tokens;
-    this.users = users;
-    this.audit = audit;
+    this.lapses = lapses;
   }
 
   @Override
@@ -59,42 +42,27 @@ public class ExternalAccessTokenLapseStep implements LocalAccountMaintenanceStep
 
   @Override
   public void run(Instant now) {
-    List<ExternalAccessToken> lapsed = tokens.findLapsed(now);
+    List<UUID> lapsed = tokens.findLapsed(now).stream().map(ExternalAccessToken::getId).toList();
     int recorded = 0;
-    for (ExternalAccessToken token : lapsed) {
-      boolean alreadyRevoked = token.getRevokedAt() != null;
-      if (!alreadyRevoked) {
-        token.revoke(ExternalAccessTokenRevocationReason.EXPIRED, now);
-      }
-      token.markLapseRecorded(now);
-      tokens.save(token);
-      if (!alreadyRevoked) {
-        record(token);
-        recorded++;
+    int failed = 0;
+    for (UUID tokenId : lapsed) {
+      try {
+        if (lapses.recordLapse(tokenId, now)) {
+          recorded++;
+        }
+      } catch (RuntimeException e) {
+        // The row keeps no marker, so the next run tries again - that is the whole point of the
+        // per-token transaction.
+        failed++;
+        log.error("Recording the lapse of access token {} failed; it stays pending", tokenId, e);
       }
     }
     if (!lapsed.isEmpty()) {
       log.info(
-          "External access tokens: {} token(s) lapsed, {} recorded as expired",
+          "External access tokens: {} token(s) lapsed, {} recorded as expired, {} left pending",
           lapsed.size(),
-          recorded);
+          recorded,
+          failed);
     }
-  }
-
-  private void record(ExternalAccessToken token) {
-    User owner = users.findById(token.getUserId()).orElse(null);
-    if (owner == null) {
-      return;
-    }
-    audit.recordSystemProcessAction(
-        AuditEvent.builder()
-            .organizationId(owner.getOrganizationId())
-            .actorRef(SYSTEM_ACTOR)
-            .type(AuditEventType.API_TOKEN_EXPIRED)
-            .object(AuditObjectType.API_TOKEN, token.getId(), null)
-            .subject(AuditSubjectKind.USER, owner.getId())
-            .after(Map.of("reason", ExternalAccessTokenRevocationReason.EXPIRED.name()))
-            .outcome(AuditOutcome.SUCCESS)
-            .build());
   }
 }

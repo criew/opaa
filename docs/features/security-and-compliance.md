@@ -256,7 +256,9 @@ Schalter, Ablauf-Obergrenze, Kontingent, Netzbereiche, Alarmschwelle — der Ein
 fremde Werkzeuge erzeugt bewusst keinen Eintrag) und — seit #1718 — die persönlichen Zugangstokens
 desselben Kanals (`API_TOKEN_ISSUED` mit Bibliotheksauswahl und Ablauf, `API_TOKEN_REVOKED` mit
 Anlass und der Angabe, ob die Person selbst oder die Systemverwaltung widerrufen hat, und
-`API_TOKEN_EXPIRED` beim Außerkrafttreten durch den täglichen Lauf — alle drei mit der
+`API_TOKEN_EXPIRED` beim Außerkrafttreten, mit dem Anlass `EXPIRED` aus dem täglichen Lauf oder
+`ACCOUNT_LIFECYCLE` beim Sperren eines Kontos und bei der abgeschlossenen Übergabe an eine
+Anbieteridentität — alle drei mit der
 Token-Kennung statt des frei formulierten Tokennamens, und die **Nutzung** eines Tokens erzeugt
 keinen Eintrag). Die Anfrage
 „Passwort vergessen" ändert keinen Zustand; die Bestätigung der eigenen Adresse ist eine Handlung

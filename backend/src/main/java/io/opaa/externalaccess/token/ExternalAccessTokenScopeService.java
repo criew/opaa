@@ -1,5 +1,7 @@
 package io.opaa.externalaccess.token;
 
+import io.opaa.auth.User;
+import io.opaa.auth.UserRepository;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.library.LibraryAccessService;
 import java.time.Clock;
@@ -30,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ExternalAccessTokenScopeService {
 
   private final ExternalAccessTokenRepository tokens;
+  private final UserRepository users;
   private final LibraryAccessService libraryAccess;
   private final ExternalAccessSettingsService settings;
   private final ExternalAccessLibraryRelease release;
@@ -37,11 +40,13 @@ public class ExternalAccessTokenScopeService {
 
   public ExternalAccessTokenScopeService(
       ExternalAccessTokenRepository tokens,
+      UserRepository users,
       LibraryAccessService libraryAccess,
       ExternalAccessSettingsService settings,
       ExternalAccessLibraryRelease release,
       Clock clock) {
     this.tokens = tokens;
+    this.users = users;
     this.libraryAccess = libraryAccess;
     this.settings = settings;
     this.release = release;
@@ -49,14 +54,21 @@ public class ExternalAccessTokenScopeService {
   }
 
   /**
-   * The libraries this token may be used against right now. Empty when the channel is closed or the
-   * token is no longer active - the caller then learns nothing about which of the two it was, the
-   * same way a missing chunk is never explained in the web interface.
+   * The libraries this token may be used against right now. Empty when the channel is closed, the
+   * token is no longer active or its person is gone - the caller then learns nothing about which of
+   * the three it was, the same way a missing chunk is never explained in the web interface.
+   *
+   * <p>Takes the token id and nothing else: person <em>and</em> organisation are read from the
+   * token's own row, so no caller can widen or narrow the intersection by passing a different one.
    */
   @Transactional
-  public Set<UUID> effectiveLibraryIds(UUID tokenId, UUID organizationId) {
+  public Set<UUID> effectiveLibraryIds(UUID tokenId) {
     ExternalAccessToken token = tokens.findById(tokenId).orElse(null);
     if (token == null || !settings.isEnabled()) {
+      return Set.of();
+    }
+    User owner = users.findById(token.getUserId()).orElse(null);
+    if (owner == null) {
       return Set.of();
     }
     Instant now = clock.instant();
@@ -67,7 +79,7 @@ public class ExternalAccessTokenScopeService {
     if (selected.isEmpty()) {
       return Set.of();
     }
-    Set<UUID> readable = libraryAccess.readableLibraryIds(token.getUserId(), organizationId);
+    Set<UUID> readable = libraryAccess.readableLibraryIds(owner.getId(), owner.getOrganizationId());
     Set<UUID> stillReleased = release.releasedAmong(selected);
     if (token.extinguishAllBut(stillReleased, now)) {
       tokens.save(token);

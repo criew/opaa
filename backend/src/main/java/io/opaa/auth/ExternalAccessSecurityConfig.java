@@ -3,6 +3,7 @@ package io.opaa.auth;
 import io.opaa.externalaccess.ExternalAccessNetworkPolicy;
 import io.opaa.externalaccess.token.ExternalAccessTokenAuthenticator;
 import io.opaa.externalaccess.token.ExternalAccessTokenService;
+import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -14,6 +15,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.util.matcher.RequestMatcher;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The security chain of the external-access channel (ADR-0035), in every profile.
@@ -40,14 +42,17 @@ public class ExternalAccessSecurityConfig {
       ExternalAccessTokenAuthenticator authenticator,
       ExternalAccessTokenService tokenService,
       ExternalAccessNetworkPolicy networkPolicy,
-      ExternalAccessPathAllowlist allowlist)
+      ExternalAccessPathAllowlist allowlist,
+      JsonMapper jsonMapper,
+      Clock clock)
       throws Exception {
     http.securityMatcher(ExternalAccessTokenAuthenticationFilter::carriesAccessToken)
         .csrf(AbstractHttpConfigurer::disable)
         .cors(Customizer.withDefaults())
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .addFilterBefore(
-            new ExternalAccessTokenAuthenticationFilter(authenticator, tokenService, networkPolicy),
+            new ExternalAccessTokenAuthenticationFilter(
+                authenticator, tokenService, networkPolicy, jsonMapper, clock),
             AuthorizationFilter.class)
         .authorizeHttpRequests(
             auth -> {

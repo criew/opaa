@@ -11,7 +11,12 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -20,6 +25,7 @@ import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Authenticates a bearer value carrying the access-token prefix (ADR-0035, Entscheidung 2) and
@@ -32,9 +38,17 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * issuer does (ADR-0033, Entscheidung 8) - a tool that gets {@code channel_closed} waits, one that
  * gets {@code token_revoked} needs a new token, and neither has to guess.
  *
- * <p>The authority is deliberately not the person's system role: an access token reaches the paths
- * of {@link ExternalAccessPathAllowlist} and nothing else, whatever the person may do in the web
- * interface. And nothing here logs the value or its prefix, on any level.
+ * <p><b>The caller a token call carries is never the person's full identity.</b> Neither the
+ * authority ({@link #AUTHORITY}, never the system role) nor the {@link CurrentUser} of the request
+ * carries it: the {@code CurrentUser} is built with the lowest system role, so an endpoint that
+ * authorises out of {@code @Caller} rather than out of {@code @PreAuthorize} cannot hand a
+ * Systemverwalterin her administrative rights through her access token.
+ *
+ * <p>"Zuletzt benutzt" is written <b>after</b> a successful chain, and only when the day is not
+ * already recorded - a refused call is no use, and the check costs no query on the hot path because
+ * the authenticator already read the value.
+ *
+ * <p>Nothing here logs the value or its prefix, on any level.
  */
 public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilter {
 
@@ -45,17 +59,27 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
   public static final String TOKEN_ID_ATTRIBUTE =
       ExternalAccessTokenAuthenticationFilter.class.getName() + ".tokenId";
 
+  private static final String UNAUTHENTICATED_MESSAGE = "Nicht angemeldet";
+
   private final ExternalAccessTokenAuthenticator authenticator;
   private final ExternalAccessTokenService tokenService;
   private final ExternalAccessNetworkPolicy networkPolicy;
+  private final JsonMapper jsonMapper;
+  private final Clock clock;
+  private final ZoneId zone;
 
   public ExternalAccessTokenAuthenticationFilter(
       ExternalAccessTokenAuthenticator authenticator,
       ExternalAccessTokenService tokenService,
-      ExternalAccessNetworkPolicy networkPolicy) {
+      ExternalAccessNetworkPolicy networkPolicy,
+      JsonMapper jsonMapper,
+      Clock clock) {
     this.authenticator = authenticator;
     this.tokenService = tokenService;
     this.networkPolicy = networkPolicy;
+    this.jsonMapper = jsonMapper;
+    this.clock = clock;
+    this.zone = ZoneId.systemDefault();
   }
 
   /** Whether the request presents a bearer value shaped like an access token. */
@@ -78,41 +102,66 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
       throws ServletException, IOException {
     String value = bearerValue(request);
     if (value == null) {
-      refuse(response, ExternalAccessTokenRejection.INVALID_TOKEN.marker());
+      refuse(response, ExternalAccessTokenRejection.INVALID_TOKEN);
       return;
     }
     if (!networkPolicy.isAllowed(request)) {
       // The network restriction belongs to the channel, not to the token (ADR-0035); it is checked
       // before the lookup, so an address outside it learns nothing about which values exist.
-      refuse(response, ExternalAccessTokenRejection.NETWORK_NOT_ALLOWED.marker());
+      refuse(response, ExternalAccessTokenRejection.NETWORK_NOT_ALLOWED);
       return;
     }
     Result result = authenticator.authenticate(value);
     if (result instanceof Result.Refused refused) {
-      refuse(response, refused.rejection().marker());
+      refuse(response, refused.rejection());
       return;
     }
     Result.Authenticated authenticated = (Result.Authenticated) result;
-    User user = authenticated.user();
     UUID tokenId = authenticated.tokenId();
-    request.setAttribute(CurrentUserArgumentResolver.REQUEST_ATTRIBUTE, CurrentUser.from(user));
+    request.setAttribute(
+        CurrentUserArgumentResolver.REQUEST_ATTRIBUTE,
+        CurrentUser.forExternalAccess(authenticated.user()));
     request.setAttribute(TOKEN_ID_ATTRIBUTE, tokenId);
     SecurityContextHolder.getContext()
-        .setAuthentication(new ExternalAccessTokenAuthentication(user.getId(), tokenId));
-    // The day of use, at most one write per day - not an event, not a counter (ADR-0035).
-    tokenService.recordUse(tokenId);
+        .setAuthentication(
+            new ExternalAccessTokenAuthentication(authenticated.user().getId(), tokenId));
     filterChain.doFilter(request, response);
+    recordUse(authenticated, response);
   }
 
-  private void refuse(HttpServletResponse response, String marker) throws IOException {
+  /**
+   * The day of use - at most one write per day, never for a refused call, and no extra query: the
+   * authenticator already read the recorded day.
+   */
+  private void recordUse(Result.Authenticated authenticated, HttpServletResponse response) {
+    if (response.getStatus() >= HttpStatus.BAD_REQUEST.value()) {
+      return;
+    }
+    LocalDate today = LocalDate.ofInstant(clock.instant(), zone);
+    if (today.equals(authenticated.lastUsedOn())) {
+      return;
+    }
+    tokenService.recordUse(authenticated.tokenId());
+  }
+
+  private void refuse(HttpServletResponse response, ExternalAccessTokenRejection rejection)
+      throws IOException {
     SecurityContextHolder.clearContext();
     response.setStatus(HttpStatus.UNAUTHORIZED.value());
     response.setHeader(
         HttpHeaders.WWW_AUTHENTICATE,
-        "Bearer error=\"invalid_token\", error_description=\"" + marker + "\"");
+        "Bearer error=\"invalid_token\", error_description=\"" + rejection.marker() + "\"");
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-    response.setCharacterEncoding("UTF-8");
-    response.getWriter().write("{\"error\":\"Nicht angemeldet\",\"status\":401}");
+    // The shape of ErrorResponse in the specification: error, status and timestamp.
+    jsonMapper.writeValue(
+        response.getOutputStream(),
+        Map.of(
+            "error",
+            UNAUTHENTICATED_MESSAGE,
+            "status",
+            HttpStatus.UNAUTHORIZED.value(),
+            "timestamp",
+            Instant.now().toString()));
   }
 
   /** The authentication an access-token call carries: the person, the token, one authority. */

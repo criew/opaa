@@ -3,6 +3,7 @@ package io.opaa.externalaccess.token;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.local.LocalAccountMaintenanceStep;
+import io.opaa.externalaccess.ExternalAccessSettingsService;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -46,24 +47,28 @@ public class ExternalAccessTokenExpiryReminderStep implements LocalAccountMainte
   private final ExternalAccessTokenRepository tokens;
   private final UserRepository users;
   private final ExternalAccessTokenMailer mailer;
+  private final ExternalAccessSettingsService settings;
   private final ZoneId zone;
 
   @Autowired
   public ExternalAccessTokenExpiryReminderStep(
       ExternalAccessTokenRepository tokens,
       UserRepository users,
-      ExternalAccessTokenMailer mailer) {
-    this(tokens, users, mailer, ZoneId.systemDefault());
+      ExternalAccessTokenMailer mailer,
+      ExternalAccessSettingsService settings) {
+    this(tokens, users, mailer, settings, ZoneId.systemDefault());
   }
 
   ExternalAccessTokenExpiryReminderStep(
       ExternalAccessTokenRepository tokens,
       UserRepository users,
       ExternalAccessTokenMailer mailer,
+      ExternalAccessSettingsService settings,
       ZoneId zone) {
     this.tokens = tokens;
     this.users = users;
     this.mailer = mailer;
+    this.settings = settings;
     this.zone = zone;
   }
 
@@ -74,6 +79,11 @@ public class ExternalAccessTokenExpiryReminderStep implements LocalAccountMainte
 
   @Override
   public void run(Instant now) {
+    if (!settings.isEnabled()) {
+      // A closed channel needs no reminder: the token it warns about cannot be used either way,
+      // and "Ihr Zugangstoken läuft ab" would be an odd thing to read while the channel is off.
+      return;
+    }
     Map<UUID, List<ExternalAccessToken>> due = new LinkedHashMap<>();
     for (int leadDays : LEAD_DAYS) {
       LocalDate day = LocalDate.ofInstant(now, zone).plusDays(leadDays);

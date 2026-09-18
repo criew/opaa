@@ -9,6 +9,7 @@ import io.opaa.security.LocalAuthKeyService;
 import io.opaa.security.LocalAuthKeyService.Purpose;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -90,14 +91,17 @@ public class ExternalAccessTokenAuthenticator {
       // account lifecycle - access-control.md applies the same rule to everything else.
       return new Result.Refused(ExternalAccessTokenRejection.ACCOUNT_NOT_ACTIVE);
     }
-    return new Result.Authenticated(user, token.getId());
+    return new Result.Authenticated(user, token.getId(), token.getLastUsedOn());
   }
 
   /** Outcome of {@link #authenticate}. */
   public sealed interface Result {
 
-    /** The person behind the value and the token id every scope check needs. */
-    record Authenticated(User user, UUID tokenId) implements Result {}
+    /**
+     * The person behind the value, the token id every scope check needs and the day of use the row
+     * already carries - so the caller can skip a second write without a second query.
+     */
+    record Authenticated(User user, UUID tokenId, LocalDate lastUsedOn) implements Result {}
 
     /** Refused, with the reason {@code WWW-Authenticate} names. */
     record Refused(ExternalAccessTokenRejection rejection) implements Result {}

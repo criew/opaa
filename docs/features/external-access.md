@@ -384,7 +384,9 @@ Gebaut sind Modell und Schema (`external_access_tokens` samt der unveränderlich
 benutzt", der Widerruf durch die Person, die Verwaltungsliste ohne Nutzungsdatum und ohne
 Personenfilter, die beiden Sperren der Systemverwaltung, der Authentifizierungsfilter samt eigener
 Filterkette, die Erinnerungsmail 14 und 3 Tage vor dem Ablauf, das Außerkrafttreten mit
-Protokolleintrag und die an die Protokollfrist gekoppelte Löschfrist.
+Protokolleintrag — sowohl beim Ablauf als auch beim Kontenlebenszyklus: Sperre eines Kontos und
+abgeschlossene Übergabe an eine Anbieteridentität setzen die Tokens der Person in derselben
+Transaktion außer Kraft — und die an die Protokollfrist gekoppelte Löschfrist.
 
 Schalter, Netzbereich und Höchstlaufzeit kommen aus den Kanaleinstellungen
 ([#1717](https://github.com/criew/opaa/issues/1717)) und werden **je Aufruf** gelesen: Ist der
