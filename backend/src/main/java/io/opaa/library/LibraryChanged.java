@@ -12,12 +12,13 @@ import java.util.UUID;
  * PermissionHistoryService#recordVisibilityChanged}) and one audit entry, side by side. {@link
  * KnowledgeLibraryService} publishes exactly one of these per operation; {@link AuditListener} and
  * {@link PermissionHistoryListener} each react with their own half, in an intentionally unspecified
- * order - see {@link GrantChanged}'s Javadoc for why. Scoped to {@code CREATED} and {@code
- * VISIBILITY_CHANGED} only - a plain rename/description edit ({@code LIBRARY_CHANGED}) and a
- * source-configuration edit ({@code LIBRARY_SOURCE_UPDATED}) write an audit entry with no
- * permission-history counterpart, so they stay direct {@code AuditEventRecorder} calls; library
- * deletion closes a variable number of grant/visibility intervals in a loop, a different shape than
- * this event's one-history-write-per-publish, so it also stays direct.
+ * order - see {@link GrantChanged}'s Javadoc for why. Scoped to {@code CREATED}, {@code
+ * VISIBILITY_CHANGED} and {@code EXTERNAL_ACCESS_CHANGED} only - a plain rename/description edit
+ * ({@code LIBRARY_CHANGED}) and a source-configuration edit ({@code LIBRARY_SOURCE_UPDATED}) write
+ * an audit entry with no permission-history counterpart, so they stay direct {@code
+ * AuditEventRecorder} calls; library deletion closes a variable number of grant/visibility
+ * intervals in a loop, a different shape than this event's one-history-write-per-publish, so it
+ * also stays direct.
  *
  * <p>Same {@link Cause}-carries-its-{@link AuditEventType} and transaction/publishing contract as
  * {@link GrantChanged} - see its Javadoc.
@@ -35,7 +36,8 @@ public record LibraryChanged(
    */
   public enum Cause {
     CREATED(AuditEventType.LIBRARY_CREATED),
-    VISIBILITY_CHANGED(AuditEventType.ASSET_VISIBILITY_CHANGED);
+    VISIBILITY_CHANGED(AuditEventType.ASSET_VISIBILITY_CHANGED),
+    EXTERNAL_ACCESS_CHANGED(AuditEventType.ASSET_EXTERNAL_ACCESS_CHANGED);
 
     private final AuditEventType auditEventType;
 

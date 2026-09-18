@@ -25,6 +25,7 @@ import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import FieldLabel from './wizard/FieldLabel'
 import SectionHead from './SectionHead'
+import LibraryExternalAccessSection from './library/LibraryExternalAccessSection'
 import type {
   AssetGrantResponse,
   AssetRole,
@@ -517,6 +518,9 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
             </Stack>
           </Stack>
         )}
+
+        <Divider sx={{ my: 2 }} />
+        <LibraryExternalAccessSection libraryId={library.id} />
 
         <Divider sx={{ my: 2 }} />
         <SectionHead component="h3">Rollen</SectionHead>

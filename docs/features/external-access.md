@@ -182,6 +182,13 @@ Jede Bibliothek trägt ein Merkmal **„darf über Fremdzugänge genutzt werden"
 Gesetzt wird es von dem, der die Bibliothek verwaltet — mindestens Verwalter-Rolle an ihr — sowie von
 der Systemverwaltung.
 
+> **Gebaut (#1731).** Das Merkmal, seine Pflichtbefristung, die Historisierung, der Ablauflauf, die
+> Wiedervorlage per Mail, die beiden Protokollereignisse, der Schalter im Zugriffsbereich der
+> Bibliothek und die Liste der Systemverwaltung stehen. Nicht gebaut und hier ausdrücklich nicht
+> vorweggenommen: die Deckelung durch die Freigabe-Obergrenze (#797, Punkt 2 unten), die Sperre bei
+> „Nachfolge offen" (Punkt 4 unten) und die Tokenzählung, die bis zu den Zugangstokens (#1718) als
+> `0` ausgewiesen wird.
+
 ### Die Freigabe ist ein Reichweitenfeld und wird wie eines behandelt
 
 Das Merkmal ist fachlich dasselbe wie `visibility` und `listed`: eine Stufe der Reichweite, an der

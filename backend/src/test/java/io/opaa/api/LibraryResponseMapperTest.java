@@ -14,6 +14,7 @@ import io.opaa.api.dto.S3Settings;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.ExternalAccessState;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.ScheduleFrequency;
@@ -25,6 +26,7 @@ import io.opaa.library.ConfluenceSpaceSelection;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryDetail;
+import io.opaa.library.LibraryExternalAccess;
 import io.opaa.library.LibraryManagementDetail;
 import io.opaa.library.LibraryScheduleDetail;
 import io.opaa.library.LibrarySummary;
@@ -127,6 +129,8 @@ class LibraryResponseMapperTest {
             LibraryVisibility.PRIVATE,
             false);
     Instant nextRunAt = Instant.now().plusSeconds(3600);
+    Instant releaseExpiresAt = Instant.now().plusSeconds(86_400);
+    Instant releaseSetAt = Instant.now().minusSeconds(60);
     LibraryScheduleDetail schedule =
         new LibraryScheduleDetail(
             ScheduleFrequency.DAILY, 3, 30, ScheduleWeekday.MONDAY, nextRunAt);
@@ -144,7 +148,15 @@ class LibraryResponseMapperTest {
             schedule,
             false,
             1_000_000L,
-            250_000L);
+            250_000L,
+            new LibraryExternalAccess(
+                library.getId(),
+                ExternalAccessState.ACTIVE,
+                releaseExpiresAt,
+                releaseSetAt,
+                "Erika Mustermann",
+                0L,
+                365));
     LibraryDetail detail =
         new LibraryDetail(library, AssetRole.MANAGER, 3L, managementDetail, true);
 
@@ -168,6 +180,14 @@ class LibraryResponseMapperTest {
     assertThat(response.getLastScheduledRunsFailed()).isFalse();
     assertThat(response.getStorageQuotaBytes()).isEqualTo(1_000_000L);
     assertThat(response.getStorageUsedBytes()).isEqualTo(250_000L);
+    // #1731: every field of the release travels, and the token count stays a number
+    assertThat(response.getExternalAccess().getLibraryId()).isEqualTo(library.getId());
+    assertThat(response.getExternalAccess().getState()).isEqualTo(ExternalAccessState.ACTIVE);
+    assertThat(response.getExternalAccess().getExpiresAt()).isEqualTo(releaseExpiresAt);
+    assertThat(response.getExternalAccess().getSetAt()).isEqualTo(releaseSetAt);
+    assertThat(response.getExternalAccess().getSetByDisplayName()).isEqualTo("Erika Mustermann");
+    assertThat(response.getExternalAccess().getTokenCount()).isZero();
+    assertThat(response.getExternalAccess().getMaxReleaseDays()).isEqualTo(365);
   }
 
   @Test
@@ -184,7 +204,7 @@ class LibraryResponseMapperTest {
             false);
     LibraryManagementDetail managementDetail =
         new LibraryManagementDetail(
-            null, null, null, false, false, null, null, null, null, null, null, 0L, 0L);
+            null, null, null, false, false, null, null, null, null, null, null, 0L, 0L, null);
     LibraryDetail detail = new LibraryDetail(library, AssetRole.OWNER, 0L, managementDetail, true);
 
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);

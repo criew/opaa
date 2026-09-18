@@ -1337,6 +1337,17 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     // #1278 review: the mock user is the library's named (ownerId) OWNER here, not merely an
     // admin bypass - the one case holdsIndependentOwnerRole (and this mock field) says true for.
     diagnosticsLockToggleable: true,
+    // #1731: das ausgelieferte "nie freigegeben" - die Fremdzugangsfreigabe liefert das Backend
+    // erst ab MANAGER, deshalb tragen die Fixtures unterhalb dieser Rolle das Feld gar nicht.
+    externalAccess: {
+      libraryId: 'library-mine',
+      state: 'NEVER_SET',
+      expiresAt: null,
+      setAt: null,
+      setByDisplayName: null,
+      tokenCount: 0,
+      maxReleaseDays: 365,
+    },
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
@@ -1357,6 +1368,15 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     sourceType: 'FILESYSTEM',
     diagnosticsLocked: true,
     diagnosticsLockToggleable: false,
+    externalAccess: {
+      libraryId: 'library-referat-50',
+      state: 'ACTIVE',
+      expiresAt: '2027-03-01T22:59:59Z',
+      setAt: '2026-03-01T10:00:00Z',
+      setByDisplayName: 'Erika Mustermann',
+      tokenCount: 4,
+      maxReleaseDays: 365,
+    },
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },

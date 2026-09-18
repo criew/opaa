@@ -4485,6 +4485,65 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/libraries/{libraryId}/external-access:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: setLibraryExternalAccess
+      tags: [library]
+      summary: >
+        Sets or takes back a library's Fremdzugangsfreigabe (MANAGER role or above required - the
+        same bar that decides who may hand out read access, plus SYSTEM_ADMIN). A release is
+        mandatorily time-limited to at most one year; it stops taking effect on its own, and the
+        renewal is a deliberate act. Whether the channel itself is open is a separate, installation-
+        wide decision (#1717) this endpoint neither reads nor needs.
+        See docs/features/external-access.md#die-freigabe-der-bibliothek.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryExternalAccessRequest"
+      responses:
+        "200":
+          description: Release set or taken back
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryExternalAccessResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/external-access/libraries:
+    get:
+      operationId: listExternalAccessLibraries
+      tags: [library, admin]
+      summary: >
+        Every library currently released for Fremdzugänge, with who set the release, when, and
+        when it ends (SYSTEM_ADMIN only). Sorted by expiry, soonest first - the list exists to
+        make the Bestand of releases reviewable, not to look up a single library.
+      responses:
+        "200":
+          description: The currently released libraries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExternalAccessLibraryResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/libraries/{libraryId}/confluence-webhook-secret:
     parameters:
       - name: libraryId
@@ -8112,6 +8171,96 @@ components:
         owning group's membership. ORGANIZATION is readable by every user in the same
         organization. See docs/features/spaces-and-assets.md#freigabestufen-und-auffindbarkeit.
       enum: [PRIVATE, SHARED, ORGANIZATION]
+
+    ExternalAccessState:
+      type: string
+      description: >
+        Whether a library may be used through a Fremdzugang, and where it may not, why not.
+        NEVER_SET is the shipped default. ACTIVE means released until expiresAt. WITHDRAWN means
+        taken back by hand, EXPIRED means the Befristung ran out and the scheduled run took the
+        release out of effect. SUSPENDED is reserved for a subsequently lowered connector share
+        ceiling (#797) and is set by nothing today. See
+        docs/features/external-access.md#die-freigabe-der-bibliothek.
+      enum: [NEVER_SET, ACTIVE, WITHDRAWN, EXPIRED, SUSPENDED]
+
+    LibraryExternalAccessRequest:
+      type: object
+      required:
+        - enabled
+      properties:
+        enabled:
+          type: boolean
+          description: >
+            True releases the library for Fremdzugänge and requires expiresAt; false takes an
+            existing release back and must not carry an expiresAt.
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            Mandatory when enabled is true: the instant the release stops taking effect. Must lie
+            in the future and at most one year out (opaa.external-access.max-release-days) - a
+            release without an end is a ratchet, which is exactly what the Befristung prevents.
+
+    LibraryExternalAccessResponse:
+      type: object
+      required:
+        - libraryId
+        - state
+        - tokenCount
+        - maxReleaseDays
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        state:
+          $ref: "#/components/schemas/ExternalAccessState"
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When the release ends, or - for WITHDRAWN/EXPIRED - when it would have ended. Null
+            while the state is NEVER_SET.
+        setAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the release was last set or taken back; null while NEVER_SET.
+        setByDisplayName:
+          type: string
+          nullable: true
+          description: >
+            Who last set or took back the release, resolved for display only; null when the
+            account no longer exists. The audit log carries the same fact pseudonymised.
+        tokenCount:
+          type: integer
+          format: int64
+          description: >
+            How many Zugangstokens currently contain this library - a number, never names,
+            persons or usage. Always 0 until the tokens themselves exist (#1718); the field is
+            here from the start so the release view does not change shape when they arrive.
+        maxReleaseDays:
+          type: integer
+          description: >
+            The systemwide upper bound of a release in days (opaa.external-access.max-release-days,
+            365 by default) - so a client can offer the latest admissible date instead of
+            hard-coding one.
+
+    ExternalAccessLibraryResponse:
+      type: object
+      required:
+        - libraryId
+        - libraryName
+        - externalAccess
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        libraryName:
+          type: string
+        externalAccess:
+          $ref: "#/components/schemas/LibraryExternalAccessResponse"
       example: PRIVATE
 
     LibraryRequest:
@@ -9062,6 +9211,16 @@ components:
             does, so an admin without a self-issued or independently-held OWNER grant sees false
             here even though myRole reads OWNER (#1278 review). A client uses this, not myRole, to
             decide whether to offer the toggle at all.
+        externalAccess:
+          description: >
+            The library's Fremdzugangsfreigabe (docs/features/external-access.md#die-freigabe-der-
+            bibliothek). Set only if myRole is at least MANAGER - the same threshold PUT
+            /api/v1/libraries/{libraryId}/external-access enforces for changing it, and the
+            tokenCount inside it is an input of the annual renewal decision, not something a
+            VIEWER needs. Absent (not merely null) below that role.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/LibraryExternalAccessResponse"
         createdAt:
           type: string
           format: date-time
@@ -11871,6 +12030,8 @@ components:
           ASSET_GRANT_EXPIRED,
           ASSET_VISIBILITY_CHANGED,
           ASSET_GRANT_SUSPENDED,
+          ASSET_EXTERNAL_ACCESS_CHANGED,
+          ASSET_EXTERNAL_ACCESS_EXPIRED,
           SPACE_CREATED,
           SPACE_CHANGED,
           SPACE_DELETED,

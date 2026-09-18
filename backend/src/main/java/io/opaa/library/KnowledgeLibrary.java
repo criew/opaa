@@ -2,6 +2,7 @@ package io.opaa.library;
 
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.ExternalAccessState;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.source.s3.S3SourceSettings;
@@ -84,6 +85,43 @@ public class KnowledgeLibrary {
 
   @Column(name = "listed", nullable = false)
   private boolean listed;
+
+  /**
+   * The third reach field beside {@link #visibility} and {@link #listed}: whether this library may
+   * be used through a Fremdzugang, and where it may not, why not (#1731,
+   * docs/features/external-access.md). {@code NEVER_SET} for every new and every pre-existing
+   * library - a Bestand never leaves the house because nobody decided it should.
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "external_access_state", nullable = false, length = 20)
+  private ExternalAccessState externalAccessState = ExternalAccessState.NEVER_SET;
+
+  /**
+   * When the release stops taking effect, or - once it no longer does - when it would have. Never
+   * {@code null} while {@link #externalAccessState} is {@code ACTIVE} ({@code
+   * chk_knowledge_libraries_external_access}): a release without an end is a ratchet.
+   */
+  @Column(name = "external_access_expires_at")
+  private Instant externalAccessExpiresAt;
+
+  @Column(name = "external_access_set_at")
+  private Instant externalAccessSetAt;
+
+  /**
+   * Who last set or took back the release - carried for the administration's Bestandsliste only,
+   * deliberately without a foreign key: deleting an account must neither fail nor drag the library
+   * with it, and the pseudonymised, binding record of the act is the audit entry, not this column.
+   */
+  @Column(name = "external_access_set_by_user_id")
+  private UUID externalAccessSetByUserId;
+
+  /**
+   * When the Wiedervorlage for the running release went out - {@code null} while none has. Makes
+   * the daily reminder run idempotent per release rather than mailing every day of the lead window;
+   * cleared with every change of the release, because the next one earns its own reminder.
+   */
+  @Column(name = "external_access_reminder_sent_at")
+  private Instant externalAccessReminderSentAt;
 
   /**
    * The library's single quellentyp (ADR-0018) - chosen at creation, never changed afterwards (see
@@ -578,6 +616,62 @@ public class KnowledgeLibrary {
 
   public boolean isListed() {
     return listed;
+  }
+
+  public ExternalAccessState getExternalAccessState() {
+    return externalAccessState;
+  }
+
+  public Instant getExternalAccessExpiresAt() {
+    return externalAccessExpiresAt;
+  }
+
+  public Instant getExternalAccessSetAt() {
+    return externalAccessSetAt;
+  }
+
+  public UUID getExternalAccessSetByUserId() {
+    return externalAccessSetByUserId;
+  }
+
+  public Instant getExternalAccessReminderSentAt() {
+    return externalAccessReminderSentAt;
+  }
+
+  /** See {@link #externalAccessReminderSentAt} - the reminder is no reach change and no history. */
+  void markExternalAccessReminderSent(Instant at) {
+    this.externalAccessReminderSentAt = at;
+  }
+
+  /** Whether a Fremdzugang may currently reach this library at all. */
+  public boolean isExternalAccessActive() {
+    return externalAccessState == ExternalAccessState.ACTIVE;
+  }
+
+  /**
+   * Package-private by contract, for the same reason as {@link #updateDetails}: the release is a
+   * reach field sharing one history interval with {@code visibility}/{@code listed} ({@link
+   * PermissionHistoryService#recordExternalAccessChanged}), so whoever changes it must write that
+   * interval - in production code today only {@link LibraryExternalAccessService} does. Package
+   * scope keeps that obligation reachable; it does not enforce it.
+   *
+   * <p>{@code expiresAt} is required for {@link ExternalAccessState#ACTIVE} and kept as the date
+   * the release ran to for every other state except {@link ExternalAccessState#NEVER_SET}, which
+   * this method never produces - a library that was released once is never "never set" again.
+   */
+  void updateExternalAccess(
+      ExternalAccessState state, Instant expiresAt, UUID actorUserId, Instant at) {
+    if (state == ExternalAccessState.NEVER_SET) {
+      throw new IllegalArgumentException("a release that happened cannot return to NEVER_SET");
+    }
+    if (state == ExternalAccessState.ACTIVE && expiresAt == null) {
+      throw new IllegalArgumentException("an active release carries a mandatory expiry");
+    }
+    this.externalAccessState = state;
+    this.externalAccessExpiresAt = expiresAt;
+    this.externalAccessSetAt = at;
+    this.externalAccessSetByUserId = actorUserId;
+    this.externalAccessReminderSentAt = null;
   }
 
   public DocumentSourceType getSourceType() {

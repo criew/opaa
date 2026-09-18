@@ -1,6 +1,8 @@
 package io.opaa.library;
 
+import io.opaa.api.types.ExternalAccessState;
 import io.opaa.api.types.LibraryVisibility;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -79,4 +81,28 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
    * never intersected with anyone's read rights.
    */
   long countByOrganizationIdAndDiagnosticsLockedTrue(UUID organizationId);
+
+  /**
+   * Every library of one organization in one release state (#1731) - the administration's
+   * Bestandsliste asks for {@code ACTIVE}.
+   */
+  List<KnowledgeLibrary> findByOrganizationIdAndExternalAccessState(
+      UUID organizationId, ExternalAccessState state);
+
+  /**
+   * Every library whose release is still {@code ACTIVE} although its expiry has passed, across all
+   * organizations - the one query of the daily expiry run, served by {@code
+   * idx_knowledge_libraries_external_access_expiry}.
+   */
+  List<KnowledgeLibrary> findByExternalAccessStateAndExternalAccessExpiresAtLessThanEqual(
+      ExternalAccessState state, Instant cutoff);
+
+  /**
+   * Every library whose release is {@code ACTIVE}, expires within the reminder window and has not
+   * been reminded about yet - which is what keeps the daily run from mailing every day of that
+   * window.
+   */
+  List<KnowledgeLibrary>
+      findByExternalAccessStateAndExternalAccessReminderSentAtIsNullAndExternalAccessExpiresAtLessThanEqual(
+          ExternalAccessState state, Instant until);
 }

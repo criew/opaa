@@ -14,6 +14,9 @@ import io.opaa.api.types.AssetRole;
  *     {@code null} below that threshold.
  * @param sourceCredentialsSet whether a credential is stored, never the credential itself
  *     (ADR-0018) - ships even at this MANAGER threshold as a non-secret yes/no.
+ * @param externalAccess the library's Freigabe fuer Fremdzugaenge (#1731), MANAGER-gated like the
+ *     rest: it is set at this bar, and the token count it carries is an input of the annual renewal
+ *     decision, not something a VIEWER needs.
  */
 public record LibraryManagementDetail(
     String sourcePath,
@@ -28,9 +31,10 @@ public record LibraryManagementDetail(
     LibraryScheduleDetail schedule,
     Boolean lastScheduledRunsFailed,
     Long storageQuotaBytes,
-    Long storageUsedBytes) {
+    Long storageUsedBytes,
+    LibraryExternalAccess externalAccess) {
 
   public static final LibraryManagementDetail EMPTY =
       new LibraryManagementDetail(
-          null, null, null, null, null, null, null, null, null, null, null, null, null);
+          null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }
