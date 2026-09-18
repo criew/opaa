@@ -71,11 +71,15 @@ databaseChangeLog:
               ALTER TABLE library_visibility_history
                   DROP CONSTRAINT chk_library_visibility_history_cause;
 
-              -- Zeilen der beiden neuen Ursachen gehen mit: Die engere Bedingung liesse sich sonst
-              -- nicht wieder anlegen, und die Rueckrichtung dieses Changesets nimmt das Merkmal
-              -- ohnehin ganz zurueck - eine Historienzeile ueber eine Freigabe, deren Spalten es
-              -- danach nicht mehr gibt, waere kein Nachweis mehr, sondern eine Ursache ohne Zustand.
-              DELETE FROM library_visibility_history
+              -- Die beiden neuen Ursachen werden auf die Bestandsursache zurueckgeschrieben, nicht
+              -- geloescht: Die engere Bedingung liesse sich sonst nicht wieder anlegen, aber eine
+              -- geloeschte Zeile nimmt das Intervall mit, in dem sie stand - eine Bibliothek ohne
+              -- offenes Intervall antwortet der Stichtagsrekonstruktion still "nicht
+              -- organisationsweit lesbar", also falsch in die gefaehrliche Richtung (ADR-0016).
+              -- Was die Zeile ueber visibility/listed festhaelt, bleibt richtig; nur ihr Anlass
+              -- ist nach der Ruecknahme des Merkmals nicht mehr darstellbar.
+              UPDATE library_visibility_history
+                  SET cause = 'VISIBILITY_CHANGED'
                   WHERE cause IN ('EXTERNAL_ACCESS_CHANGED', 'EXTERNAL_ACCESS_EXPIRED');
 
               ALTER TABLE library_visibility_history

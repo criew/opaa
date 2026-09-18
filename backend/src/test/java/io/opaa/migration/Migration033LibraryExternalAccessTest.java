@@ -143,24 +143,30 @@ class Migration033LibraryExternalAccessTest extends AbstractMigrationTest {
 
   /**
    * Die Rückrichtung muss auch dann laufen, wenn die beiden neuen Ursachen bereits im Bestand
-   * stehen - die engere Bedingung liesse sich sonst nicht wieder anlegen, und ein Rollback, der an
-   * den eigenen Daten scheitert, ist keiner.
+   * stehen - und sie darf die Zeilen nicht mitnehmen: Eine Bibliothek ohne offenes Intervall
+   * antwortet der Stichtagsrekonstruktion still „nicht organisationsweit lesbar", also falsch in
+   * die gefährliche Richtung. Was die Zeile über visibility/listed festhält, bleibt richtig; nur
+   * ihr Anlass ist nach der Rücknahme des Merkmals nicht mehr darstellbar.
    */
   @Test
-  void theRollbackSurvivesRowsCarryingTheNewCauses() throws Exception {
+  void theRollbackKeepsTheIntervalsAndOnlyRewritesTheirCause() throws Exception {
     UUID organization = insertOrganization();
     UUID owner = insertUser(organization);
     UUID library = insertLibrary(organization, owner);
     applyChangelog(connection, CHANGELOG_PATH);
-    insertHistory(library, organization, "EXTERNAL_ACCESS_CHANGED", "ACTIVE");
-    insertHistory(library, organization, "EXTERNAL_ACCESS_EXPIRED", "EXPIRED");
-    insertHistory(library, organization, "CREATED", "NEVER_SET");
+    insertHistory(library, organization, "CREATED", "NEVER_SET", true);
+    insertHistory(library, organization, "EXTERNAL_ACCESS_CHANGED", "ACTIVE", true);
+    insertHistory(library, organization, "EXTERNAL_ACCESS_EXPIRED", "EXPIRED", false);
 
     rollbackChangelog(connection, CHANGELOG_PATH);
 
     assertThat(columnExists("knowledge_libraries", "external_access_state")).isFalse();
     assertThat(columnExists("library_visibility_history", "external_access_state")).isFalse();
-    assertThat(historyCauses(library)).containsExactly("CREATED");
+    assertThat(historyCauses(library))
+        .containsExactly("CREATED", "VISIBILITY_CHANGED", "VISIBILITY_CHANGED");
+    assertThat(openIntervalCount(library))
+        .as("die Bibliothek behält ihr offenes Intervall")
+        .isEqualTo(1);
   }
 
   /**
@@ -246,11 +252,24 @@ class Migration033LibraryExternalAccessTest extends AbstractMigrationTest {
 
   private void insertHistory(UUID libraryId, UUID organizationId, String cause, String state)
       throws SQLException {
+    insertHistory(libraryId, organizationId, cause, state, true);
+  }
+
+  /**
+   * {@code closed} steuert {@code valid_to}: Höchstens eine Zeile je Bibliothek darf offen sein
+   * (Teilindex auf den offenen Zeilen), und genau die ist der Zustand, den die Rekonstruktion für
+   * „jetzt" auswählt.
+   */
+  private void insertHistory(
+      UUID libraryId, UUID organizationId, String cause, String state, boolean closed)
+      throws SQLException {
     try (PreparedStatement statement =
         connection.prepareStatement(
             "INSERT INTO library_visibility_history (id, library_id, organization_id, visibility,"
                 + " listed, cause, valid_from, valid_to, created_at, external_access_state)"
-                + " VALUES (?, ?, ?, 'PRIVATE', true, ?, now(), now(), now(), ?)")) {
+                + " VALUES (?, ?, ?, 'PRIVATE', true, ?, now(), "
+                + (closed ? "now()" : "NULL")
+                + ", now(), ?)")) {
       statement.setObject(1, UUID.randomUUID());
       statement.setObject(2, libraryId);
       statement.setObject(3, organizationId);
@@ -272,6 +291,19 @@ class Migration033LibraryExternalAccessTest extends AbstractMigrationTest {
             changelogClasspath, new ClassLoaderResourceAccessor(), liquibaseDatabase(connection))
         .rollback(1, new Contexts(), new LabelExpression());
     connection.setAutoCommit(true);
+  }
+
+  private int openIntervalCount(UUID libraryId) throws SQLException {
+    try (PreparedStatement statement =
+        connection.prepareStatement(
+            "SELECT count(*) FROM library_visibility_history"
+                + " WHERE library_id = ? AND valid_to IS NULL")) {
+      statement.setObject(1, libraryId);
+      try (ResultSet rows = statement.executeQuery()) {
+        assertThat(rows.next()).isTrue();
+        return rows.getInt(1);
+      }
+    }
   }
 
   private List<String> historyCauses(UUID libraryId) throws SQLException {
