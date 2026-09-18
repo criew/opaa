@@ -8283,6 +8283,7 @@ components:
         owning group's membership. ORGANIZATION is readable by every user in the same
         organization. See docs/features/spaces-and-assets.md#freigabestufen-und-auffindbarkeit.
       enum: [PRIVATE, SHARED, ORGANIZATION]
+      example: PRIVATE
 
     ExternalAccessState:
       type: string
@@ -8373,7 +8374,6 @@ components:
           type: string
         externalAccess:
           $ref: "#/components/schemas/LibraryExternalAccessResponse"
-      example: PRIVATE
 
     LibraryRequest:
       type: object

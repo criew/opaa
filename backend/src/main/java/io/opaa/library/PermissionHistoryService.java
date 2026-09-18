@@ -314,22 +314,6 @@ public class PermissionHistoryService {
    * them" is answered by checking its absence in that same, single reconstruction rather than by
    * the absence of a log entry, which the feature spec explicitly rejects as unprovable.
    */
-  /**
-   * Whether {@code libraryId} was released for Fremdzugaenge at {@code asOf} - the Stichtag
-   * counterpart of {@link KnowledgeLibrary#isExternalAccessActive()} (#1731). Answers the audit
-   * question "was this Bestand reachable from outside the house in 2026" from the history alone,
-   * which is the point of historising the field rather than only logging it: the log is deleted
-   * monthwise after its retention, the interval is not. {@code false} for a library no interval
-   * covers at that instant - a library that did not exist was not released.
-   */
-  @Transactional(readOnly = true)
-  public boolean externalAccessActiveAsOf(UUID libraryId, Instant asOf) {
-    return visibilityHistoryRepository
-        .findStateAsOf(libraryId, asOf)
-        .map(interval -> interval.getExternalAccessState() == ExternalAccessState.ACTIVE)
-        .orElse(false);
-  }
-
   @Transactional(readOnly = true)
   public Set<UUID> readableLibraryIdsAsOf(UUID userId, UUID organizationId, Instant asOf) {
     Set<UUID> readable = new HashSet<>();
@@ -348,5 +332,30 @@ public class PermissionHistoryService {
     readable.addAll(
         visibilityHistoryRepository.findOrganizationWideLibraryIdsAsOf(organizationId, asOf));
     return readable;
+  }
+
+  /**
+   * Whether {@code libraryId} was released for Fremdzugaenge at {@code asOf} - the Stichtag
+   * counterpart of {@link KnowledgeLibrary#isExternalAccessActive(Instant)} (#1731). Answers the
+   * audit question "was this Bestand reachable from outside the house in 2026" from the history
+   * alone, which is the point of historising the field rather than only logging it: the log is
+   * deleted monthwise after its retention, the interval is not.
+   *
+   * <p>The Befristung counts at {@code asOf} itself, not at the moment {@link
+   * LibraryExternalAccessExpiryService} wrote the expiry down: an interval that still reads {@code
+   * ACTIVE} because the run had not come round yet was, at an instant past its own {@code
+   * expiresAt}, not in effect. {@code false} for a library no interval covers at that instant - a
+   * library that did not exist was not released.
+   */
+  @Transactional(readOnly = true)
+  public boolean externalAccessActiveAsOf(UUID libraryId, Instant asOf) {
+    return visibilityHistoryRepository
+        .findStateAsOf(libraryId, asOf)
+        .map(
+            interval ->
+                interval.getExternalAccessState() == ExternalAccessState.ACTIVE
+                    && interval.getExternalAccessExpiresAt() != null
+                    && interval.getExternalAccessExpiresAt().isAfter(asOf))
+        .orElse(false);
   }
 }

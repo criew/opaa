@@ -98,11 +98,12 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
       ExternalAccessState state, Instant cutoff);
 
   /**
-   * Every library whose release is {@code ACTIVE}, expires within the reminder window and has not
-   * been reminded about yet - which is what keeps the daily run from mailing every day of that
-   * window.
+   * Every library whose release is {@code ACTIVE}, has not been reminded about yet and expires
+   * inside the reminder window - bounded on both sides: the open end keeps the daily run from
+   * mailing every day of the window, the lower end keeps it from announcing a Befristung that has
+   * already passed, which the run before it has just taken out of effect.
    */
   List<KnowledgeLibrary>
-      findByExternalAccessStateAndExternalAccessReminderSentAtIsNullAndExternalAccessExpiresAtLessThanEqual(
-          ExternalAccessState state, Instant until);
+      findByExternalAccessStateAndExternalAccessReminderSentAtIsNullAndExternalAccessExpiresAtBetween(
+          ExternalAccessState state, Instant after, Instant until);
 }

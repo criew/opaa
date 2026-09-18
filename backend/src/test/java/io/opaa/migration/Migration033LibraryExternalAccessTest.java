@@ -10,7 +10,13 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import liquibase.Contexts;
+import liquibase.LabelExpression;
+import liquibase.Liquibase;
+import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -101,8 +107,10 @@ class Migration033LibraryExternalAccessTest extends AbstractMigrationTest {
         .hasMessageContaining("chk_knowledge_libraries_external_access");
     assertThatThrownBy(() -> setRelease(library, "NEVER_SET", false, true, owner))
         .hasMessageContaining("chk_knowledge_libraries_external_access");
+    // Der Wert passiert die Zustandsbedingung des ELSE-Zweiges (set_at gesetzt), sodass nur die
+    // Wertebereichsprüfung greifen kann - die Zusicherung nennt sie deshalb namentlich.
     assertThatThrownBy(() -> setRelease(library, "FREIGEGEBEN", true, true, owner))
-        .hasMessageContaining("chk_knowledge_libraries_external_access");
+        .hasMessageContaining("chk_knowledge_libraries_external_access_state");
 
     assertThatCode(() -> setRelease(library, "ACTIVE", true, true, owner))
         .doesNotThrowAnyException();
@@ -131,6 +139,28 @@ class Migration033LibraryExternalAccessTest extends AbstractMigrationTest {
         .doesNotThrowAnyException();
     assertThatThrownBy(() -> insertHistory(library, organization, "FREIGEGEBEN", "ACTIVE"))
         .hasMessageContaining("chk_library_visibility_history_cause");
+  }
+
+  /**
+   * Die Rückrichtung muss auch dann laufen, wenn die beiden neuen Ursachen bereits im Bestand
+   * stehen - die engere Bedingung liesse sich sonst nicht wieder anlegen, und ein Rollback, der an
+   * den eigenen Daten scheitert, ist keiner.
+   */
+  @Test
+  void theRollbackSurvivesRowsCarryingTheNewCauses() throws Exception {
+    UUID organization = insertOrganization();
+    UUID owner = insertUser(organization);
+    UUID library = insertLibrary(organization, owner);
+    applyChangelog(connection, CHANGELOG_PATH);
+    insertHistory(library, organization, "EXTERNAL_ACCESS_CHANGED", "ACTIVE");
+    insertHistory(library, organization, "EXTERNAL_ACCESS_EXPIRED", "EXPIRED");
+    insertHistory(library, organization, "CREATED", "NEVER_SET");
+
+    rollbackChangelog(connection, CHANGELOG_PATH);
+
+    assertThat(columnExists("knowledge_libraries", "external_access_state")).isFalse();
+    assertThat(columnExists("library_visibility_history", "external_access_state")).isFalse();
+    assertThat(historyCauses(library)).containsExactly("CREATED");
   }
 
   /**
@@ -228,6 +258,35 @@ class Migration033LibraryExternalAccessTest extends AbstractMigrationTest {
       statement.setString(5, state);
       statement.executeUpdate();
     }
+  }
+
+  /**
+   * Rolls the one changeSet of {@link #CHANGELOG_PATH} back. No helper for this exists on the base
+   * class - this is the first delta test whose Rueckrichtung is itself a claim - and {@code
+   * Liquibase.rollback(...)} leaves auto-commit disabled, so it is restored here like {@code
+   * applyChangelog} does.
+   */
+  private void rollbackChangelog(Connection connection, String changelogClasspath)
+      throws Exception {
+    new Liquibase(
+            changelogClasspath, new ClassLoaderResourceAccessor(), liquibaseDatabase(connection))
+        .rollback(1, new Contexts(), new LabelExpression());
+    connection.setAutoCommit(true);
+  }
+
+  private List<String> historyCauses(UUID libraryId) throws SQLException {
+    List<String> causes = new ArrayList<>();
+    try (PreparedStatement statement =
+        connection.prepareStatement(
+            "SELECT cause FROM library_visibility_history WHERE library_id = ? ORDER BY cause")) {
+      statement.setObject(1, libraryId);
+      try (ResultSet rows = statement.executeQuery()) {
+        while (rows.next()) {
+          causes.add(rows.getString(1));
+        }
+      }
+    }
+    return causes;
   }
 
   private String releaseStateOf(UUID libraryId) throws SQLException {

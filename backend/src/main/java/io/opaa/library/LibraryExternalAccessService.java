@@ -118,12 +118,16 @@ public class LibraryExternalAccessService {
     return describe(saved);
   }
 
-  /** The release of one library, for the library detail response. */
+  /**
+   * The release of one library, for the library detail response - carrying the state as it takes
+   * effect now ({@link KnowledgeLibrary#effectiveExternalAccessState}), not the state the row
+   * happens to still hold until the nightly run catches up.
+   */
   @Transactional(readOnly = true)
   public LibraryExternalAccess describe(KnowledgeLibrary library) {
     return new LibraryExternalAccess(
         library.getId(),
-        library.getExternalAccessState(),
+        library.effectiveExternalAccessState(clock.instant()),
         library.getExternalAccessExpiresAt(),
         library.getExternalAccessSetAt(),
         resolveDisplayName(library.getExternalAccessSetByUserId()),
@@ -134,7 +138,9 @@ public class LibraryExternalAccessService {
   /**
    * Every currently released library of the caller's organization, soonest expiry first
    * (SYSTEM_ADMIN only). Deliberately the released ones alone: the list exists to make the Bestand
-   * of releases reviewable, and a list carrying every library that ever had one would bury it.
+   * of releases reviewable, and a list carrying every library that ever had one would bury it. A
+   * release whose Befristung has passed is already gone from here, whether or not the nightly run
+   * has written that down.
    */
   @Transactional(readOnly = true)
   public List<ExternalAccessLibrary> listReleasedLibraries(CurrentUser actor) {
@@ -142,10 +148,12 @@ public class LibraryExternalAccessService {
       throw new AccessDeniedException(
           "Nur die Systemverwaltung sieht die freigegebenen Bibliotheken");
     }
+    Instant now = clock.instant();
     return libraryRepository
         .findByOrganizationIdAndExternalAccessState(
             actor.organizationId(), ExternalAccessState.ACTIVE)
         .stream()
+        .filter(library -> library.isExternalAccessActive(now))
         .sorted(
             Comparator.comparing(KnowledgeLibrary::getExternalAccessExpiresAt)
                 .thenComparing(KnowledgeLibrary::getId))

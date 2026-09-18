@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
+import Divider from '@mui/material/Divider'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
@@ -52,9 +53,15 @@ function stateLine(access: LibraryExternalAccessResponse): string {
   }
 }
 
+/**
+ * Ein Tag weniger als die Obergrenze: `toExpiresAt` legt den gewählten Tag auf sein lokales Ende,
+ * sodass der gesendete Zeitpunkt bis zu 24 Stunden hinter dem gewählten Datum liegt. Ohne den Abzug
+ * böte das Feld genau den Wert als zulässig an, den das Backend mit „gilt höchstens N Tage"
+ * abweist.
+ */
 function latestAdmissibleDate(maxReleaseDays: number): string {
   const latest = new Date()
-  latest.setDate(latest.getDate() + maxReleaseDays)
+  latest.setDate(latest.getDate() + maxReleaseDays - 1)
   return toDateInput(latest.toISOString())
 }
 
@@ -117,6 +124,10 @@ export default function LibraryExternalAccessSection({
   const released = access.state === 'ACTIVE'
   return (
     <Stack spacing={1}>
+      {/* Der Trenner gehört dieser Sektion, nicht dem Dialog: unterhalb der Verwalter-Rolle
+          liefert das Backend die Freigabe gar nicht, und ein Trenner ohne folgenden Abschnitt
+          wäre eine Linie, die nichts trennt. */}
+      <Divider sx={{ my: 1 }} />
       <SectionHead component="h3">Fremdzugänge</SectionHead>
       {error && (
         <Alert severity="error" onClose={() => setError(null)}>

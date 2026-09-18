@@ -602,7 +602,10 @@ class PermissionHistoryServiceIntegrationTest {
   private void assertReleaseLiveAndHistoryAgree(ExternalAccessChange change) {
     Instant afterTheChange = historyClock.nextBoundary();
     boolean live =
-        libraryRepository.findById(change.libraryId()).orElseThrow().isExternalAccessActive();
+        libraryRepository
+            .findById(change.libraryId())
+            .orElseThrow()
+            .isExternalAccessActive(Instant.now());
     assertThat(live)
         .as("the operation must have left the release in the expected state")
         .isEqualTo(change.releasedAfterwards());
@@ -646,6 +649,58 @@ class PermissionHistoryServiceIntegrationTest {
   private LibraryExternalAccessExpiryService expiryServiceAt(Instant now) {
     return new LibraryExternalAccessExpiryService(
         libraryRepository, permissionHistoryService, auditEventRecorder, () -> now);
+  }
+
+  /**
+   * #1731 review, Befund 7: the release must not leak into the read rights. The comment classifying
+   * {@code LibraryExternalAccessService} as unable to change readability asserts exactly that -
+   * here it is measured, for a user who holds no grant on the library and for its own owner.
+   */
+  @Test
+  void releasingALibraryForExternalAccessLeavesTheReadableSetUntouched() {
+    UUID owner = createUser();
+    UUID outsider = createUser();
+    UUID libraryId = createLibrary(owner);
+    Set<UUID> outsiderBefore = accessService.readableLibraryIds(outsider, organizationId);
+    Set<UUID> ownerBefore = accessService.readableLibraryIds(owner, organizationId);
+    Instant beforeTheRelease = historyClock.nextBoundary();
+
+    externalAccessService.setExternalAccess(
+        currentUserOf(owner), libraryId, true, Instant.now().plus(30, ChronoUnit.DAYS));
+    Instant afterTheRelease = historyClock.nextBoundary();
+
+    assertThat(accessService.readableLibraryIds(outsider, organizationId))
+        .isEqualTo(outsiderBefore)
+        .doesNotContain(libraryId);
+    assertThat(accessService.readableLibraryIds(owner, organizationId)).isEqualTo(ownerBefore);
+    assertThat(
+            permissionHistoryService.readableLibraryIdsAsOf(
+                outsider, organizationId, afterTheRelease))
+        .isEqualTo(
+            permissionHistoryService.readableLibraryIdsAsOf(
+                outsider, organizationId, beforeTheRelease));
+  }
+
+  /**
+   * #1731 review, Befund 1: an interval that still reads ACTIVE because the run had not come round
+   * yet was, at an instant past its own expiry, not in effect - and the Stichtag answer is the
+   * proof purpose of the whole field.
+   */
+  @Test
+  void theStichtagAnswerFollowsTheBefristungNotTheRun() {
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    Instant expiresAt = Instant.now().plus(30, ChronoUnit.DAYS);
+    externalAccessService.setExternalAccess(currentUserOf(owner), libraryId, true, expiresAt);
+
+    assertThat(
+            permissionHistoryService.externalAccessActiveAsOf(
+                libraryId, historyClock.nextBoundary()))
+        .isTrue();
+    assertThat(
+            permissionHistoryService.externalAccessActiveAsOf(
+                libraryId, expiresAt.plus(1, ChronoUnit.HOURS)))
+        .isFalse();
   }
 
   /**

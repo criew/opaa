@@ -51,6 +51,9 @@ class LibraryExternalAccessServiceIntegrationTest {
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private PermissionHistoryService permissionHistoryService;
   @Autowired private AuditEventRecorder auditEventRecorder;
+  @Autowired private LibraryAccessService accessService;
+  @Autowired private ExternalAccessProperties externalAccessProperties;
+  @Autowired private org.springframework.context.ApplicationEventPublisher eventPublisher;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -108,7 +111,11 @@ class LibraryExternalAccessServiceIntegrationTest {
     assertThat(access.state()).isEqualTo(ExternalAccessState.ACTIVE);
     assertThat(access.expiresAt()).isEqualTo(expiresAt);
     assertThat(access.setByDisplayName()).isEqualTo("Test User");
-    assertThat(libraryRepository.findById(libraryId).orElseThrow().isExternalAccessActive())
+    assertThat(
+            libraryRepository
+                .findById(libraryId)
+                .orElseThrow()
+                .isExternalAccessActive(Instant.now()))
         .isTrue();
     assertThat(auditEventTypes(libraryId)).containsExactly("ASSET_EXTERNAL_ACCESS_CHANGED");
   }
@@ -136,7 +143,11 @@ class LibraryExternalAccessServiceIntegrationTest {
 
     externalAccessService.setExternalAccess(
         currentUserOf(reader, true), libraryId, true, expiresAt);
-    assertThat(libraryRepository.findById(libraryId).orElseThrow().isExternalAccessActive())
+    assertThat(
+            libraryRepository
+                .findById(libraryId)
+                .orElseThrow()
+                .isExternalAccessActive(Instant.now()))
         .isTrue();
   }
 
@@ -177,7 +188,11 @@ class LibraryExternalAccessServiceIntegrationTest {
         externalAccessService.setExternalAccess(currentUserOf(owner), libraryId, false, null);
 
     assertThat(access.state()).isEqualTo(ExternalAccessState.WITHDRAWN);
-    assertThat(libraryRepository.findById(libraryId).orElseThrow().isExternalAccessActive())
+    assertThat(
+            libraryRepository
+                .findById(libraryId)
+                .orElseThrow()
+                .isExternalAccessActive(Instant.now()))
         .isFalse();
     assertThat(auditEventTypes(libraryId))
         .containsExactly("ASSET_EXTERNAL_ACCESS_CHANGED", "ASSET_EXTERNAL_ACCESS_CHANGED");
@@ -200,12 +215,64 @@ class LibraryExternalAccessServiceIntegrationTest {
     assertThat(expired).isEqualTo(1);
     KnowledgeLibrary library = libraryRepository.findById(libraryId).orElseThrow();
     assertThat(library.getExternalAccessState()).isEqualTo(ExternalAccessState.EXPIRED);
-    assertThat(library.isExternalAccessActive()).isFalse();
+    assertThat(library.isExternalAccessActive(Instant.now())).isFalse();
     assertThat(auditEventTypes(libraryId))
         .containsExactly("ASSET_EXTERNAL_ACCESS_CHANGED", "ASSET_EXTERNAL_ACCESS_EXPIRED");
     assertThat(auditActorRefs(libraryId)).contains("external-access-expiry");
     assertThat(auditAfterPayloads(libraryId))
         .anyMatch(after -> after.contains("RELEASE_PERIOD_ELAPSED"));
+  }
+
+  /**
+   * #1731 review, Befund 1: the Befristung takes effect the moment it passes, not when the nightly
+   * run gets round to writing it down. Between the two, a single instance can be down for days -
+   * and it is this predicate that the enforcement of #1720/#1721 will ask.
+   */
+  @Test
+  void theReleaseStopsTakingEffectAtItsExpiryEvenBeforeTheRunWritesItDown() {
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    Instant expiresAt = Instant.now().plus(30, ChronoUnit.DAYS);
+    externalAccessService.setExternalAccess(currentUserOf(owner), libraryId, true, expiresAt);
+
+    KnowledgeLibrary library = libraryRepository.findById(libraryId).orElseThrow();
+    assertThat(library.getExternalAccessState()).isEqualTo(ExternalAccessState.ACTIVE);
+    assertThat(library.isExternalAccessActive(expiresAt.minusSeconds(1))).isTrue();
+    assertThat(library.isExternalAccessActive(expiresAt.plusSeconds(1))).isFalse();
+    assertThat(library.effectiveExternalAccessState(expiresAt.plusSeconds(1)))
+        .isEqualTo(ExternalAccessState.EXPIRED);
+
+    // ... and neither the administration's Bestandsliste nor the library view still calls it
+    // released, although no run has happened.
+    assertThat(
+            externalAccessServiceAt(expiresAt.plusSeconds(1))
+                .listReleasedLibraries(currentUserOf(owner, true))
+                .stream()
+                .map(entry -> entry.library().getId()))
+        .doesNotContain(libraryId);
+    assertThat(externalAccessServiceAt(expiresAt.plusSeconds(1)).describe(library).state())
+        .isEqualTo(ExternalAccessState.EXPIRED);
+  }
+
+  /**
+   * #1731 review, Befund 6: history ({@code actorUserId == null}) and protocol (system actor) both
+   * say "nobody acted" - the fact row must not contradict them by moving the last human act to the
+   * night of the run.
+   */
+  @Test
+  void theExpiryRunLeavesTheLastHumanActUntouched() {
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    externalAccessService.setExternalAccess(
+        currentUserOf(owner), libraryId, true, Instant.now().plus(30, ChronoUnit.DAYS));
+    KnowledgeLibrary released = libraryRepository.findById(libraryId).orElseThrow();
+    Instant setAt = released.getExternalAccessSetAt();
+
+    expiryServiceAt(Instant.now().plus(31, ChronoUnit.DAYS)).runOnce();
+
+    KnowledgeLibrary expired = libraryRepository.findById(libraryId).orElseThrow();
+    assertThat(expired.getExternalAccessSetAt()).isEqualTo(setAt);
+    assertThat(expired.getExternalAccessSetByUserId()).isEqualTo(owner);
   }
 
   /** A second run finds nothing left to do - the run is a sweep, not a state machine tick. */
@@ -258,6 +325,17 @@ class LibraryExternalAccessServiceIntegrationTest {
   private LibraryExternalAccessExpiryService expiryServiceAt(Instant now) {
     return new LibraryExternalAccessExpiryService(
         libraryRepository, permissionHistoryService, auditEventRecorder, () -> now);
+  }
+
+  /** The release service with its clock moved - same reasoning as {@link #expiryServiceAt}. */
+  private LibraryExternalAccessService externalAccessServiceAt(Instant now) {
+    return new LibraryExternalAccessService(
+        libraryRepository,
+        accessService,
+        userRepository,
+        eventPublisher,
+        externalAccessProperties,
+        () -> now);
   }
 
   private List<String> auditEventTypes(UUID libraryId) {

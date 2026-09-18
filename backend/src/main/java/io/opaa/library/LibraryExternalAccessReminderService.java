@@ -101,8 +101,8 @@ public class LibraryExternalAccessReminderService {
     Instant until = now.plus(Duration.ofDays(properties.reminderLeadDays()));
     List<KnowledgeLibrary> due =
         libraryRepository
-            .findByExternalAccessStateAndExternalAccessReminderSentAtIsNullAndExternalAccessExpiresAtLessThanEqual(
-                ExternalAccessState.ACTIVE, until);
+            .findByExternalAccessStateAndExternalAccessReminderSentAtIsNullAndExternalAccessExpiresAtBetween(
+                ExternalAccessState.ACTIVE, now, until);
     int sent = 0;
     for (KnowledgeLibrary library : due) {
       library.markExternalAccessReminderSent(now);

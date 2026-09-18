@@ -519,7 +519,6 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
           </Stack>
         )}
 
-        <Divider sx={{ my: 2 }} />
         <LibraryExternalAccessSection libraryId={library.id} />
 
         <Divider sx={{ my: 2 }} />

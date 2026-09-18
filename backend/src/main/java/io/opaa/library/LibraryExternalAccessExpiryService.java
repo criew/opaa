@@ -27,6 +27,11 @@ import org.springframework.transaction.annotation.Transactional;
  * actor, and the audit entry is a system-process action - a run has no acting person, and an expiry
  * recorded under the last person to touch the release would name someone who did nothing.
  *
+ * <p><b>A Nachtrag, not the condition of the effect:</b> {@link
+ * KnowledgeLibrary#isExternalAccessActive(Instant)} already answers {@code false} the moment the
+ * Befristung passes, so a run that comes hours late - or, with the instance down, days late - never
+ * leaves a release in effect past its own end. What this run adds is the recorded fact.
+ *
  * <p>Idempotent: a release already out of effect is not selected, so a second run in the same
  * minute writes nothing. The Anlass is the Fristablauf; "gesenkte Freigabe-Obergrenze" comes with
  * #797.
@@ -74,8 +79,7 @@ public class LibraryExternalAccessExpiryService {
             ExternalAccessState.ACTIVE, now);
     for (KnowledgeLibrary library : due) {
       Instant ranTo = library.getExternalAccessExpiresAt();
-      library.updateExternalAccess(
-          ExternalAccessState.EXPIRED, ranTo, library.getExternalAccessSetByUserId(), now);
+      library.expireExternalAccess();
       KnowledgeLibrary saved = libraryRepository.save(library);
       permissionHistoryService.recordExternalAccessChanged(
           saved, LibraryVisibilityHistoryCause.EXTERNAL_ACCESS_EXPIRED, null);

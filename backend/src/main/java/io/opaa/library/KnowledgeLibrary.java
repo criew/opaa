@@ -643,9 +643,29 @@ public class KnowledgeLibrary {
     this.externalAccessReminderSentAt = at;
   }
 
-  /** Whether a Fremdzugang may currently reach this library at all. */
-  public boolean isExternalAccessActive() {
-    return externalAccessState == ExternalAccessState.ACTIVE;
+  /**
+   * Whether a Fremdzugang may reach this library at {@code at}. The Befristung takes effect the
+   * moment it passes, not when {@link LibraryExternalAccessExpiryService} gets round to writing it
+   * down: that run is a Nachtrag for the protocol and the history, never the condition of the
+   * effect - a single instance (ADR-0021) can be down for days, and the release must not outlive
+   * its end for that long.
+   */
+  public boolean isExternalAccessActive(Instant at) {
+    return externalAccessState == ExternalAccessState.ACTIVE
+        && externalAccessExpiresAt != null
+        && externalAccessExpiresAt.isAfter(at);
+  }
+
+  /**
+   * The release state as it takes effect at {@code at} - {@link ExternalAccessState#EXPIRED} for a
+   * stored {@code ACTIVE} whose Befristung has passed, the stored state otherwise. What every
+   * reader of the release sees, so nobody is told a release is in effect that no longer is.
+   */
+  public ExternalAccessState effectiveExternalAccessState(Instant at) {
+    if (externalAccessState == ExternalAccessState.ACTIVE && !isExternalAccessActive(at)) {
+      return ExternalAccessState.EXPIRED;
+    }
+    return externalAccessState;
   }
 
   /**
@@ -671,6 +691,21 @@ public class KnowledgeLibrary {
     this.externalAccessExpiresAt = expiresAt;
     this.externalAccessSetAt = at;
     this.externalAccessSetByUserId = actorUserId;
+    this.externalAccessReminderSentAt = null;
+  }
+
+  /**
+   * Writes down that the Befristung has passed - the state alone, deliberately leaving {@link
+   * #externalAccessSetAt}/{@link #externalAccessSetByUserId} at the last <em>human</em> act. A run
+   * has no acting person, and recording it as one would name someone who did nothing, contradicting
+   * the history row ({@code actorUserId == null}) and the audit entry (system actor) written beside
+   * it. Package-private for the same reason as {@link #updateExternalAccess}.
+   */
+  void expireExternalAccess() {
+    if (externalAccessState != ExternalAccessState.ACTIVE) {
+      throw new IllegalStateException("only an active release expires");
+    }
+    this.externalAccessState = ExternalAccessState.EXPIRED;
     this.externalAccessReminderSentAt = null;
   }
 
