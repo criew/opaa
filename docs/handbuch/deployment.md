@@ -1103,9 +1103,11 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_SEARCH_EXCERPT_MAX_CHARACTERS` | `1500` | `1500` | Länge des Auszugs je Treffer. Gedeckelt, damit die Trefferliste nicht selbst zum Abrufweg wird — der vollständige Abschnitt ist einen Abruf entfernt |
 | `OPAA_SEARCH_FETCH_MAX_CHARACTERS` | `200000` | `200000` | Zeichen-Deckel von `GET /api/v1/search/hits/{hitId}?full=true`, der einzigen Stelle, an der ein Aufruf ein ganzes Dokument zurückgibt. Wird abgeschnitten, sagt die Antwort es (`truncated`). Bewusst endlich, obwohl die größten Dokumente darunter bleiben: Der Deckel ist der Unterschied zwischen „ich habe ein Dokument verlangt" und „ich habe den Bestand verlangt" |
 | `OPAA_SEARCH_CONTEXT_PASSAGES` | `1` | `1` | Angrenzende Abschnitte je Seite beim Abruf ohne `full` (0–10). `0` liefert nur den Abschnitt des Treffers selbst |
-| **Fremdzugänge (Kontingent und Abflussalarm)** | | | |
-| — (Systemeinstellung) | `60` Anfragen/Stunde | — | Das **Kontingent je Zugangstoken** ist keine Umgebungsvariable, sondern eine Systemeinstellung unter *Systemkonfiguration → Fremdzugänge* (1–10.000). Es gilt **zusätzlich** zu den Grenzen je Netzadresse, nicht an ihrer Stelle: Hinter einem gemeinsamen Ausgangspunkt im Behördennetz teilen sich alle dieselbe Adresse. Es ist eine **Lastbremse, kein Schutz vor Massenabfluss** — ein überschrittenes Kontingent führt zu einer klaren Ablehnung (`429`) mit Wartehinweis, nicht zu einer langsamen Antwort. Der Zähler läuft nur im Arbeitsspeicher, wird nicht historisiert, nicht je Person ausgewertet und nicht angezeigt; eine Ablehnung erzeugt keinen Protokolleintrag |
-| — (Systemeinstellung) | `600` Abrufe/Stunde | — | Die **Schwelle des Abflussalarms**, ebenfalls unter *Systemkonfiguration → Fremdzugänge* (1–1.000.000). Gezählt werden die Abrufe des **ganzen Kanals** in einem gleitenden Stundenfenster, ausschließlich im Arbeitsspeicher (ADR-0021) — keine Tabelle, keine Zeitreihe, kein Verlauf, und die Zählung überlebt keinen Neustart. Bei Überschreitung entsteht **eine** Meldung an jede Systemverwaltung der Organisation (Zeitfenster und Token-Kennung) plus eine `WARN`-Zeile im Anwendungslog, die zusätzlich Schwelle und gemessenen Wert trägt; danach schweigt der Alarm sechs Stunden, damit ein anhaltender Vorgang nicht in eine Meldungsreihe zerfällt. Die Meldung wird nach **14 Tagen** automatisch gelöscht, gelesen oder nicht — eine stehenbleibende Folge solcher Meldungen wäre der Verlauf je Token, den die Spezifikation ausschließt; die Frist ist deshalb eine Konstante und keine Einstellung. **Kein Eintrag im Nachweisprotokoll** — der Alarm ist ein Sicherheitsereignis; ins Protokoll gelangt allein eine daraus folgende Sperre |
+| **Fremdzugänge** | | | |
+| `OPAA_EXTERNAL_ACCESS_MAX_RELEASE_DAYS` | `365` | `365` | Längste zulässige Befristung der Fremdzugangsfreigabe einer Wissensbibliothek, in Tagen. Muss positiv sein — eine Freigabe ohne Obergrenze ist genau die Ratsche, die die Pflichtbefristung verhindert; der Start bricht sonst ab. Siehe [Fremdzugänge](fremdzugaenge.md) |
+| `OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS` | `14` | `14` | Wie viele Tage vor dem Erlöschen einer Freigabe der Bibliotheksverantwortliche per Mail erinnert wird. `0` schaltet die Erinnerung ab; die Freigabe erlischt trotzdem, nur unangekündigt |
+| — (Systemeinstellung) | `60` Anfragen/Stunde | — | Das **Kontingent je Zugangstoken** ist keine Umgebungsvariable, sondern eine Systemeinstellung unter *Administration → Fremdzugänge* (1–10.000). Es gilt **zusätzlich** zu den Grenzen je Netzadresse, nicht an ihrer Stelle: Hinter einem gemeinsamen Ausgangspunkt im Behördennetz teilen sich alle dieselbe Adresse. Es ist eine **Lastbremse, kein Schutz vor Massenabfluss** — ein überschrittenes Kontingent führt zu einer klaren Ablehnung (`429`) mit Wartehinweis, nicht zu einer langsamen Antwort. Der Zähler läuft nur im Arbeitsspeicher, wird nicht historisiert, nicht je Person ausgewertet und nicht angezeigt; eine Ablehnung erzeugt keinen Protokolleintrag |
+| — (Systemeinstellung) | `600` Abrufe/Stunde | — | Die **Schwelle des Abflussalarms**, ebenfalls unter *Administration → Fremdzugänge* (1–1.000.000). Gezählt werden die Abrufe des **ganzen Kanals** in einem gleitenden Stundenfenster, ausschließlich im Arbeitsspeicher (ADR-0021) — keine Tabelle, keine Zeitreihe, kein Verlauf, und die Zählung überlebt keinen Neustart. Bei Überschreitung entsteht **eine** Meldung an jede Systemverwaltung der Organisation (Zeitfenster und Token-Kennung) plus eine `WARN`-Zeile im Anwendungslog, die zusätzlich Schwelle und gemessenen Wert trägt; danach schweigt der Alarm sechs Stunden, damit ein anhaltender Vorgang nicht in eine Meldungsreihe zerfällt. Die Meldung wird nach **14 Tagen** automatisch gelöscht, gelesen oder nicht — eine stehenbleibende Folge solcher Meldungen wäre der Verlauf je Token, den die Spezifikation ausschließt; die Frist ist deshalb eine Konstante und keine Einstellung. **Kein Eintrag im Nachweisprotokoll** — der Alarm ist ein Sicherheitsereignis; ins Protokoll gelangt allein eine daraus folgende Sperre |
 | **Indizierung** | | | |
 | `OPAA_INDEXING_CHUNK_SIZE` | `1000` | `1000` | Ziel-Tokens pro Chunk (1–10.000) |
 | `OPAA_INDEXING_CHUNK_OVERLAP` | `100` | nicht gesetzt (Anwendungs-Default gilt) | Anzahl der Tokens, die jeder Chunk vom Ende seines Vorgängers wiederholt, damit eine Aussage an einer Chunk-Grenze in mindestens einem Chunk vollständig erhalten bleibt. Muss kleiner als `OPAA_INDEXING_CHUNK_SIZE` sein; `0` deaktiviert die Überlappung, ein negativer Wert wird auf `0` normalisiert |
@@ -1578,8 +1580,9 @@ den Zugangsschlüssel für das betroffene Modell über die Verwaltungsoberfläch
 > **Fremdzugänge sind davon unberührt und stehen auf „aus".** Der Zugang für fremde KI-Werkzeuge
 > (persönliche Zugangstokens, MCP-Server) ist ein eigener Schalter unter *Administration →
 > Fremdzugänge*, unabhängig vom hier eingestellten Anmeldeverfahren. Eine frische Installation
-> liefert ihn ausgeschaltet aus, zusammen mit einer Netzbeschränkung auf das Hausnetz; das eigene
-> Handbuchkapitel dazu kommt mit dem gebauten Kanal.
+> liefert ihn ausgeschaltet aus, zusammen mit einer Netzbeschränkung auf das Hausnetz. Schalter,
+> Freigaben, Tokens und die Einrichtung im Client stehen im Kapitel
+> [Fremdzugänge](fremdzugaenge.md).
 
 OPAA kennt genau zwei Auth-Modi. Der Modus
 wird über das aktive Spring-Profil gewählt; ist weder `oidc` noch `dev` gesetzt, **bricht das
@@ -1816,6 +1819,10 @@ zurückgefallen. Deshalb gehören nach **jeder** Rücksicherung zwei Schritte da
    Sicherung und Rücksicherung gesperrt oder zurückgesetzt wurde, ist es danach nicht mehr. Das
    Nachweisprotokoll der Zwischenzeit ist die Liste, die dabei abzuarbeiten ist — sofern es selbst
    nicht Teil der Rücksicherung war.
+
+Sind Fremdzugänge in Betrieb, kommt eine dritte Prüfung dazu: Schalter, Freigaben und Zugangstokens
+rollen mit zurück, einschließlich eines Notaus und gesperrter Tokens. Die Prüfliste dafür steht im
+Kapitel [Fremdzugänge](fremdzugaenge.md).
 
 ### Testkonten im Überblick
 

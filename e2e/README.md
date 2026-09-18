@@ -462,6 +462,35 @@ lassen.
   Upload allein könnte sonst mit dem deterministischen KI-Stub-Embedding das erwartete Ergebnis eines
   anderen, zitatprüfenden Szenarios verdrängen (siehe „Vier Testnutzer" oben).
 
+- `tests/external-access.spec.ts` (#1723, Teil von Epic #1715) — die Fremdzugänge über den vollen
+  Stack (`docs/features/external-access.md`, ADR-0035): der Weg von der Freigabe über das
+  Zugangstoken bis zum Treffer, und die Gegenprobe zu jedem der vier Faktoren der effektiven Sicht.
+  Die Systemverwaltung schaltet den Kanal ein, eine Bibliotheksverantwortliche gibt ihre Bibliothek
+  befristet frei, die Person erzeugt dafür ein Token — und ein MCP-Aufruf gegen den laufenden Stack
+  listet die drei Werkzeuge, ruft `list_libraries`, `search` und `fetch` und erhält genau die
+  Bestände dieses Tokens. Danach wird jeder Faktor einzeln entzogen: der Notaus (auch mitten in
+  einer aufgebauten Sitzung, deren nächster Werkzeugaufruf abgewiesen wird), die zurückgenommene
+  Freigabe, die erloschene Befristung, das entzogene Leserecht, der Widerruf durch die Person und
+  die Sperre durch die Systemverwaltung. Dazu die drei Zusagen, die keine Treffer betreffen: Der
+  Tokenwert ist genau einmal zu sehen, ein Token erreicht nur die drei Lesewege, und die
+  Verwaltungssicht führt weder ein Nutzungsdatum noch einen Filter nach Person.
+
+  **Der MCP-Teil läuft ohne Browser**, über Playwrights `request`-Kontext gegen `/mcp` — und gegen
+  den **Host-Port des Backends** (`E2E_BACKEND_BASE_URL`, von `scripts/run-e2e.mjs` gesetzt), nicht
+  gegen die Frontend-Adresse der übrigen Szenarien: `frontend/nginx.conf` leitet ausschließlich
+  `/api/` weiter, `/mcp` erreicht ein Client dort also nicht. Ein fremdes Werkzeug spricht denselben
+  Endpunkt, den auch `io.opaa.mcp.McpServerIntegrationTest` fährt, hier aber im zusammengesetzten
+  Stack und mit einem Token, das über die Oberfläche entstanden ist.
+
+  `test.describe.serial`, und zwar zwingend: Die Szenarien bauen eine Installation nacheinander
+  weiter, und drei Schritte sind unumkehrbar (eine erloschene Auswahl im Token lebt nicht wieder
+  auf, ein widerrufenes Token kommt nicht zurück). Handelnde sind `dev-admin` für Schalter und
+  Fremdbestand und `dev-format-pipelines` als Person mit den eigenen Bibliotheken und Tokens — das
+  Konto, das nie eine Chatfrage stellt (siehe „Vier Testnutzer" oben). Anders als die übrigen
+  Szenarien räumt dieses hinter sich auf: Schalter, Freigaben und Tokens stehen am Ende wieder im
+  Ausgangszustand, und die drei angelegten Bibliotheken samt Dokumenten werden über die API wieder
+  entfernt.
+
 ## Demo-Smoke (#232)
 
 Ein separater, eigenständig startbarer Lauf gegen das Compose-Profil `demo`
