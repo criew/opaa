@@ -64,10 +64,10 @@ class MailTemplateServiceIntegrationTest {
   }
 
   @Test
-  void listsAllTwelveTemplatesAsDeliveredDefaultsWhileNothingIsOverridden() {
+  void listsEveryTemplateAsDeliveredDefaultWhileNothingIsOverridden() {
     List<MailTemplateView> views = templateService.list(MailTemplateService.DEFAULT_LOCALE);
 
-    assertThat(views).hasSize(MailTemplateKey.values().length).hasSize(12);
+    assertThat(views).hasSize(MailTemplateKey.values().length).hasSize(13);
     assertThat(views).allMatch(view -> view.source() == MailTemplateView.Source.DEFAULT);
     assertThat(views.getFirst().defaultBodyHtml()).contains("<!DOCTYPE html>");
   }

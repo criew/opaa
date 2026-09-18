@@ -2,7 +2,8 @@ package io.opaa.library;
 
 /**
  * The operation that opened or closed a {@link LibraryVisibilityHistory} interval (#238). Mirrored
- * by the database check constraint {@code chk_library_visibility_history_cause} (migration 018).
+ * by the database check constraint {@code chk_library_visibility_history_cause} (baseline, extended
+ * by changeset 033).
  */
 public enum LibraryVisibilityHistoryCause {
   /** The library was created ({@code KnowledgeLibraryService#createLibrary}). */
@@ -13,6 +14,21 @@ public enum LibraryVisibilityHistoryCause {
    * closes the previous interval and opens a new one with the new values.
    */
   VISIBILITY_CHANGED,
+
+  /**
+   * The release for Fremdzugaenge was set or taken back ({@code
+   * LibraryExternalAccessService#setExternalAccess}) - closes the previous interval and opens a new
+   * one, exactly like {@link #VISIBILITY_CHANGED} does for its own two fields (#1731).
+   */
+  EXTERNAL_ACCESS_CHANGED,
+
+  /**
+   * The release stopped taking effect without anyone acting ({@code
+   * LibraryExternalAccessExpiryService}) - today always the expiry of its mandatory Befristung.
+   * Opens the interval of the no-longer-released state with no actor, the way a directory sync run
+   * carries none.
+   */
+  EXTERNAL_ACCESS_EXPIRED,
 
   /**
    * The interval was written by migration 018's backfill changeSet for a library that already
