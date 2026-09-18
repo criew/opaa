@@ -56,7 +56,8 @@ describe('tokenLabels', () => {
     const snippets = clientSetupSnippets('https://opaa.example/', 'opaa_pat_wert')
 
     expect(snippets.url).toBe('https://opaa.example/mcp')
-    // --scope user: sonst schreibt Claude Code den Wert in eine projekteigene, eingecheckte Datei.
+    // --scope user: der Eintrag gilt projektübergreifend statt nur im aktuellen Projekt, und
+    // die teilbare Ablage (--scope project, .mcp.json im Projekt) kommt so nie in Betracht.
     expect(snippets.claudeCode).toContain('claude mcp add --scope user --transport http opaa')
     expect(snippets.claudeCode).toContain('Authorization: Bearer opaa_pat_wert')
   })

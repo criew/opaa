@@ -163,10 +163,11 @@ export function releaseEndsBeforeExpiry(
  * Wert steht dort schon, und ein Schnipsel ohne ihn wäre an jeder anderen Stelle nutzlos. Die
  * ausführliche Anleitung ist Sache des Handbuchs.
  *
- * Den Wert im Klartext trägt allein der Claude-Code-Befehl, der ihn in die benutzereigene
- * Konfiguration schreibt (`--scope user`). Die beiden JSON-Schnipsel landen erfahrungsgemäß in
- * einer eingecheckten oder synchronisierten Datei und verweisen deshalb auf eine Eingabe
- * (VS Code) beziehungsweise eine Umgebungsvariable (Cursor).
+ * Den Wert im Klartext trägt allein der Claude-Code-Befehl. `--scope user` legt den Eintrag dabei
+ * projektübergreifend in der Benutzerkonfiguration ab statt projektbezogen; die geteilte Ablage,
+ * die den Wert in die Versionsverwaltung trüge, wäre `--scope project`. Die beiden JSON-Schnipsel
+ * gehören ohnehin in eine Datei, die geteilt oder eingecheckt werden kann, und verweisen deshalb
+ * auf eine Eingabe (VS Code) beziehungsweise eine Umgebungsvariable (Cursor).
  */
 export function clientSetupSnippets(baseUrl: string, token: string) {
   const url = `${baseUrl.replace(/\/+$/, '')}/mcp`

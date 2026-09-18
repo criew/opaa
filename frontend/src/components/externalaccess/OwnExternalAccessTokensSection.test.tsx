@@ -166,7 +166,7 @@ describe('OwnExternalAccessTokensSection', () => {
     expect(within(valueDialog).getByText(/wird nur jetzt angezeigt/)).toBeInTheDocument()
     // Der Einrichtungshinweis trägt den Wert - deshalb steht er hier und nirgends sonst, und
     // zwar nur im Claude-Code-Befehl: Die beiden JSON-Schnipsel verweisen auf Eingabe bzw.
-    // Umgebungsvariable, damit der Wert nicht in einer eingecheckten Datei landet.
+    // Umgebungsvariable, damit der Wert nicht in einer teilbaren Datei landet.
     expect(
       within(valueDialog).getByText(/claude mcp add --scope user --transport http opaa/),
     ).toBeInTheDocument()
