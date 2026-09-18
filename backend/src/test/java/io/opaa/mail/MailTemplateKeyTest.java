@@ -13,7 +13,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 /**
- * #1536, ADR-0033 Entscheidung 10: the twelve delivered templates are internally consistent - each
+ * #1536, ADR-0033 Entscheidung 10: every delivered template is internally consistent - each
  * declares exactly the placeholders its own text references, renders with its sample values under
  * the same strict compiler {@code MailTemplateService} uses, and carries a sample value for every
  * placeholder.

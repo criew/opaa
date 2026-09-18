@@ -13,9 +13,8 @@ public interface MailTemplateRepository extends JpaRepository<MailTemplate, UUID
   Optional<MailTemplate> findByTemplateKeyAndLocale(String templateKey, String locale);
 
   /**
-   * Every override for one locale in one query - the overview lists all twelve keys, and twelve
-   * single lookups would be twelve round trips for a page nobody opens often enough to warrant
-   * them.
+   * Every override for one locale in one query - the overview lists every key, and one lookup per
+   * key would be as many round trips for a page nobody opens often enough to warrant them.
    */
   List<MailTemplate> findByLocale(String locale);
 }
