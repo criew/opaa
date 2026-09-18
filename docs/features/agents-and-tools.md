@@ -598,7 +598,7 @@ Fachverfahren, Vorgangsbearbeitung und elektronische Akte sind die Systeme, in d
 
 ### Offene Fragen zur Oberfläche
 
-Gesetzt ist: Der Chat bleibt der Ort der Arbeit, Agenten werden dort mit `@` aufgerufen, verwaltet werden sie wie Wissensbibliotheken, gefunden im Katalog (siehe [Zielbild der Weboberfläche](../design/redesign-prompt.md)). Eine eigene Arbeitsfläche „Agenten" gibt es nicht. Nicht entschieden ist:
+Gesetzt ist: Der Chat bleibt der Ort der Arbeit, Agenten werden dort mit `@` aufgerufen, verwaltet werden sie wie Wissensbibliotheken, gefunden im Katalog (siehe [Zielbild der Weboberfläche](../design/redesign-prompt.md)). Der Bereich „Agenten" dient dem Anlegen und Pflegen; **gearbeitet** wird mit einem Agenten im Chat, nicht auf einer eigenen Fläche. Nicht entschieden ist:
 
 - **Wie ein Skill im Chat gewählt wird.** Das Zielbild kennt `@` für Bestände und Agenten, aber noch keine Skills. Mit `@` in derselben Vorschlagsliste, über eine eigene Auswahl am Eingabefeld oder über ein anderes Zeichen — die Liste muss drei Arten sofort unterscheidbar halten: Ein Bestand verengt die Suche, ein Skill und ein Agent verändern die Arbeitsweise.
 - **Wie lange eine Wahl wirkt.** Für einen Bestand ist entschieden: eine einzelne Frage. Eine Arbeitsweise trägt dagegen meist mehrere Nachrichten. Richtung: Skill und Agent gelten für den Chat, stehen sichtbar am Eingabefeld neben der Angabe des Durchsuchten und sind dort abwählbar — eine Wirkung, die man nicht sieht, ist eine Fehlerquelle.
