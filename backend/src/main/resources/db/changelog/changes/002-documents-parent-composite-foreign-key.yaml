@@ -18,20 +18,20 @@ databaseChangeLog:
         - sql:
             splitStatements: false
             sql: |
-              ALTER TABLE ONLY public.documents
+              ALTER TABLE ONLY documents
                   ADD CONSTRAINT uk_documents_id_organization UNIQUE (id, organization_id);
 
-              ALTER TABLE public.documents
+              ALTER TABLE documents
                   DROP CONSTRAINT fk_documents_parent;
 
-              ALTER TABLE ONLY public.documents
-                  ADD CONSTRAINT fk_documents_parent FOREIGN KEY (parent_document_id, organization_id) REFERENCES public.documents(id, organization_id);
+              ALTER TABLE ONLY documents
+                  ADD CONSTRAINT fk_documents_parent FOREIGN KEY (parent_document_id, organization_id) REFERENCES documents(id, organization_id);
       rollback:
         - sql:
             sql: |
-              ALTER TABLE public.documents DROP CONSTRAINT IF EXISTS fk_documents_parent;
+              ALTER TABLE documents DROP CONSTRAINT IF EXISTS fk_documents_parent;
 
-              ALTER TABLE public.documents
-                  ADD CONSTRAINT fk_documents_parent FOREIGN KEY (parent_document_id) REFERENCES public.documents(id);
+              ALTER TABLE documents
+                  ADD CONSTRAINT fk_documents_parent FOREIGN KEY (parent_document_id) REFERENCES documents(id);
 
-              ALTER TABLE public.documents DROP CONSTRAINT IF EXISTS uk_documents_id_organization;
+              ALTER TABLE documents DROP CONSTRAINT IF EXISTS uk_documents_id_organization;

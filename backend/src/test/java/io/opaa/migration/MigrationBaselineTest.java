@@ -1298,7 +1298,7 @@ class MigrationBaselineTest extends AbstractMigrationTest {
                 "SELECT c.table_name FROM information_schema.columns c"
                     + " JOIN information_schema.tables t"
                     + "   ON t.table_schema = c.table_schema AND t.table_name = c.table_name"
-                    + " WHERE c.table_schema = 'public' AND c.column_name = 'organization_id'"
+                    + " WHERE c.table_schema = current_schema() AND c.column_name = 'organization_id'"
                     + "   AND t.table_type = 'BASE TABLE'"
                     + "   AND c.table_name <> 'organizations'"
                     + " ORDER BY c.table_name")) {
@@ -1331,7 +1331,7 @@ class MigrationBaselineTest extends AbstractMigrationTest {
                     + " JOIN pg_class bc ON bc.oid = c.conrelid"
                     + " JOIN pg_namespace bn ON bn.oid = bc.relnamespace"
                     + " JOIN pg_class rc ON rc.oid = c.confrelid"
-                    + " WHERE c.contype = 'f' AND bn.nspname = 'public' AND c.conparentid = 0"
+                    + " WHERE c.contype = 'f' AND bn.nspname = current_schema() AND c.conparentid = 0"
                     + " ORDER BY c.conname")) {
       while (result.next()) {
         foreignKeys.add(
@@ -1442,7 +1442,7 @@ class MigrationBaselineTest extends AbstractMigrationTest {
         ResultSet rs =
             statement.executeQuery(
                 "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace"
-                    + " WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')"
+                    + " WHERE n.nspname = current_schema() AND c.relkind IN ('r', 'p')"
                     + " AND NOT c.relispartition"
                     + " AND c.relname NOT IN ('databasechangelog', 'databasechangeloglock')"
                     + " ORDER BY c.relname")) {
@@ -1457,7 +1457,7 @@ class MigrationBaselineTest extends AbstractMigrationTest {
     try (PreparedStatement statement =
         connection.prepareStatement(
             "SELECT 1 FROM information_schema.tables "
-                + "WHERE table_schema = 'public' AND table_name = ?")) {
+                + "WHERE table_schema = current_schema() AND table_name = ?")) {
       statement.setString(1, tableName);
       try (ResultSet rs = statement.executeQuery()) {
         return rs.next();

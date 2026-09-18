@@ -84,7 +84,7 @@ class ChunkInspectionServiceIntegrationTest {
     allChunkIds.add(indexlessChunkId);
     allChunkIds.add(orphanChunkId);
     for (UUID chunkId : allChunkIds) {
-      jdbcTemplate.update("DELETE FROM public.vector_store WHERE id = ?", chunkId);
+      jdbcTemplate.update("DELETE FROM vector_store WHERE id = ?", chunkId);
     }
     jdbcTemplate.update("DELETE FROM documents WHERE id in (?, ?)", documentId, foreignDocumentId);
     jdbcTemplate.update(
@@ -220,7 +220,7 @@ class ChunkInspectionServiceIntegrationTest {
             .formatted(ownerDocumentId, indexEntry, libraryId);
     // No embedding: the read path must not depend on the column, and the row must still be found.
     jdbcTemplate.update(
-        "INSERT INTO public.vector_store (id, content, metadata) VALUES (?, ?, ?::jsonb)",
+        "INSERT INTO vector_store (id, content, metadata) VALUES (?, ?, ?::jsonb)",
         chunkId,
         content,
         metadata);

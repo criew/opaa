@@ -105,7 +105,7 @@ class FullTextIndexFillStateServiceIntegrationTest {
     setTsvVersion((short) (FullTextChunkStore.CURRENT_TSV_VERSION - 1));
     // Deletes the vector row alone, so the full-text row outlives its chunk - the residual risk
     // VectorChunkStore's non-transactional delete accepts.
-    jdbcTemplate.update("DELETE FROM public.vector_store WHERE id = ?", orphanedChunkId);
+    jdbcTemplate.update("DELETE FROM vector_store WHERE id = ?", orphanedChunkId);
 
     FullTextIndexFillState fillState = fillStateService.fillStateForLibrary(libraryId);
 

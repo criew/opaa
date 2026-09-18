@@ -296,7 +296,7 @@ class Migration030ChatNoteItemsTest extends AbstractMigrationTest {
 
   private boolean tableExists(String table) throws SQLException {
     return scalarExists(
-        "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?",
+        "SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = ?",
         table);
   }
 
@@ -306,7 +306,7 @@ class Migration030ChatNoteItemsTest extends AbstractMigrationTest {
 
   private boolean indexExists(String name) throws SQLException {
     return scalarExists(
-        "SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = ?", name);
+        "SELECT 1 FROM pg_indexes WHERE schemaname = current_schema() AND indexname = ?", name);
   }
 
   private String foreignKeyDefinition(String name) throws SQLException {

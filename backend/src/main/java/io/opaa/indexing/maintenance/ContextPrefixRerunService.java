@@ -62,7 +62,7 @@ public class ContextPrefixRerunService {
       DocumentMetadataService documentMetadataService,
       VectorChunkStore vectorChunkStore,
       ObjectMapper objectMapper,
-      @Value("${spring.ai.vectorstore.pgvector.schema-name:public}") String schemaName,
+      @Value("${opaa.database.schema}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
     this.jdbcTemplate = jdbcTemplate;
     this.documentRepository = documentRepository;
