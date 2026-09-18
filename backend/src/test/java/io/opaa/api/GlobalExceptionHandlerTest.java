@@ -26,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -596,6 +597,23 @@ class GlobalExceptionHandlerTest {
     assertNotNull(body);
     assertEquals(415, body.getStatus());
     assertEquals("Der Inhaltstyp der Anfrage wird nicht unterstützt", body.getError());
+  }
+
+  /**
+   * The status is unchanged by this branch - a caller who accepts nothing this API writes gets a
+   * bodyless 406 either way, and {@code GlobalExceptionHandlerNotAcceptableTest} guards what does
+   * change, the log. This pins the body the branch produces.
+   */
+  @Test
+  void handleHttpMediaTypeNotAcceptableExceptionReturnsNotAcceptable() {
+    var response =
+        handler.handleHttpMediaTypeNotAcceptableException(
+            new HttpMediaTypeNotAcceptableException(List.of(MediaType.APPLICATION_JSON)));
+    assertEquals(406, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(406, body.getStatus());
+    assertEquals("Das angeforderte Antwortformat wird nicht unterstützt", body.getError());
   }
 
   private DataIntegrityViolationException dataIntegrityViolation(String sqlState, String message) {

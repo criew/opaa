@@ -33,6 +33,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -313,6 +314,26 @@ public class GlobalExceptionHandler {
             new ErrorResponse(
                 "Der Inhaltstyp der Anfrage wird nicht unterstützt",
                 HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(),
+                Instant.now()));
+  }
+
+  /**
+   * The {@code Accept} sibling of the two above (#1707). Its status code is <em>not</em> what was
+   * wrong: a caller who accepts nothing this API writes cannot be sent a body at all, so the answer
+   * ends up a bodyless 406 either way - what {@link #handleGenericException} added was an {@code
+   * ERROR} stacktrace per request, raisable without a session by anyone sending {@code Accept:
+   * application/xml}. That noise, not the status, is what this branch removes; {@code
+   * GlobalExceptionHandlerNotAcceptableTest} therefore asserts on the log.
+   */
+  @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
+  public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotAcceptableException(
+      HttpMediaTypeNotAcceptableException ex) {
+    log.debug("Unacceptable response format: {}", errorSanitizer.sanitize(ex.getMessage()));
+    return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE)
+        .body(
+            new ErrorResponse(
+                "Das angeforderte Antwortformat wird nicht unterstützt",
+                HttpStatus.NOT_ACCEPTABLE.value(),
                 Instant.now()));
   }
 
