@@ -187,9 +187,11 @@ Zeitpunkt der letzten Änderung prominent an, und das Handbuchkapitel trägt ein
 Wiederherstellung": Schalterzustand, freigegebene Bibliotheken und Tokenbestand gegen den Stand vor
 dem Restore prüfen.
 
-Ob Tokens auch bei ausgeschaltetem Kanal **angelegt** werden können, entscheidet die Umsetzung zu
-Gunsten der Verständlichkeit: Die Oberfläche zeigt die Verwaltung dann mit einem deutlichen Hinweis,
-dass der Kanal derzeit geschlossen ist (Annahme, siehe [Offene Fragen](#offene-fragen--zukünftige-erweiterungen)).
+Ob Tokens auch bei ausgeschaltetem Kanal **angelegt** werden können, hat die Umsetzung entschieden:
+**nein**. Die Ausstellung prüft den Schalter wie jeder andere Weg je Aufruf und weist sonst ab; die
+Auswahlmenge ist dann ohnehin leer. Die Oberfläche sperrt das Anlegen mit dieser Begründung, zeigt
+die Verwaltung aber weiter — mit dem Hinweis, dass der Kanal geschlossen ist und die vorhandenen
+Tokens derzeit nicht wirken; widerrufen lässt sich jedes von ihnen (#1718, #1719).
 
 ---
 
@@ -422,6 +424,40 @@ Eines steht noch aus:
 
 - **Der MCP-Server** ([#1721](https://github.com/criew/opaa/issues/1721)) trägt `/mcp` in dieselbe
   Freigabeliste ein, sobald es ihn gibt.
+
+### Die Oberfläche (#1719)
+
+Gebaut ist beides: der Reiter *Ihre Einstellungen → Zugangstokens* (eigene Liste mit Name, Präfix,
+Bibliotheken, Erstellung, Ablauf, „zuletzt benutzt" und Zustand; Anlegedialog mit Aufklärung,
+Bibliotheksauswahl und Ablaufdatum; Einmalanzeige des Werts; Widerruf mit Rückfrage) und der Reiter
+*Administration → Fremdzugänge → Zugangstokens* (Bestandsliste ohne Nutzungsdatum, Filter allein
+über Zustand und Ablauf, Einzelsperre und Sperre je Person, je mit Rückfrage).
+
+Fünf Festlegungen weichen vom Entwurf oben ab oder ergänzen ihn:
+
+1. **Ein eigener Selbstsicht-Endpunkt der Kanalwerte.** `GET /api/v1/external-access/settings`
+   liefert jeder angemeldeten Person `enabled` und `tokenMaxLifetimeDays` — mehr nicht. Ohne ihn
+   könnte die Tokenverwaltung weder die Vorgabe und Obergrenze des Ablaufdatums setzen noch den
+   Hinweis „Kanal ist derzeit zu" zeigen; die Einstellungen der Systemverwaltung dafür zu öffnen,
+   gäbe ihr zugleich Kontingent, Netzbereiche und Einleitungstext.
+2. **Die ausgesetzte Auswahl trägt ein Feld.** `ExternalAccessTokenLibraryResponse.suspended` macht
+   den erloschenen Eintrag in der Antwort sichtbar; die Oberfläche zeigt ihn samt dem Hinweis, dass
+   er auch bei erneuter Freigabe nicht wieder auflebt.
+3. **Der Einrichtungshinweis steht im Einmal-Dialog**, als Schnipsel für Claude Code und für
+   Cursor/VS Code. Er trägt den Wert und wäre an jeder anderen Stelle nutzlos; die ausführliche
+   Anleitung bleibt beim Handbuch ([#1722](https://github.com/criew/opaa/issues/1722)).
+4. **Die Bibliotheksauswahl kommt aus `GET /api/v1/external-access/eligible-libraries`** und ist
+   damit genau die Menge, die die Ausstellung annimmt. Der Dialog zeigt je Eintrag das Ende der
+   Freigabe und weist darauf hin, wenn das gewählte Ablaufdatum eine dieser Freigaben überdauert —
+   die Bibliothek fiele dann vor dem Token aus ihm heraus und lebte auch bei erneuter Freigabe
+   nicht wieder auf. Bleibt die Menge leer, nennt der Leerzustand den Grund (kein Lesezugriff bzw.
+   keine Freigabe) und die Ansprechstelle: die Verwaltung der jeweiligen Bibliothek.
+5. **Bei geschlossenem Kanal lässt sich kein Token anlegen.** Die oben als Annahme offengelassene
+   Frage ist damit entschieden — und zwar von der Ausstellung selbst, die den Schalter je Aufruf
+   prüft und sonst abweist; die Auswahlmenge ist dann ohnehin leer. Die Oberfläche sperrt die
+   Schaltfläche mit genau dieser Begründung, statt in die Absage laufen zu lassen. Die übrige
+   Verwaltung bleibt bedienbar: Die Liste steht samt Kennzeichnung „wirkt derzeit nicht", und
+   widerrufen lässt sich weiterhin jedes Token.
 
 ---
 

@@ -79,6 +79,7 @@ class ExternalAccessTokenResponseMapperTest {
             library -> {
               assertThat(library.getId()).isEqualTo(libraryId);
               assertThat(library.getName()).isEqualTo("Vergaberecht");
+              assertThat(library.getSuspended()).isFalse();
             });
   }
 
@@ -113,7 +114,9 @@ class ExternalAccessTokenResponseMapperTest {
     AdminExternalAccessTokenResponse response =
         ExternalAccessTokenResponseMapper.toAdmin(
             new ExternalAccessTokenAdminView(
-                token, "Erika Mustermann", List.of(new SelectedLibrary(libraryId, "Vergaberecht"))),
+                token,
+                "Erika Mustermann",
+                List.of(new SelectedLibrary(libraryId, "Vergaberecht", true))),
             NOW);
 
     assertThat(response.getId()).isEqualTo(token.getId());
@@ -123,7 +126,9 @@ class ExternalAccessTokenResponseMapperTest {
     assertThat(response.getCreatedAt()).isEqualTo(CREATED);
     assertThat(response.getExpiresAt()).isEqualTo(EXPIRES);
     assertThat(response.getStatus()).isEqualTo(ExternalAccessTokenStatus.ACTIVE);
-    assertThat(response.getLibraries()).hasSize(1);
+    assertThat(response.getLibraries())
+        .singleElement()
+        .satisfies(library -> assertThat(library.getSuspended()).isTrue());
 
     // The promise is structural, not a matter of what this mapper happens to set: the response
     // type has no field for a usage date and none for the value.

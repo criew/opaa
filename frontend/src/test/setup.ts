@@ -21,6 +21,8 @@ import { resetMockAuthConfig, resetMockBranding, resetMockOidcProviders } from '
 import { resetMockMailSettings, resetMockMailTemplates } from '../mocks/mailFixtures'
 import { resetMockLocalAuthSettings, resetMockLocalUsers } from '../mocks/localUserFixtures'
 import { resetMockSelfServiceTokens } from '../mocks/localAuthFixtures'
+import { resetMockExternalAccessSettings } from '../mocks/externalAccessHandlers'
+import { resetMockExternalAccessTokens } from '../mocks/externalAccessTokenHandlers'
 
 /**
  * MSW passes a handler's `Set-Cookie` into `document.cookie`, which jsdom keeps for the whole file.
@@ -58,6 +60,10 @@ afterEach(() => {
   // A self-service link is single-use in the mock, as it is in the backend - a link one test
   // redeemed would read as invalid in the next.
   resetMockSelfServiceTokens()
+  // Dieselbe Begründung für die Fremdzugänge (#1717/#1719): Schalter und Tokenbestand sind
+  // veränderlich, damit ein Speichern, ein Anlegen oder eine Sperre im nächsten GET sichtbar ist.
+  resetMockExternalAccessSettings()
+  resetMockExternalAccessTokens()
   clearCookies()
 })
 afterAll(() => server.close())
