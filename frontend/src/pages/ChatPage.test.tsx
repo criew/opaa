@@ -372,6 +372,30 @@ describe('ChatPage', () => {
       expect(screen.getByText('Archiviert')).toBeInTheDocument()
     })
 
+    // regression guard: a chat still held by the store carries client-side ids for the questions
+    // of this session, so the hit's server id is only found in a freshly loaded history.
+    it('reloads the chat still open in this session to find the hit message', async () => {
+      useChatStore.setState({
+        spaceId: 'space-personal',
+        chatId: 'chat-personal-1',
+        messages: [
+          {
+            id: 'client-side-id',
+            role: 'user',
+            content: 'Wie ist das Projekt aufgebaut?',
+            timestamp: new Date(),
+          },
+        ],
+      })
+      renderWithProviders(<ChatPage />, {
+        withRouter: true,
+        initialRoute: '/spaces/space-personal/chats/chat-personal-1?message=message-personal-1-1',
+      })
+
+      const target = await screen.findByRole('article', { name: 'Gefundene Nachricht: Frage' })
+      await waitFor(() => expect(target).toHaveFocus())
+    })
+
     it('opens the chat normally when the message is unknown', async () => {
       renderWithProviders(<ChatPage />, {
         withRouter: true,

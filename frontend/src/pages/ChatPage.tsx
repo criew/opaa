@@ -65,6 +65,7 @@ export default function ChatPage() {
   }, [storeChatId])
 
   const isNewChat = !routeChatId || routeChatId === 'new'
+  const targetMessageId = isNewChat ? null : searchParams.get('message')
 
   // Loads the requested chat's history, or resets to a blank not-yet-persisted chat for the
   // current space - whichever the route asks for. Only re-runs when the route itself changes, not
@@ -75,13 +76,18 @@ export default function ChatPage() {
       // Already the active chat (e.g. just implicitly created by sendMessage, which replaces the
       // URL to point at it) - refetching here would load the not-yet-persisted history and
       // overwrite the message just shown (#548 review, finding 1).
-      if (routeChatId !== storeChatIdRef.current) {
+      // A search hit names a server message id; questions of this session still carry client ids,
+      // so a chat already open is reloaded when the hit is not among its messages.
+      const targetMissing =
+        targetMessageId !== null &&
+        !useChatStore.getState().messages.some((message) => message.id === targetMessageId)
+      if (routeChatId !== storeChatIdRef.current || targetMissing) {
         void loadChat(routeChatId)
       }
     } else {
       startNewChat(spaceId)
     }
-  }, [spaceId, routeChatId, isNewChat, loadChat, startNewChat])
+  }, [spaceId, routeChatId, isNewChat, loadChat, startNewChat, targetMessageId])
 
   // The first message on a not-yet-persisted chat creates it implicitly (chatStore#sendMessage) -
   // once that happened, the URL is replaced to point at the real chat id so a reload restores it.
@@ -220,7 +226,7 @@ export default function ChatPage() {
         key={chatView.key}
         messages={messages}
         isLoading={isLoading}
-        targetMessageId={isNewChat ? null : searchParams.get('message')}
+        targetMessageId={targetMessageId}
       />
       <ChatInput onSend={(message) => sendMessage(message)} disabled={isLoading} />
     </Box>
