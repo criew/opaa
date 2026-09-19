@@ -14,12 +14,19 @@ import org.springframework.http.MediaType;
  * header (#1780): the same compatibility test {@code AbstractMessageConverterMethodProcessor} runs,
  * against the types the Jackson converter writes for the envelope.
  *
- * <p>Pre-check and writer agree while two conditions hold - no other registered converter writes
+ * <p>Pre-check and writer agree while two conditions hold. No other registered converter writes
  * {@link ErrorResponse} ({@code Jaxb2RootElementHttpMessageConverter} is registered and declines
- * only for want of XML annotations on the generated DTO), and the matched mapping declares no
- * narrower {@code produces=}. No mapping in {@code io.opaa} does. Actuator's {@code
- * /actuator/prometheus} does, and since a {@code @RestControllerAdvice} without a selector covers
- * its mappings too, that is the one place where the two would part ways.
+ * only for want of XML annotations on the generated DTO). And no {@code @ExceptionHandler} of
+ * {@link GlobalExceptionHandler} declares a {@code produces=}: {@code
+ * ExceptionHandlerExceptionResolver} records one as the producible media types, which the writer
+ * then negotiates against instead of the converters', leaving this class to promise a body the
+ * writer cannot write - the {@code Accept} an RFC 7807 branch would exclude turns its status into
+ * the container's 500. {@code GlobalExceptionHandlerBodyFunnelTest} holds that condition.
+ *
+ * <p>The {@code produces=} of the matched <em>mapping</em> is a different matter and does not enter
+ * into it, the Actuator's included: {@code DispatcherServlet#processHandlerException} removes the
+ * producible media types before any exception resolver runs, so the envelope is negotiated against
+ * the converters. {@code GlobalExceptionHandlerProducibleTypesTest} holds that.
  */
 class ErrorBodyNegotiator {
 

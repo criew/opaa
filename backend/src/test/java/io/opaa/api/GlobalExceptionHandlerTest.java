@@ -3,7 +3,6 @@ package io.opaa.api;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.openai.core.http.Headers;
 import com.openai.errors.InternalServerException;
@@ -601,19 +600,21 @@ class GlobalExceptionHandlerTest {
   }
 
   /**
-   * The absent body is the contract, not an omission: an {@link ErrorResponse} here would be
-   * unwritable for the very reason the exception was raised, and the second exception that follows
-   * is logged with a stacktrace by {@code ExceptionHandlerExceptionResolver} - which is what this
-   * branch exists to prevent (#1707). {@code GlobalExceptionHandlerNotAcceptableTest} guards the
-   * same property end to end, on the log.
+   * Whether this branch's body reaches a caller is {@code respond}'s decision since #1786, not this
+   * branch's: without a bound request - as here - a body is written, and against an {@code Accept}
+   * that excludes the envelope it is dropped, which is what {@code
+   * GlobalExceptionHandlerNotAcceptableTest} guards end to end, on the log.
    */
   @Test
-  void handleHttpMediaTypeNotAcceptableExceptionAnswersWithoutABody() {
+  void handleHttpMediaTypeNotAcceptableExceptionReturnsNotAcceptable() {
     var response =
         handler.handleHttpMediaTypeNotAcceptableException(
             new HttpMediaTypeNotAcceptableException(List.of(MediaType.APPLICATION_JSON)));
     assertEquals(406, response.getStatusCode().value());
-    assertNull(response.getBody());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(406, body.getStatus());
+    assertEquals("Das angeforderte Antwortformat wird nicht unterstützt", body.getError());
   }
 
   private DataIntegrityViolationException dataIntegrityViolation(String sqlState, String message) {
