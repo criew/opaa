@@ -208,8 +208,11 @@ benutzbare Systemverwalter-Anmeldung entfernen könnte, läuft darüber:
   `oidc_providers`, Bedingung: ein gesicherter **lokaler** Systemverwalter bleibt);
 - Sperren, Befristen, Rollenentzug und Löschen eines Systemverwalters über die neue Admin-API
   lokaler Konten (Entscheidung 11) **und über den bestehenden generischen Rollenendpunkt**
-  `POST /api/v1/admin/users/{id}/role` (`UserService#updateRole`, Gegenstand von #1349 — er hat heute
-  keinen Schutz des letzten Verwalters; ohne ihn wäre die Invariante offen);
+  `POST /api/v1/admin/users/{id}/role` (`UserService#updateRole`, Gegenstand von #1349 — er hatte zum
+  Zeitpunkt dieser Entscheidung keinen Schutz des letzten Verwalters; ohne ihn wäre die Invariante
+  offen). *Nachtrag:* Mit #1537 gebaut — `UserService#updateRole` ruft
+  `LocalAdminAvailabilityGuard#requireAnotherLoginCapableAdmin` unter `lockRoleChanges`; #1349 hat
+  den Test gegen echtes Postgres nachgezogen;
 - der Rollenentzug per Token (`TokenRoleSynchronizer`, ADR-0025, Entscheidung 4);
 - der Anstoß einer Übergabe für ein Systemverwalterkonto (Entscheidung 12);
 - der Wiederanlauf (Entscheidung 5), der das Notanker-Konto wieder anmeldefähig macht — und es neu
