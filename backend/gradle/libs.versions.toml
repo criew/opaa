@@ -4,8 +4,9 @@ spring-dependency-management = "1.1.7"
 spring-ai = "2.0.1"
 # Override of the tomcat.version property of the spring-boot-dependencies BOM (see the
 # dependencyManagement block in build.gradle.kts). Spring Boot 4.1.1 pins 11.0.24, which is
-# affected by CVE-2026-65182, CVE-2026-65905 and CVE-2026-68525. Remove this entry and the
-# override once a Spring Boot release ships tomcat.version >= 11.0.25 (#1431).
+# affected by CVE-2026-65182, CVE-2026-65905 and CVE-2026-68525. Remove this entry, its
+# [libraries] entries and the override once a Spring Boot release ships tomcat.version >= 11.0.25
+# (#1431).
 tomcat = "11.0.25"
 spotless = "8.10.2"
 caffeine = "3.2.4"
@@ -95,12 +96,13 @@ greenmail = "2.1.13"
 # Transitive-only pin (see the dependencyManagement block in build.gradle.kts). Tika's crypto, pdf,
 # microsoft and digest parser modules resolve Bouncy Castle 1.84, which is affected by
 # CVE-2026-8763 (name constraint bypass) and CVE-2026-13506 (ASN.1 nesting depth reset). All four
-# artifacts must carry the same version. Remove entry and override once Tika resolves >= 1.85
-# on its own (#1464).
+# artifacts ship from the same release and must carry the same version. Remove this entry, its
+# [libraries] entries and the override once Tika resolves >= 1.85 on its own.
 bouncycastle = "1.85"
 # Transitive-only pin (see the dependencyManagement block in build.gradle.kts). Tika's pkg parser
 # module resolves junrar 7.6.0, which is affected by CVE-2026-86071 (directory escape while
-# extracting). Remove entry and override once Tika resolves >= 7.6.1 on its own (#1464).
+# extracting). Remove this entry, its [libraries] entry and the override once Tika resolves
+# >= 7.6.1 on its own.
 junrar = "7.6.1"
 
 [libraries]
@@ -180,6 +182,20 @@ testcontainers-minio = { module = "org.testcontainers:testcontainers-minio" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 awaitility = { module = "org.awaitility:awaitility" }
 greenmail = { module = "com.icegreen:greenmail", version.ref = "greenmail" }
+
+# Version overrides for artifacts that reach the classpath only transitively (see the
+# dependencyManagement block in build.gradle.kts, which is their only consumer). They are declared
+# here rather than as a bare [versions] entry because Renovate's gradle manager derives a
+# coordinate from [libraries] alone - a version without one is invisible to it and would freeze a
+# security pin at the version it was set to.
+tomcat-embed-core = { module = "org.apache.tomcat.embed:tomcat-embed-core", version.ref = "tomcat" }
+tomcat-embed-el = { module = "org.apache.tomcat.embed:tomcat-embed-el", version.ref = "tomcat" }
+tomcat-embed-websocket = { module = "org.apache.tomcat.embed:tomcat-embed-websocket", version.ref = "tomcat" }
+bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
+bouncycastle-bcutil = { module = "org.bouncycastle:bcutil-jdk18on", version.ref = "bouncycastle" }
+bouncycastle-bcpkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
+bouncycastle-bcjmail = { module = "org.bouncycastle:bcjmail-jdk18on", version.ref = "bouncycastle" }
+junrar = { module = "com.github.junrar:junrar", version.ref = "junrar" }
 
 [bundles]
 spring-boot = [
