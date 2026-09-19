@@ -288,8 +288,9 @@ vollständigen nicht unterscheidbar und würde als Codeänderung gegen die Basel
 Stufen-Auswahl zur Messgröße zu machen ist ein Vertragsnachtrag mit neuem Fixpunkt, erhöhter
 Vertragsversion und neu gezogenen Baselines. **Eine zweite Ausnahme, aus der Umsetzung:** die
 Stufe, die den Rechtefilter setzt (`SEARCH_SCOPE`), ist nicht abschaltbar — „ohne diese Stufe" wäre keine
-Messvariante, sondern eine Suche ohne Rechtefilter (ADR-0008 §5). Eine Konfiguration, die es versucht,
-scheitert beim Start, nicht bei der Abfrage.
+Messvariante, sondern eine Suche ohne Rechtefilter
+([Durchsetzung zur Abfragezeit](./spaces-and-assets.md#durchsetzung-zur-abfragezeit)). Eine Konfiguration,
+die es versucht, scheitert beim Start, nicht bei der Abfrage.
 
 **Jede Stufe erklärt ihr Ergebnis, und zwar als Pflicht-Rückgabewert.** Das Erklärprotokoll ist Teil
 des Rückgabewerts der Stufenschnittstelle — nicht ein optionaler Nebeneffekt, den eine Stufe erzeugen
@@ -605,9 +606,8 @@ LLM-Teilfragen-Zerlegung nebenbei (#923). Wiedervorlage bei gemessenem Bedarf, n
 
 Der Filter auf die lesbaren Bibliotheken (`library_id IN (...)`) ist **Teil der Volltextabfrage selbst**,
 genau wie im Vektorpfad — nie ein Filter auf deren Ergebnis. Das ist keine Optimierung, sondern die
-tragende Zusicherung von ADR-0008 (der Grundsatz ist mit #326 in die Spezifikation überführt worden;
-maßgeblich ist heute
-[Durchsetzung zur Abfragezeit](./spaces-and-assets.md#durchsetzung-zur-abfragezeit)).
+tragende Zusicherung des Rechtemodells —
+[Durchsetzung zur Abfragezeit](./spaces-and-assets.md#durchsetzung-zur-abfragezeit).
 
 Zwei Folgerungen sind verbindlich:
 

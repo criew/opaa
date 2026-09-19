@@ -31,7 +31,7 @@ class VectorSearchStageTest {
                 new VectorSearchStage(vectorStore)
                     .apply(context(Set.of(LIBRARY_ID), PROPERTIES), RetrievalState.initial()))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("ADR-0008");
+        .hasMessageContaining("without a rights filter");
     verifyNoInteractions(vectorStore);
   }
 }

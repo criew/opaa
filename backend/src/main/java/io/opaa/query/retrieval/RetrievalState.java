@@ -166,14 +166,15 @@ public record RetrievalState(
 
   /**
    * The filter a search stage must apply, or an {@link IllegalStateException} - a search without a
-   * permission filter is not a degraded mode this pipeline has.
+   * permission filter is not a degraded mode this pipeline has
+   * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit).
    */
   public Filter.Expression requiredLibraryFilter() {
     if (libraryFilter == null) {
       throw new IllegalStateException(
           "no permission filter in the pipeline state: a search stage ran before "
               + RetrievalStageName.SEARCH_SCOPE
-              + ", which would search without a rights filter (ADR-0008 §5)");
+              + ", which would search without a rights filter");
     }
     return libraryFilter;
   }

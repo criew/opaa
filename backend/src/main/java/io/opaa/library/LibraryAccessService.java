@@ -140,11 +140,12 @@ public class LibraryAccessService {
    * formula in docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten. Space
    * associations deliberately do not appear anywhere in this computation, per the same
    * specification section. No system-admin bypass: the vector search always reads with the calling
-   * user's own rights, with no second rights context (ADR-0008 §5) - unlike {@link #effectiveRole},
-   * which fail-opens system admins for library administration. That asymmetry is intentional and
-   * points the safe way: an admin may administer every library but retrieves only from those the
-   * formula grants them, so nothing an admin reads in a chat can come from a library they were not
-   * granted.
+   * user's own rights, with no second rights context
+   * (docs/features/spaces-and-assets.md#ein-agent-liest-immer-mit-den-rechten-des-nutzers) - unlike
+   * {@link #effectiveRole}, which fail-opens system admins for library administration. That
+   * asymmetry is intentional and points the safe way: an admin may administer every library but
+   * retrieves only from those the formula grants them, so nothing an admin reads in a chat can come
+   * from a library they were not granted.
    */
   public Set<UUID> readableLibraryIds(UUID userId, UUID organizationId) {
     Instant now = Instant.now();

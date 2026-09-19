@@ -92,20 +92,24 @@ class FullTextSearchStageTest {
         .build();
   }
 
-  /** ADR-0008 §5: no search stage runs before the stage that establishes the filter. */
+  /**
+   * No search stage runs before the stage that establishes the filter
+   * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit).
+   */
   @Test
   void refusesToRunWithoutAPermissionFilter() {
     assertThatThrownBy(
             () -> stage().apply(context(Set.of(SCOPED_LIBRARY)), RetrievalState.initial()))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("ADR-0008");
+        .hasMessageContaining("without a rights filter");
     verifyNoInteractions(search);
   }
 
   /**
-   * Exactly the permission scope reaches the query - no library beyond it (ADR-0008 §5) and none of
-   * it held back either: the full-text row is written with the vector row, so there is no scoped
-   * library the lexical path has to leave out.
+   * Exactly the permission scope reaches the query - no library beyond it
+   * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit) and none of it held back
+   * either: the full-text row is written with the vector row, so there is no scoped library the
+   * lexical path has to leave out.
    */
   @Test
   void searchesExactlyThePermissionScope() {

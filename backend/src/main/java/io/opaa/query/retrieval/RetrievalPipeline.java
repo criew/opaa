@@ -46,7 +46,7 @@ public class RetrievalPipeline {
             "cannot switch off "
                 + stage.name()
                 + ": it establishes the permission filter, and a run without one is a permission"
-                + " bypass, not a pipeline variant (ADR-0008 §5)");
+                + " bypass, not a pipeline variant");
       }
     }
     this.stages = List.copyOf(stages);
@@ -62,8 +62,9 @@ public class RetrievalPipeline {
    * Runs every registered stage in order and returns the selection together with the complete
    * explanation protocol. {@code context.searchScope()} is taken as given: this method applies it
    * as the {@code library_id} filter of every search but resolves no permissions of its own
-   * (ADR-0008 §5). Once a stage halts the run, the remaining stages are recorded as not reached
-   * instead of being executed.
+   * (docs/features/spaces-and-assets.md#ein-agent-liest-immer-mit-den-rechten-des-nutzers). Once a
+   * stage halts the run, the remaining stages are recorded as not reached instead of being
+   * executed.
    */
   public RetrievalPipelineResult run(RetrievalContext rawContext) {
     // Without the rerank stage nothing would restore the top-k cap, so the narrowing stages must

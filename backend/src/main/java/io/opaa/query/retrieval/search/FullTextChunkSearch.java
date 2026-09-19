@@ -24,7 +24,8 @@ import tools.jackson.databind.ObjectMapper;
  * The lexical half of the hybrid search (docs/handbuch/suche.md, Stufe 5): one PostgreSQL full-text
  * query against {@code chunk_full_text}, ranked by {@code ts_rank}, in the {@link Document} shape
  * the vector path returns. The permission filter is part of that query, never a filter on its
- * result (ADR-0008 §5): {@code library_id = ANY(?)} sits in the {@code WHERE} clause.
+ * result (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit): {@code library_id =
+ * ANY(?)} sits in the {@code WHERE} clause.
  *
  * <p>The query mirrors {@link FullTextChunkStore#indexChunks}: the German analysis chain over the
  * question's words, OR-ed rather than AND-ed because this path feeds a fusion, plus the identifier
