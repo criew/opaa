@@ -2,14 +2,26 @@
 
 ## Status
 
-**Akzeptiert (19.09.2026)** — Issue [#1810](https://github.com/criew/opaa/issues/1810), Epic
-[#1295](https://github.com/criew/opaa/issues/1295) „Gruppen, Rollen und Berechtigungen", Phase 1.
+**Vorgeschlagen (19.09.2026, Issue [#1810](https://github.com/criew/opaa/issues/1810), Epic
+[#1295](https://github.com/criew/opaa/issues/1295) „Gruppen, Rollen und Berechtigungen", Phase 1).**
 Setzt die Abstimmungen vom 10.09. und 19.09.2026 um und schreibt die Empfehlungen des
-Konzeptpapiers aus [#1809](https://github.com/criew/opaa/issues/1809) fest.
+Konzeptpapiers aus [#1809](https://github.com/criew/opaa/issues/1809) fest. Der Maintainer setzt den
+Status auf „Akzeptiert" (`docs/AGENT-ORGANIZATION.md`, „ADRs"); Vorbild sind ADR-0033 und ADR-0035,
+die beide als Entwurf kamen und mit dem Abschluss ihres Epics umgestellt wurden.
 
-**Löst ab:** [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md), Entscheidung 6 samt Nachtrag
-vom 19.08.2026 (#484) — die Anlage einer Bibliothek ist künftig eine vergebbare Fähigkeit,
-ausgeliefert an „Alle Konten" (Entscheidung 5 unten). ADR-0018 gilt im Übrigen unverändert.
+**Setzt den Merge von PR #1825 (Konzeptpapier, #1809) voraus.** Dieser ADR delegiert die gesamte
+Abwägung und jede Antwort auf eine Stakeholder-Auflage dorthin; bis zu dessen Merge lösen die fünf
+Verweise auf `docs/discussions/` nicht auf.
+
+**Löst mit seiner Annahme ab:** [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md),
+Entscheidung 6 samt Nachtrag vom 19.08.2026 (#484) — die Anlage einer Bibliothek wird dann eine
+vergebbare Fähigkeit, ausgeliefert an „Alle Konten" (Entscheidung 5 unten). ADR-0018 gilt im Übrigen
+unverändert.
+
+**Zwei Werte sind hier ausdrücklich offen** und vom Maintainer zu setzen, bevor der Status wechselt:
+die **Voreinstellung** der Mindestgruppengröße und der **ausgelieferte Wert** der
+Aufbewahrungshöchstdauer (siehe „Zahlen, die dieser ADR setzt"). Ihre erzwungenen Grenzen sind
+entschieden.
 
 **Präzisiert, ohne aufzuheben:** [ADR-0016](0016-loeschschicksal-rechtehistorie.md) (Entscheidung 8),
 [ADR-0025](0025-mehrere-oidc-anbieter.md) (Entscheidungen 2 und 3),
@@ -165,9 +177,9 @@ Entscheidung.
 
 > **Präzisierung gegenüber dem Papier.** Dass „der Verzeichnisabgleich eines deaktivierten Anbieters
 > pausiert", ist heute **nicht** der Fall: `TrustedProvider#issuer()` löst den Standardanbieter über
-> `findByDefaultProviderTrue()` auf, **ohne** `enabled` zu prüfen. Das Pausieren ist deshalb eine
-> Anforderung an #1816 (Abgleich je Anbieter, an den aktivierten Zustand gebunden), keine
-> Zustandsbeschreibung.
+> `findByDefaultProviderTrue()` auf, **ohne** `enabled` zu prüfen — obwohl ADR-0033 „nur aktiviert"
+> verlangt. Das ist als **#1832** erfasst. Das Pausieren ist deshalb eine Anforderung an #1816
+> (Abgleich je Anbieter, an den aktivierten Zustand gebunden), keine Zustandsbeschreibung.
 
 **Die Rücknahme von Mitgliedschaften nach einem Vorfall bleibt im ersten Schritt Handarbeit.** Die
 Deaktivierung nimmt keine Mitgliedschaft zurück, die ein kompromittierter Anbieter vorher über
@@ -374,8 +386,9 @@ und `GroupMembershipResolver`.
 - **Migration:** drei Zeilen je Organisation an `ALL_ACCOUNTS`, keine für `CREATE_INTERNAL_GROUP`;
   Delta-Test. Nach der Migration verhält sich jede Installation wie vorher.
 
-**Damit ist ADR-0018, Entscheidung 6 samt Nachtrag #484 abgelöst.** Die dortige Feststellung
-„die Anlage-Berechtigung bleibt dauerhaft offen" gilt nicht mehr; was bleibt, ist die
+**Damit wird ADR-0018, Entscheidung 6 samt Nachtrag #484 mit der Annahme dieses ADR abgelöst.** Die
+dortige Feststellung „die Anlage-Berechtigung bleibt dauerhaft offen" gilt dann nicht mehr; was
+bleibt, ist die
 Pfad-Allowlist und die Adressprüfung (`TargetAddressValidator`) als von der Berechtigung
 **unabhängige** Sicherung — sie greift weiterhin unabhängig davon, wer die Bibliothek anlegt. Der
 ausgelieferte Zustand ist identisch mit dem heutigen; wer einschränken will, entzieht „Alle Konten".
@@ -452,9 +465,11 @@ Dazu:
    Verwaltungshandlung.** Entfernen, Herabstufen oder Austritt des letzten `ADMIN` wird mit `409`
    abgelehnt — heute schützt `SpaceService#removeMember` nur den Eigentümer, und das als
    `ValidationException`, also `400`. **Eine Gruppe zählt als `ADMIN`, solange sie handlungsfähig
-   ist**; das beantwortet die offene Frage aus #1815. Den Eigentümerwechsel darf künftig jeder
-   wirksame `ADMIN` an sich oder einen anderen `ADMIN` übertragen (heute nur Eigentümer oder
-   `SYSTEM_ADMIN`) — das ist die eine Verhaltensänderung.
+   ist**; das beantwortet die offene Frage aus #1815. Den Eigentümerwechsel darf künftig **jedes
+   handlungsfähige `ADMIN`-Mitglied, das eine natürliche Person ist**, an sich oder an ein anderes
+   solches Mitglied übertragen (heute nur Eigentümer oder `SYSTEM_ADMIN`) — das ist die eine
+   Verhaltensänderung. Eine Gruppe kommt dafür nicht in Betracht: Der Space-Eigentümer bleibt eine
+   natürliche Person.
 2. **Eine Kontosperre wird nie wegen offener Eigentums- oder Zuständigkeitsfragen abgelehnt.** Sie
    ist die eine Handlung, die den Zustand erzeugen darf. **Die einzige Ausnahme bleibt der Schutz des
    letzten anmeldefähigen Systemverwalters** (#1349, ADR-0033; heute
@@ -541,6 +556,16 @@ angelegt, nicht von vornherein pseudonymisiert** — der vorhandene Pseudonym-Me
 (`audit_actor_pseudonyms`, `CASCADE` auf `users`) liegt im eigenen Privilegienmodell des Protokolls
 (ADR-0015) und ist ohne eigene Entscheidung nicht übertragbar; zwei Modelle nebeneinander machten
 #391/#395 nicht kleiner, sondern zweiteilig.
+
+> **Damit wird eine Zusage der Spezifikation aufgehoben, und dieser ADR benennt sie.**
+> `security-and-compliance.md` sagt heute: „Aufbewahrung und Löschschicksal der Historie folgen
+> derselben Logik wie das Protokoll: Sie unterliegt einer Höchstdauer, **und der Personenbezug ist ab
+> dem Schreibzeitpunkt pseudonymisiert**." Der erste Halbsatz wird mit diesem ADR eingelöst, **der
+> zweite nicht**: Die Personenspalten bleiben `RESTRICT`, und die Pseudonymisierung wird an den
+> Personen-Einstieg und die Kontolöschung gekoppelt (#391/#395). Der Satz wird entsprechend
+> umgeschrieben, nicht nur ergänzt — wie der SCIM-Satz in `access-control.md` (Entscheidung 3);
+> zuständig sind #1808 und #1824. ADR-0016 führt genau diese beiden Punkte als offene Folgefragen:
+> Die Höchstdauer wird hier bejaht, die Pseudonymisierung ab Schreibzeitpunkt **verneint**.
 
 **Die Kontozustandshistorie bekommt keinen zweiten Lesepfad** („Verlauf" am Konto in der
 Benutzerverwaltung) neben der Stichtagsauskunft.
@@ -719,7 +744,7 @@ Rollback-Blöcke** (ADR-0034). Deshalb:
 
 | Fall | Behandlung im Changeset (#1812) | Delta-Test |
 | --- | --- | --- |
-| Token-Gruppe, deren Anbieter-UUID in `oidc_providers` fehlt | Umwandlung in eine **interne Gruppe** (`kind = AD_HOC`, `provider_id = NULL`, `external_id = NULL`, Beschreibung mit Herkunftsvermerk), **ohne Verantwortliche** → sie erscheint sofort in der Liste offener Nachfolgen; je Zeile ein Audit-Ereignis unter einem Systemprozess-Akteur `migration` | Fixture mit einer solchen Waisen-Gruppe samt Grant; nach der Migration ist sie intern, ihr Grant unverändert |
+| Token-Gruppe, deren Anbieter-UUID in `oidc_providers` fehlt | Umwandlung in eine **interne Gruppe** (`kind = AD_HOC`, `provider_id = NULL`, `external_id = NULL`, Beschreibung mit Herkunftsvermerk), **ohne Verantwortliche**; je Zeile ein Audit-Ereignis unter einem Systemprozess-Akteur `migration`. Dass sie damit in der Liste offener Nachfolgen erscheint, ist eine **Anforderung an #1819** — die Liste entsteht erst dort, #1812 legt nur den Zustand an | Fixture mit einer solchen Waisen-Gruppe samt Grant; nach der Migration ist sie intern, ihr Grant unverändert |
 | `ORG_UNIT`-Gruppe in einer Installation **ohne Standardanbieter** (die Anbietermenge darf leer sein; die `LOCAL`-Zeile ist nie Standard) | dieselbe Umwandlung; `dissolved` bleibt als Beschreibungsvermerk erhalten | Fixture ohne `is_default`-Zeile |
 | `ORG_UNIT`-Gruppen im Betriebsmodus `dev` (dort gibt es keine Anbieterzeile; `TrustedProvider` liest den Issuer aus `opaa.auth.dev`) | **#1816 entscheidet**, ob der Abgleich im `dev`-Modus über eine synthetische Anbieterzeile läuft oder entfällt; die Migration darf im `dev`-Modus **nicht abbrechen** | Suite unter `local,dev` |
 | Reihenfolge der Eindeutigkeit (`uk_groups_organization_external_id` ist heute `(organization_id, external_id)` und der Nebenläufigkeitsschutz von `TokenGroupSynchronizer`) | erst neuen Schlüssel `(organization_id, provider_id, kind, external_id)` anlegen, **dann** Präfix schneiden, **dann** alten Schlüssel fallen lassen — sonst kollidieren zwei gleichnamige Gruppen zweier Anbieter **während** des Updates; `TokenGroupSynchronizer.MAX_NAME_LENGTH` ändert sich mit dem Präfix | Fixture mit gleichnamigen Gruppen zweier Anbieter |
@@ -771,11 +796,11 @@ für Mitgliedschaften zieht.
 
 | ADR | Verhältnis |
 | --- | --- |
-| [ADR-0016](0016-loeschschicksal-rechtehistorie.md) | gilt unverändert. Entscheidung 8 wendet seine Systematik auf fünf neue Tabellen an (Subjektspalten `RESTRICT`, Objektspalten ohne FK) und ergänzt eine **zweite Achse**, die ADR-0016 nicht kennt: die Aufbewahrungshöchstdauer. Der Nachtrag vom 11.09.2026 (Vollmachten sind Betriebsrechte der Gegenwart, `CASCADE`) trägt die Einordnung der Verantwortlichen in Entscheidung 4 |
+| [ADR-0016](0016-loeschschicksal-rechtehistorie.md) | gilt unverändert. Entscheidung 8 wendet seine Systematik auf fünf neue Tabellen an (Subjektspalten `RESTRICT`, Objektspalten ohne FK) und ergänzt eine **zweite Achse**, die ADR-0016 nicht kennt: die Aufbewahrungshöchstdauer. Sie **beantwortet außerdem zwei seiner drei offenen Folgefragen**: den lesbaren Namensschnappschuss bejahend (Entscheidung 2, unter der Bedingung der Höchstdauer) und die **Pseudonymisierung des Personenbezugs ab Schreibzeitpunkt verneinend** (`RESTRICT`, Kopplung an den Personen-Einstieg statt an das Schreiben). Der Nachtrag vom 11.09.2026 (Vollmachten sind Betriebsrechte der Gegenwart, `CASCADE`) trägt die Einordnung der Verantwortlichen in Entscheidung 4 |
 | [ADR-0025](0025-mehrere-oidc-anbieter.md) | gilt unverändert. Entscheidung 2 gibt der dort eingeführten Gruppenherkunft aus Token-Claims einen echten Fremdschlüssel statt einer Zeichenkette; die Identitätsregel `(issuer, subject)` bleibt und ist der Grund, warum der Keycloak-Konnektor ohne Abbildungsregel auskommt |
 | [ADR-0033](0033-lokale-benutzerverwaltung.md) | gilt unverändert. Lokale Konten bekommen Gruppen ausschließlich über interne Gruppen (Entscheidung 4); die Wächter des Anbieter-Schalters und der Schutz des letzten anmeldefähigen Systemverwalters bleiben unangetastet (Entscheidungen 2 und 6); das Muster „abgeleiteter Zustand statt Statusspalte" trägt Entscheidung 6 |
 | [ADR-0021](0021-single-instance-betrieb.md) | trägt die Zusage „Entzug wirkt ohne Neuanmeldung" (Entscheidung 5) und den Feststellungslauf (Entscheidung 6) |
-| [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md) | Entscheidung 6 samt Nachtrag #484 **abgelöst** (Entscheidung 5); der Rest gilt |
+| [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md) | Entscheidung 6 samt Nachtrag #484 wird **mit der Annahme dieses ADR abgelöst** (Entscheidung 5); der Rest gilt unverändert |
 | [ADR-0006](0006-openapi-dto-generation.md) | jede API-Änderung dieses Epics beginnt in `opaa-api.yaml`; das `403` der Fähigkeitsprüfung ist eine **eigene Entscheidung der Operation** und wird dort deklariert |
 | [ADR-0034](0034-liquibase-changeset-stil-und-schema.md) | jedes Changeset des Epics ist reines PostgreSQL-SQL ohne Schemaqualifizierung, mit eigenem Delta-Test |
 
@@ -783,12 +808,13 @@ für Mitgliedschaften zieht.
 
 | Größe | Wert | Herkunft |
 | --- | --- | --- |
-| **Mindestgruppengröße für Rechteprofile — erzwungene Untergrenze** | **5** | Eine Gruppe von vier ist in einem Referat eine Person mit Namen. Die Untergrenze steht als **Zahl** in der Konfigurationstabelle des Handbuchs — eine Validierung ohne nachlesbaren Wert ist nicht überprüfbar. **Voreinstellung ebenfalls 5**, nach oben frei; ein Haus kann den Schutz nicht abschalten |
+| **Mindestgruppengröße für Rechteprofile — erzwungene Untergrenze** | **5** | Eine Gruppe von vier ist in einem Referat eine Person mit Namen. Die Untergrenze steht als **Zahl** in der Konfigurationstabelle des Handbuchs — eine Validierung ohne nachlesbaren Wert ist nicht überprüfbar. Nach oben frei; ein Haus kann den Schutz nicht abschalten |
+| **Mindestgruppengröße — Voreinstellung** | **offen, vom Maintainer zu setzen** | `spaces-and-assets.md` führt Voreinstellung und Untergrenze als **zwei** Werte („Das Produkt setzt eine Voreinstellung und erzwingt eine Untergrenze"), und die Voreinstellung steht dort unter „Offene Punkte". Die Begründung oben trägt nur die Untergrenze; ein Wert ≥ 5 ist zulässig, welcher es sein soll, entscheidet der Maintainer. Bis dahin bleibt dieser Eintrag offen — (c) setzt den Wert nicht selbst |
 | **Alterungsschwelle der Nachfolgeliste** | **12 Monate**, konfigurierbar | orientiert an `DiagnosticImpersonationGrant.MAX_VALIDITY_MONTHS` |
 | **Plausibilitätsschwelle des Abgleichs** | **30 %** | unverändert der gebaute Vorgabewert (`opaa.directory-sync.change-threshold-fraction = 0.3`) |
 | **Abgleichintervall** | Vorgabe **6 Stunden**, je Anbieter einstellbar | wie in `access-control.md` genannt |
 | **Feststellungsintervall** | Vorgabe **stündlich** | Entscheidung 6 |
-| **Aufbewahrungshöchstdauer der Rechtehistorie** | Grenzen **12–120 Monate**, ausgeliefert **120** | dieselben Grenzen wie `chk_audit_retention_settings_months`; ausgeliefert wird der höchste Wert, weil eine Löschung nicht rückholbar ist und eine Installation ihren Wert bewusst senken soll |
+| **Aufbewahrungshöchstdauer der Rechtehistorie** | Grenzen **12–120 Monate** entschieden; ausgeliefert **36 — Vorschlag, vom Maintainer zu bestätigen** | Die Grenzen sind dieselben wie `chk_audit_retention_settings_months`, weil `security-and-compliance.md` („Aufbewahrung und Löschschicksal der Historie folgen derselben Logik wie das Protokoll") es so verlangt. **Derselbe Satz trägt auch den ausgelieferten Wert:** Das Protokoll wird mit **36** geseedet (`001-baseline.yaml`), und die Begründung dort ist ausdrücklich — 3 Jahre decken „den üblichen Abstand zwischen Vorgang und Prüfung", 10 Jahre sind die Obergrenze, weil „was länger liegt, keiner Prüfung mehr dient". **120 wäre der falsche Auslieferungswert:** Personalrat D1 verlangt die Höchstdauer als Vorbedingung weiterer Quellen, und eine ausgelieferte Obergrenze begrenzt im Auslieferungszustand nichts |
 | **Personenspalten in Historientabellen** | **2 → 7** | heute `group_membership_history.user_id` und `asset_grant_history.subject_user_id`; dazu fünf neue Tabellen |
 | **`RESTRICT`-Personenspalten insgesamt (Löschschuld)** | **11 → 16** | `UserRepository#countDeletionBlockers` zählt heute elf Spalten in acht Tabellen (`spaces`, `chats`, `knowledge_libraries`, `asset_grants` ×2, `space_asset_associations`, `asset_grant_history`, `group_membership_history`, `audit_incident_scope_grants` ×3); `UserDeletionBlockerCoverageIntegrationTest` hält die Liste gegen `pg_constraint`. **Diese Zahl ist das Maß der aufgeschobenen Löschschuld**; `countDeletionBlockers` wächst mit jeder neuen Tabelle, und #391/#395 stellt die sieben Historienspalten in einem Zug um |
 
@@ -869,7 +895,7 @@ ausdrücklichen Vergabe zu sperren (Sachbearbeitung 4a — die Auslieferung darf
 | #1813 Fähigkeiten | eigene Tabelle mit `ALL_ACCOUNTS`; vier Fähigkeiten; Governance-Ereignis; Historie mit Zeitspanne; Klartextzeile; `403` als eigene Entscheidung (5) | Liste um `CREATE_CONNECTOR_LIBRARY` und `CREATE_INTERNAL_GROUP` ergänzen; „Alle Konten" als **dritte Subjektart**, nicht als Gruppenobjekt; Liquibase 042; **nach (a)** |
 | #1814 Gruppenverantwortliche | Freigabe zur Verwendung **mit Durchsetzung im Service**, Schutzkennzeichen, Abgabe der Verantwortung, Anzeige der Verantwortlichen, Benachrichtigung (4, 9) | Verantwortliche **ohne** Historientabelle; API ohne `/admin`; `404` statt `403` |
 | #1815 Gruppen als Space-Mitglieder | Subjektspalten, beste Rolle, Historie, **handlungsfähige Gruppe zählt als `ADMIN`**, Mitgliederzahl bei Erteilung (6, 8, 9) | offene Frage „zählt eine Gruppe als `ADMIN`" ist entschieden; `409` statt `400` für den letzten `ADMIN`; Eigentümerwechsel durch jeden wirksamen `ADMIN`; Liquibase 043–044; **nach (a)** |
-| #1816 Abgleich je Anbieter | Plan-Lebenszyklus (vier Festlegungen), Mechanismuskonflikt mit `409`, `dev`-Modus, Bindung an den **aktivierten** Anbieter (3, 11) | `dev`-Modus ausdrücklich entscheiden; `TrustedProvider` prüft heute `enabled` **nicht**; **hängt nicht** an (b) |
+| #1816 Abgleich je Anbieter | Plan-Lebenszyklus (vier Festlegungen), Mechanismuskonflikt mit `409`, `dev`-Modus, Bindung an den **aktivierten** Anbieter (3, 11) | `dev`-Modus ausdrücklich entscheiden; `TrustedProvider` prüft heute `enabled` **nicht** (#1832); **hängt nicht** an (b) |
 | #1817 Erster Konnektor | **Keycloak Admin REST API**; direkte Mitglieder; `CredentialsEncryptor`; Verbindungstest und Allowlist (3) | Typ ist nicht mehr offen; Mitgliederzahl je Gruppe im Differenzbericht; `SettingsEncryptor` → `CredentialsEncryptor` |
 | #1818 Kontostatus | Schwelle und Bestätigungsweg, Rückholbarkeit, Kontozustandshistorie, Grund und Ansprechstelle für die Person (3, 8) | **nach #1817**, weil der Kontostatus den Konnektor braucht; Historie nur nach (a), sonst Audit |
 | #1819 Lebenszyklus | Feststellungslauf, vollständige Liste in beide Richtungen, Betriebsliste mit drei Reitern, Kennzeichnung ohne Eigentümer und Datum, Alterungsschwelle mit Sichtungsvermerk (6) | „Nachfolge offen" **abgeleitet**, kein Flag; Frist, Eskalation und Mail bleiben draußen; **Übernahme herausgeschnitten nach (b)** |
@@ -883,8 +909,10 @@ ausdrücklichen Vergabe zu sperren (Sachbearbeitung 4a — die Auslieferung darf
 | **neu (c)** | **Space-Kontext im Rechteprofil** — nach #1815; bis dahin keine Space-ID im Diagnose-Request (7) | anzulegen |
 | **neu (d)** | **Erweiterung von #1822** um Vollmacht, Ein-Objekt-Regel, Zeitfenster und Abrufereignis (8) | als Nachschärfung von #1822 |
 
-**Reihenfolge der Wellen:** #1811 → (a) → #1812, #1813, #1815 → #1814, #1816, (b) → #1817, #1818,
-#1819, (c), #1822 → #1820, #1821, #1823, #1824.
+**Reihenfolge der Wellen:** #1811 → (a), #1812 → #1813, #1815 → #1814, #1816, (b) → #1817, #1822,
+#1823 → #1818, #1819, (c) → #1820 → #1821 → #1824. **(a) ist Vorbedingung von #1813, #1815, #1818
+und #1819, nicht von #1812** — beide können nebeneinander laufen; #1824 steht als letzte Welle allein,
+weil es die Oberflächen aus #1820 und #1821 beschreibt.
 
 ## Bewusst nicht entschieden
 
@@ -1112,8 +1140,8 @@ ausdrücklichen Vergabe zu sperren (Sachbearbeitung 4a — die Auslieferung darf
 - [ADR-0015](0015-eigentuemertrennung-protokollablage.md) — Privilegienmodell des Protokolls
 - [ADR-0016](0016-loeschschicksal-rechtehistorie.md) — Löschschicksal der Rechtehistorie, Nachtrag zu
   Vollmachten
-- [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md) — Entscheidung 6 mit Nachtrag #484, hier
-  abgelöst
+- [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md) — Entscheidung 6 mit Nachtrag #484, mit
+  der Annahme dieses ADR abgelöst
 - [ADR-0019](0019-minimale-benachrichtigungsinfrastruktur.md) — Benachrichtigungen ohne Mail
 - [ADR-0021](0021-single-instance-betrieb.md) — Single-Instance-Annahme
 - [ADR-0025](0025-mehrere-oidc-anbieter.md) — mehrere OIDC-Anbieter, Identität `(issuer, subject)`,
