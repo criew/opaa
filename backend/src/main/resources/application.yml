@@ -193,6 +193,13 @@ opaa:
       # (docs/features/conversation-memory.md). Everything else about the note is a fixed
       # value with no addressee to reconfigure it.
       max-items: ${OPAA_CHAT_NOTE_MAX_ITEMS:10}
+  # SPIKE (#1789), throwaway ahead of epic #1747 - never for production use. A message starting
+  # with "@test " (case-insensitive) runs through a model-driven tool-calling loop instead of the
+  # ordinary retrieval/answer path; every other message is unaffected. Off by default; the beans
+  # behind it (io.opaa.query.spike) only exist while this is set.
+  spike:
+    tool-loop:
+      enabled: ${OPAA_SPIKE_TOOL_LOOP_ENABLED:false}
   query:
     top-k: ${OPAA_QUERY_TOP_K:8}
     fetch-k: ${OPAA_QUERY_FETCH_K:25}
