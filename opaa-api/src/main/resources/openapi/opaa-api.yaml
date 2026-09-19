@@ -5029,7 +5029,8 @@ paths:
         The secret is stored through the same encryption as sourceCredentials, so this operation
         needs the credentials encryption key (OPAA_CREDENTIALS_ENCRYPTION_KEY): without a usable
         key no secret is stored and the answer is 503 naming the missing key. Removing a secret
-        (DELETE below) does not need the key - it stores nothing.
+        (DELETE below) does not need the key: it erases the column instead of writing a value
+        that would have to be encrypted.
       responses:
         "200":
           description: The new secret, shown once
@@ -5139,7 +5140,8 @@ paths:
         the value. The token is stored through the same encryption as sourceCredentials, so this
         operation needs the credentials encryption key (OPAA_CREDENTIALS_ENCRYPTION_KEY): without
         a usable key no token is stored and the answer is 503 naming the missing key. Removing a
-        token (DELETE below) does not need the key - it stores nothing.
+        token (DELETE below) does not need the key: it erases the column instead of writing a
+        value that would have to be encrypted.
       responses:
         "200":
           description: The new token, shown once

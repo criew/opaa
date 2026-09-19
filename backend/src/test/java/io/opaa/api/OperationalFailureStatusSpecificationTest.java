@@ -20,6 +20,7 @@ import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import io.opaa.security.CredentialsEncryptionProperties;
 import io.opaa.security.CredentialsEncryptor;
 import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -67,14 +68,14 @@ import org.yaml.snakeyaml.Yaml;
  * from the very {@link GlobalExceptionHandler} branches that answer them, the operations that may
  * declare the AI pair are derived from the constructor-injected object graph of the
  * {@code @RestController}s - whichever of them can reach the retrieval pipeline or the answer
- * generation -, the encrypted columns are counted off {@link KnowledgeLibrary}, and the write/read
- * asymmetry that decides which library operation declares the missing encryption key is asserted
- * against the production {@link SourceCredentialsConverter} itself. No Spring context.
+ * generation -, the encrypted columns are scanned off every {@code @Entity} of the project, and the
+ * write/read asymmetry that decides which library operation declares the missing encryption key is
+ * asserted against the production {@link SourceCredentialsConverter} itself. No Spring context.
  *
  * <p><b>What this test cannot see, deliberately named rather than hidden.</b>
  *
  * <ol>
- *   <li><b>The object-store and capacity half is held by nothing here</b> - seven of the thirteen
+ *   <li><b>The object-store and capacity half is held by nothing here</b> - seven of the fourteen
  *       {@code 503} declarations. Taking the {@code 503} off {@code triggerLibraryIndexing} or off
  *       any of the four orphan-cleanup operations leaves this class green. Deriving that half would
  *       mean treating {@code UploadedOriginalStore} as a seam, which every controller that touches
@@ -92,8 +93,13 @@ import org.yaml.snakeyaml.Yaml;
  *       ordinary field and answer nothing to a caller, so treating it as a seam would demand the
  *       pair at every chat operation.
  *   <li><b>The push-secret pair is named, not derived</b> (see {@link
- *       #everyOperationThatStoresAPushSecretDeclaresTheMissingKey}) - what is derived is that
- *       {@link KnowledgeLibrary} has exactly the two encrypted columns these rules account for.
+ *       #everyOperationThatStoresAPushSecretDeclaresTheMissingKey}) - what is derived is that the
+ *       entities hold exactly the two encrypted columns these rules account for.
+ *   <li><b>Both encryption-key rules are written per field, while the flush writes the whole
+ *       row.</b> Their negative half - this operation must <em>not</em> declare the status - is
+ *       therefore only as absolute as the assumption that no reachable row carries a legacy
+ *       cleartext credential; #1806 tracks the row-wise write itself, and closing it would let an
+ *       operation that merely changes a library answer the status too.
  * </ol>
  *
  * <p>A sharper guard would need a call graph. That remains the wrong trade here - it cannot tell a
@@ -136,6 +142,10 @@ class OperationalFailureStatusSpecificationTest {
    * this test with it instead of leaving the specification quietly wrong. The wrapped variants go
    * through {@code handleGenericException}, which unwraps the cause chain: that is the branch the
    * JPA flush of an encrypted column and Spring AI's own retry machinery actually arrive at.
+   *
+   * <p>Only {@code InternalServerException} is built with an explicit {@code statusCode}: its
+   * builder demands one and throws without it, while the fixed-status subtypes carry their own and
+   * expose no such setter.
    */
   @Test
   void theTwoStatusesAreTheOnesTheProductionHandlersAnswer() {
@@ -274,8 +284,14 @@ class OperationalFailureStatusSpecificationTest {
    * The premise the encryption-key half rests on, asserted against the production converter:
    * without a usable key a secret on its way <em>into</em> the database is refused, one on its way
    * out is reported as absent, and a blank write needs no key at all. Only an operation that writes
-   * a non-blank value can therefore answer {@code 503} - which is why the two removals below do
-   * not.
+   * a non-blank value can therefore answer {@code 503}.
+   *
+   * <p>The blank write alone does not carry the two removals, because the flush writes the whole
+   * row: a non-blank value in the <em>other</em> encrypted column would be re-encrypted with it.
+   * That column is either already encrypted - then the read reported it absent and the flush writes
+   * {@code null} - or legacy cleartext, and legacy cleartext predates the encryption. The removals
+   * exist only for {@code CONFLUENCE} and {@code S3}, both introduced long after it, so no library
+   * they can reach carries any.
    */
   @Test
   void aSecretIsRefusedOnWriteWithoutTheKeyAndToleratedOnReadAndOnErasure() {
@@ -295,17 +311,18 @@ class OperationalFailureStatusSpecificationTest {
   }
 
   /**
-   * The columns that go through {@link SourceCredentialsConverter}, counted off {@link
-   * KnowledgeLibrary} rather than listed from memory: each one is a write path that can answer
-   * {@code 503}, and the two tests below account for exactly these two. The equality is the
-   * tripwire - a third encrypted column arrives here before it can arrive unnoticed in the
+   * The columns that go through {@link SourceCredentialsConverter}, scanned off every entity rather
+   * than listed from memory: each one is a write path that can answer {@code 503}, and the two
+   * tests below account for exactly these two. The equality is the tripwire - a third encrypted
+   * column, on this entity or on a future one, arrives here before it can arrive unnoticed in the
    * specification.
    */
   @Test
-  void theEncryptedColumnsOfALibraryAreTheOnesTheRulesBelowAccountFor() {
-    assertThat(encryptedColumnsOfALibrary())
+  void theEncryptedColumnsOfEveryEntityAreTheOnesTheRulesBelowAccountFor() {
+    assertThat(encryptedColumnsOfEveryEntity())
         .as("a column goes through SourceCredentialsConverter without a rule for its writers")
-        .containsExactlyInAnyOrder("sourceCredentials", "webhookSecret");
+        .containsExactlyInAnyOrder(
+            "KnowledgeLibrary.sourceCredentials", "KnowledgeLibrary.webhookSecret");
   }
 
   /**
@@ -416,15 +433,21 @@ class OperationalFailureStatusSpecificationTest {
   }
 
   private static Set<Class<?>> restControllers() {
-    ClassPathScanningCandidateComponentProvider scanner =
-        new ClassPathScanningCandidateComponentProvider(false);
-    scanner.addIncludeFilter(new AnnotationTypeFilter(RestController.class));
-    Set<Class<?>> controllers = new LinkedHashSet<>();
-    for (BeanDefinition definition : scanner.findCandidateComponents("io.opaa")) {
-      controllers.add(load(definition.getBeanClassName()));
-    }
+    Set<Class<?>> controllers = classesAnnotatedWith(RestController.class);
     assertThat(controllers).as("no @RestController found under io.opaa").isNotEmpty();
     return controllers;
+  }
+
+  /** Every class under {@code io.opaa} carrying {@code annotation}, from the class path. */
+  private static Set<Class<?>> classesAnnotatedWith(Class<? extends Annotation> annotation) {
+    ClassPathScanningCandidateComponentProvider scanner =
+        new ClassPathScanningCandidateComponentProvider(false);
+    scanner.addIncludeFilter(new AnnotationTypeFilter(annotation));
+    Set<Class<?>> found = new LinkedHashSet<>();
+    for (BeanDefinition definition : scanner.findCandidateComponents("io.opaa")) {
+      found.add(load(definition.getBeanClassName()));
+    }
+    return found;
   }
 
   /** The project's own types {@code type} holds as fields, generic wrappers unwrapped one level. */
@@ -531,13 +554,23 @@ class OperationalFailureStatusSpecificationTest {
     return operation instanceof Map<?, ?> found ? (String) found.get("operationId") : null;
   }
 
-  /** The names of the {@link KnowledgeLibrary} columns converted by the credentials converter. */
-  private static Set<String> encryptedColumnsOfALibrary() {
+  /**
+   * Every column of every {@code @Entity} under {@code io.opaa} that goes through the credentials
+   * converter, as {@code SimpleName.field}. Scanned across all entities rather than read off {@link
+   * KnowledgeLibrary} alone: the converter is {@code autoApply = false} and attached explicitly to
+   * the one field it is meant for, so nothing stops a future table from carrying one too - and such
+   * a column would be exactly the gap this tripwire exists to catch.
+   */
+  private static Set<String> encryptedColumnsOfEveryEntity() {
     Set<String> columns = new TreeSet<>();
-    for (Field field : KnowledgeLibrary.class.getDeclaredFields()) {
-      Convert convert = field.getDeclaredAnnotation(Convert.class);
-      if (convert != null && convert.converter() == SourceCredentialsConverter.class) {
-        columns.add(field.getName());
+    Set<Class<?>> entities = classesAnnotatedWith(Entity.class);
+    assertThat(entities).as("no @Entity found under io.opaa").isNotEmpty();
+    for (Class<?> entity : entities) {
+      for (Field field : entity.getDeclaredFields()) {
+        Convert convert = field.getDeclaredAnnotation(Convert.class);
+        if (convert != null && convert.converter() == SourceCredentialsConverter.class) {
+          columns.add(entity.getSimpleName() + "." + field.getName());
+        }
       }
     }
     return columns;
