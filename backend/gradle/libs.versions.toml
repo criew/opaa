@@ -103,7 +103,7 @@ bouncycastle = "1.86"
 # module resolves junrar 7.6.0, which is affected by CVE-2026-86071 (directory escape while
 # extracting). Remove this entry, its [libraries] entry and the override once Tika resolves
 # >= 7.6.1 on its own.
-junrar = "7.6.1"
+junrar = "8.1.1"
 
 [libraries]
 # Spring Boot starters (versions managed by Spring Boot BOM)
