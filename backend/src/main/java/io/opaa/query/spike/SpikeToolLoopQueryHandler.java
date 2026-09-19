@@ -15,19 +15,25 @@ import io.opaa.query.answer.ConversationWindowMessages;
 import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.query.citation.CitationParser;
 import io.opaa.query.citation.CitationValidator;
+import io.opaa.query.retrieval.ChunkGroupingKey;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.advisor.ToolCallingAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.model.tool.ToolCallLimitExceededException;
 import org.springframework.ai.model.tool.ToolCallingManager;
+import org.springframework.ai.tool.execution.DefaultToolExecutionExceptionProcessor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -53,8 +59,21 @@ import org.springframework.stereotype.Service;
 @ConditionalOnProperty(name = "opaa.spike.tool-loop.enabled", havingValue = "true")
 public class SpikeToolLoopQueryHandler {
 
+  private static final Logger log = LoggerFactory.getLogger(SpikeToolLoopQueryHandler.class);
+
   /** Hard per-turn cap (#1789 acceptance criterion), enforced by {@link ToolCallingManager}. */
   static final int MAX_TOOL_CALLS = 4;
+
+  /**
+   * Replaces both the raw tool passages and {@link ToolCallLimitExceededException}'s own English
+   * sentence when {@link #toolCallLimitReached} fires - neither is fit for a persisted or displayed
+   * answer.
+   */
+  static final String TOOL_CALL_LIMIT_MESSAGE =
+      "Die Suche wurde nach "
+          + MAX_TOOL_CALLS
+          + " Werkzeugaufrufen beendet. Die folgende Antwort beruht auf den bisher gefundenen"
+          + " Angaben.";
 
   private static final String TEST_PREFIX = "@test ";
 
@@ -108,10 +127,23 @@ public class SpikeToolLoopQueryHandler {
 
   /**
    * Empty for any question without the {@code "@test "} prefix (case-insensitive) - the caller then
-   * runs its own, unmodified path. Otherwise runs the tool-calling loop against {@code rawQuestion}
-   * with the prefix stripped, validates the resulting citations exactly as the ordinary path does,
+   * runs its own, unmodified path. Otherwise runs the tool-calling loop against the question with
+   * the prefix stripped, validates the resulting citations exactly as the ordinary path does,
    * persists the turn via {@code chatService.appendTurn} and returns the finished {@link
    * QueryResult}.
+   *
+   * <p>What is persisted (and added to {@code chatMemory}) and what this call returns deliberately
+   * differ: the prefix never reaches {@code appendTurn}/{@code chatMemory} - a follow-up turn's
+   * {@code ConversationWindowMessages.reloaded} must rebuild the exact same window whether the
+   * cache is warm or was just reloaded from the persisted history, and a stray {@code "@test "}
+   * would ride along into that window, the derived chat title and the chat's full-text index
+   * otherwise. The "Suchschritte" line is display-only for this one response for the same reason:
+   * persisting it would leave the same window inconsistent after a reload, since {@link
+   * ConversationWindowMessages#answer} strips only citation markers, not this block.
+   *
+   * <p>The Gesprächsnotiz ({@code notePoints}) rides along in the returned {@link QueryResult}
+   * unchanged, but - unlike the ordinary path's {@code AnswerGenerationService#generateAnswer} -
+   * never reaches the model prompt here; out of scope for this spike (#1789).
    *
    * @param startTime {@code System.currentTimeMillis()} at the start of the caller's turn, for
    *     {@link QueryOutcome#durationMs()} - the same reference point the ordinary path uses.
@@ -136,7 +168,14 @@ public class SpikeToolLoopQueryHandler {
     messages.add(new UserMessage(question));
 
     ToolCallingManager toolCallingManager =
-        ToolCallingManager.builder().maxTotalToolCalls(MAX_TOOL_CALLS).build();
+        ToolCallingManager.builder()
+            .maxTotalToolCalls(MAX_TOOL_CALLS)
+            // A tool failure (e.g. KnowledgeRetrieval throwing) must abort the turn like any other
+            // production error, never be swallowed into a tool-response message that lets the loop
+            // continue and #handle report success regardless.
+            .toolExecutionExceptionProcessor(
+                DefaultToolExecutionExceptionProcessor.builder().alwaysThrow(true).build())
+            .build();
     ToolCallingAdvisor toolCallingAdvisor =
         ToolCallingAdvisor.builder().toolCallingManager(toolCallingManager).build();
 
@@ -152,25 +191,37 @@ public class SpikeToolLoopQueryHandler {
             .call()
             .chatResponse();
 
-    String rawAnswer = ChatResponses.text(response);
-    List<Document> chunks = runState.collectedChunks();
+    // The breach text (either the library's own English sentence or the last raw tool response,
+    // see ToolCallLimitExceededException#buildGeneration) is never fit for a persisted or
+    // displayed answer - replaced with a plain German one; the chunks already gathered still back
+    // the source list below regardless.
+    String rawAnswer =
+        toolCallLimitReached(response) ? TOOL_CALL_LIMIT_MESSAGE : ChatResponses.text(response);
+    List<Document> chunks = deduplicated(runState.collectedChunks());
     List<CitationValidator.ValidatedCitation> validatedCitations =
         citationValidator.validate(citationParser.extractCitations(rawAnswer), chunks, rawAnswer);
     List<ChatSource> sources =
         chatSourceAssembler.assemble(chunks, validatedCitations, metadataFilter);
-    String answer = rawAnswer + searchStepsBlock(runState.searchSteps());
+    // Display-only (see this method's own Javadoc): never persisted, never added to chatMemory.
+    String displayAnswer = rawAnswer + searchStepsBlock(runState.searchSteps());
 
     // Kept in step with the ordinary path (AnswerGenerationService#generateAnswer): a follow-up
     // turn in the same chat must see this one in its conversation window regardless of which path
-    // answered it.
+    // answered it - with the question stripped of its prefix and the answer without the
+    // "Suchschritte" line, exactly what gets persisted below.
     chatMemory.add(conversationKey, new UserMessage(question));
     ConversationWindowMessages.answer(rawAnswer)
         .ifPresent(message -> chatMemory.add(conversationKey, message));
 
     String chatTitle =
-        chat.map(c -> chatService.appendTurn(c, rawQuestion, answer, sources)).orElse(null);
+        chat.map(c -> chatService.appendTurn(c, question, rawAnswer, sources)).orElse(null);
     chat.ifPresent(
         c -> chatNoteExtractionService.condenseAsync(c.getId(), c.getSpaceId(), question));
+
+    log.info(
+        "Spike tool-loop turn finished with {} tool call(s); teilfragen: {}",
+        runState.searchSteps().size(),
+        runState.searchSteps());
 
     long durationMs = System.currentTimeMillis() - startTime;
     int tokenCount = ChatResponses.totalTokens(response);
@@ -185,7 +236,37 @@ public class SpikeToolLoopQueryHandler {
             false,
             chatSourceAssembler.searchedLibraries(searchScope));
     return Optional.of(
-        new QueryResult(answer, sources, metadata, effectiveChatId, chatTitle, notePoints));
+        new QueryResult(displayAnswer, sources, metadata, effectiveChatId, chatTitle, notePoints));
+  }
+
+  /**
+   * {@code true} once {@link ToolCallLimitExceededException} broke the loop - {@link
+   * org.springframework.ai.chat.client.advisor.ToolCallingAdvisor} turns that exception into a
+   * single {@link org.springframework.ai.chat.model.Generation} carrying {@link
+   * ToolCallLimitExceededException#FINISH_REASON} as its finish reason, never into a Java exception
+   * this method could catch.
+   */
+  private static boolean toolCallLimitReached(ChatResponse response) {
+    return response != null
+        && response.getResult() != null
+        && response.getResult().getMetadata() != null
+        && ToolCallLimitExceededException.FINISH_REASON.equals(
+            response.getResult().getMetadata().getFinishReason());
+  }
+
+  /**
+   * Collapses chunks the same document/section (#1789 review) contributed across several tool calls
+   * in one turn to a single entry - two searches finding the same passage must not double its
+   * {@code ChatSourceAssembler#countMatchesPerDocument} tally.
+   */
+  private static List<Document> deduplicated(List<Document> chunks) {
+    Map<String, Document> byKey = new LinkedHashMap<>();
+    for (Document chunk : chunks) {
+      String key =
+          ChunkGroupingKey.of(chunk) + "#" + chunk.getMetadata().getOrDefault("chunk_index", "0");
+      byKey.putIfAbsent(key, chunk);
+    }
+    return new ArrayList<>(byKey.values());
   }
 
   /** The debug line replacing streaming (#1789): every teilfrage the model formulated, in order. */

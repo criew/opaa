@@ -22,6 +22,9 @@ class SearchKnowledgeTool {
 
   static final String RUN_STATE_KEY = "opaa.spike.toolLoop.runState";
 
+  /** Must match the tool name {@link SpikeToolLoopQueryHandler}'s system prompt names. */
+  static final String TOOL_NAME = "search_knowledge";
+
   private final KnowledgeRetrieval knowledgeRetrieval;
 
   SearchKnowledgeTool(KnowledgeRetrieval knowledgeRetrieval) {
@@ -29,6 +32,7 @@ class SearchKnowledgeTool {
   }
 
   @Tool(
+      name = TOOL_NAME,
       description =
           "Durchsucht die für diesen Chat freigegebene Wissensbasis nach Textstellen zu einer"
               + " Frage oder einem Suchbegriff. Vor jeder inhaltlichen Antwort aufrufen.")

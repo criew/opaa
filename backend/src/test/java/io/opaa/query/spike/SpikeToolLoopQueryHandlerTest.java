@@ -1,7 +1,9 @@
 package io.opaa.query.spike;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -11,6 +13,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.chat.Chat;
 import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatService;
 import io.opaa.indexing.metadata.MetadataFilter;
@@ -92,7 +95,7 @@ class SpikeToolLoopQueryHandlerTest {
             .toolCalls(
                 List.of(
                     new AssistantMessage.ToolCall(
-                        toolCallId, "function", "searchKnowledge", frageJson)))
+                        toolCallId, "function", SearchKnowledgeTool.TOOL_NAME, frageJson)))
             .build();
     return new ChatResponse(List.of(new Generation(message)));
   }
@@ -177,9 +180,57 @@ class SpikeToolLoopQueryHandlerTest {
   }
 
   /**
+   * #1789 review, finding 1: {@code appendTurn} - and therefore {@code ChatMemory}, the chat title
+   * and the chat's full-text index - must never see the {@code "@test "} prefix or the
+   * "Suchschritte" line; both are display-only for the one response that carries them. Otherwise a
+   * follow-up turn's reload of the persisted history (after a restart or a cache eviction) would
+   * rebuild a conversation window the live process never actually sent.
+   */
+  @Test
+  void handlePersistsTheQuestionWithoutThePrefixAndTheAnswerWithoutTheSearchStepsLine() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
+    Document chunk =
+        Document.builder()
+            .text("Anmeldungen laufen über das Bürgerportal.")
+            .metadata(Map.of("file_name", "handbuch.md", "document_id", "doc-1", "chunk_index", 0))
+            .build();
+    when(knowledgeRetrieval.retrieve(any(), any(), any(), any(), any()))
+        .thenReturn(
+            new RetrievalPipelineResult(
+                List.of(chunk), List.of(), new RetrievalExplanation(List.of()), true));
+    when(chatSourceAssembler.assemble(any(), any(), any())).thenReturn(List.of());
+    when(chatSourceAssembler.searchedLibraries(any())).thenReturn(List.of());
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCallResponse("call-1", "{\"frage\":\"Wie melde ich mich an?\"}"),
+            new ChatResponse(
+                List.of(new Generation(new AssistantMessage("Über das Bürgerportal.")))));
+
+    Optional<QueryResult> result =
+        handler.handle(
+            "@test Wie melde ich mich an?",
+            Optional.of(chat),
+            chat.getId(),
+            "conv-key",
+            null,
+            Set.of(),
+            MetadataFilter.NONE,
+            System.currentTimeMillis());
+
+    assertThat(result).isPresent();
+    assertThat(result.get().answer()).contains("Suchschritte:");
+    verify(chatService)
+        .appendTurn(eq(chat), eq("Wie melde ich mich an?"), eq("Über das Bürgerportal."), any());
+    verify(chatMemory).add(eq("conv-key"), eq(new AssistantMessage("Über das Bürgerportal.")));
+  }
+
+  /**
    * (d): a model that always requests the tool never runs more than {@link
    * SpikeToolLoopQueryHandler#MAX_TOOL_CALLS} real tool executions - Spring AI's own {@code
-   * ToolCallingManager} limit ends the loop with a breach answer instead of calling forever.
+   * ToolCallingManager} limit ends the loop with a breach answer instead of calling forever. The
+   * breach answer is the plain German {@link SpikeToolLoopQueryHandler#TOOL_CALL_LIMIT_MESSAGE},
+   * not Spring AI's own English sentence or a raw tool response (#1789 review, nit 1).
    */
   @Test
   void handleStopsAtTheHardToolCallLimitInsteadOfLoopingForever() {
@@ -205,7 +256,49 @@ class SpikeToolLoopQueryHandlerTest {
             System.currentTimeMillis());
 
     assertThat(result).isPresent();
+    assertThat(result.get().answer()).contains(SpikeToolLoopQueryHandler.TOOL_CALL_LIMIT_MESSAGE);
     verify(knowledgeRetrieval, times(SpikeToolLoopQueryHandler.MAX_TOOL_CALLS))
         .retrieve(any(), any(), any(), any(), any());
+  }
+
+  /**
+   * #1789 review, nit 2: a tool failure must abort the turn like any other production error - never
+   * be swallowed into a tool-response message that lets the loop continue and {@code
+   * QueryMetrics#recordSuccess} fire regardless.
+   */
+  @Test
+  void handlePropagatesAToolFailureRatherThanCountingItAsSuccess() {
+    QueryMetrics metrics = mock(QueryMetrics.class);
+    SpikeToolLoopQueryHandler handlerWithMockedMetrics =
+        new SpikeToolLoopQueryHandler(
+            activeChatModelResolver,
+            searchKnowledgeTool,
+            chatMemory,
+            new CitationParser(),
+            new CitationValidator(),
+            chatSourceAssembler,
+            chatService,
+            chatNoteExtractionService,
+            metrics);
+    when(knowledgeRetrieval.retrieve(any(), any(), any(), any(), any()))
+        .thenThrow(new IllegalStateException("Datenbank nicht erreichbar"));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(toolCallResponse("call-1", "{\"frage\":\"Suche\"}"));
+
+    assertThatThrownBy(
+            () ->
+                handlerWithMockedMetrics.handle(
+                    "@test Suche",
+                    Optional.empty(),
+                    UUID.randomUUID(),
+                    "conv-key",
+                    null,
+                    Set.of(),
+                    MetadataFilter.NONE,
+                    System.currentTimeMillis()))
+        .isInstanceOf(RuntimeException.class);
+
+    verify(metrics, never()).recordSuccess(anyInt());
+    verify(chatService, never()).appendTurn(any(), any(), any(), any());
   }
 }
