@@ -765,14 +765,12 @@ class LocalUserAdminIntegrationTest {
                 null,
                 null));
     Instant now = Instant.now();
+    Instant yesterday = now.minus(Duration.ofDays(1));
+    Instant inAMonth = now.plus(Duration.ofDays(30));
+    // Every row below is issued by the account being deleted, so each one reaches the selection
+    // and every exclusion below is the only reason its row is left out.
     // the one that still confers something to a holder who remains
-    grant(
-        holder.id(),
-        unit,
-        issuer.id(),
-        now.minus(Duration.ofDays(1)),
-        now.plus(Duration.ofDays(30)),
-        null);
+    grant(holder.id(), unit, issuer.id(), yesterday, inAMonth, null);
     // spent: its window has run out, so there is nothing left to revoke
     grant(
         holder.id(),
@@ -781,22 +779,12 @@ class LocalUserAdminIntegrationTest {
         now.minus(Duration.ofDays(40)),
         now.minus(Duration.ofDays(10)),
         null);
-    // already revoked by the account being deleted - that revocation has its own event
-    grant(
-        holder.id(),
-        unit,
-        admin.id(),
-        now.minus(Duration.ofDays(5)),
-        now.plus(Duration.ofDays(30)),
-        issuer.id());
-    // held by the account itself: its Gegenstand goes with the account (ADR-0016, Nachtrag)
-    grant(
-        issuer.id(),
-        unit,
-        admin.id(),
-        now.minus(Duration.ofDays(1)),
-        now.plus(Duration.ofDays(30)),
-        null);
+    // revoked back then by the account itself - a second event would carry that old revocation's
+    // timestamp and actor, because revoking is idempotent
+    grant(holder.id(), unit, issuer.id(), now.minus(Duration.ofDays(5)), inAMonth, issuer.id());
+    // held by the account itself: its Gegenstand goes with the account (ADR-0016, Nachtrag), and a
+    // revocation event would name a pseudonym this transaction deletes
+    grant(issuer.id(), unit, issuer.id(), yesterday, inAMonth, null);
 
     try {
       asAdmin(delete(LOCAL_USERS + "/" + issuer.id())).andExpect(status().isNoContent());

@@ -243,12 +243,13 @@ auch Rechtevergaben, Raumzuordnungen, Geltungsbereiche einer anlassbezogenen Kl�
 **Nachweiseinträge** über Gruppenmitgliedschaften und Rechteänderungen. Sonst lehnt OPAA die
 Löschung ab und verweist auf die Sperre.
 
-Eine Ausnahme ist die Befugnis „Sicht als" ([Suche](suche.md), Abschnitt 8.2): Sie hält keine
-Löschung auf. Hat das Konto solche Befugnisse erteilt, **entzieht OPAA sie beim Löschen** — jede
-noch gültige einzeln und mit einem eigenen Eintrag im Nachweisprotokoll, wie bei einem Entzug von
-Hand. Die Personen, die sie hielten, verlieren sie damit. Abgelaufene und bereits entzogene
-Befugnisse bleiben unberührt, ebenso Befugnisse, die das gelöschte Konto selbst hielt: Sie entfallen
-mit ihm.
+Eine Ausnahme ist die Befugnis „Sicht als" ([Suche](suche.md), Abschnitt 8.3): Sie hält keine
+Löschung auf. Hat das Konto solche Befugnisse erteilt, **entzieht OPAA jede noch gültige davon beim
+Löschen** — einzeln und mit einem eigenen Eintrag im Nachweisprotokoll, wie bei einem Entzug von
+Hand; die Personen, die sie hielten, verlieren sie damit. Alle übrigen Befugnisse, an denen das
+Konto beteiligt war — die abgelaufenen und die bereits entzogenen, die es erteilt oder entzogen hat,
+und die es selbst hielt —, enden mit ihm, aber **ohne eigenen Eintrag**. Unberührt bleibt, woran das
+Konto nicht beteiligt war.
 
 Praktisch heißt das: Löschen ist der Weg für ein Konto, das nie benutzt wurde — eine falsch getippte
 Adresse, eine Einladung an die falsche Person, ein Testkonto. Wer dagegen je Mitglied einer Gruppe
