@@ -204,7 +204,7 @@ class TransportStatusCodeSpecificationTest {
    *
    * <p>Its self-check is a parity, not a threshold: every mapping annotation in the sources has to
    * belong to a parsed member. A threshold grows weaker as handlers are added and lets a signature
-   * form the scan cannot read slip through - the way it let one through in the review of #1788.
+   * form the scan cannot read slip through.
    */
   @Test
   void everyHandlerReadingThroughTheSharedBoundDeclaresItsSizeLimit() throws IOException {
@@ -413,9 +413,10 @@ class TransportStatusCodeSpecificationTest {
   }
 
   /**
-   * A top-level member of a production class: the file it stands in, its name, whether it carries a
-   * mapping annotation, the method and routes that annotation resolves to - each of them null when
-   * the annotation does not spell it out - and its body without comments.
+   * A top-level member of a production class: its file, keyed by the path under the source root so
+   * that two classes of the same name cannot balance each other out in the parity; its name;
+   * whether it carries a mapping annotation; the method and routes that annotation resolves to,
+   * each null when the annotation does not spell it out; and its body without comments.
    */
   private record Member(
       String source,
@@ -426,7 +427,8 @@ class TransportStatusCodeSpecificationTest {
       List<String> code) {
 
     boolean callsTheSharedBound() {
-      boolean inTheDeclaringClass = source.equals(BOUND_OWNER + ".java");
+      boolean inTheDeclaringClass =
+          Path.of(source).getFileName().toString().equals(BOUND_OWNER + ".java");
       return code.stream()
           .anyMatch(
               line ->
@@ -479,7 +481,7 @@ class TransportStatusCodeSpecificationTest {
                       MAPPING_ANNOTATIONS.stream().anyMatch(name -> line.startsWith("  @" + name)))
               .count();
       if (count > 0) {
-        perFile.put(source.getFileName().toString(), count);
+        perFile.put(MAIN_SOURCES.relativize(source).toString(), count);
       }
     }
     return perFile;
@@ -523,7 +525,7 @@ class TransportStatusCodeSpecificationTest {
       String mapping = mappingAnnotation(lines, index);
       members.add(
           new Member(
-              source.getFileName().toString(),
+              MAIN_SOURCES.relativize(source).toString(),
               memberName(lines.get(index)),
               mapping != null,
               mapping == null ? null : httpMethodOf(mapping),
