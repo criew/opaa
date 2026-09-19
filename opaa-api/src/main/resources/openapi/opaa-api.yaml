@@ -26,9 +26,10 @@ info:
     Error answers carry an `ErrorResponse`, whether they are declared at an operation or listed
     above. Two do not: the `406`, and *one* of the refusals behind the `401` - the resource
     server's own, which states its reason in `WWW-Authenticate` instead of in a body. The other
-    two do carry one: an access token refused on an external-access read path is answered with
-    `WWW-Authenticate` **and** an `ErrorResponse`, a call that reaches a handler without any caller
-    identity with the body alone. Independently of all this, a caller whose `Accept` admits nothing
+    two do carry one: an access token refused **anywhere** - the external-access chain claims every
+    call that presents one, wherever it is aimed - is answered with `WWW-Authenticate` **and** an
+    `ErrorResponse`, and a call that reaches a handler without any caller identity with the body
+    alone. Independently of all this, a caller whose `Accept` admits nothing
     this API writes is answered without a body whatever went wrong.
 
     `429` is deliberately absent from the list: the rate limits are per endpoint, not global. It is

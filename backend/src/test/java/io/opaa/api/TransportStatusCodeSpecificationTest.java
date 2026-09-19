@@ -1,6 +1,7 @@
 package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -10,6 +11,7 @@ import io.opaa.api.RateLimitProperties.EndpointLimit;
 import io.opaa.api.RateLimitProperties.LocalAuthLimit;
 import io.opaa.api.RateLimitProperties.LocalAuthLimits;
 import io.opaa.auth.local.LocalSelfServiceAvailability;
+import io.opaa.common.PayloadTooLargeException;
 import io.opaa.observability.RateLimitMetrics;
 import io.opaa.security.TrustedProxyClientIpResolver;
 import jakarta.servlet.Filter;
@@ -36,10 +38,9 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>The {@code 429} half derives its expectation from the production wiring rather than from a
  * list: every path of the specification is run through the very {@link RateLimitFilter} {@link
  * RateLimitConfiguration} builds, so a new rate-limit rule without the matching declaration fails
- * here. The {@code 413} half can only be derived for multipart uploads, which share one configured
- * bound; a raw-body bound read inside a controller is invisible from here, so the two event intakes
- * are held to the same declarations instead - they share the one bound literally. No Spring
- * context.
+ * here. The {@code 413} half derives the multipart uploads from the one configured bound they
+ * share, and the two event intakes from the one {@code readBounded} they share - both premises are
+ * read off the production side rather than listed. No Spring context.
  */
 class TransportStatusCodeSpecificationTest {
 
@@ -123,11 +124,28 @@ class TransportStatusCodeSpecificationTest {
   }
 
   /**
-   * The two event intakes read their body through the one {@code
-   * ConfluenceWebhookController#readBounded} against the one {@code MAX_BODY_BYTES} and share one
-   * rate-limit rule, so a status one of them can answer the other can answer too. Keeping their
-   * declarations equal is the only guard against the half that no rule can derive: a raw-body bound
-   * is nowhere visible in the specification.
+   * A raw-body bound is nowhere visible in the specification, so the premise of the two intakes'
+   * {@code 413} is read off the production code instead of asserted: both read their body through
+   * the one {@link ConfluenceWebhookController#readBounded}, and as long as that refuses an
+   * oversized one, both must declare {@code 413}. Taking the declaration away from both at once -
+   * the likely shape of a future change, since they share the method literally - fails here.
+   */
+  @Test
+  void bothEventIntakesDeclareTheOneSizeLimitTheyShare() {
+    MockHttpServletRequest oversized = new MockHttpServletRequest("POST", "/api/v1/libraries/x");
+    oversized.setContent(new byte[ConfluenceWebhookController.MAX_BODY_BYTES + 1]);
+
+    assertThatThrownBy(() -> ConfluenceWebhookController.readBounded(oversized))
+        .as("the shared bound no longer refuses an oversized body")
+        .isInstanceOf(PayloadTooLargeException.class);
+
+    assertThat(declaredStatusesOf("receiveConfluenceWebhook")).contains("413");
+    assertThat(declaredStatusesOf("receiveS3Events")).contains("413");
+  }
+
+  /**
+   * Beyond the shared bound above, the two intakes also share one rate-limit rule and one
+   * authentication posture, so a status one of them can answer the other can answer too.
    */
   @Test
   void theTwoEventIntakesDeclareTheSameStatuses() {
