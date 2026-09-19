@@ -110,15 +110,26 @@ Migration-Saat, #201) — die keine Bibliothek mit eigenen Regeln war, sondern v
 lesbaren Menge herausfiel. #521 hat sie samt Inhalt gelöscht; jede verbleibende Bibliothek hat einen
 echten Eigentümer.
 
-**Die eine Abweichung, und sie zeigt in die sichere Richtung: die Systemverwaltung.** Für die Verwaltung
-einer einzelnen Bibliothek — ansehen, umbenennen, Sichtbarkeit ändern, Rechte vergeben, Dokumente öffnen
-— gilt ein `SYSTEM_ADMIN` als `OWNER`, ohne dass der Ausdruck oben ihn erreicht. Für die **Suche** gilt das nicht:
-Der Filter der Suche wertet ausschließlich den Ausdruck aus und kennt keinen Zweig für die
-Systemverwaltung. Ein Administrator darf also jede Bibliothek verwalten, ruft in einem Chat aber nur aus
-denen ab, die ihm der Ausdruck zugesteht — nichts, was er in einer Antwort zu lesen bekommt, kann aus
-einer Bibliothek stammen, auf die er keinen Grant hat. Dieselbe Trennung erklärt die Bibliotheksliste:
-Sie wird aus dem Ausdruck gebildet, nicht aus dem Verwaltungsweg. Einordnung und Begründung in
+**Die Abweichung, auf die es hier ankommt, und sie zeigt in die sichere Richtung: die Systemverwaltung.**
+Für die Verwaltung einer einzelnen Bibliothek — ansehen, umbenennen, Sichtbarkeit ändern, Rechte
+vergeben, Dokumente öffnen — gilt ein `SYSTEM_ADMIN` als `OWNER`, ohne dass der Ausdruck oben ihn
+erreicht. Für die **Suche** gilt das nicht: Der Filter der gewöhnlichen Suche wertet ausschließlich den
+Ausdruck aus und kennt keinen Zweig für die Systemverwaltung. Ein Administrator darf also jede Bibliothek
+verwalten, ruft in einem Chat aber nur aus denen ab, die ihm der Ausdruck zugesteht — nichts, was er in
+einer Antwort zu lesen bekommt, kann aus einer Bibliothek stammen, auf die er keinen Grant hat. Dieselbe
+Trennung erklärt die Bibliotheksliste: Sie wird aus dem Ausdruck gebildet, nicht aus dem Verwaltungsweg.
+Einordnung und Begründung in
 [Identität, Rechte & Mandanten](./access-control.md#verwalten-ist-nicht-lesen-die-asymmetrie-bei-wissensbibliotheken).
+
+**Die Befugnis „Sicht als" ist die zweite Stelle, an der der Ausdruck für jemand anderen ausgewertet
+wird.** Eine Suchdiagnose im fremden Rechtekontext bildet die Bibliotheksmenge nach demselben Ausdruck —
+für die Zielperson statt für die ausführende Person, bei einem Rechteprofil aus den beiden Zweigen, die
+eine Gruppe überhaupt erreichen kann (Grant an die Gruppe, organisationsweite Sichtbarkeit). Der
+Ausdruck selbst bleibt dabei unangetastet; wer ihn für wen auswerten darf, entscheidet die einzeln
+vergebene Befugnis. Nur die zusätzliche Eindämmungsprüfung beim Rechteprofil — das Profil darf keine
+Bibliothek umfassen, die die ausführende Person nicht selbst einsehen darf — entfällt für einen
+`SYSTEM_ADMIN`. Beides steht in
+[Identität, Rechte & Mandanten](./access-control.md#zwei-befugnisse-neben-den-rollen).
 
 ### Gruppen als Rechtesubjekt
 

@@ -323,7 +323,7 @@ nebenbei die Suchqualität verändert, ist im Nachhinein nicht mehr von einer Re
 
 > **Stand: gebaut** ([#1048](https://github.com/criew/opaa/issues/1048)); die Schemaänderung und der
 > Backfill (AP 2a) davor mit [#1047](https://github.com/criew/opaa/issues/1047). Der gebaute Ablauf steht
-> in [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md#3b-volltextsuche-je-teilfrage-1048);
+> in [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md#3b-volltextsuche-je-teilfrage-10481049);
 > dieser Abschnitt bleibt die Begründung und der Zuschnitt.
 >
 > **Seit [#1049](https://github.com/criew/opaa/issues/1049) in der Fusion.** Die Stufe liefert je

@@ -81,10 +81,17 @@ Neben `SYSTEM_ADMIN` trägt die Benutzer-Entität eine zweite systemweite Rolle:
 #393/#394). Ein Konto hält genau einen der drei Werte `USER`, `SYSTEM_ADMIN` oder `AUDITOR` — die Rollen
 sind Alternativen, nicht Stufen.
 
-`AUDITOR` öffnet ausschließlich den Revisionsweg: die vier begrenzten Abfragen auf das Protokoll und den
-Vorgang der anlassbezogenen Klärung (siehe
-[Zugriffswege](./security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt)). Sie trägt
-keine einzige der oben aufgezählten Verwaltungsbefugnisse.
+`AUDITOR` öffnet ausschließlich den Revisionsweg, und der besteht aus drei Teilen:
+
+- die **vier begrenzten Abfragen** auf das Protokoll,
+- den **Vorgang der anlassbezogenen Klärung** (beides siehe
+  [Zugriffswege](./security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt)),
+- und das **Gesamtprotokoll der Suchdiagnosen**: Zeitraumabfrage und Einzelsatzansicht des
+  Diagnose-Protokolls stehen ebenfalls allein `AUDITOR` offen, je mit Pflicht-Anlass und eigenem
+  Protokolleintrag auch für den abgewiesenen Abruf (siehe
+  [Berechtigungs-Leitplanken](./hybrid-retrieval.md#berechtigungs-leitplanken), Leitplanke (h)).
+
+Sie trägt keine einzige der oben aufgezählten Verwaltungsbefugnisse.
 
 **Die Trennung gilt in beide Richtungen.** `SYSTEM_ADMIN` trägt keinen Lesezugriff auf das Protokoll: Ein
 Leseversuch der Systemverwaltung wird abgewiesen — und der abgewiesene Versuch wird selbst protokolliert.
@@ -110,7 +117,12 @@ Im Einzelnen:
 
 - **„Sicht als":** Die Systemverwaltung *erteilt* die Befugnis, hält sie dadurch aber nicht. Die Prüfung
   beim Ausführen sieht ausschließlich die Zeilen der Vollmachtstabelle an und kennt keinen Rollenzweig —
-  für keine Rolle. Ein Administrator ohne eigene Vollmacht wird abgewiesen wie jeder andere.
+  für keine Rolle. Ein Administrator ohne eigene Vollmacht wird abgewiesen wie jeder andere. Die
+  Bibliotheksmenge des fremden Kontexts entsteht dabei aus derselben Formel wie sonst, nur für die
+  Zielperson bzw. die Gruppe des Rechteprofils. Die **eine** Rollenverzweigung auf diesem Weg betrifft
+  den Profilkontext: Dass ein Rechteprofil keine Bibliothek umfassen darf, die die ausführende Person
+  nicht selbst einsehen darf, wird für einen `SYSTEM_ADMIN` nicht geprüft — dieselbe Asymmetrie wie
+  unter [Verwalten ist nicht Lesen](#verwalten-ist-nicht-lesen-die-asymmetrie-bei-wissensbibliotheken).
 - **Vorfallsbereich:** Antrag, Freigabe und Abfrage stehen allein `AUDITOR` offen; die Systemverwaltung
   erreicht diesen Weg gar nicht.
 - **Zueinander:** Wer diagnostiziert, wertet nicht das Protokoll aus, in dem seine Diagnose steht. Die
@@ -125,8 +137,12 @@ gelesen.
 
 Auf dem Weg der **einzelnen Bibliothek** gilt die Systemverwaltung als `OWNER`: Sie kann jede Bibliothek
 ansehen, umbenennen, ihre Sichtbarkeit ändern, Rechte darauf vergeben — und auch ihre Dokumente öffnen
-und herunterladen. Die Abgrenzung oben ist an dieser Stelle also enger formuliert, als der gebaute Stand
-sie hält; die Fassung des Rechtemodells ist Gegenstand von Epic #1295.
+und herunterladen, wobei dieser Zugriff heute **keinen Protokolleintrag** erzeugt: Die Auslieferung der
+Originaldatei schreibt kein Ereignis, und eine Ereignisart für das Lesen eines Dokuments gibt es nicht,
+während [Verwaltungsaktionen](./security-and-compliance.md#verwaltungsaktionen-und-agentenaktionen) dort
+als protokollpflichtig zugesagt sind (offen in
+[#1828](https://github.com/criew/opaa/issues/1828)). Die Abgrenzung oben ist an dieser Stelle also enger
+formuliert, als der gebaute Stand sie hält; die Fassung des Rechtemodells ist Gegenstand von Epic #1295.
 
 Auf dem Weg der **Suche** gilt das nicht. Die Menge der lesbaren Bibliotheken wird allein aus Grants,
 Gruppenmitgliedschaften und organisationsweiter Sichtbarkeit gebildet — ohne Ausnahme für die
