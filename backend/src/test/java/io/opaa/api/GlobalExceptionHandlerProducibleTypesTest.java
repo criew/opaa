@@ -31,9 +31,10 @@ import org.springframework.web.bind.annotation.RestController;
  * change, the writer would raise the second exception of #1780 on a path the {@code Accept} check
  * calls writable, and this class is what would say so.
  *
- * <p><b>The probe mapping stands in for {@code /actuator/prometheus}</b>, the one mapping this
- * application serves that declares a {@code produces=} without JSON, and one the Actuator cannot be
- * driven into an exception from the outside. The mechanism is the same either way: {@code
+ * <p><b>The probe mapping stands in for {@code /actuator/prometheus}</b>, whose {@code producesFrom
+ * = PrometheusOutputFormat.class} yields three types, none of them JSON; the probe takes the first
+ * of them, that being the property at stake. It stands in because the Actuator cannot be driven
+ * into an exception from the outside, and the mechanism is the same either way: {@code
  * RequestMappingInfoHandlerMapping} records the producible types of whichever mapping matched.
  *
  * <p>{@code standaloneSetup} rather than a {@code @WebMvcTest} slice, like {@code
@@ -86,18 +87,19 @@ class GlobalExceptionHandlerProducibleTypesTest {
   }
 
   /**
-   * The 406 such a mapping raises when the {@code Accept} cannot reach it - and the branch that
-   * answers it with the status alone. A body would be writable here, the producible types being
-   * gone by then; it is withheld because the caller of such a mapping is a scraper, and gets the
-   * status rather than this application's German envelope (see {@code
-   * GlobalExceptionHandler#handleHttpMediaTypeNotAcceptableException}).
+   * The 406 such a mapping raises when the {@code Accept} cannot reach it. Its branch goes through
+   * the funnel like every other one since #1786, and the funnel settles this position by itself:
+   * the producible types are gone by the time it decides, so an {@code Accept} of JSON takes the
+   * envelope - the same answer the 404 above gives the same caller.
    */
   @Test
-  void anAcceptTheProducesCannotSatisfyAnswersWithTheStatusAlone() throws Exception {
+  void anAcceptTheProducesCannotSatisfyStillCarriesTheEnvelope() throws Exception {
     mockMvc
         .perform(get(TEXT_ONLY_PATH).accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isNotAcceptable())
-        .andExpect(content().string(""));
+        .andExpect(jsonPath("$.status").value(406))
+        .andExpect(
+            jsonPath("$.error").value("Das angeforderte Antwortformat wird nicht unterstützt"));
 
     assertNoStacktraceWasLogged();
   }
@@ -118,7 +120,7 @@ class GlobalExceptionHandlerProducibleTypesTest {
   @Profile("standalone-probe")
   static class ProbeController {
 
-    /** The {@code produces=} of {@code /actuator/prometheus}, verbatim. */
+    /** The first of the three types {@code /actuator/prometheus} produces. */
     @GetMapping(path = TEXT_ONLY_PATH, produces = "text/plain;version=0.0.4;charset=utf-8")
     String textOnly() {
       throw new NotFoundException(REFUSAL);

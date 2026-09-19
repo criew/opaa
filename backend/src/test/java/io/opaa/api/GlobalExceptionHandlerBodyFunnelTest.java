@@ -25,9 +25,11 @@ import org.junit.jupiter.api.Test;
  * every {@code @ExceptionHandler} reflectively - would need a usable instance of some two dozen
  * exception types, the Kotlin types of the OpenAI SDK among them.
  *
- * <p><b>Three assertions, because each alone leaves a gap</b> (measured, not assumed - PR #1783
- * review): a branch calling {@code .body(...)} itself is caught by the first only, one assembling a
- * {@code ResponseEntity} another way by the second only, and a second advice class by neither.
+ * <p><b>Five assertions, because each alone leaves a gap</b> (measured, not assumed - the reviews
+ * of PR #1783 and PR #1798): a branch calling {@code .body(...)} itself is caught by the first
+ * only, one assembling a {@code ResponseEntity} another way by the second only, a second advice
+ * class by neither, and the last two guard the two ways the funnel's own decision can be made wrong
+ * without touching a branch - a selector on the advice, and a {@code produces=} on a branch.
  */
 class GlobalExceptionHandlerBodyFunnelTest {
 
@@ -37,13 +39,6 @@ class GlobalExceptionHandlerBodyFunnelTest {
       MAIN_SOURCES.resolve(Path.of("io", "opaa", "api", "GlobalExceptionHandler.java"));
 
   private static final String FUNNEL = "respond";
-
-  /**
-   * The one branch that answers without a body at all, named here rather than derived: its own
-   * Javadoc carries the reason, and a rename has to pass through this list.
-   */
-  private static final Set<String> BRANCHES_WITHOUT_A_BODY =
-      Set.of("handleHttpMediaTypeNotAcceptableException");
 
   /** Every branch this class holds today; the guard may only ever see more, never fewer. */
   private static final int BRANCH_COUNT = 31;
@@ -77,12 +72,10 @@ class GlobalExceptionHandlerBodyFunnelTest {
         .as(
             "this guard proves nothing if a branch went unparsed - the class holds %d",
             BRANCH_COUNT)
-        .hasSizeGreaterThanOrEqualTo(BRANCH_COUNT)
-        .containsAll(BRANCHES_WITHOUT_A_BODY);
+        .hasSizeGreaterThanOrEqualTo(BRANCH_COUNT);
 
     List<String> bypassingHandlers =
         handlers.stream()
-            .filter(handler -> !BRANCHES_WITHOUT_A_BODY.contains(handler.name()))
             .filter(
                 handler -> handler.code().stream().noneMatch(line -> line.contains(FUNNEL + "(")))
             .map(Member::name)
@@ -90,10 +83,10 @@ class GlobalExceptionHandlerBodyFunnelTest {
 
     assertThat(bypassingHandlers)
         .as(
-            "every @ExceptionHandler but %s has to build its answer via %s(); one that does not"
-                + " brings back the second exception, the stacktrace and the discarded response"
-                + " of #1780",
-            BRANCHES_WITHOUT_A_BODY, FUNNEL)
+            "every @ExceptionHandler has to build its answer via %s() - without exception since"
+                + " #1786; one that does not brings back the second exception, the stacktrace and"
+                + " the discarded response of #1780",
+            FUNNEL)
         .isEmpty();
   }
 
@@ -120,11 +113,12 @@ class GlobalExceptionHandlerBodyFunnelTest {
   }
 
   /**
-   * A selector on the advice would take the branches above off the paths they matter most on
-   * (#1786): {@code HandlerTypePredicate} rejects the {@code null} handler type every exception
-   * raised before a handler method is resolved carries, so the unmapped-path 404 (#456) and the 405
-   * with its {@code Allow} header would answer from Spring Boot's own error page instead - in
-   * English, naming the requested path, measured rather than assumed.
+   * A selector on the advice - any of the three, {@code hasSelectors()} weighing all of them -
+   * would take the branches above off the paths they matter most on (#1786): {@code
+   * HandlerTypePredicate} rejects the {@code null} handler type every exception raised before a
+   * handler method is resolved carries, so the unmapped-path 404 (#456) and the 405 with its {@code
+   * Allow} header would answer from Spring Boot's own error page instead. Measured rather than
+   * assumed: five assertions of this package fall with a selector in place.
    */
   @Test
   void theAdviceIsDeclaredWithoutASelector() throws IOException {
@@ -134,6 +128,61 @@ class GlobalExceptionHandlerBodyFunnelTest {
     assertThat(declarations)
         .as("narrowing the advice silently drops every branch reached without a handler method")
         .containsExactly("@RestControllerAdvice");
+  }
+
+  /**
+   * {@code @ExceptionHandler} carries a {@code produces=} of its own since Spring 7, and {@code
+   * ExceptionHandlerExceptionResolver} records it as the producible media types of the response -
+   * after {@code DispatcherServlet} removed the matched mapping's. {@code ErrorBodyNegotiator}
+   * would then promise a body the writer negotiates against that set instead of against the
+   * converters. Measured with {@code produces = "application/problem+json"} on one branch: its 404
+   * arrives as the container's 500 for every caller sending {@code Accept: application/json} - the
+   * outcome of #1780, on a branch nothing else here would flag.
+   */
+  @Test
+  void noBranchDeclaresAProducesOfItsOwn() throws IOException {
+    List<String> annotations = exceptionHandlerAnnotations();
+
+    assertThat(annotations)
+        .as(
+            "this guard proves nothing if the annotations went unparsed - the class holds %d",
+            BRANCH_COUNT)
+        .hasSizeGreaterThanOrEqualTo(BRANCH_COUNT);
+    assertThat(annotations.stream().filter(annotation -> annotation.contains("produces")).toList())
+        .as(
+            "a produces= on a branch makes %s() promise a body the writer then cannot write, and"
+                + " turns that branch's status into the container's 500",
+            FUNNEL)
+        .isEmpty();
+  }
+
+  /** Each {@code @ExceptionHandler} as one string, the lines google-java-format wrapped joined. */
+  private List<String> exceptionHandlerAnnotations() throws IOException {
+    List<String> lines = Files.readAllLines(SOURCE);
+    List<String> annotations = new ArrayList<>();
+
+    for (int index = 0; index < lines.size(); index++) {
+      if (!lines.get(index).startsWith("  @ExceptionHandler")) {
+        continue;
+      }
+      StringBuilder annotation = new StringBuilder();
+      int depth = 0;
+      for (int cursor = index; cursor < lines.size(); cursor++) {
+        String line = lines.get(cursor);
+        annotation.append(line.strip());
+        depth += occurrences(line, '(') - occurrences(line, ')');
+        index = cursor;
+        if (depth == 0) {
+          break;
+        }
+      }
+      annotations.add(annotation.toString());
+    }
+    return annotations;
+  }
+
+  private long occurrences(String line, char character) {
+    return line.chars().filter(candidate -> candidate == character).count();
   }
 
   /** A member of the guarded class: its name, its code lines, and whether it is a branch. */

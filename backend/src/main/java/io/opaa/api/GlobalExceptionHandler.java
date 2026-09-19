@@ -56,9 +56,9 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  * "io.opaa"} included - makes Spring's {@code HandlerTypePredicate} reject the {@code null} handler
  * type of every exception raised before a handler method is resolved: the unmapped-path 404 (#456)
  * and the 405 with its {@code Allow} header would leave this class for Spring Boot's own error
- * page, English and naming the requested path. The Actuator mappings it therefore covers as well
- * need no narrowing: their error bodies are negotiated like any other ({@link
- * ErrorBodyNegotiator}).
+ * page, dropping the German envelope and five assertions that hold it. The Actuator mappings it
+ * therefore covers as well need no narrowing: their error bodies are negotiated like any other
+ * ({@link ErrorBodyNegotiator}).
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -85,14 +85,14 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * The decision 30 of this class's 31 branches route through - all but the bodyless 406 below: the
-   * envelope is attached only when the caller's {@code Accept} lets it be written (#1780).
-   * Attaching an unwritable one makes {@code ExceptionHandlerExceptionResolver} log a stacktrace
-   * and discard this response, upon which the caller gets whatever renders the exception next: an
-   * exception Spring's own {@code DefaultHandlerExceptionResolver} renders keeps its status, every
-   * other branch arrives as the container's 500. A branch with a builder of its own ({@code Allow},
-   * {@code Retry-After}) hands it here instead of calling {@code builder.body(...)}; {@code
-   * GlobalExceptionHandlerBodyFunnelTest} holds that rule.
+   * The decision every one of this class's 31 branches routes through, the 406 included since
+   * #1786: the envelope is attached only when the caller's {@code Accept} lets it be written
+   * (#1780). Attaching an unwritable one makes {@code ExceptionHandlerExceptionResolver} log a
+   * stacktrace and discard this response, upon which the caller gets whatever renders the exception
+   * next: an exception Spring's own {@code DefaultHandlerExceptionResolver} renders keeps its
+   * status, every other branch arrives as the container's 500. A branch with a builder of its own
+   * ({@code Allow}, {@code Retry-After}) hands it here instead of calling {@code
+   * builder.body(...)}; {@code GlobalExceptionHandlerBodyFunnelTest} holds that rule.
    */
   private ResponseEntity<ErrorResponse> respond(
       ResponseEntity.BodyBuilder builder, ErrorResponse body) {
@@ -368,25 +368,27 @@ public class GlobalExceptionHandler {
 
   /**
    * The {@code Accept} sibling of the two above (#1707). Its status code is <em>not</em> what was
-   * wrong: a caller who accepts nothing this API writes cannot be sent a body at all, so the answer
-   * is a bodyless 406 either way - what {@link #handleGenericException} added was a stacktrace per
-   * request, raisable without a session by anyone sending {@code Accept: application/xml}.
+   * wrong: what {@link #handleGenericException} added was a stacktrace per request, raisable
+   * without a session by anyone sending {@code Accept: application/xml}.
    *
-   * <p><b>The one branch that does not go through {@link #respond} (#1780).</b> A 406 is answered
-   * with the status alone, for either kind of caller this advice serves. Through a mapping in
-   * {@code io.opaa} the {@code Accept} that caused it excludes the envelope as well - no mapping
-   * there declares {@code produces=}, and both binary endpoints preset a concrete {@code
-   * Content-Type}, skipping negotiation - so {@link #respond} would drop the body regardless. For
-   * the Actuator mappings this advice also covers, a body would be writable (#1786): a metrics
-   * scraper is sent the status, not this application's German envelope. {@code
-   * GlobalExceptionHandlerNotAcceptableTest} taps the ROOT logger, not this class's, because the
-   * stacktrace in question came from a Spring logger.
+   * <p>Routed through {@link #respond} like every other branch (#1786), which answers both
+   * positions of this exception by itself: raised while writing, the caller's {@code Accept}
+   * excludes the envelope too and the body is dropped as before; raised because a mapping's {@code
+   * produces=} could not meet that {@code Accept} - the Actuator's, this advice covering its
+   * mappings as well - the envelope is writable and is sent, exactly as the neighbouring branches
+   * answer the same caller. {@code GlobalExceptionHandlerNotAcceptableTest} taps the ROOT logger,
+   * not this class's, because the stacktrace in question came from a Spring logger.
    */
   @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
   public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotAcceptableException(
       HttpMediaTypeNotAcceptableException ex) {
     log.debug("Unacceptable response format: {}", errorSanitizer.sanitize(ex.getMessage()));
-    return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).build();
+    return respond(
+        HttpStatus.NOT_ACCEPTABLE,
+        new ErrorResponse(
+            "Das angeforderte Antwortformat wird nicht unterstützt",
+            HttpStatus.NOT_ACCEPTABLE.value(),
+            Instant.now()));
   }
 
   @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
