@@ -12,6 +12,7 @@ import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.TokenGroups;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.oidc.OidcClaimMapping;
@@ -1101,7 +1102,7 @@ class PermissionHistoryServiceIntegrationTest {
     UUID owner = createUser();
     UUID libraryId = createLibrary(owner);
     OidcProvider provider = tokenProvider("Beschäftigte");
-    synchronizer.apply(createUserEntity(), provider, List.of(TOKEN_GROUP_NAME));
+    synchronizer.apply(createUserEntity(), provider, TokenGroups.named(List.of(TOKEN_GROUP_NAME)));
     Group tokenGroup = registerTokenGroup(provider, TOKEN_GROUP_NAME);
     grantService.upsertGrant(
         libraryId,
@@ -1109,7 +1110,7 @@ class PermissionHistoryServiceIntegrationTest {
         currentUserOf(owner));
     User member = createUserEntity();
 
-    synchronizer.apply(member, provider, List.of(TOKEN_GROUP_NAME));
+    synchronizer.apply(member, provider, TokenGroups.named(List.of(TOKEN_GROUP_NAME)));
 
     return new ReadabilityChange(member.getId(), libraryId, true);
   }
@@ -1119,7 +1120,7 @@ class PermissionHistoryServiceIntegrationTest {
     UUID libraryId = createLibrary(owner);
     OidcProvider provider = tokenProvider("Partner");
     User member = createUserEntity();
-    synchronizer.apply(member, provider, List.of(TOKEN_GROUP_NAME));
+    synchronizer.apply(member, provider, TokenGroups.named(List.of(TOKEN_GROUP_NAME)));
     Group tokenGroup = registerTokenGroup(provider, TOKEN_GROUP_NAME);
     grantService.upsertGrant(
         libraryId,
@@ -1127,7 +1128,7 @@ class PermissionHistoryServiceIntegrationTest {
         currentUserOf(owner));
 
     // The next sign-in's token no longer names the group.
-    synchronizer.apply(member, provider, List.of());
+    synchronizer.apply(member, provider, TokenGroups.named(List.of()));
 
     return new ReadabilityChange(member.getId(), libraryId, false);
   }

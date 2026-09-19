@@ -68,7 +68,8 @@ class UserProvisionedEventIntegrationTest {
     OidcProvider provider = providerWithGroupsClaim();
 
     eventPublisher.publishEvent(
-        UserProvisionedEvent.withTokenGroups(user, false, provider, List.of(groupName)));
+        UserProvisionedEvent.withTokenGroups(
+            user, false, provider, TokenGroups.named(List.of(groupName))));
 
     assertThat(
             jdbcTemplate.queryForObject(
@@ -104,7 +105,7 @@ class UserProvisionedEventIntegrationTest {
             () ->
                 eventPublisher.publishEvent(
                     UserProvisionedEvent.withTokenGroups(
-                        user, false, provider, List.of(groupName))))
+                        user, false, provider, TokenGroups.named(List.of(groupName)))))
         .isInstanceOf(DataIntegrityViolationException.class);
 
     assertThat(defaultSpacesOf(user.getId())).isEqualTo(1);

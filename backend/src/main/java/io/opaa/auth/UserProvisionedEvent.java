@@ -1,7 +1,6 @@
 package io.opaa.auth;
 
 import io.opaa.auth.oidc.OidcProvider;
-import java.util.List;
 
 /**
  * Published by {@link UserService} once per provisioning of an account, after the {@code users} row
@@ -15,7 +14,7 @@ import java.util.List;
  * the later ones, so the order below is a contract, not a preference.
  */
 public record UserProvisionedEvent(
-    User user, boolean createdHere, OidcProvider provider, List<String> tokenGroups) {
+    User user, boolean createdHere, OidcProvider provider, TokenGroups tokenGroups) {
 
   /** The personal space is provisioned before any rights-affecting listener of this event. */
   public static final int PERSONAL_SPACE_ORDER = 100;
@@ -25,14 +24,13 @@ public record UserProvisionedEvent(
 
   /**
    * {@code provider} and {@code tokenGroups} are present together or not at all - a listener that
-   * sees one may rely on the other, and {@link #hasTokenGroups()} decides for both.
+   * sees one may rely on the other, and {@link #hasGroupsClaim()} decides for both.
    */
   public UserProvisionedEvent {
     if ((provider == null) != (tokenGroups == null)) {
       throw new IllegalArgumentException(
           "provider and tokenGroups must be set together or left out together");
     }
-    tokenGroups = tokenGroups == null ? null : List.copyOf(tokenGroups);
   }
 
   /**
@@ -43,17 +41,21 @@ public record UserProvisionedEvent(
     return new UserProvisionedEvent(user, createdHere, null, null);
   }
 
-  /** {@code provider}'s groups claim named exactly {@code tokenGroups} for {@code user}. */
+  /**
+   * {@code provider} declares a groups claim, and {@code tokenGroups} is what this sign-in's token
+   * said about it - which may be that it said nothing usable (#1807).
+   */
   public static UserProvisionedEvent withTokenGroups(
-      User user, boolean createdHere, OidcProvider provider, List<String> tokenGroups) {
+      User user, boolean createdHere, OidcProvider provider, TokenGroups tokenGroups) {
     return new UserProvisionedEvent(user, createdHere, provider, tokenGroups);
   }
 
   /**
    * Whether a provider's groups claim is authoritative for this sign-in; {@link #provider()} and
-   * {@link #tokenGroups()} are {@code null} otherwise.
+   * {@link #tokenGroups()} are {@code null} otherwise. It does not say that the token carried any
+   * groups - that is {@link #tokenGroups()}'s business alone.
    */
-  public boolean hasTokenGroups() {
+  public boolean hasGroupsClaim() {
     return provider != null;
   }
 }

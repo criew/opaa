@@ -1665,6 +1665,16 @@ Bei eingeschalteter lokaler Benutzerverwaltung heißt das zugleich: Gelingt der 
 
 **Rollen und Gruppen aus dem Token** (optional, je Anbieter). Ist ein **Rollen-Claim** gesetzt (Pfad in Punktnotation, z. B. `realm_access.roles`, mit den Rollenwerten für `SYSTEM_ADMIN` und `AUDITOR`), ist der Anbieter für diese Systemrollen führend: Die Rolle wird bei jeder Anfrage aus dem Token übernommen, die manuelle Rollenvergabe ist für Konten dieses Anbieters gesperrt, und der letzte `SYSTEM_ADMIN` der Installation wird nie per Token entzogen (der abgelehnte Entzug wird protokolliert und auditiert). Das Setzen des Rollen-Claims verlangt in der Oberfläche eine Bestätigung. Ist ein **Gruppen-Claim** gesetzt, werden die Gruppennamen des Tokens bei jeder Anmeldung zu Mitgliedschaften in Gruppen der Art „Gruppe aus dem Identitätsanbieter" im Namensraum dieses Anbieters — gleichnamige Gruppen zweier Anbieter sind zwei Gruppen; diese Gruppen sind in der Gruppenverwaltung schreibgeschützt und nicht Gegenstand des Verzeichnisabgleichs.
 
+**Was ein Token über Gruppen sagt — und was nicht.** Ein Gruppen-Claim ist nur dann führend, wenn das Token ihn auch trägt. OPAA unterscheidet drei Fälle:
+
+| Was das Token trägt | Was bei der Anmeldung geschieht |
+|---|---|
+| Gruppen-Claim mit Werten | Die Mitgliedschaften dieses Anbieters werden auf genau diese Gruppen gebracht (Zugang und Entzug, je Änderung historisiert und auditiert). |
+| Gruppen-Claim vorhanden und leer | Alle Mitgliedschaften dieses Anbieters werden entzogen, historisiert und auditiert — der Anbieter ist die führende Quelle. |
+| Kein Gruppen-Claim, falsch geformter Claim, nur unbrauchbare Werte, oder Overage-Hinweis | Es ändert sich **nichts**: Mitgliedschaften, Rechtehistorie und Nachweisprotokoll bleiben unberührt. Das Backend meldet den Vorfall im Anwendungsprotokoll, je Anbieter höchstens alle fünf Minuten einmal. |
+
+Der dritte Fall ist der praktisch wichtige: Wird am Anbieter der Gruppen-Mapper entfernt oder umbenannt, verlöre sonst jedes Konto bei seiner nächsten Anmeldung alle Gruppenrechte — einzeln und unauffällig. Der **Overage-Hinweis** ist der Sonderfall, in dem der Anbieter den Claim wegen seiner Größe durch einen Verweis ersetzt (Entra ID ab 200 Gruppen, `_claim_names` nach OpenID Connect 5.6.2); OPAA lädt die Gruppen nicht nach, meldet den Vorfall aber eigens benannt. Wer die Meldung sieht, prüft die Claim-Zuordnung des Anbieters und die Mapper-Konfiguration dort — bis dahin arbeiten die Konten mit ihrem letzten bekannten Gruppenstand weiter.
+
 #### Bestandsübernahme aus `OPAA_OIDC_*`
 
 Die Variablen `OPAA_OIDC_ISSUER_URI`, `OPAA_OIDC_CLIENT_ID` und `OPAA_OIDC_JWK_SET_URI` sind **Bootstrap-Werte**: Beim ersten Start im `oidc`-Modus übernimmt OPAA sie einmalig als ersten, aktivierten Standardanbieter „Verzeichnisdienst" — vor dem Start des Webservers, sodass keine Anmeldung der Übernahme zuvorkommt. Danach führt die Datenbank; eine Änderung der Variablen wirkt nicht mehr. Eine Bestandsinstallation, deren Konten unter diesem Issuer angelegt wurden, behält damit jedes Konto (kein Eingriff an `users`). Fehlt beim Start eine der drei Variablen oder ist die Issuer-URI keine http(s)-Adresse, wird nichts übernommen, das Backend protokolliert, was zu setzen ist, und holt die Übernahme beim nächsten Start nach.

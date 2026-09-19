@@ -1,5 +1,6 @@
 package io.opaa.group;
 
+import io.opaa.api.RateLimitService;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
@@ -7,6 +8,7 @@ import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.GroupKind;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.TokenGroups;
 import io.opaa.auth.User;
 import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.library.PermissionHistoryService;
@@ -38,6 +40,13 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * GroupMembershipHistoryCause#IDENTITY_PROVIDER_ADDED}/{@code _REMOVED}) and audited under the
  * {@value #IDENTITY_PROVIDER_ACTOR} system actor; the user's cached group set is evicted after the
  * commit. ORG_UNIT and AD_HOC groups are never touched.
+ *
+ * <p>Only a claim the token actually carried is authoritative (#1807): an empty claim is the
+ * provider ending every membership of its namespace, but a token whose claim is absent, of another
+ * shape or replaced by an overage reference leaves the last known memberships as they are and is
+ * logged per provider at most once per {@link #INCIDENT_WINDOW_SECONDS} seconds. Without that
+ * distinction a removed group mapper at the provider would silently revoke every account's access
+ * on its next sign-in.
  */
 @Component
 public class TokenGroupSynchronizer {
@@ -48,7 +57,15 @@ public class TokenGroupSynchronizer {
   /** {@code groups.external_id} is 255 characters; the namespace takes 42 of them. */
   static final int MAX_NAME_LENGTH = 255 - (EXTERNAL_ID_PREFIX.length() + 36 + 1);
 
+  /** One incident per provider per window: a broken provider must not flood the log. */
+  static final int INCIDENT_WINDOW_SECONDS = 300;
+
+  private static final int INCIDENTS_PER_WINDOW = 1;
+
   private static final Logger log = LoggerFactory.getLogger(TokenGroupSynchronizer.class);
+
+  private final RateLimitService incidentLog =
+      new RateLimitService(INCIDENTS_PER_WINDOW, INCIDENT_WINDOW_SECONDS);
 
   private final GroupRepository groupRepository;
   private final GroupMembershipRepository membershipRepository;
@@ -74,17 +91,46 @@ public class TokenGroupSynchronizer {
     return EXTERNAL_ID_PREFIX + provider.getId() + ":";
   }
 
-  /** Cheap when the token's groups equal the stored memberships; otherwise a resync. */
+  /**
+   * Cheap when the token's groups equal the stored memberships; otherwise a resync. A token that
+   * named no usable claim changes nothing at all and is only reported (#1807).
+   */
   @Transactional
-  public void apply(User user, OidcProvider provider, List<String> groupNames) {
+  public void apply(User user, OidcProvider provider, TokenGroups groups) {
+    switch (groups) {
+      case TokenGroups.Unavailable unavailable ->
+          report(provider, unavailable.reason().description());
+      case TokenGroups.Named named -> applyNames(user, provider, named.names());
+    }
+  }
+
+  private void applyNames(User user, OidcProvider provider, List<String> groupNames) {
     String prefix = namespaceOf(provider);
     Map<String, String> desired = desiredByExternalId(provider, prefix, groupNames);
+    // a claim that named groups but none this installation can hold is no revocation either
+    if (desired.isEmpty() && !groupNames.isEmpty()) {
+      report(provider, "names only groups that cannot be held here");
+      return;
+    }
     Set<String> current =
         groupRepository.findIdentityProviderExternalIdsOfUser(user.getId(), prefix);
     if (current.equals(desired.keySet())) {
       return;
     }
     resync(user, provider, prefix, desired, current);
+  }
+
+  /** Names the provider and the cause once per window; the memberships are left as they are. */
+  private void report(OidcProvider provider, String cause) {
+    if (!incidentLog.isAllowed(String.valueOf(provider.getId()))) {
+      return;
+    }
+    log.warn(
+        "The token of provider '{}' {}; the group memberships of its accounts are left unchanged"
+            + " (further incidents of this provider are suppressed for {} seconds)",
+        provider.getDisplayName(),
+        cause,
+        INCIDENT_WINDOW_SECONDS);
   }
 
   private static Map<String, String> desiredByExternalId(

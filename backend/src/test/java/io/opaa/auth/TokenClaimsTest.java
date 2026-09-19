@@ -40,7 +40,9 @@ class TokenClaimsTest {
     assertThat(claims.email()).isEqualTo("alice@behoerde.example");
     assertThat(claims.displayName()).isEqualTo("Alice Mustermann");
     assertThat(claims.roles()).isEmpty();
-    assertThat(claims.groups()).isEmpty();
+    // a mapping without a groups claim knows nothing about groups - which is not "no groups"
+    assertThat(claims.groups())
+        .isEqualTo(TokenGroups.unavailable(TokenGroups.Reason.CLAIM_MISSING));
   }
 
   @Test
@@ -55,7 +57,7 @@ class TokenClaimsTest {
     // given_name is absent: preferred_username is the fallback, never the subject
     assertThat(claims.displayName()).isEqualTo("amustermann");
     assertThat(claims.roles()).containsExactly("opaa-admin", "offline_access");
-    assertThat(claims.groups()).containsExactly("CN=Referat 12");
+    assertThat(claims.groups()).isEqualTo(TokenGroups.named(List.of("CN=Referat 12")));
   }
 
   @Test
@@ -63,7 +65,7 @@ class TokenClaimsTest {
     OidcClaimMapping mapping = new OidcClaimMapping(null, null, null, null, null, "groups");
 
     assertThat(TokenClaims.read(token(), mapping).groups())
-        .containsExactly("Fachbereich 3", "Projekt Phoenix");
+        .isEqualTo(TokenGroups.named(List.of("Fachbereich 3", "Projekt Phoenix")));
   }
 
   @Test
@@ -74,7 +76,9 @@ class TokenClaimsTest {
 
     TokenClaims claims = TokenClaims.read(token(), mapping);
     assertThat(claims.roles()).isEmpty();
-    assertThat(claims.groups()).isEmpty();
+    // regression guard for #1807: a path that leads nowhere is not an empty groups claim
+    assertThat(claims.groups())
+        .isEqualTo(TokenGroups.unavailable(TokenGroups.Reason.CLAIM_MISSING));
     TokenClaims none = TokenClaims.read(bare, OidcClaimMapping.keycloakDefaults());
     assertThat(none.email()).isNull();
     assertThat(none.displayName()).isNull();

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.TokenGroups;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.oidc.OidcClaimMapping;
@@ -16,6 +17,7 @@ import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +31,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * namespace, same-named groups of two providers stay two groups, a token that drops a group ends
  * the membership, an unchanged token writes nothing, and the group management refuses to touch such
  * a group.
+ *
+ * <p>And the distinction #1807 is about: an empty claim revokes, a claim that is absent, malformed
+ * or replaced by an overage reference leaves memberships, rights history and audit log untouched.
  */
 @OpaaIntegrationTest
 class TokenGroupSynchronizerIntegrationTest {
@@ -84,7 +89,8 @@ class TokenGroupSynchronizerIntegrationTest {
 
   @Test
   void theTokensGroupsBecomeNamespacedMembershipsAndFollowTheToken() {
-    synchronizer.apply(alice, beschaeftigte, List.of("Fachbereich 3", "Projekt Phoenix"));
+    synchronizer.apply(
+        alice, beschaeftigte, TokenGroups.named(List.of("Fachbereich 3", "Projekt Phoenix")));
 
     List<Group> groups = tokenGroups();
     assertThat(groups)
@@ -99,7 +105,7 @@ class TokenGroupSynchronizerIntegrationTest {
         .containsExactlyInAnyOrderElementsOf(groups.stream().map(Group::getId).toList());
 
     // the next token no longer names Projekt Phoenix: the membership ends, the group stays
-    synchronizer.apply(alice, beschaeftigte, List.of("Fachbereich 3"));
+    synchronizer.apply(alice, beschaeftigte, TokenGroups.named(List.of("Fachbereich 3")));
 
     assertThat(membershipResolver.groupIdsForUser(alice.getId()))
         .containsExactly(
@@ -133,12 +139,12 @@ class TokenGroupSynchronizerIntegrationTest {
 
   @Test
   void sameNamedGroupsOfTwoProvidersAreTwoGroups() {
-    synchronizer.apply(alice, beschaeftigte, List.of("Fachbereich 3"));
+    synchronizer.apply(alice, beschaeftigte, TokenGroups.named(List.of("Fachbereich 3")));
     User bob = new User("sub-" + UUID.randomUUID(), partner.getIssuerUri(), "b@x.example", "B");
     bob.setOrganizationId(organizationId);
     bob = userRepository.save(bob);
     try {
-      synchronizer.apply(bob, partner, List.of("Fachbereich 3"));
+      synchronizer.apply(bob, partner, TokenGroups.named(List.of("Fachbereich 3")));
 
       List<Group> groups = tokenGroups();
       assertThat(groups).hasSize(2);
@@ -146,7 +152,7 @@ class TokenGroupSynchronizerIntegrationTest {
       assertThat(membershipResolver.groupIdsForUser(alice.getId()))
           .doesNotContainAnyElementsOf(membershipResolver.groupIdsForUser(bob.getId()));
       // the partner's next token without the group touches only the partner's namespace
-      synchronizer.apply(bob, partner, List.of());
+      synchronizer.apply(bob, partner, TokenGroups.named(List.of()));
       assertThat(membershipResolver.groupIdsForUser(alice.getId())).hasSize(1);
       assertThat(membershipResolver.groupIdsForUser(bob.getId())).isEmpty();
     } finally {
@@ -160,18 +166,93 @@ class TokenGroupSynchronizerIntegrationTest {
   @Test
   void anUnchangedTokenWritesNothingAndAnOverlongNameIsSkipped() {
     String overlong = "x".repeat(TokenGroupSynchronizer.MAX_NAME_LENGTH + 1);
-    synchronizer.apply(alice, beschaeftigte, List.of("Fachbereich 3", overlong));
+    synchronizer.apply(alice, beschaeftigte, TokenGroups.named(List.of("Fachbereich 3", overlong)));
     int historyRows = historyRowsOfAlice();
     assertThat(tokenGroups()).hasSize(1);
 
-    synchronizer.apply(alice, beschaeftigte, List.of("Fachbereich 3", overlong));
+    synchronizer.apply(alice, beschaeftigte, TokenGroups.named(List.of("Fachbereich 3", overlong)));
 
     assertThat(historyRowsOfAlice()).isEqualTo(historyRows);
   }
 
+  /**
+   * regression guard for #1807: the provider's group mapper is gone or renamed, so the next token
+   * carries no groups claim at all. Memberships, rights history and audit log stay exactly as they
+   * were - before the fix this sign-in removed every membership of this provider.
+   */
+  @Test
+  void aTokenWithoutAGroupsClaimChangesNothing() {
+    synchronizer.apply(
+        alice, beschaeftigte, TokenGroups.named(List.of("Fachbereich 3", "Projekt Phoenix")));
+    Set<String> before = storedExternalIdsOfAlice();
+    int historyRows = historyRowsOfAlice();
+    int auditRows = auditRowsOfOrganization();
+    assertThat(before).hasSize(2);
+
+    synchronizer.apply(
+        alice, beschaeftigte, TokenGroups.unavailable(TokenGroups.Reason.CLAIM_MISSING));
+
+    assertThat(storedExternalIdsOfAlice()).isEqualTo(before);
+    assertThat(historyRowsOfAlice()).isEqualTo(historyRows);
+    assertThat(auditRowsOfOrganization()).isEqualTo(auditRows);
+  }
+
+  /** A token that signals a group overage says nothing about the groups; nothing is revoked. */
+  @Test
+  void anOverageHintRevokesNothing() {
+    synchronizer.apply(alice, beschaeftigte, TokenGroups.named(List.of("Fachbereich 3")));
+    Set<String> before = storedExternalIdsOfAlice();
+    int historyRows = historyRowsOfAlice();
+    int auditRows = auditRowsOfOrganization();
+
+    synchronizer.apply(
+        alice, beschaeftigte, TokenGroups.unavailable(TokenGroups.Reason.CLAIM_OVERAGE));
+
+    assertThat(storedExternalIdsOfAlice()).isEqualTo(before);
+    assertThat(historyRowsOfAlice()).isEqualTo(historyRows);
+    assertThat(auditRowsOfOrganization()).isEqualTo(auditRows);
+  }
+
+  /** A claim that names only groups this installation cannot hold is no revocation either. */
+  @Test
+  void aClaimOfOnlyUnusableNamesRevokesNothing() {
+    synchronizer.apply(alice, beschaeftigte, TokenGroups.named(List.of("Fachbereich 3")));
+    Set<String> before = storedExternalIdsOfAlice();
+
+    synchronizer.apply(
+        alice,
+        beschaeftigte,
+        TokenGroups.named(List.of("x".repeat(TokenGroupSynchronizer.MAX_NAME_LENGTH + 1))));
+
+    assertThat(storedExternalIdsOfAlice()).isEqualTo(before);
+  }
+
+  /** An empty claim stays a revocation: the provider is the leading source for its namespace. */
+  @Test
+  void anEmptyGroupsClaimRevokesAndIsHistorisedAndAudited() {
+    synchronizer.apply(alice, beschaeftigte, TokenGroups.named(List.of("Fachbereich 3")));
+
+    synchronizer.apply(alice, beschaeftigte, TokenGroups.named(List.of()));
+
+    assertThat(storedExternalIdsOfAlice()).isEmpty();
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT cause FROM group_membership_history WHERE user_id = ? ORDER BY created_at",
+                alice.getId()))
+        .extracting(row -> row.get("cause"))
+        .containsExactly("IDENTITY_PROVIDER_ADDED", "IDENTITY_PROVIDER_REMOVED");
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT event_type FROM audit_log WHERE organization_id = ? ORDER BY recorded_at,"
+                    + " event_id",
+                organizationId))
+        .extracting(row -> row.get("event_type"))
+        .containsExactly("GROUP_CREATED", "GROUP_MEMBER_ADDED", "GROUP_MEMBER_REMOVED");
+  }
+
   @Test
   void theGroupManagementRefusesToEditATokenGroup() {
-    synchronizer.apply(alice, beschaeftigte, List.of("Fachbereich 3"));
+    synchronizer.apply(alice, beschaeftigte, TokenGroups.named(List.of("Fachbereich 3")));
     Group group = tokenGroups().getFirst();
     CurrentUser admin =
         CurrentUser.of(alice.getId(), organizationId, SystemRole.SYSTEM_ADMIN, "A", "a@x.example");
@@ -182,6 +263,21 @@ class TokenGroupSynchronizerIntegrationTest {
     assertThatThrownBy(() -> groupService.deleteGroup(group.getId(), admin))
         .isInstanceOf(ValidationException.class);
     assertThat(groupRepository.findById(group.getId())).isPresent();
+  }
+
+  /** Read from the database, not from {@link GroupMembershipResolver}'s cache. */
+  private Set<String> storedExternalIdsOfAlice() {
+    return groupRepository.findIdentityProviderExternalIdsOfUser(
+        alice.getId(), TokenGroupSynchronizer.namespaceOf(beschaeftigte));
+  }
+
+  private int auditRowsOfOrganization() {
+    Integer count =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM audit_log WHERE organization_id = ?",
+            Integer.class,
+            organizationId);
+    return count == null ? 0 : count;
   }
 
   private int historyRowsOfAlice() {
