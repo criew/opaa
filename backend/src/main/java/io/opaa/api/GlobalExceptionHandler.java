@@ -76,12 +76,14 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * The single decision every branch routes through: the envelope is attached only when the
-   * caller's {@code Accept} lets it be written (#1780). Attaching an unwritable one makes {@code
-   * ExceptionHandlerExceptionResolver} log a stacktrace and discard this response altogether, so
-   * the caller gets the container's 500 instead of the status meant for them. A branch with a
-   * builder of its own ({@code Allow}, {@code Retry-After}) hands it here instead of calling {@code
-   * builder.body(...)}.
+   * The decision 30 of this class's 31 branches route through - all but the bodyless 406 below: the
+   * envelope is attached only when the caller's {@code Accept} lets it be written (#1780).
+   * Attaching an unwritable one makes {@code ExceptionHandlerExceptionResolver} log a stacktrace
+   * and discard this response, upon which the caller gets whatever renders the exception next -
+   * {@code DefaultHandlerExceptionResolver} for 405, 415 and 404, the container's 500 for every
+   * other branch. A branch with a builder of its own ({@code Allow}, {@code Retry-After}) hands it
+   * here instead of calling {@code builder.body(...)}; {@code GlobalExceptionHandlerBodyFunnelTest}
+   * holds that rule.
    */
   private ResponseEntity<ErrorResponse> respond(
       ResponseEntity.BodyBuilder builder, ErrorResponse body) {
@@ -92,7 +94,12 @@ public class GlobalExceptionHandler {
     return respond(ResponseEntity.status(status), body);
   }
 
-  /** Without a bound request - a unit test invoking a branch directly - a body is written. */
+  /**
+   * Without a bound request - a unit test invoking a branch directly - a body is written. The
+   * direction is deliberate rather than an enumeration of cases: the opposite one would silently
+   * strip the body from every direct call, the 45 assertions of {@code GlobalExceptionHandlerTest}
+   * among them.
+   */
   private boolean acceptsErrorBody() {
     RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
     if (attributes instanceof ServletRequestAttributes servletAttributes) {
@@ -356,13 +363,14 @@ public class GlobalExceptionHandler {
    * is a bodyless 406 either way - what {@link #handleGenericException} added was a stacktrace per
    * request, raisable without a session by anyone sending {@code Accept: application/xml}.
    *
-   * <p><b>The answer carries no body, and that is load-bearing rather than a simplification.</b>
-   * Returning an {@link ErrorResponse} here would be unwritable for the very reason the exception
-   * was raised; {@code AbstractMessageConverterMethodProcessor} would throw a second {@code
-   * HttpMediaTypeNotAcceptableException}, and {@code ExceptionHandlerExceptionResolver} logs any
-   * exception other than the original one via {@code logger.warn(msg, throwable)} - so the
-   * stacktrace this branch exists to remove would come back from a Spring logger instead. {@code
-   * GlobalExceptionHandlerNotAcceptableTest} therefore taps the ROOT logger, not this class's.
+   * <p><b>The one branch that does not go through {@link #respond} (#1780).</b> Since that method
+   * exists, an {@link ErrorResponse} here would no longer bring the stacktrace back - it would be
+   * dropped just the same, because every 406 reachable in this codebase arises from an {@code
+   * Accept} that excludes the envelope as well (no mapping declares {@code produces=}, and both
+   * binary endpoints preset a concrete {@code Content-Type}, skipping negotiation). Routing this
+   * branch through {@link #respond} would therefore change no answer and only add a German wording
+   * no caller can receive. {@code GlobalExceptionHandlerNotAcceptableTest} taps the ROOT logger,
+   * not this class's, because the stacktrace in question came from a Spring logger.
    */
   @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
   public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotAcceptableException(

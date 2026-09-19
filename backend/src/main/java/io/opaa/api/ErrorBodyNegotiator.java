@@ -3,6 +3,7 @@ package io.opaa.api;
 import io.opaa.api.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.InvalidMediaTypeException;
@@ -10,11 +11,15 @@ import org.springframework.http.MediaType;
 
 /**
  * Decides whether an {@link ErrorResponse} body may be attached, given the caller's {@code Accept}
- * header (#1780). The criterion is the very compatibility test {@code
- * AbstractMessageConverterMethodProcessor} runs, so the two cannot disagree.
+ * header (#1780): the same compatibility test {@code AbstractMessageConverterMethodProcessor} runs,
+ * against the types the Jackson converter writes for the envelope.
  *
- * <p>The envelope is only ever written by the Jackson converter, hence these two producible types;
- * that holds as long as no mapping narrows them with {@code produces=}, which none does today.
+ * <p>Pre-check and writer agree while two conditions hold - no other registered converter writes
+ * {@link ErrorResponse} ({@code Jaxb2RootElementHttpMessageConverter} is registered and declines
+ * only for want of XML annotations on the generated DTO), and the matched mapping declares no
+ * narrower {@code produces=}. No mapping in {@code io.opaa} does. Actuator's {@code
+ * /actuator/prometheus} does, and since a {@code @RestControllerAdvice} without a selector covers
+ * its mappings too, that is the one place where the two would part ways.
  */
 class ErrorBodyNegotiator {
 
@@ -22,7 +27,10 @@ class ErrorBodyNegotiator {
       List.of(MediaType.APPLICATION_JSON, MediaType.parseMediaType("application/*+json"));
 
   boolean acceptsErrorBody(HttpServletRequest request) {
-    return acceptsErrorBody(Collections.list(request.getHeaders(HttpHeaders.ACCEPT)));
+    // A null enumeration violates the servlet contract, but an NPE raised here would re-enter the
+    // very path this class closes; an absent Accept is the harmless reading of it.
+    Enumeration<String> acceptHeaders = request.getHeaders(HttpHeaders.ACCEPT);
+    return acceptsErrorBody(acceptHeaders == null ? List.of() : Collections.list(acceptHeaders));
   }
 
   /**
