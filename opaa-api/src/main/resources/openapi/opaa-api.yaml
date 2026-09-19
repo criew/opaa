@@ -36,6 +36,14 @@ info:
     declared at exactly those operations that have a budget of their own. Its answer carries
     `Retry-After` **where the waiting time is known** - a refusal from a concurrency ceiling rather
     than from a time window has none to name.
+
+    `502` and `503` are absent for the same reason, although they read like infrastructure: they
+    are not answered for every call but only by the operations that themselves depend on something
+    outside this service - the AI provider one of them calls on the request thread, the object
+    store another reads an original from, the worker capacity a run is handed to, the encryption
+    key a stored credential needs. Each such operation declares the status it can produce and names
+    the dependency in its own description; an operation that declares neither cannot produce
+    either.
   version: 0.1.0
   license:
     name: AGPL-3.0
@@ -63,6 +71,14 @@ paths:
         Ask a question against indexed documents. If chatId resolves to an owned, persisted chat
         whose space is archived (#543), the turn is rejected with 409 and not persisted - an
         archived space accepts no new turns in an existing chat either.
+      description: >
+        The turn calls the configured AI provider on the request thread - the embedding of the
+        search queries and the generation of the answer - and therefore answers for it: 503 while
+        the provider is unreachable, overloaded or rate-limiting, and while no chat model is
+        active at all; 502 once the provider answered but not usefully, which is the shape of a
+        misconfiguration (unknown model identifier, rejected key) rather than of a passing
+        disturbance. The 503 carries Retry-After where the provider named a waiting time. Nothing
+        of the turn is persisted in either case.
       requestBody:
         required: true
         content:
@@ -90,6 +106,10 @@ paths:
           $ref: "#/components/responses/Conflict"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/v1/search/metadata-filter-options:
     get:
@@ -141,6 +161,13 @@ paths:
         model is asked to generate anything, and nothing is persisted. Open to every signed-in
         person; it does not hang on the external-access switch, which is the emergency stop of the
         external-access channel, not of this endpoint.
+      description: >
+        No chat model generates anything here, but the retrieval itself calls the configured AI
+        provider on the request thread: every search query is embedded before it can be compared
+        against the stored chunks. This operation therefore answers for the provider exactly like
+        POST /api/v1/query does - 503 while it is unreachable, overloaded or rate-limiting, 502
+        once it answered but not usefully. A failed sub-question decomposition is not one of
+        these: it falls back to searching the question as it was asked.
       requestBody:
         required: true
         content:
@@ -158,6 +185,10 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/v1/search/libraries:
     get:
@@ -2492,6 +2523,13 @@ paths:
         diagnosegesperrte libraries and the protocol entry happen in that one call. Without the
         befugnis the answer is 403, whatever the caller's role. The result of such a run is
         returned once and stored nowhere (Leitplanke (j)).
+
+
+        The run goes through the same retrieval pipeline as POST /api/v1/query and POST
+        /api/v1/search and therefore answers for the configured AI provider the same way: 503
+        while it is unreachable, overloaded or rate-limiting, 502 once it answered but not
+        usefully. A diagnosis that fails this way produced no protocol - it is a disturbed run,
+        not a run whose Erklärprotokoll says the question found nothing.
       requestBody:
         required: true
         content:
@@ -2511,6 +2549,10 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/v1/admin/search/chunks/{chunkId}:
     get:
@@ -3323,6 +3365,12 @@ paths:
       operationId: createLibrary
       tags: [library]
       summary: Create a new knowledge library, owned by the caller or by one of the caller's groups
+      description: >
+        A sourceCredentials given here is stored encrypted, so this operation needs the
+        credentials encryption key (OPAA_CREDENTIALS_ENCRYPTION_KEY). Without a usable key the
+        library is not created and the answer is 503 naming the missing key - a write never
+        silently drops a credential. Reading a library never fails this way: an undecryptable
+        stored credential is reported as absent.
       requestBody:
         required: true
         content:
@@ -3342,6 +3390,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/v1/libraries/source-test:
     post:
@@ -3507,6 +3557,12 @@ paths:
       operationId: updateLibrary
       tags: [library]
       summary: Update library name, description, visibility and listed flag (owner only)
+      description: >
+        A sourceCredentials given here is stored encrypted, so this operation needs the
+        credentials encryption key (OPAA_CREDENTIALS_ENCRYPTION_KEY). Without a usable key
+        nothing is changed and the answer is 503 naming the missing key - a write never silently
+        drops a credential. A request that carries no new credential keeps the stored one and is
+        unaffected.
       requestBody:
         required: true
         content:
@@ -3526,6 +3582,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
     delete:
       operationId: deleteLibrary
@@ -15347,6 +15405,12 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     TooManyRequests:
       description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    BadGateway:
+      description: An upstream service answered, but not usefully
       content:
         application/json:
           schema:
