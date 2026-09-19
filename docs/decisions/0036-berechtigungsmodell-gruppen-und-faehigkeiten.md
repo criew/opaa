@@ -18,10 +18,10 @@ Entscheidung 6 samt Nachtrag vom 19.08.2026 (#484) — die Anlage einer Biblioth
 vergebbare Fähigkeit, ausgeliefert an „Alle Konten" (Entscheidung 5 unten). ADR-0018 gilt im Übrigen
 unverändert.
 
-**Zwei Werte sind hier ausdrücklich offen** und vom Maintainer zu setzen, bevor der Status wechselt:
-die **Voreinstellung** der Mindestgruppengröße und der **ausgelieferte Wert** der
-Aufbewahrungshöchstdauer (siehe „Zahlen, die dieser ADR setzt"). Ihre erzwungenen Grenzen sind
-entschieden.
+**Alle Werte sind gesetzt.** Die beiden Auslieferungswerte, die der Entwurf vom 19.09.2026 noch offen
+ließ — die Voreinstellung der Mindestgruppengröße und der ausgelieferte Wert der
+Aufbewahrungshöchstdauer —, hat der Maintainer entschieden; sie stehen in „Zahlen, die dieser ADR
+setzt".
 
 **Präzisiert, ohne aufzuheben:** [ADR-0016](0016-loeschschicksal-rechtehistorie.md) (Entscheidung 8),
 [ADR-0025](0025-mehrere-oidc-anbieter.md) (Entscheidungen 2 und 3),
@@ -809,12 +809,12 @@ für Mitgliedschaften zieht.
 | Größe | Wert | Herkunft |
 | --- | --- | --- |
 | **Mindestgruppengröße für Rechteprofile — erzwungene Untergrenze** | **5** | Eine Gruppe von vier ist in einem Referat eine Person mit Namen. Die Untergrenze steht als **Zahl** in der Konfigurationstabelle des Handbuchs — eine Validierung ohne nachlesbaren Wert ist nicht überprüfbar. Nach oben frei; ein Haus kann den Schutz nicht abschalten |
-| **Mindestgruppengröße — Voreinstellung** | **offen, vom Maintainer zu setzen** | `spaces-and-assets.md` führt Voreinstellung und Untergrenze als **zwei** Werte („Das Produkt setzt eine Voreinstellung und erzwingt eine Untergrenze"), und die Voreinstellung steht dort unter „Offene Punkte". Die Begründung oben trägt nur die Untergrenze; ein Wert ≥ 5 ist zulässig, welcher es sein soll, entscheidet der Maintainer. Bis dahin bleibt dieser Eintrag offen — (c) setzt den Wert nicht selbst |
+| **Mindestgruppengröße — Voreinstellung** | **5**, gleich der Untergrenze | `spaces-and-assets.md` führt Voreinstellung und Untergrenze als **zwei** Werte („Das Produkt setzt eine Voreinstellung und erzwingt eine Untergrenze"); die Begründung oben trägt nur die Untergrenze, die Voreinstellung ist eine eigene Wahl. **Sie liegt am erzwungenen Minimum und ist nur nach oben änderbar** — das Produkt schreibt damit keinen strengeren Schutz vor, als es selbst durchsetzt, und verdeckt umgekehrt nicht, wo die harte Grenze liegt. Ein Haus mit kleinen Einheiten hebt sie an; absenken kann sie niemand |
 | **Alterungsschwelle der Nachfolgeliste** | **12 Monate**, konfigurierbar | orientiert an `DiagnosticImpersonationGrant.MAX_VALIDITY_MONTHS` |
 | **Plausibilitätsschwelle des Abgleichs** | **30 %** | unverändert der gebaute Vorgabewert (`opaa.directory-sync.change-threshold-fraction = 0.3`) |
 | **Abgleichintervall** | Vorgabe **6 Stunden**, je Anbieter einstellbar | wie in `access-control.md` genannt |
 | **Feststellungsintervall** | Vorgabe **stündlich** | Entscheidung 6 |
-| **Aufbewahrungshöchstdauer der Rechtehistorie** | Grenzen **12–120 Monate** entschieden; ausgeliefert **36 — Vorschlag, vom Maintainer zu bestätigen** | Die Grenzen sind dieselben wie `chk_audit_retention_settings_months`, weil `security-and-compliance.md` („Aufbewahrung und Löschschicksal der Historie folgen derselben Logik wie das Protokoll") es so verlangt. **Derselbe Satz trägt auch den ausgelieferten Wert:** Das Protokoll wird mit **36** geseedet (`001-baseline.yaml`), und die Begründung dort ist ausdrücklich — 3 Jahre decken „den üblichen Abstand zwischen Vorgang und Prüfung", 10 Jahre sind die Obergrenze, weil „was länger liegt, keiner Prüfung mehr dient". **120 wäre der falsche Auslieferungswert:** Personalrat D1 verlangt die Höchstdauer als Vorbedingung weiterer Quellen, und eine ausgelieferte Obergrenze begrenzt im Auslieferungszustand nichts |
+| **Aufbewahrungshöchstdauer der Rechtehistorie** | Grenzen **12–120 Monate**, ausgeliefert **36** | Die Grenzen sind dieselben wie `chk_audit_retention_settings_months`, weil `security-and-compliance.md` („Aufbewahrung und Löschschicksal der Historie folgen derselben Logik wie das Protokoll") es so verlangt. **Derselbe Satz trägt auch den ausgelieferten Wert:** Das Nachweisprotokoll wird mit **36** geseedet (`001-baseline.yaml`), und die Begründung dort ist ausdrücklich — 3 Jahre decken „den üblichen Abstand zwischen Vorgang und Prüfung", 10 Jahre sind die Obergrenze, weil „was länger liegt, keiner Prüfung mehr dient". **120 wäre der falsche Auslieferungswert gewesen:** Personalrat D1 verlangt die Höchstdauer als Vorbedingung weiterer Quellen, und eine ausgelieferte Obergrenze begrenzt im Auslieferungszustand nichts |
 | **Personenspalten in Historientabellen** | **2 → 7** | heute `group_membership_history.user_id` und `asset_grant_history.subject_user_id`; dazu fünf neue Tabellen |
 | **`RESTRICT`-Personenspalten insgesamt (Löschschuld)** | **11 → 16** | `UserRepository#countDeletionBlockers` zählt heute elf Spalten in acht Tabellen (`spaces`, `chats`, `knowledge_libraries`, `asset_grants` ×2, `space_asset_associations`, `asset_grant_history`, `group_membership_history`, `audit_incident_scope_grants` ×3); `UserDeletionBlockerCoverageIntegrationTest` hält die Liste gegen `pg_constraint`. **Diese Zahl ist das Maß der aufgeschobenen Löschschuld**; `countDeletionBlockers` wächst mit jeder neuen Tabelle, und #391/#395 stellt die sieben Historienspalten in einem Zug um |
 
@@ -907,7 +907,7 @@ ausdrücklichen Vergabe zu sperren (Sachbearbeitung 4a — die Auslieferung darf
 | **neu (a)** | **Aufbewahrungshöchstdauer der Rechtehistorie** — klein, Phase 2, **vor #1815**; Vorbedingung von #1813, #1815, #1818, #1819 (8) | anzulegen; Liquibase 045 |
 | **neu (b)** | **Übertragungsoperation** — nach #1811 und #1815; #1819 hängt daran, #1812 und #1816 nicht (10) | anzulegen |
 | **neu (c)** | **Space-Kontext im Rechteprofil** — nach #1815; bis dahin keine Space-ID im Diagnose-Request (7) | anzulegen |
-| **neu (d)** | **Erweiterung von #1822** um Vollmacht, Ein-Objekt-Regel, Zeitfenster und Abrufereignis (8) | als Nachschärfung von #1822 |
+| **(d)** | **Erweiterung von #1822** um Vollmacht, Ein-Objekt-Regel, Zeitfenster und Abrufereignis (8) | **kein eigenes Issue** — Nachschärfung von #1822. Die vier Punkte sind Parameter desselben Endpunkts und eine Zeile in derselben Methode; sie nachzuziehen hieße, den Lesepfad zuerst ungehärtet zu bauen — die Reihenfolge, gegen die Personalrat Z1 gerichtet ist. **Neu anzulegen sind damit drei Issues: (a), (b), (c)** |
 
 **Reihenfolge der Wellen:** #1811 → (a), #1812 → #1813, #1815 → #1814, #1816, (b) → #1817, #1822,
 #1823 → #1818, #1819, (c) → #1820 → #1821 → #1824. **(a) ist Vorbedingung von #1813, #1815, #1818
