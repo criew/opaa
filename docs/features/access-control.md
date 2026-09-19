@@ -300,7 +300,8 @@ OIDC-Anbieters (im `dev`-Modus: des Dev-Issuers). Über ihn laufen der Rollenent
 `LAST_LOGIN_CAPABLE_ADMIN`) sowie das Deaktivieren und Löschen jedes aktivierten
 OIDC-Anbieters sowie Sperren, Befristen und Löschen lokaler Systemverwalter. Weil beide
 Rollenwege denselben Lock nehmen, gilt die Zusicherung auch dann, wenn ein manueller Entzug
-zeitgleich mit einem Token-Entzug läuft: Einer der beiden wird abgelehnt. Die
+zeitgleich mit einem Token-Entzug läuft: Ist der zweite Entzug der des letzten anmeldefähigen
+Systemverwalters, wird er abgelehnt. Die
 `LOCAL`-Zeile ist über die Anbieter-API weder löschbar noch Standard, ihr Issuer nicht änderbar
 (nur der Anzeigename), Adressprüfung und Verbindungstest entfallen für sie; ihr
 Aktivieren/Deaktivieren ist der Schalter der lokalen Verwaltung (`LOCAL_ACCOUNTS_ENABLED`/

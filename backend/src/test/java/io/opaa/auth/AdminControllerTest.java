@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.api.types.SystemRole;
+import io.opaa.auth.local.LocalAdminAvailabilityGuard;
 import io.opaa.common.ConflictException;
 import java.util.List;
 import java.util.UUID;
@@ -156,11 +157,9 @@ class AdminControllerTest {
   @Test
   void changeRoleRefusedByTheLockoutGuardReturns409WithItsCode() throws Exception {
     UUID userId = UUID.randomUUID();
+    String refusal = "Der letzte anmeldefähige Systemverwalter kann nicht entfernt werden.";
     when(userService.updateRole(any(), any(), any()))
-        .thenThrow(
-            new ConflictException(
-                "Der letzte anmeldefähige Systemverwalter kann nicht entfernt werden.",
-                "LAST_LOGIN_CAPABLE_ADMIN"));
+        .thenThrow(new ConflictException(refusal, LocalAdminAvailabilityGuard.ERROR_CODE));
 
     mockMvc
         .perform(
@@ -169,10 +168,8 @@ class AdminControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"role\": \"USER\"}"))
         .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("LAST_LOGIN_CAPABLE_ADMIN"))
-        .andExpect(
-            jsonPath("$.error")
-                .value("Der letzte anmeldefähige Systemverwalter kann nicht entfernt werden."));
+        .andExpect(jsonPath("$.code").value(LocalAdminAvailabilityGuard.ERROR_CODE))
+        .andExpect(jsonPath("$.error").value(refusal));
   }
 
   @Test
